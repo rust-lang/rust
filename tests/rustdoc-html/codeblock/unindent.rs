@@ -1,6 +1,6 @@
 #![crate_name = "foo"]
 
-//@ has foo/struct.Example.html
+//@ has foo/type.Example.html
 //@ matches - '//pre[@class="rust rust-example-rendered"]' \
 //     '(?m)let example = Example::new\(\)\n    \.first\(\)\n    \.second\(\)\n    \.build\(\);\Z'
 /// ```rust
@@ -11,7 +11,7 @@
 /// ```
 pub struct Example;
 
-//@ has foo/struct.F.html
+//@ has foo/type.F.html
 //@ matches - '//pre[@class="rust rust-example-rendered"]' \
 //     '(?m)let example = Example::new\(\)\n    \.first\(\)\n    \.another\(\)\n    \.build\(\);\Z'
 ///```rust
@@ -22,7 +22,7 @@ pub struct Example;
 /// ```
 pub struct F;
 
-//@ has foo/struct.G.html
+//@ has foo/type.G.html
 //@ matches - '//pre[@class="rust rust-example-rendered"]' \
 //     '(?m)let example = Example::new\(\)\n\.first\(\)\n    \.another\(\)\n\.build\(\);\Z'
 ///```rust
@@ -33,26 +33,26 @@ pub struct F;
 ///```
 pub struct G;
 
-//@ has foo/struct.H.html
+//@ has foo/type.H.html
 //@ has - '//div[@class="docblock"]/p' 'no whitespace lol'
 ///no whitespace
 #[doc = " lol"]
 pub struct H;
 
-//@ has foo/struct.I.html
+//@ has foo/type.I.html
 //@ matches - '//pre[@class="rust rust-example-rendered"]' '(?m)4 whitespaces!\Z'
 ///     4 whitespaces!
 #[doc = "something"]
 pub struct I;
 
-//@ has foo/struct.J.html
+//@ has foo/type.J.html
 //@ matches - '//div[@class="docblock"]/p' '(?m)a\nno whitespace\nJust some text.\Z'
 ///a
 ///no whitespace
 #[doc = include_str!("unindent.md")]
 pub struct J;
 
-//@ has foo/struct.K.html
+//@ has foo/type.K.html
 //@ matches - '//pre[@class="rust rust-example-rendered"]' '(?m)4 whitespaces!\Z'
 ///a
 ///

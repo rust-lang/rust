@@ -44,7 +44,7 @@ pub trait Trait<T: ?Sized> {
 
 pub struct Implementor;
 
-//@ has generic_const_items/struct.Implementor.html
+//@ has generic_const_items/type.Implementor.html
 //@ has - '//h3[@class="code-header"]' 'impl Trait<str> for Implementor'
 impl Trait<str> for Implementor {
     //@ has - '//*[@id="associatedconstant.C"]' \

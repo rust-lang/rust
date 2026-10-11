@@ -10,6 +10,6 @@ use std::marker::PhantomData as TheOne;
 
 
 pub fn foo() {
-    //@ has - '//a[@href="{{channel}}/core/marker/struct.PhantomData.html"]' 'TheOne'
+    //@ has - '//a[@href="{{channel}}/core/marker/type.PhantomData.html"]' 'TheOne'
     let _: TheOne::<usize>;
 }

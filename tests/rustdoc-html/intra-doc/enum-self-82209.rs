@@ -10,4 +10,4 @@ pub enum Foo {
     },
 }
 
-//@ has foo/enum.Foo.html '//a/@href' 'enum.Foo.html#variant.Bar.field.abc'
+//@ has foo/type.Foo.html '//a/@href' 'type.Foo.html#variant.Bar.field.abc'

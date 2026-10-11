@@ -61,12 +61,12 @@ pub mod ratel {
     #[doc(cfg(feature = "thionic"))]
     pub type Thionic = ();
 
-    //@ has 'globuliferous/ratel/struct.Eventration.html'
+    //@ has 'globuliferous/ratel/type.Eventration.html'
     //@ count   - '//*[@class="stab portability"]' 1
     //@ matches - '//*[@class="stab portability"]' 'crate feature ratel'
     pub struct Eventration;
 
-    //@ has 'globuliferous/ratel/struct.Zincic.html'
+    //@ has 'globuliferous/ratel/type.Zincic.html'
     //@ count   - '//*[@class="stab portability"]' 2
     //@ matches - '//*[@class="stab portability"]' 'crate features ratel and zincic'
     //@ matches - '//*[@class="stab portability"]' 'crate feature rutherford'
@@ -78,7 +78,7 @@ pub mod ratel {
         pub rutherford: (),
     }
 
-    //@ has 'globuliferous/ratel/enum.Cosmotellurian.html'
+    //@ has 'globuliferous/ratel/type.Cosmotellurian.html'
     //@ count   - '//*[@class="stab portability"]' 10
     //@ matches - '//*[@class="stab portability"]' 'crate features cosmotellurian and ratel'
     //@ matches - '//*[@class="stab portability"]' 'crate feature biotaxy'

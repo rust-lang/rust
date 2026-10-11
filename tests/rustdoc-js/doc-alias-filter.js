@@ -9,7 +9,7 @@ const EXPECTED = {
             'path': 'doc_alias_filter',
             'name': 'Foo',
             'alias': 'true',
-            'href': '../doc_alias_filter/struct.Foo.html',
+            'href': '../doc_alias_filter/type.Foo.html',
             'is_alias': true
         },
     ],

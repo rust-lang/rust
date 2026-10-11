@@ -18,12 +18,12 @@ foo! {}
 //@ hasraw - '<a href="../../foo/fn.f.html">f</a>'
 #[rustfmt::skip]
 pub fn f () {}
-//@ hasraw - '<a href="../../foo/struct.Bar.html">Bar</a>'
-//@ hasraw - '<a href="../../foo/struct.Bar.html">Bar</a>'
+//@ hasraw - '<a href="../../foo/type.Bar.html">Bar</a>'
+//@ hasraw - '<a href="../../foo/type.Bar.html">Bar</a>'
 //@ hasraw - '<a href="{{channel}}/std/primitive.u32.html">u32</a>'
 #[rustfmt::skip]
 pub struct Bar ( u32 );
-//@ hasraw - '<a href="../../foo/enum.Foo.html">Foo</a>'
+//@ hasraw - '<a href="../../foo/type.Foo.html">Foo</a>'
 pub enum Foo {
     A,
 }

@@ -1,5 +1,5 @@
 #![crate_name = "foo"]
-//@ has foo/enum.Token.html
+//@ has foo/type.Token.html
 /// A token!
 /// # First
 /// Some following text...

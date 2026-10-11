@@ -1,6 +1,6 @@
 #![crate_name = "foo"]
 
-//@ has 'foo/struct.Bar.html'
+//@ has 'foo/type.Bar.html'
 //@ has '-' '//*[@id="deref-methods-FooJ"]' 'Methods from Deref<Target = FooJ>'
 //@ has '-' '//*[@class="impl-items"]//*[@id="method.foo_a"]' 'pub fn foo_a(&self)'
 //@ has '-' '//*[@class="impl-items"]//*[@id="method.foo_b"]' 'pub fn foo_b(&self)'

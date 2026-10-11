@@ -5,7 +5,7 @@
 // link to the blanket impl and not the other impl. Basically, we're checking if
 // the ID is correctly derived.
 
-//@ has 'foo/struct.AnotherStruct.html'
+//@ has 'foo/type.AnotherStruct.html'
 //@ count - '//*[@class="sidebar"]//a[@href="#impl-AnAmazingTrait-for-AnotherStruct%3C()%3E"]' 1
 //@ count - '//*[@class="sidebar"]//a[@href="#impl-AnAmazingTrait-for-T"]' 1
 

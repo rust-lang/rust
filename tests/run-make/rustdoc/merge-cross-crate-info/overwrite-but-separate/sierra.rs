@@ -5,8 +5,8 @@
 //@ has index.html '//ul[@class="all-items"]//a[@href="tango/index.html"]' 'tango'
 //@ has help.html
 //@ has settings.html
-//@ has sierra/struct.Sierra.html
-//@ hasraw trait.impl/tango/trait.Tango.js 'struct.Sierra.html'
+//@ has sierra/type.Sierra.html
+//@ hasraw trait.impl/tango/trait.Tango.js 'type.Sierra.html'
 //@ hasraw search.index/name/*.js 'Tango'
 //@ hasraw search.index/name/*.js 'Sierra'
 //@ hasraw search.index/name/*.js 'Quebec'

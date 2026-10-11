@@ -13,7 +13,7 @@ impl Foo<u32> {
 
 // Note that the same href is used both on the method itself,
 // and on the sidebar items.
-//@ has foo/struct.Bar.html
+//@ has foo/type.Bar.html
 //@ has - '//a[@href="#method.get_i32"]' 'get_i32'
 //@ !has - '//a[@href="#method.get_u32"]' 'get_u32'
 //@ count - '//ul[@class="block deref-methods"]//a' 1

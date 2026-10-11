@@ -1,4 +1,4 @@
-//@ has manual/struct.Foo.html
+//@ has manual/type.Foo.html
 //@ has - '//*[@id="synthetic-implementations-list"]//*[@class="impl"]//h3[@class="code-header"]' \
 // 'impl<T> Sync for Foo<T>where T: Sync'
 //

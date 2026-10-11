@@ -4,7 +4,7 @@
 #![feature(inherent_associated_types)]
 #![allow(incomplete_features)]
 
-//@ has 'foo/struct.Bar.html'
+//@ has 'foo/type.Bar.html'
 pub struct Bar;
 
 impl Bar {

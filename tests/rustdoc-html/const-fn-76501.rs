@@ -7,11 +7,11 @@ pub const fn bloop() -> i32 {
     1
 }
 
-/// A struct.
+/// A type.
 pub struct Struct {}
 
 impl Struct {
-    //@ has 'foo/struct.Struct.html' '//*[@class="method"]' \
+    //@ has 'foo/type.Struct.html' '//*[@class="method"]' \
     // 'pub const fn blurp() -> i32'
     /// A useless function that always returns 1.
     pub const fn blurp() -> i32 {

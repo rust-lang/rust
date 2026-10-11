@@ -11,12 +11,12 @@
 //@ has - '//*[@id="main-content"]/*[@class="section-header"]' 'Traits'
 // Checking that there are only three items.
 //@ count - '//*[@id="main-content"]//dt' 3
-//@ has - '//*[@id="main-content"]//a[@href="struct.Bar.html"]' 'Bar'
+//@ has - '//*[@id="main-content"]//a[@href="type.Bar.html"]' 'Bar'
 //@ has - '//*[@id="main-content"]//a[@href="fn.foo.html"]' 'foo'
 //@ has - '//*[@id="main-content"]//a[@href="trait.Foo.html"]' 'Foo'
 
 // Now checking that the `foo` method is visible in `Bar` page.
-//@ has 'foo/struct.Bar.html'
+//@ has 'foo/type.Bar.html'
 //@ has - '//*[@id="method.foo"]/*[@class="code-header"]' 'pub fn foo()'
 //@ has - '//*[@id="method.bar"]/*[@class="code-header"]' 'fn bar()'
 pub struct Bar;

@@ -10,7 +10,7 @@ extern crate bar;
 // In this case, since all variants are C-like variants and at least one of them
 // has its value set, we display values for all of them.
 
-//@ has 'foo/enum.A.html'
+//@ has 'foo/type.A.html'
 //@ has - '//*[@class="rust item-decl"]/code' 'A = 12,'
 //@ has - '//*[@class="rust item-decl"]/code' 'B = 13,'
 //@ has - '//*[@class="rust item-decl"]/code' 'C = 1_245,'
@@ -26,7 +26,7 @@ pub enum A {
 // In this case, all variants are C-like variants but none of them has its value set.
 // Therefore we don't display values.
 
-//@ has 'foo/enum.B.html'
+//@ has 'foo/type.B.html'
 //@ has - '//*[@class="rust item-decl"]/code' 'A,'
 //@ has - '//*[@class="rust item-decl"]/code' 'B,'
 //@ matches - '//*[@id="variant.A"]/h3' '^A$'
@@ -38,7 +38,7 @@ pub enum B {
 
 // In this case, not all variants are C-like variants so we don't display values.
 
-//@ has 'foo/enum.C.html'
+//@ has 'foo/type.C.html'
 //@ has - '//*[@class="rust item-decl"]/code' 'A = 12,'
 //@ has - '//*[@class="rust item-decl"]/code' 'B,'
 //@ has - '//*[@class="rust item-decl"]/code' 'C(u32),'
@@ -55,7 +55,7 @@ pub enum C {
 // In this case, not all variants are C-like variants and no C-like variant has its
 // value set, so we don't display values.
 
-//@ has 'foo/enum.D.html'
+//@ has 'foo/type.D.html'
 //@ has - '//*[@class="rust item-decl"]/code' 'A,'
 //@ has - '//*[@class="rust item-decl"]/code' 'C(u32),'
 //@ matches - '//*[@id="variant.A"]/h3' '^A$'
@@ -65,7 +65,7 @@ pub enum D {
     C(u32),
 }
 
-//@ has 'foo/enum.E.html'
+//@ has 'foo/type.E.html'
 //@ has - '//*[@class="rust item-decl"]/code' 'A = 12,'
 //@ has - '//*[@class="rust item-decl"]/code' 'B = 13,'
 //@ has - '//*[@class="rust item-decl"]/code' 'C = 1_245,'
@@ -74,14 +74,14 @@ pub enum D {
 //@ matches - '//*[@id="variant.C"]/h3' '^C = 1_245$'
 pub use bar::E;
 
-//@ has 'foo/enum.F.html'
+//@ has 'foo/type.F.html'
 //@ has - '//*[@class="rust item-decl"]/code' 'A,'
 //@ has - '//*[@class="rust item-decl"]/code' 'B,'
 //@ matches - '//*[@id="variant.A"]/h3' '^A$'
 //@ matches - '//*[@id="variant.B"]/h3' '^B$'
 pub use bar::F;
 
-//@ has 'foo/enum.G.html'
+//@ has 'foo/type.G.html'
 //@ has - '//*[@class="rust item-decl"]/code' 'A = 12,'
 //@ has - '//*[@class="rust item-decl"]/code' 'B,'
 //@ has - '//*[@class="rust item-decl"]/code' 'C(u32),'
@@ -90,7 +90,7 @@ pub use bar::F;
 //@ has - '//*[@id="variant.C"]/h3' 'C(u32)'
 pub use bar::G;
 
-//@ has 'foo/enum.H.html'
+//@ has 'foo/type.H.html'
 //@ has - '//*[@class="rust item-decl"]/code' 'A,'
 //@ has - '//*[@class="rust item-decl"]/code' 'C(u32),'
 //@ matches - '//*[@id="variant.A"]/h3' '^A$'
@@ -99,7 +99,7 @@ pub use bar::H;
 
 // Testing more complex cases.
 pub const X: isize = 2;
-//@ has 'foo/enum.I.html'
+//@ has 'foo/type.I.html'
 //@ has - '//*[@class="rust item-decl"]/code' 'A = 2,'
 //@ has - '//*[@class="rust item-decl"]/code' 'B = 4,'
 //@ has - '//*[@class="rust item-decl"]/code' 'C = 9,'
@@ -118,7 +118,7 @@ pub enum I {
 
 // Testing `repr`.
 
-//@ has 'foo/enum.J.html'
+//@ has 'foo/type.J.html'
 //@ has - '//*[@class="rust item-decl"]/code' 'A = 0,'
 //@ has - '//*[@class="rust item-decl"]/code' 'B = 1,'
 //@ matches - '//*[@id="variant.A"]/h3' '^A = 0$'
@@ -129,7 +129,7 @@ pub enum J {
     B,
 }
 
-//@ has 'foo/enum.K.html'
+//@ has 'foo/type.K.html'
 //@ has - '//*[@class="rust item-decl"]/code' 'A(u32),'
 //@ has - '//*[@class="rust item-decl"]/code' 'B,'
 //@ has - '//*[@id="variant.A"]/h3' 'A(u32)'
@@ -140,7 +140,7 @@ pub enum K {
     B,
 }
 
-//@ has 'foo/enum.L.html'
+//@ has 'foo/type.L.html'
 //@ has - '//*[@class="rust item-decl"]/code' 'A = 0,'
 //@ has - '//*[@class="rust item-decl"]/code' 'B = 1,'
 //@ matches - '//*[@id="variant.A"]/h3' '^A = 0$'
@@ -151,7 +151,7 @@ pub enum L {
     B,
 }
 
-//@ has 'foo/enum.M.html'
+//@ has 'foo/type.M.html'
 //@ has - '//*[@class="rust item-decl"]/code' 'A(u32),'
 //@ has - '//*[@class="rust item-decl"]/code' 'B,'
 //@ has - '//*[@id="variant.A"]/h3' 'A(u32)'
@@ -162,28 +162,28 @@ pub enum M {
     B,
 }
 
-//@ has 'foo/enum.N.html'
+//@ has 'foo/type.N.html'
 //@ has - '//*[@class="rust item-decl"]/code' 'A = 0,'
 //@ has - '//*[@class="rust item-decl"]/code' 'B = 1,'
 //@ matches - '//*[@id="variant.A"]/h3' '^A = 0$'
 //@ matches - '//*[@id="variant.B"]/h3' '^B = 1$'
 pub use bar::N;
 
-//@ has 'foo/enum.O.html'
+//@ has 'foo/type.O.html'
 //@ has - '//*[@class="rust item-decl"]/code' 'A(u32),'
 //@ has - '//*[@class="rust item-decl"]/code' 'B,'
 //@ has - '//*[@id="variant.A"]/h3' 'A(u32)'
 //@ matches - '//*[@id="variant.B"]/h3' '^B$'
 pub use bar::O;
 
-//@ has 'foo/enum.P.html'
+//@ has 'foo/type.P.html'
 //@ has - '//*[@class="rust item-decl"]/code' 'A = 0,'
 //@ has - '//*[@class="rust item-decl"]/code' 'B = 1,'
 //@ matches - '//*[@id="variant.A"]/h3' '^A = 0$'
 //@ matches - '//*[@id="variant.B"]/h3' '^B = 1$'
 pub use bar::P;
 
-//@ has 'foo/enum.Q.html'
+//@ has 'foo/type.Q.html'
 //@ has - '//*[@class="rust item-decl"]/code' 'A(u32),'
 //@ has - '//*[@class="rust item-decl"]/code' 'B,'
 //@ has - '//*[@id="variant.A"]/h3' 'A(u32)'
@@ -191,7 +191,7 @@ pub use bar::P;
 pub use bar::Q;
 
 // Ensure signed implicit discriminants are rendered correctly after a negative explicit value.
-//@ has 'foo/enum.R.html'
+//@ has 'foo/type.R.html'
 //@ has - '//*[@class="rust item-decl"]/code' 'A = -2,'
 //@ has - '//*[@class="rust item-decl"]/code' 'B = -1,'
 //@ matches - '//*[@id="variant.A"]/h3' '^A = -2$'
@@ -202,7 +202,7 @@ pub enum R {
 }
 
 // Also check that incrementing -1 yields 0 for the next implicit variant.
-//@ has 'foo/enum.S.html'
+//@ has 'foo/type.S.html'
 //@ has - '//*[@class="rust item-decl"]/code' 'A = -1,'
 //@ has - '//*[@class="rust item-decl"]/code' 'B = 0,'
 //@ matches - '//*[@id="variant.A"]/h3' '^A = -1$'

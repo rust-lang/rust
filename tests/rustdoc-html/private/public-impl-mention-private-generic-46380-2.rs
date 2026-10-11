@@ -3,7 +3,7 @@
 
 pub trait PublicTrait<T> {}
 
-//@ has foo/struct.PublicStruct.html
+//@ has foo/type.PublicStruct.html
 pub struct PublicStruct;
 
 //@ !has - '//*[@class="impl"]' 'impl PublicTrait<PrivateStruct> for PublicStruct'

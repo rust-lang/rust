@@ -6,7 +6,7 @@
 
 pub struct Source;
 
-//@ has foo/struct.Source.html
+//@ has foo/type.Source.html
 
 // Verify negative Deref impl is rendered in the main content.
 //@ has - '//*[@class="impl"]//h3[@class="code-header"]' 'impl !Deref for Source'

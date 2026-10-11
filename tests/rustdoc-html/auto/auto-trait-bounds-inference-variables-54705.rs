@@ -3,7 +3,7 @@
 
 pub trait ScopeHandle<'scope> {}
 
-//@ has foo/struct.ScopeFutureContents.html
+//@ has foo/type.ScopeFutureContents.html
 //@ has - '//*[@id="synthetic-implementations-list"]//*[@class="impl"]//h3[@class="code-header"]' \
 // "impl<'scope, S> Send for ScopeFutureContents<'scope, S>where S: Sync"
 //

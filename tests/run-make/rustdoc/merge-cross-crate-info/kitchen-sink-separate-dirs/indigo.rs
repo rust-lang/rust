@@ -7,11 +7,11 @@
 //@ has index.html '//ul[@class="all-items"]//a[@href="tango/index.html"]' 'tango'
 //@ has help.html
 //@ has settings.html
-//@ !has quebec/struct.Quebec.html
+//@ !has quebec/type.Quebec.html
 //@ !has romeo/type.Romeo.html
-//@ !has sierra/struct.Sierra.html
+//@ !has sierra/type.Sierra.html
 //@ !has tango/trait.Tango.html
-//@ hasraw trait.impl/tango/trait.Tango.js 'struct.Sierra.html'
+//@ hasraw trait.impl/tango/trait.Tango.js 'type.Sierra.html'
 //@ hasraw search.index/name/*.js 'Quebec'
 //@ hasraw search.index/name/*.js 'Romeo'
 //@ hasraw search.index/name/*.js 'Sierra'

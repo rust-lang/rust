@@ -11,7 +11,7 @@ extern crate foo;
 //@ !has - '//*[@id="method.baz"]' 'default fn baz()'
 pub use foo::Item;
 
-//@ has default_trait_method/struct.Foo.html
+//@ has default_trait_method/type.Foo.html
 //@ has - '//*[@id="method.foo"]' 'default fn foo()'
 //@ has - '//*[@id="method.bar"]' 'fn bar()'
 //@ !has - '//*[@id="method.bar"]' 'default fn bar()'

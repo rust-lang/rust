@@ -7,8 +7,8 @@
 //@ has 'src/foo/prelude-types.rs.html'
 // FIXME: would be nice to be able to check both the class and the href at the same time so
 // we could check the text as well...
-//@ has - '//a[@class="prelude-ty"]/@href' '{{channel}}/core/result/enum.Result.html'
-//@ has - '//a[@class="prelude-ty"]/@href' '{{channel}}/core/option/enum.Option.html'
+//@ has - '//a[@class="prelude-ty"]/@href' '{{channel}}/core/result/type.Result.html'
+//@ has - '//a[@class="prelude-ty"]/@href' '{{channel}}/core/option/type.Option.html'
 pub fn foo() -> Result<Option<()>, ()> { Err(()) }
 
 // This part is to ensure that they are not linking to the actual prelude ty.

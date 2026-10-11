@@ -10,7 +10,7 @@
 // visible items instead and assert that there are *exactly two* associated items
 // (by counting the number of `section`s). This is more robust and future-proof.
 
-//@ has dependent/struct.Ty.html
+//@ has dependent/type.Ty.html
 //@ has - '//*[@id="associatedtype.VisibleAssoc"]' 'type VisibleAssoc = ()'
 //@ has - '//*[@id="associatedconstant.VISIBLE_ASSOC"]' 'const VISIBLE_ASSOC: ()'
 //@ count - '//*[@class="impl-items"]/section' 2

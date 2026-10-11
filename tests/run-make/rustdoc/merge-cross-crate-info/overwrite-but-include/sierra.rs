@@ -1,8 +1,8 @@
-//@ has quebec/struct.Quebec.html
-//@ has sierra/struct.Sierra.html
+//@ has quebec/type.Quebec.html
+//@ has sierra/type.Sierra.html
 //@ has tango/trait.Tango.html
-//@ hasraw sierra/struct.Sierra.html 'Tango'
-//@ hasraw trait.impl/tango/trait.Tango.js 'struct.Sierra.html'
+//@ hasraw sierra/type.Sierra.html 'Tango'
+//@ hasraw trait.impl/tango/trait.Tango.js 'type.Sierra.html'
 //@ hasraw search.index/name/*.js 'Tango'
 //@ hasraw search.index/name/*.js 'Sierra'
 //@ !hasraw search.index/name/*.js 'Quebec'

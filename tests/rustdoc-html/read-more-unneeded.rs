@@ -23,7 +23,7 @@ pub trait MyFrom {
 
 pub struct NonZero;
 
-//@ has 'foo/struct.NonZero.html'
+//@ has 'foo/type.NonZero.html'
 impl MyFrom for NonZero {
     //@ matches - '//*[@class="docblock"]' '^Hello Read more$'
     fn try_from1() {}

@@ -13,21 +13,21 @@
 //@ count - '//*[@title="Available on non-crate feature `hidden` only"]' 2
 #[cfg(not(feature = "hidden"))]
 pub mod m {
-    //@ count 'foo/m/struct.A.html' '//*[@class="stab portability"]' 0
+    //@ count 'foo/m/type.A.html' '//*[@class="stab portability"]' 0
     pub struct A;
 
     //@ has 'foo/m/inner/index.html' '//*[@class="stab portability"]' 'Available on non-crate feature hidden only.'
     #[doc(auto_cfg(show(feature, values("hidden"))))]
     pub mod inner {
-        //@ has 'foo/m/inner/struct.B.html' '//*[@class="stab portability"]' 'Available on non-crate feature hidden only.'
+        //@ has 'foo/m/inner/type.B.html' '//*[@class="stab portability"]' 'Available on non-crate feature hidden only.'
         pub struct B;
 
-        //@ count 'foo/m/inner/struct.A.html' '//*[@class="stab portability"]' 0
+        //@ count 'foo/m/inner/type.A.html' '//*[@class="stab portability"]' 0
         #[doc(auto_cfg(hide(feature, values("hidden"))))]
         pub struct A;
     }
 
-    //@ has 'foo/m/struct.B.html' '//*[@class="stab portability"]' 'Available on non-crate feature hidden only.'
+    //@ has 'foo/m/type.B.html' '//*[@class="stab portability"]' 'Available on non-crate feature hidden only.'
     #[doc(auto_cfg(show(feature, values("hidden"))))]
     pub struct B;
 }
@@ -38,11 +38,11 @@ pub mod m {
 #[doc(auto_cfg = false)]
 pub mod n {
     // Should not have `moustache` listed.
-    //@ count 'foo/n/struct.X.html' '//*[@class="stab portability"]' 0
+    //@ count 'foo/n/type.X.html' '//*[@class="stab portability"]' 0
     pub struct X;
 
     // Should re-enable `auto_cfg` and make `moustache` listed.
-    //@ has 'foo/n/struct.Y.html' '//*[@class="stab portability"]' \
+    //@ has 'foo/n/type.Y.html' '//*[@class="stab portability"]' \
     //  'Available on non-crate feature moustache only.'
     #[doc(auto_cfg)]
     pub struct Y;
@@ -53,13 +53,13 @@ pub mod n {
     //  'Available on non-crate feature moustache only.'
     #[doc(auto_cfg = true)]
     pub mod inner {
-        //@ has 'foo/n/inner/struct.Y.html' '//*[@class="stab portability"]' \
+        //@ has 'foo/n/inner/type.Y.html' '//*[@class="stab portability"]' \
         //  'Available on non-crate feature moustache only.'
         pub struct Y;
     }
 
     // Should re-enable `auto_cfg` and make `moustache` listed.
-    //@ has 'foo/n/struct.Z.html' '//*[@class="stab portability"]' \
+    //@ has 'foo/n/type.Z.html' '//*[@class="stab portability"]' \
     //  'Available on non-crate feature moustache only.'
     #[doc(auto_cfg(hide(feature, values("hidden"))))]
     pub struct Z;
@@ -70,7 +70,7 @@ pub mod n {
 //  'Available on non-crate feature pistache only.'
 #[doc(cfg(not(feature = "pistache")))]
 pub mod o {
-    //@ has 'foo/o/struct.A.html' '//*[@class="stab portability"]' \
+    //@ has 'foo/o/type.A.html' '//*[@class="stab portability"]' \
     //  'Available on non-crate feature pistache and non-crate feature tarte only.'
     #[doc(cfg(not(feature = "tarte")))]
     pub struct A;

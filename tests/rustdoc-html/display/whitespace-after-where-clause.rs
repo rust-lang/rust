@@ -23,7 +23,7 @@ pub trait ToOwned2<T: Clone> {
     fn whatever(&self) -> T;
 }
 
-//@ has 'foo/enum.Cow.html'
+//@ has 'foo/type.Cow.html'
 //@ snapshot enum - '//*[@class="rust item-decl"]'
 pub enum Cow<'a, B: ?Sized + 'a>
 where
@@ -33,7 +33,7 @@ where
     Whatever(u32),
 }
 
-//@ has 'foo/enum.Cow2.html'
+//@ has 'foo/type.Cow2.html'
 //@ snapshot enum2 - '//*[@class="rust item-decl"]'
 // There should be a whitespace before `{` in this case!
 pub enum Cow2<'a, B: ?Sized + ToOwned<()> + 'a> {
@@ -41,7 +41,7 @@ pub enum Cow2<'a, B: ?Sized + ToOwned<()> + 'a> {
     Whatever(u32),
 }
 
-//@ has 'foo/struct.Struct.html'
+//@ has 'foo/type.Struct.html'
 //@ snapshot struct - '//*[@class="rust item-decl"]'
 pub struct Struct<'a, B: ?Sized + 'a>
 where
@@ -51,7 +51,7 @@ where
     pub b: u32,
 }
 
-//@ has 'foo/struct.Struct2.html'
+//@ has 'foo/type.Struct2.html'
 //@ snapshot struct2 - '//*[@class="rust item-decl"]'
 // There should be a whitespace before `{` in this case!
 pub struct Struct2<'a, B: ?Sized + ToOwned<()> + 'a> {
@@ -59,7 +59,7 @@ pub struct Struct2<'a, B: ?Sized + ToOwned<()> + 'a> {
     pub b: u32,
 }
 
-//@ has 'foo/union.Union.html'
+//@ has 'foo/type.Union.html'
 //@ snapshot union - '//*[@class="rust item-decl"]'
 pub union Union<'a, B: ?Sized + 'a>
 where
@@ -69,7 +69,7 @@ where
     b: u32,
 }
 
-//@ has 'foo/union.Union2.html'
+//@ has 'foo/type.Union2.html'
 //@ snapshot union2 - '//*[@class="rust item-decl"]'
 // There should be a whitespace before `{` in this case!
 pub union Union2<'a, B: ?Sized + ToOwned<()> + 'a> {

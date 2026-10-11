@@ -30,7 +30,7 @@ pub mod single_reexport {
 
     // Then we check that we have the correct link for each re-export.
 
-    //@ !has - '//*[@href="struct.Foo.html"]' 'Foo'
+    //@ !has - '//*[@href="type.Foo.html"]' 'Foo'
     //@ !has - '//*[@id="reexport.Foo"]/code' 'pub use crate::private_module::Public as Foo;'
     pub use crate::private_module::Public as Foo;
     //@ !has - '//*[@href="type.Foo2.html"]' 'Foo2'
@@ -39,27 +39,27 @@ pub mod single_reexport {
     //@ !has - '//*[@href="type.Yo.html"]' 'Yo'
     //@ !has - '//*[@id="reexport.Yo"]/code' 'pub use crate::Bar3 as Yo;'
     pub use crate::Bar3 as Yo;
-    //@ !has - '//*[@href="struct.Yo2.html"]' 'Yo2'
+    //@ !has - '//*[@href="type.Yo2.html"]' 'Yo2'
     //@ !has - '//*[@id="reexport.Yo2"]/code' 'pub use crate::FooFoo as Yo2;'
     pub use crate::FooFoo as Yo2;
 
     // Checking that each file is also created as expected.
-    //@ !has 'foo/single_reexport/struct.Foo.html'
+    //@ !has 'foo/single_reexport/type.Foo.html'
     //@ !has 'foo/single_reexport/type.Foo2.html'
     //@ !has 'foo/single_reexport/type.Yo.html'
-    //@ !has 'foo/single_reexport/struct.Yo2.html'
+    //@ !has 'foo/single_reexport/type.Yo2.html'
 }
 
 // However, re-exporting an item inheriting `#[doc(hidden)]` will inline it.
 pub mod single_reexport_inherit_hidden {
     //@ has 'foo/single_reexport_inherit_hidden/index.html'
 
-    //@ has - '//*[@href="struct.Foo3.html"]' 'Foo3'
+    //@ has - '//*[@href="type.Foo3.html"]' 'Foo3'
     pub use crate::module::Public2 as Foo3;
     //@ has - '//*[@href="type.Foo4.html"]' 'Foo4'
     pub use crate::module::Bar2 as Foo4;
 
-    //@ has 'foo/single_reexport_inherit_hidden/struct.Foo3.html'
+    //@ has 'foo/single_reexport_inherit_hidden/type.Foo3.html'
     //@ has 'foo/single_reexport_inherit_hidden/type.Foo4.html'
 }
 
@@ -114,10 +114,10 @@ pub mod glob_reexport {
     pub use crate::*;
     // This one should be inlined.
     //@ !has - '//*[@id="main-content"]//*' 'pub use crate::module::*;'
-    //@ has - '//*[@id="main-content"]//a[@href="struct.Public2.html"]' 'Public2'
+    //@ has - '//*[@id="main-content"]//a[@href="type.Public2.html"]' 'Public2'
     //@ has - '//*[@id="main-content"]//a[@href="type.Bar2.html"]' 'Bar2'
     // And we check that the two files were created too.
-    //@ has 'foo/glob_reexport/struct.Public2.html'
+    //@ has 'foo/glob_reexport/type.Public2.html'
     //@ has 'foo/glob_reexport/type.Bar2.html'
     pub use crate::module::*;
 }
@@ -130,7 +130,7 @@ mod private {
 // Checking that `#[doc(hidden)]` re-exports documentation isn't generated.
 pub mod doc_hidden_reexport {
     //@ has 'foo/doc_hidden_reexport/index.html'
-    // Ensure there is only one item in this page and that it's a struct.
+    // Ensure there is only one item in this page and that it's a type.
     //@ count - '//dt' 1
     //@ has - '//a[@class="struct"]' 'Reexport'
     // Check that the `#[doc(hidden)]` re-export's attributes are not taken into account.

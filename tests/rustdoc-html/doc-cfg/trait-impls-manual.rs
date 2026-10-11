@@ -22,7 +22,7 @@ pub trait Foo {
 
 pub struct X;
 
-//@ has 'foo/struct.X.html'
+//@ has 'foo/type.X.html'
 //@ count - '//*[@id="impl-Bob-for-X"]' 1
 //@ count - '//*[@id="impl-Bob-for-X"]/*[@class="item-info"]' 1
 //@ count - '//*[@id="impl-Trait-for-X"]' 1
@@ -60,7 +60,7 @@ mod imp3 {
 
 pub struct Y;
 
-//@ has 'foo/struct.Y.html'
+//@ has 'foo/type.Y.html'
 //@ count - '//*[@id="implementations-list"]//*[@class="impl-items"]' 1
 //@ count - '//*[@id="implementations-list"]//*[@class="impl-items"]/*[@class="item-info"]' 0
 #[doc(cfg(any(target_pointer_width = "64", target_arch = "wasm32")))]
@@ -71,7 +71,7 @@ mod imp4 {
 
 pub struct Z;
 
-//@ has 'foo/struct.Z.html'
+//@ has 'foo/type.Z.html'
 //@ count - '//*[@id="implementations-list"]//*[@class="impl-items"]' 1
 //@ count - '//*[@id="implementations-list"]//*[@class="impl-items"]/*[@class="item-info"]' 0
 #[doc(cfg(any(target_pointer_width = "64", target_arch = "wasm32")))]
@@ -83,7 +83,7 @@ mod imp5 {
 // The "witness" which has the item info.
 pub struct W;
 
-//@ has 'foo/struct.W.html'
+//@ has 'foo/type.W.html'
 //@ count - '//*[@id="implementations-list"]//*[@class="impl-items"]' 1
 //@ count - '//*[@id="implementations-list"]//*[@class="impl-items"]/*[@class="item-info"]' 1
 #[doc(cfg(any(target_pointer_width = "64", target_arch = "wasm32")))]

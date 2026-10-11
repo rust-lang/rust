@@ -3,8 +3,8 @@
 pub struct Foo;
 
 impl Foo {
-    //@ has unicode/struct.Foo.html //a/@href "#%C3%BA"
-    //@ !has unicode/struct.Foo.html //a/@href "#ú"
+    //@ has unicode/type.Foo.html //a/@href "#%C3%BA"
+    //@ !has unicode/type.Foo.html //a/@href "#ú"
     /// # ú
     pub fn foo() {}
 }

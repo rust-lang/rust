@@ -10,7 +10,7 @@
 /// blah
 pub fn widget_count() {}
 
-//@ has foo/struct.Widget.html '//head/title' 'Widget in foo - Rust'
+//@ has foo/type.Widget.html '//head/title' 'Widget in foo - Rust'
 pub struct Widget;
 
 //@ has foo/constant.ANSWER.html '//head/title' 'ANSWER in foo - Rust'
@@ -18,7 +18,7 @@ pub const ANSWER: u8 = 42;
 
 //@ has foo/blah/index.html '//head/title' 'foo::blah - Rust'
 pub mod blah {
-    //@ has foo/blah/struct.Widget.html '//head/title' 'Widget in foo::blah - Rust'
+    //@ has foo/blah/type.Widget.html '//head/title' 'Widget in foo::blah - Rust'
     pub struct Widget;
 
     //@ has foo/blah/trait.Awesome.html '//head/title' 'Awesome in foo::blah - Rust'

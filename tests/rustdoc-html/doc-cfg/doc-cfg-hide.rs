@@ -3,20 +3,20 @@
 
 #![doc(auto_cfg(hide(feature, values("solecism"))))]
 
-//@ has 'oud/struct.Solecism.html'
+//@ has 'oud/type.Solecism.html'
 //@ count   - '//*[@class="stab portability"]' 0
 //@ compile-flags:--cfg feature="solecism"
 #[cfg(feature = "solecism")]
 pub struct Solecism;
 
-//@ has 'oud/struct.Scribacious.html'
+//@ has 'oud/type.Scribacious.html'
 //@ count   - '//*[@class="stab portability"]' 1
 //@ matches - '//*[@class="stab portability"]' 'crate feature solecism'
 #[cfg(feature = "solecism")]
 #[doc(cfg(feature = "solecism"))]
 pub struct Scribacious;
 
-//@ has 'oud/struct.Hyperdulia.html'
+//@ has 'oud/type.Hyperdulia.html'
 //@ count   - '//*[@class="stab portability"]' 1
 //@ matches - '//*[@class="stab portability"]' 'crate features hyperdulia only'
 //@ compile-flags:--cfg feature="hyperdulia"
@@ -24,7 +24,7 @@ pub struct Scribacious;
 #[cfg(feature = "hyperdulia")]
 pub struct Hyperdulia;
 
-//@ has 'oud/struct.Oystercatcher.html'
+//@ has 'oud/type.Oystercatcher.html'
 //@ count   - '//*[@class="stab portability"]' 1
 //@ matches - '//*[@class="stab portability"]' 'crate features oystercatcher only'
 //@ compile-flags:--cfg feature="oystercatcher"

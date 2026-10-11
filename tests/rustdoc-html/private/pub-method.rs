@@ -9,7 +9,7 @@ pub fn bar() -> usize {
     2
 }
 
-//@ has foo/struct.Foo.html
+//@ has foo/type.Foo.html
 //@ has - '//*[@class="method"]' 'pub fn new()'
 //@ has - '//*[@class="method"]' 'fn not_pub()'
 pub struct Foo(usize);

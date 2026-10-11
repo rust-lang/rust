@@ -1,6 +1,6 @@
 #![crate_name = "foo"]
 
-//@ has foo/struct.Foo.html
+//@ has foo/type.Foo.html
 pub struct Foo;
 
 impl Foo {

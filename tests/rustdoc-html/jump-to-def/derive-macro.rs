@@ -6,7 +6,7 @@
 #![crate_name = "foo"]
 
 // First we check intra-doc links.
-//@ has 'foo/struct.Bar.html'
+//@ has 'foo/type.Bar.html'
 //@ has - '//a[@href="{{channel}}/core/fmt/macros/derive.Debug.html"]' 'Debug'
 //@ has - '//a[@href="{{channel}}/core/cmp/derive.PartialEq.html"]' 'PartialEq'
 

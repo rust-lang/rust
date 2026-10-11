@@ -33,8 +33,8 @@ pub mod stb2 {
 #[stable(since = "1.0", feature = "nested")]
 pub mod nested {
     //! [Inside1] [Inside2]
-    //@ has foo/nested/index.html '//a[@href="../stb1/struct.Inside1.html"]' 'Inside1'
-    //@ has foo/nested/index.html '//a[@href="../stb2/struct.Inside2.html"]' 'Inside2'
+    //@ has foo/nested/index.html '//a[@href="../stb1/type.Inside1.html"]' 'Inside1'
+    //@ has foo/nested/index.html '//a[@href="../stb2/type.Inside2.html"]' 'Inside2'
     use crate::stb1::Inside1;
     use crate::stb2::Inside2;
 }

@@ -8,7 +8,7 @@
 pub struct S;
 
 impl S {
-    //@ has 'foo/struct.S.html'
+    //@ has 'foo/type.S.html'
     //@ count - '//*[@id="method.new"]/..//*[@class="stab portability"]' 0
     #[doc(auto_cfg = false)]
     #[cfg(panic = "unwind")]

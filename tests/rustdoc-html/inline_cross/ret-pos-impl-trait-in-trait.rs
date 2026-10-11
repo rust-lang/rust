@@ -13,17 +13,17 @@
 //@ count - '//*[@id="main-content"]//section[@class="method"]' 1
 pub use rpitit::Trait;
 
-//@ has user/struct.Basic.html
+//@ has user/type.Basic.html
 //@ has - '//*[@id="method.create"]' 'fn create() -> impl Iterator<Item = u64>'
 //@ count - '//*[@id="trait-implementations-list"]//*[@class="impl-items"]' 1
 pub use rpitit::Basic;
 
-//@ has user/struct.Intermediate.html
+//@ has user/type.Intermediate.html
 //@ has - '//*[@id="method.create"]' 'fn create() -> Range<u64>'
 //@ count - '//*[@id="trait-implementations-list"]//*[@class="impl-items"]' 1
 pub use rpitit::Intermediate;
 
-//@ has user/struct.Advanced.html
+//@ has user/type.Advanced.html
 //@ has - '//*[@id="method.create"]' 'fn create() -> impl Iterator<Item = u64>'
 //@ count - '//*[@id="trait-implementations-list"]//*[@class="impl-items"]' 1
 pub use rpitit::Advanced;

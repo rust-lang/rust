@@ -7,14 +7,14 @@
 #![crate_name = "foo"]
 
 //@ has 'src/foo/item-with-derive.rs.html'
-//@ has - '//a[@href="../../foo/struct.Bar.html"]' 'Bar'
+//@ has - '//a[@href="../../foo/type.Bar.html"]' 'Bar'
 #[derive(Debug)]
 pub struct Bar {
     x: u8,
 }
 
 // Same test with an enum just in case...
-//@ has - '//a[@href="../../foo/enum.Blob.html"]' 'Blob'
+//@ has - '//a[@href="../../foo/type.Blob.html"]' 'Blob'
 #[derive(Debug)]
 pub enum Blob {
     X,

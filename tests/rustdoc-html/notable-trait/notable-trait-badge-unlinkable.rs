@@ -12,7 +12,7 @@ trait Private {}
 #[doc(notable_trait)]
 pub trait Public {}
 
-//@ has 'foo/struct.Foo.html'
+//@ has 'foo/type.Foo.html'
 //@ count - '//div[@class="notable-trait-badge-container"]' 1
 //@ has - '//div[@class="notable-trait-badge-container"]/a[@href="trait.Public.html"]' 'Public'
 pub struct Foo;

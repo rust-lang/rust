@@ -9,7 +9,7 @@ pub mod traits {
     }
 }
 
-//@ has foo/struct.Owned.html
+//@ has foo/type.Owned.html
 //@ has - '//*[@id="synthetic-implementations-list"]//*[@class="impl"]//h3[@class="code-header"]' \
 // "impl<T> Send for Owned<T>where <T as Owned<'static>>::Reader: Send"
 pub struct Owned<T> where T: for<'a> ::traits::Owned<'a> {

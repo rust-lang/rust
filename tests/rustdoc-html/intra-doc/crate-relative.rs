@@ -7,7 +7,7 @@ impl<'a> Test<'a> {
 }
 
 //@ has crate_relative/demo/index.html
-//@ has - '//a/@href' '../struct.Test.html#method.do_test'
+//@ has - '//a/@href' '../type.Test.html#method.do_test'
 pub mod demo {
     //! [`crate::Test::do_test`]
 }

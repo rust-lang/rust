@@ -14,6 +14,6 @@ pub use async_fn::load;
 //@ has - '//*[@id="tymethod.run"]' 'async fn run(&self) -> i32'
 pub use async_fn::Load;
 
-//@ has user/struct.Loader.html
+//@ has user/type.Loader.html
 //@ has - '//*[@id="method.run"]' 'async fn run(&self) -> i32'
 pub use async_fn::Loader;

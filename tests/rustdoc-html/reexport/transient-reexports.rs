@@ -13,7 +13,7 @@ extern crate bar;
 // We ensure that there is only one item, so it's not possibly another item we're gonna check.
 //@ count - '//dl/[@class="item-table"]/dt' 1
 //@ count - '//dl/[@class="item-table"]/dd' 1
-//@ has - '//dl/[@class="item-table"]/dt/a[@href="struct.Type.html"]' 'Type'
+//@ has - '//dl/[@class="item-table"]/dt/a[@href="type.Type.html"]' 'Type'
 // We should have "foo", "bar" and "baz" (one fragment in each crate reexport).
 //@ has - '//dl/[@class="item-table"]/dd' 'foo bar baz'
 

@@ -8,7 +8,7 @@ pub struct S;
 pub trait MyTrait1 {}
 pub trait MyTrait2 {}
 
-//@ has foo/struct.S.html
+//@ has foo/type.S.html
 //@ has - '//*[@id="impl-MyTrait1-for-S"]//*[@class="stab portability"]' \
 //        'Available on non-crate feature coolstuff only.'
 #[cfg(not(feature = "coolstuff"))]

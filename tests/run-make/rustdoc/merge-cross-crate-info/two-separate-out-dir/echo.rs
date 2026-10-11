@@ -1,6 +1,6 @@
-//@ has echo/enum.Echo.html
-//@ hasraw echo/enum.Echo.html 'Foxtrot'
-//@ hasraw trait.impl/foxtrot/trait.Foxtrot.js 'enum.Echo.html'
+//@ has echo/type.Echo.html
+//@ hasraw echo/type.Echo.html 'Foxtrot'
+//@ hasraw trait.impl/foxtrot/trait.Foxtrot.js 'type.Echo.html'
 //@ hasraw search.index/name/*.js 'Foxtrot'
 //@ hasraw search.index/name/*.js 'Echo'
 

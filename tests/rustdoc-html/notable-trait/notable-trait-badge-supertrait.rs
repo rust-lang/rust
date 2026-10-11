@@ -6,7 +6,7 @@ pub trait Base {}
 
 pub trait Derived: Base {}
 
-//@ has 'foo/struct.S.html'
+//@ has 'foo/type.S.html'
 // Implementing `Derived` requires implementing the notable supertrait `Base`,
 // so its badge shows up.
 //@ count - '//div[@class="notable-trait-badge-container"]/a' 1

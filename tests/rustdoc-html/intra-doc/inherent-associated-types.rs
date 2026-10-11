@@ -5,7 +5,7 @@
 
 //@ has inherent_associated_types/index.html
 
-//@ has - '//a/@href' 'enum.Simple.html#associatedtype.Type'
+//@ has - '//a/@href' 'type.Simple.html#associatedtype.Type'
 //! [`Simple::Type`]
 
 pub enum Simple {}
@@ -17,7 +17,7 @@ impl Simple {
 ////////////////////////////////////////
 
 //@ has 'inherent_associated_types/type.Test0.html' '//a/@href' \
-//          'struct.Parametrized.html#associatedtype.Proj'
+//          'type.Parametrized.html#associatedtype.Proj'
 /// [`Parametrized<bool>::Proj`]
 pub type Test0 = ();
 
@@ -29,8 +29,8 @@ pub type Test0 = ();
 // It currently links to `Parametrized<bool>::Proj`.
 
 //@ has 'inherent_associated_types/type.Test1.html'
-//@ has - '//a/@href' 'struct.Parametrized.html#associatedtype.Proj'
-//@ !has - '//a/@href' 'struct.Parametrized.html#associatedtype.Proj-1'
+//@ has - '//a/@href' 'type.Parametrized.html#associatedtype.Proj'
+//@ !has - '//a/@href' 'type.Parametrized.html#associatedtype.Proj-1'
 /// [`Parametrized<i32>::Proj`]
 pub type Test1 = ();
 

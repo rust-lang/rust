@@ -15,7 +15,7 @@ pub trait Trait {
     fn g();
 }
 
-//@ has foo/struct.S.html
+//@ has foo/type.S.html
 //@ !has - '//*[@id="associatedtype.Foo"]' 'type Foo'
 //@ has - '//*[@id="associatedtype.Bar"]' 'type Bar'
 //@ !has - '//*[@id="method.f"]' 'fn f()'

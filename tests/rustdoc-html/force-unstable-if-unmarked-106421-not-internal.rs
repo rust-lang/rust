@@ -7,5 +7,5 @@
 
 extern crate foo;
 
-//@ !has bar/struct.FatalError.html '//*[@id="method.raise"]' 'fn raise'
+//@ !has bar/type.FatalError.html '//*[@id="method.raise"]' 'fn raise'
 pub use foo::FatalError;

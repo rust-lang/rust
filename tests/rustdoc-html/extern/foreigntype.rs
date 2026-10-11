@@ -1,7 +1,7 @@
 #![feature(extern_types)]
 
 extern "C" {
-    //@ has foreigntype/foreigntype.ExtType.html
+    //@ has foreigntype/type.ExtType.html
     pub type ExtType;
 }
 

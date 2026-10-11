@@ -15,7 +15,7 @@ impl Y {
 }
 
 // There should be `bar` and `babar` listed... and that's it!
-//@ has 'foo/struct.X.html'
+//@ has 'foo/type.X.html'
 //@ count - '//*[@id="deref-methods-Y-1"]/section' 2
 //@ has - '//*[@id="deref-methods-Y-1"]/section[@id="method.bar"]' 'pub fn bar(&self)'
 //@ has - '//*[@id="deref-methods-Y-1"]/section[@id="method.babar"]' 'pub fn babar(self)'

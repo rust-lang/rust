@@ -9,19 +9,19 @@ pub fn foo() {}
 
 //@ has 'foo/fn.bar.html'
 //@ has - '//*[@class="docblock"]' 'line Path line'
-//@ has - '//*[@class="docblock"]//a[@href="struct.Path.html"]' 'Path'
+//@ has - '//*[@class="docblock"]//a[@href="type.Path.html"]' 'Path'
 #[doc = "line ["]
 #[doc = "Path"]
 #[doc = "] line"]
 pub fn bar() {}
 
 //@ has 'foo/fn.another.html'
-//@ has - '//*[@class="docblock"]//a[@href="struct.Path.html"]' 'Path'
+//@ has - '//*[@class="docblock"]//a[@href="type.Path.html"]' 'Path'
 /// [ `Path`]
 pub fn another() {}
 
 //@ has 'foo/fn.last.html'
-//@ has - '//*[@class="docblock"]//a[@href="struct.Path.html"]' 'Path'
+//@ has - '//*[@class="docblock"]//a[@href="type.Path.html"]' 'Path'
 /// [ Path`]
 pub fn last() {}
 

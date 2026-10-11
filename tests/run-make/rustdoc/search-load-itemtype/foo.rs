@@ -26,18 +26,18 @@ pub extern crate core as y_crate;
 #[doc(no_inline)]
 pub use core::option as z_import;
 
-//@ has foo/struct.AStruct.html
+//@ has foo/type.AStruct.html
 //@ hasraw search.index/name/*.js AStruct
 pub struct AStruct {
-    //@ hasraw foo/struct.AStruct.html a_structfield
+    //@ hasraw foo/type.AStruct.html a_structfield
     //@ hasraw search.index/name/*.js a_structfield
     pub a_structfield: i32,
 }
 
-//@ has foo/enum.AEnum.html
+//@ has foo/type.AEnum.html
 //@ hasraw search.index/name/*.js AEnum
 pub enum AEnum {
-    //@ hasraw foo/enum.AEnum.html AVariant
+    //@ hasraw foo/type.AEnum.html AVariant
     //@ hasraw search.index/name/*.js AVariant
     AVariant,
 }
@@ -72,7 +72,7 @@ pub trait ATrait {
 // and have no search entry
 
 impl AStruct {
-    //@ hasraw foo/struct.AStruct.html a_method
+    //@ hasraw foo/type.AStruct.html a_method
     //@ hasraw search.index/name/*.js a_method
     pub fn a_method() {}
 }
@@ -88,10 +88,10 @@ macro_rules! a_macro {
 //@ hasraw search.index/name/*.js A_CONSTANT
 pub const A_CONSTANT: i32 = 1;
 
-//@ has foo/union.AUnion.html
+//@ has foo/type.AUnion.html
 //@ hasraw search.index/name/*.js AUnion
 pub union AUnion {
-    //@ hasraw foo/union.AUnion.html a_unionfield
+    //@ hasraw foo/type.AUnion.html a_unionfield
     //@ hasraw search.index/name/*.js a_unionfield
     pub a_unionfield: i32,
 }

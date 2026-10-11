@@ -3,7 +3,7 @@
 #![feature(checked_type_aliases)]
 #![allow(incomplete_features)]
 
-//@ has 'inner_types_lazy/struct.Pair.html'
+//@ has 'inner_types_lazy/type.Pair.html'
 pub struct Pair<A, B> {
     pub first: A,
     pub second: B,

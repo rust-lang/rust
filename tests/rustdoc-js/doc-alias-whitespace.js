@@ -8,7 +8,7 @@ const EXPECTED = [
                 'path': 'doc_alias_whitespace',
                 'name': 'Struct',
                 'alias': 'Demon Lord',
-                'href': '../doc_alias_whitespace/struct.Struct.html',
+                'href': '../doc_alias_whitespace/type.Struct.html',
                 'is_alias': true
             },
         ],

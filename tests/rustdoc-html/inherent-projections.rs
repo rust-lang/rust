@@ -3,7 +3,7 @@
 
 //@ has 'inherent_projections/fn.create.html'
 //@ has - '//pre[@class="rust item-decl"]' "create() -> Owner::Metadata"
-//@ has - '//pre[@class="rust item-decl"]//a[@class="associatedtype"]/@href' 'struct.Owner.html#associatedtype.Metadata'
+//@ has - '//pre[@class="rust item-decl"]//a[@class="associatedtype"]/@href' 'type.Owner.html#associatedtype.Metadata'
 pub fn create() -> Owner::Metadata {}
 
 pub struct Owner;
@@ -29,8 +29,8 @@ impl<'a> Carrier<'a> {
 
 //@ has 'inherent_projections/fn.test.html'
 //@ has - '//pre[@class="rust item-decl"]' "test(_: Parametrized<i32>::Proj)"
-//@ has - '//pre[@class="rust item-decl"]//a[@class="associatedtype"]/@href' 'struct.Parametrized.html#associatedtype.Proj'
-//@ !has - '//pre[@class="rust item-decl"]//a[@class="associatedtype"]/@href' 'struct.Parametrized.html#associatedtype.Proj-1'
+//@ has - '//pre[@class="rust item-decl"]//a[@class="associatedtype"]/@href' 'type.Parametrized.html#associatedtype.Proj'
+//@ !has - '//pre[@class="rust item-decl"]//a[@class="associatedtype"]/@href' 'type.Parametrized.html#associatedtype.Proj-1'
 pub fn test(_: Parametrized<i32>::Proj) {}
 
 pub struct Parametrized<T>(T);

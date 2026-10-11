@@ -1,8 +1,8 @@
 //@ !has index.html
 //@ !has help.html
 //@ !has settings.html
-//@ has sierra/struct.Sierra.html
-//@ hasraw sierra/struct.Sierra.html 'Tango'
+//@ has sierra/type.Sierra.html
+//@ hasraw sierra/type.Sierra.html 'Tango'
 //@ !has trait.impl/tango/trait.Tango.js
 //@ !has search.index/name/*.js
 

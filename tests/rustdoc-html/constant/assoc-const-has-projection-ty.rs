@@ -25,7 +25,7 @@ pub struct Struct;
 impl Trait for Struct {
     type Ty = u32;
 
-    //@ has it/struct.Struct.html
+    //@ has it/type.Struct.html
     //@ has - '//*[@id="associatedconstant.CT"]' 'const CT: Self::Ty = 1'
     const CT: Self::Ty = 1;
 }

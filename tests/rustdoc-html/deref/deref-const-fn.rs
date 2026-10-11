@@ -7,7 +7,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-//@ has 'foo/struct.Bar.html'
+//@ has 'foo/type.Bar.html'
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Bar;
 
@@ -24,7 +24,7 @@ pub struct Foo {
     value: Bar,
 }
 
-//@ has 'foo/struct.Foo.html'
+//@ has 'foo/type.Foo.html'
 //@ has - '//*[@id="method.len"]' 'pub fn len(&self) -> usize'
 //@ has - '//*[@id="method.len"]//span[@class="since"]' '1.0.0'
 //@ !has - '//*[@id="method.len"]//span[@class="since"]' '(const: 1.0.0)'

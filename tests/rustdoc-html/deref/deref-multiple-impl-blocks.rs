@@ -2,7 +2,7 @@
 
 use std::ops::{Deref, DerefMut};
 
-//@ has foo/struct.Vec.html
+//@ has foo/type.Vec.html
 //@ count - '//h2[@id="deref-methods-Slice"]' 1
 //@ count - '//div[@id="deref-methods-Slice-1"]' 1
 //@ count - '//div[@id="deref-methods-Slice-1"][@class="impl-items"]' 1

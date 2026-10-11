@@ -1,6 +1,6 @@
 #![crate_name = "foo"]
 
-//@ has foo/struct.Unsized.html
+//@ has foo/type.Unsized.html
 //@ has - '//*[@id="impl-Sized-for-Unsized"]/h3[@class="code-header"]' 'impl !Sized for Unsized'
 //@ !has - '//*[@id="impl-Sized-for-Unsized"]//a[@class="src"]' 'Source'
 //@ has - '//*[@id="impl-Sync-for-Unsized"]/h3[@class="code-header"]' 'impl Sync for Unsized'

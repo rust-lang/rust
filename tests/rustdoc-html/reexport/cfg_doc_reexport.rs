@@ -19,7 +19,7 @@ pub trait Sized: MetaSized {}
 
 #[doc(cfg(feature = "foobar"))]
 mod imp_priv {
-    //@ has 'foo/struct.BarPriv.html'
+    //@ has 'foo/type.BarPriv.html'
     //@ has - '//*[@id="main-content"]/*[@class="item-info"]/*[@class="stab portability"]' \
     //    'Available on crate feature foobar only.'
     pub struct BarPriv {}
@@ -31,7 +31,7 @@ mod imp_priv {
 pub use crate::imp_priv::*;
 
 pub mod bar {
-    //@ has 'foo/bar/struct.Bar.html'
+    //@ has 'foo/bar/type.Bar.html'
     //@ has - '//*[@id="main-content"]/*[@class="item-info"]/*[@class="stab portability"]' \
     //    'Available on crate feature bar only.'
     #[doc(cfg(feature = "bar"))]

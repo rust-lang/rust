@@ -2,7 +2,7 @@
 // levels and across multiple crates.
 // For `Deref` on non-foreign types, look at `deref-recursive.rs`.
 
-//@ has 'foo/struct.Foo.html'
+//@ has 'foo/type.Foo.html'
 //@ has '-' '//*[@id="deref-methods-PathBuf"]' 'Methods from Deref<Target = PathBuf>'
 //@ has '-' '//*[@class="impl-items"]//*[@id="method.as_path"]' 'pub fn as_path(&self)'
 //@ has '-' '//*[@id="deref-methods-Path"]' 'Methods from Deref<Target = Path>'

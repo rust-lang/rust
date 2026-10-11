@@ -6,7 +6,7 @@
 //@ has 'foo/bar/index.html'
 //@ has - '//section[@id="rustdoc-toc"]/h3' 'Module Items'
 pub mod bar {
-    //@ has 'foo/bar/struct.Baz.html'
+    //@ has 'foo/bar/type.Baz.html'
     //@ !has - '//section[@id="rustdoc-toc"]/h3' 'Module Items'
     pub struct Baz;
 }

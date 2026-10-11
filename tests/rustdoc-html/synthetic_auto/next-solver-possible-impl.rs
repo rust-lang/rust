@@ -5,7 +5,7 @@
 
 pub auto trait Marker {}
 
-//@ has 'foo/struct.MyType.html'
+//@ has 'foo/type.MyType.html'
 //@ !has - '//*[@id="synthetic-implementations-list"]//*[@class="impl"]' 'Marker for MyType<T>'
 pub struct MyType<T>(T);
 

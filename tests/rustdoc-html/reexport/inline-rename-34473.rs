@@ -8,6 +8,6 @@ mod second {
 
 //@ has foo/index.html
 //@ !hasraw - SomeTypeWithLongName
-//@ has foo/struct.SomeType.html
-//@ !has foo/struct.SomeTypeWithLongName.html
+//@ has foo/type.SomeType.html
+//@ !has foo/type.SomeTypeWithLongName.html
 pub use second::{SomeTypeWithLongName as SomeType};

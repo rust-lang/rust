@@ -7,10 +7,10 @@
 //@ has index.html '//h1' 'List of all crates'
 //@ has index.html '//ul[@class="all-items"]//a[@href="f/index.html"]' 'f'
 //@ has index.html '//ul[@class="all-items"]//a[@href="e/index.html"]' 'e'
-//@ has e/enum.Echo.html
+//@ has e/type.Echo.html
 //@ has f/trait.Foxtrot.html
-//@ hasraw e/enum.Echo.html 'Foxtrot'
-//@ hasraw trait.impl/f/trait.Foxtrot.js 'enum.Echo.html'
+//@ hasraw e/type.Echo.html 'Foxtrot'
+//@ hasraw trait.impl/f/trait.Foxtrot.js 'type.Echo.html'
 //@ hasraw search.index/name/*.js 'Foxtrot'
 //@ hasraw search.index/name/*.js 'Echo'
 

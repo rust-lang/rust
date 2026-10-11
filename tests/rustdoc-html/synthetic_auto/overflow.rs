@@ -20,7 +20,7 @@ enum TyData<I: Interner> {
 
 struct VariableKind<I: Interner>(I::InternedType);
 
-//@ has overflow/struct.BoundVarsCollector.html
+//@ has overflow/type.BoundVarsCollector.html
 //@ has - '//h3[@class="code-header"]' "impl<'tcx> Send for BoundVarsCollector<'tcx>"
 pub struct BoundVarsCollector<'tcx> {
     val: VariableKind<RustInterner<'tcx>>

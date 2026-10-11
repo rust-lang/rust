@@ -4,7 +4,7 @@ use std::io::Lines;
 
 pub trait MyTrait { fn dummy(&self) { } }
 
-//@ has foo/struct.Alpha.html '//pre' "pub struct Alpha<A>(/* private fields */) where A: MyTrait"
+//@ has foo/type.Alpha.html '//pre' "pub struct Alpha<A>(/* private fields */) where A: MyTrait"
 //@ snapshot alpha_trait_decl - '//*[@class="rust item-decl"]/code'
 pub struct Alpha<A>(A) where A: MyTrait;
 //@ has foo/trait.Bravo.html '//pre' "pub trait Bravo<B>where B: MyTrait"
@@ -16,7 +16,7 @@ pub fn charlie<C>() where C: MyTrait {}
 
 pub struct Delta<D>(D);
 
-//@ has foo/struct.Delta.html '//*[@class="impl"]//h3[@class="code-header"]' \
+//@ has foo/type.Delta.html '//*[@class="impl"]//h3[@class="code-header"]' \
 //          "impl<D> Delta<D>where D: MyTrait"
 //@ snapshot SWhere_Echo_impl - '//*[@id="impl-Delta%3CD%3E"]/h3[@class="code-header"]'
 impl<D> Delta<D> where D: MyTrait {
@@ -25,7 +25,7 @@ impl<D> Delta<D> where D: MyTrait {
 
 pub struct Echo<E>(E);
 
-//@ has 'foo/struct.Simd.html'
+//@ has 'foo/type.Simd.html'
 //@ snapshot SWhere_Simd_item-decl - '//pre[@class="rust item-decl"]'
 pub struct Simd<T>([T; 1])
 where
@@ -53,7 +53,7 @@ pub trait TraitWhere {
     { todo!() }
 }
 
-//@ has foo/struct.Echo.html '//*[@class="impl"]//h3[@class="code-header"]' \
+//@ has foo/type.Echo.html '//*[@class="impl"]//h3[@class="code-header"]' \
 //          "impl<E> MyTrait for Echo<E>where E: MyTrait"
 //@ has foo/trait.MyTrait.html '//*[@id="implementors-list"]//h3[@class="code-header"]' \
 //          "impl<E> MyTrait for Echo<E>where E: MyTrait"
@@ -61,7 +61,7 @@ impl<E> MyTrait for Echo<E>where E: MyTrait {}
 
 pub enum Foxtrot<F> { Foxtrot1(F) }
 
-//@ has foo/enum.Foxtrot.html '//*[@class="impl"]//h3[@class="code-header"]' \
+//@ has foo/type.Foxtrot.html '//*[@class="impl"]//h3[@class="code-header"]' \
 //          "impl<F> MyTrait for Foxtrot<F>where F: MyTrait"
 //@ has foo/trait.MyTrait.html '//*[@id="implementors-list"]//h3[@class="code-header"]' \
 //          "impl<F> MyTrait for Foxtrot<F>where F: MyTrait"

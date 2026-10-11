@@ -33,7 +33,7 @@ fn foo() {
 }
 
 //@ has 'foo/index.html'
-//@ has - '//a[@href="struct.Bar.html"]' 'Bar'
+//@ has - '//a[@href="type.Bar.html"]' 'Bar'
 struct Bar;
 
 const BAR: i32 = {
@@ -48,7 +48,7 @@ const BAR: i32 = {
     }
     impl Foo for Bar {}
 
-    //@ has 'foo/struct.Bar.html'
+    //@ has 'foo/type.Bar.html'
     //@ has - '//*[@id="method.foo"]/*[@class="code-header"]' 'pub(crate) fn foo()'
     //@ count - '//*[@id="main-content"]/*[@class="section-header"]' 3
     // We now check that the `Foo` trait is not documented nor visible on `Bar` page.

@@ -33,21 +33,21 @@ trait TPrivVis {}
 //@ has - '//*[@id="impl-TPrivHidden-for-VisPub"]' 'VisPub'
 trait TPrivHidden {}
 
-//@ has foo/struct.VisPub.html
+//@ has foo/type.VisPub.html
 //@ has - '//*[@id="trait-implementations-list"]' 'TPrivHidden'
 //@ has - '//*[@id="trait-implementations-list"]' 'TPrivVis'
 //@ has - '//*[@id="trait-implementations-list"]' 'TPubHidden'
 //@ has - '//*[@id="trait-implementations-list"]' 'TPubVis'
 pub struct VisPub;
 
-//@ has foo/struct.VisPriv.html
+//@ has foo/type.VisPriv.html
 //@ has - '//*[@id="trait-implementations-list"]' 'TPrivHidden'
 //@ has - '//*[@id="trait-implementations-list"]' 'TPrivVis'
 //@ has - '//*[@id="trait-implementations-list"]' 'TPubHidden'
 //@ has - '//*[@id="trait-implementations-list"]' 'TPubVis'
 struct VisPriv;
 
-//@ has foo/struct.HidPub.html
+//@ has foo/type.HidPub.html
 //@ has - '//*[@id="trait-implementations-list"]' 'TPrivHidden'
 //@ has - '//*[@id="trait-implementations-list"]' 'TPrivVis'
 //@ has - '//*[@id="trait-implementations-list"]' 'TPubHidden'
@@ -55,7 +55,7 @@ struct VisPriv;
 #[doc(hidden)]
 pub struct HidPub;
 
-//@ has foo/struct.HidPriv.html
+//@ has foo/type.HidPriv.html
 //@ has - '//*[@id="trait-implementations-list"]' 'TPrivHidden'
 //@ has - '//*[@id="trait-implementations-list"]' 'TPrivVis'
 //@ has - '//*[@id="trait-implementations-list"]' 'TPubHidden'

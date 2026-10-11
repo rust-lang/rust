@@ -733,6 +733,13 @@ function preLoadCss(cssUrl) {
                 let path;
                 if (shortty === "mod") {
                     path = `${modpath}${name}/index.html`;
+                } else if (
+                    shortty === "struct" ||
+                    shortty === "union" ||
+                    shortty === "enum" ||
+                    shortty === "foreigntype"
+                ) {
+                    path = `${modpath}type.${name}.html`;
                 } else if (!isMacro) {
                     path = `${modpath}${shortty}.${name}.html`;
                 } else {

@@ -1,5 +1,7 @@
 {
   "foo/macro.foo!.html": "foo/macro.foo.html",
-  "foo/private/struct.Quz.html": "foo/struct.Quz.html",
-  "foo/hidden/struct.Bar.html": "foo/struct.Bar.html"
+  "foo/private/type.Quz.html": "foo/type.Quz.html",
+  "foo/struct.Quz.html": "foo/type.Quz.html",
+  "foo/hidden/type.Bar.html": "foo/type.Bar.html",
+  "foo/struct.Bar.html": "foo/type.Bar.html"
 }

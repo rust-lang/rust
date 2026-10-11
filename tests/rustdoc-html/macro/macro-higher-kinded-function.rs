@@ -10,7 +10,7 @@ macro_rules! gen {
     }
 }
 
-//@ has 'foo/struct.Providers.html'
+//@ has 'foo/type.Providers.html'
 //@ has - '//*[@class="rust item-decl"]//code' "pub a: for<'tcx> fn(TyCtxt<'tcx>, u8) -> i8,"
 //@ has - '//*[@class="rust item-decl"]//code' "pub b: for<'tcx> fn(TyCtxt<'tcx>, u16) -> i16,"
 //@ has - '//*[@id="structfield.a"]/code' "a: for<'tcx> fn(TyCtxt<'tcx>, u8) -> i8"

@@ -20,18 +20,18 @@
 //@ has foo/index.html '//a[@href="type.TheEnumAlias.html#variant.TheVariant.field.the_field"]' 'TheEnumAlias::TheVariant::the_field'
 //@ has foo/index.html '//a[@href="type.TheUnionAlias.html#structfield.f1"]' 'TheUnionAlias::f1'
 
-//@ has foo/index.html '//a[@href="struct.TheStruct.html#method.trait_"]' 'TheStruct::trait_'
-//@ has foo/index.html '//a[@href="struct.TheStruct.html#method.trait_"]' 'TheStructAlias::trait_'
-//@ has foo/index.html '//a[@href="enum.TheEnum.html#method.trait_"]' 'TheEnum::trait_'
+//@ has foo/index.html '//a[@href="type.TheStruct.html#method.trait_"]' 'TheStruct::trait_'
+//@ has foo/index.html '//a[@href="type.TheStruct.html#method.trait_"]' 'TheStructAlias::trait_'
+//@ has foo/index.html '//a[@href="type.TheEnum.html#method.trait_"]' 'TheEnum::trait_'
 // FIXME: this one should resolve to alias since it's impl Trait for TheEnumAlias
-//@ has foo/index.html '//a[@href="enum.TheEnum.html#method.trait_"]' 'TheEnumAlias::trait_'
+//@ has foo/index.html '//a[@href="type.TheEnum.html#method.trait_"]' 'TheEnumAlias::trait_'
 
-//@ has foo/index.html '//a[@href="struct.TheStruct.html#method.inherent"]' 'TheStruct::inherent'
+//@ has foo/index.html '//a[@href="type.TheStruct.html#method.inherent"]' 'TheStruct::inherent'
 // FIXME: this one should resolve to alias
-//@ has foo/index.html '//a[@href="struct.TheStruct.html#method.inherent"]' 'TheStructAlias::inherent'
-//@ has foo/index.html '//a[@href="enum.TheEnum.html#method.inherent"]' 'TheEnum::inherent'
+//@ has foo/index.html '//a[@href="type.TheStruct.html#method.inherent"]' 'TheStructAlias::inherent'
+//@ has foo/index.html '//a[@href="type.TheEnum.html#method.inherent"]' 'TheEnum::inherent'
 // FIXME: this one should resolve to alias
-//@ has foo/index.html '//a[@href="enum.TheEnum.html#method.inherent"]' 'TheEnumAlias::inherent'
+//@ has foo/index.html '//a[@href="type.TheEnum.html#method.inherent"]' 'TheEnumAlias::inherent'
 
 pub struct TheStruct {
     pub the_field: i32,

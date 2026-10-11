@@ -27,7 +27,7 @@ fn foo() {
 
     // This one should not generate any link.
     let x = hidden_links::error::Foo;
-    //@ has - '//pre/code/a[@href="../../hidden_links/struct.Bar.html"]' 'Bar'
+    //@ has - '//pre/code/a[@href="../../hidden_links/type.Bar.html"]' 'Bar'
     let y = hidden_links::Bar;
 
     // `x` and `y` generate a link every time...

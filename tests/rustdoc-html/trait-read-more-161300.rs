@@ -2,7 +2,7 @@
 // ensures the "read more" link exists in various circumstances.
 #![crate_name = "foo"]
 
-//@ has 'foo/struct.MyStruct.html'
+//@ has 'foo/type.MyStruct.html'
 pub trait MyTrait {
     /// First
     ///

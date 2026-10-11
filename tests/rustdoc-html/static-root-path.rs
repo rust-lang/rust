@@ -1,6 +1,6 @@
 //@ compile-flags:-Z unstable-options --static-root-path /cache/
 
-//@ has static_root_path/struct.SomeStruct.html
+//@ has static_root_path/type.SomeStruct.html
 //@ matchesraw - '"/cache/main-'
 //@ !matchesraw - '"\.\./main'
 //@ matchesraw - 'data-root-path="\.\./"'

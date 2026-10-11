@@ -7,7 +7,7 @@
 #[rustc_doc_primitive = "i32"]
 const _: () = ();
 
-//@ has foo/struct.Node.html '//a/@href' 'primitive.i32.html'
+//@ has foo/type.Node.html '//a/@href' 'primitive.i32.html'
 pub struct Node;
 
 impl Node {

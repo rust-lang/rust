@@ -16,11 +16,11 @@ pub struct Bar {}
 fn Bar() {}
 
 //@ has 'foo/fn.repro.html'
-//@ has - '//*[@class="toggle top-doc"]/*[@class="docblock"]//a/@href' 'struct.Thing.html'
+//@ has - '//*[@class="toggle top-doc"]/*[@class="docblock"]//a/@href' 'type.Thing.html'
 /// Do stuff with [`Thing`].
 pub fn repro(_: Thing) {}
 
 //@ has 'foo/fn.repro2.html'
-//@ has - '//*[@class="toggle top-doc"]/*[@class="docblock"]//a/@href' 'struct.Bar.html'
+//@ has - '//*[@class="toggle top-doc"]/*[@class="docblock"]//a/@href' 'type.Bar.html'
 /// Do stuff with [`Bar`].
 pub fn repro2(_: Bar) {}

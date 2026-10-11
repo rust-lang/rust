@@ -17,7 +17,7 @@ pub mod bar {
     //@ has smoke/bar/trait.Doge.html
     pub trait Doge { fn dummy(&self) { } }
 
-    //@ has smoke/bar/struct.Foo.html
+    //@ has smoke/bar/type.Foo.html
     pub struct Foo { x: isize, y: usize }
 
     //@ has smoke/bar/fn.prawns.html

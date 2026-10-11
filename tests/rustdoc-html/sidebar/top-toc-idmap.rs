@@ -29,7 +29,7 @@
 /// The difference between struct-like headers and module-like headers
 /// is strange, but not actually a problem as long as we're consistent.
 
-//@ has foo/struct.MyStruct.html
+//@ has foo/type.MyStruct.html
 // User header
 //@ has - '//section[@id="rustdoc-toc"]/ul[@class="block top-toc"]/li/a[@href="#fields-1"]' 'Fields'
 //@ has - '//details[@class="toggle top-doc"]/div[@class="docblock"]/h2[@id="fields-1"]' 'Fields'

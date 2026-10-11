@@ -16,10 +16,10 @@
 //@ has - '//dl[@class="item-table"]/dd' 'Foobar Blob'
 //@ has - '//dl[@class="item-table"]/dd' 'Tarte Tatin'
 
-//@ has 'foo/struct.Foo.html'
+//@ has 'foo/type.Foo.html'
 //@ has - '//*[@class="docblock"]' 'Foobar Blob'
 
-//@ has 'foo/struct.Another.html'
+//@ has 'foo/type.Another.html'
 //@ has - '//*[@class="docblock"]' 'Tarte Tatin'
 
 mod raw {

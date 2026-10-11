@@ -12,4 +12,4 @@ define-function: (
 )
 
 call-function: ("check-font", {"path": "tooltips/fn.bar.html"})
-call-function: ("check-font", {"path": "tooltips/struct.X.html"})
+call-function: ("check-font", {"path": "tooltips/type.X.html"})

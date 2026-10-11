@@ -30,9 +30,9 @@ pub fn f2() -> <isize as Trait>::X {
 }
 
 pub struct S {
-    //@ has 'normalize_assoc_item/struct.S.html' '//span[@id="structfield.box_me_up"]' 'box_me_up: Box<S>'
+    //@ has 'normalize_assoc_item/type.S.html' '//span[@id="structfield.box_me_up"]' 'box_me_up: Box<S>'
     pub box_me_up: <S as Trait>::X,
-    //@ has 'normalize_assoc_item/struct.S.html' '//span[@id="structfield.generic"]' 'generic: (usize, isize)'
+    //@ has 'normalize_assoc_item/type.S.html' '//span[@id="structfield.generic"]' 'generic: (usize, isize)'
     pub generic: <Generic<usize> as Trait>::X,
 }
 
@@ -49,10 +49,10 @@ impl<Inner: Trait> Trait for Generic<Inner> {
 // These can't be normalized because they depend on a generic parameter.
 // However the user can choose whether the text should be displayed as `Inner::X` or `<Inner as Trait>::X`.
 
-//@ has 'normalize_assoc_item/struct.Unknown.html' '//pre[@class="rust item-decl"]' 'pub struct Unknown<Inner: Trait>(pub <Inner as Trait>::X);'
+//@ has 'normalize_assoc_item/type.Unknown.html' '//pre[@class="rust item-decl"]' 'pub struct Unknown<Inner: Trait>(pub <Inner as Trait>::X);'
 pub struct Unknown<Inner: Trait>(pub <Inner as Trait>::X);
 
-//@ has 'normalize_assoc_item/struct.Unknown2.html' '//pre[@class="rust item-decl"]' 'pub struct Unknown2<Inner: Trait>(pub Inner::X);'
+//@ has 'normalize_assoc_item/type.Unknown2.html' '//pre[@class="rust item-decl"]' 'pub struct Unknown2<Inner: Trait>(pub Inner::X);'
 pub struct Unknown2<Inner: Trait>(pub Inner::X);
 
 trait Lifetimes<'a> {

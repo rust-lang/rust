@@ -8,7 +8,7 @@ pub struct H;
 // Denotes a field which should not be hidden (shown).
 pub struct S;
 
-//@ has foo/enum.FooEnum.html
+//@ has foo/type.FooEnum.html
 pub enum FooEnum {
     //@ has - '//*[@id="variant.HiddenTupleItem"]//h3' 'HiddenTupleItem(/* private fields */)'
     //@ count - '//*[@id="variant.HiddenTupleItem.field.0"]' 0

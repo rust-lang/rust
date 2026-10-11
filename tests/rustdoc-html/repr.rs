@@ -5,17 +5,17 @@
 // Check the "local case" (HIR cleaning) //
 
 // Don't render the default repr which is `Rust`.
-//@ has 'repr/struct.ReprDefault.html'
+//@ has 'repr/type.ReprDefault.html'
 //@ !has - '//*[@class="rust item-decl"]//*[@class="code-attribute"]' '#[repr(Rust)]'
 pub struct ReprDefault;
 
 // Don't render the `Rust` repr — even if given explicitly — since it's the default.
-//@ has 'repr/struct.ReprRust.html'
+//@ has 'repr/type.ReprRust.html'
 //@ !has - '//*[@class="rust item-decl"]//*[@class="code-attribute"]' '#[repr(Rust)]'
 #[repr(Rust)] // omitted
 pub struct ReprRust;
 
-//@ has 'repr/struct.ReprCPubFields.html'
+//@ has 'repr/type.ReprCPubFields.html'
 //@ has - '//*[@class="rust item-decl"]//*[@class="code-attribute"]' '#[repr(C)]'
 #[repr(C)] // public
 pub struct ReprCPubFields {
@@ -23,7 +23,7 @@ pub struct ReprCPubFields {
     pub b: u32,
 }
 
-//@ has 'repr/struct.ReprCPrivField.html'
+//@ has 'repr/type.ReprCPrivField.html'
 //@ !has - '//*[@class="rust item-decl"]//*[@class="code-attribute"]' '#[repr(C)]'
 #[repr(C)] // private...
 pub struct ReprCPrivField {
@@ -31,14 +31,14 @@ pub struct ReprCPrivField {
     pub b: u32,
 }
 
-//@ has 'repr/enum.ReprIsize.html'
+//@ has 'repr/type.ReprIsize.html'
 //@ has - '//*[@class="rust item-decl"]//*[@class="code-attribute"]' '#[repr(isize)]'
 #[repr(isize)] // public
 pub enum ReprIsize {
     Bla,
 }
 
-//@ has 'repr/enum.ReprU32HiddenVariant.html'
+//@ has 'repr/type.ReprU32HiddenVariant.html'
 //@ !has - '//*[@class="rust item-decl"]//*[@class="code-attribute"]' '#[repr(u32)]'
 #[repr(u32)] // private...
 pub enum ReprU32HiddenVariant {
@@ -47,7 +47,7 @@ pub enum ReprU32HiddenVariant {
     Public,
 }
 
-//@ has 'repr/struct.ReprAlignHiddenField.html'
+//@ has 'repr/type.ReprAlignHiddenField.html'
 //@ !has - '//*[@class="rust item-decl"]//*[@class="code-attribute"]' '#[repr(align(4))]'
 #[repr(align(4))] // private...
 pub struct ReprAlignHiddenField {
@@ -55,35 +55,35 @@ pub struct ReprAlignHiddenField {
     pub hidden: i16, // ...since this field is hidden
 }
 
-//@ has 'repr/struct.ReprSimd.html'
+//@ has 'repr/type.ReprSimd.html'
 //@ has - '//*[@class="rust item-decl"]//*[@class="code-attribute"]' '#[repr(simd, packed(2))]'
 #[repr(simd, packed(2))] // public
 pub struct ReprSimd {
     pub field: [u8; 1],
 }
 
-//@ has 'repr/enum.ReprU32Align.html'
+//@ has 'repr/type.ReprU32Align.html'
 //@ has - '//*[@class="rust item-decl"]//*[@class="code-attribute"]' '#[repr(u32, align(8))]'
 #[repr(u32, align(8))] // public
 pub enum ReprU32Align {
     Variant(u16),
 }
 
-//@ has 'repr/enum.ReprCHiddenVariantField.html'
+//@ has 'repr/type.ReprCHiddenVariantField.html'
 //@ !has - '//*[@class="rust item-decl"]//*[@class="code-attribute"]' '#[repr(C)]'
 #[repr(C)] // private...
 pub enum ReprCHiddenVariantField {
     Variant { #[doc(hidden)] field: () }, //...since this field is hidden
 }
 
-//@ has 'repr/struct.ReprTransparentPrivField.html'
+//@ has 'repr/type.ReprTransparentPrivField.html'
 //@ !has - '//*[@class="rust item-decl"]//*[@class="code-attribute"]' '#[repr(transparent)]'
 #[repr(transparent)] // private...
 pub struct ReprTransparentPrivField {
     field: u32, // ...since the non-1-ZST field is private
 }
 
-//@ has 'repr/struct.ReprTransparentPriv1ZstFields.html'
+//@ has 'repr/type.ReprTransparentPriv1ZstFields.html'
 //@ has - '//*[@class="rust item-decl"]//*[@class="code-attribute"]' '#[repr(transparent)]'
 #[repr(transparent)] // public...
 pub struct ReprTransparentPriv1ZstFields {
@@ -92,7 +92,7 @@ pub struct ReprTransparentPriv1ZstFields {
     marker1: Marker,
 } // the two private 1-ZST fields don't matter
 
-//@ has 'repr/struct.ReprTransparentPrivFieldPub1ZstField.html'
+//@ has 'repr/type.ReprTransparentPrivFieldPub1ZstField.html'
 //@ !has - '//*[@class="rust item-decl"]//*[@class="code-attribute"]' '#[repr(transparent)]'
 #[repr(transparent)] // private...
 pub struct ReprTransparentPrivFieldPub1ZstField {
@@ -100,7 +100,7 @@ pub struct ReprTransparentPrivFieldPub1ZstField {
     pub marker: Marker, // this public 1-ZST field doesn't matter
 }
 
-//@ has 'repr/struct.ReprTransparentPub1ZstField.html'
+//@ has 'repr/type.ReprTransparentPub1ZstField.html'
 //@ has - '//*[@class="rust item-decl"]//*[@class="code-attribute"]' '#[repr(transparent)]'
 #[repr(transparent)] // public...
 pub struct ReprTransparentPub1ZstField {
@@ -108,26 +108,26 @@ pub struct ReprTransparentPub1ZstField {
     pub marker1: Marker, // ...and this field is public and visible
 }
 
-//@ has 'repr/struct.ReprTransparentUnitStruct.html'
+//@ has 'repr/type.ReprTransparentUnitStruct.html'
 //@ has - '//*[@class="rust item-decl"]//*[@class="code-attribute"]' '#[repr(transparent)]'
 #[repr(transparent)] // public
 pub struct ReprTransparentUnitStruct;
 
-//@ has 'repr/enum.ReprTransparentEnumUnitVariant.html'
+//@ has 'repr/type.ReprTransparentEnumUnitVariant.html'
 //@ has - '//*[@class="rust item-decl"]//*[@class="code-attribute"]' '#[repr(transparent)]'
 #[repr(transparent)] // public
 pub enum ReprTransparentEnumUnitVariant {
     Variant,
 }
 
-//@ has 'repr/enum.ReprTransparentEnumHiddenUnitVariant.html'
+//@ has 'repr/type.ReprTransparentEnumHiddenUnitVariant.html'
 //@ !has - '//*[@class="rust item-decl"]//*[@class="code-attribute"]' '#[repr(transparent)]'
 #[repr(transparent)] // private
 pub enum ReprTransparentEnumHiddenUnitVariant {
     #[doc(hidden)] Variant(u32),
 }
 
-//@ has 'repr/enum.ReprTransparentEnumPub1ZstField.html'
+//@ has 'repr/type.ReprTransparentEnumPub1ZstField.html'
 //@ has - '//*[@class="rust item-decl"]//*[@class="code-attribute"]' '#[repr(transparent)]'
 #[repr(transparent)] // public...
 pub enum ReprTransparentEnumPub1ZstField {
@@ -138,7 +138,7 @@ pub enum ReprTransparentEnumPub1ZstField {
     },
 }
 
-//@ has 'repr/enum.ReprTransparentEnumHidden1ZstField.html'
+//@ has 'repr/type.ReprTransparentEnumHidden1ZstField.html'
 //@ !has - '//*[@class="rust item-decl"]//*[@class="code-attribute"]' '#[repr(transparent)]'
 #[repr(transparent)] // private...
 pub enum ReprTransparentEnumHidden1ZstField {
@@ -149,7 +149,7 @@ pub enum ReprTransparentEnumHidden1ZstField {
 }
 
 // Regression test for <https://github.com/rust-lang/rust/issues/150919>.
-//@ has 'repr/struct.RustcPubTransparent.html'
+//@ has 'repr/type.RustcPubTransparent.html'
 //@ has - '//*[@class="rust item-decl"]//*[@class="code-attribute"]' '#[repr(transparent)]'
 #[repr(transparent)] // public...
 #[rustc_pub_transparent] // ...since this attribute was applied
@@ -169,6 +169,6 @@ struct Marker; // 1-ZST
 extern crate ext_repr as ext;
 
 // Regression test for <https://github.com/rust-lang/rust/issues/110698>.
-//@ has 'repr/enum.ReprI8.html'
+//@ has 'repr/type.ReprI8.html'
 //@ has - '//*[@class="rust item-decl"]//*[@class="code-attribute"]' '#[repr(i8)]'
 pub use ext::ReprI8;

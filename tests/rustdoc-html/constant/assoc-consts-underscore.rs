@@ -14,7 +14,7 @@ pub trait Trait {
 }
 
 impl Trait for Struct {
-    //@ !has assoc_consts_underscore/struct.Struct.html '//*[@id="associatedconstant.REQUIRED"]' \
+    //@ !has assoc_consts_underscore/type.Struct.html '//*[@id="associatedconstant.REQUIRED"]' \
     //      'const REQUIRED: Struct = _'
     //@ has - '//*[@id="associatedconstant.REQUIRED"]' 'const REQUIRED: Struct'
     const REQUIRED: Struct = Struct { _private: () };

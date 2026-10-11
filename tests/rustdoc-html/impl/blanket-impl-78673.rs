@@ -7,7 +7,7 @@ pub trait AnAmazingTrait {}
 
 impl<T: Something> AnAmazingTrait for T {}
 
-//@ has 'issue_78673/struct.MyStruct.html'
+//@ has 'issue_78673/type.MyStruct.html'
 //@ has  - '//*[@class="impl"]' 'AnAmazingTrait for MyStruct'
 //@ !has - '//*[@class="impl"]' 'AnAmazingTrait for T'
 pub struct MyStruct;
@@ -16,7 +16,7 @@ impl AnAmazingTrait for MyStruct {}
 
 // generic structs may have _both_ specific and blanket impls that apply
 
-//@ has 'issue_78673/struct.AnotherStruct.html'
+//@ has 'issue_78673/type.AnotherStruct.html'
 //@ has - '//*[@class="impl"]' 'AnAmazingTrait for AnotherStruct<()>'
 //@ has - '//*[@class="impl"]' 'AnAmazingTrait for T'
 pub struct AnotherStruct<T>(T);

@@ -24,17 +24,17 @@ define-function: (
         })
         call-function: ("check-item-decl-comment", {
             "theme": |theme|,
-            "url": "file://" + |DOC_PATH| + "/test_docs/private/struct.Struct.html",
+            "url": "file://" + |DOC_PATH| + "/test_docs/private/type.Struct.html",
             "comment_color": |comment_color|,
         })
         call-function: ("check-item-decl-comment", {
             "theme": |theme|,
-            "url": "file://" + |DOC_PATH| + "/test_docs/private/struct.Tuple.html",
+            "url": "file://" + |DOC_PATH| + "/test_docs/private/type.Tuple.html",
             "comment_color": |comment_color|,
         })
         call-function: ("check-item-decl-comment", {
             "theme": |theme|,
-            "url": "file://" + |DOC_PATH| + "/test_docs/private/union.Union.html",
+            "url": "file://" + |DOC_PATH| + "/test_docs/private/type.Union.html",
             "comment_color": |comment_color|,
         })
         call-function: ("check-item-decl-comment", {

@@ -7,7 +7,7 @@ pub const fn bar() -> usize {
     2
 }
 
-//@ has foo/struct.Foo.html
+//@ has foo/type.Foo.html
 //@ has - '//*[@class="method"]' 'const fn new()'
 pub struct Foo(usize);
 

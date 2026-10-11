@@ -4,7 +4,7 @@
 
 pub struct MyType;
 
-//@ has 'impl_box/struct.MyType.html'
+//@ has 'impl_box/type.MyType.html'
 //@ has '-' '//*[@id="impl-Iterator-for-Box%3CMyType%3E"]' 'impl Iterator for Box<MyType>'
 
 impl Iterator for Box<MyType> {

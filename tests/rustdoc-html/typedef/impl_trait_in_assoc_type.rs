@@ -2,7 +2,7 @@
 
 pub struct AlwaysTrue;
 
-//@ has impl_trait_in_assoc_type/struct.AlwaysTrue.html
+//@ has impl_trait_in_assoc_type/type.AlwaysTrue.html
 
 impl IntoIterator for AlwaysTrue {
     type Item = bool;

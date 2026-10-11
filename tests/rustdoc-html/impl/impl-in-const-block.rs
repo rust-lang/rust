@@ -4,7 +4,7 @@
 
 #![crate_name = "foo"]
 
-//@ has 'foo/struct.A.html'
+//@ has 'foo/type.A.html'
 //@ has - '//*[@id="method.new"]/*[@class="code-header"]' 'pub fn new() -> A'
 //@ has - '//*[@id="method.bar"]/*[@class="code-header"]' 'pub fn bar(&self)'
 //@ has - '//*[@id="method.woo"]/*[@class="code-header"]' 'pub fn woo(&self)'

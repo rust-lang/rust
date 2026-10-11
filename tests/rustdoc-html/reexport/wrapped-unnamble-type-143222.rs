@@ -10,7 +10,7 @@
 
 extern crate wrap_unnamable_type as helper;
 
-//@ has 'foo/struct.Foo.html'
-//@ !hasraw - 'struct.Bar.html'
+//@ has 'foo/type.Foo.html'
+//@ !hasraw - 'type.Bar.html'
 #[doc(inline)]
 pub use helper::Foo;

@@ -1,14 +1,14 @@
 #![deny(rustdoc::broken_intra_doc_links)]
 // first try backticks
 /// Trait: [`trait@Name`], fn: [`fn@Name`], [`Name`][`macro@Name`]
-//@ has disambiguators_removed/struct.AtDisambiguator.html
+//@ has disambiguators_removed/type.AtDisambiguator.html
 //@ has - '//a[@href="trait.Name.html"][code]' "Name"
 //@ has - '//a[@href="fn.Name.html"][code]' "Name"
 //@ has - '//a[@href="macro.Name.html"][code]' "Name"
 pub struct AtDisambiguator;
 
 /// fn: [`Name()`], macro: [`Name!`]
-//@ has disambiguators_removed/struct.SymbolDisambiguator.html
+//@ has disambiguators_removed/type.SymbolDisambiguator.html
 //@ has - '//a[@href="fn.Name.html"][code]' "Name()"
 //@ has - '//a[@href="macro.Name.html"][code]' "Name!"
 pub struct SymbolDisambiguator;

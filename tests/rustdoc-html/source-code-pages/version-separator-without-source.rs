@@ -9,7 +9,7 @@
 #[stable(feature = "bar", since = "1.0")]
 pub fn foo() {}
 
-//@ has foo/struct.Bar.html
+//@ has foo/type.Bar.html
 //@ has - '//div[@class="main-heading"]/*[@class="sub-heading"]' '1.0.0'
 //@ !has - '//div[@class="main-heading"]/*[@class="sub-heading"]' '1.0.0 · source'
 #[stable(feature = "bar", since = "1.0")]

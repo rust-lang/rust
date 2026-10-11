@@ -21,7 +21,7 @@ pub trait Trait {
 pub struct Struct;
 
 impl Trait for Struct {
-    //@ has trait_impl/struct.Struct.html '//*[@id="method.a"]/../../div[@class="docblock"]' 'Some long docs'
+    //@ has trait_impl/type.Struct.html '//*[@id="method.a"]/../../div[@class="docblock"]' 'Some long docs'
     //@ !has - '//*[@id="method.a"]/../../div[@class="docblock"]' 'link will be added'
     //@ has - '//*[@id="method.a"]/../../div[@class="docblock"]/a' 'Read more'
     //@ has - '//*[@id="method.a"]/../../div[@class="docblock"]/a/@href' 'trait.Trait.html#tymethod.a'

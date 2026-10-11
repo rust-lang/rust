@@ -3,7 +3,7 @@
 
 pub struct Foo;
 
-//@ has foo/struct.Foo.html
+//@ has foo/type.Foo.html
 //@ !hasraw - 'Auto Trait Implementations'
 // Manually un-implement all auto traits for Foo:
 impl !Send for Foo {}

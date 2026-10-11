@@ -7,9 +7,9 @@
 //@ compile-flags: -Zunstable-options --generate-link-to-definition
 
 //@ has 'src/foo/link-to-variant.rs.html'
-//@ has - '//a[@href="{{channel}}/core/cmp/enum.Ordering.html#variant.Equal"]' 'Equal'
-//@ has - '//a[@href="{{channel}}/core/cmp/enum.Ordering.html"]' 'Ordering'
-//@ has - '//a[@href="{{channel}}/core/cmp/enum.Ordering.html"]' 'self'
+//@ has - '//a[@href="{{channel}}/core/cmp/type.Ordering.html#variant.Equal"]' 'Equal'
+//@ has - '//a[@href="{{channel}}/core/cmp/type.Ordering.html"]' 'Ordering'
+//@ has - '//a[@href="{{channel}}/core/cmp/type.Ordering.html"]' 'self'
 
 use core::cmp::Ordering::{self, Equal};
 

@@ -34,7 +34,7 @@ pub async fn quux() -> impl Bar {
     ()
 }
 
-//@ has async_fn/struct.Foo.html
+//@ has async_fn/type.Foo.html
 //@ matches - '//h4[@class="code-header"]' 'pub async fn f\(\)$'
 //@ matches - '//h4[@class="code-header"]' 'pub async unsafe fn g\(\)$'
 //@ matches - '//h4[@class="code-header"]' 'pub async fn mut_self\(self, first: usize\)$'
@@ -78,7 +78,7 @@ pub async fn elided_in_input_trait(t: impl Pattern<'_>) {}
 struct AsyncFdReadyGuard<'a, T> { x: &'a T }
 
 impl Foo {
-    //@ has async_fn/struct.Foo.html
+    //@ has async_fn/type.Foo.html
     //@ has - '//*[@class="method"]' 'pub async fn complicated_lifetimes( &self, context: &impl Bar, ) -> impl Iterator<Item = &usize>'
     pub async fn complicated_lifetimes(&self, context: &impl Bar) -> impl Iterator<Item = &usize> {
         [0].iter()

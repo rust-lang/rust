@@ -2,7 +2,7 @@
 
 #![crate_name = "foo"]
 
-//@ snapshot type-code 'foo/enum.Type.html' '//pre[@class="rust item-decl"]/code'
+//@ snapshot type-code 'foo/type.Type.html' '//pre[@class="rust item-decl"]/code'
 pub enum Type {
     #[non_exhaustive]
     // attribute that should not be shown

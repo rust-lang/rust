@@ -1,6 +1,6 @@
 #![crate_name = "foo"]
 
-//@ has foo/struct.Foo.html
+//@ has foo/type.Foo.html
 //@ has - '//div[@id="synthetic-implementations-list"]/*[@id="impl-Send-for-Foo"]' 'impl Send for Foo'
 pub struct Foo;
 

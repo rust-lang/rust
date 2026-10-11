@@ -9,7 +9,7 @@ pub struct X;
 #[cfg(not(feature = "blob"))]
 fn foo() {
     impl X {
-        //@ has 'foo/struct.X.html'
+        //@ has 'foo/type.X.html'
         //@ has - '//*[@class="stab portability"]' 'Available on non-crate feature blob only.'
         pub fn bar() {}
     }

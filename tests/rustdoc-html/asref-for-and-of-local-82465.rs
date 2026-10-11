@@ -4,7 +4,7 @@
 use std::convert::AsRef;
 pub struct Local;
 
-//@ has foo/struct.Local.html '//h3[@class="code-header"]' 'impl AsRef<str> for Local'
+//@ has foo/type.Local.html '//h3[@class="code-header"]' 'impl AsRef<str> for Local'
 impl AsRef<str> for Local {
     fn as_ref(&self) -> &str {
         todo!()

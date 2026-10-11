@@ -7,7 +7,7 @@
 
 extern crate rustdoc_nonreachable_impls;
 
-//@ has foobar/struct.Wobble.html
+//@ has foobar/type.Wobble.html
 //@ has - '//*[@class="impl"]//h3[@class="code-header"]' 'Bark for'
 //@ has - '//*[@class="impl"]//h3[@class="code-header"]' 'Woof for'
 //@ !has - '//*[@class="impl"]//h3[@class="code-header"]' 'Bar for'

@@ -72,7 +72,7 @@ impl<T: Lea> Jurisconsult for T {}
 #[doc(cfg(feature = "unit"))]
 impl Jurisconsult for () {}
 
-//@ has 'myrmecophagous/struct.Ultimogeniture.html'
+//@ has 'myrmecophagous/type.Ultimogeniture.html'
 //@ count   - '//*[@class="stab portability"]' 8
 //
 //@ matches - '//*[@class="stab portability"]' 'crate feature zibib'
@@ -96,7 +96,7 @@ impl Jurisconsult for Ultimogeniture {}
 #[doc(cfg(feature = "copy"))]
 impl Copy for Ultimogeniture {}
 
-//@ has 'myrmecophagous/struct.Quarter.html'
+//@ has 'myrmecophagous/type.Quarter.html'
 //@ count   - '//*[@class="stab portability"]' 9
 //@ matches - '//*[@class="stab portability"]' 'crate feature quarter'
 //

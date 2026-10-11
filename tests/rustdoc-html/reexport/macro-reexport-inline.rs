@@ -118,12 +118,12 @@ pub mod bar {
     //@ !has 'foo/bar/macro.actually_hidden_wild_macro.html'
     pub use self::actually_hidden_wild::*;
 
-    //@ !has 'foo/bar/struct.HiddenStruct.html'
+    //@ !has 'foo/bar/type.HiddenStruct.html'
     pub use self::actually_hidden_struct::HiddenStruct;
 
     //@ !has 'foo/bar/macro.actually_hidden_indirect_macro.html'
     pub use self::actually_hidden_indirect::actually_hidden_indirect_macro;
 
-    //@ !has 'foo/bar/struct.IndirectlyHiddenStruct.html'
+    //@ !has 'foo/bar/type.IndirectlyHiddenStruct.html'
     pub use self::actually_hidden_indirect_struct::IndirectlyHiddenStruct;
 }

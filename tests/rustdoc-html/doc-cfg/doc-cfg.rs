@@ -1,6 +1,6 @@
 #![feature(doc_cfg)]
 
-//@ has doc_cfg/struct.Portable.html
+//@ has doc_cfg/type.Portable.html
 //@ !has - '//*[@id="main-content"]/*[@class="item-info"]/*[@class="stab portability"]' ''
 //@ has - '//*[@id="method.unix_and_arm_only_function"]' 'fn unix_and_arm_only_function()'
 //@ has - '//*[@class="stab portability"]' 'Available on ARM and Unix only.'
