@@ -763,7 +763,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             #[allow(rustc::potential_query_instability)]
             for (head_index, usages) in usages.into_iter() {
                 if head_index == entry_index {
-                    entry.usages.unwrap().ignore_usages(usages);
+                    entry.usages.as_mut().unwrap().ignore_usages(usages);
                 } else {
                     entry.heads.ignore_usages(head_index, usages);
                 }

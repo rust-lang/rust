@@ -57,7 +57,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for ElaborateBoxDerefVisitor<'a, 'tcx> {
 
             let ptr_local = self.patch.new_temp(ptr_ty, source_info.span);
 
-            // Project to the first field (a `Unique`), then transmute that. We could project one
+            // Project to the first field (a `BoxRaw`), then transmute that. We could project one
             // further but in the end we'd hit a pattern type so we'd always have to transmute.
             let field_place =
                 Place::from(place.local).project_to_field(FieldIdx::ZERO, &*self.local_decls, tcx);

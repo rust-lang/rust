@@ -1,0 +1,15 @@
+// MIR for `indexed` 0 dataflow
+
+fn indexed(_1: usize) -> () {
+    let mut _0: ();
+    let mut _2: [u32; 2];
+
+    bb0: {
+        // early: [_1]
+        // late: [_2]
+        _2[_1] = const 1_u32;
+        // early: []
+        // late: []
+        return;
+    }
+}
