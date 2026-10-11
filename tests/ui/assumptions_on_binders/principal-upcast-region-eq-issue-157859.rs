@@ -4,7 +4,7 @@ trait Super<U> {
     fn a(&self) {
         let a: &dyn Sub = &();
         let b: &dyn Super<for<'a> fn(&'a ())> = a;
-        //~^ ERROR the trait bound `&dyn Sub: CoerceUnsized<&dyn Super<for<'a> fn(&'a ())>>` is not satisfied
+        //~^ ERROR the trait bound `dyn Sub: Unsize<dyn Super<for<'a> fn(&'a ())>>` is not satisfied
     }
 }
 

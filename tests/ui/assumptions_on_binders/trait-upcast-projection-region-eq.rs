@@ -6,7 +6,7 @@ trait Super {
     fn a(&self) {
         let a: &dyn Sub = &();
         let b: &dyn Super<Assoc = for<'a> fn(&'a ())> = a;
-        //~^ ERROR the trait bound `&dyn Sub: CoerceUnsized<&dyn Super<Assoc = for<'a> fn(&'a ())>>` is not satisfied
+        //~^ ERROR the trait bound `dyn Sub: Unsize<dyn Super<Assoc = for<'a> fn(&'a ())>>` is not satisfied
     }
 }
 
