@@ -243,10 +243,8 @@ mod expressions {
         type_ascribe!({ from_output(()) }, Option<_>);
         type_ascribe!({
                 from_output(match branch(None) {
-                        Break {  0: residual } => #[allow(unreachable_code)]
-                            break from_residual(residual),
-                        Continue {  0: val } => #[allow(unreachable_code)]
-                            val,
+                        Break {  0: residual } => break from_residual(residual),
+                        Continue {  0: val } => val,
                     })
             }, Option<String>)
     }
@@ -367,10 +365,8 @@ mod expressions {
     fn expr_try() {
         let expr;
         match branch(expr) {
-            Break {  0: residual } => #[allow(unreachable_code)]
-                return from_residual(residual),
-            Continue {  0: val } => #[allow(unreachable_code)]
-                val,
+            Break {  0: residual } => return from_residual(residual),
+            Continue {  0: val } => val,
         };
     }
     /// ExprKind::Yield
