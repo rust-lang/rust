@@ -178,6 +178,8 @@ fn build_test_runner(
     let test_target_filter = test_target.clone();
     let backend_path = std::env::var("CG_GCC_BACKEND_PATH")
         .unwrap_or_else(|_| format!("{}/target/debug/librustc_codegen_gcc.so", current_dir));
+    let sysroot_path = std::env::var("CG_GCC_SYSROOT_PATH")
+        .unwrap_or_else(|_| format!("{}/build/build_sysroot/sysroot/", current_dir));
 
     LangTester::new()
         .test_dir(test_dir)
@@ -212,7 +214,7 @@ fn build_test_runner(
             let mut compiler_args = vec![
                 format!("-Zcodegen-backend={}", backend_path),
                 "--sysroot".into(),
-                format!("{}/build/build_sysroot/sysroot/", current_dir),
+                sysroot_path.clone(),
                 "-C".into(),
                 "link-arg=-lc".into(),
                 "--extern".into(),

@@ -194,7 +194,7 @@ impl TestArg {
 }
 
 fn build_if_no_backend(env: &Env, args: &TestArg) -> Result<(), String> {
-    if args.config_info.backend.is_some() || args.config_info.backend_path.is_some() {
+    if args.config_info.backend.is_some() || args.config_info.prebuilt_backend_path.is_some() {
         return Ok(());
     }
     let mut command: Vec<&dyn AsRef<OsStr>> = vec![&"cargo", &"rustc"];
@@ -231,8 +231,11 @@ fn cargo_tests(test_env: &Env, test_args: &TestArg) -> Result<(), String> {
         "CG_RUSTFLAGS".into(),
         test_env.get("CG_RUSTFLAGS").map(|s| s.as_str()).unwrap_or("").to_string(),
     );
-    if test_args.config_info.backend_path.is_some() {
+    if test_args.config_info.prebuilt_backend_path.is_some() {
         env.insert("CG_GCC_BACKEND_PATH".into(), test_args.config_info.cg_backend_path.clone());
+    }
+    if test_args.config_info.prebuilt_sysroot_path.is_some() {
+        env.insert("CG_GCC_SYSROOT_PATH".into(), test_args.config_info.sysroot_path.clone());
     }
     // Pass all the default args + the user-specified ones.
     let mut args: Vec<&dyn AsRef<OsStr>> = vec![&"cargo", &"test"];

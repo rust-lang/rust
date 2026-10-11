@@ -27,6 +27,7 @@ pub struct ConfigFile {
     gcc_path: Option<String>,
     download_gccjit: Option<bool>,
     backend_path: Option<String>,
+    sysroot_path: Option<String>,
 }
 
 impl ConfigFile {
@@ -67,6 +68,15 @@ impl ConfigFile {
                         "Expected a string for `backend-path`",
                     );
                 }
+                ("sysroot-path", TomlValue::String(value)) => {
+                    config.sysroot_path = Some(value.as_str().to_string())
+                }
+                ("sysroot-path", _) => {
+                    return failed_config_parsing(
+                        config_file,
+                        "Expected a string for `sysroot-path`",
+                    );
+                }
                 _ => return failed_config_parsing(config_file, &format!("Unknown key `{key}`")),
             }
         }
@@ -93,10 +103,12 @@ impl ConfigFile {
             }
             _ => {}
         }
-        if let Some(backend_path) = config.backend_path.as_mut() {
-            *backend_path = Path::new(backend_path)
+        for path in
+            [config.backend_path.as_mut(), config.sysroot_path.as_mut()].into_iter().flatten()
+        {
+            *path = Path::new(path)
                 .canonicalize()
-                .map_err(|err| format!("Failed to get absolute path of `{backend_path}`: {err:?}"))?
+                .map_err(|err| format!("Failed to get absolute path of `{path}`: {err:?}"))?
                 .display()
                 .to_string();
         }
@@ -130,7 +142,9 @@ pub struct ConfigInfo {
     pub no_default_features: bool,
     pub backend: Option<String>,
     /// A prebuilt backend dylib to use instead of building this repository.
-    pub backend_path: Option<String>,
+    pub prebuilt_backend_path: Option<String>,
+    /// A prebuilt sysroot to use instead of building one with the backend.
+    pub prebuilt_sysroot_path: Option<String>,
     pub features: Vec<String>,
 }
 
@@ -302,7 +316,8 @@ impl ConfigInfo {
             Some(config_file) => config_file.into(),
             None => self.compute_path("config.toml"),
         };
-        let ConfigFile { gcc_path, download_gccjit, backend_path } = ConfigFile::new(&config_file)?;
+        let ConfigFile { gcc_path, download_gccjit, backend_path, sysroot_path } =
+            ConfigFile::new(&config_file)?;
         if let Some(backend_path) = &backend_path {
             println!(
                 "Backend path retrieved from `{}`. Using `{}` instead of building the backend",
@@ -310,7 +325,15 @@ impl ConfigInfo {
                 backend_path
             );
         }
-        self.backend_path = backend_path;
+        if let Some(sysroot_path) = &sysroot_path {
+            println!(
+                "Sysroot path retrieved from `{}`. Using `{}` instead of building the sysroot",
+                config_file.display(),
+                sysroot_path
+            );
+        }
+        self.prebuilt_backend_path = backend_path;
+        self.prebuilt_sysroot_path = sysroot_path;
 
         if let Some(true) = download_gccjit {
             self.download_gccjit_if_needed()?;
@@ -399,7 +422,7 @@ impl ConfigInfo {
         };
 
         let mut rustflags = Vec::new();
-        self.cg_backend_path = match &self.backend_path {
+        self.cg_backend_path = match &self.prebuilt_backend_path {
             Some(backend_path) => backend_path.clone(),
             None => current_dir
                 .join("target")
@@ -408,8 +431,10 @@ impl ConfigInfo {
                 .display()
                 .to_string(),
         };
-        self.sysroot_path =
-            current_dir.join(get_sysroot_dir()).join("sysroot").display().to_string();
+        self.sysroot_path = match &self.prebuilt_sysroot_path {
+            Some(sysroot_path) => sysroot_path.clone(),
+            None => current_dir.join(get_sysroot_dir()).join("sysroot").display().to_string(),
+        };
         if let Some(backend) = &self.backend {
             // This option is only used in the rust compiler testsuite. The sysroot is handled
             // by its build system directly so no need to set it ourselves.
