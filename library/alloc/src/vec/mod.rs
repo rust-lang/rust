@@ -2609,6 +2609,235 @@ impl<T, A: Allocator> Vec<T, A> {
         mem::forget(g);
     }
 
+    /// Retains only the elements specified by the predicate, passing a mutable reference to it.
+    ///
+    /// In other words, remove all elements `e` such that `f(&mut e)` returns `false`.
+    /// This method does not maintain the relative order of the retained elements. If order matters,
+    /// consider using [`Vec::retain_mut`] instead.
+    ///
+    /// [`VecDeque::retain_mut`]: crate::collections::Vec::retain_mut
+    ///
+    /// # Current implementation
+    ///
+    /// When the predicate evaluates to false on an element, it performs a reverse search to find
+    /// the last element after this index for which the predicate evaluates to true and swaps them,
+    /// truncating the remaining elements after the last element. If no elements in the reverse
+    /// search evaluated to true by the predicate, then the vector is simply truncated to remove the
+    /// current and remaining elements.
+    ///
+    /// Time complexity: *O*(*n*)
+    ///
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(retain_unstable)]
+    /// let mut vec = vec![4, 3, 2, 1];
+    /// vec.retain_unstable(|x| if *x <= 3 {
+    ///     *x += 1;
+    ///     true
+    /// } else {
+    ///     false
+    /// });
+    /// assert_eq!(vec, [2, 4, 3]);
+    /// ```
+    #[unstable(feature = "retain_unstable", issue = "164152")]
+    pub fn retain_unstable<F>(&mut self, mut f: F)
+    where
+        F: FnMut(&mut T) -> bool,
+    {
+        let original_len = self.len();
+
+        if original_len == 0 {
+            // Empty case: explicit return allows better optimization, vs letting compiler infer it
+            return;
+        }
+
+        // Vec: [Kept,    Kept,    Hole,    Unchecked,    Unchecked,    Swap,    To-drop,    To-drop]
+        //      |                 ^- write ^- read                     ^-read_back                  |
+        //      |<-              len                             ->|
+        //
+        // Kept: Elements which predicate returns true on.
+        // Hole: Moved or dropped element slot.
+        // Unchecked: Unchecked valid elements.
+        // Swap: The element which predicate returns true on and we want to overwrite the
+        // the `Hole` at the write index with this value.
+        // To-drop: Elements which predicate returns false on from the read_back index.
+        // When the swap is performed, or if we didn't find a swap (read_back == write)
+        // we need to perform a batch drop on all elements marked `To-drop`.
+        //
+        // This drop guard will be invoked when predicate or `drop` of element panicked.
+        // It shifts unchecked elements between [read, read_back] (inclusive) to cover hole at
+        // the write index and `set_len` to the correct length. We take care of the following:
+        //     - Do not `drop` any element marked as `Swap`. This is because the `Hole` is
+        //       written with the `Swap` value via `copy_nonoverlapping`, and dropping `Swap`
+        //       will leave `Hole` back to being a `Hole` (which can cause a double drop if
+        //       a `drop` of an element panicked or create an invalid memory state for the Vec).
+        //     - We also make sure that `Swap` is not included within the `set_len` of Vec,
+        //       so it's impossible for the Vec to do a double drop on `Swap` and a `Hole`
+        //       written with the content of `Swap`.
+        // In cases when predicate and `drop` never panick, we may still use this drop guard
+        // to perform batch dropping (e.g. if no elements are retained by the Vec).
+        struct PanicGuard<'a, T, A: Allocator> {
+            v: &'a mut Vec<T, A>,
+            read: usize,
+            read_back: usize,
+            write: usize,
+            len: usize,
+        }
+
+        impl<T, A: Allocator> Drop for PanicGuard<'_, T, A> {
+            #[cold]
+            fn drop(&mut self) {
+                let remaining = self.read_back + 1 - self.read;
+                let remaining_to_drop = self.len - (self.read_back + 1);
+                // SAFETY: Trailing unchecked items between `read..=read_back` must be valid
+                // since we never touch them or drop the content here.
+                unsafe {
+                    ptr::copy(
+                        self.v.as_ptr().add(self.read),
+                        self.v.as_mut_ptr().add(self.write),
+                        remaining,
+                    );
+                }
+
+                // SAFETY: After filling the hole, our items are in contiguous memory.
+                // We then `drop` the elements that the predicate returned false on
+                // from the `read_back` search; we set the length of the vector before
+                // doing so to ensure that a double drop does not occur.
+                unsafe {
+                    self.v.set_len(self.write + remaining);
+                    let remaining_slice = &mut *self
+                        .v
+                        .as_mut_ptr()
+                        .add(self.read_back + 1)
+                        .cast_slice(remaining_to_drop);
+                    ptr::drop_in_place(remaining_slice);
+                }
+            }
+        }
+
+        let mut read = 0;
+        loop {
+            // SAFETY: read < original_len
+            let cur = unsafe { self.get_unchecked_mut(read) };
+            if hint::unlikely(!f(cur)) {
+                break;
+            }
+            read += 1;
+            if read == original_len {
+                // All elements are kept, return early.
+                return;
+            }
+        }
+
+        let mut g = PanicGuard {
+            v: self,
+            read: read + 1,
+            write: read,
+            read_back: original_len - 1,
+            len: original_len,
+        };
+        // SAFETY: previous `read` is always less than original_len.
+        unsafe { ptr::drop_in_place(&mut *g.v.as_mut_ptr().add(read)) };
+        loop {
+            if g.read_back == g.write {
+                // No element found to swap with. Let the `PanicGuard` `drop` handle
+                // dropping all the elements. from `g.write + 1..g.len`.
+                return;
+            }
+            // SAFETY: `g.read_back` is always less than `g.len`.
+            let swap = unsafe { &mut *g.v.as_mut_ptr().add(g.read_back) };
+            if hint::unlikely(f(swap)) {
+                // Found an element to swap with!
+                break;
+            }
+            g.read_back -= 1;
+        }
+
+        // SAFETY: This is safe because:
+        // * g.read_back currently points to an element (`Swap`) that predicate returned true on
+        // that we want to write in the `Hole` that g.write is pointing to; it is impossible
+        // for g.read_back == g.write (hence no overlapping memory)
+        // * g.len - (g.read_back + 1) refers to all elements that our predicate has returned
+        // false on. We do (g.read_back + 1) to ensure that the `Swap` element g.read_back
+        // is not included in something that we want to drop, so that g.write is not left
+        // with a `Hole` again.
+        // * We update g.len to g.read_back (which excludes the `Swap` element), decrement
+        // g.read_back, and increment g.write before dropping the `To-drop` marked elements
+        // to ensure that they are not double dropped.
+        // Logically, this is overwriting vec[write] with vec[read_back] and
+        // calling self.truncate(read_back) without the bound check.
+        unsafe {
+            let to_drop_remaining = g.len - (g.read_back + 1);
+            let to_drop_slice =
+                &mut *g.v.as_mut_ptr().add(g.read_back + 1).cast_slice(to_drop_remaining);
+            let src_ptr = &mut *g.v.as_mut_ptr().add(g.read_back);
+            let dst_ptr = &mut *g.v.as_mut_ptr().add(g.write);
+            ptr::copy_nonoverlapping(src_ptr, dst_ptr, 1);
+            g.len = g.read_back;
+            g.read_back -= 1;
+            g.write += 1;
+            ptr::drop_in_place(to_drop_slice);
+        }
+
+        while g.read <= g.read_back {
+            // SAFETY: g.read <= g.read_back && g.read_back < g.self.len
+            let cur = unsafe { &mut *g.v.as_mut_ptr().add(g.read) };
+            if hint::unlikely(!f(cur)) {
+                // Advance `read` early to avoid double drop if `drop_in_place` panicked.
+                g.read += 1;
+                // SAFETY: We never touch this element again after dropped.
+                unsafe { ptr::drop_in_place(cur) };
+                loop {
+                    if g.read_back == g.write {
+                        // No element found to swap with. Let the `PanicGuard` `drop` handle
+                        // dropping all the elements. from `g.write + 1..g.len`.
+                        return;
+                    }
+
+                    // SAFETY: g.read_back < g.len (will not be out of bound) &
+                    // g.read_back > g.write (will not touch the `Hole`)
+                    let swap = unsafe { &mut *g.v.as_mut_ptr().add(g.read_back) };
+                    if hint::unlikely(f(swap)) {
+                        // Found an element to swap with!
+                        break;
+                    }
+                    g.read_back -= 1;
+                }
+
+                // SAFETY: This is safe because:
+                // * g.read_back currently points to an element (`Swap`) that predicate returned true on
+                // that we want to write in the `Hole` that g.write is pointing to; it is impossible
+                // for g.read_back == g.write (hence no overlapping memory)
+                // * g.len - (g.read_back + 1) refers to all elements that our predicate has returned
+                // false on. We do (g.read_back + 1) to ensure that the `Swap` element g.read_back
+                // is not included in something that we want to drop, so that g.write is not left
+                // with a `Hole` again.
+                // * We update g.len to g.read_back (which excludes the `Swap` element), decrement
+                // g.read_back, and increment g.write before dropping the `To-drop` marked elements
+                // to ensure that they are not double dropped.
+                // Logically, this is overwriting vec[write] with vec[read_back] and
+                // calling self.truncate(read_back) without the bound check.
+                unsafe {
+                    let to_drop_remaining = g.len - (g.read_back + 1);
+                    let to_drop_slice =
+                        &mut *g.v.as_mut_ptr().add(g.read_back + 1).cast_slice(to_drop_remaining);
+                    let src_ptr = &mut *g.v.as_mut_ptr().add(g.read_back);
+                    let dst_ptr = &mut *g.v.as_mut_ptr().add(g.write);
+                    ptr::copy_nonoverlapping(src_ptr, dst_ptr, 1);
+                    g.len = g.read_back;
+                    g.read_back -= 1;
+                    g.write += 1;
+                    ptr::drop_in_place(to_drop_slice);
+                }
+                continue;
+            }
+            g.read += 1;
+            g.write += 1;
+        }
+    }
+
     /// Removes all but the first of consecutive elements in the vector that resolve to the same
     /// key.
     ///

@@ -866,6 +866,75 @@ fn bench_flat_map_collect(b: &mut Bencher) {
     b.iter(|| v.iter().flat_map(|color| color.rotate_left(8).to_be_bytes()).collect::<Vec<_>>());
 }
 
+#[bench]
+fn bench_retain_unstable_100000(b: &mut Bencher) {
+    let mut v = Vec::with_capacity(100000);
+
+    b.iter(|| {
+        v.clear();
+        v.extend(black_box(1..=100000));
+        v.retain_unstable(|x| &*x & 1 == 0)
+    });
+}
+
+#[bench]
+fn bench_retain_unstable_whole_100000(b: &mut Bencher) {
+    let mut v = black_box(vec![826u32; 100000]);
+    b.iter(|| v.retain_unstable(|x| *x == 826u32));
+}
+
+macro_rules! retain_unstable_type_benches {
+    (
+        len = $len:literal,
+        suffix = $suffix:literal,
+        types = [$($ty:ident),*]
+    ) => {
+        $(
+            #[bench]
+            fn ${concat(bench_retain_unstable, $ty, _, $suffix)}(b: &mut Bencher) {
+                let mut v: Vec<$ty> = Vec::with_capacity($len);
+                b.iter(|| {
+                    v.clear();
+                    v.extend(black_box((0..$len).map(|x| { x as $ty })));
+                    v.retain_unstable(|x| *x & 1 == 0)
+                });
+            }
+
+            #[bench]
+            fn ${concat(bench_retain_unstable_whole_, $ty, _, $suffix)}(b: &mut Bencher) {
+                let mut v = black_box(vec![82 as $ty; $len]);
+                b.iter(|| v.retain_unstable(|x| *x == 82 ));
+            }
+        )*
+    };
+}
+
+macro_rules! retain_unstable_matrix_benches {
+    ($($len:literal => $suffix:literal;)*) => {
+        $(
+            retain_unstable_type_benches! {
+                len = $len,
+                suffix = $suffix,
+                types = [u8, u16, u32, u64]
+            }
+        )*
+    };
+}
+
+retain_unstable_matrix_benches! {
+    4 => "000004";
+    8 => "000008";
+    16 => "000016";
+    32 => "000032";
+    64 => "000064";
+    128 => "000128";
+    256 => "000256";
+    512 => "000512";
+    1000 => "001000";
+    10000 => "010000";
+    100000 => "100000";
+}
+
 /// Reference benchmark that `retain` has to compete with.
 #[bench]
 fn bench_retain_iter_100000(b: &mut Bencher) {
