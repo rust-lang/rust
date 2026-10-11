@@ -152,10 +152,7 @@ pub const fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
 ///
 /// # Safety
 ///
-/// This function is unsafe because it does not check that the bytes passed
-/// to it are valid UTF-8. If this constraint is violated, it may cause
-/// memory unsafety issues with future users of the `str`, as the rest of
-/// the standard library [assumes that `str`s are valid UTF-8](prim@str#invariant).
+/// The bytes passed in must be valid UTF-8.
 ///
 /// # Examples
 ///
@@ -182,7 +179,8 @@ pub const unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
     // SAFETY: the pointer dereference is safe because that pointer
     // comes from a reference which is guaranteed to be valid for reads.
     // If the input bytes are not valid UTF-8, then the returned `&str` will
-    // have invalid UTF-8, which is unsafe but not immediate UB.
+    // have invalid UTF-8, which is unsafe but not immediate UB, though this function
+    // conservatively doesn't guarantee that to callers.
     unsafe { &*(v as *const [u8] as *const str) }
 }
 
@@ -195,10 +193,7 @@ pub const unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
 ///
 /// # Safety
 ///
-/// This function is unsafe because it does not check that the bytes passed
-/// to it are valid UTF-8. If this constraint is violated, it may cause
-/// memory unsafety issues with future users of the `str`, as the rest of
-/// the standard library [assumes that `str`s are valid UTF-8](prim@str#invariant).
+/// The bytes passed in must be valid UTF-8.
 ///
 /// # Examples
 ///
@@ -221,7 +216,8 @@ pub const unsafe fn from_utf8_unchecked_mut(v: &mut [u8]) -> &mut str {
     // SAFETY: the pointer dereference is safe because that pointer
     // comes from a reference which is guaranteed to be valid for writes.
     // If the input bytes are not valid UTF-8, then the returned `&mut str` will
-    // have invalid UTF-8, which is unsafe but not immediate UB.
+    // have invalid UTF-8, which is unsafe but not immediate UB, though this function
+    // conservatively doesn't guarantee that to callers.
     unsafe { &mut *(v as *mut [u8] as *mut str) }
 }
 
