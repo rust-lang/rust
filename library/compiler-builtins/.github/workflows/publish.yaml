@@ -3,6 +3,7 @@ name: Release-plz
 permissions:
   pull-requests: write
   contents: write
+  id-token: write
 
 on:
   push: { branches: [main] }
