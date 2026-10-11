@@ -1,8 +1,7 @@
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::IndexVec;
-use rustc_middle::mir::{Body, Location};
+use rustc_middle::mir::{Body, DenseLocationMap, Location, PointIndex};
 use rustc_middle::ty::RegionVid;
-use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex};
 use smallvec::SmallVec;
 
 use crate::BorrowSet;

@@ -16,7 +16,7 @@ use std::borrow::Cow;
 use std::cell::{OnceCell, RefCell};
 use std::marker::PhantomData;
 use std::ops::{ControlFlow, Deref};
-use std::rc::Rc;
+use std::sync::Arc;
 
 use borrow_set::LocalsStateAtExit;
 use polonius_engine::AllFacts;
@@ -44,7 +44,6 @@ use rustc_mir_dataflow::impls::{EverInitializedPlaces, MaybeUninitializedPlaces}
 use rustc_mir_dataflow::move_paths::{
     InitIndex, InitLocation, LookupResult, MoveData, MovePathIndex,
 };
-use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_mir_dataflow::{Analysis, EntryStates, Results, ResultsVisitor, visit_results};
 use rustc_span::{ErrorGuaranteed, Span, Symbol, bug, span_bug};
 use rustc_trait_selection::traits::query::type_op::{QueryTypeOp, TypeOp, TypeOpOutput};
@@ -301,7 +300,7 @@ struct CollectRegionConstraintsResult<'tcx> {
     move_data: MoveData<'tcx>,
     borrow_set: BorrowSet<'tcx>,
     location_table: PoloniusLocationTable,
-    location_map: Rc<DenseLocationMap>,
+    location_map: Arc<DenseLocationMap>,
     universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
     region_bound_pairs: Frozen<RegionBoundPairs<'tcx>>,
     known_type_outlives_obligations: Frozen<Vec<ty::PolyTypeOutlivesClause<'tcx>>>,
@@ -344,7 +343,7 @@ fn borrowck_collect_region_constraints<'tcx>(
     let locals_are_invalidated_at_exit = tcx.hir_body_owner_kind(def).is_fn_or_closure();
     let borrow_set = BorrowSet::build(tcx, body, locals_are_invalidated_at_exit, &move_data);
 
-    let location_map = Rc::new(DenseLocationMap::new(body));
+    let location_map = Arc::clone(body.basic_blocks.location_map());
 
     let polonius_input = root_cx.consumer.as_ref().is_some_and(|c| c.polonius_input())
         || infcx.tcx.sess.opts.unstable_opts.polonius.is_legacy_enabled();
@@ -368,7 +367,7 @@ fn borrowck_collect_region_constraints<'tcx>(
         &borrow_set,
         &mut polonius_facts,
         &move_data,
-        Rc::clone(&location_map),
+        Arc::clone(&location_map),
     );
 
     CollectRegionConstraintsResult {

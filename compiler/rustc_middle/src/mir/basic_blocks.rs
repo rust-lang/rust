@@ -9,13 +9,16 @@ use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use smallvec::SmallVec;
 
 use crate::mir::traversal::Postorder;
-use crate::mir::{BasicBlock, BasicBlockData, START_BLOCK};
+use crate::mir::{BasicBlock, BasicBlockData, DenseLocationMap, START_BLOCK};
 
 #[derive(Clone, TyEncodable, TyDecodable, Debug, StableHash, TypeFoldable, TypeVisitable)]
 pub struct BasicBlocks<'tcx> {
     basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
     /// Use an `Arc` so we can share the cache when we clone the MIR body, as borrowck does.
     cache: Arc<Cache>,
+    /// See [`BasicBlocks::location_map`]. Unlike the CFG cache this also depends on the
+    /// statements, so each `BasicBlocks` keeps its own and only shares the computed map.
+    location_map: LocationMapCache,
 }
 
 // Typically 95%+ of basic blocks have 4 or fewer predecessors.
@@ -28,10 +31,25 @@ struct Cache {
     dominators: OnceLock<Dominators<BasicBlock>>,
 }
 
+#[derive(Clone, Default, Debug)]
+struct LocationMapCache(OnceLock<Arc<DenseLocationMap>>);
+
+impl Cache {
+    fn is_empty(&self) -> bool {
+        self.predecessors.get().is_none()
+            && self.reverse_postorder.get().is_none()
+            && self.dominators.get().is_none()
+    }
+}
+
 impl<'tcx> BasicBlocks<'tcx> {
     #[inline]
     pub fn new(basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>) -> Self {
-        BasicBlocks { basic_blocks, cache: Arc::new(Cache::default()) }
+        BasicBlocks {
+            basic_blocks,
+            cache: Arc::new(Cache::default()),
+            location_map: Default::default(),
+        }
     }
 
     #[inline]
@@ -69,6 +87,13 @@ impl<'tcx> BasicBlocks<'tcx> {
         })
     }
 
+    /// Returns the numbering of the body's locations as `PointIndex`es, computed once per body
+    /// and shared by everything that keeps per-location data.
+    #[inline]
+    pub fn location_map(&self) -> &Arc<DenseLocationMap> {
+        self.location_map.0.get_or_init(|| Arc::new(DenseLocationMap::new(&self.basic_blocks)))
+    }
+
     /// Returns mutable reference to basic blocks. Invalidates CFG cache.
     #[inline]
     pub fn as_mut(&mut self) -> &mut IndexVec<BasicBlock, BasicBlockData<'tcx>> {
@@ -87,8 +112,12 @@ impl<'tcx> BasicBlocks<'tcx> {
     ///     kind is not changed.
     ///
     /// If any of these conditions cannot be upheld, you should call [`BasicBlocks::invalidate_cfg_cache`].
+    ///
+    /// Statements may still be added or removed, which renumbers the locations, so the location
+    /// map is invalidated.
     #[inline]
     pub fn as_mut_preserves_cfg(&mut self) -> &mut IndexVec<BasicBlock, BasicBlockData<'tcx>> {
+        self.location_map.0.take();
         &mut self.basic_blocks
     }
 
@@ -98,9 +127,13 @@ impl<'tcx> BasicBlocks<'tcx> {
     /// All other methods that allow you to mutate the basic blocks also call this method
     /// themselves, thereby avoiding any risk of accidentally cache invalidation.
     pub fn invalidate_cfg_cache(&mut self) {
+        self.location_map.0.take();
         if let Some(cache) = Arc::get_mut(&mut self.cache) {
-            // If we only have a single reference to this cache, clear it.
-            *cache = Cache::default();
+            // If we only have a single reference to this cache, clear it. Code that builds a body
+            // block by block gets here with nothing cached yet, so do not touch it then.
+            if !cache.is_empty() {
+                *cache = Cache::default();
+            }
         } else {
             // If we have several references to this cache, overwrite the pointer itself so other
             // users can continue to use their (valid) cache.
@@ -149,7 +182,7 @@ impl<'tcx> graph::Predecessors for BasicBlocks<'tcx> {
 }
 
 // Done here instead of in `structural_impls.rs` because `Cache` is private, as is `basic_blocks`.
-TrivialTypeTraversalImpls! { Cache }
+TrivialTypeTraversalImpls! { Cache, LocationMapCache }
 
 impl<S: Encoder> Encodable<S> for Cache {
     #[inline]
@@ -164,6 +197,23 @@ impl<D: Decoder> Decodable<D> for Cache {
 }
 
 impl StableHash for Cache {
+    #[inline]
+    fn stable_hash<Hcx: StableHashCtxt>(&self, _: &mut Hcx, _: &mut StableHasher) {}
+}
+
+impl<S: Encoder> Encodable<S> for LocationMapCache {
+    #[inline]
+    fn encode(&self, _s: &mut S) {}
+}
+
+impl<D: Decoder> Decodable<D> for LocationMapCache {
+    #[inline]
+    fn decode(_: &mut D) -> Self {
+        Default::default()
+    }
+}
+
+impl StableHash for LocationMapCache {
     #[inline]
     fn stable_hash<Hcx: StableHashCtxt>(&self, _: &mut Hcx, _: &mut StableHasher) {}
 }

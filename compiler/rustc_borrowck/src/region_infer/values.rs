@@ -1,13 +1,12 @@
 use std::fmt::Debug;
-use std::rc::Rc;
+use std::sync::Arc;
 
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_index::Idx;
 use rustc_index::bit_set::SparseBitMatrix;
 use rustc_index::interval::{IntervalSet, SparseIntervalMatrix};
-use rustc_middle::mir::{BasicBlock, Location};
+use rustc_middle::mir::{BasicBlock, DenseLocationMap, Location, PointIndex};
 use rustc_middle::ty::{self, RegionVid};
-use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex};
 use rustc_span::bug;
 use tracing::{debug, instrument};
 
@@ -52,7 +51,7 @@ enum LiveRegions {
 #[derive(Clone)] // FIXME(#146079)
 pub(crate) struct LivenessValues {
     /// The map from locations to points.
-    location_map: Rc<DenseLocationMap>,
+    location_map: Arc<DenseLocationMap>,
 
     /// Where a region is live.
     live_regions: LiveRegions,
@@ -63,7 +62,7 @@ pub(crate) struct LivenessValues {
 
 impl LivenessValues {
     /// Create an empty map of regions to locations where they're live.
-    pub(crate) fn with_specific_points(location_map: Rc<DenseLocationMap>) -> Self {
+    pub(crate) fn with_specific_points(location_map: Arc<DenseLocationMap>) -> Self {
         LivenessValues {
             live_regions: LiveRegions::AtPoints(SparseIntervalMatrix::new(
                 location_map.num_points(),
@@ -77,7 +76,7 @@ impl LivenessValues {
     ///
     /// Unlike `with_specific_points`, does not track exact locations where something is live, only
     /// which regions are live.
-    pub(crate) fn without_specific_points(location_map: Rc<DenseLocationMap>) -> Self {
+    pub(crate) fn without_specific_points(location_map: Arc<DenseLocationMap>) -> Self {
         LivenessValues {
             live_regions: LiveRegions::InBody(Default::default()),
             location_map,
@@ -171,7 +170,7 @@ impl LivenessValues {
     }
 
     /// Returns whether `region` is marked live at the given
-    /// [`point`][rustc_mir_dataflow::points::PointIndex].
+    /// [`point`][rustc_middle::mir::PointIndex].
     #[inline]
     pub(crate) fn is_live_at_point(&self, region: RegionVid, point: PointIndex) -> bool {
         self.point_liveness(region).is_some_and(|r| r.contains(point))
@@ -265,7 +264,7 @@ impl<'tcx> PlaceholderIndices<'tcx> {
 /// because (since it is returned) it must live for at least `'a`. But
 /// it would also contain various points from within the function.
 pub(crate) struct RegionValues<'tcx, N: Idx> {
-    location_map: Rc<DenseLocationMap>,
+    location_map: Arc<DenseLocationMap>,
     placeholder_indices: PlaceholderIndices<'tcx>,
     points: SparseIntervalMatrix<N, PointIndex>,
     free_regions: SparseBitMatrix<N, RegionVid>,
@@ -280,7 +279,7 @@ impl<'tcx, N: Idx> RegionValues<'tcx, N> {
     /// Each of the regions in num_region_variables will be initialized with an
     /// empty set of points and no causal information.
     pub(crate) fn new(
-        location_map: Rc<DenseLocationMap>,
+        location_map: Arc<DenseLocationMap>,
         num_universal_regions: usize,
         placeholder_indices: PlaceholderIndices<'tcx>,
     ) -> Self {

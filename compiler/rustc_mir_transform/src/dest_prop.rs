@@ -145,7 +145,6 @@ use rustc_middle::mir::visit::{MutVisitor, PlaceContext, VisitPlacesWith, Visito
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::impls::{DefUse, LivenessTransferFunction, MaybeLiveLocals};
-use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_mir_dataflow::{Analysis, EntryStates, GenKill};
 use tracing::{debug, trace};
 
@@ -173,11 +172,11 @@ impl<'tcx> crate::MirPass<'tcx> for DestinationPropagation {
 
         let live = MaybeLiveLocals.iterate_to_fixpoint(tcx, body, Some("MaybeLiveLocals-DestProp"));
 
-        let points = DenseLocationMap::new(body);
+        let points: &DenseLocationMap = body.basic_blocks.location_map();
         let mut relevant = RelevantLocals::compute(&candidates, body.local_decls.len());
-        let mut live = save_as_intervals(&points, body, &relevant, live.entry_states);
+        let mut live = save_as_intervals(points, body, &relevant, live.entry_states);
 
-        dest_prop_mir_dump(tcx, body, &points, &live, &relevant);
+        dest_prop_mir_dump(tcx, body, points, &live, &relevant);
 
         let mut merged_locals = DenseBitSet::new_empty(body.local_decls.len());
 

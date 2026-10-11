@@ -11,7 +11,6 @@ use crate::impls::{
     MaybeLiveLocals, MaybeTransitiveLiveLocals, SplitPointEffect, SplitPointIndex, borrowed_locals,
     liveness_matrix,
 };
-use crate::points::DenseLocationMap;
 use crate::{ResultsVisitor, visit_results};
 
 type ExtraDataFn = dyn Fn(PassWhere, &mut dyn io::Write) -> io::Result<()>;
@@ -38,7 +37,7 @@ pub(crate) fn mir_pretty_extra_data<'tcx>(
                 );
             }
             RustcMirKind::PrettyPreciseLiveness => {
-                let points = DenseLocationMap::new(body);
+                let points = body.basic_blocks.location_map();
                 let matrix = liveness_matrix(tcx, body, &points, None);
                 for (block, data) in body.basic_blocks.iter_enumerated() {
                     for statement_index in 0..=data.statements.len() {

@@ -4,12 +4,13 @@ use rustc_index::bit_set::{DenseBitSet, MixedBitSet};
 use rustc_index::interval::IntervalSet;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_infer::traits::TraitErrors;
-use rustc_middle::mir::{BasicBlock, Body, ConstraintCategory, Local, Location};
+use rustc_middle::mir::{
+    BasicBlock, Body, ConstraintCategory, DenseLocationMap, Local, Location, PointIndex,
+};
 use rustc_middle::traits::query::DropckOutlivesResult;
 use rustc_middle::ty::{GenericArg, Ty, TypeVisitableExt};
 use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::{HasMoveData, MoveData, MovePathIndex};
-use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex};
 use rustc_mir_dataflow::{Analysis, MaybeReachable, ResultsCursor};
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;

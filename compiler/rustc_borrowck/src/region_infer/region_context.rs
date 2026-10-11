@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 use std::ops::{Deref, DerefMut};
-use std::rc::Rc;
+use std::sync::Arc;
 
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
@@ -10,11 +10,10 @@ use rustc_infer::infer::outlives::test_type_match;
 use rustc_infer::infer::region_constraints::{VerifyBound, VerifyIfEq};
 use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin};
 use rustc_middle::mir::{
-    AnnotationSource, BasicBlock, Body, ConstraintCategory, Location, ReturnConstraint,
-    TerminatorKind,
+    AnnotationSource, BasicBlock, Body, ConstraintCategory, DenseLocationMap, Location,
+    ReturnConstraint, TerminatorKind,
 };
 use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt, TypeFoldable, UniverseIndex, fold_regions};
-use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::{DUMMY_SP, bug};
 use tracing::{debug, instrument, trace};
@@ -106,7 +105,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         infcx: &BorrowckInferCtxt<'tcx>,
         lowered_constraints: LoweredConstraints<'tcx>,
         universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
-        location_map: Rc<DenseLocationMap>,
+        location_map: Arc<DenseLocationMap>,
         body: &Body<'tcx>,
         polonius_output: Option<Box<PoloniusOutput>>,
     ) -> (RegionInferenceContext<'tcx>, Option<ClosureRegionRequirements<'tcx>>, RegionErrors<'tcx>)

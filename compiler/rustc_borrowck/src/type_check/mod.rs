@@ -1,6 +1,6 @@
 //! This pass type-checks the MIR to ensure it is not broken.
 
-use std::rc::Rc;
+use std::sync::Arc;
 use std::{fmt, iter, mem};
 
 use rustc_abi::FieldIdx;
@@ -30,7 +30,6 @@ use rustc_middle::ty::{
     TypeVisitableExt, UserArgs, UserTypeAnnotationIndex, fold_regions,
 };
 use rustc_mir_dataflow::move_paths::MoveData;
-use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::{Span, Spanned, bug, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
@@ -103,12 +102,12 @@ pub(crate) fn type_check<'tcx>(
     borrow_set: &BorrowSet<'tcx>,
     polonius_facts: &mut Option<PoloniusFacts>,
     move_data: &MoveData<'tcx>,
-    location_map: Rc<DenseLocationMap>,
+    location_map: Arc<DenseLocationMap>,
 ) -> MirTypeckResults<'tcx> {
     let mut constraints = MirTypeckRegionConstraints {
         placeholder_indices: PlaceholderIndices::default(),
         placeholder_index_to_region: IndexVec::default(),
-        liveness_constraints: LivenessValues::with_specific_points(Rc::clone(&location_map)),
+        liveness_constraints: LivenessValues::with_specific_points(Arc::clone(&location_map)),
         outlives_constraints: OutlivesConstraintSet::default(),
         type_tests: Vec::default(),
         universe_causes: FxIndexMap::default(),
@@ -516,8 +515,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // modify their locations.
         let polonius_facts = &mut None;
         let mut constraints = Default::default();
-        let mut liveness_constraints =
-            LivenessValues::without_specific_points(Rc::new(DenseLocationMap::new(promoted_body)));
+        let mut liveness_constraints = LivenessValues::without_specific_points(Arc::clone(
+            promoted_body.basic_blocks.location_map(),
+        ));
         let mut deferred_closure_requirements = Default::default();
 
         // Don't try to add borrow_region facts for the promoted MIR as they refer
