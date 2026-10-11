@@ -8,8 +8,14 @@ fn move_while_borrowed(x: String) {
 }
 
 fn borrow_mut_while_borrowed(mut x: i32) {
-    let f = || x;
+    let f = || *&x;
     let y = &mut x; //~ ERROR
+    f.use_ref();
+}
+
+fn borrow_mut_while_not_borrowed(mut x: i32) {
+    let f = || x;
+    let y = &mut x;
     f.use_ref();
 }
 
@@ -17,14 +23,29 @@ fn drop_while_borrowed() {
     let f;
     {
         let x = 1;
-        f = || x; //~ ERROR
+        f = || *&x; //~ ERROR
+    }
+    f.use_ref();
+}
+
+fn drop_while_not_borrowed() {
+    let f;
+    {
+        let x = 1;
+        f = || x;
     }
     f.use_ref();
 }
 
 fn assign_while_borrowed(mut x: i32) {
-    let f = || x;
+    let f = || *&x;
     x = 1; //~ ERROR
+    f.use_ref();
+}
+
+fn assign_while_not_borrowed(mut x: i32) {
+    let f = || x;
+    x = 1;
     f.use_ref();
 }
 
@@ -97,5 +118,8 @@ fn assign_while_borrowed_unique(x: &mut i32) {
 
 fn main() {}
 
-trait Fake { fn use_mut(&mut self) { } fn use_ref(&self) { }  }
-impl<T> Fake for T { }
+trait Fake {
+    fn use_mut(&mut self) {}
+    fn use_ref(&self) {}
+}
+impl<T> Fake for T {}

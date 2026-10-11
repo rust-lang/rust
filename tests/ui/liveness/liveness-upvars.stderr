@@ -113,12 +113,12 @@ warning: value assigned to `e` is never read
    |
 LL |             e = Some("e1");
    |             ^^^^^^^^^^^^^^ this value is reassigned later and never used
-LL |
+...
 LL |             e = Some("e2");
    |             -------------- `e` is overwritten here before the previous value is read
 
 warning: value assigned to `e` is never read
-  --> $DIR/liveness-upvars.rs:85:13
+  --> $DIR/liveness-upvars.rs:86:13
    |
 LL |             e = Some("e2");
    |             ^^^^^^^^^^^^^^
@@ -133,8 +133,25 @@ LL |             d = Some("d1");
 LL |             d = Some("d2");
    |             -------------- `d` is overwritten here before the previous value is read
 
+warning: value captured by `e` is never read
+  --> $DIR/liveness-upvars.rs:83:13
+   |
+LL |             e = Some("e1");
+   |             ^
+   |
+   = help: did you mean to capture by reference instead?
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: unused variable: `e`
+  --> $DIR/liveness-upvars.rs:76:9
+   |
+LL |     let mut e = None;
+   |         ^^^^^ help: if this is intentional, prefix it with an underscore: `_e`
+   |
+   = note: `#[warn(unused_variables)]` implied by `#[warn(unused)]`
+
 warning: value assigned to `v` is never read
-  --> $DIR/liveness-upvars.rs:93:13
+  --> $DIR/liveness-upvars.rs:94:13
    |
 LL |             v = T::default();
    |             ^
@@ -142,7 +159,7 @@ LL |             v = T::default();
    = help: maybe it is overwritten before being read?
 
 warning: value captured by `z` is never read
-  --> $DIR/liveness-upvars.rs:106:17
+  --> $DIR/liveness-upvars.rs:107:17
    |
 LL |                 z = T::default();
    |                 ^
@@ -150,7 +167,7 @@ LL |                 z = T::default();
    = help: did you mean to capture by reference instead?
 
 warning: value assigned to `z` is never read
-  --> $DIR/liveness-upvars.rs:106:17
+  --> $DIR/liveness-upvars.rs:107:17
    |
 LL |                 z = T::default();
    |                 ^^^^^^^^^^^^^^^^
@@ -158,7 +175,7 @@ LL |                 z = T::default();
    = help: maybe it is overwritten before being read?
 
 warning: value captured by `state` is never read
-  --> $DIR/liveness-upvars.rs:132:9
+  --> $DIR/liveness-upvars.rs:133:9
    |
 LL |         state = 4;
    |         ^^^^^
@@ -166,7 +183,7 @@ LL |         state = 4;
    = help: did you mean to capture by reference instead?
 
 warning: value assigned to `state` is never read
-  --> $DIR/liveness-upvars.rs:132:9
+  --> $DIR/liveness-upvars.rs:133:9
    |
 LL |         state = 4;
    |         ^^^^^^^^^ this value is reassigned later and never used
@@ -175,7 +192,7 @@ LL |         state = 5;
    |         --------- `state` is overwritten here before the previous value is read
 
 warning: value assigned to `state` is never read
-  --> $DIR/liveness-upvars.rs:135:9
+  --> $DIR/liveness-upvars.rs:136:9
    |
 LL |         state = 5;
    |         ^^^^^^^^^
@@ -183,7 +200,7 @@ LL |         state = 5;
    = help: maybe it is overwritten before being read?
 
 warning: value assigned to `s` is never read
-  --> $DIR/liveness-upvars.rs:144:9
+  --> $DIR/liveness-upvars.rs:145:9
    |
 LL |         s = 1;
    |         ^^^^^ this value is reassigned later and never used
@@ -191,12 +208,12 @@ LL |         yield (s = 2);
    |               ------- `s` is overwritten here before the previous value is read
 
 warning: value assigned to `s` is never read
-  --> $DIR/liveness-upvars.rs:146:9
+  --> $DIR/liveness-upvars.rs:147:9
    |
 LL |         s = yield ();
    |         ^^^^^^^^^^^^ this value is reassigned later and never used
 LL |         s = 3;
    |         ----- `s` is overwritten here before the previous value is read
 
-warning: 24 warnings emitted
+warning: 26 warnings emitted
 

@@ -7,14 +7,14 @@
 
 struct Node<'b, T: 'b> {
     val: T,
-    next: Option<&'b Node<'b, T>>
+    next: Option<&'b Node<'b, T>>,
 }
 
 impl<'b, T> Node<'b, T> {
     fn get<'a>(&'a self) -> &'b T {
-        match self.next { //~ ERROR lifetime may not live long enough
+        match self.next {
             Some(ref next) => next.get(),
-            None => &self.val
+            None => &self.val, //~ ERROR lifetime may not live long enough
         }
     }
 }

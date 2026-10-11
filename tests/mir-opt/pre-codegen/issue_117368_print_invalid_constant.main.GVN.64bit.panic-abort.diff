@@ -24,7 +24,7 @@
               let _11: std::alloc::AllocError;
               let mut _12: !;
               let mut _13: &dyn std::fmt::Debug;
-              let _14: &std::alloc::AllocError;
+              let mut _14: &std::alloc::AllocError;
               scope 8 {
               }
               scope 9 {
@@ -88,6 +88,7 @@
           StorageLive(_14);
           _14 = &_11;
           _13 = copy _14 as &dyn std::fmt::Debug (PointerCoercion(Unsize, Implicit));
+          StorageDead(_14);
           _12 = result::unwrap_failed(const "called `Result::unwrap()` on an `Err` value", move _13) -> unwind unreachable;
       }
   

@@ -1645,7 +1645,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
         let temp_scope_id = closure_expr.hir_id.local_id;
 
         match upvar_capture {
-            ty::UpvarCapture::ByValue => captured_place_expr,
+            ty::UpvarCapture::ByValue | ty::UpvarCapture::ByCopy => captured_place_expr,
             ty::UpvarCapture::ByUse => {
                 let span = captured_place_expr.span;
                 let expr_id = self.thir.exprs.push(captured_place_expr);

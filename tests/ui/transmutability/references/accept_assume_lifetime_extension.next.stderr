@@ -121,7 +121,7 @@ error[E0277]: `&u8` cannot be safely transmuted into `&u8`
 LL |         unsafe { extend_hrtb(src) }
    |                  ^^^^^^^^^^^^---^
    |                  |           |
-   |                  |           `&u8` doesn't satisfy the trait bound
+   |                  |           `&'a u8` doesn't satisfy the trait bound
    |                  unsatisfied trait bound
    |
    = help: the nightly-only, unstable trait `for<'b> std::mem::TransmuteFrom<&u8, std::mem::Assume { alignment: false, lifetimes: true, safety: false, validity: false }>` is not implemented for `&'b u8`

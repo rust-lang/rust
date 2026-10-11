@@ -1,10 +1,10 @@
 #![deny(invalid_doc_attributes)]
 #![crate_type = "lib"]
 #![doc(as_ptr)]
-//~^ ERROR unknown `doc` attribute
+//~^ ERROR reserved `doc` attribute
 
 #[doc(as_ptr)]
-//~^ ERROR unknown `doc` attribute
+//~^ ERROR reserved `doc` attribute
 pub fn foo() {}
 
 #[doc(123)]
@@ -16,6 +16,6 @@ pub fn foo() {}
 //~| WARN
 //~| WARN
 #[doc(foo::bar, crate::bar::baz = "bye")]
-//~^ ERROR unknown `doc` attribute
-//~| ERROR unknown `doc` attribute
+//~^ ERROR reserved `doc` attribute
+//~| ERROR reserved `doc` attribute
 fn bar() {}

@@ -4175,7 +4175,8 @@ impl<'db> ClosureCapture<'db> {
 
     pub fn kind(&self) -> CaptureKind {
         match self.capture.info.capture_kind {
-            hir_ty::closure_analysis::UpvarCapture::ByValue => CaptureKind::Move,
+            hir_ty::closure_analysis::UpvarCapture::ByValue
+            | hir_ty::closure_analysis::UpvarCapture::ByCopy => CaptureKind::Move,
             hir_ty::closure_analysis::UpvarCapture::ByUse => CaptureKind::SharedRef, // Good enough?
             hir_ty::closure_analysis::UpvarCapture::ByRef(
                 hir_ty::closure_analysis::BorrowKind::Immutable,

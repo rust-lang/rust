@@ -36,6 +36,7 @@
 #![feature(const_iter)]
 #![feature(const_ops)]
 #![feature(const_option_ops)]
+#![feature(const_precise_live_drops)]
 #![feature(const_ref_cell)]
 #![feature(const_result_trait_fn)]
 #![feature(const_select_unpredictable)]

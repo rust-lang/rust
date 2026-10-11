@@ -9,7 +9,7 @@ note: Capturing p[(1, 0)] -> Mutable
    |
 LL |         || p.y += incr;
    |            ^^^
-note: Capturing incr[] -> Immutable
+note: Capturing incr[] -> ByCopy
   --> $DIR/nested-closure.rs:28:19
    |
 LL |         || p.y += incr;
@@ -26,7 +26,7 @@ note: Min Capture p[(1, 0)] -> Mutable
    |
 LL |         || p.y += incr;
    |            ^^^
-note: Min Capture incr[] -> Immutable
+note: Min Capture incr[] -> ByCopy
   --> $DIR/nested-closure.rs:28:19
    |
 LL |         || p.y += incr;

@@ -65,7 +65,7 @@ LL | |         match variant {
 LL | |     };
    | |_____^
    |
-note: Capturing variant[(0, 0)] -> Immutable
+note: Capturing variant[(0, 0)] -> ByCopy
   --> $DIR/patterns-capture-analysis.rs:66:15
    |
 LL |         match variant {
@@ -82,7 +82,7 @@ LL | |         match variant {
 LL | |     };
    | |_____^
    |
-note: Min Capture variant[(0, 0)] -> Immutable
+note: Min Capture variant[(0, 0)] -> ByCopy
   --> $DIR/patterns-capture-analysis.rs:66:15
    |
 LL |         match variant {

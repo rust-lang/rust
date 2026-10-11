@@ -1,0 +1,12 @@
+warning: the trait bound `T: Bound` is not satisfied
+  --> $DIR/unsatisfied-hrtb-arg.rs:17:21
+   |
+LL | fn warns<T>() where for<'a> W<'a, T>: Sized {}
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #162200 <https://github.com/rust-lang/rust/issues/162200>
+   = note: `#[warn(unsatisfied_hrtb_arg)]` (part of `#[warn(future_incompatible)]`) on by default
+
+warning: 1 warning emitted
+

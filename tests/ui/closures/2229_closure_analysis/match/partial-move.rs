@@ -35,7 +35,7 @@ pub fn test_enum1(x: Enum) -> impl FnOnce() {
     || {
     //~^ ERROR: closure may outlive the current function, but it borrows `x.0`
         match x {
-            Enum::A(a, b) => {
+            Enum::A(ref a, b) => {
                 drop((a, b));
             }
             _ => unreachable!(),
@@ -47,7 +47,7 @@ pub fn test_enum2(x: Enum) -> impl FnOnce() {
     || {
     //~^ ERROR: closure may outlive the current function, but it borrows `x.0`
         match x {
-            Enum::A(a, b) => {
+            Enum::A(ref a, b) => {
                 drop((a, b));
             }
         }
@@ -59,7 +59,7 @@ pub fn test_struct(x: Struct) -> impl FnOnce() {
     || {
     //~^ ERROR: closure may outlive the current function, but it borrows `x.0`
         match x {
-            Struct(a, b) => {
+            Struct(ref a, b) => {
                 drop((a, b));
             }
         }
@@ -70,7 +70,7 @@ pub fn test_struct(x: Struct) -> impl FnOnce() {
 pub fn test_two_variants(x: TwoVariants) -> impl FnOnce() {
     || {
         match x {
-            TwoVariants::A(a, b) => {
+            TwoVariants::A(ref a, b) => {
                 drop((a, b));
             }
             _ => unreachable!(),
@@ -82,7 +82,7 @@ pub fn test_two_variants(x: TwoVariants) -> impl FnOnce() {
 pub fn test_non_exhaustive1(x: NonExhaustive) -> impl FnOnce() {
     || {
         match x {
-            NonExhaustive::A(a, b) => {
+            NonExhaustive::A(ref a, b) => {
                 drop((a, b));
             }
             _ => unreachable!(),
@@ -94,7 +94,7 @@ pub fn test_non_exhaustive1(x: NonExhaustive) -> impl FnOnce() {
 pub fn test_non_exhaustive2(x: NonExhaustive) -> impl FnOnce() {
     || {
         match x {
-            NonExhaustive::A(a, b) => {
+            NonExhaustive::A(ref a, b) => {
                 drop((a, b));
             }
         }
@@ -105,7 +105,7 @@ pub fn test_non_exhaustive2(x: NonExhaustive) -> impl FnOnce() {
 pub fn test_ext(x: ExtNonExhaustive) -> impl FnOnce() {
     || {
         match x {
-            ExtNonExhaustive::A(a, b) => {
+            ExtNonExhaustive::A(ref a, b) => {
                 drop((a, b));
             }
             _ => unreachable!(),

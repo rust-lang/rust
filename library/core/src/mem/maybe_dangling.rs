@@ -99,6 +99,7 @@ impl<P: ?Sized> MaybeDangling<P> {
     /// Extracts the value from the `MaybeDangling` container.
     ///
     /// Note that this is UB if the inner value is currently dangling.
+    #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
     pub const fn into_inner(self) -> P
     where
         P: Sized,
