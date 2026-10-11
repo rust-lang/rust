@@ -1635,8 +1635,12 @@ fn check_fn_or_method<'tcx>(
     // on the entire `FnSig`, since this would use the same `WellFormedLoc`
     // for each type, preventing the HIR wf check from generating
     // a nice error message.
-    let arg_span =
-        |idx| hir_decl.inputs.get(idx).map_or(hir_decl.output.span(), |arg: &hir::Ty<'_>| arg.span);
+    let arg_span = |idx| {
+        hir_decl
+            .inputs
+            .get(idx)
+            .map_or(hir_decl.output.span(), |param: &hir::Param<'_>| param.ty.span)
+    };
 
     sig.inputs_and_output =
         tcx.mk_type_list_from_iter(sig.inputs_and_output.iter().enumerate().map(|(idx, ty)| {
@@ -1682,14 +1686,14 @@ fn check_fn_or_method<'tcx>(
             );
         } else {
             tcx.dcx().span_err(
-                hir_decl.inputs.last().map_or(span, |input| input.span),
+                hir_decl.inputs.last().map_or(span, |input| input.ty.span),
                 "functions with the \"rust-call\" ABI must take a single non-self tuple argument",
             );
         }
         // No more inputs other than the `self` type and the tuple type
         if inputs.next().is_some() {
             tcx.dcx().span_err(
-                hir_decl.inputs.last().map_or(span, |input| input.span),
+                hir_decl.inputs.last().map_or(span, |input| input.ty.span),
                 "functions with the \"rust-call\" ABI must take a single non-self tuple argument",
             );
         }
@@ -1731,7 +1735,7 @@ fn check_method_receiver<'tcx>(
         return Ok(());
     }
 
-    let span = fn_sig.decl.inputs[0].span;
+    let span = fn_sig.decl.inputs[0].ty.span;
     let loc = WellFormedLoc::Param { function: method.def_id.expect_local(), param_idx: 0 };
 
     let sig = tcx.fn_sig(method.def_id).instantiate_identity().skip_norm_wip();

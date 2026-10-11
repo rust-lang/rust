@@ -517,7 +517,7 @@ mod items {
 }
 mod patterns {
     /// PatKind::Missing
-    fn pat_missing() { let _: for fn(u32, T, &'_ str); }
+    fn pat_missing() { let _: for fn(_: u32, _: T, _: &'_ str); }
     /// PatKind::Wild
     fn pat_wild() { let _; }
     /// PatKind::Ident
@@ -624,7 +624,7 @@ mod types {
     fn ty_bare_fn() {
         let _: fn();
         let _: fn() -> ();
-        let _: fn(T);
+        let _: fn(_: T);
         let _: fn(t: T);
         let _: fn();
         let _: for<'a> fn();

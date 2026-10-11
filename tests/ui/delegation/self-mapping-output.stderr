@@ -132,7 +132,7 @@ note: method defined here
   --> $DIR/self-mapping-output.rs:199:12
    |
 LL |         fn method(&self) -> ();
-   |            ^^^^^^  ----
+   |            ^^^^^^ -----
 help: consider borrowing here
    |
 LL |         reuse Trait::method { &self.0 }
@@ -188,7 +188,7 @@ note: method defined here
   --> $DIR/self-mapping-output.rs:199:12
    |
 LL |         fn method(&self) -> ();
-   |            ^^^^^^  ----
+   |            ^^^^^^ -----
 help: consider borrowing here
    |
 LL |         reuse Trait::method { &self.0 }
@@ -245,7 +245,7 @@ note: method defined here
   --> $DIR/self-mapping-output.rs:237:12
    |
 LL |         fn method(&self) -> Self;
-   |            ^^^^^^  ----
+   |            ^^^^^^ -----
 
 error[E0308]: mismatched types
   --> $DIR/self-mapping-output.rs:256:29
@@ -293,7 +293,7 @@ note: method defined here
   --> $DIR/self-mapping-output.rs:237:12
    |
 LL |         fn method(&self) -> Self;
-   |            ^^^^^^  ----
+   |            ^^^^^^ -----
 
 error[E0308]: mismatched types
   --> $DIR/self-mapping-output.rs:268:29
@@ -341,7 +341,7 @@ note: method defined here
   --> $DIR/self-mapping-output.rs:282:12
    |
 LL |         fn method(&self) -> Self;
-   |            ^^^^^^  ----
+   |            ^^^^^^ -----
 
 error[E0308]: mismatched types
   --> $DIR/self-mapping-output.rs:310:31
@@ -358,7 +358,7 @@ note: method defined here
   --> $DIR/self-mapping-output.rs:282:12
    |
 LL |         fn method(&self) -> Self;
-   |            ^^^^^^  ----
+   |            ^^^^^^ -----
 
 error[E0616]: field `0` of struct `private::W` is private
   --> $DIR/self-mapping-output.rs:336:36

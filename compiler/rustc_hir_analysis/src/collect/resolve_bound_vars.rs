@@ -18,7 +18,8 @@ use rustc_hir::def_id::LocalDefIdMap;
 use rustc_hir::definitions::{DefPathData, PerParentDisambiguatorsMap};
 use rustc_hir::intravisit::{self, InferKind, Visitor};
 use rustc_hir::{
-    self as hir, AmbigArg, GenericArg, GenericParam, GenericParamKind, HirId, LifetimeKind, Node,
+    self as hir, AmbigArg, FnDecl, GenericArg, GenericParam, GenericParamKind, HirId, LifetimeKind,
+    Node,
 };
 use rustc_macros::extension;
 use rustc_middle::hir::nested_filter;
@@ -434,9 +435,20 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
         self.tcx
     }
 
+    fn visit_fn_decl(&mut self, decl: &'tcx FnDecl<'tcx>) -> Self::Result {
+        if !decl.fn_decl_kind.has_body() {
+            intravisit::walk_fn_decl(self, decl);
+        }
+    }
+
     fn visit_nested_body(&mut self, body: hir::BodyId) {
         let body = self.tcx.hir_body(body);
         self.with(Scope::Body { id: body.id(), s: self.scope }, |this| {
+            if let Some(decl) = this.tcx.hir_fn_decl_by_hir_id(this.tcx.hir_body_owner(body.id())) {
+                for input in decl.inputs {
+                    intravisit::walk_pat(this, input.pat);
+                }
+            }
             this.visit_body(body);
         });
     }
@@ -474,6 +486,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 let infer_spans = fn_decl
                     .inputs
                     .into_iter()
+                    .map(|param| param.ty)
                     .filter_map(span_of_infer)
                     .chain(infer_in_rt_sp)
                     .collect::<Vec<_>>();
@@ -700,7 +713,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
 
     fn visit_foreign_item(&mut self, item: &'tcx hir::ForeignItem<'tcx>) {
         match item.kind {
-            hir::ForeignItemKind::Fn(_, _, generics) => {
+            hir::ForeignItemKind::Fn(_, generics) => {
                 self.visit_early_late(item.hir_id(), generics, |this| {
                     intravisit::walk_foreign_item(this, item);
                 })
@@ -976,7 +989,11 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
             let hir_id = self.tcx.local_def_id_to_hir_id(def_id);
             self.rbv.late_bound_vars.insert(hir_id.local_id, bound_vars);
         }
-        self.visit_fn_like_elision(fd.inputs, output, matches!(fk, intravisit::FnKind::Closure));
+        self.visit_fn_like_elision(
+            fd.inputs.iter().map(|p| p.ty),
+            output,
+            matches!(fk, intravisit::FnKind::Closure),
+        );
         intravisit::walk_fn_kind(self, fk);
         self.visit_nested_body(body_id)
     }
@@ -1811,7 +1828,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         path: &hir::Path<'tcx>,
     ) {
         if let Some((inputs, output)) = generic_args.paren_sugar_inputs_output() {
-            self.visit_fn_like_elision(inputs, Some(output), false);
+            self.visit_fn_like_elision(inputs.iter(), Some(output), false);
             return;
         }
 
@@ -2260,10 +2277,10 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         }
     }
 
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self, inputs))]
     fn visit_fn_like_elision(
         &mut self,
-        inputs: &'tcx [hir::Ty<'tcx>],
+        inputs: impl Iterator<Item = &'tcx hir::Ty<'tcx>>,
         output: Option<&'tcx hir::Ty<'tcx>>,
         in_closure: bool,
     ) {
@@ -2594,8 +2611,8 @@ fn is_late_bound_map(
     let mut late_bound = FxIndexSet::default();
 
     let mut constrained_by_input = ConstrainedCollector { regions: Default::default(), tcx };
-    for arg_ty in sig.decl.inputs {
-        constrained_by_input.visit_ty_unambig(arg_ty);
+    for param in sig.decl.inputs {
+        constrained_by_input.visit_ty_unambig(param.ty);
     }
 
     let mut appears_in_output =

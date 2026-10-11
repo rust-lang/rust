@@ -8,7 +8,7 @@ use rustc_ast::LitKind;
 use rustc_ast::ast::RangeLimits;
 use rustc_data_structures::packed::Pu128;
 use rustc_errors::Applicability;
-use rustc_hir::{Body, Closure, Expr, ExprKind};
+use rustc_hir::{Body, Closure, Expr, ExprKind, FnDecl};
 use rustc_lint::LateContext;
 use rustc_span::{Span, SyntaxContext};
 
@@ -68,13 +68,12 @@ pub(super) fn check(
 ) {
     let mut applicability = Applicability::MaybeIncorrect;
     if let Some(range) = higher::Range::hir(cx, receiver)
-        && let ExprKind::Closure(Closure { body, .. }) = arg.kind
+        && let ExprKind::Closure(Closure { fn_decl: decl@FnDecl { inputs: [param], .. }, body, .. }) = arg.kind
         && let body_hir = cx.tcx.hir_body(*body)
         && let Body {
-            params: [param],
             value: body_expr,
         } = body_hir
-        && !usage::BindingUsageFinder::are_params_used(cx, body_hir)
+        && !usage::BindingUsageFinder::are_params_used(cx, decl, body_hir)
         && let ctxt = ex.span.ctxt()
         && let Some(count) = extract_count_with_applicability(cx, range, &mut applicability, ctxt)
         && let Some(exec_context) = std_or_core(cx)
@@ -88,7 +87,7 @@ pub(super) fn check(
                 ("repeat", (arg.span, body_snippet.to_string()), true)
             }
         } else if msrv.meets(cx, msrvs::REPEAT_WITH) {
-            ("repeat_with", (param.span, String::new()), true)
+            ("repeat_with", (param.param_span, String::new()), true)
         } else {
             return;
         };

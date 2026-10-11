@@ -3820,17 +3820,18 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let sm = self.tcx.sess.source_map();
         Some(match node {
             Node::Expr(&hir::Expr {
-                kind: hir::ExprKind::Closure(&hir::Closure { body, fn_decl_span, fn_arg_span, .. }),
+                kind:
+                    hir::ExprKind::Closure(&hir::Closure { fn_decl, fn_decl_span, fn_arg_span, .. }),
                 ..
             }) => (
                 fn_decl_span,
                 fn_arg_span,
-                self.tcx
-                    .hir_body(body)
-                    .params
+                fn_decl
+                    .inputs
                     .iter()
-                    .map(|arg| {
-                        if let hir::Pat { kind: hir::PatKind::Tuple(args, _), span, .. } = *arg.pat
+                    .map(|param| {
+                        if let hir::Pat { kind: hir::PatKind::Tuple(args, _), span, .. } =
+                            *param.pat
                         {
                             Some(ArgKind::Tuple(
                                 Some(span),
@@ -3843,7 +3844,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                     .collect::<Option<Vec<_>>>()?,
                             ))
                         } else {
-                            let name = sm.span_to_snippet(arg.pat.span).ok()?;
+                            let name = sm.span_to_snippet(param.pat.span).ok()?;
                             Some(ArgKind::Arg(name, "_".to_owned()))
                         }
                     })
@@ -3855,7 +3856,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 kind: hir::TraitItemKind::Fn(ref sig, _), ..
             })
             | Node::ForeignItem(&hir::ForeignItem {
-                kind: hir::ForeignItemKind::Fn(ref sig, _, _),
+                kind: hir::ForeignItemKind::Fn(ref sig, _),
                 ..
             }) => (
                 sig.span,
@@ -3863,9 +3864,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 sig.decl
                     .inputs
                     .iter()
-                    .map(|arg| match arg.kind {
+                    .map(|param| match param.ty.kind {
                         hir::TyKind::Tup(tys) => ArgKind::Tuple(
-                            Some(arg.span),
+                            Some(param.ty.span),
                             vec![("_".to_owned(), "_".to_owned()); tys.len()],
                         ),
                         _ => ArgKind::empty(),

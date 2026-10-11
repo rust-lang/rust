@@ -533,7 +533,7 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'_>) {
         if let TraitItemKind::Fn(_, kind) = item.kind {
             let body = match kind {
-                TraitFn::Required(_) => None,
+                TraitFn::Required => None,
                 TraitFn::Provided(body) => Some(body),
             };
             inline_always::check(cx, item.span, item.ident.name, cx.tcx.hir_attrs(item.hir_id()), body);

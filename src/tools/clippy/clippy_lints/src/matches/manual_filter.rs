@@ -104,7 +104,7 @@ pub(crate) fn check_and_then_method<'tcx>(
         && let ExprKind::Closure(closure) = arg.kind
         && let body = cx.tcx.hir_body(closure.body)
         && let Some(fn_arg_span) = closure.fn_arg_span
-        && let [param] = body.params
+        && let [param] = closure.fn_decl.inputs
         && let expr_span_ctxt = expr.span.ctxt()
         && let Some(some_expr) = get_cond_expr(cx, param.pat, body.value, expr_span_ctxt)
     {

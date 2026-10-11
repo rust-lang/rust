@@ -56,7 +56,7 @@ fn is_ok_wrapping(cx: &LateContext<'_>, map_expr: &Expr<'_>) -> bool {
         },
         ExprKind::Closure(closure) => {
             let body = cx.tcx.hir_body(closure.body);
-            if let PatKind::Binding(_, param_id, ..) = body.params[0].pat.kind
+            if let PatKind::Binding(_, param_id, ..) = closure.fn_decl.inputs[0].pat.kind
                 && let ExprKind::Call(callee, [ok_arg]) = body.value.kind
                 && callee.res(cx).ctor_parent(cx).is_lang_item(cx, ResultOk)
             {

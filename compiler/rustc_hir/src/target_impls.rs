@@ -29,7 +29,7 @@ impl From<&hir::TraitItem<'_>> for Target {
     fn from(trait_item: &hir::TraitItem<'_>) -> Target {
         match trait_item.kind {
             TraitItemKind::Const(..) => Target::AssocConst(AssocCtxt::Trait),
-            TraitItemKind::Fn(_, hir::TraitFn::Required(_)) => {
+            TraitItemKind::Fn(_, hir::TraitFn::Required) => {
                 Target::Method(MethodKind::Trait { body: false })
             }
             TraitItemKind::Fn(_, hir::TraitFn::Provided(_)) => {

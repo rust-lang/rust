@@ -808,14 +808,6 @@ enum GenericArgsMode {
     Silence,
 }
 
-#[derive(Debug, Copy, Clone)]
-enum DiscardParams {
-    /// Should be used for functions without a body. Lowers the attributes on the parameter and then discards them.
-    Yes,
-    /// Should be used for functions with a body. Does not lower the attributes, as lowering of the parameters is done by `lower_body`.
-    No,
-}
-
 impl<'hir> LoweringContext<'_, 'hir> {
     fn create_def(
         &mut self,
@@ -1558,6 +1550,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             TyKind::FnPtr(f) => {
                 let hir_id = self.lower_node_id(t.id);
                 let generic_params = self.lower_lifetime_binder(t.id, &f.generic_params);
+                let params =
+                    self.arena.alloc_from_iter(f.decl.inputs.iter().map(|x| self.lower_param(x)));
                 let kind = hir::TyKind::FnPtr(self.arena.alloc(hir::FnPtrTy {
                     generic_params,
                     safety: self.lower_safety(f.safety, hir::Safety::Safe),
@@ -1565,12 +1559,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     decl: self.lower_fn_decl(
                         &f.decl,
                         t.id,
-                        hir_id,
                         FnDeclKind::Pointer,
                         None,
-                        DiscardParams::Yes,
+                        false,
+                        params,
                     ),
-                    param_idents: self.lower_fn_params_to_idents(&f.decl),
                 }));
                 return hir::Ty { kind, span: self.lower_span(t.span), hir_id };
             }
@@ -1732,13 +1725,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             TyKind::MacCall(_) => {
                 span_bug!(t.span, "`TyKind::MacCall` should have been expanded by now")
             }
-            TyKind::CVarArgs => {
-                let guar = self.dcx().span_delayed_bug(
-                    t.span,
-                    "`TyKind::CVarArgs` should have been handled elsewhere",
-                );
-                hir::TyKind::Err(guar)
-            }
+            TyKind::CVarArgs => hir::TyKind::CVarArgs,
             TyKind::View(ty, fields) => {
                 let ty = self.lower_ty_alloc(ty, itctx);
                 let fields = self.arena.alloc_slice(fields);
@@ -1899,21 +1886,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }))
     }
 
-    fn lower_fn_params_to_idents(&mut self, decl: &FnDecl) -> &'hir [Option<Ident>] {
-        self.arena.alloc_from_iter(decl.inputs.iter().map(|param| match param.pat.kind {
-            PatKind::Missing => None,
-            PatKind::Ident(_, ident, _) => Some(self.lower_ident(ident)),
-            PatKind::Wild => Some(Ident::new(kw::Underscore, self.lower_span(param.pat.span))),
-            _ => {
-                self.dcx().span_delayed_bug(
-                    param.pat.span,
-                    "non-missing/ident/wild param pat must trigger an error",
-                );
-                None
-            }
-        }))
-    }
-
     /// Lowers a function declaration.
     ///
     /// `decl`: the unlowered (AST) function declaration.
@@ -1934,10 +1906,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         decl: &FnDecl,
         fn_node_id: NodeId,
-        fn_hir_id: HirId,
         kind: FnDeclKind,
         coro: Option<CoroutineMarker>,
-        discard_params: DiscardParams,
+        has_body: bool,
+        hir_inputs: &'hir [hir::Param<'hir>],
     ) -> &'hir hir::FnDecl<'hir> {
         let c_variadic = decl.c_variadic();
         let mut splatted = decl.splatted();
@@ -1945,35 +1917,46 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // Skip the `...` (`CVarArgs`) trailing arguments from the AST,
         // as they are not explicit in HIR/Ty function signatures.
         // (instead, the `c_variadic` flag is set to `true`)
-        let mut inputs = &decl.inputs[..];
+        let inputs = &decl.inputs[..];
         if decl.c_variadic() {
             // Splat + variadic errors in AST validation, so just ignore one of them here.
             splatted = None;
-            inputs = &inputs[..inputs.len() - 1];
+            // inputs = &inputs[..inputs.len() - 1];
         }
-        let inputs = self.arena.alloc_from_iter(inputs.iter().map(|param| {
-            if let DiscardParams::Yes = discard_params {
-                // FIXME This uses `fn_hir_id`, which is not correct, it should use the parameter hir id instead
-                // The parameter is currently not lowered for functions without bodies, so there is no place to store the lowered hir id
-                // This should be fixed by storing function parameters in the `hir::FnSig` instead of `hir::Body`
-                self.lower_attrs(fn_hir_id, &param.attrs, param.span, Target::Param);
-            }
-            let itctx = match kind {
-                FnDeclKind::Fn | FnDeclKind::Inherent | FnDeclKind::Impl | FnDeclKind::Trait => {
-                    ImplTraitContext::Universal
+
+        let inputs = self.arena.alloc_from_iter(inputs.iter().zip(hir_inputs).enumerate().map(
+            |(i, (param, hir_param))| {
+                let itctx = match kind {
+                    FnDeclKind::Fn
+                    | FnDeclKind::Inherent
+                    | FnDeclKind::Impl
+                    | FnDeclKind::Trait => ImplTraitContext::Universal,
+                    FnDeclKind::ExternFn => {
+                        ImplTraitContext::Disallowed(ImplTraitPosition::ExternFnParam)
+                    }
+                    FnDeclKind::Closure => {
+                        ImplTraitContext::Disallowed(ImplTraitPosition::ClosureParam)
+                    }
+                    FnDeclKind::Pointer => {
+                        ImplTraitContext::Disallowed(ImplTraitPosition::PointerParam)
+                    }
+                };
+
+                let mut ty = self.lower_ty(&param.ty, itctx);
+                if matches!(ty.kind, hir::TyKind::CVarArgs) && i != inputs.len() - 1 {
+                    ty.kind = hir::TyKind::Err(
+                        self.dcx().span_delayed_bug(param.span, "CVarArgs not in final position"),
+                    );
                 }
-                FnDeclKind::ExternFn => {
-                    ImplTraitContext::Disallowed(ImplTraitPosition::ExternFnParam)
+
+                hir::Param {
+                    hir_id: hir_param.hir_id,
+                    pat: hir_param.pat,
+                    ty: self.arena.alloc(ty),
+                    param_span: hir_param.param_span,
                 }
-                FnDeclKind::Closure => {
-                    ImplTraitContext::Disallowed(ImplTraitPosition::ClosureParam)
-                }
-                FnDeclKind::Pointer => {
-                    ImplTraitContext::Disallowed(ImplTraitPosition::PointerParam)
-                }
-            };
-            self.lower_ty(&param.ty, itctx)
-        }));
+            },
+        ));
 
         let output = match coro {
             Some(coro) => {
@@ -2047,7 +2030,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             )
             .set_c_variadic(c_variadic)
             .set_splatted(splatted, inputs.len())
-            .unwrap();
+            .unwrap()
+            .set_has_body(has_body);
 
         self.arena.alloc(hir::FnDecl { inputs, output, fn_decl_kind })
     }

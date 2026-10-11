@@ -724,7 +724,7 @@ impl<'tcx> ExprFnSig<'tcx> {
                 }
             },
             Self::Closure(decl, sig) => Some((
-                decl.and_then(|decl| decl.inputs.get(i)),
+                decl.and_then(|decl| decl.inputs.get(i).map(|p| p.ty)),
                 sig.input(0).map_bound(|ty| ty.tuple_fields()[i]),
             )),
             Self::Trait(inputs, _, _) => Some((None, inputs.map_bound(|ty| ty.tuple_fields()[i]))),

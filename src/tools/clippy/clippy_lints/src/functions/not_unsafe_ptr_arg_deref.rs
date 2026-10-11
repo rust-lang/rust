@@ -44,7 +44,7 @@ fn check_raw_ptr<'tcx>(
     def_id: LocalDefId,
 ) {
     if safety.is_safe() && cx.effective_visibilities.is_exported(def_id) {
-        let raw_ptrs = iter_input_pats(decl, body)
+        let raw_ptrs = iter_input_pats(decl)
             .filter_map(|arg| raw_ptr_arg(cx, arg))
             .collect::<HirIdSet>();
 

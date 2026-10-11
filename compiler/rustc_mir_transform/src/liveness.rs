@@ -292,12 +292,11 @@ fn annotate_mut_binding_to_immutable_binding<'tcx>(
     let hir_param_index =
         local.as_usize() - if tcx.is_closure_like(body_def_id.to_def_id()) { 2 } else { 1 };
     let fn_decl = tcx.hir_node_by_def_id(body_def_id).fn_decl()?;
-    let ty = fn_decl.inputs[hir_param_index];
-    let hir::TyKind::Ref(lt, inner_ty, mutbl) = ty.kind else { return None };
+    let param = fn_decl.inputs[hir_param_index];
+    let hir::TyKind::Ref(lt, inner_ty, mutbl) = param.ty.kind else { return None };
 
     // ... as a binding pattern.
     let hir_body = tcx.hir_maybe_body_owned_by(body_def_id)?;
-    let param = hir_body.params[hir_param_index];
     let hir::PatKind::Binding(hir::BindingMode::MUT, _hir_id, ident, _) = param.pat.kind else {
         return None;
     };

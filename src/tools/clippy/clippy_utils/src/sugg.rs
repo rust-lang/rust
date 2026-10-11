@@ -815,7 +815,7 @@ pub fn deref_closure_args(cx: &LateContext<'_>, closure: &hir::Expr<'_>) -> Opti
         let closure_body = cx.tcx.hir_body(body);
         // is closure arg a type annotated double reference (i.e.: `|x: &&i32| ...`)
         // a type annotation is present if param `kind` is different from `TyKind::Infer`
-        let closure_arg_is_type_annotated_double_ref = if let TyKind::Ref(_, ty, ..) = fn_decl.inputs[0].kind {
+        let closure_arg_is_type_annotated_double_ref = if let TyKind::Ref(_, ty, ..) = fn_decl.inputs[0].ty.kind {
             matches!(ty.kind, TyKind::Ref(..))
         } else {
             false
@@ -824,7 +824,7 @@ pub fn deref_closure_args(cx: &LateContext<'_>, closure: &hir::Expr<'_>) -> Opti
         let mut visitor = DerefDelegate {
             cx,
             closure_span: closure.span,
-            closure_arg_id: closure_body.params[0].pat.hir_id,
+            closure_arg_id: fn_decl.inputs[0].pat.hir_id,
             closure_arg_is_type_annotated_double_ref,
             next_pos: closure.span.lo(),
             checked_borrows: FxHashSet::default(),
@@ -833,7 +833,7 @@ pub fn deref_closure_args(cx: &LateContext<'_>, closure: &hir::Expr<'_>) -> Opti
         };
 
         ExprUseVisitor::for_clippy(cx, def_id, &mut visitor)
-            .consume_body(closure_body)
+            .consume_body(fn_decl, closure_body)
             .into_ok();
 
         if !visitor.suggestion_start.is_empty() {

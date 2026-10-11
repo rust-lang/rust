@@ -35,7 +35,7 @@ pub(super) fn check<'tcx>(
         let body = cx.tcx.hir_body(body);
         let body_expr = &body.value;
 
-        if usage::BindingUsageFinder::are_params_used(cx, body) || is_from_proc_macro(cx, expr) {
+        if usage::BindingUsageFinder::are_params_used(cx, fn_decl, body) || is_from_proc_macro(cx, expr) {
             return false;
         }
 
@@ -49,8 +49,8 @@ pub(super) fn check<'tcx>(
             };
 
             let mut applicability = Applicability::MachineApplicable;
-            if body
-                .params
+            if fn_decl
+                .inputs
                 .iter()
                 // bindings are checked to be unused above
                 .any(|param| !matches!(param.pat.kind, hir::PatKind::Binding(..) | hir::PatKind::Wild))

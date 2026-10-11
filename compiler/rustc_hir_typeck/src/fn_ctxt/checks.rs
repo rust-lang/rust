@@ -1,5 +1,5 @@
+use std::iter;
 use std::ops::Deref;
-use std::{fmt, iter};
 
 use itertools::Itertools;
 use rustc_ast as ast;
@@ -769,9 +769,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let spans = if let SplatLoweringInfo::FnDef(def_id) = fn_id
                         && let Some(hir_node) = self.tcx.hir_get_if_local(def_id)
                         && let Some(fn_decl) = hir_node.fn_decl()
-                        && let Some(arg_ty) = fn_decl.inputs.get(first_tupled_arg_index_usz)
+                        && let Some(param) = fn_decl.inputs.get(first_tupled_arg_index_usz)
                     {
-                        let arg_def_span = arg_ty.span;
+                        let arg_def_span = param.ty.span;
                         vec![call_span, arg_def_span]
                     } else {
                         vec![call_span]
@@ -1775,7 +1775,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 struct MismatchedParam<'a> {
                     idx: ExpectedIdx,
                     generic: GenericIdx,
-                    param: &'a FnParam<'a>,
+                    param: &'a hir::Param<'a>,
                     deps: SmallVec<[ExpectedIdx; 4]>,
                 }
 
@@ -1798,7 +1798,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             }),
                         Some((None, expected_param)) => {
                             // Still mark the mismatched parameter
-                            spans.push_span_label(expected_param.span(), "");
+                            spans.push_span_label(expected_param.param_span, "");
                         }
                         None => {
                             if tuple_arguments.is_splatted() {
@@ -1831,7 +1831,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     })
                                 } else {
                                     // Still mark mismatched parameters
-                                    spans.push_span_label(param.span(), "");
+                                    spans.push_span_label(param.param_span, "");
                                     None
                                 }
                             },
@@ -1869,7 +1869,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             params_with_generics[dep].1.display(dep.as_usize()).to_string()
                         }) {
                             spans.push_span_label(
-                                param.param.span(),
+                                param.param.param_span,
                                 format!(
                                     "this parameter needs to match the {} type of {deps_list}",
                                     self.deeply_resolve_ignoring_regions(
@@ -1880,7 +1880,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             );
                         } else {
                             // Still mark mismatched parameters
-                            spans.push_span_label(param.param.span(), "");
+                            spans.push_span_label(param.param.param_span, "");
                         }
                     }
                     // Highlight each parameter being depended on for a generic type.
@@ -1892,7 +1892,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             param.param.display(param.idx.as_usize()).to_string()
                         }) {
                             spans.push_span_label(
-                                param.span(),
+                                param.param_span,
                                 format!(
                                     "{deps_list} need{} to match the {} type of this parameter",
                                     pluralize!((deps.len() != 1) as u32),
@@ -1962,10 +1962,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
             }
         } else if let Some(hir::Node::Expr(e)) = self.tcx.hir_get_if_local(def_id)
-            && let hir::ExprKind::Closure(hir::Closure { body, .. }) = &e.kind
+            && let hir::ExprKind::Closure(hir::Closure { fn_decl, .. }) = &e.kind
         {
-            let param = expected_idx
-                .and_then(|expected_idx| self.tcx.hir_body(*body).params.get(expected_idx));
+            let param = expected_idx.and_then(|expected_idx| fn_decl.inputs.get(expected_idx));
             let (kind, span) = if let Some(param) = param {
                 // Try to find earlier invocations of this closure to find if the type mismatch
                 // is because of inference. If we find one, point at them.
@@ -2006,7 +2005,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
 
-                ("closure parameter", param.span)
+                ("closure parameter", param.param_span)
             } else {
                 ("closure", self.tcx.def_span(def_id))
             };
@@ -2097,75 +2096,62 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Returns the parameters of a function, with their generic parameters if those are the full
     /// type of that parameter.
-    ///
-    /// Returns `None` if the body is not a named function (e.g. a closure).
     fn get_hir_param_info(
         &self,
         def_id: DefId,
         is_method: bool,
-    ) -> Option<(IndexVec<ExpectedIdx, (Option<GenericIdx>, FnParam<'_>)>, &hir::Generics<'_>)>
+    ) -> Option<(IndexVec<ExpectedIdx, (Option<GenericIdx>, &'_ hir::Param<'_>)>, &hir::Generics<'_>)>
     {
-        let (sig, generics, body_id, params) = match self.tcx.hir_get_if_local(def_id)? {
+        let (sig, generics) = match self.tcx.hir_get_if_local(def_id)? {
             hir::Node::TraitItem(&hir::TraitItem {
                 generics,
-                kind: hir::TraitItemKind::Fn(sig, trait_fn),
+                kind: hir::TraitItemKind::Fn(sig, _),
                 ..
-            }) => match trait_fn {
-                hir::TraitFn::Required(params) => (sig, generics, None, Some(params)),
-                hir::TraitFn::Provided(body) => (sig, generics, Some(body), None),
-            },
-            hir::Node::ImplItem(&hir::ImplItem {
+            })
+            | hir::Node::ImplItem(&hir::ImplItem {
                 generics,
-                kind: hir::ImplItemKind::Fn(sig, body),
+                kind: hir::ImplItemKind::Fn(sig, _),
                 ..
             })
             | hir::Node::Item(&hir::Item {
-                kind: hir::ItemKind::Fn { sig, generics, body, .. },
+                kind: hir::ItemKind::Fn { sig, generics, .. }, ..
+            })
+            | hir::Node::ForeignItem(&hir::ForeignItem {
+                kind: hir::ForeignItemKind::Fn(sig, generics),
                 ..
-            }) => (sig, generics, Some(body), None),
-            hir::Node::ForeignItem(&hir::ForeignItem {
-                kind: hir::ForeignItemKind::Fn(sig, params, generics),
-                ..
-            }) => (sig, generics, None, Some(params)),
+            }) => (sig, generics),
             _ => return None,
         };
 
         // Make sure to remove both the receiver and variadic argument. Both are removed
         // when matching parameter types.
-        let fn_inputs = sig.decl.inputs.get(is_method as usize..)?.iter().map(|param| {
-            if let hir::TyKind::Path(QPath::Resolved(
-                _,
-                &hir::Path { res: Res::Def(_, res_def_id), .. },
-            )) = param.kind
-            {
-                generics
-                    .params
-                    .iter()
-                    .position(|param| param.def_id.to_def_id() == res_def_id)
-                    .map(GenericIdx::from_usize)
-            } else {
-                None
-            }
-        });
-        match (body_id, params) {
-            (Some(_), Some(_)) | (None, None) => unreachable!(),
-            (Some(body), None) => {
-                let params = self.tcx.hir_body(body).params;
-                let params = params
-                    .get(is_method as usize..params.len() - sig.decl.c_variadic() as usize)?;
-                debug_assert_eq!(params.len(), fn_inputs.len());
-                Some((fn_inputs.zip(params.iter().map(FnParam::Param)).collect(), generics))
-            }
-            (None, Some(params)) => {
-                let params = params
-                    .get(is_method as usize..params.len() - sig.decl.c_variadic() as usize)?;
-                debug_assert_eq!(params.len(), fn_inputs.len());
-                Some((
-                    fn_inputs.zip(params.iter().map(|&ident| FnParam::Ident(ident))).collect(),
-                    generics,
-                ))
-            }
-        }
+        let fn_inputs = sig
+            .decl
+            .inputs
+            .get(is_method as usize..(sig.decl.inputs.len() - sig.decl.c_variadic() as usize))?
+            .iter()
+            .map(|param| {
+                if let hir::TyKind::Path(QPath::Resolved(
+                    _,
+                    &hir::Path { res: Res::Def(_, res_def_id), .. },
+                )) = param.ty.kind
+                {
+                    generics
+                        .params
+                        .iter()
+                        .position(|param| param.def_id.to_def_id() == res_def_id)
+                        .map(GenericIdx::from_usize)
+                } else {
+                    None
+                }
+            });
+
+        let params = sig
+            .decl
+            .inputs
+            .get(is_method as usize..sig.decl.inputs.len() - sig.decl.c_variadic() as usize)?;
+        debug_assert_eq!(params.len(), fn_inputs.len());
+        Some((fn_inputs.zip(params).collect(), generics))
     }
 }
 
@@ -2186,57 +2172,6 @@ impl<'tcx> Visitor<'tcx> for FindClosureArg<'tcx> {
             self.calls.push((rcvr, args));
         }
         hir::intravisit::walk_expr(self, ex);
-    }
-}
-
-#[derive(Clone, Copy)]
-enum FnParam<'hir> {
-    Param(&'hir hir::Param<'hir>),
-    Ident(Option<Ident>),
-}
-
-impl FnParam<'_> {
-    fn span(&self) -> Span {
-        match self {
-            Self::Param(param) => param.span,
-            Self::Ident(ident) => {
-                if let Some(ident) = ident {
-                    ident.span
-                } else {
-                    DUMMY_SP
-                }
-            }
-        }
-    }
-
-    fn display(&self, idx: usize) -> impl '_ + fmt::Display {
-        struct D<'a>(FnParam<'a>, usize);
-        impl fmt::Display for D<'_> {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                // A "unique" param name is one that (a) exists, and (b) is guaranteed to be unique
-                // among the parameters, i.e. `_` does not count.
-                let unique_name = match self.0 {
-                    FnParam::Param(param)
-                        if let hir::PatKind::Binding(_, _, ident, _) = param.pat.kind =>
-                    {
-                        Some(ident.name)
-                    }
-                    FnParam::Ident(ident)
-                        if let Some(ident) = ident
-                            && ident.name != kw::Underscore =>
-                    {
-                        Some(ident.name)
-                    }
-                    _ => None,
-                };
-                if let Some(unique_name) = unique_name {
-                    write!(f, "`{unique_name}`")
-                } else {
-                    write!(f, "parameter #{}", self.1 + 1)
-                }
-            }
-        }
-        D(*self, idx)
     }
 }
 

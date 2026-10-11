@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir};
 use clippy_utils::get_parent_expr;
 use clippy_utils::sugg::Sugg;
-use hir::Param;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::intravisit::Visitor;
@@ -87,7 +86,6 @@ fn find_innermost_closure<'tcx>(
     &'tcx hir::Expr<'tcx>,
     &'tcx hir::FnDecl<'tcx>,
     ty::Asyncness,
-    &'tcx [Param<'tcx>],
     CaptureBy,
 )> {
     let mut data = None;
@@ -121,7 +119,6 @@ fn find_innermost_closure<'tcx>(
             unwrapped_body_value,
             closure.fn_decl,
             asyncness,
-            body.params,
             capture_clause,
         ));
         steps -= 1;
@@ -181,10 +178,10 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
             // We don't want to suggest replacing `x!()()` with `x!()`.
             && recv.span.ctxt().outer_expn() == expr.span.ctxt().outer_expn()
             && let (full_expr, call_depth) = get_parent_call_exprs(cx, expr)
-            && let Some((mut body, fn_decl, coroutine_kind, params, capture_clause)) =
+            && let Some((mut body, fn_decl, coroutine_kind, capture_clause)) =
                 find_innermost_closure(cx, recv, call_depth)
             // outside macros we lint properly. Inside macros, we lint only ||() style closures.
-            && (!matches!(expr.span.ctxt().outer_expn_data().kind, ExpnKind::Macro(_, _)) || params.is_empty())
+            && (!matches!(expr.span.ctxt().outer_expn_data().kind, ExpnKind::Macro(_, _)) || fn_decl.inputs.is_empty())
         {
             span_lint_and_then(
                 cx,

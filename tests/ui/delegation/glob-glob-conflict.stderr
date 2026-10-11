@@ -34,7 +34,7 @@ note: method defined here
   --> $DIR/glob-glob-conflict.rs:7:8
    |
 LL |     fn method(&self) -> u8;
-   |        ^^^^^^  ----
+   |        ^^^^^^ -----
 help: provide the argument
    |
 LL |     reuse Trait2::*(/* value */);
@@ -59,7 +59,7 @@ note: method defined here
   --> $DIR/glob-glob-conflict.rs:4:8
    |
 LL |     fn method(&self) -> u8;
-   |        ^^^^^^  ----
+   |        ^^^^^^ -----
 help: provide the argument
    |
 LL |     reuse Trait1::*(/* value */);

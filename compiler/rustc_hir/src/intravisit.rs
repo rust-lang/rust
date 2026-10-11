@@ -109,6 +109,7 @@ impl<'a> FnKind<'a> {
 pub trait HirTyCtxt<'hir> {
     /// Retrieves the `Node` corresponding to `id`.
     fn hir_node(&self, hir_id: HirId) -> Node<'hir>;
+    fn hir_fn_decl(&self, hir_id: HirId) -> &'hir FnDecl<'hir>;
     fn hir_body(&self, id: BodyId) -> &'hir Body<'hir>;
     fn hir_item(&self, id: ItemId) -> &'hir Item<'hir>;
     fn hir_trait_item(&self, id: TraitItemId) -> &'hir TraitItem<'hir>;
@@ -119,6 +120,9 @@ pub trait HirTyCtxt<'hir> {
 /// Used when no tcx is actually available, forcing manual implementation of nested visitors.
 impl<'hir> HirTyCtxt<'hir> for ! {
     fn hir_node(&self, _: HirId) -> Node<'hir> {
+        *self
+    }
+    fn hir_fn_decl(&self, _: HirId) -> &'hir FnDecl<'hir> {
         *self
     }
     fn hir_body(&self, _: BodyId) -> &'hir Body<'hir> {
@@ -542,7 +546,8 @@ pub trait Visitor<'v>: Sized {
 }
 
 pub fn walk_param<'v, V: Visitor<'v>>(visitor: &mut V, param: &'v Param<'v>) -> V::Result {
-    let Param { hir_id, pat, ty_span: _, span: _ } = param;
+    let Param { hir_id, pat, ty, param_span: _ } = param;
+    try_visit!(visitor.visit_ty_unambig(*ty));
     try_visit!(visitor.visit_id(*hir_id));
     visitor.visit_pat(pat)
 }
@@ -663,8 +668,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::
 }
 
 pub fn walk_body<'v, V: Visitor<'v>>(visitor: &mut V, body: &Body<'v>) -> V::Result {
-    let Body { params, value } = body;
-    walk_list!(visitor, visit_param, *params);
+    let Body { value } = body;
     visitor.visit_expr(*value)
 }
 
@@ -687,12 +691,9 @@ pub fn walk_foreign_item<'v, V: Visitor<'v>>(
     try_visit!(visitor.visit_ident(*ident));
 
     match *kind {
-        ForeignItemKind::Fn(ref sig, param_idents, ref generics) => {
+        ForeignItemKind::Fn(ref sig, ref generics) => {
             try_visit!(visitor.visit_generics(generics));
             try_visit!(visitor.visit_fn_decl(sig.decl));
-            for ident in param_idents.iter().copied() {
-                visit_opt!(visitor, visit_ident, ident);
-            }
         }
         ForeignItemKind::Static(ref typ, _, _) => {
             try_visit!(visitor.visit_ty_unambig(typ));
@@ -1079,6 +1080,7 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty<'v, AmbigArg>) -
                 try_visit!(visitor.visit_ident(*field));
             }
         }
+        TyKind::CVarArgs => {}
     }
     V::Result::output()
 }
@@ -1234,7 +1236,7 @@ pub fn walk_fn_decl<'v, V: Visitor<'v>>(
     function_declaration: &'v FnDecl<'v>,
 ) -> V::Result {
     let FnDecl { inputs, output, fn_decl_kind: _ } = function_declaration;
-    walk_list!(visitor, visit_ty_unambig, *inputs);
+    walk_list!(visitor, visit_param, *inputs);
     visitor.visit_fn_ret_ty(output)
 }
 
@@ -1306,11 +1308,8 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(
             try_visit!(visitor.visit_ty_unambig(ty));
             visit_opt!(visitor, visit_const_item_rhs, default);
         }
-        TraitItemKind::Fn(ref sig, TraitFn::Required(param_idents)) => {
+        TraitItemKind::Fn(ref sig, TraitFn::Required) => {
             try_visit!(visitor.visit_fn_decl(sig.decl));
-            for ident in param_idents.iter().copied() {
-                visit_opt!(visitor, visit_ident, ident);
-            }
         }
         TraitItemKind::Fn(ref sig, TraitFn::Provided(body_id)) => {
             try_visit!(visitor.visit_fn(
