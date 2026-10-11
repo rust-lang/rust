@@ -404,7 +404,13 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 args_adjusted,
                 orig_args,
             );
-            self.store_call_result(return_slot, return_value)
+            let return_value = self.store_call_result(return_slot, return_value);
+            match fn_abi {
+                Some(fn_abi) if self.cx.is_two_register_pair_type(return_type) => {
+                    self.copy_pair(return_value, fn_abi.ret.layout.immediate_gcc_type(self.cx))
+                }
+                _ => return_value,
+            }
         } else {
             #[cfg(not(feature = "master"))]
             if gcc_func.get_param_count() == 0 {
@@ -564,7 +570,10 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let value_type = value.get_type();
         if !expected_return_type.is_compatible_with(value_type) {
             // NOTE: due to opaque pointers now being used, we need to (bit)cast here.
-            if self.is_native_int_type(value_type) && self.is_native_int_type(expected_return_type)
+            if self.cx.is_two_register_pair_type(expected_return_type) {
+                value = self.copy_pair(value, expected_return_type);
+            } else if self.is_native_int_type(value_type)
+                && self.is_native_int_type(expected_return_type)
             {
                 value = self.context.new_cast(self.location, value, expected_return_type);
             } else {
@@ -2476,6 +2485,26 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let var = self.new_temp(self.current_func(), self.location, value.get_type());
         self.llbb().add_assignment(self.location, var, value);
         var.to_rvalue()
+    }
+
+    /// Copies the two fields of the struct `pair` into a new struct of type `typ`.
+    fn copy_pair(&mut self, pair: RValue<'gcc>, typ: Type<'gcc>) -> RValue<'gcc> {
+        let source = pair.get_type().is_struct().expect("pair struct");
+        let destination = typ.is_struct().expect("pair struct");
+        let pair = self.assign_to_var(pair);
+        let result = self.new_temp(self.current_func(), self.location, typ);
+        for index in 0..2 {
+            let value = pair.access_field(self.location, source.get_field(index));
+            let field = result.access_field(self.location, destination.get_field(index));
+            let field_type = field.to_rvalue().get_type();
+            let value = if field_type.is_compatible_with(value.get_type()) {
+                value
+            } else {
+                self.context.new_cast(self.location, value, field_type)
+            };
+            self.llbb().add_assignment(self.location, field, value);
+        }
+        result.to_rvalue()
     }
 
     /// Anchor a call in a statement, since an rvalue is evaluated at each use. An indirect result

@@ -80,11 +80,11 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let a_native = self.is_native_int_type(a_type);
         let b_native = self.is_native_int_type(b_type);
         if a_native && b_native {
-            // `>>` is arithmetic exactly when `a` is signed, and the signedness of `a` can differ
-            // from its Rust type: a transmuted integer is always signed.
+            // `>>` is arithmetic exactly when `a` is signed, but the GCC type of `a` can disagree
+            // with its Rust type: cg_ssa gives a transmute to `u16` the type `i16`, for instance.
             let shift_type =
                 if arithmetic { a_type.to_signed(self) } else { a_type.to_unsigned(self) };
-            if shift_type != a_type {
+            if !shift_type.is_compatible_with(a_type) {
                 let a = self.context.new_cast(self.location, a, shift_type);
                 let result = self.gcc_shr(a, b, arithmetic);
                 return self.context.new_cast(self.location, result, a_type);

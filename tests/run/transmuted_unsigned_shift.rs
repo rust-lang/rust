@@ -3,8 +3,8 @@
 // Run-time:
 //   status: 0
 
-// A transmuted integer gets a signed GCC type whatever its Rust type, so a backend that picks the
-// kind of right shift from the GCC type sign-extends these unsigned values.
+// cg_ssa gives a transmute to an unsigned integer the signed GCC type of the same size, so a
+// backend that picks the kind of right shift from the GCC type sign-extends these values.
 
 use std::hint::black_box;
 use std::mem::transmute;

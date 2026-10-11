@@ -103,6 +103,12 @@ pub struct CodegenCx<'gcc, 'tcx> {
     /// field types, so without this two equal byte runs would yield two distinct anonymous structs.
     pub byte_array_types: RefCell<FxHashMap<(Type<'gcc>, u64), Type<'gcc>>>,
 
+    /// Cache of the return types of the pairs returned in two registers, keyed by the types of the
+    /// two scalars.
+    pub two_register_pair_types: RefCell<FxHashMap<(Type<'gcc>, Type<'gcc>), Type<'gcc>>>,
+    /// The types of `two_register_pair_types`.
+    pub two_register_pair_type_set: RefCell<FxHashSet<Type<'gcc>>>,
+
     /// Cache instances of monomorphic and polymorphic items
     pub instances: RefCell<FxHashMap<Instance<'tcx>, LValue<'gcc>>>,
     /// Cache function instances of monomorphic and polymorphic items
@@ -322,6 +328,8 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             tcx,
             struct_types: Default::default(),
             byte_array_types: Default::default(),
+            two_register_pair_types: Default::default(),
+            two_register_pair_type_set: Default::default(),
             local_gen_sym_counter: Cell::new(0),
             global_gen_sym_counter: Cell::new(0),
             eh_personality: Cell::new(None),
