@@ -174,6 +174,15 @@ fn reformat(content: &str, limit: usize) -> String {
         if ignore(line) || REGEX_SPLIT.is_match(line) {
             continue;
         }
+        const SEP: &str = ", ";
+        if line.contains(SEP) && line.len() > limit {
+            let indent = line.find(|ch: char| !ch.is_whitespace()).unwrap();
+            let (before_sep, after_sep) = line.rsplit_once(SEP).unwrap();
+            new_content[new_n] = format!("{before_sep}{}", SEP.trim_end());
+            new_n += 1;
+            new_content.insert(new_n, format!("{:indent$}{after_sep}", ""));
+            continue;
+        }
         let Some(next_line) = content.get(n + 1) else {
             continue;
         };
@@ -192,7 +201,6 @@ fn reformat(content: &str, limit: usize) -> String {
             skip_next = true;
             continue;
         }
-        const SEP: &str = ", ";
         let indent = next_line.find(|ch: char| !ch.is_whitespace()).unwrap();
         if next_line.contains(SEP) {
             let (before_sep, after_sep) = next_line.split_once(SEP).unwrap();
@@ -327,6 +335,8 @@ comma (filler), of next line
   split on
   comma (filler), of next line
 
+ this overlong, sentence, should be split in two
+
 [a target]: https://example.com
 [another target]: https://example.com
 ";
@@ -369,6 +379,9 @@ of next line
 
   split on comma (filler),
   of next line
+
+ this overlong, sentence,
+ should be split in two
 
 [a target]: https://example.com
 [another target]: https://example.com
