@@ -237,7 +237,6 @@ where
             if !region_errors.iter().all(&is_bound_failure) {
                 region_errors.retain(|e| !is_bound_failure(e));
             }
-            region_errors.sort_by_key(|e| e.origin().span());
 
             for error in &region_errors {
                 let span = error.origin().span();
