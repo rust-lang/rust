@@ -977,7 +977,6 @@ ui/feature-gates/issue-43106-gating-of-proc_macro_derive.rs
 ui/feature-gates/issue-43106-gating-of-stable.rs
 ui/feature-gates/issue-43106-gating-of-test.rs
 ui/feature-gates/issue-43106-gating-of-unstable.rs
-ui/feature-gates/issue-49983-see-issue-0.rs
 ui/fmt/issue-103826.rs
 ui/fmt/issue-104142.rs
 ui/fmt/issue-23781.rs
