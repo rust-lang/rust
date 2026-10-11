@@ -10,6 +10,7 @@ LL |     f.bat(1.0);
 help: there is a method `bag` with a similar name, but with different arguments
   --> $DIR/suggest-methods.rs:9:5
    |
+LL | trait FooT {
 LL |     fn bag(&self);
    |     ^^^^^^^^^^^^^^
 
