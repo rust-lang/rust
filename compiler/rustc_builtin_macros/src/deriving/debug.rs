@@ -306,12 +306,10 @@ fn show_fieldless_enum_concat_str(
         })
         .collect::<ThinVec<_>>();
 
-    // Create the constant concatenated string
     let names_str_body = cx.expr_str(span, Symbol::intern(&concatenated_names));
 
     let variant_index_expr = cx.expr_match(span, cx.expr_self(span), arms);
 
-    // ::core::fmt::Formatter::debug_c_like_enum_write_str(f, __NAMES, &__OFFSET, __d)
     let fn_path = cx.std_path(&[sym::fmt, sym::Formatter, sym::debug_c_like_enum_write_str]);
     let call_expr =
         cx.expr_call_global(span, fn_path, thin_vec![fmt, names_str_body, variant_index_expr]);
