@@ -287,7 +287,7 @@ fn show_fieldless_enum_concat_str(
 
             let name = v.ident.name.as_str();
             concatenated_names.push_str(name);
-            concatenated_names.push_str(" ");
+            concatenated_names.push(' ');
 
             let variant_path = cx.path(span, vec![type_ident, v.ident]);
             let pat = match &v.data {
