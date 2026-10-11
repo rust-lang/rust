@@ -96,12 +96,10 @@ To work around this,
 the [`RefDecodable`] trait is defined in [`rustc_middle`].
 This can then be implemented for any type.
 The `TyDecodable` macro will call `RefDecodable` to decode references,
-but various generic code needs types to actually be
-`Decodable` with a specific decoder.
+but various generic code needs types to actually be `Decodable` with a specific decoder.
 
 For interned types instead of manually implementing `RefDecodable`, using a new type wrapper,
-like [`ty::Predicate`] and manually implementing `Encodable` and
-`Decodable` may be simpler.
+like [`ty::Predicate`] and manually implementing `Encodable` and `Decodable` may be simpler.
 
 [`Decodable`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_serialize/trait.Decodable.html
 [`Decoder`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_serialize/trait.Decoder.html
@@ -126,8 +124,7 @@ The [`rustc_macros`] crate defines various derives to help implement `Decodable`
 - The `Encodable` and `Decodable` macros generate implementations that apply to
   all `Encoders` and `Decoders`.
   These should be used in crates that don't depend on [`rustc_middle`],
-  or that have to be serialized by a type that does
-  not implement `TyEncoder`.
+  or that have to be serialized by a type that does not implement `TyEncoder`.
 - [`MetadataEncodable`] generates implementations that
   only allow decoding by [`rustc_metadata::rmeta::encoder::EncodeContext`].
 - [`BlobDecodable`] and [`LazyDecodable`] serve as the decoding counterparts to
@@ -156,8 +153,8 @@ if each `Ty` was encoded naively then crate metadata would be very large.
 To handle this,
 each `TyEncoder` has a cache of locations in its output where it has serialized types.
 If a type being encoded is in the cache,
-then instead of serializing the type as usual, the byte offset
-within the file being written is encoded instead.
+then instead of serializing the type as usual,
+the byte offset within the file being written is encoded instead.
 A similar scheme is used for `ty::Predicate`.
 
 ## `LazyValue<T>`
@@ -173,7 +170,8 @@ The `LazyArray<[T]>` and `LazyTable<I, T>` types provide some functionality over
 
 - It's possible to encode a `LazyArray<T>` directly from an `Iterator`,
   without first collecting into a `Vec<T>`.
-- Indexing into a `LazyTable<I, T>` does not require decoding entries, other than the one being read.
+- Indexing into a `LazyTable<I, T>` does not require decoding entries,
+  other than the one being read.
 
 **note**: `LazyValue<T>` does not cache its value after being deserialized the first time.
 Instead, the query system itself is the main way of caching these results.
