@@ -1,0 +1,19 @@
+name: Install recent binutils
+description: >
+  Installs binutils >= 2.44 from Ubuntu plucky, for the instructions and directives (like
+  `.base64`) that the assembler of ubuntu-24.04 does not know. Needs the apt-mirrors action first.
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        echo "deb mirror+file:/etc/apt/apt-mirrors.txt plucky main universe" | sudo tee /etc/apt/sources.list.d/plucky-copies.list
+        sudo apt-get update -o Acquire::Retries=3 -o Acquire::http::Timeout=30
+        sudo apt-get install binutils
+        installed="$(dpkg-query --showformat='${Version}' --show binutils)"
+        echo "Installed binutils: $installed"
+        if dpkg --compare-versions "$installed" lt "2.44"; then
+            echo "::error::binutils upgrade failed (got $installed, need >= 2.44); the apt fetch probably failed"
+            exit 1
+        fi
