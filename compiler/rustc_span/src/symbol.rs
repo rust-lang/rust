@@ -2893,7 +2893,15 @@ impl Interner {
     // `ByteSymbol`.
     fn prefill(init: &[&'static str], extra: &[&'static str]) -> Self {
         let values = init.iter().copied().chain(extra.iter().copied()).map(|str| str.as_bytes());
-        let (size_hint, _) = values.size_hint();
+        // At the time of writing, `helloworld` Check benchmark interns ~1k additional symbols.
+        // Some of the noisy ones (`include-blob`, `tt-muncher`, `externs`, `large-workspace`, etc.)
+        // are between 1k and 2k. Lowest number among non-artificial benchmarks is ~5k for `ucd`.
+        // This was chosen to make small, artificial benchmarks more stable, and to
+        // reduce resizing for normal code without regresing memory use for smaller crates.
+        // FIXME(panstromek): we could do better if we take into account whether this is
+        //  Debug/Opt build. Those builds intern at least 6k more symbols than Check ones.
+        let additional_capacity = 2400;
+        let size_hint = values.size_hint().0 + additional_capacity;
         let mut conflicting_values: Vec<&[u8]> = Vec::new();
 
         let mut indices: HashTable<(&'static [u8], u32)> = HashTable::with_capacity(size_hint);
