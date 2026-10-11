@@ -557,6 +557,9 @@ impl CommandLineStep for Llvm {
         // which saves both memory during parallel links and overall disk space
         // for the tools. We don't do this on every platform as it doesn't work
         // equally well everywhere.
+        //
+        // Under normal circumstances, the dylib LINK and BUILD vars below should
+        // be set to the same value. See #160597
         let llvm_dylib = if link_shared { "ON" } else { "OFF" };
         cfg.define("LLVM_LINK_LLVM_DYLIB", llvm_dylib);
         cfg.define("LLVM_BUILD_LLVM_DYLIB", llvm_dylib);
