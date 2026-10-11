@@ -71,9 +71,7 @@ fn show_substructure(
     let (ident, vdata, fields) = match substr.fields {
         Struct(vdata, fields) => (type_ident, vdata, fields),
         EnumMatching(v, fields) => (v.ident, &v.data, fields),
-        AllFieldlessEnum(enum_def) => {
-            return show_fieldless_enum(cx, &substr, span, enum_def, type_ident);
-        }
+        AllFieldlessEnum(enum_def) => return show_fieldless_enum(cx, span, enum_def, type_ident),
         _ => cx.dcx().span_bug(span, "unexpected substructure in `derive(Debug)`"),
     };
 
@@ -230,12 +228,11 @@ fn show_substructure(
 /// ```
 fn show_fieldless_enum(
     cx: &ExtCtxt<'_>,
-    substr: &Substructure<'_>,
     span: Span,
     def: &EnumDef,
     type_ident: Ident,
 ) -> BlockOrExpr {
-    if let Some(expr) = show_fieldless_enum_concat_str(cx, span, def, substr) {
+    if let Some(expr) = show_fieldless_enum_concat_str(cx, span, def, type_ident) {
         return BlockOrExpr::new_expr(expr);
     }
     let fmt = formatter_ident(cx, span);
@@ -267,7 +264,7 @@ fn show_fieldless_enum_concat_str(
     cx: &ExtCtxt<'_>,
     span: Span,
     def: &EnumDef,
-    substr: &Substructure<'_>,
+    type_ident: Ident,
 ) -> Option<Box<ast::Expr>> {
     // Minimum variants count where this optimization starts to pay off.
     // Initial value of 10 came from https://github.com/rust-lang/rust/pull/155452.
@@ -292,7 +289,7 @@ fn show_fieldless_enum_concat_str(
             concatenated_names.push_str(name);
             concatenated_names.push_str(" ");
 
-            let variant_path = cx.path(span, vec![substr.type_ident, v.ident]);
+            let variant_path = cx.path(span, vec![type_ident, v.ident]);
             let pat = match &v.data {
                 ast::VariantData::Tuple(fields, _) => {
                     debug_assert!(fields.is_empty());
