@@ -1,11 +1,8 @@
 name: CI with the cg_gcc distributed by rustup
 
-on:
-  # FIXME: remove once this workflow passes, so that it only runs nightly.
-  pull_request:
-  schedule:
-    - cron: "0 4 * * *"
-  workflow_dispatch:
+# FIXME: run nightly (`schedule: - cron: "0 4 * * *"`) once this workflow tests the cg_gcc sources
+# of the rust-lang/rust commit of the nightly instead of the ones of this repository.
+on: workflow_dispatch
 
 permissions:
   contents: read
