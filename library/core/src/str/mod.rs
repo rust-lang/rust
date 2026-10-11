@@ -294,10 +294,7 @@ impl str {
     ///
     /// # Safety
     ///
-    /// This function is unsafe because it does not check that the bytes passed
-    /// to it are valid UTF-8. If this constraint is violated, it may cause
-    /// memory unsafety issues with future users of the `str`, as the rest of
-    /// the standard library [assumes that `str`s are valid UTF-8](prim@str#invariant).
+    /// The bytes passed in must be valid UTF-8.
     ///
     /// # Examples
     ///
@@ -330,10 +327,7 @@ impl str {
     ///
     /// # Safety
     ///
-    /// This function is unsafe because it does not check that the bytes passed
-    /// to it are valid UTF-8. If this constraint is violated, it may cause
-    /// memory unsafety issues with future users of the `str`, as the rest of
-    /// the standard library [assumes that `str`s are valid UTF-8](prim@str#invariant).
+    /// The bytes passed in must be valid UTF-8.
     ///
     /// # Examples
     ///
