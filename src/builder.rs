@@ -406,6 +406,8 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             );
             let return_value = self.store_call_result(return_slot, return_value);
             match fn_abi {
+                // cg_ssa expects the struct of the pair layout, which is smaller than the padded
+                // struct: storing the padded struct to a place of that layout would overflow it.
                 Some(fn_abi) if self.cx.is_two_register_pair_type(return_type) => {
                     self.copy_pair(return_value, fn_abi.ret.layout.immediate_gcc_type(self.cx))
                 }
@@ -571,6 +573,8 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         if !expected_return_type.is_compatible_with(value_type) {
             // NOTE: due to opaque pointers now being used, we need to (bit)cast here.
             if self.cx.is_two_register_pair_type(expected_return_type) {
+                // cg_ssa built `value` with the struct of the pair layout, but the function must
+                // return the padded struct for GCC to put each scalar in its own register.
                 value = self.copy_pair(value, expected_return_type);
             } else if self.is_native_int_type(value_type)
                 && self.is_native_int_type(expected_return_type)
@@ -2487,7 +2491,8 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         var.to_rvalue()
     }
 
-    /// Copies the two fields of the struct `pair` into a new struct of type `typ`.
+    /// Converts a pair between the struct of its layout, used by cg_ssa, and the padded struct
+    /// that GCC returns in two registers. A bitcast cannot, since the padding changes the size.
     fn copy_pair(&mut self, pair: RValue<'gcc>, typ: Type<'gcc>) -> RValue<'gcc> {
         let source = pair.get_type().is_struct().expect("pair struct");
         let destination = typ.is_struct().expect("pair struct");
