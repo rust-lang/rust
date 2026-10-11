@@ -415,6 +415,7 @@ pub(super) fn remove_dead_blocks(body: &mut Body<'_>) {
 }
 
 pub(super) enum SimplifyLocals {
+    BeforeSroa,
     BeforeConstProp,
     AfterGVN,
     Final,
@@ -423,6 +424,7 @@ pub(super) enum SimplifyLocals {
 impl<'tcx> crate::MirPass<'tcx> for SimplifyLocals {
     fn name(&self) -> &'static str {
         match &self {
+            SimplifyLocals::BeforeSroa => "SimplifyLocals-before-sroa",
             SimplifyLocals::BeforeConstProp => "SimplifyLocals-before-const-prop",
             SimplifyLocals::AfterGVN => "SimplifyLocals-after-value-numbering",
             SimplifyLocals::Final => "SimplifyLocals-final",
