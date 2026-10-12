@@ -848,28 +848,12 @@ impl UnixSocketFileDescription for TcpSocket {
                 self.state.borrow().as_socket_ref(),
             );
         } else if level == ecx.eval_libc_i32("IPPROTO_TCP") {
-            let opt_tcp_nodelay = ecx.eval_libc_i32("TCP_NODELAY");
-
-            if option == opt_tcp_nodelay {
-                if value_len != 4 {
-                    // Option value should be C-int which is usually 4 bytes.
-                    return interp_ok(Err(LibcError("EINVAL")));
-                }
-                let option_value = ecx.ptr_to_mplace(value_ptr, ecx.machine.layouts.i32);
-                let nodelay = ecx.read_scalar(&option_value)?.to_i32()? != 0;
-
-                return interp_ok(
-                    self.with_socket_ref(|s| s.set_tcp_nodelay(nodelay))
-                        .map_err(IoError::HostError),
-                );
-            } else {
-                return ecx.set_tcp_socket_option(
-                    option,
-                    value_ptr,
-                    value_len,
-                    self.state.borrow().as_socket_ref(),
-                );
-            }
+            return ecx.set_tcp_socket_option(
+                option,
+                value_ptr,
+                value_len,
+                self.state.borrow().as_socket_ref(),
+            );
         }
 
         throw_unsup_format!(
