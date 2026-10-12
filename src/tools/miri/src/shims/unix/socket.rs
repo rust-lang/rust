@@ -1060,6 +1060,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let opt_so_error = ecx.eval_libc_i32("SO_ERROR");
         let opt_so_rcvtimeo = ecx.eval_libc_i32("SO_RCVTIMEO");
         let opt_so_sndtimeo = ecx.eval_libc_i32("SO_SNDTIMEO");
+        let opt_so_reuseaddr = ecx.eval_libc_i32("SO_REUSEADDR");
 
         if option == opt_so_error {
             let return_value = match socket.take_error(ecx)? {
@@ -1094,6 +1095,24 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             ecx.write_int(usecs, &usec_field)?;
 
             return interp_ok(Ok(timeval_buffer));
+        }
+
+        if option == opt_so_reuseaddr {
+            let reuse = match socket.with_socket_ref(|s| s.reuse_address()) {
+                Ok(Ok(reuse)) => reuse,
+                Ok(Err(e)) => return interp_ok(Err(IoError::HostError(e))),
+                Err(()) =>
+                    throw_unsup_format!(
+                        "getsockopt: option SO_REUSEADDR is unsupported for {}",
+                        socket.name()
+                    ),
+            };
+
+            // Allocate new buffer on the stack with the `i32` layout.
+            let value_buffer = ecx.allocate(ecx.machine.layouts.i32, MemoryKind::Stack)?;
+            ecx.write_int(i32::from(reuse), &value_buffer)?;
+
+            return interp_ok(Ok(value_buffer));
         }
 
         throw_unsup_format!("getsockopt: option {option:#x} is unsupported for level SOL_SOCKET",);
