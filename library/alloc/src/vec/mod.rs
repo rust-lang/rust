@@ -3613,7 +3613,7 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     /// assert_eq!(vec, [0; 3]);
     /// ```
     #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
+    #[unstable(feature = "vec_from_elem", issue = "none")]
     #[inline]
     pub fn from_elem_in(elem: T, n: usize, alloc: A) -> Self {
         <T as SpecFromElem>::from_elem(elem, n, alloc)
