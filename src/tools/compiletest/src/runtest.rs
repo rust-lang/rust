@@ -1373,6 +1373,7 @@ impl<'test> TestCx<'test> {
 
         rustc.args(&["--crate-type", "rlib"]);
         rustc.arg("-Cpanic=abort");
+        rustc.arg("--check-cfg=cfg(target_has_reliable_f16b)");
         rustc.args(self.props.minicore_compile_flags.clone());
 
         let res =
