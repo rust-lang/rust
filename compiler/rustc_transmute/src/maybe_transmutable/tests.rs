@@ -402,8 +402,6 @@ mod union {
 }
 
 mod char {
-    use rustc_middle::ty::transmute::Answer;
-
     use super::*;
     use crate::layout::tree::Endian;
 
@@ -443,8 +441,6 @@ mod char {
 }
 
 mod nonzero {
-    use rustc_middle::ty::transmute::{Answer, Reason};
-
     use super::*;
 
     const NONZERO_BYTE_WIDTHS: [u64; 5] = [1, 2, 4, 8, 16];
