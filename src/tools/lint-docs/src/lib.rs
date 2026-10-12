@@ -473,7 +473,7 @@ impl<'a> LintExtractor<'a> {
         cmd.arg(format!("--edition={edition}"));
         // Just in case this is an unstable edition.
         cmd.arg("-Zunstable-options");
-        // FIXME(#160895): While the new solver is enabled by default on nightly,
+        // FIXME(#160895): While the new solver is already enabled by default,
         // we don't want to use it in our tests for now.
         cmd.arg("-Znext-solver=coherence");
         cmd.arg("--error-format=json");
