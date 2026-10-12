@@ -11,6 +11,7 @@ LL |     foo::m!();
 note: consider marking `f` as `pub` in the imported module
   --> $DIR/decl-macro-use-no-ice.rs:10:5
    |
+LL | mod foo {
 LL |     macro f() {}
    |     ^^^^^^^^^^^^
 

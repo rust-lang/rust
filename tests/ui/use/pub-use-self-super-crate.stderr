@@ -4,7 +4,14 @@ error[E0365]: `self` is only public within the crate, and cannot be re-exported 
 LL |     pub use self as this;
    |             ^^^^^^^^^^^^ re-export of crate public `self`
    |
-   = note: consider declaring type or module `self` with `pub`
+note: consider declaring module `self` with `pub`
+  --> $DIR/pub-use-self-super-crate.rs:1:1
+   |
+LL | / mod foo {
+LL | |     pub use self as this;
+...  |
+LL | | }
+   | |_^
 
 error[E0365]: `super` is only public within the crate, and cannot be re-exported outside
   --> $DIR/pub-use-self-super-crate.rs:6:17
@@ -12,7 +19,14 @@ error[E0365]: `super` is only public within the crate, and cannot be re-exported
 LL |         pub use super as parent;
    |                 ^^^^^^^^^^^^^^^ re-export of crate public `super`
    |
-   = note: consider declaring type or module `super` with `pub`
+note: consider declaring module `super` with `pub`
+  --> $DIR/pub-use-self-super-crate.rs:1:1
+   |
+LL | / mod foo {
+LL | |     pub use self as this;
+...  |
+LL | | }
+   | |_^
 
 error[E0365]: `super` is only public within the crate, and cannot be re-exported outside
   --> $DIR/pub-use-self-super-crate.rs:8:17
@@ -20,7 +34,14 @@ error[E0365]: `super` is only public within the crate, and cannot be re-exported
 LL |         pub use self::super as parent2;
    |                 ^^^^^^^^^^^^^^^^^^^^^^ re-export of crate public `super`
    |
-   = note: consider declaring type or module `super` with `pub`
+note: consider declaring module `super` with `pub`
+  --> $DIR/pub-use-self-super-crate.rs:1:1
+   |
+LL | / mod foo {
+LL | |     pub use self as this;
+...  |
+LL | | }
+   | |_^
 
 error[E0365]: `self` is only public within the crate, and cannot be re-exported outside
   --> $DIR/pub-use-self-super-crate.rs:10:25
@@ -28,7 +49,14 @@ error[E0365]: `self` is only public within the crate, and cannot be re-exported 
 LL |         pub use super::{self as parent3};
    |                         ^^^^^^^^^^^^^^^ re-export of crate public `self`
    |
-   = note: consider declaring type or module `self` with `pub`
+note: consider declaring module `self` with `pub`
+  --> $DIR/pub-use-self-super-crate.rs:1:1
+   |
+LL | / mod foo {
+LL | |     pub use self as this;
+...  |
+LL | | }
+   | |_^
 
 error[E0365]: `super` is only public within the crate, and cannot be re-exported outside
   --> $DIR/pub-use-self-super-crate.rs:12:24
@@ -36,7 +64,14 @@ error[E0365]: `super` is only public within the crate, and cannot be re-exported
 LL |         pub use self::{super as parent4};
    |                        ^^^^^^^^^^^^^^^^ re-export of crate public `super`
    |
-   = note: consider declaring type or module `super` with `pub`
+note: consider declaring module `super` with `pub`
+  --> $DIR/pub-use-self-super-crate.rs:1:1
+   |
+LL | / mod foo {
+LL | |     pub use self as this;
+...  |
+LL | | }
+   | |_^
 
 error: aborting due to 5 previous errors
 

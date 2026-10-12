@@ -11,6 +11,7 @@ LL |     foo::m!();
 note: consider marking `f` as `pub` in the imported module
   --> $DIR/privacy-early.rs:6:5
    |
+LL | mod foo {
 LL |     fn f() {}
    |     ^^^^^^^^^
 
@@ -27,6 +28,8 @@ LL |     foo::m!();
 note: consider marking `f` as `pub` in the imported module
   --> $DIR/privacy-early.rs:7:5
    |
+LL | mod foo {
+LL |     fn f() {}
 LL |     macro f() {}
    |     ^^^^^^^^^^^^
 
