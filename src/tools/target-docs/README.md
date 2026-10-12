@@ -25,8 +25,9 @@ This is achieved through YAML frontmatter.
 The frontmatter follows the following format:
 
 ```yaml
-pattern: i686-pc-windows-gnu
-maintainers: ["@someone"]
+pattern: "i686-pc-windows-gnu"
+maintainers:
+  - "@someone"
 footnotes:
   i686-pc-windows-gnu:
     - "x86_32-floats-return-ABI"
