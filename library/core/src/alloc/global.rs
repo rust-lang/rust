@@ -155,9 +155,16 @@ use crate::{cmp, ptr};
 /// * It is undefined behavior for the allocator to read, write, or deallocate any memory that
 ///   is *currently allocated*. This memory is owned by the user, the allocator must not touch it.
 ///
-/// * It's undefined behavior if global allocators unwind. This restriction may
-///   be lifted in the future, but currently a panic from any of these
-///   functions may lead to memory unsafety.
+/// * The methods of this trait must not unwind. Users may rely on this guarantee, and the compiler
+///   may treat unwinds from the methods as undefined behavior.
+///   * This means that implementors should either handle unwinds (e.g. by using a [`DropGuard`] to
+///     abort), or treat all panicking API (like [`Option::unwrap`]) as if it was unchecked API
+///     (like [`Option::unwrap_unchecked`]). This includes arithmetic operators like `+`, which may
+///     panic if overflow checks are enabled!
+///   * In the future, this restriction may be lifted by the compiler automatically inserting code
+///     to automatically turn unwinds into aborts, but for now, this is up to the implementor to
+///     handle correctly.
+///     Users will always be able to rely on calls to these methods not unwinding.
 ///
 /// * Callers of this trait are allowed to rely on the contracts defined on each method, and
 ///   implementors must ensure such contracts remain true.
@@ -185,6 +192,7 @@ use crate::{cmp, ptr};
 /// [`std::thread::park`]: ../../std/thread/fn.park.html
 /// [`std::thread::Thread`]: ../../std/thread/struct.Thread.html
 /// [`unpark`]: ../../std/thread/struct.Thread.html#method.unpark
+/// [`DropGuard`]: core::mem::DropGuard
 #[stable(feature = "global_alloc", since = "1.28.0")]
 pub unsafe trait GlobalAlloc {
     /// Allocates memory as described by the given `layout`.

@@ -117,7 +117,8 @@ unsafe impl core::alloc::StaticAllocator for Global {}
 ///   if you control the underlying allocator and know that it explicitly initialized this memory,
 ///   you cannot rely on it being initialized.
 ///
-/// Users of this function have to consider that in the future, allocators may be allowed to unwind.
+/// It is guaranteed that this function never unwinds. Note however that consumers of this API that
+/// handle errors with [`handle_alloc_error`] may still unwind in the future.
 ///
 /// Calling [`Allocator::allocate`] on `Global` is preferred.
 ///
@@ -180,10 +181,10 @@ pub unsafe fn alloc(layout: Layout) -> *mut u8 {
 ///   So even if you know that the program previously initialized that memory, the allocator cannot
 ///   rely on it being initialized.
 ///
-/// Users of this function have to consider that in the future, allocators may be allowed to unwind.
-///
 /// This function is expected to be deprecated in favor of the `deallocate` method
 /// of the [`Global`] type when it and the [`Allocator`] trait become stable.
+///
+/// It is guaranteed that this function never unwinds.
 ///
 /// # Safety
 ///
@@ -234,10 +235,11 @@ unsafe fn dealloc_nonnull(ptr: NonNull<u8>, layout: Layout) {
 /// - If this shrinks the allocation, the contents of the removed part of the old allocation are
 ///   de-initialized by this function before invoking the underlying allocator.
 ///
-/// Users of this function have to consider that in the future, allocators may be allowed to unwind.
-///
 /// This function is expected to be deprecated in favor of the `grow` and `shrink` methods
 /// of the [`Global`] type when it and the [`Allocator`] trait become stable.
+///
+/// It is guaranteed that this function never unwinds. Note however that consumers of this API that
+/// handle errors with [`handle_alloc_error`] may still unwind in the future.
 ///
 /// # Safety
 ///
@@ -282,10 +284,11 @@ unsafe fn realloc_nonnull(ptr: NonNull<u8>, layout: Layout, new_size: usize) -> 
 /// - An allocation created by invoking this function has exactly the size and minimum alignment
 ///   defined by `layout`, even if the underlying allocator makes stronger promises.
 ///
-/// Users of this function have to consider that in the future, allocators may be allowed to unwind.
-///
 /// This function is expected to be deprecated in favor of the `allocate_zeroed` method
 /// of the [`Global`] type when it and the [`Allocator`] trait become stable.
+///
+/// It is guaranteed that this function never unwinds. Note however that consumers of this API that
+/// handle errors with [`handle_alloc_error`] may still unwind in the future.
 ///
 /// # Safety
 ///
