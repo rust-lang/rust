@@ -29,6 +29,7 @@ use crate::{
         ValueConst,
         infer::{DbInternerInferExt, traits::ObligationCause},
     },
+    representability::{Representability, representability},
     traits::StoredParamEnvAndCrate,
 };
 
@@ -535,6 +536,9 @@ fn struct_tail_erasing_lifetimes<'a>(db: &'a dyn HirDatabase, pointee: Ty<'a>) -
                 AdtId::StructId(id) => id,
                 _ => return pointee,
             };
+            if representability(db, def.def_id()) == Representability::Infinite {
+                return pointee;
+            }
             let data = struct_id.fields(db);
             let mut it = data.fields().iter().rev();
             match it.next() {
