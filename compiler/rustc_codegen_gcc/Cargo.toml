@@ -29,6 +29,7 @@ gccjit = { version = "7.2.0", features = ["dlopen"] }
 [dev-dependencies]
 boml = "0.3.1"
 lang_tester = "0.8.0"
+libc = "0.2"
 
 [profile.dev]
 # By compiling dependencies with optimizations, performing tests gets much faster.
