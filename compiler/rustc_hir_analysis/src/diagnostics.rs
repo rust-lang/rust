@@ -1707,6 +1707,16 @@ pub(crate) struct OnlyCurrentTraitsPointerSugg<'a> {
 }
 
 #[derive(Diagnostic)]
+#[diag("failed to inherit delegation {$kind}")]
+pub(crate) struct DelegationInheritanceFailed {
+    #[primary_span]
+    pub span: Span,
+    pub kind: &'static str,
+    #[label("callee defined here")]
+    pub callee_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("{$descr}")]
 pub(crate) struct UnsupportedDelegation<'a> {
     #[primary_span]

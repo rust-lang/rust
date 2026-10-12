@@ -3,8 +3,8 @@ use std::path::PathBuf;
 use rustc_ast::{GenericParamKind, ItemKind, LitIntType, LitKind, MetaItemLit};
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_attr_ir::{
-    BorrowckGraphvizFormatKind, CguFields, CguKind, RustcCleanAttribute, RustcCleanQueries,
-    RustcMirKind,
+    BorrowckGraphvizFormatKind, CguFields, CguKind, RustcAssertVarianceKind, RustcCleanAttribute,
+    RustcCleanQueries, RustcMirKind,
 };
 use rustc_data_structures::fx::FxHashMap;
 use rustc_feature::AttributeStability;
@@ -1167,4 +1167,55 @@ impl NoArgsAttributeParser for RustcCanonicalSymbolParser {
         lints"
     );
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcCanonicalSymbol;
+}
+
+pub(crate) struct RustcAssertVarianceParser;
+
+impl SingleAttributeParser for RustcAssertVarianceParser {
+    const PATH: &[Symbol] = &[sym::rustc_assert_variance];
+
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
+
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
+        Allow(Target::TypeParam),
+        Allow(Target::LifetimeParam),
+        Allow(Target::ConstParam),
+    ]);
+
+    const TEMPLATE: AttributeTemplate =
+        template!(OneOf: &[sym::covariant, sym::invariant, sym::contravariant, sym::bivariant]);
+
+    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
+        let arg = cx.expect_single_element_list(args, cx.attr_span)?;
+
+        let mut fail_arg = |span| {
+            cx.adcx().expected_specific_argument(
+                span,
+                &[sym::covariant, sym::invariant, sym::contravariant, sym::bivariant],
+            )
+        };
+
+        let Some(arg) = arg.meta_item_no_args() else {
+            fail_arg(arg.span());
+            return None;
+        };
+
+        let Some(arg) = arg.ident() else {
+            fail_arg(arg.span());
+            return None;
+        };
+
+        let kind = match arg.name {
+            sym::covariant => RustcAssertVarianceKind::Covariant,
+            sym::invariant => RustcAssertVarianceKind::Invariant,
+            sym::contravariant => RustcAssertVarianceKind::Contravariant,
+            sym::bivariant => RustcAssertVarianceKind::Bivariant,
+            _ => {
+                fail_arg(arg.span);
+                return None;
+            }
+        };
+
+        Some(AttributeKind::RustcAssertVariance { span: cx.attr_span, kind })
+    }
 }

@@ -1,0 +1,40 @@
+error[E0747]: type provided when a constant was expected
+  --> $DIR/const-param-trait-name-collision-ice-163868.rs:7:24
+   |
+LL | impl<const C: usize> S<C> {
+   |                        ^
+
+error: failed to inherit delegation predicates
+  --> $DIR/const-param-trait-name-collision-ice-163868.rs:13:19
+   |
+LL |     fn foo_self<T>(self) {}
+   |     -------------------- callee defined here
+...
+LL |     reuse S::<1>::foo_self::<_> as foo_self_4;
+   |                   ^^^^^^^^
+
+error[E0277]: the size for values of type `T` cannot be known at compilation time
+  --> $DIR/const-param-trait-name-collision-ice-163868.rs:13:19
+   |
+LL |     reuse S::<1>::foo_self::<_> as foo_self_4;
+   |                   ^^^^^^^^
+   |                   |
+   |                   doesn't have a size known at compile-time
+   |                   this type parameter needs to be `Sized`
+   |
+note: required by an implicit `Sized` bound in `S::<{const error}>::foo_self`
+  --> $DIR/const-param-trait-name-collision-ice-163868.rs:9:17
+   |
+LL | impl<const C: usize> S<C> {
+LL |
+LL |     fn foo_self<T>(self) {}
+   |                 ^ required by the implicit `Sized` requirement on this type parameter in `S::<{const error}>::foo_self`
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL |     fn foo_self<T: ?Sized>(self) {}
+   |                  ++++++++
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0277, E0747.
+For more information about an error, try `rustc --explain E0277`.
