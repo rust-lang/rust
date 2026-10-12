@@ -881,6 +881,20 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, Result<MPlaceTy<'tcx>, IoError>> {
         let ecx = self.eval_context_mut();
 
+        let opt_ip_ttl = ecx.eval_libc_i32("IP_TTL");
+
+        if option == opt_ip_ttl {
+            let ttl = match socket.ttl_v4() {
+                Ok(ttl) => ttl,
+                Err(e) => return interp_ok(Err(IoError::HostError(e))),
+            };
+
+            // Allocate new buffer on the stack with the `u32` layout.
+            let value_buffer = ecx.allocate(ecx.machine.layouts.u32, MemoryKind::Stack)?;
+            ecx.write_int(ttl, &value_buffer)?;
+            return interp_ok(Ok(value_buffer));
+        }
+
         throw_unsup_format!("getsockopt: option {option:#x} is unsupported for level IPPROTO_IP",);
     }
 }

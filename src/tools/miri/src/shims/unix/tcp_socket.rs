@@ -974,21 +974,7 @@ impl UnixSocketFileDescription for TcpSocket {
                 );
             }
         } else if level == ecx.eval_libc_i32("IPPROTO_IP") {
-            let opt_ip_ttl = ecx.eval_libc_i32("IP_TTL");
-
-            if option == opt_ip_ttl {
-                let ttl = match self.with_socket_ref(|s| s.ttl_v4()) {
-                    Ok(ttl) => ttl,
-                    Err(e) => return interp_ok(Err(IoError::HostError(e))),
-                };
-
-                // Allocate new buffer on the stack with the `u32` layout.
-                let value_buffer = ecx.allocate(ecx.machine.layouts.u32, MemoryKind::Stack)?;
-                ecx.write_int(ttl, &value_buffer)?;
-                interp_ok(Ok(value_buffer))
-            } else {
-                ecx.get_ip_socket_option(option, self.state.borrow().as_socket_ref())
-            }
+            ecx.get_ip_socket_option(option, self.state.borrow().as_socket_ref())
         } else if level == ecx.eval_libc_i32("IPPROTO_TCP") {
             let opt_tcp_nodelay = ecx.eval_libc_i32("TCP_NODELAY");
 
