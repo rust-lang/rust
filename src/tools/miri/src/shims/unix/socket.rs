@@ -861,6 +861,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let opt_so_rcvtimeo = ecx.eval_libc_i32("SO_RCVTIMEO");
         let opt_so_sndtimeo = ecx.eval_libc_i32("SO_SNDTIMEO");
         let opt_so_reuseaddr = ecx.eval_libc_i32("SO_REUSEADDR");
+        let opt_so_linger = if matches!(ecx.tcx.sess.target.os, Os::MacOs) {
+            // On macOS the SO_LINGER socket option sets the linger duration in kernel ticks
+            // while the SO_LINGER_SEC socket option sets the linger duration in seconds.
+            ecx.eval_libc_i32("SO_LINGER_SEC")
+        } else {
+            // For all other targets SO_LINGER sets the linger duration in seconds.
+            ecx.eval_libc_i32("SO_LINGER")
+        };
 
         if matches!(ecx.tcx.sess.target.os, Os::MacOs | Os::FreeBsd | Os::NetBsd) {
             // SO_NOSIGPIPE only exists on MacOS, FreeBSD, and NetBSD.
@@ -909,6 +917,29 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             let result = socket.with_socket_ref(|s| s.set_reuse_address(reuse)).map_err(|()| {
                 err_unsup_format!(
                     "setsockopt: option SO_REUSEADDR is unsupported for {}",
+                    socket.name()
+                )
+            })?;
+            return interp_ok(result.map_err(IoError::HostError));
+        } else if option == opt_so_linger {
+            let linger_layout = ecx.libc_ty_layout("linger");
+            if value_len != linger_layout.size.bytes() {
+                // Size should be equal to the size of a linger struct.
+                return interp_ok(Err(LibcError("EINVAL")));
+            }
+            let option_value = ecx.ptr_to_mplace(value_ptr, linger_layout);
+
+            let onoff_field = ecx.project_field_named(&option_value, "l_onoff")?;
+            let onoff = ecx.read_scalar(&onoff_field)?.to_i32()? != 0;
+
+            let linger_field = ecx.project_field_named(&option_value, "l_linger")?;
+            let linger = ecx.read_scalar(&linger_field)?.to_i32()?;
+
+            let linger = onoff.then_some(Duration::from_secs(u64::try_from(linger).unwrap()));
+
+            let result = socket.with_socket_ref(|s| s.set_linger(linger)).map_err(|()| {
+                err_unsup_format!(
+                    "setsockopt: option SO_LINGER is unsupported for {}",
                     socket.name()
                 )
             })?;

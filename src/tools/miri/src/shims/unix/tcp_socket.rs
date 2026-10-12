@@ -744,35 +744,9 @@ impl UnixSocketFileDescription for TcpSocket {
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, Result<(), IoError>> {
         if level == ecx.eval_libc_i32("SOL_SOCKET") {
-            let opt_so_linger = if matches!(ecx.tcx.sess.target.os, Os::MacOs) {
-                // On macOS the SO_LINGER socket option sets the linger duration in kernel ticks
-                // while the SO_LINGER_SEC socket option sets the linger duration in seconds.
-                ecx.eval_libc_i32("SO_LINGER_SEC")
-            } else {
-                // For all other targets SO_LINGER sets the linger duration in seconds.
-                ecx.eval_libc_i32("SO_LINGER")
-            };
             let opt_so_keepalive = ecx.eval_libc_i32("SO_KEEPALIVE");
 
-            if option == opt_so_linger {
-                let linger_layout = ecx.libc_ty_layout("linger");
-                if value_len != linger_layout.size.bytes() {
-                    // Size should be equal to the size of a linger struct.
-                    return interp_ok(Err(LibcError("EINVAL")));
-                }
-                let option_value = ecx.ptr_to_mplace(value_ptr, linger_layout);
-
-                let onoff_field = ecx.project_field_named(&option_value, "l_onoff")?;
-                let onoff = ecx.read_scalar(&onoff_field)?.to_i32()? != 0;
-
-                let linger_field = ecx.project_field_named(&option_value, "l_linger")?;
-                let linger = ecx.read_scalar(&linger_field)?.to_i32()?;
-
-                let linger = onoff.then_some(Duration::from_secs(u64::try_from(linger).unwrap()));
-                return interp_ok(
-                    self.with_socket_ref(|s| s.set_linger(linger)).map_err(IoError::HostError),
-                );
-            } else if option == opt_so_keepalive {
+            if option == opt_so_keepalive {
                 if value_len != 4 {
                     // Option value should be C-int which is usually 4 bytes.
                     return interp_ok(Err(LibcError("EINVAL")));
