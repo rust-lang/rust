@@ -1485,8 +1485,7 @@ impl<'db> InferenceContext<'db> {
                                 PatOrigin::LetStmt { has_else: else_branch.is_some() },
                             );
                             if let Some(expr) = else_branch {
-                                let previous_diverges =
-                                    mem::replace(&mut this.diverges, Diverges::Maybe);
+                                let previous_diverges = this.diverges;
                                 this.infer_expr_coerce(
                                     *expr,
                                     &Expectation::HasType(this.types.types.never),
