@@ -65,6 +65,10 @@ Contains tests for the rendering of enum types and in particular its variants.
 
 Contains tests to check how extern items (like `extern "C"` functions) are rendered.
 
+## `tests/rustdoc-html/fn`
+
+Same as `tests/rustdoc-html/enum` but for function items.
+
 ## `tests/rustdoc-html/footnote`
 
 Contains tests checking the markdown footnote features and how it is rendered.
