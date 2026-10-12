@@ -1545,6 +1545,27 @@ impl str {
         pat.into_searcher(self).next_match_back().map(|(i, _)| i)
     }
 
+    /// Reverses the order of the bytes in the string.
+    ///
+    /// # Safety
+    ///
+    /// It assumes every character in the string can be represented with u8.
+    /// This means characters like é will result in undefined behaviour.
+    ///
+    /// # Examples
+    /// ```
+    /// let mut string = String::from("12345");
+    /// string.reverse();
+    /// assert_eq!(string, "54321");
+    /// ```
+    #[unstable(feature = "str_reverse", issue = "none")]
+    #[inline]
+    pub unsafe fn reverse(&mut self) {
+        // SAFETY: Non-UTF-8 characters will break.
+        // For example e + \u0302 turns into \u0302 + e.
+        unsafe { self.as_bytes_mut().reverse() }
+    }
+
     /// Returns an iterator over substrings of this string slice, separated by
     /// characters matched by a pattern.
     ///
