@@ -2596,7 +2596,7 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustContextConfigureDiagnosticHandler(
         context: &Context,
         diagnostic_handler_callback: DiagnosticHandlerCallback,
-        diagnostic_handler_context: *mut c_void,
+        diagnostic_handler_callback_data: *mut c_void,
         remark_all_passes: bool,
         remark_passes: *const *const c_char,
         remark_passes_len: usize,

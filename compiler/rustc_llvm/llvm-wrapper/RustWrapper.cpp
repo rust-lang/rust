@@ -1523,7 +1523,7 @@ typedef void (*LLVMRustDiagnosticHandlerCallback)(LLVMDiagnosticInfoRef,
 extern "C" void LLVMRustContextConfigureDiagnosticHandler(
     LLVMContextRef C,
     LLVMRustDiagnosticHandlerCallback DiagnosticHandlerCallback,
-    void *DiagnosticHandlerContext, bool RemarkAllPasses,
+    void *DiagnosticHandlerCallbackData, bool RemarkAllPasses,
     const char *const *RemarkPasses, size_t RemarkPassesLen,
     const char *RemarkFilePath, bool PGOAvailable) {
 
@@ -1531,13 +1531,13 @@ extern "C" void LLVMRustContextConfigureDiagnosticHandler(
   public:
     RustDiagnosticHandler(
         LLVMRustDiagnosticHandlerCallback DiagnosticHandlerCallback,
-        void *DiagnosticHandlerContext, bool RemarkAllPasses,
+        void *DiagnosticHandlerCallbackData, bool RemarkAllPasses,
         std::vector<std::string> RemarkPasses,
         std::unique_ptr<ToolOutputFile> RemarksFile,
         std::unique_ptr<llvm::remarks::RemarkStreamer> RemarkStreamer,
         std::unique_ptr<LLVMRemarkStreamer> LlvmRemarkStreamer)
         : DiagnosticHandlerCallback(DiagnosticHandlerCallback),
-          DiagnosticHandlerContext(DiagnosticHandlerContext),
+          DiagnosticHandlerCallbackData(DiagnosticHandlerCallbackData),
           RemarkAllPasses(RemarkAllPasses),
           RemarkPasses(std::move(RemarkPasses)),
           RemarksFile(std::move(RemarksFile)),
@@ -1569,7 +1569,7 @@ extern "C" void LLVMRustContextConfigureDiagnosticHandler(
         }
       }
       if (DiagnosticHandlerCallback) {
-        DiagnosticHandlerCallback(wrap(&DI), DiagnosticHandlerContext);
+        DiagnosticHandlerCallback(wrap(&DI), DiagnosticHandlerCallbackData);
         return true;
       }
       return false;
@@ -1604,7 +1604,7 @@ extern "C" void LLVMRustContextConfigureDiagnosticHandler(
     }
 
     LLVMRustDiagnosticHandlerCallback DiagnosticHandlerCallback = nullptr;
-    void *DiagnosticHandlerContext = nullptr;
+    void *DiagnosticHandlerCallbackData = nullptr;
 
     bool RemarkAllPasses = false;
     std::vector<std::string> RemarkPasses;
@@ -1657,7 +1657,7 @@ extern "C" void LLVMRustContextConfigureDiagnosticHandler(
   }
 
   unwrap(C)->setDiagnosticHandler(std::make_unique<RustDiagnosticHandler>(
-      DiagnosticHandlerCallback, DiagnosticHandlerContext, RemarkAllPasses,
+      DiagnosticHandlerCallback, DiagnosticHandlerCallbackData, RemarkAllPasses,
       Passes, std::move(RemarkFile), std::move(RemarkStreamer),
       std::move(LlvmRemarkStreamer)));
 }
