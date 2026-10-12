@@ -1094,6 +1094,22 @@ impl UnixSocketFileDescription for TcpSocket {
 
         interp_ok(Ok(()))
     }
+
+    fn set_read_timeout<'tcx>(
+        self: FileDescriptionRef<Self>,
+        timeout: Option<Duration>,
+    ) -> InterpResult<'tcx> {
+        self.read_timeout.set(timeout);
+        interp_ok(())
+    }
+
+    fn set_write_timeout<'tcx>(
+        self: FileDescriptionRef<Self>,
+        timeout: Option<Duration>,
+    ) -> InterpResult<'tcx> {
+        self.write_timeout.set(timeout);
+        interp_ok(())
+    }
 }
 
 impl<'tcx> EvalContextPrivExt<'tcx> for crate::MiriInterpCx<'tcx> {}

@@ -1,4 +1,5 @@
 use std::net::{Shutdown, SocketAddr};
+use std::time::Duration;
 
 use rustc_abi::Size;
 use rustc_target::spec::Os;
@@ -148,6 +149,28 @@ pub trait UnixSocketFileDescription: UnixFileDescription {
         _ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, Result<(), IoError>> {
         throw_unsup_format!("cannot shut down {}", self.name());
+    }
+
+    // Socket options from SOL_SOCKET which are supported by all socket kinds.
+
+    /// Set the read timeout for the socket.
+    /// If `timeout` is [`None`], then read operations should block indefinitely.
+    /// Otherwise, read operations should block until `timeout` is expired.
+    fn set_read_timeout<'tcx>(
+        self: FileDescriptionRef<Self>,
+        _timeout: Option<Duration>,
+    ) -> InterpResult<'tcx> {
+        throw_unsup_format!("setsockopt: option SO_RCVTIMEO is unsupported for {}", self.name())
+    }
+
+    /// Set the write timeout for the socket.
+    /// If `timeout` is [`None`], then write operations should block indefinitely.
+    /// Otherwise, write operations should block until `timeout` is expired.
+    fn set_write_timeout<'tcx>(
+        self: FileDescriptionRef<Self>,
+        _timeout: Option<Duration>,
+    ) -> InterpResult<'tcx> {
+        throw_unsup_format!("setsockopt: option SO_SNDTIMEO is unsupported for {}", self.name())
     }
 }
 
