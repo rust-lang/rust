@@ -1025,6 +1025,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         throw_unsup_format!("setsockopt: option {option:#x} is unsupported for level IPPROTO_TCP");
     }
 
+    /// Get the `option` socket option on level SOL_SOCKET for `socket`.
+    fn get_generic_socket_option<T: UnixSocketFileDescription>(
+        &mut self,
+        option: i32,
+        socket: FileDescriptionRef<T>,
+    ) -> InterpResult<'tcx, Result<MPlaceTy<'tcx>, IoError>> {
+        let ecx = self.eval_context_mut();
+
+        throw_unsup_format!("getsockopt: option {option:#x} is unsupported for level SOL_SOCKET",);
+    }
+
     /// Get the `option` socket option on level IPPROTO_IP for `socket`.
     /// `socket` is a [`socket2::SockRef`] to the underlying host socket of
     /// the shimmed socket.
