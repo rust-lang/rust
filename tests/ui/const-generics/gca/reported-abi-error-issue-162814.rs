@@ -2,7 +2,7 @@
 //@ revisions: default optimized
 //@ compile-flags: -Znext-solver
 //@[optimized] compile-flags: -O
-
+//@ normalize-stderr: "(?m)^  ::: \$SRC_DIR/core/src/mem/mod\.rs:LL:COL\n" -> ""
 #![feature(gca_min_const_items, generic_const_items, gca_const_items)]
 #![expect(incomplete_features)]
 
