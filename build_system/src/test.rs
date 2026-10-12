@@ -194,7 +194,7 @@ impl TestArg {
 }
 
 fn build_if_no_backend(env: &Env, args: &TestArg) -> Result<(), String> {
-    if args.config_info.backend.is_some() {
+    if args.config_info.backend.is_some() || args.config_info.prebuilt_backend_path.is_some() {
         return Ok(());
     }
     let mut command: Vec<&dyn AsRef<OsStr>> = vec![&"cargo", &"rustc"];
@@ -231,6 +231,12 @@ fn cargo_tests(test_env: &Env, test_args: &TestArg) -> Result<(), String> {
         "CG_RUSTFLAGS".into(),
         test_env.get("CG_RUSTFLAGS").map(|s| s.as_str()).unwrap_or("").to_string(),
     );
+    if test_args.config_info.prebuilt_backend_path.is_some() {
+        env.insert("CG_GCC_BACKEND_PATH".into(), test_args.config_info.cg_backend_path.clone());
+    }
+    if test_args.config_info.prebuilt_sysroot_path.is_some() {
+        env.insert("CG_GCC_SYSROOT_PATH".into(), test_args.config_info.sysroot_path.clone());
+    }
     // Pass all the default args + the user-specified ones.
     let mut args: Vec<&dyn AsRef<OsStr>> = vec![&"cargo", &"test"];
     args.extend(test_args.test_args.iter().map(|s| s as &dyn AsRef<OsStr>));
@@ -639,14 +645,7 @@ fn asm_tests(env: &Env, args: &TestArg) -> Result<(), String> {
     // FIXME: create a function "display_if_not_quiet" or something along the line.
     println!("[TEST] rustc asm test suite");
 
-    let codegen_backend_path = format!(
-        "{pwd}/target/{channel}/librustc_codegen_gcc.{dylib_ext}",
-        pwd = std::env::current_dir()
-            .map_err(|error| format!("`current_dir` failed: {error:?}"))?
-            .display(),
-        channel = args.config_info.channel.as_str(),
-        dylib_ext = args.config_info.dylib_ext,
-    );
+    let codegen_backend_path = &args.config_info.cg_backend_path;
 
     let extra =
         if args.is_using_gcc_master_branch() { "" } else { " -Csymbol-mangling-version=v0" };

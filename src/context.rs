@@ -103,6 +103,12 @@ pub struct CodegenCx<'gcc, 'tcx> {
     /// field types, so without this two equal byte runs would yield two distinct anonymous structs.
     pub byte_array_types: RefCell<FxHashMap<(Type<'gcc>, u64), Type<'gcc>>>,
 
+    /// Cache of the return types of the pairs returned in two registers, keyed by the types of the
+    /// two scalars.
+    pub two_register_pair_types: RefCell<FxHashMap<(Type<'gcc>, Type<'gcc>), Type<'gcc>>>,
+    /// The types of `two_register_pair_types`.
+    pub two_register_pair_type_set: RefCell<FxHashSet<Type<'gcc>>>,
+
     /// Cache instances of monomorphic and polymorphic items
     pub instances: RefCell<FxHashMap<Instance<'tcx>, LValue<'gcc>>>,
     /// Cache function instances of monomorphic and polymorphic items
@@ -141,7 +147,7 @@ pub struct CodegenCx<'gcc, 'tcx> {
 
     eh_personality: Cell<Option<Function<'gcc>>>,
     #[cfg(feature = "master")]
-    pub rust_try_fn: Cell<Option<(Type<'gcc>, Function<'gcc>)>>,
+    pub rust_try_fn: Cell<Option<Function<'gcc>>>,
 
     pub pointee_infos: RefCell<FxHashMap<(Ty<'tcx>, Size), Option<PointeeInfo>>>,
 
@@ -322,6 +328,8 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             tcx,
             struct_types: Default::default(),
             byte_array_types: Default::default(),
+            two_register_pair_types: Default::default(),
+            two_register_pair_type_set: Default::default(),
             local_gen_sym_counter: Cell::new(0),
             global_gen_sym_counter: Cell::new(0),
             eh_personality: Cell::new(None),
@@ -364,17 +372,6 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         }
 
         self.landing_pads.borrow_mut().clear();
-    }
-
-    pub fn rvalue_as_function(&self, value: RValue<'gcc>) -> Function<'gcc> {
-        let function: Function<'gcc> = unsafe { std::mem::transmute(value) };
-        debug_assert!(
-            self.functions.borrow().values().any(|value| *value == function),
-            "{:?} ({:?}) is not a function",
-            value,
-            value.get_type()
-        );
-        function
     }
 
     pub fn is_native_int_type(&self, typ: Type<'gcc>) -> bool {
