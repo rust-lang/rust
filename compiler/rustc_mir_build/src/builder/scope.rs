@@ -447,7 +447,7 @@ impl DropTree {
                         // use `DUMMY_SP`.
                         let source_info =
                             SourceInfo { span: DUMMY_SP, ..drop_node.data.source_info };
-                        let terminator = TerminatorKind::Goto { target };
+                        let terminator = TerminatorKind::goto(target);
                         cfg.terminate(block, source_info, terminator);
                     }
                 }
@@ -467,7 +467,7 @@ impl DropTree {
                         // use `DUMMY_SP`.
                         let source_info =
                             SourceInfo { span: DUMMY_SP, ..drop_node.data.source_info };
-                        let terminator = TerminatorKind::Goto { target };
+                        let terminator = TerminatorKind::goto(target);
                         cfg.terminate(block, source_info, terminator);
                     }
                 }
@@ -569,12 +569,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.cfg.terminate(
                     normal_block.into_block(),
                     source_info,
-                    TerminatorKind::Goto { target },
+                    TerminatorKind::goto(target),
                 );
                 self.cfg.terminate(
                     exit_block.into_block(),
                     source_info,
-                    TerminatorKind::Goto { target },
+                    TerminatorKind::goto(target),
                 );
                 target.unit()
             }
@@ -622,12 +622,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.cfg.terminate(
                     normal_block.into_block(),
                     source_info,
-                    TerminatorKind::Goto { target },
+                    TerminatorKind::goto(target),
                 );
                 self.cfg.terminate(
                     exit_block.into_block(),
                     source_info,
-                    TerminatorKind::Goto { target },
+                    TerminatorKind::goto(target),
                 );
                 target.unit()
             }
@@ -2117,7 +2117,7 @@ impl<'tcx> DropTreeBuilder<'tcx> for ExitScopes {
         // (The dummy is added by `break_scope` and `break_from_if_then_scope`.)
         let term = cfg.block_data_mut(from).terminator_mut();
         if let TerminatorKind::UnwindResume = term.kind {
-            term.kind = TerminatorKind::Goto { target: to };
+            term.kind = TerminatorKind::goto(to);
         } else {
             span_bug!(term.source_info.span, "unexpected dummy terminator kind: {:?}", term.kind);
         }
@@ -2158,7 +2158,7 @@ impl<'tcx> DropTreeBuilder<'tcx> for Unwind {
             TerminatorKind::Drop { unwind, .. } => {
                 if let UnwindAction::Cleanup(unwind) = *unwind {
                     let source_info = term.source_info;
-                    cfg.terminate(unwind, source_info, TerminatorKind::Goto { target: to });
+                    cfg.terminate(unwind, source_info, TerminatorKind::goto(to));
                 } else {
                     *unwind = UnwindAction::Cleanup(to);
                 }

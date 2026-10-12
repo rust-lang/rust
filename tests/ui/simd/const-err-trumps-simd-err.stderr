@@ -1,6 +1,7 @@
 error[E0080]: evaluation panicked: assertion failed: LANE < 4
   --> $DIR/const-err-trumps-simd-err.rs:17:13
    |
+LL | fn get_elem<const LANE: u32>(a: int8x4_t) -> u8 {
 LL |     const { assert!(LANE < 4); } // the error should be here...
    |             ^^^^^^^^^^^^^^^^^ evaluation of `get_elem::<4>::{constant#0}` failed here
 

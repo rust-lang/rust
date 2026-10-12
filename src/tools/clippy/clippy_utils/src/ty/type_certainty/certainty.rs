@@ -83,6 +83,7 @@ impl Certainty {
         self.clear_def_id().join(other.clear_def_id())
     }
 
+    /// Clears the `Certainty`'s `DefId`.
     pub fn clear_def_id(self) -> Certainty {
         if matches!(self, Certainty::Certain(_)) {
             Certainty::Certain(None)
@@ -91,6 +92,7 @@ impl Certainty {
         }
     }
 
+    /// Sets the `DefId` to the provided one if the `Certainty` is `Certain`.
     pub fn with_def_id(self, def_id: DefId) -> Certainty {
         if matches!(self, Certainty::Certain(_)) {
             Certainty::Certain(Some(def_id))
@@ -99,6 +101,8 @@ impl Certainty {
         }
     }
 
+    /// Returns the underlying `DefId` if the `Certainty` is `Certain` and the `DefId` is known,
+    /// otherwise `None`.
     pub fn to_def_id(self) -> Option<DefId> {
         match self {
             Certainty::Certain(inner) => inner,
@@ -106,6 +110,8 @@ impl Certainty {
         }
     }
 
+    /// Returns whether the `Certainty` is `Certain`, regardless of whether
+    /// the specific `DefId` is known (i.e. even if it contains `None`).
     pub fn is_certain(self) -> bool {
         matches!(self, Self::Certain(_))
     }

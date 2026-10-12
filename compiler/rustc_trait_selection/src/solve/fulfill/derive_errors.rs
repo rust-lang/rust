@@ -14,7 +14,6 @@ use rustc_next_trait_solver::solve::{GoalEvaluation, MaybeInfo, SolverDelegateEv
 use rustc_span::{bug, span_bug};
 use tracing::{instrument, trace};
 
-use super::NextSolverAmbiguityError;
 use crate::solve::delegate::SolverDelegate;
 use crate::solve::inspect::{self, InferCtxtProofTreeExt, ProofTreeVisitor};
 use crate::solve::{Certainty, deeply_normalize_for_diagnostics};
@@ -85,24 +84,9 @@ pub(super) fn fulfillment_error_for_no_solution<'tcx>(
 
 pub(super) fn fulfillment_error_for_stalled<'tcx>(
     infcx: &InferCtxt<'tcx>,
-    ambiguity: NextSolverAmbiguityError<'tcx>,
-) -> FulfillmentError<'tcx> {
-    let NextSolverAmbiguityError { root_obligation, code, refine_obligation } = ambiguity;
-
-    let obligation = if refine_obligation {
-        find_best_leaf_obligation(infcx, &root_obligation, true)
-    } else {
-        root_obligation.clone()
-    };
-
-    FulfillmentError { obligation, code, root_obligation }
-}
-
-pub(super) fn try_ambiguity_error_for_stalled<'tcx>(
-    infcx: &InferCtxt<'tcx>,
     root_obligation: PredicateObligation<'tcx>,
-) -> Option<NextSolverAmbiguityError<'tcx>> {
-    let evaluation = infcx.probe(|_| {
+) -> FulfillmentError<'tcx> {
+    let (code, refine_obligation) = infcx.probe(|_| {
         match <&SolverDelegate<'tcx>>::from(infcx).evaluate_root_goal(
             root_obligation.as_goal(),
             root_obligation.cause.span,
@@ -116,7 +100,7 @@ pub(super) fn try_ambiguity_error_for_stalled<'tcx>(
                         stalled_on_coroutines: _,
                     }),
                 ..
-            }) => Some((FulfillmentErrorCode::Ambiguity { overflow: None }, true)),
+            }) => (FulfillmentErrorCode::Ambiguity { overflow: None }, true),
             Ok(GoalEvaluation {
                 certainty:
                     Certainty::Maybe(MaybeInfo {
@@ -126,7 +110,7 @@ pub(super) fn try_ambiguity_error_for_stalled<'tcx>(
                         stalled_on_coroutines: _,
                     }),
                 ..
-            }) => Some((
+            }) => (
                 FulfillmentErrorCode::Ambiguity { overflow: Some(suggest_increasing_limit) },
                 // Don't look into overflows because we treat overflows weirdly anyways.
                 // We discard the inference constraints from overflowing goals, so
@@ -135,17 +119,13 @@ pub(super) fn try_ambiguity_error_for_stalled<'tcx>(
                 //
                 // FIXME: We should probably just look into overflows here.
                 false,
-            )),
+            ),
             Ok(GoalEvaluation { certainty: Certainty::Yes, .. }) => {
-                infcx.dcx().span_delayed_bug(
-                    root_obligation.cause.span,
-                    format!(
-                        "did not expect successful goal when collecting ambiguity errors for `{:?}`",
-                        infcx.deeply_resolve_ignoring_regions(root_obligation.predicate),
-                    ),
-                );
-                None
-            },
+                // FIXME: We should ICE here. See the following links for details
+                // - <https://rust-lang.zulipchat.com/#narrow/channel/144729-t-types/topic/resolving.20equal.20regions/near/623484902>
+                // - <https://github.com/rust-lang/rust/issues/161669>
+                (FulfillmentErrorCode::Ambiguity { overflow: None }, false)
+            }
             Err(_) => {
                 span_bug!(
                     root_obligation.cause.span,
@@ -156,9 +136,15 @@ pub(super) fn try_ambiguity_error_for_stalled<'tcx>(
         }
     });
 
-    let (code, refine_obligation) = evaluation?;
-
-    Some(NextSolverAmbiguityError { root_obligation, code, refine_obligation })
+    FulfillmentError {
+        obligation: if refine_obligation {
+            find_best_leaf_obligation(infcx, &root_obligation, true)
+        } else {
+            root_obligation.clone()
+        },
+        code,
+        root_obligation,
+    }
 }
 
 #[instrument(level = "debug", skip(infcx), ret)]
@@ -228,20 +214,16 @@ impl<'tcx> BestObligation<'tcx> {
                 // We always handle rigid alias candidates separately as we may not add them for
                 // aliases whose trait bound doesn't hold.
                 candidates.retain(|c| !matches!(c.kind(), inspect::ProbeKind::RigidAlias { .. }));
-                // If we have >1 candidate, one may still be due to "boring" reasons, like
-                // an alias-relate that failed to hold when deeply evaluated. We really
-                // don't care about reasons like this.
+                // If there are multiple candidates, we can still recurse into a single one if all
+                // others fail due to boring reasons. Currently that's if we fail to normalize
+                // while considering the candidate.
                 if candidates.len() > 1 {
                     candidates.retain(|candidate| {
                         goal.infcx().probe(|_| {
-                            candidate.instantiate_nested_goals(self.span()).iter().any(
+                            !candidate.instantiate_nested_goals(self.span()).iter().any(
                                 |nested_goal| {
-                                    matches!(
-                                        nested_goal.source(),
-                                        GoalSource::ImplWhereBound
-                                            | GoalSource::AliasBoundConstCondition
-                                            | GoalSource::AliasWellFormed
-                                    ) && nested_goal.result().is_err()
+                                    nested_goal.source() == GoalSource::Normalization
+                                        && nested_goal.result().is_err()
                                 },
                             )
                         })
@@ -510,7 +492,7 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
             match (child_mode, nested_goal.source()) {
                 (
                     ChildMode::Trait(_) | ChildMode::Host(_),
-                    GoalSource::Misc | GoalSource::TypeRelating | GoalSource::NormalizeGoal(_),
+                    GoalSource::Misc | GoalSource::Normalization,
                 ) => {
                     continue;
                 }

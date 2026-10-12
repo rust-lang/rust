@@ -5,7 +5,7 @@
 use std::cmp::Ordering;
 use std::hash::Hash;
 
-use rustc_data_structures::fx::{FxIndexMap, IndexEntry};
+use rustc_data_structures::fx::{FxIndexMap, IndexEntry, default};
 use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 use rustc_hir::def::DefKind;
 use rustc_hir::{ItemKind, Node, UseKind, UseTree};
@@ -277,9 +277,9 @@ impl<Id: Eq + Hash> EffectiveVisibilities<Id> {
     }
 }
 
-impl<Id> Default for EffectiveVisibilities<Id> {
+const impl<Id> Default for EffectiveVisibilities<Id> {
     fn default() -> Self {
-        EffectiveVisibilities { map: Default::default() }
+        EffectiveVisibilities { map: default::fx_index_map() }
     }
 }
 

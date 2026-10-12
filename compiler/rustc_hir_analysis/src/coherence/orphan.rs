@@ -321,7 +321,7 @@ fn orphan_check<'tcx>(
     // (1)  Instantiate all generic params with fresh inference vars.
     let infcx = tcx
         .infer_ctxt()
-        .with_next_trait_solver(tcx.next_trait_solver_in_coherence())
+        .with_next_trait_solver(true)
         .enable_next_solver_overflow_fcw(false)
         .build(TypingMode::Coherence);
     let cause = traits::ObligationCause::dummy();

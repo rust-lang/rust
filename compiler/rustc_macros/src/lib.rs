@@ -3,7 +3,6 @@
     rustc::default_hash_types,
     reason = "we like performance but can't use `rustc_data_structures`"
 )]
-#![cfg_attr(bootstrap, feature(never_type))]
 #![deny(
     rustc::potential_query_instability,
     reason = "macros shall produce deterministic output/errors"

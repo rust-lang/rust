@@ -169,6 +169,9 @@ dashmap = { version = "=6.2.1", features = ["raw-api", "inline"] }
 # libraries publish
 unicode-ident = "=1.0.24"
 
+[workspace.lints.cargo]
+unused_dependencies = "allow"
+
 [workspace.lints.rust]
 # remember to update RUSTFLAGS in ci.yml if you add something here
 

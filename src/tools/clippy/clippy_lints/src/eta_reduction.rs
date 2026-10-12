@@ -100,7 +100,7 @@ fn check_closure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tcx
 
     if body.value.span.from_expansion() {
         if body.params.is_empty()
-            && let Some(VecArgs::Vec(&[])) = VecArgs::hir(cx, body.value)
+            && let Some(VecArgs::Vec(&[])) = VecArgs::hir(cx, &body.value)
         {
             let vec_crate = if is_no_std_crate(cx) { "alloc" } else { "std" };
             // replace `|| vec![]` with `Vec::new`
@@ -124,7 +124,7 @@ fn check_closure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tcx
         return;
     }
 
-    if is_adjusted(cx, body.value) {
+    if is_adjusted(cx, &body.value) {
         return;
     }
 
@@ -170,7 +170,7 @@ fn check_closure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tcx
                 _ => {
                     if typeck.type_dependent_def_id(body.value.hir_id).is_some()
                         && let subs = typeck.node_args(body.value.hir_id)
-                        && let output = typeck.expr_ty(body.value)
+                        && let output = typeck.expr_ty(&body.value)
                         && let ty::Tuple(tys) = *subs.type_at(1).kind()
                     {
                         cx.tcx.mk_fn_sig_safe_rust_abi(tys, output)

@@ -3,7 +3,6 @@ use std::{fmt, iter, mem};
 use itertools::Itertools;
 use rustc_abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
 use rustc_attr_ir::lang_items::LangItem;
-use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir::{CoroutineDesugaring, CoroutineKind};
 use rustc_index::Idx;
 use rustc_middle::mir::*;
@@ -263,20 +262,20 @@ where
         let succ_with_dead = self.new_block_with_statements(
             unwind,
             vec![self.storage_dead(fut)],
-            TerminatorKind::Goto { target: succ },
+            TerminatorKind::goto(succ),
         );
         let dropline_with_dead = dropline.map(|target| {
             self.new_block_with_statements(
                 unwind,
                 vec![self.storage_dead(fut)],
-                TerminatorKind::Goto { target },
+                TerminatorKind::goto(target),
             )
         });
         let unwind_with_dead = unwind.map(|target| {
             self.new_block_with_statements(
                 Unwind::InCleanup,
                 vec![self.storage_dead(fut)],
-                TerminatorKind::Goto { target },
+                TerminatorKind::goto(target),
             )
         });
 
@@ -322,12 +321,8 @@ where
             dropline_with_dead.unwrap_or(succ_with_dead),
             unwind_with_dead,
         );
-        self.elaborator
-            .patch()
-            .patch_terminator(drop_resume_bb, TerminatorKind::Goto { target: panic_bb });
-        self.elaborator
-            .patch()
-            .patch_terminator(drop_drop_bb, TerminatorKind::Goto { target: drop_pin_bb });
+        self.elaborator.patch().patch_terminator(drop_resume_bb, TerminatorKind::goto(panic_bb));
+        self.elaborator.patch().patch_terminator(drop_drop_bb, TerminatorKind::goto(drop_pin_bb));
 
         // If we are in the regular code path, `dropline_with_dead` is `Some`.
         //
@@ -344,12 +339,8 @@ where
                 succ_with_dead,
                 unwind_with_dead,
             );
-            self.elaborator
-                .patch()
-                .patch_terminator(resume_bb, TerminatorKind::Goto { target: pin_bb });
-            self.elaborator
-                .patch()
-                .patch_terminator(drop_bb, TerminatorKind::Goto { target: drop_pin_bb });
+            self.elaborator.patch().patch_terminator(resume_bb, TerminatorKind::goto(pin_bb));
+            self.elaborator.patch().patch_terminator(drop_bb, TerminatorKind::goto(drop_pin_bb));
             pin_bb
         } else {
             // We were already in the drop line, so return the loop we created for it.
@@ -654,9 +645,7 @@ where
                 self.dropline,
                 false,
             );
-            self.elaborator
-                .patch()
-                .patch_terminator(bb, TerminatorKind::Goto { target: async_drop_bb });
+            self.elaborator.patch().patch_terminator(bb, TerminatorKind::goto(async_drop_bb));
         } else {
             self.elaborator.patch().patch_terminator(
                 bb,
@@ -745,24 +734,18 @@ where
     fn elaborate_drop(&mut self, bb: BasicBlock) {
         match self.elaborator.drop_style(self.path, DropFlagMode::Deep) {
             DropStyle::Dead => {
-                self.elaborator
-                    .patch()
-                    .patch_terminator(bb, TerminatorKind::Goto { target: self.succ });
+                self.elaborator.patch().patch_terminator(bb, TerminatorKind::goto(self.succ));
             }
             DropStyle::Static => {
                 self.build_drop(bb);
             }
             DropStyle::Conditional => {
                 let drop_bb = self.complete_drop(self.succ, self.unwind);
-                self.elaborator
-                    .patch()
-                    .patch_terminator(bb, TerminatorKind::Goto { target: drop_bb });
+                self.elaborator.patch().patch_terminator(bb, TerminatorKind::goto(drop_bb));
             }
             DropStyle::Open => {
                 let drop_bb = self.open_drop();
-                self.elaborator
-                    .patch()
-                    .patch_terminator(bb, TerminatorKind::Goto { target: drop_bb });
+                self.elaborator.patch().patch_terminator(bb, TerminatorKind::goto(drop_bb));
             }
         }
     }
@@ -1023,7 +1006,7 @@ where
                 Place::from(ptr_local),
                 Rvalue::Cast(CastKind::Transmute, Operand::Copy(nonnull_place), ptr_ty),
             )],
-            TerminatorKind::Goto { target: do_drop_bb },
+            TerminatorKind::goto(do_drop_bb),
         )
     }
 
@@ -1335,7 +1318,7 @@ where
                 self.build_async_drop(place, ety, loop_block, unwind, dropline, false);
             self.elaborator
                 .patch()
-                .patch_terminator(drop_block, TerminatorKind::Goto { target: async_drop_bb });
+                .patch_terminator(drop_block, TerminatorKind::goto(async_drop_bb));
         } else {
             self.elaborator.patch().patch_terminator(
                 drop_block,
@@ -1449,7 +1432,7 @@ where
                     ),
                 ),
             ],
-            TerminatorKind::Goto { target: slice_block },
+            TerminatorKind::goto(slice_block),
         )
     }
 
@@ -1491,7 +1474,7 @@ where
                 ),
                 self.assign(cur.into(), Rvalue::Use(zero, WithRetag::Yes)),
             ],
-            TerminatorKind::Goto { target: loop_block },
+            TerminatorKind::goto(loop_block),
         );
 
         // FIXME(#34708): handle partially-dropped array/slice elements.
@@ -1577,7 +1560,7 @@ where
         if statements.is_empty() {
             return succ;
         }
-        self.new_block_with_statements(unwind, statements, TerminatorKind::Goto { target: succ })
+        self.new_block_with_statements(unwind, statements, TerminatorKind::goto(succ))
     }
 
     #[instrument(level = "debug", skip(self), ret)]
@@ -1641,11 +1624,7 @@ where
     #[instrument(level = "trace", skip(self), ret)]
     fn new_block(&mut self, unwind: Unwind, k: TerminatorKind<'tcx>) -> BasicBlock {
         self.elaborator.patch().new_block(BasicBlockData::new(
-            Some(Terminator {
-                source_info: self.source_info,
-                kind: k,
-                loop_hint_attrs: ThinVec::new(),
-            }),
+            Some(Terminator { source_info: self.source_info, kind: k }),
             unwind.is_cleanup(),
         ))
     }
@@ -1659,11 +1638,7 @@ where
     ) -> BasicBlock {
         self.elaborator.patch().new_block(BasicBlockData::new_stmts(
             statements,
-            Some(Terminator {
-                source_info: self.source_info,
-                kind: k,
-                loop_hint_attrs: ThinVec::new(),
-            }),
+            Some(Terminator { source_info: self.source_info, kind: k }),
             unwind.is_cleanup(),
         ))
     }

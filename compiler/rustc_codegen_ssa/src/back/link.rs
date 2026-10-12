@@ -44,7 +44,7 @@ use rustc_span::{Symbol, bug};
 use rustc_structures::{CrateType, NativeLibKind};
 use rustc_target::spec::crt_objects::CrtObjects;
 use rustc_target::spec::{
-    Arch, BinaryFormat, Cc, CfgAbi, Env, LinkOutputKind, LinkSelfContainedComponents,
+    BinaryFormat, Cc, CfgAbi, Env, LinkOutputKind, LinkSelfContainedComponents,
     LinkSelfContainedDefault, LinkerFeatures, LinkerFlavor, LinkerFlavorCli, Lld, Os, RelocModel,
     RelroLevel, SanitizerSet, SplitDebuginfo,
 };
@@ -58,7 +58,7 @@ use super::linker::{self, Linker};
 use super::metadata::{MetadataPosition, create_wrapper_file};
 use super::rmeta_link::RmetaLinkCache;
 use super::rpath::{self, RPathConfig};
-use super::{apple, rmeta_link, versioned_llvm_target};
+use super::{apple, rmeta_link, symbol_export, versioned_llvm_target};
 use crate::base::needs_allocator_shim_for_linking;
 use crate::{
     CodegenLintLevelSpecs, CompiledModule, CompiledModules, CrateInfo, NativeLib, SymbolExport,
@@ -2759,10 +2759,6 @@ fn add_rpath_args(
     }
 }
 
-fn strip_numeric_suffix<'a>(base: &'a str, suffix: impl AsRef<str>, fallback: &'a str) -> &'a str {
-    if suffix.as_ref().parse::<u32>().is_ok() { base } else { fallback }
-}
-
 fn undecorate_c_symbol<'a>(
     name: &'a str,
     sess: &Session,
@@ -2775,47 +2771,11 @@ fn undecorate_c_symbol<'a>(
             name.strip_prefix('_')
         }
         BinaryFormat::Coff => {
-            // MSVC C++ mangled names start with '?' and use a completely different
-            // decorating scheme that includes '@@' as structural delimiters.
-            // They must not be subjected to C calling-convention undecoration.
-            if name.starts_with('?') {
-                return Some(name);
+            // COFF undecoration is shared with `symbol_edit`'s binary-level matching.
+            match symbol_export::coff_machine_for_arch(&sess.target.arch) {
+                Some(machine) => Some(symbol_export::undecorate_coff_symbol(name, machine, kind)),
+                None => Some(name),
             }
-            Some(match sess.target.arch {
-                Arch::X86 => {
-                    // COFF 32-bit: strip calling-convention decorations.
-                    if let Some(rest) = name.strip_prefix('@') {
-                        // fastcall: @foo@N -> foo
-                        rest.rsplit_once('@')
-                            .map(|(base, suffix)| strip_numeric_suffix(base, suffix, name))
-                            .unwrap_or(name)
-                    } else if let Some(stripped) = name.strip_prefix('_') {
-                        if let Some((base, suffix)) = stripped.rsplit_once('@') {
-                            // stdcall: _foo@N -> foo
-                            strip_numeric_suffix(base, suffix, stripped)
-                        } else {
-                            // cdecl: _foo -> foo
-                            stripped
-                        }
-                    } else {
-                        // vectorcall: foo@@N -> foo
-                        name.rsplit_once("@@")
-                            .map(|(base, suffix)| strip_numeric_suffix(base, suffix, name))
-                            .unwrap_or(name)
-                    }
-                }
-                Arch::X86_64 => {
-                    // COFF 64-bit: vectorcall mangling (foo@@N -> foo) also applies on x86_64.
-                    name.rsplit_once("@@")
-                        .map(|(base, suffix)| strip_numeric_suffix(base, suffix, name))
-                        .unwrap_or(name)
-                }
-                Arch::Arm64EC if kind == SymbolExportKind::Text => {
-                    // Arm64EC: `#` prefix distinguishes ARM64EC text symbols from x64 thunks.
-                    name.strip_prefix('#').unwrap_or(name)
-                }
-                _ => name,
-            })
         }
         // ELF: no decoration
         _ => Some(name),

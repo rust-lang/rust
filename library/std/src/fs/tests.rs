@@ -1,6 +1,7 @@
 use rand::RngCore;
 
 use super::Dir;
+use super::dirs::{HomeDirs, MediaDirs};
 use crate::fs::{self, File, FileTimes, OpenOptions, TryLockError, exists};
 use crate::io::prelude::*;
 use crate::io::{BorrowedBuf, ErrorKind, SeekFrom};
@@ -613,12 +614,13 @@ fn set_get_unix_permissions() {
     assert_eq!(mask & metadata1.permissions().mode(), 0o0777);
 }
 
-#[cfg(not(target_os = "android"))]
+/// Test set_permissions_nofollow on a regular file.
 #[test]
 fn set_get_permissions_nofollows() {
     let tmpdir = tmpdir();
     let filename = tmpdir.join("set_get_unix_permissions_file");
     check!(File::create(&filename));
+
     let file_metadata = check!(fs::metadata(&filename));
     assert!(!file_metadata.permissions().readonly());
     let mut permission_bits = file_metadata.permissions();
@@ -648,12 +650,8 @@ fn set_get_permissions_nofollows() {
     }
 }
 
-// Only Windows and Unix support `fs::set_permissions_nofollow`
+/// Test set_permissions_nofollow on a symlink.
 #[test]
-#[cfg(all(
-    any(windows, unix),
-    not(any(target_os = "espidf", target_os = "horizon", target_os = "wasi"))
-))]
 fn set_get_permissions_nofollows_symlink() {
     let tmpdir = tmpdir();
     let filename = tmpdir.join("set_get_unix_permissions_file");
@@ -662,14 +660,20 @@ fn set_get_permissions_nofollows_symlink() {
     check!(symlink_file(&filename, &symlink_name));
 
     let init_symlink_metadata = check!(fs::symlink_metadata(&symlink_name));
-    let mut init_symlink_permissions = init_symlink_metadata.permissions();
-
+    assert!(!init_symlink_metadata.permissions().readonly());
     let init_target_metadata = check!(fs::metadata(&symlink_name));
-    let init_target_permissions = init_target_metadata.permissions();
+    assert!(!init_target_metadata.permissions().readonly());
 
     // Set symlink permissions to readonly
-    init_symlink_permissions.set_readonly(true);
-    let result = fs::set_permissions_nofollow(&symlink_name, init_symlink_permissions);
+    let result = fs::set_permissions_nofollow(&symlink_name, {
+        let mut permissions = init_symlink_metadata.permissions();
+        permissions.set_readonly(true);
+        permissions
+    });
+
+    // This should not change the permissions of the target!
+    let after_target_metadata = check!(fs::metadata(&symlink_name));
+    assert_eq!(after_target_metadata.permissions(), init_target_metadata.permissions());
 
     cfg_select! {
         any(
@@ -682,16 +686,11 @@ fn set_get_permissions_nofollows_symlink() {
             target_os = "nto",
             target_os = "qnx"
         ) => {
-            assert_eq!(result.unwrap(), ());
-
-            let after_target_metadata = check!(fs::metadata(&symlink_name));
-            // We should expect the target file to not have its permission bits
-            // changed
-            assert_eq!(after_target_metadata.permissions(), init_target_permissions);
-
-            let after_symlink_metadata = check!(fs::symlink_metadata(&symlink_name));
             // On these systems, it's confirmed the symlink itself is marked readonly
             // https://superuser.com/questions/1099634/change-permissions-symbolic-link-mac-os
+            assert_eq!(result.unwrap(), ());
+
+            let after_symlink_metadata = check!(fs::symlink_metadata(&symlink_name));
             assert!(after_symlink_metadata.permissions().readonly());
 
             // Reset the read-only bit under Windows 7: avoids the
@@ -705,11 +704,7 @@ fn set_get_permissions_nofollows_symlink() {
             }
         }
         _ => {
-            let after_target_metadata = check!(fs::metadata(&symlink_name));
-            // We should expect the target file to not have its permission bits
-            // changed
-            assert_eq!(after_target_metadata.permissions(), init_target_permissions);
-
+            // Everywhere else, this just fails.
             let error_kind = result.unwrap_err().kind();
             assert_eq!(error_kind, crate::io::ErrorKind::Unsupported);
         }
@@ -1299,10 +1294,6 @@ fn recursive_mkdir_empty() {
 }
 
 #[test]
-#[cfg_attr(
-    all(windows, target_arch = "aarch64"),
-    ignore = "SymLinks not enabled on Arm64 Windows runners https://github.com/actions/partner-runner-images/issues/94"
-)]
 fn recursive_rmdir() {
     let tmpdir = tmpdir();
     let d1 = tmpdir.join("d1");
@@ -1314,7 +1305,9 @@ fn recursive_rmdir() {
     check!(fs::create_dir_all(&d2));
     check!(check!(File::create(&canary)).write(b"foo"));
     check!(junction_point(&d2, &dt.join("d2")));
-    let _ = symlink_file(&canary, &d1.join("canary"));
+    if got_symlink_permission(&tmpdir) {
+        let _ = symlink_file(&canary, &d1.join("canary"));
+    }
     check!(fs::remove_dir_all(&d1));
 
     assert!(!d1.is_dir());
@@ -1322,10 +1315,6 @@ fn recursive_rmdir() {
 }
 
 #[test]
-#[cfg_attr(
-    all(windows, target_arch = "aarch64"),
-    ignore = "SymLinks not enabled on Arm64 Windows runners https://github.com/actions/partner-runner-images/issues/94"
-)]
 fn recursive_rmdir_of_symlink() {
     // test we do not recursively delete a symlink but only dirs.
     let tmpdir = tmpdir();
@@ -2141,10 +2130,6 @@ fn file_open_not_found() {
 }
 
 #[test]
-#[cfg_attr(
-    all(windows, target_arch = "aarch64"),
-    ignore = "SymLinks not enabled on Arm64 Windows runners https://github.com/actions/partner-runner-images/issues/94"
-)]
 fn create_dir_all_with_junctions() {
     let tmpdir = tmpdir();
     let target = tmpdir.join("target");
@@ -2681,10 +2666,6 @@ fn test_rename_symlink() {
 
 #[test]
 #[cfg(windows)]
-#[cfg_attr(
-    all(windows, target_arch = "aarch64"),
-    ignore = "SymLinks not enabled on Arm64 Windows runners https://github.com/actions/partner-runner-images/issues/94"
-)]
 fn test_rename_junction() {
     let tmpdir = tmpdir();
     let original = tmpdir.join("original");
@@ -3165,4 +3146,66 @@ fn test_dir_metadata() {
     let metadata = check!(dir.symlink_metadata("link"));
     assert!(!metadata.is_file());
     assert!(metadata.is_symlink());
+}
+
+fn root_test_dir(what: &str) -> PathBuf {
+    crate::env::current_dir().unwrap().ancestors().last().unwrap().join(what)
+}
+
+#[test]
+fn test_home_dirs_field_hookup_matches() {
+    let mut dirs = HomeDirs::empty();
+
+    assert_eq!(dirs.config_home(), None);
+    assert_eq!(dirs.data_home(), None);
+    assert_eq!(dirs.state_home(), None);
+    assert_eq!(dirs.cache_home(), None);
+
+    let config = root_test_dir("config");
+    let data = root_test_dir("data");
+    let state = root_test_dir("state");
+    let cache = root_test_dir("cache");
+
+    dirs.set_config_home(config.clone());
+    dirs.set_data_home(data.clone());
+    dirs.set_state_home(state.clone());
+    dirs.set_cache_home(cache.clone());
+
+    assert_eq!(dirs.config_home(), Some(config.as_ref()));
+    assert_eq!(dirs.data_home(), Some(data.as_ref()));
+    assert_eq!(dirs.state_home(), Some(state.as_ref()));
+    assert_eq!(dirs.cache_home(), Some(cache.as_ref()));
+}
+
+#[test]
+fn test_media_dirs_field_hookup_matches() {
+    let mut dirs = MediaDirs::empty();
+
+    assert_eq!(dirs.desktop(), None);
+    assert_eq!(dirs.documents(), None);
+    assert_eq!(dirs.downloads(), None);
+    assert_eq!(dirs.music(), None);
+    assert_eq!(dirs.pictures(), None);
+    assert_eq!(dirs.videos(), None);
+
+    let desktop = root_test_dir("desktop");
+    let documents = root_test_dir("documents");
+    let downloads = root_test_dir("downloads");
+    let music = root_test_dir("music");
+    let pictures = root_test_dir("pictures");
+    let videos = root_test_dir("videos");
+
+    dirs.set_desktop(desktop.clone());
+    dirs.set_documents(documents.clone());
+    dirs.set_downloads(downloads.clone());
+    dirs.set_music(music.clone());
+    dirs.set_pictures(pictures.clone());
+    dirs.set_videos(videos.clone());
+
+    assert_eq!(dirs.desktop(), Some(desktop.as_ref()));
+    assert_eq!(dirs.documents(), Some(documents.as_ref()));
+    assert_eq!(dirs.downloads(), Some(downloads.as_ref()));
+    assert_eq!(dirs.music(), Some(music.as_ref()));
+    assert_eq!(dirs.pictures(), Some(pictures.as_ref()));
+    assert_eq!(dirs.videos(), Some(videos.as_ref()));
 }

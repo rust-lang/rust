@@ -25,7 +25,7 @@ declare_clippy_lint! {
     /// let x: u32 = 5;
     /// let bit_width = x.bit_width();
     /// ```
-    #[clippy::version = "1.98.0"]
+    #[clippy::version = "1.99.0"]
     pub MANUAL_BIT_WIDTH,
     pedantic,
     "manually reimplementing `bit_width`"
@@ -49,7 +49,7 @@ declare_clippy_lint! {
     /// let x: u64 = 5;
     /// let bit_width = x.bit_width();
     /// ```
-    #[clippy::version = "1.98.0"]
+    #[clippy::version = "1.99.0"]
     pub MISMATCHED_BIT_WIDTH_TYPE,
     suspicious,
     "type mismatch in bit width calculation"

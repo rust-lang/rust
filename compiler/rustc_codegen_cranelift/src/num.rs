@@ -1,5 +1,7 @@
 //! Various operations on integer and floating-point numbers
 
+use rustc_middle::ty::layout::HasTypingEnv as _;
+
 use crate::codegen_f16_f128;
 use crate::prelude::*;
 
@@ -437,7 +439,7 @@ fn codegen_ptr_binop<'tcx>(
         .layout()
         .ty
         .builtin_deref(true)
-        .map(|ty| !fx.tcx.type_has_metadata(ty, ty::TypingEnv::fully_monomorphized()))
+        .map(|ty| !fx.tcx.type_has_metadata(ty, fx.typing_env()))
         .unwrap_or(true);
 
     if is_thin_ptr {

@@ -1427,6 +1427,10 @@ pub enum Float {
     F32,
     F64,
     F128,
+    /// `ppcf128`. This is not a builtin type in Rust (it is exposed as a lang item),
+    /// but it is a builtin type in LLVM so needs to be explicitly represented
+    /// in the backend.
+    PpcF128,
 }
 
 impl Float {
@@ -1439,6 +1443,7 @@ impl Float {
             F32 => Size::from_bits(32),
             F64 => Size::from_bits(64),
             F128 => Size::from_bits(128),
+            PpcF128 => Size::from_bits(128),
         }
     }
 
@@ -1451,6 +1456,7 @@ impl Float {
             F32 => dl.f32_align,
             F64 => dl.f64_align,
             F128 => dl.f128_align,
+            PpcF128 => dl.f128_align,
         })
     }
 
@@ -1463,6 +1469,7 @@ impl Float {
             F32 => "f32",
             F64 => "f64",
             F128 => "f128",
+            PpcF128 => "ppcf128",
         }
     }
 }
@@ -1487,7 +1494,10 @@ impl Numeric {
     pub fn reg_kind(self) -> RegKind {
         match self {
             Numeric::Int(_, _) => RegKind::Integer,
-            Numeric::Float(_) => RegKind::Float,
+            Numeric::Float(Float::PpcF128) => RegKind::PpcF128,
+            Numeric::Float(Float::F16 | Float::F16B | Float::F32 | Float::F64 | Float::F128) => {
+                RegKind::Float
+            }
         }
     }
 }
@@ -2254,6 +2264,13 @@ pub struct LayoutData<FieldIdx: Idx, VariantIdx: Idx> {
     /// alignment in some cases.
     pub unadjusted_abi_align: Align,
 
+    /// Whether this type is `repr(C)`, or a `repr(transparent)` wrapper around such,
+    /// or an array of such.
+    /// This matters because we must follow the C ABI for these types.
+    /// Some C ABIs pass `repr(C)` ZSTs by pointer, but `repr(Rust)` ZSTs should always
+    /// be ignored.
+    pub repr_c: bool,
+
     /// The randomization seed based on this type's own repr and its fields.
     ///
     /// Since randomization is toggled on a per-crate basis even crates that do not have randomization
@@ -2293,6 +2310,12 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
             }
         }
     }
+
+    /// Returns `true` if this is a `repr(C)` type,
+    /// or an array of such, or a `repr(transparent)` wrapper around such
+    pub fn is_repr_c(&self) -> bool {
+        self.repr_c
+    }
 }
 
 impl<FieldIdx: Idx, VariantIdx: Idx> fmt::Debug for LayoutData<FieldIdx, VariantIdx>
@@ -2314,6 +2337,7 @@ where
             variants,
             max_repr_align,
             unadjusted_abi_align,
+            repr_c,
             randomization_seed,
         } = self;
         f.debug_struct("Layout")
@@ -2326,6 +2350,7 @@ where
             .field("variants", variants)
             .field("max_repr_align", max_repr_align)
             .field("unadjusted_abi_align", unadjusted_abi_align)
+            .field("repr_c", repr_c)
             .field("randomization_seed", randomization_seed)
             .finish()
     }
@@ -2354,9 +2379,12 @@ pub struct PointeeInfo {
     /// If `size` is not zero, then the pointer is either null or dereferenceable for this many bytes
     /// (independent of `safe`).
     ///
-    /// On a function argument, "dereferenceable" here means "dereferenceable for the entire duration
-    /// of this function call", i.e. it is UB for the memory that this pointer points to be freed
-    /// while this function is still running.
+    /// "Dereferenceable" means that it's sound to add a speculative (spurious) read of the pointer.
+    /// The backend is free to add such reads at will. (This is useful to hoist pointer reads out of
+    /// loops without proving that the loop executes at least once, for example.)
+    ///
+    /// This can be used in both argument and return position, in both cases it means
+    /// "dereferenceable right now" (function entry/return) (but could be freed any time later).
     pub size: Size,
     /// The pointer is guaranteed to be aligned this much (independent of `safe`).
     pub align: Align,
@@ -2428,8 +2456,8 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
     /// Checks if these two `Layout` are equal enough to be considered "the same for all function
     /// call ABIs". Note however that real ABIs depend on more details that are not reflected in the
     /// `Layout`; the `PassMode` need to be compared as well. Also note that we assume
-    /// aggregates are passed via `PassMode::Indirect` or `PassMode::Cast`; more strict
-    /// checks would otherwise be required.
+    /// aggregates are passed via `PassMode::Indirect`, `PassMode::IndirectUnsized` or
+    /// `PassMode::Cast`; more strict checks would otherwise be required.
     pub fn eq_abi(&self, other: &Self) -> bool {
         // The one thing that we are not capturing here is that for unsized types, the metadata must
         // also have the same ABI, and moreover that the same metadata leads to the same size. The

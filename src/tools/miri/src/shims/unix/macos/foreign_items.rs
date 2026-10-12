@@ -62,7 +62,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "fstat$INODE64" => {
                 let [fd, buf] =
                     this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
-                let result = this.fstat(fd, buf)?;
+                let result = this.fstat(fd, buf, "stat")?;
+                this.write_scalar(result, dest)?;
+            }
+            "fstatat$INODE64" => {
+                let [dirfd, path, buf, flags] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, *_, *_, i32) -> i32),
+                    (link_name, abi, args),
+                )?;
+                let result = this.fstatat(dirfd, path, buf, flags)?;
                 this.write_scalar(result, dest)?;
             }
             "opendir$INODE64" => {
@@ -72,7 +80,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "readdir$INODE64" => {
                 let [dirp] = this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
-                this.readdir(dirp, dest)?;
+                this.readdir(dirp, dest, "dirent")?;
             }
             "realpath$DARWIN_EXTSN" => {
                 let [path, resolved_path] =
@@ -142,9 +150,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let buf_ptr = this.read_pointer(buf)?;
                 let bufsize = this.deref_pointer_as(bufsize, this.machine.layouts.u32)?;
 
-                // Using the host current_exe is a bit off, but consistent with Linux
-                // (where stdlib reads /proc/self/exe).
-                let path = std::env::current_exe().unwrap();
+                let Some(path) = this.machine.current_exe.clone() else {
+                    throw_unsup_format!(
+                        "_NSGetExecutablePath only works when Miri is run on a file"
+                    )
+                };
                 let (written, size_needed) = this.write_path_to_c_str(
                     &path,
                     buf_ptr,

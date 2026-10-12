@@ -732,7 +732,7 @@ mod impls {
         bool char
     }
 
-    #[stable(feature = "never_type", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "never_type", since = "1.100.0")]
     #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
     const impl Clone for ! {
         #[inline]

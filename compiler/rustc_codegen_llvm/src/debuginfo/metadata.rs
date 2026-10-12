@@ -32,7 +32,7 @@ use super::CodegenUnitDebugContext;
 use super::namespace::mangled_name_of_instance;
 use super::type_names::{compute_debuginfo_type_name, compute_debuginfo_vtable_name};
 use super::utils::{DIB, debug_context, get_namespace_for_item, is_node_local_to_unit};
-use crate::common::{AsCCharPtr, CodegenCx};
+use crate::common::CodegenCx;
 use crate::debuginfo::metadata::type_map::build_type_with_children;
 use crate::debuginfo::utils::{WidePtrKind, create_DIArray, wide_pointer_kind};
 use crate::debuginfo::{DIBuilderExt, dwarf_const};
@@ -651,14 +651,14 @@ fn create_file<'ll>(
     unsafe {
         llvm::LLVMRustDIBuilderCreateFile(
             builder,
-            file_name.as_c_char_ptr(),
+            file_name.as_ptr(),
             file_name.len(),
-            directory.as_c_char_ptr(),
+            directory.as_ptr(),
             directory.len(),
             hash_kind,
-            hash_value.as_c_char_ptr(),
+            hash_value.as_ptr(),
             hash_value.len(),
-            source.map_or(ptr::null(), |x| x.as_c_char_ptr()),
+            source.map_or(ptr::null(), |x| x.as_ptr()),
             source.map_or(0, |x| x.len()),
         )
     }
@@ -949,20 +949,21 @@ pub(crate) fn build_compile_unit_di_node<'ll, 'tcx>(
             llvm::ChecksumKind::None,
             None,
         );
+        let flags = c"";
 
         let unit_metadata = llvm::LLVMRustDIBuilderCreateCompileUnit(
             debug_context.builder.as_ref(),
             dwarf_const::DW_LANG_Rust,
             compile_unit_file,
-            producer.as_c_char_ptr(),
+            producer.as_ptr(),
             producer.len(),
             tcx.sess.opts.optimize != config::OptLevel::No,
-            c"".as_ptr(),
+            flags.as_ptr(),
             0,
             // NB: this doesn't actually have any perceptible effect, it seems. LLVM will instead
             // put the path supplied to `MCSplitDwarfFile` into the debug info of the final
             // output(s).
-            split_name.as_c_char_ptr(),
+            split_name.as_ptr(),
             split_name.len(),
             kind,
             0,

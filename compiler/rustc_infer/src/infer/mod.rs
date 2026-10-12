@@ -307,6 +307,11 @@ pub struct InferCtxt<'tcx> {
     pub reported_trait_errors:
         RefCell<FxIndexMap<Span, (Vec<Goal<'tcx, ty::Predicate<'tcx>>>, ErrorGuaranteed)>>,
 
+    /// A set of predicates *on a specific* HIR node (the originating expression and its enclosing
+    /// statement), to avoid reporting multiple errors pointing at different sub-expressions in the
+    /// same method chain.
+    pub reported_hir_errors: RefCell<FxIndexMap<HirId, FxHashSet<ty::Predicate<'tcx>>>>,
+
     pub reported_signature_mismatch: RefCell<FxHashSet<(Span, Option<Span>)>>,
 
     /// When an error occurs, we want to avoid reporting "derived"
@@ -463,7 +468,7 @@ pub enum SubregionOrigin<'tcx> {
         trait_item_def_id: DefId,
     },
 
-    AscribeUserTypeProvePredicate(Span),
+    AscribeUserTypeProvePredicate(Span, DefId),
 
     // FIXME(-Zassumptions-on-binders): this is a temporary hack until we support
     // proper diagnostics for solver region constraints.
@@ -478,7 +483,9 @@ impl<'tcx> SubregionOrigin<'tcx> {
     pub fn to_constraint_category(&self) -> ConstraintCategory<'tcx> {
         match self {
             Self::Subtype(type_trace) => type_trace.cause.to_constraint_category(),
-            Self::AscribeUserTypeProvePredicate(span) => ConstraintCategory::Predicate(*span),
+            Self::AscribeUserTypeProvePredicate(span, def_id) => {
+                ConstraintCategory::Predicate(*span, *def_id)
+            }
             Self::SolverRegionConstraint(span) => ConstraintCategory::SolverRegionConstraint(*span),
             _ => ConstraintCategory::BoringNoLocation,
         }
@@ -687,6 +694,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
             selection_cache: Default::default(),
             evaluation_cache: Default::default(),
             reported_trait_errors: Default::default(),
+            reported_hir_errors: Default::default(),
             reported_signature_mismatch: Default::default(),
             tainted_by_errors: Cell::new(None),
             universe: Cell::new(ty::UniverseIndex::ROOT),
@@ -1840,7 +1848,7 @@ impl<'tcx> SubregionOrigin<'tcx> {
             SubregionOrigin::Reborrow(a) => a,
             SubregionOrigin::ReferenceOutlivesReferent(_, a) => a,
             SubregionOrigin::CompareImplItemObligation { span, .. } => span,
-            SubregionOrigin::AscribeUserTypeProvePredicate(span) => span,
+            SubregionOrigin::AscribeUserTypeProvePredicate(span, _) => span,
             SubregionOrigin::CheckAssociatedTypeBounds { ref parent, .. } => parent.span(),
             SubregionOrigin::SolverRegionConstraint(a) => a,
         }
@@ -1874,8 +1882,8 @@ impl<'tcx> SubregionOrigin<'tcx> {
                 parent: Box::new(default()),
             },
 
-            traits::ObligationCauseCode::AscribeUserTypeProvePredicate(span) => {
-                SubregionOrigin::AscribeUserTypeProvePredicate(span)
+            traits::ObligationCauseCode::AscribeUserTypeProvePredicate(span, def_id) => {
+                SubregionOrigin::AscribeUserTypeProvePredicate(span, def_id)
             }
 
             traits::ObligationCauseCode::ObjectTypeBound(ty, _reg) => {

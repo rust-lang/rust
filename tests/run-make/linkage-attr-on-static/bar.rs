@@ -1,7 +1,7 @@
 #![feature(linkage)]
 
 #[no_mangle]
-#[linkage = "external"]
+#[linkage = "weak"]
 static BAZ: i32 = 21;
 
 #[link(name = "foo", kind = "static")]

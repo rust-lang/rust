@@ -53,7 +53,7 @@ pub(crate) fn thir_body<'tcx>(
         }
     }
 
-    let expr = cx.mirror_expr(body.value);
+    let expr = cx.mirror_expr(&body.value);
     Ok((tcx.alloc_steal_thir(cx.thir), expr))
 }
 

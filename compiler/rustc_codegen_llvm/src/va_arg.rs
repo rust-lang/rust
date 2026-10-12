@@ -96,8 +96,7 @@ fn get_param_type_alignment<'ll, 'tcx>(
             },
             Primitive::Float(float) => match float {
                 Float::F16 | Float::F16B | Float::F32 => unreachable!(),
-                Float::F64 => { /* fall through */ }
-                Float::F128 => return Align::from_bytes(16).unwrap(),
+                Float::F64 | Float::F128 | Float::PpcF128 => { /* fall through */ }
             },
             Primitive::Pointer(_) => { /* fall through */ }
         },
@@ -308,7 +307,7 @@ fn emit_powerpc_va_arg<'ll, 'tcx>(
     let va_list_addr = list.immediate();
 
     // Peel off any newtype wrappers.
-    let layout = layout.peel_transparent_wrappers(bx.cx);
+    let layout = layout.peel_transparent_wrappers_from_non_1zst(bx.cx);
 
     // Rust does not currently support any powerpc softfloat targets.
     let target = &bx.cx.tcx.sess.target;
@@ -471,6 +470,9 @@ fn emit_s390x_va_arg<'ll, 'tcx>(
                 Primitive::Float(Float::F16B) => {
                     bug!("`f16b` use in varadics unsupported on s390x")
                 }
+                Primitive::Float(Float::PpcF128) => {
+                    bug!("`ppcf128` use in varadics unsupported on s390x")
+                }
             },
 
             _ => false,
@@ -561,7 +563,7 @@ fn emit_x86_64_sysv64_va_arg<'ll, 'tcx>(
     // #[repr(C)]
     // struct Foo([Empty; 8], i32);
     // ```
-    let layout = layout.peel_transparent_wrappers(bx.cx);
+    let layout = layout.peel_transparent_wrappers_from_non_1zst(bx.cx);
 
     // AMD64-ABI 3.5.7p5: Step 1. Determine whether type may be passed
     // in the registers. If not go to step 7.

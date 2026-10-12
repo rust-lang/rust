@@ -10,7 +10,6 @@ fn main() {
     let c = |_: Wrapper<()>| {}; //~ ERROR the trait bound `(): Context` is not satisfied
     c(Wrapper { /* missing */ });
     //~^ ERROR the trait bound `(): Context` is not satisfied
-    //~^^ ERROR missing field `container` in initializer of `Wrapper<_>`
-    //~^^^ ERROR the trait bound `(): Context` is not satisfied
-    //~^^^^ ERROR the trait bound `(): Context` is not satisfied
+    //~| ERROR missing field `container` in initializer of `Wrapper<_>`
+    //~| ERROR the trait bound `(): Context` is not satisfied
 }

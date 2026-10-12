@@ -46,7 +46,7 @@ jobs:
   # If you want to modify CI jobs, take a look at src/ci/github-actions/jobs.yml.
   calculate_matrix:
     name: Calculate job matrix
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
     outputs:
       jobs: ${{ steps.jobs.outputs.jobs }}
       run_type: ${{ steps.jobs.outputs.run_type }}
@@ -190,6 +190,15 @@ jobs:
       - name: install ninja
         run: src/ci/scripts/install-ninja.sh
 
+      - name: install required Python version
+        # LLDB on Windows requires the same Python version it was built against to be the first
+        # discoverable Python in $env:PATH. Only install if we're actually running Windows tests
+        # that use LLDB
+        if: ${{ startsWith(matrix.os, 'windows') && matrix.required_python_version}}
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.required_python_version }}
+
       - name: enable ipv6 on Docker
         # Don't run on codebuild because systemctl is not available
         if: ${{ !matrix.codebuild }}
@@ -309,7 +318,7 @@ jobs:
   # This job is used to publish toolstate for successful auto builds.
   outcome:
     name: publish toolstate
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     needs: [ calculate_matrix, job ]
     if: ${{ needs.calculate_matrix.outputs.run_type == 'auto' }}
     environment: ${{ (github.repository == 'rust-lang/rust' && 'bors') || '' }}

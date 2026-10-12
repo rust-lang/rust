@@ -228,7 +228,6 @@ fn prefix_and_suffix<'tcx>(
                 // LTO can fail when internal linkage is used.
                 emit_fatal("naked functions may not have internal linkage")
             }
-            Linkage::Common => emit_fatal("Functions may not have common linkage"),
             Linkage::AvailableExternally => {
                 // this would make the function equal an extern definition
                 emit_fatal("Functions may not have available_externally linkage")
@@ -491,12 +490,14 @@ fn wasm_type<'tcx>(signature: &mut String, arg_abi: &ArgAbi<'_, Ty<'tcx>>, ptr_t
                     ..=8 => "f64",
                     _ => ptr_type,
                 },
+                RegKind::PpcF128 => bug!("not a valid wasm type"),
                 RegKind::Vector { .. } => "v128",
             };
 
             signature.push_str(wrapped_wasm_type);
         }
         PassMode::Indirect { .. } => signature.push_str(ptr_type),
+        PassMode::IndirectUnsized { .. } => bug!("unsized argument to naked asm"),
     }
 }
 
@@ -514,6 +515,7 @@ fn wasm_primitive(primitive: Primitive, ptr_type: &'static str) -> &'static str 
             Float::F16 | Float::F32 => "f32",
             Float::F64 => "f64",
             Float::F128 => "i64, i64",
+            Float::PpcF128 => bug!("`ppcf128` unsupported on wasm"),
         },
         Primitive::Pointer(_) => ptr_type,
     }

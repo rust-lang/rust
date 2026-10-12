@@ -24,7 +24,7 @@ use std::{fmt, iter};
 
 pub(super) fn check_body<'tcx>(
     cx: &LateContext<'tcx>,
-    body: &Body<'tcx>,
+    body: &'tcx Body<'tcx>,
     item_id: OwnerId,
     sig: &FnSig<'tcx>,
     is_trait_item: bool,
@@ -207,7 +207,7 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
         .filter_map(move |(i, (ty, hir_ty))| {
             if let ty::Ref(_, ty, mutability) = *ty.kind()
                 && let  ty::Adt(adt, args) = *ty.kind()
-                && let TyKind::Ref(lt, ref inner_ty, _) = hir_ty.kind
+                && let TyKind::Ref(lt, inner_ty, _) = hir_ty.kind
                 && let TyKind::Path(QPath::Resolved(None, path)) = inner_ty.kind
                 // Check that the name as typed matches the actual name of the type.
                 // e.g. `fn foo(_: &Foo)` shouldn't trigger the lint when `Foo` is an alias for `Vec`
@@ -306,7 +306,7 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
 }
 
 #[expect(clippy::too_many_lines)]
-fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &Body<'tcx>, args: &[PtrArg<'tcx>]) -> Vec<PtrArgResult> {
+fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'tcx>, args: &[PtrArg<'tcx>]) -> Vec<PtrArgResult> {
     struct V<'cx, 'tcx> {
         cx: &'cx LateContext<'tcx>,
         /// Map from a local id to which argument it came from (index into `Self::args` and
@@ -449,7 +449,7 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &Body<'tcx>, args: &[
         results,
         skip_count,
     };
-    v.visit_expr(body.value);
+    v.visit_expr(&body.value);
     v.results
 }
 

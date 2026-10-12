@@ -2,6 +2,7 @@
 // into function arguments via the function's generic parameters
 // FIXME(oli-obk): make `expected_inputs_for_expected_output` support this
 //@ revisions: default next
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 
 #![feature(type_alias_impl_trait)]

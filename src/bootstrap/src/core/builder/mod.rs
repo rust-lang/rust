@@ -926,6 +926,7 @@ impl<'a> Builder<'a> {
                 test::Clippy,
                 test::CompiletestTest,
                 test::StdarchVerify,
+                test::StdarchGenCheck,
                 test::CrateRunMakeSupport,
                 test::CrateBuildHelper,
                 test::RustdocJSStd,
@@ -965,6 +966,7 @@ impl<'a> Builder<'a> {
                 doc::CargoBook,
                 doc::Clippy,
                 doc::ClippyBook,
+                doc::CompilerWithTools,
                 doc::Miri,
                 doc::EmbeddedBook,
                 doc::EditionGuide,
@@ -1119,10 +1121,9 @@ impl<'a> Builder<'a> {
             Subcommand::Run { .. } => (Kind::Run, &paths[..]),
             Subcommand::Clean { .. } => (Kind::Clean, &paths[..]),
             Subcommand::Format { .. } => (Kind::Format, &[][..]),
-            Subcommand::Setup { profile: ref path } => (
-                Kind::Setup,
-                path.as_ref().map_or([].as_slice(), |path| std::slice::from_ref(path)),
-            ),
+            Subcommand::Setup { profile: ref path } => {
+                (Kind::Setup, path.as_ref().map_or([].as_slice(), std::slice::from_ref))
+            }
             Subcommand::Vendor { .. } => (Kind::Vendor, &paths[..]),
             Subcommand::Perf { .. } => (Kind::Perf, &paths[..]),
         };

@@ -4,9 +4,13 @@ error: implementation of `FnOnce` is not general enough
 LL | /     send(async {
 LL | |         Next(&Buffered(Map(Empty(PhantomData), ready::<&()>), FuturesOrdered(PhantomData), 0)).await
 LL | |     });
-   | |______^ implementation of `FnOnce` is not general enough
+   | |______^
    |
-   = note: `fn(&'0 ()) -> Ready<&'0 ()> {std::future::ready::<&'0 ()>}` must implement `FnOnce<(&'1 (),)>`, for any two lifetimes `'0` and `'1`...
+note: `fn(&'0 ()) -> Ready<&'0 ()> {std::future::ready::<&'0 ()>}` must implement `FnOnce<(&'1 (),)>`, for any two lifetimes `'0` and `'1`...
+  --> $DIR/drop-tracking-unresolved-typeck-results.rs:13:12
+   |
+LL | fn send<T: Send>(_: T) {}
+   |            ^^^^ required by this bound in `send`
    = note: ...but it actually implements `FnOnce<(&(),)>`
 
 error: implementation of `FnOnce` is not general enough
@@ -15,9 +19,13 @@ error: implementation of `FnOnce` is not general enough
 LL | /     send(async {
 LL | |         Next(&Buffered(Map(Empty(PhantomData), ready::<&()>), FuturesOrdered(PhantomData), 0)).await
 LL | |     });
-   | |______^ implementation of `FnOnce` is not general enough
+   | |______^
    |
-   = note: `fn(&'0 ()) -> Ready<&'0 ()> {std::future::ready::<&'0 ()>}` must implement `FnOnce<(&'1 (),)>`, for any two lifetimes `'0` and `'1`...
+note: `fn(&'0 ()) -> Ready<&'0 ()> {std::future::ready::<&'0 ()>}` must implement `FnOnce<(&'1 (),)>`, for any two lifetimes `'0` and `'1`...
+  --> $DIR/drop-tracking-unresolved-typeck-results.rs:13:12
+   |
+LL | fn send<T: Send>(_: T) {}
+   |            ^^^^ required by this bound in `send`
    = note: ...but it actually implements `FnOnce<(&(),)>`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 

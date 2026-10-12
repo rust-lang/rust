@@ -5,7 +5,6 @@
 //! This API is completely unstable and subject to change.
 
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(trim_prefix_suffix))]
 #![feature(decl_macro)]
 #![feature(file_buffered)]
 #![feature(panic_backtrace_config)]
@@ -170,7 +169,7 @@ impl Callbacks for TimePassesCallbacks {
 }
 
 /// This is the primary entry point for rustc.
-pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) {
+pub fn compiler_entrypoint(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) {
     let mut default_early_dcx = EarlyDiagCtxt::new(ErrorOutputType::default());
 
     // Throw away the first argument, the name of the binary.
@@ -185,14 +184,24 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
 
     let args = args::arg_expand_all(&default_early_dcx, at_args);
 
+    // For the purposes of checking that an --edition was passed, we only emit a message if the only
+    // argument passed to rustc is a file name.
+    let warn_unspecified_edition = match &args[..] {
+        [] => false,
+        // We explicitly don't emit the note if we're consuming code from stdin, or passing non-file
+        // flags. This can happen on some cargo invocations too.
+        [name] if name.starts_with("-") => false,
+        [_] => true,
+        _ => false,
+    };
     let (matches, help_only) = match handle_options(&default_early_dcx, &args) {
         HandledOptions::None => return,
         HandledOptions::Normal(matches) => (matches, false),
         HandledOptions::HelpOnly(matches) => (matches, true),
     };
 
-    let sopts = config::build_session_options(&mut default_early_dcx, &matches);
-    // fully initialize ice path static once unstable options are available as context
+    let sopts =
+        config::build_session_options(&mut default_early_dcx, &matches, warn_unspecified_edition);
     let ice_file = ice_path_with_config(Some(&sopts.unstable_opts)).clone();
 
     if let Some(ref code) = matches.opt_str("explain") {
@@ -382,7 +391,7 @@ fn make_input(early_dcx: &EarlyDiagCtxt, free_matches: &[String]) -> Option<Inpu
                     .early_fatal("couldn't read from stdin, as it did not contain valid UTF-8");
             }
 
-            let name = match env::var("UNSTABLE_RUSTDOC_TEST_PATH") {
+            match env::var("UNSTABLE_RUSTDOC_TEST_PATH") {
                 Ok(path) => {
                     let line = env::var("UNSTABLE_RUSTDOC_TEST_LINE").expect(
                         "when UNSTABLE_RUSTDOC_TEST_PATH is set \
@@ -391,12 +400,13 @@ fn make_input(early_dcx: &EarlyDiagCtxt, free_matches: &[String]) -> Option<Inpu
                     let line = line
                         .parse::<isize>()
                         .expect("UNSTABLE_RUSTDOC_TEST_LINE needs to be a number");
-                    FileName::doc_test_source_code(PathBuf::from(path), line)
+                    Some(Input::DocTestStr { file: PathBuf::from(path), line, input })
                 }
-                Err(_) => FileName::anon_source_code(&input),
-            };
-
-            Some(Input::Str { name, input })
+                Err(_) => {
+                    let name = FileName::anon_source_code(&input);
+                    Some(Input::Str { name, input })
+                }
+            }
         }
         [ifile] => Some(Input::File(PathBuf::from(ifile))),
         [ifile1, ifile2, ..] => early_dcx.early_fatal(format!(
@@ -610,7 +620,7 @@ fn list_metadata(sess: &Session, metadata_loader: &dyn MetadataLoader) {
             }
             safe_println!("{}", String::from_utf8(v).unwrap());
         }
-        Input::Str { .. } => {
+        Input::Str { .. } | Input::DocTestStr { .. } => {
             sess.dcx().fatal("cannot list metadata for stdin");
         }
     }
@@ -1364,12 +1374,14 @@ fn parse_crate_attrs<'a>(sess: &'a Session) -> PResult<'a, ast::AttrVec> {
         Input::File(file) => {
             new_parser_from_file(&sess.psess, file, StripTokens::ShebangAndFrontmatter, None)
         }
-        Input::Str { name, input } => new_parser_from_source_str(
-            &sess.psess,
-            name.clone(),
-            input.clone(),
-            StripTokens::ShebangAndFrontmatter,
-        ),
+        instr @ (Input::Str { input, .. } | Input::DocTestStr { input, .. }) => {
+            new_parser_from_source_str(
+                &sess.psess,
+                instr.file_name(sess),
+                input.clone(),
+                StripTokens::ShebangAndFrontmatter,
+            )
+        }
     });
     parser.parse_inner_attributes()
 }
@@ -1387,7 +1399,7 @@ static ICE_PATH: OnceLock<Option<PathBuf>> = OnceLock::new();
 
 // This function should only be called from the ICE hook.
 //
-// The intended behavior is that `run_compiler` will invoke `ice_path_with_config` early in the
+// The intended behavior is that `compiler_entrypoint` will invoke `ice_path_with_config` early in the
 // initialization process to properly initialize the ICE_PATH static based on parsed CLI flags.
 //
 // Subsequent calls to either function will then return the proper ICE path as configured by
@@ -1675,7 +1687,7 @@ pub fn main() -> ExitCode {
     install_ctrlc_handler();
 
     let exit_code =
-        catch_with_exit_code(|| run_compiler(&args::raw_args(&early_dcx), &mut callbacks));
+        catch_with_exit_code(|| compiler_entrypoint(&args::raw_args(&early_dcx), &mut callbacks));
 
     if let Some(format) = callbacks.time_passes {
         let end_rss = get_resident_set_size();

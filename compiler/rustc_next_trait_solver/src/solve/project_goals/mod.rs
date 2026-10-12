@@ -69,7 +69,7 @@ where
         let (
             NestedNormalizationGoals(nested_goals),
             GoalEvaluation { goal: _, certainty, stalled_on: _, has_changed: _ },
-        ) = self.evaluate_goal_raw(GoalSource::TypeRelating, normalizes_to)?;
+        ) = self.evaluate_goal_raw(GoalSource::Normalization, normalizes_to)?;
 
         trace!(?nested_goals);
 

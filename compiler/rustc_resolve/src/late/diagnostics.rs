@@ -666,11 +666,10 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         path: &[Segment],
         following_seg: Option<&Segment>,
         span: Span,
-        source: PathSource<'_, 'ast, 'ra>,
+        mut source: PathSource<'_, 'ast, 'ra>,
         res: Option<Res>,
         qself: Option<&QSelf>,
     ) -> (Diag<'tcx>, Vec<ImportSuggestion>) {
-        debug!(?res, ?source);
         let cross_namespace_res = res.filter(|res| !res.matches_ns(source.namespace()));
         let could_be_expr = res.is_some_and(|res| self.could_be_expr(res, span));
         let base_error = self.make_base_error(
@@ -684,6 +683,14 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         let code = source.error_code(res.is_some());
         let mut err = self.r.dcx().struct_span_err(base_error.span, base_error.msg.clone());
         err.code(code);
+
+        if self.diag_metadata.currently_processing_generic_args
+            && let PathSource::Type = source
+            && let [segment] = path
+            && !segment.has_generic_args
+        {
+            source = PathSource::TypeParam;
+        }
 
         if let Some(res) = cross_namespace_res {
             err.note(format!(
@@ -706,6 +713,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         self.suggest_at_operator_in_slice_pat_with_range(&mut err, path);
         self.suggest_range_struct_destructuring(&mut err, path, source);
         self.suggest_swapping_misplaced_self_ty_and_trait(&mut err, source, res, base_error.span);
+        self.detect_resolution_error_in_derive(&mut err, base_error.span);
 
         if let Some((span, label)) = base_error.span_label {
             err.span_label(span, label);
@@ -1894,6 +1902,26 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     vec![(trait_ref.path.span, self_ty_str), (self_ty.span, trait_ref_str)],
                     Applicability::MaybeIncorrect,
                 );
+        }
+    }
+
+    /// If the name resolution error occurs in an ident that has no span context, but the enclosing
+    /// item is within a derive macro, point at the derive, as the error can either be because of an
+    /// invalid derive macro *or* a non-existing item that will already have been reported through
+    /// the annotated item.
+    fn detect_resolution_error_in_derive(&self, err: &mut Diag<'_>, span: Span) {
+        if let Some(item) = self.diag_metadata.current_item
+            && !item.span.eq_ctxt(span)
+            && item.span.in_derive_expansion()
+        {
+            // `item` comes from a `#[derive()]`, but the error `span` doesn't, which means that the
+            // derive is referencing a name coming from the annotated item. If the item exists, then
+            // the derive macro itself is buggy. If the item exists, then an error will have already
+            // been emitted while evaluating the annotated item itself, but we can't silence this
+            // one because one *can* write a derive macro referencing a non-existing item that is
+            // part of the expansion, *not* from the user's code. Because of that, at least for now,
+            // we just add context to the current error.
+            err.span_label(item.span, "in this derive macro");
         }
     }
 
@@ -3673,6 +3701,9 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         ) {
             (Some(Item { kind: ItemKind::Fn(fn_), .. }), _, _) if fn_.ident.name == sym::main => {
                 // Ignore `fn main()` as we don't want to suggest `fn main<T>()`
+            }
+            (Some(Item { span, .. }), _, _) if span.in_derive_expansion() => {
+                return (None, None);
             }
             (
                 Some(Item {

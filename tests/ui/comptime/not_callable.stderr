@@ -1,14 +1,24 @@
-error: comptime fns can only be called at compile time
+error: comptime functions can only be called at compile time
   --> $DIR/not_callable.rs:10:5
    |
 LL |     foo();
    |     ^^^^^
+   |
+help: wrap the call in a const block to force compile time evaluation
+   |
+LL |     const { foo() };
+   |     +++++++       +
 
-error: comptime fns can only be called at compile time
+error: comptime functions can only be called at compile time
   --> $DIR/not_callable.rs:15:5
    |
 LL |     foo();
    |     ^^^^^
+   |
+help: wrap the call in a const block to force compile time evaluation
+   |
+LL |     const { foo() };
+   |     +++++++       +
 
 error: aborting due to 2 previous errors
 

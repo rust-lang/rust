@@ -34,7 +34,8 @@ fn test_getaddrinfo_freeaddrinfo() {
         ));
     }
     let start = res;
-    let mut addr_count = 0;
+    let mut addr_count_v4 = 0;
+    let mut addr_count_v6 = 0;
 
     loop {
         unsafe {
@@ -43,9 +44,9 @@ fn test_getaddrinfo_freeaddrinfo() {
                 break;
             };
 
-            addr_count += 1;
             match (*cur).ai_family as libc::c_int {
                 libc::AF_INET => {
+                    addr_count_v4 += 1;
                     let (_, addr) = net::sockname_ipv4(|storage, len| {
                         *(storage as *mut libc::sockaddr_in) = *cur.ai_addr.cast();
                         *len = (*res).ai_addrlen;
@@ -59,6 +60,7 @@ fn test_getaddrinfo_freeaddrinfo() {
                     assert_eq!(localhost_ipv4.sin_addr.s_addr, addr.sin_addr.s_addr);
                 }
                 libc::AF_INET6 => {
+                    addr_count_v6 += 1;
                     let (_, addr) = net::sockname_ipv6(|storage, len| {
                         *(storage as *mut libc::sockaddr_in6) = *cur.ai_addr.cast();
                         *len = (*res).ai_addrlen;
@@ -81,7 +83,7 @@ fn test_getaddrinfo_freeaddrinfo() {
     }
 
     // We expect an IPv4 and an IPv6 address.
-    assert!(addr_count == 2);
+    assert!(addr_count_v4 == 1 && addr_count_v6 == 1);
 
     unsafe {
         libc::freeaddrinfo(start.cast());

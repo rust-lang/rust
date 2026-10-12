@@ -7,7 +7,6 @@
 //! [`Condition`]s for the trait solver to discharge.
 
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(never_type))]
 #![cfg_attr(test, feature(test))]
 #![feature(option_into_flat_iter)]
 // tidy-alphabetical-end

@@ -126,21 +126,21 @@ pr:
       # tidy. This speeds up the PR CI job by ~1 minute.
       SKIP_SUBMODULES: src/gcc
     <<: *job-linux-4c
-  - name: test-x86_64-gnu-llvm-21
+  - name: test-x86_64-gnu-llvm-22
     env:
       ENABLE_GCC_CODEGEN: "1"
       DOCKER_SCRIPT: x86_64-gnu-llvm.sh
     <<: *job-linux-4c
-  - name: test-aarch64-gnu-llvm-21-1
+  - name: test-aarch64-gnu-llvm-22-1
     env:
-      IMAGE: test-aarch64-gnu-llvm-21
-      LLVM_VERSION: "21"
+      IMAGE: test-aarch64-gnu-llvm-22
+      LLVM_VERSION: "22"
       DOCKER_SCRIPT: stage_2_test_set1.sh
     <<: *job-aarch64-linux
-  - name: test-aarch64-gnu-llvm-21-2
+  - name: test-aarch64-gnu-llvm-22-2
     env:
-      IMAGE: test-aarch64-gnu-llvm-21
-      LLVM_VERSION: "21"
+      IMAGE: test-aarch64-gnu-llvm-22
+      LLVM_VERSION: "22"
       DOCKER_SCRIPT: stage_2_test_set2.sh
     <<: *job-aarch64-linux
   - name: test-x86_64-gnu-tools
@@ -428,40 +428,13 @@ auto:
   - name: test-x86_64-gnu-distcheck
     <<: *job-linux-4c
 
-  # The x86_64-gnu-llvm-21 job is split into multiple jobs to run tests in parallel.
-  # x86_64-gnu-llvm-21-1 skips tests that run in x86_64-gnu-llvm-21-{2,3}.
-  - name: test-x86_64-gnu-llvm-21-1
-    env:
-      RUST_BACKTRACE: 1
-      IMAGE: test-x86_64-gnu-llvm-21
-      LLVM_VERSION: "21"
-      DOCKER_SCRIPT: stage_2_test_set2.sh
-    <<: *job-linux-4c
-
-  # Skip tests that run in x86_64-gnu-llvm-21-{1,3}
-  - name: test-x86_64-gnu-llvm-21-2
-    env:
-      RUST_BACKTRACE: 1
-      IMAGE: test-x86_64-gnu-llvm-21
-      LLVM_VERSION: "21"
-      DOCKER_SCRIPT: x86_64-gnu-llvm2.sh
-    <<: *job-linux-4c
-
-  # Skip tests that run in x86_64-gnu-llvm-21-{1,2}
-  - name: test-x86_64-gnu-llvm-21-3
-    env:
-      RUST_BACKTRACE: 1
-      IMAGE: test-x86_64-gnu-llvm-21
-      LLVM_VERSION: "21"
-      DOCKER_SCRIPT: x86_64-gnu-llvm3.sh
-    <<: *job-linux-4c
-
   # The x86_64-gnu-llvm-22 job is split into multiple jobs to run tests in parallel.
   # x86_64-gnu-llvm-22-1 skips tests that run in x86_64-gnu-llvm-22-{2,3}.
   - name: test-x86_64-gnu-llvm-22-1
     env:
       RUST_BACKTRACE: 1
       IMAGE: test-x86_64-gnu-llvm-22
+      LLVM_VERSION: "22"
       DOCKER_SCRIPT: stage_2_test_set2.sh
     <<: *job-linux-4c
 
@@ -470,6 +443,7 @@ auto:
     env:
       RUST_BACKTRACE: 1
       IMAGE: test-x86_64-gnu-llvm-22
+      LLVM_VERSION: "22"
       DOCKER_SCRIPT: x86_64-gnu-llvm2.sh
     <<: *job-linux-4c
 
@@ -478,6 +452,7 @@ auto:
     env:
       RUST_BACKTRACE: 1
       IMAGE: test-x86_64-gnu-llvm-22
+      LLVM_VERSION: "22"
       DOCKER_SCRIPT: x86_64-gnu-llvm3.sh
     <<: *job-linux-4c
 
@@ -695,9 +670,12 @@ auto:
 
   # x86_64-msvc is split into two jobs to run tests in parallel.
   - name: test-x86_64-msvc-1
+    # required to run LLDB 22
+    required_python_version: '3.11'
     env:
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-sanitizers --enable-profiler
       SCRIPT: make ci-msvc-py
+      LLDB_PATH: ./citools/clang-rust/bin/lldb.exe
     <<: *job-windows
 
   - name: test-x86_64-msvc-2
@@ -779,9 +757,12 @@ auto:
 
   # x86_64-mingw is split into two jobs to run tests in parallel.
   - name: test-x86_64-mingw-1
+    # required to run LLDB 22
+    required_python_version: '3.11'
     env:
       SCRIPT: make ci-mingw-x
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
+      LLDB_PATH: ./citools/clang-rust/bin/lldb.exe
     <<: *job-windows
 
   - name: test-x86_64-mingw-2

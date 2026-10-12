@@ -50,12 +50,12 @@ fn main() -> Result<()> {
         let old = fs::read_to_string(&path)?;
         let mut new = comply(&old);
         if cli.reflow_harder {
-            new = lengthen_lines(&new, cli.line_length_limit)
+            new = reformat(&new, cli.line_length_limit)
         }
         if new == old {
             compliant.push(path.clone());
         } else if cli.overwrite {
-            fs::write(&path, lengthen_lines(&new, cli.line_length_limit))?;
+            fs::write(&path, reformat(&new, cli.line_length_limit))?;
             made_compliant.push(path.clone());
         } else {
             not_compliant.push(path.clone());
@@ -112,28 +112,30 @@ fn comply(content: &str) -> String {
         if in_code_block || ignore(&line) {
             continue;
         }
-        if REGEX_SPLIT.is_match(&line) {
-            let indent = if let Some(regex_match) = REGEX_LIST_ENTRY.find(&line) {
-                regex_match.len()
-            } else {
-                line.find(|ch: char| !ch.is_whitespace()).unwrap()
-            };
-            let mut newly_split_lines = line.split_inclusive(&*REGEX_SPLIT);
-            let first = newly_split_lines.next().unwrap().trim_end().to_owned();
-            let mut remaining: Vec<_> = newly_split_lines
-                .map(|portion| format!("{:indent$}{}", "", portion.trim_end()))
-                .collect();
-            let mut new_lines = Vec::new();
-            new_lines.push(first);
-            new_lines.append(&mut remaining);
-            new_content.splice(new_n..=new_n, new_lines.clone());
-            new_n += new_lines.len() - 1;
+        if !REGEX_SPLIT.is_match(&line) {
+            continue;
         }
+        let indent = if let Some(regex_match) = REGEX_LIST_ENTRY.find(&line) {
+            regex_match.len()
+        } else {
+            line.find(|ch: char| !ch.is_whitespace()).unwrap()
+        };
+        let mut newly_split_lines = line.split_inclusive(&*REGEX_SPLIT);
+        let first = newly_split_lines.next().unwrap().trim_end().to_owned();
+        let mut remaining: Vec<_> = newly_split_lines
+            .map(|portion| format!("{:indent$}{}", "", portion.trim_end()))
+            .collect();
+        let mut new_lines = Vec::new();
+        new_lines.push(first);
+        new_lines.append(&mut remaining);
+        new_content.splice(new_n..=new_n, new_lines.clone());
+        new_n += new_lines.len() - 1;
     }
     new_content.join("\n") + "\n"
 }
 
-fn lengthen_lines(content: &str, limit: usize) -> String {
+// This reformats lines, so that changes of "fn comply" look more pretty
+fn reformat(content: &str, limit: usize) -> String {
     let content: Vec<_> = content.lines().map(std::borrow::ToOwned::to_owned).collect();
     let mut new_content = content.clone();
     let mut new_n = 0;
@@ -172,6 +174,15 @@ fn lengthen_lines(content: &str, limit: usize) -> String {
         if ignore(line) || REGEX_SPLIT.is_match(line) {
             continue;
         }
+        const SEP: &str = ", ";
+        if line.contains(SEP) && line.len() > limit {
+            let indent = line.find(|ch: char| !ch.is_whitespace()).unwrap();
+            let (before_sep, after_sep) = line.rsplit_once(SEP).unwrap();
+            new_content[new_n] = format!("{before_sep}{}", SEP.trim_end());
+            new_n += 1;
+            new_content.insert(new_n, format!("{:indent$}{after_sep}", ""));
+            continue;
+        }
         let Some(next_line) = content.get(n + 1) else {
             continue;
         };
@@ -190,7 +201,6 @@ fn lengthen_lines(content: &str, limit: usize) -> String {
             skip_next = true;
             continue;
         }
-        const SEP: &str = ", ";
         let indent = next_line.find(|ch: char| !ch.is_whitespace()).unwrap();
         if next_line.contains(SEP) {
             let (before_sep, after_sep) = next_line.split_once(SEP).unwrap();
@@ -239,6 +249,8 @@ o? whatever
 r? @reviewer
  r? @reviewer
 ~? diagnostic
+
+the queries that we do, as well as the **query DAG**. The
 ";
     let expected = "
 # some. heading
@@ -272,12 +284,15 @@ whatever
 r? @reviewer
  r? @reviewer
 ~? diagnostic
+
+the queries that we do, as well as the **query DAG**.
+The
 ";
     assert_eq!(expected, comply(original));
 }
 
 #[test]
-fn test_lengthen_lines() {
+fn test_reformat_lines() {
     let original = "\
 do not split
 short sentences
@@ -307,6 +322,20 @@ html comment closing
 
  handle the
  indented well
+
+split on comma (filler), of
+current line
+
+  split on comma (filler), of
+  current line
+
+split on
+comma (filler), of next line
+
+  split on
+  comma (filler), of next line
+
+ this overlong, sentence, should be split in two
 
 [a target]: https://example.com
 [another target]: https://example.com
@@ -339,10 +368,25 @@ html comment closing
 
  handle the indented well
 
+split on comma (filler),
+of current line
+
+  split on comma (filler),
+  of current line
+
+split on comma (filler),
+of next line
+
+  split on comma (filler),
+  of next line
+
+ this overlong, sentence,
+ should be split in two
+
 [a target]: https://example.com
 [another target]: https://example.com
 ";
-    assert_eq!(expected, lengthen_lines(original, 50));
+    assert_eq!(expected, reformat(original, 30));
 }
 
 #[test]
@@ -350,49 +394,4 @@ html comment closing
 fn should_pass() {
     let original = "if you see `input isn't interesting! verify interesting-ness test`.";
     assert_eq!(original, comply(original));
-}
-
-#[test]
-fn split_on_comma_of_current_line() {
-    let original = "
-Each derived value has a dependency, on other values, which could themselves be either base or
-derived.
-
-  Each derived value has a dependency, on other values, which could themselves be either base or
-  derived.
-";
-    let expected = "
-Each derived value has a dependency, on other values,
-which could themselves be either base or derived.
-
-  Each derived value has a dependency, on other values,
-  which could themselves be either base or derived.
-";
-    assert_eq!(expected, lengthen_lines(original, 100))
-}
-
-#[test]
-fn split_on_comma_of_next_line() {
-    let original = "
-Because of canonicalization of regions and
-inference variables, encountering a cycle doesn't mean that we would get an infinite proof tree.
-
-  Because of canonicalization of regions and
-  inference variables, encountering a cycle doesn't mean that we would get an infinite proof tree.
-";
-    let expected = "
-Because of canonicalization of regions and inference variables,
-encountering a cycle doesn't mean that we would get an infinite proof tree.
-
-  Because of canonicalization of regions and inference variables,
-  encountering a cycle doesn't mean that we would get an infinite proof tree.
-";
-    assert_eq!(expected, lengthen_lines(original, 100))
-}
-
-#[test]
-fn should_split() {
-    let original = "the queries that we do, as well as the **query DAG**. The";
-    let expected = "the queries that we do, as well as the **query DAG**.\nThe\n";
-    assert_eq!(expected, comply(original));
 }

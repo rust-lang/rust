@@ -280,7 +280,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         let is_no_inline = find_attr!(
             use_attrs,
             Doc(d)
-            if d.inline.first().is_some_and(|(inline, _)| *inline == DocInline::NoInline)
+            if d.inline.is_some_and(|(inline, _)| inline == DocInline::NoInline)
         ) || (document_hidden
             && use_attrs.iter().any(|attr| attr.is_doc_hidden()));
 
@@ -601,7 +601,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     find_attr!(
                         attrs,
                         Doc(d)
-                        if d.inline.first().is_some_and(|(inline, _)| *inline == DocInline::Inline)
+                        if d.inline.is_some_and(|(inline, _)| inline == DocInline::Inline)
                     )
                 };
                 let ident = match (tree.kind, self.glob_mode) {
@@ -720,7 +720,7 @@ impl<'tcx> Visitor<'tcx> for RustdocVisitor<'_, 'tcx> {
         // Unneeded.
     }
 
-    fn visit_body(&mut self, b: &hir::Body<'tcx>) {
+    fn visit_body(&mut self, b: &'tcx hir::Body<'tcx>) {
         let prev = mem::replace(&mut self.inside_body, true);
         walk_body(self, b);
         self.inside_body = prev;

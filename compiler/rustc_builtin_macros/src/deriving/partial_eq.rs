@@ -119,7 +119,7 @@ fn get_substructure_equality_expr(
     span: Span,
     substructure: Substructure<'_>,
 ) -> BlockOrExpr {
-    BlockOrExpr::new_expr(match substructure {
+    BlockOrExpr::new_expr(match substructure.fields {
         EnumMatching(.., fields) | Struct(.., fields) => {
             let combine = move |acc, field: &FieldInfo| {
                 let rhs = field

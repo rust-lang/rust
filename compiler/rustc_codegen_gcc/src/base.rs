@@ -55,19 +55,14 @@ pub fn global_linkage_to_gcc(linkage: Linkage) -> GlobalKind {
         | Linkage::LinkOnceODR
         | Linkage::WeakAny
         | Linkage::WeakODR
-        | Linkage::ExternalWeak
-        | Linkage::Common => GlobalKind::Exported,
+        | Linkage::ExternalWeak => GlobalKind::Exported,
     }
 }
 
 /// The attribute a global *definition* needs on top of its [`GlobalKind`] to get this linkage.
 #[cfg(feature = "master")]
 pub fn global_linkage_attribute<'gcc>(linkage: Linkage) -> Option<VarAttribute<'gcc>> {
-    match linkage {
-        Linkage::Common => Some(VarAttribute::Common),
-        _ if linkage_needs_weak_attribute(linkage) => Some(VarAttribute::Weak),
-        _ => None,
-    }
+    if linkage_needs_weak_attribute(linkage) { Some(VarAttribute::Weak) } else { None }
 }
 
 /// The type of a function *definition* with an explicit `#[linkage]`.
@@ -85,17 +80,12 @@ pub fn linkage_to_gcc(linkage: Linkage) -> FunctionType {
         | Linkage::LinkOnceODR
         | Linkage::WeakAny
         | Linkage::WeakODR
-        | Linkage::ExternalWeak
-        | Linkage::Common => FunctionType::Exported,
+        | Linkage::ExternalWeak => FunctionType::Exported,
     }
 }
 
 /// Whether a definition with this linkage must carry the `weak` attribute, so that a strong
 /// definition in another object file wins over it instead of clashing with it.
-///
-/// `common` is in here for functions only: GCC honours that attribute on a variable, but drops it
-/// on a function, so a common function falls back to weak. Globals go through
-/// `global_linkage_attribute` instead.
 #[cfg(feature = "master")]
 pub fn linkage_needs_weak_attribute(linkage: Linkage) -> bool {
     match linkage {
@@ -103,8 +93,7 @@ pub fn linkage_needs_weak_attribute(linkage: Linkage) -> bool {
         | Linkage::LinkOnceODR
         | Linkage::WeakAny
         | Linkage::WeakODR
-        | Linkage::ExternalWeak
-        | Linkage::Common => true,
+        | Linkage::ExternalWeak => true,
         Linkage::External | Linkage::AvailableExternally | Linkage::Internal => false,
     }
 }

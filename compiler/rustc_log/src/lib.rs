@@ -130,25 +130,10 @@ where
         Err(VarError::NotUnicode(_value)) => return Err(Error::NonUnicodeColorValue),
     };
 
-    let verbose_entry_exit = match cfg.verbose_entry_exit {
-        Ok(v) => &v != "0",
-        Err(_) => false,
-    };
-
-    let verbose_thread_ids = match cfg.verbose_thread_ids {
-        Ok(v) => &v == "1",
-        Err(_) => false,
-    };
-
-    let lines = match cfg.lines {
-        Ok(v) => &v == "1",
-        Err(_) => false,
-    };
-
-    let json = match cfg.json {
-        Ok(v) => &v == "1",
-        Err(_) => false,
-    };
+    let verbose_entry_exit = cfg.verbose_entry_exit.is_ok_and(|v| v != "0");
+    let verbose_thread_ids = cfg.verbose_thread_ids.is_ok_and(|v| v == "1");
+    let lines = cfg.lines.is_ok_and(|v| v == "1");
+    let json = cfg.json.is_ok_and(|v| v == "1");
 
     let output_target: BoxMakeWriter = match cfg.output_target {
         Ok(v) => match File::options().create(true).write(true).truncate(true).open(&v) {

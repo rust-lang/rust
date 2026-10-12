@@ -1,5 +1,6 @@
 #![crate_type = "rlib"]
 //@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@ edition: 2021
 //@[current] known-bug: #155151
 //@[current] check-fail

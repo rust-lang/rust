@@ -47,7 +47,7 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
                 Ok(TerminatorKind::Return)
             },
             @call(mir_goto, args) => {
-                Ok(TerminatorKind::Goto { target: self.parse_block(args[0])? } )
+                Ok(TerminatorKind::goto(self.parse_block(args[0])?))
             },
             @call(mir_unreachable, _args) => {
                 Ok(TerminatorKind::Unreachable)

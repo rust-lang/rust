@@ -205,13 +205,13 @@ enum LintPoint {
 
 impl<'tcx> LateLintPass<'tcx> for StdReexports {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &Item<'tcx>) {
-        if let ItemKind::Use(tree) = item.kind {
-            if let UseKind::Nested { items } = tree.kind {
-                for (nested, _, _) in items {
-                    self.walk_import(cx, nested, tree.prefix.segments);
-                }
-                self.in_import = true;
+        if let ItemKind::Use(tree) = item.kind
+            && let UseKind::Nested { items } = tree.kind
+        {
+            for (nested, _, _) in items {
+                self.walk_import(cx, nested, tree.prefix.segments);
             }
+            self.in_import = true;
         }
     }
 

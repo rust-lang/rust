@@ -1,4 +1,4 @@
-//@ reference: destructors.scope.lifetime-extension.exprs
+//@ reference: destructors.scope.lifetime-extension.exprs.extending
 
 fn temp() -> String {
     String::from("Hello")

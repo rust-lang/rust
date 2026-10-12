@@ -924,7 +924,7 @@ impl<'tcx> LateContext<'tcx> {
                 hir::Node::Item(item) => match item.kind {
                     // FIXME(mgca): figure out how to handle ConstArgKind::Path (or don't but add warning in docs here)
                     hir::ItemKind::Const(.., hir::ConstItemRhs::Body(body_id))
-                    | hir::ItemKind::Static(.., body_id) => Some(self.tcx.hir_body(body_id).value),
+                    | hir::ItemKind::Static(.., body_id) => Some(&self.tcx.hir_body(body_id).value),
                     _ => None,
                 },
                 _ => None,

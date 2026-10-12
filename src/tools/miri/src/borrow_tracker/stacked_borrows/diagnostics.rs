@@ -2,7 +2,7 @@ use std::fmt;
 
 use rustc_abi::Size;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_span::{Span, SpanData};
+use rustc_span::Span;
 use smallvec::SmallVec;
 
 use crate::borrow_tracker::{AccessKind, GlobalStateInner, ProtectorKind};
@@ -33,12 +33,12 @@ struct Creation {
 }
 
 impl Creation {
-    fn generate_diagnostic(&self) -> (String, SpanData) {
+    fn generate_diagnostic(&self) -> (String, Span) {
         let tag = self.retag.new_tag;
         if let Some(perm) = self.retag.permission {
             (
                 format!("{tag:?} was created by a {perm:?} retag at offsets {}", self.retag.range),
-                self.span.data(),
+                self.span,
             )
         } else {
             assert!(self.retag.range.size == Size::ZERO);
@@ -47,7 +47,7 @@ impl Creation {
                     "{tag:?} would have been created here, but this is a zero-size retag ({}) so the tag in question does not exist anywhere",
                     self.retag.range,
                 ),
-                self.span.data(),
+                self.span,
             )
         }
     }
@@ -68,7 +68,7 @@ enum InvalidationCause {
 }
 
 impl Invalidation {
-    fn generate_diagnostic(&self) -> (String, SpanData) {
+    fn generate_diagnostic(&self) -> (String, Span) {
         let message = if matches!(
             self.cause,
             InvalidationCause::Retag(_, RetagInfo { cause: RetagCause::FnEntry, .. })
@@ -85,7 +85,7 @@ impl Invalidation {
                 self.tag, self.range, self.cause
             )
         };
-        (message, self.span.data())
+        (message, self.span)
     }
 }
 
@@ -107,9 +107,9 @@ struct Protection {
 
 #[derive(Clone)]
 pub struct TagHistory {
-    pub created: (String, SpanData),
-    pub invalidated: Option<(String, SpanData)>,
-    pub protected: Option<(String, SpanData)>,
+    pub created: (String, Span),
+    pub invalidated: Option<(String, Span)>,
+    pub protected: Option<(String, Span)>,
 }
 
 pub struct DiagnosticCxBuilder<'ecx, 'tcx> {
@@ -342,7 +342,7 @@ impl<'history, 'ecx, 'tcx> DiagnosticCx<'history, 'ecx, 'tcx> {
                             "{tag:?} was created here, as the root tag for {}",
                             self.history.id
                         ),
-                        self.history.root.1.data(),
+                        self.history.root.1,
                     ))
                 } else {
                     None
@@ -364,7 +364,7 @@ impl<'history, 'ecx, 'tcx> DiagnosticCx<'history, 'ecx, 'tcx> {
             })
             .map(|protection| {
                 let protected_tag = protection.tag;
-                (format!("{protected_tag:?} is this argument"), protection.span.data())
+                (format!("{protected_tag:?} is this argument"), protection.span)
             });
 
         Some(TagHistory { created, invalidated, protected })

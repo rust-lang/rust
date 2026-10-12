@@ -450,7 +450,7 @@ impl<'tcx> LateLintPass<'tcx> for UnconditionalRecursion {
     ) {
         // If the function is a method...
         if let FnKind::Method(name, _) = kind
-            && let expr = expr_or_init(cx, body.value).peel_blocks()
+            && let expr = expr_or_init(cx, &body.value).peel_blocks()
             // Doesn't have a conditional return.
             && !has_conditional_return(body, expr)
         {

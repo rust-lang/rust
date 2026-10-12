@@ -304,6 +304,7 @@ impl<'sess> AttributeParser<'sess> {
         self.sess().dcx()
     }
 
+    #[track_caller]
     pub(crate) fn emit_err(&self, diag: impl for<'x> Diagnostic<'x>) -> ErrorGuaranteed {
         self.should_emit.emit_err(self.sess.dcx().create_err(diag))
     }
@@ -332,20 +333,6 @@ impl<'sess> AttributeParser<'sess> {
                 if !filter(attr) {
                     continue;
                 }
-            }
-
-            fn is_doc_non_lit_expr(attr: &ast::Attribute) -> bool {
-                if !attr.has_name(sym::doc) {
-                    return false;
-                }
-                let ast::AttrKind::Normal(n) = &attr.kind else { return false };
-                let ast::AttrArgs::Eq { expr, .. } = &n.item.args else { return false };
-                !matches!(expr.kind, ast::ExprKind::Lit(_))
-            }
-
-            // FIXME accidentally allowed on Stable Rust
-            if target == Target::MacroCall && is_doc_non_lit_expr(attr) {
-                continue;
             }
 
             let attr_span = lower_span(attr.span);
@@ -510,23 +497,25 @@ impl<'sess> AttributeParser<'sess> {
 
         // Now that all attributes have been parsed, run the deferred checks. These can
         // inspect the fully parsed attributes via `FinalizeCheckContext::parsed_attrs`.
-        for (check, attr_span) in deferred_checks {
-            check(
-                &mut FinalizeCheckContext {
-                    shared: SharedContext {
-                        cx: self,
-                        target_span,
-                        target,
-                        emit_lint: &mut emit_lint,
-                        #[cfg(debug_assertions)]
-                        has_lint_been_emitted: AtomicBool::new(false),
+        if !matches!(self.should_emit, ShouldEmit::Nothing) {
+            for (check, attr_span) in deferred_checks {
+                check(
+                    &mut FinalizeCheckContext {
+                        shared: SharedContext {
+                            cx: self,
+                            target_span,
+                            target,
+                            emit_lint: &mut emit_lint,
+                            #[cfg(debug_assertions)]
+                            has_lint_been_emitted: AtomicBool::new(false),
+                        },
+                        all_attrs: &attr_paths,
+                        parsed_attrs: &attributes,
+                        target_item,
                     },
-                    all_attrs: &attr_paths,
-                    parsed_attrs: &attributes,
-                    target_item,
-                },
-                attr_span,
-            );
+                    attr_span,
+                );
+            }
         }
 
         if !matches!(self.should_emit, ShouldEmit::Nothing) && target == Target::WherePredicate {
