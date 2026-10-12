@@ -869,6 +869,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // For all other targets SO_LINGER sets the linger duration in seconds.
             ecx.eval_libc_i32("SO_LINGER")
         };
+        let opt_so_keepalive = ecx.eval_libc_i32("SO_KEEPALIVE");
 
         if matches!(ecx.tcx.sess.target.os, Os::MacOs | Os::FreeBsd | Os::NetBsd) {
             // SO_NOSIGPIPE only exists on MacOS, FreeBSD, and NetBSD.
@@ -938,6 +939,21 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             let linger = onoff.then_some(Duration::from_secs(u64::try_from(linger).unwrap()));
 
             let result = socket.with_socket_ref(|s| s.set_linger(linger)).map_err(|()| {
+                err_unsup_format!(
+                    "setsockopt: option SO_LINGER is unsupported for {}",
+                    socket.name()
+                )
+            })?;
+            return interp_ok(result.map_err(IoError::HostError));
+        } else if option == opt_so_keepalive {
+            if value_len != 4 {
+                // Option value should be C-int which is usually 4 bytes.
+                return interp_ok(Err(LibcError("EINVAL")));
+            }
+            let option_value = ecx.ptr_to_mplace(value_ptr, ecx.machine.layouts.i32);
+            let keepalive = ecx.read_scalar(&option_value)?.to_i32()? != 0;
+
+            let result = socket.with_socket_ref(|s| s.set_keepalive(keepalive)).map_err(|()| {
                 err_unsup_format!(
                     "setsockopt: option SO_LINGER is unsupported for {}",
                     socket.name()

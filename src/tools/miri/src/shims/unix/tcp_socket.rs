@@ -744,23 +744,7 @@ impl UnixSocketFileDescription for TcpSocket {
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, Result<(), IoError>> {
         if level == ecx.eval_libc_i32("SOL_SOCKET") {
-            let opt_so_keepalive = ecx.eval_libc_i32("SO_KEEPALIVE");
-
-            if option == opt_so_keepalive {
-                if value_len != 4 {
-                    // Option value should be C-int which is usually 4 bytes.
-                    return interp_ok(Err(LibcError("EINVAL")));
-                }
-                let option_value = ecx.ptr_to_mplace(value_ptr, ecx.machine.layouts.i32);
-                let keepalive = ecx.read_scalar(&option_value)?.to_i32()? != 0;
-
-                return interp_ok(
-                    self.with_socket_ref(|s| s.set_keepalive(keepalive))
-                        .map_err(IoError::HostError),
-                );
-            } else {
-                return ecx.set_generic_socket_option(option, value_ptr, value_len, self);
-            }
+            return ecx.set_generic_socket_option(option, value_ptr, value_len, self);
         } else if level == ecx.eval_libc_i32("IPPROTO_IP") {
             return ecx.set_ip_socket_option(
                 option,
