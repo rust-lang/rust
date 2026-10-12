@@ -744,8 +744,6 @@ impl UnixSocketFileDescription for TcpSocket {
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, Result<(), IoError>> {
         if level == ecx.eval_libc_i32("SOL_SOCKET") {
-            let opt_so_rcvtimeo = ecx.eval_libc_i32("SO_RCVTIMEO");
-            let opt_so_sndtimeo = ecx.eval_libc_i32("SO_SNDTIMEO");
             let opt_so_reuseaddr = ecx.eval_libc_i32("SO_REUSEADDR");
             let opt_so_linger = if matches!(ecx.tcx.sess.target.os, Os::MacOs) {
                 // On macOS the SO_LINGER socket option sets the linger duration in kernel ticks
@@ -756,25 +754,6 @@ impl UnixSocketFileDescription for TcpSocket {
                 ecx.eval_libc_i32("SO_LINGER")
             };
             let opt_so_keepalive = ecx.eval_libc_i32("SO_KEEPALIVE");
-
-            if option == opt_so_rcvtimeo || option == opt_so_sndtimeo {
-                let timeval_layout = ecx.libc_ty_layout("timeval");
-                let option_value = ecx.ptr_to_mplace(value_ptr, timeval_layout);
-
-                let timeout = match ecx.read_timeval(&option_value)? {
-                    None => return interp_ok(Err(LibcError("EINVAL"))),
-                    Some(Duration::ZERO) => None,
-                    Some(duration) => Some(duration),
-                };
-
-                if option == opt_so_rcvtimeo {
-                    self.read_timeout.set(timeout);
-                } else {
-                    self.write_timeout.set(timeout);
-                }
-
-                return interp_ok(Ok(()));
-            }
 
             if option == opt_so_reuseaddr {
                 if value_len != 4 {

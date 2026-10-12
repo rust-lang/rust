@@ -842,9 +842,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         option: i32,
         value_ptr: Pointer,
         value_len: u64,
-        _socket: FileDescriptionRef<T>,
+        socket: FileDescriptionRef<T>,
     ) -> InterpResult<'tcx, Result<(), IoError>> {
         let ecx = self.eval_context_mut();
+
+        let opt_so_rcvtimeo = ecx.eval_libc_i32("SO_RCVTIMEO");
+        let opt_so_sndtimeo = ecx.eval_libc_i32("SO_SNDTIMEO");
 
         if matches!(ecx.tcx.sess.target.os, Os::MacOs | Os::FreeBsd | Os::NetBsd) {
             // SO_NOSIGPIPE only exists on MacOS, FreeBSD, and NetBSD.
@@ -861,6 +864,25 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 return interp_ok(Ok(()));
             }
+        }
+
+        if option == opt_so_rcvtimeo || option == opt_so_sndtimeo {
+            let timeval_layout = ecx.libc_ty_layout("timeval");
+            let option_value = ecx.ptr_to_mplace(value_ptr, timeval_layout);
+
+            let timeout = match ecx.read_timeval(&option_value)? {
+                None => return interp_ok(Err(LibcError("EINVAL"))),
+                Some(Duration::ZERO) => None,
+                Some(duration) => Some(duration),
+            };
+
+            if option == opt_so_rcvtimeo {
+                socket.set_read_timeout(timeout)?;
+            } else {
+                socket.set_write_timeout(timeout)?;
+            }
+
+            return interp_ok(Ok(()));
         }
 
         throw_unsup_format!("setsockopt: option {option:#x} is unsupported for level SOL_SOCKET");
