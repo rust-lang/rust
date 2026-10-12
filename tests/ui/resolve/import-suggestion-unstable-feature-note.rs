@@ -8,7 +8,7 @@ extern crate extern_prelude;
 fn main() {
     let _: BorrowedBuf;
     //~^ ERROR cannot find type `BorrowedBuf` in this scope
-    //[gate_off]~| NOTE 'std::io::BorrowedBuf' is unstable in nightly Rust and is only available with the `#![feature(core_io_borrowed_buf)]` attribute
+    //[gate_off]~| NOTE 'std::io::BorrowedBuf' is unstable, add `#![feature(core_io_borrowed_buf)]` to the crate attributes to enable
 
     let _: HashMap;
     //~^ ERROR cannot find type `HashMap` in this scope
