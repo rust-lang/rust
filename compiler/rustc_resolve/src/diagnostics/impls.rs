@@ -1837,9 +1837,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             && let StabilityLevel::Unstable { .. } = stab.level
                         {
                             Some(format!(
-                                "'{}' is unstable in nightly Rust \
-                                    and is only available with the \
-                                    `#![feature({})]` attribute",
+                                "'{}' is unstable, add `#![feature({})]` \
+                                    to the crate attributes to enable",
                                 path_names_to_string(&path),
                                 stab.feature
                             ))
@@ -4128,7 +4127,7 @@ pub(crate) fn import_candidates(
     );
 }
 
-type PathString<'a> = (String, &'a str, Option<Span>, &'a Option<String>, bool);
+type PathString<'a> = (String, &'a str, Option<Span>, &'a Option<String>, bool, bool);
 
 /// When an entity with a given name is not available in scope, we search for
 /// entities with that name in all crates. This method allows outputting the
@@ -4170,6 +4169,7 @@ fn show_candidates(
                         c.did.and_then(|did| Some(tcx.source_span(did.as_local()?))),
                         &c.note,
                         c.via_import,
+                        c.is_stable,
                     ));
                 } else {
                     accessible_path_strings.push((
@@ -4178,6 +4178,7 @@ fn show_candidates(
                         c.did.and_then(|did| Some(tcx.source_span(did.as_local()?))),
                         &c.note,
                         c.via_import,
+                        c.is_stable,
                     ));
                 }
             }
@@ -4188,7 +4189,8 @@ fn show_candidates(
                 c.did.and_then(|did| Some(tcx.source_span(did.as_local()?))),
                 &c.note,
                 c.via_import,
-            ));
+                c.is_stable,
+            ))
         }
     });
 
@@ -4221,14 +4223,14 @@ fn show_candidates(
 
     if !accessible_renames.is_empty() {
         let (determiner, kind, s, through) =
-            if let [(_, descr, _, _, via_import)] = &accessible_renames[..] {
+            if let [(_, descr, _, _, via_import, _)] = &accessible_renames[..] {
                 ("this", *descr, "", if *via_import { " through its public re-export" } else { "" })
             } else {
                 // Get the unique item kinds and if there's only one, we use the right kind name
                 // instead of the more generic "items".
                 let kinds = accessible_path_strings
                     .iter()
-                    .map(|(_, descr, _, _, _)| *descr)
+                    .map(|(_, descr, _, _, _, _)| *descr)
                     .collect::<UnordSet<&str>>();
                 let kind = if let Some(kind) = kinds.get_only() { kind } else { "item" };
                 let s = if kind.ends_with('s') { "es" } else { "s" };
@@ -4239,10 +4241,6 @@ fn show_candidates(
         let instead = if let Instead::Yes = instead { " instead" } else { "" };
         let msg = format!("consider using {determiner} {kind}{s}{through}{instead}");
 
-        for note in accessible_path_strings.iter().flat_map(|cand| cand.3.as_ref()) {
-            err.note(note.clone());
-        }
-
         err.span_suggestions_with_style(
             path[0].ident.span.to(path[path.len() - 1].ident.span),
             msg,
@@ -4250,11 +4248,15 @@ fn show_candidates(
             Applicability::MaybeIncorrect,
             SuggestionStyle::ShowAlways,
         );
+
+        for note in accessible_path_strings.iter().flat_map(|cand| cand.3.as_ref()) {
+            err.note(note.clone());
+        }
         showed = true;
     }
     if !accessible_path_strings.is_empty() {
         let (determiner, kind, s, name, through) =
-            if let [(name, descr, _, _, via_import)] = &accessible_path_strings[..] {
+            if let [(name, descr, _, _, via_import, _)] = &accessible_path_strings[..] {
                 (
                     "this",
                     *descr,
@@ -4267,7 +4269,7 @@ fn show_candidates(
                 // instead of the more generic "items".
                 let kinds = accessible_path_strings
                     .iter()
-                    .map(|(_, descr, _, _, _)| *descr)
+                    .map(|(_, descr, _, _, _, _)| *descr)
                     .collect::<UnordSet<&str>>();
                 let kind = if let Some(kind) = kinds.get_only() { kind } else { "item" };
                 let s = if kind.ends_with('s') { "es" } else { "s" };
@@ -4285,16 +4287,24 @@ fn show_candidates(
             format!("consider importing {determiner} {kind}{s}{through}{instead}")
         };
 
-        for note in accessible_path_strings.iter().flat_map(|cand| cand.3.as_ref()) {
-            err.note(note.clone());
-        }
+        let append_candidates =
+            |msg: &mut String, accessible_path_strings: &Vec<PathString<'_>>| {
+                msg.push(':');
 
-        let append_candidates = |msg: &mut String, accessible_path_strings: Vec<PathString<'_>>| {
-            msg.push(':');
+                for candidate in accessible_path_strings {
+                    msg.push('\n');
+                    msg.push_str(&candidate.0);
+                }
+            };
 
-            for candidate in accessible_path_strings {
-                msg.push('\n');
-                msg.push_str(&candidate.0);
+        let show_notes = |err: &mut Diag<'_>, accessible_path_strings: &Vec<PathString<'_>>| {
+            let only_one = accessible_path_strings.len() == 1;
+            for (_, _, _, note, _, is_stable) in accessible_path_strings {
+                if let Some(note) = note
+                    && (*is_stable || only_one)
+                {
+                    err.note(note.clone());
+                }
             }
         };
 
@@ -4304,9 +4314,10 @@ fn show_candidates(
                     err.span_suggestions(
                         span,
                         msg,
-                        accessible_path_strings.into_iter().map(|a| a.0),
+                        accessible_path_strings.iter().map(|a| a.0.clone()),
                         Applicability::MaybeIncorrect,
                     );
+                    show_notes(err, &accessible_path_strings);
                     return true;
                 }
                 DiagMode::Import { .. } => ("", ""),
@@ -4328,14 +4339,14 @@ fn show_candidates(
 
             match mode {
                 DiagMode::Import { append: true, .. } => {
-                    append_candidates(&mut msg, accessible_path_strings);
+                    append_candidates(&mut msg, &accessible_path_strings);
                     err.span_help(span, msg);
                 }
                 _ => {
                     err.span_suggestions_with_style(
                         span,
                         msg,
-                        accessible_path_strings.into_iter().map(|a| a.0),
+                        accessible_path_strings.iter().map(|a| a.0.clone()),
                         Applicability::MaybeIncorrect,
                         SuggestionStyle::ShowAlways,
                     );
@@ -4356,9 +4367,12 @@ fn show_candidates(
                 }
             }
         } else {
-            append_candidates(&mut msg, accessible_path_strings);
+            append_candidates(&mut msg, &accessible_path_strings);
             err.help(msg);
         }
+
+        show_notes(err, &accessible_path_strings);
+
         showed = true;
     }
     if !inaccessible_path_strings.is_empty()
@@ -4366,7 +4380,7 @@ fn show_candidates(
     {
         let prefix =
             if let DiagMode::Pattern = mode { "you might have meant to match on " } else { "" };
-        if let [(name, descr, source_span, note, _)] = &inaccessible_path_strings[..] {
+        if let [(name, descr, source_span, note, _, _)] = &inaccessible_path_strings[..] {
             let msg = format!(
                 "{prefix}{descr} `{name}`{} exists but is inaccessible",
                 if let DiagMode::Pattern = mode { ", which" } else { "" }
@@ -4386,7 +4400,7 @@ fn show_candidates(
         } else {
             let descr = inaccessible_path_strings
                 .iter()
-                .map(|&(_, descr, _, _, _)| descr)
+                .map(|&(_, descr, _, _, _, _)| descr)
                 .all_equal_value()
                 .unwrap_or("item");
             let plural_descr =
@@ -4396,7 +4410,7 @@ fn show_candidates(
             let mut has_colon = false;
 
             let mut spans = Vec::new();
-            for (name, _, source_span, _, _) in &inaccessible_path_strings {
+            for (name, _, source_span, _, _, _) in &inaccessible_path_strings {
                 if let Some(source_span) = source_span {
                     let span = tcx.sess.source_map().guess_head_span(*source_span);
                     spans.push((name, span));
