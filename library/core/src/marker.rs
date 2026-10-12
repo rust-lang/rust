@@ -884,7 +884,7 @@ pub trait DiscriminantKind {
     /// The type of the discriminant, which must satisfy the trait
     /// bounds required by `mem::Discriminant`.
     #[lang = "discriminant_type"]
-    type Discriminant: Clone + Copy + Debug + Eq + PartialEq + Hash + Send + Sync + Unpin;
+    type Discriminant: Copy + Debug + Eq + Hash + Ord + Send + Sync + Unpin;
 }
 
 /// Used to determine whether a type contains
