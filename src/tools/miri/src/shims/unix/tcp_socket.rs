@@ -989,9 +989,7 @@ impl UnixSocketFileDescription for TcpSocket {
                 ecx.write_int(i32::from(nodelay), &value_buffer)?;
                 interp_ok(Ok(value_buffer))
             } else {
-                throw_unsup_format!(
-                    "getsockopt: option {option:#x} is unsupported for level IPPROTO_TCP"
-                );
+                ecx.get_tcp_socket_option(option, self.state.borrow().as_socket_ref())
             }
         } else {
             throw_unsup_format!(
