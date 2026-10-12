@@ -1050,11 +1050,7 @@ pub enum NextSolverConfig {
 // See https://github.com/rust-lang/compiler-team/issues/1014
 impl Default for NextSolverConfig {
     fn default() -> Self {
-        if option_env!("CFG_DEFAULT_NEXT_SOLVER_GLOBALLY").is_some() {
-            Self::Globally
-        } else {
-            Self::Coherence
-        }
+        Self::Globally
     }
 }
 
