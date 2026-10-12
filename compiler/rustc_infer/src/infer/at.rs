@@ -140,27 +140,7 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         T: ToTrace<'tcx>,
     {
-        if self.next_trait_solver {
-            NextSolverRelate::relate(
-                &self,
-                param_env,
-                expected,
-                ty::Contravariant,
-                actual,
-                cause.span,
-            )
-            .map(|goals| self.at(&cause, param_env).goals_to_obligations(goals))
-        } else {
-            let mut op = TypeRelating::new(
-                &self,
-                ToTrace::to_trace(&cause, expected, actual),
-                param_env,
-                define_opaque_types,
-                ty::Contravariant,
-            );
-            op.relate(expected, actual)?;
-            Ok(InferOk { value: (), obligations: op.into_obligations() })
-        }
+        self.at(cause, param_env).sup(define_opaque_types, expected, actual)
     }
 
     /// Makes `expected <: actual`.
@@ -175,20 +155,7 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         T: ToTrace<'tcx>,
     {
-        if self.next_trait_solver {
-            NextSolverRelate::relate(&self, param_env, expected, ty::Covariant, actual, cause.span)
-                .map(|goals| self.at(&cause, param_env).goals_to_obligations(goals))
-        } else {
-            let mut op = TypeRelating::new(
-                &self,
-                ToTrace::to_trace(&cause, expected, actual),
-                param_env,
-                define_opaque_types,
-                ty::Covariant,
-            );
-            op.relate(expected, actual)?;
-            Ok(InferOk { value: (), obligations: op.into_obligations() })
-        }
+        self.at(cause, param_env).sub(define_opaque_types, expected, actual)
     }
 
     /// Makes `expected == actual`.
@@ -226,15 +193,7 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         T: Relate<TyCtxt<'tcx>>,
     {
-        if self.next_trait_solver {
-            NextSolverRelate::relate(&self, param_env, expected, ty::Invariant, actual, cause.span)
-                .map(|goals| self.at(&cause, param_env).goals_to_obligations(goals))
-        } else {
-            let mut op =
-                TypeRelating::new(&self, trace, param_env, define_opaque_types, ty::Invariant);
-            op.relate(expected, actual)?;
-            Ok(InferOk { value: (), obligations: op.into_obligations() })
-        }
+        self.at(cause, param_env).eq_trace(define_opaque_types, trace, expected, actual)
     }
 
     pub fn relate<T>(
@@ -249,18 +208,7 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         T: ToTrace<'tcx>,
     {
-        match variance {
-            ty::Covariant => self.sub(cause, param_env, define_opaque_types, expected, actual),
-            ty::Invariant => self.eq(cause, param_env, define_opaque_types, expected, actual),
-            ty::Contravariant => self.sup(cause, param_env, define_opaque_types, expected, actual),
-
-            // We could make this make sense but it's not readily
-            // exposed and I don't feel like dealing with it. Note
-            // that bivariance in general does a bit more than just
-            // *nothing*, it checks that the types are the same
-            // "modulo variance" basically.
-            ty::Bivariant => panic!("Bivariant given to `relate()`"),
-        }
+        self.at(cause, param_env).relate(define_opaque_types, expected, variance, actual)
     }
 }
 
