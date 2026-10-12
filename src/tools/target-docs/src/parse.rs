@@ -64,7 +64,7 @@ fn parse_file(full_path: PathBuf, file_name: &str, content: &str) -> Result<Pars
     let frontmatter_line_count = frontmatter.lines().count() + 2; // 2 from ---
 
     let frontmatter =
-        serde_yaml::from_str::<Frontmatter>(frontmatter).wrap_err("invalid frontmatter")?;
+        yaml_serde::from_str::<Frontmatter>(frontmatter).wrap_err("invalid frontmatter")?;
 
     let expected_file_name = frontmatter.pattern.replace('*', "_");
     if expected_file_name != file_name {
