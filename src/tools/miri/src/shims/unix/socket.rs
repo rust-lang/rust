@@ -811,6 +811,21 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
     }
 
+    /// Set the `option` socket option on level SOL_SOCKET for `socket`.
+    /// `value_ptr` points to the new value of the socket option, and `value_len`
+    /// contains the amount of bytes the value uses at `value_ptr`.
+    fn set_generic_socket_option<T: UnixSocketFileDescription>(
+        &mut self,
+        option: i32,
+        value_ptr: Pointer,
+        value_len: u64,
+        _socket: FileDescriptionRef<T>,
+    ) -> InterpResult<'tcx, Result<(), IoError>> {
+        let ecx = self.eval_context_mut();
+
+        throw_unsup_format!("setsockopt: option {option:#x} is unsupported for level SOL_SOCKET");
+    }
+
     /// Set the `option` socket option on level IPPROTO_IP for `socket`.
     /// `value_ptr` points to the new value of the socket option, and `value_len`
     /// contains the amount of bytes the value uses at `value_ptr`.

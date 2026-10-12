@@ -836,9 +836,7 @@ impl UnixSocketFileDescription for TcpSocket {
                         .map_err(IoError::HostError),
                 );
             } else {
-                throw_unsup_format!(
-                    "setsockopt: option {option:#x} is unsupported for level SOL_SOCKET",
-                );
+                return ecx.set_generic_socket_option(option, value_ptr, value_len, self);
             }
         } else if level == ecx.eval_libc_i32("IPPROTO_IP") {
             return ecx.set_ip_socket_option(
