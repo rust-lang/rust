@@ -67,7 +67,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let ObligationCauseCode::WhereClause(item_def_id, span) = *cause_code.peel_derives() else {
             return false;
         };
-
+        // Continue only if there is an impl associated type corresponding to the expected trait item.
         if !self.tcx.opt_associated_item(body_def_id.to_def_id()).is_some_and(|assoc_item| {
             assoc_item.trait_item_def_id().is_some_and(|trait_item_def_id| {
                 trait_item_def_id == item_def_id
