@@ -1069,6 +1069,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // For all other targets SO_LINGER sets the linger duration in seconds.
             ecx.eval_libc_i32("SO_LINGER")
         };
+        let opt_so_keepalive = ecx.eval_libc_i32("SO_KEEPALIVE");
 
         if option == opt_so_error {
             let return_value = match socket.take_error(ecx)? {
@@ -1145,6 +1146,22 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             ecx.write_int(secs, &linger_field)?;
 
             return interp_ok(Ok(linger_buffer));
+        } else if option == opt_so_keepalive {
+            let keepalive = match socket.with_socket_ref(|s| s.keepalive()) {
+                Ok(Ok(keepalive)) => keepalive,
+                Ok(Err(e)) => return interp_ok(Err(IoError::HostError(e))),
+                Err(()) =>
+                    throw_unsup_format!(
+                        "getsockopt: option SO_KEEPALIVE is unsupported for {}",
+                        socket.name()
+                    ),
+            };
+
+            // Allocate new buffer on the stack with the `i32` layout.
+            let value_buffer = ecx.allocate(ecx.machine.layouts.i32, MemoryKind::Stack)?;
+            ecx.write_int(i32::from(keepalive), &value_buffer)?;
+
+            return interp_ok(Ok(value_buffer));
         }
 
         throw_unsup_format!("getsockopt: option {option:#x} is unsupported for level SOL_SOCKET",);
