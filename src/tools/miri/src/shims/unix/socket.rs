@@ -823,6 +823,23 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, Result<(), IoError>> {
         let ecx = self.eval_context_mut();
 
+        if matches!(ecx.tcx.sess.target.os, Os::MacOs | Os::FreeBsd | Os::NetBsd) {
+            // SO_NOSIGPIPE only exists on MacOS, FreeBSD, and NetBSD.
+            let opt_so_nosigpipe = ecx.eval_libc_i32("SO_NOSIGPIPE");
+
+            if option == opt_so_nosigpipe {
+                if value_len != 4 {
+                    // Option value should be C-int which is usually 4 bytes.
+                    return interp_ok(Err(LibcError("EINVAL")));
+                }
+                let option_value = ecx.ptr_to_mplace(value_ptr, ecx.machine.layouts.i32);
+                let _val = ecx.read_scalar(&option_value)?.to_i32()?;
+                // We entirely ignore this value since we do not support signals anyway.
+
+                return interp_ok(Ok(()));
+            }
+        }
+
         throw_unsup_format!("setsockopt: option {option:#x} is unsupported for level SOL_SOCKET");
     }
 
