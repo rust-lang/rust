@@ -546,7 +546,6 @@ impl GlobalState {
             if client_refresh {
                 // Refresh semantic tokens if the client supports it.
                 if self.config.semantic_tokens_refresh() {
-                    self.semantic_tokens_cache.lock().clear();
                     self.send_request::<lsp_types::SemanticTokensRefreshRequest>((), |_, _| ());
                 }
 
@@ -921,7 +920,10 @@ impl GlobalState {
                         }
                         Err(e) => self.show_message(
                             lsp_types::MessageType::Error,
-                            format!("Failed to spawn project discovery command: {e:#}"),
+                            format!(
+                                "Failed to spawn project discovery command in {}: {e:#}",
+                                current_dir,
+                            ),
                             false,
                         ),
                     }

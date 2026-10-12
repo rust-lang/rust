@@ -2908,7 +2908,6 @@ struct Astruct;
 impl B for Astruct {}
 "#,
         expect![[r#"
-            428..430 '_x': T
             733..737 'self': Box<[T], A>
             766..798 '{     ...     }': Vec<T, A>
             812..940 '{     ...])); }': ()
@@ -3260,7 +3259,6 @@ fn main() {
 }
         "#,
         expect![[r#"
-            104..108 'self': &'? Box<T>
             188..192 'self': &'_ Box<Foo<T>>
             218..220 '{}': &'? T
             242..246 'self': &'_ Box<Foo<T>>
@@ -4296,10 +4294,10 @@ union U {
 }
     "#,
         expect![[r#"
-            242..243 '0': isize
             111..125 '{ C as usize }': usize
             113..114 'C': f32
             113..123 'C as usize': usize
+            242..243 '0': isize
         "#]],
     );
 }
@@ -4462,5 +4460,17 @@ where
 {
 }
 "#,
+    );
+}
+
+#[test]
+fn anon_consts_generic_params() {
+    check_types(
+        r#"
+struct Foo<const N: usize> {
+    a: usize = { {}; N },
+                  // ^ usize
+}
+    "#,
     );
 }

@@ -46,7 +46,8 @@ fn write_builtin_derive_impl_method<'db>(
     let loc = impl_.loc(db);
     let adt_params = GenericParams::of(db, loc.adt.into());
 
-    if f.show_container_bounds() && !adt_params.is_empty() {
+    // Builtin derive impl always with a trait
+    if f.show_container_bounds() {
         f.write_str("impl")?;
         write_generic_params(loc.adt.into(), f)?;
         f.write_char(' ')?;
@@ -115,7 +116,8 @@ impl<'db> HirDisplay<'db> for Function {
             }
             ItemContainerId::ImplId(impl_) => {
                 let (params, params_store) = GenericParams::with_store(f.db, impl_.into());
-                if f.show_container_bounds() && !params.is_empty() {
+                let with_trait = ImplSignature::of(db, impl_).target_trait.is_some();
+                if f.show_container_bounds() && (!params.is_empty() || with_trait) {
                     write_impl_header(impl_, f)?;
                     f.write_char('\n')?;
                     has_disaplayable_predicates(f.db, params, params_store).then_some((
@@ -383,6 +385,9 @@ impl<'db> HirDisplay<'db> for Struct {
 
                 f.write_char(')')?;
                 write_where_clause(def_id, f)?;
+                if f.entity_limit.is_some() {
+                    f.write_char(';')?;
+                }
             }
             StructKind::Record => {
                 let has_where_clause = write_where_clause(def_id, f)?;
@@ -391,7 +396,12 @@ impl<'db> HirDisplay<'db> for Struct {
                     write_fields(&fields, hidden_fields, has_where_clause, limit, false, f)?;
                 }
             }
-            StructKind::Unit => _ = write_where_clause(def_id, f)?,
+            StructKind::Unit => {
+                write_where_clause(def_id, f)?;
+                if f.entity_limit.is_some() {
+                    f.write_char(';')?;
+                }
+            }
         }
 
         Ok(())
