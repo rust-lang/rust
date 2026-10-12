@@ -183,6 +183,7 @@ fn file_test_io_seek_and_write() {
         target_os = "freebsd",
         target_os = "fuchsia",
         target_os = "hurd",
+        target_os = "haiku",
         target_os = "illumos",
         target_os = "linux",
         target_os = "netbsd",
@@ -217,6 +218,7 @@ fn file_lock_multiple_shared() {
         target_os = "freebsd",
         target_os = "fuchsia",
         target_os = "hurd",
+        target_os = "haiku",
         target_os = "illumos",
         target_os = "linux",
         target_os = "netbsd",
@@ -252,6 +254,7 @@ fn file_lock_blocking() {
         target_os = "freebsd",
         target_os = "fuchsia",
         target_os = "hurd",
+        target_os = "haiku",
         target_os = "illumos",
         target_os = "linux",
         target_os = "netbsd",
@@ -284,6 +287,7 @@ fn file_lock_drop() {
         target_os = "freebsd",
         target_os = "fuchsia",
         target_os = "hurd",
+        target_os = "haiku",
         target_os = "illumos",
         target_os = "linux",
         target_os = "netbsd",
@@ -318,6 +322,7 @@ fn file_lock_dup() {
         target_os = "freebsd",
         target_os = "fuchsia",
         target_os = "hurd",
+        target_os = "haiku",
         target_os = "illumos",
         target_os = "linux",
         target_os = "netbsd",
@@ -340,7 +345,7 @@ fn file_lock_double() {
     // The behavior here differs between Windows and Unix: on Windows, f1 holds both locks;
     // on Unix, the lock got downgraded so f1 only holds the shared lock.
     assert_matches!(f2.try_lock(), Err(TryLockError::WouldBlock));
-    if cfg!(windows) {
+    if cfg!(any(windows, target_os = "haiku")) {
         assert_matches!(f2.try_lock_shared(), Err(TryLockError::WouldBlock));
     } else {
         check!(f2.try_lock_shared());

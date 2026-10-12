@@ -1,15 +1,22 @@
 //@ compile-flags: -Copt-level=3
 
 // LLVM IR isn't very portable and the one tested here depends on the ABI which is different between
-// x86 (where we use SSE registers) and others. `x86-64` and `x86-32-sse2` are identical, but
-// compiletest does not support taking the union of multiple `only` annotations.
-//@ revisions: x86-64 x86-32-sse2 by-ref
+// architectures that pass vectors via registers and others that don't.
+// The architecture-specific revisions are identical and only exist as compiletest does not support
+// taking the union of multiple `only` annotations.
+
+//@ revisions: x86-64 x86-32-sse2 aarch64 by-ref
+
 //@[x86-64] only-x86_64
 //@[x86-64] filecheck-flags: --check-prefix=by-val
 //@[x86-32-sse2] only-rustc_abi-x86-sse2
 //@[x86-32-sse2] filecheck-flags: --check-prefix=by-val
+//@[aarch64] only-aarch64
+//@[aarch64] filecheck-flags: --check-prefix=by-val
+
 //@[by-ref] ignore-rustc_abi-x86-sse2
 //@[by-ref] ignore-x86_64
+//@[by-ref] ignore-aarch64
 
 #![crate_type = "lib"]
 #![no_std]
