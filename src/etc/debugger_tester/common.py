@@ -551,6 +551,13 @@ generated for this test yet, consider using the `--bless` option."
 
         self.bless_metadata = metadata
         path = os.environ["DEBUGGER_TESTER_INPUT_DATA_PATH"]
+
+        # We first sort the types dictionary. This keeps the git diff more consistent, and doesn't
+        # affect runtime behavior at all.
+        import operator
+
+        self.types = dict(sorted(self.types.items(), key=operator.itemgetter(0)))
+
         # dumping directly to a file is somewhat unsafe. If the `Variable`/`Type` data ends up in a
         # state that cannot be serialized correctly, the json ends up malformed, and we could end up
         # overwriting valid test data with a complete mess. Since the in-memory data is typically
@@ -567,7 +574,7 @@ generated for this test yet, consider using the `--bless` option."
 
         os.makedirs(pathlib.Path(path).parent, exist_ok=True)
 
-        with open(path, "w") as f:
+        with open(path, "w", newline="\n") as f:
             f.write(x)
             f.write("\n")
 
