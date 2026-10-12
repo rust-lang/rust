@@ -189,6 +189,7 @@ mod imp {
 }
 
 #[cfg(test)]
+#[cfg(not(miri))]
 mod tests {
     use std::fs;
 
