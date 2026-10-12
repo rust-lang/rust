@@ -4010,13 +4010,6 @@ pub fn from_elem<T: Clone>(elem: T, n: usize) -> Vec<T> {
     vec![elem; n]
 }
 
-#[doc(hidden)]
-#[cfg(not(no_global_oom_handling))]
-#[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
-pub fn from_elem_in<T: Clone, A: Allocator>(elem: T, n: usize, alloc: A) -> Vec<T, A> {
-    Vec::repeat_in(elem, n, alloc)
-}
-
 #[cfg(not(no_global_oom_handling))]
 trait ExtendFromWithinSpec {
     /// # Safety
