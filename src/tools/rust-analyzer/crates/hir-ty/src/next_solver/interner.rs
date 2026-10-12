@@ -12,8 +12,8 @@ pub use tls_db::{attach_db, attach_db_allow_change, with_attached_db};
 
 use base_db::Crate;
 use hir_def::{
-    AdtId, CallableDefId, EnumId, GenericParamId, HasModule, ItemContainerId, StructId, TraitId,
-    TypeAliasId, UnionId, VariantId,
+    AdtId, CallableDefId, EnumId, GenericDefId, GenericParamId, HasModule, ItemContainerId,
+    StructId, TraitId, TypeAliasId, UnionId, VariantId,
     attrs::AttrFlags,
     expr_store::{ExpressionStore, StoreVisitor},
     hir::{ClosureKind as HirClosureKind, CoroutineKind as HirCoroutineKind, ExprId, PatId},
@@ -24,13 +24,11 @@ use hir_def::{
     },
 };
 use rustc_abi::ExternAbi;
-use rustc_hash::FxHashSet;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_type_ir::{
     AliasTy, BoundVar, CoroutineWitnessTypes, DebruijnIndex, EarlyBinder, FlagComputation, Flags,
     FnSigKind, GenericArgKind, GenericTypeVisitable, ImplPolarity, InferTy, Interner, TraitRef,
-    TypeFlags, TypeVisitableExt, Upcast, Variance, VisitorResult,
-    elaborate::elaborate,
+    TypeFlags, TypeVisitableExt, Variance, VisitorResult,
     error::TypeError,
     fast_reject,
     inherent::{self, Const as _, GenericsOf, IntoKind, SliceLike as _, Span as _, Ty as _},
@@ -52,8 +50,8 @@ use crate::{
         ImplOrTraitAssocTyId, InherentAssocConstId, InherentAssocTermId, InherentAssocTyId,
         LateParamRegion, OpaqueTyIdWrapper, OpaqueTypeKey, RegionAssumptions, ScalarInt,
         SimplifiedType, SolverContext, SolverDefIds, TermId, TraitAssocConstId, TraitAssocTermId,
-        TraitAssocTyId, TraitIdWrapper, TypeAliasIdWrapper, UnevaluatedConst, Unnormalized,
-        util::{explicit_item_bounds, explicit_item_self_bounds},
+        TraitAssocTyId, TraitIdWrapper, TypeAliasIdWrapper, UnevaluatedConst,
+        util::{ItemBounds, impl_super_outlives},
     },
 };
 
@@ -1299,33 +1297,10 @@ impl<'db> Interner for DbInterner<'db> {
     }
 
     fn generics_require_sized_self(self, def_id: Self::DefId) -> bool {
-        let sized_trait = self.lang_items().Sized;
-        let Some(sized_id) = sized_trait else {
-            return false; /* No Sized trait, can't require it! */
-        };
-        let sized_def_id = sized_id.into();
-
-        // Search for a predicate like `Self : Sized` amongst the trait bounds.
-        let predicates = self.predicates_of(def_id);
-        elaborate(self, predicates.iter_identity().map(Unnormalized::skip_norm_wip)).any(|pred| {
-            match pred.kind().skip_binder() {
-                ClauseKind::Trait(ref trait_pred) => {
-                    trait_pred.def_id() == sized_def_id
-                        && matches!(
-                            trait_pred.self_ty().kind(),
-                            TyKind::Param(ParamTy { index: 0, .. })
-                        )
-                }
-                ClauseKind::RegionOutlives(_)
-                | ClauseKind::TypeOutlives(_)
-                | ClauseKind::Projection(_)
-                | ClauseKind::ConstArgHasType(_, _)
-                | ClauseKind::WellFormed(_)
-                | ClauseKind::ConstEvaluatable(_)
-                | ClauseKind::HostEffect(..)
-                | ClauseKind::UnstableFeature(_) => false,
-            }
-        })
+        match GenericDefId::try_from(def_id) {
+            Ok(def_id) => crate::dyn_compatibility::generics_require_sized_self(self.db, def_id),
+            Err(_) => false,
+        }
     }
 
     #[tracing::instrument(skip(self))]
@@ -1333,7 +1308,7 @@ impl<'db> Interner for DbInterner<'db> {
         self,
         def_id: Self::DefId,
     ) -> EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>> {
-        explicit_item_bounds(self, def_id).map_bound(|bounds| elaborate(self, bounds))
+        ItemBounds::of_solver_def(self.db, def_id).all_bounds()
     }
 
     #[tracing::instrument(skip(self))]
@@ -1341,22 +1316,14 @@ impl<'db> Interner for DbInterner<'db> {
         self,
         def_id: Self::DefId,
     ) -> EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>> {
-        explicit_item_self_bounds(self, def_id)
-            .map_bound(|bounds| elaborate(self, bounds).filter_only_self())
+        ItemBounds::of_solver_def(self.db, def_id).self_bounds()
     }
 
     fn item_non_self_bounds(
         self,
         def_id: Self::DefId,
     ) -> EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>> {
-        let all_bounds: FxHashSet<_> = self.item_bounds(def_id).skip_binder().into_iter().collect();
-        let own_bounds: FxHashSet<_> =
-            self.item_self_bounds(def_id).skip_binder().into_iter().collect();
-        if all_bounds.len() == own_bounds.len() {
-            EarlyBinder::bind(Clauses::empty())
-        } else {
-            EarlyBinder::bind(Clauses::new_from_iter(all_bounds.difference(&own_bounds).cloned()))
-        }
+        ItemBounds::of_solver_def(self.db, def_id).non_self_bounds()
     }
 
     fn predicates_of(
@@ -1416,16 +1383,15 @@ impl<'db> Interner for DbInterner<'db> {
         self,
         impl_id: Self::ImplId,
     ) -> EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>> {
-        let trait_ref = self.impl_trait_ref(impl_id);
-        trait_ref.map_bound(|trait_ref| {
-            let clause: Clause<'_> = trait_ref.upcast(self);
-            elaborate(self, [clause]).filter(|clause| {
-                matches!(
-                    clause.kind().skip_binder(),
-                    ClauseKind::TypeOutlives(_) | ClauseKind::RegionOutlives(_)
-                )
-            })
-        })
+        let bounds = match impl_id {
+            AnyImplId::ImplId(id) => {
+                impl_super_outlives(self.db, id).get().map_bound(|it| it.as_slice())
+            }
+            AnyImplId::BuiltinDeriveImplId(id) => {
+                crate::builtin_derive::impl_super_outlives(self, id)
+            }
+        };
+        bounds.map_bound(|it| it.iter().copied())
     }
 
     #[expect(unreachable_code)]

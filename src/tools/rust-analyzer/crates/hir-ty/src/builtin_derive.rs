@@ -157,6 +157,15 @@ pub fn impl_trait<'db>(
     }
 }
 
+#[inline]
+pub fn impl_super_outlives<'db>(
+    _interner: DbInterner<'db>,
+    _id: BuiltinDeriveImplId,
+) -> EarlyBinder<'db, &'db [Clause<'db>]> {
+    // Currently no builtin-derived traits have super outlive bounds.
+    EarlyBinder::bind(&[])
+}
+
 #[salsa::tracked(returns(ref))]
 pub fn predicates(db: &dyn HirDatabase, impl_: BuiltinDeriveImplId) -> GenericPredicates {
     let loc = impl_.loc(db);

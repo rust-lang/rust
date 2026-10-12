@@ -31,7 +31,7 @@ use crate::{
     },
 };
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum DynCompatibilityViolation {
     SizedSelf,
     SelfReferential,
@@ -42,7 +42,7 @@ pub enum DynCompatibilityViolation {
     HasNonCompatibleSuperTrait(TraitId),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MethodViolationCode {
     StaticMethod,
     ReferencesSelfInput,
@@ -122,7 +122,7 @@ where
     ControlFlow::Continue(())
 }
 
-#[salsa::tracked(returns(clone))]
+#[salsa::tracked(returns(copy))]
 pub fn dyn_compatibility_of_trait_query(
     db: &dyn HirDatabase,
     trait_: TraitId,
@@ -136,33 +136,31 @@ pub fn dyn_compatibility_of_trait_query(
     res
 }
 
-pub fn generics_require_sized_self(db: &dyn HirDatabase, def: GenericDefId) -> bool {
-    let krate = def.module(db).krate(db);
+#[salsa::tracked(returns(copy))]
+pub fn generics_require_sized_self(db: &dyn HirDatabase, def_id: GenericDefId) -> bool {
+    let krate = def_id.krate(db);
     let interner = DbInterner::new_with(db, krate);
-    let Some(sized) = interner.lang_items().Sized else {
-        return false;
+    let Some(sized_def_id) = interner.lang_items().Sized else {
+        return false; /* No Sized trait, can't require it! */
     };
 
-    let predicates = GenericPredicates::query_explicit(db, def);
-    // FIXME: We should use `explicit_predicates_of` here, which hasn't been implemented to
-    // rust-analyzer yet
-    // https://github.com/rust-lang/rust/blob/ddaf12390d3ffb7d5ba74491a48f3cd528e5d777/compiler/rustc_hir_analysis/src/collect/predicates_of.rs#L490
-    elaborate::elaborate(interner, predicates.iter_identity().map(Unnormalized::skip_norm_wip)).any(
-        |pred| match pred.kind().skip_binder() {
-            ClauseKind::Trait(trait_pred) => {
-                if sized == trait_pred.def_id().0
-                    && let rustc_type_ir::TyKind::Param(param_ty) =
-                        trait_pred.trait_ref.self_ty().kind()
-                    && param_ty.index == 0
-                {
-                    true
-                } else {
-                    false
-                }
-            }
-            _ => false,
-        },
-    )
+    // Search for a clause like `Self: Sized` amongst the trait bounds.
+    let clauses = GenericPredicates::query_own_explicit(db, def_id)
+        .iter_identity()
+        .map(Unnormalized::skip_norm_wip);
+    elaborate::elaborate(interner, clauses).any(|clause| match clause.kind().skip_binder() {
+        ClauseKind::Trait(ref trait_pred) => {
+            trait_pred.def_id().0 == sized_def_id && trait_pred.self_ty().is_param(0)
+        }
+        ClauseKind::RegionOutlives(_)
+        | ClauseKind::TypeOutlives(_)
+        | ClauseKind::Projection(_)
+        | ClauseKind::ConstArgHasType(_, _)
+        | ClauseKind::WellFormed(_)
+        | ClauseKind::ConstEvaluatable(_)
+        | ClauseKind::UnstableFeature(_)
+        | ClauseKind::HostEffect(..) => false,
+    })
 }
 
 // rustc gathers all the spans that references `Self` for error rendering,
