@@ -129,25 +129,10 @@ impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for Ty<'tcx> {
 }
 
 /// Encode a predicate using rustc's existing shorthand representation.
-fn encode_predicate_kind<'tcx, E: TyEncoder<'tcx>>(
-    e: &mut E,
-    kind: ty::Binder<'tcx, ty::PredicateKind<'tcx>>,
-) {
+pub fn encode_predicate<'tcx, E: TyEncoder<'tcx>>(e: &mut E, predicate: ty::Predicate<'tcx>) {
+    let kind = predicate.kind();
     kind.bound_vars().encode(e);
     encode_with_shorthand(e, &kind.skip_binder(), TyEncoder::predicate_shorthands);
-}
-
-/// Encode a predicate using rustc's existing shorthand representation.
-pub fn encode_predicate<'tcx, E: TyEncoder<'tcx>>(e: &mut E, predicate: ty::Predicate<'tcx>) {
-    encode_predicate_kind(e, predicate.kind());
-}
-
-/// Encode the shared representation with the same shorthand format.
-pub fn encode_shared_predicate<'tcx, E: TyEncoder<'tcx>>(
-    e: &mut E,
-    predicate: rustc_type_ir::predicates::Predicate<TyCtxt<'tcx>>,
-) {
-    encode_predicate_kind(e, predicate.kind());
 }
 
 impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ty::Pattern<'tcx> {
@@ -228,15 +213,6 @@ pub fn decode_predicate<'tcx, D: TyDecoder<'tcx>>(decoder: &mut D) -> ty::Predic
         bound_vars,
     );
     decoder.interner().mk_predicate(predicate_kind)
-}
-
-/// Decode the shared representation using rustc's existing decoder.
-///
-/// The concrete and shared wrappers currently use identical interned storage.
-pub fn decode_shared_predicate<'tcx, D: TyDecoder<'tcx>>(
-    decoder: &mut D,
-) -> rustc_type_ir::predicates::Predicate<TyCtxt<'tcx>> {
-    decode_predicate(decoder)
 }
 
 impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for GenericArgsRef<'tcx> {

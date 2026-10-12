@@ -533,7 +533,7 @@ impl<'a, 'tcx> rustc_type_ir::InternerDecoder for CacheDecoder<'a, 'tcx> {
     }
 
     fn decode_predicate(&mut self) -> rustc_type_ir::predicates::Predicate<Self::Interner> {
-        ty::codec::decode_shared_predicate(self)
+        ty::codec::decode_predicate(self)
     }
 }
 
@@ -922,7 +922,7 @@ impl<'tcx> SpanEncoder for CacheEncoder<'tcx> {
 
 impl<'tcx> rustc_type_ir::PredicateEncoder<TyCtxt<'tcx>> for CacheEncoder<'tcx> {
     fn encode_predicate(&mut self, predicate: rustc_type_ir::predicates::Predicate<TyCtxt<'tcx>>) {
-        ty::codec::encode_shared_predicate(self, predicate);
+        ty::codec::encode_predicate(self, predicate);
     }
 }
 

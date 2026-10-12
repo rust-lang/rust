@@ -11,6 +11,7 @@ use rustc_ast_ir::Mutability;
 
 use crate::elaborate::Elaboratable;
 use crate::fold::{TypeFoldable, TypeSuperFoldable};
+use crate::predicates::Predicate;
 use crate::relate::Relate;
 use crate::solve::{AdtDestructorKind, SizedTraitKind};
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
@@ -427,7 +428,7 @@ pub trait Clause<I: Interner<Clause = Self>>:
     + IntoKind<Kind = ty::Binder<I, ty::ClauseKind<I>>>
     + Elaboratable<I>
 {
-    fn as_predicate(self) -> rustc_type_ir::sty::predicates::Predicate<I>;
+    fn as_predicate(self) -> Predicate<I>;
 
     fn as_type_outlives_clause(self) -> Option<ty::Binder<I, ty::OutlivesClause<I, I::Ty>>> {
         self.kind()

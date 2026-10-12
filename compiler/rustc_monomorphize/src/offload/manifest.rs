@@ -133,7 +133,7 @@ impl<'a, 'tcx> SpanEncoder for OffloadManifestEncoder<'a, 'tcx> {
 
 impl<'a, 'tcx> ty::PredicateEncoder<TyCtxt<'tcx>> for OffloadManifestEncoder<'a, 'tcx> {
     fn encode_predicate(&mut self, predicate: ty::predicates::Predicate<TyCtxt<'tcx>>) {
-        ty::codec::encode_shared_predicate(self, predicate);
+        ty::codec::encode_predicate(self, predicate);
     }
 }
 
@@ -378,7 +378,7 @@ impl<'a, 'tcx> rustc_middle::ty::InternerDecoder for OffloadManifestDecoder<'a, 
     }
 
     fn decode_predicate(&mut self) -> ty::predicates::Predicate<Self::Interner> {
-        ty::codec::decode_shared_predicate(self)
+        ty::codec::decode_predicate(self)
     }
 }
 

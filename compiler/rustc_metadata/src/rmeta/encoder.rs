@@ -410,7 +410,7 @@ impl<'a, 'tcx> rustc_middle::ty::PredicateEncoder<TyCtxt<'tcx>> for EncodeContex
         &mut self,
         predicate: rustc_middle::ty::predicates::Predicate<TyCtxt<'tcx>>,
     ) {
-        rustc_middle::ty::codec::encode_shared_predicate(self, predicate);
+        rustc_middle::ty::codec::encode_predicate(self, predicate);
     }
 }
 
