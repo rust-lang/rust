@@ -3606,7 +3606,7 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(allocator_ext)]
+    /// #![feature(vec_from_elem)]
     /// use std::alloc::System;
     ///
     /// let vec = Vec::from_elem_in(0, 3, System);
