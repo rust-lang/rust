@@ -863,8 +863,11 @@ impl UnixSocketFileDescription for TcpSocket {
                         .map_err(IoError::HostError),
                 );
             } else {
-                throw_unsup_format!(
-                    "setsockopt: option {option:#x} is unsupported for level IPPROTO_TCP"
+                return ecx.set_tcp_socket_option(
+                    option,
+                    value_ptr,
+                    value_len,
+                    self.state.borrow().as_socket_ref(),
                 );
             }
         }

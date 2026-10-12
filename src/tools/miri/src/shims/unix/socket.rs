@@ -840,4 +840,21 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         throw_unsup_format!("setsockopt: option {option:#x} is unsupported for level IPPROTO_IP",);
     }
+
+    /// Set the `option` socket option on level IPPROTO_TCP for `socket`.
+    /// `value_ptr` points to the new value of the socket option, and `value_len`
+    /// contains the amount of bytes the value uses at `value_ptr`.
+    /// `socket` is a [`socket2::SockRef`] to the underlying host socket of
+    /// the shimmed socket.
+    fn set_tcp_socket_option(
+        &self,
+        option: i32,
+        value_ptr: Pointer,
+        value_len: u64,
+        socket: socket2::SockRef<'_>,
+    ) -> InterpResult<'tcx, Result<(), IoError>> {
+        let ecx = self.eval_context_ref();
+
+        throw_unsup_format!("setsockopt: option {option:#x} is unsupported for level IPPROTO_TCP");
+    }
 }
