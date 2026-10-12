@@ -731,11 +731,12 @@ pub struct TypeId {
     pub(crate) data: [*const (); 16 / size_of::<*const ()>()],
 }
 
-// SAFETY: the raw pointer is always an integer
 #[stable(feature = "rust1", since = "1.0.0")]
+// SAFETY: the raw pointer is always an integer
 unsafe impl Send for TypeId {}
-// SAFETY: the raw pointer is always an integer
+
 #[stable(feature = "rust1", since = "1.0.0")]
+// SAFETY: the raw pointer is always an integer
 unsafe impl Sync for TypeId {}
 
 #[stable(feature = "rust1", since = "1.0.0")]

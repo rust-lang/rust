@@ -1780,6 +1780,7 @@ where
 }
 
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
+// SAFETY: The `Deref` implementation is a direct call to a pure deref impl, and thus is pure.
 unsafe impl<Ptr: DerefPure> DerefPure for Pin<Ptr> {}
 
 #[unstable(feature = "legacy_receiver_trait", issue = "none")]
@@ -1898,6 +1899,8 @@ where
 /// [`Arc::get_mut`]: ../../std/sync/struct.Arc.html#method.get_mut "Arc::get_mut"
 pub unsafe trait PinSafePointer: Deref + Sized {}
 
+#[stable(feature = "pin", since = "1.33.0")]
+// SAFETY:
 // A pointer can only be pin safe if it does not implement certain safe traits
 // maliciously. Since `&T` is fundamental, downstream crates may be able to
 // implement those traits for `&LocalType`, so we must carefully check that
@@ -1914,9 +1917,10 @@ pub unsafe trait PinSafePointer: Deref + Sized {}
 // `&LocalType` as long as `LocalType` does not implement said trait. However,
 // the existence of an `&&T` cannot be treated as evidence that the `T` is not
 // pinned, so this is not problematic.
-#[stable(feature = "pin", since = "1.33.0")]
 unsafe impl<'a, T: ?Sized> PinSafePointer for &'a T {}
 
+#[stable(feature = "pin", since = "1.33.0")]
+// SAFETY:
 // A pointer can only be pin safe if it does not implement certain safe traits
 // maliciously. Since `&mut T` is fundamental, downstream crates may be able to
 // implement those traits for `&mut LocalType`, so we must carefully check that
@@ -1933,9 +1937,10 @@ unsafe impl<'a, T: ?Sized> PinSafePointer for &'a T {}
 // for `&mut LocalType` as long as `LocalType` does not implement said trait.
 // However, the existence of an `&&mut T` cannot be treated as evidence that the
 // `T` is not pinned, so this is not problematic.
-#[stable(feature = "pin", since = "1.33.0")]
 unsafe impl<'a, T: ?Sized> PinSafePointer for &'a mut T {}
 
+#[stable(feature = "pin", since = "1.33.0")]
+// SAFETY:
 // A pointer can only be pin safe if it does not implement certain safe traits
 // maliciously. `Pin` implements these traits by forwarding to `P`, which also
 // asserts that these implementations are not malicious, so the implementations
@@ -1967,7 +1972,6 @@ unsafe impl<'a, T: ?Sized> PinSafePointer for &'a mut T {}
 // given that the implementation of `Clone` returned a `Pin<P>`, we know that
 // the target value is pinned, so this conversion is okay even if `Clone` was
 // implemented for `Pin<P>` by a downstream crate.
-#[stable(feature = "pin", since = "1.33.0")]
 unsafe impl<P: PinSafePointer> PinSafePointer for Pin<P> {}
 
 /// Constructs a <code>[Pin]<[&mut] T></code>, by pinning a `value: T` locally.

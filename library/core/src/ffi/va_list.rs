@@ -319,8 +319,10 @@ crate::cfg_select! {
         // - i8 is implicitly promoted to c_int in C, and cannot implement `VaArgSafe`.
         // - u8 is implicitly promoted to c_uint in C, and cannot implement `VaArgSafe`.
         #[unstable(feature = "c_variadic_va_arg_safe", issue = "162911", implied_by = "c_variadic")]
+        // ignore-tidy-undocumented-unsafe
         unsafe impl VaArgSafe for i16 {}
         #[unstable(feature = "c_variadic_va_arg_safe", issue = "162911", implied_by = "c_variadic")]
+        // ignore-tidy-undocumented-unsafe
         unsafe impl VaArgSafe for u16 {}
     }
     _ => {
@@ -335,6 +337,7 @@ crate::cfg_select! {
     target_arch = "avr" => {
         // c_double is f32 on this target.
         #[unstable(feature = "c_variadic_va_arg_safe", issue = "162911", implied_by = "c_variadic")]
+        // ignore-tidy-undocumented-unsafe
         unsafe impl VaArgSafe for f32 {}
     }
     _ => {
@@ -345,17 +348,23 @@ crate::cfg_select! {
 }
 
 #[unstable(feature = "c_variadic_va_arg_safe", issue = "162911", implied_by = "c_variadic")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl VaArgSafe for i32 {}
 #[unstable(feature = "c_variadic_va_arg_safe", issue = "162911", implied_by = "c_variadic")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl VaArgSafe for i64 {}
 #[unstable(feature = "c_variadic_va_arg_safe", issue = "162911", implied_by = "c_variadic")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl VaArgSafe for isize {}
 
 #[unstable(feature = "c_variadic_va_arg_safe", issue = "162911", implied_by = "c_variadic")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl VaArgSafe for u32 {}
 #[unstable(feature = "c_variadic_va_arg_safe", issue = "162911", implied_by = "c_variadic")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl VaArgSafe for u64 {}
 #[unstable(feature = "c_variadic_va_arg_safe", issue = "162911", implied_by = "c_variadic")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl VaArgSafe for usize {}
 
 // Implement `VaArgSafe` for 128-bit integers on targets where clang provides `__int128`.
@@ -398,9 +407,11 @@ cfg_select! {
     ) => {
         #[unstable_feature_bound(c_variadic_int128)]
         #[unstable(feature = "c_variadic_int128", issue = "155752")]
+        // ignore-tidy-undocumented-unsafe
         unsafe impl VaArgSafe for i128 {}
         #[unstable_feature_bound(c_variadic_int128)]
         #[unstable(feature = "c_variadic_int128", issue = "155752")]
+        // ignore-tidy-undocumented-unsafe
         unsafe impl VaArgSafe for u128 {}
     }
     _ => {
@@ -414,6 +425,7 @@ cfg_select! {
 }
 
 #[unstable(feature = "c_variadic_va_arg_safe", issue = "162911", implied_by = "c_variadic")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl VaArgSafe for f64 {}
 
 // Implement `VaArgSafe` for f128 on targets where either:
@@ -460,14 +472,17 @@ cfg_select! {
     ) => {
         #[unstable_feature_bound(f128)]
         #[unstable(feature = "f128", issue = "116909")]
+        // ignore-tidy-undocumented-unsafe
         unsafe impl VaArgSafe for f128 {}
     }
     _ => { /* unsupported */ }
 }
 
 #[unstable(feature = "c_variadic_va_arg_safe", issue = "162911", implied_by = "c_variadic")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T> VaArgSafe for *mut T {}
 #[unstable(feature = "c_variadic_va_arg_safe", issue = "162911", implied_by = "c_variadic")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T> VaArgSafe for *const T {}
 
 // Check that relevant `core::ffi` types implement `VaArgSafe`.

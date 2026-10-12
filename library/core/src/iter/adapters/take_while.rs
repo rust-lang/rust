@@ -108,9 +108,11 @@ where
 }
 
 #[unstable(issue = "none", feature = "trusted_fused")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<I: TrustedFused, P> TrustedFused for TakeWhile<I, P> {}
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<P, I> SourceIter for TakeWhile<I, P>
 where
     I: SourceIter,
@@ -125,6 +127,7 @@ where
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<I: InPlaceIterable, F> InPlaceIterable for TakeWhile<I, F> {
     const EXPAND_BY: Option<NonZero<usize>> = I::EXPAND_BY;
     const MERGE_BY: Option<NonZero<usize>> = I::MERGE_BY;

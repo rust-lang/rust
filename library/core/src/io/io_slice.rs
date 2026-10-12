@@ -37,9 +37,11 @@ cfg_select! {
 pub struct IoSliceMut<'a>(repr::IoSliceMut<'a>);
 
 #[stable(feature = "iovec_send_sync", since = "1.44.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<'a> Send for IoSliceMut<'a> {}
 
 #[stable(feature = "iovec_send_sync", since = "1.44.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<'a> Sync for IoSliceMut<'a> {}
 
 #[stable(feature = "iovec", since = "1.36.0")]
@@ -195,9 +197,11 @@ impl<'a> DerefMut for IoSliceMut<'a> {
 pub struct IoSlice<'a>(repr::IoSlice<'a>);
 
 #[stable(feature = "iovec_send_sync", since = "1.44.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<'a> Send for IoSlice<'a> {}
 
 #[stable(feature = "iovec_send_sync", since = "1.44.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<'a> Sync for IoSlice<'a> {}
 
 #[stable(feature = "iovec", since = "1.36.0")]

@@ -64,6 +64,7 @@ impl<T> ExactSizeIterator for Empty<T> {
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// SAFETY: Sure looks empty to me, boss.
 unsafe impl<T> TrustedLen for Empty<T> {}
 
 #[stable(feature = "fused", since = "1.26.0")]

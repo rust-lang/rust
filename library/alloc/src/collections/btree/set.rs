@@ -1803,6 +1803,7 @@ impl<T> ExactSizeIterator for Iter<'_, T> {
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T> TrustedLen for Iter<'_, T> {}
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -1850,6 +1851,7 @@ impl<T, A: AllocatorClone> ExactSizeIterator for IntoIter<T, A> {
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T, A: AllocatorClone> TrustedLen for IntoIter<T, A> {}
 
 #[stable(feature = "fused", since = "1.26.0")]

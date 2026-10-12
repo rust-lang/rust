@@ -118,4 +118,5 @@ impl<A, F: FnOnce() -> A> ExactSizeIterator for OnceWith<F> {
 impl<A, F: FnOnce() -> A> FusedIterator for OnceWith<F> {}
 
 #[stable(feature = "iter_once_with", since = "1.43.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<A, F: FnOnce() -> A> TrustedLen for OnceWith<F> {}

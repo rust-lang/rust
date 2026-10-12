@@ -1026,6 +1026,7 @@ impl<'a, I: tags::Type<'a>> Tagged<TaggedOption<'a, I>> {
 /// This trait is exclusively implemented by the `TaggedOption` type.
 unsafe trait Erased<'a>: 'a {}
 
+// ignore-tidy-undocumented-unsafe
 unsafe impl<'a, I: tags::Type<'a>> Erased<'a> for TaggedOption<'a, I> {}
 
 struct Tagged<E: ?Sized> {

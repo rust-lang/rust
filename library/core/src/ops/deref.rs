@@ -297,9 +297,11 @@ const impl<T: ?Sized> DerefMut for &mut T {
 pub unsafe trait DerefPure: PointeeSized {}
 
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: ?Sized> DerefPure for &T {}
 
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: ?Sized> DerefPure for &mut T {}
 
 /// Indicates that a struct can be used as a method receiver.

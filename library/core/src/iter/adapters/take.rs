@@ -141,6 +141,7 @@ where
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<I> SourceIter for Take<I>
 where
     I: SourceIter,
@@ -155,6 +156,7 @@ where
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<I: InPlaceIterable> InPlaceIterable for Take<I> {
     const EXPAND_BY: Option<NonZero<usize>> = I::EXPAND_BY;
     const MERGE_BY: Option<NonZero<usize>> = I::MERGE_BY;
@@ -257,9 +259,11 @@ impl<I> ExactSizeIterator for Take<I> where I: ExactSizeIterator {}
 impl<I> FusedIterator for Take<I> where I: FusedIterator {}
 
 #[unstable(issue = "none", feature = "trusted_fused")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<I: TrustedFused> TrustedFused for Take<I> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<I: TrustedLen> TrustedLen for Take<I> {}
 
 trait SpecTake: Iterator {

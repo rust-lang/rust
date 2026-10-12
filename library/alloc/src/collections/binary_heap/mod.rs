@@ -1748,6 +1748,7 @@ impl<T, A: Allocator> FusedIterator for IntoIter<T, A> {}
 
 #[doc(hidden)]
 #[unstable(issue = "none", feature = "trusted_fused")]
+// SAFETY: We just forward to `vec::IntoIter`, which is always fused.
 unsafe impl<T, A: Allocator> TrustedFused for IntoIter<T, A> {}
 
 #[stable(feature = "default_iters", since = "1.70.0")]
@@ -1768,6 +1769,7 @@ impl<T> Default for IntoIter<T> {
 // also refer to the vec::in_place_collect module documentation to get an overview
 #[unstable(issue = "none", feature = "inplace_iteration")]
 #[doc(hidden)]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T, A: Allocator> SourceIter for IntoIter<T, A> {
     type Source = IntoIter<T, A>;
 
@@ -1779,12 +1781,14 @@ unsafe impl<T, A: Allocator> SourceIter for IntoIter<T, A> {
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
 #[doc(hidden)]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<I, A: Allocator> InPlaceIterable for IntoIter<I, A> {
     const EXPAND_BY: Option<NonZero<usize>> = NonZero::new(1);
     const MERGE_BY: Option<NonZero<usize>> = NonZero::new(1);
 }
 
 #[cfg(not(test))]
+// SAFETY: We don't mutate the contained data when returning it.
 unsafe impl<I> AsVecIntoIter for IntoIter<I> {
     type Item = I;
 
@@ -1834,6 +1838,7 @@ impl<T: Ord, A: Allocator> ExactSizeIterator for IntoIterSorted<T, A> {}
 impl<T: Ord, A: Allocator> FusedIterator for IntoIterSorted<T, A> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// SAFETY: We just forward to `vec::IntoIter`, which has a trustable length.
 unsafe impl<T: Ord, A: Allocator> TrustedLen for IntoIterSorted<T, A> {}
 
 /// A draining iterator over the elements of a `BinaryHeap`.
@@ -1960,6 +1965,7 @@ impl<T: Ord, A: Allocator> ExactSizeIterator for DrainSorted<'_, T, A> {}
 impl<T: Ord, A: Allocator> FusedIterator for DrainSorted<'_, T, A> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// SAFETY: The length of the underlying heap is always correct.
 unsafe impl<T: Ord, A: Allocator> TrustedLen for DrainSorted<'_, T, A> {}
 
 #[stable(feature = "binary_heap_extras_15", since = "1.5.0")]

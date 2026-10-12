@@ -86,9 +86,11 @@ unsafe extern "Rust" {
 pub struct Global;
 
 #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
+// SAFETY: All clones of `Global` refer to the same global allocator.
 unsafe impl core::alloc::AllocatorClone for Global {}
 
 #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
+// SAFETY: `Global` allocations remain active unless deallocated.
 unsafe impl core::alloc::StaticAllocator for Global {}
 
 /// Allocates memory with the global allocator.
@@ -568,6 +570,8 @@ impl Global {
 
 #[stable(feature = "allocator_api", since = "1.100.0")]
 #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+// SAFETY: The specific requirements of `Allocator` are too much to explain here,
+// but we do cover all of them for `Global`.
 const unsafe impl Allocator for Global {
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces

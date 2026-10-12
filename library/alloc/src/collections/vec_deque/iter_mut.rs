@@ -283,14 +283,17 @@ impl<T> ExactSizeIterator for IterMut<'_, T> {
 impl<T> FusedIterator for IterMut<'_, T> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T> TrustedLen for IterMut<'_, T> {}
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T> TrustedRandomAccess for IterMut<'_, T> {}
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T> TrustedRandomAccessNoCoerce for IterMut<'_, T> {
     const MAY_HAVE_SIDE_EFFECT: bool = false;
 }

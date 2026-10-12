@@ -38,10 +38,12 @@ macro_rules! unsafe_range_trusted_random_access_impl {
     ($($t:ty)*) => ($(
         #[doc(hidden)]
         #[unstable(feature = "trusted_random_access", issue = "none")]
+        // ignore-tidy-undocumented-unsafe
         unsafe impl TrustedRandomAccess for RangeIter<$t> {}
 
         #[doc(hidden)]
         #[unstable(feature = "trusted_random_access", issue = "none")]
+        // ignore-tidy-undocumented-unsafe
         unsafe impl TrustedRandomAccessNoCoerce for RangeIter<$t> {
             const MAY_HAVE_SIDE_EFFECT: bool = false;
         }
@@ -151,6 +153,7 @@ impl<A: Step> DoubleEndedIterator for RangeIter<A> {
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<A: TrustedStep> TrustedLen for RangeIter<A> {}
 
 #[stable(feature = "new_range_api", since = "1.96.0")]
@@ -274,6 +277,7 @@ impl<A: Step> DoubleEndedIterator for RangeInclusiveIter<A> {
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<A: TrustedStep> TrustedLen for RangeInclusiveIter<A> {}
 
 #[stable(feature = "new_range_inclusive_api", since = "1.95.0")]
@@ -430,6 +434,7 @@ impl<A: Step> Iterator for RangeFromIter<A> {
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<A: TrustedStep> TrustedLen for RangeFromIter<A> {}
 
 #[stable(feature = "new_range_from_api", since = "1.96.0")]

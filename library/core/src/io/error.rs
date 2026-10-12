@@ -594,12 +594,12 @@ pub struct Custom {
     outer_drop: unsafe fn(NonNull<Self>),
 }
 
-// SAFETY: All members of `Custom` are `Send`
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+// SAFETY: All members of `Custom` are `Send` or only used in the destructor.
 unsafe impl Send for Custom {}
 
-// SAFETY: All members of `Custom` are `Sync`
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+// SAFETY: All members of `Custom` are `Sync` or only used in the destructor.
 unsafe impl Sync for Custom {}
 
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
@@ -668,12 +668,12 @@ impl Custom {
 #[doc(hidden)]
 pub struct CustomOwner(NonNull<Custom>);
 
-// SAFETY: Custom is `Send`
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+// SAFETY: Custom is `Send`.
 unsafe impl Send for CustomOwner {}
 
-// SAFETY: Custom is `Sync`
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+// SAFETY: Custom is `Sync`.
 unsafe impl Sync for CustomOwner {}
 
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]

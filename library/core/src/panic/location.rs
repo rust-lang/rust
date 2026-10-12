@@ -308,6 +308,8 @@ impl fmt::Display for Location<'_> {
 }
 
 #[stable(feature = "panic_hooks", since = "1.10.0")]
+// SAFETY: Immutable data is trivially `Send`.
 unsafe impl Send for Location<'_> {}
 #[stable(feature = "panic_hooks", since = "1.10.0")]
+// SAFETY: Immutable data is trivially `Sync`.
 unsafe impl Sync for Location<'_> {}

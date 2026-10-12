@@ -87,8 +87,10 @@ impl<T: fmt::Debug, A: Allocator> fmt::Debug for Drain<'_, T, A> {
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: Sync, A: Allocator + Sync> Sync for Drain<'_, T, A> {}
 #[stable(feature = "drain", since = "1.6.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: Send, A: Allocator + Send> Send for Drain<'_, T, A> {}
 
 #[stable(feature = "drain", since = "1.6.0")]

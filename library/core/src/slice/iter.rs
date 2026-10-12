@@ -85,8 +85,10 @@ impl<T: fmt::Debug> fmt::Debug for Iter<'_, T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: Sync> Sync for Iter<'_, T> {}
 #[stable(feature = "rust1", since = "1.0.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: Sync> Send for Iter<'_, T> {}
 
 impl<'a, T> Iter<'a, T> {
@@ -210,8 +212,10 @@ impl<T: fmt::Debug> fmt::Debug for IterMut<'_, T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: Sync> Sync for IterMut<'_, T> {}
 #[stable(feature = "rust1", since = "1.0.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: Send> Send for IterMut<'_, T> {}
 
 impl<'a, T> IterMut<'a, T> {
@@ -1436,6 +1440,7 @@ impl<'a, T> DoubleEndedIterator for Windows<'a, T> {
 impl<T> ExactSizeIterator for Windows<'_, T> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T> TrustedLen for Windows<'_, T> {}
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -1443,10 +1448,12 @@ impl<T> FusedIterator for Windows<'_, T> {}
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<'a, T> TrustedRandomAccess for Windows<'a, T> {}
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<'a, T> TrustedRandomAccessNoCoerce for Windows<'a, T> {
     const MAY_HAVE_SIDE_EFFECT: bool = false;
 }
@@ -1616,6 +1623,7 @@ impl<'a, T> DoubleEndedIterator for Chunks<'a, T> {
 impl<T> ExactSizeIterator for Chunks<'_, T> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T> TrustedLen for Chunks<'_, T> {}
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -1623,10 +1631,12 @@ impl<T> FusedIterator for Chunks<'_, T> {}
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<'a, T> TrustedRandomAccess for Chunks<'a, T> {}
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<'a, T> TrustedRandomAccessNoCoerce for Chunks<'a, T> {
     const MAY_HAVE_SIDE_EFFECT: bool = false;
 }
@@ -1792,6 +1802,7 @@ impl<'a, T> DoubleEndedIterator for ChunksMut<'a, T> {
 impl<T> ExactSizeIterator for ChunksMut<'_, T> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T> TrustedLen for ChunksMut<'_, T> {}
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -1799,18 +1810,22 @@ impl<T> FusedIterator for ChunksMut<'_, T> {}
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<'a, T> TrustedRandomAccess for ChunksMut<'a, T> {}
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<'a, T> TrustedRandomAccessNoCoerce for ChunksMut<'a, T> {
     const MAY_HAVE_SIDE_EFFECT: bool = false;
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T> Send for ChunksMut<'_, T> where T: Send {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T> Sync for ChunksMut<'_, T> where T: Sync {}
 
 /// An iterator over a slice in (non-overlapping) chunks (`chunk_size` elements at a
@@ -1971,6 +1986,7 @@ impl<T> ExactSizeIterator for ChunksExact<'_, T> {
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T> TrustedLen for ChunksExact<'_, T> {}
 
 #[stable(feature = "chunks_exact", since = "1.31.0")]
@@ -1978,10 +1994,12 @@ impl<T> FusedIterator for ChunksExact<'_, T> {}
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<'a, T> TrustedRandomAccess for ChunksExact<'a, T> {}
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<'a, T> TrustedRandomAccessNoCoerce for ChunksExact<'a, T> {
     const MAY_HAVE_SIDE_EFFECT: bool = false;
 }
@@ -2134,6 +2152,7 @@ impl<T> ExactSizeIterator for ChunksExactMut<'_, T> {
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T> TrustedLen for ChunksExactMut<'_, T> {}
 
 #[stable(feature = "chunks_exact", since = "1.31.0")]
@@ -2141,18 +2160,22 @@ impl<T> FusedIterator for ChunksExactMut<'_, T> {}
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<'a, T> TrustedRandomAccess for ChunksExactMut<'a, T> {}
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<'a, T> TrustedRandomAccessNoCoerce for ChunksExactMut<'a, T> {
     const MAY_HAVE_SIDE_EFFECT: bool = false;
 }
 
 #[stable(feature = "chunks_exact", since = "1.31.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T> Send for ChunksExactMut<'_, T> where T: Send {}
 
 #[stable(feature = "chunks_exact", since = "1.31.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T> Sync for ChunksExactMut<'_, T> where T: Sync {}
 
 /// A windowed iterator over a slice in overlapping chunks (`N` elements at a
@@ -2267,6 +2290,7 @@ impl<T, const N: usize> ExactSizeIterator for ArrayWindows<'_, T, N> {
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T, const N: usize> TrustedLen for ArrayWindows<'_, T, N> {}
 
 #[stable(feature = "array_windows", since = "1.94.0")]
@@ -2274,10 +2298,12 @@ impl<T, const N: usize> FusedIterator for ArrayWindows<'_, T, N> {}
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T, const N: usize> TrustedRandomAccess for ArrayWindows<'_, T, N> {}
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T, const N: usize> TrustedRandomAccessNoCoerce for ArrayWindows<'_, T, N> {
     const MAY_HAVE_SIDE_EFFECT: bool = false;
 }
@@ -2431,6 +2457,7 @@ impl<'a, T> DoubleEndedIterator for RChunks<'a, T> {
 impl<T> ExactSizeIterator for RChunks<'_, T> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T> TrustedLen for RChunks<'_, T> {}
 
 #[stable(feature = "rchunks", since = "1.31.0")]
@@ -2438,10 +2465,12 @@ impl<T> FusedIterator for RChunks<'_, T> {}
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<'a, T> TrustedRandomAccess for RChunks<'a, T> {}
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<'a, T> TrustedRandomAccessNoCoerce for RChunks<'a, T> {
     const MAY_HAVE_SIDE_EFFECT: bool = false;
 }
@@ -2602,6 +2631,7 @@ impl<'a, T> DoubleEndedIterator for RChunksMut<'a, T> {
 impl<T> ExactSizeIterator for RChunksMut<'_, T> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T> TrustedLen for RChunksMut<'_, T> {}
 
 #[stable(feature = "rchunks", since = "1.31.0")]
@@ -2609,18 +2639,22 @@ impl<T> FusedIterator for RChunksMut<'_, T> {}
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<'a, T> TrustedRandomAccess for RChunksMut<'a, T> {}
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<'a, T> TrustedRandomAccessNoCoerce for RChunksMut<'a, T> {
     const MAY_HAVE_SIDE_EFFECT: bool = false;
 }
 
 #[stable(feature = "rchunks", since = "1.31.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T> Send for RChunksMut<'_, T> where T: Send {}
 
 #[stable(feature = "rchunks", since = "1.31.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T> Sync for RChunksMut<'_, T> where T: Sync {}
 
 /// An iterator over a slice in (non-overlapping) chunks (`chunk_size` elements at a
@@ -2788,6 +2822,7 @@ impl<'a, T> ExactSizeIterator for RChunksExact<'a, T> {
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T> TrustedLen for RChunksExact<'_, T> {}
 
 #[stable(feature = "rchunks", since = "1.31.0")]
@@ -2795,10 +2830,12 @@ impl<T> FusedIterator for RChunksExact<'_, T> {}
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<'a, T> TrustedRandomAccess for RChunksExact<'a, T> {}
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<'a, T> TrustedRandomAccessNoCoerce for RChunksExact<'a, T> {
     const MAY_HAVE_SIDE_EFFECT: bool = false;
 }
@@ -2961,6 +2998,7 @@ impl<T> ExactSizeIterator for RChunksExactMut<'_, T> {
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T> TrustedLen for RChunksExactMut<'_, T> {}
 
 #[stable(feature = "rchunks", since = "1.31.0")]
@@ -2968,36 +3006,44 @@ impl<T> FusedIterator for RChunksExactMut<'_, T> {}
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<'a, T> TrustedRandomAccess for RChunksExactMut<'a, T> {}
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<'a, T> TrustedRandomAccessNoCoerce for RChunksExactMut<'a, T> {
     const MAY_HAVE_SIDE_EFFECT: bool = false;
 }
 
 #[stable(feature = "rchunks", since = "1.31.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T> Send for RChunksExactMut<'_, T> where T: Send {}
 
 #[stable(feature = "rchunks", since = "1.31.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T> Sync for RChunksExactMut<'_, T> where T: Sync {}
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<'a, T> TrustedRandomAccess for Iter<'a, T> {}
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<'a, T> TrustedRandomAccessNoCoerce for Iter<'a, T> {
     const MAY_HAVE_SIDE_EFFECT: bool = false;
 }
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<'a, T> TrustedRandomAccess for IterMut<'a, T> {}
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<'a, T> TrustedRandomAccessNoCoerce for IterMut<'a, T> {
     const MAY_HAVE_SIDE_EFFECT: bool = false;
 }

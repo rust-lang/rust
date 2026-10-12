@@ -11,15 +11,19 @@ pub unsafe trait BuiltinDeref: Sized {
     type Pointee: PointeeSized;
 }
 
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: PointeeSized> BuiltinDeref for &mut T {
     type Pointee = T;
 }
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: PointeeSized> BuiltinDeref for &T {
     type Pointee = T;
 }
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: PointeeSized> BuiltinDeref for *mut T {
     type Pointee = T;
 }
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: PointeeSized> BuiltinDeref for *const T {
     type Pointee = T;
 }
@@ -53,6 +57,7 @@ pub unsafe trait FloatPrimitive: Sized + Copy {
     fn from_bits(bits: Self::UInt) -> Self;
 }
 
+// ignore-tidy-undocumented-unsafe
 unsafe impl FloatPrimitive for f16 {
     type UInt = u16;
     const SIGN_MASK: Self::UInt = f16::SIGN_MASK;
@@ -66,6 +71,7 @@ unsafe impl FloatPrimitive for f16 {
     }
 }
 
+// ignore-tidy-undocumented-unsafe
 unsafe impl FloatPrimitive for f32 {
     type UInt = u32;
     const SIGN_MASK: Self::UInt = f32::SIGN_MASK;
@@ -79,6 +85,7 @@ unsafe impl FloatPrimitive for f32 {
     }
 }
 
+// ignore-tidy-undocumented-unsafe
 unsafe impl FloatPrimitive for f64 {
     type UInt = u64;
     const SIGN_MASK: Self::UInt = f64::SIGN_MASK;
@@ -92,6 +99,7 @@ unsafe impl FloatPrimitive for f64 {
     }
 }
 
+// ignore-tidy-undocumented-unsafe
 unsafe impl FloatPrimitive for f128 {
     type UInt = u128;
     const SIGN_MASK: Self::UInt = f128::SIGN_MASK;
@@ -117,6 +125,7 @@ pub const unsafe trait IntegerPrimitive: Copy + [const] Ord {}
 macro_rules! impl_integer_primitive {
     ($($t:ty),*) => {$(
         #[rustc_const_unstable(feature = "core_intrinsics", issue = "none")]
+        // ignore-tidy-undocumented-unsafe
         const unsafe impl IntegerPrimitive for $t {}
     )*};
 }

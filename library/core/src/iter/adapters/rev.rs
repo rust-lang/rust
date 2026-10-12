@@ -154,6 +154,7 @@ where
 impl<I> FusedIterator for Rev<I> where I: FusedIterator + DoubleEndedIterator {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<I> TrustedLen for Rev<I> where I: TrustedLen + DoubleEndedIterator {}
 
 #[stable(feature = "default_iters", since = "1.70.0")]

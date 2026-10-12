@@ -474,6 +474,7 @@ macro_rules! iterator {
         impl<T> FusedIterator for $name<'_, T> {}
 
         #[unstable(feature = "trusted_len", issue = "37572")]
+        // ignore-tidy-undocumented-unsafe
         unsafe impl<T> TrustedLen for $name<'_, T> {}
 
         #[stable(feature = "default_iters", since = "1.70.0")]

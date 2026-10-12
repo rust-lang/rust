@@ -9,6 +9,7 @@ pub(super) unsafe trait CopySpec: Clone {
     unsafe fn clone_slice(src: &[Self], dst: *mut [Self]);
 }
 
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: Clone> CopySpec for T {
     #[inline]
     default unsafe fn clone_one(src: &Self, dst: *mut Self) {
@@ -52,6 +53,7 @@ unsafe impl<T: Clone> CopySpec for T {
 
 // Specialized implementation for types that are [`TrivialClone`], not just [`Clone`],
 // and can therefore be copied bitwise.
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: TrivialClone> CopySpec for T {
     #[inline]
     unsafe fn clone_one(src: &Self, dst: *mut Self) {

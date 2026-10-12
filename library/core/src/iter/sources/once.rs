@@ -95,6 +95,7 @@ impl<T> ExactSizeIterator for Once<T> {
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T> TrustedLen for Once<T> {}
 
 #[stable(feature = "fused", since = "1.26.0")]

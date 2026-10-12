@@ -398,6 +398,7 @@ impl CharSearcher<'_> {
     }
 }
 
+// ignore-tidy-undocumented-unsafe
 unsafe impl<'a> Searcher<'a> for CharSearcher<'a> {
     #[inline]
     fn haystack(&self) -> &'a str {
@@ -476,6 +477,7 @@ unsafe impl<'a> Searcher<'a> for CharSearcher<'a> {
     // let next_reject use the default implementation from the Searcher trait
 }
 
+// ignore-tidy-undocumented-unsafe
 unsafe impl<'a> ReverseSearcher<'a> for CharSearcher<'a> {
     #[inline]
     fn next_back(&mut self) -> SearchStep {
@@ -681,6 +683,7 @@ impl<C: MultiCharEq> Pattern for MultiCharEqPattern<C> {
     }
 }
 
+// ignore-tidy-undocumented-unsafe
 unsafe impl<'a, C: MultiCharEq> Searcher<'a> for MultiCharEqSearcher<'a, C> {
     #[inline]
     fn haystack(&self) -> &'a str {
@@ -706,6 +709,7 @@ unsafe impl<'a, C: MultiCharEq> Searcher<'a> for MultiCharEqSearcher<'a, C> {
     }
 }
 
+// ignore-tidy-undocumented-unsafe
 unsafe impl<'a, C: MultiCharEq> ReverseSearcher<'a> for MultiCharEqSearcher<'a, C> {
     #[inline]
     fn next_back(&mut self) -> SearchStep {
@@ -831,10 +835,12 @@ impl<const N: usize> Pattern for [char; N] {
     pattern_methods!('a, CharArraySearcher<'a, N>, MultiCharEqPattern, CharArraySearcher);
 }
 
+// ignore-tidy-undocumented-unsafe
 unsafe impl<'a, const N: usize> Searcher<'a> for CharArraySearcher<'a, N> {
     searcher_methods!(forward);
 }
 
+// ignore-tidy-undocumented-unsafe
 unsafe impl<'a, const N: usize> ReverseSearcher<'a> for CharArraySearcher<'a, N> {
     searcher_methods!(reverse);
 }
@@ -853,10 +859,12 @@ impl<'b, const N: usize> Pattern for &'b [char; N] {
     pattern_methods!('a, CharArrayRefSearcher<'a, 'b, N>, MultiCharEqPattern, CharArrayRefSearcher);
 }
 
+// ignore-tidy-undocumented-unsafe
 unsafe impl<'a, 'b, const N: usize> Searcher<'a> for CharArrayRefSearcher<'a, 'b, N> {
     searcher_methods!(forward);
 }
 
+// ignore-tidy-undocumented-unsafe
 unsafe impl<'a, 'b, const N: usize> ReverseSearcher<'a> for CharArrayRefSearcher<'a, 'b, N> {
     searcher_methods!(reverse);
 }
@@ -873,10 +881,12 @@ impl<'a, 'b, const N: usize> DoubleEndedSearcher<'a> for CharArrayRefSearcher<'a
 #[derive(Clone, Debug)]
 pub struct CharSliceSearcher<'a, 'b>(<MultiCharEqPattern<&'b [char]> as Pattern>::Searcher<'a>);
 
+// ignore-tidy-undocumented-unsafe
 unsafe impl<'a, 'b> Searcher<'a> for CharSliceSearcher<'a, 'b> {
     searcher_methods!(forward);
 }
 
+// ignore-tidy-undocumented-unsafe
 unsafe impl<'a, 'b> ReverseSearcher<'a> for CharSliceSearcher<'a, 'b> {
     searcher_methods!(reverse);
 }
@@ -916,6 +926,7 @@ where
             .finish()
     }
 }
+// ignore-tidy-undocumented-unsafe
 unsafe impl<'a, F> Searcher<'a> for CharPredicateSearcher<'a, F>
 where
     F: FnMut(char) -> bool,
@@ -923,6 +934,7 @@ where
     searcher_methods!(forward);
 }
 
+// ignore-tidy-undocumented-unsafe
 unsafe impl<'a, F> ReverseSearcher<'a> for CharPredicateSearcher<'a, F>
 where
     F: FnMut(char) -> bool,
@@ -1128,6 +1140,7 @@ impl<'a, 'b> StrSearcher<'a, 'b> {
     }
 }
 
+// ignore-tidy-undocumented-unsafe
 unsafe impl<'a, 'b> Searcher<'a> for StrSearcher<'a, 'b> {
     #[inline]
     fn haystack(&self) -> &'a str {
@@ -1250,6 +1263,7 @@ unsafe impl<'a, 'b> Searcher<'a> for StrSearcher<'a, 'b> {
     }
 }
 
+// ignore-tidy-undocumented-unsafe
 unsafe impl<'a, 'b> ReverseSearcher<'a> for StrSearcher<'a, 'b> {
     #[inline]
     fn next_back(&mut self) -> SearchStep {

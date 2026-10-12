@@ -47,6 +47,7 @@ pub struct Unique<T: PointeeSized> {
 /// unenforced by the type system; the abstraction using the
 /// `Unique` must enforce it.
 #[unstable(feature = "ptr_internals", issue = "none")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: Send + PointeeSized> Send for Unique<T> {}
 
 /// `Unique` pointers are `Sync` if `T` is `Sync` because the data they
@@ -54,6 +55,7 @@ unsafe impl<T: Send + PointeeSized> Send for Unique<T> {}
 /// unenforced by the type system; the abstraction using the
 /// `Unique` must enforce it.
 #[unstable(feature = "ptr_internals", issue = "none")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: Sync + PointeeSized> Sync for Unique<T> {}
 
 #[unstable(feature = "ptr_internals", issue = "none")]
@@ -167,6 +169,7 @@ impl<T: PointeeSized> Copy for Unique<T> {}
 
 #[doc(hidden)]
 #[unstable(feature = "trivial_clone", issue = "none")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: PointeeSized> TrivialClone for Unique<T> {}
 
 #[unstable(feature = "ptr_internals", issue = "none")]

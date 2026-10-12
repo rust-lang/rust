@@ -356,8 +356,8 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized, A: Allocator> CoerceUnsized<Rc<U, A>> for
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Rc<U>> for Rc<T> {}
 
-// SAFETY: `Rc::clone` doesn't access any `Cell`s which could contain the `Rc` being cloned.
 #[unstable(feature = "cell_get_cloned", issue = "145329")]
+// SAFETY: `Rc::clone` doesn't access any `Cell`s which could contain the `Rc` being cloned.
 unsafe impl<T: ?Sized> CloneFromCell for Rc<T> {}
 
 impl<T: ?Sized> Rc<T> {
@@ -2601,23 +2601,28 @@ impl<T: ?Sized, A: Allocator> Deref for Rc<T, A> {
 // accordingly. Since this type is not fundamental, downstream crates cannot
 // provide malicious implementations of any of the traits relevant for `Pin`.
 #[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: ?Sized, A: StaticAllocator> PinSafePointer for Rc<T, A> {}
 
 //#[unstable(feature = "unique_rc_arc", issue = "112566")]
 #[unstable(feature = "pin_coerce_unsized_trait", issue = "150112")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: ?Sized, A: StaticAllocator> PinSafePointer for UniqueRc<T, A> {}
 
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: ?Sized, A: Allocator> DerefPure for Rc<T, A> {}
 
 //#[unstable(feature = "unique_rc_arc", issue = "112566")]
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: ?Sized, A: Allocator> DerefPure for UniqueRc<T, A> {}
 
 #[unstable(feature = "legacy_receiver_trait", issue = "none")]
 impl<T: ?Sized> LegacyReceiver for Rc<T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for Rc<T, A> {
     /// Drops the `Rc`.
     ///
@@ -2774,6 +2779,7 @@ impl<T: ?Sized + PartialEq, A: Allocator> RcEqIdent<T, A> for Rc<T, A> {
 }
 
 // Hack to allow specializing on `Eq` even though `Eq` has a method.
+// ignore-tidy-undocumented-unsafe
 #[unsafe(rustc_allow_lifetime_dependent_specialization)]
 pub(crate) trait MarkerEq: PartialEq<Self> {}
 
@@ -3377,8 +3383,8 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized, A: Allocator> CoerceUnsized<Weak<U, A>> f
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Weak<U>> for Weak<T> {}
 
-// SAFETY: `Weak::clone` doesn't access any `Cell`s which could contain the `Weak` being cloned.
 #[unstable(feature = "cell_get_cloned", issue = "145329")]
+// SAFETY: `Weak::clone` doesn't access any `Cell`s which could contain the `Weak` being cloned.
 unsafe impl<T: ?Sized> CloneFromCell for Weak<T> {}
 
 impl<T> Weak<T> {
@@ -3815,6 +3821,7 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
 }
 
 #[stable(feature = "rc_weak", since = "1.4.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for Weak<T, A> {
     /// Drops the `Weak` pointer.
     ///
@@ -4696,6 +4703,7 @@ impl<T: ?Sized, A: Allocator> DerefMut for UniqueRc<T, A> {
 }
 
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for UniqueRc<T, A> {
     fn drop(&mut self) {
         // ignore-tidy-undocumented-unsafe
@@ -4794,6 +4802,7 @@ impl<T: ?Sized, A: Allocator> Drop for UniqueRcUninit<T, A> {
 }
 
 #[stable(feature = "allocator_api", since = "1.100.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: ?Sized + Allocator, A: Allocator> Allocator for Rc<T, A> {
     #[inline]
     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
@@ -4849,4 +4858,5 @@ unsafe impl<T: ?Sized + Allocator, A: Allocator> Allocator for Rc<T, A> {
 impl<T: ?Sized + Allocator, A: Allocator> AllocatorNightly for Rc<T, A> {}
 
 #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: Allocator + ?Sized, A: AllocatorClone> AllocatorClone for Rc<T, A> {}

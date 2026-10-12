@@ -3894,6 +3894,7 @@ const impl<T, A: Allocator> ops::DerefMut for Vec<T, A> {
 }
 
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T, A: Allocator> ops::DerefPure for Vec<T, A> {}
 
 #[cfg(not(no_global_oom_handling))]
@@ -4383,6 +4384,7 @@ impl<T: Ord, A: Allocator> Ord for Vec<T, A> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+// ignore-tidy-undocumented-unsafe
 const unsafe impl<#[may_dangle] T: [const] Destruct, A: [const] Allocator + [const] Destruct> Drop
     for Vec<T, A>
 {

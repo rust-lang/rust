@@ -398,14 +398,17 @@ impl ExactSizeIterator for Bytes<'_> {
 impl FusedIterator for Bytes<'_> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl TrustedLen for Bytes<'_> {}
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl TrustedRandomAccess for Bytes<'_> {}
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl TrustedRandomAccessNoCoerce for Bytes<'_> {
     const MAY_HAVE_SIDE_EFFECT: bool = false;
 }

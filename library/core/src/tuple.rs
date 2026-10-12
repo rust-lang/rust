@@ -159,11 +159,9 @@ macro_rules! tuple_impls {
 
         maybe_tuple_doc! {
             $($T)+ @
-            // SAFETY: tuples introduce no additional indirection, so they can be copied whenever T
-            // can.
             #[unstable(feature = "cell_get_cloned", issue = "145329")]
-            unsafe impl<$($T: CloneFromCell),+> CloneFromCell for ($($T,)+)
-            {}
+            // SAFETY: tuples introduce no additional indirection, so they can be copied whenever T can.
+            unsafe impl<$($T: CloneFromCell),+> CloneFromCell for ($($T,)+) {}
         }
     }
 }

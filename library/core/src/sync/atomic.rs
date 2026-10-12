@@ -304,6 +304,8 @@ macro impl_atomic_primitive {
             issue = "none"
         )]
         #[cfg($cfg)]
+        // SAFETY: see macro call safety.
+        // FIXME: unsafe macro calls
         unsafe impl $(<$T>)? AtomicPrimitive for $Primitive {
             type Storage = private::$Storage<$Operand>;
         }
@@ -331,6 +333,7 @@ macro impl_atomic_primitive {
     },
 }
 
+// SAFETY: We explicitly gate atomics based upon whether platforms support them.
 impl_atomic_primitive!([] bool as Align1<u8>, size("8"));
 impl_atomic_primitive!([] i8 as Align1<i8>, size("8"));
 impl_atomic_primitive!([] u8 as Align1<u8>, size("8"));
@@ -386,8 +389,10 @@ pub struct Atomic<T: AtomicPrimitive> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+// SAFETY: Atomics explicitly synchronize their operations.
 unsafe impl<T: AtomicPrimitive> Send for Atomic<T> {}
 #[stable(feature = "rust1", since = "1.0.0")]
+// SAFETY: Atomics explicitly synchronize their operations.
 unsafe impl<T: AtomicPrimitive> Sync for Atomic<T> {}
 
 // Some architectures don't have byte-sized atomics, which results in LLVM

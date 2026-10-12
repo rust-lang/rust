@@ -475,6 +475,7 @@ impl<T: Clone, const N: usize> Clone for [T; N] {
 
 #[doc(hidden)]
 #[unstable(feature = "trivial_clone", issue = "none")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T: TrivialClone, const N: usize> TrivialClone for [T; N] {}
 
 trait SpecArrayClone: Clone {

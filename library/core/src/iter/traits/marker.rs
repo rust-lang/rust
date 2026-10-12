@@ -25,6 +25,7 @@ pub unsafe trait TrustedFused {}
 ///
 /// [`Fuse`]: crate::iter::Fuse
 #[stable(feature = "fused", since = "1.26.0")]
+// ignore-tidy-undocumented-unsafe
 #[unsafe(rustc_allow_lifetime_dependent_specialization)]
 // FIXME: this should be a #[marker] and have another blanket impl for T: TrustedFused
 // but that ICEs iter::Fuse specializations.
@@ -62,12 +63,15 @@ impl<I: FusedIterator + ?Sized> FusedIterator for &mut I {}
 /// This trait must only be implemented when the contract is upheld. Consumers
 /// of this trait must inspect [`Iterator::size_hint()`]’s upper bound.
 #[unstable(feature = "trusted_len", issue = "37572")]
+// ignore-tidy-undocumented-unsafe
 #[unsafe(rustc_allow_lifetime_dependent_specialization)]
 #[rustc_const_unstable(feature = "const_iter", issue = "92476")]
 pub const unsafe trait TrustedLen: [const] Iterator {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
 #[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+// SAFETY: Since `size_hint` for mutable references is trivially forwarded,
+// `TrustedLen` can be trivially inhberited.
 unsafe impl<I: TrustedLen + ?Sized> TrustedLen for &mut I {}
 
 /// An iterator that when yielding an item will have taken at least one element

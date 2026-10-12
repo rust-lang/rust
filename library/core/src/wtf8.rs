@@ -653,6 +653,7 @@ impl Hash for Wtf8 {
 }
 
 #[unstable(feature = "clone_to_uninit", issue = "126799")]
+// SAFETY: We always initialize the [`Wtf8`] slice.
 unsafe impl CloneToUninit for Wtf8 {
     #[inline]
     #[cfg_attr(debug_assertions, track_caller)]

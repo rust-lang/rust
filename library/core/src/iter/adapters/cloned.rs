@@ -123,10 +123,12 @@ where
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<I> TrustedRandomAccess for Cloned<I> where I: TrustedRandomAccess {}
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<I> TrustedRandomAccessNoCoerce for Cloned<I>
 where
     I: TrustedRandomAccessNoCoerce,
@@ -135,6 +137,7 @@ where
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<'a, I, T: 'a> TrustedLen for Cloned<I>
 where
     I: TrustedLen<Item = &'a T>,
@@ -157,6 +160,7 @@ impl<I: Default> Default for Cloned<I> {
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<I> SourceIter for Cloned<I>
 where
     I: SourceIter,
@@ -171,6 +175,7 @@ where
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<I: InPlaceIterable> InPlaceIterable for Cloned<I> {
     const EXPAND_BY: Option<NonZero<usize>> = I::EXPAND_BY;
     const MERGE_BY: Option<NonZero<usize>> = I::MERGE_BY;

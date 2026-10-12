@@ -60,6 +60,8 @@ macro marker_impls {
     ( $(#[$($meta:tt)*])* $Trait:ident for ) => {},
 
     ( $(#[$($meta:tt)*])* unsafe $Trait:ident for $({$($bounds:tt)*})? $T:ty $(, $($rest:tt)*)? ) => {
+        // SAFETY: see safety comments on macro calls.
+        // FIXME: unsafe macro calls
         $(#[$($meta)*])* unsafe impl< $($($bounds)*)? > $Trait for $T {}
         marker_impls! { $(#[$($meta)*])* unsafe $Trait for $($($rest)*)? }
     },
@@ -98,10 +100,10 @@ impl<T: PointeeSized> !Send for *const T {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: PointeeSized> !Send for *mut T {}
 
-// Most instances arise automatically, but this instance is needed to link up `T: Sync` with
+#[stable(feature = "rust1", since = "1.0.0")]
+// SAFETY: Most instances arise automatically, but this instance is needed to link up `T: Sync` with
 // `&T: Send` (and it also removes the unsound default instance `T Send` -> `&T: Send` that would
 // otherwise exist).
-#[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T: Sync + PointeeSized> Send for &T {}
 
 /// Types with a constant size known at compile time.
@@ -852,6 +854,7 @@ impl<T: PointeeSized> Clone for PhantomData<T> {
 
 #[doc(hidden)]
 #[unstable(feature = "trivial_clone", issue = "none")]
+// SAFETY: We can trivially clone nothing.
 unsafe impl<T: PointeeSized> TrivialClone for PhantomData<T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -907,6 +910,9 @@ pub unsafe auto trait Freeze {}
 
 #[unstable(feature = "freeze", issue = "121675")]
 impl<T: PointeeSized> !Freeze for UnsafeCell<T> {}
+
+// SAFETY: Pointers, by themselves, are not interior-mutable.
+// And nothing is also immutable.
 marker_impls! {
     #[unstable(feature = "freeze", issue = "121675")]
     unsafe Freeze for
@@ -929,6 +935,9 @@ pub unsafe auto trait UnsafeUnpin {}
 
 #[unstable(feature = "unsafe_unpin", issue = "125735")]
 impl<T: PointeeSized> !UnsafeUnpin for UnsafePinned<T> {}
+
+// SAFETY: Any indirection ensures that `UnsafeUnpin` is safe to implement.
+// Nothing (`PhantomData`), also, pins just fine.
 marker_impls! {
 #[unstable(feature = "unsafe_unpin", issue = "125735")]
     unsafe UnsafeUnpin for

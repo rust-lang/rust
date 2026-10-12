@@ -448,20 +448,20 @@ macro_rules! casemappingiter_impls {
             }
         }
 
-        // SAFETY: forwards to inner `array::IntoIter`
         #[unstable(feature = "trusted_len", issue = "37572")]
+        // SAFETY: forwards to inner `array::IntoIter`
         unsafe impl TrustedLen for $ITER_NAME {}
 
-        // SAFETY: forwards to inner `array::IntoIter`
         #[doc(hidden)]
         #[unstable(feature = "std_internals", issue = "none")]
+        // SAFETY: forwards to inner `array::IntoIter`
         unsafe impl TrustedRandomAccessNoCoerce for $ITER_NAME {
             const MAY_HAVE_SIDE_EFFECT: bool = false;
         }
 
-        // SAFETY: this iter has no subtypes/supertypes
         #[doc(hidden)]
         #[unstable(feature = "std_internals", issue = "none")]
+        // SAFETY: this iter has no subtypes/supertypes
         unsafe impl TrustedRandomAccess for $ITER_NAME {}
 
         #[$displaystab]

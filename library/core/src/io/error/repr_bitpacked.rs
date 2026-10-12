@@ -128,8 +128,9 @@ const TAG_SIMPLE: usize = 0b11;
 #[rustc_insignificant_dtor]
 pub(super) struct Repr(NonNull<()>, PhantomData<ErrorData<CustomOwner>>);
 
-// All the types `Repr` stores internally are Send + Sync, and so is it.
+// SAFETY: All the types `Repr` stores internally are `Send`, and so is it.
 unsafe impl Send for Repr {}
+// SAFETY: All the types `Repr` stores internally are `Sync`, and so is it.
 unsafe impl Sync for Repr {}
 
 impl Repr {

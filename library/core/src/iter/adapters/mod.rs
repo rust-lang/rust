@@ -206,6 +206,7 @@ where
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<I, R> SourceIter for GenericShunt<'_, I, R>
 where
     I: SourceIter,
@@ -223,6 +224,7 @@ where
 // in order to return `Some(_)`. Since `iter` has type `I: InPlaceIterable` it's
 // guaranteed that at least one item will be moved out from the underlying source.
 #[unstable(issue = "none", feature = "inplace_iteration")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<I, R> InPlaceIterable for GenericShunt<'_, I, R>
 where
     I: InPlaceIterable,

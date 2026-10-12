@@ -12,6 +12,7 @@ use crate::ops::{self, Try};
 macro_rules! unsafe_impl_trusted_step {
     ($($type:ty)*) => {$(
         #[unstable(feature = "trusted_step", issue = "85731")]
+        // ignore-tidy-undocumented-unsafe
         unsafe impl TrustedStep for $type {}
     )*};
 }
@@ -983,10 +984,12 @@ macro_rules! unsafe_range_trusted_random_access_impl {
     ($($t:ty)*) => ($(
         #[doc(hidden)]
         #[unstable(feature = "trusted_random_access", issue = "none")]
+        // ignore-tidy-undocumented-unsafe
         unsafe impl TrustedRandomAccess for ops::Range<$t> {}
 
         #[doc(hidden)]
         #[unstable(feature = "trusted_random_access", issue = "none")]
+        // ignore-tidy-undocumented-unsafe
         unsafe impl TrustedRandomAccessNoCoerce for ops::Range<$t> {
             const MAY_HAVE_SIDE_EFFECT: bool = false;
         }
@@ -1355,6 +1358,7 @@ const impl<A: [const] Step + [const] Destruct> DoubleEndedIterator for ops::Rang
 // then `(0, Some(0))` is returned by `ops::Range<A: Step>::size_hint`. As such
 // the second invariant is upheld.
 #[unstable(feature = "trusted_len", issue = "37572")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<A: TrustedStep> TrustedLen for ops::Range<A> {}
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -1385,6 +1389,7 @@ impl<A: Step> Iterator for ops::RangeFrom<A> {
 
 // Safety: See above implementation for `ops::Range<A>`
 #[unstable(feature = "trusted_len", issue = "37572")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<A: TrustedStep> TrustedLen for ops::RangeFrom<A> {}
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -1666,6 +1671,7 @@ impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
 
 // Safety: See above implementation for `ops::Range<A>`
 #[unstable(feature = "trusted_len", issue = "37572")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<A: TrustedStep> TrustedLen for ops::RangeInclusive<A> {}
 
 #[stable(feature = "fused", since = "1.26.0")]

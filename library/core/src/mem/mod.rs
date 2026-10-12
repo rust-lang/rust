@@ -1299,6 +1299,7 @@ impl<T> clone::Clone for Discriminant<T> {
 
 #[doc(hidden)]
 #[unstable(feature = "trivial_clone", issue = "none")]
+// SAFETY: `DiscriminantKind::Discriminant` is `Copy`, which is `TrivialClone`.
 unsafe impl<T> TrivialClone for Discriminant<T> {}
 
 #[stable(feature = "discriminant_value", since = "1.21.0")]

@@ -92,6 +92,7 @@ where
 /// Equivalent to `&self[0 .. len]` or `&mut self[0 .. len]`.
 #[stable(feature = "str_checked_slicing", since = "1.20.0")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
+// ignore-tidy-undocumented-unsafe
 const unsafe impl SliceIndex<str> for ops::RangeFull {
     type Output = str;
     #[inline]
@@ -186,6 +187,7 @@ const fn check_range(slice: &str, range: crate::range::Range<usize>) -> bool {
 /// ```
 #[stable(feature = "str_checked_slicing", since = "1.20.0")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
+// ignore-tidy-undocumented-unsafe
 const unsafe impl SliceIndex<str> for ops::Range<usize> {
     type Output = str;
     #[inline]
@@ -257,6 +259,7 @@ const unsafe impl SliceIndex<str> for ops::Range<usize> {
 
 #[stable(feature = "new_range_api", since = "1.96.0")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
+// ignore-tidy-undocumented-unsafe
 const unsafe impl SliceIndex<str> for range::Range<usize> {
     type Output = str;
     #[inline]
@@ -364,6 +367,7 @@ const unsafe impl SliceIndex<str> for range::Range<usize> {
 /// a character (as defined by `is_char_boundary`), if `begin > end`, or if
 /// `end > len`.
 #[stable(feature = "slice_index_str_with_ops_bound_pair", since = "1.73.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl SliceIndex<str> for (ops::Bound<usize>, ops::Bound<usize>) {
     type Output = str;
 
@@ -419,6 +423,7 @@ unsafe impl SliceIndex<str> for (ops::Bound<usize>, ops::Bound<usize>) {
 /// character (as defined by `is_char_boundary`), or if `end > len`.
 #[stable(feature = "str_checked_slicing", since = "1.20.0")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
+// ignore-tidy-undocumented-unsafe
 const unsafe impl SliceIndex<str> for ops::RangeTo<usize> {
     type Output = str;
     #[inline]
@@ -488,6 +493,7 @@ const unsafe impl SliceIndex<str> for ops::RangeTo<usize> {
 /// a character (as defined by `is_char_boundary`), or if `begin > len`.
 #[stable(feature = "str_checked_slicing", since = "1.20.0")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
+// ignore-tidy-undocumented-unsafe
 const unsafe impl SliceIndex<str> for ops::RangeFrom<usize> {
     type Output = str;
     #[inline]
@@ -544,6 +550,7 @@ const unsafe impl SliceIndex<str> for ops::RangeFrom<usize> {
 
 #[stable(feature = "new_range_from_api", since = "1.96.0")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
+// ignore-tidy-undocumented-unsafe
 const unsafe impl SliceIndex<str> for range::RangeFrom<usize> {
     type Output = str;
     #[inline]
@@ -616,6 +623,7 @@ const unsafe impl SliceIndex<str> for range::RangeFrom<usize> {
 /// byte offset or equal to `len`), if `begin > end`, or if `end >= len`.
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
+// ignore-tidy-undocumented-unsafe
 const unsafe impl SliceIndex<str> for ops::RangeInclusive<usize> {
     type Output = str;
     #[inline]
@@ -674,6 +682,7 @@ const unsafe impl SliceIndex<str> for ops::RangeInclusive<usize> {
 
 #[stable(feature = "new_range_inclusive_api", since = "1.95.0")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
+// ignore-tidy-undocumented-unsafe
 const unsafe impl SliceIndex<str> for range::RangeInclusive<usize> {
     type Output = str;
     #[inline]
@@ -720,6 +729,7 @@ const unsafe impl SliceIndex<str> for range::RangeInclusive<usize> {
 /// `is_char_boundary`, or equal to `len`), or if `end >= len`.
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
+// ignore-tidy-undocumented-unsafe
 const unsafe impl SliceIndex<str> for ops::RangeToInclusive<usize> {
     type Output = str;
     #[inline]
@@ -766,6 +776,7 @@ const unsafe impl SliceIndex<str> for ops::RangeToInclusive<usize> {
 /// `is_char_boundary`, or equal to `len`), or if `last >= len`.
 #[stable(feature = "new_range_to_inclusive_api", since = "1.96.0")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
+// ignore-tidy-undocumented-unsafe
 const unsafe impl SliceIndex<str> for range::RangeToInclusive<usize> {
     type Output = str;
     #[inline]

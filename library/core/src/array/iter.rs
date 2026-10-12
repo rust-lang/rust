@@ -363,10 +363,12 @@ impl<T, const N: usize> FusedIterator for IntoIter<T, N> {}
 // This range is decremented in length in either `next` or `next_back`. It is
 // always decremented by 1 in those methods, but only if `Some(_)` is returned.
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T, const N: usize> TrustedLen for IntoIter<T, N> {}
 
 #[doc(hidden)]
 #[unstable(issue = "none", feature = "std_internals")]
+// ignore-tidy-undocumented-unsafe
 #[unsafe(rustc_allow_lifetime_dependent_specialization)]
 trait NonDrop {}
 
@@ -377,6 +379,7 @@ impl<T: Copy> NonDrop for T {}
 
 #[doc(hidden)]
 #[unstable(issue = "none", feature = "std_internals")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<T, const N: usize> TrustedRandomAccessNoCoerce for IntoIter<T, N>
 where
     T: NonDrop,

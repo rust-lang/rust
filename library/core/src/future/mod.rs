@@ -51,9 +51,11 @@ pub use self::join::join;
 pub struct ResumeTy(NonNull<Context<'static>>);
 
 #[unstable(feature = "gen_future", issue = "none")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl Send for ResumeTy {}
 
 #[unstable(feature = "gen_future", issue = "none")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl Sync for ResumeTy {}
 
 #[lang = "get_context"]

@@ -165,10 +165,12 @@ where
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<I> TrustedRandomAccess for Copied<I> where I: TrustedRandomAccess {}
 
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<I> TrustedRandomAccessNoCoerce for Copied<I>
 where
     I: TrustedRandomAccessNoCoerce,
@@ -177,6 +179,7 @@ where
 }
 
 #[stable(feature = "iter_copied", since = "1.36.0")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<'a, I, T: 'a> TrustedLen for Copied<I>
 where
     I: TrustedLen<Item = &'a T>,
@@ -261,6 +264,7 @@ impl<I: Default> Default for Copied<I> {
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<I> SourceIter for Copied<I>
 where
     I: SourceIter,
@@ -275,6 +279,7 @@ where
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<I: InPlaceIterable> InPlaceIterable for Copied<I> {
     const EXPAND_BY: Option<NonZero<usize>> = I::EXPAND_BY;
     const MERGE_BY: Option<NonZero<usize>> = I::MERGE_BY;

@@ -44,6 +44,8 @@ macro_rules! impl_zeroable_primitive {
                 reason = "implementation detail which may disappear or be replaced at any time",
                 issue = "none"
             )]
+            // SAFETY: see safety comments on macro calls.
+            // FIXME: unsafe macro calls
             unsafe impl ZeroablePrimitive for $primitive {
                 type NonZeroInner = super::niche_types::$NonZeroInner;
             }
@@ -51,6 +53,7 @@ macro_rules! impl_zeroable_primitive {
     };
 }
 
+// SAFETY: All of these types use pattern types which disallow zero.
 impl_zeroable_primitive!(
     NonZeroU8Inner(u8),
     NonZeroU16Inner(u16),
@@ -150,6 +153,8 @@ impl_nonzero_fmt! {
 macro_rules! impl_nonzero_auto_trait {
     (unsafe $Trait:ident) => {
         #[stable(feature = "nonzero", since = "1.28.0")]
+        // SAFETY: see safety comments on macro calls.
+        // FIXME: unsafe macro calls
         unsafe impl<T> $Trait for NonZero<T> where T: ZeroablePrimitive + $Trait {}
     };
     ($Trait:ident) => {
@@ -158,8 +163,9 @@ macro_rules! impl_nonzero_auto_trait {
     };
 }
 
-// Implement auto-traits manually based on `T` to avoid docs exposing
+// We implement auto-traits manually based on `T` to avoid docs exposing
 // the `ZeroablePrimitive::NonZeroInner` implementation detail.
+// SAFETY: The underlying pattern types are primitives, which are `Freeze`, `Send`, and `Sync`.
 impl_nonzero_auto_trait!(unsafe Freeze);
 impl_nonzero_auto_trait!(RefUnwindSafe);
 impl_nonzero_auto_trait!(unsafe Send);
@@ -188,6 +194,7 @@ impl<T> Copy for NonZero<T> where T: ZeroablePrimitive {}
 #[doc(hidden)]
 #[unstable(feature = "trivial_clone", issue = "none")]
 #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+// SAFETY: The underlying types are all trivially cloneable primitives.
 const unsafe impl<T> TrivialClone for NonZero<T> where T: ZeroablePrimitive {}
 
 #[stable(feature = "nonzero", since = "1.28.0")]

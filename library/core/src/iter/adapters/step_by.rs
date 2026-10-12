@@ -147,6 +147,7 @@ impl<I> FusedIterator for StepBy<I> where I: FusedIterator {}
 // I: TrustedLen would not.
 // This also covers the Range specializations since the ranges also implement TRA
 #[unstable(feature = "trusted_len", issue = "37572")]
+// ignore-tidy-undocumented-unsafe
 unsafe impl<I> TrustedLen for StepBy<I> where I: Iterator + TrustedRandomAccess {}
 
 trait SpecRangeSetup<T> {
@@ -222,6 +223,7 @@ unsafe trait StepByBackImpl<I> {
         F: FnMut(Acc, Self::Item) -> Acc;
 }
 
+// ignore-tidy-undocumented-unsafe
 unsafe impl<I: Iterator> StepByImpl<I> for StepBy<I> {
     type Item = I::Item;
 
@@ -346,6 +348,7 @@ unsafe impl<I: Iterator> StepByImpl<I> for StepBy<I> {
     }
 }
 
+// ignore-tidy-undocumented-unsafe
 unsafe impl<I: DoubleEndedIterator + ExactSizeIterator> StepByBackImpl<I> for StepBy<I> {
     type Item = I::Item;
 
@@ -476,6 +479,7 @@ macro_rules! spec_int_ranges {
             }
         }
 
+        // ignore-tidy-undocumented-unsafe
         unsafe impl StepByImpl<$ctor<$t>> for StepBy<$ctor<$t>> {
             #[inline]
             fn spec_next(&mut self) -> Option<$t> {
@@ -552,6 +556,7 @@ macro_rules! spec_int_ranges_r {
     ($ctor:ident; $($t:ty)*) => ($(
         const _: () = assert!(usize::BITS >= <$t>::BITS);
 
+        // ignore-tidy-undocumented-unsafe
         unsafe impl StepByBackImpl<$ctor<$t>> for StepBy<$ctor<$t>> {
 
             #[inline]
