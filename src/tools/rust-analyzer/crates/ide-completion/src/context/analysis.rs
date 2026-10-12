@@ -495,7 +495,7 @@ fn analyze<'db>(
 
     let Some(name_like) = find_node_at_offset(&speculative_file, speculative_offset) else {
         let analysis = if let Some(original) = ast::String::cast(original_token.clone())
-            && original_token.parent().is_none_or(|it| !ast::CfgAtom::can_cast(it.kind()))
+            && self_token.parent().is_none_or(|it| !ast::CfgAtom::can_cast(it.kind()))
         {
             CompletionAnalysis::String { original, expanded: ast::String::cast(self_token.clone()) }
         } else {
