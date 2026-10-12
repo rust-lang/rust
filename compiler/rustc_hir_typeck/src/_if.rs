@@ -9,7 +9,7 @@ use crate::coercion::CoerceMany;
 use crate::diverges::Diverges;
 use crate::fn_ctxt::FnCtxt;
 
-/// State shared across all branches of an `else if` chain check.
+/// State shared across all branches of an `if`/`else if` chain check.
 struct IfChainCx<'a, 'tcx> {
     coerce: &'a mut CoerceMany<'tcx>,
     outer_if_expr_id: HirId,
