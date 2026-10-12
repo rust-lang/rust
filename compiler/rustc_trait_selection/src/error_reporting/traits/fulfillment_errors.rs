@@ -67,17 +67,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let ObligationCauseCode::WhereClause(item_def_id, span) = *cause_code.peel_derives() else {
             return false;
         };
-        let is_impl_trait_assoc_type = if let Some(assoc_item) =
-            self.tcx.opt_associated_item(body_def_id.to_def_id())
-            && let Some(trait_item_def_id) = assoc_item.trait_item_def_id()
-        {
-            trait_item_def_id == item_def_id
-                && matches!(assoc_item.kind, ty::AssocKind::Type { .. })
-        } else {
-            false
-        };
 
-        if !is_impl_trait_assoc_type {
+        if !self.tcx.opt_associated_item(body_def_id.to_def_id()).is_some_and(|assoc_item| {
+            assoc_item.trait_item_def_id().is_some_and(|trait_item_def_id| {
+                trait_item_def_id == item_def_id
+                    && matches!(assoc_item.kind, ty::AssocKind::Type { .. })
+            })
+        }) {
             return false;
         }
 
@@ -208,20 +204,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         if let Err(guar) = leaf_trait_predicate.error_reported() {
                             return guar;
                         }
-                        let impl_assoc_type_self_trait_bound_param =
-                            if self.is_explicit_self_trait_bound_on_impl_assoc_type(
-                                obligation.cause.body_def_id,
-                                obligation.cause.code(),
-                                leaf_trait_predicate.def_id(),
-                            ) && let ty::Param(param_ty) =
-                                *leaf_trait_predicate.skip_binder().self_ty().kind()
-                            {
-                                Some(param_ty)
-                            } else {
-                                None
-                            };
-
-                        if let Some(param_ty) = impl_assoc_type_self_trait_bound_param {
+                        if self.is_explicit_self_trait_bound_on_impl_assoc_type(
+                            obligation.cause.body_def_id,
+                            obligation.cause.code(),
+                            leaf_trait_predicate.def_id(),
+                        ) && let ty::Param(param_ty) =
+                            *leaf_trait_predicate.skip_binder().self_ty().kind()
+                        {
                             span = param_ty.span_from_generics(
                                 self.tcx,
                                 obligation.cause.body_def_id.to_def_id(),
