@@ -1129,13 +1129,13 @@ pub fn walk_const_arg<'v, V: Visitor<'v>>(
         ConstArgKind::TupleCall(qpath, args) => {
             try_visit!(visitor.visit_qpath(qpath, *hir_id, qpath.span()));
             for arg in *args {
-                try_visit!(visitor.visit_const_arg_unambig(*arg));
+                try_visit!(visitor.visit_const_arg_unambig(arg));
             }
             V::Result::output()
         }
         ConstArgKind::Array(array_expr) => {
             for arg in array_expr.elems {
-                try_visit!(visitor.visit_const_arg_unambig(*arg));
+                try_visit!(visitor.visit_const_arg_unambig(arg));
             }
             V::Result::output()
         }

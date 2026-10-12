@@ -508,7 +508,7 @@ impl<'hir, Unambig> ConstArg<'hir, Unambig> {
 #[derive(Clone, Copy, Debug, StableHash)]
 #[repr(u8, C)]
 pub enum ConstArgKind<'hir, Unambig = ()> {
-    Tup(&'hir [&'hir ConstArg<'hir>]),
+    Tup(&'hir [ConstArg<'hir>]),
     /// **Note:** Currently this is only used for bare const params
     /// (`N` where `fn foo<const N: usize>(...)`),
     /// not paths to any const (`N` where `const N: usize = ...`).
@@ -517,9 +517,9 @@ pub enum ConstArgKind<'hir, Unambig = ()> {
     Path(QPath<'hir>),
     Anon(&'hir AnonConst),
     /// Represents construction of struct/struct variants
-    Struct(QPath<'hir>, &'hir [&'hir ConstArgExprField<'hir>]),
+    Struct(QPath<'hir>, &'hir [ConstArgExprField<'hir>]),
     /// Tuple constructor variant
-    TupleCall(QPath<'hir>, &'hir [&'hir ConstArg<'hir>]),
+    TupleCall(QPath<'hir>, &'hir [ConstArg<'hir>]),
     /// Array literal argument
     Array(&'hir ConstArgArrayExpr<'hir>),
     /// Error const
@@ -544,7 +544,7 @@ pub struct ConstArgExprField<'hir> {
 #[derive(Clone, Copy, Debug, StableHash)]
 pub struct ConstArgArrayExpr<'hir> {
     pub span: Span,
-    pub elems: &'hir [&'hir ConstArg<'hir>],
+    pub elems: &'hir [ConstArg<'hir>],
 }
 
 /// Tracks what a [GenericArg::Infer] can be inferred to based on its syntax.
