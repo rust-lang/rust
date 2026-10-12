@@ -33,6 +33,7 @@ pub(crate) mod unify;
 
 use std::{
     cell::{OnceCell, RefCell},
+    cmp,
     convert::identity,
     fmt,
     hash::Hash,
@@ -1060,16 +1061,32 @@ pub struct CaptureInfo {
 /// during `typeck`, specifically by `regionck`.
 #[derive(Eq, PartialEq, Clone, Debug, Copy, Hash)]
 pub enum UpvarCapture {
-    /// Upvar is captured by value. This is always true when the
-    /// closure is labeled `move`, but can also be true in other cases
-    /// depending on inference.
-    ByValue,
+    /// Upvar is captured by reference.
+    ByRef(BorrowKind),
 
     /// Upvar is captured by use. This is true when the closure is labeled `use`.
     ByUse,
 
-    /// Upvar is captured by reference.
-    ByRef(BorrowKind),
+    /// Upvar is captured by value. This is always true when the
+    /// closure is labeled `move`, but can also be true in other cases
+    /// depending on inference.
+    ByValue,
+}
+
+// Used in closure::analysis::determine_capture_info
+impl PartialOrd for UpvarCapture {
+    #[inline]
+    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+        match (self, other) {
+            (Self::ByValue, Self::ByValue) | (Self::ByUse, Self::ByUse) => {
+                Some(cmp::Ordering::Equal)
+            }
+            (Self::ByValue | Self::ByUse, Self::ByRef(_)) => Some(cmp::Ordering::Greater),
+            (Self::ByRef(_), Self::ByValue | Self::ByUse) => Some(cmp::Ordering::Less),
+            (Self::ByRef(left), Self::ByRef(right)) => Some(left.cmp(right)),
+            (Self::ByUse, Self::ByValue) | (Self::ByValue, Self::ByUse) => None,
+        }
+    }
 }
 
 #[salsa::tracked]
@@ -1964,12 +1981,7 @@ impl<'db> InferenceContext<'db> {
         })
     }
 
-    pub(crate) fn create_anon_const(
-        &mut self,
-        expr: ExprId,
-        expected_ty: Ty<'db>,
-        allow_using_generic_params: bool,
-    ) -> Const<'db> {
+    pub(crate) fn create_anon_const(&mut self, expr: ExprId, expected_ty: Ty<'db>) -> Const<'db> {
         never!(expected_ty.has_infer(), "cannot have infer vars in an anon const's ty");
         let konst = create_anon_const(
             self.interner(),
@@ -1981,7 +1993,11 @@ impl<'db> InferenceContext<'db> {
             &|| self.generics(),
             Some(&mut |span| self.table.next_const_var(span)),
             self.lowering_mode,
-            (!(allow_using_generic_params && self.allow_using_generic_params)).then_some(0),
+            (!self.allow_using_generic_params).then_some(0),
+            // The situation around body anon consts using generic params is complicated.
+            // rustc disallows them all, except for array repeat expressions. However in another place even repeat exprs
+            // are disallowed, so in practice they cause an error.
+            false,
         );
 
         if let Ok(konst) = konst

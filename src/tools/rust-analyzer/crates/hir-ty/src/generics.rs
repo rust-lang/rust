@@ -69,15 +69,11 @@ impl<'db> SingleGenerics<'db> {
     }
 
     pub(crate) fn len_lifetimes(&self) -> usize {
-        self.params.len_lifetimes()
+        self.params.len_early_bound_lifetimes()
     }
 
     pub(crate) fn len(&self, consider_late_bound: bool) -> usize {
-        if consider_late_bound {
-            self.params.len()
-        } else {
-            self.params.len() - self.params.len_late_bound_lifetimes()
-        }
+        if consider_late_bound { self.params.len() } else { self.params.len_no_late() }
     }
 
     fn iter_lifetimes(&self) -> impl Iterator<Item = (LifetimeParamId, &'db LifetimeParamData)> {
@@ -269,7 +265,7 @@ impl<'db> Generics<'db> {
         let parent_total = self.len_parent();
 
         let owner = self.owner();
-        let lifetimes = owner.params.len_lifetimes();
+        let lifetimes = owner.params.len_early_bound_lifetimes();
 
         let mut has_self_param = false;
         let mut non_impl_trait_type_params = 0;

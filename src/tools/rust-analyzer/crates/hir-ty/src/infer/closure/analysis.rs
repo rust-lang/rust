@@ -30,7 +30,7 @@
 //! then mean that all later passes would have to check for these figments
 //! and report an error, and it just seems like more mess in the end.)
 
-use std::{iter, mem};
+use std::{cmp, iter, mem};
 
 use hir_def::{
     expr_store::ExpressionStore,
@@ -88,7 +88,7 @@ impl<'db> UpvarArgs<'db> {
     }
 }
 
-#[derive(Eq, Clone, PartialEq, Debug, Copy, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum BorrowKind {
     /// Data must be immutable and is aliasable.
     Immutable,
@@ -1295,9 +1295,9 @@ fn restrict_precision_for_drop_types<'db>(
     mut place: Place,
     capture_info: &mut CaptureInfo,
 ) -> Place {
-    let is_copy_type = fcx.infcx().type_is_copy_modulo_regions(fcx.table.param_env, place.ty());
-
-    if let (false, UpvarCapture::ByValue) = (is_copy_type, capture_info.capture_kind) {
+    if capture_info.capture_kind == UpvarCapture::ByValue
+        && !fcx.infcx().type_is_copy_modulo_regions(fcx.table.param_env, place.ty())
+    {
         for i in 0..place.projections.len() {
             match place.ty_before_projection(i).kind() {
                 TyKind::Adt(def, _) if def.destructor(fcx.interner()).is_some() => {
@@ -1407,53 +1407,12 @@ fn adjust_for_non_move_closure(mut place: Place, capture_info: &mut CaptureInfo)
 
 /// At the end, `capture_info_a` will contain the selected info.
 fn determine_capture_info(capture_info_a: &mut CaptureInfo, capture_info_b: &mut CaptureInfo) {
-    // If the capture kind is equivalent then, we don't need to escalate and can compare the
-    // expressions.
-    let eq_capture_kind = match (capture_info_a.capture_kind, capture_info_b.capture_kind) {
-        (UpvarCapture::ByValue, UpvarCapture::ByValue) => true,
-        (UpvarCapture::ByUse, UpvarCapture::ByUse) => true,
-        (UpvarCapture::ByRef(ref_a), UpvarCapture::ByRef(ref_b)) => ref_a == ref_b,
-        (UpvarCapture::ByValue, _) | (UpvarCapture::ByUse, _) | (UpvarCapture::ByRef(_), _) => {
-            false
-        }
-    };
-
-    let swap = if eq_capture_kind {
-        false
-    } else {
-        // We select the CaptureKind which ranks higher based the following priority order:
-        // (ByUse | ByValue) > MutBorrow > UniqueImmBorrow > ImmBorrow
-        match (capture_info_a.capture_kind, capture_info_b.capture_kind) {
-            (UpvarCapture::ByUse, UpvarCapture::ByValue)
-            | (UpvarCapture::ByValue, UpvarCapture::ByUse) => {
-                panic!("Same capture can't be ByUse and ByValue at the same time")
-            }
-            (UpvarCapture::ByValue, UpvarCapture::ByValue)
-            | (UpvarCapture::ByUse, UpvarCapture::ByUse)
-            | (UpvarCapture::ByValue | UpvarCapture::ByUse, UpvarCapture::ByRef(_)) => false,
-            (UpvarCapture::ByRef(_), UpvarCapture::ByValue | UpvarCapture::ByUse) => true,
-            (UpvarCapture::ByRef(ref_a), UpvarCapture::ByRef(ref_b)) => {
-                match (ref_a, ref_b) {
-                    // Take LHS:
-                    (BorrowKind::UniqueImmutable | BorrowKind::Mutable, BorrowKind::Immutable)
-                    | (BorrowKind::Mutable, BorrowKind::UniqueImmutable) => false,
-
-                    // Take RHS:
-                    (BorrowKind::Immutable, BorrowKind::UniqueImmutable | BorrowKind::Mutable)
-                    | (BorrowKind::UniqueImmutable, BorrowKind::Mutable) => true,
-
-                    (BorrowKind::Immutable, BorrowKind::Immutable)
-                    | (BorrowKind::UniqueImmutable, BorrowKind::UniqueImmutable)
-                    | (BorrowKind::Mutable, BorrowKind::Mutable) => {
-                        panic!("Expected unequal capture kinds");
-                    }
-                }
-            }
-        }
-    };
-
-    if swap {
-        mem::swap(capture_info_a, capture_info_b);
+    // We select the CaptureKind which ranks higher based the following priority order:
+    // (ByUse | ByValue) > MutBorrow > UniqueImmBorrow > ImmBorrow
+    match capture_info_a.capture_kind.partial_cmp(&capture_info_b.capture_kind) {
+        Some(cmp::Ordering::Equal) | Some(cmp::Ordering::Greater) => {}
+        Some(cmp::Ordering::Less) => mem::swap(capture_info_a, capture_info_b),
+        None => panic!("Same capture can't be ByUse and ByValue at the same time"),
     }
 }
 

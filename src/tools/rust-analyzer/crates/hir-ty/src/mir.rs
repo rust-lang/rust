@@ -6,13 +6,12 @@ use hir_def::{
     FieldId, LocalFieldId, StaticId, UnionId, VariantId,
     hir::{BindingId, Expr, ExprId, Ordering, PatId},
 };
-use intern::{InternedSlice, InternedSliceRef, impl_slice_internable};
 use la_arena::{Arena, ArenaMap, Idx, RawIdx};
 use macros::{TypeFoldable, TypeVisitable};
 use rustc_ast_ir::Mutability;
 use rustc_hash::FxHashMap;
 use rustc_type_ir::{
-    CollectAndApply, GenericTypeVisitable,
+    GenericTypeVisitable,
     inherent::{GenericArgs as _, IntoKind, Ty as _},
 };
 use salsa::SalsaValue;
@@ -26,8 +25,8 @@ use crate::{
     next_solver::{
         Allocation, AllocationData, DbInterner, ErrorGuaranteed, GenericArgs, ParamEnv,
         StoredAllocation, StoredConst, StoredGenericArgs, StoredTy, Ty, TyKind,
-        impl_stored_interned_slice,
         infer::{InferCtxt, traits::ObligationCause},
+        interned_slice,
         obligation_ctxt::ObligationCtxt,
     },
 };
@@ -220,49 +219,11 @@ impl<W: crate::next_solver::WorldExposer> GenericTypeVisitable<W> for PlaceElem 
     fn generic_visit_with(&self, _: &mut W) {}
 }
 
-impl_slice_internable!(gc; ProjectionStorage, (), PlaceElem);
-impl_stored_interned_slice!(ProjectionStorage, Projection, StoredProjection);
-
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Projection<'db> {
-    interned: InternedSliceRef<'db, ProjectionStorage>,
-}
-
-impl<'db> std::fmt::Debug for Projection<'db> {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        (*self).as_slice().fmt(fmt)
-    }
-}
+interned_slice!(ProjectionStorage, Projection, StoredProjection, projection, PlaceElem, PlaceElem);
 
 impl<'db> Projection<'db> {
-    pub fn new_from_iter<I, T>(args: I) -> T::Output
-    where
-        I: IntoIterator<Item = T>,
-        T: CollectAndApply<PlaceElem, Self>,
-    {
-        CollectAndApply::collect_and_apply(args.into_iter(), Self::new_from_slice)
-    }
-
-    #[inline]
-    pub fn new_from_slice(slice: &[PlaceElem]) -> Self {
-        Self { interned: InternedSlice::from_header_and_slice((), slice) }
-    }
-
-    #[inline]
-    pub fn as_slice(self) -> &'db [PlaceElem] {
-        &self.interned.get().slice
-    }
-
     pub fn project(self, projection: PlaceElem) -> Projection<'db> {
         Projection::new_from_iter(self.as_slice().iter().copied().chain([projection]))
-    }
-}
-
-impl<'db> std::ops::Deref for Projection<'db> {
-    type Target = [PlaceElem];
-
-    fn deref(&self) -> &Self::Target {
-        self.as_slice()
     }
 }
 
