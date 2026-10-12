@@ -18,7 +18,7 @@ LL | use std::simd::intrinsics;
    |                |
    |                no `intrinsics` in `simd`
    |
-   = note: 'std::intrinsics' is unstable in nightly Rust and is only available with the `#![feature(core_intrinsics)]` attribute
+   = note: 'std::intrinsics' is unstable, add `#![feature(core_intrinsics)]` to the crate attributes to enable
 help: consider importing this module instead
    |
 LL - use std::simd::intrinsics;
