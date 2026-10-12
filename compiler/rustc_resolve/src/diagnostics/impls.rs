@@ -2031,7 +2031,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             return;
         }
 
-        let unused_macro = self.unused_macros.iter().find_map(|(def_id, (_, unused_ident))| {
+        let unused_macro = self.unused_macros.iter().find_map(|(def_id, (_, unused_ident, _))| {
             if unused_ident.name == ident.name { Some((def_id, unused_ident)) } else { None }
         });
 
@@ -2166,8 +2166,21 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
         }
 
-        if self.macro_names.contains(&IdentKey::new(ident)) {
-            err.subdiagnostic(AddedMacroUse);
+        if let Some(def_id) = self.macro_names.get(&IdentKey::new(ident)) {
+            let macro_span = self.def_span(def_id.to_def_id());
+            let mut span: MultiSpan = macro_span.into();
+            span.push_span_label(
+                macro_span,
+                "a macro with the same name is defined here".to_string(),
+            );
+            if let Some(def_id) = self.local_macro_def_scopes[def_id].opt_def_id() {
+                span.push_span_label(
+                    self.def_span(def_id),
+                    "consider annotating this `mod` with `#[macro_use]`".to_string(),
+                );
+            }
+
+            err.subdiagnostic(AddedMacroUse { span });
             return;
         }
     }
@@ -2439,7 +2452,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
             if kind != AmbiguityKind::GlobVsGlob {
                 if let Scope::ModuleNonGlobs(module, _) | Scope::ModuleGlobs(module, _) = scope {
-                    if module == self.graph_root.to_module() {
+                    if b.res() == Res::Err {
+                        help_msgs.push("consider removing this".to_string());
+                    } else if module == self.graph_root.to_module() {
                         help_msgs.push(format!(
                             "use `crate::{ident}` to refer to this {thing} unambiguously"
                         ));
