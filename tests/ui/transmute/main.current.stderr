@@ -1,5 +1,5 @@
 error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
-  --> $DIR/main.rs:17:17
+  --> $DIR/main.rs:19:17
    |
 LL |     let x: u8 = transmute(10u16);
    |                 ^^^^^^^^^
@@ -8,7 +8,7 @@ LL |     let x: u8 = transmute(10u16);
    = note: target type: `u8` (8 bits)
 
 error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
-  --> $DIR/main.rs:21:17
+  --> $DIR/main.rs:23:17
    |
 LL |     let x: u8 = transmute("test");
    |                 ^^^^^^^^^
@@ -17,7 +17,7 @@ LL |     let x: u8 = transmute("test");
    = note: target type: `u8` (8 bits)
 
 error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
-  --> $DIR/main.rs:26:18
+  --> $DIR/main.rs:28:18
    |
 LL |     let x: Foo = transmute(10);
    |                  ^^^^^^^^^
