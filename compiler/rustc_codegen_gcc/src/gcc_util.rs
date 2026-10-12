@@ -67,7 +67,6 @@ pub(crate) fn global_gcc_features(sess: &EarlySession) -> Vec<String> {
 
 // To find a list of GCC's names, check https://gcc.gnu.org/onlinedocs/gcc/Function-Attributes.html
 pub fn to_gcc_features<'a>(target: &Target, s: &'a str) -> SmallVec<[&'a str; 2]> {
-    // cSpell:disable
     match (&target.arch, s) {
         // FIXME: seems like x87 does not exist?
         (&Arch::X86 | &Arch::X86_64, "x87") => smallvec![],
@@ -111,7 +110,86 @@ pub fn to_gcc_features<'a>(target: &Target, s: &'a str) -> SmallVec<[&'a str; 2]
         (&Arch::AArch64, "sve2-bitperm") => smallvec!["sve2-bitperm", "neon"],
         (_, s) => smallvec![s],
     }
-    // cSpell:enable
+}
+
+/// Translate a Rust AArch64 feature name to the GCC extension enabled by `target("+name")`.
+/// GCC rejects unknown extensions, so features without one return `None`.
+#[cfg(feature = "master")]
+pub fn to_gcc_aarch64_extension(feature: &str) -> Option<&'static str> {
+    let extension = match feature {
+        "neon" => "simd",
+        "rdm" => "rdma",
+        "fhm" => "fp16fml",
+        "jsconv" => "jscvt",
+        "mte" => "memtag",
+        "rand" => "rng",
+        "spe" => "profile",
+        "paca" | "pacg" => "pauth",
+        "aes" => "aes",
+        "bf16" => "bf16",
+        "crc" => "crc",
+        "cssc" => "cssc",
+        "dotprod" => "dotprod",
+        "f32mm" => "f32mm",
+        "f64mm" => "f64mm",
+        "faminmax" => "faminmax",
+        "fcma" => "fcma",
+        "flagm" => "flagm",
+        "flagm2" => "flagm2",
+        "fp8" => "fp8",
+        "fp8dot2" => "fp8dot2",
+        "fp8dot4" => "fp8dot4",
+        "fp8fma" => "fp8fma",
+        "fp16" => "fp16",
+        "frintts" => "frintts",
+        "i8mm" => "i8mm",
+        "lse" => "lse",
+        "lse128" => "lse128",
+        "lut" => "lut",
+        "mops" => "mops",
+        "rcpc" => "rcpc",
+        "rcpc2" => "rcpc2",
+        "rcpc3" => "rcpc3",
+        "sb" => "sb",
+        "sha2" => "sha2",
+        "sha3" => "sha3",
+        "sm4" => "sm4",
+        "sme" => "sme",
+        "sme-b16b16" => "sme-b16b16",
+        "sme-f8f16" => "sme-f8f16",
+        "sme-f8f32" => "sme-f8f32",
+        "sme-f16f16" => "sme-f16f16",
+        "sme-f64f64" => "sme-f64f64",
+        "sme-i16i64" => "sme-i16i64",
+        "sme-lutv2" => "sme-lutv2",
+        "sme2" => "sme2",
+        "sme2p1" => "sme2p1",
+        "ssbs" => "ssbs",
+        "ssve-fp8dot2" => "ssve-fp8dot2",
+        "ssve-fp8dot4" => "ssve-fp8dot4",
+        "ssve-fp8fma" => "ssve-fp8fma",
+        "sve" => "sve",
+        "sve-b16b16" => "sve-b16b16",
+        "sve2" => "sve2",
+        "sve2-aes" => "sve2-aes",
+        "sve2-bitperm" => "sve2-bitperm",
+        "sve2-sha3" => "sve2-sha3",
+        "sve2-sm4" => "sve2-sm4",
+        "sve2p1" => "sve2p1",
+        "tme" => "tme",
+        "wfxt" => "wfxt",
+        _ => return None,
+    };
+    Some(extension)
+}
+
+/// Translate a Rust feature name to the name libgccjit reports in its target
+/// info (see gcc/config/aarch64/aarch64-jit.cc and aarch64-option-extensions.def).
+pub fn to_gcc_target_info_feature<'a>(sess: &EarlySession, feature: &'a str) -> &'a str {
+    match (&sess.target.arch, feature) {
+        (&Arch::AArch64, "neon") => "asimd",
+        (_, feature) => feature,
+    }
 }
 
 fn arch_to_gcc(name: &str) -> &str {
@@ -189,6 +267,26 @@ pub fn new_context<'gcc>(sess: &Session) -> Context<'gcc> {
         context.add_command_line_option("-mavx");
     }
 
+    if sess.target.arch == Arch::AArch64 {
+        // Unlike LLVM, GCC enables outline atomics by default, but their libgcc helpers are
+        // missing on targets without this feature, like the Linux kernel. Only AArch64 has it.
+        let outline_atomics = sess
+            .global_backend_features
+            .iter()
+            .rev()
+            .find_map(|feature| match feature.as_str() {
+                "outline-atomics" | "+outline-atomics" => Some(true),
+                "-outline-atomics" => Some(false),
+                _ => None,
+            })
+            .unwrap_or(false);
+        context.add_command_line_option(if outline_atomics {
+            "-moutline-atomics"
+        } else {
+            "-mno-outline-atomics"
+        });
+    }
+
     for arg in &sess.opts.cg.llvm_args {
         context.add_command_line_option(arg);
     }
@@ -235,7 +333,12 @@ pub fn new_context<'gcc>(sess: &Session) -> Context<'gcc> {
     match sess.target.stack_probes {
         StackProbeType::None => (),
         StackProbeType::Inline | StackProbeType::InlineOrCall { .. } => {
-            context.add_command_line_option("-fstack-clash-protection")
+            context.add_command_line_option("-fstack-clash-protection");
+            // GCC assumes a 64 KiB guard on AArch64, so frames up to 63 KiB would skip the
+            // single-page guard of Rust threads.
+            if sess.target.arch == Arch::AArch64 {
+                context.add_command_line_option("--param=stack-clash-protection-guard-size=12");
+            }
         }
         // FIXME(antoyo): We should define the stack probe symbol to be __rust_probestack, but it seems GCC cannot do that.
         StackProbeType::Call => (),

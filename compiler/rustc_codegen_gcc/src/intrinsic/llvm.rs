@@ -2,6 +2,8 @@ use std::borrow::Cow;
 
 use gccjit::{CType, Context, Field, Function, FunctionPtrType, RValue, ToRValue, Type};
 use rustc_codegen_ssa::traits::BuilderMethods;
+#[cfg(feature = "master")]
+use rustc_target::spec::Arch;
 
 use crate::builder::Builder;
 use crate::context::{CodegenCx, new_array_type};
@@ -1089,41 +1091,28 @@ pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function
         "llvm.x86.xgetbv" => "__builtin_trap",
         _ => unimplemented!("unsupported LLVM intrinsic {}", name),
     };
-    let func = cx.context.get_builtin_function(gcc_name);
-    cx.functions.borrow_mut().insert(gcc_name.to_string(), func);
-    func
+    cx.context.get_builtin_function(gcc_name)
 }
 
 #[cfg(feature = "master")]
 pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function<'gcc> {
     let gcc_name = match name {
-        "llvm.prefetch.p0" => {
-            let gcc_name = "__builtin_prefetch";
-            let func = cx.context.get_builtin_function(gcc_name);
-            cx.functions.borrow_mut().insert(gcc_name.to_string(), func);
-            return func;
-        }
+        "llvm.prefetch.p0" => return cx.context.get_builtin_function("__builtin_prefetch"),
 
         "llvm.aarch64.isb" => {
             // FIXME: GCC doesn't support __builtin_arm_isb yet, check if this builtin is OK.
-            let gcc_name = "__atomic_thread_fence";
-            let func = cx.context.get_builtin_function(gcc_name);
-            cx.functions.borrow_mut().insert(gcc_name.to_string(), func);
-            return func;
+            return cx.context.get_builtin_function("__atomic_thread_fence");
         }
 
         "llvm.x86.xgetbv" => "__builtin_ia32_xgetbv",
         // NOTE: this doc specifies the equivalent GCC builtins: http://huonw.github.io/llvmint/llvmint/x86/index.html
+        "llvm.sqrt.v2f64" if cx.sess().target.arch == Arch::AArch64 => "__builtin_aarch64_sqrtv2df",
+        "llvm.sqrt.v4f32" if cx.sess().target.arch == Arch::AArch64 => "__builtin_aarch64_sqrtv4sf",
         // FIXME: Should handle other targets than `ia32`.
         "llvm.sqrt.v2f64" => "__builtin_ia32_sqrtpd",
         // FIXME: Should handle other targets than `ia32`.
         "llvm.sqrt.v4f32" => "__builtin_ia32_sqrtps",
-        "llvm.sqrt.f32" => {
-            let gcc_name = "__builtin_sqrtf";
-            let func = cx.context.get_builtin_function(gcc_name);
-            cx.functions.borrow_mut().insert(gcc_name.to_string(), func);
-            return func;
-        }
+        "llvm.sqrt.f32" => return cx.context.get_builtin_function("__builtin_sqrtf"),
         // FIXME: Should handle other targets than `ia32`.
         "llvm.smax.v4i32" => "__builtin_ia32_pmaxsd128",
         "llvm.x86.avx512.pmul.dq.512" => "__builtin_ia32_pmuldq512_mask",
@@ -1716,13 +1705,47 @@ pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function
         "llvm.x86.tcmmrlfp16ps" => "__builtin_trap",
         "llvm.x86.tcmmrlfp16ps.internal" => "__builtin_trap",
 
+        "llvm.aarch64.neon.umaxp.v16i8" => "__builtin_aarch64_umaxpv16qi",
+        "llvm.aarch64.neon.smax.v4i32" => "__builtin_aarch64_smaxv4si",
+        "llvm.aarch64.neon.sqdmulh.v2i32" => "__builtin_aarch64_sqdmulhv2si",
+        "llvm.aarch64.neon.sqdmulh.v8i16" => "__builtin_aarch64_sqdmulhv8hi",
+        "llvm.aarch64.neon.sqdmulh.v4i32" => "__builtin_aarch64_sqdmulhv4si",
+        "llvm.aarch64.neon.tbl1.v16i8" => "__builtin_aarch64_qtbl1v16qi_ssu",
+        "llvm.aarch64.neon.uaddlp.v8i16.v16i8" => "__builtin_aarch64_uaddlpv16qi_uu",
+        "llvm.aarch64.neon.uaddlp.v4i32.v8i16" => "__builtin_aarch64_uaddlpv8hi_uu",
+        "llvm.aarch64.neon.addp.v2i32" => "__builtin_aarch64_addpv2si",
+        "llvm.aarch64.neon.fcvtau.v4i32.v4f32" => "__builtin_aarch64_lrounduv4sfv4si_us",
+        "llvm.aarch64.neon.fmin.v4f32" => "__builtin_aarch64_fmin_nanv4sf",
+        "llvm.aarch64.neon.sqrdmulh.v4i16" => "__builtin_aarch64_sqrdmulhv4hi",
+        "llvm.aarch64.neon.sqrdmulh.v8i16" => "__builtin_aarch64_sqrdmulhv8hi",
+        "llvm.aarch64.neon.sqrdmulh.v2i32" => "__builtin_aarch64_sqrdmulhv2si",
+        "llvm.aarch64.neon.sqrdmulh.v4i32" => "__builtin_aarch64_sqrdmulhv4si",
+        "llvm.aarch64.neon.sqrdmlah.v4i16" => "__builtin_aarch64_sqrdmlahv4hi",
+        "llvm.aarch64.neon.sqrdmlah.v8i16" => "__builtin_aarch64_sqrdmlahv8hi",
+        "llvm.aarch64.neon.sqrdmlah.v2i32" => "__builtin_aarch64_sqrdmlahv2si",
+        "llvm.aarch64.neon.sqrdmlah.v4i32" => "__builtin_aarch64_sqrdmlahv4si",
+        "llvm.aarch64.neon.sqrdmlsh.v4i16" => "__builtin_aarch64_sqrdmlshv4hi",
+        "llvm.aarch64.neon.sqrdmlsh.v8i16" => "__builtin_aarch64_sqrdmlshv8hi",
+        "llvm.aarch64.neon.sqrdmlsh.v2i32" => "__builtin_aarch64_sqrdmlshv2si",
+        "llvm.aarch64.neon.sqrdmlsh.v4i32" => "__builtin_aarch64_sqrdmlshv4si",
+        "llvm.aarch64.neon.sqxtn.v4i16" => "__builtin_aarch64_sqmovnv4si",
+        "llvm.aarch64.neon.sqxtun.v4i16" => "__builtin_aarch64_sqmovunv4si_us",
+        "llvm.aarch64.neon.uqxtn.v8i8" => "__builtin_aarch64_uqmovnv8hi",
+        "llvm.aarch64.neon.sqshrun.v4i16" => "__builtin_aarch64_sqshrun_nv4si",
+        "llvm.aarch64.crc32b" => "__builtin_aarch64_crc32b",
+        "llvm.aarch64.crc32h" => "__builtin_aarch64_crc32h",
+        "llvm.aarch64.crc32w" => "__builtin_aarch64_crc32w",
+        "llvm.aarch64.crc32x" => "__builtin_aarch64_crc32x",
+        "llvm.aarch64.crc32cb" => "__builtin_aarch64_crc32cb",
+        "llvm.aarch64.crc32ch" => "__builtin_aarch64_crc32ch",
+        "llvm.aarch64.crc32cw" => "__builtin_aarch64_crc32cw",
+        "llvm.aarch64.crc32cx" => "__builtin_aarch64_crc32cx",
+
         // NOTE: this file is generated by https://github.com/GuillaumeGomez/llvmint/blob/master/generate_list.py
         _ => map_arch_intrinsic(name),
     };
 
-    let func = cx.context.get_target_builtin_function(gcc_name);
-    cx.functions.borrow_mut().insert(gcc_name.to_string(), func);
-    func
+    cx.context.get_target_builtin_function(gcc_name)
 }
 
 #[cfg(feature = "master")]

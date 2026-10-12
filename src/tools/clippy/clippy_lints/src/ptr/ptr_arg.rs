@@ -24,7 +24,7 @@ use std::{fmt, iter};
 
 pub(super) fn check_body<'tcx>(
     cx: &LateContext<'tcx>,
-    body: &Body<'tcx>,
+    body: &'tcx Body<'tcx>,
     item_id: OwnerId,
     sig: &FnSig<'tcx>,
     is_trait_item: bool,
@@ -306,7 +306,7 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
 }
 
 #[expect(clippy::too_many_lines)]
-fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &Body<'tcx>, args: &[PtrArg<'tcx>]) -> Vec<PtrArgResult> {
+fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'tcx>, args: &[PtrArg<'tcx>]) -> Vec<PtrArgResult> {
     struct V<'cx, 'tcx> {
         cx: &'cx LateContext<'tcx>,
         /// Map from a local id to which argument it came from (index into `Self::args` and
@@ -449,7 +449,7 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &Body<'tcx>, args: &[
         results,
         skip_count,
     };
-    v.visit_expr(body.value);
+    v.visit_expr(&body.value);
     v.results
 }
 

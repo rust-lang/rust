@@ -17,7 +17,7 @@ use rustc_attr_ir::{ConstStability, StabilityLevel, StableSince};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, MacroKinds};
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, LOCAL_CRATE, ModId};
 use rustc_metadata::creader::CStore;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypingMode};
 use rustc_span::symbol::kw;
@@ -308,7 +308,7 @@ fn print_generic_args(generic_args: &clean::GenericArgs, cx: &Context<'_>) -> im
 }
 
 // Possible errors when computing href link source for a `DefId`
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Debug)]
 pub(crate) enum HrefError {
     /// This item is known to rustdoc, but from a crate that does not have documentation generated.
     ///
@@ -338,6 +338,7 @@ pub(crate) enum HrefError {
 }
 
 /// Type representing information of an `href` attribute.
+#[derive(Debug)]
 pub(crate) struct HrefInfo {
     /// URL to the item page.
     pub(crate) url: String,
@@ -436,7 +437,6 @@ fn transitive_reexport_path_inner(
     def_id: DefId,
     callers: &mut Vec<DefId>,
 ) -> Option<Vec<Symbol>> {
-    use rustc_hir::def_id::ModId;
     use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 
     if let Some(cnum) = def_id.as_crate_root() {
@@ -531,6 +531,18 @@ fn generate_item_def_id_path(
         {
             def_id = trait_def_id;
         } else if let Some(new_def_id) = ty.ty_adt_def().map(|adt| adt.did()) {
+            // If the inferred item is available in the local path map, it means we're reexporting
+            // from the current crate, so better use the local path directly.
+            if cx.cache().paths.contains_key(&new_def_id)
+                && let Ok(mut info) =
+                    href_with_jump_to_def_path_depth(new_def_id, cx, jump_to_def_path_depth, None)
+            {
+                let kind = ItemType::from_def_id(original_def_id, tcx);
+                // We need to append the anchor to the URL otherwise we're just linking to the
+                // parent item...
+                info.url = format!("{}#{kind}.{}", info.url, tcx.item_name(original_def_id));
+                return Ok(info);
+            }
             def_id = new_def_id;
             maybe_have_impl_not_in_def_crate = !of_trait
                 && !original_def_id.is_local()
@@ -644,7 +656,12 @@ fn url_parts(
     relative_to: &[Symbol],
     jump_to_def_path_depth: Option<usize>,
 ) -> Result<(UrlPartsBuilder, bool), HrefError> {
-    match cache.extern_locations[&def_id.krate] {
+    let location = if def_id.krate == LOCAL_CRATE {
+        &ExternalLocation::Local
+    } else {
+        &cache.extern_locations[&def_id.krate]
+    };
+    match *location {
         ExternalLocation::Remote { ref url, is_absolute } => {
             let depth = jump_to_def_path_depth.unwrap_or(relative_to.len());
             let mut builder = remote_url_prefix(url, is_absolute, depth);

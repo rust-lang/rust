@@ -449,7 +449,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
     fn gather_terminator(&mut self, term: &Terminator<'tcx>) {
         debug!("gather_terminator({:?}, {:?})", self.loc, term);
         match term.kind {
-            TerminatorKind::Goto { target: _ }
+            TerminatorKind::Goto { target: _, .. }
             | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. } => {}
             // In some sense returning moves the return place into the current

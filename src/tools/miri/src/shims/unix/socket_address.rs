@@ -20,7 +20,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let node_ptr = this.read_pointer(node)?;
         let service_ptr = this.read_pointer(service)?;
         let hints_ptr = this.read_pointer(hints)?;
-        let res_mplace = this.deref_pointer(res)?;
+        let res_mplace = this.deref_pointer_as(res, this.machine.layouts.void_ptr_mut)?;
 
         if node_ptr == Pointer::null() {
             // We cannot get an address without the `node` part because

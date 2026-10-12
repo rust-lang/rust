@@ -1,12 +1,14 @@
 error[E0080]: cannot access thread local static `A`
   --> $DIR/tls.rs:11:25
    |
+LL | static TEST_BAD: () = {
 LL |     unsafe { let _val = A; }
    |                         ^ evaluation of `TEST_BAD` failed here
 
 error[E0080]: cannot access thread local static `A`
   --> $DIR/tls.rs:19:26
    |
+LL | static TEST_BAD_REF: () = {
 LL |     unsafe { let _val = &A; }
    |                          ^ evaluation of `TEST_BAD_REF` failed here
 

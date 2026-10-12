@@ -592,7 +592,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         }
 
         for (block, block_data) in body.basic_blocks.iter_enumerated() {
-            let mut location = Location { block, statement_index: 0 };
+            let mut location = block.start_location();
             for stmt in &block_data.statements {
                 self.visit_statement(stmt, location);
                 location.statement_index += 1;
@@ -2082,7 +2082,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     fn check_iscleanup(&mut self, block_data: &BasicBlockData<'tcx>) {
         let is_cleanup = block_data.is_cleanup;
         match block_data.terminator().kind {
-            TerminatorKind::Goto { target } => {
+            TerminatorKind::Goto { target, .. } => {
                 self.assert_iscleanup(block_data, target, is_cleanup)
             }
             TerminatorKind::SwitchInt { ref targets, .. } => {

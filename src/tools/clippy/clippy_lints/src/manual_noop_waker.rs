@@ -64,7 +64,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualNoopWaker {
 
                 if let ImplItemKind::Fn(_, body_id) = &impl_item.kind {
                     let body = cx.tcx.hir_body(*body_id);
-                    if !is_empty_block(body.value) {
+                    if !is_empty_block(&body.value) {
                         return;
                     }
                 }

@@ -371,6 +371,11 @@ fn hover_offset(
             let c = token.parent().and_then(|x| x.parent()).and_then(ast::ClosureExpr::cast)?;
             render::closure_expr(sema, config, c, edition, display_target)
         };
+        let cfg_predicate = || {
+            let predicate = token.parent().and_then(ast::CfgPredicate::cast)?;
+            render::cfg_predicate(sema, predicate)
+                .map(|markup| HoverResult { markup, actions: vec![] })
+        };
         let literal = || {
             render::literal(sema, original_token.clone(), display_target)
                 .map(|markup| HoverResult { markup, actions: vec![] })
@@ -380,6 +385,7 @@ fn hover_offset(
             .or_else(rest_pat)
             .or_else(call)
             .or_else(closure)
+            .or_else(cfg_predicate)
             .or_else(literal)
         {
             res.push(result)

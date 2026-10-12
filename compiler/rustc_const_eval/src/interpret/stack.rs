@@ -230,18 +230,21 @@ impl<'tcx> FrameInfo<'tcx> {
             diagnostics::FrameNote {
                 where_: "closure",
                 span,
+                span_context: vec![],
                 instance: String::new(),
                 times: 0,
                 has_label: false,
             }
         } else {
             let instance = format!("{}", self.instance);
+            let span_context = crate::util::context_spans(tcx, span, self.instance.def_id());
             // Note: this triggers a `must_produce_diag` state, which means that if we ever get
             // here we must emit a diagnostic. We should never display a `FrameInfo` unless we
             // actually want to emit a warning or error to the user.
             diagnostics::FrameNote {
                 where_: "instance",
                 span,
+                span_context,
                 instance,
                 times: 0,
                 has_label: false,

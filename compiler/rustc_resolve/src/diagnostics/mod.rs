@@ -770,8 +770,11 @@ pub(crate) struct MaybeMissingMacroRulesName {
 }
 
 #[derive(Subdiagnostic)]
-#[help("have you added the `#[macro_use]` on the module/import?")]
-pub(crate) struct AddedMacroUse;
+#[help("you might be missing a `#[macro_use]` attribute on a `mod` module or `use` import")]
+pub(crate) struct AddedMacroUse {
+    #[primary_span]
+    pub(crate) span: MultiSpan,
+}
 
 #[derive(Subdiagnostic)]
 #[suggestion("consider adding a derive", code = "{suggestion}", applicability = "maybe-incorrect")]
@@ -1472,6 +1475,14 @@ pub(crate) struct MacroIsPrivate {
 #[diag("unused macro definition: `{$name}`")]
 pub(crate) struct UnusedMacroDefinition {
     pub name: Symbol,
+    #[suggestion(
+        "consider annotating the enclosing module with `#[macro_use]`",
+        code = "#[macro_use]\n",
+        applicability = "machine-applicable"
+    )]
+    pub unannotated_mod: Option<Span>,
+    #[label("the macro is exported by its enclosing module")]
+    pub annotated_mod: Option<Span>,
 }
 
 #[derive(Diagnostic)]

@@ -575,7 +575,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // for the inner coroutine may actually be more restrictive.
                 if infer_kind {
                     let ty::Coroutine(_, coroutine_args) =
-                        *self.typeck_results.borrow().expr_ty(body.value).kind()
+                        *self.typeck_results.borrow().expr_ty(&body.value).kind()
                     else {
                         bug!();
                     };
@@ -1867,7 +1867,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
 
             // Anything else would be completely captured and therefore handled already.
-            _ => unreachable!(),
+            _ => unreachable!("unexpected base_path_ty: {base_path_ty:?}",),
         }
     }
 

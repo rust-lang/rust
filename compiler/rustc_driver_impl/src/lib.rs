@@ -391,7 +391,7 @@ fn make_input(early_dcx: &EarlyDiagCtxt, free_matches: &[String]) -> Option<Inpu
                     .early_fatal("couldn't read from stdin, as it did not contain valid UTF-8");
             }
 
-            let name = match env::var("UNSTABLE_RUSTDOC_TEST_PATH") {
+            match env::var("UNSTABLE_RUSTDOC_TEST_PATH") {
                 Ok(path) => {
                     let line = env::var("UNSTABLE_RUSTDOC_TEST_LINE").expect(
                         "when UNSTABLE_RUSTDOC_TEST_PATH is set \
@@ -400,12 +400,13 @@ fn make_input(early_dcx: &EarlyDiagCtxt, free_matches: &[String]) -> Option<Inpu
                     let line = line
                         .parse::<isize>()
                         .expect("UNSTABLE_RUSTDOC_TEST_LINE needs to be a number");
-                    FileName::doc_test_source_code(PathBuf::from(path), line)
+                    Some(Input::DocTestStr { file: PathBuf::from(path), line, input })
                 }
-                Err(_) => FileName::anon_source_code(&input),
-            };
-
-            Some(Input::Str { name, input })
+                Err(_) => {
+                    let name = FileName::anon_source_code(&input);
+                    Some(Input::Str { name, input })
+                }
+            }
         }
         [ifile] => Some(Input::File(PathBuf::from(ifile))),
         [ifile1, ifile2, ..] => early_dcx.early_fatal(format!(
@@ -619,7 +620,7 @@ fn list_metadata(sess: &Session, metadata_loader: &dyn MetadataLoader) {
             }
             safe_println!("{}", String::from_utf8(v).unwrap());
         }
-        Input::Str { .. } => {
+        Input::Str { .. } | Input::DocTestStr { .. } => {
             sess.dcx().fatal("cannot list metadata for stdin");
         }
     }
@@ -1373,12 +1374,14 @@ fn parse_crate_attrs<'a>(sess: &'a Session) -> PResult<'a, ast::AttrVec> {
         Input::File(file) => {
             new_parser_from_file(&sess.psess, file, StripTokens::ShebangAndFrontmatter, None)
         }
-        Input::Str { name, input } => new_parser_from_source_str(
-            &sess.psess,
-            name.clone(),
-            input.clone(),
-            StripTokens::ShebangAndFrontmatter,
-        ),
+        instr @ (Input::Str { input, .. } | Input::DocTestStr { input, .. }) => {
+            new_parser_from_source_str(
+                &sess.psess,
+                instr.file_name(sess),
+                input.clone(),
+                StripTokens::ShebangAndFrontmatter,
+            )
+        }
     });
     parser.parse_inner_attributes()
 }

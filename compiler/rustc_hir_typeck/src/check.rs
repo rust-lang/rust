@@ -72,10 +72,10 @@ pub(super) fn check_fn<'a, 'tcx>(
             fcx.register_wf_obligation(
                 param_ty.into(),
                 param.span,
-                ObligationCauseCode::WellFormed(Some(WellFormedLoc::Param {
+                ObligationCauseCode::WellFormed(WellFormedLoc::Param {
                     function: fn_def_id,
                     param_idx: idx,
-                })),
+                }),
             );
         }
 
@@ -127,7 +127,7 @@ pub(super) fn check_fn<'a, 'tcx>(
     }
 
     fcx.is_whole_body.set(true);
-    fcx.check_return_or_body_tail(body.value, false);
+    fcx.check_return_or_body_tail(&body.value, false);
 
     // Finalize the return check by taking the LUB of the return types
     // we saw and assigning it to the expected return type. This isn't

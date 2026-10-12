@@ -1,5 +1,7 @@
 //@ check-pass
-
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@ [next] compile-flags: -Znext-solver
 use std::ptr::NonNull;
 
 struct Foo<'a, T: ?Sized>(&'a (), NonNull<T>);

@@ -190,6 +190,15 @@ jobs:
       - name: install ninja
         run: src/ci/scripts/install-ninja.sh
 
+      - name: install required Python version
+        # LLDB on Windows requires the same Python version it was built against to be the first
+        # discoverable Python in $env:PATH. Only install if we're actually running Windows tests
+        # that use LLDB
+        if: ${{ startsWith(matrix.os, 'windows') && matrix.required_python_version}}
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.required_python_version }}
+
       - name: enable ipv6 on Docker
         # Don't run on codebuild because systemctl is not available
         if: ${{ !matrix.codebuild }}
@@ -254,7 +263,7 @@ jobs:
           df -h
 
       - name: upload artifacts to github
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           # name is set in previous step
           name: ${{ env.DOC_ARTIFACT_NAME }}

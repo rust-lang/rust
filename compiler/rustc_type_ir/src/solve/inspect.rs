@@ -23,7 +23,7 @@ use thin_vec::ThinVec;
 
 use crate::search_graph::RequiredDepth;
 use crate::solve::{CandidateSource, Certainty, Goal, GoalSource, QueryResult};
-use crate::{Canonical, CanonicalVarValues, Interner};
+use crate::{Canonical, Interner};
 
 /// Some `data` together with information about how they relate to the input
 /// of the canonical query.
@@ -35,7 +35,7 @@ use crate::{Canonical, CanonicalVarValues, Interner};
 #[derive_where(Copy; I: Interner, T: Copy)]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
 pub struct State<I: Interner, T> {
-    pub var_values: CanonicalVarValues<I>,
+    pub var_values: I::GenericArgs,
     pub data: T,
 }
 

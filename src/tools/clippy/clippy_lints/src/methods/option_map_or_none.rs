@@ -61,7 +61,7 @@ pub(super) fn check<'tcx>(
         if let hir::ExprKind::Closure(&hir::Closure { body, fn_decl_span, .. }) = map_arg.kind
             && let arg_snippet = snippet(cx, fn_decl_span, "..")
             && let body = cx.tcx.hir_body(body)
-            && let Some((func, [arg_char])) = reduce_unit_expression(body.value)
+            && let Some((func, [arg_char])) = reduce_unit_expression(&body.value)
             && let Some(id) = func.res(cx).opt_def_id().map(|ctor_id| cx.tcx.parent(ctor_id))
             && Some(id) == cx.tcx.lang_items().option_some_variant()
         {

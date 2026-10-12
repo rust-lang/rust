@@ -24,7 +24,6 @@ use std::hash::Hash;
 use std::iter;
 
 use rustc_abi::Align;
-use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_lint_defs::builtin::EXPLICIT_BUILTIN_CFGS_IN_FLAGS;
 use rustc_span::{Symbol, sym};
@@ -101,11 +100,9 @@ pub(crate) fn disallow_cfgs(sess: &Session, user_cfgs: &Cfg) {
         } else {
             format!("{}", cfg_name)
         };
-        sess.psess.opt_span_buffer_lint(
+        sess.psess.buffer_crate_lint(
             EXPLICIT_BUILTIN_CFGS_IN_FLAGS,
-            None,
-            ast::CRATE_NODE_ID,
-            diagnostics::UnexpectedBuiltinCfg { cfg, cfg_name, controlled_by }.into(),
+            diagnostics::UnexpectedBuiltinCfg { cfg, cfg_name, controlled_by },
         )
     };
 

@@ -12,7 +12,7 @@ use rustc_index::Idx;
 use rustc_macros::{BlobDecodable, Decodable, Encodable, StableHash};
 use rustc_serialize::{Decodable, Encodable};
 
-use crate::{SpanDecoder, SpanEncoder, Symbol};
+use crate::{BlobDecoder, SpanEncoder, Symbol};
 
 pub type StableCrateIdMap =
     indexmap::IndexMap<StableCrateId, CrateNum, BuildHasherDefault<Unhasher>>;
@@ -399,14 +399,14 @@ impl fmt::Debug for LocalDefId {
 }
 
 impl<E: SpanEncoder> Encodable<E> for LocalDefId {
-    fn encode(&self, s: &mut E) {
-        self.to_def_id().encode(s);
+    fn encode(&self, e: &mut E) {
+        e.encode_local_def_id(*self);
     }
 }
 
-impl<D: SpanDecoder> Decodable<D> for LocalDefId {
+impl<D: BlobDecoder> Decodable<D> for LocalDefId {
     fn decode(d: &mut D) -> LocalDefId {
-        DefId::decode(d).expect_local()
+        d.decode_local_def_id()
     }
 }
 

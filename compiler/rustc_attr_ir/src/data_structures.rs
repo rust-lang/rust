@@ -24,6 +24,7 @@ use thin_vec::ThinVec;
 pub use crate::canonical_symbols::{CanonicalSymbol, CanonicalSymbols};
 use crate::diagnostic::*;
 use crate::lang_items::LangItem;
+use crate::lint::LintCheck;
 use crate::pretty_printing::PrintAttribute;
 use crate::stability::{DefaultBodyStability, PartialConstStability, Stability};
 
@@ -589,6 +590,7 @@ pub enum RustcDumpLayoutKind {
 #[derive(Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute, PartialEq, Eq)]
 pub enum RustcMirKind {
     PrettyLiveLocals,
+    PrettyPreciseLiveness,
     PrettyTransitiveLiveLocals,
     PeekMaybeInit,
     PeekMaybeUninit,
@@ -715,6 +717,15 @@ impl fmt::Display for AutoDiffItem {
         write!(f, " with inputs: {:?}", self.inputs)?;
         write!(f, " with output: {:?}", self.output)
     }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(StableHash, Encodable, Decodable, PrintAttribute)]
+pub enum RustcAssertVarianceKind {
+    Covariant,
+    Invariant,
+    Contravariant,
+    Bivariant,
 }
 
 #[derive(Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
@@ -931,6 +942,9 @@ pub enum AttributeKind {
     /// Represents `#[linkage]`.
     Linkage(Linkage, Span),
 
+    /// Represents `#[allow]`, `#[warn]`, `#[deny]`, `#[forbid]`, and `#[expect]`.
+    LintCheck(ThinVec<LintCheck>),
+
     /// Represents `#[loop_match]`.
     LoopMatch(Span),
 
@@ -1143,6 +1157,12 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_as_ptr]` (used by the `dangling_pointers_from_temporaries` lint).
     RustcAsPtr,
+
+    /// Represents `#[rustc_assert_variance]`.
+    RustcAssertVariance {
+        span: Span,
+        kind: RustcAssertVarianceKind,
+    },
 
     /// Represents `#[rustc_autodiff]`.
     RustcAutodiff(Option<Box<RustcAutodiff>>),

@@ -537,6 +537,40 @@ fn test() {
 }
 
 #[test]
+fn coerce_fn_item_with_unsafe_in_array() {
+    check_no_mismatches(
+        r"
+fn foo(x: u32) -> isize { 1 }
+unsafe fn bar(x: u32) -> isize { 1 }
+fn test() {
+    let f = [foo, bar];
+          // ^^^ adjustments: Pointer(ReifyFnPointer)
+}",
+    );
+}
+
+#[test]
+fn coerce_fn_items_with_unsafe_in_match_arms() {
+    check_no_mismatches(
+        r"
+const fn foo1(x: u32) -> isize { 1 }
+unsafe fn foo2(x: u32) -> isize { 2 }
+fn foo3(x: u32) -> isize { 3 }
+fn test() {
+    let x = match 1 {
+        1 => foo1,
+          // ^^^^ adjustments: Pointer(ReifyFnPointer)
+        2 => foo2,
+          // ^^^^ adjustments: Pointer(ReifyFnPointer)
+        _ => foo3,
+          // ^^^^ adjustments: Pointer(ReifyFnPointer), Pointer(UnsafeFnPointer)
+    };
+    x;
+}",
+    );
+}
+
+#[test]
 fn coerce_closure_to_fn_ptr() {
     check_no_mismatches(
         r"
@@ -1085,5 +1119,32 @@ async fn foo(a: &[i32]) -> &[i32] {
     &a[..0]
 }
     "#,
+    );
+}
+
+#[test]
+fn coerce_unsize_infer_var_via_default_and_box() {
+    // Regression for rust-analyzer#23114: `y` is only related to the `Sized`
+    // obligation through subtyping (`Box::new(y)` then unsize to `Box<dyn Send>`).
+    check_no_mismatches(
+        r#"
+//- minicore: coerce_unsized, send, default
+use core::{marker::Unsize, ops::CoerceUnsized};
+
+struct Box<T: ?Sized>(*const T);
+impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Box<U>> for Box<T> {}
+impl<T> Box<T> {
+    fn new(t: T) -> Self {
+        loop {}
+    }
+}
+
+fn main() {
+    let y = Default::default();
+    let x = Box::new(y);
+    let z: Box<dyn Send> = x;
+    let _: i32 = y;
+}
+"#,
     );
 }

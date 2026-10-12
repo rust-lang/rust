@@ -140,7 +140,7 @@ fn check_item(cx: &LateContext<'_>, hir_id: HirId) {
             cx,
             hir_id,
             |v| {
-                v.expr(&v.bind("expr", body.value));
+                v.expr(&v.bind("expr", &body.value));
             },
             Some(body),
         );
@@ -727,7 +727,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
     }
 
     fn body(&self, body_id: &Binding<hir::BodyId>) {
-        let expr = self.cx.tcx.hir_body(body_id.value).value;
+        let expr = &self.cx.tcx.hir_body(body_id.value).value;
         bind!(self, expr);
         chain!(self, "{expr} = &cx.tcx.hir_body({body_id}).value");
         self.expr(expr);

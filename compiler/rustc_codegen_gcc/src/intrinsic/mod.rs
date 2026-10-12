@@ -28,8 +28,6 @@ use rustc_session::config::OptLevel;
 use rustc_span::{Span, Symbol, bug, span_bug, sym};
 use rustc_target::callconv::{ArgAbi, PassMode};
 
-#[cfg(feature = "master")]
-use crate::abi::FnAbiGccExt;
 use crate::abi::GccType;
 use crate::builder::Builder;
 use crate::common::{SignType, TypeReflection};
@@ -362,7 +360,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                         sym::cttz_nonzero => {
                             self.count_trailing_zeroes_nonzero(width, args[0].immediate())
                         }
-                        sym::ctpop => self.pop_count(args[0].immediate()),
+                        sym::ctpop => self.ctpop(args[0].immediate()),
                         sym::bswap => {
                             if width == 8 {
                                 args[0].immediate() // byte swap a u8/i8 is just a no-op
@@ -689,6 +687,10 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
         cond
     }
 
+    fn ctpop(&mut self, val: Self::Value) -> Self::Value {
+        self.pop_count(val)
+    }
+
     fn type_checked_load(
         &mut self,
         _vtable: Self::Value,
@@ -831,8 +833,11 @@ impl<'gcc, 'tcx> ArgAbiExt<'gcc, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
         idx: &mut usize,
         dst: PlaceRef<'tcx, RValue<'gcc>>,
     ) {
+        let func = bx.current_func();
+        // The return pointer counted by cg_ssa is a hidden parameter in GCC.
+        let hidden_params = bx.functions_with_indirect_return.borrow().contains_key(&func) as usize;
         let mut next = || {
-            let val = bx.current_func().get_param(*idx as i32);
+            let val = func.get_param((*idx - hidden_params) as i32);
             *idx += 1;
             val.to_rvalue()
         };
@@ -841,12 +846,10 @@ impl<'gcc, 'tcx> ArgAbiExt<'gcc, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
             PassMode::Pair(..) => {
                 OperandValue::Pair(next(), next()).store(bx, dst);
             }
-            PassMode::Indirect { meta_attrs: Some(_), .. } => {
+            PassMode::IndirectUnsized { .. } => {
                 bug!("unsized `ArgAbi` cannot be stored");
             }
-            PassMode::Direct(_)
-            | PassMode::Indirect { meta_attrs: None, .. }
-            | PassMode::Cast { .. } => {
+            PassMode::Direct(_) | PassMode::Indirect { .. } | PassMode::Cast { .. } => {
                 let next_arg = next();
                 self.store(bx, next_arg, dst);
             }
@@ -1400,7 +1403,7 @@ fn codegen_gnu_try<'gcc, 'tcx>(
     dest: PlaceRef<'tcx, RValue<'gcc>>,
 ) {
     let cx: &CodegenCx<'gcc, '_> = bx.cx;
-    let (llty, func) = get_rust_try_fn(cx, &mut |mut bx| {
+    let func = get_rust_try_fn(cx, &mut |mut bx| {
         // Codegens the shims described above:
         //
         //   bx:
@@ -1459,12 +1462,12 @@ fn codegen_gnu_try<'gcc, 'tcx>(
         );
     });
 
-    let func = unsafe { std::mem::transmute::<Function<'gcc>, RValue<'gcc>>(func) };
+    let func = func.get_address(None);
 
     // Note that no invoke is used here because by definition this function
     // can't panic (that's what it's catching).
     let ret = bx.call(
-        llty,
+        func.get_type(),
         None,
         None,
         func,
@@ -1484,7 +1487,7 @@ fn codegen_gnu_try<'gcc, 'tcx>(
 fn get_rust_try_fn<'a, 'gcc, 'tcx>(
     cx: &'a CodegenCx<'gcc, 'tcx>,
     codegen: &mut dyn FnMut(Builder<'a, 'gcc, 'tcx>),
-) -> (Type<'gcc>, Function<'gcc>) {
+) -> Function<'gcc> {
     if let Some(llfn) = cx.rust_try_fn.get() {
         return llfn;
     }
@@ -1529,9 +1532,8 @@ fn gen_fn<'a, 'gcc, 'tcx>(
     name: &str,
     rust_fn_sig: ty::PolyFnSig<'tcx>,
     codegen: &mut dyn FnMut(Builder<'a, 'gcc, 'tcx>),
-) -> (Type<'gcc>, Function<'gcc>) {
+) -> Function<'gcc> {
     let fn_abi = cx.fn_abi_of_fn_ptr(rust_fn_sig, ty::List::empty());
-    let return_type = fn_abi.gcc_type(cx).return_type;
     // FIXME(eddyb) find a nicer way to do this.
     cx.linkage.set(FunctionType::Internal);
     let func = cx.declare_fn(name, fn_abi);
@@ -1540,5 +1542,5 @@ fn gen_fn<'a, 'gcc, 'tcx>(
     let block = Builder::append_block(cx, func, "entry-block");
     let bx = Builder::build(cx, block);
     codegen(bx);
-    (return_type, func)
+    func
 }

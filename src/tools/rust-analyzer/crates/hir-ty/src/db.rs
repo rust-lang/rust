@@ -35,9 +35,8 @@ use crate::{
     },
     mir::{MirBody, MirLowerError},
     next_solver::{
-        Allocation, Clause, EarlyBinder, GenericArgs, ParamEnv, PolyFnSig, StoredClauses,
-        StoredEarlyBinder, StoredGenericArgs, StoredPolyFnSig, StoredTraitRef, StoredTy, TraitRef,
-        Ty, VariancesOf,
+        Allocation, Clause, EarlyBinder, GenericArgs, ParamEnv, PolyFnSig, StoredEarlyBinder,
+        StoredGenericArgs, StoredPolyFnSig, StoredTraitRef, StoredTy, TraitRef, Ty, VariancesOf,
     },
     traits::{ParamEnvAndCrate, StoredParamEnvAndCrate},
 };
@@ -319,7 +318,7 @@ pub trait HirDatabase: SourceDatabase + 'static {
     fn type_alias_bounds_with_diagnostics<'db>(
         &'db self,
         type_alias: TypeAliasId,
-    ) -> &'db TyLoweringResult<'db, TypeAliasBounds<StoredEarlyBinder<StoredClauses>>> {
+    ) -> &'db TyLoweringResult<'db, TypeAliasBounds> {
         let db = self.as_dyn();
         crate::lower::type_alias_bounds_with_diagnostics(db, type_alias)
     }

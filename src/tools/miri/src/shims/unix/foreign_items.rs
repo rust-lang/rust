@@ -353,7 +353,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     shim_sig!(extern "C" fn(*_, i32, ...) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = this.open(path_raw, flag, varargs)?;
+                let result = this.open(None, path_raw, flag, varargs)?;
+                this.write_scalar(result, dest)?;
+            }
+            "openat" => {
+                let ([dirfd, path_raw, flag], varargs) = this.check_shim_sig_variadic(
+                    shim_sig!(extern "C" fn(i32, *_, i32, ...) -> i32),
+                    (link_name, abi, args),
+                )?;
+                let result = this.open(Some(dirfd), path_raw, flag, varargs)?;
                 this.write_scalar(result, dest)?;
             }
             "unlink" => {
@@ -385,7 +393,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     shim_sig!(extern "C" fn(i32, *_) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = this.fstat(fd, buf)?;
+                let result = this.fstat(fd, buf, "stat")?;
                 this.write_scalar(result, dest)?;
             }
             "lstat" => {
@@ -468,7 +476,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "readdir" => {
                 let [dirp] = this
                     .check_shim_sig(shim_sig!(extern "C" fn(*_) -> *_), (link_name, abi, args))?;
-                this.readdir(dirp, dest)?;
+                this.readdir(dirp, dest, "dirent")?;
             }
             "dirfd" => {
                 let [dirp] = this
@@ -516,6 +524,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     (link_name, abi, args),
                 )?;
                 let result = this.futimens(fd, times)?;
+                this.write_scalar(result, dest)?;
+            }
+            "utimensat" => {
+                let [dirfd, path, times, flags] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, *_, *_, i32) -> i32),
+                    (link_name, abi, args),
+                )?;
+                let result = this.utimensat(dirfd, path, times, flags)?;
                 this.write_scalar(result, dest)?;
             }
             "readlink" => {

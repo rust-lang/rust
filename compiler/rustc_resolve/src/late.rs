@@ -445,6 +445,8 @@ pub(crate) enum AliasPossibility {
 pub(crate) enum PathSource<'a, 'ast, 'ra> {
     /// Type paths `Path`.
     Type,
+    /// Type or constant in a `PathSegment` argument.
+    TypeParam,
     /// Trait paths in bounds or impls.
     Trait(AliasPossibility),
     /// Expression paths `path`, with optional parent context.
@@ -480,6 +482,7 @@ impl PathSource<'_, '_, '_> {
     fn namespace(self) -> Namespace {
         match self {
             PathSource::Type
+            | PathSource::TypeParam
             | PathSource::Trait(_)
             | PathSource::Struct(_)
             | PathSource::DefineOpaques
@@ -499,6 +502,7 @@ impl PathSource<'_, '_, '_> {
     fn defer_to_typeck(self) -> bool {
         match self {
             PathSource::Type
+            | PathSource::TypeParam
             | PathSource::Expr(..)
             | PathSource::Pat
             | PathSource::Struct(_)
@@ -519,6 +523,7 @@ impl PathSource<'_, '_, '_> {
         match &self {
             PathSource::DefineOpaques => "type alias or associated type with opaqaue types",
             PathSource::Type => "type",
+            PathSource::TypeParam => "type or constant",
             PathSource::Trait(_) => "trait",
             PathSource::Pat => "unit struct, unit variant or constant",
             PathSource::Struct(_) => "struct, variant or union type",
@@ -590,6 +595,28 @@ impl PathSource<'_, '_, '_> {
                         | DefKind::AssocTy
                         | DefKind::TyParam
                         | DefKind::OpaqueTy
+                        | DefKind::ForeignTy,
+                    _,
+                ) | Res::PrimTy(..)
+                    | Res::SelfTyParam { .. }
+                    | Res::SelfTyAlias { .. }
+            ),
+            PathSource::TypeParam => matches!(
+                res,
+                Res::Def(
+                    DefKind::Struct
+                        | DefKind::Union
+                        | DefKind::Enum
+                        | DefKind::Trait
+                        | DefKind::TraitAlias
+                        | DefKind::TyAlias
+                        | DefKind::AssocTy
+                        | DefKind::TyParam
+                        | DefKind::OpaqueTy
+                        | DefKind::AnonConst
+                        | DefKind::AssocConst
+                        | DefKind::Const
+                        | DefKind::ConstParam
                         | DefKind::ForeignTy,
                     _,
                 ) | Res::PrimTy(..)
@@ -668,8 +695,8 @@ impl PathSource<'_, '_, '_> {
         match (self, has_unexpected_resolution) {
             (PathSource::Trait(_), true) => E0404,
             (PathSource::Trait(_), false) => E0405,
-            (PathSource::Type | PathSource::DefineOpaques, true) => E0573,
-            (PathSource::Type | PathSource::DefineOpaques, false) => E0425,
+            (PathSource::Type | PathSource::DefineOpaques | PathSource::TypeParam, true) => E0573,
+            (PathSource::Type | PathSource::DefineOpaques | PathSource::TypeParam, false) => E0425,
             (PathSource::Struct(_), true) => E0574,
             (PathSource::Struct(_), false) => E0422,
             (PathSource::Expr(..), true)
@@ -797,7 +824,7 @@ pub(crate) struct DiagMetadata<'ast> {
     current_impl_item: Option<&'ast AssocItem>,
 
     /// When processing impl trait
-    currently_processing_impl_trait: Option<(TraitRef, Ty)>,
+    currently_processing_impl_trait: Option<(&'ast TraitRef, &'ast Ty)>,
 
     /// Accumulate the errors due to missed lifetime elision,
     /// and report them all at once for each function.
@@ -830,7 +857,7 @@ struct LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     lifetime_elision_candidates: Option<Vec<(LifetimeRes, LifetimeElisionCandidate)>>,
 
     /// The trait that the current context can refer to.
-    current_trait_ref: Option<(Module<'ra>, TraitRef)>,
+    current_trait_ref: Option<(Module<'ra>, &'ast TraitRef)>,
 
     /// Fields used to add information to diagnostic errors.
     diag_metadata: Box<DiagMetadata<'ast>>,
@@ -1977,8 +2004,8 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         // are we trying to use an anonymous lifetime
                         // on a non GAT associated trait type?
                         if !self.in_func_body
-                            && let Some((module, _)) = &self.current_trait_ref
-                            && let Some(ty) = &self.diag_metadata.current_self_type
+                            && let Some((module, _)) = self.current_trait_ref
+                            && let Some(ty) = self.diag_metadata.current_self_type
                             && Some(true) == self.diag_metadata.in_non_gat_assoc_type
                             && let crate::ModuleKind::Def(DefKind::Trait, trait_id, _, _) =
                                 module.kind
@@ -2272,6 +2299,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 PathSource::Trait(..)
                 | PathSource::TraitItem(..)
                 | PathSource::Type
+                | PathSource::TypeParam
                 | PathSource::PreciseCapturingArg(..)
                 | PathSource::ReturnTypeNotation
                 | PathSource::Macro
@@ -3481,7 +3509,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     /// This is called to resolve a trait reference from an `impl` (i.e., `impl Trait for Foo`).
     fn with_optional_trait_ref<T>(
         &mut self,
-        opt_trait_ref: Option<&TraitRef>,
+        opt_trait_ref: Option<&'ast TraitRef>,
         self_type: &'ast Ty,
         f: impl FnOnce(&mut Self, Option<DefId>) -> T,
     ) -> T {
@@ -3489,8 +3517,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         let mut new_id = None;
         if let Some(trait_ref) = opt_trait_ref {
             let path: Vec<_> = Segment::from_path(&trait_ref.path);
-            self.diag_metadata.currently_processing_impl_trait =
-                Some((trait_ref.clone(), self_type.clone()));
+            self.diag_metadata.currently_processing_impl_trait = Some((trait_ref, self_type));
             let res = self.smart_resolve_path_fragment(
                 &None,
                 &path,
@@ -3502,7 +3529,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             self.diag_metadata.currently_processing_impl_trait = None;
             if let Some(def_id) = res.expect_full_res().opt_def_id() {
                 new_id = Some(def_id);
-                new_val = Some((self.r.expect_module(def_id), trait_ref.clone()));
+                new_val = Some((self.r.expect_module(def_id), trait_ref));
             }
         }
         let original_trait_ref = replace(&mut self.current_trait_ref, new_val);
@@ -3889,7 +3916,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         let Some(decl) = decl else {
             // We could not find the method: report an error.
             let candidate = self.find_similarly_named_assoc_item(reported_ident.name, kind);
-            let path = &self.current_trait_ref.as_ref().unwrap().1.path;
+            let path = &self.current_trait_ref.unwrap().1.path;
             let path_names = path_names_to_string(path);
             self.report_error(span, err(reported_ident, path_names, candidate));
             feed_visibility(self, module.def_id());
@@ -3903,7 +3930,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         match seen_trait_items.entry(id_in_trait) {
             Entry::Occupied(entry) => {
                 let trait_span = decl.parent_module.unwrap().span.shrink_to_lo();
-                let impl_span = self.current_trait_ref.as_ref().unwrap().1.path.span;
+                let impl_span = self.current_trait_ref.unwrap().1.path.span;
                 self.report_error(
                     span,
                     ResolutionError::TraitImplDuplicate {
@@ -3933,7 +3960,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         }
 
         // The method kind does not correspond to what appeared in the trait, report.
-        let path = &self.current_trait_ref.as_ref().unwrap().1.path;
+        let path = &self.current_trait_ref.unwrap().1.path;
         let (code, kind) = match kind {
             AssocItemKind::Const(..) => (E0323, "const"),
             AssocItemKind::Fn(..) => (E0324, "method"),
@@ -3945,7 +3972,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         };
         let trait_path = path_names_to_string(path);
         let trait_span = decl.parent_module.unwrap().span.shrink_to_lo();
-        let impl_span = self.current_trait_ref.as_ref().unwrap().1.path.span;
+        let impl_span = self.current_trait_ref.unwrap().1.path.span;
         self.report_error(
             span,
             ResolutionError::TraitImplMismatch {
@@ -5514,7 +5541,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
     fn record_traits_in_scope(&mut self, node_id: NodeId, ident: Ident) {
         let traits = self.r.traits_in_scope(
-            self.current_trait_ref.as_ref().map(|(module, _)| *module),
+            self.current_trait_ref.map(|(module, _)| module),
             &self.parent_scope,
             ident.span,
             Some((ident.name, ValueNS)),

@@ -18,6 +18,8 @@ use rustc_target::spec::Arch;
 #[cfg(feature = "master")]
 use crate::base;
 use crate::context::CodegenCx;
+#[cfg(feature = "master")]
+use crate::gcc_util::to_gcc_aarch64_extension;
 use crate::gcc_util::to_gcc_features;
 
 /// Checks if the function `instance` is recursively inline.
@@ -147,6 +149,21 @@ pub fn from_fn_attrs<'gcc, 'tcx>(
     }
 
     #[cfg(feature = "master")]
+    if cx.sess().target.arch == Arch::AArch64 {
+        let extensions = codegen_fn_attrs
+            .target_features
+            .iter()
+            .filter_map(|feature| to_gcc_aarch64_extension(feature.name.as_str()))
+            .map(|extension| format!("+{extension}"))
+            .collect::<Vec<_>>()
+            .join(",");
+        if !extensions.is_empty() {
+            func.add_attribute(FnAttribute::Target(&extensions));
+        }
+        return;
+    }
+
+    #[cfg(feature = "master")]
     let x86_interrupt = is_x86_interrupt(fn_abi);
     #[cfg(not(feature = "master"))]
     let x86_interrupt = false;
@@ -197,7 +214,8 @@ pub fn from_fn_attrs<'gcc, 'tcx>(
             Arch::X86 | Arch::X86_64 | Arch::PowerPC => {
                 func.add_attribute(FnAttribute::Target(&target_features))
             }
-            // The target attribute is not supported on other targets in GCC.
+            // FIXME: GCC also supports the target attribute on other targets, with their own
+            // spellings.
             _ => (),
         }
     }

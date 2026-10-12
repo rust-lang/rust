@@ -63,25 +63,6 @@ impl Subdiagnostic for OverruledAttributeSub {
 }
 
 #[derive(Diagnostic)]
-#[diag("malformed lint attribute input", code = E0452)]
-pub(crate) struct MalformedAttribute {
-    #[primary_span]
-    pub span: Span,
-    #[subdiagnostic]
-    pub sub: MalformedAttributeSub,
-}
-
-#[derive(Subdiagnostic)]
-pub(crate) enum MalformedAttributeSub {
-    #[label("bad attribute argument")]
-    BadAttributeArgument(#[primary_span] Span),
-    #[label("reason must be a string literal")]
-    ReasonMustBeStringLiteral(#[primary_span] Span),
-    #[label("reason in lint attribute must come last")]
-    ReasonMustComeLast(#[primary_span] Span),
-}
-
-#[derive(Diagnostic)]
 #[diag("unknown tool name `{$tool_name}` found in scoped lint: `{$tool_name}::{$lint_name}`", code = E0710)]
 pub(crate) struct UnknownToolInScopedLint {
     #[primary_span]
@@ -3261,3 +3242,14 @@ pub(crate) enum RawBorrowViaReferenceSuggestion<'a> {
     #[help("consider using `&raw {$mutbl}` for a safer and more explicit raw pointer")]
     Spanless { mutbl: &'a str },
 }
+
+#[derive(Diagnostic)]
+#[diag("missing `#[derive(GenericTypeVisitable)]` on a type which implements `TypeVisitable`")]
+#[note_once(
+    "`GenericTypeVisitable` is rust-analyzer's version of `TypeVisitable`; it should be implemented whenever the latter is"
+)]
+#[help("mark the type with `#[derive(GenericTypeVisitable)]`")]
+#[help(
+    "or, if `GenericTypeVisitable` is derived, check whether all fields implement `GenericTypeVisitable`"
+)]
+pub(crate) struct MissingGenericTypeVisitableDeriveDiag;

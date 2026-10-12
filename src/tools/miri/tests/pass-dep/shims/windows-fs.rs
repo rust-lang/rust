@@ -121,7 +121,7 @@ unsafe fn test_create_normal_file() {
         FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
         ptr::null_mut(),
         CREATE_NEW,
-        0,
+        FILE_FLAG_OPEN_REPARSE_POINT,
         ptr::null_mut(),
     );
     assert_eq!(handle.addr(), usize::MAX, "CreateFileW did not fail");

@@ -25,6 +25,7 @@ use rustc_hir::{ExprKind, HirId, QPath, is_range_literal};
 use rustc_hir_analysis::diagnostics::{NoFieldOnType, NoVariantNamed};
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer as _;
 use rustc_infer::infer::{self, DefineOpaqueTypes, InferOk, RegionVariableOrigin};
+use rustc_infer::traits::WellFormedLoc;
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
 use rustc_middle::ty::consts::ConstExt;
@@ -425,35 +426,46 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return Ty::new_error(tcx, guar);
         }
 
-        let oprnd_t = self.structurally_resolve_type(expr.span, oprnd_t);
+        // Resolve what we can for `Not` and `Neg`, but allow later constraints
+        // to determine an unresolved operand type,
+        // so we call `deeply_resolve_ignoring_regions_with_obligations` for them.
         match unop {
-            hir::UnOp::Deref => self.lookup_derefing(expr, oprnd, oprnd_t).unwrap_or_else(|| {
-                let mut err =
-                    self.dcx().create_err(CantDereference { span: expr.span, ty: oprnd_t });
-                let sp = tcx.sess.source_map().start_point(expr.span).with_parent(None);
-                if let Some(sp) =
-                    tcx.sess.psess.complete_stmt_exprs_before_bin_op_lookalike.borrow().get(&sp)
-                {
-                    err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
-                }
-                // The operand may be an uncalled function, in which case it is its return type
-                // the user meant to dereference. Only suggest the call when that return type is
-                // itself dereferenceable, mirroring the checks `lookup_derefing` just failed.
-                self.suggest_fn_call(&mut err, oprnd, oprnd_t, |output| {
-                    output.builtin_deref(true).is_some()
-                        || self.tcx.lang_items().deref_trait().is_some_and(|deref_trait| {
-                            self.type_implements_trait(deref_trait, [output], self.param_env)
-                                .may_apply()
-                        })
-                });
-                Ty::new_error(tcx, err.emit_err())
-            }),
+            hir::UnOp::Deref => {
+                // Dereferencing must distinguish builtin pointers from
+                // overloaded `Deref`, so it still requires a structurally resolved type.
+                //
+                // This is necessary as raw pointers do not implement `Deref`.
+                let oprnd_t = self.structurally_resolve_type(expr.span, oprnd_t);
+                self.lookup_derefing(expr, oprnd, oprnd_t).unwrap_or_else(|| {
+                    let mut err =
+                        self.dcx().create_err(CantDereference { span: expr.span, ty: oprnd_t });
+                    let sp = tcx.sess.source_map().start_point(expr.span).with_parent(None);
+                    if let Some(sp) =
+                        tcx.sess.psess.complete_stmt_exprs_before_bin_op_lookalike.borrow().get(&sp)
+                    {
+                        err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
+                    }
+                    // The operand may be an uncalled function, in which case it is its return type
+                    // the user meant to dereference. Only suggest the call when that return type is
+                    // itself dereferenceable, mirroring the checks `lookup_derefing` just failed.
+                    self.suggest_fn_call(&mut err, oprnd, oprnd_t, |output| {
+                        output.builtin_deref(true).is_some()
+                            || self.tcx.lang_items().deref_trait().is_some_and(|deref_trait| {
+                                self.type_implements_trait(deref_trait, [output], self.param_env)
+                                    .may_apply()
+                            })
+                    });
+                    Ty::new_error(tcx, err.emit_err())
+                })
+            }
             hir::UnOp::Not => {
+                let oprnd_t = self.deeply_resolve_ignoring_regions_with_obligations(oprnd_t);
                 let result = self.check_user_unop(expr, oprnd_t, unop, expected_inner);
                 // If it's builtin, we can reuse the type, this helps inference.
                 if oprnd_t.is_integral() || *oprnd_t.kind() == ty::Bool { oprnd_t } else { result }
             }
             hir::UnOp::Neg => {
+                let oprnd_t = self.deeply_resolve_ignoring_regions_with_obligations(oprnd_t);
                 let result = self.check_user_unop(expr, oprnd_t, unop, expected_inner);
                 // If it's builtin, we can reuse the type, this helps inference.
                 if oprnd_t.is_numeric() { oprnd_t } else { result }
@@ -699,14 +711,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.require_type_is_sized_deferred(
                 output,
                 call_expr_and_args.map_or(expr.span, |(e, _)| e.span),
-                ObligationCauseCode::SizedCallReturnType,
+                ObligationCauseCode::SizedCallReturnType(expr.hir_id),
             );
         }
 
         // We always require that the type provided as the value for
         // a type parameter outlives the moment of instantiation.
         let args = self.typeck_results.borrow().node_args(expr.hir_id);
-        self.add_wf_bounds(args, expr.span);
+        self.add_wf_bounds(args, expr.span, expr.hir_id);
 
         ty
     }
@@ -1722,7 +1734,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let def_id = block.def_id;
         let fcx = FnCtxt::new(self, self.param_env, def_id);
 
-        let ty = fcx.check_expr_with_expectation(body.value, expected);
+        let ty = fcx.check_expr_with_expectation(&body.value, expected);
         fcx.require_type_is_sized(ty, body.value.span, ObligationCauseCode::SizedConstOrStatic);
         fcx.write_ty(block.hir_id, ty);
         ty
@@ -1772,7 +1784,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.deferred_repeat_expr_checks.borrow_mut().push((element, element_ty, count));
 
         let ty = Ty::new_array_with_const_len(tcx, t, count);
-        self.register_wf_obligation(ty.into(), expr.span, ObligationCauseCode::WellFormed(None));
+        self.register_wf_obligation(
+            ty.into(),
+            expr.span,
+            ObligationCauseCode::WellFormed(WellFormedLoc::HirId(expr.hir_id)),
+        );
         ty
     }
 
@@ -1944,7 +1960,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.register_wf_obligation(
                 field_type.into(),
                 field.expr.span,
-                ObligationCauseCode::WellFormed(None),
+                ObligationCauseCode::WellFormed(WellFormedLoc::HirId(field.expr.hir_id)),
             );
 
             // Make sure to give a type to the field even if there's
@@ -3725,7 +3741,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let body = self.tcx.hir_body(anon_const.body);
 
                     let fcx = FnCtxt::new(self, self.param_env, anon_const.def_id);
-                    let ty = fcx.check_expr(body.value);
+                    let ty = fcx.check_expr(&body.value);
                     let target_ty = match self.structurally_resolve_type(body.value.span, ty).kind()
                     {
                         ty::FnDef(..) => {
@@ -3895,7 +3911,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.require_type_is_sized(
                                 field_ty,
                                 expr.span,
-                                ObligationCauseCode::Misc,
+                                ObligationCauseCode::WellFormed(WellFormedLoc::HirId(expr.hir_id)),
                             );
                         }
 
@@ -3924,7 +3940,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 self.require_type_is_sized(
                                     field_ty,
                                     expr.span,
-                                    ObligationCauseCode::Misc,
+                                    ObligationCauseCode::WellFormed(WellFormedLoc::HirId(
+                                        expr.hir_id,
+                                    )),
                                 );
                             }
 

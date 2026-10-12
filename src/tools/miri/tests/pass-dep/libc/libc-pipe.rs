@@ -188,20 +188,17 @@ fn test_pipe_fcntl_threaded() {
     let mut fds = [-1, -1];
     errno_check(unsafe { libc::pipe(fds.as_mut_ptr()) });
     let thread1 = thread::spawn(move || {
+        // The O_NONBLOCK flag is not set initially. We only check that bit as other parts of the
+        // flags differ on FreeBSD due to bidirectional pipes.
+        let flags = errno_result(unsafe { libc::fcntl(fds[0], libc::F_GETFL) }).unwrap();
+        assert!(flags & libc::O_NONBLOCK == 0);
+
         // Add O_NONBLOCK flag while pipe is still blocked on read.
         errno_check(unsafe { libc::fcntl(fds[0], libc::F_SETFL, libc::O_NONBLOCK) });
 
         // Check the new flag value while the main thread is still blocked on fds[0].
         let flags = errno_result(unsafe { libc::fcntl(fds[0], libc::F_GETFL) }).unwrap();
-
-        if cfg!(target_os = "freebsd") {
-            // FreeBSD also reports readable/writable flags in F_GETFL.
-            // FIXME: check the exact flags, once Miri emulates them correctly.
-            // See <https://github.com/rust-lang/miri/issues/5359>.
-            assert!(flags & libc::O_NONBLOCK != 0);
-        } else {
-            assert_eq!(flags, libc::O_NONBLOCK)
-        }
+        assert!(flags & libc::O_NONBLOCK != 0);
 
         // The write below will unblock the `read` in main thread: even though
         // the socket is now "non-blocking", the shim needs to deal correctly

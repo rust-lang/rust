@@ -1,6 +1,8 @@
 error[E0080]: calling non-const function `<NotConstDestruct as Drop>::drop`
   --> $DIR/drop.rs:23:1
    |
+LL | static TEST_BAD: () = {
+LL |     let _v: NotConstDestruct = NotConstDestruct;
 LL | };
    | ^ evaluation of `TEST_BAD` failed inside this call
    |

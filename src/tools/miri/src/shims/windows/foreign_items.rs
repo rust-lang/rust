@@ -1249,8 +1249,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Any non zero value works for the stdlib. This is just used for stack overflows anyway.
                 this.write_int(1, dest)?;
             }
-            // this is only callable from std because we know that std ignores the return value
             "SwitchToThread" if this.frame_in_std() => {
+                // this is only callable from std because we know that std ignores the return value
                 let [] = this.check_shim_sig(
                     shim_sig!(extern "system" fn() -> winapi::BOOL),
                     (link_name, abi, args),
@@ -1259,6 +1259,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.yield_active_thread();
 
                 // FIXME: this should return a nonzero value if this call does result in switching to another thread.
+                this.write_null(dest)?;
+            }
+            "GetFinalPathNameByHandleW" if this.frame_in_std() => {
+                // Std uses this when debug-printing `File`. We stub it out by returning an error.
+                let [_file, _buf, _bufsz, _flags] = this.check_shim_sig(
+                    shim_sig!(extern "system" fn(winapi::HANDLE, *_, u32, u32) -> u32),
+                    (link_name, abi, args),
+                )?;
+
+                this.set_last_error(IoError::WindowsError("ERROR_NOT_SUPPORTED"))?;
                 this.write_null(dest)?;
             }
 

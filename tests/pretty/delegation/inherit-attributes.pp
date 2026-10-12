@@ -1,14 +1,15 @@
+#![attr = LintCheck([LintCheck {lint_name: "incomplete_features",
+kind: Allow}])]
+#![attr = Feature([fn_delegation#0])]
+extern crate std;
+#[attr = PreludeImport]
+use std::prelude::rust_2021::*;
 //@ edition:2021
 //@ aux-crate:to_reuse_functions=to-reuse-functions.rs
 //@ pretty-mode:hir
 //@ pretty-compare-only
 //@ pp-exact:inherit-attributes.pp
 
-#![allow(incomplete_features)]
-#![attr = Feature([fn_delegation#0])]
-extern crate std;
-#[attr = PreludeImport]
-use std::prelude::rust_2021::*;
 
 extern crate to_reuse_functions;
 

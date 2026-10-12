@@ -133,7 +133,7 @@ fn typeck_with_inspect<'tcx>(
     if let hir::Node::Item(hir::Item { kind: hir::ItemKind::GlobalAsm { .. }, .. }) = node {
         // Check the fake body of a global ASM. There's not much to do here except
         // for visit the asm expr of the body.
-        let ty = fcx.check_expr(body.value);
+        let ty = fcx.check_expr(&body.value);
         fcx.write_ty(id, ty);
     } else if let Some(hir::FnSig { header, decl, span: _ }) = node.fn_sig() {
         let fn_sig = if decl.output.is_suggestable_infer_ty().is_some() {
@@ -193,7 +193,7 @@ fn typeck_with_inspect<'tcx>(
 
         let expected_type = fcx.normalize(body.value.span, Unnormalized::new_wip(expected_type));
 
-        let wf_code = ObligationCauseCode::WellFormed(Some(WellFormedLoc::Ty(def_id)));
+        let wf_code = ObligationCauseCode::WellFormed(WellFormedLoc::Ty(def_id));
         fcx.register_wf_obligation(expected_type.into(), body.value.span, wf_code);
 
         if let hir::Node::AnonConst(_) = node {
@@ -204,7 +204,7 @@ fn typeck_with_inspect<'tcx>(
             );
         }
 
-        fcx.check_expr_coercible_to_type_or_error(body.value, expected_type, None, |err, _| {
+        fcx.check_expr_coercible_to_type_or_error(&body.value, expected_type, None, |err, _| {
             extend_err_with_const_context(err, tcx, node, expected_type);
         });
 

@@ -183,6 +183,7 @@ fn file_test_io_seek_and_write() {
         target_os = "freebsd",
         target_os = "fuchsia",
         target_os = "hurd",
+        target_os = "haiku",
         target_os = "illumos",
         target_os = "linux",
         target_os = "netbsd",
@@ -217,6 +218,7 @@ fn file_lock_multiple_shared() {
         target_os = "freebsd",
         target_os = "fuchsia",
         target_os = "hurd",
+        target_os = "haiku",
         target_os = "illumos",
         target_os = "linux",
         target_os = "netbsd",
@@ -252,6 +254,7 @@ fn file_lock_blocking() {
         target_os = "freebsd",
         target_os = "fuchsia",
         target_os = "hurd",
+        target_os = "haiku",
         target_os = "illumos",
         target_os = "linux",
         target_os = "netbsd",
@@ -284,6 +287,7 @@ fn file_lock_drop() {
         target_os = "freebsd",
         target_os = "fuchsia",
         target_os = "hurd",
+        target_os = "haiku",
         target_os = "illumos",
         target_os = "linux",
         target_os = "netbsd",
@@ -318,6 +322,7 @@ fn file_lock_dup() {
         target_os = "freebsd",
         target_os = "fuchsia",
         target_os = "hurd",
+        target_os = "haiku",
         target_os = "illumos",
         target_os = "linux",
         target_os = "netbsd",
@@ -340,7 +345,7 @@ fn file_lock_double() {
     // The behavior here differs between Windows and Unix: on Windows, f1 holds both locks;
     // on Unix, the lock got downgraded so f1 only holds the shared lock.
     assert_matches!(f2.try_lock(), Err(TryLockError::WouldBlock));
-    if cfg!(windows) {
+    if cfg!(any(windows, target_os = "haiku")) {
         assert_matches!(f2.try_lock_shared(), Err(TryLockError::WouldBlock));
     } else {
         check!(f2.try_lock_shared());
@@ -2660,6 +2665,98 @@ fn test_rename_symlink() {
 
     symlink_file(not_exist, &original).unwrap();
     fs::rename(&original, &dest).unwrap();
+    // Make sure that renaming `original` to `dest` preserves the symlink.
+    assert_eq!(fs::read_link(&dest).unwrap().as_path(), not_exist);
+}
+
+#[test]
+fn test_rename_noreplace() {
+    let tmpdir = tmpdir();
+    let source_path = tmpdir.join("source_file.txt");
+    let target_path = tmpdir.join("target_file.txt");
+
+    fs::write(&source_path, b"source hello world").unwrap();
+
+    fs::rename_noreplace(&source_path, &target_path).unwrap();
+    assert!(!source_path.exists());
+    assert_eq!(fs::read(&target_path).unwrap(), b"source hello world");
+}
+
+#[test]
+fn test_rename_noreplace_existing_file() {
+    let tmpdir = tmpdir();
+    let source_path = tmpdir.join("source_file.txt");
+    let target_path = tmpdir.join("target_file.txt");
+
+    fs::write(&source_path, b"source hello world").unwrap();
+    fs::write(&target_path, b"target hello world").unwrap();
+
+    let err = fs::rename_noreplace(&source_path, &target_path).unwrap_err();
+    assert_eq!(err.kind(), ErrorKind::AlreadyExists);
+    // Make sure the failed rename left both files untouched.
+    assert_eq!(fs::read(&source_path).unwrap(), b"source hello world");
+    assert_eq!(fs::read(&target_path).unwrap(), b"target hello world");
+}
+
+#[test]
+fn test_rename_noreplace_directory_to_empty_directory() {
+    // Renaming a directory over an existing empty directory should fail;
+    // plain `rename` would succeed here.
+    let tmpdir = tmpdir();
+    let source_path = tmpdir.join("source_directory");
+    let target_path = tmpdir.join("target_directory");
+
+    fs::create_dir(&source_path).unwrap();
+    fs::create_dir(&target_path).unwrap();
+
+    let err = fs::rename_noreplace(&source_path, &target_path).unwrap_err();
+    assert_matches!(
+        err.kind(),
+        // A native no-replace rename returns `AlreadyExists`. The `link`/`unlink`
+        // fallback cannot rename directories and returns `PermissionDenied`.
+        ErrorKind::AlreadyExists | ErrorKind::PermissionDenied,
+        "Expected AlreadyExists or PermissionDenied error, got {err}"
+    );
+}
+
+#[test]
+#[cfg(any(target_os = "linux", target_os = "android", target_vendor = "apple", windows))]
+fn test_rename_noreplace_directory() {
+    let tmpdir = tmpdir();
+    let source_path = tmpdir.join("source_directory");
+    let target_path = tmpdir.join("target_directory");
+
+    fs::create_dir(&source_path).unwrap();
+    fs::write(source_path.join("file.txt"), b"hello world").unwrap();
+
+    match fs::rename_noreplace(&source_path, &target_path) {
+        Ok(()) => {
+            assert!(!source_path.exists());
+            assert_eq!(fs::read(target_path.join("file.txt")).unwrap(), b"hello world");
+        }
+        // Without a native no-replace rename (Linux before 3.15), Unix
+        // platforms fall back to `link`/`unlink`, and it rejects directories.
+        Err(err) if cfg!(unix) && err.kind() == ErrorKind::PermissionDenied => {
+            assert!(source_path.exists());
+            assert!(!target_path.exists());
+        }
+        Err(err) => panic!("unexpected error: {err:?}"),
+    }
+}
+
+#[test]
+fn test_rename_noreplace_symlink() {
+    let tmpdir = tmpdir();
+    if !got_symlink_permission(&tmpdir) {
+        return;
+    };
+
+    let original = tmpdir.join("original");
+    let dest = tmpdir.join("dest");
+    let not_exist = Path::new("does not exist");
+
+    symlink_file(not_exist, &original).unwrap();
+    fs::rename_noreplace(&original, &dest).unwrap();
     // Make sure that renaming `original` to `dest` preserves the symlink.
     assert_eq!(fs::read_link(&dest).unwrap().as_path(), not_exist);
 }

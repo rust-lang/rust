@@ -21,12 +21,12 @@ export async function bootstrap(
 
     log.info("Using server binary at", path);
 
-    if (!isValidExecutable(path, config.serverExtraEnv)) {
+    if (!(await isValidExecutable(path, config.serverExtraEnv))) {
         throw new Error(
             `Failed to execute ${path} --version.` +
                 (config.serverPath
-                    ? `\`config.server.path\` or \`config.serverPath\` has been set explicitly.\
-            Consider removing this config or making a valid server binary available at that path.`
+                    ? ` \`config.server.path\` or \`config.serverPath\` has been set explicitly.` +
+                      ` Consider removing this config or making a valid server binary available at that path.`
                     : ""),
         );
     }
