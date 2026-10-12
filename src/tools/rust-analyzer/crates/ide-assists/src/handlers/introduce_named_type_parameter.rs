@@ -192,6 +192,15 @@ fn foo<
     }
 
     #[test]
+    fn replace_impl_long_path() {
+        check_assist(
+            introduce_named_type_parameter,
+            r#"fn foo(bar: $0impl std::iter::Iterator) {}"#,
+            r#"fn foo<$0I: std::iter::Iterator>(bar: I) {}"#,
+        );
+    }
+
+    #[test]
     fn replace_impl_with_mut() {
         check_assist(
             introduce_named_type_parameter,

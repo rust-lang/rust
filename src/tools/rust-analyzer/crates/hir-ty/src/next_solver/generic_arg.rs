@@ -623,17 +623,9 @@ impl<'db> rustc_type_ir::relate::Relate<DbInterner<'db>> for GenericArgs<'db> {
         a: Self,
         b: Self,
     ) -> rustc_type_ir::relate::RelateResult<DbInterner<'db>, Self> {
-        GenericArgs::new_from_iter(
-            relation.cx(),
-            std::iter::zip(a.iter(), b.iter()).map(|(a, b)| {
-                relation.relate_with_variance(
-                    Variance::Invariant,
-                    VarianceDiagInfo::default(),
-                    a,
-                    b,
-                )
-            }),
-        )
+        GenericArgs::new_from_iter(std::iter::zip(a.iter(), b.iter()).map(|(a, b)| {
+            relation.relate_with_variance(Variance::Invariant, VarianceDiagInfo::default(), a, b)
+        }))
     }
 }
 

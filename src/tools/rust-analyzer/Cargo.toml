@@ -122,7 +122,7 @@ rayon = "1.10.0"
 rowan = "0.17.0"
 # Ideally we'd not enable the macros feature but unfortunately the `tracked` attribute does not work
 # on impls without it
-salsa = { version = "0.28.2", default-features = false, features = [
+salsa = { version = "0.28.5", default-features = false, features = [
     "rayon",
     "salsa_unstable",
     "macros",
@@ -164,6 +164,10 @@ hashbrown = { version = "0.17.0", features = [
 
 # We need to freeze the version of the crate, as the raw-api feature is considered unstable
 dashmap = { version = "=6.2.1", features = ["raw-api", "inline"] }
+
+# We need to freeze this as `1.0.26` breaks the compilation of `rustc_lexer` during our in-tree
+# libraries publish
+unicode-ident = "=1.0.24"
 
 [workspace.lints.cargo]
 unused_dependencies = "allow"

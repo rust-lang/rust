@@ -70,6 +70,7 @@ pub(crate) fn complete_expr_path<'db>(
         ref innermost_breakable_ty,
         ref impl_,
         in_match_guard,
+        at_optional_block,
         ..
     } = expr_ctx;
 
@@ -383,9 +384,10 @@ pub(crate) fn complete_expr_path<'db>(
                     if in_condition {
                         add_keyword("letm", "let mut $1 = $0");
                         add_keyword("let", "let $1 = $0");
-                    }
-
-                    if in_block_expr {
+                    } else if at_optional_block {
+                        add_keyword("letm", "{\n    let mut $1 = $0;\n}");
+                        add_keyword("let", "{\n    let $1 = $0;\n}");
+                    } else if in_block_expr {
                         add_keyword("letm", "let mut $1 = $0;");
                         add_keyword("let", "let $1 = $0;");
                     }

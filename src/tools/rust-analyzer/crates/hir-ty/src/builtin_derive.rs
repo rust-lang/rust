@@ -179,12 +179,12 @@ pub fn predicates(db: &dyn HirDatabase, impl_: BuiltinDeriveImplId) -> GenericPr
             simple_trait_predicates(interner, loc, generic_params, adt_predicates, trait_id)
         }
         BuiltinDeriveImplTrait::Reborrow => {
-            explicit_own_predicates(interner, adt_predicates.own_explicit_predicates())
+            explicit_own_predicates(adt_predicates.own_explicit_predicates())
         }
         BuiltinDeriveImplTrait::Default => {
             if matches!(loc.adt, AdtId::EnumId(_)) {
                 // Enums don't have extra bounds.
-                explicit_own_predicates(interner, adt_predicates.own_explicit_predicates())
+                explicit_own_predicates(adt_predicates.own_explicit_predicates())
             } else {
                 simple_trait_predicates(interner, loc, generic_params, adt_predicates, trait_id)
             }
@@ -218,7 +218,6 @@ pub fn predicates(db: &dyn HirDatabase, impl_: BuiltinDeriveImplId) -> GenericPr
             });
             GenericPredicates::from_explicit_own_predicates(StoredEarlyBinder::bind(
                 Clauses::new_from_iter(
-                    interner,
                     adt_predicates
                         .explicit_predicates()
                         .iter_identity()
@@ -233,11 +232,10 @@ pub fn predicates(db: &dyn HirDatabase, impl_: BuiltinDeriveImplId) -> GenericPr
 }
 
 fn explicit_own_predicates<'db>(
-    interner: DbInterner<'db>,
     predicates: EarlyBinder<'db, impl Iterator<Item = Clause<'db>>>,
 ) -> GenericPredicates {
     GenericPredicates::from_explicit_own_predicates(StoredEarlyBinder::bind(
-        Clauses::new_from_iter(interner, predicates.skip_binder()).store(),
+        Clauses::new_from_iter(predicates.skip_binder()).store(),
     ))
 }
 
@@ -292,8 +290,8 @@ fn simple_trait_predicates<'db>(
                 parent: loc.adt.into(),
                 local_id: param_idx,
             });
-            let param_idx =
-                param_idx.into_raw().into_u32() + (generic_params.len_lifetimes() as u32);
+            let param_idx = param_idx.into_raw().into_u32()
+                + (generic_params.len_early_bound_lifetimes() as u32);
             let param_ty = Ty::new_param(interner, param_id, param_idx);
             let trait_args = trait_args(loc.trait_, param_ty);
             let trait_ref = TraitRef::new_from_args(interner, trait_id.into(), trait_args);
@@ -329,7 +327,6 @@ fn simple_trait_predicates<'db>(
     }
     GenericPredicates::from_explicit_own_predicates(StoredEarlyBinder::bind(
         Clauses::new_from_iter(
-            interner,
             adt_predicates
                 .explicit_predicates()
                 .iter_identity()
@@ -413,7 +410,7 @@ fn coerce_pointee_params<'db>(
         local_id: pointee_param,
     });
     let pointee_param_idx =
-        pointee_param.into_raw().into_u32() + (generic_params.len_lifetimes() as u32);
+        pointee_param.into_raw().into_u32() + (generic_params.len_early_bound_lifetimes() as u32);
     let new_param_idx = generic_params.len() as u32;
     let new_param_id = coerce_pointee_new_type_param(trait_id);
     let new_param_ty = Ty::new_param(interner, new_param_id, new_param_idx);

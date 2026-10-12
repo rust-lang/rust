@@ -214,7 +214,6 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                                     span,
                                 );
                                 let args = GenericArgs::new_from_iter(
-                                    self.ctx.interner,
                                     trait_ref
                                         .args
                                         .iter()
@@ -544,7 +543,6 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
         let substs = self.substs_from_path_segment(assoc_type.into(), infer_args, None, true, span);
 
         let substs = GenericArgs::new_from_iter(
-            interner,
             trait_args.iter().chain(substs.iter().skip(trait_args.len())),
         );
 
@@ -745,7 +743,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                         };
                         self.ctx
                             .ctx
-                            .lower_const(konst, const_param_ty(self.ctx.ctx.db, const_id))
+                            .lower_const(konst, const_param_ty(self.ctx.ctx.db, const_id), false)
                             .into()
                     }
                     _ => unreachable!("unmatching param kinds were passed to `provided_kind()`"),
@@ -928,7 +926,6 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                         )
                     });
                 let args = GenericArgs::new_from_iter(
-                    interner,
                     super_trait_args.iter().chain(args.iter().skip(super_trait_args.len())),
                 );
                 let projection_term = AliasTerm::new_from_args(

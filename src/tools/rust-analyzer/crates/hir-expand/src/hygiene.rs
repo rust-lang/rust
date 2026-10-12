@@ -22,8 +22,6 @@
 // FIXME: Move this into the span crate? Not quite possible today as that depends on `MacroCallLoc`
 // which contains a bunch of unrelated things
 
-use std::convert::identity;
-
 use span::{Edition, MacroCallId, Span, SyntaxContext};
 
 use base_db::SourceDatabase;
@@ -114,20 +112,17 @@ fn apply_mark_internal(
     transparency: Transparency,
     edition: Edition,
 ) -> SyntaxContext {
-    let call_id = Some(call_id);
-
-    let mut opaque = ctxt.opaque(db);
-    let mut opaque_and_semiopaque = ctxt.opaque_and_semiopaque(db);
+    let (mut opaque, mut opaque_and_semiopaque) = ctxt.opaque_and_opaque_and_semiopaque(db);
 
     if transparency >= Transparency::Opaque {
         let parent = opaque;
-        opaque = SyntaxContext::new(db, call_id, transparency, edition, parent, identity, identity);
+        opaque = SyntaxContext::new(db, call_id, transparency, edition, parent, None, None);
     }
 
     if transparency >= Transparency::SemiOpaque {
         let parent = opaque_and_semiopaque;
         opaque_and_semiopaque =
-            SyntaxContext::new(db, call_id, transparency, edition, parent, |_| opaque, identity);
+            SyntaxContext::new(db, call_id, transparency, edition, parent, Some(opaque), None);
     }
 
     let parent = ctxt;
@@ -137,7 +132,7 @@ fn apply_mark_internal(
         transparency,
         edition,
         parent,
-        |_| opaque,
-        |_| opaque_and_semiopaque,
+        Some(opaque),
+        Some(opaque_and_semiopaque),
     )
 }

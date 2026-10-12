@@ -449,11 +449,15 @@ Expr =
 | LetExpr
 | UnderscoreExpr
 | IncludeBytesExpr
+| CfgPredExpr
 
 // We need a special expression for this because we don't have access to the file,
 // and emitting a specific array will have problems with the length.
 IncludeBytesExpr =
   'builtin' '#' 'include_bytes'
+
+CfgPredExpr =
+  'builtin' '#' 'cfg' '(' CfgPredicate ','? ')'
 
 OffsetOfExpr =
   AnyAttr* 'builtin' '#' 'offset_of' '(' Type ',' fields:(NameRef ('.' NameRef)* ) ')'
@@ -763,12 +767,16 @@ Pat =
 | ConstBlockPat
 | DerefPat
 | NotNull
+| CfgPredPat
 
 NotNull =
     '!' 'null'
 
 DerefPat =
     'builtin' '#' 'deref' '(' Pat ')'
+
+CfgPredPat =
+    'builtin' '#' 'cfg' '(' CfgPredicate ','? ')'
 
 LiteralPat =
   '-'? Literal

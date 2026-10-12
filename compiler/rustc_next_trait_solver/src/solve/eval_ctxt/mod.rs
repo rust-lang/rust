@@ -16,6 +16,7 @@ use rustc_type_ir::solve::{
     NoSolutionOrRerunNonErased, OpaqueTypesJank, QueryResultOrRerunNonErased, RerunCondition,
     RerunNonErased, RerunReason, RerunResultExt, SmallCopySet, TyOrConstInferVar,
 };
+use rustc_type_ir::transmute::Answer;
 use rustc_type_ir::{
     self as ty, ClauseKind, Const, InferCtxtLike, Interner, MayBeErased, OpaqueTypeKey,
     PredicateKind, PredicateProxy, Region, RegionVid, TypeFoldable, TypeSuperVisitable,
@@ -1565,7 +1566,7 @@ where
         src: I::Ty,
         dst: I::Ty,
         assume: Const<I>,
-    ) -> Result<Certainty, NoSolution> {
+    ) -> Result<Answer<Region<I>, I::Ty>, NoSolution> {
         self.delegate.is_transmutable(dst, src, assume)
     }
 

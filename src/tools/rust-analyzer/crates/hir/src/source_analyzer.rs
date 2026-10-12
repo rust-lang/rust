@@ -470,6 +470,7 @@ impl<'db> SourceAnalyzer<'db> {
             LifetimeElisionKind::Infer,
             LifetimeLoweringMode::LateParam,
         )
+        .with_interning_mode(LoweringMode::Ide)
         .with_infer_vars_behavior(Some(&mut vars_cts))
         .lower_ty(type_ref);
 
@@ -1893,6 +1894,7 @@ fn resolve_hir_path_<'db>(
                     LifetimeElisionKind::Infer,
                     LifetimeLoweringMode::LateParam,
                 )
+                .with_interning_mode(LoweringMode::Ide)
                 .lower_ty_ext(type_ref);
                 res.map(|ty_ns| (ty_ns, path.segments().first(), Visibility::Public))
             }),
@@ -2097,6 +2099,7 @@ fn resolve_hir_path_qualifier<'db>(
                     LifetimeElisionKind::Infer,
                     LifetimeLoweringMode::LateParam,
                 )
+                .with_interning_mode(LoweringMode::Ide)
                 .lower_ty_ext(type_ref);
                 res.map(|ty_ns| (ty_ns, path.segments().first()))
             }),

@@ -954,3 +954,14 @@ fn test() -> i32 {
     "#,
     );
 }
+
+#[test]
+fn diverging_let_with_else() {
+    check_no_mismatches(
+        r#"
+fn x() {
+    let true: bool = return else {};
+}
+    "#,
+    );
+}
