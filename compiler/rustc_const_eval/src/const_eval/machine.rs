@@ -1132,7 +1132,10 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
             return interp_ok(None);
         }
         // If it's a frozen shared reference that's not already immutable, potentially make it immutable.
-        // (Do nothing on `None` provenance, that cannot store immutability anyway.)
+        // (Do nothing on `None` provenance, that cannot be used to perform mutation anyway.)
+        // Note that const-checking relies on the UB detection we are implementing here! Specifically,
+        // the analysis for which destructors may be invoked relies on `&impl Freeze` references not
+        // being able to change what gets dropped.
         if let ty::Ref(_, ty, mutbl) = val.layout.ty.kind()
             && *mutbl == Mutability::Not
             && val.to_scalar_and_meta().0.to_pointer(ecx).provenance.is_some_and(|p| !p.immutable())
