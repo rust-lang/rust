@@ -162,7 +162,7 @@
     },
     {
      "name": "length",
-     "type": "unsigned long",
+     "type": "usize",
      "offset": 8
     }
    ]
@@ -171,9 +171,9 @@
    "size": 8,
    "type_class": 4096
   },
-  "unsigned long": {
+  "usize": {
    "size": 8,
-   "type_class": 4,
+   "type_class": 32768,
    "basic_type": 16
   },
   "int": {
@@ -192,7 +192,7 @@
     },
     {
      "name": "len",
-     "type": "unsigned long",
+     "type": "usize",
      "offset": 16
     }
    ],
@@ -281,7 +281,7 @@
    "fields": [
     {
      "name": "__0",
-     "type": "unsigned long",
+     "type": "usize",
      "offset": 0
     }
    ]
@@ -297,6 +297,11 @@
     "unsigned long"
    ]
   },
+  "unsigned long": {
+   "size": 8,
+   "type_class": 4,
+   "basic_type": 16
+  },
   "&str": {
    "size": 16,
    "type_class": 16384,
@@ -308,7 +313,7 @@
     },
     {
      "name": "length",
-     "type": "unsigned long",
+     "type": "usize",
      "offset": 8
     }
    ]
@@ -335,7 +340,7 @@
     },
     {
      "name": "len",
-     "type": "unsigned long",
+     "type": "usize",
      "offset": 16
     }
    ],
