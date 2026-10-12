@@ -5,10 +5,10 @@ LL |     pub use ::E::V;
    |             ^^^^^^
    |
 note: consider marking `V` as `pub` in the imported module
-  --> $DIR/private-variant-reexport.rs:3:13
+  --> $DIR/private-variant-reexport.rs:21:10
    |
-LL |     pub use ::E::V;
-   |             ^^^^^^
+LL | enum E { V }
+   |          ^
 
 error[E0364]: `V` is only public within the crate, and cannot be re-exported outside
   --> $DIR/private-variant-reexport.rs:7:19
@@ -17,10 +17,10 @@ LL |     pub use ::E::{V};
    |                   ^
    |
 note: consider marking `V` as `pub` in the imported module
-  --> $DIR/private-variant-reexport.rs:7:19
+  --> $DIR/private-variant-reexport.rs:21:10
    |
-LL |     pub use ::E::{V};
-   |                   ^
+LL | enum E { V }
+   |          ^
 
 error[E0432]: unresolved import `E::V`
   --> $DIR/private-variant-reexport.rs:11:18

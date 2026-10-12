@@ -1708,7 +1708,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     err.subdiagnostic(ConsiderMarkingAsPubCrate { vis_span: import.vis_span });
                 }
                 _ => {
-                    err.subdiagnostic(ConsiderMarkingAsPub { span: import.span, ident });
+                    err.subdiagnostic(ConsiderMarkingAsPub { span: decl.span, ident });
                 }
             }
             err.emit();
