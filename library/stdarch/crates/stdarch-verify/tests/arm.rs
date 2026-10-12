@@ -11,7 +11,7 @@ struct Function {
     target_feature: Option<&'static str>,
     instrs: &'static [&'static str],
     file: &'static str,
-    required_const: &'static [usize],
+    legacy_const_generics: &'static [usize],
     has_test: bool,
     doc: &'static str,
 }
@@ -333,7 +333,9 @@ fn matches(rust: &Function, arm: &Intrinsic) -> Result<(), String> {
             // SVE uses generic type parameters to handle void pointers
             (Type::ConstPtr(Type::GenericParam("T")), Type::ConstPtr(Type::Void)) => (),
             // SVE const generics use i32 over u64 for usability reasons
-            (Type::PrimSigned(32), Type::PrimUnsigned(64)) if rust.required_const.contains(&i) => {
+            (Type::PrimSigned(32), Type::PrimUnsigned(64))
+                if rust.legacy_const_generics.contains(&i) =>
+            {
                 ()
             }
             // svset doesn't have its const argument last as we assumed when building the Function
@@ -343,12 +345,12 @@ fn matches(rust: &Function, arm: &Intrinsic) -> Result<(), String> {
         }
         if *arm_const {
             nconst += 1;
-            if !rust.required_const.contains(&i) && !rust.name.starts_with("svset") {
+            if !rust.legacy_const_generics.contains(&i) && !rust.name.starts_with("svset") {
                 bail!("argument const mismatch");
             }
         }
     }
-    if nconst != rust.required_const.len() {
+    if nconst != rust.legacy_const_generics.len() {
         bail!("wrong number of const arguments");
     }
 

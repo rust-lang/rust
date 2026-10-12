@@ -169,7 +169,7 @@ pub fn sha256sum1(rs1: u32) -> u32 {
 /// C = L(B) = B ⊕ (B ≪ 2) ⊕ (B ≪ 10) ⊕ (B ≪ 18) ⊕ (B ≪ 24)
 /// ```
 ///
-/// It can be implemented by `sm4ed` instruction like:
+/// It can be implemented by the `sm4ed` instruction like this:
 ///
 /// ```no_run
 /// # #[cfg(any(target_arch = "riscv32", target_arch = "riscv64"))]
@@ -177,16 +177,15 @@ pub fn sha256sum1(rs1: u32) -> u32 {
 /// # #[cfg(target_arch = "riscv32")] use core::arch::riscv32::sm4ed;
 /// # #[cfg(target_arch = "riscv64")] use core::arch::riscv64::sm4ed;
 /// let a = x1 ^ x2 ^ x3 ^ rk;
-/// let c0 = sm4ed(x0, a, 0);
-/// let c1 = sm4ed(c0, a, 1); // c1 represents c[0..=1], etc.
-/// let c2 = sm4ed(c1, a, 2);
-/// let c3 = sm4ed(c2, a, 3);
+/// let c0 = sm4ed::<0>(x0, a);
+/// let c1 = sm4ed::<1>(c0, a); // c1 represents c[0..=1], etc.
+/// let c2 = sm4ed::<2>(c1, a);
+/// let c3 = sm4ed::<3>(c2, a);
 /// return c3; // c3 represents c[0..=3]
 /// # }
 /// ```
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 #[target_feature(enable = "zksed")]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(sm4ed, BS = 0))]
 #[inline]
 pub fn sm4ed<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
@@ -253,16 +252,15 @@ pub fn sm4ed<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
 /// # #[cfg(target_arch = "riscv32")] use core::arch::riscv32::sm4ed;
 /// # #[cfg(target_arch = "riscv64")] use core::arch::riscv64::sm4ed;
 /// let a = x1 ^ x2 ^ x3 ^ rk;
-/// let c0 = sm4ed(x0, a, 0);
-/// let c1 = sm4ed(c0, a, 1); // c1 represents c[0..=1], etc.
-/// let c2 = sm4ed(c1, a, 2);
-/// let c3 = sm4ed(c2, a, 3);
+/// let c0 = sm4ed::<0>(x0, a);
+/// let c1 = sm4ed::<1>(c0, a); // c1 represents c[0..=1], etc.
+/// let c2 = sm4ed::<2>(c1, a);
+/// let c3 = sm4ed::<3>(c2, a);
 /// return c3; // c3 represents c[0..=3]
 /// # }
 /// ```
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 #[target_feature(enable = "zksed")]
-#[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(sm4ks, BS = 0))]
 #[inline]
 pub fn sm4ks<const BS: u8>(rs1: u32, rs2: u32) -> u32 {

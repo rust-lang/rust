@@ -110,37 +110,21 @@ fn functions(input: TokenStream, dirs: &[&str]) -> TokenStream {
                 quote! { None }
             };
 
-            let required_const = find_required_const("rustc_args_required_const", &f.attrs);
-            let mut legacy_const_generics =
-                find_required_const("rustc_legacy_const_generics", &f.attrs);
-            if !required_const.is_empty() && !legacy_const_generics.is_empty() {
-                panic!(
-                    "Can't have both #[rustc_args_required_const] and \
-                     #[rustc_legacy_const_generics]"
-                );
-            }
+            let mut legacy_const_generics = find_legacy_const_generics(&f.attrs);
 
             // Newer intrinsics don't have `rustc_legacy_const_generics` - assume they belong at
             // the end of the argument list
-            if required_const.is_empty() && legacy_const_generics.is_empty() {
+            if legacy_const_generics.is_empty() {
                 legacy_const_generics =
                     (arguments.len()..(arguments.len() + const_arguments.len())).collect();
             }
 
-            // The list of required consts, used to verify the arguments, comes from either the
-            // `rustc_args_required_const` or the `rustc_legacy_const_generics` attribute.
-            let required_const = if required_const.is_empty() {
-                legacy_const_generics.clone()
-            } else {
-                required_const
-            };
-
             legacy_const_generics.sort();
             for (idx, ty) in legacy_const_generics
-                .into_iter()
+                .iter()
                 .zip(const_arguments.into_iter())
             {
-                arguments.insert(idx, ty);
+                arguments.insert(*idx, ty);
             }
 
             // Strip leading underscore from fn name when building a test
@@ -162,7 +146,7 @@ fn functions(input: TokenStream, dirs: &[&str]) -> TokenStream {
                     target_feature: #target_feature,
                     instrs: &[#(#instrs),*],
                     file: stringify!(#path),
-                    required_const: &[#(#required_const),*],
+                    legacy_const_generics: &[#(#legacy_const_generics),*],
                     has_test: #has_test,
                     doc: #doc
                 }
@@ -596,7 +580,7 @@ fn find_doc(attrs: &[syn::Attribute]) -> String {
         .collect()
 }
 
-fn find_required_const(name: &str, attrs: &[syn::Attribute]) -> Vec<usize> {
+fn find_legacy_const_generics(attrs: &[syn::Attribute]) -> Vec<usize> {
     attrs
         .iter()
         .filter_map(|a| {
@@ -607,7 +591,7 @@ fn find_required_const(name: &str, attrs: &[syn::Attribute]) -> Vec<usize> {
             }
         })
         .flat_map(|l| {
-            if l.path.segments[0].ident == name {
+            if l.path.segments[0].ident == "rustc_legacy_const_generics" {
                 syn::parse2::<RustcArgsRequiredConst>(l.tokens.clone())
                     .unwrap()
                     .args
