@@ -2655,7 +2655,6 @@ impl<T, A: Allocator> Vec<T, A> {
 
         // Vec: [Kept,    Kept,    Hole,    Unchecked,    Unchecked,    Swap,    Dropped,    Dropped]
         //      |                  ^- write ^- read                     ^-read_back                 |
-        //      |<-                   len                        ->|
         //
         // Kept: Elements which predicate returns true on.
         // Hole: Moved or dropped element slot.
@@ -2670,30 +2669,31 @@ impl<T, A: Allocator> Vec<T, A> {
         // It overwrites the `Hole` with the last `Swap` at the write index and `set_len` to the correct
         // length. We take care of the following:
         //     - Do not `drop` any element marked as `Swap`. This is because the `Hole` is
-        //       written with the `Swap` value via `copy_nonoverlapping`, and dropping `Swap`
-        //       will leave `Hole` back to being a `Hole` (which can cause a double drop if
-        //       a `drop` of an element panicked or create an invalid memory state for the Vec).
+        //       written with the `Swap` value via `copy_nonoverlapping` outside of this guard,
+        //       and dropping `Swap` will leave `Hole` back to being a `Hole` (which can cause
+        //       a double drop if a `drop` of an element panicked or create an invalid memory
+        //       state for the Vec).
         //     - We also make sure that `Swap` is not included within the `set_len` of Vec,
         //       so it's impossible for the Vec to do a double drop on `Swap` and a `Hole`
         //       written with the content of `Swap`.
         //     - In the event that `Hole` and `Swap` are pointing to the same element (that is
-        //       read_back == write), we ensure that remaining here will be 0, so that no copy
+        //       read_back == write), we ensure that `remaining` here will be 0, so that no copy
         //       occurs on overlapping memory.
-        // In cases when predicate and `drop` never panick, we may still use this drop guard
-        // to perform batch dropping (e.g. if no elements are retained by the Vec).
+        // In cases when predicate and `drop` never panick, this will be optimized out.
         struct PanicGuard<'a, T, A: Allocator> {
             v: &'a mut Vec<T, A>,
             read: usize,
             read_back: usize,
             write: usize,
-            len: usize,
         }
 
         impl<T, A: Allocator> Drop for PanicGuard<'_, T, A> {
+            #[cold]
             fn drop(&mut self) {
-                let remaining = self.len - self.read;
+                let remaining = self.read_back + 1 - self.read;
                 // SAFETY: We can ensure the following:
-                //  * `read_back` (`Swap`) always points to the last item in the vec
+                //  * `read_back` (`Swap`) always points to the last item in the vec;
+                //    we can effectively treat `read_back` + 1 as the length of the vec
                 //  * in the event that `read_back` == `write`, we can ensure that
                 //    remaining = 0, so no copying actually occurs on overlapping memory
                 //  * we set our vec's len to not include `read_back` to avoid double dropping
@@ -2728,65 +2728,61 @@ impl<T, A: Allocator> Vec<T, A> {
 
         // Critical section starts here and at least one element is going to be removed.
         // Advance `g.read` early to avoid double drop if `drop_in_place` panicked.
-        let mut g = PanicGuard {
-            v: self,
-            read: read + 1,
-            write: read,
-            read_back: original_len - 1,
-            len: original_len,
-        };
+        let mut g =
+            PanicGuard { v: self, read: read + 1, write: read, read_back: original_len - 1 };
         // SAFETY: previous `read` is always less than original_len.
         unsafe { ptr::drop_in_place(&mut *g.v.as_mut_ptr().add(read)) };
-        loop {
+        let swap = loop {
             if g.read_back == g.write {
-                // No element found to swap with. Let the `PanicGuard` `drop` handle
-                // dropping all the elements. from `g.write + 1..g.len`.
+                // No element found to swap with.
+                // We are leaving the critical section and no panic happened,
+                // Commit the length change and forget the guard.
+                // SAFETY: `write` is always less than or equal to original_len.
+                unsafe { g.v.set_len(g.write) };
+                mem::forget(g);
                 return;
             }
-            // SAFETY: `g.read_back` is always less than `g.len`.
+            // SAFETY: `g.read_back` is always less than original length
             let swap = unsafe { &mut *g.v.as_mut_ptr().add(g.read_back) };
             if hint::unlikely(f(swap)) {
                 // Found an element to swap with!
-                break;
+                break swap;
             }
-            // Subtract `g.read_back` early and ensure that we have the correct length of
-            // the Vec to avoid a double drop if `drop_in_place` panicked
-            g.len = g.read_back;
+            // Subtract `g.read_back` early to avoid a double drop if `drop_in_place`
+            // panicked
             g.read_back -= 1;
-            // SAFETY: previous `g.read_back` is always less than `g.len`
+            // SAFETY: previous `g.read_back` is always less than `original_len`
+            // and greater than `g.write`
             unsafe { ptr::drop_in_place(swap) };
-        }
+        };
 
         // SAFETY: This is safe because:
-        // * g.read_back currently points to an element (`Swap`) that predicate returned true on
-        // that we want to write in the `Hole` that g.write is pointing to; it is impossible
-        // for g.read_back == g.write (hence no overlapping memory)
-        // * We update g.len to g.read_back (which excludes the `Swap` element), decrement
-        // g.read_back, and increment g.write to ensure that they are not double dropped
-        // in future iterations.
+        // * `swap` (g.read_back) currently points to an element that predicate returned true on
+        // that we want to write in the `Hole` that `g.write` is pointing to; it is impossible
+        // for `g.read_back` == `g.write` (hence no overlapping memory)
+        // * We decrement g.read_back and increment g.write to ensure that they are not double
+        // dropped in future iterations.
         // Logically, this is overwriting vec[write] with vec[read_back]
         unsafe {
-            let swap = &mut *g.v.as_mut_ptr().add(g.read_back);
             let hole = &mut *g.v.as_mut_ptr().add(g.write);
             ptr::copy_nonoverlapping(swap, hole, 1);
-            g.len = g.read_back;
             g.read_back -= 1;
             g.write += 1;
         }
 
-        while g.read <= g.read_back {
+        'retain: while g.read <= g.read_back {
             // SAFETY: g.read <= g.read_back && g.read_back < g.self.len
-            let cur = unsafe { &mut *g.v.as_mut_ptr().add(g.read) };
-            if !f(cur) {
+            let hole = unsafe { &mut *g.v.as_mut_ptr().add(g.read) };
+            if !f(hole) {
                 // Advance `read` early to avoid double drop if `drop_in_place` panicked.
                 g.read += 1;
                 // SAFETY: We never touch this element again after dropped.
-                unsafe { ptr::drop_in_place(cur) };
-                loop {
+                unsafe { ptr::drop_in_place(hole) };
+                let swap = loop {
                     if g.read_back == g.write {
-                        // No element found to swap with. Let the `PanicGuard` `drop` handle
-                        // dropping all the elements. from `g.write + 1..g.len`.
-                        return;
+                        // No element found to swap with.
+                        // return;
+                        break 'retain;
                     }
 
                     // SAFETY: g.read_back < g.len (will not be out of bound) and
@@ -2794,29 +2790,25 @@ impl<T, A: Allocator> Vec<T, A> {
                     let swap = unsafe { &mut *g.v.as_mut_ptr().add(g.read_back) };
                     if f(swap) {
                         // Found an element to swap with!
-                        break;
+                        break swap;
                     }
-                    // Subtract `g.read_back` early and ensure that we have the correct length of
-                    // the Vec to avoid a double drop if `drop_in_place` panicked
-                    g.len = g.read_back;
+                    // Subtract `g.read_back` early to avoid a double drop if `drop_in_place`
+                    // panicked
                     g.read_back -= 1;
-                    // SAFETY: previous `g.read_back` is always less than `g.len`
+                    // SAFETY: previous `g.read_back` is always less than `original_len`
+                    // and greater than `g.write`
                     unsafe { ptr::drop_in_place(swap) };
-                }
+                };
 
                 // SAFETY: This is safe because:
-                // * g.read_back currently points to an element (`Swap`) that predicate returned true on
-                // that we want to write in the `Hole` that g.write is pointing to; it is impossible
-                // for g.read_back == g.write (hence no overlapping memory)
-                // * We update g.len to g.read_back (which excludes the `Swap` element), decrement
-                // g.read_back, and increment g.write to ensure that they are not double dropped
-                // in future iterations.
+                // * `swap` (g.read_back) currently points to an element that predicate returned true on
+                // that we want to write in the `Hole` that `g.write` is pointing to; it is impossible
+                // for `g.read_back` == `g.write` (hence no overlapping memory)
+                // * We decrement g.read_back and increment g.write to ensure that they are not double
+                // dropped in future iterations.
                 // Logically, this is overwriting vec[write] with vec[read_back]
                 unsafe {
-                    let swap = &mut *g.v.as_mut_ptr().add(g.read_back);
-                    let hole = &mut *g.v.as_mut_ptr().add(g.write);
                     ptr::copy_nonoverlapping(swap, hole, 1);
-                    g.len = g.read_back;
                     g.read_back -= 1;
                     g.write += 1;
                 }
@@ -2825,6 +2817,12 @@ impl<T, A: Allocator> Vec<T, A> {
             g.read += 1;
             g.write += 1;
         }
+
+        // We are leaving the critical section and no panic happened,
+        // Commit the length change and forget the guard.
+        // SAFETY: `write` is always less than or equal to original_len.
+        unsafe { g.v.set_len(g.write) };
+        mem::forget(g);
     }
 
     /// Removes all but the first of consecutive elements in the vector that resolve to the same
