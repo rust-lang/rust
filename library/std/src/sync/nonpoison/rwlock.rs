@@ -61,8 +61,26 @@ unsafe impl<T: ?Sized + Send + Sync> Sync for RwLock<T> {}
 /// dropped.
 ///
 /// This structure is created by the [`read`] and [`try_read`] methods on
-/// [`RwLock`].
+/// [`RwLock`]. It is invariant over `T` to allow upgrading its permissions
+/// to write access (feature not implemented yet). If you need covariance,
+/// create a [`MappedRwLockWriteGuard`] using [`map`]:
+/// ```
+/// #![feature(mapped_lock_guards)]
+/// #![feature(nonpoison_rwlock)]
 ///
+/// use std::sync::nonpoison::{MappedRwLockReadGuard, RwLock, RwLockReadGuard};
+///
+/// let lock = RwLock::new(&42);
+/// let invariant = lock.read();
+/// let covariant = RwLockReadGuard::map(invariant, |data| data);
+/// # {
+/// #     let temp = 0;
+/// #     fn requires_covariance<'lock, 'data>(_guard: MappedRwLockReadGuard<'lock, &'data i32>, _data: &'data i32) {}
+/// #     requires_covariance(covariant, &temp);
+/// # }
+/// ```
+///
+/// [`map`]: RwLockReadGuard::map
 /// [`read`]: RwLock::read
 /// [`try_read`]: RwLock::try_read
 #[must_use = "if unused the RwLock will immediately unlock"]
@@ -73,14 +91,10 @@ unsafe impl<T: ?Sized + Send + Sync> Sync for RwLock<T> {}
 #[clippy::has_significant_drop]
 #[cfg_attr(not(test), rustc_diagnostic_item = "NonPoisonRwLockReadGuard")]
 pub struct RwLockReadGuard<'rwlock, T: ?Sized + 'rwlock> {
-    /// A pointer to the data protected by the `RwLock`. Note that we use a pointer here instead of
-    /// `&'rwlock T` to avoid `noalias` violations, because a `RwLockReadGuard` instance only holds
-    /// immutability until it drops, not for its whole scope.
-    /// `NonNull` is preferable over `*const T` to allow for niche optimizations. `NonNull` is also
-    /// covariant over `T`, just like we would have with `&T`.
-    data: NonNull<T>,
-    /// A reference to the internal [`sys::RwLock`] that we have read-locked.
-    inner_lock: &'rwlock sys::RwLock,
+    /// A reference to the [`RwLock`] that we have read-locked. Note that this
+    /// makes `RwLockReadGuard` invariant over `T` as `RwLock` is, too. This is
+    /// required to allow sound upgrading of read guards to write guards.
+    lock: &'rwlock RwLock<T>,
 }
 
 #[unstable(feature = "nonpoison_rwlock", issue = "134645")]
@@ -604,10 +618,7 @@ impl<'rwlock, T: ?Sized> RwLockReadGuard<'rwlock, T> {
     /// `lock.inner.read()`, `lock.inner.try_read()`, or `lock.inner.downgrade()` before
     /// instantiating this object.
     unsafe fn new(lock: &'rwlock RwLock<T>) -> RwLockReadGuard<'rwlock, T> {
-        RwLockReadGuard {
-            data: unsafe { NonNull::new_unchecked(lock.data.get()) },
-            inner_lock: &lock.inner,
-        }
+        RwLockReadGuard { lock }
     }
 
     /// Makes a [`MappedRwLockReadGuard`] for a component of the borrowed data, e.g.
@@ -634,9 +645,9 @@ impl<'rwlock, T: ?Sized> RwLockReadGuard<'rwlock, T> {
         // was created, and have been upheld throughout `map` and/or `filter_map`.
         // The signature of the closure guarantees that it will not "leak" the lifetime of the
         // reference passed to it. If the closure panics, the guard will be dropped.
-        let data = NonNull::from(f(unsafe { orig.data.as_ref() }));
+        let data = NonNull::from(f(unsafe { orig.lock.data.as_ref_unchecked() }));
         let orig = ManuallyDrop::new(orig);
-        MappedRwLockReadGuard { data, inner_lock: orig.inner_lock }
+        MappedRwLockReadGuard { data, inner_lock: &orig.lock.inner }
     }
 
     /// Makes a [`MappedRwLockReadGuard`] for a component of the borrowed data. The
@@ -664,11 +675,11 @@ impl<'rwlock, T: ?Sized> RwLockReadGuard<'rwlock, T> {
         // was created, and have been upheld throughout `map` and/or `filter_map`.
         // The signature of the closure guarantees that it will not "leak" the lifetime of the
         // reference passed to it. If the closure panics, the guard will be dropped.
-        match f(unsafe { orig.data.as_ref() }) {
+        match f(unsafe { orig.lock.data.as_ref_unchecked() }) {
             Some(data) => {
                 let data = NonNull::from(data);
                 let orig = ManuallyDrop::new(orig);
-                Ok(MappedRwLockReadGuard { data, inner_lock: orig.inner_lock })
+                Ok(MappedRwLockReadGuard { data, inner_lock: &orig.lock.inner })
             }
             None => Err(orig),
         }
@@ -978,7 +989,7 @@ impl<T: ?Sized> Drop for RwLockReadGuard<'_, T> {
     fn drop(&mut self) {
         // SAFETY: the conditions of `RwLockReadGuard::new` were satisfied when created.
         unsafe {
-            self.inner_lock.read_unlock();
+            self.lock.inner.read_unlock();
         }
     }
 }
@@ -1023,7 +1034,7 @@ impl<T: ?Sized> Deref for RwLockReadGuard<'_, T> {
 
     fn deref(&self) -> &T {
         // SAFETY: the conditions of `RwLockReadGuard::new` were satisfied when created.
-        unsafe { self.data.as_ref() }
+        unsafe { &*self.lock.data.get() }
     }
 }
 

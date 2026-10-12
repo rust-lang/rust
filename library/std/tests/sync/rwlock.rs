@@ -268,22 +268,6 @@ nonpoison_and_poison_unwrap_test!(
 );
 
 nonpoison_and_poison_unwrap_test!(
-    name: test_read_guard_covariance,
-    test_body: {
-        use locks::{RwLock, RwLockReadGuard};
-
-        fn do_stuff<'a>(_: RwLockReadGuard<'_, &'a i32>, _: &'a i32) {}
-        let j: i32 = 5;
-        let lock = RwLock::new(&j);
-        {
-            let i = 6;
-            do_stuff(maybe_unwrap(lock.read()), &i);
-        }
-        drop(lock);
-    }
-);
-
-nonpoison_and_poison_unwrap_test!(
     name: test_mapped_read_guard_covariance,
     test_body: {
         use locks::{RwLock, RwLockReadGuard, MappedRwLockReadGuard};
@@ -601,6 +585,19 @@ fn test_replace_poison() {
 
     inner(|| NonCopy(10), || NonCopy(20));
     inner(|| NonCopyNeedsDrop(10), || NonCopyNeedsDrop(20));
+}
+
+#[test]
+fn test_poison_read_guard_covariance() {
+    fn do_stuff<'a>(_: RwLockReadGuard<'_, &'a i32>, _: &'a i32) {}
+
+    let j: i32 = 5;
+    let lock = RwLock::new(&j);
+    {
+        let i = 6;
+        do_stuff(lock.read().unwrap(), &i);
+    }
+    drop(lock);
 }
 
 #[test]
