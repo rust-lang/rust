@@ -1,0 +1,14 @@
+error: [T: o, F: +]
+  --> $DIR/variance-library-types.rs:6:1
+   |
+LL | struct LazyCellIsCovariantOnlyInF<T, F>(std::cell::LazyCell<T, F>);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: [T: o, F: +]
+  --> $DIR/variance-library-types.rs:9:1
+   |
+LL | struct LazyLockIsCovariantOnlyInF<T, F>(std::sync::LazyLock<T, F>);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
