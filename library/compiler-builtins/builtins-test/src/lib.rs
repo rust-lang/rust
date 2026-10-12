@@ -24,6 +24,9 @@ use compiler_builtins::support::{Float, Int, MinInt};
 use rand_xoshiro::Xoshiro128StarStar;
 use rand_xoshiro::rand_core::{Rng, SeedableRng};
 
+// Workaround for Cargo unused dependency lint false positive
+use rustc_apfloat as _;
+
 /// Sets the number of fuzz iterations run for most tests. In practice, the vast majority of bugs
 /// are caught by the edge case testers. Most of the remaining bugs triggered by more complex
 /// sequences are caught well within 10_000 fuzz iterations. For classes of algorithms like division
