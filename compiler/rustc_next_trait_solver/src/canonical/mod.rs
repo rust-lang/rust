@@ -27,7 +27,7 @@ use tracing::instrument;
 use crate::delegate::SolverDelegate;
 use crate::solve::{
     CanonicalResponse, Certainty, ExternalConstraintsData, ExternalRegionConstraints, Goal,
-    NestedNormalizationGoals, QueryInput, Response, VisibleForLeakCheck, inspect,
+    IsIdentity, NestedNormalizationGoals, QueryInput, Response, VisibleForLeakCheck, inspect,
 };
 
 pub mod canonicalizer;
@@ -111,7 +111,7 @@ where
     let instantiation =
         compute_query_response_instantiation_values(delegate, &original_values, &response, span);
 
-    let Response { var_values, external_constraints, certainty } = response.value;
+    let Response { certainty, var_values, var_values_is_identity: _, external_constraints } = response.value;
     let external_constraints = delegate.instantiate_value(external_constraints, instantiation);
 
     unify_query_var_values(delegate, &original_values, var_values, instantiation, span);
@@ -670,11 +670,12 @@ pub fn response_no_constraints_raw<I: Interner>(
         max_universe,
         var_kinds,
         value: Response {
+            certainty,
             var_values,
+            var_values_is_identity: IsIdentity::Yes,
             // FIXME: maybe we should store the "no response" version in cx, like
             // we do for cx.types and stuff.
             external_constraints: cx.mk_external_constraints(ExternalConstraintsData::new(cx)),
-            certainty,
         },
     }
 }
