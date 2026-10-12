@@ -774,36 +774,9 @@ impl UnixSocketFileDescription for TcpSocket {
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, Result<MPlaceTy<'tcx>, IoError>> {
         if level == ecx.eval_libc_i32("SOL_SOCKET") {
-            let opt_so_linger = if matches!(ecx.tcx.sess.target.os, Os::MacOs) {
-                // On macOS the SO_LINGER socket option sets the linger duration in kernel ticks
-                // while the SO_LINGER_SEC socket option sets the linger duration in seconds.
-                ecx.eval_libc_i32("SO_LINGER_SEC")
-            } else {
-                // For all other targets SO_LINGER sets the linger duration in seconds.
-                ecx.eval_libc_i32("SO_LINGER")
-            };
             let opt_so_keepalive = ecx.eval_libc_i32("SO_KEEPALIVE");
 
-            if option == opt_so_linger {
-                let linger = match self.with_socket_ref(|s| s.linger()) {
-                    Ok(linger) => linger,
-                    Err(e) => return interp_ok(Err(IoError::HostError(e))),
-                };
-
-                let linger_layout = ecx.libc_ty_layout("linger");
-                // Allocate new buffer on the stack with the `linger` layout.
-                let linger_buffer = ecx.allocate(linger_layout, MemoryKind::Stack)?;
-
-                let onoff_field = ecx.project_field_named(&linger_buffer, "l_onoff")?;
-                let onoff = i32::from(linger.is_some());
-                ecx.write_int(onoff, &onoff_field)?;
-
-                let linger_field = ecx.project_field_named(&linger_buffer, "l_linger")?;
-                let secs = i32::try_from(linger.unwrap_or_default().as_secs()).unwrap();
-                ecx.write_int(secs, &linger_field)?;
-
-                interp_ok(Ok(linger_buffer))
-            } else if option == opt_so_keepalive {
+            if option == opt_so_keepalive {
                 let keepalive = match self.with_socket_ref(|s| s.keepalive()) {
                     Ok(keepalive) => keepalive,
                     Err(e) => return interp_ok(Err(IoError::HostError(e))),

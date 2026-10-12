@@ -1061,6 +1061,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let opt_so_rcvtimeo = ecx.eval_libc_i32("SO_RCVTIMEO");
         let opt_so_sndtimeo = ecx.eval_libc_i32("SO_SNDTIMEO");
         let opt_so_reuseaddr = ecx.eval_libc_i32("SO_REUSEADDR");
+        let opt_so_linger = if matches!(ecx.tcx.sess.target.os, Os::MacOs) {
+            // On macOS the SO_LINGER socket option sets the linger duration in kernel ticks
+            // while the SO_LINGER_SEC socket option sets the linger duration in seconds.
+            ecx.eval_libc_i32("SO_LINGER_SEC")
+        } else {
+            // For all other targets SO_LINGER sets the linger duration in seconds.
+            ecx.eval_libc_i32("SO_LINGER")
+        };
 
         if option == opt_so_error {
             let return_value = match socket.take_error(ecx)? {
@@ -1113,6 +1121,30 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             ecx.write_int(i32::from(reuse), &value_buffer)?;
 
             return interp_ok(Ok(value_buffer));
+        } else if option == opt_so_linger {
+            let linger = match socket.with_socket_ref(|s| s.linger()) {
+                Ok(Ok(linger)) => linger,
+                Ok(Err(e)) => return interp_ok(Err(IoError::HostError(e))),
+                Err(()) =>
+                    throw_unsup_format!(
+                        "getsockopt: option SO_LINGER is unsupported for {}",
+                        socket.name()
+                    ),
+            };
+
+            let linger_layout = ecx.libc_ty_layout("linger");
+            // Allocate new buffer on the stack with the `linger` layout.
+            let linger_buffer = ecx.allocate(linger_layout, MemoryKind::Stack)?;
+
+            let onoff_field = ecx.project_field_named(&linger_buffer, "l_onoff")?;
+            let onoff = i32::from(linger.is_some());
+            ecx.write_int(onoff, &onoff_field)?;
+
+            let linger_field = ecx.project_field_named(&linger_buffer, "l_linger")?;
+            let secs = i32::try_from(linger.unwrap_or_default().as_secs()).unwrap();
+            ecx.write_int(secs, &linger_field)?;
+
+            return interp_ok(Ok(linger_buffer));
         }
 
         throw_unsup_format!("getsockopt: option {option:#x} is unsupported for level SOL_SOCKET",);
