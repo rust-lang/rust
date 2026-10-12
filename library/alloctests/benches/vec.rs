@@ -883,6 +883,23 @@ fn bench_retain_unstable_whole_100000(b: &mut Bencher) {
     b.iter(|| v.retain_unstable(|x| *x == 826u32));
 }
 
+#[bench]
+fn bench_retain_unstable_quarter_false_100000(b: &mut Bencher) {
+    let mut v = Vec::with_capacity(100000);
+
+    b.iter(|| {
+        v.clear();
+        v.extend(black_box(1..=100000));
+        v.retain_unstable(|x| if *x < 25000 { false } else { true })
+    });
+}
+
+#[bench]
+fn bench_retain_unstable_none_100000(b: &mut Bencher) {
+    let mut v = black_box(vec![826u32; 100000]);
+    b.iter(|| v.retain_unstable(|x| *x != 826u32));
+}
+
 macro_rules! retain_unstable_type_benches {
     (
         len = $len:literal,
@@ -891,7 +908,7 @@ macro_rules! retain_unstable_type_benches {
     ) => {
         $(
             #[bench]
-            fn ${concat(bench_retain_unstable, $ty, _, $suffix)}(b: &mut Bencher) {
+            fn ${concat(bench_retain_unstable_, $ty, _, $suffix)}(b: &mut Bencher) {
                 let mut v: Vec<$ty> = Vec::with_capacity($len);
                 b.iter(|| {
                     v.clear();
@@ -963,6 +980,23 @@ fn bench_retain_100000(b: &mut Bencher) {
 fn bench_retain_whole_100000(b: &mut Bencher) {
     let mut v = black_box(vec![826u32; 100000]);
     b.iter(|| v.retain(|x| *x == 826u32));
+}
+
+#[bench]
+fn bench_retain_quarter_false_100000(b: &mut Bencher) {
+    let mut v = Vec::with_capacity(100000);
+
+    b.iter(|| {
+        v.clear();
+        v.extend(black_box(1..=100000));
+        v.retain(|x| if *x < 25000 { false } else { true })
+    });
+}
+
+#[bench]
+fn bench_retain_none_100000(b: &mut Bencher) {
+    let mut v = black_box(vec![826u32; 100000]);
+    b.iter(|| v.retain(|x| *x != 826u32));
 }
 
 macro_rules! retain_type_benches {
