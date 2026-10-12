@@ -366,12 +366,30 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
     }
 
     fn check_unused_macros(&mut self) {
-        for (_, &(node_id, ident)) in self.unused_macros.iter() {
+        for (_, &(node_id, ident, parent_def_id)) in self.unused_macros.iter() {
+            let mut unannotated_mod = None;
+            let mut annotated_mod = None;
+            if let Some(def_id) = parent_def_id {
+                let span = self.def_span(def_id);
+                let node_id = self.def_id_to_node_id(def_id.expect_local());
+                if ast::CRATE_NODE_ID != node_id {
+                    if self.macro_use_mods.contains(&node_id) {
+                        annotated_mod = Some(span);
+                    } else {
+                        unannotated_mod = Some(span.shrink_to_lo());
+                    }
+                }
+            }
+
             self.lint_buffer.buffer_lint(
                 UNUSED_MACROS,
                 node_id,
                 ident.span,
-                diagnostics::UnusedMacroDefinition { name: ident.name },
+                diagnostics::UnusedMacroDefinition {
+                    name: ident.name,
+                    unannotated_mod,
+                    annotated_mod,
+                },
             );
             // Do not report unused individual rules if the entire macro is unused
             self.unused_macro_rules.swap_remove(&node_id);

@@ -378,7 +378,7 @@ impl<'tcx> Ty<'tcx> {
     pub fn new_var(tcx: TyCtxt<'tcx>, v: ty::TyVid) -> Ty<'tcx> {
         // Use a pre-interned one when possible.
         tcx.types
-            .ty_vars
+            .infer_ty_vars
             .get(v.as_usize())
             .copied()
             .unwrap_or_else(|| Ty::new(tcx, Infer(TyVar(v))))
@@ -398,7 +398,7 @@ impl<'tcx> Ty<'tcx> {
     pub fn new_fresh(tcx: TyCtxt<'tcx>, n: u32) -> Ty<'tcx> {
         // Use a pre-interned one when possible.
         tcx.types
-            .fresh_tys
+            .infer_fresh_tys
             .get(n as usize)
             .copied()
             .unwrap_or_else(|| Ty::new_infer(tcx, ty::FreshTy(n)))
@@ -408,7 +408,7 @@ impl<'tcx> Ty<'tcx> {
     pub fn new_fresh_int(tcx: TyCtxt<'tcx>, n: u32) -> Ty<'tcx> {
         // Use a pre-interned one when possible.
         tcx.types
-            .fresh_int_tys
+            .infer_fresh_int_tys
             .get(n as usize)
             .copied()
             .unwrap_or_else(|| Ty::new_infer(tcx, ty::FreshIntTy(n)))
@@ -418,7 +418,7 @@ impl<'tcx> Ty<'tcx> {
     pub fn new_fresh_float(tcx: TyCtxt<'tcx>, n: u32) -> Ty<'tcx> {
         // Use a pre-interned one when possible.
         tcx.types
-            .fresh_float_tys
+            .infer_fresh_float_tys
             .get(n as usize)
             .copied()
             .unwrap_or_else(|| Ty::new_infer(tcx, ty::FreshFloatTy(n)))
@@ -437,7 +437,7 @@ impl<'tcx> Ty<'tcx> {
     ) -> Ty<'tcx> {
         // Use a pre-interned one when possible.
         if let ty::BoundTy { var, kind: ty::BoundTyKind::Anon } = bound_ty
-            && let Some(inner) = tcx.types.anon_bound_tys.get(index.as_usize())
+            && let Some(inner) = tcx.types.bound_bound_anons.get(index.as_usize())
             && let Some(ty) = inner.get(var.as_usize()).copied()
         {
             ty
@@ -449,7 +449,7 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn new_canonical_bound(tcx: TyCtxt<'tcx>, var: BoundVar) -> Ty<'tcx> {
         // Use a pre-interned one when possible.
-        if let Some(ty) = tcx.types.anon_canonical_bound_tys.get(var.as_usize()).copied() {
+        if let Some(ty) = tcx.types.bound_canonical_anons.get(var.as_usize()).copied() {
             ty
         } else {
             Ty::new(
@@ -464,7 +464,15 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn new_placeholder(tcx: TyCtxt<'tcx>, placeholder: ty::PlaceholderType<'tcx>) -> Ty<'tcx> {
-        Ty::new(tcx, Placeholder(placeholder))
+        if placeholder.universe.is_root()
+            && placeholder.bound.kind == ty::BoundTyKind::Anon
+            && let Some(ty) =
+                tcx.types.placeholder_root_anons.get(placeholder.bound.var.as_usize()).copied()
+        {
+            ty
+        } else {
+            Ty::new(tcx, Placeholder(placeholder))
+        }
     }
 
     #[inline]

@@ -290,7 +290,6 @@ pub trait Interner:
         self,
         alias: ty::AliasConstKind<Self>,
     ) -> Option<ty::EarlyBinder<Self, Const<Self>>>;
-    fn anon_const_kind(self, def_id: Self::DefId) -> ty::AnonConstKind;
 
     fn def_span(self, def_id: Self::DefId) -> Self::Span;
 
@@ -445,8 +444,6 @@ pub trait Interner:
 
     fn is_trait_lang_item(self, def_id: Self::TraitId, lang_item: SolverTraitLangItem) -> bool;
 
-    fn is_adt_lang_item(self, def_id: Self::AdtId, lang_item: SolverAdtLangItem) -> bool;
-
     fn is_default_trait(self, def_id: Self::TraitId) -> bool;
 
     fn is_sizedness_trait(self, def_id: Self::TraitId) -> bool;
@@ -504,8 +501,6 @@ pub trait Interner:
     /// Returns `true` if this is an `unsafe trait`.
     fn trait_is_unsafe(self, trait_def_id: Self::TraitId) -> bool;
 
-    fn is_impl_trait_in_trait(self, def_id: Self::DefId) -> bool;
-
     fn delay_bug(self, msg: impl ToString) -> Self::ErrorGuaranteed;
     fn span_delayed_bug(self, span: Self::Span, msg: impl ToString) -> Self::ErrorGuaranteed;
 
@@ -538,10 +533,6 @@ pub trait Interner:
     ) -> (QueryResult<Self>, Self::Probe, RequiredDepth);
 
     fn item_name(self, item_index: Self::DefId) -> Self::Symbol;
-
-    fn get_anon_re_bounds_lifetime(self, idx: usize, var_idx: usize) -> Option<Region<Self>>;
-
-    fn get_anon_re_canonical_bounds_lifetime(self, idx: usize) -> Option<Region<Self>>;
 
     fn get_re_static_lifetime(self) -> Region<Self>;
 
