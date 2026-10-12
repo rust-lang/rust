@@ -565,6 +565,7 @@ pub fn eagerly_handle_placeholders_in_universe<Infcx: InferCtxtLike<Interner = I
 ) -> RegionConstraint<I> {
     assert!(u > UniverseIndex::ROOT, "eagerly handle placeholders called for root universe");
 
+    let constraint = infcx.deeply_resolve_via_unification_table(constraint);
     let assumptions = infcx.get_placeholder_assumptions(u);
 
     // 1. rewrite type outlives constraints involving things from `u` into either region constraints

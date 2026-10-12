@@ -4075,9 +4075,18 @@ pub struct TestBinderConstraints {
 pub struct TestBinderBody {
     pub foralls: ThinVec<TestBinderForall>,
     pub exists: ThinVec<TestBinderExists>,
+    pub region_equalities: Vec<TestBinderRegionEquality>,
     pub constraints: Vec<TestBinderConstraint>,
     /// These are not where clauses, but rather predicates within the body to be proven
     pub predicates: Vec<WherePredicate>,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
+pub struct TestBinderRegionEquality {
+    #[visitable(extra = LifetimeCtxt::Bound)]
+    pub lhs: Lifetime,
+    #[visitable(extra = LifetimeCtxt::Bound)]
+    pub rhs: Lifetime,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
