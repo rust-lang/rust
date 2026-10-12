@@ -7,6 +7,7 @@ LL |         pub use super::foo;
 note: consider marking `foo` as `pub` in the imported module
   --> $DIR/reexports.rs:4:5
    |
+LL | mod a {
 LL |     fn foo() {}
    |     ^^^^^^^^^^^
 

@@ -12,6 +12,8 @@ LL |     crate::m::mac_glob!();
 note: consider marking `S` as `pub` in the imported module
   --> $DIR/private-from-decl-macro.rs:10:5
    |
+LL | mod m {
+...
 LL |     const S: u8 = 0;
    |     ^^^^^^^^^^^^^^^^
 
