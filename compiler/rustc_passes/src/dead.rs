@@ -504,7 +504,16 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         ControlFlow::Continue(())
     }
 
-    fn get_trivial_field_reads_attr(&mut self, id: HirId) -> Option<Span> {
+    fn get_trivial_field_reads_attr(&mut self, id: HirId, node: &Node<'_>) -> Option<Span> {
+        // This needs to be kept compatible with the allowed
+        // attribute positions in `RustcTrivialFieldReadsParser`
+        if !matches!(
+            node,
+            Node::Item(hir::Item { kind: rustc_hir::ItemKind::Fn { .. }, .. })
+                | Node::ImplItem(hir::ImplItem { kind: rustc_hir::ImplItemKind::Fn { .. }, .. })
+        ) {
+            return None;
+        }
         find_attr!(self.tcx, id, RustcTrivialFieldReads(span) => span.clone())
     }
 
@@ -521,7 +530,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         // If we are looking at a `WorkItem` created from a trivial usage
         // site, keep the usage site, otherwise check for the attr
         self.inside_trivial_usage_site = trivial.or_else(|| {
-            self.get_trivial_field_reads_attr(hir_id).map(|attr_span| {
+            self.get_trivial_field_reads_attr(hir_id, &node).map(|attr_span| {
                 let site = TrivialUsageSite { attr_span, hir_id };
                 self.live_symbols.sites.add_trivial_usage_site(site)
             })
