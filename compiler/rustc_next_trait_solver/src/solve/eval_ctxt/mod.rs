@@ -883,6 +883,7 @@ where
             self.delegate,
             &orig_values,
             response,
+            canonical_goal.canonical.var_kinds,
             self.origin_span,
         );
 
@@ -2064,6 +2065,7 @@ pub(super) fn evaluate_root_goal_for_proof_tree<D: SolverDelegate<Interner = I>,
         delegate,
         &proof_tree.orig_values,
         response,
+        canonical_goal.canonical.var_kinds,
         origin_span,
     );
 
