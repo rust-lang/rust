@@ -546,7 +546,7 @@ declare_features! (
     /// Allows using `#[align(...)]` on function items
     (unstable, fn_align, "1.53.0", Some(82232)),
     /// Support delegating implementation of functions to other already implemented functions.
-    (incomplete, fn_delegation, "1.76.0", Some(118212)),
+    (unstable, fn_delegation, "1.76.0", Some(118212)),
     /// Traits for function pointers and items
     (unstable, fn_static, "1.100.0", Some(148768)),
     /// Allows using forced keywords `k#fn`.
