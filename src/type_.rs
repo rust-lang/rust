@@ -121,6 +121,26 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         self.struct_types.borrow_mut().insert(key, typ);
         typ
     }
+
+    /// A struct that holds `first` and `second` in two different eightbytes, so that GCC returns
+    /// them in two registers instead of packing them into one.
+    pub fn type_two_register_pair(&self, first: Type<'gcc>, second: Type<'gcc>) -> Type<'gcc> {
+        if let Some(typ) = self.two_register_pair_types.borrow().get(&(first, second)) {
+            return *typ;
+        }
+        let fields = [
+            self.context.new_field(None, first, "first"),
+            self.context.new_field(None, second.get_aligned(8), "second"),
+        ];
+        let typ = self.context.new_struct_type(None, "two_register_pair", &fields).as_type();
+        self.two_register_pair_types.borrow_mut().insert((first, second), typ);
+        self.two_register_pair_type_set.borrow_mut().insert(typ);
+        typ
+    }
+
+    pub fn is_two_register_pair_type(&self, typ: Type<'gcc>) -> bool {
+        self.two_register_pair_type_set.borrow().contains(&typ)
+    }
 }
 
 /// An attribute that can be set on a GCC struct type.
