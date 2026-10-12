@@ -987,9 +987,7 @@ impl UnixSocketFileDescription for TcpSocket {
                 ecx.write_int(ttl, &value_buffer)?;
                 interp_ok(Ok(value_buffer))
             } else {
-                throw_unsup_format!(
-                    "getsockopt: option {option:#x} is unsupported for level IPPROTO_IP",
-                );
+                ecx.get_ip_socket_option(option, self.state.borrow().as_socket_ref())
             }
         } else if level == ecx.eval_libc_i32("IPPROTO_TCP") {
             let opt_tcp_nodelay = ecx.eval_libc_i32("TCP_NODELAY");
