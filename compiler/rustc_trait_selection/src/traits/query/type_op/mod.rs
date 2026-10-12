@@ -2,14 +2,12 @@ use std::fmt;
 
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::LocalDefId;
-use rustc_infer::traits::PredicateObligations;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::{ParamEnvAnd, TyCtxt, TypeFoldable};
 use rustc_span::Span;
 
 use crate::infer::canonical::{
-    CanonicalQueryInput, CanonicalQueryResponse, Certainty, OriginalQueryValues,
-    QueryRegionConstraints,
+    CanonicalQueryInput, CanonicalQueryResponse, OriginalQueryValues, QueryRegionConstraints,
 };
 use crate::infer::{InferCtxt, InferOk};
 use crate::traits::ObligationCause;
@@ -82,43 +80,6 @@ pub trait QueryTypeOp<'tcx>: fmt::Debug + Copy + TypeFoldable<TyCtxt<'tcx>> + 't
         tcx: TyCtxt<'tcx>,
         canonicalized: CanonicalQueryInput<'tcx, ParamEnvAnd<'tcx, Self>>,
     ) -> Result<CanonicalQueryResponse<'tcx, Self::QueryResponse>, NoSolution>;
-
-    fn fully_perform_into(
-        query_key: ParamEnvAnd<'tcx, Self>,
-        infcx: &InferCtxt<'tcx>,
-        output_query_region_constraints: &mut QueryRegionConstraints<'tcx>,
-        span: Span,
-    ) -> Result<
-        (
-            Self::QueryResponse,
-            Option<CanonicalQueryInput<'tcx, ParamEnvAnd<'tcx, Self>>>,
-            PredicateObligations<'tcx>,
-            Certainty,
-        ),
-        NoSolution,
-    > {
-        if !infcx.disable_trait_solver_fast_paths()
-            && let Some(result) = QueryTypeOp::try_fast_path(infcx.tcx, &query_key)
-        {
-            return Ok((result, None, PredicateObligations::new(), Certainty::Proven));
-        }
-
-        let mut canonical_var_values = OriginalQueryValues::default();
-        let old_param_env = query_key.param_env;
-        let canonical_self = infcx.canonicalize_query(query_key, &mut canonical_var_values);
-        let canonical_result = Self::perform_query(infcx.tcx, canonical_self)?;
-
-        let InferOk { value, obligations } = infcx
-            .instantiate_nll_query_response_and_region_obligations(
-                &ObligationCause::dummy_with_span(span),
-                old_param_env,
-                &canonical_var_values,
-                canonical_result,
-                output_query_region_constraints,
-            )?;
-
-        Ok((value, Some(canonical_self), obligations, canonical_result.value.certainty))
-    }
 }
 
 impl<'tcx, Q> TypeOp<'tcx> for ParamEnvAnd<'tcx, Q>
@@ -144,14 +105,32 @@ where
         // also manually collecting region constraints via `region_constraints`.
         let (mut output, _) =
             scrape_region_constraints(infcx, root_def_id, "fully_perform", span, |ocx| {
-                let (output, ei, obligations, _) =
-                    Q::fully_perform_into(self, infcx, &mut region_constraints, span)?;
-                error_info = ei;
+                if !infcx.disable_trait_solver_fast_paths()
+                    && let Some(value) = QueryTypeOp::try_fast_path(infcx.tcx, &self)
+                {
+                    return Ok(value);
+                }
 
+                let mut canonical_var_values = OriginalQueryValues::default();
+                let old_param_env = self.param_env;
+                let canonical_self = infcx.canonicalize_query(self, &mut canonical_var_values);
+                let canonical_result = Q::perform_query(infcx.tcx, canonical_self)?;
+
+                let InferOk { value, obligations } = infcx
+                    .instantiate_nll_query_response_and_region_obligations(
+                        &ObligationCause::dummy_with_span(span),
+                        old_param_env,
+                        &canonical_var_values,
+                        canonical_result,
+                        &mut region_constraints,
+                    )?;
+
+                error_info = Some(canonical_self);
                 ocx.register_obligations(obligations);
-                Ok(output)
+                Ok(value)
             })?;
         output.error_info = error_info;
+
         if let Some(QueryRegionConstraints { constraints, assumptions }) = output.constraints {
             region_constraints.constraints.extend(constraints.iter().cloned());
             region_constraints.assumptions.extend(assumptions.iter().cloned());
