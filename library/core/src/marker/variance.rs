@@ -16,10 +16,10 @@ macro_rules! first_token {
 macro_rules! phantom_type {
     ($(
         $(#[$attr:meta])*
-        pub struct $name:ident <$t:ident> ($($inner:tt)*);
+        pub struct $name:ident <$(#[$param_attr:meta])? $t:ident> ($($inner:tt)*);
     )*) => {$(
         $(#[$attr])*
-        pub struct $name<$t>($($inner)*) where $t: ?Sized;
+        pub struct $name<$(#[$param_attr])? $t>($($inner)*) where $t: ?Sized;
 
         impl<T> $name<T>
             where T: ?Sized
@@ -101,11 +101,11 @@ macro_rules! phantom_type {
 macro_rules! phantom_lifetime {
     ($(
         $(#[$attr:meta])*
-        pub struct $name:ident <$lt:lifetime> ($($inner:tt)*);
+        pub struct $name:ident <$(#[$param_attr:meta])? $lt:lifetime> ($($inner:tt)*);
     )*) => {$(
         $(#[$attr])*
         #[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-        pub struct $name<$lt>($($inner)*);
+        pub struct $name<$(#[$param_attr])? $lt>($($inner)*);
 
         impl $name<'_> {
             /// Constructs a new instance of the variance marker.
@@ -144,7 +144,7 @@ phantom_lifetime! {
     /// * `align_of::<PhantomCovariantLifetime<'a>>() == 1`
     #[rustc_pub_transparent]
     #[repr(transparent)]
-    pub struct PhantomCovariantLifetime<'a>(PhantomCovariant<&'a ()>);
+    pub struct PhantomCovariantLifetime<#[rustc_assert_variance(covariant)] 'a>(PhantomCovariant<&'a ()>);
     /// Zero-sized type used to mark a lifetime as contravariant.
     ///
     /// Contravariant lifetimes must live at most as long as declared. See [the reference][1] for
@@ -161,7 +161,7 @@ phantom_lifetime! {
     /// * `align_of::<PhantomContravariantLifetime<'a>>() == 1`
     #[rustc_pub_transparent]
     #[repr(transparent)]
-    pub struct PhantomContravariantLifetime<'a>(PhantomContravariant<&'a ()>);
+    pub struct PhantomContravariantLifetime<#[rustc_assert_variance(contravariant)] 'a>(PhantomContravariant<&'a ()>);
     /// Zero-sized type used to mark a lifetime as invariant.
     ///
     /// Invariant lifetimes must be live for the exact length declared, neither shorter nor longer.
@@ -176,7 +176,7 @@ phantom_lifetime! {
     /// * `align_of::<PhantomInvariantLifetime<'a>>() == 1`
     #[rustc_pub_transparent]
     #[repr(transparent)]
-    pub struct PhantomInvariantLifetime<'a>(PhantomInvariant<&'a ()>);
+    pub struct PhantomInvariantLifetime<#[rustc_assert_variance(invariant)] 'a>(PhantomInvariant<&'a ()>);
 }
 
 phantom_type! {
@@ -197,7 +197,7 @@ phantom_type! {
     /// * `align_of::<PhantomCovariant<T>>() == 1`
     #[rustc_pub_transparent]
     #[repr(transparent)]
-    pub struct PhantomCovariant<T>(PhantomData<fn() -> T>);
+    pub struct PhantomCovariant<#[rustc_assert_variance(covariant)] T>(PhantomData<fn() -> T>);
     /// Zero-sized type used to mark a type parameter as contravariant.
     ///
     /// Types passed as arguments to a function are contravariant. If the type is _also_ part of the
@@ -215,7 +215,7 @@ phantom_type! {
     /// * `align_of::<PhantomContravariant<T>>() == 1`
     #[rustc_pub_transparent]
     #[repr(transparent)]
-    pub struct PhantomContravariant<T>(PhantomData<fn(T)>);
+    pub struct PhantomContravariant<#[rustc_assert_variance(contravariant)] T>(PhantomData<fn(T)>);
     /// Zero-sized type used to mark a type parameter as invariant.
     ///
     /// Types that are both passed as an argument _and_ used as part of the return value from a
@@ -230,7 +230,7 @@ phantom_type! {
     /// * `align_of::<PhantomInvariant<T>>() == 1`
     #[rustc_pub_transparent]
     #[repr(transparent)]
-    pub struct PhantomInvariant<T>(PhantomData<fn(T) -> T>);
+    pub struct PhantomInvariant<#[rustc_assert_variance(invariant)] T>(PhantomData<fn(T) -> T>);
 }
 
 mod private_items {
