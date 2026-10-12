@@ -16,7 +16,7 @@ mod utils;
 #[alloc_error_handler]
 fn alloc_error_handler(layout: Layout) -> ! {
     let _ = writeln!(utils::MiriStderr, "custom alloc error handler: {layout:?}");
-    core::intrinsics::abort(); //~ERROR: aborted
+    core::intrinsics::abort_immediate(); //~ERROR: aborted
 }
 
 // rustc requires us to provide some more things that aren't actually used by this test

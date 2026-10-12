@@ -114,7 +114,7 @@ impl ImportRename {
 impl LateLintPass<'_> for ImportRename {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
         if let ItemKind::Use(tree) = &item.kind {
-            self.check_use_tree(cx, tree)
+            self.check_use_tree(cx, tree);
         }
     }
 }

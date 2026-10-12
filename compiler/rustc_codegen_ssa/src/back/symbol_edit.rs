@@ -12,6 +12,9 @@ use object::read::elf::{SectionHeader as _, Sym as _};
 use object::read::macho::Nlist;
 use object::{Endianness, elf, macho, pe};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_middle::middle::exported_symbols::SymbolExportKind;
+
+use super::symbol_export::undecorate_coff_symbol;
 
 struct Patch {
     offset: usize,
@@ -58,20 +61,8 @@ pub(super) fn apply_edits<'a>(
             rename,
             mem::offset_of!(macho::Nlist32<Endianness>, n_type),
         ),
-        Some(object::File::Coff(f)) => coff_edit_impl(
-            data,
-            f.coff_header(),
-            hide,
-            rename,
-            coff_strip_underscore(f.coff_header()),
-        ),
-        Some(object::File::CoffBig(f)) => coff_edit_impl(
-            data,
-            f.coff_header(),
-            hide,
-            rename,
-            coff_strip_underscore(f.coff_header()),
-        ),
+        Some(object::File::Coff(f)) => coff_edit_impl(data, f.coff_header(), hide, rename),
+        Some(object::File::CoffBig(f)) => coff_edit_impl(data, f.coff_header(), hide, rename),
         _ => None,
     };
     match result {
@@ -99,28 +90,20 @@ pub(super) fn collect_internal_names(
         object::File::MachO32(_) => {
             macho_collect_impl::<macho::MachHeader32<Endianness>>(data, exported, out)
         }
-        object::File::Coff(f) => coff_collect_impl(
-            data,
-            f.coff_header(),
-            exported,
-            out,
-            coff_strip_underscore(f.coff_header()),
-        ),
-        object::File::CoffBig(f) => coff_collect_impl(
-            data,
-            f.coff_header(),
-            exported,
-            out,
-            coff_strip_underscore(f.coff_header()),
-        ),
+        object::File::Coff(f) => coff_collect_impl(data, f.coff_header(), exported, out),
+        object::File::CoffBig(f) => coff_collect_impl(data, f.coff_header(), exported, out),
         _ => {}
     }
 }
 
-/// Whether this machine's COFF ABI decorates external symbols with a leading `_`
-/// (i686 only).
-fn coff_strip_underscore(header: &impl CoffHeader) -> bool {
-    header.machine() == pe::IMAGE_FILE_MACHINE_I386
+/// The `SymbolExportKind` of a COFF symbol, so `#`-prefixed `Arm64EC` text symbols are told
+/// apart from data symbols during undecoration.
+fn coff_symbol_kind(sym: &impl object::read::coff::ImageSymbol) -> SymbolExportKind {
+    if sym.derived_type() == pe::IMAGE_SYM_DTYPE_FUNCTION {
+        SymbolExportKind::Text
+    } else {
+        SymbolExportKind::Data
+    }
 }
 
 fn elf_collect_impl<Elf: object::read::elf::FileHeader<Endian = Endianness>>(
@@ -485,10 +468,10 @@ fn coff_collect_impl<'data, Coff: CoffHeader>(
     header: &'data Coff,
     exported: &FxHashSet<String>,
     out: &mut FxHashSet<String>,
-    strip_underscore: bool,
 ) {
     let Ok(symbols) = header.symbols(data) else { return };
     let strings = symbols.strings();
+    let machine = header.machine();
 
     for (_index, sym) in symbols.iter() {
         let sclass = sym.storage_class();
@@ -499,15 +482,10 @@ fn coff_collect_impl<'data, Coff: CoffHeader>(
             continue;
         }
         let Ok(name_bytes) = sym.name(strings) else { continue };
-        let Ok(mut name) = str::from_utf8(name_bytes).map(String::from) else { continue };
-        if strip_underscore {
-            name = name.strip_prefix('_').unwrap_or(&name).to_string();
-        }
-        let is_exported = exported.contains(&name)
-            || (header.machine() == pe::IMAGE_FILE_MACHINE_ARM64EC
-                && name.strip_prefix('#').is_some_and(|name| exported.contains(name)));
-        if !is_exported {
-            out.insert(name);
+        let Ok(name) = str::from_utf8(name_bytes) else { continue };
+        let name = undecorate_coff_symbol(name, machine, coff_symbol_kind(sym));
+        if !exported.contains(name) {
+            out.insert(name.to_string());
         }
     }
 }
@@ -517,7 +495,6 @@ fn coff_edit_impl<'data, Coff: CoffHeader>(
     header: &'data Coff,
     hide: bool,
     rename: Option<&(FxHashSet<String>, &str)>,
-    strip_underscore: bool,
 ) -> Option<Vec<u8>> {
     // COFF has no visibility concept, so hiding is unsupported; the caller
     // has already warned and does not request it.
@@ -545,6 +522,7 @@ fn coff_edit_impl<'data, Coff: CoffHeader>(
 
     let Ok(symbols) = header.symbols(data) else { return None };
     let strings = symbols.strings();
+    let machine = header.machine();
 
     let mut renames = Vec::new();
     for (index, sym) in symbols.iter() {
@@ -554,8 +532,7 @@ fn coff_edit_impl<'data, Coff: CoffHeader>(
         }
         let Ok(name_bytes) = sym.name(strings) else { continue };
         let Ok(name) = str::from_utf8(name_bytes) else { continue };
-        let check_name =
-            if strip_underscore { name.strip_prefix('_').unwrap_or(name) } else { name };
+        let check_name = undecorate_coff_symbol(name, machine, coff_symbol_kind(sym));
         if rename.is_some_and(|(rename_set, _)| rename_set.contains(check_name)) {
             renames.push(RenameEntry {
                 name_field_offset: symbol_bytes_offset + index.0 * sym_size,

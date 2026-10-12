@@ -63,7 +63,7 @@ declare_clippy_lint! {
     /// b = a;
     /// a = t;
     /// ```
-    /// Use std::mem::swap():
+    /// Use `std::mem::swap()`:
     /// ```no_run
     /// let mut a = 1;
     /// let mut b = 2;

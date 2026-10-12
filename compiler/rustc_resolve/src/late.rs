@@ -445,6 +445,8 @@ pub(crate) enum AliasPossibility {
 pub(crate) enum PathSource<'a, 'ast, 'ra> {
     /// Type paths `Path`.
     Type,
+    /// Type or constant in a `PathSegment` argument.
+    TypeParam,
     /// Trait paths in bounds or impls.
     Trait(AliasPossibility),
     /// Expression paths `path`, with optional parent context.
@@ -480,6 +482,7 @@ impl PathSource<'_, '_, '_> {
     fn namespace(self) -> Namespace {
         match self {
             PathSource::Type
+            | PathSource::TypeParam
             | PathSource::Trait(_)
             | PathSource::Struct(_)
             | PathSource::DefineOpaques
@@ -499,6 +502,7 @@ impl PathSource<'_, '_, '_> {
     fn defer_to_typeck(self) -> bool {
         match self {
             PathSource::Type
+            | PathSource::TypeParam
             | PathSource::Expr(..)
             | PathSource::Pat
             | PathSource::Struct(_)
@@ -519,6 +523,7 @@ impl PathSource<'_, '_, '_> {
         match &self {
             PathSource::DefineOpaques => "type alias or associated type with opaqaue types",
             PathSource::Type => "type",
+            PathSource::TypeParam => "type or constant",
             PathSource::Trait(_) => "trait",
             PathSource::Pat => "unit struct, unit variant or constant",
             PathSource::Struct(_) => "struct, variant or union type",
@@ -590,6 +595,28 @@ impl PathSource<'_, '_, '_> {
                         | DefKind::AssocTy
                         | DefKind::TyParam
                         | DefKind::OpaqueTy
+                        | DefKind::ForeignTy,
+                    _,
+                ) | Res::PrimTy(..)
+                    | Res::SelfTyParam { .. }
+                    | Res::SelfTyAlias { .. }
+            ),
+            PathSource::TypeParam => matches!(
+                res,
+                Res::Def(
+                    DefKind::Struct
+                        | DefKind::Union
+                        | DefKind::Enum
+                        | DefKind::Trait
+                        | DefKind::TraitAlias
+                        | DefKind::TyAlias
+                        | DefKind::AssocTy
+                        | DefKind::TyParam
+                        | DefKind::OpaqueTy
+                        | DefKind::AnonConst
+                        | DefKind::AssocConst
+                        | DefKind::Const
+                        | DefKind::ConstParam
                         | DefKind::ForeignTy,
                     _,
                 ) | Res::PrimTy(..)
@@ -668,8 +695,8 @@ impl PathSource<'_, '_, '_> {
         match (self, has_unexpected_resolution) {
             (PathSource::Trait(_), true) => E0404,
             (PathSource::Trait(_), false) => E0405,
-            (PathSource::Type | PathSource::DefineOpaques, true) => E0573,
-            (PathSource::Type | PathSource::DefineOpaques, false) => E0425,
+            (PathSource::Type | PathSource::DefineOpaques | PathSource::TypeParam, true) => E0573,
+            (PathSource::Type | PathSource::DefineOpaques | PathSource::TypeParam, false) => E0425,
             (PathSource::Struct(_), true) => E0574,
             (PathSource::Struct(_), false) => E0422,
             (PathSource::Expr(..), true)
@@ -2272,6 +2299,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 PathSource::Trait(..)
                 | PathSource::TraitItem(..)
                 | PathSource::Type
+                | PathSource::TypeParam
                 | PathSource::PreciseCapturingArg(..)
                 | PathSource::ReturnTypeNotation
                 | PathSource::Macro
@@ -2861,12 +2889,14 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     }
 
     fn resolve_item(&mut self, item: &'ast Item) {
+        let mut mod_inner_attrs_start = None;
         match item.kind {
             ItemKind::Mod(..) => {
                 // We only handle outer doc comments for modules here.
                 let attrs = if let Some(pos) = item.attrs.iter().position(|a| {
                     a.doc_resolution_scope().is_some_and(|style| style == AttrStyle::Inner)
                 }) {
+                    mod_inner_attrs_start = Some(pos);
                     &item.attrs[..pos]
                 } else {
                     &item.attrs
@@ -2972,9 +3002,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     this.with_rib(TypeNS, RibKind::Module(module.expect_local()), |this| {
                         // Outer doc comments were already handled above, now we handle
                         // inner doc comments.
-                        let attrs = if let Some(pos) = item.attrs.iter().position(|a| {
-                            a.doc_resolution_scope().is_some_and(|style| style == AttrStyle::Inner)
-                        }) {
+                        let attrs = if let Some(pos) = mod_inner_attrs_start {
                             &item.attrs[pos..]
                         } else {
                             &[]
@@ -4105,7 +4133,6 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     /// `Result<T, &!>` could look like:
     /// ```rust
     /// # #![feature(never_patterns)]
-    #[cfg_attr(bootstrap, doc = "#![feature(never_type)]")]
     /// # fn bar(_x: u32) {}
     /// let foo: Result<u32, &!> = Ok(0);
     /// match foo {
@@ -4171,7 +4198,6 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     /// `Result<T, &!>` could look like:
     /// ```rust
     /// # #![feature(never_patterns)]
-    #[cfg_attr(bootstrap, doc = "#![feature(never_type)]")]
     /// # fn foo() -> Result<bool, &'static !> { Ok(true) }
     /// let (Ok(x) | Err(&!)) = foo();
     /// # let _ = x;

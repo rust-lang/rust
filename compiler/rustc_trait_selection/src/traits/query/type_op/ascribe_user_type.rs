@@ -109,7 +109,7 @@ fn relate_mir_and_user_args<'tcx>(
         let cause = ObligationCause::new(
             span,
             CRATE_DEF_ID,
-            ObligationCauseCode::AscribeUserTypeProvePredicate(clause_span),
+            ObligationCauseCode::AscribeUserTypeProvePredicate(clause_span, def_id),
         );
         let instantiated_clause = ocx.normalize(&cause, param_env, instantiated_clause);
 

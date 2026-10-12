@@ -5,9 +5,13 @@ LL |     let generator = #[coroutine] move || {
    |                                  ------- this coroutine captures a value whose type is not `Foo`
 ...
 LL |     assert_foo(generator);
-   |     ^^^^^^^^^^^^^^^^^^^^^ implementation of `Foo` is not general enough
+   |     ^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `&'0 OnlyFooIfStaticRef` must implement `Foo`, for any lifetime `'0`...
+note: `&'0 OnlyFooIfStaticRef` must implement `Foo`, for any lifetime `'0`...
+  --> $DIR/auto-trait-regions.rs:21:18
+   |
+LL | fn assert_foo<T: Foo>(f: T) {}
+   |                  ^^^ required by this bound in `assert_foo`
    = note: ...but `Foo` is actually implemented for the type `&'static OnlyFooIfStaticRef`
 
 error[E0626]: borrow may still be in use when coroutine yields
@@ -49,9 +53,13 @@ LL |     let generator = #[coroutine] move || {
    |                                  ------- this coroutine captures a value whose type is not `Foo`
 ...
 LL |     assert_foo(generator);
-   |     ^^^^^^^^^^^^^^^^^^^^^ implementation of `Foo` is not general enough
+   |     ^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `Foo` would have to be implemented for the type `A<'0, '1>`, for any two lifetimes `'0` and `'1`...
+note: `Foo` would have to be implemented for the type `A<'0, '1>`, for any two lifetimes `'0` and `'1`...
+  --> $DIR/auto-trait-regions.rs:21:18
+   |
+LL | fn assert_foo<T: Foo>(f: T) {}
+   |                  ^^^ required by this bound in `assert_foo`
    = note: ...but `Foo` is actually implemented for the type `A<'_, '2>`, for some specific lifetime `'2`
 
 error: aborting due to 4 previous errors

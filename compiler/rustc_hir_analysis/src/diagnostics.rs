@@ -296,13 +296,14 @@ pub(crate) struct FieldAlreadyDeclaredNestedHelp {
 }
 
 #[derive(Diagnostic)]
-#[diag("the trait `Copy` cannot be implemented for this type; the type has a destructor", code = E0184)]
-pub(crate) struct CopyImplOnTypeWithDtor {
+#[diag("the trait `{$trait_name}` cannot be implemented for this type; the type has a destructor", code = E0184)]
+pub(crate) struct TraitImplOnTypeWithDtor {
     #[primary_span]
-    #[label("`Copy` not allowed on types with destructors")]
+    #[label("`{$trait_name}` not allowed on types with destructors")]
     pub span: Span,
     #[note("destructor declared here")]
     pub impl_: Span,
+    pub trait_name: Symbol,
 }
 
 #[derive(Diagnostic)]
@@ -1740,7 +1741,7 @@ pub(crate) struct UnusedGenericParameter {
     pub span: Span,
     pub param_name: Ident,
     pub param_def_kind: &'static str,
-    #[label("`{$param_name}` is named here, but is likely unused in the containing type")]
+    #[label("`{$param_name}` is named here, but is not used in the type that wraps it")]
     pub usage_spans: Vec<Span>,
     #[subdiagnostic]
     pub help: UnusedGenericParameterHelp,
@@ -2155,4 +2156,25 @@ pub(crate) struct ParamInTyOfConstParam<'tcx> {
     #[label("the type `{$ty}` must not depend on other generic parameter")]
     pub(crate) span: Span,
     pub(crate) ty: Ty<'tcx>,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "field `{$field}` has a default value that is only checked when a value of `{$ty}` is \
+     constructed"
+)]
+#[help(
+    "structs and enums with type and const parameters only evaluate their default field values \
+     during construction, not eagerly when declared"
+)]
+pub(crate) struct UnevaluatedDefaultFieldValue {
+    pub(crate) field: Symbol,
+    pub(crate) ty: String,
+    #[suggestion(
+        "if this behavior is acceptable, allow the lint and preferably write a test relying on the default value",
+        code = "{padding}#[expect(unevaluated_default_field_value)]\n",
+        applicability = "maybe-incorrect"
+    )]
+    pub(crate) struct_start: Span,
+    pub(crate) padding: String,
 }

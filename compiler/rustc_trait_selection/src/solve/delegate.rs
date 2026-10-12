@@ -215,11 +215,16 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                     return Outcome::NoFastPath;
                 }
 
+                // We use `VisibleForLeakCheck::Yes` for `RegionOutlives` goals without
+                // the fast path. However, we always change region constraints from nested
+                // goals to `VisibleForLeakCheck::No`, so to be consistent with this
+                // behavior as we avoid the nested goal boundary, we have to manually
+                // set the flag.
                 self.0.sub_regions(
                     SubregionOrigin::RelateRegionParamBound(span, None),
                     outlives.1,
                     outlives.0,
-                    ty::VisibleForLeakCheck::Yes,
+                    ty::VisibleForLeakCheck::No,
                 );
                 Outcome::TriviallyHolds
             }
@@ -229,6 +234,10 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                 }
 
                 let ty = self.deeply_resolve_ignoring_regions(outlives.0);
+                if ty.has_non_rigid_aliases() {
+                    return Outcome::NoFastPath;
+                }
+
                 let mut infer_collector = CollectNonRegionInfer {
                     infers: Default::default(),
                     visited: Default::default(),
@@ -245,10 +254,6 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                             })
                             .collect(),
                     );
-                }
-
-                if ty.has_non_rigid_aliases() {
-                    return Outcome::NoFastPath;
                 }
 
                 self.0.register_type_outlives_constraint(
@@ -515,19 +520,24 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
 
     fn emit_next_solver_overflow_fcw(&self, goal: Goal<'tcx, ty::Predicate<'tcx>>, span: Span) {
         let tcx = self.tcx;
-        let goal = self.deeply_resolve_ignoring_regions(goal);
-        let mut visitor = OverflowedGoalChain {
-            span,
-            predicates: vec![],
-            recursion_limit: usize::min(16, tcx.recursion_limit().0),
-        };
-        let _ = self
-            .with_disabled_next_solver_overflow_fcw(|| self.visit_proof_tree(goal, &mut visitor));
         tcx.emit_node_span_lint(
             RECURSION_DEPTH_EXCEEDING_LIMIT,
             CRATE_HIR_ID,
             span,
             rustc_errors::DiagDecorator(|diag| {
+                // We do this in the decorator as that avoids the work
+                // if we don't actually emit the lint.
+                let goal = self.deeply_resolve_ignoring_regions(goal);
+                let mut visitor = OverflowedGoalChain {
+                    span,
+                    predicates: vec![],
+                    recursion_limit: usize::min(16, tcx.recursion_limit().0),
+                };
+
+                let _ = self.with_disabled_next_solver_overflow_fcw(|| {
+                    self.visit_proof_tree(goal, &mut visitor)
+                });
+
                 // FIXME: share this with overflow error in fulfillment instead of duplicating.
                 let pred_str = |pred: ty::Predicate<'tcx>| {
                     let s = pred.to_string();

@@ -1671,12 +1671,11 @@ pub fn clip(tcx: TyCtxt<'_>, u: u128, ity: UintTy) -> u128 {
     (u << amt) >> amt
 }
 
-/// Checks if an attribute is present. 
+/// Checks if an attribute is present.
 ///
 /// NOTE: this does not work for most attributes:
 /// - parsed attributes: use `find_attr!` for these
-/// - tool attributes: these have multi-segmented names
-/// (and diagnostic attrs are parsed anyway)
+/// - tool attributes: these have multi-segmented names (and diagnostic attrs are parsed anyway)
 ///
 /// At this time, these only work for lint attributes (allow, warn, etc)
 /// and derive helpers.
@@ -1780,7 +1779,7 @@ pub fn get_async_closure_expr<'tcx>(tcx: TyCtxt<'tcx>, expr: &Expr<'_>) -> Optio
 
 /// Peels away all the compiler generated code surrounding the body of an async function,
 pub fn get_async_fn_body<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'_>) -> Option<&'tcx Expr<'tcx>> {
-    get_async_closure_expr(tcx, body.value)
+    get_async_closure_expr(tcx, &body.value)
 }
 
 // check if expr is calling method or function with #[must_use] attribute
@@ -1843,7 +1842,7 @@ fn is_body_identity_function<'hir>(cx: &LateContext<'_>, func: &Body<'hir>) -> b
         true
     };
 
-    let mut expr = func.value;
+    let mut expr = &func.value;
     loop {
         match expr.kind {
             ExprKind::Block(

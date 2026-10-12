@@ -6,6 +6,11 @@ LL | fn main() -> Thing { Thing }
    |
    = note: `IsStatic` would have to be implemented for the type `&'0 ()`, for any lifetime `'0`...
    = note: ...but `IsStatic` is actually implemented for the type `&'1 ()`, for some specific lifetime `'1`
+note: required for `Thing` to implement `Termination`
+  --> $DIR/main-termination-lifetime-issue-148421.rs:13:6
+   |
+LL | impl Termination for Thing where for<'a> &'a (): IsStatic {
+   |      ^^^^^^^^^^^     ^^^^^                       -------- unsatisfied trait bound introduced here
 
 error: aborting due to 1 previous error
 

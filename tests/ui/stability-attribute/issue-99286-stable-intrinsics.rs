@@ -6,7 +6,7 @@
 // is unstable.
 
 #![allow(unused_imports)]
-#![allow(deprecated)]
+#![allow(unstable_imports)]
 
 use std::intrinsics::copy_nonoverlapping as _;
 use std::intrinsics::copy as _;

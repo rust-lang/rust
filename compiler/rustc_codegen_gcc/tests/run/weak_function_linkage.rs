@@ -7,7 +7,7 @@
 // weak symbols, by linking against `tests/c/weak_function_linkage.c`, which defines the same
 // symbols strongly.
 
-#![feature(linkage, no_core)]
+#![feature(linkage, no_core, rustc_private)]
 #![no_std]
 #![no_core]
 #![no_main]
@@ -40,9 +40,6 @@ extern "C" fn linkonce_function() -> i32 {
 extern "C" fn linkonce_odr_function() -> i32 {
     4
 }
-
-// `#[linkage = "common"]` is absent on purpose: a common symbol is `SHN_COMMON`, which the object
-// format only allows for objects, so no backend can give a function that linkage.
 
 // Not overridden by the C side: the definition here is the one that runs.
 #[linkage = "weak"]

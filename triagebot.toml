@@ -224,8 +224,9 @@ new_draft = true
 [autolabel."needs-triage"]
 new_issue = true
 exclude_labels = [
-    "C-tracking-issue",
     "A-diagnostics",
+    "C-tracking-issue",
+    "relnotes-tracking-issue",
 ]
 
 [autolabel."I-prioritize"]
@@ -706,6 +707,16 @@ github_comment = ":robot: A [dedicated `#t-types/nominated` topic]({zulip_topic_
 message_on_remove = "Issue #{number}'s nomination has been removed. Thanks all for participating!"
 message_on_close = "Issue #{number} has been closed. Thanks for participating!"
 message_on_reopen = "Issue #{number} has been reopened. Pinging @*T-types*."
+
+[notify-zulip."I-libs-nominated"]
+zulip_stream = 639962 # #t-libs/nominated
+topic = "#{number}: {title}"
+message_on_add = """\
+[#{number} "{title}"](https://github.com/rust-lang/rust/pull/{number}) has been nominated for discussion.
+"""
+message_on_remove = """\
+#{number} is no longer nominated.
+"""
 
 
 # ------------------------------------------------------------------------------
@@ -1404,7 +1415,7 @@ cc = ["@nnethercote"]
 
 [mentions."tests/ui/stats/input-stats.stderr"]
 message = "Changes to the size of AST and/or HIR nodes."
-cc = ["@nnethercote"]
+cc = ["@nnethercote", "@JonathanBrouwer"]
 
 [mentions."compiler/rustc_sanitizers"]
 cc = ["@rcvalle"]
@@ -1554,6 +1565,21 @@ cc = ["@mejrs"]
 message = "Some changes occurred to diagnostic attributes."
 cc = ["@mejrs"]
 
+[mentions."compiler/rustc_codegen_llvm/src/debuginfo"]
+cc = ["@Walnut356"]
+[mentions."src/etc/debugger_tester"]
+cc = ["@Walnut356"]
+[mentions."src/etc/natvis"]
+cc = ["@Walnut356"]
+[mentions."src/etc/gdb_lookup.py"]
+cc = ["@Walnut356"]
+[mentions."src/etc/gdb_providers.py"]
+cc = ["@Walnut356"]
+[mentions."src/etc/lldb_lookup.py"]
+cc = ["@Walnut356"]
+[mentions."src/etc/lldb_providers.py"]
+cc = ["@Walnut356"]
+
 [mentions."RELEASES.md"]
 message = """
 `RELEASES.md` was changed. Upon merging, each section will be automatically synced with its \
@@ -1698,7 +1724,12 @@ ast_lowering = [
     "@spastorino",
 ]
 debuginfo = [
-    "@davidtwco"
+    "@davidtwco",
+    "@Walnut356",
+]
+debugger_visualizer = [
+    "@Mark-Simulacrum",
+    "@Walnut356",
 ]
 fallback = [
     "@Mark-Simulacrum",
@@ -1778,6 +1809,13 @@ dep-bumps = [
 "/src/doc/style-guide" =                                 ["style-team"]
 "/src/doc/unstable-book" =                               ["compiler"]
 "/src/etc" =                                             ["@Mark-Simulacrum"]
+"/src/etc/gdb_load_rust_pretty_printers.py" =            ["debugger_visualizer"]
+"/src/etc/gdb_lookup.py" =                               ["debugger_visualizer"]
+"/src/etc/gdb_providers.py" =                            ["debugger_visualizer"]
+"/src/etc/lldb_lookup.py" =                              ["debugger_visualizer"]
+"/src/etc/lldb_providers.py" =                           ["debugger_visualizer"]
+"/src/etc/natvis" =                                      ["debugger_visualizer"]
+"/src/etc/rust_types.py" =                               ["debugger_visualizer"]
 "/src/librustdoc" =                                      ["rustdoc"]
 "/src/llvm-project" =                                    ["@cuviper"]
 "/src/rustdoc-json-types" =                              ["rustdoc"]

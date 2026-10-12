@@ -1,5 +1,6 @@
 //@  compile-flags:  -Zexperimental-default-bounds
 //@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@ [next] compile-flags: -Znext-solver
 
 #![feature(auto_traits, extern_types, lang_items, negative_impls, no_core, rustc_attrs)]

@@ -133,7 +133,8 @@ impl Default for f16b {
 }
 
 #[unstable(feature = "f16b", issue = "160630")]
-impl PartialEq for f16b {
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+const impl PartialEq for f16b {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
         widen(*self).eq(&widen(*other))

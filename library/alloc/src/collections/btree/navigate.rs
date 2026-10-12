@@ -77,11 +77,8 @@ impl<BorrowType: marker::BorrowType, K, V> LeafRange<BorrowType, K, V> {
         if self.is_empty() {
             None
         } else {
-            super::mem::replace(self.front.as_mut().unwrap(), |front| {
-                let kv = front.next_kv().ok().unwrap();
-                let result = f(&kv);
-                (kv.next_leaf_edge(), Some(result))
-            })
+            // SAFETY: The range is nonempty, so there is an unvisited KV before the back cursor.
+            Some(unsafe { self.front.as_mut().unwrap().perform_next_unchecked(f) })
         }
     }
 
@@ -93,11 +90,8 @@ impl<BorrowType: marker::BorrowType, K, V> LeafRange<BorrowType, K, V> {
         if self.is_empty() {
             None
         } else {
-            super::mem::replace(self.back.as_mut().unwrap(), |back| {
-                let kv = back.next_back_kv().ok().unwrap();
-                let result = f(&kv);
-                (kv.next_back_leaf_edge(), Some(result))
-            })
+            // SAFETY: The range is nonempty, so there is an unvisited KV before the front cursor.
+            Some(unsafe { self.back.as_mut().unwrap().perform_next_back_unchecked(f) })
         }
     }
 }
@@ -548,10 +542,8 @@ impl<'a, K, V> Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Ed
     /// # Safety
     /// There must be another KV in the direction travelled.
     unsafe fn next_unchecked(&mut self) -> (&'a K, &'a V) {
-        super::mem::replace(self, |leaf_edge| {
-            let kv = leaf_edge.next_kv().ok().unwrap();
-            (kv.next_leaf_edge(), kv.into_kv())
-        })
+        // SAFETY: guaranteed by caller
+        unsafe { self.perform_next_unchecked(|node| node.into_kv()) }
     }
 
     /// Moves the leaf edge handle to the previous leaf edge and returns references to the
@@ -560,10 +552,8 @@ impl<'a, K, V> Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Ed
     /// # Safety
     /// There must be another KV in the direction travelled.
     unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a V) {
-        super::mem::replace(self, |leaf_edge| {
-            let kv = leaf_edge.next_back_kv().ok().unwrap();
-            (kv.next_back_leaf_edge(), kv.into_kv())
-        })
+        // SAFETY: guaranteed by caller
+        unsafe { self.perform_next_back_unchecked(|node| node.into_kv()) }
     }
 }
 
@@ -572,30 +562,85 @@ impl<'a, K, V> Handle<NodeRef<marker::ValMut<'a>, K, V, marker::Leaf>, marker::E
     /// key and value in between.
     ///
     /// # Safety
-    /// There must be another KV in the direction travelled.
+    /// - There must be another KV in the direction travelled.
+    /// - The KV returned by this call must not be aliased by any other
+    ///   live mutable reference
     unsafe fn next_unchecked(&mut self) -> (&'a K, &'a mut V) {
-        let kv = super::mem::replace(self, |leaf_edge| {
-            let kv = leaf_edge.next_kv().ok().unwrap();
-            // ignore-tidy-undocumented-unsafe
-            (unsafe { ptr::read(&kv) }.next_leaf_edge(), kv)
-        });
-        // Doing this last is faster, according to benchmarks.
-        kv.into_kv_valmut()
+        // SAFETY: guaranteed by caller
+        unsafe { self.perform_next_unchecked(|kv| ptr::read(kv).into_kv_valmut()) }
     }
 
     /// Moves the leaf edge handle to the previous leaf and returns references to the
     /// key and value in between.
     ///
     /// # Safety
-    /// There must be another KV in the direction travelled.
+    /// - There must be another KV in the direction travelled.
+    /// - The KV returned by this call must not be aliased by any other
+    ///   live mutable reference
     unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a mut V) {
-        let kv = super::mem::replace(self, |leaf_edge| {
-            let kv = leaf_edge.next_back_kv().ok().unwrap();
-            // ignore-tidy-undocumented-unsafe
-            (unsafe { ptr::read(&kv) }.next_back_leaf_edge(), kv)
-        });
-        // Doing this last is faster, according to benchmarks.
-        kv.into_kv_valmut()
+        // SAFETY: guaranteed by caller
+        unsafe { self.perform_next_back_unchecked(|kv| ptr::read(kv).into_kv_valmut()) }
+    }
+}
+
+impl<BorrowType: marker::BorrowType, K, V>
+    Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>
+{
+    /// # Safety
+    /// - There must be another KV in the direction travelled.
+    /// - The KV produced by this call must not be aliased by any other
+    ///   live mutable reference
+    unsafe fn perform_next_unchecked<F, R>(&mut self, f: F) -> R
+    where
+        F: Fn(&Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::KV>) -> R,
+    {
+        let idx = self.idx();
+        let len = self.reborrow().into_node().len();
+        // The fast path when the next KV is still in the same node
+        if idx < len {
+            // SAFETY: `self` will be immediately replaced below
+            let node = unsafe { ptr::read(self) }.into_node();
+            // SAFETY: `idx + 1 <= node.len()`. The copy of `node` is only used
+            // to form the next edge; `node` is consumed below to access the current KV.
+            *self = unsafe { Handle::new_edge(ptr::read(&node), idx + 1) };
+            // SAFETY: `idx < node.len()`.
+            f(&unsafe { Handle::new_kv(node, idx) }.forget_node_type())
+        } else {
+            let kv = super::mem::replace(self, |leaf_edge| {
+                let kv = leaf_edge.next_kv().ok().unwrap();
+                // SAFETY: The copy of `kv` is only used to form the next edge
+                (unsafe { ptr::read(&kv) }.next_leaf_edge(), kv)
+            });
+            f(&kv)
+        }
+    }
+
+    /// # Safety
+    /// - There must be another KV in the direction travelled.
+    /// - The KV produced by this call must not be aliased by any other
+    ///   live mutable reference
+    unsafe fn perform_next_back_unchecked<F, R>(&mut self, f: F) -> R
+    where
+        F: Fn(&Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::KV>) -> R,
+    {
+        let idx = self.idx();
+        // The fast path when the next KV is still in the same node
+        if idx > 0 {
+            // SAFETY: `self` will be replaced below
+            let node = unsafe { ptr::read(self) }.into_node();
+            // SAFETY: `0 <= idx - 1 < node.len()`. The copy of `node` is only used
+            // to form the next edge; `node` is consumed below to access the current KV.
+            *self = unsafe { Handle::new_edge(ptr::read(&node), idx - 1) };
+            // SAFETY: `0 <= idx - 1 < node.len()`
+            f(&unsafe { Handle::new_kv(node, idx - 1) }.forget_node_type())
+        } else {
+            let kv = super::mem::replace(self, |leaf_edge| {
+                let kv = leaf_edge.next_back_kv().ok().unwrap();
+                // SAFETY: The copy of `kv` is only used to form the next edge
+                (unsafe { ptr::read(&kv) }.next_back_leaf_edge(), kv)
+            });
+            f(&kv)
+        }
     }
 }
 

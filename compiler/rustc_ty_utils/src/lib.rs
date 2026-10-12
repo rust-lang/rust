@@ -5,7 +5,6 @@
 //! This API is completely unstable and subject to change.
 
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(deref_patterns)]
 #![feature(iterator_try_collect)]
 #![feature(option_into_flat_iter)]

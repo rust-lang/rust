@@ -32,8 +32,8 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Lints for suspicious operations in impls of OpAssign, e.g.
-    /// subtracting elements in an AddAssign impl.
+    /// Lints for suspicious operations in impls of `OpAssign`, e.g.
+    /// subtracting elements in an `AddAssign` impl.
     ///
     /// ### Why is this bad?
     /// This is probably a typo or copy-and-paste error and not intended.
@@ -92,7 +92,7 @@ fn check_expr_inner<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, bin
             ]
                 .iter()
                 .find(|&(ts, _)| ts.iter().any(|&t| Some(trait_id) == cx.tcx.lang_items().get(t)))
-            && count_binops(body.value) == 1
+            && count_binops(&body.value) == 1
     {
         span_lint(
             cx,

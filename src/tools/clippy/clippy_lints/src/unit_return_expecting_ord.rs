@@ -9,18 +9,18 @@ use rustc_span::{BytePos, Span, Symbol, sym};
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for functions that expect closures of type
-    /// Fn(...) -> Ord where the implemented closure returns the unit type.
+    /// `Fn(...) -> Ord` where the implemented closure returns the unit type.
     /// The lint also suggests to remove the semi-colon at the end of the statement if present.
     ///
     /// ### Why is this bad?
     /// Likely, returning the unit type is unintentional, and
-    /// could simply be caused by an extra semi-colon. Since () implements Ord
+    /// could simply be caused by an extra semi-colon. Since `()` implements `Ord`
     /// it doesn't cause a compilation error.
-    /// This is the same reasoning behind the unit_cmp lint.
+    /// This is the same reasoning behind the `unit_cmp` lint.
     ///
     /// ### Known problems
     /// If returning unit is intentional, then there is no
-    /// way of specifying this without triggering needless_return lint
+    /// way of specifying this without triggering `needless_return` lint
     ///
     /// ### Example
     /// ```no_run

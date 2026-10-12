@@ -267,8 +267,8 @@ pub fn cvt_nz(error: libc::c_int) -> io::Result<()> {
 // Current glibc's abort() function unblocks SIGABRT, raises SIGABRT, clears the
 // SIGABRT handler and raises it again, and then starts to get creative.
 //
-// See the public documentation for `intrinsics::abort()` and `process::abort()`
-// for further discussion.
+// See the public documentation for `intrinsics::abort_immediate()` and
+// `process::abort()` for further discussion.
 //
 // There is confusion about whether libc::abort() flushes stdio streams.
 // libc::abort() is required by ISO C 99 (7.14.1.1p5) to be async-signal-safe,

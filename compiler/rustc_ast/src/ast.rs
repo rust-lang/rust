@@ -124,6 +124,11 @@ impl StableHash for Path {
         self.segments.len().stable_hash(hcx, hasher);
         for segment in &self.segments {
             segment.ident.stable_hash(hcx, hasher);
+            if segment.args.is_some() {
+                // This should never happen, because Path::stable_hash is only used for attributes,
+                // which never have generic args. Check that to make sure, though.
+                panic!("Paths with generic args should not appear in incremental state");
+            }
         }
     }
 }
@@ -4072,7 +4077,7 @@ pub struct TestBinderBody {
     pub exists: ThinVec<TestBinderExists>,
     pub constraints: Vec<TestBinderConstraint>,
     /// These are not where clauses, but rather predicates within the body to be proven
-    pub predicates: Vec<WhereClause>,
+    pub predicates: Vec<WherePredicate>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
@@ -4099,6 +4104,9 @@ pub enum TestBinderConstraint {
     },
     Or {
         items: ThinVec<TestBinderConstraint>,
+    },
+    Ambiguity {
+        span: Span,
     },
     Lifetime {
         #[visitable(extra = LifetimeCtxt::Bound)]

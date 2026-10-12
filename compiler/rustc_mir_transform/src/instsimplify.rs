@@ -256,7 +256,7 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
                 ),
             ))),
         ));
-        terminator.kind = TerminatorKind::Goto { target: *destination_block };
+        terminator.kind = TerminatorKind::goto(*destination_block);
     }
 
     /// Simplify `size_of_val` and `align_of_val` if we don't actually need
@@ -314,7 +314,7 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
                     Rvalue::Use(const_op, WithRetag::Yes),
                 ))),
             ));
-            terminator.kind = TerminatorKind::Goto { target: *destination_block };
+            terminator.kind = TerminatorKind::goto(*destination_block);
         }
     }
 
@@ -371,7 +371,7 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
                     Rvalue::BinaryOp(BinOp::Eq, Box::new((lhs_op, rhs_op))),
                 ))),
             ));
-            terminator.kind = TerminatorKind::Goto { target: *destination_block };
+            terminator.kind = TerminatorKind::goto(*destination_block);
         }
     }
 
@@ -421,7 +421,7 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
             }
             Some(false) => {
                 // If we know the assert does not panic, turn the call into a Goto
-                terminator.kind = TerminatorKind::Goto { target: target_block };
+                terminator.kind = TerminatorKind::goto(target_block);
             }
         }
     }

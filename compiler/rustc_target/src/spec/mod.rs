@@ -1702,6 +1702,9 @@ supported_targets! {
     ("i686-oe-linux-gnu", i686_oe_linux_gnu),
     ("riscv64-oe-linux-gnu", riscv64_oe_linux_gnu),
     ("x86_64-oe-linux-gnu", x86_64_oe_linux_gnu),
+
+    ("aarch64-unknown-hyperlight", aarch64_unknown_hyperlight),
+    ("x86_64-unknown-hyperlight", x86_64_unknown_hyperlight),
 }
 
 /// Cow-Vec-Str: Cow<'static, [Cow<'static, str>]>
@@ -1857,6 +1860,7 @@ crate::target_spec_enum! {
         Hermit = "hermit",
         Horizon = "horizon",
         Hurd = "hurd",
+        Hyperlight = "hyperlight",
         Illumos = "illumos",
         IOs = "ios",
         L4Re = "l4re",
@@ -2537,7 +2541,7 @@ pub struct TargetOptions {
     /// rustc and not forwarded to LLVM.
     pub rustc_abi: Option<RustcAbi>,
 
-    /// Whether or not RelaxElfRelocation flag will be passed to the linker
+    /// Whether or not X86RelaxRelocations flag will be passed to LLVM (x86 only).
     pub relax_elf_relocations: bool,
 
     /// Additional arguments to pass to LLVM, similar to the `-C llvm-args` codegen option.

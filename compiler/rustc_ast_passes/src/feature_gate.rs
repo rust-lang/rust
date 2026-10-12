@@ -5,6 +5,7 @@ use rustc_attr_parsing::AttributeParser;
 use rustc_errors::msg;
 use rustc_feature::{DependentFeature, Features};
 use rustc_session::Session;
+use rustc_session::config::NextSolverConfig;
 use rustc_session::diagnostics::{feature_err, feature_warn};
 use rustc_span::{Span, Spanned, sym};
 
@@ -410,6 +411,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     check_incompatible_features(sess, features);
     check_dependent_features(sess, features);
     warn_next_solver_and_gce(sess, features);
+    warn_next_solver_and_higher_ranked_assumptions(sess);
     check_features_requiring_new_solver(sess, features);
 
     let mut visitor = PostExpansionVisitor { sess, features };
@@ -698,12 +700,12 @@ fn check_dependent_features(sess: &Session, features: &Features) {
 }
 
 fn warn_next_solver_and_gce(sess: &Session, features: &Features) {
-    if !sess.opts.unstable_opts.next_solver.globally {
+    if sess.opts.unstable_opts.next_solver != NextSolverConfig::Globally {
         return;
     }
 
-    // Warn people who uses GCE and -Znext-solver=globally
-    // that their trait solver was downgraded to -Znext-solver=no
+    // Warn people who use GCE and -Znext-solver=globally
+    // that their trait solver was downgraded to -Znext-solver=coherence
     if let Some(gce_span) = features
         .enabled_lang_features()
         .iter()
@@ -715,8 +717,18 @@ fn warn_next_solver_and_gce(sess: &Session, features: &Features) {
     }
 }
 
+fn warn_next_solver_and_higher_ranked_assumptions(sess: &Session) {
+    // Warn people who use -Zhigher-ranked-assumptions and -Znext-solver=globally
+    // that their trait solver was downgraded to -Znext-solver=coherence
+    if sess.opts.unstable_opts.next_solver == NextSolverConfig::Globally
+        && sess.opts.unstable_opts.higher_ranked_assumptions
+    {
+        sess.dcx().emit_warn(diagnostics::NextSolverDisabledForHigherRankedAssumptions);
+    }
+}
+
 fn check_features_requiring_new_solver(sess: &Session, features: &Features) {
-    if sess.opts.unstable_opts.next_solver.globally {
+    if sess.opts.unstable_opts.next_solver == NextSolverConfig::Globally {
         return;
     }
 

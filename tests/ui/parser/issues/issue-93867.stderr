@@ -4,9 +4,13 @@ error: expected one of `,` or `>`, found `K`
 LL | pub fn entry<'a, K, V>() -> Entry<'a K, V> {
    |                                      ^ expected one of `,` or `>`
    |
-help: you might have meant to end the type parameters here
+help: you might have meant to write a reference type here
    |
-LL | pub fn entry<'a, K, V>() -> Entry<'a> K, V> {
+LL | pub fn entry<'a, K, V>() -> Entry<&'a K, V> {
+   |                                   +
+help: use a comma to separate type parameters
+   |
+LL | pub fn entry<'a, K, V>() -> Entry<'a, K, V> {
    |                                     +
 
 error: aborting due to 1 previous error

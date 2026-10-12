@@ -1,3 +1,8 @@
+//! Tests that `-Zstaticlib-rename-internal-symbols` renames internal symbols on COFF targets
+//! while leaving exported symbols untouched, taking COFF decoration (i686 cdecl `_` /
+//! stdcall `_@N` / fastcall `@N` / vectorcall `@@N`, Arm64EC text `#`) into account so decorated
+//! exported symbols are neither renamed nor missed.
+
 //@ only-windows
 //@ ignore-cross-compile
 
@@ -7,9 +12,12 @@ use run_make_support::object::read::archive::ArchiveFile;
 use run_make_support::object::read::coff::ImageSymbol as _;
 use run_make_support::object::{File, pe};
 use run_make_support::path_helpers::source_root;
-use run_make_support::{cc, extra_c_flags, rfs, run, rustc, static_lib_name};
+use run_make_support::{
+    cc, extra_c_flags, is_windows_msvc, rfs, run, rustc, static_lib_name, target,
+};
 
-const EXPORTED: &[&str] = &["my_add", "my_hash_lookup", "call_internal", "my_safe_div"];
+/// The undecorated exported names of the base fixture (`lib.rs`).
+const BASE_EXPORTED: &[&str] = &["my_add", "my_hash_lookup", "call_internal", "my_safe_div"];
 
 fn main() {
     let hide_sibling = source_root().join("tests/run-make/staticlib-hide-internal-symbols");
@@ -24,65 +32,49 @@ fn main() {
     test_rs_suffix_present();
     test_dual_staticlib_linking();
     test_hide_and_rename();
+    test_decorated_symbols();
+}
+
+/// Compile `<crate_name>.rs` into a staticlib under `-Zstaticlib-rename-internal-symbols`.
+fn compile_staticlib(crate_name: &str) -> String {
+    let lib_name = static_lib_name(crate_name);
+    rustc()
+        .input(format!("{crate_name}.rs"))
+        .crate_type("staticlib")
+        .arg("-Zstaticlib-rename-internal-symbols")
+        .opt()
+        .run();
+    lib_name
+}
+
+/// Link `main_c` against `libs` into `exe`, then run it.
+fn link_and_run(main_c: &str, libs: &[&str], exe: &str) {
+    let mut cmd = cc();
+    cmd.input(main_c);
+    for lib in libs {
+        cmd.input(*lib);
+    }
+    cmd.out_exe(exe).args(extra_c_flags()).run();
+    run(exe);
 }
 
 fn test_basic_functionality() {
-    let lib_name = static_lib_name("lib");
-
-    rustc()
-        .input("lib.rs")
-        .crate_type("staticlib")
-        .arg("-Zstaticlib-rename-internal-symbols")
-        .opt()
-        .run();
-
-    cc().input("main.c").input(&lib_name).out_exe("main").args(extra_c_flags()).run();
-    run("main");
-
-    rfs::remove_file(&lib_name);
+    let lib = compile_staticlib("lib");
+    link_and_run("main.c", &[lib.as_str()], "main");
+    rfs::remove_file(&lib);
 }
 
 fn test_rs_suffix_present() {
-    let lib_name = static_lib_name("lib");
-
-    rustc()
-        .input("lib.rs")
-        .crate_type("staticlib")
-        .arg("-Zstaticlib-rename-internal-symbols")
-        .opt()
-        .run();
-
-    let data = rfs::read(&lib_name);
-    check_rename_symbols(&data);
-
-    rfs::remove_file(&lib_name);
+    let lib = compile_staticlib("lib");
+    let data = rfs::read(&lib);
+    check_rename_symbols(&data, BASE_EXPORTED, MatchMode::Undecorated);
+    rfs::remove_file(&lib);
 }
 
 fn test_dual_staticlib_linking() {
-    let liba_name = static_lib_name("liba");
-    let libb_name = static_lib_name("libb");
-
-    rustc()
-        .input("liba.rs")
-        .crate_type("staticlib")
-        .arg("-Zstaticlib-rename-internal-symbols")
-        .opt()
-        .run();
-
-    rustc()
-        .input("libb.rs")
-        .crate_type("staticlib")
-        .arg("-Zstaticlib-rename-internal-symbols")
-        .opt()
-        .run();
-
-    cc().input("dual_main.c")
-        .input(&liba_name)
-        .input(&libb_name)
-        .out_exe("dual_main")
-        .args(extra_c_flags())
-        .run();
-    run("dual_main");
+    let liba = compile_staticlib("liba");
+    let libb = compile_staticlib("libb");
+    link_and_run("dual_main.c", &[liba.as_str(), libb.as_str()], "dual_main");
 }
 
 /// On COFF, hiding is unsupported and must only produce a warning, while
@@ -103,15 +95,50 @@ fn test_hide_and_rename() {
         .assert_exit_code(0);
 
     let data = rfs::read(&lib_name);
-    check_rename_symbols(&data);
+    check_rename_symbols(&data, BASE_EXPORTED, MatchMode::Undecorated);
 
-    cc().input("main.c").input(&lib_name).out_exe("main").args(extra_c_flags()).run();
-    run("main");
-
+    link_and_run("main.c", &[lib_name.as_str()], "main");
     rfs::remove_file(&lib_name);
 }
 
-fn check_rename_symbols(archive_data: &[u8]) {
+/// Assert the stdcall/fastcall/vectorcall exports (`_@N` / `@N` / `@@N`) don't get renamed
+/// into their undecorated form.
+fn test_decorated_symbols() {
+    let lib = compile_staticlib("decorated_lib");
+    let data = rfs::read(&lib);
+    check_rename_symbols(&data, &decorated_exports(), MatchMode::Raw);
+    rfs::remove_file(&lib);
+}
+
+/// Raw decorated names `decorated_lib.rs` emits: i686 cdecl `_`, stdcall `_@N`, fastcall `@N`,
+/// and vectorcall `@@N` (MSVC x86/x86_64 only).
+fn decorated_exports() -> Vec<&'static str> {
+    let mut exports = if target().starts_with("i686") {
+        vec![
+            "_decorated_cdecl",
+            "_decorated_calls_internal",
+            "_decorated_stdcall@8",
+            "@decorated_fastcall@8",
+        ]
+    } else {
+        vec!["decorated_cdecl", "decorated_calls_internal"]
+    };
+    if is_windows_msvc() && (target().starts_with("i686") || target().starts_with("x86_64")) {
+        exports.push("decorated_vectorcall@@8");
+    }
+    exports
+}
+
+/// How exported symbol names are matched against the object file's symbol table.
+#[derive(Clone, Copy)]
+enum MatchMode {
+    /// Strip the target's leading prefix (`_` i686 cdecl, `#` Arm64EC text) before matching.
+    Undecorated,
+    /// Match raw object-file names verbatim.
+    Raw,
+}
+
+fn check_rename_symbols(archive_data: &[u8], exported: &[&str], mode: MatchMode) {
     let archive = ArchiveFile::parse(archive_data).unwrap();
     let mut found_exported = HashSet::new();
     let mut found_rs_suffix = false;
@@ -125,19 +152,29 @@ fn check_rename_symbols(archive_data: &[u8]) {
         // parse directly from the borrowed slice.
         let data = member.data(archive_data).unwrap();
         match File::parse(data) {
-            Ok(File::Coff(f)) => {
-                check_coff_symbols(f.coff_header(), data, &mut found_exported, &mut found_rs_suffix)
-            }
-            Ok(File::CoffBig(f)) => {
-                check_coff_symbols(f.coff_header(), data, &mut found_exported, &mut found_rs_suffix)
-            }
+            Ok(File::Coff(f)) => check_coff_symbols(
+                f.coff_header(),
+                data,
+                exported,
+                mode,
+                &mut found_exported,
+                &mut found_rs_suffix,
+            ),
+            Ok(File::CoffBig(f)) => check_coff_symbols(
+                f.coff_header(),
+                data,
+                exported,
+                mode,
+                &mut found_exported,
+                &mut found_rs_suffix,
+            ),
             Ok(_) => panic!("unexpected object file format in archive member"),
             Err(e) => panic!("failed to parse archive member: {e}"),
         }
     }
 
     assert!(found_rs_suffix, "expected to find at least one renamed symbol with .rs suffix");
-    for expected in EXPORTED {
+    for expected in exported {
         assert!(
             found_exported.contains(*expected),
             "expected to find exported symbol `{expected}` in archive"
@@ -148,6 +185,8 @@ fn check_rename_symbols(archive_data: &[u8]) {
 fn check_coff_symbols<Coff: run_make_support::object::read::coff::CoffHeader>(
     header: &Coff,
     data: &[u8],
+    exported: &[&str],
+    mode: MatchMode,
     found_exported: &mut HashSet<String>,
     found_rs_suffix: &mut bool,
 ) {
@@ -178,18 +217,19 @@ fn check_coff_symbols<Coff: run_make_support::object::read::coff::CoffHeader>(
         let Ok(name_bytes) = symbol.name(strings) else { continue };
         let Ok(mut name) = str::from_utf8(name_bytes).map(String::from) else { continue };
 
-        // Adjust for various symbol decorations.
-        match header.machine() {
-            pe::IMAGE_FILE_MACHINE_I386 => {
-                name = name.strip_prefix('_').unwrap_or(&name).to_string();
+        if matches!(mode, MatchMode::Undecorated) {
+            match header.machine() {
+                pe::IMAGE_FILE_MACHINE_I386 => {
+                    name = name.strip_prefix('_').unwrap_or(&name).to_string();
+                }
+                pe::IMAGE_FILE_MACHINE_ARM64EC => {
+                    name = name.strip_prefix('#').unwrap_or(&name).to_string();
+                }
+                _ => {}
             }
-            pe::IMAGE_FILE_MACHINE_ARM64EC => {
-                name = name.strip_prefix('#').unwrap_or(&name).to_string();
-            }
-            _ => {}
         }
 
-        if EXPORTED.contains(&name.as_str()) {
+        if exported.contains(&name.as_str()) {
             assert!(
                 !name.contains(".rs"),
                 "exported symbol `{name}` should not contain .rs suffix"

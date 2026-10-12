@@ -14,7 +14,7 @@ fn generic_in_place(_1: *mut Box<[T]>) -> () {
                     scope 5 {
                         scope 18 (inlined Layout::size) {
                         }
-                        scope 19 (inlined std::ptr::Unique::<[T]>::cast::<u8>) {
+                        scope 19 (inlined boxed::BoxRaw::<[T]>::cast::<u8>) {
                             let mut _8: std::ptr::NonNull<u8>;
                             scope 20 (inlined NonNull::<[T]>::cast::<u8>) {
                                 let mut _7: *mut u8;
@@ -22,8 +22,8 @@ fn generic_in_place(_1: *mut Box<[T]>) -> () {
                                 }
                             }
                         }
-                        scope 22 (inlined <NonNull<u8> as From<std::ptr::Unique<u8>>>::from) {
-                            scope 23 (inlined std::ptr::Unique::<u8>::as_non_null_ptr) {
+                        scope 22 (inlined boxed::<impl From<boxed::BoxRaw<u8>> for NonNull<u8>>::from) {
+                            scope 23 (inlined boxed::BoxRaw::<u8>::as_non_null_ptr) {
                             }
                         }
                         scope 24 (inlined <std::alloc::Global as Allocator>::deallocate) {
@@ -41,7 +41,7 @@ fn generic_in_place(_1: *mut Box<[T]>) -> () {
                             }
                         }
                     }
-                    scope 6 (inlined std::ptr::Unique::<[T]>::as_ptr) {
+                    scope 6 (inlined boxed::BoxRaw::<[T]>::as_ptr) {
                         scope 7 (inlined NonNull::<[T]>::as_ptr) {
                         }
                     }
@@ -77,7 +77,7 @@ fn generic_in_place(_1: *mut Box<[T]>) -> () {
         StorageLive(_5);
         StorageLive(_8);
         StorageLive(_2);
-        _2 = copy (((*_1).0: std::ptr::Unique<[T]>).0: std::ptr::NonNull<[T]>);
+        _2 = copy (((*_1).0: std::boxed::BoxRaw<[T]>).0: std::ptr::NonNull<[T]>);
         StorageLive(_4);
         _3 = copy _2 as *mut [T] (Transmute);
         _4 = copy _2 as *const [T] (Transmute);

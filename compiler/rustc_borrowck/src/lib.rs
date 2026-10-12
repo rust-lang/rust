@@ -2,7 +2,6 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(default_field_values)]
 #![feature(deref_patterns)]
 #![feature(file_buffered)]
@@ -232,7 +231,7 @@ pub struct ClosureOutlivesRequirement<'tcx> {
 
 // Make sure this enum doesn't unintentionally grow
 #[cfg(target_pointer_width = "64")]
-rustc_data_structures::static_assert_size!(ConstraintCategory<'_>, 16);
+rustc_data_structures::static_assert_size!(ConstraintCategory<'_>, 24);
 
 /// The subject of a `ClosureOutlivesRequirement` -- that is, the thing
 /// that must outlive some region.
@@ -979,7 +978,7 @@ impl<'a, 'tcx> ResultsVisitor<'tcx, Borrowck<'a, 'tcx>> for MirBorrowckCtxt<'a, 
                 }
             }
 
-            TerminatorKind::Goto { target: _ }
+            TerminatorKind::Goto { target: _, loop_hint_attrs: _ }
             | TerminatorKind::UnwindTerminate(_)
             | TerminatorKind::Unreachable
             | TerminatorKind::UnwindResume

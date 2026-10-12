@@ -341,7 +341,7 @@ impl<'tcx> LateLintPass<'tcx> for FormatArgs<'tcx> {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         if let Some(macro_call) = root_macro_call_first_node(cx, expr)
             && is_format_macro(cx, macro_call.def_id)
-            && let Some(format_args) = self.format_args.get(cx, expr, macro_call.expn)
+            && let Some(mut format_args) = self.format_args.get(cx, expr, macro_call.expn)
         {
             let mut linter = FormatArgsExpr {
                 cx,
@@ -358,8 +358,34 @@ impl<'tcx> LateLintPass<'tcx> for FormatArgs<'tcx> {
             linter.check_trailing_comma();
             linter.check_templates();
 
-            if self.msrv.meets(cx, msrvs::FORMAT_ARGS_CAPTURE) {
-                linter.check_uninlined_args();
+            if !self.msrv.meets(cx, msrvs::FORMAT_ARGS_CAPTURE) {
+                return;
+            }
+
+            let mut uninlined_queue = vec![];
+            loop {
+                if linter.check_uninlined_args() {
+                    break;
+                }
+
+                uninlined_queue.extend(self.format_args.get_nested(format_args));
+                if let Some(inner_format_args) = uninlined_queue.pop() {
+                    format_args = inner_format_args;
+
+                    linter = FormatArgsExpr {
+                        cx,
+                        expr,
+                        macro_call: &macro_call,
+                        format_args,
+                        ignore_mixed: self.ignore_mixed,
+                        msrv: &self.msrv,
+                        ty_msrv_map: &self.ty_msrv_map,
+                        has_derived_debug: &mut self.has_derived_debug,
+                        has_pointer_format: &mut self.has_pointer_format,
+                    };
+                } else {
+                    break;
+                }
             }
         }
     }
@@ -575,16 +601,16 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
         }
     }
 
-    fn check_uninlined_args(&self) {
+    fn check_uninlined_args(&self) -> bool {
         if self.format_args.span.from_expansion() {
-            return;
+            return false;
         }
         if self.macro_call.span.edition() < Edition2021
             && (is_panic(self.cx, self.macro_call.def_id) || is_assert_macro(self.cx, self.macro_call.def_id))
         {
             // panic!, assert!, and debug_assert! before 2021 edition considers a single string argument as
             // non-format
-            return;
+            return false;
         }
 
         let mut fixes = Vec::new();
@@ -595,12 +621,12 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
         // Example of an un-inlinable format:  print!("{}{1}", foo, 2)
         for (pos, usage) in self.format_arg_positions() {
             if !self.check_one_arg(pos, usage, &mut fixes) {
-                return;
+                return !fixes.is_empty();
             }
         }
 
         if fixes.is_empty() {
-            return;
+            return false;
         }
 
         // multiline span display suggestion is sometimes broken: https://github.com/rust-lang/rust/pull/102729#discussion_r988704308
@@ -627,6 +653,8 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
                 );
             },
         );
+
+        true
     }
 
     fn check_one_arg(&self, pos: &FormatArgPosition, usage: FormatParamUsage, fixes: &mut Vec<(Span, String)>) -> bool {

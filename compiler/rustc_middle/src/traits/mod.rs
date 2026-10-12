@@ -137,8 +137,8 @@ impl<'tcx> ObligationCause<'tcx> {
     pub fn to_constraint_category(&self) -> ConstraintCategory<'tcx> {
         match self.code() {
             ObligationCauseCode::MatchImpl(cause, _) => cause.to_constraint_category(),
-            ObligationCauseCode::AscribeUserTypeProvePredicate(predicate_span) => {
-                ConstraintCategory::Predicate(*predicate_span)
+            ObligationCauseCode::AscribeUserTypeProvePredicate(predicate_span, def_id) => {
+                ConstraintCategory::Predicate(*predicate_span, *def_id)
             }
             _ => ConstraintCategory::BoringNoLocation,
         }
@@ -238,7 +238,7 @@ pub enum ObligationCauseCode<'tcx> {
     /// Return type must be `Sized`.
     SizedReturnType,
     /// Return type of a call expression must be `Sized`.
-    SizedCallReturnType,
+    SizedCallReturnType(HirId),
     /// Yield type must be `Sized`.
     SizedYieldType,
     /// Inline asm operand type must be `Sized`.
@@ -384,7 +384,7 @@ pub enum ObligationCauseCode<'tcx> {
     /// This is purely for diagnostic purposes - it is always
     /// correct to use `Misc` instead, or to specify
     /// `WellFormed(None)`.
-    WellFormed(Option<WellFormedLoc>),
+    WellFormed(WellFormedLoc),
 
     /// From `match_impl`. The cause for us having to match an impl, and the DefId we are matching
     /// against.
@@ -402,7 +402,7 @@ pub enum ObligationCauseCode<'tcx> {
         output_ty: Option<Ty<'tcx>>,
     },
 
-    AscribeUserTypeProvePredicate(Span),
+    AscribeUserTypeProvePredicate(Span, DefId),
 
     RustCall,
 
@@ -461,6 +461,8 @@ pub enum WellFormedLoc {
         /// being the last 'parameter'
         param_idx: usize,
     },
+    HirId(HirId),
+    None,
 }
 
 impl<'tcx> ObligationCauseCode<'tcx> {

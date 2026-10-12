@@ -9,7 +9,6 @@ fn main() {
     Some([0]).map(|s| {
     //~^ ERROR the size for values of type `[{integer}]` cannot be known at compilation time
     //~| ERROR the size for values of type `[{integer}]` cannot be known at compilation time
-    //~| ERROR the size for values of type `[{integer}]` cannot be known at compilation time
         let _ = &x;
         s[..]
     });

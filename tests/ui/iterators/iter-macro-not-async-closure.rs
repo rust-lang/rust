@@ -1,3 +1,9 @@
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
+//@[next] known-bug: trait-system-refactor-initiative#302
+//@[next] check-pass
+
 // This test ensures iterators created with the `iter!` macro are not
 // accidentally async closures.
 //
@@ -23,11 +29,8 @@ fn main() {
     }};
 
     let x = pin!(call_async_once(f));
-    //~^ ERROR AsyncFnOnce()` is not satisfied
-    //~^^ ERROR AsyncFnOnce()` is not satisfied
-    //~^^^ ERROR AsyncFnOnce()` is not satisfied
-    //~^^^^ ERROR AsyncFnOnce()` is not satisfied
-    //~^^^^^ ERROR AsyncFnOnce()` is not satisfied
+    //[current]~^ ERROR AsyncFnOnce()` is not satisfied
+    //[current]~| ERROR AsyncFnOnce()` is not satisfied
     x.poll(&mut Context::from_waker(Waker::noop()));
-    //~^ ERROR AsyncFnOnce()` is not satisfied
+    //[current]~^ ERROR AsyncFnOnce()` is not satisfied
 }

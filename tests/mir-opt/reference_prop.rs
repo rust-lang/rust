@@ -776,6 +776,36 @@ fn maybe_dead(m: bool) {
     }
 }
 
+#[custom_mir(dialect = "runtime", phase = "post-cleanup")]
+fn maybe_dead_field_reborrow(m: bool) -> i32 {
+    // CHECK-LABEL: fn maybe_dead_field_reborrow(
+    // CHECK: [[r:_.*]] = &mut {{_.*}};
+    // CHECK: ((*[[r]]).0: i32) = const 1_i32;
+
+    use std::intrinsics::mir::*;
+    mir! {
+        let x: (i32, i32);
+        let r: &mut (i32, i32);
+        let r2: &mut i32;
+        {
+            StorageLive(x);
+            x = (0, 0);
+            r = &mut x;
+            (*r).0 = 1;
+            r2 = &mut (*r).0;
+            match m { true => bb1, _ => bb2 }
+        }
+        bb1 = {
+            StorageDead(x);
+            Goto(bb2)
+        }
+        bb2 = {
+            RET = *r2;
+            Return()
+        }
+    }
+}
+
 fn mut_raw_then_mut_shr() -> (i32, i32) {
     // CHECK-LABEL: fn mut_raw_then_mut_shr(
     // CHECK-NOT: (*{{_.*}})
@@ -875,6 +905,7 @@ fn main() {
     multiple_storage();
     dominate_storage();
     maybe_dead(true);
+    maybe_dead_field_reborrow(true);
     mut_raw_then_mut_shr();
     unique_with_copies();
     debuginfo();
@@ -889,6 +920,7 @@ fn main() {
 // EMIT_MIR reference_prop.multiple_storage.ReferencePropagation.diff
 // EMIT_MIR reference_prop.dominate_storage.ReferencePropagation.diff
 // EMIT_MIR reference_prop.maybe_dead.ReferencePropagation.diff
+// EMIT_MIR reference_prop.maybe_dead_field_reborrow.ReferencePropagation.diff
 // EMIT_MIR reference_prop.mut_raw_then_mut_shr.ReferencePropagation.diff
 // EMIT_MIR reference_prop.unique_with_copies.ReferencePropagation.diff
 // EMIT_MIR reference_prop.debuginfo.ReferencePropagation.diff

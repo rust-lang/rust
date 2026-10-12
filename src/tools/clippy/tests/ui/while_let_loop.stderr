@@ -1,3 +1,12 @@
+warning: label name `'cool` shadows a label name that is already in scope
+  --> tests/ui/while_let_loop.rs:315:21
+   |
+LL |     'cool: loop {
+   |     ----- first declared here
+...
+LL |             None => 'cool: {
+   |                     ^^^^^ label `'cool` already in scope
+
 error: this loop could be written as a `while let` loop
   --> tests/ui/while_let_loop.rs:6:5
    |
@@ -186,5 +195,37 @@ LL +         ..
 LL +     }
    |
 
-error: aborting due to 12 previous errors
+error: this loop could be written as a `while let` loop
+  --> tests/ui/while_let_loop.rs:280:5
+   |
+LL | /     'cool: loop {
+LL | |
+LL | |         match it.next() {
+LL | |             Some(_) => {},
+...  |
+LL | |     }
+   | |_____^ help: try: `'cool: while let Some(_) = it.next() { .. }`
+
+error: this loop could be written as a `while let` loop
+  --> tests/ui/while_let_loop.rs:291:5
+   |
+LL | /     'outer: loop {
+LL | |
+LL | |         if let Some(x) = it.next() {
+LL | |             println!("{x}");
+...  |
+LL | |     }
+   | |_____^ help: try: `'outer: while let Some(x) = it.next() { .. }`
+
+error: this loop could be written as a `while let` loop
+  --> tests/ui/while_let_loop.rs:303:5
+   |
+LL | /     'outer: loop {
+LL | |
+LL | |         let Some(x) = it.next() else { break 'outer };
+LL | |         println!("{x}");
+LL | |     }
+   | |_____^ help: try: `'outer: while let Some(x) = it.next() { .. }`
+
+error: aborting due to 15 previous errors; 1 warning emitted
 

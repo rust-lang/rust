@@ -1,5 +1,5 @@
-// wasm32 does not support benches (no time).
-#![cfg(not(target_arch = "wasm32"))]
+// wasm*-unknown-unknown does not support benches (no time).
+#![cfg(all(target_family = "wasm", target_os = "unknown"))]
 // This is marked as `test = true` and hence picked up by `./x miri`, but that would be too slow.
 #![cfg(not(miri))]
 #![feature(flt2dec)]

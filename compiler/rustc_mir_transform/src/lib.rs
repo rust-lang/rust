@@ -483,6 +483,12 @@ fn mir_promoted(
         Some(MirPhase::Analysis(AnalysisPhase::Initial)),
     );
 
+    // Avoid over-capacity in the vectors of basic blocks, which can take up substantial memory.
+    // This costs a tiny bit of performance to save a lot of memory.
+    for bb in body.basic_blocks.as_mut_preserves_cfg() {
+        bb.statements.shrink_to_fit();
+    }
+
     lint_tail_expr_drop_order::run_lint(tcx, def, &body);
 
     let promoted = promote_pass.promoted_fragments.into_inner();

@@ -96,21 +96,21 @@ LL |         fn(#[rustc_splat] (u32, i8), #[rustc_splat] (u32, i8)) = multisplat
    = help: remove `#[rustc_splat]` from all but one argument
 
 error: multiple `#[rustc_splat]`s are not allowed in the same function argument list
-  --> $DIR/splat-invalid.rs:75:9
+  --> $DIR/splat-invalid.rs:76:9
    |
 LL |         #[rustc_splat]
    |         ^^^^^^^^^^^^^^
 LL |
 LL |         #[rustc_splat]
    |         ^^^^^^^^^^^^^^
-LL |         (u32, i8),
+...
 LL |         #[rustc_splat] (u32, i8),
    |         ^^^^^^^^^^^^^^
    |
    = help: remove `#[rustc_splat]` from all but one argument
 
 error: `...` and `#[rustc_splat]` are not allowed in the same function argument list
-  --> $DIR/splat-invalid.rs:82:47
+  --> $DIR/splat-invalid.rs:84:47
    |
 LL |     let splat_variadic_: unsafe extern "C" fn(#[rustc_splat] (u32, i8), ...) = splat_variadic;
    |                                               ^^^^^^^^^^^^^^            ^^^
@@ -118,13 +118,13 @@ LL |     let splat_variadic_: unsafe extern "C" fn(#[rustc_splat] (u32, i8), ...
    = help: remove `#[rustc_splat]` or remove `...`
 
 error: `...` must be the last argument of a C-variadic function
-  --> $DIR/splat-invalid.rs:84:48
+  --> $DIR/splat-invalid.rs:86:48
    |
 LL |     let splat_variadic2_: unsafe extern "C" fn(..., #[rustc_splat] (u32, i8)) = splat_variadic2;
    |                                                ^^^
 
 error: `...` and `#[rustc_splat]` are not allowed in the same function argument list
-  --> $DIR/splat-invalid.rs:84:48
+  --> $DIR/splat-invalid.rs:86:48
    |
 LL |     let splat_variadic2_: unsafe extern "C" fn(..., #[rustc_splat] (u32, i8)) = splat_variadic2;
    |                                                ^^^  ^^^^^^^^^^^^^^
@@ -155,6 +155,30 @@ note: attribute also specified here
 LL |     #[rustc_splat]
    |     ^^^^^^^^^^^^^^
 
+error: multiple `rustc_splat` attributes
+  --> $DIR/splat-invalid.rs:71:9
+   |
+LL |         #[rustc_splat]
+   |         ^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/splat-invalid.rs:70:9
+   |
+LL |         #[rustc_splat]
+   |         ^^^^^^^^^^^^^^
+
+error: multiple `rustc_splat` attributes
+  --> $DIR/splat-invalid.rs:78:9
+   |
+LL |         #[rustc_splat]
+   |         ^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/splat-invalid.rs:76:9
+   |
+LL |         #[rustc_splat]
+   |         ^^^^^^^^^^^^^^
+
 error[E0053]: method `has_splat` has an incompatible type for trait
   --> $DIR/splat-invalid.rs:59:5
    |
@@ -183,6 +207,6 @@ LL |     fn no_splat(_: (u32, f64));
    = note: expected signature `fn((_, _))`
               found signature `fn(#[rustc_splat] (_, _))`
 
-error: aborting due to 19 previous errors
+error: aborting due to 21 previous errors
 
 For more information about this error, try `rustc --explain E0053`.

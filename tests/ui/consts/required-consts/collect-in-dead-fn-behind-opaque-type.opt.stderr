@@ -1,6 +1,7 @@
 error[E0080]: evaluation panicked: explicit panic
   --> $DIR/collect-in-dead-fn-behind-opaque-type.rs:11:23
    |
+LL |     impl<T> Fail<T> {
 LL |         const C: () = panic!();
    |                       ^^^^^^^^ evaluation of `m::Fail::<i32>::C` failed here
 

@@ -12,11 +12,17 @@ LL |     inner(0, n)
 note: [... 125 additional calls inside `inner` ...]
   --> $DIR/ctfe-id-unlimited.rs:17:41
    |
+LL | const fn rec_id(n: u32) -> u32 {
+LL |     const fn inner(acc: u32, n: u32) -> u32 {
+...
 LL |             #[cfg(return_)] _ => return inner(acc + 1, n - 1),
    |                                         ^^^^^^^^^^^^^^^^^^^^^
 note: inside `inner`
   --> $DIR/ctfe-id-unlimited.rs:17:41
    |
+LL | const fn rec_id(n: u32) -> u32 {
+LL |     const fn inner(acc: u32, n: u32) -> u32 {
+...
 LL |             #[cfg(return_)] _ => return inner(acc + 1, n - 1),
    |                                         ^^^^^^^^^^^^^^^^^^^^^ the failure occurred here
 

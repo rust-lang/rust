@@ -436,7 +436,7 @@ impl LateLintPass<'_> for MissingAssertsForIndexing {
     fn check_body(&mut self, cx: &LateContext<'_>, body: &Body<'_>) {
         let mut map = UnindexMap::default();
 
-        for_each_expr_without_closures(body.value, |expr| {
+        for_each_expr_without_closures(&body.value, |expr| {
             check_index(cx, expr, &mut map);
             check_assert(cx, expr, &mut map);
             ControlFlow::<!, ()>::Continue(())

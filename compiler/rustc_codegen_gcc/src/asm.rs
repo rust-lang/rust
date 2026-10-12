@@ -12,6 +12,7 @@ use rustc_codegen_ssa::traits::{
     AsmBuilderMethods, AsmCodegenMethods, BaseTypeCodegenMethods, BuilderMethods,
     GlobalAsmOperandRef, InlineAsmOperandRef,
 };
+use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::mir::interpret::{GlobalAlloc, PointerArithmetic, Scalar};
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::layout::LayoutOf;
@@ -146,8 +147,8 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         // Clobbers collected from `out("explicit register") _` and `inout("explicit_reg") var => _`
         let mut clobbers = vec![];
 
-        // Symbols name that needs to be inserted to asm const ptr template string.
-        let mut const_syms = vec![];
+        // Symbol names to insert in the template for the const ptr operands, by operand index.
+        let mut const_syms = FxHashMap::default();
 
         // We're trying to preallocate space for the template
         let mut constants_len = 0;
@@ -418,7 +419,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                         let (prov, _) = ptr.prov_and_relative_offset();
                         let global_alloc = self.tcx.global_alloc(prov.alloc_id());
                         let (val, sym) = self.cx.alloc_to_backend(global_alloc, true).unwrap();
-                        const_syms.push(sym.unwrap());
+                        const_syms.insert(rust_idx, sym.unwrap());
                         inputs.push(AsmInOperand { constraint: "X".into(), rust_idx, val });
                     }
                 },
@@ -518,7 +519,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
 
                                 Scalar::Ptr(ptr, _) => {
                                     let (_, offset) = ptr.prov_and_relative_offset();
-                                    let sym = const_syms.remove(0);
+                                    let sym = const_syms[&operand_idx];
                                     // FIXME(@Amanieu): Additional mangling is needed on
                                     // some targets to add a leading underscore (Mach-O)
                                     // or byte count suffixes (x86 Windows).

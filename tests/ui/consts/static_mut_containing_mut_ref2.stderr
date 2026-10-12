@@ -1,6 +1,7 @@
 error[E0080]: modifying a static's initial value from another static's initializer
   --> $DIR/static_mut_containing_mut_ref2.rs:6:5
    |
+LL | pub static mut STDERR_BUFFER: () = unsafe {
 LL |     *(&mut STDERR_BUFFER_SPACE) = 42;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `STDERR_BUFFER` failed here
 

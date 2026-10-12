@@ -1957,7 +1957,7 @@ pub struct BodyId {
 #[derive(Debug, Clone, Copy, StableHash)]
 pub struct Body<'hir> {
     pub params: &'hir [Param<'hir>],
-    pub value: &'hir Expr<'hir>,
+    pub value: Expr<'hir>,
 }
 
 impl<'hir> Body<'hir> {
@@ -4556,6 +4556,7 @@ pub struct TestBinderExists<'hir> {
 pub enum TestBinderConstraint<'hir> {
     And { items: &'hir [TestBinderConstraint<'hir>] },
     Or { items: &'hir [TestBinderConstraint<'hir>] },
+    Ambiguity { span: Span },
     Lifetime { lhs: &'hir Lifetime, rhs: &'hir Lifetime },
     PlaceholderOutlives { lhs: &'hir Ty<'hir>, rhs: &'hir Lifetime },
     AliasOutlives { bound_type_constraint: &'hir TestBinderBoundTypeConstraint<'hir> },
@@ -5274,7 +5275,7 @@ mod size_asserts {
     use super::*;
     // tidy-alphabetical-start
     static_assert_size!(Block<'_>, 48);
-    static_assert_size!(Body<'_>, 24);
+    static_assert_size!(Body<'_>, 80);
     static_assert_size!(Expr<'_>, 64);
     static_assert_size!(ExprKind<'_>, 48);
     static_assert_size!(FnDecl<'_>, 40);

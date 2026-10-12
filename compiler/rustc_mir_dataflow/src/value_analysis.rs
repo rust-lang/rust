@@ -214,17 +214,6 @@ impl<V: Clone + HasBottom> State<V> {
         }
     }
 
-    /// Helper method for assignments to a discriminant.
-    pub fn assign_discr(&mut self, target: PlaceRef<'_>, result: ValueOrPlace<V>, map: &Map<'_>)
-    where
-        V: HasTop,
-    {
-        self.flood_discr(target, map);
-        if let Some(target) = map.find_discr(target) {
-            self.insert_idx(target, result, map);
-        }
-    }
-
     /// Retrieve the value stored for a place, or `None` if it is not tracked.
     fn try_get(&self, place: PlaceRef<'_>, map: &Map<'_>) -> Option<V> {
         let place = map.find(place)?;

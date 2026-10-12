@@ -94,7 +94,7 @@ pub(crate) fn test(input: &Input, options: Options, dcx: DiagCtxtHandle<'_>) -> 
         Input::File(path) => {
             read_to_string(path).map_err(|err| format!("{}: {err}", path.display()))?
         }
-        Input::Str { name: _, input } => input.clone(),
+        Input::Str { name: _, input } | Input::DocTestStr { input, .. } => input.clone(),
     };
 
     // Obviously not a real crate name, but close enough for purposes of doctests.

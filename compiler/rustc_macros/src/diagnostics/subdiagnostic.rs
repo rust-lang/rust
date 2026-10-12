@@ -315,7 +315,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
                     let binding = info.binding.binding.clone();
                     // FIXME(#100717): support `Option<Span>` on `primary_span` like in the
                     // diagnostic derive
-                    if !matches!(info.ty, FieldInnerTy::Plain(_)) {
+                    if !matches!(info.ty, FieldInnerTy::Plain(_) | FieldInnerTy::Option(_)) {
                         throw_invalid_attr!(attr, |diag| {
                             let diag = diag.note("there must be exactly one primary span");
 

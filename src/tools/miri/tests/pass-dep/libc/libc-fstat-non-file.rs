@@ -1,4 +1,4 @@
-//@ignore-target: windows # No libc fstat on non-file FDs on Windows
+//@ignore-target: windows # libc bits exist, but we don't support them
 //@compile-flags: -Zmiri-disable-isolation
 
 use std::mem::MaybeUninit;

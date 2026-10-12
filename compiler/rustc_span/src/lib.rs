@@ -520,7 +520,8 @@ pub enum FileName {
     CliCrateAttr(Hash64),
     /// Custom sources for explicit parser calls from plugins and drivers.
     Custom(String),
-    DocTest(PathBuf, isize),
+    /// Custom path for doctests
+    DocTest(RealFileName, isize),
     /// Post-substitution inline assembly from LLVM.
     InlineAsm(Hash64),
 }
@@ -543,7 +544,7 @@ impl fmt::Display for FileNameDisplay<'_> {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use FileName::*;
         match *self.inner {
-            Real(ref name) => {
+            Real(ref name) | DocTest(ref name, _) => {
                 write!(fmt, "{}", name.to_string_lossy(self.display_pref))
             }
             CfgSpec(_) => write!(fmt, "<cfgspec>"),
@@ -552,7 +553,6 @@ impl fmt::Display for FileNameDisplay<'_> {
             ProcMacroSourceCode(_) => write!(fmt, "<proc-macro source code>"),
             CliCrateAttr(_) => write!(fmt, "<crate attribute>"),
             Custom(ref s) => write!(fmt, "<{s}>"),
-            DocTest(ref path, _) => write!(fmt, "{}", path.display()),
             InlineAsm(_) => write!(fmt, "<inline asm>"),
         }
     }
@@ -643,7 +643,7 @@ impl FileName {
         FileName::CliCrateAttr(hasher.finish())
     }
 
-    pub fn doc_test_source_code(path: PathBuf, line: isize) -> FileName {
+    pub fn doc_test_source_code(path: RealFileName, line: isize) -> FileName {
         FileName::DocTest(path, line)
     }
 
@@ -660,7 +660,7 @@ impl FileName {
     pub fn into_local_path(self) -> Option<PathBuf> {
         match self {
             FileName::Real(path) => path.into_local_path(),
-            FileName::DocTest(path, _) => Some(path),
+            FileName::DocTest(path, _) => path.into_local_path(),
             _ => None,
         }
     }
@@ -1354,6 +1354,20 @@ pub trait SpanEncoder: Encoder {
     fn encode_crate_num(&mut self, crate_num: CrateNum);
     fn encode_def_index(&mut self, def_index: DefIndex);
     fn encode_def_id(&mut self, def_id: DefId);
+
+    fn encode_local_def_id(&mut self, def_id: LocalDefId) {
+        self.encode_def_id(def_id.to_def_id());
+    }
+
+    // `rustc_span` does not reference `rustc_hir_id` (`rustc_hir_id` references `rustc_span` instead),
+    // so we can't use `DefKey` or `DisambiguatedDefPathData` here.
+    fn encode_def_key(&mut self, parent: Option<DefIndex>, disambiguated_data: impl Encodable<Self>)
+    where
+        Self: Sized,
+    {
+        parent.encode(self);
+        disambiguated_data.encode(self);
+    }
 }
 
 impl SpanEncoder for FileEncoder<'_> {
@@ -1409,11 +1423,11 @@ impl SpanEncoder for MemEncoder {
     }
 
     fn encode_expn_id(&mut self, _expn_id: ExpnId) {
-        panic!("cannot encode `ExpnId` with `FileEncoder`");
+        panic!("cannot encode `ExpnId` with `MemEncoder`");
     }
 
     fn encode_syntax_context(&mut self, _syntax_context: SyntaxContext) {
-        panic!("cannot encode `SyntaxContext` with `FileEncoder`");
+        panic!("cannot encode `SyntaxContext` with `MemEncoder`");
     }
 
     fn encode_crate_num(&mut self, crate_num: CrateNum) {
@@ -1421,7 +1435,7 @@ impl SpanEncoder for MemEncoder {
     }
 
     fn encode_def_index(&mut self, _def_index: DefIndex) {
-        panic!("cannot encode `DefIndex` with `FileEncoder`");
+        panic!("cannot encode `DefIndex` with `MemEncoder`");
     }
 
     fn encode_def_id(&mut self, def_id: DefId) {
@@ -1488,6 +1502,12 @@ pub trait BlobDecoder: Decoder {
     fn decode_symbol(&mut self) -> Symbol;
     fn decode_byte_symbol(&mut self) -> ByteSymbol;
     fn decode_def_index(&mut self) -> DefIndex;
+
+    // This function is placed here (not in a `SpanDecoder`),
+    // as during metadata decoding `LocalDefId` is just a wrapper
+    // around `DefIndex`, so it can be decoded without extra knowledge
+    // like crate remapping.
+    fn decode_local_def_id(&mut self) -> LocalDefId;
 }
 
 /// This trait is used to allow decoder specific encodings of certain types.
@@ -1526,6 +1546,10 @@ impl BlobDecoder for MemDecoder<'_> {
 
     fn decode_def_index(&mut self) -> DefIndex {
         panic!("cannot decode `DefIndex` with `MemDecoder`");
+    }
+
+    fn decode_local_def_id(&mut self) -> LocalDefId {
+        self.decode_def_id().expect_local()
     }
 }
 

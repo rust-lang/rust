@@ -1,6 +1,6 @@
 use std::borrow::{Borrow, Cow};
 use std::cell::{Cell, RefCell};
-use std::ffi::{CStr, c_char, c_uint};
+use std::ffi::{CStr, c_uint};
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 use std::str;
@@ -195,33 +195,6 @@ pub(crate) unsafe fn create_module<'ll>(
     let mut target_data_layout = sess.target.data_layout.to_string();
     let llvm_version = llvm_util::get_version();
 
-    if llvm_version < (22, 0, 0) {
-        if sess.target.arch == Arch::Avr {
-            // LLVM 22.0 updated the default layout on avr: https://github.com/llvm/llvm-project/pull/153010
-            target_data_layout = target_data_layout.replace("n8:16", "n8")
-        }
-        if sess.target.arch == Arch::Nvptx64 {
-            // LLVM 22 updated the NVPTX layout to indicate 256-bit vector load/store: https://github.com/llvm/llvm-project/pull/155198
-            target_data_layout = target_data_layout.replace("-i256:256", "");
-        }
-        if sess.target.arch == Arch::PowerPC64 {
-            // LLVM 22 updated the ABI alignment for double on AIX: https://github.com/llvm/llvm-project/pull/144673
-            target_data_layout = target_data_layout.replace("-f64:32:64", "");
-
-            // LLVM 22 fixed the data layout calculation for targets that default to ELFv1
-            // when the ABI is set to ELFv2. With LLVM 21, the ELFv1 datalayout must be used,
-            // which will overalign function entries.
-            // https://github.com/llvm/llvm-project/pull/149725
-            if sess.target.llvm_target == "powerpc64-unknown-linux-gnu" {
-                target_data_layout = target_data_layout.replace("-Fn32", "-Fi64");
-            }
-        }
-        if sess.target.arch == Arch::AmdGpu {
-            // LLVM 22 specified ELF mangling in the amdgpu data layout:
-            // https://github.com/llvm/llvm-project/pull/163011
-            target_data_layout = target_data_layout.replace("-m:e", "");
-        }
-    }
     if llvm_version < (23, 0, 0) {
         if sess.target.arch == Arch::S390x {
             // LLVM 23 updated the s390x layout to specify the stack alignment: https://github.com/llvm/llvm-project/pull/176041
@@ -938,19 +911,11 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
     }
 
     pub(crate) fn get_md_kind_id(&self, name: &str) -> llvm::MetadataKindId {
-        unsafe {
-            llvm::LLVMGetMDKindIDInContext(
-                self.llcx(),
-                name.as_ptr() as *const c_char,
-                name.len() as c_uint,
-            )
-        }
+        unsafe { llvm::LLVMGetMDKindIDInContext(self.llcx(), name.as_ptr(), name.len() as c_uint) }
     }
 
     pub(crate) fn create_metadata(&self, name: &[u8]) -> &'ll Metadata {
-        unsafe {
-            llvm::LLVMMDStringInContext2(self.llcx(), name.as_ptr() as *const c_char, name.len())
-        }
+        unsafe { llvm::LLVMMDStringInContext2(self.llcx(), name.as_ptr(), name.len()) }
     }
 
     pub(crate) fn get_functions(&self) -> Vec<&'ll Value> {
@@ -1261,7 +1226,7 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
 
     /// Helper method for the sequence of calls:
     /// - `LLVMMDNodeInContext2` (to create an `llvm::MDNode` from a list of metadata)
-    /// - `LLVMRustGlobalAddMetadata` (to set that node as metadata of `kind_id` for `global`)
+    /// - `LLVMGlobalAddMetadata` (to set that node as metadata of `kind_id` for `global`)
     pub(crate) fn global_add_metadata_node(
         &self,
         global: &'ll Value,
@@ -1269,7 +1234,7 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
         md_list: &[&'ll Metadata],
     ) {
         let md = self.md_node_in_context(md_list);
-        unsafe { llvm::LLVMRustGlobalAddMetadata(global, kind_id, md) };
+        unsafe { llvm::LLVMGlobalAddMetadata(global, kind_id, md) };
     }
 
     /// Helper method for the sequence of calls:

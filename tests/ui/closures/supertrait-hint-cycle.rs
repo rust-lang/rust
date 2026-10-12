@@ -1,4 +1,8 @@
 //@ edition:2021
+//@ revisions: old next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
+//@[next] ignore-test: trait-system-refactor-initiative#242
 //@ check-pass
 
 #![feature(type_alias_impl_trait)]

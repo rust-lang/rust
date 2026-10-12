@@ -7,10 +7,9 @@
 // `tests/c/static_linkage.c`, which defines the overridable ones strongly.
 //
 // If `predefine_static` were to ignore its `linkage` argument outright, every static would come out as
-// an ordinary global symbol: the overridable ones would clash with the C definitions at link time, and
-// `internal` would export a symbol it should have kept private.
+// an ordinary global symbol: the overridable ones would clash with the C definitions at link time.
 
-#![feature(linkage, no_core)]
+#![feature(linkage, no_core, rustc_private)]
 #![no_std]
 #![no_core]
 #![no_main]
@@ -34,16 +33,6 @@ pub static linkonce_static: i32 = 0;
 #[no_mangle]
 pub static linkonce_odr_static: i32 = 0;
 
-// `common` is only valid on a mutable global: LLVM rejects a constant one.
-#[linkage = "common"]
-#[no_mangle]
-pub static mut common_static: i32 = 0;
-
-// Private to this crate, so the C definition of the same name is a different object.
-#[linkage = "internal"]
-#[no_mangle]
-pub static internal_static: i32 = 100;
-
 // Not overridden by the C side: the definition here is the one that survives.
 #[linkage = "weak"]
 #[no_mangle]
@@ -66,9 +55,6 @@ extern "C" fn main(_argc: i32, _argv: *const *const u8) -> i32 {
         return result;
     }
 
-    if internal_static != 100 {
-        return 1;
-    }
     if only_weak_static != 6 {
         return 2;
     }

@@ -33,10 +33,17 @@ fn main() {
     }
     test_bind_ipv4_invalid_addr_len();
     test_bind_ipv6();
+    test_bind_twice();
+    test_bind_connected();
+    test_bind_listening();
     test_listen();
+    test_listen_connected();
+    test_listen_listening();
 
     test_accept_connect();
     test_connect_error();
+    test_connect_connected();
+    test_connect_listening();
     test_send_peek_recv();
     test_write_read();
     test_readv();
@@ -47,6 +54,7 @@ fn main() {
     test_getsockname_ipv4_unbound();
     test_getsockname_ipv4_connect();
     test_getsockname_ipv6();
+    test_getsockname_ipv6_unbound();
 
     test_getpeername_ipv4();
     test_getpeername_ipv6();
@@ -59,6 +67,7 @@ fn main() {
 
     test_sockopt_sndtimeo();
     test_sockopt_rcvtimeo();
+    test_sockopt_reuseaddr();
 
     test_unblock_after_socket_close();
 }
@@ -126,8 +135,6 @@ fn test_set_reuseaddr_invalid_len() {
     // Value should be of type `libc::c_int` which has size 4 bytes.
     // By providing an u16 of size 2 bytes we trigger an invalid length error.
     let err = net::setsockopt(sockfd, libc::SOL_SOCKET, libc::SO_REUSEADDR, 1u16).unwrap_err();
-    assert_eq!(err.kind(), ErrorKind::InvalidInput);
-    // Check that it is the right kind of `InvalidInput`.
     assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
 
     // By providing an u64 of size 8 bytes the behavior differs between native hosts and Miri.
@@ -135,7 +142,6 @@ fn test_set_reuseaddr_invalid_len() {
     match result {
         Err(err) => {
             // Check that this is the right error.
-            assert_eq!(err.kind(), ErrorKind::InvalidInput);
             assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
         }
         Ok(_) => {
@@ -181,8 +187,6 @@ fn test_set_nosigpipe_invalid_len() {
     // Value should be of type `libc::c_int` which has size 4 bytes.
     // By providing a u16 of size 2 bytes we trigger an invalid length error.
     let err = net::setsockopt(sockfd, libc::SOL_SOCKET, libc::SO_NOSIGPIPE, 1u16).unwrap_err();
-    assert_eq!(err.kind(), ErrorKind::InvalidInput);
-    // Check that it is the right kind of `InvalidInput`.
     assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
 }
 
@@ -201,8 +205,6 @@ fn test_bind_ipv4_invalid_addr_len() {
         ))
         .unwrap_err()
     };
-    assert_eq!(err.kind(), ErrorKind::InvalidInput);
-    // Check that it is the right kind of `InvalidInput`.
     assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
 
     if cfg!(miri) {
@@ -217,8 +219,6 @@ fn test_bind_ipv4_invalid_addr_len() {
             ))
             .unwrap_err()
         };
-        assert_eq!(err.kind(), ErrorKind::InvalidInput);
-        // Check that it is the right kind of `InvalidInput`.
         assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
     }
 }
@@ -236,21 +236,123 @@ fn test_bind_ipv6() {
     }
 }
 
-fn test_listen() {
+/// Test that invoking `bind` on an already bound TCP socket
+/// returns EINVAL.
+fn test_bind_twice() {
     let sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
     let addr = net::sock_addr_ipv4(net::IPV4_LOCALHOST, 0);
-    unsafe {
+    let err = unsafe {
         errno_check(libc::bind(
             sockfd,
             (&addr as *const libc::sockaddr_in).cast::<libc::sockaddr>(),
             size_of::<libc::sockaddr_in>() as libc::socklen_t,
         ));
-    }
+        errno_result(libc::bind(
+            sockfd,
+            (&addr as *const libc::sockaddr_in).cast::<libc::sockaddr>(),
+            size_of::<libc::sockaddr_in>() as libc::socklen_t,
+        ))
+        .unwrap_err()
+    };
+    // Check that it is the right error.
+    assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
+}
+
+/// Test that invoking `bind` on an already connected client
+/// TCP socket returns EINVAL.
+fn test_bind_connected() {
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    net::connect_ipv4(client_sockfd, addr).unwrap();
+    net::accept_ipv4(server_sockfd).unwrap();
+
+    let addr = net::sock_addr_ipv4(net::IPV4_LOCALHOST, 0);
+    let err = unsafe {
+        errno_result(libc::bind(
+            client_sockfd,
+            (&addr as *const libc::sockaddr_in).cast::<libc::sockaddr>(),
+            size_of::<libc::sockaddr_in>() as libc::socklen_t,
+        ))
+        .unwrap_err()
+    };
+    // Check that it is the right error.
+    assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
+}
+
+/// Test that invoking `bind` on an already listening server
+/// TCP socket returns EINVAL.
+fn test_bind_listening() {
+    let server_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
 
     unsafe {
-        errno_check(libc::listen(sockfd, 16));
+        errno_check(libc::listen(server_sockfd, 16));
     }
+
+    let addr = net::sock_addr_ipv4(net::IPV4_LOCALHOST, 0);
+    let err = unsafe {
+        errno_result(libc::bind(
+            server_sockfd,
+            (&addr as *const libc::sockaddr_in).cast::<libc::sockaddr>(),
+            size_of::<libc::sockaddr_in>() as libc::socklen_t,
+        ))
+        .unwrap_err()
+    };
+    // Check that it is the right error.
+    assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
+}
+
+/// Test that a socket can start listening. This also tests
+/// whether sockets are bound implicitly after `listen` has been
+/// invoked on them.
+fn test_listen() {
+    let sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    unsafe { errno_check(libc::listen(sockfd, 16)) };
+
+    let (_, sock_addr) =
+        net::sockname_ipv4(|storage, len| unsafe { libc::getsockname(sockfd, storage, len) })
+            .unwrap();
+
+    // Libc representation of an unspecified IPv4 address with zero port.
+    let addr = net::sock_addr_ipv4([0, 0, 0, 0], 0);
+
+    // Ensure that the socket got implicitly bound to the unspecified
+    // local address with a non-zero port.
+    assert!(sock_addr.sin_port > 0);
+    assert_eq!(addr.sin_family, sock_addr.sin_family);
+    assert_eq!(addr.sin_addr.s_addr, sock_addr.sin_addr.s_addr);
+}
+
+/// Test that `listen` returns EINVAL for a client TCP socket which
+/// is already connected to a peer socket.
+fn test_listen_connected() {
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    net::connect_ipv4(client_sockfd, addr).unwrap();
+    net::accept_ipv4(server_sockfd).unwrap();
+
+    // Connected sockets cannot start listening, thus the operation should
+    // fail with EINVAL.
+    let err = unsafe { errno_result(libc::listen(client_sockfd, 16)).unwrap_err() };
+    // Check that it is the right error.
+    assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
+}
+
+/// Test that `listen` succeeds for a server TCP socket which is already
+/// listening.
+fn test_listen_listening() {
+    let (server_sockfd, _) = net::make_listener_ipv4().unwrap();
+
+    // Invoking `listen` multiple times should be allowed as it can be used to change
+    // the backlog value.
+    unsafe { errno_check(libc::listen(server_sockfd, 16)) };
 }
 
 /// Test accepting connections by running a server in a separate thread and connecting clients
@@ -316,6 +418,46 @@ fn test_connect_error() {
             | ErrorKind::AddrNotAvailable
             | ErrorKind::NetworkUnreachable
     ));
+}
+
+/// Test that invoking `connect` on an already connected client
+/// TCP socket returns EISCONN.
+fn test_connect_connected() {
+    let (server_sockfd1, addr1) = net::make_listener_ipv4().unwrap();
+    let (_, addr2) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    net::connect_ipv4(client_sockfd, addr1).unwrap();
+    net::accept_ipv4(server_sockfd1).unwrap();
+
+    let err = net::connect_ipv4(client_sockfd, addr2).unwrap_err();
+    // The standard library doesn't provide an error kind for EISCONN;
+    // we thus cannot assert the correct error kind.
+    assert_eq!(err.raw_os_error(), Some(libc::EISCONN));
+}
+
+/// Test that invoking `connect` on an already listening server
+/// TCP socket returns EOPNOTSUPP on non-Linux-like targets and
+/// EISCONN on Linux-like targets.
+fn test_connect_listening() {
+    let (_, addr1) = net::make_listener_ipv4().unwrap();
+    let (server_sockfd2, _) = net::make_listener_ipv4().unwrap();
+
+    let err = net::connect_ipv4(server_sockfd2, addr1).unwrap_err();
+
+    if cfg!(any(target_os = "linux", target_os = "android")) {
+        // Linux-like targets return EISCONN when attempting to invoke
+        // `connect` on an already listening socket.
+
+        // The standard library doesn't provide an error kind for EISCONN;
+        // we thus cannot assert the correct error kind.
+        assert_eq!(err.raw_os_error(), Some(libc::EISCONN));
+    } else {
+        // POSIX specifies EOPNOTSUPP when attempting to invoke
+        // `connect` on an already listening socket.
+        assert_eq!(err.raw_os_error(), Some(libc::EOPNOTSUPP));
+    }
 }
 
 /// Test sending bytes into a connected stream and then peeking and receiving
@@ -598,6 +740,32 @@ fn test_getsockname_ipv6() {
     let (_, sock_addr) =
         net::sockname_ipv6(|storage, len| unsafe { libc::getsockname(sockfd, storage, len) })
             .unwrap();
+
+    assert_eq!(addr.sin6_family, sock_addr.sin6_family);
+    assert_eq!(addr.sin6_port, sock_addr.sin6_port);
+    assert_eq!(addr.sin6_flowinfo, sock_addr.sin6_flowinfo);
+    assert_eq!(addr.sin6_scope_id, sock_addr.sin6_scope_id);
+    assert_eq!(addr.sin6_addr.s6_addr, sock_addr.sin6_addr.s6_addr);
+}
+
+/// Test the `getsockname` syscall on an IPv6 socket which is not bound.
+/// The `getsockname` syscall should return [::]:0 with flowinfo and scope id
+/// of zero.
+fn test_getsockname_ipv6_unbound() {
+    let sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET6, libc::SOCK_STREAM, 0)).unwrap() };
+
+    let (_, sock_addr) =
+        net::sockname_ipv6(|storage, len| unsafe { libc::getsockname(sockfd, storage, len) })
+            .unwrap();
+
+    // Libc representation of an unspecified IPv6 address with zero port, flowinfo and scope id.
+    let addr = net::sock_addr_full_ipv6(
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        /* port */ 0,
+        /* flowinfo */ 0,
+        /* scope_id */ 0,
+    );
 
     assert_eq!(addr.sin6_family, sock_addr.sin6_family);
     assert_eq!(addr.sin6_port, sock_addr.sin6_port);
@@ -902,6 +1070,30 @@ fn test_sockopt_rcvtimeo() {
     assert_eq!(err.kind(), ErrorKind::WouldBlock);
     // Ensure that we blocked for at least 40 milliseconds.
     assert!(before.elapsed() >= Duration::from_millis(40))
+}
+
+/// Test setting and reading the SO_REUSEADDR socket option.
+fn test_sockopt_reuseaddr() {
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    net::connect_ipv4(client_sockfd, addr).unwrap();
+    let (_peerfd, _) = net::accept_ipv4(server_sockfd).unwrap();
+
+    net::setsockopt(client_sockfd, libc::SOL_SOCKET, libc::SO_REUSEADDR, true as libc::c_int)
+        .unwrap();
+    let reuseaddr =
+        net::getsockopt::<libc::c_int>(client_sockfd, libc::SOL_SOCKET, libc::SO_REUSEADDR)
+            .unwrap();
+    assert_ne!(reuseaddr, 0);
+
+    net::setsockopt(client_sockfd, libc::SOL_SOCKET, libc::SO_REUSEADDR, false as libc::c_int)
+        .unwrap();
+    let reuseaddr =
+        net::getsockopt::<libc::c_int>(client_sockfd, libc::SOL_SOCKET, libc::SO_REUSEADDR)
+            .unwrap();
+    assert_eq!(reuseaddr, 0);
 }
 
 /// Test that a thread which is blocked on a socket gets unblocked once

@@ -1,0 +1,31 @@
+error[E0746]: return type cannot be a trait object without pointer indirection
+  --> $DIR/unsized-return-type-in-call.rs:4:13
+   |
+LL | fn foo() -> dyn T {
+   |             ^^^^^ doesn't have a size known at compile-time
+   |
+help: consider returning an `impl Trait` instead of a `dyn Trait`
+   |
+LL - fn foo() -> dyn T {
+LL + fn foo() -> impl T {
+   |
+help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
+   |
+LL ~ fn foo() -> Box<dyn T> {
+LL |
+LL ~     Box::new(todo!())
+   |
+
+error[E0277]: the size for values of type `dyn T` cannot be known at compilation time
+  --> $DIR/unsized-return-type-in-call.rs:10:9
+   |
+LL |     let x = foo();
+   |         ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `dyn T`
+   = note: all local variables must have a statically known size
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0277, E0746.
+For more information about an error, try `rustc --explain E0277`.

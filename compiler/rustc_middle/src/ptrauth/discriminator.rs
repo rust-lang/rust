@@ -282,9 +282,7 @@ fn compute_fn_ptr_type_discriminator<'tcx>(
 
     enc.push(b'E');
 
-    let hash = enc.finish();
-
-    hash.into()
+    enc.finish()
 }
 
 // Clang disc type.

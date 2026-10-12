@@ -312,7 +312,7 @@ impl<'a, 'b, 'tcx> ImplicitHasherConstructorVisitor<'a, 'b, 'tcx> {
 impl<'tcx> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'_, '_, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
-    fn visit_body(&mut self, body: &Body<'tcx>) {
+    fn visit_body(&mut self, body: &'tcx Body<'tcx>) {
         let old_maybe_typeck_results = self.maybe_typeck_results.replace(self.cx.tcx.typeck_body(body.id()));
         walk_body(self, body);
         self.maybe_typeck_results = old_maybe_typeck_results;
@@ -337,7 +337,8 @@ impl<'tcx> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'_, '_, 'tcx> {
 
             match method.ident.name {
                 sym::new => {
-                    self.suggestions.insert(OrdSpan(e.span), format!("{container_name}::default()"));
+                    self.suggestions
+                        .insert(OrdSpan(e.span), format!("{container_name}::default()"));
                 },
                 sym::with_capacity => {
                     let (arg_snippet, _) = snippet_with_context(

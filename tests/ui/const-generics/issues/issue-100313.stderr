@@ -1,12 +1,17 @@
 error[E0080]: writing to ALLOC$ID which is read-only
   --> $DIR/issue-100313.rs:18:5
    |
+LL | const _: () = {
+LL |     let x = T::<{ &true }>;
 LL |     x.set_false();
    |     ^^^^^^^^^^^^^ evaluation of `_` failed inside this call
    |
 note: inside `T::<&true>::set_false`
   --> $DIR/issue-100313.rs:11:13
    |
+LL | impl<const B: &'static bool> T<B> {
+LL |     const fn set_false(&self) {
+LL |         unsafe {
 LL |             *(B as *const bool as *mut bool) = false;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the failure occurred here
 

@@ -1,4 +1,8 @@
-//@ check-pass
+//@ revisions: old next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
+//@[next] known-bug: trait-system-refactor-initiative#152
+//@[old] check-pass
 
 //! When safety is assumed, a transmutation over exclusive references should be
 //! accepted if the source type potentially carries safety invariants.

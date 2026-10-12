@@ -1,4 +1,5 @@
 //@ revisions: old next
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 // (`test_free_mismatch` is quite difficult to implement in the old solver, so make sure this test
 // runs on the old solver, just in case someone attempts to implement GCA for the old solver and

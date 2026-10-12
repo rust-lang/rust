@@ -1,0 +1,50 @@
+//@revisions: no coherence globally
+//@[no] compile-flags: -Znext-solver=no
+//@[coherence] compile-flags: -Znext-solver=coherence
+//@[globally] compile-flags: -Znext-solver=globally
+
+#![feature(const_trait_impl)]
+#![warn(clippy::needless_borrows_for_generic_args)]
+
+mod main {
+    pub enum SelfRecursiveEnum {
+        Array(Vec<SelfRecursiveEnum>),
+        Null,
+    }
+
+    pub fn recursive_type(value: Option<SelfRecursiveEnum>) -> Option<SelfRecursiveEnum> {
+        let predicate = |_: &SelfRecursiveEnum| true;
+        value.filter(&predicate)
+        //~^ needless_borrows_for_generic_args
+    }
+
+    // `[const] FnOnce` never holds for a closure, but that is irrelevant from a non-const context.
+    pub fn closure_with_const_fn_callee(value: Option<String>) -> Option<String> {
+        let predicate = |_: &String| true;
+        value.filter(&predicate)
+        //~^ needless_borrows_for_generic_args
+    }
+
+    mod const_trait_impl {
+        const trait Tr {}
+        const impl Tr for &u32 {}
+        impl Tr for u32 {}
+
+        const fn consume<T: [const] Tr>(t: T) {
+            std::mem::forget(t);
+        }
+
+        // No lint because `u32: [const] Tr` does not hold
+        const fn in_const_fn() {
+            consume(&0u32);
+        }
+
+        // No lint because `u32: [const] Tr` does not hold
+        const IN_CONST_ITEM: () = consume(&0u32);
+
+        fn in_non_const_fn() {
+            consume(&0u32);
+            //~^ needless_borrows_for_generic_args
+        }
+    }
+}

@@ -528,21 +528,21 @@ impl<'a> FmtVisitor<'a> {
         self.push_rewrite(struct_parts.span, rewrite);
     }
 
-    pub(crate) fn visit_enum(
+    fn format_enum(
         &mut self,
         ident: symbol::Ident,
         vis: &ast::Visibility,
         enum_def: &ast::EnumDef,
         generics: &ast::Generics,
         span: Span,
-    ) {
+    ) -> Option<String> {
         let enum_header =
             format_header(&self.get_context(), "enum ", ident, vis, self.block_indent);
-        self.push_str(&enum_header);
 
         let enum_snippet = self.snippet(span);
         let brace_pos = enum_snippet.find_uncommented("{").unwrap();
         let body_start = span.lo() + BytePos(brace_pos as u32 + 1);
+
         let generics_str = format_generics(
             &self.get_context(),
             generics,
@@ -556,19 +556,34 @@ impl<'a> FmtVisitor<'a> {
             // make a span that starts right after `enum Foo`
             mk_sp(ident.span.hi(), body_start),
             last_line_width(&enum_header, self.get_context().config.tab_spaces()),
-        )
-        .unwrap();
-        self.push_str(&generics_str);
-
-        self.last_pos = body_start;
+        )?;
 
         match self.format_variant_list(enum_def, body_start, span.hi()) {
-            Some(ref s) if enum_def.variants.is_empty() => self.push_str(s),
-            rw => {
-                self.push_rewrite(mk_sp(body_start, span.hi()), rw);
+            Some(ref s) if enum_def.variants.is_empty() => {
+                Some(format!("{enum_header}{generics_str}{s}"))
+            }
+            Some(rw) => {
+                let indent = self.block_indent.to_string(self.config);
                 self.block_indent = self.block_indent.block_unindent(self.config);
+                Some(format!("{enum_header}{generics_str}\n{indent}{rw}"))
+            }
+            None => {
+                self.block_indent = self.block_indent.block_unindent(self.config);
+                None
             }
         }
+    }
+
+    pub(crate) fn visit_enum(
+        &mut self,
+        ident: symbol::Ident,
+        vis: &ast::Visibility,
+        enum_def: &ast::EnumDef,
+        generics: &ast::Generics,
+        span: Span,
+    ) {
+        let rewrite = self.format_enum(ident, vis, enum_def, generics, span);
+        self.push_rewrite(span, rewrite);
     }
 
     // Format the body of an enum definition
@@ -3106,8 +3121,13 @@ fn rewrite_where_keyword(
 
     let (span_before, span_after) =
         missing_span_before_after_where(span_end_before_where, predicates, where_span);
-    let (comment_before, comment_after) =
-        rewrite_comments_before_after_where(context, span_before, span_after, shape)?;
+    let (comment_before, comment_after) = rewrite_comments_before_after_where(
+        context,
+        span_before,
+        span_after,
+        block_shape,
+        clause_shape,
+    )?;
 
     let starting_newline = match where_clause_option.snuggle {
         WhereClauseSpace::Space if comment_before.is_empty() => Cow::from(" "),
@@ -3301,14 +3321,11 @@ fn rewrite_comments_before_after_where(
     context: &RewriteContext<'_>,
     span_before_where: Span,
     span_after_where: Span,
-    shape: Shape,
+    before_shape: Shape,
+    after_shape: Shape,
 ) -> Result<(String, String), RewriteError> {
-    let before_comment = rewrite_missing_comment(span_before_where, shape, context)?;
-    let after_comment = rewrite_missing_comment(
-        span_after_where,
-        shape.block_indent(context.config.tab_spaces()),
-        context,
-    )?;
+    let before_comment = rewrite_missing_comment(span_before_where, before_shape, context)?;
+    let after_comment = rewrite_missing_comment(span_after_where, after_shape, context)?;
     Ok((before_comment, after_comment))
 }
 

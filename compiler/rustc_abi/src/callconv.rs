@@ -1,5 +1,5 @@
 #[cfg(feature = "nightly")]
-use crate::{BackendRepr, FieldsShape, Primitive, Size, TyAbiInterface, TyAndLayout, Variants};
+use crate::{BackendRepr, FieldsShape, Size, TyAbiInterface, TyAndLayout, Variants};
 
 mod reg;
 
@@ -73,10 +73,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         match self.backend_repr {
             // The primitive for this algorithm.
             BackendRepr::Scalar(scalar) => {
-                let kind = match scalar.primitive() {
-                    Primitive::Int(..) | Primitive::Pointer(_) => RegKind::Integer,
-                    Primitive::Float(_) => RegKind::Float,
-                };
+                let kind = RegKind::from_primitive(scalar.primitive());
                 Ok(HomogeneousAggregate::Homogeneous(Reg { kind, size: self.size }))
             }
 
