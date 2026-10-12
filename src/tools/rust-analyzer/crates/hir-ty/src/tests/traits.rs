@@ -1022,8 +1022,6 @@ fn test(x: impl Trait<u64>, y: &impl Trait<u32>) {
     z.foo2();
 }"#,
         expect![[r#"
-            29..33 'self': &'? Self
-            54..58 'self': &'? Self
             77..78 'x': impl Trait<u16>
             97..99 '{}': ()
             154..155 'x': impl Trait<u64>
@@ -1220,8 +1218,6 @@ fn test(x: impl Trait<u64>, y: &impl Trait<u64>) {
     z.foo2();
 }"#,
         expect![[r#"
-            29..33 'self': &'? Self
-            54..58 'self': &'? Self
             98..100 '{}': ()
             110..111 'x': impl Trait<u64>
             130..131 'y': &'? impl Trait<u64>
@@ -1344,7 +1340,6 @@ fn test() {
     a.foo();
 }"#,
         expect![[r#"
-            29..33 'self': &'? Self
             71..82 '{ loop {} }': !
             73..80 'loop {}': !
             78..80 '{}': ()
@@ -1382,8 +1377,6 @@ fn test() {
     d.foo();
 }"#,
         expect![[r#"
-            49..53 'self': &'? mut Self
-            101..105 'self': &'? Self
             184..195 '{ loop {} }': (impl Iterator<Item = impl Trait<u32>>, impl Trait<u64>)
             186..193 'loop {}': !
             191..193 '{}': ()
@@ -1488,8 +1481,6 @@ fn test(x: Box<dyn Trait<u64>>, y: &dyn Trait<u64>) {
     z.foo2();
 }"#,
         expect![[r#"
-            29..33 'self': &'? Self
-            54..58 'self': &'? Self
             206..208 '{}': Box<dyn Trait<u64> + '?>
             218..219 'x': Box<dyn Trait<u64> + 'static>
             242..243 'y': &'? (dyn Trait<u64> + 'static)
@@ -1536,12 +1527,10 @@ fn test(s: S<u32, i32>) {
     s.bar().baz();
 }"#,
         expect![[r#"
-            32..36 'self': &'? Self
             106..110 'self': &'? S<T, U>
             132..143 '{ loop {} }': &'? (dyn Trait<T, U> + 'static)
             134..141 'loop {}': !
             139..141 '{}': ()
-            179..183 'self': &'? Self
             255..256 's': S<u32, i32>
             271..293 '{     ...z(); }': ()
             277..278 's': S<u32, i32>
@@ -1570,7 +1559,6 @@ fn test(x: Trait, y: &Trait) -> u64 {
     z.foo();
 }"#,
         expect![[r#"
-            26..30 'self': &'? Self
             60..62 '{}': dyn Trait + '?
             72..73 'x': dyn Trait + 'static
             82..83 'y': &'? (dyn Trait + 'static)
@@ -1800,7 +1788,6 @@ fn test<T: Trait1<Type = u32>>(x: T) {
     x.foo();
 }"#,
         expect![[r#"
-            61..65 'self': Self
             163..164 'x': T
             169..185 '{     ...o(); }': ()
             175..176 'x': T
@@ -1992,7 +1979,6 @@ fn test() {
     opt.map(f);
 }"#,
         expect![[r#"
-            28..32 'self': &'? Self
             132..136 'self': &'? Bar<F>
             149..160 '{ loop {} }': (A1, R)
             151..158 'loop {}': !
@@ -2186,7 +2172,6 @@ fn test() {
             112..123 '{ loop {} }': U
             114..121 'loop {}': !
             119..121 '{}': ()
-            158..162 'self': S
             210..214 'self': S
             216..217 'x': T
             222..223 'f': F
@@ -2354,8 +2339,6 @@ impl Trait for S2 {
     fn f(&self, x: <Self>::Item) { let y = x; }
 }"#,
         expect![[r#"
-            40..44 'self': &'? Self
-            46..47 'x': <Self as Trait>::Item
             126..130 'self': &'? S
             132..133 'x': u32
             147..161 '{ let y = x; }': ()
@@ -2914,7 +2897,6 @@ fn main() {
             240..251 '{ loop {} }': ()
             242..249 'loop {}': !
             247..249 '{}': ()
-            360..364 'self': Self
             692..696 'self': I
             703..723 '{     ...     }': I
             713..717 'self': I
@@ -3022,7 +3004,6 @@ fn test() {
     (IsCopy, NotCopy).test();
 }"#,
         expect![[r#"
-            78..82 'self': &'? Self
             134..235 '{     ...t(); }': ()
             140..146 'IsCopy': IsCopy
             140..153 'IsCopy.test()': bool
@@ -3064,7 +3045,6 @@ fn test() {
             28..29 'T': {unknown}
             36..38 '{}': T
             36..38: expected T, got ()
-            113..117 'self': &'? Self
             169..249 '{     ...t(); }': ()
             175..178 'foo': fn foo()
             175..185 'foo.test()': bool
@@ -3092,7 +3072,6 @@ fn test(f1: fn(), f2: fn(usize) -> u8, f3: fn(u8, u8) -> &u8) {
     f3.test();
 }"#,
         expect![[r#"
-            22..26 'self': &'? Self
             76..78 'f1': fn()
             86..88 'f2': fn(usize) -> u8
             107..109 'f3': fn(u8, u8) -> &'? u8
@@ -3122,7 +3101,6 @@ fn test() {
     (1u8, *"foo").test(); // not Sized
 }"#,
         expect![[r#"
-            22..26 'self': &'? Self
             79..194 '{     ...ized }': ()
             85..88 '1u8': u8
             85..95 '1u8.test()': bool
@@ -3504,8 +3482,6 @@ fn test() {
     let r = x.do_op(y);
 }"#,
         expect![[r#"
-            63..67 'self': Self
-            69..72 'rhs': RHS
             153..157 'self': A
             159..162 'rhs': A
             186..206 '{     ...     }': bool
@@ -3779,7 +3755,6 @@ fn main() {
 }
 "#,
         expect![[r#"
-            44..48 'self': &'? Self
             133..137 'self': &'? [u8; 4]
             155..172 '{     ...     }': usize
             165..166 '2': usize
@@ -3827,7 +3802,6 @@ fn main() {
 }
 "#,
         expect![[r#"
-            44..48 'self': &'? Self
             151..155 'self': &'? [u8; L]
             173..194 '{     ...     }': [u8; L]
             183..188 '*self': [u8; L]
@@ -3879,7 +3853,6 @@ impl foo::Foo for u32 {
 }
     "#,
         expect![[r#"
-            45..49 'self': Self
             67..71 'self': Self
             82..87 '{ 0 }': usize
             84..85 '0': usize
@@ -4316,7 +4289,6 @@ fn f<'a>(v: &dyn Trait<Assoc<i32> = &'a i32>) {
 }
     "#,
         expect![[r#"
-            90..94 'self': &'? Self
             127..128 'v': &'? (dyn Trait<Assoc<i32> = &'_ i32> + 'static)
             164..195 '{     ...f(); }': ()
             170..171 'v': &'? (dyn Trait<Assoc<i32> = &'_ i32> + 'static)
