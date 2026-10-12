@@ -251,6 +251,7 @@ fn tuple_expr(p: &mut Parser<'_>) -> CompletedMarker {
 //     builtin#asm("");
 //     builtin#format_args("", 0, 1, a = 2 + 3, a + b);
 //     builtin#offset_of(Foo, bar.baz.0);
+//     builtin#cfg(any(true, x = "y"));
 // }
 fn builtin_expr(p: &mut Parser<'_>) -> Option<CompletedMarker> {
     let m = p.start();
@@ -322,6 +323,12 @@ fn builtin_expr(p: &mut Parser<'_>) -> Option<CompletedMarker> {
         // test include_bytes
         // fn foo() { builtin # include_bytes }
         Some(m.complete(p, INCLUDE_BYTES_EXPR))
+    } else if p.eat_contextual_kw(T![cfg]) {
+        p.expect(T!['(']);
+        attributes::cfg_predicate(p);
+        p.eat(T![,]);
+        p.expect(T![')']);
+        Some(m.complete(p, CFG_PRED_EXPR))
     } else {
         m.abandon(p);
         None

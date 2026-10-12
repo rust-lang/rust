@@ -844,4 +844,65 @@ fn main() {
 "#,
         );
     }
+
+    #[test]
+    fn completes_let_in_match_arm() {
+        check_edit(
+            "let",
+            r#"
+fn main() {
+    match () {
+        () => $0
+    }
+}
+"#,
+            r#"
+fn main() {
+    match () {
+        () => {
+    let $1 = $0;
+}
+    }
+}
+"#,
+        );
+        check_edit(
+            "letm",
+            r#"
+fn main() {
+    match () {
+        () => letm$0
+    }
+}
+"#,
+            r#"
+fn main() {
+    match () {
+        () => {
+    let mut $1 = $0;
+}
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn completes_let_in_closure_expr() {
+        check_edit(
+            "let",
+            r#"
+fn main() {
+    || $0
+}
+"#,
+            r#"
+fn main() {
+    || {
+    let $1 = $0;
+}
+}
+"#,
+        );
+    }
 }
