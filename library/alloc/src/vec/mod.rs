@@ -3584,7 +3584,7 @@ impl<T: Clone> Vec<T, Global> {
     /// assert_eq!(vec, [0; 3]);
     /// ```
     #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "vec_from_elem", issue = "none")]
+    #[unstable(feature = "vec_from_elem", issue = "164215")]
     #[inline]
     pub fn from_elem(elem: T, n: usize) -> Self {
         <T as SpecFromElem>::from_elem(elem, n, Global)
@@ -3613,7 +3613,7 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     /// assert_eq!(vec, [0; 3]);
     /// ```
     #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "vec_from_elem", issue = "none")]
+    #[unstable(feature = "vec_from_elem", issue = "164215")]
     #[inline]
     pub fn from_elem_in(elem: T, n: usize, alloc: A) -> Self {
         <T as SpecFromElem>::from_elem(elem, n, alloc)
