@@ -27,7 +27,8 @@ use tracing::instrument;
 use crate::delegate::SolverDelegate;
 use crate::solve::{
     CanonicalResponse, Certainty, ExternalConstraintsData, ExternalRegionConstraints, Goal,
-    IsIdentity, NestedNormalizationGoals, QueryInput, Response, VisibleForLeakCheck, inspect,
+    IsIdentity, NestedNormalizationGoals, QueryInput, Response, VisibleForLeakCheck,
+    has_no_inference_or_external_constraints, inspect,
 };
 
 pub mod canonicalizer;
@@ -93,7 +94,7 @@ where
 /// After calling a canonical query, we apply the constraints returned
 /// by the query using this function.
 ///
-/// This happens in three steps:
+/// If a quick early-return check fails, this happens in three steps:
 /// - we instantiate the bound variables of the query response
 /// - we unify the `var_values` of the response with the `original_values`
 /// - we apply the `external_constraints` returned by the query, returning
@@ -102,16 +103,26 @@ pub(super) fn instantiate_and_apply_query_response<D, I>(
     delegate: &D,
     original_values: &[I::GenericArg],
     response: CanonicalResponse<I>,
+    canonical_goal_var_kinds: I::CanonicalVarKinds,
     span: I::Span,
 ) -> (NestedNormalizationGoals<I>, Certainty)
 where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
+    let Response { certainty, var_values, external_constraints, .. } = response.value;
+
+    // If the response is an identity, and there are no external constraints, and the response var
+    // kinds match the canonical goal var kinds, this function is a no-op and we can return early.
+    if has_no_inference_or_external_constraints(response)
+        && response.var_kinds == canonical_goal_var_kinds
+    {
+        return (NestedNormalizationGoals::empty(), certainty);
+    }
+
     let instantiation =
         compute_query_response_instantiation_values(delegate, &original_values, &response, span);
 
-    let Response { certainty, var_values, var_values_is_identity: _, external_constraints } = response.value;
     let external_constraints = delegate.instantiate_value(external_constraints, instantiation);
 
     unify_query_var_values(delegate, &original_values, var_values, instantiation, span);

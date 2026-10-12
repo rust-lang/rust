@@ -57,7 +57,7 @@ pub enum HasChanged {
 
 // FIXME(trait-system-refactor-initiative#117): we don't detect whether a response
 // ended up pulling down any universes.
-fn has_no_inference_or_external_constraints<I: Interner>(
+pub(crate) fn has_no_inference_or_external_constraints<I: Interner>(
     response: ty::Canonical<I, Response<I>>,
 ) -> bool {
     let ExternalConstraintsData {
