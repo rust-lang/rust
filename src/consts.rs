@@ -16,8 +16,8 @@ use rustc_middle::mir::interpret::{
     self, ConstAllocation, CtfeProvenance, ErrorHandled, Scalar as InterpScalar, read_target_uint,
 };
 use rustc_middle::mono::MonoItem;
-use rustc_middle::ty::layout::LayoutOf;
-use rustc_middle::ty::{self, Instance};
+use rustc_middle::ty::Instance;
+use rustc_middle::ty::layout::{HasTypingEnv as _, LayoutOf};
 use rustc_span::def_id::DefId;
 use rustc_span::{bug, span_bug};
 
@@ -251,7 +251,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         let gcc_type = if nested {
             self.type_i8()
         } else {
-            let ty = instance.ty(self.tcx, ty::TypingEnv::fully_monomorphized());
+            let ty = instance.ty(self.tcx, self.typing_env());
             self.layout_of(ty).gcc_type(self)
         };
 
