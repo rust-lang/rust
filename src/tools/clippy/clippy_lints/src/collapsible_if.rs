@@ -10,7 +10,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{Block, Expr, ExprKind, StmtKind};
 use rustc_lexer::TokenKind;
 use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
-use rustc_span::{BytePos, Span, Symbol};
+use rustc_span::{BytePos, Ident, Span, Symbol};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -247,7 +247,7 @@ impl CollapsibleIf {
                         matches!(
                             lint,
                             LintCheck {
-                                tool_name: Some(sym::clippy),
+                                tool: Some(Ident { name: sym::clippy, .. }),
                                 rest: None,
                                 kind: LintCheckKind::Expect,
                                 ..
