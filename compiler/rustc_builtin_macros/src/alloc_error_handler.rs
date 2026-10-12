@@ -33,7 +33,6 @@ pub(crate) fn expand(
         return vec![orig_item];
     };
 
-    // Generate a bunch of new items using the AllocFnFactory
     let span = ecx.with_def_site_ctxt(item.span);
 
     // Generate item statements for the allocator methods.
