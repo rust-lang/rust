@@ -164,6 +164,13 @@ pub trait UnixSocketFileDescription: UnixFileDescription {
         throw_unsup_format!("setsockopt: option SO_RCVTIMEO is unsupported for {}", self.name())
     }
 
+    /// Get the read timeout for the socket.
+    fn get_read_timeout<'tcx>(
+        self: FileDescriptionRef<Self>,
+    ) -> InterpResult<'tcx, Option<Duration>> {
+        throw_unsup_format!("getsockopt: option SO_RCVTIMEO is unsupported for {}", self.name())
+    }
+
     /// Set the write timeout for the socket.
     /// If `timeout` is [`None`], then write operations should block indefinitely.
     /// Otherwise, write operations should block until `timeout` is expired.
@@ -172,6 +179,13 @@ pub trait UnixSocketFileDescription: UnixFileDescription {
         _timeout: Option<Duration>,
     ) -> InterpResult<'tcx> {
         throw_unsup_format!("setsockopt: option SO_SNDTIMEO is unsupported for {}", self.name())
+    }
+
+    /// Get the write timeout for the socket.
+    fn get_write_timeout<'tcx>(
+        self: FileDescriptionRef<Self>,
+    ) -> InterpResult<'tcx, Option<Duration>> {
+        throw_unsup_format!("getsockopt: option SO_SNDTIMEO is unsupported for {}", self.name())
     }
 
     /// Get the stored I/O error of the socket, if any exists.
@@ -1044,6 +1058,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let ecx = self.eval_context_mut();
 
         let opt_so_error = ecx.eval_libc_i32("SO_ERROR");
+        let opt_so_rcvtimeo = ecx.eval_libc_i32("SO_RCVTIMEO");
+        let opt_so_sndtimeo = ecx.eval_libc_i32("SO_SNDTIMEO");
 
         if option == opt_so_error {
             let return_value = match socket.take_error(ecx)? {
@@ -1056,6 +1072,28 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             let value_buffer = ecx.allocate(ecx.machine.layouts.i32, MemoryKind::Stack)?;
             ecx.write_int(return_value, &value_buffer)?;
             return interp_ok(Ok(value_buffer));
+        } else if option == opt_so_rcvtimeo || option == opt_so_sndtimeo {
+            let timeout = if option == opt_so_rcvtimeo {
+                socket.get_read_timeout()?
+            } else {
+                socket.get_write_timeout()?
+            }
+            .unwrap_or_default();
+
+            let secs = timeout.as_secs();
+            let usecs = timeout.subsec_micros();
+
+            let timeval_layout = ecx.libc_ty_layout("timeval");
+            // Allocate new buffer on the stack with the `timeval` layout.
+            let timeval_buffer = ecx.allocate(timeval_layout, MemoryKind::Stack)?;
+
+            let sec_field = ecx.project_field_named(&timeval_buffer, "tv_sec")?;
+            ecx.write_int(secs, &sec_field)?;
+
+            let usec_field = ecx.project_field_named(&timeval_buffer, "tv_usec")?;
+            ecx.write_int(usecs, &usec_field)?;
+
+            return interp_ok(Ok(timeval_buffer));
         }
 
         throw_unsup_format!("getsockopt: option {option:#x} is unsupported for level SOL_SOCKET",);

@@ -774,8 +774,6 @@ impl UnixSocketFileDescription for TcpSocket {
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, Result<MPlaceTy<'tcx>, IoError>> {
         if level == ecx.eval_libc_i32("SOL_SOCKET") {
-            let opt_so_rcvtimeo = ecx.eval_libc_i32("SO_RCVTIMEO");
-            let opt_so_sndtimeo = ecx.eval_libc_i32("SO_SNDTIMEO");
             let opt_so_reuseaddr = ecx.eval_libc_i32("SO_REUSEADDR");
             let opt_so_linger = if matches!(ecx.tcx.sess.target.os, Os::MacOs) {
                 // On macOS the SO_LINGER socket option sets the linger duration in kernel ticks
@@ -787,29 +785,7 @@ impl UnixSocketFileDescription for TcpSocket {
             };
             let opt_so_keepalive = ecx.eval_libc_i32("SO_KEEPALIVE");
 
-            if option == opt_so_rcvtimeo || option == opt_so_sndtimeo {
-                let timeout = if option == opt_so_rcvtimeo {
-                    self.read_timeout.get()
-                } else {
-                    self.write_timeout.get()
-                }
-                .unwrap_or_default();
-
-                let secs = timeout.as_secs();
-                let usecs = timeout.subsec_micros();
-
-                let timeval_layout = ecx.libc_ty_layout("timeval");
-                // Allocate new buffer on the stack with the `timeval` layout.
-                let timeval_buffer = ecx.allocate(timeval_layout, MemoryKind::Stack)?;
-
-                let sec_field = ecx.project_field_named(&timeval_buffer, "tv_sec")?;
-                ecx.write_int(secs, &sec_field)?;
-
-                let usec_field = ecx.project_field_named(&timeval_buffer, "tv_usec")?;
-                ecx.write_int(usecs, &usec_field)?;
-
-                interp_ok(Ok(timeval_buffer))
-            } else if option == opt_so_reuseaddr {
+            if option == opt_so_reuseaddr {
                 let reuse = match self.with_socket_ref(|s| s.reuse_address()) {
                     Ok(reuse) => reuse,
                     Err(e) => return interp_ok(Err(IoError::HostError(e))),
@@ -1001,12 +977,24 @@ impl UnixSocketFileDescription for TcpSocket {
         interp_ok(())
     }
 
+    fn get_read_timeout<'tcx>(
+        self: FileDescriptionRef<Self>,
+    ) -> InterpResult<'tcx, Option<Duration>> {
+        interp_ok(self.read_timeout.get())
+    }
+
     fn set_write_timeout<'tcx>(
         self: FileDescriptionRef<Self>,
         timeout: Option<Duration>,
     ) -> InterpResult<'tcx> {
         self.write_timeout.set(timeout);
         interp_ok(())
+    }
+
+    fn get_write_timeout<'tcx>(
+        self: FileDescriptionRef<Self>,
+    ) -> InterpResult<'tcx, Option<Duration>> {
+        interp_ok(self.write_timeout.get())
     }
 
     fn take_error<'tcx>(
