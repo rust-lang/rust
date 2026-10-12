@@ -1,5 +1,7 @@
 //! A pretty-printer for MIR.
 
+mod errors;
+
 use std::{
     fmt::{Debug, Display, Write},
     mem,
@@ -13,20 +15,22 @@ use hir_def::{
 };
 use hir_expand::{Lookup, name::Name};
 use la_arena::ArenaMap;
+use macros::extension;
 use rustc_type_ir::inherent::IntoKind;
 
 use crate::{
     InferBodyId,
     db::{HirDatabase, InternedClosureId},
     display::{ClosureStyle, DisplayTarget, HirDisplay},
-    mir::{PlaceElem, PlaceTy, ProjectionElem, StatementKind, TerminatorKind},
+    mir::{
+        AggregateKind, BasicBlockId, BorrowKind, LocalId, MirBody, MutBorrowKind, Operand,
+        OperandKind, PlaceElem, PlaceTy, ProjectionElem, Rvalue, StatementKind, StoredPlace,
+        TerminatorKind, UnOp,
+    },
     next_solver::{DbInterner, TyKind, infer::DbInternerInferExt},
 };
 
-use super::{
-    AggregateKind, BasicBlockId, BorrowKind, LocalId, MirBody, MutBorrowKind, Operand, OperandKind,
-    Rvalue, StoredPlace, UnOp,
-};
+pub use self::errors::{ConstEvalErrorPretty, MirEvalErrorPretty, MirLowerErrorPretty};
 
 macro_rules! w {
     ($dst:expr, $($arg:tt)*) => {
@@ -43,8 +47,9 @@ macro_rules! wln {
     };
 }
 
+#[extension(pub trait MirBodyPretty)]
 impl MirBody<'_> {
-    pub fn pretty_print(&self, db: &dyn HirDatabase, display_target: DisplayTarget) -> String {
+    fn pretty_print(&self, db: &dyn HirDatabase, display_target: DisplayTarget) -> String {
         let hir_body = ExpressionStore::of(db, self.owner.expression_store_owner(db));
         let mut ctx = MirPrettyCtx::new(self, hir_body, db, display_target);
         ctx.for_body(|this| match ctx.body.owner {
@@ -88,7 +93,7 @@ impl MirBody<'_> {
 
     // String with lines is rendered poorly in `dbg` macros, which I use very much, so this
     // function exists to solve that.
-    pub fn dbg(&self, db: &dyn HirDatabase, display_target: DisplayTarget) -> impl Debug {
+    fn dbg(&self, db: &dyn HirDatabase, display_target: DisplayTarget) -> impl Debug {
         struct StringDbg(String);
         impl Debug for StringDbg {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

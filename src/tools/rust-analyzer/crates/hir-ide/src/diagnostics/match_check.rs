@@ -22,10 +22,9 @@ use span::Edition;
 use stdx::{always, never, variance::PhantomCovariantLifetime};
 
 use crate::{
-    ByRef, InferenceResult,
+    BindingMode, ByRef, InferenceResult,
     db::HirDatabase,
     display::{HirDisplay, HirDisplayError, HirFormatter},
-    infer::BindingMode,
     next_solver::{GenericArgs, Mutability, Ty, TyKind},
 };
 

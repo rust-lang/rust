@@ -17,7 +17,7 @@ use hir_def::{
     visibility::Visibility,
 };
 use hir_expand::name::Name;
-use hir_ty::{
+use hir_ide::{
     GenericPredicates,
     db::HirDatabase,
     display::{
@@ -79,7 +79,7 @@ fn write_builtin_derive_impl_method<'db>(
         write!(f, "\n    // Bounds from impl:")?;
 
         let predicates =
-            hir_ty::builtin_derive::predicates(db, impl_).explicit_predicates().skip_binder();
+            hir_ide::builtin_derive::predicates(db, impl_).explicit_predicates().skip_binder();
         write_params_bounds(f, &Vec::from_iter(predicates))?;
     }
 

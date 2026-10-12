@@ -527,6 +527,3 @@ fn contains_illegal_impl_trait_in_trait<'db>(
 
     None
 }
-
-#[cfg(test)]
-mod tests;

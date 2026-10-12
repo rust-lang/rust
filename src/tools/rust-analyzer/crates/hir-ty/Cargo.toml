@@ -26,7 +26,6 @@ tracing = { workspace = true, features = ["attributes"] }
 rustc-hash.workspace = true
 la-arena.workspace = true
 triomphe.workspace = true
-typed-arena = "2.0.2"
 indexmap.workspace = true
 rustc_apfloat = "0.2.3"
 salsa.workspace = true
@@ -35,7 +34,6 @@ bitflags.workspace = true
 
 ra-ap-rustc_abi.workspace = true
 ra-ap-rustc_index.workspace = true
-ra-ap-rustc_pattern_analysis.workspace = true
 ra-ap-rustc_ast_ir.workspace = true
 ra-ap-rustc_type_ir.workspace = true
 ra-ap-rustc_next_trait_solver.workspace = true
@@ -56,16 +54,11 @@ syntax.workspace = true
 span.workspace = true
 thin-vec = "0.2.16"
 
-[dev-dependencies]
-expect-test = "1.5.1"
-project-model.workspace = true
-
-# local deps
-test-utils.workspace = true
-test-fixture.workspace = true
-
 [features]
 in-rust-tree = ["hir-expand/in-rust-tree"]
 
 [lints]
 workspace = true
+
+[package.metadata.cargo-machete]
+ignored = ["serde"]

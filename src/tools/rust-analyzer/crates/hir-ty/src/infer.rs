@@ -766,21 +766,21 @@ pub struct InferenceResult<'db> {
     /// that which allows us to resolve a [`TupleFieldId`]s type.
     tuple_field_access_types: ThinVec<StoredTys>,
 
-    pub(crate) type_of_expr: ArenaMap<ExprId, StoredTy>,
+    pub type_of_expr: ArenaMap<ExprId, StoredTy>,
     /// For each pattern record the type it resolves to.
     ///
     /// **Note**: When a pattern type is resolved it may still contain
     /// unresolved or missing subpatterns or subpatterns of mismatched types.
-    pub(crate) type_of_pat: ArenaMap<PatId, StoredTy>,
-    pub(crate) type_of_binding: ArenaMap<BindingId, StoredTy>,
-    pub(crate) type_of_type_placeholder: FxHashMap<TypeRefId, StoredTy>,
-    pub(crate) type_of_opaque: FxHashMap<InternedOpaqueTyId<'db>, StoredTy>,
+    pub type_of_pat: ArenaMap<PatId, StoredTy>,
+    pub type_of_binding: ArenaMap<BindingId, StoredTy>,
+    pub type_of_type_placeholder: FxHashMap<TypeRefId, StoredTy>,
+    pub type_of_opaque: FxHashMap<InternedOpaqueTyId<'db>, StoredTy>,
 
     /// Whether there are any type-mismatching errors in the result.
     // FIXME: This isn't as useful as initially thought due to us falling back placeholders to
     // `TyKind::Error`.
     // Which will then mark this field.
-    pub(crate) has_errors: bool,
+    pub has_errors: bool,
     /// During inference this field is empty and [`InferenceContext::diagnostics`] is filled instead.
     diagnostics: ThinVec<InferenceDiagnostic>,
     // FIXME: Remove this, change it to be in `InferenceContext`:
@@ -790,9 +790,9 @@ pub struct InferenceResult<'db> {
     // FIXME: Remove this.
     error_ty: StoredTy,
 
-    pub(crate) expr_adjustments: FxHashMap<ExprId, Box<[Adjustment]>>,
+    pub expr_adjustments: FxHashMap<ExprId, Box<[Adjustment]>>,
     /// Stores the types which were implicitly dereferenced in pattern binding modes.
-    pub(crate) pat_adjustments: FxHashMap<PatId, Vec<PatAdjustment>>,
+    pub pat_adjustments: FxHashMap<PatId, Vec<PatAdjustment>>,
     /// Stores the binding mode (`ref` in `let ref x = 2`) of bindings.
     ///
     /// This one is tied to the `PatId` instead of `BindingId`, because in some rare cases, a binding in an
@@ -806,13 +806,13 @@ pub struct InferenceResult<'db> {
     /// }
     /// ```
     /// the first `rest` has implicit `ref` binding mode, but the second `rest` binding mode is `move`.
-    pub(crate) binding_modes: ArenaMap<PatId, BindingMode>,
+    pub binding_modes: ArenaMap<PatId, BindingMode>,
 
     /// Set of reference patterns that match against a match-ergonomics inserted reference
     /// (as opposed to against a reference in the scrutinee type).
     skipped_ref_pats: FxHashSet<PatId>,
 
-    pub(crate) coercion_casts: FxHashSet<ExprId>,
+    pub coercion_casts: FxHashSet<ExprId>,
 
     pub closures_data: FxHashMap<ExprId, ClosureData>,
 

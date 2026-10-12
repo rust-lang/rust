@@ -817,7 +817,7 @@ dependencies = [
  "expect-test",
  "hir-def",
  "hir-expand",
- "hir-ty",
+ "hir-ide",
  "intern",
  "itertools 0.15.0",
  "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -903,6 +903,40 @@ dependencies = [
 ]
 
 [[package]]
+name = "hir-ide"
+version = "0.0.0"
+dependencies = [
+ "base-db",
+ "cov-mark",
+ "either",
+ "expect-test",
+ "hir-def",
+ "hir-expand",
+ "hir-ty",
+ "intern",
+ "itertools 0.15.0",
+ "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "macros",
+ "project-model",
+ "ra-ap-rustc_abi",
+ "ra-ap-rustc_ast_ir",
+ "ra-ap-rustc_pattern_analysis",
+ "ra-ap-rustc_type_ir",
+ "rustc-hash 2.1.2",
+ "rustc_apfloat",
+ "salsa",
+ "smallvec",
+ "span",
+ "stdx",
+ "syntax",
+ "test-fixture",
+ "test-utils",
+ "tracing",
+ "triomphe",
+ "typed-arena",
+]
+
+[[package]]
 name = "hir-ty"
 version = "0.0.0"
 dependencies = [
@@ -912,7 +946,6 @@ dependencies = [
  "cov-mark",
  "either",
  "ena",
- "expect-test",
  "hir-def",
  "hir-expand",
  "indexmap",
@@ -922,12 +955,10 @@ dependencies = [
  "macros",
  "oorandom",
  "petgraph",
- "project-model",
  "ra-ap-rustc_abi",
  "ra-ap-rustc_ast_ir",
  "ra-ap-rustc_index",
  "ra-ap-rustc_next_trait_solver",
- "ra-ap-rustc_pattern_analysis",
  "ra-ap-rustc_type_ir",
  "rustc-hash 2.1.2",
  "rustc_apfloat",
@@ -938,14 +969,11 @@ dependencies = [
  "span",
  "stdx",
  "syntax",
- "test-fixture",
- "test-utils",
  "thin-vec",
  "tracing",
  "tracing-subscriber",
  "tracing-tree",
  "triomphe",
- "typed-arena",
 ]
 
 [[package]]

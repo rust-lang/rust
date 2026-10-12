@@ -37,9 +37,6 @@ pub use self::{adt::layout_of_adt_query, target::target_data_layout_query};
 pub(crate) mod adt;
 pub(crate) mod target;
 
-#[cfg(test)]
-mod tests;
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct RustcEnumVariantIdx(pub usize);
 

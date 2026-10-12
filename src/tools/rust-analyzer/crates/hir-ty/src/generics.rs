@@ -20,7 +20,7 @@ use hir_def::{
     },
 };
 
-pub(crate) fn generics(db: &dyn SourceDatabase, def: GenericDefId) -> Generics<'_> {
+pub fn generics(db: &dyn SourceDatabase, def: GenericDefId) -> Generics<'_> {
     let mut chain = ArrayVec::new();
     let mut parent_params_len = 0;
     if let Some(parent_def) = parent_generic_def(db, def) {
@@ -228,7 +228,7 @@ impl<'db> Generics<'db> {
     }
 
     /// Iterate over the parent params followed by self params.
-    pub(crate) fn iter(
+    pub fn iter(
         &self,
         consider_late_bound: bool,
     ) -> impl Iterator<Item = (GenericParamId, GenericParamDataRef<'db>)> {
@@ -261,7 +261,7 @@ impl<'db> Generics<'db> {
         self.owner().len_lifetimes()
     }
 
-    pub(crate) fn provenance_split(&self) -> ProvenanceSplit {
+    pub fn provenance_split(&self) -> ProvenanceSplit {
         let parent_total = self.len_parent();
 
         let owner = self.owner();
@@ -371,14 +371,14 @@ impl<'db> Generics<'db> {
     }
 }
 
-pub(crate) struct ProvenanceSplit {
-    pub(crate) parent_total: usize,
+pub struct ProvenanceSplit {
+    pub parent_total: usize,
     // The rest are about self.
-    pub(crate) has_self_param: bool,
-    pub(crate) non_impl_trait_type_params: usize,
-    pub(crate) const_params: usize,
-    pub(crate) impl_trait_type_params: usize,
-    pub(crate) lifetimes: usize,
+    pub has_self_param: bool,
+    pub non_impl_trait_type_params: usize,
+    pub const_params: usize,
+    pub impl_trait_type_params: usize,
+    pub lifetimes: usize,
 }
 
 fn parent_generic_def(db: &dyn SourceDatabase, def: GenericDefId) -> Option<GenericDefId> {

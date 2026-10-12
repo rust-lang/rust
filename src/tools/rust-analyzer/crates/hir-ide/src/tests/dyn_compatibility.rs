@@ -5,11 +5,13 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::ToSmolStr;
 use test_fixture::WithFixture;
 
-use crate::{dyn_compatibility::dyn_compatibility_with_callback, test_db::TestDB};
-
-use super::{
-    DynCompatibilityViolation,
-    MethodViolationCode::{self, *},
+use crate::{
+    dyn_compatibility::{
+        DynCompatibilityViolation,
+        MethodViolationCode::{self, *},
+        dyn_compatibility_with_callback,
+    },
+    test_db::TestDB,
 };
 
 use DynCompatibilityViolationKind::*;

@@ -19,7 +19,7 @@ use crate::{
 
 // FIXME: Turn this into a query, it can be quite slow
 /// Checks whether a type is visibly uninhabited from a particular module.
-pub(crate) fn is_ty_uninhabited_from<'db>(
+pub fn is_ty_uninhabited_from<'db>(
     infcx: &InferCtxt<'db>,
     ty: Ty<'db>,
     target_mod: ModuleId,
@@ -33,7 +33,7 @@ pub(crate) fn is_ty_uninhabited_from<'db>(
 
 // FIXME: Turn this into a query, it can be quite slow
 /// Checks whether a variant is visibly uninhabited from a particular module.
-pub(crate) fn is_enum_variant_uninhabited_from<'db>(
+pub fn is_enum_variant_uninhabited_from<'db>(
     infcx: &InferCtxt<'db>,
     variant: EnumVariantId,
     subst: GenericArgs<'db>,

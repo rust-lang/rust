@@ -10,7 +10,7 @@ use std::{
 use base_db::{Crate, FxIndexMap};
 use either::Either;
 use hir_def::{
-    ExpressionStoreOwnerId, FindPathConfig, GenericDefId, GenericParamId, HasModule,
+    CallableDefId, ExpressionStoreOwnerId, FindPathConfig, GenericDefId, GenericParamId, HasModule,
     ItemContainerId, LocalFieldId, Lookup, ModuleDefId, ModuleId, TraitId, TypeAliasId,
     expr_store::{ExpressionStore, path::Path},
     find_path::{self, PrefixKind},
@@ -51,11 +51,10 @@ use span::Edition;
 use stdx::never;
 
 use crate::{
-    CallableDefId, FieldType, ImplTraitId, MemoryMap, ParamEnvAndCrate, consteval,
+    FieldType, GenericPredicates, ImplTraitId, MemoryMap, ParamEnvAndCrate, consteval,
     db::{GeneralConstId, HirDatabase},
     generics::{ProvenanceSplit, generics},
     layout::Layout,
-    lower::GenericPredicates,
     mir::{IsSigned, pad16},
     next_solver::{
         AliasTy, Allocation, Clause, ClauseKind, Const, ConstKind, DbInterner,

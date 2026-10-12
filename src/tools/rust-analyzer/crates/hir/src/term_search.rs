@@ -1,7 +1,7 @@
 //! Term search
 
 use hir_def::type_ref::Mutability;
-use hir_ty::db::HirDatabase;
+use hir_ide::db::HirDatabase;
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
 
