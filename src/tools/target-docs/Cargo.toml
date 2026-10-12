@@ -11,4 +11,4 @@ eyre = "0.6.12"
 glob = "0.3.1"
 serde = { version = "1.0.185", features = ["derive"] }
 serde_json = "1.0.114"
-serde_yaml = "0.9.31"
+yaml_serde = "0.10.7"
