@@ -43,9 +43,9 @@ use crate::solve::search_graph::SearchGraph;
 use crate::solve::ty::may_use_unstable_feature;
 use crate::solve::{
     CanonicalResponse, Certainty, ExternalConstraintsData, FIXPOINT_STEP_LIMIT, Goal,
-    GoalEvaluation, GoalSource, GoalStalledOn, GoalStalledOnOpaques, HasChanged, MaybeCause,
-    NestedNormalizationGoals, NoSolution, QueryInput, QueryResult, Response, SucceededInErased,
-    VisibleForLeakCheck, inspect,
+    GoalEvaluation, GoalSource, GoalStalledOn, GoalStalledOnOpaques, HasChanged, IsIdentity,
+    MaybeCause, NestedNormalizationGoals, NoSolution, QueryInput, QueryResult, Response,
+    SucceededInErased, VisibleForLeakCheck, inspect,
 };
 
 pub mod fast_path;
@@ -1711,15 +1711,17 @@ where
 
         filter_irrelevant_region_constraints(self.delegate, var_values, &mut external_constraints);
 
-        let canonical = canonicalize_response(
+        let mut canonical = canonicalize_response(
             self.delegate,
             self.max_input_universe,
             Response {
-                var_values,
                 certainty,
+                var_values,
+                var_values_is_identity: IsIdentity::No, // updated below, after canonicalization
                 external_constraints: self.cx().mk_external_constraints(external_constraints),
             },
         );
+        canonical.value.update_var_values_is_identity();
 
         Ok(canonical)
     }

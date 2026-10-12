@@ -582,63 +582,68 @@ pub enum FetchEligibleAssocItemResponse<I: Interner> {
     NotFoundBecauseErased,
 }
 
+/// The variant order here matters for the `PartialOrd`/`Ord` impls.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
+pub enum IsIdentity {
+    No,
+    ModuloRegions,
+    Yes,
+}
+
 #[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
 pub struct Response<I: Interner> {
     pub certainty: Certainty,
     pub var_values: I::GenericArgs,
+    /// Is `var_values` an identity?
+    pub var_values_is_identity: IsIdentity,
     /// Additional constraints returned by this query.
     pub external_constraints: I::ExternalConstraints,
 }
 
 impl<I: Interner> Response<I> {
-    pub fn is_identity(&self) -> bool {
-        self.var_values.iter().enumerate().all(|(bv, arg)| match arg.kind() {
-            ty::GenericArgKind::Lifetime(r) => {
-                matches!(r.kind(), ty::ReBound(ty::BoundVarIndexKind::Canonical, br) if br.var().as_usize() == bv)
-            }
-            ty::GenericArgKind::Type(ty) => {
-                matches!(ty.kind(), ty::Bound(ty::BoundVarIndexKind::Canonical, bt) if bt.var().as_usize() == bv)
-            }
-            ty::GenericArgKind::Const(ct) => {
-                matches!(ct.kind(), ty::ConstKind::Bound(ty::BoundVarIndexKind::Canonical, bc) if bc.var().as_usize() == bv)
-            }
-        })
-    }
+    pub fn update_var_values_is_identity(&mut self) {
+        // We start optimistic and downgrade if necessary along the way.
+        self.var_values_is_identity = IsIdentity::Yes;
 
-    pub fn is_identity_modulo_regions(&self) -> bool {
-        let mut var = ty::BoundVar::ZERO;
+        let mut bv = ty::BoundVar::ZERO;
         for arg in self.var_values.iter() {
             match arg.kind() {
                 ty::GenericArgKind::Lifetime(r) => {
-                    if matches!(r.kind(), ty::ReBound(ty::BoundVarIndexKind::Canonical, br) if var == br.var())
+                    if let ty::ReBound(ty::BoundVarIndexKind::Canonical, br) = r.kind()
+                        && bv == br.var()
                     {
-                        var = var + 1;
+                        bv = bv + 1;
                     } else {
-                        // It's ok if this region var isn't an identity variable
+                        // If this region var isn't an identity variable we can't be
+                        // `IsIdentity::Yes`, but we can still be `IsIdentity::ModuloRegions`.
+                        self.var_values_is_identity = IsIdentity::ModuloRegions;
                     }
                 }
                 ty::GenericArgKind::Type(ty) => {
-                    if matches!(ty.kind(), ty::Bound(ty::BoundVarIndexKind::Canonical, bt) if var == bt.var())
+                    if let ty::Bound(ty::BoundVarIndexKind::Canonical, bt) = ty.kind()
+                        && bv == bt.var()
                     {
-                        var = var + 1;
+                        bv = bv + 1;
                     } else {
-                        return false;
+                        self.var_values_is_identity = IsIdentity::No;
+                        break;
                     }
                 }
                 ty::GenericArgKind::Const(ct) => {
-                    if matches!(ct.kind(), ty::ConstKind::Bound(ty::BoundVarIndexKind::Canonical, bc) if var == bc.var())
+                    if let ty::ConstKind::Bound(ty::BoundVarIndexKind::Canonical, bc) = ct.kind()
+                        && bv == bc.var()
                     {
-                        var = var + 1;
+                        bv = bv + 1;
                     } else {
-                        return false;
+                        self.var_values_is_identity = IsIdentity::No;
+                        break;
                     }
                 }
             }
         }
-
-        true
     }
 }
 
