@@ -860,6 +860,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let opt_so_rcvtimeo = ecx.eval_libc_i32("SO_RCVTIMEO");
         let opt_so_sndtimeo = ecx.eval_libc_i32("SO_SNDTIMEO");
+        let opt_so_reuseaddr = ecx.eval_libc_i32("SO_REUSEADDR");
 
         if matches!(ecx.tcx.sess.target.os, Os::MacOs | Os::FreeBsd | Os::NetBsd) {
             // SO_NOSIGPIPE only exists on MacOS, FreeBSD, and NetBSD.
@@ -895,6 +896,23 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
 
             return interp_ok(Ok(()));
+        }
+
+        if option == opt_so_reuseaddr {
+            if value_len != 4 {
+                // Option value should be C-int which is usually 4 bytes.
+                return interp_ok(Err(LibcError("EINVAL")));
+            }
+            let option_value = ecx.ptr_to_mplace(value_ptr, ecx.machine.layouts.i32);
+            let reuse = ecx.read_scalar(&option_value)?.to_i32()? != 0;
+
+            let result = socket.with_socket_ref(|s| s.set_reuse_address(reuse)).map_err(|()| {
+                err_unsup_format!(
+                    "setsockopt: option SO_REUSEADDR is unsupported for {}",
+                    socket.name()
+                )
+            })?;
+            return interp_ok(result.map_err(IoError::HostError));
         }
 
         throw_unsup_format!("setsockopt: option {option:#x} is unsupported for level SOL_SOCKET");
