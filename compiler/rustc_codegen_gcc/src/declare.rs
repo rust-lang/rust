@@ -136,10 +136,14 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             // Return in memory even where the target ABI would use registers, as cg_llvm does for
             // `PassMode::Indirect`.
             func.set_indirect_return();
-            // `get_param(0)` hands out this local's address and `ret_void` returns it.
+            // `get_param(0)` hands out this local's address and `ret_void` returns it. As the named
+            // return value, it lives in the caller's return slot instead of being copied there.
             if self.linkage.get() != FunctionType::Extern {
                 self.functions_with_indirect_return.borrow_mut().entry(func).or_insert_with(|| {
-                    func.new_local(None, fn_abi_gcc.return_type, "indirectReturn")
+                    let return_value =
+                        func.new_local(None, fn_abi_gcc.return_type, "indirectReturn");
+                    func.set_named_return_value(return_value);
+                    return_value
                 });
             }
         }
