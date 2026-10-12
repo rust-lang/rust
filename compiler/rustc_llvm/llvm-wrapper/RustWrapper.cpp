@@ -1495,7 +1495,7 @@ extern "C" uint64_t LLVMRustModuleInstructionStats(LLVMModuleRef M) {
 
 // Transfers ownership of DiagnosticHandler unique_ptr to the caller.
 extern "C" DiagnosticHandler *
-LLVMRustContextGetDiagnosticHandler(LLVMContextRef C) {
+LLVMRustContextTakeDiagnosticHandler(LLVMContextRef C) {
   std::unique_ptr<DiagnosticHandler> DH = unwrap(C)->getDiagnosticHandler();
   return DH.release();
 }

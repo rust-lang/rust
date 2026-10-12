@@ -731,6 +731,7 @@ pub(crate) struct OperandBundle<'a>(InvariantOpaque<'a>);
 pub(crate) struct Linker<'a>(InvariantOpaque<'a>);
 
 unsafe extern "C" {
+    /// Corresponds to LLVM's `DiagnosticHandler`.
     pub(crate) type DiagnosticHandler;
 }
 
@@ -2578,13 +2579,19 @@ unsafe extern "C" {
         data: &ThinLTOData,
     );
 
-    pub(crate) fn LLVMRustContextGetDiagnosticHandler(
+    /// Removes the currently-installed `DiagnosticHandler`, and returns an owning pointer to it.
+    pub(crate) fn LLVMRustContextTakeDiagnosticHandler(
         Context: &Context,
-    ) -> Option<&DiagnosticHandler>;
+    ) -> Option<ptr::NonNull<DiagnosticHandler>>;
+
+    /// Installs a diagnostic handler that was previously removed by
+    /// [`LLVMRustContextTakeDiagnosticHandler`].
     pub(crate) fn LLVMRustContextSetDiagnosticHandler(
         context: &Context,
-        diagnostic_handler: Option<&DiagnosticHandler>,
+        diagnostic_handler: Option<ptr::NonNull<DiagnosticHandler>>,
     );
+
+    /// Installs a custom diagnostic handler.
     pub(crate) fn LLVMRustContextConfigureDiagnosticHandler(
         context: &Context,
         diagnostic_handler_callback: DiagnosticHandlerTy,

@@ -2,7 +2,7 @@ use std::ffi::{CStr, CString};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::{fs, slice, str};
+use std::{fs, ptr, slice, str};
 
 use libc::{c_char, c_int, c_void, size_t};
 use rustc_codegen_ssa::back::link::ensure_removed;
@@ -322,7 +322,7 @@ pub(crate) enum CodegenDiagnosticsStage {
 pub(crate) struct DiagnosticHandlers<'a> {
     data: *mut (&'a CodegenContext, &'a SharedEmitter),
     llcx: &'a llvm::Context,
-    old_handler: Option<&'a llvm::DiagnosticHandler>,
+    old_handler: Option<ptr::NonNull<llvm::DiagnosticHandler>>,
 }
 
 impl<'a> DiagnosticHandlers<'a> {
@@ -365,7 +365,7 @@ impl<'a> DiagnosticHandlers<'a> {
         let pgo_available = cgcx.module_config.pgo_use.is_some();
         let data = Box::into_raw(Box::new((cgcx, shared_emitter)));
         unsafe {
-            let old_handler = llvm::LLVMRustContextGetDiagnosticHandler(llcx);
+            let old_handler = llvm::LLVMRustContextTakeDiagnosticHandler(llcx);
             llvm::LLVMRustContextConfigureDiagnosticHandler(
                 llcx,
                 diagnostic_handler,
