@@ -109,6 +109,8 @@ note: `Trait` defines an item `get_s`, perhaps you need to implement it
    |
 LL | trait Trait: Sized {
    | ^^^^^^^^^^^^^^^^^^
+LL |     fn get_s(self) -> S<(), 123>;
+   |
 
 error[E0599]: no method named `get_s` found for struct `Rc<Self>` in the current scope
   --> $DIR/inherent-impls-self-replacement.rs:49:38
@@ -122,6 +124,8 @@ note: `Trait` defines an item `get_s`, perhaps you need to implement it
    |
 LL | trait Trait: Sized {
    | ^^^^^^^^^^^^^^^^^^
+LL |     fn get_s(self) -> S<(), 123>;
+   |
 
 error[E0599]: no method named `get_s` found for struct `Pin<Box<Self>>` in the current scope
   --> $DIR/inherent-impls-self-replacement.rs:51:39
@@ -135,6 +139,8 @@ note: `Trait` defines an item `get_s`, perhaps you need to implement it
    |
 LL | trait Trait: Sized {
    | ^^^^^^^^^^^^^^^^^^
+LL |     fn get_s(self) -> S<(), 123>;
+   |
 
 error[E0507]: cannot move out of `*self` which is behind a shared reference
   --> $DIR/inherent-impls-self-replacement.rs:24:34
