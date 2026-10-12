@@ -1,6 +1,10 @@
 //@ check-pass
 //@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver=globally
+
+// Check that elaborating a higher-ranked supertrait correctly shifts
+// bound-variable indices when combining the two sets of binders.
 
 trait Triple<'a, 'b, 'c> {}
 

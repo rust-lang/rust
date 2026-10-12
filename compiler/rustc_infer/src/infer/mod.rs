@@ -1567,7 +1567,7 @@ impl<'tcx> InferCtxt<'tcx> {
             args: Vec<ty::GenericArg<'tcx>>,
         }
 
-        impl<'tcx> BoundVarReplacerDelegate<'tcx> for ToFreshVars<'tcx> {
+        impl<'tcx> BoundVarReplacerDelegate<TyCtxt<'tcx>> for ToFreshVars<'tcx> {
             fn replace_region(&mut self, br: ty::BoundRegion<'tcx>) -> ty::Region<'tcx> {
                 self.args[br.var.index()].expect_region()
             }

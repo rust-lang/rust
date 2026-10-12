@@ -53,6 +53,7 @@ use rustc_index::{Idx, IndexVec};
 use thin_vec::ThinVec;
 use tracing::{debug, instrument};
 
+use crate::data_structures::DelayedMap;
 use crate::inherent::*;
 use crate::visit::{TypeVisitable, TypeVisitableExt as _};
 use crate::{
@@ -491,24 +492,58 @@ where
 }
 
 ///////////////////////////////////////////////////////////////////////////
-// Bound variable index shifter
-//
-// When combining binders, shift the bound-variable indices to avoid
-// overlapping with the variables from the other binder.
+// Bound variable replacer
 
-struct BoundVarIndexShifter<I: Interner> {
-    cx: I,
-    current_index: ty::DebruijnIndex,
-    amount: usize,
+/// A delegate used when instantiating bound vars.
+///
+/// Each bound variable must always map to the same result. `BoundVarReplacer`
+/// caches folded types and may not call the delegate on every visit.
+pub trait BoundVarReplacerDelegate<I: Interner> {
+    fn replace_region(&mut self, br: ty::BoundRegion<I>) -> Region<I>;
+    fn replace_ty(&mut self, bt: ty::BoundTy<I>) -> I::Ty;
+    fn replace_const(&mut self, bc: ty::BoundConst<I>) -> Const<I>;
 }
 
-impl<I: Interner> BoundVarIndexShifter<I> {
-    fn new(cx: I, amount: usize) -> Self {
-        Self { cx, current_index: ty::INNERMOST, amount }
+/// A simple delegate taking three mutable functions.
+pub struct FnMutDelegate<'a, I: Interner> {
+    pub regions: &'a mut (dyn FnMut(ty::BoundRegion<I>) -> Region<I> + 'a),
+    pub types: &'a mut (dyn FnMut(ty::BoundTy<I>) -> I::Ty + 'a),
+    pub consts: &'a mut (dyn FnMut(ty::BoundConst<I>) -> Const<I> + 'a),
+}
+
+impl<I: Interner> BoundVarReplacerDelegate<I> for FnMutDelegate<'_, I> {
+    fn replace_region(&mut self, br: ty::BoundRegion<I>) -> Region<I> {
+        (self.regions)(br)
+    }
+
+    fn replace_ty(&mut self, bt: ty::BoundTy<I>) -> I::Ty {
+        (self.types)(bt)
+    }
+
+    fn replace_const(&mut self, bc: ty::BoundConst<I>) -> Const<I> {
+        (self.consts)(bc)
     }
 }
 
-impl<I: Interner> TypeFolder<I> for BoundVarIndexShifter<I> {
+/// Replaces escaping bound vars in a value.
+pub struct BoundVarReplacer<I: Interner, D> {
+    cx: I,
+    /// As with `RegionFolder`, represents the index of a binder *just outside*
+    /// the ones we have visited.
+    current_index: ty::DebruijnIndex,
+    delegate: D,
+    // Types can appear at different binder depths, so include the depth
+    // in the cache key.
+    cache: DelayedMap<(ty::DebruijnIndex, I::Ty), I::Ty>,
+}
+
+impl<I: Interner, D: BoundVarReplacerDelegate<I>> BoundVarReplacer<I, D> {
+    pub fn new(cx: I, delegate: D) -> Self {
+        Self { cx, current_index: ty::INNERMOST, delegate, cache: Default::default() }
+    }
+}
+
+impl<I: Interner, D: BoundVarReplacerDelegate<I>> TypeFolder<I> for BoundVarReplacer<I, D> {
     fn cx(&self) -> I {
         self.cx
     }
@@ -520,44 +555,56 @@ impl<I: Interner> TypeFolder<I> for BoundVarIndexShifter<I> {
         t
     }
 
+    fn fold_ty(&mut self, t: I::Ty) -> I::Ty {
+        match t.kind() {
+            ty::Bound(ty::BoundVarIndexKind::Bound(debruijn), bound_ty)
+                if debruijn == self.current_index =>
+            {
+                let ty = self.delegate.replace_ty(bound_ty);
+                debug_assert!(!ty.has_vars_bound_above(ty::INNERMOST));
+                shift_vars(self.cx, ty, self.current_index.as_u32())
+            }
+            _ => {
+                if !t.has_vars_bound_at_or_above(self.current_index) {
+                    t
+                } else if let Some(&t) = self.cache.get(&(self.current_index, t)) {
+                    t
+                } else {
+                    let res = t.super_fold_with(self);
+                    assert!(self.cache.insert((self.current_index, t), res));
+                    res
+                }
+            }
+        }
+    }
+
     fn fold_region(&mut self, r: Region<I>) -> Region<I> {
         match r.kind() {
             ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), br)
                 if debruijn == self.current_index =>
             {
-                Region::new_bound(
-                    self.cx,
-                    debruijn,
-                    ty::BoundRegion { var: br.var + self.amount, kind: br.kind },
-                )
+                let region = self.delegate.replace_region(br);
+                if let ty::ReBound(ty::BoundVarIndexKind::Bound(inner), br) = region.kind() {
+                    // Bound regions returned by the delegate use INNERMOST.
+                    // Adjust them to the current binder depth.
+                    assert_eq!(inner, ty::INNERMOST);
+                    Region::new_bound(self.cx, debruijn, br)
+                } else {
+                    region
+                }
             }
             _ => r,
         }
     }
 
-    fn fold_ty(&mut self, ty: I::Ty) -> I::Ty {
-        match ty.kind() {
-            ty::Bound(ty::BoundVarIndexKind::Bound(debruijn), bound_ty)
-                if debruijn == self.current_index =>
-            {
-                Ty::new_bound(
-                    self.cx,
-                    debruijn,
-                    ty::BoundTy { var: bound_ty.var + self.amount, kind: bound_ty.kind },
-                )
-            }
-
-            _ if ty.has_vars_bound_at_or_above(self.current_index) => ty.super_fold_with(self),
-            _ => ty,
-        }
-    }
-
     fn fold_const(&mut self, ct: Const<I>) -> Const<I> {
         match ct.kind() {
-            ty::ConstKind::Bound(ty::BoundVarIndexKind::Bound(debruijn), bound_ct)
+            ty::ConstKind::Bound(ty::BoundVarIndexKind::Bound(debruijn), bound_const)
                 if debruijn == self.current_index =>
             {
-                Const::new_bound(self.cx, debruijn, ty::BoundConst::new(bound_ct.var + self.amount))
+                let ct = self.delegate.replace_const(bound_const);
+                debug_assert!(!ct.has_vars_bound_above(ty::INNERMOST));
+                shift_vars(self.cx, ct, self.current_index.as_u32())
             }
             _ => ct.super_fold_with(self),
         }
@@ -572,17 +619,50 @@ impl<I: Interner> TypeFolder<I> for BoundVarIndexShifter<I> {
     }
 }
 
-/// Shifts escaping bound-variable indices by `bound_vars` without changing
-/// their De Bruijn depth.
-pub fn shift_bound_var_indices<I: Interner, T>(cx: I, bound_vars: usize, value: T) -> T
-where
-    T: TypeFoldable<I>,
-{
-    if bound_vars == 0 || !value.has_escaping_bound_vars() {
+/// Replaces escaping bound vars using `delegate`.
+pub fn replace_escaping_bound_vars_uncached<I: Interner, T: TypeFoldable<I>>(
+    cx: I,
+    value: T,
+    delegate: impl BoundVarReplacerDelegate<I>,
+) -> T {
+    if !value.has_escaping_bound_vars() {
         value
     } else {
-        value.fold_with(&mut BoundVarIndexShifter::new(cx, bound_vars))
+        value.fold_with(&mut BoundVarReplacer::new(cx, delegate))
     }
+}
+
+/// Shifts escaping bound-variable indices by `bound_vars` without changing
+/// their De Bruijn depth.
+pub fn shift_bound_var_indices<I: Interner, T: TypeFoldable<I>>(
+    cx: I,
+    bound_vars: usize,
+    value: T,
+) -> T {
+    if bound_vars == 0 || !value.has_escaping_bound_vars() {
+        return value;
+    }
+
+    let shift_bv = |bv: ty::BoundVar| bv + bound_vars;
+    replace_escaping_bound_vars_uncached(
+        cx,
+        value,
+        FnMutDelegate {
+            regions: &mut |r: ty::BoundRegion<I>| {
+                Region::new_bound(
+                    cx,
+                    ty::INNERMOST,
+                    ty::BoundRegion { var: shift_bv(r.var), kind: r.kind },
+                )
+            },
+            types: &mut |t: ty::BoundTy<I>| {
+                Ty::new_bound(cx, ty::INNERMOST, ty::BoundTy { var: shift_bv(t.var), kind: t.kind })
+            },
+            consts: &mut |c: ty::BoundConst<I>| {
+                Const::new_bound(cx, ty::INNERMOST, ty::BoundConst::new(shift_bv(c.var)))
+            },
+        },
+    )
 }
 
 ///////////////////////////////////////////////////////////////////////////
