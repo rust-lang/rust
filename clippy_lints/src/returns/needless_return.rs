@@ -13,7 +13,7 @@ use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, Expr, ExprKind, HirId, MatchSource, StmtKind};
 use rustc_lint::{LateContext, LintContext as _};
 use rustc_middle::ty::{self, Ty};
-use rustc_span::{BytePos, Pos as _, Span};
+use rustc_span::{BytePos, Ident, Pos as _, Span};
 use std::borrow::Cow;
 use std::fmt::Display;
 
@@ -188,7 +188,7 @@ fn check_final_expr<'tcx>(
                         matches!(
                             lint,
                             LintCheck {
-                                tool_name: Some(sym::clippy),
+                                tool: Some(Ident { name: sym::clippy, .. }),
                                 lint_name: sym::needless_return | sym::style | sym::all | sym::warnings,
                                 rest: None,
                                 kind: LintCheckKind::Expect,
