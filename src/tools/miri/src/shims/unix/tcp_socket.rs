@@ -1089,6 +1089,13 @@ impl UnixSocketFileDescription for TcpSocket {
         self.write_timeout.set(timeout);
         interp_ok(())
     }
+
+    fn with_socket_ref<T>(&self, cb: impl FnOnce(socket2::SockRef<'_>) -> T) -> Result<T, ()>
+    where
+        Self: Sized,
+    {
+        Ok(cb(self.state.borrow().as_socket_ref()))
+    }
 }
 
 impl<'tcx> EvalContextPrivExt<'tcx> for crate::MiriInterpCx<'tcx> {}

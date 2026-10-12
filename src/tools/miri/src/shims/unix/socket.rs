@@ -172,6 +172,18 @@ pub trait UnixSocketFileDescription: UnixFileDescription {
     ) -> InterpResult<'tcx> {
         throw_unsup_format!("setsockopt: option SO_SNDTIMEO is unsupported for {}", self.name())
     }
+
+    /// If the shimmed socket contains an underlying host socket, the `cb` callback
+    /// function is invoked with a [`socket2::SockRef`] to the underlying host socket
+    /// and [`Ok`] with the return value of the callback is returned.
+    /// Otherwise, when the shimmed socket is not backed by a host socket, [`Err`] is
+    /// returned.
+    fn with_socket_ref<T>(&self, _cb: impl FnOnce(socket2::SockRef<'_>) -> T) -> Result<T, ()>
+    where
+        Self: Sized,
+    {
+        Err(())
+    }
 }
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
