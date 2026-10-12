@@ -841,27 +841,12 @@ impl UnixSocketFileDescription for TcpSocket {
                 );
             }
         } else if level == ecx.eval_libc_i32("IPPROTO_IP") {
-            let opt_ip_ttl = ecx.eval_libc_i32("IP_TTL");
-
-            if option == opt_ip_ttl {
-                if value_len != 4 {
-                    // Option value should be C-uint which is usually 4 bytes.
-                    return interp_ok(Err(LibcError("EINVAL")));
-                }
-                let option_value = ecx.ptr_to_mplace(value_ptr, ecx.machine.layouts.u32);
-                let ttl = ecx.read_scalar(&option_value)?.to_u32()?;
-
-                return interp_ok(
-                    self.with_socket_ref(|s| s.set_ttl_v4(ttl)).map_err(IoError::HostError),
-                );
-            } else {
-                return ecx.set_ip_socket_option(
-                    option,
-                    value_ptr,
-                    value_len,
-                    self.state.borrow().as_socket_ref(),
-                );
-            }
+            return ecx.set_ip_socket_option(
+                option,
+                value_ptr,
+                value_len,
+                self.state.borrow().as_socket_ref(),
+            );
         } else if level == ecx.eval_libc_i32("IPPROTO_TCP") {
             let opt_tcp_nodelay = ecx.eval_libc_i32("TCP_NODELAY");
 
