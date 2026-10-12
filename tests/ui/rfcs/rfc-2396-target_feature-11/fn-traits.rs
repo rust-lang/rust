@@ -26,15 +26,15 @@ fn call_once_i32(f: impl FnOnce(i32)) {
 }
 
 fn main() {
-    call(foo); //~ ERROR expected an `Fn()` closure, found `#[target_feature(..)] fn() {foo}`
-    call_mut(foo); //~ ERROR expected an `FnMut()` closure, found `#[target_feature(..)] fn() {foo}`
-    call_once(foo); //~ ERROR expected an `FnOnce()` closure, found `#[target_feature(..)] fn() {foo}`
-    call_once_i32(bar); //~ ERROR expected an `FnOnce(i32)` closure, found `#[target_feature(..)] fn(i32) {bar}`
+    call(foo); //~ ERROR expected `Fn()` signature, found `#[target_feature(..)] fn() {foo}`
+    call_mut(foo); //~ ERROR expected `FnMut()` signature, found `#[target_feature(..)] fn() {foo}`
+    call_once(foo); //~ ERROR expected `FnOnce()` signature, found `#[target_feature(..)] fn() {foo}`
+    call_once_i32(bar); //~ ERROR expected `FnOnce(i32)` signature, found `#[target_feature(..)] fn(i32) {bar}`
 
     call(foo_unsafe);
-    //~^ ERROR expected an `Fn()` closure, found `unsafe fn() {foo_unsafe}`
+    //~^ ERROR expected `Fn()` signature, found `unsafe fn() {foo_unsafe}`
     call_mut(foo_unsafe);
-    //~^ ERROR expected an `FnMut()` closure, found `unsafe fn() {foo_unsafe}`
+    //~^ ERROR expected `FnMut()` signature, found `unsafe fn() {foo_unsafe}`
     call_once(foo_unsafe);
-    //~^ ERROR expected an `FnOnce()` closure, found `unsafe fn() {foo_unsafe}`
+    //~^ ERROR expected `FnOnce()` signature, found `unsafe fn() {foo_unsafe}`
 }

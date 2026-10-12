@@ -11,8 +11,8 @@ help: the trait `for<'a> FnMut(&'a {integer})` is not implemented for closure `{
    |
 LL |     let _ = (-10..=10).find(|x: i32| x.signum() == 0);
    |                             ^^^^^^^^
-   = note: expected a closure with signature `for<'a> fn(&'a {integer})`
-              found a closure with signature `fn(i32)`
+   = note: expected type with signature `for<'a> fn(&'a {integer})`
+           found closure with signature `fn(i32)`
 note: required by a bound in `find`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
 
@@ -29,8 +29,8 @@ help: the trait `for<'a> FnMut(&'a {integer})` is not implemented for closure `{
    |
 LL |     let _ = (-10..=10).find(|x: &&&i32| x.signum() == 0);
    |                             ^^^^^^^^^^^
-   = note: expected a closure with signature `for<'a> fn(&'a {integer})`
-              found a closure with signature `fn(&&&i32)`
+   = note: expected type with signature `for<'a> fn(&'a {integer})`
+           found closure with signature `fn(&&&i32)`
 note: required by a bound in `find`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
 

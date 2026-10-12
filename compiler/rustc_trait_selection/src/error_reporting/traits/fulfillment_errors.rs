@@ -3632,9 +3632,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             // Print type mismatch
             let (expected_args, given_args) = self.cmp(expected_ty, given_ty);
             err.note_expected_found(
-                "a closure with signature",
+                "type with signature",
                 expected_args,
-                "a closure with signature",
+                &format!(
+                    "{} with signature",
+                    trait_pred.self_ty().skip_binder().prefix_string(self.tcx)
+                ),
                 given_args,
             );
         }
