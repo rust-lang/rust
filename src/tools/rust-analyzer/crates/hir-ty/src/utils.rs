@@ -14,7 +14,7 @@ use span::Edition;
 use crate::{
     TargetFeatures,
     db::HirDatabase,
-    layout::{Layout, TagEncoding},
+    layout::{Layout, RustcEnumVariantIdx, TagEncoding},
     lower::SupertraitsInfo,
     mir::{IsSigned, pad16},
 };
@@ -106,7 +106,8 @@ pub(crate) fn detect_variant_from_bytes<'a>(
             (e.enum_variants(db).variants[index.0].0, layout)
         }
         hir_def::layout::Variants::Multiple { tag, tag_encoding, variants, .. } => {
-            let size = tag.size(target_data_layout).bytes_usize();
+            let tag_size = tag.size(target_data_layout);
+            let size = tag_size.bytes_usize();
             let offset = layout.fields.offset(0).bytes_usize(); // The only field on enum variants is the tag field
             let tag = i128::from_le_bytes(pad16(&b[offset..offset + size], IsSigned::No));
             match tag_encoding {
@@ -118,14 +119,45 @@ pub(crate) fn detect_variant_from_bytes<'a>(
                         })?;
                     (var_idx, layout)
                 }
-                TagEncoding::Niche { untagged_variant, niche_start, .. } => {
-                    let candidate_tag = tag.wrapping_sub(*niche_start as i128) as usize;
-                    let variant = variants
-                        .iter_enumerated()
-                        .map(|(x, _)| x)
-                        .filter(|x| x != untagged_variant)
-                        .nth(candidate_tag)
-                        .unwrap_or(*untagged_variant);
+                TagEncoding::Niche { untagged_variant, niche_variants, niche_start } => {
+                    // Compute the variant this niche value/"tag" corresponds to. With niche layout,
+                    // discriminant (encoded in niche/tag) and variant index are the same.
+                    let variants_start = niche_variants.start().0;
+                    let variants_end = niche_variants.end().0;
+
+                    // Match rustc's Sub, which uses overflowing_sub().
+                    // https://github.com/rust-lang/rust/blob/e023590de407f417e0f3da675a372eca7acf60c6/compiler/rustc_const_eval/src/interpret/operator.rs#L256
+                    let (variant_index_relative_val, _) =
+                        (tag as u128).overflowing_sub(*niche_start);
+
+                    let variant_index_relative = tag_size.truncate(variant_index_relative_val);
+                    // Check if this is in the range that indicates an actual discriminant.
+                    let variant =
+                        if variant_index_relative <= (variants_end - variants_start) as u128 {
+                            let variant_index_relative = usize::try_from(variant_index_relative)
+                                .expect("we checked that this fits into a usize");
+                            // Then computing the absolute variant idx should not overflow any more.
+                            let variant_index = RustcEnumVariantIdx(
+                                variants_start
+                                    .checked_add(variant_index_relative)
+                                    .expect("overflow computing absolute variant idx"),
+                            );
+                            assert!(variant_index.0 < variants.len());
+                            if variant_index == *untagged_variant {
+                                // The untagged variant can be in the niche range, but even then it
+                                // is not a valid encoding.
+                                return None;
+                            }
+                            variant_index
+                        } else {
+                            *untagged_variant
+                        };
+                    // Reading the discriminant of an uninhabited variant is UB. This is the basis for the
+                    // `uninhabited_enum_branching` MIR pass. It also ensures consistency with
+                    // `write_discriminant`.
+                    if variants[variant].uninhabited {
+                        return None;
+                    }
                     (e.enum_variants(db).variants[variant.0].0, &variants[variant])
                 }
             }
