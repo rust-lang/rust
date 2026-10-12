@@ -1507,7 +1507,9 @@ extern "C" void LLVMRustContextSetDiagnosticHandler(LLVMContextRef C,
   unwrap(C)->setDiagnosticHandler(std::unique_ptr<DiagnosticHandler>(DH));
 }
 
-using LLVMDiagnosticHandlerTy = DiagnosticHandler::DiagnosticHandlerTy;
+// Must match `rustc_codegen_llvm::llvm::ffi::DiagnosticHandlerCallback`.
+typedef void (*LLVMRustDiagnosticHandlerCallback)(LLVMDiagnosticInfoRef,
+                                                  void *);
 
 // Configures a diagnostic handler that invokes provided callback when a
 // backend needs to emit a diagnostic.
@@ -1519,7 +1521,8 @@ using LLVMDiagnosticHandlerTy = DiagnosticHandler::DiagnosticHandlerTy;
 // If RemarkFilePath is not NULL, optimization remarks will be streamed directly
 // into this file, bypassing the diagnostics handler.
 extern "C" void LLVMRustContextConfigureDiagnosticHandler(
-    LLVMContextRef C, LLVMDiagnosticHandlerTy DiagnosticHandlerCallback,
+    LLVMContextRef C,
+    LLVMRustDiagnosticHandlerCallback DiagnosticHandlerCallback,
     void *DiagnosticHandlerContext, bool RemarkAllPasses,
     const char *const *RemarkPasses, size_t RemarkPassesLen,
     const char *RemarkFilePath, bool PGOAvailable) {
@@ -1527,7 +1530,7 @@ extern "C" void LLVMRustContextConfigureDiagnosticHandler(
   class RustDiagnosticHandler final : public DiagnosticHandler {
   public:
     RustDiagnosticHandler(
-        LLVMDiagnosticHandlerTy DiagnosticHandlerCallback,
+        LLVMRustDiagnosticHandlerCallback DiagnosticHandlerCallback,
         void *DiagnosticHandlerContext, bool RemarkAllPasses,
         std::vector<std::string> RemarkPasses,
         std::unique_ptr<ToolOutputFile> RemarksFile,
@@ -1566,7 +1569,7 @@ extern "C" void LLVMRustContextConfigureDiagnosticHandler(
         }
       }
       if (DiagnosticHandlerCallback) {
-        DiagnosticHandlerCallback(&DI, DiagnosticHandlerContext);
+        DiagnosticHandlerCallback(wrap(&DI), DiagnosticHandlerContext);
         return true;
       }
       return false;
@@ -1600,7 +1603,7 @@ extern "C" void LLVMRustContextConfigureDiagnosticHandler(
       return false;
     }
 
-    LLVMDiagnosticHandlerTy DiagnosticHandlerCallback = nullptr;
+    LLVMRustDiagnosticHandlerCallback DiagnosticHandlerCallback = nullptr;
     void *DiagnosticHandlerContext = nullptr;
 
     bool RemarkAllPasses = false;

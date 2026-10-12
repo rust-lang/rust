@@ -368,7 +368,7 @@ impl<'a> DiagnosticHandlers<'a> {
             let old_handler = llvm::LLVMRustContextTakeDiagnosticHandler(llcx);
             llvm::LLVMRustContextConfigureDiagnosticHandler(
                 llcx,
-                diagnostic_handler,
+                diagnostic_handler_callback,
                 data.cast(),
                 remark_passes_all,
                 remark_passes.as_ptr(),
@@ -418,7 +418,7 @@ fn report_inline_asm(
     InlineAsmError { lo, hi, msg, level, source }
 }
 
-unsafe extern "C" fn diagnostic_handler(info: &DiagnosticInfo, user: *mut c_void) {
+unsafe extern "C" fn diagnostic_handler_callback(info: &DiagnosticInfo, user: *mut c_void) {
     if user.is_null() {
         return;
     }

@@ -735,7 +735,8 @@ unsafe extern "C" {
     pub(crate) type DiagnosticHandler;
 }
 
-pub(crate) type DiagnosticHandlerTy = unsafe extern "C" fn(&DiagnosticInfo, *mut c_void);
+/// Must match the declaration of `LLVMRustDiagnosticHandlerCallback`.
+pub(crate) type DiagnosticHandlerCallback = unsafe extern "C" fn(&DiagnosticInfo, *mut c_void);
 
 pub(crate) mod debuginfo {
     use bitflags::bitflags;
@@ -2594,7 +2595,7 @@ unsafe extern "C" {
     /// Installs a custom diagnostic handler.
     pub(crate) fn LLVMRustContextConfigureDiagnosticHandler(
         context: &Context,
-        diagnostic_handler_callback: DiagnosticHandlerTy,
+        diagnostic_handler_callback: DiagnosticHandlerCallback,
         diagnostic_handler_context: *mut c_void,
         remark_all_passes: bool,
         remark_passes: *const *const c_char,
