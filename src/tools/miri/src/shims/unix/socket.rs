@@ -1,3 +1,4 @@
+use std::io;
 use std::net::{Shutdown, SocketAddr};
 use std::time::Duration;
 
@@ -171,6 +172,15 @@ pub trait UnixSocketFileDescription: UnixFileDescription {
         _timeout: Option<Duration>,
     ) -> InterpResult<'tcx> {
         throw_unsup_format!("setsockopt: option SO_SNDTIMEO is unsupported for {}", self.name())
+    }
+
+    /// Get the stored I/O error of the socket, if any exists.
+    /// This method should consume the stored error.
+    fn take_error<'tcx>(
+        self: FileDescriptionRef<Self>,
+        _ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, Option<io::Error>> {
+        throw_unsup_format!("getsockopt: option SO_ERROR is unsupported for {}", self.name())
     }
 
     /// If the shimmed socket contains an underlying host socket, the `cb` callback
@@ -1032,6 +1042,21 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         socket: FileDescriptionRef<T>,
     ) -> InterpResult<'tcx, Result<MPlaceTy<'tcx>, IoError>> {
         let ecx = self.eval_context_mut();
+
+        let opt_so_error = ecx.eval_libc_i32("SO_ERROR");
+
+        if option == opt_so_error {
+            let return_value = match socket.take_error(ecx)? {
+                Some(err) => ecx.io_error_to_errnum(err)?.to_i32()?,
+                // If there is no error, we return 0 as the option value.
+                None => 0,
+            };
+
+            // Allocate new buffer on the stack with the `i32` layout.
+            let value_buffer = ecx.allocate(ecx.machine.layouts.i32, MemoryKind::Stack)?;
+            ecx.write_int(return_value, &value_buffer)?;
+            return interp_ok(Ok(value_buffer));
+        }
 
         throw_unsup_format!("getsockopt: option {option:#x} is unsupported for level SOL_SOCKET",);
     }

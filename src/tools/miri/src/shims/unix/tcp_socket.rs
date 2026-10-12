@@ -774,7 +774,6 @@ impl UnixSocketFileDescription for TcpSocket {
         ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, Result<MPlaceTy<'tcx>, IoError>> {
         if level == ecx.eval_libc_i32("SOL_SOCKET") {
-            let opt_so_error = ecx.eval_libc_i32("SO_ERROR");
             let opt_so_rcvtimeo = ecx.eval_libc_i32("SO_RCVTIMEO");
             let opt_so_sndtimeo = ecx.eval_libc_i32("SO_SNDTIMEO");
             let opt_so_reuseaddr = ecx.eval_libc_i32("SO_REUSEADDR");
@@ -788,30 +787,7 @@ impl UnixSocketFileDescription for TcpSocket {
             };
             let opt_so_keepalive = ecx.eval_libc_i32("SO_KEEPALIVE");
 
-            if option == opt_so_error {
-                // Reading SO_ERROR should always return the latest async error. Because our stored
-                // `socket.error` could be outdated, we attempt to update it here.
-                ecx.update_last_error(&self);
-
-                let return_value = match self.error.take() {
-                    Some(err) => ecx.io_error_to_errnum(err)?.to_i32()?,
-                    // If there is no error, we return 0 as the option value.
-                    None => 0,
-                };
-
-                // Clear our own stored error -- it was either `take`n above or it is outdated.
-                self.error.replace(None);
-
-                // We know there is no longer an async error and thus we need to update the
-                // I/O and fd readiness of the socket.
-                self.io_readiness.borrow_mut().error = false;
-                ecx.update_fd_readiness(self, ReadinessUpdateFlags::DEFAULT)?;
-
-                // Allocate new buffer on the stack with the `i32` layout.
-                let value_buffer = ecx.allocate(ecx.machine.layouts.i32, MemoryKind::Stack)?;
-                ecx.write_int(return_value, &value_buffer)?;
-                interp_ok(Ok(value_buffer))
-            } else if option == opt_so_rcvtimeo || option == opt_so_sndtimeo {
+            if option == opt_so_rcvtimeo || option == opt_so_sndtimeo {
                 let timeout = if option == opt_so_rcvtimeo {
                     self.read_timeout.get()
                 } else {
@@ -1031,6 +1007,25 @@ impl UnixSocketFileDescription for TcpSocket {
     ) -> InterpResult<'tcx> {
         self.write_timeout.set(timeout);
         interp_ok(())
+    }
+
+    fn take_error<'tcx>(
+        self: FileDescriptionRef<Self>,
+        ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, Option<io::Error>> {
+        // Reading SO_ERROR should always return the latest async error. Because our stored
+        // `socket.error` could be outdated, we attempt to update it here.
+        ecx.update_last_error(&self);
+
+        // We consume the error. `self.error` is now guaranteed to be `None`.
+        let err = self.error.take();
+
+        // We know there is no longer an async error and thus we need to update the
+        // I/O and fd readiness of the socket.
+        self.io_readiness.borrow_mut().error = false;
+        ecx.update_fd_readiness(self, ReadinessUpdateFlags::DEFAULT)?;
+
+        interp_ok(err)
     }
 
     fn with_socket_ref<T>(&self, cb: impl FnOnce(socket2::SockRef<'_>) -> T) -> Result<T, ()>
