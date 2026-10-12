@@ -59,7 +59,6 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_infer::infer::DefineOpaqueTypes;
-use rustc_infer::traits::IfChainCoerceCause;
 use rustc_macros::extension;
 use rustc_middle::traits::PatternOriginExpr;
 use rustc_middle::ty::consts::ConstExt;
@@ -507,101 +506,45 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     }
                 }
             },
-            ObligationCauseCode::IfChainCoerce(IfChainCoerceCause {
-                outer_if_expr_id,
-                source_branch_expr_id: prev_branch_expr_id,
-                source_branch_ty: prev_branch_ty,
-                source_branch_span: prev_branch_span,
-                target_branch_expr_id: branch_expr_id,
-                target_branch_ty: branch_ty,
-                target_branch_span: branch_span,
+            ObligationCauseCode::IfExpression {
+                outermost_if_expr_id: expr_id,
+                expected_branch_id: expected_branch,
+                found_branch_id: found_branch,
                 ..
-            }) => {
-                err.span_label(prev_branch_span, "expected because of this");
-
-                if let hir::Node::Expr(&hir::Expr { span: expr_span, .. }) =
-                    self.tcx.hir_node(outer_if_expr_id)
-                    && let hir::Node::Expr(&hir::Expr { kind: hir::ExprKind::If(cond, ..), .. }) =
-                        self.tcx.hir_node(outer_if_expr_id)
-                {
-                    let outer_span = if self.tcx.sess.source_map().is_multiline(expr_span) {
-                        if prev_branch_span.hi() == expr_span.hi()
-                            || branch_span.hi() == expr_span.hi()
-                        {
-                            // Avoid overlapping arrows: shrink to `if <cond>`.
-                            Some(expr_span.shrink_to_lo().to(cond.peel_drop_temps().span))
-                        } else {
-                            Some(expr_span)
-                        }
-                    } else {
-                        None
-                    };
-                    if let Some(sp) = outer_span {
-                        err.span_label(sp, "`if` and `else` have incompatible types");
-                    }
-                }
-
-                let prev_id = if let hir::Node::Expr(hir::Expr {
-                    kind: hir::ExprKind::Block(blk, _),
-                    ..
-                }) = self.tcx.hir_node(prev_branch_expr_id)
-                {
-                    blk.hir_id
-                } else {
-                    prev_branch_expr_id
-                };
-                let new_id = if let hir::Node::Expr(hir::Expr {
-                    kind: hir::ExprKind::Block(blk, _),
-                    ..
-                }) = self.tcx.hir_node(branch_expr_id)
-                {
-                    blk.hir_id
-                } else {
-                    branch_expr_id
-                };
-                if let Some(subdiag) = self.suggest_remove_semi_or_return_binding(
-                    Some(prev_id),
-                    prev_branch_ty,
-                    prev_branch_span,
-                    Some(new_id),
-                    branch_ty,
-                    branch_span,
-                ) {
-                    err.subdiagnostic(subdiag);
-                }
-            }
-            ObligationCauseCode::IfExpression { expr_id, .. } => {
-                let hir::Node::Expr(&hir::Expr {
-                    kind: hir::ExprKind::If(cond_expr, then_expr, Some(else_expr)),
-                    span: expr_span,
-                    ..
-                }) = self.tcx.hir_node(expr_id)
+            } => {
+                let hir::Node::Expr(
+                    outer_if @ &hir::Expr {
+                        kind: hir::ExprKind::If(cond_expr, ..),
+                        span: expr_span,
+                        ..
+                    },
+                ) = self.tcx.hir_node(expr_id)
                 else {
                     return;
                 };
-                let then_span = self.find_block_span_from_hir_id(then_expr.hir_id);
-                let then_ty = self
+                let expected_expr = self.tcx.hir_node(expected_branch).expect_expr();
+                let found_expr = self.tcx.hir_node(found_branch).expect_expr();
+                let expected_span = self.find_block_span_from_hir_id(expected_branch);
+                let expected_ty = self
                     .typeck_results
                     .as_ref()
                     .expect("if expression only expected inside FnCtxt")
-                    .expr_ty(then_expr);
-                let else_span = self.find_block_span_from_hir_id(else_expr.hir_id);
-                let else_ty = self
+                    .expr_ty(expected_expr);
+                let found_span = self.find_block_span_from_hir_id(found_branch);
+                let found_ty = self
                     .typeck_results
                     .as_ref()
                     .expect("if expression only expected inside FnCtxt")
-                    .expr_ty(else_expr);
-                if let hir::ExprKind::If(_cond, _then, None) = else_expr.kind
-                    && else_ty.is_unit()
-                {
-                    // Account for `let x = if a { 1 } else if b { 2 };`
+                    .expr_ty(found_expr);
+                if !expected_ty.is_unit() && if_chain_lacks_final_else(outer_if) {
+                    // Account for `if a { &() } else if b { }`
                     err.note("`if` expressions without `else` evaluate to `()`");
                     err.note("consider adding an `else` block that evaluates to the expected type");
                 }
-                err.span_label(then_span, "expected because of this");
+                err.span_label(expected_span, "expected because of this");
 
                 let outer_span = if self.tcx.sess.source_map().is_multiline(expr_span) {
-                    if then_span.hi() == expr_span.hi() || else_span.hi() == expr_span.hi() {
+                    if expected_span.hi() == expr_span.hi() || found_span.hi() == expr_span.hi() {
                         // Point at condition only if either block has the same end point as
                         // the whole expression, since that'll cause awkward overlapping spans.
                         Some(expr_span.shrink_to_lo().to(cond_expr.peel_drop_temps().span))
@@ -615,23 +558,23 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     err.span_label(sp, "`if` and `else` have incompatible types");
                 }
 
-                let then_id = if let hir::ExprKind::Block(then_blk, _) = then_expr.kind {
+                let expected_id = if let hir::ExprKind::Block(then_blk, _) = expected_expr.kind {
                     then_blk.hir_id
                 } else {
-                    then_expr.hir_id
+                    expected_expr.hir_id
                 };
-                let else_id = if let hir::ExprKind::Block(else_blk, _) = else_expr.kind {
+                let found_id = if let hir::ExprKind::Block(else_blk, _) = found_expr.kind {
                     else_blk.hir_id
                 } else {
-                    else_expr.hir_id
+                    found_expr.hir_id
                 };
                 if let Some(subdiag) = self.suggest_remove_semi_or_return_binding(
-                    Some(then_id),
-                    then_ty,
-                    then_span,
-                    Some(else_id),
-                    else_ty,
-                    else_span,
+                    Some(expected_id),
+                    expected_ty,
+                    expected_span,
+                    Some(found_id),
+                    found_ty,
+                    found_span,
                 ) {
                     err.subdiagnostic(subdiag);
                 }
@@ -2687,7 +2630,7 @@ impl<'tcx> ObligationCause<'tcx> {
                     _ => ObligationCauseFailureCode::MatchCompat { span, subdiags },
                 }
             }
-            ObligationCauseCode::IfExpression { .. } | ObligationCauseCode::IfChainCoerce(_) => {
+            ObligationCauseCode::IfExpression { .. } => {
                 ObligationCauseFailureCode::IfElseDifferent { span, subdiags }
             }
             ObligationCauseCode::IfExpressionWithNoElse => {
@@ -2812,6 +2755,17 @@ impl TyCategory {
             }
             ty::Foreign(def_id) => Some((Self::Foreign, def_id)),
             _ => None,
+        }
+    }
+}
+
+fn if_chain_lacks_final_else(expr: &hir::Expr<'_>) -> bool {
+    let mut cur = expr;
+    loop {
+        match cur.kind {
+            hir::ExprKind::If(_, _, Some(next)) => cur = next,
+            hir::ExprKind::If(_, _, None) => return true,
+            _ => return false,
         }
     }
 }

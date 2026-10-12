@@ -334,12 +334,16 @@ pub enum ObligationCauseCode<'tcx> {
 
     /// Computing common supertype in an if expression
     IfExpression {
-        expr_id: HirId,
+        outermost_if_expr_id: HirId,
+        /// The branch that established the expected type: the `then` block of a plain
+        /// `if`/`else`, or the preceding branch of an `else if` chain.
+        expected_branch_id: HirId,
+        /// The branch whose type did not match: the `else` block, or the current
+        /// `else if` branch.
+        found_branch_id: HirId,
         // Is the expectation of this match expression an RPIT?
         tail_defines_return_position_impl_trait: Option<LocalDefId>,
     },
-
-    IfChainCoerce(Box<IfChainCoerceCause<'tcx>>),
 
     /// Computing common supertype of an if expression with no else counter-part
     IfExpressionWithNoElse,
@@ -550,20 +554,6 @@ pub struct MatchExpressionArmCause<'tcx> {
     /// These are used for pointing out errors that may affect several arms.
     pub prior_non_diverging_arms: Vec<Span>,
     /// Is the expectation of this match expression an RPIT?
-    pub tail_defines_return_position_impl_trait: Option<LocalDefId>,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, StableHash, TyEncodable, TyDecodable)]
-#[derive(TypeVisitable, TypeFoldable)]
-pub struct IfChainCoerceCause<'tcx> {
-    /// Outermost `if` of the chain, for the outer "incompatible types" label.
-    pub outer_if_expr_id: HirId,
-    pub source_branch_expr_id: HirId,
-    pub source_branch_ty: Ty<'tcx>,
-    pub source_branch_span: Span,
-    pub target_branch_expr_id: HirId,
-    pub target_branch_ty: Ty<'tcx>,
-    pub target_branch_span: Span,
     pub tail_defines_return_position_impl_trait: Option<LocalDefId>,
 }
 
