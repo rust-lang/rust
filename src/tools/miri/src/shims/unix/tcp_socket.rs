@@ -14,7 +14,7 @@ use rustc_target::spec::Os;
 use crate::shims::files::{EvalContextExt as _, FdNum, FileDescription, FileDescriptionRef};
 use crate::shims::sig::Varargs;
 use crate::shims::unix::UnixFileDescription;
-use crate::shims::unix::socket::UnixSocketFileDescription;
+use crate::shims::unix::socket::{EvalContextExt, UnixSocketFileDescription};
 use crate::*;
 
 /// On Linux a TCP socket is initally in the TCP_CLOSE state:
@@ -855,8 +855,11 @@ impl UnixSocketFileDescription for TcpSocket {
                     self.with_socket_ref(|s| s.set_ttl_v4(ttl)).map_err(IoError::HostError),
                 );
             } else {
-                throw_unsup_format!(
-                    "setsockopt: option {option:#x} is unsupported for level IPPROTO_IP",
+                return ecx.set_ip_socket_option(
+                    option,
+                    value_ptr,
+                    value_len,
+                    self.state.borrow().as_socket_ref(),
                 );
             }
         } else if level == ecx.eval_libc_i32("IPPROTO_TCP") {
