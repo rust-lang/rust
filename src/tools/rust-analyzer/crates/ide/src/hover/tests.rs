@@ -6274,6 +6274,29 @@ const FOO$0: Option<&i32> = Some(2).as_ref();
 }
 
 #[test]
+fn hover_const_eval_enum_niche_tag_outside_range() {
+    check(
+        r#"
+enum Empty {}
+enum Bar { BarValue(u64), BarUnit }
+enum Foo { FooValue(Bar), FooUnit, FooEmpty(Empty) }
+const GOAL$0: Foo = Foo::FooValue(Bar::BarValue(0));
+"#,
+        expect![[r#"
+            *GOAL*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            const GOAL: Foo = FooValue(BarValue(0))
+            ```
+        "#]],
+    );
+}
+
+#[test]
 fn hover_const_eval_dyn_trait() {
     check(
         r#"
