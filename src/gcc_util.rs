@@ -192,15 +192,6 @@ pub fn to_gcc_target_info_feature<'a>(sess: &EarlySession, feature: &'a str) -> 
     }
 }
 
-/// Translate a Rust feature name to the name libgccjit reports in its target
-/// info (see gcc/config/aarch64/aarch64-jit.cc and aarch64-option-extensions.def).
-pub fn to_gcc_target_info_feature<'a>(sess: &EarlySession, feature: &'a str) -> &'a str {
-    match (&sess.target.arch, feature) {
-        (&Arch::AArch64, "neon") => "asimd",
-        (_, feature) => feature,
-    }
-}
-
 fn arch_to_gcc(name: &str) -> &str {
     match name {
         "M68000" => "68000",
