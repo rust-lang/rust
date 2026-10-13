@@ -357,14 +357,14 @@ impl LintStore {
         }
 
         let complete_name = if let Some(tool_name) = tool_name {
-            format!("{tool_name}::{lint_name}")
+            &format!("{tool_name}::{lint_name}")
         } else {
-            lint_name.to_string()
+            lint_name
         };
         // If the lint was scoped with `tool::` check if the tool lint exists
         if let Some(tool_name) = tool_name {
-            match self.by_name.get(&complete_name) {
-                None => match self.lint_groups.get(&*complete_name) {
+            match self.by_name.get(complete_name) {
+                None => match self.lint_groups.get(complete_name) {
                     // If the lint isn't registered, there are two possibilities:
                     None => {
                         // 1. The tool is currently running, so this lint really doesn't exist.
@@ -373,7 +373,7 @@ impl LintStore {
                         let tool_prefix = format!("{tool_name}::");
 
                         return if self.by_name.keys().any(|lint| lint.starts_with(&tool_prefix)) {
-                            self.no_lint_suggestion(&complete_name, tool_name.as_str())
+                            self.no_lint_suggestion(complete_name, tool_name.as_str())
                         } else {
                             // 2. The tool isn't currently running, so no lints will be registered.
                             // To avoid giving a false positive, ignore all unknown lints.
@@ -394,13 +394,13 @@ impl LintStore {
                 _ => {}
             }
         }
-        match self.by_name.get(&complete_name) {
+        match self.by_name.get(complete_name) {
             Some(Renamed(new_name, _)) => CheckLintNameResult::Renamed(new_name.to_string()),
             Some(Removed(reason)) => CheckLintNameResult::Removed(reason.to_string()),
-            None => match self.lint_groups.get(&*complete_name) {
+            None => match self.lint_groups.get(complete_name) {
                 // If neither the lint, nor the lint group exists check if there is a `clippy::`
                 // variant of this lint
-                None => self.check_tool_name_for_backwards_compat(&complete_name, "clippy"),
+                None => self.check_tool_name_for_backwards_compat(complete_name, "clippy"),
                 Some(LintGroup { lint_ids, depr, .. }) => {
                     // Check if the lint group name is deprecated
                     if let &Some(LintAlias { name, silent: false }) = depr {
