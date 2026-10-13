@@ -960,44 +960,6 @@ pub(crate) struct EiiWithoutImpl {
 }
 
 #[derive(Diagnostic)]
-#[diag("function doesn't have a default implementation")]
-pub(crate) struct FunctionNotHaveDefaultImplementation {
-    #[primary_span]
-    pub span: Span,
-    #[note("required by this annotation")]
-    pub note_span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("not a function")]
-pub(crate) struct MustImplementNotFunction {
-    #[primary_span]
-    pub span: Span,
-    #[subdiagnostic]
-    pub span_note: MustImplementNotFunctionSpanNote,
-    #[subdiagnostic]
-    pub note: MustImplementNotFunctionNote,
-}
-
-#[derive(Subdiagnostic)]
-#[note("required by this annotation")]
-pub(crate) struct MustImplementNotFunctionSpanNote {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Subdiagnostic)]
-#[note("all `#[rustc_must_implement_one_of]` arguments must be associated function names")]
-pub(crate) struct MustImplementNotFunctionNote {}
-
-#[derive(Diagnostic)]
-#[diag("function not found in this trait")]
-pub(crate) struct FunctionNotFoundInTrait {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("there is no parameter `{$argument_name}` on trait `{$trait_name}`")]
 pub(crate) struct UnknownFormatParameterForOnUnimplementedAttr {
     pub argument_name: Symbol,

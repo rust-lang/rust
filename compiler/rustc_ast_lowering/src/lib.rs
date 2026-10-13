@@ -684,7 +684,7 @@ fn index_ast<'tcx>(
             mut_visit::walk_assoc_item(self, item, ctxt);
             match ctxt {
                 visit::AssocCtxt::Trait => {
-                    self.replace_with_dummy(item, AssocItemKind::MacCall, AstOwner::TraitItem)
+                    self.insert(item.id, AstOwner::TraitItem(Box::new(item.clone())));
                 }
                 visit::AssocCtxt::Impl { .. } => {
                     self.replace_with_dummy(item, AssocItemKind::MacCall, AstOwner::ImplItem)
