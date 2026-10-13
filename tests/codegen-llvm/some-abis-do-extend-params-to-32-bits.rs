@@ -1,10 +1,12 @@
 //@ add-minicore
 //@ compile-flags: -Cno-prepopulate-passes -Copt-level=0
 
-//@ revisions:x86_64 i686 aarch64-apple aarch64-windows aarch64-linux arm riscv
+//@ revisions:x86_64-linux x86_64-uefi i686 aarch64-apple aarch64-windows aarch64-linux arm riscv
 
-//@[x86_64] compile-flags: --target x86_64-unknown-uefi
-//@[x86_64] needs-llvm-components: x86
+//@[x86_64-uefi] compile-flags: --target x86_64-unknown-uefi
+//@[x86_64-uefi] needs-llvm-components: x86
+//@[x86_64-linux] compile-flags: --target x86_64-unknown-linux-gnu
+//@[x86_64-linux] needs-llvm-components: x86
 //@[i686] compile-flags: --target i686-unknown-linux-musl
 //@[i686] needs-llvm-components: x86
 //@[aarch64-windows] compile-flags: --target aarch64-pc-windows-msvc
@@ -33,7 +35,8 @@ use minicore::*;
 //
 //                  ZERO/SIGN-EXTENDING TO 32 BITS            NON-EXTENDING
 //                  ==============================  =======================
-// x86_64:          void @c_arg_bool(i1 zeroext %_a)
+// x86_64-linux:    void @c_arg_bool(i1 zeroext %_a)
+// x86_64-uefi:     void @c_arg_bool(i1 zeroext %_a)
 // i686:            void @c_arg_bool(i1 zeroext %_a)
 // aarch64-apple:   void @c_arg_bool(i1 zeroext %_a)
 // aarch64-windows:                                  void @c_arg_bool(i1 %_a)
@@ -43,7 +46,8 @@ use minicore::*;
 #[no_mangle]
 pub extern "C" fn c_arg_bool(_a: bool) {}
 
-// x86_64:          void @c_arg_u8(i8 zeroext %_a)
+// x86_64-linux:    void @c_arg_u8(i8 zeroext %_a)
+// x86_64-uefi:     void @c_arg_u8(i8 zeroext %_a)
 // i686:            void @c_arg_u8(i8 zeroext %_a)
 // aarch64-apple:   void @c_arg_u8(i8 zeroext %_a)
 // aarch64-windows:                                  void @c_arg_u8(i8 %_a)
@@ -53,7 +57,8 @@ pub extern "C" fn c_arg_bool(_a: bool) {}
 #[no_mangle]
 pub extern "C" fn c_arg_u8(_a: u8) {}
 
-// x86_64:          void @c_arg_u16(i16 zeroext %_a)
+// x86_64-linux:    void @c_arg_u16(i16 zeroext %_a)
+// x86_64-uefi:     void @c_arg_u16(i16 zeroext %_a)
 // i686:            void @c_arg_u16(i16 zeroext %_a)
 // aarch64-apple:   void @c_arg_u16(i16 zeroext %_a)
 // aarch64-windows:                                 void @c_arg_u16(i16 %_a)
@@ -63,7 +68,8 @@ pub extern "C" fn c_arg_u8(_a: u8) {}
 #[no_mangle]
 pub extern "C" fn c_arg_u16(_a: u16) {}
 
-// x86_64:          void @c_arg_u32(i32 %_a)
+// x86_64-linux:    void @c_arg_u32(i32 %_a)
+// x86_64-uefi:     void @c_arg_u32(i32 %_a)
 // i686:            void @c_arg_u32(i32 %_a)
 // aarch64-apple:   void @c_arg_u32(i32 %_a)
 // aarch64-windows:                                 void @c_arg_u32(i32 %_a)
@@ -73,7 +79,8 @@ pub extern "C" fn c_arg_u16(_a: u16) {}
 #[no_mangle]
 pub extern "C" fn c_arg_u32(_a: u32) {}
 
-// x86_64:          void @c_arg_u64(i64 %_a)
+// x86_64-linux:    void @c_arg_u64(i64 %_a)
+// x86_64-uefi:     void @c_arg_u64(i64 %_a)
 // i686:            void @c_arg_u64(i64 %_a)
 // aarch64-apple:   void @c_arg_u64(i64 %_a)
 // aarch64-windows:                                 void @c_arg_u64(i64 %_a)
@@ -83,7 +90,8 @@ pub extern "C" fn c_arg_u32(_a: u32) {}
 #[no_mangle]
 pub extern "C" fn c_arg_u64(_a: u64) {}
 
-// x86_64:          void @c_arg_i8(i8 signext %_a)
+// x86_64-linux:    void @c_arg_i8(i8 signext %_a)
+// x86_64-uefi:     void @c_arg_i8(i8 signext %_a)
 // i686:            void @c_arg_i8(i8 signext %_a)
 // aarch64-apple:   void @c_arg_i8(i8 signext %_a)
 // aarch64-windows:                                  void @c_arg_i8(i8 %_a)
@@ -93,7 +101,8 @@ pub extern "C" fn c_arg_u64(_a: u64) {}
 #[no_mangle]
 pub extern "C" fn c_arg_i8(_a: i8) {}
 
-// x86_64:          void @c_arg_i16(i16 signext %_a)
+// x86_64-linux:    void @c_arg_i16(i16 signext %_a)
+// x86_64-uefi:     void @c_arg_i16(i16 signext %_a)
 // i686:            void @c_arg_i16(i16 signext %_a)
 // aarch64-apple:   void @c_arg_i16(i16 signext %_a)
 // aarch64-windows:                                 void @c_arg_i16(i16 %_a)
@@ -103,7 +112,8 @@ pub extern "C" fn c_arg_i8(_a: i8) {}
 #[no_mangle]
 pub extern "C" fn c_arg_i16(_a: i16) {}
 
-// x86_64:          void @c_arg_i32(i32 %_a)
+// x86_64-linux:    void @c_arg_i32(i32 %_a)
+// x86_64-uefi:     void @c_arg_i32(i32 %_a)
 // i686:            void @c_arg_i32(i32 %_a)
 // aarch64-apple:   void @c_arg_i32(i32 %_a)
 // aarch64-windows:                                 void @c_arg_i32(i32 %_a)
@@ -113,7 +123,8 @@ pub extern "C" fn c_arg_i16(_a: i16) {}
 #[no_mangle]
 pub extern "C" fn c_arg_i32(_a: i32) {}
 
-// x86_64:          void @c_arg_i64(i64 %_a)
+// x86_64-linux:    void @c_arg_i64(i64 %_a)
+// x86_64-uefi:     void @c_arg_i64(i64 %_a)
 // i686:            void @c_arg_i64(i64 %_a)
 // aarch64-apple:   void @c_arg_i64(i64 %_a)
 // aarch64-windows:                                 void @c_arg_i64(i64 %_a)
@@ -123,7 +134,8 @@ pub extern "C" fn c_arg_i32(_a: i32) {}
 #[no_mangle]
 pub extern "C" fn c_arg_i64(_a: i64) {}
 
-// x86_64:          zeroext i1 @c_ret_bool()
+// x86_64-linux:    zeroext i1 @c_ret_bool()
+// x86_64-uefi:     zeroext i1 @c_ret_bool()
 // i686:            zeroext i1 @c_ret_bool()
 // aarch64-apple:   zeroext i1 @c_ret_bool()
 // aarch64-windows:                                 i1 @c_ret_bool()
@@ -135,7 +147,8 @@ pub extern "C" fn c_ret_bool() -> bool {
     false
 }
 
-// x86_64:          zeroext i8 @c_ret_u8()
+// x86_64-linux:                                    i8 @c_ret_u8()
+// x86_64-uefi:     zeroext i8 @c_ret_u8()
 // i686:            zeroext i8 @c_ret_u8()
 // aarch64-apple:   zeroext i8 @c_ret_u8()
 // aarch64-windows:                                 i8 @c_ret_u8()
@@ -147,7 +160,8 @@ pub extern "C" fn c_ret_u8() -> u8 {
     0
 }
 
-// x86_64:          zeroext i16 @c_ret_u16()
+// x86_64-linux:                                    i16 @c_ret_u16()
+// x86_64-uefi:     zeroext i16 @c_ret_u16()
 // i686:            zeroext i16 @c_ret_u16()
 // aarch64-apple:   zeroext i16 @c_ret_u16()
 // aarch64-windows:                                 i16 @c_ret_u16()
@@ -159,7 +173,8 @@ pub extern "C" fn c_ret_u16() -> u16 {
     0
 }
 
-// x86_64:          i32 @c_ret_u32()
+// x86_64-linux:    i32 @c_ret_u32()
+// x86_64-uefi:     i32 @c_ret_u32()
 // i686:            i32 @c_ret_u32()
 // aarch64-apple:   i32 @c_ret_u32()
 // aarch64-windows:                                 i32 @c_ret_u32()
@@ -171,7 +186,8 @@ pub extern "C" fn c_ret_u32() -> u32 {
     0
 }
 
-// x86_64:          i64 @c_ret_u64()
+// x86_64-linux:    i64 @c_ret_u64()
+// x86_64-uefi:     i64 @c_ret_u64()
 // i686:            i64 @c_ret_u64()
 // aarch64-apple:   i64 @c_ret_u64()
 // aarch64-windows:                                 i64 @c_ret_u64()
@@ -183,7 +199,8 @@ pub extern "C" fn c_ret_u64() -> u64 {
     0
 }
 
-// x86_64:          signext i8 @c_ret_i8()
+// x86_64-linux:                                    i8 @c_ret_i8()
+// x86_64-uefi:     signext i8 @c_ret_i8()
 // i686:            signext i8 @c_ret_i8()
 // aarch64-apple:   signext i8 @c_ret_i8()
 // aarch64-windows:                                 i8 @c_ret_i8()
@@ -195,7 +212,8 @@ pub extern "C" fn c_ret_i8() -> i8 {
     0
 }
 
-// x86_64:          signext i16 @c_ret_i16()
+// x86_64-linux:                                    i16 @c_ret_i16()
+// x86_64-uefi:     signext i16 @c_ret_i16()
 // i686:            signext i16 @c_ret_i16()
 // aarch64-apple:   signext i16 @c_ret_i16()
 // aarch64-windows:                                 i16 @c_ret_i16()
@@ -207,7 +225,8 @@ pub extern "C" fn c_ret_i16() -> i16 {
     0
 }
 
-// x86_64:          i32 @c_ret_i32()
+// x86_64-linux:    i32 @c_ret_i32()
+// x86_64-uefi:     i32 @c_ret_i32()
 // i686:            i32 @c_ret_i32()
 // aarch64-apple:   i32 @c_ret_i32()
 // aarch64-windows:                                 i32 @c_ret_i32()
@@ -219,7 +238,8 @@ pub extern "C" fn c_ret_i32() -> i32 {
     0
 }
 
-// x86_64:          i64 @c_ret_i64()
+// x86_64-linux:    i64 @c_ret_i64()
+// x86_64-uefi:     i64 @c_ret_i64()
 // i686:            i64 @c_ret_i64()
 // aarch64-apple:   i64 @c_ret_i64()
 // aarch64-windows:                                 i64 @c_ret_i64()

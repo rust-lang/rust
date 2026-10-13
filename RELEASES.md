@@ -1,3 +1,12 @@
+Version 1.99.1 (2026-10-15)
+===========================
+
+<a id="1.99.1"></a>
+
+* [library: fix missing symbol `wcslen` on UEFI and embedded targets](https://github.com/rust-lang/rust/issues/163614)
+* [rustc: fix miscompilation of FFI `bool` return values on x86_64](https://github.com/rust-lang/rust/issues/163911)
+* [rust-lld: add the rpath for `libLLVM` on macOS](https://github.com/rust-lang/rust/issues/163947)
+
 Version 1.99.0 (2026-10-01)
 ==========================
 
@@ -29,7 +38,7 @@ Language
 Compiler
 --------
 - [Convert `-Ctarget-cpu` into a target-modifier for AVR, AMDGCN and NVPTX](https://github.com/rust-lang/rust/pull/150732)
-- [Enable `static_position_independent_executables` on all gnu and musl targets](https://github.com/rust-lang/rust/pull/158510)
+- [Enable `static_position_independent_executables` on all gnu targets](https://github.com/rust-lang/rust/pull/158510)
 - When providing a suggestion about a missing method, rustc now prefers an exactly matching name from a [doc alias attribute](https://doc.rust-lang.org/rustdoc/advanced-features.html#add-aliases-for-an-item-in-documentation-search) over a similarity search from other method names. If your new users sometimes expect a method under a different name, adding a doc alias will now help them find it via rustc suggestions, in addition to helping them find it via rustdoc search: [When suggesting method names, prefer *exact* doc aliases over similar names](https://github.com/rust-lang/rust/pull/160369)
 
 
@@ -85,7 +94,6 @@ Cargo
 -----
 - Add a new built-in profile `debug`. This is a preparation for transitioning the `dev` profile away from debugging to give a saner default for faster development iterations. Currently there is no difference between `dev` and `debug` profiles. [docs](https://doc.rust-lang.org/nightly/cargo/reference/profiles.html#debug-1) [#17214](https://github.com/rust-lang/cargo/pull/17214)
 - Workspace members on edition 2024 or later can now override an inherited workspace dependency's `default-features` field. For example, `serde = { workspace = true, default-features = false }` now turns off default features even when the workspace definition enables them. On earlier editions, `default-features = false` is ignored with a warning. ([RFC 3945](https://github.com/rust-lang/rfcs/pull/3945)) [#17126](https://github.com/rust-lang/cargo/pull/17126)
-- Incremental compilation is now disabled by default when running in CI. CI is detected via the CI environment variable. [#17220](https://github.com/rust-lang/cargo/pull/17220)
 
 See also the [full Cargo changelog](https://doc.rust-lang.org/nightly/cargo/CHANGELOG.html#cargo-199-2026-10-01)
 
@@ -116,6 +124,8 @@ Compatibility Notes
 - Macros that expand to a semicolon now produce a warning lint (`semicolon_in_expressions_from_non_local_macros`) even when the macro comes from another crate. Previously, such warnings only appeared for macros from the same crate, to avoid showing warnings that can't be fixed locally; however, this masked problems, as integration tests from the crate providing the macro get compiled as a separate crate, so tests often wouldn't reveal this issue. If you encounter a lint like this, please make sure to report it to the crate providing the macro so they can fix it; don't just silence it in your own crate.
   - [`semicolon_in_expressions_from_macros`: Lint on non-local macros too](https://github.com/rust-lang/rust/pull/159222)
   - [Split non-local `semicolon_in_expressions_from_macros` into a separate lint](https://github.com/rust-lang/rust/pull/159700)
+- In Cargo, incremental compilation is now disabled by default when running in CI. CI is detected via the `CI` environment variable. [#17220](https://github.com/rust-lang/cargo/pull/17220)
+- [The Rust Reference no longer recommends using a single pattern to match a union alongside another value, such as in a manually-written tagged union](https://github.com/rust-lang/reference/pull/2303). This was because it was found that such code would, in some circumstances, result in the compiler reading the contents of the union before checking if the rest of the scrutinee matches the rest of the pattern. This can cause undefined behavior in code similar to what the reference previously recommended.
 
 <a id="1.99.0-Internal-Changes"></a>
 
@@ -1536,7 +1546,7 @@ for more information on Rust's tiered platform support.
 Libraries
 ---------
 - [Stabilize the anonymous pipe API](https://github.com/rust-lang/rust/issues/127154)
-- [Add support for unbounded left/right shift operations](https://github.com/rust-lang/rust/issues/129375) 
+- [Add support for unbounded left/right shift operations](https://github.com/rust-lang/rust/issues/129375)
 - [Print pointer metadata in `Debug` impl of raw pointers](https://github.com/rust-lang/rust/pull/135080)
 - [`Vec::with_capacity` guarantees it allocates with the amount requested, even if `Vec::capacity` returns a different number.](https://github.com/rust-lang/rust/pull/135933)
 - Most `std::arch` intrinsics which don't take pointer arguments can now be called from safe code if the caller has the appropriate target features already enabled (https://github.com/rust-lang/stdarch/pull/1714, https://github.com/rust-lang/stdarch/pull/1716, https://github.com/rust-lang/stdarch/pull/1717)
@@ -1610,7 +1620,7 @@ These previously stable APIs are now stable in const contexts:
 - [`char::is_digit`](https://doc.rust-lang.org/stable/std/primitive.char.html#method.is_digit)
 - [`char::is_whitespace`](https://doc.rust-lang.org/stable/std/primitive.char.html#method.is_whitespace)
 - [`<[[T; N]]>::as_flattened`](https://doc.rust-lang.org/stable/std/primitive.slice.html#method.as_flattened)
-- [`<[[T; N]]>::as_flattened_mut`](https://doc.rust-lang.org/stable/std/primitive.slice.html#method.as_flattened_mut) 
+- [`<[[T; N]]>::as_flattened_mut`](https://doc.rust-lang.org/stable/std/primitive.slice.html#method.as_flattened_mut)
 - [`String::into_bytes`](https://doc.rust-lang.org/stable/std/string/struct.String.html#method.into_bytes)
 - [`String::as_str`](https://doc.rust-lang.org/stable/std/string/struct.String.html#method.as_str)
 - [`String::capacity`](https://doc.rust-lang.org/stable/std/string/struct.String.html#method.capacity)

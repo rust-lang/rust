@@ -1,5 +1,5 @@
 extern crate compiler_builtins;
-use compiler_builtins::mem::{memcmp, memcpy, memmove, memset};
+use compiler_builtins::mem::{memcmp, memcpy, memmove, memset, wchar_t};
 
 const WORD_SIZE: usize = core::mem::size_of::<usize>();
 
@@ -283,6 +283,30 @@ fn memset_backward_aligned() {
         core::ptr::write_bytes(reference.0.as_mut_ptr().add(3 + WORD_SIZE), 0xCC, 17);
         assert_eq!(arr.0, reference.0);
     }
+}
+
+/// Wrapper that prevents inlining the wcslen implementation into the test.
+///
+/// Inlining causes LLVM to pick up the wcslen pattern and generate a call to
+/// wcslen. That causes a linker error for tests on platforms without wcslen
+/// (such as wasm).
+///
+/// `no_mangle` is needed because LLVM knows not to apply the wcslen
+/// optimization to a function with this name:
+/// https://github.com/llvm/llvm-project/pull/132572
+#[inline(never)]
+#[unsafe(no_mangle)]
+unsafe fn wcslen(p: *const wchar_t) -> usize {
+    unsafe { compiler_builtins::mem::wcslen(p) }
+}
+
+#[test]
+fn wide_string_length() {
+    let s = [0];
+    assert_eq!(unsafe { wcslen(s.as_ptr()) }, 0);
+
+    let s = [97, 98, 99, 0];
+    assert_eq!(unsafe { wcslen(s.as_ptr()) }, 3);
 }
 
 #[cfg(all(
