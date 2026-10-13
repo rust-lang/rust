@@ -224,7 +224,7 @@ version = "0.0.0"
 dependencies = [
  "arbitrary",
  "cfg",
- "expect-test",
+ "expect-test 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "intern",
  "oorandom",
  "rustc-hash 2.1.2",
@@ -594,6 +594,14 @@ dependencies = [
 [[package]]
 name = "expect-test"
 version = "1.5.1"
+dependencies = [
+ "dissimilar",
+ "once_cell",
+]
+
+[[package]]
+name = "expect-test"
+version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "63af43ff4431e848fb47472a920f14fa71c24de13255a5692e93d4e90302acb0"
 dependencies = [
@@ -805,7 +813,7 @@ dependencies = [
  "base-db",
  "cfg",
  "either",
- "expect-test",
+ "expect-test 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "hir-def",
  "hir-expand",
  "hir-ide",
@@ -841,7 +849,7 @@ dependencies = [
  "cov-mark",
  "drop_bomb",
  "either",
- "expect-test",
+ "expect-test 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "fst",
  "hir-expand",
  "indexmap",
@@ -875,7 +883,7 @@ dependencies = [
  "cfg",
  "cov-mark",
  "either",
- "expect-test",
+ "expect-test 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "intern",
  "itertools 0.15.0",
  "mbe",
@@ -900,7 +908,7 @@ dependencies = [
  "base-db",
  "cov-mark",
  "either",
- "expect-test",
+ "expect-test 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "hir-def",
  "hir-expand",
  "hir-ty",
@@ -1064,7 +1072,7 @@ dependencies = [
  "cov-mark",
  "dot",
  "either",
- "expect-test",
+ "expect-test 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "hir",
  "ide-assists",
  "ide-completion",
@@ -1097,7 +1105,7 @@ version = "0.0.0"
 dependencies = [
  "cov-mark",
  "either",
- "expect-test",
+ "expect-test 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "hir",
  "ide-db",
  "itertools 0.15.0",
@@ -1115,7 +1123,7 @@ version = "0.0.0"
 dependencies = [
  "base-db",
  "cov-mark",
- "expect-test",
+ "expect-test 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "hir",
  "ide-db",
  "itertools 0.15.0",
@@ -1138,7 +1146,7 @@ dependencies = [
  "cov-mark",
  "crossbeam-channel",
  "either",
- "expect-test",
+ "expect-test 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "fst",
  "hir",
  "itertools 0.15.0",
@@ -1169,7 +1177,7 @@ dependencies = [
  "cfg",
  "cov-mark",
  "either",
- "expect-test",
+ "expect-test 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "hir",
  "ide-db",
  "itertools 0.15.0",
@@ -1188,7 +1196,7 @@ name = "ide-ssr"
 version = "0.0.0"
 dependencies = [
  "cov-mark",
- "expect-test",
+ "expect-test 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "hir",
  "ide-db",
  "itertools 0.15.0",
@@ -1501,7 +1509,7 @@ dependencies = [
  "arrayvec",
  "bitflags",
  "cov-mark",
- "expect-test",
+ "expect-test 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "intern",
  "parser",
  "ra-ap-rustc_lexer",
@@ -1756,7 +1764,7 @@ version = "0.0.0"
 dependencies = [
  "drop_bomb",
  "edition",
- "expect-test",
+ "expect-test 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "ra-ap-rustc_lexer",
  "rustc-literal-escaper",
  "stdx",
@@ -1924,7 +1932,7 @@ dependencies = [
 name = "proc-macro-srv"
 version = "0.0.0"
 dependencies = [
- "expect-test",
+ "expect-test 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "intern",
  "line-index 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "paths",
@@ -1939,7 +1947,7 @@ name = "proc-macro-srv-cli"
 version = "0.0.0"
 dependencies = [
  "clap",
- "expect-test",
+ "expect-test 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "intern",
  "paths",
  "proc-macro-api",
@@ -1995,7 +2003,7 @@ dependencies = [
  "base-db",
  "cargo_metadata",
  "cfg",
- "expect-test",
+ "expect-test 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "intern",
  "itertools 0.15.0",
  "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2358,7 +2366,7 @@ dependencies = [
  "dhat",
  "dirs",
  "dissimilar",
- "expect-test",
+ "expect-test 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "gen-lsp-types",
  "hir",
  "hir-def",
@@ -2762,7 +2770,7 @@ name = "syntax"
 version = "0.0.0"
 dependencies = [
  "either",
- "expect-test",
+ "expect-test 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "itertools 0.15.0",
  "parser",
  "ra-ap-rustc_lexer",
@@ -2785,7 +2793,7 @@ dependencies = [
 name = "syntax-bridge"
 version = "0.0.0"
 dependencies = [
- "expect-test",
+ "expect-test 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "intern",
  "parser",
  "rustc-hash 2.1.2",
