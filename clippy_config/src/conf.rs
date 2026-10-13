@@ -80,7 +80,7 @@ macro_rules! define_Conf {
             $(#[default_text = $default_text:literal])?
             $(#[rename = $new_name:ident])?
             $(#[lints($($for_lints:ident),* $(,)?)])?
-            // The type must exist for regular fields and shouldn't exist for deprecated ones.
+            // The type must exist for regular fields and must not exist for deprecated ones.
             $name:ident($name_str:literal) $(: $ty:ty $(= $default:expr)?)?,
         )*
     ) => {
@@ -205,6 +205,18 @@ macro_rules! define_Conf {
                 )?)*}
             }
         }
+
+        // The next macro invocation intentionally produces a compile error if `$name` is renamed
+        // and has a type. It is a compile-time check, not a conventional test. If it fails to
+        // compile, find `$name` in the `define_Conf!` invocation and remove either its `rename`
+        // attribute (`rename = ...`) or its type annotation (`...: $ty ...`).
+        macro_rules! test (
+            ($name_:ident) => {};
+            ($name_:ident $new_name_:ident) => {};
+            ($name_:ident $ty_:ty) => {};
+            ($name_:ident $new_name_:ident $ty_:ty) => { compile_error!(concat!("renamed field `", stringify!($name_), "` has a type")); };
+        );
+        $(test!($name $($new_name)? $($ty)?);)*
 
         #[test]
         fn check_conf_order() {
@@ -597,7 +609,7 @@ define_Conf! {
     #[lints(collapsible_else_if, collapsible_if)]
     lint_commented_code("lint-commented-code"): bool = false,
     #[rename = check_inconsistent_struct_field_initializers]
-    lint_inconsistent_struct_field_initializers("lint-inconsistent-struct-field-initializers"): bool = false,
+    lint_inconsistent_struct_field_initializers("lint-inconsistent-struct-field-initializers"),
     /// The lower bound for linting decimal literals
     #[lints(decimal_literal_representation)]
     literal_representation_threshold("literal-representation-threshold"): u64 = 16384,
