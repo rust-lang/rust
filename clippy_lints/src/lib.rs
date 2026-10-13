@@ -108,8 +108,8 @@ mod dereference;
 mod derivable_impls;
 mod derive;
 mod disallowed_fields;
+mod disallowed_items;
 mod disallowed_macros;
-mod disallowed_methods;
 mod disallowed_names;
 mod disallowed_script_idents;
 mod disallowed_types;
@@ -714,7 +714,7 @@ rustc_lint::late_lint_methods!(
         SemicolonIfNothingReturned: semicolon_if_nothing_returned::SemicolonIfNothingReturned = semicolon_if_nothing_returned::SemicolonIfNothingReturned,
         AsyncYieldsAsync: async_yields_async::AsyncYieldsAsync = async_yields_async::AsyncYieldsAsync,
         DisallowedMacros: disallowed_macros::DisallowedMacros = disallowed_macros::DisallowedMacros::new(tcx, conf, attrs.clone()),
-        DisallowedMethods: disallowed_methods::DisallowedMethods = disallowed_methods::DisallowedMethods::new(tcx, conf),
+        DisallowedMethods: disallowed_items::DisallowedMethods = disallowed_items::DisallowedMethods::new(tcx, conf),
         EmptyDrop: empty_drop::EmptyDrop = empty_drop::EmptyDrop,
         StrToString: strings::StrToString = strings::StrToString,
         ZeroSizedMapValues: zero_sized_map_values::ZeroSizedMapValues = zero_sized_map_values::ZeroSizedMapValues,
