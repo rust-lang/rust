@@ -12,7 +12,7 @@ use crate::relate::{Relate, RelateResult, TypeRelation};
 use crate::{
     AliasConst, BoundConst, BoundVar, BoundVarIndexKind, ConstKind, ConstVid, DebruijnIndex,
     FallibleTypeFolder, Flags, InferConst, Interner, IsRigid, PlaceholderConst, TypeFlags,
-    TypeFoldable, TypeFolder, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitor,
+    TypeFoldable, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
 
 #[derive_where(Clone, Copy, PartialEq, Eq, Hash; I: Interner)]
@@ -169,10 +169,6 @@ impl<I: Interner> TypeFoldable<I> for Const<I> {
     fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
         folder.try_fold_const(self)
     }
-
-    fn fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self {
-        folder.fold_const(self)
-    }
 }
 
 impl<I: Interner> TypeVisitable<I> for Const<I> {
@@ -200,23 +196,6 @@ impl<I: Interner> TypeSuperFoldable<I> for Const<I> {
             | ConstKind::Error(_) => return Ok(self),
         };
         if kind != self.kind() { Ok(Self::new(folder.cx(), kind)) } else { Ok(self) }
-    }
-
-    fn super_fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self {
-        let kind = match self.kind() {
-            ConstKind::Alias(is_rigid, alias_const) => {
-                ConstKind::Alias(is_rigid, alias_const.fold_with(folder))
-            }
-            ConstKind::Value(v) => ConstKind::Value(v.fold_with(folder)),
-            ConstKind::Expr(e) => ConstKind::Expr(e.fold_with(folder)),
-
-            ConstKind::Param(_)
-            | ConstKind::Infer(_)
-            | ConstKind::Bound(..)
-            | ConstKind::Placeholder(_)
-            | ConstKind::Error(_) => return self,
-        };
-        if kind != self.kind() { Self::new(folder.cx(), kind) } else { self }
     }
 }
 
