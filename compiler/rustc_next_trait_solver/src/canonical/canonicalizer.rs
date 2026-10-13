@@ -8,7 +8,6 @@ use rustc_type_ir::{
     Const, Flags, InferCtxtLike, Interner, PlaceholderConst, PlaceholderType, PredicateProxy,
     Region, TypeFlags, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
 };
-use thin_vec::ThinVec;
 
 use crate::delegate::SolverDelegate;
 
@@ -204,7 +203,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
     pub(super) fn canonicalize_input<P: TypeFoldable<I>>(
         delegate: &'a D,
         input: QueryInput<I, P>,
-    ) -> (ThinVec<I::GenericArg>, ty::Canonical<I, QueryInput<I, P>>) {
+    ) -> (Vec<I::GenericArg>, ty::Canonical<I, QueryInput<I, P>>) {
         // First canonicalize the `param_env` while keeping `'static`. This produces a
         // canonicalizer that can canonicalize the rest of the input without keeping `'static`.
         let (param_env, mut rest_canonicalizer) =
@@ -274,7 +273,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         ty::BoundVar::from(idx)
     }
 
-    fn finalize(mut self) -> (ty::UniverseIndex, ThinVec<I::GenericArg>, I::CanonicalVarKinds) {
+    fn finalize(mut self) -> (ty::UniverseIndex, Vec<I::GenericArg>, I::CanonicalVarKinds) {
         // See the rustc-dev-guide section about how we deal with universes
         // during canonicalization in the new solver.
         let max_universe = match self.canonicalize_mode {
