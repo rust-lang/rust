@@ -6,6 +6,7 @@ use rustc_infer::traits::PredicateObligations;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::{ParamEnvAnd, TyCtxt, TypeFoldable};
 use rustc_span::Span;
+use tracing::debug;
 
 use crate::infer::canonical::{
     CanonicalQueryInput, CanonicalQueryResponse, Certainty, OriginalQueryValues,
@@ -93,14 +94,13 @@ pub trait QueryTypeOp<'tcx>: fmt::Debug + Copy + TypeFoldable<TyCtxt<'tcx>> + 't
             Self::QueryResponse,
             Option<CanonicalQueryInput<'tcx, ParamEnvAnd<'tcx, Self>>>,
             PredicateObligations<'tcx>,
-            Certainty,
         ),
         NoSolution,
     > {
         if !infcx.disable_trait_solver_fast_paths()
             && let Some(result) = QueryTypeOp::try_fast_path(infcx.tcx, &query_key)
         {
-            return Ok((result, None, PredicateObligations::new(), Certainty::Proven));
+            return Ok((result, None, PredicateObligations::new()));
         }
 
         let mut canonical_var_values = OriginalQueryValues::default();
@@ -117,7 +117,15 @@ pub trait QueryTypeOp<'tcx>: fmt::Debug + Copy + TypeFoldable<TyCtxt<'tcx>> + 't
                 output_query_region_constraints,
             )?;
 
-        Ok((value, Some(canonical_self), obligations, canonical_result.value.certainty))
+        match canonical_result.value.certainty {
+            Certainty::Proven => {}
+            Certainty::Ambiguous => {
+                debug!("type_op resulted in unexpected ambiguity: {query_key:?}");
+                return Err(NoSolution);
+            }
+        }
+
+        Ok((value, Some(canonical_self), obligations))
     }
 }
 
@@ -143,7 +151,7 @@ where
         // collecting region constraints via `region_constraints`.
         let (mut output, _) =
             scrape_region_constraints(infcx, root_def_id, "fully_perform", span, |ocx| {
-                let (output, ei, obligations, _) =
+                let (output, ei, obligations) =
                     Q::fully_perform_into(self, infcx, &mut region_constraints, span)?;
                 error_info = ei;
 

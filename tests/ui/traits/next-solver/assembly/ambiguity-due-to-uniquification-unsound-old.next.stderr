@@ -1,0 +1,23 @@
+error[E0283]: type annotations needed: cannot satisfy `dyn Tr<'a, 'a, (), ()>: Sup<'a, ()>`
+  --> $DIR/ambiguity-due-to-uniquification-unsound-old.rs:38:7
+   |
+LL |     x.hide_me()
+   |       ^^^^^^^
+   |
+   = note: cannot satisfy `dyn Tr<'a, 'a, (), ()>: Sup<'a, ()>`
+help: the trait `Sup<'a, ()>` is implemented for `&'a str`
+  --> $DIR/ambiguity-due-to-uniquification-unsound-old.rs:16:1
+   |
+LL | impl<'a> Sup<'a, ()> for &'a str {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: required for `dyn Tr<'a, 'a, (), ()>` to implement `HideMe`
+  --> $DIR/ambiguity-due-to-uniquification-unsound-old.rs:32:57
+   |
+LL | impl<'a, T: Sup<'a, (), Assoc = &'static str> + ?Sized> HideMe for T {
+   |             ---------------------------------           ^^^^^^     ^
+   |             |
+   |             unsatisfied trait bound introduced here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0283`.
