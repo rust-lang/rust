@@ -33,7 +33,7 @@ allow-unauthenticated = [
 [assign]
 
 [assign.owners]
-"*" = ["@Amanieu", "@folkertdev", "@sayantn", "@davidtwco", "@adamgemmell"]
+"*" = ["@Amanieu", "@folkertdev", "@davidtwco", "@adamgemmell"]
 
 [ping.windows]
 message = """\
