@@ -10,6 +10,10 @@
 'simple::conv_rust'.busted = "check"
 'simple::conv_rust::rustc_caller'.busted = "run"
 
+[target.'cfg(all(target_arch = "x86_64", target_env = "msvc"))']
+# ICE: https://github.com/rust-lang/rust/issues/164207
+'EmptyStruct::conv_c::repr_c::rustc_calls_cgclif'.run = "skip"
+
 [target.'*'.'f16']
 run = "skip"
 
