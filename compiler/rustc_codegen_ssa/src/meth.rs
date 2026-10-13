@@ -53,6 +53,23 @@ impl<'a, 'tcx> VirtualIndex {
         self.get_fn_inner(bx, llvtable, ty, fn_abi, true)
     }
 
+    /// Read a data pointer. For function pointers, use [`VirtualIndex::get_fn`].
+    pub(crate) fn get_data_ptr<Bx: BuilderMethods<'a, 'tcx>>(
+        self,
+        bx: &mut Bx,
+        llvtable: Bx::Value,
+        nonnull: bool,
+    ) -> Bx::Value {
+        // Load the data pointer from the object.
+        debug!("get_ptr({:?}, {:?})", llvtable, self);
+
+        let llty = bx.type_ptr();
+        let ptr_size = bx.data_layout().pointer_size();
+        let vtable_byte_offset = self.0 * ptr_size.bytes();
+
+        load_vtable_plain(bx, llvtable, llty, vtable_byte_offset, nonnull)
+    }
+
     pub(crate) fn get_usize<Bx: BuilderMethods<'a, 'tcx>>(
         self,
         bx: &mut Bx,
@@ -122,7 +139,7 @@ pub(crate) fn get_vtable<'tcx, Cx: CodegenMethods<'tcx>>(
 }
 
 /// Call this function whenever you need to load a vtable.
-pub(crate) fn load_vtable<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+fn load_vtable<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     llvtable: Bx::Value,
     llty: Bx::Type,
