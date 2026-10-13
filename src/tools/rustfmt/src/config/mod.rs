@@ -339,7 +339,12 @@ impl Config {
         style_edition: Option<StyleEdition>,
         version: Option<Version>,
     ) -> Result<(Config, Option<PathBuf>), Error> {
-        match resolve_project_file(dir).or_else(|_| config_from_user_dirs())? {
+        let path = match resolve_project_file(dir)? {
+            Some(path) => Some(path),
+            None => config_from_user_dirs()?,
+        };
+
+        match path {
             None => Ok((
                 Config::default_for_possible_style_edition(style_edition, edition, version),
                 None,
