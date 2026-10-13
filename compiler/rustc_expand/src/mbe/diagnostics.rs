@@ -374,6 +374,7 @@ pub(super) fn emit_frag_parse_err(
     kind: AstFragmentKind,
     bindings: &[MacroRule],
     matched_rule_bindings: &[MatcherLoc],
+    is_trailing_mac: bool,
 ) -> ErrorGuaranteed {
     // FIXME(davidtwco): avoid depending on the error message text
     if parser.token == token::Eof
@@ -411,7 +412,7 @@ pub(super) fn emit_frag_parse_err(
                     "the macro call doesn't expand to an expression, but it can expand to a statement",
                 );
 
-                if parser.token == token::Semi {
+                if !is_trailing_mac {
                     if let Ok(snippet) = parser.psess.source_map().span_to_snippet(site_span) {
                         e.span_suggestion_verbose(
                             site_span,
