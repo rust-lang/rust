@@ -3,7 +3,6 @@
 // See https://doc.rust-lang.org/nightly/reference/items/use-declarations.html#r-items.use.path.edition2018
 
 #![feature(custom_inner_attributes)]
-#![feature(diagnostic_on_unknown)]
 #![crate_type = "lib"]
 
 // Only applies to the root, not everything in the entire crate

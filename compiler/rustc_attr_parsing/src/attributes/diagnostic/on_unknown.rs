@@ -14,10 +14,8 @@ impl AttributeParser for OnUnknownParser {
     const ATTRIBUTES: AcceptMapping<Self> = &[(
         &[sym::diagnostic, sym::on_unknown],
         template!(List: &[r#"/*opt*/ message = "...", /*opt*/ label = "...", /*opt*/ note = "...""#]),
-        AttributeStability::Stable, // Unstable, stability checked manually below
+        AttributeStability::Stable,
         |this, cx, args| {
-            gate_diagnostic_attr!(diagnostic_on_unknown);
-
             let span = cx.attr_span;
             this.span = Some(span);
             let mode = Mode::DiagnosticOnUnknown;

@@ -1,5 +1,5 @@
 warning: the `diagnostic::on_unknown` attribute cannot be used on expressions
-  --> $DIR/incorrect_unstable_positions.rs:8:7
+  --> $DIR/incorrect_unstable_positions.rs:7:7
    |
 LL |     #[diagnostic::on_unknown(message = "anonymous block")]
    |       ^^^^^^^^^^^^^^^^^^^^^^

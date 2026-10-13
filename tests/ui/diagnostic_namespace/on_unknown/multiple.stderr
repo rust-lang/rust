@@ -1,5 +1,5 @@
 error[E0432]: the same message
-  --> $DIR/multiple.rs:21:5
+  --> $DIR/multiple.rs:20:5
    |
 LL |     x::Bar,
    |     ^^^---
@@ -22,7 +22,7 @@ LL |     z::Baz,
    = note: note z
 
 error[E0432]: unresolved imports `different::nothing`, `x::Buz`
-  --> $DIR/multiple.rs:35:5
+  --> $DIR/multiple.rs:34:5
    |
 LL |     different::nothing,
    |     ^^^^^^^^^^^-------

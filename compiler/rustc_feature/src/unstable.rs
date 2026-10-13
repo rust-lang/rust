@@ -497,8 +497,6 @@ declare_features! (
     (unstable, diagnostic_on_move, "1.96.0", Some(154181)),
     /// Allows giving custom types diagnostic messages on type errors
     (unstable, diagnostic_on_type_error, "1.98.0", Some(155382)),
-    /// Allows giving unresolved imports a custom diagnostic message
-    (unstable, diagnostic_on_unknown, "1.96.0", Some(152900)),
     /// Allows macros to customize macro argument matcher diagnostics.
     (unstable, diagnostic_on_unmatched_args, "1.97.0", Some(155642)),
     /// Used by macros to not show their bodies in error messages. No-op with `-Z macro-backtrace`.

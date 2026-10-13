@@ -1,4 +1,3 @@
-#![feature(diagnostic_on_unknown)]
 #![crate_type = "lib"]
 
 pub mod foo {}

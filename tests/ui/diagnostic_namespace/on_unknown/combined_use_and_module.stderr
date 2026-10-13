@@ -1,5 +1,5 @@
 error[E0432]: the message
-  --> $DIR/combined_use_and_module.rs:22:9
+  --> $DIR/combined_use_and_module.rs:21:9
    |
 LL | pub use constants::THREE;
    |         ^^^^^^^^^^^-----

@@ -1,5 +1,5 @@
 error[E0531]: it works `empty` `blah`
-  --> $DIR/late_res.rs:13:16
+  --> $DIR/late_res.rs:12:16
    |
 LL |         empty::blah => {}
    |                ^^^^ label it works
@@ -8,7 +8,7 @@ LL |         empty::blah => {}
    = note: note it works
 
 error[E0425]: it works `empty` `blah`
-  --> $DIR/late_res.rs:21:27
+  --> $DIR/late_res.rs:20:27
    |
 LL |     println!("{}", empty::blah);
    |                           ^^^^ label it works
@@ -17,7 +17,7 @@ LL |     println!("{}", empty::blah);
    = note: note it works
 
 error[E0425]: it works `empty` `blah`
-  --> $DIR/late_res.rs:28:16
+  --> $DIR/late_res.rs:27:16
    |
 LL |         empty::blah,
    |                ^^^^ label it works
@@ -26,7 +26,7 @@ LL |         empty::blah,
    = note: note it works
 
 error[E0425]: it works `empty` `blah2`
-  --> $DIR/late_res.rs:33:16
+  --> $DIR/late_res.rs:32:16
    |
 LL |         empty::blah2,
    |                ^^^^^ label it works
@@ -35,7 +35,7 @@ LL |         empty::blah2,
    = note: note it works
 
 error[E0425]: message
-  --> $DIR/late_res.rs:47:19
+  --> $DIR/late_res.rs:46:19
    |
 LL | const X: u32 = x::WAHT;
    |                   ^^^^ label
@@ -43,7 +43,7 @@ LL | const X: u32 = x::WAHT;
    = note: cannot find value `WAHT` in module `x`
    = note: note
 note: similarly named constant `WHAT` defined here
-  --> $DIR/late_res.rs:43:5
+  --> $DIR/late_res.rs:42:5
    |
 LL |     const WHAT: u32 = 1;
    |     ^^^^^^^^^^^^^^^^^^^^

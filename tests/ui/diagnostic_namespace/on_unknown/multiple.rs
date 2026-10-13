@@ -1,5 +1,4 @@
 #![crate_type = "lib"]
-#![feature(diagnostic_on_unknown)]
 
 #[diagnostic::on_unknown(
     message = "NEVER SHOWN",

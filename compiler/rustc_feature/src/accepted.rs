@@ -191,6 +191,8 @@ declare_features! (
     (accepted, destructuring_assignment, "1.59.0", Some(71126)),
     /// Allows using the `#[diagnostic]` attribute tool namespace
     (accepted, diagnostic_namespace, "1.78.0", Some(111996)),
+    /// Allows giving unresolved imports a custom diagnostic message
+    (accepted, diagnostic_on_unknown, "CURRENT_RUSTC_VERSION", Some(152900)),
     /// Controls errors in trait implementations.
     (accepted, do_not_recommend, "1.85.0", Some(51992)),
     /// Allows `#[doc(alias = "...")]`.
