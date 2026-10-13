@@ -107,7 +107,6 @@ mod definition_in_module_root;
 mod dereference;
 mod derivable_impls;
 mod derive;
-mod disallowed_fields;
 mod disallowed_items;
 mod disallowed_macros;
 mod disallowed_names;
@@ -851,7 +850,6 @@ rustc_lint::late_lint_methods!(
         ToplevelRefArg: toplevel_ref_arg::ToplevelRefArg = toplevel_ref_arg::ToplevelRefArg,
         VolatileComposites: volatile_composites::VolatileComposites = volatile_composites::VolatileComposites,
         ReplaceBox: replace_box::ReplaceBox = <replace_box::ReplaceBox>::default(),
-        DisallowedFields: disallowed_fields::DisallowedFields = disallowed_fields::DisallowedFields::new(tcx, conf),
         ManualIlog2: manual_ilog2::ManualIlog2 = manual_ilog2::ManualIlog2::new(conf),
         SameLengthAndCapacity: same_length_and_capacity::SameLengthAndCapacity = same_length_and_capacity::SameLengthAndCapacity,
         DurationSuboptimalUnits: duration_suboptimal_units::DurationSuboptimalUnits = duration_suboptimal_units::DurationSuboptimalUnits::new(tcx, conf),

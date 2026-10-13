@@ -112,7 +112,7 @@ pub static LINTS: &[&::declare_clippy_lint::LintInfo] = &[
     crate::derive::DERIVED_HASH_WITH_MANUAL_EQ_INFO,
     crate::derive::EXPL_IMPL_CLONE_ON_COPY_INFO,
     crate::derive::UNSAFE_DERIVE_DESERIALIZE_INFO,
-    crate::disallowed_fields::DISALLOWED_FIELDS_INFO,
+    crate::disallowed_items::DISALLOWED_FIELDS_INFO,
     crate::disallowed_items::DISALLOWED_METHODS_INFO,
     crate::disallowed_items::DISALLOWED_TYPES_INFO,
     crate::disallowed_macros::DISALLOWED_MACROS_INFO,
