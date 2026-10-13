@@ -263,10 +263,10 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
                 if debruijn == self.binder_index =>
             {
                 let idx = bound_ty.var().as_usize();
-                if self.bound_vars.len() <= idx {
+                let Some(bound_var) = self.bound_vars.get(idx) else {
                     panic!("Not enough bound vars: {:?} not found in {:?}", t, self.bound_vars);
-                }
-                bound_ty.assert_eq(self.bound_vars.get(idx).unwrap());
+                };
+                bound_ty.assert_eq(bound_var);
             }
             _ => {}
         };
@@ -283,10 +283,10 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
                 if debruijn == ty::BoundVarIndexKind::Bound(self.binder_index) =>
             {
                 let idx = bound_const.var().as_usize();
-                if self.bound_vars.len() <= idx {
+                let Some(bound_var) = self.bound_vars.get(idx) else {
                     panic!("Not enough bound vars: {:?} not found in {:?}", c, self.bound_vars);
-                }
-                bound_const.assert_eq(self.bound_vars.get(idx).unwrap());
+                };
+                bound_const.assert_eq(bound_var);
             }
             _ => {}
         };
@@ -298,10 +298,10 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
         match r.kind() {
             ty::ReBound(index, br) if index == ty::BoundVarIndexKind::Bound(self.binder_index) => {
                 let idx = br.var().as_usize();
-                if self.bound_vars.len() <= idx {
+                let Some(bound_var) = self.bound_vars.get(idx) else {
                     panic!("Not enough bound vars: {:?} not found in {:?}", r, self.bound_vars);
-                }
-                br.assert_eq(self.bound_vars.get(idx).unwrap());
+                };
+                br.assert_eq(bound_var);
             }
 
             _ => (),
