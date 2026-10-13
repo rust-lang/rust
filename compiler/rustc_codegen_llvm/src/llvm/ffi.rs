@@ -731,10 +731,12 @@ pub(crate) struct OperandBundle<'a>(InvariantOpaque<'a>);
 pub(crate) struct Linker<'a>(InvariantOpaque<'a>);
 
 unsafe extern "C" {
+    /// Corresponds to LLVM's `DiagnosticHandler`.
     pub(crate) type DiagnosticHandler;
 }
 
-pub(crate) type DiagnosticHandlerTy = unsafe extern "C" fn(&DiagnosticInfo, *mut c_void);
+/// Must match the declaration of `LLVMRustDiagnosticHandlerCallback`.
+pub(crate) type DiagnosticHandlerCallback = unsafe extern "C" fn(&DiagnosticInfo, *mut c_void);
 
 pub(crate) mod debuginfo {
     use bitflags::bitflags;
@@ -2578,17 +2580,23 @@ unsafe extern "C" {
         data: &ThinLTOData,
     );
 
-    pub(crate) fn LLVMRustContextGetDiagnosticHandler(
+    /// Removes the currently-installed `DiagnosticHandler`, and returns an owning pointer to it.
+    pub(crate) fn LLVMRustContextTakeDiagnosticHandler(
         Context: &Context,
-    ) -> Option<&DiagnosticHandler>;
+    ) -> Option<ptr::NonNull<DiagnosticHandler>>;
+
+    /// Installs a diagnostic handler that was previously removed by
+    /// [`LLVMRustContextTakeDiagnosticHandler`].
     pub(crate) fn LLVMRustContextSetDiagnosticHandler(
         context: &Context,
-        diagnostic_handler: Option<&DiagnosticHandler>,
+        diagnostic_handler: Option<ptr::NonNull<DiagnosticHandler>>,
     );
+
+    /// Installs a custom diagnostic handler.
     pub(crate) fn LLVMRustContextConfigureDiagnosticHandler(
         context: &Context,
-        diagnostic_handler_callback: DiagnosticHandlerTy,
-        diagnostic_handler_context: *mut c_void,
+        diagnostic_handler_callback: DiagnosticHandlerCallback,
+        diagnostic_handler_callback_data: *mut c_void,
         remark_all_passes: bool,
         remark_passes: *const *const c_char,
         remark_passes_len: usize,
