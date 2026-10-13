@@ -1,0 +1,8 @@
+error: function not found in this trait
+  --> $DIR/rustc_must_implement_one_of_macros.rs:33:34
+   |
+LL | #[rustc_must_implement_one_of(a, b)]
+   |                                  ^
+
+error: aborting due to 1 previous error
+
