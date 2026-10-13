@@ -320,7 +320,7 @@ pub struct CanonicalParamEnvCacheEntry<I: Interner> {
 }
 
 /// State used and modified by a canonicalizer during canonicalization. To avoid many allocations,
-/// this state is reused by many canonicalizers from a single `InferCtxt`.
+/// this state is reused by many canonicalizers from `GlobalCaches`.
 #[derive_where(Default; I: Interner)]
 pub struct CanonicalizerState<I: Interner> {
     pub variables: Vec<I::GenericArg>,
@@ -345,10 +345,32 @@ impl<I: Interner> CanonicalizerState<I> {
         // Deconstruct to ensure no fields are missed.
         let Self { variables, var_kinds, variable_lookup_table, sub_root_lookup_table, cache } =
             self;
+
+        // The vectors can be simply cleared because `Vec::clear` is cheap: it just sets the length
+        // to zero. (The elements don't impl `Drop`.)
+        //
+        // The hash maps are different: `HashMap::clear` has to write some control bytes, the
+        // number of which is proportional to capacity. Most of the time the hash map capacity is
+        // small and it's not a problem, but on some benchmarks it can occasionally get very big.
+        // In which case we just start over with a fresh hash map so we aren't saddled with a high
+        // `clear` cost forevermore.
+
         variables.clear();
         var_kinds.clear();
-        variable_lookup_table.clear();
-        sub_root_lookup_table.clear();
-        cache.clear();
+        if variable_lookup_table.capacity() <= 128 {
+            variable_lookup_table.clear();
+        } else {
+            *variable_lookup_table = HashMap::default();
+        }
+        if sub_root_lookup_table.capacity() <= 128 {
+            sub_root_lookup_table.clear();
+        } else {
+            *sub_root_lookup_table = HashMap::default();
+        }
+        if cache.capacity() <= 128 {
+            cache.clear();
+        } else {
+            *cache = Default::default();
+        }
     }
 }

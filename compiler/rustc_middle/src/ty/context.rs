@@ -73,11 +73,11 @@ use crate::traits::solve::{
 };
 use crate::ty::predicate::ExistentialPredicateStableCmpExt as _;
 use crate::ty::{
-    self, AdtDef, AdtDefData, AdtKind, Binder, Clause, ClausePolarity, Clauses, Const, ConstKind,
-    FnSigKind, GenericArg, GenericArgsUnsized, GenericParamDefKind, List, ListWithCachedTypeInfo,
-    ParamConst, Pattern, PatternKind, PolyExistentialPredicate, PolyFnSig, Predicate,
-    PredicateKind, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVid, ValTree,
-    ValTreeKind, Visibility,
+    self, AdtDef, AdtDefData, AdtKind, Binder, CanonicalizerState, Clause, ClausePolarity, Clauses,
+    Const, ConstKind, FnSigKind, GenericArg, GenericArgsUnsized, GenericParamDefKind, List,
+    ListWithCachedTypeInfo, ParamConst, Pattern, PatternKind, PolyExistentialPredicate, PolyFnSig,
+    Predicate, PredicateKind, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind,
+    TyVid, ValTree, ValTreeKind, Visibility,
 };
 
 impl<'tcx> rustc_type_ir::inherent::DefId<TyCtxt<'tcx>> for DefId {
@@ -702,6 +702,13 @@ pub struct GlobalCaches<'tcx> {
     /// Caches the results of goal evaluation in the new solver.
     new_solver_evaluation_cache: Lock<search_graph::GlobalCache<TyCtxt<'tcx>>>,
     new_solver_canonical_param_env_cache: Lock<ty::CanonicalParamEnvCache<TyCtxt<'tcx>>>,
+
+    /// State reused by each new canonicalizer, and then cleared (but not deallocated) once the
+    /// canonicalizer is finished. A performance win, because it avoids reallocating new
+    /// vecs/hashmaps for every canonicalizer. The `Vec` is needed because there can be multiple
+    /// canonicalizers in use at once if the number of threads > 1. The `Box` avoids memcpy because
+    /// `CanonicalizerState` is moderately big.
+    pub canonicalizer_states: Lock<Vec<Box<CanonicalizerState<TyCtxt<'tcx>>>>>,
 
     pub canonical_param_env_cache: CanonicalParamEnvCache<'tcx>,
 
