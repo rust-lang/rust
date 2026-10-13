@@ -894,18 +894,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     None
                 };
 
-                // Figure out how large a pthread TLS key actually is.
-                // To this end, deref the argument type. This is `libc::pthread_key_t`.
-                let key_type = key.layout.ty
-                    .builtin_deref(true)
-                    .ok_or_else(|| err_ub_format!(
-                        "wrong signature used for `pthread_key_create`: first argument must be a raw pointer."
-                    ))?;
-                let key_layout = this.layout_of(key_type)?;
-
                 // Create key and write it into the memory where `key_ptr` wants it.
-                let key = this.machine.tls.create_tls_key(dtor, key_layout.size)?;
-                this.write_scalar(Scalar::from_uint(key, key_layout.size), &key_place)?;
+                let key = this.machine.tls.create_tls_key(dtor, key_place.layout.size)?;
+                this.write_scalar(Scalar::from_uint(key, key_place.layout.size), &key_place)?;
 
                 // Return success (`0`).
                 this.write_null(dest)?;
