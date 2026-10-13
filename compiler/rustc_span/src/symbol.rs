@@ -219,7 +219,6 @@ symbols! {
         Equal,
         Err,
         ExitCode,
-        Expected,
         ExternC,
         ExternRust,
         Float,
@@ -233,7 +232,6 @@ symbols! {
         FnPtrToPtr,
         Formatter,
         Forward,
-        Found,
         From,
         FromIterator,
         FromResidual,
@@ -257,7 +255,6 @@ symbols! {
         IoBufReader,
         IrTyKind,
         Item,
-        ItemContext,
         Iterator,
         IteratorItem,
         IteratorMap,
@@ -361,7 +358,6 @@ symbols! {
         Type,
         TypeVisitable,
         Union,
-        Unresolved,
         Unsafe,
         UnsafeFnPointer,
         Unsize,
@@ -1051,6 +1047,7 @@ symbols! {
         format_macro,
         format_placeholder,
         format_unsafe_arg,
+        found,
         fp,
         fpregs,
         framework,
@@ -1205,6 +1202,7 @@ symbols! {
         issue_5723_bootstrap,
         issue_tracker_base_url,
         item,
+        item_context,
         item_like_imports,
         iter,
         iter_mut,
@@ -2175,6 +2173,7 @@ symbols! {
         test_removed_feature,
         test_runner,
         test_unstable_lint,
+        this,
         thread,
         thread_local,
         threadptr,
@@ -2323,6 +2322,7 @@ symbols! {
         unreachable_code,
         unreachable_display,
         unreachable_macro,
+        unresolved,
         unrestricted_attribute_tokens,
         unsafe_attributes,
         unsafe_binders,
@@ -3008,9 +3008,19 @@ pub mod kw {
 ///
 /// Given that `sym` is imported, use them like `sym::symbol_name`.
 /// For example `sym::rustfmt` or `sym::u8`.
-#[diagnostic::on_unknown(
-    label = "`{Unresolved}` is not a pre-interned symbol",
-    note = "consider adding `{Unresolved}` to the `symbols!` invocation in compiler/rustc_span/src/symbol.rs"
+#[cfg_attr(
+    bootstrap,
+    diagnostic::on_unknown(
+        label = "`{Unresolved}` is not a pre-interned symbol",
+        note = "consider adding `{Unresolved}` to the `symbols!` invocation in compiler/rustc_span/src/symbol.rs"
+    )
+)]
+#[cfg_attr(
+    not(bootstrap),
+    diagnostic::on_unknown(
+        label = "`{unresolved}` is not a pre-interned symbol",
+        note = "consider adding `{unresolved}` to the `symbols!` invocation in compiler/rustc_span/src/symbol.rs"
+    )
 )]
 pub mod sym {
     use super::Symbol;

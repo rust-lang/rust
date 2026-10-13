@@ -1,7 +1,7 @@
 #![feature(diagnostic_on_type_error)]
 
 #[diagnostic::on_type_error(
-    note = "custom on_type_error note: expected `{Expected}`, found `{Found}`"
+    note = "custom on_type_error note: expected `{expected}`, found `{found}`"
 )]
 struct Array<T, const N: usize>([T; N]);
 //~^ WARN `#[diagnostic::on_type_error]` only supports exactly one ADT generic parameter, but found `2` [malformed_diagnostic_attributes]

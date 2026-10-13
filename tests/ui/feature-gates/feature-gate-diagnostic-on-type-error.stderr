@@ -1,7 +1,7 @@
 warning: unknown diagnostic attribute
   --> $DIR/feature-gate-diagnostic-on-type-error.rs:3:1
    |
-LL | #[diagnostic::on_type_error(note = "custom on_type_error note: expected {Expected}, found {Found}")]
+LL | #[diagnostic::on_type_error(note = "custom on_type_error note: expected {expected}, found {found}")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: this is an experimental diagnostic attribute
