@@ -2326,19 +2326,6 @@ pub(crate) enum InvalidNanComparisonsSuggestion {
         style = "verbose",
         applicability = "machine-applicable"
     )]
-    Spanful {
-        #[suggestion_part(code = "!")]
-        neg: Option<Span>,
-        #[suggestion_part(code = ".is_nan()")]
-        float: Span,
-        #[suggestion_part(code = "")]
-        nan_plus_binop: Span,
-    },
-    #[multipart_suggestion(
-        "use `f32::is_nan()` or `f64::is_nan()` instead",
-        style = "verbose",
-        applicability = "machine-applicable"
-    )]
     Ufcs {
         prefix: String,
         #[suggestion_part(code = "{prefix}")]

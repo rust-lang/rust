@@ -5,39 +5,39 @@
 
 fn main() {
     let x = 5f16;
-    let _ = x.is_nan();
+    let _ = f16::is_nan(x);
     //~^ WARN incorrect NaN comparison
-    let _ = !x.is_nan();
+    let _ = !f16::is_nan(x);
     //~^ WARN incorrect NaN comparison
 
     let x = 5f32;
-    let _ = x.is_nan();
+    let _ = f32::is_nan(x);
     //~^ WARN incorrect NaN comparison
-    let _ = !x.is_nan();
+    let _ = !f32::is_nan(x);
     //~^ WARN incorrect NaN comparison
 
     let x = 5f64;
-    let _ = x.is_nan();
+    let _ = f64::is_nan(x);
     //~^ WARN incorrect NaN comparison
-    let _ = !x.is_nan();
+    let _ = !f64::is_nan(x);
     //~^ WARN incorrect NaN comparison
 
     let x = 5f128;
-    let _ = x.is_nan();
+    let _ = f128::is_nan(x);
     //~^ WARN incorrect NaN comparison
-    let _ = !x.is_nan();
-    //~^ WARN incorrect NaN comparison
-
-    let b = &2.3f32;
-    if !b.is_nan() {}
+    let _ = !f128::is_nan(x);
     //~^ WARN incorrect NaN comparison
 
     let b = &2.3f32;
-    if !b.is_nan() {}
+    if !f32::is_nan(*b) {}
+    //~^ WARN incorrect NaN comparison
+
+    let b = &2.3f32;
+    if !f32::is_nan(*b) {}
     //~^ WARN incorrect NaN comparison
 
     let _ =
-        !b.is_nan();
+        !f32::is_nan(*b);
 
     // Issue #164143: an unsuffixed float is constrained by the `NAN` operand.
     // Suggesting `.is_nan()` drops that constraint and does not compile.
@@ -52,6 +52,22 @@ fn main() {
     }
     let _ = m;
 
+    let unary = &(-3.3);
+    if !f64::is_nan(*unary) {}
+    //~^ WARN incorrect NaN comparison
+
+    let block = &{ 3.3 };
+    if !f64::is_nan(*block) {}
+    //~^ WARN incorrect NaN comparison
+
+    let (tuple,) = (&3.3,);
+    if !f64::is_nan(*tuple) {}
+    //~^ WARN incorrect NaN comparison
+
+    let arithmetic = &(3.3 + 0.0);
+    if !f64::is_nan(*arithmetic) {}
+    //~^ WARN incorrect NaN comparison
+
     let _ = f64::is_nan(3.3);
     //~^ WARN incorrect NaN comparison
 
@@ -60,33 +76,33 @@ fn main() {
 
     let suffixed = 3.3f64;
     let copied = suffixed;
-    let _ = !copied.is_nan();
+    let _ = !f64::is_nan(copied);
     //~^ WARN incorrect NaN comparison
 
     let ascribed: f64 = 3.3;
-    let _ = !ascribed.is_nan();
+    let _ = !f64::is_nan(ascribed);
     //~^ WARN incorrect NaN comparison
 
     parameter(1.0);
     parameter_ref(&1.0);
-    let _ = |x: f64| !x.is_nan(); //~ WARN incorrect NaN comparison
+    let _ = |x: f64| !f64::is_nan(x); //~ WARN incorrect NaN comparison
 
     #[allow(unused_macros)]
     macro_rules! nan { () => { f32::NAN }; }
     macro_rules! number { () => { 5f32 }; }
 
-    let _ = number!().is_nan();
+    let _ = f32::is_nan(number!());
     //~^ WARN incorrect NaN comparison
-    let _ = !number!().is_nan();
+    let _ = !f32::is_nan(number!());
     //~^ WARN incorrect NaN comparison
 }
 
 fn parameter(x: f64) {
-    let _ = x.is_nan();
+    let _ = f64::is_nan(x);
     //~^ WARN incorrect NaN comparison
 }
 
 fn parameter_ref(x: &f32) {
-    if !x.is_nan() {}
+    if !f32::is_nan(*x) {}
     //~^ WARN incorrect NaN comparison
 }

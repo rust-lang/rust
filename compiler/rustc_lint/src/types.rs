@@ -245,45 +245,6 @@ fn lint_nan<'tcx>(
         }
     }
 
-    fn is_primitive_float(mut ty: &hir::Ty<'_>) -> bool {
-        while let hir::TyKind::Ref(_, inner, _) = ty.kind {
-            ty = inner;
-        }
-        matches!(
-            ty.kind,
-            hir::TyKind::Path(hir::QPath::Resolved(_, path))
-                if matches!(path.res, hir::def::Res::PrimTy(hir::PrimTy::Float(_)))
-        )
-    }
-
-    // `true` when `expr.is_nan()` still type-checks after this comparison is removed.
-    // `let [mut] b = &3.3; b != &f64::NAN` is `&f64` only because of that comparison, so
-    // `b.is_nan()` leaves `{float}` and does not compile. `let b: f64 = 3.3` does.
-    fn can_suggest_is_nan_method<'a>(cx: &LateContext<'a>, expr: &'a hir::Expr<'a>) -> bool {
-        let mut cursor = expr.peel_blocks().peel_borrows();
-        while let ExprKind::Path(qpath) = &cursor.kind
-            && let hir::def::Res::Local(hir_id) = cx.qpath_res(qpath, cursor.hir_id)
-            && let hir::Node::LetStmt(local) = cx.tcx.parent_hir_node(hir_id)
-        {
-            if local.ty.is_some_and(is_primitive_float) {
-                return true;
-            }
-            if let hir::PatKind::Binding(..) = local.pat.kind
-                && let Some(init) = local.init
-            {
-                cursor = init.peel_blocks().peel_borrows();
-            } else {
-                break;
-            }
-        }
-        if let ExprKind::Lit(lit) = cursor.kind
-            && let ast::LitKind::Float(_, ast::LitFloatType::Unsuffixed) = lit.node
-        {
-            return false;
-        }
-        cx.typeck_results().expr_ty_opt(cursor).is_some_and(|ty| ty.peel_refs().is_floating_point())
-    }
-
     fn eq_ne_suggestion<'a>(
         cx: &LateContext<'a>,
         cmp: &'a hir::Expr<'a>,
@@ -302,14 +263,6 @@ fn lint_nan<'tcx>(
         } else {
             value_span.shrink_to_hi().to(nan_span)
         };
-
-        if can_suggest_is_nan_method(cx, value) {
-            return InvalidNanComparisonsSuggestion::Spanful {
-                neg: is_ne.then(|| value_span.shrink_to_lo()),
-                float: value_span.shrink_to_hi(),
-                nan_plus_binop: remove_nan,
-            };
-        }
 
         let Some(mut ty) = cx.typeck_results().expr_ty_opt(value) else {
             return InvalidNanComparisonsSuggestion::Spanless;

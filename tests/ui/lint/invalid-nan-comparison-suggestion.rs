@@ -55,6 +55,22 @@ fn main() {
     }
     let _ = m;
 
+    let unary = &(-3.3);
+    if unary != &f64::NAN {}
+    //~^ WARN incorrect NaN comparison
+
+    let block = &{ 3.3 };
+    if block != &f64::NAN {}
+    //~^ WARN incorrect NaN comparison
+
+    let (tuple,) = (&3.3,);
+    if tuple != &f64::NAN {}
+    //~^ WARN incorrect NaN comparison
+
+    let arithmetic = &(3.3 + 0.0);
+    if arithmetic != &f64::NAN {}
+    //~^ WARN incorrect NaN comparison
+
     let _ = 3.3 == f64::NAN;
     //~^ WARN incorrect NaN comparison
 
