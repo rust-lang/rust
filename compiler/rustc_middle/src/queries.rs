@@ -69,7 +69,8 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdSet, LocalModId};
 use rustc_hir::{ItemLocalId, PreciseCapturingArgKind};
-use rustc_index::{IndexSlice, IndexVec};
+use rustc_index::IndexVec;
+use rustc_index::dense_map::DenseMapRef;
 use rustc_lint_defs::{LintId, StableLintExpectationId};
 use rustc_macros::rustc_queries;
 use rustc_middle::middle::resolve::TypeRelativeDelegationRes;
@@ -210,7 +211,7 @@ rustc_queries! {
     // We want to drop it once the whole HIR has been lowered.
     // We rely on reference counting to know when all definitions have been stolen.
     // None if the `LocalDefId` is not an owner.
-    query index_ast(_: ()) -> &'tcx IndexSlice<LocalDefId, Option<Steal<(Arc<ResolverAstLowering<'tcx>>, AstOwner)>>>  {
+    query index_ast(_: ()) -> DenseMapRef<'tcx, LocalDefId, Option<Steal<(Arc<ResolverAstLowering<'tcx>>, AstOwner)>>>  {
         eval_always
         no_hash
         desc { "getting the AST for lowering" }

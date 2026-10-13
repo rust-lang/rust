@@ -12,6 +12,7 @@ use std::ops::{Index, IndexMut};
 use std::sync::atomic::{AtomicPtr, AtomicU32, AtomicUsize, Ordering};
 
 use rustc_index::Idx;
+use rustc_index::dense_map::DenseKey;
 
 #[cfg(test)]
 mod tests;
@@ -221,7 +222,7 @@ impl SlotIndex {
 /// query dependency tracking.
 ///
 /// [#124780]: https://github.com/rust-lang/rust/pull/124780
-pub struct VecCache<K: Idx, V, I> {
+pub struct VecCache<K: DenseKey, V, I> {
     // Entries per bucket:
     // Bucket  0:       4096 2^12
     // Bucket  1:       4096 2^12
@@ -243,7 +244,7 @@ pub struct VecCache<K: Idx, V, I> {
     key: PhantomData<(K, I)>,
 }
 
-impl<K: Idx, V, I> Default for VecCache<K, V, I> {
+impl<K: DenseKey, V, I> Default for VecCache<K, V, I> {
     fn default() -> Self {
         VecCache {
             buckets: Default::default(),
@@ -255,7 +256,7 @@ impl<K: Idx, V, I> Default for VecCache<K, V, I> {
     }
 }
 
-impl<K: Idx, V, I> VecCache<K, V, I> {
+impl<K: DenseKey, V, I> VecCache<K, V, I> {
     pub fn without_track_present() -> Self {
         let mut this = VecCache::default();
         this.track_present = false;
@@ -264,7 +265,7 @@ impl<K: Idx, V, I> VecCache<K, V, I> {
 }
 
 // SAFETY: No access to `V` is made.
-unsafe impl<K: Idx, #[may_dangle] V, I> Drop for VecCache<K, V, I> {
+unsafe impl<K: DenseKey, #[may_dangle] V, I> Drop for VecCache<K, V, I> {
     fn drop(&mut self) {
         // We have unique ownership, so no locks etc. are needed. Since `K` and `V` are both `Copy`,
         // we are also guaranteed to just need to deallocate any large arrays (not iterate over
@@ -303,7 +304,7 @@ unsafe impl<K: Idx, #[may_dangle] V, I> Drop for VecCache<K, V, I> {
 
 impl<K, V, I> VecCache<K, V, I>
 where
-    K: Eq + Idx + Copy + Debug,
+    K: Eq + DenseKey + Copy + Debug,
     V: Copy,
     I: Idx + Copy,
 {

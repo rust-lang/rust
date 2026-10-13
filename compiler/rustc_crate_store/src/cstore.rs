@@ -9,7 +9,7 @@ use std::sync::OnceLock;
 use rustc_abi::ExternAbi;
 use rustc_attr_ir::{CfgEntry, PeImportNameType};
 use rustc_data_structures::svh::Svh;
-use rustc_data_structures::sync::{self, AppendOnlyIndexVec, FreezeLock};
+use rustc_data_structures::sync::{self, AppendOnlyDenseMap, FreezeLock};
 use rustc_hir_id::definitions::{DefKey, DefPath, Definitions};
 use rustc_macros::{BlobDecodable, Decodable, Encodable, StableHash};
 use rustc_span::def_id::{
@@ -218,7 +218,7 @@ pub type CrateStoreDyn = dyn CrateStore + sync::DynSync + sync::DynSend;
 pub struct Untracked {
     pub cstore: FreezeLock<Box<CrateStoreDyn>>,
     /// Reference span for definitions.
-    pub source_span: AppendOnlyIndexVec<LocalDefId, Span>,
+    pub source_span: AppendOnlyDenseMap<LocalDefId, Span>,
     pub definitions: FreezeLock<Definitions>,
     /// The interned [StableCrateId]s.
     pub stable_crate_ids: FreezeLock<StableCrateIdMap>,

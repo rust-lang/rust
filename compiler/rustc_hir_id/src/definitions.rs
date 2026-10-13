@@ -11,7 +11,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hash::StableHasher;
 use rustc_hashes::Hash64;
-use rustc_index::IndexVec;
+use rustc_index::dense_map::DenseMap;
 use rustc_macros::{BlobDecodable, Decodable, Encodable, extension};
 use rustc_serialize::Encodable;
 pub use rustc_span::def_id::DefPathHash;
@@ -96,9 +96,9 @@ impl DefPathToIndexMap {
 #[derive(Debug)]
 pub struct Definitions {
     stable_crate_id: StableCrateId,
-    def_id_to_key: IndexVec<LocalDefId, DefKey>,
+    def_id_to_key: DenseMap<LocalDefId, DefKey>,
     // We do only store the local hash, as all the definitions are from the current crate.
-    def_path_hashes: IndexVec<LocalDefId, Hash64>,
+    def_path_hashes: DenseMap<LocalDefId, Hash64>,
     // The first non deterministic def index, may correspond to non-allocated
     // def id, in this case `first_non_det_index.as_usize() == num_definitions`.
     first_non_det_index: Option<DefIndex>,
@@ -420,9 +420,12 @@ impl Definitions {
         def_id
     }
 
+    #[rustc_lint_query_instability]
     pub fn enumerated_keys_and_path_hashes(
         &self,
     ) -> impl Iterator<Item = (DefIndex, &DefKey, DefPathHash)> + ExactSizeIterator {
+        // propagated to the caller
+        #[allow(rustc::potential_query_instability)]
         self.def_id_to_key
             .iter_enumerated()
             .map(move |(def_id, key)| (def_id.local_def_index, key, self.def_path_hash(def_id)))

@@ -58,10 +58,29 @@ impl<K: DenseKey, V> DenseMap<K, V> {
         self.raw.get_mut(key.index())
     }
 
+    /// Replaces the value at `key`, returning the previously stored value.
     #[inline]
     pub fn replace(&mut self, key: K, value: V) -> V {
         assert!(key.index() < self.raw.len());
         std::mem::replace(&mut self.raw[key.index()], value)
+    }
+
+    /// Inserts `value` at `key` resizing the backing container if needed, filling missing values with
+    /// `V::default()`
+    ///
+    /// Use `Self::replace` instead when `key` is known to fit
+    #[inline]
+    pub fn insert(&mut self, key: K, value: V) -> Option<V>
+    where
+        V: Default,
+    {
+        if key.index() < self.raw.len() {
+            Some(self.replace(key, value))
+        } else {
+            self.raw.resize_with(key.index() + 1, Default::default);
+            *self.raw.last_mut().unwrap() = value;
+            None
+        }
     }
 
     #[inline]
