@@ -826,15 +826,13 @@ impl<'tcx> MutVisitor<'tcx> for AliasFixup<'_, 'tcx> {
                         location,
                     )
                 }
+                // MCP#838 banned projections into SIMD types, so use the
+                // general aliasing fallback below for those aggregates.
                 Rvalue::Aggregate(
                     AggregateKind::Adt(adt_did, var_idx, _, _, None),
                     ref mut operands,
-                ) => {
+                ) if !self.tcx.adt_def(adt_did).repr().simd() => {
                     let def = self.tcx.adt_def(adt_did);
-                    if def.repr().simd() {
-                        // MCP#838 banned projections into SIMD types.
-                        return;
-                    }
                     self.visit_aggregate_assign(
                         *dest,
                         def.is_enum().then_some(var_idx),
