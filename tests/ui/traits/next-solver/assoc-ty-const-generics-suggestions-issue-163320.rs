@@ -1,5 +1,5 @@
-// Item lowering should not need trait solving for suggestions, while body
-// type checking should retain applicable suggestions.
+// Suggestions should not need trait solving during either item lowering or
+// body type checking. Deep rejection may also admit incompatible impls.
 
 //@ compile-flags: -Znext-solver=globally
 //@ check-fail
@@ -44,7 +44,7 @@ fn body_negative() {
     //~^ ERROR ambiguous associated type
 }
 
-// Repeated impl parameters must not produce an incompatible suggestion.
+// Repeated impl parameters can result in false-positive suggestions.
 type RepeatedParam = <(u8, u16)>::Item;
 //~^ ERROR ambiguous associated type
 
