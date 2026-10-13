@@ -19,7 +19,6 @@ use rustc_middle::ty::{RequiredDepth, TyCtxt, VisitorResult, try_visit};
 use rustc_next_trait_solver::canonical::instantiate_canonical_state;
 use rustc_next_trait_solver::solve::{MaybeCause, MaybeInfo, SolverDelegateEvalExt as _, inspect};
 use rustc_span::{Span, bug};
-use thin_vec::ThinVec;
 use tracing::instrument;
 
 use crate::solve::delegate::SolverDelegate;
@@ -34,7 +33,7 @@ pub struct InspectGoal<'a, 'tcx> {
     depth: usize,
     // Required depth to complete the evaluation of this goal.
     required_depth: RequiredDepth,
-    orig_values: ThinVec<ty::GenericArg<'tcx>>,
+    orig_values: Vec<ty::GenericArg<'tcx>>,
     prev_universe: ty::UniverseIndex,
     goal: Goal<'tcx, ty::Predicate<'tcx>>,
     result: Result<Certainty, NoSolution>,

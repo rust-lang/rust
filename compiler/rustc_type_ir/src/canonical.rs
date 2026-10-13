@@ -8,7 +8,6 @@ use rustc_macros::{Decodable_NoContext, Encodable_NoContext, StableHash_NoContex
 use rustc_type_ir_macros::{
     GenericTypeVisitable, Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic,
 };
-use thin_vec::ThinVec;
 
 use crate::data_structures::{DelayedMap, HashMap};
 use crate::inherent::*;
@@ -315,7 +314,7 @@ pub struct CanonicalParamEnvCacheEntry<I: Interner> {
     // Note: this `param_env` is the canonicalized form of the key for this entry in the enclosing
     // `CanonicalParamEnvCache`.
     pub param_env: I::ParamEnv,
-    pub variables: ThinVec<I::GenericArg>,
+    pub variables: Vec<I::GenericArg>,
     pub variable_lookup_table: HashMap<I::GenericArg, usize>,
     pub var_kinds: Vec<CanonicalVarKind<I>>,
 }
@@ -324,7 +323,7 @@ pub struct CanonicalParamEnvCacheEntry<I: Interner> {
 /// this state is reused by many canonicalizers from a single `InferCtxt`.
 #[derive_where(Default; I: Interner)]
 pub struct CanonicalizerState<I: Interner> {
-    pub variables: ThinVec<I::GenericArg>,
+    pub variables: Vec<I::GenericArg>,
     pub var_kinds: Vec<CanonicalVarKind<I>>,
     pub variable_lookup_table: HashMap<I::GenericArg, usize>,
 
