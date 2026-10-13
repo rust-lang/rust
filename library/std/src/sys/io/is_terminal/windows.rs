@@ -1,6 +1,7 @@
 use crate::ffi::c_void;
 use crate::mem::MaybeUninit;
 use crate::os::windows::io::{AsHandle, AsRawHandle, BorrowedHandle};
+use crate::sys::api::utf16;
 use crate::sys::c;
 
 pub fn is_terminal(h: &impl AsHandle) -> bool {
