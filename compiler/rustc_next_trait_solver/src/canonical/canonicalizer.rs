@@ -71,7 +71,7 @@ pub(super) struct Canonicalizer<'a, D: SolverDelegate<Interner = I>, I: Interner
     canonicalize_mode: CanonicalizeMode,
 
     // Mutable fields.
-    state: CanonicalizerState<I>,
+    state: Box<CanonicalizerState<I>>,
 }
 
 impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
