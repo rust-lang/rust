@@ -2935,6 +2935,9 @@ pub struct Param {
     pub id: NodeId,
     pub span: Span,
     pub is_placeholder: bool,
+    /// Records whether `const` was written before the parameter.
+    /// This only tracks syntax, not whether it's a valid const generic param.
+    pub has_const_keyword: bool,
 }
 
 /// Alternative representation for `Arg`s describing `self` parameter of methods.
@@ -3032,7 +3035,27 @@ impl Param {
             ty,
             id: DUMMY_NODE_ID,
             is_placeholder: false,
+            has_const_keyword: false,
         }
+    }
+
+    /// Returns the ident if this param is a valid arg position const param.
+    /// Unlike has_const_keyword, this also checks the pats
+    pub fn const_param_ident(&self) -> Option<Ident> {
+        if !self.has_const_keyword {
+            return None;
+        }
+
+        match self.pat.kind {
+            PatKind::Ident(BindingMode::NONE, ident, None) => Some(ident),
+            _ => None,
+        }
+    }
+
+    /// Checks if this is an arg position const param.
+    /// Use this instead of has_const_keyword, which only checks for the keyword.
+    pub fn is_const_param(&self) -> bool {
+        self.const_param_ident().is_some()
     }
 }
 

@@ -1254,8 +1254,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
         body: impl FnOnce(&mut Self) -> hir::Expr<'hir>,
     ) -> hir::BodyId {
         self.lower_body(|this| {
-            let params =
-                this.arena.alloc_from_iter(decl.inputs.iter().map(|x| this.lower_param(x)));
+            let params = this.arena.alloc_from_iter(
+                decl.inputs
+                    .iter()
+                    .filter(|param| !param.is_const_param())
+                    .map(|x| this.lower_param(x)),
+            );
 
             // Optionally lower the fn contract
             if let Some(contract) = contract {
@@ -1398,7 +1402,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // let-bound variables and temporaries created in the body
         // (and its tail expression!) before we drop the
         // parameters (c.f. rust-lang/rust#64512).
-        for (index, parameter) in decl.inputs.iter().enumerate() {
+        for (index, parameter) in
+            decl.inputs.iter().filter(|param| !param.is_const_param()).enumerate()
+        {
             let parameter = self.lower_param(parameter);
             let span = parameter.pat.span;
 
@@ -1771,6 +1777,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> (&'hir hir::Generics<'hir>, T) {
         assert!(self.curr_owner.impl_trait_defs.is_empty());
         assert!(self.curr_owner.impl_trait_bounds.is_empty());
+        assert!(self.curr_owner.const_defs.is_empty());
 
         let mut predicates: SmallVec<[hir::WherePredicate<'hir>; 4]> = SmallVec::new();
         // We need to make sure that generic params don't have multiple relaxed bounds for the same trait
@@ -1814,6 +1821,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let where_clause_span = self.lower_span(generics.where_clause.span);
         let span = self.lower_span(generics.span);
         let res = f(self);
+
+        let const_defs = std::mem::take(&mut self.curr_owner.const_defs);
+        params.extend(const_defs.into_iter());
 
         let impl_trait_defs = std::mem::take(&mut self.curr_owner.impl_trait_defs);
         params.extend(impl_trait_defs.into_iter());
