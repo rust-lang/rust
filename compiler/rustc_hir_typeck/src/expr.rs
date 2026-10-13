@@ -24,7 +24,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{ExprKind, HirId, QPath, is_range_literal};
 use rustc_hir_analysis::diagnostics::{NoFieldOnType, NoVariantNamed};
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer as _;
-use rustc_infer::infer::{self, DefineOpaqueTypes, InferOk, RegionVariableOrigin};
+use rustc_infer::infer::{self, RegionVariableOrigin};
 use rustc_infer::traits::WellFormedLoc;
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
@@ -2118,27 +2118,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 if let Some(_) = remaining_fields.remove(&ident) {
                                     let target_ty = self.field_ty(base_expr.span, f, args);
                                     let cause = self.misc(base_expr.span);
-                                    match self.at(&cause, self.param_env).sup(
-                                        // We're already using inference variables for any params,
-                                        // and don't allow converting between different structs,
-                                        // so there is no way this ever actually defines an opaque
-                                        // type. Thus choosing `Yes` is fine.
-                                        DefineOpaqueTypes::Yes,
-                                        target_ty,
-                                        fru_ty,
-                                    ) {
-                                        Ok(InferOk { obligations, value: () }) => {
-                                            self.register_predicates(obligations)
-                                        }
-                                        Err(_) => {
-                                            span_bug!(
-                                                cause.span,
-                                                "subtyping remaining fields of type changing FRU \
-                                                failed: {target_ty} != {fru_ty}: {}::{}",
-                                                variant.name,
-                                                ident.name,
-                                            );
-                                        }
+                                    if let Err(diag) =
+                                        self.demand_suptype_diag(cause.span, target_ty, fru_ty)
+                                    {
+                                        diag.delay_as_bug();
                                     }
                                 }
                                 self.deeply_resolve_ignoring_regions(fru_ty)

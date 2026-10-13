@@ -732,9 +732,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     call_expr.span,
                     ObligationCauseCode::WellFormed(WellFormedLoc::HirId(call_expr.hir_id)),
                 );
+                // FIXME: This needs to happen in a `probe` as the `sup`
+                // call can currently guide type inference.
                 if self
-                    .at(&cause, self.param_env)
-                    .sup(DefineOpaqueTypes::Yes, formal_input_tys[0], adjusted_arg_type)
+                    .sup_raw(
+                        &cause,
+                        self.param_env,
+                        DefineOpaqueTypes::Yes,
+                        formal_input_tys[0],
+                        adjusted_arg_type,
+                    )
                     .is_err()
                 {
                     return do_check();
