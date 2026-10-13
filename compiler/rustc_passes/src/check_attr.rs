@@ -716,7 +716,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         }
                     });
 
-                    let is_allowed = argument_name == sym::Expected || argument_name == sym::Found;
+                    let is_allowed = argument_name == sym::expected || argument_name == sym::found;
                     if !(has_generic | is_allowed) {
                         self.tcx.emit_node_span_lint(
                             MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,

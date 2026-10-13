@@ -667,7 +667,8 @@ pub fn run_test(
             // level.
             let supports_threads = !cfg!(target_os = "emscripten")
                 && !cfg!(target_family = "wasm")
-                && !cfg!(target_os = "zkvm");
+                && !cfg!(target_os = "zkvm")
+                && !cfg!(target_os = "uefi");
             if supports_threads {
                 let cfg = thread::Builder::new().name(name.as_slice().to_owned());
                 let mut runtest = Arc::new(Mutex::new(Some(runtest)));

@@ -1,7 +1,7 @@
 #![feature(diagnostic_on_type_error)]
 
 #[diagnostic::on_type_error(
-    note = "custom on_type_error note: expected union `{Expected}`, found `{Found}`"
+    note = "custom on_type_error note: expected union `{expected}`, found `{found}`"
 )]
 union MyUnion<T> {
     value: std::mem::ManuallyDrop<T>,

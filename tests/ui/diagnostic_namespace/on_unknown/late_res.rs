@@ -2,7 +2,7 @@
 #![feature(diagnostic_on_unknown)]
 
 #[diagnostic::on_unknown(
-    message = "it works `{This}` `{Unresolved}`",
+    message = "it works `{this}` `{unresolved}`",
     label = "label it works",
     note = "note it works"
 )]

@@ -1038,14 +1038,14 @@ impl Display for Arguments<'_> {
 #[rustc_on_unimplemented(
     on(
         all(crate_local, not(Self = "{union}")),
-        note = "add `#[derive(Debug)]` to `{Self}` or manually `impl {This} for {Self}`"
+        note = "add `#[derive(Debug)]` to `{Self}` or manually `impl {this} for {Self}`"
     ),
-    on(all(crate_local, Self = "{union}"), note = "manually `impl {This} for {Self}`"),
+    on(all(crate_local, Self = "{union}"), note = "manually `impl {this} for {Self}`"),
     on(
         from_desugaring = "FormatLiteral",
-        label = "`{Self}` cannot be formatted using `{{:?}}` because it doesn't implement `{This}`"
+        label = "`{Self}` cannot be formatted using `{{:?}}` because it doesn't implement `{this}`"
     ),
-    message = "`{Self}` doesn't implement `{This}`"
+    message = "`{Self}` doesn't implement `{this}`"
 )]
 #[doc(alias = "{:?}")]
 #[rustc_diagnostic_item = "Debug"]
@@ -1179,7 +1179,7 @@ pub use macros::Debug;
         note = "in format strings you may be able to use `{{:?}}` (or `{{:#?}}` for pretty-print) instead",
         label = "`{Self}` cannot be formatted with the default formatter",
     ),
-    message = "`{Self}` doesn't implement `{This}`"
+    message = "`{Self}` doesn't implement `{this}`"
 )]
 #[doc(alias = "{}")]
 #[rustc_diagnostic_item = "Display"]
