@@ -3263,9 +3263,14 @@ impl<'a, 'tcx> ArgMatchingCtxt<'a, 'tcx> {
 
         // Using probe here, since we don't want this subtyping to affect inference.
         let subtyping_error = self.probe(|_| {
-            self.at(&self.misc(arg_span), self.param_env)
-                .sup(DefineOpaqueTypes::Yes, formal_input_ty, coerced_ty)
-                .err()
+            self.sup_raw(
+                &self.misc(arg_span),
+                self.param_env,
+                DefineOpaqueTypes::Yes,
+                formal_input_ty,
+                coerced_ty,
+            )
+            .err()
         });
 
         // Same as above: if either the coerce type or the checked type is an error type,
