@@ -733,8 +733,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ObligationCauseCode::WellFormed(WellFormedLoc::HirId(call_expr.hir_id)),
                 );
                 if self
-                    .at(&cause, self.param_env)
-                    .sup(DefineOpaqueTypes::Yes, formal_input_tys[0], adjusted_arg_type)
+                    .sup_raw(
+                        &cause,
+                        self.param_env,
+                        DefineOpaqueTypes::Yes,
+                        formal_input_tys[0],
+                        adjusted_arg_type,
+                    )
                     .is_err()
                 {
                     return do_check();
