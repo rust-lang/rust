@@ -718,11 +718,6 @@ impl SyntaxContext {
     }
 
     #[inline]
-    pub(crate) const fn from_u16(raw: u16) -> SyntaxContext {
-        SyntaxContext(raw as u32)
-    }
-
-    #[inline]
     fn from_usize(raw: usize) -> SyntaxContext {
         SyntaxContext(u32::try_from(raw).unwrap())
     }
