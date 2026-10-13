@@ -198,7 +198,7 @@ pub(super) fn build_coroutine_di_node<'ll, 'tcx>(
                     //        with enums?
                     let variant_name = format!("{}", variant_index.as_usize()).into();
 
-                    let span = coroutine_layout.variant_source_info[variant_index].span;
+                    let span = coroutine_layout.variant_source_info()[variant_index].span;
                     let source_info = if !span.is_dummy() {
                         let loc = cx.lookup_debug_loc(span.lo());
                         Some((file_metadata(cx, &loc.file), loc.line))
