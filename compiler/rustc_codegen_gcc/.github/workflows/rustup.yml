@@ -1,11 +1,19 @@
 name: CI with the cg_gcc distributed by rustup
 
-# FIXME: run nightly (`schedule: - cron: "0 4 * * *"`) once this workflow tests the cg_gcc sources
-# of the rust-lang/rust commit of the nightly instead of the ones of this repository.
-on: workflow_dispatch
+# Not run in PRs since it tests the cg_gcc sources of the latest nightly, not the ones of this
+# repository.
+on:
+  schedule:
+    - cron: "0 4 * * *"
+  workflow_dispatch:
 
 permissions:
   contents: read
+
+defaults:
+  run:
+    # Where the rustup-cg-gcc action checks out the cg_gcc sources of the nightly.
+    working-directory: rust/compiler/rustc_codegen_gcc
 
 env:
   # Enable backtraces for easier debugging
@@ -45,16 +53,14 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-
-    # `rustup show` installs from rust-toolchain.toml
-    - name: Setup rust toolchain
-      run: rustup show
+      with:
+        sparse-checkout: .github
+        sparse-checkout-cone-mode: false
 
     - name: Use the cg_gcc distributed by rustup
       uses: ./.github/actions/rustup-cg-gcc
-
-    - name: Setup rust cache
-      uses: Swatinem/rust-cache@v2
+      with:
+        path: rust
 
     - name: Add apt mirrors
       uses: ./.github/actions/apt-mirrors
@@ -106,6 +112,8 @@ jobs:
 
     - name: Remove rustc-dev
       uses: ./.github/actions/remove-rustc-dev
+      with:
+        directory: rust/compiler/rustc_codegen_gcc
 
     - name: Prepare dependencies
       run: |
@@ -129,26 +137,24 @@ jobs:
       fail-fast: false
       matrix:
         cargo_runner: [
-          "sde -cpuid-in /home/runner/work/rustc_codegen_gcc/rustc_codegen_gcc/tests/cpuid.def -rtm_mode full --",
+          "sde -cpuid-in /home/runner/work/rustc_codegen_gcc/rustc_codegen_gcc/rust/compiler/rustc_codegen_gcc/tests/cpuid.def -rtm_mode full --",
           "",
         ]
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        sparse-checkout: .github
+        sparse-checkout-cone-mode: false
 
-    # `rustup show` installs from rust-toolchain.toml
-    - name: Setup rust toolchain
-      run: rustup show
+    - name: Use the cg_gcc distributed by rustup
+      uses: ./.github/actions/rustup-cg-gcc
+      with:
+        path: rust
 
     # The stdarch-gen-common tests run rustfmt.
     - name: Install rustfmt
       run: rustup component add rustfmt
-
-    - name: Use the cg_gcc distributed by rustup
-      uses: ./.github/actions/rustup-cg-gcc
-
-    - name: Setup rust cache
-      uses: Swatinem/rust-cache@v2
 
     - name: Add apt mirrors
       uses: ./.github/actions/apt-mirrors
@@ -203,6 +209,8 @@ jobs:
 
     - name: Remove rustc-dev
       uses: ./.github/actions/remove-rustc-dev
+      with:
+        directory: rust/compiler/rustc_codegen_gcc
 
     - name: Run stdarch tests
       if: ${{ !matrix.cargo_runner }}
@@ -226,19 +234,19 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-
-    # `rustup show` installs from rust-toolchain.toml
-    - name: Setup rust toolchain
-      run: rustup show
+      with:
+        sparse-checkout: .github
+        sparse-checkout-cone-mode: false
 
     - name: Use the cg_gcc distributed by rustup
       uses: ./.github/actions/rustup-cg-gcc
+      with:
+        path: rust
 
     - name: Remove rustc-dev
       uses: ./.github/actions/remove-rustc-dev
-
-    - name: Setup rust cache
-      uses: Swatinem/rust-cache@v2
+      with:
+        directory: rust/compiler/rustc_codegen_gcc
 
     - name: Add apt mirrors
       uses: ./.github/actions/apt-mirrors
