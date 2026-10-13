@@ -1,3 +1,5 @@
+#![feature(rustc_attrs)]
+#![allow(internal_features)]
 // tidy-alphabetical-start
 #![cfg_attr(all(feature = "nightly", test), feature(stmt_expr_attributes))]
 #![cfg_attr(all(feature = "nightly", test), feature(test))]
@@ -8,6 +10,7 @@ pub mod bit_set;
 #[cfg(feature = "nightly")]
 pub mod interval;
 
+pub mod dense_map;
 mod idx;
 mod slice;
 mod vec;
