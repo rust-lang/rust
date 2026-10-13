@@ -37,7 +37,7 @@ pub(crate) fn expand_deriving_debug(
             has_other_selflike_arg: false,
             ret_ty: cx.ty_path(path_std!(cx, span, fmt::Result)),
             attributes: thin_vec![
-                cx.generated_attr(span, ast::GeneratedAttr::Inline),
+                cx.attr_word(sym::inline, span),
                 cx.generated_attr(span, ast::GeneratedAttr::RustcTrivialFieldReads),
             ],
             fieldless_variants_strategy:
