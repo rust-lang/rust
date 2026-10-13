@@ -9,10 +9,10 @@ LL |     let a = a!();
    |             ---- in this macro invocation
    |
    = note: the macro call doesn't expand to an expression, but it can expand to a statement
-help: add `;` to interpret the expansion as a statement
+help: invoke the macro in a new block with a single statement to interpret the expansion as a statement
    |
-LL |     let a = a!();;
-   |                 +
+LL |     let a = { a!(); };
+   |             +     +++
 
 error: expected expression, found keyword `trait`
   --> $DIR/duplicate-semi-suggestion-issue-164087.rs:2:12
