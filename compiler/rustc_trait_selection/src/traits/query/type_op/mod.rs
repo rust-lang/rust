@@ -60,13 +60,13 @@ pub struct TypeOpOutput<'tcx, Op: TypeOp<'tcx>> {
 ///
 /// [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html
 pub trait QueryTypeOp<'tcx>: fmt::Debug + Copy + TypeFoldable<TyCtxt<'tcx>> + 'tcx {
-    type QueryResponse: TypeFoldable<TyCtxt<'tcx>>;
+    type QueryResponse: TypeFoldable<TyCtxt<'tcx>> + PartialEq;
 
     /// Give query the option for a simple fast path that never
     /// actually hits the tcx cache lookup etc. Return `Some(r)` with
     /// a final result or `None` to do the full path.
     fn try_fast_path(
-        tcx: TyCtxt<'tcx>,
+        infcx: &InferCtxt<'tcx>,
         key: &ParamEnvAnd<'tcx, Self>,
     ) -> Option<Self::QueryResponse>;
 
@@ -96,11 +96,9 @@ where
         span: Span,
     ) -> Result<TypeOpOutput<'tcx, Self>, ErrorGuaranteed> {
         if !infcx.disable_trait_solver_fast_paths()
-            && let Some(value) = QueryTypeOp::try_fast_path(infcx.tcx, &self)
+            && let Some(value) = QueryTypeOp::try_fast_path(infcx, &self)
         {
-            // In this case most of the work done by `scrape_region_constraints` becomes a no-op
-            // and can be skipped. This deep resolve is the only thing that isn't a no-op.
-            let value = infcx.deeply_resolve_ignoring_regions(value);
+            debug_assert_eq!(value, infcx.deeply_resolve_ignoring_regions(value.clone()));
 
             return Ok(TypeOpOutput { output: value, constraints: None, error_info: None });
         }
