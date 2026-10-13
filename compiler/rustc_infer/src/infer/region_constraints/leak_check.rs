@@ -407,6 +407,8 @@ impl<'tcx> MiniGraph<'tcx> {
                         "we never add verifications while doing higher-ranked things",
                     ),
                     &AddCombination(..) | &AddVar(..) => {}
+                    // FIXME(-Zassumptions-on-binders): we probably need to handle this in some manner
+                    &OverwriteSolverRegionConstraint { .. } => {}
                 }
             }
         } else {

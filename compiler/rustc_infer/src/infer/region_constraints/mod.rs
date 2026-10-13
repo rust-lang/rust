@@ -9,7 +9,8 @@ use rustc_data_structures::unify as ut;
 use rustc_index::IndexVec;
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::ty::{self, ReBound, ReStatic, ReVar, Region, RegionVid, Ty, TyCtxt};
-use rustc_span::{bug, span_bug};
+use rustc_span::{Span, bug, span_bug};
+use rustc_type_ir::TypeVisitableExt;
 use tracing::{debug, instrument};
 
 use self::CombineMapType::*;
@@ -26,6 +27,10 @@ pub struct RegionConstraintStorage<'tcx> {
     pub(super) var_infos: IndexVec<RegionVid, RegionVariableInfo<'tcx>>,
 
     pub(super) data: RegionConstraintData<'tcx>,
+    // FIXME(-Zassumptions-on-binders): We should merge `solver_data` and `data`
+    // into just one field and have the representation of region constraints be
+    // the same regardless of whether abby is enabled or not
+    pub(super) solver_data: SolverRegionConstraintData<'tcx>,
 
     /// For a given pair of regions (R1, R2), maps to a region R3 that
     /// is designated as their LUB (edges R1 <= R3 and R2 <= R3
@@ -76,6 +81,26 @@ pub struct RegionConstraintData<'tcx> {
     /// An example is a `A <= B` where neither `A` nor `B` are
     /// inference variables.
     pub verifys: Vec<Verify<'tcx>>,
+}
+
+pub type SolverRegionConstraint<'tcx> =
+    rustc_type_ir::region_constraint::RegionConstraint<TyCtxt<'tcx>, Span>;
+
+#[derive(Clone, Debug, Default)]
+pub struct SolverRegionConstraintData<'tcx>(Option<SolverRegionConstraint<'tcx>>);
+
+impl<'tcx> SolverRegionConstraintData<'tcx> {
+    pub(crate) fn get_constraint(&self) -> SolverRegionConstraint<'tcx> {
+        match &self.0 {
+            Some(v) => v.clone(),
+            None => SolverRegionConstraint::new_true(),
+        }
+    }
+
+    #[instrument(level = "debug", skip(self))]
+    pub(crate) fn overwrite(&mut self, constraint: SolverRegionConstraint<'tcx>) {
+        self.0 = Some(constraint);
+    }
 }
 
 /// Represents a constraint that influences the inference process.
@@ -309,7 +334,7 @@ pub(crate) struct TwoRegions<'tcx> {
     b: Region<'tcx>,
 }
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub(crate) enum UndoLog<'tcx> {
     /// We added `RegionVid`.
     AddVar(RegionVid),
@@ -322,6 +347,9 @@ pub(crate) enum UndoLog<'tcx> {
 
     /// We added a GLB/LUB "combination variable".
     AddCombination(CombineMapType, TwoRegions<'tcx>),
+
+    /// Overwrite the `-Zassumptions-on-binders` storage
+    OverwriteSolverRegionConstraint { old_constraint: SolverRegionConstraint<'tcx> },
 }
 
 #[derive(Copy, Clone, PartialEq)]
@@ -390,6 +418,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         let RegionConstraintStorage {
             var_infos: _,
             data,
+            solver_data: _,
             lubs,
             glbs,
             unification_table: _,
@@ -423,6 +452,40 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
 
     pub fn data(&self) -> &RegionConstraintData<'tcx> {
         &self.storage.data
+    }
+
+    pub fn solver_data(&self) -> &SolverRegionConstraintData<'tcx> {
+        &self.storage.solver_data
+    }
+
+    pub fn overwrite_solver_constraint(&mut self, constraint: SolverRegionConstraint<'tcx>) {
+        assert!(
+            !constraint.has_escaping_bound_vars(),
+            "solver region constraint has escaping bound vars, which is indicative of a bug in how constraints are handled: {constraint:?}",
+        );
+
+        let old_constraint = self.storage.solver_data.get_constraint();
+        self.storage.solver_data.overwrite(constraint);
+        self.undo_log.push(OverwriteSolverRegionConstraint { old_constraint });
+    }
+
+    pub fn register_solver_constraint(&mut self, constraint: SolverRegionConstraint<'tcx>) {
+        assert!(
+            !constraint.has_escaping_bound_vars(),
+            "solver region constraint has escaping bound vars, which is indicative of a bug in how constraints are handled: {constraint:?}",
+        );
+
+        let old_constraint = self.storage.solver_data.get_constraint();
+        let new_constraint = rustc_type_ir::region_constraint::RegionConstraint::build_and(
+            constraint,
+            old_constraint.clone(),
+        );
+
+        // FIXME(-Zassumptions-on-binders): This is pretty bad for perf, we don't make incremental
+        // changes to the region constraints, instead we just rewrite the entire thing every time
+        // and store the old version.
+        self.undo_log.push(OverwriteSolverRegionConstraint { old_constraint });
+        self.storage.solver_data.overwrite(new_constraint);
     }
 
     pub(super) fn start_snapshot(&self) -> RegionSnapshot {
@@ -767,7 +830,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     pub fn region_constraints_added_in_snapshot(&self, mark: &Snapshot<'tcx>) -> bool {
         self.undo_log
             .region_constraints_in_snapshot(mark)
-            .any(|&elt| matches!(elt, AddConstraint(_)))
+            .any(|elt| matches!(elt, &AddConstraint(_)))
     }
 
     #[inline]
@@ -873,6 +936,9 @@ impl<'tcx> Rollback<UndoLog<'tcx>> for RegionConstraintStorage<'tcx> {
             }
             AddCombination(Lub, ref regions) => {
                 self.lubs.remove(regions);
+            }
+            OverwriteSolverRegionConstraint { old_constraint } => {
+                self.solver_data.overwrite(old_constraint);
             }
         }
     }
