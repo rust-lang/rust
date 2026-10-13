@@ -54,13 +54,6 @@ use crate::{DUMMY_SP, Span, SpanDecoder, SpanEncoder, with_session_globals};
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SyntaxContext(u32);
 
-impl From<u32> for SyntaxContext {
-    #[inline]
-    fn from(raw_id: u32) -> Self {
-        SyntaxContext(raw_id)
-    }
-}
-
 // To ensure correctness of incremental compilation,
 // `SyntaxContext` must not implement `Ord` or `PartialOrd`.
 // See https://github.com/rust-lang/rust/issues/90317.
@@ -348,8 +341,8 @@ impl ExpnId {
     }
 }
 
-pub trait HygieneEntityRemapper<TIdx: From<u32> + Copy> {
-    fn hash(&self, id: TIdx) -> u64;
+pub trait HygieneEntityRemapper {
+    fn hash(&self, raw_id: u32) -> u64;
     fn len(&self) -> usize;
     fn first_non_det_index_mut(&mut self) -> &mut Option<u32>;
     fn first_non_det_index(&self) -> u32;
@@ -367,7 +360,7 @@ pub trait HygieneEntityRemapper<TIdx: From<u32> + Copy> {
         let range = start..self.len() as u32;
 
         let mut indices_to_remap = range.collect::<Vec<_>>();
-        indices_to_remap.sort_by_key(|&idx| self.hash(From::from(idx)));
+        indices_to_remap.sort_by_cached_key(|&idx| self.hash(idx));
 
         let mut remapping = FxHashMap::<u32, u32>::default();
 
@@ -398,10 +391,10 @@ impl LocalExpansionRemapper<'_> {
     }
 }
 
-impl HygieneEntityRemapper<SyntaxContext> for SyntaxContextRemapper<'_> {
+impl HygieneEntityRemapper for SyntaxContextRemapper<'_> {
     #[inline]
-    fn hash(&self, ctxt: SyntaxContext) -> u64 {
-        ctxt.hash_for_det_sorting(self.0)
+    fn hash(&self, raw_id: u32) -> u64 {
+        SyntaxContext(raw_id).hash_for_det_sorting(self.0)
     }
 
     #[inline]
@@ -420,10 +413,10 @@ impl HygieneEntityRemapper<SyntaxContext> for SyntaxContextRemapper<'_> {
     }
 }
 
-impl HygieneEntityRemapper<LocalExpnId> for LocalExpansionRemapper<'_> {
+impl HygieneEntityRemapper for LocalExpansionRemapper<'_> {
     #[inline]
-    fn hash(&self, id: LocalExpnId) -> u64 {
-        self.0.local_expn_hashes[id].local_hash().as_u64()
+    fn hash(&self, raw_id: u32) -> u64 {
+        self.0.local_expn_hashes[LocalExpnId::from_u32(raw_id)].local_hash().as_u64()
     }
 
     #[inline]
