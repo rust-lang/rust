@@ -448,10 +448,6 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
         Some(&self.infcx)
     }
 
-    fn param_env(&self) -> Option<ty::ParamEnv<'tcx>> {
-        Some(self.param_env)
-    }
-
     fn lower_fn_sig(
         &self,
         decl: &rustc_hir::FnDecl<'_>,

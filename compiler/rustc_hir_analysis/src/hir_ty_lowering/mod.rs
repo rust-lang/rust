@@ -46,12 +46,10 @@ use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::{
     self, Const, FnSigKind, GenericArgKind, GenericArgsRef, GenericParamDefKind, LitToConstInput,
     Ty, TyCtxt, TypeSuperFoldable, TypeVisitableExt, Unnormalized, Upcast, const_lit_matches_ty,
-    fold_regions,
 };
 use rustc_session::diagnostics::feature_err;
 use rustc_span::def_id::{LocalModId, ModId};
-use rustc_span::{DUMMY_SP, Ident, Span, bug, kw, span_bug, sym};
-use rustc_trait_selection::infer::InferCtxtExt;
+use rustc_span::{Ident, Span, bug, kw, span_bug, sym};
 use rustc_trait_selection::traits::{self, FulfillmentError};
 use tracing::{debug, instrument};
 
@@ -231,9 +229,6 @@ pub trait HirTyLowerer<'tcx> {
 
     /// The inference context of the lowering context if applicable.
     fn infcx(&self) -> Option<&InferCtxt<'tcx>>;
-
-    /// The parameter environment when lowering in a context with inference.
-    fn param_env(&self) -> Option<ty::ParamEnv<'tcx>>;
 
     /// Convenience method for coercing the lowering context into a trait object type.
     ///
@@ -1863,18 +1858,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ) -> Vec<String> {
         let tcx = self.tcx();
 
-        let infcx = self.infcx();
-        let param_env = self.param_env();
-
-        // We cannot normalize aliases while lowering item signatures.
-        // Avoid suggesting traits based on an unresolved projection.
-        if infcx.is_none() && qself_ty.has_aliases() {
+        // Deep rejection cannot rule out unrelated impls for unresolved aliases.
+        // Avoid offering misleading suggestions for those types.
+        if qself_ty.has_aliases() {
             return Vec::new();
         }
 
-        let value = fold_regions(tcx, qself_ty, |_, _| tcx.lifetimes.re_erased);
         // FIXME: Don't bother dealing with non-lifetime binders here...
-        if value.has_escaping_bound_vars() {
+        if qself_ty.has_escaping_bound_vars() {
             return Vec::new();
         }
 
@@ -1898,43 +1889,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                 return false;
                             }
 
-                            if let Some(infcx) = infcx {
-                                let trait_ref = header
-                                    .trait_ref
-                                    .instantiate(
-                                        tcx,
-                                        infcx.fresh_args_for_item(DUMMY_SP, impl_def_id),
-                                    )
-                                    .skip_norm_wip();
+                            let impl_ty = header
+                                .trait_ref
+                                .instantiate_identity()
+                                .skip_norm_wip()
+                                .self_ty();
 
-                                infcx.can_eq(
-                                    param_env.expect("inference requires a parameter environment"),
-                                    trait_ref.self_ty(),
-                                    value,
-                                )
-                            } else {
-                                let impl_ty = header
-                                    .trait_ref
-                                    .instantiate_identity()
-                                    .skip_norm_wip()
-                                    .self_ty();
-
-                                // Fast rejection doesn't check that repeated impl
-                                // parameters match the same type. Avoid suggesting
-                                // impls that need that additional equality check.
-                                let mut seen = FxHashSet::default();
-                                if crate::constrained_generic_params::parameters_for(
-                                    tcx, impl_ty, true,
-                                )
-                                .into_iter()
-                                .any(|param| !seen.insert(param))
-                                {
-                                    return false;
-                                }
-
-                                ty::DeepRejectCtxt::relate_rigid_infer(tcx)
-                                    .types_may_unify_with_depth(value, impl_ty, usize::MAX)
-                            }
+                            ty::DeepRejectCtxt::relate_rigid_infer(tcx)
+                                .types_may_unify(qself_ty, impl_ty)
                         })
             })
             .map(|trait_def_id| tcx.def_path_str(trait_def_id))

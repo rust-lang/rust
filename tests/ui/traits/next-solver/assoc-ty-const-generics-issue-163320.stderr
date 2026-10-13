@@ -100,13 +100,10 @@ error[E0223]: ambiguous associated type
 LL |     let _: <[(); N] as IntoIterator>::Item::Item;
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: use fully-qualified syntax
+help: if there were a trait named `Example` with associated type `Item` implemented for `<[(); N] as IntoIterator>::Item`, you could use the fully-qualified path
    |
 LL -     let _: <[(); N] as IntoIterator>::Item::Item;
-LL +     let _: <<[(); N] as IntoIterator>::Item as IntoAsyncIterator>::Item;
-   |
-LL -     let _: <[(); N] as IntoIterator>::Item::Item;
-LL +     let _: <<[(); N] as IntoIterator>::Item as IntoIterator>::Item;
+LL +     let _: <<[(); N] as IntoIterator>::Item as Example>::Item;
    |
 
 error: aborting due to 9 previous errors
