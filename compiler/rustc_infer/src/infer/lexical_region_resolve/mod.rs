@@ -16,7 +16,8 @@ use tracing::{debug, instrument};
 use super::outlives::test_type_match;
 use crate::infer::lexical_region_resolve::indexed_edges::{EdgeDirection, IndexedConstraintEdges};
 use crate::infer::region_constraints::{
-    ConstraintKind, GenericKind, RegionConstraintData, VarInfos, VerifyBound,
+    AbbyRegionConstraintData, Constraint, ConstraintKind, GenericKind, RegionConstraintData,
+    VarInfos, Verify, VerifyBound,
 };
 use crate::infer::{RegionRelations, RegionVariableOrigin, SubregionOrigin};
 
@@ -28,13 +29,13 @@ mod indexed_edges;
 /// assuming such values can be found. It returns the final values of
 /// all the variables as well as a set of errors that must be reported.
 #[instrument(level = "debug", skip(region_rels, var_infos, data))]
-pub(crate) fn resolve<'tcx>(
+pub(crate) fn resolve<'tcx, D: Data<'tcx>>(
     region_rels: &RegionRelations<'_, 'tcx>,
     var_infos: VarInfos<'tcx>,
-    data: RegionConstraintData<'tcx>,
+    data: D,
 ) -> (LexicalRegionResolutions<'tcx>, Vec<RegionResolutionError<'tcx>>) {
     assert!(
-        data.constraints.iter().all(|(c, _)| match c.kind {
+        data.constraints().all(|(c, _)| match c.kind {
             ConstraintKind::VarSubVar
             | ConstraintKind::RegSubVar
             | ConstraintKind::VarSubReg
@@ -129,13 +130,94 @@ struct RegionAndOrigin<'tcx> {
     origin: SubregionOrigin<'tcx>,
 }
 
-struct LexicalResolver<'cx, 'tcx> {
-    region_rels: &'cx RegionRelations<'cx, 'tcx>,
-    var_infos: VarInfos<'tcx>,
-    data: RegionConstraintData<'tcx>,
+pub(crate) trait Data<'tcx> {
+    fn dedupe_constraints(&mut self);
+    fn constraints(
+        &self,
+    ) -> impl DoubleEndedIterator<Item = (Constraint<'tcx>, SubregionOrigin<'tcx>)>;
+    fn verifys<'a>(&'a self) -> impl Iterator<Item = &'a Verify<'tcx>>
+    where
+        'tcx: 'a;
 }
 
-impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
+impl<'tcx> Data<'tcx> for RegionConstraintData<'tcx> {
+    fn dedupe_constraints(&mut self) {
+        let mut seen = UnordSet::default();
+        self.constraints.retain_mut(|(constraint, _)| {
+            // We don't want to discern constraints by leak check visibility here
+            constraint.visible_for_leak_check = ty::VisibleForLeakCheck::Unreachable;
+            seen.insert(*constraint)
+        });
+    }
+
+    fn constraints(
+        &self,
+    ) -> impl DoubleEndedIterator<Item = (Constraint<'tcx>, SubregionOrigin<'tcx>)> {
+        self.constraints.iter().cloned()
+    }
+
+    fn verifys<'a>(&'a self) -> impl Iterator<Item = &'a Verify<'tcx>>
+    where
+        'tcx: 'a,
+    {
+        self.verifys.iter()
+    }
+}
+
+impl<'tcx> Data<'tcx> for AbbyRegionConstraintData<'tcx> {
+    fn dedupe_constraints(&mut self) {
+        // abby constraints are always deduplicated!
+    }
+
+    fn constraints(
+        &self,
+    ) -> impl DoubleEndedIterator<Item = (Constraint<'tcx>, SubregionOrigin<'tcx>)> {
+        use rustc_type_ir::region_constraint::LeafRegionConstraint::*;
+        let convert_leaf = |c| match c {
+            RegionOutlives(r1, r2, sp) => {
+                let kind = match (r1.is_var(), r2.is_var()) {
+                    (true, true) => ConstraintKind::VarSubVar,
+                    (true, false) => ConstraintKind::VarSubReg,
+                    (false, true) => ConstraintKind::RegSubVar,
+                    (false, false) => ConstraintKind::RegSubReg,
+                };
+                let constraint = Constraint {
+                    kind,
+                    sub: r1,
+                    sup: r2,
+                    visible_for_leak_check: ty::VisibleForLeakCheck::Unreachable,
+                };
+                let origin = SubregionOrigin::SolverRegionConstraint(sp);
+                Some((constraint, origin))
+            }
+            Ambiguity(_) => None,
+            AliasTyOutlivesViaEnv(_, _) | PlaceholderTyOutlives(_, _, _) => unreachable!(),
+        };
+
+        let c = self.get_constraint();
+        // FIXME(-Zassumptions-on-binders): actually implement OR as an  OR
+        let leafs = c.and_constraint.0.into_iter().chain(
+            c.or_constraint.0.into_iter().flat_map(|and_constraint| and_constraint.0.into_iter()),
+        );
+        leafs.flat_map(convert_leaf)
+    }
+
+    fn verifys<'a>(&'a self) -> impl Iterator<Item = &'a Verify<'tcx>>
+    where
+        'tcx: 'a,
+    {
+        // we don't have verifys!
+        [].into_iter()
+    }
+}
+
+struct LexicalResolver<'cx, 'tcx, D: Data<'tcx>> {
+    region_rels: &'cx RegionRelations<'cx, 'tcx>,
+    var_infos: VarInfos<'tcx>,
+    data: D,
+}
+
+impl<'cx, 'tcx, D: Data<'tcx>> LexicalResolver<'cx, 'tcx, D> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.region_rels.tcx
     }
@@ -147,12 +229,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         let mut var_data = self.construct_var_data();
 
         // Deduplicating constraints is shown to have a positive perf impact.
-        let mut seen = UnordSet::default();
-        self.data.constraints.retain_mut(|(constraint, _)| {
-            // We don't want to discern constraints by leak check visibility here
-            constraint.visible_for_leak_check = ty::VisibleForLeakCheck::Unreachable;
-            seen.insert(*constraint)
-        });
+        self.data.dedupe_constraints();
 
         if cfg!(debug_assertions) {
             self.dump_constraints();
@@ -184,7 +261,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     fn dump_constraints(&self) {
-        for (idx, (constraint, _)) in self.data.constraints.iter().enumerate() {
+        for (idx, (constraint, _)) in self.data.constraints().enumerate() {
             debug!("Constraint {} => {:?}", idx, constraint);
         }
     }
@@ -200,7 +277,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         let mut constraints = IndexVec::from_elem(Vec::new(), &var_values.values);
         // Tracks the changed region vids.
         let mut changes = Vec::new();
-        for (c, _) in &self.data.constraints {
+        for (c, _) in self.data.constraints() {
             match c.kind {
                 ConstraintKind::RegSubVar => {
                     let sup_vid = c.sup.as_var();
@@ -550,7 +627,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         var_data: &mut LexicalRegionResolutions<'tcx>,
         errors: &mut Vec<RegionResolutionError<'tcx>>,
     ) {
-        for (c, origin) in &self.data.constraints {
+        for (c, origin) in self.data.constraints() {
             debug!(?c, ?origin);
             match c.kind {
                 ConstraintKind::RegSubVar | ConstraintKind::VarSubVar => {
@@ -568,7 +645,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                     );
 
                     errors.push(RegionResolutionError::ConcreteFailure(
-                        (*origin).clone(),
+                        origin.clone(),
                         c.sub,
                         c.sup,
                     ));
@@ -601,7 +678,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             }
         }
 
-        for verify in &self.data.verifys {
+        for verify in self.data.verifys() {
             debug!("collect_errors: verify={:?}", verify);
             let sub = var_data.normalize(self.tcx(), verify.region);
 
@@ -648,7 +725,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         let mut dup_vec = IndexVec::from_elem_n(None, self.num_vars());
 
         // Only construct the edge index when necessary, because it's moderately expensive.
-        let mut edges: Option<IndexedConstraintEdges<'_, 'tcx>> = None;
+        let mut edges: Option<IndexedConstraintEdges<'tcx>> = None;
 
         for (node_vid, value) in var_data.values.iter_enumerated() {
             match *value {
@@ -693,7 +770,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
 
     fn collect_error_for_expanding_node(
         &self,
-        edges: &IndexedConstraintEdges<'_, 'tcx>,
+        edges: &IndexedConstraintEdges<'tcx>,
         dup_vec: &mut IndexSlice<RegionVid, Option<RegionVid>>,
         node_idx: RegionVid,
         errors: &mut Vec<RegionResolutionError<'tcx>>,
@@ -811,7 +888,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
     ///   those returned by a previous call for another region.
     fn collect_bounding_regions(
         &self,
-        edges: &IndexedConstraintEdges<'_, 'tcx>,
+        edges: &IndexedConstraintEdges<'tcx>,
         orig_node_idx: RegionVid,
         dir: EdgeDirection,
         mut dup_vec: Option<&mut IndexSlice<RegionVid, Option<RegionVid>>>,
@@ -857,7 +934,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
 
         fn process_edges<'tcx>(
             state: &mut WalkState<'tcx>,
-            edges: &IndexedConstraintEdges<'_, 'tcx>,
+            edges: &IndexedConstraintEdges<'tcx>,
             source_vid: RegionVid,
             dir: EdgeDirection,
         ) {

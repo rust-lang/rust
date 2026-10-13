@@ -17,6 +17,7 @@ use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_infer::infer::region_constraints::RegionConstraintData;
 use rustc_infer::infer::{
     BoundRegionConversionTime, InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin,
+    SolverRegionConstraint,
 };
 use rustc_infer::traits::{Obligation, ObligationCause, PredicateObligations};
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
@@ -111,6 +112,7 @@ pub(crate) fn type_check<'tcx>(
         outlives_constraints: OutlivesConstraintSet::default(),
         type_tests: Vec::default(),
         universe_causes: FxIndexMap::default(),
+        solver_constraints: Default::default(),
     };
 
     let CreateResult {
@@ -171,6 +173,8 @@ pub(crate) fn type_check<'tcx>(
     let polonius_context = typeck.polonius_context;
 
     if infcx.tcx.assumptions_on_binders() {
+        let constraint = mem::take(&mut typeck.constraints.solver_constraints);
+        assert!(infcx.tcx.assumptions_on_binders());
         let mut converter = constraint_conversion::ConstraintConversion::new(
             typeck.infcx,
             typeck.universal_regions,
@@ -182,6 +186,7 @@ pub(crate) fn type_check<'tcx>(
             typeck.constraints,
         );
         typeck.infcx.destructure_solver_region_constraints_for_borrowck(
+            constraint,
             &mut converter,
             typeck.known_type_outlives_obligations,
             typeck.region_bound_pairs,
@@ -290,9 +295,17 @@ pub(crate) struct MirTypeckRegionConstraints<'tcx> {
     pub(crate) universe_causes: FxIndexMap<ty::UniverseIndex, UniverseInfo<'tcx>>,
 
     pub(crate) type_tests: Vec<TypeTest<'tcx>>,
+
+    /// Constraints from completed AoB type operations, lowered once all bounds are available.
+    pub(crate) solver_constraints: SolverRegionConstraint<'tcx>,
 }
 
 impl<'tcx> MirTypeckRegionConstraints<'tcx> {
+    pub(crate) fn register_solver_constraint(&mut self, constraint: SolverRegionConstraint<'tcx>) {
+        let prev = mem::take(&mut self.solver_constraints);
+        self.solver_constraints = SolverRegionConstraint::build_and(prev, constraint);
+    }
+
     /// Creates a `Region` for a given `PlaceholderRegion`, or returns the
     /// region that corresponds to a previously created one.
     pub(crate) fn placeholder_region(

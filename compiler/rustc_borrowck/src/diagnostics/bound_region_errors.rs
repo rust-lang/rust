@@ -372,7 +372,8 @@ fn try_extract_error_from_fulfill_cx<'a, 'tcx>(
     // already run, but there's no point using `span_delayed_bug`
     // when we're going to emit an error here anyway.
     let _errors = ocx.evaluate_obligations_error_on_ambiguity();
-    let region_constraints = ocx.infcx.with_region_constraints(|r| r.clone());
+    // FIXME(-Zassumptions-on-binders): do something here for abby_constraints?
+    let region_constraints = ocx.infcx.with_region_constraints(|r, _| r.clone());
     try_extract_error_from_region_constraints(
         ocx.infcx,
         generic_param_scope,

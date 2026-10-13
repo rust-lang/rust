@@ -76,14 +76,19 @@ pub struct QueryResponse<'tcx, R> {
     pub value: R,
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, Default, PartialEq, Hash)]
 #[derive(StableHash, TypeFoldable, TypeVisitable)]
 pub struct QueryRegionConstraints<'tcx> {
     pub constraints: Vec<QueryRegionConstraint<'tcx>>,
     pub assumptions: Vec<ty::ArgOutlivesClause<'tcx>>,
+    /// Unspanned AoB constraints, canonicalized with the rest of the response.
+    /// The caller attaches its own span when consuming them.
+    pub solver_constraints: ir::region_constraint::RegionConstraint<TyCtxt<'tcx>>,
 }
 
-impl QueryRegionConstraints<'_> {
+impl Eq for QueryRegionConstraints<'_> {}
+
+impl<'tcx> QueryRegionConstraints<'tcx> {
     /// Represents an empty (trivially true) set of region constraints.
     ///
     /// FIXME(higher_ranked_auto): This could still just be true if there are only assumptions?
@@ -91,8 +96,23 @@ impl QueryRegionConstraints<'_> {
     /// discharge a requirement from another query, which is a potential problem if we did throw
     /// away these assumptions because there were no constraints.
     pub fn is_empty(&self) -> bool {
-        let QueryRegionConstraints { constraints, assumptions } = self;
-        constraints.is_empty() && assumptions.is_empty()
+        let QueryRegionConstraints { constraints, assumptions, solver_constraints } = self;
+        constraints.is_empty() && assumptions.is_empty() && solver_constraints.is_true()
+    }
+
+    pub fn extend(&mut self, other: &Self) {
+        let QueryRegionConstraints { constraints, assumptions, solver_constraints } = other;
+        self.constraints.extend(constraints.iter().cloned());
+        self.assumptions.extend(assumptions.iter().cloned());
+        self.add_solver_constraint(solver_constraints.clone());
+    }
+
+    pub fn add_solver_constraint(
+        &mut self,
+        c: ir::region_constraint::RegionConstraint<TyCtxt<'tcx>>,
+    ) {
+        let prev = core::mem::take(&mut self.solver_constraints);
+        self.solver_constraints = ir::region_constraint::RegionConstraint::build_and(prev, c);
     }
 }
 

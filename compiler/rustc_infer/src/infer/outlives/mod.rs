@@ -5,6 +5,7 @@ use std::iter;
 use rustc_data_structures::undo_log::UndoLogs;
 use rustc_middle::traits::query::OutlivesBound;
 use rustc_middle::ty;
+use rustc_type_ir::region_constraint::LeafRegionConstraint;
 use tracing::instrument;
 
 use self::env::OutlivesEnvironment;
@@ -12,7 +13,7 @@ use super::region_constraints::{RegionConstraintData, UndoLog};
 use super::{InferCtxt, RegionResolutionError};
 use crate::infer::free_regions::RegionRelations;
 use crate::infer::lexical_region_resolve;
-use crate::infer::region_constraints::ConstraintKind;
+use crate::infer::region_constraints::{AbbyRegionConstraintData, ConstraintKind};
 
 pub mod env;
 pub mod obligations;
@@ -58,8 +59,8 @@ impl<'tcx> InferCtxt<'tcx> {
             inner.region_constraint_storage.take().expect("regions already resolved")
         };
 
-        storage.data.constraints = storage
-            .data
+        storage.legacy_data.constraints = storage
+            .legacy_data
             .constraints
             .iter()
             .flat_map(|(constraint, origin)| {
@@ -70,7 +71,7 @@ impl<'tcx> InferCtxt<'tcx> {
         // Filter out any region-region outlives assumptions that are implied by
         // coroutine well-formedness.
         if self.tcx.sess.opts.unstable_opts.higher_ranked_assumptions {
-            storage.data.constraints.retain(|(c, _)| match c.kind {
+            storage.legacy_data.constraints.retain(|(c, _)| match c.kind {
                 ConstraintKind::RegSubReg => !outlives_env
                     .higher_ranked_assumptions()
                     .contains(&ty::OutlivesClause(c.sup.into(), c.sub)),
@@ -87,8 +88,32 @@ impl<'tcx> InferCtxt<'tcx> {
 
         let region_rels = &RegionRelations::new(self.tcx, outlives_env.free_region_map());
 
-        let (lexical_region_resolutions, errors) =
-            lexical_region_resolve::resolve(region_rels, storage.var_infos, storage.data);
+        let abby = self.tcx.sess.opts.unstable_opts.assumptions_on_binders;
+        let (lexical_region_resolutions, errors) = if abby {
+            let c = storage.abby_data.get_constraint();
+            let r =
+                lexical_region_resolve::resolve(region_rels, storage.var_infos, storage.abby_data);
+
+            // Emit an error if the region constraint was ambiguous
+            for leaf in c.and_constraint.0.into_iter().chain(
+                c.or_constraint
+                    .0
+                    .into_iter()
+                    .flat_map(|and_constraint| and_constraint.0.into_iter()),
+            ) {
+                if let LeafRegionConstraint::Ambiguity(span) = leaf {
+                    self.dcx()
+                            .span_err(
+                                span,
+                                "unable to satisfy constraints involving placeholders due to unknown implied bounds",
+                            );
+                }
+            }
+
+            r
+        } else {
+            lexical_region_resolve::resolve(region_rels, storage.var_infos, storage.legacy_data)
+        };
 
         let old_value = self.lexical_region_resolutions.replace(Some(lexical_region_resolutions));
         assert!(old_value.is_none());
@@ -106,7 +131,11 @@ impl<'tcx> InferCtxt<'tcx> {
     /// region constraints as normal, but then we take them and
     /// translate them into the form that the NLL solver
     /// understands. See the NLL module for mode details.
-    pub fn take_and_reset_region_constraints(&self) -> RegionConstraintData<'tcx> {
+    pub fn take_and_reset_region_constraints(
+        &self,
+    ) -> (RegionConstraintData<'tcx>, AbbyRegionConstraintData<'tcx>) {
+        // FIXME(-Zassumptions-on-binders): should we be asserting no type
+        // outlives constraints in the abby constraints storage?
         assert!(
             self.inner.borrow().region_obligations.is_empty(),
             "region_obligations not empty: {:#?}",
@@ -124,9 +153,10 @@ impl<'tcx> InferCtxt<'tcx> {
     /// Gives temporary access to the region constraint data.
     pub fn with_region_constraints<R>(
         &self,
-        op: impl FnOnce(&RegionConstraintData<'tcx>) -> R,
+        op: impl FnOnce(&RegionConstraintData<'tcx>, &AbbyRegionConstraintData<'tcx>) -> R,
     ) -> R {
         let mut inner = self.inner.borrow_mut();
-        op(inner.unwrap_region_constraints().data())
+        let constraints = inner.unwrap_region_constraints();
+        op(constraints.legacy_data(), constraints.abby_data())
     }
 }

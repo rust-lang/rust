@@ -141,19 +141,7 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 
     pub fn register_solver_region_constraint(&self, c: SolverRegionConstraint<'tcx>) {
-        let mut inner = self.inner.borrow_mut();
-
-        let old_constraint = inner.solver_region_constraint_storage.get_constraint();
-        let new_constraint = rustc_type_ir::region_constraint::RegionConstraint::build_and(
-            c,
-            old_constraint.clone(),
-        );
-
-        // FIXME(-Zassumptions-on-binders): This is pretty bad for perf, we don't make incremental
-        // changes to the region constraints, instead we just rewrite the entire thing every time
-        // and store the old version.
-        inner.undo_log.push(UndoLog::OverwriteSolverRegionConstraint { old_constraint });
-        inner.solver_region_constraint_storage.overwrite(new_constraint);
+        self.inner.borrow_mut().unwrap_region_constraints().register_abby_constraint(c);
     }
 
     pub fn register_type_outlives_constraint(
@@ -233,6 +221,9 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
         outlives_env: &OutlivesEnvironment<'tcx>,
     ) {
+        assert!(self.tcx.assumptions_on_binders());
+        assert!(self.next_trait_solver());
+
         // `FreeRegionMap::relation` stores `'sub <= 'sup` edges while
         // `Assumptions::region_outlives` expects `'longer: 'shorter` ones, so the
         // edges have to be inverted here.
@@ -250,37 +241,34 @@ impl<'tcx> InferCtxt<'tcx> {
             region_outlives.freeze(),
             ty::UniverseIndex::ROOT,
         );
-        self.destructure_solver_region_constraints(assumptions, self);
+
+        let constraint = region_constraint::destructure_type_outlives_constraints_in_root(
+            self,
+            self.get_solver_region_constraint(),
+            &assumptions,
+        );
+        self.overwrite_solver_region_constraint(constraint);
     }
 
     pub fn destructure_solver_region_constraints_for_borrowck(
         &self,
+        constraint: SolverRegionConstraint<'tcx>,
         // this is always ConstraintConversion but lol
-        conversion: impl TypeOutlivesDelegate<'tcx>,
+        mut conversion: impl TypeOutlivesDelegate<'tcx>,
         known_type_outlives: &[PolyTypeOutlivesClause<'tcx>],
         region_bound_pairs: &RegionBoundPairs<'tcx>,
         region_outlives: TransitiveRelation<RegionVid>,
     ) {
+        assert!(self.tcx.assumptions_on_binders());
+        assert!(self.next_trait_solver());
+
         let assumptions = region_constraint::Assumptions::new(
             self,
             assumed_type_outlives(self.tcx, known_type_outlives, region_bound_pairs),
             region_outlives.maybe_map(|r| Some(Region::new_var(self.tcx, r))).unwrap(),
             ty::UniverseIndex::ROOT,
         );
-        self.destructure_solver_region_constraints(assumptions, conversion);
-    }
 
-    #[instrument(level = "debug", skip(self, conversion))]
-    pub fn destructure_solver_region_constraints(
-        &self,
-        assumptions: rustc_type_ir::region_constraint::Assumptions<TyCtxt<'tcx>>,
-        mut conversion: impl TypeOutlivesDelegate<'tcx>,
-    ) {
-        assert!(self.tcx.assumptions_on_binders());
-        assert!(self.next_trait_solver());
-
-        let constraint = self.inner.borrow().solver_region_constraint_storage.get_constraint();
-        debug!(?constraint);
         let constraint = region_constraint::destructure_type_outlives_constraints_in_root(
             self,
             constraint,
