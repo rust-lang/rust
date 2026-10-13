@@ -42,6 +42,38 @@ fn main() {
             &f32::NAN
         };
 
+    // Issue #164143: an unsuffixed float is constrained by the `NAN` operand.
+    // Suggesting `.is_nan()` drops that constraint and does not compile.
+    let b = &3.3;
+    if b != &f64::NAN {}
+    //~^ WARN incorrect NaN comparison
+
+    let mut m = &3.3;
+    if m != &f64::NAN {
+        //~^ WARN incorrect NaN comparison
+        m = &1.0;
+    }
+    let _ = m;
+
+    let _ = 3.3 == f64::NAN;
+    //~^ WARN incorrect NaN comparison
+
+    let _ = &3.3 != &f64::NAN;
+    //~^ WARN incorrect NaN comparison
+
+    let suffixed = 3.3f64;
+    let copied = suffixed;
+    let _ = copied != f64::NAN;
+    //~^ WARN incorrect NaN comparison
+
+    let ascribed: f64 = 3.3;
+    let _ = ascribed != f64::NAN;
+    //~^ WARN incorrect NaN comparison
+
+    parameter(1.0);
+    parameter_ref(&1.0);
+    let _ = |x: f64| x != f64::NAN; //~ WARN incorrect NaN comparison
+
     #[allow(unused_macros)]
     macro_rules! nan { () => { f32::NAN }; }
     macro_rules! number { () => { 5f32 }; }
@@ -49,5 +81,15 @@ fn main() {
     let _ = nan!() == number!();
     //~^ WARN incorrect NaN comparison
     let _ = number!() != nan!();
+    //~^ WARN incorrect NaN comparison
+}
+
+fn parameter(x: f64) {
+    let _ = x == f64::NAN;
+    //~^ WARN incorrect NaN comparison
+}
+
+fn parameter_ref(x: &f32) {
+    if x != &f32::NAN {}
     //~^ WARN incorrect NaN comparison
 }

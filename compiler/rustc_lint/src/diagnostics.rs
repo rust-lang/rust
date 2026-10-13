@@ -2334,6 +2334,22 @@ pub(crate) enum InvalidNanComparisonsSuggestion {
         #[suggestion_part(code = "")]
         nan_plus_binop: Span,
     },
+    #[multipart_suggestion(
+        "use `f32::is_nan()` or `f64::is_nan()` instead",
+        style = "verbose",
+        applicability = "machine-applicable"
+    )]
+    Ufcs {
+        prefix: String,
+        #[suggestion_part(code = "{prefix}")]
+        prefix_span: Span,
+        #[suggestion_part(code = ")")]
+        close_span: Span,
+        #[suggestion_part(code = "")]
+        remove_nan: Span,
+        #[suggestion_part(code = "")]
+        remove_borrow: Option<Span>,
+    },
     #[help("use `f32::is_nan()` or `f64::is_nan()` instead")]
     Spanless,
 }
