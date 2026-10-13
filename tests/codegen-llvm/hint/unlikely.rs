@@ -25,10 +25,10 @@ pub fn test1(x: bool) {
     }
 
     // CHECK-LABEL: @test1(
-    // CHECK: br i1 %x, label %bb2, label %bb4, !prof ![[NUM:[0-9]+]]
-    // CHECK: bb4:
+    // CHECK: br i1 %x, label %[[TRUE:bb[0-9]+]], label %[[FALSE:bb[0-9]+]], !prof ![[NUM:[0-9]+]]
+    // CHECK: [[FALSE]]:
     // CHECK: path_b
-    // CHECK: bb2:
+    // CHECK: [[TRUE]]:
     // CHECK: path_a
 }
 
@@ -40,10 +40,10 @@ pub fn test2(x: i32) {
     }
 
     // CHECK-LABEL: @test2(
-    // CHECK: br i1 %_2, label %bb2, label %bb4, !prof ![[NUM]]
-    // CHECK: bb4:
+    // CHECK: br i1 %_2, label %[[TRUE:bb[0-9]+]], label %[[FALSE:bb[0-9]+]], !prof ![[NUM]]
+    // CHECK: [[FALSE]]:
     // CHECK: path_b
-    // CHECK: bb2:
+    // CHECK: [[TRUE]]:
     // CHECK: path_a
 }
 
@@ -55,10 +55,10 @@ pub fn test3(x: i8) {
     }
 
     // CHECK-LABEL: @test3(
-    // CHECK: br i1 %_2, label %bb2, label %bb4, !prof ![[NUM]]
-    // CHECK: bb4:
+    // CHECK: br i1 %_2, label %[[TRUE:bb[0-9]+]], label %[[FALSE:bb[0-9]+]], !prof ![[NUM]]
+    // CHECK: [[FALSE]]:
     // CHECK: path_b
-    // CHECK: bb2:
+    // CHECK: [[TRUE]]:
     // CHECK: path_a
 }
 
@@ -70,10 +70,10 @@ pub fn test4(x: u64) {
     }
 
     // CHECK-LABEL: @test4(
-    // CHECK: br i1 %0, label %bb4, label %bb2, !prof ![[NUM2:[0-9]+]]
-    // CHECK: bb4:
+    // CHECK: br i1 %0, label %[[TRUE:bb[0-9]+]], label %[[FALSE:bb[0-9]+]], !prof ![[NUM2:[0-9]+]]
+    // CHECK: [[TRUE]]:
     // CHECK: path_a
-    // CHECK: bb2:
+    // CHECK: [[FALSE]]:
     // CHECK: path_b
 }
 

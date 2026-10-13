@@ -84,6 +84,7 @@
       }
   
       bb5: {
+          _11 = const std::alloc::AllocError;
           StorageLive(_13);
           StorageLive(_14);
           _14 = &_11;
@@ -100,6 +101,7 @@
           _3 = copy _4 as *mut u8 (PtrToPtr);
           StorageDead(_4);
           StorageDead(_3);
+          _0 = const ();
           StorageDead(_1);
           return;
       }

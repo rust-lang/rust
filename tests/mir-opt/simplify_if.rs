@@ -7,6 +7,7 @@ fn main() {
     // CHECK-LABEL: fn main(
 
     // CHECK: bb0: {
+    // CHECK-NEXT: _0 = const ();
     // CHECK-NEXT: return;
     if false {
         noop();

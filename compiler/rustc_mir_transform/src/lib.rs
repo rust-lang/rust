@@ -191,6 +191,7 @@ declare_passes! {
             AfterUnreachableEnumBranching
         },
         SimplifyLocals {
+            BeforeSroa,
             BeforeConstProp,
             AfterGVN,
             Final
@@ -745,6 +746,8 @@ pub(crate) fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
             // This invalidates CFG caches also.
             &o1(simplify_branches::SimplifyConstCondition::AfterInstSimplify),
             &ref_prop::ReferencePropagation,
+            // Remove unused locals before SROA expands their aggregate assignments.
+            &simplify::SimplifyLocals::BeforeSroa,
             &sroa::ScalarReplacementOfAggregates,
             &simplify::SimplifyLocals::BeforeConstProp,
             &dead_store_elimination::DeadStoreElimination::Initial,

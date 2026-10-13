@@ -106,7 +106,7 @@ pub fn add_loop_label_to_break() {
 #[cfg(not(any(bpass1,bpass4)))]
 #[rustc_clean(cfg="bpass2", except="hir_owner")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="hir_owner")]
+#[rustc_clean(cfg="bpass5", except="hir_owner,optimized_mir")]
 #[rustc_clean(cfg="bpass6")]
 pub fn add_loop_label_to_break() {
     let mut _x = 0;
