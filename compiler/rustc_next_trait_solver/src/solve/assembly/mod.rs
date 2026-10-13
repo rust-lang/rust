@@ -1218,16 +1218,17 @@ where
 
             cx.for_each_blanket_impl(goal.predicate.trait_def_id(cx), |impl_def_id| {
                 match G::consider_impl_candidate(self, goal, goal_trait_ref, impl_def_id, |ecx| {
-                    if ecx.shallow_resolve(self_ty).is_ty_var()
-                        && goal_trait_ref
-                            .args
-                            .iter()
-                            .skip(1)
-                            .all(|arg| ecx.resolve_vars_if_possible(arg) == arg)
+                    if goal_trait_ref
+                        .args
+                        .iter()
+                        .all(|arg| ecx.deeply_resolve_ignoring_regions(arg) == arg)
                     {
                         // Blanket impls may guide inference for not-yet-defined opaques,
-                        // but must not constrain the other trait arguments while matching
-                        // the impl itself.
+                        // but matching the impl must not constrain the trait arguments.
+                        //
+                        // FIXME(trait-system-refactor-initiative#229): This is brittle:
+                        // added goals, including those for normalizing the impl header,
+                        // are evaluated only after this check and may constrain the args.
                         ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
                     } else {
                         // We don't want to use impls if they constrain the opaque or
