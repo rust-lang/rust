@@ -714,7 +714,7 @@ rustc_lint::late_lint_methods!(
         SemicolonIfNothingReturned: semicolon_if_nothing_returned::SemicolonIfNothingReturned = semicolon_if_nothing_returned::SemicolonIfNothingReturned,
         AsyncYieldsAsync: async_yields_async::AsyncYieldsAsync = async_yields_async::AsyncYieldsAsync,
         DisallowedMacros: disallowed_macros::DisallowedMacros = disallowed_macros::DisallowedMacros::new(tcx, conf, attrs.clone()),
-        DisallowedMethods: disallowed_items::DisallowedMethods = disallowed_items::DisallowedMethods::new(tcx, conf),
+        DisallowedMethods: disallowed_items::DisallowedItems = disallowed_items::DisallowedItems::new(tcx, conf),
         EmptyDrop: empty_drop::EmptyDrop = empty_drop::EmptyDrop,
         StrToString: strings::StrToString = strings::StrToString,
         ZeroSizedMapValues: zero_sized_map_values::ZeroSizedMapValues = zero_sized_map_values::ZeroSizedMapValues,

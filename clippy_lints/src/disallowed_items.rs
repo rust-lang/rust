@@ -60,15 +60,15 @@ declare_clippy_lint! {
     "use of a disallowed method call"
 }
 
-impl_lint_pass!(DisallowedMethods => [DISALLOWED_METHODS]);
+impl_lint_pass!(DisallowedItems => [DISALLOWED_METHODS]);
 
-pub struct DisallowedMethods {
-    disallowed: DefIdMap<(&'static str, &'static DisallowedPath)>,
+pub struct DisallowedItems {
+    methods: DefIdMap<(&'static str, &'static DisallowedPath)>,
 }
 
-impl DisallowedMethods {
+impl DisallowedItems {
     pub fn new(tcx: TyCtxt<'_>, conf: &'static Conf) -> Self {
-        let (disallowed, _) = create_disallowed_map(
+        let (methods, _) = create_disallowed_map(
             tcx,
             &conf.disallowed_methods,
             PathNS::Value,
@@ -81,13 +81,13 @@ impl DisallowedMethods {
             "function",
             false,
         );
-        Self { disallowed }
+        Self { methods }
     }
 }
 
-impl<'tcx> LateLintPass<'tcx> for DisallowedMethods {
+impl<'tcx> LateLintPass<'tcx> for DisallowedItems {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if self.disallowed.is_empty() {
+        if self.methods.is_empty() {
             return;
         }
         if expr.span.desugaring_kind().is_some() {
@@ -100,7 +100,7 @@ impl<'tcx> LateLintPass<'tcx> for DisallowedMethods {
             },
             _ => return,
         };
-        if let Some(&(path, disallowed_path)) = self.disallowed.get(&id) {
+        if let Some(&(path, disallowed_path)) = self.methods.get(&id) {
             span_lint_and_then(
                 cx,
                 DISALLOWED_METHODS,
