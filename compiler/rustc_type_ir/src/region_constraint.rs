@@ -48,6 +48,8 @@ impl<T> Default for TransitiveRelationBuilder<T> {
     }
 }
 
+use smallvec::SmallVec;
+
 use crate::data_structures::IndexMap;
 use crate::fold::TypeSuperFoldable;
 use crate::inherent::*;
@@ -265,7 +267,7 @@ impl<I: Interner, S: Clone + std::fmt::Debug + Eq + std::hash::Hash> LeafRegionC
 /// than proving the subset, so it can never be the candidate which makes the OR hold. E.g.
 /// `OR(AND('a: 'b), AND('a: 'b, 'b: 'c))` really ought to just be `OR(AND('a: 'b))`. Only keeping
 /// an empty AND is the degenerate case of that rule.
-pub struct Or<I: Interner, S: Clone + std::fmt::Debug = ()>(pub Box<[And<I, S>]>);
+pub struct Or<I: Interner, S: Clone + std::fmt::Debug = ()>(pub SmallVec<[And<I, S>; 1]>);
 impl<I: Interner> Or<I> {
     pub fn with_spans<S: Clone + std::fmt::Debug + Eq + std::hash::Hash>(
         self,
@@ -276,7 +278,7 @@ impl<I: Interner> Or<I> {
 }
 impl<I: Interner, S: Clone + std::hash::Hash + std::fmt::Debug + Eq> Or<I, S> {
     pub fn new_true() -> Self {
-        Self(Box::new([And::new_true()]))
+        Self(SmallVec::from_buf([And::new_true()]))
     }
 
     pub fn is_true(&self) -> bool {
@@ -291,7 +293,7 @@ impl<I: Interner, S: Clone + std::hash::Hash + std::fmt::Debug + Eq> Or<I, S> {
     }
 
     pub fn new_false() -> Self {
-        Self(Box::new([]))
+        Self(SmallVec::new())
     }
 
     pub fn is_false(&self) -> bool {
@@ -300,10 +302,9 @@ impl<I: Interner, S: Clone + std::hash::Hash + std::fmt::Debug + Eq> Or<I, S> {
     }
 
     pub fn new(i: impl IntoIterator<Item = And<I, S>>) -> Self {
-        let ands = i.into_iter().collect::<Vec<_>>().into_boxed_slice();
-        let mut new_ands: Vec<And<I, S>> = Vec::new();
+        let mut new_ands: SmallVec<[And<I, S>; _]> = SmallVec::new();
 
-        for and in ands {
+        for and in i {
             // An empty AND is trivially true, which makes the whole OR true no matter what the
             // other candidates are. `And::new` discards leaf constraints which are trivially
             // true, so this is how e.g. a reflexive `'a: 'a` candidate discharges an OR.
@@ -320,7 +321,7 @@ impl<I: Interner, S: Clone + std::hash::Hash + std::fmt::Debug + Eq> Or<I, S> {
             }
         }
 
-        Self(new_ands.into_boxed_slice())
+        Self(new_ands)
     }
 
     pub fn new_ambig(s: S) -> Self {
@@ -361,7 +362,9 @@ impl<I: Interner, S: Clone + std::hash::Hash + std::fmt::Debug + Eq> Or<I, S> {
 /// An AND of leaf constraints. Always in "canonical form", meaning:
 /// - No leaf constraints are present twice in this AND
 /// - No leaf constraint is trivially true, i.e. a reflexive `'a: 'a`
-pub struct And<I: Interner, S: Clone + std::fmt::Debug = ()>(pub Box<[LeafRegionConstraint<I, S>]>);
+pub struct And<I: Interner, S: Clone + std::fmt::Debug = ()>(
+    pub SmallVec<[LeafRegionConstraint<I, S>; 1]>,
+);
 impl<I: Interner> And<I> {
     pub fn with_spans<S: Clone + std::fmt::Debug + Eq + std::hash::Hash>(
         self,
@@ -372,7 +375,7 @@ impl<I: Interner> And<I> {
 }
 impl<I: Interner, S: Clone + std::hash::Hash + std::fmt::Debug + Eq> And<I, S> {
     pub fn new_true() -> Self {
-        Self(Box::new([]))
+        Self(SmallVec::new())
     }
 
     pub fn new(i: impl IntoIterator<Item = LeafRegionConstraint<I, S>>) -> Self {

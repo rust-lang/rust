@@ -86,20 +86,27 @@ pub struct RegionConstraintData<'tcx> {
 pub type SolverRegionConstraint<'tcx> =
     rustc_type_ir::region_constraint::RegionConstraint<TyCtxt<'tcx>, Span>;
 
-#[derive(Clone, Debug, Default)]
-pub struct SolverRegionConstraintData<'tcx>(Option<SolverRegionConstraint<'tcx>>);
+#[derive(Clone, Debug)]
+pub struct SolverRegionConstraintData<'tcx>(SolverRegionConstraint<'tcx>);
+
+impl<'tcx> Default for SolverRegionConstraintData<'tcx> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl<'tcx> SolverRegionConstraintData<'tcx> {
+    pub(crate) fn new() -> Self {
+        Self(SolverRegionConstraint::new_true())
+    }
+
     pub(crate) fn get_constraint(&self) -> SolverRegionConstraint<'tcx> {
-        match &self.0 {
-            Some(v) => v.clone(),
-            None => SolverRegionConstraint::new_true(),
-        }
+        self.0.clone()
     }
 
     #[instrument(level = "debug", skip(self))]
     pub(crate) fn overwrite(&mut self, constraint: SolverRegionConstraint<'tcx>) {
-        self.0 = Some(constraint);
+        self.0 = constraint;
     }
 }
 

@@ -1034,6 +1034,7 @@ impl<'tcx> InferCtxt<'tcx> {
         self.next_region_var_in_universe(RegionVariableOrigin::Nll(origin), universe)
     }
 
+    #[inline(always)]
     pub fn var_for_def(&self, span: Span, param: &ty::GenericParamDef) -> GenericArg<'tcx> {
         match param.kind {
             GenericParamDefKind::Lifetime => {
@@ -1108,7 +1109,7 @@ impl<'tcx> InferCtxt<'tcx> {
         let inner = self.inner.borrow();
         assert!(!UndoLogs::<UndoLog<'_>>::in_snapshot(&inner.undo_log));
         let storage = inner.region_constraint_storage.as_ref().expect("regions already resolved");
-        // FIXME(-Zassumptions-on-binders): Handle abby_data
+        // FIXME(-Zassumptions-on-binders): Handle solver_data
         assert!(storage.legacy_data.is_empty(), "{:#?}", storage.legacy_data);
         // We clone instead of taking because borrowck still wants to use the
         // inference context after calling this for diagnostics and the new
