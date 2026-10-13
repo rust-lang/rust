@@ -221,6 +221,9 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
         outlives_env: &OutlivesEnvironment<'tcx>,
     ) {
+        assert!(self.tcx.assumptions_on_binders());
+        assert!(self.next_trait_solver());
+
         // `FreeRegionMap::relation` stores `'sub <= 'sup` edges while
         // `Assumptions::region_outlives` expects `'longer: 'shorter` ones, so the
         // edges have to be inverted here.
@@ -238,34 +241,32 @@ impl<'tcx> InferCtxt<'tcx> {
             region_outlives.freeze(),
             ty::UniverseIndex::ROOT,
         );
-        self.destructure_solver_region_constraints(assumptions, self);
+
+        let constraint = region_constraint::destructure_type_outlives_constraints_in_root(
+            self,
+            self.get_solver_region_constraint(),
+            &assumptions,
+        );
+        self.overwrite_solver_region_constraint(constraint);
     }
 
     pub fn destructure_solver_region_constraints_for_borrowck(
         &self,
         // this is always ConstraintConversion but lol
-        conversion: impl TypeOutlivesDelegate<'tcx>,
+        mut conversion: impl TypeOutlivesDelegate<'tcx>,
         known_type_outlives: &[PolyTypeOutlivesClause<'tcx>],
         region_bound_pairs: &RegionBoundPairs<'tcx>,
         region_outlives: TransitiveRelation<RegionVid>,
     ) {
+        assert!(self.tcx.assumptions_on_binders());
+        assert!(self.next_trait_solver());
+
         let assumptions = region_constraint::Assumptions::new(
             self,
             assumed_type_outlives(self.tcx, known_type_outlives, region_bound_pairs),
             region_outlives.maybe_map(|r| Some(Region::new_var(self.tcx, r))).unwrap(),
             ty::UniverseIndex::ROOT,
         );
-        self.destructure_solver_region_constraints(assumptions, conversion);
-    }
-
-    #[instrument(level = "debug", skip(self, conversion))]
-    pub fn destructure_solver_region_constraints(
-        &self,
-        assumptions: rustc_type_ir::region_constraint::Assumptions<TyCtxt<'tcx>>,
-        mut conversion: impl TypeOutlivesDelegate<'tcx>,
-    ) {
-        assert!(self.tcx.assumptions_on_binders());
-        assert!(self.next_trait_solver());
 
         let constraint = self.get_solver_region_constraint();
         debug!(?constraint);
