@@ -112,7 +112,6 @@ mod disallowed_items;
 mod disallowed_macros;
 mod disallowed_names;
 mod disallowed_script_idents;
-mod disallowed_types;
 mod doc;
 mod double_parens;
 mod drop_forget_ref;
@@ -724,7 +723,6 @@ rustc_lint::late_lint_methods!(
         IfThenSomeElseNone: if_then_some_else_none::IfThenSomeElseNone = if_then_some_else_none::IfThenSomeElseNone::new(conf),
         BoolAssertComparison: bool_assert_comparison::BoolAssertComparison = bool_assert_comparison::BoolAssertComparison,
         UnusedAsync: unused_async::UnusedAsync = <unused_async::UnusedAsync>::default(),
-        DisallowedTypes: disallowed_types::DisallowedTypes = disallowed_types::DisallowedTypes::new(tcx, conf),
         ImportRename: missing_enforced_import_rename::ImportRename = missing_enforced_import_rename::ImportRename::new(tcx, conf),
         StrlenOnCStrings: strlen_on_c_strings::StrlenOnCStrings = strlen_on_c_strings::StrlenOnCStrings::new(conf),
         SelfNamedConstructors: self_named_constructors::SelfNamedConstructors = self_named_constructors::SelfNamedConstructors,
