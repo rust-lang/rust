@@ -95,6 +95,16 @@ where
         root_def_id: LocalDefId,
         span: Span,
     ) -> Result<TypeOpOutput<'tcx, Self>, ErrorGuaranteed> {
+        if !infcx.disable_trait_solver_fast_paths()
+            && let Some(value) = QueryTypeOp::try_fast_path(infcx.tcx, &self)
+        {
+            // In this case most of the work done by `scrape_region_constraints` becomes a no-op
+            // and can be skipped. This deep resolve is the only thing that isn't a no-op.
+            let value = infcx.deeply_resolve_ignoring_regions(value);
+
+            return Ok(TypeOpOutput { output: value, constraints: None, error_info: None });
+        }
+
         let mut error_info = None;
         let mut region_constraints = QueryRegionConstraints::default();
 
@@ -105,12 +115,6 @@ where
         // also manually collecting region constraints via `region_constraints`.
         let (mut output, _) =
             scrape_region_constraints(infcx, root_def_id, "fully_perform", span, |ocx| {
-                if !infcx.disable_trait_solver_fast_paths()
-                    && let Some(value) = QueryTypeOp::try_fast_path(infcx.tcx, &self)
-                {
-                    return Ok(value);
-                }
-
                 let mut canonical_var_values = OriginalQueryValues::default();
                 let old_param_env = self.param_env;
                 let canonical_self = infcx.canonicalize_query(self, &mut canonical_var_values);
