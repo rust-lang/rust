@@ -1,5 +1,4 @@
 use std::collections::hash_map::Entry;
-use std::mem;
 
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::solve::{Goal, QueryInput};
@@ -94,7 +93,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         };
         debug_assert!(!value.has_infer(), "unexpected infer in {value:?}");
         debug_assert!(!value.has_placeholders(), "unexpected placeholders in {value:?}");
-        let (max_universe, _variables, var_kinds) = canonicalizer.finalize();
+        let (max_universe, var_kinds) = canonicalizer.finalize();
 
         Canonical { max_universe, var_kinds, value }
     }
@@ -225,7 +224,8 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
 
         debug_assert!(!value.has_infer(), "unexpected infer in {value:?}");
         debug_assert!(!value.has_placeholders(), "unexpected placeholders in {value:?}");
-        let (max_universe, variables, var_kinds) = rest_canonicalizer.finalize();
+        let variables = rest_canonicalizer.state.variables.clone();
+        let (max_universe, var_kinds) = rest_canonicalizer.finalize();
         (variables, Canonical { max_universe, var_kinds, value })
     }
 
@@ -273,7 +273,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         ty::BoundVar::from(idx)
     }
 
-    fn finalize(mut self) -> (ty::UniverseIndex, Vec<I::GenericArg>, I::CanonicalVarKinds) {
+    fn finalize(mut self) -> (ty::UniverseIndex, I::CanonicalVarKinds) {
         // See the rustc-dev-guide section about how we deal with universes
         // during canonicalization in the new solver.
         let max_universe = match self.canonicalize_mode {
@@ -309,14 +309,13 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
                     .unwrap_or(ty::UniverseIndex::ROOT)
             }
         };
-        let variables = mem::take(&mut self.state.variables);
         let var_kinds = self.delegate.cx().mk_canonical_var_kinds(&self.state.var_kinds);
 
         // We have finished with this canonicalizer and can return its state to the delegate for
         // later reuse.
         self.delegate.release_canonicalizer_state(self.state);
 
-        (max_universe, variables, var_kinds)
+        (max_universe, var_kinds)
     }
 
     fn inner_fold_ty(&mut self, t: I::Ty) -> I::Ty {
