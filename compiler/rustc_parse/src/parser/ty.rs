@@ -886,7 +886,7 @@ impl<'a> Parser<'a> {
             req_name: |_, _| false,
             context: FnContext::FunctionPtrType,
             req_body: false,
-            allow_const: false,
+            allow_const_params: false,
         };
         let decl = self.parse_fn_decl(&mode, AllowPlus::No, recover_return_sign)?;
         let decl = Box::new(decl);
@@ -1455,7 +1455,7 @@ impl<'a> Parser<'a> {
             req_name: |_, _| false,
             context: FnContext::Free,
             req_body: false,
-            allow_const: false,
+            allow_const_params: false,
         };
         match self.parse_fn_decl(&mode, AllowPlus::No, RecoverReturnSign::OnlyFatArrow) {
             Ok(decl) => {
@@ -1557,7 +1557,7 @@ impl<'a> Parser<'a> {
             req_name: |_, _| false,
             context: FnContext::Free,
             req_body: false,
-            allow_const: false,
+            allow_const_params: false,
         };
         let inputs = match self.parse_fn_params(&mode) {
             Ok(params) => params,

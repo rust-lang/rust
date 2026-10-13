@@ -163,7 +163,7 @@ impl<'a> Parser<'a> {
                 req_name: |_, _| true,
                 context: FnContext::Free,
                 req_body: true,
-                allow_const: true,
+                allow_const_params: true,
             },
             force_collect,
             AllowConstBlockItems::No,

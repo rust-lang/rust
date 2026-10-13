@@ -130,7 +130,7 @@ impl<'a> Parser<'a> {
             req_name: |_, _| true,
             context: FnContext::Free,
             req_body: true,
-            allow_const: true,
+            allow_const_params: true,
         };
         self.parse_item_(fn_parse_mode, force_collect, allow_const_block_items)
             .map(|i| i.map(Box::new))
@@ -1243,7 +1243,7 @@ impl<'a> Parser<'a> {
             req_name: |_, _| true,
             context: FnContext::Impl,
             req_body: true,
-            allow_const: true,
+            allow_const_params: true,
         };
         self.parse_assoc_item(fn_parse_mode, force_collect)
     }
@@ -1256,7 +1256,7 @@ impl<'a> Parser<'a> {
             req_name: |edition, _| edition >= Edition::Edition2018,
             context: FnContext::Trait,
             req_body: false,
-            allow_const: true,
+            allow_const_params: true,
         };
         self.parse_assoc_item(fn_parse_mode, force_collect)
     }
@@ -1603,7 +1603,7 @@ impl<'a> Parser<'a> {
             req_name: |_, is_dot_dot_dot| is_dot_dot_dot == IsDotDotDot::No,
             context: FnContext::Free,
             req_body: false,
-            allow_const: false,
+            allow_const_params: false,
         };
         Ok(self
             .parse_item_(
@@ -2528,7 +2528,7 @@ impl<'a> Parser<'a> {
                     req_name: |_, _| true,
                     context: FnContext::Free,
                     req_body: true,
-                    allow_const: true,
+                    allow_const_params: true,
                 };
                 match self.parse_fn(
                     &mut AttrVec::new(),

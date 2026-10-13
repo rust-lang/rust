@@ -95,7 +95,7 @@ pub(crate) struct FnParseMode {
     /// Whether function_arg_const_generics (`const N: T`) is allowed
     /// in the parameter list. Enabled for free, impl, and trait functions.
     /// Disabled for the rest.
-    pub(super) allow_const: bool,
+    pub(super) allow_const_params: bool,
 }
 
 /// The context in which a function is parsed.
@@ -771,7 +771,7 @@ impl<'a> Parser<'a> {
             };
 
             let mut is_const = false;
-            if fn_parse_mode.allow_const
+            if fn_parse_mode.allow_const_params
                 && this.token.is_keyword(kw::Const)
                 && this.look_ahead(1, |token| token.is_non_reserved_ident())
                 && this.look_ahead(2, |token| *token == token::Colon)
