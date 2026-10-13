@@ -358,7 +358,7 @@ impl<'a, 'db> MirPrettyCtx<'a, 'db> {
                         .build(rustc_type_ir::TypingMode::PostAnalysis);
                     let env = this.db.trait_environment(this.body.owner.generic_def(this.db));
                     let place_ty = PlaceTy::from_ty(this.body.locals[local].ty.as_ref())
-                        .multi_projection_ty(&infcx, env, projections);
+                        .multi_projection_ty(&infcx, env, head);
                     if let Some(variant_id) = place_ty.variant_id {
                         let variant_fields = variant_id.fields(this.db);
                         w!(
