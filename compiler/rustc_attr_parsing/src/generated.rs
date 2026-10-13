@@ -44,6 +44,7 @@ impl GeneratedAttrState {
             GeneratedAttr::RustcTestMarker(test_marker) => {
                 AttributeKind::RustcTestMarker(test_marker)
             }
+            GeneratedAttr::RustcTrivialFieldReads => AttributeKind::RustcTrivialFieldReads(span),
         };
         self.state.push(attr);
     }

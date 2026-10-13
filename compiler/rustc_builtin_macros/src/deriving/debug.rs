@@ -38,7 +38,7 @@ pub(crate) fn expand_deriving_debug(
             ret_ty: cx.ty_path(path_std!(cx, span, fmt::Result)),
             attributes: thin_vec![
                 cx.generated_attr(span, ast::GeneratedAttr::Inline),
-                cx.attr_word(sym::rustc_trivial_field_reads, span)
+                cx.generated_attr(span, ast::GeneratedAttr::RustcTrivialFieldReads),
             ],
             fieldless_variants_strategy:
                 FieldlessVariantsStrategy::SpecializeIfAllVariantsFieldless,
