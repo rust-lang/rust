@@ -26,7 +26,7 @@ pub struct RegionConstraintStorage<'tcx> {
     /// For each `RegionVid`, the corresponding `RegionVariableOrigin`.
     pub(super) var_infos: IndexVec<RegionVid, RegionVariableInfo<'tcx>>,
 
-    pub(super) data: RegionConstraintData<'tcx>,
+    pub(super) legacy_data: RegionConstraintData<'tcx>,
     // FIXME(-Zassumptions-on-binders): We should merge `abby_data` and `data`
     // into just one field and have the representation of region constraints be
     // the same regardless of whether abby is enabled or not
@@ -417,8 +417,8 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         // or updated in some way.
         let RegionConstraintStorage {
             var_infos: _,
-            data,
-            // FIXME(-Zassumptions-on-binders): we probably should do sth here
+            legacy_data,
+            // FIXME(-Zassumptions-on-binders): Handle abby_data
             abby_data: _,
             lubs,
             glbs,
@@ -433,7 +433,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         lubs.clear();
         glbs.clear();
 
-        let data = mem::take(data);
+        let data = mem::take(legacy_data);
 
         // Clear all unifications and recreate the variables a "now
         // un-unified" state. Note that when we unify `a` and `b`, we
@@ -451,8 +451,8 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         data
     }
 
-    pub fn data(&self) -> &RegionConstraintData<'tcx> {
-        &self.storage.data
+    pub fn legacy_data(&self) -> &RegionConstraintData<'tcx> {
+        &self.storage.legacy_data
     }
 
     pub fn abby_data(&self) -> &AbbyRegionConstraintData<'tcx> {
@@ -522,8 +522,8 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         // cannot add constraints once regions are resolved
         debug!("RegionConstraintCollector: add_constraint({:?})", constraint);
 
-        let index = self.storage.data.constraints.len();
-        self.storage.data.constraints.push((constraint, origin));
+        let index = self.storage.legacy_data.constraints.len();
+        self.storage.legacy_data.constraints.push((constraint, origin));
         self.undo_log.push(AddConstraint(index));
     }
 
@@ -538,8 +538,8 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
             return;
         }
 
-        let index = self.storage.data.verifys.len();
-        self.storage.data.verifys.push(verify);
+        let index = self.storage.legacy_data.verifys.len();
+        self.storage.legacy_data.verifys.push(verify);
         self.undo_log.push(AddVerify(index));
     }
 
@@ -925,12 +925,12 @@ impl<'tcx> Rollback<UndoLog<'tcx>> for RegionConstraintStorage<'tcx> {
                 assert_eq!(self.var_infos.len(), vid.index());
             }
             AddConstraint(index) => {
-                self.data.constraints.pop().unwrap();
-                assert_eq!(self.data.constraints.len(), index);
+                self.legacy_data.constraints.pop().unwrap();
+                assert_eq!(self.legacy_data.constraints.len(), index);
             }
             AddVerify(index) => {
-                self.data.verifys.pop();
-                assert_eq!(self.data.verifys.len(), index);
+                self.legacy_data.verifys.pop();
+                assert_eq!(self.legacy_data.verifys.len(), index);
             }
             AddCombination(Glb, ref regions) => {
                 self.glbs.remove(regions);

@@ -1108,7 +1108,8 @@ impl<'tcx> InferCtxt<'tcx> {
         let inner = self.inner.borrow();
         assert!(!UndoLogs::<UndoLog<'_>>::in_snapshot(&inner.undo_log));
         let storage = inner.region_constraint_storage.as_ref().expect("regions already resolved");
-        assert!(storage.data.is_empty(), "{:#?}", storage.data);
+        // FIXME(-Zassumptions-on-binders): Handle abby_data
+        assert!(storage.legacy_data.is_empty(), "{:#?}", storage.legacy_data);
         // We clone instead of taking because borrowck still wants to use the
         // inference context after calling this for diagnostics and the new
         // trait solver.
