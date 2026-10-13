@@ -245,6 +245,14 @@ fn lint_nan<'tcx>(
         }
     }
 
+    fn nan_method_path(cx: &LateContext<'_>, nan: &hir::Expr<'_>) -> Option<String> {
+        let expr = nan.peel_blocks().peel_borrows();
+        let path = cx.sess().source_map().span_to_snippet(expr.span).ok()?;
+        path.strip_suffix("NAN")
+            .filter(|path| path.contains("::"))
+            .map(|path| format!("{path}is_nan"))
+    }
+
     fn eq_ne_suggestion<'a>(
         cx: &LateContext<'a>,
         cmp: &'a hir::Expr<'a>,
@@ -295,8 +303,11 @@ fn lint_nan<'tcx>(
         }
         let written_borrow = outer_span.until(operand_span);
         let neg = if is_ne { "!" } else { "" };
+        let Some(method_path) = nan_method_path(cx, nan) else {
+            return InvalidNanComparisonsSuggestion::Spanless;
+        };
         InvalidNanComparisonsSuggestion::Ufcs {
-            prefix: format!("{neg}{}::is_nan({}", float_ty.name_str(), "*".repeat(deref_count)),
+            prefix: format!("{neg}{method_path}({}", "*".repeat(deref_count)),
             prefix_span: operand_span.shrink_to_lo(),
             close_span: operand_span.shrink_to_hi(),
             remove_nan,

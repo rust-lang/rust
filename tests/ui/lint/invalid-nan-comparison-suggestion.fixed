@@ -3,6 +3,8 @@
 
 #![feature(f16, f128)]
 
+extern crate core;
+
 fn main() {
     let x = 5f16;
     let _ = f16::is_nan(x);
@@ -68,6 +70,17 @@ fn main() {
     if !f64::is_nan(*arithmetic) {}
     //~^ WARN incorrect NaN comparison
 
+    let x = 1.0f64;
+    if !f64::is_nan(x) {}
+    //~^ WARN incorrect NaN comparison
+    let p = &x;
+    let _ = f64::is_nan(*p);
+    //~^ WARN incorrect NaN comparison
+    let _ = f64::is_nan(-x);
+    //~^ WARN incorrect NaN comparison
+
+    shadowed::check();
+
     let _ = f64::is_nan(3.3);
     //~^ WARN incorrect NaN comparison
 
@@ -105,4 +118,19 @@ fn parameter(x: f64) {
 fn parameter_ref(x: &f32) {
     if !f32::is_nan(*x) {}
     //~^ WARN incorrect NaN comparison
+}
+
+mod shadowed {
+    #[allow(dead_code, non_camel_case_types)]
+    struct f64;
+    use ::core::primitive::f64 as Float;
+
+    pub fn check() {
+        let b = &3.3;
+        if !::core::primitive::f64::is_nan(*b) {}
+        //~^ WARN incorrect NaN comparison
+        let c = &4.4;
+        if !Float::is_nan(*c) {}
+        //~^ WARN incorrect NaN comparison
+    }
 }
