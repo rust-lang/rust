@@ -852,102 +852,175 @@ fn file_test_windows_fileext_trait_case_1() {
 #[test]
 #[cfg(windows)]
 fn file_test_windows_fileext_trait_case_2() {
+    use crate::cell::RefCell;
     use crate::os::windows::fs::FileExt;
 
     // Test when seek_read(), seek_write() return Ok(0)
     struct MockFile {
         expected_offset: u64,
+        read_calls: RefCell<usize>,
+        write_calls: RefCell<usize>,
+    }
+
+    impl MockFile {
+        fn new(expected_offset: u64) -> Self {
+            Self { expected_offset, read_calls: RefCell::new(0), write_calls: RefCell::new(0) }
+        }
     }
 
     impl FileExt for MockFile {
         fn seek_read(&self, _buf: &mut [u8], offset: u64) -> io::Result<usize> {
+            *self.read_calls.borrow_mut() += 1;
             assert_eq!(offset, self.expected_offset);
             Ok(0)
         }
 
         fn seek_write(&self, _buf: &[u8], offset: u64) -> io::Result<usize> {
+            *self.write_calls.borrow_mut() += 1;
             assert_eq!(offset, self.expected_offset);
             Ok(0)
         }
     }
 
-    {
-        let mock_file = MockFile { expected_offset: 0 };
-        let mut buf = [0; 256];
-        assert_eq!(
-            mock_file.seek_read_exact(&mut buf, 0).unwrap_err().kind(),
-            io::ErrorKind::UnexpectedEof
-        );
-        assert_eq!(mock_file.seek_write_all(&buf, 0).unwrap_err().kind(), io::ErrorKind::WriteZero);
-    }
-
-    {
-        let mock_file = MockFile { expected_offset: 420 };
-        let mut buf = [0; 256];
-        assert_eq!(
-            mock_file.seek_read_exact(&mut buf, 420).unwrap_err().kind(),
-            io::ErrorKind::UnexpectedEof
-        );
-        assert_eq!(
-            mock_file.seek_write_all(&buf, 420).unwrap_err().kind(),
-            io::ErrorKind::WriteZero
-        );
+    let mut buf = [0; 256];
+    for offset in [0, 1, 420] {
+        {
+            let mock_file = MockFile::new(offset);
+            assert_eq!(
+                mock_file.seek_read_exact(&mut buf, offset).unwrap_err().kind(),
+                ErrorKind::UnexpectedEof
+            );
+            assert_eq!(*mock_file.read_calls.borrow(), 1);
+            assert_eq!(*mock_file.write_calls.borrow(), 0);
+        }
+        {
+            let mock_file = MockFile::new(offset);
+            assert_eq!(
+                mock_file.seek_write_all(&buf, offset).unwrap_err().kind(),
+                ErrorKind::WriteZero
+            );
+            assert_eq!(*mock_file.read_calls.borrow(), 0);
+            assert_eq!(*mock_file.write_calls.borrow(), 1);
+        }
     }
 }
 
 #[test]
 #[cfg(windows)]
 fn file_test_windows_fileext_trait_case_3() {
+    use crate::cell::RefCell;
     use crate::os::windows::fs::FileExt;
 
-    // Test that Err other than io::ErrorKind::Interrupted are propagated up.
+    // Test that Err are propagated up.
     struct MockFile {
         expected_offset: u64,
+        read_calls: RefCell<usize>,
+        write_calls: RefCell<usize>,
+    }
+
+    impl MockFile {
+        fn new(expected_offset: u64) -> Self {
+            Self { expected_offset, read_calls: RefCell::new(0), write_calls: RefCell::new(0) }
+        }
     }
 
     impl FileExt for MockFile {
         fn seek_read(&self, _buf: &mut [u8], offset: u64) -> io::Result<usize> {
+            *self.read_calls.borrow_mut() += 1;
             assert_eq!(offset, self.expected_offset);
-            Err(io::Error::new(io::ErrorKind::PermissionDenied, "seek_read"))
+            Err(io::Error::new(ErrorKind::PermissionDenied, "seek_read"))
         }
 
         fn seek_write(&self, _buf: &[u8], offset: u64) -> io::Result<usize> {
+            *self.write_calls.borrow_mut() += 1;
             assert_eq!(offset, self.expected_offset);
-            Err(io::Error::new(io::ErrorKind::ConnectionRefused, "seek_write"))
+            Err(io::Error::new(ErrorKind::ConnectionRefused, "seek_write"))
         }
     }
 
-    {
-        let mock_file = MockFile { expected_offset: 0 };
-        let mut buf = [0; 256];
-        assert_eq!(
-            mock_file.seek_read_exact(&mut buf, 0).unwrap_err().kind(),
-            io::ErrorKind::PermissionDenied
-        );
-        assert_eq!(
-            mock_file.seek_write_all(&buf, 0).unwrap_err().kind(),
-            io::ErrorKind::ConnectionRefused
-        );
+    let mut buf = [0; 256];
+    for offset in [0, 1, 420] {
+        {
+            let mock_file = MockFile::new(offset);
+            assert_eq!(
+                mock_file.seek_read_exact(&mut buf, offset).unwrap_err().kind(),
+                ErrorKind::PermissionDenied
+            );
+            assert_eq!(*mock_file.read_calls.borrow(), 1);
+            assert_eq!(*mock_file.write_calls.borrow(), 0);
+        }
+        {
+            let mock_file = MockFile::new(offset);
+            assert_eq!(
+                mock_file.seek_write_all(&buf, offset).unwrap_err().kind(),
+                ErrorKind::ConnectionRefused
+            );
+            assert_eq!(*mock_file.read_calls.borrow(), 0);
+            assert_eq!(*mock_file.write_calls.borrow(), 1);
+        }
     }
-
-    {
-        let mock_file = MockFile { expected_offset: 420 };
-        let mut buf = [0; 256];
-        assert_eq!(
-            mock_file.seek_read_exact(&mut buf, 420).unwrap_err().kind(),
-            io::ErrorKind::PermissionDenied
-        );
-        assert_eq!(
-            mock_file.seek_write_all(&buf, 420).unwrap_err().kind(),
-            io::ErrorKind::ConnectionRefused
-        );
-    }
-    // FIXME: Cover io::ErrorKind::Interrupted, but don't infinite loop ;)
 }
 
 #[test]
 #[cfg(windows)]
 fn file_test_windows_fileext_trait_case_4() {
+    use crate::cell::RefCell;
+    use crate::os::windows::fs::FileExt;
+
+    // Test that Err ErrorKind::Interrupted are propagated up (unlike Unix versions)
+    struct MockFile {
+        expected_offset: u64,
+        read_calls: RefCell<usize>,
+        write_calls: RefCell<usize>,
+    }
+
+    impl MockFile {
+        fn new(expected_offset: u64) -> Self {
+            Self { expected_offset, read_calls: RefCell::new(0), write_calls: RefCell::new(0) }
+        }
+    }
+
+    impl FileExt for MockFile {
+        fn seek_read(&self, _buf: &mut [u8], offset: u64) -> io::Result<usize> {
+            *self.read_calls.borrow_mut() += 1;
+            assert_eq!(offset, self.expected_offset);
+            Err(io::Error::new(ErrorKind::Interrupted, "seek_read"))
+        }
+
+        fn seek_write(&self, _buf: &[u8], offset: u64) -> io::Result<usize> {
+            *self.write_calls.borrow_mut() += 1;
+            assert_eq!(offset, self.expected_offset);
+            Err(io::Error::new(ErrorKind::Interrupted, "seek_write"))
+        }
+    }
+
+    let mut buf = [0; 256];
+    for offset in [0, 1, 420] {
+        {
+            let mock_file = MockFile::new(offset);
+            assert_eq!(
+                mock_file.seek_read_exact(&mut buf, offset).unwrap_err().kind(),
+                ErrorKind::Interrupted
+            );
+            assert_eq!(*mock_file.read_calls.borrow(), 1);
+            assert_eq!(*mock_file.write_calls.borrow(), 0);
+        }
+        {
+            let mock_file = MockFile::new(offset);
+            assert_eq!(
+                mock_file.seek_write_all(&buf, offset).unwrap_err().kind(),
+                ErrorKind::Interrupted
+            );
+            assert_eq!(*mock_file.read_calls.borrow(), 0);
+            assert_eq!(*mock_file.write_calls.borrow(), 1);
+        }
+    }
+}
+
+#[test]
+#[cfg(windows)]
+fn file_test_windows_fileext_trait_case_5() {
+    use crate::cell::RefCell;
     use crate::os::windows::fs::FileExt;
 
     const MSG: &[u8] =
@@ -957,10 +1030,19 @@ fn file_test_windows_fileext_trait_case_4() {
     // seek_write(), respectively.
     struct MockFile {
         expected_offset: u64,
+        read_calls: RefCell<usize>,
+        write_calls: RefCell<usize>,
+    }
+
+    impl MockFile {
+        fn new(expected_offset: u64) -> Self {
+            Self { expected_offset, read_calls: RefCell::new(0), write_calls: RefCell::new(0) }
+        }
     }
 
     impl FileExt for MockFile {
         fn seek_read(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
+            *self.read_calls.borrow_mut() += 1;
             assert_eq!(offset, self.expected_offset);
             assert_eq!(buf.len(), MSG.len());
             assert_eq!(buf, &[0; MSG.len()]);
@@ -969,6 +1051,7 @@ fn file_test_windows_fileext_trait_case_4() {
         }
 
         fn seek_write(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
+            *self.write_calls.borrow_mut() += 1;
             assert_eq!(offset, self.expected_offset);
             assert_eq!(buf.len(), MSG.len());
             assert_eq!(buf, MSG);
@@ -976,26 +1059,28 @@ fn file_test_windows_fileext_trait_case_4() {
         }
     }
 
-    {
-        let mock_file = MockFile { expected_offset: 0 };
-        let mut buf = [0; MSG.len()];
-        check!(mock_file.seek_read_exact(&mut buf, 0));
-        assert_eq!(&buf, MSG);
-        check!(mock_file.seek_write_all(&buf, 0));
-    }
-
-    {
-        let mock_file = MockFile { expected_offset: 420 };
-        let mut buf = [0; MSG.len()];
-        check!(mock_file.seek_read_exact(&mut buf, 420));
-        assert_eq!(&buf, MSG);
-        check!(mock_file.seek_write_all(&buf, 420));
+    for offset in [0, 1, 420] {
+        {
+            let mock_file = MockFile::new(offset);
+            let mut buf = [0; MSG.len()];
+            check!(mock_file.seek_read_exact(&mut buf, offset));
+            assert_eq!(&buf, MSG);
+            assert_eq!(*mock_file.read_calls.borrow(), 1);
+            assert_eq!(*mock_file.write_calls.borrow(), 0);
+        }
+        {
+            let mock_file = MockFile::new(offset);
+            check!(mock_file.seek_write_all(MSG, offset));
+            assert_eq!(*mock_file.read_calls.borrow(), 0);
+            assert_eq!(*mock_file.write_calls.borrow(), 1);
+        }
     }
 }
 
 #[test]
 #[cfg(windows)]
-fn file_test_windows_fileext_trait_case_5() {
+fn file_test_windows_fileext_trait_case_6() {
+    use crate::cell::RefCell;
     use crate::os::windows::fs::FileExt;
 
     const MSG: &[u8] =
@@ -1004,36 +1089,47 @@ fn file_test_windows_fileext_trait_case_5() {
     // Test pathological case where seek_read(), seek_write() only do 1 byte per call, return Ok(1)
     struct MockFile {
         base_offset: u64,
+        read_calls: RefCell<usize>,
+        write_calls: RefCell<usize>,
+    }
+
+    impl MockFile {
+        fn new(base_offset: u64) -> Self {
+            Self { base_offset, read_calls: RefCell::new(0), write_calls: RefCell::new(0) }
+        }
     }
 
     impl FileExt for MockFile {
         fn seek_read(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
+            *self.read_calls.borrow_mut() += 1;
             let offset = (offset - self.base_offset) as usize;
             buf[0..1].copy_from_slice(&MSG[offset..offset + 1]);
             Ok(1)
         }
 
         fn seek_write(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
+            *self.write_calls.borrow_mut() += 1;
             let offset = (offset - self.base_offset) as usize;
             assert_eq!(buf[0..1], MSG[offset..offset + 1]);
             Ok(1)
         }
     }
 
-    {
-        let mock_file = MockFile { base_offset: 0 };
-        let mut buf = [0; MSG.len()];
-        check!(mock_file.seek_read_exact(&mut buf, 0));
-        assert_eq!(&buf, MSG);
-        check!(mock_file.seek_write_all(&buf, 0));
-    }
-
-    {
-        let mock_file = MockFile { base_offset: 420 };
-        let mut buf = [0; MSG.len()];
-        check!(mock_file.seek_read_exact(&mut buf, 420));
-        assert_eq!(&buf, MSG);
-        check!(mock_file.seek_write_all(&buf, 420));
+    for offset in [0, 1, 420] {
+        {
+            let mock_file = MockFile::new(offset);
+            let mut buf = [0; MSG.len()];
+            check!(mock_file.seek_read_exact(&mut buf, offset));
+            assert_eq!(&buf, MSG);
+            assert_eq!(*mock_file.read_calls.borrow(), MSG.len());
+            assert_eq!(*mock_file.write_calls.borrow(), 0);
+        }
+        {
+            let mock_file = MockFile::new(offset);
+            check!(mock_file.seek_write_all(MSG, offset));
+            assert_eq!(*mock_file.read_calls.borrow(), 0);
+            assert_eq!(*mock_file.write_calls.borrow(), MSG.len());
+        }
     }
 }
 
