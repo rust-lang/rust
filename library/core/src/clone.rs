@@ -678,7 +678,7 @@ unsafe impl CloneToUninit for str {
 unsafe impl CloneToUninit for crate::ffi::CStr {
     #[cfg_attr(debug_assertions, track_caller)]
     unsafe fn clone_to_uninit(&self, dest: *mut u8) {
-        // SAFETY: For now, CStr is just a #[repr(trasnsparent)] [c_char] with some invariants.
+        // SAFETY: For now, CStr is just a #[repr(transparent)] [c_char] with some invariants.
         // And we can cast [c_char] to [u8] on all supported platforms (see: to_bytes_with_nul).
         // The pointer metadata properly preserves the length (so NUL is also copied).
         // See: `cstr_metadata_is_length_with_nul` in tests.
