@@ -57,16 +57,15 @@ impl<'a, 'tcx> VirtualIndex {
         self,
         bx: &mut Bx,
         llvtable: Bx::Value,
-        ty: Ty<'tcx>,
     ) -> Bx::Value {
         // Load the data pointer from the object.
-        debug!("get_int({:?}, {:?})", llvtable, self);
+        debug!("get_usize({:?}, {:?})", llvtable, self);
 
         let llty = bx.type_isize();
         let ptr_size = bx.data_layout().pointer_size();
         let vtable_byte_offset = self.0 * ptr_size.bytes();
 
-        load_vtable(bx, llvtable, llty, vtable_byte_offset, ty, false)
+        load_vtable_plain(bx, llvtable, llty, vtable_byte_offset, false)
     }
 }
 
@@ -131,8 +130,6 @@ pub(crate) fn load_vtable<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     ty: Ty<'tcx>,
     nonnull: bool,
 ) -> Bx::Value {
-    let ptr_align = bx.data_layout().pointer_align().abi;
-
     if bx.cx().sess().opts.unstable_opts.virtual_function_elimination
         && bx.cx().sess().lto() == Lto::Fat
     {
@@ -144,6 +141,18 @@ pub(crate) fn load_vtable<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             bug!("load nonnull value from a vtable without a principal trait")
         }
     }
+
+    load_vtable_plain(bx, llvtable, llty, vtable_byte_offset, nonnull)
+}
+
+fn load_vtable_plain<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+    bx: &mut Bx,
+    llvtable: Bx::Value,
+    llty: Bx::Type,
+    vtable_byte_offset: u64,
+    nonnull: bool,
+) -> Bx::Value {
+    let ptr_align = bx.data_layout().pointer_align().abi;
 
     let gep = bx.inbounds_ptradd(llvtable, bx.const_usize(vtable_byte_offset));
     let ptr = bx.load(llty, gep, ptr_align);
