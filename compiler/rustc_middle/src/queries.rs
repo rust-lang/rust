@@ -2851,6 +2851,10 @@ rustc_queries! {
         desc { "calculating all fake doc items" }
     }
 
+    query polymorphize_instance(instance: ty::Instance<'tcx>) -> ty::Instance<'tcx> {
+        desc { "polymorphizing an instance by erasing its concrete generic arguments" }
+    }
+
     //-----------------------------------------------------------------------------
     // "Non-queries" are special dep kinds that are not queries.
     //-----------------------------------------------------------------------------
