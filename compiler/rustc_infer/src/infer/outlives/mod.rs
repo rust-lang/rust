@@ -13,7 +13,7 @@ use super::region_constraints::{RegionConstraintData, UndoLog};
 use super::{InferCtxt, RegionResolutionError};
 use crate::infer::free_regions::RegionRelations;
 use crate::infer::lexical_region_resolve;
-use crate::infer::region_constraints::ConstraintKind;
+use crate::infer::region_constraints::{AbbyRegionConstraintData, ConstraintKind};
 
 pub mod env;
 pub mod obligations;
@@ -131,7 +131,11 @@ impl<'tcx> InferCtxt<'tcx> {
     /// region constraints as normal, but then we take them and
     /// translate them into the form that the NLL solver
     /// understands. See the NLL module for mode details.
-    pub fn take_and_reset_region_constraints(&self) -> RegionConstraintData<'tcx> {
+    pub fn take_and_reset_region_constraints(
+        &self,
+    ) -> (RegionConstraintData<'tcx>, AbbyRegionConstraintData<'tcx>) {
+        // FIXME(-Zassumptions-on-binders): should we be asserting no type
+        // outlives constraints in the abby constraints storage?
         assert!(
             self.inner.borrow().region_obligations.is_empty(),
             "region_obligations not empty: {:#?}",
@@ -146,20 +150,13 @@ impl<'tcx> InferCtxt<'tcx> {
         self.inner.borrow_mut().unwrap_region_constraints().take_and_reset_data()
     }
 
-    /// Drain completed query constraints without allocating an empty constraint.
-    pub fn take_solver_region_constraints(
-        &self,
-    ) -> Option<Box<rustc_type_ir::region_constraint::RegionConstraint<TyCtxt<'tcx>>>> {
-        todo!("remove this")
-    }
-
     /// Gives temporary access to the region constraint data.
     pub fn with_region_constraints<R>(
         &self,
-        op: impl FnOnce(&RegionConstraintData<'tcx>) -> R,
+        op: impl FnOnce(&RegionConstraintData<'tcx>, &AbbyRegionConstraintData<'tcx>) -> R,
     ) -> R {
         let mut inner = self.inner.borrow_mut();
-        // FIXME(-Zassumptions-on-binders): Handle abby_data
-        op(inner.unwrap_region_constraints().legacy_data())
+        let constraints = inner.unwrap_region_constraints();
+        op(constraints.legacy_data(), constraints.abby_data())
     }
 }

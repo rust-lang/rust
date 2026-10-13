@@ -100,7 +100,7 @@ impl<'tcx> AbbyRegionConstraintData<'tcx> {
         Self(SolverRegionConstraint::new_true())
     }
 
-    pub(crate) fn get_constraint(&self) -> SolverRegionConstraint<'tcx> {
+    pub fn get_constraint(&self) -> SolverRegionConstraint<'tcx> {
         self.0.clone()
     }
 
@@ -416,7 +416,9 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     /// some other point Q, in NLL.
     ///
     /// Not legal during a snapshot.
-    pub fn take_and_reset_data(&mut self) -> RegionConstraintData<'tcx> {
+    pub fn take_and_reset_data(
+        &mut self,
+    ) -> (RegionConstraintData<'tcx>, AbbyRegionConstraintData<'tcx>) {
         assert!(!UndoLogs::<UndoLog<'_>>::in_snapshot(&self.undo_log));
 
         // If you add a new field to `RegionConstraintCollector`, you
@@ -425,8 +427,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         let RegionConstraintStorage {
             var_infos: _,
             legacy_data,
-            // FIXME(-Zassumptions-on-binders): Handle abby_data
-            abby_data: _,
+            abby_data,
             lubs,
             glbs,
             unification_table: _,
@@ -440,7 +441,8 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         lubs.clear();
         glbs.clear();
 
-        let data = mem::take(legacy_data);
+        let legacy_data = mem::take(legacy_data);
+        let abby_data = mem::take(abby_data);
 
         // Clear all unifications and recreate the variables a "now
         // un-unified" state. Note that when we unify `a` and `b`, we
@@ -455,7 +457,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
                 });
         }
 
-        data
+        (legacy_data, abby_data)
     }
 
     pub fn legacy_data(&self) -> &RegionConstraintData<'tcx> {

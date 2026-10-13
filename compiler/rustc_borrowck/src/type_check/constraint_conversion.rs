@@ -78,10 +78,8 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
             });
         }
 
-        if let Some(constraint) = solver_constraints {
-            self.constraints
-                .register_solver_constraint((**constraint).clone().with_spans(self.span));
-        }
+        self.constraints
+            .register_solver_constraint(solver_constraints.clone().with_spans(self.span));
     }
 
     /// Given an instance of the closure type, this method instantiates the "extra" requirements

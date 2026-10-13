@@ -377,14 +377,20 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         // inside of a `probe` whenever we have multiple choices inside of the solver.
         let region_obligations = self.0.inner.borrow().region_obligations().to_owned();
         let region_assumptions = self.0.inner.borrow().region_assumptions().to_owned();
-        let region_constraints = self.0.with_region_constraints(|region_constraints| {
-            make_query_region_constraints(
-                region_obligations,
-                region_constraints,
-                region_assumptions,
-                None,
-            )
-        });
+        let region_constraints =
+            self.0.with_region_constraints(|legacy_constraints, abby_constraints| {
+                let abby_constraints = abby_constraints.get_constraint().without_spans();
+                assert!(
+                    abby_constraints.is_true(),
+                    "unexpected abby constraint without abby enabled"
+                );
+                make_query_region_constraints(
+                    region_obligations,
+                    legacy_constraints,
+                    region_assumptions,
+                    abby_constraints,
+                )
+            });
 
         let mut seen = FxHashMap::default();
         let mut constraints = vec![];

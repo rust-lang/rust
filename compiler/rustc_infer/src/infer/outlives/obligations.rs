@@ -269,8 +269,6 @@ impl<'tcx> InferCtxt<'tcx> {
             ty::UniverseIndex::ROOT,
         );
 
-        let constraint = self.get_solver_region_constraint();
-        debug!(?constraint);
         let constraint = region_constraint::destructure_type_outlives_constraints_in_root(
             self,
             constraint,

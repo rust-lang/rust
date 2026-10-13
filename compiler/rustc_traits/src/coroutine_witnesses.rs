@@ -77,14 +77,16 @@ fn compute_assumptions<'tcx>(
 
         let region_obligations = infcx.take_registered_region_obligations();
         let region_assumptions = infcx.take_registered_region_assumptions();
-        let region_constraints = infcx.take_and_reset_region_constraints();
+        let (legacy_constraints, abby_constraints) = infcx.take_and_reset_region_constraints();
+        let abby_constraints = abby_constraints.get_constraint().without_spans();
+        assert!(abby_constraints.is_true(), "unexpected abby constraint without abby enabled");
 
         let constraints = infcx.deeply_resolve_via_unification_table(
             make_query_region_constraints(
                 region_obligations,
-                &region_constraints,
+                &legacy_constraints,
                 region_assumptions,
-                None,
+                abby_constraints,
             )
             .constraints,
         );

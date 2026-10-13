@@ -38,9 +38,12 @@ where
     let TypeOpOutput { output, constraints: query_constraints, error_info } =
         op.fully_perform(infcx, infcx.root_def_id, locations.span(body))?;
     if cfg!(debug_assertions) {
-        let data = infcx.take_and_reset_region_constraints();
-        if !data.is_empty() {
-            panic!("leftover region constraints: {data:#?}");
+        let (legacy_constraints, abby_constraints) = infcx.take_and_reset_region_constraints();
+        if !legacy_constraints.is_empty() {
+            panic!("leftover region constraints: {legacy_constraints:#?}");
+        }
+        if !abby_constraints.get_constraint().is_true() {
+            panic!("leftover region constraints: {abby_constraints:#?}");
         }
     }
 

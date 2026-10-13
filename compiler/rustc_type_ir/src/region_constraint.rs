@@ -435,6 +435,14 @@ pub struct RegionConstraint<I: Interner, S: Clone + std::fmt::Debug = ()> {
     pub or_constraint: Or<I, S>,
 }
 
+impl<I: Interner, S: Clone + std::fmt::Debug + Eq + std::hash::Hash> Default
+    for RegionConstraint<I, S>
+{
+    fn default() -> Self {
+        Self::new_true()
+    }
+}
+
 impl<I: Interner> RegionConstraint<I> {
     pub fn with_spans<S: Clone + std::fmt::Debug + Eq + std::hash::Hash>(
         self,

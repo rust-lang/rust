@@ -112,7 +112,7 @@ pub(crate) fn type_check<'tcx>(
         outlives_constraints: OutlivesConstraintSet::default(),
         type_tests: Vec::default(),
         universe_causes: FxIndexMap::default(),
-        solver_constraints: None,
+        solver_constraints: Default::default(),
     };
 
     let CreateResult {
@@ -134,9 +134,6 @@ pub(crate) fn type_check<'tcx>(
             pre_assumptions.is_empty(),
             "there should be no incoming region assumptions = {pre_assumptions:#?}",
         );
-        if let Some(constraint) = infcx.take_solver_region_constraints() {
-            assert!(constraint.is_true(), "incoming solver constraints: {constraint:?}");
-        }
     }
 
     debug!(?normalized_inputs_and_output);
@@ -175,7 +172,8 @@ pub(crate) fn type_check<'tcx>(
 
     let polonius_context = typeck.polonius_context;
 
-    if let Some(solver_constraints) = typeck.constraints.solver_constraints.take() {
+    if infcx.tcx.assumptions_on_binders() {
+        let constraint = mem::take(&mut typeck.constraints.solver_constraints);
         assert!(infcx.tcx.assumptions_on_binders());
         let mut converter = constraint_conversion::ConstraintConversion::new(
             typeck.infcx,
@@ -188,7 +186,7 @@ pub(crate) fn type_check<'tcx>(
             typeck.constraints,
         );
         typeck.infcx.destructure_solver_region_constraints_for_borrowck(
-            *solver_constraints,
+            constraint,
             &mut converter,
             typeck.known_type_outlives_obligations,
             typeck.region_bound_pairs,
@@ -299,15 +297,13 @@ pub(crate) struct MirTypeckRegionConstraints<'tcx> {
     pub(crate) type_tests: Vec<TypeTest<'tcx>>,
 
     /// Constraints from completed AoB type operations, lowered once all bounds are available.
-    pub(crate) solver_constraints: Option<Box<SolverRegionConstraint<'tcx>>>,
+    pub(crate) solver_constraints: SolverRegionConstraint<'tcx>,
 }
 
 impl<'tcx> MirTypeckRegionConstraints<'tcx> {
     pub(crate) fn register_solver_constraint(&mut self, constraint: SolverRegionConstraint<'tcx>) {
-        self.solver_constraints = Some(Box::new(match self.solver_constraints.take() {
-            Some(previous) => SolverRegionConstraint::build_and(*previous, constraint),
-            None => constraint,
-        }));
+        let prev = mem::take(&mut self.solver_constraints);
+        self.solver_constraints = SolverRegionConstraint::build_and(prev, constraint);
     }
 
     /// Creates a `Region` for a given `PlaceholderRegion`, or returns the
