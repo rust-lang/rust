@@ -27,7 +27,7 @@ use rustc_middle::middle::dead_code::{
 use rustc_middle::middle::privacy::Level;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, AssocTag, TyCtxt};
-use rustc_span::{Span, Symbol, bug, kw, span_bug};
+use rustc_span::{Span, Symbol, bug, kw, span_bug, sym};
 use rustc_structures::CrateType;
 
 use crate::diagnostics::{
@@ -517,12 +517,35 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         find_attr!(self.tcx, id, RustcTrivialFieldReads(span) => span.clone())
     }
 
+    fn should_ignore_impl_item(&mut self, impl_item: &hir::ImplItem<'_>) -> bool {
+        let is_impl_of_debug_or_clone = |impl_of| {
+            let trait_ref = impl_of;
+            self.tcx.is_diagnostic_item(sym::Clone, trait_ref)
+                || self.tcx.is_diagnostic_item(sym::Debug, trait_ref)
+        };
+        if let hir::ImplItemImplKind::Trait { .. } = impl_item.impl_kind
+            && let impl_of = self.tcx.local_parent(impl_item.owner_id.def_id)
+            && self.tcx.is_automatically_derived(impl_of.to_def_id())
+            && is_impl_of_debug_or_clone(
+                self.tcx.impl_trait_ref(impl_of).instantiate_identity().skip_norm_wip().def_id,
+            )
+        {
+            return true;
+        }
+        false
+    }
+
     fn visit_node(
         &mut self,
         hir_id: HirId,
         trivial: Option<TrivialUsageSiteId>,
     ) -> <MarkSymbolVisitor<'tcx> as Visitor<'tcx>>::Result {
         let node = self.tcx.hir_node(hir_id);
+        if let Node::ImplItem(impl_item) = node
+            && self.should_ignore_impl_item(impl_item)
+        {
+            return ControlFlow::Continue(());
+        }
         let inside_trivial_usage_site = self.inside_trivial_usage_site.clone();
         let unconditionally_treated_fields_as_live =
             self.repr_unconditionally_treats_fields_as_live;
