@@ -10,6 +10,7 @@ use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_span::{DUMMY_SP, Span, Symbol, bug};
 use rustc_type_ir::lang_items::{SolverAdtLangItem, SolverProjectionLangItem, SolverTraitLangItem};
+use rustc_type_ir::predicates::Predicate;
 use rustc_type_ir::solve::CanonicalInputData;
 use rustc_type_ir::{
     BoundVar, CollectAndApply, DebruijnIndex, Interner, RegionVid, TypeFoldable, Unnormalized,
@@ -136,7 +137,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     fn intern_predicate(
         self,
         predicate: ty::Binder<'tcx, ty::PredicateKind<'tcx>>,
-    ) -> rustc_type_ir::sty::predicates::Predicate<Self> {
+    ) -> Predicate<Self> {
         self.interners.intern_predicate(predicate)
     }
 

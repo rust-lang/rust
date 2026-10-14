@@ -1,6 +1,7 @@
 use std::fmt::Debug;
 use std::ops::Deref;
 
+use rustc_type_ir::predicates::Predicate;
 use rustc_type_ir::solve::{
     ComputeGoalFastPathOutcome, FetchEligibleAssocItemResponse, Goal, NoSolution,
     VisibleForLeakCheck,
@@ -42,7 +43,7 @@ pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
 
     fn compute_goal_fast_path(
         &self,
-        goal: Goal<Self::Interner, rustc_type_ir::sty::predicates::Predicate<Self::Interner>>,
+        goal: Goal<Self::Interner, Predicate<Self::Interner>>,
         span: <Self::Interner as Interner>::Span,
     ) -> ComputeGoalFastPathOutcome<Self::Interner>;
 
@@ -73,7 +74,7 @@ pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
         &self,
         param_env: <Self::Interner as Interner>::ParamEnv,
         term: <Self::Interner as Interner>::Term,
-    ) -> Option<Vec<Goal<Self::Interner, rustc_type_ir::sty::predicates::Predicate<Self::Interner>>>>;
+    ) -> Option<Vec<Goal<Self::Interner, Predicate<Self::Interner>>>>;
 
     fn make_deduplicated_region_constraints(
         &self,
@@ -101,9 +102,7 @@ pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
         args: <Self::Interner as Interner>::GenericArgs,
         param_env: <Self::Interner as Interner>::ParamEnv,
         hidden_ty: <Self::Interner as Interner>::Ty,
-        goals: &mut Vec<
-            Goal<Self::Interner, rustc_type_ir::sty::predicates::Predicate<Self::Interner>>,
-        >,
+        goals: &mut Vec<Goal<Self::Interner, Predicate<Self::Interner>>>,
     );
 
     fn fetch_eligible_assoc_item(
@@ -132,7 +131,7 @@ pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
 
     fn emit_next_solver_overflow_fcw(
         &self,
-        goal: Goal<Self::Interner, rustc_type_ir::sty::predicates::Predicate<Self::Interner>>,
+        goal: Goal<Self::Interner, Predicate<Self::Interner>>,
         span: <Self::Interner as Interner>::Span,
     );
 }

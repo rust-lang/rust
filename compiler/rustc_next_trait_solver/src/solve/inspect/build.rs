@@ -8,6 +8,7 @@ use std::marker::PhantomData;
 
 use derive_where::derive_where;
 use rustc_type_ir::inherent::*;
+use rustc_type_ir::predicates::Predicate;
 use rustc_type_ir::{self as ty, Interner};
 
 use crate::canonical;
@@ -146,17 +147,10 @@ impl<I: Interner> WipProbe<I> {
 
 #[derive_where(PartialEq, Debug; I: Interner)]
 enum WipProbeStep<I: Interner> {
-    AddGoal(
-        GoalSource,
-        inspect::CanonicalState<I, Goal<I, rustc_type_ir::sty::predicates::Predicate<I>>>,
-    ),
+    AddGoal(GoalSource, inspect::CanonicalState<I, Goal<I, Predicate<I>>>),
     NestedProbe(WipProbe<I>),
-    MakeCanonicalResponse {
-        shallow_certainty: Certainty,
-    },
-    RecordImplArgs {
-        impl_args: inspect::CanonicalState<I, I::GenericArgs>,
-    },
+    MakeCanonicalResponse { shallow_certainty: Certainty },
+    RecordImplArgs { impl_args: inspect::CanonicalState<I, I::GenericArgs> },
 }
 
 impl<I: Interner> Eq for WipProbeStep<I> {}
@@ -239,7 +233,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> EvaluationStepBuilder<D> {
         delegate: &D,
         max_input_universe: ty::UniverseIndex,
         source: GoalSource,
-        goal: Goal<I, rustc_type_ir::sty::predicates::Predicate<I>>,
+        goal: Goal<I, Predicate<I>>,
     ) {
         if let Some(this) = self.as_mut() {
             let goal = canonical::make_canonical_state(
