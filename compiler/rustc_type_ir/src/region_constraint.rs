@@ -446,6 +446,12 @@ impl<I: Interner, S: Clone + std::fmt::Debug> Deref for Or<I, S> {
     }
 }
 
+#[derive(PartialEq)]
+pub enum IsDuplicate {
+    Yes,
+    No,
+}
+
 #[derive_where(Clone, Hash, PartialEq, Eq; I: Interner, S)]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
@@ -489,6 +495,24 @@ impl<I: Interner, S: ConstraintSpan> And<I, S> {
                 }
             })
             .collect())
+    }
+
+    pub fn add(&mut self, leaf: LeafRegionConstraint<I, S>) -> Option<(usize, IsDuplicate)> {
+        if let LeafRegionConstraint::RegionOutlives(r1, r2, _) = leaf
+            && r1 == r2
+        {
+            return None;
+        }
+        self.0.iter().position(|x| x == &leaf).map(|index| (index, IsDuplicate::Yes)).or_else(
+            || {
+                self.0.push(leaf);
+                Some((self.0.len() - 1, IsDuplicate::No))
+            },
+        )
+    }
+
+    pub fn pop(&mut self) -> Option<LeafRegionConstraint<I, S>> {
+        self.0.pop()
     }
 
     fn compare_and_relation(&self, other: &And<I, S>) -> AndRelation {
