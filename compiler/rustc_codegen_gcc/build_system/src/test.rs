@@ -787,6 +787,7 @@ const PROJECTS: &[Project] = &[
     // fails on the nightly we use no matter which backend produces the code.
     Project::new("https://github.com/rust-lang-nursery/lazy-static.rs")
         .test_harness_arguments(&["--skip", "ui", "--exact"]),
+    Project::new("https://github.com/taiki-e/portable-atomic"),
     Project::new("https://github.com/BurntSushi/memchr"),
     Project::new("https://github.com/rust-lang/log"),
     Project::new("https://github.com/rust-random/getrandom"),
