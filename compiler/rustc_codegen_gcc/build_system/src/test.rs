@@ -792,16 +792,17 @@ const PROJECTS: &[Project] = &[
     Project::new("https://github.com/marshallpierce/rust-base64"),
     Project::new("https://github.com/serde-rs/serde"),
     Project::new("https://github.com/rayon-rs/rayon"),
+    // regex 1.12.2, the version rustc depends on.
     Project::new("https://github.com/rust-lang/regex")
-        .commit("341f207c1071f7290e3f228c710817c280c8dca1")
-        .test_cargo_arguments(&["--tests"])
-        .test_harness_arguments(&["-q"]),
+        .commit("5ea3eb1e95f0338e283f5f0b4681f0891a1cd836")
+        .test_cargo_arguments(&["--tests"]),
     // The test suite refuses to build unless every feature is enabled; it otherwise spawns a
     // nested `cargo test --all-features` which would not use this backend.
     Project::new("https://github.com/time-rs/time").cargo_arguments(&["--all-features"]),
-    Project::new("https://github.com/rust-random/rand")
-        .commit("1f4507a8e1cf8050e4ceef95eeda8f64645b6719")
-        .cargo_arguments(&["--workspace"]),
+    Project::new("https://github.com/rust-lang/regex")
+        .commit("5ea3eb1e95f0338e283f5f0b4681f0891a1cd836")
+        .cargo_arguments(&["-p", "regex-automata"])
+        .test_cargo_arguments(&["--lib"]),
     Project::new("https://github.com/bitflags/bitflags"),
     Project::new("https://github.com/dtolnay/itoa"),
     // The `ui` test compares against the diagnostics of the compiler it was blessed with, so it
@@ -810,6 +811,10 @@ const PROJECTS: &[Project] = &[
         .test_harness_arguments(&["--skip", "ui", "--exact"]),
     Project::new("https://github.com/taiki-e/portable-atomic"),
     Project::new("https://github.com/BurntSushi/memchr"),
+    // rand 0.9.3, the version rustc depends on.
+    Project::new("https://github.com/rust-random/rand")
+        .commit("1aeee9f4c506f9f737c6c37c169ccdc365bfbabf")
+        .cargo_arguments(&["--workspace"]),
     Project::new("https://github.com/rust-lang/log"),
     Project::new("https://github.com/rust-random/getrandom"),
     Project::new("https://github.com/rust-lang/cfg-if"),
