@@ -1052,7 +1052,7 @@ fn read_significant_comments(file_name: &Path) -> Result<HashMap<String, String>
     let reader = BufReader::new(file);
 
     // Matches `// rustfmt-{name}: {value}`
-    let old_pattern = r"^\s*//\s+rustfmt-(?P<name>[A-Za-z_]+)\s?:\s*(?P<value>\S+)$";
+    let old_pattern = r"^\s*//\s*rustfmt-(?P<name>[A-Za-z_]+)\s?:\s*(?P<value>\S+)$";
     let old_regex = regex::Regex::new(old_pattern).expect("failed creating old pattern");
 
     // Matches `//@ rustfmt-{name}: {value}`
