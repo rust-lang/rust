@@ -2380,7 +2380,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     pub(super) fn check_test_binder_body(&self, body: TestBinderBody<'tcx>) {
-        let TestBinderBody { foralls, exists, constraints, predicates } = body;
+        let TestBinderBody { span, foralls, exists, constraints, predicates } = body;
         if !predicates.is_empty() {
             for (predicate, span) in predicates {
                 let cause = traits::ObligationCause::misc(span, self.body_def_id);
@@ -2400,6 +2400,10 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
             Ok(()) => constraints,
             Err(_guar) => ty::region_constraint::RegionConstraint::new_true(),
         };
+        if constraints.is_false() {
+            self.tcx().dcx().span_err(span, "top level false constraints are not supported");
+            return;
+        }
 
         self.infcx.register_solver_region_constraint(constraints);
 
@@ -2479,6 +2483,13 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
                 u,
             )
             .with_spans(forall.span);
+            if constraint.is_false() {
+                self.tcx().dcx().span_err(forall.span, "forall evaluated to false");
+                self.infcx.overwrite_solver_region_constraint(
+                    ty::region_constraint::RegionConstraint::new_true(),
+                );
+                return;
+            }
             if let Some(assert_on_exit) = &forall.assert_on_exit {
                 self.check_test_binder_region_constraints(forall.span, assert_on_exit, &constraint);
             }
@@ -2798,6 +2809,7 @@ struct RedundantLifetimeArgsLint<'tcx> {
 
 #[derive(Clone, Debug, TypeFoldable, TypeVisitable)]
 pub(crate) struct TestBinderBody<'tcx> {
+    pub span: Span,
     pub foralls: Vec<TestBinderForall<'tcx>>,
     pub exists: Vec<TestBinderExists<'tcx>>,
     /// Constraints to be inserted directly into constraint storage to be proven

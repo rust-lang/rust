@@ -4096,6 +4096,7 @@ pub struct TestBinderConstraints {
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct TestBinderBody {
+    pub span: Span,
     pub foralls: ThinVec<TestBinderForall>,
     pub exists: ThinVec<TestBinderExists>,
     pub constraints: Vec<TestBinderConstraint>,
