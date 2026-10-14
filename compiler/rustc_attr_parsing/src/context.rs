@@ -252,6 +252,7 @@ attribute_parsers!(
         Single<RustcObjcClassParser>,
         Single<RustcObjcSelectorParser>,
         Single<RustcScalableVectorParser>,
+        Single<RustcShowSpans>,
         Single<RustcSimdMonomorphizeLaneLimitParser>,
         Single<RustcSkipDuringMethodDispatchParser>,
         Single<RustcTestMarkerParser>,
