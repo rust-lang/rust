@@ -410,6 +410,9 @@ impl<'tcx> MiniGraph<'tcx> {
                     &AddCombination(..) | &AddVar(..) => {}
                     // FIXME(-Zassumptions-on-binders): we probably need to handle this in some manner
                     &OverwriteSolverRegionConstraint { .. } => {}
+                    &AddSolverLeafRegionConstraint(_i) => {
+                        // FIXME: support leak check with leaf region outlives
+                    }
                 }
             }
         } else {
