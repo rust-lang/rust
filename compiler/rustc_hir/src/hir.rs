@@ -4530,6 +4530,7 @@ impl FnHeader {
 
 #[derive(Debug, Clone, Copy, StableHash)]
 pub struct TestBinderBody<'hir> {
+    pub span: Span,
     pub foralls: &'hir [TestBinderForall<'hir>],
     pub exists: &'hir [TestBinderExists<'hir>],
     /// Constraints to be inserted directly into constraint storage to be proven

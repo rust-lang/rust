@@ -2731,6 +2731,7 @@ impl<'a> Parser<'a> {
         let mut exists = ThinVec::new();
         let mut constraints = Vec::new();
         let mut predicates = Vec::new();
+        let mut span = self.token.span;
         self.parse_delim_comma_seq(exp!(OpenBrace), exp!(CloseBrace), |this| {
             match this.token.ident() {
                 Some((Ident { name: sym::predicates, .. }, IdentKind::Normal)) => {
@@ -2749,7 +2750,8 @@ impl<'a> Parser<'a> {
             }
             Ok(())
         })?;
-        Ok(TestBinderBody { foralls, exists, constraints, predicates })
+        span = span.to(self.prev_token.span);
+        Ok(TestBinderBody { foralls, exists, constraints, predicates, span })
     }
 
     pub fn parse_test_binder_forall(&mut self) -> PResult<'a, TestBinderForall> {
