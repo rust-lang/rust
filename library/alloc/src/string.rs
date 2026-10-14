@@ -940,6 +940,10 @@ impl String {
     /// into a `String` with the [`from_raw_parts`] function, allowing
     /// the destructor to perform the cleanup.
     ///
+    /// If `capacity == 0`, then `pointer` may be dangling. Otherwise,
+    /// it will always be valid for reads and writes over `capacity`
+    /// bytes, and point to the start of the string.
+    ///
     /// [`from_raw_parts`]: String::from_raw_parts
     ///
     /// # Examples
