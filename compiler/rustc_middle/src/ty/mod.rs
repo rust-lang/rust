@@ -1156,20 +1156,20 @@ impl<'tcx> TypingEnv<'tcx> {
 
     /// The `TypingEnv` which should be for everything happens after HIR typeck
     /// up-to and including borrowck itself.
-    pub fn post_typeck_until_borrowck(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> TypingEnv<'tcx> {
+    pub fn post_typeck_through_borrowck(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> TypingEnv<'tcx> {
         let param_env = tcx.param_env(def_id.to_def_id());
         TypingEnv::new(param_env, ty::TypingMode::borrowck(tcx, def_id))
     }
 
-    /// Ideally we just use `TypingMode::post_typeck_until_borrowck`.
+    /// Ideally we just use `TypingMode::post_typeck_through_borrowck`.
     /// But that's not compatible with the old solver yet.
     ///
     /// FIXME: this should not be needed in the long term.
-    pub fn post_typeck_until_borrowck_for_mir_build(
+    pub fn post_typeck_through_borrowck_for_mir_build(
         tcx: TyCtxt<'tcx>,
         def_id: LocalDefId,
     ) -> TypingEnv<'tcx> {
-        if tcx.use_typing_mode_post_typeck_until_borrowck() {
+        if tcx.use_typing_mode_post_typeck_through_borrowck() {
             TypingEnv::new(tcx.param_env(def_id.to_def_id()), ty::TypingMode::borrowck(tcx, def_id))
         } else {
             // FIXME(#132279): We're in a body, we should use a typing
@@ -1210,7 +1210,7 @@ impl<'tcx> TypingEnv<'tcx> {
             TypingMode::Coherence
             | TypingMode::Reflection
             | TypingMode::Typeck { .. }
-            | TypingMode::PostTypeckUntilBorrowck { .. }
+            | TypingMode::PostTypeckThroughBorrowck { .. }
             | TypingMode::PostBorrowck { .. } => {}
             TypingMode::PostAnalysis | TypingMode::Codegen => return self.as_query_input(value),
         }
@@ -1235,7 +1235,7 @@ impl<'tcx> TypingEnv<'tcx> {
             TypingMode::Coherence
             | TypingMode::Reflection
             | TypingMode::Typeck { .. }
-            | TypingMode::PostTypeckUntilBorrowck { .. }
+            | TypingMode::PostTypeckThroughBorrowck { .. }
             | TypingMode::PostBorrowck { .. }
             | TypingMode::PostAnalysis => {}
             TypingMode::Codegen => return self.as_query_input(value),

@@ -627,7 +627,7 @@ impl<'tcx> LateContext<'tcx> {
     /// building a new `InferCtxt`.
     pub fn typing_mode(&self) -> TypingMode<'tcx> {
         if let Some(body_id) = self.enclosing_body
-            && self.tcx.use_typing_mode_post_typeck_until_borrowck()
+            && self.tcx.use_typing_mode_post_typeck_through_borrowck()
         {
             let def_id = self.tcx.hir_enclosing_body_owner(body_id.hir_id);
             TypingMode::post_borrowck_analysis(self.tcx, def_id)
