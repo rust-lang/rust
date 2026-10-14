@@ -2569,7 +2569,10 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
                 }
                 TestBinderItem::Constraint(constraint) => {
                     match validate(self.tcx(), &constraint, span) {
-                        Ok(()) => self.infcx.register_solver_region_constraint(constraint),
+                        Ok(()) => self.infcx.register_solver_region_constraint(
+                            constraint,
+                            ty::VisibleForLeakCheck::Unreachable,
+                        ),
                         Err(_guar) => (),
                     }
                 }

@@ -86,8 +86,49 @@ pub struct RegionConstraintData<'tcx> {
 pub type SolverRegionConstraint<'tcx> =
     rustc_type_ir::region_constraint::RegionConstraint<TyCtxt<'tcx>, Span>;
 
+/// Leaf region constraint with additional info that we don't care in
+/// deduplication and evaluation. But they're necessary for undo log
+/// or leak check.
 #[derive(Clone, Debug)]
-pub struct SolverRegionConstraintData<'tcx>(SolverRegionConstraint<'tcx>);
+pub struct SolverLeafRegionConstraint<'tcx> {
+    // FIXME(-Zassumptions-on-binders): borrow rather than clone if it improves perf.
+    pub leaf: rustc_type_ir::region_constraint::LeafRegionConstraint<TyCtxt<'tcx>>,
+    pub visible_for_leak_check: ty::VisibleForLeakCheck,
+    pub is_duplicate: bool,
+    pub span: Span,
+}
+
+// Only used to name the tuple field. Enum is too verbose.
+type IsDuplicate = bool;
+
+#[derive(Clone, Debug)]
+pub struct SolverRegionConstraintData<'tcx> {
+    constraint: SolverRegionConstraint<'tcx>,
+    // This is used to store info lost in deduplication.
+    // The first field is the index to `and_constraint`.
+    //
+    // The motivation is to support snapshot-based leak check. To achieve that,
+    // we need to know the `VisibleForLeakCheck` for each added leaf constraint
+    // regardless of duplication.
+    // We can't store the visibility directly in the region constraint,
+    // since deduplication requires merging visibilities and merged visibilities
+    // can't be restored in `probe/commit_if_ok` rollback. Besides, storing visibilities
+    // in the region constraint would add so much boilerplate to region constraint
+    // handling since we only have a few places that care about `VisibleForLeakCheck`.
+    // We can't store the visibility on the undo log entry either since we don't
+    // push entries if we're not in a snapshot.
+    // So we have to use a separate list here to record visibilites.
+    // `IsDuplicate` is necessary even if we don't have leak check. Otherwise
+    // we can't decide whether to pop a leaf constraint when rolling back.
+    // `IsDuplicate` can be put on the undo log entry but is stored here to avoid leaking
+    // storage details out. This doesn't matter much.
+    //
+    // FIXME(-Zassumptions-on-binders): rework the storage to be a list of
+    // `(RegionConstraint, VisibleForLeakCheck)` rather than one big combined
+    // region constraint. That will clean all this up.
+    // See project-assumptions-on-binders#60.
+    leafs_not_deduplicated: Vec<(usize, ty::VisibleForLeakCheck, IsDuplicate)>,
+}
 
 impl<'tcx> Default for SolverRegionConstraintData<'tcx> {
     fn default() -> Self {
@@ -97,16 +138,72 @@ impl<'tcx> Default for SolverRegionConstraintData<'tcx> {
 
 impl<'tcx> SolverRegionConstraintData<'tcx> {
     pub(crate) fn new() -> Self {
-        Self(SolverRegionConstraint::new_true())
+        Self { constraint: SolverRegionConstraint::new_true(), leafs_not_deduplicated: Vec::new() }
     }
 
     pub(crate) fn get_constraint(&self) -> SolverRegionConstraint<'tcx> {
-        self.0.clone()
+        self.constraint.clone()
     }
 
     #[instrument(level = "debug", skip(self))]
     pub(crate) fn overwrite(&mut self, constraint: SolverRegionConstraint<'tcx>) {
-        self.0 = constraint;
+        self.constraint = constraint;
+    }
+
+    #[instrument(level = "debug", skip(self, span), ret)]
+    pub(crate) fn add_leaf_constraint(
+        &mut self,
+        leaf_constraint: rustc_type_ir::region_constraint::LeafRegionConstraint<TyCtxt<'tcx>>,
+        vis: ty::VisibleForLeakCheck,
+        span: Span,
+    ) -> Option<usize> {
+        let prev_len = self.constraint.and_constraint.len();
+        let leaf_index = self.constraint.and_constraint.add(leaf_constraint, span);
+        let is_duplicate = self.constraint.and_constraint.len() == prev_len;
+        leaf_index.map(|leaf_index| {
+            self.leafs_not_deduplicated.push((leaf_index, vis, is_duplicate));
+            self.leafs_not_deduplicated.len() - 1
+        })
+    }
+
+    pub(crate) fn pop_leaf_constraint(&mut self) {
+        let (deduplicated_index, _vis, is_duplicate) = self.leafs_not_deduplicated.pop().unwrap();
+        if !is_duplicate {
+            self.constraint.and_constraint.pop().unwrap();
+            assert_eq!(self.constraint.and_constraint.len(), deduplicated_index);
+        }
+    }
+
+    pub(crate) fn get_leaf(&self, index: usize) -> Option<SolverLeafRegionConstraint<'tcx>> {
+        self.leafs_not_deduplicated.get(index).map(
+            |&(deduplicated_index, visible_for_leak_check, is_duplicate)| {
+                let (leaf, span) = &self.constraint.and_constraint[deduplicated_index];
+                SolverLeafRegionConstraint {
+                    leaf: leaf.clone(),
+                    visible_for_leak_check,
+                    is_duplicate,
+                    span: *span,
+                }
+            },
+        )
+    }
+
+    pub(crate) fn iter_leafs(&self) -> impl Iterator<Item = SolverLeafRegionConstraint<'tcx>> {
+        self.leafs_not_deduplicated.iter().map(
+            |&(deduplicated_index, visible_for_leak_check, is_duplicate)| {
+                let (leaf, span) = &self.constraint.and_constraint[deduplicated_index];
+                SolverLeafRegionConstraint {
+                    leaf: leaf.clone(),
+                    visible_for_leak_check,
+                    is_duplicate,
+                    span: *span,
+                }
+            },
+        )
+    }
+
+    pub(crate) fn leafs_len(&self) -> usize {
+        self.leafs_not_deduplicated.len()
     }
 }
 
@@ -357,6 +454,9 @@ pub(crate) enum UndoLog<'tcx> {
 
     /// Overwrite the `-Zassumptions-on-binders` storage
     OverwriteSolverRegionConstraint { old_constraint: Box<SolverRegionConstraint<'tcx>> },
+
+    /// We added the given leaf solver constraint.
+    AddSolverLeafRegionConstraint(usize),
 }
 
 #[derive(Copy, Clone, PartialEq)]
@@ -478,24 +578,42 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
             .push(OverwriteSolverRegionConstraint { old_constraint: Box::new(old_constraint) });
     }
 
-    pub fn register_solver_constraint(&mut self, constraint: SolverRegionConstraint<'tcx>) {
+    pub fn register_solver_constraint(
+        &mut self,
+        constraint: SolverRegionConstraint<'tcx>,
+        vis: ty::VisibleForLeakCheck,
+    ) {
         assert!(
             !constraint.has_escaping_bound_vars(),
             "solver region constraint has escaping bound vars, which is indicative of a bug in how constraints are handled: {constraint:?}",
         );
 
-        let old_constraint = self.storage.solver_data.get_constraint();
-        let new_constraint = rustc_type_ir::region_constraint::RegionConstraint::build_and(
-            constraint,
-            old_constraint.clone(),
-        );
+        if constraint.or_constraint.is_true() {
+            for (leaf, span) in constraint.and_constraint.into_iter() {
+                debug!(
+                    "RegionConstraintCollector: add_solver_leaf_region_constraint({:?}, {:?})",
+                    leaf, vis
+                );
+                if let Some(index) = self.storage.solver_data.add_leaf_constraint(leaf, vis, span) {
+                    self.undo_log.push(AddSolverLeafRegionConstraint(index));
+                }
+            }
+        } else {
+            // FIXME(-Zassumptions-on-binders): We should assert that the overwrite log is not used
+            // under `min_coroutine`.
+            let old_constraint = self.storage.solver_data.get_constraint();
+            let new_constraint = rustc_type_ir::region_constraint::RegionConstraint::build_and(
+                old_constraint.clone(),
+                constraint,
+            );
 
-        // FIXME(-Zassumptions-on-binders): This is pretty bad for perf, we don't make incremental
-        // changes to the region constraints, instead we just rewrite the entire thing every time
-        // and store the old version.
-        self.undo_log
-            .push(OverwriteSolverRegionConstraint { old_constraint: Box::new(old_constraint) });
-        self.storage.solver_data.overwrite(new_constraint);
+            // FIXME(-Zassumptions-on-binders): This is pretty bad for perf, we don't make incremental
+            // changes to the region constraints, instead we just rewrite the entire thing every time
+            // and store the old version.
+            self.undo_log
+                .push(OverwriteSolverRegionConstraint { old_constraint: Box::new(old_constraint) });
+            self.storage.solver_data.overwrite(new_constraint);
+        }
     }
 
     pub(super) fn start_snapshot(&self) -> RegionSnapshot {
@@ -949,6 +1067,10 @@ impl<'tcx> Rollback<UndoLog<'tcx>> for RegionConstraintStorage<'tcx> {
             }
             OverwriteSolverRegionConstraint { old_constraint } => {
                 self.solver_data.overwrite(*old_constraint);
+            }
+            AddSolverLeafRegionConstraint(index) => {
+                self.solver_data.pop_leaf_constraint();
+                assert_eq!(self.solver_data.leafs_len(), index);
             }
         }
     }
