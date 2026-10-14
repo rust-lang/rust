@@ -212,8 +212,10 @@ impl CodegenBackend for LlvmCodegenBackend {
         // -Ztpde requires the TPDE pass plugin, which may not be available. If TPDE is used but not available,
         // we emit an early error here and abort compilation.
         {
-            match llvm::TpdeWrapper::get_or_init(&sess.opts.sysroot, &sess.opts.unstable_opts.tpde)
-            {
+            match llvm::TpdeWrapper::get_or_init(
+                &sess.opts.sysroot,
+                &sess.opts.unstable_opts.llvm_tpde,
+            ) {
                 Ok(_) => {}
                 Err(llvm::TpdeLibraryError::NotFound { err }) => {
                     sess.dcx().emit_fatal(crate::diagnostics::TpdeComponentMissing { err });
@@ -221,6 +223,14 @@ impl CodegenBackend for LlvmCodegenBackend {
                 Err(llvm::TpdeLibraryError::LoadFailed { err }) => {
                     sess.dcx().emit_fatal(crate::diagnostics::TpdeComponentUnavailable { err });
                 }
+            }
+
+            if sess.opts.unstable_opts.llvm_tpde.is_some()
+                && !matches!(sess.opts.optimize, OptLevel::No | OptLevel::Less)
+            {
+                sess.dcx().emit_warn(crate::diagnostics::TpdeHighOptLevel {
+                    opt_level: sess.opts.optimize,
+                });
             }
         }
 
