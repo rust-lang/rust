@@ -83,6 +83,8 @@ fn main() {
     //~^ WARN incorrect NaN comparison
 
     shadowed::check();
+    nested_operands();
+    macro_paths();
 
     let _ = 3.3 == f64::NAN;
     //~^ WARN incorrect NaN comparison
@@ -123,6 +125,52 @@ fn parameter_ref(x: &f32) {
     //~^ WARN incorrect NaN comparison
 }
 
+fn nested_operands() {
+    let x = 1.0f64;
+    let _ = &x as &f64 == &f64::NAN;
+    //~^ WARN incorrect NaN comparison
+    let _ = { &{ 3.3 } } != &f64::NAN;
+    //~^ WARN incorrect NaN comparison
+    let _ = &&&3.3 == &&&f64::NAN;
+    //~^ WARN incorrect NaN comparison
+    let b = &&&3.3;
+    let _ = &&&f64::NAN != b;
+    //~^ WARN incorrect NaN comparison
+    let b = &mut 3.3;
+    let _ = b != &f64::NAN;
+    //~^ WARN incorrect NaN comparison
+    let b = &3.3;
+    let _ = &(<f64>::NAN) == b;
+    //~^ WARN incorrect NaN comparison
+    let b = &3.3;
+    let _ = b != &{ f64::NAN };
+    //~^ WARN incorrect NaN comparison
+    let b = &&3.3;
+    let _ = &{ &{ f64::NAN } } == b;
+    //~^ WARN incorrect NaN comparison
+
+    let b = &(-3.3);
+    let _ = b != &f16::NAN;
+    //~^ WARN incorrect NaN comparison
+    let b = &(3.3 + 0.0);
+    let _ = b == &f128::NAN;
+    //~^ WARN incorrect NaN comparison
+
+    macro_rules! borrowed { () => { &3.3 }; }
+    let _ = borrowed!() != &f64::NAN;
+    //~^ WARN incorrect NaN comparison
+}
+
+pub type MacroFloat = f64;
+
+fn macro_paths() {
+    #[allow(unused_macros)]
+    macro_rules! nan { () => { $crate::MacroFloat::NAN }; }
+    let b = &3.3;
+    let _ = b != &nan!();
+    //~^ WARN incorrect NaN comparison
+}
+
 mod shadowed {
     #[allow(dead_code, non_camel_case_types)]
     struct f64;
@@ -134,6 +182,9 @@ mod shadowed {
         //~^ WARN incorrect NaN comparison
         let c = &4.4;
         if c != &Float::NAN {}
+        //~^ WARN incorrect NaN comparison
+        let d = &5.5;
+        if d != &Float::r#NAN {}
         //~^ WARN incorrect NaN comparison
     }
 }

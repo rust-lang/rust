@@ -2,6 +2,7 @@ use std::iter;
 
 use rustc_abi::{BackendRepr, TagEncoding, Variants, WrappingRange};
 use rustc_ast as ast;
+use rustc_ast::util::parser::ExprPrecedence;
 use rustc_attr_ir::find_attr;
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_hir as hir;
@@ -113,8 +114,8 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `invalid_nan_comparisons` lint checks comparison with `f32::NAN` or `f64::NAN`
-    /// as one of the operand.
+    /// The `invalid_nan_comparisons` lint checks comparisons with the `NAN` constants
+    /// of `f16`, `f32`, `f64`, and `f128`.
     ///
     /// ### Example
     ///
@@ -127,8 +128,8 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// NaN does not compare meaningfully to anything – not
-    /// even itself – so those comparisons are always false.
+    /// NaN compares unequal to every floating-point value, including itself.
+    /// Use the `is_nan` method to check whether a value is NaN.
     INVALID_NAN_COMPARISONS,
     Warn,
     "detects invalid floating point NaN comparisons"
@@ -229,28 +230,50 @@ fn lint_nan<'tcx>(
     l: &'tcx hir::Expr<'tcx>,
     r: &'tcx hir::Expr<'tcx>,
 ) {
-    fn nan_ty(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<ty::FloatTy> {
-        let expr = expr.peel_blocks().peel_borrows();
+    fn nan_ty(cx: &LateContext<'_>, mut expr: &hir::Expr<'_>) -> Option<ty::FloatTy> {
+        loop {
+            expr = expr.peel_blocks();
+            match expr.kind {
+                ExprKind::AddrOf(.., inner) => expr = inner,
+                _ => break,
+            }
+        }
         let ExprKind::Path(qpath) = expr.kind else { return None };
         let def_id = cx.typeck_results().qpath_res(&qpath, expr.hir_id).opt_def_id()?;
-        if !matches!(
-            cx.tcx.get_diagnostic_name(def_id),
-            Some(sym::f16_nan | sym::f32_nan | sym::f64_nan | sym::f128_nan)
-        ) {
-            return None;
-        }
-        match cx.tcx.type_of(def_id).instantiate_identity().skip_norm_wip().kind() {
-            ty::Float(fty) => Some(*fty),
-            _ => None,
-        }
+        Some(match cx.tcx.get_diagnostic_name(def_id)? {
+            sym::f16_nan => ty::FloatTy::F16,
+            sym::f32_nan => ty::FloatTy::F32,
+            sym::f64_nan => ty::FloatTy::F64,
+            sym::f128_nan => ty::FloatTy::F128,
+            _ => return None,
+        })
     }
 
-    fn nan_method_path(cx: &LateContext<'_>, nan: &hir::Expr<'_>) -> Option<String> {
-        let expr = nan.peel_blocks().peel_borrows();
-        let path = cx.sess().source_map().span_to_snippet(expr.span).ok()?;
-        path.strip_suffix("NAN")
-            .filter(|path| path.contains("::"))
-            .map(|path| format!("{path}is_nan"))
+    fn nan_method_path(
+        cx: &LateContext<'_>,
+        mut nan: &hir::Expr<'_>,
+        float_ty: ty::FloatTy,
+        cmp_span: Span,
+    ) -> Option<String> {
+        loop {
+            match nan.kind {
+                ExprKind::AddrOf(.., inner) => nan = inner,
+                ExprKind::Block(block, _) if block.stmts.is_empty() => nan = block.expr?,
+                _ => break,
+            }
+        }
+        let ExprKind::Path(hir::QPath::TypeRelative(ty, _)) = nan.kind else {
+            return None;
+        };
+        if !ty.span.from_expansion() && cmp_span.contains(ty.span) {
+            let ty = cx.sess().source_map().span_to_snippet(ty.span).ok()?;
+            Some(format!("<{ty}>::is_nan"))
+        } else if matches!(float_ty, ty::FloatTy::F32 | ty::FloatTy::F64) {
+            let krate = std_or_core(cx)?;
+            Some(format!("::{krate}::primitive::{}::is_nan", float_ty.name_str()))
+        } else {
+            None
+        }
     }
 
     fn eq_ne_suggestion<'a>(
@@ -261,11 +284,18 @@ fn lint_nan<'tcx>(
         float_ty: ty::FloatTy,
         is_ne: bool,
     ) -> InvalidNanComparisonsSuggestion {
-        let (Some(value_span), Some(nan_span)) =
-            (value.span.find_ancestor_inside(cmp.span), nan.span.find_ancestor_inside(cmp.span))
-        else {
+        if cmp.span.from_expansion() {
+            return InvalidNanComparisonsSuggestion::Spanless;
+        }
+        let (Some(value_span), Some(nan_span)) = (
+            value.span.find_ancestor_inside_same_ctxt(cmp.span),
+            nan.span.find_ancestor_inside_same_ctxt(cmp.span),
+        ) else {
             return InvalidNanComparisonsSuggestion::Spanless;
         };
+        if value_span.overlaps(nan_span) {
+            return InvalidNanComparisonsSuggestion::Spanless;
+        }
         let remove_nan = if nan_span.lo() < value_span.lo() {
             nan_span.until(value_span)
         } else {
@@ -275,43 +305,29 @@ fn lint_nan<'tcx>(
         let Some(mut ty) = cx.typeck_results().expr_ty_opt(value) else {
             return InvalidNanComparisonsSuggestion::Spanless;
         };
-        let mut operand = value.peel_blocks();
-        let Some(mut operand_span) = operand.span.find_ancestor_inside(value_span) else {
-            return InvalidNanComparisonsSuggestion::Spanless;
-        };
-        let outer_span = operand_span;
         let mut deref_count = 0;
         while let ty::Ref(_, inner, _) = *ty.kind() {
-            if let ExprKind::AddrOf(_, _, inner_expr) = operand.kind
-                && let peeled = inner_expr.peel_blocks()
-                && let Some(peeled_span) = peeled.span.find_ancestor_inside(operand_span)
-            {
-                operand = peeled;
-                operand_span = peeled_span;
-            } else {
-                deref_count += 1;
-            }
+            deref_count += 1;
             ty = inner;
         }
-        let matches_float = match *ty.kind() {
-            ty::Float(fty) => fty == float_ty,
-            ty::Infer(ty::FloatVar(_)) => true,
-            _ => false,
-        };
-        if !matches_float {
+        if !matches!(*ty.kind(), ty::Float(fty) if fty == float_ty) {
             return InvalidNanComparisonsSuggestion::Spanless;
         }
-        let written_borrow = outer_span.until(operand_span);
         let neg = if is_ne { "!" } else { "" };
-        let Some(method_path) = nan_method_path(cx, nan) else {
+        let Some(method_path) = nan_method_path(cx, nan, float_ty, cmp.span) else {
             return InvalidNanComparisonsSuggestion::Spanless;
         };
+        let (open, suffix) = if deref_count != 0 && cx.precedence(value) < ExprPrecedence::Prefix {
+            ("(", "))")
+        } else {
+            ("", ")")
+        };
         InvalidNanComparisonsSuggestion::Ufcs {
-            prefix: format!("{neg}{method_path}({}", "*".repeat(deref_count)),
-            prefix_span: operand_span.shrink_to_lo(),
-            close_span: operand_span.shrink_to_hi(),
+            prefix: format!("{neg}{method_path}({}{open}", "*".repeat(deref_count)),
+            prefix_span: value_span.shrink_to_lo(),
+            suffix,
+            close_span: value_span.shrink_to_hi(),
             remove_nan,
-            remove_borrow: (!written_borrow.is_empty()).then_some(written_borrow),
         }
     }
 
