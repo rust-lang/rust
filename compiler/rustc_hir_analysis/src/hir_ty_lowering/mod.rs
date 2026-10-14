@@ -1864,6 +1864,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             return Vec::new();
         }
 
+        // FIXME: Support non-lifetime binders without suggesting unrelated traits.
+        if qself_ty.has_non_region_bound_vars() {
+            return Vec::new();
+        }
+
         tcx.all_traits_including_private()
             .filter(|trait_def_id| {
                 // Consider only traits with the associated type
