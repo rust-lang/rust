@@ -77,26 +77,34 @@ pub fn get_handle(handle_id: u32) -> io::Result<c::HANDLE> {
     }
 }
 
-fn is_console(handle: c::HANDLE) -> bool {
-    // `GetConsoleMode` will return false (0) if this is a pipe (we don't care about the reported
-    // mode). This will only detect Windows Console, not other terminals connected to a pipe like
-    // MSYS. Which is exactly what we need, as only Windows Console needs a conversion to UTF-16.
-    let mut mode = 0;
-    unsafe { c::GetConsoleMode(handle, &mut mode) != 0 }
-}
-
-/// Returns true if the attached console's code page is currently UTF-8.
+/// Returns true if `handle` refers to a proper console (aka conhost).
 #[cfg(not(target_vendor = "win7"))]
-fn is_utf8_console() -> bool {
-    unsafe { c::GetConsoleOutputCP() == c::CP_UTF8 }
-}
-
-#[cfg(target_vendor = "win7")]
-fn is_utf8_console() -> bool {
-    // Windows 7 has a fun "feature" where WriteFile on a console handle will return
-    // the number of UTF-16 code units written and not the number of bytes from the input string.
-    // So we always claim the console isn't UTF-8 to trigger the WriteConsole fallback code.
-    false
+fn is_console(handle: c::HANDLE) -> bool {
+    cfg_select! {
+        target_vendor = "win7" => {
+            // `GetConsoleMode` will return false (0) if this is a pipe (we don't care about the reported
+            // mode). This will only detect Windows Console, not other terminals connected to a pipe like
+            // MSYS. Which is exactly what we need, as only Windows Console needs a conversion to UTF-16.
+            let mut mode = 0;
+            unsafe { c::GetConsoleMode(handle, &mut mode) != 0 }
+        }
+        _ => unsafe {
+            // `GetConsoleMode` incurs a remote RPC round-trip (= bad), so it's best avoided.
+            // `NtQueryVolumeInformationFile` lets us test the handle directly.
+            // The required `FILE_DEVICE_CONSOLE` type was introduced in Windows 8.
+            // Fun fact: `GetFileType` uses `NtQueryVolumeInformationFile` internally.
+            let mut io_status = MaybeUninit::<c::IO_STATUS_BLOCK>::uninit();
+            let mut device_info = MaybeUninit::<c::FILE_FS_DEVICE_INFORMATION>::uninit();
+            let status = c::NtQueryVolumeInformationFile(
+                handle,
+                io_status.as_mut_ptr(),
+                device_info.as_mut_ptr().cast(),
+                size_of_val(&device_info) as u32,
+                c::FileFsDeviceInformation,
+            );
+            status >= 0 && device_info.assume_init_ref().DeviceType == c::FILE_DEVICE_CONSOLE
+        },
+    }
 }
 
 fn write(handle_id: u32, data: &[u8], incomplete_utf8: &mut IncompleteUtf8) -> io::Result<usize> {
@@ -105,7 +113,12 @@ fn write(handle_id: u32, data: &[u8], incomplete_utf8: &mut IncompleteUtf8) -> i
     }
 
     let handle = get_handle(handle_id)?;
-    if !is_console(handle) || is_utf8_console() {
+
+    // At the time of writing, console IO on Windows is high latency:
+    // Windows has no TTY buffers, making every call a fully synchronous RPC.
+    // So, while always deferring to `write_console_utf16` wastes valuable heap for
+    // our UTF16 conversion, it handily beats doing 2 (or more) costly RPC round-trips.
+    if !is_console(handle) {
         unsafe {
             let handle = Handle::from_raw_handle(handle);
             let ret = handle.write(data);
