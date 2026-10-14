@@ -126,8 +126,12 @@ impl<'a> Parser<'a> {
         force_collect: ForceCollect,
         allow_const_block_items: AllowConstBlockItems,
     ) -> PResult<'a, Option<Box<Item>>> {
-        let fn_parse_mode =
-            FnParseMode { req_name: |_, _| true, context: FnContext::Free, req_body: true };
+        let fn_parse_mode = FnParseMode {
+            req_name: |_, _| true,
+            context: FnContext::Free,
+            req_body: true,
+            allow_const_params: true,
+        };
         self.parse_item_(fn_parse_mode, force_collect, allow_const_block_items)
             .map(|i| i.map(Box::new))
     }
@@ -1235,8 +1239,12 @@ impl<'a> Parser<'a> {
         &mut self,
         force_collect: ForceCollect,
     ) -> PResult<'a, Option<Option<Box<AssocItem>>>> {
-        let fn_parse_mode =
-            FnParseMode { req_name: |_, _| true, context: FnContext::Impl, req_body: true };
+        let fn_parse_mode = FnParseMode {
+            req_name: |_, _| true,
+            context: FnContext::Impl,
+            req_body: true,
+            allow_const_params: true,
+        };
         self.parse_assoc_item(fn_parse_mode, force_collect)
     }
 
@@ -1248,6 +1256,7 @@ impl<'a> Parser<'a> {
             req_name: |edition, _| edition >= Edition::Edition2018,
             context: FnContext::Trait,
             req_body: false,
+            allow_const_params: true,
         };
         self.parse_assoc_item(fn_parse_mode, force_collect)
     }
@@ -1594,6 +1603,7 @@ impl<'a> Parser<'a> {
             req_name: |_, is_dot_dot_dot| is_dot_dot_dot == IsDotDotDot::No,
             context: FnContext::Free,
             req_body: false,
+            allow_const_params: false,
         };
         Ok(self
             .parse_item_(
@@ -2514,8 +2524,12 @@ impl<'a> Parser<'a> {
             let err = if self.check_fn_front_matter(false, Case::Sensitive) {
                 let inherited_vis = Visibility { span: DUMMY_SP, kind: VisibilityKind::Inherited };
                 // We use `parse_fn` to get a span for the function
-                let fn_parse_mode =
-                    FnParseMode { req_name: |_, _| true, context: FnContext::Free, req_body: true };
+                let fn_parse_mode = FnParseMode {
+                    req_name: |_, _| true,
+                    context: FnContext::Free,
+                    req_body: true,
+                    allow_const_params: true,
+                };
                 match self.parse_fn(
                     &mut AttrVec::new(),
                     fn_parse_mode,
@@ -2717,6 +2731,7 @@ impl<'a> Parser<'a> {
         let mut exists = ThinVec::new();
         let mut constraints = Vec::new();
         let mut predicates = Vec::new();
+        let mut span = self.token.span;
         self.parse_delim_comma_seq(exp!(OpenBrace), exp!(CloseBrace), |this| {
             match this.token.ident() {
                 Some((Ident { name: sym::predicates, .. }, IdentKind::Normal)) => {
@@ -2735,7 +2750,8 @@ impl<'a> Parser<'a> {
             }
             Ok(())
         })?;
-        Ok(TestBinderBody { foralls, exists, constraints, predicates })
+        span = span.to(self.prev_token.span);
+        Ok(TestBinderBody { foralls, exists, constraints, predicates, span })
     }
 
     pub fn parse_test_binder_forall(&mut self) -> PResult<'a, TestBinderForall> {

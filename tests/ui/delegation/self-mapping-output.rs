@@ -109,7 +109,6 @@ mod no_constructor {
     impl Trait for W {
         reuse Trait::method { self.0 }
         //~^ ERROR: no field `0` on type `&no_constructor::W`
-        //~| ERROR: struct `no_constructor::W` has no field named `0`
         reuse Trait::r#static;
         //~^ WARN: function cannot return without recursing [unconditional_recursion]
         reuse Trait::raw_S { self.0 }
@@ -119,7 +118,6 @@ mod no_constructor {
     impl W {
         reuse Trait::method { self.0 }
         //~^ ERROR: no field `0` on type `&no_constructor::W`
-        //~| ERROR: struct `no_constructor::W` has no field named `0`
         reuse Trait::r#static;
         reuse Trait::raw_S { self.0 }
         //~^ ERROR: no field `0` on type `&no_constructor::W`
@@ -142,7 +140,7 @@ mod more_than_one_field {
     struct W(S, S, S);
     impl Trait for W {
         reuse Trait::method { self.0 }
-        //~^ ERROR: missing fields `1` and `2` in initializer of `more_than_one_field::W`
+        //~^ ERROR: missing fields `0`, `1` and `2` in initializer of `more_than_one_field::W`
         reuse Trait::r#static;
         //~^ WARN: function cannot return without recursing [unconditional_recursion]
         reuse Trait::raw_S { self.0 }
@@ -150,7 +148,7 @@ mod more_than_one_field {
 
     impl W {
         reuse Trait::method { self.0 }
-        //~^ ERROR: missing fields `1` and `2` in initializer of `more_than_one_field::W`
+        //~^ ERROR: missing fields `0`, `1` and `2` in initializer of `more_than_one_field::W`
         reuse Trait::r#static;
         reuse Trait::raw_S { self.0 }
     }

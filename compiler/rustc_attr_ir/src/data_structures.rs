@@ -578,6 +578,13 @@ impl<E: rustc_span::SpanEncoder> rustc_serialize::Encodable<E> for DocAttribute 
 }
 
 #[derive(Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
+pub enum RustcShowSpansKind {
+    Expr,
+    Ty,
+    Path,
+}
+
+#[derive(Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
 pub enum RustcDumpLayoutKind {
     Align,
     BackendRepr,
@@ -1425,6 +1432,9 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_should_not_be_called_on_const_items]`
     RustcShouldNotBeCalledOnConstItems,
+
+    /// Represents `#[rustc_show_spans]`
+    RustcShowSpans(ThinVec<RustcShowSpansKind>),
 
     /// Represents `#[rustc_simd_monomorphize_lane_limit = "N"]`.
     RustcSimdMonomorphizeLaneLimit(Limit),

@@ -910,8 +910,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.hir_opt_name(id).unwrap_or_else(|| bug!("no name for {}", self.hir_id_to_string(id)))
     }
 
-    /// Given a node ID, gets a list of attributes associated with the AST
-    /// corresponding to the node-ID.
+    /// Retrieves the attributes associated with this hir ID.
     pub fn hir_attrs(self, id: HirId) -> &'tcx [Attribute] {
         self.hir_attr_map(id.owner).get(id.local_id)
     }

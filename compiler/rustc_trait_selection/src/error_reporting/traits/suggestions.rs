@@ -24,7 +24,6 @@ use rustc_infer::traits::ImplSource;
 use rustc_middle::middle::privacy::Level;
 use rustc_middle::traits::IsConstable;
 use rustc_middle::ty::adjustment::{Adjust, DerefAdjustKind};
-use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::print::{
     PrintPolyTraitClauseExt as _, PrintPolyTraitRefExt, PrintTraitClauseExt as _,
@@ -6339,8 +6338,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let Some(fn_def_id) = fn_def_id.as_local() else {
             // If it's not local, we can at least mention that the method is async, if it is.
             if self.tcx.asyncness(fn_def_id).is_async() {
+                let mut span: MultiSpan = self.tcx.def_span(fn_def_id).into();
+                span.push_span_context(self.tcx.def_span(self.tcx.parent(fn_def_id)));
                 err.span_note(
-                    self.tcx.def_span(fn_def_id),
+                    span,
                     format!(
                         "`{}::{}` is an `async fn` in trait, which does not \
                     automatically imply that its future is `{auto_trait}`",

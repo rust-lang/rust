@@ -337,30 +337,39 @@ fn sidebar_trait<'a>(
             ("provided-associated-consts", "Provided Associated Constants", prov_assoc_const),
             ("required-associated-types", "Required Associated Types", req_assoc),
             ("provided-associated-types", "Provided Associated Types", prov_assoc),
-            ("required-methods", "Required Methods", req_method),
-            ("provided-methods", "Provided Methods", prov_method),
-            ("foreign-impls", "Implementations on Foreign Types", foreign_impls),
         ]
         .into_iter()
         .map(|(id, title, items)| LinkBlock::new(Link::new(id, title), "", items)),
     );
+
+    let tcx = cx.tcx();
+    // Because of `rustc_must_implement_one_of`, we might have a trait with no "required methods"
+    // but still want the link in the sidebar, so we handle it on its own.
+    let mut req_method_link =
+        LinkBlock::new(Link::new("required-methods", "Required Methods"), "", req_method);
+    let rustc_middle::ty::TraitDef { must_implement_one_of, .. } = tcx.trait_def(t.def_id);
+    req_method_link.force_render = must_implement_one_of.is_some();
+    blocks.push(req_method_link);
+
+    blocks.push(LinkBlock::new(Link::new("provided-methods", "Provided Methods"), "", prov_method));
+
     sidebar_assoc_items(cx, it, blocks, deref_id_map);
 
-    // Move the foreign impls block after dyn compatibility note to match the order of the headings
-    // in the main content.
-    let foreign_impls_block = blocks.pop_if(|b| b.heading.href == "foreign-impls");
-    if !t.is_dyn_compatible(cx.tcx()) {
+    if !t.is_dyn_compatible(tcx) {
         blocks.push(LinkBlock::forced(
             Link::new("dyn-compatibility", "Dyn Compatibility"),
             "dyn-compatibility-note",
         ));
     }
-    if let Some(foreign_impls_block) = foreign_impls_block {
-        blocks.push(foreign_impls_block);
-    }
+
+    blocks.push(LinkBlock::new(
+        Link::new("foreign-impls", "Implementations on Foreign Types"),
+        "",
+        foreign_impls,
+    ));
 
     blocks.push(LinkBlock::forced(Link::new("implementors", "Implementors"), "impl"));
-    if t.is_auto(cx.tcx()) {
+    if t.is_auto(tcx) {
         blocks.push(LinkBlock::forced(
             Link::new("synthetic-implementors", "Auto Implementors"),
             "impl-auto",

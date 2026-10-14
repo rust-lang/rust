@@ -1190,6 +1190,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
             // These shims are enabled only when the caller is in the standard library.
+            "NtQueryVolumeInformationFile" if this.frame_in_std() => {
+                let [_handle, _iosb, _info, _length, _class] = this.check_shim_sig(
+                    shim_sig!(extern "system" fn(winapi::HANDLE, *_, *_, u32, i32) -> i32),
+                    (link_name, abi, args),
+                )?;
+                // Return an error to make std think that nothing is a console.
+                // This means the normal NtWriteFile is used for stdout/stderr, greatly simplifying our lives.
+                let not_implemented = this.eval_windows("c", "STATUS_NOT_IMPLEMENTED");
+                this.write_scalar(not_implemented, dest)?;
+            }
             "GetProcessHeap" if this.frame_in_std() => {
                 let [] = this.check_shim_sig(
                     shim_sig!(extern "system" fn() -> winapi::HANDLE),
@@ -1213,24 +1223,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     (link_name, abi, args),
                 )?;
                 // Pretend these does not exist / nothing happened, by returning zero.
-                this.write_null(dest)?;
-            }
-            "GetConsoleMode" if this.frame_in_std() => {
-                let [console, mode] = this.check_shim_sig(
-                    shim_sig!(extern "system" fn(winapi::HANDLE, *_) -> winapi::BOOL),
-                    (link_name, abi, args),
-                )?;
-                this.read_target_isize(console)?;
-                this.deref_pointer_as(mode, this.machine.layouts.u32)?;
-                // Indicate an error.
-                this.write_null(dest)?;
-            }
-            "GetFileType" if this.frame_in_std() => {
-                let [_file] = this.check_shim_sig(
-                    shim_sig!(extern "system" fn(winapi::HANDLE) -> u32),
-                    (link_name, abi, args),
-                )?;
-                // Return unknown file type.
                 this.write_null(dest)?;
             }
             "AddVectoredExceptionHandler" if this.frame_in_std() => {

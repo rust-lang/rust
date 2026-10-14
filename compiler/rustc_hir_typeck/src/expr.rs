@@ -5,6 +5,8 @@
 //!
 //! See [`rustc_hir_analysis::check`] for more context on type checking in general.
 
+use std::borrow::Cow;
+
 use rustc_abi::{FIRST_VARIANT, FieldIdx};
 use rustc_ast as ast;
 use rustc_ast::util::parser::ExprPrecedence;
@@ -24,11 +26,10 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{ExprKind, HirId, QPath, is_range_literal};
 use rustc_hir_analysis::diagnostics::{NoFieldOnType, NoVariantNamed};
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer as _;
-use rustc_infer::infer::{self, DefineOpaqueTypes, InferOk, RegionVariableOrigin};
+use rustc_infer::infer::{self, RegionVariableOrigin};
 use rustc_infer::traits::WellFormedLoc;
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase};
-use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, AdtKind, GenericArgsRef, Ty, TypeVisitableExt, Unnormalized};
 use rustc_session::diagnostics::feature_err;
@@ -636,7 +637,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     call_expr_and_args.map_or(expr.span, |(e, _)| e.span),
                     expr.span,
                     expr.hir_id,
-                    call_expr_and_args.is_some(),
+                    call_expr_and_args.map(|(_, args)| args),
                 )
                 .0
             }
@@ -1507,14 +1508,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 // Handle splatted method arguments
                 // self is already handled as `rcvr`, so it's never splatted here
-                let method_inputs = &method.sig.inputs()[1..];
+                let mut method_inputs = Cow::Borrowed(&method.sig.inputs()[1..]);
+                for (param, pos) in self.tcx.generics_of(method.def_id).own_arg_pos_consts() {
+                    let ty = self
+                        .tcx
+                        .type_of(param.def_id)
+                        .instantiate(self.tcx, method.args)
+                        .skip_norm_wip();
+                    // Insert function argument const param types back into the inputs.
+                    // We use pos - 1 since method_inputs skips self, but arg_pos counts it.
+                    method_inputs.to_mut().insert(pos as usize - 1, ty);
+                }
+
                 let method_tuple_args_flag =
                     TupleArgumentsFlag::with_fn_sig_kind(method.sig.fn_sig_kind, true);
 
                 self.check_argument_types(
                     segment.ident.span,
                     expr,
-                    method_inputs,
+                    &method_inputs,
                     method.sig.output(),
                     expected,
                     args,
@@ -1898,10 +1910,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         let adt_kind = adt.adt_kind();
 
+        let get_field_ident = |field: &ty::FieldDef| field.ident(tcx).normalize_to_macros_2_0();
         let mut remaining_fields = variant
             .fields
             .iter_enumerated()
-            .map(|(i, field)| (field.ident(tcx).normalize_to_macros_2_0(), (i, field)))
+            .map(|(i, field)| (get_field_ident(field), (i, field)))
             .collect::<UnordMap<_, _>>();
 
         let mut seen_fields = FxHashMap::default();
@@ -1919,40 +1932,64 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Type-check each field.
         for (idx, field) in hir_fields.iter().enumerate() {
-            let ident = tcx.adjust_ident(field.ident, variant.def_id);
-            let field_type = if let Some((i, v_field)) = remaining_fields.remove(&ident) {
-                seen_fields.insert(ident, field.span);
-                self.write_field_index(field.hir_id, i);
-
-                // We don't look at stability attributes on
-                // struct-like enums (yet...), but it's definitely not
-                // a bug to have constructed one.
-                if adt_kind != AdtKind::Enum {
-                    tcx.check_stability(v_field.did, Some(field.hir_id), field.span, None);
-                }
-
-                self.field_ty(field.span, v_field, args)
-            } else {
-                error_happened = true;
-                let guar = if let Some(prev_span) = seen_fields.get(&ident) {
-                    self.dcx().emit_err(FieldMultiplySpecifiedInInitializer {
-                        span: field.ident.span,
-                        prev_span: *prev_span,
-                        ident,
-                    })
+            let ident = if field.ident.name == kw::Underscore {
+                // We are processing delegation `Self` mapping field, we expect that it is a struct
+                // with one field, so if it is not true we emit an error as we can't infer
+                // what field to use to initialize the struct.
+                // The `_` is a keyword so if user uses it during struct initialization as a field name
+                // it will be error anyway.
+                if let [v_field] = &variant.fields[..] {
+                    Ok(get_field_ident(v_field))
                 } else {
-                    self.report_unknown_field(
-                        adt_ty,
-                        variant,
-                        expr,
-                        field,
-                        hir_fields,
-                        adt.variant_descr(),
-                    )
-                };
-
-                Ty::new_error(tcx, guar)
+                    Err(tcx.dcx().span_delayed_bug(
+                        field.ident.span,
+                        format!(
+                            "can not infer the delegation `Self` mapping field for {:?}",
+                            self.body_def_id
+                        ),
+                    ))
+                }
+            } else {
+                Ok(tcx.adjust_ident(field.ident, variant.def_id))
             };
+
+            let field_type = ident
+                .and_then(|ident| {
+                    if let Some((i, v_field)) = remaining_fields.remove(&ident) {
+                        seen_fields.insert(ident, field.span);
+                        self.write_field_index(field.hir_id, i);
+
+                        // We don't look at stability attributes on
+                        // struct-like enums (yet...), but it's definitely not
+                        // a bug to have constructed one.
+                        if adt_kind != AdtKind::Enum {
+                            tcx.check_stability(v_field.did, Some(field.hir_id), field.span, None);
+                        }
+
+                        Ok(self.field_ty(field.span, v_field, args))
+                    } else {
+                        error_happened = true;
+                        let guar = if let Some(prev_span) = seen_fields.get(&ident) {
+                            self.dcx().emit_err(FieldMultiplySpecifiedInInitializer {
+                                span: field.ident.span,
+                                prev_span: *prev_span,
+                                ident,
+                            })
+                        } else {
+                            self.report_unknown_field(
+                                adt_ty,
+                                variant,
+                                expr,
+                                field,
+                                hir_fields,
+                                adt.variant_descr(),
+                            )
+                        };
+
+                        Err(guar)
+                    }
+                })
+                .unwrap_or_else(|err| Ty::new_error(tcx, err));
 
             // Check that the expected field type is WF. Otherwise, we emit no use-site error
             // in the case of coercions for non-WF fields, which leads to incorrect error
@@ -2119,27 +2156,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 if let Some(_) = remaining_fields.remove(&ident) {
                                     let target_ty = self.field_ty(base_expr.span, f, args);
                                     let cause = self.misc(base_expr.span);
-                                    match self.at(&cause, self.param_env).sup(
-                                        // We're already using inference variables for any params,
-                                        // and don't allow converting between different structs,
-                                        // so there is no way this ever actually defines an opaque
-                                        // type. Thus choosing `Yes` is fine.
-                                        DefineOpaqueTypes::Yes,
-                                        target_ty,
-                                        fru_ty,
-                                    ) {
-                                        Ok(InferOk { obligations, value: () }) => {
-                                            self.register_predicates(obligations)
-                                        }
-                                        Err(_) => {
-                                            span_bug!(
-                                                cause.span,
-                                                "subtyping remaining fields of type changing FRU \
-                                                failed: {target_ty} != {fru_ty}: {}::{}",
-                                                variant.name,
-                                                ident.name,
-                                            );
-                                        }
+                                    if let Err(diag) =
+                                        self.demand_suptype_diag(cause.span, target_ty, fru_ty)
+                                    {
+                                        diag.delay_as_bug();
                                     }
                                 }
                                 self.deeply_resolve_ignoring_regions(fru_ty)

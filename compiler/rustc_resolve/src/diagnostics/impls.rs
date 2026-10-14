@@ -206,21 +206,18 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             .iter()
             .map(|(import, import_error)| {
                 if let Some(ModuleOrUniformRoot::Module(module_data)) = import.imported_module.get()
-                    && let ModuleKind::Def(DefKind::Mod, def_id, _, name) = module_data.kind
+                    && let ModuleKind::Def(DefKind::Mod, def_id, ..) = module_data.kind
                 {
-                    let Some(directive) = self.on_unknown_data(def_id) else {
+                    let Some((this, directive)) = self.on_unknown_data(def_id) else {
                         return CustomDiagnostic::default();
                     };
 
-                    let this = if let Some(name) = name {
-                        name.to_string()
-                    } else if let Some(crate_name) = &self.tcx.sess.opts.crate_name {
-                        crate_name.to_string()
-                    } else {
-                        "<unnamed crate>".to_string()
-                    };
                     let unresolved = import_error.segment.map(|s| s.name).unwrap_or(kw::Underscore);
-                    let args = FormatArgs { this, unresolved: unresolved.to_string(), .. };
+                    let args = FormatArgs {
+                        this: this.to_string(),
+                        unresolved: unresolved.to_string(),
+                        ..
+                    };
 
                     directive.eval(None, &args)
                 } else {
@@ -3867,12 +3864,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
     }
 
-    /// Gets the `#[diagnostic::on_unknown]` attribute data associated with this `DefId`.
-    pub(crate) fn on_unknown_data(&self, def_id: DefId) -> Option<&Directive> {
-        match def_id.as_local() {
+    /// Gets the name and `#[diagnostic::on_unknown]` attribute data associated with this `DefId`.
+    pub(crate) fn on_unknown_data(&self, def_id: DefId) -> Option<(Symbol, &Directive)> {
+        let directive = match def_id.as_local() {
             Some(local) => Some(self.on_unknown_data.get(&local)?.directive.as_ref()),
-            None => find_attr!(self.tcx, def_id, OnUnknown{ directive } => directive)?.as_deref(),
-        }
+            None => find_attr!(self.tcx, def_id, OnUnknown { directive } => directive)?.as_deref(),
+        }?;
+
+        let name =
+            self.expect_module(def_id).name().unwrap_or_else(|| self.tcx.crate_name(def_id.krate));
+
+        Some((name, directive))
     }
 }
 

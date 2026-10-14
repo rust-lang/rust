@@ -233,6 +233,18 @@
         ],
         "type": "f32"
     },
+    "exp2m1": {
+        "sources": [
+            "libm/src/math/exp2m1.rs"
+        ],
+        "type": "f64"
+    },
+    "exp2m1f": {
+        "sources": [
+            "libm/src/math/exp2m1f.rs"
+        ],
+        "type": "f32"
+    },
     "expf": {
         "sources": [
             "libm/src/math/expf.rs"

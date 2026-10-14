@@ -385,6 +385,7 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     // Internal attributes, Testing:
     // ==========================================================================
 
+    sym::rustc_show_spans,
     sym::rustc_effective_visibility,
     sym::rustc_dump_inferred_outlives,
     sym::rustc_capture_analysis,

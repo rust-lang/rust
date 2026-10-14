@@ -21,7 +21,6 @@ use rustc_middle::mir::ConstValue;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::traits::EvaluationResult;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, DerefAdjustKind};
-use rustc_middle::ty::consts::ConstExt as _;
 use rustc_middle::ty::layout::{LayoutError, LayoutOf as _, TyAndLayout};
 use rustc_middle::ty::{
     self, AdtDef, AliasTy, AssocItem, AssocTag, Binder, BoundRegion, BoundVarIndexKind, FnSig, GenericArg,
@@ -623,7 +622,8 @@ fn is_uninit_value_valid_for_layout<'tcx>(cx: &LateContext<'tcx>, layout: TyAndL
 
 /// Fallback for polymorphic types where `layout_of` fails
 fn is_uninit_value_valid_for_ty_fallback<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
-    let typing_env = cx.typing_env().with_post_analysis_normalized(cx.tcx);
+    let ty::PseudoCanonicalInput { typing_env, value: ty } =
+        cx.typing_env().with_post_analysis_normalized_invalidating_rigid_aliases(cx.tcx, ty);
 
     match *ty.kind() {
         // The array length may be polymorphic, let's try the inner type.

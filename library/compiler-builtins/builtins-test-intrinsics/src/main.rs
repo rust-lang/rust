@@ -10,7 +10,6 @@
 #![feature(f128)]
 #![feature(f16)]
 #![feature(lang_items)]
-#![feature(optimize_attribute)]
 #![no_std]
 #![no_main]
 

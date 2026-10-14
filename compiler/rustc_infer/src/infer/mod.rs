@@ -61,12 +61,10 @@ pub mod region_constraints;
 pub mod relate;
 pub mod resolve;
 pub(crate) mod snapshot;
-mod solver_region_constraints;
 mod type_variable;
 mod unify_key;
 
-pub use solver_region_constraints::SolverRegionConstraint;
-use solver_region_constraints::SolverRegionConstraintStorage;
+pub use region_constraints::SolverRegionConstraint;
 
 /// `InferOk<'tcx, ()>` is used a lot. It may seem like a useless wrapper
 /// around `PredicateObligations<'tcx>`, but it has one important property:
@@ -133,9 +131,6 @@ pub struct InferCtxtInner<'tcx> {
     /// region constraints would've been added.
     region_constraint_storage: Option<RegionConstraintStorage<'tcx>>,
 
-    /// Used by the next solver when `-Zassumptions-on-binders` is set.
-    solver_region_constraint_storage: SolverRegionConstraintStorage<'tcx>,
-
     /// A set of constraints that regionck must validate.
     ///
     /// Each constraint has the form `T:'a`, meaning "some type `T` must
@@ -183,7 +178,6 @@ impl<'tcx> InferCtxtInner<'tcx> {
             float_unification_storage: Default::default(),
             float_origin_origin_storage: Default::default(),
             region_constraint_storage: Some(Default::default()),
-            solver_region_constraint_storage: SolverRegionConstraintStorage::new(),
             region_obligations: Default::default(),
             region_assumptions: Default::default(),
             hir_typeck_potentially_region_dependent_goals: Default::default(),
@@ -891,7 +885,7 @@ impl<'tcx> InferCtxt<'tcx> {
             if a_is_expected {
                 Ok(self.at(cause, param_env).sub(DefineOpaqueTypes::Yes, a, b))
             } else {
-                Ok(self.at(cause, param_env).sup(DefineOpaqueTypes::Yes, b, a))
+                Ok(self.sup_raw(cause, param_env, DefineOpaqueTypes::Yes, b, a))
             }
         })
     }
@@ -1114,7 +1108,8 @@ impl<'tcx> InferCtxt<'tcx> {
         let inner = self.inner.borrow();
         assert!(!UndoLogs::<UndoLog<'_>>::in_snapshot(&inner.undo_log));
         let storage = inner.region_constraint_storage.as_ref().expect("regions already resolved");
-        assert!(storage.data.is_empty(), "{:#?}", storage.data);
+        // FIXME(-Zassumptions-on-binders): Handle abby_data
+        assert!(storage.legacy_data.is_empty(), "{:#?}", storage.legacy_data);
         // We clone instead of taking because borrowck still wants to use the
         // inference context after calling this for diagnostics and the new
         // trait solver.
@@ -1567,7 +1562,7 @@ impl<'tcx> InferCtxt<'tcx> {
             args: Vec<ty::GenericArg<'tcx>>,
         }
 
-        impl<'tcx> BoundVarReplacerDelegate<'tcx> for ToFreshVars<'tcx> {
+        impl<'tcx> BoundVarReplacerDelegate<TyCtxt<'tcx>> for ToFreshVars<'tcx> {
             fn replace_region(&mut self, br: ty::BoundRegion<'tcx>) -> ty::Region<'tcx> {
                 self.args[br.var.index()].expect_region()
             }
@@ -1616,18 +1611,11 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 
     pub fn get_solver_region_constraint(&self) -> SolverRegionConstraint<'tcx> {
-        self.inner.borrow().solver_region_constraint_storage.get_constraint()
+        self.inner.borrow().region_constraint_storage.as_ref().unwrap().solver_data.get_constraint()
     }
 
     pub fn overwrite_solver_region_constraint(&self, constraint: SolverRegionConstraint<'tcx>) {
-        assert!(
-            !constraint.has_escaping_bound_vars(),
-            "solver region constraint has escaping bound vars, which is indicative of a bug in how constraints are handled: {constraint:?}",
-        );
-        let mut inner = self.inner.borrow_mut();
-        let old_constraint = inner.solver_region_constraint_storage.get_constraint();
-        inner.undo_log.push(UndoLog::OverwriteSolverRegionConstraint { old_constraint });
-        inner.solver_region_constraint_storage.overwrite(constraint);
+        self.inner.borrow_mut().unwrap_region_constraints().overwrite_solver_constraint(constraint);
     }
 
     /// See the [`region_constraints::RegionConstraintCollector::verify_generic_bound`] method.

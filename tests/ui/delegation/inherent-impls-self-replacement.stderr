@@ -147,6 +147,7 @@ LL |     reuse S::<(), 123>::by_ref { self.get_s() }
 note: `Trait::get_s` takes ownership of the receiver `self`, which moves `*self`
   --> $DIR/inherent-impls-self-replacement.rs:20:14
    |
+LL | trait Trait: Sized {
 LL |     fn get_s(self) -> S<(), 123>;
    |              ^^^^
 help: if `Self` implemented `Clone`, you could clone the value
@@ -169,6 +170,7 @@ LL |     reuse S::<(), 123>::by_mut_ref { self.get_s() }
 note: `Trait::get_s` takes ownership of the receiver `self`, which moves `*self`
   --> $DIR/inherent-impls-self-replacement.rs:20:14
    |
+LL | trait Trait: Sized {
 LL |     fn get_s(self) -> S<(), 123>;
    |              ^^^^
 help: if `Self` implemented `Clone`, you could clone the value

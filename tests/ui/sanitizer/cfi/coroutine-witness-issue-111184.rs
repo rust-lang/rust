@@ -6,8 +6,8 @@
 //@ edition: 2021
 //@ no-prefer-dynamic
 //@ only-x86_64-unknown-linux-gnu
-//@ build-pass
 //@ ignore-backends: gcc
+//@ build-pass
 
 use std::future::Future;
 
