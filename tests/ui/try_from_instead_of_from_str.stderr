@@ -17,7 +17,7 @@ help: replace with
 LL + impl core::str::FromStr for MyType {
 LL +     type Err = ();
 LL + 
-LL +     fn from_str(value: &str) -> Result<Self, Self::Err> {
+LL +     fn from_str(_value: &str) -> Result<Self, Self::Err> {
 LL +         Ok(MyType)
 LL +     }
 LL + }
@@ -40,7 +40,7 @@ help: replace with
 LL + impl core::str::FromStr for Bar {
 LL +     type Err = &'static str;
 LL + 
-LL +     fn from_str(value: &str) -> Result<Self, Self::Err> {
+LL +     fn from_str(_value: &str) -> Result<Self, Self::Err> {
 LL +         Ok(Bar)
 LL +     }
 LL + }
@@ -63,7 +63,7 @@ help: replace with
 LL + impl<'a> core::str::FromStr for Tarte<'a> {
 LL +     type Err = &'static str;
 LL + 
-LL +     fn from_str(value: &str) -> Result<Self, Self::Err> {
+LL +     fn from_str(_value: &str) -> Result<Self, Self::Err> {
 LL +         Ok(Tarte(&()))
 LL +     }
 LL + }
@@ -85,7 +85,7 @@ help: replace with
 LL + impl core::str::FromStr for Lifetime3 {
 LL +     type Err = LifetimeErr2<for<'b> fn(&'b u32)>;
 LL + 
-LL +     fn from_str(value: &str) -> Result<Self, Self::Err> {
+LL +     fn from_str(_value: &str) -> Result<Self, Self::Err> {
 LL +         Ok(Lifetime3)
 LL +     }
 LL + }
@@ -107,11 +107,59 @@ help: replace with
 LL + impl<'a> core::str::FromStr for Lifetime4<&'a ()> {
 LL +     type Err = LifetimeErr2<&'a ()>;
 LL + 
-LL +     fn from_str(value: &str) -> Result<Self, Self::Err> {
+LL +     fn from_str(_value: &str) -> Result<Self, Self::Err> {
 LL +         Ok(Lifetime4(&()))
 LL +     }
 LL + }
    |
 
-error: aborting due to 5 previous errors
+error: `TryFrom<str>` could be `FromStr`
+  --> tests/ui/try_from_instead_of_from_str.rs:166:5
+   |
+LL | /     impl TryFrom<&str> for NotValue {
+LL | |
+LL | |         type Error = std::io::Error;
+LL | |         fn try_from(some_other_name: &str) -> Result<Self, Self::Error> {
+...  |
+LL | |     }
+   | |_____^
+   |
+   = help: `FromStr` can also be implemented alongside `TryFrom` if you want to avoid breaking changes
+help: replace with
+   |
+LL ~     impl core::str::FromStr for NotValue {
+LL +     type Err = std::io::Error;
+LL + 
+LL +     fn from_str(some_other_name: &str) -> Result<Self, Self::Err> {
+LL +             let _ = some_other_name;
+LL +             Ok(Self)
+LL +         }
+LL + }
+   |
+
+error: `TryFrom<str>` could be `FromStr`
+  --> tests/ui/try_from_instead_of_from_str.rs:176:5
+   |
+LL | /     impl TryFrom<&str> for NotValue2 {
+LL | |
+LL | |         type Error = ();
+LL | |         fn try_from(mut __value_value_value__: &str) -> Result<Self, Self::Error> {
+...  |
+LL | |     }
+   | |_____^
+   |
+   = help: `FromStr` can also be implemented alongside `TryFrom` if you want to avoid breaking changes
+help: replace with
+   |
+LL ~     impl core::str::FromStr for NotValue2 {
+LL +     type Err = ();
+LL + 
+LL +     fn from_str(mut __value_value_value__: &str) -> Result<Self, Self::Err> {
+LL +             __value_value_value__ = "something changed";
+LL +             Ok(Self)
+LL +         }
+LL + }
+   |
+
+error: aborting due to 7 previous errors
 
