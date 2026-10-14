@@ -4,7 +4,15 @@ error: higher-ranked lifetime error
 LL |     || {};
    |     ^^^^^
    |
+   = note: could not prove `{closure@$DIR/trivial-does-not-hold.rs:7:5: 7:7} well-formed`
+
+error: higher-ranked lifetime error
+  --> $DIR/trivial-does-not-hold.rs:7:5
+   |
+LL |     || {};
+   |     ^^^^^
+   |
    = note: could not prove `for<'a> &'a (): '_`
 
-error: aborting due to 1 previous error
+error: aborting due to 2 previous errors
 
