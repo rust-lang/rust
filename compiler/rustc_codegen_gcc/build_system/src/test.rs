@@ -795,14 +795,7 @@ const PROJECTS: &[Project] = &[
     Project::new("https://github.com/rust-lang/regex")
         .commit("341f207c1071f7290e3f228c710817c280c8dca1")
         .test_cargo_arguments(&["--tests"])
-        // FIXME: try removing `--exclude-should-panic` argument
-        .test_harness_arguments(&[
-            "--exclude-should-panic",
-            "--test-threads",
-            "1",
-            "-Zunstable-options",
-            "-q",
-        ]),
+        .test_harness_arguments(&["-q"]),
     // The test suite refuses to build unless every feature is enabled; it otherwise spawns a
     // nested `cargo test --all-features` which would not use this backend.
     Project::new("https://github.com/time-rs/time").cargo_arguments(&["--all-features"]),
