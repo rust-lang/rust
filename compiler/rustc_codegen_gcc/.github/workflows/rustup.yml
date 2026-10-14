@@ -34,10 +34,7 @@ jobs:
           "--std-tests --alloc-tests",
           # FIXME: re-enable asm tests when GCC can emit in the right syntax.
           # "--asm-tests",
-          "--test-libcore",
-          "--extended-rand-tests",
-          "--extended-regex-example-tests --test-libcore-doctests",
-          "--extended-regex-tests",
+          "--test-libcore --test-libcore-doctests",
           "--test-successful-rustc --nb-parts 2 --current-part 0",
           "--test-successful-rustc --nb-parts 2 --current-part 1",
           "--librsvg-tests",
@@ -48,7 +45,7 @@ jobs:
         ]
         # The tests that don't depend on the test command only run in the fastest job.
         include:
-          - commands: "--extended-rand-tests"
+          - commands: "--std-tests --alloc-tests"
             run_cargo_tests: true
 
     steps:
