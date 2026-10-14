@@ -7,7 +7,7 @@ use rustc_ast::util::parser::{AssocOp, ExprPrecedence};
 use rustc_ast::{
     self as ast, AngleBracketedArg, AngleBracketedArgs, AnonConst, AttrVec, BinOpKind, BindingMode,
     Block, BlockCheckMode, Expr, ExprKind, GenericArg, GenericArgs, Generics, Item, ItemKind,
-    MutTy, Mutability, Param, Pat, PatKind, Path, PathSegment, QSelf, Recovered, Ty, TyKind,
+    Mutability, Param, Pat, PatKind, Path, PathSegment, QSelf, Recovered, Ty, TyKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
@@ -1518,10 +1518,7 @@ impl<'a> Parser<'a> {
                 sugg: CStyleReferenceSugg { remove: ref_span, insert: ty.span.shrink_to_lo() },
             });
 
-            self.mk_ty(
-                ty.span.to(ref_span),
-                TyKind::Ref(None, MutTy { ty, mutbl: Mutability::Not }),
-            )
+            self.mk_ty(ty.span.to(ref_span), TyKind::Ref(None, ty, Mutability::Not))
         } else {
             ty
         }

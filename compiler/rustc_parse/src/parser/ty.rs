@@ -687,7 +687,7 @@ impl<'a> Parser<'a> {
 
         self.dcx().emit_err(err);
 
-        return Ok(TyKind::Ref(lifetime, MutTy { ty, mutbl }));
+        return Ok(TyKind::Ref(lifetime, ty, mutbl));
     }
 
     /// Parses a raw pointer type: `*[const | mut] $type`.
