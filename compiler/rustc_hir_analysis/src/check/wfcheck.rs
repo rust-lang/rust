@@ -2400,10 +2400,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
             Err(_guar) => ty::region_constraint::RegionConstraint::new_true(),
         };
         if constraints.is_false() {
-            self.tcx()
-                .dcx()
-                .struct_span_err(span, "top level false constraints are not supported")
-                .emit();
+            self.tcx().dcx().span_err(span, "top level false constraints are not supported");
             return;
         }
 
@@ -2486,7 +2483,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
             )
             .with_spans(forall.span);
             if constraint.is_false() {
-                self.tcx().dcx().struct_span_err(forall.span, "forall evaluated to false").emit();
+                self.tcx().dcx().span_err(forall.span, "forall evaluated to false");
                 self.infcx.overwrite_solver_region_constraint(
                     ty::region_constraint::RegionConstraint::new_true(),
                 );
