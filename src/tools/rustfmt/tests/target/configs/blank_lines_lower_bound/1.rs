@@ -1,4 +1,4 @@
-// rustfmt-blank_lines_lower_bound: 1
+//@ rustfmt-blank_lines_lower_bound: 1
 
 fn foo() {}
 

@@ -1,4 +1,4 @@
-// rustfmt-use_small_heuristics: Default
+//@ rustfmt-use_small_heuristics: Default
 
 enum Lorem {
     Ipsum,

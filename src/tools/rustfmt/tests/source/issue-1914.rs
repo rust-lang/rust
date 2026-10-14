@@ -1,4 +1,4 @@
-// rustfmt-max_width: 80
+//@ rustfmt-max_width: 80
 
 extern "C" {
 #[link_name = "_ZN7MyClass26example_check_no_collisionE"]

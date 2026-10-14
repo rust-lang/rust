@@ -1,4 +1,4 @@
-// rustfmt-skip_macro_invocations: ["unknown"]
+//@ rustfmt-skip_macro_invocations: ["unknown"]
 
 // Should not skip this invocation
 items!(

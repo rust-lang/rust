@@ -1,5 +1,5 @@
-// rustfmt-style_edition: 2027
-// rustfmt-reorder_modules: true
+//@ rustfmt-style_edition: 2027
+//@ rustfmt-reorder_modules: true
 
 mod _ZYXW;
 mod _abcd;

@@ -1,4 +1,4 @@
-// rustfmt-imports_granularity: Crate
+//@ rustfmt-imports_granularity: Crate
 
 use foo::{
     a, b, b as b2,

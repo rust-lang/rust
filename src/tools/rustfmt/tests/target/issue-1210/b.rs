@@ -1,5 +1,5 @@
-// rustfmt-format_strings: true
-// rustfmt-max_width: 50
+//@ rustfmt-format_strings: true
+//@ rustfmt-max_width: 50
 
 impl Foo {
     fn cxx(&self, target: &str) -> &Path {
