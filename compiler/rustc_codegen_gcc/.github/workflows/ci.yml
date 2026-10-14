@@ -78,6 +78,14 @@ jobs:
         sudo apt-get update
         sudo apt-get install ninja-build ripgrep llvm-14-tools llvm
 
+    # portable-atomic's tests read ID_AA64ISAR3_EL1 by name, which needs binutils >= 2.43.
+    # FIXME: remove when we have binutils version 2.43 in the repo.
+    - name: Install more recent binutils
+      if: ${{ contains(matrix.commands, '--projects') }}
+      # Without a limit, an unreachable mirror hangs the job until GitHub's 6-hour timeout.
+      timeout-minutes: 20
+      uses: ./.github/actions/recent-binutils
+
     - name: Install the libraries needed to build librsvg
       if: ${{ contains(matrix.commands, '--librsvg-tests') }}
       timeout-minutes: 20
