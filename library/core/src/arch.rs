@@ -70,9 +70,10 @@ pub macro global_asm("assembly template", $(operands,)* $(options($(option),*))?
 /// of a debugger, and not all operating systems and execution environments guarantee that such an
 /// interrupt aborts the current process. On operating systems where the behavior of the interrupt
 /// can be overwritten by the application (e.g. via a SIGTRAP signal handler), the application
-/// *should* make sure to still abort the process, but we recommend not relying on that for
-/// soundness unless you actually know for sure that the application running your code keeps the
-/// default (or equivalent) behavior.
+/// *should* make sure to still abort the process. However, code not fully in control of that
+/// application state (e.g. signal handlers) cannot always rely on that for soundness.
+/// If you do rely on this, such that your code's soundness requires applications to not continue
+/// from your breakpoints, please document that for your users.
 ///
 /// The precise instruction is guaranteed only on the following targets:
 /// - On x86 targets, this produces an `int3` instruction.
