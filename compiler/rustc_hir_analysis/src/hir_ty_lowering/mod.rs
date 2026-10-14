@@ -1864,11 +1864,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             return Vec::new();
         }
 
-        // FIXME: Don't bother dealing with non-lifetime binders here...
-        if qself_ty.has_escaping_bound_vars() {
-            return Vec::new();
-        }
-
         tcx.all_traits_including_private()
             .filter(|trait_def_id| {
                 // Consider only traits with the associated type
