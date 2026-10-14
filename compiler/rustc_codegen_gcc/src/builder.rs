@@ -98,6 +98,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         operation: ExtremumOperation,
         dst: RValue<'gcc>,
         src: RValue<'gcc>,
+        comparison_type: Type<'gcc>,
         order: AtomicOrdering,
     ) -> RValue<'gcc> {
         let size = get_maybe_pointer_size(src);
@@ -138,8 +139,8 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let cond1 = self.context.new_comparison(
             self.location,
             comparison_operator,
-            previous_var.to_rvalue(),
-            self.context.new_cast(self.location, src, previous_value.get_type()),
+            self.context.new_cast(self.location, previous_var.to_rvalue(), comparison_type),
+            self.context.new_cast(self.location, src, comparison_type),
         );
         let compare_exchange =
             self.compare_exchange(dst, previous_var, src, order, load_ordering, false);
@@ -1783,16 +1784,44 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
             AtomicRmwBinOp::AtomicOr => format!("__atomic_fetch_or_{}", size),
             AtomicRmwBinOp::AtomicXor => format!("__atomic_fetch_xor_{}", size),
             AtomicRmwBinOp::AtomicMax => {
-                return self.atomic_extremum(ExtremumOperation::Max, dst, src, order);
+                let comparison_type = src.get_type().to_signed(self);
+                return self.atomic_extremum(
+                    ExtremumOperation::Max,
+                    dst,
+                    src,
+                    comparison_type,
+                    order,
+                );
             }
             AtomicRmwBinOp::AtomicMin => {
-                return self.atomic_extremum(ExtremumOperation::Min, dst, src, order);
+                let comparison_type = src.get_type().to_signed(self);
+                return self.atomic_extremum(
+                    ExtremumOperation::Min,
+                    dst,
+                    src,
+                    comparison_type,
+                    order,
+                );
             }
             AtomicRmwBinOp::AtomicUMax => {
-                return self.atomic_extremum(ExtremumOperation::Max, dst, src, order);
+                let comparison_type = src.get_type().to_unsigned(self);
+                return self.atomic_extremum(
+                    ExtremumOperation::Max,
+                    dst,
+                    src,
+                    comparison_type,
+                    order,
+                );
             }
             AtomicRmwBinOp::AtomicUMin => {
-                return self.atomic_extremum(ExtremumOperation::Min, dst, src, order);
+                let comparison_type = src.get_type().to_unsigned(self);
+                return self.atomic_extremum(
+                    ExtremumOperation::Min,
+                    dst,
+                    src,
+                    comparison_type,
+                    order,
+                );
             }
         };
 
