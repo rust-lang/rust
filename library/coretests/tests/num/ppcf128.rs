@@ -53,6 +53,7 @@ fn constants() {
 #[test]
 fn impls() {
     const ONE: ppcf128 = ppcf128::from_components(1.0, 0.0);
+    const NEGATIVE_ONE: ppcf128 = ppcf128::from_components(-1.0, 0.0);
     const TWO: ppcf128 = ppcf128::from_components(2.0, 0.0);
 
     assert_eq!(ONE, ONE);
@@ -62,6 +63,22 @@ fn impls() {
     assert!(ONE < TWO);
     assert!(TWO > ONE);
     assert!(TWO >= TWO);
+
+    assert!(NEGATIVE_ONE <= NEGATIVE_ONE);
+    assert!(NEGATIVE_ONE < ONE);
+    assert!(ONE > NEGATIVE_ONE);
+    assert!(ONE >= ONE);
+
+    const MAX: ppcf128 = ppcf128::MAX;
+    const ALMOST_MAX: ppcf128 = {
+        let (large, small) = MAX.to_components();
+        ppcf128::from_components(large, small.next_down())
+    };
+
+    assert!(ALMOST_MAX <= ALMOST_MAX);
+    assert!(ALMOST_MAX < MAX);
+    assert!(MAX > ALMOST_MAX);
+    assert!(MAX >= MAX);
 
     assert!(ONE < ppcf128::INFINITY);
     assert!(ONE > ppcf128::NEG_INFINITY);
