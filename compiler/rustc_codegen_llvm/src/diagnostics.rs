@@ -4,6 +4,7 @@ use std::path::Path;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level, format_diag_message, msg};
 use rustc_macros::Diagnostic;
+use rustc_session::config::OptLevel;
 use rustc_span::Span;
 
 #[derive(Diagnostic)]
@@ -117,6 +118,17 @@ pub(crate) struct TpdeComponentUnavailable {
 #[diag("TPDE backend not found in the sysroot: {$err}")]
 pub(crate) struct TpdeComponentMissing {
     pub err: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "using TPDE with optimization levels higher than 1 is not recommended. Requested level: {$opt_level}"
+)]
+#[note(
+    "compilation with TPDE at higher opt levels is likely to fail, and to have worse compile times/runtime performance than LLVM even if it succeeds"
+)]
+pub(crate) struct TpdeHighOptLevel {
+    pub opt_level: OptLevel,
 }
 
 #[derive(Diagnostic)]
