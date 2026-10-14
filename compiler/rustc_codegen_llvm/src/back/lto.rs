@@ -718,7 +718,11 @@ pub(crate) fn optimize_and_codegen_thin_module(
     let mut module = ModuleCodegen::new_regular(thin_module.name(), module_llvm);
     // Given that the newly created module lacks a thinlto buffer for embedding, we need to re-add it here.
     if cgcx.module_config.embed_bitcode() {
-        module.thin_lto_buffer = Some(thin_module.data().to_vec());
+        module
+            .module_llvm
+            .thin_lto_buffer
+            .set(thin_module.data().to_vec())
+            .expect("thin_lto_buffer should be unset");
     }
     {
         let target = &*module.module_llvm.tm;

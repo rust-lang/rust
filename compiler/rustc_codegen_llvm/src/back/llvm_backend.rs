@@ -5,6 +5,7 @@ use std::any::Any;
 use std::ffi::CStr;
 use std::mem::ManuallyDrop;
 use std::path::PathBuf;
+use std::sync::OnceLock;
 
 use rustc_ast::expand::allocator::AllocatorMethod;
 use rustc_codegen_ssa::back::lto::ThinModule;
@@ -427,6 +428,12 @@ pub struct ModuleLlvm {
     // This field is `ManuallyDrop` because it is important that the `TargetMachine`
     // is disposed prior to the `Context` being disposed otherwise UAFs can occur.
     pub(crate) tm: ManuallyDrop<OwnedTargetMachine>,
+
+    /// Saved ThinLTO buffer for embedding in the object file.
+    ///
+    /// This is currently a `OnceLock` to avoid aliasing problems when writing to it
+    /// from code that also wants to pass around a shared ref to `ModuleCodegen`.
+    pub(crate) thin_lto_buffer: OnceLock<Vec<u8>>,
 }
 
 unsafe impl Send for ModuleLlvm {}
@@ -442,6 +449,7 @@ impl ModuleLlvm {
                 llmod_raw,
                 llcx,
                 tm: ManuallyDrop::new(create_target_machine(tcx, mod_name)),
+                thin_lto_buffer: OnceLock::new(),
             }
         }
     }
@@ -455,6 +463,7 @@ impl ModuleLlvm {
                 llmod_raw,
                 llcx,
                 tm: ManuallyDrop::new(create_informational_target_machine(tcx.sess)),
+                thin_lto_buffer: OnceLock::new(),
             }
         }
     }
@@ -472,7 +481,12 @@ impl ModuleLlvm {
             let llmod_raw = back::lto::parse_module(llcx, name, buffer, dcx);
             let tm = tm_factory(dcx, TargetMachineFactoryConfig::new(cgcx, name.to_str().unwrap()));
 
-            ModuleLlvm { llmod_raw, llcx, tm: ManuallyDrop::new(tm) }
+            ModuleLlvm {
+                llmod_raw,
+                llcx,
+                tm: ManuallyDrop::new(tm),
+                thin_lto_buffer: OnceLock::new(),
+            }
         }
     }
 

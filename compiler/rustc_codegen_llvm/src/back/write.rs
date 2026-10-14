@@ -937,7 +937,11 @@ pub(crate) fn optimize(
         };
         if let Some(thin_lto_buffer) = thin_lto_buffer {
             let thin_lto_buffer = thin_lto_buffer.unwrap();
-            module.thin_lto_buffer = Some(thin_lto_buffer.data().to_vec());
+            module
+                .module_llvm
+                .thin_lto_buffer
+                .set(thin_lto_buffer.data().to_vec())
+                .expect("thin_lto_buffer should be unset");
             let bc_summary_out =
                 cgcx.output_filenames.temp_path_for_cgu(OutputType::ThinLinkBitcode, &module.name);
             if let Some(thin_lto_summary_buffer) = thin_lto_summary_buffer
@@ -1025,7 +1029,7 @@ pub(crate) fn codegen(
                 let _timer = prof
                     .generic_activity_with_arg("LLVM_module_codegen_embed_bitcode", &*module.name);
                 let thin_bc =
-                    module.thin_lto_buffer.as_deref().expect("cannot find embedded bitcode");
+                    module.module_llvm.thin_lto_buffer.get().expect("cannot find embedded bitcode");
                 embed_bitcode(cgcx, llcx, llmod, &thin_bc);
             }
         }
