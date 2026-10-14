@@ -79,7 +79,11 @@ pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
         &self,
     ) -> Vec<(ty::RegionConstraint<Self::Interner>, VisibleForLeakCheck)>;
 
-    fn instantiate_value<V>(&self, value: V, values: ty::CanonicalVarValues<Self::Interner>) -> V
+    fn instantiate_value<V>(
+        &self,
+        value: ty::Canonicalized<V>,
+        values: ty::CanonicalVarValues<Self::Interner>,
+    ) -> V
     where
         V: TypeFoldable<Self::Interner>;
 
