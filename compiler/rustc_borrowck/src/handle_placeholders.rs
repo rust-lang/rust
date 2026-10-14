@@ -246,7 +246,9 @@ pub(crate) fn compute_sccs_applying_placeholder_outlives_constraints<'tcx>(
         mut outlives_constraints,
         universe_causes,
         type_tests,
+        solver_constraints,
     } = constraints;
+    assert!(solver_constraints.is_none(), "solver constraints were not lowered to NLL");
 
     let fr_static = universal_regions.fr_static;
     let compute_sccs =
