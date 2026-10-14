@@ -4,6 +4,7 @@
 
 #![stable(feature = "thread_extensions", since = "1.9.0")]
 
+use crate::macros::rustdoc_skip_body;
 use crate::os::windows::io::{AsRawHandle, IntoRawHandle, RawHandle};
 use crate::sys::{AsInner, IntoInner};
 use crate::thread;
@@ -11,19 +12,17 @@ use crate::thread;
 #[stable(feature = "thread_extensions", since = "1.9.0")]
 impl<T> AsRawHandle for thread::JoinHandle<T> {
     #[inline]
+    #[rustdoc_skip_body]
     fn as_raw_handle(&self) -> RawHandle {
-        no_code! {
-            self.as_inner().handle().as_raw_handle() as *mut _
-        }
+        self.as_inner().handle().as_raw_handle() as *mut _
     }
 }
 
 #[stable(feature = "thread_extensions", since = "1.9.0")]
 impl<T> IntoRawHandle for thread::JoinHandle<T> {
     #[inline]
+    #[rustdoc_skip_body]
     fn into_raw_handle(self) -> RawHandle {
-        no_code! {
-            self.into_inner().into_handle().into_raw_handle() as *mut _
-        }
+        self.into_inner().into_handle().into_raw_handle() as *mut _
     }
 }
