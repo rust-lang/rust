@@ -479,7 +479,6 @@ impl Span {
 
     /// This function is used as a fast path when decoding the full `SpanData` is not necessary.
     /// It's a cut-down version of `data_untracked` and doesn't require taking the interner lock.
-    #[cfg_attr(not(test), rustc_diagnostic_item = "SpanCtxt")]
     #[inline]
     pub fn ctxt(self) -> SyntaxContext {
         let ctxt32 = match_span_kind! {
@@ -492,12 +491,8 @@ impl Span {
         SyntaxContext::from_u32(ctxt32)
     }
 
-    // Allow `span_use_eq_ctxt` because this is `eq_ctxt`!
-    //
-    // FIXME(nnethercote): context equality used to be much more complex, but the span
-    // representation changed and now simple equality is fine. This method and the
-    // `span_use_eq_ctxt` lint and the `SpanCtxt` diagnostic item can be removed.
-    #[allow(rustc::span_use_eq_ctxt)]
+    // With the pre-#163857 span representation this method was more complex and required. Now it's
+    // trivial but it hasn't been removed simply to avoid churn.
     #[inline]
     pub fn eq_ctxt(self, other: Span) -> bool {
         self.ctxt() == other.ctxt()

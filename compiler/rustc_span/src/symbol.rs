@@ -330,7 +330,6 @@ symbols! {
         SliceIndex,
         Some,
         Source,
-        SpanCtxt,
         StdinLock,
         Str,
         String,
