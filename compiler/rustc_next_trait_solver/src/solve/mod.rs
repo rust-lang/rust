@@ -501,7 +501,7 @@ pub fn flatten_answer_tree<I: Interner>(
     interner: I,
     predicate: TraitClause<I>,
     cond: Condition<Region<I>, I::Ty>,
-) -> ThinVec<I::Predicate> {
+) -> ThinVec<ty::predicates::Predicate<I>> {
     match cond {
         // FIXME(bryangarza): Add separate `IfAny` case, instead of treating as `IfAll`
         // Not possible until the trait solver supports disjunctions of obligations
@@ -519,7 +519,7 @@ pub fn flatten_answer_tree<I: Interner>(
         }
         Condition::Outlives { long, short } => {
             let outlives = ty::OutlivesClause(long, short);
-            thin_vec![outlives.upcast(interner)]
+            thin_vec![ty::ClauseKind::RegionOutlives(outlives).upcast(interner)]
         }
         Condition::Transmutable { src, dst } => {
             let transmute_trait = predicate.def_id();
