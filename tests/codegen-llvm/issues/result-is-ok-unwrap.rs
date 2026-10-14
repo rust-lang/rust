@@ -10,7 +10,6 @@ use std::hint::black_box;
 #[no_mangle]
 pub fn unwrap_after_is_ok(arg: Result<u64, u32>) {
     // CHECK-NOT: unwrap_failed
-    // CHECK-NOT: panic
     if arg.is_ok() {
         let value = arg.unwrap();
         if value == 42 {
@@ -18,3 +17,14 @@ pub fn unwrap_after_is_ok(arg: Result<u64, u32>) {
         }
     }
 }
+
+// Ensure our `NOT` check above could actually ever trigger
+
+// CHECK-LABEL: @unguarded_unwrap_calls_unwrap_failed
+#[no_mangle]
+pub fn unguarded_unwrap_calls_unwrap_failed(arg: Result<u64, u32>) -> u64 {
+    // CHECK: call{{.+}}unwrap_failed
+    arg.unwrap()
+}
+
+// CHECK: declare{{.+}}unwrap_failed

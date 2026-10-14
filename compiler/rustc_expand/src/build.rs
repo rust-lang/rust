@@ -600,6 +600,7 @@ impl<'a> ExtCtxt<'a> {
             span,
             ty,
             is_placeholder: false,
+            has_const_keyword: false,
         }
     }
 
