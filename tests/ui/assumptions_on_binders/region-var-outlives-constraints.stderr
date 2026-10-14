@@ -1,0 +1,8 @@
+error: unable to satisfy constraints involving placeholders due to unknown implied bounds
+  --> $DIR/region-var-outlives-constraints.rs:14:9
+   |
+LL |         forall<'a>
+   |         ^^^^^^
+
+error: aborting due to 1 previous error
+
