@@ -22,34 +22,11 @@ pub struct Stdin {
 
 pub struct Stdout {
     incomplete_utf8: IncompleteUtf8,
-    write_mode: Option<WriteMode>,
 }
 
 pub struct Stderr {
     incomplete_utf8: IncompleteUtf8,
-    write_mode: Option<WriteMode>,
 }
-
-/// How to write to a standard stream, cached for the duration of a lock
-/// session (see `Stdout::refresh`). Re-querying this on every lock
-/// acquisition keeps `SetStdHandle` calls made between lock sessions working
-/// (see #40490), while a held lock skips the per-write console queries that
-/// otherwise dominate bulk writes (see #154071).
-#[derive(Clone, Copy)]
-enum WriteMode {
-    /// The stream is a pipe or file, or a console using the UTF-8 code page:
-    /// bytes are written out unchanged.
-    Passthrough(c::HANDLE),
-    /// The stream is a console using a non-UTF-8 code page: data is converted
-    /// to UTF-16 and written with `WriteConsoleW`.
-    Utf16Console(c::HANDLE),
-}
-
-// SAFETY: a `HANDLE` stored here is only an OS handle value for a standard
-// stream (it is never dereferenced), and handle values are valid
-// process-wide, on any thread.
-unsafe impl Send for WriteMode {}
-unsafe impl Sync for WriteMode {}
 
 struct IncompleteUtf8 {
     bytes: [u8; 4],
@@ -100,62 +77,56 @@ pub fn get_handle(handle_id: u32) -> io::Result<c::HANDLE> {
     }
 }
 
-fn is_console(handle: c::HANDLE) -> bool {
-    // `GetConsoleMode` will return false (0) if this is a pipe (we don't care about the reported
-    // mode). This will only detect Windows Console, not other terminals connected to a pipe like
-    // MSYS. Which is exactly what we need, as only Windows Console needs a conversion to UTF-16.
-    let mut mode = 0;
-    unsafe { c::GetConsoleMode(handle, &mut mode) != 0 }
-}
-
-/// Returns true if the attached console's code page is currently UTF-8.
+/// Returns true if `handle` refers to a proper console (aka conhost).
 #[cfg(not(target_vendor = "win7"))]
-fn is_utf8_console() -> bool {
-    unsafe { c::GetConsoleOutputCP() == c::CP_UTF8 }
+fn is_console(handle: c::HANDLE) -> bool {
+    cfg_select! {
+        target_vendor = "win7" => {
+            // `GetConsoleMode` will return false (0) if this is a pipe (we don't care about the reported
+            // mode). This will only detect Windows Console, not other terminals connected to a pipe like
+            // MSYS. Which is exactly what we need, as only Windows Console needs a conversion to UTF-16.
+            let mut mode = 0;
+            unsafe { c::GetConsoleMode(handle, &mut mode) != 0 }
+        }
+        _ => unsafe {
+            // `GetConsoleMode` incurs a remote RPC round-trip (= bad), so it's best avoided.
+            // `NtQueryVolumeInformationFile` lets us test the handle directly.
+            // The required `FILE_DEVICE_CONSOLE` type was introduced in Windows 8.
+            // Fun fact: `GetFileType` uses `NtQueryVolumeInformationFile` internally.
+            let mut io_status = MaybeUninit::<c::IO_STATUS_BLOCK>::uninit();
+            let mut device_info = MaybeUninit::<c::FILE_FS_DEVICE_INFORMATION>::uninit();
+            let status = c::NtQueryVolumeInformationFile(
+                handle,
+                io_status.as_mut_ptr(),
+                device_info.as_mut_ptr().cast(),
+                size_of_val(&device_info) as u32,
+                c::FileFsDeviceInformation,
+            );
+            status >= 0 && device_info.assume_init_ref().DeviceType == c::FILE_DEVICE_CONSOLE
+        },
+    }
 }
 
-#[cfg(target_vendor = "win7")]
-fn is_utf8_console() -> bool {
-    // Windows 7 has a fun "feature" where WriteFile on a console handle will return
-    // the number of UTF-16 code units written and not the number of bytes from the input string.
-    // So we always claim the console isn't UTF-8 to trigger the WriteConsole fallback code.
-    false
-}
-
-fn write(
-    handle_id: u32,
-    data: &[u8],
-    incomplete_utf8: &mut IncompleteUtf8,
-    write_mode: &mut Option<WriteMode>,
-) -> io::Result<usize> {
+fn write(handle_id: u32, data: &[u8], incomplete_utf8: &mut IncompleteUtf8) -> io::Result<usize> {
     if data.is_empty() {
         return Ok(0);
     }
 
-    let mode = match *write_mode {
-        Some(mode) => mode,
-        None => {
-            let handle = get_handle(handle_id)?;
-            let mode = if !is_console(handle) || is_utf8_console() {
-                WriteMode::Passthrough(handle)
-            } else {
-                WriteMode::Utf16Console(handle)
-            };
-            // Only cache success; if there is no handle, keep erroring on
-            // every write like before.
-            *write_mode = Some(mode);
-            mode
-        }
-    };
+    let handle = get_handle(handle_id)?;
 
-    match mode {
-        WriteMode::Passthrough(handle) => unsafe {
+    // At the time of writing, console IO on Windows is high latency:
+    // Windows has no TTY buffers, making every call a fully synchronous RPC.
+    // So, while always deferring to `write_console_utf16` wastes valuable heap for
+    // our UTF16 conversion, it handily beats doing 2 (or more) costly RPC round-trips.
+    if !is_console(handle) {
+        unsafe {
             let handle = Handle::from_raw_handle(handle);
             let ret = handle.write(data);
             let _ = handle.into_raw_handle(); // Don't close the handle
             ret
-        },
-        WriteMode::Utf16Console(handle) => write_console_utf16(data, incomplete_utf8, handle),
+        }
+    } else {
+        write_console_utf16(data, incomplete_utf8, handle)
     }
 }
 
@@ -481,21 +452,13 @@ impl IncompleteUtf8 {
 
 impl Stdout {
     pub const fn new() -> Stdout {
-        Stdout { incomplete_utf8: IncompleteUtf8::new(), write_mode: None }
-    }
-
-    /// Forgets the cached stream state, so the next write re-queries the OS.
-    /// Called when a new lock session begins, so that changing the process
-    /// stdio handles (e.g. `SetStdHandle`) between lock sessions keeps
-    /// working (see #40490).
-    pub fn refresh(&mut self) {
-        self.write_mode = None;
+        Stdout { incomplete_utf8: IncompleteUtf8::new() }
     }
 }
 
 impl io::Write for Stdout {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        write(c::STD_OUTPUT_HANDLE, buf, &mut self.incomplete_utf8, &mut self.write_mode)
+        write(c::STD_OUTPUT_HANDLE, buf, &mut self.incomplete_utf8)
     }
 
     fn flush(&mut self) -> io::Result<()> {
@@ -505,18 +468,13 @@ impl io::Write for Stdout {
 
 impl Stderr {
     pub const fn new() -> Stderr {
-        Stderr { incomplete_utf8: IncompleteUtf8::new(), write_mode: None }
-    }
-
-    /// See `Stdout::refresh`.
-    pub fn refresh(&mut self) {
-        self.write_mode = None;
+        Stderr { incomplete_utf8: IncompleteUtf8::new() }
     }
 }
 
 impl io::Write for Stderr {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        write(c::STD_ERROR_HANDLE, buf, &mut self.incomplete_utf8, &mut self.write_mode)
+        write(c::STD_ERROR_HANDLE, buf, &mut self.incomplete_utf8)
     }
 
     fn flush(&mut self) -> io::Result<()> {
