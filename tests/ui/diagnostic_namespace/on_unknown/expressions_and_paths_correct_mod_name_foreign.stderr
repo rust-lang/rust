@@ -8,7 +8,7 @@ LL | use foreign::c::d::x;
    |
    = note: unresolved import `foreign::c::d::x`
 
-error[E0425]: this=foreign::c::d, unresolved=X
+error[E0425]: this=b, unresolved=X
   --> $DIR/expressions_and_paths_correct_mod_name_foreign.rs:8:28
    |
 LL |     let _ = foreign::c::d::X();
@@ -16,7 +16,7 @@ LL |     let _ = foreign::c::d::X();
    |
    = note: cannot find function, tuple struct or tuple variant `X` in module `foreign::c::d`
 
-error[E0425]: this=foreign::c::d, unresolved=X
+error[E0425]: this=b, unresolved=X
   --> $DIR/expressions_and_paths_correct_mod_name_foreign.rs:10:27
    |
 LL |     let _: foreign::c::d::X;

@@ -14,7 +14,7 @@ mod c {
 use c::d::x; //~ ERROR this=b, unresolved=x
 
 fn main() {
-    let _ = c::d::X(); //~ ERROR this=c::d, unresolved=X
+    let _ = c::d::X(); //~ ERROR this=b, unresolved=X
 
-    let _: c::d::X; //~ ERROR this=c::d, unresolved=X
+    let _: c::d::X; //~ ERROR this=b, unresolved=X
 }

@@ -558,9 +558,10 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             };
             let mut notes = Vec::new();
             if let Some(module_def_id) = module
-                && let Some(directive) = self.r.on_unknown_data(module_def_id)
+                && let Some((this, directive)) = self.r.on_unknown_data(module_def_id)
             {
-                let args = FormatArgs { unresolved: item_ident.to_string(), this: mod_str, .. };
+                let args =
+                    FormatArgs { unresolved: item_ident.to_string(), this: this.to_string(), .. };
                 let CustomDiagnostic {
                     message,
                     label,
