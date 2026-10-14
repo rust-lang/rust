@@ -159,6 +159,21 @@ impl std::fmt::Debug for CfgSelectArm {
     }
 }
 
+impl CfgSelectArm {
+    /// Is the cfg_select! arm written with two consecutive blocks.
+    /// For example `$predicate => {{}}`. If so, extract the inner block.
+    /// rustfmt will preserve the double block syntax.
+    pub(crate) fn double_block_inner(&self) -> Option<&ast::Expr> {
+        match &self.expr.kind {
+            ast::ExprKind::Block(b, _) if b.stmts.len() == 1 => match &b.stmts[0].kind {
+                ast::StmtKind::Expr(e) if matches!(e.kind, ast::ExprKind::Block(..)) => Some(e),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+}
+
 // FIXME(ytmimi) would be nice if rustfmt didn't need to implement parsing logic on its own
 // and could instead just call rustc_attr_parsing::parse_cfg_select, but this is fine for now.
 pub(crate) fn parse_cfg_select_arms(
