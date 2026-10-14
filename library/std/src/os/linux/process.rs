@@ -5,6 +5,7 @@
 #![unstable(feature = "linux_pidfd", issue = "82971")]
 
 use crate::io::Result;
+use crate::macros::no_code_when_rustdoc;
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
 use crate::process::{self, ExitStatus};
 use crate::sys::{AsInner, AsInnerMut, FromInner, IntoInner};
@@ -61,10 +62,9 @@ impl PidFd {
     /// races. But doing so will return an Error.
     ///
     /// [`Child::kill`]: process::Child::kill
+    #[no_code_when_rustdoc]
     pub fn kill(&self) -> Result<()> {
-        no_code! {
-            self.inner.kill()
-        }
+        self.inner.kill()
     }
 
     /// Waits for the child to exit completely, returning the status that it exited with.
@@ -76,10 +76,9 @@ impl PidFd {
     /// will return an Error.
     ///
     /// [`Child::wait`]: process::Child::wait
+    #[no_code_when_rustdoc]
     pub fn wait(&self) -> Result<ExitStatus> {
-        no_code! {
-            self.inner.wait().map(FromInner::from_inner)
-        }
+        self.inner.wait().map(FromInner::from_inner)
     }
 
     /// Attempts to collect the exit status of the child if it has already exited.
@@ -88,10 +87,9 @@ impl PidFd {
     /// to reap a child will return an ExitStatus, further attempts will return an Error.
     ///
     /// [`Child::try_wait`]: process::Child::try_wait
+    #[no_code_when_rustdoc]
     pub fn try_wait(&self) -> Result<Option<ExitStatus>> {
-        no_code! {
-            Ok(self.inner.try_wait()?.map(FromInner::from_inner))
-        }
+        Ok(self.inner.try_wait()?.map(FromInner::from_inner))
     }
 }
 
@@ -116,50 +114,44 @@ impl IntoInner<InnerPidFd> for PidFd {
 
 impl AsRawFd for PidFd {
     #[inline]
+    #[no_code_when_rustdoc]
     fn as_raw_fd(&self) -> RawFd {
-        no_code! {
-            self.as_inner().as_inner().as_raw_fd()
-        }
+        self.as_inner().as_inner().as_raw_fd()
     }
 }
 
 impl FromRawFd for PidFd {
+    #[no_code_when_rustdoc]
     unsafe fn from_raw_fd(fd: RawFd) -> Self {
-        no_code! {
-            Self::from_inner(InnerPidFd::from_raw_fd(fd))
-        }
+        Self::from_inner(InnerPidFd::from_raw_fd(fd))
     }
 }
 
 impl IntoRawFd for PidFd {
+    #[no_code_when_rustdoc]
     fn into_raw_fd(self) -> RawFd {
-        no_code! {
-            self.into_inner().into_inner().into_raw_fd()
-        }
+        self.into_inner().into_inner().into_raw_fd()
     }
 }
 
 impl AsFd for PidFd {
+    #[no_code_when_rustdoc]
     fn as_fd(&self) -> BorrowedFd<'_> {
-        no_code! {
-            self.as_inner().as_inner().as_fd()
-        }
+        self.as_inner().as_inner().as_fd()
     }
 }
 
 impl From<OwnedFd> for PidFd {
+    #[no_code_when_rustdoc]
     fn from(fd: OwnedFd) -> Self {
-        no_code! {
-            Self::from_inner(InnerPidFd::from_inner(FileDesc::from_inner(fd)))
-        }
+        Self::from_inner(InnerPidFd::from_inner(FileDesc::from_inner(fd)))
     }
 }
 
 impl From<PidFd> for OwnedFd {
+    #[no_code_when_rustdoc]
     fn from(pid_fd: PidFd) -> Self {
-        no_code! {
-            pid_fd.into_inner().into_inner().into_inner()
-        }
+        pid_fd.into_inner().into_inner().into_inner()
     }
 }
 

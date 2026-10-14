@@ -6,6 +6,7 @@
 
 use crate::fs::{self, Metadata, OpenOptions, Permissions};
 use crate::io::BorrowedCursor;
+use crate::macros::no_code_when_rustdoc;
 use crate::path::Path;
 use crate::sys::{AsInner, AsInnerMut, FromInner, IntoInner};
 use crate::time::SystemTime;
@@ -500,39 +501,34 @@ pub trait OpenOptionsExt {
 
 #[stable(feature = "open_options_ext", since = "1.10.0")]
 impl OpenOptionsExt for OpenOptions {
+    #[no_code_when_rustdoc]
     fn access_mode(&mut self, access: u32) -> &mut OpenOptions {
-        no_code! {
-            self.as_inner_mut().access_mode(access);
-            self
-        }
+        self.as_inner_mut().access_mode(access);
+        self
     }
 
+    #[no_code_when_rustdoc]
     fn share_mode(&mut self, share: u32) -> &mut OpenOptions {
-        no_code! {
-            self.as_inner_mut().share_mode(share);
-            self
-        }
+        self.as_inner_mut().share_mode(share);
+        self
     }
 
+    #[no_code_when_rustdoc]
     fn custom_flags(&mut self, flags: u32) -> &mut OpenOptions {
-        no_code! {
-            self.as_inner_mut().custom_flags(flags);
-            self
-        }
+        self.as_inner_mut().custom_flags(flags);
+        self
     }
 
+    #[no_code_when_rustdoc]
     fn attributes(&mut self, attributes: u32) -> &mut OpenOptions {
-        no_code! {
-            self.as_inner_mut().attributes(attributes);
-            self
-        }
+        self.as_inner_mut().attributes(attributes);
+        self
     }
 
+    #[no_code_when_rustdoc]
     fn security_qos_flags(&mut self, flags: u32) -> &mut OpenOptions {
-        no_code! {
-            self.as_inner_mut().security_qos_flags(flags);
-            self
-        }
+        self.as_inner_mut().security_qos_flags(flags);
+        self
     }
 }
 
@@ -553,18 +549,16 @@ pub impl(self) trait OpenOptionsExt2 {
 
 #[unstable(feature = "windows_freeze_file_times", issue = "149715")]
 impl OpenOptionsExt2 for OpenOptions {
+    #[no_code_when_rustdoc]
     fn freeze_last_access_time(&mut self, freeze: bool) -> &mut Self {
-        no_code! {
-            self.as_inner_mut().freeze_last_access_time(freeze);
-            self
-        }
+        self.as_inner_mut().freeze_last_access_time(freeze);
+        self
     }
 
+    #[no_code_when_rustdoc]
     fn freeze_last_write_time(&mut self, freeze: bool) -> &mut Self {
-        no_code! {
-            self.as_inner_mut().freeze_last_write_time(freeze);
-            self
-        }
+        self.as_inner_mut().freeze_last_write_time(freeze);
+        self
     }
 }
 
@@ -615,10 +609,9 @@ pub impl(self) trait PermissionsExt {
 
 #[unstable(feature = "windows_permissions_ext", issue = "152956")]
 impl PermissionsExt for fs::Permissions {
+    #[no_code_when_rustdoc]
     fn file_attributes(&self) -> u32 {
-        no_code! {
-            self.as_inner().file_attributes()
-        }
+        self.as_inner().file_attributes()
     }
 
     fn set_file_attributes(&mut self, mask: u32) {
@@ -828,50 +821,41 @@ pub trait MetadataExt {
 
 #[stable(feature = "metadata_ext", since = "1.1.0")]
 impl MetadataExt for Metadata {
+    #[no_code_when_rustdoc]
     fn file_attributes(&self) -> u32 {
-        no_code! {
-            self.as_inner().attrs()
-        }
+        self.as_inner().attrs()
     }
+    #[no_code_when_rustdoc]
     fn creation_time(&self) -> u64 {
-        no_code! {
-            self.as_inner().created_u64()
-        }
+        self.as_inner().created_u64()
     }
+    #[no_code_when_rustdoc]
     fn last_access_time(&self) -> u64 {
-        no_code! {
-            self.as_inner().accessed_u64()
-        }
+        self.as_inner().accessed_u64()
     }
+    #[no_code_when_rustdoc]
     fn last_write_time(&self) -> u64 {
-        no_code! {
-            self.as_inner().modified_u64()
-        }
+        self.as_inner().modified_u64()
     }
+    #[no_code_when_rustdoc]
     fn file_size(&self) -> u64 {
-        no_code! {
-            self.as_inner().size()
-        }
+        self.as_inner().size()
     }
+    #[no_code_when_rustdoc]
     fn volume_serial_number(&self) -> Option<u32> {
-        no_code! {
-            self.as_inner().volume_serial_number()
-        }
+        self.as_inner().volume_serial_number()
     }
+    #[no_code_when_rustdoc]
     fn number_of_links(&self) -> Option<u32> {
-        no_code! {
-            self.as_inner().number_of_links()
-        }
+        self.as_inner().number_of_links()
     }
+    #[no_code_when_rustdoc]
     fn file_index(&self) -> Option<u64> {
-        no_code! {
-            self.as_inner().file_index()
-        }
+        self.as_inner().file_index()
     }
+    #[no_code_when_rustdoc]
     fn change_time(&self) -> Option<u64> {
-        no_code! {
-            self.as_inner().changed_u64()
-        }
+        self.as_inner().changed_u64()
     }
 }
 
@@ -890,15 +874,13 @@ pub impl(self) trait FileTypeExt {
 
 #[stable(feature = "windows_file_type_ext", since = "1.64.0")]
 impl FileTypeExt for fs::FileType {
+    #[no_code_when_rustdoc]
     fn is_symlink_dir(&self) -> bool {
-        no_code! {
-            self.as_inner().is_symlink_dir()
-        }
+        self.as_inner().is_symlink_dir()
     }
+    #[no_code_when_rustdoc]
     fn is_symlink_file(&self) -> bool {
-        no_code! {
-            self.as_inner().is_symlink_file()
-        }
+        self.as_inner().is_symlink_file()
     }
 }
 
@@ -912,11 +894,10 @@ pub impl(self) trait FileTimesExt {
 
 #[stable(feature = "file_set_times", since = "1.75.0")]
 impl FileTimesExt for fs::FileTimes {
+    #[no_code_when_rustdoc]
     fn set_created(mut self, t: SystemTime) -> Self {
-        no_code! {
-            self.as_inner_mut().set_created(t.into_inner());
-            self
-        }
+        self.as_inner_mut().set_created(t.into_inner());
+        self
     }
 }
 
@@ -957,10 +938,9 @@ impl FileTimesExt for fs::FileTimes {
 /// [symlink-security]: https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/create-symbolic-links
 #[stable(feature = "symlink", since = "1.1.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "fs_symlink_file")]
+#[no_code_when_rustdoc]
 pub fn symlink_file<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Result<()> {
-    no_code! {
-        sys::fs::symlink_inner(original.as_ref(), link.as_ref(), false)
-    }
+    sys::fs::symlink_inner(original.as_ref(), link.as_ref(), false)
 }
 
 /// Creates a new symlink to a directory on the filesystem.
@@ -1000,10 +980,9 @@ pub fn symlink_file<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io:
 /// [symlink-security]: https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/create-symbolic-links
 #[stable(feature = "symlink", since = "1.1.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "fs_symlink_dir")]
+#[no_code_when_rustdoc]
 pub fn symlink_dir<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Result<()> {
-    no_code! {
-        sys::fs::symlink_inner(original.as_ref(), link.as_ref(), true)
-    }
+    sys::fs::symlink_inner(original.as_ref(), link.as_ref(), true)
 }
 
 /// Creates a junction point.
@@ -1014,8 +993,7 @@ pub fn symlink_dir<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::
 ///
 /// If either path is not a local file path then this will fail.
 #[unstable(feature = "junction_point", issue = "121709")]
+#[no_code_when_rustdoc]
 pub fn junction_point<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Result<()> {
-    no_code! {
-        sys::fs::junction_point(original.as_ref(), link.as_ref())
-    }
+    sys::fs::junction_point(original.as_ref(), link.as_ref())
 }

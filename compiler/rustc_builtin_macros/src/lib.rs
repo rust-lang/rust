@@ -43,6 +43,7 @@ mod gca;
 mod global_allocator;
 mod iter;
 mod log_syntax;
+mod no_code_when_rustdoc;
 mod offload;
 mod pattern_type;
 mod source_util;
@@ -123,6 +124,7 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         eii_declaration: eii::eii_declaration,
         eii_shared_macro: eii::eii_shared_macro,
         global_allocator: global_allocator::expand,
+        no_code_when_rustdoc: no_code_when_rustdoc::expand,
         offload_kernel: offload::expand_kernel,
         test: test::expand_test,
         test_case: test::expand_test_case,

@@ -12,6 +12,7 @@ use io::{Read, Write};
 use crate::ffi::OsStr;
 use crate::fs::{self, File, OpenOptions};
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
+use crate::macros::no_code_when_rustdoc;
 #[cfg(target_env = "p1")]
 use crate::os::fd::AsRawFd;
 use crate::path::Path;
@@ -333,20 +334,17 @@ pub trait MetadataExt {
 }
 
 impl MetadataExt for fs::Metadata {
+    #[no_code_when_rustdoc]
     fn dev(&self) -> u64 {
-        no_code! {
-            self.as_inner().as_inner().st_dev
-        }
+        self.as_inner().as_inner().st_dev
     }
+    #[no_code_when_rustdoc]
     fn ino(&self) -> u64 {
-        no_code! {
-            self.as_inner().as_inner().st_ino
-        }
+        self.as_inner().as_inner().st_ino
     }
+    #[no_code_when_rustdoc]
     fn nlink(&self) -> u64 {
-        no_code! {
-            self.as_inner().as_inner().st_nlink
-        }
+        self.as_inner().as_inner().st_nlink
     }
 }
 
@@ -364,20 +362,17 @@ pub trait FileTypeExt {
 }
 
 impl FileTypeExt for fs::FileType {
+    #[no_code_when_rustdoc]
     fn is_block_device(&self) -> bool {
-        no_code! {
-            self.as_inner().is(libc::S_IFBLK)
-        }
+        self.as_inner().is(libc::S_IFBLK)
     }
+    #[no_code_when_rustdoc]
     fn is_char_device(&self) -> bool {
-        no_code! {
-            self.as_inner().is(libc::S_IFCHR)
-        }
+        self.as_inner().is(libc::S_IFCHR)
     }
+    #[no_code_when_rustdoc]
     fn is_socket(&self) -> bool {
-        no_code! {
-            self.as_inner().is(libc::S_IFSOCK)
-        }
+        self.as_inner().is(libc::S_IFSOCK)
     }
 }
 

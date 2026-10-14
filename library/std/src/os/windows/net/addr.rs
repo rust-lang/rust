@@ -1,6 +1,7 @@
 #![unstable(feature = "windows_unix_domain_sockets", issue = "150487")]
 use crate::bstr::ByteStr;
 use crate::ffi::OsStr;
+use crate::macros::no_code_when_rustdoc;
 use crate::path::Path;
 #[cfg(not(doc))]
 use crate::sys::c::{AF_UNIX, SOCKADDR, SOCKADDR_UN};
@@ -127,28 +128,27 @@ impl SocketAddr {
     ///
     /// assert!(SocketAddr::from_pathname("/path/with/\0/bytes").is_err());
     /// ```
+    #[no_code_when_rustdoc]
     pub fn from_pathname<P>(path: P) -> io::Result<SocketAddr>
     where
         P: AsRef<Path>,
     {
-        no_code! {
-            sockaddr_un(path.as_ref()).map(|(addr, len)| SocketAddr { addr, len: len as _ })
-        }
+        sockaddr_un(path.as_ref()).map(|(addr, len)| SocketAddr { addr, len: len as _ })
     }
-    fn address(&self) -> AddressKind<'_> {
-        no_code! {
-            let len = self.len as usize - SUN_PATH_OFFSET;
-            let path = unsafe { mem::transmute::<&[i8], &[u8]>(&self.addr.sun_path) };
 
-            if len == 0 {
-                AddressKind::Unnamed
-            } else if self.addr.sun_path[0] == 0 {
-                AddressKind::Abstract(ByteStr::from_bytes(&path[1..len]))
-            } else {
-                AddressKind::Pathname(unsafe {
-                    OsStr::from_encoded_bytes_unchecked(&path[..len - 1]).as_ref()
-                })
-            }
+    #[no_code_when_rustdoc]
+    fn address(&self) -> AddressKind<'_> {
+        let len = self.len as usize - SUN_PATH_OFFSET;
+        let path = unsafe { mem::transmute::<&[i8], &[u8]>(&self.addr.sun_path) };
+
+        if len == 0 {
+            AddressKind::Unnamed
+        } else if self.addr.sun_path[0] == 0 {
+            AddressKind::Abstract(ByteStr::from_bytes(&path[1..len]))
+        } else {
+            AddressKind::Pathname(unsafe {
+                OsStr::from_encoded_bytes_unchecked(&path[..len - 1]).as_ref()
+            })
         }
     }
 

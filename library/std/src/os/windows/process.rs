@@ -5,6 +5,7 @@
 #![stable(feature = "process_extensions", since = "1.2.0")]
 
 use crate::ffi::{OsStr, c_void};
+use crate::macros::no_code_when_rustdoc;
 use crate::mem::MaybeUninit;
 use crate::os::windows::io::{
     AsHandle, AsRawHandle, BorrowedHandle, FromRawHandle, IntoRawHandle, OwnedHandle, RawHandle,
@@ -14,12 +15,11 @@ use crate::{io, marker, process, ptr, sys};
 
 #[stable(feature = "process_extensions", since = "1.2.0")]
 impl FromRawHandle for process::Stdio {
+    #[no_code_when_rustdoc]
     unsafe fn from_raw_handle(handle: RawHandle) -> process::Stdio {
-        no_code! {
-            let handle = unsafe { sys::handle::Handle::from_raw_handle(handle as *mut _) };
-            let io = sys::process::Stdio::Handle(handle);
-            process::Stdio::from_inner(io)
-        }
+        let handle = unsafe { sys::handle::Handle::from_raw_handle(handle as *mut _) };
+        let io = sys::process::Stdio::Handle(handle);
+        process::Stdio::from_inner(io)
     }
 }
 
@@ -27,108 +27,97 @@ impl FromRawHandle for process::Stdio {
 impl From<OwnedHandle> for process::Stdio {
     /// Takes ownership of a handle and returns a [`Stdio`](process::Stdio)
     /// that can attach a stream to it.
+    #[no_code_when_rustdoc]
     fn from(handle: OwnedHandle) -> process::Stdio {
-        no_code! {
-            let handle = sys::handle::Handle::from_inner(handle);
-            let io = sys::process::Stdio::Handle(handle);
-            process::Stdio::from_inner(io)
-        }
+        let handle = sys::handle::Handle::from_inner(handle);
+        let io = sys::process::Stdio::Handle(handle);
+        process::Stdio::from_inner(io)
     }
 }
 
 #[stable(feature = "process_extensions", since = "1.2.0")]
 impl AsRawHandle for process::Child {
     #[inline]
+    #[no_code_when_rustdoc]
     fn as_raw_handle(&self) -> RawHandle {
-        no_code! {
-            self.as_inner().handle().as_raw_handle() as *mut _
-        }
+        self.as_inner().handle().as_raw_handle() as *mut _
     }
 }
 
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl AsHandle for process::Child {
     #[inline]
+    #[no_code_when_rustdoc]
     fn as_handle(&self) -> BorrowedHandle<'_> {
-        no_code! {
-            self.as_inner().handle().as_handle()
-        }
+        self.as_inner().handle().as_handle()
     }
 }
 
 #[stable(feature = "into_raw_os", since = "1.4.0")]
 impl IntoRawHandle for process::Child {
+    #[no_code_when_rustdoc]
     fn into_raw_handle(self) -> RawHandle {
-        no_code! {
-            self.into_inner().into_handle().into_raw_handle() as *mut _
-        }
+        self.into_inner().into_handle().into_raw_handle() as *mut _
     }
 }
 
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl From<process::Child> for OwnedHandle {
     /// Takes ownership of a [`Child`](process::Child)'s process handle.
+    #[no_code_when_rustdoc]
     fn from(child: process::Child) -> OwnedHandle {
-        no_code! {
-            child.into_inner().into_handle().into_inner()
-        }
+        child.into_inner().into_handle().into_inner()
     }
 }
 
 #[stable(feature = "process_extensions", since = "1.2.0")]
 impl AsRawHandle for process::ChildStdin {
     #[inline]
+    #[no_code_when_rustdoc]
     fn as_raw_handle(&self) -> RawHandle {
-        no_code! {
-            self.as_inner().handle().as_raw_handle() as *mut _
-        }
+        self.as_inner().handle().as_raw_handle() as *mut _
     }
 }
 
 #[stable(feature = "process_extensions", since = "1.2.0")]
 impl AsRawHandle for process::ChildStdout {
     #[inline]
+    #[no_code_when_rustdoc]
     fn as_raw_handle(&self) -> RawHandle {
-        no_code! {
-            self.as_inner().handle().as_raw_handle() as *mut _
-        }
+        self.as_inner().handle().as_raw_handle() as *mut _
     }
 }
 
 #[stable(feature = "process_extensions", since = "1.2.0")]
 impl AsRawHandle for process::ChildStderr {
     #[inline]
+    #[no_code_when_rustdoc]
     fn as_raw_handle(&self) -> RawHandle {
-        no_code! {
-            self.as_inner().handle().as_raw_handle() as *mut _
-        }
+        self.as_inner().handle().as_raw_handle() as *mut _
     }
 }
 
 #[stable(feature = "into_raw_os", since = "1.4.0")]
 impl IntoRawHandle for process::ChildStdin {
+    #[no_code_when_rustdoc]
     fn into_raw_handle(self) -> RawHandle {
-        no_code! {
-            self.into_inner().into_handle().into_raw_handle() as *mut _
-        }
+        self.into_inner().into_handle().into_raw_handle() as *mut _
     }
 }
 
 #[stable(feature = "into_raw_os", since = "1.4.0")]
 impl IntoRawHandle for process::ChildStdout {
+    #[no_code_when_rustdoc]
     fn into_raw_handle(self) -> RawHandle {
-        no_code! {
-            self.into_inner().into_handle().into_raw_handle() as *mut _
-        }
+        self.into_inner().into_handle().into_raw_handle() as *mut _
     }
 }
 
 #[stable(feature = "into_raw_os", since = "1.4.0")]
 impl IntoRawHandle for process::ChildStderr {
+    #[no_code_when_rustdoc]
     fn into_raw_handle(self) -> RawHandle {
-        no_code! {
-            self.into_inner().into_handle().into_raw_handle() as *mut _
-        }
+        self.into_inner().into_handle().into_raw_handle() as *mut _
     }
 }
 
@@ -138,12 +127,11 @@ impl IntoRawHandle for process::ChildStderr {
 /// writing from and to it is implemented using asynchronous APIs.
 #[stable(feature = "child_stream_from_fd", since = "1.74.0")]
 impl From<OwnedHandle> for process::ChildStdin {
+    #[no_code_when_rustdoc]
     fn from(handle: OwnedHandle) -> process::ChildStdin {
-        no_code! {
-            let handle = sys::handle::Handle::from_inner(handle);
-            let pipe = sys::process::ChildPipe::from_inner(handle);
-            process::ChildStdin::from_inner(pipe)
-        }
+        let handle = sys::handle::Handle::from_inner(handle);
+        let pipe = sys::process::ChildPipe::from_inner(handle);
+        process::ChildStdin::from_inner(pipe)
     }
 }
 
@@ -153,12 +141,11 @@ impl From<OwnedHandle> for process::ChildStdin {
 /// writing from and to it is implemented using asynchronous APIs.
 #[stable(feature = "child_stream_from_fd", since = "1.74.0")]
 impl From<OwnedHandle> for process::ChildStdout {
+    #[no_code_when_rustdoc]
     fn from(handle: OwnedHandle) -> process::ChildStdout {
-        no_code! {
-            let handle = sys::handle::Handle::from_inner(handle);
-            let pipe = sys::process::ChildPipe::from_inner(handle);
-            process::ChildStdout::from_inner(pipe)
-        }
+        let handle = sys::handle::Handle::from_inner(handle);
+        let pipe = sys::process::ChildPipe::from_inner(handle);
+        process::ChildStdout::from_inner(pipe)
     }
 }
 
@@ -168,12 +155,11 @@ impl From<OwnedHandle> for process::ChildStdout {
 /// writing from and to it is implemented using asynchronous APIs.
 #[stable(feature = "child_stream_from_fd", since = "1.74.0")]
 impl From<OwnedHandle> for process::ChildStderr {
+    #[no_code_when_rustdoc]
     fn from(handle: OwnedHandle) -> process::ChildStderr {
-        no_code! {
-            let handle = sys::handle::Handle::from_inner(handle);
-            let pipe = sys::process::ChildPipe::from_inner(handle);
-            process::ChildStderr::from_inner(pipe)
-        }
+        let handle = sys::handle::Handle::from_inner(handle);
+        let pipe = sys::process::ChildPipe::from_inner(handle);
+        process::ChildStderr::from_inner(pipe)
     }
 }
 
@@ -188,10 +174,9 @@ pub impl(self) trait ExitStatusExt {
 
 #[stable(feature = "exit_status_from", since = "1.12.0")]
 impl ExitStatusExt for process::ExitStatus {
+    #[no_code_when_rustdoc]
     fn from_raw(raw: u32) -> Self {
-        no_code! {
-            process::ExitStatus::from_inner(From::from(raw))
-        }
+        process::ExitStatus::from_inner(From::from(raw))
     }
 }
 
@@ -419,39 +404,34 @@ pub impl(self) trait CommandExt {
 
 #[stable(feature = "windows_process_extensions", since = "1.16.0")]
 impl CommandExt for process::Command {
+    #[no_code_when_rustdoc]
     fn creation_flags(&mut self, flags: u32) -> &mut process::Command {
-        no_code! {
-            self.as_inner_mut().creation_flags(flags);
-            self
-        }
+        self.as_inner_mut().creation_flags(flags);
+        self
     }
 
+    #[no_code_when_rustdoc]
     fn desktop<S: AsRef<OsStr>>(&mut self, desktop: S) -> &mut process::Command {
-        no_code! {
-            self.as_inner_mut().desktop(desktop.as_ref());
-            self
-        }
+        self.as_inner_mut().desktop(desktop.as_ref());
+        self
     }
 
+    #[no_code_when_rustdoc]
     fn show_window(&mut self, cmd_show: u16) -> &mut process::Command {
-        no_code! {
-            self.as_inner_mut().show_window(Some(cmd_show));
-            self
-        }
+        self.as_inner_mut().show_window(Some(cmd_show));
+        self
     }
 
+    #[no_code_when_rustdoc]
     fn force_quotes(&mut self, enabled: bool) -> &mut process::Command {
-        no_code! {
-            self.as_inner_mut().force_quotes(enabled);
-            self
-        }
+        self.as_inner_mut().force_quotes(enabled);
+        self
     }
 
+    #[no_code_when_rustdoc]
     fn raw_arg<S: AsRef<OsStr>>(&mut self, raw_text: S) -> &mut process::Command {
-        no_code! {
-            self.as_inner_mut().raw_arg(raw_text.as_ref());
-            self
-        }
+        self.as_inner_mut().raw_arg(raw_text.as_ref());
+        self
     }
 
     fn async_pipes(&mut self, always_async: bool) -> &mut process::Command {
@@ -463,43 +443,38 @@ impl CommandExt for process::Command {
         self
     }
 
+    #[no_code_when_rustdoc]
     fn spawn_with_attributes(
         &mut self,
         attribute_list: &ProcThreadAttributeList<'_>,
     ) -> io::Result<process::Child> {
-        no_code! {
-            self.as_inner_mut()
-                .spawn_with_attributes(sys::process::Stdio::Inherit, true, Some(attribute_list))
-                .map(process::Child::from_inner)
-        }
+        self.as_inner_mut()
+            .spawn_with_attributes(sys::process::Stdio::Inherit, true, Some(attribute_list))
+            .map(process::Child::from_inner)
     }
 
+    #[no_code_when_rustdoc]
     fn startupinfo_fullscreen(&mut self, enabled: bool) -> &mut process::Command {
-        no_code! {
-            self.as_inner_mut().startupinfo_fullscreen(enabled);
-            self
-        }
+        self.as_inner_mut().startupinfo_fullscreen(enabled);
+        self
     }
 
+    #[no_code_when_rustdoc]
     fn startupinfo_untrusted_source(&mut self, enabled: bool) -> &mut process::Command {
-        no_code! {
-            self.as_inner_mut().startupinfo_untrusted_source(enabled);
-            self
-        }
+        self.as_inner_mut().startupinfo_untrusted_source(enabled);
+        self
     }
 
+    #[no_code_when_rustdoc]
     fn startupinfo_force_feedback(&mut self, enabled: Option<bool>) -> &mut process::Command {
-        no_code! {
-            self.as_inner_mut().startupinfo_force_feedback(enabled);
-            self
-        }
+        self.as_inner_mut().startupinfo_force_feedback(enabled);
+        self
     }
 
+    #[no_code_when_rustdoc]
     fn inherit_handles(&mut self, inherit_handles: bool) -> &mut process::Command {
-        no_code! {
-            self.as_inner_mut().inherit_handles(inherit_handles);
-            self
-        }
+        self.as_inner_mut().inherit_handles(inherit_handles);
+        self
     }
 }
 
@@ -512,10 +487,9 @@ pub impl(self) trait ChildExt {
 
 #[stable(feature = "windows_process_extensions_main_thread_handle", since = "1.100.0")]
 impl ChildExt for process::Child {
+    #[no_code_when_rustdoc]
     fn main_thread_handle(&self) -> BorrowedHandle<'_> {
-        no_code! {
-            self.handle.main_thread_handle()
-        }
+        self.handle.main_thread_handle()
     }
 }
 
@@ -534,10 +508,9 @@ pub impl(self) trait ExitCodeExt {
 
 #[unstable(feature = "windows_process_exit_code_from", issue = "111688")]
 impl ExitCodeExt for process::ExitCode {
+    #[no_code_when_rustdoc]
     fn from_raw(raw: u32) -> Self {
-        no_code! {
-            process::ExitCode::from_inner(From::from(raw))
-        }
+        process::ExitCode::from_inner(From::from(raw))
     }
 }
 
@@ -573,12 +546,11 @@ impl<'a> Drop for ProcThreadAttributeList<'a> {
     /// underlying attribute list.
     ///
     /// [1]: <https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-deleteprocthreadattributelist>
+    #[no_code_when_rustdoc]
     fn drop(&mut self) {
-        no_code! {
-            let lp_attribute_list =
-                self.attribute_list.as_mut_ptr().cast::<sys::c::_PROC_THREAD_ATTRIBUTE_LIST>();
-            unsafe { sys::c::DeleteProcThreadAttributeList(lp_attribute_list) }
-        }
+        let lp_attribute_list =
+            self.attribute_list.as_mut_ptr().cast::<sys::c::_PROC_THREAD_ATTRIBUTE_LIST>();
+        unsafe { sys::c::DeleteProcThreadAttributeList(lp_attribute_list) }
     }
 }
 
@@ -721,61 +693,60 @@ impl<'a> ProcThreadAttributeListBuilder<'a> {
     ///
     /// Returns an error if the maximum number of attributes is exceeded
     /// or if there is an I/O error during initialization.
+    #[no_code_when_rustdoc]
     pub fn finish(&self) -> io::Result<ProcThreadAttributeList<'a>> {
-        no_code! {
-            // To initialize our ProcThreadAttributeList, we need to determine
-            // how many bytes to allocate for it. The Windows API simplifies this
-            // process by allowing us to call `InitializeProcThreadAttributeList`
-            // with a null pointer to retrieve the required size.
-            let mut required_size = 0;
-            let Ok(attribute_count) = self.attributes.len().try_into() else {
-                return Err(io::const_error!(
-                    io::ErrorKind::InvalidInput,
-                    "maximum number of ProcThreadAttributes exceeded",
-                ));
-            };
-            unsafe {
-                sys::c::InitializeProcThreadAttributeList(
-                    ptr::null_mut(),
-                    attribute_count,
-                    0,
-                    &mut required_size,
-                )
-            };
+        // To initialize our ProcThreadAttributeList, we need to determine
+        // how many bytes to allocate for it. The Windows API simplifies this
+        // process by allowing us to call `InitializeProcThreadAttributeList`
+        // with a null pointer to retrieve the required size.
+        let mut required_size = 0;
+        let Ok(attribute_count) = self.attributes.len().try_into() else {
+            return Err(io::const_error!(
+                io::ErrorKind::InvalidInput,
+                "maximum number of ProcThreadAttributes exceeded",
+            ));
+        };
+        unsafe {
+            sys::c::InitializeProcThreadAttributeList(
+                ptr::null_mut(),
+                attribute_count,
+                0,
+                &mut required_size,
+            )
+        };
 
-            let mut attribute_list = vec![MaybeUninit::uninit(); required_size].into_boxed_slice();
+        let mut attribute_list = vec![MaybeUninit::uninit(); required_size].into_boxed_slice();
 
-            // Once we've allocated the necessary memory, it's safe to invoke
-            // `InitializeProcThreadAttributeList` to properly initialize the list.
+        // Once we've allocated the necessary memory, it's safe to invoke
+        // `InitializeProcThreadAttributeList` to properly initialize the list.
+        sys::cvt(unsafe {
+            sys::c::InitializeProcThreadAttributeList(
+                attribute_list.as_mut_ptr().cast::<sys::c::_PROC_THREAD_ATTRIBUTE_LIST>(),
+                attribute_count,
+                0,
+                &mut required_size,
+            )
+        })?;
+
+        // # Add our attributes to the buffer.
+        // It's theoretically possible for the attribute count to exceed a u32
+        // value. Therefore, we ensure that we don't add more attributes than
+        // the buffer was initialized for.
+        for (&attribute, value) in self.attributes.iter().take(attribute_count as usize) {
             sys::cvt(unsafe {
-                sys::c::InitializeProcThreadAttributeList(
+                sys::c::UpdateProcThreadAttribute(
                     attribute_list.as_mut_ptr().cast::<sys::c::_PROC_THREAD_ATTRIBUTE_LIST>(),
-                    attribute_count,
                     0,
-                    &mut required_size,
+                    attribute,
+                    value.ptr,
+                    value.size,
+                    ptr::null_mut(),
+                    ptr::null_mut(),
                 )
             })?;
-
-            // # Add our attributes to the buffer.
-            // It's theoretically possible for the attribute count to exceed a u32
-            // value. Therefore, we ensure that we don't add more attributes than
-            // the buffer was initialized for.
-            for (&attribute, value) in self.attributes.iter().take(attribute_count as usize) {
-                sys::cvt(unsafe {
-                    sys::c::UpdateProcThreadAttribute(
-                        attribute_list.as_mut_ptr().cast::<sys::c::_PROC_THREAD_ATTRIBUTE_LIST>(),
-                        0,
-                        attribute,
-                        value.ptr,
-                        value.size,
-                        ptr::null_mut(),
-                        ptr::null_mut(),
-                    )
-                })?;
-            }
-
-            Ok(ProcThreadAttributeList { attribute_list, _lifetime_marker: marker::PhantomData })
         }
+
+        Ok(ProcThreadAttributeList { attribute_list, _lifetime_marker: marker::PhantomData })
     }
 }
 

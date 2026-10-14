@@ -1469,6 +1469,7 @@ symbols! {
         nll,
         no,
         no_builtins,
+        no_code_when_rustdoc,
         no_core,
         no_coverage,
         no_crate_inject,

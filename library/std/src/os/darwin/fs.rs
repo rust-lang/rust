@@ -4,6 +4,7 @@
 #![stable(feature = "metadata_ext", since = "1.1.0")]
 
 use crate::fs::{self, Metadata};
+use crate::macros::no_code_when_rustdoc;
 use crate::sys::{AsInner, AsInnerMut, IntoInner};
 use crate::time::SystemTime;
 
@@ -88,115 +89,93 @@ pub trait MetadataExt {
 impl MetadataExt for Metadata {
     #[allow(deprecated)]
     #[cfg(any(doc, target_os = "macos", target_os = "ios"))]
+    #[no_code_when_rustdoc]
     fn as_raw_stat(&self) -> &super::raw::stat {
-        no_code! {
-            unsafe { &*(self.as_inner().as_inner() as *const libc::stat as *const super::raw::stat) }
-        }
+        unsafe { &*(self.as_inner().as_inner() as *const libc::stat as *const super::raw::stat) }
     }
+    #[no_code_when_rustdoc]
     fn st_dev(&self) -> u64 {
-        no_code! {
-            self.as_inner().as_inner().st_dev as u64
-        }
+        self.as_inner().as_inner().st_dev as u64
     }
+    #[no_code_when_rustdoc]
     fn st_ino(&self) -> u64 {
-        no_code! {
-            self.as_inner().as_inner().st_ino as u64
-        }
+        self.as_inner().as_inner().st_ino as u64
     }
+    #[no_code_when_rustdoc]
     fn st_mode(&self) -> u32 {
-        no_code! {
-            self.as_inner().as_inner().st_mode as u32
-        }
+        self.as_inner().as_inner().st_mode as u32
     }
+    #[no_code_when_rustdoc]
     fn st_nlink(&self) -> u64 {
-        no_code! {
-            self.as_inner().as_inner().st_nlink as u64
-        }
+        self.as_inner().as_inner().st_nlink as u64
     }
+    #[no_code_when_rustdoc]
     fn st_uid(&self) -> u32 {
-        no_code! {
-            self.as_inner().as_inner().st_uid as u32
-        }
+        self.as_inner().as_inner().st_uid as u32
     }
+    #[no_code_when_rustdoc]
     fn st_gid(&self) -> u32 {
-        no_code! {
-            self.as_inner().as_inner().st_gid as u32
-        }
+        self.as_inner().as_inner().st_gid as u32
     }
+    #[no_code_when_rustdoc]
     fn st_rdev(&self) -> u64 {
-        no_code! {
-            self.as_inner().as_inner().st_rdev as u64
-        }
+        self.as_inner().as_inner().st_rdev as u64
     }
+    #[no_code_when_rustdoc]
     fn st_size(&self) -> u64 {
-        no_code! {
-            self.as_inner().as_inner().st_size as u64
-        }
+        self.as_inner().as_inner().st_size as u64
     }
+    #[no_code_when_rustdoc]
     fn st_atime(&self) -> i64 {
-        no_code! {
-            self.as_inner().as_inner().st_atime as i64
-        }
+        self.as_inner().as_inner().st_atime as i64
     }
+    #[no_code_when_rustdoc]
     fn st_atime_nsec(&self) -> i64 {
-        no_code! {
-            self.as_inner().as_inner().st_atime_nsec as i64
-        }
+        self.as_inner().as_inner().st_atime_nsec as i64
     }
+    #[no_code_when_rustdoc]
     fn st_mtime(&self) -> i64 {
-        no_code! {
-            self.as_inner().as_inner().st_mtime as i64
-        }
+        self.as_inner().as_inner().st_mtime as i64
     }
+    #[no_code_when_rustdoc]
     fn st_mtime_nsec(&self) -> i64 {
-        no_code! {
-            self.as_inner().as_inner().st_mtime_nsec as i64
-        }
+        self.as_inner().as_inner().st_mtime_nsec as i64
     }
+    #[no_code_when_rustdoc]
     fn st_ctime(&self) -> i64 {
-        no_code! {
-            self.as_inner().as_inner().st_ctime as i64
-        }
+        self.as_inner().as_inner().st_ctime as i64
     }
+    #[no_code_when_rustdoc]
     fn st_ctime_nsec(&self) -> i64 {
-        no_code! {
-            self.as_inner().as_inner().st_ctime_nsec as i64
-        }
+        self.as_inner().as_inner().st_ctime_nsec as i64
     }
+    #[no_code_when_rustdoc]
     fn st_birthtime(&self) -> i64 {
-        no_code! {
-            self.as_inner().as_inner().st_birthtime as i64
-        }
+        self.as_inner().as_inner().st_birthtime as i64
     }
+    #[no_code_when_rustdoc]
     fn st_birthtime_nsec(&self) -> i64 {
-        no_code! {
-            self.as_inner().as_inner().st_birthtime_nsec as i64
-        }
+        self.as_inner().as_inner().st_birthtime_nsec as i64
     }
+    #[no_code_when_rustdoc]
     fn st_blksize(&self) -> u64 {
-        no_code! {
-            self.as_inner().as_inner().st_blksize as u64
-        }
+        self.as_inner().as_inner().st_blksize as u64
     }
+    #[no_code_when_rustdoc]
     fn st_blocks(&self) -> u64 {
-        no_code! {
-            self.as_inner().as_inner().st_blocks as u64
-        }
+        self.as_inner().as_inner().st_blocks as u64
     }
+    #[no_code_when_rustdoc]
     fn st_gen(&self) -> u32 {
-        no_code! {
-            self.as_inner().as_inner().st_gen as u32
-        }
+        self.as_inner().as_inner().st_gen as u32
     }
+    #[no_code_when_rustdoc]
     fn st_flags(&self) -> u32 {
-        no_code! {
-            self.as_inner().as_inner().st_flags as u32
-        }
+        self.as_inner().as_inner().st_flags as u32
     }
+    #[no_code_when_rustdoc]
     fn st_lspare(&self) -> u32 {
-        no_code! {
-            self.as_inner().as_inner().st_lspare as u32
-        }
+        self.as_inner().as_inner().st_lspare as u32
     }
     #[cfg(target_os = "macos")]
     fn st_qspare(&self) -> [u64; 2] {
@@ -215,10 +194,9 @@ pub impl(self) trait FileTimesExt {
 
 #[stable(feature = "file_set_times", since = "1.75.0")]
 impl FileTimesExt for fs::FileTimes {
+    #[no_code_when_rustdoc]
     fn set_created(mut self, t: SystemTime) -> Self {
-        no_code! {
-            self.as_inner_mut().set_created(t.into_inner());
-            self
-        }
+        self.as_inner_mut().set_created(t.into_inner());
+        self
     }
 }
