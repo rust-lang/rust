@@ -16,7 +16,7 @@ use rustc_type_ir::{
 use tracing::{debug, instrument};
 
 use crate::delegate::SolverDelegate;
-use crate::solve::{Certainty, EvalCtxt, Goal, NoSolution};
+use crate::solve::{Certainty, EvalCtxt, Goal, NoSolution, VisibleForLeakCheck};
 
 /// Logic for `-Zassumptions-on-binders` stuff
 impl<'a, D, I> EvalCtxt<'a, D>
@@ -168,7 +168,7 @@ where
         use Component::*;
         use LeafRegionConstraint::*;
         match c {
-            Region(c_r) => Or::new_leaf(RegionOutlives(*c_r, r, ())),
+            Region(c_r) => Or::new_leaf(RegionOutlives(*c_r, r, VisibleForLeakCheck::No, ())),
             Placeholder(p) => {
                 Or::new_leaf(PlaceholderTyOutlives(Ty::new_placeholder(self.cx(), *p), r, ()))
             }
@@ -194,7 +194,7 @@ where
 
         let item_bounds =
             rustc_type_ir::outlives::declared_bounds_from_definition(self.cx(), alias)
-                .map(|bound| And::new([RegionOutlives(bound, r, ())]));
+                .map(|bound| And::new([RegionOutlives(bound, r, VisibleForLeakCheck::No, ())]));
         let item_bound_outlives = Or::new(item_bounds);
 
         let where_clause_outlives =

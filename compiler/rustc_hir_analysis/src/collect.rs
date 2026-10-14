@@ -36,7 +36,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
 use rustc_middle::ty::{
     self, AdtKind, Const, IsSuggestable, Ty, TyCtxt, TypeVisitableExt, TypingMode, Unnormalized,
-    fold_regions,
+    VisibleForLeakCheck, fold_regions,
 };
 use rustc_span::def_id::LocalModId;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, bug, kw, span_bug, sym};
@@ -444,7 +444,10 @@ impl<'tcx> ItemCtxt<'tcx> {
                 let lhs = self.lowerer().lower_lifetime(lhs, RegionInferReason::RegionPredicate);
                 let rhs = self.lowerer().lower_lifetime(rhs, RegionInferReason::RegionPredicate);
                 SolverRegionConstraint::new_leaf(LeafRegionConstraint::RegionOutlives(
-                    lhs, rhs, span,
+                    lhs,
+                    rhs,
+                    VisibleForLeakCheck::Unreachable,
+                    span,
                 ))
             }
             hir::TestBinderConstraint::PlaceholderOutlives { lhs, rhs } => {

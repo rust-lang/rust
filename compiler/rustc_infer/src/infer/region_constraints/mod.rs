@@ -86,6 +86,9 @@ pub struct RegionConstraintData<'tcx> {
 pub type SolverRegionConstraint<'tcx> =
     rustc_type_ir::region_constraint::RegionConstraint<TyCtxt<'tcx>, Span>;
 
+pub type SolverLeafRegionConstraint<'tcx> =
+    rustc_type_ir::region_constraint::LeafRegionConstraint<TyCtxt<'tcx>, Span>;
+
 #[derive(Clone, Debug, Default)]
 pub struct SolverRegionConstraintData<'tcx>(Option<SolverRegionConstraint<'tcx>>);
 
@@ -107,6 +110,10 @@ impl<'tcx> SolverRegionConstraintData<'tcx> {
             Some(v) => v.and_constraint.0.len(),
             None => 0,
         }
+    }
+
+    pub(crate) fn leafs(&self) -> &[SolverLeafRegionConstraint<'tcx>] {
+        &self.0.as_ref().unwrap().and_constraint.0
     }
 }
 
