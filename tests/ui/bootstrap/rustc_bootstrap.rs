@@ -10,7 +10,7 @@
 
 // ignore-tidy-linelength
 
-//@ revisions: default_nightly cheat cheat_single_crate cheat_multi_crate force_stable force_stable_allow_flags invalid_zero invalid_junk
+//@ revisions: default_nightly cheat cheat_single_crate cheat_multi_crate force_stable force_stable_disallow_additional_flags force_stable_disallow_unstable_features invalid_zero invalid_junk
 //@ only-nightly
 //@ normalize-stderr: "dev release channel" -> "nightly release channel"
 
@@ -41,14 +41,18 @@
 //@[force_stable] rustc-env:RUSTC_BOOTSTRAP=-1
 //@[force_stable] compile-flags: -Z unstable-options
 
-// Here rustc shouldn't complain about compiletest's -Z flags being passed.
-//@[force_stable_allow_flags] rustc-env:RUSTC_BOOTSTRAP=-2
-//@[force_stable_allow_flags] compile-flags: -Z unstable-options
+// Here rustc shouldn't complain about the allowed compiletest -Z flags being passed, but should
+// still complain about other unstable flags.
+//@[force_stable_disallow_additional_flags] act-as-stable
+//@[force_stable_disallow_additional_flags] compile-flags: -Z mir-opt-level=3
+
+// Here rustc should not allow using unstable language features.
+//@[force_stable_disallow_unstable_features] act-as-stable
 
 #![crate_type = "lib"]
 // Note: `rustc_attrs` is a perma-unstable internal feature that is unlikely to change, which is
 // used as a proxy to check `RUSTC_BOOTSTRAP` versus stability checking logic.
 #![feature(rustc_attrs)]
-//[force_stable_allow_flags]~^ ERROR: `#![feature]` may not be used on the
+//[force_stable_disallow_unstable_features]~^ ERROR: `#![feature]` may not be used on the
 
 //[force_stable]~? RAW the option `Z` is only accepted on the nightly compiler
