@@ -12,11 +12,10 @@ use thin_vec::{ThinVec, thin_vec};
 
 use super::{Parser, PathStyle, SeqSep, TokenType, Trailing};
 use crate::diagnostics::{
-    self, AttributeOnEmptyType, AttributeOnType, CStyleReferenceMut,
-    CStyleReferenceMutLifetimeSugg, CStyleReferenceMutPlainSugg, DynAfterMut,
-    ExpectedFnPathFoundFnKeyword, ExpectedMutOrConstInRawPointerType, FnPtrWithGenerics,
-    FnPtrWithGenericsSugg, HelpUseLatestEdition, InvalidCVariadicType, InvalidDynKeyword,
-    LifetimeAfterMut, NeedPlusAfterTraitObjectLifetime, NestedCVariadicType,
+    self, CStyleReferenceMut, CStyleReferenceMutLifetimeSugg, CStyleReferenceMutPlainSugg,
+    DynAfterMut, ExpectedFnPathFoundFnKeyword, ExpectedMutOrConstInRawPointerType,
+    FnPtrWithGenerics, FnPtrWithGenericsSugg, HelpUseLatestEdition, InvalidCVariadicType,
+    InvalidDynKeyword, LifetimeAfterMut, NeedPlusAfterTraitObjectLifetime, NestedCVariadicType,
     ReturnTypesUseThinArrow,
 };
 use crate::parser::{FnContext, FnParseMode, FrontMatterParsingMode};

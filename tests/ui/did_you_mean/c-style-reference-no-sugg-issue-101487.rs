@@ -19,13 +19,6 @@ fn b() {
 
 fn main() {
     let x = 12;
-    let y = 34;
-
-    let a = x + y&;
-    //~^ ERROR reference types must be written as `&expr`
-
-    let _d = x as u8&;
-    //~^ ERROR reference types must be written as `&expr`
 
     m!(x &);
     //~^ ERROR expected expression, found end of macro arguments

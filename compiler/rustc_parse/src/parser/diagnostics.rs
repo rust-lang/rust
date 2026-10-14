@@ -6,9 +6,8 @@ use rustc_ast::token::{self, Lit, LitKind, Token, TokenKind};
 use rustc_ast::util::parser::{AssocOp, ExprPrecedence};
 use rustc_ast::{
     self as ast, AngleBracketedArg, AngleBracketedArgs, AnonConst, AttrVec, BinOpKind, BindingMode,
-    Block, BlockCheckMode, BorrowKind, Expr, ExprKind, GenericArg, GenericArgs, Generics, Item,
-    ItemKind, MutTy, Mutability, Param, Pat, PatKind, Path, PathSegment, QSelf, Recovered, Ty,
-    TyKind,
+    Block, BlockCheckMode, Expr, ExprKind, GenericArg, GenericArgs, Generics, Item, ItemKind,
+    MutTy, Mutability, Param, Pat, PatKind, Path, PathSegment, QSelf, Recovered, Ty, TyKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
@@ -27,12 +26,11 @@ use super::{
     SeqSep, TokenType,
 };
 use crate::diagnostics::{
-    AddParen, AmbiguousPlus, AsyncMoveBlockIn2015, AsyncUseBlockIn2015, AttributeOnParamType,
-    AwaitSuggestion, BadQPathStage2, BadTypePlus, BadTypePlusSub, CStyleReference,
-    CStyleReferenceExpr, CStyleReferenceExprSugg, CStyleReferenceSugg, ColonAsSemi,
+    AddParen, AmbiguousPlus, AsyncMoveBlockIn2015, AsyncUseBlockIn2015, AwaitSuggestion,
+    BadQPathStage2, BadTypePlus, BadTypePlusSub, CStyleReference, CStyleReferenceSugg, ColonAsSemi,
     ComparisonOperatorsCannotBeChained, ComparisonOperatorsCannotBeChainedSugg,
-    DocCommentDoesNotDocumentAnything, DocCommentOnParamType, DoubleColonInBound,
-    ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg, ExprParenthesesNeeded, FoundPathInGenerics,
+    DocCommentDoesNotDocumentAnything, DoubleColonInBound, ExpectedIdentifier, ExpectedSemi,
+    ExpectedSemiSugg, ExprParenthesesNeeded, FoundPathInGenerics,
     GenericParamsWithoutAngleBrackets, GenericParamsWithoutAngleBracketsSugg,
     HelpIdentifierStartsWithNumber, HelpUseLatestEdition, InInTypo, IncorrectAwait,
     IncorrectSemicolon, IncorrectUseOfAwait, IncorrectUseOfUse, MisspelledKw,
@@ -3030,37 +3028,5 @@ impl<'a> Parser<'a> {
             });
             new_error
         })
-    }
-
-    pub(super) fn recover_from_c_style_reference(&mut self, lhs: Box<Expr>) -> Box<Expr> {
-        let ref_span = self.prev_token.span;
-
-        let mutbl = self.parse_mutability();
-        let prefix = mutbl.prefix_str();
-
-        let op_span = ref_span.to(self.prev_token.span);
-        let span = lhs.span.to(op_span);
-
-        if matches!(lhs.kind, ExprKind::Binary(..) | ExprKind::Cast(..)) {
-            self.dcx().emit_err(CStyleReferenceExpr {
-                span,
-                mutbl: prefix.to_string(),
-                sugg: None,
-            });
-            return lhs;
-        }
-
-        let insert = lhs.span.shrink_to_lo();
-        let sugg = match mutbl {
-            Mutability::Mut => CStyleReferenceExprSugg::Mut { removal: op_span, insert },
-            Mutability::Not => CStyleReferenceExprSugg::Shared { removal: op_span, insert },
-        };
-        self.dcx().emit_err(CStyleReferenceExpr {
-            span,
-            mutbl: prefix.to_string(),
-            sugg: Some(sugg),
-        });
-
-        self.mk_expr(span, ExprKind::AddrOf(BorrowKind::Ref, mutbl, lhs))
     }
 }

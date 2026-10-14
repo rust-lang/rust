@@ -4690,7 +4690,7 @@ pub(crate) enum CStyleReferenceMut {
         #[subdiagnostic]
         sugg: CStyleReferenceMutLifetimeSugg,
     },
-    #[diag("reference types must be written as `&mut T`")]
+    #[diag("reference types must be written as `&mut /* Type */`")]
     Plain {
         #[primary_span]
         span: Span,
@@ -4718,7 +4718,7 @@ pub(crate) struct CStyleReferenceMutPlainSugg {
 }
 
 #[derive(Diagnostic)]
-#[diag("reference types must be written as `&T`")]
+#[diag("reference types must be written as `&/* Type */`")]
 pub(crate) struct CStyleReference {
     #[primary_span]
     pub span: Span,
@@ -4733,35 +4733,4 @@ pub(crate) struct CStyleReferenceSugg {
     pub remove: Span,
     #[suggestion_part(code = "&")]
     pub insert: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("reference types must be written as `&{$mutbl}expr`")]
-pub(crate) struct CStyleReferenceExpr {
-    #[primary_span]
-    pub span: Span,
-    pub mutbl: String,
-    #[subdiagnostic]
-    pub sugg: Option<CStyleReferenceExprSugg>,
-}
-
-#[derive(Subdiagnostic)]
-pub(crate) enum CStyleReferenceExprSugg {
-    #[multipart_suggestion("put the `&` before the `expr`", applicability = "machine-applicable")]
-    Shared {
-        #[suggestion_part(code = "")]
-        removal: Span,
-        #[suggestion_part(code = "&")]
-        insert: Span,
-    },
-    #[multipart_suggestion(
-        "put the `&mut` before the `expr`",
-        applicability = "machine-applicable"
-    )]
-    Mut {
-        #[suggestion_part(code = "")]
-        removal: Span,
-        #[suggestion_part(code = "&mut ")]
-        insert: Span,
-    },
 }

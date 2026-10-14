@@ -14,20 +14,8 @@ LL |     let _c: u8 &mut;
    |           |
    |           while parsing the type for `_c`
 
-error: reference types must be written as `&expr`
-  --> $DIR/c-style-reference-no-sugg-issue-101487.rs:24:13
-   |
-LL |     let a = x + y&;
-   |             ^^^^^^
-
-error: reference types must be written as `&expr`
-  --> $DIR/c-style-reference-no-sugg-issue-101487.rs:27:14
-   |
-LL |     let _d = x as u8&;
-   |              ^^^^^^^^
-
 error: expected expression, found end of macro arguments
-  --> $DIR/c-style-reference-no-sugg-issue-101487.rs:30:11
+  --> $DIR/c-style-reference-no-sugg-issue-101487.rs:23:11
    |
 LL |     ($e:expr) => { $e };
    |      ------- while parsing argument for this `expr` macro fragment
@@ -35,5 +23,5 @@ LL |     ($e:expr) => { $e };
 LL |     m!(x &);
    |           ^ expected expression
 
-error: aborting due to 5 previous errors
+error: aborting due to 3 previous errors
 
