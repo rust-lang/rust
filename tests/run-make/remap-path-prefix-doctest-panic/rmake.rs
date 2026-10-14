@@ -6,6 +6,8 @@
 
 //@ ignore-cross-compile
 
+use std::path::Path;
+
 use run_make_support::assertion_helpers::{assert_contains, assert_not_contains};
 use run_make_support::rustdoc;
 
@@ -39,16 +41,19 @@ fn panic_file(scope: Option<&str>) -> String {
 }
 
 fn main() {
+    let expected_remapped = Path::new("/REMAPPED").join("doctest.rs").to_string_lossy().to_string();
+    let expected_unremapped = Path::new("src").join("doctest.rs").to_string_lossy().to_string();
+
     // Check that with debuginfo (and related) we get the remapped path
     for scope in [Some("debuginfo"), Some("object"), Some("all"), None] {
         let stdout = panic_file(scope);
-        assert_contains(&stdout, "/REMAPPED/doctest.rs");
-        assert_not_contains(&stdout, "src/doctest.rs");
+        assert_contains(&stdout, &expected_remapped);
+        assert_not_contains(&stdout, &expected_unremapped);
     }
 
     for scope in ["diagnostics", "documentation", "macro"] {
         let stdout = panic_file(Some(scope));
-        assert_contains(&stdout, "src/doctest.rs");
-        assert_not_contains(&stdout, "/REMAPPED/doctest.rs");
+        assert_contains(&stdout, &expected_unremapped);
+        assert_not_contains(&stdout, &expected_remapped);
     }
 }
