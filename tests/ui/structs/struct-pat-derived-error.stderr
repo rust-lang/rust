@@ -10,17 +10,17 @@ LL -         let A { x, y } = self.d;
 LL +         let A { x, y } = self.b;
    |
 
-error[E0026]: struct `A` does not have fields named `x`, `y`
+error[E0026]: struct `A` does not have fields named `x` and `y`
   --> $DIR/struct-pat-derived-error.rs:8:17
    |
 LL |         let A { x, y } = self.d;
    |                 ^  ^ struct `A` does not have these fields
 
-error[E0027]: pattern does not mention fields `b`, `c`
+error[E0027]: pattern does not mention fields `b` and `c`
   --> $DIR/struct-pat-derived-error.rs:8:13
    |
 LL |         let A { x, y } = self.d;
-   |             ^^^^^^^^^^ missing fields `b`, `c`
+   |             ^^^^^^^^^^ missing fields `b` and `c`
    |
 help: include the missing fields in the pattern
    |
