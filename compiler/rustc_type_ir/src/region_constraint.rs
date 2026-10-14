@@ -451,6 +451,22 @@ impl<I: Interner, S: ConstraintSpan> And<I, S> {
             .collect())
     }
 
+    pub fn add(&mut self, leaf: LeafRegionConstraint<I>, span: S) -> Option<usize> {
+        if let LeafRegionConstraint::RegionOutlives(r1, r2) = leaf
+            && r1 == r2
+        {
+            return None;
+        }
+        self.0.iter().position(|(x, _)| x == &leaf).or_else(|| {
+            self.0.push((leaf, span));
+            Some(self.0.len() - 1)
+        })
+    }
+
+    pub fn pop(&mut self) -> Option<(LeafRegionConstraint<I>, S)> {
+        self.0.pop()
+    }
+
     fn compare_and_relation(&self, other: &And<I, S>) -> AndRelation {
         let this = self.clone().0;
         let other = other.clone().0;
