@@ -42,7 +42,7 @@ where
                     .map_err(Into::into)
             }
             TypingMode::Typeck { defining_opaque_types_and_generators: defining_opaque_types }
-            | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types } => {
+            | TypingMode::PostTypeckThroughBorrowck { defining_opaque_types } => {
                 let Some(def_id) = def_id
                     .as_local()
                     .filter(|&def_id| defining_opaque_types.contains(&def_id.into()))
@@ -89,7 +89,7 @@ where
                     // computed in HIR typeck as the initial value.
                     match self.typing_mode().assert_not_erased() {
                         TypingMode::Typeck { .. } => {}
-                        TypingMode::PostTypeckUntilBorrowck { .. } => {
+                        TypingMode::PostTypeckThroughBorrowck { .. } => {
                             let actual = cx
                                 .type_of_opaque_hir_typeck(def_id)
                                 .instantiate(cx, opaque_ty.args);

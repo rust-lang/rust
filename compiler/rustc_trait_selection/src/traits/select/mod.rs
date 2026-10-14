@@ -1389,7 +1389,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // This is likely fixed by better caching in general in the new solver.
             // See: <https://github.com/rust-lang/rust/issues/132064>.
             TypingMode::Typeck { defining_opaque_types_and_generators: defining_opaque_types }
-            | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types } => {
+            | TypingMode::PostTypeckThroughBorrowck { defining_opaque_types } => {
                 defining_opaque_types.is_empty()
                     || (!pred.has_opaque_types() && !pred.has_coroutines())
             }
@@ -2435,7 +2435,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             }
 
             TypingMode::Typeck { .. }
-            | TypingMode::PostTypeckUntilBorrowck { .. }
+            | TypingMode::PostTypeckThroughBorrowck { .. }
             | TypingMode::PostBorrowck { .. }
             | TypingMode::Codegen
             | TypingMode::ErasedNotCoherence(_)
@@ -2787,7 +2787,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             TypingMode::PostAnalysis
             | TypingMode::Reflection
             | TypingMode::Codegen
-            | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: _ }
+            | TypingMode::PostTypeckThroughBorrowck { defining_opaque_types: _ }
             | TypingMode::PostBorrowck { defined_opaque_types: _ } => false,
             TypingMode::Coherence => {
                 unreachable!("old solver coherence")
