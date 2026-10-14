@@ -1,0 +1,30 @@
+error[E0432]: this=b, unresolved=x
+  --> $DIR/expressions_and_paths_correct_mod_name_foreign.rs:5:5
+   |
+LL | use foreign::c::d::x;
+   |     ^^^^^^^^^^^^^^^-
+   |                    |
+   |                    no `x` in `a::b`
+   |
+   = note: unresolved import `foreign::c::d::x`
+
+error[E0425]: this=b, unresolved=X
+  --> $DIR/expressions_and_paths_correct_mod_name_foreign.rs:8:28
+   |
+LL |     let _ = foreign::c::d::X();
+   |                            ^ not found in `foreign::c::d`
+   |
+   = note: cannot find function, tuple struct or tuple variant `X` in module `foreign::c::d`
+
+error[E0425]: this=b, unresolved=X
+  --> $DIR/expressions_and_paths_correct_mod_name_foreign.rs:10:27
+   |
+LL |     let _: foreign::c::d::X;
+   |                           ^ not found in `foreign::c::d`
+   |
+   = note: cannot find type `X` in module `foreign::c::d`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0425, E0432.
+For more information about an error, try `rustc --explain E0425`.
