@@ -2015,7 +2015,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 .iter()
                 .map(|predicate| self.lower_where_predicate(predicate, &[], &mut dedup_map)),
         );
-        hir::TestBinderBody { foralls, exists, constraints, predicates }
+        let span = self.lower_span(body.span);
+        hir::TestBinderBody { foralls, exists, constraints, predicates, span }
     }
 
     fn lower_test_binder_forall(

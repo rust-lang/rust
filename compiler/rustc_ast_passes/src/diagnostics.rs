@@ -1333,3 +1333,11 @@ pub(crate) struct AbiCustomCannotBeCold {
     #[label("`extern \"custom\"` because of this")]
     pub abi_span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag("showing the spans of the {$kind}")]
+pub(crate) struct ShowSpan {
+    #[primary_span]
+    pub span: Span,
+    pub kind: &'static str,
+}

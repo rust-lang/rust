@@ -1910,10 +1910,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         let adt_kind = adt.adt_kind();
 
+        let get_field_ident = |field: &ty::FieldDef| field.ident(tcx).normalize_to_macros_2_0();
         let mut remaining_fields = variant
             .fields
             .iter_enumerated()
-            .map(|(i, field)| (field.ident(tcx).normalize_to_macros_2_0(), (i, field)))
+            .map(|(i, field)| (get_field_ident(field), (i, field)))
             .collect::<UnordMap<_, _>>();
 
         let mut seen_fields = FxHashMap::default();
@@ -1931,40 +1932,64 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Type-check each field.
         for (idx, field) in hir_fields.iter().enumerate() {
-            let ident = tcx.adjust_ident(field.ident, variant.def_id);
-            let field_type = if let Some((i, v_field)) = remaining_fields.remove(&ident) {
-                seen_fields.insert(ident, field.span);
-                self.write_field_index(field.hir_id, i);
-
-                // We don't look at stability attributes on
-                // struct-like enums (yet...), but it's definitely not
-                // a bug to have constructed one.
-                if adt_kind != AdtKind::Enum {
-                    tcx.check_stability(v_field.did, Some(field.hir_id), field.span, None);
-                }
-
-                self.field_ty(field.span, v_field, args)
-            } else {
-                error_happened = true;
-                let guar = if let Some(prev_span) = seen_fields.get(&ident) {
-                    self.dcx().emit_err(FieldMultiplySpecifiedInInitializer {
-                        span: field.ident.span,
-                        prev_span: *prev_span,
-                        ident,
-                    })
+            let ident = if field.ident.name == kw::Underscore {
+                // We are processing delegation `Self` mapping field, we expect that it is a struct
+                // with one field, so if it is not true we emit an error as we can't infer
+                // what field to use to initialize the struct.
+                // The `_` is a keyword so if user uses it during struct initialization as a field name
+                // it will be error anyway.
+                if let [v_field] = &variant.fields[..] {
+                    Ok(get_field_ident(v_field))
                 } else {
-                    self.report_unknown_field(
-                        adt_ty,
-                        variant,
-                        expr,
-                        field,
-                        hir_fields,
-                        adt.variant_descr(),
-                    )
-                };
-
-                Ty::new_error(tcx, guar)
+                    Err(tcx.dcx().span_delayed_bug(
+                        field.ident.span,
+                        format!(
+                            "can not infer the delegation `Self` mapping field for {:?}",
+                            self.body_def_id
+                        ),
+                    ))
+                }
+            } else {
+                Ok(tcx.adjust_ident(field.ident, variant.def_id))
             };
+
+            let field_type = ident
+                .and_then(|ident| {
+                    if let Some((i, v_field)) = remaining_fields.remove(&ident) {
+                        seen_fields.insert(ident, field.span);
+                        self.write_field_index(field.hir_id, i);
+
+                        // We don't look at stability attributes on
+                        // struct-like enums (yet...), but it's definitely not
+                        // a bug to have constructed one.
+                        if adt_kind != AdtKind::Enum {
+                            tcx.check_stability(v_field.did, Some(field.hir_id), field.span, None);
+                        }
+
+                        Ok(self.field_ty(field.span, v_field, args))
+                    } else {
+                        error_happened = true;
+                        let guar = if let Some(prev_span) = seen_fields.get(&ident) {
+                            self.dcx().emit_err(FieldMultiplySpecifiedInInitializer {
+                                span: field.ident.span,
+                                prev_span: *prev_span,
+                                ident,
+                            })
+                        } else {
+                            self.report_unknown_field(
+                                adt_ty,
+                                variant,
+                                expr,
+                                field,
+                                hir_fields,
+                                adt.variant_descr(),
+                            )
+                        };
+
+                        Err(guar)
+                    }
+                })
+                .unwrap_or_else(|err| Ty::new_error(tcx, err));
 
             // Check that the expected field type is WF. Otherwise, we emit no use-site error
             // in the case of coercions for non-WF fields, which leads to incorrect error
