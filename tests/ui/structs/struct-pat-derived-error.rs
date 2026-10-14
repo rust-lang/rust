@@ -6,8 +6,8 @@ struct A {
 impl A {
     fn foo(&self) {
         let A { x, y } = self.d; //~ ERROR no field `d` on type `&A`
-        //~^ ERROR struct `A` does not have fields named `x`, `y`
-        //~| ERROR pattern does not mention fields `b`, `c`
+        //~^ ERROR struct `A` does not have fields named `x` and `y`
+        //~| ERROR pattern does not mention fields `b` and `c`
     }
 }
 
