@@ -164,7 +164,7 @@ macro_rules! define_Conf {
                                 $name = Some(
                                     <$ty as DeserializeOrDefault<_>>::deserialize_or_default(
                                         dcx,
-                                        value.into(),
+                                        value,
                                         first_expr!($($default,)? ()),
                                     ),
                                 );
