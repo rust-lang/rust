@@ -55,6 +55,7 @@ use crate::data_structures::IndexMap;
 use crate::fold::TypeSuperFoldable;
 use crate::inherent::*;
 use crate::relate::{Relate, RelateResult, TypeRelation, VarianceDiagInfo};
+use crate::solve::VisibleForLeakCheck;
 use crate::visit::TypeVisitableExt;
 use crate::{
     AliasTy, Binder, BoundRegion, BoundRegionKind, BoundVar, BoundVariableKind, ClauseKind,
@@ -192,7 +193,7 @@ impl ConstraintSpan for rustc_span::Span {}
 #[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
 pub enum LeafRegionConstraint<I: Interner, S: Clone = NoSpan> {
     Ambiguity(S),
-    RegionOutlives(Region<I>, Region<I>, S),
+    RegionOutlives(Region<I>, Region<I>, VisibleForLeakCheck, S),
     /// Requirement that a (potentially higher ranked) alias outlives some (potentially higher ranked)
     /// region due to an assumption in the environment. This cannot be satisfied via component outlives
     /// or item bounds.
@@ -219,7 +220,7 @@ impl<I: Interner, S: Clone> std::fmt::Debug for LeafRegionConstraint<I, S> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         match self {
             Self::Ambiguity(_span) => f.write_str("ambiguity"),
-            Self::RegionOutlives(r1, r2, _span) => {
+            Self::RegionOutlives(r1, r2, _vis, _span) => {
                 r1.fmt(f)?;
                 f.write_str(": ")?;
                 r2.fmt(f)
@@ -248,7 +249,7 @@ impl<I: Interner> LeafRegionConstraint<I> {
 
         match self {
             Ambiguity(NoSpan) => Ambiguity(span),
-            RegionOutlives(r1, r2, NoSpan) => RegionOutlives(r1, r2, span),
+            RegionOutlives(r1, r2, vis, NoSpan) => RegionOutlives(r1, r2, vis, span),
             AliasTyOutlivesViaEnv(bound_outlives, NoSpan) => {
                 AliasTyOutlivesViaEnv(bound_outlives, span)
             }
@@ -263,7 +264,7 @@ impl<I: Interner, S: ConstraintSpan> LeafRegionConstraint<I, S> {
 
         match self {
             Ambiguity(_) => Ambiguity(NoSpan),
-            RegionOutlives(r1, r2, _) => RegionOutlives(r1, r2, NoSpan),
+            RegionOutlives(r1, r2, vis, _) => RegionOutlives(r1, r2, vis, NoSpan),
             AliasTyOutlivesViaEnv(bound_outlives, _) => {
                 AliasTyOutlivesViaEnv(bound_outlives, NoSpan)
             }
@@ -275,7 +276,7 @@ impl<I: Interner, S: ConstraintSpan> LeafRegionConstraint<I, S> {
         use LeafRegionConstraint::*;
 
         let (Ambiguity(s)
-        | RegionOutlives(_, _, s)
+        | RegionOutlives(_, _, _, s)
         | AliasTyOutlivesViaEnv(_, s)
         | PlaceholderTyOutlives(_, _, s)) = self;
         s.clone()
@@ -481,7 +482,7 @@ impl<I: Interner, S: ConstraintSpan> And<I, S> {
                 // Outlives is reflexive so a `'a: 'a` leaf is always true and carries no
                 // information. Dropping it here keeps the rest of the code from having to special
                 // case it, and is what lets an OR with a reflexive candidate be recognized as true.
-                if let LeafRegionConstraint::RegionOutlives(r1, r2, _) = leaf
+                if let LeafRegionConstraint::RegionOutlives(r1, r2, _, _) = leaf
                     && r1 == r2
                 {
                     return false;
@@ -498,7 +499,7 @@ impl<I: Interner, S: ConstraintSpan> And<I, S> {
     }
 
     pub fn add(&mut self, leaf: LeafRegionConstraint<I, S>) -> Option<(usize, IsDuplicate)> {
-        if let LeafRegionConstraint::RegionOutlives(r1, r2, _) = leaf
+        if let LeafRegionConstraint::RegionOutlives(r1, r2, _, _) = leaf
             && r1 == r2
         {
             return None;
@@ -540,6 +541,18 @@ impl<I: Interner, S: ConstraintSpan> And<I, S> {
 
     pub fn without_spans(self) -> And<I> {
         And(self.0.into_iter().map(|leaf| leaf.without_span()).collect())
+    }
+
+    pub fn visible_for_leak_check(&mut self, new_vis: VisibleForLeakCheck) {
+        use LeafRegionConstraint::*;
+        for leaf in &mut self.0 {
+            match leaf {
+                RegionOutlives(_r1, _r2, vis, _span) => {
+                    *vis = new_vis;
+                }
+                Ambiguity(..) | AliasTyOutlivesViaEnv(..) | PlaceholderTyOutlives(..) => {}
+            }
+        }
     }
 }
 
@@ -795,7 +808,7 @@ fn compute_new_region_constraints<Infcx: InferCtxtLike<Interner = I>, I: Interne
                 Ambiguity(NoSpan) | PlaceholderTyOutlives(..) | AliasTyOutlivesViaEnv(..) => {
                     constraints.push(c.clone())
                 }
-                RegionOutlives(r1, r2, NoSpan) => {
+                RegionOutlives(r1, r2, _, NoSpan) => {
                     regions.insert(*r1);
                     regions.insert(*r2);
                     builder.add(*r2, *r1);
@@ -837,7 +850,12 @@ fn compute_new_region_constraints<Infcx: InferCtxtLike<Interner = I>, I: Interne
                 };
 
                 if is_placeholder_like(r) && is_placeholder_like(ub) {
-                    constraints.push(RegionOutlives(ub, r, NoSpan));
+                    constraints.push(RegionOutlives(
+                        ub,
+                        r,
+                        VisibleForLeakCheck::Unreachable,
+                        NoSpan,
+                    ));
                 }
             }
         }
@@ -900,7 +918,7 @@ fn pull_region_outlives_constraints_out_of_universe<
                     assert!(max_universe(infcx, c.clone()) < u);
                     pulled_constraints.push(Or::new_leaf(c.clone()));
                 }
-                RegionOutlives(region_1, region_2, NoSpan) => {
+                RegionOutlives(region_1, region_2, _, NoSpan) => {
                     let region_1_u = max_universe(infcx, region_1);
                     let region_2_u = max_universe(infcx, region_2);
 
@@ -931,7 +949,12 @@ fn pull_region_outlives_constraints_out_of_universe<
                             // As long as any region outlived by `region_1` outlives any region region which
                             // `region_2` outlives, we know that `region_1: region_2` holds. In other words,
                             // there exists some set of 4 regions for which `'r1: 'i1` `'i1: 'i2` `'i2: 'r2`
-                            candidates.push(RegionOutlives(ub, lb, NoSpan));
+                            candidates.push(RegionOutlives(
+                                ub,
+                                lb,
+                                VisibleForLeakCheck::Unreachable,
+                                NoSpan,
+                            ));
                         }
                     }
 
@@ -987,7 +1010,12 @@ pub fn destructure_type_outlives_constraints_in_root<
                     let contents =
                         Or::new(regions_outlived_by_placeholder(*ty, assumptions, infcx.cx()).map(
                             move |assumption_r| {
-                                And::new([RegionOutlives(assumption_r, *r, span.clone())])
+                                And::new([RegionOutlives(
+                                    assumption_r,
+                                    *r,
+                                    VisibleForLeakCheck::Unreachable,
+                                    span.clone(),
+                                )])
                             },
                         ));
                     if contents.is_false() {
@@ -1111,10 +1139,11 @@ fn rewrite_placeholder_ty_outlives_constraints_in_universe_for_eager_placeholder
 
     // There could be `!T: 'region` assumptions in the env even if `!T` is in a
     // smaller universe
-    candidates.extend(
-        regions_outlived_by_placeholder(ty, assumptions, infcx.cx())
-            .map(move |assumption_r| RegionOutlives(assumption_r, region, NoSpan)),
-    );
+    candidates.extend(regions_outlived_by_placeholder(ty, assumptions, infcx.cx()).map(
+        move |assumption_r| {
+            RegionOutlives(assumption_r, region, VisibleForLeakCheck::Unreachable, NoSpan)
+        },
+    ));
 
     // We can express `!T: 'region` as `!T: 'r` where `'r: 'region`. This is only necessary
     // if the placeholder type is in a smaller universe as otherwise we know all regions which
@@ -1357,7 +1386,12 @@ fn alias_outlives_candidates_from_assumptions<Infcx: InferCtxtLike<Interner = I>
 
             let mut relation = HigherRankedAliasMatcher {
                 infcx,
-                region_constraints: vec![LeafRegionConstraint::RegionOutlives(r2, r, NoSpan)],
+                region_constraints: vec![LeafRegionConstraint::RegionOutlives(
+                    r2,
+                    r,
+                    VisibleForLeakCheck::Unreachable,
+                    NoSpan,
+                )],
             };
 
             // FIXME(#155345): Both sides should be rigid in the future.
@@ -1429,8 +1463,18 @@ impl<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeRelation<I>
 
     fn regions(&mut self, a: Region<I>, b: Region<I>) -> RelateResult<I, Region<I>> {
         if a != b {
-            self.region_constraints.push(LeafRegionConstraint::RegionOutlives(a, b, NoSpan));
-            self.region_constraints.push(LeafRegionConstraint::RegionOutlives(b, a, NoSpan));
+            self.region_constraints.push(LeafRegionConstraint::RegionOutlives(
+                a,
+                b,
+                VisibleForLeakCheck::Unreachable,
+                NoSpan,
+            ));
+            self.region_constraints.push(LeafRegionConstraint::RegionOutlives(
+                b,
+                a,
+                VisibleForLeakCheck::Unreachable,
+                NoSpan,
+            ));
         }
         Ok(a)
     }

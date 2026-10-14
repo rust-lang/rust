@@ -1,9 +1,10 @@
 // Tests that using fulfillment in the trait solver means that we detect that a
 // method is impossible, leading to no ambiguity.
 //@ check-pass
-//@ revisions: current next
+//@ revisions: current next abby
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
+//@[abby] compile-flags: -Zassumptions-on-binders -Znext-solver=globally
 
 struct W<T, U>(Option<T>, Option<U>);
 
