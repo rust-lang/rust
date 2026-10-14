@@ -231,6 +231,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         }
     }
 
+    fn anon_const_kind(self, def_id: DefId) -> ty::AnonConstKind {
+        self.anon_const_kind(def_id)
+    }
+
     fn def_span(self, def_id: DefId) -> Span {
         self.def_span(def_id)
     }

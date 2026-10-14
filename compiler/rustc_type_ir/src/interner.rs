@@ -293,6 +293,7 @@ pub trait Interner:
         self,
         alias: ty::AliasConstKind<Self>,
     ) -> Option<ty::EarlyBinder<Self, Const<Self>>>;
+    fn anon_const_kind(self, def_id: Self::DefId) -> ty::AnonConstKind;
 
     fn def_span(self, def_id: Self::DefId) -> Self::Span;
 
