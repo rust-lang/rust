@@ -1600,7 +1600,7 @@ pub fn walk_test_binder_body<'v, V: Visitor<'v>>(
     visitor: &mut V,
     body: &'v TestBinderBody<'v>,
 ) -> V::Result {
-    let TestBinderBody { foralls, exists, constraints, predicates } = body;
+    let TestBinderBody { span: _, foralls, exists, constraints, predicates } = body;
     walk_list!(visitor, visit_test_binder_forall, *foralls);
     walk_list!(visitor, visit_test_binder_exists, *exists);
     try_visit!(visitor.visit_test_binder_constraint(&constraints));
