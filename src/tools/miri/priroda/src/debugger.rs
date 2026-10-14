@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use miri::Immediate::Uninit;
 use miri::{InterpErrorInfo, InterpErrorKind, TerminationInfo, *};
 use rustc_abi::{FIRST_VARIANT, FieldIdx, Size};
+use rustc_data_structures::either::Either;
 use rustc_hir::def::CtorKind;
 use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::mir::{self, Local, ProjectionElem, VarDebugInfoContents, VarDebugInfoFragment};
