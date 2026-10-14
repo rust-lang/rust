@@ -78,6 +78,7 @@ windows_link::link!("kernel32.dll" "system" fn MoveFileExW(lpexistingfilename : 
 windows_link::link!("kernel32.dll" "system" fn MultiByteToWideChar(codepage : u32, dwflags : u32, lpmultibytestr : *const i8, cbmultibyte : i32, lpwidecharstr : PWSTR, cchwidechar : i32) -> i32);
 windows_link::link!("ntdll.dll" "system" fn NtCreateFile(filehandle : *mut HANDLE, desiredaccess : ACCESS_MASK, objectattributes : *const OBJECT_ATTRIBUTES, iostatusblock : *mut IO_STATUS_BLOCK, allocationsize : *const i64, fileattributes : u32, shareaccess : u32, createdisposition : u32, createoptions : u32, eabuffer : *const core::ffi::c_void, ealength : u32) -> NTSTATUS);
 windows_link::link!("ntdll.dll" "system" fn NtOpenFile(filehandle : *mut HANDLE, desiredaccess : ACCESS_MASK, objectattributes : *const OBJECT_ATTRIBUTES, iostatusblock : *mut IO_STATUS_BLOCK, shareaccess : u32, openoptions : u32) -> NTSTATUS);
+windows_link::link!("ntdll.dll" "system" fn NtQueryVolumeInformationFile(filehandle : HANDLE, iostatusblock : *mut IO_STATUS_BLOCK, fsinformation : *mut core::ffi::c_void, length : u32, fsinformationclass : FS_INFORMATION_CLASS) -> NTSTATUS);
 windows_link::link!("ntdll.dll" "system" fn NtReadFile(filehandle : HANDLE, event : HANDLE, apcroutine : PIO_APC_ROUTINE, apccontext : *const core::ffi::c_void, iostatusblock : *mut IO_STATUS_BLOCK, buffer : *mut core::ffi::c_void, length : u32, byteoffset : *const i64, key : *const u32) -> NTSTATUS);
 windows_link::link!("ntdll.dll" "system" fn NtSetInformationFile(filehandle : HANDLE, iostatusblock : *mut IO_STATUS_BLOCK, fileinformation : *const core::ffi::c_void, length : u32, fileinformationclass : FILE_INFORMATION_CLASS) -> NTSTATUS);
 windows_link::link!("ntdll.dll" "system" fn NtWriteFile(filehandle : HANDLE, event : HANDLE, apcroutine : PIO_APC_ROUTINE, apccontext : *const core::ffi::c_void, iostatusblock : *mut IO_STATUS_BLOCK, buffer : *const core::ffi::c_void, length : u32, byteoffset : *const i64, key : *const u32) -> NTSTATUS);
@@ -2544,6 +2545,12 @@ pub const FILE_FLAG_RANDOM_ACCESS: i32 = 268435456;
 pub const FILE_FLAG_SEQUENTIAL_SCAN: i32 = 134217728;
 pub const FILE_FLAG_SESSION_AWARE: i32 = 8388608;
 pub const FILE_FLAG_WRITE_THROUGH: u32 = 2147483648;
+#[repr(C)]
+#[derive(Clone, Copy, Default)]
+pub struct FILE_FS_DEVICE_INFORMATION {
+    pub DeviceType: u32,
+    pub Characteristics: u32,
+}
 pub const FILE_GENERIC_EXECUTE: i32 = 1179808;
 pub const FILE_GENERIC_READ: i32 = 1179785;
 pub const FILE_GENERIC_WRITE: i32 = 1179926;
@@ -2678,7 +2685,6 @@ pub const FILE_SYNCHRONOUS_IO_NONALERT: i32 = 32;
 pub const FILE_TRAVERSE: i32 = 32;
 pub const FILE_TYPE_CHAR: i32 = 2;
 pub const FILE_TYPE_DISK: i32 = 1;
-pub const FILE_TYPE_PIPE: i32 = 3;
 pub const FILE_TYPE_REMOTE: i32 = 32768;
 pub const FILE_TYPE_UNKNOWN: i32 = 0;
 pub const FILE_WRITE_ATTRIBUTES: i32 = 256;
@@ -2718,6 +2724,7 @@ pub const FORMAT_MESSAGE_IGNORE_INSERTS: i32 = 512;
 pub const FRS_ERR_SYSVOL_POPULATE_TIMEOUT: i32 = 8014;
 pub const FSCTL_GET_REPARSE_POINT: i32 = 589992;
 pub const FSCTL_SET_REPARSE_POINT: i32 = 589988;
+pub type FS_INFORMATION_CLASS = i32;
 pub const FileAlignmentInfo: FILE_INFO_BY_HANDLE_CLASS = 17;
 pub const FileAllocationInfo: FILE_INFO_BY_HANDLE_CLASS = 5;
 pub const FileAttributeTagInfo: FILE_INFO_BY_HANDLE_CLASS = 9;
@@ -2727,6 +2734,7 @@ pub const FileCompressionInfo: FILE_INFO_BY_HANDLE_CLASS = 8;
 pub const FileDispositionInfo: FILE_INFO_BY_HANDLE_CLASS = 4;
 pub const FileDispositionInfoEx: FILE_INFO_BY_HANDLE_CLASS = 21;
 pub const FileEndOfFileInfo: FILE_INFO_BY_HANDLE_CLASS = 6;
+pub const FileFsDeviceInformation: FS_INFORMATION_CLASS = 4;
 pub const FileFullDirectoryInfo: FILE_INFO_BY_HANDLE_CLASS = 14;
 pub const FileFullDirectoryRestartInfo: FILE_INFO_BY_HANDLE_CLASS = 15;
 pub const FileIdBothDirectoryInfo: FILE_INFO_BY_HANDLE_CLASS = 10;
