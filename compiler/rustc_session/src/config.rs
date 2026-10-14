@@ -2792,7 +2792,7 @@ pub fn build_session_options(
     check_error_format_stability(
         early_dcx,
         &unstable_opts,
-        unstable_features.allow_unstable_compiler_flags(),
+        unstable_features.allow_unstable_compiler_flag("error-format"),
         error_format,
     );
 
@@ -2974,7 +2974,7 @@ pub fn build_session_options(
     }
 
     // Parse any `-l` flags, which link to native libraries.
-    let libs = parse_native_libs(early_dcx, &unstable_opts, unstable_features, matches);
+    let libs = parse_native_libs(early_dcx, &unstable_opts, &unstable_features, matches);
 
     let test = matches.opt_present("test");
 
@@ -3201,14 +3201,10 @@ pub mod nightly_options {
 
     /// Are we allowed to use -Z compiler flags *and* -Zunstable-options was passed?
     pub fn unstable_options_enabled(matches: &getopts::Matches) -> bool {
-        unstable_compiler_flags_allowed(matches)
+        let unstable_features =
+            UnstableFeatures::from_environment(matches.opt_str("crate-name").as_deref());
+        unstable_features.allow_unstable_compiler_flag("unstable-options")
             && matches.opt_strs("Z").iter().any(|x| *x == "unstable-options")
-    }
-
-    /// Are we allowed to use -Z compiler flags?
-    pub fn unstable_compiler_flags_allowed(matches: &getopts::Matches) -> bool {
-        UnstableFeatures::from_environment(matches.opt_str("crate-name").as_deref())
-            .allow_unstable_compiler_flags()
     }
 
     pub fn match_is_nightly_build(matches: &getopts::Matches) -> bool {
@@ -3222,7 +3218,8 @@ pub mod nightly_options {
         flags: &[RustcOptGroup],
     ) {
         let has_z_unstable_option = matches.opt_strs("Z").iter().any(|x| *x == "unstable-options");
-        let really_allows_unstable_options = unstable_compiler_flags_allowed(matches);
+        let unstable_features =
+            UnstableFeatures::from_environment(matches.opt_str("crate-name").as_deref());
         let mut nightly_options_on_stable = 0;
 
         for opt in flags.iter() {
@@ -3239,7 +3236,40 @@ pub mod nightly_options {
                     opt.name
                 ));
             }
-            if really_allows_unstable_options {
+
+            // Check if the matched values are enabled
+            // If we're dealing with -Z, then check all the matched values (i.e. -Zfoo, -Zbar, etc.)
+            // If we're dealing with other flags, check their name directly
+            if opt.name == "Z" {
+                // For `-Zui-testing -Zfoo=bar -Zfoo=baz`, this returns
+                // ["ui-testing", "foo=bar", "foo=baz"].
+                // Check that all of them are allowed
+                let values = matches.opt_strs(opt.name);
+                let disallowed_flags = values
+                    .iter()
+                    .map(|flag| flag.split_once("=").map(|s| s.0).unwrap_or(flag))
+                    .filter(|flag| !unstable_features.allow_unstable_compiler_flag(flag))
+                    .collect::<Vec<_>>();
+                if disallowed_flags.is_empty() {
+                    continue;
+                }
+
+                // At this point, check if we're using the "allow unstable flags only" mode.
+                // In this case, if the user allowed only foo and bar, but then -Zbaz was also
+                // passed, rustc would only print that `-Z` is not allowed, which doesn't tell the
+                // user the actual -Z flag value that was disallowed. So we try to provide better
+                // diagnostics here (solely for the use-case of debugging compiletest itself).
+                let unstable_features =
+                    UnstableFeatures::from_environment(matches.opt_str("crate-name").as_deref());
+                if matches!(
+                    unstable_features,
+                    UnstableFeatures::AllowUnstableCompilerFlagsOnly { .. }
+                ) {
+                    for flag in disallowed_flags {
+                        let _ = early_dcx.early_err(format!("the -Z{flag} option was not allowed through `-allow-unstable-compiler-flags`"));
+                    }
+                }
+            } else if unstable_features.allow_unstable_compiler_flag(opt.name) {
                 continue;
             }
 

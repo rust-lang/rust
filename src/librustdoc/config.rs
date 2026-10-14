@@ -944,7 +944,7 @@ impl Options {
             output_format,
             json_unused_externs,
             scrape_examples_options,
-            unstable_features,
+            unstable_features: unstable_features.clone(),
             doctest_build_args,
             target_modifiers: collected_options.target_modifiers,
         };

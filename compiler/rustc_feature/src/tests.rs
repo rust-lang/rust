@@ -35,10 +35,15 @@ fn rustc_bootstrap_parsing() {
     assert!(is_force_stable(Some("x")));
     assert!(is_force_stable(Some("x,y,z")));
 
-    // `RUSTC_BOOTSTRAP=-2` simulates the stable toolchain, while allowing unstable compiler flags
-    // to be passed.
-    std::assert_matches!(
-        UnstableFeatures::from_environment_value(None, Ok("-2".to_string())),
-        UnstableFeatures::ActAsStableForTesting
+    // `RUSTC_BOOTSTRAP=-allow-unstable-compiler-flags` simulates the stable toolchain, while
+    // allowing unstable compiler flags to be passed.
+    std::assert_eq!(
+        UnstableFeatures::from_environment_value(
+            None,
+            Ok("-allow-unstable-compiler-flags=foo,bar".to_string())
+        ),
+        UnstableFeatures::AllowUnstableCompilerFlagsOnly {
+            allowed_flags: vec!["foo".to_string(), "bar".to_string()]
+        }
     );
 }

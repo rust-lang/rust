@@ -34,7 +34,7 @@ pub struct Feature {
     issue: Option<NonZero<u32>>,
 }
 
-#[derive(Clone, Copy, Debug, Hash)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub enum UnstableFeatures {
     /// Disallow use of unstable features and unstable compiler flags.
     ///
@@ -54,16 +54,18 @@ pub enum UnstableFeatures {
     /// because the build turns on warnings-as-errors and uses lots of unstable
     /// features. As a result, this is always required for building Rust itself.
     Cheat,
-    /// Allow the use of *unstable compiler flags*, but disallow the use of
+    /// Allow the use of selected *unstable compiler flags*, but disallow the use of
     /// *unstable language features*.
-    /// And in general, try to treat everything except for compiler flags as if we were on stable.
     ///
     /// **This mode is designed only for internal testing of rustc.**
     ///
     /// Specifically, we need it when we want to test how rustc behaves on the stable channel,
     /// but at the same time we need to be able to pass it some unstable `-Z` compiler flags
     /// required for the testing infrastructure itself to work.
-    ActAsStableForTesting,
+    AllowUnstableCompilerFlagsOnly {
+        /// Unstable compiler flags that we are allowed to use, without their `-Z` prefix.
+        allowed_flags: Vec<String>,
+    },
 }
 
 impl UnstableFeatures {
@@ -89,14 +91,19 @@ impl UnstableFeatures {
         let is_unstable_crate =
             |var: &str| krate.is_some_and(|name| var.split(',').any(|new_krate| new_krate == name));
 
+        let allow_unstable_flags_prefix = "-allow-unstable-compiler-flags=";
         if let Ok(val) = env_var_rustc_bootstrap.as_deref() {
             match val {
+                // Act as stable, but still accept unstable compiler flags required by compiletest
+                val if let Some(flags) = val.strip_prefix(allow_unstable_flags_prefix) => {
+                    return UnstableFeatures::AllowUnstableCompilerFlagsOnly {
+                        allowed_flags: flags.split(",").map(|s| s.trim().to_string()).collect(),
+                    };
+                }
                 val if val == "1" || is_unstable_crate(val) => return UnstableFeatures::Cheat,
                 // Hypnotize ourselves so that we think we are a stable compiler and thus don't
                 // allow any unstable features.
                 "-1" => return UnstableFeatures::Disallow,
-                // Act as stable, but still accept unstable compiler flags required by compiletest
-                "-2" => return UnstableFeatures::ActAsStableForTesting,
                 _ => {}
             }
         }
@@ -104,19 +111,26 @@ impl UnstableFeatures {
         if disable_unstable_features { UnstableFeatures::Disallow } else { UnstableFeatures::Allow }
     }
 
-    pub fn allow_unstable_compiler_flags(&self) -> bool {
-        match *self {
-            UnstableFeatures::Allow
-            | UnstableFeatures::Cheat
-            | UnstableFeatures::ActAsStableForTesting => true,
-            UnstableFeatures::Disallow => false,
+    /// Are we allowed to use the given unstable `flag`?
+    /// If it is a `-Z<flag>`, it should be passed without the `-Z` prefix.
+    pub fn allow_unstable_compiler_flag(&self, flag: &str) -> bool {
+        match self {
+            UnstableFeatures::Allow | UnstableFeatures::Cheat => true,
+            UnstableFeatures::AllowUnstableCompilerFlagsOnly { allowed_flags }
+                if allowed_flags.iter().any(|allowed_flag| allowed_flag == flag) =>
+            {
+                true
+            }
+            UnstableFeatures::Disallow
+            | UnstableFeatures::AllowUnstableCompilerFlagsOnly { .. } => false,
         }
     }
 
     pub fn is_nightly_build(&self) -> bool {
         match *self {
             UnstableFeatures::Allow | UnstableFeatures::Cheat => true,
-            UnstableFeatures::Disallow | UnstableFeatures::ActAsStableForTesting => false,
+            UnstableFeatures::Disallow
+            | UnstableFeatures::AllowUnstableCompilerFlagsOnly { .. } => false,
         }
     }
 }
