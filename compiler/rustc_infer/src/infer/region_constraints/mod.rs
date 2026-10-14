@@ -349,7 +349,7 @@ pub(crate) enum UndoLog<'tcx> {
     AddCombination(CombineMapType, TwoRegions<'tcx>),
 
     /// Overwrite the `-Zassumptions-on-binders` storage
-    OverwriteSolverRegionConstraint { old_constraint: SolverRegionConstraint<'tcx> },
+    OverwriteSolverRegionConstraint { old_constraint: Box<SolverRegionConstraint<'tcx>> },
 }
 
 #[derive(Copy, Clone, PartialEq)]
@@ -467,7 +467,8 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
 
         let old_constraint = self.storage.solver_data.get_constraint();
         self.storage.solver_data.overwrite(constraint);
-        self.undo_log.push(OverwriteSolverRegionConstraint { old_constraint });
+        self.undo_log
+            .push(OverwriteSolverRegionConstraint { old_constraint: Box::new(old_constraint) });
     }
 
     pub fn register_solver_constraint(&mut self, constraint: SolverRegionConstraint<'tcx>) {
@@ -485,7 +486,8 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         // FIXME(-Zassumptions-on-binders): This is pretty bad for perf, we don't make incremental
         // changes to the region constraints, instead we just rewrite the entire thing every time
         // and store the old version.
-        self.undo_log.push(OverwriteSolverRegionConstraint { old_constraint });
+        self.undo_log
+            .push(OverwriteSolverRegionConstraint { old_constraint: Box::new(old_constraint) });
         self.storage.solver_data.overwrite(new_constraint);
     }
 
@@ -939,7 +941,7 @@ impl<'tcx> Rollback<UndoLog<'tcx>> for RegionConstraintStorage<'tcx> {
                 self.lubs.remove(regions);
             }
             OverwriteSolverRegionConstraint { old_constraint } => {
-                self.solver_data.overwrite(old_constraint);
+                self.solver_data.overwrite(*old_constraint);
             }
         }
     }
