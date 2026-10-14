@@ -564,7 +564,9 @@ impl<'tcx> MutVisitor<'tcx> for PlaceUpdater<'_, 'tcx> {
     fn visit_statement(&mut self, statement: &mut Statement<'tcx>, location: Location) {
         match statement.kind {
             // Remove storage lifetime markers because they no longer describe
-            // the merged locals.
+            // the merged locals. The later storage reconstruction pass rebuilds
+            // these markers for all locals, which can also shorten the storage
+            // lifetimes of locals that were not merged.
             StatementKind::StorageDead(_) | StatementKind::StorageLive(_) => {
                 statement.make_nop(true);
                 return;
