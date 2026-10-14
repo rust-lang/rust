@@ -7,6 +7,7 @@ use super::{
 };
 use crate::error::TypeError;
 use crate::inherent::*;
+use crate::predicates::Predicate;
 use crate::relate::VarianceDiagInfo;
 use crate::solve::Goal;
 use crate::visit::TypeVisitableExt as _;
@@ -23,16 +24,13 @@ where
     fn param_env(&self) -> I::ParamEnv;
 
     /// Register obligations that must hold in order for this relation to hold
-    fn register_goals(
-        &mut self,
-        obligations: impl IntoIterator<Item = Goal<I, rustc_type_ir::sty::predicates::Predicate<I>>>,
-    );
+    fn register_goals(&mut self, obligations: impl IntoIterator<Item = Goal<I, Predicate<I>>>);
 
     /// Register predicates that must hold in order for this relation to hold.
     /// This uses the default `param_env` of the obligation.
     fn register_predicates(
         &mut self,
-        obligations: impl IntoIterator<Item: Upcast<I, rustc_type_ir::sty::predicates::Predicate<I>>>,
+        obligations: impl IntoIterator<Item: Upcast<I, Predicate<I>>>,
     );
 }
 

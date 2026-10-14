@@ -4,6 +4,7 @@
 use rustc_data_structures::transitive_relation::TransitiveRelationBuilder;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::outlives::{Component, push_outlives_components};
+use rustc_type_ir::predicates::Predicate;
 #[cfg(not(feature = "nightly"))]
 use rustc_type_ir::region_constraint::TransitiveRelationBuilder;
 use rustc_type_ir::region_constraint::{
@@ -39,7 +40,7 @@ where
         struct RawAssumptions<'a, 'b, D: SolverDelegate<Interner = I>, I: Interner> {
             ecx: &'a mut EvalCtxt<'b, D, I>,
             param_env: I::ParamEnv,
-            out: Vec<Goal<I, rustc_type_ir::sty::predicates::Predicate<I>>>,
+            out: Vec<Goal<I, Predicate<I>>>,
         }
 
         impl<D, I> TypeVisitor<I> for RawAssumptions<'_, '_, D, I>

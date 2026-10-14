@@ -5,6 +5,7 @@ use smallvec::smallvec;
 use crate::data_structures::HashSet;
 use crate::inherent::*;
 use crate::outlives::{Component, push_outlives_components};
+use crate::predicates::Predicate;
 use crate::{self as ty, Interner, Region, Unnormalized, Upcast as _};
 
 /// "Elaboration" is the process of identifying all the predicates that
@@ -27,7 +28,7 @@ enum Filter {
 
 /// Describes how to elaborate an obligation into a sub-obligation.
 pub trait Elaboratable<I: Interner> {
-    fn predicate(&self) -> rustc_type_ir::sty::predicates::Predicate<I>;
+    fn predicate(&self) -> Predicate<I>;
 
     // Makes a new `Self` but with a different clause that comes from elaboration.
     fn child(&self, clause: I::Clause) -> Self;
@@ -43,7 +44,7 @@ pub trait Elaboratable<I: Interner> {
     ) -> Self;
 }
 
-impl<I: Interner> Elaboratable<I> for ty::predicates::Predicate<I> {
+impl<I: Interner> Elaboratable<I> for Predicate<I> {
     fn predicate(&self) -> Self {
         *self
     }
@@ -76,7 +77,7 @@ impl<I: Interner> ClauseWithSupertraitSpan<I> {
 }
 
 impl<I: Interner> Elaboratable<I> for ClauseWithSupertraitSpan<I> {
-    fn predicate(&self) -> rustc_type_ir::sty::predicates::Predicate<I> {
+    fn predicate(&self) -> Predicate<I> {
         self.clause.as_predicate()
     }
 

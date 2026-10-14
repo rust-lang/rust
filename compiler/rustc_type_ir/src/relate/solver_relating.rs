@@ -2,6 +2,7 @@ use tracing::{debug, instrument};
 
 use self::combine::{PredicateEmittingRelation, super_combine_consts, super_combine_tys};
 use crate::data_structures::DelayedSet;
+use crate::predicates::Predicate;
 use crate::region_constraint::{LeafRegionConstraint, NoSpan, RegionConstraint};
 use crate::relate::combine::combine_ty_args;
 pub use crate::relate::*;
@@ -17,7 +18,7 @@ pub trait RelateExt: InferCtxtLike {
         rhs: T,
         span: <Self::Interner as Interner>::Span,
     ) -> Result<
-        Vec<Goal<Self::Interner, rustc_type_ir::sty::predicates::Predicate<Self::Interner>>>,
+        Vec<Goal<Self::Interner, Predicate<Self::Interner>>>,
         TypeError<Self::Interner>,
     >;
 }
@@ -31,7 +32,7 @@ impl<Infcx: InferCtxtLike> RelateExt for Infcx {
         rhs: T,
         span: <Self::Interner as Interner>::Span,
     ) -> Result<
-        Vec<Goal<Self::Interner, rustc_type_ir::sty::predicates::Predicate<Self::Interner>>>,
+        Vec<Goal<Self::Interner, Predicate<Self::Interner>>>,
         TypeError<Self::Interner>,
     > {
         let mut relate = SolverRelating::new(self, variance, param_env, span);
@@ -48,7 +49,7 @@ pub struct SolverRelating<'infcx, Infcx, I: Interner> {
     span: I::Span,
     // Mutable fields.
     ambient_variance: ty::Variance,
-    goals: Vec<Goal<I, rustc_type_ir::sty::predicates::Predicate<I>>>,
+    goals: Vec<Goal<I, Predicate<I>>>,
     /// The cache only tracks the `ambient_variance` as it's the
     /// only field which is mutable and which meaningfully changes
     /// the result when relating types.
@@ -383,7 +384,7 @@ where
     fn register_predicates(
         &mut self,
         obligations: impl IntoIterator<
-            Item: ty::Upcast<I, rustc_type_ir::sty::predicates::Predicate<I>>,
+            Item: ty::Upcast<I, Predicate<I>>,
         >,
     ) {
         self.goals.extend(
@@ -393,7 +394,7 @@ where
 
     fn register_goals(
         &mut self,
-        obligations: impl IntoIterator<Item = Goal<I, rustc_type_ir::sty::predicates::Predicate<I>>>,
+        obligations: impl IntoIterator<Item = Goal<I, Predicate<I>>>,
     ) {
         self.goals.extend(obligations);
     }

@@ -5,6 +5,7 @@ use derive_where::derive_where;
 use rustc_type_ir::data_structures::HashMap;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::{SolverProjectionLangItem, SolverTraitLangItem};
+use rustc_type_ir::predicates::Predicate;
 use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::solve::inspect::ProbeKind;
 use rustc_type_ir::{
@@ -452,7 +453,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
 ) -> Result<
     (
         ty::Binder<I, AsyncCallableRelevantTypes<I>>,
-        Vec<rustc_type_ir::sty::predicates::Predicate<I>>,
+        Vec<Predicate<I>>,
     ),
     NoSolution,
 > {
@@ -620,7 +621,7 @@ fn fn_item_to_async_callable<I: Interner>(
 ) -> Result<
     (
         ty::Binder<I, AsyncCallableRelevantTypes<I>>,
-        Vec<rustc_type_ir::sty::predicates::Predicate<I>>,
+        Vec<Predicate<I>>,
     ),
     NoSolution,
 > {
@@ -922,7 +923,7 @@ pub(in crate::solve) fn predicates_for_object_candidate<D, I>(
     param_env: I::ParamEnv,
     trait_ref: ty::TraitRef<I>,
     object_bounds: I::BoundExistentialPredicates,
-) -> Result<Vec<Goal<I, rustc_type_ir::sty::predicates::Predicate<I>>>, NoUniqueSolutionOrRerunNonErased>
+) -> Result<Vec<Goal<I, Predicate<I>>>, NoUniqueSolutionOrRerunNonErased>
 where
     D: SolverDelegate<Interner = I>,
     I: Interner,
@@ -996,7 +997,7 @@ struct ReplaceProjectionWith<'a, 'b, I: Interner, D: SolverDelegate<Interner = I
     param_env: I::ParamEnv,
     self_ty: I::Ty,
     mapping: &'a HashMap<I::TraitAssocTermId, Vec<ty::Binder<I, ty::ProjectionClause<I>>>>,
-    nested: Vec<Goal<I, rustc_type_ir::sty::predicates::Predicate<I>>>,
+    nested: Vec<Goal<I, Predicate<I>>>,
 }
 
 impl<D, I> ReplaceProjectionWith<'_, '_, I, D>

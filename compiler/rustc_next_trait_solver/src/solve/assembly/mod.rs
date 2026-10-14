@@ -9,6 +9,7 @@ use derive_where::derive_where;
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::SolverTraitLangItem;
+use rustc_type_ir::predicates::Predicate;
 use rustc_type_ir::search_graph::CandidateHeadUsages;
 use rustc_type_ir::solve::{
     AliasBoundKind, MaybeInfo, NoSolutionOrRerunNonErased, QueryResultOrRerunNonErased,
@@ -66,9 +67,7 @@ where
         parent_source: CandidateSource<I>,
         goal: Goal<I, Self>,
         assumption: I::Clause,
-        requirements: impl IntoIterator<
-            Item = (GoalSource, Goal<I, rustc_type_ir::sty::predicates::Predicate<I>>),
-        >,
+        requirements: impl IntoIterator<Item = (GoalSource, Goal<I, Predicate<I>>)>,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
         Self::probe_and_match_goal_against_assumption(ecx, parent_source, goal, assumption, |ecx| {
             for (nested_source, goal) in requirements {
@@ -1073,7 +1072,7 @@ where
                 // prove the super trait bounds of the current goal.
                 //
                 // We skip the goal itself as that one would cycle.
-                let predicate: rustc_type_ir::sty::predicates::Predicate<I> = trait_ref.upcast(cx);
+                let predicate: Predicate<I> = trait_ref.upcast(cx);
                 ecx.add_goals(
                     GoalSource::Misc,
                     elaborate::elaborate(cx, [predicate])
