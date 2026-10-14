@@ -3721,7 +3721,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let found_trait_ty = found_trait_ref.self_ty();
 
         let found_did = match *found_trait_ty.kind() {
-            ty::Closure(did, _) | ty::FnDef(did, _) | ty::Coroutine(did, ..) => Some(did),
+            ty::Closure(did, _)
+            | ty::FnDef(did, _)
+            | ty::Coroutine(did, ..)
+            | ty::CoroutineClosure(did, ..) => Some(did),
             _ => None,
         };
 
@@ -3782,12 +3785,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             // This would result in "Expected to take 1 argument, but it takes 1 argument".
             // Check again to avoid this.
             if found.len() != expected.len() {
+                let is_closure =
+                    found_trait_ty.is_closure() || found_trait_ty.is_coroutine_closure();
                 return Ok(self.report_arg_count_mismatch(
                     span,
                     closure_span,
                     expected,
                     found,
-                    found_trait_ty.is_closure(),
+                    is_closure,
                     closure_arg_span,
                 ));
             }
