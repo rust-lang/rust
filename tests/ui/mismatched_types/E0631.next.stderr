@@ -1,0 +1,79 @@
+error[E0277]: expected `Fn(usize)` signature, found `{closure@$DIR/E0631.rs:10:9: 10:19}`
+  --> $DIR/E0631.rs:10:9
+   |
+LL |     foo(|_: isize| {});
+   |     --- ^^^^^^^^^^^^^ expected `Fn(usize)` signature, found `{closure@$DIR/E0631.rs:10:9: 10:19}`
+   |     |
+   |     required by a bound introduced by this call
+   |
+help: the trait `Fn(usize)` is not implemented for closure `{closure@$DIR/E0631.rs:10:9: 10:19}`
+  --> $DIR/E0631.rs:10:9
+   |
+LL |     foo(|_: isize| {});
+   |         ^^^^^^^^^^
+   = note: expected type with signature `fn(usize)`
+           found closure with signature `fn(isize)`
+note: required by a bound in `foo`
+  --> $DIR/E0631.rs:6:11
+   |
+LL | fn foo<F: Fn(usize)>(_: F) {}
+   |           ^^^^^^^^^ required by this bound in `foo`
+
+error[E0277]: expected `Fn(usize)` signature, found `{closure@$DIR/E0631.rs:11:9: 11:19}`
+  --> $DIR/E0631.rs:11:9
+   |
+LL |     bar(|_: isize| {});
+   |     --- ^^^^^^^^^^^^^ expected `Fn(usize)` signature, found `{closure@$DIR/E0631.rs:11:9: 11:19}`
+   |     |
+   |     required by a bound introduced by this call
+   |
+help: the trait `Fn(usize)` is not implemented for closure `{closure@$DIR/E0631.rs:11:9: 11:19}`
+  --> $DIR/E0631.rs:11:9
+   |
+LL |     bar(|_: isize| {});
+   |         ^^^^^^^^^^
+   = note: expected type with signature `fn(usize)`
+           found closure with signature `fn(isize)`
+note: required by a bound in `bar`
+  --> $DIR/E0631.rs:7:11
+   |
+LL | fn bar<F: Fn<(usize,)>>(_: F) {}
+   |           ^^^^^^^^^^^^ required by this bound in `bar`
+
+error[E0277]: expected `Fn(usize)` signature, found `fn(u64) {f}`
+  --> $DIR/E0631.rs:12:9
+   |
+LL |     foo(f);
+   |     --- ^ expected `Fn(usize)` signature, found `fn(u64) {f}`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `Fn(usize)` is not implemented for fn item `fn(u64) {f}`
+   = note: expected type with signature `fn(usize)`
+           found fn item with signature `fn(u64)`
+note: required by a bound in `foo`
+  --> $DIR/E0631.rs:6:11
+   |
+LL | fn foo<F: Fn(usize)>(_: F) {}
+   |           ^^^^^^^^^ required by this bound in `foo`
+
+error[E0277]: expected `Fn(usize)` signature, found `fn(u64) {f}`
+  --> $DIR/E0631.rs:13:9
+   |
+LL |     bar(f);
+   |     --- ^ expected `Fn(usize)` signature, found `fn(u64) {f}`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `Fn(usize)` is not implemented for fn item `fn(u64) {f}`
+   = note: expected type with signature `fn(usize)`
+           found fn item with signature `fn(u64)`
+note: required by a bound in `bar`
+  --> $DIR/E0631.rs:7:11
+   |
+LL | fn bar<F: Fn<(usize,)>>(_: F) {}
+   |           ^^^^^^^^^^^^ required by this bound in `bar`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

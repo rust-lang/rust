@@ -1,5 +1,5 @@
 error[E0593]: closure is expected to take 2 arguments, but it takes 0 arguments
-  --> $DIR/closure-arg-count.rs:5:15
+  --> $DIR/closure-arg-count.rs:8:15
    |
 LL |     [1, 2, 3].sort_by(|| panic!());
    |               ^^^^^^^ -- takes 0 arguments
@@ -12,7 +12,7 @@ LL |     [1, 2, 3].sort_by(|_, _| panic!());
    |                        ++++
 
 error[E0593]: closure is expected to take 2 arguments, but it takes 1 argument
-  --> $DIR/closure-arg-count.rs:7:15
+  --> $DIR/closure-arg-count.rs:10:15
    |
 LL |     [1, 2, 3].sort_by(|tuple| panic!());
    |               ^^^^^^^ ------- takes 1 argument
@@ -20,7 +20,7 @@ LL |     [1, 2, 3].sort_by(|tuple| panic!());
    |               expected closure that takes 2 arguments
 
 error[E0593]: closure is expected to take 2 distinct arguments, but it takes a single 2-tuple as argument
-  --> $DIR/closure-arg-count.rs:9:15
+  --> $DIR/closure-arg-count.rs:12:15
    |
 LL |     [1, 2, 3].sort_by(|(tuple, tuple2)| panic!());
    |               ^^^^^^^ ----------------- takes a single 2-tuple as argument
@@ -34,7 +34,7 @@ LL +     [1, 2, 3].sort_by(|tuple, tuple2| panic!());
    |
 
 error[E0593]: closure is expected to take 2 distinct arguments, but it takes a single 2-tuple as argument
-  --> $DIR/closure-arg-count.rs:11:15
+  --> $DIR/closure-arg-count.rs:14:15
    |
 LL |     [1, 2, 3].sort_by(|(tuple, tuple2): (usize, _)| panic!());
    |               ^^^^^^^ ----------------------------- takes a single 2-tuple as argument
@@ -47,46 +47,46 @@ LL -     [1, 2, 3].sort_by(|(tuple, tuple2): (usize, _)| panic!());
 LL +     [1, 2, 3].sort_by(|tuple, tuple2| panic!());
    |
 
-error[E0593]: closure is expected to take 1 argument, but it takes 0 arguments
-  --> $DIR/closure-arg-count.rs:13:5
+error[E0277]: expected `Fn(usize)` signature, found `{closure@$DIR/closure-arg-count.rs:16:7: 16:9}`
+  --> $DIR/closure-arg-count.rs:16:7
    |
 LL |     f(|| panic!());
-   |     ^^--^^^^^^^^^^
-   |     | |
-   |     | takes 0 arguments
-   |     expected closure that takes 1 argument
+   |     - ^^^^^^^^^^^ expected `Fn(usize)` signature, found `{closure@$DIR/closure-arg-count.rs:16:7: 16:9}`
+   |     |
+   |     required by a bound introduced by this call
    |
+help: the trait `Fn(usize)` is not implemented for closure `{closure@$DIR/closure-arg-count.rs:16:7: 16:9}`
+  --> $DIR/closure-arg-count.rs:16:7
+   |
+LL |     f(|| panic!());
+   |       ^^
 note: required by a bound in `f`
-  --> $DIR/closure-arg-count.rs:3:9
+  --> $DIR/closure-arg-count.rs:6:9
    |
 LL | fn f<F: Fn<(usize,)>>(_: F) {}
    |         ^^^^^^^^^^^^ required by this bound in `f`
-help: consider changing the closure to take and ignore the expected argument
-   |
-LL |     f(|_| panic!());
-   |        +
 
-error[E0593]: closure is expected to take 1 argument, but it takes 0 arguments
-  --> $DIR/closure-arg-count.rs:15:5
+error[E0277]: expected `Fn(usize)` signature, found `{closure@$DIR/closure-arg-count.rs:18:9: 18:19}`
+  --> $DIR/closure-arg-count.rs:18:9
    |
 LL |     f(  move    || panic!());
-   |     ^^^^----------^^^^^^^^^^
-   |     |   |
-   |     |   takes 0 arguments
-   |     expected closure that takes 1 argument
+   |     -   ^^^^^^^^^^^^^^^^^^^ expected `Fn(usize)` signature, found `{closure@$DIR/closure-arg-count.rs:18:9: 18:19}`
+   |     |
+   |     required by a bound introduced by this call
    |
+help: the trait `Fn(usize)` is not implemented for closure `{closure@$DIR/closure-arg-count.rs:18:9: 18:19}`
+  --> $DIR/closure-arg-count.rs:18:9
+   |
+LL |     f(  move    || panic!());
+   |         ^^^^^^^^^^
 note: required by a bound in `f`
-  --> $DIR/closure-arg-count.rs:3:9
+  --> $DIR/closure-arg-count.rs:6:9
    |
 LL | fn f<F: Fn<(usize,)>>(_: F) {}
    |         ^^^^^^^^^^^^ required by this bound in `f`
-help: consider changing the closure to take and ignore the expected argument
-   |
-LL |     f(  move    |_| panic!());
-   |                  +
 
 error[E0593]: closure is expected to take a single 2-tuple as argument, but it takes 2 distinct arguments
-  --> $DIR/closure-arg-count.rs:18:53
+  --> $DIR/closure-arg-count.rs:21:53
    |
 LL |     let _it = vec![1, 2, 3].into_iter().enumerate().map(|i, x| i);
    |                                                     ^^^ ------ takes 2 distinct arguments
@@ -100,7 +100,7 @@ LL +     let _it = vec![1, 2, 3].into_iter().enumerate().map(|(i, x)| i);
    |
 
 error[E0593]: closure is expected to take a single 2-tuple as argument, but it takes 2 distinct arguments
-  --> $DIR/closure-arg-count.rs:20:53
+  --> $DIR/closure-arg-count.rs:23:53
    |
 LL |     let _it = vec![1, 2, 3].into_iter().enumerate().map(|i: usize, x| i);
    |                                                     ^^^ ------------- takes 2 distinct arguments
@@ -114,82 +114,86 @@ LL +     let _it = vec![1, 2, 3].into_iter().enumerate().map(|(i, x)| i);
    |
 
 error[E0593]: closure is expected to take a single 2-tuple as argument, but it takes 3 distinct arguments
-  --> $DIR/closure-arg-count.rs:22:53
+  --> $DIR/closure-arg-count.rs:25:53
    |
 LL |     let _it = vec![1, 2, 3].into_iter().enumerate().map(|i, x, y| i);
    |                                                     ^^^ --------- takes 3 distinct arguments
    |                                                     |
    |                                                     expected closure that takes a single 2-tuple as argument
 
-error[E0593]: function is expected to take a single 2-tuple as argument, but it takes 0 arguments
-  --> $DIR/closure-arg-count.rs:24:57
-   |
-LL |     let _it = vec![1, 2, 3].into_iter().enumerate().map(foo);
-   |                                                     --- ^^^ expected function that takes a single 2-tuple as argument
-   |                                                     |
-   |                                                     required by a bound introduced by this call
-...
-LL | fn foo() {}
-   | -------- takes 0 arguments
-   |
-note: required by a bound in `map`
-  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-
-error[E0593]: closure is expected to take a single 2-tuple as argument, but it takes 3 distinct arguments
+error[E0277]: expected `FnMut((usize, {integer}))` signature, found `fn() {foo}`
   --> $DIR/closure-arg-count.rs:27:57
    |
-LL |     let bar = |i, x, y| i;
-   |               --------- takes 3 distinct arguments
-LL |     let _it = vec![1, 2, 3].into_iter().enumerate().map(bar);
-   |                                                     --- ^^^ expected closure that takes a single 2-tuple as argument
+LL |     let _it = vec![1, 2, 3].into_iter().enumerate().map(foo);
+   |                                                     --- ^^^ expected `FnMut((usize, {integer}))` signature, found `fn() {foo}`
    |                                                     |
    |                                                     required by a bound introduced by this call
    |
+   = help: the trait `FnMut((usize, {integer}))` is not implemented for fn item `fn() {foo}`
+   = note: expected a closure taking 0 arguments, but one taking 1 argument was given
 note: required by a bound in `map`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
 
-error[E0593]: function is expected to take a single 2-tuple as argument, but it takes 2 distinct arguments
-  --> $DIR/closure-arg-count.rs:29:57
+error[E0277]: expected `FnOnce((usize, {integer}))` signature, found `{closure@$DIR/closure-arg-count.rs:29:15: 29:24}`
+  --> $DIR/closure-arg-count.rs:30:57
+   |
+LL |     let _it = vec![1, 2, 3].into_iter().enumerate().map(bar);
+   |                                                     --- ^^^ expected `FnOnce((usize, {integer}))` signature, found `{closure@$DIR/closure-arg-count.rs:29:15: 29:24}`
+   |                                                     |
+   |                                                     required by a bound introduced by this call
+   |
+help: the trait `FnOnce((usize, {integer}))` is not implemented for closure `{closure@$DIR/closure-arg-count.rs:29:15: 29:24}`
+  --> $DIR/closure-arg-count.rs:29:15
+   |
+LL |     let bar = |i, x, y| i;
+   |               ^^^^^^^^^
+note: required by a bound in `map`
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+
+error[E0277]: expected `FnMut((usize, {integer}))` signature, found `fn(usize, usize) {qux}`
+  --> $DIR/closure-arg-count.rs:32:57
    |
 LL |     let _it = vec![1, 2, 3].into_iter().enumerate().map(qux);
-   |                                                     --- ^^^ expected function that takes a single 2-tuple as argument
+   |                                                     --- ^^^ expected `FnMut((usize, {integer}))` signature, found `fn(usize, usize) {qux}`
    |                                                     |
    |                                                     required by a bound introduced by this call
-...
-LL | fn qux(x: usize, y: usize) {}
-   | -------------------------- takes 2 distinct arguments
    |
+   = help: the trait `FnMut((usize, {integer}))` is not implemented for fn item `fn(usize, usize) {qux}`
+   = note: expected a closure taking 2 arguments, but one taking 1 argument was given
 note: required by a bound in `map`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
 
-error[E0593]: function is expected to take 1 argument, but it takes 2 arguments
-  --> $DIR/closure-arg-count.rs:32:45
+error[E0277]: expected `FnMut({integer})` signature, found `fn(usize, usize) -> Option<usize> {core::num::<impl usize>::checked_add}`
+  --> $DIR/closure-arg-count.rs:35:45
    |
 LL |     let _it = vec![1, 2, 3].into_iter().map(usize::checked_add);
-   |                                         --- ^^^^^^^^^^^^^^^^^^ expected function that takes 1 argument
+   |                                         --- ^^^^^^^^^^^^^^^^^^ expected `FnMut({integer})` signature, found `fn(usize, usize) -> Option<usize> {core::num::<impl usize>::checked_add}`
    |                                         |
    |                                         required by a bound introduced by this call
    |
+   = help: the trait `FnMut({integer})` is not implemented for fn item `fn(usize, usize) -> Option<usize> {core::num::<impl usize>::checked_add}`
+   = note: expected a closure taking 2 arguments, but one taking 1 argument was given
 note: required by a bound in `map`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
 
-error[E0593]: function is expected to take 0 arguments, but it takes 1 argument
-  --> $DIR/closure-arg-count.rs:35:10
+error[E0277]: expected `FnOnce()` signature, found `fn(u8) -> Foo {Foo}`
+  --> $DIR/closure-arg-count.rs:38:10
    |
 LL |     call(Foo);
-   |     ---- ^^^ expected function that takes 0 arguments
+   |     ---- ^^^ expected `FnOnce()` signature, found `fn(u8) -> Foo {Foo}`
    |     |
    |     required by a bound introduced by this call
-...
-LL | struct Foo(u8);
-   | ---------- takes 1 argument
    |
+   = help: the trait `FnOnce()` is not implemented for fn item `fn(u8) -> Foo {Foo}`
+   = note: wrap the `fn(u8) -> Foo {Foo}` in a closure with no arguments: `|| { /* code */ }`
+   = note: expected a closure taking 1 argument, but one taking 0 arguments was given
 note: required by a bound in `call`
-  --> $DIR/closure-arg-count.rs:42:30
+  --> $DIR/closure-arg-count.rs:45:30
    |
 LL | fn call<F, R>(_: F) where F: FnOnce() -> R {}
    |                              ^^^^^^^^^^^^^ required by this bound in `call`
 
 error: aborting due to 14 previous errors
 
-For more information about this error, try `rustc --explain E0593`.
+Some errors have detailed explanations: E0277, E0593.
+For more information about an error, try `rustc --explain E0277`.
