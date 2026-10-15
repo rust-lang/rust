@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/lifetime-extension.rs:11:14
+  --> $DIR/lifetime-extension.rs:10:14
    |
 LL | fn func(n: &i32) -> &'static i32 {
    |            - let's call the lifetime of this reference `'1`
