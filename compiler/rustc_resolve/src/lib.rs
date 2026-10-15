@@ -1445,7 +1445,7 @@ pub struct Resolver<'ra, 'tcx> {
     builtin_type_decls: FxHashMap<Symbol, Decl<'ra>>,
     builtin_attr_decls: FxHashMap<Symbol, Decl<'ra>>,
     registered_attr_tool_decls: FxHashMap<IdentKey, Decl<'ra>>,
-    macro_names: FxHashSet<IdentKey> = default::fx_hash_set(),
+    macro_names: FxHashMap<IdentKey, LocalDefId> = default::fx_hash_map(),
     builtin_macros: FxHashMap<Symbol, SyntaxExtensionKind> = default::fx_hash_map(),
     registered_attr_tools: &'tcx RegisteredTools,
     registered_lint_tools: &'tcx RegisteredTools,
@@ -1459,7 +1459,8 @@ pub struct Resolver<'ra, 'tcx> {
     non_macro_attr: &'ra Arc<SyntaxExtension>,
     local_macro_def_scopes: FxHashMap<LocalDefId, LocalModule<'ra>> = default::fx_hash_map(),
     ast_transform_scopes: FxHashMap<LocalExpnId, LocalModule<'ra>> = default::fx_hash_map(),
-    unused_macros: FxIndexMap<LocalDefId, (NodeId, Ident)> = default::fx_index_map(),
+    unused_macros: FxIndexMap<LocalDefId, (NodeId, Ident, Option<DefId>)> = default::fx_index_map(),
+    macro_use_mods: FxIndexSet<NodeId> = default::fx_index_set(),
     /// A map from the macro to all its potentially unused arms and the `LocalDefId` of the macro itself.
     unused_macro_rules: FxIndexMap<NodeId, (LocalDefId, DenseBitSet<usize>)> = default::fx_index_map(),
     proc_macro_stubs: FxHashSet<LocalDefId> = default::fx_hash_set(),
@@ -1760,7 +1761,7 @@ impl<'tcx> Resolver<'_, 'tcx> {
                 .filter_map(|param| match param.kind {
                     ty::GenericParamDefKind::Lifetime => Some("'_"),
                     ty::GenericParamDefKind::Type { has_default, .. }
-                    | ty::GenericParamDefKind::Const { has_default } => {
+                    | ty::GenericParamDefKind::Const { has_default, arg_pos: _ } => {
                         if has_default {
                             None
                         } else {

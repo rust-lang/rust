@@ -320,6 +320,7 @@ fn completion_config() -> CompletionConfig<'static> {
         enable_self_on_the_fly: true,
         enable_private_editable: true,
         enable_term_search: true,
+        enable_turbofish: true,
         term_search_fuel: 200,
         full_function_signatures: false,
         callable: Some(CallableSnippets::FillArguments),

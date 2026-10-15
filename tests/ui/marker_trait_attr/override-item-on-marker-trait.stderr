@@ -1,12 +1,15 @@
 error[E0714]: marker traits cannot have associated items
   --> $DIR/override-item-on-marker-trait.rs:5:5
    |
+LL | trait Marker {
 LL |     const N: usize = 0;
    |     ^^^^^^^^^^^^^^
 
 error[E0714]: marker traits cannot have associated items
   --> $DIR/override-item-on-marker-trait.rs:7:5
    |
+LL | trait Marker {
+...
 LL |     fn do_something() {}
    |     ^^^^^^^^^^^^^^^^^
 

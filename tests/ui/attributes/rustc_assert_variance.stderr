@@ -1,0 +1,125 @@
+error[E0539]: malformed `rustc_assert_variance` attribute input
+  --> $DIR/rustc_assert_variance.rs:4:15
+   |
+LL | struct Foo1<#[rustc_assert_variance] T> {
+   |               ^^^^^^^^^^^^^^^^^^^^^ expected this to be a list
+
+error[E0539]: malformed `rustc_assert_variance` attribute input
+  --> $DIR/rustc_assert_variance.rs:10:15
+   |
+LL | struct Foo2<#[rustc_assert_variance(nonsense)] T> {
+   |               ^^^^^^^^^^^^^^^^^^^^^^--------^
+   |                                     |
+   |                                     valid arguments are `covariant`, `invariant`, `contravariant` or `bivariant`
+
+error: `Foo3` is expected to be bivariant in `T` but is not
+  --> $DIR/rustc_assert_variance.rs:16:1
+   |
+LL | struct Foo3<#[rustc_assert_variance(bivariant)] T> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-^
+   |                                                 |
+   |                                                 `Foo3` is covariant in `T`
+   |
+note: required by this attribute
+  --> $DIR/rustc_assert_variance.rs:16:13
+   |
+LL | struct Foo3<#[rustc_assert_variance(bivariant)] T> {
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `Foo4` is expected to be invariant in `T` but is not
+  --> $DIR/rustc_assert_variance.rs:23:1
+   |
+LL | struct Foo4<#[rustc_assert_variance(invariant)] T> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-^
+   |                                                 |
+   |                                                 `Foo4` is covariant in `T`
+   |
+note: required by this attribute
+  --> $DIR/rustc_assert_variance.rs:23:13
+   |
+LL | struct Foo4<#[rustc_assert_variance(invariant)] T> {
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `Foo5` is expected to be invariant in `'a` but is not
+  --> $DIR/rustc_assert_variance.rs:30:1
+   |
+LL | / struct Foo5<
+LL | |
+LL | |
+LL | |     #[rustc_assert_variance(invariant)]
+LL | |
+LL | |     'a,
+   | |     -- `Foo5` is covariant in `'a`
+...  |
+LL | | > {
+   | |_^
+   |
+note: required by this attribute
+  --> $DIR/rustc_assert_variance.rs:33:5
+   |
+LL |     #[rustc_assert_variance(invariant)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `Foo5` is expected to be covariant in `T` but is not
+  --> $DIR/rustc_assert_variance.rs:30:1
+   |
+LL | / struct Foo5<
+LL | |
+LL | |
+LL | |     #[rustc_assert_variance(invariant)]
+...  |
+LL | |     T,
+   | |     - `Foo5` is invariant in `T`
+LL | |
+LL | | > {
+   | |_^
+   |
+note: required by this attribute
+  --> $DIR/rustc_assert_variance.rs:37:5
+   |
+LL |     #[rustc_assert_variance(covariant)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `Foo6` is expected to be contravariant in `'a` but is not
+  --> $DIR/rustc_assert_variance.rs:45:1
+   |
+LL | / struct Foo6<
+LL | |
+LL | |
+LL | |     #[rustc_assert_variance(contravariant)]
+LL | |
+LL | |     'a,
+   | |     -- `Foo6` is covariant in `'a`
+...  |
+LL | | > {
+   | |_^
+   |
+note: required by this attribute
+  --> $DIR/rustc_assert_variance.rs:48:5
+   |
+LL |     #[rustc_assert_variance(contravariant)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `Foo6` is expected to be contravariant in `T` but is not
+  --> $DIR/rustc_assert_variance.rs:45:1
+   |
+LL | / struct Foo6<
+LL | |
+LL | |
+LL | |     #[rustc_assert_variance(contravariant)]
+...  |
+LL | |     T,
+   | |     - `Foo6` is invariant in `T`
+LL | |
+LL | | > {
+   | |_^
+   |
+note: required by this attribute
+  --> $DIR/rustc_assert_variance.rs:52:5
+   |
+LL |     #[rustc_assert_variance(contravariant)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0539`.

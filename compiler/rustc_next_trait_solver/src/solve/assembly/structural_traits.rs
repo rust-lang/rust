@@ -440,6 +440,10 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
 ) -> Result<(ty::Binder<I, AsyncCallableRelevantTypes<I>>, Vec<I::Predicate>), NoSolution> {
     match self_ty.kind() {
         ty::CoroutineClosure(def_id, args) => {
+            if !cx.coroutine_is_async(cx.coroutine_for_closure(def_id)) {
+                return Err(NoSolution);
+            }
+
             let args = args.as_coroutine_closure();
             let kind_ty = args.kind_ty();
             let sig = args.coroutine_closure_sig().skip_binder();

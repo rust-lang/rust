@@ -1,4 +1,4 @@
-error[E0277]: expected an `FnOnce(&'any i32)` closure, found `impl for<'any> FnMutFut<&'any BAZ::Param, ()>`
+error[E0277]: expected `FnOnce(&'any i32)` signature, found `impl for<'any> FnMutFut<&'any BAZ::Param, ()>`
   --> $DIR/issue-116864.rs:29:1
    |
 LL | / async fn foo<BAZ>(_: BAZ, mut cb: impl for<'any> FnMutFut<&'any BAZ::Param, ()>)
@@ -6,10 +6,10 @@ LL | |
 LL | |
 LL | | where
 LL | |     BAZ: Baz<Param = i32>,
-   | |__________________________^ expected an `FnOnce(&'any i32)` closure, found `impl for<'any> FnMutFut<&'any BAZ::Param, ()>`
+   | |__________________________^ expected `FnOnce(&'any i32)` signature, found `impl for<'any> FnMutFut<&'any BAZ::Param, ()>`
    |
-   = note: expected a closure with signature `for<'any> fn(&'any i32)`
-              found a closure with signature `fn(&<BAZ as Baz>::Param)`
+   = note:        expected type with signature `for<'any> fn(&'any i32)`
+           found type parameter with signature `fn(&<BAZ as Baz>::Param)`
 note: required for `impl for<'any> FnMutFut<&'any BAZ::Param, ()>` to implement `for<'any> FnMutFut<&'any i32, ()>`
   --> $DIR/issue-116864.rs:21:20
    |

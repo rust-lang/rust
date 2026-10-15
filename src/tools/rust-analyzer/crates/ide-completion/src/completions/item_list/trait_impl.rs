@@ -33,6 +33,7 @@
 
 use hir::{MacroCallId, Name};
 use ide_db::text_edit::TextEdit;
+use ide_db::traits::IsRequiredAssocItem;
 use ide_db::{
     SymbolKind, documentation::HasDocs, path_transform::PathTransform,
     syntax_helpers::prettify_macro_expansion, traits::get_missing_assoc_items,
@@ -165,17 +166,24 @@ fn complete_trait_impl(
         get_missing_assoc_items(&ctx.sema, impl_def)
             .into_iter()
             .filter(|(item, _)| ctx.check_stability_and_hidden(*item))
-            .for_each(|(item, _)| {
+            .for_each(|(item, required)| {
                 use self::ImplCompletionKind::*;
                 match (item, kind) {
                     (hir::AssocItem::Function(func), All | Fn) => {
-                        add_function_impl(acc, ctx, replacement_range, func, hir_impl)
+                        add_function_impl(acc, ctx, replacement_range, func, hir_impl, required)
                     }
                     (hir::AssocItem::TypeAlias(type_alias), All | TypeAlias) => {
-                        add_type_alias_impl(acc, ctx, replacement_range, type_alias, hir_impl)
+                        add_type_alias_impl(
+                            acc,
+                            ctx,
+                            replacement_range,
+                            type_alias,
+                            hir_impl,
+                            required,
+                        )
                     }
                     (hir::AssocItem::Const(const_), All | Const) => {
-                        add_const_impl(acc, ctx, replacement_range, const_, hir_impl)
+                        add_const_impl(acc, ctx, replacement_range, const_, hir_impl, required)
                     }
                     _ => {}
                 }
@@ -189,6 +197,7 @@ fn add_function_impl(
     replacement_range: TextRange,
     func: hir::Function,
     impl_def: hir::Impl,
+    required: IsRequiredAssocItem,
 ) {
     let fn_name = &func.name(ctx.db);
     let sugar: &[_] = if func.is_async(ctx.db) {
@@ -199,7 +208,16 @@ fn add_function_impl(
         &[AsyncSugaring::Plain]
     };
     for &sugaring in sugar {
-        add_function_impl_(acc, ctx, replacement_range, func, impl_def, fn_name, sugaring);
+        add_function_impl_(
+            acc,
+            ctx,
+            replacement_range,
+            func,
+            impl_def,
+            fn_name,
+            sugaring,
+            required,
+        );
     }
 }
 
@@ -211,6 +229,7 @@ fn add_function_impl_(
     impl_def: hir::Impl,
     fn_name: &Name,
     async_sugaring: AsyncSugaring,
+    required: IsRequiredAssocItem,
 ) {
     let async_ = if let AsyncSugaring::Async | AsyncSugaring::Resugar = async_sugaring {
         "async "
@@ -233,7 +252,11 @@ fn add_function_impl_(
     let mut item = CompletionItem::new(completion_kind, replacement_range, label, ctx.edition);
     item.lookup_by(format!("{}fn {}", async_, fn_name.display(ctx.db, ctx.edition)))
         .set_documentation(func.docs(ctx.db))
-        .set_relevance(CompletionRelevance { exact_name_match: true, ..Default::default() });
+        .set_relevance(CompletionRelevance {
+            exact_name_match: true,
+            is_missing: required.0,
+            ..Default::default()
+        });
 
     if let Some(source) = ctx.sema.source(func)
         && let Some(transformed_fn) =
@@ -383,6 +406,7 @@ fn add_type_alias_impl(
     replacement_range: TextRange,
     type_alias: hir::TypeAlias,
     impl_def: hir::Impl,
+    required: IsRequiredAssocItem,
 ) {
     let alias_name = type_alias.name(ctx.db).as_str().to_smolstr();
 
@@ -392,7 +416,11 @@ fn add_type_alias_impl(
         CompletionItem::new(SymbolKind::TypeAlias, replacement_range, label, ctx.edition);
     item.lookup_by(format!("type {alias_name}"))
         .set_documentation(type_alias.docs(ctx.db))
-        .set_relevance(CompletionRelevance { exact_name_match: true, ..Default::default() });
+        .set_relevance(CompletionRelevance {
+            exact_name_match: true,
+            is_missing: required.0,
+            ..Default::default()
+        });
 
     if let Some(source) = ctx.sema.source(type_alias) {
         let assoc_item = ast::AssocItem::TypeAlias(source.value);
@@ -466,6 +494,7 @@ fn add_const_impl(
     replacement_range: TextRange,
     const_: hir::Const,
     impl_def: hir::Impl,
+    required: IsRequiredAssocItem,
 ) {
     let const_name = const_.name(ctx.db).map(|n| n.display_no_db(ctx.edition).to_smolstr());
 
@@ -490,6 +519,7 @@ fn add_const_impl(
                 .set_documentation(const_.docs(ctx.db))
                 .set_relevance(CompletionRelevance {
                     exact_name_match: true,
+                    is_missing: required.0,
                     ..Default::default()
                 });
             match ctx.config.snippet_cap {

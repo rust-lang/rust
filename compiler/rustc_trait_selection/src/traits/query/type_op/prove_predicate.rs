@@ -4,6 +4,7 @@ use rustc_middle::traits::query::NoSolution;
 pub use rustc_middle::traits::query::type_op::ProvePredicate;
 use rustc_middle::ty::{self, ParamEnvAnd, TyCtxt};
 
+use crate::infer::InferCtxt;
 use crate::infer::canonical::{CanonicalQueryInput, CanonicalQueryResponse};
 use crate::traits::{ObligationCtxt, sizedness_fast_path};
 
@@ -11,16 +12,16 @@ impl<'tcx> super::QueryTypeOp<'tcx> for ProvePredicate<'tcx> {
     type QueryResponse = ();
 
     fn try_fast_path(
-        tcx: TyCtxt<'tcx>,
+        infcx: &InferCtxt<'tcx>,
         key: &ParamEnvAnd<'tcx, Self>,
     ) -> Option<Self::QueryResponse> {
-        if sizedness_fast_path(tcx, key.value.predicate, key.param_env) {
+        if sizedness_fast_path(infcx.tcx, key.value.predicate, key.param_env) {
             return Some(());
         }
 
         if let ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(term)) =
             key.value.predicate.kind().skip_binder()
-            && term.is_trivially_wf(tcx)
+            && term.is_trivially_wf(infcx.tcx)
         {
             return Some(());
         }

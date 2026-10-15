@@ -1,0 +1,23 @@
+name: Use the rustup cg_gcc
+description: >
+  Installs the cg_gcc backend and libgccjit that rustup distributes for the toolchain of
+  rust-toolchain.toml, and writes a config.toml that makes y.sh use them, along with the sysroot
+  of that toolchain (compiled by cg_llvm), instead of building the backend and the sysroot.
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        rustup component add rustc-codegen-gcc gcc-x86_64-unknown-linux-gnu
+        sysroot="$(rustc --print sysroot)"
+        codegen_backends="$sysroot/lib/rustlib/x86_64-unknown-linux-gnu/codegen-backends"
+        backends=("$codegen_backends"/librustc_codegen_gcc-*.so)
+        if [ "${#backends[@]}" -ne 1 ] || [ ! -f "${backends[0]}" ]; then
+          echo "::error::expected exactly one cg_gcc in $codegen_backends, found: ${backends[*]}"
+          exit 1
+        fi
+        echo "gcc-path = \"$codegen_backends/lib/x86_64-unknown-linux-gnu\"" > config.toml
+        echo "backend-path = \"${backends[0]}\"" >> config.toml
+        echo "sysroot-path = \"$sysroot\"" >> config.toml
+        cat config.toml

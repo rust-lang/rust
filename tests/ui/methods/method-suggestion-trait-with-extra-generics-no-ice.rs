@@ -16,7 +16,7 @@ struct Bar;
 
 fn main() {
     let foo: Box<dyn Fn(bool) -> usize> = Box::new(Bar);
-    //~^ ERROR expected an `Fn(bool)` closure, found `Bar`
+    //~^ ERROR expected `Fn(bool)` signature, found `Bar`
     foo.borrow();
     //~^ ERROR no method named `borrow` found
     foo.take()

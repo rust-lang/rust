@@ -80,6 +80,6 @@ pub(super) fn check_method<'tcx>(
         } else {
             None
         };
-        check(cx, recv, param.pat, ty_spans, body.value);
+        check(cx, recv, param.pat, ty_spans, &body.value);
     }
 }

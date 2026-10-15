@@ -74,7 +74,7 @@ pub fn check(
             && let Some(future) = cx.tcx.lang_items().future_trait()
             && let typeck = cx.tcx.typeck_body(body_id)
             && let body = cx.tcx.hir_body(body_id)
-            && let ret_ty = typeck.expr_ty(body.value)
+            && let ret_ty = typeck.expr_ty(&body.value)
             && implements_trait_with_env(
                 cx.tcx,
                 ty::TypingEnv::non_body_analysis(cx.tcx, owner_id.def_id),

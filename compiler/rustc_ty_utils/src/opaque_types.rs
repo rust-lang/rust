@@ -67,7 +67,7 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
         let Some(body) = self.tcx.hir_maybe_body_owned_by(self.item) else {
             return;
         };
-        let body = body.value;
+        let body = &body.value;
         struct TaitInBodyFinder<'a, 'tcx> {
             collector: &'a mut OpaqueTypeCollector<'tcx>,
         }

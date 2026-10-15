@@ -13,7 +13,11 @@ error[E0282]: type annotations needed
 LL |     fn convert(_i: In) -> Self::Out {
    |                           ^^^^^^^^^ cannot infer type
    |
-   = note: cannot infer type of hidden type of opaque
+note: cannot infer type of hidden type of opaque
+  --> $DIR/issue-84660-unsoundness.rs:12:12
+   |
+LL | type Bar = impl Foo;
+   |            ^^^^^^^^
 
 error: aborting due to 2 previous errors
 

@@ -24,7 +24,7 @@ use crate::solve::assembly::{
 use crate::solve::inspect::ProbeKind;
 use crate::solve::{
     BuiltinImplSource, CandidateSource, Certainty, EvalCtxt, Goal, GoalSource, MaybeCause,
-    MergeCandidateInfo, NoSolution, ParamEnvSource, StalledOnCoroutines,
+    MergeCandidateInfo, NoSolution, ParamEnvSource, StalledOnCoroutines, flatten_answer_tree,
     has_only_region_constraints,
 };
 
@@ -136,6 +136,7 @@ where
     fn fast_reject_assumption(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
+        goal_lang_item: Option<SolverTraitLangItem>,
         assumption: I::Clause,
     ) -> Result<(), NoSolution> {
         fn trait_def_id_matches<I: Interner>(
@@ -143,6 +144,7 @@ where
             clause_def_id: I::TraitId,
             goal_def_id: I::TraitId,
             polarity: ClausePolarity,
+            goal_lang_item: Option<SolverTraitLangItem>,
         ) -> bool {
             clause_def_id == goal_def_id
             // PERF(sized-hierarchy): Sizedness supertraits aren't elaborated to improve perf, so
@@ -150,8 +152,8 @@ where
             //
             // `PointeeSized` bounds are syntactic sugar for a lack of bounds so don't need this.
                 || (polarity == ClausePolarity::Positive
-                    && cx.is_trait_lang_item(clause_def_id, SolverTraitLangItem::Sized)
-                    && cx.is_trait_lang_item(goal_def_id, SolverTraitLangItem::MetaSized))
+                    && goal_lang_item == Some(SolverTraitLangItem::MetaSized)
+                    && cx.is_trait_lang_item(clause_def_id, SolverTraitLangItem::Sized))
         }
 
         if let Some(trait_clause) = assumption.as_trait_clause()
@@ -161,6 +163,7 @@ where
                 trait_clause.def_id(),
                 goal.predicate.def_id(),
                 goal.predicate.polarity,
+                goal_lang_item,
             )
             && DeepRejectCtxt::relate_rigid_rigid(ecx.cx()).args_may_unify(
                 goal.predicate.trait_ref.args,
@@ -656,6 +659,8 @@ where
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
+        use rustc_type_ir::transmute::Answer;
+
         if goal.predicate.polarity != ty::ClausePolarity::Positive {
             return Err(NoSolution.into());
         }
@@ -678,11 +683,28 @@ where
                     goal.predicate.trait_ref.args.const_at(2),
                 )?;
 
-                let certainty = ecx.is_transmutable(
+                let answer = ecx.is_transmutable(
                     goal.predicate.trait_ref.args.type_at(0),
                     goal.predicate.trait_ref.args.type_at(1),
                     assume,
                 )?;
+
+                let certainty = match answer {
+                    Answer::No(_) => return Err(NoSolution.into()),
+                    Answer::Yes => Certainty::Yes,
+                    Answer::If(cond) => {
+                        let tcx = ecx.cx();
+                        ecx.add_goals(
+                            GoalSource::Misc,
+                            flatten_answer_tree(tcx, goal.predicate, cond)
+                                .into_iter()
+                                .map(|predicate| Goal::new(tcx, goal.param_env, predicate)),
+                        )?;
+
+                        Certainty::Yes
+                    }
+                };
+
                 ecx.evaluate_added_goals_and_make_canonical_response(certainty)
             },
         )

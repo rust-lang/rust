@@ -557,10 +557,23 @@ impl CommandLineStep for Llvm {
         // which saves both memory during parallel links and overall disk space
         // for the tools. We don't do this on every platform as it doesn't work
         // equally well everywhere.
+        //
+        // Under normal circumstances, the dylib LINK and BUILD vars below should
+        // be set to the same value. See #160597
+        let llvm_dylib = if link_shared { "ON" } else { "OFF" };
+        cfg.define("LLVM_LINK_LLVM_DYLIB", llvm_dylib);
+        cfg.define("LLVM_BUILD_LLVM_DYLIB", llvm_dylib);
+        // Keep the pre-LLVM23 behavior for now.
+        cfg.define("LLVM_VERSIONED_DYLIB_NAME_ON_DARWIN", "OFF");
+
         if link_shared {
-            cfg.define("LLVM_LINK_LLVM_DYLIB", "ON");
-            // Keep the pre-LLVM23 behavior for now.
-            cfg.define("LLVM_VERSIONED_DYLIB_NAME_ON_DARWIN", "OFF");
+            // We inform LLVM tools where they can find the LLVM library
+            // by adding an rpath entry to the expected parent `lib` directory,
+            // e.g. `rust-objcopy` is shipped in `lib/rustlib/<host>/bin`.
+            if let Some(rpath) = llvm_lib_rpath(builder, target) {
+                ldflags.exe.push(" ");
+                ldflags.exe.push(rpath);
+            }
         }
 
         if (target.starts_with("csky")
@@ -1159,6 +1172,23 @@ fn get_var(var_base: &str, host: &str, target: &str) -> Option<OsString> {
         .or_else(|| env::var_os(var_base))
 }
 
+/// Generate a RPATH entry for a binary that will link to LLVM (libLLVM.so) dynamically.
+/// This will make it possible to execute the binary outside Rustup, so that it can still find the libLLVM.so file.
+fn llvm_lib_rpath(builder: &Builder<'_>, target: TargetSelection) -> Option<&'static str> {
+    if builder.config.rpath_enabled(target) && helpers::use_host_linker(target) {
+        // Be careful when changing this path, we need to ensure it's quoted or escaped:
+        // `$ORIGIN` would otherwise be expanded when the `LdFlags` are passed verbatim to
+        // cmake.
+        if target.contains("linux") {
+            return Some("-Wl,-rpath,'$ORIGIN/../../../'");
+        }
+        if target.contains("apple-darwin") {
+            return Some("-Wl,-rpath,'@loader_path/../../../'");
+        }
+    }
+    None
+}
+
 #[derive(Clone)]
 pub struct BuiltRustOffload {
     /// Path to the rust offload dylib
@@ -1433,19 +1463,12 @@ impl CommandLineStep for OmpOffload {
             ldflags.push_all(format!("-L{}", dir.display()));
         }
 
-        if builder.config.rpath_enabled(target)
-            && helpers::use_host_linker(target)
-            && llvm_output.link_shared()
-            && target.contains("linux")
-        {
-            // Same logic as in Lld::run
+        if llvm_output.link_shared() {
             // We inform libomptarget.so where it can find LLVM's libraries
             // by adding an rpath entry to the expected parent `lib` directory.
-            //
-            // Be careful when changing this path, we need to ensure it's quoted or escaped:
-            // `$ORIGIN` would otherwise be expanded when the `LdFlags` are passed verbatim to
-            // cmake.
-            ldflags.push_all("-Wl,-rpath,'$ORIGIN/../../../'");
+            if let Some(rpath) = llvm_lib_rpath(builder, target) {
+                ldflags.push_all(rpath);
+            }
         }
 
         configure_cmake(builder, target, &mut cfg, true, ldflags, cflags, &[]);
@@ -1721,21 +1744,11 @@ impl CommandLineStep for Lld {
         // component installed, one can successfully invoke `rust-lld` directly without rustup's
         // `LD_LIBRARY_PATH` overrides)
         //
-        if builder.config.rpath_enabled(target)
-            && helpers::use_host_linker(target)
-            && llvm_output.link_shared()
-        {
+        if llvm_output.link_shared() {
             // So we inform LLD where it can find LLVM's libraries by adding an rpath entry to the
             // expected parent `lib` directory.
-            //
-            // Be careful when changing this path, we need to ensure it's quoted or escaped:
-            // `$ORIGIN` would otherwise be expanded when the `LdFlags` are passed verbatim to
-            // cmake.
-            if target.contains("linux") {
-                ldflags.push_all("-Wl,-rpath,'$ORIGIN/../../../'");
-            }
-            if target.contains("apple-darwin") {
-                ldflags.push_all("-Wl,-rpath,'@loader_path/../../../'");
+            if let Some(rpath) = llvm_lib_rpath(builder, target) {
+                ldflags.push_all(rpath);
             }
         }
 

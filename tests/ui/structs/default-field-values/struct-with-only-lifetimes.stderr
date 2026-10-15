@@ -1,0 +1,9 @@
+error[E0080]: evaluation panicked: asdf
+  --> $DIR/struct-with-only-lifetimes.rs:6:23
+   |
+LL |     pub bax: &'a u8 = panic!("asdf"),
+   |                       ^^^^^^^^^^^^^^ evaluation of `Bat::<'_>::bax::{constant#0}` failed here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

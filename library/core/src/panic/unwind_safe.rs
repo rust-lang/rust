@@ -5,7 +5,7 @@ use crate::future::Future;
 use crate::marker::PointeeSized;
 use crate::ops::{Deref, DerefMut};
 use crate::pin::Pin;
-use crate::ptr::{NonNull, Unique};
+use crate::ptr::NonNull;
 use crate::task::{Context, Poll};
 
 /// A marker trait which represents "panic safe" types in Rust.
@@ -186,8 +186,6 @@ impl<T: RefUnwindSafe + PointeeSized> UnwindSafe for &T {}
 impl<T: RefUnwindSafe + PointeeSized> UnwindSafe for *const T {}
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 impl<T: RefUnwindSafe + PointeeSized> UnwindSafe for *mut T {}
-#[unstable(feature = "ptr_internals", issue = "none")]
-impl<T: UnwindSafe + PointeeSized> UnwindSafe for Unique<T> {}
 #[stable(feature = "nonnull", since = "1.25.0")]
 impl<T: RefUnwindSafe + PointeeSized> UnwindSafe for NonNull<T> {}
 #[stable(feature = "catch_unwind", since = "1.9.0")]

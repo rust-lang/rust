@@ -858,6 +858,10 @@ impl Config {
         if self.target.starts_with("wasm") {
             return self.target.contains("threads");
         }
+        // UEFI targets don't have threads.
+        if self.target.contains("uefi") {
+            return false;
+        }
         true
     }
 

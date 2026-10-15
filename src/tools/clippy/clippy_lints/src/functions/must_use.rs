@@ -327,7 +327,7 @@ fn is_mutated_static(e: &hir::Expr<'_>) -> bool {
 }
 
 fn mutates_static<'tcx>(cx: &LateContext<'tcx>, body: &'tcx hir::Body<'_>) -> bool {
-    for_each_expr_without_closures(body.value, |e| {
+    for_each_expr_without_closures(&body.value, |e| {
         use hir::ExprKind::{AddrOf, Assign, AssignOp, Call, MethodCall};
 
         match e.kind {

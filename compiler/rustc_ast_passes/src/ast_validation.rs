@@ -401,6 +401,7 @@ impl<'a> AstValidator<'a> {
         self.check_decl_splatting(fn_decl, c_variadic_span, splat_semantic);
         self.check_decl_attrs(fn_decl);
         self.check_decl_self_param(&fn_decl.inputs, self_semantic);
+        self.check_decl_const_param(&fn_decl.inputs);
     }
 
     /// Emits fatal error if function declaration has more than `u16::MAX` arguments
@@ -551,6 +552,20 @@ impl<'a> AstValidator<'a> {
         if let (SelfSemantic::No, [param, ..]) = (self_semantic, fn_inputs) {
             if param.is_self() {
                 self.dcx().emit_err(diagnostics::FnParamForbiddenSelf { span: param.span });
+            }
+        }
+    }
+
+    fn check_decl_const_param(&self, fn_inputs: &[Param]) {
+        for param in fn_inputs {
+            if param.has_const_keyword && !param.is_const_param() {
+                let span = if matches!(param.pat.kind, PatKind::Missing) {
+                    param.span
+                } else {
+                    param.pat.span
+                };
+
+                self.dcx().emit_err(diagnostics::InvalidConstParam { span });
             }
         }
     }

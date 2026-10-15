@@ -13,12 +13,12 @@ rust-version.workspace = true
 doctest = false
 
 [dependencies]
-paths.workspace = true
-rustc-hash.workspace = true
+paths = { workspace = true, optional = true }
+rustc-hash = { workspace = true, optional = true }
 # span = {workspace = true, default-features = false} does not work
-span = { path = "../span", version = "0.0.0", default-features = false}
-intern.workspace = true
-stdx.workspace = true
+span = { path = "../span", version = "0.0.0", default-features = false, optional = true }
+intern = { workspace = true, optional = true }
+stdx = { workspace = true, optional = true }
 
 [dev-dependencies]
 expect-test.workspace = true
@@ -29,7 +29,7 @@ proc-macro-test.path = "./proc-macro-test"
 
 [features]
 default = []
-in-rust-tree = []
+in-rust-tree = ["dep:intern", "dep:paths", "dep:rustc-hash", "dep:span", "dep:stdx"]
 
 [lints]
 workspace = true
