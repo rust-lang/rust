@@ -985,7 +985,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
 
         let llret = unsafe {
             llvm::LLVMBuildCallWithOperandBundles(
-                self.llbuilder,
+                self.llbuilder(),
                 fn_ty,
                 fn_ptr,
                 llargs.as_ptr(),
