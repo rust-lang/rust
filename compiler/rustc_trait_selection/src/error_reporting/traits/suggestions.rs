@@ -6788,7 +6788,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     tcx,
                     ObligationCause::dummy(),
                     param_env,
-                    ty::TraitRef::new(tcx, trait_def_id, trait_args),
+                    parent_trait_pred.rebind(ty::TraitRef::new(tcx, trait_def_id, trait_args)),
                 );
                 self.predicate_may_hold(&obligation)
             })
