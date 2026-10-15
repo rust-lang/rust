@@ -1,8 +1,6 @@
-use std::fmt;
-
-use rustc_ast::join_path_syms;
 use rustc_macros::{Decodable, Encodable, PrintAttribute, StableHash};
 use rustc_span::{Span, Symbol, sym};
+use rustc_structures::LintName;
 
 use crate::{HashIgnoredAttrId, PrintAttribute};
 
@@ -64,64 +62,4 @@ pub struct LintCheck {
     ///        ^^^^^^^^^^^^^
     pub lint_span: Span,
     pub tool_span: Option<Span>,
-}
-
-#[derive(Copy, Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
-pub struct LintName {
-    /// The lint's tool name, if present.
-    pub tool: Option<Symbol>,
-    /// The lint's name, minus the tool name if any.
-    ///
-    /// For example:
-    /// - `clippy::blah` -> `blah`
-    /// - `unstable_imports` -> `unstable_imports`
-    /// - `custom_tool::blah::bleh` -> `blah::bleh`
-    pub name: Symbol,
-}
-
-impl LintName {
-    pub fn new(segments: impl Iterator<Item = Symbol>) -> LintName {
-        let segments = segments.collect::<Vec<_>>();
-        let (tool, name) = match &*segments {
-            [] => unreachable!(),
-            [lint_name] => (None, *lint_name),
-            [tool, lint_name] => (Some(*tool), *lint_name),
-            // Not reachable for any builtin lints,
-            // but reachable using `register_tool`.
-            [tool, multi_segment_lint_name @ ..] => {
-                (Some(*tool), Symbol::intern(&join_path_syms(multi_segment_lint_name)))
-            }
-        };
-        LintName { tool, name }
-    }
-
-    /// Panics if `lint` is empty.
-    pub fn from_str(lint: &str) -> LintName {
-        if lint.is_empty() {
-            if cfg!(debug_assertions) {
-                rustc_span::bug!("`lint` is empty")
-            } else {
-                return LintName { tool: None, name: sym::empty };
-            }
-        }
-        if let Some((tool, name)) = lint.split_once("::") {
-            LintName { tool: Some(Symbol::intern(tool)), name: Symbol::intern(name) }
-        } else {
-            LintName { tool: None, name: Symbol::intern(lint) }
-        }
-    }
-
-    pub fn is(&self, lint: Symbol) -> bool {
-        lint == self.name && self.tool.is_none()
-    }
-}
-
-impl fmt::Display for LintName {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if let Some(tool) = self.tool {
-            write!(f, "{tool}::")?
-        }
-        write!(f, "{}", self.name)?;
-        Ok(())
-    }
 }

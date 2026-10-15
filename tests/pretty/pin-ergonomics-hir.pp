@@ -1,6 +1,7 @@
 #![attr = Feature([pin_ergonomics#0])]
-#![attr = LintCheck([LintCheck {lint_name: LintName {name: "dead_code"},
-kind: Allow}, LintCheck {lint_name: LintName {name: "incomplete_features"},
+#![attr = LintCheck([LintCheck {lint_name: LintName { tool: None, name: "dead_code" },
+kind: Allow},
+LintCheck {lint_name: LintName { tool: None, name: "incomplete_features" },
 kind: Allow}])]
 extern crate std;
 #[attr = PreludeImport]
