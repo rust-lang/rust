@@ -381,7 +381,7 @@ fn validate_options_for_backend(
     if codegen_backend.name() != "llvm" && early_sess.opts.unstable_opts.llvm_tpde.is_some() {
         early_sess
             .dcx()
-            .fatal("-Ztpde is LLVM-specific and not supported by other codegen backends");
+            .fatal("-Zllvm-tpde is LLVM-specific and not supported by other codegen backends");
     }
 }
 

@@ -4,7 +4,6 @@ use std::path::Path;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level, format_diag_message, msg};
 use rustc_macros::Diagnostic;
-use rustc_session::config::OptLevel;
 use rustc_span::Span;
 
 #[derive(Diagnostic)]
@@ -125,15 +124,11 @@ pub(crate) struct TpdeComponentMissing {
 }
 
 #[derive(Diagnostic)]
-#[diag(
-    "using TPDE with optimization levels higher than 1 is not recommended. Requested level: {$opt_level}"
-)]
+#[diag("using TPDE with optimization levels higher than 1 is not recommended")]
 #[note(
-    "compilation with TPDE at higher opt levels is likely to fail, and to have worse compile times/runtime performance than LLVM even if it succeeds"
+    "compilation with TPDE at higher opt levels is more likely to fail, and to have worse runtime performance than LLVM even if it succeeds"
 )]
-pub(crate) struct TpdeHighOptLevel {
-    pub opt_level: OptLevel,
-}
+pub(crate) struct TpdeHighOptLevel;
 
 #[derive(Diagnostic)]
 pub(crate) enum LlvmError<'a> {

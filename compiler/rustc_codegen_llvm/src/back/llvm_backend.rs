@@ -209,7 +209,7 @@ impl CodegenBackend for LlvmCodegenBackend {
             }
         }
 
-        // -Ztpde requires the TPDE pass plugin, which may not be available. If TPDE is used but not available,
+        // -Zllvm-tpde requires the TPDE pass plugin, which may not be available. If TPDE is used but not available,
         // we emit an early error here and abort compilation.
         {
             match llvm::TpdeWrapper::get_or_init(
@@ -228,9 +228,7 @@ impl CodegenBackend for LlvmCodegenBackend {
             if sess.opts.unstable_opts.llvm_tpde.is_some()
                 && !matches!(sess.opts.optimize, OptLevel::No | OptLevel::Less)
             {
-                sess.dcx().emit_warn(crate::diagnostics::TpdeHighOptLevel {
-                    opt_level: sess.opts.optimize,
-                });
+                sess.dcx().emit_warn(crate::diagnostics::TpdeHighOptLevel);
             }
         }
 

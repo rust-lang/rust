@@ -1,10 +1,10 @@
-# `tpde`
+# `llvm-tpde`
 
 The tracking issue for this feature is: None.
 
 ---
 
-The `-Ztpde[=VALUE]` compiler flag controls whether TPDE-LLVM is used as the codegen backend for debug builds instead of LLVM. If not set, LLVM is used.
+The `-Zllvm-tpde[=VALUE]` compiler flag controls whether TPDE-LLVM is used as the codegen backend for debug builds instead of LLVM. If not set, LLVM is used.
 
 Possible values are:
 
