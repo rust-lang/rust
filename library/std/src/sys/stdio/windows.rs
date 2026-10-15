@@ -78,7 +78,6 @@ pub fn get_handle(handle_id: u32) -> io::Result<c::HANDLE> {
 }
 
 /// Returns true if `handle` refers to a proper console (aka conhost).
-#[cfg(not(target_vendor = "win7"))]
 fn is_console(handle: c::HANDLE) -> bool {
     cfg_select! {
         target_vendor = "win7" => {
