@@ -369,7 +369,7 @@ impl AtHwcap {
             enable_feature(Feature::cssc, self.cssc);
             enable_feature(Feature::fpmr, self.fpmr);
             enable_feature(Feature::faminmax, self.faminmax);
-            let fp8 = self.f8cvt && self.faminmax && self.lut && self.bf16;
+            let fp8 = self.f8cvt && self.asimd;
             enable_feature(Feature::fp8, fp8);
             let fp8fma = self.f8fma && fp8;
             enable_feature(Feature::fp8fma, fp8fma);
