@@ -574,8 +574,15 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // and call arg (among other positions).
         //
         // These targets are known to never be RHS in `LHS: CoerceUnsized<RHS>`.
-        // That's because these are built-in types for which a core-provided impl
-        // doesn't exist, and for which a user-written impl is invalid.
+        // That's because one of the following is true.
+        // - For the built-in types, a core-provided impl doesn't exist and a
+        //   user-written impl is invalid.
+        // - For enums and unions, they can never be the target of a
+        //   `CoerceUnsized` impl.
+        // - For structs, they can only be the target of a `CoerceUnsized` impl
+        //   if `LHS` and `RHS` are instances of the same struct type but with
+        //   at least one differing field type. This is impossible when we
+        //   exclude structs with any generic args.
         //
         // This is technically incomplete when users write impossible bounds like
         // `where T: CoerceUnsized<usize>`, for example, but that trait is unstable
@@ -604,6 +611,11 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             | ty::CoroutineWitness(_, _)
             | ty::Never
             | ty::Tuple(_) => return Err(TypeError::Mismatch),
+            ty::Adt(adt, args) => match adt.adt_kind() {
+                ty::AdtKind::Enum | ty::AdtKind::Union => return Err(TypeError::Mismatch),
+                ty::AdtKind::Struct if args.is_empty() => return Err(TypeError::Mismatch),
+                _ => {}
+            },
             _ => {}
         }
         // `&str: CoerceUnsized<&str>` does not hold but is encountered frequently
