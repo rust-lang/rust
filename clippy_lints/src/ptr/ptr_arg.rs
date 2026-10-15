@@ -306,7 +306,11 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
 }
 
 #[expect(clippy::too_many_lines)]
-fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'tcx>, args: &[PtrArg<'tcx>]) -> Vec<PtrArgResult> {
+fn check_ptr_arg_usage<'tcx>(
+    cx: &LateContext<'tcx>,
+    body: &'tcx Body<'tcx>,
+    args: &[PtrArg<'tcx>],
+) -> Vec<PtrArgResult> {
     struct V<'cx, 'tcx> {
         cx: &'cx LateContext<'tcx>,
         /// Map from a local id to which argument it came from (index into `Self::args` and

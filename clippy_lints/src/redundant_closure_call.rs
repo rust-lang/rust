@@ -111,7 +111,7 @@ fn find_innermost_closure<'tcx>(
                 unwrapped_body_value = &cx.tcx.hir_body(inner_closure.body).value;
             }
 
-            if contains_early_return(&unwrapped_body_value) {
+            if contains_early_return(unwrapped_body_value) {
                 break;
             }
         }
