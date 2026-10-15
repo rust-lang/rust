@@ -3,7 +3,7 @@ use std::fmt::Debug;
 use rustc_ast as ast;
 use rustc_ast::CRATE_NODE_ID;
 use rustc_ast::attr::AttributeExt;
-use rustc_attr_ir::lint::{LintCheck, LintCheckKind};
+use rustc_attr_ir::lint::{LintCheck, LintCheckKind, LintName};
 use rustc_attr_ir::target::Target;
 use rustc_attr_ir::{Attribute, AttributeKind, find_attr};
 use rustc_attr_parsing::{AttributeParser, Recovery, ShouldEmit};
@@ -31,7 +31,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::{RegisteredTools, TyCtxt};
 use rustc_session::Session;
 use rustc_span::def_id::CRATE_MOD_ID;
-use rustc_span::{AttrId, DUMMY_SP, Ident, Span, Symbol, sym};
+use rustc_span::{AttrId, DUMMY_SP, Span, Symbol, sym};
 use thin_vec::ThinVec;
 use tracing::{debug, instrument};
 
@@ -753,10 +753,11 @@ where
 
         // FIXME: consider performing these checks in attribute parsing instead
         for (lint_index, lint_check) in lint_checks.into_iter().enumerate() {
-            let LintCheck { tool, lint_name, lint_span, kind, reason, attr_id, attr_span: _ } =
+            let LintCheck { lint_name, kind, reason, attr_id, attr_span: _, lint_span, tool_span } =
                 lint_check;
 
-            let full_lint_name = lint_name.as_str();
+            let full_lint_name = format!("{lint_name}");
+            let LintName { tool, name: lint_name } = lint_name;
 
             let level = match kind {
                 LintCheckKind::Allow => Level::Allow,
@@ -771,21 +772,15 @@ where
             let lint_id = (level == Level::Expect)
                 .then(|| self.provider.mk_lint_expectation_id(attr_id.attr_id, lint_index as u16));
 
-            let lint_result = self.store.check_lint_name(
-                full_lint_name,
-                tool.map(|i| i.name),
-                self.registered_lint_tools,
-            );
+            let lint_result =
+                self.store.check_lint_name(lint_name.as_str(), tool, self.registered_lint_tools);
 
             let (ids, name) = match lint_result {
                 CheckLintNameResult::Ok(ids) => (ids, lint_name),
 
                 CheckLintNameResult::Tool(ids, new_lint_name) => {
                     let name = match new_lint_name {
-                        None => {
-                            let complete_name = &format!("{}::{lint_name}", tool.unwrap().name);
-                            Symbol::intern(complete_name)
-                        }
+                        None => Symbol::intern(&full_lint_name),
                         Some(new_lint_name) => {
                             self.emit_span_lint(
                                 builtin::RENAMED_AND_REMOVED_LINTS,
@@ -812,8 +807,8 @@ where
 
                 CheckLintNameResult::NoTool => {
                     sess.dcx().emit_err(UnknownToolInScopedLint {
-                        span: Some(tool.unwrap().span),
-                        tool_name: tool.unwrap().name,
+                        span: Some(tool_span.unwrap()),
+                        tool_name: tool.unwrap(),
                         lint_name: full_lint_name.to_string(),
                         is_nightly_build: sess.is_nightly_build(),
                     });
@@ -824,13 +819,11 @@ where
                     if self.lint_added_lints {
                         let suggestion =
                             RenamedLintSuggestion::WithSpan { suggestion: lint_span, replace };
-                        let name = tool
-                            .map(|Ident { name, .. }| format!("{name}::{full_lint_name}"))
-                            .unwrap_or_else(|| full_lint_name.to_string());
+
                         self.emit_span_lint(
                             RENAMED_AND_REMOVED_LINTS,
                             lint_span.into(),
-                            RenamedLint { name: name.as_str(), replace, suggestion },
+                            RenamedLint { name: full_lint_name.as_str(), replace, suggestion },
                         );
                     }
 
@@ -850,15 +843,10 @@ where
 
                 CheckLintNameResult::Removed(ref reason) => {
                     if self.lint_added_lints {
-                        let name = if let Some(Ident { name, .. }) = tool {
-                            &format!("{name}::{full_lint_name}")
-                        } else {
-                            full_lint_name
-                        };
                         self.emit_span_lint(
                             RENAMED_AND_REMOVED_LINTS,
                             lint_span.into(),
-                            RemovedLint { name, reason },
+                            RemovedLint { name: &full_lint_name, reason },
                         );
                     }
                     continue;
@@ -866,9 +854,6 @@ where
 
                 CheckLintNameResult::NoLint(suggestion) => {
                     if self.lint_added_lints {
-                        let name = tool
-                            .map(|Ident { name, .. }| format!("{name}::{full_lint_name}"))
-                            .unwrap_or_else(|| full_lint_name.to_string());
                         let suggestion = suggestion.map(|(replace, from_rustc)| {
                             UnknownLintSuggestion::WithSpan {
                                 suggestion: lint_span,
@@ -879,7 +864,7 @@ where
                         self.emit_span_lint(
                             UNKNOWN_LINTS,
                             lint_span.into(),
-                            UnknownLint { name, suggestion },
+                            UnknownLint { name: full_lint_name, suggestion },
                         );
                     }
                     continue;
@@ -908,12 +893,7 @@ where
                 };
                 self.provider.push_expectation(
                     expect_id,
-                    LintExpectation::new(
-                        reason,
-                        lint_span,
-                        is_unfulfilled_lint_expectations,
-                        tool.map(|i| i.name),
-                    ),
+                    LintExpectation::new(reason, lint_span, is_unfulfilled_lint_expectations, tool),
                 );
             }
         }
