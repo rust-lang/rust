@@ -54,6 +54,20 @@ use crate::{DUMMY_SP, Span, SpanDecoder, SpanEncoder, with_session_globals};
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SyntaxContext(u32);
 
+impl From<u32> for SyntaxContext {
+    #[inline(always)]
+    fn from(value: u32) -> SyntaxContext {
+        SyntaxContext(value)
+    }
+}
+
+impl Into<u32> for SyntaxContext {
+    #[inline(always)]
+    fn into(self) -> u32 {
+        self.0
+    }
+}
+
 // To ensure correctness of incremental compilation,
 // `SyntaxContext` must not implement `Ord` or `PartialOrd`.
 // See https://github.com/rust-lang/rust/issues/90317.
@@ -341,39 +355,56 @@ impl ExpnId {
     }
 }
 
-pub trait HygieneEntityRemapper {
-    fn hash(&self, raw_id: u32) -> u64;
+pub struct HygieneRemappingResults<T: Hash + Eq + Into<u32>> {
+    pub remapping: FxHashMap<T, T>,
+    pub first_non_det_index: T,
+}
+
+impl<T: Hash + Eq + Into<u32> + Copy> HygieneRemappingResults<T> {
+    #[inline]
+    pub fn map_id(&self, idx: T) -> T {
+        if idx.into() < self.first_non_det_index.into() {
+            idx
+        } else {
+            self.remapping.get(&idx).copied().unwrap_or(idx)
+        }
+    }
+}
+
+/// Includes common logic for remapping both expansion ids and syntax contexts.
+pub trait HygieneRemapper<TKey: From<u32> + Into<u32> + Hash + Eq + Copy> {
+    fn hash(&self, key: TKey) -> u64;
     fn len(&self) -> usize;
-    fn first_non_det_index_mut(&mut self) -> &mut Option<u32>;
+    fn first_non_det_index_mut(&mut self) -> &mut Option<TKey>;
     fn first_non_det_index(&self) -> u32;
 
     fn commit_end_of_determinism(&mut self) {
         let len = self.len() as u32;
         assert!(
-            self.first_non_det_index_mut().replace(len).is_none(),
+            self.first_non_det_index_mut().replace(TKey::from(len)).is_none(),
             "this function can be called only once"
         )
     }
 
-    fn create_remapping(&self) -> (u32, FxHashMap<u32, u32>) {
+    fn remapping_results(&self) -> HygieneRemappingResults<TKey> {
         let start = self.first_non_det_index();
         let range = start..self.len() as u32;
 
-        let mut indices_to_remap = range.collect::<Vec<_>>();
-        indices_to_remap.sort_by_cached_key(|&idx| self.hash(idx));
+        let mut indices_to_remap = range.map(|raw_id| TKey::from(raw_id)).collect::<Vec<_>>();
+        indices_to_remap.sort_by_cached_key(|&key| self.hash(key));
 
-        let mut remapping = FxHashMap::<u32, u32>::default();
+        let mut remapping = FxHashMap::<TKey, TKey>::default();
 
-        for (idx, id) in indices_to_remap.into_iter().enumerate() {
-            let from = id;
-            let to = start + idx as u32;
+        for (idx, key) in indices_to_remap.into_iter().enumerate() {
+            let from = key;
+            let to = TKey::from(start + idx as u32);
 
             if from != to {
                 remapping.insert(from, to);
             }
         }
 
-        (start, remapping)
+        HygieneRemappingResults { remapping, first_non_det_index: TKey::from(start) }
     }
 }
 
@@ -384,17 +415,17 @@ impl SyntaxContextRemapper<'_> {
     }
 }
 
-pub struct LocalExpansionRemapper<'a>(&'a mut HygieneData);
-impl LocalExpansionRemapper<'_> {
-    pub fn with<T>(f: impl FnOnce(LocalExpansionRemapper<'_>) -> T) -> T {
-        HygieneData::with(|data| f(LocalExpansionRemapper(data)))
+pub struct LocalExpnIdRemapper<'a>(&'a mut HygieneData);
+impl LocalExpnIdRemapper<'_> {
+    pub fn with<T>(f: impl FnOnce(LocalExpnIdRemapper<'_>) -> T) -> T {
+        HygieneData::with(|data| f(LocalExpnIdRemapper(data)))
     }
 }
 
-impl HygieneEntityRemapper for SyntaxContextRemapper<'_> {
+impl HygieneRemapper<SyntaxContext> for SyntaxContextRemapper<'_> {
     #[inline]
-    fn hash(&self, raw_id: u32) -> u64 {
-        SyntaxContext(raw_id).hash_for_det_sorting(self.0)
+    fn hash(&self, key: SyntaxContext) -> u64 {
+        key.hash_for_det_sorting(self.0)
     }
 
     #[inline]
@@ -403,20 +434,20 @@ impl HygieneEntityRemapper for SyntaxContextRemapper<'_> {
     }
 
     #[inline]
-    fn first_non_det_index_mut(&mut self) -> &mut Option<u32> {
+    fn first_non_det_index_mut(&mut self) -> &mut Option<SyntaxContext> {
         &mut self.0.first_s_ctxt_non_det_index
     }
 
     #[inline]
     fn first_non_det_index(&self) -> u32 {
-        self.0.first_s_ctxt_non_det_index.expect("must be set at this point")
+        self.0.first_s_ctxt_non_det_index.map(|s| s.as_u32()).expect("must be set at this point")
     }
 }
 
-impl HygieneEntityRemapper for LocalExpansionRemapper<'_> {
+impl HygieneRemapper<LocalExpnId> for LocalExpnIdRemapper<'_> {
     #[inline]
-    fn hash(&self, raw_id: u32) -> u64 {
-        self.0.local_expn_hashes[LocalExpnId::from_u32(raw_id)].local_hash().as_u64()
+    fn hash(&self, key: LocalExpnId) -> u64 {
+        self.0.local_expn_hashes[key].local_hash().as_u64()
     }
 
     #[inline]
@@ -425,13 +456,16 @@ impl HygieneEntityRemapper for LocalExpansionRemapper<'_> {
     }
 
     #[inline]
-    fn first_non_det_index_mut(&mut self) -> &mut Option<u32> {
+    fn first_non_det_index_mut(&mut self) -> &mut Option<LocalExpnId> {
         &mut self.0.first_local_expn_non_det_index
     }
 
     #[inline]
     fn first_non_det_index(&self) -> u32 {
-        self.0.first_local_expn_non_det_index.expect("must be set at this point")
+        self.0
+            .first_local_expn_non_det_index
+            .map(|l| l.as_u32())
+            .expect("must be set at this point")
     }
 }
 
@@ -448,8 +482,8 @@ pub(crate) struct HygieneData {
     foreign_expn_hashes: FxHashMap<ExpnId, ExpnHash>,
     expn_hash_to_expn_id: UnhashMap<ExpnHash, ExpnId>,
     syntax_context_data: Vec<SyntaxContextData>,
-    first_s_ctxt_non_det_index: Option<u32>,
-    first_local_expn_non_det_index: Option<u32>,
+    first_s_ctxt_non_det_index: Option<SyntaxContext>,
+    first_local_expn_non_det_index: Option<LocalExpnId>,
     syntax_context_map: FxHashMap<SyntaxContextKey, SyntaxContext>,
     /// Maps the `local_hash` of an `ExpnData` to the next disambiguator value.
     /// This is used by `update_disambiguator` to keep track of which `ExpnData`s
@@ -1416,7 +1450,7 @@ impl HygieneEncodeContext {
     pub fn encode<T>(
         h_ctxt: &RefCell<HygieneEncodeContext>,
         encoder: &mut T,
-        mut encode_ctxt: impl FnMut(&mut T, u32, &SyntaxContextKey),
+        mut encode_ctxt: impl FnMut(&mut T, SyntaxContext, &SyntaxContextKey),
         mut encode_expn: impl FnMut(&mut T, ExpnId, Option<&ExpnData>, ExpnHash),
     ) {
         // When we serialize a `SyntaxContextData`, we may end up serializing
@@ -1439,7 +1473,7 @@ impl HygieneEncodeContext {
 
             for ctxt in latest_contexts {
                 let key = HygieneData::with(|data| data.syntax_context_data[ctxt.0 as usize].key());
-                encode_ctxt(encoder, ctxt.0, &key);
+                encode_ctxt(encoder, ctxt, &key);
             }
 
             // Same as above, but for expansions instead of syntax contexts.
@@ -1463,12 +1497,10 @@ impl HygieneEncodeContext {
     }
 
     #[inline]
-    pub fn get_syntax_ctxt_encoding_index(&mut self, ctxt: SyntaxContext) -> u32 {
+    pub fn enqueue_syntax_context_for_encoding(&mut self, ctxt: SyntaxContext) {
         if self.serialized_ctxts.insert(ctxt) {
             self.latest_ctxts.push(ctxt);
         }
-
-        ctxt.0
     }
 }
 
