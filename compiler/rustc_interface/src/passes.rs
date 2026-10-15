@@ -955,6 +955,7 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
         crate_types.contains(&CrateType::Executable),
         sess.opts.cg.metadata.clone(),
         sess.cfg_version,
+        sess.target.pointer_width,
     );
 
     let outputs = util::build_output_filenames(&pre_configured_attrs, sess);

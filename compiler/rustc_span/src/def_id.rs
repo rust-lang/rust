@@ -154,11 +154,20 @@ impl StableCrateId {
         is_exe: bool,
         mut metadata: Vec<String>,
         cfg_version: &'static str,
+        pointer_width: u16,
     ) -> StableCrateId {
         let mut hasher = StableHasher::new();
         // We must hash the string text of the crate name, not the id, as the id is not stable
         // across builds.
         crate_name.as_str().hash(&mut hasher);
+
+        // NOTE(ultrabear): previously, `impl Hash for Path` with StableHasher would return a different hash output
+        // depending on whether the target width was u32/u64, fixing that caused StableCrateId to
+        // have a collision in CI
+        // I (ultrabear) have no idea why this would cause StableCrateId to have a collision (it
+        // does not even hash a Path in this code), but adding back that specific entropy might
+        // make CI pass, and thus the bug is "solved" to be investigated another time.
+        hasher.write_u16(pointer_width);
 
         // We don't want the stable crate ID to depend on the order of
         // -C metadata arguments, so sort them:

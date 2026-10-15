@@ -18,8 +18,8 @@ fn def_path_hash_depends_on_crate_id() {
     // crate's version number).
 
     create_session_globals_then(Edition::Edition2024, &[], None, || {
-        let id0 = StableCrateId::new(Symbol::intern("foo"), false, vec!["1".to_string()], "");
-        let id1 = StableCrateId::new(Symbol::intern("foo"), false, vec!["2".to_string()], "");
+        let id0 = StableCrateId::new(Symbol::intern("foo"), false, vec!["1".to_string()], "", 64);
+        let id1 = StableCrateId::new(Symbol::intern("foo"), false, vec!["2".to_string()], "", 64);
 
         let h0 = mk_test_hash(id0);
         let h1 = mk_test_hash(id1);
