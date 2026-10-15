@@ -20,7 +20,9 @@ pub type WCHAR = u16;
 
 pub const INVALID_HANDLE_VALUE: HANDLE = ::core::ptr::without_provenance_mut(-1i32 as _);
 
+#[cfg(not(target_vendor = "win7"))]
 pub const FILE_DEVICE_NAMED_PIPE: u32 = 0x00000011;
+#[cfg(not(target_vendor = "win7"))]
 pub const FILE_DEVICE_CONSOLE: u32 = 0x00000050;
 
 // https://learn.microsoft.com/en-us/cpp/c-runtime-library/exit-success-exit-failure?view=msvc-170
