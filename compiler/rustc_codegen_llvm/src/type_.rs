@@ -149,7 +149,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
 }
 
 impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
-    pub(crate) fn llcx(&self) -> &'ll llvm::Context {
+    pub(crate) fn llcx(&self) -> llvm::Context<'ll> {
         (**self).borrow().llcx
     }
 
@@ -286,12 +286,12 @@ impl<'ll, CX: Borrow<SCx<'ll>>> BaseTypeCodegenMethods for GenericCx<'ll, CX> {
     }
 }
 
-pub(crate) fn llvm_type_ptr(llcx: &llvm::Context) -> &Type {
+pub(crate) fn llvm_type_ptr<'ll>(llcx: llvm::Context<'ll>) -> &'ll Type {
     llvm_type_ptr_in_address_space(llcx, AddressSpace::ZERO)
 }
 
 pub(crate) fn llvm_type_ptr_in_address_space<'ll>(
-    llcx: &'ll llvm::Context,
+    llcx: llvm::Context<'ll>,
     addr_space: AddressSpace,
 ) -> &'ll Type {
     llvm::LLVMPointerTypeInContext(llcx, addr_space.0)
