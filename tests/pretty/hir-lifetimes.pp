@@ -1,4 +1,4 @@
-#![attr = LintCheck([LintCheck {lint_name: LintName {name: "unused"},
+#![attr = LintCheck([LintCheck {lint_name: LintName { tool: None, name: "unused" },
 kind: Allow}])]
 extern crate std;
 #[attr = PreludeImport]

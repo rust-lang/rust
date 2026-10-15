@@ -8,7 +8,6 @@ use std::slice;
 use rustc_abi as abi;
 use rustc_ast::BindingMode;
 use rustc_ast::util::parser::ExprPrecedence;
-use rustc_attr_ir::lint::LintName;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync;
 use rustc_data_structures::unord::UnordMap;
@@ -33,6 +32,7 @@ use rustc_middle::ty::{
 use rustc_session::{DynLintStore, Session};
 use rustc_span::edit_distance::find_best_match_for_names;
 use rustc_span::{Ident, Span, Symbol, bug, sym};
+use rustc_structures::LintName;
 use tracing::debug;
 
 use self::TargetLint::*;
@@ -80,10 +80,10 @@ pub struct LintStore {
     pub(crate) late_lint_mod_passes: Vec<LateLintPassFactory>,
 
     /// Lints indexed by name.
-    by_name: UnordMap<String, TargetLint>,
+    by_name: UnordMap<LintName, TargetLint>,
 
     /// Map of registered lint groups to what lints they expand to.
-    lint_groups: FxIndexMap<&'static str, LintGroup>,
+    lint_groups: FxIndexMap<LintName, LintGroup>,
 }
 
 impl DynLintStore for LintStore {
@@ -166,7 +166,7 @@ impl LintStore {
         &self.lints
     }
 
-    pub fn get_lint_groups(&self) -> impl Iterator<Item = (&'static str, Vec<LintId>, bool)> {
+    pub fn get_lint_groups(&self) -> impl Iterator<Item = (LintName, Vec<LintId>, bool)> {
         self.lint_groups
             .iter()
             .filter(|(_, LintGroup { depr, .. })| {
@@ -174,12 +174,12 @@ impl LintStore {
                 depr.is_none()
             })
             .map(|(k, LintGroup { lint_ids, is_externally_loaded, .. })| {
-                (*k, lint_ids.clone(), *is_externally_loaded)
+                (k.clone(), lint_ids.clone(), *is_externally_loaded)
             })
     }
 
     /// Returns all lint group names, including deprecated/aliased groups
-    pub fn get_all_group_names(&self) -> impl Iterator<Item = &'static str> {
+    pub fn get_all_group_names(&self) -> impl Iterator<Item = LintName> {
         self.lint_groups.keys().copied()
     }
 
@@ -209,14 +209,14 @@ impl LintStore {
             self.lints.push(lint);
 
             let id = LintId::of(lint);
-            if self.by_name.insert(lint.name_lower(), Id(id)).is_some() {
+            if self.by_name.insert(LintName::from_str(&lint.name_lower()), Id(id)).is_some() {
                 bug!("duplicate specification of lint {}", lint.name_lower())
             }
 
             if let Some(FutureIncompatibleInfo { reason, .. }) = lint.future_incompatible {
                 if let Some(edition) = reason.edition() {
                     self.lint_groups
-                        .entry(edition.lint_name())
+                        .entry(LintName::from_str(edition.lint_name()))
                         .or_insert(LintGroup {
                             lint_ids: vec![],
                             is_externally_loaded: lint.is_externally_loaded,
@@ -229,7 +229,7 @@ impl LintStore {
                     // future version of rustc will cause existing code to stop compiling.
                     // Lints tied to an edition don't count because they are opt-in.
                     self.lint_groups
-                        .entry("future_incompatible")
+                        .entry(LintName::from_str("future_incompatible"))
                         .or_insert(LintGroup {
                             lint_ids: vec![],
                             is_externally_loaded: lint.is_externally_loaded,
@@ -243,14 +243,16 @@ impl LintStore {
     }
 
     fn insert_group(&mut self, name: &'static str, group: LintGroup) {
-        let previous = self.lint_groups.insert(name, group);
+        let previous = self.lint_groups.insert(LintName::from_str(name), group);
         if previous.is_some() {
             bug!("group {name:?} already exists");
         }
     }
 
     pub fn register_group_alias(&mut self, group_name: &'static str, alias: &'static str) {
-        let Some(LintGroup { lint_ids, .. }) = self.lint_groups.get(group_name) else {
+        let Some(LintGroup { lint_ids, .. }) =
+            self.lint_groups.get(&LintName::from_str(group_name))
+        else {
             bug!("group alias {alias:?} points to unregistered group {group_name:?}")
         };
 
@@ -289,7 +291,7 @@ impl LintStore {
     /// This is used by rustc to avoid warning about old rustdoc lints before rustdoc registers them as tool lints.
     #[track_caller]
     pub fn register_ignored(&mut self, name: &str) {
-        if self.by_name.insert(name.to_string(), Ignored).is_some() {
+        if self.by_name.insert(LintName::from_str(name), Ignored).is_some() {
             bug!("duplicate specification of lint {}", name);
         }
     }
@@ -297,17 +299,18 @@ impl LintStore {
     /// This lint has been renamed; warn about using the new name and apply the lint.
     #[track_caller]
     pub fn register_renamed(&mut self, old_name: &str, new_name: &str) {
-        let Some(&Id(target)) = self.by_name.get(new_name) else {
+        let Some(&Id(target)) = self.by_name.get(&LintName::from_str(new_name)) else {
             bug!("invalid lint renaming of {} to {}", old_name, new_name);
         };
-        self.by_name.insert(old_name.to_string(), Renamed(new_name.to_string(), target));
+        self.by_name.insert(LintName::from_str(old_name), Renamed(new_name.to_string(), target));
     }
 
     pub fn register_removed(&mut self, name: &str, reason: &str) {
-        self.by_name.insert(name.into(), Removed(reason.into()));
+        self.by_name.insert(LintName::from_str(name), Removed(reason.into()));
     }
 
     pub fn find_lints(&self, lint_name: &str) -> Option<&[LintId]> {
+        let lint_name = &LintName::from_str(lint_name);
         match self.by_name.get(lint_name) {
             Some(Id(lint_id)) => Some(slice::from_ref(lint_id)),
             Some(Renamed(_, lint_id)) => Some(slice::from_ref(lint_id)),
@@ -328,7 +331,7 @@ impl LintStore {
             self.lint_groups.keys().collect::<Vec<_>>()
         );
         let lint_name_str = lint_name.as_str();
-        self.lint_groups.contains_key(lint_name_str) || {
+        self.lint_groups.contains_key(&LintName::from_str(lint_name_str)) || {
             let warnings_name_str = crate::WARNINGS.name_lower();
             lint_name_str == warnings_name_str
         }
@@ -346,8 +349,7 @@ impl LintStore {
         lint_name: &LintName,
         registered_lint_tools: &RegisteredTools,
     ) -> CheckLintNameResult<'_> {
-        let LintName { tool: tool_name, name: primary_name } = *lint_name;
-        let lint_name = primary_name.as_str();
+        let tool_name = lint_name.tool;
 
         if let Some(tool_name) = tool_name {
             // FIXME: rustc and rustdoc are considered tools for lints, but not for attributes.
@@ -359,23 +361,19 @@ impl LintStore {
             }
         }
 
-        let complete_name = if let Some(tool_name) = tool_name {
-            &format!("{tool_name}::{lint_name}")
-        } else {
-            lint_name
-        };
+        let complete_name: &str = &format!("{lint_name}");
+
         // If the lint was scoped with `tool::` check if the tool lint exists
         if let Some(tool_name) = tool_name {
-            match self.by_name.get(complete_name) {
-                None => match self.lint_groups.get(complete_name) {
+            match self.by_name.get(lint_name) {
+                None => match self.lint_groups.get(lint_name) {
                     // If the lint isn't registered, there are two possibilities:
                     None => {
                         // 1. The tool is currently running, so this lint really doesn't exist.
                         // FIXME: should this handle tools that never register a lint, like rustfmt?
                         debug!("lints={:?}", self.by_name);
-                        let tool_prefix = format!("{tool_name}::");
 
-                        return if self.by_name.keys().any(|lint| lint.starts_with(&tool_prefix)) {
+                        return if self.by_name.keys().any(|lint| lint.tool == Some(tool_name)) {
                             self.no_lint_suggestion(complete_name, tool_name.as_str())
                         } else {
                             // 2. The tool isn't currently running, so no lints will be registered.
@@ -397,10 +395,10 @@ impl LintStore {
                 _ => {}
             }
         }
-        match self.by_name.get(complete_name) {
+        match self.by_name.get(lint_name) {
             Some(Renamed(new_name, _)) => CheckLintNameResult::Renamed(new_name.to_string()),
             Some(Removed(reason)) => CheckLintNameResult::Removed(reason.to_string()),
-            None => match self.lint_groups.get(complete_name) {
+            None => match self.lint_groups.get(lint_name) {
                 // If neither the lint, nor the lint group exists check if there is a `clippy::`
                 // variant of this lint
                 None => self.check_tool_name_for_backwards_compat(complete_name, "clippy"),
@@ -438,7 +436,7 @@ impl LintStore {
             .filter_map(|(k, LintGroup { depr, .. })| depr.is_none().then_some(k))
             .collect();
         groups.sort();
-        let groups = groups.iter().map(|k| Symbol::intern(k));
+        let groups = groups.iter().map(|k| Symbol::intern(&k.to_string()));
         let lints = self.lints.iter().map(|l| Symbol::intern(&l.name_lower()));
         let names: Vec<Symbol> = groups.chain(lints).collect();
         let mut lookups = vec![Symbol::intern(&name_lower)];
@@ -460,8 +458,9 @@ impl LintStore {
         tool_name: &str,
     ) -> CheckLintNameResult<'_> {
         let complete_name = format!("{tool_name}::{lint_name}");
-        match self.by_name.get(&complete_name) {
-            None => match self.lint_groups.get(&*complete_name) {
+        let nlint_name = LintName::from_str(&complete_name);
+        match self.by_name.get(&nlint_name) {
+            None => match self.lint_groups.get(&nlint_name) {
                 // Now we are sure, that this lint exists nowhere
                 None => self.no_lint_suggestion(lint_name, tool_name),
                 Some(LintGroup { lint_ids, .. }) => {

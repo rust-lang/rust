@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use rustc_ast as ast;
 use rustc_ast::CRATE_NODE_ID;
-use rustc_attr_ir::lint::{LintCheck, LintCheckKind, LintName};
+use rustc_attr_ir::lint::{LintCheck, LintCheckKind};
 use rustc_attr_ir::target::Target;
 use rustc_attr_ir::{Attribute, DocAttribute, find_attr};
 use rustc_attr_parsing::{AttributeParser, Recovery, ShouldEmit};
@@ -31,6 +31,7 @@ use rustc_middle::ty::{RegisteredTools, TyCtxt};
 use rustc_session::Session;
 use rustc_span::def_id::CRATE_MOD_ID;
 use rustc_span::{AttrId, DUMMY_SP, Span, Symbol, sym};
+use rustc_structures::LintName;
 use tracing::{debug, instrument};
 
 use crate::builtin::MISSING_DOCS;
