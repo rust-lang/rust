@@ -25,7 +25,7 @@
 // trigger runtime aborts. (Fortunately these are obvious and easy to fix.)
 
 use std::cell::RefCell;
-use std::hash::{DefaultHasher, Hash, Hasher};
+use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 use std::{fmt, iter, mem};
 
@@ -372,8 +372,8 @@ impl<T: Hash + Eq + Into<u32> + Copy> HygieneRemappingResults<T> {
 }
 
 /// Includes common logic for remapping both expansion ids and syntax contexts.
-pub trait HygieneRemapper<T: From<u32> + Hash + Eq + Copy> {
-    fn hash(&self, key: T) -> u64;
+pub trait HygieneRemapper<T: From<u32> + Hash + StableHash + Eq + Copy> {
+    fn hash(&self, key: T, hcx: &mut impl StableHashCtxt) -> u64;
     fn len(&self) -> usize;
     fn first_non_det_index_mut(&mut self) -> &mut Option<T>;
     fn first_non_det_index(&self) -> u32;
@@ -385,12 +385,12 @@ pub trait HygieneRemapper<T: From<u32> + Hash + Eq + Copy> {
         assert!(prev.is_none(), "this function can be called only once")
     }
 
-    fn remapping_results(&self) -> HygieneRemappingResults<T> {
+    fn remapping_results(&self, hcx: &mut impl StableHashCtxt) -> HygieneRemappingResults<T> {
         let start = self.first_non_det_index();
         let range = start..self.len() as u32;
 
         let mut indices_to_remap = range.map(|raw_id| T::from(raw_id)).collect::<Vec<_>>();
-        indices_to_remap.sort_by_cached_key(|&key| self.hash(key));
+        indices_to_remap.sort_by_cached_key(|&key| self.hash(key, hcx));
 
         let mut remapping = FxHashMap::<T, T>::default();
 
@@ -422,18 +422,11 @@ impl LocalExpnIdRemapper<'_> {
 }
 
 impl HygieneRemapper<SyntaxContext> for SyntaxContextRemapper<'_> {
-    fn hash(&self, key: SyntaxContext) -> u64 {
-        if key.is_root() {
-            return 0;
-        }
+    fn hash(&self, key: SyntaxContext, hcx: &mut impl StableHashCtxt) -> u64 {
+        let hasher = &mut StableHasher::new();
+        key.stable_hash_internal(Some(self.0), hcx, hasher);
 
-        let (hash, transparency) = key.get_data_for_hashing(self.0);
-
-        let mut state = DefaultHasher::new();
-        hash.hash(&mut state);
-        transparency.hash(&mut state);
-
-        state.finish()
+        hasher.finish()
     }
 
     #[inline]
@@ -454,8 +447,11 @@ impl HygieneRemapper<SyntaxContext> for SyntaxContextRemapper<'_> {
 
 impl HygieneRemapper<LocalExpnId> for LocalExpnIdRemapper<'_> {
     #[inline]
-    fn hash(&self, key: LocalExpnId) -> u64 {
-        self.0.local_expn_hashes[key].local_hash().as_u64()
+    fn hash(&self, key: LocalExpnId, hcx: &mut impl StableHashCtxt) -> u64 {
+        let hasher = &mut StableHasher::new();
+        key.stable_hash_internal(Some(self.0), hcx, hasher);
+
+        hasher.finish()
     }
 
     #[inline]
@@ -1672,14 +1668,18 @@ fn update_disambiguator(expn_data: &mut ExpnData, mut hcx: impl StableHashCtxt) 
 }
 
 impl SyntaxContext {
+    #[inline]
     fn get_data_for_hashing(&self, data: &HygieneData) -> (Fingerprint, Transparency) {
         let (expn_id, transparency) = data.outer_mark(*self);
         (data.expn_hash(expn_id).0, transparency)
     }
-}
 
-impl StableHash for SyntaxContext {
-    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn stable_hash_internal<Hcx: StableHashCtxt>(
+        &self,
+        data: Option<&HygieneData>,
+        hcx: &mut Hcx,
+        hasher: &mut StableHasher,
+    ) {
         const TAG_EXPANSION: u8 = 0;
         const TAG_NO_EXPANSION: u8 = 1;
 
@@ -1690,29 +1690,74 @@ impl StableHash for SyntaxContext {
             // This duplicates `ExpnId::stable_hash`, but reads the outer mark and
             // expansion hash in a single `HygieneData::with` call to avoid extra locking.
             hcx.assert_default_stable_hash_controls("ExpnId");
-            let (hash, transparency) = HygieneData::with(|data| self.get_data_for_hashing(data));
+
+            let (hash, transp) = match data {
+                Some(data) => self.get_data_for_hashing(data),
+                None => HygieneData::with(|data| self.get_data_for_hashing(data)),
+            };
+
             hash.stable_hash(hcx, hasher);
-            transparency.stable_hash(hcx, hasher);
+            transp.stable_hash(hcx, hasher);
         }
     }
 }
 
-impl StableHash for ExpnId {
+impl StableHash for SyntaxContext {
+    #[inline]
     fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        self.stable_hash_internal(None, hcx, hasher);
+    }
+}
+
+impl ExpnId {
+    #[inline]
+    fn get_data_for_hashing(&self, data: &HygieneData) -> Fingerprint {
+        data.expn_hash(*self).0
+    }
+
+    fn stable_hash_internal<Hcx: StableHashCtxt>(
+        &self,
+        data: Option<&HygieneData>,
+        hcx: &mut Hcx,
+        hasher: &mut StableHasher,
+    ) {
         hcx.assert_default_stable_hash_controls("ExpnId");
         let hash = if *self == ExpnId::root() {
             // Avoid fetching TLS storage for a trivial often-used value.
             Fingerprint::ZERO
         } else {
-            self.expn_hash().0
+            match data {
+                Some(data) => self.get_data_for_hashing(data),
+                None => HygieneData::with(|data| self.get_data_for_hashing(data)),
+            }
         };
 
         hash.stable_hash(hcx, hasher);
     }
 }
 
-impl StableHash for LocalExpnId {
+impl StableHash for ExpnId {
+    #[inline]
     fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        self.to_expn_id().stable_hash(hcx, hasher);
+        self.stable_hash_internal(None, hcx, hasher);
+    }
+}
+
+impl LocalExpnId {
+    #[inline]
+    fn stable_hash_internal<Hcx: StableHashCtxt>(
+        self,
+        data: Option<&HygieneData>,
+        hcx: &mut Hcx,
+        hasher: &mut StableHasher,
+    ) {
+        self.to_expn_id().stable_hash_internal(data, hcx, hasher)
+    }
+}
+
+impl StableHash for LocalExpnId {
+    #[inline]
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        self.to_expn_id().stable_hash_internal(None, hcx, hasher);
     }
 }

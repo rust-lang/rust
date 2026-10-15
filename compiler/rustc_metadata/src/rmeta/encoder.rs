@@ -2730,8 +2730,13 @@ fn with_encode_metadata_header(
     let required_source_files = Some(FxIndexSet::default());
     drop(source_map_files);
 
-    let syntax_context_remapping = SyntaxContextRemapper::with(|r| r.remapping_results());
-    let local_expn_id_remapping = LocalExpnIdRemapper::with(|r| r.remapping_results());
+    let (syntax_context_remapping, local_expn_id_remapping) =
+        tcx.with_stable_hashing_context(|mut ctx| {
+            (
+                SyntaxContextRemapper::with(|r| r.remapping_results(&mut ctx)),
+                LocalExpnIdRemapper::with(|r| r.remapping_results(&mut ctx)),
+            )
+        });
 
     let mut ecx = EncodeContext {
         opaque: encoder,
