@@ -267,11 +267,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         }
 
         // Consider coercing the subtype to a DST
-        //
-        // NOTE: this is wrapped in a `commit_if_ok` because it creates
-        // a "spurious" type variable, and we don't want to have that
-        // type variable in memory if the coercion fails.
-        let unsize = self.commit_if_ok(|_| self.coerce_unsized(a, b));
+        let unsize = self.coerce_unsized(a, b);
         match unsize {
             Ok(_) => {
                 debug!("coerce: unsize successful");
@@ -639,85 +635,92 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // a DST unless we have to. This currently comes out in the wash since
         // we can't unify [T] with U. But to properly support DST, we need to allow
         // that, at which point we will need extra checks on the target here.
+        //
+        // NOTE: this is wrapped in a `commit_if_ok` because it creates
+        // a "spurious" type variable, and we don't want to have that
+        // type variable in memory if the coercion fails.
+        self.commit_if_ok(|_| {
+            // Handle reborrows before selecting `Source: CoerceUnsized<Target>`.
+            let reborrow = match (source.kind(), target.kind()) {
+                (&ty::Ref(_, ty_a, mutbl_a), &ty::Ref(_, _, mutbl_b)) => {
+                    coerce_mutbls(mutbl_a, mutbl_b)?;
 
-        // Handle reborrows before selecting `Source: CoerceUnsized<Target>`.
-        let reborrow = match (source.kind(), target.kind()) {
-            (&ty::Ref(_, ty_a, mutbl_a), &ty::Ref(_, _, mutbl_b)) => {
-                coerce_mutbls(mutbl_a, mutbl_b)?;
+                    let coercion = RegionVariableOrigin::Coercion(self.cause.span);
+                    let r_borrow = self.next_region_var(coercion);
 
-                let coercion = RegionVariableOrigin::Coercion(self.cause.span);
-                let r_borrow = self.next_region_var(coercion);
+                    // We don't allow two-phase borrows here, at least for initial
+                    // implementation. If it happens that this coercion is a function argument,
+                    // the reborrow in coerce_borrowed_ptr will pick it up.
+                    let mutbl = AutoBorrowMutability::new(mutbl_b, AllowTwoPhase::No);
 
-                // We don't allow two-phase borrows here, at least for initial
-                // implementation. If it happens that this coercion is a function argument,
-                // the reborrow in coerce_borrowed_ptr will pick it up.
-                let mutbl = AutoBorrowMutability::new(mutbl_b, AllowTwoPhase::No);
+                    Some((
+                        Adjustment { kind: Adjust::Deref(DerefAdjustKind::Builtin), target: ty_a },
+                        Adjustment {
+                            kind: Adjust::Borrow(AutoBorrow::Ref(mutbl)),
+                            target: Ty::new_ref(self.tcx, r_borrow, ty_a, mutbl_b),
+                        },
+                    ))
+                }
+                (&ty::Ref(_, ty_a, mt_a), &ty::RawPtr(_, mt_b)) => {
+                    coerce_mutbls(mt_a, mt_b)?;
 
-                Some((
-                    Adjustment { kind: Adjust::Deref(DerefAdjustKind::Builtin), target: ty_a },
-                    Adjustment {
-                        kind: Adjust::Borrow(AutoBorrow::Ref(mutbl)),
-                        target: Ty::new_ref(self.tcx, r_borrow, ty_a, mutbl_b),
-                    },
-                ))
-            }
-            (&ty::Ref(_, ty_a, mt_a), &ty::RawPtr(_, mt_b)) => {
-                coerce_mutbls(mt_a, mt_b)?;
+                    Some((
+                        Adjustment { kind: Adjust::Deref(DerefAdjustKind::Builtin), target: ty_a },
+                        Adjustment {
+                            kind: Adjust::Borrow(AutoBorrow::RawPtr(mt_b)),
+                            target: Ty::new_ptr(self.tcx, ty_a, mt_b),
+                        },
+                    ))
+                }
+                _ => None,
+            };
+            let coerce_source = reborrow.as_ref().map_or(source, |(_, r)| r.target);
 
-                Some((
-                    Adjustment { kind: Adjust::Deref(DerefAdjustKind::Builtin), target: ty_a },
-                    Adjustment {
-                        kind: Adjust::Borrow(AutoBorrow::RawPtr(mt_b)),
-                        target: Ty::new_ptr(self.tcx, ty_a, mt_b),
-                    },
-                ))
-            }
-            _ => None,
-        };
-        let coerce_source = reborrow.as_ref().map_or(source, |(_, r)| r.target);
+            // Setup either a subtyping or a LUB relationship between
+            // the `CoerceUnsized` target type and the expected type.
+            // We only have the latter, so we use an inference variable
+            // for the former and let type inference do the rest.
+            let coerce_target = self.next_ty_var(self.cause.span);
 
-        // Setup either a subtyping or a LUB relationship between
-        // the `CoerceUnsized` target type and the expected type.
-        // We only have the latter, so we use an inference variable
-        // for the former and let type inference do the rest.
-        let coerce_target = self.next_ty_var(self.cause.span);
-
-        let mut coercion = self.unify_and(
-            coerce_target,
-            target,
-            reborrow.map(|(deref, autoref)| [deref, autoref]).into_flat_iter(),
-            Adjust::Pointer(PointerCoercion::Unsize),
-            ForceLeakCheck::No,
-        )?;
-
-        // Create an obligation for `Source: CoerceUnsized<Target>`.
-        let cause = self.cause(self.cause.span, ObligationCauseCode::Coercion { source, target });
-        let pred = ty::TraitRef::new(self.tcx, coerce_unsized_did, [coerce_source, coerce_target]);
-        let obligation = Obligation::new(self.tcx, cause, self.fcx.param_env, pred);
-
-        if self.next_trait_solver() {
-            coercion.obligations.push(obligation);
-
-            if self
-                .infcx
-                .visit_proof_tree(
-                    Goal::new(self.tcx, self.param_env, pred),
-                    &mut CoerceVisitor { fcx: self.fcx, span: self.cause.span, errored: false },
-                )
-                .is_break()
-            {
-                return Err(TypeError::Mismatch);
-            }
-        } else {
-            self.coerce_unsized_old_solver(
-                obligation,
-                &mut coercion,
-                coerce_unsized_did,
-                unsize_did,
+            let mut coercion = self.unify_and(
+                coerce_target,
+                target,
+                reborrow.map(|(deref, autoref)| [deref, autoref]).into_flat_iter(),
+                Adjust::Pointer(PointerCoercion::Unsize),
+                ForceLeakCheck::No,
             )?;
-        }
 
-        Ok(coercion)
+            // Create an obligation for `Source: CoerceUnsized<Target>`.
+            let cause =
+                self.cause(self.cause.span, ObligationCauseCode::Coercion { source, target });
+            let pred =
+                ty::TraitRef::new(self.tcx, coerce_unsized_did, [coerce_source, coerce_target]);
+            let obligation = Obligation::new(self.tcx, cause, self.fcx.param_env, pred);
+
+            if self.next_trait_solver() {
+                coercion.obligations.push(obligation);
+
+                if self
+                    .infcx
+                    .visit_proof_tree(
+                        Goal::new(self.tcx, self.param_env, pred),
+                        &mut CoerceVisitor { fcx: self.fcx, span: self.cause.span, errored: false },
+                    )
+                    .is_break()
+                {
+                    return Err(TypeError::Mismatch);
+                }
+            } else {
+                self.coerce_unsized_old_solver(
+                    obligation,
+                    &mut coercion,
+                    coerce_unsized_did,
+                    unsize_did,
+                )?;
+            }
+
+            Ok(coercion)
+        })
     }
 
     fn coerce_unsized_old_solver(
