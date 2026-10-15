@@ -295,7 +295,7 @@ impl<'tcx> InferCtxt<'tcx> {
                         )
                         .emit();
                 }
-                RegionOutlives(a, b, span) => {
+                RegionOutlives(a, b, _, span) => {
                     let origin = SubregionOrigin::SolverRegionConstraint(span);
                     let category = origin.to_constraint_category();
                     conversion.push_sub_region_constraint(

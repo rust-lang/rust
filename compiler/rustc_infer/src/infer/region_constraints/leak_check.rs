@@ -410,21 +410,58 @@ impl<'tcx> MiniGraph<'tcx> {
                     &AddCombination(..) | &AddVar(..) => {}
                     // FIXME(-Zassumptions-on-binders): we probably need to handle this in some manner
                     &OverwriteSolverRegionConstraint { .. } => {}
+                    &AddSolverLeafRegionConstraint(i) => {
+                        if let SolverLeafRegionConstraint::RegionOutlives(
+                            sup,
+                            sub,
+                            visible_for_leak_check,
+                            _,
+                        ) = region_constraints.solver_data().leafs()[i]
+                        {
+                            match visible_for_leak_check {
+                                ty::VisibleForLeakCheck::Yes => each_edge(sub, sup),
+                                ty::VisibleForLeakCheck::No => {}
+                                ty::VisibleForLeakCheck::Unreachable => unreachable!(),
+                            }
+                        }
+                    }
                 }
             }
         } else {
-            region_constraints
-                .legacy_data()
-                .constraints
-                .iter()
-                .flat_map(|(c, _)| c.iter_outlives())
-                .for_each(|Constraint { kind: _, sub, sup, visible_for_leak_check }| {
-                    match visible_for_leak_check {
-                        ty::VisibleForLeakCheck::Yes => each_edge(sub, sup),
-                        ty::VisibleForLeakCheck::No => {}
-                        ty::VisibleForLeakCheck::Unreachable => unreachable!(),
+            let assumptions_on_binders_enabled =
+                rustc_middle::ty::tls::with(|tcx| tcx.assumptions_on_binders());
+            if assumptions_on_binders_enabled {
+                region_constraints.solver_data().leafs().iter().for_each(|leaf| {
+                    if let SolverLeafRegionConstraint::RegionOutlives(
+                        sup,
+                        sub,
+                        visible_for_leak_check,
+                        _,
+                    ) = leaf
+                    {
+                        match visible_for_leak_check {
+                            ty::VisibleForLeakCheck::Yes => each_edge(*sub, *sup),
+                            ty::VisibleForLeakCheck::No => {}
+                            ty::VisibleForLeakCheck::Unreachable => unreachable!(),
+                        }
+                    } else {
+                        unreachable!()
                     }
                 })
+            } else {
+                region_constraints
+                    .legacy_data()
+                    .constraints
+                    .iter()
+                    .flat_map(|(c, _)| c.iter_outlives())
+                    .for_each(|Constraint { kind: _, sub, sup, visible_for_leak_check }| {
+                        match visible_for_leak_check {
+                            ty::VisibleForLeakCheck::Yes => each_edge(sub, sup),
+                            ty::VisibleForLeakCheck::No => {}
+                            ty::VisibleForLeakCheck::Unreachable => unreachable!(),
+                        }
+                    })
+            }
         }
     }
 
