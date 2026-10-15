@@ -66,11 +66,11 @@ ENV WASM_WASIP_SCRIPT="python3 /checkout/x.py --stage 2 test --host= --target $W
   tests/run-make \
   tests/run-make-cargo \
   tests/ui \
-  tests/mir-opt \
   tests/codegen-units \
   tests/codegen-llvm \
   tests/assembly-llvm \
-  library/core"
+  library/core \
+  tests/mir-opt"
 
 ENV NVPTX_TARGETS=nvptx64-nvidia-cuda
 ENV NVPTX_SCRIPT="python3 /checkout/x.py --stage 2 test --host= --target $NVPTX_TARGETS \
