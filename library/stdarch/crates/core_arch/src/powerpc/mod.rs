@@ -98,6 +98,12 @@ impl From<f16> for ppcf128 {
 macro_rules! ppcf128_doctest_prelude {
     () => {
         concat!(
+            "```",
+            // ignore the examples when running doc tests on non-powerpc targets.
+            cfg_select! {
+                any(target_arch = "powerpc", target_arch = "powerpc64") => "\n",
+                _ => "only-powerpc\n",
+            },
             "#![feature(powerpc_ppcf128)]\n",
             "# #![feature(stdarch_powerpc)]\n",
             "# #[cfg(any(target_arch = \"powerpc\", target_arch = \"powerpc64\"))] {\n",
@@ -160,7 +166,6 @@ impl ppcf128 {
     ///
     /// # Examples
     ///
-    /// ```
     #[doc = ppcf128_doctest_prelude!()]
     ///
     /// let bytes = ppcf128::from(12.5_f64).to_ne_bytes();
@@ -191,7 +196,6 @@ impl ppcf128 {
     ///
     /// # Examples
     ///
-    /// ```
     #[doc = ppcf128_doctest_prelude!()]
     ///
     /// let bytes = ppcf128::from(12.5_f64).to_le_bytes();
@@ -221,7 +225,6 @@ impl ppcf128 {
     ///
     /// # Examples
     ///
-    /// ```
     #[doc = ppcf128_doctest_prelude!()]
     ///
     /// let bytes = ppcf128::from(12.5_f64).to_be_bytes();
@@ -255,7 +258,6 @@ impl ppcf128 {
     ///
     /// # Examples
     ///
-    /// ```
     #[doc = ppcf128_doctest_prelude!()]
     ///
     /// if cfg!(target_endian = "little") {
@@ -278,7 +280,6 @@ impl ppcf128 {
 
     /// Returns the large and small component of this floating point number.
     ///
-    /// ```
     #[doc = ppcf128_doctest_prelude!()]
     ///
     /// assert_eq!(ppcf128::default().to_components(), (0.0, 0.0));
@@ -316,7 +317,6 @@ impl ppcf128 {
     /// The result has the intuitive value of `large + small`. This function will normalize
     /// the components if they are not already in [normal form](ppcf128#normal-form).
     ///
-    /// ```
     #[doc = ppcf128_doctest_prelude!()]
     ///
     /// assert_eq!(ppcf128::from_components(1.0, 0.0).to_components(), (1.0, 0.0));
@@ -371,7 +371,6 @@ impl ppcf128 {
     ///
     /// Returns `None` when the components are not in normal form.
     ///
-    /// ```
     #[doc = ppcf128_doctest_prelude!()]
     ///
     /// assert!(ppcf128::from_components_checked(1.0, 0.0).is_some());
@@ -392,7 +391,6 @@ impl ppcf128 {
 
     /// Returns `true` if this value is NaN.
     ///
-    /// ```
     #[doc = ppcf128_doctest_prelude!()]
     ///
     /// let nan = ppcf128::NAN;
@@ -413,7 +411,6 @@ impl ppcf128 {
     /// Returns `true` if this value is positive infinity or negative infinity, and
     /// `false` otherwise.
     ///
-    /// ```
     #[doc = ppcf128_doctest_prelude!()]
     ///
     /// let f = ppcf128::from(7.0_f64);
@@ -438,7 +435,6 @@ impl ppcf128 {
 
     /// Returns `true` if this number is neither infinite nor NaN.
     ///
-    /// ```
     #[doc = ppcf128_doctest_prelude!()]
     ///
     /// let f = ppcf128::from(7.0_f64);
@@ -472,7 +468,6 @@ impl ppcf128 {
     /// `self.signum() == ppcf128::from(1.0_f64)` if you need fully portable behavior
     /// (evaluates to `false` for all NaNs).
     ///
-    /// ```
     #[doc = ppcf128_doctest_prelude!()]
     ///
     /// let f = ppcf128::from(7.0_f64);
@@ -501,7 +496,6 @@ impl ppcf128 {
     /// `self.signum() == ppcf128::from(-1.0_f64)` if you need fully portable behavior
     /// (evaluates to `false` for all NaNs).
     ///
-    /// ```
     #[doc = ppcf128_doctest_prelude!()]
     ///
     /// let f = ppcf128::from(7.0_f64);
@@ -527,7 +521,6 @@ impl ppcf128 {
     ///
     /// # Examples
     ///
-    /// ```
     #[doc = ppcf128_doctest_prelude!()]
     ///
     /// let f = ppcf128::from(3.5_f64);
