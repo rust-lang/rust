@@ -1,4 +1,5 @@
 #![feature(control_flow_into_value)]
+#![feature(default_field_values)]
 #![feature(deref_patterns)]
 #![feature(exact_div)]
 #![feature(f128)]
