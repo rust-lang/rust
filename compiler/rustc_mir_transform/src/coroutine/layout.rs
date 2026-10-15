@@ -252,6 +252,8 @@ fn compute_storage_conflicts<'mir, 'tcx>(
         saved_locals,
         local_conflicts: BitMatrix::from_row_n(&ineligible_locals, body.local_decls.len()),
         eligible_storage_live: DenseBitSet::new_empty(body.local_decls.len()),
+        prev_eligible_storage_live: DenseBitSet::new_empty(body.local_decls.len()),
+        newly_live: DenseBitSet::new_empty(body.local_decls.len()),
     };
 
     // Filter out:
@@ -296,6 +298,11 @@ struct StorageConflictVisitor<'a> {
     local_conflicts: BitMatrix<Local, Local>,
     // We keep this bitset as a buffer to avoid reallocating memory.
     eligible_storage_live: DenseBitSet<Local>,
+    // Eligible live set at the previously applied location. Every pair inside
+    // it is already recorded in `local_conflicts`.
+    prev_eligible_storage_live: DenseBitSet<Local>,
+    // Buffer: locals live now that were not live in the previous state.
+    newly_live: DenseBitSet<Local>,
 }
 
 impl<'a, 'tcx> ResultsVisitor<'tcx, MaybeRequiresStorage> for StorageConflictVisitor<'a> {
@@ -323,9 +330,18 @@ impl StorageConflictVisitor<'_> {
         self.eligible_storage_live.clone_from(state);
         self.eligible_storage_live.intersect(&**self.saved_locals);
 
-        for local in self.eligible_storage_live.iter() {
-            self.local_conflicts.union_row_with(&self.eligible_storage_live, local);
+        self.newly_live.clone_from(&self.eligible_storage_live);
+        self.newly_live.subtract(&self.prev_eligible_storage_live);
+
+        // Only pairs involving a newly live local can be missing.
+        for new in self.newly_live.iter() {
+            for other in self.eligible_storage_live.iter() {
+                self.local_conflicts.insert(new, other);
+                self.local_conflicts.insert(other, new);
+            }
         }
+
+        std::mem::swap(&mut self.prev_eligible_storage_live, &mut self.eligible_storage_live);
     }
 }
 
