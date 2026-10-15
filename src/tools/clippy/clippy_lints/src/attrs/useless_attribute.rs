@@ -53,6 +53,7 @@ pub(super) fn check(cx: &EarlyContext<'_>, item: &Item, attrs: &[Attribute]) {
                                     | sym::single_component_path_imports
                                     | sym::disallowed_types
                                     | sym::unused_trait_names
+                                    | sym::allow_attributes
                             )
                         {
                             return;
