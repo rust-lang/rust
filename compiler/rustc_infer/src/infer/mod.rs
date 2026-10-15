@@ -9,7 +9,8 @@ use lexical_region_resolve::LexicalRegionResolutions;
 pub use lexical_region_resolve::RegionResolutionError;
 pub use opaque_types::{OpaqueTypeStorage, OpaqueTypeStorageEntries, OpaqueTypeTable};
 use region_constraints::{
-    GenericKind, RegionConstraintCollector, RegionConstraintStorage, VarInfos, VerifyBound,
+    GenericKind, RegionConstraintCollector, RegionConstraintData, RegionConstraintStorage,
+    VarInfos, VerifyBound,
 };
 pub use relate::combine::PredicateEmittingRelation;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
@@ -1108,8 +1109,14 @@ impl<'tcx> InferCtxt<'tcx> {
         let inner = self.inner.borrow();
         assert!(!UndoLogs::<UndoLog<'_>>::in_snapshot(&inner.undo_log));
         let storage = inner.region_constraint_storage.as_ref().expect("regions already resolved");
-        // FIXME(-Zassumptions-on-binders): Handle abby_data
-        assert!(storage.legacy_data.is_empty(), "{:#?}", storage.legacy_data);
+        match &storage.data {
+            RegionConstraintData::Legacy(legacy) => {
+                assert!(legacy.is_empty(), "{legacy:#?}");
+            }
+            RegionConstraintData::Solver(_solver) => {
+                // FIXME(-Zassumptions-on-binders): Handle solver_data
+            }
+        };
         // We clone instead of taking because borrowck still wants to use the
         // inference context after calling this for diagnostics and the new
         // trait solver.
@@ -1611,7 +1618,14 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 
     pub fn get_solver_region_constraint(&self) -> SolverRegionConstraint<'tcx> {
-        self.inner.borrow().region_constraint_storage.as_ref().unwrap().solver_data.get_constraint()
+        self.inner
+            .borrow()
+            .region_constraint_storage
+            .as_ref()
+            .unwrap()
+            .data
+            .unwrap_solver()
+            .get_constraint()
     }
 
     pub fn overwrite_solver_region_constraint(&self, constraint: SolverRegionConstraint<'tcx>) {

@@ -3,7 +3,9 @@ use std::rc::Rc;
 
 use rustc_errors::Diag;
 use rustc_hir::def_id::LocalDefId;
-use rustc_infer::infer::region_constraints::{Constraint, ConstraintKind, LegacyRegionConstraintData};
+use rustc_infer::infer::region_constraints::{
+    Constraint, ConstraintKind, LegacyRegionConstraintData,
+};
 use rustc_infer::infer::{
     InferCtxt, RegionResolutionError, RegionVariableOrigin, SubregionOrigin, TyCtxtInferExt as _,
 };

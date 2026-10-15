@@ -16,8 +16,8 @@ use tracing::{debug, instrument};
 use super::outlives::test_type_match;
 use crate::infer::lexical_region_resolve::indexed_edges::{EdgeDirection, IndexedConstraintEdges};
 use crate::infer::region_constraints::{
-    Constraint, ConstraintKind, GenericKind, LegacyRegionConstraintData, SolverRegionConstraintData,
-    VarInfos, Verify, VerifyBound,
+    Constraint, ConstraintKind, GenericKind, LegacyRegionConstraintData,
+    SolverRegionConstraintData, VarInfos, Verify, VerifyBound,
 };
 use crate::infer::{RegionRelations, RegionVariableOrigin, SubregionOrigin};
 

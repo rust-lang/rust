@@ -59,42 +59,15 @@ impl<'tcx> InferCtxt<'tcx> {
             inner.region_constraint_storage.take().expect("regions already resolved")
         };
 
-        storage.legacy_data.constraints = storage
-            .legacy_data
-            .constraints
-            .iter()
-            .flat_map(|(constraint, origin)| {
-                constraint.iter_outlives().zip(iter::repeat_with(|| origin.clone()))
-            })
-            .collect();
-
-        // Filter out any region-region outlives assumptions that are implied by
-        // coroutine well-formedness.
-        if self.tcx.sess.opts.unstable_opts.higher_ranked_assumptions {
-            storage.legacy_data.constraints.retain(|(c, _)| match c.kind {
-                ConstraintKind::RegSubReg => !outlives_env
-                    .higher_ranked_assumptions()
-                    .contains(&ty::OutlivesClause(c.sup.into(), c.sub)),
-
-                ConstraintKind::VarSubVar
-                | ConstraintKind::RegSubVar
-                | ConstraintKind::VarSubReg => true,
-
-                ConstraintKind::VarEqVar | ConstraintKind::VarEqReg | ConstraintKind::RegEqReg => {
-                    unreachable!();
-                }
-            });
-        }
-
         let region_rels = &RegionRelations::new(self.tcx, outlives_env.free_region_map());
 
         let abby = self.tcx.sess.opts.unstable_opts.assumptions_on_binders;
         let (lexical_region_resolutions, errors) = if abby {
-            let c = storage.solver_data.get_constraint();
+            let c = storage.data.unwrap_solver().get_constraint();
             let r = lexical_region_resolve::resolve(
                 region_rels,
                 storage.var_infos,
-                storage.solver_data,
+                storage.data.unwrap_solver().clone(),
             );
 
             // Emit an error if the region constraint was ambiguous
@@ -115,7 +88,41 @@ impl<'tcx> InferCtxt<'tcx> {
 
             r
         } else {
-            lexical_region_resolve::resolve(region_rels, storage.var_infos, storage.legacy_data)
+            storage.data.unwrap_legacy_mut().constraints = storage
+                .data
+                .unwrap_legacy()
+                .constraints
+                .iter()
+                .flat_map(|(constraint, origin)| {
+                    constraint.iter_outlives().zip(iter::repeat_with(|| origin.clone()))
+                })
+                .collect();
+
+            // Filter out any region-region outlives assumptions that are implied by
+            // coroutine well-formedness.
+            if self.tcx.sess.opts.unstable_opts.higher_ranked_assumptions {
+                storage.data.unwrap_legacy_mut().constraints.retain(|(c, _)| match c.kind {
+                    ConstraintKind::RegSubReg => !outlives_env
+                        .higher_ranked_assumptions()
+                        .contains(&ty::OutlivesClause(c.sup.into(), c.sub)),
+
+                    ConstraintKind::VarSubVar
+                    | ConstraintKind::RegSubVar
+                    | ConstraintKind::VarSubReg => true,
+
+                    ConstraintKind::VarEqVar
+                    | ConstraintKind::VarEqReg
+                    | ConstraintKind::RegEqReg => {
+                        unreachable!();
+                    }
+                });
+            }
+
+            lexical_region_resolve::resolve(
+                region_rels,
+                storage.var_infos,
+                storage.data.unwrap_legacy().clone(),
+            )
         };
 
         let old_value = self.lexical_region_resolutions.replace(Some(lexical_region_resolutions));
