@@ -490,7 +490,9 @@ where
                     .dcx()
                     .emit_err(UnsupportedGroup { lint_group: crate::WARNINGS.name_lower() });
             }
-            match self.store.check_lint_name(lint_name_only, tool_name, self.registered_lint_tools)
+            match self
+                .store
+                .check_lint_name(&LintName::from_str(lint_name), self.registered_lint_tools)
             {
                 CheckLintNameResult::Renamed(ref replace) => {
                     let name = lint_name.as_str();
@@ -757,7 +759,7 @@ where
                 lint_check;
 
             let full_lint_name = format!("{lint_name}");
-            let LintName { tool, name: lint_name } = lint_name;
+            let LintName { tool, name: primary_name } = lint_name;
 
             let level = match kind {
                 LintCheckKind::Allow => Level::Allow,
@@ -772,8 +774,9 @@ where
             let lint_id = (level == Level::Expect)
                 .then(|| self.provider.mk_lint_expectation_id(attr_id.attr_id, lint_index as u16));
 
-            let lint_result =
-                self.store.check_lint_name(lint_name.as_str(), tool, self.registered_lint_tools);
+            let lint_result = self.store.check_lint_name(&lint_name, self.registered_lint_tools);
+
+            let lint_name = { primary_name };
 
             let (ids, name) = match lint_result {
                 CheckLintNameResult::Ok(ids) => (ids, lint_name),
@@ -830,12 +833,13 @@ where
                     // If this lint was renamed, apply the new lint instead of ignoring the
                     // attribute. Ignore any errors or warnings that happen because the new
                     // name is inaccurate.
-                    // NOTE: `new_name` already includes the tool name, so we don't
-                    // have to add it again.
-                    let CheckLintNameResult::Ok(ids) =
-                        self.store.check_lint_name(replace, None, self.registered_lint_tools)
+                    let replace_check = self
+                        .store
+                        .check_lint_name(&LintName::from_str(replace), self.registered_lint_tools);
+                    let (CheckLintNameResult::Ok(ids) | CheckLintNameResult::Tool(ids, _)) =
+                        replace_check
                     else {
-                        panic!("renamed lint does not exist: {replace}");
+                        panic!("renamed lint does not exist: {replace} :{replace_check:?}");
                     };
 
                     (ids, Symbol::intern(&replace))

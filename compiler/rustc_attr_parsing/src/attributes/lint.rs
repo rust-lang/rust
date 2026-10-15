@@ -52,7 +52,9 @@ impl LintParser {
                     MetaItemOrLitParser::MetaItemParser(p) => {
                         match p.args() {
                             ArgParser::NoArgs => self.lints.push(LintCheck {
-                                lint_name: LintName::new(&p.path().0),
+                                lint_name: LintName::new(
+                                    p.path().0.segments.iter().map(|s| s.ident.name),
+                                ),
                                 kind,
                                 attr_id,
                                 reason,
