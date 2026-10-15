@@ -803,8 +803,9 @@ impl<'a> Parser<'a> {
                         Err(err)
                     };
                 }
+                let ty = if is_const { this.parse_ty() } else { this.parse_ty_for_param() };
 
-                (pat, this.parse_ty_for_param()?)
+                (pat, ty?)
             } else {
                 debug!("parse_param_general ident_to_pat");
                 let parser_snapshot_before_ty = this.create_snapshot_for_diagnostic();
