@@ -197,15 +197,25 @@ pub enum LeafRegionConstraint<I: Interner, S: Clone = ()> {
 impl<I: Interner, S: Clone> std::fmt::Debug for LeafRegionConstraint<I, S> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         match self {
-            Self::Ambiguity(_span) => write!(f, "Ambiguity"),
+            Self::Ambiguity(_span) => f.write_str("ambiguity"),
             Self::RegionOutlives(r1, r2, _span) => {
-                f.debug_tuple("RegionOutlives").field(r1).field(r2).finish()
+                r1.fmt(f)?;
+                f.write_str(": ")?;
+                r2.fmt(f)
             }
             Self::AliasTyOutlivesViaEnv(bound_outlives, _span) => {
-                f.debug_tuple("AliasTyOutlivesViaEnv").field(bound_outlives).finish()
+                f.write_str("for<")?;
+                bound_outlives.bound_vars().fmt(f)?;
+                f.write_str(">")?;
+                let (ty, r) = bound_outlives.skip_binder();
+                ty.fmt(f)?;
+                f.write_str(": ")?;
+                r.fmt(f)
             }
             Self::PlaceholderTyOutlives(ty, r, _span) => {
-                f.debug_tuple("PlaceholderTyOutlives").field(ty).field(r).finish()
+                ty.fmt(f)?;
+                f.write_str(": ")?;
+                r.fmt(f)
             }
         }
     }
@@ -252,7 +262,7 @@ impl<I: Interner, S: Clone + std::fmt::Debug + Eq + std::hash::Hash> LeafRegionC
     }
 }
 
-#[derive_where(Clone, Hash, PartialEq, Eq, Debug; I: Interner, S)]
+#[derive_where(Clone, Hash, PartialEq, Eq; I: Interner, S)]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
 /// An OR of AND of LEAF constraints. Always in "canonical form" meaning:
@@ -282,7 +292,7 @@ impl<I: Interner, S: Clone + std::hash::Hash + std::fmt::Debug + Eq> Or<I, S> {
     pub fn is_true(&self) -> bool {
         // OR([AND([])])
         if let [and] = &*self.0
-            && and.0.len() == 0
+            && and.0.is_empty()
         {
             true
         } else {
@@ -296,7 +306,7 @@ impl<I: Interner, S: Clone + std::hash::Hash + std::fmt::Debug + Eq> Or<I, S> {
 
     pub fn is_false(&self) -> bool {
         // OR([])
-        self.0.len() == 0
+        self.0.is_empty()
     }
 
     pub fn new(i: impl IntoIterator<Item = And<I, S>>) -> Self {
@@ -355,7 +365,20 @@ impl<I: Interner, S: Clone + std::hash::Hash + std::fmt::Debug + Eq> Or<I, S> {
     }
 }
 
-#[derive_where(Clone, Hash, PartialEq, Eq, Debug; I: Interner, S)]
+impl<I: Interner, S: Clone + std::fmt::Debug> std::fmt::Debug for Or<I, S> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.0.is_empty() {
+            f.write_str("false")
+        } else if let [single] = &*self.0 {
+            single.fmt(f)
+        } else {
+            f.write_str("or ")?;
+            f.debug_set().entries(&self.0).finish()
+        }
+    }
+}
+
+#[derive_where(Clone, Hash, PartialEq, Eq; I: Interner, S)]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
 /// An AND of leaf constraints. Always in "canonical form", meaning:
@@ -415,7 +438,20 @@ impl<I: Interner, S: Clone + std::hash::Hash + std::fmt::Debug + Eq> And<I, S> {
     }
 }
 
-#[derive_where(Clone, Hash, PartialEq, Debug; I: Interner, S)]
+impl<I: Interner, S: Clone + std::fmt::Debug> std::fmt::Debug for And<I, S> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.0.is_empty() {
+            f.write_str("true")
+        } else if let [single] = &*self.0 {
+            single.fmt(f)
+        } else {
+            f.write_str("and ")?;
+            f.debug_set().entries(&self.0).finish()
+        }
+    }
+}
+
+#[derive_where(Clone, Hash, PartialEq; I: Interner, S)]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
 /// An `And` and an `Or` constraint both in canonical forms, with two additional constraints:
@@ -535,6 +571,21 @@ impl<I: Interner, S: Clone + std::fmt::Debug + Eq + std::hash::Hash> RegionConst
 
     pub fn new_leaf(l: LeafRegionConstraint<I, S>) -> Self {
         RegionConstraint { and_constraint: And::new([l]), or_constraint: Or::new_true() }
+    }
+}
+
+impl<I: Interner, S: Clone + std::fmt::Debug> std::fmt::Debug for RegionConstraint<I, S> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let [single_or] = &*self.or_constraint.0
+            && single_or.0.is_empty()
+        {
+            self.and_constraint.fmt(f)
+        } else if self.and_constraint.0.is_empty() {
+            self.or_constraint.fmt(f)
+        } else {
+            f.write_str("and ")?;
+            f.debug_set().entries(&self.and_constraint.0).entry(&self.or_constraint).finish()
+        }
     }
 }
 
