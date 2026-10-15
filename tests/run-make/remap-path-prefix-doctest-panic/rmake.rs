@@ -5,6 +5,7 @@
 // are inspected, so timings, temp dirs and backtraces can't leak into the check.
 
 //@ ignore-cross-compile
+//@ ignore-windows
 
 use run_make_support::assertion_helpers::{assert_contains, assert_not_contains};
 use run_make_support::rustdoc;
