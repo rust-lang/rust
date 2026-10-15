@@ -183,7 +183,7 @@ fn check_final_expr<'tcx>(
             // actually fulfill the expectation (clippy::#12998)
             match cx.tcx.hir_attrs(expr.hir_id) {
                 [] => {},
-                [Attribute::Parsed(AttributeKind::LintCheck(lints))] => {
+                [Attribute::Parsed(AttributeKind::LintCheck(lints))]
                     if lints.iter().any(|lint| {
                         matches!(
                             lint,
@@ -195,11 +195,9 @@ fn check_final_expr<'tcx>(
                                 ..
                             }
                         )
-                    }) {
-                        // This is an expectation of the `needless_return` lint
-                    } else {
-                        return;
-                    }
+                    }) =>
+                {
+                    // This is an expectation of the `needless_return` lint
                 },
                 _ => return,
             }

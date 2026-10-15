@@ -104,7 +104,7 @@ cargo dev dogfood
 
 More about [intellij] command usage and reasons.
 
-[intellij]: https://github.com/rust-lang/rust-clippy/blob/master/CONTRIBUTING.md#rustrover
+[intellij]: https://github.com/rust-lang/rust-clippy/blob/HEAD/CONTRIBUTING.md#rustrover
 
 ## lintcheck
 
@@ -116,7 +116,7 @@ are no false positives and that the suggestions are valid.
 
 Refer to the tools [README] for more details.
 
-[README]: https://github.com/rust-lang/rust-clippy/blob/master/lintcheck/README.md
+[README]: https://github.com/rust-lang/rust-clippy/blob/HEAD/lintcheck/README.md
 
 ## On PRs
 

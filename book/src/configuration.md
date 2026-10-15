@@ -22,11 +22,11 @@ disallowed-names = ["toto", "tata", "titi"]
 
 The [table of configurations](./lint_configuration.md)
 contains all config values, their default, and a list of lints they affect.
-Each [configurable lint](https://rust-lang.github.io/rust-clippy/master/index.html#Configuration)
+Each [configurable lint](https://rust-lang.github.io/rust-clippy/main/index.html#Configuration)
 , also contains information about these values.
 
 For configurations that are a list type with default values such as
-[disallowed-names](https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_names),
+[disallowed-names](https://rust-lang.github.io/rust-clippy/main/index.html#disallowed_names),
 you can use the unique value `".."` to extend the default values instead of replacing them.
 
 ```toml
@@ -132,7 +132,7 @@ is equivalent to `msrv = 1.30.0`.
 > enabled explicitly.
 
 Lints that recognize this configuration option can be
-found [here](https://rust-lang.github.io/rust-clippy/master/index.html#msrv)
+found [here](https://rust-lang.github.io/rust-clippy/main/index.html#msrv)
 
 ### Disabling evaluation of certain code
 

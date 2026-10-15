@@ -63,4 +63,4 @@ book](../lints.md).
 [clippy_rfc]: https://github.com/rust-lang/rfcs/blob/master/text/2476-clippy-uno.md
 [rfc_stability]: https://github.com/rust-lang/rfcs/blob/master/text/2476-clippy-uno.md#stability-guarantees
 [rfc_lint_cats]: https://github.com/rust-lang/rfcs/blob/master/text/2476-clippy-uno.md#lint-audit-and-categories
-[`CONTRIBUTING.md`]: https://github.com/rust-lang/rust-clippy/blob/master/CONTRIBUTING.md
+[`CONTRIBUTING.md`]: https://github.com/rust-lang/rust-clippy/blob/HEAD/CONTRIBUTING.md
