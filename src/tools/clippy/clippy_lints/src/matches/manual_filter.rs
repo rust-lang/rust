@@ -3,6 +3,7 @@ use clippy_utils::res::{MaybeDef as _, MaybeResPath as _};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_copy;
+use clippy_utils::usage::is_potentially_mutated;
 use clippy_utils::visitors::contains_unsafe_block;
 use clippy_utils::{as_some_expr, span_contains_comment};
 use rustc_errors::Applicability;
@@ -26,6 +27,9 @@ fn get_cond_expr<'tcx>(
     let block_expr = peels_blocks_incl_unsafe(expr);
     if let ExprKind::If(cond, then_expr, Some(else_expr)) = block_expr.kind
         && let PatKind::Binding(_, target, ..) = pat.kind
+        // `Option::filter` only gives its predicate a `&T`, so a condition that needs `&mut` access
+        // to the value can't be moved into it.
+        && !is_potentially_mutated(target, cond, cx)
         && (is_some_expr(cx, target, ctxt, then_expr) && is_none_expr(cx, else_expr)
             || is_none_expr(cx, then_expr) && is_some_expr(cx, target, ctxt, else_expr))
     // check that one expr resolves to `Some(x)`, the other to `None`

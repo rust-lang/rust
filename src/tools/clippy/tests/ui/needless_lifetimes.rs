@@ -559,4 +559,19 @@ pub fn issue14607<'s>(x: &'s u8) {
     })();
 }
 
+mod issue17844 {
+    pub struct Resource;
+
+    pub trait Link {}
+
+    impl Link for &Resource {}
+
+    pub fn with_link<'a, T, F>(resource: &'a Resource, op: F) -> T
+    where
+        F: FnOnce(Box<dyn Link + 'a>) -> T,
+    {
+        op(Box::new(resource))
+    }
+}
+
 fn main() {}

@@ -37,5 +37,29 @@ error: item name starts with its containing module's name
 LL |     pub use error::FooError;
    |                    ^^^^^^^^
 
-error: aborting due to 6 previous errors
+error: item name starts with its containing module's name
+  --> tests/ui/module_name_repetitions.rs:83:24
+   |
+LL |     pub use happening::SpaceTime;
+   |                        ^^^^^^^^^
+
+error: item name starts with its containing module's name
+  --> tests/ui/module_name_repetitions.rs:85:46
+   |
+LL |     pub use happening::{NegativeSpaceWedgie, SpaceWedgie};
+   |                                              ^^^^^^^^^^^
+
+error: item name starts with its containing module's name
+  --> tests/ui/module_name_repetitions.rs:99:9
+   |
+LL |         NestA,
+   |         ^^^^^
+
+error: item name starts with its containing module's name
+  --> tests/ui/module_name_repetitions.rs:102:18
+   |
+LL |         deeper::{NestB, Plain},
+   |                  ^^^^^
+
+error: aborting due to 10 previous errors
 
