@@ -97,13 +97,18 @@ pub(crate) fn complete_mod(
             }
         })
         .filter(|name| !existing_mod_declarations.contains(name))
-        .for_each(|submodule_name| {
-            let mut label = submodule_name;
+        .for_each(|name| {
+            let mut item =
+                CompletionItem::new(SymbolKind::Module, ctx.source_range(), &name, ctx.edition);
+            let mut insert_text = name.clone();
             if mod_under_caret.semicolon_token().is_none() {
-                label.push(';');
+                item.lookup_by(&name).label(format!("{name};"));
+                insert_text.push(';');
             }
-            let item =
-                CompletionItem::new(SymbolKind::Module, ctx.source_range(), &label, ctx.edition);
+            if syntax::utils::is_raw_identifier(&name, ctx.edition) {
+                insert_text.insert_str(0, "r#");
+            }
+            item.insert_text(insert_text);
             item.add_to(acc, ctx.db)
         });
 
@@ -163,7 +168,7 @@ fn module_chain_to_containing_module_file(
 mod tests {
     use expect_test::expect;
 
-    use crate::tests::check;
+    use crate::tests::{check, check_edit};
 
     #[test]
     fn lib_module_completion() {
@@ -367,6 +372,52 @@ fn baz() {}
             expect![[r#"
                 md baz;
             "#]],
+        );
+    }
+
+    #[test]
+    fn insert_escaped_name() {
+        check(
+            r#"
+//- /lib.rs
+mod s$0
+//- /struct.rs
+fn baz() {}
+//- /normal.rs
+fn baz() {}
+"#,
+            expect![[r#"
+                md normal;
+                md struct;
+            "#]],
+        );
+        check_edit(
+            "normal",
+            r#"
+//- /lib.rs
+mod s$0
+//- /struct.rs
+fn baz() {}
+//- /normal.rs
+fn baz() {}
+"#,
+            r#"
+mod normal;
+"#,
+        );
+        check_edit(
+            "struct",
+            r#"
+//- /lib.rs
+mod s$0
+//- /struct.rs
+fn baz() {}
+//- /normal.rs
+fn baz() {}
+"#,
+            r#"
+mod r#struct;
+"#,
         );
     }
 }
