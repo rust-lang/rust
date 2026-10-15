@@ -894,7 +894,7 @@ pub(crate) struct NoAssociatedItem<'tcx> {
 )]
 pub(crate) struct CandidateTraitNote {
     #[primary_span]
-    pub span: Span,
+    pub span: MultiSpan,
     pub trait_name: String,
     pub item_name: Ident,
     pub action_or_ty: String,
