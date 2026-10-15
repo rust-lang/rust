@@ -17,15 +17,22 @@ use crate::parse::macros::build_stream_parser;
 use crate::parse::session::ParseSess;
 use crate::spanned::Spanned;
 
+// NB: parser recovery can return `Ok(expr)` (or other non-terminals) and still emit errors. We need
+// to properly reset the shared error count.
+
 pub(crate) fn parse_items_from_cfg_select<'a>(
     psess: &'a ParseSess,
     mac: &'a ast::MacCall,
 ) -> Result<Vec<ast::Item>, &'static str> {
-    match catch_unwind(AssertUnwindSafe(|| {
+    let result = catch_unwind(AssertUnwindSafe(|| {
         parse_items_from_cfg_select_inner(psess, mac)
-    })) {
-        Ok(Ok(items)) => Ok(items),
-        Ok(err @ Err(_)) => err,
+    }));
+    let dcx = psess.inner().dcx();
+    let recovered = dcx.has_errors().is_some();
+    dcx.reset_err_count();
+    match result {
+        Ok(Ok(_)) if recovered => Err("cfg_select! parsed with recovery"),
+        Ok(res) => res,
         Err(..) => Err("failed to parse cfg_select!"),
     }
 }
@@ -71,7 +78,6 @@ fn parse_items_from_cfg_select_inner<'a>(
                 }
                 Err(err) => {
                     err.cancel();
-                    parser.psess.dcx().reset_err_count();
                     return Err(
                         "Expected item inside cfg_select block, but failed to parse it as an item",
                     );
@@ -159,6 +165,24 @@ pub(crate) fn parse_cfg_select_arms(
     psess: &ParseSess,
     ts: TokenStream,
 ) -> Option<Vec<CfgSelectArm>> {
+    let result = catch_unwind(AssertUnwindSafe(|| parse_cfg_select_arms_inner(psess, ts)));
+    let dcx = psess.inner().dcx();
+    let recovered = dcx.has_errors().is_some();
+    dcx.reset_err_count();
+    match result {
+        Ok(Some(_)) if recovered => {
+            debug!("cfg_select! arms parsed with recovery");
+            None
+        }
+        Ok(arms) => arms,
+        Err(..) => {
+            debug!("failed to parse cfg_select! arms");
+            None
+        }
+    }
+}
+
+fn parse_cfg_select_arms_inner(psess: &ParseSess, ts: TokenStream) -> Option<Vec<CfgSelectArm>> {
     let mut cfg_select_predicates = vec![];
     let mut parser = build_stream_parser(psess.inner(), ts);
 
@@ -170,12 +194,13 @@ pub(crate) fn parse_cfg_select_arms(
                 debug!("Failed to parse cfg entry in cfg_select! predicate");
                 return None;
             };
+
             CfgSelectFormatPredicate::Cfg(meta_item)
         };
 
         if let Err(e) = parser.expect(exp!(FatArrow)) {
             e.cancel();
-            debug!("Expected to find a `=>` after cfg_selec! predicate.");
+            debug!("Expected to find a `=>` after cfg_select! predicate.");
             return None;
         };
 

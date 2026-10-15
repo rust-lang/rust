@@ -3,16 +3,19 @@
 use indoc::panicdoc;
 use std::env;
 use std::fs::{File, remove_file};
+use std::io::Write;
 use std::path::Path;
-use std::process::Command;
+use std::process::{Command, Stdio};
 
 use rustfmt_config_proc_macro::{nightly_only_test, rustfmt_only_ci_test, stable_only_test};
 
 /// Run the rustfmt executable with environment vars set and return its output.
+/// If `input` is given, it is piped to the executable's stdin.
 fn rustfmt_with_extra(
     args: &[&str],
     working_dir: Option<&str>,
     envs: &[(&str, &str)],
+    input: Option<&str>,
 ) -> (String, String) {
     let rustfmt_exe = env!("CARGO_BIN_EXE_rustfmt");
     let bin_dir = Path::new(rustfmt_exe).parent().unwrap();
@@ -29,7 +32,19 @@ fn rustfmt_with_extra(
     if let Some(working_dir) = working_dir {
         cmd.current_dir(working_dir);
     }
-    match cmd.output() {
+    cmd.stdin(if input.is_some() {
+        Stdio::piped()
+    } else {
+        Stdio::null()
+    });
+    cmd.stdout(Stdio::piped());
+    cmd.stderr(Stdio::piped());
+    match cmd.spawn().and_then(|mut child| {
+        if let Some(input) = input {
+            child.stdin.take().unwrap().write_all(input.as_bytes())?;
+        }
+        child.wait_with_output()
+    }) {
         Ok(output) => (
             String::from_utf8(output.stdout).expect("utf-8"),
             String::from_utf8(output.stderr).expect("utf-8"),
@@ -39,7 +54,7 @@ fn rustfmt_with_extra(
 }
 
 fn rustfmt(args: &[&str]) -> (String, String) {
-    rustfmt_with_extra(args, None, &[])
+    rustfmt_with_extra(args, None, &[], None)
 }
 
 macro_rules! assert_that {
@@ -401,9 +416,22 @@ fn rustfmt_allow_not_a_dir_errors() {
 
     let args = [empty_rs.to_str().unwrap()];
     let envs = &[("HOME", fake_home_str)];
-    let (stdout, stderr) = rustfmt_with_extra(&args, Some(fake_home_str), envs);
+    let (stdout, stderr) = rustfmt_with_extra(&args, Some(fake_home_str), envs, None);
 
     // Should pass without any errors
     assert_eq!(stdout, "");
     assert_eq!(stderr, "");
+}
+
+// FIXME(cfg_select): ungate when `cfg_select!` formatting can be enabled on stable.
+#[nightly_only_test]
+#[test]
+fn cfg_select_parser_recovery_ice_7087() {
+    // See also https://github.com/rust-lang/rustfmt/issues/7087
+    let source = "cfg_select! { true => { fn foo {} } }\n";
+    let panic_re = regex::Regex::new("thread.*panicked").unwrap();
+    let (stdout, stderr) = rustfmt_with_extra(&[], None, &[], Some(source));
+    assert!(!panic_re.is_match(&stderr));
+    // Invalid arm should cause `cfg_select!` to be re-emitted unmodified.
+    assert_eq!(source, stdout);
 }
