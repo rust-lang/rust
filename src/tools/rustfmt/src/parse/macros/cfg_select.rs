@@ -13,6 +13,7 @@ use rustc_parse::parser::{AllowConstBlockItems, ForceCollect};
 use rustc_span::Span;
 use tracing::debug;
 
+use crate::expr::is_unsafe_block;
 use crate::parse::macros::build_stream_parser;
 use crate::parse::session::ParseSess;
 use crate::spanned::Spanned;
@@ -164,11 +165,25 @@ impl CfgSelectArm {
     /// For example `$predicate => {{}}`. If so, extract the inner block.
     /// rustfmt will preserve the double block syntax.
     pub(crate) fn double_block_inner(&self) -> Option<&ast::Expr> {
+        // In order to see if we can reach in and grab the inner block we'll
+        // check the following properties of the outer block:
+        // 1. It has a single statement that's also a block
+        // 2. It doesn't have a label
+        // 3. It isn't an unsafe block
+        // 4. It doesn't have any attributes
         match &self.expr.kind {
-            ast::ExprKind::Block(b, _) if b.stmts.len() == 1 => match &b.stmts[0].kind {
-                ast::StmtKind::Expr(e) if matches!(e.kind, ast::ExprKind::Block(..)) => Some(e),
-                _ => None,
-            },
+            ast::ExprKind::Block(b, label)
+                if b.stmts.len() == 1
+                    && label.is_none()
+                    && !is_unsafe_block(b)
+                    && self.expr.attrs.is_empty() =>
+            {
+                match &b.stmts[0].kind {
+                    // This is where we check that the inner block's statement is also a block
+                    ast::StmtKind::Expr(e) if matches!(e.kind, ast::ExprKind::Block(..)) => Some(e),
+                    _ => None,
+                }
+            }
             _ => None,
         }
     }

@@ -1633,10 +1633,11 @@ fn format_cfg_select(
                 // FIXME(ytmimi) The formatting for the `$predicate => {{}}` case isn't very robust.
                 // There's the potential that we'll lose comments in between the predicate, the `=>`
                 // and the body. We also don't handle comments like `{/*comment*/{}/*comment*/}`.
+                // The `rewrite_match_body` branch also handles `control_brace_style` better.
                 // That said, it helps fix <https://github.com/rust-lang/rustfmt/issues/7045>.
                 Some(expr) => {
-                    // Offset + 1 because we're adding  `{` to the start of the arm body.
-                    let nested_shape = nested_shape.offset_left(1, arm.span())?;
+                    let offset = predicate_str.len() + " => {".len();
+                    let nested_shape = nested_shape.offset_left(offset, arm.span())?;
                     let trailing_comma = if arm.trailing_comma.is_some() {
                         ","
                     } else {
