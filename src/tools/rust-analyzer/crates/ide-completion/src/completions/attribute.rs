@@ -74,6 +74,7 @@ pub(crate) fn complete_attribute_path(
     &AttrCtx { kind, annotated_item_kind, ref derive_helpers }: &AttrCtx,
 ) {
     let is_inner = kind == AttrKind::Inner;
+    let arg_exists = ctx.original_token.next_token().is_some_and(|it| it.kind().is_l_delimiter());
 
     for (derive_helper, derive_name) in derive_helpers {
         let mut item = CompletionItem::new(
@@ -113,7 +114,9 @@ pub(crate) fn complete_attribute_path(
         Qualified::No => {
             ctx.process_all_names(&mut |name, def, doc_aliases| match def {
                 hir::ScopeDef::ModuleDef(hir::ModuleDef::Macro(m)) if m.is_attr(ctx.db) => {
-                    acc.add_macro(ctx, path_ctx, m, name)
+                    if !DUPLICATE_ATTR.contains(&name.as_str()) {
+                        acc.add_macro(ctx, path_ctx, m, name)
+                    }
                 }
                 hir::ScopeDef::ModuleDef(hir::ModuleDef::Module(m)) => {
                     acc.add_module(ctx, path_ctx, m, name, doc_aliases)
@@ -147,6 +150,12 @@ pub(crate) fn complete_attribute_path(
             .zip(qualifiers)
             .take_while(|(s, q)| s.name_ref().is_some_and(|t| t.text() == **q))
             .count();
+        if let Some(s) = snippet.as_mut()
+            && (arg_exists && s.ends_with(')'))
+            && let Some(at) = s.find('(')
+        {
+            s.truncate(at);
+        }
         if matching_qualifiers != qualifiers.len() {
             let prefix = qualifiers[matching_qualifiers..].join("::");
             label = format!("{prefix}::{label}");
@@ -389,6 +398,8 @@ const ATTRIBUTES: &[AttrCompletion] = &[
     )
     .prefer_inner(),
 ];
+
+const DUPLICATE_ATTR: &[&str] = &["derive", "test"];
 
 fn parse_comma_sep_expr(input: ast::TokenTree) -> Option<Vec<ast::Expr>> {
     let r_paren = input.r_paren_token()?;

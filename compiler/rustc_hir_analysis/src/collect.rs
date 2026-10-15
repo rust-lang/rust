@@ -328,7 +328,7 @@ impl<'tcx> ItemCtxt<'tcx> {
         &self,
         item: &hir::TestBinderBody<'tcx>,
     ) -> TestBinderBody<'tcx> {
-        let hir::TestBinderBody { foralls, exists, constraints, predicates } = item;
+        let hir::TestBinderBody { span, foralls, exists, constraints, predicates } = item;
         let foralls = foralls.iter().map(|forall| self.lower_test_binder_forall(forall)).collect();
         let exists = exists.iter().map(|exists| self.lower_test_binder_exists(exists)).collect();
         let constraints = self.lower_test_binder_constraint(&constraints);
@@ -337,7 +337,7 @@ impl<'tcx> ItemCtxt<'tcx> {
             clauses_of::where_predicate_clauses(self, predicate, &mut clauses);
         }
         let predicates = clauses.into_iter().map(|(c, span)| (c.kind(), span)).collect();
-        TestBinderBody { foralls, exists, constraints, predicates }
+        TestBinderBody { span: *span, foralls, exists, constraints, predicates }
     }
 
     #[instrument(level = "debug", skip(self), ret)]
@@ -1705,7 +1705,7 @@ fn coroutine_for_closure(tcx: TyCtxt<'_>, def_id: LocalDefId) -> DefId {
         bug!()
     };
 
-    let &hir::Expr {
+    let hir::Expr {
         kind:
             hir::ExprKind::Closure(&rustc_hir::Closure {
                 def_id,

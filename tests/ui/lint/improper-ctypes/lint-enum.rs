@@ -1,6 +1,5 @@
 #![allow(dead_code)]
 #![deny(improper_ctypes)]
-#![feature(ptr_internals)]
 #![feature(transparent_unions)]
 
 use std::num;
@@ -90,7 +89,6 @@ extern "C" {
     fn option_ref(x: Option<&'static u8>);
     fn option_fn(x: Option<extern "C" fn()>);
     fn option_nonnull(x: Option<std::ptr::NonNull<u8>>);
-    fn option_unique(x: Option<std::ptr::Unique<u8>>);
     fn option_nonzero_u8(x: Option<num::NonZero<u8>>);
     fn option_nonzero_u16(x: Option<num::NonZero<u16>>);
     fn option_nonzero_u32(x: Option<num::NonZero<u32>>);
@@ -113,7 +111,6 @@ extern "C" {
     fn result_ref_t(x: Result<&'static u8, ()>);
     fn result_fn_t(x: Result<extern "C" fn(), ()>);
     fn result_nonnull_t(x: Result<std::ptr::NonNull<u8>, ()>);
-    fn result_unique_t(x: Result<std::ptr::Unique<u8>, ()>);
     fn result_nonzero_u8_t(x: Result<num::NonZero<u8>, ()>);
     fn result_nonzero_u16_t(x: Result<num::NonZero<u16>, ()>);
     fn result_nonzero_u32_t(x: Result<num::NonZero<u32>, ()>);
@@ -149,7 +146,6 @@ extern "C" {
     fn result_ref_e(x: Result<(), &'static u8>);
     fn result_fn_e(x: Result<(), extern "C" fn()>);
     fn result_nonnull_e(x: Result<(), std::ptr::NonNull<u8>>);
-    fn result_unique_e(x: Result<(), std::ptr::Unique<u8>>);
     fn result_nonzero_u8_e(x: Result<(), num::NonZero<u8>>);
     fn result_nonzero_u16_e(x: Result<(), num::NonZero<u16>>);
     fn result_nonzero_u32_e(x: Result<(), num::NonZero<u32>>);

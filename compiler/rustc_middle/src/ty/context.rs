@@ -47,7 +47,9 @@ use rustc_span::{DUMMY_SP, Ident, Span, Symbol, bug, kw, sym};
 use rustc_structures::{CrateType, Limit};
 use rustc_type_ir::TyKind::*;
 pub use rustc_type_ir::lift::Lift;
-use rustc_type_ir::{CollectAndApply, WithCachedTypeInfo, elaborate, search_graph};
+use rustc_type_ir::{
+    CollectAndApply, PlaceholderType, WithCachedTypeInfo, elaborate, search_graph,
+};
 use tracing::{debug, instrument};
 
 use crate::arena::Arena;
@@ -284,28 +286,22 @@ impl<'tcx> CtxtInterners<'tcx> {
 // For these preinterned values, an alternative would be to have
 // variable-length vectors that grow as needed. But that turned out to be
 // slightly more complex and no faster.
+//
+// All numbers have been chosen based on profiling data.
 
-const NUM_PREINTERNED_TY_VARS: u32 = 100;
-const NUM_PREINTERNED_FRESH_TYS: u32 = 20;
-const NUM_PREINTERNED_FRESH_INT_TYS: u32 = 3;
-const NUM_PREINTERNED_FRESH_FLOAT_TYS: u32 = 3;
-const NUM_PREINTERNED_ANON_BOUND_TYS_I: u32 = 3;
+const NUM_PREINTERNED_INFER_TY_VARS: u32 = 512;
+const NUM_PREINTERNED_INFER_FRESH_TYS: u32 = 20;
+const NUM_PREINTERNED_INFER_FRESH_INT_TYS: u32 = 3;
+const NUM_PREINTERNED_INFER_FRESH_FLOAT_TYS: u32 = 3;
+const NUM_PREINTERNED_BOUND_BOUND_ANONS_I: u32 = 3;
+const NUM_PREINTERNED_BOUND_BOUND_ANONS_V: u32 = 20;
+const NUM_PREINTERNED_BOUND_CANONICAL_ANONS: u32 = 128;
+const NUM_PREINTERNED_PLACEHOLDER_ROOT_ANONS: u32 = 128;
 
-// From general profiling of the *max vars during canonicalization* of a value:
-// - about 90% of the time, there are no canonical vars
-// - about 9% of the time, there is only one canonical var
-// - there are rarely more than 3-5 canonical vars (with exceptions in particularly pathological
-//   cases)
-// This may not match the number of bound vars found in `for`s.
-// Given that this is all heap interned, it seems likely that interning fewer
-// vars here won't make an appreciable difference. Though, if we were to inline the data (in an
-// array), we may want to consider reducing the number for canonicalized vars down to 4 or so.
-const NUM_PREINTERNED_ANON_BOUND_TYS_V: u32 = 20;
-
-// This number may seem high, but it is reached in all but the smallest crates.
 const NUM_PREINTERNED_RE_VARS: u32 = 500;
-const NUM_PREINTERNED_ANON_RE_BOUNDS_I: u32 = 3;
-const NUM_PREINTERNED_ANON_RE_BOUNDS_V: u32 = 20;
+const NUM_PREINTERNED_RE_BOUND_BOUND_ANONS_I: u32 = 3;
+const NUM_PREINTERNED_RE_BOUND_BOUND_ANONS_V: u32 = 20;
+const NUM_PREINTERNED_RE_BOUND_CANONICAL_ANONS: u32 = 20;
 
 pub struct CommonTypes<'tcx> {
     pub unit: Ty<'tcx>,
@@ -360,26 +356,37 @@ pub struct CommonTypes<'tcx> {
     pub trait_object_dummy_self: Ty<'tcx>,
 
     /// Pre-interned `Infer(ty::TyVar(n))` for small values of `n`.
-    pub ty_vars: Vec<Ty<'tcx>>,
+    pub infer_ty_vars: Vec<Ty<'tcx>>,
 
     /// Pre-interned `Infer(ty::FreshTy(n))` for small values of `n`.
-    pub fresh_tys: Vec<Ty<'tcx>>,
+    pub infer_fresh_tys: Vec<Ty<'tcx>>,
 
     /// Pre-interned `Infer(ty::FreshIntTy(n))` for small values of `n`.
-    pub fresh_int_tys: Vec<Ty<'tcx>>,
+    pub infer_fresh_int_tys: Vec<Ty<'tcx>>,
 
     /// Pre-interned `Infer(ty::FreshFloatTy(n))` for small values of `n`.
-    pub fresh_float_tys: Vec<Ty<'tcx>>,
+    pub infer_fresh_float_tys: Vec<Ty<'tcx>>,
 
     /// Pre-interned values of the form:
-    /// `Bound(BoundVarIndexKind::Bound(DebruijnIndex(i)), BoundTy { var: v, kind:
-    /// BoundTyKind::Anon})` for small values of `i` and `v`.
-    pub anon_bound_tys: Vec<Vec<Ty<'tcx>>>,
+    /// `Bound(
+    ///     BoundVarIndexKind::Bound(DebruijnIndex(i)),
+    ///     BoundTy { var: v, kind: BoundTyKind::Anon }
+    /// )`
+    /// for small values of `i` and `v`.
+    pub bound_bound_anons: Vec<Vec<Ty<'tcx>>>,
 
-    // Pre-interned values of the form:
-    // `Bound(BoundVarIndexKind::Canonical, BoundTy { var: v, kind: BoundTyKind::Anon })`
-    // for small values of `v`.
-    pub anon_canonical_bound_tys: Vec<Ty<'tcx>>,
+    /// Pre-interned values of the form:
+    /// `Bound(BoundVarIndexKind::Canonical, BoundTy { var: v, kind: BoundTyKind::Anon })`
+    /// for small values of `v`.
+    pub bound_canonical_anons: Vec<Ty<'tcx>>,
+
+    /// Pre-interned values of the form:
+    /// `Placeholder(Placeholder {
+    ///     universe: UniverseIndex::ROOT,
+    ///     bound: BoundTy { var: v, kind: BoundTyKind::Anon }
+    /// })`
+    /// for small values of `v`.
+    pub placeholder_root_anons: Vec<Ty<'tcx>>,
 }
 
 pub struct CommonLifetimes<'tcx> {
@@ -389,18 +396,18 @@ pub struct CommonLifetimes<'tcx> {
     /// Erased region, used outside of type inference.
     pub re_erased: Region<'tcx>,
 
-    /// Pre-interned `ReVar(ty::RegionVar(n))` for small values of `n`.
+    /// Pre-interned `ReVar(ty::RegionVid(n))` for small values of `n`.
     pub re_vars: Vec<Region<'tcx>>,
 
     /// Pre-interned values of the form:
     /// `ReBound(BoundVarIndexKind::Bound(DebruijnIndex(i)), BoundRegion { var: v, kind: BoundRegionKind::Anon })`
     /// for small values of `i` and `v`.
-    pub anon_re_bounds: Vec<Vec<Region<'tcx>>>,
+    pub re_bound_bound_anons: Vec<Vec<Region<'tcx>>>,
 
-    // Pre-interned values of the form:
-    // `ReBound(BoundVarIndexKind::Canonical, BoundRegion { var: v, kind: BoundRegionKind::Anon })`
-    // for small values of `v`.
-    pub anon_re_canonical_bounds: Vec<Region<'tcx>>,
+    /// Pre-interned values of the form:
+    /// `ReBound(BoundVarIndexKind::Canonical, BoundRegion { var: v, kind: BoundRegionKind::Anon })`
+    /// for small values of `v`.
+    pub re_bound_canonical_anons: Vec<Region<'tcx>>,
 }
 
 pub struct CommonConsts<'tcx> {
@@ -415,18 +422,21 @@ impl<'tcx> CommonTypes<'tcx> {
     fn new(interners: &CtxtInterners<'tcx>) -> CommonTypes<'tcx> {
         let mk = |ty| interners.intern_ty(ty);
 
-        let ty_vars =
-            (0..NUM_PREINTERNED_TY_VARS).map(|n| mk(Infer(ty::TyVar(TyVid::from(n))))).collect();
-        let fresh_tys: Vec<_> =
-            (0..NUM_PREINTERNED_FRESH_TYS).map(|n| mk(Infer(ty::FreshTy(n)))).collect();
-        let fresh_int_tys: Vec<_> =
-            (0..NUM_PREINTERNED_FRESH_INT_TYS).map(|n| mk(Infer(ty::FreshIntTy(n)))).collect();
-        let fresh_float_tys: Vec<_> =
-            (0..NUM_PREINTERNED_FRESH_FLOAT_TYS).map(|n| mk(Infer(ty::FreshFloatTy(n)))).collect();
+        let infer_ty_vars = (0..NUM_PREINTERNED_INFER_TY_VARS)
+            .map(|n| mk(Infer(ty::TyVar(TyVid::from(n)))))
+            .collect();
+        let infer_fresh_tys: Vec<_> =
+            (0..NUM_PREINTERNED_INFER_FRESH_TYS).map(|n| mk(Infer(ty::FreshTy(n)))).collect();
+        let infer_fresh_int_tys: Vec<_> = (0..NUM_PREINTERNED_INFER_FRESH_INT_TYS)
+            .map(|n| mk(Infer(ty::FreshIntTy(n))))
+            .collect();
+        let infer_fresh_float_tys: Vec<_> = (0..NUM_PREINTERNED_INFER_FRESH_FLOAT_TYS)
+            .map(|n| mk(Infer(ty::FreshFloatTy(n))))
+            .collect();
 
-        let anon_bound_tys = (0..NUM_PREINTERNED_ANON_BOUND_TYS_I)
+        let bound_bound_anons = (0..NUM_PREINTERNED_BOUND_BOUND_ANONS_I)
             .map(|i| {
-                (0..NUM_PREINTERNED_ANON_BOUND_TYS_V)
+                (0..NUM_PREINTERNED_BOUND_BOUND_ANONS_V)
                     .map(|v| {
                         mk(ty::Bound(
                             ty::BoundVarIndexKind::Bound(ty::DebruijnIndex::from(i)),
@@ -437,12 +447,21 @@ impl<'tcx> CommonTypes<'tcx> {
             })
             .collect();
 
-        let anon_canonical_bound_tys = (0..NUM_PREINTERNED_ANON_BOUND_TYS_V)
+        let bound_canonical_anons = (0..NUM_PREINTERNED_BOUND_CANONICAL_ANONS)
             .map(|v| {
                 mk(ty::Bound(
                     ty::BoundVarIndexKind::Canonical,
                     ty::BoundTy { var: ty::BoundVar::from(v), kind: ty::BoundTyKind::Anon },
                 ))
+            })
+            .collect();
+
+        let placeholder_root_anons = (0..NUM_PREINTERNED_PLACEHOLDER_ROOT_ANONS)
+            .map(|v| {
+                mk(ty::Placeholder(PlaceholderType::new_anon(
+                    ty::UniverseIndex::ROOT,
+                    ty::BoundVar::from(v),
+                )))
             })
             .collect();
 
@@ -470,14 +489,15 @@ impl<'tcx> CommonTypes<'tcx> {
             str_: mk(Str),
             self_param: mk(ty::Param(ty::ParamTy { index: 0, name: kw::SelfUpper })),
 
-            trait_object_dummy_self: fresh_tys[0],
+            trait_object_dummy_self: infer_fresh_tys[0],
 
-            ty_vars,
-            fresh_tys,
-            fresh_int_tys,
-            fresh_float_tys,
-            anon_bound_tys,
-            anon_canonical_bound_tys,
+            infer_ty_vars,
+            infer_fresh_tys,
+            infer_fresh_int_tys,
+            infer_fresh_float_tys,
+            bound_bound_anons,
+            bound_canonical_anons,
+            placeholder_root_anons,
         }
     }
 }
@@ -493,9 +513,9 @@ impl<'tcx> CommonLifetimes<'tcx> {
         let re_vars =
             (0..NUM_PREINTERNED_RE_VARS).map(|n| mk(ty::ReVar(ty::RegionVid::from(n)))).collect();
 
-        let anon_re_bounds = (0..NUM_PREINTERNED_ANON_RE_BOUNDS_I)
+        let re_bound_bound_anons = (0..NUM_PREINTERNED_RE_BOUND_BOUND_ANONS_I)
             .map(|i| {
-                (0..NUM_PREINTERNED_ANON_RE_BOUNDS_V)
+                (0..NUM_PREINTERNED_RE_BOUND_BOUND_ANONS_V)
                     .map(|v| {
                         mk(ty::ReBound(
                             ty::BoundVarIndexKind::Bound(ty::DebruijnIndex::from(i)),
@@ -509,7 +529,7 @@ impl<'tcx> CommonLifetimes<'tcx> {
             })
             .collect();
 
-        let anon_re_canonical_bounds = (0..NUM_PREINTERNED_ANON_RE_BOUNDS_V)
+        let re_bound_canonical_anons = (0..NUM_PREINTERNED_RE_BOUND_CANONICAL_ANONS)
             .map(|v| {
                 mk(ty::ReBound(
                     ty::BoundVarIndexKind::Canonical,
@@ -522,8 +542,8 @@ impl<'tcx> CommonLifetimes<'tcx> {
             re_static: mk(ty::ReStatic),
             re_erased: mk(ty::ReErased),
             re_vars,
-            anon_re_bounds,
-            anon_re_canonical_bounds,
+            re_bound_bound_anons,
+            re_bound_canonical_anons,
         }
     }
 }

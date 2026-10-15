@@ -2,8 +2,6 @@
 //! This module exists because some integer types are not supported on some gcc platforms, e.g.
 //! 128-bit integers on 32-bit platforms and thus require to be handled manually.
 
-// cSpell:words cmpti divti modti mulodi muloti udivti umodti
-
 use gccjit::{
     BinaryOp, CType, ComparisonOp, FunctionType, Location, RValue, ToRValue, Type, UnaryOp,
 };
@@ -70,13 +68,29 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     }
 
     pub fn gcc_lshr(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
+        self.gcc_shr(a, b, false)
+    }
+
+    pub fn gcc_ashr(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
+        self.gcc_shr(a, b, true)
+    }
+
+    fn gcc_shr(&mut self, a: RValue<'gcc>, b: RValue<'gcc>, arithmetic: bool) -> RValue<'gcc> {
         let a_type = a.get_type();
         let b_type = b.get_type();
         let a_native = self.is_native_int_type(a_type);
         let b_native = self.is_native_int_type(b_type);
         if a_native && b_native {
+            // `>>` is arithmetic exactly when `a` is signed, but the GCC type of `a` can disagree
+            // with its Rust type: cg_ssa gives a transmute to `u16` the type `i16`, for instance.
+            let shift_type =
+                if arithmetic { a_type.to_signed(self) } else { a_type.to_unsigned(self) };
+            if !shift_type.is_compatible_with(a_type) {
+                let a = self.context.new_cast(self.location, a, shift_type);
+                let result = self.gcc_shr(a, b, arithmetic);
+                return self.context.new_cast(self.location, result, a_type);
+            }
             // FIXME(antoyo): remove the casts when libgccjit can shift an unsigned number by a signed number.
-            // FIXME(antoyo): cast to unsigned to do a logical shift if that does not work.
             if a_type.is_signed(self) != b_type.is_signed(self) {
                 let b = self.context.new_cast(self.location, b, a_type);
                 a >> b
@@ -97,7 +111,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         } else if a_type.is_vector() && b_type.is_vector() {
             a >> b
         } else if a_native && !b_native {
-            self.gcc_lshr(a, self.gcc_int_cast(b, a_type))
+            self.gcc_shr(a, self.gcc_int_cast(b, a_type), arithmetic)
         } else {
             // NOTE: we cannot use the lshr builtin because it's calling hi() (to get the most
             // significant half of the number) which uses lshr.
@@ -122,8 +136,20 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
             let shift_value = self.gcc_sub(b, sixty_four);
             let high = self.high(a);
-            let sign = if a_type.is_signed(self) { high >> sixty_three } else { zero };
-            let array_value = self.concat_low_high_rvalues(a_type, high >> shift_value, sign);
+            let high_shift_type = if arithmetic {
+                native_int_type.to_signed(self.cx)
+            } else {
+                native_int_type.to_unsigned(self.cx)
+            };
+            let context = self.context;
+            let location = self.location;
+            let shift_high = |shift: RValue<'gcc>| {
+                let high = context.new_cast(location, high, high_shift_type);
+                let shift = context.new_cast(location, shift, high_shift_type);
+                context.new_cast(location, high >> shift, native_int_type)
+            };
+            let sign = if arithmetic { shift_high(sixty_three) } else { zero };
+            let array_value = self.concat_low_high_rvalues(a_type, shift_high(shift_value), sign);
             then_block.add_assignment(self.location, result, array_value);
             then_block.end_with_jump(self.location, after_block);
 
@@ -142,7 +168,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             let array_value = self.concat_low_high_rvalues(
                 a_type,
                 (high << shift_value) | shifted_low,
-                high >> b,
+                shift_high(b),
             );
             actual_else_block.add_assignment(self.location, result, array_value);
             actual_else_block.end_with_jump(self.location, after_block);
@@ -956,11 +982,9 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
                 let value = self.int_to_float_cast(signed, value, self.float_type);
                 return self.context.new_cast(None, value, dest_typ);
             }
-            // cSpell:disable
             TypeKind::Float => "tisf",
             TypeKind::Double => "tidf",
             TypeKind::FP128 => "titf",
-            // cSpell:enable
             kind => panic!("cannot cast a non-native integer to type {:?}", kind),
         };
         let sign = if signed { "" } else { "un" };
@@ -1006,12 +1030,10 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             _ => (None, value_type),
         };
         let name_suffix = match self.type_kind(value_type) {
-            // cSpell:disable
             // Since we will cast Half to a float, we use sfti for both.
             TypeKind::Half | TypeKind::Float => "sfti",
             TypeKind::Double => "dfti",
             TypeKind::FP128 => "tfti",
-            // cSpell:enable
             kind => panic!("cannot cast a {:?} to non-native integer", kind),
         };
         let sign = if signed { "" } else { "uns" };

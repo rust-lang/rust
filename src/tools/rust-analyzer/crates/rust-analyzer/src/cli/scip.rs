@@ -72,7 +72,7 @@ impl flags::Scip {
             VendoredLibrariesConfig::Included { workspace_root: &root.clone().into() }
         };
 
-        let si = StaticIndex::compute(&analysis, vendored_libs_config);
+        let si = StaticIndex::compute(&analysis, vendored_libs_config, false);
 
         let metadata = scip_types::Metadata {
             version: scip_types::ProtocolVersion::UnspecifiedProtocolVersion.into(),
@@ -544,6 +544,7 @@ mod test {
             VendoredLibrariesConfig::Included {
                 workspace_root: &VfsPath::new_virtual_path("/workspace".to_owned()),
             },
+            false,
         );
 
         let FilePosition { file_id, offset } = position;
@@ -912,6 +913,7 @@ pub mod example_mod {
             VendoredLibrariesConfig::Included {
                 workspace_root: &VfsPath::new_virtual_path("/workspace".to_owned()),
             },
+            false,
         );
 
         let file = si.files.first().unwrap();
@@ -935,6 +937,7 @@ pub mod example_mod {
             VendoredLibrariesConfig::Included {
                 workspace_root: &VfsPath::new_virtual_path("/workspace".to_owned()),
             },
+            false,
         );
 
         let file = si.files.first().unwrap();
@@ -963,6 +966,7 @@ pub mod example_mod {
             VendoredLibrariesConfig::Included {
                 workspace_root: &VfsPath::new_virtual_path("/workspace".to_owned()),
             },
+            false,
         );
 
         let file = si.files.first().unwrap();
@@ -995,6 +999,7 @@ pub mod example_mod {
             VendoredLibrariesConfig::Included {
                 workspace_root: &VfsPath::new_virtual_path("/workspace".to_owned()),
             },
+            false,
         );
 
         let file = si.files.first().unwrap();

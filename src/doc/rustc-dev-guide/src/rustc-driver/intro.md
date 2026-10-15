@@ -4,7 +4,8 @@
 
 The [`rustc_driver`] is essentially `rustc`'s `main` function.
 It acts as the glue for running the various phases of the compiler in the correct order,
-using the interface defined in the [`rustc_interface`] crate. Where possible, using [`rustc_driver`] rather than [`rustc_interface`] is recommended.
+using the interface defined in the [`rustc_interface`] crate.
+Where possible, using [`rustc_driver`] rather than [`rustc_interface`] is recommended.
 
 The main entry point of [`rustc_driver`] is [`rustc_driver::compiler_entrypoint`][rd_ce].
 This builder accepts the same command-line args as rustc as well as an implementation of [`Callbacks`] and a couple of other optional options.

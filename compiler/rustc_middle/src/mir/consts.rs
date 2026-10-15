@@ -10,7 +10,6 @@ use rustc_type_ir::TypeVisitableExt;
 use super::interpret::ReportedErrorInfo;
 use crate::mir::interpret::{AllocId, AllocRange, ErrorHandled, GlobalAlloc, Scalar, alloc_range};
 use crate::mir::{Promoted, pretty_print_const_value};
-use crate::ty::consts::ConstExt;
 use crate::ty::print::{pretty_print_const, with_no_trimmed_paths};
 use crate::ty::{self, ConstKind, GenericArgsRef, ScalarInt, Ty, TyCtxt};
 
@@ -106,10 +105,7 @@ impl ConstValue {
         typing_env: ty::TypingEnv<'tcx>,
         ty: Ty<'tcx>,
     ) -> Option<u128> {
-        let size = tcx
-            .layout_of(typing_env.with_post_analysis_normalized(tcx).as_query_input(ty))
-            .ok()?
-            .size;
+        let size = tcx.layout_of(typing_env.as_query_input(ty)).ok()?.size;
         self.try_to_bits(size)
     }
 
@@ -382,10 +378,7 @@ impl<'tcx> Const<'tcx> {
         typing_env: ty::TypingEnv<'tcx>,
     ) -> Option<u128> {
         let int = self.try_eval_scalar_int(tcx, typing_env)?;
-        let size = tcx
-            .layout_of(typing_env.with_post_analysis_normalized(tcx).as_query_input(self.ty()))
-            .ok()?
-            .size;
+        let size = tcx.layout_of(typing_env.as_query_input(self.ty())).ok()?.size;
         Some(int.to_bits(size))
     }
 

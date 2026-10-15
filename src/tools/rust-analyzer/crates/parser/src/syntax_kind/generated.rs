@@ -199,6 +199,8 @@ pub enum SyntaxKind {
     CFG_ATTR_META,
     CFG_COMPOSITE,
     CFG_META,
+    CFG_PRED_EXPR,
+    CFG_PRED_PAT,
     CLOSURE_EXPR,
     CONST,
     CONST_ARG,
@@ -387,6 +389,8 @@ impl SyntaxKind {
             | CFG_ATTR_META
             | CFG_COMPOSITE
             | CFG_META
+            | CFG_PRED_EXPR
+            | CFG_PRED_PAT
             | CLOSURE_EXPR
             | CONST
             | CONST_ARG

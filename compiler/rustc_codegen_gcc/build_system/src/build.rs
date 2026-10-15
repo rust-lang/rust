@@ -107,6 +107,10 @@ fn cleanup_sysroot_previous_build(library_dir: &Path) {
 }
 
 pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Result<(), String> {
+    if let Some(sysroot_path) = &config.prebuilt_sysroot_path {
+        println!("Not building the sysroot since `{sysroot_path}` is used");
+        return Ok(());
+    }
     let start_dir = get_sysroot_dir();
 
     // Symlink libgccjit.so to sysroot.
@@ -264,7 +268,9 @@ fn build_codegen(args: &mut BuildArg) -> Result<(), String> {
     for flag in &flags {
         command.push(flag);
     }
-    run_command_with_output_and_env(&command, None, Some(&env))?;
+    if args.config_info.prebuilt_backend_path.is_none() {
+        run_command_with_output_and_env(&command, None, Some(&env))?;
+    }
 
     args.config_info.setup(&mut env, false, true)?;
 

@@ -2,7 +2,7 @@ use std::ffi::{CStr, CString};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::{fs, slice, str};
+use std::{fs, ptr, slice, str};
 
 use libc::{c_char, c_int, c_void, size_t};
 use rustc_codegen_ssa::back::link::ensure_removed;
@@ -319,10 +319,22 @@ pub(crate) enum CodegenDiagnosticsStage {
     Codegen,
 }
 
+/// Context data that is passed to [`diagnostic_handler_callback`].
+#[derive(Clone, Copy)]
+struct DiagnosticHandlerCallbackData<'a> {
+    cgcx: &'a CodegenContext,
+    shared_emitter: &'a SharedEmitter,
+}
+
 pub(crate) struct DiagnosticHandlers<'a> {
-    data: *mut (&'a CodegenContext, &'a SharedEmitter),
     llcx: &'a llvm::Context,
-    old_handler: Option<&'a llvm::DiagnosticHandler>,
+    old_handler: Option<ptr::NonNull<llvm::DiagnosticHandler>>,
+
+    /// Ownership of the box-allocated data that was installed (as a pointer)
+    /// alongside [`diagnostic_handler_callback`].
+    ///
+    /// To be freed via [`Box::from_raw`] after the handler is removed.
+    diagnostic_handler_callback_data: *mut DiagnosticHandlerCallbackData<'a>,
 }
 
 impl<'a> DiagnosticHandlers<'a> {
@@ -363,13 +375,14 @@ impl<'a> DiagnosticHandlers<'a> {
             .and_then(|dir| dir.to_str().and_then(|p| CString::new(p).ok()));
 
         let pgo_available = cgcx.module_config.pgo_use.is_some();
-        let data = Box::into_raw(Box::new((cgcx, shared_emitter)));
+        let diagnostic_handler_callback_data =
+            Box::into_raw(Box::new(DiagnosticHandlerCallbackData { cgcx, shared_emitter }));
         unsafe {
-            let old_handler = llvm::LLVMRustContextGetDiagnosticHandler(llcx);
+            let old_handler = llvm::LLVMRustContextTakeDiagnosticHandler(llcx);
             llvm::LLVMRustContextConfigureDiagnosticHandler(
                 llcx,
-                diagnostic_handler,
-                data.cast(),
+                diagnostic_handler_callback,
+                diagnostic_handler_callback_data.cast::<c_void>(),
                 remark_passes_all,
                 remark_passes.as_ptr(),
                 remark_passes.len(),
@@ -378,7 +391,7 @@ impl<'a> DiagnosticHandlers<'a> {
                 remark_file.as_ref().map(|dir| dir.as_ptr()).unwrap_or(std::ptr::null()),
                 pgo_available,
             );
-            DiagnosticHandlers { data, llcx, old_handler }
+            DiagnosticHandlers { llcx, old_handler, diagnostic_handler_callback_data }
         }
     }
 }
@@ -387,7 +400,7 @@ impl<'a> Drop for DiagnosticHandlers<'a> {
     fn drop(&mut self) {
         unsafe {
             llvm::LLVMRustContextSetDiagnosticHandler(self.llcx, self.old_handler);
-            drop(Box::from_raw(self.data));
+            drop(Box::from_raw(self.diagnostic_handler_callback_data));
         }
     }
 }
@@ -418,11 +431,21 @@ fn report_inline_asm(
     InlineAsmError { lo, hi, msg, level, source }
 }
 
-unsafe extern "C" fn diagnostic_handler(info: &DiagnosticInfo, user: *mut c_void) {
-    if user.is_null() {
+unsafe extern "C" fn diagnostic_handler_callback(info: &DiagnosticInfo, data: *mut c_void) {
+    if data.is_null() {
         return;
     }
-    let (cgcx, shared_emitter) = unsafe { *(user as *const (&CodegenContext, &SharedEmitter)) };
+    // After casting the data pointer, pass it into an inner function to limit its lifetimes.
+    diagnostic_handler_callback_inner(info, unsafe {
+        &*data.cast::<DiagnosticHandlerCallbackData<'_>>()
+    });
+}
+
+fn diagnostic_handler_callback_inner(
+    info: &DiagnosticInfo,
+    data: &DiagnosticHandlerCallbackData<'_>,
+) {
+    let &DiagnosticHandlerCallbackData { cgcx, shared_emitter } = data;
 
     let dcx = DiagCtxt::new(Box::new(shared_emitter.clone()));
     let dcx = dcx.handle();

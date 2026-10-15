@@ -219,7 +219,6 @@ symbols! {
         Equal,
         Err,
         ExitCode,
-        Expected,
         ExternC,
         ExternRust,
         Float,
@@ -233,7 +232,6 @@ symbols! {
         FnPtrToPtr,
         Formatter,
         Forward,
-        Found,
         From,
         FromIterator,
         FromResidual,
@@ -257,7 +255,6 @@ symbols! {
         IoBufReader,
         IrTyKind,
         Item,
-        ItemContext,
         Iterator,
         IteratorItem,
         IteratorMap,
@@ -333,7 +330,6 @@ symbols! {
         SliceIndex,
         Some,
         Source,
-        SpanCtxt,
         StdinLock,
         Str,
         String,
@@ -361,7 +357,6 @@ symbols! {
         Type,
         TypeVisitable,
         Union,
-        Unresolved,
         Unsafe,
         UnsafeFnPointer,
         Unsize,
@@ -564,6 +559,7 @@ symbols! {
         bits,
         bitxor,
         bitxor_assign,
+        bivariant,
         black_box,
         block,
         blocking,
@@ -747,6 +743,7 @@ symbols! {
         contracts_ensures,
         contracts_internals,
         contracts_requires,
+        contravariant,
         convert,
         coprocessor,
         copy,
@@ -769,6 +766,7 @@ symbols! {
         coroutines,
         cos,
         count,
+        covariant,
         covariant_unsafe_cell,
         coverage,
         coverage_attribute,
@@ -1048,6 +1046,7 @@ symbols! {
         format_macro,
         format_placeholder,
         format_unsafe_arg,
+        found,
         fp,
         fpregs,
         framework,
@@ -1071,6 +1070,7 @@ symbols! {
         fsub_algebraic,
         fsub_fast,
         full,
+        function_arg_const_generics,
         fundamental,
         fused_iterator,
         future_output,
@@ -1189,6 +1189,7 @@ symbols! {
         into_try_type,
         intra_doc_pointers,
         intrinsics,
+        invariant,
         irrefutable_let_patterns,
         is,
         is_auto,
@@ -1201,6 +1202,7 @@ symbols! {
         issue_5723_bootstrap,
         issue_tracker_base_url,
         item,
+        item_context,
         item_like_imports,
         iter,
         iter_mut,
@@ -1817,6 +1819,7 @@ symbols! {
         rustc_allowed_through_unstable_modules,
         rustc_always_gca,
         rustc_as_ptr,
+        rustc_assert_variance,
         rustc_attrs,
         rustc_autodiff,
         rustc_builtin_macro,
@@ -1913,6 +1916,7 @@ symbols! {
         rustc_regions,
         rustc_scalable_vector,
         rustc_should_not_be_called_on_const_items,
+        rustc_show_spans,
         rustc_simd_monomorphize_lane_limit,
         rustc_skip_during_method_dispatch,
         rustc_specialization_trait,
@@ -2170,6 +2174,7 @@ symbols! {
         test_removed_feature,
         test_runner,
         test_unstable_lint,
+        this,
         thread,
         thread_local,
         threadptr,
@@ -2318,6 +2323,7 @@ symbols! {
         unreachable_code,
         unreachable_display,
         unreachable_macro,
+        unresolved,
         unrestricted_attribute_tokens,
         unsafe_attributes,
         unsafe_binders,
@@ -2896,7 +2902,15 @@ impl Interner {
     // `ByteSymbol`.
     fn prefill(init: &[&'static str], extra: &[&'static str]) -> Self {
         let values = init.iter().copied().chain(extra.iter().copied()).map(|str| str.as_bytes());
-        let (size_hint, _) = values.size_hint();
+        // At the time of writing, `helloworld` Check benchmark interns ~1k additional symbols.
+        // Some of the noisy ones (`include-blob`, `tt-muncher`, `externs`, `large-workspace`, etc.)
+        // are between 1k and 2k. Lowest number among non-artificial benchmarks is ~5k for `ucd`.
+        // This was chosen to make small, artificial benchmarks more stable, and to
+        // reduce resizing for normal code without regresing memory use for smaller crates.
+        // FIXME(panstromek): we could do better if we take into account whether this is
+        //  Debug/Opt build. Those builds intern at least 6k more symbols than Check ones.
+        let additional_capacity = 2400;
+        let size_hint = values.size_hint().0 + additional_capacity;
         let mut conflicting_values: Vec<&[u8]> = Vec::new();
 
         let mut indices: HashTable<(&'static [u8], u32)> = HashTable::with_capacity(size_hint);
@@ -2995,9 +3009,19 @@ pub mod kw {
 ///
 /// Given that `sym` is imported, use them like `sym::symbol_name`.
 /// For example `sym::rustfmt` or `sym::u8`.
-#[diagnostic::on_unknown(
-    label = "`{Unresolved}` is not a pre-interned symbol",
-    note = "consider adding `{Unresolved}` to the `symbols!` invocation in compiler/rustc_span/src/symbol.rs"
+#[cfg_attr(
+    bootstrap,
+    diagnostic::on_unknown(
+        label = "`{Unresolved}` is not a pre-interned symbol",
+        note = "consider adding `{Unresolved}` to the `symbols!` invocation in compiler/rustc_span/src/symbol.rs"
+    )
+)]
+#[cfg_attr(
+    not(bootstrap),
+    diagnostic::on_unknown(
+        label = "`{unresolved}` is not a pre-interned symbol",
+        note = "consider adding `{unresolved}` to the `symbols!` invocation in compiler/rustc_span/src/symbol.rs"
+    )
 )]
 pub mod sym {
     use super::Symbol;

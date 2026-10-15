@@ -1712,6 +1712,15 @@ pub(crate) struct GenericParamsWithoutAngleBrackets {
     pub sugg: GenericParamsWithoutAngleBracketsSugg,
 }
 
+#[derive(Diagnostic)]
+#[diag("use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments")]
+pub(crate) struct MissingTurbofishForLifetime {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion("add `::`", style = "verbose", code = "::", applicability = "machine-applicable")]
+    pub suggest_turbofish: Span,
+}
+
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(
     "surround the type parameters with angle brackets",

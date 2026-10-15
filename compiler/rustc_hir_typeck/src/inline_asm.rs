@@ -6,7 +6,6 @@ use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_lint_defs::builtin::ASM_SUB_REGISTER;
-use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::{
     self, Article, FloatTy, IntTy, Ty, TyCtxt, TypeVisitableExt, UintTy, Unnormalized,
 };
@@ -584,7 +583,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                     }
                 }
                 hir::InlineAsmOperand::Const { anon_const } => {
-                    let ty = self.expr_ty(self.tcx().hir_body(anon_const.body).value);
+                    let ty = self.expr_ty(&self.tcx().hir_body(anon_const.body).value);
                     match ty.kind() {
                         ty::Error(_) => {}
                         _ if ty.is_integral() => {}

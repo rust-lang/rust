@@ -2,9 +2,10 @@
 
 use std::{fmt::Write, iter, mem};
 
+use arrayvec::ArrayVec;
 use base_db::Crate;
 use hir_def::{
-    DefWithBodyId, EnumVariantId, ExpressionStoreOwnerId, GenericParamId, HasModule,
+    AdtId, DefWithBodyId, EnumVariantId, ExpressionStoreOwnerId, GenericParamId, HasModule,
     ItemContainerId, LocalFieldId, Lookup, TraitId,
     expr_store::{Body, ExpressionStore, HygieneId, body::Param, path::Path},
     hir::{
@@ -966,23 +967,62 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                 self.lower_expr_to_place(id, place, current)
             }
             Expr::Cast { expr, type_ref: _ } => {
-                let Some((it, current)) = self.lower_expr_to_some_operand(*expr, current)? else {
-                    return Ok(None);
-                };
                 // Since we don't have THIR, this is the "zipped" version of [rustc's HIR lowering](https://github.com/rust-lang/rust/blob/e71f9529121ca8f687e4b725e3c9adc3f1ebab4d/compiler/rustc_mir_build/src/thir/cx/expr.rs#L165-L178)
                 // and [THIR lowering as RValue](https://github.com/rust-lang/rust/blob/a4601859ae3875732797873612d424976d9e3dd0/compiler/rustc_mir_build/src/build/expr/as_rvalue.rs#L193-L313)
-                let rvalue = if self.infer.coercion_casts.contains(expr) {
-                    Rvalue::Use(it)
+                let (rvalue, current) = if self.infer.coercion_casts.contains(expr) {
+                    let Some((it, current)) = self.lower_expr_to_some_operand(*expr, current)?
+                    else {
+                        return Ok(None);
+                    };
+                    (Rvalue::Use(it), current)
                 } else {
                     let source_ty = self.infer.expr_ty(*expr);
                     let target_ty = self.infer.expr_ty(expr_id);
+                    let (it, source_ty, current) =
+                        if let Some(VariantId::EnumVariantId(variant_id)) =
+                            self.infer.variant_resolution_for_expr(*expr)
+                        {
+                            self.lower_variant_discriminant(current, variant_id)?
+                        } else if let TyKind::Adt(adt, _) = source_ty.kind()
+                            && adt.is_enum()
+                        {
+                            let Some((enum_place, current)) =
+                                self.lower_expr_as_place(current, *expr, true)?
+                            else {
+                                return Ok(None);
+                            };
+                            let discr_ty = Ty::new_int(self.interner(), rustc_type_ir::IntTy::I128);
+                            let discr_place: Place<'db> =
+                                self.temp(discr_ty, current, expr_id.into())?.into();
+
+                            self.push_assignment(
+                                current,
+                                discr_place,
+                                Rvalue::Discriminant(enum_place.store()),
+                                expr_id.into(),
+                            );
+                            (
+                                Operand {
+                                    kind: OperandKind::Copy(discr_place.store()),
+                                    span: Some(expr_id.into()),
+                                },
+                                discr_ty,
+                                current,
+                            )
+                        } else {
+                            let Some((it, current)) =
+                                self.lower_expr_to_some_operand(*expr, current)?
+                            else {
+                                return Ok(None);
+                            };
+                            (it, source_ty, current)
+                        };
                     let cast_kind = if source_ty.as_reference().is_some() {
                         CastKind::PointerCoercion(PointerCast::ArrayToPointer)
                     } else {
                         cast_kind(self.db, source_ty, target_ty)?
                     };
-
-                    Rvalue::Cast(cast_kind, it, target_ty.store())
+                    (Rvalue::Cast(cast_kind, it, target_ty.store()), current)
                 };
                 self.push_assignment(current, place, rvalue, expr_id.into());
                 Ok(Some(current))
@@ -1519,6 +1559,17 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
         Ok(prev_block)
     }
 
+    fn lower_variant_discriminant(
+        &mut self,
+        current: BasicBlockId,
+        variant_id: EnumVariantId,
+    ) -> Result<'db, (Operand, Ty<'db>, BasicBlockId)> {
+        let discriminant = self.const_eval_discriminant(variant_id)?;
+        let discr_ty = Ty::new_int(self.interner(), rustc_type_ir::IntTy::I128);
+        let operand = Operand::from_bytes(Box::new(discriminant.to_le_bytes()), discr_ty);
+        Ok((operand, discr_ty, current))
+    }
+
     fn lower_call_and_args(
         &mut self,
         func: Operand,
@@ -2012,20 +2063,31 @@ fn convert_closure_capture_projections(
     _db: &dyn HirDatabase,
     place: &HirPlace,
 ) -> impl Iterator<Item = PlaceElem> {
-    place.projections.iter().enumerate().map(|(i, proj)| match proj.kind {
-        HirProjectionKind::Deref => ProjectionElem::Deref,
-        HirProjectionKind::Field { field_idx, variant_idx: _ } => {
-            let ty = place.ty_before_projection(i);
-            match ty.kind() {
-                TyKind::Tuple(_) => ProjectionElem::Field(FieldIndex(field_idx)),
-                TyKind::Adt(_, _) => {
-                    let local_field_id = LocalFieldId::from_raw(RawIdx::from_u32(field_idx));
-                    ProjectionElem::Field(local_field_id.into())
+    place.projections.iter().enumerate().flat_map(|(i, proj)| {
+        let mut projections = ArrayVec::<PlaceElem, 2>::new();
+        match proj.kind {
+            HirProjectionKind::Deref => projections.push(ProjectionElem::Deref),
+            HirProjectionKind::Field { field_idx, variant_idx } => {
+                let ty = place.ty_before_projection(i);
+                match ty.kind() {
+                    TyKind::Tuple(_) => {
+                        projections.push(ProjectionElem::Field(FieldIndex(field_idx)))
+                    }
+                    TyKind::Adt(adt_def, _) => {
+                        if let AdtId::EnumId(enum_id) = adt_def.def_id() {
+                            let variant =
+                                enum_id.enum_variants(_db).variants[variant_idx as usize].0.into();
+                            projections.push(ProjectionElem::Downcast(variant));
+                        }
+                        let local_field_id = LocalFieldId::from_raw(RawIdx::from_u32(field_idx));
+                        projections.push(ProjectionElem::Field(local_field_id.into()));
+                    }
+                    _ => panic!("unexpected type"),
                 }
-                _ => panic!("unexpected type"),
             }
+            _ => panic!("unexpected projection"),
         }
-        _ => panic!("unexpected projection"),
+        projections.into_iter()
     })
 }
 

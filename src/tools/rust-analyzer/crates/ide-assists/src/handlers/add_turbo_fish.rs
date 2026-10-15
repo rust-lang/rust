@@ -78,7 +78,13 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> 
         Definition::Function(it) => it,
         _ => return None,
     };
-    let generics = hir::GenericDef::Function(fun).params(ctx.sema.db);
+    let generics = hir::GenericDef::Function(fun)
+        .params(ctx.sema.db)
+        .into_iter()
+        .filter(|param| {
+            matches!(param, hir::GenericParam::TypeParam(_) | hir::GenericParam::ConstParam(_))
+        })
+        .collect::<Vec<_>>();
     if generics.is_empty() {
         cov_mark::hit!(add_turbo_fish_non_generic);
         return None;
@@ -128,13 +134,6 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> 
         }
     }
 
-    let number_of_arguments = generics
-        .iter()
-        .filter(|param| {
-            matches!(param, hir::GenericParam::TypeParam(_) | hir::GenericParam::ConstParam(_))
-        })
-        .count();
-
     acc.add(
         AssistId::refactor_rewrite("add_turbo_fish"),
         "Add `::<>`",
@@ -146,7 +145,7 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> 
                 Either::Right(it) => builder.make_editor(it.syntax()),
             };
 
-            let fish_head = get_fish_head(editor.make(), number_of_arguments);
+            let fish_head = get_fish_head(editor.make(), generics.len());
 
             match turbofish_target {
                 Either::Left(path_segment) => {
@@ -316,11 +315,20 @@ fn main() {
 
     #[test]
     fn add_turbo_fish_non_generic() {
-        cov_mark::check!(add_turbo_fish_non_generic);
+        cov_mark::check_count!(add_turbo_fish_non_generic, 2);
         check_assist_not_applicable(
             add_turbo_fish,
             r#"
 fn make() -> () {}
+fn main() {
+    make$0();
+}
+"#,
+        );
+        check_assist_not_applicable(
+            add_turbo_fish,
+            r#"
+fn make<'a>() {}
 fn main() {
     make$0();
 }

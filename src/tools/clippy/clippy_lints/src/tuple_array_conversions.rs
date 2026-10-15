@@ -13,7 +13,6 @@ use rustc_data_structures::packed::Pu128;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{Arm, Expr, ExprKind, HirId, ImplItemKind, ItemKind, Node, PatKind, Stmt, TraitFn, TraitItemKind};
 use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
-use rustc_middle::ty::consts::ConstExt as _;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::sym;
 
@@ -286,7 +285,7 @@ fn find_binding_use_scope<'tcx>(
                     Some((_, Node::ImplItem(i))) if let ImplItemKind::Fn(_, body) = i.kind => body,
                     _ => break None,
                 };
-                break Some(BindingUseRange::Param(tcx.hir_body(body).value));
+                break Some(BindingUseRange::Param(&tcx.hir_body(body).value));
             },
             Some((_, Node::LetStmt(_)))
                 if let Some((id, Node::Stmt(_))) = iter.next()

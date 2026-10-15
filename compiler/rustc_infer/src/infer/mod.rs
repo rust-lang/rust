@@ -891,7 +891,7 @@ impl<'tcx> InferCtxt<'tcx> {
             if a_is_expected {
                 Ok(self.at(cause, param_env).sub(DefineOpaqueTypes::Yes, a, b))
             } else {
-                Ok(self.at(cause, param_env).sup(DefineOpaqueTypes::Yes, b, a))
+                Ok(self.sup_raw(cause, param_env, DefineOpaqueTypes::Yes, b, a))
             }
         })
     }
@@ -1567,7 +1567,7 @@ impl<'tcx> InferCtxt<'tcx> {
             args: Vec<ty::GenericArg<'tcx>>,
         }
 
-        impl<'tcx> BoundVarReplacerDelegate<'tcx> for ToFreshVars<'tcx> {
+        impl<'tcx> BoundVarReplacerDelegate<TyCtxt<'tcx>> for ToFreshVars<'tcx> {
             fn replace_region(&mut self, br: ty::BoundRegion<'tcx>) -> ty::Region<'tcx> {
                 self.args[br.var.index()].expect_region()
             }

@@ -28,7 +28,6 @@ pub struct Foo(#[m$0] i32);
             at cold
             at deny(…)
             at deprecated
-            at derive                                  macro derive
             at derive(…)
             at diagnostic::do_not_recommend
             at diagnostic::on_unimplemented
@@ -92,7 +91,6 @@ pub struct Foo(#[$0] i32);
             at cold
             at deny(…)
             at deprecated
-            at derive                                  macro derive
             at derive(…)
             at diagnostic::do_not_recommend
             at diagnostic::on_unimplemented
@@ -140,6 +138,7 @@ fn proc_macros() {
     check(
         r#"
 //- proc_macros: identity
+//- minicore: derive
 #[$0]
 struct Foo;
 "#,
@@ -150,6 +149,7 @@ struct Foo;
             at deny(…)
             at deprecated
             at derive(…)
+            at derive_const macro derive_const
             at doc = "…"
             at doc = include_str!("…")
             at doc(alias = "…")
@@ -162,6 +162,7 @@ struct Foo;
             at repr(…)
             at unsafe(…)
             at warn(…)
+            md core::
             md proc_macros::
             kw crate::
             kw self::
@@ -448,7 +449,6 @@ struct Foo;
             at cfg_attr(…)
             at deny(…)
             at deprecated
-            at derive             macro derive
             at derive(…)
             at derive_const macro derive_const
             at doc = "…"
@@ -924,6 +924,12 @@ struct Foo;
 }
 
 #[test]
+fn attr_before_arg() {
+    check_edit("allow", r#"#[$0()] fn main() {}"#, r#"#[allow()] fn main() {}"#);
+    check_edit("cfg_attr", r#"#[c$0(test)] fn main() {}"#, r#"#[cfg_attr(test)] fn main() {}"#);
+}
+
+#[test]
 fn issue_17479() {
     check(
         r#"
@@ -959,6 +965,7 @@ mod cfg {
                 ba all
                 ba any
                 ba dbg
+                ba false
                 ba not
                 ba opt_level
                 ba test
@@ -974,6 +981,7 @@ mod cfg {
                 ba all
                 ba any
                 ba dbg
+                ba false
                 ba not
                 ba opt_level
                 ba test
@@ -993,6 +1001,7 @@ mod cfg {
                 ba all
                 ba any
                 ba dbg
+                ba false
                 ba not
                 ba opt_level
                 ba test
@@ -1008,6 +1017,7 @@ mod cfg {
                 ba all
                 ba any
                 ba dbg
+                ba false
                 ba not
                 ba opt_level
                 ba test
@@ -1023,6 +1033,7 @@ mod cfg {
                 ba all
                 ba any
                 ba dbg
+                ba false
                 ba not
                 ba opt_level
                 ba test
@@ -1038,6 +1049,7 @@ mod cfg {
                 ba all
                 ba any
                 ba dbg
+                ba false
                 ba not
                 ba opt_level
                 ba test
@@ -1058,6 +1070,7 @@ fn f() {}
             expect![[r#"
                 ba all
                 ba any
+                ba false
                 ba feature
                 ba not
                 ba true
@@ -1088,7 +1101,7 @@ fn f() {}
 #[cfg($0)]
 "#,
             r#"
-#[cfg(opt_level = $0)]
+#[cfg(opt_level = "$1")]
 "#,
         );
     }
@@ -1109,6 +1122,16 @@ fn f() {}
                 ba little
             "#]],
         );
+        check(
+            r#"#[cfg(target_endian = "$0""#,
+            expect![[r#"
+                ba big
+                ba little
+            "#]],
+        );
+
+        check_edit("big", r#"#[cfg(target_endian = b$0"#, r#"#[cfg(target_endian = "big""#);
+        check_edit("big", r#"#[cfg(target_endian = "b$0""#, r#"#[cfg(target_endian = "big""#);
     }
 
     #[test]

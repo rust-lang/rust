@@ -1,5 +1,8 @@
 //! regression test for <https://github.com/rust-lang/rust/issues/23477>
 //@ build-pass
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@ [next] compile-flags: -Znext-solver
 //@ compile-flags: -g
 
 pub struct Dst {

@@ -69,9 +69,6 @@ pub trait FileExt {
     ///
     /// # Errors
     ///
-    /// If this function encounters an error of the kind
-    /// [`io::ErrorKind::Interrupted`] then the error is ignored and the operation
-    /// will continue.
     ///
     /// If this function encounters an "end of file" before completely filling
     /// the buffer, it returns an error of the kind [`io::ErrorKind::UnexpectedEof`].
@@ -113,7 +110,6 @@ pub trait FileExt {
                     buf = &mut buf[n..];
                     offset += n as u64;
                 }
-                Err(ref e) if e.is_interrupted() => {}
                 Err(e) => return Err(e),
             }
         }
@@ -203,7 +199,6 @@ pub trait FileExt {
             let prev_written = buf.written();
             match self.seek_read_buf(buf.reborrow(), offset) {
                 Ok(()) => {}
-                Err(e) if e.is_interrupted() => {}
                 Err(e) => return Err(e),
             }
             let n = buf.written() - prev_written;
@@ -264,8 +259,7 @@ pub trait FileExt {
     ///
     /// # Errors
     ///
-    /// This function will return the first error of
-    /// non-[`io::ErrorKind::Interrupted`] kind that [`seek_write`] returns.
+    /// This function will return the first error that [`seek_write`] returns.
     ///
     /// [`seek_write`]: FileExt::seek_write
     ///
@@ -298,7 +292,6 @@ pub trait FileExt {
                     buf = &buf[n..];
                     offset += n as u64
                 }
-                Err(ref e) if e.is_interrupted() => {}
                 Err(e) => return Err(e),
             }
         }

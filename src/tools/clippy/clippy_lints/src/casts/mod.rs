@@ -953,7 +953,7 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
         ptr_cast_constness::check_null_ptr_cast_method(cx, expr);
     }
 
-    fn check_body(&mut self, cx: &LateContext<'tcx>, body: &rustc_hir::Body<'tcx>) {
+    fn check_body(&mut self, cx: &LateContext<'tcx>, body: &'tcx rustc_hir::Body<'tcx>) {
         needless_type_cast::check(cx, body);
     }
 }

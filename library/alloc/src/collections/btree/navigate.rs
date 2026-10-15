@@ -77,11 +77,8 @@ impl<BorrowType: marker::BorrowType, K, V> LeafRange<BorrowType, K, V> {
         if self.is_empty() {
             None
         } else {
-            super::mem::replace(self.front.as_mut().unwrap(), |front| {
-                let kv = front.next_kv().ok().unwrap();
-                let result = f(&kv);
-                (kv.next_leaf_edge(), Some(result))
-            })
+            // SAFETY: The range is nonempty, so there is an unvisited KV before the back cursor.
+            Some(unsafe { self.front.as_mut().unwrap().perform_next_unchecked(f) })
         }
     }
 
@@ -93,11 +90,8 @@ impl<BorrowType: marker::BorrowType, K, V> LeafRange<BorrowType, K, V> {
         if self.is_empty() {
             None
         } else {
-            super::mem::replace(self.back.as_mut().unwrap(), |back| {
-                let kv = back.next_back_kv().ok().unwrap();
-                let result = f(&kv);
-                (kv.next_back_leaf_edge(), Some(result))
-            })
+            // SAFETY: The range is nonempty, so there is an unvisited KV before the front cursor.
+            Some(unsafe { self.back.as_mut().unwrap().perform_next_back_unchecked(f) })
         }
     }
 }
@@ -548,10 +542,8 @@ impl<'a, K, V> Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Ed
     /// # Safety
     /// There must be another KV in the direction travelled.
     unsafe fn next_unchecked(&mut self) -> (&'a K, &'a V) {
-        super::mem::replace(self, |leaf_edge| {
-            let kv = leaf_edge.next_kv().ok().unwrap();
-            (kv.next_leaf_edge(), kv.into_kv())
-        })
+        // SAFETY: guaranteed by caller
+        unsafe { self.perform_next_unchecked(|node| node.into_kv()) }
     }
 
     /// Moves the leaf edge handle to the previous leaf edge and returns references to the
@@ -560,10 +552,8 @@ impl<'a, K, V> Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Ed
     /// # Safety
     /// There must be another KV in the direction travelled.
     unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a V) {
-        super::mem::replace(self, |leaf_edge| {
-            let kv = leaf_edge.next_back_kv().ok().unwrap();
-            (kv.next_back_leaf_edge(), kv.into_kv())
-        })
+        // SAFETY: guaranteed by caller
+        unsafe { self.perform_next_back_unchecked(|node| node.into_kv()) }
     }
 }
 
@@ -572,30 +562,85 @@ impl<'a, K, V> Handle<NodeRef<marker::ValMut<'a>, K, V, marker::Leaf>, marker::E
     /// key and value in between.
     ///
     /// # Safety
-    /// There must be another KV in the direction travelled.
+    /// - There must be another KV in the direction travelled.
+    /// - The KV returned by this call must not be aliased by any other
+    ///   live mutable reference
     unsafe fn next_unchecked(&mut self) -> (&'a K, &'a mut V) {
-        let kv = super::mem::replace(self, |leaf_edge| {
-            let kv = leaf_edge.next_kv().ok().unwrap();
-            // ignore-tidy-undocumented-unsafe
-            (unsafe { ptr::read(&kv) }.next_leaf_edge(), kv)
-        });
-        // Doing this last is faster, according to benchmarks.
-        kv.into_kv_valmut()
+        // SAFETY: guaranteed by caller
+        unsafe { self.perform_next_unchecked(|kv| ptr::read(kv).into_kv_valmut()) }
     }
 
     /// Moves the leaf edge handle to the previous leaf and returns references to the
     /// key and value in between.
     ///
     /// # Safety
-    /// There must be another KV in the direction travelled.
+    /// - There must be another KV in the direction travelled.
+    /// - The KV returned by this call must not be aliased by any other
+    ///   live mutable reference
     unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a mut V) {
-        let kv = super::mem::replace(self, |leaf_edge| {
-            let kv = leaf_edge.next_back_kv().ok().unwrap();
-            // ignore-tidy-undocumented-unsafe
-            (unsafe { ptr::read(&kv) }.next_back_leaf_edge(), kv)
-        });
-        // Doing this last is faster, according to benchmarks.
-        kv.into_kv_valmut()
+        // SAFETY: guaranteed by caller
+        unsafe { self.perform_next_back_unchecked(|kv| ptr::read(kv).into_kv_valmut()) }
+    }
+}
+
+impl<BorrowType: marker::BorrowType, K, V>
+    Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>
+{
+    /// # Safety
+    /// - There must be another KV in the direction travelled.
+    /// - The KV produced by this call must not be aliased by any other
+    ///   live mutable reference
+    unsafe fn perform_next_unchecked<F, R>(&mut self, f: F) -> R
+    where
+        F: Fn(&Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::KV>) -> R,
+    {
+        let idx = self.idx();
+        let len = self.reborrow().into_node().len();
+        // The fast path when the next KV is still in the same node
+        if idx < len {
+            // SAFETY: `self` will be immediately replaced below
+            let node = unsafe { ptr::read(self) }.into_node();
+            // SAFETY: `idx + 1 <= node.len()`. The copy of `node` is only used
+            // to form the next edge; `node` is consumed below to access the current KV.
+            *self = unsafe { Handle::new_edge(ptr::read(&node), idx + 1) };
+            // SAFETY: `idx < node.len()`.
+            f(&unsafe { Handle::new_kv(node, idx) }.forget_node_type())
+        } else {
+            let kv = super::mem::replace(self, |leaf_edge| {
+                let kv = leaf_edge.next_kv().ok().unwrap();
+                // SAFETY: The copy of `kv` is only used to form the next edge
+                (unsafe { ptr::read(&kv) }.next_leaf_edge(), kv)
+            });
+            f(&kv)
+        }
+    }
+
+    /// # Safety
+    /// - There must be another KV in the direction travelled.
+    /// - The KV produced by this call must not be aliased by any other
+    ///   live mutable reference
+    unsafe fn perform_next_back_unchecked<F, R>(&mut self, f: F) -> R
+    where
+        F: Fn(&Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::KV>) -> R,
+    {
+        let idx = self.idx();
+        // The fast path when the next KV is still in the same node
+        if idx > 0 {
+            // SAFETY: `self` will be replaced below
+            let node = unsafe { ptr::read(self) }.into_node();
+            // SAFETY: `0 <= idx - 1 < node.len()`. The copy of `node` is only used
+            // to form the next edge; `node` is consumed below to access the current KV.
+            *self = unsafe { Handle::new_edge(ptr::read(&node), idx - 1) };
+            // SAFETY: `0 <= idx - 1 < node.len()`
+            f(&unsafe { Handle::new_kv(node, idx - 1) }.forget_node_type())
+        } else {
+            let kv = super::mem::replace(self, |leaf_edge| {
+                let kv = leaf_edge.next_back_kv().ok().unwrap();
+                // SAFETY: The copy of `kv` is only used to form the next edge
+                (unsafe { ptr::read(&kv) }.next_back_leaf_edge(), kv)
+            });
+            f(&kv)
+        }
     }
 }
 
@@ -803,6 +848,73 @@ impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Lea
                     node = edge.descend();
                     bound = new_bound;
                 }
+            }
+        }
+    }
+}
+
+impl<K, V> NodeRef<marker::Dying, K, V, marker::LeafOrInternal> {
+    /// # Safety
+    /// - `self` must be the root.
+    /// - The tree shouldn't be accessed anymore.
+    pub(super) unsafe fn drop_tree<A: AllocatorClone>(self, alloc: A) {
+        struct DropGuard<K, V, A: AllocatorClone> {
+            node: Option<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>>,
+            alloc: A,
+        }
+
+        impl<K, V, A: AllocatorClone> Drop for DropGuard<K, V, A> {
+            fn drop(&mut self) {
+                if let Some(cur) = self.node.take() {
+                    let mut next =
+                        // SAFETY: When unwinding reached this guard, all kvs in cur
+                        // have already been dropped in `drop_kvs`, while the node itself has not
+                        // yet been deallocated.
+                        unsafe { deallocate_and_next_postorder_node(cur, self.alloc.clone()) };
+
+                    while let Some(mut node) = next {
+                        // SAFETY: Every node only calls the function once
+                        unsafe { node.drop_kvs() };
+                        next =
+                            // SAFETY: `drop_kvs()` above only dropped kvs and the node is still accessible,
+                            // and also each node is deallocated exactly once.
+                            unsafe { deallocate_and_next_postorder_node(node, self.alloc.clone()) }
+                    }
+                }
+            }
+        }
+        /// Deallocates `node` and returns the next node in postorder traversal
+        ///
+        /// # Safety
+        ///
+        /// The node must be initialized, all kvs in node must have already
+        /// been dropped or moved out and its children must have already been deallocated.
+        /// Also the node can't be touched anymore.
+        unsafe fn deallocate_and_next_postorder_node<K, V, A: AllocatorClone>(
+            node: NodeRef<marker::Dying, K, V, marker::LeafOrInternal>,
+            alloc: A,
+        ) -> Option<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>> {
+            // SAFETY: guaranteed by the caller
+            let parent = unsafe { node.deallocate_and_ascend(alloc) }?;
+
+            Some(match parent.right_kv() {
+                Ok(kv) => kv.right_edge().descend().first_leaf_edge().into_node().forget_type(),
+                Err(last_edge) => last_edge.into_node().forget_type(),
+            })
+        }
+
+        let node = self.first_leaf_edge().into_node().forget_type();
+        let mut guard = DropGuard { node: Some(node), alloc };
+        loop {
+            // SAFETY: all kvs of each node are dropped once
+            unsafe { guard.node.as_mut().unwrap().drop_kvs() };
+            // SAFETY: Nodes are deallocated in postorder, and each node is deallocated exactly once.
+            if let Some(next) = unsafe {
+                deallocate_and_next_postorder_node(guard.node.take().unwrap(), guard.alloc.clone())
+            } {
+                guard.node = Some(next);
+            } else {
+                return;
             }
         }
     }

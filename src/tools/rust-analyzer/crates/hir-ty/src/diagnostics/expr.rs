@@ -343,7 +343,10 @@ impl<'db> ExprValidator<'db> {
         pat: PatId,
         initializer: Option<ExprId>,
     ) -> Option<BodyValidationDiagnostic<'db>> {
-        if self.infer.pat_has_type_mismatch(pat) {
+        // Bail out if any subpattern has a type mismatch: the pattern isn't well-formed then, and
+        // deconstructing it can produce constructors with mismatching arities, which the
+        // usefulness analysis doesn't expect. `check_match` does the same for its arms.
+        if !types_of_subpatterns_do_match(pat, self.body, self.infer) {
             return None;
         }
         let initializer = initializer?;

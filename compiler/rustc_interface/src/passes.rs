@@ -266,6 +266,10 @@ fn configure_and_expand(
         )
     });
 
+    if features.rustc_attrs() {
+        rustc_ast_passes::show_spans::check_crate(sess, &krate);
+    }
+
     let crate_types = tcx.crate_types();
     let is_executable_crate = crate_types.contains(&CrateType::Executable);
     let is_proc_macro_crate = crate_types.contains(&CrateType::ProcMacro);
