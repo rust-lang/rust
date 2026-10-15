@@ -17,7 +17,7 @@ use rustc_hash::FxHashMap;
 use span::{Span, SpanAnchor, SyntaxContext, TextRange, TextSize};
 
 use crate::{
-    DelimSpan, Delimiter, DelimiterKind, Ident, IdentIsRaw, Leaf, LitKind, Literal, Punct, Spacing,
+    DelimSpan, Delimiter, DelimiterKind, Ident, IdentKind, Leaf, LitKind, Literal, Punct, Spacing,
     Subtree, SubtreeView, TokenTree, TokenTreesView, TtIter,
 };
 
@@ -354,7 +354,7 @@ unsafe fn encode<'a>(
                     ptr = encode_span(ptr, &span, span_parts_map, 0b00, false);
                 }
             }
-            TokenTree::Leaf(Leaf::Ident(Ident { sym, span, is_raw })) => {
+            TokenTree::Leaf(Leaf::Ident(Ident { sym, span, kind: is_raw })) => {
                 ptr = encode_symbol(ptr, &sym, is_raw as u32, symbols_map);
                 ptr = encode_span(ptr, &span, span_parts_map, 0b10, false);
             }
@@ -851,9 +851,13 @@ unsafe fn decode<'a>(
             let is_raw = symbol_first_byte & 0b1;
             let symbol;
             (ptr, symbol) = decode_symbol(ptr, symbol_first_byte, symbols);
-            let is_raw = transmute::<u8, IdentIsRaw>(is_raw);
+            let is_raw = transmute::<u8, IdentKind>(is_raw);
 
-            return (ptr, TokenTree::Leaf(Leaf::Ident(Ident { sym: symbol, span, is_raw })), 0);
+            return (
+                ptr,
+                TokenTree::Leaf(Leaf::Ident(Ident { sym: symbol, span, kind: is_raw })),
+                0,
+            );
         }
 
         let mut children_byte_len = 0;

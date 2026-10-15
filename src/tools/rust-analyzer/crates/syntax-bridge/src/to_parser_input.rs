@@ -64,7 +64,7 @@ pub fn to_parser_input(
                         match ident.sym.as_str() {
                             "_" => res.push(T![_], edition),
                             i if i.starts_with('\'') => res.push(LIFETIME_IDENT, edition),
-                            _ if ident.is_raw.yes() => res.push(IDENT, edition),
+                            _ if ident.kind.yes() => res.push(IDENT, edition),
                             text => match SyntaxKind::from_keyword(text, edition) {
                                 Some(kind) => res.push(kind, edition),
                                 None => {

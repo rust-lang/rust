@@ -560,12 +560,12 @@ impl<'a, T: SpanTransformer<Span = span::Span>> Writer<'a, '_, T, tt::iter::TtIt
                         let id = self.token_id_of(ident.span);
                         let text = if self.version >= EXTENDED_LEAF_DATA {
                             self.intern_owned(ident.sym.as_str().to_owned())
-                        } else if ident.is_raw.yes() {
+                        } else if ident.kind.yes() {
                             self.intern_owned(format!("r#{}", ident.sym.as_str(),))
                         } else {
                             self.intern_owned(ident.sym.as_str().to_owned())
                         };
-                        self.ident.push(IdentRepr { id, text, is_raw: ident.is_raw.yes() });
+                        self.ident.push(IdentRepr { id, text, is_raw: ident.kind.yes() });
                         (idx << 2) | 0b11
                     }
                 },
@@ -829,17 +829,21 @@ impl<T: SpanTransformer<Span = span::Span>> Reader<'_, T> {
                         let text = self.text[repr.text as usize].as_str();
                         let (is_raw, text) = if self.version >= EXTENDED_LEAF_DATA {
                             (
-                                if repr.is_raw { tt::IdentIsRaw::Yes } else { tt::IdentIsRaw::No },
+                                if repr.is_raw {
+                                    tt::IdentKind::Raw
+                                } else {
+                                    tt::IdentKind::Normal
+                                },
                                 text,
                             )
                         } else {
-                            tt::IdentIsRaw::split_from_symbol(text)
+                            tt::IdentKind::split_from_symbol(text)
                         };
                         s.push(
                             tt::Leaf::Ident(tt::Ident {
                                 sym: Symbol::intern(text),
                                 span: read_span(repr.id),
-                                is_raw,
+                                kind: is_raw,
                             })
                             .into(),
                         )
@@ -935,21 +939,21 @@ impl<T: SpanTransformer> Reader<'_, T> {
                             let (is_raw, text) = if self.version >= EXTENDED_LEAF_DATA {
                                 (
                                     if repr.is_raw {
-                                        tt::IdentIsRaw::Yes
+                                        tt::IdentKind::Raw
                                     } else {
-                                        tt::IdentIsRaw::No
+                                        tt::IdentKind::Normal
                                     },
                                     text,
                                 )
                             } else {
-                                tt::IdentIsRaw::split_from_symbol(text)
+                                tt::IdentKind::split_from_symbol(text)
                             };
                             proc_macro_srv::TokenTree::Ident(proc_macro_srv::Ident {
                                 sym: Symbol::intern(text),
                                 span: read_span(repr.id),
                                 kind: match is_raw {
-                                    tt::IdentIsRaw::Yes => proc_macro_srv::IdentKind::Raw,
-                                    tt::IdentIsRaw::No => proc_macro_srv::IdentKind::Normal,
+                                    tt::IdentKind::Raw => proc_macro_srv::IdentKind::Raw,
+                                    tt::IdentKind::Normal => proc_macro_srv::IdentKind::Normal,
                                 },
                             })
                         }
