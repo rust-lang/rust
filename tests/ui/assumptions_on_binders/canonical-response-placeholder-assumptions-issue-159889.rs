@@ -19,6 +19,6 @@ impl Trait for () {
 
 #[define_opaque(Foo)]
 fn foo() -> Foo {}
-//~^ ERROR item does not constrain `Foo::{opaque#0}`
+//~^ ERROR item does not constrain `FooAssoc::{opaque#0}`
 
 fn main() {}

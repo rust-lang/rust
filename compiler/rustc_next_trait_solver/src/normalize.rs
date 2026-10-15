@@ -120,6 +120,7 @@ where
             let Some(result) =
                 self.normalize_alias_term(alias_ty.into(), HasEscapingBoundVars::Yes)?
             else {
+                tracing::debug!("NOSOL: {ty:?}");
                 return Ok(ty);
             };
 

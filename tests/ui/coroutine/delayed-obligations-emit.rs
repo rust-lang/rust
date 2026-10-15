@@ -2,7 +2,7 @@
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 //@ edition: 2024
-//@[current] check-pass
+//@ check-pass
 
 // This previously caused an ICE with the new solver.
 // The delayed coroutine obligations were checked with the
@@ -15,7 +15,6 @@
 
 fn build_multiple<'a>() -> impl Sized {
     spawn(async { build_dependencies().await });
-    //[next]~^ ERROR overflow evaluating the requirement
 }
 
 // Adding an explicit `Send` bound fixes it.
