@@ -175,7 +175,7 @@ impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
 
     fn encode_syntax_context(&mut self, syntax_context: SyntaxContext) {
         self.hygiene_ctxt.borrow_mut().enqueue_syntax_context_for_encoding(syntax_context);
-        self.emit_u32(self.syntax_context_remapping.map_id(syntax_context).into());
+        self.emit_u32(self.syntax_context_remapping.map_id(syntax_context).as_u32());
     }
 
     fn encode_expn_id(&mut self, expn_id: ExpnId) {
@@ -2052,16 +2052,16 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         HygieneEncodeContext::encode(
             &Rc::clone(&self.hygiene_ctxt),
             &mut (&mut *self, &mut syntax_contexts, &mut expn_data_table, &mut expn_hash_table),
-            |(this, syntax_contexts, _, _), context, ctxt_data| {
-                let context = this.syntax_context_remapping.map_id(context);
-                syntax_contexts.set_some(context.into(), this.lazy(ctxt_data));
+            |(this, syntax_contexts, _, _), ctxt, ctxt_data| {
+                let context = this.syntax_context_remapping.map_id(ctxt);
+                syntax_contexts.set_some(context.as_u32(), this.lazy(ctxt_data));
             },
             |(this, _, expn_data_table, expn_hash_table), expn_id, expn_data, hash| {
                 if let Some(expn_id) = expn_id.as_local() {
-                    let expn_idx = this.local_expn_id_remapping.map_id(expn_id).as_raw();
+                    let expn_index = this.local_expn_id_remapping.map_id(expn_id).as_raw();
 
-                    expn_data_table.set_some(expn_idx, this.lazy(expn_data.expect("local expn")));
-                    expn_hash_table.set_some(expn_idx, this.lazy(hash));
+                    expn_data_table.set_some(expn_index, this.lazy(expn_data.expect("local expn")));
+                    expn_hash_table.set_some(expn_index, this.lazy(hash));
                 }
             },
         );
@@ -2730,8 +2730,8 @@ fn with_encode_metadata_header(
     let required_source_files = Some(FxIndexSet::default());
     drop(source_map_files);
 
-    let s_ctxt_remapping = SyntaxContextRemapper::with(|r| r.remapping_results());
-    let l_expn_remapping = LocalExpnIdRemapper::with(|r| r.remapping_results());
+    let syntax_context_remapping = SyntaxContextRemapper::with(|r| r.remapping_results());
+    let local_expn_id_remapping = LocalExpnIdRemapper::with(|r| r.remapping_results());
 
     let mut ecx = EncodeContext {
         opaque: encoder,
@@ -2749,8 +2749,8 @@ fn with_encode_metadata_header(
         is_proc_macro: tcx.crate_types().contains(&CrateType::ProcMacro),
         hygiene_ctxt: Default::default(),
         symbol_index_table: Default::default(),
-        syntax_context_remapping: s_ctxt_remapping,
-        local_expn_id_remapping: l_expn_remapping,
+        syntax_context_remapping,
+        local_expn_id_remapping,
     };
 
     // Encode the rustc version string in a predictable location.

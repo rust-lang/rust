@@ -283,10 +283,10 @@ impl OnDiskCache {
             HygieneEncodeContext::encode(
                 &Rc::clone(&encoder.hygiene_context),
                 &mut encoder,
-                |encoder, context, ctxt_data| {
+                |encoder, ctxt, ctxt_data| {
                     let pos = AbsoluteBytePos::new(encoder.position());
                     encoder.encode_tagged(TAG_SYNTAX_CONTEXT, ctxt_data);
-                    syntax_contexts.insert(context.into(), pos);
+                    syntax_contexts.insert(ctxt.as_u32(), pos);
                 },
                 |encoder, expn_id, data, hash| {
                     if expn_id.krate == LOCAL_CRATE {
@@ -839,7 +839,7 @@ impl<'tcx> CacheEncoder<'tcx> {
 impl<'tcx> SpanEncoder for CacheEncoder<'tcx> {
     fn encode_syntax_context(&mut self, syntax_context: SyntaxContext) {
         self.hygiene_context.borrow_mut().enqueue_syntax_context_for_encoding(syntax_context);
-        self.emit_u32(syntax_context.into());
+        self.emit_u32(syntax_context.as_u32());
     }
 
     fn encode_expn_id(&mut self, expn_id: ExpnId) {
