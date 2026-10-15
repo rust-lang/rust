@@ -67,7 +67,7 @@ use rustc_middle::ty::{
     self, GenericArgKind, GenericArgsRef, PolyTypeOutlivesClause, Region, RegionVid, Ty, TyCtxt,
     TypeVisitableExt, Upcast,
 };
-use rustc_span::bug;
+use rustc_span::{Span, bug};
 use rustc_type_ir::region_constraint::{self, LeafRegionConstraint};
 use smallvec::smallvec;
 use tracing::{debug, instrument};
@@ -232,6 +232,7 @@ impl<'tcx> InferCtxt<'tcx> {
     pub fn destructure_solver_region_constraints_for_regionck(
         &self,
         outlives_env: &OutlivesEnvironment<'tcx>,
+        span: Span,
     ) {
         // `FreeRegionMap::relation` stores `'sub <= 'sup` edges while
         // `Assumptions::region_outlives` expects `'longer: 'shorter` ones, so the
@@ -250,7 +251,7 @@ impl<'tcx> InferCtxt<'tcx> {
             region_outlives.freeze(),
             ty::UniverseIndex::ROOT,
         );
-        self.destructure_solver_region_constraints(assumptions, self);
+        self.destructure_solver_region_constraints(assumptions, self, span);
     }
 
     pub fn destructure_solver_region_constraints_for_borrowck(
@@ -267,7 +268,7 @@ impl<'tcx> InferCtxt<'tcx> {
             region_outlives.maybe_map(|r| Some(Region::new_var(self.tcx, r))).unwrap(),
             ty::UniverseIndex::ROOT,
         );
-        self.destructure_solver_region_constraints(assumptions, conversion);
+        self.destructure_solver_region_constraints(assumptions, conversion, rustc_span::DUMMY_SP);
     }
 
     #[instrument(level = "debug", skip(self, conversion))]
@@ -275,6 +276,7 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
         assumptions: rustc_type_ir::region_constraint::Assumptions<TyCtxt<'tcx>>,
         mut conversion: impl TypeOutlivesDelegate<'tcx>,
+        span: Span,
     ) {
         assert!(self.tcx.assumptions_on_binders());
         assert!(self.next_trait_solver());
@@ -287,6 +289,12 @@ impl<'tcx> InferCtxt<'tcx> {
             &assumptions,
         );
         debug!(?constraint);
+
+        if constraint.is_false() {
+            self.dcx()
+                .struct_span_err(span, "unable to satisfy constraints because it cannot be proven")
+                .emit();
+        }
 
         // FIXME(-Zassumptions-on-binders): actually implement OR as an  OR
         for c in constraint.and_constraint.0.into_iter().chain(
@@ -332,11 +340,15 @@ impl<'tcx> InferCtxt<'tcx> {
     /// invoked after all type-inference variables have been bound --
     /// right before lexical region resolution.
     #[instrument(level = "debug", skip(self, outlives_env))]
-    pub fn process_registered_region_obligations(&self, outlives_env: &OutlivesEnvironment<'tcx>) {
+    pub fn process_registered_region_obligations(
+        &self,
+        outlives_env: &OutlivesEnvironment<'tcx>,
+        span: Span,
+    ) {
         assert!(!self.in_snapshot(), "cannot process registered region obligations in a snapshot");
 
         if self.tcx.assumptions_on_binders() {
-            self.destructure_solver_region_constraints_for_regionck(outlives_env);
+            self.destructure_solver_region_constraints_for_regionck(outlives_env, span);
         }
 
         // Must loop since the process of normalizing may itself register region obligations.

@@ -1,0 +1,24 @@
+error: unable to satisfy constraints because it cannot be proven
+  --> $DIR/test-infra-works.rs:52:1
+   |
+LL | / core::test_binder_constraints! {
+LL | |
+LL | |     impl<T: Trait> {
+LL | |         forall<'a> {
+...  |
+LL | | }
+   | |_^
+
+error: unable to satisfy constraints because it cannot be proven
+  --> $DIR/test-infra-works.rs:71:1
+   |
+LL | / core::test_binder_constraints! {
+LL | |
+LL | |     impl<T: Trait> {
+LL | |         forall<'a> {
+...  |
+LL | | }
+   | |_^
+
+error: aborting due to 2 previous errors
+

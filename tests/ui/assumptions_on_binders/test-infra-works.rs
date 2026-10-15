@@ -1,4 +1,3 @@
-//@ check-pass
 //@ compile-flags: -Zassumptions-on-binders -Znext-solver=globally
 
 #![feature(test_binder_constraints, non_lifetime_binders)]
@@ -51,6 +50,7 @@ trait Trait {
 //
 // for<> syntax does direct insert into constraint storage
 core::test_binder_constraints! {
+    //~^ ERROR: unable to satisfy constraints because it cannot be proven
     impl<T: Trait> {
         forall<'a> {
             for<> T::Assoc: 'a
@@ -69,6 +69,7 @@ core::test_binder_constraints! {
 //
 // `predicates` syntax goes through the full clause destructuring and register_obligation pipeline
 core::test_binder_constraints! {
+    //~^ ERROR: unable to satisfy constraints because it cannot be proven
     impl<T: Trait> {
         forall<'a> {
             predicates T::Assoc: 'a
