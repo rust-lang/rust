@@ -141,7 +141,7 @@ struct ScannedItem {
 #[derive(Default)]
 struct LiveSymbols {
     live: LocalDefIdSet,
-    sites_by_defid: LocalDefIdMap<FxHashSet<TrivialUsageSiteId>>,
+    sites_by_defid: LocalDefIdMap<Vec<TrivialUsageSiteId>>,
     sites: TrivialUsageSites,
 }
 
@@ -152,7 +152,7 @@ impl LiveSymbols {
                 // Only remember the trivial usage of the field
                 // if it it is dead or has only used trivially before
                 if !self.live.contains(&def_id) {
-                    self.sites_by_defid.entry(def_id).or_default().insert(site);
+                    self.sites_by_defid.entry(def_id).or_default().push(site);
                 }
             }
             None => {
@@ -777,20 +777,9 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
     }
 
     fn get_live_symbols(&self) -> DeadCodeLivenessSnapshot {
-        let sites_by_defid = self
-            .live_symbols
-            .sites_by_defid
-            .items()
-            .map(|(def_id, site_ids)| {
-                #[allow(rustc::potential_query_instability)]
-                let mut site_ids = site_ids.iter().copied().collect::<Vec<_>>();
-                site_ids.sort();
-                (*def_id, site_ids)
-            })
-            .collect();
         DeadCodeLivenessSnapshot {
             live: self.live_symbols.live.clone(),
-            sites_by_defid,
+            sites_by_defid: self.live_symbols.sites_by_defid.clone(),
             sites: self.live_symbols.sites.clone(),
         }
     }
