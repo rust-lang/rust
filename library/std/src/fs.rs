@@ -416,6 +416,13 @@ pub fn read_to_string<P: AsRef<Path>>(path: P) -> io::Result<String> {
 /// This is a convenience function for using [`File::create`] and [`write_all`]
 /// with fewer imports.
 ///
+/// Note that writing is not atomic: the file is created or truncated before
+/// any content is written, so a failed or interrupted write can leave the
+/// file partially written. To replace a file's contents atomically, write to
+/// a temporary file and use [`fs::rename`] to move it into place.
+///
+/// [`fs::rename`]: rename
+///
 /// [`write_all`]: Write::write_all
 ///
 /// # Examples
