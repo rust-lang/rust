@@ -380,10 +380,9 @@ pub trait HygieneRemapper<TKey: From<u32> + Into<u32> + Hash + Eq + Copy> {
 
     fn commit_end_of_determinism(&mut self) {
         let len = self.len() as u32;
-        assert!(
-            self.first_non_det_index_mut().replace(TKey::from(len)).is_none(),
-            "this function can be called only once"
-        )
+
+        let prev = self.first_non_det_index_mut().replace(TKey::from(len));
+        assert!(prev.is_none(), "this function can be called only once")
     }
 
     fn remapping_results(&self) -> HygieneRemappingResults<TKey> {
