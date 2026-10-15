@@ -1196,10 +1196,10 @@ unsafe extern "C" {
     );
 
     // Instruction builders
-    pub(crate) fn LLVMCreateBuilderForModule(M: &Module) -> &mut Builder<'_>;
+    pub(crate) fn LLVMCreateBuilderForModule<'ll>(M: &'ll Module) -> ptr::NonNull<Builder<'ll>>;
     pub(crate) fn LLVMPositionBuilderAtEnd<'a>(Builder: &Builder<'a>, Block: &'a BasicBlock);
     pub(crate) fn LLVMGetInsertBlock<'a>(Builder: &Builder<'a>) -> &'a BasicBlock;
-    pub(crate) fn LLVMDisposeBuilder<'a>(Builder: &'a mut Builder<'a>);
+    pub(crate) fn LLVMDisposeBuilder<'ll>(Builder: ptr::NonNull<Builder<'ll>>);
 
     // Metadata
     pub(crate) fn LLVMSetCurrentDebugLocation2<'a>(Builder: &Builder<'a>, Loc: *const Metadata);
