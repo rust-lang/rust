@@ -882,7 +882,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if oldfd != at_fdcwd {
             throw_unsup_format!("linkat with `olddirfd` not equal to `AT_FDCWD` is not supported");
         }
-        if oldpath_ptr == Pointer::null() {
+        if this.ptr_is_null(oldpath_ptr)? {
             return this.set_errno_and_return_neg1_i32(LibcError("EFAULT"));
         }
         let oldpath = this.read_path_from_c_str(oldpath_ptr)?.into_owned();
@@ -891,7 +891,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if newfd != at_fdcwd {
             throw_unsup_format!("linkat with `newdirfd` not equal to `AT_FDCWD` is not supported");
         }
-        if newpath_ptr == Pointer::null() {
+        if this.ptr_is_null(newpath_ptr)? {
             return this.set_errno_and_return_neg1_i32(LibcError("EFAULT"));
         }
         let newpath = this.read_path_from_c_str(newpath_ptr)?.into_owned();
