@@ -12,3 +12,12 @@ pub fn multer(a: i128, b: i128) -> i128 {
     // panic function in case of a bug. We verify that no imports exist in our verifier.
     a * b
 }
+
+#[cfg(target_env = "p3")]
+#[no_mangle]
+pub extern "C" fn __wasm_task_hook(_: u32) {}
+#[cfg(target_env = "p3")]
+#[no_mangle]
+pub extern "C" fn cabi_realloc(_: *mut u8, _: usize, _: usize, _: usize) -> *mut u8 {
+    loop {}
+}
