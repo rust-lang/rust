@@ -2853,6 +2853,11 @@ impl DirEntry {
     /// needed), but on Unix platforms this function is the equivalent of
     /// calling `symlink_metadata` on the path.
     ///
+    /// Note that this metadata may be cached, especially on Windows where it
+    /// can come from the directory enumeration itself. It might therefore not
+    /// reflect the most recent changes to the file. Use [`fs::metadata`] if
+    /// you need up-to-date information.
+    ///
     /// # Examples
     ///
     /// ```
