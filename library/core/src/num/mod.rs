@@ -1624,6 +1624,10 @@ macro_rules! from_str_int_impl {
             /// whitespace) represent an error. Underscores (which are accepted in Rust literals)
             /// also represent an error.
             ///
+            /// If the parsed value does not fit in the target integer type, the
+            /// error's kind is [`ParseIntErrorKind::PosOverflow`] or
+            /// [`ParseIntErrorKind::NegOverflow`].
+            ///
             /// # See also
             /// For parsing numbers in other bases, such as binary or hexadecimal,
             /// see [`from_str_radix`][Self::from_str_radix].
@@ -1649,6 +1653,10 @@ macro_rules! from_str_int_impl {
 
         impl $int_ty {
             /// Parses an integer from a string slice with digits in a given base.
+            ///
+            /// If the parsed value does not fit in the target integer type, the
+            /// error's kind is [`ParseIntErrorKind::PosOverflow`] or
+            /// [`ParseIntErrorKind::NegOverflow`].
             ///
             /// The string is expected to be an optional
             #[doc = sign_dependent_expr!{
