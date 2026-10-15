@@ -521,31 +521,41 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // As a special case, if we would produce `&'a *x`, that's
         // a total no-op. We end up with the type `&'a T` just as
         // we started with. In that case, just skip it altogether.
-        //
-        // FIXME: Ideally we would also skip `&mut` -> `&mut` reborrow,
-        // and handle that in MIR.
-        let can_skip_noop_reborrow = mutbl_b.is_not()
-            && if self.tcx.is_closure_like(self.body_def_id.to_def_id()) {
+
+        let can_skip_noop_reborrow = if mutbl_b.is_not() {
+            if self.tcx.is_closure_like(self.body_def_id.to_def_id()) {
                 // FIXME: Inside a closure, reborrows can affect capture inference.
                 // So we have to keep the existing elision behavior stable.
-                // Ideally we wouldn't have to do this, it makes lifetime
-                // annotations affect codegen
+                // Ideally we wouldn't have to do this, as it makes lifetime
+                // annotations affect codegen.
+                // See `tests/ui/coercion/structural_identity_dependent_reborrows.rs`
                 coerced_a == a && autoderef_step_count == 1
             } else {
-                if let Some(Adjustment { kind: Adjust::Deref(DerefAdjustKind::Builtin), .. }) =
-                    adjustments.last()
-                    // Check type before the last deref adjustment
-                    && let ty::Ref(_, _, ty::Mutability::Not) = if adjustments.len() >= 2 {
+                if matches!(
+                    adjustments.last(),
+                    Some(Adjustment { kind: Adjust::Deref(DerefAdjustKind::Builtin), .. })
+                ) {
+                    // Last adjustment is a builtin deref adjustment.
+                    // Check if that deref was applied to a shared reference
+
+                    let ty_before_deref = if adjustments.len() >= 2 {
                         *adjustments[adjustments.len() - 2].target.kind()
                     } else {
                         ty::Ref(r_a, mt_a.ty, mt_a.mutbl)
-                    }
-                {
-                    true
+                    };
+
+                    matches!(ty_before_deref, ty::Ref(_, _, ty::Mutability::Not))
                 } else {
+                    // Last adjustment is not a builtin deref adjustment,
+                    // so this can't be a shared ref reborrow.
                     false
                 }
-            };
+            }
+        } else {
+            // FIXME: Ideally we would also skip `&mut` -> `&mut` reborrow,
+            // and handle that in MIR.
+            false
+        };
 
         if can_skip_noop_reborrow {
             adjustments.pop();
