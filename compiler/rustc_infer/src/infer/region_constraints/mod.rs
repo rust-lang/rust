@@ -27,13 +27,6 @@ pub enum RegionConstraintData<'tcx> {
     Solver(SolverRegionConstraintData<'tcx>),
 }
 
-// TODO: shouldnt be default
-impl<'tcx> Default for RegionConstraintData<'tcx> {
-    fn default() -> Self {
-        Self::Legacy(Default::default())
-    }
-}
-
 impl<'tcx> RegionConstraintData<'tcx> {
     pub fn unwrap_legacy(&self) -> &LegacyRegionConstraintData<'tcx> {
         match self {
@@ -72,7 +65,7 @@ impl<'tcx> RegionConstraintData<'tcx> {
     }
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct RegionConstraintStorage<'tcx> {
     /// For each `RegionVid`, the corresponding `RegionVariableOrigin`.
     pub(super) var_infos: IndexVec<RegionVid, RegionVariableInfo<'tcx>>,
@@ -102,6 +95,25 @@ pub struct RegionConstraintStorage<'tcx> {
     /// a flag set to true when we perform any unifications; this is used
     /// to micro-optimize `take_and_reset_data`
     any_unifications: bool,
+}
+
+impl<'tcx> RegionConstraintStorage<'tcx> {
+    pub fn new(tcx: TyCtxt<'tcx>) -> Self {
+        let data = if tcx.assumptions_on_binders() {
+            RegionConstraintData::Solver(Default::default())
+        } else {
+            RegionConstraintData::Legacy(Default::default())
+        };
+
+        RegionConstraintStorage {
+            var_infos: Default::default(),
+            data,
+            lubs: Default::default(),
+            glbs: Default::default(),
+            unification_table: Default::default(),
+            any_unifications: Default::default(),
+        }
+    }
 }
 
 pub struct RegionConstraintCollector<'a, 'tcx> {
@@ -471,8 +483,8 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
             any_unifications,
         } = self.storage;
 
-        let legacy_data = match mem::take(data) {
-            RegionConstraintData::Legacy(legacy) => legacy,
+        let legacy_data = match data {
+            RegionConstraintData::Legacy(legacy) => mem::take(legacy),
             RegionConstraintData::Solver(_solver) => {
                 // FIXME(-Zassumptions-on-binders): Handle solver_data
                 LegacyRegionConstraintData::default()

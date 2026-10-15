@@ -168,7 +168,7 @@ pub struct InferCtxtInner<'tcx> {
 }
 
 impl<'tcx> InferCtxtInner<'tcx> {
-    fn new() -> InferCtxtInner<'tcx> {
+    fn new(tcx: TyCtxt<'tcx>) -> InferCtxtInner<'tcx> {
         InferCtxtInner {
             undo_log: InferCtxtUndoLogs::default(),
 
@@ -178,7 +178,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
             int_unification_storage: Default::default(),
             float_unification_storage: Default::default(),
             float_origin_origin_storage: Default::default(),
-            region_constraint_storage: Some(Default::default()),
+            region_constraint_storage: Some(RegionConstraintStorage::new(tcx)),
             region_obligations: Default::default(),
             region_assumptions: Default::default(),
             hir_typeck_potentially_region_dependent_goals: Default::default(),
@@ -684,7 +684,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
             considering_regions,
             in_hir_typeck,
             skip_leak_check,
-            inner: RefCell::new(InferCtxtInner::new()),
+            inner: RefCell::new(InferCtxtInner::new(tcx)),
             lexical_region_resolutions: RefCell::new(None),
             selection_cache: Default::default(),
             evaluation_cache: Default::default(),
