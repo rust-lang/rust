@@ -1,6 +1,5 @@
 use std::fmt;
 
-use rustc_ast as ast;
 use rustc_ast::join_path_syms;
 use rustc_macros::{Decodable, Encodable, PrintAttribute, StableHash};
 use rustc_span::{Span, Symbol, sym};
@@ -81,21 +80,35 @@ pub struct LintName {
 }
 
 impl LintName {
-    pub fn new(path: &ast::Path) -> LintName {
-        let (tool, name) = match &*path.segments {
+    pub fn new(segments: impl Iterator<Item = Symbol>) -> LintName {
+        let segments = segments.collect::<Vec<_>>();
+        let (tool, name) = match &*segments {
             [] => unreachable!(),
-            [lint_name] => (None, lint_name.ident.name),
-            [tool, lint_name] => (Some(tool.ident.name), lint_name.ident.name),
+            [lint_name] => (None, *lint_name),
+            [tool, lint_name] => (Some(*tool), *lint_name),
             // Not reachable for any builtin lints,
             // but reachable using `register_tool`.
-            [tool, multi_segment_lint_name @ ..] => (
-                Some(tool.ident.name),
-                Symbol::intern(&join_path_syms(
-                    multi_segment_lint_name.iter().map(|seg| seg.ident.name),
-                )),
-            ),
+            [tool, multi_segment_lint_name @ ..] => {
+                (Some(*tool), Symbol::intern(&join_path_syms(multi_segment_lint_name)))
+            }
         };
         LintName { tool, name }
+    }
+
+    /// Panics if `lint` is empty.
+    pub fn from_str(lint: &str) -> LintName {
+        if lint.is_empty() {
+            if cfg!(debug_assertions) {
+                rustc_span::bug!("`lint` is empty")
+            } else {
+                return LintName { tool: None, name: sym::empty };
+            }
+        }
+        if let Some((tool, name)) = lint.split_once("::") {
+            LintName { tool: Some(Symbol::intern(tool)), name: Symbol::intern(name) }
+        } else {
+            LintName { tool: None, name: Symbol::intern(lint) }
+        }
     }
 
     pub fn is(&self, lint: Symbol) -> bool {

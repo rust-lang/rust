@@ -8,6 +8,7 @@ use std::slice;
 use rustc_abi as abi;
 use rustc_ast::BindingMode;
 use rustc_ast::util::parser::ExprPrecedence;
+use rustc_attr_ir::lint::LintName;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync;
 use rustc_data_structures::unord::UnordMap;
@@ -342,10 +343,12 @@ impl LintStore {
     /// printing duplicate warnings.
     pub fn check_lint_name(
         &self,
-        lint_name: &str,
-        tool_name: Option<Symbol>,
+        lint_name: &LintName,
         registered_lint_tools: &RegisteredTools,
     ) -> CheckLintNameResult<'_> {
+        let LintName { tool: tool_name, name: primary_name } = *lint_name;
+        let lint_name = primary_name.as_str();
+
         if let Some(tool_name) = tool_name {
             // FIXME: rustc and rustdoc are considered tools for lints, but not for attributes.
             if tool_name != sym::rustc
