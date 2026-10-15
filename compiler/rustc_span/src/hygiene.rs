@@ -427,8 +427,7 @@ impl HygieneRemapper<SyntaxContext> for SyntaxContextRemapper<'_> {
             return 0;
         }
 
-        let (expn_id, transparency) = self.0.outer_mark(key);
-        let hash = self.0.expn_hash(expn_id).0;
+        let (hash, transparency) = key.get_data_for_hashing(self.0);
 
         let mut state = DefaultHasher::new();
         hash.hash(&mut state);
@@ -1675,6 +1674,13 @@ fn update_disambiguator(expn_data: &mut ExpnData, mut hcx: impl StableHashCtxt) 
     ExpnHash::new(LOCAL_CRATE.as_def_id().to_stable_hash_key(&mut hcx).stable_crate_id(), expn_hash)
 }
 
+impl SyntaxContext {
+    fn get_data_for_hashing(&self, data: &HygieneData) -> (Fingerprint, Transparency) {
+        let (expn_id, transparency) = data.outer_mark(*self);
+        (data.expn_hash(expn_id).0, transparency)
+    }
+}
+
 impl StableHash for SyntaxContext {
     fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         const TAG_EXPANSION: u8 = 0;
@@ -1687,10 +1693,7 @@ impl StableHash for SyntaxContext {
             // This duplicates `ExpnId::stable_hash`, but reads the outer mark and
             // expansion hash in a single `HygieneData::with` call to avoid extra locking.
             hcx.assert_default_stable_hash_controls("ExpnId");
-            let (hash, transparency) = HygieneData::with(|data| {
-                let (expn_id, transparency) = data.outer_mark(*self);
-                (data.expn_hash(expn_id).0, transparency)
-            });
+            let (hash, transparency) = HygieneData::with(|data| self.get_data_for_hashing(data));
             hash.stable_hash(hcx, hasher);
             transparency.stable_hash(hcx, hasher);
         }
