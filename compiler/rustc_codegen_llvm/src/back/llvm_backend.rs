@@ -4,7 +4,7 @@
 use std::any::Any;
 use std::ffi::CStr;
 use std::marker::PhantomData;
-use std::mem::ManuallyDrop;
+use std::mem::{self, ManuallyDrop};
 use std::path::PathBuf;
 use std::ptr;
 use std::sync::OnceLock;
@@ -442,7 +442,7 @@ impl CodegenBackend for LlvmCodegenBackend {
 }
 
 pub struct ModuleLlvm {
-    llcx_raw: ptr::NonNull<llvm::Context>,
+    llcx_raw: ptr::NonNull<llvm::ContextRaw>,
     llmod_raw: *const llvm::Module,
 
     // This field is `ManuallyDrop` because it is important that the `TargetMachine`
@@ -459,12 +459,30 @@ pub struct ModuleLlvm {
 unsafe impl Send for ModuleLlvm {}
 unsafe impl Sync for ModuleLlvm {}
 
+/// Converts an unbranded pointer-to-context to a branded reference-to-context.
+///
+/// # Safety
+/// The pointer must be convertible to a reference (as via [`ptr::NonNull::as_ref`]).
+/// If the reference is passed to safe code, its caller-requested lifetime must
+/// not outlive the underlying context.
+unsafe fn llcx_ref<'ll>(llcx_raw: ptr::NonNull<llvm::ContextRaw>) -> &'ll llvm::Context<'ll> {
+    unsafe {
+        // Transmute the unbranded pointer to a lifetime-branded one.
+        // We can't use `.cast()` because the pointee type is not Sized.
+        let llcx_raw_cast = mem::transmute::<
+            ptr::NonNull<llvm::ContextRaw>,
+            ptr::NonNull<llvm::Context<'ll>>,
+        >(llcx_raw);
+        llcx_raw_cast.as_ref()
+    }
+}
+
 /// Shared helper to call [`llvm::LLVMContextCreate`] and then configure
 /// [`llvm::LLVMContextSetDiscardValueNames`].
-fn create_context_and_set_fewer_names(fewer_names: bool) -> ptr::NonNull<llvm::Context> {
+fn create_context_and_set_fewer_names(fewer_names: bool) -> ptr::NonNull<llvm::ContextRaw> {
     unsafe {
         let llcx_raw = llvm::LLVMContextCreate();
-        llvm::LLVMContextSetDiscardValueNames(llcx_raw.as_ref(), fewer_names.to_llvm_bool());
+        llvm::LLVMContextSetDiscardValueNames(llcx_ref(llcx_raw), fewer_names.to_llvm_bool());
         llcx_raw
     }
 }
@@ -473,7 +491,7 @@ impl ModuleLlvm {
     pub(crate) fn new(tcx: TyCtxt<'_>, mod_name: &str) -> Self {
         unsafe {
             let llcx_raw = create_context_and_set_fewer_names(tcx.sess.fewer_names());
-            let llmod_raw = context::create_module(tcx, llcx_raw.as_ref(), mod_name);
+            let llmod_raw = context::create_module(tcx, llcx_ref(llcx_raw), mod_name);
             ModuleLlvm {
                 llmod_raw,
                 llcx_raw,
@@ -486,7 +504,7 @@ impl ModuleLlvm {
     pub(crate) fn new_metadata(tcx: TyCtxt<'_>, mod_name: &str) -> Self {
         unsafe {
             let llcx_raw = create_context_and_set_fewer_names(tcx.sess.fewer_names());
-            let llmod_raw = context::create_module(tcx, llcx_raw.as_ref(), mod_name);
+            let llmod_raw = context::create_module(tcx, llcx_ref(llcx_raw), mod_name);
             ModuleLlvm {
                 llmod_raw,
                 llcx_raw,
@@ -505,7 +523,7 @@ impl ModuleLlvm {
     ) -> Self {
         unsafe {
             let llcx_raw = create_context_and_set_fewer_names(cgcx.fewer_names);
-            let llmod_raw = back::lto::parse_module(llcx_raw.as_ref(), name, buffer, dcx);
+            let llmod_raw = back::lto::parse_module(llcx_ref(llcx_raw), name, buffer, dcx);
             let tm = tm_factory(dcx, TargetMachineFactoryConfig::new(cgcx, name.to_str().unwrap()));
 
             ModuleLlvm {
@@ -527,7 +545,7 @@ impl ModuleLlvm {
         inner_fn: impl for<'ll> FnOnce(ModuleRefs<'ll>) -> R,
     ) -> R {
         inner_fn(ModuleRefs {
-            llcx: unsafe { self.llcx_raw.as_ref() },
+            llcx: unsafe { llcx_ref(self.llcx_raw) },
             llmod: unsafe { &*self.llmod_raw },
             tm: self.tm.raw(),
             _ph: PhantomData,
@@ -547,7 +565,7 @@ impl Drop for ModuleLlvm {
 /// Bundle of references provided by [`ModuleLlvm::with_module_refs`].
 #[derive(Clone, Copy)]
 pub(crate) struct ModuleRefs<'ll> {
-    pub(crate) llcx: &'ll llvm::Context,
+    pub(crate) llcx: &'ll llvm::Context<'ll>,
     pub(crate) llmod: &'ll llvm::Module,
     pub(crate) tm: &'ll llvm::TargetMachine,
     /// Make sure `'ll` is invariant, even if no fields happen to require that.
