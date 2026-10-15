@@ -105,7 +105,7 @@ fn lint_impl_body(cx: &LateContext<'_>, item_def_id: hir::OwnerId, impl_span: Sp
             typeck_results: cx.tcx.typeck(impl_item_def_id),
             result: Vec::new(),
         };
-        fpu.visit_expr(body.value);
+        fpu.visit_expr(&body.value);
 
         // if we've found one, lint
         if !fpu.result.is_empty() {

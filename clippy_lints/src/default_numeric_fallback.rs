@@ -50,7 +50,7 @@ declare_clippy_lint! {
 declare_lint_pass!(DefaultNumericFallback => [DEFAULT_NUMERIC_FALLBACK]);
 
 impl<'tcx> LateLintPass<'tcx> for DefaultNumericFallback {
-    fn check_body(&mut self, cx: &LateContext<'tcx>, body: &Body<'tcx>) {
+    fn check_body(&mut self, cx: &LateContext<'tcx>, body: &'tcx Body<'tcx>) {
         // NOTE: this is different from `clippy_utils::is_inside_always_const_context`.
         // Inline const supports type inference.
         let is_parent_const = matches!(

@@ -15,7 +15,6 @@ use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{BinOpKind, BorrowKind, Closure, Expr, ExprKind, HirId, Mutability, Pat, PatKind, QPath};
 use rustc_lint::LateContext;
 use rustc_middle::middle::region;
-use rustc_middle::ty::consts::ConstExt as _;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::symbol::{Symbol, sym};
 use rustc_span::{Span, SyntaxContext};
@@ -450,7 +449,7 @@ impl<'tcx> Visitor<'tcx> for VarVisitor<'_, 'tcx> {
             },
             ExprKind::Closure(&Closure { body, .. }) => {
                 let body = self.cx.tcx.hir_body(body);
-                self.visit_expr(body.value);
+                self.visit_expr(&body.value);
             },
             _ => walk_expr(self, expr),
         }

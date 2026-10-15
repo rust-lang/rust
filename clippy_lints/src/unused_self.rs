@@ -64,7 +64,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedSelf {
             && let body = cx.tcx.hir_body(*body_id)
             && let [self_param, ..] = body.params
             && !is_local_used(cx, body, self_param.pat.hir_id)
-            && !is_todo_unimplemented_stub(cx, body.value)
+            && !is_todo_unimplemented_stub(cx, &body.value)
         {
             span_lint_and_help(
                 cx,

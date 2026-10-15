@@ -73,7 +73,7 @@ impl<'tcx> LateLintPass<'tcx> for SignificantDropTightening<'tcx> {
         _: hir::def_id::LocalDefId,
     ) {
         self.apas.clear();
-        let initial_dummy_stmt = dummy_stmt_expr(body.value);
+        let initial_dummy_stmt = dummy_stmt_expr(&body.value);
         let mut ap = AuxParams::new(&mut self.apas, &initial_dummy_stmt);
         StmtsChecker::new(&mut ap, cx, &mut self.type_cache).visit_body(body);
         for apa in ap.apas.values() {
