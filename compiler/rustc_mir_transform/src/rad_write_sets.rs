@@ -6,16 +6,20 @@ use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{
-    BasicBlock, Body, BodyLoans, CheckpointObject, CheckpointTable, CoroutineSavedLocal, Depth,
+    AwaitCheckpoints, BasicBlock, Body, BodyLoans, CheckpointObject, CheckpointTable, Depth,
     InstructionLoans, LoanId, Local, Location, Mutability, NonDivergingIntrinsic, Operand, Place,
     ProjectionElem, Rvalue, START_BLOCK, Statement, StatementKind, Terminator, TerminatorKind,
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{CAPTURE_STRUCT_LOCAL, TyCtxt, TypeVisitableExt};
-use rustc_mir_dataflow::impls::always_storage_live_locals;
-use rustc_span::Spanned;
+use rustc_mir_dataflow::impls::{
+    MaybeBorrowedLocals, MaybeLiveLocals, MaybeRequiresStorage, always_storage_live_locals,
+};
+use rustc_mir_dataflow::{Analysis as _, ResultsCursor};
+use rustc_span::{Spanned, span_bug};
 
 use crate::PassPolicy;
+use crate::coroutine::CTX_ARG;
 use crate::coroutine::layout::{LivenessInfo, locals_live_across_suspend_points};
 use crate::rad_statement_ids::{id_at, id_label, repeated_ids, unnumbered};
 
@@ -31,7 +35,7 @@ impl<'tcx> crate::MirPass<'tcx> for RadWriteSets {
             return;
         }
         let Some(plan) = analyze(tcx, body) else { return };
-        // Keep what to copy at each suspension for the pass inserting the checkpoints
+        // Keep what to copy at each `.await` for the pass inserting the checkpoints
         if let Some(coroutine) = body.coroutine.as_mut() {
             coroutine.rad_checkpoints = Some(plan.table());
         }
@@ -39,99 +43,171 @@ impl<'tcx> crate::MirPass<'tcx> for RadWriteSets {
     }
 }
 
-/// The blocks in between two checkpoints
-struct Segment {
-    blocks: DenseBitSet<BasicBlock>,
-    from_entry: bool,
-    /// Set of earlier checkpoint Yield() that resume into this segment
-    after: DenseBitSet<BasicBlock>,
-}
-
-/// The poll loop of an `.await`, which rustc lowers as
-/// `loop { match poll(..) { Ready(r) => break r, Pending => {} } cx = yield () }`
-struct PollLoop {
+/// An `.await` has a poll loop, which rustc lowers as
+/// `loop { match poll(..) { Ready(r) => break r, Pending => {} } cx = yield () }`,
+/// and the code after the loop until the awaitee is dead
+struct Await {
     /// The `Yield` that suspends while the awaited future is pending
     suspend: BasicBlock,
-    /// The block the `Yield` resumes into, which jumps back to the loop head
-    resume: BasicBlock,
+    /// The loop head, which the loop is entered through and the resume block jumps back to
+    head: BasicBlock,
+    /// The blocks that belong to the `.await` as a whole: the loop, and the code after its
+    /// `Ready` exit until the awaitee's `StorageDead`
+    blocks: DenseBitSet<BasicBlock>,
+    /// The awaitee's `StorageDead` after the loop. The statements before it in that block still
+    /// belong to the `.await`, the ones after it to the code that follows.
+    ends: Vec<Location>,
 }
 
-/// Maps the head of each `.await`'s poll loop to that loop. A resume block that doesn't end in
-/// a `goto` back to the head isn't recognised, so its `.await` keeps every path.
-fn poll_loops(body: &Body<'_>, checkpoints: &[BasicBlock]) -> FxIndexMap<BasicBlock, PollLoop> {
-    let mut loops = FxIndexMap::default();
-    for &suspend in checkpoints {
-        let TerminatorKind::Yield { resume, .. } = body[suspend].terminator().kind else {
-            continue;
-        };
-        if let TerminatorKind::Goto { target: head } = body[resume].terminator().kind {
-            loops.insert(head, PollLoop { suspend, resume });
-        }
-    }
-    loops
-}
-
-fn segment(
-    body: &Body<'_>,
-    poll_loops: &FxIndexMap<BasicBlock, PollLoop>,
-    end: BasicBlock,
-) -> Segment {
-    let n = body.basic_blocks.len();
-    let mut segment = Segment {
-        blocks: DenseBitSet::new_empty(n),
-        from_entry: false,
-        after: DenseBitSet::new_empty(n),
+/// Finds the poll loop and the end of the `.await` whose `Yield` is `suspend`
+fn find_await(body: &Body<'_>, suspend: BasicBlock) -> Await {
+    // Resume block of the Yield must end in `goto head`
+    let unrecognised = |what| span_bug!(body.span, "`.await` at {suspend:?}: {what}");
+    let TerminatorKind::Yield { resume, .. } = body[suspend].terminator().kind else {
+        unrecognised("not a `Yield`")
     };
-    segment.blocks.insert(end);
-    let mut stack = vec![end];
+    let TerminatorKind::Goto { target: head } = body[resume].terminator().kind else {
+        unrecognised("its resume block doesn't jump back to the loop head")
+    };
+
+    // The loop head pins the awaitee with `_p = &mut awaitee`
+    let Some(awaitee) = body[head].statements.iter().find_map(|statement| match &statement.kind {
+        StatementKind::Assign(assign) => match assign.1 {
+            Rvalue::Ref(_, _, place) => place.as_local(),
+            _ => None,
+        },
+        _ => None,
+    }) else {
+        unrecognised("no borrow of the awaitee in the loop head")
+    };
+
+    // The loop: every block on a path from the head to the `Yield`, and the resume block
+    let mut blocks = DenseBitSet::new_empty(body.basic_blocks.len());
+    blocks.insert(suspend);
+    blocks.insert(resume);
+    let mut stack = vec![suspend];
     while let Some(bb) = stack.pop() {
-        segment.from_entry |= bb == START_BLOCK;
+        if bb == head {
+            continue;
+        }
         for &pred in &body.basic_blocks.predecessors()[bb] {
-            // Strangelove's API needs to guarantee that every await() returns `Pending` on its
-            // first poll, so every `.await` suspends at least once. Leaving another `await()`'s
-            // poll loop through `Ready` therefore means its `Yield` already ran and took a
-            // checkpoint. So we need to remove the CFG edge that returns immediately in our analysis.
-            if let Some(poll_loop) = poll_loops.get(&bb)
-                && poll_loop.suspend != end
-                && pred != poll_loop.resume
-            {
-                continue;
-            }
-            match body[pred].terminator().kind {
-                // A suspension's drop edge leads to the coroutine being destroyed
-                TerminatorKind::Yield { resume, .. } => {
-                    if resume == bb {
-                        segment.after.insert(pred);
-                    }
-                }
-                _ => {
-                    if segment.blocks.insert(pred) {
-                        stack.push(pred);
-                    }
-                }
+            if blocks.insert(pred) {
+                stack.push(pred);
             }
         }
     }
-    segment
+
+    // Walk down the CFG from the `Ready` exit until the awaitee is dead, skipping unwind paths and
+    // unreachable edges.
+    let normal = |bb: BasicBlock| {
+        !body[bb].is_cleanup && !matches!(body[bb].terminator().kind, TerminatorKind::Unreachable)
+    };
+    let mut stack: Vec<BasicBlock> = blocks
+        .iter()
+        .filter(|&bb| bb != suspend)
+        .flat_map(|bb| body[bb].terminator().successors())
+        .filter(|&succ| !blocks.contains(succ) && normal(succ))
+        .collect();
+
+    let mut ends = Vec::new();
+    while let Some(bb) = stack.pop() {
+        // Find blocks where the await's future is dead, meaning the await is finished
+        let dead = body[bb].statements.iter().position(|statement| {
+            matches!(statement.kind, StatementKind::StorageDead(local) if local == awaitee)
+        });
+        if let Some(statement_index) = dead {
+            let end = Location { block: bb, statement_index };
+            if !ends.contains(&end) {
+                ends.push(end);
+            }
+            continue;
+        }
+
+        // Record standard blocks that do not terminate the await section
+        if !blocks.insert(bb) {
+            continue;
+        }
+
+        if matches!(
+            body[bb].terminator().kind,
+            TerminatorKind::Yield { .. } | TerminatorKind::Return
+        ) {
+            unrecognised("no `StorageDead` of the awaitee after the loop")
+        }
+
+        stack.extend(body[bb].terminator().successors().filter(|&succ| normal(succ)));
+    }
+    Await { suspend, head, blocks, ends }
 }
 
-/// What the checkpoint at each `.await` of a body must save
+/// The locals live right after each `.await`'s `StorageDead`, by the rule
+/// `locals_live_across_suspend_points` uses at a `Yield`
+fn live_after_ends<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &Body<'tcx>,
+    movable: bool,
+    awaits: &[Await],
+) -> Vec<DenseBitSet<Local>> {
+    let borrowed = MaybeBorrowedLocals.iterate_to_fixpoint(tcx, body, None);
+    let requires_storage =
+        MaybeRequiresStorage::new(body, &borrowed).iterate_to_fixpoint(tcx, body, None);
+    let mut requires_storage = ResultsCursor::new_borrowing(body, &requires_storage);
+    let mut borrowed = ResultsCursor::new_owning(body, borrowed);
+    let mut liveness =
+        MaybeLiveLocals.iterate_to_fixpoint(tcx, body, None).into_results_cursor(body);
+
+    awaits
+        .iter()
+        .map(|awaited| {
+            let mut live = DenseBitSet::new_empty(body.local_decls.len());
+            for &end in &awaited.ends {
+                // `StorageDead` isn't a use, so liveness is the same on both sides of it
+                liveness.seek_after_primary_effect(end);
+                let mut here = liveness.get().clone();
+                if !movable {
+                    borrowed.seek_after_primary_effect(end);
+                    here.union(borrowed.get());
+                }
+                requires_storage.seek_after_primary_effect(end);
+                here.intersect(requires_storage.get());
+                live.union(&here);
+            }
+            live.remove(CAPTURE_STRUCT_LOCAL);
+            // Each `poll` passes its own context, so a restore never needs an old one
+            live.remove(CTX_ARG);
+            live
+        })
+        .collect()
+}
+
+/// What the checkpoints of each `.await` of a body must save
 struct CheckpointPlan<'tcx> {
     /// Polonius's results for the body
     loans: Option<&'tcx BodyLoans<'tcx>>,
-    /// The local each slot of the coroutine layout holds
-    slot_locals: IndexVec<CoroutineSavedLocal, Local>,
-    /// The list of items that need to be checkpointed
-    suspensions: Vec<Suspension<'tcx>>,
+    awaits: Vec<AwaitPlan<'tcx>>,
 }
 
-/// One `.await`'s checkpoint
-struct Suspension<'tcx> {
+/// The two checkpoints of one `.await`
+struct AwaitPlan<'tcx> {
     /// The block where the `.await` has a `Yield`
-    end: BasicBlock,
-    /// The segment from the previous checkpoint to this one
-    segment: Segment,
-    /// The locals StateTransform stores in the future here
+    suspend: BasicBlock,
+    /// Taken where the poll loop is entered: what the code since the previous `.await` wrote
+    before: WriteSet<'tcx>,
+    /// The code of `before` starts at the function entry
+    from_entry: bool,
+    /// The earlier `.await`s whose end the code of `before` starts at
+    after: Vec<usize>,
+    /// Taken once the awaitee is dead: what the `.await` itself wrote
+    effects: WriteSet<'tcx>,
+    /// The awaitee's `StorageDead`, where `effects` is taken
+    ends: Vec<Location>,
+    /// Locals live where `effects` is taken that no `Yield` stores in the future yet
+    pending: DenseBitSet<Local>,
+}
+
+/// The write set of one checkpoint: the writes in the code it covers and what it must copy
+struct WriteSet<'tcx> {
+    /// The locals stored in the future where the checkpoint is taken
     saved: DenseBitSet<Local>,
     /// The writes the liveness filter kept
     writes: Vec<Write<'tcx>>,
@@ -142,14 +218,20 @@ struct Suspension<'tcx> {
 }
 
 impl CheckpointPlan<'_> {
-    /// What to copy at each suspension, without the details of how it was found
+    /// What to copy at each `.await`, without the details of how it was found
     fn table(&self) -> CheckpointTable {
-        let suspensions = self
-            .suspensions
+        let list = |write_set: &WriteSet<'_>| -> Vec<_> {
+            write_set.objects.iter().map(|(&object, &depth)| (object, depth)).collect()
+        };
+        let awaits = self
+            .awaits
             .iter()
-            .map(|suspension| suspension.objects.iter().map(|(&o, &d)| (o, d)).collect())
+            .map(|plan| AwaitCheckpoints {
+                before: list(&plan.before),
+                effects: list(&plan.effects),
+            })
             .collect();
-        CheckpointTable { suspensions }
+        CheckpointTable { awaits }
     }
 }
 
@@ -163,7 +245,7 @@ fn record(
     *entry = (*entry).max(depth);
 }
 
-/// An instruction in a segment that writes memory the checkpoint may need
+/// An instruction in a checkpoint's code that writes memory the checkpoint may need
 struct Write<'tcx> {
     location: Location,
     effect: Effect<'tcx>,
@@ -176,22 +258,23 @@ struct Reach<'tcx> {
     targets: Targets<'tcx>,
 }
 
-/// Finds what the checkpoint at each `.await` must save
+/// Finds what the two checkpoints at each `.await` must save
 fn analyze<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> Option<CheckpointPlan<'tcx>> {
-    // Find .await() calls where checkpoints get put
-    let checkpoints: Vec<BasicBlock> = body
+    // Every `Yield` of an async body is the suspension of an `.await`
+    let awaits: Vec<Await> = body
         .basic_blocks
         .iter_enumerated()
         .filter(|(_, data)| matches!(data.terminator().kind, TerminatorKind::Yield { .. }))
-        .map(|(bb, _)| bb)
+        .map(|(bb, _)| find_await(body, bb))
         .collect();
-    if checkpoints.is_empty() {
+    if awaits.is_empty() {
         return None;
     }
 
     let movable = tcx.coroutine_movability(body.source.def_id()) == hir::Movability::Movable;
     let liveness =
         locals_live_across_suspend_points(tcx, body, &always_storage_live_locals(body), movable);
+    let live_after = live_after_ends(tcx, body, movable, &awaits);
 
     // Get live aliasing info from polonius
     let def = body.source.def_id().expect_local();
@@ -200,64 +283,139 @@ fn analyze<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> Option<CheckpointPlan<
         .ok()
         .and_then(|result| result.loans.get(&def));
 
-    let slot_locals = liveness.saved_locals.iter_enumerated().map(|(_, local)| local).collect();
-    let analysis = Analysis {
-        tcx,
-        body,
-        liveness,
-        loans,
-        // Find the poll loops to split checkpoint segments at
-        poll_loops: poll_loops(body, &checkpoints),
-        defs: LocalDefs::new(tcx, body),
-    };
+    let mut inside = DenseBitSet::new_empty(body.basic_blocks.len());
+    let mut end_of = FxIndexMap::default();
+    for (index, awaited) in awaits.iter().enumerate() {
+        inside.union(&awaited.blocks);
+        for &end in &awaited.ends {
+            end_of.insert(end.block, (index, end.statement_index));
+        }
+    }
+    let analysis =
+        Analysis { tcx, body, liveness, loans, defs: LocalDefs::new(tcx, body), inside, end_of };
 
-    // Find the items that need to be checkpointed
-    let suspensions = checkpoints
+    let awaits = awaits
         .iter()
+        .zip(live_after)
         .enumerate()
-        .map(|(index, &end)| analysis.suspension(index, end))
+        .map(|(index, (awaited, live))| analysis.await_plan(index, awaited, live))
         .collect();
-
-    Some(CheckpointPlan { loans, slot_locals, suspensions })
+    Some(CheckpointPlan { loans, awaits })
 }
 
-/// What `analyze` computes once per body, for every suspension to use
+/// What `analyze` computes once per body, for every checkpoint to use
 struct Analysis<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
     liveness: LivenessInfo,
     loans: Option<&'tcx BodyLoans<'tcx>>,
-    poll_loops: FxIndexMap<BasicBlock, PollLoop>,
     defs: LocalDefs,
+    /// The blocks that belong to some `.await` as a whole
+    inside: DenseBitSet<BasicBlock>,
+    /// The blocks where an `.await` ends: its index and the statement of the awaitee's
+    /// `StorageDead`
+    end_of: FxIndexMap<BasicBlock, (usize, usize)>,
 }
 
 impl<'tcx> Analysis<'_, 'tcx> {
-    /// Finds what the checkpoint at the `index`th `.await`, whose `Yield` is `end`, must save
-    fn suspension(&self, index: usize, end: BasicBlock) -> Suspension<'tcx> {
+    /// Finds the two checkpoints of the `index`th `.await`, where `live` is what's live at its end
+    fn await_plan(
+        &self,
+        index: usize,
+        awaited: &Await,
+        live: DenseBitSet<Local>,
+    ) -> AwaitPlan<'tcx> {
         let body = self.body;
-        // Find segments between two await() calls
-        let segment = segment(body, &self.poll_loops, end);
 
+        // `before`: back from the loop's entry edges to the end of an earlier `.await` or the
+        // function entry
+        let mut code = Vec::new();
+        let (mut from_entry, mut after) = (false, Vec::new());
+        let mut seen = DenseBitSet::new_empty(body.basic_blocks.len());
+        let mut stack: Vec<BasicBlock> = body.basic_blocks.predecessors()[awaited.head]
+            .iter()
+            .copied()
+            .filter(|&pred| !awaited.blocks.contains(pred))
+            .collect();
+        while let Some(bb) = stack.pop() {
+            if !seen.insert(bb) || self.inside.contains(bb) {
+                continue;
+            }
+            let data = &body[bb];
+            let first = match self.end_of.get(&bb) {
+                // An earlier `.await` ends here, so only what follows its `StorageDead` counts
+                Some(&(earlier, dead)) => {
+                    if !after.contains(&earlier) {
+                        after.push(earlier);
+                    }
+                    dead + 1
+                }
+                None => {
+                    from_entry |= bb == START_BLOCK;
+                    stack.extend(body.basic_blocks.predecessors()[bb].iter().copied());
+                    0
+                }
+            };
+            code.extend(
+                (first..=data.statements.len())
+                    .map(|statement_index| Location { block: bb, statement_index }),
+            );
+        }
+        let before = self.write_set(&code, saved_at(body, &self.liveness, index));
+
+        // `effects`: the loop without its `Yield`, and the code after it until the awaitee is dead
+        let mut code = Vec::new();
+        for bb in awaited.blocks.iter() {
+            let len = body[bb].statements.len();
+            let last = if bb == awaited.suspend { len } else { len + 1 };
+            code.extend((0..last).map(|statement_index| Location { block: bb, statement_index }));
+        }
+        for end in &awaited.ends {
+            code.extend(
+                (0..end.statement_index)
+                    .map(|statement_index| Location { block: end.block, statement_index }),
+            );
+        }
+        // Only locals that some `Yield` stores have a slot in the future yet
+        let mut saved = live.clone();
+        let mut pending = live;
+        for local in saved.clone().iter() {
+            if self.liveness.saved_locals.get(local).is_some() {
+                pending.remove(local);
+            } else {
+                saved.remove(local);
+            }
+        }
+        let effects = self.write_set(&code, saved);
+
+        AwaitPlan {
+            suspend: awaited.suspend,
+            before,
+            from_entry,
+            after,
+            effects,
+            ends: awaited.ends.clone(),
+            pending,
+        }
+    }
+
+    /// Finds what the checkpoint covering the instructions at `code` must copy, when `saved` are
+    /// the locals stored in the future where it is taken
+    fn write_set(&self, code: &[Location], saved: DenseBitSet<Local>) -> WriteSet<'tcx> {
+        let body = self.body;
         // Find statements that modify objects
         let mut effects = Effects::default();
-        for bb in segment.after.iter() {
-            // Write returned by resume arg
-            effects.visit_terminator(body[bb].terminator(), body.terminator_loc(bb));
-        }
-        for bb in segment.blocks.iter() {
-            let data = &body[bb];
-            for (statement_index, statement) in data.statements.iter().enumerate() {
-                effects.visit_statement(statement, Location { block: bb, statement_index });
-            }
-            // await()'s return is checkpointed in the next segment
-            if bb != end {
-                effects.visit_terminator(data.terminator(), body.terminator_loc(bb));
+        let mut code = code.to_vec();
+        code.sort();
+        for location in code {
+            match body.stmt_at(location) {
+                Either::Left(statement) => effects.visit_statement(statement, location),
+                Either::Right(terminator) => effects.visit_terminator(terminator, location),
             }
         }
 
-        let saved = saved_at(body, &self.liveness, index);
         let mut objects = FxIndexMap::default();
-        // The state changes at every suspension
+        // Each checkpoint records the state its restore continues from
         record(&mut objects, CheckpointObject::Discriminant, Depth::Shallow);
 
         // Remove dead writes using liveness filter
@@ -265,11 +423,14 @@ impl<'tcx> Analysis<'_, 'tcx> {
         let mut not_saved = 0;
         for (location, effect) in effects.effects {
             // Find where it's actually writing
-            if let Effect::Write(place, _) = effect
+            if let Effect::Write(place, context) = effect
                 && !place.is_indirect()
             {
                 match self.object(place, &saved) {
                     Some(object) => record(&mut objects, object, Depth::Shallow),
+                    // Drop glue can write through the references the dropped local holds, even
+                    // when the local itself isn't needed after the checkpoint
+                    None if context == MutatingUseContext::Drop => {}
                     // Drop writes to a temporary variable that aren't used after the checkpoint
                     None => {
                         not_saved += 1;
@@ -285,7 +446,7 @@ impl<'tcx> Analysis<'_, 'tcx> {
             };
             writes.push(Write { location, effect, reach });
         }
-        Suspension { end, segment, saved, writes, not_saved, objects }
+        WriteSet { saved, writes, not_saved, objects }
     }
 
     /// Find the saved local or upvar that holds `place` if it's stored in the future here
@@ -627,7 +788,6 @@ fn on_cycle(body: &Body<'_>, block: BasicBlock) -> bool {
 
 fn print<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, plan: &CheckpointPlan<'tcx>) {
     eprintln!("=== rad write sets: {} ===", tcx.def_path_str(body.source.def_id()));
-    let suspension = |bb| plan.suspensions.iter().position(|s| s.end == bb).unwrap();
     let source_map = tcx.sess.source_map();
     if plan.loans.is_none() {
         eprintln!("  polonius: no live loans recorded (needs `-Zpolonius=next`)");
@@ -641,75 +801,71 @@ fn print<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, plan: &CheckpointPlan<'tcx>
         unnumbered.len()
     );
 
-    // The summary shows what's stored for later passes, not the analysis's own copy
-    let table = body.coroutine.as_ref().and_then(|coroutine| coroutine.rad_checkpoints.as_ref());
-    for (index, checkpoint) in plan.suspensions.iter().enumerate() {
-        let (end, segment) = (checkpoint.end, &checkpoint.segment);
-        let span = source_map.span_to_diagnostic_string(body[end].terminator().source_info.span);
-        let starts = segment
+    let locals = |set: &DenseBitSet<Local>| -> String {
+        set.iter().map(|local| format!("{local:?}")).collect::<Vec<_>>().join(", ")
+    };
+    for (index, awaited) in plan.awaits.iter().enumerate() {
+        let suspend = awaited.suspend;
+        let span =
+            source_map.span_to_diagnostic_string(body[suspend].terminator().source_info.span);
+        eprintln!("  .await {index} ({suspend:?}) at {span}");
+
+        let starts = awaited
             .from_entry
             .then(|| "entry".to_string())
             .into_iter()
-            .chain(segment.after.iter().map(|bb| format!(".await {}", suspension(bb))));
-        eprintln!(
-            "  .await {index} ({end:?}) at {span}, since {}",
-            starts.collect::<Vec<_>>().join(", ")
-        );
-        let saved_list: Vec<String> =
-            checkpoint.saved.iter().map(|local| format!("{local:?}")).collect();
-        eprintln!("    saved: {}", saved_list.join(", "));
+            .chain(awaited.after.iter().map(|earlier| format!("end of .await {earlier}")));
+        eprintln!("    before, since {}:", starts.collect::<Vec<_>>().join(", "));
+        print_write_set(tcx, body, plan.loans, &awaited.before);
 
-        for write in &checkpoint.writes {
-            let location = write.location;
-            match write.effect {
-                Effect::Write(place, context) => {
-                    let what = match context {
-                        MutatingUseContext::Store => "store",
-                        MutatingUseContext::SetDiscriminant => "discr",
-                        MutatingUseContext::Call => "call dest",
-                        MutatingUseContext::Yield => "resume",
-                        MutatingUseContext::Drop => "drop",
-                        MutatingUseContext::AsmOutput => "asm out",
-                        _ => unreachable!("not recorded as a write: {context:?}"),
-                    };
-                    let how = access(tcx, body, place);
-                    let id = id_label(body, location);
-                    eprintln!("    {location:?} {id:<5} {what:<10} {how:<8} {place:?}");
-                }
-                Effect::Call => {
-                    let mut head = String::new();
-                    body[location.block].terminator().kind.fmt_head(&mut head).unwrap();
-                    let id = id_label(body, location);
-                    eprintln!("    {location:?} {id:<5} call       {head}");
-                }
-                Effect::Intrinsic => eprintln!("    {location:?} intrinsic  copy_nonoverlapping"),
-            }
-            if let (Some(reach), Some(loans)) = (&write.reach, plan.loans) {
-                print_live_loans(loans, reach, &checkpoint.saved);
-            }
+        eprintln!("    effects, until {:?}:", awaited.ends);
+        if !awaited.pending.is_empty() {
+            eprintln!("      live, not in the future yet: {}", locals(&awaited.pending));
         }
-        eprintln!("    ({} writes to locals not saved here)", checkpoint.not_saved);
-        let Some(objects) = table.map(|table| &table.suspensions[index]) else { continue };
-        let objects: Vec<String> = objects
-            .iter()
-            .map(|(object, depth)| {
-                let object = match object {
-                    CheckpointObject::Discriminant => "state".to_string(),
-                    CheckpointObject::Saved(slot) => {
-                        format!("{slot:?} ({:?})", plan.slot_locals[*slot])
-                    }
-                    CheckpointObject::Upvar(Some(field)) => format!("upvar {field:?}"),
-                    CheckpointObject::Upvar(None) => "upvars".to_string(),
-                    CheckpointObject::Outside => "outside".to_string(),
-                };
-                match depth {
-                    Depth::Shallow => object,
-                    Depth::Deep => format!("{object} deep"),
-                }
-            })
-            .collect();
-        eprintln!("    checkpoint: {}", objects.join(", "));
+        print_write_set(tcx, body, plan.loans, &awaited.effects);
     }
+}
+
+/// Prints the writes one checkpoint covers
+fn print_write_set<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &Body<'tcx>,
+    loans: Option<&BodyLoans<'tcx>>,
+    write_set: &WriteSet<'tcx>,
+) {
+    let saved: Vec<String> = write_set.saved.iter().map(|local| format!("{local:?}")).collect();
+    eprintln!("      saved: {}", saved.join(", "));
+
+    for write in &write_set.writes {
+        let location = write.location;
+        match write.effect {
+            Effect::Write(place, context) => {
+                let what = match context {
+                    MutatingUseContext::Store => "store",
+                    MutatingUseContext::SetDiscriminant => "discr",
+                    MutatingUseContext::Call => "call dest",
+                    MutatingUseContext::Yield => "resume",
+                    MutatingUseContext::Drop => "drop",
+                    MutatingUseContext::AsmOutput => "asm out",
+                    _ => unreachable!("not recorded as a write: {context:?}"),
+                };
+                let how = access(tcx, body, place);
+                let id = id_label(body, location);
+                eprintln!("      {location:?} {id:<5} {what:<10} {how:<8} {place:?}");
+            }
+            Effect::Call => {
+                let mut head = String::new();
+                body[location.block].terminator().kind.fmt_head(&mut head).unwrap();
+                let id = id_label(body, location);
+                eprintln!("      {location:?} {id:<5} call       {head}");
+            }
+            Effect::Intrinsic => eprintln!("      {location:?} intrinsic  copy_nonoverlapping"),
+        }
+        if let (Some(reach), Some(loans)) = (&write.reach, loans) {
+            print_live_loans(loans, reach, &write_set.saved);
+        }
+    }
+    eprintln!("      ({} writes to locals not saved here)", write_set.not_saved);
 }
 
 /// Prints which loans the pointers used by an instruction can hold, and the memory those loans

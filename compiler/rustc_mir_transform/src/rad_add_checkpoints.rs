@@ -24,15 +24,16 @@ impl<'tcx> crate::MirPass<'tcx> for RadAddCheckpoints {
         let sites = suspend_sites(body);
 
         // Make sure that the sites match the actual number of checkpoints
-        assert_eq!(sites.len(), table.suspensions.len(), "suspensions don't match the plan");
+        assert_eq!(sites.len(), table.awaits.len(), "suspensions don't match the plan");
 
         // TODO: remove debug output when actual pass gets written
         let path = with_no_trimmed_paths!(tcx.def_path_str(body.source.def_id()));
         eprintln!("=== rad checkpoints: {path} ===");
 
-        for (index, (site, objects)) in sites.iter().zip(&table.suspensions).enumerate() {
+        for (index, (site, checkpoints)) in sites.iter().zip(&table.awaits).enumerate() {
             assert_eq!(site.state.as_usize(), CoroutineArgs::RESERVED_VARIANTS + index);
-            emit_checkpoint(tcx, body, site, objects);
+            emit_checkpoint(tcx, body, site, "checkpoint", &checkpoints.before);
+            emit_checkpoint(tcx, body, site, "await effects", &checkpoints.effects);
         }
     }
 }
@@ -65,11 +66,12 @@ fn suspend_sites(body: &Body<'_>) -> Vec<SuspendSite> {
     sites
 }
 
-/// Inserts the checkpoint copying `objects` before the coroutine suspends at `site`
+/// Inserts the `which` checkpoint of the `.await` at `site`, copying `objects`
 fn emit_checkpoint<'tcx>(
     _tcx: TyCtxt<'tcx>,
     _body: &mut Body<'tcx>,
     site: &SuspendSite,
+    which: &str,
     objects: &[(CheckpointObject, Depth)],
 ) {
     let objects: Vec<String> = objects
@@ -88,5 +90,10 @@ fn emit_checkpoint<'tcx>(
             }
         })
         .collect();
-    eprintln!("  state {} ({:?}): copy {}", site.state.as_usize(), site.block, objects.join(", "));
+    eprintln!(
+        "  state {} ({:?}) {which}: copy {}",
+        site.state.as_usize(),
+        site.block,
+        objects.join(", ")
+    );
 }

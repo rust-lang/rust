@@ -199,13 +199,21 @@ rustc_index::newtype_index! {
     pub struct LoanId {}
 }
 
-/// What the checkpoint at each suspension of a coroutine must copy, computed by
-/// `-Zrad-write-sets` before `StateTransform` for the pass that inserts the checkpoints after it
+/// The write set of the two checkpoints at each `.await` of a coroutine.
 #[derive(Clone, Debug, TyEncodable, TyDecodable, StableHash)]
 pub struct CheckpointTable {
-    /// One entry per suspension, in block order of the `Yield`s, which is also the order of
+    /// One entry per `.await`, in block order of their `Yield`s, which is also the order of
     /// `StateTransform`'s suspend states (state `3 + index`)
-    pub suspensions: Vec<Vec<(CheckpointObject, Depth)>>,
+    pub awaits: Vec<AwaitCheckpoints>,
+}
+
+/// The two checkpoints of one `.await`
+#[derive(Clone, Debug, TyEncodable, TyDecodable, StableHash)]
+pub struct AwaitCheckpoints {
+    /// Values written to from the last `.await`'s completion to the start of the current `.await`
+    pub before: Vec<(CheckpointObject, Depth)>,
+    /// The side effects of the `.await` call
+    pub effects: Vec<(CheckpointObject, Depth)>,
 }
 
 TrivialTypeTraversalImpls! { CheckpointTable }
