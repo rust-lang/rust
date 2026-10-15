@@ -524,15 +524,15 @@ extern "C" LLVMRustResult LLVMRustWriteOutputFile(
   auto BOS = buffer_ostream(OS);
 
   if (TpdeOptions.mode != LLVMRustTpdeMode::None) {
-    assert(TpdeOptions.plugin &&
-           "rustc_codegen_llvm must set TpdeOptions.plugin if using -Ztpde");
+    assert(
+        TpdeOptions.plugin &&
+        "rustc_codegen_llvm must set TpdeOptions.plugin if using -Zllvm-tpde");
     llvm::PassPluginLibraryInfo plugin = TpdeOptions.plugin();
     if (plugin.PreCodeGenCallback(*unwrap(M), *unwrap(Target), FileType, BOS)) {
       return LLVMRustResult::Success;
     } else if (TpdeOptions.mode == LLVMRustTpdeMode::Only) {
       std::string error = "Failed to compile module " +
                           unwrap(M)->getModuleIdentifier() + " with TPDE: ";
-      unwrap(M)->getContext().diagnos
       LLVMRustSetLastError(error.c_str());
       return LLVMRustResult::Failure;
     }
