@@ -526,6 +526,20 @@ pub(crate) struct BindingInNeverPattern {
 }
 
 #[derive(Diagnostic)]
+#[diag("cannot use `{$ident}` in this move expression")]
+pub(crate) struct CannotUseInnerLocalInMoveExpr {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) ident: Ident,
+    #[label("`{$ident}` is defined here")]
+    pub(crate) binding_span: Span,
+    #[label("this expression is evaluated outside that scope")]
+    pub(crate) move_expr_span: Span,
+    #[label("`{$ident}` is defined within this scope")]
+    pub(crate) scope_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("duplicate definitions with name `{$name}`:", code = E0201)]
 pub(crate) struct TraitImplDuplicate {
     #[primary_span]
