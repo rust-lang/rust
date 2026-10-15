@@ -12,7 +12,7 @@ pub(super) enum EdgeDirection {
     In,
 }
 
-/// Type alias for the pairs stored in [`RegionConstraintData::constraints`],
+/// Type alias for the pairs stored in [`LegacyRegionConstraintData::constraints`],
 /// which we are indexing.
 type ConstraintPair<'tcx> = (Constraint<'tcx>, SubregionOrigin<'tcx>);
 

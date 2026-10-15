@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use rustc_errors::Diag;
 use rustc_hir::def_id::LocalDefId;
-use rustc_infer::infer::region_constraints::{Constraint, ConstraintKind, RegionConstraintData};
+use rustc_infer::infer::region_constraints::{Constraint, ConstraintKind, LegacyRegionConstraintData};
 use rustc_infer::infer::{
     InferCtxt, RegionResolutionError, RegionVariableOrigin, SubregionOrigin, TyCtxtInferExt as _,
 };
@@ -390,7 +390,7 @@ fn try_extract_error_from_region_constraints<'a, 'tcx>(
     generic_param_scope: LocalDefId,
     placeholder_region: ty::Region<'tcx>,
     error_region: Option<ty::Region<'tcx>>,
-    region_constraints: &RegionConstraintData<'tcx>,
+    region_constraints: &LegacyRegionConstraintData<'tcx>,
     mut region_var_origin: impl FnMut(RegionVid) -> RegionVariableOrigin<'tcx>,
     mut universe_of_region: impl FnMut(RegionVid) -> UniverseIndex,
 ) -> Option<Diag<'a>> {

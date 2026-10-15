@@ -16,7 +16,7 @@ use tracing::{debug, instrument};
 use super::outlives::test_type_match;
 use crate::infer::lexical_region_resolve::indexed_edges::{EdgeDirection, IndexedConstraintEdges};
 use crate::infer::region_constraints::{
-    Constraint, ConstraintKind, GenericKind, RegionConstraintData, SolverRegionConstraintData,
+    Constraint, ConstraintKind, GenericKind, LegacyRegionConstraintData, SolverRegionConstraintData,
     VarInfos, Verify, VerifyBound,
 };
 use crate::infer::{RegionRelations, RegionVariableOrigin, SubregionOrigin};
@@ -140,7 +140,7 @@ pub(crate) trait Data<'tcx> {
         'tcx: 'a;
 }
 
-impl<'tcx> Data<'tcx> for RegionConstraintData<'tcx> {
+impl<'tcx> Data<'tcx> for LegacyRegionConstraintData<'tcx> {
     fn dedupe_constraints(&mut self) {
         let mut seen = UnordSet::default();
         self.constraints.retain_mut(|(constraint, _)| {

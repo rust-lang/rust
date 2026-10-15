@@ -9,7 +9,7 @@ use rustc_type_ir::region_constraint::LeafRegionConstraint;
 use tracing::instrument;
 
 use self::env::OutlivesEnvironment;
-use super::region_constraints::{RegionConstraintData, UndoLog};
+use super::region_constraints::{LegacyRegionConstraintData, UndoLog};
 use super::{InferCtxt, RegionResolutionError};
 use crate::infer::free_regions::RegionRelations;
 use crate::infer::lexical_region_resolve;
@@ -134,7 +134,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// region constraints as normal, but then we take them and
     /// translate them into the form that the NLL solver
     /// understands. See the NLL module for mode details.
-    pub fn take_and_reset_region_constraints(&self) -> RegionConstraintData<'tcx> {
+    pub fn take_and_reset_region_constraints(&self) -> LegacyRegionConstraintData<'tcx> {
         assert!(
             self.inner.borrow().region_obligations.is_empty(),
             "region_obligations not empty: {:#?}",
@@ -152,7 +152,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// Gives temporary access to the region constraint data.
     pub fn with_region_constraints<R>(
         &self,
-        op: impl FnOnce(&RegionConstraintData<'tcx>) -> R,
+        op: impl FnOnce(&LegacyRegionConstraintData<'tcx>) -> R,
     ) -> R {
         let mut inner = self.inner.borrow_mut();
         // FIXME(-Zassumptions-on-binders): Handle solver_data

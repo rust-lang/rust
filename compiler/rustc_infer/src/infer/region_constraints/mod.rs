@@ -26,10 +26,7 @@ pub struct RegionConstraintStorage<'tcx> {
     /// For each `RegionVid`, the corresponding `RegionVariableOrigin`.
     pub(super) var_infos: IndexVec<RegionVid, RegionVariableInfo<'tcx>>,
 
-    pub(super) legacy_data: RegionConstraintData<'tcx>,
-    // FIXME(-Zassumptions-on-binders): We should merge `solver_data` and `legacy_data`
-    // into just one field and have the representation of region constraints be
-    // the same regardless of whether abby is enabled or not
+    pub(super) legacy_data: LegacyRegionConstraintData<'tcx>,
     pub(super) solver_data: SolverRegionConstraintData<'tcx>,
 
     /// For a given pair of regions (R1, R2), maps to a region R3 that
@@ -69,7 +66,7 @@ pub type VarInfos<'tcx> = IndexVec<RegionVid, RegionVariableInfo<'tcx>>;
 /// regions, as well as other conditions that must be verified, or
 /// assumptions that can be made.
 #[derive(Debug, Default, Clone)]
-pub struct RegionConstraintData<'tcx> {
+pub struct LegacyRegionConstraintData<'tcx> {
     /// Constraints of the form `A <= B`, where either `A` or `B` can
     /// be a region variable (or neither, as it happens).
     pub constraints: Vec<(Constraint<'tcx>, SubregionOrigin<'tcx>)>,
@@ -409,7 +406,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     /// some other point Q, in NLL.
     ///
     /// Not legal during a snapshot.
-    pub fn take_and_reset_data(&mut self) -> RegionConstraintData<'tcx> {
+    pub fn take_and_reset_data(&mut self) -> LegacyRegionConstraintData<'tcx> {
         assert!(!UndoLogs::<UndoLog<'_>>::in_snapshot(&self.undo_log));
 
         // If you add a new field to `RegionConstraintCollector`, you
@@ -438,7 +435,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         // Clear all unifications and recreate the variables a "now
         // un-unified" state. Note that when we unify `a` and `b`, we
         // also insert `a <= b` and a `b <= a` edges, so the
-        // `RegionConstraintData` contains the relationship here.
+        // `LegacyRegionConstraintData` contains the relationship here.
         if *any_unifications {
             *any_unifications = false;
             // Manually inlined `self.unification_table_mut()` as `self` is used in the closure.
@@ -451,7 +448,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         data
     }
 
-    pub fn legacy_data(&self) -> &RegionConstraintData<'tcx> {
+    pub fn legacy_data(&self) -> &LegacyRegionConstraintData<'tcx> {
         &self.storage.legacy_data
     }
 
@@ -910,11 +907,11 @@ impl<'tcx> VerifyBound<'tcx> {
     }
 }
 
-impl<'tcx> RegionConstraintData<'tcx> {
+impl<'tcx> LegacyRegionConstraintData<'tcx> {
     /// Returns `true` if this region constraint data contains no constraints, and `false`
     /// otherwise.
     pub fn is_empty(&self) -> bool {
-        let RegionConstraintData { constraints, verifys } = self;
+        let LegacyRegionConstraintData { constraints, verifys } = self;
         constraints.is_empty() && verifys.is_empty()
     }
 }

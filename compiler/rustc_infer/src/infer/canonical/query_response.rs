@@ -22,7 +22,7 @@ use crate::infer::canonical::{
     Canonical, CanonicalQueryResponse, CanonicalVarValues, Certainty, OriginalQueryValues,
     QueryRegionConstraints, QueryResponse,
 };
-use crate::infer::region_constraints::{ConstraintKind, RegionConstraintData};
+use crate::infer::region_constraints::{ConstraintKind, LegacyRegionConstraintData};
 use crate::infer::{
     DefineOpaqueTypes, InferCtxt, InferOk, InferResult, OpaqueTypeStorageEntries, SubregionOrigin,
     TypeOutlivesConstraint,
@@ -616,10 +616,10 @@ impl<'tcx> InferCtxt<'tcx> {
 /// creates query region constraints.
 pub fn make_query_region_constraints<'tcx>(
     outlives_obligations: Vec<TypeOutlivesConstraint<'tcx>>,
-    region_constraints: &RegionConstraintData<'tcx>,
+    region_constraints: &LegacyRegionConstraintData<'tcx>,
     assumptions: Vec<ty::ArgOutlivesClause<'tcx>>,
 ) -> QueryRegionConstraints<'tcx> {
-    let RegionConstraintData { constraints, verifys } = region_constraints;
+    let LegacyRegionConstraintData { constraints, verifys } = region_constraints;
 
     assert!(verifys.is_empty());
 

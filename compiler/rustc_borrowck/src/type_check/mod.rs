@@ -14,7 +14,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_infer::infer::outlives::env::RegionBoundPairs;
-use rustc_infer::infer::region_constraints::RegionConstraintData;
+use rustc_infer::infer::region_constraints::LegacyRegionConstraintData;
 use rustc_infer::infer::{
     BoundRegionConversionTime, InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin,
 };
@@ -2781,7 +2781,7 @@ impl NormalizeLocation for Location {
 #[derive(Debug)]
 pub(super) struct InstantiateOpaqueType<'tcx> {
     pub base_universe: Option<ty::UniverseIndex>,
-    pub region_constraints: Option<RegionConstraintData<'tcx>>,
+    pub region_constraints: Option<LegacyRegionConstraintData<'tcx>>,
     pub obligations: PredicateObligations<'tcx>,
 }
 

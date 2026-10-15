@@ -2,7 +2,7 @@ use std::fmt;
 
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::LocalDefId;
-use rustc_infer::infer::region_constraints::RegionConstraintData;
+use rustc_infer::infer::region_constraints::LegacyRegionConstraintData;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::{TyCtxt, TypeFoldable};
 use rustc_span::Span;
@@ -68,7 +68,7 @@ pub fn scrape_region_constraints<'tcx, Op, R>(
     name: &'static str,
     span: Span,
     op: impl FnOnce(&ObligationCtxt<'_, 'tcx>) -> Result<R, NoSolution>,
-) -> Result<(TypeOpOutput<'tcx, Op>, RegionConstraintData<'tcx>), ErrorGuaranteed>
+) -> Result<(TypeOpOutput<'tcx, Op>, LegacyRegionConstraintData<'tcx>), ErrorGuaranteed>
 where
     R: TypeFoldable<TyCtxt<'tcx>>,
     Op: super::TypeOp<'tcx, Output = R>,

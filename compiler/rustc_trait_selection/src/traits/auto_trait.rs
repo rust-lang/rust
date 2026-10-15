@@ -15,7 +15,7 @@ use tracing::debug;
 use super::*;
 use crate::diagnostics::UnableToConstructConstantValue;
 use crate::infer::TypeFreshener;
-use crate::infer::region_constraints::{ConstraintKind, RegionConstraintData};
+use crate::infer::region_constraints::{ConstraintKind, LegacyRegionConstraintData};
 use crate::regions::OutlivesEnvironmentBuildExt;
 use crate::traits::project::ProjectAndUnifyResult;
 
@@ -41,7 +41,7 @@ pub enum AutoTraitResult<A> {
 
 pub struct AutoTraitInfo<'cx> {
     pub full_user_env: ty::ParamEnv<'cx>,
-    pub region_data: RegionConstraintData<'cx>,
+    pub region_data: LegacyRegionConstraintData<'cx>,
     pub vid_to_region: FxIndexMap<ty::RegionVid, ty::Region<'cx>>,
 }
 
@@ -251,7 +251,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
 
         let info = AutoTraitInfo {
             full_user_env,
-            region_data: RegionConstraintData::default(),
+            region_data: LegacyRegionConstraintData::default(),
             vid_to_region: FxIndexMap::default(),
         };
         AutoTraitResult::PositiveImpl(auto_trait_callback(info))
@@ -527,7 +527,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
     /// to each other, we match `ty::RegionVid`s to `ty::Region`s.
     fn map_vid_to_region<'cx>(
         &self,
-        regions: &RegionConstraintData<'cx>,
+        regions: &LegacyRegionConstraintData<'cx>,
     ) -> FxIndexMap<ty::RegionVid, ty::Region<'cx>> {
         let mut vid_map = FxIndexMap::<RegionTarget<'cx>, RegionDeps<'cx>>::default();
         let mut finished_map = FxIndexMap::default();
