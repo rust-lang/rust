@@ -4030,6 +4030,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                     && !bounds.iter()
                                         .filter_map(|bound| bound.trait_ref())
                                         .any(|tr| tr.trait_def_id().is_some_and(|def_id| tcx.is_lang_item(def_id, LangItem::Sized)))
+                                    // Only suggest relaxing the implicit `Sized` restriction if the
+                                    // failing obligation is that restriction. Relaxing it cannot
+                                    // satisfy an explicit where clause of the item, e.g.
+                                    // `type Assoc where Self: Sized;`.
+                                    && !generics.predicates.iter().any(|pred| {
+                                        pred.kind.in_where_clause() && pred.span.contains(span)
+                                    })
                                 {
                                     let (span, separator) = if let [.., last] = bounds {
                                         (last.span().shrink_to_hi(), " +")

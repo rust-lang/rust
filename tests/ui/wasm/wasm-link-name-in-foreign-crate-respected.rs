@@ -1,6 +1,6 @@
 //@ only-wasm32
 //@ aux-build:link-name-in-foreign-crate.rs
-//@ compile-flags: --crate-type cdylib
+//@ compile-flags: --crate-type cdylib -C link-arg=--skip-wit-component
 //@ build-pass
 //@ no-prefer-dynamic
 

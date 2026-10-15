@@ -81,6 +81,7 @@
     - [\*-linux-ohos](platform-support/openharmony.md)
     - [\*-hurd-gnu](platform-support/hurd.md)
     - [aarch64-unknown-teeos](platform-support/aarch64-unknown-teeos.md)
+    - [aarch64-unknown-qtee](platform-support/aarch64-unknown-qtee.md)
     - [avr-none](platform-support/avr-none.md)
     - [\*-espidf](platform-support/esp-idf.md)
     - [\*-unknown-fuchsia](platform-support/fuchsia.md)
