@@ -66,7 +66,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(result, dest)?;
             }
             "fstatat$INODE64" => {
-                let [dirfd, path, buf, flags] = this.check_shim_sig(
+                let [dirfd, path, buf, flags] = &this.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, *_, *_, i32) -> i32),
                     (link_name, abi, args),
                 )?;
@@ -339,33 +339,33 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.os_unfair_lock_assert_not_owner(lock_op)?;
             }
             "dispatch_semaphore_create" => {
-                let [value] = this.check_shim_sig(
+                let [value] = &this.check_shim_sig(
                     shim_sig!(extern "C" fn(isize) -> *_),
                     (link_name, abi, args),
                 )?;
                 this.dispatch_semaphore_create(value, dest)?;
             }
             "dispatch_semaphore_wait" => {
-                let [sem, timeout] = this.check_shim_sig(
+                let [sem, timeout] = &this.check_shim_sig(
                     shim_sig!(extern "C" fn(*_, u64) -> isize),
                     (link_name, abi, args),
                 )?;
                 this.dispatch_semaphore_wait(sem, timeout, dest)?;
             }
             "dispatch_semaphore_signal" => {
-                let [sem] = this.check_shim_sig(
+                let [sem] = &this.check_shim_sig(
                     shim_sig!(extern "C" fn(*_) -> isize),
                     (link_name, abi, args),
                 )?;
                 this.dispatch_semaphore_signal(sem, dest)?;
             }
             "dispatch_release" => {
-                let [sem] = this
+                let [sem] = &this
                     .check_shim_sig(shim_sig!(extern "C" fn(*_) -> ()), (link_name, abi, args))?;
                 this.dispatch_release(sem)?;
             }
             "dispatch_time" => {
-                let [when, delta] = this.check_shim_sig(
+                let [when, delta] = &this.check_shim_sig(
                     shim_sig!(extern "C" fn(u64, i64) -> u64),
                     (link_name, abi, args),
                 )?;
