@@ -4743,8 +4743,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if impls_trait(trait_info.def_id) {
                         self.suggest_valid_traits(err, item_name, vec![trait_info.def_id], false);
                     } else {
+                        let mut span: MultiSpan = self.tcx.def_span(trait_info.def_id).into();
+                        for assoc in self
+                            .tcx
+                            .associated_items(trait_info.def_id)
+                            .filter_by_name_unhygienic(item_name.name)
+                        {
+                            span.push_span_context(self.tcx.def_span(assoc.def_id).shrink_to_lo());
+                        }
                         err.subdiagnostic(CandidateTraitNote {
-                            span: self.tcx.def_span(trait_info.def_id),
+                            span,
                             trait_name: self.tcx.def_path_str(trait_info.def_id),
                             item_name,
                             action_or_ty: if trait_missing_method {

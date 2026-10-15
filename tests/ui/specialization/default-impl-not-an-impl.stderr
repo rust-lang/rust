@@ -33,6 +33,8 @@ note: `Foo` defines an item `f`, perhaps you need to implement it
    |
 LL | trait Foo {
    | ^^^^^^^^^
+LL |     fn f(&self) -> u32;
+   |
 
 error[E0277]: the trait bound `u32: Foo` is not satisfied
   --> $DIR/default-impl-not-an-impl.rs:65:23
