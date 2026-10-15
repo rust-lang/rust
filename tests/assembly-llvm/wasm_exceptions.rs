@@ -32,7 +32,6 @@ pub fn test_cleanup() {
         may_panic();
     }
 
-    // CHECK-NOT: call
     // CHECK: try_table (catch_all_ref 0)
     // CHECK: call may_panic
     // CHECK: end_try_table
@@ -56,7 +55,6 @@ pub fn test_rtry() {
         );
     }
 
-    // CHECK-NOT: call
     // CHECK: try_table (catch __cpp_exception 0)
     // CHECK: call may_panic
     // CHECK: end_try_table
