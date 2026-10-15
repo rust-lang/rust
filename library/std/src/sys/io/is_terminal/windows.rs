@@ -1,5 +1,4 @@
 use crate::ffi::c_void;
-use crate::mem::MaybeUninit;
 use crate::os::windows::io::{AsHandle, AsRawHandle, BorrowedHandle};
 use crate::sys::c;
 
@@ -27,6 +26,7 @@ fn handle_is_console(handle: BorrowedHandle<'_>) -> bool {
             }
         }
         _ => unsafe {
+            use crate::mem::MaybeUninit;
             // `GetConsoleMode` incurs a remote RPC round-trip (= bad), so it's best avoided.
             // `NtQueryVolumeInformationFile` lets us test the handle directly.
             // The required `FILE_DEVICE_CONSOLE` type was introduced in Windows 8.
