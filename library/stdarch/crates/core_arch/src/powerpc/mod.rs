@@ -15,7 +15,8 @@ pub(crate) mod macros;
 ///
 /// The large and small component must be in normal form. Intuitively, the large component must
 /// indeed be large, and the small component should only add precision that does not fit in the
-/// large component.
+/// large component. Creating a value with components that are not in normal form
+/// (e.g. with [`ppcf128::from_components_unchecked`]) is [undefined behavior].
 ///
 /// More precisely, `large` and `small` are in normal form if:
 ///
@@ -25,6 +26,21 @@ pub(crate) mod macros;
 ///
 /// The [`ppcf128::from_components`] method automatically normalizes the components.
 ///
+/// ## Prefered and allowed representations
+///
+/// The table below describes the representations of `ppcf128` values. The preferred representation
+/// is the one used by associated constants (if applicable). The allowed representations are those
+/// that don't cause [undefined behavior].
+///
+/// Value | Prefered Representation | Allowed Representations | Notes
+/// ---|---|---|---
+/// +0.0 | (+0.0, +0.0) | (+0.0, ±0.0) | Nonzero second components are not allowed
+/// -0.0 | (-0.0, -0.0) | (-0.0, ±0.0) | Nonzero second components are not allowed
+/// +∞ | (+∞, +0.0) | (+∞, ±0.0) | Nonzero second components are not allowed
+/// -∞ | (-∞, -0.0) | (-∞, ±0.0) | Nonzero second components are not allowed
+/// NaN | ([NaN], +0.0) | (NaN, *) | Any NaN is allowed in the first component, any `f64` is allowed in the second component
+/// x ∈ ℝ | (x₁, x₂) | N/A | x₁ + x₂ must round to x₁
+///
 /// # Endianness
 ///
 /// The `large` and `small` components are always stored as `[large, small]`. This can be
@@ -32,6 +48,9 @@ pub(crate) mod macros;
 /// is in position 127 on big-endian, but in position 63 on little-endian.
 ///
 /// See [`ppcf128::to_bits()`] for an example.
+///
+/// [NaN]: f64#associatedconstant.NAN
+/// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
 #[doc(alias = "__ibm128")]
 #[doc(alias = "doubledouble")]
 #[doc(alias = "f64f64")]
