@@ -273,12 +273,12 @@ where
         opt_values
     });
 
-    CanonicalVarValues::instantiate(delegate.cx(), response.var_kinds, |var_values, kind| {
+    CanonicalVarValues::instantiate(delegate.cx(), response.var_kinds, |prev_var_values, kind| {
         if kind.universe() != ty::UniverseIndex::ROOT {
             // A variable from inside a binder of the query. While ideally these shouldn't
             // exist at all (see the FIXME at the start of this method), we have to deal with
             // them for now.
-            delegate.instantiate_canonical_var(kind, span, &var_values, |idx| {
+            delegate.instantiate_canonical_var(kind, span, &prev_var_values, |idx| {
                 prev_universe + idx.index()
             })
         } else if kind.is_existential() {
@@ -290,11 +290,11 @@ where
             // to "come from somewhere", so by equating them with the original values of the caller
             // later on, we pull them down into their correct universe again.
             if let Some(v) =
-                opt_values.as_ref().unwrap()[ty::BoundVar::from_usize(var_values.len())]
+                opt_values.as_ref().unwrap()[ty::BoundVar::from_usize(prev_var_values.len())]
             {
                 v
             } else {
-                delegate.instantiate_canonical_var(kind, span, &var_values, |_| prev_universe)
+                delegate.instantiate_canonical_var(kind, span, &prev_var_values, |_| prev_universe)
             }
         } else {
             // For placeholders which were already part of the input, we simply map this

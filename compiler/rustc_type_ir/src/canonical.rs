@@ -269,6 +269,7 @@ impl<I: Interner> CanonicalVarValues<I> {
         if var_kinds.len() <= 4 {
             let mut var_values = ArrayVec::<_, 4>::new();
             for info in var_kinds.iter() {
+                // Note: the `f` call gets all the previously constructed `var_values`.
                 var_values.push(f(&var_values, info));
             }
             CanonicalVarValues { var_values: cx.mk_args(&var_values) }
