@@ -423,9 +423,19 @@ impl LocalExpnIdRemapper<'_> {
 }
 
 impl HygieneRemapper<SyntaxContext> for SyntaxContextRemapper<'_> {
-    #[inline]
     fn hash(&self, key: SyntaxContext) -> u64 {
-        key.hash_for_det_sorting(self.0)
+        if key.is_root() {
+            return 0;
+        }
+
+        let (expn_id, transparency) = self.0.outer_mark(key);
+        let hash = self.0.expn_hash(expn_id).0;
+
+        let mut state = DefaultHasher::new();
+        hash.hash(&mut state);
+        transparency.hash(&mut state);
+
+        state.finish()
     }
 
     #[inline]
@@ -1685,23 +1695,6 @@ impl StableHash for SyntaxContext {
             hash.stable_hash(hcx, hasher);
             transparency.stable_hash(hcx, hasher);
         }
-    }
-}
-
-impl SyntaxContext {
-    fn hash_for_det_sorting(self, data: &HygieneData) -> u64 {
-        if self.is_root() {
-            return 0;
-        }
-
-        let (expn_id, transparency) = data.outer_mark(self);
-        let hash = data.expn_hash(expn_id).0;
-
-        let mut state = DefaultHasher::new();
-        hash.hash(&mut state);
-        transparency.hash(&mut state);
-
-        state.finish()
     }
 }
 

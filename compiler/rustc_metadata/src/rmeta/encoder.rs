@@ -81,8 +81,8 @@ pub(super) struct EncodeContext<'a, 'tcx> {
     hygiene_ctxt: Rc<RefCell<HygieneEncodeContext>>,
     // Used for both `Symbol`s and `ByteSymbol`s.
     symbol_index_table: FxHashMap<u32, usize>,
-    s_ctxt_remapping: HygieneRemappingResults<SyntaxContext>,
-    l_expn_remapping: HygieneRemappingResults<LocalExpnId>,
+    syntax_context_remapping: HygieneRemappingResults<SyntaxContext>,
+    local_expn_id_remapping: HygieneRemappingResults<LocalExpnId>,
 }
 
 /// If the current crate is a proc-macro, returns early with `LazyArray::default()`.
@@ -175,7 +175,7 @@ impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
 
     fn encode_syntax_context(&mut self, syntax_context: SyntaxContext) {
         self.hygiene_ctxt.borrow_mut().enqueue_syntax_context_for_encoding(syntax_context);
-        self.emit_u32(self.s_ctxt_remapping.map_id(syntax_context).into());
+        self.emit_u32(self.syntax_context_remapping.map_id(syntax_context).into());
     }
 
     fn encode_expn_id(&mut self, expn_id: ExpnId) {
@@ -188,11 +188,12 @@ impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
         }
         expn_id.krate.encode(self);
 
-        if let Some(local_expn) = expn_id.as_local() {
-            self.l_expn_remapping.map_id(local_expn).as_u32().encode(self);
-        } else {
-            expn_id.local_id.encode(self);
-        }
+        let expn_index = match expn_id.as_local() {
+            Some(local_expn) => self.local_expn_id_remapping.map_id(local_expn).as_raw(),
+            None => expn_id.local_id,
+        };
+
+        expn_index.encode(self);
     }
 
     fn encode_span(&mut self, span: Span) {
@@ -2052,12 +2053,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             &Rc::clone(&self.hygiene_ctxt),
             &mut (&mut *self, &mut syntax_contexts, &mut expn_data_table, &mut expn_hash_table),
             |(this, syntax_contexts, _, _), context, ctxt_data| {
-                let context = this.s_ctxt_remapping.map_id(context);
+                let context = this.syntax_context_remapping.map_id(context);
                 syntax_contexts.set_some(context.into(), this.lazy(ctxt_data));
             },
             |(this, _, expn_data_table, expn_hash_table), expn_id, expn_data, hash| {
                 if let Some(expn_id) = expn_id.as_local() {
-                    let expn_idx = this.l_expn_remapping.map_id(expn_id).as_raw();
+                    let expn_idx = this.local_expn_id_remapping.map_id(expn_id).as_raw();
 
                     expn_data_table.set_some(expn_idx, this.lazy(expn_data.expect("local expn")));
                     expn_hash_table.set_some(expn_idx, this.lazy(hash));
@@ -2748,8 +2749,8 @@ fn with_encode_metadata_header(
         is_proc_macro: tcx.crate_types().contains(&CrateType::ProcMacro),
         hygiene_ctxt: Default::default(),
         symbol_index_table: Default::default(),
-        s_ctxt_remapping,
-        l_expn_remapping,
+        syntax_context_remapping: s_ctxt_remapping,
+        local_expn_id_remapping: l_expn_remapping,
     };
 
     // Encode the rustc version string in a predictable location.
