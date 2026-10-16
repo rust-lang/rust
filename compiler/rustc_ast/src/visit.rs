@@ -446,7 +446,7 @@ macro_rules! common_visitor_and_walkers {
             crate::token::LitKind,
             crate::tokenstream::LazyAttrTokenStream,
             crate::tokenstream::TokenStream,
-            rustc_data_structures::fx::FxHashMap<Symbol, usize>,
+            rustc_data_structures::fx::FxIndexMap<Symbol, usize>,
             rustc_span::ByteSymbol,
             rustc_span::ErrorGuaranteed,
             std::borrow::Cow<'_, str>,

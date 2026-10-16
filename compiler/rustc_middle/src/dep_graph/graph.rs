@@ -6,7 +6,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::profiling::QueryInvocationId;
 use rustc_data_structures::sharded::ShardedHashMap;
 use rustc_data_structures::stable_hash::{StableHash, StableHasher};
@@ -1140,7 +1140,7 @@ pub struct WorkProduct {
     ///
     /// By convention, file extensions are currently used as identifiers, i.e. the key "o" maps to
     /// the object file's path, and "dwo" to the dwarf object file's path.
-    pub saved_files: UnordMap<String, String>,
+    pub saved_files: FxIndexMap<String, String>,
 }
 
 impl WorkProduct {

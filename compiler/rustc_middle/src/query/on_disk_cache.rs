@@ -4,11 +4,10 @@ use std::rc::Rc;
 use std::sync::Arc;
 use std::{fmt, mem};
 
-use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::sync::{HashMapExt, Lock, RwLock};
-use rustc_data_structures::unhash::UnhashMap;
-use rustc_data_structures::unord::{UnordMap, UnordSet};
+use rustc_data_structures::unhash::UnindexMap;
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE, LocalDefId, StableCrateId};
 use rustc_hir::definitions::DefPathHash;
 use rustc_index::IndexVec;
@@ -56,7 +55,7 @@ pub struct OnDiskCache {
     // The complete cache data in serialized form.
     serialized_data: RwLock<Option<Mmap>>,
 
-    file_index_to_stable_id: FxHashMap<SourceFileIndex, EncodedSourceFileId>,
+    file_index_to_stable_id: FxIndexMap<SourceFileIndex, EncodedSourceFileId>,
 
     // Caches that are populated lazily during decoding.
     file_index_to_file: Lock<FxHashMap<SourceFileIndex, Arc<SourceFile>>>,
@@ -76,7 +75,7 @@ pub struct OnDiskCache {
     // to represent the fact that we are storing *encoded* ids. When we decode
     // a `SyntaxContext`, a new id will be allocated from the global `HygieneData`,
     // which will almost certainly be different than the serialized id.
-    syntax_contexts: FxHashMap<u32, AbsoluteBytePos>,
+    syntax_contexts: FxIndexMap<u32, AbsoluteBytePos>,
     // A map from the `DefPathHash` of an `ExpnId` to the position
     // of their associated `ExpnData`. Ideally, we would store a `DefId`,
     // but we need to decode this before we've constructed a `TyCtxt` (which
@@ -86,20 +85,20 @@ pub struct OnDiskCache {
     // `ExpnData` (e.g `ExpnData.krate` may not be `LOCAL_CRATE`). Alternatively,
     // we could look up the `ExpnData` from the metadata of foreign crates,
     // but it seemed easier to have `OnDiskCache` be independent of the `CStore`.
-    expn_data: UnhashMap<ExpnHash, AbsoluteBytePos>,
+    expn_data: UnindexMap<ExpnHash, AbsoluteBytePos>,
     // Additional information used when decoding hygiene data.
     hygiene_context: HygieneDecodeContext,
     // Maps `ExpnHash`es to their raw value from the *previous*
     // compilation session. This is used as an initial 'guess' when
     // we try to map an `ExpnHash` to its value in the current
     // compilation session.
-    foreign_expn_data: UnhashMap<ExpnHash, u32>,
+    foreign_expn_data: UnindexMap<ExpnHash, u32>,
 }
 
 // This type is used only for serialization and deserialization.
 #[derive(Encodable, Decodable)]
 struct Footer {
-    file_index_to_stable_id: FxHashMap<SourceFileIndex, EncodedSourceFileId>,
+    file_index_to_stable_id: FxIndexMap<SourceFileIndex, EncodedSourceFileId>,
     query_values_index: Vec<(SerializedDepNodeIndex, AbsoluteBytePos)>,
     side_effects_index: Vec<(SerializedDepNodeIndex, AbsoluteBytePos)>,
     // The location of all allocations.
@@ -107,10 +106,10 @@ struct Footer {
     // without measurable overhead. This permits larger const allocations without ICEing.
     interpret_alloc_index: Vec<u64>,
     // See `OnDiskCache.syntax_contexts`
-    syntax_contexts: FxHashMap<u32, AbsoluteBytePos>,
+    syntax_contexts: FxIndexMap<u32, AbsoluteBytePos>,
     // See `OnDiskCache.expn_data`
-    expn_data: UnhashMap<ExpnHash, AbsoluteBytePos>,
-    foreign_expn_data: UnhashMap<ExpnHash, u32>,
+    expn_data: UnindexMap<ExpnHash, AbsoluteBytePos>,
+    foreign_expn_data: UnindexMap<ExpnHash, u32>,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Encodable, Decodable)]
@@ -189,9 +188,9 @@ impl OnDiskCache {
             query_values_index: Default::default(),
             side_effects_index: Default::default(),
             alloc_decoding_state: AllocDecodingState::new(Vec::new()),
-            syntax_contexts: FxHashMap::default(),
-            expn_data: UnhashMap::default(),
-            foreign_expn_data: UnhashMap::default(),
+            syntax_contexts: Default::default(),
+            expn_data: Default::default(),
+            foreign_expn_data: Default::default(),
             hygiene_context: Default::default(),
         }
     }
@@ -213,7 +212,7 @@ impl OnDiskCache {
                 let mut file_to_file_index =
                     FxHashMap::with_capacity_and_hasher(files.len(), Default::default());
                 let mut file_index_to_stable_id =
-                    FxHashMap::with_capacity_and_hasher(files.len(), Default::default());
+                    FxIndexMap::with_capacity_and_hasher(files.len(), Default::default());
 
                 for (index, file) in files.iter().enumerate() {
                     let index = SourceFileIndex(index as u32);
@@ -273,9 +272,9 @@ impl OnDiskCache {
                 interpret_alloc_index
             };
 
-            let mut syntax_contexts = FxHashMap::default();
-            let mut expn_data = UnhashMap::default();
-            let mut foreign_expn_data = UnhashMap::default();
+            let mut syntax_contexts = FxIndexMap::default();
+            let mut expn_data = UnindexMap::default();
+            let mut foreign_expn_data = UnindexMap::default();
 
             // Encode all hygiene data (`SyntaxContextData` and `ExpnData`) from the current
             // session.
@@ -400,11 +399,11 @@ pub struct CacheDecoder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     opaque: MemDecoder<'a>,
     file_index_to_file: &'a Lock<FxHashMap<SourceFileIndex, Arc<SourceFile>>>,
-    file_index_to_stable_id: &'a FxHashMap<SourceFileIndex, EncodedSourceFileId>,
+    file_index_to_stable_id: &'a FxIndexMap<SourceFileIndex, EncodedSourceFileId>,
     alloc_decoding_session: AllocDecodingSession<'a>,
-    syntax_contexts: &'a FxHashMap<u32, AbsoluteBytePos>,
-    expn_data: &'a UnhashMap<ExpnHash, AbsoluteBytePos>,
-    foreign_expn_data: &'a UnhashMap<ExpnHash, u32>,
+    syntax_contexts: &'a FxIndexMap<u32, AbsoluteBytePos>,
+    expn_data: &'a UnindexMap<ExpnHash, AbsoluteBytePos>,
+    foreign_expn_data: &'a UnindexMap<ExpnHash, u32>,
     hygiene_context: &'a HygieneDecodeContext,
     source_span_cache: SourceSpanCache,
 }
@@ -726,8 +725,8 @@ macro_rules! impl_decodable_via_ref_decodable_for_foreign_types {
 impl_decodable_via_ref_decodable_for_foreign_types! {
     // tidy-alphabetical-start
     &'tcx IndexVec<mir::Promoted, mir::Body<'tcx>>,
-    &'tcx UnordMap<DefId, ty::EarlyBinder<'tcx, Ty<'tcx>>>,
-    &'tcx UnordSet<LocalDefId>,
+    &'tcx FxIndexMap<DefId, ty::EarlyBinder<'tcx, Ty<'tcx>>>,
+    &'tcx FxIndexSet<LocalDefId>,
     &'tcx [(
         rustc_middle::middle::exported_symbols::ExportedSymbol<'tcx>,
         rustc_middle::middle::exported_symbols::SymbolExportInfo,

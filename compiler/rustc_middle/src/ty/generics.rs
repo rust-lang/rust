@@ -1,7 +1,7 @@
 use std::ops::ControlFlow;
 
 use rustc_ast as ast;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::def_id::DefId;
 use rustc_macros::{StableHash, TyDecodable, TyEncodable};
 use rustc_span::{Span, Symbol, bug, kw};
@@ -142,7 +142,7 @@ pub struct Generics {
 
     /// Reverse map to the `index` field of each `GenericParamDef`.
     #[stable_hash(ignore)]
-    pub param_def_id_to_index: FxHashMap<DefId, u32>,
+    pub param_def_id_to_index: FxIndexMap<DefId, u32>,
 
     pub has_self: bool,
     pub has_arg_pos_consts: bool,
@@ -151,15 +151,11 @@ pub struct Generics {
 
 impl std::fmt::Debug for Generics {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
-        // ironically, we get this warning because of what we're trying to fix.
-        #[expect(rustc::potential_query_instability)]
-        let mut stabilized_hashmap = self.param_def_id_to_index.iter().collect::<Vec<_>>();
-        stabilized_hashmap.sort_by_key(|(_, v)| **v);
         f.debug_struct("Generics")
             .field("parent", &self.parent)
             .field("parent_count", &self.parent_count)
             .field("own_params", &self.own_params)
-            .field("param_def_id_to_index", &stabilized_hashmap)
+            .field("param_def_id_to_index", &self.param_def_id_to_index)
             .field("has_self", &self.has_self)
             .field("has_late_bound_regions", &self.has_late_bound_regions)
             .finish()

@@ -2,7 +2,7 @@
 
 use std::borrow::Cow;
 use std::cell::{Cell, RefCell};
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::hash::{BuildHasher, Hash};
 use std::marker::{PhantomData, PointeeSized};
 use std::num::{NonZero, ZeroablePrimitive};
@@ -601,57 +601,6 @@ where
     T: Decodable<D> + PartialEq + Ord,
 {
     fn decode(d: &mut D) -> BTreeSet<T> {
-        let len = d.read_usize();
-        (0..len).map(|_| Decodable::decode(d)).collect()
-    }
-}
-
-impl<E: Encoder, K, V, S> Encodable<E> for HashMap<K, V, S>
-where
-    K: Encodable<E> + Eq,
-    V: Encodable<E>,
-    S: BuildHasher,
-{
-    fn encode(&self, e: &mut E) {
-        e.emit_usize(self.len());
-        for (key, val) in self {
-            key.encode(e);
-            val.encode(e);
-        }
-    }
-}
-
-impl<D: Decoder, K, V, S> Decodable<D> for HashMap<K, V, S>
-where
-    K: Decodable<D> + Hash + Eq,
-    V: Decodable<D>,
-    S: BuildHasher + Default,
-{
-    fn decode(d: &mut D) -> HashMap<K, V, S> {
-        let len = d.read_usize();
-        (0..len).map(|_| (Decodable::decode(d), Decodable::decode(d))).collect()
-    }
-}
-
-impl<E: Encoder, T, S> Encodable<E> for HashSet<T, S>
-where
-    T: Encodable<E> + Eq,
-    S: BuildHasher,
-{
-    fn encode(&self, s: &mut E) {
-        s.emit_usize(self.len());
-        for e in self {
-            e.encode(s);
-        }
-    }
-}
-
-impl<D: Decoder, T, S> Decodable<D> for HashSet<T, S>
-where
-    T: Decodable<D> + Hash + Eq,
-    S: BuildHasher + Default,
-{
-    fn decode(d: &mut D) -> HashSet<T, S> {
         let len = d.read_usize();
         (0..len).map(|_| Decodable::decode(d)).collect()
     }

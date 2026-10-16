@@ -6,7 +6,6 @@ use rustc_hir as hir;
 use rustc_hir::HirId;
 use rustc_hir::def_id::LocalDefId;
 use rustc_macros::{StableHash, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
-use rustc_span::def_id::LocalDefIdMap;
 use rustc_span::{Ident, Span, Symbol, bug};
 
 use super::TyCtxt;
@@ -77,7 +76,7 @@ impl PartialOrd for UpvarCapture {
 
 /// Given the closure DefId this map provides a map of root variables to minimum
 /// set of `CapturedPlace`s that need to be tracked to support all captures of that closure.
-pub type MinCaptureInformationMap<'tcx> = LocalDefIdMap<RootVariableMinCaptureList<'tcx>>;
+pub type MinCaptureInformationMap<'tcx> = FxIndexMap<LocalDefId, RootVariableMinCaptureList<'tcx>>;
 
 /// Part of `MinCaptureInformationMap`; Maps a root variable to the list of `CapturedPlace`.
 /// Used to track the minimum set of `Place`s that need to be captured to support all

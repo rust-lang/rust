@@ -16,6 +16,13 @@ macro_rules! define_id_collections {
         pub type $set_name = $crate::unord::UnordSet<$key>;
         pub type $entry_name<'a, T> = $crate::fx::StdEntry<'a, $key, T>;
     };
+    ($map_name:ident, $set_name:ident, $entry_name:ident, $key:ty, $index_map_name:ident, $index_set_name:ident) => {
+        pub type $map_name<T> = $crate::unord::UnordMap<$key, T>;
+        pub type $set_name = $crate::unord::UnordSet<$key>;
+        pub type $entry_name<'a, T> = $crate::fx::StdEntry<'a, $key, T>;
+        pub type $index_map_name<T> = $crate::fx::FxIndexMap<$key, T>;
+        pub type $index_set_name = $crate::fx::FxIndexSet<$key>;
+    };
 }
 
 #[macro_export]
