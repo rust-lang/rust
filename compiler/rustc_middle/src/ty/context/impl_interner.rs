@@ -858,5 +858,9 @@ bidirectional_lang_item_map! {
     Tuple,
     Unpin,
     Unsize,
+    Eq,
+    Send,
+    Sync,
+    Debug,
 // tidy-alphabetical-end
 }

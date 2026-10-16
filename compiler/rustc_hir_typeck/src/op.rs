@@ -1196,8 +1196,8 @@ fn lang_item_for_binop(tcx: TyCtxt<'_>, op: Op) -> (Symbol, Option<DefId>) {
             BinOpKind::Le => (sym::le, lang.partial_ord_trait()),
             BinOpKind::Ge => (sym::ge, lang.partial_ord_trait()),
             BinOpKind::Gt => (sym::gt, lang.partial_ord_trait()),
-            BinOpKind::Eq => (sym::eq, lang.eq_trait()),
-            BinOpKind::Ne => (sym::ne, lang.eq_trait()),
+            BinOpKind::Eq => (sym::eq, lang.partial_eq_trait()),
+            BinOpKind::Ne => (sym::ne, lang.partial_eq_trait()),
             BinOpKind::And | BinOpKind::Or => {
                 bug!("&& and || are not overloadable")
             }

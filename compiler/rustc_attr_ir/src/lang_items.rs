@@ -166,6 +166,7 @@ language_item_table! {
     OffsetOf,                kw::OffsetOf,             offset_of,                  Target::Fn,             GenericRequirement::Exact(1);
     /// Trait injected by `#[derive(PartialEq)]`, (i.e. "Partial EQ").
     StructuralPeq,           sym::structural_peq,      structural_peq_trait,       Target::Trait,          GenericRequirement::None;
+    Debug,                   sym::debug,               debug_trait,                Target::Trait,          GenericRequirement::Exact(0);
     Copy,                    sym::copy,                copy_trait,                 Target::Trait,          GenericRequirement::Exact(0);
     Clone,                   sym::clone,               clone_trait,                Target::Trait,          GenericRequirement::None;
     CloneFn,                 sym::clone_fn,            clone_fn,                   Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
@@ -173,6 +174,7 @@ language_item_table! {
     UseCloned,               sym::use_cloned,          use_cloned_trait,           Target::Trait,          GenericRequirement::None;
     TrivialClone,            sym::trivial_clone,       trivial_clone_trait,        Target::Trait,          GenericRequirement::None;
     Sync,                    sym::sync,                sync_trait,                 Target::Trait,          GenericRequirement::Exact(0);
+    Send,                    sym::send,                send_trait,                 Target::Trait,          GenericRequirement::Exact(0);
     DiscriminantKind,        sym::discriminant_kind,   discriminant_kind_trait,    Target::Trait,          GenericRequirement::None;
     /// The associated item of the `DiscriminantKind` trait.
     Discriminant,            sym::discriminant_type,   discriminant_type,          Target::AssocTy(AssocCtxt::Trait),        GenericRequirement::None;
@@ -281,7 +283,8 @@ language_item_table! {
     Pin,                     kw::Pin,                  pin_type,                   Target::Struct,         GenericRequirement::None;
 
     OrderingEnum,            sym::Ordering,            ordering_enum,              Target::Enum,           GenericRequirement::Exact(0);
-    PartialEq,               sym::eq,                  eq_trait,                   Target::Trait,          GenericRequirement::Exact(1);
+    PartialEq,               sym::partial_eq,          partial_eq_trait,           Target::Trait,          GenericRequirement::Exact(1);
+    Eq,                      sym::eq,                  eq_trait,                   Target::Trait,          GenericRequirement::Exact(0);
     PartialOrd,              sym::partial_ord,         partial_ord_trait,          Target::Trait,          GenericRequirement::Exact(1);
     CVoid,                   sym::c_void,              c_void,                     Target::Enum,           GenericRequirement::None;
     F16B,                    sym::f16b,                f16b,                       Target::Struct,         GenericRequirement::Exact(0);

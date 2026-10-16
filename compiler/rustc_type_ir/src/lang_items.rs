@@ -60,5 +60,9 @@ pub enum SolverTraitLangItem {
     Tuple,
     Unpin,
     Unsize,
+    Eq,
+    Send,
+    Sync,
+    Debug,
     // tidy-alphabetical-end
 }
