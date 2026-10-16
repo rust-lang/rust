@@ -8,19 +8,19 @@ Follow the instructions at [How to build and run the compiler](../building/how-t
 
 You will also need to enable `llvm.tpde = true` in `bootstrap.toml`, and, due to present limitations with the way LLVM is built, disable CI LLVM downloads with `llvm.download-ci-llvm = false`.
 
-Afterwards rustc toolchain link will allow you to use it through cargo:
+Afterwards, linking the toolchain with rustup will allow you to use it through cargo:
 
 ```console
 rustup toolchain link stage1 build/host/stage1
 # in other crate
-RUSTFLAGS="-Ztpde" cargo +stage1 build
+RUSTFLAGS="-Zllvm-tpde" cargo +stage1 build
 ```
 
 You can then run the compiler test suite:
 
 ```console
-./x test --stage 1 tests/ui --compiletest-rustc-args="-Ztpde" # or -Ztpde=only
-./x test --stage 1 tests/run-make --compiletest-rustc-args="-Ztpde" # or -Ztpde=only
+./x test --stage 1 tests/ui --compiletest-rustc-args="-Zllvm-tpde" # or -Zllvm-tpde=only
+./x test --stage 1 tests/run-make --compiletest-rustc-args="-Zllvm-tpde" # or -Zllvm-tpde=only
 ```
 
 ## Build instruction for TPDE itself

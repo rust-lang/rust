@@ -6,7 +6,7 @@ Please ask on [Zulip](https://rust-lang.zulipchat.com/) for help if you get stuc
 
 # Reporting crashes
 
-When using `-Z tpde=only`, you will likely see modules failing to compile due to certain LLVM IR features being unsupported by TPDE. An LLVM module should never fail to compile with `-Z tpde=try`, so if it does, this is a bug we would particularly appreciate knowing about.
+When using `-Z llvm-tpde=only`, you will likely see modules failing to compile due to certain LLVM IR features being unsupported by TPDE. An LLVM module should never fail to compile with `-Z llvm-tpde=try`, so if it does, this is a bug we would particularly appreciate knowing about.
 
 It is also conceivable that a program compiled with TPDE will compile successfully but crash at runtime due to an ABI mismatch with LLVM or other miscompilation. These bugs can be similarly minimized and reported, and are of high interest to the maintainers of the `rustc` TPDE integration. These cases are harder to debug, so your help is highly appreciated.
 
