@@ -6,8 +6,10 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use eyre::{Context, OptionExt, Result, bail};
-use parse::ParsedTargetInfoFile;
 use serde::Deserialize;
+
+use crate::parse::ParsedTargetInfoFile;
+use crate::render::Section;
 
 /// Information about a target obtained from the markdown and rustc.
 struct TargetInfo {
@@ -19,18 +21,15 @@ struct TargetInfo {
     metadata: RustcTargetMetadata,
 }
 
-/// All the sections that we want every doc page to have.
-/// It may make sense to relax this into two kinds of sections, "required" sections
-/// and "optional" sections, where required sections will get stubbed out when not found
-/// while optional sections will just not exist when not found.
+/// All the sections that we want doc pages to have.
 // IMPORTANT: This is also documented in the README, keep it in sync.
-const SECTIONS: &[&str] = &[
-    "Overview",
-    "Requirements",
-    "Testing",
-    "Building the target",
-    "Cross compilation",
-    "Building Rust programs",
+const SECTIONS: &[Section] = &[
+    Section::required("Overview"),
+    Section::required("Requirements"),
+    Section::required("Testing"),
+    Section::required("Building the target"),
+    Section::required("Cross compilation"),
+    Section::required("Building Rust programs"),
 ];
 
 fn main() -> Result<()> {
