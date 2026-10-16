@@ -76,7 +76,7 @@ pub struct OnDiskCache {
     // to represent the fact that we are storing *encoded* ids. When we decode
     // a `SyntaxContext`, a new id will be allocated from the global `HygieneData`,
     // which will almost certainly be different than the serialized id.
-    syntax_contexts: FxHashMap<u32, AbsoluteBytePos>,
+    syntax_contexts: FxHashMap<SyntaxContext, AbsoluteBytePos>,
     // A map from the `DefPathHash` of an `ExpnId` to the position
     // of their associated `ExpnData`. Ideally, we would store a `DefId`,
     // but we need to decode this before we've constructed a `TyCtxt` (which
@@ -107,7 +107,7 @@ struct Footer {
     // without measurable overhead. This permits larger const allocations without ICEing.
     interpret_alloc_index: Vec<u64>,
     // See `OnDiskCache.syntax_contexts`
-    syntax_contexts: FxHashMap<u32, AbsoluteBytePos>,
+    syntax_contexts: FxHashMap<SyntaxContext, AbsoluteBytePos>,
     // See `OnDiskCache.expn_data`
     expn_data: UnhashMap<ExpnHash, AbsoluteBytePos>,
     foreign_expn_data: UnhashMap<ExpnHash, u32>,
@@ -283,10 +283,10 @@ impl OnDiskCache {
             HygieneEncodeContext::encode(
                 &Rc::clone(&encoder.hygiene_context),
                 &mut encoder,
-                |encoder, index, ctxt_data| {
+                |encoder, ctxt, ctxt_data| {
                     let pos = AbsoluteBytePos::new(encoder.position());
                     encoder.encode_tagged(TAG_SYNTAX_CONTEXT, ctxt_data);
-                    syntax_contexts.insert(index, pos);
+                    syntax_contexts.insert(ctxt, pos);
                 },
                 |encoder, expn_id, data, hash| {
                     if expn_id.krate == LOCAL_CRATE {
@@ -402,7 +402,7 @@ pub struct CacheDecoder<'a, 'tcx> {
     file_index_to_file: &'a Lock<FxHashMap<SourceFileIndex, Arc<SourceFile>>>,
     file_index_to_stable_id: &'a FxHashMap<SourceFileIndex, EncodedSourceFileId>,
     alloc_decoding_session: AllocDecodingSession<'a>,
-    syntax_contexts: &'a FxHashMap<u32, AbsoluteBytePos>,
+    syntax_contexts: &'a FxHashMap<SyntaxContext, AbsoluteBytePos>,
     expn_data: &'a UnhashMap<ExpnHash, AbsoluteBytePos>,
     foreign_expn_data: &'a UnhashMap<ExpnHash, u32>,
     hygiene_context: &'a HygieneDecodeContext,
@@ -549,10 +549,10 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for Vec<u8> {
 impl<'a, 'tcx> SpanDecoder for CacheDecoder<'a, 'tcx> {
     fn decode_syntax_context(&mut self) -> SyntaxContext {
         let syntax_contexts = self.syntax_contexts;
-        rustc_span::hygiene::decode_syntax_context(self, self.hygiene_context, |this, id| {
+        rustc_span::hygiene::decode_syntax_context(self, self.hygiene_context, |this, ctxt| {
             // This closure is invoked if we haven't already decoded the data for the `SyntaxContext` we are deserializing.
             // We look up the position of the associated `SyntaxData` and decode it.
-            let pos = syntax_contexts.get(&id).unwrap();
+            let pos = syntax_contexts.get(&ctxt).unwrap();
             this.with_position(pos.to_usize(), |decoder| {
                 let data: SyntaxContextKey = decode_tagged(decoder, TAG_SYNTAX_CONTEXT);
                 data
