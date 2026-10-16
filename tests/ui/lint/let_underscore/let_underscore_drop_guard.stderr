@@ -1,0 +1,86 @@
+error: non-binding let on a `DropGuard`
+  --> $DIR/let_underscore_drop_guard.rs:8:9
+   |
+LL |     let _ = DropGuard::new((), |_| {});
+   |         ^ this `DropGuard` is not assigned to a binding and is immediately dropped
+   |
+   = note: `#[deny(let_underscore_drop_guard)]` on by default
+help: consider binding to an unused variable to avoid immediately dropping the value
+   |
+LL |     let _unused = DropGuard::new((), |_| {});
+   |          ++++++
+help: consider immediately dropping the value
+   |
+LL -     let _ = DropGuard::new((), |_| {});
+LL +     drop(DropGuard::new((), |_| {}));
+   |
+
+error: non-binding let on a `DropGuard`
+  --> $DIR/let_underscore_drop_guard.rs:10:5
+   |
+LL |     _ = DropGuard::new((), |_| {});
+   |     ^ this `DropGuard` is not assigned to a binding and is immediately dropped
+   |
+help: consider binding to an unused variable to avoid immediately dropping the value
+   |
+LL -     _ = DropGuard::new((), |_| {});
+LL +     let _unused = DropGuard::new((), |_| {});
+   |
+help: consider immediately dropping the value
+   |
+LL -     _ = DropGuard::new((), |_| {});
+LL +     drop(DropGuard::new((), |_| {}));
+   |
+
+error: non-binding let on a `DropGuard`
+  --> $DIR/let_underscore_drop_guard.rs:13:10
+   |
+LL |     let (_, _) = (DropGuard::new((), |_| {}), 1);
+   |          ^ this `DropGuard` is not assigned to a binding and is immediately dropped
+   |
+   = help: consider immediately dropping the value using `drop(..)` after the `let` statement
+help: consider binding to an unused variable to avoid immediately dropping the value
+   |
+LL |     let (_unused, _) = (DropGuard::new((), |_| {}), 1);
+   |           ++++++
+
+error: non-binding let on a `DropGuard`
+  --> $DIR/let_underscore_drop_guard.rs:15:6
+   |
+LL |     (_, _) = (DropGuard::new((), |_| {}), 1);
+   |      ^ this `DropGuard` is not assigned to a binding and is immediately dropped
+   |
+help: consider binding to an unused variable to avoid immediately dropping the value
+  --> $DIR/let_underscore_drop_guard.rs:15:6
+   |
+LL |     (_, _) = (DropGuard::new((), |_| {}), 1);
+   |      ^
+   = help: consider immediately dropping the value using `drop(..)` after the `let` statement
+
+error: non-binding let on a `DropGuard`
+  --> $DIR/let_underscore_drop_guard.rs:18:26
+   |
+LL |     let (_a, Struct { a: _ }) = (0, Struct { a: DropGuard::new((), |_| {}) });
+   |                          ^ this `DropGuard` is not assigned to a binding and is immediately dropped
+   |
+   = help: consider immediately dropping the value using `drop(..)` after the `let` statement
+help: consider binding to an unused variable to avoid immediately dropping the value
+   |
+LL |     let (_a, Struct { a: _unused }) = (0, Struct { a: DropGuard::new((), |_| {}) });
+   |                           ++++++
+
+error: non-binding let on a `DropGuard`
+  --> $DIR/let_underscore_drop_guard.rs:21:22
+   |
+LL |     (_b, Struct { a: _ }) = (0, Struct { a: DropGuard::new((), |_| {}) });
+   |                      ^ this `DropGuard` is not assigned to a binding and is immediately dropped
+   |
+help: consider binding to an unused variable to avoid immediately dropping the value
+  --> $DIR/let_underscore_drop_guard.rs:21:22
+   |
+LL |     (_b, Struct { a: _ }) = (0, Struct { a: DropGuard::new((), |_| {}) });
+   |                      ^
+   = help: consider immediately dropping the value using `drop(..)` after the `let` statement
+
+error: aborting due to 6 previous errors
+
