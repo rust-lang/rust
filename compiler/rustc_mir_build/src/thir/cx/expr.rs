@@ -255,10 +255,10 @@ impl<'tcx> ThirBuildCx<'tcx> {
                     && let ExprKind::Deref { arg: derefed_expr } = expr.kind
                     && let ty::Ref(_, _, ty::Mutability::Not) =
                         self.thir.exprs[derefed_expr].ty.kind()
-                    // FIXME: reborrows can currently affect closure capture inference
+                    // FIXME: removing these reborrows may prevent closure upvars from resolving
                     && !self.tcx.is_closure_like(self.body_owner)
                 {
-                    debug_assert_eq!(self.thir.exprs.last_index(), Some(derefed_expr));
+                    assert_eq!(self.thir.exprs.last_index(), Some(derefed_expr));
                     return self.thir.exprs.pop().unwrap();
                 } else {
                     ExprKind::Borrow {
