@@ -382,6 +382,7 @@ impl<'tcx> PlaceUnification<'_, 'tcx> {
 
     #[tracing::instrument(level = "trace", skip(self))]
     fn remap_local(&mut self, local: Local, place: Place<'tcx>) {
+        debug_assert!(self.remapped_locals[local].is_none());
         self.remapped_locals[local] = Some(place);
 
         self.liveness_matrix.union_rows(local, place.local);
@@ -420,9 +421,22 @@ impl<'tcx> PlaceUnification<'_, 'tcx> {
         }
 
         // Do the actual remapping *after* checking for live range overlaps.
-        // This is necessary because the input operands necessarily have
-        // overlapping live ranges.
+        //
+        // If we tried to do this immediately after `can_unify_places` for each
+        // operand then this would only allow unifying with one operand: once
+        // the first operand's live range is unified with the destination, all
+        // remaining inputs conflict with the combined live range.
+        //
+        // By deferring remapping until all inputs are checked, we can unify
+        // with all eligible inputs instead of just one. This is sound because
+        // they will each be mapped to a disjoint field of the destination
+        // place.
         for (local, place) in candidates {
+            // Repeated operands can produce multiple candidates for the same
+            // local. Only keep the first mapping.
+            if self.remapped_locals[local].is_some() {
+                continue;
+            }
             self.remap_local(local, place);
         }
     }
