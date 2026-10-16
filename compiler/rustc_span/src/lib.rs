@@ -503,11 +503,19 @@ impl RealFileName {
             FileNameDisplayPreference::Scope(scope) => self.path(scope).to_string_lossy(),
             FileNameDisplayPreference::Diagnostics(scope) => {
                 let path = self.path(scope);
+                // Paths without `.` or `..` are returned unchanged. `normalize_lexically`
+                // rebuilds the path from components, which on Windows turns `/` into `\`
+                // and breaks remapped paths like `/rustc/<hash>\library\...`.
+                // The dot check is on the string since `components()` skips interior `.`.
+                let path_str = path.to_string_lossy();
+                if !path_str.split(['/', '\\']).any(|seg| seg == "." || seg == "..") {
+                    return path_str;
+                }
                 match path.normalize_lexically() {
                     Ok(normalized) => {
                         Cow::Owned(normalized.into_os_string().to_string_lossy().into_owned())
                     }
-                    Err(_) => path.to_string_lossy(),
+                    Err(_) => path_str,
                 }
             }
         }

@@ -825,3 +825,13 @@ fn filename_for_diagnostics_verbose_keeps_parent_dir() {
         path_str("tests/sub/../helper.rs"),
     );
 }
+
+#[test]
+fn filename_for_diagnostics_keeps_separators_without_dot_segments() {
+    let sm = SourceMap::new(FilePathMapping::empty());
+    // On Windows the remap prefix keeps `/` while the local part uses `\`.
+    // No dot segments, so the path must come back unchanged.
+    let path = "/rustc/FAKE_PREFIX\\library\\core\\src\\alloc\\layout.rs";
+    let name = filename(&sm, path);
+    assert_eq!(sm.filename_for_diagnostics(&name).to_string(), path);
+}
