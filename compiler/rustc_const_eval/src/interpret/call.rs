@@ -705,6 +705,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             throw_ub_format!("calling a function with more arguments than it expected");
         }
 
+        // All function arguments have gotten initialized, call corresponding hook.
+        M::after_stack_frame_init(self)?;
+
         // Done!
         self.push_stack_frame_done()
     }
