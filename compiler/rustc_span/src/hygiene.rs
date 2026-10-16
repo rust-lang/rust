@@ -202,7 +202,7 @@ impl LocalExpnId {
     }
 
     pub fn fresh_empty() -> LocalExpnId {
-        HygieneData::with(|data| {
+        HygieneData::with_mut(|data| {
             let expn_id = data.local_expn_data.push(None);
             let _eid = data.local_expn_hashes.push(ExpnHash(Fingerprint::ZERO));
             debug_assert_eq!(expn_id, _eid);
@@ -213,7 +213,7 @@ impl LocalExpnId {
     pub fn fresh(mut expn_data: ExpnData, hcx: impl StableHashCtxt) -> LocalExpnId {
         debug_assert_eq!(expn_data.parent.krate, LOCAL_CRATE);
         let expn_hash = update_disambiguator(&mut expn_data, hcx);
-        HygieneData::with(|data| {
+        HygieneData::with_mut(|data| {
             let expn_id = data.local_expn_data.push(Some(expn_data));
             let _eid = data.local_expn_hashes.push(expn_hash);
             debug_assert_eq!(expn_id, _eid);
@@ -237,7 +237,7 @@ impl LocalExpnId {
     pub fn set_expn_data(self, mut expn_data: ExpnData, hcx: impl StableHashCtxt) {
         debug_assert_eq!(expn_data.parent.krate, LOCAL_CRATE);
         let expn_hash = update_disambiguator(&mut expn_data, hcx);
-        HygieneData::with(|data| {
+        HygieneData::with_mut(|data| {
             let old_expn_data = &mut data.local_expn_data[self];
             assert!(old_expn_data.is_none(), "expansion data is reset for an expansion ID");
             *old_expn_data = Some(expn_data);
@@ -390,8 +390,15 @@ impl HygieneData {
     }
 
     #[inline]
-    fn with<R>(f: impl FnOnce(&mut HygieneData) -> R) -> R {
-        with_session_globals(|session_globals| f(&mut session_globals.hygiene_data.borrow_mut()))
+    fn with<R>(f: impl FnOnce(&HygieneData) -> R) -> R {
+        with_session_globals(|session_globals| f(&session_globals.hygiene_data.read().unwrap()))
+    }
+
+    #[inline]
+    fn with_mut<R>(f: impl FnOnce(&mut HygieneData) -> R) -> R {
+        with_session_globals(|session_globals| {
+            f(&mut session_globals.hygiene_data.write().unwrap())
+        })
     }
 
     #[inline]
@@ -650,7 +657,7 @@ pub fn update_dollar_crate_names(mut get_name: impl FnMut(SyntaxContext) -> Symb
     for (idx, name) in &mut to_update {
         *name = get_name(SyntaxContext::from_usize(*idx));
     }
-    HygieneData::with(|data| {
+    HygieneData::with_mut(|data| {
         for (idx, name) in to_update {
             data.syntax_context_data[idx].dollar_crate_name = name;
         }
@@ -725,7 +732,7 @@ impl SyntaxContext {
     /// Extend a syntax context with a given expansion and transparency.
     #[inline]
     pub fn apply_mark(self, expn_id: ExpnId, transparency: Transparency) -> SyntaxContext {
-        HygieneData::with(|data| data.apply_mark(self, expn_id, transparency))
+        HygieneData::with_mut(|data| data.apply_mark(self, expn_id, transparency))
     }
 
     /// Pulls a single mark off of the syntax context. This effectively moves the
@@ -850,7 +857,7 @@ impl SyntaxContext {
         expn_id: ExpnId,
         glob_span: Span,
     ) -> Option<Option<ExpnId>> {
-        HygieneData::with(|data| {
+        HygieneData::with_mut(|data| {
             if data.adjust(self, expn_id).is_some() {
                 return None;
             }
@@ -1427,7 +1434,7 @@ pub struct HygieneDecodeContext {
 
 /// Register an expansion which has been decoded from the on-disk-cache for the local crate.
 pub fn register_local_expn_id(data: ExpnData, hash: ExpnHash) -> ExpnId {
-    HygieneData::with(|hygiene_data| {
+    HygieneData::with_mut(|hygiene_data| {
         let expn_id = hygiene_data.local_expn_data.next_index();
         hygiene_data.local_expn_data.push(Some(data));
         let _eid = hygiene_data.local_expn_hashes.push(hash);
@@ -1450,7 +1457,7 @@ pub fn register_expn_id(
 ) -> ExpnId {
     debug_assert!(data.parent == ExpnId::root() || krate == data.parent.krate);
     let expn_id = ExpnId { krate, local_id };
-    HygieneData::with(|hygiene_data| {
+    HygieneData::with_mut(|hygiene_data| {
         let _old_data = hygiene_data.foreign_expn_data.insert(expn_id, data);
         let _old_hash = hygiene_data.foreign_expn_hashes.insert(expn_id, hash);
         debug_assert!(_old_hash.is_none() || _old_hash == Some(hash));
@@ -1515,8 +1522,9 @@ pub fn decode_syntax_context<D: Decoder>(
     // Don't try to decode data while holding the lock, since we need to
     // be able to recursively decode a SyntaxContext
     let (parent, expn_id, transparency) = decode_data(d, raw_id);
-    let ctxt =
-        HygieneData::with(|hygiene_data| hygiene_data.alloc_ctxt(parent, expn_id, transparency));
+    let ctxt = HygieneData::with_mut(|hygiene_data| {
+        hygiene_data.alloc_ctxt(parent, expn_id, transparency)
+    });
 
     context.remapped_ctxts.lock().insert(raw_id, ctxt);
 
@@ -1550,7 +1558,7 @@ fn update_disambiguator(expn_data: &mut ExpnData, mut hcx: impl StableHashCtxt) 
     hcx.assert_default_stable_hash_controls("ExpnData (disambiguator)");
     let mut expn_hash = expn_data.hash_expn(&mut hcx);
 
-    let disambiguator = HygieneData::with(|data| {
+    let disambiguator = HygieneData::with_mut(|data| {
         // If this is the first ExpnData with a given hash, then keep our
         // disambiguator at 0 (the default u32 value)
         let disambig = data.expn_data_disambiguators.entry(expn_hash).or_default();
