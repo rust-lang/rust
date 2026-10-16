@@ -232,7 +232,6 @@ impl<'tcx> InferCtxt<'tcx> {
     pub fn destructure_solver_region_constraints_for_regionck(
         &self,
         outlives_env: &OutlivesEnvironment<'tcx>,
-        span: Span,
     ) {
         // `FreeRegionMap::relation` stores `'sub <= 'sup` edges while
         // `Assumptions::region_outlives` expects `'longer: 'shorter` ones, so the
@@ -251,7 +250,7 @@ impl<'tcx> InferCtxt<'tcx> {
             region_outlives.freeze(),
             ty::UniverseIndex::ROOT,
         );
-        self.destructure_solver_region_constraints(assumptions, self, span);
+        self.destructure_solver_region_constraints(assumptions, self);
     }
 
     pub fn destructure_solver_region_constraints_for_borrowck(
@@ -268,7 +267,7 @@ impl<'tcx> InferCtxt<'tcx> {
             region_outlives.maybe_map(|r| Some(Region::new_var(self.tcx, r))).unwrap(),
             ty::UniverseIndex::ROOT,
         );
-        self.destructure_solver_region_constraints(assumptions, conversion, rustc_span::DUMMY_SP);
+        self.destructure_solver_region_constraints(assumptions, conversion);
     }
 
     #[instrument(level = "debug", skip(self, conversion))]
@@ -276,36 +275,56 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
         assumptions: rustc_type_ir::region_constraint::Assumptions<TyCtxt<'tcx>>,
         mut conversion: impl TypeOutlivesDelegate<'tcx>,
-        span: Span,
     ) {
         assert!(self.tcx.assumptions_on_binders());
         assert!(self.next_trait_solver());
+        use LeafRegionConstraint::*;
 
         let constraint = self.inner.borrow().solver_region_constraint_storage.get_constraint();
         debug!(?constraint);
-        let constraint = region_constraint::destructure_type_outlives_constraints_in_root(
+        let constraint: (
+            region_constraint::RegionConstraint<TyCtxt<'tcx>, Span>,
+            Vec<LeafRegionConstraint<TyCtxt<'tcx>, Span>>,
+        ) = region_constraint::destructure_type_outlives_constraints_in_root(
             self,
             constraint,
             &assumptions,
         );
         debug!(?constraint);
 
-        if constraint.is_false() {
-            self.dcx()
-                .struct_span_err(span, "unable to satisfy constraints because it cannot be proven")
-                .emit();
+        if constraint.0.is_false() {
+            match &constraint.1.first() {
+                Some(PlaceholderTyOutlives(_a, _b, span)) => {
+                    self.dcx()
+                        .struct_span_err(
+                            *span,
+                            "unable to satisfy constraints because it cannot be proven",
+                        )
+                        .emit();
+                }
+                Some(AliasTyOutlivesViaEnv(_, span)) => {
+                    self.dcx()
+                        .struct_span_err(
+                            *span,
+                            "unable to satisfy constraints because it cannot be proven",
+                        )
+                        .emit();
+                }
+                _ => {
+                    unreachable!()
+                }
+            }
         }
 
         // FIXME(-Zassumptions-on-binders): actually implement OR as an  OR
-        for c in constraint.and_constraint.0.into_iter().chain(
+        for c in constraint.0.and_constraint.0.into_iter().chain(
             constraint
+                .0
                 .or_constraint
                 .0
                 .into_iter()
                 .flat_map(|and_constraint| and_constraint.0.into_iter()),
         ) {
-            use LeafRegionConstraint::*;
-
             match c {
                 Ambiguity(span) => {
                     self.dcx()
@@ -340,15 +359,11 @@ impl<'tcx> InferCtxt<'tcx> {
     /// invoked after all type-inference variables have been bound --
     /// right before lexical region resolution.
     #[instrument(level = "debug", skip(self, outlives_env))]
-    pub fn process_registered_region_obligations(
-        &self,
-        outlives_env: &OutlivesEnvironment<'tcx>,
-        span: Span,
-    ) {
+    pub fn process_registered_region_obligations(&self, outlives_env: &OutlivesEnvironment<'tcx>) {
         assert!(!self.in_snapshot(), "cannot process registered region obligations in a snapshot");
 
         if self.tcx.assumptions_on_binders() {
-            self.destructure_solver_region_constraints_for_regionck(outlives_env, span);
+            self.destructure_solver_region_constraints_for_regionck(outlives_env);
         }
 
         // Must loop since the process of normalizing may itself register region obligations.

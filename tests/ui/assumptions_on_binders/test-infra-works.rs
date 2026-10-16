@@ -50,9 +50,9 @@ trait Trait {
 //
 // for<> syntax does direct insert into constraint storage
 core::test_binder_constraints! {
-    //~^ ERROR: unable to satisfy constraints because it cannot be proven
     impl<T: Trait> {
         forall<'a> {
+        //~^ ERROR: unable to satisfy constraints because it cannot be proven
             for<> T::Assoc: 'a
         } expect {
             or {
@@ -69,9 +69,9 @@ core::test_binder_constraints! {
 //
 // `predicates` syntax goes through the full clause destructuring and register_obligation pipeline
 core::test_binder_constraints! {
-    //~^ ERROR: unable to satisfy constraints because it cannot be proven
     impl<T: Trait> {
         forall<'a> {
+        //~^ ERROR: unable to satisfy constraints because it cannot be proven
             predicates T::Assoc: 'a
         } expect {
             or {
