@@ -1,5 +1,5 @@
 warning: connecting sockets return unspecified socket addresses on Windows hosts
-  --> tests/pass-dep/libc/libc-socket-no-blocking.rs:LL:CC
+  --> tests/pass-dep/libc/socket-tcp-no-blocking.rs:LL:CC
    |
 LL |         libc::getsockname(client_sockfd, storage, len)
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Called `getsockname` on connecting socket
@@ -9,15 +9,15 @@ LL |         libc::getsockname(client_sockfd, storage, len)
    = note: this is on thread `main`
    = note: stack backtrace:
            0: test_getsockname_ipv4_connect_nonblock::{closure#0}
-               at tests/pass-dep/libc/libc-socket-no-blocking.rs:LL:CC
-           1: libc_utils::net::sockname::<{closure@tests/pass-dep/libc/libc-socket-no-blocking.rs:LL:CC}>
+               at tests/pass-dep/libc/socket-tcp-no-blocking.rs:LL:CC
+           1: libc_utils::net::sockname::<{closure@tests/pass-dep/libc/socket-tcp-no-blocking.rs:LL:CC}>
                at tests/pass-dep/libc/../../utils/libc.rs:LL:CC
-           2: libc_utils::net::sockname_ipv4::<{closure@tests/pass-dep/libc/libc-socket-no-blocking.rs:LL:CC}>
+           2: libc_utils::net::sockname_ipv4::<{closure@tests/pass-dep/libc/socket-tcp-no-blocking.rs:LL:CC}>
                at tests/pass-dep/libc/../../utils/libc.rs:LL:CC
            3: test_getsockname_ipv4_connect_nonblock
-               at tests/pass-dep/libc/libc-socket-no-blocking.rs:LL:CC
+               at tests/pass-dep/libc/socket-tcp-no-blocking.rs:LL:CC
            4: main
-               at tests/pass-dep/libc/libc-socket-no-blocking.rs:LL:CC
+               at tests/pass-dep/libc/socket-tcp-no-blocking.rs:LL:CC
 
 warning: 1 warning emitted
 
