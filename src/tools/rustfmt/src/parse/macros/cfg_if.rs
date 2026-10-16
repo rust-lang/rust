@@ -13,9 +13,13 @@ pub(crate) fn parse_cfg_if<'a>(
     psess: &'a ParseSess,
     mac: &'a ast::MacCall,
 ) -> Result<Vec<ast::Item>, &'static str> {
-    match catch_unwind(AssertUnwindSafe(|| parse_cfg_if_inner(psess, mac))) {
-        Ok(Ok(items)) => Ok(items),
-        Ok(err @ Err(_)) => err,
+    let result = catch_unwind(AssertUnwindSafe(|| parse_cfg_if_inner(psess, mac)));
+    let dcx = psess.inner().dcx();
+    let recovered = dcx.has_errors().is_some();
+    dcx.reset_err_count();
+    match result {
+        Ok(Ok(_)) if recovered => Err("cfg_if! parsed with recovery"),
+        Ok(res) => res,
         Err(..) => Err("failed to parse cfg_if!"),
     }
 }

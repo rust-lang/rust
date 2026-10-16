@@ -1,3 +1,5 @@
+//@ rustfmt-show_parse_errors: false
+
 cfg_if::cfg_if! {
     if #[cfg(unix)] {
         fn foo {}
