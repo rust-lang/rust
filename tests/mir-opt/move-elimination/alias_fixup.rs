@@ -1,7 +1,7 @@
 //@ test-mir-pass: MoveElimination
 //@ compile-flags: -Cpanic=abort
 
-#![feature(core_intrinsics, custom_mir)]
+#![feature(core_intrinsics, custom_mir, repr_simd)]
 #![allow(dead_code)]
 #![allow(internal_features)]
 
@@ -92,4 +92,65 @@ pub fn aggregate_indirect_source_alias() -> (u8, u8) {
             Return()
         }
     }
+}
+
+// Aliasing array elements must all be read before any element is overwritten.
+// EMIT_MIR alias_fixup.array_swap.MoveElimination.diff
+pub fn array_swap(mut array: [u8; 2]) -> [u8; 2] {
+    // CHECK-LABEL: fn array_swap(
+    // CHECK: debug array => _1;
+    // CHECK: [[FIRST:_[0-9]+]] = copy _1[0 of 2];
+    // CHECK: [[SECOND:_[0-9]+]] = no_retag move _1[1 of 2];
+    // CHECK: _1[0 of 1] = no_retag move [[SECOND]];
+    // CHECK: _1[1 of 2] = no_retag move [[FIRST]];
+    let [a, b] = array;
+    array = [b, a];
+    array
+}
+
+pub enum PairEnum {
+    Empty,
+    Pair(u8, u8),
+}
+
+// Enum alias fixup must read both fields before writing the swapped payload,
+// then set the discriminant after the field writes.
+// EMIT_MIR alias_fixup.enum_alias.MoveElimination.diff
+pub fn enum_alias(flag: bool, x: u8, y: u8) -> PairEnum {
+    // CHECK-LABEL: fn enum_alias(
+    // CHECK: debug input => _0;
+    // CHECK: [[FIRST:_[0-9]+]] = copy ((_0 as Pair).0: u8);
+    // CHECK: [[SECOND:_[0-9]+]] = no_retag move ((_0 as Pair).1: u8);
+    // CHECK: ((_0 as variant#1).0: u8) = no_retag move [[SECOND]];
+    // CHECK: ((_0 as variant#1).1: u8) = no_retag move [[FIRST]];
+    // CHECK-NEXT: discriminant(_0) = 1;
+    let input = PairEnum::Pair(x, y);
+    if flag {
+        input
+    } else {
+        match input {
+            PairEnum::Pair(a, b) => PairEnum::Pair(b, a), // swap
+            PairEnum::Empty => PairEnum::Empty,
+        }
+    }
+}
+
+#[repr(simd)]
+#[derive(Copy, Clone)]
+pub struct Vector([u32; 4]);
+
+pub union VectorUnion {
+    vector: Vector,
+    array: [u32; 4],
+}
+
+// SIMD aggregates cannot be replaced with direct access to the inner field.
+// EMIT_MIR alias_fixup.simd_alias.MoveElimination.diff
+pub unsafe fn simd_alias(flag: bool) -> VectorUnion {
+    // CHECK-LABEL: fn simd_alias(
+    // CHECK: debug input => _0;
+    // CHECK: [[TEMP:_[0-9]+]] = Vector(move (_0.1: [u32; 4]));
+    // CHECK-NEXT: (_0.0: Vector) = no_retag move [[TEMP]];
+    let input = VectorUnion { vector: Vector([0; 4]) };
+    if flag { VectorUnion { vector: Vector(input.array) } } else { input }
 }
