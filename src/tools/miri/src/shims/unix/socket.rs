@@ -810,4 +810,118 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Err(e) => this.set_errno_and_return_neg1_i32(e),
         }
     }
+
+    /// Set the `option` socket option on level IPPROTO_IP for `socket`.
+    /// `value_ptr` points to the new value of the socket option, and `value_len`
+    /// contains the amount of bytes the value uses at `value_ptr`.
+    /// `socket` is a [`socket2::SockRef`] to the underlying host socket of
+    /// the shimmed socket.
+    fn set_ip_socket_option(
+        &self,
+        option: i32,
+        value_ptr: Pointer,
+        value_len: u64,
+        socket: socket2::SockRef<'_>,
+    ) -> InterpResult<'tcx, Result<(), IoError>> {
+        let ecx = self.eval_context_ref();
+
+        let opt_ip_ttl = ecx.eval_libc_i32("IP_TTL");
+
+        if option == opt_ip_ttl {
+            if value_len != 4 {
+                // Option value should be C-uint which is usually 4 bytes.
+                return interp_ok(Err(LibcError("EINVAL")));
+            }
+            let option_value = ecx.ptr_to_mplace(value_ptr, ecx.machine.layouts.u32);
+            let ttl = ecx.read_scalar(&option_value)?.to_u32()?;
+
+            return interp_ok(socket.set_ttl_v4(ttl).map_err(IoError::HostError));
+        }
+
+        throw_unsup_format!("setsockopt: option {option:#x} is unsupported for level IPPROTO_IP",);
+    }
+
+    /// Set the `option` socket option on level IPPROTO_TCP for `socket`.
+    /// `value_ptr` points to the new value of the socket option, and `value_len`
+    /// contains the amount of bytes the value uses at `value_ptr`.
+    /// `socket` is a [`socket2::SockRef`] to the underlying host socket of
+    /// the shimmed socket.
+    fn set_tcp_socket_option(
+        &self,
+        option: i32,
+        value_ptr: Pointer,
+        value_len: u64,
+        socket: socket2::SockRef<'_>,
+    ) -> InterpResult<'tcx, Result<(), IoError>> {
+        let ecx = self.eval_context_ref();
+
+        let opt_tcp_nodelay = ecx.eval_libc_i32("TCP_NODELAY");
+
+        if option == opt_tcp_nodelay {
+            if value_len != 4 {
+                // Option value should be C-int which is usually 4 bytes.
+                return interp_ok(Err(LibcError("EINVAL")));
+            }
+            let option_value = ecx.ptr_to_mplace(value_ptr, ecx.machine.layouts.i32);
+            let nodelay = ecx.read_scalar(&option_value)?.to_i32()? != 0;
+
+            return interp_ok(socket.set_tcp_nodelay(nodelay).map_err(IoError::HostError));
+        }
+
+        throw_unsup_format!("setsockopt: option {option:#x} is unsupported for level IPPROTO_TCP");
+    }
+
+    /// Get the `option` socket option on level IPPROTO_IP for `socket`.
+    /// `socket` is a [`socket2::SockRef`] to the underlying host socket of
+    /// the shimmed socket.
+    fn get_ip_socket_option(
+        &mut self,
+        option: i32,
+        socket: socket2::SockRef<'_>,
+    ) -> InterpResult<'tcx, Result<MPlaceTy<'tcx>, IoError>> {
+        let ecx = self.eval_context_mut();
+
+        let opt_ip_ttl = ecx.eval_libc_i32("IP_TTL");
+
+        if option == opt_ip_ttl {
+            let ttl = match socket.ttl_v4() {
+                Ok(ttl) => ttl,
+                Err(e) => return interp_ok(Err(IoError::HostError(e))),
+            };
+
+            // Allocate new buffer on the stack with the `u32` layout.
+            let value_buffer = ecx.allocate(ecx.machine.layouts.u32, MemoryKind::Stack)?;
+            ecx.write_int(ttl, &value_buffer)?;
+            return interp_ok(Ok(value_buffer));
+        }
+
+        throw_unsup_format!("getsockopt: option {option:#x} is unsupported for level IPPROTO_IP",);
+    }
+
+    /// Get the `option` socket option on level IPPROTO_TCP for `socket`.
+    /// `socket` is a [`socket2::SockRef`] to the underlying host socket of
+    /// the shimmed socket.
+    fn get_tcp_socket_option(
+        &mut self,
+        option: i32,
+        socket: socket2::SockRef<'_>,
+    ) -> InterpResult<'tcx, Result<MPlaceTy<'tcx>, IoError>> {
+        let ecx = self.eval_context_mut();
+
+        let opt_tcp_nodelay = ecx.eval_libc_i32("TCP_NODELAY");
+
+        if option == opt_tcp_nodelay {
+            let nodelay = match socket.tcp_nodelay() {
+                Ok(nodelay) => nodelay,
+                Err(e) => return interp_ok(Err(IoError::HostError(e))),
+            };
+
+            // Allocate new buffer on the stack with the `i32` layout.
+            let value_buffer = ecx.allocate(ecx.machine.layouts.i32, MemoryKind::Stack)?;
+            ecx.write_int(i32::from(nodelay), &value_buffer)?;
+            return interp_ok(Ok(value_buffer));
+        }
+
+        throw_unsup_format!("getsockopt: option {option:#x} is unsupported for level IPPROTO_TCP");
+    }
 }
