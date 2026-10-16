@@ -1,5 +1,5 @@
 //@ check-fail
-
+//@ forbid-output: backend2.push(
 use std::path::PathBuf;
 
 type Test = Option<(PathBuf, Vec<u8>)>;

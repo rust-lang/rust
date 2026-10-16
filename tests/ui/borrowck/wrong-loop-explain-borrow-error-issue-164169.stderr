@@ -1,11 +1,11 @@
 error[E0499]: cannot borrow `backend2` as mutable more than once at a time
   --> $DIR/wrong-loop-explain-borrow-error-issue-164169.rs:17:15
    |
-LL |         backend2.push(match b {
-   |         -------- first borrow used here, in later iteration of loop
-...
 LL |         test2(&mut backend2)?;
-   |               ^^^^^^^^^^^^^ `backend2` was mutably borrowed here in the previous iteration of the loop
+   |               ^^^^^^^^^^^^^
+   |               |
+   |               `backend2` was mutably borrowed here in the previous iteration of the loop
+   |               first borrow used here, in later iteration of loop
 
 error[E0499]: cannot borrow `*disks` as mutable more than once at a time
   --> $DIR/wrong-loop-explain-borrow-error-issue-164169.rs:27:15
