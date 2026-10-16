@@ -481,45 +481,48 @@ where
     }
 
     fn add_command_line(&mut self) {
-        for &(ref lint_name, level) in &self.sess.opts.lint_opts {
+        for &(ref lint_name_, level) in &self.sess.opts.lint_opts {
             // Checks the validity of lint names derived from the command line.
-            let (tool_name, lint_name_only) = parse_lint_and_tool_name(lint_name);
+            let (tool_name, lint_name_only) = parse_lint_and_tool_name(lint_name_);
             if lint_name_only == crate::WARNINGS.name_lower() && matches!(level, Level::ForceWarn) {
                 self.sess
                     .dcx()
                     .emit_err(UnsupportedGroup { lint_group: crate::WARNINGS.name_lower() });
             }
-            match self
-                .store
-                .check_lint_name(&LintName::from_str(lint_name), self.registered_lint_tools)
-            {
-                CheckLintNameResult::Renamed(ref replace) => {
-                    let name = lint_name.as_str();
-                    let suggestion = RenamedLintSuggestion::WithoutSpan { replace };
+            let lint_name = LintName::from_str(lint_name_);
+            match self.store.check_lint_name(lint_name, self.registered_lint_tools) {
+                CheckLintNameResult::Renamed(replacement) => {
+                    let suggestion = RenamedLintSuggestion::WithoutSpan { replacement };
                     let requested_level = RequestedLevel { level, lint_name };
-                    let lint =
-                        RenamedLintFromCommandLine { name, replace, suggestion, requested_level };
+                    let lint = RenamedLintFromCommandLine {
+                        lint_name,
+                        replacement,
+                        suggestion,
+                        requested_level,
+                    };
                     self.emit_lint(RENAMED_AND_REMOVED_LINTS, lint);
                 }
                 CheckLintNameResult::Removed(ref reason) => {
-                    let name = lint_name.as_str();
                     let requested_level = RequestedLevel { level, lint_name };
-                    let lint = RemovedLintFromCommandLine { name, reason, requested_level };
+                    let lint = RemovedLintFromCommandLine { lint_name, reason, requested_level };
                     self.emit_lint(RENAMED_AND_REMOVED_LINTS, lint);
                 }
                 CheckLintNameResult::NoLint(suggestion) => {
-                    let name = lint_name.clone();
-                    let suggestion = suggestion.map(|(replace, from_rustc)| {
-                        UnknownLintSuggestion::WithoutSpan { replace, from_rustc }
+                    let suggestion = suggestion.map(|(replacement, from_rustc)| {
+                        UnknownLintSuggestion::WithoutSpan { replacement, from_rustc }
                     });
                     let requested_level = RequestedLevel { level, lint_name };
-                    let lint = UnknownLintFromCommandLine { name, suggestion, requested_level };
+                    let lint =
+                        UnknownLintFromCommandLine { lint_name, suggestion, requested_level };
                     self.emit_lint(UNKNOWN_LINTS, lint);
                 }
-                CheckLintNameResult::Tool(_, Some(ref replace)) => {
-                    let name = lint_name.clone();
+                CheckLintNameResult::Tool(_, Some(replacement)) => {
                     let requested_level = RequestedLevel { level, lint_name };
-                    let lint = DeprecatedLintNameFromCommandLine { name, replace, requested_level };
+                    let lint = DeprecatedLintNameFromCommandLine {
+                        lint_name,
+                        replacement,
+                        requested_level,
+                    };
                     self.emit_lint(RENAMED_AND_REMOVED_LINTS, lint);
                 }
                 CheckLintNameResult::NoTool => {
@@ -531,7 +534,7 @@ where
                 _ => {}
             };
 
-            let lint_flag_val = Symbol::intern(lint_name);
+            let lint_flag_val = Symbol::intern(lint_name_);
 
             let Some(ids) = self.store.find_lints(lint_name) else {
                 // errors already handled above
@@ -733,9 +736,7 @@ where
         for (lint_index, lint_check) in lint_checks.into_iter().enumerate() {
             let LintCheck { lint_name, kind, reason, attr_id, attr_span: _, lint_span, tool_span } =
                 lint_check;
-
-            let full_lint_name = format!("{lint_name}");
-            let LintName { tool, name: primary_name } = lint_name;
+            let LintName { tool, name: _ } = lint_name;
 
             let level = match kind {
                 LintCheckKind::Allow => Level::Allow,
@@ -750,27 +751,25 @@ where
             let lint_id = (level == Level::Expect)
                 .then(|| self.provider.mk_lint_expectation_id(attr_id.attr_id, lint_index as u16));
 
-            let lint_result = self.store.check_lint_name(&lint_name, self.registered_lint_tools);
+            let lint_result = self.store.check_lint_name(lint_name, self.registered_lint_tools);
 
-            let lint_name = { primary_name };
-
-            let (ids, name) = match lint_result {
+            let (ids, name): (_, LintName) = match lint_result {
                 CheckLintNameResult::Ok(ids) => (ids, lint_name),
 
                 CheckLintNameResult::Tool(ids, new_lint_name) => {
                     let name = match new_lint_name {
-                        None => Symbol::intern(&full_lint_name),
-                        Some(new_lint_name) => {
+                        None => lint_name,
+                        Some(replacement) => {
                             self.emit_span_lint(
                                 builtin::RENAMED_AND_REMOVED_LINTS,
                                 lint_span.into(),
                                 DeprecatedLintName {
-                                    name: lint_name.to_string(),
+                                    lint_name,
                                     suggestion: lint_span,
-                                    replace: &new_lint_name,
+                                    replacement,
                                 },
                             );
-                            Symbol::intern(&new_lint_name)
+                            replacement
                         }
                     };
                     (ids, name)
@@ -788,37 +787,36 @@ where
                     sess.dcx().emit_err(UnknownToolInScopedLint {
                         span: Some(tool_span.unwrap()),
                         tool_name: tool.unwrap(),
-                        lint_name: full_lint_name.to_string(),
+                        lint_name,
                         is_nightly_build: sess.is_nightly_build(),
                     });
                     continue;
                 }
 
-                CheckLintNameResult::Renamed(ref replace) => {
+                CheckLintNameResult::Renamed(replacement) => {
                     if self.lint_added_lints {
                         let suggestion =
-                            RenamedLintSuggestion::WithSpan { suggestion: lint_span, replace };
+                            RenamedLintSuggestion::WithSpan { suggestion: lint_span, replacement };
 
                         self.emit_span_lint(
                             RENAMED_AND_REMOVED_LINTS,
                             lint_span.into(),
-                            RenamedLint { name: full_lint_name.as_str(), replace, suggestion },
+                            RenamedLint { name: lint_name, replacement, suggestion },
                         );
                     }
 
                     // If this lint was renamed, apply the new lint instead of ignoring the
                     // attribute. Ignore any errors or warnings that happen because the new
                     // name is inaccurate.
-                    let replace_check = self
-                        .store
-                        .check_lint_name(&LintName::from_str(replace), self.registered_lint_tools);
+                    let replace_check =
+                        self.store.check_lint_name(replacement, self.registered_lint_tools);
                     let (CheckLintNameResult::Ok(ids) | CheckLintNameResult::Tool(ids, _)) =
                         replace_check
                     else {
-                        panic!("renamed lint does not exist: {replace} :{replace_check:?}");
+                        panic!("renamed lint does not exist: {replacement} :{replace_check:?}");
                     };
 
-                    (ids, Symbol::intern(&replace))
+                    (ids, replacement)
                 }
 
                 CheckLintNameResult::Removed(ref reason) => {
@@ -826,7 +824,7 @@ where
                         self.emit_span_lint(
                             RENAMED_AND_REMOVED_LINTS,
                             lint_span.into(),
-                            RemovedLint { name: &full_lint_name, reason },
+                            RemovedLint { name: lint_name, reason },
                         );
                     }
                     continue;
@@ -834,24 +832,28 @@ where
 
                 CheckLintNameResult::NoLint(suggestion) => {
                     if self.lint_added_lints {
-                        let suggestion = suggestion.map(|(replace, from_rustc)| {
+                        let suggestion = suggestion.map(|(replacement, from_rustc)| {
                             UnknownLintSuggestion::WithSpan {
                                 suggestion: lint_span,
-                                replace,
+                                replacement,
                                 from_rustc,
                             }
                         });
                         self.emit_span_lint(
                             UNKNOWN_LINTS,
                             lint_span.into(),
-                            UnknownLint { name: full_lint_name, suggestion },
+                            UnknownLint { name: lint_name, suggestion },
                         );
                     }
                     continue;
                 }
             };
 
-            let src = LintLevelSource::Node { name, span: lint_span, reason };
+            let src = LintLevelSource::Node {
+                name: Symbol::intern(&name.to_string()),
+                span: lint_span,
+                reason,
+            };
             for &id in ids {
                 if self.check_gated_lint(id, lint_span, false) {
                     self.insert_spec(id, LevelSpec::new(level, lint_id, src));

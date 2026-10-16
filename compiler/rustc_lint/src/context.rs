@@ -101,7 +101,7 @@ enum TargetLint {
     Id(LintId),
 
     /// Temporary renaming, used for easing migration pain; see #16545
-    Renamed(String, LintId),
+    Renamed(LintName, LintId),
 
     /// Lint with this name existed previously, but has been removed/deprecated.
     /// The string argument is the reason for removal.
@@ -130,18 +130,18 @@ struct LintGroup {
 pub enum CheckLintNameResult<'a> {
     Ok(&'a [LintId]),
     /// Lint doesn't exist. Potentially contains a suggestion for a correct lint name.
-    NoLint(Option<(Symbol, bool)>),
+    NoLint(Option<(LintName, bool)>),
     /// The lint refers to a tool that has not been registered.
     NoTool,
     /// The lint has been renamed to a new name.
-    Renamed(String),
+    Renamed(LintName),
     /// The lint has been removed due to the given reason.
     Removed(String),
 
     /// The lint is from a tool. The `LintId` will be returned as if it were a
     /// rustc lint. The `Option<String>` indicates if the lint has been
     /// renamed.
-    Tool(&'a [LintId], Option<String>),
+    Tool(&'a [LintId], Option<LintName>),
 
     /// The lint is from a tool. Either the lint does not exist in the tool or
     /// the code was not compiled with the tool and therefore the lint was
@@ -299,24 +299,24 @@ impl LintStore {
     /// This lint has been renamed; warn about using the new name and apply the lint.
     #[track_caller]
     pub fn register_renamed(&mut self, old_name: &str, new_name: &str) {
-        let Some(&Id(target)) = self.by_name.get(&LintName::from_str(new_name)) else {
-            bug!("invalid lint renaming of {} to {}", old_name, new_name);
+        let new_name = LintName::from_str(new_name);
+        let Some(&Id(target)) = self.by_name.get(&new_name) else {
+            bug!("invalid lint renaming of {old_name} to {new_name}");
         };
-        self.by_name.insert(LintName::from_str(old_name), Renamed(new_name.to_string(), target));
+        self.by_name.insert(LintName::from_str(old_name), Renamed(new_name, target));
     }
 
     pub fn register_removed(&mut self, name: &str, reason: &str) {
         self.by_name.insert(LintName::from_str(name), Removed(reason.into()));
     }
 
-    pub fn find_lints(&self, lint_name: &str) -> Option<&[LintId]> {
-        let lint_name = &LintName::from_str(lint_name);
-        match self.by_name.get(lint_name) {
+    pub fn find_lints(&self, lint_name: LintName) -> Option<&[LintId]> {
+        match self.by_name.get(&lint_name) {
             Some(Id(lint_id)) => Some(slice::from_ref(lint_id)),
             Some(Renamed(_, lint_id)) => Some(slice::from_ref(lint_id)),
             Some(Removed(_)) => None,
             Some(Ignored) => Some(&[]),
-            None => match self.lint_groups.get(lint_name) {
+            None => match self.lint_groups.get(&lint_name) {
                 Some(LintGroup { lint_ids, .. }) => Some(lint_ids),
                 None => None,
             },
@@ -346,7 +346,7 @@ impl LintStore {
     /// printing duplicate warnings.
     pub fn check_lint_name(
         &self,
-        lint_name: &LintName,
+        lint_name: LintName,
         registered_lint_tools: &RegisteredTools,
     ) -> CheckLintNameResult<'_> {
         let tool_name = lint_name.tool;
@@ -361,12 +361,10 @@ impl LintStore {
             }
         }
 
-        let complete_name: &str = &format!("{lint_name}");
-
         // If the lint was scoped with `tool::` check if the tool lint exists
         if let Some(tool_name) = tool_name {
-            match self.by_name.get(lint_name) {
-                None => match self.lint_groups.get(lint_name) {
+            match self.by_name.get(&lint_name) {
+                None => match self.lint_groups.get(&lint_name) {
                     // If the lint isn't registered, there are two possibilities:
                     None => {
                         // 1. The tool is currently running, so this lint really doesn't exist.
@@ -374,7 +372,7 @@ impl LintStore {
                         debug!("lints={:?}", self.by_name);
 
                         return if self.by_name.keys().any(|lint| lint.tool == Some(tool_name)) {
-                            self.no_lint_suggestion(complete_name, tool_name.as_str())
+                            self.no_lint_suggestion(lint_name)
                         } else {
                             // 2. The tool isn't currently running, so no lints will be registered.
                             // To avoid giving a false positive, ignore all unknown lints.
@@ -383,7 +381,7 @@ impl LintStore {
                     }
                     Some(LintGroup { lint_ids, depr, .. }) => {
                         return if let &Some(LintAlias { name, silent: false }) = depr {
-                            CheckLintNameResult::Tool(lint_ids, Some(name.to_string()))
+                            CheckLintNameResult::Tool(lint_ids, Some(LintName::from_str(name)))
                         } else {
                             CheckLintNameResult::Tool(lint_ids, None)
                         };
@@ -395,17 +393,15 @@ impl LintStore {
                 _ => {}
             }
         }
-        match self.by_name.get(lint_name) {
-            Some(Renamed(new_name, _)) => CheckLintNameResult::Renamed(new_name.to_string()),
+        match self.by_name.get(&lint_name) {
+            Some(Renamed(new_name, _)) => CheckLintNameResult::Renamed(*new_name),
             Some(Removed(reason)) => CheckLintNameResult::Removed(reason.to_string()),
-            None => match self.lint_groups.get(lint_name) {
-                // If neither the lint, nor the lint group exists check if there is a `clippy::`
-                // variant of this lint
-                None => self.check_tool_name_for_backwards_compat(complete_name, "clippy"),
+            None => match self.lint_groups.get(&lint_name) {
+                None => self.no_lint_suggestion(lint_name),
                 Some(LintGroup { lint_ids, depr, .. }) => {
                     // Check if the lint group name is deprecated
                     if let &Some(LintAlias { name, silent: false }) = depr {
-                        CheckLintNameResult::Tool(lint_ids, Some(name.to_string()))
+                        CheckLintNameResult::Tool(lint_ids, Some(LintName::from_str(name)))
                     } else {
                         CheckLintNameResult::Ok(lint_ids)
                     }
@@ -416,12 +412,12 @@ impl LintStore {
         }
     }
 
-    fn no_lint_suggestion(&self, lint_name: &str, tool_name: &str) -> CheckLintNameResult<'_> {
+    fn no_lint_suggestion(&self, lint_name: LintName) -> CheckLintNameResult<'_> {
         let name_lower = lint_name.to_lowercase();
 
-        if lint_name.chars().any(char::is_uppercase) && self.find_lints(&name_lower).is_some() {
+        if self.find_lints(name_lower).is_some() {
             // First check if the lint name is (partly) in upper case instead of lower case...
-            return CheckLintNameResult::NoLint(Some((Symbol::intern(&name_lower), false)));
+            return CheckLintNameResult::NoLint(Some((name_lower, false)));
         }
 
         // ...if not, search for lints with a similar name
@@ -439,40 +435,16 @@ impl LintStore {
         let groups = groups.iter().map(|k| Symbol::intern(&k.to_string()));
         let lints = self.lints.iter().map(|l| Symbol::intern(&l.name_lower()));
         let names: Vec<Symbol> = groups.chain(lints).collect();
-        let mut lookups = vec![Symbol::intern(&name_lower)];
-        if let Some(stripped) = name_lower.split("::").last() {
+        let mut lookups = vec![Symbol::intern(&name_lower.to_string())];
+        if let Some(stripped) = name_lower.name.as_str().split("::").last() {
             lookups.push(Symbol::intern(stripped));
         }
         let res = find_best_match_for_names(&names, &lookups, None);
-        let is_rustc = res.map_or_else(
-            || false,
-            |s| name_lower.contains("::") && !s.as_str().starts_with(tool_name),
-        );
-        let suggestion = res.map(|s| (s, is_rustc));
+        let res = res.map(|s| LintName::from_str(s.as_str()));
+        let is_builtin =
+            res.as_ref().map(|s| lint_name.tool.is_some() && s.tool.is_none()).unwrap_or(false);
+        let suggestion = res.map(|s| (s, is_builtin));
         CheckLintNameResult::NoLint(suggestion)
-    }
-
-    fn check_tool_name_for_backwards_compat(
-        &self,
-        lint_name: &str,
-        tool_name: &str,
-    ) -> CheckLintNameResult<'_> {
-        let complete_name = format!("{tool_name}::{lint_name}");
-        let nlint_name = LintName::from_str(&complete_name);
-        match self.by_name.get(&nlint_name) {
-            None => match self.lint_groups.get(&nlint_name) {
-                // Now we are sure, that this lint exists nowhere
-                None => self.no_lint_suggestion(lint_name, tool_name),
-                Some(LintGroup { lint_ids, .. }) => {
-                    CheckLintNameResult::Tool(lint_ids, Some(complete_name))
-                }
-            },
-            Some(Id(id)) => CheckLintNameResult::Tool(slice::from_ref(id), Some(complete_name)),
-            Some(other) => {
-                debug!("got renamed lint {:?}", other);
-                CheckLintNameResult::NoLint(None)
-            }
-        }
     }
 }
 
