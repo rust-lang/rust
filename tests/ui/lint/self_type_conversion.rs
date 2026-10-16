@@ -229,6 +229,41 @@ fn question_mark() -> Result<I, I> {
     Ok(Err(I)?)
 }
 
+macro_rules! in_macro {
+    ($expr:expr) => {
+        $expr.into()
+    }
+}
+macro_rules! in_macro_2 {
+    ($expr:expr) => {
+        $expr.into()
+        //~^ ERROR useless conversion to the same type: `()` [self_type_conversion_in_macro]
+        //~| ERROR useless conversion to the same type: `u16` [self_type_conversion_in_macro]
+    }
+}
+macro_rules! in_macro_3 {
+    ($expr1:expr, $expr2:expr) => {
+        ($expr1.into(), $expr2.into())
+        //~^ ERROR useless conversion to the same type: `()` [self_type_conversion_in_macro]
+        //~| ERROR useless conversion to the same type: `()` [self_type_conversion_in_macro]
+        //~| ERROR useless conversion to the same type: `()` [self_type_conversion_in_macro]
+    }
+}
+macro_rules! in_macro_4 {
+    ($expr1:expr, $expr2:expr) => {
+        ($expr1.into(), $expr2.into())
+        //~^ ERROR useless conversion to the same type: `()` [self_type_conversion_in_macro]
+        //~| ERROR useless conversion to the same type: `()` [self_type_conversion_in_macro]
+        //~| ERROR useless conversion to the same type: `()` [self_type_conversion_in_macro]
+        //~| ERROR useless conversion to the same type: `u16` [self_type_conversion_in_macro]
+    }
+}
+macro_rules! in_macro_5 {
+    ($expr1:expr, $expr2:expr) => {
+        ($expr1.into(), $expr2.into())
+    }
+}
+
 fn main() {
     a::bar();
     b::baz();
@@ -241,4 +276,14 @@ fn main() {
     let () = e::G.into(); // Ok, `e` is behind a `cfg` attr
     let () = H.into(); // Ok, `H` is behind a `cfg` attr
     let _ = ().foo(); // Ok, `T::Assoc` has an `Into<_>` bound
+    let () = in_macro!(()); // Ok, there's another macro expansion where the `.into()` isn't useless
+    let _: u64 = in_macro!(0u16); // Ok, the expanded `.into()` isn't entirelyl uselses
+    let () = in_macro_2!(());  // Not ok, pointing into the macro
+    let _: u16 = in_macro_2!(0u16); // Not ok, pointing into the macro
+    let _: ((), ()) = in_macro_3!((), ()); // Not ok, because the first into is useless
+    let _: ((), u64) = in_macro_3!((), 0u16); // Not ok, because the first into is useless
+    let _: ((), ()) = in_macro_4!((), ()); // Not ok, because both into calls are useless
+    let _: ((), u16) = in_macro_4!((), 0u16); // Not ok, because both into calls are useless
+    let _: ((), ()) = in_macro_5!((), ()); // Ok, because the next call is not useless
+    let _: (u64, u64) = in_macro_5!(0u16, 0u16); // Ok
 }

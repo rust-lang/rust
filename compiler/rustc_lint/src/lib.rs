@@ -336,9 +336,7 @@ fn register_builtins(store: &mut LintStore) {
     store.register_lints(&foreign_modules::lint_vec());
     store.register_lints(&hardwired::lint_vec());
     store.register_lints(&SelfTypeConversion::lint_vec());
-    store.register_late_lint_pass(Box::new(|_| {
-        Box::new(SelfTypeConversion { ignored_types: Default::default() })
-    }));
+    store.register_late_lint_pass(Box::new(|_| Box::new(SelfTypeConversion::new())));
 
     add_lint_group!(
         "nonstandard_style",

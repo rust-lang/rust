@@ -24,7 +24,7 @@ use rustc_ast_pretty::pprust::expr_to_string;
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_attr_ir::{AttributeKind, DocAttribute, find_attr};
 use rustc_attr_parsing::AttributeParser;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::{Applicability, Diagnostic, msg};
 use rustc_feature::GateIssue;
 use rustc_hir::def::{DefKind, Res};
@@ -40,7 +40,7 @@ use rustc_middle::ty::{
     self, AssocContainer, Ty, TyCtxt, TypeVisitableExt, Unnormalized, Upcast, VariantDef,
 };
 use rustc_span::edition::Edition;
-use rustc_span::{DUMMY_SP, Ident, InnerSpan, Span, Spanned, Symbol, bug, kw, sym};
+use rustc_span::{DUMMY_SP, Ident, InnerSpan, Span, Spanned, Symbol, SyntaxContext, bug, kw, sym};
 use rustc_target::asm::InlineAsmArch;
 use rustc_trait_selection::infer::{InferCtxtExt, TyCtxtInferExt};
 use rustc_trait_selection::traits;
@@ -3274,18 +3274,25 @@ declare_lint! {
 #[derive(Debug)]
 pub struct SelfTypeConversion<'tcx> {
     pub ignored_types: FxHashSet<Ty<'tcx>>,
+    pub macros: FxHashMap<DefId, usize>,
+    pub triggered_macros: FxIndexMap<(DefId, SyntaxContext), FxIndexSet<(Span, Ty<'tcx>)>>,
 }
 
 impl_lint_pass!(SelfTypeConversion<'_> => [SELF_TYPE_CONVERSION, SELF_TYPE_CONVERSION_IN_MACRO]);
 
 impl SelfTypeConversion<'_> {
     pub fn new() -> Self {
-        Self { ignored_types: Default::default() }
+        Self {
+            ignored_types: Default::default(),
+            macros: Default::default(),
+            triggered_macros: Default::default(),
+        }
     }
 }
 struct ConditionalTypeCollector<'tcx> {
     tcx: TyCtxt<'tcx>,
     ignored_types: FxHashSet<Ty<'tcx>>,
+    macros: FxHashSet<(DefId, SyntaxContext)>,
 }
 
 impl<'tcx> hir::intravisit::Visitor<'tcx> for ConditionalTypeCollector<'tcx> {
@@ -3293,6 +3300,16 @@ impl<'tcx> hir::intravisit::Visitor<'tcx> for ConditionalTypeCollector<'tcx> {
 
     fn maybe_tcx(&mut self) -> TyCtxt<'tcx> {
         self.tcx
+    }
+
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
+        if let Some(expn) = expr.span.macro_backtrace().next()
+            && let Some(def_id) = expn.macro_def_id
+            && def_id.is_local()
+        {
+            self.macros.insert((def_id, expr.span.ctxt()));
+        }
+        hir::intravisit::walk_expr(self, expr);
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
@@ -3354,9 +3371,17 @@ impl<'tcx> hir::intravisit::Visitor<'tcx> for ConditionalTypeCollector<'tcx> {
 
 impl<'tcx> LateLintPass<'tcx> for SelfTypeConversion<'tcx> {
     fn check_crate(&mut self, cx: &LateContext<'tcx>) {
-        let mut v = ConditionalTypeCollector { tcx: cx.tcx, ignored_types: Default::default() };
+        let mut v = ConditionalTypeCollector {
+            tcx: cx.tcx,
+            ignored_types: Default::default(),
+            macros: Default::default(),
+        };
         cx.tcx.hir_visit_all_item_likes_in_crate(&mut v);
         self.ignored_types = v.ignored_types;
+        #[allow(rustc::potential_query_instability)]
+        for (def_id, _) in v.macros {
+            *self.macros.entry(def_id).or_default() += 1;
+        }
     }
 
     /// Look for method calls to `Into::into` that rely on inference and that ends up using the
@@ -3508,12 +3533,17 @@ impl<'tcx> LateLintPass<'tcx> for SelfTypeConversion<'tcx> {
         }
 
         if let Some(expn) = expr.span.macro_backtrace().next() {
-            if expn.macro_def_id.map_or(false, |did| did.is_local()) {
-                cx.emit_span_lint(
-                    SELF_TYPE_CONVERSION_IN_MACRO,
-                    expr.span,
-                    SelfTypeConversionInMacroDiag { ty },
-                );
+            if let Some(def_id) = expn.macro_def_id
+                && def_id.is_local()
+                && self.macros.get(&def_id).is_some()
+            {
+                // Collect all the `.into()` in macro expansions. Once we've evaluated the whole
+                // crate, we'll only emit the `self_type_conversion_in_macro` lint if *every* macro
+                // expansion would trigger it.
+                self.triggered_macros
+                    .entry((def_id, expr.span.ctxt()))
+                    .or_default()
+                    .insert((expr.span, ty));
             }
             // A macro that expands to this code isn't great, but end-users of a macro can't do
             // anything about it.
@@ -3528,6 +3558,31 @@ impl<'tcx> LateLintPass<'tcx> for SelfTypeConversion<'tcx> {
             expr.span,
             SelfTypeConversionDiag { ty, removal_span, fully_qualified_path },
         );
+    }
+
+    fn check_crate_post(&mut self, cx: &LateContext<'tcx>) {
+        let mut counts: FxIndexMap<DefId, usize> = Default::default();
+        for ((def_id, _), _) in &self.triggered_macros {
+            // Count the `SyntaxContext`s
+            *counts.entry(*def_id).or_default() += 1;
+        }
+
+        for ((def_id, _), entries) in &self.triggered_macros {
+            if counts.get(def_id) == Some(&self.macros[def_id]) {
+                // Every macro invocation involves a useless `.into()`, so we lint them. Otherwise,
+                // it would mean that there are *some* macro calls that involve types where the
+                // `.into()` call *isn't* useless. This is still a bit more verbose than it could
+                // be. We could instead lint once on the macro itself instead of once per macro
+                // invocation.
+                for &(span, ty) in entries {
+                    cx.emit_span_lint(
+                        SELF_TYPE_CONVERSION_IN_MACRO,
+                        span,
+                        SelfTypeConversionInMacroDiag { ty },
+                    );
+                }
+            }
+        }
     }
 }
 
