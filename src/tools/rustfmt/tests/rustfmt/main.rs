@@ -1,6 +1,5 @@
 //! Integration tests for rustfmt.
 
-use indoc::panicdoc;
 use std::env;
 use std::fs::{File, remove_file};
 use std::io::Write;
@@ -57,79 +56,113 @@ fn rustfmt(args: &[&str]) -> (String, String) {
     rustfmt_with_extra(args, None, &[], None)
 }
 
-macro_rules! assert_that {
-    ($args:expr, $($check:ident $check_args:tt)&&+) => {
-        let (stdout, stderr) = rustfmt($args);
-        if $(!stdout.$check$check_args && !stderr.$check$check_args)||* {
-            let args = $args;
-            let expected = stringify!($( $check$check_args )&&*);
-            panicdoc! {"
-                Output not expected for rustfmt {args:?}
-                expected: {expected}
-                actual stdout:
-                {stdout}
-                actual stderr:
-                {stderr}",
-            };
-        }
-    };
+#[test]
+fn print_config_errors_on_unknown_option() {
+    let args = &["--print-config", "unknown"];
+
+    let (stdout, stderr) = rustfmt(args);
+
+    assert_eq!(&stdout, "");
+    assert!(
+        stderr.contains("Unknown print-config option"),
+        "expected helpful error message, got: {stderr}"
+    );
 }
 
+#[test]
+fn print_config_default() {
+    let args = &["--print-config", "default"];
+    let (stdout, stderr) = rustfmt(args);
+
+    assert!(
+        stdout.contains("max_width = 100"),
+        "expected stdout to contain a default config, got: {stdout}",
+    );
+    assert_eq!(&stderr, "");
+}
+
+#[test]
+fn print_config_errors_minimal_with_no_path() {
+    let args = &["--print-config", "minimal"];
+
+    let (stdout, stderr) = rustfmt(args);
+
+    // NOTE: existing the behaviour, possibly a bug
+    assert_eq!(&stdout, "\n");
+    assert!(
+        stderr.contains("PATH required"),
+        "expected helpful error message, got: {stderr}"
+    );
+}
+
+#[test]
+fn print_config_errors_minimal_without_input_file() {
+    let args = &["--print-config", "minimal", "minimal.toml"];
+
+    let (stdout, stderr) = rustfmt(args);
+
+    assert_eq!(&stdout, "");
+    assert!(
+        stderr.contains("doesn't work with standard input"),
+        "expected helpful error message, got: {stderr}"
+    );
+}
+
+// test writes to file within the repo, rust-lang/rust doesn't like that
 #[rustfmt_only_ci_test]
 #[test]
-fn print_config() {
-    assert_that!(
-        &["--print-config", "unknown"],
-        starts_with("Unknown print-config option")
-    );
-    assert_that!(&["--print-config", "default"], contains("max_width = 100"));
-    assert_that!(&["--print-config", "minimal"], contains("PATH required"));
-    assert_that!(
-        &["--print-config", "minimal", "minimal-config"],
-        contains("doesn't work with standard input.")
-    );
+fn print_config_writes_to_file() {
+    let out_file = "minimal.toml";
+    let args = &["--print-config", "minimal", out_file, "src/shape.rs"];
 
-    let (stdout, stderr) = rustfmt(&[
-        "--print-config",
-        "minimal",
-        "minimal-config",
-        "src/shape.rs",
-    ]);
+    let (stdout, stderr) = rustfmt(args);
+
+    assert_eq!(stderr, "");
     assert!(
-        Path::new("minimal-config").exists(),
+        Path::new(out_file).exists(),
         "stdout:\n{stdout}\nstderr:\n{stderr}"
     );
-    remove_file("minimal-config").unwrap();
+    remove_file(out_file).unwrap();
 }
 
-#[rustfmt_only_ci_test]
 #[test]
-fn inline_config() {
-    // single invocation
-    assert_that!(
-        &[
-            "--print-config",
-            "current",
-            ".",
-            "--config=color=Never,edition=2018"
-        ],
-        contains("color = \"Never\"") && contains("edition = \"2018\"")
-    );
+fn print_config_merges_override_from_args() {
+    let args = &[
+        "--print-config",
+        "current",
+        ".",
+        "--config=color=Never,edition=2018",
+    ];
 
-    // multiple overriding invocations
-    assert_that!(
-        &[
-            "--print-config",
-            "current",
-            ".",
-            "--config",
-            "color=never,edition=2018",
-            "--config",
-            "color=always,format_strings=true"
-        ],
-        contains("color = \"Always\"")
-            && contains("edition = \"2018\"")
-            && contains("format_strings = true")
+    let (stdout, stderr) = rustfmt(args);
+
+    assert_eq!(stderr, "");
+    assert!(
+        stdout.contains(r#"color = "Never""#) && stdout.contains(r#"edition = "2018""#),
+        "expected overrides in stdout, got: {stdout}",
+    );
+}
+
+#[test]
+fn print_config_merges_multiple_overrides_from_args() {
+    let args = &[
+        "--print-config",
+        "current",
+        ".",
+        "--config",
+        "color=never,edition=2018",
+        "--config",
+        "color=always,format_strings=true",
+    ];
+
+    let (stdout, stderr) = rustfmt(args);
+
+    assert_eq!(stderr, "");
+    assert!(
+        stdout.contains(r#"color = "Always""#)
+            && stdout.contains(r#"edition = "2018""#)
+            && stdout.contains("format_strings = true"),
+        "expected overrides in stdout, got: {stdout}",
     );
 }
 
