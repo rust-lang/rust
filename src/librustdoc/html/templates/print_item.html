@@ -11,12 +11,9 @@
     {% endif %}
     <h1>
         {{typ}}
-        <span{% if item_type != "mod" +%} class="{{item_type}}"{% endif %}>
+        <span {% if item_type != "mod" +%} class="{{item_type}}"{% endif %}>
         {{name|wrapped|safe}}
         </span>&nbsp;{# #}
-        <button id="copy-path" title="Copy item path to clipboard"> {# #}
-            Copy item path {# #}
-        </button> {# #}
     </h1> {# #}
     <rustdoc-toolbar></rustdoc-toolbar> {# #}
     <span class="sub-heading">

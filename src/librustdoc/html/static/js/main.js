@@ -2113,34 +2113,41 @@ function preLoadCss(cssUrl) {
         }, 1000);
     }
 
-    // Copy button that appears next to the path breadcrumbs.
-    const but = document.getElementById("copy-path");
-    if (!but) {
-        return;
-    }
-    but.onclick = () => {
-        // We get the path from the "breadcrumbs" and the actual item name.
-        let path = "";
-        // @ts-expect-error
-        const heading = document.getElementById(MAIN_ID).querySelector(".main-heading");
+    const itemPath = nonnull(document.getElementById(MAIN_ID)).querySelector(".main-heading h1");
+    // The best way to check it's a page where we should generate the "copy path" button is to
+    // check if there is a `<span>` in the `<h1>`.
+    if (itemPath && itemPath.querySelector("span")) {
+        // Copy button that appears next to the path breadcrumbs.
+        const but = document.createElement("button");
+        but.id = "copy-path";
+        but.setAttribute("title", "Copy item path to clipboard");
+        but.innerText = "Copy item path";
 
-        if (heading) {
-            const breadcrumbs = heading.querySelector(".rustdoc-breadcrumbs");
-            if (breadcrumbs) {
-                // @ts-expect-error
-                path = breadcrumbs.innerText;
-                if (path.length > 0) {
-                    path += "::";
+        but.onclick = () => {
+            const heading = nonnull(
+                document.getElementById(MAIN_ID)).querySelector(".main-heading");
+            if (heading) {
+                // We get the path from the "breadcrumbs" and the actual item name.
+                let path = "";
+
+                const breadcrumbs = heading.querySelector(".rustdoc-breadcrumbs");
+                if (breadcrumbs) {
+                    // @ts-expect-error
+                    path = breadcrumbs.innerText;
+                    if (path.length > 0) {
+                        path += "::";
+                    }
                 }
+
+                // @ts-expect-error
+                path += heading.querySelector("h1 > span").innerText;
+
+                copyContentToClipboard(path);
+                copyButtonAnimation(but);
             }
-
-            // @ts-expect-error
-            path += heading.querySelector("h1 > span").innerText;
-
-            copyContentToClipboard(path);
-            copyButtonAnimation(but);
-        }
-    };
+        };
+        itemPath.appendChild(but);
+    }
 
     /**
      * Copy buttons on code examples.
