@@ -2141,7 +2141,16 @@ fn compare_const_generic_param_types<'tcx>(
         iter::zip(const_params_of(impl_item.def_id), const_params_of(trait_item.def_id));
 
     for (param_impl, param_trait) in param_iter {
-        let param_impl_ty_span = tcx.ty_span(param_impl.def_id.expect_local());
+        // If `impl_item` comes from RPITIT:
+        // <https://rustc-dev-guide.rust-lang.org/return-position-impl-trait-in-trait.html>
+        // then expecting a `LocalDefId` for `param_impl` is fraught: the synthetic
+        // associated type reuses the trait's generic parameters, which may be nonlocal.
+        // Use the impl item's span instead.
+        let param_impl_ty_span = if impl_item.is_impl_trait_in_trait() {
+            tcx.def_span(impl_item.def_id)
+        } else {
+            tcx.ty_span(param_impl.def_id.expect_local())
+        };
 
         let cause = ObligationCause::new(
             param_impl_ty_span,
