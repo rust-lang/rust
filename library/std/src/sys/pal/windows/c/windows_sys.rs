@@ -2985,7 +2985,6 @@ pub struct M128A {
 pub const MAXIMUM_REPARSE_DATA_BUFFER_SIZE: i32 = 16384;
 pub const MAX_PATH: i32 = 260;
 pub const MB_COMPOSITE: i32 = 2;
-pub const MB_ERR_INVALID_CHARS: i32 = 8;
 pub const MB_PRECOMPOSED: i32 = 1;
 pub const MB_USEGLYPHCHARS: i32 = 4;
 pub const MOVEFILE_COPY_ALLOWED: i32 = 2;
@@ -3351,7 +3350,6 @@ pub const WAIT_FAILED: u32 = 4294967295;
 pub const WAIT_IO_COMPLETION: i32 = 192;
 pub const WAIT_OBJECT_0: i32 = 0;
 pub const WAIT_TIMEOUT: i32 = 258;
-pub const WC_ERR_INVALID_CHARS: i32 = 128;
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct WIN32_FIND_DATAW {

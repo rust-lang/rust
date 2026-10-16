@@ -147,12 +147,6 @@ pub const HANDLE_FLAG_INHERIT: u32 = cu(windows_sys::HANDLE_FLAG_INHERIT);
 pub const STACK_SIZE_PARAM_IS_A_RESERVATION: u32 =
     cu(windows_sys::STACK_SIZE_PARAM_IS_A_RESERVATION);
 
-// dwFlags -- WideCharToMultiByte
-pub const WC_ERR_INVALID_CHARS: u32 = cu(windows_sys::WC_ERR_INVALID_CHARS);
-
-// dwFlags -- MultiByteToWideChar
-pub const MB_ERR_INVALID_CHARS: u32 = cu(windows_sys::MB_ERR_INVALID_CHARS);
-
 // dwFlags -- CreateWaitableTimerExW
 pub const CREATE_WAITABLE_TIMER_HIGH_RESOLUTION: u32 =
     cu(windows_sys::CREATE_WAITABLE_TIMER_HIGH_RESOLUTION);
