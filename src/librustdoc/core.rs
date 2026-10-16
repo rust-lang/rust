@@ -1,8 +1,7 @@
 use std::sync::{Arc, LazyLock};
 use std::{io, mem};
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
-use rustc_data_structures::unord::UnordSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_driver::USING_INTERNAL_FEATURES;
 use rustc_errors::TerminalUrl;
 use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
@@ -322,7 +321,8 @@ pub(crate) fn create_config(
                 |tcx, module_def_id| late_lint_mod(tcx, module_def_id, MissingDoc);
             // hack so that `used_trait_imports` won't try to call typeck
             providers.queries.used_trait_imports = |_, _| {
-                static EMPTY_SET: LazyLock<UnordSet<LocalDefId>> = LazyLock::new(UnordSet::default);
+                static EMPTY_SET: LazyLock<FxIndexSet<LocalDefId>> =
+                    LazyLock::new(FxIndexSet::default);
                 &EMPTY_SET
             };
             // In case typeck does end up being called, don't ICE in case there were name resolution errors

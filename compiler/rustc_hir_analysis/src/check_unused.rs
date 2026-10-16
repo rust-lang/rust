@@ -1,4 +1,4 @@
-use rustc_data_structures::unord::{ExtendUnord, UnordSet};
+use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
@@ -33,7 +33,7 @@ pub(super) fn check_unused_traits(tcx: TyCtxt<'_>, (): ()) {
     for item_def_id in tcx.hir_body_owners() {
         let imports = tcx.used_trait_imports(item_def_id);
         debug!("GatherVisitor: item_def_id={:?} with imports {:#?}", item_def_id, imports);
-        used_trait_imports.extend_unord(imports.items().copied());
+        used_trait_imports.extend(imports.iter().copied());
     }
 
     for &id in tcx.resolutions(()).maybe_unused_trait_imports.iter() {

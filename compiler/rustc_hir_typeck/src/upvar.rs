@@ -889,7 +889,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut typeck_results = self.typeck_results.borrow_mut();
 
         let mut root_var_min_capture_list =
-            typeck_results.closure_min_captures.remove(&closure_def_id).unwrap_or_default();
+            typeck_results.closure_min_captures.swap_remove(&closure_def_id).unwrap_or_default();
 
         for (mut place, capture_info) in capture_information.into_iter() {
             let var_hir_id = match place.base {

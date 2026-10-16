@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::iter;
 
-use hir::def_id::{DefId, DefIdMap, LocalDefId};
+use hir::def_id::{DefId, LocalDefId};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ErrorGuaranteed, MultiSpan, pluralize, struct_span_code_err};
@@ -458,7 +458,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RemapLateParam<'tcx> {
 pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_m_def_id: LocalDefId,
-) -> Result<&'tcx DefIdMap<ty::EarlyBinder<'tcx, Ty<'tcx>>>, ErrorGuaranteed> {
+) -> Result<&'tcx FxIndexMap<DefId, ty::EarlyBinder<'tcx, Ty<'tcx>>>, ErrorGuaranteed> {
     let impl_m = tcx.associated_item(impl_m_def_id.to_def_id());
     let trait_m = tcx.associated_item(impl_m.expect_trait_impl()?);
     let impl_trait_ref = tcx
@@ -706,7 +706,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     // lifetime parameters.
     ocx.resolve_regions_and_report_errors(impl_m_def_id, param_env, wf_tys)?;
 
-    let mut remapped_types = DefIdMap::default();
+    let mut remapped_types = FxIndexMap::default();
     for (def_id, (ty, args)) in collected_types {
         match infcx.deeply_resolve_via_region_graph(ty) {
             Ok(ty) => {

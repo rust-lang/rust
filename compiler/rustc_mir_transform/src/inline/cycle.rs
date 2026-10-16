@@ -1,5 +1,4 @@
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
-use rustc_data_structures::unord::UnordSet;
+use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::mir::TerminatorKind;
 use rustc_middle::ty::{self, GenericArgsRef, InstanceKind, ShimKind, TyCtxt, TypeVisitableExt};
@@ -68,7 +67,7 @@ fn process<'tcx>(
     caller: ty::Instance<'tcx>,
     target: LocalDefId,
     seen: &mut FxHashMap<ty::Instance<'tcx>, bool>,
-    involved: &mut FxHashSet<LocalDefId>,
+    involved: &mut FxIndexSet<LocalDefId>,
     recursion_limiter: &mut FxHashMap<DefId, usize>,
     recursion_limit: Limit,
 ) -> Option<bool> {
@@ -152,7 +151,7 @@ fn process<'tcx>(
 pub(crate) fn mir_callgraph_cyclic<'tcx>(
     tcx: TyCtxt<'tcx>,
     root: LocalDefId,
-) -> Option<&'tcx UnordSet<LocalDefId>> {
+) -> Option<&'tcx FxIndexSet<LocalDefId>> {
     assert!(
         !tcx.is_constructor(root.to_def_id()),
         "you should not call `mir_callgraph_reachable` on enum/struct constructor functions"
@@ -166,13 +165,13 @@ pub(crate) fn mir_callgraph_cyclic<'tcx>(
     // the default recursion limits are quite generous for us. If we need to recurse 64 times
     // into the call graph, we're probably not going to find any useful MIR inlining.
     let recursion_limit = tcx.recursion_limit() / 8;
-    let mut involved = FxHashSet::default();
+    let mut involved = FxIndexSet::default();
     let typing_env = ty::TypingEnv::post_analysis(tcx, root);
     let root_instance =
         ty::Instance::new_raw(root.to_def_id(), ty::GenericArgs::identity_for_item(tcx, root));
     if !should_recurse(tcx, root_instance) {
         trace!("cannot walk, skipping");
-        return Some(tcx.arena.alloc(involved.into()));
+        return Some(tcx.arena.alloc(involved));
     }
     match process(
         tcx,

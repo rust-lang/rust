@@ -39,7 +39,7 @@ mod writeback;
 
 pub use coercion::can_coerce;
 use fn_ctxt::FnCtxt;
-use rustc_data_structures::unord::UnordSet;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, struct_span_code_err};
 use rustc_hir as hir;
@@ -77,7 +77,7 @@ macro_rules! type_error_struct {
     })
 }
 
-fn used_trait_imports(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &UnordSet<LocalDefId> {
+fn used_trait_imports(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &FxIndexSet<LocalDefId> {
     &tcx.typeck(def_id).used_trait_imports
 }
 
