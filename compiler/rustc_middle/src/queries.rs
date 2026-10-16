@@ -379,7 +379,7 @@ rustc_queries! {
     }
 
     query collect_return_position_impl_trait_in_trait_tys(key: DefId)
-        -> Result<&'tcx DefIdMap<ty::EarlyBinder<'tcx, Ty<'tcx>>>, ErrorGuaranteed>
+        -> Result<&'tcx FxIndexMap<DefId, ty::EarlyBinder<'tcx, Ty<'tcx>>>, ErrorGuaranteed>
     {
         desc { "comparing an impl and trait method signature, inferring any hidden `impl Trait` types in the process" }
         cache_on_disk
@@ -1115,7 +1115,7 @@ rustc_queries! {
 
     /// Given the `item_def_id` of a trait or impl, return a mapping from associated fn def id
     /// to its associated type items that correspond to the RPITITs in its signature.
-    query associated_types_for_impl_traits_in_trait_or_impl(item_def_id: DefId) -> &'tcx DefIdMap<Vec<DefId>> {
+    query associated_types_for_impl_traits_in_trait_or_impl(item_def_id: DefId) -> &'tcx FxIndexMap<DefId, Vec<DefId>> {
         arena_cache
         desc { "synthesizing RPITIT items for the opaque types for methods in `{}`", tcx.def_path_str(item_def_id) }
         separate_provide_extern

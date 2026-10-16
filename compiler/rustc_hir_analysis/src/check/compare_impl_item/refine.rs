@@ -67,7 +67,7 @@ pub(crate) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
         return;
     };
 
-    if hidden_tys.items().any(|(_, &ty)| ty.skip_binder().references_error()) {
+    if hidden_tys.values().any(|ty| ty.skip_binder().references_error()) {
         return;
     }
 

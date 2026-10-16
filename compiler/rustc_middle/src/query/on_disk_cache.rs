@@ -4,11 +4,11 @@ use std::rc::Rc;
 use std::sync::Arc;
 use std::{fmt, mem};
 
-use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::sync::{HashMapExt, Lock, RwLock};
 use rustc_data_structures::unhash::UnhashMap;
-use rustc_data_structures::unord::{UnordMap, UnordSet};
+use rustc_data_structures::unord::UnordSet;
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE, LocalDefId, StableCrateId};
 use rustc_hir::definitions::DefPathHash;
 use rustc_index::IndexVec;
@@ -725,8 +725,8 @@ macro_rules! impl_decodable_via_ref_decodable_for_foreign_types {
 
 impl_decodable_via_ref_decodable_for_foreign_types! {
     // tidy-alphabetical-start
+    &'tcx FxIndexMap<DefId, ty::EarlyBinder<'tcx, Ty<'tcx>>>,
     &'tcx IndexVec<mir::Promoted, mir::Body<'tcx>>,
-    &'tcx UnordMap<DefId, ty::EarlyBinder<'tcx, Ty<'tcx>>>,
     &'tcx UnordSet<LocalDefId>,
     &'tcx [(
         rustc_middle::middle::exported_symbols::ExportedSymbol<'tcx>,

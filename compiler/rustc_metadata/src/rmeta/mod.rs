@@ -16,7 +16,7 @@ use rustc_attr_ir::{
 };
 use rustc_crate_store::{CrateDepKind, ForeignModule, LinkagePreference, NativeLib};
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::svh::Svh;
 use rustc_hir as hir;
 use rustc_hir::PreciseCapturingArgKind;
@@ -509,14 +509,14 @@ define_tables! {
     assoc_container: Table<LazyValue<ty::AssocContainer>>,
     macro_definition: Table<LazyValue<ast::DelimArgs>>,
     deduced_param_attrs: Table<LazyArray<DeducedParamAttrs>>,
-    collect_return_position_impl_trait_in_trait_tys: Table<LazyValue<DefIdMap<ty::EarlyBinder<'static, Ty<'static>>>>>,
+    collect_return_position_impl_trait_in_trait_tys: Table<LazyValue<FxIndexMap<DefId, ty::EarlyBinder<'static, Ty<'static>>>>>,
     doc_link_resolutions: Table<LazyValue<DocLinkResMap>>,
     doc_link_traits_in_scope: Table<LazyArray<DefId>>,
     assumed_wf_types_for_rpitit: Table<LazyArray<(Ty<'static>, Span)>>,
     opaque_ty_origin: Table<LazyValue<hir::OpaqueTyOrigin<DefId>>>,
     anon_const_kind: Table<LazyValue<ty::AnonConstKind>>,
     const_of_item: Table<LazyValue<Option<ty::EarlyBinder<'static, ty::Const<'static>>>>>,
-    associated_types_for_impl_traits_in_trait_or_impl: Table<LazyValue<DefIdMap<Vec<DefId>>>>,
+    associated_types_for_impl_traits_in_trait_or_impl: Table<LazyValue<FxIndexMap<DefId, Vec<DefId>>>>,
     live_args_for_alias_from_outlives_bounds: Table<LazyValue<DenseBitSet<u32>>>,
     args_known_to_outlive_alias_params: Table<LazyValue<Vec<(usize, DenseBitSet<u32>)>>>,
     mut_restriction: Table<LazyValue<ty::RestrictionKind>>,

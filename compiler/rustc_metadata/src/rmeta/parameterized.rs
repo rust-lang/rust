@@ -1,5 +1,6 @@
 use std::hash::Hash;
 
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::unord::UnordMap;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::ty::{Binder, EarlyBinder, GenericArg, Region};
@@ -29,6 +30,10 @@ impl<I: Idx + 'static, T: ParameterizedOverTcx> ParameterizedOverTcx for IndexVe
 
 impl<I: Hash + Eq + 'static, T: ParameterizedOverTcx> ParameterizedOverTcx for UnordMap<I, T> {
     type Value<'tcx> = UnordMap<I, T::Value<'tcx>>;
+}
+
+impl<I: Hash + Eq + 'static, T: ParameterizedOverTcx> ParameterizedOverTcx for FxIndexMap<I, T> {
+    type Value<'tcx> = FxIndexMap<I, T::Value<'tcx>>;
 }
 
 impl<T: ParameterizedOverTcx> ParameterizedOverTcx for Binder<'static, T> {
@@ -105,6 +110,7 @@ trivially_parameterized_over_tcx! {
     rustc_hir::PreciseCapturingArgKind<Symbol, Symbol>,
     rustc_hir::Safety,
     rustc_hir::def::DefKind,
+    rustc_hir::def::Res<rustc_ast::node_id::NodeId>,
     rustc_hir::def_id::DefId,
     rustc_hir::def_id::DefIndex,
     rustc_hir::definitions::DefKey,
@@ -115,7 +121,6 @@ trivially_parameterized_over_tcx! {
     rustc_middle::middle::exported_symbols::SymbolExportInfo,
     rustc_middle::middle::lib_features::FeatureStability,
     rustc_middle::middle::resolve::AmbigModChild,
-    rustc_middle::middle::resolve::DocLinkResMap,
     rustc_middle::middle::resolve::ModChild,
     rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault,
     rustc_middle::mir::ConstQualifs,

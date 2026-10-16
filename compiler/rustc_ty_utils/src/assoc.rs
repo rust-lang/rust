@@ -1,3 +1,4 @@
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId};
 use rustc_hir::definitions::{DefPathData, PerParentDisambiguatorState};
@@ -142,7 +143,7 @@ impl<'tcx> Visitor<'tcx> for RPITVisitor<'_, 'tcx> {
 fn associated_types_for_impl_traits_in_trait_or_impl<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
-) -> DefIdMap<Vec<DefId>> {
+) -> FxIndexMap<DefId, Vec<DefId>> {
     let item = tcx.hir_expect_item(def_id);
     let disambiguator = &mut PerParentDisambiguatorState::new(def_id);
     match item.kind {
