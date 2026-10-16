@@ -1,6 +1,7 @@
 //! Suboptimal half-markdown parser that's just good-enough for this.
 
 use std::collections::HashMap;
+use std::fmt;
 use std::fs::DirEntry;
 use std::path::{Path, PathBuf};
 
@@ -103,13 +104,17 @@ fn parse_file(full_path: PathBuf, file_name: &str, content: &str) -> Result<Pars
             if in_codeblock {
                 push_line(&mut sections, line)?;
             } else if let Some(header) = line.strip_prefix("## ") {
-                if !crate::SECTIONS.contains(&header) {
+                if crate::SECTIONS.iter().any(|s| s.name == header) {
+                    sections.push((header.to_owned(), String::new()));
+                } else {
                     bail!(
-                        "on line {number}, `{header}` is not an allowed section name, must be one of {:?}",
-                        super::SECTIONS
+                        "on line {number}, `{header}` is not an allowed section name, must be one of {}",
+                        fmt::from_fn(|f| f
+                            .debug_list()
+                            .entries(super::SECTIONS.iter().map(|s| s.name))
+                            .finish())
                     );
                 }
-                sections.push((header.to_owned(), String::new()));
             } else {
                 bail!("on line {number}, the only allowed headings are `## `: `{line}`");
             }

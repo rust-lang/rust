@@ -6,6 +6,22 @@ use eyre::{Context, Result, eyre};
 
 use crate::TargetInfo;
 
+#[derive(Debug)]
+pub struct Section {
+    pub name: &'static str,
+    pub required: bool,
+}
+
+impl Section {
+    pub const fn required(name: &'static str) -> Self {
+        Self { name, required: true }
+    }
+
+    /*pub const fn optional(name: &'static str) -> Self {
+        Self { name, required: false }
+    }*/
+}
+
 /// Renders a single target markdown file from the information obtained.
 pub fn render_target_md(target: &TargetInfo) -> String {
     let render_header_option_bool = |bool| match bool {
@@ -27,16 +43,22 @@ pub fn render_target_md(target: &TargetInfo) -> String {
         render_header_option_bool(target.metadata.host_tools),
     );
 
-    let mut section = |name: &str, content: &str| {
+    let mut render_section = |name: &str, content: &str| {
         doc.push_str("## ");
-        doc.push_str(name.trim());
+        doc.push_str(name);
         doc.push('\n');
-        doc.push_str(content.trim());
+        doc.push_str(content);
         doc.push_str("\n\n");
     };
 
     let maintainers_content = if target.maintainers.is_empty() {
-        "This target does not have any maintainers!".to_owned()
+        concat!(
+            "**⚠️ This target does not have any maintainers and may not be properly maintained. ⚠️**\n\n",
+            "If you are using this target, please consider signing up to become a target maintainer.\n",
+            "See the [target tier policy] for details.\n",
+            "Without maintainers, this target may be demoted or removed in the future.\n\n",
+            "[target tier policy]: ../../target-tier-policy.md",
+            ).to_owned()
     } else {
         format!(
             "This target is maintained by:\n{}",
@@ -44,11 +66,10 @@ pub fn render_target_md(target: &TargetInfo) -> String {
                 .maintainers
                 .iter()
                 .map(|maintainer| {
-                    let maintainer = if maintainer.starts_with('@') && !maintainer.contains(' ') {
-                        format!(
-                            "[@{0}](https://github.com/{0})",
-                            maintainer.strip_prefix("@").unwrap()
-                        )
+                    let maintainer = if let Some(username) = maintainer.strip_prefix('@')
+                        && !maintainer.contains(' ')
+                    {
+                        format!("[{maintainer}](https://github.com/{username})")
                     } else {
                         maintainer.to_owned()
                     };
@@ -60,16 +81,18 @@ pub fn render_target_md(target: &TargetInfo) -> String {
         )
     };
 
-    section("Maintainers", &maintainers_content);
+    render_section("Target maintainers", &maintainers_content);
 
-    for section_name in crate::SECTIONS {
-        let value = target.sections.iter().find(|(name, _)| name == section_name);
+    for section in crate::SECTIONS {
+        let value = target.sections.iter().find(|(name, _)| name == section.name);
 
         let section_content = match value {
             Some((_, value)) => value.clone(),
-            None => "Unknown.".to_owned(),
+            None if !section.required => continue,
+            None => "**⚠️ This section is a stub, you can help improve it by sending a PR. ⚠️**"
+                .to_owned(),
         };
-        section(section_name, &section_content);
+        render_section(section.name, &section_content);
     }
 
     let cfg_text = target
@@ -81,7 +104,7 @@ pub fn render_target_md(target: &TargetInfo) -> String {
     let cfg_content =
         format!("This target defines the following target-specific cfg values:\n{cfg_text}\n");
 
-    section("cfg", &cfg_content);
+    render_section("cfg", &cfg_content);
 
     doc
 }

@@ -10,7 +10,8 @@ For every rustc target, we iterate through all the target infos and find matchin
 When a glob matches, it extracts the h2 markdown sections and saves them for the target.
 
 In the end, a page is generated for every target using these sections.
-Sections that are not provided are stubbed out. Currently, the sections are
+Required sections that are not provided are stubbed out, optional sections are omitted if not provided.
+Currently, the sections are:
 
 - Overview
 - Requirements
