@@ -67,7 +67,7 @@ use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::{ErrorGuaranteed, catch_fatal_errors};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdSet, LocalModId};
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalModId};
 use rustc_hir::{ItemLocalId, PreciseCapturingArgKind};
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_lint_defs::{LintId, StableLintExpectationId};
@@ -379,7 +379,7 @@ rustc_queries! {
     }
 
     query collect_return_position_impl_trait_in_trait_tys(key: DefId)
-        -> Result<&'tcx DefIdMap<ty::EarlyBinder<'tcx, Ty<'tcx>>>, ErrorGuaranteed>
+        -> Result<&'tcx FxIndexMap<DefId, ty::EarlyBinder<'tcx, Ty<'tcx>>>, ErrorGuaranteed>
     {
         desc { "comparing an impl and trait method signature, inferring any hidden `impl Trait` types in the process" }
         cache_on_disk
@@ -1115,7 +1115,7 @@ rustc_queries! {
 
     /// Given the `item_def_id` of a trait or impl, return a mapping from associated fn def id
     /// to its associated type items that correspond to the RPITITs in its signature.
-    query associated_types_for_impl_traits_in_trait_or_impl(item_def_id: DefId) -> &'tcx DefIdMap<Vec<DefId>> {
+    query associated_types_for_impl_traits_in_trait_or_impl(item_def_id: DefId) -> &'tcx FxIndexMap<DefId, Vec<DefId>> {
         arena_cache
         desc { "synthesizing RPITIT items for the opaque types for methods in `{}`", tcx.def_path_str(item_def_id) }
         separate_provide_extern
@@ -1254,7 +1254,7 @@ rustc_queries! {
         cache_on_disk
     }
 
-    query used_trait_imports(key: LocalDefId) -> &'tcx UnordSet<LocalDefId> {
+    query used_trait_imports(key: LocalDefId) -> &'tcx FxIndexSet<LocalDefId> {
         desc { "finding used_trait_imports `{}`", tcx.def_path_str(key) }
         cache_on_disk
     }
@@ -1316,7 +1316,7 @@ rustc_queries! {
 
     /// Return the set of (transitive) callees that may result in a recursive call to `key`,
     /// if we were able to walk all callees.
-    query mir_callgraph_cyclic(key: LocalDefId) -> Option<&'tcx UnordSet<LocalDefId>> {
+    query mir_callgraph_cyclic(key: LocalDefId) -> Option<&'tcx FxIndexSet<LocalDefId>> {
         desc {
             "computing (transitive) callees of `{}` that may recurse",
             tcx.def_path_str(key),
@@ -1431,7 +1431,7 @@ rustc_queries! {
         }
     }
 
-    query reachable_set(_: ()) -> &'tcx LocalDefIdSet {
+    query reachable_set(_: ()) -> &'tcx FxIndexSet<LocalDefId> {
         arena_cache
         desc { "reachability" }
         cache_on_disk
@@ -1966,7 +1966,7 @@ rustc_queries! {
     /// crate. Instead use the narrower `upstream_monomorphizations_for`,
     /// `upstream_drop_glue_for`, `upstream_async_drop_glue_for`, or,
     /// even better, `Instance::upstream_monomorphization()`.
-    query upstream_monomorphizations(_: ()) -> &'tcx DefIdMap<UnordMap<GenericArgsRef<'tcx>, CrateNum>> {
+    query upstream_monomorphizations(_: ()) -> &'tcx DefIdMap<FxIndexMap<GenericArgsRef<'tcx>, CrateNum>> {
         arena_cache
         desc { "collecting available upstream monomorphizations" }
     }
@@ -1979,7 +1979,7 @@ rustc_queries! {
     /// You likely want to call `Instance::upstream_monomorphization()`
     /// instead of invoking this query directly.
     query upstream_monomorphizations_for(def_id: DefId)
-        -> Option<&'tcx UnordMap<GenericArgsRef<'tcx>, CrateNum>>
+        -> Option<&'tcx FxIndexMap<GenericArgsRef<'tcx>, CrateNum>>
     {
         desc {
             "collecting available upstream monomorphizations for `{}`",
@@ -2282,7 +2282,7 @@ rustc_queries! {
     /// to know that the feature implies another feature. If it were reversed, and the `#[stable]`
     /// attribute had an `implies` meta item, then a map would be necessary when avoiding a "use of
     /// unstable feature" error for a feature that was implied.
-    query stability_implications(_: CrateNum) -> &'tcx UnordMap<Symbol, Symbol> {
+    query stability_implications(_: CrateNum) -> &'tcx FxIndexMap<Symbol, Symbol> {
         arena_cache
         desc { "calculating the implications between `#[unstable]` features defined in a crate" }
         separate_provide_extern

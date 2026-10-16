@@ -1,11 +1,9 @@
-use std::collections::hash_map::Entry::*;
-
 use object::pe;
 use rustc_abi::{CanonAbi, X86Call};
 use rustc_ast::expand::allocator::{AllocatorKind, NO_ALLOC_SHIM_IS_UNSTABLE, global_fn_name};
 use rustc_crate_store::CrateDepKind;
-use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::unord::UnordMap;
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
+use rustc_data_structures::indexmap::map::Entry::*;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE, LocalDefId};
@@ -66,7 +64,7 @@ pub fn reachable_non_generics_helper(tcx: TyCtxt<'_>) -> DefIdMap<SymbolExportIn
 
     let mut reachable_non_generics: DefIdMap<_> = tcx
         .reachable_set(())
-        .items()
+        .iter()
         .filter_map(|&def_id| {
             // We want to ignore some FFI functions that are not exposed from
             // this crate. Reachable FFI functions can be lumped into two
@@ -150,7 +148,7 @@ pub fn reachable_non_generics_helper(tcx: TyCtxt<'_>) -> DefIdMap<SymbolExportIn
             };
             (def_id.to_def_id(), info)
         })
-        .into();
+        .collect();
 
     if let Some(id) = tcx.proc_macro_decls_static(()) {
         reachable_non_generics.insert(
@@ -495,10 +493,10 @@ fn exported_generic_symbols_provider_local<'tcx>(
 fn upstream_monomorphizations_provider(
     tcx: TyCtxt<'_>,
     (): (),
-) -> DefIdMap<UnordMap<GenericArgsRef<'_>, CrateNum>> {
+) -> DefIdMap<FxIndexMap<GenericArgsRef<'_>, CrateNum>> {
     let cnums = tcx.crates(());
 
-    let mut instances: DefIdMap<UnordMap<_, _>> = Default::default();
+    let mut instances: DefIdMap<FxIndexMap<_, _>> = Default::default();
 
     let drop_glue_fn_def_id = tcx.lang_items().drop_glue_fn();
     let async_drop_in_place_fn_def_id = tcx.lang_items().async_drop_in_place_fn();
@@ -560,7 +558,7 @@ fn upstream_monomorphizations_provider(
 fn upstream_monomorphizations_for_provider(
     tcx: TyCtxt<'_>,
     def_id: DefId,
-) -> Option<&UnordMap<GenericArgsRef<'_>, CrateNum>> {
+) -> Option<&FxIndexMap<GenericArgsRef<'_>, CrateNum>> {
     assert!(!def_id.is_local());
     tcx.upstream_monomorphizations(()).get(&def_id)
 }

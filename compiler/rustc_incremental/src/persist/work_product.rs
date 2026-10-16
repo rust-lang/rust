@@ -4,7 +4,7 @@
 
 use std::path::Path;
 
-use rustc_data_structures::unord::UnordMap;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_fs_util::link_or_copy;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_session::{IncrCompSession, Session};
@@ -26,7 +26,7 @@ pub fn copy_cgu_workproduct_to_incr_comp_cache_dir(
     debug!(?cgu_name, ?files);
     assert!(sess.opts.incremental.is_some());
 
-    let mut saved_files = UnordMap::default();
+    let mut saved_files = FxIndexMap::default();
     for (ext, path) in files {
         let file_name = format!("{cgu_name}.{ext}");
         let path_in_incr_dir = in_incr_comp_dir_sess(incr_comp_session, &file_name);

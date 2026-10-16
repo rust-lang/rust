@@ -1,6 +1,6 @@
 use std::hash::Hash;
 
-use rustc_data_structures::unord::UnordMap;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::ty::{Binder, EarlyBinder, GenericArg, Region};
 use rustc_span::Symbol;
@@ -27,8 +27,8 @@ impl<I: Idx + 'static, T: ParameterizedOverTcx> ParameterizedOverTcx for IndexVe
     type Value<'tcx> = IndexVec<I, T::Value<'tcx>>;
 }
 
-impl<I: Hash + Eq + 'static, T: ParameterizedOverTcx> ParameterizedOverTcx for UnordMap<I, T> {
-    type Value<'tcx> = UnordMap<I, T::Value<'tcx>>;
+impl<I: Hash + Eq + 'static, T: ParameterizedOverTcx> ParameterizedOverTcx for FxIndexMap<I, T> {
+    type Value<'tcx> = FxIndexMap<I, T::Value<'tcx>>;
 }
 
 impl<T: ParameterizedOverTcx> ParameterizedOverTcx for Binder<'static, T> {

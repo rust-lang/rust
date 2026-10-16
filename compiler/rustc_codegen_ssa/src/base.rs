@@ -15,7 +15,6 @@ use rustc_attr_ir::{DebuggerVisualizerType, EiiDecl, EiiImpl, OptimizeAttr, find
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
 use rustc_data_structures::sync::{IntoDynSyncSend, par_map};
-use rustc_data_structures::unord::UnordMap;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
@@ -1073,9 +1072,9 @@ impl CrateInfo {
             is_no_builtins: Default::default(),
             native_libraries: Default::default(),
             used_libraries: tcx.native_libraries(LOCAL_CRATE).iter().map(Into::into).collect(),
-            crate_name: UnordMap::with_capacity(n_crates),
+            crate_name: FxIndexMap::with_capacity_and_hasher(n_crates, Default::default()),
             used_crates,
-            used_crate_source: UnordMap::with_capacity(n_crates),
+            used_crate_source: FxIndexMap::with_capacity_and_hasher(n_crates, Default::default()),
             dependency_formats,
             eii_linkage,
             windows_subsystem,

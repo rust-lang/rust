@@ -9,7 +9,7 @@ use rustc_attr_ir::{
     StabilityLevel, StableSince, UnstableReason, VERSION_PLACEHOLDER, find_attr,
 };
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_data_structures::unord::{ExtendUnord, UnordMap, UnordSet};
+use rustc_data_structures::unord::UnordSet;
 use rustc_feature::{EnabledLangFeature, EnabledLibFeature, UNSTABLE_LANG_FEATURES};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId, LocalModId};
@@ -265,8 +265,8 @@ fn lookup_const_stability(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ConstSt
     None
 }
 
-fn stability_implications(tcx: TyCtxt<'_>, LocalCrate: LocalCrate) -> UnordMap<Symbol, Symbol> {
-    let mut implications = UnordMap::default();
+fn stability_implications(tcx: TyCtxt<'_>, LocalCrate: LocalCrate) -> FxIndexMap<Symbol, Symbol> {
+    let mut implications = FxIndexMap::default();
 
     let mut register_implication = |def_id| {
         if let Some(stability) = tcx.lookup_stability(def_id)
@@ -1215,9 +1215,9 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
     fn check_features<'tcx>(
         tcx: TyCtxt<'tcx>,
         remaining_lib_features: &mut FxIndexMap<Symbol, Span>,
-        remaining_implications: &mut UnordMap<Symbol, Symbol>,
+        remaining_implications: &mut FxIndexMap<Symbol, Symbol>,
         defined_features: &LibFeatures,
-        all_implications: &UnordMap<Symbol, Symbol>,
+        all_implications: &FxIndexMap<Symbol, Symbol>,
     ) {
         for (feature, stability) in defined_features.to_sorted_vec() {
             if let FeatureStability::AcceptedSince(since) = stability
@@ -1240,7 +1240,7 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
             // the attribute that establishes this relationship. `implied_by` is guaranteed to be a
             // feature defined in the local crate because `remaining_implications` is only the
             // implications from this crate.
-            remaining_implications.remove(&feature);
+            remaining_implications.swap_remove(&feature);
 
             if let FeatureStability::Unstable { old_name: Some(alias) } = stability
                 && let Some(span) = remaining_lib_features.swap_remove(&alias)
@@ -1268,8 +1268,7 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
         // `remaining_lib_features`.
         let mut all_implications = remaining_implications.clone();
         for &cnum in crates {
-            all_implications
-                .extend_unord(tcx.stability_implications(cnum).items().map(|(k, v)| (*k, *v)));
+            all_implications.extend(tcx.stability_implications(cnum).iter().map(|(k, v)| (*k, *v)));
         }
 
         check_features(
@@ -1336,7 +1335,7 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
         }
     }
 
-    for (&implied_by, &feature) in remaining_implications.to_sorted_stable_ord() {
+    for (implied_by, feature) in remaining_implications {
         let local_defined_features = tcx.lib_features(LOCAL_CRATE);
         let span = local_defined_features
             .stability

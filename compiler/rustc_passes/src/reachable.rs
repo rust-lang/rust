@@ -23,6 +23,7 @@
 //! considering here as at that point, everything is monomorphic.
 
 use hir::def_id::LocalDefIdSet;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
 use rustc_hir::Node;
 use rustc_hir::def::{DefKind, Res};
@@ -52,7 +53,7 @@ struct ReachableContext<'tcx> {
     tcx: TyCtxt<'tcx>,
     maybe_typeck_results: Option<&'tcx ty::TypeckResults<'tcx>>,
     // The set of items which must be exported in the linkage sense.
-    reachable_symbols: LocalDefIdSet,
+    reachable_symbols: FxIndexSet<LocalDefId>,
     // A worklist of item IDs. Each item ID in this worklist will be inlined
     // and will be scanned for further references.
     // FIXME(eddyb) benchmark if this would be faster as a `VecDeque`.
@@ -458,7 +459,7 @@ fn has_custom_linkage(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
 }
 
 /// See module-level doc comment above.
-fn reachable_set(tcx: TyCtxt<'_>, (): ()) -> LocalDefIdSet {
+fn reachable_set(tcx: TyCtxt<'_>, (): ()) -> FxIndexSet<LocalDefId> {
     let effective_visibilities = &tcx.effective_visibilities(());
 
     let any_library = tcx.crate_types().iter().any(|ty| {
