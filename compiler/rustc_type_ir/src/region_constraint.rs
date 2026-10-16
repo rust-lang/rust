@@ -848,10 +848,11 @@ pub fn destructure_type_outlives_constraints_in_root<
     infcx: &Infcx,
     constraint: RegionConstraint<I, S>,
     assumptions: &Assumptions<I>,
-) -> RegionConstraint<I, S> {
+) -> (RegionConstraint<I, S>, Vec<LeafRegionConstraint<I, S>>) {
     use LeafRegionConstraint::*;
 
-    let destructure_and = |and: &And<I, S>| {
+    let mut leaf_region_contents: Vec<LeafRegionConstraint<I, S>> = vec![];
+    let mut destructure_and = |and: &And<I, S>| {
         debug!("rewriting and: {:?}", and);
         let mut destructured_constraints = Vec::new();
         for c in &and.0 {
@@ -859,22 +860,29 @@ pub fn destructure_type_outlives_constraints_in_root<
                 Ambiguity(_) | RegionOutlives(..) => {
                     destructured_constraints.push(Or::new_leaf(c.clone()))
                 }
-                PlaceholderTyOutlives(ty, r, span) => destructured_constraints.push(Or::new(
-                    regions_outlived_by_placeholder(*ty, assumptions, infcx.cx()).map(
-                        move |assumption_r| {
-                            And::new([RegionOutlives(assumption_r, *r, span.clone())])
-                        },
-                    ),
-                )),
+                PlaceholderTyOutlives(ty, r, span) => {
+                    let contents =
+                        Or::new(regions_outlived_by_placeholder(*ty, assumptions, infcx.cx()).map(
+                            move |assumption_r| {
+                                And::new([RegionOutlives(assumption_r, *r, span.clone())])
+                            },
+                        ));
+                    if contents.is_false() {
+                        leaf_region_contents.push(c.clone());
+                    }
+                    destructured_constraints.push(contents)
+                }
                 AliasTyOutlivesViaEnv(bound_outlives, span) => {
-                    destructured_constraints.push(
-                        alias_outlives_candidates_from_assumptions(
-                            infcx,
-                            *bound_outlives,
-                            assumptions,
-                        )
-                        .with_spans(span.clone()),
-                    );
+                    let content = alias_outlives_candidates_from_assumptions(
+                        infcx,
+                        *bound_outlives,
+                        assumptions,
+                    )
+                    .with_spans(span.clone());
+                    if content.is_false() {
+                        leaf_region_contents.push(c.clone());
+                    }
+                    destructured_constraints.push(content);
                 }
             }
         }
@@ -893,7 +901,10 @@ pub fn destructure_type_outlives_constraints_in_root<
         .into_iter()
         .fold(Or::new_false(), |acc, c| Or::build_or(acc, destructure_and(&c)));
 
-    RegionConstraint::new_from_or(Or::build_and(and_constraint, or_constraint))
+    (
+        RegionConstraint::new_from_or(Or::build_and(and_constraint, or_constraint)),
+        leaf_region_contents,
+    )
 }
 
 /// Converts type outlives constraints into either region outlives constraints, or type outlives
