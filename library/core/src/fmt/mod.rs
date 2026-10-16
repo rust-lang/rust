@@ -1048,6 +1048,7 @@ impl Display for Arguments<'_> {
     message = "`{Self}` doesn't implement `{this}`"
 )]
 #[doc(alias = "{:?}")]
+#[lang = "debug"]
 #[rustc_diagnostic_item = "Debug"]
 #[rustc_trivial_field_reads]
 pub trait Debug: PointeeSized {
