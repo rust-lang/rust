@@ -250,9 +250,9 @@ bitflags::bitflags! {
         /// Apply remappings to documentation information
         const DOCUMENTATION = 1 << 5;
 
-        /// An alias for `macro`, `debuginfo` and `coverage`. This ensures all paths in compiled
-        /// executables, libraries and objects are remapped but not elsewhere.
-        const OBJECT = Self::MACRO.bits() | Self::DEBUGINFO.bits() | Self::COVERAGE.bits();
+        /// An alias for `macro`, `documentation`, `debuginfo` and `coverage`. This ensures all paths in compiled
+        /// executables, libraries, objects and documentation outputs are remapped but not elsewhere.
+        const OBJECT = Self::MACRO.bits() | Self::DOCUMENTATION.bits() | Self::DEBUGINFO.bits() | Self::COVERAGE.bits();
     }
 }
 
