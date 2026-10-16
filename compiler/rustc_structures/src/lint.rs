@@ -55,6 +55,18 @@ impl LintName {
         }
     }
 
+    pub fn to_lowercase(mut self) -> LintName {
+        fn lowercase(s: &mut Symbol) {
+            let lower = s.as_str().to_lowercase();
+            *s = Symbol::intern(&lower);
+        }
+        if let Some(tool) = &mut self.tool {
+            lowercase(tool);
+        }
+        lowercase(&mut self.name);
+        self
+    }
+
     pub fn is(&self, lint: Symbol) -> bool {
         lint == self.name && self.tool.is_none()
     }
@@ -67,5 +79,15 @@ impl fmt::Display for LintName {
         }
         write!(f, "{}", self.name)?;
         Ok(())
+    }
+}
+
+#[cfg(feature = "nightly")]
+impl rustc_error_messages::IntoDiagArg for LintName {
+    fn into_diag_arg(
+        self,
+        _: &mut Option<std::path::PathBuf>,
+    ) -> rustc_error_messages::DiagArgValue {
+        self.to_string().into_diag_arg(&mut None)
     }
 }

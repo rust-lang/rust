@@ -17,6 +17,7 @@ use rustc_middle::ty::{Clause, PolyExistentialTraitRef, Ty, TyCtxt};
 use rustc_session::Session;
 use rustc_span::edition::Edition;
 use rustc_span::{Ident, Span, Symbol, sym};
+use rustc_structures::LintName;
 
 use crate::LateContext;
 use crate::builtin::{InitError, ShorthandAssocTyCollector, TypeAliasBounds};
@@ -68,7 +69,7 @@ pub(crate) struct UnknownToolInScopedLint {
     #[primary_span]
     pub span: Option<Span>,
     pub tool_name: Symbol,
-    pub lint_name: String,
+    pub lint_name: LintName,
     #[help("add `#![register_tool({$tool_name})]` to the crate root")]
     pub is_nightly_build: bool,
 }
@@ -106,9 +107,9 @@ pub(crate) struct BuiltinEllipsisInclusiveRangePatterns {
 
 #[derive(Subdiagnostic)]
 #[note("requested on the command line with `{$level} {$lint_name}`")]
-pub(crate) struct RequestedLevel<'a> {
+pub(crate) struct RequestedLevel {
     pub level: rustc_lint_defs::Level,
-    pub lint_name: &'a str,
+    pub lint_name: LintName,
 }
 
 #[derive(Diagnostic)]
@@ -119,10 +120,10 @@ pub(crate) struct UnsupportedGroup {
 
 #[derive(Diagnostic)]
 #[diag("unknown lint tool: `{$tool_name}`", code = E0602)]
-pub(crate) struct CheckNameUnknownTool<'a> {
+pub(crate) struct CheckNameUnknownTool {
     pub tool_name: Symbol,
     #[subdiagnostic]
-    pub sub: RequestedLevel<'a>,
+    pub sub: RequestedLevel,
 }
 
 // array_into_iter.rs
@@ -1395,76 +1396,76 @@ pub(crate) struct OverruledAttributeLint<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag("lint name `{$name}` is deprecated and may not have an effect in the future")]
-pub(crate) struct DeprecatedLintName<'a> {
-    pub name: String,
-    #[suggestion("change it to", code = "{replace}", applicability = "machine-applicable")]
+#[diag("lint name `{$lint_name}` is deprecated and may not have an effect in the future")]
+pub(crate) struct DeprecatedLintName {
+    pub lint_name: LintName,
+    #[suggestion("change it to", code = "{replacement}", applicability = "machine-applicable")]
     pub suggestion: Span,
-    pub replace: &'a str,
+    pub replacement: LintName,
 }
 
 #[derive(Diagnostic)]
-#[diag("lint name `{$name}` is deprecated and may not have an effect in the future")]
-#[help("change it to {$replace}")]
-pub(crate) struct DeprecatedLintNameFromCommandLine<'a> {
-    pub name: String,
-    pub replace: &'a str,
+#[diag("lint name `{$lint_name}` is deprecated and may not have an effect in the future")]
+#[help("change it to {$replacement}")]
+pub(crate) struct DeprecatedLintNameFromCommandLine {
+    pub lint_name: LintName,
+    pub replacement: LintName,
     #[subdiagnostic]
-    pub requested_level: RequestedLevel<'a>,
+    pub requested_level: RequestedLevel,
 }
 
 #[derive(Diagnostic)]
-#[diag("lint `{$name}` has been renamed to `{$replace}`")]
-pub(crate) struct RenamedLint<'a> {
-    pub name: &'a str,
-    pub replace: &'a str,
+#[diag("lint `{$name}` has been renamed to `{$replacement}`")]
+pub(crate) struct RenamedLint {
+    pub name: LintName,
+    pub replacement: LintName,
     #[subdiagnostic]
-    pub suggestion: RenamedLintSuggestion<'a>,
+    pub suggestion: RenamedLintSuggestion,
 }
 
 #[derive(Subdiagnostic)]
-pub(crate) enum RenamedLintSuggestion<'a> {
-    #[suggestion("use the new name", code = "{replace}", applicability = "machine-applicable")]
+pub(crate) enum RenamedLintSuggestion {
+    #[suggestion("use the new name", code = "{replacement}", applicability = "machine-applicable")]
     WithSpan {
         #[primary_span]
         suggestion: Span,
-        replace: &'a str,
+        replacement: LintName,
     },
-    #[help("use the new name `{$replace}`")]
-    WithoutSpan { replace: &'a str },
+    #[help("use the new name `{$replacement}`")]
+    WithoutSpan { replacement: LintName },
 }
 
 #[derive(Diagnostic)]
-#[diag("lint `{$name}` has been renamed to `{$replace}`")]
-pub(crate) struct RenamedLintFromCommandLine<'a> {
-    pub name: &'a str,
-    pub replace: &'a str,
+#[diag("lint `{$lint_name}` has been renamed to `{$replacement}`")]
+pub(crate) struct RenamedLintFromCommandLine {
+    pub lint_name: LintName,
+    pub replacement: LintName,
     #[subdiagnostic]
-    pub suggestion: RenamedLintSuggestion<'a>,
+    pub suggestion: RenamedLintSuggestion,
     #[subdiagnostic]
-    pub requested_level: RequestedLevel<'a>,
+    pub requested_level: RequestedLevel,
 }
 
 #[derive(Diagnostic)]
 #[diag("lint `{$name}` has been removed: {$reason}")]
 pub(crate) struct RemovedLint<'a> {
-    pub name: &'a str,
+    pub name: LintName,
     pub reason: &'a str,
 }
 
 #[derive(Diagnostic)]
-#[diag("lint `{$name}` has been removed: {$reason}")]
+#[diag("lint `{$lint_name}` has been removed: {$reason}")]
 pub(crate) struct RemovedLintFromCommandLine<'a> {
-    pub name: &'a str,
+    pub lint_name: LintName,
     pub reason: &'a str,
     #[subdiagnostic]
-    pub requested_level: RequestedLevel<'a>,
+    pub requested_level: RequestedLevel,
 }
 
 #[derive(Diagnostic)]
 #[diag("unknown lint: `{$name}`")]
 pub(crate) struct UnknownLint {
-    pub name: String,
+    pub name: LintName,
     #[subdiagnostic]
     pub suggestion: Option<UnknownLintSuggestion>,
 }
@@ -1476,32 +1477,32 @@ pub(crate) enum UnknownLintSuggestion {
             [true] a lint with a similar name exists in `rustc` lints
             *[false] did you mean
         }",
-        code = "{replace}",
+        code = "{replacement}",
         applicability = "maybe-incorrect"
     )]
     WithSpan {
         #[primary_span]
         suggestion: Span,
-        replace: Symbol,
+        replacement: LintName,
         from_rustc: bool,
     },
     #[help(
         "{$from_rustc ->
-            [true] a lint with a similar name exists in `rustc` lints: `{$replace}`
-            *[false] did you mean: `{$replace}`
+            [true] a lint with a similar name exists in `rustc` lints: `{$replacement}`
+            *[false] did you mean: `{$replacement}`
         }"
     )]
-    WithoutSpan { replace: Symbol, from_rustc: bool },
+    WithoutSpan { replacement: LintName, from_rustc: bool },
 }
 
 #[derive(Diagnostic)]
-#[diag("unknown lint: `{$name}`", code = E0602)]
-pub(crate) struct UnknownLintFromCommandLine<'a> {
-    pub name: String,
+#[diag("unknown lint: `{$lint_name}`", code = E0602)]
+pub(crate) struct UnknownLintFromCommandLine {
+    pub lint_name: LintName,
     #[subdiagnostic]
     pub suggestion: Option<UnknownLintSuggestion>,
     #[subdiagnostic]
-    pub requested_level: RequestedLevel<'a>,
+    pub requested_level: RequestedLevel,
 }
 
 #[derive(Diagnostic)]
