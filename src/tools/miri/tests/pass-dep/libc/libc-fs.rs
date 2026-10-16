@@ -683,7 +683,7 @@ fn test_ftruncate<T: From<i32>>(
     assert_eq!(file.metadata().unwrap().len(), 5);
 
     let c_path = utils::into_c_string(&path);
-    let fd = unsafe { libc::open(c_path.as_ptr(), libc::O_RDWR) };
+    let fd = errno_result(unsafe { libc::open(c_path.as_ptr(), libc::O_RDWR) }).unwrap();
 
     // Truncate to a bigger size
     errno_check(unsafe { ftruncate(fd, T::from(10)) });
@@ -885,7 +885,7 @@ fn test_posix_fallocate<T: From<i32>>(
 
         // fd not writable
         let c_path = utils::into_c_string(path);
-        let fd = unsafe { libc::open(c_path.as_ptr(), libc::O_RDONLY) };
+        let fd = errno_result(unsafe { libc::open(c_path.as_ptr(), libc::O_RDONLY) }).unwrap();
         let ret = unsafe { posix_fallocate(fd, T::from(0), T::from(10)) };
         assert_eq!(ret, libc::EBADF);
     };
@@ -899,7 +899,7 @@ fn test_posix_fallocate<T: From<i32>>(
         assert_eq!(file.metadata().unwrap().len(), 5);
 
         let c_path = utils::into_c_string(&path);
-        let fd = unsafe { libc::open(c_path.as_ptr(), libc::O_RDWR) };
+        let fd = errno_result(unsafe { libc::open(c_path.as_ptr(), libc::O_RDWR) }).unwrap();
 
         // Allocate to a bigger size from offset 0
         let mut res = unsafe { posix_fallocate(fd, T::from(0), T::from(10)) };
@@ -1510,8 +1510,7 @@ fn test_read_and_uninit() {
         let path = utils::prepare_with_content("miri-pass-libc-read-and-uninit.txt", &[1u8, 2, 3]);
         let cpath = utils::into_c_string(path);
         unsafe {
-            let fd = libc::open(cpath.as_ptr(), libc::O_RDONLY);
-            assert_ne!(fd, -1);
+            let fd = errno_result(libc::open(cpath.as_ptr(), libc::O_RDONLY)).unwrap();
             let mut buf: MaybeUninit<u8> = MaybeUninit::uninit();
             assert_eq!(libc::read(fd, buf.as_mut_ptr().cast::<std::ffi::c_void>(), 1), 1);
             let buf = buf.assume_init();
@@ -1527,8 +1526,7 @@ fn test_read_and_uninit() {
         let path = utils::prepare_with_content("miri-pass-libc-read-and-uninit-2.txt", &data);
         let cpath = utils::into_c_string(&path);
         unsafe {
-            let fd = libc::open(cpath.as_ptr(), libc::O_RDONLY);
-            assert_ne!(fd, -1);
+            let fd = errno_result(libc::open(cpath.as_ptr(), libc::O_RDONLY)).unwrap();
             let mut buf = [42u8; 5];
             let res = libc::read(fd, buf.as_mut_ptr().cast::<std::ffi::c_void>(), 4);
             assert!(res > 0 && res < 4);
@@ -1556,7 +1554,7 @@ fn test_ioctl() {
         let errno = std::io::Error::last_os_error().raw_os_error().unwrap();
         assert_eq!(errno, libc::EBADF);
 
-        let fd = libc::open(name.as_ptr(), libc::O_RDONLY);
+        let fd = errno_result(libc::open(name.as_ptr(), libc::O_RDONLY)).unwrap();
         errno_check(libc::ioctl(fd, libc::FIOCLEX));
     }
 }
@@ -1710,8 +1708,7 @@ fn test_readv() {
     let file_contents = [1u8, 2, 3, 4, 5, 6];
     let path = utils::prepare_with_content("miri-pass-libc-readv.txt", &file_contents);
     let cpath = utils::into_c_string(path);
-    let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) };
-    assert_ne!(fd, -1);
+    let fd = errno_result(unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) }).unwrap();
 
     let mut buffer = [0u8; 4];
     let (buffer1, buffer2) = buffer.split_at_mut(2);
@@ -1746,8 +1743,7 @@ fn test_readv_empty_bufs() {
 
     let path = utils::prepare_with_content("miri-pass-libc-readv-empty-bufs.txt", &[1u8, 2, 3]);
     let cpath = utils::into_c_string(path);
-    let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) };
-    assert_ne!(fd, -1);
+    let fd = errno_result(unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) }).unwrap();
     unsafe { assert_eq!(errno_result(libc::readv(fd, ptr::null::<libc::iovec>(), 0)).unwrap(), 0) };
 }
 
@@ -1760,8 +1756,7 @@ fn test_preadv() {
     let file_contents = [1u8, 2, 3, 4, 5, 6];
     let path = utils::prepare_with_content("miri-pass-libc-preadv.txt", &file_contents);
     let cpath = utils::into_c_string(path);
-    let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) };
-    assert_ne!(fd, -1);
+    let fd = errno_result(unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) }).unwrap();
 
     let mut buffer = [0u8; 4];
     let (buffer1, buffer2) = buffer.split_at_mut(2);
@@ -1801,8 +1796,7 @@ fn test_pread() {
     let file_contents = [1u8, 2, 3, 4, 5, 6];
     let path = utils::prepare_with_content("miri-pass-libc-pread.txt", &file_contents);
     let cpath = utils::into_c_string(path);
-    let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) };
-    assert_ne!(fd, -1);
+    let fd = errno_result(unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) }).unwrap();
 
     let mut buffer = [0u8; 2];
 
@@ -1828,8 +1822,7 @@ fn test_pread() {
 fn test_writev() {
     let path = utils::prepare_with_content("miri-pass-libc-writev.txt", &[]);
     let cpath = utils::into_c_string(path);
-    let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_WRONLY) };
-    assert_ne!(fd, -1);
+    let fd = errno_result(unsafe { libc::open(cpath.as_ptr(), libc::O_WRONLY) }).unwrap();
 
     let mut write_buffer = [1u8, 2, 3, 4, 5, 6];
     let (buffer1, buffer2) = write_buffer.split_at_mut(3);
@@ -1853,8 +1846,7 @@ fn test_writev() {
     assert!(bytes_written > 0);
 
     // Open the FD again in readonly mode and with an unadvanced pointer.
-    let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) };
-    assert_ne!(fd, -1);
+    let fd = errno_result(unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) }).unwrap();
 
     let mut read_buffer = [0u8; 16];
     unsafe {
@@ -1879,8 +1871,7 @@ fn test_writev_empty_bufs() {
 
     let path = utils::prepare_with_content("miri-pass-libc-writev-empty-bufs.txt", &[1u8, 2, 3]);
     let cpath = utils::into_c_string(path);
-    let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_WRONLY) };
-    assert_ne!(fd, -1);
+    let fd = errno_result(unsafe { libc::open(cpath.as_ptr(), libc::O_WRONLY) }).unwrap();
     unsafe {
         assert_eq!(errno_result(libc::writev(fd, ptr::null::<libc::iovec>(), 0)).unwrap(), 0)
     };
@@ -1894,8 +1885,7 @@ fn test_writev_empty_bufs() {
 fn test_pwritev() {
     let path = utils::prepare_with_content("miri-pass-libc-pwritev.txt", &[]);
     let cpath = utils::into_c_string(path);
-    let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_WRONLY) };
-    assert_ne!(fd, -1);
+    let fd = errno_result(unsafe { libc::open(cpath.as_ptr(), libc::O_WRONLY) }).unwrap();
 
     let mut write_buffer = [1u8, 2, 3, 4, 5, 6];
     let (buffer1, buffer2) = write_buffer.split_at_mut(3);
@@ -1927,8 +1917,7 @@ fn test_pwritev() {
     assert!(bytes_written > 0);
 
     // Open the FD again in readonly mode and with an unadvanced pointer.
-    let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) };
-    assert_ne!(fd, -1);
+    let fd = errno_result(unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) }).unwrap();
 
     let mut read_buffer = [0u8; 16];
     // Read offset + bytes written.
@@ -1950,8 +1939,7 @@ fn test_pwritev() {
 fn test_pwrite() {
     let path = utils::prepare_with_content("miri-pass-libc-pwritev.txt", &[]);
     let cpath = utils::into_c_string(path);
-    let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_WRONLY) };
-    assert_ne!(fd, -1);
+    let fd = errno_result(unsafe { libc::open(cpath.as_ptr(), libc::O_WRONLY) }).unwrap();
 
     let write_buffer = [1u8, 2, 3, 4, 5, 6];
 
@@ -1970,8 +1958,7 @@ fn test_pwrite() {
     assert!(bytes_written > 0);
 
     // Open the FD again in readonly mode and with an unadvanced pointer.
-    let fd = unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) };
-    assert_ne!(fd, -1);
+    let fd = errno_result(unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) }).unwrap();
 
     let mut read_buffer = [0u8; 16];
     // Read offset + bytes written.
