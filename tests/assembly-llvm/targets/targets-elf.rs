@@ -79,6 +79,9 @@
 //@ revisions: aarch64_unknown_none_softfloat
 //@ [aarch64_unknown_none_softfloat] compile-flags: --target aarch64-unknown-none-softfloat
 //@ [aarch64_unknown_none_softfloat] needs-llvm-components: aarch64
+//@ revisions: aarch64_vega_linux_gnu
+//@ [aarch64_vega_linux_gnu] compile-flags: --target aarch64-vega-linux-gnu
+//@ [aarch64_vega_linux_gnu] needs-llvm-components: aarch64
 //@ revisions: aarch64v8r_unknown_none
 //@ [aarch64v8r_unknown_none] compile-flags: --target aarch64v8r-unknown-none
 //@ [aarch64v8r_unknown_none] needs-llvm-components: aarch64
@@ -217,6 +220,9 @@
 //@ revisions: armv7_unknown_trusty
 //@ [armv7_unknown_trusty] compile-flags: --target armv7-unknown-trusty
 //@ [armv7_unknown_trusty] needs-llvm-components: arm
+//@ revisions: armv7_vega_linux_gnueabihf
+//@ [armv7_vega_linux_gnueabihf] compile-flags: --target armv7-vega-linux-gnueabihf
+//@ [armv7_vega_linux_gnueabihf] needs-llvm-components: arm
 //@ revisions: armv7_wrs_vxworks_eabihf
 //@ [armv7_wrs_vxworks_eabihf] compile-flags: --target armv7-wrs-vxworks-eabihf
 //@ [armv7_wrs_vxworks_eabihf] needs-llvm-components: arm
@@ -784,6 +790,9 @@
 //@ revisions: x86_64_unknown_trusty
 //@ [x86_64_unknown_trusty] compile-flags: --target x86_64-unknown-trusty
 //@ [x86_64_unknown_trusty] needs-llvm-components: x86
+//@ revisions: x86_64_vega_linux_gnu
+//@ [x86_64_vega_linux_gnu] compile-flags: --target x86_64-vega-linux-gnu
+//@ [x86_64_vega_linux_gnu] needs-llvm-components: x86
 //@ revisions: x86_64_wrs_vxworks
 //@ [x86_64_wrs_vxworks] compile-flags: --target x86_64-wrs-vxworks
 //@ [x86_64_wrs_vxworks] needs-llvm-components: x86

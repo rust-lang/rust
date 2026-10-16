@@ -291,6 +291,7 @@ target | std | host | notes
 [`aarch64-unknown-qtee`](platform-support/aarch64-unknown-qtee.md) | ? |  | ARM64 QTEE |
 [`aarch64-unknown-trusty`](platform-support/trusty.md) | ✓ |  |
 [`aarch64-uwp-windows-msvc`](platform-support/uwp-windows-msvc.md) | ✓ |  |
+[`aarch64-vega-linux-gnu`](platform-support/vega-linux-gnu.md) | ✓ |  | ARM64 Vega OS (glibc 2.35)
 [`aarch64-wrs-vxworks`](platform-support/vxworks.md) | ✓ |  | ARM64 VxWorks OS
 [`aarch64v8r-unknown-none`](platform-support/aarch64v8r-unknown-none.md) | * | | Bare Armv8-R in AArch64 mode, hardfloat
 [`aarch64v8r-unknown-none-softfloat`](platform-support/aarch64v8r-unknown-none.md) | * | | Bare Armv8-R in AArch64 mode, softfloat
@@ -325,6 +326,7 @@ target | std | host | notes
 [`armv7-unknown-linux-uclibceabihf`](platform-support/armv7-unknown-linux-uclibceabihf.md) | ✓ | ? | Armv7-A Linux with uClibc, hardfloat
 [`armv7-unknown-netbsd-eabihf`](platform-support/netbsd.md) | ✓ | ✓ | Armv7-A NetBSD w/hard-float
 [`armv7-unknown-trusty`](platform-support/trusty.md) | ✓ |  |
+[`armv7-vega-linux-gnueabihf`](platform-support/vega-linux-gnu.md) | ✓ |  | Armv7-A Vega OS, hardfloat, Cortex-A7 with NEON (glibc 2.35)
 [`armv7-wrs-vxworks-eabihf`](platform-support/vxworks.md) | ✓ |  | Armv7-A for VxWorks
 [`armv7a-kmc-solid_asp3-eabi`](platform-support/kmc-solid.md) | ✓ |  | ARM SOLID with TOPPERS/ASP3
 [`armv7a-kmc-solid_asp3-eabihf`](platform-support/kmc-solid.md) | ✓ |  | ARM SOLID with TOPPERS/ASP3, hardfloat
@@ -473,6 +475,7 @@ target | std | host | notes
 [`x86_64-unknown-trusty`](platform-support/trusty.md) | ✓ |  |
 `x86_64-uwp-windows-gnu` | ✓ |  |
 [`x86_64-uwp-windows-msvc`](platform-support/uwp-windows-msvc.md) | ✓ |  |
+[`x86_64-vega-linux-gnu`](platform-support/vega-linux-gnu.md) | ✓ |  | 64-bit Vega OS (glibc 2.35)
 [`x86_64-win7-windows-gnu`](platform-support/win7-windows-gnu.md) | ✓ |  | 64-bit Windows 7 support
 [`x86_64-win7-windows-msvc`](platform-support/win7-windows-msvc.md) | ✓ | ✓ | 64-bit Windows 7 support
 [`x86_64-wrs-vxworks`](platform-support/vxworks.md) | ✓ |  |

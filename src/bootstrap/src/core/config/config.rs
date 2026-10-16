@@ -1963,9 +1963,11 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             .unwrap_or(
                 if target.contains("fuchsia")
                     || (target.contains("hexagon") && !target.contains("qurt"))
+                    || target.contains("vega")
                 {
-                    // Fuchsia and Hexagon Linux use in-tree llvm-libunwind.
+                    // Fuchsia, Hexagon Linux and Vega OS use in-tree llvm-libunwind.
                     // Hexagon QuRT uses libc_eh from the Hexagon SDK instead.
+                    // Vega OS has no shared libgcc_s for apps.
                     LlvmLibunwind::InTree
                 } else {
                     LlvmLibunwind::No
