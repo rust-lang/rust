@@ -62,23 +62,9 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
             match field.name {
                 sym::kind => {
                     let variant_index = match ty.kind() {
-                        ty::Tuple(fields) => {
-                            let (variant, variant_place) =
+                        ty::Tuple(_) => {
+                            let (variant, _variant_place) =
                                 self.project_downcast_named(&field_dest, sym::Tuple)?;
-                            // project to the single tuple variant field of `type_info::Tuple` struct type
-                            let tuple_place = self.project_field(&variant_place, FieldIdx::ZERO)?;
-                            assert_eq!(
-                                1,
-                                tuple_place
-                                    .layout()
-                                    .ty
-                                    .ty_adt_def()
-                                    .unwrap()
-                                    .non_enum_variant()
-                                    .fields
-                                    .len()
-                            );
-                            self.write_tuple_type_info(tuple_place, fields, ty)?;
                             variant
                         }
                         ty::Array(_, _) => {
