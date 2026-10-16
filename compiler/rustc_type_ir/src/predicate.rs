@@ -790,6 +790,9 @@ bitflags::bitflags! {
         const DEBUG = 1 << 5;
         const DROP = 1 << 6;
         const UNPIN = 1 << 7;
+        const EQ = 1 << 8;
+        const SEND = 1 << 9;
+        const SYNC = 1 << 10;
     }
 }
 
@@ -797,14 +800,17 @@ impl CompressedTraitRefs {
     #[inline]
     pub fn from_lang_item(lang_item: SolverTraitLangItem) -> Option<Self> {
         Some(match lang_item {
-            SolverTraitLangItem::Clone => CompressedTraitRefs::CLONE,
-            SolverTraitLangItem::Copy => CompressedTraitRefs::COPY,
+            SolverTraitLangItem::Sized => CompressedTraitRefs::SIZED,
             SolverTraitLangItem::MetaSized => CompressedTraitRefs::META_SIZED,
             SolverTraitLangItem::PointeeSized => CompressedTraitRefs::POINTEE_SIZED,
-            SolverTraitLangItem::Sized => CompressedTraitRefs::SIZED,
+            SolverTraitLangItem::Clone => CompressedTraitRefs::CLONE,
+            SolverTraitLangItem::Copy => CompressedTraitRefs::COPY,
+            SolverTraitLangItem::Debug => CompressedTraitRefs::DEBUG,
             SolverTraitLangItem::Drop => CompressedTraitRefs::DROP,
             SolverTraitLangItem::Unpin => CompressedTraitRefs::UNPIN,
-            // TODO: Debug
+            SolverTraitLangItem::Eq => CompressedTraitRefs::EQ,
+            SolverTraitLangItem::Send => CompressedTraitRefs::SEND,
+            SolverTraitLangItem::Sync => CompressedTraitRefs::SYNC,
             _ => return None,
         })
     }
@@ -817,9 +823,12 @@ impl CompressedTraitRefs {
             Self::POINTEE_SIZED => SolverTraitLangItem::PointeeSized,
             Self::CLONE => SolverTraitLangItem::Clone,
             Self::COPY => SolverTraitLangItem::Copy,
-            Self::DEBUG => todo!(),
+            Self::DEBUG => SolverTraitLangItem::Debug,
             Self::DROP => SolverTraitLangItem::Drop,
             Self::UNPIN => SolverTraitLangItem::Unpin,
+            Self::EQ => SolverTraitLangItem::Eq,
+            Self::SEND => SolverTraitLangItem::Send,
+            Self::SYNC => SolverTraitLangItem::Sync,
             _ => unreachable!(),
         }
     }

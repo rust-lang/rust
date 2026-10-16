@@ -38,7 +38,7 @@ impl<'tcx> LateLintPass<'tcx> for PartialEqNeImpl {
             ..
         }) = item.kind
             && !cx.tcx.is_automatically_derived(item.owner_id.to_def_id())
-            && let Some(eq_trait) = cx.tcx.lang_items().eq_trait()
+            && let Some(eq_trait) = cx.tcx.lang_items().partial_eq_trait()
             && of_trait.trait_ref.path.res.def_id() == eq_trait
         {
             for impl_item in impl_items {
