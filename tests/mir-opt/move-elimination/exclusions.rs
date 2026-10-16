@@ -116,3 +116,24 @@ pub fn rust_call_tuple_not_projected<F: FnOnce([u8; 8], [u8; 8])>(f: F) {
     let b = [2; 8];
     f(a, b);
 }
+
+// Subslice projections cannot appear in debuginfo, so refuse to merge `array`
+// and `local`.
+// EMIT_MIR exclusions.subslice_not_projected.MoveElimination.diff
+pub fn subslice_not_projected(array: [u8; 4]) {
+    // CHECK-LABEL: fn subslice_not_projected(
+    // CHECK: debug middle => [[MIDDLE:_[0-9]+]];
+    // CHECK: [[MIDDLE]] = copy _1[1..3];
+    let [_, middle @ .., _] = array;
+    std::hint::black_box(middle);
+}
+
+// Forward constant indices are supported in debuginfo and allow remapping.
+// EMIT_MIR exclusions.constant_index_projected.MoveElimination.diff
+pub fn constant_index_projected(array: [[u8; 4]; 2]) {
+    // CHECK-LABEL: fn constant_index_projected(
+    // CHECK: debug first => _1[0 of 2];
+    // CHECK: std::hint::black_box::<[u8; 4]>(move _1[0 of 2])
+    let [first, ..] = array;
+    std::hint::black_box(first);
+}
