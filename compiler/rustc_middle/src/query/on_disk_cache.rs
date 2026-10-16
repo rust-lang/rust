@@ -724,9 +724,9 @@ macro_rules! impl_decodable_via_ref_decodable_for_foreign_types {
 
 impl_decodable_via_ref_decodable_for_foreign_types! {
     // tidy-alphabetical-start
-    &'tcx IndexVec<mir::Promoted, mir::Body<'tcx>>,
     &'tcx FxIndexMap<DefId, ty::EarlyBinder<'tcx, Ty<'tcx>>>,
     &'tcx FxIndexSet<LocalDefId>,
+    &'tcx IndexVec<mir::Promoted, mir::Body<'tcx>>,
     &'tcx [(
         rustc_middle::middle::exported_symbols::ExportedSymbol<'tcx>,
         rustc_middle::middle::exported_symbols::SymbolExportInfo,
