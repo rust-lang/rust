@@ -1705,6 +1705,10 @@ supported_targets! {
     ("riscv64-oe-linux-gnu", riscv64_oe_linux_gnu),
     ("x86_64-oe-linux-gnu", x86_64_oe_linux_gnu),
 
+    ("aarch64-vega-linux-gnu", aarch64_vega_linux_gnu),
+    ("armv7-vega-linux-gnueabihf", armv7_vega_linux_gnueabihf),
+    ("x86_64-vega-linux-gnu", x86_64_vega_linux_gnu),
+
     ("aarch64-unknown-hyperlight", aarch64_unknown_hyperlight),
     ("x86_64-unknown-hyperlight", x86_64_unknown_hyperlight),
 }

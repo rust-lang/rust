@@ -142,6 +142,7 @@
     - [\*-unknown-openbsd](platform-support/openbsd.md)
     - [\*-unknown-redox](platform-support/redox.md)
     - [\*-unknown-uefi](platform-support/unknown-uefi.md)
+    - [\*-vega-linux-gnu\*](platform-support/vega-linux-gnu.md)
     - [\*-pc-windows-msvc](platform-support/windows-msvc.md)
     - [\*-uwp-windows-msvc](platform-support/uwp-windows-msvc.md)
     - [\*-wrs-vxworks](platform-support/vxworks.md)
