@@ -328,7 +328,7 @@ impl Deserialize for BraceKind {
 }
 
 pub struct MacroMatcher {
-    pub name: String,
+    pub name: Symbol,
     pub braces: (char, char),
 }
 
@@ -336,7 +336,7 @@ impl Deserialize for MacroMatcher {
     fn deserialize(dcx: &DiagCtxt<'_>, value: &TomlValue<'_>) -> Option<Self> {
         if let Some(table) = value.as_ref().as_table() {
             deserialize_table!(dcx, table,
-                name("name"): String,
+                name("name"): Symbol,
                 brace("brace"): BraceKind,
             );
             let Some(name) = name else {
