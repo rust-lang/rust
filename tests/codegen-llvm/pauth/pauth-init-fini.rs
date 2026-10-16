@@ -28,8 +28,8 @@ use minicore::*;
 
 // O0_PAUTH: @{{[0-9A-Za-z_]+}}GLOBAL_INIT = constant ptr ptrauth (ptr @{{[0-9A-Za-z_]+}}init_fn, i32 0, i64 55764, ptr inttoptr (i64 1 to ptr)), section ".init_array.90"
 // O3_PAUTH: @{{[0-9A-Za-z_]+}}GLOBAL_INIT = constant ptr ptrauth (ptr @{{[0-9A-Za-z_]+}}init_fn, i32 0, i64 55764, ptr inttoptr (i64 1 to ptr)), section ".init_array.90"
-// O0_PAUTH-ADDR-DISC: @{{[0-9A-Za-z_]+}}GLOBAL_INIT = constant ptr ptrauth (ptr @{{[0-9A-Za-z_]+}}init_fn, i32 0, i64 55764, ptr @_RNvCsf7kshQi9mOB_15pauth_init_fini7init_fn), section ".init_array.90"
-// O3_PAUTH-ADDR-DISC: @{{[0-9A-Za-z_]+}}GLOBAL_INIT = constant ptr ptrauth (ptr @{{[0-9A-Za-z_]+}}init_fn, i32 0, i64 55764, ptr @_RNvCsf7kshQi9mOB_15pauth_init_fini7init_fn), section ".init_array.90"
+// O0_PAUTH-ADDR-DISC: @{{[0-9A-Za-z_]+}}GLOBAL_INIT = constant ptr ptrauth (ptr @{{[0-9A-Za-z_]+}}init_fn, i32 0, i64 55764, ptr @_RNvCs8QAMpyYYVLR_15pauth_init_fini7init_fn), section ".init_array.90"
+// O3_PAUTH-ADDR-DISC: @{{[0-9A-Za-z_]+}}GLOBAL_INIT = constant ptr ptrauth (ptr @{{[0-9A-Za-z_]+}}init_fn, i32 0, i64 55764, ptr @_RNvCs8QAMpyYYVLR_15pauth_init_fini7init_fn), section ".init_array.90"
 // O0_PAUTH-NO-INIT-FINI-NOT: @{{[0-9A-Za-z_]+}}GLOBAL_INIT = constant ptr ptrauth
 // O0_PAUTH-NO-INIT-FINI-ADDR-DISC: @{{[0-9A-Za-z_]+}}GLOBAL_INIT = constant ptr ptrauth
 #[used]
@@ -38,8 +38,8 @@ static GLOBAL_INIT: extern "C" fn() = init_fn;
 
 // O0_PAUTH: @{{[0-9A-Za-z_]+}}GLOBAL_FINI = constant ptr ptrauth (ptr @{{[0-9A-Za-z_]+}}fini_fn, i32 0, i64 55764, ptr inttoptr (i64 1 to ptr)), section ".fini_array.90"
 // O3_PAUTH: @{{[0-9A-Za-z_]+}}GLOBAL_FINI = constant ptr ptrauth (ptr @{{[0-9A-Za-z_]+}}fini_fn, i32 0, i64 55764, ptr inttoptr (i64 1 to ptr)), section ".fini_array.90"
-// O0_PAUTH-ADDR-DISC: @{{[0-9A-Za-z_]+}}GLOBAL_FINI = constant ptr ptrauth (ptr @{{[0-9A-Za-z_]+}}fini_fn, i32 0, i64 55764, ptr @_RNvCsf7kshQi9mOB_15pauth_init_fini7fini_fn), section ".fini_array.90"
-// O3_PAUTH-ADDR-DISC: @{{[0-9A-Za-z_]+}}GLOBAL_FINI = constant ptr ptrauth (ptr @{{[0-9A-Za-z_]+}}fini_fn, i32 0, i64 55764, ptr @_RNvCsf7kshQi9mOB_15pauth_init_fini7fini_fn), section ".fini_array.90"
+// O0_PAUTH-ADDR-DISC: @{{[0-9A-Za-z_]+}}GLOBAL_FINI = constant ptr ptrauth (ptr @{{[0-9A-Za-z_]+}}fini_fn, i32 0, i64 55764, ptr @_RNvCs8QAMpyYYVLR_15pauth_init_fini7fini_fn), section ".fini_array.90"
+// O3_PAUTH-ADDR-DISC: @{{[0-9A-Za-z_]+}}GLOBAL_FINI = constant ptr ptrauth (ptr @{{[0-9A-Za-z_]+}}fini_fn, i32 0, i64 55764, ptr @_RNvCs8QAMpyYYVLR_15pauth_init_fini7fini_fn), section ".fini_array.90"
 // O0_PAUTH-NO-INIT-FINI-NOT: @{{[0-9A-Za-z_]+}}GLOBAL_FINI = constant ptr ptrauth
 // O3_PAUTH-NO-INIT-FINI-NOT: @{{[0-9A-Za-z_]+}}GLOBAL_FINI = constant ptr ptrauth
 #[used]

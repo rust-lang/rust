@@ -31,8 +31,8 @@ type FnPtr = unsafe extern "C" fn(i32, i32) -> i32;
 // O3_PAUTH: define {{.*}}test_entry
 #[no_mangle]
 pub unsafe extern "C" fn test_entry(x: usize) {
-    // O0_PAUTH: call{{.*}}_RNvCshUtaFcP1mZ5_14pauth_extern_c7call_it(ptr ptrauth (ptr @external_c_callee, i32 0), i32 5, i32 7)
-    // O3_PAUTH: call{{.*}}_RNvCshUtaFcP1mZ5_14pauth_extern_c7call_it(ptr{{.*}}ptrauth (ptr @external_c_callee, i32 0), i32{{.*}}5, i32{{.*}}7)
+    // O0_PAUTH: call{{.*}}_RNvCsdVIR1uJl2zk_14pauth_extern_c7call_it(ptr ptrauth (ptr @external_c_callee, i32 0), i32 5, i32 7)
+    // O3_PAUTH: call{{.*}}_RNvCsdVIR1uJl2zk_14pauth_extern_c7call_it(ptr{{.*}}ptrauth (ptr @external_c_callee, i32 0), i32{{.*}}5, i32{{.*}}7)
     let _ = call_it(external_c_callee, 5, 7);
 }
 
