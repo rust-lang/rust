@@ -143,16 +143,6 @@ impl TcpSocket {
             watched: ReadinessWatched::default(),
         })
     }
-
-    /// Invoke `cb` with a [`socket2::SockRef`] to the underlying host socket.
-    ///
-    /// **Note**: Potentially blocking operations need to be performed on the
-    /// underlying [`TcpStream`] and [`TcpListener`] as it would break the mio
-    /// poll on Windows hosts when performed directly on the [`socket2::SockRef`].
-    fn with_socket_ref<T>(&self, cb: impl FnOnce(socket2::SockRef<'_>) -> T) -> T {
-        let state = self.state.borrow();
-        cb(state.as_socket_ref())
-    }
 }
 
 impl FileDescription for TcpSocket {
