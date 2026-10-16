@@ -54,7 +54,7 @@ pub(crate) fn complete_mod(
 
     let existing_mod_declarations = current_module
         .children(ctx.db)
-        .filter_map(|module| Some(module.name(ctx.db)?.display(ctx.db, ctx.edition).to_string()))
+        .filter_map(|module| Some(module.name(ctx.db)?.as_str().to_owned()))
         .filter(|module| module != ctx.original_token.text())
         .collect::<FxHashSet<_>>();
 
@@ -204,6 +204,24 @@ mod $0 {
 fn foo() {}
 "#,
             expect![[r#""#]],
+        );
+    }
+
+    #[test]
+    fn exclude_exists_module_declarations() {
+        check(
+            r#"
+//- /lib.rs
+mod foo;
+mod r#struct;
+mod $0
+//- /foo.rs
+//- /bar.rs
+//- /struct.rs
+"#,
+            expect![[r#"
+                md bar;
+            "#]],
         );
     }
 
@@ -371,6 +389,21 @@ fn baz() {}
 "#,
             expect![[r#"
                 md baz;
+            "#]],
+        );
+        check(
+            r#"
+//- /lib.rs
+mod foo;
+//- /foo.rs
+mod bar {
+    mod struct$0
+}
+//- /foo/bar/struct.rs
+fn baz() {}
+"#,
+            expect![[r#"
+                md struct;
             "#]],
         );
     }
