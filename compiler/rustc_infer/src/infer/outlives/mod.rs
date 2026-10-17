@@ -5,6 +5,7 @@ use std::iter;
 use rustc_data_structures::undo_log::UndoLogs;
 use rustc_middle::traits::query::OutlivesBound;
 use rustc_middle::ty;
+use rustc_type_ir::region_constraint::LeafRegionConstraint;
 use tracing::instrument;
 
 use self::env::OutlivesEnvironment;
@@ -58,7 +59,6 @@ impl<'tcx> InferCtxt<'tcx> {
             inner.region_constraint_storage.take().expect("regions already resolved")
         };
 
-        // FIXME(-Zassumptions-in-binders): Handle solver_data
         storage.legacy_data.constraints = storage
             .legacy_data
             .constraints
@@ -88,8 +88,35 @@ impl<'tcx> InferCtxt<'tcx> {
 
         let region_rels = &RegionRelations::new(self.tcx, outlives_env.free_region_map());
 
-        let (lexical_region_resolutions, errors) =
-            lexical_region_resolve::resolve(region_rels, storage.var_infos, storage.legacy_data);
+        let abby = self.tcx.sess.opts.unstable_opts.assumptions_on_binders;
+        let (lexical_region_resolutions, errors) = if abby {
+            let c = storage.solver_data.get_constraint();
+            let r = lexical_region_resolve::resolve(
+                region_rels,
+                storage.var_infos,
+                storage.solver_data,
+            );
+
+            // Emit an error if the region constraint was ambiguous
+            for leaf in c.and_constraint.0.into_iter().chain(
+                c.or_constraint
+                    .0
+                    .into_iter()
+                    .flat_map(|and_constraint| and_constraint.0.into_iter()),
+            ) {
+                if let LeafRegionConstraint::Ambiguity(span) = leaf {
+                    self.dcx()
+                            .span_err(
+                                span,
+                                "unable to satisfy constraints involving placeholders due to unknown implied bounds",
+                            );
+                }
+            }
+
+            r
+        } else {
+            lexical_region_resolve::resolve(region_rels, storage.var_infos, storage.legacy_data)
+        };
 
         let old_value = self.lexical_region_resolutions.replace(Some(lexical_region_resolutions));
         assert!(old_value.is_none());
