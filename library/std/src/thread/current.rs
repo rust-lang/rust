@@ -11,6 +11,9 @@ const BUSY: *mut () = ptr::without_provenance_mut(1);
 const DESTROYED: *mut () = ptr::without_provenance_mut(2);
 
 local_pointer! {
+    // The destructors of other TLS values might call `Thread::current()`,
+    // so this value should be dropped last - after all others are gone.
+    #[keep_last]
     static CURRENT;
 }
 
