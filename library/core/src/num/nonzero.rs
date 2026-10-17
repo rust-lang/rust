@@ -1289,8 +1289,6 @@ macro_rules! nonzero_integer {
             /// # Examples
             ///
             /// ```
-            /// #![feature(nonzero_ops)]
-            ///
             /// # use std::num::NonZero;
             /// #
             /// # fn main() { test().unwrap(); }
@@ -1302,7 +1300,8 @@ macro_rules! nonzero_integer {
             /// # Some(())
             /// # }
             /// ```
-            #[unstable(feature = "nonzero_ops", issue = "84186")]
+            #[stable(feature = "nonzero_ops", since = "CURRENT_RUSTC_VERSION")]
+            #[rustc_const_stable(feature = "const_nonzero_ops", since = "CURRENT_RUSTC_VERSION")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
@@ -1877,8 +1876,6 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         /// # Examples
         ///
         /// ```
-        /// #![feature(nonzero_ops)]
-        ///
         /// # use std::num::NonZero;
         /// #
         /// # fn main() { test().unwrap(); }
@@ -1890,7 +1887,8 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         /// # Some(())
         /// # }
         /// ```
-        #[unstable(feature = "nonzero_ops", issue = "84186")]
+        #[stable(feature = "nonzero_ops", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "const_nonzero_ops", since = "CURRENT_RUSTC_VERSION")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
