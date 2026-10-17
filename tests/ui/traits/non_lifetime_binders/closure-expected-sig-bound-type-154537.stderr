@@ -1,5 +1,5 @@
-error[E0271]: type mismatch resolving `<{closure@bound-type-relate.rs:7:5} as FnOnce<()>>::Output == T`
-  --> $DIR/bound-type-relate.rs:5:14
+error[E0271]: type mismatch resolving `<{closure@closure-expected-sig-bound-type-154537.rs:11:5} as FnOnce<()>>::Output == T`
+  --> $DIR/closure-expected-sig-bound-type-154537.rs:9:14
    |
 LL | fn take() -> impl for<T> Fn() -> T {
    |              ^^^^^^^^^^^^^^^^^^^^^ expected integer, found placeholder type
