@@ -139,6 +139,10 @@ where
 
 // When each element can be compared byte-wise, we can compare all the bytes
 // from the whole size in one call to the intrinsics.
+//
+// The compiler lowers matches against constant slices of bytewise-comparable
+// primitives to calls to `PartialEq::eq` that are assumed not to unwind (see
+// `is_bytewise_comparable` in `rustc_mir_build`), so this must never panic.
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
 const impl<A, B> SlicePartialEq<B> for A
 where

@@ -148,6 +148,9 @@ const impl<T: [const] PartialEq<Other>, Other, const N: usize> SpecArrayEq<Other
     }
 }
 
+// The compiler lowers matches against constant arrays of bytewise-comparable
+// primitives to calls to `PartialEq::eq` that are assumed not to unwind (see
+// `is_bytewise_comparable` in `rustc_mir_build`), so this must never panic.
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
 const impl<T: [const] BytewiseEq<U>, U, const N: usize> SpecArrayEq<U, N> for T {
     fn spec_eq(a: &[T; N], b: &[U; N]) -> bool {
