@@ -93,6 +93,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
 '--timings[Pass \`--timings\` to Cargo to get crate build timings]' \
+'--dist-std[Build the standard library under the \`dist\` profile]' \
 '(-q --quiet)*-v[use verbose output (-vv for very verbose)]' \
 '(-q --quiet)*--verbose[use verbose output (-vv for very verbose)]' \
 '(-v --verbose)-q[use quiet output]' \
@@ -140,6 +141,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
 '--timings[Pass \`--timings\` to Cargo to get crate build timings]' \
+'--dist-std[Build the standard library under the \`dist\` profile]' \
 '(-q --quiet)*-v[use verbose output (-vv for very verbose)]' \
 '(-q --quiet)*--verbose[use verbose output (-vv for very verbose)]' \
 '(-v --verbose)-q[use quiet output]' \
@@ -544,6 +546,7 @@ _arguments "${_arguments_options[@]}" : \
 '--rustfix-coverage[enable this to generate a Rustfix coverage file, which is saved in \`/<build_base>/rustfix_missing_coverage.txt\`]' \
 '--no-capture[don'\''t capture stdout/stderr of tests]' \
 '--bypass-ignore-backends[Ignore \`//@ ignore-backends\` directives]' \
+'--dist-std[Build the standard library under the \`dist\` profile]' \
 '--no-doc[Deprecated. Use \`--all-targets\` or \`--tests\` instead]' \
 '--record[Record all the failed tests in a file in the build directory]' \
 '--rerun[Rerun tests that previously failed, and stored with \`--record\`]' \
@@ -611,6 +614,7 @@ _arguments "${_arguments_options[@]}" : \
 '--rustfix-coverage[enable this to generate a Rustfix coverage file, which is saved in \`/<build_base>/rustfix_missing_coverage.txt\`]' \
 '--no-capture[don'\''t capture stdout/stderr of tests]' \
 '--bypass-ignore-backends[Ignore \`//@ ignore-backends\` directives]' \
+'--dist-std[Build the standard library under the \`dist\` profile]' \
 '--no-doc[Deprecated. Use \`--all-targets\` or \`--tests\` instead]' \
 '--record[Record all the failed tests in a file in the build directory]' \
 '--rerun[Rerun tests that previously failed, and stored with \`--record\`]' \
@@ -713,6 +717,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
+'--dist-std[Build the standard library under the \`dist\` profile]' \
 '(-q --quiet)*-v[use verbose output (-vv for very verbose)]' \
 '(-q --quiet)*--verbose[use verbose output (-vv for very verbose)]' \
 '(-v --verbose)-q[use quiet output]' \
@@ -806,6 +811,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
+'--dist-std[Build the standard library under the \`dist\` profile]' \
 '(-q --quiet)*-v[use verbose output (-vv for very verbose)]' \
 '(-q --quiet)*--verbose[use verbose output (-vv for very verbose)]' \
 '(-v --verbose)-q[use quiet output]' \
@@ -852,6 +858,7 @@ _arguments "${_arguments_options[@]}" : \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
 '--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
+'--dist-std[Build the standard library under the \`dist\` profile]' \
 '(-q --quiet)*-v[use verbose output (-vv for very verbose)]' \
 '(-q --quiet)*--verbose[use verbose output (-vv for very verbose)]' \
 '(-v --verbose)-q[use quiet output]' \
