@@ -39,15 +39,6 @@ cfg_select! {
 
 #[cfg(all(target_os = "linux", target_env = "gnu"))]
 use libc::c_char;
-#[cfg(any(
-    all(target_os = "linux", not(target_env = "musl")),
-    target_os = "android",
-    target_os = "fuchsia",
-    target_os = "hurd",
-    target_os = "illumos",
-    target_vendor = "apple",
-))]
-use libc::dirfd;
 use libc::{c_int, mode_t};
 
 use crate::ffi::{CStr, OsStr, OsString};
@@ -990,12 +981,10 @@ impl Drop for DirStream {
             target_os = "nto",
             target_os = "qnx",
             target_os = "vita",
-            target_os = "hurd",
             target_os = "espidf",
             target_os = "horizon",
             target_os = "vxworks",
             target_os = "rtems",
-            target_os = "nuttx",
         )))]
         {
             let fd = unsafe { libc::dirfd(self.0) };
@@ -1027,15 +1016,17 @@ impl DirEntry {
     pub fn metadata(&self) -> io::Result<FileAttr> {
         cfg_select! {
             // Use directory handle where possible
-            any(
-                all(target_os = "linux", not(target_env = "musl")),
-                target_os = "android",
-                target_os = "fuchsia",
-                target_os = "hurd",
-                target_os = "illumos",
-                target_vendor = "apple",
-            ) => {
-                let fd = cvt(unsafe { dirfd(self.dir.dirp.0) })?;
+            not(any(
+                target_os = "redox",
+                target_os = "nto",
+                target_os = "qnx",
+                target_os = "vita",
+                target_os = "espidf",
+                target_os = "horizon",
+                target_os = "vxworks",
+                target_os = "rtems",
+            )) => {
+                let fd = cvt(unsafe { libc::dirfd(self.dir.dirp.0) })?;
 
                 // Make this FD into a directory handle. We don't actually drop it,
                 // so having an `OwnedFd` is fine.
