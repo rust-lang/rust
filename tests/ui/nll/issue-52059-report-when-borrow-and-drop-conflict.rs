@@ -25,6 +25,6 @@ fn finish_3(s: S) -> &mut String {
 fn finish_4(s: S) -> &mut String {
     let p = s.url; p
 }
-//~^^ ERROR cannot move out of type `S<'_>`, which implements the `Drop` trait
+//~^^ ERROR borrow may still be in use when destructor runs [E0713]
 
 fn main() {}

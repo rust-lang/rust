@@ -23,6 +23,12 @@ LL |     rustc_peek(&x);
    |     ^^^^^^^^^^^^^^
 
 error: rustc_peek: bit not set
+  --> $DIR/uninits-1.rs:41:5
+   |
+LL |     rustc_peek(&x);
+   |     ^^^^^^^^^^^^^^
+
+error: rustc_peek: bit not set
   --> $DIR/uninits-1.rs:44:5
    |
 LL |     rustc_peek(&ret);
@@ -30,5 +36,5 @@ LL |     rustc_peek(&ret);
 
 error: stop_after_dataflow ended compilation
 
-error: aborting due to 6 previous errors
+error: aborting due to 7 previous errors
 

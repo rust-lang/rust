@@ -1483,9 +1483,10 @@ pub enum Rvalue<'tcx> {
     /// Future work may add support for multiple lifetimes and changing memory layout as part of
     /// CoerceShared. These may be end up implemented as multiple MIR operations.
     ///
-    /// This is produced by the [`ExprKind::Reborrow`].
+    /// This is produced by [`ExprKind::CoerceShared`],
+    /// and by `consume_by_copy_reborrow_or_move()` in `rustc_mir_build`.
     ///
-    /// [`ExprKind::Reborrow`]: crate::thir::ExprKind::Reborrow
+    /// [`ExprKind::CoerceShared`]: crate::thir::ExprKind::CoerceShared
     Reborrow(Ty<'tcx>, Mutability, Place<'tcx>),
 }
 
