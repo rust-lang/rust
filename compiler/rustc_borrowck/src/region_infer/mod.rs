@@ -130,6 +130,9 @@ pub(crate) struct TypeTest<'tcx> {
     /// The span to blame.
     pub span: Span,
 
+    // Where this type test is required to hold.
+    pub locations: Locations,
+
     /// A test which, if met by the region `'x`, proves that this type
     /// constraint is satisfied.
     pub verify_bound: VerifyBound<'tcx>,
