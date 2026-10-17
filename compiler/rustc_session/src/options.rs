@@ -2534,6 +2534,11 @@ options! {
     fewer_names: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "reduce memory use by retaining fewer names within compilation artifacts (LLVM-IR) \
         (default: no)"),
+    fine_grained_generic_cgus: bool = (true, parse_bool, [TRACKED],
+        "shard the volatile (generic) codegen units of large local buckets by generic \
+        function in incremental builds, so editing one generic function invalidates only \
+        its shard; skipped when the shards would not fit under the -C codegen-units limit \
+        (default: yes)"),
     fixed_x18: bool = (false, parse_bool, [TRACKED] { TARGET_MODIFIER: FixedX18 },
         "make the x18 register reserved on AArch64 (default: no)"),
     flatten_format_args: bool = (true, parse_bool, [TRACKED],
