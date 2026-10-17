@@ -224,7 +224,6 @@ pub fn compiler_entrypoint(at_args: &[String], callbacks: &mut (dyn Callbacks + 
         output_dir: odir,
         ice_file,
         file_loader: None,
-        lint_caps: Default::default(),
         psess_created: None,
         track_state: None,
         register_lints: None,
