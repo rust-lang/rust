@@ -1461,7 +1461,7 @@ pub enum AttributeKind {
     RustcThenThisWouldNeed(ThinVec<Ident>),
 
     /// Represents `#[rustc_trivial_field_reads]`
-    RustcTrivialFieldReads,
+    RustcTrivialFieldReads(Span),
 
     /// Represents `#[sanitize]`
     ///
