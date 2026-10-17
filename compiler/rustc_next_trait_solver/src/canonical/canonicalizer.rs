@@ -74,11 +74,17 @@ pub(super) struct Canonicalizer<'a, D: SolverDelegate<Interner = I>, I: Interner
 
     // Mutable fields.
     state: CanonicalizerState<I>,
+    param_env_var_kinds: Option<I::CanonicalVarKinds>,
 }
 
 impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
     fn new(delegate: &'a D, canonicalize_mode: CanonicalizeMode) -> Self {
-        Canonicalizer { delegate, canonicalize_mode, state: delegate.obtain_canonicalizer_state() }
+        Canonicalizer {
+            delegate,
+            canonicalize_mode,
+            state: delegate.obtain_canonicalizer_state(),
+            param_env_var_kinds: None,
+        }
     }
 
     pub(super) fn canonicalize_response<T: TypeFoldable<I>>(
@@ -155,11 +161,15 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
                 Entry::Vacant(e) => {
                     // Cache miss. Do `env` canonicalization and get `rest_canonicalizer`, and
                     // fill in the cache entry.
-                    let (param_env, rest_canonicalizer) = do_env_and_make_rest();
+                    let (param_env, mut rest_canonicalizer) = do_env_and_make_rest();
+                    let interned_var_kinds =
+                        delegate.cx().mk_canonical_var_kinds(&rest_canonicalizer.state.var_kinds);
+                    rest_canonicalizer.param_env_var_kinds = Some(interned_var_kinds);
                     e.insert(CanonicalParamEnvCacheEntry {
                         param_env,
                         variables: rest_canonicalizer.state.variables.clone(),
                         var_kinds: rest_canonicalizer.state.var_kinds.clone(),
+                        interned_var_kinds,
                         // SAFETY: The iterated elements go straight back into a hashmap.
                         #[allow(rustc::potential_query_instability)]
                         variable_lookup_table: rest_canonicalizer
@@ -180,6 +190,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
                     );
                     rest_canonicalizer.state.variables.clone_from(&e.variables);
                     rest_canonicalizer.state.var_kinds.clone_from(&e.var_kinds);
+                    rest_canonicalizer.param_env_var_kinds = Some(e.interned_var_kinds);
                     rest_canonicalizer
                         .state
                         .variable_lookup_table
@@ -249,6 +260,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             *self.state.variable_lookup_table.entry(arg).or_insert_with(|| {
                 let var = self.state.variables.len();
                 self.state.variables.push(arg);
+                self.param_env_var_kinds = None;
                 self.state.var_kinds.push(kind);
                 var
             })
@@ -256,6 +268,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             self.state.variables.iter().position(|&v| v == arg).unwrap_or_else(|| {
                 let var = self.state.variables.len();
                 self.state.variables.push(arg);
+                self.param_env_var_kinds = None;
                 self.state.var_kinds.push(kind);
                 var
             })
@@ -295,6 +308,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             // information for placeholders and inference variables created inside
             // of the query.
             CanonicalizeMode::Response { max_input_universe } => {
+                self.param_env_var_kinds = None;
                 for var in self.state.var_kinds.iter_mut() {
                     let uv = var.universe();
                     let new_uv = ty::UniverseIndex::from(
@@ -311,7 +325,10 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             }
         };
         let variables = mem::take(&mut self.state.variables);
-        let var_kinds = self.delegate.cx().mk_canonical_var_kinds(&self.state.var_kinds);
+        let var_kinds = match self.param_env_var_kinds {
+            Some(cached) => cached,
+            _ => self.delegate.cx().mk_canonical_var_kinds(&self.state.var_kinds),
+        };
 
         // We have finished with this canonicalizer and can return its state to the delegate for
         // later reuse.
