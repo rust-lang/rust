@@ -30,7 +30,7 @@ runs:
         echo "commit=$commit" >> "$GITHUB_OUTPUT"
         echo "Tested the cg_gcc of nightly-$date ([rust-lang/rust@${commit:0:11}](https://github.com/rust-lang/rust/commit/$commit))." >> "$GITHUB_STEP_SUMMARY"
 
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
       with:
         repository: rust-lang/rust
         ref: ${{ steps.nightly.outputs.commit }}
