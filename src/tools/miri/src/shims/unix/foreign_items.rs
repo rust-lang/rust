@@ -1105,6 +1105,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     .check_shim_sig(shim_sig!(extern "C" fn(*_) -> i32), (link_name, abi, args))?;
                 this.pthread_sem_wait(sem, dest)?;
             }
+            "sem_timedwait" => {
+                let [sem, abs_timeout] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*_, *_) -> i32),
+                    (link_name, abi, args),
+                )?;
+                this.pthread_sem_timedwait(sem, abs_timeout, dest)?;
+            }
             "sem_post" => {
                 let [sem] = this
                     .check_shim_sig(shim_sig!(extern "C" fn(*_) -> i32), (link_name, abi, args))?;

@@ -532,9 +532,19 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
 
         let data = this.dispatch_semaphore_get_data(&sem_ptr)?.clone();
+        let dest = dest.clone();
         this.semaphore_decrement(
             data.semaphore,
-            Some((Scalar::from_target_isize(0, this), dest.clone())),
+            /* deadline */ None,
+            callback!(
+                @capture<'tcx> {
+                    dest: MPlaceTy<'tcx>,
+                }
+                |this, unblock: UnblockKind| {
+                    assert_eq!(unblock, UnblockKind::Ready);
+                    this.write_null(&dest)
+                }
+            ),
         )?;
 
         interp_ok(())

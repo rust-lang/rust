@@ -1056,7 +1056,60 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let data = sem_get_data(this, sem_op)?.clone();
-        this.semaphore_decrement(data.sem_ref, Some((Scalar::from_i32(0), dest.clone())))?;
+        let dest = dest.clone();
+        this.semaphore_decrement(
+            data.sem_ref,
+            /* deadline */ None,
+            callback!(
+                @capture<'tcx> {
+                    dest: MPlaceTy<'tcx>,
+                }
+                |this, unblock: UnblockKind| {
+                    assert_eq!(unblock, UnblockKind::Ready);
+                    this.write_null(&dest)?;
+                    interp_ok(())
+                }
+            ),
+        )?;
+
+        interp_ok(())
+    }
+
+    fn pthread_sem_timedwait(
+        &mut self,
+        sem_op: &OpTy<'tcx>,
+        abs_timeout_op: &OpTy<'tcx>,
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        this.check_no_isolation("`pthread_sem_timedwait`")?;
+
+        let abs_timeout = this.deref_pointer_as(abs_timeout_op, this.libc_ty_layout("timespec"))?;
+
+        let Some(duration) = this.read_timespec(&abs_timeout)? else {
+            return this.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
+        };
+        let deadline =
+            this.machine.timeout(TimeoutClock::RealTime, TimeoutStyle::Absolute, duration);
+        let data = sem_get_data(this, sem_op)?.clone();
+        let dest = dest.clone();
+        this.semaphore_decrement(
+            data.sem_ref,
+            Some(deadline),
+            callback!(
+                @capture<'tcx> {
+                    dest: MPlaceTy<'tcx>,
+                }
+                |this, unblock: UnblockKind| {
+                    match unblock {
+                        UnblockKind::Ready =>
+                            this.write_null(&dest),
+                        UnblockKind::TimedOut =>
+                            this.set_errno_and_return_neg1(LibcError("ETIMEDOUT"), &dest),
+                    }
+                }
+            ),
+        )?;
 
         interp_ok(())
     }

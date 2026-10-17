@@ -876,7 +876,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn semaphore_decrement(
         &mut self,
         semaphore_ref: SemaphoreRef,
-        retval_dest: Option<(Scalar, MPlaceTy<'tcx>)>,
+        deadline: Option<Deadline>,
+        callback: DynUnblockCallback<'tcx>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
@@ -885,10 +886,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             semaphore.value = new_value;
             this.acquire_clock(&semaphore.clock)?;
             drop(semaphore);
-            if let Some((val, dest)) = retval_dest {
-                this.write_scalar(val, &dest)?;
-            }
-            return interp_ok(());
+            return callback.call(this, UnblockKind::Ready);
         }
 
         // We have to block.
@@ -897,19 +895,31 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         this.block_thread(
             BlockReason::Semaphore,
-            /* deadline */ None,
+            deadline.clone(),
             callback!(
-                    @capture<'tcx> {
-                        semaphore_ref: SemaphoreRef,
-            retval_dest: Option<(Scalar, MPlaceTy<'tcx>)>,
+                @capture<'tcx> {
+                    semaphore_ref: SemaphoreRef,
+                    deadline: Option<Deadline>,
+                    callback: DynUnblockCallback<'tcx>,
+                }
+                |this, unblock: UnblockKind| {
+                    match unblock {
+                        UnblockKind::TimedOut => {
+                            // Remove the waiter.
+                            let thread = this.active_thread();
+                            let mut semaphore = semaphore_ref.0.borrow_mut();
+                            semaphore.waiters.retain(|&waiter| waiter != thread);
+                            // Finish with callback.
+                            return callback.call(this, UnblockKind::TimedOut);
+                        }
+                        UnblockKind::Ready => {
+                            // Try again! This time it will definitely work.
+                            // (But it's too much of a hassle to assert that.)
+                            this.semaphore_decrement(semaphore_ref, deadline, callback)
+                        }
                     }
-                    |this, unblock: UnblockKind| {
-                        assert_eq!(unblock, UnblockKind::Ready);
-                        // Try again! This time it will definitely work.
-                        // (But it's too much of a hassle to assert that.)
-                        this.semaphore_decrement(semaphore_ref, retval_dest)
-                    }
-                ),
+                }
+            ),
         );
         interp_ok(())
     }
