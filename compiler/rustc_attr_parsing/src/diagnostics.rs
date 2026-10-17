@@ -2150,6 +2150,24 @@ pub(crate) enum MalformedAttributeSub {
     ReasonMustComeLast(#[primary_span] Span),
 }
 
+#[derive(Diagnostic)]
+#[diag("expected path to a lint, found literal")]
+pub(crate) struct BadAttributeLit {
+    #[primary_span]
+    #[label("not a lint")]
+    pub span: Span,
+    #[subdiagnostic]
+    pub sub: BadAttributeLitHelp,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum BadAttributeLitHelp {
+    #[help("try using `#[{$kind}({$sym})]`")]
+    StrLit { sym: Symbol, kind: Symbol },
+    #[help("for example, write `#[{$kind}(dead_code)]` for `dead_code`")]
+    Other { kind: Symbol },
+}
+
 #[derive(Subdiagnostic)]
 pub(crate) enum UnusedNote {
     #[note("attribute `{$name}` with an empty list has no effect")]

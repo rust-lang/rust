@@ -3,5 +3,5 @@
 //@ compile-flags: -Zdeduplicate-diagnostics=yes
 
 #[allow("literal")]
-//~^ ERROR malformed lint attribute input [E0452]
+//~^ ERROR expected path to a lint, found literal
 fn main() {}

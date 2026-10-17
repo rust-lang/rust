@@ -1,9 +1,10 @@
-error[E0452]: malformed lint attribute input
+error: expected path to a lint, found literal
   --> $DIR/lint-attribute-literals.rs:5:9
    |
 LL | #[allow("literal")]
-   |         ^^^^^^^^^ bad attribute argument
+   |         ^^^^^^^^^ not a lint
+   |
+   = help: try using `#[allow(literal)]`
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0452`.
