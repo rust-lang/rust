@@ -18,6 +18,7 @@ pub use rustc_span::def_id::DefPathHash;
 use rustc_span::def_id::{
     CRATE_DEF_INDEX, CrateNum, DefIndex, LOCAL_CRATE, LocalDefId, LocalDefIdMap, StableCrateId,
 };
+use rustc_span::hygiene::{HygieneRemapper, LocalExpnIdRemapper, SyntaxContextRemapper};
 use rustc_span::{SpanEncoder, Symbol, kw, sym};
 use tracing::{debug, instrument};
 
@@ -305,10 +306,11 @@ impl Definitions {
     /// This function indicates that the order of def id allocations
     /// may be non-deterministic after it was called.
     pub fn commit_end_of_determinism(&mut self) {
-        assert!(
-            self.def_path_hash_to_index.after_parallel_alloc.replace(Default::default()).is_none(),
-            "this function should be called only once"
-        )
+        let prev = self.def_path_hash_to_index.after_parallel_alloc.replace(Default::default());
+        assert!(prev.is_none(), "this function should be called only once");
+
+        SyntaxContextRemapper::with(|mut r| r.commit_end_of_determinism());
+        LocalExpnIdRemapper::with(|mut r| r.commit_end_of_determinism());
     }
 
     #[inline(always)]
