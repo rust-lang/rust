@@ -1036,7 +1036,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             | Annotatable::Param(..)
             | Annotatable::FieldDef(..)
             | Annotatable::Variant(..)
-            | Annotatable::WherePredicate(..) => panic!("unexpected annotatable"),
+            | Annotatable::WherePredicate(..)
+            | Annotatable::AnnotatableUseTree(..) => panic!("unexpected annotatable"),
         };
         if self.cx.ecfg.features.proc_macro_hygiene() {
             return;
