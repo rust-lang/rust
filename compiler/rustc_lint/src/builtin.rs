@@ -24,6 +24,7 @@ use rustc_ast_pretty::pprust::expr_to_string;
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_attr_ir::{AttributeKind, DocAttribute, find_attr};
 use rustc_attr_parsing::AttributeParser;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::{Applicability, Diagnostic, msg};
 use rustc_feature::GateIssue;
 use rustc_hir::def::{DefKind, Res};
@@ -57,7 +58,8 @@ use crate::diagnostics::{
     BuiltinTypeAliasBounds, BuiltinUngatedAsyncFnTrackCaller, BuiltinUnpermittedTypeInit,
     BuiltinUnpermittedTypeInitSub, BuiltinUnreachablePub, BuiltinUnsafe, BuiltinUnstableFeatures,
     BuiltinUnusedDocComment, BuiltinUnusedDocCommentSub, BuiltinWhileTrue,
-    EqInternalMethodImplemented, InvalidAsmLabel,
+    EqInternalMethodImplemented, FullyQualifiedPathSuggestion, InvalidAsmLabel,
+    SelfTypeConversionDiag,
 };
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 
@@ -1508,6 +1510,7 @@ pub mod soft {
         vec![
             WHILE_TRUE,
             NON_SHORTHAND_FIELD_PATTERNS,
+            SELF_TYPE_CONVERSION,
             UNSAFE_CODE,
             MISSING_DOCS,
             MISSING_COPY_IMPLEMENTATIONS,
@@ -3171,4 +3174,410 @@ impl<'tcx> LateLintPass<'tcx> for InternalEqTraitMethodImpls {
             );
         }
     }
+}
+
+declare_lint! {
+    /// The `self_type_conversion` lint detects when a call to `.into()` does not have any effect.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(self_type_conversion)]
+    /// fn main() {
+    ///     let _: i32 = 0i32.into();
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// The standard library provides an `impl<T> Into<T> for T` implementation, which lets you call
+    /// `.into()` on any type. Relying on that `impl` is a potential semver problem, as a new, more
+    /// specific `impl` of `Into` for the type could be added in the future, causing an inference
+    /// error on code that previously compiled successfully.
+    ///
+    /// As a way to side-step this potential future failure, it is a good idea to instead use the
+    /// fully-qualified path to the correct impl, like `<Ty as Into<Other>>::into(value)`. When
+    /// calling the method with this syntax, inference does not come into play.
+    ///
+    /// ### Limitations
+    ///
+    /// The lint as currently implemented has both false negatives *and* false positives.
+    ///
+    /// When `use` imports and/or type aliases have `cfg` attributes or are behind a `cfg_select!`
+    /// macro invocation, their *underlying* type will *not* be considered for the purposes of this
+    /// lint, in order to avoid complaining about useless conversions for types that are platform
+    /// dependent.
+    ///
+    /// Even then, the analysis for whether a type is different under different platforms isn't
+    /// exhaustive: if a containing *module* is the one that is gated with a `cfg` attribute, this
+    /// lint will not detect that.
+    ///
+    /// If you are in a situation where the presence of false positives are less of a problem than
+    /// false negatives, you can use clippy's `clippy::useless_conversion` lint, which doesn't
+    /// implement the heuristics this lint does.
+    pub SELF_TYPE_CONVERSION,
+    Deny,
+    "unnecessary call to `.into()`",
+}
+
+#[derive(Debug)]
+pub struct SelfTypeConversion<'tcx> {
+    pub ignored_types: FxHashSet<Ty<'tcx>>,
+    pub into_in_macros: FxHashMap<DefId, Vec<Span>>,
+    pub triggered_macros: FxIndexMap<DefId, FxIndexSet<(Span, Ty<'tcx>)>>,
+}
+
+impl_lint_pass!(SelfTypeConversion<'_> => [SELF_TYPE_CONVERSION]);
+
+impl SelfTypeConversion<'_> {
+    pub fn new() -> Self {
+        Self {
+            ignored_types: Default::default(),
+            into_in_macros: Default::default(),
+            triggered_macros: Default::default(),
+        }
+    }
+}
+struct ConditionalTypeCollector<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    ignored_types: FxHashSet<Ty<'tcx>>,
+    into_in_macros: FxHashMap<DefId, Vec<Span>>,
+}
+
+struct IntoMethod<'tcx> {
+    ty: Ty<'tcx>,
+    rcvr_ty: Ty<'tcx>,
+    rcvr: &'tcx hir::Expr<'tcx>,
+    fully_qualified_path: Option<FullyQualifiedPathSuggestion<'tcx>>,
+    removal_span: Option<Span>,
+}
+
+fn find_into_method<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    typeck: &ty::TypeckResults<'tcx>,
+    expr: &'tcx hir::Expr<'tcx>,
+) -> Option<IntoMethod<'tcx>> {
+    let mut fully_qualified_path = None;
+    let mut removal_span = None;
+    let (rcvr, ty, rcvr_ty) = match expr.kind {
+        // If we have `foo.method(...)` with arguments, we already know that `method` can't be
+        // `into`, so we bail.
+        hir::ExprKind::MethodCall(_segment, rcvr, args, _) => {
+            let Some(def_id) = typeck.type_dependent_def_id(expr.hir_id) else {
+                return None;
+            };
+            if Some(def_id) == tcx.get_diagnostic_item(sym::into_fn) {
+                // We've got `foo.into()`.
+                let ty = typeck.expr_ty(expr);
+                let rcvr_ty = typeck.expr_ty(rcvr);
+                // check that the span context is the same for both sides.
+                if expr.span.eq_ctxt(rcvr.span) {
+                    let post = expr.span.with_lo(rcvr.span.hi());
+                    removal_span = Some(post);
+                    fully_qualified_path = Some(FullyQualifiedPathSuggestion {
+                        ty,
+                        pre: rcvr.span.shrink_to_lo(),
+                        post,
+                    });
+                }
+                (rcvr, ty, rcvr_ty)
+            } else if (Some(def_id) == tcx.get_diagnostic_item(sym::option_map)
+                || Some(def_id) == tcx.get_diagnostic_item(sym::result_map)
+                || Some(def_id) == tcx.get_diagnostic_item(sym::result_map_err))
+                && let [arg] = args
+                && let hir::ExprKind::Path(qpath) = arg.kind
+                && let Res::Def(DefKind::AssocFn, into_def_id) =
+                    typeck.qpath_res(&qpath, arg.hir_id)
+                && Some(into_def_id) == tcx.get_diagnostic_item(sym::into_fn)
+            {
+                // We've got a situation like `foo.map(Into::into)` where `foo`
+                // is an `Option` or `Result`.
+                let ty = typeck.expr_ty(expr);
+                let rcvr_ty = typeck.expr_ty(rcvr);
+                let param_at = if Some(def_id) == tcx.get_diagnostic_item(sym::result_map_err) {
+                    // Look at `E` in `Result<T, E>`, not `T`, we have `foo.map_err(...)`.
+                    1
+                } else {
+                    0
+                };
+                match (ty.kind(), rcvr_ty.kind()) {
+                    // We care about the `T` in `Option<T>` and `Result<T, _>`.
+                    (ty::Adt(_, args), ty::Adt(_, rcvr_args)) => {
+                        if expr.span.eq_ctxt(rcvr.span) {
+                            removal_span = Some(expr.span.with_lo(rcvr.span.hi()));
+                        }
+                        (rcvr, args.type_at(param_at), rcvr_args.type_at(param_at))
+                    }
+                    _ => return None,
+                }
+            } else {
+                // We don't have `foo.into()` corresponding to `Into::into` or
+                // `foo.map(Into::into)`.
+                return None;
+            }
+        }
+        _ => return None,
+    };
+
+    Some(IntoMethod { ty, rcvr_ty, rcvr, fully_qualified_path, removal_span })
+}
+
+impl<'tcx> hir::intravisit::Visitor<'tcx> for ConditionalTypeCollector<'tcx> {
+    type NestedFilter = rustc_middle::hir::nested_filter::All;
+
+    fn maybe_tcx(&mut self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
+        if let Some(expn) = expr.span.macro_backtrace().next()
+            && let Some(def_id) = expn.macro_def_id
+            && def_id.is_local()
+            && let id = self.tcx.local_def_id_to_hir_id(expr.hir_id.owner)
+            && self.tcx.hir_node(id).body_id().is_some()
+            && let typeck = self.tcx.typeck(expr.hir_id.owner)
+            && find_into_method(self.tcx, typeck, expr).is_some()
+        {
+            self.into_in_macros.entry(def_id).or_default().push(expr.span);
+        }
+        hir::intravisit::walk_expr(self, expr);
+    }
+
+    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
+        hir::intravisit::walk_item(self, item);
+        let use_tree = match item.kind {
+            hir::ItemKind::Use(use_tree) => use_tree,
+            hir::ItemKind::TyAlias(_, _, _)
+                if find_attr!(self.tcx, item.hir_id(), CfgTrace(..) | CfgAttrTrace(..)) =>
+            {
+                // We've encountered `#[cfg(..)] type Alias = Foo;`.
+                // FIXME(generic_const_exprs): Revisit this before stabilization.
+                // See also `tests/ui/const-generics/generic_const_exprs/type-alias-bounds.rs`.
+                let ty = self.tcx.type_of(item.owner_id).instantiate_identity().skip_norm_wip();
+                self.ignored_types.insert(ty);
+                return;
+            }
+            _ => return,
+        };
+
+        // Look at `cfg`d types as to account for things like `std::io::repr_bitpacked` and
+        // `std::io::repr_unpacked`.
+        //
+        // The compiler currently doesn't track when a type alias has been interacted with in type
+        // type system, which means that when given `type Alias = i32;` and `let x: i32 = 42;` or
+        // `let y: Alias = 42`, we can't differentiate between calling `let _: i32 = x.into();` and
+        // `let _: i32 = y.into();`: as far as the compiler is concerned in both cases the receiver
+        // type is `i32`. Worse yet, type aliases are often used to select different types in
+        // different platforms, meaning that `y.into()` might be a no-op in some platforms, while
+        // being required in others. To avoid some false positives, we keep track of type aliases
+        // that have `cfg` attributes and will *not* emit the lint against calling `.into()` on the
+        // underlying type. This *will* cause false negatives.
+        //
+        // There are likely other combinations that we should check for in order to avoid false
+        // positives, like looking at the parent items for the type alias for `cfg` attributes, but
+        // empirically these two checks seem to account for the majority of the cases in the wild.
+        // FIXME: verify the above with crater run :)
+
+        // Whether we've encountered `#[cfg(..)] use foo::bar;`.
+        let import_has_cfg = find_attr!(self.tcx, item.hir_id(), CfgTrace(..) | CfgAttrTrace(..));
+        for res in use_tree.resolutions() {
+            for res in res.present_items() {
+                let Res::Def(DefKind::TyAlias, def_id) = res else { continue };
+                let ty = self.tcx.type_of(def_id).instantiate_identity().skip_normalization();
+
+                // Whether we've encountered `#[cfg(..)] type Alias = Ty;`.
+                let alias_has_cfg = find_attr!(self.tcx, def_id, CfgTrace(..) | CfgAttrTrace(..));
+                if alias_has_cfg || import_has_cfg {
+                    // We have in scope a type alias of type `ty` which is gated behind a `cfg`
+                    // attribute, either at its definition or through its import, which is indicative
+                    // of platform specific code. This kind of code often ends up with `.into()` method
+                    // calls that are useless in some configurations, but *necessary* in others. As a
+                    // first-order approximation, we ignore *all* `val_of_ty.into()` calls.
+                    self.ignored_types.insert(ty);
+                }
+            }
+        }
+    }
+}
+
+impl<'tcx> LateLintPass<'tcx> for SelfTypeConversion<'tcx> {
+    fn check_crate(&mut self, cx: &LateContext<'tcx>) {
+        let mut v = ConditionalTypeCollector {
+            tcx: cx.tcx,
+            ignored_types: Default::default(),
+            into_in_macros: Default::default(),
+        };
+        cx.tcx.hir_visit_all_item_likes_in_crate(&mut v);
+        self.ignored_types = v.ignored_types;
+        tracing::info!("{:#?}", v.into_in_macros);
+        self.into_in_macros = v.into_in_macros;
+    }
+
+    /// Look for method calls to `Into::into` that rely on inference and that ends up using the
+    /// `impl<T> Into<T> for T {}` blanket `impl`.
+    ///
+    /// This filters on explicit `foo.into()` method calls (ignoring `<_ as Into<_>>::into(foo)`).
+    fn check_expr_post(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
+        let Some(IntoMethod { ty, rcvr_ty, rcvr, fully_qualified_path, removal_span }) =
+            find_into_method(cx.tcx, cx.typeck_results(), expr)
+        else {
+            return;
+        };
+
+        if ty != rcvr_ty {
+            // If the type we are converting from and converting towards are different, there's
+            // nothing to complain about.
+            return;
+        }
+
+        if self.ignored_types.contains(&ty) {
+            // Found `<{ty} as Into<{ty}>::into()` call, but that type has been detected to have
+            // been annotated with `#[cfg]`, meaning it there are likely configurations in which
+            // the receiver and target types are different.
+            tracing::debug!("Skipping linting `<{ty} as Into<{ty}>::into()` call");
+            return;
+        }
+
+        if let hir::ExprKind::Field(base, field) = rcvr.kind {
+            // Look at the original type. If the field being accessed or its type is behind a `cfg`
+            // attribute, we don't trigger the lint, as it's likely that field has different types
+            // in different configurations.
+            //
+            // #[cfg(true)]
+            // struct S {
+            //     #[cfg(..)] field: u32,
+            //     #[cfg(not(..))] field: u64,
+            // }
+            //
+            // let s = S { field: 0 };
+            // let x: u32 = s.field.into();
+            let ty = cx.typeck_results().expr_ty(base);
+            if let ty::Adt(def, _args) = ty.peel_refs().kind()
+                && struct_field_has_cfg(cx.tcx, def.did(), field.name)
+            {
+                return;
+            }
+        }
+        if let hir::Node::ExprField(field) = cx.tcx.parent_hir_node(expr.hir_id)
+            && let hir::Node::Expr(parent) = cx.tcx.parent_hir_node(field.hir_id)
+            && let hir::ExprKind::Struct(hir::QPath::Resolved(_, path), _, _) = parent.kind
+            && let Res::Def(DefKind::Struct, def_id) = path.res
+            && struct_field_has_cfg(cx.tcx, def_id, field.ident.name)
+        {
+            // The target of the value being converted corresponds to a struct that is behind a
+            // `cfg`:
+            //
+            // #[cfg(true)]
+            // struct S {
+            //     #[cfg(..)] field: u32,
+            //     #[cfg(not(..))] field: u64,
+            // }
+            //
+            // S { field: 0u32.into() };
+            return;
+        }
+        if let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = rcvr.kind
+            && let Res::Def(DefKind::Const { .. }, def_id) = path.res
+            && (find_attr!(cx.tcx, def_id, CfgTrace(..) | CfgAttrTrace(..))
+                || find_attr!(cx.tcx, cx.tcx.parent(def_id), CfgTrace(..) | CfgAttrTrace(..)))
+        {
+            // We're accessing and converting a const that is either itself annotated with `cfg` or
+            // its parent `mod`. Common for things like `libc::TIOCGWINSZ`.
+            return;
+        }
+
+        if let hir::ExprKind::MethodCall(_segment, _rcvr, _args, _) = rcvr.kind
+            && let Some(def_id) = cx.typeck_results().type_dependent_def_id(rcvr.hir_id)
+            && let output = cx.tcx.fn_sig(def_id).skip_binder().output().skip_binder()
+            && let ty::Alias(_, ty::AliasTy { kind: ty::Projection { def_id }, .. }) = output.kind()
+            && let bounds = cx.tcx.item_bounds(*def_id).instantiate_identity().skip_norm_wip()
+            && bounds.iter().any(|bound| {
+                Some(true)
+                    == bound
+                        .as_trait_clause()
+                        .map(|c| Some(c.def_id()) == cx.tcx.get_diagnostic_item(sym::Into))
+            })
+        {
+            // We called `.into()` in an assoc `fn foo() -> Self::Type` where `type Type: Into<_>;`.
+            // We can assume that calling `.into()` on this value is the *intended use*.
+            // We saw this in interaction of `object`+`gimli` crates.
+            return;
+        }
+
+        if let Some(expn) = expr.span.macro_backtrace().next() {
+            if let Some(def_id) = expn.macro_def_id
+                && def_id.is_local()
+                && self.into_in_macros.get(&def_id).is_some()
+            {
+                // Collect all the `.into()` in macro expansions. Once we've evaluated the whole
+                // crate, we'll only emit the `self_type_conversion` lint if *every* macro
+                // expansion would trigger it.
+                self.triggered_macros.entry(def_id).or_default().insert((expr.span, ty));
+            }
+            // A macro that expands to this code isn't great, but end-users of a macro can't do
+            // anything about it.
+            return;
+        }
+
+        if ["crates_io", "cargo"].contains(&cx.tcx.crate_name(hir::def_id::LOCAL_CRATE).as_str()) {
+            return;
+        }
+
+        cx.emit_span_lint(
+            SELF_TYPE_CONVERSION,
+            expr.span,
+            SelfTypeConversionDiag {
+                ty,
+                removal_span,
+                fully_qualified_path,
+                fully_qualified_path_note: false,
+            },
+        );
+    }
+
+    fn check_crate_post(&mut self, cx: &LateContext<'tcx>) {
+        for (def_id, entries) in &self.triggered_macros {
+            if entries.len() == self.into_in_macros[def_id].len() {
+                // Every macro invocation involves a useless `.into()`, so we lint them. Otherwise,
+                // it would mean that there are *some* macro calls that involve types where the
+                // `.into()` call *isn't* useless. This is still a bit more verbose than it could
+                // be. We could instead lint once on the macro itself instead of once per macro
+                // invocation.
+                for &(span, ty) in entries {
+                    cx.emit_span_lint(
+                        SELF_TYPE_CONVERSION,
+                        span,
+                        SelfTypeConversionDiag {
+                            ty,
+                            removal_span: None,
+                            fully_qualified_path: None,
+                            fully_qualified_path_note: true,
+                        },
+                    );
+                }
+            }
+        }
+    }
+}
+
+fn struct_field_has_cfg(tcx: TyCtxt<'_>, def_id: DefId, field_name: Symbol) -> bool {
+    if find_attr!(tcx, def_id, CfgTrace(..) | CfgAttrTrace(..)) {
+        // The item is `cfg`d.
+        return true;
+    }
+    if find_attr!(tcx, tcx.parent(def_id), CfgTrace(..) | CfgAttrTrace(..)) {
+        // The `mod` enclosing the item is `cfg`d.
+        return true;
+    }
+    let def = tcx.adt_def(def_id);
+    for variant in def.variants().iter() {
+        for f in &variant.fields {
+            if f.name == field_name && find_attr!(tcx, f.did, CfgTrace(..) | CfgAttrTrace(..)) {
+                return true;
+            }
+        }
+    }
+    false
 }
