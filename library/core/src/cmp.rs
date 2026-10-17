@@ -58,25 +58,34 @@ use crate::ops::ControlFlow;
 /// The default implementation of `ne` provides this consistency and is almost
 /// always sufficient. It should not be overridden without very good reason.
 ///
-/// If [`PartialOrd`] or [`Ord`] are also implemented for `Self` and `Rhs`, their methods must also
-/// be consistent with `PartialEq` (see the documentation of those traits for the exact
-/// requirements). It's easy to accidentally make them disagree by deriving some of the traits and
-/// manually implementing others.
+/// If [`PartialOrd`] is also implemented for `Self` and `Rhs`, their methods must also be
+/// consistent with `PartialEq` (see the documentation of those traits for the exact requirements).
+/// It's easy to accidentally make them disagree by deriving some of the traits and manually
+/// implementing others.
 ///
-/// The equality relation `==` must satisfy the following conditions
-/// (for all `a`, `b`, `c` of type `A`, `B`, `C`):
+/// For any type `A: PartialEq`, the equality relation `==` must satisfy the following condition:
 ///
-/// - **Symmetry**: if `A: PartialEq<B>` and `B: PartialEq<A>`, then **`a == b`
-///   implies `b == a`**; and
+/// - **Transitivity**: for all `a`, `b`, `c` of type `A`,
+///   **`a == b` and `b == c` implies `a == c`**. This must also work for longer chains.
 ///
-/// - **Transitivity**: if `A: PartialEq<B>` and `B: PartialEq<C>` and `A:
-///   PartialEq<C>`, then **`a == b` and `b == c` implies `a == c`**.
-///   This must also work for longer chains, such as when `A: PartialEq<B>`, `B: PartialEq<C>`,
-///   `C: PartialEq<D>`, and `A: PartialEq<D>` all exist.
+/// For any given combination of `A` and `B` where `A: PartialEq<B>` and `B: PartialEq<A>`,
+/// the equality relation `==` must additionally satisfy the following condition:
 ///
-/// Note that the `B: PartialEq<A>` (symmetric) and `A: PartialEq<C>`
-/// (transitive) impls are not forced to exist, but these requirements apply
-/// whenever they do exist.
+/// - **Symmetry**: for all `a` of type `A` and `b` of type `B`,
+///   **`a == b` implies `b == a`**. This also means that this case applies for `A == B`.
+///
+/// Note that the for any given `A: PartialEq<B>` impl, the symmetric `B: PartialEq<A>` impl
+/// is not forced to exist, but these requirements apply whenever they do exist.
+///
+/// Note that transitivity for more than one type is *not guaranteed*. For any given combination
+/// of `A`, `B`, and `C` where `A: PartialEq<B>` and `B: PartialEq<C>`, the following may not hold:
+///
+/// - **Transitivity**: for all `a` of type `A`, `b` of type `B`, and `c` of type `C`,
+///   **`a == b` and `b == c` does not imply `a == c`**.
+///
+/// Note that types are *allowed* to be transitive in this method, but it is not strictly required.
+/// If you want stronger guarantees across types, you should use conversions like [`Borrow`] to
+/// convert everything to the same type before comparing.
 ///
 /// Violating these requirements is a logic error. The behavior resulting from a logic error is not
 /// specified, but users of the trait must ensure that such logic errors do *not* result in
@@ -240,6 +249,7 @@ use crate::ops::ControlFlow;
 ///
 /// [`eq`]: PartialEq::eq
 /// [`ne`]: PartialEq::ne
+/// [`Borrow`]: core::borrow::Borrow
 #[lang = "eq"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(alias = "==")]
@@ -1238,18 +1248,31 @@ pub macro Ord($item:item) {
 /// `partial_cmp` (see the documentation of that trait for the exact requirements). It's easy to
 /// accidentally make them disagree by deriving some of the traits and manually implementing others.
 ///
-/// The comparison relations must satisfy the following conditions (for all `a`, `b`, `c` of type
-/// `A`, `B`, `C`):
+/// For any type `A: PartialOrd`, the ordering must satisfy the following condition:
 ///
-/// - **Transitivity**: if `A: PartialOrd<B>` and `B: PartialOrd<C>` and `A: PartialOrd<C>`, then `a
-///   < b` and `b < c` implies `a < c`. The same must hold for both `==` and `>`. This must also
-///   work for longer chains, such as when `A: PartialOrd<B>`, `B: PartialOrd<C>`, `C:
-///   PartialOrd<D>`, and `A: PartialOrd<D>` all exist.
-/// - **Duality**: if `A: PartialOrd<B>` and `B: PartialOrd<A>`, then `a < b` if and only if `b >
-///   a`.
+/// - **Transitivity**: for all `a`, `b`, `c` of type `A`,
+///   **`a < b` and `b < c` implies `a < c`**. This must also work for longer chains and all
+///   possible operators such as `>` and `==`.
 ///
-/// Note that the `B: PartialOrd<A>` (dual) and `A: PartialOrd<C>` (transitive) impls are not forced
-/// to exist, but these requirements apply whenever they do exist.
+/// For any given combination of `A` and `B` where `A: PartialOrd<B>` and `B: PartialOrd<A>`,
+/// the ordering must additionally satisfy the following condition:
+///
+/// - **Duality**: for all `a` of type `A` and `b` of type `B`,
+///   **`a < b` if and only if `b > a`**; and
+///
+/// Note that the for any given `A: PartialOrd<B>` impl, the symmetric `B: PartialOrd<A>` impl
+/// is not forced to exist, but these requirements apply whenever they do exist.
+///
+/// Note that transitivity for more than one type is *not guaranteed*. For any given combination
+/// of `A`, `B`, and `C` where `A: PartialEq<B>` and `B: PartialEq<C>`, the following may not hold:
+///
+/// - **Transitivity**: for all `a` of type `A`, `b` of type `B`, and `c` of type `C`,
+///   **`a < b` and `b < c` does not imply `a < c`**. This also applies to all possible operators
+///   such as `>` and `==`.
+///
+/// Note that types are *allowed* to be transitive in this method, but it is not strictly required.
+/// If you want stronger guarantees across types, you should use conversions like [`Borrow`] to
+/// convert everything to the same type before comparing.
 ///
 /// Violating these requirements is a logic error. The behavior resulting from a logic error is not
 /// specified, but users of the trait must ensure that such logic errors do *not* result in
@@ -1442,6 +1465,7 @@ pub macro Ord($item:item) {
 ///
 /// [`partial_cmp`]: PartialOrd::partial_cmp
 /// [`cmp`]: Ord::cmp
+/// [`Borrow`]: core::borrow::Borrow
 #[lang = "partial_ord"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(alias = ">")]
