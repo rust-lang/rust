@@ -308,9 +308,13 @@ fn expand_format_args<'hir>(
 
     // See library/core/src/fmt/mod.rs for the format string encoding format.
 
+    let mut starts_with_placeholder = false;
+    let mut total_literal_len = 0;
     for (i, piece) in template.iter().enumerate() {
         match piece {
             &FormatArgsPiece::Literal(sym) => {
+                total_literal_len += sym.as_str().len();
+
                 // Coalesce adjacent literal pieces.
                 if let Some(FormatArgsPiece::Literal(_)) = template.get(i + 1) {
                     incomplete_lit.push_str(sym.as_str());
@@ -357,6 +361,10 @@ fn expand_format_args<'hir>(
                 incomplete_lit.clear();
             }
             FormatArgsPiece::Placeholder(p) => {
+                if total_literal_len == 0 {
+                    starts_with_placeholder = true;
+                }
+
                 // Push the start byte and remember its index so we can set the option bits later.
                 let i = bytecode.len();
                 bytecode.push(0xC0);
@@ -494,9 +502,26 @@ fn expand_format_args<'hir>(
         )
     };
 
+    // `Arguments::estimated_capacity()` is used by `alloc::fmt::format` to reduce
+    // the number of reallocations. This is a somewhat reasonable heuristic given
+    // the limited information available at this time, but there is definitely
+    // room for improvement here.
+    let estimated_capacity = if starts_with_placeholder && total_literal_len < 16 {
+        // If the format string starts with a placeholder,
+        // don't preallocate anything, unless length
+        // of literal pieces is significant.
+        0
+    } else {
+        // There are some placeholders, so any additional push
+        // will reallocate the string. To avoid that,
+        // we're "pre-doubling" the capacity here.
+        (total_literal_len as u128).wrapping_mul(2)
+    };
+    let estimated_capacity = ctx.expr_usize_literal(macsp, estimated_capacity);
+
     // Generate:
     //     unsafe {
-    //         <core::fmt::Arguments>::new(b"…", &args)
+    //         <core::fmt::Arguments>::new(b"…", &args, estimated_capacity)
     //     }
     let template = ctx.expr_byte_str(macsp, ByteSymbol::intern(&bytecode));
     let call = {
@@ -506,7 +531,7 @@ fn expand_format_args<'hir>(
             sym::new,
         ));
         let args = ctx.expr_ref(macsp, args);
-        let new_args = ctx.arena.alloc_from_iter([template, args]);
+        let new_args = ctx.arena.alloc_from_iter([template, args, estimated_capacity]);
         ctx.expr_call(macsp, new, new_args)
     };
     let call = hir::ExprKind::Block(
