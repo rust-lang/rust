@@ -2,7 +2,7 @@
 //@compile-flags: -Zmiri-strict-provenance
 //@[tree_implicit_writes]compile-flags: -Zmiri-tree-borrows -Zmiri-tree-borrows-implicit-writes
 //@[tree]compile-flags: -Zmiri-tree-borrows
-#![feature(iter_advance_by, iter_next_chunk)]
+#![feature(iter_next_chunk)]
 
 // Gather all references from a mutable iterator and make sure Miri notices if
 // using them is dangerous.

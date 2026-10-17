@@ -292,8 +292,6 @@ pub const trait Iterator {
     /// # Examples
     ///
     /// ```
-    /// #![feature(iter_advance_by)]
-    ///
     /// use std::num::NonZero;
     ///
     /// let a = [1, 2, 3, 4];
@@ -305,7 +303,7 @@ pub const trait Iterator {
     /// assert_eq!(iter.advance_by(100), Err(NonZero::new(99).unwrap())); // only `4` was skipped
     /// ```
     #[inline]
-    #[unstable(feature = "iter_advance_by", issue = "77404")]
+    #[stable(feature = "iter_advance_by", since = "CURRENT_RUSTC_VERSION")]
     fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>>
     where
         Self::Item: [const] Destruct,
