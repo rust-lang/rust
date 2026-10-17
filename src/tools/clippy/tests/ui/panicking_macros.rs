@@ -1,7 +1,9 @@
+//@ aux-build:proc_macros.rs
 #![warn(clippy::panic, clippy::todo, clippy::unimplemented, clippy::unreachable)]
 #![expect(clippy::assertions_on_constants, clippy::eq_op, clippy::let_unit_value)]
 
 extern crate core;
+extern crate proc_macros;
 
 const _: () = {
     if 1 == 0 {
@@ -127,3 +129,48 @@ fn debug_assert_msg() {
 }
 
 fn main() {}
+
+mod issue17699 {
+    macro_rules! outer {
+        ($e:expr) => {{ $e }};
+    }
+
+    fn nested_macro() {
+        outer!(panic!()); //~ panic
+        outer!(todo!()); //~ todo
+        outer!(unimplemented!()); //~ unimplemented
+        outer!(unreachable!()); //~ unreachable
+
+        macro_rules! call_panic {
+            () => {
+                panic!("should not be linted")
+            };
+        }
+        call_panic!();
+    }
+
+    fn duplication() {
+        macro_rules! twice {
+            ($e:expr) => {{ ($e, $e) }};
+        };
+        // `panic!` is called twice but linted once
+        twice!(panic!()); //~ panic
+    }
+
+    fn proc_macro() {
+        // These should not linted because users have no control
+
+        proc_macros::external! { panic!() }
+
+        proc_macros::with_span! { span {
+            panic!();
+            todo!();
+            unimplemented!();
+            unreachable!()
+        }}
+        proc_macros::with_span! {
+            span proc_macros::with_span! { span panic!("FP") }
+        }
+        outer! { proc_macros::with_span! { span panic!("FP") } }
+    }
+}

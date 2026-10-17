@@ -594,9 +594,8 @@ impl fmt::Debug for StdinLock<'_> {
 ///
 /// ### Note: Windows Portability Considerations
 ///
-/// When operating in a console, the Windows implementation of this stream does not support
-/// non-UTF-8 byte sequences. Attempting to write bytes that are not valid UTF-8 will return
-/// an error.
+/// When operating in a console, the Windows implementation of this stream decodes bytes
+/// as UTF-8, replacing malformed sequences with the Unicode replacement character (U+FFFD).
 ///
 /// In a process with a detached console, such as one using
 /// `#![windows_subsystem = "windows"]`, or in a child process spawned from such a process,
@@ -627,9 +626,8 @@ pub struct Stdout {
 ///
 /// ### Note: Windows Portability Considerations
 ///
-/// When operating in a console, the Windows implementation of this stream does not support
-/// non-UTF-8 byte sequences. Attempting to write bytes that are not valid UTF-8 will return
-/// an error.
+/// When operating in a console, the Windows implementation of this stream decodes bytes
+/// as UTF-8, replacing malformed sequences with the Unicode replacement character (U+FFFD).
 ///
 /// In a process with a detached console, such as one using
 /// `#![windows_subsystem = "windows"]`, or in a child process spawned from such a process,
@@ -659,9 +657,8 @@ static STDOUT: OnceLock<ReentrantLock<RefCell<LineWriter<StdoutRaw>>>> = OnceLoc
 ///
 /// ### Note: Windows Portability Considerations
 ///
-/// When operating in a console, the Windows implementation of this stream does not support
-/// non-UTF-8 byte sequences. Attempting to write bytes that are not valid UTF-8 will return
-/// an error.
+/// When operating in a console, the Windows implementation of this stream decodes bytes
+/// as UTF-8, replacing malformed sequences with the Unicode replacement character (U+FFFD).
 ///
 /// In a process with a detached console, such as one using
 /// `#![windows_subsystem = "windows"]`, or in a child process spawned from such a process,
@@ -882,9 +879,8 @@ impl fmt::Debug for StdoutLock<'_> {
 ///
 /// ### Note: Windows Portability Considerations
 ///
-/// When operating in a console, the Windows implementation of this stream does not support
-/// non-UTF-8 byte sequences. Attempting to write bytes that are not valid UTF-8 will return
-/// an error.
+/// When operating in a console, the Windows implementation of this stream decodes bytes
+/// as UTF-8, replacing malformed sequences with the Unicode replacement character (U+FFFD).
 ///
 /// In a process with a detached console, such as one using
 /// `#![windows_subsystem = "windows"]`, or in a child process spawned from such a process,
@@ -903,9 +899,8 @@ pub struct Stderr {
 ///
 /// ### Note: Windows Portability Considerations
 ///
-/// When operating in a console, the Windows implementation of this stream does not support
-/// non-UTF-8 byte sequences. Attempting to write bytes that are not valid UTF-8 will return
-/// an error.
+/// When operating in a console, the Windows implementation of this stream decodes bytes
+/// as UTF-8, replacing malformed sequences with the Unicode replacement character (U+FFFD).
 ///
 /// In a process with a detached console, such as one using
 /// `#![windows_subsystem = "windows"]`, or in a child process spawned from such a process,
@@ -924,9 +919,8 @@ pub struct StderrLock<'a> {
 ///
 /// ### Note: Windows Portability Considerations
 ///
-/// When operating in a console, the Windows implementation of this stream does not support
-/// non-UTF-8 byte sequences. Attempting to write bytes that are not valid UTF-8 will return
-/// an error.
+/// When operating in a console, the Windows implementation of this stream decodes bytes
+/// as UTF-8, replacing malformed sequences with the Unicode replacement character (U+FFFD).
 ///
 /// In a process with a detached console, such as one using
 /// `#![windows_subsystem = "windows"]`, or in a child process spawned from such a process,

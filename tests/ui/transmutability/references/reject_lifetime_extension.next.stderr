@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/reject_lifetime_extension.rs:20:18
+  --> $DIR/reject_lifetime_extension.rs:22:18
    |
 LL |     fn extend_bare<'a>(src: &'a u8) -> &'static u8 {
    |                    -- lifetime `'a` defined here
@@ -7,7 +7,7 @@ LL |         unsafe { transmute(src) }
    |                  ^^^^^^^^^^^^^^ returning this value requires that `'a` must outlive `'static`
 
 error: lifetime may not live long enough
-  --> $DIR/reject_lifetime_extension.rs:28:18
+  --> $DIR/reject_lifetime_extension.rs:30:18
    |
 LL |     fn extend_nested<'a>(src: &'a &'a u8) -> &'a &'static u8 {
    |                      -- lifetime `'a` defined here
@@ -15,7 +15,7 @@ LL |         unsafe { transmute(src) }
    |                  ^^^^^^^^^^^^^^ returning this value requires that `'a` must outlive `'static`
 
 error: lifetime may not live long enough
-  --> $DIR/reject_lifetime_extension.rs:36:18
+  --> $DIR/reject_lifetime_extension.rs:38:18
    |
 LL |     fn extend_unit<'a>(src: (&'a u8,)) -> (&'static u8,) {
    |                    -- lifetime `'a` defined here
@@ -23,7 +23,7 @@ LL |         unsafe { transmute(src) }
    |                  ^^^^^^^^^^^^^^ returning this value requires that `'a` must outlive `'static`
 
 error: lifetime may not live long enough
-  --> $DIR/reject_lifetime_extension.rs:40:18
+  --> $DIR/reject_lifetime_extension.rs:42:18
    |
 LL |     fn extend_pair<'a>(src: (&'a u8, u8)) -> (&'static u8, u8) {
    |                    -- lifetime `'a` defined here
@@ -31,7 +31,7 @@ LL |         unsafe { transmute(src) }
    |                  ^^^^^^^^^^^^^^ returning this value requires that `'a` must outlive `'static`
 
 error: lifetime may not live long enough
-  --> $DIR/reject_lifetime_extension.rs:50:18
+  --> $DIR/reject_lifetime_extension.rs:52:18
    |
 LL |     fn extend_struct<'a>(src: Struct<'a>) -> Struct<'static> {
    |                      -- lifetime `'a` defined here
@@ -39,7 +39,7 @@ LL |         unsafe { transmute(src) }
    |                  ^^^^^^^^^^^^^^ returning this value requires that `'a` must outlive `'static`
 
 error: lifetime may not live long enough
-  --> $DIR/reject_lifetime_extension.rs:62:18
+  --> $DIR/reject_lifetime_extension.rs:64:18
    |
 LL |     fn extend_single<'a>(src: Single<'a>) -> Single<'static> {
    |                      -- lifetime `'a` defined here
@@ -47,7 +47,7 @@ LL |         unsafe { transmute(src) }
    |                  ^^^^^^^^^^^^^^ returning this value requires that `'a` must outlive `'static`
 
 error: lifetime may not live long enough
-  --> $DIR/reject_lifetime_extension.rs:72:18
+  --> $DIR/reject_lifetime_extension.rs:74:18
    |
 LL |     fn extend_multi<'a>(src: Multi<'a>) -> Multi<'static> {
    |                     -- lifetime `'a` defined here
@@ -55,7 +55,7 @@ LL |         unsafe { transmute(src) }
    |                  ^^^^^^^^^^^^^^ returning this value requires that `'a` must outlive `'static`
 
 error[E0521]: borrowed data escapes outside of function
-  --> $DIR/reject_lifetime_extension.rs:80:18
+  --> $DIR/reject_lifetime_extension.rs:82:18
    |
 LL |     fn call_extend_hrtb<'a>(src: &'a u8) -> &'static u8 {
    |                         --  --- `src` is only valid in the function body
@@ -68,7 +68,7 @@ LL |         unsafe { extend_hrtb(src) }
    |                  argument requires that `'a` must outlive `'static`
    |
 note: due to a current limitation of the type system, this implies a `'static` lifetime
-  --> $DIR/reject_lifetime_extension.rs:85:9
+  --> $DIR/reject_lifetime_extension.rs:87:9
    |
 LL |         for<'b> &'b u8: TransmuteFrom<&'a u8>,
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

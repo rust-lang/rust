@@ -126,7 +126,9 @@ libm_macros::for_each_function! {
         exp10 | exp10f | exp2 | exp2f => (true, Some(musl_math_sys::MACRO_FN_NAME)),
 
         // Musl does not provide `f16` and `f128` functions, as well as a handful of others
-        fmaximum
+        exp2m1
+        | exp2m1f
+        | fmaximum
         | fmaximum_num
         | fmaximum_numf
         | fmaximumf

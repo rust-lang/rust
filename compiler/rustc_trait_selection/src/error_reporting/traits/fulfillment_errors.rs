@@ -57,6 +57,35 @@ use crate::traits::{
 };
 
 impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
+    /// Checks for an explicit `Self: Trait` bound on an associated type impl.
+    fn is_explicit_self_trait_bound_on_impl_assoc_type(
+        &self,
+        body_def_id: LocalDefId,
+        cause_code: &ObligationCauseCode<'tcx>,
+        trait_def_id: DefId,
+    ) -> bool {
+        let ObligationCauseCode::WhereClause(item_def_id, span) = *cause_code.peel_derives() else {
+            return false;
+        };
+        // Continue only if there is an impl associated type corresponding to the expected trait item.
+        if !self.tcx.opt_associated_item(body_def_id.to_def_id()).is_some_and(|assoc_item| {
+            assoc_item.trait_item_def_id().is_some_and(|trait_item_def_id| {
+                trait_item_def_id == item_def_id
+                    && matches!(assoc_item.kind, ty::AssocKind::Type { .. })
+            })
+        }) {
+            return false;
+        }
+
+        self.tcx.clauses_of(item_def_id).instantiate_own_identity().any(|(clause, clause_span)| {
+            clause_span == span
+                && clause.skip_norm_wip().as_trait_clause().is_some_and(|trait_pred| {
+                    trait_pred.def_id() == trait_def_id
+                        && trait_pred.skip_binder().self_ty().is_self_param()
+                })
+        })
+    }
+
     /// The `root_obligation` parameter should be the `root_obligation` field
     /// from a `FulfillmentError`. If no `FulfillmentError` is available,
     /// then it should be the same as `obligation`.
@@ -174,6 +203,18 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
                         if let Err(guar) = leaf_trait_predicate.error_reported() {
                             return guar;
+                        }
+                        if self.is_explicit_self_trait_bound_on_impl_assoc_type(
+                            obligation.cause.body_def_id,
+                            obligation.cause.code(),
+                            leaf_trait_predicate.def_id(),
+                        ) && let ty::Param(param_ty) =
+                            *leaf_trait_predicate.skip_binder().self_ty().kind()
+                        {
+                            span = param_ty.span_from_generics(
+                                self.tcx,
+                                obligation.cause.body_def_id.to_def_id(),
+                            );
                         }
                         // Silence redundant errors on binding access that are already
                         // reported on the binding definition (#56607).
