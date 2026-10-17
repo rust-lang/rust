@@ -1,0 +1,79 @@
+- // MIR for `shorten_non_borrowed` before MoveElimination
++ // MIR for `shorten_non_borrowed` after MoveElimination
+  
+  fn shorten_non_borrowed(_1: u32) -> () {
+      debug x => _1;
+      let mut _0: ();
+      let _2: u32;
+      let mut _3: u32;
+      let _5: u32;
+      let mut _6: u32;
+      let _7: u32;
+      let mut _8: u32;
+      scope 1 {
+-         debug a => _2;
++         debug a => _6;
+          let _4: u32;
+          scope 2 {
+-             debug b => _4;
++             debug b => _6;
+          }
+      }
+  
+      bb0: {
+-         StorageLive(_2);
++         nop;
++         nop;
+          StorageLive(_3);
+          _3 = copy _1;
+-         _2 = opaque::<u32>(move _3) -> [return: bb1, unwind unreachable];
++         StorageLive(_6);
++         _6 = opaque::<u32>(move _3) -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+          StorageDead(_3);
+-         StorageLive(_4);
+-         _4 = copy _2;
++         nop;
++         nop;
++         nop;
++         nop;
++         nop;
++         nop;
+          StorageLive(_5);
+-         StorageLive(_6);
+-         _6 = copy _4;
+          _5 = opaque::<u32>(move _6) -> [return: bb2, unwind unreachable];
+      }
+  
+      bb2: {
+-         StorageDead(_6);
+          StorageDead(_5);
++         StorageDead(_6);
++         nop;
++         nop;
++         nop;
++         nop;
++         nop;
+          StorageLive(_7);
+-         StorageLive(_8);
+-         _8 = copy _1;
+-         _7 = opaque::<u32>(move _8) -> [return: bb3, unwind unreachable];
++         _7 = opaque::<u32>(move _1) -> [return: bb3, unwind unreachable];
+      }
+  
+      bb3: {
+-         StorageDead(_8);
+          StorageDead(_7);
++         nop;
++         nop;
+          _0 = const ();
+-         StorageDead(_4);
+-         StorageDead(_2);
++         nop;
++         nop;
+          return;
+      }
+  }
+  

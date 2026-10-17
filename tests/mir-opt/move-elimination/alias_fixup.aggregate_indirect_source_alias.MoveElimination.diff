@@ -1,0 +1,29 @@
+- // MIR for `aggregate_indirect_source_alias` before MoveElimination
++ // MIR for `aggregate_indirect_source_alias` after MoveElimination
+  
+  fn aggregate_indirect_source_alias() -> (u8, u8) {
+      let mut _0: (u8, u8);
+      let mut _1: u8;
+      let mut _2: *const u8;
+      let mut _3: (u8, u8);
++     let mut _4: u8;
+  
+      bb0: {
+-         _1 = const 1_u8;
+-         _2 = &raw const _1;
+-         _3 = (copy (*_2), move _1);
+-         _0 = copy _3;
++         (_0.1: u8) = const 1_u8;
++         StorageLive(_2);
++         _2 = &raw const (_0.1: u8);
++         StorageLive(_4);
++         _4 = no_retag copy (*_2);
++         (_0.0: u8) = no_retag move _4;
++         nop;
++         StorageDead(_4);
++         StorageDead(_2);
++         nop;
+          return;
+      }
+  }
+  
