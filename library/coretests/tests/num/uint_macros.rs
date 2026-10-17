@@ -569,6 +569,10 @@ macro_rules! uint_module {
                 assert_eq_const_safe!($T: (8 as $T).div_floor(3), 2);
             }
 
+            fn test_rem_floor() {
+                assert_eq_const_safe!($T: (8 as $T).rem_floor(3), 2);
+            }
+
             fn test_div_ceil() {
                 assert_eq_const_safe!($T: (8 as $T).div_ceil(3), 3);
             }
