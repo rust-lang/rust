@@ -103,7 +103,7 @@ fn subexpression_elimination(x: u64, y: u64, mut z: u64) {
     // We can substitute through an immutable reference.
     // CHECK: [[ref:_.*]] = &_3;
     // CHECK: [[deref:_.*]] = copy (*[[ref]]);
-    // CHECK: [[addref:_.*]] = Add(copy [[deref]], copy _1);
+    // CHECK: [[addref:_.*]] = Add(copy _1, copy [[deref]]);
     // CHECK: opaque::<u64>(copy [[addref]])
     // CHECK: [[deref2:_.*]] = copy [[deref]];
     // CHECK: [[addref2:_.*]] = copy [[addref]];
@@ -143,7 +143,7 @@ fn subexpression_elimination(x: u64, y: u64, mut z: u64) {
     // Important: `e` is not `a`!
     // CHECK: [[ref2:_.*]] = &_3;
     // CHECK: [[deref2:_.*]] = copy (*[[ref2]]);
-    // CHECK: [[addref2:_.*]] = Add(copy [[deref2]], copy _1);
+    // CHECK: [[addref2:_.*]] = Add(copy _1, copy [[deref2]]);
     // CHECK: opaque::<u64>(copy [[addref2]])
     // CHECK: [[deref3:_.*]] = copy [[deref2]];
     // CHECK: [[addref3:_.*]] = copy [[addref2]];
