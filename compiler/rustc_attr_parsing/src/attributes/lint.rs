@@ -37,7 +37,7 @@ impl LintParser {
                 if !p.path().word_is(sym::reason) {
                     cx.emit_err(diagnostics::MalformedAttribute {
                         span: p.span(),
-                        sub: diagnostics::MalformedAttributeSub::BadAttributeArgument(p.span()),
+                        kind: diagnostics::MalformedAttributeKind::BadAttributeArgument(p.span()),
                     });
                 } else {
                     parsers = &parsers[..(parsers.len() - 1)];
@@ -83,7 +83,7 @@ impl LintParser {
                             ArgParser::NameValue(nv) if p.path().word_is(sym::reason) => {
                                 cx.emit_err(diagnostics::MalformedAttribute {
                                     span: p.span(),
-                                    sub: diagnostics::MalformedAttributeSub::ReasonMustComeLast(
+                                    kind: diagnostics::MalformedAttributeKind::ReasonMustComeLast(
                                         item.span(),
                                     ),
                                 });
@@ -92,7 +92,7 @@ impl LintParser {
                             ArgParser::NameValue(_) | ArgParser::List(_) => {
                                 cx.emit_err(diagnostics::MalformedAttribute {
                                     span: p.span(),
-                                    sub: diagnostics::MalformedAttributeSub::BadAttributeArgument(
+                                    kind: diagnostics::MalformedAttributeKind::BadAttributeArgument(
                                         item.span(),
                                     ),
                                 });
@@ -102,7 +102,7 @@ impl LintParser {
                     MetaItemOrLitParser::Lit(lit) => {
                         cx.emit_err(diagnostics::BadAttributeLit {
                             span: item.span(),
-                            sub: if lit.kind.is_str() {
+                            help: if lit.kind.is_str() {
                                 diagnostics::BadAttributeLitHelp::StrLit {
                                     sym: lit.symbol,
                                     kind: kind.sym(),
