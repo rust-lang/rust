@@ -39,6 +39,7 @@
 #![feature(pattern)]
 #![feature(ptr_cast_slice)]
 #![feature(read_buf)]
+#![feature(retain_unstable)]
 #![feature(seek_io_take_position)]
 #![feature(seek_stream_len)]
 #![feature(slice_partial_sort_unstable)]
