@@ -8,6 +8,7 @@
 #![feature(deref_patterns)]
 #![feature(exitcode_exit_method)]
 #![feature(file_buffered)]
+#![feature(format_args_nl)]
 #![feature(formatting_options)]
 #![feature(iter_intersperse)]
 #![feature(iter_order_by)]
