@@ -4,7 +4,7 @@
 #![allow(missing_debug_implementations)]
 
 cfg_select! {
-    unix => {
+    any(unix, target_os = "qurt") => {
         mod unix;
         pub use self::unix::*;
     }
@@ -23,6 +23,10 @@ cfg_select! {
     target_os = "motor" => {
         mod motor;
         pub use self::motor::*;
+    }
+    target_os = "qurt" => {
+        mod qurt;
+        pub use self::qurt::*;
     }
     target_os = "trusty" => {
         mod trusty;

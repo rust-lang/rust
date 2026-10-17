@@ -15,6 +15,8 @@ use crate::fs;
 use crate::io;
 #[cfg(target_os = "hermit")]
 use crate::os::hermit::io::OwnedFd;
+#[cfg(target_os = "qurt")]
+use crate::os::qurt::io::OwnedFd;
 #[cfg(all(not(target_os = "hermit"), not(target_os = "motor")))]
 use crate::os::raw;
 #[cfg(all(doc, not(any(target_family = "wasm", target_env = "sgx", target_os = "l4re"))))]

@@ -3,6 +3,11 @@ use crate::fmt;
 
 pub struct Args {}
 
+#[cfg(target_os = "qurt")]
+pub unsafe fn init(_argc: isize, _argv: *const *const u8) {
+    // QuRT goes through the unix PAL's `init`, but has no args to record.
+}
+
 pub fn args() -> Args {
     Args {}
 }

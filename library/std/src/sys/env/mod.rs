@@ -6,6 +6,7 @@
     target_family = "unix",
     target_os = "hermit",
     target_os = "motor",
+    target_os = "qurt",
     all(target_vendor = "fortanix", target_env = "sgx"),
     target_os = "solid_asp3",
     target_os = "uefi",
@@ -15,7 +16,7 @@
 mod common;
 
 cfg_select! {
-    target_family = "unix" => {
+    any(target_family = "unix", target_os = "qurt") => {
         mod unix;
         pub use unix::*;
     }
