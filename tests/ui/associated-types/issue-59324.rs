@@ -14,7 +14,6 @@ pub trait ThriftService<Bug: NotFoo>:
 {
     fn get_service(
     //~^ ERROR the trait bound `Bug: Foo` is not satisfied
-    //~| ERROR the trait bound `Bug: Foo` is not satisfied
         &self,
     ) -> Self::AssocType;
 }
