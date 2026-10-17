@@ -3,6 +3,21 @@ struct Dog {
     age: u32,
 }
 
+pub mod foo {
+    pub struct Bar {
+        pub field1: (),
+        field2: (),
+    }
+    impl Bar {
+        pub fn new() -> Self {
+            Bar {
+                field1: (),
+                field2: (),
+            }
+        }
+    }
+}
+
 
 fn main() {
     let d = Dog { name: "Rusty".to_string(), age: 8 };
@@ -19,6 +34,9 @@ fn main() {
         Dog { name: x  , } => {} //~ ERROR pattern does not mention field `age`
     }
     match d {
-        Dog {} => {} //~ ERROR pattern does not mention fields `name`, `age`
+        Dog {} => {} //~ ERROR pattern does not mention fields `name` and `age`
+    }
+    match foo::Bar::new() {
+        foo::Bar {} => {} //~ ERROR pattern does not mention field `field1` and inaccessible fields
     }
 }
