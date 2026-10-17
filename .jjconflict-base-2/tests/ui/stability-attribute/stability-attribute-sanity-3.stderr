@@ -1,0 +1,8 @@
+error: macro has missing stability attribute
+  --> $DIR/stability-attribute-sanity-3.rs:8:1
+   |
+LL | macro_rules! mac {
+   | ^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

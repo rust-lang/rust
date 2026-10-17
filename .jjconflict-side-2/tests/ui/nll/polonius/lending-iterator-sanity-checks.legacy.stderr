@@ -1,0 +1,28 @@
+error[E0499]: cannot borrow `*t` as mutable more than once at a time
+  --> $DIR/lending-iterator-sanity-checks.rs:19:19
+   |
+LL | fn use_live<T: LendingIterator>(t: &mut T) -> Option<(T::Item<'_>, T::Item<'_>)> {
+   |                                    - let's call the lifetime of this reference `'1`
+LL |     let Some(i) = t.next() else { return None };
+   |                   - first mutable borrow occurs here
+LL |     let Some(j) = t.next() else { return None };
+   |                   ^ second mutable borrow occurs here
+...
+LL |     Some((i, j))
+   |     ------------ returning this value requires that `*t` is borrowed for `'1`
+
+error[E0499]: cannot borrow `*t` as mutable more than once at a time
+  --> $DIR/lending-iterator-sanity-checks.rs:31:13
+   |
+LL |     let i = t.next();
+   |             - first mutable borrow occurs here
+...
+LL |     let j = t.next();
+   |             ^ second mutable borrow occurs here
+LL |
+LL | }
+   | - first borrow might be used here, when `i` is dropped and runs the destructor for type `Option<<T as LendingIterator>::Item<'_>>`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0499`.

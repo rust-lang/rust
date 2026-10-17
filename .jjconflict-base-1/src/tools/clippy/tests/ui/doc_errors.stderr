@@ -1,0 +1,47 @@
+error: docs for function returning `Result` missing `# Errors` section
+  --> tests/ui/doc_errors.rs:7:1
+   |
+LL | pub fn pub_fn_missing_errors_header() -> Result<(), ()> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::missing-errors-doc` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::missing_errors_doc)]`
+
+error: docs for function returning `Result` missing `# Errors` section
+  --> tests/ui/doc_errors.rs:13:1
+   |
+LL | pub async fn async_pub_fn_missing_errors_header() -> Result<(), ()> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: docs for function returning `Result` missing `# Errors` section
+  --> tests/ui/doc_errors.rs:20:1
+   |
+LL | pub fn pub_fn_returning_io_result() -> io::Result<()> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: docs for function returning `Result` missing `# Errors` section
+  --> tests/ui/doc_errors.rs:27:1
+   |
+LL | pub async fn async_pub_fn_returning_io_result() -> io::Result<()> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: docs for function returning `Result` missing `# Errors` section
+  --> tests/ui/doc_errors.rs:59:5
+   |
+LL |     pub fn pub_method_missing_errors_header() -> Result<(), ()> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: docs for function returning `Result` missing `# Errors` section
+  --> tests/ui/doc_errors.rs:66:5
+   |
+LL |     pub async fn async_pub_method_missing_errors_header() -> Result<(), ()> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: docs for function returning `Result` missing `# Errors` section
+  --> tests/ui/doc_errors.rs:118:5
+   |
+LL |     fn trait_method_missing_errors_header() -> Result<(), ()>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 7 previous errors
+

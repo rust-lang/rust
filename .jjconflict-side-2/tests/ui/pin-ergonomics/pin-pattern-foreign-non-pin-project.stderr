@@ -1,0 +1,8 @@
+error: cannot project on type that is not `#[pin_v2]`
+  --> $DIR/pin-pattern-foreign-non-pin-project.rs:18:18
+   |
+LL |     let &pin mut Foreign(ref pin mut _x) = p;
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

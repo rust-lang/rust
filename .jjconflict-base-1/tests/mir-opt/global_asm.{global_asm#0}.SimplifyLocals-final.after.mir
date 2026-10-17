@@ -1,0 +1,9 @@
+// MIR for `{global_asm#0}` after SimplifyLocals-final
+
+{global_asm#0}: ! = {
+    let mut _0: !;
+
+    bb0: {
+        asm!("/* */", options()) -> unwind unreachable;
+    }
+}

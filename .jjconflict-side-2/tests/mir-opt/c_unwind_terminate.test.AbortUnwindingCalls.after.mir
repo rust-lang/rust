@@ -1,0 +1,36 @@
+// MIR for `test` after AbortUnwindingCalls
+
+fn test() -> () {
+    let mut _0: ();
+    let _1: Noise;
+    let _2: ();
+    scope 1 {
+        debug _val => _1;
+    }
+
+    bb0: {
+        StorageLive(_1);
+        _1 = Noise;
+        StorageLive(_2);
+        _2 = panic() -> [return: bb1, unwind: bb3];
+    }
+
+    bb1: {
+        StorageDead(_2);
+        _0 = const ();
+        drop(_1) -> [return: bb2, unwind: bb4];
+    }
+
+    bb2: {
+        StorageDead(_1);
+        return;
+    }
+
+    bb3 (cleanup): {
+        drop(_1) -> [return: bb4, unwind terminate(cleanup)];
+    }
+
+    bb4 (cleanup): {
+        terminate(abi);
+    }
+}

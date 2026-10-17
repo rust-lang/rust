@@ -1,0 +1,117 @@
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/implied-bounds-leak-hidden-ty-rpitit.rs:22:9
+   |
+LL |         (Box::new(x), Outlives::<T>(None))
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         |
+   |         the parameter type `T` must be valid for the static lifetime...
+   |         ...so that the type `T` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL |     fn foo<T: 'static>(x: T) -> (Box<dyn Any>, impl Sized) {
+   |             +++++++++
+
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/implied-bounds-leak-hidden-ty-rpitit.rs:22:10
+   |
+LL |         (Box::new(x), Outlives::<T>(None))
+   |          ^^^^^^^^^^^
+   |          |
+   |          the parameter type `T` must be valid for the static lifetime...
+   |          ...so that the type `T` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL |     fn foo<T: 'static>(x: T) -> (Box<dyn Any>, impl Sized) {
+   |             +++++++++
+
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/implied-bounds-leak-hidden-ty-rpitit.rs:22:10
+   |
+LL |         (Box::new(x), Outlives::<T>(None))
+   |          ^^^^^^^^^^^
+   |          |
+   |          the parameter type `T` must be valid for the static lifetime...
+   |          ...so that the type `T` will meet its required lifetime bounds
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider adding an explicit lifetime bound
+   |
+LL |     fn foo<T: 'static>(x: T) -> (Box<dyn Any>, impl Sized) {
+   |             +++++++++
+
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/implied-bounds-leak-hidden-ty-rpitit.rs:22:23
+   |
+LL |         (Box::new(x), Outlives::<T>(None))
+   |                       ^^^^^^^^^^^^^^^^^^^
+   |                       |
+   |                       the parameter type `T` must be valid for the static lifetime...
+   |                       ...so that the type `T` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL |     fn foo<T: 'static>(x: T) -> (Box<dyn Any>, impl Sized) {
+   |             +++++++++
+
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/implied-bounds-leak-hidden-ty-rpitit.rs:34:9
+   |
+LL |         (Box::new(x), Outlives::<T>(None))
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         |
+   |         the parameter type `T` must be valid for the static lifetime...
+   |         ...so that the type `T` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL |     fn foo<T: 'static>(x: T) -> (Box<dyn Any>, impl Sized) {
+   |             +++++++++
+
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/implied-bounds-leak-hidden-ty-rpitit.rs:34:10
+   |
+LL |         (Box::new(x), Outlives::<T>(None))
+   |          ^^^^^^^^^^^
+   |          |
+   |          the parameter type `T` must be valid for the static lifetime...
+   |          ...so that the type `T` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL |     fn foo<T: 'static>(x: T) -> (Box<dyn Any>, impl Sized) {
+   |             +++++++++
+
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/implied-bounds-leak-hidden-ty-rpitit.rs:34:10
+   |
+LL |         (Box::new(x), Outlives::<T>(None))
+   |          ^^^^^^^^^^^
+   |          |
+   |          the parameter type `T` must be valid for the static lifetime...
+   |          ...so that the type `T` will meet its required lifetime bounds
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider adding an explicit lifetime bound
+   |
+LL |     fn foo<T: 'static>(x: T) -> (Box<dyn Any>, impl Sized) {
+   |             +++++++++
+
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/implied-bounds-leak-hidden-ty-rpitit.rs:34:23
+   |
+LL |         (Box::new(x), Outlives::<T>(None))
+   |                       ^^^^^^^^^^^^^^^^^^^
+   |                       |
+   |                       the parameter type `T` must be valid for the static lifetime...
+   |                       ...so that the type `T` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL |     fn foo<T: 'static>(x: T) -> (Box<dyn Any>, impl Sized) {
+   |             +++++++++
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0310`.

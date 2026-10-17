@@ -1,0 +1,117 @@
+error[E0382]: use of moved value: `u`
+  --> $DIR/borrowck-union-move.rs:26:21
+   |
+LL |             let mut u = Unn { n1: ManuallyDrop::new(NonCopy) };
+   |                 ----- move occurs because `u` has type `Unn`, which does not implement the `Copy` trait
+LL |             let a = u.n1;
+   |                     ---- value moved here
+LL |             let a = u.n1;
+   |                     ^^^^ value used here after move
+   |
+note: if `Unn` implemented `Clone`, you could clone the value
+  --> $DIR/borrowck-union-move.rs:7:1
+   |
+LL | union Unn {
+   | ^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |             let a = u.n1;
+   |                     ---- you could clone this value
+
+error[E0382]: use of moved value: `u`
+  --> $DIR/borrowck-union-move.rs:31:21
+   |
+LL |             let mut u = Unn { n1: ManuallyDrop::new(NonCopy) };
+   |                 ----- move occurs because `u` has type `Unn`, which does not implement the `Copy` trait
+LL |             let a = u.n1;
+   |                     ---- value moved here
+LL |             let a = u;
+   |                     ^ value used here after move
+   |
+note: if `Unn` implemented `Clone`, you could clone the value
+  --> $DIR/borrowck-union-move.rs:7:1
+   |
+LL | union Unn {
+   | ^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |             let a = u.n1;
+   |                     ---- you could clone this value
+
+error[E0382]: use of moved value: `u`
+  --> $DIR/borrowck-union-move.rs:36:21
+   |
+LL |             let mut u = Unn { n1: ManuallyDrop::new(NonCopy) };
+   |                 ----- move occurs because `u` has type `Unn`, which does not implement the `Copy` trait
+LL |             let a = u.n1;
+   |                     ---- value moved here
+LL |             let a = u.n2;
+   |                     ^^^^ value used here after move
+   |
+note: if `Unn` implemented `Clone`, you could clone the value
+  --> $DIR/borrowck-union-move.rs:7:1
+   |
+LL | union Unn {
+   | ^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |             let a = u.n1;
+   |                     ---- you could clone this value
+
+error[E0382]: use of moved value: `u`
+  --> $DIR/borrowck-union-move.rs:63:21
+   |
+LL |             let mut u = Ucn { c: Copy };
+   |                 ----- move occurs because `u` has type `Ucn`, which does not implement the `Copy` trait
+LL |             let a = u.n;
+   |                     --- value moved here
+LL |             let a = u.n;
+   |                     ^^^ value used here after move
+   |
+note: if `Ucn` implemented `Clone`, you could clone the value
+  --> $DIR/borrowck-union-move.rs:15:1
+   |
+LL | union Ucn {
+   | ^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |             let a = u.n;
+   |                     --- you could clone this value
+
+error[E0382]: use of moved value: `u`
+  --> $DIR/borrowck-union-move.rs:68:21
+   |
+LL |             let mut u = Ucn { c: Copy };
+   |                 ----- move occurs because `u` has type `Ucn`, which does not implement the `Copy` trait
+LL |             let a = u.n;
+   |                     --- value moved here
+LL |             let a = u.c;
+   |                     ^^^ value used here after move
+   |
+note: if `Ucn` implemented `Clone`, you could clone the value
+  --> $DIR/borrowck-union-move.rs:15:1
+   |
+LL | union Ucn {
+   | ^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |             let a = u.n;
+   |                     --- you could clone this value
+
+error[E0382]: use of moved value: `u`
+  --> $DIR/borrowck-union-move.rs:83:21
+   |
+LL |             let mut u = Ucn { c: Copy };
+   |                 ----- move occurs because `u` has type `Ucn`, which does not implement the `Copy` trait
+LL |             let a = u.n;
+   |                     --- value moved here
+LL |             let a = u;
+   |                     ^ value used here after move
+   |
+note: if `Ucn` implemented `Clone`, you could clone the value
+  --> $DIR/borrowck-union-move.rs:15:1
+   |
+LL | union Ucn {
+   | ^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |             let a = u.n;
+   |                     --- you could clone this value
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0382`.

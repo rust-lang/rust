@@ -1,0 +1,72 @@
+//@ compile-flags: -Z unpretty=hir,typed
+
+#![deny(deprecated)]
+#![attr = Feature([extern_item_impls#0])]
+extern crate std;
+#[attr = PreludeImport]
+use ::std::prelude::rust_2015::*;
+
+const _: () =
+    ({
+        #[attr = EiiImpl(EiiImpl {resolution: Known(DefId(0:7 ~ cfg_on_eii[fec6]::{extern#0}::cfg_on_eii)),
+        is_default: true})]
+        fn cfg_on_eii() ({ } as ())
+    } as ());
+extern "Rust" {
+    #[attr = CfgTrace([Bool(true, $DIR/cfg_on_eii.rs:6:7: 6:11 (#0))])]
+    #[attr = RustcEiiForeignItem]
+    fn cfg_on_eii();
+}
+#[attr = CfgTrace([Bool(true, $DIR/cfg_on_eii.rs:6:7: 6:11 (#0))])]
+#[attr = RustcMacroTransparency(SemiOpaque)]
+#[attr = RustcBuiltinMacro {builtin_name: "eii_shared_macro",
+helper_attrs: []}]
+#[attr = EiiDeclaration(EiiDecl {foreign_item: DefId(0:7 ~ cfg_on_eii[fec6]::{extern#0}::cfg_on_eii),
+impl_unsafe: false, name: cfg_on_eii#0})]
+macro cfg_on_eii { () => {} }
+
+const _: () =
+    ({
+        #[attr = EiiImpl(EiiImpl {resolution: Known(DefId(0:12 ~ cfg_on_eii[fec6]::{extern#1}::conditional_eii)),
+        is_default: true})]
+        fn conditional_eii() ({ } as ())
+    } as ());
+extern "Rust" {
+    #[attr = CfgAttrTrace([Bool(true, $DIR/cfg_on_eii.rs:10:12: 10:16 (#0))])]
+    #[attr = RustcEiiForeignItem]
+    fn conditional_eii();
+}
+#[attr = CfgAttrTrace([Bool(true, $DIR/cfg_on_eii.rs:10:12: 10:16 (#0))])]
+#[attr = RustcMacroTransparency(SemiOpaque)]
+#[attr = RustcBuiltinMacro {builtin_name: "eii_shared_macro",
+helper_attrs: []}]
+#[attr = EiiDeclaration(EiiDecl {foreign_item: DefId(0:12 ~ cfg_on_eii[fec6]::{extern#1}::conditional_eii),
+impl_unsafe: false, name: conditional_eii#0})]
+macro conditional_eii { () => {} }
+
+const _: () =
+    ({
+        #[attr = EiiImpl(EiiImpl {resolution: Known(DefId(0:17 ~ cfg_on_eii[fec6]::{extern#2}::cfg_attr_on_eii)),
+        is_default: true})]
+        fn cfg_attr_on_eii() ({ } as ())
+    } as ());
+extern "Rust" {
+    #[attr = CfgAttrTrace([Bool(true, $DIR/cfg_on_eii.rs:13:12: 13:16 (#0))])]
+    #[attr = Deprecated {deprecation: Deprecation {since: Unspecified,
+    note: bar#0}}]
+    #[attr = RustcEiiForeignItem]
+    fn cfg_attr_on_eii();
+}
+#[attr = CfgAttrTrace([Bool(true, $DIR/cfg_on_eii.rs:13:12: 13:16 (#0))])]
+#[attr = Deprecated {deprecation: Deprecation {since: Unspecified,
+note: bar#0}}]
+#[attr = RustcMacroTransparency(SemiOpaque)]
+#[attr = RustcBuiltinMacro {builtin_name: "eii_shared_macro",
+helper_attrs: []}]
+#[attr = EiiDeclaration(EiiDecl {foreign_item: DefId(0:17 ~ cfg_on_eii[fec6]::{extern#2}::cfg_attr_on_eii),
+impl_unsafe: false, name: cfg_attr_on_eii#0})]
+macro cfg_attr_on_eii { () => {} }
+
+fn main() ({
+    ((cfg_attr_on_eii as fn() {cfg_attr_on_eii})() as ());
+} as ())

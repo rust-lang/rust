@@ -1,0 +1,14 @@
+error: complex const arguments must be placed inside of a `const` block
+  --> $DIR/feature-gate-gca-adts.rs:15:19
+   |
+LL |     let _: S<gca!([1, 2])> = S::<gca!([1, 2])>;
+   |                   ^^^^^^
+
+error: complex const arguments must be placed inside of a `const` block
+  --> $DIR/feature-gate-gca-adts.rs:15:39
+   |
+LL |     let _: S<gca!([1, 2])> = S::<gca!([1, 2])>;
+   |                                       ^^^^^^
+
+error: aborting due to 2 previous errors
+

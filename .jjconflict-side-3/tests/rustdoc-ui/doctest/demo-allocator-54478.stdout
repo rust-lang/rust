@@ -1,0 +1,6 @@
+
+running 1 test
+test $DIR/demo-allocator-54478.rs - (line 25) ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+

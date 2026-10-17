@@ -1,0 +1,13 @@
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/stmt-expr-gated.rs:2:13
+   |
+LL |     let _ = #[deny(warnings)] if true {
+   |             ^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0658`.

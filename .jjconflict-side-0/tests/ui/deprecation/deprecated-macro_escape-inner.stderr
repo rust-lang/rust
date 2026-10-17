@@ -1,0 +1,10 @@
+warning: `#[macro_escape]` is a deprecated synonym for `#[macro_use]`
+  --> $DIR/deprecated-macro_escape-inner.rs:4:5
+   |
+LL |     #![macro_escape]
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: try an outer attribute: `#[macro_use]`
+
+warning: 1 warning emitted
+

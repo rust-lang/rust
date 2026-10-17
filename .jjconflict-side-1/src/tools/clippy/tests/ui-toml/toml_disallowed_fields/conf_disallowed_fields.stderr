@@ -1,0 +1,61 @@
+error: use of a disallowed field `conf_disallowed_fields::Y::y`
+  --> tests/ui-toml/toml_disallowed_fields/conf_disallowed_fields.rs:17:10
+   |
+LL | fn b(X { y }: X) {}
+   |          ^
+   |
+   = note: `-D clippy::disallowed-fields` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::disallowed_fields)]`
+
+error: use of a disallowed field `conf_disallowed_fields::Y::y`
+  --> tests/ui-toml/toml_disallowed_fields/conf_disallowed_fields.rs:22:15
+   |
+LL |     let _ = x.y;
+   |               ^
+
+error: use of a disallowed field `conf_disallowed_fields::Y::y`
+  --> tests/ui-toml/toml_disallowed_fields/conf_disallowed_fields.rs:26:15
+   |
+LL |     let _ = x.y;
+   |               ^
+
+error: use of a disallowed field `std::ops::Range::start`
+  --> tests/ui-toml/toml_disallowed_fields/conf_disallowed_fields.rs:30:15
+   |
+LL |     let _ = x.start;
+   |               ^^^^^
+
+error: use of a disallowed field `std::ops::Range::end`
+  --> tests/ui-toml/toml_disallowed_fields/conf_disallowed_fields.rs:32:15
+   |
+LL |     let _ = x.end;
+   |               ^^^
+   |
+   = note: no end allowed
+
+error: use of a disallowed field `std::ops::Range::start`
+  --> tests/ui-toml/toml_disallowed_fields/conf_disallowed_fields.rs:34:17
+   |
+LL |     let Range { start, .. } = x;
+   |                 ^^^^^
+
+error: use of a disallowed field `std::ops::RangeTo::end`
+  --> tests/ui-toml/toml_disallowed_fields/conf_disallowed_fields.rs:38:15
+   |
+LL |     let _ = x.end;
+   |               ^^^
+
+error: use of a disallowed field `std::ops::RangeTo::end`
+  --> tests/ui-toml/toml_disallowed_fields/conf_disallowed_fields.rs:42:19
+   |
+LL |         RangeTo { end } => {},
+   |                   ^^^
+
+error: use of a disallowed field `conf_disallowed_fields::Z::B::x`
+  --> tests/ui-toml/toml_disallowed_fields/conf_disallowed_fields.rs:48:16
+   |
+LL |         Z::B { x } => {},
+   |                ^
+
+error: aborting due to 9 previous errors
+

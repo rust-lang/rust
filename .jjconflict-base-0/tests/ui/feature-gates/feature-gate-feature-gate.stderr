@@ -1,0 +1,14 @@
+error: use of an unstable feature
+  --> $DIR/feature-gate-feature-gate.rs:2:12
+   |
+LL | #![feature(intrinsics)]
+   |            ^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/feature-gate-feature-gate.rs:1:11
+   |
+LL | #![forbid(unstable_features)]
+   |           ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,15 @@
+error[E0609]: no field `c` on type `&Foo`
+  --> $DIR/issue-30580.rs:12:11
+   |
+LL |         b.c;
+   |           ^ unknown field
+   |
+help: a field with a similar name exists
+   |
+LL -         b.c;
+LL +         b.a;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0609`.

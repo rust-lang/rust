@@ -1,0 +1,27 @@
+- // MIR for `sized_ptr` before CheckAlignment
++ // MIR for `sized_ptr` after CheckAlignment
+  
+  fn sized_ptr(_1: *const u32) -> u32 {
+      debug ptr => _1;
+      let mut _0: u32;
++     let mut _2: *const ();
++     let mut _3: usize;
++     let mut _4: usize;
++     let mut _5: usize;
++     let mut _6: bool;
+  
+      bb0: {
++         _2 = copy _1 as *const () (PtrToPtr);
++         _3 = copy _2 as usize (Transmute);
++         _4 = Sub(const <u32 as std::mem::SizedTypeProperties>::ALIGN, const 1_usize);
++         _5 = BitAnd(copy _3, copy _4);
++         _6 = Eq(copy _5, const 0_usize);
++         assert(copy _6, "misaligned pointer dereference: address must be a multiple of {} but is {}", const <u32 as std::mem::SizedTypeProperties>::ALIGN, copy _3) -> [success: bb1, unwind unreachable];
++     }
++ 
++     bb1: {
+          _0 = copy (*_1);
+          return;
+      }
+  }
+  

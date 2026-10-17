@@ -1,0 +1,10 @@
+warning: trait alias `bar` should have an upper camel case name
+  --> $DIR/style_lint.rs:6:7
+   |
+LL | trait bar = std::fmt::Display + std::fmt::Debug;
+   |       ^^^ help: convert the identifier to upper camel case: `Bar`
+   |
+   = note: `#[warn(non_camel_case_types)]` (part of `#[warn(nonstandard_style)]`) on by default
+
+warning: 1 warning emitted
+

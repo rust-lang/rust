@@ -1,0 +1,73 @@
+error: free type alias without body
+  --> $DIR/item-free-type-bounds-semantic-fail.rs:4:5
+   |
+LL |     type A: Ord;
+   |     ^^^^^^^^^^^-
+   |                |
+   |                help: provide a definition for the type: `= <type>;`
+
+error: bounds on `type`s in this context have no effect
+  --> $DIR/item-free-type-bounds-semantic-fail.rs:4:13
+   |
+LL |     type A: Ord;
+   |             ^^^
+
+error: bounds on `type`s in this context have no effect
+  --> $DIR/item-free-type-bounds-semantic-fail.rs:7:13
+   |
+LL |     type B: Ord = u8;
+   |             ^^^
+
+error: bounds on `type`s in this context have no effect
+  --> $DIR/item-free-type-bounds-semantic-fail.rs:9:13
+   |
+LL |     type C: Ord where 'static: 'static = u8;
+   |             ^^^
+
+error: free type alias without body
+  --> $DIR/item-free-type-bounds-semantic-fail.rs:11:5
+   |
+LL |     type D<_T>: Ord;
+   |     ^^^^^^^^^^^^^^^-
+   |                    |
+   |                    help: provide a definition for the type: `= <type>;`
+
+error: bounds on `type`s in this context have no effect
+  --> $DIR/item-free-type-bounds-semantic-fail.rs:11:17
+   |
+LL |     type D<_T>: Ord;
+   |                 ^^^
+
+error: bounds on `type`s in this context have no effect
+  --> $DIR/item-free-type-bounds-semantic-fail.rs:14:17
+   |
+LL |     type E<_T>: Ord = u8;
+   |                 ^^^
+
+error: bounds on `type`s in this context have no effect
+  --> $DIR/item-free-type-bounds-semantic-fail.rs:17:17
+   |
+LL |     type F<_T>: Ord where 'static: 'static = u8;
+   |                 ^^^
+
+error[E0091]: type parameter `_T` is never used
+  --> $DIR/item-free-type-bounds-semantic-fail.rs:14:12
+   |
+LL |     type E<_T>: Ord = u8;
+   |            ^^ unused type parameter
+   |
+   = help: consider removing `_T` or referring to it in the body of the type alias
+   = help: if you intended `_T` to be a const parameter, use `const _T: /* Type */` instead
+
+error[E0091]: type parameter `_T` is never used
+  --> $DIR/item-free-type-bounds-semantic-fail.rs:17:12
+   |
+LL |     type F<_T>: Ord where 'static: 'static = u8;
+   |            ^^ unused type parameter
+   |
+   = help: consider removing `_T` or referring to it in the body of the type alias
+   = help: if you intended `_T` to be a const parameter, use `const _T: /* Type */` instead
+
+error: aborting due to 10 previous errors
+
+For more information about this error, try `rustc --explain E0091`.

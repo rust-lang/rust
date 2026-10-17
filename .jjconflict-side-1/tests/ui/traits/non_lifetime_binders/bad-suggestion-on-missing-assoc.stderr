@@ -1,0 +1,23 @@
+error: late-bound const parameters cannot be used currently
+  --> $DIR/bad-suggestion-on-missing-assoc.rs:18:15
+   |
+LL |     for<const N: u8 = { T::A }> T: TraitA<AsA = impl TraitB<AsB = impl TraitC>>,
+   |               ^
+
+error: defaults for generic parameters are not allowed in `for<...>` binders
+  --> $DIR/bad-suggestion-on-missing-assoc.rs:18:9
+   |
+LL |     for<const N: u8 = { T::A }> T: TraitA<AsA = impl TraitB<AsB = impl TraitC>>,
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0562]: `impl Trait` is not allowed in bounds
+  --> $DIR/bad-suggestion-on-missing-assoc.rs:18:49
+   |
+LL |     for<const N: u8 = { T::A }> T: TraitA<AsA = impl TraitB<AsB = impl TraitC>>,
+   |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `impl Trait` is only allowed in arguments and return types of functions and methods
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0562`.

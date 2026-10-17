@@ -1,0 +1,100 @@
+error: `..` can only be used once per tuple struct or variant pattern
+  --> $DIR/tuple_struct_destructure_fail.rs:23:27
+   |
+LL |     TupleStruct(a, .., b, ..) = TupleStruct(0, 1);
+   |                    --     ^^ can only be used once per tuple struct or variant pattern
+   |                    |
+   |                    previously used here
+
+error: `..` can only be used once per tuple struct or variant pattern
+  --> $DIR/tuple_struct_destructure_fail.rs:25:35
+   |
+LL |     Enum::SingleVariant(a, .., b, ..) = Enum::SingleVariant(0, 1);
+   |                            --     ^^ can only be used once per tuple struct or variant pattern
+   |                            |
+   |                            previously used here
+
+error[E0023]: this pattern has 3 fields, but the corresponding tuple struct has 2 fields
+  --> $DIR/tuple_struct_destructure_fail.rs:28:17
+   |
+LL | struct TupleStruct<S, T>(S, T);
+   |                          -  - tuple struct has 2 fields
+...
+LL |     TupleStruct(a, a, b) = TupleStruct(1, 2);
+   |                 ^  ^  ^ expected 2 fields, found 3
+
+error[E0023]: this pattern has 1 field, but the corresponding tuple struct has 2 fields
+  --> $DIR/tuple_struct_destructure_fail.rs:30:17
+   |
+LL | struct TupleStruct<S, T>(S, T);
+   |                          -  - tuple struct has 2 fields
+...
+LL |     TupleStruct(_) = TupleStruct(1, 2);
+   |                 ^ expected 2 fields, found 1
+   |
+help: use `_` to explicitly ignore each field
+   |
+LL |     TupleStruct(_, _) = TupleStruct(1, 2);
+   |                  +++
+help: use `..` to ignore all fields
+   |
+LL -     TupleStruct(_) = TupleStruct(1, 2);
+LL +     TupleStruct(..) = TupleStruct(1, 2);
+   |
+
+error[E0023]: this pattern has 3 fields, but the corresponding tuple variant has 2 fields
+  --> $DIR/tuple_struct_destructure_fail.rs:32:25
+   |
+LL |     SingleVariant(S, T)
+   |                   -  - tuple variant has 2 fields
+...
+LL |     Enum::SingleVariant(a, a, b) = Enum::SingleVariant(1, 2);
+   |                         ^  ^  ^ expected 2 fields, found 3
+
+error[E0023]: this pattern has 1 field, but the corresponding tuple variant has 2 fields
+  --> $DIR/tuple_struct_destructure_fail.rs:34:25
+   |
+LL |     SingleVariant(S, T)
+   |                   -  - tuple variant has 2 fields
+...
+LL |     Enum::SingleVariant(_) = Enum::SingleVariant(1, 2);
+   |                         ^ expected 2 fields, found 1
+   |
+help: use `_` to explicitly ignore each field
+   |
+LL |     Enum::SingleVariant(_, _) = Enum::SingleVariant(1, 2);
+   |                          +++
+help: use `..` to ignore all fields
+   |
+LL -     Enum::SingleVariant(_) = Enum::SingleVariant(1, 2);
+LL +     Enum::SingleVariant(..) = Enum::SingleVariant(1, 2);
+   |
+
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/tuple_struct_destructure_fail.rs:38:12
+   |
+LL |     test() = TupleStruct(0, 0);
+   |     ------ ^
+   |     |
+   |     cannot assign to this expression
+
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/tuple_struct_destructure_fail.rs:40:14
+   |
+LL |     (test)() = TupleStruct(0, 0);
+   |     -------- ^
+   |     |
+   |     cannot assign to this expression
+
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/tuple_struct_destructure_fail.rs:42:38
+   |
+LL |     <Alias::<isize> as Test>::test() = TupleStruct(0, 0);
+   |     -------------------------------- ^
+   |     |
+   |     cannot assign to this expression
+
+error: aborting due to 9 previous errors
+
+Some errors have detailed explanations: E0023, E0070.
+For more information about an error, try `rustc --explain E0023`.

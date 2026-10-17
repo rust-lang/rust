@@ -1,0 +1,52 @@
+error: unsequenced read of `x`
+  --> tests/ui/mixed_read_write_in_expression.rs:14:9
+   |
+LL |     } + x;
+   |         ^
+   |
+note: whether read occurs before this write depends on evaluation order
+  --> tests/ui/mixed_read_write_in_expression.rs:12:9
+   |
+LL |         x = 1;
+   |         ^^^^^
+   = note: `-D clippy::mixed-read-write-in-expression` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::mixed_read_write_in_expression)]`
+
+error: unsequenced read of `x`
+  --> tests/ui/mixed_read_write_in_expression.rs:18:5
+   |
+LL |     x += {
+   |     ^
+   |
+note: whether read occurs before this write depends on evaluation order
+  --> tests/ui/mixed_read_write_in_expression.rs:21:9
+   |
+LL |         x = 20;
+   |         ^^^^^^
+
+error: unsequenced read of `x`
+  --> tests/ui/mixed_read_write_in_expression.rs:33:12
+   |
+LL |         a: x,
+   |            ^
+   |
+note: whether read occurs before this write depends on evaluation order
+  --> tests/ui/mixed_read_write_in_expression.rs:36:13
+   |
+LL |             x = 6;
+   |             ^^^^^
+
+error: unsequenced read of `x`
+  --> tests/ui/mixed_read_write_in_expression.rs:43:9
+   |
+LL |         x += {
+   |         ^
+   |
+note: whether read occurs before this write depends on evaluation order
+  --> tests/ui/mixed_read_write_in_expression.rs:46:13
+   |
+LL |             x = 20;
+   |             ^^^^^^
+
+error: aborting due to 4 previous errors
+

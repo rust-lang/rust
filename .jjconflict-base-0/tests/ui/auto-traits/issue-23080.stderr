@@ -1,0 +1,11 @@
+error[E0380]: auto traits cannot have associated items
+  --> $DIR/issue-23080.rs:5:8
+   |
+LL | unsafe auto trait Trait {
+   |                   ----- auto traits cannot have associated items
+LL |     fn method(&self) {
+   |        ^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0380`.

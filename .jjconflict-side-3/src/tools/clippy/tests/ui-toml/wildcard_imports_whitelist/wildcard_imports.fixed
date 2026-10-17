@@ -1,0 +1,26 @@
+#![warn(clippy::wildcard_imports)]
+
+mod utils {
+    pub fn print() {}
+}
+
+mod utils_plus {
+    pub fn do_something() {}
+}
+
+mod my_crate {
+    pub mod utils {
+        pub fn my_util_fn() {}
+    }
+}
+
+use my_crate::utils::*;
+use utils::*;
+use utils_plus::do_something;
+//~^ ERROR: usage of wildcard import
+
+fn main() {
+    print();
+    my_util_fn();
+    do_something();
+}

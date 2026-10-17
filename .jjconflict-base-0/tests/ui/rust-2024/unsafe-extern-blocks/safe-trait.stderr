@@ -1,0 +1,8 @@
+error: expected one of `!` or `::`, found keyword `trait`
+  --> $DIR/safe-trait.rs:1:6
+   |
+LL | safe trait Foo {}
+   |      ^^^^^ expected one of `!` or `::`
+
+error: aborting due to 1 previous error
+

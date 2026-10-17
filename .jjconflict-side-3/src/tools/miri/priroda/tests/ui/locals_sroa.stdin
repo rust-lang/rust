@@ -1,0 +1,4 @@
+break tests/ui/locals_sroa.rs:13
+continue
+locals
+quit

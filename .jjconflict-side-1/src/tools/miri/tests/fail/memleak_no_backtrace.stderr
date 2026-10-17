@@ -1,0 +1,6 @@
+error: memory leaked: ALLOC (Rust heap, size: 4, align: 4)
+
+note: set `MIRIFLAGS=-Zmiri-ignore-leaks` to disable this check
+
+error: aborting due to 1 previous error
+

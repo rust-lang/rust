@@ -1,0 +1,15 @@
+error[E0080]: calling non-const function `mostly_harmless`
+  --> $DIR/do_not_const_check.rs:9:5
+   |
+LL |     mostly_harmless();
+   |     ^^^^^^^^^^^^^^^^^ evaluation of `_` failed here
+
+error[E0080]: calling non-const function `integer_min::<i32>`
+  --> $DIR/do_not_const_check.rs:22:5
+   |
+LL |     integer_min(0, 1);
+   |     ^^^^^^^^^^^^^^^^^ evaluation of `_` failed here
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

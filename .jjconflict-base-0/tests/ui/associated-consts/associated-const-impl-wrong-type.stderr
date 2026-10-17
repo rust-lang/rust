@@ -1,0 +1,15 @@
+error[E0326]: implemented const `BAR` has an incompatible type for trait
+  --> $DIR/associated-const-impl-wrong-type.rs:8:16
+   |
+LL |     const BAR: i32 = -1;
+   |                ^^^ expected `u32`, found `i32`
+   |
+note: type in trait
+  --> $DIR/associated-const-impl-wrong-type.rs:2:16
+   |
+LL |     const BAR: u32;
+   |                ^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0326`.

@@ -1,0 +1,47 @@
+error[E0080]: evaluation panicked: assertion failed: std::mem::size_of::<T>() == 0
+  --> $DIR/const-expr-generic-err.rs:4:13
+   |
+LL |     const { assert!(std::mem::size_of::<T>() == 0); }
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `foo::<i32>::{constant#0}` failed here
+
+note: erroneous constant encountered
+  --> $DIR/const-expr-generic-err.rs:4:5
+   |
+LL |     const { assert!(std::mem::size_of::<T>() == 0); }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: the above error was encountered while instantiating `fn foo::<i32>`
+  --> $DIR/const-expr-generic-err.rs:12:5
+   |
+LL |     foo::<i32>();
+   |     ^^^^^^^^^^^^
+
+error[E0080]: attempt to compute `0_usize - 1_usize`, which would overflow
+  --> $DIR/const-expr-generic-err.rs:8:13
+   |
+LL |     const { N - 1 }
+   |             ^^^^^ evaluation of `bar::<0>::{constant#0}` failed here
+
+note: erroneous constant encountered
+  --> $DIR/const-expr-generic-err.rs:8:5
+   |
+LL |     const { N - 1 }
+   |     ^^^^^^^^^^^^^^^
+
+note: erroneous constant encountered
+  --> $DIR/const-expr-generic-err.rs:8:5
+   |
+LL |     const { N - 1 }
+   |     ^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: the above error was encountered while instantiating `fn bar::<0>`
+  --> $DIR/const-expr-generic-err.rs:13:5
+   |
+LL |     bar::<0>();
+   |     ^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

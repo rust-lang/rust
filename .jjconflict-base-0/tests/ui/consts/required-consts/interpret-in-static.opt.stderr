@@ -1,0 +1,15 @@
+error[E0080]: evaluation panicked: explicit panic
+  --> $DIR/interpret-in-static.rs:8:19
+   |
+LL |     const C: () = panic!();
+   |                   ^^^^^^^^ evaluation of `Fail::<i32>::C` failed here
+
+note: erroneous constant encountered
+  --> $DIR/interpret-in-static.rs:17:9
+   |
+LL |         Fail::<i32>::C;
+   |         ^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

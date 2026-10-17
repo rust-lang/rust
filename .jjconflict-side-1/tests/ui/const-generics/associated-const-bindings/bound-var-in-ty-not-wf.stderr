@@ -1,0 +1,16 @@
+error: higher-ranked subtype error
+  --> $DIR/bound-var-in-ty-not-wf.rs:21:13
+   |
+LL |         K = const { () }
+   |             ^^^^^^^^^^^^
+
+error: higher-ranked subtype error
+  --> $DIR/bound-var-in-ty-not-wf.rs:21:13
+   |
+LL |         K = const { () }
+   |             ^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors
+

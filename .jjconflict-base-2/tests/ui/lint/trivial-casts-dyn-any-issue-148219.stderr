@@ -1,0 +1,15 @@
+warning: trivial cast: `&(dyn DynKey + 'static)` as `&(dyn Any + 'static)`
+  --> $DIR/trivial-casts-dyn-any-issue-148219.rs:20:13
+   |
+LL |     let _ = other as &dyn Any;
+   |             ^^^^^^^^^^^^^^^^^
+   |
+   = help: cast can be replaced by coercion; this might require a temporary variable
+note: the lint level is defined here
+  --> $DIR/trivial-casts-dyn-any-issue-148219.rs:5:9
+   |
+LL | #![warn(trivial_casts)]
+   |         ^^^^^^^^^^^^^
+
+warning: 1 warning emitted
+

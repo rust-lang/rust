@@ -1,0 +1,27 @@
+error[E0582]: binding for associated type `Item` references lifetime `'a`, which does not appear in the trait input types
+  --> $DIR/bound-lifetime-in-binding-only.rs:12:25
+   |
+LL | fn angle<T: for<'a> Foo<Item=&'a i32>>() {
+   |                         ^^^^^^^^^^^^
+
+error[E0582]: binding for associated type `Item` references lifetime `'a`, which does not appear in the trait input types
+  --> $DIR/bound-lifetime-in-binding-only.rs:17:37
+   |
+LL | fn angle1<T>() where T: for<'a> Foo<Item=&'a i32> {
+   |                                     ^^^^^^^^^^^^
+
+error[E0582]: binding for associated type `Item` references lifetime `'a`, which does not appear in the trait input types
+  --> $DIR/bound-lifetime-in-binding-only.rs:22:37
+   |
+LL | fn angle2<T>() where for<'a> T: Foo<Item=&'a i32> {
+   |                                     ^^^^^^^^^^^^
+
+error[E0582]: binding for associated type `Item` references lifetime `'a`, which does not appear in the trait input types
+  --> $DIR/bound-lifetime-in-binding-only.rs:27:31
+   |
+LL | fn angle3(_: &dyn for<'a> Foo<Item=&'a i32>) {
+   |                               ^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0582`.

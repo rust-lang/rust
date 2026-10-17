@@ -1,0 +1,20 @@
+Function name: no_spans::affected_function
+Raw bytes (9): 0x[01, 01, 00, 01, 01, 15, 1c, 00, 1d]
+Number of files: 1
+- file 0 => $DIR/no_spans.rs
+Number of expressions: 0
+Number of file 0 mappings: 1
+- Code(Counter(0)) at (prev + 21, 28) to (start + 0, 29)
+Highest counter ID seen: c0
+
+Function name: no_spans::main
+Raw bytes (19): 0x[01, 01, 00, 03, 01, 0a, 01, 00, 0a, 01, 01, 05, 00, 1a, 01, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => $DIR/no_spans.rs
+Number of expressions: 0
+Number of file 0 mappings: 3
+- Code(Counter(0)) at (prev + 10, 1) to (start + 0, 10)
+- Code(Counter(0)) at (prev + 1, 5) to (start + 0, 26)
+- Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
+Highest counter ID seen: c0
+

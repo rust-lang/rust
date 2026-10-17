@@ -1,0 +1,12 @@
+error[E0050]: method `trigger` has 2 parameters but the declaration in trait `Func::trigger` has 1
+  --> $DIR/self-receiver-type-mismatch.rs:14:16
+   |
+LL |     fn trigger(self) -> usize;
+   |                ---- trait requires 1 parameter
+...
+LL |     fn trigger(&self, a: usize) -> usize {
+   |                ^^^^^^^^^^^^^^^ expected 1 parameter, found 2
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0050`.

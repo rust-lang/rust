@@ -1,0 +1,8 @@
+error: expected `::`, found `(`
+  --> $DIR/unmatched-langle-2.rs:13:20
+   |
+LL |     foo::<Ty<<<i32>();
+   |                    ^ expected `::`
+
+error: aborting due to 1 previous error
+
