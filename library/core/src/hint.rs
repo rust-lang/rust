@@ -704,7 +704,7 @@ pub const fn likely(b: bool) -> bool {
 ///     // Use outside of a branch condition may still influence a nearby branch
 ///     let cond = unlikely(x != 0);
 ///     if cond {
-///         println!("this branch is likely to be taken");
+///         println!("this branch is unlikely to be taken");
 ///     }
 /// }
 /// ```
