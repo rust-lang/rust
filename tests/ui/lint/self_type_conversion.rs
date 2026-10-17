@@ -237,30 +237,46 @@ macro_rules! in_macro {
 macro_rules! in_macro_2 {
     ($expr:expr) => {
         $expr.into()
-        //~^ ERROR useless conversion to the same type: `()` [self_type_conversion_in_macro]
-        //~| ERROR useless conversion to the same type: `u16` [self_type_conversion_in_macro]
+        //~^ ERROR useless conversion to the same type: `()`
+        //~| ERROR useless conversion to the same type: `u16`
     }
 }
 macro_rules! in_macro_3 {
     ($expr1:expr, $expr2:expr) => {
+        // FIXME: should likely complain about `$expr1` only, but now it doesn't complain at all.
         ($expr1.into(), $expr2.into())
-        //~^ ERROR useless conversion to the same type: `()` [self_type_conversion_in_macro]
-        //~| ERROR useless conversion to the same type: `()` [self_type_conversion_in_macro]
-        //~| ERROR useless conversion to the same type: `()` [self_type_conversion_in_macro]
     }
 }
 macro_rules! in_macro_4 {
     ($expr1:expr, $expr2:expr) => {
         ($expr1.into(), $expr2.into())
-        //~^ ERROR useless conversion to the same type: `()` [self_type_conversion_in_macro]
-        //~| ERROR useless conversion to the same type: `()` [self_type_conversion_in_macro]
-        //~| ERROR useless conversion to the same type: `()` [self_type_conversion_in_macro]
-        //~| ERROR useless conversion to the same type: `u16` [self_type_conversion_in_macro]
+        //~^ ERROR useless conversion to the same type: `()`
+        //~| ERROR useless conversion to the same type: `()`
+        //~| ERROR useless conversion to the same type: `()`
+        //~| ERROR useless conversion to the same type: `u16`
     }
 }
 macro_rules! in_macro_5 {
     ($expr1:expr, $expr2:expr) => {
         ($expr1.into(), $expr2.into())
+    }
+}
+
+macro_rules! multiple_arms_ok {
+    ($($ty:ty: $expr:expr,)*) => {
+        $(
+            let _: $ty = $expr.into();
+        )*
+    }
+}
+
+macro_rules! multiple_arms {
+    ($($ty:ty: $expr:expr,)*) => {
+        $(
+            let _: $ty = $expr.into();
+            //~^ ERROR useless conversion to the same type: `()`
+            //~| ERROR useless conversion to the same type: `u64`
+        )*
     }
 }
 
@@ -280,10 +296,18 @@ fn main() {
     let _: u64 = in_macro!(0u16); // Ok, the expanded `.into()` isn't entirelyl uselses
     let () = in_macro_2!(());  // Not ok, pointing into the macro
     let _: u16 = in_macro_2!(0u16); // Not ok, pointing into the macro
-    let _: ((), ()) = in_macro_3!((), ()); // Not ok, because the first into is useless
-    let _: ((), u64) = in_macro_3!((), 0u16); // Not ok, because the first into is useless
+    let _: ((), ()) = in_macro_3!((), ()); // Should complain about the first argument, but doesn't
+    let _: ((), u64) = in_macro_3!((), 0u16); // because *one* of the `.into()` wasn't useless.
     let _: ((), ()) = in_macro_4!((), ()); // Not ok, because both into calls are useless
     let _: ((), u16) = in_macro_4!((), 0u16); // Not ok, because both into calls are useless
     let _: ((), ()) = in_macro_5!((), ()); // Ok, because the next call is not useless
     let _: (u64, u64) = in_macro_5!(0u16, 0u16); // Ok
+    multiple_arms_ok! {
+        (): (), // Ok because of the next line
+        u64: 0u16,
+    }
+    multiple_arms! {
+        (): (),
+        u64: 0u64,
+    }
 }

@@ -40,7 +40,7 @@ use rustc_middle::ty::{
     self, AssocContainer, Ty, TyCtxt, TypeVisitableExt, Unnormalized, Upcast, VariantDef,
 };
 use rustc_span::edition::Edition;
-use rustc_span::{DUMMY_SP, Ident, InnerSpan, Span, Spanned, Symbol, SyntaxContext, bug, kw, sym};
+use rustc_span::{DUMMY_SP, Ident, InnerSpan, Span, Spanned, Symbol, bug, kw, sym};
 use rustc_target::asm::InlineAsmArch;
 use rustc_trait_selection::infer::{InferCtxtExt, TyCtxtInferExt};
 use rustc_trait_selection::traits;
@@ -59,7 +59,7 @@ use crate::diagnostics::{
     BuiltinUnpermittedTypeInitSub, BuiltinUnreachablePub, BuiltinUnsafe, BuiltinUnstableFeatures,
     BuiltinUnusedDocComment, BuiltinUnusedDocCommentSub, BuiltinWhileTrue,
     EqInternalMethodImplemented, FullyQualifiedPathSuggestion, InvalidAsmLabel,
-    SelfTypeConversionDiag, SelfTypeConversionInMacroDiag,
+    SelfTypeConversionDiag,
 };
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 
@@ -1511,7 +1511,6 @@ pub mod soft {
             WHILE_TRUE,
             NON_SHORTHAND_FIELD_PATTERNS,
             SELF_TYPE_CONVERSION,
-            SELF_TYPE_CONVERSION_IN_MACRO,
             UNSAFE_CODE,
             MISSING_DOCS,
             MISSING_COPY_IMPLEMENTATIONS,
@@ -3223,68 +3222,20 @@ declare_lint! {
     "unnecessary call to `.into()`",
 }
 
-declare_lint! {
-    /// The `self_type_conversion_in_macro` lint detects when a call to `.into()` within a macro
-    /// expansion does not have any effect.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,compile_fail
-    /// #![deny(self_type_conversion_in_macro)]
-    /// macro_rules! foo {
-    ///     ($x:expr) => {
-    ///         $x.into()
-    ///     }
-    /// }
-    /// fn main() {
-    ///     let () = foo!(());
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// The standard library provides an `impl<T> Into<T> for T` implementation, which lets you call
-    /// `.into()` on any type. Relying on that `impl` is a potential semver problem, as a new, more
-    /// specific `impl` of `Into` for the type could be added in the future, causing an inference
-    /// error on code that previously compiled successfully.
-    ///
-    /// As a way to side-step this potential future failure, it is a good idea to instead use the
-    /// fully-qualified path to the correct impl, like `<Ty as Into<Other>>::into(value)`. When
-    /// calling the method with this syntax, inference does not come into play.
-    ///
-    /// ### Limitations
-    ///
-    /// The lint as currently implemented has both false negatives *and* false positives.
-    ///
-    /// When `use` imports and/or type aliases have `cfg` attributes or are behind a `cfg_select!`
-    /// macro invocation, their *underlying* type will *not* be considered for the purposes of this
-    /// lint, in order to avoid complaining about useless conversions for types that are platform
-    /// dependent.
-    ///
-    /// Even then, the analysis for whether a type is different under different platforms isn't
-    /// exhaustive: if a containing *module* is the one that is gated with a `cfg` attribute, this
-    /// lint will not detect that.
-    pub SELF_TYPE_CONVERSION_IN_MACRO,
-    Deny,
-    "unnecessary call to `.into()` within a macro expansion",
-}
-
 #[derive(Debug)]
 pub struct SelfTypeConversion<'tcx> {
     pub ignored_types: FxHashSet<Ty<'tcx>>,
-    pub macros: FxHashMap<DefId, usize>,
-    pub triggered_macros: FxIndexMap<(DefId, SyntaxContext), FxIndexSet<(Span, Ty<'tcx>)>>,
+    pub into_in_macros: FxHashMap<DefId, Vec<Span>>,
+    pub triggered_macros: FxIndexMap<DefId, FxIndexSet<(Span, Ty<'tcx>)>>,
 }
 
-impl_lint_pass!(SelfTypeConversion<'_> => [SELF_TYPE_CONVERSION, SELF_TYPE_CONVERSION_IN_MACRO]);
+impl_lint_pass!(SelfTypeConversion<'_> => [SELF_TYPE_CONVERSION]);
 
 impl SelfTypeConversion<'_> {
     pub fn new() -> Self {
         Self {
             ignored_types: Default::default(),
-            macros: Default::default(),
+            into_in_macros: Default::default(),
             triggered_macros: Default::default(),
         }
     }
@@ -3292,7 +3243,85 @@ impl SelfTypeConversion<'_> {
 struct ConditionalTypeCollector<'tcx> {
     tcx: TyCtxt<'tcx>,
     ignored_types: FxHashSet<Ty<'tcx>>,
-    macros: FxHashSet<(DefId, SyntaxContext)>,
+    into_in_macros: FxHashMap<DefId, Vec<Span>>,
+}
+
+struct IntoMethod<'tcx> {
+    ty: Ty<'tcx>,
+    rcvr_ty: Ty<'tcx>,
+    rcvr: &'tcx hir::Expr<'tcx>,
+    fully_qualified_path: Option<FullyQualifiedPathSuggestion<'tcx>>,
+    removal_span: Option<Span>,
+}
+
+fn find_into_method<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    typeck: &ty::TypeckResults<'tcx>,
+    expr: &'tcx hir::Expr<'tcx>,
+) -> Option<IntoMethod<'tcx>> {
+    let mut fully_qualified_path = None;
+    let mut removal_span = None;
+    let (rcvr, ty, rcvr_ty) = match expr.kind {
+        // If we have `foo.method(...)` with arguments, we already know that `method` can't be
+        // `into`, so we bail.
+        hir::ExprKind::MethodCall(_segment, rcvr, args, _) => {
+            let Some(def_id) = typeck.type_dependent_def_id(expr.hir_id) else {
+                return None;
+            };
+            if Some(def_id) == tcx.get_diagnostic_item(sym::into_fn) {
+                // We've got `foo.into()`.
+                let ty = typeck.expr_ty(expr);
+                let rcvr_ty = typeck.expr_ty(rcvr);
+                // check that the span context is the same for both sides.
+                if expr.span.eq_ctxt(rcvr.span) {
+                    let post = expr.span.with_lo(rcvr.span.hi());
+                    removal_span = Some(post);
+                    fully_qualified_path = Some(FullyQualifiedPathSuggestion {
+                        ty,
+                        pre: rcvr.span.shrink_to_lo(),
+                        post,
+                    });
+                }
+                (rcvr, ty, rcvr_ty)
+            } else if (Some(def_id) == tcx.get_diagnostic_item(sym::option_map)
+                || Some(def_id) == tcx.get_diagnostic_item(sym::result_map)
+                || Some(def_id) == tcx.get_diagnostic_item(sym::result_map_err))
+                && let [arg] = args
+                && let hir::ExprKind::Path(qpath) = arg.kind
+                && let Res::Def(DefKind::AssocFn, into_def_id) =
+                    typeck.qpath_res(&qpath, arg.hir_id)
+                && Some(into_def_id) == tcx.get_diagnostic_item(sym::into_fn)
+            {
+                // We've got a situation like `foo.map(Into::into)` where `foo`
+                // is an `Option` or `Result`.
+                let ty = typeck.expr_ty(expr);
+                let rcvr_ty = typeck.expr_ty(rcvr);
+                let param_at = if Some(def_id) == tcx.get_diagnostic_item(sym::result_map_err) {
+                    // Look at `E` in `Result<T, E>`, not `T`, we have `foo.map_err(...)`.
+                    1
+                } else {
+                    0
+                };
+                match (ty.kind(), rcvr_ty.kind()) {
+                    // We care about the `T` in `Option<T>` and `Result<T, _>`.
+                    (ty::Adt(_, args), ty::Adt(_, rcvr_args)) => {
+                        if expr.span.eq_ctxt(rcvr.span) {
+                            removal_span = Some(expr.span.with_lo(rcvr.span.hi()));
+                        }
+                        (rcvr, args.type_at(param_at), rcvr_args.type_at(param_at))
+                    }
+                    _ => return None,
+                }
+            } else {
+                // We don't have `foo.into()` corresponding to `Into::into` or
+                // `foo.map(Into::into)`.
+                return None;
+            }
+        }
+        _ => return None,
+    };
+
+    Some(IntoMethod { ty, rcvr_ty, rcvr, fully_qualified_path, removal_span })
 }
 
 impl<'tcx> hir::intravisit::Visitor<'tcx> for ConditionalTypeCollector<'tcx> {
@@ -3306,8 +3335,12 @@ impl<'tcx> hir::intravisit::Visitor<'tcx> for ConditionalTypeCollector<'tcx> {
         if let Some(expn) = expr.span.macro_backtrace().next()
             && let Some(def_id) = expn.macro_def_id
             && def_id.is_local()
+            && let id = self.tcx.local_def_id_to_hir_id(expr.hir_id.owner)
+            && self.tcx.hir_node(id).body_id().is_some()
+            && let typeck = self.tcx.typeck(expr.hir_id.owner)
+            && find_into_method(self.tcx, typeck, expr).is_some()
         {
-            self.macros.insert((def_id, expr.span.ctxt()));
+            self.into_in_macros.entry(def_id).or_default().push(expr.span);
         }
         hir::intravisit::walk_expr(self, expr);
     }
@@ -3374,82 +3407,23 @@ impl<'tcx> LateLintPass<'tcx> for SelfTypeConversion<'tcx> {
         let mut v = ConditionalTypeCollector {
             tcx: cx.tcx,
             ignored_types: Default::default(),
-            macros: Default::default(),
+            into_in_macros: Default::default(),
         };
         cx.tcx.hir_visit_all_item_likes_in_crate(&mut v);
         self.ignored_types = v.ignored_types;
-        #[allow(rustc::potential_query_instability)]
-        for (def_id, _) in v.macros {
-            *self.macros.entry(def_id).or_default() += 1;
-        }
+        tracing::info!("{:#?}", v.into_in_macros);
+        self.into_in_macros = v.into_in_macros;
     }
 
     /// Look for method calls to `Into::into` that rely on inference and that ends up using the
     /// `impl<T> Into<T> for T {}` blanket `impl`.
     ///
     /// This filters on explicit `foo.into()` method calls (ignoring `<_ as Into<_>>::into(foo)`).
-    fn check_expr_post(&mut self, cx: &LateContext<'tcx>, expr: &hir::Expr<'_>) {
-        let mut fully_qualified_path = None;
-        let mut removal_span = None;
-        let (rcvr, ty, rcvr_ty) = match expr.kind {
-            // If we have `foo.method(...)` with arguments, we already know that `method` can't be
-            // `into`, so we bail.
-            hir::ExprKind::MethodCall(_segment, rcvr, args, _) => {
-                let Some(def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) else {
-                    return;
-                };
-                if Some(def_id) == cx.tcx.get_diagnostic_item(sym::into_fn) {
-                    // We've got `foo.into()`.
-                    let ty = cx.typeck_results().expr_ty(expr);
-                    let rcvr_ty = cx.typeck_results().expr_ty(rcvr);
-                    // check that the span context is the same for both sides.
-                    if expr.span.eq_ctxt(rcvr.span) {
-                        let post = expr.span.with_lo(rcvr.span.hi());
-                        removal_span = Some(post);
-                        fully_qualified_path = Some(FullyQualifiedPathSuggestion {
-                            ty,
-                            pre: rcvr.span.shrink_to_lo(),
-                            post,
-                        });
-                    }
-                    (rcvr, ty, rcvr_ty)
-                } else if (Some(def_id) == cx.tcx.get_diagnostic_item(sym::option_map)
-                    || Some(def_id) == cx.tcx.get_diagnostic_item(sym::result_map)
-                    || Some(def_id) == cx.tcx.get_diagnostic_item(sym::result_map_err))
-                    && let [arg] = args
-                    && let hir::ExprKind::Path(qpath) = arg.kind
-                    && let Res::Def(DefKind::AssocFn, into_def_id) =
-                        cx.typeck_results().qpath_res(&qpath, arg.hir_id)
-                    && Some(into_def_id) == cx.tcx.get_diagnostic_item(sym::into_fn)
-                {
-                    // We've got a situation like `foo.map(Into::into)` where `foo`
-                    // is an `Option` or `Result`.
-                    let ty = cx.typeck_results().expr_ty(expr);
-                    let rcvr_ty = cx.typeck_results().expr_ty(rcvr);
-                    let param_at =
-                        if Some(def_id) == cx.tcx.get_diagnostic_item(sym::result_map_err) {
-                            // Look at `E` in `Result<T, E>`, not `T`, we have `foo.map_err(...)`.
-                            1
-                        } else {
-                            0
-                        };
-                    match (ty.kind(), rcvr_ty.kind()) {
-                        // We care about the `T` in `Option<T>` and `Result<T, _>`.
-                        (ty::Adt(_, args), ty::Adt(_, rcvr_args)) => {
-                            if expr.span.eq_ctxt(rcvr.span) {
-                                removal_span = Some(expr.span.with_lo(rcvr.span.hi()));
-                            }
-                            (rcvr, args.type_at(param_at), rcvr_args.type_at(param_at))
-                        }
-                        _ => return,
-                    }
-                } else {
-                    // We don't have `foo.into()` corresponding to `Into::into` or
-                    // `foo.map(Into::into)`.
-                    return;
-                }
-            }
-            _ => return,
+    fn check_expr_post(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
+        let Some(IntoMethod { ty, rcvr_ty, rcvr, fully_qualified_path, removal_span }) =
+            find_into_method(cx.tcx, cx.typeck_results(), expr)
+        else {
+            return;
         };
 
         if ty != rcvr_ty {
@@ -3535,15 +3509,12 @@ impl<'tcx> LateLintPass<'tcx> for SelfTypeConversion<'tcx> {
         if let Some(expn) = expr.span.macro_backtrace().next() {
             if let Some(def_id) = expn.macro_def_id
                 && def_id.is_local()
-                && self.macros.get(&def_id).is_some()
+                && self.into_in_macros.get(&def_id).is_some()
             {
                 // Collect all the `.into()` in macro expansions. Once we've evaluated the whole
-                // crate, we'll only emit the `self_type_conversion_in_macro` lint if *every* macro
+                // crate, we'll only emit the `self_type_conversion` lint if *every* macro
                 // expansion would trigger it.
-                self.triggered_macros
-                    .entry((def_id, expr.span.ctxt()))
-                    .or_default()
-                    .insert((expr.span, ty));
+                self.triggered_macros.entry(def_id).or_default().insert((expr.span, ty));
             }
             // A macro that expands to this code isn't great, but end-users of a macro can't do
             // anything about it.
@@ -3553,22 +3524,22 @@ impl<'tcx> LateLintPass<'tcx> for SelfTypeConversion<'tcx> {
         if ["crates_io", "cargo"].contains(&cx.tcx.crate_name(hir::def_id::LOCAL_CRATE).as_str()) {
             return;
         }
+
         cx.emit_span_lint(
             SELF_TYPE_CONVERSION,
             expr.span,
-            SelfTypeConversionDiag { ty, removal_span, fully_qualified_path },
+            SelfTypeConversionDiag {
+                ty,
+                removal_span,
+                fully_qualified_path,
+                fully_qualified_path_note: false,
+            },
         );
     }
 
     fn check_crate_post(&mut self, cx: &LateContext<'tcx>) {
-        let mut counts: FxIndexMap<DefId, usize> = Default::default();
-        for ((def_id, _), _) in &self.triggered_macros {
-            // Count the `SyntaxContext`s
-            *counts.entry(*def_id).or_default() += 1;
-        }
-
-        for ((def_id, _), entries) in &self.triggered_macros {
-            if counts.get(def_id) == Some(&self.macros[def_id]) {
+        for (def_id, entries) in &self.triggered_macros {
+            if entries.len() == self.into_in_macros[def_id].len() {
                 // Every macro invocation involves a useless `.into()`, so we lint them. Otherwise,
                 // it would mean that there are *some* macro calls that involve types where the
                 // `.into()` call *isn't* useless. This is still a bit more verbose than it could
@@ -3576,9 +3547,14 @@ impl<'tcx> LateLintPass<'tcx> for SelfTypeConversion<'tcx> {
                 // invocation.
                 for &(span, ty) in entries {
                     cx.emit_span_lint(
-                        SELF_TYPE_CONVERSION_IN_MACRO,
+                        SELF_TYPE_CONVERSION,
                         span,
-                        SelfTypeConversionInMacroDiag { ty },
+                        SelfTypeConversionDiag {
+                            ty,
+                            removal_span: None,
+                            fully_qualified_path: None,
+                            fully_qualified_path_note: true,
+                        },
                     );
                 }
             }

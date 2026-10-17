@@ -184,6 +184,11 @@ pub(crate) struct SelfTypeConversionDiag<'t> {
     pub removal_span: Option<Span>,
     #[subdiagnostic]
     pub fully_qualified_path: Option<FullyQualifiedPathSuggestion<'t>>,
+    #[note(
+        "you can instead use the fully-qualified path `<{$ty} as Into<{$ty}>::into(val) to avoid \
+        triggering this lint"
+    )]
+    pub fully_qualified_path_note: bool,
 }
 
 #[derive(Subdiagnostic)]
@@ -197,21 +202,6 @@ pub(crate) struct FullyQualifiedPathSuggestion<'t> {
     pub pre: Span,
     #[suggestion_part(code = ")")]
     pub post: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("useless conversion to the same type: `{$ty}`")]
-#[note(
-    "this method call relies on the `impl<T> Into<T> for T` blanket implementation and type \
-     inference, which is a semver hazard as a new `impl Into<_>` that affects your type might be \
-     added in the future causing type inference errors"
-)]
-#[note(
-    "you can instead use the fully-qualified path `<{$ty} as Into<{$ty}>::into(val) to avoid \
-     triggering this lint"
-)]
-pub(crate) struct SelfTypeConversionInMacroDiag<'t> {
-    pub ty: Ty<'t>,
 }
 
 // autorefs.rs

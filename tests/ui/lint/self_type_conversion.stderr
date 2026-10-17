@@ -187,7 +187,6 @@ LL |     let () = in_macro_2!(());  // Not ok, pointing into the macro
    |
    = note: this method call relies on the `impl<T> Into<T> for T` blanket implementation and type inference, which is a semver hazard as a new `impl Into<_>` that affects your type might be added in the future causing type inference errors
    = note: you can instead use the fully-qualified path `<() as Into<()>::into(val) to avoid triggering this lint
-   = note: `#[deny(self_type_conversion_in_macro)]` on by default
 
 error: useless conversion to the same type: `u16`
   --> $DIR/self_type_conversion.rs:239:9
@@ -204,49 +203,7 @@ LL |     let _: u16 = in_macro_2!(0u16); // Not ok, pointing into the macro
    = note: you can instead use the fully-qualified path `<u16 as Into<u16>::into(val) to avoid triggering this lint
 
 error: useless conversion to the same type: `()`
-  --> $DIR/self_type_conversion.rs:246:10
-   |
-LL | macro_rules! in_macro_3 {
-LL |     ($expr1:expr, $expr2:expr) => {
-LL |         ($expr1.into(), $expr2.into())
-   |          ^^^^^^^^^^^^^
-...
-LL |     let _: ((), ()) = in_macro_3!((), ()); // Not ok, because the first into is useless
-   |                       ------------------- in this macro invocation
-   |
-   = note: this method call relies on the `impl<T> Into<T> for T` blanket implementation and type inference, which is a semver hazard as a new `impl Into<_>` that affects your type might be added in the future causing type inference errors
-   = note: you can instead use the fully-qualified path `<() as Into<()>::into(val) to avoid triggering this lint
-
-error: useless conversion to the same type: `()`
-  --> $DIR/self_type_conversion.rs:246:25
-   |
-LL | macro_rules! in_macro_3 {
-LL |     ($expr1:expr, $expr2:expr) => {
-LL |         ($expr1.into(), $expr2.into())
-   |                         ^^^^^^^^^^^^^
-...
-LL |     let _: ((), ()) = in_macro_3!((), ()); // Not ok, because the first into is useless
-   |                       ------------------- in this macro invocation
-   |
-   = note: this method call relies on the `impl<T> Into<T> for T` blanket implementation and type inference, which is a semver hazard as a new `impl Into<_>` that affects your type might be added in the future causing type inference errors
-   = note: you can instead use the fully-qualified path `<() as Into<()>::into(val) to avoid triggering this lint
-
-error: useless conversion to the same type: `()`
-  --> $DIR/self_type_conversion.rs:246:10
-   |
-LL | macro_rules! in_macro_3 {
-LL |     ($expr1:expr, $expr2:expr) => {
-LL |         ($expr1.into(), $expr2.into())
-   |          ^^^^^^^^^^^^^
-...
-LL |     let _: ((), u64) = in_macro_3!((), 0u16); // Not ok, because the first into is useless
-   |                        --------------------- in this macro invocation
-   |
-   = note: this method call relies on the `impl<T> Into<T> for T` blanket implementation and type inference, which is a semver hazard as a new `impl Into<_>` that affects your type might be added in the future causing type inference errors
-   = note: you can instead use the fully-qualified path `<() as Into<()>::into(val) to avoid triggering this lint
-
-error: useless conversion to the same type: `()`
-  --> $DIR/self_type_conversion.rs:254:10
+  --> $DIR/self_type_conversion.rs:252:10
    |
 LL | macro_rules! in_macro_4 {
 LL |     ($expr1:expr, $expr2:expr) => {
@@ -260,7 +217,7 @@ LL |     let _: ((), ()) = in_macro_4!((), ()); // Not ok, because both into cal
    = note: you can instead use the fully-qualified path `<() as Into<()>::into(val) to avoid triggering this lint
 
 error: useless conversion to the same type: `()`
-  --> $DIR/self_type_conversion.rs:254:25
+  --> $DIR/self_type_conversion.rs:252:25
    |
 LL | macro_rules! in_macro_4 {
 LL |     ($expr1:expr, $expr2:expr) => {
@@ -274,7 +231,7 @@ LL |     let _: ((), ()) = in_macro_4!((), ()); // Not ok, because both into cal
    = note: you can instead use the fully-qualified path `<() as Into<()>::into(val) to avoid triggering this lint
 
 error: useless conversion to the same type: `()`
-  --> $DIR/self_type_conversion.rs:254:10
+  --> $DIR/self_type_conversion.rs:252:10
    |
 LL | macro_rules! in_macro_4 {
 LL |     ($expr1:expr, $expr2:expr) => {
@@ -288,7 +245,7 @@ LL |     let _: ((), u16) = in_macro_4!((), 0u16); // Not ok, because both into 
    = note: you can instead use the fully-qualified path `<() as Into<()>::into(val) to avoid triggering this lint
 
 error: useless conversion to the same type: `u16`
-  --> $DIR/self_type_conversion.rs:254:25
+  --> $DIR/self_type_conversion.rs:252:25
    |
 LL | macro_rules! in_macro_4 {
 LL |     ($expr1:expr, $expr2:expr) => {
@@ -301,5 +258,39 @@ LL |     let _: ((), u16) = in_macro_4!((), 0u16); // Not ok, because both into 
    = note: this method call relies on the `impl<T> Into<T> for T` blanket implementation and type inference, which is a semver hazard as a new `impl Into<_>` that affects your type might be added in the future causing type inference errors
    = note: you can instead use the fully-qualified path `<u16 as Into<u16>::into(val) to avoid triggering this lint
 
-error: aborting due to 21 previous errors
+error: useless conversion to the same type: `()`
+  --> $DIR/self_type_conversion.rs:276:26
+   |
+LL |   macro_rules! multiple_arms {
+...
+LL |               let _: $ty = $expr.into();
+   |                            ^^^^^^^^^^^^
+...
+LL | /     multiple_arms! {
+LL | |         (): (),
+LL | |         u64: 0u64,
+LL | |     }
+   | |_____- in this macro invocation
+   |
+   = note: this method call relies on the `impl<T> Into<T> for T` blanket implementation and type inference, which is a semver hazard as a new `impl Into<_>` that affects your type might be added in the future causing type inference errors
+   = note: you can instead use the fully-qualified path `<() as Into<()>::into(val) to avoid triggering this lint
+
+error: useless conversion to the same type: `u64`
+  --> $DIR/self_type_conversion.rs:276:26
+   |
+LL |   macro_rules! multiple_arms {
+...
+LL |               let _: $ty = $expr.into();
+   |                            ^^^^^^^^^^^^
+...
+LL | /     multiple_arms! {
+LL | |         (): (),
+LL | |         u64: 0u64,
+LL | |     }
+   | |_____- in this macro invocation
+   |
+   = note: this method call relies on the `impl<T> Into<T> for T` blanket implementation and type inference, which is a semver hazard as a new `impl Into<_>` that affects your type might be added in the future causing type inference errors
+   = note: you can instead use the fully-qualified path `<u64 as Into<u64>::into(val) to avoid triggering this lint
+
+error: aborting due to 20 previous errors
 
