@@ -1040,7 +1040,7 @@ impl<'test> TestCx<'test> {
             .arg(file_to_doc)
             .arg("-A")
             .arg("internal_features")
-            // FIXME(#160895): While the new solver is enabled by default on nightly,
+            // FIXME(#160895): While the new solver is already enabled by default,
             // we don't want to use it in our tests for now.
             .arg("-Znext-solver=coherence")
             .args(&self.props.compile_flags)
@@ -1933,7 +1933,7 @@ impl<'test> TestCx<'test> {
             },
         }
 
-        // FIXME(#160895): While the new solver is enabled by default on nightly,
+        // FIXME(#160895): While the new solver is already enabled by default,
         // we don't want to use it in our tests for now.
         compiler.args(["-Znext-solver=coherence"]);
 
