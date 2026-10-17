@@ -6,6 +6,7 @@
 #![feature(option_reference_flattening)]
 // tidy-alphabetical-end
 
+mod _if;
 mod _match;
 mod autoderef;
 mod callee;
