@@ -54,7 +54,7 @@ impl RiscVInlineAsmRegClass {
     }
 }
 
-pub(crate) fn is_e(target_features: &FxIndexSet<Symbol>) -> bool {
+fn is_e(target_features: &FxIndexSet<Symbol>) -> bool {
     target_features.contains(&sym::character('e'))
 }
 
@@ -63,9 +63,9 @@ fn not_e(
     _reloc_model: RelocModel,
     target_features: &FxIndexSet<Symbol>,
     _target: &Target,
-    _is_clobber: bool,
+    is_clobber: bool,
 ) -> Result<(), &'static str> {
-    if is_e(target_features) {
+    if is_e(target_features) && !is_clobber {
         Err("register can't be used with the `e` target feature")
     } else {
         Ok(())

@@ -1,18 +1,13 @@
 //@ add-minicore
 //@ revisions: riscv32i riscv32imafc riscv32gc riscv32e riscv64imac riscv64gc
 //@[riscv32i] compile-flags: --target riscv32i-unknown-none-elf
-//@[riscv32i] needs-llvm-components: riscv
 //@[riscv32imafc] compile-flags: --target riscv32imafc-unknown-none-elf
-//@[riscv32imafc] needs-llvm-components: riscv
 //@[riscv32gc] compile-flags: --target riscv32gc-unknown-linux-gnu
-//@[riscv32gc] needs-llvm-components: riscv
 //@[riscv32e] compile-flags: --target riscv32e-unknown-none-elf
-//@[riscv32e] needs-llvm-components: riscv
 //@[riscv64imac] compile-flags: --target riscv64imac-unknown-none-elf
-//@[riscv64imac] needs-llvm-components: riscv
 //@[riscv64gc] compile-flags: --target riscv64gc-unknown-linux-gnu
-//@[riscv64gc] needs-llvm-components: riscv
 //@ ignore-backends: gcc
+//@ needs-llvm-components: riscv
 
 // Unlike riscv32e-registers.rs, this tests if the rustc can reject invalid registers
 // usage in the asm! API (in, out, inout, etc.).
@@ -43,37 +38,37 @@ fn f() {
         asm!("", out("zero") _);
         //~^ ERROR invalid register `zero`: the zero register cannot be used as an operand for inline asm
 
-        asm!("", out("x16") _);
+        asm!("", in("x16") x);
         //[riscv32e]~^ ERROR register can't be used with the `e` target feature
-        asm!("", out("x17") _);
+        asm!("", in("x17") x);
         //[riscv32e]~^ ERROR register can't be used with the `e` target feature
-        asm!("", out("x18") _);
+        asm!("", in("x18") x);
         //[riscv32e]~^ ERROR register can't be used with the `e` target feature
-        asm!("", out("x19") _);
+        asm!("", in("x19") x);
         //[riscv32e]~^ ERROR register can't be used with the `e` target feature
-        asm!("", out("x20") _);
+        asm!("", in("x20") x);
         //[riscv32e]~^ ERROR register can't be used with the `e` target feature
-        asm!("", out("x21") _);
+        asm!("", in("x21") x);
         //[riscv32e]~^ ERROR register can't be used with the `e` target feature
-        asm!("", out("x22") _);
+        asm!("", in("x22") x);
         //[riscv32e]~^ ERROR register can't be used with the `e` target feature
-        asm!("", out("x23") _);
+        asm!("", in("x23") x);
         //[riscv32e]~^ ERROR register can't be used with the `e` target feature
-        asm!("", out("x24") _);
+        asm!("", in("x24") x);
         //[riscv32e]~^ ERROR register can't be used with the `e` target feature
-        asm!("", out("x25") _);
+        asm!("", in("x25") x);
         //[riscv32e]~^ ERROR register can't be used with the `e` target feature
-        asm!("", out("x26") _);
+        asm!("", in("x26") x);
         //[riscv32e]~^ ERROR register can't be used with the `e` target feature
-        asm!("", out("x27") _);
+        asm!("", in("x27") x);
         //[riscv32e]~^ ERROR register can't be used with the `e` target feature
-        asm!("", out("x28") _);
+        asm!("", in("x28") x);
         //[riscv32e]~^ ERROR register can't be used with the `e` target feature
-        asm!("", out("x29") _);
+        asm!("", in("x29") x);
         //[riscv32e]~^ ERROR register can't be used with the `e` target feature
-        asm!("", out("x30") _);
+        asm!("", in("x30") x);
         //[riscv32e]~^ ERROR register can't be used with the `e` target feature
-        asm!("", out("x31") _);
+        asm!("", in("x31") x);
         //[riscv32e]~^ ERROR register can't be used with the `e` target feature
 
         asm!("", out("f0") _); // ok
@@ -91,6 +86,7 @@ fn f() {
         // Clobber-only registers
         // vreg
         asm!("", out("v0") _); // ok
+        asm!("", out("x31") _); // ok
         asm!("", in("v0") x);
         //~^ ERROR can only be used as a clobber
         //~| ERROR type `i32` cannot be used with this register class
