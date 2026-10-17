@@ -2875,7 +2875,7 @@ pub(crate) struct Interner(Lock<InternerInner>);
 struct InternerInner {
     arena: DroplessArena,
     indices: HashTable<(&'static [u8], u32)>,
-    big_indices: Vec<(&'static [u8], u32)>,
+    big_indices: HashTable<(u64, &'static [u8], u32)>,
     byte_strs: Vec<&'static [u8]>,
 }
 
@@ -2968,22 +2968,25 @@ impl Interner {
         })
     }
 
-    #[inline(never)]
     fn intern_inner_big(&self, byte_str: &[u8]) -> u32 {
+        let hasher = FxBuildHasher::default();
+        let hash_of_byte_str = hasher.hash_one(byte_str);
+
         self.0.with_lock(|inner| {
-            // FIXME(matyas) SliceOrd compares element by element before it compares len, we could maybe
-            // make this faster if we compare len first, if we assume that len almost always differs.
-            let search = inner.big_indices.binary_search_by(|(s, _)| (*s).cmp(byte_str));
-            match search {
-                Ok(i) => inner.big_indices[i].1,
-                Err(insert_index) => {
+            match inner.big_indices.entry(
+                hash_of_byte_str,
+                |&(_, s, _)| s == byte_str,
+                |&(hash, _, _)| hash,
+            ) {
+                Entry::Occupied(v) => v.get().2,
+                Entry::Vacant(view) => {
                     let byte_str: &[u8] = inner.arena.alloc_slice(byte_str);
 
                     // SAFETY: we can extend the arena allocation to `'static` because we
                     // only access these while the arena is still alive.
                     let byte_str: &'static [u8] = unsafe { &*(byte_str as *const [u8]) };
                     let idx = inner.byte_strs.len() as u32;
-                    inner.big_indices.insert(insert_index, (byte_str, idx));
+                    view.insert((hash_of_byte_str, byte_str, idx));
                     inner.byte_strs.push(byte_str);
                     idx
                 }
