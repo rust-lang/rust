@@ -863,6 +863,28 @@ const impl AsMut<str> for str {
     }
 }
 
+#[stable(feature = "never_type", since = "CURRENT_RUSTC_VERSION")]
+#[expect(
+    clippy::explicit_auto_deref,
+    reason = "https://github.com/rust-lang/rust-clippy/issues/17713"
+)]
+impl<T: ?Sized> AsRef<T> for ! {
+    fn as_ref(&self) -> &T {
+        *self
+    }
+}
+
+#[stable(feature = "never_type", since = "CURRENT_RUSTC_VERSION")]
+#[expect(
+    clippy::explicit_auto_deref,
+    reason = "https://github.com/rust-lang/rust-clippy/issues/17713"
+)]
+impl<T: ?Sized> AsMut<T> for ! {
+    fn as_mut(&mut self) -> &mut T {
+        *self
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // THE NO-ERROR ERROR TYPE
 ////////////////////////////////////////////////////////////////////////////////
