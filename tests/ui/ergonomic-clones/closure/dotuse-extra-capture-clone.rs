@@ -1,9 +1,5 @@
-//! Regression test for #157141.
-//!
-//! A non-`move`, non-`use` closure that only `.use`s an upvar should capture it
-//! by immutable borrow, not by `use` (which would clone the value into the
-//! closure at construction time). The `.use` expression in the body is then the
-//! only thing that clones, once per evaluation.
+//! A non-`move`, non-`use` closure that only `.use`s an upvar should still capture it
+//! by `.use`, to ensure we do not unduly restrict the lifetime of the closure.
 
 //@ run-pass
 
@@ -31,9 +27,11 @@ fn clones_during<R>(f: impl FnOnce() -> R) -> usize {
     CLONES.load(Ordering::Relaxed) - before
 }
 
+fn assert_static_fn(_: &(impl Fn() + 'static)) {}
+
 fn main() {
-    // Plain `||` closure: `x` is borrowed, so building the closure clones nothing.
-    // Each call clones exactly once via the `.use` in the body.
+    // Plain `||` closure: `x` is cloned once at construction time.
+    // After that, each call clones exactly once via the `.use` in the body.
     let x = Thing;
     let n = clones_during(|| {
         let closure = || {
@@ -41,8 +39,26 @@ fn main() {
         };
         closure();
         closure();
+        assert_static_fn(&closure);
     });
-    assert_eq!(n, 2, "plain `||` closure should clone once per call, not also at capture");
+    assert_eq!(n, 3, "plain `||` closure should clone once per call, and also at capture");
+    drop(x);
+
+    // If you wish to avoid the clone on construction, you can take an explicit reference:
+
+    let x = Thing;
+    let n = clones_during(|| {
+        let closure = || {
+            let _y = (*&x).use;
+        };
+        closure();
+        closure();
+    });
+    assert_eq!(
+        n, 2,
+        "plain `||` closure with explicit by-reference capture \
+    should clone once per call"
+    );
     drop(x);
 
     // `move ||` closure: `x` is moved in (no capture clone), `.use` clones per call.
