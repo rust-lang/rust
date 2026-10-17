@@ -100,23 +100,21 @@ fn parse_file(full_path: PathBuf, file_name: &str, content: &str) -> Result<Pars
         if line.starts_with("```") {
             in_codeblock ^= true; // toggle
             push_line(&mut sections, line)?;
-        } else if line.starts_with('#') {
-            if in_codeblock {
-                push_line(&mut sections, line)?;
-            } else if let Some(header) = line.strip_prefix("## ") {
-                if crate::SECTIONS.iter().any(|s| s.name == header) {
-                    sections.push((header.to_owned(), String::new()));
-                } else {
-                    bail!(
-                        "on line {number}, `{header}` is not an allowed section name, must be one of {}",
-                        fmt::from_fn(|f| f
-                            .debug_list()
-                            .entries(super::SECTIONS.iter().map(|s| s.name))
-                            .finish())
-                    );
-                }
+        } else if in_codeblock {
+            push_line(&mut sections, line)?;
+        } else if line.starts_with("# ") {
+            bail!("on line {number}, first-level headings are not allowed: `{line}`");
+        } else if let Some(header) = line.strip_prefix("## ") {
+            if crate::SECTIONS.iter().any(|s| s.name == header) {
+                sections.push((header.to_owned(), String::new()));
             } else {
-                bail!("on line {number}, the only allowed headings are `## `: `{line}`");
+                bail!(
+                    "on line {number}, `{header}` is not an allowed section name, must be one of {}",
+                    fmt::from_fn(|f| f
+                        .debug_list()
+                        .entries(super::SECTIONS.iter().map(|s| s.name))
+                        .finish())
+                );
             }
         } else {
             push_line(&mut sections, line)?;
