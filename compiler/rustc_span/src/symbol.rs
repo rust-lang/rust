@@ -207,6 +207,7 @@ symbols! {
         Deref,
         DispatchFromDyn,
         Display,
+        DropGuard,
         Dual,
         DualOnly,
         Dualv,
