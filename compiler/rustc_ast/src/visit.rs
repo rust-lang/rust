@@ -465,7 +465,6 @@ macro_rules! common_visitor_and_walkers {
             ThinVec<(Ident, Option<Ident>)>,
             ThinVec<(NodeId, Path)>,
             ThinVec<AngleBracketedArg>,
-            ThinVec<AnnotatableUseTree>,
             ThinVec<Attribute>,
             ThinVec<Box<Ty>>,
             ThinVec<EiiImpl>,
@@ -753,6 +752,13 @@ macro_rules! common_visitor_and_walkers {
 
                 fn flat_map_pat_field(&mut self, fp: PatField) -> SmallVec<[PatField; 1]> {
                     walk_flat_map_pat_field(self, fp)
+                }
+
+                fn flat_map_annotatable_use_tree(
+                    &mut self,
+                    annotatable_use_tree:AnnotatableUseTree,
+                )->SmallVec<[AnnotatableUseTree;1]>{
+                    walk_flat_map_annotatable_use_tree(self,annotatable_use_tree)
                 }
             )?
         }
@@ -1139,6 +1145,7 @@ macro_rules! generate_list_visit_fns {
 
 generate_list_visit_fns! {
     // tidy-alphabetical-start
+    visit_annotatable_use_tree, AnnotatableUseTree;
     visit_arm, Arm;
     visit_assoc_item, Box<AssocItem>, ctxt: AssocCtxt;
     visit_expr, Box<Expr>;
