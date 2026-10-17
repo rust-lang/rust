@@ -7,6 +7,18 @@ use std::cell::SyncUnsafeCell;
 use std::mem::MaybeUninit;
 use std::{mem, ptr, thread};
 
+#[path = "../../utils/libc.rs"]
+mod libc_utils;
+
+fn yield_now() {
+    if cfg!(miri) {
+        thread::yield_now();
+    } else {
+        // Without scheduler control, we hope that sleeping a bit is enough.
+        thread::sleep(std::time::Duration::from_millis(10));
+    }
+}
+
 fn main() {
     test_mutex();
     test_mutex_libc_init_recursive();
@@ -25,6 +37,11 @@ fn main() {
     test_rwlock();
     test_rwlock_write();
     test_rwlock_read_no_deadlock();
+
+    #[cfg(not(target_vendor = "apple"))]
+    {
+        test_sem();
+    }
 }
 
 // We want to only use pthread APIs here for easier testing.
@@ -170,7 +187,7 @@ fn test_mutex() {
                 let ptr = ptr; // circumvent per-field closure capture
                 let mutexptr = ptr::addr_of_mut!((*ptr.ptr).0);
                 assert_eq!(libc::pthread_mutex_lock(mutexptr), 0);
-                thread::yield_now();
+                yield_now();
                 (*ptr.ptr).1 += 1;
                 assert_eq!(libc::pthread_mutex_unlock(mutexptr), 0);
             });
@@ -200,7 +217,7 @@ fn test_rwlock_write() {
                 let ptr = ptr; // circumvent per-field closure capture
                 let rwlockptr = ptr::addr_of_mut!((*ptr.ptr).0);
                 assert_eq!(libc::pthread_rwlock_wrlock(rwlockptr), 0);
-                thread::yield_now();
+                yield_now();
                 (*ptr.ptr).1 += 1;
                 assert_eq!(libc::pthread_rwlock_unlock(rwlockptr), 0);
             });
@@ -210,7 +227,7 @@ fn test_rwlock_write() {
                 let ptr = ptr; // circumvent per-field closure capture
                 let rwlockptr = ptr::addr_of_mut!((*ptr.ptr).0);
                 assert_eq!(libc::pthread_rwlock_rdlock(rwlockptr), 0);
-                thread::yield_now();
+                yield_now();
                 let val = (*ptr.ptr).1;
                 assert!(val >= 0 && val <= 3);
                 assert_eq!(libc::pthread_rwlock_unlock(rwlockptr), 0);
@@ -244,13 +261,13 @@ fn test_rwlock_read_no_deadlock() {
             let l2 = l2; // circumvent per-field closure capture
             // acquire l2 before the other thread
             assert_eq!(libc::pthread_rwlock_rdlock(l2.ptr), 0);
-            thread::yield_now();
+            yield_now();
             assert_eq!(libc::pthread_rwlock_rdlock(l1.ptr), 0);
-            thread::yield_now();
+            yield_now();
             assert_eq!(libc::pthread_rwlock_unlock(l1.ptr), 0);
             assert_eq!(libc::pthread_rwlock_unlock(l2.ptr), 0);
         });
-        thread::yield_now();
+        yield_now(); // let `t` go first
         assert_eq!(libc::pthread_rwlock_rdlock(l2.ptr), 0);
         handle.join().unwrap();
     }
@@ -282,18 +299,19 @@ fn test_cond() {
             assert_eq!(libc::pthread_mutex_unlock(mutex.ptr), 0);
         });
 
-        thread::yield_now();
+        // Let `t` go first.
+        yield_now();
 
         assert_eq!(libc::pthread_mutex_lock(mutex.ptr), 0);
         assert!(data.ptr.read() == 1);
         data.ptr.write(2);
         assert_eq!(libc::pthread_cond_signal(cond.ptr), 0);
-        thread::yield_now(); // the other thread wakes up but can't get the lock yet
+        yield_now(); // the other thread wakes up but can't get the lock yet
         assert!(data.ptr.read() == 2);
         data.ptr.write(3);
         assert_eq!(libc::pthread_mutex_unlock(mutex.ptr), 0);
 
-        thread::yield_now(); // now the other thread gets the lock back
+        yield_now(); // now the other thread gets the lock back
 
         assert_eq!(libc::pthread_mutex_lock(mutex.ptr), 0);
         assert!(data.ptr.read() == 4);
@@ -352,5 +370,37 @@ fn test_rwlock() {
         assert_eq!(libc::pthread_rwlock_unlock(rw.get()), 0);
 
         assert_eq!(libc::pthread_rwlock_destroy(rw.get()), 0);
+    }
+}
+
+#[cfg(not(target_vendor = "apple"))] // macOS does not support pthread semaphores
+fn test_sem() {
+    use libc_utils::errno_check;
+
+    unsafe {
+        let mut data = 0;
+        let data = SendPtr { ptr: &mut data };
+
+        let mut sem = mem::zeroed::<libc::sem_t>();
+        errno_check(libc::sem_init(&raw mut sem, /* shared */ 0, /* value */ 1));
+        let sem = SendPtr { ptr: &mut sem };
+
+        errno_check(libc::sem_wait(sem.ptr));
+        // Semaphore blocks when 0 is hit, and we can use that to synchronize.
+        let t = thread::spawn(move || {
+            let data = data;
+            let sem = sem;
+
+            errno_check(libc::sem_wait(sem.ptr));
+            let val = data.ptr.read();
+            assert_eq!(val, 1);
+        });
+        yield_now(); // let `t` go first.
+        // `t` will block so we end up here.
+        data.ptr.write(1);
+        errno_check(libc::sem_post(sem.ptr));
+        t.join().unwrap();
+
+        errno_check(libc::sem_destroy(sem.ptr));
     }
 }
