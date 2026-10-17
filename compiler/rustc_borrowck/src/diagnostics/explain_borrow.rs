@@ -610,7 +610,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
             // loop iteration. In this case, try using the loop terminator location in
             // `find_sub_region_live_at`.
             if let Some(loop_terminator_location) =
-                regioncx.find_loop_terminator_location(borrow.region, body)
+                regioncx.find_loop_terminator_location(borrow.region, body, location)
             {
                 region_sub = self
                     .regioncx
