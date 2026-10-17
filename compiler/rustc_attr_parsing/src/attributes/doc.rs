@@ -8,7 +8,7 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexMap, IndexEntry};
 use rustc_errors::{Applicability, MultiSpan, msg};
 use rustc_feature::AttributeStability;
 use rustc_lint_defs::builtin::{INVALID_DOC_ATTRIBUTES, UNUSED_ATTRIBUTES};
-use rustc_span::{Span, Symbol, edition, sym};
+use rustc_span::{Ident, Span, Symbol, edition, sym};
 
 use super::prelude::{ALL_TARGETS, AllowedTargets};
 use super::{AcceptMapping, AttributeParser, template};
@@ -42,9 +42,23 @@ fn check_keyword(cx: &mut AcceptContext<'_, '_>, keyword: Symbol, span: Span) ->
 }
 
 fn check_attribute(cx: &mut AcceptContext<'_, '_>, attribute: Symbol, span: Span) -> bool {
-    // FIXME: This should support attributes with namespace like `diagnostic::do_not_recommend`.
     if rustc_feature::BUILTIN_ATTRIBUTE_SET.contains(&attribute) {
         return true;
+    }
+
+    if let Some((tool, name)) = attribute.as_str().split_once("::") {
+        let Some(tools) = cx.attr_tools else {
+            return false;
+        };
+        if rustc_lexer::is_ident(tool)
+            && rustc_lexer::is_ident(name)
+            && tools.contains(&Ident::from_str(tool))
+        {
+            return true;
+        } else {
+            cx.emit_err(DocAttributeNotAttribute { span, attribute });
+            return false;
+        }
     }
     cx.emit_err(DocAttributeNotAttribute { span, attribute });
     false
