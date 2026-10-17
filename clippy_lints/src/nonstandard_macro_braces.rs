@@ -74,15 +74,24 @@ impl EarlyLintPass for MacroBraces {
         }
     }
 
-    // See issue #9913
-    fn check_stmt(&mut self, _: &EarlyContext<'_>, stmt: &ast::Stmt) {
-        if let ast::StmtKind::MacCall(mac_callstmt) = &stmt.kind
-            && let ast::MacCallStmt {
-                style: ast::MacStmtStyle::Braces,
-                ..
-            } = **mac_callstmt
-        {
-            self.mac_stmt_spans.push(mac_callstmt.mac.span());
+    fn check_block(&mut self, _: &EarlyContext<'_>, block: &ast::Block) {
+        let Some(end) = block
+            .stmts
+            .iter()
+            .rposition(|stmt| !matches!(stmt.kind, ast::StmtKind::Empty))
+        else {
+            return;
+        };
+
+        for stmt in &block.stmts[..end] {
+            if let ast::StmtKind::MacCall(mac_callstmt) = &stmt.kind
+                && let ast::MacCallStmt {
+                    style: ast::MacStmtStyle::Braces,
+                    ..
+                } = **mac_callstmt
+            {
+                self.mac_stmt_spans.push(mac_callstmt.mac.span());
+            }
         }
     }
 
