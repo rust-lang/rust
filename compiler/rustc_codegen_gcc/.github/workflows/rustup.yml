@@ -23,7 +23,7 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     # Above 3 times the longest job, so that a hang cannot run until GitHub's 6-hour limit.
     timeout-minutes: 90
 
@@ -63,18 +63,11 @@ jobs:
       uses: ./.github/actions/apt-mirrors
 
     - name: Install packages
-      # `llvm-14-tools` is needed to install the `FileCheck` binary which is used for asm tests.
+      # `llvm-tools` is needed to install the `FileCheck` binary which is used for asm tests.
       timeout-minutes: 20
       run: |
         sudo apt-get update
-        sudo apt-get install ninja-build ripgrep llvm-14-tools llvm
-
-    # The libgccjit distributed by rustup emits `.base64`, which needs binutils >= 2.43.
-    # FIXME: remove when we have binutils version 2.43 in the repo.
-    - name: Install more recent binutils
-      # Without a limit, an unreachable mirror hangs the job until GitHub's 6-hour timeout.
-      timeout-minutes: 20
-      uses: ./.github/actions/recent-binutils
+        sudo apt-get install ninja-build ripgrep llvm-tools llvm
 
     - name: Install the libraries needed to build librsvg
       if: ${{ contains(matrix.commands, '--librsvg-tests') }}
@@ -126,7 +119,7 @@ jobs:
   # (and cg_gcc can find them in the sysroot).
 
   stdarch:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     # Above 3 times the longest job, so that a hang cannot run until GitHub's 6-hour limit.
     timeout-minutes: 90
 
@@ -159,13 +152,6 @@ jobs:
     - name: Install packages
       timeout-minutes: 20
       run: sudo apt-get install ninja-build ripgrep
-
-    # The libgccjit distributed by rustup emits `.base64`, which needs binutils >= 2.43.
-    # FIXME: remove when we have binutils version 2.43 in the repo.
-    - name: Install more recent binutils
-      # Without a limit, an unreachable mirror hangs the job until GitHub's 6-hour timeout.
-      timeout-minutes: 20
-      uses: ./.github/actions/recent-binutils
 
     - name: Install Intel Software Development Emulator
       if: ${{ matrix.cargo_runner }}
@@ -225,7 +211,7 @@ jobs:
         STDARCH_TEST_SKIP_FUNCTION="xsave,xsaveopt,xsave64,xsaveopt64" STDARCH_TEST_EVERYTHING=1 CHANNEL=release CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER="${{ matrix.cargo_runner }}" TARGET=x86_64-unknown-linux-gnu CG_RUSTFLAGS="-Ainternal_features" ./y.sh cargo test --manifest-path build/build_sysroot/sysroot_src/library/stdarch/Cargo.toml -- --skip rtm --skip tbm --skip sse4a --skip test_tile_ --skip test__tile --skip test_mm_srav_epi64
 
   failures:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     # Above 3 times the longest job, so that a hang cannot run until GitHub's 6-hour limit.
     timeout-minutes: 90
 
@@ -251,13 +237,6 @@ jobs:
     - name: Install packages
       timeout-minutes: 20
       run: sudo apt-get install ninja-build ripgrep
-
-    # The libgccjit distributed by rustup emits `.base64`, which needs binutils >= 2.43.
-    # FIXME: remove when we have binutils version 2.43 in the repo.
-    - name: Install more recent binutils
-      # Without a limit, an unreachable mirror hangs the job until GitHub's 6-hour timeout.
-      timeout-minutes: 20
-      uses: ./.github/actions/recent-binutils
 
     - name: Set env
       run: |
