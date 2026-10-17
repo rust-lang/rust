@@ -1,12 +1,14 @@
 error[E0053]: method `bar` has an incompatible type for trait
   --> $DIR/issue-13033.rs:10:30
    |
+LL | impl Foo for Baz {
 LL |     fn bar(&mut self, other: &dyn Foo) {}
    |                              ^^^^^^^^ types differ in mutability
    |
 note: type in trait
   --> $DIR/issue-13033.rs:4:30
    |
+LL | trait Foo {
 LL |     fn bar(&mut self, other: &mut dyn Foo);
    |                              ^^^^^^^^^^^^
    = note: expected signature `fn(&mut Baz, &mut dyn Foo)`
