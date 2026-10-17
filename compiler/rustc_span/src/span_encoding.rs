@@ -1,3 +1,4 @@
+use core::num::niche_types::U64NotAllOnes;
 use std::cmp::Ordering;
 use std::hash::Hash;
 
@@ -80,13 +81,16 @@ use crate::{BytePos, SPAN_TRACK, SpanData};
 ///   `repr(packed(1))` isn't worth it; it only shrinks a few types and
 ///   performance is a tiny bit worse.
 ///
+/// - The use of `U64NotAllOnes` means `u64::MAX` serves as a niche value
+///   and `Option<Span>` is the same size as `Span`.
+///
 /// In order to reliably use parented spans in incremental compilation,
 /// accesses to `lo` and `hi` must introduce a dependency to the parent definition's span.
 /// This is performed using the callback `SPAN_TRACK` to access the query engine.
-#[derive(Clone, Copy, Eq, PartialEq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 #[rustc_pass_by_value]
 #[repr(packed(4))]
-pub struct Span(u64);
+pub struct Span(U64NotAllOnes);
 
 // `SyntaxContext` (`SpanData::ctxt`) and `LocalDefId` (within `SpanData::parent`) aren't orderable.
 // If you want to order spans just on `lo`/`hi`, use explicit comparisons involving `Span::lo_hi`.
@@ -133,13 +137,20 @@ impl SpanField {
     #[inline]
     const fn set(self, v: u32) -> u64 {
         debug_assert!(v <= self.mask() as u32);
-        (v as u64) << self.shift
+        // The mask provides information that helps LLVM do better codegen for `from_non_max_u64`.
+        ((v as u64) & self.mask()) << self.shift
     }
 
     /// Returns non-zero if `v` is too big to fit in the field.
     #[inline]
     const fn too_big(self, v: u32) -> u32 {
         v & !(self.mask() as u32)
+    }
+
+    /// Asserts that a field has one or more zeros in it.
+    #[inline]
+    const fn assert_has_zero(self, v: u32) {
+        assert!(v != self.mask() as u32);
     }
 
     /// Asserts that a field uses the bottom-most bits.
@@ -188,7 +199,7 @@ impl InlineCtxt {
     #[inline]
     const fn try_new_span(lo: u32, len: u32, ctxt: u32) -> Option<Span> {
         if Self::LEN.too_big(len) | Self::CTXT.too_big(ctxt) == 0 {
-            Some(Span(
+            Some(Span::from_non_max_u64(
                 Self::PREFIX.set(Self::PREFIX_VALUE)
                     | Self::LEN.set(len)
                     | Self::CTXT.set(ctxt)
@@ -211,23 +222,25 @@ impl InlineCtxt {
 
     #[inline]
     fn from_span(span: Span) -> InlineCtxt {
-        let u = span.0;
+        let u = span.as_non_max_u64();
         Self { lo: Self::LO.get(u), len: Self::LEN.get(u), ctxt: Self::CTXT.get(u) }
     }
 }
+const _: () = InlineCtxt::PREFIX.assert_has_zero(InlineCtxt::PREFIX_VALUE);
 const _: () = InlineCtxt::LO.assert_is_bottom();
 
 impl InlineParent {
     const PREFIX_VALUE: u32 = 0b110;
     const PREFIX: SpanField = SpanField::top(3);
     const LEN: SpanField = Self::PREFIX.below(14);
-    const PARENT: SpanField = Self::LEN.below(15);
+    const CTXT: SpanField = Self::LEN.below(0); // `InlineParent` has no context
+    const PARENT: SpanField = Self::CTXT.below(15);
     const LO: SpanField = Self::PARENT.below(32);
 
     #[inline]
     fn try_new_span(lo: u32, len: u32, ctxt: u32, parent: u32) -> Option<Span> {
-        if Self::LEN.too_big(len) | ctxt | Self::PARENT.too_big(parent) == 0 {
-            Some(Span(
+        if Self::LEN.too_big(len) | Self::CTXT.too_big(ctxt) | Self::PARENT.too_big(parent) == 0 {
+            Some(Span::from_non_max_u64(
                 Self::PREFIX.set(Self::PREFIX_VALUE)
                     | Self::LEN.set(len)
                     | Self::PARENT.set(parent)
@@ -250,10 +263,11 @@ impl InlineParent {
 
     #[inline]
     fn from_span(span: Span) -> InlineParent {
-        let u = span.0;
+        let u = span.as_non_max_u64();
         Self { lo: Self::LO.get(u), len: Self::LEN.get(u), parent: Self::PARENT.get(u) }
     }
 }
+const _: () = InlineParent::PREFIX.assert_has_zero(InlineParent::PREFIX_VALUE);
 const _: () = InlineParent::LO.assert_is_bottom();
 
 impl InlinePair {
@@ -272,7 +286,7 @@ impl InlinePair {
             | Self::PARENT.too_big(parent)
             == 0
         {
-            Some(Span(
+            Some(Span::from_non_max_u64(
                 Self::PREFIX.set(Self::PREFIX_VALUE)
                     | Self::LEN.set(len)
                     | Self::CTXT.set(ctxt)
@@ -296,7 +310,7 @@ impl InlinePair {
 
     #[inline]
     fn from_span(span: Span) -> InlinePair {
-        let u = span.0;
+        let u = span.as_non_max_u64();
         Self {
             lo: Self::LO.get(u),
             len: Self::LEN.get(u),
@@ -305,6 +319,7 @@ impl InlinePair {
         }
     }
 }
+const _: () = InlinePair::PREFIX.assert_has_zero(InlinePair::PREFIX_VALUE);
 const _: () = InlinePair::LO.assert_is_bottom();
 
 impl Interned {
@@ -315,7 +330,12 @@ impl Interned {
 
     #[inline]
     fn new_span(ctxt: u32, index: u32) -> Span {
-        Span(Self::PREFIX.set(Self::PREFIX_VALUE) | Self::CTXT.set(ctxt) | Self::INDEX.set(index))
+        let u =
+            Self::PREFIX.set(Self::PREFIX_VALUE) | Self::CTXT.set(ctxt) | Self::INDEX.set(index);
+
+        // A `u` of `u64::MAX` is impossible in practice here because it would require `ctxt` and
+        // `index` to be all 1s; we'd exhaust many other limits before hitting that.
+        Span::from_non_max_u64(u)
     }
 
     #[inline]
@@ -327,7 +347,7 @@ impl Interned {
 
     #[inline]
     fn from_span(span: Span) -> Interned {
-        let u = span.0;
+        let u = span.as_non_max_u64();
         Self { ctxt: Self::CTXT.get(u), index: Self::INDEX.get(u) }
     }
 }
@@ -344,7 +364,7 @@ macro_rules! match_span_kind {
         InlinePair($span3:ident) => $arm3:expr,
         Interned($span4:ident) => $arm4:expr,
     ) => {{
-        let span64 = $span.0;
+        let span64 = $span.as_non_max_u64();
         if InlineCtxt::PREFIX.get(span64) == InlineCtxt::PREFIX_VALUE {
             let $span1 = InlineCtxt::from_span($span);
             $arm1
@@ -365,6 +385,17 @@ macro_rules! match_span_kind {
 pub const DUMMY_SP: Span = InlineCtxt::try_new_span(0, 0, 0).unwrap();
 
 impl Span {
+    #[inline]
+    const fn as_non_max_u64(self) -> u64 {
+        self.0.as_inner()
+    }
+
+    /// Converts a `u64` to a `Span`. Panics if the `u64` is `u64::MAX`.
+    #[inline]
+    const fn from_non_max_u64(u: u64) -> Span {
+        Span(U64NotAllOnes::new(u).unwrap())
+    }
+
     #[inline]
     pub fn new(
         mut lo: BytePos,
@@ -543,12 +574,15 @@ impl Span {
 
     #[inline]
     pub(crate) fn to_raw_span(self) -> RawSpan {
-        RawSpan(self.0)
+        RawSpan(self.as_non_max_u64())
     }
 
+    /// Panics if the `u64` within `RawSpan` is `u64::MAX`. In practice this should never happen
+    /// because `RawSpan`s are only produced by `to_raw_span`, which takes a `Span` as input, and
+    /// `Span`s never have `u64::MAX` by construction.
     #[inline]
-    pub fn from_raw_span(RawSpan(a): RawSpan) -> Span {
-        Span(a)
+    pub fn from_raw_span(raw: RawSpan) -> Span {
+        Span::from_non_max_u64(raw.0)
     }
 }
 
@@ -609,4 +643,16 @@ impl SpanInterner {
 #[inline]
 fn with_span_interner<T, F: FnOnce(&mut SpanInterner) -> T>(f: F) -> T {
     crate::with_session_globals(|session_globals| f(&mut session_globals.span_interner.lock()))
+}
+
+// Some types are used a lot. Make sure they don't unintentionally get bigger.
+#[cfg(target_pointer_width = "64")]
+mod size_asserts {
+    use rustc_data_structures::static_assert_size;
+
+    use super::*;
+    // tidy-alphabetical-start
+    static_assert_size!(Option<Span>, 8);
+    static_assert_size!(Span, 8);
+    // tidy-alphabetical-end
 }
