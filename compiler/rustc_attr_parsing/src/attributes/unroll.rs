@@ -28,7 +28,7 @@ impl SingleAttributeParser for UnrollParser {
                 if let Some(lit) = l.as_lit()
                     && let LitKind::Int(val, LitIntType::Unsuffixed) = lit.kind
                 {
-                    if let Ok(val) = u32::try_from(val.get()) {
+                    if let Ok(val) = val.as_u32() {
                         return Some(AttributeKind::Unroll(UnrollAttr::Count(val)));
                     } else {
                         cx.adcx().expected_integer_literal_in_range(l.span(), 0, u32::MAX as isize);

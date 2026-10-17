@@ -71,7 +71,7 @@ fn invalid_type_err(
             dcx.emit_err(ConcatBytesInvalid { span, lit_kind: "numeric", sugg, cs_note: None })
         }
         Ok(LitKind::Int(val, LitIntType::Unsuffixed | LitIntType::Unsigned(UintTy::U8))) => {
-            assert!(val.get() > u8::MAX.into()); // must be an error
+            assert!(val.as_u128() > u8::MAX.into()); // must be an error
             dcx.emit_err(ConcatBytesOob { span })
         }
         Ok(LitKind::Int(_, _)) => dcx.emit_err(ConcatBytesNonU8 { span }),
@@ -99,7 +99,7 @@ fn handle_array_element(
                 Ok(LitKind::Int(
                     val,
                     LitIntType::Unsuffixed | LitIntType::Unsigned(UintTy::U8),
-                )) if let Ok(val) = u8::try_from(val.get()) => {
+                )) if let Ok(val) = val.as_u8() => {
                     return Some(val);
                 }
                 Ok(LitKind::Byte(val)) => return Some(val),
@@ -165,7 +165,7 @@ pub(crate) fn expand_concat_bytes(
                     if let Some(elem) =
                         handle_array_element(cx, &mut guar, &mut missing_literals, expr)
                     {
-                        for _ in 0..count_val.get() {
+                        for _ in 0..count_val.as_u128() {
                             accumulator.push(elem);
                         }
                     }

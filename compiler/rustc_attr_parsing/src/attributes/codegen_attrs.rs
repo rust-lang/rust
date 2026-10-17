@@ -890,7 +890,7 @@ impl SingleAttributeParser for PatchableFunctionEntryParser {
                 return None;
             };
 
-            let Ok(val) = val.get().try_into() else {
+            let Ok(val) = val.as_u8() else {
                 cx.adcx().expected_integer_literal_in_range(
                     value.value_span,
                     u8::MIN as isize,
