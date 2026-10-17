@@ -70,7 +70,7 @@ fn try_parse_19digits(s_ref: &mut &[u8], x: &mut u64) {
 }
 
 /// Parse the scientific notation component of a float.
-fn parse_scientific(s_ref: &mut &[u8]) -> Option<i64> {
+pub(super) fn parse_scientific(s_ref: &mut &[u8]) -> Option<i64> {
     let mut exponent = 0i64;
     let mut negative = false;
 
@@ -85,8 +85,11 @@ fn parse_scientific(s_ref: &mut &[u8]) -> Option<i64> {
 
     if matches!(s.first(), Some(&x) if x.is_ascii_digit()) {
         *s_ref = s.parse_digits(|digit| {
-            // no overflows here, saturate well before overflow
-            if exponent < 0x10000 {
+            // The exponent is at most 10 * 2^59 - 1, which is small enough for i64.
+            // We stop accumulating the exponent once it's larger than 2^59 - 1, knowing that
+            // a fractional part small enough for an even larger exponent to matter requires
+            // exabyte-scale input size.
+            if exponent < (1_i64 << 59) {
                 exponent = 10 * exponent + digit as i64;
             }
         });
@@ -139,6 +142,8 @@ fn parse_partial_number(mut s: &[u8]) -> Option<(Decimal, usize)> {
             s = s_next;
             // If None, we have no trailing digits after exponent, or an invalid float.
             exp_number = parse_scientific(&mut s)?;
+            // In principle, the fractional part can cause the following to overflow i64;
+            // however, this is not a problem on sub-exabyte inputs.
             exponent += exp_number;
         }
     }
@@ -177,6 +182,8 @@ fn parse_partial_number(mut s: &[u8]) -> Option<(Decimal, usize)> {
             -s.offset_from(before)
         } as i64;
         // add back the explicit part
+        // In principle, the integer part can cause the following to overflow i64;
+        // however, this is not a problem on sub-exabyte inputs.
         exponent += exp_number;
     }
 
