@@ -1,18 +1,23 @@
 error: memory leaked: ALLOC (Rust heap, SIZE, ALIGN), allocated here:
-  --> RUSTLIB/alloc/src/rcs/rc.rs:LL:CC
+  --> RUSTLIB/alloc/src/rcs/common/mod.rs:LL:CC
    |
-LL |               Self::from_inner(Box::into_non_null(Box::new(RcInner {
-   |  _________________________________________________^
-LL | |                 strong: Cell::new(1),
-LL | |                 weak: Cell::new(1),
-LL | |                 value,
-LL | |             })))
-   | |______________^
+LL |     let allocation_ptr = alloc.allocate(rc_layout.layout())?;
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: stack backtrace:
-           0: std::rc::Rc::<std::cell::RefCell<std::option::Option<Dummy>>>::new
+           0: alloc::rcs::common::try_allocate_uninit::<std::alloc::Global>
+               at RUSTLIB/alloc/src/rcs/common/mod.rs:LL:CC
+           1: alloc::rcs::common::allocate_uninit::<std::alloc::Global>
+               at RUSTLIB/alloc/src/rcs/common/mod.rs:LL:CC
+           2: alloc::rcs::common::Header::<std::cell::Cell<usize>>::allocate_uninit_for_type::<std::alloc::Global, std::mem::MaybeUninit<std::cell::RefCell<std::option::Option<Dummy>>>>
+               at RUSTLIB/alloc/src/rcs/common/mod.rs:LL:CC
+           3: std::rc::Rc::<std::cell::RefCell<std::option::Option<Dummy>>>::new_uninit_in
                at RUSTLIB/alloc/src/rcs/rc.rs:LL:CC
-           1: main
+           4: std::rc::Rc::<std::cell::RefCell<std::option::Option<Dummy>>>::new_in
+               at RUSTLIB/alloc/src/rcs/rc.rs:LL:CC
+           5: std::rc::Rc::<std::cell::RefCell<std::option::Option<Dummy>>>::new
+               at RUSTLIB/alloc/src/rcs/rc.rs:LL:CC
+           6: main
                at tests/fail/memleak_rc.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
