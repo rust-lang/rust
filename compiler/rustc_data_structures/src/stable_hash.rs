@@ -5,6 +5,7 @@ use std::num::NonZero;
 
 use rustc_index::bit_set::{self, DenseBitSet};
 use rustc_index::{Idx, IndexSlice, IndexVec};
+use rustc_macros::StableHash;
 use smallvec::SmallVec;
 use thin_vec::ThinVec;
 
@@ -35,6 +36,25 @@ pub trait StableHashCtxt {
     /// Assert that the provided `StableHashCtxt` is configured with the default
     /// `StableHashControls`. We should always have bailed out before getting to here with a
     fn assert_default_stable_hash_controls(&self, msg: &str);
+}
+
+/// Dummy impl of [`StableHashCtxt`], for code that can't provide a real context,
+/// and only wants to compute stable hashes for types that don't rely on the context.
+pub struct DummyStableHashCtxt;
+
+impl StableHashCtxt for DummyStableHashCtxt {
+    fn stable_hash_span(&mut self, _span: RawSpan, _hasher: &mut StableHasher) {
+        panic!("method on dummy stable-hash context was unexpectedly called");
+    }
+    fn def_path_hash(&self, _def_id: RawDefId) -> Fingerprint {
+        panic!("method on dummy stable-hash context was unexpectedly called");
+    }
+    fn stable_hash_controls(&self) -> StableHashControls {
+        panic!("method on dummy stable-hash context was unexpectedly called");
+    }
+    fn assert_default_stable_hash_controls(&self, _msg: &str) {
+        panic!("method on dummy stable-hash context was unexpectedly called");
+    }
 }
 
 // A type used to work around `Span` not being visible in this crate. It is the same size as
@@ -71,6 +91,18 @@ pub struct RawDefId(pub u32, pub u32);
 /// - `stable_hash()` must be independent of the host architecture. The
 ///   `StableHasher` takes care of endianness and `isize`/`usize` platform
 ///   differences.
+///
+/// # Consistency across compiler stages
+///
+/// Because the stage1 compiler is built against the bootstrap stdlib, but the stage2
+/// compiler uses in-tree stdlib, implementations of `StableHash` must not rely on `Hash`
+/// impls that were provided or derived by the standard library. Doing so leads to weird
+/// bugs and CI failures that can block changes to those stdlib hash impls.
+///
+/// (Unfortunately, as of late 2026 we have many stable-hash impls that _do_
+/// leak details of stdlib hash impls.)
+///
+/// See <https://github.com/rust-lang/rust/pull/164458> for more context.
 pub trait StableHash {
     fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher);
 }
@@ -575,8 +607,97 @@ impl<R: Idx, C: Idx> StableHash for bit_set::BitMatrix<R, C> {
 
 impl_stable_traits_for_trivial_type!(::std::ffi::OsStr);
 
-impl_stable_traits_for_trivial_type!(::std::path::Path);
-impl_stable_traits_for_trivial_type!(::std::path::PathBuf);
+impl StableHash for std::path::Path {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        use std::path::{Component, Prefix};
+
+        /// Tag value to be mixed in with each kind of component/prefix.
+        #[derive(StableHash)]
+        enum Tag {
+            StartOfPath,
+            PrefixVerbatim,
+            PrefixVerbatimUNC,
+            PrefixVerbatimDisk,
+            PrefixDeviceNS,
+            PrefixUNC,
+            PrefixDisk,
+            RootDir,
+            CurDir,
+            ParentDir,
+            Normal,
+            EndOfPath,
+        }
+
+        // Explicitly tag the start of each path, so that empty paths always hash something.
+        Tag::StartOfPath.stable_hash(hcx, hasher);
+
+        for (i, component) in self.components().enumerate() {
+            // Mix in the index of each component, to avoid potentially trivial collisions
+            // between inputs like `("foo/bar", "baz")` and `("foo", "bar/baz")`.
+            i.stable_hash(hcx, hasher);
+            match component {
+                Component::Prefix(prefix) => match prefix.kind() {
+                    Prefix::Verbatim(os_str) => {
+                        Tag::PrefixVerbatim.stable_hash(hcx, hasher);
+                        os_str.stable_hash(hcx, hasher);
+                    }
+                    Prefix::VerbatimUNC(host, share) => {
+                        Tag::PrefixVerbatimUNC.stable_hash(hcx, hasher);
+                        host.stable_hash(hcx, hasher);
+                        share.stable_hash(hcx, hasher);
+                    }
+                    Prefix::VerbatimDisk(letter) => {
+                        Tag::PrefixVerbatimDisk.stable_hash(hcx, hasher);
+                        letter.stable_hash(hcx, hasher);
+                    }
+                    Prefix::DeviceNS(os_str) => {
+                        Tag::PrefixDeviceNS.stable_hash(hcx, hasher);
+                        os_str.stable_hash(hcx, hasher);
+                    }
+                    Prefix::UNC(host, share) => {
+                        Tag::PrefixUNC.stable_hash(hcx, hasher);
+                        host.stable_hash(hcx, hasher);
+                        share.stable_hash(hcx, hasher);
+                    }
+                    Prefix::Disk(letter) => {
+                        Tag::PrefixDisk.stable_hash(hcx, hasher);
+                        letter.stable_hash(hcx, hasher);
+                    }
+                },
+                Component::RootDir => Tag::RootDir.stable_hash(hcx, hasher),
+                Component::CurDir => Tag::CurDir.stable_hash(hcx, hasher),
+                Component::ParentDir => Tag::ParentDir.stable_hash(hcx, hasher),
+                Component::Normal(os_str) => {
+                    Tag::Normal.stable_hash(hcx, hasher);
+                    os_str.stable_hash(hcx, hasher);
+                }
+            }
+        }
+
+        // Explicitly tag the end of each path, so that empty paths always hash something.
+        // (Tagging the start and the end and the component-index is potentially overkill.)
+        Tag::EndOfPath.stable_hash(hcx, hasher);
+    }
+}
+
+impl StableOrd for std::path::Path {
+    /// FIXME(Zalathar): Unstably sorting paths is pre-existing behavior, but potentially wrong.
+    const CAN_USE_UNSTABLE_SORT: bool = true;
+    /// Stdlib path sorting should (hopefully) not change.
+    const THIS_IMPLEMENTATION_HAS_BEEN_TRIPLE_CHECKED: () = ();
+}
+
+impl StableHash for std::path::PathBuf {
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        self.as_path().stable_hash(hcx, hasher);
+    }
+}
+
+impl StableOrd for std::path::PathBuf {
+    const CAN_USE_UNSTABLE_SORT: bool = <std::path::Path as StableOrd>::CAN_USE_UNSTABLE_SORT;
+    /// Stdlib path sorting should (hopefully) not change.
+    const THIS_IMPLEMENTATION_HAS_BEEN_TRIPLE_CHECKED: () = ();
+}
 
 // It is not safe to implement StableHash for HashSet, HashMap or any other collection type
 // with unstable but observable iteration order.

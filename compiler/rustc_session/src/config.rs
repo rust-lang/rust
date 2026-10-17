@@ -3406,7 +3406,7 @@ pub(crate) mod dep_tracking {
     use rustc_abi::Align;
     use rustc_ast::attr::version::RustcVersion;
     use rustc_data_structures::fx::FxIndexMap;
-    use rustc_data_structures::stable_hash::StableHasher;
+    use rustc_data_structures::stable_hash::{DummyStableHashCtxt, StableHash, StableHasher};
     use rustc_errors::LanguageIdentifier;
     use rustc_feature::UnstableFeatures;
     use rustc_hashes::Hash64;
@@ -3510,10 +3510,8 @@ pub(crate) mod dep_tracking {
         OutputType,
         PanicStrategy,
         PatchableFunctionEntry,
-        PathBuf,
         PointerAuthOption,
         Polonius,
-        RealFileName,
         RelocModel,
         RelroLevel,
         RemapPathScopeComponents,
@@ -3623,6 +3621,28 @@ pub(crate) mod dep_tracking {
                     DepTrackingHash::hash(val, hasher, error_format, for_crate_hash);
                 }
             }
+        }
+    }
+
+    impl DepTrackingHash for PathBuf {
+        fn hash(
+            &self,
+            hasher: &mut StableHasher,
+            _error_format: ErrorOutputType,
+            _for_crate_hash: bool,
+        ) {
+            self.stable_hash(&mut DummyStableHashCtxt, hasher);
+        }
+    }
+
+    impl DepTrackingHash for RealFileName {
+        fn hash(
+            &self,
+            hasher: &mut StableHasher,
+            _error_format: ErrorOutputType,
+            _for_crate_hash: bool,
+        ) {
+            self.stable_hash(&mut DummyStableHashCtxt, hasher);
         }
     }
 
