@@ -101,6 +101,8 @@ static PROPERTIES: &[&str] = &[
     "N",
     "Uppercase",
     "White_Space",
+    "XID_Continue",
+    "XID_Start",
     // tidy-alphabetical-end
 ];
 
