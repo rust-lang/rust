@@ -818,28 +818,8 @@ pub(crate) unsafe fn llvm_optimize<'ll>(
         )
     };
 
-    if cgcx.target_is_like_gpu
-        && config.offload.iter().any(|o| matches!(o, config::Offload::Device(_)))
-    {
-        let device_path = cgcx.output_filenames.path(OutputType::Object);
-        let device_dir = device_path.parent().unwrap();
-        let device_out = device_dir.join("device.bin");
-        let device_out_c = path_to_c_string(device_out.as_path());
-        // 1) Bundle device module into offload image device.bin (device TM)
-        let ok = unsafe {
-            llvm::RustOffloadWrapper::get_instance().llvm_rust_bundle_images(
-                llmod,
-                tm,
-                device_out_c.as_c_str(),
-            )
-        };
-        if !ok || !device_out.exists() {
-            dcx.emit_err(crate::diagnostics::OffloadBundleImagesFailed);
-        }
-    }
-
     // This assumes that we previously compiled our kernels for a gpu target, which created a
-    // `device.bin` artifact. The user is supposed to provide us with a path to this artifact, we
+    // `<crate>.bc` artifact. The user is supposed to provide us with a path to this artifact, we
     // don't need any other artifacts from the previous run.
     if !cgcx.target_is_like_gpu && is_final_stage {
         if let Some(device_path) = config
@@ -850,19 +830,15 @@ pub(crate) unsafe fn llvm_optimize<'ll>(
             let device_pathbuf = PathBuf::from(device_path);
             if device_pathbuf.is_relative() {
                 dcx.emit_err(crate::diagnostics::OffloadWithoutAbsPath);
-            } else if device_pathbuf
-                .file_name()
-                .and_then(|n| n.to_str())
-                .is_some_and(|n| n != "device.bin")
-            {
+            } else if device_pathbuf.extension().and_then(|e| e.to_str()) != Some("bc") {
                 dcx.emit_err(crate::diagnostics::OffloadWrongFileName);
             } else if !device_pathbuf.exists() {
                 dcx.emit_err(crate::diagnostics::OffloadNonexistingPath);
             }
-            let device_bin_c = path_to_c_string(device_pathbuf.as_path());
+            let device_bitcode_c = path_to_c_string(device_pathbuf.as_path());
             let ok = unsafe {
                 llvm::RustOffloadWrapper::get_instance()
-                    .llvm_rust_offload_wrap_images(llmod, device_bin_c.as_c_str())
+                    .llvm_rust_offload_wrap_images(llmod, device_bitcode_c.as_c_str())
             };
             if !ok {
                 dcx.emit_err(crate::diagnostics::OffloadWrapImagesFailed);
