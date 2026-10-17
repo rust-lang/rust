@@ -28,7 +28,7 @@ jobs:
         ]
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
 
     # `rustup show` installs from rust-toolchain.toml
     - name: Setup rust toolchain
@@ -46,7 +46,9 @@ jobs:
 
     - name: Install packages
       timeout-minutes: 20
-      run: sudo apt-get install ninja-build ripgrep
+      run: |
+        sudo apt-get update
+        sudo apt-get install ninja-build ripgrep
 
     - name: Install Intel Software Development Emulator
       if: ${{ matrix.cargo_runner }}

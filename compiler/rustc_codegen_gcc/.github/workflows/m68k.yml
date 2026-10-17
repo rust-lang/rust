@@ -34,7 +34,7 @@ jobs:
         ]
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
 
     # `rustup show` installs from rust-toolchain.toml
     - name: Setup rust toolchain
@@ -50,7 +50,7 @@ jobs:
       timeout-minutes: 20
       run: |
         sudo apt-get update
-        sudo apt-get install qemu-system qemu-user qemu-user-binfmt
+        sudo apt-get install qemu-user qemu-user-binfmt
 
     - name: Download artifact
       run: curl -LO https://github.com/cross-cg-gcc-tools/cross-gcc/releases/latest/download/gcc-m68k-15.deb

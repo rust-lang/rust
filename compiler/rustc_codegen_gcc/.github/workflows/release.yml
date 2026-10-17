@@ -30,7 +30,7 @@ jobs:
         ]
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
 
     # `rustup show` installs from rust-toolchain.toml
     - name: Setup rust toolchain
@@ -45,7 +45,9 @@ jobs:
     - name: Install packages
       # `llvm-tools` is needed to install the `FileCheck` binary which is used for run-make tests.
       timeout-minutes: 20
-      run: sudo apt-get install ninja-build ripgrep llvm-tools llvm
+      run: |
+        sudo apt-get update
+        sudo apt-get install ninja-build ripgrep llvm-tools llvm
 
     - name: Download artifact
       run: curl -LO https://github.com/rust-lang/gcc/releases/latest/download/gcc-15.deb

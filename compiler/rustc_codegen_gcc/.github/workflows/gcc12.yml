@@ -37,7 +37,7 @@ jobs:
         ]
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
 
     # `rustup show` installs from rust-toolchain.toml
     - name: Setup rust toolchain

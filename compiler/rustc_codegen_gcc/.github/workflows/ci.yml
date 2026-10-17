@@ -56,7 +56,7 @@ jobs:
             commands: "--librsvg-tests"
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
 
     # `rustup show` installs from rust-toolchain.toml
     - name: Setup rust toolchain
@@ -182,13 +182,13 @@ jobs:
   duplicates:
     runs-on: ubuntu-26.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: python tools/check_intrinsics_duplicates.py
 
   build_system:
     runs-on: ubuntu-26.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Test build system
         run: |
           cd build_system

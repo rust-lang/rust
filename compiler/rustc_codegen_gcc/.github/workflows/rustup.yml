@@ -49,7 +49,7 @@ jobs:
             run_cargo_tests: true
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
       with:
         sparse-checkout: .github
         sparse-checkout-cone-mode: false
@@ -134,7 +134,7 @@ jobs:
         ]
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
       with:
         sparse-checkout: .github
         sparse-checkout-cone-mode: false
@@ -153,7 +153,9 @@ jobs:
 
     - name: Install packages
       timeout-minutes: 20
-      run: sudo apt-get install ninja-build ripgrep
+      run: |
+        sudo apt-get update
+        sudo apt-get install ninja-build ripgrep
 
     - name: Install Intel Software Development Emulator
       if: ${{ matrix.cargo_runner }}
@@ -218,7 +220,7 @@ jobs:
     timeout-minutes: 90
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
       with:
         sparse-checkout: .github
         sparse-checkout-cone-mode: false
@@ -238,7 +240,9 @@ jobs:
 
     - name: Install packages
       timeout-minutes: 20
-      run: sudo apt-get install ninja-build ripgrep
+      run: |
+        sudo apt-get update
+        sudo apt-get install ninja-build ripgrep
 
     - name: Set env
       run: |
