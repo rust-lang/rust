@@ -1,6 +1,6 @@
 use std::fmt;
 
-pub(crate) use region_context::*;
+pub use region_context::RegionInferenceContext;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::graph::scc::Sccs;
 use rustc_hir::def_id::CRATE_DEF_ID;
