@@ -4,10 +4,10 @@
 use std::collections::VecDeque;
 use std::iter;
 
-use rustc_data_structures::fx::{FxIndexMap, FxIndexSet, IndexEntry};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet, IndexEntry};
 use rustc_data_structures::unord::UnordSet;
 use rustc_hir::def_id::CRATE_DEF_ID;
-use rustc_infer::infer::DefineOpaqueTypes;
+use rustc_infer::infer::{DefineOpaqueTypes, RegionVariableOrigin};
 use rustc_middle::ty::{Region, RegionVid};
 use rustc_span::DUMMY_SP;
 use tracing::debug;
@@ -193,14 +193,124 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         trait_did: DefId,
         mut auto_trait_callback: impl FnMut(AutoTraitInfo<'tcx>) -> A,
     ) -> AutoTraitResult<A> {
+        enum NeedsAutoTraitEvaluation {
+            Yes,
+            NotInterested,
+            ExplicitImpl(DefId),
+        }
+
+        /// Gather types that needs to be the RHS of the where bounds for auto trait impls,
+        /// by recursing into each field type. This is a recursive function rather than a
+        /// `TypeVisitor` because we have to look into nested fields.
+        fn gather_constituent_tys<'tcx>(
+            tcx: TyCtxt<'tcx>,
+            ty: Ty<'tcx>,
+            trait_did: DefId,
+            constituents: &mut Vec<Ty<'tcx>>,
+            visited: &mut FxHashSet<Ty<'tcx>>,
+        ) -> NeedsAutoTraitEvaluation {
+            if !visited.insert(ty) {
+                return NeedsAutoTraitEvaluation::Yes;
+            }
+
+            // If the type has any explicit impl for the trait, we just add a
+            // `where {type}: Trait` bound instead of recursing into its nested fields.
+            let mut disqualifying_impl = None;
+            tcx.for_each_relevant_impl(trait_did, ty, |impl_def_id| {
+                disqualifying_impl = Some(impl_def_id);
+            });
+            if let Some(impl_def_id) = disqualifying_impl {
+                constituents.push(ty);
+
+                return NeedsAutoTraitEvaluation::ExplicitImpl(impl_def_id);
+            }
+
+            match *ty.kind() {
+                ty::Param(_) => {
+                    constituents.push(ty);
+                    NeedsAutoTraitEvaluation::Yes
+                }
+
+                // Primitive types which don't need to consider generics
+                ty::Bool
+                | ty::Char
+                | ty::Int(_)
+                | ty::Uint(_)
+                | ty::Float(_)
+                | ty::Never
+                | ty::Str
+                | ty::FnPtr(_, _) => NeedsAutoTraitEvaluation::Yes,
+
+                ty::Adt(adt_def, args) => {
+                    // For `PhantomData<T>`, we pass `T`.
+                    if adt_def.is_phantom_data() {
+                        let _ = gather_constituent_tys(
+                            tcx,
+                            args.type_at(0),
+                            trait_did,
+                            constituents,
+                            visited,
+                        );
+                        return NeedsAutoTraitEvaluation::Yes;
+                    }
+
+                    for field_ty in
+                        adt_def.all_fields().map(|field| field.ty(tcx, args).skip_norm_wip())
+                    {
+                        let _ =
+                            gather_constituent_tys(tcx, field_ty, trait_did, constituents, visited);
+                    }
+                    NeedsAutoTraitEvaluation::Yes
+                }
+
+                ty::RawPtr(elem, _) | ty::Ref(_, elem, _) => {
+                    let _ = gather_constituent_tys(tcx, elem, trait_did, constituents, visited);
+                    NeedsAutoTraitEvaluation::Yes
+                }
+
+                ty::Array(elem, _) | ty::Pat(elem, _) | ty::Slice(elem) => {
+                    let _ = gather_constituent_tys(tcx, elem, trait_did, constituents, visited);
+                    NeedsAutoTraitEvaluation::Yes
+                }
+                ty::Tuple(tys) => {
+                    for elem in tys {
+                        let _ = gather_constituent_tys(tcx, elem, trait_did, constituents, visited);
+                    }
+                    NeedsAutoTraitEvaluation::Yes
+                }
+
+                // Aliases can be mentioned in fields
+                ty::Alias(_, _) => {
+                    constituents.push(ty);
+                    NeedsAutoTraitEvaluation::Yes
+                }
+
+                // Uninteresting or shouldn't be encountered types.
+                // Perhaps we'd like to assert on the later, but since this is
+                // a makeshift hack so let's not break things.
+                ty::Foreign(_)
+                | ty::FnDef(_, _)
+                | ty::UnsafeBinder(_)
+                | ty::Dynamic(_, _)
+                | ty::Closure(_, _)
+                | ty::CoroutineClosure(_, _)
+                | ty::Coroutine(_, _)
+                | ty::CoroutineWitness(_, _)
+                | ty::Bound(_, _)
+                | ty::Placeholder(_)
+                | ty::Infer(_)
+                | ty::Error(_) => NeedsAutoTraitEvaluation::NotInterested,
+            }
+        }
+
         // When the new solver is enabled globally we keep things deliberately
         // simple. The precise auto-trait synthesis depends on old-solver
         // internals, so here we only synthesize a simple field-based auto-trait
-        // impl for ADTs.
+        // impl for ADTs, primitives and some simple types such as tuples.
         //
-        // If the self type is not an ADT we return `NoImpl` instead of trying
+        // If the self type is none of those we return `NoImpl` instead of trying
         // to do anything fancy. To decide whether to emit a negative impl, we
-        // replace the ADT's generic arguments with inference variables and
+        // replace the ty's generic arguments with inference variables and
         // check whether the auto trait can hold. A true error from that probe
         // becomes a `NegativeImpl`, otherwise we continue on to emit the
         // imprecise field-based impl.
@@ -209,9 +319,6 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         // used for testing, even if the generated synthetic impls are less
         // precise.
         let tcx = self.tcx;
-        let ty::Adt(adt_def, args) = *ty.kind() else {
-            return AutoTraitResult::NoImpl;
-        };
 
         let mut disqualifying_impl = None;
         tcx.for_each_relevant_impl(trait_did, ty, |impl_def_id| {
@@ -225,23 +332,76 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             return AutoTraitResult::ExplicitImpl;
         }
 
+        let mut constituent_tys = vec![];
+        let needs_evaluation = gather_constituent_tys(
+            tcx,
+            ty,
+            trait_did,
+            &mut constituent_tys,
+            &mut Default::default(),
+        );
+        match needs_evaluation {
+            NeedsAutoTraitEvaluation::Yes => {}
+            NeedsAutoTraitEvaluation::NotInterested => return AutoTraitResult::NoImpl,
+            NeedsAutoTraitEvaluation::ExplicitImpl(impl_def_id) => {
+                debug!(
+                    "find_auto_trait_generics({:?}): possible manual impl {impl_def_id:?} found, bailing",
+                    ty::TraitRef::new(tcx, trait_did, [ty]),
+                );
+                return AutoTraitResult::ExplicitImpl;
+            }
+        }
+
         let (infcx, orig_env) = tcx.infer_ctxt().build_with_typing_env(typing_env);
-        let field_clauses = adt_def
-            .all_fields()
-            .map(|field| field.ty(tcx, args).skip_norm_wip())
-            .filter(|field_ty| field_ty.has_non_region_param())
-            .map(|field_ty| {
+        let constituent_clauses = constituent_tys
+            .into_iter()
+            .map(|constituent_ty| {
                 ty::TraitClause {
-                    trait_ref: ty::TraitRef::new(tcx, trait_did, [field_ty]),
+                    trait_ref: ty::TraitRef::new(tcx, trait_did, [constituent_ty]),
                     polarity: ty::ClausePolarity::Positive,
                 }
                 .upcast(tcx)
             })
             .collect::<Vec<ty::Clause<'tcx>>>();
-        let full_user_env = ty::ParamEnv::new(tcx, orig_env.caller_bounds().chain(field_clauses));
+        let full_user_env =
+            ty::ParamEnv::new(tcx, orig_env.caller_bounds().chain(constituent_clauses));
 
-        let fresh_args = infcx.fresh_args_for_item(DUMMY_SP, adt_def.did());
-        let fresh_ty = ty::EarlyBinder::bind(tcx, ty).instantiate(tcx, fresh_args).skip_norm_wip();
+        let fresh_ty = if !ty.has_param() {
+            ty
+        } else if let ty::Adt(adt_def, _) = *ty.kind() {
+            let fresh_args = infcx.fresh_args_for_item(DUMMY_SP, adt_def.did());
+            ty::EarlyBinder::bind(tcx, ty).instantiate(tcx, fresh_args).skip_norm_wip()
+        } else {
+            let mut tys = FxHashMap::default();
+            let mut regions = FxHashMap::default();
+            let mut consts = FxHashMap::default();
+
+            ty.fold_with(&mut ty::BottomUpFolder {
+                tcx,
+                ty_op: |ty| {
+                    let ty::Param(_) = *ty.kind() else {
+                        return ty;
+                    };
+                    *tys.entry(ty).or_insert_with(|| infcx.next_ty_var(DUMMY_SP))
+                },
+                lt_op: |lt| {
+                    let ty::ReEarlyParam(param) = lt.kind() else {
+                        return lt;
+                    };
+                    *regions.entry(lt).or_insert_with(|| {
+                        infcx.next_region_var(RegionVariableOrigin::RegionParameterDefinition(
+                            DUMMY_SP, param.name,
+                        ))
+                    })
+                },
+                ct_op: |ct| {
+                    let ty::ConstKind::Param(_) = ct.kind() else {
+                        return ct;
+                    };
+                    *consts.entry(ct).or_insert_with(|| infcx.next_const_var(DUMMY_SP))
+                },
+            })
+        };
         let ocx = ObligationCtxt::new(&infcx);
         ocx.register_bound(ObligationCause::dummy(), orig_env, fresh_ty, trait_did);
         let errors = ocx.try_evaluate_obligations();
