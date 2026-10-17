@@ -1,0 +1,75 @@
+error: multiple successive mutable references
+  --> tests/ui/mut_mut_unfixable.rs:8:11
+   |
+LL | fn fun(x: &mut &mut u32) -> bool {
+   |           ^^^^^^^^^^
+   |
+   = note: `-D clippy::mut-mut` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::mut_mut)]`
+help: use only a single mutable reference
+   |
+LL - fn fun(x: &mut &mut u32) -> bool {
+LL + fn fun(x: &mut u32) -> bool {
+   |
+
+error: multiple successive mutable borrows
+  --> tests/ui/mut_mut_unfixable.rs:14:17
+   |
+LL |     let mut x = &mut &mut 1u32;
+   |                 ^^^^^^^^^^
+   |
+help: make only a single borrow
+   |
+LL -     let mut x = &mut &mut 1u32;
+LL +     let mut x = &mut 1u32;
+   |
+
+error: borrow of a mutable reference
+  --> tests/ui/mut_mut_unfixable.rs:17:21
+   |
+LL |         let mut y = &mut x;
+   |                     ^^^^^
+   |
+help: reborrow instead
+   |
+LL |         let mut y = &mut *x;
+   |                          +
+
+error: multiple successive mutable borrows
+  --> tests/ui/mut_mut_unfixable.rs:23:17
+   |
+LL |         let y = &mut &mut 2;
+   |                 ^^^^^^^^^^
+   |
+help: make only a single borrow
+   |
+LL -         let y = &mut &mut 2;
+LL +         let y = &mut 2;
+   |
+
+error: multiple successive mutable borrows
+  --> tests/ui/mut_mut_unfixable.rs:29:17
+   |
+LL |         let y = &mut &mut &mut 2;
+   |                 ^^^^^^^^^^^^^^^
+   |
+help: make only a single borrow
+   |
+LL -         let y = &mut &mut &mut 2;
+LL +         let y = &mut 2;
+   |
+
+error: multiple successive mutable borrows
+  --> tests/ui/mut_mut_unfixable.rs:38:17
+   |
+LL |         let y = &mut &mut x;
+   |                 ^^^^^^^^^^
+   |
+help: make only a single borrow
+   |
+LL -         let y = &mut &mut x;
+LL +         let y = &mut x;
+   |
+
+error: aborting due to 6 previous errors
+

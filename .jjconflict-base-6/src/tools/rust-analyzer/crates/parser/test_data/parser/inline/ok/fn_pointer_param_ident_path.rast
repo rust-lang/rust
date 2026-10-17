@@ -1,0 +1,58 @@
+SOURCE_FILE
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "Foo"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    FN_PTR_TYPE
+      FN_KW "fn"
+      PARAM_LIST
+        L_PAREN "("
+        PARAM
+          PATH_TYPE
+            PATH
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "Bar"
+              COLON2 "::"
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "Baz"
+        R_PAREN ")"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "Qux"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    FN_PTR_TYPE
+      FN_KW "fn"
+      PARAM_LIST
+        L_PAREN "("
+        PARAM
+          IDENT_PAT
+            NAME
+              IDENT "baz"
+          COLON ":"
+          WHITESPACE " "
+          PATH_TYPE
+            PATH
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "Bar"
+              COLON2 "::"
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "Baz"
+        R_PAREN ")"
+    SEMICOLON ";"
+  WHITESPACE "\n"

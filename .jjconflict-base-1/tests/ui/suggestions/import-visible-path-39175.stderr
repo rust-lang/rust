@@ -1,0 +1,17 @@
+error[E0599]: no method named `exec` found for mutable reference `&mut Command` in the current scope
+  --> $DIR/import-visible-path-39175.rs:13:47
+   |
+LL |     let _ = Command::new("echo").arg("hello").exec();
+   |                                               ^^^^
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: there is a method `pre_exec` with a similar name, but with different arguments
+  --> $SRC_DIR/std/src/os/unix/process.rs:LL:COL
+help: trait `CommandExt` which provides `exec` is implemented but not in scope; perhaps you want to import it
+   |
+LL + use std::os::unix::process::CommandExt;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

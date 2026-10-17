@@ -1,0 +1,14 @@
+error[E0621]: explicit lifetime required in parameter type
+  --> $DIR/ex1-return-one-existing-name-if-else-3.rs:2:27
+   |
+LL |     if x > y { x } else { y }
+   |                           ^ lifetime `'a` required
+   |
+help: add explicit lifetime `'a` to type
+   |
+LL | fn foo<'a>((x, y): (&'a i32, &'a i32)) -> &'a i32 {
+   |                               ++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0621`.

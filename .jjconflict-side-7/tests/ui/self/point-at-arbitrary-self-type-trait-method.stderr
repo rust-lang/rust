@@ -1,0 +1,21 @@
+error[E0599]: no method named `foo` found for struct `A` in the current scope
+  --> $DIR/point-at-arbitrary-self-type-trait-method.rs:9:7
+   |
+LL | trait B { fn foo(self: Box<Self>); }
+   |              ---       --------- the method might not be found because of this arbitrary self type
+   |              |
+   |              the method is available for `Box<A>` here
+LL | struct A;
+   | -------- method `foo` not found for this struct
+...
+LL |     A.foo()
+   |       ^^^ method not found in `A`
+   |
+help: consider wrapping the receiver expression with the appropriate type
+   |
+LL |     Box::new(A).foo()
+   |     +++++++++ +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

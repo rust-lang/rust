@@ -1,0 +1,13 @@
+error: unterminated unicode escape
+  --> $DIR/new-unicode-escapes-1.rs:2:14
+   |
+LL |     let s = "\u{2603";
+   |              ^^^^^^^ missing a closing `}`
+   |
+help: terminate the unicode escape
+   |
+LL |     let s = "\u{2603}";
+   |                     +
+
+error: aborting due to 1 previous error
+

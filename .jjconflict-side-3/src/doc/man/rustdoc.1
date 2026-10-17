@@ -1,0 +1,126 @@
+.TH RUSTDOC "1" "July 2018" "rustdoc <INSERT VERSION HERE>" "User Commands"
+.SH NAME
+rustdoc \- generate documentation from Rust source code
+.SH SYNOPSIS
+.B rustdoc
+[\fIOPTIONS\fR] \fIINPUT\fR
+
+.SH DESCRIPTION
+This tool generates API reference documentation by extracting comments from
+source code written in the Rust language, available at
+<\fBhttps://www.rust-lang.org\fR>. It accepts several input formats and
+provides several output formats for the generated documentation.
+
+.SH OPTIONS
+
+.TP
+\fB\-r\fR, \fB\-\-input\-format\fR \fIFORMAT\fR
+rust
+.TP
+\fB\-w\fR, \fB\-\-output\-format\fR \fIFORMAT\fR
+html
+.TP
+\fB\-o\fR, \fB\-\-output\fR \fIOUTPUT\fR,
+where to place the output (default: \fIdoc/\fR for html)
+.TP
+\fB\-\-passes\fR \fILIST\fR
+space\[hy]separated list of passes to run (default: '')
+.TP
+\fB\-\-no\-defaults\fR
+don't run the default passes
+.TP
+\fB\-\-plugins\fR \fILIST\fR
+space-separated list of plugins to run (default: '')
+.TP
+\fB\-\-plugin\-path\fR \fIDIR\fR
+directory to load plugins from (default: \fI/tmp/rustdoc_ng/plugins\fR)
+.TP
+\fB\-\-target\fR \fITRIPLE\fR
+target triple to document
+.TP
+\fB\-\-crate\-name\fR \fINAME\fR
+specify the name of this crate
+.TP
+\fB\-L\fR, \fB\-\-library\-path\fR \fIDIR\fR
+directory to add to crate search path
+.TP
+\fB\-\-cfg\fR \fISPEC\fR
+pass a \fI\-\-cfg\fR to rustc
+.TP
+\fB\-\-extern\fR \fIVAL\fR
+pass an \fI\-\-extern\fR to rustc
+.TP
+\fB\-\-test\fR
+run code examples as tests
+.TP
+\fB\-\-test\-args\fR \fIARGS\fR
+pass arguments to the test runner
+.TP
+\fB\-\-html\-in\-header\fR \fIFILE\fR
+file to add to <head>
+.TP
+\fB\-\-html\-before\-content\fR \fIFILES\fR
+files to include inline between <body> and the content of a rendered Markdown
+file or generated documentation
+.TP
+\fB\-\-markdown\-before\-content\fR \fIFILES\fR
+files to include inline between <body> and the content of a rendered
+Markdown file or generated documentation
+.TP
+\fB\-\-html\-after\-content\fR \fIFILES\fR
+files to include inline between the content and </body> of a rendered
+Markdown file or generated documentation
+.TP
+\fB\-\-markdown\-after\-content\fR \fIFILES\fR
+files to include inline between the content and </body> of a rendered
+Markdown file or generated documentation
+.TP
+\fB\-\-markdown\-css\fR \fIFILES\fR
+CSS files to include via <link> in a rendered Markdown file Markdown file or
+generated documentation
+.TP
+\fB\-\-markdown\-playground\-url\fR \fIURL\fR
+URL to send code snippets to
+.TP
+\fB\-\-markdown\-no\-toc\fR
+don't include table of contents
+.TP
+\fB\-h\fR, \fB\-\-extend\-css\fR
+to redefine some css rules with a given file to generate doc with your own theme
+.TP
+\fB\-V\fR, \fB\-\-version\fR
+Print rustdoc's version
+
+.SH "OUTPUT FORMATS"
+
+The rustdoc tool can generate output in an HTML format.
+
+If using an HTML format, then the specified output destination will be the root
+directory of an HTML structure for all the documentation.
+Pages will be placed into this directory, and source files will also
+possibly be rendered into it as well.
+
+.SH "EXAMPLES"
+
+To generate documentation for the source in the current directory:
+    $ rustdoc hello.rs
+
+List all available passes that rustdoc has, along with default passes:
+    $ rustdoc \-\-passes list
+
+The generated HTML can be viewed with any standard web browser.
+
+.SH "SEE ALSO"
+
+.BR rustc (1)
+
+.SH "BUGS"
+See <\fBhttps://github.com/rust\-lang/rust/issues\fR>
+for issues.
+
+.SH "AUTHOR"
+See the version control history or <\fBhttps://thanks.rust\-lang.org\fR>
+
+.SH "COPYRIGHT"
+This work is dual\[hy]licensed under Apache\ 2.0 and MIT terms.
+See \fICOPYRIGHT\fR file in the rust source distribution.

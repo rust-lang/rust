@@ -1,0 +1,16 @@
+error[E0597]: `s` does not live long enough
+  --> $DIR/do-not-ignore-lifetime-bounds-in-copy.rs:8:17
+   |
+LL |     let s = 2;
+   |         - binding `s` declared here
+LL |     let a = Foo(&s);
+   |                 ^^ borrowed value does not live long enough
+LL |     drop(a);
+   |          - copying this value requires that `s` is borrowed for `'static`
+LL |     drop(a);
+LL | }
+   | - `s` dropped here while still borrowed
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0597`.

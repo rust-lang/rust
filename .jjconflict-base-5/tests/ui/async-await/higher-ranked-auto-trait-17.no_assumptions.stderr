@@ -1,0 +1,29 @@
+error: implementation of `FnOnce` is not general enough
+  --> $DIR/higher-ranked-auto-trait-17.rs:12:5
+   |
+LL | /     async move {
+LL | |         let iter = Adaptor::new(a.iter().map(|_: &()| {}));
+LL | |         std::future::pending::<()>().await;
+LL | |         drop(iter);
+LL | |     }
+   | |_____^ implementation of `FnOnce` is not general enough
+   |
+   = note: closure with signature `fn(&'0 ())` must implement `FnOnce<(&'1 (),)>`, for any two lifetimes `'0` and `'1`...
+   = note: ...but it actually implements `FnOnce<(&(),)>`
+
+error: implementation of `FnOnce` is not general enough
+  --> $DIR/higher-ranked-auto-trait-17.rs:12:5
+   |
+LL | /     async move {
+LL | |         let iter = Adaptor::new(a.iter().map(|_: &()| {}));
+LL | |         std::future::pending::<()>().await;
+LL | |         drop(iter);
+LL | |     }
+   | |_____^ implementation of `FnOnce` is not general enough
+   |
+   = note: closure with signature `fn(&'0 ())` must implement `FnOnce<(&'1 (),)>`, for any two lifetimes `'0` and `'1`...
+   = note: ...but it actually implements `FnOnce<(&(),)>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors
+

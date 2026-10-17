@@ -1,0 +1,403 @@
+error[E0658]: `mut` restrictions are experimental
+  --> $DIR/feature-gate-mut-restriction.rs:8:9
+   |
+LL |     pub mut(crate) x: i32,
+   |         ^^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(mut_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `mut` restrictions are experimental
+  --> $DIR/feature-gate-mut-restriction.rs:9:9
+   |
+LL |     pub mut(self) unsafe y: i32,
+   |         ^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(mut_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `mut` restrictions are experimental
+  --> $DIR/feature-gate-mut-restriction.rs:12:23
+   |
+LL | pub struct TupFoo(pub mut(crate) i32, pub mut(self) i32);
+   |                       ^^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(mut_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `mut` restrictions are experimental
+  --> $DIR/feature-gate-mut-restriction.rs:12:43
+   |
+LL | pub struct TupFoo(pub mut(crate) i32, pub mut(self) i32);
+   |                                           ^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(mut_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `mut` restrictions are experimental
+  --> $DIR/feature-gate-mut-restriction.rs:17:9
+   |
+LL |         mut(self) x: i32,
+   |         ^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(mut_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `mut` restrictions are experimental
+  --> $DIR/feature-gate-mut-restriction.rs:18:9
+   |
+LL |         mut(crate) unsafe y: i32,
+   |         ^^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(mut_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `mut` restrictions are experimental
+  --> $DIR/feature-gate-mut-restriction.rs:20:9
+   |
+LL |     Tup(mut(self) i32, mut(crate) i32),
+   |         ^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(mut_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `mut` restrictions are experimental
+  --> $DIR/feature-gate-mut-restriction.rs:20:24
+   |
+LL |     Tup(mut(self) i32, mut(crate) i32),
+   |                        ^^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(mut_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `mut` restrictions are experimental
+  --> $DIR/feature-gate-mut-restriction.rs:25:9
+   |
+LL |     pub mut(self) x: i32,
+   |         ^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(mut_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `mut` restrictions are experimental
+  --> $DIR/feature-gate-mut-restriction.rs:26:9
+   |
+LL |     pub mut(crate) unsafe y: i32,
+   |         ^^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(mut_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `mut` restrictions are experimental
+  --> $DIR/feature-gate-mut-restriction.rs:31:13
+   |
+LL |         pub mut(super) x: i32,
+   |             ^^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(mut_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `mut` restrictions are experimental
+  --> $DIR/feature-gate-mut-restriction.rs:32:13
+   |
+LL |         pub mut(in crate::foo) unsafe y: i32,
+   |             ^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(mut_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `mut` restrictions are experimental
+  --> $DIR/feature-gate-mut-restriction.rs:35:27
+   |
+LL |     pub struct TupBar(pub mut(super) i32, pub mut(in crate::foo) i32);
+   |                           ^^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(mut_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `mut` restrictions are experimental
+  --> $DIR/feature-gate-mut-restriction.rs:35:47
+   |
+LL |     pub struct TupBar(pub mut(super) i32, pub mut(in crate::foo) i32);
+   |                                               ^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(mut_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `mut` restrictions are experimental
+  --> $DIR/feature-gate-mut-restriction.rs:40:13
+   |
+LL |             mut(in crate::foo) x: i32,
+   |             ^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(mut_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `mut` restrictions are experimental
+  --> $DIR/feature-gate-mut-restriction.rs:41:13
+   |
+LL |             mut(super) unsafe y: i32,
+   |             ^^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(mut_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `mut` restrictions are experimental
+  --> $DIR/feature-gate-mut-restriction.rs:43:13
+   |
+LL |         Tup(mut(in crate::foo) i32, mut(super) i32),
+   |             ^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(mut_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `mut` restrictions are experimental
+  --> $DIR/feature-gate-mut-restriction.rs:43:37
+   |
+LL |         Tup(mut(in crate::foo) i32, mut(super) i32),
+   |                                     ^^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(mut_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `mut` restrictions are experimental
+  --> $DIR/feature-gate-mut-restriction.rs:48:13
+   |
+LL |         pub mut(in crate::foo) x: i32,
+   |             ^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(mut_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `mut` restrictions are experimental
+  --> $DIR/feature-gate-mut-restriction.rs:49:13
+   |
+LL |         pub mut(super) unsafe y: i32,
+   |             ^^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(mut_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `mut` restrictions are experimental
+  --> $DIR/feature-gate-mut-restriction.rs:55:9
+   |
+LL |     pub mut(crate) x: i32,
+   |         ^^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(mut_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `mut` restrictions are experimental
+  --> $DIR/feature-gate-mut-restriction.rs:56:9
+   |
+LL |     pub mut(self) unsafe y: i32,
+   |         ^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(mut_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `mut` restrictions are experimental
+  --> $DIR/feature-gate-mut-restriction.rs:60:23
+   |
+LL | pub struct TupBaz(pub mut(crate) i32, pub mut(self) i32);
+   |                       ^^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(mut_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `mut` restrictions are experimental
+  --> $DIR/feature-gate-mut-restriction.rs:60:43
+   |
+LL | pub struct TupBaz(pub mut(crate) i32, pub mut(self) i32);
+   |                                           ^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(mut_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `mut` restrictions are experimental
+  --> $DIR/feature-gate-mut-restriction.rs:66:9
+   |
+LL |         mut(self) x: i32,
+   |         ^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(mut_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `mut` restrictions are experimental
+  --> $DIR/feature-gate-mut-restriction.rs:67:9
+   |
+LL |         mut(crate) unsafe y: i32,
+   |         ^^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(mut_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `mut` restrictions are experimental
+  --> $DIR/feature-gate-mut-restriction.rs:69:9
+   |
+LL |     Tup(mut(self) i32, mut(crate) i32),
+   |         ^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(mut_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `mut` restrictions are experimental
+  --> $DIR/feature-gate-mut-restriction.rs:69:24
+   |
+LL |     Tup(mut(self) i32, mut(crate) i32),
+   |                        ^^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(mut_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `mut` restrictions are experimental
+  --> $DIR/feature-gate-mut-restriction.rs:75:9
+   |
+LL |     pub mut(self) x: i32,
+   |         ^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(mut_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `mut` restrictions are experimental
+  --> $DIR/feature-gate-mut-restriction.rs:76:9
+   |
+LL |     pub mut(crate) unsafe y: i32,
+   |         ^^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(mut_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `mut` restrictions are experimental
+  --> $DIR/feature-gate-mut-restriction.rs:82:13
+   |
+LL |         pub mut(super) x: i32,
+   |             ^^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(mut_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `mut` restrictions are experimental
+  --> $DIR/feature-gate-mut-restriction.rs:83:13
+   |
+LL |         pub mut(in crate::foo) unsafe y: i32,
+   |             ^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(mut_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `mut` restrictions are experimental
+  --> $DIR/feature-gate-mut-restriction.rs:86:27
+   |
+LL |     pub struct TupBar(pub mut(super) i32, pub mut(in crate::foo) i32);
+   |                           ^^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(mut_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `mut` restrictions are experimental
+  --> $DIR/feature-gate-mut-restriction.rs:86:47
+   |
+LL |     pub struct TupBar(pub mut(super) i32, pub mut(in crate::foo) i32);
+   |                                               ^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(mut_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `mut` restrictions are experimental
+  --> $DIR/feature-gate-mut-restriction.rs:91:13
+   |
+LL |             mut(in crate::foo) x: i32,
+   |             ^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(mut_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `mut` restrictions are experimental
+  --> $DIR/feature-gate-mut-restriction.rs:92:13
+   |
+LL |             mut(super) unsafe y: i32,
+   |             ^^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(mut_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `mut` restrictions are experimental
+  --> $DIR/feature-gate-mut-restriction.rs:94:13
+   |
+LL |         Tup(mut(in crate::foo) i32, mut(super) i32),
+   |             ^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(mut_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `mut` restrictions are experimental
+  --> $DIR/feature-gate-mut-restriction.rs:94:37
+   |
+LL |         Tup(mut(in crate::foo) i32, mut(super) i32),
+   |                                     ^^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(mut_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `mut` restrictions are experimental
+  --> $DIR/feature-gate-mut-restriction.rs:99:13
+   |
+LL |         pub mut(in crate::foo) x: i32,
+   |             ^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(mut_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `mut` restrictions are experimental
+  --> $DIR/feature-gate-mut-restriction.rs:100:13
+   |
+LL |         pub mut(super) unsafe y: i32,
+   |             ^^^^^^^^^^
+   |
+   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
+   = help: add `#![feature(mut_restriction)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 40 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

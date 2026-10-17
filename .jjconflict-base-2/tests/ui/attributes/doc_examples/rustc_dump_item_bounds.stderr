@@ -1,0 +1,11 @@
+error: rustc_dump_item_bounds
+ --> $DIR/rustc_dump_item_bounds.rs:8:5
+  |
+8 |     type Assoc: PartialEq<String>;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: Binder { value: TraitClause(<<Self as Trait<T>>::Assoc as std::cmp::PartialEq<std::string::String>>, polarity:Positive), bound_vars: [] }
+  = note: Binder { value: TraitClause(<<Self as Trait<T>>::Assoc as std::marker::Sized>, polarity:Positive), bound_vars: [] }
+
+error: aborting due to 1 previous error
+

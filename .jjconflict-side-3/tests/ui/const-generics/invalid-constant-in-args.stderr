@@ -1,0 +1,11 @@
+error[E0107]: struct takes 1 generic argument but 2 generic arguments were supplied
+  --> $DIR/invalid-constant-in-args.rs:4:12
+   |
+LL |     let _: Cell<&str, "a"> = Cell::new("");
+   |            ^^^^     ----- help: remove the unnecessary generic argument
+   |            |
+   |            expected 1 generic argument
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0107`.

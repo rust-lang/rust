@@ -1,0 +1,16 @@
+error: this operation will panic at runtime
+  --> $DIR/index-bounds.rs:4:14
+   |
+LL |     let _n = [64][200];
+   |              ^^^^^^^^^ index out of bounds: the length is 1 but the index is 200
+   |
+   = note: `#[deny(unconditional_panic)]` on by default
+
+error: this operation will panic at runtime
+  --> $DIR/index-bounds.rs:8:14
+   |
+LL |     let _n = [64][u32::MAX as usize - 1];
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^ index out of bounds: the length is 1 but the index is 4294967294
+
+error: aborting due to 2 previous errors
+

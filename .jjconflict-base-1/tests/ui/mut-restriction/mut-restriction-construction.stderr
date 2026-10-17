@@ -1,0 +1,111 @@
+error: `FooS` cannot be constructed using a `struct` expression outside `crate::foo::bar`
+  --> $DIR/mut-restriction-construction.rs:50:17
+   |
+LL | ...       pub mut(self) alpha: u8,
+   |               --------- field restricted here
+...
+LL | ...   let _ = bar::FooS { alpha: 1, beta: 2, gamma: 3 };
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `FooS` cannot be constructed using a `struct` expression outside `crate::foo::bar`
+  --> $DIR/mut-restriction-construction.rs:52:17
+   |
+LL | ...       pub mut(self) alpha: u8,
+   |               --------- field restricted here
+...
+LL | ...   let _ = bar::FooS { gamma: 3, ..foos };
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `Var` cannot be constructed using a `variant` expression outside `crate::foo::bar`
+  --> $DIR/mut-restriction-construction.rs:54:17
+   |
+LL | ...           mut(in crate::foo::bar) alpha: u8,
+   |               ----------------------- field restricted here
+...
+LL | ...   let _ = bar::FooE::Var { alpha: 1, beta: 2, gamma: 3 };
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `Tup` cannot be constructed using a `variant` expression outside `crate::foo::bar`
+  --> $DIR/mut-restriction-construction.rs:55:17
+   |
+LL |             Tup(mut(in crate::foo::bar) u8, mut(in crate::foo) u8, u8),
+   |                 ----------------------- field restricted here
+...
+LL |         let _ = bar::FooE::Tup(1, 2, 3);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `FooU` cannot be constructed using a `union` expression outside `crate::foo::bar`
+  --> $DIR/mut-restriction-construction.rs:57:17
+   |
+LL |             pub mut(in self) alpha: u8,
+   |                 ------------ field restricted here
+...
+LL |         let _ = bar::FooU { alpha: 1 };
+   |                 ^^^^^^^^^^^^^^^^^^^^^^
+
+error: `Bar` cannot be constructed using a `struct` expression outside `crate::foo::bar`
+  --> $DIR/mut-restriction-construction.rs:61:17
+   |
+LL |             pub mut(self) u8,
+   |                 --------- field restricted here
+...
+LL |         let _ = bar::Bar(1, 2, 3);
+   |                 ^^^^^^^^^^^^^^^^^
+
+error: `TopLevelS` cannot be constructed using a `struct` expression outside `external`
+  --> $DIR/mut-restriction-construction.rs:66:13
+   |
+LL |     let _ = external::TopLevelS { x: 1, y: 2 };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+  ::: $DIR/auxiliary/external-mut-restriction.rs:5:9
+   |
+LL |     pub mut(crate) x: i32,
+   |         ---------- field restricted here
+
+error: `TopLevelS` cannot be constructed using a `struct` expression outside `external`
+  --> $DIR/mut-restriction-construction.rs:68:13
+   |
+LL |     let _ = external::TopLevelS { y: 2, ..ext_toplevel_s };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+  ::: $DIR/auxiliary/external-mut-restriction.rs:5:9
+   |
+LL |     pub mut(crate) x: i32,
+   |         ---------- field restricted here
+
+error: `Var` cannot be constructed using a `variant` expression outside `external`
+  --> $DIR/mut-restriction-construction.rs:70:13
+   |
+LL |     let _ = external::TopLevelE::Var { x: 1, y: 2 };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+  ::: $DIR/auxiliary/external-mut-restriction.rs:11:9
+   |
+LL |         mut(crate) x: i32,
+   |         ---------- field restricted here
+
+error: `Tup` cannot be constructed using a `variant` expression outside `external`
+  --> $DIR/mut-restriction-construction.rs:71:13
+   |
+LL |     let _ = external::TopLevelE::Tup(1, 2);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+  ::: $DIR/auxiliary/external-mut-restriction.rs:14:9
+   |
+LL |     Tup(mut(crate) i32, i32),
+   |         ---------- field restricted here
+
+error: `TopLevelU` cannot be constructed using a `union` expression outside `external`
+  --> $DIR/mut-restriction-construction.rs:72:13
+   |
+LL |     let _ = external::TopLevelU { x: 1 };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+  ::: $DIR/auxiliary/external-mut-restriction.rs:18:9
+   |
+LL |     pub mut(crate) x: i32,
+   |         ---------- field restricted here
+
+error: aborting due to 11 previous errors
+

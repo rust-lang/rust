@@ -1,0 +1,65 @@
+error: expected identifier, found keyword `async`
+  --> $DIR/edition-keywords-2018-2015-parsing.rs:14:13
+   |
+LL |     let mut async = 1;
+   |             ^^^^^ expected identifier, found keyword
+   |
+help: escape `async` to use it as an identifier
+   |
+LL |     let mut r#async = 1;
+   |             ++
+
+error: expected identifier, found keyword `async`
+  --> $DIR/edition-keywords-2018-2015-parsing.rs:26:13
+   |
+LL |     module::async();
+   |             ^^^^^ expected identifier, found keyword
+   |
+help: escape `async` to use it as an identifier
+   |
+LL |     module::r#async();
+   |             ++
+
+error: no rules expected `r#async`
+  --> $DIR/edition-keywords-2018-2015-parsing.rs:18:31
+   |
+LL |     r#async = consumes_async!(r#async);
+   |                               ^^^^^^^ no rules expected this token in macro call
+   |
+note: while trying to match keyword `async`
+  --> $DIR/auxiliary/edition-kw-macro-2015.rs:17:6
+   |
+LL |     (async) => (1)
+   |      ^^^^^
+
+error: no rules expected keyword `async`
+  --> $DIR/edition-keywords-2018-2015-parsing.rs:19:35
+   |
+LL |     r#async = consumes_async_raw!(async);
+   |                                   ^^^^^ no rules expected this token in macro call
+   |
+note: while trying to match `r#async`
+  --> $DIR/auxiliary/edition-kw-macro-2015.rs:22:6
+   |
+LL |     (r#async) => (1)
+   |      ^^^^^^^
+
+error: macro expansion ends with an incomplete expression: expected one of `move`, `use`, `{`, `|`, or `||`
+  --> $DIR/auxiliary/edition-kw-macro-2015.rs:27:23
+   |
+LL |     ($i: ident) => ($i)
+   |                       ^ expected one of `move`, `use`, `{`, `|`, or `||`
+   |
+  ::: $DIR/edition-keywords-2018-2015-parsing.rs:22:8
+   |
+LL |     if passes_ident!(async) == 1 {} // FIXME: Edition hygiene bug, async here is 2018 and reserved
+   |        -------------------- in this macro invocation
+
+error: macro expansion ends with an incomplete expression: expected one of `move`, `use`, `{`, `|`, or `||`
+  --> $DIR/edition-keywords-2018-2015-parsing.rs:24:24
+   |
+LL |     if passes_tt!(async) == 1 {}
+   |                        ^ expected one of `move`, `use`, `{`, `|`, or `||`
+
+error: aborting due to 6 previous errors
+

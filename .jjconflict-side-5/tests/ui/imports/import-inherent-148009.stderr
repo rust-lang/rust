@@ -1,0 +1,37 @@
+error[E0432]: unresolved import `self::TestStruct`
+  --> $DIR/import-inherent-148009.rs:18:15
+   |
+LL | pub use self::TestStruct::{C1, m1};
+   |               ^^^^^^^^^^ `TestStruct` is a struct, not a module or a trait
+   |
+   = note: cannot import inherent associated items, only trait associated items
+
+error[E0432]: unresolved import `self::TestUnion`
+  --> $DIR/import-inherent-148009.rs:33:15
+   |
+LL | pub use self::TestUnion::{C2, m2};
+   |               ^^^^^^^^^ `TestUnion` is a union, not a module or a trait
+   |
+   = note: cannot import inherent associated items, only trait associated items
+
+error[E0432]: unresolved imports `self::TestEnum::C3`, `self::TestEnum::m3`
+  --> $DIR/import-inherent-148009.rs:48:26
+   |
+LL | pub use self::TestEnum::{C3, m3};
+   |                          ^^  ^^ no `m3` in `TestEnum`
+   |                          |
+   |                          no `C3` in `TestEnum`
+   |
+   = note: cannot import inherent associated items, only trait associated items
+
+error[E0432]: unresolved import `self::TestForeignTy`
+  --> $DIR/import-inherent-148009.rs:63:15
+   |
+LL | pub use self::TestForeignTy::{C4, m4};
+   |               ^^^^^^^^^^^^^ `TestForeignTy` is a foreign type, not a module or a trait
+   |
+   = note: cannot import inherent associated items, only trait associated items
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0432`.

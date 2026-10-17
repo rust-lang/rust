@@ -1,0 +1,179 @@
+error[E0801]: invalid generic `self` parameter type: `R`
+  --> $DIR/arbitrary-self-from-method-substs.rs:9:43
+   |
+LL |     fn get<R: Deref<Target = Self>>(self: R) -> u32 {
+   |                                           ^
+   |
+   = note: type of `self` must not be a method generic parameter type
+   = help: use a concrete type such as `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+
+error[E0801]: invalid generic `self` parameter type: `&R`
+  --> $DIR/arbitrary-self-from-method-substs.rs:13:44
+   |
+LL |     fn get1<R: Deref<Target = Self>>(self: &R) -> u32 {
+   |                                            ^^
+   |
+   = note: type of `self` must not be a method generic parameter type
+   = help: use a concrete type such as `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+
+error[E0801]: invalid generic `self` parameter type: `&mut R`
+  --> $DIR/arbitrary-self-from-method-substs.rs:17:44
+   |
+LL |     fn get2<R: Deref<Target = Self>>(self: &mut R) -> u32 {
+   |                                            ^^^^^^
+   |
+   = note: type of `self` must not be a method generic parameter type
+   = help: use a concrete type such as `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+
+error[E0801]: invalid generic `self` parameter type: `Rc<R>`
+  --> $DIR/arbitrary-self-from-method-substs.rs:21:44
+   |
+LL |     fn get3<R: Deref<Target = Self>>(self: std::rc::Rc<R>) -> u32 {
+   |                                            ^^^^^^^^^^^^^^
+   |
+   = note: type of `self` must not be a method generic parameter type
+   = help: use a concrete type such as `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+
+error[E0801]: invalid generic `self` parameter type: `&Rc<R>`
+  --> $DIR/arbitrary-self-from-method-substs.rs:25:44
+   |
+LL |     fn get4<R: Deref<Target = Self>>(self: &std::rc::Rc<R>) -> u32 {
+   |                                            ^^^^^^^^^^^^^^^
+   |
+   = note: type of `self` must not be a method generic parameter type
+   = help: use a concrete type such as `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+
+error[E0801]: invalid generic `self` parameter type: `Rc<&R>`
+  --> $DIR/arbitrary-self-from-method-substs.rs:29:44
+   |
+LL |     fn get5<R: Deref<Target = Self>>(self: std::rc::Rc<&R>) -> u32 {
+   |                                            ^^^^^^^^^^^^^^^
+   |
+   = note: type of `self` must not be a method generic parameter type
+   = help: use a concrete type such as `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+
+error[E0308]: mismatched types
+  --> $DIR/arbitrary-self-from-method-substs.rs:76:5
+   |
+LL |     foo.get::<&Foo>();
+   |     ^^^ expected `&Foo`, found `Foo`
+
+error[E0308]: mismatched types
+  --> $DIR/arbitrary-self-from-method-substs.rs:78:5
+   |
+LL |     foo.get::<std::rc::Rc<Foo>>();
+   |     ^^^ expected `Rc<Foo>`, found `Foo`
+   |
+   = note: expected struct `Rc<Foo>`
+              found struct `Foo`
+
+error[E0308]: mismatched types
+  --> $DIR/arbitrary-self-from-method-substs.rs:84:5
+   |
+LL |     smart_ptr.get::<SmartPtr2<Foo>>();
+   |     ^^^^^^^^^ expected `SmartPtr2<'_, Foo>`, found `SmartPtr<'_, Foo>`
+   |
+   = note: expected struct `SmartPtr2<'_, Foo>`
+              found struct `SmartPtr<'_, Foo>`
+
+error[E0308]: mismatched types
+  --> $DIR/arbitrary-self-from-method-substs.rs:86:5
+   |
+LL |     smart_ptr.get::<&Foo>();
+   |     ^^^^^^^^^ expected `&Foo`, found `SmartPtr<'_, Foo>`
+   |
+   = note: expected reference `&Foo`
+                 found struct `SmartPtr<'_, Foo>`
+
+error[E0271]: type mismatch resolving `<Silly as FindReceiver>::Receiver == Foo`
+  --> $DIR/arbitrary-self-from-method-substs.rs:92:9
+   |
+LL |     foo.get6(Silly);
+   |         ^^^^ type mismatch resolving `<Silly as FindReceiver>::Receiver == Foo`
+   |
+note: expected this to be `Foo`
+  --> $DIR/arbitrary-self-from-method-substs.rs:71:21
+   |
+LL |     type Receiver = std::rc::Rc<Foo>;
+   |                     ^^^^^^^^^^^^^^^^
+   = note: expected struct `Foo`
+              found struct `Rc<Foo>`
+
+error[E0271]: type mismatch resolving `<Silly as FindReceiver>::Receiver == &Foo`
+  --> $DIR/arbitrary-self-from-method-substs.rs:96:9
+   |
+LL |     foo.get6(Silly);
+   |         ^^^^ type mismatch resolving `<Silly as FindReceiver>::Receiver == &Foo`
+   |
+note: expected this to be `&Foo`
+  --> $DIR/arbitrary-self-from-method-substs.rs:71:21
+   |
+LL |     type Receiver = std::rc::Rc<Foo>;
+   |                     ^^^^^^^^^^^^^^^^
+   = note: expected reference `&Foo`
+                 found struct `Rc<Foo>`
+
+error[E0599]: the method `get` exists for struct `Rc<Bar<_>>`, but its trait bounds were not satisfied
+  --> $DIR/arbitrary-self-from-method-substs.rs:100:7
+   |
+LL | struct Bar<R>(std::marker::PhantomData<R>);
+   | ------------- doesn't satisfy `Bar<_>: Deref`
+...
+LL |     t.get();
+   |       ^^^ method cannot be called on `Rc<Bar<_>>` due to unsatisfied trait bounds
+   |
+note: the following trait bounds were not satisfied:
+      `<&Bar<_> as Deref>::Target = Bar<&Bar<_>>`
+      `<&Rc<Bar<_>> as Deref>::Target = Bar<&Rc<Bar<_>>>`
+      `<&mut Bar<_> as Deref>::Target = Bar<&mut Bar<_>>`
+      `<&mut Rc<Bar<_>> as Deref>::Target = Bar<&mut Rc<Bar<_>>>`
+      `<Rc<Bar<_>> as Deref>::Target = Bar<Rc<Bar<_>>>`
+      `Bar<_>: Deref`
+  --> $DIR/arbitrary-self-from-method-substs.rs:60:9
+   |
+LL | impl<R: std::ops::Deref<Target = Self>> Bar<R> {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ------
+   |         |               |
+   |         |               unsatisfied trait bound introduced here
+   |         unsatisfied trait bound introduced here
+note: the trait `Deref` must be implemented
+  --> $SRC_DIR/core/src/ops/deref.rs:LL:COL
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following trait defines an item `get`, perhaps you need to implement it:
+           candidate #1: `SliceIndex`
+
+error[E0599]: the method `get` exists for reference `&Rc<Bar<_>>`, but its trait bounds were not satisfied
+  --> $DIR/arbitrary-self-from-method-substs.rs:108:7
+   |
+LL | struct Bar<R>(std::marker::PhantomData<R>);
+   | ------------- doesn't satisfy `Bar<_>: Deref`
+...
+LL |     t.get();
+   |       ^^^ method cannot be called on `&Rc<Bar<_>>` due to unsatisfied trait bounds
+   |
+note: the following trait bounds were not satisfied:
+      `<&&Rc<Bar<_>> as Deref>::Target = Bar<&&Rc<Bar<_>>>`
+      `<&Bar<_> as Deref>::Target = Bar<&Bar<_>>`
+      `<&Rc<Bar<_>> as Deref>::Target = Bar<&Rc<Bar<_>>>`
+      `<&mut &Rc<Bar<_>> as Deref>::Target = Bar<&mut &Rc<Bar<_>>>`
+      `<&mut Bar<_> as Deref>::Target = Bar<&mut Bar<_>>`
+      `<&mut Rc<Bar<_>> as Deref>::Target = Bar<&mut Rc<Bar<_>>>`
+      `<Rc<Bar<_>> as Deref>::Target = Bar<Rc<Bar<_>>>`
+      `Bar<_>: Deref`
+  --> $DIR/arbitrary-self-from-method-substs.rs:60:9
+   |
+LL | impl<R: std::ops::Deref<Target = Self>> Bar<R> {
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ------
+   |         |               |
+   |         |               unsatisfied trait bound introduced here
+   |         unsatisfied trait bound introduced here
+note: the trait `Deref` must be implemented
+  --> $SRC_DIR/core/src/ops/deref.rs:LL:COL
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following trait defines an item `get`, perhaps you need to implement it:
+           candidate #1: `SliceIndex`
+
+error: aborting due to 14 previous errors
+
+Some errors have detailed explanations: E0271, E0308, E0599, E0801.
+For more information about an error, try `rustc --explain E0271`.

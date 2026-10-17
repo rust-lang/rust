@@ -1,0 +1,26 @@
+error[E0437]: type `Opq2` is not a member of trait `Trait`
+  --> $DIR/lifetime-def-path-conflict-40731.rs:10:5
+   |
+LL |     type Opq2 = impl for<'a> Trait<'a>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a member of trait `Trait`
+
+error[E0496]: lifetime name `'a` shadows a lifetime name that is already in scope
+  --> $DIR/lifetime-def-path-conflict-40731.rs:10:26
+   |
+LL | impl<'a> Trait<'a> for u32 {
+   |      -- first declared here
+LL |     type Opq2 = impl for<'a> Trait<'a>;
+   |                          ^^ lifetime `'a` already in scope
+
+error: unconstrained opaque type
+  --> $DIR/lifetime-def-path-conflict-40731.rs:10:17
+   |
+LL |     type Opq2 = impl for<'a> Trait<'a>;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `Opq2` must be used in combination with a concrete type within the same impl
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0437, E0496.
+For more information about an error, try `rustc --explain E0437`.

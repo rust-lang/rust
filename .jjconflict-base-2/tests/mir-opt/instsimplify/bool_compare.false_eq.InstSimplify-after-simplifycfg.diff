@@ -1,0 +1,36 @@
+- // MIR for `false_eq` before InstSimplify-after-simplifycfg
++ // MIR for `false_eq` after InstSimplify-after-simplifycfg
+  
+  fn false_eq(_1: bool) -> u32 {
+      debug x => _1;
+      let mut _0: u32;
+      let mut _2: bool;
+      let mut _3: bool;
+  
+      bb0: {
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = copy _1;
+-         _2 = Eq(const false, move _3);
++         _2 = Not(move _3);
+          switchInt(move _2) -> [0: bb2, otherwise: bb1];
+      }
+  
+      bb1: {
+          StorageDead(_3);
+          _0 = const 0_u32;
+          goto -> bb3;
+      }
+  
+      bb2: {
+          StorageDead(_3);
+          _0 = const 1_u32;
+          goto -> bb3;
+      }
+  
+      bb3: {
+          StorageDead(_2);
+          return;
+      }
+  }
+  

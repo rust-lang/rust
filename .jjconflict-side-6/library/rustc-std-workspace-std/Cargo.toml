@@ -1,0 +1,17 @@
+[package]
+name = "rustc-std-workspace-std"
+version = "1.99.0"
+license = 'MIT OR Apache-2.0'
+description = """
+Hack for the compiler's own build system
+"""
+edition = "2024"
+
+[lib]
+path = "lib.rs"
+test = false
+bench = false
+doc = false
+
+[dependencies]
+std = { path = "../std" }

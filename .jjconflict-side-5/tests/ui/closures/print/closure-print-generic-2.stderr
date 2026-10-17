@@ -1,0 +1,20 @@
+error[E0308]: mismatched types
+  --> $DIR/closure-print-generic-2.rs:6:22
+   |
+LL |         let c = || println!("{} {}", t, x);
+   |                 -- the found closure
+LL |         let c1: () = c;
+   |                 --   ^ expected `()`, found closure
+   |                 |
+   |                 expected due to this
+   |
+   = note: expected unit type `()`
+                found closure `{closure@$DIR/closure-print-generic-2.rs:5:17: 5:19}`
+help: use parentheses to call this closure
+   |
+LL |         let c1: () = c();
+   |                       ++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

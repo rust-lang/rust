@@ -1,0 +1,23 @@
+error: redundant explicit link target
+  --> $DIR/issue-120444-2.rs:10:13
+   |
+LL | /// [`Vfs`][crate::Vfs]
+   |      -----  ^^^^^^^^^^ explicit target is redundant
+   |      |
+   |      because label contains path that resolves to same destination
+   |
+   = note: when a link's destination is not specified,
+           the label is used to resolve intra-doc links
+note: the lint level is defined here
+  --> $DIR/issue-120444-2.rs:3:9
+   |
+LL | #![deny(rustdoc::redundant_explicit_links)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: remove explicit link target
+   |
+LL - /// [`Vfs`][crate::Vfs]
+LL + /// [`Vfs`]
+   |
+
+error: aborting due to 1 previous error
+

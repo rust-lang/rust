@@ -1,0 +1,33 @@
+{
+  "arch": "avr",
+  "atomic-cas": false,
+  "crt-objects-fallback": "false",
+  "data-layout": "e-P1-p:16:8-i8:8-i16:8-i32:8-i64:8-f32:8-f64:8-n8:16-a:8",
+  "eh-frame-header": false,
+  "exe-suffix": ".elf",
+  "late-link-args": {
+    "gnu-cc": [
+      "-lgcc"
+    ],
+    "gnu-lld-cc": [
+      "-lgcc"
+    ]
+  },
+  "linker": "avr-gcc",
+  "linker-flavor": "gnu-cc",
+  "llvm-target": "avr-unknown-unknown",
+  "max-atomic-width": 16,
+  "metadata": {
+    "description": null,
+    "host_tools": false,
+    "std": false,
+    "tier": 3
+  },
+  "pre-link-args": {
+    "gnu-cc": [],
+    "gnu-lld-cc": []
+  },
+  "relocation-model": "static",
+  "target-c-int-width": 16,
+  "target-pointer-width": 16
+}

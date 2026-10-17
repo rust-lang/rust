@@ -1,0 +1,108 @@
+error: expected one of `!` or `::`, found `}`
+  --> $DIR/issue-40006.rs:3:1
+   |
+LL | impl dyn A {
+   |            - while parsing this item list starting here
+LL |     Y
+   |      - expected one of `!` or `::`
+LL | }
+   | ^
+   | |
+   | unexpected token
+   | the item list ends here
+
+error: missing `fn` for function definition
+  --> $DIR/issue-40006.rs:8:5
+   |
+LL | trait X {
+   |         - while parsing this item list starting here
+LL |     X() {}
+   |     ^
+...
+LL | }
+   | - the item list ends here
+   |
+help: add `fn` here to parse `X` as a function
+   |
+LL |     fn X() {}
+   |     ++
+
+error: missing `fn` for function definition
+  --> $DIR/issue-40006.rs:16:5
+   |
+LL | trait A {
+   |         - while parsing this item list starting here
+LL |     X() {}
+   |     ^
+LL | }
+   | - the item list ends here
+   |
+help: add `fn` here to parse `X` as a function
+   |
+LL |     fn X() {}
+   |     ++
+
+error: expected one of `!` or `[`, found `#`
+  --> $DIR/issue-40006.rs:19:17
+   |
+LL |     fn xxx() { ### }
+   |                 ^ expected one of `!` or `[`
+
+error: expected one of `!` or `::`, found `=`
+  --> $DIR/issue-40006.rs:22:7
+   |
+LL | trait C {
+   |         - while parsing this item list starting here
+LL |     L = M;
+   |       ^ expected one of `!` or `::`
+LL | }
+   | - the item list ends here
+
+error: expected one of `!` or `::`, found `=`
+  --> $DIR/issue-40006.rs:25:7
+   |
+LL | trait D {
+   |         - while parsing this item list starting here
+LL |     Z = { 2 + 3 };
+   |       ^ expected one of `!` or `::`
+LL | }
+   | - the item list ends here
+
+error: expected one of `!` or `::`, found `(`
+  --> $DIR/issue-40006.rs:28:9
+   |
+LL | trait E {
+   |         - while parsing this item list starting here
+LL |     ::Y ();
+   |         ^ expected one of `!` or `::`
+LL | }
+   | - the item list ends here
+
+error: missing `fn` for method definition
+  --> $DIR/issue-40006.rs:32:5
+   |
+LL | impl S {
+   |        - while parsing this item list starting here
+LL |     pub hello_method(&self) {
+   |     ^^^^^^^^^^^^^^^^
+...
+LL | }
+   | - the item list ends here
+   |
+help: add `fn` here to parse `hello_method` as a method
+   |
+LL |     pub fn hello_method(&self) {
+   |         ++
+
+error[E0599]: no method named `hello_method` found for struct `S` in the current scope
+  --> $DIR/issue-40006.rs:38:7
+   |
+LL | struct S;
+   | -------- method `hello_method` not found for this struct
+...
+LL |     S.hello_method();
+   |       ^^^^^^^^^^^^ method not found in `S`
+
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

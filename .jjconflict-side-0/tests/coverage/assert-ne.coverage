@@ -1,0 +1,23 @@
+   LL|       |//@ edition: 2021
+   LL|       |
+   LL|       |use core::hint::black_box;
+   LL|       |
+   LL|       |#[derive(Debug, PartialEq)]
+   LL|       |struct Foo(u32);
+   LL|       |
+   LL|      1|fn main() {
+   LL|      1|    assert_ne!(
+   LL|      1|        black_box(Foo(5)), // Make sure this expression's span isn't lost.
+   LL|      1|        if black_box(false) {
+   LL|      0|            Foo(0) //
+   LL|       |        } else {
+   LL|      1|            Foo(1) //
+   LL|       |        }
+   LL|       |    );
+   LL|      1|    ()
+   LL|      1|}
+   LL|       |
+   LL|       |// This test is a short fragment extracted from `issue-84561.rs`, highlighting
+   LL|       |// a particular span of code that can easily be lost if overlapping spans are
+   LL|       |// processed incorrectly.
+

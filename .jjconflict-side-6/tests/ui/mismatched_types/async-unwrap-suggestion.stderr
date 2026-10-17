@@ -1,0 +1,25 @@
+error[E0308]: mismatched types
+  --> $DIR/async-unwrap-suggestion.rs:5:16
+   |
+LL |         return Ok(6);
+   |                ^^^^^ expected `i32`, found `Result<{integer}, _>`
+   |
+   = note: expected type `i32`
+              found enum `Result<{integer}, _>`
+
+error[E0308]: mismatched types
+  --> $DIR/async-unwrap-suggestion.rs:15:16
+   |
+LL |         return s;
+   |                ^ expected `i32`, found `Result<{integer}, _>`
+   |
+   = note: expected type `i32`
+              found enum `Result<{integer}, _>`
+help: consider using `Result::expect` to unwrap the `Result<{integer}, _>` value, panicking if the value is a `Result::Err`
+   |
+LL |         return s.expect("REASON");
+   |                 +++++++++++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

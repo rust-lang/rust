@@ -1,0 +1,19 @@
+error[E0107]: missing generics for type alias `ExplicitTypeOutlives`
+  --> $DIR/bad-lazy-type-alias.rs:8:24
+   |
+LL |     _significant_drop: ExplicitTypeOutlives,
+   |                        ^^^^^^^^^^^^^^^^^^^^ expected 1 generic argument
+   |
+note: type alias defined here, with 1 generic parameter: `T`
+  --> $DIR/bad-lazy-type-alias.rs:5:6
+   |
+LL | type ExplicitTypeOutlives<T> = T;
+   |      ^^^^^^^^^^^^^^^^^^^^ -
+help: add missing generic argument
+   |
+LL |     _significant_drop: ExplicitTypeOutlives<T>,
+   |                                            +++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0107`.

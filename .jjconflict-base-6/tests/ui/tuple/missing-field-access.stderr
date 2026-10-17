@@ -1,0 +1,28 @@
+error[E0599]: no method named `get_ref` found for struct `F` in the current scope
+  --> $DIR/missing-field-access.rs:11:15
+   |
+LL | struct F(BufReader<File>);
+   | -------- method `get_ref` not found for this struct
+...
+LL |     let x = f.get_ref();
+   |               ^^^^^^^ method not found in `F`
+   |
+help: one of the expressions' fields has a method of the same name
+   |
+LL |     let x = f.0.get_ref();
+   |               ++
+
+error[E0599]: no method named `get_ref` found for tuple `(BufReader<File>,)` in the current scope
+  --> $DIR/missing-field-access.rs:14:15
+   |
+LL |     let x = f.get_ref();
+   |               ^^^^^^^ method not found in `(BufReader<File>,)`
+   |
+help: one of the expressions' fields has a method of the same name
+   |
+LL |     let x = f.0.get_ref();
+   |               ++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

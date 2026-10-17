@@ -1,0 +1,15 @@
+error[E0026]: variant `A::A` does not have a field named `fob`
+  --> $DIR/match-enum-struct-variant-field-missing.rs:12:16
+   |
+LL |         A::A { fob } => {
+   |                ^^^ variant `A::A` does not have this field
+   |
+help: a field with a similar name exists
+   |
+LL -         A::A { fob } => {
+LL +         A::A { foo } => {
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0026`.

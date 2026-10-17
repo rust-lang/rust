@@ -1,0 +1,122 @@
+//! Throughout the compiler tree, there are several places which want to have
+//! access to state or queries while being inside crates that are dependencies
+//! of `rustc_middle`. To facilitate this, we have the
+//! `rustc_data_structures::AtomicRef` type, which allows us to setup a global
+//! static which can then be set in this file at program startup.
+//!
+//! See `SPAN_TRACK` for an example of how to set things up.
+//!
+//! The functions in this file should fall back to the default set in their
+//! origin crate when the `TyCtxt` is not present in TLS.
+
+use std::fmt;
+use std::fmt::Arguments;
+use std::panic::Location;
+
+use rustc_errors::{DiagInner, DiagLocation, Level};
+use rustc_middle::dep_graph::{QuerySideEffect, TaskDepsRef};
+use rustc_middle::ty::tls;
+use rustc_span::{Span, Symbol};
+
+fn track_span_parent(def_id: rustc_span::def_id::LocalDefId) {
+    tls::with_context_opt(|icx| {
+        if let Some(icx) = icx {
+            // `track_span_parent` gets called a lot from HIR lowering code.
+            // Skip doing anything if we aren't tracking dependencies.
+            let tracks_deps = match icx.task_deps {
+                TaskDepsRef::Allow(..) => true,
+                TaskDepsRef::EvalAlways | TaskDepsRef::Ignore | TaskDepsRef::Forbid => false,
+            };
+            if tracks_deps {
+                let _span = icx.tcx.source_span(def_id);
+                // Sanity check: relative span's parent must be an absolute span.
+                debug_assert_eq!(_span.data_untracked().parent, None);
+            }
+        }
+    })
+}
+
+/// This is a callback from `rustc_errors` as it cannot access the implicit state
+/// in `rustc_middle` otherwise. It is used when diagnostic messages are
+/// emitted and stores them in the current query, if there is one.
+fn track_diagnostic<R>(diagnostic: DiagInner, f: &mut dyn FnMut(DiagInner) -> R) -> R {
+    tls::with_context_opt(|icx| {
+        if let Some(icx) = icx {
+            icx.tcx.dep_graph.record_diagnostic(icx.tcx, &diagnostic);
+
+            // Diagnostics are tracked, we can ignore the dependency.
+            let icx = tls::ImplicitCtxt { task_deps: TaskDepsRef::Ignore, ..*icx };
+            tls::enter_context(&icx, move || (*f)(diagnostic))
+        } else {
+            // In any other case, invoke diagnostics anyway.
+            (*f)(diagnostic)
+        }
+    })
+}
+
+fn track_feature(feature: Symbol) {
+    tls::with_context_opt(|icx| {
+        let Some(icx) = icx else {
+            return;
+        };
+        let tcx = icx.tcx;
+
+        if let Some(dep_node_index) = tcx.query_system.used_features.lock().get(&feature).copied() {
+            tcx.dep_graph.read_index(dep_node_index);
+        } else {
+            let dep_node_index = tcx
+                .dep_graph
+                .encode_side_effect(tcx, QuerySideEffect::CheckFeature { symbol: feature });
+            tcx.query_system.used_features.lock().insert(feature, dep_node_index);
+            tcx.dep_graph.read_index(dep_node_index);
+        }
+    })
+}
+
+/// This is a callback from `rustc_hir` as it cannot access the implicit state
+/// in `rustc_middle` otherwise.
+fn def_id_debug(def_id: rustc_hir::def_id::DefId, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "DefId({}:{}", def_id.krate, def_id.index.index())?;
+    tls::with_opt(|opt_tcx| {
+        if let Some(tcx) = opt_tcx {
+            write!(f, " ~ {}", tcx.def_path_debug_str(def_id))?;
+        }
+        Ok(())
+    })?;
+    write!(f, ")")
+}
+
+/// Returns true if it printed the diagnostic, which happens if a `tcx` is available.
+fn emit_bug_diagnostic(
+    span: Option<Span>,
+    args: Arguments<'_>,
+    location: &'static Location<'static>,
+) -> bool {
+    tls::with_opt(move |tcx| {
+        if let Some(tcx) = tcx {
+            let mut diag = DiagInner::new(Level::Bug, format!("{location}: {args}"));
+            if let Some(span) = span {
+                diag.span = span.into();
+            }
+            diag.emitted_at = DiagLocation::from_location(location);
+            // Emit the bug without aborting. We let `bug_impl` do the abort because it has
+            // `#[track_caller]` which gives a better location. (`#[track_caller]` doesn't work
+            // here because this function is called via a function pointer.)
+            tcx.dcx().emit_diagnostic(diag);
+            true
+        } else {
+            false
+        }
+    })
+}
+
+/// Sets up the callbacks in prior crates which we want to refer to the
+/// TyCtxt in.
+pub fn setup_callbacks() {
+    rustc_span::SPAN_TRACK.swap(&(track_span_parent as fn(_)));
+    rustc_hir::def_id::DEF_ID_DEBUG.swap(&(def_id_debug as fn(_, &mut fmt::Formatter<'_>) -> _));
+    rustc_errors::TRACK_DIAGNOSTIC.swap(&(track_diagnostic as _));
+    rustc_feature::TRACK_FEATURE.swap(&(track_feature as _));
+    rustc_span::macros::EMIT_BUG_DIAGNOSTIC.swap(&(emit_bug_diagnostic as _));
+    rustc_expand_queries::setup_callbacks();
+}

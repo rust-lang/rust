@@ -1,0 +1,28 @@
+error: expected one of `async`, `|`, or `||`, found `{`
+  --> $DIR/parse.rs:5:12
+   |
+LL |     || use {
+   |     --     ^ expected one of `async`, `|`, or `||`
+   |     |
+   |     while parsing the body of this closure
+   |
+help: you might have meant to open the body of the closure, instead of enclosing the closure in a block
+   |
+LL ~ fn parse1() 
+LL ~     || { use {
+   |
+
+error: expected one of `async`, `|`, or `||`, found keyword `use`
+  --> $DIR/parse.rs:11:10
+   |
+LL |     move use || {
+   |          ^^^ expected one of `async`, `|`, or `||`
+
+error: expected one of `async`, `|`, or `||`, found keyword `move`
+  --> $DIR/parse.rs:17:9
+   |
+LL |     use move || {
+   |         ^^^^ expected one of `async`, `|`, or `||`
+
+error: aborting due to 3 previous errors
+

@@ -1,0 +1,8 @@
+error: expected `()`, found `(N, T::ASSOC)`
+  --> $DIR/tuple_expr_arg_unbounded_assoc_const.rs:9:21
+   |
+LL |     takes_tuple::<{ (N, T::ASSOC) }>;
+   |                     ^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

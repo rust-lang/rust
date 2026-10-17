@@ -1,0 +1,78 @@
+error: expected identifier, found keyword `self`
+  --> $DIR/missing-fat-arrow.rs:8:13
+   |
+LL |         Some(x) if x == y {
+   |                         - while parsing this struct
+LL |             self.next_token()?;
+   |             ^^^^ expected identifier, found keyword
+   |
+help: you might have meant to start a match arm after the match guard
+   |
+LL |         Some(x) if x == y => {
+   |                           ++
+
+error: expected one of `,`, `:`, or `}`, found `.`
+  --> $DIR/missing-fat-arrow.rs:22:14
+   |
+LL |         Some(a) if a.value == b {
+   |                               - while parsing this struct
+LL |             a.value = 1;
+   |             -^ expected one of `,`, `:`, or `}`
+   |             |
+   |             while parsing this struct field
+   |
+help: try naming a field
+   |
+LL |             a: a.value = 1;
+   |             ++
+help: you might have meant to start a match arm after the match guard
+   |
+LL |         Some(a) if a.value == b => {
+   |                                 ++
+
+error: expected one of `,`, `:`, or `}`, found `.`
+  --> $DIR/missing-fat-arrow.rs:32:14
+   |
+LL |         Some(a) if a.value == b {
+   |                               - while parsing this struct
+LL |             a.value,
+   |             -^ expected one of `,`, `:`, or `}`
+   |             |
+   |             while parsing this struct field
+   |
+help: try naming a field
+   |
+LL |             a: a.value,
+   |             ++
+help: you might have meant to start a match arm after the match guard
+   |
+LL |         Some(a) if a.value == b => {
+   |                                 ++
+
+error[E0308]: mismatched types
+  --> $DIR/missing-fat-arrow.rs:12:18
+   |
+LL |     let _: i32 = ();
+   |            ---   ^^ expected `i32`, found `()`
+   |            |
+   |            expected due to this
+
+error[E0308]: mismatched types
+  --> $DIR/missing-fat-arrow.rs:26:18
+   |
+LL |     let _: i32 = ();
+   |            ---   ^^ expected `i32`, found `()`
+   |            |
+   |            expected due to this
+
+error[E0308]: mismatched types
+  --> $DIR/missing-fat-arrow.rs:37:18
+   |
+LL |     let _: i32 = ();
+   |            ---   ^^ expected `i32`, found `()`
+   |            |
+   |            expected due to this
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

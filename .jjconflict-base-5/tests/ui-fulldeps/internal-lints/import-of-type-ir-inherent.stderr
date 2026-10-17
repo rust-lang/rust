@@ -1,0 +1,31 @@
+error: do not use `rustc_type_ir::inherent` unless you're inside of the trait solver
+  --> $DIR/import-of-type-ir-inherent.rs:8:20
+   |
+LL | use rustc_type_ir::inherent::*;
+   |                    ^^^^^^^^
+   |
+   = note: the method or struct you're looking for is likely defined somewhere else downstream in the compiler
+note: the lint level is defined here
+  --> $DIR/import-of-type-ir-inherent.rs:4:9
+   |
+LL | #![deny(rustc::usage_of_type_ir_inherent)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: do not use `rustc_type_ir::inherent` unless you're inside of the trait solver
+  --> $DIR/import-of-type-ir-inherent.rs:10:20
+   |
+LL | use rustc_type_ir::inherent;
+   |                    ^^^^^^^^
+   |
+   = note: the method or struct you're looking for is likely defined somewhere else downstream in the compiler
+
+error: do not use `rustc_type_ir::inherent` unless you're inside of the trait solver
+  --> $DIR/import-of-type-ir-inherent.rs:12:20
+   |
+LL | use rustc_type_ir::inherent::Predicate;
+   |                    ^^^^^^^^
+   |
+   = note: the method or struct you're looking for is likely defined somewhere else downstream in the compiler
+
+error: aborting due to 3 previous errors
+

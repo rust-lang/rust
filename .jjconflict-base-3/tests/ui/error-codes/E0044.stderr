@@ -1,0 +1,11 @@
+error[E0044]: foreign items may not have type parameters
+  --> $DIR/E0044.rs:2:5
+   |
+LL |     fn sqrt<T>(f: T) -> T;
+   |     ^^^^^^^^^^^^^^^^^^^^^^ can't have type parameters
+   |
+   = help: replace the type parameters with concrete types like `u32`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0044`.

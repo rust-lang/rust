@@ -1,0 +1,13 @@
+error: path separator must be a double colon
+  --> $DIR/issue-60933.rs:3:28
+   |
+LL |     let _: usize = std::mem:size_of::<u32>();
+   |                            ^
+   |
+help: use a double colon instead
+   |
+LL |     let _: usize = std::mem::size_of::<u32>();
+   |                             +
+
+error: aborting due to 1 previous error
+

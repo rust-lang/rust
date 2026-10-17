@@ -1,0 +1,17 @@
+error[E0597]: `s` does not live long enough
+  --> $DIR/check-trait-object-bounds-3.rs:15:34
+   |
+LL |         let s = String::from("abcdef");
+   |             - binding `s` declared here
+LL |         z = f::<dyn X<Y = &str>>(&s);
+   |             ---------------------^^-
+   |             |                    |
+   |             |                    borrowed value does not live long enough
+   |             argument requires that `s` is borrowed for `'static`
+LL |
+LL |     }
+   |     - `s` dropped here while still borrowed
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0597`.

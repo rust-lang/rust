@@ -1,0 +1,74 @@
+error: repetition matches empty token tree
+  --> $DIR/issue-57597.rs:8:7
+   |
+LL |     ($($($i:ident)?)+) => {};
+   |       ^^^^^^^^^^^^^^
+
+error: repetition matches empty token tree
+  --> $DIR/issue-57597.rs:13:7
+   |
+LL |     ($($($i:ident)?)*) => {};
+   |       ^^^^^^^^^^^^^^
+
+error: repetition matches empty token tree
+  --> $DIR/issue-57597.rs:18:7
+   |
+LL |     ($($($i:ident)?)?) => {};
+   |       ^^^^^^^^^^^^^^
+
+error: repetition matches empty token tree
+  --> $DIR/issue-57597.rs:23:7
+   |
+LL |     ($($($($i:ident)?)?)?) => {};
+   |       ^^^^^^^^^^^^^^^^^^
+
+error: repetition matches empty token tree
+  --> $DIR/issue-57597.rs:28:7
+   |
+LL |     ($($($($i:ident)*)?)?) => {};
+   |       ^^^^^^^^^^^^^^^^^^
+
+error: repetition matches empty token tree
+  --> $DIR/issue-57597.rs:33:7
+   |
+LL |     ($($($($i:ident)?)*)?) => {};
+   |       ^^^^^^^^^^^^^^^^^^
+
+error: repetition matches empty token tree
+  --> $DIR/issue-57597.rs:38:7
+   |
+LL |     ($($($($i:ident)?)?)*) => {};
+   |       ^^^^^^^^^^^^^^^^^^
+
+error: repetition matches empty token tree
+  --> $DIR/issue-57597.rs:43:7
+   |
+LL |     ($($($($i:ident)*)*)?) => {};
+   |       ^^^^^^^^^^^^^^^^^^
+
+error: repetition matches empty token tree
+  --> $DIR/issue-57597.rs:48:7
+   |
+LL |     ($($($($i:ident)?)*)*) => {};
+   |       ^^^^^^^^^^^^^^^^^^
+
+error: repetition matches empty token tree
+  --> $DIR/issue-57597.rs:53:7
+   |
+LL |     ($($($($i:ident)?)*)+) => {};
+   |       ^^^^^^^^^^^^^^^^^^
+
+error: repetition matches empty token tree
+  --> $DIR/issue-57597.rs:58:7
+   |
+LL |     ($($($($i:ident)+)?)*) => {};
+   |       ^^^^^^^^^^^^^^^^^^
+
+error: repetition matches empty token tree
+  --> $DIR/issue-57597.rs:63:7
+   |
+LL |     ($($($($i:ident)+)*)?) => {};
+   |       ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 12 previous errors
+

@@ -1,0 +1,8 @@
+error: expected one of `extern` or `fn`, found `WhereIsFerris`
+  --> $DIR/issue-68062-const-extern-fns-dont-need-fn-specifier-2.rs:5:18
+   |
+LL |     const unsafe WhereIsFerris Now() {}
+   |                  ^^^^^^^^^^^^^ expected one of `extern` or `fn`
+
+error: aborting due to 1 previous error
+

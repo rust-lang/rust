@@ -1,0 +1,58 @@
+error: Rust has no ternary operator
+  --> $DIR/ternary_operator.rs:2:19
+   |
+LL |     let x = 5 > 2 ? true : false;
+   |                   ^^^^^^^^^^^^^^
+   |
+   = help: use an `if-else` expression instead
+
+error: Rust has no ternary operator
+  --> $DIR/ternary_operator.rs:8:19
+   |
+LL |     let x = 5 > 2 ? { true } : { false };
+   |                   ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use an `if-else` expression instead
+
+error: Rust has no ternary operator
+  --> $DIR/ternary_operator.rs:14:19
+   |
+LL |     let x = 5 > 2 ? f32::MAX : f32::MIN;
+   |                   ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use an `if-else` expression instead
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found keyword `return`
+  --> $DIR/ternary_operator.rs:21:9
+   |
+LL |     v ? return;
+   |         ^^^^^^ expected one of `.`, `;`, `?`, `}`, or an operator
+
+error: expected one of `.`, `;`, `?`, `else`, or an operator, found `:`
+  --> $DIR/ternary_operator.rs:26:37
+   |
+LL |     let x = 5 > 2 ? { let x = vec![]: Vec<u16>; x } : { false };
+   |                                     ^ expected one of `.`, `;`, `?`, `else`, or an operator
+
+error: Rust has no ternary operator
+  --> $DIR/ternary_operator.rs:26:19
+   |
+LL |     let x = 5 > 2 ? { let x = vec![]: Vec<u16>; x } : { false };
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use an `if-else` expression instead
+
+error: Rust has no ternary operator
+  --> $DIR/ternary_operator.rs:33:5
+   |
+LL |     a > b ? a : b
+   |     ^^^^^^^^^^^^^
+   |
+help: use an `if-else` expression instead
+   |
+LL -     a > b ? a : b
+LL +     if a > b { a } else { b }
+   |
+
+error: aborting due to 7 previous errors
+

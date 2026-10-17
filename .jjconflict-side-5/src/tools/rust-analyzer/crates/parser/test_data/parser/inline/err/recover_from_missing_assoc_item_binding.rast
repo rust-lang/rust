@@ -1,0 +1,48 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "f"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    RET_TYPE
+      THIN_ARROW "->"
+      WHITESPACE " "
+      IMPL_TRAIT_TYPE
+        IMPL_KW "impl"
+        WHITESPACE " "
+        TYPE_BOUND_LIST
+          TYPE_BOUND
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "Iterator"
+                  GENERIC_ARG_LIST
+                    L_ANGLE "<"
+                    ASSOC_TYPE_ARG
+                      NAME_REF
+                        IDENT "Item"
+                      WHITESPACE " "
+                      EQ "="
+                    WHITESPACE " "
+                    COMMA ","
+                    WHITESPACE " "
+                    ASSOC_TYPE_ARG
+                      NAME_REF
+                        IDENT "Item"
+                      WHITESPACE " "
+                      EQ "="
+                    WHITESPACE " "
+                    R_ANGLE ">"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n"
+error 30: missing associated item binding
+error 39: missing associated item binding

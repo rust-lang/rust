@@ -1,0 +1,71 @@
+error: unexpected token: `!`
+  --> $DIR/macro-expand-to-field.rs:19:10
+   |
+LL | struct Struct {
+   |        ------ while parsing this struct
+LL |
+LL |     field!(bar:u128),
+   |          ^ unexpected token after this
+   |
+   = note: macros cannot expand to struct fields
+
+error: unexpected token: `!`
+  --> $DIR/macro-expand-to-field.rs:29:12
+   |
+LL |     variant!(whoops),
+   |            ^ unexpected token after this
+   |
+   = note: macros cannot expand to enum variants
+
+error: unexpected token: `!`
+  --> $DIR/macro-expand-to-field.rs:35:12
+   |
+LL |     variant!(recovers),
+   |            ^ unexpected token after this
+   |
+   = note: macros cannot expand to enum variants
+
+error: unexpected token: `!`
+  --> $DIR/macro-expand-to-field.rs:40:14
+   |
+LL |     Data {
+   |     ---- while parsing this struct
+LL |         field!(x:u32),
+   |              ^ unexpected token after this
+   |
+   = note: macros cannot expand to struct fields
+
+error: unexpected token: `!`
+  --> $DIR/macro-expand-to-field.rs:49:14
+   |
+LL |     Named {
+   |     ----- while parsing this struct
+LL |         field!(oopsies:()),
+   |              ^ unexpected token after this
+   |
+   = note: macros cannot expand to struct fields
+
+error: unexpected token: `!`
+  --> $DIR/macro-expand-to-field.rs:60:10
+   |
+LL | union Union {
+   |       ----- while parsing this union
+...
+LL |     field!(oopsies:()),
+   |          ^ unexpected token after this
+   |
+   = note: macros cannot expand to union fields
+
+error: unexpected token: `!`
+  --> $DIR/macro-expand-to-field.rs:73:16
+   |
+LL | pub struct Lazy {
+   |            ---- while parsing this struct
+LL |
+LL |     unreachable!()
+   |                ^ unexpected token after this
+   |
+   = note: macros cannot expand to struct fields
+
+error: aborting due to 7 previous errors
+

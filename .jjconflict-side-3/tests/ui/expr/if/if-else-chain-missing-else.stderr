@@ -1,0 +1,19 @@
+error[E0308]: `if` and `else` have incompatible types
+  --> $DIR/if-else-chain-missing-else.rs:12:12
+   |
+LL |       let x = if let Ok(x) = res {
+   |               ------------------ `if` and `else` have incompatible types
+LL |           x
+   |           - expected because of this
+LL |       } else if let Err(e) = res {
+   |  ____________^
+LL | |         return Err(e);
+LL | |     };
+   | |_____^ expected `i32`, found `()`
+   |
+   = note: `if` expressions without `else` evaluate to `()`
+   = note: consider adding an `else` block that evaluates to the expected type
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

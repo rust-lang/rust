@@ -1,0 +1,33 @@
+error: struct fields are separated by `,`
+  --> $DIR/recover-field-semi.rs:2:13
+   |
+LL | struct Foo {
+   |        --- while parsing this struct
+LL |     foo: i32;
+   |             ^ help: replace `;` with `,`
+
+error: union fields are separated by `,`
+  --> $DIR/recover-field-semi.rs:7:13
+   |
+LL | union Bar {
+   |       --- while parsing this union
+LL |     foo: i32;
+   |             ^ help: replace `;` with `,`
+
+error: struct fields are separated by `,`
+  --> $DIR/recover-field-semi.rs:12:19
+   |
+LL |     Qux { foo: i32; }
+   |     ---           ^ help: replace `;` with `,`
+   |     |
+   |     while parsing this struct
+
+error[E0308]: mismatched types
+  --> $DIR/recover-field-semi.rs:17:24
+   |
+LL |     let _ = Foo { foo: "" };
+   |                        ^^ expected `i32`, found `&str`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

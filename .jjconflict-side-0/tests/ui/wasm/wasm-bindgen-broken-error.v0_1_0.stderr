@@ -1,0 +1,8 @@
+error: older versions of the `wasm-bindgen` crate are incompatible with current versions of Rust; please update to `wasm-bindgen` v0.2.88
+  --> $DIR/wasm-bindgen-broken-error.rs:24:1
+   |
+LL | #![crate_name = "wasm_bindgen"]
+   | ^
+
+error: aborting due to 1 previous error
+

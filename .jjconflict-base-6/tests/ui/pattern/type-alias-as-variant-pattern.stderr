@@ -1,0 +1,9 @@
+error[E0599]: no associated function or constant named `String` found for struct `String` in the current scope
+  --> $DIR/type-alias-as-variant-pattern.rs:7:22
+   |
+LL |     let f = |&Value::String(_)| ();
+   |                      ^^^^^^ associated function or constant not found in `String`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

@@ -1,0 +1,17 @@
+error: calling `.zip()` on an `Option` where one side is `None` always returns `None`
+  --> tests/ui/option_zip_none_unfixable.rs:5:32
+   |
+LL |     let _: Option<(i32, ())> = Option::zip(Some(1), None::<()>);
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::option-zip-none` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::option_zip_none)]`
+
+error: calling `.zip()` on an `Option` where one side is `None` always returns `None`
+  --> tests/ui/option_zip_none_unfixable.rs:7:32
+   |
+LL |     let _: Option<((), i32)> = Option::zip(None::<()>, Some(1));
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

@@ -1,0 +1,70 @@
+error[E0428]: the name `foo` is defined multiple times
+  --> $DIR/rpitit-duplicate-associated-fn-with-nested.rs:9:5
+   |
+LL |     fn foo() -> impl T<Target = impl T<Target = impl Sized>>;
+   |     --------------------------------------------------------- previous definition of the value `foo` here
+LL |     fn foo() -> impl Sized;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ `foo` redefined here
+   |
+   = note: `foo` must be defined only once in the value namespace of this trait
+
+error[E0428]: the name `foo` is defined multiple times
+  --> $DIR/rpitit-duplicate-associated-fn-with-nested.rs:15:5
+   |
+LL |     fn foo() -> impl T<Target = impl T<Target = impl Sized>>;
+   |     --------------------------------------------------------- previous definition of the value `foo` here
+LL |     fn foo() -> impl T<Target = impl T<Target = impl Sized>>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `foo` redefined here
+   |
+   = note: `foo` must be defined only once in the value namespace of this trait
+
+error[E0428]: the name `foo` is defined multiple times
+  --> $DIR/rpitit-duplicate-associated-fn-with-nested.rs:25:5
+   |
+LL |     fn foo() -> S<impl T<Target = S<S<impl Sized>>>>;
+   |     ------------------------------------------------- previous definition of the value `foo` here
+LL |     fn foo() -> S<impl T<Target = S<S<impl Sized>>>>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `foo` redefined here
+   |
+   = note: `foo` must be defined only once in the value namespace of this trait
+
+error[E0428]: the name `foo` is defined multiple times
+  --> $DIR/rpitit-duplicate-associated-fn-with-nested.rs:39:5
+   |
+LL | /     fn foo() -> S1<
+LL | |         impl T<Target = impl T<Target = impl Sized>>,
+LL | |         impl T<Target = impl T<Target = S<impl Sized>>>
+LL | |         >;
+   | |__________- previous definition of the value `foo` here
+LL | /     fn foo() -> S1<
+LL | |         impl T<Target = impl T<Target = impl Sized>>,
+LL | |         impl T<Target = impl T<Target = S<impl Sized>>>
+LL | |         >;
+   | |__________^ `foo` redefined here
+   |
+   = note: `foo` must be defined only once in the value namespace of this trait
+
+error[E0428]: the name `a` is defined multiple times
+  --> $DIR/rpitit-duplicate-associated-fn-with-nested.rs:53:5
+   |
+LL |     fn a() -> impl T0<(), Target = impl T1<()>>;
+   |     -------------------------------------------- previous definition of the value `a` here
+LL |     fn a() -> impl T0<(), Target = impl T1<()>>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `a` redefined here
+   |
+   = note: `a` must be defined only once in the value namespace of this trait
+
+error[E0428]: the name `a` is defined multiple times
+  --> $DIR/rpitit-duplicate-associated-fn-with-nested.rs:55:5
+   |
+LL |     fn a() -> impl T0<(), Target = impl T1<()>>;
+   |     -------------------------------------------- previous definition of the value `a` here
+...
+LL |     fn a() -> impl T0<(), Target = impl T1<()>>;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `a` redefined here
+   |
+   = note: `a` must be defined only once in the value namespace of this trait
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0428`.

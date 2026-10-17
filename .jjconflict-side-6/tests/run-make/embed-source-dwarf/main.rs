@@ -1,0 +1,2 @@
+// hello
+fn main() {}

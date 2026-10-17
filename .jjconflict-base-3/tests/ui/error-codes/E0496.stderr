@@ -1,0 +1,11 @@
+error[E0496]: lifetime name `'a` shadows a lifetime name that is already in scope
+  --> $DIR/E0496.rs:6:10
+   |
+LL | impl<'a> Foo<'a> {
+   |      -- first declared here
+LL |     fn f<'a>(x: &'a i32) {
+   |          ^^ lifetime `'a` already in scope
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0496`.

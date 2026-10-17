@@ -1,0 +1,25 @@
+error[E0229]: associated item constraints are not allowed here
+  --> $DIR/rtn-in-impl-signature.rs:9:17
+   |
+LL | impl Super1<'_, bar(..): Send> for () {}
+   |                 ^^^^^^^^^^^^^ associated item constraint not allowed here
+   |
+help: consider removing this associated item constraint
+   |
+LL - impl Super1<'_, bar(..): Send> for () {}
+LL + impl Super1<'_> for () {}
+   |
+
+error[E0046]: not all trait items implemented, missing: `bar`
+  --> $DIR/rtn-in-impl-signature.rs:9:1
+   |
+LL |     fn bar<'b>() -> bool;
+   |     --------------------- `bar` from trait
+...
+LL | impl Super1<'_, bar(..): Send> for () {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `bar` in implementation
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0046, E0229.
+For more information about an error, try `rustc --explain E0046`.

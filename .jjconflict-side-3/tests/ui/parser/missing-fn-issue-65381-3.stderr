@@ -1,0 +1,13 @@
+error: missing `fn` for function definition
+  --> $DIR/missing-fn-issue-65381-3.rs:1:11
+   |
+LL | pub const initial_value() -> Self {
+   |           ^^^^^^^^^^^^^
+   |
+help: add `fn` here to parse `initial_value` as a function
+   |
+LL | pub const fn initial_value() -> Self {
+   |           ++
+
+error: aborting due to 1 previous error
+

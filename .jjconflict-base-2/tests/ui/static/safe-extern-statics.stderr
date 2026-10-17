@@ -1,0 +1,35 @@
+error[E0133]: use of extern static is unsafe and requires unsafe function or block
+  --> $DIR/safe-extern-statics.rs:11:13
+   |
+LL |     let a = A;
+   |             ^ use of extern static
+   |
+   = note: extern statics are not controlled by the Rust type system: invalid data, aliasing violations or data races will cause undefined behavior
+
+error[E0133]: use of extern static is unsafe and requires unsafe function or block
+  --> $DIR/safe-extern-statics.rs:12:15
+   |
+LL |     let ra = &A;
+   |               ^ use of extern static
+   |
+   = note: extern statics are not controlled by the Rust type system: invalid data, aliasing violations or data races will cause undefined behavior
+
+error[E0133]: use of extern static is unsafe and requires unsafe function or block
+  --> $DIR/safe-extern-statics.rs:13:14
+   |
+LL |     let xa = XA;
+   |              ^^ use of extern static
+   |
+   = note: extern statics are not controlled by the Rust type system: invalid data, aliasing violations or data races will cause undefined behavior
+
+error[E0133]: use of extern static is unsafe and requires unsafe function or block
+  --> $DIR/safe-extern-statics.rs:14:16
+   |
+LL |     let xra = &XA;
+   |                ^^ use of extern static
+   |
+   = note: extern statics are not controlled by the Rust type system: invalid data, aliasing violations or data races will cause undefined behavior
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0133`.

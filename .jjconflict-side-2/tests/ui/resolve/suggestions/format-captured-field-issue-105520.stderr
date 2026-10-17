@@ -1,0 +1,107 @@
+error[E0425]: cannot find value `r#type` in this scope
+  --> $DIR/format-captured-field-issue-105520.rs:25:29
+   |
+LL |         let _ = format!(r#"{type:WIDTH$} {type}"#,);
+   |                             ^^^^
+   |
+help: you might have meant to add a named formatting argument
+   |
+LL |         let _ = format!(r#"{type:WIDTH$} {type}"#, r#type = self.r#type,);
+   |                                                  ++++++++++++++++++++++
+
+error[E0425]: cannot find value `WIDTH` in this scope
+  --> $DIR/format-captured-field-issue-105520.rs:25:34
+   |
+LL |         let _ = format!(r#"{type:WIDTH$} {type}"#,);
+   |                                  ^^^^^ not found in this scope
+   |
+help: you might have meant to add a named formatting argument
+   |
+LL |         let _ = format!(r#"{type:WIDTH$} {type}"#, WIDTH = Self::WIDTH,);
+   |                                                  +++++++++++++++++++++
+
+error[E0425]: cannot find value `r#type` in this scope
+  --> $DIR/format-captured-field-issue-105520.rs:30:33
+   |
+LL |         let _ = format!("{} {} {type}", 0, identity!(1));
+   |                                 ^^^^
+   |
+help: you might have meant to add a named formatting argument
+   |
+LL |         let _ = format!("{} {} {type}", 0, identity!(1), r#type = self.r#type);
+   |                                                        ++++++++++++++++++++++
+
+error[E0425]: cannot find value `r#type` in this scope
+  --> $DIR/format-captured-field-issue-105520.rs:32:33
+   |
+LL |         let _ = format!("{arg} {type}", arg = identity!(1));
+   |                                 ^^^^
+   |
+help: you might have meant to add a named formatting argument
+   |
+LL |         let _ = format!("{arg} {type}", arg = identity!(1), r#type = self.r#type);
+   |                                                           ++++++++++++++++++++++
+
+error[E0425]: cannot find value `WIDTH` in this scope
+  --> $DIR/format-captured-field-issue-105520.rs:36:48
+   |
+LL |         let _ = format!("{} {type}", format!("{WIDTH}"));
+   |                                                ^^^^^ not found in this scope
+   |
+help: you might have meant to add a named formatting argument
+   |
+LL |         let _ = format!("{} {type}", format!("{WIDTH}", WIDTH = Self::WIDTH));
+   |                                                       +++++++++++++++++++++
+
+error[E0425]: cannot find value `r#type` in this scope
+  --> $DIR/format-captured-field-issue-105520.rs:36:30
+   |
+LL |         let _ = format!("{} {type}", format!("{WIDTH}"));
+   |                              ^^^^
+   |
+help: you might have meant to add a named formatting argument
+   |
+LL |         let _ = format!("{} {type}", format!("{WIDTH}"), r#type = self.r#type);
+   |                                                        ++++++++++++++++++++++
+
+error[E0425]: cannot find value `LIMIT` in this scope
+  --> $DIR/format-captured-field-issue-105520.rs:46:27
+   |
+LL |         let _ = format!("{LIMIT}");
+   |                           ^^^^^
+   |
+help: you might have meant to add a named formatting argument
+   |
+LL |         let _ = format!("{LIMIT}", LIMIT = Self::LIMIT);
+   |                                  +++++++++++++++++++++
+
+error[E0425]: cannot find value `True` in this scope
+  --> $DIR/format-captured-field-issue-105520.rs:53:23
+   |
+LL |     let _ = format!("{True}");
+   |                       ^^^^ not found in this scope
+   |
+help: you might have meant to add a named formatting argument
+   |
+LL |     let _ = format!("{True}", True = true);
+   |                             +++++++++++++
+
+error[E0423]: cannot find value `CaptureEmpty` in this scope
+  --> $DIR/format-captured-field-issue-105520.rs:55:23
+   |
+LL | struct CaptureEmpty {}
+   | ---------------------- `CaptureEmpty` defined here
+...
+LL |     let _ = format!("{CaptureEmpty:?}");
+   |                       ^^^^^^^^^^^^
+   |
+   = note: a struct named `CaptureEmpty` exists in another namespace
+help: you might have meant to add a named formatting argument
+   |
+LL |     let _ = format!("{CaptureEmpty:?}", CaptureEmpty = CaptureEmpty {});
+   |                                       ++++++++++++++++++++++++++++++++
+
+error: aborting due to 9 previous errors
+
+Some errors have detailed explanations: E0423, E0425.
+For more information about an error, try `rustc --explain E0423`.

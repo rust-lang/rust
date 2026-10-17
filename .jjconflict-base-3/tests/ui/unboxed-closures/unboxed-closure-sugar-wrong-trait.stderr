@@ -1,0 +1,24 @@
+error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/unboxed-closure-sugar-wrong-trait.rs:5:8
+   |
+LL | fn f<F:Trait(isize) -> isize>(x: F) {}
+   |        ^^^^^------- help: remove the unnecessary parenthetical generics
+   |        |
+   |        expected 0 generic arguments
+   |
+note: trait defined here, with 0 generic parameters
+  --> $DIR/unboxed-closure-sugar-wrong-trait.rs:3:7
+   |
+LL | trait Trait {}
+   |       ^^^^^
+
+error[E0220]: associated type `Output` not found for `Trait`
+  --> $DIR/unboxed-closure-sugar-wrong-trait.rs:5:24
+   |
+LL | fn f<F:Trait(isize) -> isize>(x: F) {}
+   |                        ^^^^^ associated type `Output` not found
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0107, E0220.
+For more information about an error, try `rustc --explain E0107`.

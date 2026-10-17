@@ -1,0 +1,12 @@
+error: the evaluated program deadlocked
+  --> tests/fail-dep/libc/eventfd-close-while-blocked.rs:LL:CC
+   |
+LL |     let val = eventfd::read_val(fd).unwrap();
+   |               ^^^^^^^^^^^^^^^^^^^^^ thread got stuck here
+   |
+   = note: this is on thread `main`
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,56 @@
+- // MIR for `two_reads` before JumpThreading
++ // MIR for `two_reads` after JumpThreading
+  
+  fn two_reads() -> i32 {
+      let mut _0: i32;
+      let _1: i32;
+      let mut _4: bool;
+      let mut _5: i32;
+      scope 1 {
+          debug a => _1;
+          let _2: i32;
+          scope 2 {
+              debug b => _2;
+              let _3: i32;
+              scope 3 {
+                  debug c => _3;
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          _1 = const 2_i32;
+          StorageLive(_2);
+          _2 = copy _1;
+          StorageLive(_3);
+          _3 = copy _1;
+          StorageLive(_4);
+          StorageLive(_5);
+          _5 = copy _3;
+          _4 = Eq(move _5, const 2_i32);
+-         switchInt(move _4) -> [0: bb2, otherwise: bb1];
++         goto -> bb1;
+      }
+  
+      bb1: {
+          StorageDead(_5);
+          _0 = const 0_i32;
+          goto -> bb3;
+      }
+  
+      bb2: {
+          StorageDead(_5);
+          _0 = const 1_i32;
+          goto -> bb3;
+      }
+  
+      bb3: {
+          StorageDead(_4);
+          StorageDead(_3);
+          StorageDead(_2);
+          StorageDead(_1);
+          return;
+      }
+  }
+  

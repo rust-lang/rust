@@ -1,0 +1,16 @@
+error[E0515]: cannot return value referencing local variable `rawLines`
+  --> $DIR/return-reference-local-variable-13497.rs:5:5
+   |
+LL |       rawLines
+   |       ^-------
+   |       |
+   |  _____`rawLines` is borrowed here
+   | |
+LL | |         .iter()
+LL | |         .map(|l| l.trim())
+LL | |         .collect()
+   | |__________________^ returns a value referencing data owned by the current function
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0515`.

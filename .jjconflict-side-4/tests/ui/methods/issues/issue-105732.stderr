@@ -1,0 +1,24 @@
+error[E0380]: auto traits cannot have associated items
+  --> $DIR/issue-105732.rs:4:8
+   |
+LL | auto trait Foo {
+   |            --- auto traits cannot have associated items
+LL |     fn g(&self);
+   |        ^
+
+error[E0599]: no method named `g` found for reference `&Self` in the current scope
+  --> $DIR/issue-105732.rs:10:14
+   |
+LL |         self.g();
+   |              ^
+   |
+help: there is a method `f` with a similar name
+   |
+LL -         self.g();
+LL +         self.f();
+   |
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0380, E0599.
+For more information about an error, try `rustc --explain E0380`.

@@ -1,0 +1,45 @@
+error: the constant `N` is not of type `bool`
+  --> $DIR/type-mismatch-in-nested-goal.rs:9:50
+   |
+LL | fn needs_a<const N: usize>(_: [u8; N]) where (): A<N> {}
+   |                                                  ^^^^ expected `bool`, found `usize`
+   |
+note: required by a const generic parameter in `A`
+  --> $DIR/type-mismatch-in-nested-goal.rs:5:9
+   |
+LL | trait A<const B: bool> {}
+   |         ^^^^^^^^^^^^^ required by this const generic parameter in `A`
+
+error: the constant `true` is not of type `usize`
+  --> $DIR/type-mismatch-in-nested-goal.rs:13:13
+   |
+LL |     needs_a([]);
+   |     ------- ^^ expected `usize`, found `bool`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: required by a const generic parameter in `needs_a`
+  --> $DIR/type-mismatch-in-nested-goal.rs:9:12
+   |
+LL | fn needs_a<const N: usize>(_: [u8; N]) where (): A<N> {}
+   |            ^^^^^^^^^^^^^^ required by this const generic parameter in `needs_a`
+
+error[E0308]: mismatched types
+  --> $DIR/type-mismatch-in-nested-goal.rs:13:13
+   |
+LL |     needs_a([]);
+   |     ------- ^^ expected an array with a size of true, found one with a size of 0
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected array `[u8; true]`
+              found array `[_; 0]`
+note: function defined here
+  --> $DIR/type-mismatch-in-nested-goal.rs:9:4
+   |
+LL | fn needs_a<const N: usize>(_: [u8; N]) where (): A<N> {}
+   |    ^^^^^^^                 ----------
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

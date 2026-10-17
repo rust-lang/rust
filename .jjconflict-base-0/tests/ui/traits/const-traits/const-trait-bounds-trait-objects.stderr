@@ -1,0 +1,52 @@
+error: const trait bounds are not allowed in trait object types
+  --> $DIR/const-trait-bounds-trait-objects.rs:7:17
+   |
+LL |     let _: &dyn const Trait;
+   |                 ^^^^^^^^^^^
+
+error: `[const]` is not allowed here
+  --> $DIR/const-trait-bounds-trait-objects.rs:8:17
+   |
+LL |     let _: &dyn [const] Trait;
+   |                 ^^^^^^^
+   |
+   = note: trait objects cannot have `[const]` trait bounds
+
+error: const trait bounds are not allowed in trait object types
+  --> $DIR/const-trait-bounds-trait-objects.rs:13:25
+   |
+LL | const fn handle(_: &dyn const NonConst) {}
+   |                         ^^^^^^^^^^^^^^
+
+error: `[const]` is not allowed here
+  --> $DIR/const-trait-bounds-trait-objects.rs:16:23
+   |
+LL | const fn take(_: &dyn [const] NonConst) {}
+   |                       ^^^^^^^
+   |
+   = note: trait objects cannot have `[const]` trait bounds
+
+error: `const` can only be applied to `const` traits
+  --> $DIR/const-trait-bounds-trait-objects.rs:13:25
+   |
+LL | const fn handle(_: &dyn const NonConst) {}
+   |                         ^^^^^ can't be applied to `NonConst`
+   |
+help: mark `NonConst` as `const` to allow it to have `const` implementations
+   |
+LL | const trait NonConst {}
+   | +++++
+
+error: `[const]` can only be applied to `const` traits
+  --> $DIR/const-trait-bounds-trait-objects.rs:16:23
+   |
+LL | const fn take(_: &dyn [const] NonConst) {}
+   |                       ^^^^^^^ can't be applied to `NonConst`
+   |
+help: mark `NonConst` as `const` to allow it to have `const` implementations
+   |
+LL | const trait NonConst {}
+   | +++++
+
+error: aborting due to 6 previous errors
+

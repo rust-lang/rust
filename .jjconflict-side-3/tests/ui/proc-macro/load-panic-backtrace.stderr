@@ -1,0 +1,13 @@
+
+thread '<unnamed>' ($TID) panicked at $DIR/auxiliary/test-macros.rs:38:5:
+panic-derive
+error: proc-macro derive panicked
+  --> $DIR/load-panic-backtrace.rs:11:10
+   |
+LL | #[derive(Panic)]
+   |          ^^^^^
+   |
+   = help: message: panic-derive
+
+error: aborting due to 1 previous error
+

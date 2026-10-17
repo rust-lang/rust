@@ -1,0 +1,32 @@
+error[E0626]: borrow may still be in use when coroutine yields
+  --> $DIR/yield-while-iterating.rs:13:18
+   |
+LL |     let _b =#[coroutine]  move || {
+   |                           ------- within this coroutine
+LL |         for p in &x {
+   |                  ^^
+LL |             yield();
+   |             ------- possible yield occurs here
+   |
+help: add `static` to mark this coroutine as unmovable
+   |
+LL |     let _b =#[coroutine]  static move || {
+   |                           ++++++
+
+error[E0502]: cannot borrow `x` as immutable because it is also borrowed as mutable
+  --> $DIR/yield-while-iterating.rs:58:20
+   |
+LL |     let mut b = #[coroutine] || {
+   |                              -- mutable borrow occurs here
+LL |         for p in &mut x {
+   |                       - first borrow occurs due to use of `x` in coroutine
+...
+LL |     println!("{}", x[0]);
+   |                    ^ immutable borrow occurs here
+LL |     Pin::new(&mut b).resume(());
+   |              ------ mutable borrow later used here
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0502, E0626.
+For more information about an error, try `rustc --explain E0502`.

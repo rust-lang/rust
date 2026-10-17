@@ -1,0 +1,286 @@
+SOURCE_FILE
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "S1"
+    GENERIC_PARAM_LIST
+      L_ANGLE "<"
+      TYPE_PARAM
+        NAME
+          IDENT "T"
+      R_ANGLE ">"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "S2"
+    GENERIC_PARAM_LIST
+      L_ANGLE "<"
+      TYPE_PARAM
+        NAME
+          IDENT "T"
+      R_ANGLE ">"
+    TUPLE_FIELD_LIST
+      L_PAREN "("
+      TUPLE_FIELD
+        PATH_TYPE
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "u32"
+      R_PAREN ")"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "S3"
+    GENERIC_PARAM_LIST
+      L_ANGLE "<"
+      TYPE_PARAM
+        NAME
+          IDENT "T"
+      R_ANGLE ">"
+    WHITESPACE " "
+    RECORD_FIELD_LIST
+      L_CURLY "{"
+      WHITESPACE " "
+      RECORD_FIELD
+        NAME
+          IDENT "u"
+        COLON ":"
+        WHITESPACE " "
+        PATH_TYPE
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "u32"
+      WHITESPACE " "
+      R_CURLY "}"
+  WHITESPACE "\n\n"
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "S4"
+    GENERIC_PARAM_LIST
+      L_ANGLE "<"
+      R_ANGLE ">"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "S5"
+    GENERIC_PARAM_LIST
+      L_ANGLE "<"
+      LIFETIME_PARAM
+        LIFETIME
+          LIFETIME_IDENT "'a"
+      R_ANGLE ">"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "S6"
+    GENERIC_PARAM_LIST
+      L_ANGLE "<"
+      LIFETIME_PARAM
+        LIFETIME
+          LIFETIME_IDENT "'a"
+        COLON ":"
+        TYPE_BOUND_LIST
+      R_ANGLE ">"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "S7"
+    GENERIC_PARAM_LIST
+      L_ANGLE "<"
+      LIFETIME_PARAM
+        LIFETIME
+          LIFETIME_IDENT "'a"
+        COLON ":"
+        WHITESPACE " "
+        TYPE_BOUND_LIST
+          TYPE_BOUND
+            LIFETIME
+              LIFETIME_IDENT "'b"
+      R_ANGLE ">"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "S8"
+    GENERIC_PARAM_LIST
+      L_ANGLE "<"
+      LIFETIME_PARAM
+        LIFETIME
+          LIFETIME_IDENT "'a"
+        COLON ":"
+        WHITESPACE " "
+        TYPE_BOUND_LIST
+          TYPE_BOUND
+            LIFETIME
+              LIFETIME_IDENT "'b"
+          WHITESPACE " "
+          PLUS "+"
+      WHITESPACE " "
+      R_ANGLE ">"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "S9"
+    GENERIC_PARAM_LIST
+      L_ANGLE "<"
+      LIFETIME_PARAM
+        LIFETIME
+          LIFETIME_IDENT "'a"
+        COLON ":"
+        WHITESPACE " "
+        TYPE_BOUND_LIST
+          TYPE_BOUND
+            LIFETIME
+              LIFETIME_IDENT "'b"
+          WHITESPACE " "
+          PLUS "+"
+          WHITESPACE " "
+          TYPE_BOUND
+            LIFETIME
+              LIFETIME_IDENT "'c"
+      R_ANGLE ">"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "S10"
+    GENERIC_PARAM_LIST
+      L_ANGLE "<"
+      LIFETIME_PARAM
+        LIFETIME
+          LIFETIME_IDENT "'a"
+      COMMA ","
+      R_ANGLE ">"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "S11"
+    GENERIC_PARAM_LIST
+      L_ANGLE "<"
+      LIFETIME_PARAM
+        LIFETIME
+          LIFETIME_IDENT "'a"
+      COMMA ","
+      WHITESPACE " "
+      LIFETIME_PARAM
+        LIFETIME
+          LIFETIME_IDENT "'b"
+      R_ANGLE ">"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "S12"
+    GENERIC_PARAM_LIST
+      L_ANGLE "<"
+      LIFETIME_PARAM
+        LIFETIME
+          LIFETIME_IDENT "'a"
+        COLON ":"
+        WHITESPACE " "
+        TYPE_BOUND_LIST
+          TYPE_BOUND
+            LIFETIME
+              LIFETIME_IDENT "'b"
+          PLUS "+"
+      COMMA ","
+      WHITESPACE " "
+      LIFETIME_PARAM
+        LIFETIME
+          LIFETIME_IDENT "'b"
+        COLON ":"
+        WHITESPACE " "
+        TYPE_BOUND_LIST
+          TYPE_BOUND
+            LIFETIME
+              LIFETIME_IDENT "'c"
+      COMMA ","
+      R_ANGLE ">"
+    SEMICOLON ";"
+  WHITESPACE "\n\n"
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "S13"
+    GENERIC_PARAM_LIST
+      L_ANGLE "<"
+      TYPE_PARAM
+        NAME
+          IDENT "T"
+      R_ANGLE ">"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "S14"
+    GENERIC_PARAM_LIST
+      L_ANGLE "<"
+      TYPE_PARAM
+        NAME
+          IDENT "T"
+      COMMA ","
+      WHITESPACE " "
+      TYPE_PARAM
+        NAME
+          IDENT "U"
+      R_ANGLE ">"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  STRUCT
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "S15"
+    GENERIC_PARAM_LIST
+      L_ANGLE "<"
+      LIFETIME_PARAM
+        LIFETIME
+          LIFETIME_IDENT "'a"
+      COMMA ","
+      WHITESPACE " "
+      TYPE_PARAM
+        NAME
+          IDENT "T"
+      COMMA ","
+      WHITESPACE " "
+      TYPE_PARAM
+        NAME
+          IDENT "U"
+      R_ANGLE ">"
+    SEMICOLON ";"
+  WHITESPACE "\n"

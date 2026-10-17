@@ -1,0 +1,10 @@
+error: expected identifier, found `:`
+  --> $DIR/missing-let-in-binding-4.rs:2:5
+   |
+LL | struct A {
+   |        - while parsing this struct
+LL |     : u8 =,
+   |     ^ expected identifier
+
+error: aborting due to 1 previous error
+

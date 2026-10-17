@@ -1,0 +1,24 @@
+error: found removed `do catch` syntax
+  --> $DIR/do-catch-suggests-try.rs:6:25
+   |
+LL |     let _: Option<()> = do catch {};
+   |                         ^^^^^^^^
+   |
+   = note: following RFC #2388, the new non-placeholder syntax is `try`
+help: replace with the new syntax
+   |
+LL -     let _: Option<()> = do catch {};
+LL +     let _: Option<()> = try {};
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/do-catch-suggests-try.rs:11:33
+   |
+LL |     let _recovery_witness: () = 1;
+   |                            --   ^ expected `()`, found integer
+   |                            |
+   |                            expected due to this
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

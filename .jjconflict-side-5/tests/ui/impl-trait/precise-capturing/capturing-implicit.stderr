@@ -1,0 +1,22 @@
+error: `impl Trait` captures lifetime parameter, but it is not mentioned in `use<...>` precise captures list
+  --> $DIR/capturing-implicit.rs:7:11
+   |
+LL | fn foo(x: &()) -> impl IntoIterator<Item = impl Sized> + use<> {
+   |           ^       -------------------------------------------- lifetime captured due to being mentioned in the bounds of the `impl Trait`
+   |           |
+   |           this lifetime parameter is captured
+
+error: ['_: o]
+  --> $DIR/capturing-implicit.rs:7:19
+   |
+LL | fn foo(x: &()) -> impl IntoIterator<Item = impl Sized> + use<> {
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: ['_: o]
+  --> $DIR/capturing-implicit.rs:7:44
+   |
+LL | fn foo(x: &()) -> impl IntoIterator<Item = impl Sized> + use<> {
+   |                                            ^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

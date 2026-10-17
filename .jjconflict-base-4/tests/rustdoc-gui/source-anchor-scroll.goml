@@ -1,0 +1,20 @@
+// We check that when the anchor changes and is output of the displayed content,
+// the page is scrolled to it.
+go-to: "file://" + |DOC_PATH| + "/src/link_to_definition/lib.rs.html"
+
+// We reduce the window size to make it easier to make an element "out of the page".
+set-window-size: (600, 800)
+// We check that the scroll is at the top first.
+assert-property: ("html", {"scrollTop": "0"})
+
+click: '//a[text() = "barbar" and @href="#5-7"]'
+assert-property: ("html", {"scrollTop": "195"})
+click: '//a[text() = "bar" and @href="#28-36"]'
+assert-property: ("html", {"scrollTop": "228"})
+click: '//a[normalize-space() = "sub_fn" and @href="#2-4"]'
+assert-property: ("html", {"scrollTop": "123"})
+
+// We now check that clicking on lines doesn't change the scroll
+// Extra information: the "sub_fn" function header is on line 1.
+click: '//*[@id="6"]'
+assert-property: ("html", {"scrollTop": "123"})

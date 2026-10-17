@@ -1,0 +1,28 @@
+error[E0308]: mismatched types
+  --> $DIR/point-at-inference.rs:12:9
+   |
+LL |         foo.push(i);
+   |         ---      - this argument has type `&{integer}`...
+   |         |
+   |         ... which causes `foo` to have type `Vec<&{integer}>`
+...
+LL |     bar(foo);
+   |     --- ^^^ expected `Vec<i32>`, found `Vec<&{integer}>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected struct `Vec<i32>`
+              found struct `Vec<&{integer}>`
+note: function defined here
+  --> $DIR/point-at-inference.rs:2:4
+   |
+LL | fn bar(_: Vec<i32>) {}
+   |    ^^^ -----------
+help: consider dereferencing the borrow
+   |
+LL |         foo.push(*i);
+   |                  +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

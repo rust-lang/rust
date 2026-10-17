@@ -1,0 +1,8 @@
+error: attribute value must be a literal
+  --> $DIR/print-crate-name-request-malformed-crate-name.rs:5:17
+   |
+LL | #![crate_name = concat!("wrapped")]
+   |                 ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

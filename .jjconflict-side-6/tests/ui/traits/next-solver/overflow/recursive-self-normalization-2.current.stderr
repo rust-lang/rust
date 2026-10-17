@@ -1,0 +1,9 @@
+error[E0275]: overflow evaluating the requirement `<T as Foo1>::Assoc1 == _`
+  --> $DIR/recursive-self-normalization-2.rs:16:1
+   |
+LL | fn test<T: Foo1<Assoc1 = <T as Foo2>::Assoc2> + Foo2<Assoc2 = <T as Foo1>::Assoc1>>() {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0275`.

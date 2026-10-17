@@ -1,0 +1,81 @@
+SOURCE_FILE
+  STRUCT
+    VISIBILITY
+      PUB_KW "pub"
+    WHITESPACE " "
+    STRUCT_KW "struct"
+    WHITESPACE " "
+    NAME
+      IDENT "Cache"
+    TUPLE_FIELD_LIST
+      L_PAREN "("
+      WHITESPACE "\n    "
+      TUPLE_FIELD
+        PATH_TYPE
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "RefCell"
+              GENERIC_ARG_LIST
+                L_ANGLE "<"
+                TYPE_ARG
+                  PATH_TYPE
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "HashMap"
+                        GENERIC_ARG_LIST
+                          L_ANGLE "<"
+                          WHITESPACE "\n        "
+                          TYPE_ARG
+                            PATH_TYPE
+                              PATH
+                                PATH_SEGMENT
+                                  NAME_REF
+                                    IDENT "TypeId"
+                          COMMA ","
+                          WHITESPACE "\n        "
+                          TYPE_ARG
+                            PATH_TYPE
+                              PATH
+                                PATH_SEGMENT
+                                  NAME_REF
+                                    IDENT "Box"
+                                  GENERIC_ARG_LIST
+                                    L_ANGLE "<"
+  ERROR
+    AT "@"
+  WHITESPACE " "
+  ERROR
+    PATH
+      PATH_SEGMENT
+        NAME_REF
+          IDENT "Any"
+  ERROR
+    R_ANGLE ">"
+  ERROR
+    COMMA ","
+  WHITESPACE "\n    "
+  ERROR
+    R_ANGLE ">"
+  ERROR
+    R_ANGLE ">"
+  WHITESPACE "\n"
+  ERROR
+    R_PAREN ")"
+  ERROR
+    SEMICOLON ";"
+  WHITESPACE "\n\n"
+error 67: expected R_ANGLE
+error 67: expected R_ANGLE
+error 67: expected R_ANGLE
+error 67: expected R_PAREN
+error 67: expected SEMICOLON
+error 67: expected an item
+error 72: expected an item
+error 72: expected an item
+error 73: expected an item
+error 79: expected an item
+error 80: expected an item
+error 82: expected an item
+error 83: expected an item

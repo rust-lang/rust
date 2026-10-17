@@ -1,0 +1,28 @@
+error[E0261]: use of undeclared lifetime name `'a`
+  --> $DIR/method-call-lifetime-args-unresolved.rs:2:15
+   |
+LL |     0.clone::<'a>();
+   |               ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL | fn main<'a>() {
+   |        ++++
+
+warning: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+  --> $DIR/method-call-lifetime-args-unresolved.rs:2:15
+   |
+LL |     0.clone::<'a>();
+   |               ^^
+   |
+  --> $SRC_DIR/core/src/clone.rs:LL:COL
+   |
+   = note: the late bound lifetime parameter is introduced here
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #42868 <https://github.com/rust-lang/rust/issues/42868>
+   = note: `#[warn(late_bound_lifetime_arguments)]` (part of `#[warn(future_incompatible)]`) on by default
+
+error: aborting due to 1 previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0261`.

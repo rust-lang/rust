@@ -1,0 +1,61 @@
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/tuple-suggestions-issue-142488.rs:7:14
+   |
+LL |     for a in x {
+   |              ^ not found in this scope
+
+error[E0599]: the method `to_string` exists for tuple `(_,)`, but its trait bounds were not satisfied
+  --> $DIR/tuple-suggestions-issue-142488.rs:9:14
+   |
+LL |         (a,).to_string()
+   |              ^^^^^^^^^ method cannot be called on `(_,)` due to unsatisfied trait bounds
+   |
+   = note: the following trait bounds were not satisfied:
+           `(_,): std::fmt::Display`
+           which is required by `(_,): ToString`
+
+error[E0599]: the method `meth` exists for tuple `((), HashMap<_, _>)`, but its trait bounds were not satisfied
+  --> $DIR/tuple-suggestions-issue-142488.rs:24:44
+   |
+LL |     ((), std::collections::HashMap::new()).meth()
+   |                                            ^^^^ method cannot be called on `((), HashMap<_, _>)` due to unsatisfied trait bounds
+   |
+note: trait bound `HashMap<_, _>: Trait` was not satisfied
+  --> $DIR/tuple-suggestions-issue-142488.rs:19:12
+   |
+LL | impl<T, U: Trait> Trait for (T, U) {
+   |            ^^^^^  -----     ------
+   |            |
+   |            unsatisfied trait bound introduced here
+   = help: items from traits can only be used if the trait is implemented and in scope
+note: `Trait` defines an item `meth`, perhaps you need to implement it
+  --> $DIR/tuple-suggestions-issue-142488.rs:15:1
+   |
+LL | trait Trait {
+   | ^^^^^^^^^^^
+
+error[E0599]: the method `f` exists for tuple `(_,)`, but its trait bounds were not satisfied
+  --> $DIR/tuple-suggestions-issue-142488.rs:46:16
+   |
+LL |     Struct.f().f();
+   |                ^ method cannot be called on `(_,)` due to unsatisfied trait bounds
+   |
+note: the following trait bounds were not satisfied:
+      `&(_,): I`
+      `&mut (_,): I`
+      `(_,): I`
+  --> $DIR/tuple-suggestions-issue-142488.rs:43:27
+   |
+LL | impl<T> Tr for T where T: I {}
+   |         --     -          ^ unsatisfied trait bound introduced here
+   = help: items from traits can only be used if the trait is implemented and in scope
+note: `Tr` defines an item `f`, perhaps you need to implement it
+  --> $DIR/tuple-suggestions-issue-142488.rs:34:1
+   |
+LL | trait Tr {
+   | ^^^^^^^^
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0425, E0599.
+For more information about an error, try `rustc --explain E0425`.

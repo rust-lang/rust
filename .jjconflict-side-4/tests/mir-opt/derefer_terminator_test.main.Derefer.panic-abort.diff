@@ -1,0 +1,98 @@
+- // MIR for `main` before Derefer
++ // MIR for `main` after Derefer
+  
+  fn main() -> () {
+      let mut _0: ();
+      let _1: bool;
+      let _3: ();
+      let mut _4: &&&&bool;
+      let _5: &&&bool;
+      let _6: &&bool;
+      let _7: &bool;
++     let mut _10: &&&bool;
++     let mut _11: &&bool;
++     let mut _12: &bool;
++     let mut _13: &&&bool;
++     let mut _14: &&bool;
++     let mut _15: &bool;
+      scope 1 {
+          debug b => _1;
+          let _2: bool;
+          scope 2 {
+              debug d => _2;
+              let _8: i32;
+              let _9: i32;
+              scope 3 {
+                  debug x => _8;
+              }
+              scope 4 {
+                  debug y => _9;
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          _1 = foo() -> [return: bb1, unwind: bb6];
+      }
+  
+      bb1: {
+          StorageLive(_2);
+          _2 = foo() -> [return: bb2, unwind: bb6];
+      }
+  
+      bb2: {
+          StorageLive(_3);
+          StorageLive(_4);
+          StorageLive(_5);
+          StorageLive(_6);
+          StorageLive(_7);
+          _7 = &_1;
+          _6 = &_7;
+          _5 = &_6;
+          _4 = &_5;
+-         PlaceMention((*(*(*(*_4)))));
+-         switchInt(copy (*(*(*(*_4))))) -> [0: bb3, otherwise: bb4];
++         _10 = deref_copy (*_4);
++         _11 = deref_copy (*_10);
++         _12 = deref_copy (*_11);
++         PlaceMention((*_12));
++         _13 = deref_copy (*_4);
++         _14 = deref_copy (*_13);
++         _15 = deref_copy (*_14);
++         switchInt(copy (*_15)) -> [0: bb3, otherwise: bb4];
+      }
+  
+      bb3: {
+          _3 = const ();
+          goto -> bb5;
+      }
+  
+      bb4: {
+          StorageLive(_8);
+          _8 = const 5_i32;
+          _3 = const ();
+          StorageDead(_8);
+          goto -> bb5;
+      }
+  
+      bb5: {
+          StorageDead(_7);
+          StorageDead(_6);
+          StorageDead(_5);
+          StorageDead(_4);
+          StorageDead(_3);
+          StorageLive(_9);
+          _9 = const 42_i32;
+          _0 = const ();
+          StorageDead(_9);
+          StorageDead(_2);
+          StorageDead(_1);
+          return;
+      }
+  
+      bb6 (cleanup): {
+          resume;
+      }
+  }
+  

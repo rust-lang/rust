@@ -1,0 +1,11 @@
+warning: NORMALIZED_OBJECT_DEPLOYMENT_MISMATCH_LINKER_WARNING
+         
+  |
+note: the lint level is defined here
+ --> main.rs:1:9
+  |
+1 | #![warn(linker_info, linker_messages)]
+  |         ^^^^^^^^^^^
+
+warning: 1 warning emitted
+

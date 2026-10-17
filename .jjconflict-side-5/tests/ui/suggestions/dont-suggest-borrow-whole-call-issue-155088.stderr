@@ -1,0 +1,15 @@
+error[E0277]: the trait bound `&String: Borrow<str>` is not satisfied
+  --> $DIR/dont-suggest-borrow-whole-call-issue-155088.rs:6:5
+   |
+LL |     foo(&[String::from("a")]);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Borrow<str>` is not implemented for `&String`
+   |
+note: required by a bound in `foo`
+  --> $DIR/dont-suggest-borrow-whole-call-issue-155088.rs:3:42
+   |
+LL | fn foo(_v: impl IntoIterator<Item = impl Borrow<str>>) {}
+   |                                          ^^^^^^^^^^^ required by this bound in `foo`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

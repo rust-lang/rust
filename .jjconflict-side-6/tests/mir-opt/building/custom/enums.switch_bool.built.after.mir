@@ -1,0 +1,19 @@
+// MIR for `switch_bool` after built
+
+fn switch_bool(_1: bool) -> u32 {
+    let mut _0: u32;
+
+    bb0: {
+        switchInt(copy _1) -> [1: bb1, 0: bb2, otherwise: bb2];
+    }
+
+    bb1: {
+        _0 = const 5_u32;
+        return;
+    }
+
+    bb2: {
+        _0 = const 10_u32;
+        return;
+    }
+}

@@ -1,0 +1,11 @@
+error: expected `[`, found `B`
+  --> $DIR/issue-71471-ignore-tidy.rs:2:3
+   |
+LL | #!B
+   |   ^ expected `[`
+   |
+   = note: the token sequence `#!` here looks like the start of a shebang interpreter directive but it is not
+   = help: if you meant this to be a shebang interpreter directive, move it to the very start of the file
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,16 @@
+//@ run-rustfix
+fn wat<T: Clone>(t: &T) -> T {
+    t.clone() //~ ERROR E0308
+}
+
+#[derive(Clone)]
+struct Foo;
+
+fn wut(t: &Foo) -> Foo {
+    t.clone() //~ ERROR E0308
+}
+
+fn main() {
+    wat(&42);
+    wut(&Foo);
+}

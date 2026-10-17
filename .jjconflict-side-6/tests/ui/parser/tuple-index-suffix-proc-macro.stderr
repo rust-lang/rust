@@ -1,0 +1,26 @@
+error: suffixes on a tuple index are invalid
+  --> $DIR/tuple-index-suffix-proc-macro.rs:18:28
+   |
+LL |     aux::bad_tup_indexing!(0usize);
+   |                            ^^^^^^ invalid suffix `usize`
+
+error: suffixes on a tuple index are invalid
+  --> $DIR/tuple-index-suffix-proc-macro.rs:20:47
+   |
+LL |     aux::bad_tup_struct_indexing!(tup_struct, 0isize);
+   |                                               ^^^^^^ invalid suffix `isize`
+
+error: suffixes on a tuple index are invalid
+  --> $DIR/tuple-index-suffix-proc-macro.rs:25:28
+   |
+LL |     aux::bad_tup_indexing!(0u8);
+   |                            ^^^ invalid suffix `u8`
+
+error: suffixes on a tuple index are invalid
+  --> $DIR/tuple-index-suffix-proc-macro.rs:27:47
+   |
+LL |     aux::bad_tup_struct_indexing!(tup_struct, 0u64);
+   |                                               ^^^^ invalid suffix `u64`
+
+error: aborting due to 4 previous errors
+

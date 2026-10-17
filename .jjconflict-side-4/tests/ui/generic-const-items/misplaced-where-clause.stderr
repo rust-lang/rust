@@ -1,0 +1,36 @@
+error: where clauses are not allowed before const item bodies
+  --> $DIR/misplaced-where-clause.rs:7:1
+   |
+LL |   const K<T>: u64
+   |         - while parsing this const item
+LL | / where
+LL | |     T: Tr<()>
+   | |_____________^ unexpected where clause
+LL |   = T::K;
+   |     ---- the item body
+   |
+help: move the body before the where clause
+   |
+LL ~ = T::K where
+LL ~     T: Tr<()>;
+   |
+
+error: where clauses are not allowed before const item bodies
+  --> $DIR/misplaced-where-clause.rs:14:5
+   |
+LL |       const K: u64
+   |             - while parsing this const item
+LL | /     where
+LL | |         P: Copy
+   | |_______________^ unexpected where clause
+LL |       = 0;
+   |         - the item body
+   |
+help: move the body before the where clause
+   |
+LL ~     = 0 where
+LL ~         P: Copy;
+   |
+
+error: aborting due to 2 previous errors
+

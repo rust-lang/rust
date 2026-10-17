@@ -1,0 +1,6 @@
+#![warn(clippy::decimal_literal_representation)]
+fn main() {
+    let _ = 8388608;
+    let _ = 0x00FF_FFFF;
+    //~^ ERROR: integer literal has a better hexadecimal representation
+}

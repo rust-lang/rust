@@ -1,0 +1,13 @@
+error[E0382]: use of moved value: `f.moved`
+  --> $DIR/moves-sru-moved-field.rs:20:14
+   |
+LL |     let _b = Foo {noncopyable: g, ..f};
+   |              ------------------------- value moved here
+LL |     let _c = Foo {noncopyable: h, ..f};
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^ value used here after move
+   |
+   = note: move occurs because `f.moved` has type `Box<isize>`, which does not implement the `Copy` trait
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.

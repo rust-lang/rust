@@ -1,0 +1,20 @@
+error: depth parameter of meta-variable expression `count` must be less than 4
+  --> $DIR/out-of-bounds-arguments.rs:7:14
+   |
+LL |             ${count($foo, 10)},
+   |              ^^^^^^^^^^^^^^^^^
+
+error: depth parameter of meta-variable expression `index` must be less than 3
+  --> $DIR/out-of-bounds-arguments.rs:19:18
+   |
+LL |                 ${index(10)},
+   |                  ^^^^^^^^^^^
+
+error: depth parameter of meta-variable expression `len` must be less than 2
+  --> $DIR/out-of-bounds-arguments.rs:32:18
+   |
+LL |                 ${len(10)}
+   |                  ^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

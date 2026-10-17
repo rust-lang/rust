@@ -1,0 +1,56 @@
+error: unknown disambiguator `foo`
+  --> $DIR/unknown-disambiguator.rs:4:17
+   |
+LL | //! Linking to [foo@banana] and [`bar@banana!()`].
+   |                 ^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+note: the lint level is defined here
+  --> $DIR/unknown-disambiguator.rs:2:9
+   |
+LL | #![deny(warnings)]
+   |         ^^^^^^^^
+   = note: `#[deny(rustdoc::broken_intra_doc_links)]` implied by `#[deny(warnings)]`
+
+error: unknown disambiguator `bar`
+  --> $DIR/unknown-disambiguator.rs:4:35
+   |
+LL | //! Linking to [foo@banana] and [`bar@banana!()`].
+   |                                   ^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+error: unknown disambiguator ``
+  --> $DIR/unknown-disambiguator.rs:7:31
+   |
+LL | //! And to [no disambiguator](@nectarine) and [another](@apricot!()).
+   |                               ^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+error: unknown disambiguator ``
+  --> $DIR/unknown-disambiguator.rs:7:57
+   |
+LL | //! And to [no disambiguator](@nectarine) and [another](@apricot!()).
+   |                                                         ^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+error: unknown disambiguator `foo`
+  --> $DIR/unknown-disambiguator.rs:10:34
+   |
+LL | //! And with weird backticks: [``foo@hello``] [foo`@`hello].
+   |                                  ^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+error: unknown disambiguator `foo`
+  --> $DIR/unknown-disambiguator.rs:10:48
+   |
+LL | //! And with weird backticks: [``foo@hello``] [foo`@`hello].
+   |                                                ^^^
+   |
+   = note: see https://doc.rust-lang.org/$CHANNEL/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators for more info about disambiguators
+
+error: aborting due to 6 previous errors
+

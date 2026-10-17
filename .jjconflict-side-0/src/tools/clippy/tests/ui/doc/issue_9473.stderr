@@ -1,0 +1,16 @@
+error: item in documentation is missing backticks
+  --> tests/ui/doc/issue_9473.rs:8:58
+   |
+LL | /// Blah blah blah <code>[FooBar]&lt;[FooBar]&gt;</code>[FooBar].
+   |                                                          ^^^^^^
+   |
+   = note: `-D clippy::doc-markdown` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::doc_markdown)]`
+help: try
+   |
+LL - /// Blah blah blah <code>[FooBar]&lt;[FooBar]&gt;</code>[FooBar].
+LL + /// Blah blah blah <code>[FooBar]&lt;[FooBar]&gt;</code>[`FooBar`].
+   |
+
+error: aborting due to 1 previous error
+

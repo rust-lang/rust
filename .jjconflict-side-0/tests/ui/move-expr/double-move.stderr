@@ -1,0 +1,23 @@
+error[E0382]: use of moved value: `x`
+  --> $DIR/double-move.rs:8:22
+   |
+LL |     let x = vec![1, 2, 3];
+   |         - move occurs because `x` has type `Vec<i32>`, which does not implement the `Copy` trait
+LL |     let _c = || {
+LL |         let y = move(x);
+   |                      - value moved here
+LL |         let z = move(x);
+   |                      ^ value used here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         let y = move(x.clone());
+   |                       ++++++++
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |         let y = move(ref x);
+   |                      +++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.

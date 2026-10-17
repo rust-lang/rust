@@ -1,0 +1,10 @@
+error: expected `;`, found `::`
+  --> $DIR/import-from-path.rs:1:15
+   |
+LL | use foo::{bar}::baz
+   |               ^^ expected `;`
+   |
+   = note: glob-like brace syntax must be last on the path
+
+error: aborting due to 1 previous error
+

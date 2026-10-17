@@ -1,0 +1,12 @@
+error[E0792]: expected generic lifetime parameter, found `'_`
+  --> $DIR/in-assoc-ty-early-bound.rs:11:60
+   |
+LL |     type Assoc<'a, 'b> = impl Sized;
+   |                -- this generic parameter must be used with a generic lifetime parameter
+LL |     fn bar<'a: 'a, 'b: 'b>(x: &'a ()) -> Self::Assoc<'a, 'b> {
+LL |         let closure = |x: &'a ()| -> Self::Assoc<'b, 'a> { x };
+   |                                                            ^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0792`.

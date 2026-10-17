@@ -1,0 +1,2 @@
+[address]
+type:*unsafe*extern*fn*

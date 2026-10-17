@@ -1,0 +1,4 @@
+; Check that i32 TypeTree metadata is correctly generated
+; Should show Integer for i32 values and Pointer for references
+
+CHECK: define{{.*}}"enzyme_type"="{[-1]:Integer}"{{.*}}@test_i32{{.*}}"enzyme_type"="{[-1]:Pointer, [-1,0]:Integer}"

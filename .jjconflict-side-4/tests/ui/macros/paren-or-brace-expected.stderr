@@ -1,0 +1,14 @@
+error: expected `(` or `{`, found `[`
+  --> $DIR/paren-or-brace-expected.rs:3:10
+   |
+LL |         $[count($i)]
+   |          ^^^^^^^^^^^
+
+error: expected one of: `*`, `+`, or `?`
+  --> $DIR/paren-or-brace-expected.rs:3:10
+   |
+LL |         $[count($i)]
+   |          ^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

@@ -1,0 +1,54 @@
+- // MIR for `multiple_match` before JumpThreading
++ // MIR for `multiple_match` after JumpThreading
+  
+  fn multiple_match(_1: u8) -> u8 {
+      let mut _0: u8;
+      let mut _2: u8;
+      let mut _3: u8;
+  
+      bb0: {
+          switchInt(copy _1) -> [3: bb1, otherwise: bb2];
+      }
+  
+      bb1: {
+          _2 = copy _1;
+-         switchInt(copy _2) -> [3: bb3, otherwise: bb4];
++         goto -> bb3;
+      }
+  
+      bb2: {
+          _3 = copy _1;
+-         switchInt(copy _3) -> [3: bb5, otherwise: bb6];
++         goto -> bb6;
+      }
+  
+      bb3: {
+          _0 = const 5_u8;
+          return;
+      }
+  
+      bb4: {
+          _0 = const 7_u8;
+          return;
+      }
+  
+      bb5: {
+          _0 = const 9_u8;
+          return;
+      }
+  
+      bb6: {
+          switchInt(copy _3) -> [1: bb7, otherwise: bb8];
+      }
+  
+      bb7: {
+          _0 = const 9_u8;
+          return;
+      }
+  
+      bb8: {
+          _0 = const 11_u8;
+          return;
+      }
+  }
+  

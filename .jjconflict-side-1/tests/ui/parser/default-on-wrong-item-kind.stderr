@@ -1,0 +1,803 @@
+error: an extern crate cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:9:5
+   |
+LL |     default extern crate foo;
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: a `use` import cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:10:5
+   |
+LL |     default use foo;
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: a static item cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:11:5
+   |
+LL |     default static foo: u8;
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: a module cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:14:5
+   |
+LL |     default mod foo {}
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: an extern block cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:15:5
+   |
+LL |     default extern "C" {}
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: an enum cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:17:5
+   |
+LL |     default enum foo {}
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: a struct cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:18:5
+   |
+LL |     default struct foo {}
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: a union cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:19:5
+   |
+LL |     default union foo {}
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: a trait cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:20:5
+   |
+LL |     default trait foo {}
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: a trait alias cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:21:5
+   |
+LL |     default trait foo = Ord;
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: inherent impls cannot be default
+  --> $DIR/default-on-wrong-item-kind.rs:22:18
+   |
+LL |     default impl foo {}
+   |     -------      ^^^ inherent impl for this type
+   |     |
+   |     default because of this
+   |
+   = note: only trait implementations may be annotated with `default`
+
+error: an item macro invocation cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:25:5
+   |
+LL |     default default!();
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: an item macro invocation cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:26:5
+   |
+LL |     default default::foo::bar!();
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: a macro definition cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:27:5
+   |
+LL |     default macro foo {}
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: a macro definition cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:28:5
+   |
+LL |     default macro_rules! foo {}
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: an extern crate cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:33:5
+   |
+LL |     default extern crate foo;
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: extern crate is not supported in `extern` blocks
+  --> $DIR/default-on-wrong-item-kind.rs:33:5
+   |
+LL |     default extern crate foo;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider moving the extern crate out to a nearby module scope
+
+error: a `use` import cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:35:5
+   |
+LL |     default use foo;
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: `use` import is not supported in `extern` blocks
+  --> $DIR/default-on-wrong-item-kind.rs:35:5
+   |
+LL |     default use foo;
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: consider moving the `use` import out to a nearby module scope
+
+error: a static item cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:37:5
+   |
+LL |     default static foo: u8;
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: extern items cannot be `const`
+  --> $DIR/default-on-wrong-item-kind.rs:38:19
+   |
+LL |     default const foo: u8;
+   |                   ^^^
+   |
+   = note: for more information, visit https://doc.rust-lang.org/std/keyword.extern.html
+help: try using a static value
+   |
+LL -     default const foo: u8;
+LL +     static foo: u8;
+   |
+
+error: a module cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:41:5
+   |
+LL |     default mod foo {}
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: module is not supported in `extern` blocks
+  --> $DIR/default-on-wrong-item-kind.rs:41:5
+   |
+LL |     default mod foo {}
+   |     ^^^^^^^^^^^^^^^
+   |
+   = help: consider moving the module out to a nearby module scope
+
+error: an extern block cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:43:5
+   |
+LL |     default extern "C" {}
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: extern block is not supported in `extern` blocks
+  --> $DIR/default-on-wrong-item-kind.rs:43:5
+   |
+LL |     default extern "C" {}
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider moving the extern block out to a nearby module scope
+
+error: an enum cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:46:5
+   |
+LL |     default enum foo {}
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: enum is not supported in `extern` blocks
+  --> $DIR/default-on-wrong-item-kind.rs:46:5
+   |
+LL |     default enum foo {}
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: consider moving the enum out to a nearby module scope
+
+error: a struct cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:48:5
+   |
+LL |     default struct foo {}
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: struct is not supported in `extern` blocks
+  --> $DIR/default-on-wrong-item-kind.rs:48:5
+   |
+LL |     default struct foo {}
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider moving the struct out to a nearby module scope
+
+error: a union cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:50:5
+   |
+LL |     default union foo {}
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: union is not supported in `extern` blocks
+  --> $DIR/default-on-wrong-item-kind.rs:50:5
+   |
+LL |     default union foo {}
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider moving the union out to a nearby module scope
+
+error: a trait cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:52:5
+   |
+LL |     default trait foo {}
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: trait is not supported in `extern` blocks
+  --> $DIR/default-on-wrong-item-kind.rs:52:5
+   |
+LL |     default trait foo {}
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider moving the trait out to a nearby module scope
+
+error: a trait alias cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:54:5
+   |
+LL |     default trait foo = Ord;
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: trait alias is not supported in `extern` blocks
+  --> $DIR/default-on-wrong-item-kind.rs:54:5
+   |
+LL |     default trait foo = Ord;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider moving the trait alias out to a nearby module scope
+
+error: inherent impls cannot be default
+  --> $DIR/default-on-wrong-item-kind.rs:56:18
+   |
+LL |     default impl foo {}
+   |     -------      ^^^ inherent impl for this type
+   |     |
+   |     default because of this
+   |
+   = note: only trait implementations may be annotated with `default`
+
+error: implementation is not supported in `extern` blocks
+  --> $DIR/default-on-wrong-item-kind.rs:56:5
+   |
+LL |     default impl foo {}
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: consider moving the implementation out to a nearby module scope
+
+error: an item macro invocation cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:60:5
+   |
+LL |     default default!();
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: an item macro invocation cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:61:5
+   |
+LL |     default default::foo::bar!();
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: a macro definition cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:62:5
+   |
+LL |     default macro foo {}
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: macro definition is not supported in `extern` blocks
+  --> $DIR/default-on-wrong-item-kind.rs:62:5
+   |
+LL |     default macro foo {}
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider moving the macro definition out to a nearby module scope
+
+error: a macro definition cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:64:5
+   |
+LL |     default macro_rules! foo {}
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: macro definition is not supported in `extern` blocks
+  --> $DIR/default-on-wrong-item-kind.rs:64:5
+   |
+LL |     default macro_rules! foo {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider moving the macro definition out to a nearby module scope
+
+error: an extern crate cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:70:5
+   |
+LL |     default extern crate foo;
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: extern crate is not supported in `trait`s or `impl`s
+  --> $DIR/default-on-wrong-item-kind.rs:70:5
+   |
+LL |     default extern crate foo;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider moving the extern crate out to a nearby module scope
+
+error: a `use` import cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:72:5
+   |
+LL |     default use foo;
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: `use` import is not supported in `trait`s or `impl`s
+  --> $DIR/default-on-wrong-item-kind.rs:72:5
+   |
+LL |     default use foo;
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: consider moving the `use` import out to a nearby module scope
+
+error: a static item cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:74:5
+   |
+LL |     default static foo: u8;
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: associated `static` items are not allowed
+  --> $DIR/default-on-wrong-item-kind.rs:74:5
+   |
+LL |     default static foo: u8;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: a module cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:78:5
+   |
+LL |     default mod foo {}
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: module is not supported in `trait`s or `impl`s
+  --> $DIR/default-on-wrong-item-kind.rs:78:5
+   |
+LL |     default mod foo {}
+   |     ^^^^^^^^^^^^^^^
+   |
+   = help: consider moving the module out to a nearby module scope
+
+error: an extern block cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:80:5
+   |
+LL |     default extern "C" {}
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: extern block is not supported in `trait`s or `impl`s
+  --> $DIR/default-on-wrong-item-kind.rs:80:5
+   |
+LL |     default extern "C" {}
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider moving the extern block out to a nearby module scope
+
+error: an enum cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:83:5
+   |
+LL |     default enum foo {}
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: enum is not supported in `trait`s or `impl`s
+  --> $DIR/default-on-wrong-item-kind.rs:83:5
+   |
+LL |     default enum foo {}
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: consider moving the enum out to a nearby module scope
+
+error: a struct cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:85:5
+   |
+LL |     default struct foo {}
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: struct is not supported in `trait`s or `impl`s
+  --> $DIR/default-on-wrong-item-kind.rs:85:5
+   |
+LL |     default struct foo {}
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider moving the struct out to a nearby module scope
+
+error: a union cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:87:5
+   |
+LL |     default union foo {}
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: union is not supported in `trait`s or `impl`s
+  --> $DIR/default-on-wrong-item-kind.rs:87:5
+   |
+LL |     default union foo {}
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider moving the union out to a nearby module scope
+
+error: a trait cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:89:5
+   |
+LL |     default trait foo {}
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: trait is not supported in `trait`s or `impl`s
+  --> $DIR/default-on-wrong-item-kind.rs:89:5
+   |
+LL |     default trait foo {}
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider moving the trait out to a nearby module scope
+
+error: a trait alias cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:91:5
+   |
+LL |     default trait foo = Ord;
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: trait alias is not supported in `trait`s or `impl`s
+  --> $DIR/default-on-wrong-item-kind.rs:91:5
+   |
+LL |     default trait foo = Ord;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider moving the trait alias out to a nearby module scope
+
+error: inherent impls cannot be default
+  --> $DIR/default-on-wrong-item-kind.rs:93:18
+   |
+LL |     default impl foo {}
+   |     -------      ^^^ inherent impl for this type
+   |     |
+   |     default because of this
+   |
+   = note: only trait implementations may be annotated with `default`
+
+error: implementation is not supported in `trait`s or `impl`s
+  --> $DIR/default-on-wrong-item-kind.rs:93:5
+   |
+LL |     default impl foo {}
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: consider moving the implementation out to a nearby module scope
+
+error: an item macro invocation cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:97:5
+   |
+LL |     default default!();
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: an item macro invocation cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:98:5
+   |
+LL |     default default::foo::bar!();
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: a macro definition cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:99:5
+   |
+LL |     default macro foo {}
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: macro definition is not supported in `trait`s or `impl`s
+  --> $DIR/default-on-wrong-item-kind.rs:99:5
+   |
+LL |     default macro foo {}
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider moving the macro definition out to a nearby module scope
+
+error: a macro definition cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:101:5
+   |
+LL |     default macro_rules! foo {}
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: macro definition is not supported in `trait`s or `impl`s
+  --> $DIR/default-on-wrong-item-kind.rs:101:5
+   |
+LL |     default macro_rules! foo {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider moving the macro definition out to a nearby module scope
+
+error: an extern crate cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:107:5
+   |
+LL |     default extern crate foo;
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: extern crate is not supported in `trait`s or `impl`s
+  --> $DIR/default-on-wrong-item-kind.rs:107:5
+   |
+LL |     default extern crate foo;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider moving the extern crate out to a nearby module scope
+
+error: a `use` import cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:109:5
+   |
+LL |     default use foo;
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: `use` import is not supported in `trait`s or `impl`s
+  --> $DIR/default-on-wrong-item-kind.rs:109:5
+   |
+LL |     default use foo;
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: consider moving the `use` import out to a nearby module scope
+
+error: a static item cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:111:5
+   |
+LL |     default static foo: u8;
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: associated `static` items are not allowed
+  --> $DIR/default-on-wrong-item-kind.rs:111:5
+   |
+LL |     default static foo: u8;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: a module cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:115:5
+   |
+LL |     default mod foo {}
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: module is not supported in `trait`s or `impl`s
+  --> $DIR/default-on-wrong-item-kind.rs:115:5
+   |
+LL |     default mod foo {}
+   |     ^^^^^^^^^^^^^^^
+   |
+   = help: consider moving the module out to a nearby module scope
+
+error: an extern block cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:117:5
+   |
+LL |     default extern "C" {}
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: extern block is not supported in `trait`s or `impl`s
+  --> $DIR/default-on-wrong-item-kind.rs:117:5
+   |
+LL |     default extern "C" {}
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider moving the extern block out to a nearby module scope
+
+error: an enum cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:120:5
+   |
+LL |     default enum foo {}
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: enum is not supported in `trait`s or `impl`s
+  --> $DIR/default-on-wrong-item-kind.rs:120:5
+   |
+LL |     default enum foo {}
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: consider moving the enum out to a nearby module scope
+
+error: a struct cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:122:5
+   |
+LL |     default struct foo {}
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: struct is not supported in `trait`s or `impl`s
+  --> $DIR/default-on-wrong-item-kind.rs:122:5
+   |
+LL |     default struct foo {}
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider moving the struct out to a nearby module scope
+
+error: a union cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:124:5
+   |
+LL |     default union foo {}
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: union is not supported in `trait`s or `impl`s
+  --> $DIR/default-on-wrong-item-kind.rs:124:5
+   |
+LL |     default union foo {}
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider moving the union out to a nearby module scope
+
+error: a trait cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:126:5
+   |
+LL |     default trait foo {}
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: trait is not supported in `trait`s or `impl`s
+  --> $DIR/default-on-wrong-item-kind.rs:126:5
+   |
+LL |     default trait foo {}
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider moving the trait out to a nearby module scope
+
+error: a trait alias cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:128:5
+   |
+LL |     default trait foo = Ord;
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: trait alias is not supported in `trait`s or `impl`s
+  --> $DIR/default-on-wrong-item-kind.rs:128:5
+   |
+LL |     default trait foo = Ord;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider moving the trait alias out to a nearby module scope
+
+error: inherent impls cannot be default
+  --> $DIR/default-on-wrong-item-kind.rs:130:18
+   |
+LL |     default impl foo {}
+   |     -------      ^^^ inherent impl for this type
+   |     |
+   |     default because of this
+   |
+   = note: only trait implementations may be annotated with `default`
+
+error: implementation is not supported in `trait`s or `impl`s
+  --> $DIR/default-on-wrong-item-kind.rs:130:5
+   |
+LL |     default impl foo {}
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: consider moving the implementation out to a nearby module scope
+
+error: an item macro invocation cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:134:5
+   |
+LL |     default default!();
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: an item macro invocation cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:135:5
+   |
+LL |     default default::foo::bar!();
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: a macro definition cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:136:5
+   |
+LL |     default macro foo {}
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: macro definition is not supported in `trait`s or `impl`s
+  --> $DIR/default-on-wrong-item-kind.rs:136:5
+   |
+LL |     default macro foo {}
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider moving the macro definition out to a nearby module scope
+
+error: a macro definition cannot be `default`
+  --> $DIR/default-on-wrong-item-kind.rs:138:5
+   |
+LL |     default macro_rules! foo {}
+   |     ^^^^^^^ `default` because of this
+   |
+   = note: only associated `fn`, `const`, and `type` items can be `default`
+
+error: macro definition is not supported in `trait`s or `impl`s
+  --> $DIR/default-on-wrong-item-kind.rs:138:5
+   |
+LL |     default macro_rules! foo {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider moving the macro definition out to a nearby module scope
+
+error: aborting due to 99 previous errors
+

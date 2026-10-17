@@ -1,0 +1,17 @@
+error: repeating `Vec::with_capacity` using `iter::repeat`, which does not retain capacity
+  --> tests/ui/repeat_vec_with_capacity_nostd.rs:9:27
+   |
+LL |     let _: Vec<Vec<u8>> = iter::repeat(Vec::with_capacity(42)).take(123).collect();
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: none of the yielded `Vec`s will have the requested capacity
+   = note: `-D clippy::repeat-vec-with-capacity` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::repeat_vec_with_capacity)]`
+help: if you intended to create an iterator that yields `Vec`s with an initial capacity, try
+   |
+LL -     let _: Vec<Vec<u8>> = iter::repeat(Vec::with_capacity(42)).take(123).collect();
+LL +     let _: Vec<Vec<u8>> = core::iter::repeat_with(|| Vec::with_capacity(42)).take(123).collect();
+   |
+
+error: aborting due to 1 previous error
+
