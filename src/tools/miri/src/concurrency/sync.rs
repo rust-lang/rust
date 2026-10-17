@@ -915,7 +915,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     /// Increment the semaphore.
-    fn semaphore_increment(&mut self, semaphore_ref: &SemaphoreRef) -> InterpResult<'tcx> {
+    /// Returns whether anyone was woken up.
+    fn semaphore_increment(&mut self, semaphore_ref: &SemaphoreRef) -> InterpResult<'tcx, bool> {
         let this = self.eval_context_mut();
 
         let mut semaphore = semaphore_ref.0.borrow_mut();
@@ -935,6 +936,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             this.unblock_thread(thread, BlockReason::Semaphore)?;
         }
 
-        interp_ok(())
+        interp_ok(wake_thread.is_some())
     }
 }

@@ -5,17 +5,28 @@
 
 use std::cell::SyncUnsafeCell;
 use std::mem::MaybeUninit;
-use std::{mem, ptr, thread};
+use std::{mem, ptr, thread, time};
 
 #[path = "../../utils/libc.rs"]
 mod libc_utils;
+
+struct SendPtr<T> {
+    ptr: *mut T,
+}
+unsafe impl<T> Send for SendPtr<T> {}
+impl<T> Copy for SendPtr<T> {}
+impl<T> Clone for SendPtr<T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
 
 fn yield_now() {
     if cfg!(miri) {
         thread::yield_now();
     } else {
         // Without scheduler control, we hope that sleeping a bit is enough.
-        thread::sleep(std::time::Duration::from_millis(10));
+        thread::sleep(time::Duration::from_millis(10));
     }
 }
 
@@ -160,17 +171,6 @@ fn test_mutex_libc_static_initializer_errorcheck() {
         assert_eq!(libc::pthread_mutex_unlock(mutex.get()), 0);
         assert_eq!(libc::pthread_mutex_unlock(mutex.get()), libc::EPERM);
         assert_eq!(libc::pthread_mutex_destroy(mutex.get()), 0);
-    }
-}
-
-struct SendPtr<T> {
-    ptr: *mut T,
-}
-unsafe impl<T> Send for SendPtr<T> {}
-impl<T> Copy for SendPtr<T> {}
-impl<T> Clone for SendPtr<T> {
-    fn clone(&self) -> Self {
-        *self
     }
 }
 
@@ -386,6 +386,7 @@ fn test_sem() {
         let sem = SendPtr { ptr: &mut sem };
 
         errno_check(libc::sem_wait(sem.ptr));
+
         // Semaphore blocks when 0 is hit, and we can use that to synchronize.
         let t = thread::spawn(move || {
             let data = data;
