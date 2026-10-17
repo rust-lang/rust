@@ -8,3 +8,5 @@ pub fn entry<'a, K, V>() -> Entry<'a K, V> {
 //~^^ ERROR expected one of `,` or `>`, found `K`
     unimplemented!()
 }
+
+fn main() {}
