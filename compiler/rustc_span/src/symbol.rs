@@ -2423,6 +2423,7 @@ symbols! {
         vtable_align,
         vtable_size,
         warn,
+        warnings,
         wasip2,
         wasm,
         wasm32,
