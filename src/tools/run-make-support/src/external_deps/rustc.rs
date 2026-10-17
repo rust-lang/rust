@@ -110,6 +110,9 @@ impl Rustc {
             cmd.arg(format!("-Zcodegen-backend={codegen_backend}"));
         }
 
+        // Use a single frontend thread by default, for now
+        cmd.arg("-Zthreads=1");
+
         // Automatically default to cross-compilation
         Self { cmd, target: Some(target()) }
     }
