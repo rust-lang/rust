@@ -1,6 +1,6 @@
 # `riscv64a23-unknown-linux-gnu`
 
-**Tier: 2 (without Host Tools)**
+**Tier: 2 (with Host Tools)**
 
 RISC-V target using the ratified [RVA23 Profile](https://github.com/riscv/riscv-profiles/blob/main/src/rva23-profile.adoc).
 This target will enable all mandatory features of rva23u64 by default.
