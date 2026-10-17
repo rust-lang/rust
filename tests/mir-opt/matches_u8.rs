@@ -1,4 +1,3 @@
-//@ skip-filecheck
 //@ test-mir-pass: MatchBranchSimplification
 
 // EMIT_MIR matches_u8.exhaustive_match.MatchBranchSimplification.diff
@@ -11,6 +10,10 @@ pub enum E {
 
 #[no_mangle]
 pub fn exhaustive_match(e: E) -> u8 {
+    // CHECK-LABEL: fn exhaustive_match(
+    // CHECK: discriminant(
+    // CHECK-NOT: switchInt
+    // CHECK: return
     match e {
         E::A => 0,
         E::B => 1,
@@ -19,6 +22,10 @@ pub fn exhaustive_match(e: E) -> u8 {
 
 #[no_mangle]
 pub fn exhaustive_match_i8(e: E) -> i8 {
+    // CHECK-LABEL: fn exhaustive_match_i8(
+    // CHECK: discriminant(
+    // CHECK-NOT: switchInt
+    // CHECK: return
     match e {
         E::A => 0,
         E::B => 1,
