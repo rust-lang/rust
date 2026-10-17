@@ -769,13 +769,14 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
 
                 print_indented!(self, "}", depth_lvl + 1);
             }
-            PatKind::Leaf { subpatterns } => {
+            PatKind::Leaf { subpatterns, has_rest } => {
                 print_indented!(self, "Leaf { ", depth_lvl + 1);
                 print_indented!(self, "subpatterns: [", depth_lvl + 2);
                 for field_pat in subpatterns.iter() {
                     self.print_pat(&field_pat.pattern, depth_lvl + 3);
                 }
                 print_indented!(self, "]", depth_lvl + 2);
+                print_indented!(self, format!("has_rest: {has_rest:?}"), depth_lvl + 2);
                 print_indented!(self, "}", depth_lvl + 1);
             }
             PatKind::Deref { pin, subpattern } => {
