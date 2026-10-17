@@ -5,7 +5,9 @@
     clippy::needless_return,
     clippy::no_effect,
     clippy::unit_arg,
-    clippy::useless_conversion
+    clippy::useless_conversion,
+    self_type_conversion,
+    unused
 )]
 
 #[macro_use]

@@ -1,0 +1,296 @@
+error: useless conversion to the same type: `u64`
+  --> $DIR/self_type_conversion.rs:30:22
+   |
+LL |         let _: u64 = z.into();
+   |                      ^^^^^^^^
+   |
+   = note: this method call relies on the `impl<T> Into<T> for T` blanket implementation and type inference, which is a semver hazard as a new `impl Into<_>` that affects your type might be added in the future causing type inference errors
+note: the lint level is defined here
+  --> $DIR/self_type_conversion.rs:1:9
+   |
+LL | #![deny(self_type_conversion)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+help: consider removing the conversion call
+   |
+LL -         let _: u64 = z.into();
+LL +         let _: u64 = z;
+   |
+help: you can use the fully-qualified path to avoid triggering this lint
+   |
+LL -         let _: u64 = z.into();
+LL +         let _: u64 = <u64 as Into<_>>::into(z);
+   |
+
+error: useless conversion to the same type: `u64`
+  --> $DIR/self_type_conversion.rs:40:30
+   |
+LL |         let _: Option<u64> = z.map(Into::into);
+   |                              ^^^^^^^^^^^^^^^^^
+   |
+   = note: this method call relies on the `impl<T> Into<T> for T` blanket implementation and type inference, which is a semver hazard as a new `impl Into<_>` that affects your type might be added in the future causing type inference errors
+help: consider removing the conversion call
+   |
+LL -         let _: Option<u64> = z.map(Into::into);
+LL +         let _: Option<u64> = z;
+   |
+
+error: useless conversion to the same type: `u64`
+  --> $DIR/self_type_conversion.rs:50:34
+   |
+LL |         let _: Result<u64, ()> = z.map(Into::into);
+   |                                  ^^^^^^^^^^^^^^^^^
+   |
+   = note: this method call relies on the `impl<T> Into<T> for T` blanket implementation and type inference, which is a semver hazard as a new `impl Into<_>` that affects your type might be added in the future causing type inference errors
+help: consider removing the conversion call
+   |
+LL -         let _: Result<u64, ()> = z.map(Into::into);
+LL +         let _: Result<u64, ()> = z;
+   |
+
+error: useless conversion to the same type: `u64`
+  --> $DIR/self_type_conversion.rs:60:34
+   |
+LL |         let _: Result<(), u64> = z.map_err(Into::into);
+   |                                  ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this method call relies on the `impl<T> Into<T> for T` blanket implementation and type inference, which is a semver hazard as a new `impl Into<_>` that affects your type might be added in the future causing type inference errors
+help: consider removing the conversion call
+   |
+LL -         let _: Result<(), u64> = z.map_err(Into::into);
+LL +         let _: Result<(), u64> = z;
+   |
+
+error: useless conversion to the same type: `u64`
+  --> $DIR/self_type_conversion.rs:103:22
+   |
+LL |         let _: u64 = z.into();
+   |                      ^^^^^^^^
+   |
+   = note: this method call relies on the `impl<T> Into<T> for T` blanket implementation and type inference, which is a semver hazard as a new `impl Into<_>` that affects your type might be added in the future causing type inference errors
+help: consider removing the conversion call
+   |
+LL -         let _: u64 = z.into();
+LL +         let _: u64 = z;
+   |
+help: you can use the fully-qualified path to avoid triggering this lint
+   |
+LL -         let _: u64 = z.into();
+LL +         let _: u64 = <u64 as Into<_>>::into(z);
+   |
+
+error: useless conversion to the same type: `u64`
+  --> $DIR/self_type_conversion.rs:113:30
+   |
+LL |         let _: Option<u64> = z.map(Into::into);
+   |                              ^^^^^^^^^^^^^^^^^
+   |
+   = note: this method call relies on the `impl<T> Into<T> for T` blanket implementation and type inference, which is a semver hazard as a new `impl Into<_>` that affects your type might be added in the future causing type inference errors
+help: consider removing the conversion call
+   |
+LL -         let _: Option<u64> = z.map(Into::into);
+LL +         let _: Option<u64> = z;
+   |
+
+error: useless conversion to the same type: `u64`
+  --> $DIR/self_type_conversion.rs:123:34
+   |
+LL |         let _: Result<u64, ()> = z.map(Into::into);
+   |                                  ^^^^^^^^^^^^^^^^^
+   |
+   = note: this method call relies on the `impl<T> Into<T> for T` blanket implementation and type inference, which is a semver hazard as a new `impl Into<_>` that affects your type might be added in the future causing type inference errors
+help: consider removing the conversion call
+   |
+LL -         let _: Result<u64, ()> = z.map(Into::into);
+LL +         let _: Result<u64, ()> = z;
+   |
+
+error: useless conversion to the same type: `u64`
+  --> $DIR/self_type_conversion.rs:133:34
+   |
+LL |         let _: Result<(), u64> = z.map_err(Into::into);
+   |                                  ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this method call relies on the `impl<T> Into<T> for T` blanket implementation and type inference, which is a semver hazard as a new `impl Into<_>` that affects your type might be added in the future causing type inference errors
+help: consider removing the conversion call
+   |
+LL -         let _: Result<(), u64> = z.map_err(Into::into);
+LL +         let _: Result<(), u64> = z;
+   |
+
+error: useless conversion to the same type: `u64`
+  --> $DIR/self_type_conversion.rs:161:22
+   |
+LL |         let _: u64 = z.into();
+   |                      ^^^^^^^^
+   |
+   = note: this method call relies on the `impl<T> Into<T> for T` blanket implementation and type inference, which is a semver hazard as a new `impl Into<_>` that affects your type might be added in the future causing type inference errors
+help: consider removing the conversion call
+   |
+LL -         let _: u64 = z.into();
+LL +         let _: u64 = z;
+   |
+help: you can use the fully-qualified path to avoid triggering this lint
+   |
+LL -         let _: u64 = z.into();
+LL +         let _: u64 = <u64 as Into<_>>::into(z);
+   |
+
+error: useless conversion to the same type: `u64`
+  --> $DIR/self_type_conversion.rs:171:30
+   |
+LL |         let _: Option<u64> = z.map(Into::into);
+   |                              ^^^^^^^^^^^^^^^^^
+   |
+   = note: this method call relies on the `impl<T> Into<T> for T` blanket implementation and type inference, which is a semver hazard as a new `impl Into<_>` that affects your type might be added in the future causing type inference errors
+help: consider removing the conversion call
+   |
+LL -         let _: Option<u64> = z.map(Into::into);
+LL +         let _: Option<u64> = z;
+   |
+
+error: useless conversion to the same type: `u64`
+  --> $DIR/self_type_conversion.rs:181:34
+   |
+LL |         let _: Result<u64, ()> = z.map(Into::into);
+   |                                  ^^^^^^^^^^^^^^^^^
+   |
+   = note: this method call relies on the `impl<T> Into<T> for T` blanket implementation and type inference, which is a semver hazard as a new `impl Into<_>` that affects your type might be added in the future causing type inference errors
+help: consider removing the conversion call
+   |
+LL -         let _: Result<u64, ()> = z.map(Into::into);
+LL +         let _: Result<u64, ()> = z;
+   |
+
+error: useless conversion to the same type: `u64`
+  --> $DIR/self_type_conversion.rs:191:34
+   |
+LL |         let _: Result<(), u64> = z.map_err(Into::into);
+   |                                  ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this method call relies on the `impl<T> Into<T> for T` blanket implementation and type inference, which is a semver hazard as a new `impl Into<_>` that affects your type might be added in the future causing type inference errors
+help: consider removing the conversion call
+   |
+LL -         let _: Result<(), u64> = z.map_err(Into::into);
+LL +         let _: Result<(), u64> = z;
+   |
+
+error: useless conversion to the same type: `()`
+  --> $DIR/self_type_conversion.rs:239:9
+   |
+LL | macro_rules! in_macro_2 {
+LL |     ($expr:expr) => {
+LL |         $expr.into()
+   |         ^^^^^^^^^^^^
+...
+LL |     let () = in_macro_2!(());  // Not ok, pointing into the macro
+   |              --------------- in this macro invocation
+   |
+   = note: this method call relies on the `impl<T> Into<T> for T` blanket implementation and type inference, which is a semver hazard as a new `impl Into<_>` that affects your type might be added in the future causing type inference errors
+   = note: you can instead use the fully-qualified path `<() as Into<()>::into(val) to avoid triggering this lint
+
+error: useless conversion to the same type: `u16`
+  --> $DIR/self_type_conversion.rs:239:9
+   |
+LL | macro_rules! in_macro_2 {
+LL |     ($expr:expr) => {
+LL |         $expr.into()
+   |         ^^^^^^^^^^^^
+...
+LL |     let _: u16 = in_macro_2!(0u16); // Not ok, pointing into the macro
+   |                  ----------------- in this macro invocation
+   |
+   = note: this method call relies on the `impl<T> Into<T> for T` blanket implementation and type inference, which is a semver hazard as a new `impl Into<_>` that affects your type might be added in the future causing type inference errors
+   = note: you can instead use the fully-qualified path `<u16 as Into<u16>::into(val) to avoid triggering this lint
+
+error: useless conversion to the same type: `()`
+  --> $DIR/self_type_conversion.rs:252:10
+   |
+LL | macro_rules! in_macro_4 {
+LL |     ($expr1:expr, $expr2:expr) => {
+LL |         ($expr1.into(), $expr2.into())
+   |          ^^^^^^^^^^^^^
+...
+LL |     let _: ((), ()) = in_macro_4!((), ()); // Not ok, because both into calls are useless
+   |                       ------------------- in this macro invocation
+   |
+   = note: this method call relies on the `impl<T> Into<T> for T` blanket implementation and type inference, which is a semver hazard as a new `impl Into<_>` that affects your type might be added in the future causing type inference errors
+   = note: you can instead use the fully-qualified path `<() as Into<()>::into(val) to avoid triggering this lint
+
+error: useless conversion to the same type: `()`
+  --> $DIR/self_type_conversion.rs:252:25
+   |
+LL | macro_rules! in_macro_4 {
+LL |     ($expr1:expr, $expr2:expr) => {
+LL |         ($expr1.into(), $expr2.into())
+   |                         ^^^^^^^^^^^^^
+...
+LL |     let _: ((), ()) = in_macro_4!((), ()); // Not ok, because both into calls are useless
+   |                       ------------------- in this macro invocation
+   |
+   = note: this method call relies on the `impl<T> Into<T> for T` blanket implementation and type inference, which is a semver hazard as a new `impl Into<_>` that affects your type might be added in the future causing type inference errors
+   = note: you can instead use the fully-qualified path `<() as Into<()>::into(val) to avoid triggering this lint
+
+error: useless conversion to the same type: `()`
+  --> $DIR/self_type_conversion.rs:252:10
+   |
+LL | macro_rules! in_macro_4 {
+LL |     ($expr1:expr, $expr2:expr) => {
+LL |         ($expr1.into(), $expr2.into())
+   |          ^^^^^^^^^^^^^
+...
+LL |     let _: ((), u16) = in_macro_4!((), 0u16); // Not ok, because both into calls are useless
+   |                        --------------------- in this macro invocation
+   |
+   = note: this method call relies on the `impl<T> Into<T> for T` blanket implementation and type inference, which is a semver hazard as a new `impl Into<_>` that affects your type might be added in the future causing type inference errors
+   = note: you can instead use the fully-qualified path `<() as Into<()>::into(val) to avoid triggering this lint
+
+error: useless conversion to the same type: `u16`
+  --> $DIR/self_type_conversion.rs:252:25
+   |
+LL | macro_rules! in_macro_4 {
+LL |     ($expr1:expr, $expr2:expr) => {
+LL |         ($expr1.into(), $expr2.into())
+   |                         ^^^^^^^^^^^^^
+...
+LL |     let _: ((), u16) = in_macro_4!((), 0u16); // Not ok, because both into calls are useless
+   |                        --------------------- in this macro invocation
+   |
+   = note: this method call relies on the `impl<T> Into<T> for T` blanket implementation and type inference, which is a semver hazard as a new `impl Into<_>` that affects your type might be added in the future causing type inference errors
+   = note: you can instead use the fully-qualified path `<u16 as Into<u16>::into(val) to avoid triggering this lint
+
+error: useless conversion to the same type: `()`
+  --> $DIR/self_type_conversion.rs:276:26
+   |
+LL |   macro_rules! multiple_arms {
+...
+LL |               let _: $ty = $expr.into();
+   |                            ^^^^^^^^^^^^
+...
+LL | /     multiple_arms! {
+LL | |         (): (),
+LL | |         u64: 0u64,
+LL | |     }
+   | |_____- in this macro invocation
+   |
+   = note: this method call relies on the `impl<T> Into<T> for T` blanket implementation and type inference, which is a semver hazard as a new `impl Into<_>` that affects your type might be added in the future causing type inference errors
+   = note: you can instead use the fully-qualified path `<() as Into<()>::into(val) to avoid triggering this lint
+
+error: useless conversion to the same type: `u64`
+  --> $DIR/self_type_conversion.rs:276:26
+   |
+LL |   macro_rules! multiple_arms {
+...
+LL |               let _: $ty = $expr.into();
+   |                            ^^^^^^^^^^^^
+...
+LL | /     multiple_arms! {
+LL | |         (): (),
+LL | |         u64: 0u64,
+LL | |     }
+   | |_____- in this macro invocation
+   |
+   = note: this method call relies on the `impl<T> Into<T> for T` blanket implementation and type inference, which is a semver hazard as a new `impl Into<_>` that affects your type might be added in the future causing type inference errors
+   = note: you can instead use the fully-qualified path `<u64 as Into<u64>::into(val) to avoid triggering this lint
+
+error: aborting due to 20 previous errors
+

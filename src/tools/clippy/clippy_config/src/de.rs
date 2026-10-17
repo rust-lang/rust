@@ -544,7 +544,7 @@ macro_rules! deserialize_table {
             match &**key.get_ref() {
                 $($name_str => {
                     // Duplicate keys are handled by the toml parser
-                    $name = <$ty as crate::de::Deserialize>::deserialize($dcx, value.into());
+                    $name = <$ty as crate::de::Deserialize>::deserialize($dcx, value);
                 },)+
                 _ => {
                     const NAMES: &[&str] = &[$($name_str),*];
