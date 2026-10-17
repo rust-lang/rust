@@ -462,6 +462,19 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let _trace = enter_trace_span!(M, step::init_stack_frame, %instance, tracing_separate_thread = Empty);
         let def_id = instance.def_id();
 
+        match (instance.def.requires_caller_location(*self.tcx), with_caller_location) {
+            (false, true) => {
+                throw_ub_format!(
+                    "calling a non-`#[track_caller]` function from a `#[track_caller]` declaration"
+                )
+            }
+            (true, false) => {
+                throw_ub_format!(
+                    "calling a `#[track_caller]` function from a non-`#[track_caller]` declaration"
+                )
+            }
+            _ => {}
+        }
         let caller_location = with_caller_location.then(|| self.caller_location());
 
         // The first order of business is to figure out the callee signature.

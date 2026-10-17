@@ -387,11 +387,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // (`loc` is `Right` when we are unwinding and the frame does not require cleanup).
         let loc = frame.loc.left().unwrap();
 
-        assert_eq!(
-            frame.track_caller_arg.is_some(),
-            frame.instance.def.requires_caller_location(*self.tcx)
-        );
-
         // This could be a non-`Call` terminator (such as `Drop`), or not a terminator at all
         // (such as `box`). Use the normal span by default.
         let mut source_info = *frame.body.source_info(loc);
