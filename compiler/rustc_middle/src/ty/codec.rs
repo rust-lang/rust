@@ -12,6 +12,7 @@ use std::marker::DiscriminantKind;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_serialize::{Decodable, Encodable};
+use rustc_span::def_id::DefId;
 use rustc_span::{SpanDecoder, SpanEncoder};
 
 pub use self::ref_decodable::RefDecodable;
@@ -37,6 +38,10 @@ pub trait TyEncoder<'tcx>: SpanEncoder {
     fn predicate_shorthands(&mut self) -> &mut FxHashMap<ty::PredicateKind<'tcx>, usize>;
 
     fn encode_alloc_id(&mut self, alloc_id: &AllocId);
+
+    fn encode_def_id_map<V: Encodable<Self>>(&mut self, map: &FxHashMap<DefId, V>)
+    where
+        Self: Sized;
 }
 
 pub trait TyDecoder<'tcx>:
