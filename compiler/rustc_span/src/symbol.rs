@@ -2893,7 +2893,7 @@ pub(crate) struct Interner(Lock<InternerInner>);
 // between `Interner`s.
 struct InternerInner {
     arena: DroplessArena,
-    indices: HashTable<(&'static [u8], u32)>,
+    indices: HashTable<(u64, u32)>,
     byte_strs: Vec<&'static [u8]>,
 }
 
@@ -2914,17 +2914,17 @@ impl Interner {
         let size_hint = values.size_hint().0 + additional_capacity;
         let mut conflicting_values: Vec<&[u8]> = Vec::new();
 
-        let mut indices: HashTable<(&'static [u8], u32)> = HashTable::with_capacity(size_hint);
+        let mut indices: HashTable<(u64, u32)> = HashTable::with_capacity(size_hint);
         let hasher = FxBuildHasher::default();
 
         let mut byte_strs: Vec<&'static [u8]> = Vec::with_capacity(size_hint);
 
         for v in values {
-            match indices.entry(hasher.hash_one(&v), |&(s, _)| s == v, |&(s, _)| hasher.hash_one(s))
-            {
-                Entry::Occupied(v) => conflicting_values.push(v.get().0),
+            let hash_value = hasher.hash_one(&v);
+            match indices.entry(hash_value, |&(_, i)| byte_strs[i as usize] == v, |&(s, _)| s) {
+                Entry::Occupied(v) => conflicting_values.push(byte_strs[v.get().1 as usize]),
                 Entry::Vacant(view) => {
-                    view.insert((v, byte_strs.len() as u32));
+                    view.insert((hash_value, byte_strs.len() as u32));
                     byte_strs.push(v);
                 }
             }
@@ -2956,8 +2956,8 @@ impl Interner {
         self.0.with_lock(|inner| {
             match inner.indices.entry(
                 hash_of_byte_str,
-                |&(s, _)| s == byte_str,
-                |&(s, _)| hasher.hash_one(s),
+                |&(_, i)| inner.byte_strs[i as usize] == byte_str,
+                |&(s, _)| s,
             ) {
                 Entry::Occupied(v) => v.get().1,
                 Entry::Vacant(view) => {
@@ -2967,7 +2967,7 @@ impl Interner {
                     // only access these while the arena is still alive.
                     let byte_str: &'static [u8] = unsafe { &*(byte_str as *const [u8]) };
                     let idx = inner.byte_strs.len() as u32;
-                    view.insert((byte_str, idx));
+                    view.insert((hash_of_byte_str, idx));
                     inner.byte_strs.push(byte_str);
                     idx
                 }
