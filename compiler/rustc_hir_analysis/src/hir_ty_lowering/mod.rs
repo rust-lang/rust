@@ -37,20 +37,18 @@ use rustc_errors::{
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, AnonConst, GenericArg, GenericArgs, HirId};
-use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
+use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::DynCompatibilityViolation;
 use rustc_lint_defs::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::middle::stability::AllowUnstable;
 use rustc_middle::ty::{
     self, Const, FnSigKind, GenericArgKind, GenericArgsRef, GenericParamDefKind, LitToConstInput,
-    Ty, TyCtxt, TypeSuperFoldable, TypeVisitableExt, TypingMode, Unnormalized, Upcast,
-    const_lit_matches_ty, fold_regions,
+    Ty, TyCtxt, TypeSuperFoldable, TypeVisitableExt, Unnormalized, Upcast, const_lit_matches_ty,
 };
 use rustc_session::diagnostics::feature_err;
 use rustc_span::def_id::{LocalModId, ModId};
-use rustc_span::{DUMMY_SP, Ident, Span, bug, kw, span_bug, sym};
-use rustc_trait_selection::infer::InferCtxtExt;
+use rustc_span::{Ident, Span, bug, kw, span_bug, sym};
 use rustc_trait_selection::traits::{self, FulfillmentError};
 use tracing::{debug, instrument};
 
@@ -1859,16 +1857,16 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ) -> Vec<String> {
         let tcx = self.tcx();
 
-        // In contexts that have no inference context, just make a new one.
-        // We do need a local variable to store it, though.
-        let infcx_;
-        let infcx = if let Some(infcx) = self.infcx() {
-            infcx
-        } else {
-            assert!(!qself_ty.has_infer());
-            infcx_ = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
-            &infcx_
-        };
+        // Deep rejection cannot rule out unrelated impls for unresolved aliases.
+        // Avoid offering misleading suggestions for those types.
+        if qself_ty.has_aliases() {
+            return Vec::new();
+        }
+
+        // FIXME: Support non-lifetime binders without suggesting unrelated traits.
+        if qself_ty.has_non_region_bound_vars() {
+            return Vec::new();
+        }
 
         tcx.all_traits_including_private()
             .filter(|trait_def_id| {
@@ -1886,19 +1884,18 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     && tcx.all_impls(*trait_def_id)
                         .any(|impl_def_id| {
                             let header = tcx.impl_trait_header(impl_def_id);
-                            let trait_ref = header.trait_ref.instantiate(tcx, infcx.fresh_args_for_item(DUMMY_SP, impl_def_id)).skip_norm_wip();
-
-                            let value = fold_regions(tcx, qself_ty, |_, _| tcx.lifetimes.re_erased);
-                            // FIXME: Don't bother dealing with non-lifetime binders here...
-                            if value.has_escaping_bound_vars() {
+                            if header.polarity == ty::ImplPolarity::Negative {
                                 return false;
                             }
-                            infcx
-                                .can_eq(
-                                    ty::ParamEnv::empty(),
-                                    trait_ref.self_ty(),
-                                    value,
-                                ) && header.polarity != ty::ImplPolarity::Negative
+
+                            let impl_ty = header
+                                .trait_ref
+                                .instantiate_identity()
+                                .skip_norm_wip()
+                                .self_ty();
+
+                            ty::DeepRejectCtxt::relate_rigid_infer(tcx)
+                                .types_may_unify(qself_ty, impl_ty)
                         })
             })
             .map(|trait_def_id| tcx.def_path_str(trait_def_id))
