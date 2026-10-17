@@ -1,10 +1,11 @@
-use rustc_ast::{BinOpKind, BorrowKind, Expr, ExprKind, Mutability, Safety};
+use rustc_ast::{BinOpKind, BorrowKind, Expr, ExprKind, Mutability};
 use rustc_expand::base::ExtCtxt;
-use rustc_span::{Ident, Span, kw, sym};
+use rustc_span::{Span, kw, sym};
 use thin_vec::thin_vec;
 
+use crate::deriving::call_discriminant_value;
 use crate::deriving::generic::*;
-use crate::deriving::{call_discriminant_value, path_std};
+use crate::util::path_std;
 
 /// Expands a `#[derive(PartialEq)]` attribute into an implementation for the
 /// target item.
@@ -29,8 +30,7 @@ pub(crate) fn expand_deriving_partial_eq(
         supports_unions: true,
         methods: SmallVec::new(),
         is_const: false,
-        safety: Safety::Default,
-        document: true,
+        ..
     };
     structural_trait_def.expand(cx, item, push);
 
@@ -42,23 +42,21 @@ pub(crate) fn expand_deriving_partial_eq(
         explicit_self: true,
         nonself_args: smallvec![(cx.ty_self_ref(span), sym::other)],
         has_other_selflike_arg: true,
-        ret_ty: cx.ty_path(cx.path_ident(span, Ident::new(sym::bool, span))),
+        ret_ty: cx.ty_sym(span, sym::bool),
         attributes: thin_vec![cx.attr_word(sym::inline, span)],
         fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
-        combine_substructure: combine_substructure(get_substructure_equality_expr),
+        combine_substructure: get_substructure_equality_expr,
     }];
 
     let trait_def = TraitDef {
         span,
         path: path_std!(cx, span, cmp::PartialEq),
-        skip_path_as_bound: false,
         needs_copy_as_bound_if_packed: true,
         additional_bounds: SmallVec::new(),
         supports_unions: false,
         methods,
         is_const,
-        safety: Safety::Default,
-        document: true,
+        ..
     };
     trait_def.expand(cx, item, push)
 }

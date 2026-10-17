@@ -1,13 +1,13 @@
 use rustc_ast as ast;
-use rustc_ast::{ItemKind, Safety, VariantData};
+use rustc_ast::{ItemKind, VariantData};
 use rustc_errors::MultiSpan;
-use rustc_expand::base::{DummyResult, ExtCtxt};
+use rustc_expand::base::ExtCtxt;
 use rustc_span::{Ident, Span, kw, sym};
 use thin_vec::thin_vec;
 
 use crate::deriving::generic::*;
-use crate::deriving::{new_path, pathvec};
 use crate::diagnostics;
+use crate::util::path;
 
 /// Generate an implementation of the `From` trait, provided that `item`
 /// is a struct or a tuple struct with exactly one field.
@@ -22,36 +22,31 @@ pub(crate) fn expand_deriving_from(
         let item_span = item.kind.ident().map(|ident| ident.span).unwrap_or(item.span);
         MultiSpan::from_spans(vec![span, item_span])
     };
-
     // `#[derive(From)]` is currently usable only on structs with exactly one field.
-    let field = match &item.kind {
+    let from_type = match &item.kind {
         ItemKind::Struct(_, _, data) => {
             if let [field] = data.fields() {
-                Ok(field.clone())
+                field.ty.clone()
             } else {
-                let guar = cx.dcx().emit_err(diagnostics::DeriveFromWrongFieldCount {
+                cx.dcx().emit_err(diagnostics::DeriveFromWrongFieldCount {
                     span: err_span(),
                     multiple_fields: data.fields().len() > 1,
                 });
-                Err(guar)
+                return;
             }
         }
         ItemKind::Enum(_, _, _) | ItemKind::Union(_, _, _) => {
-            let guar = cx.dcx().emit_err(diagnostics::DeriveFromWrongTarget {
+            cx.dcx().emit_err(diagnostics::DeriveFromWrongTarget {
                 span: err_span(),
                 kind: &format!("{} {}", item.kind.article(), item.kind.descr()),
             });
-            Err(guar)
+            return;
         }
         _ => cx.dcx().bug("Invalid derive(From) ADT input"),
     };
 
-    let from_type = match field {
-        Ok(ref field) => field.ty.clone(),
-        Err(guar) => cx.ty(span, ast::TyKind::Err(guar)),
-    };
-
-    let path = new_path(cx, span, pathvec!(convert::From), vec![from_type.clone()]);
+    let path =
+        cx.std_path_all(span, path!(convert::From), vec![ast::GenericArg::Type(from_type.clone())]);
 
     // Generate code like this:
     //
@@ -79,46 +74,46 @@ pub(crate) fn expand_deriving_from(
             ret_ty: cx.ty_self(span),
             attributes: thin_vec![cx.attr_word(sym::inline, span)],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
-            combine_substructure: combine_substructure(|cx, span, substructure| {
-                let field = match field {
-                    Ok(ref field) => field,
-                    Err(guar) => {
-                        return BlockOrExpr::new_expr(DummyResult::raw_expr(span, Some(guar)));
-                    }
-                };
-
-                let self_kw = Ident::new(kw::SelfUpper, span);
-                let expr: Box<ast::Expr> = match substructure.fields {
-                    StaticStruct(variant) => match variant {
-                        // Self { field: value }
-                        VariantData::Struct { .. } => cx.expr_struct_ident(
-                            span,
-                            self_kw,
-                            thin_vec![cx.field_imm(
-                                span,
-                                field.ident.unwrap(),
-                                cx.expr_ident_sym(span, sym::value)
-                            )],
-                        ),
-                        // Self(value)
-                        VariantData::Tuple(_, _) => cx.expr_call_ident(
-                            span,
-                            self_kw,
-                            thin_vec![cx.expr_ident_sym(span, sym::value)],
-                        ),
-                        variant => {
-                            cx.dcx().bug(format!("Invalid derive(From) ADT variant: {variant:?}"));
-                        }
-                    },
-                    _ => cx.dcx().bug("Invalid derive(From) ADT input"),
-                };
-                BlockOrExpr::new_expr(expr)
-            }),
+            combine_substructure: from_body,
         }],
         is_const,
-        safety: Safety::Default,
-        document: true,
+        ..
     };
 
     from_trait_def.expand(cx, item, push);
+}
+
+fn from_body(cx: &ExtCtxt<'_>, span: Span, substr: Substructure<'_>) -> BlockOrExpr {
+    let field = if let ItemKind::Struct(_, _, data) = &substr.item.kind
+        && let [field] = data.fields()
+    {
+        field
+    } else {
+        unreachable!();
+    };
+
+    let self_kw = Ident::new(kw::SelfUpper, span);
+    let expr = match substr.fields {
+        StaticStruct(variant) => match variant {
+            // Self { field: value }
+            VariantData::Struct { .. } => cx.expr_struct_ident(
+                span,
+                self_kw,
+                thin_vec![cx.field_imm(
+                    span,
+                    field.ident.unwrap(),
+                    cx.expr_ident_sym(span, sym::value)
+                )],
+            ),
+            // Self(value)
+            VariantData::Tuple(_, _) => {
+                cx.expr_call_ident(span, self_kw, thin_vec![cx.expr_ident_sym(span, sym::value)])
+            }
+            variant => {
+                cx.dcx().bug(format!("Invalid derive(From) ADT variant: {variant:?}"));
+            }
+        },
+        _ => cx.dcx().bug("Invalid derive(From) ADT input"),
+    };
+    BlockOrExpr::new_expr(expr)
 }

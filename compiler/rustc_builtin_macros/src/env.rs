@@ -12,7 +12,6 @@ use rustc_ast_pretty::pprust;
 use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacEager, MacroExpanderResult};
 use rustc_span::edit_distance::edit_distance;
 use rustc_span::{Ident, Span, Symbol, kw, sym};
-use thin_vec::thin_vec;
 
 use crate::diagnostics;
 use crate::util::{expr_to_string, get_exprs_from_tts, get_single_expr_from_tts};
@@ -51,13 +50,12 @@ pub(crate) fn expand_option_env<'cx>(
     let e = match value {
         Err(VarError::NotPresent) => {
             let lt = cx.lifetime(sp, Ident::new(kw::StaticLifetime, sp));
-            cx.expr_path(cx.path_all(
+            cx.expr_path(cx.std_path_all(
                 sp,
-                true,
-                cx.std_path(&[sym::option, sym::Option, sym::None]),
+                &[sym::option, sym::Option, sym::None],
                 vec![GenericArg::Type(cx.ty_ref(
                     sp,
-                    cx.ty_ident(sp, Ident::new(sym::str, sp)),
+                    cx.ty_sym(sp, sym::str),
                     Some(lt),
                     Mutability::Not,
                 ))],
@@ -68,11 +66,7 @@ pub(crate) fn expand_option_env<'cx>(
             let guar = cx.dcx().emit_err(diagnostics::EnvNotUnicode { span: sp, var: escaped_var });
             return ExpandResult::Ready(DummyResult::any(sp, guar));
         }
-        Ok(value) => cx.expr_call_global(
-            sp,
-            cx.std_path(&[sym::option, sym::Option, sym::Some]),
-            thin_vec![cx.expr_str(sp, value)],
-        ),
+        Ok(value) => cx.expr_some(sp, cx.expr_str(sp, value)),
     };
     ExpandResult::Ready(MacEager::expr(e))
 }

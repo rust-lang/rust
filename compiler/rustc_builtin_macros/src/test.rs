@@ -161,13 +161,13 @@ pub(crate) fn expand_test_or_bench(
     let test_ident = Ident::new(sym::test, attr_sp);
 
     // creates test::$name
-    let test_path = |name| cx.path(ret_ty_sp, vec![test_ident, Ident::from_str_and_span(name, sp)]);
+    let test_path = |name| cx.path(ret_ty_sp, &[test_ident, Ident::from_str_and_span(name, sp)]);
 
     // creates test::ShouldPanic::$name
     let should_panic_path = |name| {
         cx.path(
             sp,
-            vec![test_ident, Ident::new(sym::ShouldPanic, sp), Ident::from_str_and_span(name, sp)],
+            &[test_ident, Ident::new(sym::ShouldPanic, sp), Ident::from_str_and_span(name, sp)],
         )
     };
 
@@ -175,7 +175,7 @@ pub(crate) fn expand_test_or_bench(
     let test_type_path = |name| {
         cx.path(
             sp,
-            vec![test_ident, Ident::new(sym::TestType, sp), Ident::from_str_and_span(name, sp)],
+            &[test_ident, Ident::new(sym::TestType, sp), Ident::from_str_and_span(name, sp)],
         )
     };
 
@@ -194,8 +194,7 @@ pub(crate) fn expand_test_or_bench(
 
     let test_fn = if is_bench {
         // avoid name collisions by using the function name within the identifier, see bug #148275
-        let bencher_param =
-            Ident::from_str_and_span(&format!("__bench_{}", fn_.ident.name), attr_sp);
+        let bencher_param = Symbol::intern(&format!("__bench_{}", fn_.ident.name));
         cx.expr_call(
             sp,
             cx.expr_path(test_path("StaticBenchFn")),
@@ -212,8 +211,8 @@ pub(crate) fn expand_test_or_bench(
                             // super::$test_fn(__bench_fn_name)
                             cx.expr_call(
                                 ret_ty_sp,
-                                cx.expr_path(cx.path(sp, vec![fn_.ident])),
-                                thin_vec![cx.expr_ident(sp, bencher_param)],
+                                cx.expr_path(cx.path_ident(sp, fn_.ident)),
+                                thin_vec![cx.expr_ident_sym(sp, bencher_param)],
                             ),
                         ],
                     ),
@@ -238,7 +237,7 @@ pub(crate) fn expand_test_or_bench(
                             // $test_fn()
                             cx.expr_call(
                                 ret_ty_sp,
-                                cx.expr_path(cx.path(sp, vec![fn_.ident])),
+                                cx.expr_path(cx.path(sp, &[fn_.ident])),
                                 ThinVec::new(),
                             ), // )
                         ],
@@ -272,7 +271,7 @@ pub(crate) fn expand_test_or_bench(
             cx.attr_nested_word(sym::doc, sym::hidden, attr_sp),
         ],
         Ident::new(fn_.ident.name, sp),
-        cx.ty(sp, ast::TyKind::Path(None, test_path("TestDescAndFn"))),
+        cx.ty_path(test_path("TestDescAndFn")),
         Mutability::Not,
         // test::TestDescAndFn {
         cx.expr_struct(
