@@ -1,0 +1,10 @@
+error: expected path to a lint, found literal
+  --> $DIR/lint-attribute-literals.rs:5:9
+   |
+LL | #[allow("literal")]
+   |         ^^^^^^^^^ not a lint
+   |
+   = help: try using `#[allow(literal)]`
+
+error: aborting due to 1 previous error
+
