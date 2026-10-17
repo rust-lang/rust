@@ -19,6 +19,29 @@ LL | fn case1() {
    |
    = note: defining type: case1
 
+note: no external requirements
+  --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:21:15
+   |
+LL |     foo(cell, |cell_a, cell_x| {
+   |               ^^^^^^^^^^^^^^^^
+   |
+   = note: defining type: case1::{closure#0} with closure args [
+               i32,
+               for<Region(BrAnon)> extern "rust-call" fn((std::cell::Cell<&'?1 u32>, std::cell::Cell<&'^0 u32>)),
+               (),
+           ]
+   = note: late-bound region is '?2
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: no external requirements
+  --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:18:1
+   |
+LL | fn case1() {
+   | ^^^^^^^^^^
+   |
+   = note: defining type: case1
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 error[E0521]: borrowed data escapes outside of closure
   --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:22:9
    |
@@ -55,6 +78,31 @@ LL | fn case2() {
    | ^^^^^^^^^^
    |
    = note: defining type: case2
+
+note: external requirements
+  --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:35:15
+   |
+LL |     foo(cell, |cell_a, cell_x| {
+   |               ^^^^^^^^^^^^^^^^
+   |
+   = note: defining type: case2::{closure#0} with closure args [
+               i32,
+               for<Region(BrAnon)> extern "rust-call" fn((std::cell::Cell<&'?1 u32>, std::cell::Cell<&'^0 u32>)),
+               (),
+           ]
+   = note: late-bound region is '?2
+   = note: number of external vids: 2
+   = note: where '?1: '?0
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: no external requirements
+  --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:28:1
+   |
+LL | fn case2() {
+   | ^^^^^^^^^^
+   |
+   = note: defining type: case2
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0597]: `a` does not live long enough
   --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:30:26

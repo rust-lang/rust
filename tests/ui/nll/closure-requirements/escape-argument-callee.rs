@@ -24,7 +24,9 @@ fn test() {
     {
         let y = 22;
         let mut closure = expect_sig(|p, y| *p = y);
-        //~^ ERROR
+        //~^ERROR: lifetime may not live long enough
+        //~| WARN: lifetime may not live long enough [wf_closure_checks]
+        //~| WARN: this was previously accepted by the compiler but is being phased out
         closure(&mut p, &y);
     }
 

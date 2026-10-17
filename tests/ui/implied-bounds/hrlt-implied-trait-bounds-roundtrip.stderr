@@ -1,0 +1,27 @@
+warning: lifetime may not live long enough
+  --> $DIR/hrlt-implied-trait-bounds-roundtrip.rs:25:49
+   |
+LL |     let bar: for<'a, 'b> fn(Foo<'a>, &'b ()) = |_, _| {};
+   |                                                 ^
+   |                                                 |
+   |                                                 has type `Foo<'1>`
+   |                                                 requires that `'1` must outlive `'static`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #163155 <https://github.com/rust-lang/rust/issues/163155>
+
+warning: 1 warning emitted
+
+Future incompatibility report: Future breakage diagnostic:
+warning: lifetime may not live long enough
+  --> $DIR/hrlt-implied-trait-bounds-roundtrip.rs:25:49
+   |
+LL |     let bar: for<'a, 'b> fn(Foo<'a>, &'b ()) = |_, _| {};
+   |                                                 ^
+   |                                                 |
+   |                                                 has type `Foo<'1>`
+   |                                                 requires that `'1` must outlive `'static`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #163155 <https://github.com/rust-lang/rust/issues/163155>
+
