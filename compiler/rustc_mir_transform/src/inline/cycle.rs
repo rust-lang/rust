@@ -14,6 +14,9 @@ fn should_recurse<'tcx>(tcx: TyCtxt<'tcx>, callee: ty::Instance<'tcx>) -> bool {
         // because it has no MIR because it's an extern function), then the inliner
         // won't cause cycles on this.
         InstanceKind::Item(_) => {
+            if !callee.def_id().is_local() && callee.args.non_erasable_generics().next().is_none() {
+                return false;
+            }
             if !tcx.is_mir_available(callee.def_id()) {
                 return false;
             }
