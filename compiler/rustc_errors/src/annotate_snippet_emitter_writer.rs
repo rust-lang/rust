@@ -45,6 +45,7 @@ pub struct AnnotateSnippetEmitter {
     track_diagnostics: bool,
     terminal_url: TerminalUrl,
     theme: OutputTheme,
+    no_graphics: bool,
 }
 
 impl Debug for AnnotateSnippetEmitter {
@@ -60,6 +61,7 @@ impl Debug for AnnotateSnippetEmitter {
             track_diagnostics,
             terminal_url,
             theme,
+            no_graphics,
         } = self;
 
         f.debug_struct("AnnotateSnippetEmitter")
@@ -73,6 +75,7 @@ impl Debug for AnnotateSnippetEmitter {
             .field("track_diagnostics", track_diagnostics)
             .field("terminal_url", terminal_url)
             .field("theme", theme)
+            .field("no_graphics", no_graphics)
             .finish()
     }
 }
@@ -153,6 +156,7 @@ impl AnnotateSnippetEmitter {
             track_diagnostics: false,
             terminal_url: TerminalUrl::No,
             theme: OutputTheme::Ascii,
+            no_graphics: false,
         }
     }
 
@@ -543,6 +547,7 @@ impl AnnotateSnippetEmitter {
         .anonymized_snippet_line_numbers(self.ui_testing)
         .decor_style(decor_style)
         .short_message(self.short_message)
+        .no_graphics(self.no_graphics)
     }
 
     fn pre_style_msgs(&self, msgs: &[(DiagMessage, Style)], args: &DiagArgMap) -> String {

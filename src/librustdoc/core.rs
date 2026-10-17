@@ -172,14 +172,15 @@ pub(crate) fn new_dcx(
 ) -> rustc_errors::DiagCtxt {
     let emitter: Box<DynEmitter> = match error_format {
         ErrorOutputType::HumanReadable { kind, color_config } => match kind {
-            HumanReadableErrorType { short, unicode } => Box::new(
+            HumanReadableErrorType { no_graphics, short, unicode } => Box::new(
                 AnnotateSnippetEmitter::new(stderr_destination(color_config))
                     .sm(source_map.map(|sm| sm as _))
                     .short_message(short)
                     .diagnostic_width(diagnostic_width)
                     .track_diagnostics(unstable_opts.track_diagnostics)
                     .theme(if unicode { OutputTheme::Unicode } else { OutputTheme::Ascii })
-                    .ui_testing(unstable_opts.ui_testing),
+                    .ui_testing(unstable_opts.ui_testing)
+                    .no_graphics(no_graphics),
             ),
         },
         ErrorOutputType::Json { pretty, json_rendered, color_config } => {
