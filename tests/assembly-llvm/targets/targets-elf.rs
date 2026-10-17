@@ -112,6 +112,9 @@
 //@ revisions: aarch64_unknown_nuttx
 //@ [aarch64_unknown_nuttx] compile-flags: --target aarch64-unknown-nuttx
 //@ [aarch64_unknown_nuttx] needs-llvm-components: aarch64
+//@ revisions: aarch64_unknown_serenity
+//@ [aarch64_unknown_serenity] compile-flags: --target aarch64-unknown-serenity
+//@ [aarch64_unknown_serenity] needs-llvm-components: aarch64
 //@ revisions: aarch64_unknown_trusty
 //@ [aarch64_unknown_trusty] compile-flags: --target aarch64-unknown-trusty
 //@ [aarch64_unknown_trusty] needs-llvm-components: aarch64
@@ -784,6 +787,9 @@
 //@ revisions: x86_64_unknown_redox
 //@ [x86_64_unknown_redox] compile-flags: --target x86_64-unknown-redox
 //@ [x86_64_unknown_redox] needs-llvm-components: x86
+//@ revisions: x86_64_unknown_serenity
+//@ [x86_64_unknown_serenity] compile-flags: --target x86_64-unknown-serenity
+//@ [x86_64_unknown_serenity] needs-llvm-components: x86
 //@ revisions: x86_64_unknown_trusty
 //@ [x86_64_unknown_trusty] compile-flags: --target x86_64-unknown-trusty
 //@ [x86_64_unknown_trusty] needs-llvm-components: x86
