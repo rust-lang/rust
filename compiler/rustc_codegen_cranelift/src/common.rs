@@ -1,6 +1,7 @@
 use cranelift_codegen::isa::TargetFrontendConfig;
 use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext, Variable};
 use rustc_abi::{Float, Integer, Primitive};
+use rustc_ast::Movability;
 use rustc_index::IndexVec;
 use rustc_middle::ty::TypeFoldable;
 use rustc_middle::ty::layout::{
@@ -289,8 +290,9 @@ pub(crate) struct FunctionCx<'m, 'clif, 'tcx: 'm> {
     pub(crate) block_map: IndexVec<BasicBlock, Block>,
     pub(crate) local_map: IndexVec<Local, CPlace<'tcx>>,
 
-    /// When `#[track_caller]` is used, the implicit caller location is stored in this variable.
-    pub(crate) caller_location: Option<CValue<'tcx>>,
+    /// Where to access the caller location (for the parent-most body if there's inlining)
+    /// when there's `#[track_caller]`.
+    pub(crate) caller_location: Option<CallerLocation<'tcx>>,
 
     /// During cleanup the exception pointer will be stored in this variable.
     pub(crate) exception_slot: Variable,
@@ -299,6 +301,16 @@ pub(crate) struct FunctionCx<'m, 'clif, 'tcx: 'm> {
 
     pub(crate) inline_asm: String,
     pub(crate) inline_asm_index: u32,
+}
+
+#[derive(Clone, Copy)]
+pub(crate) enum CallerLocation<'tcx> {
+    /// Typical case: This function has `#[track_caller]`.
+    /// We track the caller location argument directly.
+    Direct(CValue<'tcx>),
+    /// Used if we're in a desugared coroutine inside a coroutine fn.
+    /// We track the field index inside `Self` that stores the caller location.
+    Captured(FieldIdx),
 }
 
 impl<'tcx> LayoutOfHelpers<'tcx> for FunctionCx<'_, '_, 'tcx> {
@@ -421,11 +433,42 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
         }
     }
 
-    pub(crate) fn get_caller_location(&mut self, source_info: mir::SourceInfo) -> CValue<'tcx> {
-        self.mir.caller_location_span(source_info, self.caller_location, self.tcx, |span| {
-            let const_loc = self.tcx.span_as_caller_location(span);
-            crate::constant::codegen_const_value(self, const_loc, self.tcx.caller_location_ty())
-        })
+    pub(crate) fn codegen_caller_location(&mut self, source_info: mir::SourceInfo) -> CValue<'tcx> {
+        let self_caller_location = self.caller_location;
+        let caller_location = self.mir.caller_location_span(
+            source_info,
+            || self_caller_location,
+            self.tcx,
+            |span| {
+                let const_loc = self.tcx.span_as_caller_location(span);
+                CallerLocation::Direct(crate::constant::codegen_const_value(
+                    self,
+                    const_loc,
+                    self.tcx.caller_location_ty(),
+                ))
+            },
+        );
+        match caller_location {
+            CallerLocation::Direct(value) => value,
+            CallerLocation::Captured(idx) => {
+                let base = self.local_map[Local::arg(0)];
+                // base is a `Pin<&mut Self>` or `&mut Self`, and we want the value of
+                // the `idx` field inside `Self`.
+                let is_pinned = self
+                    .mir
+                    .coroutine
+                    .as_ref()
+                    .expect("captured caller_location should only be in coroutines")
+                    .coroutine_kind
+                    .movability()
+                    == Movability::Static;
+                let coro_ref =
+                    if is_pinned { base.place_field(self, FieldIdx::from_usize(0)) } else { base }; // `&mut Self`
+                let coro_place = coro_ref.place_deref(self); // `Self`
+                let location_place = coro_place.place_field(self, idx); // `self.idx`
+                location_place.to_cvalue(self)
+            }
+        }
     }
 }
 

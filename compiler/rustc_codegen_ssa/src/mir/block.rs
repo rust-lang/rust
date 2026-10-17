@@ -24,11 +24,10 @@ use tracing::{debug, info};
 use super::operand::OperandRef;
 use super::operand::OperandValue::{self, Immediate, Pair, Ref, ZeroSized};
 use super::place::{PlaceRef, PlaceValue};
-use super::{CachedLlbb, FunctionCx, LocalRef};
+use super::{CachedLlbb, CallerLocation, FunctionCx, IntrinsicResult, LocalRef};
 use crate::base::{self, is_call_from_compiler_builtins_to_upstream_monomorphization};
 use crate::common::{self, IntPredicate};
 use crate::diagnostics::CompilerBuiltinsCannotCall;
-use crate::mir::IntrinsicResult;
 use crate::traits::*;
 use crate::{MemFlags, meth};
 
@@ -796,7 +795,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         self.set_debug_loc(bx, terminator.source_info);
 
         // Get the location information.
-        let location = self.get_caller_location(bx, terminator.source_info).immediate();
+        let location = self.codegen_caller_location(bx, terminator.source_info).immediate();
 
         // Put together the arguments to the panic entry point.
         let (lang_item, args) = match msg {
@@ -1446,7 +1445,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 mir_args + 1,
                 "#[track_caller] fn's must have 1 more argument in their ABI than in their MIR: {instance:?} {fn_span:?} {fn_abi:?}",
             );
-            let location = self.get_caller_location(bx, source_info);
+            let location = self.codegen_caller_location(bx, source_info);
             debug!(
                 "codegen_call_terminator({:?}): location={:?} (fn_span {:?})",
                 terminator, location, fn_span
@@ -2184,15 +2183,47 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         tuple.layout.fields.count()
     }
 
-    pub(super) fn get_caller_location(
+    pub(super) fn codegen_caller_location(
         &mut self,
         bx: &mut Bx,
         source_info: mir::SourceInfo,
     ) -> OperandRef<'tcx, Bx::Value> {
-        self.mir.caller_location_span(source_info, self.caller_location, bx.tcx(), |span: Span| {
-            let const_loc = bx.tcx().span_as_caller_location(span);
-            OperandRef::from_const(bx, const_loc, bx.tcx().caller_location_ty())
-        })
+        let caller_location = self.mir.caller_location_span(
+            source_info,
+            || self.caller_location,
+            bx.tcx(),
+            |span: Span| {
+                let const_loc = bx.tcx().span_as_caller_location(span);
+                // We don't inline `#[track_caller] async fn` into anything,
+                // so in this case, we don't need to load the caller location from
+                // an upvar in the coroutine.
+                CallerLocation::Direct(OperandRef::from_const(
+                    bx,
+                    const_loc,
+                    bx.tcx().caller_location_ty(),
+                ))
+            },
+        );
+        match caller_location {
+            CallerLocation::Direct(operand_ref) => operand_ref,
+            CallerLocation::Captured(idx) => {
+                let base = self.codegen_consume(bx, mir::Local::arg(0).into());
+                // base is a `Pin<&mut Self>` or `&mut Self`, and we want the value of
+                // the `idx` field inside `Self`.
+                let is_pinned = self
+                    .mir
+                    .coroutine
+                    .as_ref()
+                    .expect("captured caller_location should only be in coroutines")
+                    .coroutine_kind
+                    .movability()
+                    == ast::Movability::Static;
+                let coro_ref = if is_pinned { base.extract_field(self, bx, 0) } else { base }; // `&mut Self`
+                let coro_place = coro_ref.deref(bx.cx()); // `Self`
+                let location_place = coro_place.project_field(bx, idx.as_usize()); // `self.idx`
+                bx.load_operand(location_place)
+            }
+        }
     }
 
     fn get_personality_slot(&mut self, bx: &mut Bx) -> PlaceRef<'tcx, Bx::Value> {
