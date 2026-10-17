@@ -2539,7 +2539,7 @@ options! {
     flatten_format_args: bool = (true, parse_bool, [TRACKED],
         "flatten nested format_args!() and literals into a simplified format_args!() call \
         (default: yes)"),
-    fmt_debug: FmtDebug = (FmtDebug::Full, parse_fmt_debug, [TRACKED],
+    fmt_debug: FmtDebug = (FmtDebug::None, parse_fmt_debug, [TRACKED],
         "how detailed `#[derive(Debug)]` should be. `full` prints types recursively, \
         `shallow` prints only type names, `none` prints nothing and disables `{:?}`. (default: `full`)"),
     force_intrinsic_fallback: bool = (false, parse_bool, [TRACKED],
