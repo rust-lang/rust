@@ -1,0 +1,54 @@
+error[E0597]: `a` does not live long enough
+  --> $DIR/suggest-closure-annotation.rs:14:11
+   |
+LL |     for a in 0..1 {
+   |         - binding `a` declared here
+LL |         f(&a);
+   |         - ^^ borrowed value does not live long enough
+   |         |
+   |         borrow later used here
+LL |     }
+   |     - `a` dropped here while still borrowed
+   |
+help: consider annotating the closure's argument type to explicitly specify its lifetime
+   |
+LL |     let f = |v: &_| map[v];
+   |               ++++
+
+error[E0597]: `a` does not live long enough
+  --> $DIR/suggest-closure-annotation.rs:22:11
+   |
+LL |     for a in 0..1 {
+   |         - binding `a` declared here
+LL |         f(&a, 2);
+   |         - ^^ borrowed value does not live long enough
+   |         |
+   |         borrow later used here
+LL |     }
+   |     - `a` dropped here while still borrowed
+   |
+help: consider annotating the closure's argument type to explicitly specify its lifetime
+   |
+LL |     let f = |v: &_, w| map[v] + w;
+   |               ++++
+
+error[E0597]: `a` does not live long enough
+  --> $DIR/suggest-closure-annotation.rs:30:11
+   |
+LL |     for a in 0..1 {
+   |         - binding `a` declared here
+LL |         f(&a);
+   |         - ^^ borrowed value does not live long enough
+   |         |
+   |         borrow later used here
+LL |     }
+   |     - `a` dropped here while still borrowed
+   |
+help: consider annotating the closure's argument type to explicitly specify its lifetime
+   |
+LL |     let f = |v: &_| map[v];
+   |                 +
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0597`.
