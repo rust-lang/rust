@@ -7,9 +7,10 @@ use rustc_middle::ty::{self, FieldInfo, ScalarInt, Ty};
 use rustc_span::{Symbol, span_bug, sym};
 
 use crate::const_eval::CompileTimeMachine;
+use crate::interpret::Immediate::ScalarPair;
 use crate::interpret::{
-    CtfeProvenance, Immediate, InterpCx, InterpResult, OpTy, PlaceTy, Scalar, interp_ok, throw_ub,
-    type_implements_dyn_trait,
+    CtfeProvenance, Immediate, InterpCx, InterpResult, OpTy, PlaceTy, Scalar,
+    ensure_monomorphic_enough, interp_ok, throw_ub, type_implements_dyn_trait,
 };
 
 impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
@@ -380,14 +381,14 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
             }
 
             sym::type_id_name => {
-                let ty = ecx.read_type_id(&args[0])?;
+                let ty = self.read_type_id(&args[0])?;
                 ensure_monomorphic_enough(ty)?;
-                let name = crate::util::type_name(ecx.tcx(), ty);
-                let ptr = ecx.allocate_bytes_dedup(name.as_str().as_bytes())?;
-                ecx.write_immediate(
+                let name = crate::util::type_name(self.tcx(), ty);
+                let ptr = self.allocate_bytes_dedup(name.as_str().as_bytes())?;
+                self.write_immediate(
                     ScalarPair(
-                        Scalar::from_pointer(ptr, ecx),
-                        Scalar::from_target_usize(name.as_str().len() as u64, ecx),
+                        Scalar::from_pointer(ptr, self),
+                        Scalar::from_target_usize(name.as_str().len() as u64, self),
                     ),
                     dest,
                 )?;

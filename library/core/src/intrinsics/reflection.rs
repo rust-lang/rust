@@ -250,4 +250,3 @@ pub fn type_id_reflected_attrs(_type_id: crate::any::TypeId) -> &'static [&'stat
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_comptime]
 pub fn type_id_docs(_type_id: crate::any::TypeId) -> &'static [&'static str];
-
