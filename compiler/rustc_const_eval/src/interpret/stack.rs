@@ -97,6 +97,7 @@ pub struct Frame<'tcx, Prov: Provenance = CtfeProvenance, Extra = ()> {
     pub(super) va_list: Vec<MPlaceTy<'tcx, Prov>>,
 
     /// The implicit caller location argument that is passed by this function's caller, if any.
+    /// This is `Some` if and only if `instance.def.requires_caller_location` returns `true`.
     pub(super) track_caller_arg: Option<Span>,
 
     /// The span of the `tracing` crate is stored here.

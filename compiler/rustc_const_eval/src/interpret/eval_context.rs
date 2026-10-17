@@ -399,6 +399,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             source_info.span = fn_span;
         }
 
+        // Directly returning `frame.track_caller_arg` would be wrong if we are
+        // in code that got inlined from another function. `caller_location_span`
+        // handles that for us.
         frame.body.caller_location_span(source_info, frame.track_caller_arg, *self.tcx, identity)
     }
 
