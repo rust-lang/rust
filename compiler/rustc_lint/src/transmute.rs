@@ -156,7 +156,7 @@ fn check_int_to_ptr_transmute<'tcx>(
     };
     // bail-out if the argument is literal 0 as we have other lints for those cases
     if let hir::ExprKind::Lit(hir::Lit { node: LitKind::Int(v, _), .. }) = arg.kind
-        && v == 0
+        && v.as_u128() == 0
     {
         return;
     }
