@@ -133,7 +133,7 @@ impl TocBuilder {
         {
             let (toc_level, toc) = match self.chain.last() {
                 None => {
-                    sec_number = String::new();
+                    sec_number = String::with_capacity((level - 1).try_into().unwrap_or(0) * 2);
                     (0, &self.top_level)
                 }
                 Some(entry) => {
