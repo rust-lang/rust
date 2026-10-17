@@ -913,7 +913,7 @@ pub struct CapturedPlace {
 impl CapturedPlace {
     pub fn is_by_ref(&self) -> bool {
         match self.info.capture_kind {
-            UpvarCapture::ByValue | UpvarCapture::ByUse => false,
+            UpvarCapture::ByValue | UpvarCapture::ByUse | UpvarCapture::ByCopy => false,
             UpvarCapture::ByRef(..) => true,
         }
     }
@@ -937,7 +937,7 @@ impl CapturedPlace {
             Ty::new_ref(interner, region, place_ty, mutbl)
         };
         match self.info.capture_kind {
-            UpvarCapture::ByUse | UpvarCapture::ByValue => place_ty,
+            UpvarCapture::ByUse | UpvarCapture::ByValue | UpvarCapture::ByCopy => place_ty,
             UpvarCapture::ByRef(kind) => make_ref(kind.to_mutbl_lossy()),
         }
     }
@@ -1061,6 +1061,9 @@ pub struct CaptureInfo {
 /// during `typeck`, specifically by `regionck`.
 #[derive(Eq, PartialEq, Clone, Debug, Copy, Hash)]
 pub enum UpvarCapture {
+    /// Like `ByValue`, but dominated by all the other modes instead of dominating them.
+    ByCopy,
+
     /// Upvar is captured by reference.
     ByRef(BorrowKind),
 
@@ -1078,12 +1081,16 @@ impl PartialOrd for UpvarCapture {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
         match (self, other) {
-            (Self::ByValue, Self::ByValue) | (Self::ByUse, Self::ByUse) => {
-                Some(cmp::Ordering::Equal)
+            (Self::ByCopy, Self::ByCopy)
+            | (Self::ByValue, Self::ByValue)
+            | (Self::ByUse, Self::ByUse) => Some(cmp::Ordering::Equal),
+            (_, Self::ByCopy) | (Self::ByValue | Self::ByUse, Self::ByRef(_)) => {
+                Some(cmp::Ordering::Greater)
             }
-            (Self::ByValue | Self::ByUse, Self::ByRef(_)) => Some(cmp::Ordering::Greater),
-            (Self::ByRef(_), Self::ByValue | Self::ByUse) => Some(cmp::Ordering::Less),
-            (Self::ByRef(left), Self::ByRef(right)) => Some(left.cmp(right)),
+            (Self::ByCopy, _) | (Self::ByRef(_), Self::ByValue | Self::ByUse) => {
+                Some(cmp::Ordering::Less)
+            }
+            (Self::ByRef(left), Self::ByRef(right)) => Some(left.cmp(&right)),
             (Self::ByUse, Self::ByValue) | (Self::ByValue, Self::ByUse) => None,
         }
     }

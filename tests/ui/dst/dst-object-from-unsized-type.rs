@@ -22,7 +22,7 @@ fn test2<T: ?Sized + Foo>(t: &T) {
 fn test3() {
     let _: &[&dyn Foo] = &["hi"];
     //[current]~^ ERROR the size for values of type
-    //[next]~^^ ERROR the trait bound `&str: CoerceUnsized<&dyn Foo>` is not satisfied in `str`
+    //[next]~^^ ERROR the trait bound `&'static str: CoerceUnsized<&dyn Foo>` is not satisfied in `str`
 }
 
 fn test4(x: &[u8]) {

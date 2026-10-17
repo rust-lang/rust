@@ -249,10 +249,24 @@ impl<'tcx> ThirBuildCx<'tcx> {
                     deref.span,
                 )
             }
-            Adjust::Borrow(AutoBorrow::Ref(m)) => ExprKind::Borrow {
-                borrow_kind: m.to_borrow_kind(),
-                arg: self.thir.exprs.push(expr),
-            },
+            Adjust::Borrow(AutoBorrow::Ref(m)) => {
+                // Don't emit no-op &T -> &T reborrows
+                if let AutoBorrowMutability::Not = m
+                    && let ExprKind::Deref { arg: derefed_expr } = expr.kind
+                    && let ty::Ref(_, _, ty::Mutability::Not) =
+                        self.thir.exprs[derefed_expr].ty.kind()
+                    // FIXME: removing these reborrows may prevent closure upvars from resolving
+                    && !self.tcx.is_closure_like(self.body_owner)
+                {
+                    assert_eq!(self.thir.exprs.last_index(), Some(derefed_expr));
+                    return self.thir.exprs.pop().unwrap();
+                } else {
+                    ExprKind::Borrow {
+                        borrow_kind: m.to_borrow_kind(),
+                        arg: self.thir.exprs.push(expr),
+                    }
+                }
+            }
             Adjust::Borrow(AutoBorrow::RawPtr(mutability)) => {
                 ExprKind::RawBorrow { mutability, arg: self.thir.exprs.push(expr) }
             }
@@ -1689,7 +1703,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
         let temp_scope_id = closure_expr.hir_id.local_id;
 
         match upvar_capture {
-            ty::UpvarCapture::ByValue => captured_place_expr,
+            ty::UpvarCapture::ByValue | ty::UpvarCapture::ByCopy => captured_place_expr,
             ty::UpvarCapture::ByUse => {
                 let span = captured_place_expr.span;
                 let expr_id = self.thir.exprs.push(captured_place_expr);

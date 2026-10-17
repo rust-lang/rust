@@ -53,7 +53,7 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
                 let _15: std::ptr::NonNull<T>;
                 let mut _18: bool;
                 let mut _24: usize;
-                let _26: &T;
+                let mut _26: &T;
                 scope 29 {
                     let _14: *const T;
                     scope 30 {
