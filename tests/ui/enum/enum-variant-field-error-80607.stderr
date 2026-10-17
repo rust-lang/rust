@@ -1,6 +1,7 @@
 error[E0559]: variant `Enum::V1` has no field named `x`
   --> $DIR/enum-variant-field-error-80607.rs:8:16
    |
+LL | pub enum Enum {
 LL |     V1(i32),
    |     -- `Enum::V1` defined here
 ...
