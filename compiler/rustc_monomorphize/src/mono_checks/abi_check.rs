@@ -281,6 +281,17 @@ fn check_call_site_abi<'tcx>(
     do_check_simd_vector_abi(tcx, callee_abi, caller.def_id(), /*is_call*/ true, loc);
 }
 
+/// The ABI is part of the function header and does not depend on generic arguments.
+/// Inspect it without instantiating the signature or normalizing the callee type.
+fn can_skip_call_site_abi_check(tcx: TyCtxt<'_>, callee: Ty<'_>) -> bool {
+    let abi = match *callee.kind() {
+        ty::FnDef(def_id, _) => tcx.fn_sig(def_id).skip_binder().abi(),
+        ty::FnPtr(_, header) => header.abi(),
+        _ => return false,
+    };
+    abi.is_rustic_abi() || abi == ExternAbi::LlvmIntrinsic
+}
+
 fn check_callees_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>, body: &mir::Body<'tcx>) {
     // Check all function call terminators.
     for (bb, _data) in traversal::mono_reachable(body, tcx, instance) {
@@ -289,6 +300,9 @@ fn check_callees_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>, body: &m
             mir::TerminatorKind::Call { ref func, ref fn_span, .. }
             | mir::TerminatorKind::TailCall { ref func, ref fn_span, .. } => {
                 let callee_ty = func.ty(body, tcx);
+                if can_skip_call_site_abi_check(tcx, callee_ty) {
+                    continue;
+                }
                 let callee_ty = instance.instantiate_mir_and_normalize_erasing_regions(
                     tcx,
                     ty::TypingEnv::fully_monomorphized(),
