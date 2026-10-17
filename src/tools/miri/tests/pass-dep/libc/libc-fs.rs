@@ -576,8 +576,8 @@ fn test_create_read_write() {
 
 fn test_dup_stdout_stderr() {
     unsafe {
-        let new_stdout = libc::fcntl(1, libc::F_DUPFD, 0);
-        let new_stderr = libc::fcntl(2, libc::F_DUPFD, 0);
+        let new_stdout = errno_result(libc::fcntl(1, libc::F_DUPFD, 0)).unwrap();
+        let new_stderr = errno_result(libc::fcntl(2, libc::F_DUPFD, 0)).unwrap();
         libc_utils::write_all(new_stdout, b"hello stdout\n").unwrap();
         libc_utils::write_all(new_stderr, b"hello stderr\n").unwrap();
         errno_check(libc::close(new_stdout));
@@ -594,13 +594,13 @@ fn test_dup() {
     unsafe {
         let fd = errno_result(libc::open(name.as_ptr(), libc::O_RDONLY)).unwrap();
         assert!(fd < 50);
-        let new_fd = libc::dup(fd);
+        let new_fd = errno_result(libc::dup(fd)).unwrap();
         assert_eq!(new_fd, fd + 1);
-        let new_fd = libc::dup2(fd, new_fd); // overwrite the one we just dup'd
+        let new_fd = errno_result(libc::dup2(fd, new_fd)).unwrap(); // overwrite the one we just dup'd
         assert_eq!(new_fd, fd + 1);
-        let new_fd2 = libc::dup2(fd, 99);
+        let new_fd2 = errno_result(libc::dup2(fd, 99)).unwrap();
         assert_eq!(new_fd2, 99);
-        let new_fd3 = libc::fcntl(new_fd2, libc::F_DUPFD, 999);
+        let new_fd3 = errno_result(libc::fcntl(new_fd2, libc::F_DUPFD, 999)).unwrap();
         assert_eq!(new_fd3, 999);
         errno_check(libc::close(new_fd2));
 
@@ -739,8 +739,7 @@ fn test_posix_mkstemp() {
     // should be declared as a character array."
     // There seems to be no `as_mut_ptr` on `CString` so we need to use `into_raw`.
     let ptr = CString::new(valid_template).unwrap().into_raw();
-    let fd = unsafe { libc::mkstemp(ptr) };
-    assert!(fd >= 0, "mkstemp failed");
+    let fd = errno_result(unsafe { libc::mkstemp(ptr) }).unwrap();
     // Take ownership back in Rust to not leak memory.
     let slice = unsafe { CString::from_raw(ptr) };
     let osstr = OsStr::from_bytes(slice.to_bytes());
@@ -765,13 +764,10 @@ fn test_posix_mkstemp() {
         let invalid_templates = vec!["foo", "barXX", "XXXXXXbaz", "whatXXXXXXever", "X"];
         for t in invalid_templates {
             let ptr = CString::new(t).unwrap().into_raw();
-            let fd = unsafe { libc::mkstemp(ptr) };
-            let _ = unsafe { CString::from_raw(ptr) };
-            // "On error, -1 is returned, and errno is set to
-            // indicate the error"
-            assert_eq!(fd, -1, "mkstemp succeeded on invalid template {t:?}");
-            let e = std::io::Error::last_os_error();
-            assert_eq!(e.raw_os_error().unwrap(), libc::EINVAL);
+            let err = errno_result(unsafe { libc::mkstemp(ptr) }).unwrap_err();
+            assert_eq!(err.raw_os_error().unwrap(), libc::EINVAL);
+            // Take ownership back in Rust to not leak memory.
+            drop(unsafe { CString::from_raw(ptr) });
         }
     }
 
@@ -855,9 +851,9 @@ fn test_posix_fadvise() {
             libc::POSIX_FADV_DONTNEED,
         )
     };
+    assert_eq!(result, 0);
     drop(file);
     fs::remove_file(&path).unwrap();
-    assert_eq!(result, 0);
 }
 
 #[cfg(not(target_os = "macos"))]
@@ -1550,9 +1546,8 @@ fn test_ioctl() {
 
     unsafe {
         // 100 surely is an invalid FD.
-        assert_eq!(libc::ioctl(100, libc::FIOCLEX), -1);
-        let errno = std::io::Error::last_os_error().raw_os_error().unwrap();
-        assert_eq!(errno, libc::EBADF);
+        let err = errno_result(libc::ioctl(100, libc::FIOCLEX)).unwrap_err();
+        assert_eq!(err.raw_os_error().unwrap(), libc::EBADF);
 
         let fd = errno_result(libc::open(name.as_ptr(), libc::O_RDONLY)).unwrap();
         errno_check(libc::ioctl(fd, libc::FIOCLEX));
