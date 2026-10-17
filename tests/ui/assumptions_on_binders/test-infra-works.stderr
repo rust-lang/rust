@@ -1,0 +1,14 @@
+error: unable to satisfy constraints because it cannot be proven
+  --> $DIR/test-infra-works.rs:54:9
+   |
+LL |         forall<'a> {
+   |         ^^^^^^
+
+error: unable to satisfy constraints because it cannot be proven
+  --> $DIR/test-infra-works.rs:73:9
+   |
+LL |         forall<'a> {
+   |         ^^^^^^
+
+error: aborting due to 2 previous errors
+
