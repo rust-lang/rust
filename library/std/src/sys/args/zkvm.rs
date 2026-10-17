@@ -16,11 +16,14 @@ fn get_args() -> Vec<&'static OsStr> {
         // Get the size of the argument then the data.
         let arg_len = unsafe { abi::sys_argv(ptr::null_mut(), 0, i) };
 
-        let arg_len_words = (arg_len + WORD_SIZE - 1) / WORD_SIZE;
+        let arg_len_rounded =
+            arg_len.checked_next_multiple_of(WORD_SIZE).expect("argument length overflowed");
+        assert!(arg_len_rounded <= isize::MAX as usize, "argument length is too large");
+        let arg_len_words = arg_len_rounded / WORD_SIZE;
         let words = unsafe { abi::sys_alloc_words(arg_len_words) };
 
         let arg_len2 = unsafe { abi::sys_argv(words, arg_len_words, i) };
-        debug_assert_eq!(arg_len, arg_len2);
+        assert_eq!(arg_len, arg_len2);
 
         let arg_bytes = unsafe { slice::from_raw_parts(words.cast(), arg_len) };
         args.push(unsafe { OsStr::from_encoded_bytes_unchecked(arg_bytes) });
