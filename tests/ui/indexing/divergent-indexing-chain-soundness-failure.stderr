@@ -1,0 +1,11 @@
+error[E0510]: cannot assign `x` in indexing expression
+  --> $DIR/divergent-indexing-chain-soundness-failure.rs:8:12
+   |
+LL |     x[0][{ x = y; 0 }][{ return; 0 }];
+   |     ----   ^^^^^ cannot assign
+   |     |
+   |     value is immutable in indexing expression
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0510`.
