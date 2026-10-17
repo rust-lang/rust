@@ -1,0 +1,18 @@
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/same-span-deref-ice.rs:9:51
+   |
+LL |     needs_sized(same_span_deref::same_span_deref!(s));
+   |     -----------                                   ^ doesn't have a size known at compile-time
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = help: the trait `Sized` is not implemented for `str`
+note: required by a bound in `needs_sized`
+  --> $DIR/same-span-deref-ice.rs:5:19
+   |
+LL | fn needs_sized<T: Sized>(_: T) {}
+   |                   ^^^^^ required by this bound in `needs_sized`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.
