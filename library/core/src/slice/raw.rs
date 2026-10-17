@@ -118,26 +118,29 @@ use crate::{array, ptr, ub_checks};
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_stable(feature = "const_slice_from_raw_parts", since = "1.64.0")]
+#[rustc_const_unstable(feature = "const_select_unpredictable", issue = "145938")]
 #[must_use]
 #[rustc_diagnostic_item = "slice_from_raw_parts"]
 #[track_caller]
 pub const unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T] {
-    // SAFETY: the caller must uphold the safety contract for `from_raw_parts`.
-    unsafe {
-        ub_checks::assert_unsafe_precondition!(
-            check_language_ub,
-            "slice::from_raw_parts requires the pointer to be aligned and non-null, and the total size of the slice not to exceed `isize::MAX`",
-            (
-                data: *mut () = data as *mut (),
-                size: usize = size_of::<T>(),
-                align: usize = align_of::<T>(),
-                len: usize = len,
-            ) =>
-            ub_checks::maybe_is_aligned_and_not_null(data, align, false)
-                && ub_checks::is_valid_allocation_size(size, len)
-        );
-        &*ptr::slice_from_raw_parts(data, len)
-    }
+    core::hint::select_unpredictable(data.is_null(), &[], {
+        // SAFETY: the caller must uphold the safety contract for `from_raw_parts`.
+        unsafe {
+            ub_checks::assert_unsafe_precondition!(
+                check_language_ub,
+                "slice::from_raw_parts requires the pointer to be aligned and non-null, and the total size of the slice not to exceed `isize::MAX`",
+                (
+                    data: *mut () = data as *mut (),
+                    size: usize = size_of::<T>(),
+                    align: usize = align_of::<T>(),
+                    len: usize = len,
+                ) =>
+                ub_checks::maybe_is_aligned_and_not_null(data, align, false)
+                    && ub_checks::is_valid_allocation_size(size, len)
+            );
+            &*ptr::slice_from_raw_parts(data, len)
+        }
+    })
 }
 
 /// Performs the same functionality as [`from_raw_parts`], except that a
@@ -173,26 +176,29 @@ pub const unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T]
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_stable(feature = "const_slice_from_raw_parts_mut", since = "1.83.0")]
+#[rustc_const_unstable(feature = "const_select_unpredictable", issue = "145938")]
 #[must_use]
 #[rustc_diagnostic_item = "slice_from_raw_parts_mut"]
 #[track_caller]
 pub const unsafe fn from_raw_parts_mut<'a, T>(data: *mut T, len: usize) -> &'a mut [T] {
-    // SAFETY: the caller must uphold the safety contract for `from_raw_parts_mut`.
-    unsafe {
-        ub_checks::assert_unsafe_precondition!(
-            check_language_ub,
-            "slice::from_raw_parts_mut requires the pointer to be aligned and non-null, and the total size of the slice not to exceed `isize::MAX`",
-            (
-                data: *mut () = data as *mut (),
-                size: usize = size_of::<T>(),
-                align: usize = align_of::<T>(),
-                len: usize = len,
-            ) =>
-            ub_checks::maybe_is_aligned_and_not_null(data, align, false)
-                && ub_checks::is_valid_allocation_size(size, len)
-        );
-        &mut *ptr::slice_from_raw_parts_mut(data, len)
-    }
+    core::hint::select_unpredictable(data.is_null(), &mut [], {
+        // SAFETY: the caller must uphold the safety contract for `from_raw_parts_mut`.
+        unsafe {
+            ub_checks::assert_unsafe_precondition!(
+                check_language_ub,
+                "slice::from_raw_parts_mut requires the pointer to be aligned and non-null, and the total size of the slice not to exceed `isize::MAX`",
+                (
+                    data: *mut () = data as *mut (),
+                    size: usize = size_of::<T>(),
+                    align: usize = align_of::<T>(),
+                    len: usize = len,
+                ) =>
+                ub_checks::maybe_is_aligned_and_not_null(data, align, false)
+                    && ub_checks::is_valid_allocation_size(size, len)
+            );
+            &mut *ptr::slice_from_raw_parts_mut(data, len)
+        }
+    })
 }
 
 /// Converts a reference to T into a slice of length 1 (without copying).
