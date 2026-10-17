@@ -79,7 +79,7 @@ use std::io::{self, Read};
 use std::ops::{Add, Range, Sub};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use std::{cmp, fmt, iter};
 
 pub use macros::{bug, span_bug};
@@ -118,7 +118,7 @@ pub struct SessionGlobals {
     /// Maps a macro argument token into use of the corresponding metavariable in the macro body.
     /// Collisions are possible and processed in `maybe_use_metavar_location` on best effort basis.
     metavar_spans: MetavarSpansMap,
-    hygiene_data: Lock<hygiene::HygieneData>,
+    hygiene_data: RwLock<hygiene::HygieneData>,
 
     /// The session's source map, if there is one. This field should only be
     /// used in places where the `Session` is truly not available, such as
@@ -136,7 +136,7 @@ impl SessionGlobals {
             symbol_interner: symbol::Interner::with_extra_symbols(extra_symbols),
             span_interner: Lock::new(span_encoding::SpanInterner::default()),
             metavar_spans: Default::default(),
-            hygiene_data: Lock::new(hygiene::HygieneData::new(edition)),
+            hygiene_data: RwLock::new(hygiene::HygieneData::new(edition)),
             source_map: sm_inputs.map(|inputs| Arc::new(SourceMap::with_inputs(inputs))),
         }
     }
