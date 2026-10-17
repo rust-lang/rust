@@ -4,7 +4,10 @@ pub(crate) mod macros;
 
 /// The IBM extended-precision (double-double) floating-point type.
 // FIXME(ppcf128) improve the docs.
-#[lang = "ppcf128"]
+#[cfg_attr(
+    any(target_arch = "powerpc", target_arch = "powerpc64"),
+    lang = "ppcf128"
+)] // for docs
 #[doc(alias = "__ibm128")]
 #[doc(alias = "doubledouble")]
 #[doc(alias = "f64f64")]

@@ -354,6 +354,10 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                         // FIXME(ppcf128) we should support this.
                         bug!("the va_arg intrinsic does not currently support `ppcf128`")
                     }
+                    Primitive::Float(Float::X87F80) => {
+                        // FIXME(x87_f80) we should support this.
+                        bug!("the va_arg intrinsic does not currently support `x87_f80`")
+                    }
                 }
 
                 emit_va_arg(self, args[0], result_layout)

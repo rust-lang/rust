@@ -118,6 +118,10 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                 // These must always be present for `Scalar` types.
                 let align = align.unwrap();
                 let size = size.unwrap();
+                if layout.backend_repr.is_x87_f80() {
+                    // The lang item wraps a byte array, so it is not a newtype of a scalar.
+                    return;
+                }
                 // Check that this matches the underlying field.
                 let inner = skip_newtypes(cx, layout);
                 assert!(
