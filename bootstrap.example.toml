@@ -956,6 +956,12 @@
 # want to enable this right now.
 #rust.wasm-proc-macros = false
 
+# Enables wasm targets to be built with `-Cpanic=unwind` by default instead of
+# the current `-Cpanic=abort`. This is currently used in testing the Rust
+# compiler itself and is only intended for local development/testing at this
+# time.
+#rust.wasm-panic-unwind-default = false
+
 # =============================================================================
 # Distribution options
 #

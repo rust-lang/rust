@@ -97,6 +97,14 @@ impl Float for f8 {
         unimplemented!()
     }
 
+    fn floor(self) -> Self {
+        unimplemented!()
+    }
+
+    fn roundeven(self) -> Self {
+        unimplemented!()
+    }
+
     fn normalize(_significand: Self::Int) -> (i32, Self::Int) {
         unimplemented!()
     }

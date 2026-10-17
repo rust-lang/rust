@@ -204,6 +204,9 @@ fn contains_try(expr: &Expr<'_>) -> bool {
     .is_some()
 }
 
+/// calls `callback` on every expression that could be the return value of `expr`.
+///
+/// returns `false` if `expr` contains `?` or if `callback` ever return `false`.
 pub fn find_all_ret_expressions<'hir, F>(_cx: &LateContext<'_>, expr: &'hir Expr<'hir>, callback: F) -> bool
 where
     F: FnMut(&'hir Expr<'hir>) -> bool,
@@ -782,6 +785,8 @@ pub fn for_each_unconsumed_temporary<'tcx, B>(
     helper(cx.typeck_results(), true, e, &mut f)
 }
 
+/// Checks whether the drop order matters for any unconsumed temporary created by the given
+/// [expression](Expr).
 pub fn any_temporaries_need_ordered_drop<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) -> bool {
     for_each_unconsumed_temporary(cx, e, |ty| {
         if needs_ordered_drop(cx, ty) {
@@ -839,6 +844,9 @@ pub fn for_each_local_assignment<'tcx, B>(
     }
 }
 
+/// Checks whether the given [expression](Expr) contains any `break` or `continue` expressions. This
+/// does not enter any bodies or nested items, because a `break` or `continue` would not apply to the expression's
+/// scope.
 pub fn contains_break_or_continue(expr: &Expr<'_>) -> bool {
     for_each_expr_without_closures(expr, |e| {
         if matches!(e.kind, ExprKind::Break(..) | ExprKind::Continue(..)) {

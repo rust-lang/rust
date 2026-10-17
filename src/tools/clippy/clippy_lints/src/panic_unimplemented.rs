@@ -1,22 +1,15 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::macros::{is_panic, root_macro_call_first_node};
+use clippy_utils::macros::{first_node_in_macro, is_panic, root_macro_call};
+use clippy_utils::source::SpanExt as _;
 use clippy_utils::{is_in_test, is_inside_always_const_context, sym};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Expr, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
+use rustc_span::Span;
+use rustc_span::def_id::DefId;
 
-pub struct PanicUnimplemented {
-    allow_panic_in_tests: bool,
-}
-
-impl PanicUnimplemented {
-    pub fn new(conf: &'static Conf) -> Self {
-        Self {
-            allow_panic_in_tests: conf.allow_panic_in_tests,
-        }
-    }
-}
+use rustc_data_structures::fx::FxHashSet;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -93,9 +86,39 @@ declare_clippy_lint! {
 
 impl_lint_pass!(PanicUnimplemented => [PANIC, TODO, UNIMPLEMENTED, UNREACHABLE]);
 
+pub struct PanicUnimplemented {
+    allow_panic_in_tests: bool,
+    /// Cache of linted macro calls for avoiding lint duplication.
+    /// Considering proc-macros, multiple different macros can be called at the same span.
+    /// Therefore, both of `DefId` and `Span` are necessary.
+    cache: FxHashSet<(DefId, Span)>,
+}
+
+impl PanicUnimplemented {
+    pub fn new(conf: &'static Conf) -> Self {
+        Self {
+            allow_panic_in_tests: conf.allow_panic_in_tests,
+            cache: FxHashSet::default(),
+        }
+    }
+}
+
 impl<'tcx> LateLintPass<'tcx> for PanicUnimplemented {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if let Some(macro_call) = root_macro_call_first_node(cx, expr) {
+        // `root_macro_call_first_node` ignores macros passed to function-like macros
+        if first_node_in_macro(cx, expr).is_some()
+            && let Some(macro_call) = root_macro_call(expr.span)
+            // this filters snippets from proc-macros out
+            && macro_call.span.check_text(cx, |src| {
+                src.split_once('!').is_some_and(|(pre, _)| {
+                    let pre = pre.trim_end_matches(rustc_lexer::is_whitespace);
+                    // accept qualified path (e.g. `core::panic`)
+                    pre.ends_with("panic") || pre.ends_with("todo") || pre.ends_with("unimplemented") || pre.ends_with("unreachable")
+                })
+            })
+            // avoid lint duplication
+            && self.cache.insert((macro_call.def_id, macro_call.span))
+        {
             if is_panic(cx, macro_call.def_id) {
                 if is_inside_always_const_context(cx.tcx, expr.hir_id)
                     || self.allow_panic_in_tests && is_in_test(cx.tcx, expr.hir_id)

@@ -24,6 +24,7 @@ use rustc_span::bug;
 use rustc_structures::SanitizerSet;
 use tracing::{debug, info};
 
+use crate::back::llvm_backend::ModuleRefs;
 use crate::back::write::{
     self, CodegenDiagnosticsStage, DiagnosticHandlers, bitcode_section_name, codegen,
     save_temp_bitcode,
@@ -82,7 +83,7 @@ fn prepare_lto(
     symbols_below_threshold.push(c"__llvm_profile_counter_bias".to_owned());
 
     // LTO seems to discard this otherwise under certain circumstances.
-    symbols_below_threshold.push(c"rust_eh_personality".to_owned());
+    symbols_below_threshold.push(CString::new(cgcx.rust_eh_personality_symbol.clone()).unwrap());
 
     // If we're performing LTO for the entire crate graph, then for each of our
     // upstream dependencies, find the corresponding rlib and load the bitcode
@@ -249,7 +250,9 @@ fn fat_lto(
         .enumerate()
         .filter(|&(_, module)| module.kind == ModuleKind::Regular)
         .map(|(i, module)| {
-            let cost = unsafe { llvm::LLVMRustModuleCost(module.module_llvm.llmod()) };
+            let cost = module.module_llvm.with_module_refs(|ModuleRefs { llmod, .. }| unsafe {
+                llvm::LLVMRustModuleCost(llmod)
+            });
             (cost, i)
         })
         .max();
@@ -269,11 +272,7 @@ fn fat_lto(
             ModuleCodegen::new_regular(name.into_string().unwrap(), llvm_module)
         }
     };
-    {
-        let (llcx, llmod) = {
-            let llvm = &module.module_llvm;
-            (&llvm.llcx, llvm.llmod())
-        };
+    module.module_llvm.with_module_refs(|ModuleRefs { llcx, llmod, .. }| {
         info!("using {:?} as a base module", module.name);
 
         // The linking steps below may produce errors and diagnostics within LLVM
@@ -293,7 +292,9 @@ fn fat_lto(
         // way we know of to do that is to serialize them to a string and them parse
         // them later. Not great but hey, that's why it's "fat" LTO, right?
         for module in in_memory {
-            let buffer = ModuleBuffer::new(module.module_llvm.llmod(), false);
+            let buffer = module
+                .module_llvm
+                .with_module_refs(|ModuleRefs { llmod, .. }| ModuleBuffer::new(llmod, false));
             let llmod_id = CString::new(&module.name[..]).unwrap();
             serialized_modules.push((SerializedModule::Local(buffer), llmod_id));
         }
@@ -330,7 +331,7 @@ fn fat_lto(
             );
         }
         save_temp_bitcode(cgcx, &module, "lto.after-restriction");
-    }
+    });
 
     module
 }
@@ -584,7 +585,7 @@ pub(crate) fn run_pass_manager(
     cgcx: &CodegenContext,
     prof: &SelfProfilerRef,
     dcx: DiagCtxtHandle<'_>,
-    module: &mut ModuleCodegen<ModuleLlvm>,
+    module: &ModuleCodegen<ModuleLlvm>,
     thin: bool,
 ) {
     let _timer = prof.generic_activity_with_arg("LLVM_lto_optimize", &*module.name);
@@ -612,11 +613,24 @@ pub(crate) fn run_pass_manager(
         if enable_ad { write::AutodiffStage::DuringAD } else { write::AutodiffStage::PostAD }
     };
 
-    unsafe {
-        write::llvm_optimize(
-            cgcx, prof, dcx, module, None, None, config, opt_level, opt_stage, stage,
-        );
-    }
+    let llvm_optimize = |opt_stage, stage| {
+        module.module_llvm.with_module_refs(|module_refs| unsafe {
+            write::llvm_optimize(
+                cgcx,
+                prof,
+                dcx,
+                module_refs,
+                None,
+                None,
+                config,
+                opt_level,
+                opt_stage,
+                stage,
+            )
+        });
+    };
+
+    llvm_optimize(opt_stage, stage);
 
     if enable_ad && !thin {
         let opt_stage = llvm::OptStage::FatLTO;
@@ -624,17 +638,15 @@ pub(crate) fn run_pass_manager(
         if !config.autodiff.contains(&config::AutoDiff::NoPostopt)
             && config.autodiff_post_passes.as_deref() != Some("")
         {
-            unsafe {
-                write::llvm_optimize(
-                    cgcx, prof, dcx, module, None, None, config, opt_level, opt_stage, stage,
-                );
-            }
+            llvm_optimize(opt_stage, stage);
         }
 
         // This is the final IR, so people should be able to inspect the optimized autodiff output,
         // for manual inspection.
         if config.autodiff.contains(&config::AutoDiff::PrintModFinal) {
-            unsafe { llvm::LLVMDumpModule(module.module_llvm.llmod()) };
+            module.module_llvm.with_module_refs(|ModuleRefs { llmod, .. }| unsafe {
+                llvm::LLVMDumpModule(llmod)
+            });
         }
     }
 
@@ -715,14 +727,16 @@ pub(crate) fn optimize_and_codegen_thin_module(
     // crates but for locally codegened modules we may be able to reuse
     // that LLVM Context and Module.
     let module_llvm = ModuleLlvm::parse(cgcx, tm_factory, module_name, thin_module.data(), dcx);
-    let mut module = ModuleCodegen::new_regular(thin_module.name(), module_llvm);
+    let module = ModuleCodegen::new_regular(thin_module.name(), module_llvm);
     // Given that the newly created module lacks a thinlto buffer for embedding, we need to re-add it here.
     if cgcx.module_config.embed_bitcode() {
-        module.thin_lto_buffer = Some(thin_module.data().to_vec());
+        module
+            .module_llvm
+            .thin_lto_buffer
+            .set(thin_module.data().to_vec())
+            .expect("thin_lto_buffer should be unset");
     }
-    {
-        let target = &*module.module_llvm.tm;
-        let llmod = module.module_llvm.llmod();
+    module.module_llvm.with_module_refs(|ModuleRefs { llmod, tm, .. }| {
         save_temp_bitcode(cgcx, &module, "thin-lto-input");
 
         // Up next comes the per-module local analyses that we do for Thin LTO.
@@ -735,9 +749,7 @@ pub(crate) fn optimize_and_codegen_thin_module(
         // bindings we've got (currently `PassWrapper.cpp`)
         {
             let _timer = prof.generic_activity_with_arg("LLVM_thin_lto_rename", thin_module.name());
-            unsafe {
-                llvm::LLVMRustPrepareThinLTORename(thin_module.shared.data.0, llmod, target.raw())
-            };
+            unsafe { llvm::LLVMRustPrepareThinLTORename(thin_module.shared.data.0, llmod, tm) };
             save_temp_bitcode(cgcx, &module, "thin-lto-after-rename");
         }
 
@@ -763,9 +775,8 @@ pub(crate) fn optimize_and_codegen_thin_module(
 
         {
             let _timer = prof.generic_activity_with_arg("LLVM_thin_lto_import", thin_module.name());
-            if unsafe {
-                !llvm::LLVMRustPrepareThinLTOImport(thin_module.shared.data.0, llmod, target.raw())
-            } {
+            if unsafe { !llvm::LLVMRustPrepareThinLTOImport(thin_module.shared.data.0, llmod, tm) }
+            {
                 write::llvm_err(dcx, LlvmError::PrepareThinLtoModule);
             }
             save_temp_bitcode(cgcx, &module, "thin-lto-after-import");
@@ -778,10 +789,10 @@ pub(crate) fn optimize_and_codegen_thin_module(
         // little differently.
         {
             info!("running thin lto passes over {}", module.name);
-            run_pass_manager(cgcx, prof, dcx, &mut module, true);
+            run_pass_manager(cgcx, prof, dcx, &module, true);
             save_temp_bitcode(cgcx, &module, "thin-lto-after-pm");
         }
-    }
+    });
     codegen(cgcx, prof, shared_emitter, module, &cgcx.module_config)
 }
 

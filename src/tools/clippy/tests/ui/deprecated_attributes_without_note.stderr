@@ -1,0 +1,80 @@
+error: `deprecated` attribute without note could be confusing
+  --> tests/ui/deprecated_attributes_without_note.rs:10:5
+   |
+LL |     #[deprecated]
+   |     ^^^^^^^^^^^^^ help: add a note: `#[deprecated(note = /* note */)]`
+   |
+note: the lint level is defined here
+  --> tests/ui/deprecated_attributes_without_note.rs:3:9
+   |
+LL | #![deny(clippy::deprecated_attributes_without_note)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `deprecated` attribute without note could be confusing
+  --> tests/ui/deprecated_attributes_without_note.rs:14:5
+   |
+LL |     #[deprecated(since = "1.42.100")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: add a note: `#[deprecated(since = "1.42.100", note = /* note */)]`
+
+error: `deprecated` attribute without note could be confusing
+  --> tests/ui/deprecated_attributes_without_note.rs:18:22
+   |
+LL |     #[cfg_attr(true, deprecated(since = "0.0.0"))]
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: add a note: `#[deprecated(since = "0.0.0", note = /* note */)]`
+
+error: `deprecated` attribute without note could be confusing
+  --> tests/ui/deprecated_attributes_without_note.rs:22:22
+   |
+LL |     #[cfg_attr(true, deprecated)]
+   |                      ^^^^^^^^^^ help: add a note: `#[deprecated(note = /* note */)]`
+
+error: `deprecated` attribute without note could be confusing
+  --> tests/ui/deprecated_attributes_without_note.rs:26:5
+   |
+LL |     #[deprecated(since = "4.31.10")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: add a note: `#[deprecated(since = "4.31.10", note = /* note */)]`
+
+error: `deprecated` attribute without note could be confusing
+  --> tests/ui/deprecated_attributes_without_note.rs:29:9
+   |
+LL |         #[deprecated]
+   |         ^^^^^^^^^^^^^ help: add a note: `#[deprecated(note = /* note */)]`
+
+error: `deprecated` attribute without note could be confusing
+  --> tests/ui/deprecated_attributes_without_note.rs:32:13
+   |
+LL |             #[deprecated]
+   |             ^^^^^^^^^^^^^ help: add a note: `#[deprecated(note = /* note */)]`
+
+error: `deprecated` attribute without note could be confusing
+  --> tests/ui/deprecated_attributes_without_note.rs:38:9
+   |
+LL |         #[deprecated]
+   |         ^^^^^^^^^^^^^ help: add a note: `#[deprecated(note = /* note */)]`
+
+error: `deprecated` attribute without note could be confusing
+  --> tests/ui/deprecated_attributes_without_note.rs:41:13
+   |
+LL |             #[deprecated]
+   |             ^^^^^^^^^^^^^ help: add a note: `#[deprecated(note = /* note */)]`
+
+error: `deprecated` attribute without note could be confusing
+  --> tests/ui/deprecated_attributes_without_note.rs:46:9
+   |
+LL |         #[deprecated]
+   |         ^^^^^^^^^^^^^ help: add a note: `#[deprecated(note = /* note */)]`
+
+error: `deprecated` attribute without note could be confusing
+  --> tests/ui/deprecated_attributes_without_note.rs:49:13
+   |
+LL |             #[deprecated]
+   |             ^^^^^^^^^^^^^ help: add a note: `#[deprecated(note = /* note */)]`
+
+error: `deprecated` attribute without note could be confusing
+  --> tests/ui/deprecated_attributes_without_note.rs:53:13
+   |
+LL |             #[deprecated]
+   |             ^^^^^^^^^^^^^ help: add a note: `#[deprecated(note = /* note */)]`
+
+error: aborting due to 12 previous errors
+

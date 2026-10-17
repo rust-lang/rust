@@ -146,7 +146,7 @@ compiler to see if it indeed implements the trait we are interested in.
 [DefId]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/def_id/struct.DefId.html
 [diagnostic_items]: https://rustc-dev-guide.rust-lang.org/diagnostics/diagnostic-items.html
 [lang_items]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/lang_items/struct.LanguageItems.html
-[paths]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_utils/src/paths.rs
+[paths]: https://github.com/rust-lang/rust-clippy/blob/HEAD/clippy_utils/src/paths.rs
 [rustc_dev_guide]: https://rustc-dev-guide.rust-lang.org/
 [symbol]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/symbol/struct.Symbol.html
 [symbol_index]: https://doc.rust-lang.org/beta/nightly-rustc/rustc_span/symbol/sym/index.html

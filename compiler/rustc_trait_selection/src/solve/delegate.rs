@@ -494,10 +494,6 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         dst: Ty<'tcx>,
         assume: ty::Const<'tcx>,
     ) -> Result<Answer<Region<'tcx>, Ty<'tcx>>, NoSolution> {
-        // Erase regions because we compute layouts in `rustc_transmute`,
-        // which will ICE for region vars.
-        let (dst, src) = self.tcx.erase_and_anonymize_regions((dst, src));
-
         rustc_transmute::Assume::from_const(self.tcx, assume)
             .map(|assume| TransmuteTypeEnv::new(self.0.tcx).is_transmutable(src, dst, assume))
             .ok_or(NoSolution)

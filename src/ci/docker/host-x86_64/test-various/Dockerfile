@@ -43,12 +43,13 @@ WORKDIR /
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
-RUN curl -L https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-34/wasi-sdk-34.0-x86_64-linux.tar.gz | \
+RUN curl -L https://ci-mirrors.rust-lang.org/rustc/wasi-sdk-34.0-x86_64-linux.tar.gz | \
   tar -xz
 ENV WASI_SDK_PATH=/wasi-sdk-34.0-x86_64-linux
 
 ENV RUST_CONFIGURE_ARGS="--musl-root-x86_64=/usr/local/x86_64-linux-musl \
-  --set rust.lld"
+  --set rust.lld \
+  --set rust.wasm-panic-unwind-default"
 
 # Some run-make tests have assertions about code size, and enabling debug
 # assertions in libstd causes the binary to be much bigger than it would
@@ -57,11 +58,11 @@ ENV RUST_CONFIGURE_ARGS="--musl-root-x86_64=/usr/local/x86_64-linux-musl \
 ENV NO_DEBUG_ASSERTIONS=1
 ENV NO_OVERFLOW_CHECKS=1
 
-RUN curl -L https://github.com/bytecodealliance/wasmtime/releases/download/v44.0.1/wasmtime-v44.0.1-x86_64-linux.tar.xz | \
+RUN curl -L https://ci-mirrors.rust-lang.org/rustc/wasmtime-v48.0.2-x86_64-linux.tar.xz | \
   tar -xJ
-ENV PATH="$PATH:/wasmtime-v44.0.1-x86_64-linux"
+ENV PATH="$PATH:/wasmtime-v48.0.2-x86_64-linux"
 
-ENV WASM_WASIP_TARGET=wasm32-wasip1
+ENV WASM_WASIP_TARGET=wasm32-wasip3
 ENV WASM_WASIP_SCRIPT="python3 /checkout/x.py --stage 2 test --host= --target $WASM_WASIP_TARGET \
   tests/run-make \
   tests/run-make-cargo \
@@ -70,7 +71,8 @@ ENV WASM_WASIP_SCRIPT="python3 /checkout/x.py --stage 2 test --host= --target $W
   tests/codegen-units \
   tests/codegen-llvm \
   tests/assembly-llvm \
-  library/core"
+  library/core \
+  library/alloc"
 
 ENV NVPTX_TARGETS=nvptx64-nvidia-cuda
 ENV NVPTX_SCRIPT="python3 /checkout/x.py --stage 2 test --host= --target $NVPTX_TARGETS \

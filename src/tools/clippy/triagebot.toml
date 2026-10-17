@@ -92,7 +92,7 @@ message_on_close = "PR rust-clippy#{number} has been closed. Thanks for particip
 message_on_reopen = "PR rust-clippy#{number} has been reopened."
 
 [assign]
-contributing_url = "https://github.com/rust-lang/rust-clippy/blob/master/CONTRIBUTING.md"
+contributing_url = "https://github.com/rust-lang/rust-clippy/blob/HEAD/CONTRIBUTING.md"
 users_on_vacation = [
     "matthiaskrgr",
     "Alexendoo",
