@@ -1,0 +1,23 @@
+error: lifetime may not live long enough
+  --> $DIR/variance.rs:15:5
+   |
+LL | fn covariant_wrong_way<'x>(b: unsafe<'a> (&'a u8, &'x u8)) -> unsafe<'a> (&'a u8, &'static u8) {
+   |                        -- lifetime `'x` defined here
+LL |     b
+   |     ^ returning this value requires that `'x` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/variance.rs:22:5
+   |
+LL | fn invariant<'x>(
+   |              -- lifetime `'x` defined here
+...
+LL |     b
+   |     ^ returning this value requires that `'x` must outlive `'static`
+   |
+   = note: requirement occurs because of the type `Cell<&u8>`, which makes the generic argument `&u8` invariant
+   = note: the struct `Cell<T>` is invariant over the parameter `T`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+
+error: aborting due to 2 previous errors
+

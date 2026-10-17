@@ -397,8 +397,11 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 self.walk_expr(subexpr)?;
             }
 
-            hir::ExprKind::UnsafeBinderCast(_, subexpr, _) => {
+            hir::ExprKind::UnsafeBinderCast(UnsafeBinderCastKind::Unwrap, subexpr, _) => {
                 self.walk_expr(subexpr)?;
+            }
+            hir::ExprKind::UnsafeBinderCast(UnsafeBinderCastKind::Wrap, subexpr, _) => {
+                self.consume_expr(subexpr)?;
             }
 
             hir::ExprKind::Unary(hir::UnOp::Deref, base) => {

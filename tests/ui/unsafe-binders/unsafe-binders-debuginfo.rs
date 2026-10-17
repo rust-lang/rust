@@ -1,3 +1,4 @@
+//@ compile-flags: -Znext-solver
 // This is a regression test for <https://github.com/rust-lang/rust/issues/139462>.
 //@ check-pass
 //@ compile-flags: -Cdebuginfo=2
