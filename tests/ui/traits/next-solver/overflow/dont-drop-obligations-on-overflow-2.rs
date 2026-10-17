@@ -21,7 +21,7 @@ where
 #[define_opaque(Tait)]
 fn foo<'a>() -> &'a Tait<'a> {
     prove();
-    //~^ ERROR: overflow evaluating the requirement `for<'a> Tait<'a>: Sized`
+    //~^ ERROR: type annotations needed
     &()
 }
 fn main() {}

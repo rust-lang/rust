@@ -27,7 +27,7 @@ use tracing::instrument;
 use crate::delegate::SolverDelegate;
 use crate::solve::{
     CanonicalResponse, Certainty, ExternalConstraintsData, ExternalRegionConstraints, Goal,
-    NestedNormalizationGoals, QueryInput, Response, VisibleForLeakCheck, inspect,
+    NestedNormalizationGoals, Response, VisibleForLeakCheck, inspect,
 };
 
 pub mod canonicalizer;
@@ -62,13 +62,8 @@ where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
-    let (orig_values, canonical) = Canonicalizer::canonicalize_input(
-        delegate,
-        QueryInput {
-            goal,
-            predefined_opaques_in_body: delegate.cx().mk_predefined_opaques_in_body(opaque_types),
-        },
-    );
+    let (orig_values, canonical) =
+        Canonicalizer::canonicalize_input(delegate, goal, opaque_types.to_vec());
 
     let query_input = delegate.cx().mk_canonical_input(ty::CanonicalQueryInput {
         canonical,
@@ -77,17 +72,24 @@ where
     (orig_values, query_input)
 }
 
-pub(super) fn canonicalize_response<D, I, T>(
+pub(super) fn canonicalize_response<D, I>(
     delegate: &D,
     max_input_universe: ty::UniverseIndex,
-    value: T,
-) -> ty::Canonical<I, T>
+    var_values: I::GenericArgs,
+    certainty: Certainty,
+    external_constraints: ExternalConstraintsData<I>,
+) -> ty::Canonical<I, Response<I>>
 where
     D: SolverDelegate<Interner = I>,
     I: Interner,
-    T: TypeFoldable<I>,
 {
-    Canonicalizer::canonicalize_response(delegate, max_input_universe, value)
+    Canonicalizer::canonicalize_query_response(
+        delegate,
+        max_input_universe,
+        var_values,
+        certainty,
+        external_constraints,
+    )
 }
 
 /// After calling a canonical query, we apply the constraints returned
@@ -571,7 +573,7 @@ where
     let var_values = delegate.cx().mk_args(var_values);
     let state = inspect::State { var_values, data };
     let state = delegate.deeply_resolve_via_unification_table(state);
-    Canonicalizer::canonicalize_response(delegate, max_input_universe, state)
+    Canonicalizer::canonicalize_inspect_state(delegate, max_input_universe, state)
 }
 
 // FIXME: needs to be pub to be accessed by downstream
