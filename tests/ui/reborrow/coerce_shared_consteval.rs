@@ -14,7 +14,7 @@ impl Reborrow for MyMut<'_> {}
 #[derive(Clone, Copy)]
 pub struct MyRef<'a>(&'a u8);
 
-impl<'a> CoerceShared<MyRef<'a>> for MyMut<'a> {}
+impl<'a: 'b, 'b> CoerceShared<MyRef<'b>> for MyMut<'a> {}
 
 const fn consteval_reproducer() {
     let value = 1;
