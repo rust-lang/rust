@@ -39,7 +39,7 @@ walltime = ["dep:criterion"]
 
 [lints.clippy]
 # This sometimes reads better
-needless-range-loop = "allow"
+needless_range_loop = "allow"
 
 [[bench]]
 name = "float_add"
