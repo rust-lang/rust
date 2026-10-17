@@ -25,7 +25,8 @@ error[E0637]: `&` without an explicit lifetime name cannot be used here
 LL |     T: Into<&u32>,
    |             ^ explicit lifetime name needed here
    |
-help: consider introducing a higher-ranked lifetime here
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
+help: consider making the bound lifetime-generic with a new `'a` lifetime
    |
 LL |     T: for<'a> Into<&'a u32>,
    |        +++++++       ++
@@ -52,7 +53,69 @@ help: consider introducing a named lifetime parameter
 LL | fn foo<'a, F>(t: F) where F: T<Assoc=&'a str> {}
    |        +++                            ++
 
-error: aborting due to 5 previous errors
+error[E0637]: `&` without an explicit lifetime name cannot be used here
+  --> $DIR/E0637.rs:30:51
+   |
+LL | fn one_assoc<'a,F>(t: &'a F) where &'a F: T<Assoc=&str> {}// suggest &'a str
+   |                                                   ^ explicit lifetime name needed here
+   |
+help: consider using the `'a` lifetime
+   |
+LL | fn one_assoc<'a,F>(t: &'a F) where &'a F: T<Assoc=&'a str> {}// suggest &'a str
+   |                                                    ++
+
+error[E0637]: `&` without an explicit lifetime name cannot be used here
+  --> $DIR/E0637.rs:32:37
+   |
+LL | fn one<'a,F>(t: &'a F) where F:Into<&u32> {}// suggest to use 'a or for<'b>
+   |                                     ^ explicit lifetime name needed here
+   |
+help: consider using the `'a` lifetime
+   |
+LL | fn one<'a,F>(t: &'a F) where F:Into<&'a u32> {}// suggest to use 'a or for<'b>
+   |                                      ++
+help: consider making the bound lifetime-generic with a new `'b` lifetime
+   |
+LL | fn one<'a,F>(t: &'a F) where F:for<'b> Into<&'b u32> {}// suggest to use 'a or for<'b>
+   |                                +++++++       ++
+
+error[E0637]: `&` without an explicit lifetime name cannot be used here
+  --> $DIR/E0637.rs:34:59
+   |
+LL | fn multiple_assoc<'a,'b,F>(t: &'a F) where &'a F: T<Assoc=&str>{}
+   |                                                           ^ explicit lifetime name needed here
+   |
+note: these named lifetimes are available to use
+  --> $DIR/E0637.rs:34:19
+   |
+LL | fn multiple_assoc<'a,'b,F>(t: &'a F) where &'a F: T<Assoc=&str>{}
+   |                   ^^ ^^
+help: consider using one of the available lifetimes here
+   |
+LL | fn multiple_assoc<'a,'b,F>(t: &'a F) where &'a F: T<Assoc=&'lifetime str>{}
+   |                                                            +++++++++
+
+error[E0637]: `&` without an explicit lifetime name cannot be used here
+  --> $DIR/E0637.rs:37:45
+   |
+LL | fn multiple<'a,'b,F>(t: &'a F) where F:Into<&u32>{}
+   |                                             ^ explicit lifetime name needed here
+   |
+note: these named lifetimes are available to use
+  --> $DIR/E0637.rs:37:13
+   |
+LL | fn multiple<'a,'b,F>(t: &'a F) where F:Into<&u32>{}
+   |             ^^ ^^
+help: consider using one of the available lifetimes here
+   |
+LL | fn multiple<'a,'b,F>(t: &'a F) where F:Into<&'lifetime u32>{}
+   |                                              +++++++++
+help: consider making the bound lifetime-generic with a new `'c` lifetime
+   |
+LL | fn multiple<'a,'b,F>(t: &'a F) where F:for<'c> Into<&'c u32>{}
+   |                                        +++++++       ++
+
+error: aborting due to 9 previous errors
 
 Some errors have detailed explanations: E0106, E0637.
 For more information about an error, try `rustc --explain E0106`.
