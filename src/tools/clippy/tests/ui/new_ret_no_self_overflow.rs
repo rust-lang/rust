@@ -1,3 +1,5 @@
+//@ error-in-other-file: overflow evaluating the requirement `issue10041::X == _`
+
 #![feature(type_alias_impl_trait)]
 #![warn(clippy::new_ret_no_self)]
 
@@ -19,7 +21,7 @@ mod issue10041 {
     impl Bomb2 {
         #[define_opaque(X)]
         pub fn new() -> X {
-            //~^ ERROR: overflow evaluating the requirement
+            //~^ ERROR: item does not constrain `issue10041::X::{opaque#0}`
             0i32
         }
     }
