@@ -6,6 +6,7 @@ where
 {
     || {
         //~^ ERROR `S` does not live long enough
+        //~| ERROR `S` does not live long enough
         //
         // FIXME(#98437). This regressed at some point and
         // probably should work.

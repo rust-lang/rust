@@ -965,6 +965,14 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             }
         }
 
+        if self.body.local_kind(local) == LocalKind::Temp {
+            self.prove_clause(
+                ty::ClauseKind::WellFormed(local_decl.ty.into()),
+                Locations::All(local_decl.source_info.span),
+                ConstraintCategory::Boring,
+            );
+        }
+
         // When `unsized_fn_params` is enabled, this is checked in `check_call_dest`,
         // and `hir_typeck` still forces all non-argument locals to be sized (i.e., we don't
         // fully re-check what was already checked on HIR).
