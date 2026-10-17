@@ -1325,6 +1325,69 @@ impl<T> fmt::Debug for Discriminant<T> {
     }
 }
 
+impl<T> Discriminant<T> {
+    /// Returns an *unstable* ordering between `self` and `other`.
+    ///
+    /// [`Discriminant`] does not implement [`PartialOrd`] or [`Ord`] as we do
+    /// not guarantee a stable ordering of discriminant values.
+    /// This will _typically_ sort enum variants by their declaration order, but
+    /// this is *not* guaranteed.
+    /// Likewise, non-enum values (e.g., `struct`s) will _typically_ be trivially
+    /// ordered as equivalent.
+    ///
+    /// Users of this function should instead rely on the [`Ord`] implementation
+    /// of `T` wherever possible.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(discriminant_cmp)]
+    ///
+    /// use std::cmp::Ordering;
+    /// use std::mem::discriminant;
+    /// # use std::assert_matches;
+    ///
+    /// enum Foo { A(i32), B(i32) }
+    ///
+    /// // Equivalent arms will compare equal regardless of contained data
+    /// assert_matches!(
+    ///     discriminant(&Foo::A(1)).unstable_cmp(&discriminant(&Foo::A(2))),
+    ///     Ordering::Equal,
+    /// );
+    ///
+    /// // Inequivalent arms will compare not-equal
+    /// assert_matches!(
+    ///     discriminant(&Foo::A(1)).unstable_cmp(&discriminant(&Foo::B(1))),
+    ///     Ordering::Less | Ordering::Greater,
+    /// );
+    /// ```
+    ///
+    /// Upstream libraries and the compiler are free to change the exact ordering
+    /// of discriminants. The below _may_ break at any time:
+    ///
+    /// ```should_panic
+    /// # #![feature(discriminant_cmp)]
+    /// #
+    /// # use std::cmp::Ordering;
+    /// # use std::mem::discriminant;
+    /// # use std::assert_matches;
+    /// #
+    /// # enum Foo { B(i32), A(i32) } // Deliberately swapped so this example panics
+    /// #
+    /// // Foo::A is declared before Foo::B, but that ordering is not stable
+    /// assert_matches!(
+    ///     discriminant(&Foo::A(0)).unstable_cmp(&discriminant(&Foo::B(0))),
+    ///     Ordering::Less,
+    /// );
+    /// ```
+    #[unstable(feature = "discriminant_cmp", issue = "none", reason = "not yet created")]
+    #[must_use]
+    #[inline]
+    pub fn unstable_cmp(&self, other: &Self) -> Ordering {
+        <<T as DiscriminantKind>::Discriminant as Ord>::cmp(&self.0, &other.0)
+    }
+}
+
 /// Returns a value uniquely identifying the enum variant in `v`.
 ///
 /// If `T` is not an enum, calling this function will not result in undefined behavior, but the
