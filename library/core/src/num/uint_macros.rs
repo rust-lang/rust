@@ -249,6 +249,8 @@ macro_rules! uint_impl {
         /// Returns `self` with only the most significant bit set, or `0` if
         /// the input is `0`.
         ///
+        /// See also [`Self::next_power_of_two`].
+        ///
         /// # Examples
         ///
         /// ```
@@ -3917,6 +3919,8 @@ macro_rules! uint_impl {
         }
 
         /// Returns the smallest power of two greater than or equal to `self`.
+        ///
+        /// See also [`Self::isolate_highest_one`].
         ///
         /// When return value overflows (i.e., `self > (1 << (N-1))` for type
         /// `uN`), it panics in debug mode and the return value is wrapped to 0 in
