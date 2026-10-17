@@ -1,0 +1,26 @@
+error[E0107]: missing generics for associated type `std::ops::Coroutine::Yield`
+  --> $DIR/issue-53678-coroutine-and-const-fn.rs:6:42
+   |
+LL | pub type CoroOnce<Y, R> = impl Coroutine<Yield = Y, Return = R>;
+   |                                          ^^^^^ expected 1 lifetime argument
+   |
+help: add missing lifetime argument
+   |
+LL | pub type CoroOnce<Y, R> = impl Coroutine<Yield<'a> = Y, Return = R>;
+   |                                               ++++
+
+error[E0107]: missing generics for associated type `std::ops::Coroutine::Yield`
+  --> $DIR/issue-53678-coroutine-and-const-fn.rs:6:42
+   |
+LL | pub type CoroOnce<Y, R> = impl Coroutine<Yield = Y, Return = R>;
+   |                                          ^^^^^ expected 1 lifetime argument
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: add missing lifetime argument
+   |
+LL | pub type CoroOnce<Y, R> = impl Coroutine<Yield<'a> = Y, Return = R>;
+   |                                               ++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0107`.
