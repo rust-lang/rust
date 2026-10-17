@@ -6,7 +6,7 @@
 use std::env;
 use std::env::VarError;
 
-use rustc_ast::tokenstream::TokenStream;
+use rustc_ast::tokenarena::ArenaTokenStream;
 use rustc_ast::{GenericArg, Mutability};
 use rustc_ast_pretty::pprust;
 use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacEager, MacroExpanderResult};
@@ -26,7 +26,7 @@ fn lookup_env(var: Symbol) -> Result<Symbol, VarError> {
 pub(crate) fn expand_option_env<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
-    tts: TokenStream,
+    tts: ArenaTokenStream,
 ) -> MacroExpanderResult<'cx> {
     let ExpandResult::Ready(mac_expr) = get_single_expr_from_tts(cx, sp, tts, "option_env!") else {
         return ExpandResult::Retry(());
@@ -80,7 +80,7 @@ pub(crate) fn expand_option_env<'cx>(
 pub(crate) fn expand_env<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
-    tts: TokenStream,
+    tts: ArenaTokenStream,
 ) -> MacroExpanderResult<'cx> {
     let ExpandResult::Ready(mac) = get_exprs_from_tts(cx, tts) else {
         return ExpandResult::Retry(());

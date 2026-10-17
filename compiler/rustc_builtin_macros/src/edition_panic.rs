@@ -1,5 +1,5 @@
 use rustc_ast::token::Delimiter;
-use rustc_ast::tokenstream::TokenStream;
+use rustc_ast::tokenarena::ArenaTokenStream;
 use rustc_expand::base::*;
 use rustc_span::edition::Edition;
 use rustc_span::{Span, sym};
@@ -16,7 +16,7 @@ use rustc_span::{Span, sym};
 pub(crate) fn expand_panic<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
-    tts: TokenStream,
+    tts: ArenaTokenStream,
 ) -> MacroExpanderResult<'cx> {
     let mac = if use_panic_2021(sp) { sym::panic_2021 } else { sym::panic_2015 };
     expand(mac, cx, sp, tts)
@@ -29,7 +29,7 @@ pub(crate) fn expand_panic<'cx>(
 pub(crate) fn expand_unreachable<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
-    tts: TokenStream,
+    tts: ArenaTokenStream,
 ) -> MacroExpanderResult<'cx> {
     let mac = if use_panic_2021(sp) { sym::unreachable_2021 } else { sym::unreachable_2015 };
     expand(mac, cx, sp, tts)
@@ -39,7 +39,7 @@ fn expand<'cx>(
     mac: rustc_span::Symbol,
     cx: &'cx ExtCtxt<'_>,
     sp: Span,
-    tts: TokenStream,
+    tts: ArenaTokenStream,
 ) -> MacroExpanderResult<'cx> {
     let sp = cx.with_call_site_ctxt(sp);
 
