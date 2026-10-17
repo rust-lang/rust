@@ -6,6 +6,7 @@
 //! For debugging, fast paths can be disabled using `-Zdisable-fast-paths`.
 
 use rustc_type_ir::inherent::*;
+use rustc_type_ir::predicates::Predicate;
 use rustc_type_ir::solve::{
     Certainty, ComputeGoalFastPathOutcome, Goal, GoalStalledOn, GoalStalledOnOpaques, MaybeInfo,
     SucceededInErased,
@@ -132,7 +133,7 @@ where
 #[inline(never)]
 pub(super) fn compute_goal_fast_path_cold<D, I>(
     delegate: &D,
-    goal: Goal<I, I::Predicate>,
+    goal: Goal<I, Predicate<I>>,
     origin_span: I::Span,
 ) -> Option<GoalEvaluation<I>>
 where
@@ -146,7 +147,7 @@ where
 /// See the docs on [`ComputeGoalFastPathOutcome`]
 pub fn compute_goal_fast_path<D, I>(
     delegate: &D,
-    goal: Goal<I, I::Predicate>,
+    goal: Goal<I, Predicate<I>>,
     origin_span: I::Span,
 ) -> Option<GoalEvaluation<I>>
 where

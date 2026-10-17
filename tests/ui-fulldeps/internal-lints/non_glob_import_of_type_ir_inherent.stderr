@@ -1,8 +1,8 @@
 error: non-glob import of `rustc_type_ir::inherent`
   --> $DIR/non_glob_import_of_type_ir_inherent.rs:16:9
    |
-LL |     use rustc_type_ir::inherent::Predicate;
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^---------
+LL |     use rustc_type_ir::inherent::Clause;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^------
    |                                  |
    |                                  help: try using a glob import instead: `*`
    |

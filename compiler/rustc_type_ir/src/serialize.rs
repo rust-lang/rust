@@ -1,6 +1,7 @@
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
 use crate::inherent::*;
+use crate::predicates::{Clause, Predicate};
 use crate::visit::TypeVisitable;
 use crate::{self as ty, Const, ConstKind, Interner, Region, RegionKind, UnsafeBinderInner};
 
@@ -15,6 +16,8 @@ pub trait InternerDecoder: Decoder {
     type Interner: Interner;
 
     fn interner(&self) -> Self::Interner;
+
+    fn decode_predicate(&mut self) -> Predicate<Self::Interner>;
 }
 
 macro_rules! impl_binder_encode_decode {
@@ -133,5 +136,36 @@ where
 {
     fn decode(decoder: &mut D) -> Self {
         Const::new(decoder.interner(), Decodable::decode(decoder))
+    }
+}
+
+/// Encodes a shared predicate using the frontend's existing representation.
+///
+/// Rustc uses predicate shorthands for metadata and incremental caches.
+pub trait PredicateEncoder<I: Interner>: Encoder {
+    fn encode_predicate(&mut self, predicate: Predicate<I>);
+}
+
+impl<I: Interner, E: PredicateEncoder<I>> Encodable<E> for Predicate<I> {
+    fn encode(&self, encoder: &mut E) {
+        encoder.encode_predicate(*self);
+    }
+}
+
+impl<I: Interner, D: InternerDecoder<Interner = I>> Decodable<D> for Predicate<I> {
+    fn decode(decoder: &mut D) -> Self {
+        decoder.decode_predicate()
+    }
+}
+
+impl<I: Interner, E: PredicateEncoder<I>> Encodable<E> for Clause<I> {
+    fn encode(&self, encoder: &mut E) {
+        self.as_predicate().encode(encoder);
+    }
+}
+
+impl<I: Interner, D: InternerDecoder<Interner = I>> Decodable<D> for Clause<I> {
+    fn decode(decoder: &mut D) -> Self {
+        Predicate::decode(decoder).expect_clause()
     }
 }

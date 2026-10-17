@@ -1,12 +1,10 @@
 use std::cmp::Ordering;
 
-use rustc_data_structures::intern::Interned;
 use rustc_hir::def_id::DefId;
-use rustc_macros::{StableHash, extension};
-use rustc_span::bug;
+use rustc_macros::extension;
 use rustc_type_ir as ir;
 
-use crate::ty::{self, EarlyBinder, Ty, TyCtxt, TypeFlags, Upcast, UpcastFrom, WithCachedTypeInfo};
+use crate::ty::{self, Ty, TyCtxt, Upcast, UpcastFrom};
 
 pub type TraitRef<'tcx> = ir::TraitRef<TyCtxt<'tcx>>;
 pub type AliasTerm<'tcx> = ir::AliasTerm<TyCtxt<'tcx>>;
@@ -35,107 +33,11 @@ pub type PolySubtypePredicate<'tcx> = ty::Binder<'tcx, SubtypePredicate<'tcx>>;
 pub type PolyCoercePredicate<'tcx> = ty::Binder<'tcx, CoercePredicate<'tcx>>;
 pub type PolyProjectionClause<'tcx> = ty::Binder<'tcx, ProjectionClause<'tcx>>;
 
-/// A statement that can be proven by a trait solver. This includes things that may
-/// show up in where clauses, such as trait predicates and projection predicates,
-/// and also things that are emitted as part of type checking such as `DynCompatible`
-/// predicate which is emitted when a type is coerced to a trait object.
-///
-/// Use this rather than `PredicateKind`, whenever possible.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, StableHash)]
-#[rustc_pass_by_value]
-pub struct Predicate<'tcx>(
-    pub(super) Interned<'tcx, WithCachedTypeInfo<ty::Binder<'tcx, PredicateKind<'tcx>>>>,
-);
+/// An interned statement the trait solver can prove.
+pub type Predicate<'tcx> = ir::predicates::Predicate<TyCtxt<'tcx>>;
 
-impl<'tcx> rustc_type_ir::inherent::Predicate<TyCtxt<'tcx>> for Predicate<'tcx> {
-    fn as_clause(self) -> Option<ty::Clause<'tcx>> {
-        self.as_clause()
-    }
-}
-
-impl<'tcx> rustc_type_ir::inherent::IntoKind for Predicate<'tcx> {
-    type Kind = ty::Binder<'tcx, ty::PredicateKind<'tcx>>;
-
-    fn kind(self) -> Self::Kind {
-        self.kind()
-    }
-}
-
-impl<'tcx> rustc_type_ir::Flags for Predicate<'tcx> {
-    fn flags(&self) -> TypeFlags {
-        self.0.flags
-    }
-
-    fn outer_exclusive_binder(&self) -> ty::DebruijnIndex {
-        self.0.outer_exclusive_binder
-    }
-}
-
-impl<'tcx> Predicate<'tcx> {
-    /// Gets the inner `ty::Binder<'tcx, PredicateKind<'tcx>>`.
-    #[inline]
-    pub fn kind(self) -> ty::Binder<'tcx, PredicateKind<'tcx>> {
-        self.0.internee
-    }
-
-    /// Flips the polarity of a Predicate.
-    ///
-    /// Given `T: Trait` predicate it returns `T: !Trait` and given `T: !Trait` returns `T: Trait`.
-    pub fn flip_polarity(self, tcx: TyCtxt<'tcx>) -> Option<Predicate<'tcx>> {
-        let kind = self
-            .kind()
-            .map_bound(|kind| match kind {
-                PredicateKind::Clause(ClauseKind::Trait(TraitClause { trait_ref, polarity })) => {
-                    Some(PredicateKind::Clause(ClauseKind::Trait(TraitClause {
-                        trait_ref,
-                        polarity: polarity.flip(),
-                    })))
-                }
-
-                _ => None,
-            })
-            .transpose()?;
-
-        Some(tcx.mk_predicate(kind))
-    }
-
-    /// Whether this projection can be soundly normalized.
-    ///
-    /// Wf predicates must not be normalized, as normalization
-    /// can remove required bounds which would cause us to
-    /// unsoundly accept some programs. See #91068.
-    #[inline]
-    pub fn allow_normalization(self) -> bool {
-        rustc_type_ir::inherent::Predicate::allow_normalization(self)
-    }
-}
-
-impl<'tcx> rustc_errors::IntoDiagArg for Predicate<'tcx> {
-    fn into_diag_arg(self, path: &mut Option<std::path::PathBuf>) -> rustc_errors::DiagArgValue {
-        ty::tls::with(|tcx| {
-            let pred = tcx.short_string(tcx.lift(self), path);
-            rustc_errors::DiagArgValue::Str(std::borrow::Cow::Owned(pred))
-        })
-    }
-}
-
-impl<'tcx> rustc_errors::IntoDiagArg for Clause<'tcx> {
-    fn into_diag_arg(self, path: &mut Option<std::path::PathBuf>) -> rustc_errors::DiagArgValue {
-        ty::tls::with(|tcx| {
-            let clause = tcx.short_string(tcx.lift(self), path);
-            rustc_errors::DiagArgValue::Str(std::borrow::Cow::Owned(clause))
-        })
-    }
-}
-
-/// A subset of predicates which can be assumed by the trait solver. They show up in
-/// an item's where clauses, hence the name `Clause`, and may either be user-written
-/// (such as traits) or may be inserted during lowering.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, StableHash)]
-#[rustc_pass_by_value]
-pub struct Clause<'tcx>(
-    pub(super) Interned<'tcx, WithCachedTypeInfo<ty::Binder<'tcx, PredicateKind<'tcx>>>>,
-);
+/// An interned predicate that can be assumed by the solver.
+pub type Clause<'tcx> = ir::predicates::Clause<TyCtxt<'tcx>>;
 
 impl<'tcx> rustc_type_ir::inherent::Clause<TyCtxt<'tcx>> for Clause<'tcx> {
     fn as_predicate(self) -> Predicate<'tcx> {
@@ -147,78 +49,21 @@ impl<'tcx> rustc_type_ir::inherent::Clause<TyCtxt<'tcx>> for Clause<'tcx> {
     }
 }
 
-impl<'tcx> rustc_type_ir::inherent::IntoKind for Clause<'tcx> {
-    type Kind = ty::Binder<'tcx, ClauseKind<'tcx>>;
-
-    fn kind(self) -> Self::Kind {
-        self.kind()
-    }
-}
-
-impl<'tcx> rustc_type_ir::Flags for Clause<'tcx> {
-    fn flags(&self) -> TypeFlags {
-        self.0.flags
+// Preserve rustc's existing diagnostic formatting while the concrete
+// predicate wrappers are being migrated into rustc_type_ir.
+impl<'tcx> ir::ir_print::PredicateDiagFormatter for TyCtxt<'tcx> {
+    fn predicate_diag_string(
+        predicate: ir::predicates::Predicate<Self>,
+        path: &mut Option<std::path::PathBuf>,
+    ) -> String {
+        ty::tls::with(|tcx| tcx.short_string(tcx.lift(predicate), path))
     }
 
-    fn outer_exclusive_binder(&self) -> ty::DebruijnIndex {
-        self.0.outer_exclusive_binder
-    }
-}
-
-impl<'tcx> Clause<'tcx> {
-    pub fn as_predicate(self) -> Predicate<'tcx> {
-        Predicate(self.0)
-    }
-
-    pub fn kind(self) -> ty::Binder<'tcx, ClauseKind<'tcx>> {
-        // Outline the unreachable! call to make the happy path faster.
-        // see: https://github.com/rust-lang/rust/pull/163657#issuecomment-5956974964
-        #[cold]
-        #[inline(never)]
-        fn unreachable_inner() -> ! {
-            unreachable!()
-        }
-
-        self.0.internee.map_bound_no_validate_bound_vars(|kind| match kind {
-            PredicateKind::Clause(clause) => clause,
-            _ => unreachable_inner(),
-        })
-    }
-
-    pub fn as_trait_clause(self) -> Option<ty::Binder<'tcx, TraitClause<'tcx>>> {
-        let clause = self.kind();
-        if let ty::ClauseKind::Trait(trait_clause) = clause.skip_binder() {
-            Some(clause.rebind(trait_clause))
-        } else {
-            None
-        }
-    }
-
-    pub fn as_projection_clause(self) -> Option<ty::Binder<'tcx, ProjectionClause<'tcx>>> {
-        let clause = self.kind();
-        if let ty::ClauseKind::Projection(projection_clause) = clause.skip_binder() {
-            Some(clause.rebind(projection_clause))
-        } else {
-            None
-        }
-    }
-
-    pub fn as_type_outlives_clause(self) -> Option<ty::Binder<'tcx, TypeOutlivesClause<'tcx>>> {
-        let clause = self.kind();
-        if let ty::ClauseKind::TypeOutlives(o) = clause.skip_binder() {
-            Some(clause.rebind(o))
-        } else {
-            None
-        }
-    }
-
-    pub fn as_region_outlives_clause(self) -> Option<ty::Binder<'tcx, RegionOutlivesClause<'tcx>>> {
-        let clause = self.kind();
-        if let ty::ClauseKind::RegionOutlives(o) = clause.skip_binder() {
-            Some(clause.rebind(o))
-        } else {
-            None
-        }
+    fn clause_diag_string(
+        clause: ir::predicates::Clause<Self>,
+        path: &mut Option<std::path::PathBuf>,
+    ) -> String {
+        ty::tls::with(|tcx| tcx.short_string(tcx.lift(clause), path))
     }
 }
 
@@ -343,210 +188,6 @@ pub type PolyTraitRef<'tcx> = ty::Binder<'tcx, TraitRef<'tcx>>;
 pub type PolyExistentialTraitRef<'tcx> = ty::Binder<'tcx, ExistentialTraitRef<'tcx>>;
 pub type PolyExistentialProjection<'tcx> = ty::Binder<'tcx, ExistentialProjection<'tcx>>;
 
-impl<'tcx> Clause<'tcx> {
-    /// Performs a instantiation suitable for going from a
-    /// poly-trait-ref to supertraits that must hold if that
-    /// poly-trait-ref holds. This is slightly different from a normal
-    /// instantiation in terms of what happens with bound regions. See
-    /// lengthy comment below for details.
-    pub fn instantiate_supertrait(
-        self,
-        tcx: TyCtxt<'tcx>,
-        trait_ref: ty::PolyTraitRef<'tcx>,
-    ) -> Clause<'tcx> {
-        // The interaction between HRTB and supertraits is not entirely
-        // obvious. Let me walk you (and myself) through an example.
-        //
-        // Let's start with an easy case. Consider two traits:
-        //
-        //     trait Foo<'a>: Bar<'a,'a> { }
-        //     trait Bar<'b,'c> { }
-        //
-        // Now, if we have a trait reference `for<'x> T: Foo<'x>`, then
-        // we can deduce that `for<'x> T: Bar<'x,'x>`. Basically, if we
-        // knew that `Foo<'x>` (for any 'x) then we also know that
-        // `Bar<'x,'x>` (for any 'x). This more-or-less falls out from
-        // normal instantiation.
-        //
-        // In terms of why this is sound, the idea is that whenever there
-        // is an impl of `T:Foo<'a>`, it must show that `T:Bar<'a,'a>`
-        // holds. So if there is an impl of `T:Foo<'a>` that applies to
-        // all `'a`, then we must know that `T:Bar<'a,'a>` holds for all
-        // `'a`.
-        //
-        // Another example to be careful of is this:
-        //
-        //     trait Foo1<'a>: for<'b> Bar1<'a,'b> { }
-        //     trait Bar1<'b,'c> { }
-        //
-        // Here, if we have `for<'x> T: Foo1<'x>`, then what do we know?
-        // The answer is that we know `for<'x,'b> T: Bar1<'x,'b>`. The
-        // reason is similar to the previous example: any impl of
-        // `T:Foo1<'x>` must show that `for<'b> T: Bar1<'x, 'b>`. So
-        // basically we would want to collapse the bound lifetimes from
-        // the input (`trait_ref`) and the supertraits.
-        //
-        // To achieve this in practice is fairly straightforward. Let's
-        // consider the more complicated scenario:
-        //
-        // - We start out with `for<'x> T: Foo1<'x>`. In this case, `'x`
-        //   has a De Bruijn index of 1. We want to produce `for<'x,'b> T: Bar1<'x,'b>`,
-        //   where both `'x` and `'b` would have a DB index of 1.
-        //   The instantiation from the input trait-ref is therefore going to be
-        //   `'a => 'x` (where `'x` has a DB index of 1).
-        // - The supertrait-ref is `for<'b> Bar1<'a,'b>`, where `'a` is an
-        //   early-bound parameter and `'b` is a late-bound parameter with a
-        //   DB index of 1.
-        // - If we replace `'a` with `'x` from the input, it too will have
-        //   a DB index of 1, and thus we'll have `for<'x,'b> Bar1<'x,'b>`
-        //   just as we wanted.
-        //
-        // There is only one catch. If we just apply the instantiation `'a
-        // => 'x` to `for<'b> Bar1<'a,'b>`, the instantiation code will
-        // adjust the DB index because we instantiating into a binder (it
-        // tries to be so smart...) resulting in `for<'x> for<'b>
-        // Bar1<'x,'b>` (we have no syntax for this, so use your
-        // imagination). Basically the 'x will have DB index of 2 and 'b
-        // will have DB index of 1. Not quite what we want. So we apply
-        // the instantiation to the *contents* of the trait reference,
-        // rather than the trait reference itself (put another way, the
-        // instantiation code expects equal binding levels in the values
-        // from the instantiation and the value being instantiated into, and
-        // this trick achieves that).
-
-        // Working through the second example:
-        // trait_ref: for<'x> T: Foo1<'^0.0>; args: [T, '^0.0]
-        // predicate: for<'b> Self: Bar1<'a, '^0.0>; args: [Self, 'a, '^0.0]
-        // We want to end up with:
-        //     for<'x, 'b> T: Bar1<'^0.0, '^0.1>
-        // To do this:
-        // 1) We must shift all bound vars in predicate by the length
-        //    of trait ref's bound vars. So, we would end up with predicate like
-        //    Self: Bar1<'a, '^0.1>
-        // 2) We can then apply the trait args to this, ending up with
-        //    T: Bar1<'^0.0, '^0.1>
-        // 3) Finally, to create the final bound vars, we concatenate the bound
-        //    vars of the trait ref with those of the predicate:
-        //    ['x, 'b]
-        let bound_pred = self.kind();
-        let pred_bound_vars = bound_pred.bound_vars();
-        let trait_bound_vars = trait_ref.bound_vars();
-        // 1) Self: Bar1<'a, '^0.0> -> Self: Bar1<'a, '^0.1>
-        let shifted_pred =
-            tcx.shift_bound_var_indices(trait_bound_vars.len(), bound_pred.skip_binder());
-        // 2) Self: Bar1<'a, '^0.1> -> T: Bar1<'^0.0, '^0.1>
-        let new = EarlyBinder::bind(tcx, shifted_pred)
-            .instantiate(tcx, trait_ref.skip_binder().args)
-            .skip_norm_wip();
-        // 3) ['x] + ['b] -> ['x, 'b]
-        let bound_vars =
-            tcx.mk_bound_variable_kinds_from_iter(trait_bound_vars.iter().chain(pred_bound_vars));
-
-        // FIXME: Is it really perf sensitive to use reuse_or_mk_predicate here?
-        tcx.reuse_or_mk_predicate(
-            self.as_predicate(),
-            ty::Binder::bind_with_vars(PredicateKind::Clause(new), bound_vars),
-        )
-        .expect_clause()
-    }
-}
-
-impl<'tcx> UpcastFrom<TyCtxt<'tcx>, PredicateKind<'tcx>> for Predicate<'tcx> {
-    fn upcast_from(from: PredicateKind<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
-        ty::Binder::dummy(from).upcast(tcx)
-    }
-}
-
-impl<'tcx> UpcastFrom<TyCtxt<'tcx>, ty::Binder<'tcx, PredicateKind<'tcx>>> for Predicate<'tcx> {
-    fn upcast_from(from: ty::Binder<'tcx, PredicateKind<'tcx>>, tcx: TyCtxt<'tcx>) -> Self {
-        tcx.mk_predicate(from)
-    }
-}
-
-impl<'tcx> UpcastFrom<TyCtxt<'tcx>, ClauseKind<'tcx>> for Predicate<'tcx> {
-    fn upcast_from(from: ClauseKind<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
-        tcx.mk_predicate(ty::Binder::dummy(PredicateKind::Clause(from)))
-    }
-}
-
-impl<'tcx> UpcastFrom<TyCtxt<'tcx>, ty::Binder<'tcx, ClauseKind<'tcx>>> for Predicate<'tcx> {
-    fn upcast_from(from: ty::Binder<'tcx, ClauseKind<'tcx>>, tcx: TyCtxt<'tcx>) -> Self {
-        tcx.mk_predicate(from.map_bound(PredicateKind::Clause))
-    }
-}
-
-impl<'tcx> UpcastFrom<TyCtxt<'tcx>, Clause<'tcx>> for Predicate<'tcx> {
-    fn upcast_from(from: Clause<'tcx>, _tcx: TyCtxt<'tcx>) -> Self {
-        from.as_predicate()
-    }
-}
-
-impl<'tcx> UpcastFrom<TyCtxt<'tcx>, ClauseKind<'tcx>> for Clause<'tcx> {
-    fn upcast_from(from: ClauseKind<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
-        tcx.mk_predicate(ty::Binder::dummy(PredicateKind::Clause(from))).expect_clause()
-    }
-}
-
-impl<'tcx> UpcastFrom<TyCtxt<'tcx>, ty::Binder<'tcx, ClauseKind<'tcx>>> for Clause<'tcx> {
-    fn upcast_from(from: ty::Binder<'tcx, ClauseKind<'tcx>>, tcx: TyCtxt<'tcx>) -> Self {
-        tcx.mk_predicate(from.map_bound(|clause| PredicateKind::Clause(clause))).expect_clause()
-    }
-}
-
-impl<'tcx> UpcastFrom<TyCtxt<'tcx>, TraitRef<'tcx>> for Predicate<'tcx> {
-    fn upcast_from(from: TraitRef<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
-        ty::Binder::dummy(from).upcast(tcx)
-    }
-}
-
-impl<'tcx> UpcastFrom<TyCtxt<'tcx>, TraitRef<'tcx>> for Clause<'tcx> {
-    fn upcast_from(from: TraitRef<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
-        let p: Predicate<'tcx> = from.upcast(tcx);
-        p.expect_clause()
-    }
-}
-
-impl<'tcx> UpcastFrom<TyCtxt<'tcx>, ty::Binder<'tcx, TraitRef<'tcx>>> for Predicate<'tcx> {
-    fn upcast_from(from: ty::Binder<'tcx, TraitRef<'tcx>>, tcx: TyCtxt<'tcx>) -> Self {
-        let pred: PolyTraitClause<'tcx> = from.upcast(tcx);
-        pred.upcast(tcx)
-    }
-}
-
-impl<'tcx> UpcastFrom<TyCtxt<'tcx>, ty::Binder<'tcx, TraitRef<'tcx>>> for Clause<'tcx> {
-    fn upcast_from(from: ty::Binder<'tcx, TraitRef<'tcx>>, tcx: TyCtxt<'tcx>) -> Self {
-        let pred: PolyTraitClause<'tcx> = from.upcast(tcx);
-        pred.upcast(tcx)
-    }
-}
-
-impl<'tcx> UpcastFrom<TyCtxt<'tcx>, TraitClause<'tcx>> for Predicate<'tcx> {
-    fn upcast_from(from: TraitClause<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
-        PredicateKind::Clause(ClauseKind::Trait(from)).upcast(tcx)
-    }
-}
-
-impl<'tcx> UpcastFrom<TyCtxt<'tcx>, PolyTraitClause<'tcx>> for Predicate<'tcx> {
-    fn upcast_from(from: PolyTraitClause<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
-        from.map_bound_no_validate_bound_vars(|p| PredicateKind::Clause(ClauseKind::Trait(p)))
-            .upcast(tcx)
-    }
-}
-
-impl<'tcx> UpcastFrom<TyCtxt<'tcx>, TraitClause<'tcx>> for Clause<'tcx> {
-    fn upcast_from(from: TraitClause<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
-        let p: Predicate<'tcx> = from.upcast(tcx);
-        p.expect_clause()
-    }
-}
-
-impl<'tcx> UpcastFrom<TyCtxt<'tcx>, PolyTraitClause<'tcx>> for Clause<'tcx> {
-    fn upcast_from(from: PolyTraitClause<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
-        let p: Predicate<'tcx> = from.upcast(tcx);
-        p.expect_clause()
-    }
-}
-
 impl<'tcx> UpcastFrom<TyCtxt<'tcx>, RegionOutlivesClause<'tcx>> for Predicate<'tcx> {
     fn upcast_from(from: RegionOutlivesClause<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
         ty::Binder::dummy(PredicateKind::Clause(ClauseKind::RegionOutlives(from))).upcast(tcx)
@@ -565,86 +206,6 @@ impl<'tcx> UpcastFrom<TyCtxt<'tcx>, TypeOutlivesClause<'tcx>> for Predicate<'tcx
     }
 }
 
-impl<'tcx> UpcastFrom<TyCtxt<'tcx>, ProjectionClause<'tcx>> for Predicate<'tcx> {
-    fn upcast_from(from: ProjectionClause<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
-        ty::Binder::dummy(PredicateKind::Clause(ClauseKind::Projection(from))).upcast(tcx)
-    }
-}
-
-impl<'tcx> UpcastFrom<TyCtxt<'tcx>, PolyProjectionClause<'tcx>> for Predicate<'tcx> {
-    fn upcast_from(from: PolyProjectionClause<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
-        from.map_bound(|p| PredicateKind::Clause(ClauseKind::Projection(p))).upcast(tcx)
-    }
-}
-
-impl<'tcx> UpcastFrom<TyCtxt<'tcx>, ProjectionClause<'tcx>> for Clause<'tcx> {
-    fn upcast_from(from: ProjectionClause<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
-        let p: Predicate<'tcx> = from.upcast(tcx);
-        p.expect_clause()
-    }
-}
-
-impl<'tcx> UpcastFrom<TyCtxt<'tcx>, PolyProjectionClause<'tcx>> for Clause<'tcx> {
-    fn upcast_from(from: PolyProjectionClause<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
-        let p: Predicate<'tcx> = from.upcast(tcx);
-        p.expect_clause()
-    }
-}
-
-impl<'tcx> UpcastFrom<TyCtxt<'tcx>, ty::Binder<'tcx, ty::HostEffectClause<'tcx>>>
-    for Predicate<'tcx>
-{
-    fn upcast_from(from: ty::Binder<'tcx, ty::HostEffectClause<'tcx>>, tcx: TyCtxt<'tcx>) -> Self {
-        from.map_bound(ty::ClauseKind::HostEffect).upcast(tcx)
-    }
-}
-
-impl<'tcx> UpcastFrom<TyCtxt<'tcx>, ty::Binder<'tcx, ty::HostEffectClause<'tcx>>> for Clause<'tcx> {
-    fn upcast_from(from: ty::Binder<'tcx, ty::HostEffectClause<'tcx>>, tcx: TyCtxt<'tcx>) -> Self {
-        from.map_bound(ty::ClauseKind::HostEffect).upcast(tcx)
-    }
-}
-
-impl<'tcx> UpcastFrom<TyCtxt<'tcx>, NormalizesTo<'tcx>> for Predicate<'tcx> {
-    fn upcast_from(from: NormalizesTo<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
-        PredicateKind::NormalizesTo(from).upcast(tcx)
-    }
-}
-
-impl<'tcx> Predicate<'tcx> {
-    pub fn as_trait_clause(self) -> Option<PolyTraitClause<'tcx>> {
-        let predicate = self.kind();
-        match predicate.skip_binder() {
-            PredicateKind::Clause(ClauseKind::Trait(t)) => Some(predicate.rebind(t)),
-            _ => None,
-        }
-    }
-
-    pub fn as_projection_clause(self) -> Option<PolyProjectionClause<'tcx>> {
-        let predicate = self.kind();
-        match predicate.skip_binder() {
-            PredicateKind::Clause(ClauseKind::Projection(t)) => Some(predicate.rebind(t)),
-            _ => None,
-        }
-    }
-
-    /// Matches a `PredicateKind::Clause` and turns it into a `Clause`, otherwise returns `None`.
-    pub fn as_clause(self) -> Option<Clause<'tcx>> {
-        match self.kind().skip_binder() {
-            PredicateKind::Clause(..) => Some(self.expect_clause()),
-            _ => None,
-        }
-    }
-
-    /// Assert that the predicate is a clause.
-    pub fn expect_clause(self) -> Clause<'tcx> {
-        match self.kind().skip_binder() {
-            PredicateKind::Clause(..) => Clause(self.0),
-            _ => bug!("{self} is not a clause"),
-        }
-    }
-}
-
 // Some types are used a lot. Make sure they don't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
 mod size_asserts {
@@ -653,6 +214,6 @@ mod size_asserts {
     use super::*;
     // tidy-alphabetical-start
     static_assert_size!(PredicateKind<'_>, 40);
-    static_assert_size!(WithCachedTypeInfo<PredicateKind<'_>>, 48);
+    static_assert_size!(rustc_type_ir::WithCachedTypeInfo<PredicateKind<'_>>, 48);
     // tidy-alphabetical-end
 }

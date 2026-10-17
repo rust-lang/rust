@@ -5,6 +5,7 @@ use derive_where::derive_where;
 use rustc_type_ir::data_structures::HashMap;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::{SolverProjectionLangItem, SolverTraitLangItem};
+use rustc_type_ir::predicates::Predicate;
 use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::solve::inspect::ProbeKind;
 use rustc_type_ir::{
@@ -437,7 +438,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
     self_ty: I::Ty,
     goal_kind: ty::ClosureKind,
     env_region: Region<I>,
-) -> Result<(ty::Binder<I, AsyncCallableRelevantTypes<I>>, Vec<I::Predicate>), NoSolution> {
+) -> Result<(ty::Binder<I, AsyncCallableRelevantTypes<I>>, Vec<Predicate<I>>), NoSolution> {
     match self_ty.kind() {
         ty::CoroutineClosure(def_id, args) => {
             if !cx.coroutine_is_async(cx.coroutine_for_closure(def_id)) {
@@ -596,7 +597,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
 fn fn_item_to_async_callable<I: Interner>(
     cx: I,
     bound_sig: ty::Binder<I, ty::FnSig<I>>,
-) -> Result<(ty::Binder<I, AsyncCallableRelevantTypes<I>>, Vec<I::Predicate>), NoSolution> {
+) -> Result<(ty::Binder<I, AsyncCallableRelevantTypes<I>>, Vec<Predicate<I>>), NoSolution> {
     let sig = bound_sig.skip_binder();
     let future_trait_def_id = cx.require_trait_lang_item(SolverTraitLangItem::Future);
     // `FnDef` and `FnPtr` only implement `AsyncFn*` when their
@@ -889,7 +890,7 @@ pub(in crate::solve) fn predicates_for_object_candidate<D, I>(
     param_env: I::ParamEnv,
     trait_ref: ty::TraitRef<I>,
     object_bounds: I::BoundExistentialPredicates,
-) -> Result<Vec<Goal<I, I::Predicate>>, AmbiguousOrRerunNonErased>
+) -> Result<Vec<Goal<I, Predicate<I>>>, AmbiguousOrRerunNonErased>
 where
     D: SolverDelegate<Interner = I>,
     I: Interner,
@@ -951,7 +952,9 @@ where
     Ok(folder
         .nested
         .into_iter()
-        .chain(requirements.into_iter().map(|clause| Goal::new(cx, param_env, clause)))
+        .chain(
+            requirements.into_iter().map(|clause| Goal::new(cx, param_env, clause.as_predicate())),
+        )
         .collect())
 }
 
@@ -960,7 +963,7 @@ struct ReplaceProjectionWith<'a, 'b, I: Interner, D: SolverDelegate<Interner = I
     param_env: I::ParamEnv,
     self_ty: I::Ty,
     mapping: &'a HashMap<I::TraitAssocTermId, Vec<ty::Binder<I, ty::ProjectionClause<I>>>>,
-    nested: Vec<Goal<I, I::Predicate>>,
+    nested: Vec<Goal<I, Predicate<I>>>,
 }
 
 impl<D, I> ReplaceProjectionWith<'_, '_, I, D>

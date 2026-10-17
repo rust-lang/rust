@@ -4,6 +4,7 @@
 use rustc_data_structures::transitive_relation::TransitiveRelationBuilder;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::outlives::{Component, push_outlives_components};
+use rustc_type_ir::predicates::Predicate;
 #[cfg(not(feature = "nightly"))]
 use rustc_type_ir::region_constraint::TransitiveRelationBuilder;
 use rustc_type_ir::region_constraint::{
@@ -11,7 +12,7 @@ use rustc_type_ir::region_constraint::{
 };
 use rustc_type_ir::{
     AliasTy, Binder, ClauseKind, Const, InferCtxtLike, Interner, Region, TypeVisitable,
-    TypeVisitableExt, TypeVisitor, UniverseIndex,
+    TypeVisitableExt, TypeVisitor, UniverseIndex, Upcast as _,
 };
 use tracing::{debug, instrument};
 
@@ -39,7 +40,7 @@ where
         struct RawAssumptions<'a, 'b, D: SolverDelegate<Interner = I>, I: Interner> {
             ecx: &'a mut EvalCtxt<'b, D, I>,
             param_env: I::ParamEnv,
-            out: Vec<Goal<I, I::Predicate>>,
+            out: Vec<Goal<I, Predicate<I>>>,
         }
 
         impl<D, I> TypeVisitor<I> for RawAssumptions<'_, '_, D, I>
@@ -100,7 +101,10 @@ where
         //
         // `Assumptions::new` elaborates, restricts the clauses to `u` and picks out the
         // outlives ones for us, so we just hand over everything the requirements gave us.
-        let clauses = reqs.into_iter().filter_map(|goal| goal.predicate.as_clause());
+        let cx = self.cx();
+        let clauses = reqs
+            .into_iter()
+            .filter_map(|goal| goal.predicate.as_clause().map(|clause| clause.kind().upcast(cx)));
 
         Some(Assumptions::new(
             &**self.delegate,
