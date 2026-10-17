@@ -23,6 +23,7 @@ impl<T> Clone for SendPtr<T> {
 
 fn yield_now() {
     if cfg!(miri) {
+        // We control the scheduler so we know this is enough.
         thread::yield_now();
     } else {
         // Without scheduler control, we hope that sleeping a bit is enough.

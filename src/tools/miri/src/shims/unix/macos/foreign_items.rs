@@ -364,6 +364,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     .check_shim_sig(shim_sig!(extern "C" fn(*_) -> ()), (link_name, abi, args))?;
                 this.dispatch_release(sem)?;
             }
+            "dispatch_time" => {
+                let [when, delta] = this.check_shim_sig(
+                    shim_sig!(extern "C" fn(u64, i64) -> u64),
+                    (link_name, abi, args),
+                )?;
+                this.dispatch_time(when, delta, dest)?;
+            }
 
             "pthread_cond_timedwait_relative_np" => {
                 let [cond, mutex, reltime] =

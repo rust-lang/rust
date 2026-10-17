@@ -85,6 +85,7 @@ struct MacOsSemaphore {
 const SEM_INIT_OFFSET: Size = Size::ZERO;
 
 // Constants from the dispatch semaphore API.
+const DISPATCH_TIME_NOW: u64 = 0;
 const DISPATCH_TIME_FOREVER: u64 = !0;
 
 impl SyncObj for MacOsSemaphore {
@@ -527,22 +528,30 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let sem_ptr = this.read_immediate(sem_ptr)?;
         let timeout = this.read_scalar(timeout)?.to_u64()?;
 
-        if timeout != DISPATCH_TIME_FOREVER {
-            throw_unsup_format!("dispatch_semaphore_wait with a timeout is not supported");
-        }
+        let deadline = if timeout == DISPATCH_TIME_FOREVER {
+            None
+        } else {
+            // `timeout` is an absolute nanosecond value on the monotone clock.
+            // (This also handles `DISPATCH_TIME_NOW` as that is 0.)
+            let deadline =
+                this.machine.monotonic_clock.epoch().add_lossy(Duration::from_nanos(timeout));
+            Some(deadline.into())
+        };
 
         let data = this.dispatch_semaphore_get_data(&sem_ptr)?.clone();
         let dest = dest.clone();
         this.semaphore_decrement(
             data.semaphore,
-            /* deadline */ None,
+            deadline,
             callback!(
                 @capture<'tcx> {
                     dest: MPlaceTy<'tcx>,
                 }
                 |this, unblock: UnblockKind| {
-                    assert_eq!(unblock, UnblockKind::Ready);
-                    this.write_null(&dest)
+                    match unblock {
+                        UnblockKind::Ready => this.write_null(&dest),
+                        UnblockKind::TimedOut => this.write_int(1, &dest),
+                    }
                 }
             ),
         )?;
@@ -587,6 +596,37 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let sem_ptr = sem_ptr.to_scalar().to_pointer(this);
         this.deallocate_ptr(sem_ptr, None, MiriMemoryKind::Runtime.into())?;
 
+        interp_ok(())
+    }
+
+    fn dispatch_time(
+        &mut self,
+        when: &OpTy<'tcx>,
+        delta: &OpTy<'tcx>,
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+        let when = this.read_scalar(when)?.to_u64()?;
+        let delta = this.read_scalar(delta)?.to_i64()?;
+
+        if when != DISPATCH_TIME_NOW {
+            throw_unsup_format!(
+                "dispatch_time is only supported with `when` being `DISPATCH_TIME_NOW`"
+            );
+        }
+        let Ok(delta) = u64::try_from(delta) else {
+            throw_unsup_format!("dispatch_time with negative `delta` is not supported");
+        };
+
+        // `delta` is in nanoseconds. Uses the monotone clock.
+        let deadline = this.machine.monotonic_clock.now().add_lossy(Duration::from_nanos(delta));
+        // Convert back to absolute nanoseconds for return value.
+        let duration = deadline.duration_since(this.machine.monotonic_clock.epoch());
+        let Ok(nanos) = u64::try_from(duration.as_nanos()) else {
+            throw_unsup_format!("dispatch_time with too big `delta` is not supported");
+        };
+        this.write_int(nanos, dest)?;
         interp_ok(())
     }
 }
