@@ -29,7 +29,6 @@ use crate::alloc::{
 };
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
-use crate::rc::is_dangling;
 #[cfg(not(no_global_oom_handling))]
 use crate::string::String;
 #[cfg(not(no_global_oom_handling))]
@@ -45,6 +44,13 @@ use crate::vec::Vec;
 ///
 /// See comment in `Arc::clone`.
 const MAX_REFCOUNT: usize = (isize::MAX) as usize;
+
+fn is_dangling<T>(ptr: *const T) -> bool
+where
+    T: ?Sized,
+{
+    ptr.addr() == usize::MAX
+}
 
 #[cold]
 #[cfg_attr(not(panic = "immediate-abort"), inline(never))]
