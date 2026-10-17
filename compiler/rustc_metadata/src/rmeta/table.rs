@@ -5,6 +5,9 @@ use crate::rmeta::decoder::MetaBlob;
 use crate::rmeta::remapped_def_id::RemappedRawDefId;
 use crate::rmeta::*;
 
+const SPARSE_BLOCK_LEN: usize = 64;
+const SPARSE_INDEX_BYTES: usize = 12;
+
 pub(super) trait IsDefault: Default {
     fn is_default(&self) -> bool;
 }
@@ -467,11 +470,6 @@ impl<Ie: Idx, Id: Idx, const N: usize, T: FixedSizeEncoding<ByteArray = [u8; N]>
             );
         }
         if !value.is_default() {
-            // FIXME(eddyb) investigate more compact encodings for sparse tables.
-            // On the PR @michaelwoerister mentioned:
-            // > Space requirements could perhaps be optimized by using the HAMT `popcnt`
-            // > trick (i.e. divide things into buckets of 32 or 64 items and then
-            // > store bit-masks of which item in each bucket is actually serialized).
             let block = self.blocks.ensure_contains_elem(i, || [0; N]);
             value.write_to_bytes(block);
             if self.width != N {
@@ -485,17 +483,45 @@ impl<Ie: Idx, Id: Idx, const N: usize, T: FixedSizeEncoding<ByteArray = [u8; N]>
         let pos = buf.position();
 
         let width = self.width;
-        for block in &self.blocks {
-            buf.write_with(|dest| {
-                *dest = *block;
-                width
-            });
+        let len = self.blocks.len();
+        let index_bytes = len.div_ceil(SPARSE_BLOCK_LEN) * SPARSE_INDEX_BYTES;
+        let non_defaults = if index_bytes < len * width {
+            self.blocks.iter().filter(|block| **block != [0; N]).count()
+        } else {
+            len
+        };
+        let sparse =
+            u32::try_from(non_defaults).is_ok() && index_bytes + non_defaults * width < len * width;
+
+        if sparse {
+            let mut base = 0u32;
+            for chunk in self.blocks.raw.chunks(SPARSE_BLOCK_LEN) {
+                let mut bitmap = 0u64;
+                for (i, block) in chunk.iter().enumerate() {
+                    if *block != [0; N] {
+                        bitmap |= 1 << i;
+                    }
+                }
+                buf.write_array(bitmap.to_le_bytes());
+                buf.write_array(base.to_le_bytes());
+                base += bitmap.count_ones();
+            }
         }
 
+        for block in &self.blocks {
+            if !sparse || *block != [0; N] {
+                buf.write_with(|dest| {
+                    *dest = *block;
+                    width
+                });
+            }
+        }
+
+        debug_assert!(width <= usize::MAX >> 1);
         LazyTable::from_position_and_encoded_size(
             NonZero::new(pos).unwrap(),
-            width,
-            self.blocks.len(),
+            (width << 1) | usize::from(sparse),
+            len,
         )
     }
 }
@@ -520,8 +546,23 @@ where
             return Default::default();
         }
 
-        let width = self.width;
-        let start = self.position.get() + (width * i.index());
+        let width = self.width_and_sparse >> 1;
+        let mut position = self.position.get();
+        let mut index = i.index();
+        if self.width_and_sparse & 1 != 0 {
+            let block = index / SPARSE_BLOCK_LEN;
+            let bit = 1u64 << (index % SPARSE_BLOCK_LEN);
+            let start = position + block * SPARSE_INDEX_BYTES;
+            let bitmap = u64::from_le_bytes(metadata.blob()[start..start + 8].try_into().unwrap());
+            if bitmap & bit == 0 {
+                return Default::default();
+            }
+            let base =
+                u32::from_le_bytes(metadata.blob()[start + 8..start + 12].try_into().unwrap());
+            index = base as usize + (bitmap & (bit - 1)).count_ones() as usize;
+            position += self.len.div_ceil(SPARSE_BLOCK_LEN) * SPARSE_INDEX_BYTES;
+        }
+        let start = position + width * index;
         let end = start + width;
         let bytes = &metadata.blob()[start..end];
 
