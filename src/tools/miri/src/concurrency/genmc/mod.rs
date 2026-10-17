@@ -122,6 +122,9 @@ pub struct GenmcCtx {
     /// State that persists across executions.
     /// All `GenmcCtx` in one verification step share this state.
     global_state: Arc<GlobalState>,
+
+    /// Whether to model spurious failures of `compare_exchange_weak`.
+    weak_cas_spurious_failures: bool,
 }
 
 /// GenMC Context creation and administrative / query actions
@@ -134,7 +137,12 @@ impl GenmcCtx {
             genmc_config.log_level,
             /* do_estimation: */ mode == GenmcMode::Estimation,
         ));
-        Self { genmc, exec_state: Default::default(), global_state }
+        Self {
+            genmc,
+            exec_state: Default::default(),
+            global_state,
+            weak_cas_spurious_failures: genmc_config.weak_cas_spurious_failures,
+        }
     }
 
     fn get_estimation_results(&self) -> EstimationResult {
@@ -384,8 +392,7 @@ impl GenmcCtx {
                 .find(|f| !f.instance().def.requires_caller_location(*ecx.tcx))
                 .is_none_or(|f| ecx.machine.is_local(f.instance()))
         };
-        // FIXME(genmc): remove once GenMC implements spurious failures for `compare_exchange_weak`.
-        if can_fail_spuriously && show_warning() {
+        if can_fail_spuriously && !self.weak_cas_spurious_failures && show_warning() {
             static DEDUP: SpanDedupDiagnostic = SpanDedupDiagnostic::new();
             ecx.dedup_diagnostic(&DEDUP, |_first| NonHaltingDiagnostic::GenmcCompareExchangeWeak);
         }
@@ -402,7 +409,7 @@ impl GenmcCtx {
             scalar_to_genmc_scalar(ecx, self, old_value)?,
             success.to_genmc(),
             fail.to_genmc(),
-            can_fail_spuriously,
+            can_fail_spuriously && self.weak_cas_spurious_failures,
         );
 
         let (old_value, is_success, is_coherence_order_maximal_write) =

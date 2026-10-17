@@ -317,7 +317,7 @@ void MiriGenmcInterface::handle_fence(ThreadId thread_id, MemOrdering ord) {
         expectedVal,
         new_val,
         WriteAttr(),
-        /* weak: */ false,
+        can_fail_spuriously,
         nullptr,
         std::nullopt,
         EventDeps()
@@ -334,8 +334,6 @@ void MiriGenmcInterface::handle_fence(ThreadId thread_id, MemOrdering ord) {
     const auto read_old_val = ret_val->val;
     if (!ret_val->success)
         return CompareExchangeResultExt::failure(read_old_val);
-
-    // FIXME(GenMC): Add support for modelling spurious failures.
 
     const auto store_ret = GenMCDriver::handleCasWrite(
         nullptr,

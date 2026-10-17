@@ -691,7 +691,7 @@ impl<'tcx> MiriMachine<'tcx> {
             ExternTypeReborrow =>
                 format!("reborrow of a reference to `extern type` is not properly supported"),
             GenmcCompareExchangeWeak =>
-                "GenMC currently does not model spurious failures of `compare_exchange_weak`. Miri with GenMC might miss bugs related to spurious failures."
+                "GenMC does not model spurious failures of `compare_exchange_weak` by default. Miri with GenMC might miss bugs related to spurious failures."
                     .to_string(),
             FileInProcOpened => format!("files in `/proc` can bypass the Abstract Machine and might not work properly in Miri"),
             ConnectingSocketGetsockname => format!("connecting sockets return unspecified socket addresses on Windows hosts"),
@@ -801,6 +801,10 @@ impl<'tcx> MiriMachine<'tcx> {
                     ),
                 ]
             }
+            GenmcCompareExchangeWeak =>
+                vec![note!(
+                    "add `-Zmiri-genmc-weak-cas-spurious-failures` to MIRIFLAGS to explore spurious failures; all retry loops around `compare_exchange_weak` then need to be bounded"
+                )],
             _ => vec![],
         };
 
