@@ -2000,7 +2000,26 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     colon_span: None,
                     source: hir::GenericParamSource::Generics,
                 };
-                self.lower_attrs(hir_id, &param.attrs, param.span, Target::from(&generic_param));
+                let ast_generic_param = ast::GenericParam {
+                    id: param.id,
+                    ident,
+                    attrs: param.attrs.clone(),
+                    bounds: Default::default(),
+                    is_placeholder: false,
+                    kind: ast::GenericParamKind::Const {
+                        ty: param.ty.clone(),
+                        span: param.span,
+                        default: None,
+                    },
+                    colon_span: None,
+                };
+                self.lower_attrs(
+                    hir_id,
+                    &param.attrs,
+                    param.span,
+                    Target::from(&generic_param),
+                    AstTarget::GenericParam(&ast_generic_param),
+                );
                 self.curr_owner.const_defs.push(generic_param);
                 return None;
             }
