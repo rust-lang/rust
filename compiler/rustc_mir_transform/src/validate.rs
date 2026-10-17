@@ -324,9 +324,13 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                     );
                 }
             }
+            StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
+                let last_arg = Local::from_usize(self.body.arg_count);
+                if *local <= last_arg {
+                    self.fail(location, format!("StorageLive and StorageDead may not be used on the return place or arguments"));
+                }
+            }
             StatementKind::Assign(..)
-            | StatementKind::StorageLive(_)
-            | StatementKind::StorageDead(_)
             | StatementKind::Intrinsic(_)
             | StatementKind::ConstEvalCounter
             | StatementKind::PlaceMention(..)
