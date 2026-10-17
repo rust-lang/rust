@@ -46,7 +46,7 @@ pattern: \"x86_64-known-linux-gnu\"
 ";
 
     assert_is_err_contains(
-        "the only allowed headings are `## `",
+        "first-level headings are not allowed",
         super::parse_file(PathBuf::from(name), name, content),
     );
 }
