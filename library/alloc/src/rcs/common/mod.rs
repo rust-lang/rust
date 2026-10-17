@@ -19,12 +19,15 @@ use core::alloc::{AllocError, Allocator};
 use core::clone::CloneToUninit;
 #[cfg(not(no_global_oom_handling))]
 use core::iter::TrustedLen;
+use core::marker::PhantomData;
+#[cfg(not(no_global_oom_handling))]
 use core::mem::DropGuard;
 #[cfg(not(no_global_oom_handling))]
 use core::mem::ManuallyDrop;
-use core::ptr;
+use core::ops::Deref;
 #[cfg(not(no_global_oom_handling))]
 use core::ptr::NonNull;
+use core::{intrinsics, mem, ptr};
 
 pub(super) use rc_value_pointer::{ErasedRcValuePointer, RcValuePointer};
 
@@ -69,6 +72,7 @@ impl<C> Header<C> {
         Ok(try_allocate_zeroed(alloc, RcLayout::new::<Self, T>())?.unerase())
     }
 
+    #[inline]
     pub(super) fn try_allocate_from_cloning<A, T>(
         alloc: &A,
         value: &T,
@@ -81,10 +85,13 @@ impl<C> Header<C> {
             return Err(AllocError);
         };
 
-        // SAFETY: `ptr` is allocated with layout calculated from `value`, we are safe to clone into it.
-        let ptr = try_allocate_with(alloc, rc_layout, |ptr| unsafe {
-            value.clone_to_uninit(ptr.ptr.cast().as_ptr());
-        })?;
+        let ptr = try_allocate_with(
+            alloc,
+            rc_layout,
+            #[inline(always)]
+            // SAFETY: `ptr` is allocated with layout calculated from `value`, we are safe to clone into it.
+            move |ptr| unsafe { value.clone_to_uninit(ptr.ptr.cast().as_ptr()) },
+        )?;
 
         Ok(ptr.unerase_with(ptr::metadata(value)))
     }
@@ -118,6 +125,7 @@ impl<C> Header<C> {
     }
 
     #[cfg(not(no_global_oom_handling))]
+    #[inline]
     pub(super) fn allocate_uninit_slice<A, T>(alloc: &A, length: usize) -> RcValuePointer<[T]>
     where
         A: Allocator,
@@ -135,6 +143,7 @@ impl<C> Header<C> {
     }
 
     #[cfg(not(no_global_oom_handling))]
+    #[inline]
     pub(super) fn allocate_zeroed_slice<A, T>(alloc: &A, length: usize) -> RcValuePointer<[T]>
     where
         A: Allocator,
@@ -149,15 +158,19 @@ impl<C> Header<C> {
         A: Allocator,
         T: CloneToUninit + ?Sized,
     {
-        // SAFETY: `ptr` is allocated with layout calculated from `value`, we are safe to clone into it.
-        let ptr = allocate_with(alloc, RcLayout::from_value::<Self, T>(value), |ptr| unsafe {
-            value.clone_to_uninit(ptr.ptr.cast().as_ptr())
-        });
+        let ptr = allocate_with(
+            alloc,
+            RcLayout::from_value::<Self, T>(value),
+            #[inline(always)]
+            // SAFETY: `ptr` is allocated with layout calculated from `value`, we are safe to clone into it.
+            move |ptr| unsafe { value.clone_to_uninit(ptr.ptr.cast().as_ptr()) },
+        );
 
         ptr.unerase_with(ptr::metadata(value))
     }
 
     #[cfg(not(no_global_oom_handling))]
+    #[inline]
     pub(super) fn allocate_from_default<A, T>(alloc: &A) -> RcValuePointer<T>
     where
         A: Allocator,
@@ -194,6 +207,7 @@ impl<C> Header<C> {
     }
 
     #[cfg(not(no_global_oom_handling))]
+    #[inline]
     pub(super) fn allocate_from_trusted_len<A, I>(alloc: &A, iter: I) -> RcValuePointer<[I::Item]>
     where
         A: Allocator,
@@ -258,6 +272,7 @@ impl<C> Header<C> {
     /// Allocates a reference-counted memory chunk to store values produced by `iter` using the
     /// `Global` allocator.
     #[cfg(not(no_global_oom_handling))]
+    #[inline]
     pub(super) fn allocate_from_iter<I>(iter: I) -> RcValuePointer<[I::Item]>
     where
         I: Iterator,
@@ -270,6 +285,7 @@ impl<C> Header<C> {
         where
             I: Iterator,
         {
+            #[inline]
             default fn spec_allocate<C>(self) -> RcValuePointer<[Self::Item]> {
                 Header::<C>::allocate_from_vec(self.collect::<Vec<_>>()).0
             }
@@ -279,6 +295,7 @@ impl<C> Header<C> {
         where
             I: TrustedLen,
         {
+            #[inline]
             fn spec_allocate<C>(self) -> RcValuePointer<[Self::Item]> {
                 Header::<C>::allocate_from_trusted_len(&Global, self)
             }
@@ -338,22 +355,13 @@ impl<C> Header<C> {
 
     /// # Safety
     ///
-    /// `ptr` must point to a valid reference counted allocation containing an initialized header of
-    /// type `Self`.
-    #[inline]
-    pub(super) unsafe fn get<'a>(ptr: ErasedRcValuePointer) -> &'a Self {
-        // SAFETY: Caller guarantees the validity of `ptr`.
-        unsafe { ptr.ptr.cast().sub(1).as_ref() }
-    }
-
-    /// # Safety
-    ///
     /// `ptr` must point to a valid reference counted allocation that can store a header of type
     /// `Self`.
-    #[inline]
+    #[inline(always)]
     pub(super) unsafe fn write_to(self, ptr: ErasedRcValuePointer) {
-        // SAFETY: Caller guarantees the validity of `ptr`.
-        unsafe { ptr.ptr.cast().sub(1).write(self) };
+        // SAFETY: Caller guarantees the validity of `ptr`. `NonNull::sub` is not used to avoid
+        // debug assertion code.
+        unsafe { intrinsics::offset(ptr.ptr.as_ptr().cast::<Self>(), -1_isize).write(self) };
     }
 }
 
@@ -397,7 +405,7 @@ where
 
 /// Tries to allocate a reference-counted memory chunk for storing a value according to `rc_layout`,
 /// then initializes the value with `f`. If `f` panics, the allocated memory will be deallocated.
-#[inline]
+#[inline(always)]
 fn try_allocate_with<A, F>(
     alloc: &A,
     rc_layout: RcLayout,
@@ -408,14 +416,12 @@ where
     F: FnOnce(ErasedRcValuePointer),
 {
     let ptr = try_allocate_uninit(alloc, rc_layout)?;
-
-    // SAFETY: `ptr` is allocated with `alloc` and `rc_layout`.
-    let guard = unsafe { deallocate_on_drop(alloc, ptr, rc_layout) };
+    let guard = DeallocateOnDrop(alloc, ptr, rc_layout);
 
     f(ptr);
 
     // `f` did not panic, dismiss the drop guard.
-    DropGuard::dismiss(guard);
+    mem::forget(guard);
 
     Ok(ptr)
 }
@@ -453,23 +459,21 @@ where
 /// Allocates a reference-counted memory chunk for storing a value according to `rc_layout`, then
 /// initializes the value with `f`. If `f` panics, the allocated memory will be deallocated.
 #[cfg(not(no_global_oom_handling))]
-#[inline]
+#[inline(always)]
 fn allocate_with<A, F>(alloc: &A, rc_layout: RcLayout, f: F) -> ErasedRcValuePointer
 where
     A: Allocator,
     F: FnOnce(ErasedRcValuePointer),
 {
-    let value_ptr = allocate_uninit(alloc, rc_layout);
+    let ptr = allocate_uninit(alloc, rc_layout);
+    let guard = DeallocateOnDrop(alloc, ptr, rc_layout);
 
-    // SAFETY: `value_ptr` is allocated with `alloc` and `rc_layout`.
-    let guard = unsafe { deallocate_on_drop(alloc, value_ptr, rc_layout) };
-
-    f(value_ptr);
+    f(ptr);
 
     // `f` did not panic, dismiss the drop guard.
-    DropGuard::dismiss(guard);
+    mem::forget(guard);
 
-    value_ptr
+    ptr
 }
 
 /// Allocates a reference-counted memory chunk for storing a value according to `rc_layout`, then
@@ -524,21 +528,81 @@ where
     }
 }
 
-/// # Safety
-///
-/// - `value_ptr` points to a valid value location within a reference-counted allocation that
-///   can be described with `rc_layout` and can be deallocated with `alloc`.
-/// - No access to the allocation can happen if the destructor of the returned guard gets
-///   called.
-#[inline]
-unsafe fn deallocate_on_drop<'a, A>(
-    alloc: &'a A,
-    value_ptr: ErasedRcValuePointer,
-    rc_layout: RcLayout,
-) -> DropGuard<(), impl FnOnce(())>
+struct DeallocateOnDrop<'a, A>(&'a A, ErasedRcValuePointer, RcLayout)
+where
+    A: Allocator;
+
+impl<A> Drop for DeallocateOnDrop<'_, A>
 where
     A: Allocator,
 {
-    // SAFETY: Caller guarantees the validity of all arguments.
-    DropGuard::new((), move |()| unsafe { deallocate::<A>(alloc, value_ptr, rc_layout) })
+    fn drop(&mut self) {
+        // SAFETY: All callsites provide valid arguments.
+        unsafe { deallocate::<A>(self.0, self.1, self.2) }
+    }
 }
+
+/// Provides safe shared access to `Header<C>`.
+pub(super) struct HeaderRef<'a, C> {
+    ptr: ErasedRcValuePointer,
+    _marker: PhantomData<&'a C>,
+}
+
+impl<'a, C> HeaderRef<'a, C> {
+    /// # Safety
+    ///
+    /// `ptr` must point to a valid reference counted allocation with a header of type `Header<C>`.
+    #[inline(always)]
+    pub(super) const unsafe fn new(ptr: ErasedRcValuePointer) -> Self {
+        Self { ptr, _marker: PhantomData }
+    }
+}
+
+impl<C> Deref for HeaderRef<'_, C> {
+    type Target = Header<C>;
+
+    fn deref(&self) -> &Self::Target {
+        // SAFETY: `self.ptr` is valid by construction. `NonNull::sub` is not used to avoid debug
+        // assertion code.
+        unsafe { &*intrinsics::offset(self.ptr.ptr.as_ptr().cast::<Header<C>>(), -1_isize) }
+    }
+}
+
+impl<C> Clone for HeaderRef<'_, C> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<C> Copy for HeaderRef<'_, C> {}
+
+/// Like `Option<HeaderRef<'a, C>>`, but `None` is represented with a dangling pointer.
+pub(super) struct MaybeHeaderRef<'a, C> {
+    ptr: ErasedRcValuePointer,
+    _marker: PhantomData<&'a C>,
+}
+
+impl<'a, C> MaybeHeaderRef<'a, C> {
+    /// # Safety
+    ///
+    /// `ptr` must either be dangling or point to a valid reference counted allocation with a header
+    /// of type `Header<C>`.
+    #[inline(always)]
+    pub(super) const unsafe fn new(ptr: ErasedRcValuePointer) -> Self {
+        Self { ptr, _marker: PhantomData }
+    }
+
+    #[inline(always)]
+    pub(super) fn header(self) -> Option<HeaderRef<'a, C>> {
+        // SAFETY: We have checked that `self.ptr` is non-dangling.
+        if self.ptr.is_dangling() { None } else { Some(unsafe { HeaderRef::new(self.ptr) }) }
+    }
+}
+
+impl<C> Clone for MaybeHeaderRef<'_, C> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<C> Copy for MaybeHeaderRef<'_, C> {}

@@ -1,7 +1,8 @@
 use core::marker::Unsize;
+use core::mem;
 use core::num::NonZero;
 use core::ops::{CoerceUnsized, DispatchFromDyn};
-use core::ptr::{NonNull, Pointee};
+use core::ptr::{self, NonNull, Pointee};
 
 /// An non-null pointer that either:
 ///
@@ -86,8 +87,8 @@ impl ErasedRcValuePointer {
     }
 
     #[inline]
-    fn is_dangling(self) -> bool {
-        self.ptr.addr().get() == usize::MAX
+    pub(super) fn is_dangling(self) -> bool {
+        self.ptr.as_ptr().addr() == usize::MAX
     }
 
     pub(in crate::rcs) const fn unerase<T>(self) -> RcValuePointer<T> {
@@ -101,6 +102,14 @@ impl ErasedRcValuePointer {
     where
         T: ?Sized,
     {
-        RcValuePointer::new(NonNull::from_raw_parts(self.ptr, metadata))
+        // SAFETY: the source pointer is copied from `NonNull`, so transmuting it to `NonNull` is
+        // safe. `NonNull::from_raw_parts` is not used because it generates unwanted debug UB
+        // checks.
+        RcValuePointer::new(unsafe {
+            mem::transmute::<*mut T, NonNull<T>>(ptr::from_raw_parts_mut(
+                self.ptr.as_ptr(),
+                metadata,
+            ))
+        })
     }
 }

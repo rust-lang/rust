@@ -1,4 +1,5 @@
 use core::alloc::{Layout, LayoutError};
+use core::intrinsics;
 use core::mem::SizedTypeProperties;
 use core::ptr::NonNull;
 
@@ -113,7 +114,7 @@ impl RcLayout {
         where
             T: ?Sized,
         {
-            #[inline]
+            #[inline(always)]
             default unsafe fn spec_rc_layout<H>(value_ptr: NonNull<Self>) -> RcLayout {
                 // SAFETY: Caller guarantees the validity of `value_ptr`.
                 RcLayout::from_value_layout::<H>(unsafe {
@@ -123,7 +124,7 @@ impl RcLayout {
         }
 
         impl<T> SpecRcLayout for T {
-            #[inline]
+            #[inline(always)]
             unsafe fn spec_rc_layout<H>(_: NonNull<Self>) -> RcLayout {
                 const { RcLayout::new::<H, Self>() }
             }
@@ -155,7 +156,7 @@ impl RcLayout {
         where
             T: ?Sized,
         {
-            #[inline]
+            #[inline(always)]
             default unsafe fn spec_rc_layout_unchecked<H>(value_ptr: NonNull<Self>) -> RcLayout {
                 // SAFETY: Caller guarantees the validity of `value_ptr`.
                 unsafe {
@@ -167,7 +168,7 @@ impl RcLayout {
         }
 
         impl<T> SpecTryRcLayoutUnchecked for T {
-            #[inline]
+            #[inline(always)]
             unsafe fn spec_rc_layout_unchecked<H>(_: NonNull<Self>) -> RcLayout {
                 const { RcLayout::new::<H, Self>() }
             }
@@ -190,7 +191,7 @@ impl RcLayout {
     /// # Safety
     ///
     /// `RcLayout::try_from_value_layout(value_layout)` must return `Ok`.
-    #[inline]
+    #[inline(always)]
     pub(super) const unsafe fn from_value_layout_unchecked<H>(value_layout: Layout) -> Self {
         // SAFETY: Caller guarantees the layout create will not fail.
         unsafe {
@@ -198,10 +199,9 @@ impl RcLayout {
 
             // Calculates `H::SIZE.next_multiple_of(value_align)` given `value_align` being a
             // power of 2 and the result does not overflow.
-            let value_align_m1 = value_align.unchecked_sub(1);
-            let value_offset = H::SIZE.unchecked_add(value_align_m1) & !value_align_m1;
-
-            let size = value_offset.unchecked_add(value_layout.size());
+            let value_align_m1 = intrinsics::unchecked_sub(value_align, 1);
+            let value_offset = intrinsics::unchecked_add(H::SIZE, value_align_m1) & !value_align_m1;
+            let size = intrinsics::unchecked_add(value_offset, value_layout.size());
             let align = if H::ALIGN < value_align { value_align } else { H::ALIGN };
 
             Self { layout: Layout::from_size_align_unchecked(size, align), value_offset }
@@ -236,7 +236,7 @@ impl RcLayout {
     #[inline]
     pub(super) const fn value_size(&self) -> usize {
         // SAFETY: `value_offset` is guaranteed to be less than `size()`.
-        unsafe { self.layout.size().unchecked_sub(self.value_offset) }
+        unsafe { intrinsics::unchecked_sub(self.layout.size(), self.value_offset) }
     }
 }
 

@@ -255,7 +255,7 @@ use core::panic::{RefUnwindSafe, UnwindSafe};
 #[cfg(not(no_global_oom_handling))]
 use core::pin::Pin;
 use core::pin::PinSafePointer;
-use core::ptr::{self, NonNull, drop_in_place};
+use core::ptr::{self, NonNull};
 use core::{borrow, fmt, hint, intrinsics};
 
 use crate::alloc::{
@@ -264,7 +264,7 @@ use crate::alloc::{
 use crate::borrow::{Cow, ToOwned};
 #[cfg(not(no_global_oom_handling))]
 use crate::boxed::Box;
-use crate::rcs::common::{ErasedRcValuePointer, Header, RcValuePointer};
+use crate::rcs::common::{ErasedRcValuePointer, Header, HeaderRef, MaybeHeaderRef, RcValuePointer};
 #[cfg(not(no_global_oom_handling))]
 use crate::string::String;
 #[cfg(not(no_global_oom_handling))]
@@ -277,6 +277,36 @@ const _: () = {
     assert!(size_of::<RcHeader>() - mem::offset_of!(RcHeader, strong) == size_of::<usize>() * 2);
     assert!(size_of::<RcHeader>() - mem::offset_of!(RcHeader, weak) == size_of::<usize>());
 };
+
+type RcHeaderRef<'a> = HeaderRef<'a, Cell<usize>>;
+type MaybeRcHeaderRef<'a> = MaybeHeaderRef<'a, Cell<usize>>;
+
+/// Writes initial header for newly created `Rc` value. The initial weak count of 1 used for tracking
+/// all strong counts.
+///
+/// # Safety
+///
+/// `ptr` must point to a valid reference counted allocation with mutable access.
+#[inline]
+unsafe fn write_rc_header(ptr: ErasedRcValuePointer) {
+    // SAFETY: Caller guarantees the validity of `ptr`.
+    unsafe {
+        RcHeader { strong: Cell::new(1), weak: Cell::new(1) }.write_to(ptr);
+    }
+}
+
+/// Writes initial header for newly created `UniqueRc` value.
+///
+/// # Safety
+///
+/// `ptr` must point to a valid reference counted allocation with mutable access.
+#[inline]
+unsafe fn write_unique_rc_header(ptr: ErasedRcValuePointer) {
+    // SAFETY: Caller guarantees the validity of `ptr`.
+    unsafe {
+        RcHeader { strong: Cell::new(0), weak: Cell::new(1) }.write_to(ptr);
+    }
+}
 
 /// A single-threaded reference-counting pointer. 'Rc' stands for 'Reference
 /// Counted'.
@@ -347,17 +377,24 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     unsafe fn init_from_parts(ptr: RcValuePointer<T>, alloc: A) -> Self {
         // SAFETY: Upheld by caller.
         unsafe {
-            RcHeader::INIT_RC.write_to(ptr.erase());
+            write_rc_header(ptr.erase());
 
             Self::from_inner_in(ptr, alloc)
         }
     }
 
     #[inline(always)]
-    fn inner(&self) -> &RcHeader {
-        // SAFETY: While this Rc is alive we're guaranteed
-        // that the inner pointer is valid.
-        unsafe { RcHeader::get(self.ptr.erase()) }
+    fn inner(&self) -> RcHeaderRef<'_> {
+        // SAFETY: `self.ptr` is always valid.
+        unsafe { RcHeaderRef::new(self.ptr.erase()) }
+    }
+
+    #[inline(always)]
+    fn non_dangling_ptr(&self) -> RcValuePointer<T> {
+        // SAFETY: `self.ptr` is always valid.
+        unsafe { intrinsics::assume(!self.ptr.is_dangling()) }
+
+        self.ptr
     }
 
     #[inline]
@@ -375,17 +412,8 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     // Non-inlined part of `drop`.
     #[inline(never)]
     unsafe fn drop_slow(&mut self) {
-        // Reconstruct the "strong weak" pointer and drop it when this
-        // variable goes out of scope. This ensures that the memory is
-        // deallocated even if the destructor of `T` panics.
-        let _weak = Weak { ptr: self.ptr, alloc: &self.alloc };
-
-        // Destroy the contained object.
-        // We cannot use `get_mut_unchecked` here, because `self.alloc` is borrowed.
-        // SAFETY: `self.ptr` is *not* borrowed.
-        unsafe {
-            self.ptr.ptr.drop_in_place();
-        }
+        // SAFETY: `self.ptr` is provided by `Rc`, thus valid.
+        unsafe { drop_unique_rc(&self.alloc, self.ptr) };
     }
 }
 
@@ -401,7 +429,7 @@ impl<T> Rc<T> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[inline]
+    #[inline(always)]
     pub fn new(value: T) -> Rc<T> {
         Self::new_in(value, Global)
     }
@@ -724,7 +752,10 @@ impl<T, A: Allocator> Rc<T, A> {
         let init_ptr = RcHeader::allocate_uninit_for_type(&alloc);
 
         // SAFETY: We have exclusive access to `init_ptr`.
-        unsafe { RcHeader::INIT_UNIQUE_RC.write_to(init_ptr.erase()) };
+        unsafe { write_unique_rc_header(init_ptr.erase()) };
+
+        // SAFETY: `init_ptr` is guaranteed to be valid.
+        unsafe { intrinsics::assume(!init_ptr.is_dangling()) };
 
         let weak = Weak { ptr: init_ptr, alloc };
 
@@ -740,7 +771,8 @@ impl<T, A: Allocator> Rc<T, A> {
         unsafe {
             init_ptr.ptr.write(data);
 
-            let strong = RcHeader::get(init_ptr.erase()).strong_ref();
+            let header_ref = RcHeaderRef::new(init_ptr.erase());
+            let strong = header_ref.strong_ref();
             let prev_value = strong.get();
 
             debug_assert_eq!(prev_value, 0, "No prior strong references should exist");
@@ -891,12 +923,15 @@ impl<T, A: Allocator> Rc<T, A> {
             // ignore-tidy-undocumented-unsafe
             let alloc: A = unsafe { ptr::read(&this.alloc) }; // copy the allocator
 
-            // Indicate to Weaks that they can't be promoted by decrementing
-            // the strong count, and then remove the implicit "strong weak"
+            // Indicate to Weaks that they can't be promoted by setting strong count to 0, and then
+            // remove the implicit "strong weak"
             // pointer while also handling drop logic by just crafting a
             // fake Weak.
-            this.inner().dec_strong();
-            let _weak = Weak { ptr: this.ptr, alloc };
+            this.inner().strong_ref().set(0);
+
+            // SAFETY: `this.ptr` is provided by `Rc`, thus non-dangling.
+            unsafe { drop_weak_non_dangling(&alloc, this.ptr) };
+
             Ok(val)
         } else {
             Err(this)
@@ -1242,6 +1277,7 @@ impl<T: ?Sized + CloneToUninit> Rc<T> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "clone_from_ref", issue = "149075")]
+    #[inline(always)]
     pub fn clone_from_ref(value: &T) -> Rc<T> {
         Rc::clone_from_ref_in(value, Global)
     }
@@ -1259,6 +1295,7 @@ impl<T: ?Sized + CloneToUninit> Rc<T> {
     /// ```
     #[unstable(feature = "clone_from_ref", issue = "149075")]
     //#[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
+    #[inline(always)]
     pub fn try_clone_from_ref(value: &T) -> Result<Rc<T>, AllocError> {
         Rc::try_clone_from_ref_in(value, Global)
     }
@@ -1559,7 +1596,9 @@ impl<T: ?Sized> Rc<T> {
         // SAFETY: Caller guarantees `ptr` points to a valid reference counted allocation, we are
         // safe to get a reference to the header.
         let header = unsafe {
-            RcHeader::get(ErasedRcValuePointer::new(NonNull::new_unchecked(ptr.cast_mut().cast())))
+            RcHeaderRef::new(ErasedRcValuePointer::new(NonNull::new_unchecked(
+                ptr.cast_mut().cast(),
+            )))
         };
 
         header.strong.get()
@@ -1726,8 +1765,7 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     {
         this.inner().inc_weak();
         // Make sure we do not create a dangling Weak
-        debug_assert!(!this.ptr.is_dangling());
-        Weak { ptr: this.ptr, alloc: this.alloc.clone() }
+        Weak { ptr: this.non_dangling_ptr(), alloc: this.alloc.clone() }
     }
 
     /// Gets the number of [`Weak`] pointers to this allocation.
@@ -1901,7 +1939,7 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     /// ```
     ///
     /// [`get_mut_unchecked`]: Self::get_mut_unchecked
-    #[inline]
+    #[inline(always)]
     #[unstable(feature = "arc_is_unique", issue = "138938")]
     pub fn is_unique(this: &Self) -> bool {
         Rc::weak_count(this) == 0 && Rc::strong_count(this) == 1
@@ -2107,7 +2145,7 @@ impl<T: ?Sized + CloneToUninit, A: AllocatorClone> Rc<T, A> {
 
                 // This leaves us with 0 strong refs, so the data has
                 // effectively been moved to the new rc.
-                this.inner().dec_strong();
+                this.inner().strong_ref().set(0);
 
                 // Remove implicit strong-weak ref (no need to craft a fake
                 // Weak here -- we know other Weaks can clean up for us)
@@ -3288,16 +3326,25 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
     where
         A: AllocatorClone,
     {
-        let inner = self.inner()?;
+        #[inline]
+        #[rustc_no_mir_inline]
+        fn upgrade(header_ref: MaybeRcHeaderRef<'_>) -> bool {
+            let Some(header_ref) = header_ref.header() else { return false };
 
-        if inner.strong() == 0 {
-            None
-        } else {
-            // ignore-tidy-undocumented-unsafe
-            unsafe {
-                inner.inc_strong();
-                Some(Rc::from_inner_in(self.ptr, self.alloc.clone()))
+            if header_ref.strong() == 0 {
+                false
+            } else {
+                header_ref.inc_strong();
+
+                true
             }
+        }
+
+        if upgrade(self.inner()) {
+            // ignore-tidy-undocumented-unsafe
+            Some(unsafe { Rc::from_inner_in(self.ptr, self.alloc.clone()) })
+        } else {
+            None
         }
     }
 
@@ -3307,7 +3354,7 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
     #[must_use]
     #[stable(feature = "weak_counts", since = "1.41.0")]
     pub fn strong_count(&self) -> usize {
-        if let Some(inner) = self.inner() { inner.strong() } else { 0 }
+        if let Some(inner) = self.inner().header() { inner.strong() } else { 0 }
     }
 
     /// Gets the number of `Weak` pointers pointing to this allocation.
@@ -3316,7 +3363,7 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
     #[must_use]
     #[stable(feature = "weak_counts", since = "1.41.0")]
     pub fn weak_count(&self) -> usize {
-        if let Some(inner) = self.inner() {
+        if let Some(inner) = self.inner().header() {
             if inner.strong() > 0 {
                 inner.weak() - 1 // subtract the implicit weak ptr
             } else {
@@ -3327,19 +3374,11 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
         }
     }
 
-    /// Returns `None` when the pointer is dangling and there is no allocated value,
-    /// (i.e., when this `Weak` was created by `Weak::new`).
-    #[inline]
-    fn inner(&self) -> Option<&RcHeader> {
-        if self.ptr.is_dangling() {
-            None
-        } else {
-            // We are careful to *not* create a reference covering the "data" field, as
-            // the field may be mutated concurrently (for example, if the last `Rc`
-            // is dropped, the data field will be dropped in-place).
-            // ignore-tidy-undocumented-unsafe
-            Some(unsafe { RcHeader::get(self.ptr.erase()) })
-        }
+    /// Returns an accessor to the reference counters.
+    #[inline(always)]
+    fn inner(&self) -> MaybeRcHeaderRef<'_> {
+        // SAFETY: `self.ptr` is either valid or danging.
+        unsafe { MaybeRcHeaderRef::new(self.ptr.erase()) }
     }
 
     /// Returns `true` if the two `Weak`s point to the same allocation similar to [`ptr::eq`], or if
@@ -3416,12 +3455,20 @@ unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for Weak<T, A> {
     /// assert!(other_weak_foo.upgrade().is_none());
     /// ```
     fn drop(&mut self) {
-        let inner = if let Some(inner) = self.inner() { inner } else { return };
+        #[inline]
+        fn dec_weak(header_ref: MaybeRcHeaderRef<'_>) -> bool {
+            if let Some(header_ref) = header_ref.header() {
+                header_ref.dec_weak();
 
-        inner.dec_weak();
+                header_ref.weak() == 0
+            } else {
+                false
+            }
+        }
+
         // the weak count starts at 1, and will only go to zero if all
         // the strong pointers have disappeared.
-        if inner.weak() == 0 {
+        if dec_weak(self.inner()) {
             // ignore-tidy-undocumented-unsafe
             unsafe { RcHeader::deallocate(&self.alloc, self.ptr) };
         }
@@ -3443,9 +3490,16 @@ impl<T: ?Sized, A: AllocatorClone> Clone for Weak<T, A> {
     /// ```
     #[inline]
     fn clone(&self) -> Weak<T, A> {
-        if let Some(inner) = self.inner() {
-            inner.inc_weak()
+        #[inline]
+        #[rustc_no_mir_inline]
+        fn clone(header_ref: MaybeRcHeaderRef<'_>) {
+            if let Some(inner) = header_ref.header() {
+                inner.inc_weak()
+            }
         }
+
+        clone(self.inner());
+
         Weak { ptr: self.ptr, alloc: self.alloc.clone() }
     }
 }
@@ -3489,30 +3543,25 @@ impl<T> Default for Weak<T> {
 // This should have negligible overhead since you don't actually need to
 // clone these much in Rust thanks to ownership and move-semantics.
 
-#[expect(clippy::declare_interior_mutable_const, reason = "by design")]
-impl RcHeader {
-    /// Initial header for newly created `Rc` value. The initial weak count of 1 used for tracking
-    /// all strong counts.
-    const INIT_RC: Self = Self { weak: Cell::new(1), strong: Cell::new(1) };
-
-    /// Initial header for newly created `UniqueRc` value.
-    const INIT_UNIQUE_RC: Self = Self { weak: Cell::new(1), strong: Cell::new(0) };
-
+impl<'a> RcHeaderRef<'a> {
+    #[inline(always)]
     fn weak_ref(&self) -> &Cell<usize> {
         &self.weak
     }
 
+    #[inline(always)]
     fn strong_ref(&self) -> &Cell<usize> {
         &self.strong
     }
 
-    #[inline]
-    fn strong(&self) -> usize {
+    #[inline(always)]
+    fn strong(self) -> usize {
         self.strong_ref().get()
     }
 
     #[inline]
-    fn inc_strong(&self) {
+    #[rustc_no_mir_inline]
+    fn inc_strong(self) {
         let strong = self.strong();
 
         // We insert an `assume` here to hint LLVM at an otherwise
@@ -3534,18 +3583,23 @@ impl RcHeader {
         }
     }
 
-    #[inline]
-    fn dec_strong(&self) {
-        self.strong_ref().set(self.strong() - 1);
+    #[inline(always)]
+    fn dec_strong(self) -> bool {
+        let strong_ref = self.strong_ref();
+
+        strong_ref.set(strong_ref.get() - 1);
+
+        strong_ref.get() == 0
     }
 
-    #[inline]
-    fn weak(&self) -> usize {
+    #[inline(always)]
+    fn weak(self) -> usize {
         self.weak_ref().get()
     }
 
     #[inline]
-    fn inc_weak(&self) {
+    #[rustc_no_mir_inline]
+    fn inc_weak(self) {
         let weak = self.weak();
 
         // We insert an `assume` here to hint LLVM at an otherwise
@@ -3567,8 +3621,8 @@ impl RcHeader {
         }
     }
 
-    #[inline]
-    fn dec_weak(&self) {
+    #[inline(always)]
+    fn dec_weak(self) {
         self.weak_ref().set(self.weak() - 1);
     }
 }
@@ -3935,7 +3989,7 @@ impl<T, A: Allocator> UniqueRc<T, A> {
         // SAFETY: `ptr` points to a newly allocated reference counted allocation, we have exclusive
         // access to it.
         unsafe {
-            RcHeader::INIT_UNIQUE_RC.write_to(ptr.erase());
+            write_unique_rc_header(ptr.erase());
             ptr.ptr.write(value);
         }
 
@@ -3951,7 +4005,7 @@ impl<T, A: Allocator> UniqueRc<T, A> {
             // SAFETY: `ptr` points to a newly allocated reference counted allocation, we have exclusive
             // access to it.
             unsafe {
-                RcHeader::INIT_UNIQUE_RC.write_to(ptr.erase());
+                write_unique_rc_header(ptr.erase());
                 ptr.ptr.write(value);
             }
 
@@ -3964,15 +4018,15 @@ impl<T, A: Allocator> UniqueRc<T, A> {
     // #[unstable(feature = "allocator_api", issue = "163177")]
     #[must_use]
     pub fn unwrap_with_allocator(this: Self) -> (T, A) {
-        let inner_ptr = this.ptr;
-        let (data_ptr, alloc) = Self::into_raw_with_allocator(this);
+        let (data_ptr, alloc) = Self::into_inner_with_allocator(this);
 
         // SAFETY: Conceptually moves out of the `UniqueRc`.
         // We do not use the data inside ever again.
-        let val = unsafe { data_ptr.read() };
+        let val = unsafe { data_ptr.ptr.read() };
 
-        // Drop the strong-weak ref
-        drop(Weak { ptr: inner_ptr, alloc: &alloc });
+        // Drop the strong-weak ref.
+        // SAFETY: `data_ptr` is provided `UniqueRc`, thus non-dangling.
+        unsafe { drop_weak_non_dangling(&alloc, data_ptr) };
 
         (val, alloc)
     }
@@ -4091,10 +4145,11 @@ impl<T: ?Sized, A: Allocator> UniqueRc<T, A> {
         }
     }
 
+    #[cfg(not(no_global_oom_handling))]
     fn into_raw_with_allocator(this: Self) -> (*const T, A) {
         let this = ManuallyDrop::new(this);
         // SAFETY: The copy of the allocator stored in `this` is forgotten
-        (Self::as_ptr(&this), unsafe { ptr::read(&this.alloc) })
+        (this.ptr.as_ptr(), unsafe { ptr::read(&this.alloc) })
     }
 
     /// Converts the `UniqueRc` into a regular [`Rc`].
@@ -4126,16 +4181,18 @@ impl<T: ?Sized, A: Allocator> UniqueRc<T, A> {
         this.inner().weak() - 1
     }
 
-    fn inner(&self) -> &RcHeader {
-        // SAFETY: while this UniqueRc is alive we're guaranteed that the pointer is valid.
-        unsafe { RcHeader::get(self.ptr.erase()) }
+    #[inline(always)]
+    fn inner(&self) -> RcHeaderRef<'_> {
+        // SAFETY: `self.ptr` is always valid.
+        unsafe { RcHeaderRef::new(self.ptr.erase()) }
     }
 
-    fn as_ptr(this: &Self) -> *const T {
-        // This cannot go through Deref::deref or UniqueRc::inner because
-        // this is required to retain raw/mut provenance such that e.g. `get_mut` can
-        // write through the pointer after the Rc is recovered through `from_raw`.
-        this.ptr.as_ptr()
+    #[inline(always)]
+    fn non_dangling_ptr(&self) -> RcValuePointer<T> {
+        // SAFETY: `UniqueRc` always contains a non-dangling value pointer.
+        unsafe { intrinsics::assume(!self.ptr.is_dangling()) }
+
+        self.ptr
     }
 
     #[inline]
@@ -4160,7 +4217,7 @@ impl<T: ?Sized, A: AllocatorClone> UniqueRc<T, A> {
     pub fn downgrade(this: &Self) -> Weak<T, A> {
         this.inner().inc_weak();
 
-        Weak { ptr: this.ptr, alloc: this.alloc.clone() }
+        Weak { ptr: this.non_dangling_ptr(), alloc: this.alloc.clone() }
     }
 }
 
@@ -4223,19 +4280,7 @@ impl<T: ?Sized, A: Allocator> DerefMut for UniqueRc<T, A> {
 unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for UniqueRc<T, A> {
     fn drop(&mut self) {
         // ignore-tidy-undocumented-unsafe
-        unsafe {
-            // destroy the contained object
-            drop_in_place(DerefMut::deref_mut(self));
-
-            let header = self.inner();
-
-            // remove the implicit "strong weak" pointer now that we've destroyed the contents.
-            header.dec_weak();
-
-            if header.weak() == 0 {
-                RcHeader::deallocate(&self.alloc, self.ptr);
-            }
-        }
+        unsafe { drop_unique_rc(&self.alloc, self.ptr) };
     }
 }
 
@@ -4255,6 +4300,7 @@ struct UniqueRcUninit<T: ?Sized, A: Allocator> {
 impl<T: ?Sized, A: Allocator> UniqueRcUninit<T, A> {
     /// Allocates a reference counted allocation with layout suitable to contain `for_value` or a
     /// clone of it.
+    #[inline(always)]
     fn new(rc: &Rc<T, A>, alloc: A) -> UniqueRcUninit<T, A> {
         // SAFETY: `Rc<T, A>` proves that `T` is small enough to store inside a reference counted
         // allocation.
@@ -4262,7 +4308,7 @@ impl<T: ?Sized, A: Allocator> UniqueRcUninit<T, A> {
 
         // SAFETY: `ptr` points to a newly allocated reference counted allocation, we have exclusive
         // access to it.
-        unsafe { RcHeader::INIT_RC.write_to(ptr.erase()) };
+        unsafe { write_rc_header(ptr.erase()) };
 
         Self { ptr, alloc }
     }
@@ -4277,6 +4323,7 @@ impl<T: ?Sized, A: Allocator> UniqueRcUninit<T, A> {
     /// # Safety
     ///
     /// The data must have been initialized (by writing to [`Self::data_ptr()`]).
+    #[inline]
     unsafe fn into_rc(self) -> Rc<T, A> {
         let this = ManuallyDrop::new(self);
         let ptr = this.ptr;
@@ -4357,3 +4404,59 @@ impl<T: ?Sized + Allocator, A: Allocator> AllocatorNightly for Rc<T, A> {}
 
 #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
 unsafe impl<T: Allocator + ?Sized, A: AllocatorClone> AllocatorClone for Rc<T, A> {}
+
+#[inline]
+unsafe fn drop_weak_non_dangling<T, A>(alloc: &A, ptr: RcValuePointer<T>)
+where
+    T: ?Sized,
+    A: Allocator,
+{
+    #[inline]
+    fn dec_weak(header_ref: RcHeaderRef<'_>) -> bool {
+        header_ref.dec_weak();
+
+        header_ref.weak() == 0
+    }
+
+    // SAFETY: Caller guarantees the validify of `ptr`.
+    unsafe {
+        if dec_weak(RcHeaderRef::new(ptr.erase())) {
+            RcHeader::deallocate(alloc, ptr);
+        }
+    }
+}
+
+struct WeakGuard<'a, T, A>(&'a A, RcValuePointer<T>)
+where
+    T: ?Sized,
+    A: Allocator;
+
+impl<T, A> Drop for WeakGuard<'_, T, A>
+where
+    T: ?Sized,
+    A: Allocator,
+{
+    fn drop(&mut self) {
+        // SAFETY: Caller guarantees the pointer is non-dangling.
+        unsafe { drop_weak_non_dangling(self.0, self.1) };
+    }
+}
+
+/// Calls the destructor of `T`, then calls the `Weak::drop` even if `T`'s destructor panics.
+///
+/// # Safety:
+///
+/// `ptr` must point to a valid reference counted allocation with the value properly initialized.
+#[inline]
+unsafe fn drop_unique_rc<T, A>(alloc: &A, ptr: RcValuePointer<T>)
+where
+    T: ?Sized,
+    A: Allocator,
+{
+    // SAFETY: guaranteed by the caller.
+    unsafe {
+        let _guard = WeakGuard(alloc, ptr);
+
+        ptr.as_ptr().drop_in_place();
+    }
+}
