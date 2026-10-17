@@ -534,8 +534,6 @@ where
                 _ => {}
             };
 
-            let lint_flag_val = Symbol::intern(lint_name_);
-
             let Some(ids) = self.store.find_lints(lint_name) else {
                 // errors already handled above
                 continue;
@@ -549,7 +547,7 @@ where
                 }
 
                 if self.check_gated_lint(id, DUMMY_SP, true) {
-                    let src = LintLevelSource::CommandLine(lint_flag_val, level);
+                    let src = LintLevelSource::CommandLine(lint_name, level);
                     self.provider.insert(id, LevelSpec::new(level, None, src));
                 }
             }
@@ -587,7 +585,7 @@ where
             let fcw_warning = match old_src {
                 LintLevelSource::Default => false,
                 LintLevelSource::Node { name, .. } => self.store.is_lint_group(name),
-                LintLevelSource::CommandLine(symbol, _) => self.store.is_lint_group(symbol),
+                LintLevelSource::CommandLine(name, _) => self.store.is_lint_group(name),
             };
             debug!(
                 "fcw_warning={:?}, specs.get(&id) = {:?}, old_src={:?}, id_name={:?}",
@@ -603,8 +601,8 @@ where
                 LintLevelSource::Node { span, reason, .. } => {
                     OverruledAttributeSub::NodeSource { span, reason }
                 }
-                LintLevelSource::CommandLine(name, _) => {
-                    OverruledAttributeSub::CommandLineSource { id: name }
+                LintLevelSource::CommandLine(lint_name, _) => {
+                    OverruledAttributeSub::CommandLineSource { forbidden_lint_name: lint_name }
                 }
             };
             if !fcw_warning {
@@ -612,7 +610,7 @@ where
                     span: src.span(),
                     overruled: src.span(),
                     lint_level: level.as_str(),
-                    lint_source: src.name(),
+                    lint_name: src.name(),
                     sub,
                 });
             } else {
@@ -622,7 +620,7 @@ where
                     OverruledAttributeLint {
                         overruled: src.span(),
                         lint_level: level.as_str(),
-                        lint_source: src.name(),
+                        lint_name: src.name(),
                         sub,
                     },
                 );
@@ -849,11 +847,7 @@ where
                 }
             };
 
-            let src = LintLevelSource::Node {
-                name: Symbol::intern(&name.to_string()),
-                span: lint_span,
-                reason,
-            };
+            let src = LintLevelSource::Node { name, span: lint_span, reason };
             for &id in ids {
                 if self.check_gated_lint(id, lint_span, false) {
                     self.insert_spec(id, LevelSpec::new(level, lint_id, src));
@@ -897,7 +891,7 @@ where
                     lint_attr_span.into(),
                     IgnoredUnlessCrateSpecified {
                         level: level_spec.level().as_str(),
-                        name: lint_attr_name,
+                        lint_name: lint_attr_name,
                     },
                 );
                 // don't set a separate error for every lint in the group

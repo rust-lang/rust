@@ -24,14 +24,14 @@ use crate::builtin::{InitError, ShorthandAssocTyCollector, TypeAliasBounds};
 use crate::lifetime_syntax::LifetimeSyntaxCategories;
 
 #[derive(Diagnostic)]
-#[diag("{$lint_level}({$lint_source}) incompatible with previous forbid", code = E0453)]
+#[diag("{$lint_level}({$lint_name}) incompatible with previous forbid", code = E0453)]
 pub(crate) struct OverruledAttribute<'a> {
     #[primary_span]
     pub span: Span,
     #[label("overruled by previous forbid")]
     pub overruled: Span,
     pub lint_level: &'a str,
-    pub lint_source: Symbol,
+    pub lint_name: LintName,
     #[subdiagnostic]
     pub sub: OverruledAttributeSub,
 }
@@ -39,7 +39,7 @@ pub(crate) struct OverruledAttribute<'a> {
 pub(crate) enum OverruledAttributeSub {
     DefaultSource { id: String },
     NodeSource { span: Span, reason: Option<Symbol> },
-    CommandLineSource { id: Symbol },
+    CommandLineSource { forbidden_lint_name: LintName },
 }
 
 impl Subdiagnostic for OverruledAttributeSub {
@@ -55,9 +55,11 @@ impl Subdiagnostic for OverruledAttributeSub {
                     diag.note(rationale.to_string());
                 }
             }
-            OverruledAttributeSub::CommandLineSource { id } => {
-                diag.note(msg!("`forbid` lint level was set on command line (`-F {$id}`)"));
-                diag.arg("id", id);
+            OverruledAttributeSub::CommandLineSource { forbidden_lint_name } => {
+                diag.note(msg!(
+                    "`forbid` lint level was set on command line (`-F {$forbidden_lint_name}`)"
+                ));
+                diag.arg("forbidden_lint_name", forbidden_lint_name);
             }
         }
     }
@@ -1385,12 +1387,12 @@ impl Subdiagnostic for NonBindingLetSub {
 
 // levels.rs
 #[derive(Diagnostic)]
-#[diag("{$lint_level}({$lint_source}) incompatible with previous forbid")]
+#[diag("{$lint_level}({$lint_name}) incompatible with previous forbid")]
 pub(crate) struct OverruledAttributeLint<'a> {
     #[label("overruled by previous forbid")]
     pub overruled: Span,
     pub lint_level: &'a str,
-    pub lint_source: Symbol,
+    pub lint_name: LintName,
     #[subdiagnostic]
     pub sub: OverruledAttributeSub,
 }
@@ -1506,10 +1508,10 @@ pub(crate) struct UnknownLintFromCommandLine {
 }
 
 #[derive(Diagnostic)]
-#[diag("{$level}({$name}) is ignored unless specified at crate level")]
+#[diag("{$level}({$lint_name}) is ignored unless specified at crate level")]
 pub(crate) struct IgnoredUnlessCrateSpecified<'a> {
     pub level: &'a str,
-    pub name: Symbol,
+    pub lint_name: LintName,
 }
 
 // dangling.rs
