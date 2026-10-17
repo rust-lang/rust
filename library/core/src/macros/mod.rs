@@ -1907,7 +1907,7 @@ pub(crate) mod builtin {
     }
 
     /// Unstable placeholder for type ascription.
-    #[allow_internal_unstable(builtin_syntax)]
+    #[allow_internal_unstable(internal_syntax)]
     #[unstable(
         feature = "type_ascription",
         issue = "23416",
@@ -1915,11 +1915,11 @@ pub(crate) mod builtin {
     )]
     #[diagnostic::opaque]
     pub macro type_ascribe($expr:expr, $ty:ty) {
-        builtin # type_ascribe($expr, $ty)
+        k#type_ascribe($expr, $ty)
     }
 
     /// Unstable placeholder for deref patterns.
-    #[allow_internal_unstable(builtin_syntax)]
+    #[allow_internal_unstable(internal_syntax)]
     #[unstable(
         feature = "deref_patterns",
         issue = "87121",
@@ -1927,7 +1927,7 @@ pub(crate) mod builtin {
     )]
     #[diagnostic::opaque]
     pub macro deref($pat:pat) {
-        builtin # deref($pat)
+        k#deref($pat)
     }
 
     /// Derive macro generating an impl of the trait `From`.
