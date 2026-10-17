@@ -1399,7 +1399,6 @@ impl OutputFilenames {
 pub fn parse_remap_path_scope(
     early_dcx: &EarlyDiagCtxt,
     matches: &getopts::Matches,
-    unstable_opts: &UnstableOptions,
 ) -> RemapPathScopeComponents {
     if let Some(v) = matches.opt_str("remap-path-scope") {
         let mut slot = RemapPathScopeComponents::empty();
@@ -1407,13 +1406,7 @@ pub fn parse_remap_path_scope(
             slot |= match s {
                 "macro" => RemapPathScopeComponents::MACRO,
                 "diagnostics" => RemapPathScopeComponents::DIAGNOSTICS,
-                "documentation" => {
-                    if !unstable_opts.unstable_options {
-                        early_dcx.early_fatal("remapping `documentation` path scope requested but `-Zunstable-options` not specified");
-                    }
-
-                    RemapPathScopeComponents::DOCUMENTATION
-                },
+                "documentation" => RemapPathScopeComponents::DOCUMENTATION,
                 "debuginfo" => RemapPathScopeComponents::DEBUGINFO,
                 "coverage" => RemapPathScopeComponents::COVERAGE,
                 "object" => RemapPathScopeComponents::OBJECT,
@@ -2153,7 +2146,7 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
             "",
             "remap-path-scope",
             "Defines which scopes of paths should be remapped by `--remap-path-prefix`",
-            "<macro,diagnostics,debuginfo,coverage,object,all>",
+            "<macro,diagnostics,documentation,debuginfo,coverage,object,all>",
         ),
         opt(Unstable, Opt, "j", "jobs", "Limit on the number of used parallel jobs", "<N>"),
         opt(
@@ -2990,7 +2983,7 @@ pub fn build_session_options(
     let externs = parse_externs(early_dcx, matches, &unstable_opts);
 
     let remap_path_prefix = parse_remap_path_prefix(early_dcx, matches);
-    let remap_path_scope = parse_remap_path_scope(early_dcx, matches, &unstable_opts);
+    let remap_path_scope = parse_remap_path_scope(early_dcx, matches);
 
     let pretty = parse_pretty(early_dcx, &unstable_opts);
 
