@@ -878,20 +878,32 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
         return None;
     }
 
-    let (fragments, _) = attrs_to_doc_fragments(
-        attrs.iter().filter_map(|attr| {
-            let (_, kind) = attr.doc_str_and_fragment_kind()?;
-            let (is_raw, doc_str_span) = match kind {
-                DocFragmentKind::Sugared(_) => (false, attr.span()),
-                DocFragmentKind::Raw(span) => (true, span),
-            };
-            let from_include_str_macro = is_raw
-                && !attr.span().in_external_macro(cx.sess().source_map())
-                && originated_from_include_str_macro(cx, doc_str_span);
-            (from_include_str_macro || !doc_str_span.in_external_macro(cx.sess().source_map())).then_some((attr, None))
-        }),
-        true,
-    );
+    for attr in attrs {
+        let Some((_, kind)) = attr.doc_str_and_fragment_kind() else {
+            continue;
+        };
+
+        let (is_raw, doc_str_span) = match kind {
+            DocFragmentKind::Sugared(_) => (false, attr.span()),
+            DocFragmentKind::Raw(span) => (true, span),
+        };
+
+        let from_include_str_macro = is_raw
+            && !attr.span().in_external_macro(cx.sess().source_map())
+            && originated_from_include_str_macro(cx, doc_str_span);
+
+        // we can handle docs that aren't produced by macros except `include_str!` which could track
+        // errors from other files
+        if !doc_str_span.in_external_macro(cx.sess().source_map()) || from_include_str_macro {
+            continue;
+        }
+
+        // an unknown external macro generated a doc attr to avoid false positive results
+        // or inaccurate spans, silence all of the doc lints
+        return None;
+    }
+
+    let (fragments, _) = attrs_to_doc_fragments(attrs.iter().map(|attr| (attr, None)), true);
 
     let mut doc = String::with_capacity(fragments.iter().map(|frag| frag.doc.as_str().len() + 1).sum());
 
