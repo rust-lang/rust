@@ -17,7 +17,7 @@ pub struct svint32_t(i32);
 
 #[target_feature(enable = "sve")]
 pub unsafe fn svdup_n_s32(op: i32) -> svint32_t {
-    extern "C" {
+    extern "llvm-intrinsic" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.dup.x.nxv4i32")]
         fn _svdup_n_s32(op: i32) -> svint32_t;
     }
