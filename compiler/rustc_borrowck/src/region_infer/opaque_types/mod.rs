@@ -261,7 +261,7 @@ fn collect_defining_uses<'tcx>(
             DefiningScopeKind::MirBorrowck,
         ) {
             // A non-defining use. This is a hard error on stable and gets ignored
-            // with `TypingMode::PostTypeckUntilBorrowck`.
+            // with `TypingMode::PostTypeckThroughBorrowck`.
             if infcx.tcx.use_typing_mode_post_typeck_until_borrowck() {
                 match err {
                     NonDefiningUseReason::Tainted(guar) => add_hidden_type(

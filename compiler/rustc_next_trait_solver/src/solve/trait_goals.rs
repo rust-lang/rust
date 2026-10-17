@@ -1354,7 +1354,7 @@ where
                 // We're inferring regions of opaque types, but
                 // the type itself is already fully known, no way
                 // to leak the hidden type.
-                TypingMode::PostTypeckUntilBorrowck { .. } => {}
+                TypingMode::PostTypeckThroughBorrowck { .. } => {}
                 // We're inferring the hidden type of opaques, could
                 // leak types through it.
                 TypingMode::Typeck { .. } => {
@@ -1799,7 +1799,7 @@ where
                 | TypingMode::PostAnalysis
                 | TypingMode::Reflection
                 | TypingMode::Codegen
-                | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: _ }
+                | TypingMode::PostTypeckThroughBorrowck { defining_opaque_types: _ }
                 | TypingMode::PostBorrowck { defined_opaque_types: _ } => {}
             }
         }

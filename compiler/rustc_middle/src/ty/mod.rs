@@ -1210,7 +1210,7 @@ impl<'tcx> TypingEnv<'tcx> {
             TypingMode::Coherence
             | TypingMode::Reflection
             | TypingMode::Typeck { .. }
-            | TypingMode::PostTypeckUntilBorrowck { .. }
+            | TypingMode::PostTypeckThroughBorrowck { .. }
             | TypingMode::PostBorrowck { .. } => {}
             TypingMode::PostAnalysis | TypingMode::Codegen => return self.as_query_input(value),
         }
@@ -1235,7 +1235,7 @@ impl<'tcx> TypingEnv<'tcx> {
             TypingMode::Coherence
             | TypingMode::Reflection
             | TypingMode::Typeck { .. }
-            | TypingMode::PostTypeckUntilBorrowck { .. }
+            | TypingMode::PostTypeckThroughBorrowck { .. }
             | TypingMode::PostBorrowck { .. }
             | TypingMode::PostAnalysis => {}
             TypingMode::Codegen => return self.as_query_input(value),

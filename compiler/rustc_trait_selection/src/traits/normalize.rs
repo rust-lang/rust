@@ -140,7 +140,7 @@ pub(super) fn needs_normalization<'tcx, T: TypeVisitable<TyCtxt<'tcx>>>(
     match infcx.typing_mode_raw().assert_not_erased() {
         // FIXME(#132279): We likely want to reveal opaques during post borrowck analysis
         TypingMode::Typeck { .. }
-        | TypingMode::PostTypeckUntilBorrowck { .. }
+        | TypingMode::PostTypeckThroughBorrowck { .. }
         | TypingMode::PostBorrowck { .. } => flags.remove(ty::TypeFlags::HAS_TY_OPAQUE),
         TypingMode::Reflection | TypingMode::PostAnalysis | TypingMode::Codegen => {}
         TypingMode::Coherence => {
@@ -429,7 +429,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                 match self.selcx.typing_mode() {
                     // FIXME(#132279): We likely want to reveal opaques during post borrowck analysis
                     TypingMode::Typeck { .. }
-                    | TypingMode::PostTypeckUntilBorrowck { .. }
+                    | TypingMode::PostTypeckThroughBorrowck { .. }
                     | TypingMode::PostBorrowck { .. } => ty.super_fold_with(self),
                     TypingMode::Reflection | TypingMode::PostAnalysis | TypingMode::Codegen => {
                         let recursion_limit = self.cx().recursion_limit();

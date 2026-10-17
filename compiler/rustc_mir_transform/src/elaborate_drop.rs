@@ -770,7 +770,7 @@ where
                     ty::TypingMode::Coherence
                     | ty::TypingMode::Reflection
                     | ty::TypingMode::Typeck { .. }
-                    | ty::TypingMode::PostTypeckUntilBorrowck { .. }
+                    | ty::TypingMode::PostTypeckThroughBorrowck { .. }
                     | ty::TypingMode::PostBorrowck { .. } => {
                         bug!()
                     }
