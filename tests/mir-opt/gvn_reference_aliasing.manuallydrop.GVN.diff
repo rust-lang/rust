@@ -1,0 +1,83 @@
+- // MIR for `manuallydrop` before GVN
++ // MIR for `manuallydrop` after GVN
+  
+  fn manuallydrop(_1: *mut u8) -> (u8, u8) {
+      debug p => _1;
+      let mut _0: (u8, u8);
+      let _2: std::mem::ManuallyDrop<&u8>;
+      let mut _3: *mut u8;
+      let mut _5: &&u8;
+      let mut _6: &std::mem::ManuallyDrop<&u8>;
+      let mut _9: &&u8;
+      let mut _10: &std::mem::ManuallyDrop<&u8>;
+      let mut _12: u8;
+      let mut _13: u8;
+      scope 1 {
+          debug m => _2;
+          let _4: &u8;
+          scope 2 {
+              debug a => _4;
+              let _7: u8;
+              scope 3 {
+                  debug a => _7;
+                  let _8: &u8;
+                  scope 4 {
+                      debug b => _8;
+                      let _11: u8;
+                      scope 5 {
+                          debug b => _11;
+                      }
+                  }
+                  scope 7 (inlined <ManuallyDrop<&u8> as Deref>::deref) {
+                  }
+              }
+          }
+          scope 6 (inlined <ManuallyDrop<&u8> as Deref>::deref) {
+          }
+      }
+  
+      bb0: {
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = copy _1;
+-         _2 = move _3 as std::mem::ManuallyDrop<&u8> (Transmute);
++         _2 = copy _1 as std::mem::ManuallyDrop<&u8> (Transmute);
+          StorageDead(_3);
+          StorageLive(_4);
+          StorageLive(_5);
+          StorageLive(_6);
+          _6 = &_2;
+          _5 = &((*_6).0: &u8);
+          _4 = copy (*_5);
+          StorageDead(_6);
+          StorageDead(_5);
+          StorageLive(_7);
+          _7 = copy (*_4);
+          (*_1) = const 2_u8;
+          StorageLive(_8);
+          StorageLive(_9);
+          StorageLive(_10);
+          _10 = &_2;
+          _9 = &((*_10).0: &u8);
+          _8 = copy (*_9);
+          StorageDead(_10);
+          StorageDead(_9);
+          StorageLive(_11);
+          _11 = copy (*_8);
+          StorageLive(_12);
+          _12 = copy _7;
+          StorageLive(_13);
+          _13 = copy _11;
+-         _0 = (move _12, move _13);
++         _0 = (copy _7, copy _11);
+          StorageDead(_13);
+          StorageDead(_12);
+          StorageDead(_11);
+          StorageDead(_8);
+          StorageDead(_7);
+          StorageDead(_4);
+          StorageDead(_2);
+          return;
+      }
+  }
+  
