@@ -232,7 +232,11 @@ fn show_fieldless_enum(
     def: &EnumDef,
     type_ident: Ident,
 ) -> BlockOrExpr {
+    if let Some(expr) = show_fieldless_enum_concat_str(cx, span, def, type_ident) {
+        return BlockOrExpr::new_expr(expr);
+    }
     let fmt = formatter_ident(cx, span);
+    let fn_path_write_str = cx.std_path(&[sym::fmt, sym::Formatter, sym::write_str]);
     let arms = def
         .variants
         .iter()
@@ -253,6 +257,62 @@ fn show_fieldless_enum(
         })
         .collect::<ThinVec<_>>();
     let name = cx.expr_match(span, cx.expr_self(span), arms);
-    let fn_path_write_str = cx.std_path(&[sym::fmt, sym::Formatter, sym::write_str]);
     BlockOrExpr::new_expr(cx.expr_call_global(span, fn_path_write_str, thin_vec![fmt, name]))
+}
+
+fn show_fieldless_enum_concat_str(
+    cx: &ExtCtxt<'_>,
+    span: Span,
+    def: &EnumDef,
+    type_ident: Ident,
+) -> Option<Box<ast::Expr>> {
+    // Minimum variants count where this optimization starts to pay off.
+    // Initial value of 10 came from https://github.com/rust-lang/rust/pull/155452.
+    // Refined with the new impl in https://github.com/rust-lang/rust/pull/162535.
+    // Tested 10,5,2 on rustc-perf.
+    const THRESHOLD: usize = 5;
+    let variants_count = def.variants.len();
+    if variants_count < THRESHOLD {
+        return None;
+    }
+    let fmt = formatter_ident(cx, span);
+
+    let mut concatenated_names = String::new();
+
+    let arms = def
+        .variants
+        .iter()
+        .map(|v| {
+            let name_offset = concatenated_names.len();
+
+            let name = v.ident.name.as_str();
+            concatenated_names.push_str(name);
+            concatenated_names.push(' ');
+
+            let variant_path = cx.path(span, vec![type_ident, v.ident]);
+            let pat = match &v.data {
+                ast::VariantData::Tuple(fields, _) => {
+                    debug_assert!(fields.is_empty());
+                    cx.pat_tuple_struct(span, variant_path, ThinVec::new())
+                }
+                ast::VariantData::Struct { fields, .. } => {
+                    debug_assert!(fields.is_empty());
+                    cx.pat_struct(span, variant_path, ThinVec::new())
+                }
+                ast::VariantData::Unit(_) => cx.pat_path(span, variant_path),
+            };
+
+            cx.arm(span, pat, cx.expr_usize(span, name_offset))
+        })
+        .collect::<ThinVec<_>>();
+
+    let names_str_body = cx.expr_str(span, Symbol::intern(&concatenated_names));
+
+    let variant_index_expr = cx.expr_match(span, cx.expr_self(span), arms);
+
+    let fn_path = cx.std_path(&[sym::fmt, sym::Formatter, sym::debug_c_like_enum_write_str]);
+    let call_expr =
+        cx.expr_call_global(span, fn_path, thin_vec![fmt, names_str_body, variant_index_expr]);
+
+    Some(call_expr)
 }
