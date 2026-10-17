@@ -1593,7 +1593,6 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         }
 
         if matches!(kind, CastKind::Transmute) && self.ty_may_have_ref(to) {
-            //rustc_middle::ty::print::with_no_trimmed_paths!(eprintln!("Transmute from {:?} to {:?}", from, to));
             return Some(self.new_opaque(to));
         }
 
