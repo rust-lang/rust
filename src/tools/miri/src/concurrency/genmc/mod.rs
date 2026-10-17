@@ -14,8 +14,7 @@ use tracing::debug;
 
 use self::global_allocations::{EvalContextExt as _, GlobalAllocationHandler};
 use self::helper::{
-    MAX_ACCESS_SIZE, genmc_scalar_to_scalar, get_outcome,
-    maybe_upgrade_compare_exchange_success_orderings, scalar_to_genmc_scalar, to_genmc_rmw_op,
+    MAX_ACCESS_SIZE, genmc_scalar_to_scalar, get_outcome, scalar_to_genmc_scalar, to_genmc_rmw_op,
 };
 use self::run::GenmcMode;
 use self::thread_id_map::ThreadIdMap;
@@ -375,14 +374,6 @@ impl GenmcCtx {
             size.bytes()
         );
 
-        // Upgrade the success memory ordering to equal the failure ordering, since GenMC currently ignores the failure ordering.
-        // FIXME(genmc): remove this once GenMC properly supports the failure memory ordering.
-        let upgraded_success_ordering =
-            maybe_upgrade_compare_exchange_success_orderings(success, fail);
-
-        // FIXME(genmc): remove once GenMC supports failure memory ordering in `compare_exchange`.
-        let (effective_failure_ordering, _) = upgraded_success_ordering.split_memory_orderings();
-
         // Return a warning if we cannot explore all behaviors of this operation.
         // Only emit this if the operation is "in user code": walk up across `#[track_caller]`
         // frames, then check if the next frame is local.
@@ -393,19 +384,6 @@ impl GenmcCtx {
                 .find(|f| !f.instance().def.requires_caller_location(*ecx.tcx))
                 .is_none_or(|f| ecx.machine.is_local(f.instance()))
         };
-        if (success != upgraded_success_ordering || effective_failure_ordering != fail)
-            && show_warning()
-        {
-            static DEDUP: SpanDedupDiagnostic = SpanDedupDiagnostic::new();
-            ecx.dedup_diagnostic(&DEDUP, |_first| {
-                NonHaltingDiagnostic::GenmcCompareExchangeOrderingMismatch {
-                    success_ordering: success,
-                    upgraded_success_ordering,
-                    failure_ordering: fail,
-                    effective_failure_ordering,
-                }
-            });
-        }
         // FIXME(genmc): remove once GenMC implements spurious failures for `compare_exchange_weak`.
         if can_fail_spuriously && show_warning() {
             static DEDUP: SpanDedupDiagnostic = SpanDedupDiagnostic::new();
@@ -413,7 +391,7 @@ impl GenmcCtx {
         }
 
         debug!(
-            "GenMC: atomic_compare_exchange, address: {address:?}, size: {size:?} (expect: {expected_old_value:?}, new: {new_value:?}, old_value: {old_value:?}, {success:?}, orderings: {fail:?}), can fail spuriously: {can_fail_spuriously}"
+            "GenMC: atomic_compare_exchange, address: {address:?}, size: {size:?} (expect: {expected_old_value:?}, new: {new_value:?}, old_value: {old_value:?}, orderings: {success:?}/{fail:?}), can fail spuriously: {can_fail_spuriously}"
         );
         let cas_result = self.genmc.borrow_mut().pin_mut().handle_compare_exchange(
             self.active_thread_genmc_tid(&ecx.machine),
@@ -422,7 +400,7 @@ impl GenmcCtx {
             scalar_to_genmc_scalar(ecx, self, expected_old_value)?,
             scalar_to_genmc_scalar(ecx, self, new_value)?,
             scalar_to_genmc_scalar(ecx, self, old_value)?,
-            upgraded_success_ordering.to_genmc(),
+            success.to_genmc(),
             fail.to_genmc(),
             can_fail_spuriously,
         );

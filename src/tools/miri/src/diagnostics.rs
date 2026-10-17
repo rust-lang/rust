@@ -148,12 +148,6 @@ pub enum NonHaltingDiagnostic {
     },
     ExternTypeReborrow,
     GenmcCompareExchangeWeak,
-    GenmcCompareExchangeOrderingMismatch {
-        success_ordering: AtomicRwOrd,
-        upgraded_success_ordering: AtomicRwOrd,
-        failure_ordering: AtomicReadOrd,
-        effective_failure_ordering: AtomicReadOrd,
-    },
     FileInProcOpened,
     ConnectingSocketGetsockname,
     SocketAddressResolution {
@@ -651,7 +645,7 @@ impl<'tcx> MiriMachine<'tcx> {
                 ("sharing memory with a native function".to_string(), DiagLevel::Warning),
             ExternTypeReborrow =>
                 ("reborrow of reference to `extern type`".to_string(), DiagLevel::Warning),
-            GenmcCompareExchangeWeak | GenmcCompareExchangeOrderingMismatch { .. } =>
+            GenmcCompareExchangeWeak =>
                 ("GenMC might miss possible behaviors of this code".to_string(), DiagLevel::Warning),
             CreatedPointerTag(..)
             | PoppedPointerTag(..)
@@ -699,20 +693,6 @@ impl<'tcx> MiriMachine<'tcx> {
             GenmcCompareExchangeWeak =>
                 "GenMC currently does not model spurious failures of `compare_exchange_weak`. Miri with GenMC might miss bugs related to spurious failures."
                     .to_string(),
-            GenmcCompareExchangeOrderingMismatch {
-                success_ordering,
-                upgraded_success_ordering,
-                failure_ordering,
-                effective_failure_ordering,
-            } => {
-                let was_upgraded_msg = if success_ordering != upgraded_success_ordering {
-                    format!("Success ordering '{success_ordering:?}' was upgraded to '{upgraded_success_ordering:?}' to match failure ordering '{failure_ordering:?}'")
-                } else {
-                    assert_ne!(failure_ordering, effective_failure_ordering);
-                    format!("Due to success ordering '{success_ordering:?}', the failure ordering '{failure_ordering:?}' is treated like '{effective_failure_ordering:?}'")
-                };
-                format!("GenMC currently does not model the failure ordering for `compare_exchange`. {was_upgraded_msg}. Miri with GenMC might miss bugs related to this memory access.")
-            }
             FileInProcOpened => format!("files in `/proc` can bypass the Abstract Machine and might not work properly in Miri"),
             ConnectingSocketGetsockname => format!("connecting sockets return unspecified socket addresses on Windows hosts"),
             SocketAddressResolution { error } => format!("address resolution failed: {error}"),

@@ -298,11 +298,10 @@ void MiriGenmcInterface::handle_fence(ThreadId thread_id, MemOrdering ord) {
     MemOrdering fail_load_ordering,
     bool can_fail_spuriously
 ) -> CompareExchangeResult {
-    // NOTE: Both the store and load events should get the same `ordering`, it should not be split
+    // NOTE: On success, both the load and the store get `success_ordering`, it should not be split
     // into a load and a store component. This means we can have for example `AcqRel` loads and
-    // stores, but this is intended for CAS operations.
-
-    // FIXME(GenMC): properly handle failure memory ordering.
+    // stores, but this is intended for CAS operations. On failure, the load gets
+    // `fail_load_ordering`.
 
     auto expectedVal = GenmcScalarExt::to_sval(expected_value);
     auto new_val = GenmcScalarExt::to_sval(new_value);
@@ -312,7 +311,7 @@ void MiriGenmcInterface::handle_fence(ThreadId thread_id, MemOrdering ord) {
         curr_pos(thread_id),
         GenmcScalarExt::try_to_sval(old_val),
         success_ordering,
-        /* fail_ordering: */ success_ordering,
+        fail_load_ordering,
         SAddr(address),
         ASize(size),
         expectedVal,
