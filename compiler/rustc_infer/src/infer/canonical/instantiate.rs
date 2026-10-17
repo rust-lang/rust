@@ -52,7 +52,7 @@ impl<'tcx, V> Canonical<'tcx, V> {
 /// Instantiate the values from `var_values` into `value`. `var_values`
 /// must be values for the set of canonical variables that appear in
 /// `value`.
-pub(super) fn instantiate_value<'tcx, T>(
+pub fn instantiate_value<'tcx, T>(
     tcx: TyCtxt<'tcx>,
     var_values: &CanonicalVarValues<'tcx>,
     value: T,

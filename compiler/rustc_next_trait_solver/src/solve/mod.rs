@@ -57,7 +57,7 @@ pub enum HasChanged {
 
 // FIXME(trait-system-refactor-initiative#117): we don't detect whether a response
 // ended up pulling down any universes.
-fn has_no_inference_or_external_constraints<I: Interner>(
+pub(crate) fn has_no_inference_or_external_constraints<I: Interner>(
     response: ty::Canonical<I, Response<I>>,
 ) -> bool {
     let ExternalConstraintsData {
@@ -65,7 +65,7 @@ fn has_no_inference_or_external_constraints<I: Interner>(
         ref opaque_types,
         ref normalization_nested_goals,
     } = *response.value.external_constraints;
-    response.value.is_identity()
+    response.value.var_values_is_identity == IsIdentity::Yes
         && region_constraints.is_empty()
         && opaque_types.is_empty()
         && normalization_nested_goals.is_empty()
@@ -77,7 +77,7 @@ fn has_only_region_constraints<I: Interner>(response: ty::Canonical<I, Response<
         ref opaque_types,
         ref normalization_nested_goals,
     } = *response.value.external_constraints;
-    response.value.is_identity_modulo_regions()
+    response.value.var_values_is_identity >= IsIdentity::ModuloRegions
         && opaque_types.is_empty()
         && normalization_nested_goals.is_empty()
 }
@@ -93,8 +93,9 @@ fn equal_response_modulo_region_constraints<I: Interner>(
         var_kinds: a_var_kinds,
         value:
             Response {
-                var_values: a_var_values,
                 certainty: a_certainty,
+                var_values: a_var_values,
+                var_values_is_identity: _, // ignore because it's purely derived from `var_values`
                 external_constraints: a_external_constraints,
             },
     } = a;
