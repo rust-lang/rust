@@ -461,3 +461,8 @@ macro_rules! hash_map {
         map
     }}
 }
+
+#[rustc_builtin_macro]
+pub(crate) macro no_code_when_rustdoc($item:item) {
+    /* compiler built-in */
+}
