@@ -333,10 +333,6 @@ impl<'tcx, 'a> TypeVisitor<TyCtxt<'tcx>> for ExportableItemsChecker<'tcx, 'a> {
 /// 3. Non-generic functions with a stable ABI (e.g. extern "C") for which every user
 ///    defined type used in the signature is also marked as `#[export]`.
 fn exportable_items_provider_local<'tcx>(tcx: TyCtxt<'tcx>, _: LocalCrate) -> &'tcx [DefId] {
-    if !tcx.crate_types().contains(&CrateType::Sdylib) && !tcx.is_sdylib_interface_build() {
-        return &[];
-    }
-
     let mut visitor = ExportableItemCollector::new(tcx);
     tcx.hir_walk_toplevel_module(&mut visitor);
     let exportable_items = visitor.exportable_items;
@@ -344,6 +340,10 @@ fn exportable_items_provider_local<'tcx>(tcx: TyCtxt<'tcx>, _: LocalCrate) -> &'
         let mut validator =
             ExportableItemsChecker { tcx, exportable_items: &exportable_items, item_id: *item_id };
         validator.check();
+    }
+
+    if !tcx.crate_types().contains(&CrateType::Sdylib) && !tcx.is_sdylib_interface_build() {
+        return &[];
     }
 
     tcx.arena.alloc_from_iter(exportable_items.into_iter())
