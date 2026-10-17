@@ -10,7 +10,7 @@ note: the lint level is defined here
    |
 LL | #![deny(unused_must_use)]
    |         ^^^^^^^^^^^^^^^
-help: use `let _unused = ...` to ignore the resulting value without dropping it immediately
+help: if you wish to disregard this recommendation, use `let _unused = ...` to ignore the resulting value without dropping it immediately
    |
 LL |     let _unused = mutex.lock().unwrap();
    |     +++++++++++++
@@ -21,7 +21,7 @@ error: unused return value of `guard` that must be used
 LL |     guard();
    |     ^^^^^^^
    |
-help: use `let _unused = ...` to ignore the resulting value without dropping it immediately
+help: if you wish to disregard this recommendation, use `let _unused = ...` to ignore the resulting value without dropping it immediately
    |
 LL |     let _unused = guard();
    |     +++++++++++++
@@ -32,7 +32,7 @@ error: unused return value of `value` that must be used
 LL |     value();
    |     ^^^^^^^
    |
-help: use `let _ = ...` to ignore the resulting value
+help: if you wish to disregard this recommendation, use `let _ = ...` to ignore the value
    |
 LL |     let _ = value();
    |     +++++++
@@ -43,7 +43,7 @@ error: unused return value of `vec_values` that must be used
 LL |     vec_values();
    |     ^^^^^^^^^^^^
    |
-help: use `let _ = ...` to ignore the resulting value
+help: if you wish to disregard this recommendation, use `let _ = ...` to ignore the value
    |
 LL |     let _ = vec_values();
    |     +++++++
@@ -54,7 +54,7 @@ error: unused return value of `box_value` that must be used
 LL |     box_value();
    |     ^^^^^^^^^^^
    |
-help: use `let _ = ...` to ignore the resulting value
+help: if you wish to disregard this recommendation, use `let _ = ...` to ignore the value
    |
 LL |     let _ = box_value();
    |     +++++++
