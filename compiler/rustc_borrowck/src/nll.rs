@@ -2,19 +2,18 @@
 
 use std::io;
 use std::path::PathBuf;
-use std::rc::Rc;
 use std::str::FromStr;
+use std::sync::Arc;
 
 use polonius_engine::{Algorithm, AllFacts, Output};
 use rustc_attr_ir::find_attr;
 use rustc_data_structures::frozen::Frozen;
 use rustc_index::IndexSlice;
 use rustc_middle::mir::pretty::PrettyPrintMirOptions;
-use rustc_middle::mir::{Body, MirDumper, PassWhere, Promoted};
+use rustc_middle::mir::{Body, DenseLocationMap, MirDumper, PassWhere, Promoted};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_mir_dataflow::move_paths::MoveData;
-use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_session::config::MirIncludeSpans;
 use tracing::{debug, instrument};
 
@@ -85,7 +84,7 @@ pub(crate) fn replace_regions_in_mir<'tcx>(
 pub(crate) fn compute_closure_requirements_modulo_opaques<'tcx>(
     infcx: &BorrowckInferCtxt<'tcx>,
     body: &Body<'tcx>,
-    location_map: Rc<DenseLocationMap>,
+    location_map: Arc<DenseLocationMap>,
     universal_region_relations: &Frozen<UniversalRegionRelations<'tcx>>,
     constraints: &MirTypeckRegionConstraints<'tcx>,
 ) -> Option<ClosureRegionRequirements<'tcx>> {
@@ -118,7 +117,7 @@ pub(crate) fn compute_regions<'tcx>(
     location_table: &PoloniusLocationTable,
     move_data: &MoveData<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
-    location_map: Rc<DenseLocationMap>,
+    location_map: Arc<DenseLocationMap>,
     universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
     constraints: MirTypeckRegionConstraints<'tcx>,
     mut polonius_facts: Option<AllFacts<RustcFacts>>,

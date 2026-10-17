@@ -27,7 +27,6 @@ mod drop_flag_effects;
 mod framework;
 pub mod impls;
 pub mod move_paths;
-pub mod points;
 mod pretty;
 pub mod rustc_peek;
 mod un_derefer;

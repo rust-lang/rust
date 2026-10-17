@@ -1,7 +1,13 @@
-use rustc_index::{Idx, IndexVec};
-use rustc_middle::mir::{BasicBlock, Body, Location};
+use std::fmt;
+
+use rustc_index::{Idx, IndexSlice, IndexVec};
+
+use crate::mir::{BasicBlock, BasicBlockData, Location};
 
 /// Maps between a `Location` and a `PointIndex` (and vice versa).
+///
+/// Obtained from [`BasicBlocks::location_map`](crate::mir::BasicBlocks::location_map), which
+/// computes it once per body.
 pub struct DenseLocationMap {
     /// For each basic block, how many points are contained within?
     statements_before_block: IndexVec<BasicBlock, usize>,
@@ -14,11 +20,9 @@ pub struct DenseLocationMap {
 }
 
 impl DenseLocationMap {
-    #[inline]
-    pub fn new(body: &Body<'_>) -> Self {
+    pub(super) fn new(blocks: &IndexSlice<BasicBlock, BasicBlockData<'_>>) -> Self {
         let mut num_points = 0;
-        let statements_before_block: IndexVec<BasicBlock, usize> = body
-            .basic_blocks
+        let statements_before_block: IndexVec<BasicBlock, usize> = blocks
             .iter()
             .map(|block_data| {
                 let v = num_points;
@@ -28,7 +32,7 @@ impl DenseLocationMap {
             .collect();
 
         let mut basic_blocks = IndexVec::with_capacity(num_points);
-        for (bb, bb_data) in body.basic_blocks.iter_enumerated() {
+        for (bb, bb_data) in blocks.iter_enumerated() {
             basic_blocks.extend((0..=bb_data.statements.len()).map(|_| bb));
         }
         // Invariant: no block is preceded by more than all statements.
@@ -84,6 +88,15 @@ impl DenseLocationMap {
     #[inline]
     pub fn point_in_range(&self, index: PointIndex) -> bool {
         index.index() < self.num_points
+    }
+}
+
+// The per-point tables would drown any containing struct's debug output.
+impl fmt::Debug for DenseLocationMap {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("DenseLocationMap")
+            .field("num_points", &self.num_points)
+            .finish_non_exhaustive()
     }
 }
 

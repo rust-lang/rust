@@ -37,12 +37,13 @@ use rustc_middle::mir::visit::{
     MutatingUseContext, NonMutatingUseContext, NonUseContext, PlaceContext, VisitPlacesWith,
     Visitor,
 };
-use rustc_middle::mir::{self, BasicBlock, Local, Location, MirDumper, PassWhere, Place};
+use rustc_middle::mir::{
+    self, BasicBlock, DenseLocationMap, Local, Location, MirDumper, PassWhere, Place, PointIndex,
+};
 use rustc_middle::ty::TyCtxt;
 use tracing::trace;
 
 use crate::impls::{DefUse, MaybeLiveLocals, borrowed_locals};
-use crate::points::{DenseLocationMap, PointIndex};
 use crate::{Analysis, GenKill, ResultsVisitor, visit_results};
 
 /// Visits locals that are implicitly allocated by a statement or terminator as
