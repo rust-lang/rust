@@ -122,7 +122,7 @@ impl GenericParamDef {
     }
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct GenericParamCount {
     pub lifetimes: usize,
     pub types: usize,
