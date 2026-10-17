@@ -1,3 +1,6 @@
+// Test that we do not deduce parameter attributes when the function has a linkage attribute that
+// indicates a different definition may be swapped in at link-time.
+
 //@ compile-flags: -O -Cno-prepopulate-passes
 #![crate_type = "lib"]
 #![feature(linkage)]
