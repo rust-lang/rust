@@ -1,13 +1,13 @@
-use std::collections::hash_map::Entry;
 use std::hash::Hash;
 use std::iter;
 
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
-use rustc_data_structures::unord::{ExtendUnord, UnordItems, UnordSet};
+use rustc_data_structures::indexmap::map::Entry;
+use rustc_data_structures::stable_hash::StableCompare;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdMap};
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{
     self as hir, BindingMode, ByRef, HirId, ItemLocalId, ItemLocalMap, ItemLocalSet, Mutability,
     OwnerId,
@@ -69,7 +69,7 @@ pub struct TypeckResults<'tcx> {
 
     /// Stores the canonicalized types provided by the user. See also
     /// `AscribeUserType` statement in MIR.
-    pub user_provided_sigs: LocalDefIdMap<CanonicalPolyFnSig<'tcx>>,
+    pub user_provided_sigs: FxIndexMap<LocalDefId, CanonicalPolyFnSig<'tcx>>,
 
     adjustments: ItemLocalMap<Vec<ty::adjustment::Adjustment<'tcx>>>,
 
@@ -160,7 +160,7 @@ pub struct TypeckResults<'tcx> {
 
     /// Set of trait imports actually used in the method resolution.
     /// This is used for warning unused imports.
-    pub used_trait_imports: UnordSet<LocalDefId>,
+    pub used_trait_imports: FxIndexSet<LocalDefId>,
 
     /// If any errors occurred while type-checking this body,
     /// this field will be set to `Some(ErrorGuaranteed)`.
@@ -198,7 +198,7 @@ pub struct TypeckResults<'tcx> {
     /// we never capture `t`. This becomes an issue when we build MIR as we require
     /// information on `t` in order to create place `t.0` and `t.1`. We can solve this
     /// issue by fake reading `t`.
-    pub closure_fake_reads: LocalDefIdMap<Vec<(HirPlace<'tcx>, FakeReadCause, HirId)>>,
+    pub closure_fake_reads: FxIndexMap<LocalDefId, Vec<(HirPlace<'tcx>, FakeReadCause, HirId)>>,
 
     /// Stores the predicates that apply on coroutine witness types.
     /// formatting modified file tests/ui/coroutine/retain-resume-ref.rs
@@ -216,7 +216,7 @@ pub struct TypeckResults<'tcx> {
 
     /// Contains the data for evaluating the effect of feature `capture_disjoint_fields`
     /// on closure size.
-    pub closure_size_eval: LocalDefIdMap<ClosureSizeProfileData<'tcx>>,
+    pub closure_size_eval: FxIndexMap<LocalDefId, ClosureSizeProfileData<'tcx>>,
 
     /// Stores the types involved in calls to `transmute` intrinsic. These are meant to be checked
     /// outside of typeck and borrowck to avoid cycles with opaque types and coroutine layout
@@ -700,15 +700,14 @@ impl<'a, V> LocalTableInContext<'a, V> {
         self.data.get(&id.local_id)
     }
 
-    pub fn items(
-        &self,
-    ) -> UnordItems<(hir::ItemLocalId, &'a V), impl Iterator<Item = (hir::ItemLocalId, &'a V)>>
-    {
-        self.data.items().map(|(id, value)| (*id, value))
+    pub fn items(&self) -> impl Iterator<Item = (hir::ItemLocalId, &'a V)> {
+        self.data.iter().map(|(id, value)| (*id, value))
     }
 
     pub fn items_in_stable_order(&self) -> Vec<(ItemLocalId, &'a V)> {
-        self.data.items().map(|(&k, v)| (k, v)).into_sorted_stable_ord_by_key(|(k, _)| k)
+        let mut v: Vec<_> = self.data.iter().map(|(&k, v)| (k, v)).collect();
+        v.sort_by(|(k1, _), (k2, _)| k1.stable_cmp(k2));
+        v
     }
 }
 
@@ -750,11 +749,11 @@ impl<'a, V> LocalTableInContextMut<'a, V> {
 
     pub fn remove(&mut self, id: HirId) -> Option<V> {
         validate_hir_id_for_typeck_results(self.hir_owner, id);
-        self.data.remove(&id.local_id)
+        self.data.swap_remove(&id.local_id)
     }
 
-    pub fn extend(&mut self, items: UnordItems<(HirId, V), impl Iterator<Item = (HirId, V)>>) {
-        self.data.extend_unord(items.map(|(id, value)| {
+    pub fn extend(&mut self, items: impl Iterator<Item = (HirId, V)>) {
+        self.data.extend(items.map(|(id, value)| {
             validate_hir_id_for_typeck_results(self.hir_owner, id);
             (id.local_id, value)
         }))
@@ -800,7 +799,7 @@ impl<'a> LocalSetInContextMut<'a> {
 
     pub fn remove(&mut self, id: hir::HirId) -> bool {
         validate_hir_id_for_typeck_results(self.hir_owner, id);
-        self.data.remove(&id.local_id)
+        self.data.swap_remove(&id.local_id)
     }
 }
 

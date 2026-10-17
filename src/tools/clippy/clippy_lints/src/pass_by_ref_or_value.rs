@@ -7,7 +7,6 @@ use core::ops::ControlFlow;
 use rustc_abi::ExternAbi;
 use rustc_attr_ir::{InlineAttr, find_attr};
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::unord::UnordItems;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::intravisit::FnKind;
@@ -181,7 +180,7 @@ impl PassByRefOrValue {
                                 || typeck
                                     .adjustments()
                                     .items()
-                                    .flat_map(|(_, a)| UnordItems::new(a.iter()))
+                                    .flat_map(|(_, a)| a)
                                     .any(|a| matches!(a.kind, Adjust::Pointer(PointerCoercion::UnsafeFnPointer))))
                         {
                             continue;

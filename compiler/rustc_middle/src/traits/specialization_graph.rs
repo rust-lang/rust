@@ -1,7 +1,7 @@
 use rustc_attr_ir::find_attr;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir::def_id::{DefId, DefIdMap};
+use rustc_hir::def_id::DefId;
 use rustc_macros::{StableHash, TyDecodable, TyEncodable};
 
 use crate::diagnostics::StrictCoherenceNeedsNegativeCoherence;
@@ -27,10 +27,10 @@ use crate::ty::{self, TyCtxt, TypeVisitableExt};
 pub struct Graph {
     /// All impls have a parent; the "root" impls have as their parent the `def_id`
     /// of the trait.
-    pub parent: DefIdMap<DefId>,
+    pub parent: FxIndexMap<DefId, DefId>,
 
     /// The "root" impls are found by looking up the trait's def_id.
-    pub children: DefIdMap<Children>,
+    pub children: FxIndexMap<DefId, Children>,
 }
 
 impl Graph {

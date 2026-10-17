@@ -154,7 +154,7 @@ impl From<LocalModId> for HirId {
 }
 
 rustc_data_structures::define_stable_id_collections!(HirIdMap, HirIdSet, HirIdMapEntry, HirId);
-rustc_data_structures::define_id_collections!(
+rustc_data_structures::define_stable_id_collections!(
     ItemLocalMap,
     ItemLocalSet,
     ItemLocalMapEntry,

@@ -108,7 +108,6 @@ rustc_arena::declare_arena! {
     dyn_compatibility_violations: rustc_middle::traits::DynCompatibilityViolation,
     codegen_unit: rustc_middle::mono::CodegenUnit<'tcx>,
     attribute: rustc_attr_ir::Attribute,
-    name_set: rustc_data_structures::unord::UnordSet<rustc_span::Symbol>,
     autodiff_item: rustc_attr_ir::AutoDiffItem,
     ordered_name_set: rustc_data_structures::fx::FxIndexSet<rustc_span::Symbol>,
     stable_order_of_exportable_impls:
@@ -118,14 +117,14 @@ rustc_arena::declare_arena! {
     // since we need to allocate this type on both the `rustc_hir` arena
     // (during lowering) and the `rustc_middle` arena (for decoding MIR)
     asm_template: rustc_ast::InlineAsmTemplatePiece,
-    used_trait_imports: rustc_data_structures::unord::UnordSet<rustc_hir::def_id::LocalDefId>,
+    used_trait_imports: rustc_data_structures::fx::FxIndexSet<rustc_hir::def_id::LocalDefId>,
     is_late_bound_map: rustc_data_structures::fx::FxIndexSet<rustc_hir::ItemLocalId>,
     impl_source: rustc_middle::traits::ImplSource<'tcx, ()>,
 
     dep_kind_vtable: rustc_middle::dep_graph::DepKindVTable<'tcx>,
 
     trait_impl_trait_tys:
-        rustc_data_structures::unord::UnordMap<
+        rustc_data_structures::fx::FxIndexMap<
             rustc_hir::def_id::DefId,
             rustc_middle::ty::EarlyBinder<'tcx, Ty<'tcx>>
         >,
@@ -205,8 +204,8 @@ impl_ref_decodable_into_arena! {
     rustc_ast::InlineAsmTemplatePiece,
     rustc_ast::tokenstream::TokenStream,
     rustc_attr_ir::Attribute,
-    rustc_data_structures::unord::UnordMap<rustc_span::def_id::DefId, rustc_middle::ty::EarlyBinder<'tcx, Ty<'tcx>>>,
-    rustc_data_structures::unord::UnordSet<rustc_span::def_id::LocalDefId>,
+    rustc_data_structures::fx::FxIndexMap<rustc_span::def_id::DefId, rustc_middle::ty::EarlyBinder<'tcx, Ty<'tcx>>>,
+    rustc_data_structures::fx::FxIndexSet<rustc_span::def_id::LocalDefId>,
     rustc_index::IndexVec<rustc_middle::mir::Promoted, rustc_middle::mir::Body<'tcx>>,
     rustc_middle::middle::deduced_param_attrs::DeducedParamAttrs,
     rustc_middle::mir::Body<'tcx>,

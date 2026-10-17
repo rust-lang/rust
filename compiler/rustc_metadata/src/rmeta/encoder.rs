@@ -18,7 +18,7 @@ use rustc_data_structures::sync::{par_for_each_in, par_join};
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_data_structures::thousands::usize_with_underscores;
 use rustc_hir as hir;
-use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId, LocalDefIdSet};
+use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId};
 use rustc_hir::definitions::DefPathData;
 use rustc_hir_pretty::id_to_string;
 use rustc_index::IndexVec;
@@ -1180,7 +1180,7 @@ fn should_encode_stability(def_kind: DefKind) -> bool {
 /// ```
 fn should_encode_mir(
     tcx: TyCtxt<'_>,
-    reachable_set: &LocalDefIdSet,
+    reachable_set: &FxIndexSet<LocalDefId>,
     def_id: LocalDefId,
 ) -> (bool, bool) {
     match tcx.def_kind(def_id) {
@@ -2230,8 +2230,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         empty_proc_macro!(self);
         let tcx = self.tcx;
         let implications = tcx.stability_implications(LOCAL_CRATE);
-        let sorted = implications.to_sorted_stable_ord();
-        self.lazy_array(sorted.into_iter().map(|(k, v)| (*k, *v)))
+        self.lazy_array(implications.into_iter().map(|(k, v)| (*k, *v)))
     }
 
     fn encode_canonical_symbols(&mut self) -> LazyArray<(Symbol, LocalDefId)> {

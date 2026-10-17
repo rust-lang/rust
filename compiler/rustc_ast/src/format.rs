@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_macros::{Decodable, Encodable, Walkable};
 use rustc_span::{Ident, Span, Symbol};
 
@@ -78,14 +78,14 @@ pub struct FormatArguments {
     arguments: Vec<FormatArgument>,
     num_unnamed_args: usize,
     num_explicit_args: usize,
-    names: FxHashMap<Symbol, usize>,
+    names: FxIndexMap<Symbol, usize>,
 }
 
 impl FormatArguments {
     pub fn new() -> Self {
         Self {
             arguments: Vec::new(),
-            names: FxHashMap::default(),
+            names: FxIndexMap::default(),
             num_unnamed_args: 0,
             num_explicit_args: 0,
         }

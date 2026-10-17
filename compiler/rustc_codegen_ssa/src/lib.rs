@@ -20,8 +20,8 @@ use std::sync::Arc;
 use rustc_abi::Size;
 use rustc_attr_ir::{CfgEntry, WindowsSubsystemKind};
 use rustc_crate_store::{self as cstore, CrateSource};
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
-use rustc_data_structures::unord::{UnordMap, UnordSet};
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_data_structures::unord::UnordSet;
 use rustc_hir::CRATE_HIR_ID;
 use rustc_hir::def_id::CrateNum;
 use rustc_lint_defs::builtin::{LINKER_INFO, LINKER_MESSAGES};
@@ -267,16 +267,16 @@ pub struct CrateInfo {
     pub target_cpu: String,
     pub target_features: Vec<String>,
     pub crate_types: Vec<CrateType>,
-    pub exported_symbols: UnordMap<CrateType, Vec<SymbolExport>>,
+    pub exported_symbols: FxIndexMap<CrateType, Vec<SymbolExport>>,
     pub linked_symbols: FxIndexMap<CrateType, Vec<(String, SymbolExportKind)>>,
     pub local_crate_name: Symbol,
     pub compiler_builtins: Option<CrateNum>,
     pub profiler_runtime: Option<CrateNum>,
-    pub is_no_builtins: FxHashSet<CrateNum>,
+    pub is_no_builtins: FxIndexSet<CrateNum>,
     pub native_libraries: FxIndexMap<CrateNum, Vec<NativeLib>>,
-    pub crate_name: UnordMap<CrateNum, Symbol>,
+    pub crate_name: FxIndexMap<CrateNum, Symbol>,
     pub used_libraries: Vec<NativeLib>,
-    pub used_crate_source: UnordMap<CrateNum, Arc<CrateSource>>,
+    pub used_crate_source: FxIndexMap<CrateNum, Arc<CrateSource>>,
     pub used_crates: Vec<CrateNum>,
     pub dependency_formats: Arc<Dependencies>,
     /// EII implementations used by the link-time duplicate check, so `-Zno-link` can serialize the data needed by a

@@ -449,7 +449,7 @@ impl<V: Hash + Eq + StableHash> StableHash for UnordSet<V> {
 ///
 /// See [MCP 533](https://github.com/rust-lang/compiler-team/issues/533)
 /// for more information.
-#[derive(Debug, Eq, PartialEq, Clone, Encodable_NoContext, Decodable_NoContext)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct UnordMap<K: Eq + Hash, V> {
     inner: FxHashMap<K, V>,
 }

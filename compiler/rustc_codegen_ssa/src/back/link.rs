@@ -976,11 +976,8 @@ fn link_dwarf_object(
         }
 
         // Input rlibs contain .o/.dwo files from dependencies.
-        let input_rlibs = crate_info
-            .used_crate_source
-            .items()
-            .filter_map(|(_, csource)| csource.rlib.as_ref())
-            .into_sorted_stable_ord();
+        let input_rlibs =
+            crate_info.used_crate_source.iter().filter_map(|(_, csource)| csource.rlib.as_ref());
 
         for input_rlib in input_rlibs {
             debug!(?input_rlib);

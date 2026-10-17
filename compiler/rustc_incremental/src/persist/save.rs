@@ -116,7 +116,7 @@ pub fn save_work_product_index(
     debug_assert!({
         new_work_products.items().all(|(_, wp)| {
             wp.saved_files
-                .items()
+                .iter()
                 .all(|(_, path)| in_incr_comp_dir_sess(incr_comp_session.unwrap(), path).exists())
         })
     });
