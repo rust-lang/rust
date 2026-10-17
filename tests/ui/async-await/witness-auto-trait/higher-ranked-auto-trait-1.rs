@@ -1,10 +1,12 @@
 // Repro for <https://github.com/rust-lang/rust/issues/79648#issuecomment-749127947>.
 //@ edition: 2021
-//@ revisions: assumptions no_assumptions assumptions_next
+//@ revisions: assumptions min_coroutines no_assumptions assumptions_next
 //@[assumptions] compile-flags: -Zhigher-ranked-assumptions
 //@[assumptions_next] compile-flags: -Zhigher-ranked-assumptions -Znext-solver
 //@[assumptions] check-pass
 //@[assumptions_next] check-pass
+//@[min_coroutines] compile-flags: -Zassumptions-on-binders=min_coroutines -Znext-solver=globally
+//@[min_coroutines] check-pass
 //@[no_assumptions] known-bug: #110338
 
 // We're using this test to just check the way -Zhigher-ranked-assumptions
