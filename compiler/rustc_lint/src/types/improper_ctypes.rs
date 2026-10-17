@@ -971,6 +971,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             },
 
             ty::Param(..)
+            | ty::Erased(..)
             | ty::Alias(
                 _,
                 ty::AliasTy {

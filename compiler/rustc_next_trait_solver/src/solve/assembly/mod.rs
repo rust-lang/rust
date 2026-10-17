@@ -824,6 +824,7 @@ where
             | ty::Never
             | ty::Tuple(_)
             | ty::Param(_)
+            | ty::Erased(..)
             | ty::Placeholder(..)
             | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
             | ty::Error(_) => return Ok(()),
@@ -968,6 +969,7 @@ where
             | ty::Never
             | ty::Tuple(_)
             | ty::Param(_)
+            | ty::Erased(..)
             | ty::Placeholder(..)
             | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
             | ty::Error(_) => return,

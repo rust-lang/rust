@@ -23,6 +23,7 @@ mod layout;
 mod needs_drop;
 mod nested_bodies;
 mod opaque_types;
+mod polymorphize;
 mod representability;
 mod structural_match;
 mod ty;
@@ -33,12 +34,13 @@ pub fn provide(providers: &mut Providers) {
     common_traits::provide(providers);
     consts::provide(providers);
     implied_bounds::provide(providers);
+    instance::provide(providers);
     layout::provide(providers);
     needs_drop::provide(providers);
-    opaque_types::provide(providers);
-    representability::provide(providers);
-    ty::provide(providers);
-    instance::provide(providers);
-    structural_match::provide(providers);
     nested_bodies::provide(providers);
+    opaque_types::provide(providers);
+    polymorphize::provide(providers);
+    representability::provide(providers);
+    structural_match::provide(providers);
+    ty::provide(providers);
 }

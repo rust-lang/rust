@@ -30,13 +30,16 @@ pub struct Instance {
 pub enum InstanceKind {
     /// A user defined item.
     Item,
+    PolyItem,
     /// A compiler intrinsic function.
     Intrinsic,
     /// An LLVM intrinsic function.
     LlvmIntrinsic,
     /// A virtual function definition stored in a VTable.
     /// The `idx` field indicates the position in the VTable for this instance.
-    Virtual { idx: usize },
+    Virtual {
+        idx: usize,
+    },
     /// A compiler generated shim.
     Shim,
 }
@@ -117,6 +120,7 @@ impl Instance {
             }
             InstanceKind::LlvmIntrinsic
             | InstanceKind::Item
+            | InstanceKind::PolyItem
             | InstanceKind::Virtual { .. }
             | InstanceKind::Shim => None,
         }

@@ -1224,7 +1224,7 @@ impl Align {
 ///
 /// An example of a rare thing actually affected by preferred alignment is aligning of statics.
 /// It is of effectively no consequence for layout in structs and on the stack.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Encodable_NoContext, Decodable_NoContext)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub struct AbiAlign {
     pub abi: Align,
@@ -1416,7 +1416,18 @@ impl Integer {
 }
 
 /// Floating-point types.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(
+    Copy,
+    Clone,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Debug,
+    Encodable_NoContext,
+    Decodable_NoContext
+)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub enum Float {
     F16,
@@ -1503,7 +1514,7 @@ impl Numeric {
 }
 
 /// Fundamental unit of memory access and layout.
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Encodable_NoContext, Decodable_NoContext)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub enum Primitive {
     /// The `bool` is the signedness of the `Integer` type.
@@ -1570,7 +1581,7 @@ impl Primitive {
 }
 
 /// Information about one scalar component of a Rust type.
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Encodable_NoContext, Decodable_NoContext)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub enum Scalar {
     Initialized {
@@ -1696,9 +1707,12 @@ impl Scalar {
 
 // NOTE: This struct is generic over the FieldIdx for rust-analyzer usage.
 /// Describes how the fields of a type are located in memory.
-#[derive(PartialEq, Eq, Hash, Clone, Debug)]
+#[derive(PartialEq, Eq, Hash, Clone, Debug, Encodable_NoContext, Decodable_NoContext)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub enum FieldsShape<FieldIdx: Idx> {
+    /// There may or may not be fields, and we know nothing about them. Used for `ty::Erased`.
+    Opaque,
+
     /// Scalar primitives and `!`, which never have fields.
     Primitive,
 
@@ -1737,6 +1751,7 @@ impl<FieldIdx: Idx> FieldsShape<FieldIdx> {
     #[inline]
     pub fn count(&self) -> usize {
         match *self {
+            FieldsShape::Opaque => 0,
             FieldsShape::Primitive => 0,
             FieldsShape::Union(count) => count.get(),
             FieldsShape::Array { count, .. } => count.try_into().unwrap(),
@@ -1747,6 +1762,9 @@ impl<FieldIdx: Idx> FieldsShape<FieldIdx> {
     #[inline]
     pub fn offset(&self, i: usize) -> Size {
         match *self {
+            FieldsShape::Opaque => {
+                unreachable!("FieldsShape::offset: `Opaque`s have no fields")
+            }
             FieldsShape::Primitive => {
                 unreachable!("FieldsShape::offset: `Primitive`s have no fields")
             }
@@ -1769,10 +1787,14 @@ impl<FieldIdx: Idx> FieldsShape<FieldIdx> {
         // Primitives don't really have fields in the way that structs do,
         // but having this return an empty iterator for them is unhelpful
         // since that makes them look kinda like ZSTs, which they're not.
-        let pseudofield_count = if let FieldsShape::Primitive = self { 1 } else { self.count() };
+        let pseudofield_count =
+            if let FieldsShape::Primitive | FieldsShape::Opaque = self { 1 } else { self.count() };
 
         (0..pseudofield_count).map(move |i| match self {
-            FieldsShape::Primitive | FieldsShape::Union(_) | FieldsShape::Array { .. } => i,
+            FieldsShape::Primitive
+            | FieldsShape::Opaque
+            | FieldsShape::Union(_)
+            | FieldsShape::Array { .. } => i,
             FieldsShape::Arbitrary { in_memory_order, .. } => in_memory_order[i as u32].index(),
         })
     }
@@ -1781,7 +1803,18 @@ impl<FieldIdx: Idx> FieldsShape<FieldIdx> {
 /// An identifier that specifies the address space that some operation
 /// should operate on. Special address spaces have an effect on code generation,
 /// depending on the target and the address spaces it implements.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Encodable_NoContext,
+    Decodable_NoContext
+)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub struct AddressSpace(pub u32);
 
@@ -1798,7 +1831,7 @@ impl AddressSpace {
 }
 
 /// How many scalable vectors are in a `BackendRepr::ScalableVector`?
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Encodable_NoContext, Decodable_NoContext)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub struct NumScalableVectors(pub u8);
 
@@ -1847,7 +1880,7 @@ impl IntoDiagArg for NumScalableVectors {
 ///
 /// Generally, a codegen backend will prefer to handle smaller values as a scalar or short vector,
 /// and larger values will usually prefer to be represented as memory.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Encodable_NoContext, Decodable_NoContext)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub enum BackendRepr {
     Scalar(Scalar),
@@ -2027,9 +2060,12 @@ impl BackendRepr {
 
 /// Describes the variants of a type.
 // NOTE: This struct is generic over the FieldIdx and VariantIdx for rust-analyzer usage.
-#[derive(PartialEq, Eq, Hash, Clone, Debug)]
+#[derive(PartialEq, Eq, Hash, Clone, Debug, Encodable_NoContext, Decodable_NoContext)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub enum Variants<FieldIdx: Idx, VariantIdx: Idx> {
+    /// We don't know how many variants there are, nor anything about them.
+    Opaque,
+
     /// The type has no valid variants. Must be uninhabited.
     ///
     /// This is the case for:
@@ -2069,7 +2105,7 @@ pub enum Variants<FieldIdx: Idx, VariantIdx: Idx> {
 }
 
 // NOTE: This struct is generic over the VariantIdx for rust-analyzer usage.
-#[derive(PartialEq, Eq, Hash, Copy, Clone, Debug)]
+#[derive(PartialEq, Eq, Hash, Copy, Clone, Debug, Encodable_NoContext, Decodable_NoContext)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub enum TagEncoding<VariantIdx: Idx> {
     /// The tag directly stores the discriminant, but possibly with a smaller layout
@@ -2110,7 +2146,7 @@ pub enum TagEncoding<VariantIdx: Idx> {
     },
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Encodable_NoContext, Decodable_NoContext)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub struct Niche {
     pub offset: Size,
@@ -2218,7 +2254,7 @@ pub enum NicheOptimizations {
 }
 
 // NOTE: This struct is generic over the FieldIdx and VariantIdx for rust-analyzer usage.
-#[derive(PartialEq, Eq, Hash, Clone)]
+#[derive(PartialEq, Eq, Hash, Clone, Encodable_NoContext, Decodable_NoContext)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub struct LayoutData<FieldIdx: Idx, VariantIdx: Idx> {
     /// Says where the fields are located within the layout.
@@ -2303,6 +2339,7 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
     /// Returns `true` if the given variant is uninhabited.
     pub fn is_variant_uninhabited(&self, variant: VariantIdx) -> bool {
         match self.variants {
+            Variants::Opaque => false,
             Variants::Empty => true,
             Variants::Single { index } => variant != index || self.uninhabited,
             Variants::Multiple { ref variants, .. } => {
@@ -2498,7 +2535,7 @@ pub enum AbiFromStrErr {
 ///
 /// See <https://github.com/rust-lang/rust/issues/113988> for more context.
 // NOTE: This struct is generic over the FieldIdx for rust-analyzer usage.
-#[derive(PartialEq, Eq, Hash, Clone, Debug)]
+#[derive(PartialEq, Eq, Hash, Clone, Debug, Encodable_NoContext, Decodable_NoContext)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub struct VariantLayout<FieldIdx: Idx> {
     // FIXME: ideally we'd remove these as variants should not have their own
