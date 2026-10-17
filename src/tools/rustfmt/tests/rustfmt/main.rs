@@ -87,8 +87,8 @@ fn print_config_errors_minimal_with_no_path() {
 
     let (stdout, stderr) = rustfmt(args);
 
-    // NOTE: existing the behaviour, possibly a bug
-    assert_eq!(&stdout, "\n");
+    // NOTE: existing the behaviour: prints an empty line
+    assert_eq!(stdout.trim(), "");
     assert!(
         stderr.contains("PATH required"),
         "expected helpful error message, got: {stderr}"
@@ -113,7 +113,16 @@ fn print_config_errors_minimal_without_input_file() {
 #[test]
 fn print_config_writes_to_file() {
     let out_file = "minimal.toml";
-    let args = &["--print-config", "minimal", out_file, "src/shape.rs"];
+    let args = &[
+        "--config-path",
+        Path::new("tests/config/disable_all_formatting.toml")
+            .to_str()
+            .unwrap(),
+        "--print-config",
+        "minimal",
+        out_file,
+        "src/shape.rs",
+    ];
 
     let (stdout, stderr) = rustfmt(args);
 
@@ -396,30 +405,105 @@ fn rustfmt_error_improvement_regarding_invalid_toml() {
 
 #[test]
 fn config_path_walks_parent_directories_with_dir_name() {
-    let src_dir = "tests/config/issue_4660/inner_lib/src";
-    let src_file = src_dir.to_owned() + "/lib.rs";
-    let args = ["--config-path", src_dir, "--check", &src_file];
+    let src_dir = Path::new("tests/config/issue_4660/src");
+    let src_file = src_dir.join("longhand_field_init.rs");
+    let args = [
+        "--config-path",
+        &src_dir.to_str().unwrap(),
+        "--check",
+        "--files-with-diff",
+        &src_file.to_str().unwrap(),
+    ];
+
     let (stdout, stderr) = rustfmt(&args);
 
     assert_eq!(stderr, "");
-    // Due to `disable_all_formatting = true` in `tests/config/issue_4660/inner_lib/rustfmt.toml`,
-    // the source file should not be modified.
-    assert_eq!(stdout, "");
+    assert_eq!(
+        stdout,
+        format!("{}\n", src_file.canonicalize().unwrap().display()),
+        // this config sets `use_field_init_shorthand = true`
+        "we should walk up to tests/config/issue_4660/rustfmt.toml"
+    );
+}
+
+// on unix [`std::env::home_dir`] reads the `HOME` env var.
+#[cfg(unix)]
+#[test]
+fn config_path_searches_home_dir_when_dir_path_no_resolve() {
+    // move the src file to a tempdir, since we'll search up from there looking for the config file
+    // so we need to avoid using a path within this repo
+    let new_src_dir = tempfile::tempdir().unwrap().keep();
+    let src_file = Path::new("tests/config/issue_4660/src/with_spaces.rs");
+    let new_src_path = new_src_dir.join("with_spaces.rs");
+    let config_file = Path::new("tests/config/issue_4660/configs/rustfmt.hard_tabs.toml");
+    let homedir_path = tempfile::tempdir().unwrap().keep();
+
+    std::fs::copy(&config_file, homedir_path.join("rustfmt.toml")).unwrap();
+    std::fs::copy(&src_file, &new_src_path).unwrap();
+
+    let args = [
+        "--check",
+        "--files-with-diff",
+        &new_src_path.to_str().unwrap(),
+    ];
+    let env = &[("HOME", homedir_path.to_str().unwrap())];
+
+    let (stdout, stderr) = rustfmt_with_extra(&args, None, env, None);
+
+    assert_eq!(stderr, "");
+    assert_eq!(
+        stdout,
+        format!("{}\n", new_src_path.canonicalize().unwrap().display()),
+        "should search in HOME"
+    );
+}
+
+// The behaviour [`dirs::config_dir`] is os-dependent, so pick one and test to that.
+#[cfg(target_os = "linux")]
+#[test]
+fn config_path_searches_config_dir_when_dir_path_no_resolve() {
+    // move the src file to a tempdir, since we'll search up from there looking for the config file
+    let new_src_dir = tempfile::tempdir().unwrap().keep();
+    let src_file = Path::new("tests/config/issue_4660/src/with_spaces.rs");
+    let new_src_path = new_src_dir.join("with_spaces.rs");
+    let config_file = Path::new("tests/config/issue_4660/configs/rustfmt.hard_tabs.toml");
+    let xdg_config_dir_path = tempfile::tempdir().unwrap().keep();
+    let config_path = xdg_config_dir_path.join("rustfmt/rustfmt.toml");
+
+    std::fs::create_dir(&config_path.parent().unwrap()).unwrap();
+    std::fs::copy(&config_file, config_path).unwrap();
+    std::fs::copy(&src_file, &new_src_path).unwrap();
+
+    let args = [
+        "--check",
+        "--files-with-diff",
+        &new_src_path.to_str().unwrap(),
+    ];
+    let env = &[("XDG_CONFIG_HOME", xdg_config_dir_path.to_str().unwrap())];
+
+    let (stdout, stderr) = rustfmt_with_extra(&args, None, env, None);
+
+    assert_eq!(stderr, "");
+    assert_eq!(
+        stdout,
+        format!("{}\n", new_src_path.canonicalize().unwrap().display()),
+        "should search in XDG_CONFIG_HOME"
+    );
 }
 
 #[test]
-fn config_path_does_not_walk_parent_directories_with_toml_name() {
-    let src_dir = "tests/config/issue_4660/inner_bin/src";
-    let toml_file = src_dir.to_owned() + "/.rustfmt.unstable.toml";
-    let src_file = src_dir.to_owned() + "/main.rs";
-    let args = ["--config-path", &toml_file, "--check", &src_file];
+fn config_path_errors_when_invalid_file_given() {
+    let src_file = "not_a_file.rs";
+    let config_file = "also_not_a_file.toml";
+    let args = ["--config-path", &config_file, "--check", &src_file];
+
     let (stdout, stderr) = rustfmt(&args);
 
     assert_eq!(
         stderr,
         format!(
             "Error: unable to find a config file for the given path: `{}`\n",
-            Path::new(&toml_file).display(),
+            Path::new(&config_file).display(),
         )
     );
     assert_eq!(stdout, "");

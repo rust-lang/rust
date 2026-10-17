@@ -1,2 +1,6 @@
-[workspace]
-members = ["inner_lib"]
+[package]
+name = "inner_lib"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
