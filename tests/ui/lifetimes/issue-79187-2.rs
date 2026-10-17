@@ -10,10 +10,10 @@ fn main() {
     //~| ERROR implementation of `Fn` is not general enough
     take_foo(|a: &i32| a);
     //~^ ERROR lifetime may not live long enough
-    //~| ERROR mismatched types
+    //~| ERROR higher-ranked lifetime error: lifetime outlives placeholder
     take_foo(|a: &i32| -> &i32 { a });
     //~^ ERROR lifetime may not live long enough
-    //~| ERROR mismatched types
+    //~| ERROR higher-ranked lifetime error: lifetime outlives placeholder
 
     // OK
     take_foo(identity(|a| a));
