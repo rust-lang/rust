@@ -11,6 +11,7 @@ use rustc_span::{Ident, Span, Symbol, sym};
 use smallvec::{SmallVec, smallvec};
 use thin_vec::{ThinVec, thin_vec};
 
+use crate::GeneratedAttr;
 use crate::ast::{
     AttrArgs, AttrId, AttrItem, AttrKind, AttrStyle, AttrVec, Attribute, DUMMY_NODE_ID, DelimArgs,
     Expr, ExprKind, LitKind, MetaItem, MetaItemInner, MetaItemKind, MetaItemLit, NormalAttr, Path,
@@ -62,7 +63,9 @@ impl Attribute {
     pub fn get_normal_item(&self) -> &AttrItem {
         match &self.kind {
             AttrKind::Normal(normal) => &normal.item,
-            AttrKind::Synthetic(..) | AttrKind::DocComment(..) => unreachable!(),
+            AttrKind::Synthetic(..) | AttrKind::DocComment(..) | AttrKind::Generated(..) => {
+                unreachable!()
+            }
         }
     }
 
@@ -71,7 +74,9 @@ impl Attribute {
             AttrKind::Normal(..) => {
                 Attribute { kind: AttrKind::Synthetic(Box::new(synthetic_attr)), ..self }
             }
-            AttrKind::Synthetic(..) | AttrKind::DocComment(..) => unreachable!(),
+            AttrKind::Synthetic(..) | AttrKind::DocComment(..) | AttrKind::Generated(..) => {
+                unreachable!()
+            }
         }
     }
 }
@@ -88,6 +93,7 @@ impl AttributeExt for Attribute {
                 _ => None,
             },
             AttrKind::Synthetic(..) | AttrKind::DocComment(..) => None,
+            AttrKind::Generated(generated) => generated.value_span(),
         }
     }
 
@@ -95,9 +101,10 @@ impl AttributeExt for Attribute {
     /// So `#[doc = "doc"]` (which is a doc comment) and `#[doc(...)]` (which is not
     /// a doc comment) will return `false`.
     fn is_doc_comment(&self) -> Option<Span> {
-        match self.kind {
+        match &self.kind {
             AttrKind::Normal(..) | AttrKind::Synthetic(..) => None,
             AttrKind::DocComment(..) => Some(self.span),
+            AttrKind::Generated(generated) => generated.is_doc_comment(),
         }
     }
 
@@ -108,6 +115,7 @@ impl AttributeExt for Attribute {
             AttrKind::Normal(normal) => normal.item.name(),
             AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace(_)) => None,
             AttrKind::DocComment(..) => None,
+            AttrKind::Generated(generated) => generated.name(),
         }
     }
 
@@ -119,6 +127,7 @@ impl AttributeExt for Attribute {
             }
             AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace(_)) => None,
             AttrKind::DocComment(_, _) => None,
+            AttrKind::Generated(generated) => generated.symbol_path(),
         }
     }
 
@@ -127,6 +136,7 @@ impl AttributeExt for Attribute {
             AttrKind::Normal(attr) => Some(attr.item.path.span),
             AttrKind::Synthetic(..) => unreachable!(),
             AttrKind::DocComment(_, _) => None,
+            AttrKind::Generated(generated) => generated.path_span(),
         }
     }
 
@@ -143,6 +153,7 @@ impl AttributeExt for Attribute {
                         .all(|(s, n)| s.args.is_none() && s.ident.name == *n)
             }
             AttrKind::Synthetic(..) | AttrKind::DocComment(..) => false,
+            AttrKind::Generated(generated) => generated.path_matches(name),
         }
     }
 
@@ -155,6 +166,7 @@ impl AttributeExt for Attribute {
             AttrKind::Normal(normal) => matches!(normal.item.args, AttrArgs::Empty),
             AttrKind::Synthetic(..) => unreachable!(),
             AttrKind::DocComment(..) => false,
+            AttrKind::Generated(generated) => generated.is_word(),
         }
     }
 
@@ -169,6 +181,7 @@ impl AttributeExt for Attribute {
         match &self.kind {
             AttrKind::Normal(normal) => normal.item.meta_item_list(),
             AttrKind::Synthetic(..) | AttrKind::DocComment(..) => None,
+            AttrKind::Generated(generated) => generated.meta_item_list(),
         }
     }
 
@@ -192,6 +205,7 @@ impl AttributeExt for Attribute {
             AttrKind::Normal(normal) => normal.item.value_str(),
             AttrKind::Synthetic(..) => unreachable!(),
             AttrKind::DocComment(..) => None,
+            AttrKind::Generated(generated) => generated.value_str(),
         }
     }
 
@@ -211,6 +225,7 @@ impl AttributeExt for Attribute {
                 Some((value, DocFragmentKind::Raw(value_span)))
             }
             AttrKind::Normal(..) | AttrKind::Synthetic(..) => None,
+            AttrKind::Generated(generated) => generated.doc_str_and_fragment_kind(),
         }
     }
 
@@ -243,20 +258,32 @@ impl AttributeExt for Attribute {
     }
 
     fn is_doc_hidden(&self) -> bool {
-        self.has_name(sym::doc)
-            && self.meta_item_list().is_some_and(|l| list_contains_name(&l, sym::hidden))
+        match &self.kind {
+            AttrKind::Normal(_) => {
+                self.has_name(sym::doc)
+                    && self.meta_item_list().is_some_and(|l| list_contains_name(&l, sym::hidden))
+            }
+            AttrKind::Generated(GeneratedAttr::DocHidden) => true,
+            _ => false,
+        }
     }
 
     fn is_doc_keyword_or_attribute(&self) -> bool {
-        if self.has_name(sym::doc)
-            && let Some(items) = self.meta_item_list()
-        {
-            for item in items {
-                if item.has_name(sym::keyword) || item.has_name(sym::attribute) {
-                    return true;
+        match &self.kind {
+            AttrKind::Normal(_) => {
+                if self.has_name(sym::doc)
+                    && let Some(items) = self.meta_item_list()
+                {
+                    for item in items {
+                        if item.has_name(sym::keyword) || item.has_name(sym::attribute) {
+                            return true;
+                        }
+                    }
                 }
             }
+            _ => {}
         }
+
         false
     }
 
@@ -280,6 +307,7 @@ impl Attribute {
         match &self.kind {
             AttrKind::Normal(normal) => normal.item.meta(self.span),
             AttrKind::Synthetic(..) | AttrKind::DocComment(..) => None,
+            AttrKind::Generated(generated) => generated.meta(self.span),
         }
     }
 
@@ -288,12 +316,13 @@ impl Attribute {
             AttrKind::Normal(normal) => normal.item.meta_kind(),
             AttrKind::Synthetic(..) => unreachable!(),
             AttrKind::DocComment(..) => None,
+            AttrKind::Generated(generated) => generated.meta_kind(),
         }
     }
 
     pub fn token_trees(&self) -> Vec<TokenTree> {
-        match self.kind {
-            AttrKind::Normal(ref normal) => normal
+        match &self.kind {
+            AttrKind::Normal(normal) => normal
                 .tokens
                 .as_ref()
                 .unwrap_or_else(|| panic!("attribute is missing tokens: {self:?}"))
@@ -301,8 +330,9 @@ impl Attribute {
                 .to_token_trees(),
             // Empty tokens here ensures synthetic attributes are invisible to proc macros.
             AttrKind::Synthetic(..) => vec![],
+            AttrKind::Generated(generated) => generated.token_trees(),
             AttrKind::DocComment(comment_kind, data) => vec![TokenTree::token_alone(
-                token::DocComment(comment_kind, self.style, data),
+                token::DocComment(*comment_kind, self.style, *data),
                 self.span,
             )],
         }

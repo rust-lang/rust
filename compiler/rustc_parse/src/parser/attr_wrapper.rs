@@ -423,5 +423,6 @@ fn needs_tokens(attrs: &[ast::Attribute]) -> bool {
         // because they have no token form.
         AttrKind::Synthetic(_) => unreachable!(),
         AttrKind::DocComment(..) => false,
+        AttrKind::Generated(..) => unreachable!(),
     })
 }

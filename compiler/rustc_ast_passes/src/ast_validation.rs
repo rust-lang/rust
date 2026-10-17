@@ -536,7 +536,9 @@ impl<'a> AstValidator<'a> {
                     ];
                     !attr.has_any_name(&arr) && rustc_attr_parsing::is_builtin_attr(&normal.item)
                 }
-                AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace(_)) => false,
+                AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace(_)) | AttrKind::Generated(..) => {
+                    false
+                }
                 AttrKind::DocComment(..) => true,
             })
             .for_each(|attr| {

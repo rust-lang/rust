@@ -242,6 +242,7 @@ fn split_attrs(
                     }
                 }
             }
+            AttrKind::Generated(..) => unreachable!(),
         }
     }
 
