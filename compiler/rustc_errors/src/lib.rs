@@ -391,6 +391,7 @@ pub enum StashKey {
     /// the case we suppress this message and we give a better suggestion.
     GenericInFieldExpr,
     ReturnTypeNotation,
+    ParenAroundGuardedPatInMatchArm,
 }
 
 fn default_track_diagnostic<R>(diag: DiagInner, f: &mut dyn FnMut(DiagInner) -> R) -> R {
