@@ -112,6 +112,25 @@ pub(crate) struct LtoBitcodeFromRlib {
 }
 
 #[derive(Diagnostic)]
+#[diag("failed to load the TPDE backend: {$err}")]
+pub(crate) struct TpdeComponentUnavailable {
+    pub err: String,
+}
+
+#[derive(Diagnostic)]
+#[diag("TPDE backend not found in the sysroot: {$err}")]
+pub(crate) struct TpdeComponentMissing {
+    pub err: String,
+}
+
+#[derive(Diagnostic)]
+#[diag("using TPDE with optimization levels higher than 1 is not recommended")]
+#[note(
+    "compilation with TPDE at higher opt levels is more likely to fail, and to have worse runtime performance than LLVM even if it succeeds"
+)]
+pub(crate) struct TpdeHighOptLevel;
+
+#[derive(Diagnostic)]
 pub(crate) enum LlvmError<'a> {
     #[diag("could not write output to {$path}")]
     WriteOutput { path: &'a Path },

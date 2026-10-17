@@ -374,6 +374,17 @@ pub struct Config {
     pub using_internal_features: &'static std::sync::atomic::AtomicBool,
 }
 
+fn validate_options_for_backend(
+    codegen_backend: &Box<dyn CodegenBackend>,
+    early_sess: &EarlySession,
+) {
+    if codegen_backend.name() != "llvm" && early_sess.opts.unstable_opts.llvm_tpde.is_some() {
+        early_sess
+            .dcx()
+            .fatal("-Zllvm-tpde is LLVM-specific and not supported by other codegen backends");
+    }
+}
+
 // JUSTIFICATION: before session exists, only config
 #[allow(rustc::bad_opt_access)]
 pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Send) -> R {
@@ -434,6 +445,9 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                     make_codegen_backend(&early_sess)
                 }
             };
+
+            validate_options_for_backend(&codegen_backend, &early_sess);
+
             let codegen_backend_init = codegen_backend.init(&early_sess);
 
             let mut sess = rustc_session::build_session(
