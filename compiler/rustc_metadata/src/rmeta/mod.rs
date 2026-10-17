@@ -47,7 +47,7 @@ use rustc_session::config::mitigation_coverage::DeniedPartialMitigation;
 use rustc_session::config::{SymbolManglingVersion, TargetModifier};
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{ExpnIndex, MacroKind, SyntaxContextKey};
-use rustc_span::{self, ExpnData, ExpnHash, ExpnId, Ident, Span, Symbol};
+use rustc_span::{self, ExpnData, ExpnHash, ExpnId, Ident, Span, Symbol, SyntaxContext};
 use rustc_target::spec::{PanicStrategy, TargetTuple};
 use table::TableBuilder;
 
@@ -206,7 +206,8 @@ enum LazyState {
     Previous(NonZero<usize>),
 }
 
-type SyntaxContextTable = LazyTable<u32, u32, Option<LazyValue<SyntaxContextKey>>>;
+type SyntaxContextTable =
+    LazyTable<SyntaxContext, SyntaxContext, Option<LazyValue<SyntaxContextKey>>>;
 type ExpnDataTable = LazyTable<ExpnIndex, ExpnIndex, Option<LazyValue<ExpnData>>>;
 type ExpnHashTable = LazyTable<ExpnIndex, ExpnIndex, Option<LazyValue<ExpnHash>>>;
 

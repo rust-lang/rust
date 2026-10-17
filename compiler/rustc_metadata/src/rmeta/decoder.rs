@@ -466,13 +466,13 @@ impl<'a, 'tcx> SpanDecoder for MetadataDecodeContext<'a, 'tcx> {
         let tcx = self.tcx;
 
         let cname = cdata.root.name();
-        rustc_span::hygiene::decode_syntax_context(self, &cdata.hygiene_context, |_, id| {
-            debug!("SpecializedDecoder<SyntaxContext>: decoding {}", id);
+        rustc_span::hygiene::decode_syntax_context(self, &cdata.hygiene_context, |_, ctxt| {
+            debug!("SpecializedDecoder<SyntaxContext>: decoding {:?}", ctxt);
             cdata
                 .root
                 .syntax_contexts
-                .get(cdata, id)
-                .unwrap_or_else(|| panic!("Missing SyntaxContext {id:?} for crate {cname:?}"))
+                .get(cdata, ctxt)
+                .unwrap_or_else(|| panic!("Missing SyntaxContext {ctxt:?} for crate {cname:?}"))
                 .decode((cdata, tcx))
         })
     }

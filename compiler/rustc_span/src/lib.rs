@@ -47,6 +47,7 @@ use source_map::{SourceMap, SourceMapInputs};
 
 pub use self::caching_source_map_view::CachingSourceMapView;
 use crate::fatal_error::FatalError;
+use crate::hygiene::ROOT_SYNTAX_CONTEXT;
 
 pub mod edition;
 use edition::Edition;
@@ -807,7 +808,7 @@ impl Span {
 
     #[inline]
     pub fn with_root_ctxt(lo: BytePos, hi: BytePos) -> Span {
-        Span::new(lo, hi, SyntaxContext::root(), None)
+        Span::new(lo, hi, ROOT_SYNTAX_CONTEXT, None)
     }
 
     /// Returns a new span representing an empty span at the beginning of this span.

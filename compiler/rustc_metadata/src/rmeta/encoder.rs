@@ -2041,8 +2041,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         HygieneEncodeContext::encode(
             &Rc::clone(&self.hygiene_ctxt),
             &mut (&mut *self, &mut syntax_contexts, &mut expn_data_table, &mut expn_hash_table),
-            |(this, syntax_contexts, _, _), index, ctxt_data| {
-                syntax_contexts.set_some(index, this.lazy(ctxt_data));
+            |(this, syntax_contexts, _, _), ctxt, ctxt_data| {
+                syntax_contexts.set_some(ctxt, this.lazy(ctxt_data));
             },
             |(this, _, expn_data_table, expn_hash_table), index, expn_data, hash| {
                 if let Some(index) = index.as_local() {
