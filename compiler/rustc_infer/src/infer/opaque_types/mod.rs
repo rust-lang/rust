@@ -204,7 +204,7 @@ impl<'tcx> InferCtxt<'tcx> {
         opaque_type_key: OpaqueTypeKey<'tcx>,
         hidden_ty: ProvisionalHiddenType<'tcx>,
     ) -> Option<Ty<'tcx>> {
-        self.inner.borrow_mut().opaque_types().register(opaque_type_key, hidden_ty)
+        self.inner.borrow_mut().register_opaque_type(opaque_type_key, hidden_ty)
     }
 
     /// Insert a hidden type into the opaque type storage, equating it
@@ -238,11 +238,10 @@ impl<'tcx> InferCtxt<'tcx> {
                 goals.push(Goal::new(tcx, param_env, ty::PredicateKind::Ambiguous));
             }
             ty::TypingMode::Typeck { .. } => {
-                let prev = self
-                    .inner
-                    .borrow_mut()
-                    .opaque_types()
-                    .register(opaque_type_key, ProvisionalHiddenType { ty: hidden_ty, span });
+                let prev = self.inner.borrow_mut().register_opaque_type(
+                    opaque_type_key,
+                    ProvisionalHiddenType { ty: hidden_ty, span },
+                );
                 if let Some(prev) = prev {
                     goals.extend(
                         self.at(&ObligationCause::dummy_with_span(span), param_env)
@@ -254,11 +253,10 @@ impl<'tcx> InferCtxt<'tcx> {
                 }
             }
             ty::TypingMode::PostTypeckUntilBorrowck { .. } => {
-                let prev = self
-                    .inner
-                    .borrow_mut()
-                    .opaque_types()
-                    .register(opaque_type_key, ProvisionalHiddenType { ty: hidden_ty, span });
+                let prev = self.inner.borrow_mut().register_opaque_type(
+                    opaque_type_key,
+                    ProvisionalHiddenType { ty: hidden_ty, span },
+                );
 
                 // We either equate the new hidden type with the previous entry or with the type
                 // inferred by HIR typeck.
