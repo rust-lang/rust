@@ -1825,6 +1825,65 @@ impl f32 {
         intrinsics::copysignf32(self, sign)
     }
 
+    /// Calculates `self * 2.powi(exponent)` efficiently and accurately.
+    ///
+    /// Because of how floating point numbers are represented, this operation can be performed
+    /// using only bitwise operations. This is much faster than `powi` and does not run
+    /// into floating point precision issues.
+    ///
+    /// ```
+    /// #![feature(float_exponent_methods)]
+    ///
+    /// assert_eq!(3.0_f32.scalbn(4), 3.0 * 2.0_f32.powi(4)); // = 3 * 16 = 48
+    /// assert_eq!(3.0_f32.scalbn(-1), 3.0 * 2.0_f32.powi(-1)); // = 3 * 0.5 = 1.5
+    ///
+    /// assert_eq!(f32::INFINITY.scalbn(4), f32::INFINITY);
+    /// assert_eq!(f32::NEG_INFINITY.scalbn(4), f32::NEG_INFINITY);
+    ///
+    /// assert!(f32::NAN.scalbn(4).is_nan());
+    /// ```
+    #[inline]
+    #[unstable(feature = "float_exponent_methods", issue = "163184")]
+    #[rustc_const_unstable(feature = "float_exponent_methods", issue = "163184")]
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    pub const fn scalbn(self, exponent: i32) -> f32 {
+        intrinsics::scalbn(self, exponent)
+    }
+
+    /// Returns the exponent of `self`.
+    ///
+    /// Return `None` when `self` is NaN, [`i32::MIN`] when `self` is zero,
+    /// and [`i32::MAX`] when `self` is an infinity.
+    ///
+    /// ```
+    /// #![feature(float_exponent_methods)]
+    ///
+    /// assert_eq!(8.0_f32.ilogb(), Some(3));
+    /// assert_eq!((-8.0_f32).ilogb(), Some(3));
+    ///
+    /// assert_eq!(15.0_f32.ilogb(), Some(3));
+    /// assert_eq!(16.0_f32.ilogb(), Some(4));
+    ///
+    /// assert_eq!(0.5_f32.ilogb(), Some(-1));
+    ///
+    /// assert_eq!(f32::INFINITY.ilogb(), Some(i32::MAX));
+    /// assert_eq!(0.0_f32.ilogb(), Some(i32::MIN));
+    /// assert_eq!(f32::NAN.ilogb(), None);
+    /// ```
+    #[inline]
+    #[unstable(feature = "float_exponent_methods", issue = "163184")]
+    #[rustc_const_unstable(feature = "float_exponent_methods", issue = "163184")]
+    #[must_use = "this returns the result of the operation, without modifying the original"]
+    pub const fn ilogb(self) -> Option<i32> {
+        if self.is_nan() {
+            None
+        } else if self == 0.0 {
+            Some(i32::MIN)
+        } else {
+            Some(intrinsics::ilogb(self))
+        }
+    }
+
     /// Float addition that allows optimizations based on algebraic rules.
     ///
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
