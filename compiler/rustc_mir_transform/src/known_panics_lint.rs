@@ -56,6 +56,10 @@ impl<'tcx> crate::MirLint<'tcx> for KnownPanicsLint {
         trace!("KnownPanicsLint starting for {:?}", def_id);
 
         let mut linter = ConstPropagator::new(body, tcx);
+        if let Some(_) = body.tainted_by_errors {
+            trace!("KnownPanicsLint skipped for error-tainted body {:?}", def_id);
+            return;
+        }
         linter.visit_body(body);
 
         trace!("KnownPanicsLint done for {:?}", def_id);
