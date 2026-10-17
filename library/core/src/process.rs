@@ -3,6 +3,23 @@
 //! Most process-related functionality requires std, but [`abort_immediate`]
 //! is available on all targets.
 
+/// Unstable version of [`std::process::abort`](../../std/process/fn.abort.html) that works in
+/// `core`. See those docs for details.
+// FIXME(core_abort): once stable, move `std::process::abort` here and reexport rather than calling
+// the `core` version from `std`.
+#[unstable(feature = "core_abort", issue = "none")]
+#[cold]
+#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+pub fn abort() -> ! {
+    #[unsafe(no_mangle)]
+    #[cfg_attr(not(any(all(windows, target_env = "gnu"), target_os = "cygwin")), linkage = "weak")]
+    fn __rust_abort_internal() -> ! {
+        abort_immediate();
+    }
+
+    __rust_abort_internal();
+}
+
 /// Terminates the process in a violent fashion.
 ///
 /// The function will never return and will immediately terminate the current
