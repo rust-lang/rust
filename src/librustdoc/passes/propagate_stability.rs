@@ -104,6 +104,7 @@ impl DocFolder for StabilityPropagator<'_, '_> {
                     | ItemKind::PrimitiveItem(..)
                     | ItemKind::KeywordItem
                     | ItemKind::AttributeItem
+                    | ItemKind::FeatureItem
                     | ItemKind::PlaceholderImplItem => own_stability,
 
                     ItemKind::StrippedItem(..) => unreachable!(),
