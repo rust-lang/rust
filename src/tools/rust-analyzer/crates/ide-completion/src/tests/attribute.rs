@@ -1,7 +1,8 @@
 //! Completion tests for attributes.
 use expect_test::expect;
 
-use crate::tests::{check, check_edit};
+use crate::CompletionConfig;
+use crate::tests::{TEST_CONFIG, check, check_edit, check_edit_with_config};
 
 #[test]
 fn derive_helpers() {
@@ -927,6 +928,46 @@ struct Foo;
 fn attr_before_arg() {
     check_edit("allow", r#"#[$0()] fn main() {}"#, r#"#[allow()] fn main() {}"#);
     check_edit("cfg_attr", r#"#[c$0(test)] fn main() {}"#, r#"#[cfg_attr(test)] fn main() {}"#);
+}
+
+#[test]
+fn attr_without_snippet() {
+    check_edit_with_config(
+        CompletionConfig { snippet_cap: None, ..TEST_CONFIG },
+        "derive",
+        r#"#[$0]"#,
+        r#"#[derive]"#,
+    );
+    check_edit_with_config(
+        CompletionConfig { snippet_cap: None, ..TEST_CONFIG },
+        "allow",
+        r#"#[$0]"#,
+        r#"#[allow]"#,
+    );
+    check_edit_with_config(
+        CompletionConfig { snippet_cap: None, ..TEST_CONFIG },
+        "doc",
+        r#"#![$0]"#,
+        r#"#![doc = ]"#,
+    );
+    check_edit_with_config(
+        CompletionConfig { snippet_cap: None, ..TEST_CONFIG },
+        "type_length_limit",
+        r#"#![$0]"#,
+        r#"#![type_length_limit = ]"#,
+    );
+    check_edit_with_config(
+        CompletionConfig { snippet_cap: None, ..TEST_CONFIG },
+        "docinclude",
+        r#"#[$0]"#,
+        r#"#[doc = include_str!()]"#,
+    );
+    check_edit_with_config(
+        CompletionConfig { snippet_cap: None, ..TEST_CONFIG },
+        "automatically_derived",
+        r#"#[$0]"#,
+        r#"#[automatically_derived]"#,
+    );
 }
 
 #[test]
