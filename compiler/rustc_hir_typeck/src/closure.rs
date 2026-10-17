@@ -481,8 +481,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         cause_span: Option<Span>,
         projection: ty::PolyProjectionClause<'tcx>,
     ) -> Option<ExpectedSig<'tcx>> {
+        if projection.has_non_region_bound_vars() {
+            return None;
+        }
         let projection = self.deeply_resolve_ignoring_regions(projection);
-
         let arg_param_ty = projection.skip_binder().projection_term.args.type_at(1);
         debug!(?arg_param_ty);
 
@@ -526,6 +528,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         cause_span: Option<Span>,
         projection: ty::PolyProjectionClause<'tcx>,
     ) -> Option<ExpectedSig<'tcx>> {
+        if projection.has_non_region_bound_vars() {
+            return None;
+        }
         let projection = self.deeply_resolve_ignoring_regions(projection);
 
         let arg_param_ty = projection.skip_binder().projection_term.args.type_at(1);
@@ -665,7 +670,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Watch out for some surprises and just ignore the
         // expectation if things don't see to match up with what we
         // expect.
-        if expected_sig.sig.c_variadic() != decl.c_variadic() {
+        if expected_sig.sig.c_variadic() != decl.c_variadic()
+            || expected_sig.sig.has_non_region_bound_vars()
+        {
             return self.sig_of_closure_no_expectation(expr_def_id, decl, closure_kind);
         } else if expected_sig.sig.skip_binder().inputs_and_output.len() != decl.inputs.len() + 1 {
             return self.sig_of_closure_with_mismatched_number_of_arguments(
