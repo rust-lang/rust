@@ -312,11 +312,13 @@ void MiriGenmcInterface::handle_fence(ThreadId thread_id, MemOrdering ord) {
         curr_pos(thread_id),
         GenmcScalarExt::try_to_sval(old_val),
         success_ordering,
+        /* fail_ordering: */ success_ordering,
         SAddr(address),
         ASize(size),
         expectedVal,
         new_val,
         WriteAttr(),
+        /* weak: */ false,
         nullptr,
         std::nullopt,
         EventDeps()
@@ -327,11 +329,11 @@ void MiriGenmcInterface::handle_fence(ThreadId thread_id, MemOrdering ord) {
     if (std::holds_alternative<GenMCDriver::Invalid>(load_ret.result))
         return CompareExchangeResultExt::from_invalid();
 
-    const auto* ret_val = std::get_if<SVal>(&load_ret.result);
+    const auto* ret_val = std::get_if<GenMCDriver::CasReadResult>(&load_ret.result);
     // FIXME(genmc): handle `HandleResult::Reset` return values.
     ERROR_ON(nullptr == ret_val, "Unimplemented: load returned unexpected result.");
-    const auto read_old_val = *ret_val;
-    if (read_old_val != expectedVal)
+    const auto read_old_val = ret_val->val;
+    if (!ret_val->success)
         return CompareExchangeResultExt::failure(read_old_val);
 
     // FIXME(GenMC): Add support for modelling spurious failures.
