@@ -243,6 +243,8 @@ impl CodegenBackend for GccCodegenBackend {
             if target_cpu != "generic" {
                 context.add_command_line_option(format!("-march={}", target_cpu));
             }
+            // libgccjit always passes -fPIC, which some targets reject (e.g. MIPS without -mabicalls).
+            gcc_util::add_pic_option(&context, sess.relocation_model());
 
             self.config = Some(BackendConfig {
                 target_info: Arc::new(IntoDynSyncSend(context.get_target_info())),
@@ -258,6 +260,7 @@ impl CodegenBackend for GccCodegenBackend {
             let temp_file = temp_dir.keep().join("result.asm");
             let check_context = Context::default();
             check_context.set_print_errors_to_stderr(false);
+            gcc_util::add_pic_option(&check_context, sess.relocation_model());
             let _int128_ty = check_context.new_c_type(CType::UInt128t);
             // NOTE: we cannot just call compile() as this would require other files than libgccjit.so.
             check_context.compile_to_file(
