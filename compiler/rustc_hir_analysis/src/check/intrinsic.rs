@@ -171,8 +171,8 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::type_id_element_ty
         | sym::type_id_eq
         | sym::type_id_field_representing
-        | sym::type_id_field_representing_outer_type_id
         | sym::type_id_field_representing_field_offset
+        | sym::type_id_field_representing_outer_type_id
         | sym::type_id_fields
         | sym::type_id_function_ptr
         | sym::type_id_generics
