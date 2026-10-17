@@ -1,0 +1,8 @@
+error: backend_repr: Scalar(i32 is ..)
+  --> $DIR/nonnull-guaranteed-linux.rs:9:1
+   |
+LL | type OptFd = Option<std::os::unix::io::OwnedFd>;
+   | ^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
