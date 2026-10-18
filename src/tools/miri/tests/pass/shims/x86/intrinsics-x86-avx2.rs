@@ -1146,6 +1146,22 @@ unsafe fn test_avx2() {
     test_mm256_mulhrs_epi16();
 
     #[target_feature(enable = "avx2")]
+    unsafe fn test_mm256_mulhi_epi16() {
+        let (a, b) = (_mm256_set1_epi16(1000), _mm256_set1_epi16(-1001));
+        let r = _mm256_mulhi_epi16(a, b);
+        assert_eq_m256i(r, _mm256_set1_epi16(-16));
+    }
+    test_mm256_mulhi_epi16();
+
+    #[target_feature(enable = "avx2")]
+    unsafe fn test_mm256_mulhi_epu16() {
+        let (a, b) = (_mm256_set1_epi16(1000), _mm256_set1_epi16(1001));
+        let r = _mm256_mulhi_epu16(a, b);
+        assert_eq_m256i(r, _mm256_set1_epi16(15));
+    }
+    test_mm256_mulhi_epu16();
+
+    #[target_feature(enable = "avx2")]
     unsafe fn test_mm256_packs_epi16() {
         let a = _mm256_set1_epi16(2);
         let b = _mm256_set1_epi16(4);
