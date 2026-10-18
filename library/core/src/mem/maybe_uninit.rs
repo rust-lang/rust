@@ -750,18 +750,18 @@ impl<T> MaybeUninit<T> {
     /// `assume_init_read` and then [`assume_init`]), it is your responsibility
     /// to ensure that data may indeed be duplicated.
     ///
-    /// Since this function does not require `T: Send`, you also need to carefully consider
-    /// thread safety. If you call this function from a different thread than the one
-    /// that holds the `MaybeUninit<T>`, it logically constitutes a cross-thread ownership
-    /// transfer of the contained value `T`. You are responsible for guaranteeing
-    /// the thread safety of the transfer. Note that `MaybeUninit<T>` is [`Sync`] if `T`
-    /// is merely [`Sync`]; therefore, safely obtaining `&MaybeUninit<T>` does *not* ensure
-    /// the said thread safety. If `T` is [`Send`], the thread safety is
-    /// guaranteed; otherwise, you will need to provide type-specific reasoning to
-    /// prove that the transfer and your usage of the value `T` are actually thread-safe.
-    /// If your type's safe API relies on this function, you may need to manually
-    /// implement `!Send`, `!Sync`, [`Send`], and/or [`Sync`] to *tighten* the conditions
-    /// for the type to be [`Send`] and/or [`Sync`].
+    /// As calling this function does not require `T: Send`, you also need to manually
+    /// ensure thread safety. Since `MaybeUninit<T>` is [`Sync`] whenever `T` is [`Sync`],
+    /// a reference to `MaybeUninit<T>` can be sent across threads without requiring
+    /// that `T` is [`Send`]. Calling this method through the reference, now in another thread,
+    /// effectively constitutes a cross-thread transfer of the value, whose type is possibly
+    /// non-[`Send`]. Callers using this function in this cross-thread way must ensure
+    /// that the transfer of the return value and its subsequent use or drop are thread-safe.
+    /// In particular, if a safe abstraction lets this function read generic `T` into another
+    /// thread, the abstraction is required to satisfy a generic condition that ensures the
+    /// soundness of the cross-thread transfer: most simply, `T: Send`; or as a substitute,
+    /// `T: Sync + Copy`. As you can see, despite `impl<T: Sync> Sync for MaybeUninit<T>`,
+    /// `T: Sync` is not primarily relevant to the thread safety of this method.
     ///
     /// [inv]: #initialization-invariant
     /// [`assume_init`]: MaybeUninit::assume_init
