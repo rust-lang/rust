@@ -321,7 +321,6 @@ trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         metadata: FileMetadata,
         buf_op: &OpTy<'tcx>,
-        buf_type: &str,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
@@ -329,7 +328,7 @@ trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let (created_sec, created_nsec) = metadata.created.unwrap_or((0, 0));
         let (modified_sec, modified_nsec) = metadata.modified.unwrap_or((0, 0));
 
-        let buf = this.deref_pointer_as(buf_op, this.libc_ty_layout(buf_type))?;
+        let buf = this.deref_pointer(buf_op)?;
 
         this.write_int_fields_named(
             &[
@@ -924,7 +923,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Err(err) => return this.set_errno_and_return_neg1_i32(err),
         };
 
-        interp_ok(Scalar::from_i32(this.write_stat_buf(metadata, buf_op, "stat")?))
+        interp_ok(Scalar::from_i32(this.write_stat_buf(metadata, buf_op)?))
     }
 
     // `lstat` is used to get symlink metadata.
@@ -952,15 +951,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Err(err) => return this.set_errno_and_return_neg1_i32(err),
         };
 
-        interp_ok(Scalar::from_i32(this.write_stat_buf(metadata, buf_op, "stat")?))
+        interp_ok(Scalar::from_i32(this.write_stat_buf(metadata, buf_op)?))
     }
 
-    fn fstat(
-        &mut self,
-        fd_op: &OpTy<'tcx>,
-        buf_op: &OpTy<'tcx>,
-        buf_type: &str,
-    ) -> InterpResult<'tcx, Scalar> {
+    fn fstat(&mut self, fd_op: &OpTy<'tcx>, buf_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         if !matches!(
@@ -983,7 +977,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Ok(metadata) => metadata,
             Err(err) => return this.set_errno_and_return_neg1_i32(err),
         };
-        interp_ok(Scalar::from_i32(this.write_stat_buf(metadata, buf_op, buf_type)?))
+        interp_ok(Scalar::from_i32(this.write_stat_buf(metadata, buf_op)?))
     }
 
     fn fstatat(
@@ -1037,7 +1031,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Ok(metadata) => metadata,
             Err(err) => return this.set_errno_and_return_neg1_i32(err),
         };
-        interp_ok(Scalar::from_i32(this.write_stat_buf(metadata, buf_op, "stat")?))
+        interp_ok(Scalar::from_i32(this.write_stat_buf(metadata, buf_op)?))
     }
 
     fn linux_statx(
