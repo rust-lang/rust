@@ -2879,7 +2879,7 @@ struct InternerInner {
     byte_strs: Vec<&'static [u8]>,
 }
 
-const MAX_HASH_TABLE: usize = 1024;
+const MAX_HASH_TABLE: usize = 128;
 
 impl Interner {
     // These arguments are `&str`, but because of the sharing, we are
