@@ -268,15 +268,9 @@ impl<I: Interner, S: Clone + std::fmt::Debug + Eq + std::hash::Hash> LeafRegionC
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
 /// An OR of AND of LEAF constraints. Always in "canonical form" meaning:
-/// - No two ANDs are equivalent
+/// - No AND is a superset of another AND
 /// - All ANDs are in canonical form
 /// - If any AND is empty, i.e. trivially true, it is the only AND
-///
-/// FIXME(-Zassumptions-on-binders): We should consider a more general canonical form which also
-/// drops any AND that is a superset of another AND. Proving the superset requires strictly more
-/// than proving the subset, so it can never be the candidate which makes the OR hold. E.g.
-/// `OR(AND('a: 'b), AND('a: 'b, 'b: 'c))` really ought to just be `OR(AND('a: 'b))`. Only keeping
-/// an empty AND is the degenerate case of that rule.
 pub struct Or<I: Interner, S: Clone + std::fmt::Debug = ()>(pub SmallVec<[And<I, S>; 1]>);
 impl<I: Interner> Or<I> {
     pub fn with_spans<S: Clone + std::fmt::Debug + Eq + std::hash::Hash>(
@@ -285,6 +279,23 @@ impl<I: Interner> Or<I> {
     ) -> Or<I, S> {
         Or(self.0.into_iter().map(|and| and.with_spans(span.clone())).collect())
     }
+}
+
+enum AndRelation {
+    /// example:
+    /// existed: OR(AND('a: 'b))
+    /// new: AND('a: 'b, 'b: 'c)
+    Subset,
+
+    /// example:
+    /// existed: OR(AND('a: 'b, 'b: 'c))
+    /// new: AND('a: 'b)
+    Superset,
+
+    /// example:
+    /// existed: OR(AND('a: 'b))
+    /// new: AND('a: 'c)
+    Incomparable,
 }
 impl<I: Interner, S: Clone + std::hash::Hash + std::fmt::Debug + Eq> Or<I, S> {
     pub fn new_true() -> Self {
@@ -322,13 +333,26 @@ impl<I: Interner, S: Clone + std::hash::Hash + std::fmt::Debug + Eq> Or<I, S> {
                 return Self::new_true();
             }
 
-            // FIXME(-Zassumptions-on-binders): We only discard an AND which is equivalent to one
-            // we already have. More generally we should discard any AND which is a superset of
-            // another, as it requires strictly more to hold. E.g. the second AND in
-            // `OR(AND('a: 'b), AND('a: 'b, 'b: 'c))` is never the one which makes the OR true.
-            if new_ands.iter().all(|c| !c.is_and_equivalent_to(&and)) {
-                new_ands.push(and)
+            // Currently, this is a more general canonical form:
+            // comparing the existing `new_ands` with a new `and`,
+            // we always keep the and with fewer constraints in new_ands.
+            // In particular, the equivalent case is also classified under the subset branch, and no push operation is performed.
+            let mut is_subset_new = false;
+            new_ands.retain(|c| {
+                let relation = c.compare_and_relation(&and);
+                match relation {
+                    AndRelation::Superset => false,
+                    AndRelation::Subset => {
+                        is_subset_new = true;
+                        return true;
+                    }
+                    AndRelation::Incomparable => true,
+                }
+            });
+            if is_subset_new {
+                continue;
             }
+            new_ands.push(and);
         }
 
         Self(new_ands)
@@ -425,15 +449,27 @@ impl<I: Interner, S: Clone + std::hash::Hash + std::fmt::Debug + Eq> And<I, S> {
             .collect())
     }
 
-    fn is_and_equivalent_to(&self, other: &And<I, S>) -> bool {
-        let this = self.clone().0;
+    fn compare_and_relation(&self, other: &And<I, S>) -> AndRelation {
+        let this: SmallVec<[LeafRegionConstraint<I, S>; 1]> = self.clone().0;
         let other = other.clone().0;
 
-        this.iter()
+        // if newcome is superset
+        // In particular, the equivalent case is also classified under the subset branch
+        if this
+            .iter()
             .all(|c1| other.iter().any(|c2| c1.clone().without_span() == c2.clone().without_span()))
-            && other.iter().all(|c2| {
-                this.iter().any(|c1| c1.clone().without_span() == c2.clone().without_span())
-            })
+        {
+            return AndRelation::Subset;
+        }
+
+        // if newcome is subset
+        if other
+            .iter()
+            .all(|c2| this.iter().any(|c1| c1.clone().without_span() == c2.clone().without_span()))
+        {
+            return AndRelation::Superset;
+        }
+        return AndRelation::Incomparable;
     }
 
     pub fn without_spans(self) -> And<I> {
