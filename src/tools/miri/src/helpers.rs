@@ -421,9 +421,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             None => MPlaceTy::fake_alloc_zst(this.machine.layouts.unit),
         };
 
+        let with_caller_location = f.def.requires_caller_location(*this.tcx);
+
         // Construct a function pointer type representing the caller perspective.
         let sig = this.tcx.mk_fn_sig(
-            args.iter().map(|a| a.layout.ty),
+            args.iter()
+                .map(|a| a.layout.ty)
+                .chain(with_caller_location.then(|| this.tcx.caller_location_ty())),
             dest.layout.ty,
             // FIXME(splat): Do we need to set splatted here?
             // (Currently this also ignores c_variadic)
@@ -437,7 +441,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             mir,
             caller_fn_abi,
             &args.iter().map(|a| FnArg::Copy(a.clone().into())).collect::<Vec<_>>(),
-            /*with_caller_location*/ false,
+            with_caller_location,
             &dest.into(),
             cont,
         )

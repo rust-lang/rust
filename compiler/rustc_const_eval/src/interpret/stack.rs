@@ -66,6 +66,8 @@ pub struct Frame<'tcx, Prov: Provenance = CtfeProvenance, Extra = ()> {
     pub(super) body: &'tcx mir::Body<'tcx>,
 
     /// The def_id and args of the current function.
+    /// Note that if this is the body of a promoted, the `instance` points
+    /// to the surrounding body!
     pub(super) instance: ty::Instance<'tcx>,
 
     /// Extra data for the machine.
@@ -95,6 +97,10 @@ pub struct Frame<'tcx, Prov: Provenance = CtfeProvenance, Extra = ()> {
     /// The complete variable argument list of this frame. Its elements must be dropped when the
     /// frame is popped.
     pub(super) va_list: Vec<MPlaceTy<'tcx, Prov>>,
+
+    /// The implicit caller location argument that is passed by this function's caller, if any.
+    /// This is `Some` if and only if `instance.def.requires_caller_location` returns `true`.
+    pub(super) track_caller_arg: Option<Span>,
 
     /// The span of the `tracing` crate is stored here.
     /// When the guard is dropped, the span is exited. This gives us
@@ -258,13 +264,14 @@ impl<'tcx, Prov: Provenance> Frame<'tcx, Prov> {
         Frame {
             body: self.body,
             instance: self.instance,
+            extra,
             return_cont: self.return_cont,
             return_place: self.return_place,
             locals: self.locals,
             va_list: self.va_list,
-            loc: self.loc,
-            extra,
+            track_caller_arg: self.track_caller_arg,
             tracing_span: self.tracing_span,
+            loc: self.loc,
         }
     }
 }
@@ -400,6 +407,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             return_place: return_place.clone(),
             locals,
             va_list: vec![],
+            track_caller_arg: None,
             instance,
             tracing_span: SpanGuard::new(),
             extra: (),

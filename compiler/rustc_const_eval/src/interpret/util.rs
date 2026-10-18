@@ -25,7 +25,7 @@ pub(crate) fn type_implements_dyn_trait<'tcx, M: Machine<'tcx>>(
 
     let ty::Dynamic(preds, _) = trait_ty.kind() else {
         span_bug!(
-            ecx.find_closest_untracked_caller_location(),
+            ecx.cur_span(),
             "Invalid type provided to type_implements_predicates. U must be dyn Trait, got {trait_ty}."
         );
     };
