@@ -54,6 +54,8 @@ pub const fn abort_immediate() -> ! {
 ///
 /// If no debugger is attached, this will typically abort the process but may also continue
 /// execution.
+// NOTE: this is meant to discuss alternatives to `arch::breakpoint`. We may or may not
+// actually want to stabilize both of them.
 #[unstable(feature = "breakpoint", issue = "133724")]
 #[inline(always)]
 pub fn resumable_breakpoint() {
