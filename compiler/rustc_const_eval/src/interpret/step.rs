@@ -496,15 +496,33 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
             ty::FnDef(def_id, args) => {
                 let instance = self.resolve(def_id, args.no_bound_vars().unwrap())?;
-                // Don't compute FnAbi for LLVM intrinsics. Trying to do that would panic.
-                // Rust intrinsics however *do* need a FnAbi as we may invoke the
-                // fallback body like a regular function.
-                let has_fn_abi = !matches!(instance.def, ty::InstanceKind::LlvmIntrinsic(_));
+                let fn_abi =
+                    match instance.def {
+                        // Don't compute FnAbi for LLVM intrinsics. Trying to do that would panic.
+                        ty::InstanceKind::LlvmIntrinsic(_) => None,
+                        // Rust intrinsics don't really have a normal ABI, except for the case
+                        // where we call the fallback body like a regular function.
+                        // So, we compute the ABI based on the fallback body.
+                        // We can't compute the ABI based on the `instance` directly,
+                        // because `#[track_caller]` affects the ABI of the fallback body,
+                        // but not affect the "ABI" of the intrinsic itself.
+                        // Even if there is no fallback body, this computes a valid ABI
+                        // (that we then mostly ignore).
+                        ty::InstanceKind::Intrinsic(def_id) => {
+                            let fallback_instance = ty::Instance {
+                                def: ty::InstanceKind::Item(def_id),
+                                args: instance.args,
+                            };
+                            Some(self.fn_abi_of_instance_no_deduced_attrs(
+                                fallback_instance,
+                                extra_args,
+                            )?)
+                        }
+                        _ => Some(self.fn_abi_of_instance_no_deduced_attrs(instance, extra_args)?),
+                    };
                 (
                     FnVal::Instance(instance),
-                    has_fn_abi
-                        .then(|| self.fn_abi_of_instance_no_deduced_attrs(instance, extra_args))
-                        .transpose()?,
+                    fn_abi,
                     instance.def.requires_caller_location(*self.tcx),
                 )
             }

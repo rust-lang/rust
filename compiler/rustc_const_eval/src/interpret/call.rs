@@ -462,6 +462,21 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let _trace = enter_trace_span!(M, step::init_stack_frame, %instance, tracing_separate_thread = Empty);
         let def_id = instance.def_id();
 
+        match (instance.def.requires_caller_location(*self.tcx), with_caller_location) {
+            (false, true) => {
+                throw_ub_format!(
+                    "calling a non-`#[track_caller]` function from a `#[track_caller]` declaration"
+                )
+            }
+            (true, false) => {
+                throw_ub_format!(
+                    "calling a `#[track_caller]` function from a non-`#[track_caller]` declaration"
+                )
+            }
+            _ => {}
+        }
+        let caller_location = with_caller_location.then(|| self.caller_location());
+
         // The first order of business is to figure out the callee signature.
         // However, that requires the list of variadic arguments.
         // We use the *caller* information to determine where to split the list of arguments,
@@ -542,6 +557,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 .collect::<Vec<_>>()
         );
 
+        // Initialize special caller_location "local", if this function has it.
+        self.frame_mut().track_caller_arg = caller_location;
+
         // Determine whether there is a special VaList argument. This is always the
         // last argument, and since arguments start at index 1 that's `arg_count`.
         let va_list_arg = callee_fn_abi.c_variadic.then(|| mir::Local::from_usize(body.arg_count));
@@ -563,7 +581,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // The "where they come from" part is easy, we expect the caller to do any special handling
         // that might be required here (e.g. for untupling).
         // If `with_caller_location` is set we pretend there is an extra argument (that
-        // we will not pass; our `caller_location` intrinsic implementation walks the stack instead).
+        // we will not pass normally; our `caller_location` intrinsic implementation handles
+        // that separately).
         assert_eq!(
             args.len() + if with_caller_location { 1 } else { 0 },
             caller_fn_abi.args.len(),
@@ -760,6 +779,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         match instance.def {
             ty::InstanceKind::Intrinsic(def_id) => {
                 assert!(self.tcx.intrinsic(def_id).is_some());
+                assert!(!with_caller_location);
                 // FIXME: Should `InPlace` arguments be reset to uninit?
                 if let Some(fallback) = M::call_intrinsic(
                     self,
@@ -771,11 +791,16 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 )? {
                     assert!(!self.tcx.intrinsic(fallback.def_id()).unwrap().must_be_overridden);
                     assert_matches!(fallback.def, ty::InstanceKind::Item(_));
+                    // For `#[rustc_intrinsic] fn`, two `Instance`s are involved:
+                    // the original `InstanceKind::Intrinsic` (no caller location arg), and
+                    // the fallback `InstanceKind::Item` (has caller location arg if
+                    // it's `#[track_caller]`).
+                    // We replace the former with the latter.
                     return self.init_fn_call(
                         FnVal::Instance(fallback),
                         (caller_abi, caller_fn_abi),
                         args,
-                        with_caller_location,
+                        fallback.def.requires_caller_location(*self.tcx),
                         destination,
                         target,
                         unwind,

@@ -80,6 +80,8 @@ pub macro global_asm("assembly template", $(operands,)* $(options($(option),*))?
 /// - On aarch64 targets, this produces a `brk #0xf000` instruction.
 // When adding more items above, also add cases to the test in `tests/assembly-llvm/breakpoint.rs`.
 // When stabilizing this, update the comment on `core::intrinsics::breakpoint`.
+// NOTE: there is an alternative in `process::resumable_breakpoint`. We may or may not
+// actually want to stabilize both of them.
 #[unstable(feature = "breakpoint", issue = "133724")]
 #[inline(always)]
 pub fn breakpoint() {
