@@ -5,7 +5,7 @@
 // such parameters since we know that the corresponding arguments will get wfchecked regardless.
 //
 // FIXME(checked_type_aliases, #100041): At the time of writing however, that's not the case.
-//     I consider this to be stabilization-blocking concern for the strong checked version of CTA!
+//     I consider this to be stabilization-blocking concern for CTA!
 //     See also `unused-generic-arguments-not-wfchecked.rs`.
 //
 //     (We *do* ofc still detect unsatisfied predicates even if they reference unused parameters)

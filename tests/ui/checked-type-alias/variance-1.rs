@@ -30,7 +30,7 @@ type Co<'a> = std::vec::IntoIter<(&'a (), &'a ())>;
 
 // NOTE: If we end up switching back to computing variances for free alias types with the special
 //       rule explained in the FIXME above, then this function should still compile since
-//       LTA `DiscardConstrained` should be bivariant over `'a` and `T`, not invariant due to them
+//       CTA `DiscardConstrained` should be bivariant over `'a` and `T`, not invariant due to them
 //       being constrained by a projection.
 fn bi<'r>(
     x: WrapDiscardConstrained<'static, &'static (), Co<'static>>,
