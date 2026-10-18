@@ -297,7 +297,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         //     let arg1 = this.read_scalar(arg1)?.to_u32()?;
         //     let arg2 = this.read_pointer(arg2)?; // when you need to work with the pointer directly
         //     // when you want to load/store through the pointer
-        //     let arg3 = this.deref_pointer_as(arg3, this.libc_ty_layout("some_libc_struct"))?;
+        //     let arg3 = this.deref_pointer(arg3)?;
         //
         //     // ...
         //

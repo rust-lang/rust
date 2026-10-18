@@ -749,7 +749,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Time
             "gettimeofday" => {
                 let [tv, tz] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(*_, *_) -> i32),
+                    shim_sig!(extern "C" fn(*libc::timeval, *libc::timezone) -> i32),
                     (link_name, abi, args),
                 )?;
                 let result = this.gettimeofday(tv, tz)?;
@@ -757,7 +757,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "localtime_r" => {
                 let [timep, result_op] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(*_, *_) -> *_),
+                    shim_sig!(extern "C" fn(*libc::time_t, *libc::tm) -> *libc::tm),
                     (link_name, abi, args),
                 )?;
                 let result = this.localtime_r(timep, result_op)?;
@@ -765,7 +765,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "clock_gettime" => {
                 let [clk_id, tp] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(libc::clockid_t, *_) -> i32),
+                    shim_sig!(extern "C" fn(libc::clockid_t, *libc::timespec) -> i32),
                     (link_name, abi, args),
                 )?;
                 this.clock_gettime(clk_id, tp, dest)?;
