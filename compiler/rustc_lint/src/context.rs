@@ -132,7 +132,7 @@ pub enum CheckLintNameResult<'a> {
     /// Lint doesn't exist. Potentially contains a suggestion for a correct lint name.
     NoLint(Option<(LintName, bool)>),
     /// The lint refers to a tool that has not been registered.
-    NoTool,
+    NoTool(Symbol),
     /// The lint has been renamed to a new name.
     Renamed(LintName),
     /// The lint has been removed due to the given reason.
@@ -356,7 +356,7 @@ impl LintStore {
                 && tool_name != sym::rustdoc
                 && !registered_lint_tools.contains(&Ident::with_dummy_span(tool_name))
             {
-                return CheckLintNameResult::NoTool;
+                return CheckLintNameResult::NoTool(tool_name);
             }
         }
 

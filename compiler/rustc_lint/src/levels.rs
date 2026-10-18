@@ -525,9 +525,9 @@ where
                     };
                     self.emit_lint(RENAMED_AND_REMOVED_LINTS, lint);
                 }
-                CheckLintNameResult::NoTool => {
+                CheckLintNameResult::NoTool(tool_name) => {
                     self.sess.dcx().emit_err(CheckNameUnknownTool {
-                        tool_name: lint_name.tool.unwrap(),
+                        tool_name,
                         sub: RequestedLevel { level, lint_name },
                     });
                 }
@@ -781,10 +781,10 @@ where
                     continue;
                 }
 
-                CheckLintNameResult::NoTool => {
+                CheckLintNameResult::NoTool(tool_name) => {
                     sess.dcx().emit_err(UnknownToolInScopedLint {
                         span: Some(tool_span.unwrap()),
-                        tool_name: tool.unwrap(),
+                        tool_name,
                         lint_name,
                         is_nightly_build: sess.is_nightly_build(),
                     });
