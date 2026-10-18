@@ -2,7 +2,7 @@ error: expected path to a lint, found literal
   --> $DIR/deduplicate-diagnostics.rs:10:8
    |
 LL | #[deny("literal")]
-   |        ^^^^^^^^^ not a lint
+   |        ^^^^^^^^^ not the name of a lint
    |
    = help: try using `#[deny(literal)]`
 
@@ -24,7 +24,7 @@ error: expected path to a lint, found literal
   --> $DIR/deduplicate-diagnostics.rs:10:8
    |
 LL | #[deny("literal")]
-   |        ^^^^^^^^^ not a lint
+   |        ^^^^^^^^^ not the name of a lint
    |
    = help: try using `#[deny(literal)]`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
@@ -33,7 +33,7 @@ error: expected path to a lint, found literal
   --> $DIR/deduplicate-diagnostics.rs:10:8
    |
 LL | #[deny("literal")]
-   |        ^^^^^^^^^ not a lint
+   |        ^^^^^^^^^ not the name of a lint
    |
    = help: try using `#[deny(literal)]`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
