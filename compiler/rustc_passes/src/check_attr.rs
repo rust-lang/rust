@@ -1429,7 +1429,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
             match lint_name {
                 sym::dead_code_pub_in_binary => {
-                    if !self.tcx.crate_types().contains(&CrateType::Executable) {
+                    if crate::dead::dead_code_pub_in_binary_known_no_effect(self.tcx) {
                         self.tcx.emit_node_span_lint(
                             UNUSED_ATTRIBUTES,
                             hir_id,
