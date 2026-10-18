@@ -950,7 +950,13 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         let fn_ptr = if let Some(&llfn) = self.intrinsic_instances.borrow().get(&instance) {
             llfn
         } else {
-            let sym = tcx.symbol_name(instance).name;
+            // If we have a rustc_llvm_intrinsic attribute, the name specified there overrides the symbol name.
+            let sym = tcx
+                .codegen_fn_attrs(instance.def_id())
+                .llvm_intrinsic
+                .as_ref()
+                .map(|x| x.as_str())
+                .unwrap_or_else(|| tcx.symbol_name(instance).name);
 
             let llfn = if let Some(llfn) = self.get_declared_value(sym) {
                 llfn

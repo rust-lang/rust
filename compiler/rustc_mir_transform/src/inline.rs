@@ -837,6 +837,11 @@ fn check_codegen_attributes<'tcx, I: Inliner<'tcx>>(
         return Err("incompatible instruction set");
     }
 
+    if callee_attrs.llvm_intrinsic.is_some() {
+        // FIXME: should we only avoid inlining if actually using LLVM?
+        return Err("llvm intrinsic fallback bodies should not be inlined");
+    }
+
     let callee_feature_names = callee_attrs.target_features.iter().map(|f| f.name);
     let this_feature_names = codegen_fn_attrs.target_features.iter().map(|f| f.name);
     if callee_feature_names.ne(this_feature_names) {

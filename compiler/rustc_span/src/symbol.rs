@@ -1878,6 +1878,7 @@ symbols! {
         rustc_lint_opt_ty,
         rustc_lint_query_instability,
         rustc_lint_untracked_query_information,
+        rustc_llvm_intrinsic,
         rustc_macro_transparency,
         rustc_main,
         rustc_mir,

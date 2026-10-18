@@ -124,6 +124,8 @@ pub struct CodegenFnAttrs {
     pub objc_selector: Option<Symbol>,
     /// The `#[instrument_fn]` attribute.
     pub instrument_fn: Option<InstrumentFnAttr>,
+    /// The `#[rustc_llvm_intrinsic = "..."]` attribute.
+    pub llvm_intrinsic: Option<Symbol>,
 }
 
 #[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, StableHash, PartialEq, Eq)]
@@ -261,6 +263,7 @@ impl CodegenFnAttrs {
             objc_class: None,
             objc_selector: None,
             instrument_fn: None,
+            llvm_intrinsic: None,
         }
     }
 
