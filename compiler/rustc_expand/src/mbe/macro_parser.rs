@@ -100,7 +100,6 @@ pub(crate) enum MatcherLoc {
     Token {
         token: Token,
     },
-    Delimited,
     Sequence {
         op: KleeneOp,
         num_metavar_decls: usize,
@@ -132,7 +131,6 @@ impl MatcherLoc {
     pub(super) fn span(&self) -> Option<Span> {
         match self {
             MatcherLoc::Token { token } => Some(token.span),
-            MatcherLoc::Delimited => None,
             MatcherLoc::Sequence { .. } => None,
             MatcherLoc::SequenceKleeneOpNoSep { .. } => None,
             MatcherLoc::SequenceSep { .. } => None,
@@ -155,7 +153,6 @@ impl Display for MatcherLoc {
             MatcherLoc::Eof => f.write_str("end of macro"),
 
             // These are not printed in the diagnostic
-            MatcherLoc::Delimited => f.write_str("delimiter"),
             MatcherLoc::Sequence { .. } => f.write_str("sequence start"),
             MatcherLoc::SequenceKleeneOpNoSep { .. } => f.write_str("sequence end"),
             MatcherLoc::SequenceKleeneOpAfterSep { .. } => f.write_str("sequence end"),
@@ -179,7 +176,6 @@ pub(super) fn compute_locs(matcher: &[TokenTree]) -> Vec<MatcherLoc> {
                     let open_token = Token::new(delimited.delim.as_open_token_kind(), span.open);
                     let close_token = Token::new(delimited.delim.as_close_token_kind(), span.close);
 
-                    locs.push(MatcherLoc::Delimited);
                     locs.push(MatcherLoc::Token { token: open_token });
                     inner(&delimited.tts, locs, next_metavar, seq_depth);
                     locs.push(MatcherLoc::Token { token: close_token });
@@ -524,11 +520,6 @@ impl TtParser {
                     mp.idx += 1;
                     self.next_mps.push(mp);
                 }
-            }
-            MatcherLoc::Delimited => {
-                // Entering the delimiter is trivial.
-                mp.idx += 1;
-                self.cur_mps.push(mp);
             }
             &MatcherLoc::Sequence {
                 op,
