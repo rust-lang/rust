@@ -7,7 +7,7 @@ use thin_vec::ThinVec;
 
 use crate::attributes::{AcceptMapping, AttributeParser, AttributeStability};
 use crate::context::{AcceptContext, ExpectStringLiteral, FinalizeContext};
-use crate::parser::ArgParser;
+use crate::parser::{ArgParser, MetaItemOrLitParser};
 use crate::target_checking::AllowedTargets;
 use crate::target_checking::Policy::{Allow, Warn};
 use crate::{AttributeTemplate, diagnostics, template};
@@ -37,7 +37,7 @@ impl LintParser {
                 if !p.path().word_is(sym::reason) {
                     cx.emit_err(diagnostics::MalformedAttribute {
                         span: p.span(),
-                        sub: diagnostics::MalformedAttributeSub::BadAttributeArgument(p.span()),
+                        kind: diagnostics::MalformedAttributeKind::BadAttributeArgument(p.span()),
                     });
                 } else {
                     parsers = &parsers[..(parsers.len() - 1)];
@@ -48,58 +48,70 @@ impl LintParser {
             };
 
             for item in parsers {
-                if let Some(p) = item.meta_item() {
-                    match p.args() {
-                        ArgParser::NoArgs => {
-                            let (tool, lint_name, rest) = match &*p.path().0.segments {
-                                [] => unreachable!(),
-                                [lint_name] => (None, lint_name.ident.name, None),
-                                [tool, lint_name] => (Some(tool.ident), lint_name.ident.name, None),
-                                [tool, lint_name, rest @ ..] => {
-                                    let rest = rest
-                                        .iter()
-                                        .map(|s| s.ident.name)
-                                        .collect::<Vec<_>>()
-                                        .into();
-                                    (Some(tool.ident), lint_name.ident.name, Some(rest))
-                                }
-                            };
+                match item {
+                    MetaItemOrLitParser::MetaItemParser(p) => {
+                        match p.args() {
+                            ArgParser::NoArgs => {
+                                let (tool, lint_name, rest) = match &*p.path().0.segments {
+                                    [] => unreachable!(),
+                                    [lint_name] => (None, lint_name.ident.name, None),
+                                    [tool, lint_name] => {
+                                        (Some(tool.ident), lint_name.ident.name, None)
+                                    }
+                                    [tool, lint_name, rest @ ..] => {
+                                        let rest = rest
+                                            .iter()
+                                            .map(|s| s.ident.name)
+                                            .collect::<Vec<_>>()
+                                            .into();
+                                        (Some(tool.ident), lint_name.ident.name, Some(rest))
+                                    }
+                                };
 
-                            self.lints.push(LintCheck {
-                                tool,
-                                lint_name,
-                                lint_span: p.span(),
-                                kind,
-                                attr_id,
-                                reason,
-                                attr_span,
-                                rest,
-                            })
-                        }
-                        // We're found a `reason = "reason"` but we're not the last element.
-                        ArgParser::NameValue(nv) if p.path().word_is(sym::reason) => {
-                            cx.emit_err(diagnostics::MalformedAttribute {
-                                span: p.span(),
-                                sub: diagnostics::MalformedAttributeSub::ReasonMustComeLast(
-                                    item.span(),
-                                ),
-                            });
-                            nv.expect_string_literal(cx);
-                        }
-                        ArgParser::NameValue(_) | ArgParser::List(_) => {
-                            cx.emit_err(diagnostics::MalformedAttribute {
-                                span: p.span(),
-                                sub: diagnostics::MalformedAttributeSub::BadAttributeArgument(
-                                    item.span(),
-                                ),
-                            });
+                                self.lints.push(LintCheck {
+                                    tool,
+                                    lint_name,
+                                    lint_span: p.span(),
+                                    kind,
+                                    attr_id,
+                                    reason,
+                                    attr_span,
+                                    rest,
+                                })
+                            }
+                            // We've found a `reason = "reason"` but we're not the last element.
+                            ArgParser::NameValue(nv) if p.path().word_is(sym::reason) => {
+                                cx.emit_err(diagnostics::MalformedAttribute {
+                                    span: p.span(),
+                                    kind: diagnostics::MalformedAttributeKind::ReasonMustComeLast(
+                                        item.span(),
+                                    ),
+                                });
+                                nv.expect_string_literal(cx);
+                            }
+                            ArgParser::NameValue(_) | ArgParser::List(_) => {
+                                cx.emit_err(diagnostics::MalformedAttribute {
+                                    span: p.span(),
+                                    kind: diagnostics::MalformedAttributeKind::BadAttributeArgument(
+                                        item.span(),
+                                    ),
+                                });
+                            }
                         }
                     }
-                } else {
-                    cx.emit_err(diagnostics::MalformedAttribute {
-                        span: item.span(),
-                        sub: diagnostics::MalformedAttributeSub::BadAttributeArgument(item.span()),
-                    });
+                    MetaItemOrLitParser::Lit(lit) => {
+                        cx.emit_err(diagnostics::BadAttributeLit {
+                            span: item.span(),
+                            help: if lit.kind.is_str() {
+                                diagnostics::BadAttributeLitHelp::StrLit {
+                                    sym: lit.symbol,
+                                    kind: kind.sym(),
+                                }
+                            } else {
+                                diagnostics::BadAttributeLitHelp::Other { kind: kind.sym() }
+                            },
+                        });
+                    }
                 }
             }
             if parsers.is_empty() {
