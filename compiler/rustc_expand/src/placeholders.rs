@@ -432,4 +432,15 @@ impl MutVisitor for PlaceholderExpander {
             walk_crate(self, krate)
         }
     }
+
+    fn flat_map_annotatable_use_tree(
+        &mut self,
+        annotatable_use_tree: rustc_ast::AnnotatableUseTree,
+    ) -> SmallVec<[rustc_ast::AnnotatableUseTree; 1]> {
+        if annotatable_use_tree.is_placeholder {
+            self.remove(annotatable_use_tree.id).make_annotatable_use_tree()
+        } else {
+            walk_flat_map_annotatable_use_tree(self, annotatable_use_tree)
+        }
+    }
 }

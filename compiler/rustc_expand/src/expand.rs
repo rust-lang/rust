@@ -2612,6 +2612,13 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         self.flat_map_node(node)
     }
 
+    fn flat_map_annotatable_use_tree(
+        &mut self,
+        annotatable_use_tree: rustc_ast::AnnotatableUseTree,
+    ) -> SmallVec<[rustc_ast::AnnotatableUseTree; 1]> {
+        self.flat_map_node(annotatable_use_tree)
+    }
+
     fn visit_crate(&mut self, node: &mut ast::Crate) {
         self.visit_node(node)
     }
