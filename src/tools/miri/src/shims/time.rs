@@ -477,8 +477,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             throw_unsup_format!("timespec with negative tv_sec is not supported");
         }
         interp_ok(try {
-            // to the epoch
-            let seconds: u64 = sec.try_into().ok()?;
+            let seconds: u64 = sec.try_into().expect("tv_sec should fit in 64 bits");
             // tv_nsec must be non-negative.
             let nanoseconds: u32 = nsec.try_into().ok()?;
             if nanoseconds >= 1_000_000_000 {
