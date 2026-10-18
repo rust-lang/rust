@@ -50,3 +50,16 @@ __impl_slice_eq1! { const, [A: Allocator, const N: usize] Vec<T, A>, &[U; N], #[
 //__impl_slice_eq1! { [const N: usize] Cow<'a, [A]>, [B; N], }
 //__impl_slice_eq1! { [const N: usize] Cow<'a, [A]>, &[B; N], }
 //__impl_slice_eq1! { [const N: usize] Cow<'a, [A]>, &mut [B; N], }
+
+// FallibleVec.
+// FIXME: In order to stop these taking precedence over Vec in diagnostics,
+// these are marked as `diagnostic::do_not_recommend`
+use crate::collections::fallible::FallibleVec;
+__impl_slice_eq1! { [] FallibleVec<T>, &[U], #[unstable(feature = "fallible_vec", issue = "157392")] #[diagnostic::do_not_recommend] }
+__impl_slice_eq1! { [] FallibleVec<T>, &mut [U], #[unstable(feature = "fallible_vec", issue = "157392")] #[diagnostic::do_not_recommend] }
+__impl_slice_eq1! { [] &[T], FallibleVec<U>, #[unstable(feature = "fallible_vec", issue = "157392")] #[diagnostic::do_not_recommend] }
+__impl_slice_eq1! { [] &mut [T], FallibleVec<U>, #[unstable(feature = "fallible_vec", issue = "157392")] #[diagnostic::do_not_recommend] }
+__impl_slice_eq1! { [] FallibleVec<T>, [U], #[unstable(feature = "fallible_vec", issue = "157392")] #[diagnostic::do_not_recommend] }
+__impl_slice_eq1! { [] [T], FallibleVec<U>, #[unstable(feature = "fallible_vec", issue = "157392")] #[diagnostic::do_not_recommend] }
+__impl_slice_eq1! { [const N: usize] FallibleVec<T>, [U; N], #[unstable(feature = "fallible_vec", issue = "157392")] #[diagnostic::do_not_recommend] }
+__impl_slice_eq1! { [const N: usize] FallibleVec<T>, &[U; N], #[unstable(feature = "fallible_vec", issue = "157392")] #[diagnostic::do_not_recommend] }
