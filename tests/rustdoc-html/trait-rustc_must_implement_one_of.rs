@@ -12,10 +12,12 @@
 //@ has - '//*[@class="stab must_implement"]/a[@href="#method.read"]' 'read'
 //@ has - '//*[@class="stab must_implement"]/a[@href="#method.read_buf"]' 'read_buf'
 
-// There should be 3 headings in the sidebar: Required/Provided methods and "Implementors".
-//@ count - '//*[@id="rustdoc-toc"]/h3' 3
+// There should be 4 headings in the sidebar: Required/Provided methods, "Implementors" and
+// "Dyn Compatibility".
+//@ count - '//*[@id="rustdoc-toc"]/h3' 4
 //@ has - '//*[@id="rustdoc-toc"]/h3/a[@href="#required-methods"]' 'Required Methods'
 //@ has - '//*[@id="rustdoc-toc"]/h3/a[@href="#provided-methods"]' 'Provided Methods'
+//@ has - '//*[@id="rustdoc-toc"]/h3/a[@href="#dyn-compatibility"]' 'Dyn Compatibility'
 //@ has - '//*[@id="rustdoc-toc"]/h3/a[@href="#implementors"]' 'Implementors'
 
 #[rustc_must_implement_one_of(read_buf, read)]
@@ -25,10 +27,12 @@ pub trait Read {
 }
 
 //@ has 'foo/trait.Tadam.html'
-// There should still be 3 headings in the sidebar: Required/Provided methods and "Implementors".
-//@ count - '//*[@id="rustdoc-toc"]/h3' 3
+// There should still be 4 headings in the sidebar: Required/Provided methods, "Implementors"
+// and "Dyn Compatibility".
+//@ count - '//*[@id="rustdoc-toc"]/h3' 4
 //@ has - '//*[@id="rustdoc-toc"]/h3/a[@href="#required-methods"]' 'Required Methods'
 //@ has - '//*[@id="rustdoc-toc"]/h3/a[@href="#provided-methods"]' 'Provided Methods'
+//@ has - '//*[@id="rustdoc-toc"]/h3/a[@href="#dyn-compatibility"]' 'Dyn Compatibility'
 //@ has - '//*[@id="rustdoc-toc"]/h3/a[@href="#implementors"]' 'Implementors'
 
 #[rustc_must_implement_one_of(read_buf, read)]
@@ -39,9 +43,11 @@ pub trait Tadam {
 }
 
 //@ has 'foo/trait.Other.html'
-// There should be 2 headings in the sidebar: Provided methods and "Implementors".
-//@ count - '//*[@id="rustdoc-toc"]/h3' 2
+// There should be 3 headings in the sidebar: Provided methods, "Implementors" and
+// "Dyn Compatibility".
+//@ count - '//*[@id="rustdoc-toc"]/h3' 3
 //@ has - '//*[@id="rustdoc-toc"]/h3/a[@href="#provided-methods"]' 'Provided Methods'
+//@ has - '//*[@id="rustdoc-toc"]/h3/a[@href="#dyn-compatibility"]' 'Dyn Compatibility'
 //@ has - '//*[@id="rustdoc-toc"]/h3/a[@href="#implementors"]' 'Implementors'
 
 pub trait Other {
