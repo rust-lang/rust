@@ -4,4 +4,8 @@
 //~^ ERROR expected a lint, found literal
 //~| ERROR expected a lint, found literal
 //~| ERROR expected a lint, found literal
+#[deny(1.0)]
+//~^ ERROR expected a lint, found literal
+//~| ERROR expected a lint, found literal
+//~| ERROR expected a lint, found literal
 fn main() {}
