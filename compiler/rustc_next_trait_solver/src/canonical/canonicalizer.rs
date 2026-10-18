@@ -162,14 +162,13 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
                     // Cache miss. Do `env` canonicalization and get `rest_canonicalizer`, and
                     // fill in the cache entry.
                     let (param_env, mut rest_canonicalizer) = do_env_and_make_rest();
-                    let interned_var_kinds =
+                    let var_kinds =
                         delegate.cx().mk_canonical_var_kinds(&rest_canonicalizer.state.var_kinds);
-                    rest_canonicalizer.param_env_var_kinds = Some(interned_var_kinds);
+                    rest_canonicalizer.param_env_var_kinds = Some(var_kinds);
                     e.insert(CanonicalParamEnvCacheEntry {
                         param_env,
                         variables: rest_canonicalizer.state.variables.clone(),
-                        var_kinds: rest_canonicalizer.state.var_kinds.clone(),
-                        interned_var_kinds,
+                        var_kinds,
                         // SAFETY: The iterated elements go straight back into a hashmap.
                         #[allow(rustc::potential_query_instability)]
                         variable_lookup_table: rest_canonicalizer
@@ -189,8 +188,8 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
                         CanonicalizeMode::Input(CanonicalizeInputKind::Predicate),
                     );
                     rest_canonicalizer.state.variables.clone_from(&e.variables);
-                    rest_canonicalizer.state.var_kinds.clone_from(&e.var_kinds);
-                    rest_canonicalizer.param_env_var_kinds = Some(e.interned_var_kinds);
+                    e.var_kinds.as_slice().clone_into(&mut rest_canonicalizer.state.var_kinds);
+                    rest_canonicalizer.param_env_var_kinds = Some(e.var_kinds);
                     rest_canonicalizer
                         .state
                         .variable_lookup_table
