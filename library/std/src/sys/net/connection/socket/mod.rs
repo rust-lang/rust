@@ -526,7 +526,10 @@ impl TcpStream {
 
     pub fn set_hop_limit_v6(&self, limit: u8) -> io::Result<()> {
         cfg_select! {
-            all(target_os = "wasi", any(target_env = "p2", target_env = "p3")) => {
+            any(
+                all(target_os = "wasi", any(target_env = "p2", target_env = "p3")),
+                target_os = "hermit",
+            ) => {
                 let _ = limit;
                 Err(io::Error::new(ErrorKind::Unsupported, "not supported on this platform"))
             }
@@ -538,9 +541,10 @@ impl TcpStream {
 
     pub fn hop_limit_v6(&self) -> io::Result<u8> {
         cfg_select! {
-            all(target_os = "wasi", any(target_env = "p2", target_env = "p3")) => {
-                Err(io::Error::new(ErrorKind::Unsupported, "not supported on this platform"))
-            }
+            any(
+                all(target_os = "wasi", any(target_env = "p2", target_env = "p3")),
+                target_os = "hermit",
+            ) => Err(io::Error::new(ErrorKind::Unsupported, "not supported on this platform")),
             _ => {
                 let raw: c_int =
                     unsafe { getsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_UNICAST_HOPS)? };
@@ -679,7 +683,10 @@ impl TcpListener {
 
     pub fn set_hop_limit_v6(&self, limit: u8) -> io::Result<()> {
         cfg_select! {
-            all(target_os = "wasi", any(target_env = "p2", target_env = "p3")) => {
+            any(
+                all(target_os = "wasi", any(target_env = "p2", target_env = "p3")),
+                target_os = "hermit",
+            ) => {
                 let _ = limit;
                 Err(io::Error::new(ErrorKind::Unsupported, "not supported on this platform"))
             }
@@ -691,9 +698,10 @@ impl TcpListener {
 
     pub fn hop_limit_v6(&self) -> io::Result<u8> {
         cfg_select! {
-            all(target_os = "wasi", any(target_env = "p2", target_env = "p3")) => {
-                Err(io::Error::new(ErrorKind::Unsupported, "not supported on this platform"))
-            }
+            any(
+                all(target_os = "wasi", any(target_env = "p2", target_env = "p3")),
+                target_os = "hermit",
+            ) => Err(io::Error::new(ErrorKind::Unsupported, "not supported on this platform")),
             _ => {
                 let raw: c_int =
                     unsafe { getsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_UNICAST_HOPS)? };
@@ -924,7 +932,10 @@ impl UdpSocket {
 
     pub fn set_hop_limit_v6(&self, limit: u8) -> io::Result<()> {
         cfg_select! {
-            all(target_os = "wasi", any(target_env = "p2", target_env = "p3")) => {
+            any(
+                all(target_os = "wasi", any(target_env = "p2", target_env = "p3")),
+                target_os = "hermit",
+            ) => {
                 let _ = limit;
                 Err(io::Error::new(ErrorKind::Unsupported, "not supported on this platform"))
             }
@@ -936,9 +947,10 @@ impl UdpSocket {
 
     pub fn hop_limit_v6(&self) -> io::Result<u8> {
         cfg_select! {
-            all(target_os = "wasi", any(target_env = "p2", target_env = "p3")) => {
-                Err(io::Error::new(ErrorKind::Unsupported, "not supported on this platform"))
-            }
+            any(
+                all(target_os = "wasi", any(target_env = "p2", target_env = "p3")),
+                target_os = "hermit",
+            ) => Err(io::Error::new(ErrorKind::Unsupported, "not supported on this platform")),
             _ => {
                 let raw: c_int =
                     unsafe { getsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_UNICAST_HOPS)? };
@@ -949,7 +961,10 @@ impl UdpSocket {
 
     pub fn set_multicast_hop_limit_v6(&self, limit: u8) -> io::Result<()> {
         cfg_select! {
-            all(target_os = "wasi", any(target_env = "p2", target_env = "p3")) => {
+            any(
+                all(target_os = "wasi", any(target_env = "p2", target_env = "p3")),
+                target_os = "hermit",
+            ) => {
                 let _ = limit;
                 Err(io::Error::new(ErrorKind::Unsupported, "not supported on this platform"))
             }
@@ -961,9 +976,10 @@ impl UdpSocket {
 
     pub fn multicast_hop_limit_v6(&self) -> io::Result<u8> {
         cfg_select! {
-            all(target_os = "wasi", any(target_env = "p2", target_env = "p3")) => {
-                Err(io::Error::new(ErrorKind::Unsupported, "not supported on this platform"))
-            }
+            any(
+                all(target_os = "wasi", any(target_env = "p2", target_env = "p3")),
+                target_os = "hermit",
+            ) => Err(io::Error::new(ErrorKind::Unsupported, "not supported on this platform")),
             _ => {
                 let raw: c_int =
                     unsafe { getsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_MULTICAST_HOPS)? };
