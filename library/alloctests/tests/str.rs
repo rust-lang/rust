@@ -1158,6 +1158,12 @@ fn test_escape_debug() {
         "\u{301}a\u{301}bé\u{e000}".escape_debug().to_string(),
         "\\u{301}a\\u{301}bé\\u{e000}"
     );
+    // Conjoining jamo (NFD Hangul, common in macOS file names) are printable.
+    assert_eq!("한글".escape_debug().to_string(), "한글");
+    assert_eq!(
+        "\u{1112}\u{1161}\u{11ab}\u{1100}\u{1173}\u{11af}".escape_debug().to_string(),
+        "\u{1112}\u{1161}\u{11ab}\u{1100}\u{1173}\u{11af}"
+    );
 }
 
 #[test]

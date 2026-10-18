@@ -301,6 +301,12 @@ fn test_escape_debug() {
     assert_eq!(string('\u{100000}'), "\\u{100000}"); // private use 2
     assert_eq!(string('\u{ff9e}'), "\u{ff9e}"); // halfwidth dakuten
     assert_eq!(string('\u{ff9f}'), "\u{ff9f}"); // halfwidth handakuten
+    assert_eq!(string('한'), "한"); // precomposed Hangul syllable
+    assert_eq!(string('\u{1112}'), "\u{1112}"); // Hangul choseong
+    assert_eq!(string('\u{1161}'), "\u{1161}"); // Hangul jungseong
+    assert_eq!(string('\u{11ab}'), "\u{11ab}"); // Hangul jongseong
+    assert_eq!(string('\u{1160}'), "\\u{1160}"); // Hangul jungseong filler
+    assert_eq!(string('\u{3164}'), "\\u{3164}"); // Hangul filler
 }
 
 #[test]
