@@ -173,6 +173,10 @@ pub(crate) fn complete_attribute_path(
 
         if let Some((snippet, cap)) = snippet.zip(ctx.config.snippet_cap) {
             item.insert_snippet(cap, snippet);
+        } else if ctx.config.snippet_cap.is_none()
+            && let Some(text) = attr_completion.bare()
+        {
+            item.insert_text(text);
         }
 
         if is_inner || !attr_completion.prefer_inner {
@@ -202,6 +206,15 @@ struct AttrCompletion {
 impl AttrCompletion {
     fn key(&self) -> &'static str {
         self.lookup.unwrap_or(self.label)
+    }
+
+    fn bare(&self) -> Option<String> {
+        let s = r#""…""#;
+        self.label
+            .strip_suffix("(…)")
+            .or_else(|| self.label.strip_suffix("…"))
+            .map(ToOwned::to_owned)
+            .or_else(|| self.label.contains(s).then(|| self.label.replace(s, "")))
     }
 
     const fn qualifiers(self, qualifiers: &'static [&'static str]) -> AttrCompletion {
@@ -367,7 +380,7 @@ const ATTRIBUTES: &[AttrCompletion] = &[
     attr("no_std", None, None).prefer_inner(),
     attr("non_exhaustive", None, None),
     attr("panic_handler", None, None),
-    attr(r#"path = "…""#, Some("path"), Some(r#"path ="${0:path}""#)),
+    attr(r#"path = "…""#, Some("path"), Some(r#"path = "${0:path}""#)),
     attr("proc_macro", None, None),
     attr("proc_macro_attribute", None, None),
     attr("proc_macro_derive(…)", Some("proc_macro_derive"), Some("proc_macro_derive(${0:Trait})")),
