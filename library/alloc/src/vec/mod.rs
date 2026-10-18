@@ -2613,17 +2613,10 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// In other words, remove all elements `e` such that `f(&mut e)` returns `false`.
     /// This method does not maintain the relative order of the retained elements. If order matters,
-    /// consider using [`Vec::retain_mut`] instead.
+    /// consider using [`Vec::retain_mut`] instead. However, if no items are removed, then all items
+    /// are left in their original positions.
     ///
     /// [`Vec::retain_mut`]: crate::vec::Vec::retain_mut
-    ///
-    /// # Current implementation
-    ///
-    /// When the predicate evaluates to false on an element, it performs a reverse search to find
-    /// the last element after this index for which the predicate evaluates to true and swaps them,
-    /// truncating the remaining elements after the last element. If no elements in the reverse
-    /// search evaluated to true by the predicate, then the vector is simply truncated to remove the
-    /// current and remaining elements.
     ///
     /// Time complexity: *O*(*n*)
     ///
@@ -2639,13 +2632,26 @@ impl<T, A: Allocator> Vec<T, A> {
     /// } else {
     ///     false
     /// });
-    /// assert_eq!(vec, [2, 4, 3]);
+    ///
+    /// vec.sort(); // it might be in any order, so normalize before asserting
+    /// assert_eq!(vec, [2, 3, 4]);
     /// ```
     #[unstable(feature = "retain_unstable", issue = "164152")]
     pub fn retain_unstable<F>(&mut self, mut f: F)
     where
         F: FnMut(&mut T) -> bool,
     {
+        // Currently we do the following:
+        // 1) Scan forward for something we want to remove (predicate returns false).
+        // 2) Scan backward for something we want to keep (predicate returns true).
+        //    * In the reverse search process, we drop elements that the predicate
+        //      evaluated as false.
+        //    * In the event that no elements in the reverse search evaluated to true
+        //      by the predicate, then the vector is simply truncated to remove the
+        //      current and remaining elements.
+        // 3) Overwrite the forward element with the backward element.
+        // 4) Rinse and repeat from 1) until there are no elements we can iterate through.
+
         let original_len = self.len();
 
         if original_len == 0 {
@@ -2698,7 +2704,7 @@ impl<T, A: Allocator> Vec<T, A> {
                 //    remaining = 0, so no copying actually occurs on overlapping memory
                 //  * we set our vec's len to not include `read_back` to avoid double dropping
                 unsafe {
-                    ptr::copy(
+                    ptr::copy_nonoverlapping(
                         self.v.as_ptr().add(self.read_back),
                         self.v.as_mut_ptr().add(self.write),
                         core::cmp::min(remaining, 1), // Overwrite `Hole` with `Swap` or do no copying
@@ -2730,8 +2736,11 @@ impl<T, A: Allocator> Vec<T, A> {
         // Advance `g.read` early to avoid double drop if `drop_in_place` panicked.
         let mut g =
             PanicGuard { v: self, read: read + 1, write: read, read_back: original_len - 1 };
+        // SAFETY: from earlier loop, we know that this is an element that the predicate
+        // evaluated as false
+        let mut hole = unsafe { &mut *g.v.as_mut_ptr().add(read) };
         // SAFETY: previous `read` is always less than original_len.
-        unsafe { ptr::drop_in_place(&mut *g.v.as_mut_ptr().add(read)) };
+        unsafe { ptr::drop_in_place(hole) };
         let swap = loop {
             if g.read_back == g.write {
                 // No element found to swap with.
@@ -2764,7 +2773,6 @@ impl<T, A: Allocator> Vec<T, A> {
         // dropped in future iterations.
         // Logically, this is overwriting vec[write] with vec[read_back]
         unsafe {
-            let hole = &mut *g.v.as_mut_ptr().add(g.write);
             ptr::copy_nonoverlapping(swap, hole, 1);
             g.read_back -= 1;
             g.write += 1;
@@ -2772,7 +2780,7 @@ impl<T, A: Allocator> Vec<T, A> {
 
         'retain: while g.read <= g.read_back {
             // SAFETY: g.read <= g.read_back && g.read_back < g.self.len
-            let hole = unsafe { &mut *g.v.as_mut_ptr().add(g.read) };
+            hole = unsafe { &mut *g.v.as_mut_ptr().add(g.read) };
             if !f(hole) {
                 // Advance `read` early to avoid double drop if `drop_in_place` panicked.
                 g.read += 1;
@@ -2781,7 +2789,6 @@ impl<T, A: Allocator> Vec<T, A> {
                 let swap = loop {
                     if g.read_back == g.write {
                         // No element found to swap with.
-                        // return;
                         break 'retain;
                     }
 
