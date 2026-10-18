@@ -10,7 +10,7 @@ use std::os::windows::io::{AsRawHandle, FromRawHandle};
 use std::path::Path;
 use std::{fs, mem, ptr};
 
-#[path = "../../utils/mod.rs"]
+#[path = "../utils/mod.rs"]
 mod utils;
 
 use windows_sys::Wdk::Storage::FileSystem::{NtReadFile, NtWriteFile};
