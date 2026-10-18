@@ -60,14 +60,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(result, dest)?;
             }
             "fstat$INODE64" => {
-                let [fd, buf] =
-                    this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
-                let result = this.fstat(fd, buf, "stat")?;
+                let [fd, buf] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, *libc::stat) -> i32),
+                    (link_name, abi, args),
+                )?;
+                let result = this.fstat(fd, buf)?;
                 this.write_scalar(result, dest)?;
             }
             "fstatat$INODE64" => {
                 let [dirfd, path, buf, flags] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(i32, *_, *_, i32) -> i32),
+                    shim_sig!(extern "C" fn(i32, *_, *libc::stat, i32) -> i32),
                     (link_name, abi, args),
                 )?;
                 let result = this.fstatat(dirfd, path, buf, flags)?;
