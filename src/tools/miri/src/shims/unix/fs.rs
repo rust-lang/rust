@@ -500,7 +500,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 varargs,
                 fn_name,
             )?;
-            let mode = this.read_scalar(mode)?.to_u32()?;
+            let mode = this.read_scalar(&mode)?.to_u32()?;
 
             cfg_select! {
                 unix => {
