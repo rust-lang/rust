@@ -1,4 +1,4 @@
-// Check that we imply outlives-bounds on lazy type aliases.
+// Check that we imply outlives-bounds on checked type aliases.
 
 //@ revisions: pos neg
 //@[pos] check-pass

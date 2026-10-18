@@ -1,11 +1,11 @@
 error[E0107]: missing generics for type alias `ExplicitTypeOutlives`
-  --> $DIR/bad-lazy-type-alias.rs:8:24
+  --> $DIR/bad-free-alias-type.rs:8:24
    |
 LL |     _significant_drop: ExplicitTypeOutlives,
    |                        ^^^^^^^^^^^^^^^^^^^^ expected 1 generic argument
    |
 note: type alias defined here, with 1 generic parameter: `T`
-  --> $DIR/bad-lazy-type-alias.rs:5:6
+  --> $DIR/bad-free-alias-type.rs:5:6
    |
 LL | type ExplicitTypeOutlives<T> = T;
    |      ^^^^^^^^^^^^^^^^^^^^ -

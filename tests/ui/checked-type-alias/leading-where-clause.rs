@@ -4,7 +4,7 @@
 #![allow(incomplete_features)]
 #![crate_type = "lib"]
 
-// Check that we *reject* leading where-clauses on lazy type aliases.
+// Check that we *reject* leading where-clauses on checked type aliases.
 
 pub type Leading0<T>
 where //~ ERROR where clauses are not allowed before the type for type aliases

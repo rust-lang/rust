@@ -1,7 +1,6 @@
 #![feature(checked_type_aliases)]
-#![allow(incomplete_features)]
 
-// Check that we allow & respect trailing where-clauses on lazy type aliases.
+// Check that we allow & respect trailing where-clauses on checked type aliases.
 
 type Alias<T> = T
 where

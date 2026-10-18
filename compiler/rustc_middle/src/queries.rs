@@ -308,7 +308,7 @@ rustc_queries! {
 
     /// Returns the *type* of the definition given by `DefId`.
     ///
-    /// For type aliases (whether eager or lazy) and associated types, this returns
+    /// For type aliases (whether unchecked or checked) and associated types, this returns
     /// the underlying aliased type (not the corresponding [alias type]).
     ///
     /// For opaque types, this returns and thus reveals the hidden type! If you

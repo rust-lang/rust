@@ -1,4 +1,4 @@
-//! Auto-trait impls whose self type is a free (lazy) type alias are checked against the
+//! Auto-trait impls whose self type is a free alias type are checked against the
 //! type the alias *expands* to, not the alias itself. An alias resolving to an otherwise
 //! valid nominal type is accepted, just as if the underlying type had been written
 //! directly; an alias resolving to a problematic type is still rejected.

@@ -1,16 +1,14 @@
-// Check that we accept unused generic parameters on lazy type aliases (for context, we reject
-// unused type parameters on eager type aliases).
+// Check that we accept unused generic parameters on checked type aliases (for context, we reject
+// unused type parameters on unchecked type aliases).
 //
 // As long as we check well-formedness before normalization there shouldn't be anything wrong with
 // such parameters since we know that the corresponding arguments will get wfchecked regardless.
 //
 // FIXME(checked_type_aliases, #100041): At the time of writing however, that's not the case.
-//                                  I consider this to be stabilization-blocking concern for the
-//                                  strong checked version of LTA!
-//                                  See also `unused-generic-arguments-not-wfchecked.rs`.
+//     I consider this to be stabilization-blocking concern for the strong checked version of CTA!
+//     See also `unused-generic-arguments-not-wfchecked.rs`.
 //
-//                                  (We *do* ofc still detect unsatisfied predicates even if they
-//                                  reference unused parameters)
+//     (We *do* ofc still detect unsatisfied predicates even if they reference unused parameters)
 //
 // issue: <https://github.com/rust-lang/rust/issues/140230>
 //
