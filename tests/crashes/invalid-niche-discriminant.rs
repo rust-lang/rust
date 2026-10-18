@@ -1,3 +1,4 @@
+//@ known-bug: #144501
 //@ needs-rustc-debug-assertions
 //@ revisions: normal with_delayed
 //@ [with_delayed] compile-flags: -Z eagerly-emit-delayed-bugs
