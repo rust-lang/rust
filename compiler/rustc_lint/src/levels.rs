@@ -481,15 +481,15 @@ where
     }
 
     fn add_command_line(&mut self) {
-        for &(ref lint_name_, level) in &self.sess.opts.lint_opts {
+        for &(ref lint_name, level) in &self.sess.opts.lint_opts {
+            let lint_name = LintName::from_str(lint_name);
             // Checks the validity of lint names derived from the command line.
-            let (tool_name, lint_name_only) = parse_lint_and_tool_name(lint_name_);
-            if lint_name_only == crate::WARNINGS.name_lower() && matches!(level, Level::ForceWarn) {
+            if lint_name.is(sym::warnings) && matches!(level, Level::ForceWarn) {
                 self.sess
                     .dcx()
                     .emit_err(UnsupportedGroup { lint_group: crate::WARNINGS.name_lower() });
             }
-            let lint_name = LintName::from_str(lint_name_);
+
             match self.store.check_lint_name(lint_name, self.registered_lint_tools) {
                 CheckLintNameResult::Renamed(replacement) => {
                     let suggestion = RenamedLintSuggestion::WithoutSpan { replacement };
@@ -527,7 +527,7 @@ where
                 }
                 CheckLintNameResult::NoTool => {
                     self.sess.dcx().emit_err(CheckNameUnknownTool {
-                        tool_name: tool_name.unwrap(),
+                        tool_name: lint_name.tool.unwrap(),
                         sub: RequestedLevel { level, lint_name },
                     });
                 }
@@ -998,15 +998,4 @@ where
 
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { shallow_lint_levels_on, skippable_lints, ..*providers };
-}
-
-pub(crate) fn parse_lint_and_tool_name(lint_name: &str) -> (Option<Symbol>, &str) {
-    match lint_name.split_once("::") {
-        Some((tool_name, lint_name)) => {
-            let tool_name = Symbol::intern(tool_name);
-
-            (Some(tool_name), lint_name)
-        }
-        None => (None, lint_name),
-    }
 }
