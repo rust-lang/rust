@@ -170,7 +170,12 @@ pub(super) fn compute_locs(matcher: &[TokenTree]) -> Vec<MatcherLoc> {
         for tt in tts {
             match tt {
                 TokenTree::Token(token) => {
-                    locs.push(MatcherLoc::Token { token: *token });
+                    // We ignore doc comments. This is a bug, but #95267 showed that existing
+                    // programs rely on this behaviour, and changing it would require some care and
+                    // a transition period.
+                    if !matches!(token, Token { kind: DocComment(..), .. }) {
+                        locs.push(MatcherLoc::Token { token: *token });
+                    }
                 }
                 TokenTree::Delimited(span, _, delimited) => {
                     let open_token = Token::new(delimited.delim.as_open_token_kind(), span.open);
@@ -504,18 +509,11 @@ impl TtParser {
 
         match matcher_loc {
             MatcherLoc::Token { token: t } => {
-                // If it's a doc comment, we just ignore it and move on to the next tt in the
-                // matcher. This is a bug, but #95267 showed that existing programs rely on this
-                // behaviour, and changing it would require some care and a transition period.
-                //
                 // If the token matches, we can just advance the parser.
                 //
                 // Otherwise, this match has failed, there is nothing to do, and hopefully another
                 // mp in `cur_mps` will match.
-                if matches!(t, Token { kind: DocComment(..), .. }) {
-                    mp.idx += 1;
-                    self.cur_mps.push(mp);
-                } else if token_name_eq(t, token) {
+                if token_name_eq(t, token) {
                     track.matched_one(parser, mp.idx);
                     mp.idx += 1;
                     self.next_mps.push(mp);
