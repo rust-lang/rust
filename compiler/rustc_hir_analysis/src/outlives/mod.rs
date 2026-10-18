@@ -38,11 +38,6 @@ pub(super) fn inferred_outlives_of(
         _ => return &[],
     }
 
-    if tcx.generics_of(item_def_id).is_empty() {
-        // Fast path.
-        return &[];
-    }
-
     let crate_map = tcx.inferred_outlives_crate(());
     crate_map.clauses.get(&item_def_id.to_def_id()).copied().unwrap_or(&[])
 }
