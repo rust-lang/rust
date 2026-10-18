@@ -1,8 +1,8 @@
 use rustc_span::Symbol;
 
 use super::{
-    ShiftOp, mpsadbw, packssdw, packsswb, packusdw, packuswb, permute, pmaddbw, pmaddwd, pmulhrsw,
-    psadbw, pshufb, psign, shift_simd_by_scalar, shift_simd_by_simd,
+    ShiftOp, mpsadbw, packssdw, packsswb, packusdw, packuswb, pavg, permute, pmaddbw, pmaddwd,
+    pmulhrsw, psadbw, pshufb, psign, shift_simd_by_scalar, shift_simd_by_simd,
 };
 use crate::*;
 
@@ -20,6 +20,13 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let unprefixed_name = link_name.as_str().strip_prefix("llvm.x86.avx2.").unwrap();
 
         match unprefixed_name {
+            // Used to implement the _mm256_avg_epu8 and _mm256_avg_epu16 functions.
+            // Averages packed unsigned 8/16-bit integers in `left` and `right`.
+            "pavg.b" | "pavg.w" => {
+                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+
+                pavg(this, left, right, dest)?;
+            }
             // Used to implement `_mm{,_mask}_{i32,i64}gather_{epi32,epi64,pd,ps}` functions
             // Gathers elements from `slice` using `offsets * scale` as indices.
             // When the highest bit of the corresponding element of `mask` is 0,

@@ -1,4 +1,4 @@
-error: Undefined Behavior: not granting access to tag <TAG> because that would remove [Unique for <TAG>] which is strongly protected
+error: Undefined Behavior: not granting access to tag <TAG> because that would remove [Unique for <TAG>] which is strongly protected (i.e. it is in use as a function argument)
   --> tests/fail/both_borrows/illegal_write6.rs:LL:CC
    |
 LL |     unsafe { *y = 2 };
