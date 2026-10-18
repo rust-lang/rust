@@ -66,6 +66,8 @@ pub struct Frame<'tcx, Prov: Provenance = CtfeProvenance, Extra = ()> {
     pub(super) body: &'tcx mir::Body<'tcx>,
 
     /// The def_id and args of the current function.
+    /// Note that if this is the body of a promoted, the `instance` points
+    /// to the surrounding body!
     pub(super) instance: ty::Instance<'tcx>,
 
     /// Extra data for the machine.
