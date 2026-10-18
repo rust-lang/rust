@@ -2968,6 +2968,8 @@ impl Interner {
         })
     }
 
+    #[cold]
+    #[inline(never)]
     fn intern_inner_big(&self, byte_str: &[u8]) -> u32 {
         let hasher = FxBuildHasher::default();
         let hash_of_byte_str = hasher.hash_one(byte_str);
