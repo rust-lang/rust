@@ -1,7 +1,7 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::is_in_test;
 use clippy_utils::source::{SpanExt as _, snippet_with_applicability};
+use clippy_utils::{in_automatically_derived, is_from_proc_macro, is_in_test};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
@@ -118,7 +118,11 @@ impl WildcardImports {
 
 impl LateLintPass<'_> for WildcardImports {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
-        if cx.sess().is_test_crate() || item.span.in_external_macro(cx.sess().source_map()) {
+        if cx.sess().is_test_crate()
+            || item.span.in_external_macro(cx.sess().source_map())
+            || in_automatically_derived(cx.tcx, item.hir_id())
+            || is_from_proc_macro(cx, item)
+        {
             return;
         }
 
