@@ -115,7 +115,7 @@ use rustc_middle::mir::interpret::{AllocRange, GlobalAlloc};
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::HasTypingEnv;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
+use rustc_middle::ty::{self, Ty, TyCtxt, Unnormalized};
 use rustc_mir_dataflow::{Analysis, ResultsCursor};
 use rustc_span::{DUMMY_SP, bug};
 use smallvec::SmallVec;
@@ -1719,12 +1719,17 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
     }
 
     fn ty_may_have_ref(&self, ty: Ty<'tcx>) -> bool {
-        fn ty_may_have_ref_inner<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, depth: usize) -> bool {
+        fn ty_may_have_ref_inner<'tcx>(
+            tcx: TyCtxt<'tcx>,
+            typing_env: ty::TypingEnv<'tcx>,
+            outer_ty: Ty<'tcx>,
+            depth: usize,
+        ) -> bool {
             if !tcx.recursion_limit().value_within_limit(depth) {
                 return true;
             }
             let depth = depth + 1;
-            match ty.kind() {
+            match outer_ty.kind() {
                 ty::Int(_)
                 | ty::Uint(_)
                 | ty::Float(_)
@@ -1737,22 +1742,19 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                 | ty::RawPtr(_, _)
                 | ty::FnPtr(..) => false,
                 ty::Tuple(fields) => {
-                    fields.iter().any(|field| ty_may_have_ref_inner(tcx, field, depth))
+                    fields.iter().any(|field| ty_may_have_ref_inner(tcx, typing_env, field, depth))
                 }
                 ty::Pat(ty, _) | ty::Slice(ty) | ty::Array(ty, _) => {
-                    ty_may_have_ref_inner(tcx, *ty, depth)
+                    ty_may_have_ref_inner(tcx, typing_env, *ty, depth)
                 }
-                ty::Adt(adt_def, args) => {
-                    adt_def.has_param()
-                        || adt_def.has_aliases()
-                        || adt_def.all_fields().any(|field| {
-                            ty_may_have_ref_inner(
-                                tcx,
-                                field.ty(tcx, args).skip_normalization(),
-                                depth,
-                            )
-                        })
-                }
+                ty::Adt(adt_def, args) => adt_def.all_fields().any(|field| {
+                    ty_may_have_ref_inner(
+                        tcx,
+                        typing_env,
+                        tcx.normalize_erasing_regions(typing_env, field.ty(tcx, args)),
+                        depth,
+                    )
+                }),
                 ty::Ref(..)
                 | ty::Bound(..)
                 | ty::Closure(..)
@@ -1768,7 +1770,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                 | ty::Placeholder(_) => true,
             }
         }
-        ty_may_have_ref_inner(self.tcx, ty, 0)
+        ty_may_have_ref_inner(self.tcx, self.typing_env(), ty, 0)
     }
 
     /// Returns `false` if we're confident that the middle type doesn't have an
