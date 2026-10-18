@@ -176,7 +176,7 @@ pub fn remove_dir_all_iterative(dir: File) -> Result<(), WinError> {
 
     while let Some(dir) = dirlist.pop() {
         let restart = false; // we never have to restart, we iterate every directory only once
-        let more_data = dir.fill_dir_buff(&mut buffer, restart)?;
+        let more_data = buffer.fill(&dir.handle, restart)?;
         if !more_data {
             // This directory is done!
             // Attempt to delete, retrying on not empty errors because we may
