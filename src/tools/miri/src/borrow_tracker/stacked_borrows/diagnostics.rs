@@ -427,13 +427,18 @@ impl<'history, 'ecx, 'tcx> DiagnosticCx<'history, 'ecx, 'tcx> {
             ProtectorKind::StrongProtector => "strongly protected",
         };
         match self.operation {
-            Operation::Dealloc(_) =>
-                err_sb_ub(format!("deallocating while item {item:?} is {protected}",), vec![], None),
+            Operation::Dealloc(DeallocOp { tag }) =>
+                err_sb_ub(
+                    format!("deallocating while item {item:?} is {protected} (i.e. it is in use as a function argument)",),
+                    vec!["This deallocation would invalidate a reference in function argument position, which is forbidden.".to_string(),
+                               format!("Reference {:?} was used as a function argument and must remain dereferenceable for the entire function.", item.tag())],
+                    tag.and_then(|tag| self.get_logs_relevant_to(tag, Some(item.tag()))),
+                ),
             Operation::Retag(RetagOp { orig_tag: tag, .. })
             | Operation::Access(AccessOp { tag, .. }) =>
                 err_sb_ub(
                     format!(
-                        "not granting access to tag {tag:?} because that would remove {item:?} which is {protected}",
+                        "not granting access to tag {tag:?} because that would remove {item:?} which is {protected} (i.e. it is in use as a function argument)",
                     ),
                     vec![],
                     tag.and_then(|tag| self.get_logs_relevant_to(tag, Some(item.tag()))),
