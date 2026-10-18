@@ -1,4 +1,4 @@
-error: expected path to a lint, found literal
+error: expected a lint, found literal
   --> $DIR/deduplicate-diagnostics.rs:10:8
    |
 LL | #[deny("literal")]
