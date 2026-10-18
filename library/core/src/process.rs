@@ -48,6 +48,10 @@ pub const fn abort_immediate() -> ! {
 /// This signals the environment to pause execution if a debugger is attached, and pass control to
 /// the debugger. Execution may then be aborted or continued by the user controlling the debugger.
 ///
+/// If possible, this will produce an instruction sequence that allows a debugger to resume *after*
+/// the breakpoint, rather than resuming *at* the breakpoint; however, the exact behavior is
+/// target-specific and debugger-specific, and not guaranteed.
+///
 /// If no debugger is attached, this will typically abort the process but may also continue
 /// execution.
 #[unstable(feature = "breakpoint", issue = "133724")]
