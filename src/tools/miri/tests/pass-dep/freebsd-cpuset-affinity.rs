@@ -3,6 +3,10 @@
 
 use std::mem;
 
+#[path = "../utils/libc.rs"]
+mod libc_utils;
+use libc_utils::{errno_check, errno_result};
+
 fn getaffinity() {
     let mut set: libc::cpuset_t = unsafe { mem::zeroed() };
     unsafe {
@@ -25,24 +29,23 @@ fn get_small_cpu_mask() {
     // 256 CPUs so we need 32 bytes to represent this mask.
     // According to Freebsd only when `cpusetsize` is smaller than this value, does it return with ERANGE
 
-    let err = unsafe {
+    errno_check(unsafe {
         libc::cpuset_getaffinity(libc::CPU_LEVEL_WHICH, libc::CPU_WHICH_PID, -1, 32, &mut set)
-    };
-    assert_eq!(err, 0, "Success Expected");
+    });
 
     // 31 is not enough, so it should fail.
-    let err = unsafe {
+    let err = errno_result(unsafe {
         libc::cpuset_getaffinity(libc::CPU_LEVEL_WHICH, libc::CPU_WHICH_PID, -1, 31, &mut set)
-    };
-    assert_eq!(err, -1, "Expected Failure");
-    assert_eq!(std::io::Error::last_os_error().raw_os_error().unwrap(), libc::ERANGE);
+    })
+    .unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::ERANGE);
 
     // Zero should fail as well.
-    let err = unsafe {
+    let err = errno_result(unsafe {
         libc::cpuset_getaffinity(libc::CPU_LEVEL_WHICH, libc::CPU_WHICH_PID, -1, 0, &mut set)
-    };
-    assert_eq!(err, -1, "Expected Failure");
-    assert_eq!(std::io::Error::last_os_error().raw_os_error().unwrap(), libc::ERANGE);
+    })
+    .unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::ERANGE);
 }
 
 fn main() {

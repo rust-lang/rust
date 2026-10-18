@@ -25,7 +25,6 @@ mod utils;
 
 #[path = "../../utils/libc.rs"]
 mod libc_utils;
-
 use libc_utils::{errno_check, errno_result};
 
 fn main() {
