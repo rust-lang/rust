@@ -1363,9 +1363,9 @@ mod lint {
     #[test]
     fn lint_feature() {
         check_edit(
-            "box_patterns",
-            r#"#[feature(box_$0)] struct Test;"#,
-            r#"#[feature(box_patterns)] struct Test;"#,
+            "deref_patterns",
+            r#"#[feature(deref_$0)] struct Test;"#,
+            r#"#[feature(deref_patterns)] struct Test;"#,
         )
     }
 
