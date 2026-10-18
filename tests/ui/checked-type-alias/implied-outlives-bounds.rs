@@ -9,11 +9,11 @@
 type TypeOutlives<'a, T> = &'a T;
 type RegionOutlives<'a, 'b> = &'a &'b ();
 
-// Ensure that we imply bounds from the explicit bounds of weak aliases.
+// Ensure that we imply bounds from the explicit bounds of free alias types.
 struct Outer0<'a, T>(ExplicitTypeOutlives<'a, T>);
 type ExplicitTypeOutlives<'a, T: 'a> = (&'a (), T);
 
-// Ensure that we imply bounds from the implied bounds of weak aliases.
+// Ensure that we imply bounds from the implied bounds of free alias types.
 type Outer1<'b, U> = TypeOutlives<'b, U>;
 
 #[cfg(neg)]

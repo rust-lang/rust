@@ -10,9 +10,9 @@
 #![allow(incomplete_features)]
 
 // This used to crash when we were computing the variances of `Struct` since we would convert
-// `eager::Alias<T>` to a weak alias due to the presence of
+// `eager::Alias<T>` to a free alias type due to the presence of
 // `#![feature(checked_type_aliases)]` in this (!) crate and subsequently attempt to
-// obtain the variances of the type alias associated with the weak alias which would
+// obtain the variances of the type alias associated with the free alias type which would
 // panic because we don't compute this information for eager type aliases at all.
 struct Struct<T>(eager::Alias<T>);
 
