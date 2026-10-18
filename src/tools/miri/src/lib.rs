@@ -142,7 +142,9 @@ pub use crate::concurrency::data_race::{
 };
 pub use crate::concurrency::init_once::{EvalContextExt as _, InitOnceRef};
 pub use crate::concurrency::scheduler::EvalContextExt as _;
-pub use crate::concurrency::sync::{CondvarRef, EvalContextExt as _, MutexRef, RwLockRef};
+pub use crate::concurrency::sync::{
+    CondvarRef, EvalContextExt as _, MutexRef, RwLockRef, SemaphoreRef,
+};
 pub use crate::concurrency::thread::{
     BlockReason, DynUnblockCallback, EvalContextExt as _, StackEmptyCallback, ThreadId,
     ThreadManager, TlsAllocAction, UnblockKind,

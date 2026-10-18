@@ -471,8 +471,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let nsec_field = this.project_field_named(tp, "tv_nsec")?;
         let nsec = this.read_scalar(&nsec_field)?.to_int(nsec_field.layout.size)?;
 
+        // tv_sec can be negative; this does not actually return EINVAL natively.
+        // Since we cannot represent a negative duration, we just don't support this for now.
+        if sec < 0 {
+            throw_unsup_format!("timespec with negative tv_sec is not supported");
+        }
         interp_ok(try {
-            // tv_sec must be non-negative.
+            // to the epoch
             let seconds: u64 = sec.try_into().ok()?;
             // tv_nsec must be non-negative.
             let nanoseconds: u32 = nsec.try_into().ok()?;
