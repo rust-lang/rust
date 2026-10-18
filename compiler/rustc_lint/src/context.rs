@@ -115,7 +115,7 @@ enum TargetLint {
 }
 
 struct LintAlias {
-    name: &'static str,
+    name: LintName,
     /// Whether deprecation warnings should be suppressed for this alias.
     silent: bool,
 }
@@ -242,17 +242,17 @@ impl LintStore {
         }
     }
 
-    fn insert_group(&mut self, name: &'static str, group: LintGroup) {
-        let previous = self.lint_groups.insert(LintName::from_str(name), group);
+    fn insert_group(&mut self, name: LintName, group: LintGroup) {
+        let previous = self.lint_groups.insert(name, group);
         if previous.is_some() {
-            bug!("group {name:?} already exists");
+            bug!("group {name} already exists");
         }
     }
 
-    pub fn register_group_alias(&mut self, group_name: &'static str, alias: &'static str) {
-        let Some(LintGroup { lint_ids, .. }) =
-            self.lint_groups.get(&LintName::from_str(group_name))
-        else {
+    pub fn register_group_alias(&mut self, group_name: &str, alias: &str) {
+        let group_name = LintName::from_str(group_name);
+        let alias = LintName::from_str(alias);
+        let Some(LintGroup { lint_ids, .. }) = self.lint_groups.get(&group_name) else {
             bug!("group alias {alias:?} points to unregistered group {group_name:?}")
         };
 
@@ -269,11 +269,13 @@ impl LintStore {
     pub fn register_group(
         &mut self,
         is_externally_loaded: bool,
-        name: &'static str,
-        deprecated_name: Option<&'static str>,
+        name: &str,
+        deprecated_name: Option<&str>,
         to: Vec<LintId>,
     ) {
+        let name = LintName::from_str(name);
         if let Some(deprecated) = deprecated_name {
+            let deprecated = LintName::from_str(deprecated);
             self.insert_group(
                 deprecated,
                 LintGroup {
@@ -299,11 +301,12 @@ impl LintStore {
     /// This lint has been renamed; warn about using the new name and apply the lint.
     #[track_caller]
     pub fn register_renamed(&mut self, old_name: &str, new_name: &str) {
+        let old_name = LintName::from_str(old_name);
         let new_name = LintName::from_str(new_name);
         let Some(&Id(target)) = self.by_name.get(&new_name) else {
             bug!("invalid lint renaming of {old_name} to {new_name}");
         };
-        self.by_name.insert(LintName::from_str(old_name), Renamed(new_name, target));
+        self.by_name.insert(old_name, Renamed(new_name, target));
     }
 
     pub fn register_removed(&mut self, name: &str, reason: &str) {
@@ -376,8 +379,8 @@ impl LintStore {
                         };
                     }
                     Some(LintGroup { lint_ids, depr, .. }) => {
-                        return if let &Some(LintAlias { name, silent: false }) = depr {
-                            CheckLintNameResult::Tool(lint_ids, Some(LintName::from_str(name)))
+                        return if let Some(LintAlias { name, silent: false }) = depr {
+                            CheckLintNameResult::Tool(lint_ids, Some(*name))
                         } else {
                             CheckLintNameResult::Tool(lint_ids, None)
                         };
@@ -402,8 +405,8 @@ impl LintStore {
                 }),
                 Some(LintGroup { lint_ids, depr, .. }) => {
                     // Check if the lint group name is deprecated
-                    if let &Some(LintAlias { name, silent: false }) = depr {
-                        CheckLintNameResult::Tool(lint_ids, Some(LintName::from_str(name)))
+                    if let Some(LintAlias { name, silent: false }) = depr {
+                        CheckLintNameResult::Tool(lint_ids, Some(*name))
                     } else {
                         CheckLintNameResult::Ok(lint_ids)
                     }
