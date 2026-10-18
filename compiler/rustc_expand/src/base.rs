@@ -511,6 +511,12 @@ pub trait MacResult {
         // Fn-like macros cannot produce a crate.
         unreachable!()
     }
+
+    fn make_annotatable_use_tree(
+        self: Box<Self>,
+    ) -> Option<SmallVec<[ast::AnnotatableUseTree; 1]>> {
+        None
+    }
 }
 
 /// `MacResult` implementation for the common case where you've already

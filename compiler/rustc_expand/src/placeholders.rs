@@ -1,7 +1,9 @@
 use rustc_ast::mut_visit::*;
 use rustc_ast::token::Delimiter;
 use rustc_ast::visit::AssocCtxt;
-use rustc_ast::{self as ast};
+use rustc_ast::{
+    Path, UseTree, {self as ast},
+};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_span::{DUMMY_SP, Ident};
 use smallvec::{SmallVec, smallvec};
@@ -199,6 +201,17 @@ pub(crate) fn placeholder(
                     bounds: Default::default(),
                 }),
                 is_placeholder: true,
+            }])
+        }
+        AstFragmentKind::AnnotatableUseTree => {
+            AstFragment::AnnotatableUseTree(smallvec![ast::AnnotatableUseTree {
+                attrs: Default::default(),
+                id,
+                inner: UseTree {
+                    prefix: Path::from_ident(ident),
+                    kind: rustc_ast::UseTreeKind::Simple(None)
+                },
+                is_placeholder: true
             }])
         }
     }
