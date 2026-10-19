@@ -442,7 +442,7 @@ pub struct ModuleLlvm {
 unsafe impl Send for ModuleLlvm {}
 unsafe impl Sync for ModuleLlvm {}
 
-/// Shared helper to call [`llvm::LLVMContextCreate`] and then configure
+/// Shared helper to call [`llvm::LLVMRustContextCreate`] and then configure
 /// [`llvm::LLVMContextSetDiscardValueNames`].
 fn create_context_and_set_fewer_names(fewer_names: bool) -> ptr::NonNull<llvm::Context> {
     unsafe {
