@@ -61,32 +61,34 @@ fn rustfmt(args: &[&str]) -> (String, String, i32) {
 fn print_config_errors_on_unknown_option() {
     let args = &["--print-config", "unknown"];
 
-    let (stdout, stderr, _) = rustfmt(args);
+    let (stdout, stderr, exit_code) = rustfmt(args);
 
     assert_eq!(&stdout, "");
     assert!(
         stderr.contains("Unknown print-config option"),
         "expected helpful error message, got: {stderr}"
     );
+    assert_eq!(exit_code, 1);
 }
 
 #[test]
 fn print_config_default() {
     let args = &["--print-config", "default"];
-    let (stdout, stderr, _) = rustfmt(args);
+    let (stdout, stderr, exit_code) = rustfmt(args);
 
     assert!(
         stdout.contains("max_width = 100"),
         "expected stdout to contain a default config, got: {stdout}",
     );
     assert_eq!(&stderr, "");
+    assert_eq!(exit_code, 0)
 }
 
 #[test]
 fn print_config_errors_minimal_with_no_path() {
     let args = &["--print-config", "minimal"];
 
-    let (stdout, stderr, _) = rustfmt(args);
+    let (stdout, stderr, exit_code) = rustfmt(args);
 
     // NOTE: existing the behaviour: prints an empty line
     assert_eq!(stdout.trim(), "");
@@ -94,19 +96,21 @@ fn print_config_errors_minimal_with_no_path() {
         stderr.contains("PATH required"),
         "expected helpful error message, got: {stderr}"
     );
+    assert_eq!(exit_code, 0)
 }
 
 #[test]
 fn print_config_errors_minimal_without_input_file() {
     let args = &["--print-config", "minimal", "minimal.toml"];
 
-    let (stdout, stderr, _) = rustfmt(args);
+    let (stdout, stderr, exit_code) = rustfmt(args);
 
     assert_eq!(&stdout, "");
     assert!(
         stderr.contains("doesn't work with standard input"),
         "expected helpful error message, got: {stderr}"
     );
+    assert_eq!(exit_code, 1);
 }
 
 // test writes to file within the repo, rust-lang/rust doesn't like that
@@ -125,7 +129,7 @@ fn print_config_writes_to_file() {
         "src/shape.rs",
     ];
 
-    let (stdout, stderr, _) = rustfmt(args);
+    let (stdout, stderr, exit_code) = rustfmt(args);
 
     assert_eq!(stderr, "");
     assert!(
@@ -133,6 +137,7 @@ fn print_config_writes_to_file() {
         "stdout:\n{stdout}\nstderr:\n{stderr}"
     );
     remove_file(out_file).unwrap();
+    assert_eq!(exit_code, 0);
 }
 
 #[test]
@@ -144,13 +149,14 @@ fn print_config_merges_override_from_args() {
         "--config=color=Never,edition=2018",
     ];
 
-    let (stdout, stderr, _) = rustfmt(args);
+    let (stdout, stderr, exit_code) = rustfmt(args);
 
     assert_eq!(stderr, "");
     assert!(
         stdout.contains(r#"color = "Never""#) && stdout.contains(r#"edition = "2018""#),
         "expected overrides in stdout, got: {stdout}",
     );
+    assert_eq!(exit_code, 0);
 }
 
 #[test]
@@ -165,7 +171,7 @@ fn print_config_merges_multiple_overrides_from_args() {
         "color=always,format_strings=true",
     ];
 
-    let (stdout, stderr, _) = rustfmt(args);
+    let (stdout, stderr, exit_code) = rustfmt(args);
 
     assert_eq!(stderr, "");
     assert!(
@@ -174,13 +180,14 @@ fn print_config_merges_multiple_overrides_from_args() {
             && stdout.contains("format_strings = true"),
         "expected overrides in stdout, got: {stdout}",
     );
+    assert_eq!(exit_code, 0);
 }
 
 #[stable_only_test]
 #[test]
 fn rustfmt_usage_text() {
     let args = ["--help"];
-    let (stdout, _, _) = rustfmt(&args);
+    let (stdout, _, exit_code) = rustfmt(&args);
     insta::assert_snapshot!(stdout, @"
     Format Rust code
 
@@ -222,13 +229,14 @@ fn rustfmt_usage_text() {
         -h, --help [=TOPIC] Show this message or help about a specific topic:
                             `config`
     ");
+    assert_eq!(exit_code, 0);
 }
 
 #[nightly_only_test]
 #[test]
 fn rustfmt_nightly_usage_text() {
     let args = ["--help"];
-    let (stdout, _, _) = rustfmt(&args);
+    let (stdout, _, exit_code) = rustfmt(&args);
     insta::assert_snapshot!(stdout, @"
     Format Rust code
 
@@ -282,6 +290,7 @@ fn rustfmt_nightly_usage_text() {
         -h, --help [=TOPIC] Show this message or help about a specific topic:
                             `config` or `file-lines`
     ");
+    assert_eq!(exit_code, 0);
 }
 
 #[test]
@@ -296,36 +305,44 @@ fn mod_resolution_error_multiple_candidate_files() {
     );
 
     let args = ["tests/mod-resolver/issue-5167/src/lib.rs"];
-    let (_stdout, stderr, _) = rustfmt(&args);
-    assert!(stderr.contains(&error_message))
+    let (_stdout, stderr, exit_code) = rustfmt(&args);
+
+    assert!(stderr.contains(&error_message));
+    assert_eq!(exit_code, 1);
 }
 
 #[test]
 fn mod_resolution_error_sibling_module_not_found() {
     let args = ["tests/mod-resolver/module-not-found/sibling_module/lib.rs"];
-    let (_stdout, stderr, _) = rustfmt(&args);
+    let (_stdout, stderr, exit_code) = rustfmt(&args);
+
     // Module resolution fails because we're unable to find `a.rs` in the same directory as lib.rs
-    assert!(stderr.contains("a.rs does not exist"))
+    assert!(stderr.contains("a.rs does not exist"));
+    assert_eq!(exit_code, 1);
 }
 
 #[test]
 fn mod_resolution_error_relative_module_not_found() {
     let args = ["tests/mod-resolver/module-not-found/relative_module/lib.rs"];
-    let (_stdout, stderr, _) = rustfmt(&args);
+    let (_stdout, stderr, exit_code) = rustfmt(&args);
+
     // The file `./a.rs` and directory `./a` both exist.
     // Module resolution fails because we're unable to find `./a/b.rs`
     #[cfg(not(windows))]
     assert!(stderr.contains("a/b.rs does not exist"));
     #[cfg(windows)]
     assert!(stderr.contains("a\\b.rs does not exist"));
+    assert_eq!(exit_code, 1);
 }
 
 #[test]
 fn mod_resolution_error_path_attribute_does_not_exist() {
     let args = ["tests/mod-resolver/module-not-found/bad_path_attribute/lib.rs"];
-    let (_stdout, stderr, _) = rustfmt(&args);
+    let (_stdout, stderr, exit_code) = rustfmt(&args);
+
     // The path attribute points to a file that does not exist
     assert!(stderr.contains("does_not_exist.rs does not exist"));
+    assert_eq!(exit_code, 1);
 }
 
 #[test]
@@ -337,10 +354,11 @@ fn rustfmt_emits_error_on_line_overflow_true() {
         "tests/cargo-fmt/source/issue_3164/src/main.rs",
     ];
 
-    let (_stdout, stderr, _) = rustfmt(&args);
+    let (_stdout, stderr, exit_code) = rustfmt(&args);
     assert!(stderr.contains(
         "line formatted, but exceeded maximum width (maximum: 100 (see `max_width` option)"
-    ))
+    ));
+    assert_eq!(exit_code, 1);
 }
 
 #[test]
@@ -358,8 +376,11 @@ fn dont_emit_ICE() {
     let panic_re = regex::Regex::new("thread.*panicked").unwrap();
     for file in files {
         let args = [file];
-        let (_stdout, stderr, _) = rustfmt(&args);
+
+        let (_stdout, stderr, exit_code) = rustfmt(&args);
+
         assert!(!panic_re.is_match(&stderr));
+        assert_eq!(exit_code, 0);
     }
 }
 
@@ -375,8 +396,10 @@ fn rustfmt_emits_error_when_control_brace_style_is_always_next_line() {
         "tests/target/issue_5912.rs",
     ];
 
-    let (_stdout, stderr, _) = rustfmt(&args);
-    assert!(!stderr.contains("error[internal]: left behind trailing whitespace"))
+    let (_stdout, stderr, exit_code) = rustfmt(&args);
+
+    assert!(!stderr.contains("error[internal]: left behind trailing whitespace"));
+    assert_eq!(exit_code, 0);
 }
 
 #[nightly_only_test]
@@ -386,9 +409,11 @@ fn rustfmt_generates_no_error_if_failed_format_code_in_doc_comments() {
 
     let file = "tests/target/issue-6109.rs";
     let args = ["--config", "format_code_in_doc_comments=true", file];
-    let (stdout, stderr, _) = rustfmt(&args);
+    let (stdout, stderr, exit_code) = rustfmt(&args);
+
     assert!(stderr.is_empty());
     assert!(stdout.is_empty());
+    assert_eq!(exit_code, 0);
 }
 
 #[test]
@@ -396,12 +421,13 @@ fn rustfmt_error_improvement_regarding_invalid_toml() {
     // See also https://github.com/rust-lang/rustfmt/issues/6302
     let invalid_toml_config = "tests/config/issue-6302.toml";
     let args = ["--config-path", invalid_toml_config];
-    let (_stdout, stderr, _) = rustfmt(&args);
+    let (_stdout, stderr, exit_code) = rustfmt(&args);
 
     let toml_path = Path::new(invalid_toml_config).canonicalize().unwrap();
     let expected_error_message = format!("The file `{}` failed to parse", toml_path.display());
 
     assert!(stderr.contains(&expected_error_message));
+    assert_eq!(exit_code, 1);
 }
 
 #[test]
@@ -416,7 +442,7 @@ fn config_path_walks_parent_directories_with_dir_name() {
         &src_file.to_str().unwrap(),
     ];
 
-    let (stdout, stderr, _) = rustfmt(&args);
+    let (stdout, stderr, exit_code) = rustfmt(&args);
 
     assert_eq!(stderr, "");
     assert_eq!(
@@ -425,6 +451,7 @@ fn config_path_walks_parent_directories_with_dir_name() {
         // this config sets `use_field_init_shorthand = true`
         "we should walk up to tests/config/issue_4660/rustfmt.toml"
     );
+    assert_eq!(exit_code, 1);
 }
 
 // on unix [`std::env::home_dir`] reads the `HOME` env var.
@@ -449,7 +476,7 @@ fn config_path_searches_home_dir_when_dir_path_no_resolve() {
     ];
     let env = &[("HOME", homedir_path.to_str().unwrap())];
 
-    let (stdout, stderr, _) = rustfmt_with_extra(&args, None, env, None);
+    let (stdout, stderr, exit_code) = rustfmt_with_extra(&args, None, env, None);
 
     assert_eq!(stderr, "");
     assert_eq!(
@@ -457,6 +484,7 @@ fn config_path_searches_home_dir_when_dir_path_no_resolve() {
         format!("{}\n", new_src_path.canonicalize().unwrap().display()),
         "should search in HOME"
     );
+    assert_eq!(exit_code, 1);
 }
 
 // The behaviour [`dirs::config_dir`] is os-dependent, so pick one and test to that.
@@ -482,7 +510,7 @@ fn config_path_searches_config_dir_when_dir_path_no_resolve() {
     ];
     let env = &[("XDG_CONFIG_HOME", xdg_config_dir_path.to_str().unwrap())];
 
-    let (stdout, stderr, _) = rustfmt_with_extra(&args, None, env, None);
+    let (stdout, stderr, exit_code) = rustfmt_with_extra(&args, None, env, None);
 
     assert_eq!(stderr, "");
     assert_eq!(
@@ -490,6 +518,7 @@ fn config_path_searches_config_dir_when_dir_path_no_resolve() {
         format!("{}\n", new_src_path.canonicalize().unwrap().display()),
         "should search in XDG_CONFIG_HOME"
     );
+    assert_eq!(exit_code, 1);
 }
 
 #[test]
@@ -498,7 +527,7 @@ fn config_path_errors_when_invalid_file_given() {
     let config_file = "also_not_a_file.toml";
     let args = ["--config-path", &config_file, "--check", &src_file];
 
-    let (stdout, stderr, _) = rustfmt(&args);
+    let (stdout, stderr, exit_code) = rustfmt(&args);
 
     assert_eq!(
         stderr,
@@ -508,6 +537,7 @@ fn config_path_errors_when_invalid_file_given() {
         )
     );
     assert_eq!(stdout, "");
+    assert_eq!(exit_code, 1);
 }
 
 #[test]
@@ -534,11 +564,12 @@ fn rustfmt_allow_not_a_dir_errors() {
 
     let args = [empty_rs.to_str().unwrap()];
     let envs = &[("HOME", fake_home_str)];
-    let (stdout, stderr, _) = rustfmt_with_extra(&args, Some(fake_home_str), envs, None);
+    let (stdout, stderr, exit_code) = rustfmt_with_extra(&args, Some(fake_home_str), envs, None);
 
     // Should pass without any errors
     assert_eq!(stdout, "");
     assert_eq!(stderr, "");
+    assert_eq!(exit_code, 0);
 }
 
 // FIXME(cfg_select): ungate when `cfg_select!` formatting can be enabled on stable.
@@ -548,8 +579,11 @@ fn cfg_select_parser_recovery_ice_7087() {
     // See also https://github.com/rust-lang/rustfmt/issues/7087
     let source = "cfg_select! { true => { fn foo {} } }\n";
     let panic_re = regex::Regex::new("thread.*panicked").unwrap();
-    let (stdout, stderr, _) = rustfmt_with_extra(&[], None, &[], Some(source));
+
+    let (stdout, stderr, exit_code) = rustfmt_with_extra(&[], None, &[], Some(source));
+
     assert!(!panic_re.is_match(&stderr));
     // Invalid arm should cause `cfg_select!` to be re-emitted unmodified.
     assert_eq!(source, stdout);
+    assert_eq!(exit_code, 0);
 }
