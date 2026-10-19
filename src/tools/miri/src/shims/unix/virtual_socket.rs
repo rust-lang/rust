@@ -5,6 +5,7 @@
 use std::cell::{Cell, OnceCell, RefCell};
 use std::collections::VecDeque;
 use std::io::{self, ErrorKind, Read};
+use std::net::SocketAddr;
 use std::rc::Rc;
 
 use rustc_target::spec::Os;
@@ -273,6 +274,9 @@ impl UnixSocketFileDescription for VirtualSocket {
         ptr: Pointer,
         len: usize,
         is_non_block: bool,
+        // For stream-based sockets `send` and `sendto` are equivalent and
+        // we can thus ignore the destination address.
+        _dest_addr: Option<SocketAddr>,
         ecx: &mut MiriInterpCx<'tcx>,
         finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
     ) -> InterpResult<'tcx> {

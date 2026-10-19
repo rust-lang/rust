@@ -182,7 +182,15 @@ impl FileDescription for TcpSocket {
         ecx: &mut MiriInterpCx<'tcx>,
         finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
     ) -> InterpResult<'tcx> {
-        self.send(communicate_allowed, ptr, len, /* is_non_block */ false, ecx, finish)
+        self.send(
+            communicate_allowed,
+            ptr,
+            len,
+            /* is_non_block */ false,
+            /* dest_addr */ None,
+            ecx,
+            finish,
+        )
     }
 
     fn short_fd_operations(&self) -> bool {
@@ -585,6 +593,9 @@ impl UnixSocketFileDescription for TcpSocket {
         ptr: Pointer,
         len: usize,
         is_non_block: bool,
+        // For stream-based sockets `send` and `sendto` are equivalent and
+        // we can thus ignore the destination address.
+        _dest_addr: Option<SocketAddr>,
         ecx: &mut MiriInterpCx<'tcx>,
         finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
     ) -> InterpResult<'tcx> {
