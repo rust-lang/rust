@@ -80,8 +80,8 @@ name = "ui"
 harness = false
 
 [[test]]
-name = "priroda_cli"
-path = "priroda/tests/cli.rs"
+name = "priroda"
+path = "priroda/tests/ui.rs"
 harness = false
 required-features = ["priroda"]
 

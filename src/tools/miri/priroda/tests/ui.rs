@@ -65,7 +65,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         (content_length_regex.into(), b"Content-Length: {CONTENT_LENGTH}".to_vec()),
     ]);
 
-    // Priroda tests do not currently require annotation comments in the test files.
+    // Priroda UI tests do not currently require annotation comments in the test files.
     config.comment_defaults.base().exit_status = Spanned::dummy(0).into();
     config.comment_defaults.base().require_annotations = Spanned::dummy(false).into();
 
