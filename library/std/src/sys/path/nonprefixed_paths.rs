@@ -278,7 +278,8 @@ impl FusedIterator for Components<'_> {}
 impl<'a> PartialEq for Components<'a> {
     #[inline]
     fn eq(&self, other: &Components<'a>) -> bool {
-        // Fast path for exact matches, e.g. for hashmap lookups.
+        // FIXME: Ideally this should use a vectorizable find first difference
+        // method
         if self.path == other.path {
             return true;
         }
@@ -383,8 +384,8 @@ pub fn compare_components(mut left: Components<'_>, mut right: Components<'_>) -
     // - if found update state to only do a component-wise comparison on the remainder,
     //   otherwise do it on the full path
 
-    // Directly checking for equality should be fast, so this shouldn't incur
-    // a major cost
+    // FIXME: Ideally this should use a vectorizable find first difference
+    // method
     if left.path == right.path {
         return cmp::Ordering::Equal;
     }
