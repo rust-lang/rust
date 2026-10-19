@@ -14,14 +14,15 @@ use crate::{
     db::HirDatabase,
     display::DisplayTarget,
     mir::{IsSigned, pad16},
+    mir_pretty::{MirEvalErrorPretty as _, MirLowerErrorPretty as _},
     next_solver::{Allocation, GenericArgs},
     setup_tracing,
     test_db::TestDB,
 };
 
-use super::{
-    super::mir::{MirEvalError, MirLowerError},
-    ConstEvalError,
+use crate::{
+    consteval::ConstEvalError,
+    mir::{MirEvalError, MirLowerError},
 };
 
 mod intrinsics;

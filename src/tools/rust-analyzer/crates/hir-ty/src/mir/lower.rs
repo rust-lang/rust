@@ -1,6 +1,6 @@
 //! This module generates a polymorphic MIR from a hir body
 
-use std::{fmt::Write, iter, mem};
+use std::{iter, mem};
 
 use arrayvec::ArrayVec;
 use base_db::Crate;
@@ -11,7 +11,6 @@ use hir_def::{
     hir::{
         ArithOp, Array, BinaryOp, BindingAnnotation, BindingId, ClosureKind, ExprId, ExprOrPatId,
         LabelId, Literal, MatchArm, Pat, PatId, RecordLitField, RecordSpread,
-        generics::GenericParams,
     },
     item_tree::FieldsShape,
     lang_item::LangItems,
@@ -25,14 +24,12 @@ use rustc_apfloat::Float;
 use rustc_hash::FxHashMap;
 use rustc_type_ir::inherent::{Const as _, GenericArgs as _, IntoKind, Ty as _};
 use salsa::SalsaValue;
-use span::{Edition, FileId};
-use syntax::TextRange;
+use span::Edition;
 
 use crate::{
     Adjust, Adjustment, AutoBorrow, CallableDefId, InferBodyId, ParamEnvAndCrate,
     consteval::ConstEvalError,
     db::{GeneralConstId, HirDatabase, InternedClosure, InternedClosureId},
-    display::{DisplayTarget, HirDisplay, hir_display_with_store},
     generics::generics,
     infer::{
         CaptureSourceStack, CapturedPlace, UpvarCapture,
@@ -62,8 +59,6 @@ use super::{OperandKind, Place};
 
 mod as_place;
 mod pattern_matching;
-#[cfg(test)]
-mod tests;
 
 #[derive(Debug, Clone)]
 struct LoopBlocks {
@@ -106,7 +101,10 @@ pub enum MirLowerError<'db> {
     IncompletePattern,
     /// Trying to lower a trait function, instead of an implementation
     TraitFunctionDefinition(TraitId, Name),
-    UnresolvedName(String),
+    UnresolvedName {
+        owner: ExpressionStoreOwnerId,
+        path: Path,
+    },
     RecordLiteralWithoutPath,
     UnresolvedMethod(String),
     UnresolvedField,
@@ -169,90 +167,6 @@ impl Drop for DropScopeToken {
 //     }
 // }
 
-impl MirLowerError<'_> {
-    pub fn pretty_print(
-        &self,
-        f: &mut String,
-        db: &dyn HirDatabase,
-        span_formatter: impl Fn(FileId, TextRange) -> String,
-        display_target: DisplayTarget,
-    ) -> std::result::Result<(), std::fmt::Error> {
-        match self {
-            MirLowerError::ConstEvalError(name, e) => {
-                writeln!(f, "In evaluating constant {name}")?;
-                match &**e {
-                    ConstEvalError::MirLowerError(e) => {
-                        e.pretty_print(f, db, span_formatter, display_target)?
-                    }
-                    ConstEvalError::MirEvalError(e) => {
-                        e.pretty_print(f, db, span_formatter, display_target)?
-                    }
-                }
-            }
-            MirLowerError::MissingFunctionDefinition(owner, it) => {
-                let owner = owner.expression_store_owner(db);
-                let store = ExpressionStore::of(db, owner);
-                writeln!(
-                    f,
-                    "Missing function definition for {}",
-                    hir_def::expr_store::pretty::print_expr_hir(
-                        db,
-                        store,
-                        owner,
-                        *it,
-                        display_target.edition
-                    )
-                )?;
-            }
-            MirLowerError::HasErrors => writeln!(f, "Type inference result contains errors")?,
-            MirLowerError::GenericArgNotProvided(id, subst) => {
-                let param_name = match *id {
-                    GenericParamId::TypeParamId(id) => {
-                        GenericParams::of(db, id.parent())[id.local_id()].name().cloned()
-                    }
-                    GenericParamId::ConstParamId(id) => {
-                        GenericParams::of(db, id.parent())[id.local_id()].name().cloned()
-                    }
-                    GenericParamId::LifetimeParamId(id) => {
-                        Some(GenericParams::of(db, id.parent)[id.local_id].name.clone())
-                    }
-                };
-                writeln!(
-                    f,
-                    "Generic arg not provided for {}",
-                    param_name.unwrap_or(Name::missing()).display(db, display_target.edition)
-                )?;
-                writeln!(f, "Provided args: [")?;
-                for g in subst.as_ref() {
-                    write!(f, "    {},", g.display(db, display_target))?;
-                }
-                writeln!(f, "]")?;
-            }
-            MirLowerError::LayoutError(_)
-            | MirLowerError::UnsizedTemporary(_)
-            | MirLowerError::IncompleteExpr
-            | MirLowerError::IncompletePattern
-            | MirLowerError::InaccessibleLocal
-            | MirLowerError::TraitFunctionDefinition(_, _)
-            | MirLowerError::UnresolvedName(_)
-            | MirLowerError::RecordLiteralWithoutPath
-            | MirLowerError::UnresolvedMethod(_)
-            | MirLowerError::UnresolvedField
-            | MirLowerError::TypeError(_)
-            | MirLowerError::NotSupported(_)
-            | MirLowerError::ContinueWithoutLoop
-            | MirLowerError::BreakWithoutLoop
-            | MirLowerError::Loop
-            | MirLowerError::ImplementationError(_)
-            | MirLowerError::LangItemNotFound
-            | MirLowerError::MutatingRvalue
-            | MirLowerError::UnresolvedLabel
-            | MirLowerError::UnresolvedUpvar(_) => writeln!(f, "{self:?}")?,
-        }
-        Ok(())
-    }
-}
-
 macro_rules! not_supported {
     ($it: expr) => {
         return Err(MirLowerError::NotSupported(format!($it)))
@@ -269,20 +183,6 @@ macro_rules! implementation_error {
 impl From<LayoutError> for MirLowerError<'_> {
     fn from(value: LayoutError) -> Self {
         MirLowerError::LayoutError(value)
-    }
-}
-
-impl MirLowerError<'_> {
-    fn unresolved_path(
-        db: &dyn HirDatabase,
-        p: &Path,
-        display_target: DisplayTarget,
-        owner: ExpressionStoreOwnerId,
-        store: &ExpressionStore,
-    ) -> Self {
-        Self::UnresolvedName(
-            hir_display_with_store(p, owner, store).display(db, display_target).to_string(),
-        )
     }
 }
 
@@ -516,14 +416,9 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                         let result = self
                             .resolver
                             .resolve_path_in_value_ns_fully(self.db, p, hygiene)
-                            .ok_or_else(|| {
-                                MirLowerError::unresolved_path(
-                                    self.db,
-                                    p,
-                                    DisplayTarget::from_crate(self.db, self.krate()),
-                                    self.owner.expression_store_owner(self.db),
-                                    self.store,
-                                )
+                            .ok_or_else(|| MirLowerError::UnresolvedName {
+                                owner: self.owner.expression_store_owner(self.db),
+                                path: p.clone(),
                             })?;
                         self.resolver.reset_to_guard(resolver_guard);
                         result
@@ -888,13 +783,10 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                 };
                 let variant_id =
                     self.infer.variant_resolution_for_expr(expr_id).ok_or_else(|| {
-                        MirLowerError::unresolved_path(
-                            self.db,
-                            path,
-                            self.display_target(),
-                            self.owner.expression_store_owner(self.db),
-                            self.store,
-                        )
+                        MirLowerError::UnresolvedName {
+                            owner: self.owner.expression_store_owner(self.db),
+                            path: path.clone(),
+                        }
                     })?;
                 let subst = match self.expr_ty_without_adjust(expr_id).kind() {
                     TyKind::Adt(_, s) => s,
@@ -1399,16 +1291,9 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
         match &self.store[*loc] {
             Expr::Literal(l) => self.lower_literal_to_operand(ty, l),
             Expr::Path(c) => {
-                let owner = self.owner;
-                let db = self.db;
-                let unresolved_name = || {
-                    MirLowerError::unresolved_path(
-                        self.db,
-                        c,
-                        DisplayTarget::from_crate(db, owner.krate(db)),
-                        self.owner.expression_store_owner(self.db),
-                        self.store,
-                    )
+                let unresolved_name = || MirLowerError::UnresolvedName {
+                    owner: self.owner.expression_store_owner(self.db),
+                    path: c.clone(),
                 };
                 let pr = self
                     .resolver
@@ -1983,10 +1868,6 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
 
     fn krate(&self) -> Crate {
         self.owner.krate(self.db)
-    }
-
-    fn display_target(&self) -> DisplayTarget {
-        DisplayTarget::from_crate(self.db, self.krate())
     }
 
     fn drop_until_scope(
