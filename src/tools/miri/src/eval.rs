@@ -256,7 +256,8 @@ impl<'tcx> MainThreadState<'tcx> {
                 }
             }
             Running => {
-                *self = TlsDtors(Default::default());
+                // Main code is done, the program is exiting.
+                *self = TlsDtors(tls::TlsDtorsState::new_for_exit());
             }
             TlsDtors(state) =>
                 match state.on_stack_empty(this)? {

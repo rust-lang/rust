@@ -1,9 +1,6 @@
 //@ignore-target: windows # No pthreads on Windows
+//@run-native
 //! Test that pthread_key destructors are run in the right order.
-//! Note that these are *not* used by actual `thread_local!` on Linux! Those use
-//! `destructors::register` from the stdlib instead. In Miri this ends up hitting
-//! the fallback path in `guard::key::enable`, which uses a *single* pthread_key
-//! to manage a thread-local list of dtors to call.
 
 // FIXME(static_mut_refs): use raw pointers instead of references
 #![allow(static_mut_refs)]

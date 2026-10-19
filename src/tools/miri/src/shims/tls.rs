@@ -228,8 +228,9 @@ pub struct TlsDtorsState<'tcx>(TlsDtorsStatePriv<'tcx>);
 enum TlsDtorsStatePriv<'tcx> {
     #[default]
     Init,
-    MacOsDtors,
     PthreadDtors(RunningPthreadDtorState),
+    AfterPthreadDtors,
+    MacOsDtors,
     /// For Windows, we support two different ways dtors can be registered.
     /// 1. Functions that are registered via the `FlsAlloc` function, which are invoked one by one.
     /// 2. Functions from the magic `.CRT$XLB` linker section.
@@ -239,6 +240,12 @@ enum TlsDtorsStatePriv<'tcx> {
 }
 
 impl<'tcx> TlsDtorsState<'tcx> {
+    /// Returns the state we should start running when the program is exiting.
+    pub fn new_for_exit() -> Self {
+        // Pthread destructors get skipped on `exit`.
+        Self(TlsDtorsStatePriv::AfterPthreadDtors)
+    }
+
     pub fn on_stack_empty(
         &mut self,
         this: &mut MiriInterpCx<'tcx>,
@@ -247,16 +254,27 @@ impl<'tcx> TlsDtorsState<'tcx> {
         let new_state = 'new_state: {
             match &mut self.0 {
                 Init => {
+                    if this.target_os_is_unix() {
+                        // We run the pthread destructors first, since they get skipped on `exit`.
+                        break 'new_state PthreadDtors(Default::default());
+                    } else {
+                        break 'new_state AfterPthreadDtors;
+                    }
+                }
+                PthreadDtors(state) => {
+                    match this.schedule_next_pthread_tls_dtor(state)? {
+                        Poll::Pending => return interp_ok(Poll::Pending), // just keep going
+                        Poll::Ready(()) => break 'new_state AfterPthreadDtors,
+                    }
+                }
+                AfterPthreadDtors => {
+                    // Next, we run the platform-specific destructors
                     match this.tcx.sess.target.os {
                         Os::MacOs => {
                             // macOS has a _tlv_atexit function that allows
                             // registering destructors without associated keys.
                             // These are run first.
                             break 'new_state MacOsDtors;
-                        }
-                        _ if this.target_os_is_unix() => {
-                            // All other Unixes directly jump to running the pthread dtors.
-                            break 'new_state PthreadDtors(Default::default());
                         }
                         Os::Windows => {
                             // Determine which destructors to run.
@@ -276,7 +294,6 @@ impl<'tcx> TlsDtorsState<'tcx> {
                             );
                         }
                         _ => {
-                            // No TLS dtor support.
                             break 'new_state Done;
                         }
                     }
@@ -286,12 +303,6 @@ impl<'tcx> TlsDtorsState<'tcx> {
                         Poll::Pending => return interp_ok(Poll::Pending),
                         // After all macOS destructors are run, the system switches
                         // to destroying the pthread destructors.
-                        Poll::Ready(()) => break 'new_state PthreadDtors(Default::default()),
-                    }
-                }
-                PthreadDtors(state) => {
-                    match this.schedule_next_pthread_tls_dtor(state)? {
-                        Poll::Pending => return interp_ok(Poll::Pending), // just keep going
                         Poll::Ready(()) => break 'new_state Done,
                     }
                 }

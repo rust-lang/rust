@@ -1,4 +1,5 @@
-//! Check that destructors of main thread thread locals are executed.
+//! Check that destructors of main thread thread locals are executed when main returns.
+//@run-native
 
 struct Bar;
 
