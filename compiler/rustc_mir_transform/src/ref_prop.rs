@@ -30,10 +30,11 @@ use crate::ssa::{SsaLocals, StorageLiveLocals};
 ///
 /// where `PLACE` is a direct or an indirect place expression.
 ///
-/// There are 3 properties that need to be upheld for this transformation to be legal:
+/// There are 4 properties that need to be upheld for this transformation to be legal:
 /// - place stability: `PLACE` must refer to the same memory wherever it appears;
 /// - pointer liveness: we must not introduce dereferences of dangling pointers;
-/// - `&mut` borrow uniqueness.
+/// - `&mut` borrow uniqueness;
+/// - alignment: replacing a dereference must not introduce stronger alignment requirements.
 ///
 /// # Stability
 ///
@@ -44,6 +45,17 @@ use crate::ssa::{SsaLocals, StorageLiveLocals};
 /// If `PLACE` is a direct projection of a local, we consider it as constant if:
 /// - the local is always live, or it has a single `StorageLive`;
 /// - all projections have a stable offset.
+///
+/// # Alignment
+///
+/// A raw pointer may be misaligned for its pointee while a projected field
+/// is sufficiently aligned. Forming a raw pointer or reference to the field
+/// can be valid even when loading or storing through the original aggregate
+/// place would be UB.
+///
+/// Therefore, we conservatively avoid propagating indirect places with
+/// additional projections rooted in raw pointers. This may also prevent
+/// propagation through references after reborrow chains are collapsed.
 ///
 /// # Liveness
 ///
@@ -273,7 +285,16 @@ fn compute_replacement<'tcx>(
                     place = target.project_deeper(rest, tcx);
                 }
                 assert_ne!(place.local, local);
-                if is_constant_place(place) {
+                // A raw pointer may be misaligned for its pointee, even when
+                // a projected field is properly aligned. Creating a pointer
+                // or reference to that field may be valid, but replacing a
+                // later load/store with this place would require the
+                // pointee's stronger alignment.
+                let raw_indirect_projection = place.is_indirect_first_projection()
+                    && place.projection.len() > 1
+                    && body.local_decls[place.local].ty.is_raw_ptr();
+
+                if !raw_indirect_projection && is_constant_place(place) {
                     targets[local] = Value::Pointer(place, needs_unique);
                 }
             }
