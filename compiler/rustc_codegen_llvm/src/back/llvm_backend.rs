@@ -475,7 +475,7 @@ unsafe fn wrap_llcx<'ll>(llcx_raw: ptr::NonNull<llvm::ContextRaw>) -> llvm::Cont
 /// [`llvm::LLVMContextSetDiscardValueNames`].
 fn create_context_and_set_fewer_names(fewer_names: bool) -> ptr::NonNull<llvm::ContextRaw> {
     unsafe {
-        let llcx_raw = llvm::LLVMContextCreate();
+        let llcx_raw = llvm::LLVMRustContextCreate();
         llvm::LLVMContextSetDiscardValueNames(wrap_llcx(llcx_raw), fewer_names.to_llvm_bool());
         llcx_raw
     }
