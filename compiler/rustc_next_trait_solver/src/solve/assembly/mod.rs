@@ -204,7 +204,6 @@ where
                         ecx.evaluate_added_goals_and_make_canonical_response(certainty)
                     },
                 )
-                .map_err(Into::into)
             });
 
         Ok(match result.map_err_to_rerun()? {
