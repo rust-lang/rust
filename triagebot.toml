@@ -1647,20 +1647,6 @@ compiler_leads = [
     "@davidtwco",
     "@boxyuwu",
 ]
-libs = [
-    "@Mark-Simulacrum",
-    "@workingjubilee",
-    "@jhpratt",
-    "@tgross35",
-    "@thomcc",
-    "@joboet",
-    "@nia-e",
-    "@LawnGnome",
-    "@clarfonthey",
-    "@aapoalas",
-    "@Darksonn",
-    "@JohnTitor",
-]
 infra-ci = [
     "@Mark-Simulacrum",
     "@Kobzol",

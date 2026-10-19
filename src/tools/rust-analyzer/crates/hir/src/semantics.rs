@@ -30,7 +30,7 @@ use hir_expand::{
     mod_path::{ModPath, PathKind},
     name::AsName,
 };
-use hir_ty::{
+use hir_ide::{
     InferBodyId, InferenceResult, LoweringMode,
     db::AnonConstId,
     diagnostics::unsafe_operations,
@@ -1727,8 +1727,8 @@ impl<'db> SemanticsImpl<'db> {
 
     pub fn expr_adjustments(&self, expr: &ast::Expr) -> Option<Vec<Adjustment<'db>>> {
         let mutability = |m| match m {
-            hir_ty::next_solver::Mutability::Not => Mutability::Shared,
-            hir_ty::next_solver::Mutability::Mut => Mutability::Mut,
+            hir_ide::next_solver::Mutability::Not => Mutability::Shared,
+            hir_ide::next_solver::Mutability::Mut => Mutability::Mut,
         };
 
         let analyzer = self.analyze(expr.syntax())?;
@@ -1740,20 +1740,20 @@ impl<'db> SemanticsImpl<'db> {
                 .map(|adjust| {
                     let target = analyzer.ty(adjust.target.as_ref());
                     let kind = match adjust.kind {
-                        hir_ty::Adjust::NeverToAny => Adjust::NeverToAny,
-                        hir_ty::Adjust::Deref(Some(hir_ty::OverloadedDeref(m))) => {
+                        hir_ide::Adjust::NeverToAny => Adjust::NeverToAny,
+                        hir_ide::Adjust::Deref(Some(hir_ide::OverloadedDeref(m))) => {
                             // FIXME: Should we handle unknown mutability better?
                             Adjust::Deref(Some(OverloadedDeref(mutability(m))))
                         }
-                        hir_ty::Adjust::Deref(None) => Adjust::Deref(None),
-                        hir_ty::Adjust::Borrow(hir_ty::AutoBorrow::RawPtr(m)) => {
+                        hir_ide::Adjust::Deref(None) => Adjust::Deref(None),
+                        hir_ide::Adjust::Borrow(hir_ide::AutoBorrow::RawPtr(m)) => {
                             Adjust::Borrow(AutoBorrow::RawPtr(mutability(m)))
                         }
-                        hir_ty::Adjust::Borrow(hir_ty::AutoBorrow::Ref(m)) => {
+                        hir_ide::Adjust::Borrow(hir_ide::AutoBorrow::Ref(m)) => {
                             // FIXME: Handle lifetimes here
                             Adjust::Borrow(AutoBorrow::Ref(mutability(m.into())))
                         }
-                        hir_ty::Adjust::Pointer(pc) => Adjust::Pointer(pc),
+                        hir_ide::Adjust::Pointer(pc) => Adjust::Pointer(pc),
                     };
 
                     // Update `source_ty` for the next adjustment
@@ -1830,7 +1830,7 @@ impl<'db> SemanticsImpl<'db> {
         let AnyFunctionId::FunctionId(func) = func.id else { return Some(func) };
         let interner = DbInterner::new_no_crate(self.db);
         let mut subst = subst.into_iter();
-        let substs = hir_ty::next_solver::GenericArgs::for_item(
+        let substs = hir_ide::next_solver::GenericArgs::for_item(
             interner,
             trait_.id.into(),
             |_, id, _, _| {
@@ -2588,7 +2588,7 @@ impl<'db> SemanticsImpl<'db> {
                             && let Some(tree) = proof_tree
                         {
                             let data =
-                                dump_proof_tree_structured(tree, hir_ty::Span::Dummy, infer_ctxt);
+                                dump_proof_tree_structured(tree, hir_ide::Span::Dummy, infer_ctxt);
                             RESULT.with(|ctx| ctx.borrow_mut().push(data));
                         }
                     }),
@@ -2848,7 +2848,7 @@ impl<'db> SemanticsScope<'db> {
         else {
             return;
         };
-        hir_ty::associated_type_shorthand_candidates(self.db, def, resolution, |_, id| {
+        hir_ide::associated_type_shorthand_candidates(self.db, def, resolution, |_, id| {
             cb(id.into());
             false
         });

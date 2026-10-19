@@ -1,5 +1,5 @@
 error: `TryFrom<str>` could be `FromStr`
-  --> tests/ui/try_from_instead_of_from_str.rs:6:1
+  --> tests/ui/try_from_instead_of_from_str.rs:13:1
    |
 LL | / impl TryFrom<&str> for MyType {
 LL | |
@@ -24,7 +24,7 @@ LL + }
    |
 
 error: `TryFrom<str>` could be `FromStr`
-  --> tests/ui/try_from_instead_of_from_str.rs:17:1
+  --> tests/ui/try_from_instead_of_from_str.rs:24:1
    |
 LL | / impl TryFrom<&str> for Bar {
 LL | |
@@ -47,7 +47,7 @@ LL + }
    |
 
 error: `TryFrom<str>` could be `FromStr`
-  --> tests/ui/try_from_instead_of_from_str.rs:30:1
+  --> tests/ui/try_from_instead_of_from_str.rs:37:1
    |
 LL | / impl<'a> TryFrom<&str> for Tarte<'a> {
 LL | |
@@ -70,7 +70,7 @@ LL + }
    |
 
 error: `TryFrom<str>` could be `FromStr`
-  --> tests/ui/try_from_instead_of_from_str.rs:89:1
+  --> tests/ui/try_from_instead_of_from_str.rs:96:1
    |
 LL | / impl TryFrom<&str> for Lifetime3 {
 LL | |
@@ -92,7 +92,7 @@ LL + }
    |
 
 error: `TryFrom<str>` could be `FromStr`
-  --> tests/ui/try_from_instead_of_from_str.rs:101:1
+  --> tests/ui/try_from_instead_of_from_str.rs:108:1
    |
 LL | / impl<'a> TryFrom<&str> for Lifetime4<&'a ()> {
 LL | |

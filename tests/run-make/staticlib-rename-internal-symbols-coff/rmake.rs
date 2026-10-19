@@ -120,6 +120,8 @@ fn decorated_exports() -> Vec<&'static str> {
             "_decorated_stdcall@8",
             "@decorated_fastcall@8",
         ]
+    } else if target().starts_with("arm64ec") {
+        vec!["#decorated_cdecl", "#decorated_calls_internal"]
     } else {
         vec!["decorated_cdecl", "decorated_calls_internal"]
     };

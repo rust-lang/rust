@@ -571,6 +571,30 @@ pub const fn prefetch_write_instruction<T, const LOCALITY: i32>(data: *const T) 
 #[rustc_nounwind]
 pub fn breakpoint();
 
+/// A container for the string arguments passed to [`codeview_annotation`].
+#[unstable(feature = "codeview_annotation", issue = "163964")]
+pub trait CodeViewAnnotationArgs {
+    /// The string arguments to `codeview_annotation`.
+    const ARGS: &[&str];
+}
+
+/// Emits a call to [`llvm.codeview.annotation`](https://llvm.org/docs/LangRef.html#llvm-codeview-annotation-intrinsic)
+/// which results in [`CodeViewAnnotationArgs::ARGS`] being written to the
+/// PDB as an `S_ANNOTATION` record.
+///
+/// Works only with targets that use PDB debuginfo and with the LLVM backend.
+/// Is a no-op on other targets and backends.
+#[unstable(feature = "codeview_annotation", issue = "163964")]
+#[rustc_intrinsic]
+#[rustc_nounwind]
+#[miri::intrinsic_fallback_is_spec]
+pub fn codeview_annotation<T: CodeViewAnnotationArgs>() {
+    // const block to catch any errors in `T::ARGS`
+    const {
+        let _ignore = T::ARGS;
+    }
+}
+
 /// Magic intrinsic that derives its meaning from attributes
 /// attached to the function.
 ///

@@ -1417,7 +1417,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 tool: None,
                 lint_name,
                 lint_span,
-                rest: None,
                 kind: _,
                 reason: _,
                 attr_id: _,

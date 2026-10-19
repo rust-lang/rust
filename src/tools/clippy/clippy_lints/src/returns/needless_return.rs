@@ -72,7 +72,7 @@ pub(super) fn check_fn<'tcx>(cx: &LateContext<'tcx>, kind: FnKind<'tcx>, body: &
             } else {
                 RetReplacement::Empty
             };
-            check_final_expr(cx, &body.value, vec![], replacement, None);
+            check_final_expr(cx, body.value, vec![], replacement, None);
         },
         FnKind::ItemFn(..) | FnKind::Method(..) => {
             check_block_return(cx, &body.value.kind, sp, vec![]);
@@ -183,23 +183,20 @@ fn check_final_expr<'tcx>(
             // actually fulfill the expectation (clippy::#12998)
             match cx.tcx.hir_attrs(expr.hir_id) {
                 [] => {},
-                [Attribute::Parsed(AttributeKind::LintCheck(lints))] => {
+                [Attribute::Parsed(AttributeKind::LintCheck(lints))]
                     if lints.iter().any(|lint| {
                         matches!(
                             lint,
                             LintCheck {
                                 tool: Some(Ident { name: sym::clippy, .. }),
                                 lint_name: sym::needless_return | sym::style | sym::all | sym::warnings,
-                                rest: None,
                                 kind: LintCheckKind::Expect,
                                 ..
                             }
                         )
-                    }) {
-                        // This is an expectation of the `needless_return` lint
-                    } else {
-                        return;
-                    }
+                    }) =>
+                {
+                    // This is an expectation of the `needless_return` lint
                 },
                 _ => return,
             }

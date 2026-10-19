@@ -31,8 +31,8 @@ declare_clippy_lint! {
     ///
     /// ### Lints to consider instead of this
     ///
-    /// * [`excessive_nesting`](https://rust-lang.github.io/rust-clippy/master/index.html#excessive_nesting)
-    /// * [`too_many_lines`](https://rust-lang.github.io/rust-clippy/master/index.html#too_many_lines)
+    /// * [`excessive_nesting`](https://rust-lang.github.io/rust-clippy/main/index.html#excessive_nesting)
+    /// * [`too_many_lines`](https://rust-lang.github.io/rust-clippy/main/index.html#too_many_lines)
     #[clippy::version = "1.35.0"]
     pub COGNITIVE_COMPLEXITY,
     restriction,
@@ -154,7 +154,7 @@ impl<'tcx> LateLintPass<'tcx> for CognitiveComplexity {
                     },
                 }
             } else {
-                &body.value
+                body.value
             };
 
             self.check(cx, kind, decl, expr, span);

@@ -136,6 +136,7 @@ impl<I: Interner, T> Binder<I, T> {
         self.as_ref().map_bound(f)
     }
 
+    #[inline]
     pub fn map_bound<F, U: TypeVisitable<I>>(self, f: F) -> Binder<I, U>
     where
         F: FnOnce(T) -> U,
@@ -152,6 +153,7 @@ impl<I: Interner, T> Binder<I, T> {
     /// There are some uses of `map_bound` which are incredibly hot and trivially
     /// correct. Only use this if this significantly improves the performance of
     /// builds with debug assertions.
+    #[inline]
     pub fn map_bound_no_validate_bound_vars<F, U: TypeVisitable<I>>(self, f: F) -> Binder<I, U>
     where
         F: FnOnce(T) -> U,

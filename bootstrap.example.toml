@@ -103,8 +103,11 @@
 # Whether to build Enzyme as AutoDiff backend.
 #llvm.enzyme = false
 
-# Whether to build LLVM with support for it's gpu offload runtime.
+# Whether to build LLVM with support for its gpu offload runtime.
 #llvm.offload = false
+
+# Whether to build TPDE as an experimental alternative LLVM backend.
+#llvm.tpde = false
 
 # Absolute path to the directory containing ClangConfig.cmake
 #llvm.offload-clang-dir = ""
@@ -842,7 +845,7 @@
 # sysroot.
 #rust.llvm-tools = true
 
-# Indicates whether the `self-contained` llvm-bitcode-linker, will be made available
+# Indicates whether the `self-contained` llvm-bitcode-linker will be made available
 # in the sysroot. It is required for running nvptx tests.
 #rust.llvm-bitcode-linker = false
 
@@ -955,6 +958,12 @@
 # The implementation for this has not finished landing, so you probably don't
 # want to enable this right now.
 #rust.wasm-proc-macros = false
+
+# Enables wasm targets to be built with `-Cpanic=unwind` by default instead of
+# the current `-Cpanic=abort`. This is currently used in testing the Rust
+# compiler itself and is only intended for local development/testing at this
+# time.
+#rust.wasm-panic-unwind-default = false
 
 # =============================================================================
 # Distribution options

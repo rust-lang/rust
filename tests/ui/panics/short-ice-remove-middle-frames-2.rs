@@ -9,6 +9,7 @@
 //@ ignore-sgx Backtraces not symbolized
 //@ ignore-fuchsia Backtraces not symbolized
 //@ ignore-msvc the `__rust_{begin,end}_short_backtrace` symbols aren't reliable.
+//@ ignore-wasm backtraces not symbolized
 // This is needed to avoid test output differences across std being built with v0 symbols vs legacy
 // symbols.
 //@ normalize-stderr: "begin_panic::<&str>" -> "begin_panic"

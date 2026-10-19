@@ -36,6 +36,7 @@ pub mod unstable_features;
 pub mod expr_store;
 pub mod hir;
 pub mod resolver;
+pub mod upvars;
 
 pub mod nameres;
 

@@ -97,8 +97,9 @@ pub macro unreachable_2021 {
 /// Invokes a closure, aborting if the closure unwinds.
 ///
 /// When compiled with aborting panics, this function is effectively a no-op.
-/// With unwinding panics, an unwind results in another call into the panic
-/// hook followed by a process abort.
+/// With unwinding panics, an unwind that would leave the closure results in another call into the
+/// panic handler / panic hook followed by a process abort. (Locals in the closure get dropped as
+/// usual.) Unwinds that get caught inside the closure still behave as normal.
 ///
 /// # Notes
 ///
@@ -114,7 +115,7 @@ pub macro unreachable_2021 {
 /// to prevent unwinds. However, note that `extern "C" fn` will automatically
 /// convert unwinds to aborts, so using this function isn't necessary for FFI.
 #[unstable(feature = "abort_unwind", issue = "130338")]
-#[rustc_nounwind]
+#[rustc_nounwind] // this attribute does all the actual work here
 pub fn abort_on_unwind<F: FnOnce() -> R, R>(f: F) -> R {
     f()
 }

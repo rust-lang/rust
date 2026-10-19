@@ -548,7 +548,7 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// ### What it does
     ///
-    /// Checks for `Iterator::last` being called on a  `DoubleEndedIterator`, which can be replaced
+    /// Checks for `Iterator::last` being called on a `DoubleEndedIterator`, which can be replaced
     /// with `DoubleEndedIterator::next_back`.
     ///
     /// ### Why is this bad?
@@ -556,6 +556,12 @@ declare_clippy_lint! {
     /// `Iterator::last` is implemented by consuming the iterator, which is unnecessary if
     /// the iterator is a `DoubleEndedIterator`. Since Rust traits do not allow specialization,
     /// `Iterator::last` cannot be optimized for `DoubleEndedIterator`.
+    ///
+    /// ### Known issues
+    ///
+    /// The suggestion may change code behavior when an iterator adapter has side effects. For example,
+    /// a `move` closure passed to `filter` may mutate captured state. Replacing `last()` with `next_back()`
+    /// changes the order in which the closure is evaluated, which could change the final result.
     ///
     /// ### Example
     /// ```no_run
@@ -5487,7 +5493,7 @@ impl Methods {
                                 && let body = cx.tcx.hir_body(arg.body)
                                 && let [param] = body.params =>
                         {
-                            string_lit_chars_any::check(cx, expr, recv, param, peel_blocks(&body.value), self.msrv);
+                            string_lit_chars_any::check(cx, expr, recv, param, peel_blocks(body.value), self.msrv);
                         },
                         Some((sym::map, _, [map_arg], _, map_call_span)) => {
                             map_all_any_identity::check(cx, expr, recv, map_call_span, map_arg, call_span, arg, "any");
@@ -5894,9 +5900,9 @@ impl Methods {
                     no_effect_replace::check(cx, expr, arg1, arg2);
 
                     // Check for repeated `str::replace` calls to perform `collapsible_str_replace` lint
-                    if self.msrv.meets(cx, msrvs::PATTERN_TRAIT_CHAR_ARRAY)
-                        && name == sym::replace
+                    if name == sym::replace
                         && let Some((sym::replace, ..)) = method_call(recv)
+                        && self.msrv.meets(cx, msrvs::PATTERN_TRAIT_CHAR_ARRAY)
                     {
                         collapsible_str_replace::check(cx, expr, arg1, arg2);
                     }
@@ -5967,10 +5973,9 @@ impl Methods {
                 },
                 (sym::take, []) => needless_option_take::check(cx, expr, recv),
                 (sym::then, [arg]) => {
-                    if !self.msrv.meets(cx, msrvs::BOOL_THEN_SOME) {
-                        return;
+                    if self.msrv.meets(cx, msrvs::BOOL_THEN_SOME) {
+                        unnecessary_lazy_eval::check(cx, expr, recv, arg, "then_some", true);
                     }
-                    unnecessary_lazy_eval::check(cx, expr, recv, arg, "then_some", true);
                 },
                 (sym::try_into, []) if cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::TryInto) => {
                     unnecessary_fallible_conversions::check_method(cx, expr);

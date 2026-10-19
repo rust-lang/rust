@@ -248,7 +248,6 @@ impl CollapsibleIf {
                             lint,
                             LintCheck {
                                 tool: Some(Ident { name: sym::clippy, .. }),
-                                rest: None,
                                 kind: LintCheckKind::Expect,
                                 ..
                             }

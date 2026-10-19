@@ -20,7 +20,9 @@ pub type WCHAR = u16;
 
 pub const INVALID_HANDLE_VALUE: HANDLE = ::core::ptr::without_provenance_mut(-1i32 as _);
 
+#[cfg(not(target_vendor = "win7"))]
 pub const FILE_DEVICE_NAMED_PIPE: u32 = 0x00000011;
+#[cfg(not(target_vendor = "win7"))]
 pub const FILE_DEVICE_CONSOLE: u32 = 0x00000050;
 
 // https://learn.microsoft.com/en-us/cpp/c-runtime-library/exit-success-exit-failure?view=msvc-170
@@ -146,12 +148,6 @@ pub const HANDLE_FLAG_INHERIT: u32 = cu(windows_sys::HANDLE_FLAG_INHERIT);
 // dwCreationFlags -- CreateThread
 pub const STACK_SIZE_PARAM_IS_A_RESERVATION: u32 =
     cu(windows_sys::STACK_SIZE_PARAM_IS_A_RESERVATION);
-
-// dwFlags -- WideCharToMultiByte
-pub const WC_ERR_INVALID_CHARS: u32 = cu(windows_sys::WC_ERR_INVALID_CHARS);
-
-// dwFlags -- MultiByteToWideChar
-pub const MB_ERR_INVALID_CHARS: u32 = cu(windows_sys::MB_ERR_INVALID_CHARS);
 
 // dwFlags -- CreateWaitableTimerExW
 pub const CREATE_WAITABLE_TIMER_HIGH_RESOLUTION: u32 =

@@ -73,7 +73,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
             {
                 let body = tcx.hir_body(body_id);
                 let mut expr_finder = FindExprBySpan::new(span, tcx);
-                expr_finder.visit_expr(&body.value);
+                expr_finder.visit_expr(body.value);
                 if let Some(mut expr) = expr_finder.result {
                     while let hir::ExprKind::AddrOf(_, _, inner)
                     | hir::ExprKind::Unary(hir::UnOp::Deref, inner)
@@ -308,7 +308,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                             && let hir_body = tcx.hir_body(body_id)
                             && let mut expr_finder = (FindLetExpr { span: old, result: None, tcx })
                             && let Some((let_expr_span, let_expr_pat, let_expr_init)) = {
-                                expr_finder.visit_expr(&hir_body.value);
+                                expr_finder.visit_expr(hir_body.value);
                                 expr_finder.result
                             }
                             && !let_expr_span.contains(new)
@@ -610,7 +610,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
             // loop iteration. In this case, try using the loop terminator location in
             // `find_sub_region_live_at`.
             if let Some(loop_terminator_location) =
-                regioncx.find_loop_terminator_location(borrow.region, body)
+                regioncx.find_loop_terminator_location(borrow.region, body, location)
             {
                 region_sub = self
                     .regioncx

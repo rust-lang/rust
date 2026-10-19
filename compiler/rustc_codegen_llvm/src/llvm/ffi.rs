@@ -887,8 +887,8 @@ pub(crate) type GetSymbolsErrorCallback = unsafe extern "C" fn(*const c_char) ->
 
 unsafe extern "C" {
     // Create and destroy contexts.
-    pub(crate) fn LLVMContextCreate() -> &'static mut Context;
-    pub(crate) fn LLVMContextDispose(C: &'static mut Context);
+    pub(crate) fn LLVMContextCreate() -> ptr::NonNull<Context>;
+    pub(crate) fn LLVMContextDispose(C: ptr::NonNull<Context>);
     pub(crate) fn LLVMContextSetDiscardValueNames(C: &Context, Discard: Bool);
     pub(crate) fn LLVMGetMDKindIDInContext(
         C: &Context,
@@ -908,7 +908,7 @@ unsafe extern "C" {
     pub(crate) fn LLVMModuleCreateWithNameInContext(
         ModuleID: *const c_char,
         C: &Context,
-    ) -> &Module;
+    ) -> *const Module;
     pub(crate) safe fn LLVMCloneModule(M: &Module) -> &Module;
 
     /// Data layout. See Module::getDataLayout.

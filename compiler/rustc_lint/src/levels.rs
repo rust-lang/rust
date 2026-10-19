@@ -1,8 +1,8 @@
 use std::fmt::Debug;
 
 use rustc_ast as ast;
+use rustc_ast::CRATE_NODE_ID;
 use rustc_ast::attr::AttributeExt;
-use rustc_ast::{CRATE_NODE_ID, join_path_syms};
 use rustc_attr_ir::lint::{LintCheck, LintCheckKind};
 use rustc_attr_ir::target::Target;
 use rustc_attr_ir::{Attribute, AttributeKind, find_attr};
@@ -753,14 +753,10 @@ where
 
         // FIXME: consider performing these checks in attribute parsing instead
         for (lint_index, lint_check) in lint_checks.into_iter().enumerate() {
-            let LintCheck { tool, lint_name, lint_span, kind, reason, attr_id, attr_span: _, rest } =
+            let LintCheck { tool, lint_name, lint_span, kind, reason, attr_id, attr_span: _ } =
                 lint_check;
 
-            let full_lint_name = if let Some(rest) = rest {
-                &join_path_syms([lint_name].into_iter().chain(rest))
-            } else {
-                lint_name.as_str()
-            };
+            let full_lint_name = lint_name.as_str();
 
             let level = match kind {
                 LintCheckKind::Allow => Level::Allow,

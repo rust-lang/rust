@@ -2550,22 +2550,6 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
         expected: &SolverRegionConstraint<'tcx>,
         actual: &SolverRegionConstraint<'tcx>,
     ) {
-        fn err<'tcx>(
-            tcx: TyCtxt<'tcx>,
-            expected_span: Span,
-            expected: impl std::fmt::Debug,
-            actual_span: Option<Span>,
-            actual: impl std::fmt::Debug,
-        ) {
-            let mut err = tcx.dcx().struct_span_err(expected_span, "forall expect clause failed");
-            if let Some(actual_span) = actual_span {
-                err.span_note(actual_span, "constraint from here");
-            }
-            err.note(format!("expected: {expected:#?}"));
-            err.note(format!("actual: {actual:#?}"));
-            err.emit();
-        }
-
         let span_of_and = |c: &And<_, _>| {
             c.0.iter().map(|leaf| leaf.span()).reduce(|span: Span, acc| acc.to(span))
         };
@@ -2575,64 +2559,68 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
         };
 
         let check_leaf_constraint =
-            |expected: LeafRegionConstraint<_, _>, actual: LeafRegionConstraint<_, _>| {
+            |expected: &LeafRegionConstraint<_, _>, actual: &LeafRegionConstraint<_, _>| {
                 if let LeafRegionConstraint::AliasTyOutlivesViaEnv(expected, expected_span) =
                     expected
                     && let LeafRegionConstraint::AliasTyOutlivesViaEnv(actual, actual_span) = actual
                 {
-                    let expected_anon = self.tcx().anonymize_bound_vars(expected);
-                    let actual_anon = self.tcx().anonymize_bound_vars(actual);
-                    if expected_anon != actual_anon {
-                        let mut err = self
-                            .tcx()
-                            .dcx()
-                            .struct_span_err(expected_span, "forall expect clause failed");
-                        err.span_note(actual_span, "constraint from here");
-                        err.note(format!("expected: {expected:#?}"));
-                        err.note(format!("actual: {actual:#?}"));
-                        err.note(format!("expected_anon: {expected_anon:#?}"));
-                        err.note(format!("actual_anon: {actual_anon:#?}"));
-                        err.emit();
+                    let expected_anon = self.tcx().anonymize_bound_vars(expected.clone());
+                    let actual_anon = self.tcx().anonymize_bound_vars(actual.clone());
+                    if expected_anon == actual_anon {
+                        Ok(())
+                    } else {
+                        Err((Some(*expected_span), Some(*actual_span)))
                     }
-                } else if expected.clone().without_span() != actual.clone().without_span() {
-                    err(self.tcx(), expected.span(), expected, Some(actual.span()), actual);
+                } else {
+                    if expected.clone().without_span() == actual.clone().without_span() {
+                        Ok(())
+                    } else {
+                        Err((Some(expected.span()), Some(actual.span())))
+                    }
                 }
             };
 
-        let check_and_constraint = |expected: And<_, _>, actual: And<_, _>| {
+        let check_and_constraint = |expected: &And<_, _>, actual: &And<_, _>| {
             if expected.0.len() != actual.0.len() {
-                err(
-                    self.tcx(),
-                    span_of_and(&expected).unwrap_or(fallback_span),
-                    expected,
-                    span_of_and(&actual),
-                    actual,
-                )
+                Err((span_of_and(expected), span_of_and(actual)))
             } else {
-                for (expected, actual) in expected.0.into_iter().zip(actual.0.into_iter()) {
-                    check_leaf_constraint(expected, actual);
+                for (expected, actual) in expected.0.iter().zip(&actual.0) {
+                    check_leaf_constraint(expected, actual)?;
                 }
+                Ok(())
             }
         };
 
-        let check_or_constraint = |expected: Or<_, _>, actual: Or<_, _>| {
+        let check_or_constraint = |expected: &Or<_, _>, actual: &Or<_, _>| {
             if expected.0.len() != actual.0.len() {
-                err(
-                    self.tcx(),
-                    span_of_or(&expected).unwrap_or(fallback_span),
-                    expected,
-                    span_of_or(&actual),
-                    actual,
-                )
+                Err((span_of_or(expected), span_of_or(actual)))
             } else {
-                for (expected, actual) in expected.0.into_iter().zip(actual.0.into_iter()) {
-                    check_and_constraint(expected, actual);
+                for (expected, actual) in expected.0.iter().zip(&actual.0) {
+                    check_and_constraint(expected, actual)?;
                 }
+                Ok(())
             }
         };
 
-        check_or_constraint(expected.or_constraint.clone(), actual.or_constraint.clone());
-        check_and_constraint(expected.and_constraint.clone(), actual.and_constraint.clone());
+        let check = |expected: &SolverRegionConstraint<'tcx>,
+                     actual: &SolverRegionConstraint<'tcx>| {
+            check_or_constraint(&expected.or_constraint, &actual.or_constraint)?;
+            check_and_constraint(&expected.and_constraint, &actual.and_constraint)?;
+            Ok(())
+        };
+
+        if let Err((expected_span, actual_span)) = check(expected, actual) {
+            let mut err = self.tcx().dcx().struct_span_err(
+                expected_span.unwrap_or(fallback_span),
+                "forall expect clause failed",
+            );
+            if let Some(actual_span) = actual_span {
+                err.span_note(actual_span, "constraint from here");
+            }
+            err.note(format!("expected: {expected:#?}"));
+            err.note(format!("actual: {actual:#?}"));
+            err.emit();
+        }
     }
 
     #[instrument(level = "debug", skip(self))]

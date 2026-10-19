@@ -1,14 +1,15 @@
 #![unstable(issue = "none", feature = "windows_stdio")]
 
-use core::ffi::c_void;
 use core::str::utf8_char_width;
 
+#[cfg(not(target_vendor = "win7"))]
+use crate::alloc::System;
 use crate::mem::MaybeUninit;
 use crate::os::windows::io::{FromRawHandle, IntoRawHandle};
 use crate::sys::handle::Handle;
 use crate::sys::pal::api::{self, WinError};
 use crate::sys::{c, cvt};
-use crate::{cmp, io, ptr, str};
+use crate::{cmp, io, ptr};
 
 #[cfg(test)]
 mod tests;
@@ -52,19 +53,22 @@ impl IncompleteUtf8 {
     }
 }
 
-// Apparently Windows doesn't handle large reads on stdin or writes to stdout/stderr well (see
-// #13304 for details).
+// The way the console used to work up to Windows 8 is that the "LPC"s carried
+// a small scratch space for reads/writes. If the client exceeded it, the server
+// allocated a larger buffer from a fixed size section object. Its size was
+// `CONSOLE_PORT_MEMORY_SIZE`, aka 64KiB. This meant any IO larger than that failed.
+// If the Windows 7 source code ever leaks: The relevant function is `ConsoleAllocateCaptureBuffer`.
 //
-// From MSDN (2011): "The storage for this buffer is allocated from a shared heap for the
-// process that is 64 KB in size. The maximum size of the buffer will depend on heap usage."
-//
-// We choose the cap at 8 KiB because libuv does the same, and it seems to be acceptable so far.
+// It remains a good size for a stack allocated buffer, however.
 const MAX_BUFFER_SIZE: usize = 8192;
 
 // The standard buffer size of BufReader for Stdin should be able to hold 3x more bytes than there
 // are `u16`'s in MAX_BUFFER_SIZE. This ensures the read data can always be completely decoded from
 // UTF-16 to UTF-8.
 pub const STDIN_BUF_SIZE: usize = MAX_BUFFER_SIZE / 2 * 3;
+
+#[cfg(not(target_vendor = "win7"))]
+const MAX_WRITE_HEAP_LEN: usize = 64 * 1024; // In u16 -> 128KiB
 
 pub fn get_handle(handle_id: u32) -> io::Result<c::HANDLE> {
     let handle = unsafe { c::GetStdHandle(handle_id) };
@@ -78,7 +82,6 @@ pub fn get_handle(handle_id: u32) -> io::Result<c::HANDLE> {
 }
 
 /// Returns true if `handle` refers to a proper console (aka conhost).
-#[cfg(not(target_vendor = "win7"))]
 fn is_console(handle: c::HANDLE) -> bool {
     cfg_select! {
         target_vendor = "win7" => {
@@ -135,141 +138,125 @@ fn write_console_utf16(
     incomplete_utf8: &mut IncompleteUtf8,
     handle: c::HANDLE,
 ) -> io::Result<usize> {
-    if incomplete_utf8.len > 0 {
-        assert!(
-            incomplete_utf8.len < 4,
-            "Unexpected number of bytes for incomplete UTF-8 codepoint."
-        );
-        if data[0] >> 6 != 0b10 {
-            // not a continuation byte - reject
-            incomplete_utf8.len = 0;
-            return Err(io::const_error!(
-                io::ErrorKind::InvalidData,
-                "Windows stdio in console mode does not support writing non-UTF-8 byte sequences",
-            ));
-        }
-        incomplete_utf8.bytes[incomplete_utf8.len as usize] = data[0];
-        incomplete_utf8.len += 1;
-        let char_width = utf8_char_width(incomplete_utf8.bytes[0]);
-        if (incomplete_utf8.len as usize) < char_width {
-            // more bytes needed
-            return Ok(1);
-        }
-        let s = str::from_utf8(&incomplete_utf8.bytes[0..incomplete_utf8.len as usize]);
-        incomplete_utf8.len = 0;
-        match s {
-            Ok(s) => {
-                assert_eq!(char_width, s.len());
-                let written = write_valid_utf8_to_console(handle, s)?;
-                assert_eq!(written, s.len()); // guaranteed by write_valid_utf8_to_console() for single codepoint writes
-                return Ok(1);
-            }
-            Err(_) => {
-                return Err(io::const_error!(
-                    io::ErrorKind::InvalidData,
-                    "Windows stdio in console mode does not support writing non-UTF-8 byte sequences",
-                ));
-            }
-        }
+    // As stated for `MAX_BUFFER_SIZE`, Windows 7 does not support large writes at all.
+    // --> Fall back to the small-writes stack-alloc path.
+    #[cfg(not(target_vendor = "win7"))]
+    if data.len() > MAX_BUFFER_SIZE
+        && let capacity = data.len().min(MAX_WRITE_HEAP_LEN)
+        && let Ok(mut utf16) = Box::<[u16], _>::try_new_uninit_slice_in(capacity, System)
+    {
+        return write_console_with_buffer(data, incomplete_utf8, &mut utf16, handle);
     }
 
-    // As the console is meant for presenting text, we assume bytes of `data` are encoded as UTF-8,
-    // which needs to be encoded as UTF-16.
-    //
-    // If the data is not valid UTF-8 we write out as many bytes as are valid.
-    // If the first byte is invalid it is either first byte of a multi-byte sequence but the
-    // provided byte slice is too short or it is the first byte of an invalid multi-byte sequence.
-    let len = cmp::min(data.len(), MAX_BUFFER_SIZE / 2);
-    let utf8 = match str::from_utf8(&data[..len]) {
-        Ok(s) => s,
-        Err(ref e) if e.valid_up_to() == 0 => {
-            let first_byte_char_width = utf8_char_width(data[0]);
-            if first_byte_char_width > 1 && data.len() < first_byte_char_width {
-                incomplete_utf8.bytes[0] = data[0];
-                incomplete_utf8.len = 1;
-                return Ok(1);
-            } else {
-                return Err(io::const_error!(
-                    io::ErrorKind::InvalidData,
-                    "Windows stdio in console mode does not support writing non-UTF-8 byte sequences",
-                ));
-            }
-        }
-        Err(e) => str::from_utf8(&data[..e.valid_up_to()]).unwrap(),
-    };
-
-    write_valid_utf8_to_console(handle, utf8)
+    write_console_stack(data, incomplete_utf8, handle)
 }
 
-fn write_valid_utf8_to_console(handle: c::HANDLE, utf8: &str) -> io::Result<usize> {
-    debug_assert!(!utf8.is_empty());
-
-    let mut utf16 = [MaybeUninit::<u16>::uninit(); MAX_BUFFER_SIZE / 2];
-    let utf8 = &utf8[..utf8.floor_char_boundary(utf16.len())];
-
-    let utf16: &[u16] = unsafe {
-        // Note that this theoretically checks validity twice in the (most common) case
-        // where the underlying byte sequence is valid utf-8 (given the check in `write()`).
-        let result = c::MultiByteToWideChar(
-            c::CP_UTF8,                          // CodePage
-            c::MB_ERR_INVALID_CHARS,             // dwFlags
-            utf8.as_ptr().cast::<i8>(),          // lpMultiByteStr
-            utf8.len() as i32,                   // cbMultiByte
-            utf16.as_mut_ptr() as *mut c::WCHAR, // lpWideCharStr
-            utf16.len() as i32,                  // cchWideChar
-        );
-        assert!(result != 0, "Unexpected error in MultiByteToWideChar");
-
-        // Safety: MultiByteToWideChar initializes `result` values.
-        utf16[..result as usize].assume_init_ref()
-    };
-
-    let mut written = write_u16s(handle, utf16)?;
-
-    // Figure out how many bytes of as UTF-8 were written away as UTF-16.
-    if written == utf16.len() {
-        Ok(utf8.len())
-    } else {
-        // Make sure we didn't end up writing only half of a surrogate pair (even though the chance
-        // is tiny). Because it is not possible for user code to re-slice `data` in such a way that
-        // a missing surrogate can be produced (and also because of the UTF-8 validation above),
-        // write the missing surrogate out now.
-        // Buffering it would mean we have to lie about the number of bytes written.
-        let first_code_unit_remaining = utf16[written];
-        if matches!(first_code_unit_remaining, 0xDC00..=0xDFFF) {
-            // low surrogate
-            // We just hope this works, and give up otherwise
-            let _ = write_u16s(handle, &utf16[written..written + 1]);
-            written += 1;
-        }
-        // Calculate the number of bytes of `utf8` that were actually written.
-        let mut count = 0;
-        for ch in utf16[..written].iter() {
-            count += match ch {
-                0x0000..=0x007F => 1,
-                0x0080..=0x07FF => 2,
-                0xDC00..=0xDFFF => 1, // Low surrogate. We already counted 3 bytes for the other.
-                _ => 3,
-            };
-        }
-        debug_assert!(String::from_utf16(&utf16[..written]).unwrap() == utf8[..count]);
-        Ok(count)
-    }
+#[cfg_attr(not(target_vendor = "win7"), inline(never))] // Avoid stack allocations unless called
+fn write_console_stack(
+    data: &[u8],
+    incomplete_utf8: &mut IncompleteUtf8,
+    handle: c::HANDLE,
+) -> io::Result<usize> {
+    let mut utf16 = [const { MaybeUninit::uninit() }; MAX_BUFFER_SIZE];
+    write_console_with_buffer(data, incomplete_utf8, &mut utf16, handle)
 }
 
-fn write_u16s(handle: c::HANDLE, data: &[u16]) -> io::Result<usize> {
-    debug_assert!(data.len() < u32::MAX as usize);
+fn write_console_with_buffer(
+    data: &[u8],
+    incomplete_utf8: &mut IncompleteUtf8,
+    utf16: &mut [MaybeUninit<u16>],
+    handle: c::HANDLE,
+) -> io::Result<usize> {
     let mut written = 0;
-    cvt(unsafe {
-        c::WriteConsoleW(
-            handle,
-            data.as_ptr().cast::<c_void>(),
-            data.len() as u32,
-            &mut written,
-            ptr::null_mut(),
-        )
-    })?;
-    Ok(written as usize)
+    while written < data.len() {
+        match write_console_chunk(&data[written..], incomplete_utf8, utf16, handle) {
+            Ok(0) => break,
+            Ok(consumed) => written += consumed,
+            Err(error) if written == 0 => return Err(error),
+            Err(_) => break,
+        }
+    }
+    Ok(written)
+}
+
+fn write_console_chunk(
+    data: &[u8],
+    incomplete_utf8: &mut IncompleteUtf8,
+    utf16: &mut [MaybeUninit<u16>],
+    handle: c::HANDLE,
+) -> io::Result<usize> {
+    debug_assert!(utf16.len() >= 2, "not enough space for a full codepoint");
+    debug_assert!(utf16.len() >= 1024, "unreasonably small buffer");
+
+    let mut chunk_len = data.len().min(utf16.len() - incomplete_utf8.len as usize);
+    if chunk_len < data.len() {
+        chunk_len = incomplete_utf8_suffix_start(&data[..chunk_len]);
+    }
+    let data = &data[..chunk_len];
+    let mut utf16_len = 0;
+    let mut remaining = data;
+
+    // Join the incomplete sequence with the new data.
+    if incomplete_utf8.len > 0 {
+        let mut len = incomplete_utf8.len as usize;
+        let width = utf8_char_width(incomplete_utf8.bytes[0]);
+
+        // Accumulate until we have a complete sequence,
+        // or something recognizable as a invalid sequence.
+        while len < width
+            && let Some((&b, rest)) = remaining.split_first()
+            && b & 0xc0 == 0x80
+        {
+            incomplete_utf8.bytes[len] = b;
+            len += 1;
+            remaining = rest;
+        }
+
+        // If we consumed all of `data` without completing the sequence we're done.
+        if len < width && remaining.is_empty() {
+            incomplete_utf8.len = len as u8;
+            return Ok(data.len());
+        }
+
+        utf16_len = utf8_to_utf16(&incomplete_utf8.bytes[..len], utf16)?;
+    }
+
+    // Strip off any incomplete, trailing UTF8 sequence.
+    let (remaining, trailing) = remaining.split_at(incomplete_utf8_suffix_start(remaining));
+
+    // Convert the bulk of the data to UTF16.
+    if !remaining.is_empty() {
+        utf16_len += utf8_to_utf16(remaining, &mut utf16[utf16_len..])?;
+    }
+
+    if utf16_len != 0 {
+        // NOTE: WriteConsoleW does not result in short writes.
+        let mut written = 0;
+        cvt(unsafe {
+            c::WriteConsoleW(
+                handle,
+                utf16.as_ptr().cast(),
+                utf16_len as u32,
+                &mut written,
+                ptr::null_mut(),
+            )
+        })?;
+    }
+
+    incomplete_utf8.bytes[..trailing.len()].copy_from_slice(trailing);
+    incomplete_utf8.len = trailing.len() as u8;
+    Ok(data.len())
+}
+
+fn incomplete_utf8_suffix_start(bytes: &[u8]) -> usize {
+    for length in 1..=3.min(bytes.len()) {
+        let start = bytes.len() - length;
+        let byte = bytes[start];
+        if byte & 0xc0 != 0x80 {
+            return if utf8_char_width(byte) > length { start } else { bytes.len() };
+        }
+    }
+    bytes.len()
 }
 
 impl Stdin {
@@ -422,26 +409,60 @@ fn utf16_to_utf8(utf16: &[u16], utf8: &mut [u8]) -> io::Result<usize> {
 
     let result = unsafe {
         c::WideCharToMultiByte(
-            c::CP_UTF8,              // CodePage
-            c::WC_ERR_INVALID_CHARS, // dwFlags
-            utf16.as_ptr(),          // lpWideCharStr
-            utf16.len() as i32,      // cchWideChar
-            utf8.as_mut_ptr(),       // lpMultiByteStr
-            utf8.len() as i32,       // cbMultiByte
-            ptr::null(),             // lpDefaultChar
-            ptr::null_mut(),         // lpUsedDefaultChar
+            c::CP_UTF8,         // CodePage
+            0,                  // dwFlags
+            utf16.as_ptr(),     // lpWideCharStr
+            utf16.len() as i32, // cchWideChar
+            utf8.as_mut_ptr(),  // lpMultiByteStr
+            utf8.len() as i32,  // cbMultiByte
+            ptr::null(),        // lpDefaultChar
+            ptr::null_mut(),    // lpUsedDefaultChar
         )
     };
     if result == 0 {
-        // We can't really do any better than forget all data and return an error.
-        Err(io::const_error!(
-            io::ErrorKind::InvalidData,
-            "Windows stdin in console mode does not support non-UTF-16 input; \
-            encountered unpaired surrogate",
-        ))
+        return Err(io::Error::last_os_error());
     } else {
         Ok(result as usize)
     }
+}
+
+fn utf8_to_utf16(data: &[u8], utf16: &mut [MaybeUninit<u16>]) -> io::Result<usize> {
+    debug_assert!(!data.is_empty());
+
+    if utf16.is_empty() {
+        return Ok(0);
+    }
+
+    // Fun fact: As is often the case, Windows' algorithm predates Unicode's recommendation.
+    // The current behavior was implemented for Windows Vista (2007) and Unicode's recommendation
+    // for "Best Practices for Using U+FFFD" came with Unicode 5.2 (2009) [^1]. So, now if a
+    // continuation byte violates a boundary limit, it should restore it [^2], but this consumes it.
+    // For instance, `ED A0 80` produces two U+FFFD with this API, while it should be three.
+    // In practice this difference bears no meaning for console output.
+    //
+    // NOTE: However, it means we have to be careful about the treatment of `incomplete_utf8`,
+    // because the behavior of `MultiByteToWideChar` could theoretically change in the future.
+    //
+    // `MultiByteToWideChar` is technically a fancy wrapper around `RtlUTF8ToUnicodeN`,
+    // whose MSDN is a bit more enlightening about the behavior of the conversion.
+    // Despite its name, it's not a syscall, but a simple function inside ntdll.dll.
+    //
+    // [^1]: https://www.unicode.org/review/pr-121.html
+    // [^2]: https://encoding.spec.whatwg.org/#utf-8-decoder
+    let len = unsafe {
+        c::MultiByteToWideChar(
+            c::CP_UTF8,
+            0,
+            data.as_ptr().cast(),
+            data.len() as i32,
+            utf16.as_mut_ptr().cast(),
+            utf16.len() as i32,
+        )
+    };
+    if len <= 0 {
+        return Err(io::Error::last_os_error());
+    }
+    Ok(len as usize)
 }
 
 impl IncompleteUtf8 {

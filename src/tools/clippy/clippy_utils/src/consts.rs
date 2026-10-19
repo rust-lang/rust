@@ -31,6 +31,7 @@ use std::iter;
 /// A `LitKind`-like enum to fold constant `Expr`s into.
 #[derive(Debug, Clone)]
 pub enum Constant {
+    /// A constant representing an [algebraic data type](https://rustc-dev-guide.rust-lang.org/ty-module/generic-arguments.html#adts-and-generic-arguments)
     Adt(ConstValue),
     /// A `String` (e.g., "abc").
     Str(String),
@@ -205,6 +206,15 @@ impl Hash for Constant {
 }
 
 impl Constant {
+    /// Returns an ordering between `left` and `right`, if one exists. `cmp_type` determines
+    /// comparison behavior for constants with ambiguous typing (ex. [`Constant::Int`], which may be
+    /// signed or unsigned).
+    ///
+    /// # Panics
+    ///
+    /// Panics if the compared type is ambiguous and `cmp_type` describes a nonsensical type. For
+    /// example, if `left` and `right` are [`Constant::Int`], `cmp_type.kind()` must be either
+    /// [`Int`](ty::Int) or [`Uint`](ty::Uint).
     pub fn partial_cmp(tcx: TyCtxt<'_>, cmp_type: Ty<'_>, left: &Self, right: &Self) -> Option<Ordering> {
         match (left, right) {
             (Self::Str(ls), Self::Str(rs)) => Some(ls.cmp(rs)),
@@ -275,6 +285,8 @@ impl Constant {
         }
     }
 
+    /// Consume [`Constant::Ref`], removing all references to return the contained expression, e.g.
+    /// `&&T` -> `T`.
     #[must_use]
     pub fn peel_refs(mut self) -> Self {
         while let Constant::Ref(r) = self {
@@ -293,6 +305,8 @@ impl Constant {
         Self::F128(f.to_bits())
     }
 
+    /// Create a constant representing the minimum value of the type described by `ty`, if one
+    /// is defined.
     pub fn new_numeric_min<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Self> {
         match *ty.kind() {
             ty::Uint(_) => Some(Self::Int(0)),
@@ -314,6 +328,8 @@ impl Constant {
         }
     }
 
+    /// Create a constant representing the maximum value of the type described by `ty`, if one
+    /// is defined.
     pub fn new_numeric_max<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Self> {
         match *ty.kind() {
             ty::Uint(ty) => Some(Self::Int(match ty.normalize(tcx.sess.target.pointer_width) {
@@ -342,6 +358,8 @@ impl Constant {
         }
     }
 
+    /// Checks whether `self` is a numeric of the type `ty` and whether `self` is the minimum value
+    /// of that type.
     pub fn is_numeric_min<'tcx>(&self, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
         match (self, ty.kind()) {
             (&Self::Int(x), &ty::Uint(_)) => x == 0,
@@ -363,6 +381,8 @@ impl Constant {
         }
     }
 
+    /// Checks whether `self` is a numeric of the type `ty` and whether `self` is the maximum value
+    /// of that type.
     pub fn is_numeric_max<'tcx>(&self, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
         match (self, ty.kind()) {
             (&Self::Int(x), &ty::Uint(ty)) => {
@@ -394,6 +414,7 @@ impl Constant {
         }
     }
 
+    /// Checks whether `self` is a floating-point value representing positive infinity.
     pub fn is_pos_infinity(&self) -> bool {
         match *self {
             // FIXME(f16_f128): add f16 and f128 when constants are available
@@ -403,6 +424,7 @@ impl Constant {
         }
     }
 
+    /// Checks whether `self` is a floating-point value representing negative infinity.
     pub fn is_neg_infinity(&self) -> bool {
         match *self {
             // FIXME(f16_f128): add f16 and f128 when constants are available
@@ -450,18 +472,25 @@ pub enum ConstantSource {
     NonLocal,
 }
 impl ConstantSource {
+    /// Checks whether this constant value is determined solely from its expression, and is not
+    /// dependent on another definition.
     pub fn is_local(self) -> bool {
         matches!(self, Self::Local)
     }
 }
 
+/// An integer type (signed or unsigned) with enough bits to represent any integer that can be
+/// represented in Rust.
 #[derive(Copy, Clone, Debug, Eq)]
 pub enum FullInt {
+    /// Signed full int
     S(i128),
+    /// Unsigned full int
     U(u128),
 }
 
 impl FullInt {
+    /// Checks whether the current full int is equal to zero, regardless of whether its signed or unsigned.
     pub fn is_zero(self) -> bool {
         matches!(self, Self::S(0) | Self::U(0))
     }
@@ -591,6 +620,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
         }
     }
 
+    /// Attempts to evaluate the given [pattern expression](PatExpr) as a [`Constant`].
     pub fn eval_pat_expr(&self, pat_expr: &PatExpr<'_>) -> Option<Constant> {
         match &pat_expr.kind {
             PatExprKind::Lit { lit, negated } => {
@@ -621,7 +651,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
     fn expr(&self, e: &Expr<'_>) -> Option<Constant> {
         self.check_ctxt(e.span.ctxt());
         match e.kind {
-            ExprKind::ConstBlock(ConstBlock { body, .. }) => self.expr(&self.tcx.hir_body(body).value),
+            ExprKind::ConstBlock(ConstBlock { body, .. }) => self.expr(self.tcx.hir_body(body).value),
             ExprKind::DropTemps(e) => self.expr(e),
             ExprKind::Path(ref qpath) => self.qpath(qpath, e.hir_id),
             ExprKind::Block(block, _) => {
@@ -694,7 +724,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
     /// leaves the local crate.
     pub fn eval_is_empty(&self, e: &Expr<'_>) -> Option<bool> {
         match e.kind {
-            ExprKind::ConstBlock(ConstBlock { body, .. }) => self.eval_is_empty(&self.tcx.hir_body(body).value),
+            ExprKind::ConstBlock(ConstBlock { body, .. }) => self.eval_is_empty(self.tcx.hir_body(body).value),
             ExprKind::DropTemps(e) => self.eval_is_empty(e),
             ExprKind::Lit(lit) => {
                 if is_direct_expn_of(e.span, sym::cfg).is_some() {
@@ -1097,6 +1127,21 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
     }
 }
 
+/// Converts a [`ConstValue`] to a [`Constant`], if possible.
+///
+/// - If `ty` is an [`Adt`](ty::Adt) describing a struct, returns a [`Constant::Adt`] containing `val`.
+/// - If `val` is a [`Int`](Scalar::Int), `ty` determines the variant of the returned constant:
+///   - [`Bool`](ty::Bool) → [`Constant::Bool`]
+///   - [`Uint`](ty::Uint)/[`Int`](ty::Int) → [`Constant::Int`]
+///   - [`Float`](ty::Float) → [`Constant::F16`]/[`Constant::F32`]/[`Constant::F64`]/[`Constant::F128`], depending on
+///     width
+///   - [`RawPtr`](ty::RawPtr) → [`Constant::RawPtr`]
+///   - any other `ty` → `None`
+/// - If `ty` is a [`Ref`](ty::Ref) referring to a [`Str`](ty::Str) (i.e. a `&str`), returns a [`Constant::Str`].
+/// - If `val` is a [`ConstValue::Indirect`] and `ty` is an [`Array`](ty::Array) of [`Float`](ty::Float), returns a
+///   [`Constant::Vec`]
+///
+/// Otherwise, returns `None`.
 pub fn mir_to_const<'tcx>(tcx: TyCtxt<'tcx>, val: ConstValue, ty: Ty<'tcx>) -> Option<Constant> {
     match (val, ty.kind()) {
         (_, &ty::Adt(adt_def, _)) if adt_def.is_struct() => Some(Constant::Adt(val)),
@@ -1181,11 +1226,12 @@ pub fn is_zero_integer_const(cx: &LateContext<'_>, expr: &Expr<'_>, ctxt: Syntax
     integer_const(cx, expr, ctxt) == Some(0)
 }
 
+/// Extracts the [`Expr`] backing a const item's right-hand side, if it has one.
 pub fn const_item_rhs_to_expr<'tcx>(tcx: TyCtxt<'tcx>, ct_rhs: ConstItemRhs<'tcx>) -> Option<&'tcx Expr<'tcx>> {
     match ct_rhs {
-        ConstItemRhs::Body(body_id) => Some(&tcx.hir_body(body_id).value),
+        ConstItemRhs::Body(body_id) => Some(tcx.hir_body(body_id).value),
         ConstItemRhs::Direct(const_arg) => match const_arg.kind {
-            ConstArgKind::Anon(anon) => Some(&tcx.hir_body(anon.body).value),
+            ConstArgKind::Anon(anon) => Some(tcx.hir_body(anon.body).value),
             ConstArgKind::Struct(..)
             | ConstArgKind::Tup(..)
             | ConstArgKind::Literal { .. }

@@ -39,6 +39,7 @@ use hir_def::{
         Pat, PatId, Statement,
     },
     resolver::ValueNs,
+    upvars::{Upvars, UpvarsRef},
 };
 use macros::{TypeFoldable, TypeVisitable};
 use rustc_abi::ExternAbi;
@@ -65,7 +66,6 @@ use crate::{
         Binder, BoundRegion, BoundRegionKind, DbInterner, GenericArgs, Region, Ty, TyKind,
         abi::Safety, infer::traits::ObligationCause, normalize,
     },
-    upvars::{Upvars, UpvarsRef},
 };
 
 pub(crate) mod expr_use_visitor;
@@ -196,7 +196,7 @@ type InferredCaptureInformation = Vec<(Place, CaptureInfo)>;
 
 impl<'db> InferenceContext<'db> {
     pub(crate) fn closure_analyze(&mut self) {
-        let upvars = crate::upvars::upvars_mentioned(self.db, self.store_owner)
+        let upvars = hir_def::upvars::upvars_mentioned(self.db, self.store_owner)
             .unwrap_or(const { &FxHashMap::with_hasher(FxBuildHasher) });
         for root_expr in self.store.expr_roots() {
             self.analyze_closures_in_expr(root_expr, upvars);

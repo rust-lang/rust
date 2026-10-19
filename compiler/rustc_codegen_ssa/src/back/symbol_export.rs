@@ -105,7 +105,13 @@ pub fn reachable_non_generics_helper(tcx: TyCtxt<'_>) -> DefIdMap<SymbolExportIn
                 return None;
             }
 
-            if Instance::mono(tcx, def_id.into()).def.requires_inline(tcx) {
+            let instance = Instance::mono(tcx, def_id.into());
+
+            if tcx.instantiate_and_check_impossible_clauses((instance.def_id(), instance.args)) {
+                return None;
+            }
+
+            if instance.def.requires_inline(tcx) {
                 return None;
             }
 
