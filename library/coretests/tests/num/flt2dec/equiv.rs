@@ -10,6 +10,7 @@ use rand::distr::{Distribution, Uniform};
 
 // Bits 0u16..0x7C00 cover the positive finite-range,
 // with 1u16..0x7C00 for non-zero.
+#[cfg(target_has_reliable_f16)]
 const F16_POS_FIN_RANGE: std::ops::Range<u16> = 1..f16::INFINITY.to_bits();
 
 // Bits 0u32..0x7F80_0000 cover the positive finite-range,
