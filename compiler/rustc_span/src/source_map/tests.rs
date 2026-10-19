@@ -805,8 +805,9 @@ fn filename_for_diagnostics_resolves_parent_dir() {
     let with_parent = filename(&sm, "tests/sub/../helper.rs");
     assert_eq!(sm.filename_for_diagnostics(&with_parent).to_string(), path_str("tests/helper.rs"));
 
+    // No dot segments, so the path comes back verbatim, separators included.
     let clean = filename(&sm, "tests/clean.rs");
-    assert_eq!(sm.filename_for_diagnostics(&clean).to_string(), path_str("tests/clean.rs"));
+    assert_eq!(sm.filename_for_diagnostics(&clean).to_string(), "tests/clean.rs");
 }
 
 #[test]
@@ -820,10 +821,7 @@ fn filename_for_diagnostics_verbose_keeps_parent_dir() {
     });
 
     let with_parent = filename(&sm, "tests/sub/../helper.rs");
-    assert_eq!(
-        sm.filename_for_diagnostics(&with_parent).to_string(),
-        path_str("tests/sub/../helper.rs"),
-    );
+    assert_eq!(sm.filename_for_diagnostics(&with_parent).to_string(), "tests/sub/../helper.rs",);
 }
 
 #[test]
