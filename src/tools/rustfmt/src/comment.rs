@@ -842,13 +842,16 @@ impl<'a> CommentRewrite<'a> {
         // 1) wrap_comments = true is configured
         // 2) The comment is not the start of a markdown header doc comment
         // 3) The comment width exceeds the shape's width
-        // 4) No URLS were found in the comment
+        // 4) No URLs were found in the comment
+        // 5) No inline links were found (the pattern is `](...)`)
+        // 6) The comment is not a table item
         // If this changes, the documentation in ../Configurations.md#wrap_comments
         // should be changed accordingly.
         let should_wrap_comment = self.fmt.config.wrap_comments()
             && !is_markdown_header_doc_comment
             && unicode_str_width(line) > self.fmt.shape.width
             && !has_url(line)
+            && !is_inline_link(line)
             && !is_table_item(line);
 
         if should_wrap_comment {
@@ -977,6 +980,16 @@ fn trim_custom_comment_prefix(s: &str) -> String {
         })
         .collect::<Vec<_>>()
         .join("\n")
+}
+
+/// Returns `true` if the given string includes link-like fragments.
+/// The pattern is `](...)`
+fn is_inline_link(s: &str) -> bool {
+    if let Some(start) = s.find("](") {
+        let after = &s[start + 2..];
+        return after.contains(')');
+    }
+    false
 }
 
 /// Returns `true` if the given string MAY include URLs or alike.
