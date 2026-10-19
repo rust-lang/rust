@@ -1,7 +1,7 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::is_in_test;
-use clippy_utils::source::{snippet, snippet_with_applicability};
+use clippy_utils::source::{SpanExt as _, snippet_with_applicability};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
@@ -127,19 +127,26 @@ impl LateLintPass<'_> for WildcardImports {
             return;
         }
         if let ItemKind::Use(tree) = &item.kind {
-            self.check_use_tree(cx, tree, item.hir_id(), item.owner_id.def_id);
+            self.check_use_tree(cx, tree, item.hir_id(), item.owner_id.def_id, item.span);
         }
     }
 }
 
 impl WildcardImports {
-    fn check_use_tree(&mut self, cx: &LateContext<'_>, tree: &UseTree<'_>, hir_id: HirId, def_id: LocalDefId) {
+    fn check_use_tree(
+        &mut self,
+        cx: &LateContext<'_>,
+        tree: &UseTree<'_>,
+        hir_id: HirId,
+        def_id: LocalDefId,
+        item_span: Span,
+    ) {
         match tree.kind {
             UseKind::Single(_) => return,
             UseKind::Glob => {},
             UseKind::Nested { items } => {
                 for (tree, id, def_id) in items {
-                    self.check_use_tree(cx, tree, *id, *def_id);
+                    self.check_use_tree(cx, tree, *id, *def_id, item_span);
                 }
                 return;
             },
@@ -164,14 +171,26 @@ impl WildcardImports {
                 // `;`. In nested imports, like `use _::{inner::*, _}` there is no `;` and we
                 // can just use the end of the item span
                 let mut span = use_path.span;
-                if snippet(cx, span, "").ends_with(';') {
-                    span = use_path.span.with_hi(span.hi() - BytePos(1));
-                }
-                while !snippet(cx, span, "").ends_with('*') {
-                    span = use_path.span.with_hi(span.hi() + BytePos(1));
+
+                if span.check_text(cx, |s| s.ends_with(';')) {
+                    span = span.with_hi(span.hi() - BytePos(1));
                 }
 
-                (span, false)
+                let Ok(span_until_glob) = cx.sess().source_map().span_extend_while(span, |c| c != '*') else {
+                    return;
+                };
+                let span_with_glob = span_until_glob.with_hi(span_until_glob.hi() + BytePos(1));
+                if !span_with_glob.check_text(cx, |s| s.ends_with('*')) {
+                    return;
+                }
+
+                // For macros, the `*` might belong to unrelated code since `span_extend_while` doesn't know where the
+                // `use` item end, (e.g: a later `a * b`)
+                if !item_span.contains(span_with_glob) {
+                    return;
+                }
+
+                (span_with_glob, false)
             };
 
             let mut imports: Vec<_> = used_imports.iter().map(ToString::to_string).collect();
