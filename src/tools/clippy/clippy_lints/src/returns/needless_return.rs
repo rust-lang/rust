@@ -190,7 +190,6 @@ fn check_final_expr<'tcx>(
                             LintCheck {
                                 tool: Some(Ident { name: sym::clippy, .. }),
                                 lint_name: sym::needless_return | sym::style | sym::all | sym::warnings,
-                                rest: None,
                                 kind: LintCheckKind::Expect,
                                 ..
                             }

@@ -1,8 +1,9 @@
+use rustc_ast::join_path_syms;
 use rustc_attr_ir::AttributeKind;
 use rustc_attr_ir::lint::{LintCheck, LintCheckKind};
 use rustc_attr_ir::target::{AssocCtxt, MethodKind, Target};
 use rustc_lint_defs::builtin::UNUSED_ATTRIBUTES;
-use rustc_span::sym;
+use rustc_span::{Symbol, sym};
 use thin_vec::ThinVec;
 
 use crate::attributes::{AcceptMapping, AttributeParser, AttributeStability};
@@ -52,20 +53,20 @@ impl LintParser {
                     MetaItemOrLitParser::MetaItemParser(p) => {
                         match p.args() {
                             ArgParser::NoArgs => {
-                                let (tool, lint_name, rest) = match &*p.path().0.segments {
+                                let (tool, lint_name) = match &*p.path().0.segments {
                                     [] => unreachable!(),
-                                    [lint_name] => (None, lint_name.ident.name, None),
-                                    [tool, lint_name] => {
-                                        (Some(tool.ident), lint_name.ident.name, None)
-                                    }
-                                    [tool, lint_name, rest @ ..] => {
-                                        let rest = rest
-                                            .iter()
-                                            .map(|s| s.ident.name)
-                                            .collect::<Vec<_>>()
-                                            .into();
-                                        (Some(tool.ident), lint_name.ident.name, Some(rest))
-                                    }
+                                    [lint_name] => (None, lint_name.ident.name),
+                                    [tool, lint_name] => (Some(tool.ident), lint_name.ident.name),
+                                    // Not reachable for any builtin lints,
+                                    // but reachable using `register_tool`.
+                                    [tool, multi_segment_lint_name @ ..] => (
+                                        Some(tool.ident),
+                                        Symbol::intern(&join_path_syms(
+                                            multi_segment_lint_name
+                                                .iter()
+                                                .map(|seg| seg.ident.name),
+                                        )),
+                                    ),
                                 };
 
                                 self.lints.push(LintCheck {
@@ -76,7 +77,6 @@ impl LintParser {
                                     attr_id,
                                     reason,
                                     attr_span,
-                                    rest,
                                 })
                             }
                             // We've found a `reason = "reason"` but we're not the last element.
