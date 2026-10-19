@@ -1,5 +1,5 @@
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-no-std.rs:16:13
+  --> $DIR/no-std.rs:16:13
    |
 LL |     let _ = b != &nan!();
    |             ^^^^^^^^^^^^

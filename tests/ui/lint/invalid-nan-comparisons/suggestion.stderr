@@ -1,5 +1,5 @@
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:10:13
+  --> $DIR/suggestion.rs:10:13
    |
 LL |     let _ = x == f16::NAN;
    |             ^^^^^^^^^^^^^
@@ -12,7 +12,7 @@ LL +     let _ = <f16>::is_nan(x);
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:12:13
+  --> $DIR/suggestion.rs:12:13
    |
 LL |     let _ = x != f16::NAN;
    |             ^^^^^^^^^^^^^
@@ -24,7 +24,7 @@ LL +     let _ = !<f16>::is_nan(x);
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:16:13
+  --> $DIR/suggestion.rs:16:13
    |
 LL |     let _ = x == f32::NAN;
    |             ^^^^^^^^^^^^^
@@ -36,7 +36,7 @@ LL +     let _ = <f32>::is_nan(x);
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:18:13
+  --> $DIR/suggestion.rs:18:13
    |
 LL |     let _ = x != f32::NAN;
    |             ^^^^^^^^^^^^^
@@ -48,7 +48,7 @@ LL +     let _ = !<f32>::is_nan(x);
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:22:13
+  --> $DIR/suggestion.rs:22:13
    |
 LL |     let _ = x == f64::NAN;
    |             ^^^^^^^^^^^^^
@@ -60,7 +60,7 @@ LL +     let _ = <f64>::is_nan(x);
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:24:13
+  --> $DIR/suggestion.rs:24:13
    |
 LL |     let _ = x != f64::NAN;
    |             ^^^^^^^^^^^^^
@@ -72,7 +72,7 @@ LL +     let _ = !<f64>::is_nan(x);
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:28:13
+  --> $DIR/suggestion.rs:28:13
    |
 LL |     let _ = x == f128::NAN;
    |             ^^^^^^^^^^^^^^
@@ -84,7 +84,7 @@ LL +     let _ = <f128>::is_nan(x);
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:30:13
+  --> $DIR/suggestion.rs:30:13
    |
 LL |     let _ = x != f128::NAN;
    |             ^^^^^^^^^^^^^^
@@ -96,7 +96,7 @@ LL +     let _ = !<f128>::is_nan(x);
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:34:8
+  --> $DIR/suggestion.rs:34:8
    |
 LL |     if b != &f32::NAN {}
    |        ^^^^^^^^^^^^^^
@@ -108,7 +108,7 @@ LL +     if !<f32>::is_nan(*b) {}
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:38:8
+  --> $DIR/suggestion.rs:38:8
    |
 LL |     if b != { &f32::NAN } {}
    |        ^^^^^^^^^^^^^^^^^^
@@ -120,7 +120,7 @@ LL +     if !<f32>::is_nan(*b) {}
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:42:9
+  --> $DIR/suggestion.rs:42:9
    |
 LL | /         b != {
 LL | |
@@ -138,7 +138,7 @@ LL +         !<f32>::is_nan(*b);
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:50:8
+  --> $DIR/suggestion.rs:50:8
    |
 LL |     if b != &f64::NAN {}
    |        ^^^^^^^^^^^^^^
@@ -150,7 +150,7 @@ LL +     if !<f64>::is_nan(*b) {}
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:54:8
+  --> $DIR/suggestion.rs:54:8
    |
 LL |     if m != &f64::NAN {
    |        ^^^^^^^^^^^^^^
@@ -162,7 +162,7 @@ LL +     if !<f64>::is_nan(*m) {
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:61:8
+  --> $DIR/suggestion.rs:61:8
    |
 LL |     if unary != &f64::NAN {}
    |        ^^^^^^^^^^^^^^^^^^
@@ -174,7 +174,7 @@ LL +     if !<f64>::is_nan(*unary) {}
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:65:8
+  --> $DIR/suggestion.rs:65:8
    |
 LL |     if block != &f64::NAN {}
    |        ^^^^^^^^^^^^^^^^^^
@@ -186,7 +186,7 @@ LL +     if !<f64>::is_nan(*block) {}
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:69:8
+  --> $DIR/suggestion.rs:69:8
    |
 LL |     if tuple != &f64::NAN {}
    |        ^^^^^^^^^^^^^^^^^^
@@ -198,7 +198,7 @@ LL +     if !<f64>::is_nan(*tuple) {}
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:73:8
+  --> $DIR/suggestion.rs:73:8
    |
 LL |     if arithmetic != &f64::NAN {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^
@@ -210,7 +210,7 @@ LL +     if !<f64>::is_nan(*arithmetic) {}
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:77:8
+  --> $DIR/suggestion.rs:77:8
    |
 LL |     if &x != &f64::NAN {}
    |        ^^^^^^^^^^^^^^^
@@ -222,7 +222,7 @@ LL +     if !<f64>::is_nan(*&x) {}
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:80:13
+  --> $DIR/suggestion.rs:80:13
    |
 LL |     let _ = *p == f64::NAN;
    |             ^^^^^^^^^^^^^^
@@ -234,7 +234,7 @@ LL +     let _ = <f64>::is_nan(*p);
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:82:13
+  --> $DIR/suggestion.rs:82:13
    |
 LL |     let _ = -x == f64::NAN;
    |             ^^^^^^^^^^^^^^
@@ -246,7 +246,7 @@ LL +     let _ = <f64>::is_nan(-x);
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:89:13
+  --> $DIR/suggestion.rs:89:13
    |
 LL |     let _ = 3.3 == f64::NAN;
    |             ^^^^^^^^^^^^^^^
@@ -258,7 +258,7 @@ LL +     let _ = <f64>::is_nan(3.3);
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:92:13
+  --> $DIR/suggestion.rs:92:13
    |
 LL |     let _ = &3.3 != &f64::NAN;
    |             ^^^^^^^^^^^^^^^^^
@@ -270,7 +270,7 @@ LL +     let _ = !<f64>::is_nan(*&3.3);
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:97:13
+  --> $DIR/suggestion.rs:97:13
    |
 LL |     let _ = copied != f64::NAN;
    |             ^^^^^^^^^^^^^^^^^^
@@ -282,7 +282,7 @@ LL +     let _ = !<f64>::is_nan(copied);
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:101:13
+  --> $DIR/suggestion.rs:101:13
    |
 LL |     let _ = ascribed != f64::NAN;
    |             ^^^^^^^^^^^^^^^^^^^^
@@ -294,7 +294,7 @@ LL +     let _ = !<f64>::is_nan(ascribed);
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:106:22
+  --> $DIR/suggestion.rs:106:22
    |
 LL |     let _ = |x: f64| x != f64::NAN;
    |                      ^^^^^^^^^^^^^
@@ -306,7 +306,7 @@ LL +     let _ = |x: f64| !<f64>::is_nan(x);
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:112:13
+  --> $DIR/suggestion.rs:112:13
    |
 LL |     let _ = nan!() == number!();
    |             ^^^^^^^^^^^^^^^^^^^
@@ -318,7 +318,7 @@ LL +     let _ = ::std::primitive::f32::is_nan(number!());
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:114:13
+  --> $DIR/suggestion.rs:114:13
    |
 LL |     let _ = number!() != nan!();
    |             ^^^^^^^^^^^^^^^^^^^
@@ -330,7 +330,7 @@ LL +     let _ = !::std::primitive::f32::is_nan(number!());
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:119:13
+  --> $DIR/suggestion.rs:119:13
    |
 LL |     let _ = x == f64::NAN;
    |             ^^^^^^^^^^^^^
@@ -342,7 +342,7 @@ LL +     let _ = <f64>::is_nan(x);
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:124:8
+  --> $DIR/suggestion.rs:124:8
    |
 LL |     if x != &f32::NAN {}
    |        ^^^^^^^^^^^^^^
@@ -354,7 +354,7 @@ LL +     if !<f32>::is_nan(*x) {}
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:130:13
+  --> $DIR/suggestion.rs:130:13
    |
 LL |     let _ = &x as &f64 == &f64::NAN;
    |             ^^^^^^^^^^^^^^^^^^^^^^^
@@ -366,7 +366,7 @@ LL +     let _ = <f64>::is_nan(*(&x as &f64));
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:132:13
+  --> $DIR/suggestion.rs:132:13
    |
 LL |     let _ = { &{ 3.3 } } != &f64::NAN;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -378,7 +378,7 @@ LL +     let _ = !<f64>::is_nan(*{ &{ 3.3 } });
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:134:13
+  --> $DIR/suggestion.rs:134:13
    |
 LL |     let _ = &&&3.3 == &&&f64::NAN;
    |             ^^^^^^^^^^^^^^^^^^^^^
@@ -390,7 +390,7 @@ LL +     let _ = <f64>::is_nan(***&&&3.3);
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:137:13
+  --> $DIR/suggestion.rs:137:13
    |
 LL |     let _ = &&&f64::NAN != b;
    |             ^^^^^^^^^^^^^^^^
@@ -402,7 +402,7 @@ LL +     let _ = !<f64>::is_nan(***b);
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:140:13
+  --> $DIR/suggestion.rs:140:13
    |
 LL |     let _ = b != &f64::NAN;
    |             ^^^^^^^^^^^^^^
@@ -414,7 +414,7 @@ LL +     let _ = !<f64>::is_nan(*b);
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:143:13
+  --> $DIR/suggestion.rs:143:13
    |
 LL |     let _ = &(<f64>::NAN) == b;
    |             ^^^^^^^^^^^^^^^^^^
@@ -426,7 +426,7 @@ LL +     let _ = <f64>::is_nan(*b);
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:146:13
+  --> $DIR/suggestion.rs:146:13
    |
 LL |     let _ = b != &{ f64::NAN };
    |             ^^^^^^^^^^^^^^^^^^
@@ -438,7 +438,7 @@ LL +     let _ = !<f64>::is_nan(*b);
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:149:13
+  --> $DIR/suggestion.rs:149:13
    |
 LL |     let _ = &{ &{ f64::NAN } } == b;
    |             ^^^^^^^^^^^^^^^^^^^^^^^
@@ -450,7 +450,7 @@ LL +     let _ = <f64>::is_nan(**b);
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:153:13
+  --> $DIR/suggestion.rs:153:13
    |
 LL |     let _ = b != &f16::NAN;
    |             ^^^^^^^^^^^^^^
@@ -462,7 +462,7 @@ LL +     let _ = !<f16>::is_nan(*b);
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:156:13
+  --> $DIR/suggestion.rs:156:13
    |
 LL |     let _ = b == &f128::NAN;
    |             ^^^^^^^^^^^^^^^
@@ -474,7 +474,7 @@ LL +     let _ = <f128>::is_nan(*b);
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:160:13
+  --> $DIR/suggestion.rs:160:13
    |
 LL |     let _ = borrowed!() != &f64::NAN;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -486,7 +486,7 @@ LL +     let _ = !<f64>::is_nan(*borrowed!());
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:170:13
+  --> $DIR/suggestion.rs:170:13
    |
 LL |     let _ = b != &nan!();
    |             ^^^^^^^^^^^^
@@ -498,7 +498,7 @@ LL +     let _ = !::std::primitive::f64::is_nan(*b);
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:181:12
+  --> $DIR/suggestion.rs:181:12
    |
 LL |         if b != &::core::primitive::f64::NAN {}
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -510,7 +510,7 @@ LL +         if !<::core::primitive::f64>::is_nan(*b) {}
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:184:12
+  --> $DIR/suggestion.rs:184:12
    |
 LL |         if c != &Float::NAN {}
    |            ^^^^^^^^^^^^^^^^
@@ -522,7 +522,7 @@ LL +         if !<Float>::is_nan(*c) {}
    |
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-suggestion.rs:187:12
+  --> $DIR/suggestion.rs:187:12
    |
 LL |         if d != &Float::r#NAN {}
    |            ^^^^^^^^^^^^^^^^^^

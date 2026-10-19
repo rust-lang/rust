@@ -1,5 +1,5 @@
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-custom-partial-eq.rs:19:13
+  --> $DIR/custom-partial-eq.rs:19:13
    |
 LL |     let _ = value == f64::NAN;
    |             ^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL |     let _ = value == f64::NAN;
    = note: `#[warn(invalid_nan_comparisons)]` on by default
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-custom-partial-eq.rs:21:13
+  --> $DIR/custom-partial-eq.rs:21:13
    |
 LL |     let _ = f64::NAN != value;
    |             ^^^^^^^^^^^^^^^^^
@@ -16,7 +16,7 @@ LL |     let _ = f64::NAN != value;
    = help: use the `is_nan` method instead
 
 warning: incorrect NaN comparison, NaN cannot be directly compared to itself
-  --> $DIR/invalid-nan-comparison-custom-partial-eq.rs:23:13
+  --> $DIR/custom-partial-eq.rs:23:13
    |
 LL |     let _ = &value != &f64::NAN;
    |             ^^^^^^^^^^^^^^^^^^^
