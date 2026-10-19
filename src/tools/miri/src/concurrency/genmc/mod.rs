@@ -20,6 +20,7 @@ use self::helper::{
 use self::run::GenmcMode;
 use self::thread_id_map::ThreadIdMap;
 use crate::diagnostics::SpanDedupDiagnostic;
+use crate::eval::ExitType;
 use crate::*;
 
 mod config;
@@ -44,12 +45,6 @@ pub enum ExecutionEndResult {
     Continue,
     /// No errors occurred and we are finished.
     Stop,
-}
-
-#[derive(Clone, Copy, Debug)]
-pub enum ExitType {
-    MainThreadFinish,
-    ExitCalled,
 }
 
 /// The exit status of a program.

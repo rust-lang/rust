@@ -19,6 +19,7 @@ use rustc_target::spec::Os;
 use super::alloc::EvalContextExt as _;
 use super::backtrace::EvalContextExt as _;
 use crate::concurrency::GenmcEvalContextExt as _;
+use crate::eval::{ExitType, ProgramExitHandler};
 use crate::helpers::EvalContextExt as _;
 use crate::*;
 
@@ -609,19 +610,17 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Aborting the process.
             "exit" => {
                 // FIXME: This does not have a direct test (#3179).
-                let [code] = &this
+                let [exit_code] = &this
                     .check_shim_sig(shim_sig!(extern "C" fn(i32) -> ()), (link_name, abi, args))?;
-                let code = this.read_scalar(code)?.to_i32()?;
-                if let Some(genmc_ctx) = this.machine.data_race.as_genmc_ref() {
-                    // If there is no error, execution should continue (on a different thread).
-                    genmc_ctx.handle_exit(
-                        this.machine.threads.active_thread(),
-                        code,
-                        crate::concurrency::ExitType::ExitCalled,
-                    )?;
-                    return interp_ok(EmulateItemResult::AlreadyJumped);
-                }
-                throw_machine_stop!(TerminationInfo::Exit { code, leak_check: false });
+                let exit_code = this.read_scalar(exit_code)?.to_i32()?;
+                // Initialize the at-exit state machine.
+                this.replace_active_thread_stack({
+                    let mut state_machine =
+                        ProgramExitHandler::new(exit_code, ExitType::ExitCalled);
+                    Box::new(move |m| state_machine.on_stack_empty(m))
+                });
+                // We "jumped" to the exit handling.
+                return interp_ok(EmulateItemResult::AlreadyJumped);
             }
             "abort" => {
                 // FIXME: This does not have a direct test (#3179).

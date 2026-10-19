@@ -14,7 +14,7 @@ use crate::*;
 /// Details of premature program termination.
 pub enum TerminationInfo {
     Exit {
-        code: i32,
+        exit_code: i32,
         leak_check: bool,
     },
     Abort(String),
@@ -71,7 +71,8 @@ impl fmt::Display for TerminationInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use TerminationInfo::*;
         match self {
-            Exit { code, .. } => write!(f, "the evaluated program completed with exit code {code}"),
+            Exit { exit_code, .. } =>
+                write!(f, "the evaluated program completed with exit code {exit_code}"),
             Abort(msg) => write!(f, "{msg}"),
             Interrupted => write!(f, "interpretation was interrupted"),
             UnsupportedInIsolation(msg) => write!(f, "{msg}"),
@@ -251,7 +252,7 @@ pub fn report_result<'tcx>(
         let info = info.downcast_ref::<TerminationInfo>().expect("invalid MachineStop payload");
         use TerminationInfo::*;
         let title = match info {
-            &Exit { code, leak_check } => return Some((code, leak_check)),
+            &Exit { exit_code, leak_check } => return Some((exit_code, leak_check)),
             Abort(_) => Some("abnormal termination"),
             Interrupted => None,
             UnsupportedInIsolation(_) | Int2PtrWithStrictProvenance | UnsupportedForeignItem(_) =>

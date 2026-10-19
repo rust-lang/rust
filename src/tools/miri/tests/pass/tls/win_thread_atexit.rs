@@ -1,5 +1,6 @@
 //! Ensure that we call Windows TLS callbacks in the local crate.
 //@only-target: windows
+//@revisions: with_exit without_exit
 
 use core::fmt::Write;
 
@@ -17,4 +18,7 @@ unsafe extern "system" fn tls_callback(_h: *const (), _dw_reason: u32, _pv: *con
 
 fn main() {
     std::thread::spawn(|| {});
+    if cfg!(with_exit) {
+        std::process::exit(0);
+    }
 }

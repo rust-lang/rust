@@ -1,6 +1,7 @@
 //! Test the Linux and macOS APIs for thread exit callbacks.
 //@only-target: linux darwin
 //@run-native
+//@revisions: in_thread with_exit without_exit
 
 use std::{ffi, thread};
 
@@ -49,7 +50,7 @@ where
     }
 }
 
-fn main() {
+fn the_test() {
     thread::spawn(|| {
         register(|| println!("dtor 2"));
         register(|| println!("dtor 1"));
@@ -65,4 +66,19 @@ fn main() {
     });
 
     println!("exiting main");
+    if cfg!(with_exit) {
+        std::process::exit(0);
+    }
+}
+
+fn main() {
+    if cfg!(in_thread) {
+        return std::thread::spawn(the_test).join().unwrap();
+    }
+
+    the_test();
+
+    if cfg!(with_exit) {
+        std::process::exit(0);
+    }
 }

@@ -31,7 +31,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
     fn run_on_stack_empty(&mut self) -> InterpResult<'tcx, Poll<()>> {
         let this = self.eval_context_mut();
         let active_thread = this.active_thread_mut();
-        active_thread.origin_span = DUMMY_SP; // reset, the old value no longer applied
+        active_thread.origin_span = DUMMY_SP; // reset, the old value no longer applies
         let mut callback = active_thread
             .on_stack_empty
             .take()
@@ -175,11 +175,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         if !this.step()? {
-            // See if this thread can do something else.
+            // The stack is empty. See if this thread can do something else.
             match this.run_on_stack_empty()? {
                 Poll::Pending => {} // keep going
                 Poll::Ready(()) => {
-                    this.terminate_active_thread(TlsAllocAction::Deallocate)?;
+                    this.terminate_active_thread(/* for_exit */ false)?;
                 }
             }
         }

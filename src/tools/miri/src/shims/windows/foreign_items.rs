@@ -9,6 +9,7 @@ use rustc_target::callconv::FnAbi;
 use rustc_target::spec::Env;
 
 use self::shims::windows::handle::{Handle, PseudoHandle};
+use crate::eval::{ExitType, ProgramExitHandler};
 use crate::shims::os_str::bytes_to_os_str;
 use crate::shims::windows::*;
 use crate::*;
@@ -966,8 +967,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     (link_name, abi, args),
                 )?;
                 // Windows technically uses u32, but we unify everything to a Unix-style i32.
-                let code = this.read_scalar(code)?.to_i32()?;
-                throw_machine_stop!(TerminationInfo::Exit { code, leak_check: false });
+                let exit_code = this.read_scalar(code)?.to_i32()?;
+                // Initialize the at-exit state machine.
+                this.replace_active_thread_stack({
+                    let mut state_machine =
+                        ProgramExitHandler::new(exit_code, ExitType::ExitCalled);
+                    Box::new(move |m| state_machine.on_stack_empty(m))
+                });
+                // We "jumped" to the exit handling.
+                return interp_ok(EmulateItemResult::AlreadyJumped);
             }
             "SystemFunction036" => {
                 // used by getrandom 0.1

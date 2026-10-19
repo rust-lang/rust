@@ -300,11 +300,11 @@ impl<'tcx> PrirodaContext<'tcx> {
         // FIXME: Preserve `TerminationInfo::Exit::leak_check` and run Miri's
         // leak/thread-leak diagnostics once Priroda grows a proper post-exit
         // finalization path. For now, program exit only records the debuggee exit code.
-        let Some(TerminationInfo::Exit { code, .. }) = info.downcast_ref::<TerminationInfo>()
+        let Some(TerminationInfo::Exit { exit_code, .. }) = info.downcast_ref::<TerminationInfo>()
         else {
             return None;
         };
-        Some(*code)
+        Some(*exit_code)
     }
 
     fn stop_at_exception(&mut self, err: InterpErrorInfo<'tcx>) -> StepResult {
