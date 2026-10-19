@@ -116,6 +116,20 @@ macro_rules! t (
 );
 
 #[test]
+#[cfg(windows)]
+fn test_eq_ord_consistency_partially_consumed_prefix() {
+    use core::cmp::Ordering;
+
+    let mut drive = Path::new("C:").components();
+    assert!(matches!(drive.next(), Some(Component::Prefix(_))));
+    let mut unc = Path::new(r"\\server\share").components();
+    assert!(matches!(unc.next(), Some(Component::Prefix(_))));
+
+    assert_ne!(drive, unc);
+    assert_eq!(drive.cmp(&unc), Ordering::Less);
+}
+
+#[test]
 fn into() {
     use std::borrow::Cow;
 
