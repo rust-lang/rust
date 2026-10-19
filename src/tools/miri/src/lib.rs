@@ -8,6 +8,7 @@
     ),
     feature(abort_unwind)
 )]
+#![feature(array_try_from_fn)]
 #![feature(rustc_private)]
 #![feature(dirfd)]
 #![feature(f16)]

@@ -1,5 +1,5 @@
 warning: address resolution failed: $MSG
-  --> tests/pass-dep/libc/libc-socket-invalid-addr.rs:LL:CC
+  --> tests/pass-dep/libc/socket-invalid-addr.rs:LL:CC
    |
 LL |         unsafe { libc::getaddrinfo(node_c_str.as_ptr(), service_c_str.as_ptr(), &hints, &mut res) };
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ error during address resolution

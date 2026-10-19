@@ -321,7 +321,6 @@ trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         metadata: FileMetadata,
         buf_op: &OpTy<'tcx>,
-        buf_type: &str,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
@@ -329,7 +328,7 @@ trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let (created_sec, created_nsec) = metadata.created.unwrap_or((0, 0));
         let (modified_sec, modified_nsec) = metadata.modified.unwrap_or((0, 0));
 
-        let buf = this.deref_pointer_as(buf_op, this.libc_ty_layout(buf_type))?;
+        let buf = this.deref_pointer(buf_op)?;
 
         this.write_int_fields_named(
             &[
@@ -500,7 +499,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 varargs,
                 fn_name,
             )?;
-            let mode = this.read_scalar(mode)?.to_u32()?;
+            let mode = this.read_scalar(&mode)?.to_u32()?;
 
             cfg_select! {
                 unix => {
@@ -689,17 +688,24 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             None => None,
         };
 
-        // Let's see what we get when we open this!
-        options.custom_flags(custom_flags);
-        // Windows does not by itself treat `.` correctly so we do that by hand.
+        // Empty path should consistently error.
+        if path.is_empty() {
+            return this.set_errno_and_return_neg1_i32(LibcError("ENOENT"));
+        }
+        // Windows does not support "." relative to a `Dir` handle, but the empty path works.
         // (https://github.com/rust-lang/rust/issues/163032)
-        let f_or_d = match &dirfd {
-            // Using `try_clone` here means that on the host, we have the same underlying file
-            // description, even when it would be separate natively. That should be fine since
-            // std never gives us an `fs::Dir` whose internal state (e.g. for iteration) matters.
-            Some(dirfd) if path.to_str() == Some(".") => dirfd.dir.try_clone().map(Either::Right),
-            _ => open_file_or_dir(dirfd.as_ref().map(|d| &d.dir), &path, &options),
+        let path = if cfg!(windows) && dirfd.is_some() && path.to_str() == Some(".") {
+            Path::new("")
+        } else {
+            &path
         };
+
+        // Let's see what we get when we open this!
+        let f_or_d = open_file_or_dir(
+            dirfd.as_ref().map(|d| &d.dir),
+            path,
+            options.custom_flags(custom_flags),
+        );
         match f_or_d {
             Err(err) => this.set_errno_and_return_neg1_i32(err),
             Ok(Either::Right(dir)) => {
@@ -924,7 +930,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Err(err) => return this.set_errno_and_return_neg1_i32(err),
         };
 
-        interp_ok(Scalar::from_i32(this.write_stat_buf(metadata, buf_op, "stat")?))
+        interp_ok(Scalar::from_i32(this.write_stat_buf(metadata, buf_op)?))
     }
 
     // `lstat` is used to get symlink metadata.
@@ -952,15 +958,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Err(err) => return this.set_errno_and_return_neg1_i32(err),
         };
 
-        interp_ok(Scalar::from_i32(this.write_stat_buf(metadata, buf_op, "stat")?))
+        interp_ok(Scalar::from_i32(this.write_stat_buf(metadata, buf_op)?))
     }
 
-    fn fstat(
-        &mut self,
-        fd_op: &OpTy<'tcx>,
-        buf_op: &OpTy<'tcx>,
-        buf_type: &str,
-    ) -> InterpResult<'tcx, Scalar> {
+    fn fstat(&mut self, fd_op: &OpTy<'tcx>, buf_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
         if !matches!(
@@ -983,7 +984,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Ok(metadata) => metadata,
             Err(err) => return this.set_errno_and_return_neg1_i32(err),
         };
-        interp_ok(Scalar::from_i32(this.write_stat_buf(metadata, buf_op, buf_type)?))
+        interp_ok(Scalar::from_i32(this.write_stat_buf(metadata, buf_op)?))
     }
 
     fn fstatat(
@@ -1037,7 +1038,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Ok(metadata) => metadata,
             Err(err) => return this.set_errno_and_return_neg1_i32(err),
         };
-        interp_ok(Scalar::from_i32(this.write_stat_buf(metadata, buf_op, "stat")?))
+        interp_ok(Scalar::from_i32(this.write_stat_buf(metadata, buf_op)?))
     }
 
     fn linux_statx(
@@ -2269,20 +2270,18 @@ impl FileMetadata {
                 return interp_ok(Err(LibcError("ENOTDIR")));
             };
 
-            // Windows does not by itself treat `.` correctly so we do that by hand.
+            // Windows does not support "." relative to a `Dir` handle, but the empty path works.
             // (https://github.com/rust-lang/rust/issues/163032)
+            let path =
+                if cfg!(windows) && path.to_str() == Some(".") { Path::new("") } else { path };
             #[cfg(not(bootstrap))]
-            let metadata = if path.to_str() == Some(".") {
-                dir.dir.self_metadata()
-            } else if symlink_nofollow_flag {
+            let metadata = if symlink_nofollow_flag {
                 dir.dir.symlink_metadata(path)
             } else {
                 dir.dir.metadata(path)
             };
             #[cfg(bootstrap)]
-            let metadata = if path.to_str() == Some(".") {
-                dir.dir.metadata()
-            } else if symlink_nofollow_flag {
+            let metadata = if symlink_nofollow_flag {
                 dir.fallback.join(path).symlink_metadata()
             } else {
                 dir.fallback.join(path).metadata()

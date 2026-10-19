@@ -25,7 +25,6 @@ mod utils;
 
 #[path = "../../utils/libc.rs"]
 mod libc_utils;
-
 use libc_utils::{errno_check, errno_result};
 
 fn main() {
@@ -479,6 +478,7 @@ fn test_open_exclusive() {
 fn test_openat() {
     let path = utils::prepare("miri_test_openat");
     fs::create_dir(&path).unwrap();
+    fs::create_dir(&path.join("dir")).unwrap();
     fs::write(path.join("file.txt"), b"data").unwrap();
     let cpath = utils::into_c_string(&path);
 
@@ -497,14 +497,26 @@ fn test_openat() {
         .unwrap_err();
     assert_eq!(err.raw_os_error().unwrap(), libc::ENOTDIR);
 
-    // Open dir relative to dirfd. Even without O_DIRECTORY.
+    // Open dir relative to handle.
+    let dirfd2 =
+        errno_result(unsafe { libc::openat(dirfd, c"dir".as_ptr(), libc::O_DIRECTORY) }).unwrap();
+    errno_check(unsafe { libc::close(dirfd2) });
+
+    // Re-open dir relative to itself. Even without O_DIRECTORY.
     let dirfd2 =
         errno_result(unsafe { libc::openat(dirfd, c".".as_ptr(), libc::O_RDONLY) }).unwrap();
+    let fd =
+        errno_result(unsafe { libc::openat(dirfd2, c"file.txt".as_ptr(), libc::O_RDWR) }).unwrap();
+    errno_check(unsafe { libc::close(fd) });
     errno_check(unsafe { libc::close(dirfd2) });
+
+    // Empty path errors.
+    let err =
+        errno_result(unsafe { libc::openat(dirfd, c"".as_ptr(), libc::O_RDONLY) }).unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::ENOENT);
 
     // Open things via symlink.
     if utils::have_symlink_permission() {
-        fs::create_dir(path.join("dir")).unwrap();
         fs::symlink("dir", path.join("dirlink")).unwrap();
         fs::symlink("../file.txt", path.join("dir/filelink")).unwrap();
         let dirfd2 =
