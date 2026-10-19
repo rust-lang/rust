@@ -775,6 +775,7 @@ impl fmt::Display for BoundConstness {
 }
 
 #[derive(Clone, Copy, Hash, PartialEq, Debug)]
+#[derive(GenericTypeVisitable)]
 #[cfg_attr(
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, StableHash_NoContext)
@@ -797,6 +798,25 @@ bitflags::bitflags! {
 }
 
 impl CompressedTraitRefs {
+    pub fn get_and_mask_least_significant_bit(&mut self) -> Option<Self> {
+        let bs = self.bits();
+        if bs == 0 {
+            return None;
+        }
+
+        // `bs & -bs` (but for unsigned numbers), to get only the LSB set
+        // This blog helped me: https://lemire.me/blog/2018/02/21/iterating-over-set-bits-quickly/.
+        // This is the result we're looking for, but we want to still mask it out of self.
+        let only_lsb_set = bs & (!bs + 1);
+
+        // To mask it, we xor it out of bs, and put it into self.
+        // NOTE: this can never fail by the arithmetic we did above.
+        *self = CompressedTraitRefs::from_bits(bs ^ only_lsb_set).unwrap();
+
+        // Construct the one with only a single bit set.
+        Some(CompressedTraitRefs::from_bits(only_lsb_set).unwrap())
+    }
+
     #[inline]
     pub fn from_lang_item(lang_item: SolverTraitLangItem) -> Option<Self> {
         Some(match lang_item {
