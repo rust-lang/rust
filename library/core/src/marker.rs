@@ -11,7 +11,7 @@ mod variance;
 #[unstable(feature = "phantom_variance_markers", issue = "135806")]
 pub use self::variance::{
     PhantomContravariant, PhantomContravariantLifetime, PhantomCovariant, PhantomCovariantLifetime,
-    PhantomInvariant, PhantomInvariantLifetime, Variance, variance,
+    PhantomInvariant, PhantomInvariantLifetime,
 };
 use crate::cell::UnsafeCell;
 use crate::clone::TrivialClone;
