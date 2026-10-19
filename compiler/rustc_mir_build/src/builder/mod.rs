@@ -904,52 +904,53 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let tcx = self.tcx;
         let mut upvar_owner = None;
-        self.upvars = tcx
-            .closure_captures(self.def_id)
-            .iter()
-            .zip_eq(capture_tys)
-            .enumerate()
-            .map(|(i, (captured_place, ty))| {
-                let name = captured_place.to_symbol();
+        self.upvars =
+            tcx.closure_captures(self.def_id)
+                .iter()
+                .zip_eq(capture_tys)
+                .enumerate()
+                .map(|(i, (captured_place, ty))| {
+                    let name = captured_place.to_symbol();
 
-                let capture = captured_place.info.capture_kind;
-                let var_id = match captured_place.place.base {
-                    HirPlaceBase::Upvar(upvar_id) => upvar_id.var_path.hir_id,
-                    _ => bug!("Expected an upvar"),
-                };
-                let upvar_base = upvar_owner.get_or_insert(var_id.owner);
-                assert_eq!(*upvar_base, var_id.owner);
-                let var_id = var_id.local_id;
+                    let capture = captured_place.info.capture_kind;
+                    let var_id = match captured_place.place.base {
+                        HirPlaceBase::Upvar(upvar_id) => upvar_id.var_path.hir_id,
+                        _ => bug!("Expected an upvar"),
+                    };
+                    let upvar_base = upvar_owner.get_or_insert(var_id.owner);
+                    assert_eq!(*upvar_base, var_id.owner);
+                    let var_id = var_id.local_id;
 
-                let mutability = captured_place.mutability;
+                    let mutability = captured_place.mutability;
 
-                let mut projs = closure_env_projs.clone();
-                projs.push(ProjectionElem::Field(FieldIdx::new(i), ty));
-                match capture {
-                    ty::UpvarCapture::ByValue
-                    | ty::UpvarCapture::ByUse
-                    | ty::UpvarCapture::ByCopy => {}
-                    ty::UpvarCapture::ByRef(..) => {
-                        projs.push(ProjectionElem::Deref);
-                    }
-                };
+                    let mut projs = closure_env_projs.clone();
+                    projs.push(ProjectionElem::Field(FieldIdx::new(i), ty));
+                    match capture {
+                        ty::UpvarCapture::ByValue | ty::UpvarCapture::ByUse => {}
+                        // FIXME(cromulent_copy_closure_captures): remove this hack once `marker_trait_attr` is usable
+                        ty::UpvarCapture::ByCopy => projs
+                            .push(ProjectionElem::Field(FieldIdx::ZERO, captured_place.place.ty())),
+                        ty::UpvarCapture::ByRef(..) => {
+                            projs.push(ProjectionElem::Deref);
+                        }
+                    };
 
-                let use_place = Place {
-                    local: ty::CAPTURE_STRUCT_LOCAL,
-                    projection: tcx.mk_place_elems(&projs),
-                };
-                self.var_debug_info.push(VarDebugInfo {
-                    name,
-                    source_info: SourceInfo::outermost(captured_place.var_ident.span),
-                    value: VarDebugInfoContents::Place(use_place),
-                    composite: None,
-                    argument_index: None,
-                });
+                    let use_place = Place {
+                        local: ty::CAPTURE_STRUCT_LOCAL,
+                        projection: tcx.mk_place_elems(&projs),
+                    };
+                    self.var_debug_info.push(VarDebugInfo {
+                        name,
+                        source_info: SourceInfo::outermost(captured_place.var_ident.span),
+                        value: VarDebugInfoContents::Place(use_place),
+                        composite: None,
+                        argument_index: None,
+                    });
 
-                let capture = Capture { captured_place, use_place, mutability };
-                (var_id, capture)
-            })
-            .collect();
+                    let capture = Capture { captured_place, use_place, mutability };
+                    (var_id, capture)
+                })
+                .collect();
     }
 
     fn args_and_body(

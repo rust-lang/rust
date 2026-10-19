@@ -18,6 +18,10 @@ trait Sized: MetaSized {}
 #[lang = "copy"]
 trait Copy {}
 
+#[lang = "copy_closure_capture_container"]
+struct CopyClosureCaptureContainer<T: Copy>(T);
+impl<T: Copy> Copy for CopyClosureCaptureContainer<T> {}
+
 #[lang = "legacy_receiver"]
 trait LegacyReceiver: PointeeSized {}
 

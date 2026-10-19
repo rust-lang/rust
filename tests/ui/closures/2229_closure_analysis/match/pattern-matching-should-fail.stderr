@@ -17,23 +17,30 @@ LL |     let c2 = || match x { _ => () };
 error[E0381]: used binding `variant` isn't initialized
   --> $DIR/pattern-matching-should-fail.rs:25:13
    |
-LL |     let variant: !;
-   |         ------- binding declared here but left uninitialized
-LL |     let c = || {
-   |             ^^ `variant` used here but it isn't initialized
-LL |
-LL |         match variant {
-   |               ------- use occurs due to use in closure
+LL |       let variant: !;
+   |           ------- binding declared here but left uninitialized
+LL |       let c = || {
+   |  _____________^
+LL | |
+LL | |         match variant {
+LL | |             SingleVariant::Points(_) => {}
+LL | |         }
+LL | |     };
+   | |_____^ `variant` used here but it isn't initialized
 
 error[E0381]: used binding `variant` isn't initialized
   --> $DIR/pattern-matching-should-fail.rs:37:13
    |
-LL |     let variant: !;
-   |         ------- binding declared here but left uninitialized
-LL |     let c = || {
-   |             ^^ `variant` used here but it isn't initialized
-LL |         match variant {
-   |               ------- use occurs due to use in closure
+LL |       let variant: !;
+   |           ------- binding declared here but left uninitialized
+LL |       let c = || {
+   |  _____________^
+LL | |         match variant {
+LL | |             SingleVariant::Points(a) => {
+LL | |                 println!("{:?}", a);
+...  |
+LL | |     };
+   | |_____^ `variant` used here but it isn't initialized
 
 error[E0381]: used binding `g` isn't initialized
   --> $DIR/pattern-matching-should-fail.rs:52:15

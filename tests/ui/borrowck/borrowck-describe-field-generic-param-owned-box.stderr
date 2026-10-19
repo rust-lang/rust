@@ -1,5 +1,5 @@
 error[E0507]: cannot move out of `self.0` which is behind a mutable reference
-  --> $DIR/borrowck-describe-field-generic-param-owned-box.rs:52:50
+  --> $DIR/borrowck-describe-field-generic-param-owned-box.rs:55:50
    |
 LL |             free(transmute::<NonNull<T>, *mut _>(self.0));
    |                                                  ^^^^^^ move occurs because `self.0` has type `NonNull<T>`, which does not implement the `Copy` trait

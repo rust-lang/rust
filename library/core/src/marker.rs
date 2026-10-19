@@ -18,6 +18,7 @@ use crate::clone::TrivialClone;
 use crate::cmp;
 use crate::fmt::Debug;
 use crate::hash::{Hash, Hasher};
+use crate::panic::{RefUnwindSafe, UnwindSafe};
 use crate::pin::UnsafePinned;
 
 // NOTE: for consistent error messages between `core` and `minicore`, all `diagnostic` attributes
@@ -1386,3 +1387,23 @@ pub trait CoerceShared<Target: Copy>: Reborrow {
 pub macro CoerceShared($item:item) {
     /* compiler built-in */
 }
+
+// FIXME(cromulent_copy_closure_captures): remove this hack once `marker_trait_attr` is usable
+/// Closure capture implementation detail, make sure they have the correct auto traits.
+#[expect(missing_debug_implementations)]
+#[lang = "copy_closure_capture_container"]
+#[doc(hidden)]
+#[unstable(feature = "cromulent_copy_closure_capture_internals", issue = "none")]
+#[derive(Clone, Copy)]
+#[repr(transparent)]
+pub struct CopyClosureCaptureContainer<T: Copy>(T);
+
+#[unstable(feature = "cromulent_copy_closure_capture_internals", issue = "none")]
+impl<T: Copy> Unpin for CopyClosureCaptureContainer<T> {}
+
+#[unstable(feature = "cromulent_copy_closure_capture_internals", issue = "none")]
+// SAFETY: `Copy` allows moving out of a shared reference
+unsafe impl<T: Copy + Sync> Send for CopyClosureCaptureContainer<T> {}
+
+#[unstable(feature = "cromulent_copy_closure_capture_internals", issue = "none")]
+impl<T: Copy + RefUnwindSafe> UnwindSafe for CopyClosureCaptureContainer<T> {}

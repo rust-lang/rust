@@ -9,25 +9,29 @@ fn foo::{closure#0}(_1: &mut {async fn body of foo()}) -> () {
     let _3: &u32;
     let mut _9: {async block@$DIR/async_fn.rs:21:13: 21:18};
     let mut _10: {async block@$DIR/async_fn.rs:21:13: 21:18};
-    let mut _12: ();
-    let _13: ();
-    let mut _14: std::task::Poll<u32>;
-    let mut _15: std::pin::Pin<&mut {async block@$DIR/async_fn.rs:21:13: 21:18}>;
-    let mut _16: &mut {async block@$DIR/async_fn.rs:21:13: 21:18};
-    let mut _17: &mut {async block@$DIR/async_fn.rs:21:13: 21:18};
-    let mut _18: &mut std::task::Context<'_>;
-    let mut _19: &mut std::task::Context<'_>;
-    let mut _20: std::future::ResumeTy;
-    let mut _21: isize;
-    let mut _23: !;
+    let mut _11: std::marker::CopyClosureCaptureContainer<&u32>;
+    let mut _12: &u32;
+    let mut _13: std::marker::CopyClosureCaptureContainer<&u32>;
+    let mut _14: &u32;
+    let mut _16: ();
+    let _17: ();
+    let mut _18: std::task::Poll<u32>;
+    let mut _19: std::pin::Pin<&mut {async block@$DIR/async_fn.rs:21:13: 21:18}>;
+    let mut _20: &mut {async block@$DIR/async_fn.rs:21:13: 21:18};
+    let mut _21: &mut {async block@$DIR/async_fn.rs:21:13: 21:18};
+    let mut _22: &mut std::task::Context<'_>;
+    let mut _23: &mut std::task::Context<'_>;
     let mut _24: std::future::ResumeTy;
-    let mut _25: ();
-    let mut _28: u32;
-    let mut _29: u32;
-    let mut _30: u32;
-    let mut _31: u32;
+    let mut _25: isize;
+    let mut _27: !;
+    let mut _28: std::future::ResumeTy;
+    let mut _29: ();
     let mut _32: u32;
     let mut _33: u32;
+    let mut _34: u32;
+    let mut _35: u32;
+    let mut _36: u32;
+    let mut _37: u32;
     scope 1 {
         debug x => (((*_1) as variant#3).0: &u32);
         let _4: u32;
@@ -43,23 +47,23 @@ fn foo::{closure#0}(_1: &mut {async fn body of foo()}) -> () {
                     scope 5 {
                         debug z => _7;
                         let _8: u32;
-                        let mut _11: {async block@$DIR/async_fn.rs:21:13: 21:18};
+                        let mut _15: {async block@$DIR/async_fn.rs:21:13: 21:18};
                         scope 6 {
                             debug y => _8;
-                            let _26: u32;
+                            let _30: u32;
                             scope 9 {
-                                debug a => _26;
-                                let _27: &u32;
+                                debug a => _30;
+                                let _31: &u32;
                                 scope 10 {
-                                    debug a => _27;
+                                    debug a => _31;
                                 }
                             }
                         }
                         scope 7 {
                             debug __awaitee => (((*_1) as variant#3).3: {async block@$DIR/async_fn.rs:21:13: 21:18});
-                            let _22: u32;
+                            let _26: u32;
                             scope 8 {
-                                debug result => _22;
+                                debug result => _26;
                             }
                         }
                     }
@@ -69,13 +73,13 @@ fn foo::{closure#0}(_1: &mut {async fn body of foo()}) -> () {
     }
 
     bb0: {
-        _33 = discriminant((*_1));
-        switchInt(move _33) -> [0: bb9, 3: bb10, otherwise: bb11];
+        _37 = discriminant((*_1));
+        switchInt(move _37) -> [0: bb9, 3: bb10, otherwise: bb11];
     }
 
     bb1: {
-        StorageDead(_25);
-        StorageDead(_24);
+        StorageDead(_29);
+        StorageDead(_28);
         drop((((*_1) as variant#3).3: {async block@$DIR/async_fn.rs:21:13: 21:18})) -> [return: bb2, unwind: bb6];
     }
 
@@ -132,8 +136,8 @@ fn foo::{closure#0}(_1: &mut {async fn body of foo()}) -> () {
         StorageLive(_7);
         StorageLive(_8);
         StorageLive(_9);
-        StorageLive(_24);
-        StorageLive(_25);
+        StorageLive(_28);
+        StorageLive(_29);
         goto -> bb1;
     }
 
