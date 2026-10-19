@@ -39,15 +39,15 @@ define-function: (
 
 call-function: ("check-colors", {
     "theme": "ayu",
-    "background": "transparent",
+    "background": "#1d1f20",
     "background_selected": "#141920",
-    "background_hover": "transparent",
+    "background_hover": "#141920",
     "border_bottom": "0px none #c5c5c5",
-    "border_bottom_selected": "1px solid #ffb44c",
-    "border_bottom_hover": "1px solid rgba(242, 151, 24, 0.3)",
-    "border_top": "0px none #c5c5c5",
-    "border_top_selected": "0px none #c5c5c5",
-    "border_top_hover": "0px none #c5c5c5",
+    "border_bottom_selected": "0px none #c5c5c5",
+    "border_bottom_hover": "0px none #c5c5c5",
+    "border_top": "2px solid #1d1f20",
+    "border_top_selected": "2px solid #ffb44c",
+    "border_top_hover": "2px solid #ffb44c",
 })
 call-function: ("check-colors", {
     "theme": "dark",

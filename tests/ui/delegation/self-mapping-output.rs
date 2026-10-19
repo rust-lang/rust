@@ -17,7 +17,6 @@ mod success {
     impl Trait for W {
         reuse Trait::method { self.0 }
         reuse Trait::r#static;
-        //~^ WARN: function cannot return without recursing [unconditional_recursion]
         reuse Trait::raw_S { self.0 }
     }
 
@@ -45,7 +44,6 @@ mod success_non_field {
     impl Trait for W {
         reuse Trait::method { S }
         reuse Trait::r#static;
-        //~^ WARN: function cannot return without recursing [unconditional_recursion]
         reuse Trait::raw_S { S }
     }
 
@@ -81,7 +79,6 @@ mod success_generics {
     impl<'a, T, const N: usize> Trait<'a, T, N> for W<'a, 'static, T, (), N, 123> {
         reuse Trait::<'a, T, N>::method { self.0 }
         reuse Trait::<'a, T, N>::r#static;
-        //~^ WARN: function cannot return without recursing [unconditional_recursion]
         reuse Trait::<'a, T, N>::raw_S { self.0 }
     }
 
@@ -109,9 +106,7 @@ mod no_constructor {
     impl Trait for W {
         reuse Trait::method { self.0 }
         //~^ ERROR: no field `0` on type `&no_constructor::W`
-        //~| ERROR: struct `no_constructor::W` has no field named `0`
         reuse Trait::r#static;
-        //~^ WARN: function cannot return without recursing [unconditional_recursion]
         reuse Trait::raw_S { self.0 }
         //~^ ERROR: no field `0` on type `&no_constructor::W`
     }
@@ -119,7 +114,6 @@ mod no_constructor {
     impl W {
         reuse Trait::method { self.0 }
         //~^ ERROR: no field `0` on type `&no_constructor::W`
-        //~| ERROR: struct `no_constructor::W` has no field named `0`
         reuse Trait::r#static;
         reuse Trait::raw_S { self.0 }
         //~^ ERROR: no field `0` on type `&no_constructor::W`
@@ -142,16 +136,17 @@ mod more_than_one_field {
     struct W(S, S, S);
     impl Trait for W {
         reuse Trait::method { self.0 }
-        //~^ ERROR: missing fields `1` and `2` in initializer of `more_than_one_field::W`
+        //~^ ERROR: missing fields `0`, `1` and `2` in initializer of `more_than_one_field::W`
         reuse Trait::r#static;
-        //~^ WARN: function cannot return without recursing [unconditional_recursion]
+        //~^ ERROR: missing fields `0`, `1` and `2` in initializer of `more_than_one_field::W`
         reuse Trait::raw_S { self.0 }
     }
 
     impl W {
         reuse Trait::method { self.0 }
-        //~^ ERROR: missing fields `1` and `2` in initializer of `more_than_one_field::W`
+        //~^ ERROR: missing fields `0`, `1` and `2` in initializer of `more_than_one_field::W`
         reuse Trait::r#static;
+        //~^ ERROR: missing fields `0`, `1` and `2` in initializer of `more_than_one_field::W`
         reuse Trait::raw_S { self.0 }
     }
 }
@@ -302,7 +297,6 @@ mod wrong_target_expression {
         //~^ ERROR: mismatched types
 
         reuse Trait::r#static;
-        //~^ WARN: function cannot return without recursing [unconditional_recursion]
         reuse Trait::raw_S { F }
     }
 
@@ -337,7 +331,6 @@ mod privacy {
         //~^ ERROR: field `0` of struct `private::W` is private
 
         reuse Trait::r#static;
-        //~^ WARN: function cannot return without recursing [unconditional_recursion]
 
         reuse Trait::raw_S { self.0 }
         //~^ ERROR: field `0` of struct `private::W` is private

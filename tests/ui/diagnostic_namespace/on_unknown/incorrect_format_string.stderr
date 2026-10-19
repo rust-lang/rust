@@ -52,7 +52,7 @@ LL | use std::does_not_exist6;
    |          |
    |          no `does_not_exist6` in the root
    |
-   = note: foo {Self} {ItemContext} {Trait} {A}
+   = note: foo {Self} {item_context} {Trait} {A}
 
 warning: positional arguments are not permitted in diagnostic attributes
   --> $DIR/incorrect_format_string.rs:3:42
@@ -69,7 +69,7 @@ warning: this format argument is not allowed in `#[diagnostic::on_unknown]`
 LL | #[diagnostic::on_unknown(message = "foo {A}")]
    |                                          ^ remove this format argument
    |
-   = note: only `This` is allowed as a format argument, referring to the failed import
+   = note: only `this` is allowed as a format argument, referring to the failed import
 
 warning: positional arguments are not permitted in diagnostic attributes
   --> $DIR/incorrect_format_string.rs:13:40
@@ -85,7 +85,7 @@ warning: this format argument is not allowed in `#[diagnostic::on_unknown]`
 LL | #[diagnostic::on_unknown(label = "foo {A}")]
    |                                        ^ remove this format argument
    |
-   = note: only `This` is allowed as a format argument, referring to the failed import
+   = note: only `this` is allowed as a format argument, referring to the failed import
 
 warning: positional arguments are not permitted in diagnostic attributes
   --> $DIR/incorrect_format_string.rs:23:39
@@ -98,34 +98,34 @@ LL | #[diagnostic::on_unknown(note = "foo {}")]
 warning: this format argument is not allowed in `#[diagnostic::on_unknown]`
   --> $DIR/incorrect_format_string.rs:28:39
    |
-LL | #[diagnostic::on_unknown(note = "foo {Self} {ItemContext} {Trait} {A}")]
+LL | #[diagnostic::on_unknown(note = "foo {Self} {item_context} {Trait} {A}")]
    |                                       ^^^^ remove this format argument
    |
-   = note: only `This` is allowed as a format argument, referring to the failed import
+   = note: only `this` is allowed as a format argument, referring to the failed import
 
 warning: this format argument is not allowed in `#[diagnostic::on_unknown]`
   --> $DIR/incorrect_format_string.rs:28:46
    |
-LL | #[diagnostic::on_unknown(note = "foo {Self} {ItemContext} {Trait} {A}")]
-   |                                              ^^^^^^^^^^^ remove this format argument
+LL | #[diagnostic::on_unknown(note = "foo {Self} {item_context} {Trait} {A}")]
+   |                                              ^^^^^^^^^^^^ remove this format argument
    |
-   = note: only `This` is allowed as a format argument, referring to the failed import
+   = note: only `this` is allowed as a format argument, referring to the failed import
 
 warning: this format argument is not allowed in `#[diagnostic::on_unknown]`
-  --> $DIR/incorrect_format_string.rs:28:60
+  --> $DIR/incorrect_format_string.rs:28:61
    |
-LL | #[diagnostic::on_unknown(note = "foo {Self} {ItemContext} {Trait} {A}")]
-   |                                                            ^^^^^ remove this format argument
+LL | #[diagnostic::on_unknown(note = "foo {Self} {item_context} {Trait} {A}")]
+   |                                                             ^^^^^ remove this format argument
    |
-   = note: only `This` is allowed as a format argument, referring to the failed import
+   = note: only `this` is allowed as a format argument, referring to the failed import
 
 warning: this format argument is not allowed in `#[diagnostic::on_unknown]`
-  --> $DIR/incorrect_format_string.rs:28:68
+  --> $DIR/incorrect_format_string.rs:28:69
    |
-LL | #[diagnostic::on_unknown(note = "foo {Self} {ItemContext} {Trait} {A}")]
-   |                                                                    ^ remove this format argument
+LL | #[diagnostic::on_unknown(note = "foo {Self} {item_context} {Trait} {A}")]
+   |                                                                     ^ remove this format argument
    |
-   = note: only `This` is allowed as a format argument, referring to the failed import
+   = note: only `this` is allowed as a format argument, referring to the failed import
 
 error: aborting due to 6 previous errors; 9 warnings emitted
 

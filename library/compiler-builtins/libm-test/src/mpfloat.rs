@@ -355,6 +355,7 @@ libm_macros::for_each_function! {
     fn_extra: match MACRO_FN_NAME {
         // Remap function names that are different between mpfr and libm
         expm1 | expm1f => exp_m1,
+        exp2m1 | exp2m1f => exp2_m1,
         fabs | fabsf => abs,
         fdim | fdimf | fdimf16 | fdimf128  => positive_diff,
         fmaf16 | fma | fmaf | fmaf128 => mul_add,

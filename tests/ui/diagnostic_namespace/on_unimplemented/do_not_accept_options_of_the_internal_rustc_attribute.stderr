@@ -66,7 +66,7 @@ LL |     message = "{from_desugaring}{direct}{cause}{integral}{integer}{struct}{
 warning: there is no parameter `float` on trait `Baz`
   --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:38:15
    |
-LL |     label = "{float}{_Self}{crate_local}{This}{ItemContext}{This:path}{This:resolved}"
+LL |     label = "{float}{_Self}{crate_local}{this}{item_context}{this:path}{this:resolved}"
    |               ^^^^^
    |
    = help: expect either a generic argument name or `{Self}` as format argument
@@ -74,7 +74,7 @@ LL |     label = "{float}{_Self}{crate_local}{This}{ItemContext}{This:path}{This
 warning: there is no parameter `_Self` on trait `Baz`
   --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:38:22
    |
-LL |     label = "{float}{_Self}{crate_local}{This}{ItemContext}{This:path}{This:resolved}"
+LL |     label = "{float}{_Self}{crate_local}{this}{item_context}{this:path}{this:resolved}"
    |                      ^^^^^
    |
    = help: expect either a generic argument name or `{Self}` as format argument
@@ -82,40 +82,40 @@ LL |     label = "{float}{_Self}{crate_local}{This}{ItemContext}{This:path}{This
 warning: there is no parameter `crate_local` on trait `Baz`
   --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:38:29
    |
-LL |     label = "{float}{_Self}{crate_local}{This}{ItemContext}{This:path}{This:resolved}"
+LL |     label = "{float}{_Self}{crate_local}{this}{item_context}{this:path}{this:resolved}"
    |                             ^^^^^^^^^^^
    |
    = help: expect either a generic argument name or `{Self}` as format argument
 
-warning: there is no parameter `This` on trait `Baz`
+warning: there is no parameter `this` on trait `Baz`
   --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:38:42
    |
-LL |     label = "{float}{_Self}{crate_local}{This}{ItemContext}{This:path}{This:resolved}"
+LL |     label = "{float}{_Self}{crate_local}{this}{item_context}{this:path}{this:resolved}"
    |                                          ^^^^
    |
    = help: expect either a generic argument name or `{Self}` as format argument
 
-warning: there is no parameter `ItemContext` on trait `Baz`
+warning: there is no parameter `item_context` on trait `Baz`
   --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:38:48
    |
-LL |     label = "{float}{_Self}{crate_local}{This}{ItemContext}{This:path}{This:resolved}"
-   |                                                ^^^^^^^^^^^
+LL |     label = "{float}{_Self}{crate_local}{this}{item_context}{this:path}{this:resolved}"
+   |                                                ^^^^^^^^^^^^
    |
    = help: expect either a generic argument name or `{Self}` as format argument
 
-warning: there is no parameter `This` on trait `Baz`
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:38:61
+warning: there is no parameter `this` on trait `Baz`
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:38:62
    |
-LL |     label = "{float}{_Self}{crate_local}{This}{ItemContext}{This:path}{This:resolved}"
-   |                                                             ^^^^
+LL |     label = "{float}{_Self}{crate_local}{this}{item_context}{this:path}{this:resolved}"
+   |                                                              ^^^^
    |
    = help: expect either a generic argument name or `{Self}` as format argument
 
-warning: there is no parameter `This` on trait `Baz`
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:38:72
+warning: there is no parameter `this` on trait `Baz`
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:38:73
    |
-LL |     label = "{float}{_Self}{crate_local}{This}{ItemContext}{This:path}{This:resolved}"
-   |                                                                        ^^^^
+LL |     label = "{float}{_Self}{crate_local}{this}{item_context}{this:path}{this:resolved}"
+   |                                                                         ^^^^
    |
    = help: expect either a generic argument name or `{Self}` as format argument
 
@@ -162,16 +162,16 @@ LL | #[diagnostic::on_unimplemented(message = "Not allowed to apply it on a impl
    = note: `#[warn(misplaced_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
 
 warning: format specifiers are not permitted in diagnostic attributes
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:38:65
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:38:66
    |
-LL |     label = "{float}{_Self}{crate_local}{This}{ItemContext}{This:path}{This:resolved}"
-   |                                                                 ^^^^^ remove this format specifier
+LL |     label = "{float}{_Self}{crate_local}{this}{item_context}{this:path}{this:resolved}"
+   |                                                                  ^^^^^ remove this format specifier
 
 warning: format specifiers are not permitted in diagnostic attributes
-  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:38:76
+  --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:38:77
    |
-LL |     label = "{float}{_Self}{crate_local}{This}{ItemContext}{This:path}{This:resolved}"
-   |                                                                            ^^^^^^^^^ remove this format specifier
+LL |     label = "{float}{_Self}{crate_local}{this}{item_context}{this:path}{this:resolved}"
+   |                                                                             ^^^^^^^^^ remove this format specifier
 
 error[E0277]: trait has `()` and `i32` as params
   --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:56:15
@@ -217,7 +217,7 @@ error[E0277]: {from_desugaring}{direct}{cause}{integral}{integer}{struct}{enum}{
   --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:60:15
    |
 LL |     takes_baz(());
-   |     --------- ^^ {float}{_Self}{crate_local}{This}{ItemContext}{This}{This}
+   |     --------- ^^ {float}{_Self}{crate_local}{this}{item_context}{this}{this}
    |     |
    |     required by a bound introduced by this call
    |

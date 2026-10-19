@@ -1,4 +1,4 @@
-//@ only-wasm32-wasip1
+//@ only-wasm32
 //@ compile-flags: --crate-type=lib
 //@ build-pass
 //@ aux-build:internal_unstable.rs

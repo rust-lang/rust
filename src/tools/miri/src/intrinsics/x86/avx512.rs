@@ -1,7 +1,8 @@
 use rustc_span::Symbol;
 
 use super::{
-    packssdw, packsswb, packusdw, packuswb, permute, permute2, pmaddbw, pmaddwd, psadbw, pshufb,
+    packssdw, packsswb, packusdw, packuswb, pavg, permute, permute2, pmaddbw, pmaddwd, psadbw,
+    pshufb,
 };
 use crate::*;
 
@@ -177,6 +178,15 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let [a, b] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
 
                 packusdw(this, a, b, dest)?;
+            }
+            // Used to implement the _mm512_avg_epu8 and _mm512_avg_epu16 functions.
+            // Averages packed unsigned 8/16-bit integers in `left` and `right`.
+            "pavg.b.512" | "pavg.w.512" => {
+                this.expect_target_feature_for_intrinsic(link_name, "avx512bw")?;
+
+                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+
+                pavg(this, left, right, dest)?;
             }
             _ => return interp_ok(EmulateItemResult::NotSupported),
         }

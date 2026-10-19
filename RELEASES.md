@@ -1,3 +1,12 @@
+Version 1.99.1 (2026-10-15)
+===========================
+
+<a id="1.99.1"></a>
+
+* [library: fix missing symbol `wcslen` on UEFI and embedded targets](https://github.com/rust-lang/rust/issues/163614)
+* [rustc: fix miscompilation of FFI `bool` return values on x86_64](https://github.com/rust-lang/rust/issues/163911)
+* [rust-lld: add the rpath for `libLLVM` on macOS](https://github.com/rust-lang/rust/issues/163947)
+
 Version 1.99.0 (2026-10-01)
 ==========================
 

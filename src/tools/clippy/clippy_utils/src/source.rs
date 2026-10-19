@@ -20,6 +20,7 @@ use std::borrow::Cow;
 use std::fmt;
 use std::ops::{Deref, Index, Range};
 
+/// Types from which a `SourceMap` can be obtained.
 pub trait HasSourceMap<'sm>: Copy {
     #[must_use]
     fn source_map(self) -> &'sm SourceMap;
@@ -57,6 +58,7 @@ impl<'sm> HasSourceMap<'sm> for &LateContext<'sm> {
 
 /// Conversion of a value into the range portion of a `Span`.
 pub trait SpanRange: Sized {
+    /// Converts `self` into the range portion of a [`Span`].
     fn into_range(self) -> Range<BytePos>;
 }
 impl SpanRange for Span {
@@ -78,7 +80,9 @@ impl SpanRange for Range<BytePos> {
 
 /// Conversion of a value into a `Span`
 pub trait IntoSpan: Sized {
+    /// Converts `self` into a [`Span`].
     fn into_span(self) -> Span;
+    /// Converts `self` into a [`Span`], with [context](SyntaxContext).
     fn with_ctxt(self, ctxt: SyntaxContext) -> Span;
 }
 impl IntoSpan for Span {
@@ -106,6 +110,8 @@ impl IntoSpan for Range<BytePos> {
     }
 }
 
+/// Extension methods for span-like types (anything implementing [`SpanRange`]) that need access
+/// to the underlying source text via a [`HasSourceMap`].
 pub trait SpanExt: SpanRange {
     /// Attempts to get a handle to the source text. Returns `None` if either the span is malformed,
     /// or the source text is not accessible.
@@ -349,8 +355,11 @@ fn trim_start(sm: &SourceMap, sp: Range<BytePos>) -> Range<BytePos> {
     .unwrap_or(sp)
 }
 
+/// A range within a specific [source file](SourceFile).
 pub struct SourceFileRange {
+    /// The [source file](SourceFile) referred to by this range
     pub sf: Arc<SourceFile>,
+    /// The range within the associated [source file](SourceFile)
     pub range: Range<usize>,
 }
 impl SourceFileRange {
@@ -447,6 +456,7 @@ pub fn snippet_indent<'sm>(sm: impl HasSourceMap<'sm>, span: Span) -> Option<Str
     })
 }
 
+/// Checks whether the code snippet referred to by the given [`Span`] is present in the source code.
 // If the snippet is empty, it's an attribute that was inserted during macro
 // expansion and we want to ignore those, because they could come from external
 // sources that the user has no control over.

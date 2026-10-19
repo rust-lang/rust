@@ -47,6 +47,7 @@ use twox_hash::XxHash3_128;
 
 use crate::diagnostics::{FailCreateFileEncoder, FailWriteFile};
 use crate::eii::EiiMapEncodedKeyValue;
+use crate::rmeta::remapped_def_id::RemappedRawDefId;
 use crate::rmeta::*;
 
 pub(super) struct EncodeContext<'a, 'tcx> {
@@ -78,6 +79,7 @@ pub(super) struct EncodeContext<'a, 'tcx> {
     hygiene_ctxt: Rc<RefCell<HygieneEncodeContext>>,
     // Used for both `Symbol`s and `ByteSymbol`s.
     symbol_index_table: FxHashMap<u32, usize>,
+    local_defs_remapping: LocalDefsRemapping,
 }
 
 /// If the current crate is a proc-macro, returns early with `LazyArray::default()`.
@@ -164,6 +166,8 @@ impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
     }
 
     fn encode_def_id(&mut self, def_id: DefId) {
+        let def_id = self.local_defs_remapping.map_def_id(def_id);
+
         def_id.krate.encode(self);
         self.emit_u32(def_id.index.as_u32());
     }
@@ -235,7 +239,7 @@ impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
     /// `LocalDefId` as a wrapper around def index we want to encode
     /// def index only, so we override the encode implementation.
     fn encode_local_def_id(&mut self, def_id: LocalDefId) {
-        self.emit_u32(def_id.local_def_index.as_u32());
+        self.emit_u32(self.local_defs_remapping.map_local_def_id(def_id).index.as_u32());
     }
 
     /// We override encoding logic for `DefKey` during metadata encoding,
@@ -434,20 +438,23 @@ macro_rules! record_some_lazy {
     ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr) => {{
         let value = $value;
         let lazy = $self.lazy(value);
-        $self.$tables.$table.set_some($def_id, lazy);
+        let def_id = $self.local_defs_remapping.map_local_def_id($def_id);
+        $self.$tables.$table.set_some(def_id, lazy);
     }};
 }
 
 macro_rules! record_some {
-    ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr) => {
-        $self.$tables.$table.set_some($def_id, $value)
-    };
+    ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr) => {{
+        let def_id = $self.local_defs_remapping.map_local_def_id($def_id);
+        $self.$tables.$table.set_some(def_id, $value)
+    }};
 }
 
 macro_rules! record_value {
-    ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr) => {
-        $self.$tables.$table.set($def_id, $value)
-    };
+    ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr) => {{
+        let def_id = $self.local_defs_remapping.map_local_def_id($def_id);
+        $self.$tables.$table.set(def_id, $value)
+    }};
 }
 
 // Shorthand for `$self.$tables.$table.set_some($def_id.index, $self.lazy_array($value))`, which would
@@ -456,7 +463,8 @@ macro_rules! record_array {
     ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr) => {{
         let value = $value;
         let lazy = $self.lazy_array(value);
-        $self.$tables.$table.set_some($def_id, lazy);
+        let def_id = $self.local_defs_remapping.map_local_def_id($def_id);
+        $self.$tables.$table.set_some(def_id, lazy);
     }};
 }
 
@@ -464,7 +472,8 @@ macro_rules! record_defaulted_array {
     ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr) => {{
         let value = $value;
         let lazy = $self.lazy_array(value);
-        $self.$tables.$table.set($def_id, lazy);
+        let def_id = $self.local_defs_remapping.map_local_def_id($def_id);
+        $self.$tables.$table.set(def_id, lazy);
     }};
 }
 
@@ -566,10 +575,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 record_value!(self.tables.def_path_hashes[def_id] <- def_path_hash.local_hash().as_u64())
             }
         } else {
-            for (def_index, def_key, def_path_hash) in defs.enumerated_keys_and_path_hashes() {
-                let def_id = LocalDefId { local_def_index: def_index };
+            for def_id in self.local_defs_remapping.iter_sorted_local_ids() {
+                let def_key = defs.def_key(def_id);
+                let hash = defs.def_path_hash(def_id).local_hash().as_u64();
+
                 record_some_lazy!(self.tables.def_keys[def_id] <- def_key);
-                record_value!(self.tables.def_path_hashes[def_id] <- def_path_hash.local_hash().as_u64())
+                record_value!(self.tables.def_path_hashes[def_id] <- hash);
             }
         }
     }
@@ -650,6 +661,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
     fn encode_crate_root(&mut self) -> (LazyValue<CrateRoot>, LazyValue<CrateRootUnhashed>) {
         let tcx = self.tcx;
+
+        // We set it here as we need it only for metadata encoding,
+        // while `with_encode_metadata_header` is used in some other places too.
+        self.local_defs_remapping = LocalDefsRemapping::new(tcx);
+
         let mut stats: Vec<(&'static str, usize)> = Vec::with_capacity(32);
 
         macro_rules! stat {
@@ -1489,8 +1505,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
 
         let tcx = self.tcx;
-
-        for local_id in tcx.iter_local_def_id() {
+        for local_id in self.local_defs_remapping.iter_sorted_local_ids() {
             let def_id = local_id.to_def_id();
             let def_kind = tcx.def_kind(local_id);
             record_some!(self.tables.def_kind[local_id] <- def_kind);
@@ -1630,13 +1645,18 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 && tcx.type_of(def_id).skip_binder().is_coroutine_closure()
             {
                 let coroutine_for_closure = self.tcx.coroutine_for_closure(def_id);
-                record_some!(self.tables.coroutine_for_closure[local_id] <- coroutine_for_closure.into());
+                let remapped_id =
+                    RemappedRawDefId::create(coroutine_for_closure, &self.local_defs_remapping);
+
+                record_some!(self.tables.coroutine_for_closure[local_id] <- remapped_id);
 
                 // If this async closure has a by-move body, record it too.
                 if tcx.needs_coroutine_by_move_body_def_id(coroutine_for_closure) {
                     let id = self.tcx.coroutine_by_move_body_def_id(coroutine_for_closure);
+                    let id = RemappedRawDefId::create(id, &self.local_defs_remapping);
+
                     record_some!(
-                        self.tables.coroutine_by_move_body_def_id[coroutine_for_closure.expect_local()] <- id.into()
+                        self.tables.coroutine_by_move_body_def_id[coroutine_for_closure.expect_local()] <- id
                     )
                 }
             }
@@ -2325,7 +2345,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 if let Ok(mut an) = trait_def.ancestors(tcx, local_id.to_def_id())
                     && let Some(specialization_graph::Node::Impl(parent)) = an.nth(1)
                 {
-                    record_some!(self.tables.impl_parent[local_id] <- parent.into());
+                    let parent = RemappedRawDefId::create(parent, &self.local_defs_remapping);
+                    record_some!(self.tables.impl_parent[local_id] <- parent);
                 }
 
                 // if this is an impl of `CoerceUnsized`, create its
@@ -2340,7 +2361,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let trait_impls: Vec<_> = trait_impls
             .into_iter()
             .map(|(trait_def_id, impls)| TraitImpls {
-                trait_id: trait_def_id.into(),
+                trait_id: RemappedRawDefId::create(trait_def_id, &self.local_defs_remapping),
                 impls: self.lazy_array(&impls),
             })
             .collect();
@@ -2734,6 +2755,7 @@ fn with_encode_metadata_header(
         is_proc_macro: tcx.crate_types().contains(&CrateType::ProcMacro),
         hygiene_ctxt: Default::default(),
         symbol_index_table: Default::default(),
+        local_defs_remapping: Default::default(),
     };
 
     // Encode the rustc version string in a predictable location.

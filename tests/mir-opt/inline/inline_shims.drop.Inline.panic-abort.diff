@@ -121,7 +121,7 @@
 +     }
 + 
 +     bb4: {
-+         _16 = Eq(copy _14, copy _11);
++         _16 = Eq(copy _11, copy _14);
 +         switchInt(move _16) -> [0: bb3, otherwise: bb2];
 +     }
 + 

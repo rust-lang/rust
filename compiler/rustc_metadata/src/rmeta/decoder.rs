@@ -41,6 +41,7 @@ use tracing::debug;
 
 use crate::creader::CStore;
 use crate::eii::EiiMapEncodedKeyValue;
+use crate::rmeta::remapped_def_id::RemappedRawDefId;
 use crate::rmeta::table::IsDefault;
 use crate::rmeta::*;
 
@@ -103,7 +104,7 @@ pub(crate) struct CrateMetadata {
     /// FIXME: make type of the value `LazyArray<(DefIndex, Option<SimplifiedType>)>`
     /// through transmuting or somehow else, as `LocalDefId` here should be `DefIndex`,
     /// as it is from external crate.
-    trait_impls: FxIndexMap<RawDefId, LazyArray<(LocalDefId, Option<SimplifiedType>)>>,
+    trait_impls: FxIndexMap<RemappedRawDefId, LazyArray<(LocalDefId, Option<SimplifiedType>)>>,
     /// Inherent impls which do not follow the normal coherence rules.
     ///
     /// These can be introduced using either `#![rustc_coherence_is_core]`
@@ -2163,10 +2164,10 @@ impl CrateMetadata {
 
     // Translate a DefId from the current compilation environment to a DefId
     // for an external crate.
-    fn reverse_translate_def_id(&self, did: DefId) -> Option<RawDefId> {
+    fn reverse_translate_def_id(&self, did: DefId) -> Option<RemappedRawDefId> {
         for (local, &global) in self.cnum_map.iter_enumerated() {
             if global == did.krate {
-                return Some(RawDefId { krate: local.as_u32(), index: did.index.as_u32() });
+                return Some(RemappedRawDefId::new_unchecked(local.as_u32(), did.index.as_u32()));
             }
         }
 

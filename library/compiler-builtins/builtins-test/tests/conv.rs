@@ -41,13 +41,37 @@ mod i_to_f {
                         );
                         let f1: $f_ty = $fn(x);
 
+                        if f1.is_nan() {
+                            panic!("int->float cannot result in a NaN: {}({x})", stringify!($fn));
+                        }
+
                         #[cfg($sys_available)] {
+                            // If `f1` is infinite, calculate the integer that is 1 ULP after/before
+                            // $f_ty::MAX/$f_ty::MIN, saturating as needed. There's no need to
+                            // handle NaN as the result of a conversion can never be NaN.
+                            let as_int = |f: $f_ty| {
+                                if f.is_infinite() {
+                                    // For infinity, calculate the float that is half of the desired
+                                    // 1-ulp-after-max/-before-min (and therefore representable as
+                                    // $f_ty), then multiply by two after converting to an integer.
+                                    let bits = <$f_ty>::EXP_MASK - <$f_ty>::IMPLICIT_BIT;
+                                    let bits = if f.is_sign_negative() {
+                                        bits | <$f_ty as Float>::SIGN_MASK
+                                    } else {
+                                        bits
+                                    };
+                                    // float->int casts saturate, so saturate the multiply to match.
+                                    (<$f_ty>::from_bits(bits) as $i_ty).saturating_mul(2)
+                                } else {
+                                    f as $i_ty
+                                }
+                            };
                             // This makes sure that the conversion produced the best rounding possible, and does
                             // this independent of `x as $into` rounding correctly.
                             // This assumes that float to integer conversion is correct.
-                            let y_minus_ulp = <$f_ty>::from_bits(f1.to_bits().wrapping_sub(1)) as $i_ty;
-                            let y = f1 as $i_ty;
-                            let y_plus_ulp = <$f_ty>::from_bits(f1.to_bits().wrapping_add(1)) as $i_ty;
+                            let y_minus_ulp = as_int(f1.next_down());
+                            let y = as_int(f1);
+                            let y_plus_ulp = as_int(f1.next_up());
                             let error_minus = <$i_ty as Int>::abs_diff(y_minus_ulp, x);
                             let error = <$i_ty as Int>::abs_diff(y, x);
                             let error_plus = <$i_ty as Int>::abs_diff(y_plus_ulp, x);

@@ -170,7 +170,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             let res = if self.use_lub {
                 at.lub(b, a)
             } else {
-                at.sup(DefineOpaqueTypes::Yes, b, a)
+                self.sup_raw(&self.cause, self.param_env, DefineOpaqueTypes::Yes, b, a)
                     .map(|InferOk { value: (), obligations }| InferOk { value: b, obligations })
             };
 

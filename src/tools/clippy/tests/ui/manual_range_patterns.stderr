@@ -120,5 +120,29 @@ LL |             matches!($e, 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10)
 LL |     mac!(f);
    |     ------- in this macro invocation
 
-error: aborting due to 19 previous errors
+error: this OR pattern can be rewritten using a range
+  --> tests/ui/manual_range_patterns.rs:81:18
+   |
+LL |     matches!(ch, 'a' | 'b' | 'c' | 'd' | 'e');
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `'a'..='e'`
+
+error: this OR pattern can be rewritten using a range
+  --> tests/ui/manual_range_patterns.rs:83:18
+   |
+LL |     matches!(ch, '0' | '1' | '2' | '3' | '4');
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `'0'..='4'`
+
+error: this OR pattern can be rewritten using a range
+  --> tests/ui/manual_range_patterns.rs:101:20
+   |
+LL |     matches!(byte, b'a' | b'b' | b'c' | b'd' | b'e');
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `b'a'..=b'e'`
+
+error: this OR pattern can be rewritten using a range
+  --> tests/ui/manual_range_patterns.rs:103:20
+   |
+LL |     matches!(byte, b'0' | b'1' | b'2' | b'3' | b'4');
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `b'0'..=b'4'`
+
+error: aborting due to 23 previous errors
 

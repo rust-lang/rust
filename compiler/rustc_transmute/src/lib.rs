@@ -31,7 +31,6 @@ pub struct Assume {
 #[cfg(feature = "rustc")]
 mod rustc {
     use rustc_attr_ir::lang_items::LangItem;
-    use rustc_middle::ty::consts::ConstExt;
     use rustc_middle::ty::transmute::Answer;
     use rustc_middle::ty::{Const, Region, Ty, TyCtxt};
 

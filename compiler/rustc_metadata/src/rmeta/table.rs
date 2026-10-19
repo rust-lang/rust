@@ -2,6 +2,7 @@ use rustc_hir::def::CtorOf;
 use rustc_index::Idx;
 
 use crate::rmeta::decoder::MetaBlob;
+use crate::rmeta::remapped_def_id::RemappedRawDefId;
 use crate::rmeta::*;
 
 pub(super) trait IsDefault: Default {
@@ -253,7 +254,7 @@ fixed_size_enum! {
 }
 
 // We directly encode RawDefId because using a `LazyValue` would incur a 50% overhead in the worst case.
-impl FixedSizeEncoding for Option<RawDefId> {
+impl FixedSizeEncoding for Option<RemappedRawDefId> {
     type ByteArray = [u8; 8];
 
     #[inline]
@@ -265,14 +266,15 @@ impl FixedSizeEncoding for Option<RawDefId> {
         }
         let index = u32::from_le_bytes(index);
 
-        Some(RawDefId { krate: krate - 1, index })
+        Some(RemappedRawDefId::new_unchecked(krate - 1, index))
     }
 
     #[inline]
     fn write_to_bytes(self, dest: &mut [u8; 8]) {
         match self {
             None => unreachable!(),
-            Some(RawDefId { krate, index }) => {
+            Some(id) => {
+                let (krate, index) = id.decompose();
                 debug_assert!(krate < u32::MAX);
                 // CrateNum is less than `CrateNum::MAX_AS_U32`.
                 let krate = (krate + 1).to_le_bytes();

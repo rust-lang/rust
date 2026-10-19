@@ -58,7 +58,7 @@ mod cas {
             crate::run_fuzz_tests_with_lse_variants(10000, |expected: super::int_ty!($bytes), new| {
                 let mut target = expected.wrapping_add(10);
                 let ret: super::int_ty!($bytes) = unsafe {
-                    compiler_builtins::aarch64_outline_atomics::$name::$name(
+                    compiler_builtins::aarch64_outline_atomics::$name(
                         expected,
                         new,
                         &mut target,
@@ -77,7 +77,7 @@ mod cas {
 
                 target = expected;
                 let ret: super::int_ty!($bytes) = unsafe {
-                    compiler_builtins::aarch64_outline_atomics::$name::$name(
+                    compiler_builtins::aarch64_outline_atomics::$name(
                         expected,
                         new,
                         &mut target,
@@ -108,9 +108,7 @@ mod swap {
                     let orig_right = right;
                     assert_eq!(
                         unsafe {
-                            compiler_builtins::aarch64_outline_atomics::$name::$name(
-                                left, &mut right,
-                            )
+                            compiler_builtins::aarch64_outline_atomics::$name(left, &mut right)
                         },
                         orig_right
                     );
@@ -132,7 +130,13 @@ macro_rules! test_op {
                             let mut target = old;
                             let op: fn(super::int_ty!($bytes), super::int_ty!($bytes)) -> _ = $($op)*;
                             let expected = op(old, val);
-                            assert_eq!(old, unsafe { compiler_builtins::aarch64_outline_atomics::$name::$name(val, &mut target) }, "{} should return original value", stringify!($name));
+                            assert_eq!(
+                                old,
+                                unsafe {
+                                    compiler_builtins::aarch64_outline_atomics::$name(val, &mut target)
+                                },
+                                "{} should return original value", stringify!($name)
+                            );
                             assert_eq!(expected, target, "{} should store to target", stringify!($name));
                         });
                     }
