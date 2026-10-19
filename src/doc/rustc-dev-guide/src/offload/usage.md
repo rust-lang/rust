@@ -92,7 +92,8 @@ RUSTFLAGS="-Ctarget-cpu=gfx90a --emit=llvm-bc,llvm-ir -Zoffload=Device=/absolute
 
 Next we generate the host (CPU) code.
 ```
-RUSTFLAGS="--emit=llvm-bc,llvm-ir -Csave-temps -Zoffload=Host=$PWD/target/amdgcn-amd-amdhsa/release/deps/device.bin -Zunstable-options" cargo +offload build -r
+DEVICE_BC=$(find $PWD/target/amdgcn-amd-amdhsa/release/build -name '<crate_name>.bc')
+RUSTFLAGS="-C lto=fat -C embed-bitcode=yes --emit=llvm-bc,llvm-ir -Csave-temps -Zoffload=Host=$DEVICE_BC -Zunstable-options" cargo +offload build -r
 ```
 
 In the final step, you can now run your binary
