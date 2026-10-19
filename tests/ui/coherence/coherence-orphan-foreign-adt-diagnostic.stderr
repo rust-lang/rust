@@ -1,10 +1,9 @@
 error[E0117]: only traits defined in the current crate can be implemented for types defined outside of the crate
-  --> $DIR/coherence-orphan-foreign-adt-diagnostic.rs:10:1
+  --> $DIR/coherence-orphan-foreign-adt-diagnostic.rs:10:20
    |
 LL | impl PartialEq for Option<u32> {
-   | ^^^^^---------^^^^^-----------
-   |      |             |
-   |      |             `Option` is not defined in the current crate
+   |      ---------     ^^^^^^^^^^^ `Option` is not defined in the current crate
+   |      |
    |      this is not defined in the current crate because this is a foreign trait
    |
    = note: impl doesn't have any local type before any uncovered type parameters
@@ -12,12 +11,11 @@ LL | impl PartialEq for Option<u32> {
    = note: define and implement a trait or new type instead
 
 error[E0117]: only traits defined in the current crate can be implemented for types defined outside of the crate
-  --> $DIR/coherence-orphan-foreign-adt-diagnostic.rs:27:1
+  --> $DIR/coherence-orphan-foreign-adt-diagnostic.rs:27:28
    |
 LL | impl PartialEq<String> for Option<u32> {
-   | ^^^^^-----------------^^^^^-----------
-   |      |                     |
-   |      |                     `Option` is not defined in the current crate
+   |      -----------------     ^^^^^^^^^^^ `Option` is not defined in the current crate
+   |      |
    |      this is not defined in the current crate because this is a foreign trait
    |
    = note: impl doesn't have any local type before any uncovered type parameters
@@ -25,12 +23,11 @@ LL | impl PartialEq<String> for Option<u32> {
    = note: define and implement a trait or new type instead
 
 error[E0117]: only traits defined in the current crate can be implemented for types defined outside of the crate
-  --> $DIR/coherence-orphan-foreign-adt-diagnostic.rs:38:1
+  --> $DIR/coherence-orphan-foreign-adt-diagnostic.rs:38:30
    |
 LL | impl PartialEq<[i32; 3]> for Option<u32> {
-   | ^^^^^-------------------^^^^^-----------
-   |      |                       |
-   |      |                       `Option` is not defined in the current crate
+   |      -------------------     ^^^^^^^^^^^ `Option` is not defined in the current crate
+   |      |
    |      this is not defined in the current crate because this is a foreign trait
    |
    = note: impl doesn't have any local type before any uncovered type parameters
@@ -38,12 +35,11 @@ LL | impl PartialEq<[i32; 3]> for Option<u32> {
    = note: define and implement a trait or new type instead
 
 error[E0117]: only traits defined in the current crate can be implemented for primitive types
-  --> $DIR/coherence-orphan-foreign-adt-diagnostic.rs:18:1
+  --> $DIR/coherence-orphan-foreign-adt-diagnostic.rs:18:14
    |
 LL | impl Add for u32 {
-   | ^^^^^---^^^^^---
-   |      |       |
-   |      |       `u32` is not defined in the current crate
+   |      ---     ^^^ `u32` is not defined in the current crate
+   |      |
    |      this is not defined in the current crate because this is a foreign trait
    |
    = note: impl doesn't have any local type before any uncovered type parameters

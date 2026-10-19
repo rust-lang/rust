@@ -29,12 +29,10 @@ LL | impl TryAsDynCompatible<'static> for dyn Iterator<Item = u32> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl of `TryAsDynCompatible` not allowed
 
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
-  --> $DIR/reject_manual_impl.rs:25:1
+  --> $DIR/reject_manual_impl.rs:25:38
    |
 LL | impl TryAsDynCompatible<'static> for dyn Iterator<Item = u32> {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^------------------------
-   |                                      |
-   |                                      `dyn Iterator<Item = u32>` is not defined in the current crate
+   |                                      ^^^^^^^^^^^^^^^^^^^^^^^^ `dyn Iterator<Item = u32>` is not defined in the current crate
    |
    = note: impl doesn't have any local type before any uncovered type parameters
    = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules

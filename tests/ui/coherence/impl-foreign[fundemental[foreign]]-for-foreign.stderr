@@ -1,10 +1,9 @@
 error[E0117]: only traits defined in the current crate can be implemented for primitive types
-  --> $DIR/impl-foreign[fundemental[foreign]]-for-foreign.rs:11:1
+  --> $DIR/impl-foreign[fundemental[foreign]]-for-foreign.rs:11:31
    |
 LL | impl Remote1<Box<String>> for i32 {
-   | ^^^^^--------------------^^^^^---
-   |      |                        |
-   |      |                        `i32` is not defined in the current crate
+   |      --------------------     ^^^ `i32` is not defined in the current crate
+   |      |
    |      this is not defined in the current crate because this is a foreign trait
    |
    = note: impl doesn't have any local type before any uncovered type parameters
@@ -12,12 +11,11 @@ LL | impl Remote1<Box<String>> for i32 {
    = note: define and implement a trait or new type instead
 
 error[E0117]: only traits defined in the current crate can be implemented for primitive types
-  --> $DIR/impl-foreign[fundemental[foreign]]-for-foreign.rs:15:1
+  --> $DIR/impl-foreign[fundemental[foreign]]-for-foreign.rs:15:32
    |
 LL | impl Remote1<Box<Rc<i32>>> for f64 {
-   | ^^^^^---------------------^^^^^---
-   |      |                         |
-   |      |                         `f64` is not defined in the current crate
+   |      ---------------------     ^^^ `f64` is not defined in the current crate
+   |      |
    |      this is not defined in the current crate because this is a foreign trait
    |
    = note: impl doesn't have any local type before any uncovered type parameters
@@ -25,12 +23,11 @@ LL | impl Remote1<Box<Rc<i32>>> for f64 {
    = note: define and implement a trait or new type instead
 
 error[E0117]: only traits defined in the current crate can be implemented for primitive types
-  --> $DIR/impl-foreign[fundemental[foreign]]-for-foreign.rs:19:1
+  --> $DIR/impl-foreign[fundemental[foreign]]-for-foreign.rs:19:33
    |
 LL | impl<T> Remote1<Box<Rc<T>>> for f32 {
-   | ^^^^^^^^-------------------^^^^^---
-   |         |                       |
-   |         |                       `f32` is not defined in the current crate
+   |         -------------------     ^^^ `f32` is not defined in the current crate
+   |         |
    |         this is not defined in the current crate because this is a foreign trait
    |
    = note: impl doesn't have any local type before any uncovered type parameters

@@ -1,10 +1,9 @@
 error[E0117]: only traits defined in the current crate can be implemented for primitive types
-  --> $DIR/coherence-pair-covered-uncovered-1.rs:12:1
+  --> $DIR/coherence-pair-covered-uncovered-1.rs:12:43
    |
 LL | impl<T, U> Remote1<Pair<T, Local<U>>> for i32 { }
-   | ^^^^^^^^^^^--------------------------^^^^^---
-   |            |                              |
-   |            |                              `i32` is not defined in the current crate
+   |            --------------------------     ^^^ `i32` is not defined in the current crate
+   |            |
    |            this is not defined in the current crate because this is a foreign trait
    |
    = note: impl doesn't have any local type before any uncovered type parameters
