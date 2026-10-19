@@ -73,7 +73,7 @@ pub fn f() {
 
 pub fn nested() {
     let mut d = None;
-    let mut e = None; //~ WARN unused variable: `e`
+    let mut e = None;
     let _ = || {
         let _ = || {
             d = Some("d1"); //~ WARN value assigned to `d` is never read

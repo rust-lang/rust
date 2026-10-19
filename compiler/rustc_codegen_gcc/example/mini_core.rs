@@ -97,6 +97,10 @@ trait Receiver {}
 #[lang = "copy"]
 pub trait Copy {}
 
+#[lang = "copy_closure_capture_container"]
+struct CopyClosureCaptureContainer<T: Copy>(T);
+impl<T: Copy> Copy for CopyClosureCaptureContainer<T> {}
+
 #[lang = "bikeshed_guaranteed_no_drop"]
 pub trait BikeshedGuaranteedNoDrop {}
 

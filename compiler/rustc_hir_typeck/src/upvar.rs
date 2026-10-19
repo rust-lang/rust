@@ -551,6 +551,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 } else {
                                     self.tcx.lifetimes.re_erased
                                 },
+                                child_capture.var_ident.span,
                             )
                         },
                     ),
@@ -712,6 +713,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     upvar_ty,
                     capture,
                     self.tcx.lifetimes.re_erased,
+                    captured_place.var_ident.span,
                 )
             })
             .collect()
@@ -1366,7 +1368,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             hir::CaptureBy::Ref | hir::CaptureBy::Use { .. } => {
                 // For non move closure the capture kind is the max capture kind of all captures
                 // according to the ordering ByCopy < ImmBorrow < UniqueImmBorrow < MutBorrow < ByValue
-                let mut max_capture_info = root_var_min_capture_list.first().unwrap().info;
+                let max_capture = root_var_min_capture_list.first().unwrap();
+                let mut max_capture_info = max_capture.info;
                 for capture in root_var_min_capture_list.iter() {
                     max_capture_info = determine_capture_info(max_capture_info, capture.info);
                 }
@@ -1376,6 +1379,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ty,
                     max_capture_info.capture_kind,
                     self.tcx.lifetimes.re_erased,
+                    max_capture.var_ident.span,
                 )
             }
         };
@@ -1398,6 +1402,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 capture.place.ty(),
                 capture.info.capture_kind,
                 self.tcx.lifetimes.re_erased,
+                capture.var_ident.span,
             );
 
             // Checks if a capture implements any of the auto traits
@@ -2177,9 +2182,21 @@ fn apply_capture_kind_on_capture_ty<'tcx>(
     ty: Ty<'tcx>,
     capture_kind: UpvarCapture,
     region: ty::Region<'tcx>,
+    span: Span,
 ) -> Ty<'tcx> {
     match capture_kind {
-        ty::UpvarCapture::ByValue | ty::UpvarCapture::ByUse | ty::UpvarCapture::ByCopy => ty,
+        ty::UpvarCapture::ByValue | ty::UpvarCapture::ByUse => ty,
+
+        // FIXME(cromulent_copy_closure_captures): remove this hack once `marker_trait_attr` is usable
+        // We wrap `ByCopy` captures in a `CopyClosureCaptureContainer` wrapper
+        // so that they affect auto trait inference as if they were shared references.
+        // Ideally we would use blanket impls instead
+        ty::UpvarCapture::ByCopy => {
+            let did =
+                tcx.require_lang_item(rustc_attr_ir::LangItem::CopyClosureCaptureContainer, span);
+            tcx.type_of(did).instantiate(tcx, tcx.mk_args(&[ty.into()])).skip_norm_wip()
+        }
+
         ty::UpvarCapture::ByRef(kind) => Ty::new_ref(tcx, region, ty, kind.to_mutbl_lossy()),
     }
 }

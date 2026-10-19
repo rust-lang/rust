@@ -27,6 +27,9 @@ pub trait Copy {}
 
 impl Copy for *mut () {}
 
+#[lang = "copy_closure_capture_container"]
+pub struct CopyClosureCaptureContainer<T: Copy>(T);
+
 #[lang = "drop"]
 pub trait Drop {
     fn drop(&mut self);
