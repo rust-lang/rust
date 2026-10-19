@@ -39,7 +39,6 @@ where
                 // This can then allow nested goals to fail after we've constrained the `term`.
                 self.add_goal(GoalSource::Misc, goal.with(cx, ty::PredicateKind::Ambiguous))?;
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                    .map_err(Into::into)
             }
             TypingMode::Typeck { defining_opaque_types_and_generators: defining_opaque_types }
             | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types } => {
@@ -53,9 +52,7 @@ where
                         opaque_ty.to_term(cx, ty::IsRigid::Yes),
                         goal.predicate.term,
                     )?;
-                    return self
-                        .evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                        .map_err(Into::into);
+                    return self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
                 };
 
                 // We structurally normalize the args so that we're able to detect defining uses
@@ -117,7 +114,6 @@ where
                     expected,
                 )?;
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                    .map_err(Into::into)
             }
             TypingMode::PostBorrowck { defined_opaque_types } => {
                 let Some(def_id) = def_id
@@ -129,9 +125,7 @@ where
                         opaque_ty.to_term(cx, ty::IsRigid::Yes),
                         goal.predicate.term,
                     )?;
-                    return self
-                        .evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                        .map_err(Into::into);
+                    return self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
                 };
 
                 let actual = cx.type_of(def_id.into()).instantiate(cx, opaque_ty.args);
@@ -147,7 +141,6 @@ where
                 let actual = self.normalize(goal.param_env, actual)?;
                 self.eq(goal.param_env, expected, actual)?;
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                    .map_err(Into::into)
             }
             // FIXME(try_as_dyn): probably want to treat opaques opaquely and rigid
             TypingMode::Reflection | TypingMode::PostAnalysis | TypingMode::Codegen => {
@@ -156,7 +149,6 @@ where
                 let actual = self.normalize(goal.param_env, actual)?;
                 self.eq(goal.param_env, expected, actual)?;
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                    .map_err(Into::into)
             }
             TypingMode::ErasedNotCoherence(MayBeErased) => {
                 // If we have a local defid, in other typing modes we check whether
@@ -185,7 +177,6 @@ where
                     goal.predicate.term,
                 )?;
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                    .map_err(Into::into)
             }
         }
     }

@@ -886,3 +886,29 @@ const _: () = ();
 /// [`cfg`]: ./attribute.cfg.html
 /// [the `cfg_attr` attribute]: ../reference/conditional-compilation.html#the-cfg_attr-attribute
 const _: () = ();
+
+#[doc(attribute = "windows_subsystem")]
+//
+/// The `windows_subsystem` attribute is used to specify the subsystem for a Windows application.
+///
+/// Example:
+///
+/// ```rust
+/// #![windows_subsystem = "windows"]
+///
+/// fn main() {}
+/// ```
+///
+/// Accepted values are "console" (default) and "windows".
+///
+/// The `windows_subsystem` attribute may only be applied to the crate root.
+///
+/// Only the first use of `windows_subsystem` has effect.
+///
+/// The `windows_subsystem` attribute is ignored on non-Windows targets and non-bin crate types.
+/// If a "console" process is run from an existing console then it will be attached to said console;
+/// otherwise a new one will be created.
+/// The "windows" subsystem will run detached from any existing "console".
+///
+/// [Reference](../reference/runtime.html#the-windows_subsystem-attribute)
+const _: () = ();
