@@ -77,6 +77,42 @@ unsafe fn test_avx2() {
     test_mm256_abs_epi8();
 
     #[target_feature(enable = "avx2")]
+    unsafe fn test_mm256_avg_epu8() {
+        let (a, b) = (_mm256_set1_epi8(3), _mm256_set1_epi8(9));
+        let r = _mm256_avg_epu8(a, b);
+        assert_eq_m256i(r, _mm256_set1_epi8(6));
+
+        // Intermediary sum can overflow, but the final result not.
+        let (a, b) = (_mm256_set1_epi8(u8::MAX as i8), _mm256_set1_epi8((u8::MAX - 2) as i8));
+        let r = _mm256_avg_epu8(a, b);
+        assert_eq_m256i(r, _mm256_set1_epi8((u8::MAX - 1) as i8));
+
+        // Odd sums are rounded up.
+        let (a, b) = (_mm256_set1_epi8(3), _mm256_set1_epi8(6));
+        let r = _mm256_avg_epu8(a, b);
+        assert_eq_m256i(r, _mm256_set1_epi8(5));
+    }
+    test_mm256_avg_epu8();
+
+    #[target_feature(enable = "avx2")]
+    unsafe fn test_mm256_avg_epu16() {
+        let (a, b) = (_mm256_set1_epi16(3), _mm256_set1_epi16(9));
+        let r = _mm256_avg_epu16(a, b);
+        assert_eq_m256i(r, _mm256_set1_epi16(6));
+
+        // Intermediary sum can overflow, but the final result not.
+        let (a, b) = (_mm256_set1_epi16(u16::MAX as i16), _mm256_set1_epi16((u16::MAX - 2) as i16));
+        let r = _mm256_avg_epu16(a, b);
+        assert_eq_m256i(r, _mm256_set1_epi16((u16::MAX - 1) as i16));
+
+        // Odd sums are rounded up.
+        let (a, b) = (_mm256_set1_epi16(3), _mm256_set1_epi16(6));
+        let r = _mm256_avg_epu16(a, b);
+        assert_eq_m256i(r, _mm256_set1_epi16(5));
+    }
+    test_mm256_avg_epu16();
+
+    #[target_feature(enable = "avx2")]
     unsafe fn test_mm256_hadd_epi16() {
         let a = _mm256_set1_epi16(2);
         let b = _mm256_set1_epi16(4);

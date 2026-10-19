@@ -87,7 +87,7 @@ For a full list of all lints with their description and examples, please refer
 to [Clippy's lint list]. The two most important allow-by-default groups are
 described below:
 
-[Clippy's lint list]: https://rust-lang.github.io/rust-clippy/master/index.html
+[Clippy's lint list]: https://rust-lang.github.io/rust-clippy/main/index.html
 
 ##### `clippy::pedantic`
 

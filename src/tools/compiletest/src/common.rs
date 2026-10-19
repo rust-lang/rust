@@ -858,6 +858,10 @@ impl Config {
         if self.target.starts_with("wasm") {
             return self.target.contains("threads");
         }
+        // UEFI targets don't have threads.
+        if self.target.contains("uefi") {
+            return false;
+        }
         true
     }
 
@@ -1217,7 +1221,8 @@ pub(crate) fn query_rustc_output(
     };
     if !output.status.success() {
         fatal!(
-            "failed to run {command:?}\n--- stdout\n{}\n--- stderr\n{}",
+            "failed to run {command:?}\n{}\n--- stdout\n{}\n--- stderr\n{}",
+            output.status,
             String::from_utf8(output.stdout).unwrap(),
             String::from_utf8(output.stderr).unwrap(),
         );

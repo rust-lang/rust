@@ -2,12 +2,11 @@
 //@compile-flags: -Zmiri-disable-isolation
 //@run-native
 
-#[path = "../../utils/libc.rs"]
-mod libc_utils;
-
 use std::time::{Duration, Instant};
 use std::{env, mem, ptr};
 
+#[path = "../../utils/libc.rs"]
+mod libc_utils;
 use libc_utils::errno_check;
 
 fn set_tz(name: &str) {

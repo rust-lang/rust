@@ -1033,8 +1033,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // only the **lifetime bound** is changed.
                 let InferOk { mut obligations, .. } = self
                     .infcx
-                    .at(&obligation.cause, obligation.param_env)
-                    .sup(DefineOpaqueTypes::Yes, target, source_trait)
+                    .sup_raw(
+                        &obligation.cause,
+                        obligation.param_env,
+                        DefineOpaqueTypes::Yes,
+                        target,
+                        source_trait,
+                    )
                     .map_err(|_| SelectionError::Unimplemented)?;
 
                 // Register one obligation for 'a: 'b.

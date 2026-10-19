@@ -1,0 +1,8 @@
+error: forall evaluated to false
+  --> $DIR/test-forall-evaluates-to-false.rs:8:9
+   |
+LL |         forall<'b> {
+   |         ^^^^^^
+
+error: aborting due to 1 previous error
+

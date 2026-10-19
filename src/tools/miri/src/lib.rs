@@ -104,10 +104,10 @@ pub mod sym;
 pub use rustc_const_eval::interpret::*;
 // Resolve ambiguity.
 #[doc(no_inline)]
-pub use rustc_const_eval::interpret::{self, AllocMap, Provenance as _};
-pub use rustc_data_structures::either::Either;
-pub use rustc_log::tracing::{self, info, trace, warn};
-pub use rustc_span::{bug, span_bug};
+pub use rustc_const_eval::interpret::{self, Provenance as _};
+use rustc_data_structures::either::Either;
+use rustc_log::tracing::{self, info, trace, warn};
+use rustc_span::{bug, span_bug};
 
 #[cfg(all(feature = "native-lib", unix))]
 pub mod native_lib {
@@ -142,7 +142,9 @@ pub use crate::concurrency::data_race::{
 };
 pub use crate::concurrency::init_once::{EvalContextExt as _, InitOnceRef};
 pub use crate::concurrency::scheduler::EvalContextExt as _;
-pub use crate::concurrency::sync::{CondvarRef, EvalContextExt as _, MutexRef, RwLockRef};
+pub use crate::concurrency::sync::{
+    CondvarRef, EvalContextExt as _, MutexRef, RwLockRef, SemaphoreRef,
+};
 pub use crate::concurrency::thread::{
     BlockReason, DynUnblockCallback, EvalContextExt as _, StackEmptyCallback, ThreadId,
     ThreadManager, TlsAllocAction, UnblockKind,

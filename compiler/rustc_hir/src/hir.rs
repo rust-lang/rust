@@ -848,6 +848,9 @@ pub enum GenericParamKind<'hir> {
         ty: &'hir Ty<'hir>,
         /// Optional default value for the const generic param
         default: Option<&'hir ConstArg<'hir>>,
+        /// Position of the const parameter in the function's argument list,
+        /// used by `function_arg_const_generics`.
+        arg_pos: Option<u16>,
     },
 }
 
@@ -4527,6 +4530,7 @@ impl FnHeader {
 
 #[derive(Debug, Clone, Copy, StableHash)]
 pub struct TestBinderBody<'hir> {
+    pub span: Span,
     pub foralls: &'hir [TestBinderForall<'hir>],
     pub exists: &'hir [TestBinderExists<'hir>],
     /// Constraints to be inserted directly into constraint storage to be proven

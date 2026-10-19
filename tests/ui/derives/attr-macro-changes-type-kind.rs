@@ -8,7 +8,7 @@
 extern crate struct_to_enum;
 use struct_to_enum::*;
 
-#[derive(Clone, Copy, Default, Hash, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[derive(Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord, Debug)]
 #[struct_to_enum::phantom]
 struct Spooky<T>;
 

@@ -1518,6 +1518,7 @@ LL |         &mut x
 note: `Trait::by_value` takes ownership of the receiver `self`, which moves value
   --> $DIR/self-coercion-errors.rs:11:17
    |
+LL | trait Trait: Sized {
 LL |     fn by_value(self) -> i32 { 1 }
    |                 ^^^^
 note: if `F` implemented `Clone`, you could clone the value
@@ -1575,6 +1576,7 @@ LL |     reuse Trait::* { &mut self.0 }
 note: `Trait::by_value` takes ownership of the receiver `self`, which moves value
   --> $DIR/self-coercion-errors.rs:11:17
    |
+LL | trait Trait: Sized {
 LL |     fn by_value(self) -> i32 { 1 }
    |                 ^^^^
 note: if `F` implemented `Clone`, you could clone the value
@@ -1620,6 +1622,7 @@ LL |     reuse Trait::* { &self.0 }
 note: `Trait::by_value` takes ownership of the receiver `self`, which moves value
   --> $DIR/self-coercion-errors.rs:11:17
    |
+LL | trait Trait: Sized {
 LL |     fn by_value(self) -> i32 { 1 }
    |                 ^^^^
 note: if `F` implemented `Clone`, you could clone the value
@@ -1648,6 +1651,7 @@ LL |     reuse Trait::* { &&&&self.0 }
 note: `Trait::by_value` takes ownership of the receiver `self`, which moves value
   --> $DIR/self-coercion-errors.rs:11:17
    |
+LL | trait Trait: Sized {
 LL |     fn by_value(self) -> i32 { 1 }
    |                 ^^^^
 note: if `F` implemented `Clone`, you could clone the value
@@ -1676,6 +1680,7 @@ LL |     reuse Trait::* { self.0.as_ref() }
 note: `Trait::by_value` takes ownership of the receiver `self`, which moves value
   --> $DIR/self-coercion-errors.rs:11:17
    |
+LL | trait Trait: Sized {
 LL |     fn by_value(self) -> i32 { 1 }
    |                 ^^^^
 note: if `F` implemented `Clone`, you could clone the value
@@ -1704,6 +1709,7 @@ LL |     reuse Trait::* { &mut &mut &mut self.0 }
 note: `Trait::by_value` takes ownership of the receiver `self`, which moves value
   --> $DIR/self-coercion-errors.rs:11:17
    |
+LL | trait Trait: Sized {
 LL |     fn by_value(self) -> i32 { 1 }
    |                 ^^^^
 note: if `F` implemented `Clone`, you could clone the value
@@ -1749,6 +1755,7 @@ LL |     reuse Trait::* { &&mut self.0 }
 note: `Trait::by_value` takes ownership of the receiver `self`, which moves value
   --> $DIR/self-coercion-errors.rs:11:17
    |
+LL | trait Trait: Sized {
 LL |     fn by_value(self) -> i32 { 1 }
    |                 ^^^^
 note: if `F` implemented `Clone`, you could clone the value
@@ -1800,6 +1807,7 @@ LL |     reuse Trait::* { self.0 }
 note: `Trait::by_value` takes ownership of the receiver `self`, which moves value
   --> $DIR/self-coercion-errors.rs:11:17
    |
+LL | trait Trait: Sized {
 LL |     fn by_value(self) -> i32 { 1 }
    |                 ^^^^
 note: if `F` implemented `Clone`, you could clone the value
@@ -1830,6 +1838,8 @@ LL |     reuse Trait::* { self.0 }
 note: `Trait::r#box` takes ownership of the receiver `self`, which moves value
   --> $DIR/self-coercion-errors.rs:14:14
    |
+LL | trait Trait: Sized {
+...
 LL |     fn r#box(self: Box<Self>) -> i32 { 4 }
    |              ^^^^
 note: if `F` implemented `Clone`, you could clone the value
@@ -1861,6 +1871,7 @@ LL |     reuse Trait::* { self.0 }
 note: `Trait::by_value` takes ownership of the receiver `self`, which moves value
   --> $DIR/self-coercion-errors.rs:11:17
    |
+LL | trait Trait: Sized {
 LL |     fn by_value(self) -> i32 { 1 }
    |                 ^^^^
 note: if `F` implemented `Clone`, you could clone the value
@@ -1891,6 +1902,8 @@ LL |     reuse Trait::* { self.0 }
 note: `Trait::pin_box` takes ownership of the receiver `self`, which moves value
   --> $DIR/self-coercion-errors.rs:17:16
    |
+LL | trait Trait: Sized {
+...
 LL |     fn pin_box(self: Pin<Box<Self>>) -> i32 { 7 }
    |                ^^^^
 note: if `F` implemented `Clone`, you could clone the value

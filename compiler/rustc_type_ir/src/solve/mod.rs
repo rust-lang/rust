@@ -233,7 +233,7 @@ impl<I: Interner> RerunCondition<I> {
             | (
                 Self::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(a),
                 Self::AnyOpaqueHasInferAsHidden,
-            ) => Self::OpaqueInStorage(a),
+            ) => Self::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(a),
 
             (
                 Self::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(a),

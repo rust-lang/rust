@@ -133,7 +133,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// If possible, prefer the wrapper methods on `ObligationCtxt`,
     /// `FnCtxt`, or `TypeChecker`.
     pub fn sup_raw<T>(
-        self,
+        &self,
         cause: &ObligationCause<'tcx>,
         param_env: ParamEnv<'tcx>,
         define_opaque_types: DefineOpaqueTypes,
@@ -143,7 +143,27 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         T: ToTrace<'tcx>,
     {
-        self.at(cause, param_env).sup(define_opaque_types, expected, actual)
+        if self.next_trait_solver {
+            NextSolverRelate::relate(
+                self,
+                param_env,
+                expected,
+                ty::Contravariant,
+                actual,
+                cause.span,
+            )
+            .map(|goals| self.goals_to_obligations(cause, goals))
+        } else {
+            let mut op = TypeRelating::new(
+                &self,
+                ToTrace::to_trace(cause, expected, actual),
+                param_env,
+                define_opaque_types,
+                ty::Contravariant,
+            );
+            op.relate(expected, actual)?;
+            Ok(InferOk { value: (), obligations: op.into_obligations() })
+        }
     }
 
     /// Makes `expected <: actual`.
@@ -268,44 +288,6 @@ pub trait ToTrace<'tcx>: Relate<TyCtxt<'tcx>> + Copy {
 }
 
 impl<'a, 'tcx> At<'a, 'tcx> {
-    /// Makes `actual <: expected`. For example, if type-checking a
-    /// call like `foo(x)`, where `foo: fn(i32)`, you might have
-    /// `sup(i32, x)`, since the "expected" type is the type that
-    /// appears in the signature.
-    ///
-    /// FIXME: To be removed in favor of the [`InferCtxt::sup_raw`] method instead.
-    pub fn sup<T>(
-        self,
-        define_opaque_types: DefineOpaqueTypes,
-        expected: T,
-        actual: T,
-    ) -> InferResult<'tcx, ()>
-    where
-        T: ToTrace<'tcx>,
-    {
-        if self.infcx.next_trait_solver {
-            NextSolverRelate::relate(
-                self.infcx,
-                self.param_env,
-                expected,
-                ty::Contravariant,
-                actual,
-                self.cause.span,
-            )
-            .map(|goals| self.goals_to_obligations(goals))
-        } else {
-            let mut op = TypeRelating::new(
-                self.infcx,
-                ToTrace::to_trace(self.cause, expected, actual),
-                self.param_env,
-                define_opaque_types,
-                ty::Contravariant,
-            );
-            op.relate(expected, actual)?;
-            Ok(InferOk { value: (), obligations: op.into_obligations() })
-        }
-    }
-
     /// Makes `expected <: actual`.
     ///
     /// FIXME: To be removed in favor of the [`InferCtxt::sub_raw`] method instead.
@@ -411,7 +393,13 @@ impl<'a, 'tcx> At<'a, 'tcx> {
         match variance {
             ty::Covariant => self.sub(define_opaque_types, expected, actual),
             ty::Invariant => self.eq(define_opaque_types, expected, actual),
-            ty::Contravariant => self.sup(define_opaque_types, expected, actual),
+            ty::Contravariant => self.infcx.sup_raw(
+                self.cause,
+                self.param_env,
+                define_opaque_types,
+                expected,
+                actual,
+            ),
 
             // We could make this make sense but it's not readily
             // exposed and I don't feel like dealing with it. Note

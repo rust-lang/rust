@@ -1,3 +1,5 @@
+//! Utilities for analyzing macro invocations and expansions.
+
 #![expect(clippy::similar_names)] // `expr` and `expn`
 
 use std::cell::Cell;
@@ -73,6 +75,7 @@ pub struct MacroCall {
 }
 
 impl MacroCall {
+    /// Returns true if this macro call is from the root expansion or a locally defined macro
     pub fn is_local(&self) -> bool {
         span_is_local(self.span)
     }
@@ -576,7 +579,9 @@ pub enum FormatParamUsage {
 
 /// A node with a `HirId` and a `Span`
 pub trait HirNode {
+    /// Returns this node's [`HirId`]
     fn hir_id(&self) -> HirId;
+    /// Returns this node's [`Span`]
     fn span(&self) -> Span;
 }
 

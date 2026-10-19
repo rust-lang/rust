@@ -2257,10 +2257,9 @@ impl Metadata {
         FileType(self.0.file_type())
     }
 
-    /// Returns `true` if this metadata is for a directory. The
-    /// result is mutually exclusive to the result of
-    /// [`Metadata::is_file`], and will be false for symlink metadata
-    /// obtained from [`symlink_metadata`].
+    /// Returns `true` if this metadata is for a directory. The result is mutually exclusive to the
+    /// result of [`Metadata::is_file`] and [`Metadata::is_symlink`] (i.e., at most one of these
+    /// three methods returns `true`).
     ///
     /// # Examples
     ///
@@ -2280,10 +2279,9 @@ impl Metadata {
         self.file_type().is_dir()
     }
 
-    /// Returns `true` if this metadata is for a regular file. The
-    /// result is mutually exclusive to the result of
-    /// [`Metadata::is_dir`], and will be false for symlink metadata
-    /// obtained from [`symlink_metadata`].
+    /// Returns `true` if this metadata is for a regular file. The result is mutually exclusive to
+    /// the result of [`Metadata::is_dir`] and [`Metadata::is_symlink`] (i.e., at most one of these
+    /// three methods returns `true`).
     ///
     /// When the goal is simply to read from (or write to) the source, the most
     /// reliable way to test the source can be read (or written to) is to open
@@ -2970,6 +2968,9 @@ impl AsInner<fs_imp::DirEntry> for DirEntry {
 /// On Windows, `DeleteFile` is used or `CreateFileW` and `SetInformationByHandle` for readonly files.
 /// Note that, this [may change in the future][changes].
 ///
+/// On Windows, symbolic links to directories cannot currently be removed with this function.
+/// Use [`remove_dir`] for that purpose.
+///
 /// [changes]: io#platform-specific-behavior
 ///
 /// # Errors
@@ -3038,7 +3039,7 @@ pub fn remove_file<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///     Ok(())
 /// }
 /// ```
-#[doc(alias = "stat")]
+#[doc(alias = "stat", alias = "GetFileAttributes", alias = "GetFileAttributesEx")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "fs_metadata")]
 pub fn metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
@@ -3079,7 +3080,7 @@ pub fn metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
 ///     Ok(())
 /// }
 /// ```
-#[doc(alias = "lstat")]
+#[doc(alias = "lstat", alias = "GetFileAttributes", alias = "GetFileAttributesEx")]
 #[stable(feature = "symlink_metadata", since = "1.1.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "fs_symlink_metadata")]
 pub fn symlink_metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
@@ -3261,6 +3262,7 @@ pub fn rename_noreplace<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::R
 /// }
 /// ```
 #[doc(alias = "cp")]
+#[doc(alias = "copy_file_range")]
 #[doc(alias = "CopyFile", alias = "CopyFileEx")]
 #[doc(alias = "fclonefileat", alias = "fcopyfile")]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -3510,6 +3512,7 @@ pub fn create_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///     Ok(())
 /// }
 /// ```
+#[doc(alias = "mkdir", alias = "CreateDirectory")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "fs_create_dir_all")]
 pub fn create_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
@@ -3527,6 +3530,9 @@ pub fn create_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// This function currently corresponds to the `rmdir` function on Unix
 /// and the `RemoveDirectory` function on Windows.
 /// Note that, this [may change in the future][changes].
+///
+/// On Windows, this can also be used to remove symbolic links to directories.
+/// On Unix, [`remove_file`] must be used for that purpose.
 ///
 /// [changes]: io#platform-specific-behavior
 ///
@@ -3622,6 +3628,7 @@ pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///     Ok(())
 /// }
 /// ```
+#[doc(alias = "rm")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "fs_remove_dir_all")]
 pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {

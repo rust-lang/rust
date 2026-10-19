@@ -119,8 +119,8 @@ impl<'a, 'tcx> SpanEncoder for OffloadManifestEncoder<'a, 'tcx> {
         self.tcx.stable_crate_id(crate_num).encode(self);
     }
 
-    fn encode_def_index(&mut self, def_index: rustc_span::def_id::DefIndex) {
-        def_index.as_u32().encode(self);
+    fn encode_def_index(&mut self, _: rustc_span::def_id::DefIndex) {
+        panic!("encode def id instead")
     }
 
     fn encode_def_id(&mut self, def_id: rustc_span::def_id::DefId) {
@@ -287,8 +287,7 @@ impl<'a, 'tcx> BlobDecoder for OffloadManifestDecoder<'a, 'tcx> {
     }
 
     fn decode_def_index(&mut self) -> rustc_span::def_id::DefIndex {
-        let v = self.read_u32();
-        rustc_span::def_id::DefIndex::from_u32(v)
+        panic!("can't decode def indices as we do not encode them")
     }
 
     fn decode_local_def_id(&mut self) -> rustc_hir::def_id::LocalDefId {

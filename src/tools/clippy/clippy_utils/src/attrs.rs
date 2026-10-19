@@ -103,17 +103,16 @@ pub fn has_non_exhaustive_attr(tcx: TyCtxt<'_>, adt: AdtDef<'_>) -> bool {
             .any(|field_def| find_attr!(tcx, field_def.did, NonExhaustive(..)))
 }
 
-/// Checks whether the given span contains a `#[cfg(..)]` attribute
-pub fn span_contains_cfg(cx: &LateContext<'_>, s: Span) -> bool {
+fn span_contains_attr_idents(cx: &LateContext<'_>, s: Span, idents: &[&str]) -> bool {
     s.check_text(cx, |src| {
-        // PERF: A `#[cfg]` needs a literal `#`, so skip the lexer when the source has none.
+        // PERF: Attributes need a literal `#`, so skip the lexer when the source has none.
         if !src.contains('#') {
             return false;
         }
 
         let mut iter = tokenize_with_text(src);
 
-        // Search for the token sequence [`#`, `[`, `cfg`]
+        // Search for the token sequence [`#`, `[`, <ident>]
         while iter.any(|(t, ..)| matches!(t, TokenKind::Pound)) {
             let mut iter = iter.by_ref().skip_while(|(t, ..)| {
                 matches!(
@@ -122,13 +121,23 @@ pub fn span_contains_cfg(cx: &LateContext<'_>, s: Span) -> bool {
                 )
             });
             if matches!(iter.next(), Some((TokenKind::OpenBracket, ..)))
-                && matches!(iter.next(), Some((TokenKind::Ident, "cfg", _)))
+                && matches!(iter.next(), Some((TokenKind::Ident, name, _)) if idents.contains(&name))
             {
                 return true;
             }
         }
         false
     })
+}
+
+/// Checks whether the given span contains a `#[cfg(..)]` attribute
+pub fn span_contains_cfg(cx: &LateContext<'_>, s: Span) -> bool {
+    span_contains_attr_idents(cx, s, &["cfg"])
+}
+
+/// Checks whether the given span contains a `#[cfg(..)]` or `#[cfg_attr(..)]` attribute
+pub fn span_contains_cfg_or_cfg_attr(cx: &LateContext<'_>, s: Span) -> bool {
+    span_contains_attr_idents(cx, s, &["cfg", "cfg_attr"])
 }
 
 /// Currently used to keep track of the current value of `#[clippy::cognitive_complexity(N)]`

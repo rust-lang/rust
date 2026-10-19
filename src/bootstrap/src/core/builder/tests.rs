@@ -1933,6 +1933,7 @@ mod snapshot {
         [doc] rustc 0 <host> -> rustc 1 <host>
         [build] rustc 0 <host> -> HtmlChecker 1 <host>
         [test] html-check <host>
+        [test] test-float-parse <host>
         [build] rustc 0 <host> -> RunMakeSupport 1 <host>
         [test] compiletest-run-make 1 <host>
         [build] rustc 0 <host> -> cargo 1 <host>
@@ -2118,6 +2119,7 @@ mod snapshot {
         [doc] rustc 1 <host> -> rustc 2 <host>
         [build] rustc 0 <host> -> HtmlChecker 1 <host>
         [test] html-check <host>
+        [test] test-float-parse <host>
         [build] rustc 0 <host> -> RunMakeSupport 1 <host>
         [test] compiletest-run-make 2 <host>
         [build] rustc 1 <host> -> cargo 2 <host>
@@ -2928,6 +2930,38 @@ mod snapshot {
         [build] rustdoc 2 <host>
         [build] rustc 2 <host> -> std 2 <host>
         [build] rustc 0 <host> -> cargo 1 <host>
+        ");
+    }
+
+    #[test]
+    fn test_float_parse() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("test")
+                .path("src/tools/test-float-parse")
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustdoc 1 <host>
+        [test] test-float-parse <host>
+        ");
+    }
+
+    #[test]
+    fn test_float_parse_cross() {
+        let ctx = TestCtx::new();
+        insta::assert_snapshot!(
+            ctx.config("test")
+                .path("src/tools/test-float-parse")
+                .targets(&[TEST_TRIPLE_1])
+                .render_steps(), @r"
+        [build] llvm <host>
+        [build] rustc 0 <host> -> rustc 1 <host>
+        [build] rustc 1 <host> -> std 1 <target1>
+        [build] rustc 1 <host> -> std 1 <host>
+        [build] rustdoc 1 <host>
+        [test] test-float-parse <target1>
         ");
     }
 

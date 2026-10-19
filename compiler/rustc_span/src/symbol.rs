@@ -219,7 +219,6 @@ symbols! {
         Equal,
         Err,
         ExitCode,
-        Expected,
         ExternC,
         ExternRust,
         Float,
@@ -233,7 +232,6 @@ symbols! {
         FnPtrToPtr,
         Formatter,
         Forward,
-        Found,
         From,
         FromIterator,
         FromResidual,
@@ -257,7 +255,6 @@ symbols! {
         IoBufReader,
         IrTyKind,
         Item,
-        ItemContext,
         Iterator,
         IteratorItem,
         IteratorMap,
@@ -333,7 +330,6 @@ symbols! {
         SliceIndex,
         Some,
         Source,
-        SpanCtxt,
         StdinLock,
         Str,
         String,
@@ -361,7 +357,6 @@ symbols! {
         Type,
         TypeVisitable,
         Union,
-        Unresolved,
         Unsafe,
         UnsafeFnPointer,
         Unsize,
@@ -667,6 +662,7 @@ symbols! {
         cmpxchg16b_target_feature,
         cmse_nonsecure_entry,
         code,
+        codeview_annotation,
         coerce_pointee_validated,
         coerce_shared,
         coerce_shared_target,
@@ -1051,6 +1047,7 @@ symbols! {
         format_macro,
         format_placeholder,
         format_unsafe_arg,
+        found,
         fp,
         fpregs,
         framework,
@@ -1074,6 +1071,7 @@ symbols! {
         fsub_algebraic,
         fsub_fast,
         full,
+        function_arg_const_generics,
         fundamental,
         fused_iterator,
         future_output,
@@ -1205,6 +1203,7 @@ symbols! {
         issue_5723_bootstrap,
         issue_tracker_base_url,
         item,
+        item_context,
         item_like_imports,
         iter,
         iter_mut,
@@ -1918,6 +1917,7 @@ symbols! {
         rustc_regions,
         rustc_scalable_vector,
         rustc_should_not_be_called_on_const_items,
+        rustc_show_spans,
         rustc_simd_monomorphize_lane_limit,
         rustc_skip_during_method_dispatch,
         rustc_specialization_trait,
@@ -2175,6 +2175,7 @@ symbols! {
         test_removed_feature,
         test_runner,
         test_unstable_lint,
+        this,
         thread,
         thread_local,
         threadptr,
@@ -2323,6 +2324,7 @@ symbols! {
         unreachable_code,
         unreachable_display,
         unreachable_macro,
+        unresolved,
         unrestricted_attribute_tokens,
         unsafe_attributes,
         unsafe_binders,
@@ -3008,9 +3010,19 @@ pub mod kw {
 ///
 /// Given that `sym` is imported, use them like `sym::symbol_name`.
 /// For example `sym::rustfmt` or `sym::u8`.
-#[diagnostic::on_unknown(
-    label = "`{Unresolved}` is not a pre-interned symbol",
-    note = "consider adding `{Unresolved}` to the `symbols!` invocation in compiler/rustc_span/src/symbol.rs"
+#[cfg_attr(
+    bootstrap,
+    diagnostic::on_unknown(
+        label = "`{Unresolved}` is not a pre-interned symbol",
+        note = "consider adding `{Unresolved}` to the `symbols!` invocation in compiler/rustc_span/src/symbol.rs"
+    )
+)]
+#[cfg_attr(
+    not(bootstrap),
+    diagnostic::on_unknown(
+        label = "`{unresolved}` is not a pre-interned symbol",
+        note = "consider adding `{unresolved}` to the `symbols!` invocation in compiler/rustc_span/src/symbol.rs"
+    )
 )]
 pub mod sym {
     use super::Symbol;
