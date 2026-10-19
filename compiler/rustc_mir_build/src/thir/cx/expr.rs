@@ -1707,7 +1707,31 @@ impl<'tcx> ThirBuildCx<'tcx> {
         let temp_scope_id = closure_expr.hir_id.local_id;
 
         match upvar_capture {
-            ty::UpvarCapture::ByValue | ty::UpvarCapture::ByCopy => captured_place_expr,
+            ty::UpvarCapture::ByValue => captured_place_expr,
+            // FIXME(cromulent_copy_closure_captures): remove this hack once `marker_trait_attr` is usable
+            ty::UpvarCapture::ByCopy => {
+                let span = captured_place_expr.span;
+                let ty = captured_place_expr.ty;
+                let expr_id = self.thir.exprs.push(captured_place_expr);
+
+                let container_did = self
+                    .tcx
+                    .require_lang_item(rustc_attr_ir::LangItem::CopyClosureCaptureContainer, span);
+
+                Expr {
+                    temp_scope_id,
+                    ty: upvar_ty,
+                    span: closure_expr.span,
+                    kind: ExprKind::Adt(Box::new(AdtExpr {
+                        adt_def: self.tcx.adt_def(container_did),
+                        variant_index: VariantIdx::ZERO,
+                        args: self.tcx.mk_args(&[ty.into()]),
+                        user_ty: None,
+                        fields: Box::new([FieldExpr { name: FieldIdx::ZERO, expr: expr_id }]),
+                        base: AdtExprBase::None,
+                    })),
+                }
+            }
             ty::UpvarCapture::ByUse => {
                 let span = captured_place_expr.span;
                 let expr_id = self.thir.exprs.push(captured_place_expr);

@@ -1,4 +1,4 @@
-error: Undefined Behavior: constructing invalid value of type {closure@tests/fail/validity/cromulent-copy-closure-captures.rs:LL:CC}: at .<captured-var(nonzero)>.0.0, encountered 0, but expected something greater or equal to 1
+error: Undefined Behavior: constructing invalid value of type std::num::NonZero<u8>: at .0.0, encountered 0, but expected something greater or equal to 1
   --> tests/fail/validity/cromulent-copy-closure-captures.rs:LL:CC
    |
 LL |     let _ = || nonzero;

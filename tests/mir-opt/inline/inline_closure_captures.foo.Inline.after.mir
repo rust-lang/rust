@@ -5,40 +5,56 @@ fn foo(_1: T, _2: i32) -> (i32, T) {
     debug q => _2;
     let mut _0: (i32, T);
     let _3: {closure@foo<T>::{closure#0}};
-    let mut _4: &{closure@foo<T>::{closure#0}};
-    let mut _5: (i32,);
-    let mut _6: i32;
-    let mut _7: i32;
+    let mut _4: std::marker::CopyClosureCaptureContainer<i32>;
+    let mut _5: i32;
+    let mut _6: std::marker::CopyClosureCaptureContainer<T>;
+    let mut _7: T;
+    let mut _8: &{closure@foo<T>::{closure#0}};
+    let mut _9: (i32,);
+    let mut _10: i32;
+    let mut _11: i32;
     scope 1 {
         debug x => _3;
         scope 2 (inlined foo::<T>::{closure#0}) {
-            let mut _8: i32;
-            let mut _9: T;
+            let mut _12: i32;
+            let mut _13: T;
         }
     }
 
     bb0: {
         StorageLive(_3);
-        _3 = {closure@foo::<T>::{closure#0}} { q: copy _2, t: copy _1 };
         StorageLive(_4);
-        _4 = &_3;
         StorageLive(_5);
+        _5 = copy _2;
+        _4 = std::marker::CopyClosureCaptureContainer::<i32>(move _5);
         StorageLive(_6);
-        _6 = copy _2;
-        _5 = (move _6,);
         StorageLive(_7);
-        _7 = move (_5.0: i32);
-        StorageLive(_8);
-        _8 = copy ((*_4).0: i32);
-        StorageLive(_9);
-        _9 = copy ((*_4).1: T);
-        _0 = (move _8, move _9);
-        StorageDead(_9);
-        StorageDead(_8);
+        _7 = copy _1;
+        _6 = std::marker::CopyClosureCaptureContainer::<T>(move _7);
+        _3 = {closure@foo::<T>::{closure#0}} { q: move _4, t: move _6 };
         StorageDead(_7);
         StorageDead(_6);
         StorageDead(_5);
         StorageDead(_4);
+        StorageLive(_8);
+        _8 = &_3;
+        StorageLive(_9);
+        StorageLive(_10);
+        _10 = copy _2;
+        _9 = (move _10,);
+        StorageLive(_11);
+        _11 = move (_9.0: i32);
+        StorageLive(_12);
+        _12 = copy (((*_8).0: std::marker::CopyClosureCaptureContainer<i32>).0: i32);
+        StorageLive(_13);
+        _13 = copy (((*_8).1: std::marker::CopyClosureCaptureContainer<T>).0: T);
+        _0 = (move _12, move _13);
+        StorageDead(_13);
+        StorageDead(_12);
+        StorageDead(_11);
+        StorageDead(_10);
+        StorageDead(_9);
+        StorageDead(_8);
         StorageDead(_3);
         return;
     }
