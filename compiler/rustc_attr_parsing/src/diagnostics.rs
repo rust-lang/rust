@@ -2139,15 +2139,33 @@ pub(crate) struct MalformedAttribute {
     #[primary_span]
     pub span: Span,
     #[subdiagnostic]
-    pub sub: MalformedAttributeSub,
+    pub kind: MalformedAttributeKind,
 }
 
 #[derive(Subdiagnostic)]
-pub(crate) enum MalformedAttributeSub {
+pub(crate) enum MalformedAttributeKind {
     #[label("bad attribute argument")]
     BadAttributeArgument(#[primary_span] Span),
     #[label("reason in lint attribute must come last")]
     ReasonMustComeLast(#[primary_span] Span),
+}
+
+#[derive(Diagnostic)]
+#[diag("expected a lint, found literal")]
+pub(crate) struct BadAttributeLit {
+    #[primary_span]
+    #[label("not the name of a lint")]
+    pub span: Span,
+    #[subdiagnostic]
+    pub help: BadAttributeLitHelp,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum BadAttributeLitHelp {
+    #[help("try using `#[{$kind}({$sym})]`")]
+    StrLit { sym: Symbol, kind: Symbol },
+    #[help("for example, write `#[{$kind}(dead_code)]` for `dead_code`")]
+    Other { kind: Symbol },
 }
 
 #[derive(Subdiagnostic)]
