@@ -22,9 +22,7 @@ fn try_clone_from_ref_in_zero_sized_type_skips_allocation() {
         }
     }
 
-    let alloc = CountingAllocator {
-        allocations: Cell::new(0),
-    };
+    let alloc = CountingAllocator { allocations: Cell::new(0) };
 
     let value = ();
     let boxed = Box::try_clone_from_ref_in(&value, &alloc).unwrap();
