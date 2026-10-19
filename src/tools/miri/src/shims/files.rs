@@ -687,12 +687,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     /// Write data to a host `Write` type, with the bytes taken from machine memory.
     fn write_to_host(
-        &mut self,
+        &self,
         mut file: impl io::Write,
         len: usize,
         ptr: Pointer,
     ) -> InterpResult<'tcx, Result<usize, IoError>> {
-        let this = self.eval_context_mut();
+        let this = self.eval_context_ref();
 
         let bytes = this.read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(len))?;
         let result = file.write(bytes);

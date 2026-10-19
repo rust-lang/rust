@@ -84,10 +84,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     fn resolve_frame_pointer(
-        &mut self,
+        &self,
         ptr: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, (Instance<'tcx>, Loc, String, String)> {
-        let this = self.eval_context_mut();
+        let this = self.eval_context_ref();
 
         let ptr = this.read_pointer(ptr)?;
         // Take apart the pointer, we need its pieces. The offset encodes the span.
