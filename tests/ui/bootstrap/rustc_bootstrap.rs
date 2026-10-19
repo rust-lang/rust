@@ -6,7 +6,8 @@
 //! - `1`: cheat, allow usage of unstable features even if rustc thinks it is a stable compiler.
 //! - `x,y,z`: comma-delimited list of crates.
 //! - `-1`: force rustc to think it is a stable compiler.
-//! - `-2`: force rustc to think it is a stable compiler, while still allowing -Z flags.
+//! - `-allow-unstable-compiler-flags=<flags>`: force rustc to think it is a stable compiler,
+//!   while still allowing the specified -Z flags.
 
 // ignore-tidy-linelength
 

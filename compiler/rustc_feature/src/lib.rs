@@ -62,7 +62,7 @@ pub enum UnstableFeatures {
     /// Specifically, we need it when we want to test how rustc behaves on the stable channel,
     /// but at the same time we need to be able to pass it some unstable `-Z` compiler flags
     /// required for the testing infrastructure itself to work.
-    AllowUnstableCompilerFlagsOnly {
+    AllowSelectedUnstableCompilerFlagsOnly {
         /// Unstable compiler flags that we are allowed to use, without their `-Z` prefix.
         allowed_flags: Vec<String>,
     },
@@ -96,7 +96,7 @@ impl UnstableFeatures {
             match val {
                 // Act as stable, but still accept unstable compiler flags required by compiletest
                 val if let Some(flags) = val.strip_prefix(allow_unstable_flags_prefix) => {
-                    return UnstableFeatures::AllowUnstableCompilerFlagsOnly {
+                    return UnstableFeatures::AllowSelectedUnstableCompilerFlagsOnly {
                         allowed_flags: flags.split(",").map(|s| s.trim().to_string()).collect(),
                     };
                 }
@@ -116,13 +116,13 @@ impl UnstableFeatures {
     pub fn allow_unstable_compiler_flag(&self, flag: &str) -> bool {
         match self {
             UnstableFeatures::Allow | UnstableFeatures::Cheat => true,
-            UnstableFeatures::AllowUnstableCompilerFlagsOnly { allowed_flags }
+            UnstableFeatures::AllowSelectedUnstableCompilerFlagsOnly { allowed_flags }
                 if allowed_flags.iter().any(|allowed_flag| allowed_flag == flag) =>
             {
                 true
             }
             UnstableFeatures::Disallow
-            | UnstableFeatures::AllowUnstableCompilerFlagsOnly { .. } => false,
+            | UnstableFeatures::AllowSelectedUnstableCompilerFlagsOnly { .. } => false,
         }
     }
 
@@ -130,7 +130,7 @@ impl UnstableFeatures {
         match *self {
             UnstableFeatures::Allow | UnstableFeatures::Cheat => true,
             UnstableFeatures::Disallow
-            | UnstableFeatures::AllowUnstableCompilerFlagsOnly { .. } => false,
+            | UnstableFeatures::AllowSelectedUnstableCompilerFlagsOnly { .. } => false,
         }
     }
 }

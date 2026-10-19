@@ -513,7 +513,7 @@ impl LinkerFeaturesCli {
 
     /// When *not* using `-Z unstable-options` on the CLI, ensure only stable linker features are
     /// used, for the given `TargetTuple`. Returns `Ok` if no unstable variants are used.
-    /// The caller should ensure that e.g. `nightly_options::is_unstable_enabled()`
+    /// The caller should ensure that e.g. [`nightly_options::unstable_options_enabled`]
     /// returns false.
     pub(crate) fn check_unstable_variants(&self, target_tuple: &TargetTuple) -> Result<(), String> {
         // `-C linker-features=-lld` is only stable on x64 linux.
@@ -3247,23 +3247,21 @@ pub mod nightly_options {
                 let values = matches.opt_strs(opt.name);
                 let disallowed_flags = values
                     .iter()
-                    .map(|flag| flag.split_once("=").map(|s| s.0).unwrap_or(flag))
+                    .map(|flag| flag.split_once("=").map(|(k, _)| k).unwrap_or(flag))
                     .filter(|flag| !unstable_features.allow_unstable_compiler_flag(flag))
                     .collect::<Vec<_>>();
                 if disallowed_flags.is_empty() {
                     continue;
                 }
 
-                // At this point, check if we're using the "allow unstable flags only" mode.
+                // Check if we're using the "allow specified unstable flags only" mode.
                 // In this case, if the user allowed only foo and bar, but then -Zbaz was also
                 // passed, rustc would only print that `-Z` is not allowed, which doesn't tell the
                 // user the actual -Z flag value that was disallowed. So we try to provide better
                 // diagnostics here (solely for the use-case of debugging compiletest itself).
-                let unstable_features =
-                    UnstableFeatures::from_environment(matches.opt_str("crate-name").as_deref());
                 if matches!(
                     unstable_features,
-                    UnstableFeatures::AllowUnstableCompilerFlagsOnly { .. }
+                    UnstableFeatures::AllowSelectedUnstableCompilerFlagsOnly { .. }
                 ) {
                     for flag in disallowed_flags {
                         let _ = early_dcx.early_err(format!("the -Z{flag} option was not allowed through `-allow-unstable-compiler-flags`"));
