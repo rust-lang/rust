@@ -1,4 +1,6 @@
 //! Check that destructors of main thread thread locals are executed when main returns.
+//! Only works on tagets that use something other than pthread keys for the destructors.
+//@ignore-target: freebsd illumos solaris android
 //@run-native
 //@revisions: with_exit without_exit
 

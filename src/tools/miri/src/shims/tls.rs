@@ -4,7 +4,7 @@ use std::collections::btree_map::Entry as BTreeEntry;
 use std::collections::{BTreeMap, VecDeque};
 use std::task::Poll;
 
-use rustc_abi::{ExternAbi, HasDataLayout, Size};
+use rustc_abi::{ExternAbi, Size};
 use rustc_middle::ty;
 use rustc_span::Span;
 use rustc_target::spec::Os;
@@ -15,9 +15,9 @@ pub type TlsKey = u128;
 
 #[derive(Clone, Debug)]
 pub struct TlsEntry<'tcx> {
-    /// The data for this key. None is used to represent NULL.
+    /// The data for this key. Absence of data for a thread ID is used to represent NULL.
     /// (We normalize this early to avoid having to do a NULL-ptr-test each time we access the data.)
-    pub data: BTreeMap<ThreadId, Scalar>,
+    pub data: BTreeMap<ThreadId, Pointer>,
     pub dtor: Option<(ty::Instance<'tcx>, Span)>,
 }
 
@@ -90,17 +90,12 @@ impl<'tcx> TlsData<'tcx> {
         }
     }
 
-    pub fn load_tls(
-        &self,
-        key: TlsKey,
-        thread_id: ThreadId,
-        cx: &impl HasDataLayout,
-    ) -> InterpResult<'tcx, Scalar> {
+    pub fn load_tls(&self, key: TlsKey, thread_id: ThreadId) -> InterpResult<'tcx, Pointer> {
         match self.keys.get(&key) {
             Some(TlsEntry { data, .. }) => {
                 let value = data.get(&thread_id).copied();
                 trace!("TLS key {} for thread {:?} loaded: {:?}", key, thread_id, value);
-                interp_ok(value.unwrap_or_else(|| Scalar::null_ptr(cx)))
+                interp_ok(value.unwrap_or_else(Pointer::null))
             }
             None => throw_ub_format!("loading from a non-existing TLS key: {}", key),
         }
@@ -110,12 +105,11 @@ impl<'tcx> TlsData<'tcx> {
         &mut self,
         key: TlsKey,
         thread_id: ThreadId,
-        new_data: Scalar,
-        cx: &impl HasDataLayout,
+        new_data: Pointer,
     ) -> InterpResult<'tcx> {
         match self.keys.get_mut(&key) {
             Some(TlsEntry { data, .. }) => {
-                if new_data.to_target_usize(cx)? != 0 {
+                if new_data.addr() != Size::ZERO {
                     trace!("TLS key {} for thread {:?} stored: {:?}", key, thread_id, new_data);
                     data.insert(thread_id, new_data);
                 } else {
@@ -164,7 +158,7 @@ impl<'tcx> TlsData<'tcx> {
         &mut self,
         key: Option<TlsKey>,
         thread_id: ThreadId,
-    ) -> Option<(ty::Instance<'tcx>, Scalar, TlsKey, Span)> {
+    ) -> Option<(ty::Instance<'tcx>, Pointer, TlsKey, Span)> {
         use std::ops::Bound::*;
 
         let thread_local = &mut self.keys;
@@ -184,8 +178,8 @@ impl<'tcx> TlsData<'tcx> {
                 BTreeEntry::Occupied(entry) => {
                     if let Some((dtor, span)) = dtor {
                         // Set TLS data to NULL, and call dtor with old value.
-                        let data_scalar = entry.remove();
-                        return Some((*dtor, data_scalar, key, *span));
+                        let data = entry.remove();
+                        return Some((*dtor, data, key, *span));
                     }
                 }
                 BTreeEntry::Vacant(_) => {}
@@ -203,6 +197,17 @@ impl<'tcx> TlsData<'tcx> {
 
         if let Some(dtors) = self.thread_atexit.remove(&thread_id) {
             assert!(dtors.is_empty(), "the destructors should have already been run");
+        }
+    }
+
+    pub fn leak_all_thread_tls(&self, thread_id: ThreadId, static_roots: &mut Vec<AllocId>) {
+        for TlsEntry { data, .. } in self.keys.values() {
+            if let Some(ptr) = data.get(&thread_id) {
+                if let Some(alloc) = ptr.provenance.and_then(|p| p.get_alloc_id()) {
+                    trace!("Thread-local key value leaked and stored as static root: {:?}", alloc);
+                    static_roots.push(alloc);
+                }
+            }
         }
     }
 }
@@ -227,6 +232,7 @@ pub struct TlsDtorsState<'tcx>(TlsDtorsStatePriv<'tcx>);
 enum TlsDtorsStatePriv<'tcx> {
     #[default]
     Init,
+    InitForExit,
     PthreadDtors(RunningPthreadDtorState),
     AfterPthreadDtors,
     ThreadAtexit,
@@ -242,7 +248,7 @@ impl<'tcx> TlsDtorsState<'tcx> {
     /// Returns the state we should start running when the program is exiting.
     pub fn new_for_exit() -> Self {
         // Pthread destructors get skipped on `exit`.
-        Self(TlsDtorsStatePriv::AfterPthreadDtors)
+        Self(TlsDtorsStatePriv::InitForExit)
     }
 
     pub fn on_stack_empty(
@@ -259,6 +265,17 @@ impl<'tcx> TlsDtorsState<'tcx> {
                     } else {
                         break 'new_state AfterPthreadDtors;
                     }
+                }
+                InitForExit => {
+                    // We skip the pthread dtors, but we mark them as static roots so they do not
+                    // acount as leaked.
+                    if this.target_os_is_unix() {
+                        this.machine.tls.leak_all_thread_tls(
+                            this.active_thread(),
+                            &mut this.machine.static_roots,
+                        );
+                    }
+                    break 'new_state AfterPthreadDtors;
                 }
                 PthreadDtors(state) => {
                     match this.schedule_next_pthread_tls_dtor(state)? {
@@ -425,15 +442,15 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if let Some((instance, ptr, key, span)) = dtor {
             state.last_key = Some(key);
             trace!("Running TLS dtor {:?} on {:?} at {:?}", instance, ptr, active_thread);
-            assert!(
-                ptr.to_target_usize(this).unwrap() != 0,
-                "data can't be NULL when dtor is called!"
-            );
+            assert!(ptr.addr() != Size::ZERO, "data can't be NULL when dtor is called!");
 
             this.call_thread_root_function(
                 instance,
                 ExternAbi::C { unwind: false },
-                &[ImmTy::from_scalar(ptr, this.machine.layouts.unit_ptr_mut)],
+                &[ImmTy::from_scalar(
+                    Scalar::from_maybe_pointer(ptr, this),
+                    this.machine.layouts.unit_ptr_mut,
+                )],
                 None,
                 span,
             )?;
@@ -487,7 +504,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             let Some(&ptr) = data.get(&active_thread) else { continue };
 
             assert!(
-                ptr.to_target_usize(this).unwrap() != 0,
+                ptr.addr() != Size::ZERO,
                 "TLS key's value can't be null (should be absent instead)"
             );
 
@@ -499,7 +516,10 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             this.call_thread_root_function(
                 instance,
                 ExternAbi::System { unwind: false },
-                &[ImmTy::from_scalar(ptr, this.machine.layouts.unit_ptr_mut)],
+                &[ImmTy::from_scalar(
+                    Scalar::from_maybe_pointer(ptr, this),
+                    this.machine.layouts.unit_ptr_mut,
+                )],
                 None,
                 span,
             )?;

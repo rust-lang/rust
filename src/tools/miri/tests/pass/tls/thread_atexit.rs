@@ -1,5 +1,6 @@
 //! Test the Linux and macOS APIs for thread exit callbacks.
 //@only-target: linux darwin
+//@ignore-target: android
 //@run-native
 //@revisions: in_thread with_exit without_exit
 

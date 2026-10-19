@@ -605,8 +605,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 )?;
                 let key = u128::from(this.read_scalar(key)?.to_u32()?);
                 let active_thread = this.active_thread();
-                let ptr = this.machine.tls.load_tls(key, active_thread, this)?;
-                this.write_scalar(ptr, dest)?;
+                let ptr = this.machine.tls.load_tls(key, active_thread)?;
+                this.write_pointer(ptr, dest)?;
             }
             "TlsSetValue" => {
                 // FIXME: This does not have a direct test (#3179).
@@ -616,8 +616,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 )?;
                 let key = u128::from(this.read_scalar(key)?.to_u32()?);
                 let active_thread = this.active_thread();
-                let new_data = this.read_scalar(new_ptr)?;
-                this.machine.tls.store_tls(key, active_thread, new_data, &*this.tcx)?;
+                let new_data = this.read_pointer(new_ptr)?;
+                this.machine.tls.store_tls(key, active_thread, new_data)?;
 
                 // Return success (`1`).
                 this.write_int(1, dest)?;
@@ -666,8 +666,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 )?;
                 let key = u128::from(this.read_scalar(key)?.to_u32()?);
                 let active_thread = this.active_thread();
-                let ptr = this.machine.tls.load_tls(key, active_thread, this)?;
-                this.write_scalar(ptr, dest)?;
+                let ptr = this.machine.tls.load_tls(key, active_thread)?;
+                this.write_pointer(ptr, dest)?;
             }
             "FlsSetValue" => {
                 // FIXME: This does not have a direct test (#3179).
@@ -677,8 +677,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 )?;
                 let key = u128::from(this.read_scalar(key)?.to_u32()?);
                 let active_thread = this.active_thread();
-                let new_data = this.read_scalar(new_ptr)?;
-                this.machine.tls.store_tls(key, active_thread, new_data, &*this.tcx)?;
+                let new_data = this.read_pointer(new_ptr)?;
+                this.machine.tls.store_tls(key, active_thread, new_data)?;
 
                 // Return success (`1`).
                 this.write_int(1, dest)?;
