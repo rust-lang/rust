@@ -312,7 +312,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                 );
                 return IntrinsicResult::WroteIntoPlace;
             }
-            sym::breakpoint => {
+            sym::breakpoint | sym::resumable_breakpoint => {
                 unimplemented!();
             }
             sym::va_arg => {

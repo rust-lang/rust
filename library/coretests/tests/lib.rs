@@ -1,6 +1,7 @@
 // tidy-alphabetical-start
 #![cfg_attr(not(panic = "abort"), feature(reentrant_lock))]
 #![cfg_attr(target_has_atomic = "128", feature(integer_atomics))]
+#![feature(abort_immediate)]
 #![feature(array_ptr_get)]
 #![feature(array_try_from_fn)]
 #![feature(array_try_map)]
@@ -10,6 +11,7 @@
 #![feature(async_iterator)]
 #![feature(atomic_volatile)]
 #![feature(borrowed_buf_init)]
+#![feature(breakpoint)]
 #![feature(byte_str)]
 #![feature(casefold)]
 #![feature(cfg_overflow_checks)]
@@ -208,6 +210,7 @@ mod panic;
 mod pattern;
 mod pin;
 mod pin_macro;
+mod process;
 mod ptr;
 mod result;
 mod simd;
