@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use rustc_ast::{GenericParamKind, LitIntType, LitKind, MetaItemLit};
+use rustc_ast::{GenericParamKind, LitIntType, LitKind, MetaItemLit, VariantData};
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_attr_ir::target::AstTarget;
 use rustc_attr_ir::{
@@ -1235,4 +1235,21 @@ fn parse_variance(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<Ru
     };
 
     Some(kind)
+}
+
+pub(crate) struct RustcPhantomMarkerParser;
+
+impl NoArgsAttributeParser for RustcPhantomMarkerParser {
+    const PATH: &[Symbol] = &[sym::rustc_phantom_marker];
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcPhantomMarker;
+
+    fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
+        if let AstTarget::Struct(_, _, data) = cx.ast_target
+            && !matches!(data, VariantData::Unit(_))
+        {
+            cx.emit_err(crate::diagnostics::InvalidPhantomMarkerTarget { attr_span });
+        }
+    }
 }

@@ -379,7 +379,7 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
                             unnormalized_ty,
                         )
                         .unwrap_or(unnormalized_ty.skip_norm_wip())
-                        .is_phantom_data()
+                        .is_phantom_marker()
                     {
                         return None;
                     }
@@ -583,7 +583,7 @@ fn collect_reborrow_data_fields<'tcx>(
         .iter()
         .filter_map(|field| {
             let ty = field.ty(tcx, args).skip_norm_wip();
-            (!ty.is_phantom_data()).then_some(ReborrowDataField {
+            (!ty.is_phantom_marker()).then_some(ReborrowDataField {
                 ident: field.ident(tcx),
                 name: field.name,
                 ty,
@@ -804,7 +804,7 @@ pub(crate) fn coerce_unsized_info<'tcx>(
                             unnormalized_ty,
                         )
                         .unwrap_or(unnormalized_ty.skip_norm_wip())
-                        .is_phantom_data()
+                        .is_phantom_marker()
                     {
                         return None;
                     }

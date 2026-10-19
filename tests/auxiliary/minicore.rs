@@ -134,6 +134,7 @@ pub mod arch {
 }
 
 #[lang = "phantom_data"]
+#[rustc_phantom_marker]
 pub struct PhantomData<#[rustc_force_variance(covariant)] T: PointeeSized>;
 impl<T: PointeeSized> Copy for PhantomData<T> {}
 

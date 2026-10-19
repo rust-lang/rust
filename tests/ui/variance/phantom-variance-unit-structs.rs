@@ -1,10 +1,25 @@
 //@ run-pass
 #![feature(phantom_variance_markers, dropck_eyepatch, const_default, const_trait_impl)]
+#![deny(improper_ctypes)]
 
 use std::cell::UnsafeCell;
 use std::marker::*;
 use std::panic::{RefUnwindSafe, UnwindSafe};
 use std::rc::Rc;
+
+#[repr(C)]
+pub struct FfiWrapper {
+    data: u8,
+    cov: PhantomCovariant<str>,
+    contra: PhantomContravariant<str>,
+    inv: PhantomInvariant<str>,
+    cov_lt: PhantomCovariantLifetime<'static>,
+    contra_lt: PhantomContravariantLifetime<'static>,
+    inv_lt: PhantomInvariantLifetime<'static>,
+}
+unsafe extern "C" {
+    pub fn takes_wrapper(value: FfiWrapper);
+}
 
 const COV: PhantomCovariant<str> = PhantomCovariant;
 const CONTRA: PhantomContravariant<str> = PhantomContravariant;

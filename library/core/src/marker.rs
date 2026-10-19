@@ -807,6 +807,7 @@ impl<T: PointeeSized> !Sync for *mut T {}
 ///
 /// [drop check]: Drop#drop-check
 #[lang = "phantom_data"]
+#[rustc_phantom_marker]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct PhantomData<#[rustc_force_variance(covariant)] T: PointeeSized>;
 

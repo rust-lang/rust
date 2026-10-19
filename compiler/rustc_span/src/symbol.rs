@@ -1888,6 +1888,7 @@ symbols! {
         rustc_peek_liveness,
         rustc_peek_maybe_init,
         rustc_peek_maybe_uninit,
+        rustc_phantom_marker,
         rustc_preserve_ub_checks,
         rustc_pretty_live_locals,
         rustc_pretty_precise_liveness,
