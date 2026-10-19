@@ -11,11 +11,10 @@
 //! mutate it.
 //!
 //! Shareable mutable containers exist to permit mutability in a controlled manner, even in the
-//! presence of aliasing. [`Cell<T>`], [`RefCell<T>`], [`OnceCell<T>`], and [`LazyCell<T, F>`]
-//! allow doing this in a single-threaded way—they do not implement [`Sync`].
-//! (If you need to do aliasing and mutation among multiple threads, [`Mutex<T>`], [`RwLock<T>`],
-//! [`OnceLock<T>`], [`LazyLock<T, F>`] or [`atomic`] types are the correct data structures to
-//! do so).
+//! presence of aliasing. Cells types allow doing this in a single-threaded way—they do not
+//! implement [`Sync`].
+//! If you need to do aliasing and mutation among multiple threads, an appropriate type or an
+//! [`atomic`] types can be used to do so. See below for the appropriate type to use for each cell.
 //!
 //! Values of the `Cell<T>`, `RefCell<T>`, and `OnceCell<T>` types may be mutated through shared
 //! references (i.e. the common `&T` type), whereas most Rust types can only be mutated through
