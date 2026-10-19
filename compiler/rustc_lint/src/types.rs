@@ -310,9 +310,6 @@ fn lint_nan<'tcx>(
             deref_count += 1;
             ty = inner;
         }
-        if !matches!(*ty.kind(), ty::Float(fty) if fty == float_ty) {
-            return InvalidNanComparisonsSuggestion::Spanless;
-        }
         let neg = if is_ne { "!" } else { "" };
         let Some(method_path) = nan_method_path(cx, nan, float_ty, cmp.span) else {
             return InvalidNanComparisonsSuggestion::Spanless;
@@ -331,24 +328,26 @@ fn lint_nan<'tcx>(
         }
     }
 
-    let l_nan = nan_ty(cx, l);
-    let r_nan = nan_ty(cx, r);
-    let is_ne = binop == hir::BinOpKind::Ne;
+    let Some((value, nan, float_ty)) = nan_ty(cx, l)
+        .map(|float_ty| (r, l, float_ty))
+        .or_else(|| nan_ty(cx, r).map(|float_ty| (l, r, float_ty)))
+    else {
+        return;
+    };
+    let typeck_results = cx.typeck_results();
+    // Custom comparison implementations need not follow primitive float NaN semantics.
+    if ![l, r].into_iter().all(|operand| {
+        typeck_results
+            .expr_ty_opt(operand)
+            .is_some_and(|ty| matches!(*ty.peel_refs().kind(), ty::Float(fty) if fty == float_ty))
+    }) {
+        return;
+    }
     let lint = match binop {
-        hir::BinOpKind::Eq | hir::BinOpKind::Ne => {
-            let Some((value, nan, float_ty)) = l_nan
-                .map(|float_ty| (r, l, float_ty))
-                .or_else(|| r_nan.map(|float_ty| (l, r, float_ty)))
-            else {
-                return;
-            };
-            InvalidNanComparisons::EqNe {
-                suggestion: eq_ne_suggestion(cx, e, value, nan, float_ty, is_ne),
-            }
-        }
-        hir::BinOpKind::Lt | hir::BinOpKind::Le | hir::BinOpKind::Gt | hir::BinOpKind::Ge
-            if l_nan.is_some() || r_nan.is_some() =>
-        {
+        hir::BinOpKind::Eq | hir::BinOpKind::Ne => InvalidNanComparisons::EqNe {
+            suggestion: eq_ne_suggestion(cx, e, value, nan, float_ty, binop == hir::BinOpKind::Ne),
+        },
+        hir::BinOpKind::Lt | hir::BinOpKind::Le | hir::BinOpKind::Gt | hir::BinOpKind::Ge => {
             InvalidNanComparisons::LtLeGtGe
         }
         _ => return,
