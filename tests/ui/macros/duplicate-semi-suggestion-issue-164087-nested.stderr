@@ -11,10 +11,10 @@ LL |       outer!()
    |       -------- in this macro invocation
    |
    = note: the macro call doesn't expand to an expression, but it can expand to a statement
-help: add `;` to interpret the expansion as a statement
+help: invoke the macro in a new block with a single statement to interpret the expansion as a statement
    |
-LL |     () => {{ let _ = inner!();; }};
-   |                              +
+LL |     () => {{ let _ = { inner!(); }; }};
+   |                      +         +++
 
 error: aborting due to 1 previous error
 
