@@ -1,4 +1,5 @@
 //@ rustfmt-unstable: true
+//@ rustfmt-edition: 2024
 
 // We need to make sure we're not adding or removing important braces
 

@@ -1,4 +1,5 @@
 //@ rustfmt-unstable: true
+//@ rustfmt-edition: 2024
 
 // We need to make sure we're not adding or removing important braces
 
@@ -117,61 +118,37 @@ fn other_cfg_select_cases() {
     }
 
     cfg_select! {
-        outer_unsafe_block => unsafe {
-            {
-                ..
-            }
-        },
+        outer_unsafe_block => unsafe { { .. } },
         // No trailing comma in source
-        outer_unsafe_block => unsafe {
-            {
-                ..
-            }
-        },
+        outer_unsafe_block => unsafe { { .. } },
     }
     cfg_select! {
-        outer_const_block => {
-            const {
-                {
-                    ..
-                }
-            }
-        }
+        outer_const_block => const { { .. } },
         // No trailing comma in source
-        outer_const_block => {
-            const {
-                {
-                    ..
-                }
-            }
-        }
+        outer_const_block => const { { .. } },
     }
     cfg_select! {
         outer_async_block => async { { .. } },
         // No trailing comma in source
-        outer_async_block => async { { .. } }
+        outer_async_block => async { { .. } },
     }
     cfg_select! {
         outer_gen_block => gen { { .. } },
         // No trailing comma in source
-        outer_gen_block => gen { { .. } }
+        outer_gen_block => gen { { .. } },
     }
     cfg_select! {
         outer_try_block => try { { .. } },
         // No trailing comma in source
-        outer_try_block => try { { .. } }
+        outer_try_block => try { { .. } },
     }
     cfg_select! {
         outer_block_with_label => 'a: {
-            {
-                ..
-            }
+            { .. }
         }
         // No trailing comma in source
         outer_block_with_label => 'a: {
-            {
-                ..
-            }
+            { .. }
         }
     }
 
@@ -181,34 +158,26 @@ fn other_cfg_select_cases() {
         outer_block_with_outer_attr =>
         #[foo]
         {
-            {
-                ..
-            }
+            { .. }
         }
         // No trailing comma in source
         outer_block_with_outer_attr =>
         #[foo]
         {
-            {
-                ..
-            }
+            { .. }
         }
     }
     cfg_select! {
         outer_block_with_inner_attr =>
         {
             #![foo]
-            {
-                ..
-            }
+            { .. }
         }
         // No trailing comma in source
         outer_block_with_inner_attr =>
         {
             #![foo]
-            {
-                ..
-            }
+            { .. }
         }
     }
 
