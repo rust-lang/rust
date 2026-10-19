@@ -52,8 +52,8 @@ pub fn is_dyn_sym(name: &str, target_os: &Os) -> bool {
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     // Querying system information
-    fn sysconf(&mut self, val: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
+    fn sysconf(&self, val: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_ref();
 
         let name = this.read_scalar(val)?.to_i32()?;
         // FIXME: Which of these are POSIX, and which are GNU/Linux?

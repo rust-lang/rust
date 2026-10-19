@@ -1684,12 +1684,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     /// Shared logic between `posix_fallocate` and `linux_fallocate`.
     fn fallocate_impl(
-        &mut self,
+        &self,
         fd_num: i32,
         offset: i64,
         len: i64,
     ) -> InterpResult<'tcx, Result<(), IoError>> {
-        let this = self.eval_context_mut();
+        let this = self.eval_context_ref();
 
         // EINVAL is returned/set when: "offset was less than 0, or len was less than or equal to 0".
         if offset < 0 || len <= 0 {
@@ -1742,7 +1742,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let fd = this.read_scalar(fd_op)?.to_i32()?;
 
-        self.ffullsync_fd(fd)
+        this.ffullsync_fd(fd)
     }
 
     fn ffullsync_fd(&mut self, fd_num: i32) -> InterpResult<'tcx, Scalar> {

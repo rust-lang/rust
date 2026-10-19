@@ -336,8 +336,8 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     /// Lookup all the FLS keys (which are stored as TLS keys) that have a destructor.
     /// See also: `schedule_next_windows_fls_dtor`.
-    fn lookup_windows_fls_keys_with_dtors(&mut self) -> InterpResult<'tcx, VecDeque<TlsKey>> {
-        let this = self.eval_context_mut();
+    fn lookup_windows_fls_keys_with_dtors(&self) -> InterpResult<'tcx, VecDeque<TlsKey>> {
+        let this = self.eval_context_ref();
 
         interp_ok(
             this.machine

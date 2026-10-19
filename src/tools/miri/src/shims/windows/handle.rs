@@ -231,8 +231,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         )))
     }
 
-    fn GetStdHandle(&mut self, which: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
+    fn GetStdHandle(&self, which: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_ref();
         let which = this.read_scalar(which)?.to_i32()?;
 
         let stdin = this.eval_windows("c", "STD_INPUT_HANDLE").to_i32()?;
