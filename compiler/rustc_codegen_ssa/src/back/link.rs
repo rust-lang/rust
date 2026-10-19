@@ -44,7 +44,7 @@ use rustc_span::{Symbol, bug};
 use rustc_structures::{CrateType, NativeLibKind};
 use rustc_target::spec::crt_objects::CrtObjects;
 use rustc_target::spec::{
-    BinaryFormat, Cc, CfgAbi, Env, LinkOutputKind, LinkSelfContainedComponents,
+    Arch, BinaryFormat, Cc, CfgAbi, Env, LinkOutputKind, LinkSelfContainedComponents,
     LinkSelfContainedDefault, LinkerFeatures, LinkerFlavor, LinkerFlavorCli, Lld, Os, RelocModel,
     RelroLevel, SanitizerSet, SplitDebuginfo,
 };
@@ -2405,6 +2405,12 @@ fn add_post_link_objects(
 /// Add arbitrary "pre-link" args defined by the target spec or from command line.
 /// FIXME: Determine where exactly these args need to be inserted.
 fn add_pre_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
+    // Emit the CC flag for the A53 mitigation early, as later linker args can override it if
+    // required with `-mno-fix-cortex-a53-843419`
+    if sess.target.arch == Arch::AArch64 && matches!(flavor, LinkerFlavor::Gnu(Cc::Yes, ..)) {
+        cmd.cc_arg("-mfix-cortex-a53-843419");
+    }
+
     if let Some(args) = sess.target.pre_link_args.get(&flavor) {
         cmd.verbatim_args(args.iter().map(Deref::deref));
     }
