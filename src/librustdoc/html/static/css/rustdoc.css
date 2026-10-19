@@ -481,6 +481,7 @@ main {
 
 .src main {
 	padding: 15px;
+	padding-right: 0px;
 }
 
 .width-limiter {
@@ -930,6 +931,7 @@ rustdoc-topbar {
 .rustdoc .example-wrap pre {
 	margin: 0;
 	flex-grow: 1;
+	overflow: auto;
 }
 
 .scraped-example:not(.expanded) .example-wrap {
