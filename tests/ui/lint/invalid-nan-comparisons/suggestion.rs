@@ -85,6 +85,7 @@ fn main() {
     shadowed::check();
     nested_operands();
     macro_paths();
+    method_resolution::check();
 
     let _ = 3.3 == f64::NAN;
     //~^ WARN incorrect NaN comparison
@@ -185,6 +186,33 @@ mod shadowed {
         //~^ WARN incorrect NaN comparison
         let d = &5.5;
         if d != &Float::r#NAN {}
+        //~^ WARN incorrect NaN comparison
+    }
+}
+
+mod method_resolution {
+    mod f64 {
+        pub fn is_nan(_: ::core::primitive::f64) {}
+    }
+
+    trait IsNan {
+        fn is_nan(self);
+    }
+
+    impl IsNan for &f64 {
+        fn is_nan(self) {}
+    }
+
+    pub fn check() {
+        let _: () = f64::is_nan(5.0);
+        let _: () = (&5f64).is_nan();
+
+        let x = 5f64;
+        let _: bool = x == f64::NAN;
+        //~^ WARN incorrect NaN comparison
+
+        let x = &5f64;
+        let _: bool = x == &f64::NAN;
         //~^ WARN incorrect NaN comparison
     }
 }
