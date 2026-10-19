@@ -309,3 +309,87 @@ fn other_cfg_select_cases() {
         }
     };
 }
+
+fn long_predicate() {
+    let a = cfg_select! {
+        all(
+            target_os = "linux",
+            target_arch = "x86_64",
+            target_env = "gnu",
+            feature = "hello",
+            feature = "world"
+        ) => {{ x }},
+    };
+}
+
+fn with_trailing_comma_fits_max_width() {
+    cfg_select! {
+        // max_width = 100 ------------------------------------------------------------------------|
+        all(target_os = "linux", target_arch = "x86_64", target_env = "gnu") => {{ xxxxxxxxxxxxx }},
+        all(
+            target_os = "linux",
+            target_arch = "x86_64",
+            target_env = "gnu",
+            feature = "hello",
+            feature = "world"
+        ) => {{ xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx }},
+        _ => {{ xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx }},
+    }
+}
+
+fn with_trailing_comma_exceeds_max_width() {
+    cfg_select! {
+        // max_width = 100 ------------------------------------------------------------------------|
+        all(target_os = "linux", target_arch = "x86_64", target_env = "gnu") => {{
+            xxxxxxxxxxxxxx
+        }},
+        all(
+            target_os = "linux",
+            target_arch = "x86_64",
+            target_env = "gnu",
+            feature = "hello",
+            feature = "world"
+        ) => {{
+            xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+        }},
+        _ => {{
+            xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+        }},
+    }
+}
+
+fn without_trailing_comma_fits_max_width() {
+    cfg_select! {
+        // max_width = 100 ------------------------------------------------------------------------|
+        all(target_os = "linux", target_arch = "x86_64", target_env = "gnu") => {{ xxxxxxxxxxxxxx }}
+        all(
+            target_os = "linux",
+            target_arch = "x86_64",
+            target_env = "gnu",
+            feature = "hello",
+            feature = "world"
+        ) => {{ xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx }}
+        _ => {{ xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx }}
+    }
+}
+
+fn without_trailing_comma_exceeds_max_width() {
+    cfg_select! {
+        // max_width = 100 ------------------------------------------------------------------------|
+        all(target_os = "linux", target_arch = "x86_64", target_env = "gnu") => {{
+            xxxxxxxxxxxxxxx
+        }}
+        all(
+            target_os = "linux",
+            target_arch = "x86_64",
+            target_env = "gnu",
+            feature = "hello",
+            feature = "world"
+        ) => {{
+            xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+        }}
+        _ => {{
+            xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+        }}
+    }
+}
