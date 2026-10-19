@@ -471,7 +471,7 @@ unsafe fn wrap_llcx<'ll>(llcx_raw: ptr::NonNull<llvm::ContextRaw>) -> llvm::Cont
     llvm::Context { llcx_raw, _invariant_ll: PhantomData }
 }
 
-/// Shared helper to call [`llvm::LLVMContextCreate`] and then configure
+/// Shared helper to call [`llvm::LLVMRustContextCreate`] and then configure
 /// [`llvm::LLVMContextSetDiscardValueNames`].
 fn create_context_and_set_fewer_names(fewer_names: bool) -> ptr::NonNull<llvm::ContextRaw> {
     unsafe {
