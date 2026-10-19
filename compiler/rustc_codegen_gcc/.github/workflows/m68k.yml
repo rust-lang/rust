@@ -1,4 +1,4 @@
-# FIXME: check if qemu-user-static-binfmt is needed (perhaps to run some tests since it probably calls exec).
+# FIXME: check if qemu-user-binfmt is needed (perhaps to run some tests since it probably calls exec).
 
 name: m68k CI
 
@@ -17,7 +17,7 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     # Above 3 times the longest job, so that a hang cannot run until GitHub's 6-hour limit.
     timeout-minutes: 90
 
@@ -28,16 +28,13 @@ jobs:
           "--std-tests",
           # FIXME(antoyo): fix those on m68k.
           #"--test-libcore",
-          #"--extended-rand-tests",
-          #"--extended-regex-example-tests",
-          #"--extended-regex-tests",
           #"--test-successful-rustc --nb-parts 2 --current-part 0",
           #"--test-successful-rustc --nb-parts 2 --current-part 1",
           #"--test-failing-rustc",
         ]
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
 
     # `rustup show` installs from rust-toolchain.toml
     - name: Setup rust toolchain
@@ -53,7 +50,7 @@ jobs:
       timeout-minutes: 20
       run: |
         sudo apt-get update
-        sudo apt-get install qemu-system qemu-user-static
+        sudo apt-get install qemu-user qemu-user-binfmt
 
     - name: Download artifact
       run: curl -LO https://github.com/cross-cg-gcc-tools/cross-gcc/releases/latest/download/gcc-m68k-15.deb
@@ -83,7 +80,7 @@ jobs:
       run: |
         mkdir vm
         sudo mount debian-m68k.img vm
-        sudo cp $(which qemu-m68k-static) vm/usr/bin/
+        sudo cp $(which qemu-m68k) vm/usr/bin/qemu-m68k-static
 
     - name: Build sample project with target defined as JSON spec
       run: |
