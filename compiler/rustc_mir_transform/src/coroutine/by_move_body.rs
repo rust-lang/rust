@@ -137,26 +137,40 @@ pub(crate) fn coroutine_by_move_body_def_id<'tcx>(
 
             // If the parent capture is by-ref, then we need to apply an additional
             // deref before applying any further projections to this place.
-            if parent_capture.is_by_ref() {
-                child_precise_captures.insert(
+
+            match parent_capture.info.capture_kind {
+                // FIXME(cromulent_copy_closure_captures): remove this hack once `marker_trait_attr` is usable
+                ty::UpvarCapture::ByCopy => child_precise_captures.insert(
+                    0,
+                    Projection {
+                        ty: parent_capture.place.ty(),
+                        kind: ProjectionKind::Field(FieldIdx::ZERO, VariantIdx::ZERO),
+                    },
+                ),
+                ty::UpvarCapture::ByRef(_) => child_precise_captures.insert(
                     0,
                     Projection { ty: parent_capture.place.ty(), kind: ProjectionKind::Deref },
-                );
+                ),
+                ty::UpvarCapture::ByUse | ty::UpvarCapture::ByValue => {}
             }
+
             // If the child capture is by-ref, then we need to apply a "ref"
             // projection (i.e. `&`) at the end. But wait! We don't have that
             // as a projection kind. So instead, we can apply its dual and
             // *peel* a deref off of the place when it shows up in the MIR body.
             // Luckily, by construction this is always possible.
-            let peel_deref = if child_capture.is_by_ref() {
-                assert!(
-                    parent_capture.is_by_ref() || coroutine_kind != ty::ClosureKind::FnOnce,
-                    "`FnOnce` coroutine-closures return coroutines that capture from \
+            let peel = match child_capture.info.capture_kind {
+                // FIXME(cromulent_copy_closure_captures): remove this hack once `marker_trait_attr` is usable
+                ty::UpvarCapture::ByCopy => Peel::Field,
+                ty::UpvarCapture::ByRef(_) => {
+                    assert!(
+                        parent_capture.is_by_ref() || coroutine_kind != ty::ClosureKind::FnOnce,
+                        "`FnOnce` coroutine-closures return coroutines that capture from \
                         their body; it will always result in a borrowck error!"
-                );
-                true
-            } else {
-                false
+                    );
+                    Peel::Deref
+                }
+                ty::UpvarCapture::ByUse | ty::UpvarCapture::ByValue => Peel::None,
             };
 
             // Regarding the behavior above, you may think that it's redundant to both
@@ -170,8 +184,16 @@ pub(crate) fn coroutine_by_move_body_def_id<'tcx>(
             // this when building the field projection in the MIR body later on.
             let mut parent_capture_ty = parent_capture.place.ty();
             parent_capture_ty = match parent_capture.info.capture_kind {
-                ty::UpvarCapture::ByValue | ty::UpvarCapture::ByUse | ty::UpvarCapture::ByCopy => {
-                    parent_capture_ty
+                ty::UpvarCapture::ByValue | ty::UpvarCapture::ByUse => parent_capture_ty,
+                // FIXME(cromulent_copy_closure_captures): remove this hack once `marker_trait_attr` is usable
+                ty::UpvarCapture::ByCopy => {
+                    let did = tcx.require_lang_item(
+                        rustc_attr_ir::LangItem::CopyClosureCaptureContainer,
+                        parent_capture.var_ident.span,
+                    );
+                    tcx.type_of(did)
+                        .instantiate(tcx, tcx.mk_args(&[parent_capture_ty.into()]))
+                        .skip_norm_wip()
                 }
                 ty::UpvarCapture::ByRef(kind) => Ty::new_ref(
                     tcx,
@@ -186,7 +208,7 @@ pub(crate) fn coroutine_by_move_body_def_id<'tcx>(
                 (
                     FieldIdx::from_usize(parent_field_idx + num_args),
                     parent_capture_ty,
-                    peel_deref,
+                    peel,
                     child_precise_captures,
                 ),
             ))
@@ -256,9 +278,17 @@ pub(crate) fn coroutine_by_move_body_def_id<'tcx>(
     body_def.def_id().to_def_id()
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Peel {
+    None,
+    /// FIXME(cromulent_copy_closure_captures): remove this hack once `marker_trait_attr` is usable
+    Field,
+    Deref,
+}
+
 struct MakeByMoveBody<'tcx> {
     tcx: TyCtxt<'tcx>,
-    field_remapping: UnordMap<FieldIdx, (FieldIdx, Ty<'tcx>, bool, Vec<Projection<'tcx>>)>,
+    field_remapping: UnordMap<FieldIdx, (FieldIdx, Ty<'tcx>, Peel, Vec<Projection<'tcx>>)>,
     by_move_coroutine_ty: Ty<'tcx>,
 }
 
@@ -279,25 +309,38 @@ impl<'tcx> MutVisitor<'tcx> for MakeByMoveBody<'tcx> {
         if place.local == ty::CAPTURE_STRUCT_LOCAL
             && let Some((&mir::ProjectionElem::Field(idx, _), projection)) =
                 place.projection.split_first()
-            && let Some(&(remapped_idx, remapped_ty, peel_deref, ref bridging_projections)) =
+            && let Some(&(remapped_idx, remapped_ty, peel, ref bridging_projections)) =
                 self.field_remapping.get(&idx)
         {
             // As noted before, if the parent closure captures a field by value, and
             // the child captures a field by ref, then for the by-move body we're
             // generating, we also are taking that field by value. Peel off a deref,
             // since a layer of ref'ing has now become redundant.
-            let final_projections = if peel_deref {
-                let Some((mir::ProjectionElem::Deref, projection)) = projection.split_first()
-                else {
-                    bug!(
-                        "There should be at least a single deref for an upvar local initialization, found {projection:#?}"
-                    );
-                };
-                // There may be more derefs, since we may also implicitly reborrow
-                // a captured mut pointer.
-                projection
-            } else {
-                projection
+            let final_projections = match peel {
+                Peel::None => projection,
+                // FIXME(cromulent_copy_closure_captures): remove this hack once `marker_trait_attr` is usable
+                Peel::Field => {
+                    let Some((mir::ProjectionElem::Field(..), projection)) =
+                        projection.split_first()
+                    else {
+                        bug!(
+                            "There should be at least a single field projection for an upvar local initialization, found {projection:#?}"
+                        );
+                    };
+
+                    projection
+                }
+                Peel::Deref => {
+                    let Some((mir::ProjectionElem::Deref, projection)) = projection.split_first()
+                    else {
+                        bug!(
+                            "There should be at least a single deref for an upvar local initialization, found {projection:#?}"
+                        );
+                    };
+                    // There may be more derefs, since we may also implicitly reborrow
+                    // a captured mut pointer.
+                    projection
+                }
             };
 
             // These projections are applied in order to "bridge" the local that we are
@@ -357,7 +400,7 @@ impl<'tcx> MutVisitor<'tcx> for MakeByMoveBody<'tcx> {
                 local: ty::CAPTURE_STRUCT_LOCAL,
                 projection: [mir::ProjectionElem::Field(idx, _)],
             } = place.as_ref()
-            && let Some(&(_, _, true, _)) = self.field_remapping.get(&idx)
+            && let Some(&(_, _, Peel::Deref, _)) = self.field_remapping.get(&idx)
         {
             statement.kind = mir::StatementKind::Nop;
         }

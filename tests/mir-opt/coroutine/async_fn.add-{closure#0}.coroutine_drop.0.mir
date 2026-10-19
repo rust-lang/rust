@@ -7,23 +7,27 @@ fn add::{closure#0}(_1: &mut {async fn body of add()}) -> () {
     let mut _0: ();
     let mut _2: std::future::ResumeTy;
     let _3: u32;
-    let mut _6: {async block@$DIR/async_fn.rs:34:13: 34:18};
-    let mut _7: {async block@$DIR/async_fn.rs:34:13: 34:18};
-    let mut _9: ();
-    let _10: ();
-    let mut _11: std::task::Poll<u32>;
-    let mut _12: std::pin::Pin<&mut {async block@$DIR/async_fn.rs:34:13: 34:18}>;
-    let mut _13: &mut {async block@$DIR/async_fn.rs:34:13: 34:18};
-    let mut _14: &mut {async block@$DIR/async_fn.rs:34:13: 34:18};
-    let mut _15: &mut std::task::Context<'_>;
-    let mut _16: &mut std::task::Context<'_>;
-    let mut _17: std::future::ResumeTy;
-    let mut _18: isize;
-    let mut _20: !;
+    let mut _6: std::marker::CopyClosureCaptureContainer<u32>;
+    let mut _7: u32;
+    let mut _8: std::marker::CopyClosureCaptureContainer<u32>;
+    let mut _9: u32;
+    let mut _10: {async block@$DIR/async_fn.rs:34:13: 34:18};
+    let mut _11: {async block@$DIR/async_fn.rs:34:13: 34:18};
+    let mut _13: ();
+    let _14: ();
+    let mut _15: std::task::Poll<u32>;
+    let mut _16: std::pin::Pin<&mut {async block@$DIR/async_fn.rs:34:13: 34:18}>;
+    let mut _17: &mut {async block@$DIR/async_fn.rs:34:13: 34:18};
+    let mut _18: &mut {async block@$DIR/async_fn.rs:34:13: 34:18};
+    let mut _19: &mut std::task::Context<'_>;
+    let mut _20: &mut std::task::Context<'_>;
     let mut _21: std::future::ResumeTy;
-    let mut _22: ();
-    let mut _23: u32;
-    let mut _24: u32;
+    let mut _22: isize;
+    let mut _24: !;
+    let mut _25: std::future::ResumeTy;
+    let mut _26: ();
+    let mut _27: u32;
+    let mut _28: u32;
     scope 1 {
         debug x => _3;
         let _4: u32;
@@ -32,12 +36,12 @@ fn add::{closure#0}(_1: &mut {async fn body of add()}) -> () {
             let _5: {async block@$DIR/async_fn.rs:34:13: 34:18};
             scope 3 {
                 debug a => _5;
-                let mut _8: {async block@$DIR/async_fn.rs:34:13: 34:18};
+                let mut _12: {async block@$DIR/async_fn.rs:34:13: 34:18};
                 scope 4 {
                     debug __awaitee => (((*_1) as variant#3).0: {async block@$DIR/async_fn.rs:34:13: 34:18});
-                    let _19: u32;
+                    let _23: u32;
                     scope 5 {
-                        debug result => _19;
+                        debug result => _23;
                     }
                 }
             }
@@ -45,14 +49,14 @@ fn add::{closure#0}(_1: &mut {async fn body of add()}) -> () {
     }
 
     bb0: {
-        _24 = discriminant((*_1));
+        _28 = discriminant((*_1));
         _0 = const ();
-        switchInt(move _24) -> [0: bb11, 3: bb12, otherwise: bb13];
+        switchInt(move _28) -> [0: bb11, 3: bb12, otherwise: bb13];
     }
 
     bb1: {
-        StorageDead(_22);
-        StorageDead(_21);
+        StorageDead(_26);
+        StorageDead(_25);
         drop((((*_1) as variant#3).0: {async block@$DIR/async_fn.rs:34:13: 34:18})) -> [return: bb2, unwind: bb7];
     }
 
@@ -62,7 +66,7 @@ fn add::{closure#0}(_1: &mut {async fn body of add()}) -> () {
     }
 
     bb3: {
-        StorageDead(_6);
+        StorageDead(_10);
         goto -> bb4;
     }
 
@@ -87,7 +91,7 @@ fn add::{closure#0}(_1: &mut {async fn body of add()}) -> () {
     }
 
     bb8 (cleanup): {
-        StorageDead(_6);
+        StorageDead(_10);
         goto -> bb9;
     }
 
@@ -110,9 +114,9 @@ fn add::{closure#0}(_1: &mut {async fn body of add()}) -> () {
         StorageLive(_3);
         StorageLive(_4);
         StorageLive(_5);
-        StorageLive(_6);
-        StorageLive(_21);
-        StorageLive(_22);
+        StorageLive(_10);
+        StorageLive(_25);
+        StorageLive(_26);
         goto -> bb1;
     }
 
