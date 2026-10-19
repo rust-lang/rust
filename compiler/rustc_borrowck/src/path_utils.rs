@@ -1,6 +1,7 @@
 use std::ops::ControlFlow;
 
 use rustc_abi::FieldIdx;
+use rustc_attr_ir::LangItem;
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_middle::mir::{BasicBlock, Body, Location, Place, PlaceRef, ProjectionElem};
 use rustc_middle::ty::TyCtxt;
@@ -140,9 +141,22 @@ pub(crate) fn is_upvar_field_projection<'tcx>(
     let mut place_ref = place_ref;
     let mut by_ref = false;
 
-    if let Some((place_base, ProjectionElem::Deref)) = place_ref.last_projection() {
-        place_ref = place_base;
-        by_ref = true;
+    match place_ref.last_projection() {
+        Some((place_base, ProjectionElem::Deref)) => {
+            place_ref = place_base;
+            by_ref = true;
+        }
+
+        // FIXME(cromulent_copy_closure_captures): remove this hack once `marker_trait_attr` is usable
+        Some((place_base, ProjectionElem::Field(..)))
+            if let Some(adt_def) = place_base.ty(body, tcx).ty.ty_adt_def()
+                && adt_def.did()
+                    == tcx.require_lang_item(LangItem::CopyClosureCaptureContainer, body.span) =>
+        {
+            place_ref = place_base;
+        }
+
+        _ => {}
     }
 
     match place_ref.last_projection() {

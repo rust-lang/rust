@@ -1,10 +1,10 @@
 error[E0503]: cannot use `x` because it was mutably borrowed
-  --> $DIR/closure-access-spans.rs:6:8
+  --> $DIR/closure-access-spans.rs:6:5
    |
 LL |     let r = &mut x;
    |             ------ `x` is borrowed here
 LL |     || x;
-   |        ^ use of borrowed `x`
+   |     ^^^^ use of borrowed `x`
 LL |     r.use_mut();
    |     - borrow later used here
 

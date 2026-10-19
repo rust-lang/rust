@@ -82,6 +82,11 @@ impl<T: PointeeSized> LegacyReceiver for &mut T {}
 #[lang = "copy"]
 pub trait Copy: Sized {}
 
+#[lang = "copy_closure_capture_container"]
+pub struct CopyClosureCaptureContainer<T: Copy>(T);
+impl<T: Copy> Copy for CopyClosureCaptureContainer<T> {}
+impl<T: Copy> Unpin for CopyClosureCaptureContainer<T> {}
+
 pub trait From<T>: Sized {
     fn from(value: T) -> Self;
 }

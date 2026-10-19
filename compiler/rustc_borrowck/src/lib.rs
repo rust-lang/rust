@@ -1738,6 +1738,16 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                             )) => {
                                 propagate_closure_used_mut_place(self, source);
                             }
+
+                            // FIXME(cromulent_copy_closure_captures): remove this hack once `marker_trait_attr` is usable
+                            StatementKind::Assign((_, Rvalue::Aggregate(.., ref fields)))
+                                if fields.len() == 1
+                                    && let Some(op @ (Operand::Copy(_) | Operand::Move(_))) =
+                                        fields.iter().next() =>
+                            {
+                                self.propagate_closure_used_mut_upvar(op);
+                            }
+
                             _ => {
                                 bug!(
                                     "closures should only capture user variables \

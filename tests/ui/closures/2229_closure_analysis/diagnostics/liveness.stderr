@@ -152,28 +152,5 @@ LL |             b = Some("e1");
    = help: did you mean to capture by reference instead?
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-warning: variable `b` is assigned to, but never used
-  --> $DIR/liveness.rs:62:9
-   |
-LL |     let mut b: Option<&str>;
-   |         ^^^^^
-   |
-   = note: consider using `_b` instead
-   = note: `#[warn(unused_variables)]` implied by `#[warn(unused)]`
-
-warning: unused variable: `e`
-  --> $DIR/liveness.rs:65:9
-   |
-LL |     let mut e = MyStruct { x: None, y: 1 };
-   |         ^^^^^ help: if this is intentional, prefix it with an underscore: `_e`
-
-warning: value assigned to `b` is never read
-  --> $DIR/liveness.rs:63:5
-   |
-LL |     b = None;
-   |     ^^^^^^^^
-   |
-   = help: maybe it is overwritten before being read?
-
-warning: 21 warnings emitted
+warning: 18 warnings emitted
 
