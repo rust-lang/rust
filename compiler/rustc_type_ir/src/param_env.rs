@@ -112,30 +112,18 @@ mod iterator {
     }
 
     #[inline]
-    fn filter_compressed_trait_clause_helper<I, P, S, T, O>(
-        filter: &TraitClauses<I, P, S, T, O>,
+    fn filter_compressed_trait_helper<I, T>(
+        trait_filter: &T,
+        cx: I,
         self_ty: I::Ty,
         trait_ref_single_bit: CompressedTraitRefs,
     ) -> Option<Binder<I, TraitClause<I>>>
     where
         I: Interner,
-        P: PolarityFilter,
-        S: SelfTyFilter<I>,
         T: TraitFilter<I>,
-        O: OutputAs<I>,
     {
-        let &TraitClauses {
-            cx,
-            ref polarity_filter,
-            ref self_type_filter,
-            ref trait_filter,
-            output: _,
-        } = filter;
-        // All compressed clauses are positive clauses, so filter negatives out.
-        if polarity_filter.allow_polarity(ClausePolarity::Positive)
-            // Match the self ty, of course.
-            && self_type_filter.allow_self_ty(self_ty)
-            && let Some(def_id) = trait_filter.allow_compressed_trait_ref_single_bit(cx, trait_ref_single_bit)
+        if let Some(def_id) =
+            trait_filter.allow_compressed_trait_ref_single_bit(cx, trait_ref_single_bit)
         {
             // Only if all filtering allows this compressed clause do we reconstruct the trait clause,
             // but we don't intern it yet, since that depends on the output transformation. If we can
@@ -143,6 +131,87 @@ mod iterator {
             Some(CompressedTraitRefs::trait_clause_from_def_id(cx, self_ty, def_id))
         } else {
             None
+        }
+    }
+
+    struct CallerBoundsIteratorImpl<I, Iter, CF>
+    where
+        I: Interner,
+        Iter: Iterator<Item = I::Clause>,
+        CF: ClauseFilter,
+    {
+        accessor: CallerBoundsAccessor<I, Iter, CF>,
+        decompression_in_progress: CompressedTraitRefs,
+        // self ty of the currently decompression-in-progress trait ref,
+        // if applicable.
+        self_ty: Option<I::Ty>,
+    }
+
+    impl<I, Iter, P, S, T, O> Iterator
+        for CallerBoundsIteratorImpl<I, Iter, TraitClauses<I, P, S, T, O>>
+    where
+        I: Interner,
+        Iter: Iterator<Item = I::Clause>,
+        P: PolarityFilter,
+        S: SelfTyFilter<I>,
+        T: TraitFilter<I>,
+        O: OutputAs<I>,
+    {
+        type Item = O::Output;
+
+        fn next(&mut self) -> Option<Self::Item> {
+            let CallerBoundsAccessor { clauses, clause_filter: filter, cx: _ } = &mut self.accessor;
+            let cx = filter.cx;
+
+            // This loop finds the next item in `clauses` that can be returned.
+            // If `clauses` is empty, we bail out of the function inside the loop,
+            // otherwise the next non-filtered element is returned using `break`,
+            // expanding compressed trait refs.
+            let res = loop {
+                // First check whether we're still expanding some compressed trait,
+                // and make one step of progress towards it if we can.
+                // `self.compressed_elem` is `0` when we're not expanding a compressed trait,
+                // and in that case this function returns `None`
+                if let Some(trait_ref_single_bit) =
+                    self.decompression_in_progress.get_and_mask_least_significant_bit()
+                {
+                    match filter_compressed_trait_helper(
+                        &filter.trait_filter,
+                        cx,
+                        self.self_ty.unwrap(),
+                        trait_ref_single_bit,
+                    ) {
+                        Some(tc) => break tc,
+                        None => continue,
+                    }
+                } else {
+                    // Only if we indeed are not, do we check the next item in the iterator.
+                    // If exhausted, we also return None.
+                    let clause = clauses.next()?;
+                    let kind = clause.kind();
+                    match kind.skip_binder() {
+                        // If we find a trait clause, and it matches, return it
+                        ClauseKind::Trait(trait_clause)
+                            if filter_trait_clause_helper(&filter, trait_clause) =>
+                        {
+                            break kind.rebind(trait_clause);
+                        }
+                        // If we find a compressed trait clause, and it matches, store it in `self.compressed_elem`
+                        ClauseKind::CompressedTrait(ct)
+                            if filter.self_type_filter.allow_self_ty(ct.self_ty)
+                                && filter
+                                    .polarity_filter
+                                    .allow_polarity(ClausePolarity::Positive) =>
+                        {
+                            self.decompression_in_progress = ct.compressed_trait_refs;
+                            self.self_ty = Some(ct.self_ty);
+                        }
+                        _ => continue,
+                    }
+                }
+            };
+
+            Some(O::construct_from_trait_clause(res, cx))
         }
     }
 
@@ -160,31 +229,11 @@ mod iterator {
 
         #[inline]
         fn iter(self) -> impl Iterator<Item = Self::Item> {
-            let Self { clauses, clause_filter: filter, cx: _ } = self;
-            let cx = filter.cx;
-            clauses
-                .flat_map(move |clause| {
-                    let kind = clause.kind();
-                    match kind.skip_binder() {
-                        ClauseKind::Trait(trait_clause)
-                            if filter_trait_clause_helper(&filter, trait_clause) =>
-                        {
-                            // Use either to allow returning two kinds of iterators.
-                            Either::Left(Some(kind.rebind(trait_clause)).into_iter())
-                        }
-                        ClauseKind::CompressedTrait(ct) => Either::Right(
-                            ct.compressed_trait_refs
-                                .iter()
-                                .filter_map(|i| {
-                                    filter_compressed_trait_clause_helper(&filter, ct.self_ty, i)
-                                })
-                                .collect::<Vec<_>>()
-                                .into_iter(),
-                        ),
-                        _ => Either::Left(None.into_iter()),
-                    }
-                })
-                .map(move |i| O::construct_from_trait_clause(i, cx))
+            CallerBoundsIteratorImpl {
+                accessor: self,
+                decompression_in_progress: CompressedTraitRefs::empty(),
+                self_ty: None,
+            }
         }
     }
 }
