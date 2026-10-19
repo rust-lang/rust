@@ -89,7 +89,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn is_dyn_sym(&self, name: &str) -> bool {
         let this = self.eval_context_ref();
         match &this.tcx.sess.target.os {
-            os if this.target_os_is_unix() => shims::unix::foreign_items::is_dyn_sym(name, os),
+            _ if this.target_os_is_unix() =>
+                shims::unix::foreign_items::is_dyn_sym(name, &this.tcx.sess.target),
             Os::Windows => shims::windows::foreign_items::is_dyn_sym(name),
             _ => false,
         }

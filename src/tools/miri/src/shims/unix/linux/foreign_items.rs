@@ -2,6 +2,7 @@ use rustc_abi::CanonAbi;
 use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
+use rustc_target::spec::Target;
 
 use self::shims::unix::linux::mem::EvalContextExt as _;
 use self::shims::unix::linux_like::eventfd::EvalContextExt as _;
@@ -18,8 +19,10 @@ use crate::*;
 // long including a null terminator.
 const TASK_COMM_LEN: u64 = 16;
 
-pub fn is_dyn_sym(name: &str) -> bool {
+pub fn is_dyn_sym(name: &str, target: &Target) -> bool {
     matches!(name, "gettid" | "statx")
+        || (target.env == rustc_target::spec::Env::Gnu
+            && matches!(name, "__cxa_thread_atexit_impl"))
 }
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
@@ -238,6 +241,38 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(result, dest)?;
             }
             "prctl" => prctl(this, link_name, abi, args, dest)?,
+            "__cxa_thread_atexit_impl"
+                if this.tcx.sess.target.env == rustc_target::spec::Env::Gnu =>
+            {
+                let [dtor, arg, dso] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*_, *_, *_) -> i32),
+                    (link_name, abi, args),
+                )?;
+                let dtor = this.read_pointer(dtor)?;
+                let arg = this.read_scalar(arg)?;
+                let dso = this.read_pointer(dso)?;
+
+                let dso_handle = Symbol::intern("__dso_handle");
+                // FIXME: we skip this check in std because std passes the wrong address,
+                // see <https://github.com/rust-lang/rust/pull/164576>
+                if dso.addr() != Pointer::from(this.machine.extern_statics[&dso_handle]).addr()
+                    && !this.frame_in_std()
+                {
+                    throw_unsup_format!(
+                        "__cxa_thread_atexit_impl: a DSO value other than the address of `__dso_handle` is not supported"
+                    );
+                }
+
+                let dtor = this.get_ptr_fn(dtor)?.as_instance()?;
+                this.machine.tls.add_thread_atexit(
+                    this.active_thread(),
+                    dtor,
+                    arg,
+                    this.machine.current_user_relevant_span(),
+                )?;
+
+                this.write_null(dest)?;
+            }
 
             // Dynamically invoked syscalls
             "syscall" => {

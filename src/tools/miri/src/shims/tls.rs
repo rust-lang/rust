@@ -46,9 +46,8 @@ pub struct TlsData<'tcx> {
     /// pthreads-style thread-local storage.
     keys: BTreeMap<TlsKey, TlsEntry<'tcx>>,
 
-    /// On macOS, each thread holds a list of destructor functions with their
-    /// respective data arguments.
-    macos_thread_dtors: BTreeMap<ThreadId, Vec<(ty::Instance<'tcx>, Scalar, Span)>>,
+    /// Linux and macOS allow registering callbacks that will be executed each time a thread exits.
+    thread_atexit: BTreeMap<ThreadId, Vec<(ty::Instance<'tcx>, Scalar, Span)>>,
 }
 
 impl<'tcx> Default for TlsData<'tcx> {
@@ -56,7 +55,7 @@ impl<'tcx> Default for TlsData<'tcx> {
         TlsData {
             next_key: 1, // start with 1 as we must not use 0 on Windows
             keys: Default::default(),
-            macos_thread_dtors: Default::default(),
+            thread_atexit: Default::default(),
         }
     }
 }
@@ -131,14 +130,14 @@ impl<'tcx> TlsData<'tcx> {
 
     /// Add a thread local storage destructor for the given thread. This function
     /// is used to implement the `_tlv_atexit` shim on MacOS.
-    pub fn add_macos_thread_dtor(
+    pub fn add_thread_atexit(
         &mut self,
         thread: ThreadId,
         dtor: ty::Instance<'tcx>,
         data: Scalar,
         span: Span,
     ) -> InterpResult<'tcx> {
-        self.macos_thread_dtors.entry(thread).or_default().push((dtor, data, span));
+        self.thread_atexit.entry(thread).or_default().push((dtor, data, span));
         interp_ok(())
     }
 
@@ -202,7 +201,7 @@ impl<'tcx> TlsData<'tcx> {
             data.remove(&thread_id);
         }
 
-        if let Some(dtors) = self.macos_thread_dtors.remove(&thread_id) {
+        if let Some(dtors) = self.thread_atexit.remove(&thread_id) {
             assert!(dtors.is_empty(), "the destructors should have already been run");
         }
     }
@@ -210,7 +209,7 @@ impl<'tcx> TlsData<'tcx> {
 
 impl VisitProvenance for TlsData<'_> {
     fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
-        let TlsData { keys, macos_thread_dtors, next_key: _ } = self;
+        let TlsData { keys, thread_atexit: macos_thread_dtors, next_key: _ } = self;
 
         for scalar in keys.values().flat_map(|v| v.data.values()) {
             scalar.visit_provenance(visit);
@@ -230,7 +229,7 @@ enum TlsDtorsStatePriv<'tcx> {
     Init,
     PthreadDtors(RunningPthreadDtorState),
     AfterPthreadDtors,
-    MacOsDtors,
+    ThreadAtexit,
     /// For Windows, we support two different ways dtors can be registered.
     /// 1. Functions that are registered via the `FlsAlloc` function, which are invoked one by one.
     /// 2. Functions from the magic `.CRT$XLB` linker section.
@@ -270,11 +269,8 @@ impl<'tcx> TlsDtorsState<'tcx> {
                 AfterPthreadDtors => {
                     // Next, we run the platform-specific destructors
                     match this.tcx.sess.target.os {
-                        Os::MacOs => {
-                            // macOS has a _tlv_atexit function that allows
-                            // registering destructors without associated keys.
-                            // These are run first.
-                            break 'new_state MacOsDtors;
+                        Os::MacOs | Os::Linux => {
+                            break 'new_state ThreadAtexit;
                         }
                         Os::Windows => {
                             // Determine which destructors to run.
@@ -298,8 +294,8 @@ impl<'tcx> TlsDtorsState<'tcx> {
                         }
                     }
                 }
-                MacOsDtors => {
-                    match this.schedule_macos_tls_dtor()? {
+                ThreadAtexit => {
+                    match this.schedule_thread_atexit()? {
                         Poll::Pending => return interp_ok(Poll::Pending),
                         // After all macOS destructors are run, the system switches
                         // to destroying the pthread destructors.
@@ -387,15 +383,15 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     /// Schedule the macOS thread local storage destructors to be executed.
-    fn schedule_macos_tls_dtor(&mut self) -> InterpResult<'tcx, Poll<()>> {
+    fn schedule_thread_atexit(&mut self) -> InterpResult<'tcx, Poll<()>> {
         let this = self.eval_context_mut();
         let thread_id = this.active_thread();
         // macOS keeps track of TLS destructors in a stack. If a destructor
         // registers another destructor, it will be run next.
         // See https://github.com/apple-oss-distributions/dyld/blob/d552c40cd1de105f0ec95008e0e0c0972de43456/dyld/DyldRuntimeState.cpp#L2277
-        let dtor = this.machine.tls.macos_thread_dtors.get_mut(&thread_id).and_then(Vec::pop);
+        let dtor = this.machine.tls.thread_atexit.get_mut(&thread_id).and_then(Vec::pop);
         if let Some((instance, data, span)) = dtor {
-            trace!("Running macos dtor {:?} on {:?} at {:?}", instance, data, thread_id);
+            trace!("Running thread_atexit hook {:?} on {:?} at {:?}", instance, data, thread_id);
 
             this.call_thread_root_function(
                 instance,
