@@ -258,21 +258,14 @@ impl<'tcx> ProgramExitHandler<'tcx> {
                     Poll::Pending => {} // just keep going
                     Poll::Ready(()) => {
                         if this.machine.data_race.as_genmc_ref().is_some() {
-                            // In GenMC mode, we don't yield at the end of the main thread.
-                            // Instead, the `GenmcCtx` will ensure that unfinished threads get a chance to run at this point.
+                            // In GenMC mode, we don't yield at the end of the main thread. Instead,
+                            // the `GenmcCtx` will ensure that unfinished threads get a chance to
+                            // run at this point.
                             self.state = Done;
                         } else {
-                            // Give background threads a chance to finish by yielding the main thread a
-                            // couple of times -- but only if we would also preempt threads randomly.
-                            if this.machine.preemption_rate > 0.0 {
-                                // There is a non-zero chance they will yield back to us often enough to
-                                // make Miri terminate eventually.
-                                self.state = Yield { remaining: THREAD_YIELDS_AT_EXIT };
-                            } else {
-                                // The other threads did not get preempted, so no need to yield back to
-                                // them.
-                                self.state = Done;
-                            }
+                            // Give background threads a chance to finish by yielding the main
+                            // thread a couple of times.
+                            self.state = Yield { remaining: THREAD_YIELDS_AT_EXIT };
                         }
                     }
                 },
