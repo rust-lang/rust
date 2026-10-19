@@ -186,6 +186,7 @@ pub(crate) fn type_check<'tcx>(
             typeck.known_type_outlives_obligations,
             typeck.region_bound_pairs,
             universal_region_relations.outlives.clone(),
+            ty::Region::new_var(infcx.tcx, typeck.universal_regions.implicit_region_bound()),
         );
     }
 

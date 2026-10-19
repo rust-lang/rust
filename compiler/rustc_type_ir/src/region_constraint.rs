@@ -175,11 +175,9 @@ impl<I: Interner> Assumptions<I> {
 pub enum LeafRegionConstraint<I: Interner, S: Clone = ()> {
     Ambiguity(S),
     RegionOutlives(Region<I>, Region<I>, S),
-    /// A type-outlives constraint which has not yet been decomposed into its constituent parts.
-    ///
-    /// The minimal coroutine mode keeps these intact until region checking so that enabling the
-    /// mode does not strengthen the eager leak check.
-    TypeOutlives(I::Ty, Region<I>, S),
+    /// An alias-outlives constraint deferred to root region checking in minimal coroutine mode.
+    /// It is never discharged or rewritten while eagerly handling placeholders.
+    AliasOutlives(AliasTy<I>, Region<I>, S),
     /// Requirement that a (potentially higher ranked) alias outlives some (potentially higher ranked)
     /// region due to an assumption in the environment. This cannot be satisfied via component outlives
     /// or item bounds.
@@ -211,6 +209,11 @@ impl<I: Interner, S: Clone> std::fmt::Debug for LeafRegionConstraint<I, S> {
                 f.write_str(": ")?;
                 r2.fmt(f)
             }
+            Self::AliasOutlives(alias, r, _span) => {
+                alias.fmt(f)?;
+                f.write_str(": ")?;
+                r.fmt(f)
+            }
             Self::AliasTyOutlivesViaEnv(bound_outlives, _span) => {
                 f.write_str("for<")?;
                 bound_outlives.bound_vars().fmt(f)?;
@@ -220,7 +223,7 @@ impl<I: Interner, S: Clone> std::fmt::Debug for LeafRegionConstraint<I, S> {
                 f.write_str(": ")?;
                 r.fmt(f)
             }
-            Self::TypeOutlives(ty, r, _span) | Self::PlaceholderTyOutlives(ty, r, _span) => {
+            Self::PlaceholderTyOutlives(ty, r, _span) => {
                 ty.fmt(f)?;
                 f.write_str(": ")?;
                 r.fmt(f)
@@ -239,7 +242,7 @@ impl<I: Interner> LeafRegionConstraint<I> {
         match self {
             Ambiguity(()) => Ambiguity(span),
             RegionOutlives(r1, r2, ()) => RegionOutlives(r1, r2, span),
-            TypeOutlives(ty, r, ()) => TypeOutlives(ty, r, span),
+            AliasOutlives(alias, r, ()) => AliasOutlives(alias, r, span),
             AliasTyOutlivesViaEnv(bound_outlives, ()) => {
                 AliasTyOutlivesViaEnv(bound_outlives, span)
             }
@@ -255,7 +258,7 @@ impl<I: Interner, S: Clone + std::fmt::Debug + Eq + std::hash::Hash> LeafRegionC
         match self {
             Ambiguity(_) => Ambiguity(()),
             RegionOutlives(r1, r2, _) => RegionOutlives(r1, r2, ()),
-            TypeOutlives(ty, r, _) => TypeOutlives(ty, r, ()),
+            AliasOutlives(alias, r, _) => AliasOutlives(alias, r, ()),
             AliasTyOutlivesViaEnv(bound_outlives, _) => AliasTyOutlivesViaEnv(bound_outlives, ()),
             PlaceholderTyOutlives(ty, r, _) => PlaceholderTyOutlives(ty, r, ()),
         }
@@ -266,7 +269,7 @@ impl<I: Interner, S: Clone + std::fmt::Debug + Eq + std::hash::Hash> LeafRegionC
 
         let (Ambiguity(s)
         | RegionOutlives(_, _, s)
-        | TypeOutlives(_, _, s)
+        | AliasOutlives(_, _, s)
         | AliasTyOutlivesViaEnv(_, s)
         | PlaceholderTyOutlives(_, _, s)) = self;
         s.clone()
@@ -623,7 +626,8 @@ impl<I: Interner, S: Clone + std::fmt::Debug> LeafRegionConstraint<I, S> {
 ///
 /// For universes with assumptions, minimal coroutine mode only removes constraints directly implied
 /// by them. It leaves every other constraint unchanged so it can be checked in the root inference
-/// context. Universes without assumptions force ambiguity if a constraint still mentions them.
+/// context. Universes without assumptions force ambiguity if a non-alias constraint still mentions them.
+/// Alias constraints always reach the root, where all bounds are available.
 #[instrument(level = "debug", skip(infcx), ret)]
 pub fn eagerly_handle_placeholders_in_universe<Infcx: InferCtxtLike<Interner = I>, I: Interner>(
     infcx: &Infcx,
@@ -645,7 +649,8 @@ pub fn eagerly_handle_placeholders_in_universe<Infcx: InferCtxtLike<Interner = I
     // 1. rewrite type outlives constraints involving things from `u` into either region constraints
     //     involving things from `u` or type outlives constraints not involving things from `u`
     //
-    //    IOW, we only want to encounter things from `u` as part of region out lives constraints.
+    //    IOW, apart from deferred `AliasOutlives`, we only want to encounter things from `u`
+    //    as part of region outlives constraints.
     let constraint = rewrite_type_outlives_constraints_in_universe_for_eager_placeholder_handling(
         infcx,
         constraint,
@@ -691,8 +696,8 @@ fn drop_constraints_satisfied_by_assumptions<Infcx: InferCtxtLike<Interner = I>,
 
         match constraint {
             RegionOutlives(r1, r2, ()) => region_outlives(*r1, *r2),
-            TypeOutlives(ty, r, ()) | PlaceholderTyOutlives(ty, r, ()) => type_outlives(*ty, *r),
-            Ambiguity(()) | AliasTyOutlivesViaEnv(..) => false,
+            PlaceholderTyOutlives(ty, r, ()) => type_outlives(*ty, *r),
+            Ambiguity(()) | AliasOutlives(..) | AliasTyOutlivesViaEnv(..) => false,
         }
     };
 
@@ -718,6 +723,7 @@ fn drop_constraints_satisfied_by_assumptions<Infcx: InferCtxtLike<Interner = I>,
 /// Minimal coroutine mode doesn't compute assumptions for binders other than coroutine witnesses.
 /// Once constraints between region variables from `u` are dropped, anything that still mentions `u`
 /// can't be checked without the assumptions, so the whole constraint becomes ambiguous.
+/// Deferred aliases are checked at the root and do not cause ambiguity here.
 fn ambiguous_if_universe_is_constrained<Infcx: InferCtxtLike<Interner = I>, I: Interner>(
     infcx: &Infcx,
     constraint: RegionConstraint<I>,
@@ -729,7 +735,10 @@ fn ambiguous_if_universe_is_constrained<Infcx: InferCtxtLike<Interner = I>, I: I
         .0
         .iter()
         .chain(constraint.or_constraint.0.iter().flat_map(|and| and.0.iter()))
-        .any(|c| max_universe(infcx, c.clone()) == u);
+        .any(|c| {
+            !matches!(c, LeafRegionConstraint::AliasOutlives(..))
+                && max_universe(infcx, c.clone()) == u
+        });
     if is_constrained { RegionConstraint::new_ambig(()) } else { constraint }
 }
 
@@ -740,7 +749,8 @@ fn ambiguous_if_universe_is_constrained<Infcx: InferCtxtLike<Interner = I>, I: I
 ///
 /// The only constraints involving things from `u` should be region outlives constraints at this point. Type
 /// outlives constraints should have been handled already either by destructuring into region outlives or by
-/// being rewritten in terms of smaller universe variables.
+/// being rewritten in terms of smaller universe variables. Deferred `AliasOutlives` leaves are
+/// an exception: they may mention this or an inner universe and are passed through unchanged.
 #[instrument(level = "debug", skip(infcx), ret)]
 fn compute_new_region_constraints<Infcx: InferCtxtLike<Interner = I>, I: Interner>(
     infcx: &Infcx,
@@ -756,7 +766,7 @@ fn compute_new_region_constraints<Infcx: InferCtxtLike<Interner = I>, I: Interne
         for c in &and.0 {
             match c {
                 Ambiguity(())
-                | TypeOutlives(..)
+                | AliasOutlives(..)
                 | PlaceholderTyOutlives(..)
                 | AliasTyOutlivesViaEnv(..) => constraints.push(c.clone()),
                 RegionOutlives(r1, r2, ()) => {
@@ -845,8 +855,6 @@ fn pull_region_outlives_constraints_out_of_universe<
     u: UniverseIndex,
     assumptions: &Assumptions<I>,
 ) -> RegionConstraint<I> {
-    assert!(max_universe(infcx, constraint.clone()) <= u);
-
     // FIXME(-Zassumptions-on-binders): we don't lower universes of region variables when exiting `u`
     // this seems dubious/potentially wrong? we can't just blindly do this though as if we had something
     // like `!T_u -> ?x_u -> !U_u` then lowering `?x` to `u-1` when exiting `u` would be wrong.
@@ -860,14 +868,13 @@ fn pull_region_outlives_constraints_out_of_universe<
         let mut pulled_constraints = Vec::new();
         for c in and.0 {
             match c {
-                Ambiguity(())
-                | TypeOutlives(..)
-                | PlaceholderTyOutlives(..)
-                | AliasTyOutlivesViaEnv(..) => {
+                AliasOutlives(..) => pulled_constraints.push(Or::new_leaf(c)),
+                Ambiguity(()) | PlaceholderTyOutlives(..) | AliasTyOutlivesViaEnv(..) => {
                     assert!(max_universe(infcx, c.clone()) < u);
                     pulled_constraints.push(Or::new_leaf(c.clone()));
                 }
                 RegionOutlives(region_1, region_2, ()) => {
+                    assert!(max_universe(infcx, c.clone()) <= u);
                     let region_1_u = max_universe(infcx, region_1);
                     let region_2_u = max_universe(infcx, region_2);
 
@@ -968,6 +975,9 @@ where
         Component::Placeholder(placeholder) => {
             Or::new_leaf(PlaceholderTyOutlives(Ty::new_placeholder(cx, *placeholder), r, span))
         }
+        Component::Alias(_, alias) if cx.assumptions_on_binders_min_coroutines() => {
+            Or::new_leaf(AliasOutlives(*alias, r, span))
+        }
         Component::Alias(_, alias) => {
             let item_bound_outlives = Or::new(
                 crate::outlives::declared_bounds_from_definition(cx, *alias)
@@ -995,9 +1005,9 @@ where
     }
 }
 
-/// Converts all type-outlives constraints at the end of type checking, once the complete set of
-/// assumptions is known. The returned constraint has no `TypeOutlives`,
-/// `PlaceholderTyOutlives`, or `AliasTyOutlivesViaEnv` leaves.
+/// Converts placeholder and environment-only alias constraints at the end of type checking,
+/// once the complete set of assumptions is known. `AliasOutlives` leaves are retained for
+/// lowering with the stable alias-outlives machinery.
 #[instrument(level = "debug", skip(infcx), ret)]
 pub fn destructure_type_outlives_constraints_in_root<
     Infcx: InferCtxtLike<Interner = I>,
@@ -1015,24 +1025,8 @@ pub fn destructure_type_outlives_constraints_in_root<
         let mut destructured_constraints = Vec::new();
         for c in &and.0 {
             match c {
-                Ambiguity(_) | RegionOutlives(..) => {
+                Ambiguity(_) | RegionOutlives(..) | AliasOutlives(..) => {
                     destructured_constraints.push(Or::new_leaf(c.clone()))
-                }
-                TypeOutlives(ty, r, span) => {
-                    let constraint = RegionConstraint::new_from_or(destructure_type_outlives(
-                        infcx.cx(),
-                        *ty,
-                        *r,
-                        span.clone(),
-                    ));
-                    destructured_constraints.push(
-                        destructure_type_outlives_constraints_in_root(
-                            infcx,
-                            constraint,
-                            assumptions,
-                        )
-                        .splatted_and_constraints(),
-                    );
                 }
                 PlaceholderTyOutlives(ty, r, span) => destructured_constraints.push(Or::new(
                     regions_outlived_by_placeholder(*ty, assumptions, infcx.cx()).map(
@@ -1072,7 +1066,8 @@ pub fn destructure_type_outlives_constraints_in_root<
 }
 
 /// Converts type outlives constraints into either region outlives constraints, or type outlives
-/// constraints which do not contain anything from `u`.
+/// constraints which do not contain anything from `u`. Deferred `AliasOutlives` leaves are
+/// passed through unchanged.
 ///
 /// This only works off assumptions associated with the binder corresponding to `u` both for
 /// perf reasons and because the full set of region assumptions is not known during type checking
@@ -1093,34 +1088,16 @@ fn rewrite_type_outlives_constraints_in_universe_for_eager_placeholder_handling<
 ) -> RegionConstraint<I> {
     use LeafRegionConstraint::*;
 
-    assert!(
-        max_universe(infcx, constraint.clone()) <= u,
-        "constraint {:?} contains terms from a larger universe than {:?}",
-        constraint.clone(),
-        u
-    );
-
     let rewrite_and = |and: And<I>| {
         let mut rewritten_constraints = Vec::new();
         for c in and.0 {
+            // Deferred aliases may still mention an inner universe we have already left.
+            if !matches!(c, AliasOutlives(..)) {
+                assert!(max_universe(infcx, c.clone()) <= u);
+            }
             match c {
-                Ambiguity(()) | RegionOutlives(..) => rewritten_constraints.push(Or::new_leaf(c)),
-                TypeOutlives(ty, region, ()) => {
-                    let constraint = RegionConstraint::new_from_or(destructure_type_outlives(
-                        infcx.cx(),
-                        ty,
-                        region,
-                        (),
-                    ));
-                    rewritten_constraints.push(
-                        rewrite_type_outlives_constraints_in_universe_for_eager_placeholder_handling(
-                            infcx,
-                            constraint,
-                            u,
-                            assumptions,
-                        )
-                        .splatted_and_constraints(),
-                    );
+                Ambiguity(()) | RegionOutlives(..) | AliasOutlives(..) => {
+                    rewritten_constraints.push(Or::new_leaf(c));
                 }
                 PlaceholderTyOutlives(ty, region, ()) => {
                     rewritten_constraints.push(rewrite_placeholder_ty_outlives_constraints_in_universe_for_eager_placeholder_handling(infcx, ty, region, u, assumptions));

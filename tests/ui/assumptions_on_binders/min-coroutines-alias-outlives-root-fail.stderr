@@ -1,0 +1,28 @@
+error[E0309]: the associated type `<T as Trait>::Assoc` may not live long enough
+  --> $DIR/min-coroutines-alias-outlives-root-fail.rs:13:30
+   |
+LL |     impl<'a, T: Trait> {
+   |          -- the associated type `<T as Trait>::Assoc` must be valid for the lifetime `'a` as defined here...
+LL |         predicates T::Assoc: 'a
+   |                              ^^ ...so that a higher-ranked lifetime bound can be satisfied
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL |     impl<'a, T: Trait> where <T as Trait>::Assoc: 'a {
+   |                        +++++++++++++++++++++++++++++
+
+error[E0311]: the associated type `<T as Higher<'b>>::Assoc` may not live long enough
+  --> $DIR/min-coroutines-alias-outlives-root-fail.rs:30:23
+   |
+LL |         predicates T: for<'a> Outer<'a>
+   |                       ^^^^^^^^^^^^^^^^^
+   |                       |
+   |                       the associated type `<T as Higher<'b>>::Assoc` must be valid for lifetime `'a`...
+   |                       ...so that a higher-ranked lifetime bound can be satisfied
+   |
+   = help: consider adding an explicit lifetime bound `<T as Higher<'b>>::Assoc: 'a`...
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0309, E0311.
+For more information about an error, try `rustc --explain E0309`.

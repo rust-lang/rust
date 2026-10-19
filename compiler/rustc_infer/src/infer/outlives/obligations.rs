@@ -238,7 +238,16 @@ impl<'tcx> InferCtxt<'tcx> {
             region_outlives.freeze(),
             ty::UniverseIndex::ROOT,
         );
-        self.destructure_solver_region_constraints(assumptions, self);
+        self.destructure_solver_region_constraints(
+            assumptions,
+            TypeOutlives::new(
+                self,
+                self.tcx,
+                outlives_env.region_bound_pairs(),
+                None,
+                outlives_env.known_type_outlives(),
+            ),
+        );
     }
 
     pub fn destructure_solver_region_constraints_for_borrowck(
@@ -248,6 +257,7 @@ impl<'tcx> InferCtxt<'tcx> {
         known_type_outlives: &[PolyTypeOutlivesClause<'tcx>],
         region_bound_pairs: &RegionBoundPairs<'tcx>,
         region_outlives: TransitiveRelation<RegionVid>,
+        implicit_region_bound: Region<'tcx>,
     ) {
         let assumptions = region_constraint::Assumptions::new(
             self,
@@ -255,14 +265,23 @@ impl<'tcx> InferCtxt<'tcx> {
             region_outlives.maybe_map(|r| Some(Region::new_var(self.tcx, r))).unwrap(),
             ty::UniverseIndex::ROOT,
         );
-        self.destructure_solver_region_constraints(assumptions, conversion);
+        self.destructure_solver_region_constraints(
+            assumptions,
+            TypeOutlives::new(
+                conversion,
+                self.tcx,
+                region_bound_pairs,
+                Some(implicit_region_bound),
+                known_type_outlives,
+            ),
+        );
     }
 
-    #[instrument(level = "debug", skip(self, conversion))]
-    pub fn destructure_solver_region_constraints(
+    #[instrument(level = "debug", skip(self, outlives))]
+    fn destructure_solver_region_constraints(
         &self,
         assumptions: rustc_type_ir::region_constraint::Assumptions<TyCtxt<'tcx>>,
-        mut conversion: impl TypeOutlivesDelegate<'tcx>,
+        mut outlives: TypeOutlives<'_, 'tcx, impl TypeOutlivesDelegate<'tcx>>,
     ) {
         assert!(self.tcx.assumptions_on_binders_any());
         assert!(self.next_trait_solver());
@@ -298,12 +317,20 @@ impl<'tcx> InferCtxt<'tcx> {
                 RegionOutlives(a, b, span) => {
                     let origin = SubregionOrigin::SolverRegionConstraint(span);
                     let category = origin.to_constraint_category();
-                    conversion.push_sub_region_constraint(
+                    outlives.delegate.push_sub_region_constraint(
                         origin, // we flip these because regionck is silly :>
                         b, a, category,
                     );
                 }
-                TypeOutlives(..) | AliasTyOutlivesViaEnv(..) | PlaceholderTyOutlives(..) => {
+                AliasOutlives(alias, region, span) => {
+                    assert!(self.tcx.assumptions_on_binders_min_coroutines());
+                    #[allow(rustc::usage_of_type_ir_traits)]
+                    let (alias, region) =
+                        self.deeply_resolve_via_unification_table((alias, region));
+                    let origin = SubregionOrigin::SolverRegionConstraint(span);
+                    outlives.alias_ty_must_outlive(origin, region, alias);
+                }
+                AliasTyOutlivesViaEnv(..) | PlaceholderTyOutlives(..) => {
                     unreachable!()
                 }
             }
