@@ -1,7 +1,7 @@
 //! Provides the `extern static` that this platform expects.
 
 use rustc_span::Symbol;
-use rustc_target::spec::Os;
+use rustc_target::spec::{Env, Os};
 
 use crate::*;
 
@@ -61,6 +61,16 @@ impl<'tcx> MiriMachine<'tcx> {
         match &ecx.tcx.sess.target.os {
             Os::Linux => {
                 Self::weak_fn_symbols(ecx, &["getrandom", "gettid", "statx", "strlen"])?;
+                if ecx.tcx.sess.target.env == Env::Gnu {
+                    // FIXME: enabling this with genmc causes test failures because of how
+                    // std then uses pthread keys and genmc does not know about their state.
+                    if ecx.machine.data_race.as_genmc_ref().is_none() {
+                        Self::weak_fn_symbols(ecx, &["__cxa_thread_atexit_impl"])?;
+                    }
+                    // The __dso_handle symbol just marks a unique global address.
+                    let val = ImmTy::from_int(0, ecx.machine.layouts.u8);
+                    Self::alloc_extern_static(ecx, "__dso_handle", val)?;
+                }
             }
             Os::Android => {
                 Self::weak_fn_symbols(

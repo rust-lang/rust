@@ -6,7 +6,7 @@ use rustc_abi::{CanonAbi, Size};
 use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
-use rustc_target::spec::{Env, Os};
+use rustc_target::spec::{Env, Os, Target};
 
 use self::shims::unix::android::foreign_items as android;
 use self::shims::unix::freebsd::foreign_items as freebsd;
@@ -19,7 +19,7 @@ use crate::shims::cpu_affinity::EvalContextExt as _;
 use crate::shims::unix::*;
 use crate::{shim_sig, *};
 
-pub fn is_dyn_sym(name: &str, target_os: &Os) -> bool {
+pub fn is_dyn_sym(name: &str, target: &Target) -> bool {
     match name {
         // Used for (std and Miri) tests.
         "strlen" => true,
@@ -34,13 +34,13 @@ pub fn is_dyn_sym(name: &str, target_os: &Os) -> bool {
         // `preadv`/`pwritev` are set up as weak symbols in `init_extern_statics` (on Android,
         // where std uses them via `weak!` since bionic only gained them in API level 24), so
         // we allow them here too. They do not exist on Solaris.
-        "preadv" | "pwritev" if !matches!(*target_os, Os::Solaris) => true,
+        "preadv" | "pwritev" if !matches!(target.os, Os::Solaris) => true,
         // Give specific OSes a chance to allow their symbols.
         _ =>
-            match *target_os {
+            match target.os {
                 Os::Android => android::is_dyn_sym(name),
                 Os::FreeBsd => freebsd::is_dyn_sym(name),
-                Os::Linux => linux::is_dyn_sym(name),
+                Os::Linux => linux::is_dyn_sym(name, target),
                 Os::MacOs => macos::is_dyn_sym(name),
                 Os::Solaris | Os::Illumos => solarish::is_dyn_sym(name),
                 Os::NetBsd => netbsd::is_dyn_sym(name),
@@ -865,7 +865,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let Ok(name) = str::from_utf8(name) else {
                     throw_unsup_format!("dlsym: non UTF-8 symbol name not supported")
                 };
-                if is_dyn_sym(name, &this.tcx.sess.target.os) {
+                if this.is_dyn_sym(name) {
                     let ptr = this.fn_ptr(FnVal::Other(DynSym::from_str(name)));
                     this.write_pointer(ptr, dest)?;
                 } else if let Some(&ptr) = this.machine.extern_statics.get(&Symbol::intern(name)) {
@@ -902,7 +902,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_null(dest)?;
             }
             "pthread_key_delete" => {
-                // FIXME: This does not have a direct test (#3179).
                 let [key] = &this.check_shim_sig(
                     shim_sig!(extern "C" fn(libc::pthread_key_t) -> i32),
                     (link_name, abi, args),
@@ -913,15 +912,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_null(dest)?;
             }
             "pthread_getspecific" => {
-                // FIXME: This does not have a direct test (#3179).
                 let [key] = &this.check_shim_sig(
                     shim_sig!(extern "C" fn(libc::pthread_key_t) -> *_),
                     (link_name, abi, args),
                 )?;
                 let key = this.read_scalar(key)?.to_bits(key.layout.size)?;
                 let active_thread = this.active_thread();
-                let ptr = this.machine.tls.load_tls(key, active_thread, this)?;
-                this.write_scalar(ptr, dest)?;
+                let ptr = this.machine.tls.load_tls(key, active_thread)?;
+                this.write_pointer(ptr, dest)?;
             }
             "pthread_setspecific" => {
                 let [key, new_ptr] = &this.check_shim_sig(
@@ -930,8 +928,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 )?;
                 let key = this.read_scalar(key)?.to_bits(key.layout.size)?;
                 let active_thread = this.active_thread();
-                let new_data = this.read_scalar(new_ptr)?;
-                this.machine.tls.store_tls(key, active_thread, new_data, &*this.tcx)?;
+                let new_data = this.read_pointer(new_ptr)?;
+                this.machine.tls.store_tls(key, active_thread, new_data)?;
 
                 // Return success (`0`).
                 this.write_null(dest)?;
