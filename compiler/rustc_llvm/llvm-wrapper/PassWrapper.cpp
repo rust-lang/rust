@@ -55,10 +55,17 @@
 
 // Conditional includes prevent clang-format from fully sorting the list,
 // so if any are needed, keep them separate down here.
+#if LLVM_VERSION_GE(24, 0)
+#include "llvm/Support/LibraryOptionsContext.h"
+#endif
 
 using namespace llvm;
 
 static codegen::RegisterCodeGenFlags CGF;
+
+#if LLVM_VERSION_GE(24, 0)
+static cl::LibraryOptionsContext LibraryOptions;
+#endif
 
 typedef struct LLVMOpaqueTargetMachine *LLVMTargetMachineRef;
 
@@ -369,6 +376,9 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   }
 
   TargetOptions Options = codegen::InitTargetOptionsFromCodeGenFlags(Trip);
+#if LLVM_VERSION_GE(24, 0)
+  Options.MCOptions.LibraryOptions = &LibraryOptions;
+#endif
 
 #if LLVM_VERSION_LT(24, 0)
   Options.FloatABIType = FloatABIType;
@@ -446,7 +456,11 @@ extern "C" void LLVMRustSetLLVMOptions(int Argc, char **Argv) {
   if (Initialized)
     return;
   Initialized = true;
+#if LLVM_VERSION_GE(24, 0)
+  cl::parseCommandLineOptions(LibraryOptions, ArrayRef(Argv, Argc));
+#else
   cl::ParseCommandLineOptions(Argc, Argv);
+#endif
 }
 
 enum class LLVMRustFileType {
@@ -470,6 +484,9 @@ LLVMRustWriteOutputFile(LLVMTargetMachineRef Target, LLVMModuleRef M,
                         const char *Path, const char *DwoPath,
                         LLVMRustFileType RustFileType, bool VerifyIR,
                         bool DisableSimplifyLibCalls) {
+#if LLVM_VERSION_GE(24, 0)
+  unwrap(M)->getContext().getLibraryOptions().assign(LibraryOptions);
+#endif
   std::unique_ptr<llvm::legacy::PassManager> PM =
       std::make_unique<llvm::legacy::PassManager>();
 
@@ -693,6 +710,9 @@ extern "C" LLVMRustResult LLVMRustOptimize(
     const char *ExtraPasses, size_t ExtraPassesLen, const char *LLVMPlugins,
     size_t LLVMPluginsLen) {
   Module *TheModule = unwrap(ModuleRef);
+#if LLVM_VERSION_GE(24, 0)
+  TheModule->getContext().getLibraryOptions().assign(LibraryOptions);
+#endif
   TargetMachine *TM = unwrap(TMRef);
   OptimizationLevel OptLevel = fromRust(OptLevelRust);
 
