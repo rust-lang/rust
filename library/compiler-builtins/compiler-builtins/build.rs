@@ -563,10 +563,14 @@ mod c {
 
             if !link_against_prebuilt_rt && added_sources.insert(src.clone()) {
                 if cfg.target_env == "msvc" {
-                    let stem = src.file_stem().unwrap().to_string_lossy().into_owned();
-                    assert!(msvc_stems.insert(stem.clone()),"duplicate compiler-rt object name: {stem}");
+                    let stem = src.file_stem().unwrap().to_str().unwrap().to_owned();
+                    assert!(
+                        msvc_stems.insert(stem.clone()),
+                        "duplicate compiler-rt object name: {stem}"
+                    );
 
                     let mut per_file_build = build.clone();
+                    per_file_build.source_root(&root);
                     per_file_build.file(&src);
 
                     if is_clang_cl {
@@ -627,11 +631,13 @@ mod c {
                 );
             }
         } else if cfg.target_env == "msvc" {
-            let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
-            build_archive_with_bare_names(build, &msvc_objs, &out_dir.join("libcompiler-rt.a"));
+            // Preserve a stable archive order.
+            msvc_objs.sort_by(|a, b| a.0.cmp(&b.0));
 
-            println!("cargo:rustc-link-lib=static=compiler-rt");
-            println!("cargo:rustc-link-search=native={}", out_dir.display());
+            let objects: Vec<PathBuf> = msvc_objs.into_iter().map(|(_, obj)| obj).collect();
+
+            let archive = build.create_archive("compiler-rt", &objects);
+            cc::emit_link_directives(build, &archive);
         } else {
             build.compile("libcompiler-rt.a");
         }
@@ -692,60 +698,5 @@ mod c {
                 }
             }
         }
-    }
-    fn build_archive_with_bare_names(
-        build: &cc::Build,
-        objs: &[(String, PathBuf)],
-        out_path: &Path,
-    ) {
-        let out_dir = out_path.parent().unwrap();
-        let mut objs = objs.to_vec();
-        objs.sort_by(|a, b| a.0.cmp(&b.0));
-
-        let mut member_names = Vec::with_capacity(objs.len());
-
-        // Give each intermediate object a deterministic filename.
-        for (member_name, obj_path) in objs {
-            let member_path = out_dir.join(&member_name);
-
-            if obj_path != member_path {
-                let _ = fs::remove_file(&member_path);
-                fs::rename(&obj_path, &member_path).expect("failed to rename compiler-rt object");
-            }
-
-            member_names.push(member_name);
-        }
-
-        let _ = fs::remove_file(out_path);
-
-        let mut archiver = build.get_archiver();
-        let is_llvm_ar = archiver.get_program().to_string_lossy().contains("llvm-ar");
-
-        if is_llvm_ar {
-            archiver
-                .env("ZERO_AR_DATE", "1")
-                .arg("cq")
-                .arg(out_path.file_name().unwrap());
-        } else {
-            let mut out = std::ffi::OsString::from("-out:");
-            out.push(out_path.file_name().unwrap());
-            archiver.arg(out);
-        }
-
-        let status = archiver
-            .args(&member_names)
-            .current_dir(out_dir)
-            .status()
-            .expect("failed to execute archiver");
-
-        assert!(status.success(), "failed to build compiler-rt archive");
-
-        // MSVC linking may look for compiler-rt.lib even though we construct
-        // libcompiler-rt.a.
-        let lib_path = out_dir.join("compiler-rt.lib");
-        let _ = fs::remove_file(&lib_path);
-        fs::hard_link(out_path, &lib_path)
-            .or_else(|_| fs::copy(out_path, &lib_path).map(|_| ()))
-            .expect("failed to create compiler-rt.lib");
     }
 }
