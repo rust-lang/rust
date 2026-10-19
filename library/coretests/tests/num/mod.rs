@@ -391,10 +391,7 @@ macro_rules! test_impl_try_from_integer_to_bool {
             assert_eq!(bool::try_from(max).unwrap_err().kind(), IntErrorKind::PosOverflow);
             if min != 0 {
                 assert_eq!(bool::try_from(min).unwrap_err().kind(), IntErrorKind::NegOverflow);
-                assert_eq!(
-                    bool::try_from(zero - 1).unwrap_err().kind(),
-                    IntErrorKind::NegOverflow
-                );
+                assert_eq!(bool::try_from(zero - 1).unwrap_err().kind(), IntErrorKind::NegOverflow);
             }
             assert_eq!(bool::try_from(zero).unwrap(), false);
             assert_eq!(bool::try_from(one).unwrap(), true);
