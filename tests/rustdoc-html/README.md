@@ -156,6 +156,10 @@ Same as `tests/rustdoc-html/enum` but for struct items.
 
 Somewhat equivalent to the `auto` folder's tests. Both should likely be merged.
 
+## `tests/rustdoc-html/trait`
+
+Same as `tests/rustdoc-html/enum` but for trait items.
+
 ## `tests/rustdoc-html/typedef`
 
 Contains tests checking type aliases (`type X = Y`) rendering. In particular when the

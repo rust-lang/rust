@@ -30,7 +30,7 @@ types! {
 ///  - [`__hadd2`](https://docs.nvidia.com/cuda/cuda-math-api/group__CUDA__MATH____HALF2__ARITHMETIC.html#group__CUDA__MATH____HALF2__ARITHMETIC_1g921c795176eaa31265bd80ef4fe4b8e6)
 ///  - [`__hadd2_rn`](https://docs.nvidia.com/cuda/cuda-math-api/group__CUDA__MATH____HALF2__ARITHMETIC.html#group__CUDA__MATH____HALF2__ARITHMETIC_1g6cd8ddb2c3d670e1a10c3eb2e7644f82)
 #[inline]
-#[cfg_attr(test, assert_instr(add.rn.f16x22))]
+#[cfg_attr(test, assert_instr(add.rn.f16x2))]
 #[unstable(feature = "stdarch_nvptx", issue = "111199")]
 pub unsafe fn f16x2_add(a: f16x2, b: f16x2) -> f16x2 {
     simd_add(a, b)
@@ -68,9 +68,7 @@ pub unsafe fn f16x2_mul(a: f16x2, b: f16x2) -> f16x2 {
 ///
 /// <https://docs.nvidia.com/cuda/parallel-thread-execution/#half-precision-floating-point-instructions-fma>
 ///
-/// Corresponds to the CUDA C intrinsics:
-///  - [`__fma2`](https://docs.nvidia.com/cuda/cuda-math-api/group__CUDA__MATH____HALF2__ARITHMETIC.html#group__CUDA__MATH____HALF2__ARITHMETIC_1g43628ba21ded8b1e188a367348008dab)
-///  - [`__fma2_rn`](https://docs.nvidia.com/cuda/cuda-math-api/group__CUDA__MATH____HALF2__ARITHMETIC.html#group__CUDA__MATH____HALF2__ARITHMETIC_1g43628ba21ded8b1e188a367348008dab)
+/// Corresponds to the CUDA C intrinsic [`__hfma2`](https://docs.nvidia.com/cuda/cuda-math-api/group__CUDA__MATH____HALF2__ARITHMETIC.html#group__CUDA__MATH____HALF2__ARITHMETIC_1g43628ba21ded8b1e188a367348008dab)
 #[inline]
 #[cfg_attr(test, assert_instr(fma.rn.f16x2))]
 #[unstable(feature = "stdarch_nvptx", issue = "111199")]
@@ -82,7 +80,7 @@ pub unsafe fn f16x2_fma(a: f16x2, b: f16x2, c: f16x2) -> f16x2 {
 ///
 /// <https://docs.nvidia.com/cuda/parallel-thread-execution/#half-precision-floating-point-instructions-neg>
 ///
-/// Corresponds to the CUDA C intrinsic [`__hmin2`](https://docs.nvidia.com/cuda/cuda-math-api/group__CUDA__MATH____HALF2__COMPARISON.html#group__CUDA__MATH____HALF2__COMPARISON_1g9e17a33f96061804166f3fbd395422b6)
+/// Corresponds to the CUDA C intrinsic [`__hneg2`](https://docs.nvidia.com/cuda/cuda-math-api/group__CUDA__MATH____HALF2__ARITHMETIC.html#group__CUDA__MATH____HALF2__ARITHMETIC_1g90e216094729014f541fa1e5a5aaeaf7)
 #[inline]
 #[cfg_attr(test, assert_instr(neg.f16x2))]
 #[unstable(feature = "stdarch_nvptx", issue = "111199")]

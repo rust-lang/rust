@@ -10,7 +10,7 @@
 #![feature(async_iterator)]
 #![feature(atomic_volatile)]
 #![feature(borrowed_buf_init)]
-#![feature(bstr)]
+#![feature(byte_str)]
 #![feature(casefold)]
 #![feature(cfg_overflow_checks)]
 #![feature(cfg_target_has_reliable_f16_f128)]
@@ -179,7 +179,7 @@ mod asserting;
 mod async_iter;
 mod atomic;
 mod bool;
-mod bstr;
+mod byte_str;
 mod cell;
 mod char;
 mod clone;

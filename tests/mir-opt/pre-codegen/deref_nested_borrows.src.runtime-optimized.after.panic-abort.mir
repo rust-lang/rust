@@ -23,7 +23,7 @@ fn src(_1: &&u8) -> bool {
         StorageLive(_6);
         _5 = no_retag copy (*_1);
         _6 = copy (*_5);
-        _0 = Eq(move _6, copy _3);
+        _0 = Eq(copy _3, move _6);
         StorageDead(_6);
         StorageDead(_3);
         return;

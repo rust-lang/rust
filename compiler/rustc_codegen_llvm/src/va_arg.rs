@@ -88,7 +88,7 @@ fn get_param_type_alignment<'ll, 'tcx>(
     };
 
     match bx.cx.tcx.sess.target.arch {
-        Arch::PowerPC64 => match scalar.primitive() {
+        Arch::PowerPC | Arch::PowerPC64 => match scalar.primitive() {
             Primitive::Int(integer, _) => match integer {
                 Integer::I8 | Integer::I16 => unreachable!(),
                 Integer::I32 | Integer::I64 => { /* fall through */ }
@@ -96,7 +96,8 @@ fn get_param_type_alignment<'ll, 'tcx>(
             },
             Primitive::Float(float) => match float {
                 Float::F16 | Float::F16B | Float::F32 => unreachable!(),
-                Float::F64 | Float::F128 | Float::PpcF128 => { /* fall through */ }
+                Float::F64 | Float::F128 => { /* fall through */ }
+                Float::PpcF128 => return Align::EIGHT,
             },
             Primitive::Pointer(_) => { /* fall through */ }
         },
@@ -310,6 +311,8 @@ fn emit_powerpc_va_arg<'ll, 'tcx>(
     let layout = layout.peel_transparent_wrappers_from_non_1zst(bx.cx);
 
     // Rust does not currently support any powerpc softfloat targets.
+    // FIXME: however, the SPE targets are softfloat-like, and the current
+    // implementation doesn't handle them correctly.
     let target = &bx.cx.tcx.sess.target;
     let is_soft_float_abi = target.rustc_abi == Some(RustcAbi::Softfloat);
     assert!(!is_soft_float_abi);
@@ -320,13 +323,14 @@ fn emit_powerpc_va_arg<'ll, 'tcx>(
     let (is_i64, is_int, is_f64) = match layout.layout.backend_repr() {
         BackendRepr::Scalar(scalar) => match scalar.primitive() {
             rustc_abi::Primitive::Int(integer, _) => (integer.size().bits() == 64, true, false),
-            rustc_abi::Primitive::Float(float) => (false, false, float.size().bits() == 64),
+            rustc_abi::Primitive::Float(float) => (false, false, matches!(float, Float::F64)),
             rustc_abi::Primitive::Pointer(_) => (false, true, false),
         },
         _ => unreachable!("all instances of VaArgSafe are represented as scalars"),
     };
 
-    let num_regs_addr = if is_int || is_soft_float_abi {
+    let is_passed_in_fprs = !(is_int || is_soft_float_abi);
+    let num_regs_addr = if !is_passed_in_fprs {
         va_list_addr // gpr
     } else {
         bx.inbounds_ptradd(va_list_addr, bx.const_usize(1)) // fpr
@@ -341,7 +345,10 @@ fn emit_powerpc_va_arg<'ll, 'tcx>(
     }
 
     let max_regs = 8u8;
-    let use_regs = bx.icmp(IntPredicate::IntULT, num_regs, bx.const_u8(max_regs));
+    let reg_size = if is_passed_in_fprs { 8 } else { 4 };
+    let reg_incr = layout.size.bytes().div_ceil(u64::from(reg_size)) as u8;
+    let use_regs = bx.icmp(IntPredicate::IntULE, num_regs, bx.const_u8(max_regs - reg_incr));
+
     let ptr_align_abi = bx.tcx().data_layout.pointer_align().abi;
 
     let in_reg = bx.append_sibling_block("va_arg.in_reg");
@@ -353,22 +360,20 @@ fn emit_powerpc_va_arg<'ll, 'tcx>(
     let reg_addr = {
         bx.switch_to_block(in_reg);
 
-        let reg_safe_area_ptr = bx.inbounds_ptradd(va_list_addr, bx.cx.const_usize(1 + 1 + 2 + 4));
-        let mut reg_addr = bx.load(bx.type_ptr(), reg_safe_area_ptr, ptr_align_abi);
+        let reg_save_area_ptr = bx.inbounds_ptradd(va_list_addr, bx.cx.const_usize(1 + 1 + 2 + 4));
+        let mut reg_addr = bx.load(bx.type_ptr(), reg_save_area_ptr, ptr_align_abi);
 
         // Floating-point registers start after the general-purpose registers.
-        if !is_int && !is_soft_float_abi {
+        if is_passed_in_fprs {
             reg_addr = bx.inbounds_ptradd(reg_addr, bx.cx.const_usize(32))
         }
 
         // Get the address of the saved value by scaling the number of
         // registers we've used by the number of.
-        let reg_size = if is_int || is_soft_float_abi { 4 } else { 8 };
         let reg_offset = bx.mul(num_regs, bx.cx().const_u8(reg_size));
         let reg_addr = bx.inbounds_ptradd(reg_addr, reg_offset);
 
         // Increase the used-register count.
-        let reg_incr = if is_i64 || (is_f64 && is_soft_float_abi) { 2 } else { 1 };
         let new_num_regs = bx.add(num_regs, bx.cx.const_u8(reg_incr));
         bx.store(new_num_regs, num_regs_addr, dl.i8_align);
 
@@ -395,9 +400,9 @@ fn emit_powerpc_va_arg<'ll, 'tcx>(
         let mut overflow_area = bx.load(bx.type_ptr(), overflow_area_ptr, ptr_align_abi);
 
         // Round up address of argument to alignment
-        if layout.layout.align.abi > overflow_area_align {
-            overflow_area =
-                round_pointer_up_to_alignment(bx, overflow_area, layout.layout.align.abi);
+        let align = get_param_type_alignment(bx, layout);
+        if align > overflow_area_align {
+            overflow_area = round_pointer_up_to_alignment(bx, overflow_area, align);
         }
 
         let mem_addr = overflow_area;
@@ -417,7 +422,8 @@ fn emit_powerpc_va_arg<'ll, 'tcx>(
     let val_type = layout.llvm_type(bx);
     let val_addr =
         if is_indirect { bx.load(bx.cx.type_ptr(), val_addr, ptr_align_abi) } else { val_addr };
-    bx.load(val_type, val_addr, layout.align.abi)
+    let align = get_param_type_alignment(bx, layout);
+    bx.load(val_type, val_addr, align)
 }
 
 fn emit_s390x_va_arg<'ll, 'tcx>(
