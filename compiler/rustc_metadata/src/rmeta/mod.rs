@@ -54,6 +54,7 @@ use rustc_target::spec::{PanicStrategy, TargetTuple};
 use table::TableBuilder;
 
 use crate::eii::EiiMapEncodedKeyValue;
+use crate::rmeta::parameterized::EncodeFrom;
 use crate::rmeta::remapped_def_id::RemappedRawDefId;
 
 mod decoder;
@@ -570,10 +571,45 @@ macro_rules! define_tables {
                 }
             }
         }
+
+        impl<'a, 'tcx, 'b> TableWriter<'a, 'tcx, 'b> {
+            $(
+                /// Records a value into the corresponding `TableBuilders` field, encoding it in
+                /// the process when necessary
+                fn $name1<T>(&mut self, i: LocalDefId, v: T)
+                where
+                    $T1: EncodeFrom<'tcx, T>
+                {
+                    let encoded = <$T1 as EncodeFrom<'tcx, T>>::encode_from(self.encoder, v);
+                    let idx = self.encoder.local_defs_remapping.map_local_def_id(i);
+                    self.encoder.tables.$name1.set(idx, encoded);
+                }
+            )+
+            $(
+                /// Records a value into the corresponding `TableBuilders` field, encoding it in
+                /// the process when necessary
+                fn $name2<T>(&mut self, i: LocalDefId, v: T)
+                where
+                    $T2: EncodeFrom<'tcx, T>
+                {
+                    let encoded = <$T2 as EncodeFrom<'tcx, T>>::encode_from(self.encoder, v);
+                    let idx = self.encoder.local_defs_remapping.map_local_def_id(i);
+                    self.encoder.tables.$name2.set(idx, Some(encoded));
+                }
+            )+
+        }
     }
 }
 
+/// Helper struct for writing values into [`TableBuilders`].
+#[must_use]
+struct TableWriter<'a, 'tcx, 'b> {
+    encoder: &'b mut EncodeContext<'a, 'tcx>,
+}
+
 define_tables! {
+// If the compiler complains about `EncodeFrom` or `ParameterizedOverTcx` bounds when calling a
+// function generated in this macro, add them to parameterized.rs
 - defaulted:
     intrinsic: Table<Option<LazyValue<ty::IntrinsicDef>>>,
     is_macro_rules: Table<bool>,
