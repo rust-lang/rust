@@ -1,22 +1,18 @@
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
-  --> $DIR/typeck-default-trait-impl-cross-crate-coherence.rs:13:1
+  --> $DIR/typeck-default-trait-impl-cross-crate-coherence.rs:13:25
    |
 LL | impl DefaultedTrait for (A,) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^----
-   |                         |
-   |                         this is not defined in the current crate because tuples are always foreign
+   |                         ^^^^ this is not defined in the current crate because tuples are always foreign
    |
    = note: impl doesn't have any local type before any uncovered type parameters
    = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
    = note: define and implement a trait or new type instead
 
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
-  --> $DIR/typeck-default-trait-impl-cross-crate-coherence.rs:16:1
+  --> $DIR/typeck-default-trait-impl-cross-crate-coherence.rs:16:26
    |
 LL | impl !DefaultedTrait for (B,) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^----
-   |                          |
-   |                          this is not defined in the current crate because tuples are always foreign
+   |                          ^^^^ this is not defined in the current crate because tuples are always foreign
    |
    = note: impl doesn't have any local type before any uncovered type parameters
    = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
@@ -29,12 +25,10 @@ LL | impl DefaultedTrait for Box<C> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't implement cross-crate trait for type in another crate
 
 error[E0117]: only traits defined in the current crate can be implemented for types defined outside of the crate
-  --> $DIR/typeck-default-trait-impl-cross-crate-coherence.rs:21:1
+  --> $DIR/typeck-default-trait-impl-cross-crate-coherence.rs:21:25
    |
 LL | impl DefaultedTrait for lib::Something<C> {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^-----------------
-   |                         |
-   |                         `Something` is not defined in the current crate
+   |                         ^^^^^^^^^^^^^^^^^ `Something` is not defined in the current crate
    |
    = note: impl doesn't have any local type before any uncovered type parameters
    = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
