@@ -244,15 +244,25 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// on output it points to the non-truncated size of the written address in the
     /// buffer pointed to by `address_ptr`.
     ///
+    /// If `address` is [`None`] we write an "empty" address (i.e., the `address_len_ptr`
+    /// is set to zero and the `address_ptr` is left untouched).
+    ///
     /// If the address buffer doesn't fit the whole address, the address is truncated to not
     /// overflow the buffer.
     fn write_socket_address(
         &mut self,
-        address: &SocketAddr,
+        address: Option<&SocketAddr>,
         address_ptr: Pointer,
         address_len_place: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
+
+        let Some(address) = address else {
+            // We want to write an "empty" socket address. In this case we just set
+            // the address length to zero.
+
+            return this.write_int(0, address_len_place);
+        };
 
         // We only support buffer lengths which can be stored in a u64 since the
         // size of a layout in bytes is also stored in a u64.
@@ -446,7 +456,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         this.write_int(sockaddr_layout.size.bytes(), &addrlen_mplace)?;
 
         let sockaddr_mplace = this.allocate(sockaddr_layout, MiriMemoryKind::Machine.into())?;
-        this.write_socket_address(&address, sockaddr_mplace.ptr(), &addrlen_mplace)?;
+        this.write_socket_address(Some(&address), sockaddr_mplace.ptr(), &addrlen_mplace)?;
         this.write_pointer(sockaddr_mplace.ptr(), &addr_mplace)?;
 
         let canonname_mplace = this.project_field_named(&addrinfo_mplace, "ai_canonname")?;

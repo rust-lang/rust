@@ -291,12 +291,20 @@ impl UnixSocketFileDescription for VirtualSocket {
         is_peek: bool,
         is_non_block: bool,
         ecx: &mut MiriInterpCx<'tcx>,
-        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+        finish: DynMachineCallback<'tcx, Result<(usize, Option<SocketAddr>), IoError>>,
     ) -> InterpResult<'tcx> {
         if is_peek {
             throw_unsup_format!("socketpair: virtual sockets don't support peeking")
         }
 
+        let finish = callback!(
+            @capture<'tcx> {
+                finish: DynMachineCallback<'tcx, Result<(usize, Option<SocketAddr>), IoError>>,
+            } |this, result: Result<usize, IoError>| {
+                // The source address of the data isn't available for stream-based sockets.
+                finish.call(this, result.map(|bytes| (bytes, None)))
+            }
+        );
         ecx.virtual_socket_read(self, ptr, len, is_non_block, finish)
     }
 }

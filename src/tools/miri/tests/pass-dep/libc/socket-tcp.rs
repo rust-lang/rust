@@ -40,6 +40,7 @@ fn main() {
     test_connect_listening();
     test_send_peek_recv();
     test_write_read();
+    test_recvfrom();
     test_sendto();
     test_readv();
     test_writev();
@@ -395,6 +396,73 @@ fn test_write_read() {
     let mut buffer = [0; TEST_BYTES.len()];
     libc_utils::read_exact(client_sockfd, &mut buffer).unwrap();
     assert_eq!(&buffer, TEST_BYTES);
+
+    server_thread.join().unwrap();
+}
+
+/// Test receiving data from a TCP socket using `recvfrom`.
+/// Since TCP is a connection-mode protocol the `address` and `address_len`
+/// pointers should be left unchanged.
+fn test_recvfrom() {
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    // Spawn the server thread.
+    let server_thread = thread::spawn(move || {
+        let (peerfd, _) = net::accept_ipv4(server_sockfd).unwrap();
+
+        // Write some bytes into the stream.
+
+        libc_utils::write_all(peerfd, TEST_BYTES).unwrap();
+        libc_utils::write_all(peerfd, TEST_BYTES).unwrap();
+    });
+
+    net::connect_ipv4(client_sockfd, addr).unwrap();
+
+    if cfg!(miri) || !cfg!(any(target_os = "freebsd", target_vendor = "apple")) {
+        // Native FreeBSD and macOS return EFAULT when the `address_len` pointer is invalid.
+        // This is not documented in their man pages and we thus skip those native tests.
+
+        let mut buffer = [0; TEST_BYTES.len()];
+
+        // When the address pointer is a nullptr, the `address_len` should be left unchanged.
+        unsafe {
+            errno_result(libc::recvfrom(
+                client_sockfd,
+                buffer.as_mut_ptr().cast(),
+                buffer.len(),
+                /* flags */ 0,
+                ptr::null_mut::<libc::sockaddr>(),
+                ptr::without_provenance_mut::<libc::socklen_t>(0x200),
+            ))
+            .unwrap();
+        }
+
+        assert_eq!(&buffer, TEST_BYTES);
+    }
+
+    let mut buffer: [u8; 26] = [0; TEST_BYTES.len()];
+    let mut address_ptr_len = 1337 as libc::socklen_t;
+
+    // If address pointer is non-null, `address_len` should be zeroed (but address itself is not accessed).
+    // We thus use a garbage value for the address pointer to ensure it's ignored.
+    unsafe {
+        errno_result(libc::recvfrom(
+            client_sockfd,
+            buffer.as_mut_ptr().cast(),
+            buffer.len(),
+            /* flags */ 0,
+            ptr::without_provenance_mut::<libc::sockaddr>(16),
+            &mut address_ptr_len,
+        ))
+        .unwrap();
+    }
+
+    assert_eq!(&buffer, TEST_BYTES);
+
+    // Ensure the `address_len` pointer gets zeroed.
+    assert_eq!(address_ptr_len, 0);
 
     server_thread.join().unwrap();
 }

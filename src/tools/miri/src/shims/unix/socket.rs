@@ -65,12 +65,15 @@ pub trait UnixSocketFileDescription: UnixFileDescription {
         throw_unsup_format!("cannot connect {}", self.name());
     }
 
-    /// Receive data on the socket into the given buffer `ptr`.
+    /// Receive data on the socket into the given buffer `ptr` and return the socket
+    /// address from where the data originated.
     /// `len` indicates how many bytes we should try to receive.
     /// `is_peek` specifies whether the receive removes the bytes from the receive buffer
     /// ([`false`]) or leaves them in the receive buffer ([`true`]).
     /// `is_non_block` specifies whether the receive operation is non-blocking.
-    /// After a successful receive, `finish` should be called with the amount of bytes received.
+    /// After a successful receive, `finish` should be called with a tuple containing the
+    /// amount of bytes received and the socket address from where the data originated, should
+    /// it be provided by the protocol.
     fn recv<'tcx>(
         self: FileDescriptionRef<Self>,
         _communicate_allowed: bool,
@@ -79,7 +82,7 @@ pub trait UnixSocketFileDescription: UnixFileDescription {
         _is_peek: bool,
         _is_non_block: bool,
         _ecx: &mut MiriInterpCx<'tcx>,
-        _finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+        _finish: DynMachineCallback<'tcx, Result<(usize, Option<SocketAddr>), IoError>>,
     ) -> InterpResult<'tcx> {
         throw_unsup_format!("cannot receive from {}", self.name());
     }
@@ -432,7 +435,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         // We only attempt a write if the address pointer is not a null pointer.
                         // If the address pointer is a null pointer the user isn't interested in the
                         // address and we don't need to write anything.
-                        ecx.write_socket_address(&address, address_ptr, &address_len_place)?;
+                        ecx.write_socket_address(Some(&address), address_ptr, &address_len_place)?;
                     }
 
                     // We need to create the scalar using the destination size since
@@ -597,6 +600,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         buffer: &OpTy<'tcx>,
         length: &OpTy<'tcx>,
         flags: &OpTy<'tcx>,
+        dest_addr: Option<(&OpTy<'tcx>, &OpTy<'tcx>)>,
         // Location where the output scalar is written to.
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
@@ -608,6 +612,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let length: usize =
             this.read_scalar(length)?.to_uint(size_layout.size)?.try_into().unwrap();
         let mut flags = this.read_scalar(flags)?.to_i32()?;
+
+        let dest_addr = match dest_addr {
+            Some((addr, addr_len)) =>
+                Some((this.read_pointer(addr)?, this.deref_pointer(addr_len)?)),
+            None => None,
+        };
 
         // Get the file handle
         let Some(fd) = this.machine.fds.get(socket) else {
@@ -671,13 +681,27 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             this,
             callback!(
                 @capture<'tcx> {
+                    dest_addr: Option<(Pointer, MPlaceTy<'tcx>)>,
                     dest: MPlaceTy<'tcx>,
-                } |ecx, result: Result<usize, IoError>| {
-                    match result {
-                        Ok(bytes_sent) =>
-                            ecx.write_scalar(Scalar::from_target_usize(bytes_sent.try_into().unwrap(), ecx), &dest),
-                        Err(e) => ecx.set_errno_and_return_neg1(e, &dest)
+                } |ecx, result: Result<(usize, Option<SocketAddr>), IoError>| {
+                    let (bytes_received, origin_addr_opt) = match result {
+                        Ok(data) => data,
+                        Err(e) => return ecx.set_errno_and_return_neg1(e, &dest)
+                    };
+
+                    if let Some((addr_ptr, addr_len_mplace)) = dest_addr && addr_ptr != Pointer::null() {
+                        // When the `addr_ptr` is a null pointer the caller is not interested in the
+                        // socket address and we thus don't write anything in that case.
+
+                        // The recvfrom(3) man page specifies that "[...] the value stored in the object pointed to
+                        // `address` is unspecified [...]" should the protocol not provide the source address of the message.
+                        // In this case we do the same thing as the Linux implementation and simply don't write anything to the
+                        // `addr_ptr` pointer and zero the `addr_len_mplace` place.
+                        ecx.write_socket_address(origin_addr_opt.as_ref(), addr_ptr, &addr_len_mplace)?;
                     }
+
+                    ecx.write_scalar(Scalar::from_target_usize(bytes_received.try_into().unwrap(), ecx), &dest)
+
                 }
             ),
         )
@@ -820,7 +844,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Err(e) => return this.set_errno_and_return_neg1_i32(e),
         };
 
-        this.write_socket_address(&address, address_ptr, &address_len_place)
+        this.write_socket_address(Some(&address), address_ptr, &address_len_place)
             .map(|()| Scalar::from_i32(0))
     }
 
@@ -864,11 +888,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     };
 
                     ecx.write_socket_address(
-                        &address,
+                        Some(&address),
                         address_ptr,
                         &address_len_place,
                     )?;
-                   ecx.write_scalar(Scalar::from_i32(0), &dest)
+                    ecx.write_scalar(Scalar::from_i32(0), &dest)
                 }
             ),
         )
