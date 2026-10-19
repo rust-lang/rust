@@ -446,7 +446,7 @@ unsafe impl Sync for ModuleLlvm {}
 /// [`llvm::LLVMContextSetDiscardValueNames`].
 fn create_context_and_set_fewer_names(fewer_names: bool) -> ptr::NonNull<llvm::Context> {
     unsafe {
-        let llcx_raw = llvm::LLVMContextCreate();
+        let llcx_raw = llvm::LLVMRustContextCreate();
         llvm::LLVMContextSetDiscardValueNames(llcx_raw.as_ref(), fewer_names.to_llvm_bool());
         llcx_raw
     }

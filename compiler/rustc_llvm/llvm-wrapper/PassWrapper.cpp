@@ -26,6 +26,9 @@
 #include "llvm/Plugins/PassPlugin.h"
 #include "llvm/Support/CBindingWrapping.h"
 #include "llvm/Support/FileSystem.h"
+#if LLVM_VERSION_GE(24, 0)
+#include "llvm/Support/LibraryOptionsContext.h"
+#endif
 #include "llvm/Support/Program.h"
 #include "llvm/Support/TimeProfiler.h"
 #include "llvm/Support/VirtualFileSystem.h"
@@ -437,6 +440,18 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   return wrap(TM);
 }
 
+#if LLVM_VERSION_GE(24, 0)
+static cl::LibraryOptionsContext OptionsContext;
+#endif
+
+extern "C" LLVMContextRef LLVMRustContextCreate() {
+  LLVMContextRef Ctx = LLVMContextCreate();
+#if LLVM_VERSION_GE(24, 0)
+  unwrap(Ctx)->getLibraryOptions().assign(OptionsContext);
+#endif
+  return Ctx;
+}
+
 extern "C" void LLVMRustSetLLVMOptions(int Argc, char **Argv) {
   // Initializing the command-line options more than once is not allowed. So,
   // check if they've already been initialized. (This could happen if we're
@@ -446,7 +461,11 @@ extern "C" void LLVMRustSetLLVMOptions(int Argc, char **Argv) {
   if (Initialized)
     return;
   Initialized = true;
+#if LLVM_VERSION_LT(24, 0)
   cl::ParseCommandLineOptions(Argc, Argv);
+#else
+  cl::parseCommandLineOptions(OptionsContext, ArrayRef(Argv, Argc));
+#endif
 }
 
 enum class LLVMRustFileType {
