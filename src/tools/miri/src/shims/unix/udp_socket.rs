@@ -6,7 +6,7 @@ use std::time::Duration;
 use mio::event::Source;
 use rustc_target::spec::Os;
 
-use crate::shims::files::{FileDescription, FileDescriptionRef};
+use crate::shims::files::{EvalContextExt as _, FileDescription, FileDescriptionRef};
 use crate::shims::unix::UnixFileDescription;
 use crate::shims::unix::socket::{EvalContextExt, UnixSocketFileDescription};
 use crate::*;
@@ -22,6 +22,8 @@ pub(super) struct UdpSocket {
     is_non_block: Cell<bool>,
     /// Whether the socket is implicitly or explicitly bound to an address.
     is_bound: Cell<bool>,
+    /// Whether a default destination address has been set for this socket.
+    has_default_destination: Cell<bool>,
     /// The current blocking I/O readiness of the file description.
     io_readiness: RefCell<Readiness>,
     /// Read timeout of the socket. [`None`] means that reads can block indefinitely.
@@ -71,6 +73,7 @@ impl UdpSocket {
             socket: RefCell::new(socket),
             is_non_block: Cell::new(is_non_block),
             is_bound: Cell::new(false),
+            has_default_destination: Cell::new(false),
             // We can set the default readiness to the empty readiness
             // since the socket will be registered to the blocking I/O
             // directly after its creation.
@@ -93,6 +96,25 @@ impl UdpSocket {
 impl FileDescription for UdpSocket {
     fn name(&self) -> &'static str {
         "udp socket"
+    }
+
+    fn write<'tcx>(
+        self: FileDescriptionRef<Self>,
+        communicate_allowed: bool,
+        ptr: Pointer,
+        len: u64,
+        ecx: &mut MiriInterpCx<'tcx>,
+        finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
+    ) -> InterpResult<'tcx> {
+        self.send(
+            communicate_allowed,
+            ptr,
+            len,
+            /* is_non_block */ false,
+            /* dest_addr */ None,
+            ecx,
+            finish,
+        )
     }
 
     fn as_unix(self: FileDescriptionRef<Self>) -> FileDescriptionRef<dyn UnixFileDescription> {
@@ -201,6 +223,14 @@ impl UnixSocketFileDescription for UdpSocket {
     ) -> InterpResult<'tcx> {
         assert!(communicate_allowed, "cannot have `UdpSocket` with isolation enabled!");
 
+        if self.has_default_destination.get() {
+            // POSIX is very vague about whether it's allowed to set the default destination address
+            // of a non-connection-mode socket multiple times. Some platforms support it while others don't.
+            // We thus only allow setting the destination address at most once.
+            // See <https://github.com/rust-lang/miri/pull/5507#issuecomment-6779828795>
+            throw_unsup_format!("calling `connect` a second time on a UDP socket is unsupported");
+        }
+
         if let Err(e) = self.socket.borrow().connect(address) {
             return finish.call(ecx, Err(IoError::HostError(e)));
         }
@@ -210,7 +240,31 @@ impl UnixSocketFileDescription for UdpSocket {
         // We thus treat the socket as implicitly bound.
         self.is_bound.set(true);
 
+        self.has_default_destination.set(true);
+
         finish.call(ecx, Ok(()))
+    }
+
+    fn send<'tcx>(
+        self: FileDescriptionRef<Self>,
+        communicate_allowed: bool,
+        ptr: Pointer,
+        len: u64,
+        is_non_block: bool,
+        dest_addr: Option<SocketAddr>,
+        ecx: &mut MiriInterpCx<'tcx>,
+        finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
+    ) -> InterpResult<'tcx> {
+        assert!(communicate_allowed, "cannot have `UdpSocket` with isolation enabled!");
+
+        let is_non_block = is_non_block || self.is_non_block.get();
+
+        if !is_non_block {
+            throw_unsup_format!("send: blocking writes are currently unsupported for UDP sockets");
+        }
+
+        let result = ecx.try_non_block_send(&self, ptr, len, dest_addr)?;
+        finish.call(ecx, result)
     }
 
     fn setsockopt<'tcx>(
@@ -331,6 +385,95 @@ impl UnixSocketFileDescription for UdpSocket {
     {
         let socket = self.socket.borrow();
         Ok(cb(socket2::SockRef::from(&*socket)))
+    }
+}
+
+impl<'tcx> EvalContextPrivExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
+    /// Attempt to send bytes to another socket. If `dest_addr` is [`Some`], the data
+    /// is sent to the address specified in `dest_addr`. Otherwise, the data is sent
+    /// to the default destination address.
+    fn try_non_block_send(
+        &mut self,
+        socket: &FileDescriptionRef<UdpSocket>,
+        buffer_ptr: Pointer,
+        length: u64,
+        dest_addr: Option<SocketAddr>,
+    ) -> InterpResult<'tcx, Result<u64, IoError>> {
+        let ecx = self.eval_context_mut();
+
+        let host_socket = socket.socket.borrow();
+
+        if dest_addr.is_some() && socket.has_default_destination.get() {
+            // The sendto POSIX man page specifies that "[...] If a peer address has been pre-specified, either
+            // the message shall be sent to the address specified by dest_addr (overriding the pre-specified
+            // peer address), or the function shall return -1 and set errno to [EISCONN]. [...]".
+            // It turns out that Linux implements the prior option while BSD-based platforms implement the latter.
+            // Since both are allowed by POSIX, we try to model this as good as possible.
+
+            if matches!(ecx.tcx.sess.target.os, Os::FreeBsd | Os::MacOs) {
+                // We're on a BSD target. When both `dest_addr` and a default destination address
+                // are available, those platforms return EISCONN and don't perform the operation.
+                return interp_ok(Err(LibcError("EISCONN")));
+            } else if cfg!(any(target_os = "freebsd", target_vendor = "apple")) {
+                // We're on a BSD host and on a non-BSD target. On such targets `dest_addr` should
+                // "overrule" the default destination address, however, we cannot achieve this nicely
+                // since the host disallows that. We thus throw an unsupported error.
+                throw_unsup_format!(
+                    "sendto: overwriting default destination address is not supported for UDP sockets on BSD hosts"
+                )
+            }
+        }
+
+        // This is a *non-blocking* write.
+        let result = ecx.write_to_host(buffer_ptr, length, |bytes| {
+            match dest_addr {
+                Some(dest_addr) => host_socket.send_to(bytes, dest_addr),
+                None => host_socket.send(bytes),
+            }
+        })?;
+
+        if result.is_ok() {
+            // A write should never succeed when the `write_closed` readiness is set for this socket.
+            assert!(!socket.io_readiness.borrow().write_closed, "successful write after close");
+
+            if dest_addr.is_some() {
+                // After the first successful `sendto`, the socket gets implicitly bound to a local address.
+                socket.is_bound.set(true);
+            }
+        }
+
+        match result {
+            Err(IoError::HostError(e)) if matches!(e.kind(), io::ErrorKind::WouldBlock) => {
+                // We know that the source is not writable so we need to update its readiness.
+                socket.io_readiness.borrow_mut().writable = false;
+                ecx.update_fd_readiness(socket.clone(), ReadinessUpdateFlags::DEFAULT)?;
+
+                interp_ok(Err(IoError::HostError(e)))
+            }
+            Err(IoError::HostError(e))
+                if cfg!(windows) && matches!(e.kind(), io::ErrorKind::NotConnected) =>
+            {
+                // Windows returns ENOTCONN instead of EDESTADDRREQ when attempting to `send` without
+                // having a default destination address set. We thus remap this error to an EDESTADDRREQ.
+                interp_ok(Err(IoError::LibcError("EDESTADDRREQ")))
+            }
+            Err(IoError::HostError(e))
+                if cfg!(windows)
+                    && e.raw_os_error().is_some_and(|errno| errno == /* WSAEMSGSIZE */ 10040) =>
+            {
+                // We attempted to write a message which doesn't fit into a single UDP datagram.
+                // On Windows hosts this returns WSAEMSGSIZE while on Unix-like hosts this returns EMSGSIZE.
+                // Since WSAEMSGSIZE doesn't map to a `io::ErrorKind`, Miri throws an unsupported error if we
+                // would just return this I/O error. We thus manually remap this error to EMSGSIZE on Windows
+                // hosts. The mapping needs to be performed here and not directly inside the callback function
+                // where the `host_socket.send` occurs since this callback function returns a result with `io::Error`
+                // instead of `IoError`.
+                // FIXME: remove this if WSAEMSGSIZE ever maps to a `io::ErrorKind`.
+                interp_ok(Err(IoError::LibcError("EMSGSIZE")))
+            }
+            result => interp_ok(result),
+        }
     }
 }
 
