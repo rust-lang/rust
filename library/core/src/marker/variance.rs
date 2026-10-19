@@ -119,6 +119,7 @@ phantom_lifetime! {
     /// For all `'a`, the following are guaranteed:
     /// * `size_of::<PhantomCovariantLifetime<'a>>() == 0`
     /// * `align_of::<PhantomCovariantLifetime<'a>>() == 1`
+    #[rustc_phantom_marker]
     pub struct PhantomCovariantLifetime<#[rustc_force_variance(covariant)] 'a>;
     /// Zero-sized type used to mark a lifetime as contravariant.
     ///
@@ -134,6 +135,7 @@ phantom_lifetime! {
     /// For all `'a`, the following are guaranteed:
     /// * `size_of::<PhantomContravariantLifetime<'a>>() == 0`
     /// * `align_of::<PhantomContravariantLifetime<'a>>() == 1`
+    #[rustc_phantom_marker]
     pub struct PhantomContravariantLifetime<#[rustc_force_variance(contravariant)] 'a>;
     /// Zero-sized type used to mark a lifetime as invariant.
     ///
@@ -147,6 +149,7 @@ phantom_lifetime! {
     /// For all `'a`, the following are guaranteed:
     /// * `size_of::<PhantomInvariantLifetime<'a>>() == 0`
     /// * `align_of::<PhantomInvariantLifetime<'a>>() == 1`
+    #[rustc_phantom_marker]
     pub struct PhantomInvariantLifetime<#[rustc_force_variance(invariant)] 'a>;
 }
 
@@ -166,6 +169,7 @@ phantom_type! {
     /// For all `T`, the following are guaranteed:
     /// * `size_of::<PhantomCovariant<T>>() == 0`
     /// * `align_of::<PhantomCovariant<T>>() == 1`
+    #[rustc_phantom_marker]
     pub struct PhantomCovariant<#[rustc_force_variance(covariant)] T>;
     /// Zero-sized type used to mark a type parameter as contravariant.
     ///
@@ -182,6 +186,7 @@ phantom_type! {
     /// For all `T`, the following are guaranteed:
     /// * `size_of::<PhantomContravariant<T>>() == 0`
     /// * `align_of::<PhantomContravariant<T>>() == 1`
+    #[rustc_phantom_marker]
     pub struct PhantomContravariant<#[rustc_force_variance(contravariant)] T>;
     /// Zero-sized type used to mark a type parameter as invariant.
     ///
@@ -195,5 +200,6 @@ phantom_type! {
     /// For all `T`, the following are guaranteed:
     /// * `size_of::<PhantomInvariant<T>>() == 0`
     /// * `align_of::<PhantomInvariant<T>>() == 1`
+    #[rustc_phantom_marker]
     pub struct PhantomInvariant<#[rustc_force_variance(invariant)] T>;
 }

@@ -162,7 +162,7 @@ impl Id<'_> {
                     && let [variant] = &adt.variants().raw
                     && let Some(f) = variant.fields.iter().find(|&f| f.name == name)
                     && match *cx.tcx.type_of(f.did).instantiate_identity().skip_normalization().kind() {
-                        ty::Adt(adt, _) => !adt.is_phantom_data(),
+                        ty::Adt(adt, _) => !adt.is_phantom_marker(),
                         _ => true,
                     }
                     && let Some(id) = f.did.as_local() =>
