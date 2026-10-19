@@ -90,13 +90,12 @@ fn print_config_errors_minimal_with_no_path() {
 
     let (stdout, stderr, exit_code) = rustfmt(args);
 
-    // NOTE: existing the behaviour: prints an empty line
-    assert_eq!(stdout.trim(), "");
-    assert!(
-        stderr.contains("PATH required"),
+    assert_eq!(stdout, "");
+    assert_eq!(
+        stderr, "The `--print-config=minimal` option requires an output path to write to\n",
         "expected helpful error message, got: {stderr}"
     );
-    assert_eq!(exit_code, 0)
+    assert_eq!(exit_code, 1)
 }
 
 #[test]
@@ -106,8 +105,8 @@ fn print_config_errors_minimal_without_input_file() {
     let (stdout, stderr, exit_code) = rustfmt(args);
 
     assert_eq!(&stdout, "");
-    assert!(
-        stderr.contains("doesn't work with standard input"),
+    assert_eq!(
+        stderr, "The `--print-config=minimal` option doesn't work with standard input.\n",
         "expected helpful error message, got: {stderr}"
     );
     assert_eq!(exit_code, 1);
