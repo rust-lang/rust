@@ -7481,6 +7481,7 @@ Released 2018-09-13
 [`neg_multiply`]: https://clippy.rust-lang.org/main/index.html#neg_multiply
 [`negative_feature_names`]: https://clippy.rust-lang.org/main/index.html#negative_feature_names
 [`never_loop`]: https://clippy.rust-lang.org/main/index.html#never_loop
+[`new_instead_of_clear`]: https://clippy.rust-lang.org/main/index.html#new_instead_of_clear
 [`new_ret_no_self`]: https://clippy.rust-lang.org/main/index.html#new_ret_no_self
 [`new_without_default`]: https://clippy.rust-lang.org/main/index.html#new_without_default
 [`new_without_default_derive`]: https://clippy.rust-lang.org/main/index.html#new_without_default_derive
