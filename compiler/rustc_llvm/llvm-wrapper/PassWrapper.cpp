@@ -903,6 +903,20 @@ extern "C" LLVMRustResult LLVMRustOptimize(
     }
   }
 
+  bool AddingExtraPassesFailed = false;
+  if (ExtraPassesLen) {
+    OptimizerLastEPCallbacks.push_back([&](ModulePassManager &MPM,
+                                           OptimizationLevel Level,
+                                           ThinOrFullLTOPhase Phase) {
+      if (auto Err = PB.parsePassPipeline(
+              MPM, StringRef(ExtraPasses, ExtraPassesLen))) {
+        std::string ErrMsg = toString(std::move(Err));
+        LLVMRustSetLastError(ErrMsg.c_str());
+        AddingExtraPassesFailed = true;
+      }
+    });
+  }
+
   ModulePassManager MPM;
   bool NeedThinLTOBufferPasses = true;
   auto ThinLTOBuffer = std::make_unique<LLVMRustBuffer>();
@@ -980,14 +994,8 @@ extern "C" LLVMRustResult LLVMRustOptimize(
         C(MPM, OptLevel, ThinOrFullLTOPhase::None);
     }
 
-    if (ExtraPassesLen) {
-      if (auto Err = PB.parsePassPipeline(
-              MPM, StringRef(ExtraPasses, ExtraPassesLen))) {
-        std::string ErrMsg = toString(std::move(Err));
-        LLVMRustSetLastError(ErrMsg.c_str());
-        return LLVMRustResult::Failure;
-      }
-    }
+    if (AddingExtraPassesFailed)
+      return LLVMRustResult::Failure;
 
     if (NeedThinLTOBufferPasses) {
       MPM.addPass(CanonicalizeAliasesPass());
