@@ -1,7 +1,8 @@
 #![feature(rustc_attrs)]
-#![feature(covariant_unsafe_cell)]
+#![feature(covariant_unsafe_cell, phantom_variance_markers)]
 
 use std::cell::Cell;
+use std::marker::*;
 
 // Check that a type parameter which is only used in a trait bound is
 // not considered bivariant.
@@ -52,5 +53,16 @@ struct UnsafeCellIsInvariant<A> { //~ ERROR [A: o]
 struct CovariantUnsafeCellIsCovariant<A> { //~ ERROR [A: +]
     t: std::cell::CovariantUnsafeCell<A>
 }
+
+#[rustc_dump_variances]
+struct Types<T: ?Sized, U: ?Sized, V: ?Sized>(
+    PhantomCovariant<T>, PhantomContravariant<U>, PhantomInvariant<V>,
+);
+//~^^^ ERROR [T: +, U: -, V: o]
+#[rustc_dump_variances]
+struct Lifetimes<'a, 'b, 'c>(
+    PhantomCovariantLifetime<'a>, PhantomContravariantLifetime<'b>, PhantomInvariantLifetime<'c>,
+);
+//~^^^ ERROR ['a: +, 'b: -, 'c: o]
 
 pub fn main() { }
