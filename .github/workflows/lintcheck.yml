@@ -40,7 +40,9 @@ jobs:
     - name: Checkout current lintcheck
       run: |
         rm -rf lintcheck
-        git checkout ${{ github.sha }} -- lintcheck
+        git checkout "${GITHUB_SHA}" -- lintcheck
+      env:
+        GITHUB_SHA: ${{ github.sha }}
 
     - name: Cache lintcheck bin
       id: cache-lintcheck-bin
@@ -55,7 +57,9 @@ jobs:
 
     - name: Create cache key
       id: key
-      run: echo "key=lintcheck-base-${{ hashfiles('lintcheck/**') }}-$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      run: echo "key=lintcheck-base-${LINTCHECK_FILES_HASH}-$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      env:
+        LINTCHECK_FILES_HASH: ${{ hashfiles('lintcheck/**') }}
 
     - name: Cache results JSON
       id: cache-json
@@ -129,7 +133,9 @@ jobs:
       uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
 
     - name: Store PR number
-      run: echo ${{ github.event.pull_request.number }} > pr.txt
+      run: echo "${GITHUB_PR_NUMBER}" > pr.txt
+      env:
+        GITHUB_PR_NUMBER: ${{ github.event.pull_request.number }}
 
     - name: Diff results
       # GH's summery has a maximum size of 1MiB:

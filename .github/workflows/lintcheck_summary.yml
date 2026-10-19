@@ -99,8 +99,9 @@ jobs:
             # - If a comment exists from a previous run that did detect changes, edit it (--edit-last)
             # - If no comment exists do not create one, the `gh` command exits with an error which
             #   `|| true` ignores
-            gh pr comment "$PR" --body "No changes for ${{ github.event.workflow_run.head_sha }}" --edit-last || true
+            gh pr comment "$PR" --body "No changes for ${GITHUB_EVENT_WORKFLOW_RUN_HEAD_SHA}" --edit-last || true
           fi
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+          GITHUB_EVENT_WORKFLOW_RUN_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}

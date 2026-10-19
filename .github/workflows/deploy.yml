@@ -74,5 +74,7 @@ jobs:
     - name: Deploy
       run: |
         eval "$(ssh-agent -s)"
-        ssh-add - <<< "${{ secrets.DEPLOY_KEY }}"
+        ssh-add - <<< "${DEPLOY_KEY}"
         bash .github/deploy.sh
+      env:
+        DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
