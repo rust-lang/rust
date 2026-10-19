@@ -289,14 +289,10 @@ where
 
         let ct_ty = match ct.kind() {
             ty::ConstKind::Infer(_) => {
-                return self
-                    .evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
-                    .map_err(Into::into);
+                return self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
             }
             ty::ConstKind::Error(_) => {
-                return self
-                    .evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                    .map_err(Into::into);
+                return self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
             }
             ty::ConstKind::Alias(ty::IsRigid::Yes, alias_const) => {
                 alias_const.type_of(self.cx()).skip_norm_wip()
@@ -318,7 +314,7 @@ where
         };
 
         self.eq(goal.param_env, ct_ty, ty)?;
-        self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes).map_err(Into::into)
+        self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
 }
 
