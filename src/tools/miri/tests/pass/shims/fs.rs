@@ -716,6 +716,9 @@ fn test_symlink() {
     assert_eq!(fs::read_link(&symlink_path).unwrap(), path);
     // Removing symbolic link should succeed.
     remove_file(&symlink_path).unwrap();
+    // And it should remove the link, not the target!
+    assert!(path.is_file());
+    assert!(!symlink_path.exists());
 
     // Relative paths are interpreted relative to the symlink.
     let dirpath = utils::prepare("miri_test_fs_link_dir");
@@ -725,14 +728,12 @@ fn test_symlink() {
     symlink_file(PathBuf::from("..").join("miri_test_fs_link_target.txt"), &symlink_path2).unwrap();
     let contents = fs::read(&symlink_path2).unwrap();
     assert_eq!(&contents, bytes);
+    remove_file(&symlink_path2).unwrap();
+
     // Also test directory symlinks as that makes a difference on Windows hosts.
     symlink_dir("miri_test_fs_link_dir", &symlink_path).unwrap();
     fs::read_dir(&symlink_path).unwrap();
-
-    // Cleanup.
-    remove_file(&path).unwrap();
-    remove_file(&symlink_path2).unwrap();
-    remove_dir(&dirpath).unwrap();
+    assert!(symlink_path.is_dir());
     // Symlinks to dirs are more like files on Linux, and more like dirs on Windows.
     if cfg!(windows) {
         let err = remove_file(&symlink_path).unwrap_err();
@@ -743,6 +744,11 @@ fn test_symlink() {
         assert_eq!(err.kind(), ErrorKind::NotADirectory);
         remove_file(&symlink_path).unwrap();
     }
+    assert!(!symlink_path.exists());
+
+    // Cleanup.
+    remove_file(&path).unwrap();
+    remove_dir(&dirpath).unwrap();
 }
 
 fn test_hard_link() {
