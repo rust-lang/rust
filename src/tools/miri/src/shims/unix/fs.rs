@@ -688,17 +688,24 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             None => None,
         };
 
-        // Let's see what we get when we open this!
-        options.custom_flags(custom_flags);
-        // Windows does not by itself treat `.` correctly so we do that by hand.
+        // Empty path should consistently error.
+        if path.is_empty() {
+            return this.set_errno_and_return_neg1_i32(LibcError("ENOENT"));
+        }
+        // Windows does not support "." relative to a `Dir` handle, but the empty path works.
         // (https://github.com/rust-lang/rust/issues/163032)
-        let f_or_d = match &dirfd {
-            // Using `try_clone` here means that on the host, we have the same underlying file
-            // description, even when it would be separate natively. That should be fine since
-            // std never gives us an `fs::Dir` whose internal state (e.g. for iteration) matters.
-            Some(dirfd) if path.to_str() == Some(".") => dirfd.dir.try_clone().map(Either::Right),
-            _ => open_file_or_dir(dirfd.as_ref().map(|d| &d.dir), &path, &options),
+        let path = if cfg!(windows) && dirfd.is_some() && path.to_str() == Some(".") {
+            Path::new("")
+        } else {
+            &path
         };
+
+        // Let's see what we get when we open this!
+        let f_or_d = open_file_or_dir(
+            dirfd.as_ref().map(|d| &d.dir),
+            path,
+            options.custom_flags(custom_flags),
+        );
         match f_or_d {
             Err(err) => this.set_errno_and_return_neg1_i32(err),
             Ok(Either::Right(dir)) => {
@@ -2263,20 +2270,18 @@ impl FileMetadata {
                 return interp_ok(Err(LibcError("ENOTDIR")));
             };
 
-            // Windows does not by itself treat `.` correctly so we do that by hand.
+            // Windows does not support "." relative to a `Dir` handle, but the empty path works.
             // (https://github.com/rust-lang/rust/issues/163032)
+            let path =
+                if cfg!(windows) && path.to_str() == Some(".") { Path::new("") } else { path };
             #[cfg(not(bootstrap))]
-            let metadata = if path.to_str() == Some(".") {
-                dir.dir.self_metadata()
-            } else if symlink_nofollow_flag {
+            let metadata = if symlink_nofollow_flag {
                 dir.dir.symlink_metadata(path)
             } else {
                 dir.dir.metadata(path)
             };
             #[cfg(bootstrap)]
-            let metadata = if path.to_str() == Some(".") {
-                dir.dir.metadata()
-            } else if symlink_nofollow_flag {
+            let metadata = if symlink_nofollow_flag {
                 dir.fallback.join(path).symlink_metadata()
             } else {
                 dir.fallback.join(path).metadata()
