@@ -279,6 +279,7 @@ pub(crate) const COMPILETEST_UI_SUITE_UNSTABLE_FLAGS: &[&str] = &[
     "wasm-proc-macros",
     "threads",
     "ui-testing",
+    "unstable-options",
 ];
 
 impl<'test> TestCx<'test> {
