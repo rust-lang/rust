@@ -8,6 +8,8 @@ on:
     tags:
       - rust-1.**
 
+permissions: {}
+
 concurrency:
   group: ${{ github.workflow }}
   cancel-in-progress: false

@@ -3,6 +3,8 @@ name: Clippy Test
 on:
   pull_request:
 
+permissions: {}
+
 env:
   RUST_BACKTRACE: 1
   CARGO_TARGET_DIR: '${{ github.workspace }}/target'

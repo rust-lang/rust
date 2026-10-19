@@ -4,6 +4,8 @@ on:
   merge_group:
   pull_request:
 
+permissions: {}
+
 env:
   MDBOOK_VERSION: 0.5.1
 

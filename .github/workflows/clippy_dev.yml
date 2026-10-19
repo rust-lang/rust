@@ -4,6 +4,8 @@ on:
   merge_group:
   pull_request:
 
+permissions: {}
+
 env:
   RUST_BACKTRACE: 1
   CARGO_INCREMENTAL: 0

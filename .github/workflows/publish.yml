@@ -4,6 +4,8 @@ name: Publish crates.io crates
 on:
   workflow_dispatch:
 
+permissions: {}
+
 jobs:
   publish:
     name: Publish

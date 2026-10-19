@@ -18,12 +18,13 @@ on:
     types: [completed]
 
 # Restrict the default permission scope https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#defining-access-for-the-github_token-scopes
-permissions:
-  pull-requests: write
+permissions: {}
 
 jobs:
   download:
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write # Required by `gh pr comment` to create/update comments on PRs
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: Download artifact
