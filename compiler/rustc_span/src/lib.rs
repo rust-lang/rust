@@ -1096,6 +1096,9 @@ impl Span {
     }
 
     /// Check if you can select metavar spans for the given spans to get matching contexts.
+    ///
+    /// Returns the data for each metavar span if found and matched, or None otherwise. The caller
+    /// substitutes each span for its own if Some.
     #[cold]
     fn try_metavars(
         a_ctxt: SyntaxContext,
@@ -1147,17 +1150,16 @@ impl Span {
 
         match Span::try_metavars(a.ctxt, b.ctxt, a_orig, b_orig) {
             (None, None) => {
-                // Context mismatches usually happen when procedural macros combine spans copied from
-                // the macro input with spans produced by the macro (`Span::*_site`).
-                // In that case we consider the combined span to be produced by the macro and return
-                // the original macro-produced span as the result.
-                // Otherwise we just fall back to returning the first span.
                 // Combining locations typically doesn't make sense in case of context mismatches.
+                // So, just pick the more useful context; root contexts are less useful.
                 Err(if a.ctxt.is_root() { b_orig } else { a_orig })
             }
             (a_new, b_new) => {
                 let a = a_new.unwrap_or(a);
                 let b = b_new.unwrap_or(b);
+                // If `try_metavars` returns either span as Some, the contexts must have matched, so
+                // we don't need to check again.
+                debug_assert_eq!(a.ctxt, b.ctxt);
                 Ok((a, b, if a.parent == b.parent { a.parent } else { None }))
             }
         }
@@ -1182,7 +1184,10 @@ impl Span {
     ///     ^^^^^^^^^^^^^^^^^^^^
     /// ```
     pub fn to(self, end: Span) -> Span {
-        // Inline-only fast path
+        // Inline-only fast path. Inline contexts are by far the most common case, checking for them
+        // is fast (just a bitmask check on the packed span representation), we know we don't have
+        // parents, and we know the context will fit back in an inline span.
+        // So, this fast path entirely skips setting up a stack frame or saving registers.
         use rustc_serialize::int_overflow::{DebugStrictAdd, DebugStrictSub};
         if let Some(from) = InlineCtxt::try_from_span(self)
             && let Some(to) = InlineCtxt::try_from_span(end)
