@@ -62,7 +62,11 @@ impl<'tcx> MiriMachine<'tcx> {
             Os::Linux => {
                 Self::weak_fn_symbols(ecx, &["getrandom", "gettid", "statx", "strlen"])?;
                 if ecx.tcx.sess.target.env == Env::Gnu {
-                    Self::weak_fn_symbols(ecx, &["__cxa_thread_atexit_impl"])?;
+                    // FIXME: enabling this with genmc causes test failures because of how
+                    // std then uses pthread keys and genmc does not know about their state.
+                    if ecx.machine.data_race.as_genmc_ref().is_none() {
+                        Self::weak_fn_symbols(ecx, &["__cxa_thread_atexit_impl"])?;
+                    }
                     // The __dso_handle symbol just marks a unique global address.
                     let val = ImmTy::from_int(0, ecx.machine.layouts.u8);
                     Self::alloc_extern_static(ecx, "__dso_handle", val)?;
