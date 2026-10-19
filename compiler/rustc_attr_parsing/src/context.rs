@@ -350,6 +350,7 @@ attribute_parsers!(
         Single<WithoutArgs<RustcParenSugarParser>>,
         Single<WithoutArgs<RustcPassByValueParser>>,
         Single<WithoutArgs<RustcPassIndirectlyInNonRusticAbisParser>>,
+        Single<WithoutArgs<RustcPhantomMarkerParser>>,
         Single<WithoutArgs<RustcPreserveUbChecksParser>>,
         Single<WithoutArgs<RustcProcMacroDeclsParser>>,
         Single<WithoutArgs<RustcPubTransparentParser>>,

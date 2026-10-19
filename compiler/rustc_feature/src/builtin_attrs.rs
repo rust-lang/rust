@@ -259,6 +259,7 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
 
     sym::fundamental,
     sym::may_dangle,
+    sym::rustc_phantom_marker,
     sym::rustc_force_variance,
 
     // ==========================================================================

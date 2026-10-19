@@ -1413,6 +1413,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_pass_indirectly_in_non_rustic_abis]`
     RustcPassIndirectlyInNonRusticAbis(Span),
 
+    /// Marks a unit struct for `PhantomData` treatment in structural checks and lints.
+    RustcPhantomMarker,
+
     /// Represents `#[rustc_preserve_ub_checks]`
     RustcPreserveUbChecks,
 

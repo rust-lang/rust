@@ -2,10 +2,11 @@
 
 #![warn(clippy::used_underscore_binding)]
 #![expect(clippy::explicit_auto_deref, clippy::no_effect)]
+#![feature(phantom_variance_markers)]
 
 extern crate proc_macros;
 
-use core::marker::PhantomData;
+use core::marker::*;
 use proc_macros::{external, inline_macros};
 
 #[inline_macros]
@@ -77,9 +78,29 @@ fn main() {
     {
         struct X {
             _marker: PhantomData<u32>,
+            _cov: PhantomCovariant<u32>,
+            _contra: PhantomContravariant<u32>,
+            _inv: PhantomInvariant<u32>,
+            _cov_lt: PhantomCovariantLifetime<'static>,
+            _contra_lt: PhantomContravariantLifetime<'static>,
+            _inv_lt: PhantomInvariantLifetime<'static>,
         }
-        let a = X { _marker: PhantomData };
+        let a = X {
+            _marker: PhantomData,
+            _cov: PhantomCovariant,
+            _contra: PhantomContravariant,
+            _inv: PhantomInvariant,
+            _cov_lt: PhantomCovariantLifetime,
+            _contra_lt: PhantomContravariantLifetime,
+            _inv_lt: PhantomInvariantLifetime,
+        };
         a._marker;
+        a._cov;
+        a._contra;
+        a._inv;
+        a._cov_lt;
+        a._contra_lt;
+        a._inv_lt;
     }
     // Ignore multiple underscores
     {

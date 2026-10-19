@@ -2184,3 +2184,10 @@ pub(crate) struct Unused {
     #[subdiagnostic]
     pub note: UnusedNote,
 }
+
+#[derive(Diagnostic)]
+#[diag("`rustc_phantom_marker` can only be used on a unit struct")]
+pub(crate) struct InvalidPhantomMarkerTarget {
+    #[primary_span]
+    pub attr_span: Span,
+}
