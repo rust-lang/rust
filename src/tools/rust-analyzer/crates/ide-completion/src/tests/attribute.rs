@@ -1,7 +1,8 @@
 //! Completion tests for attributes.
 use expect_test::expect;
 
-use crate::tests::{check, check_edit};
+use crate::CompletionConfig;
+use crate::tests::{TEST_CONFIG, check, check_edit, check_edit_with_config};
 
 #[test]
 fn derive_helpers() {
@@ -930,6 +931,46 @@ fn attr_before_arg() {
 }
 
 #[test]
+fn attr_without_snippet() {
+    check_edit_with_config(
+        CompletionConfig { snippet_cap: None, ..TEST_CONFIG },
+        "derive",
+        r#"#[$0]"#,
+        r#"#[derive]"#,
+    );
+    check_edit_with_config(
+        CompletionConfig { snippet_cap: None, ..TEST_CONFIG },
+        "allow",
+        r#"#[$0]"#,
+        r#"#[allow]"#,
+    );
+    check_edit_with_config(
+        CompletionConfig { snippet_cap: None, ..TEST_CONFIG },
+        "doc",
+        r#"#![$0]"#,
+        r#"#![doc = ]"#,
+    );
+    check_edit_with_config(
+        CompletionConfig { snippet_cap: None, ..TEST_CONFIG },
+        "type_length_limit",
+        r#"#![$0]"#,
+        r#"#![type_length_limit = ]"#,
+    );
+    check_edit_with_config(
+        CompletionConfig { snippet_cap: None, ..TEST_CONFIG },
+        "docinclude",
+        r#"#[$0]"#,
+        r#"#[doc = include_str!()]"#,
+    );
+    check_edit_with_config(
+        CompletionConfig { snippet_cap: None, ..TEST_CONFIG },
+        "automatically_derived",
+        r#"#[$0]"#,
+        r#"#[automatically_derived]"#,
+    );
+}
+
+#[test]
 fn issue_17479() {
     check(
         r#"
@@ -1363,9 +1404,9 @@ mod lint {
     #[test]
     fn lint_feature() {
         check_edit(
-            "box_patterns",
-            r#"#[feature(box_$0)] struct Test;"#,
-            r#"#[feature(box_patterns)] struct Test;"#,
+            "deref_patterns",
+            r#"#[feature(deref_$0)] struct Test;"#,
+            r#"#[feature(deref_patterns)] struct Test;"#,
         )
     }
 

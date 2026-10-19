@@ -1,16 +1,16 @@
 //! A simple query to collect tall locals (upvars) a closure use.
 
-use hir_def::{
+use base_db::SourceDatabase;
+use hir_expand::mod_path::PathKind;
+use rustc_hash::{FxHashMap, FxHashSet};
+
+use crate::{
     DefWithBodyId, ExpressionStoreOwnerId, GenericDefId, VariantId,
     expr_store::{ExpressionStore, StoreVisitor, StoreVisitorExt, path::Path},
     hir::{BindingId, Expr, ExprId, PatId},
     resolver::{HasResolver, Resolver, ValueNs},
     type_ref::TypeRefId,
 };
-use hir_expand::mod_path::PathKind;
-use rustc_hash::{FxHashMap, FxHashSet};
-
-use crate::db::HirDatabase;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 // Kept sorted.
@@ -72,7 +72,7 @@ impl UpvarsRef<'_> {
 
 /// Returns a map from `Expr::Closure` to its upvars.
 pub fn upvars_mentioned(
-    db: &dyn HirDatabase,
+    db: &dyn SourceDatabase,
     owner: ExpressionStoreOwnerId,
 ) -> Option<&FxHashMap<ExprId, Upvars>> {
     return match owner {
@@ -83,7 +83,7 @@ pub fn upvars_mentioned(
 
     #[salsa::tracked(returns(as_deref))]
     pub fn signature_upvars_mentioned(
-        db: &dyn HirDatabase,
+        db: &dyn SourceDatabase,
         owner: GenericDefId,
     ) -> Option<Box<FxHashMap<ExprId, Upvars>>> {
         upvars_mentioned_impl(db, owner.into())
@@ -91,7 +91,7 @@ pub fn upvars_mentioned(
 
     #[salsa::tracked(returns(as_deref))]
     pub fn body_upvars_mentioned(
-        db: &dyn HirDatabase,
+        db: &dyn SourceDatabase,
         owner: DefWithBodyId,
     ) -> Option<Box<FxHashMap<ExprId, Upvars>>> {
         upvars_mentioned_impl(db, owner.into())
@@ -99,7 +99,7 @@ pub fn upvars_mentioned(
 
     #[salsa::tracked(returns(as_deref))]
     pub fn variant_fields_upvars_mentioned(
-        db: &dyn HirDatabase,
+        db: &dyn SourceDatabase,
         owner: VariantId,
     ) -> Option<Box<FxHashMap<ExprId, Upvars>>> {
         upvars_mentioned_impl(db, owner.into())
@@ -107,7 +107,7 @@ pub fn upvars_mentioned(
 }
 
 pub fn upvars_mentioned_impl(
-    db: &dyn HirDatabase,
+    db: &dyn SourceDatabase,
     owner: ExpressionStoreOwnerId,
 ) -> Option<Box<FxHashMap<ExprId, Upvars>>> {
     let store = ExpressionStore::of(db, owner);
@@ -132,7 +132,7 @@ pub fn upvars_mentioned_impl(
 }
 
 struct UpvarsMentionedVisitor<'db> {
-    db: &'db dyn HirDatabase,
+    db: &'db dyn SourceDatabase,
     resolver: Resolver<'db>,
     owner: ExpressionStoreOwnerId,
     store: &'db ExpressionStore,
@@ -226,58 +226,54 @@ impl StoreVisitor for UpvarsMentionedVisitor<'_> {
 #[cfg(test)]
 mod tests {
     use expect_test::{Expect, expect};
-    use hir_def::{
-        AssocItemId, DefWithBodyId, ModuleDefId, expr_store::Body, nameres::crate_def_map,
-    };
     use itertools::Itertools;
     use span::Edition;
     use test_fixture::WithFixture;
 
-    use crate::{test_db::TestDB, upvars::upvars_mentioned};
+    use crate::{
+        AssocItemId, DefWithBodyId, ModuleDefId, expr_store::Body, nameres::crate_def_map,
+        test_db::TestDB, upvars::upvars_mentioned,
+    };
 
     #[track_caller]
     fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str, expectation: Expect) {
         let db = TestDB::with_files(ra_fixture);
-        crate::attach_db(&db, || {
-            let def_map = crate_def_map(&db, db.test_crate());
-            let func = def_map
-                .modules()
-                .flat_map(|(_, module)| module.scope.declarations())
-                .filter_map(|decl| match decl {
-                    ModuleDefId::FunctionId(func) => Some(func),
-                    _ => None,
-                })
-                .chain(def_map.modules().flat_map(|(_, module)| {
-                    module.scope.impls().flat_map(|impl_| &*impl_.impl_items(&db).items).filter_map(
-                        |&(_, item)| match item {
-                            AssocItemId::FunctionId(it) => Some(it),
-                            _ => None,
-                        },
-                    )
-                }))
-                .exactly_one()
-                .unwrap_or_else(|_| panic!("expected one function"));
-            let (body, source_map) = Body::with_source_map(&db, func.into());
-            let Some(upvars) = upvars_mentioned(&db, DefWithBodyId::from(func).into()) else {
-                expectation.assert_eq("");
-                return;
-            };
-            let mut closures = Vec::new();
-            for (&closure, upvars) in upvars {
-                let closure_range = source_map.expr_syntax(closure).unwrap().value.text_range();
-                let upvars = upvars
-                    .iter()
-                    .map(|local| body[local].name.display(&db, Edition::CURRENT))
-                    .join(", ");
-                closures.push((closure_range, upvars));
-            }
-            closures.sort_unstable_by_key(|(range, _)| (range.start(), range.end()));
-            let closures = closures
-                .into_iter()
-                .map(|(range, upvars)| format!("{range:?}: {upvars}"))
-                .join("\n");
-            expectation.assert_eq(&closures);
-        });
+        let def_map = crate_def_map(&db, db.test_crate());
+        let func = def_map
+            .modules()
+            .flat_map(|(_, module)| module.scope.declarations())
+            .filter_map(|decl| match decl {
+                ModuleDefId::FunctionId(func) => Some(func),
+                _ => None,
+            })
+            .chain(def_map.modules().flat_map(|(_, module)| {
+                module.scope.impls().flat_map(|impl_| &*impl_.impl_items(&db).items).filter_map(
+                    |&(_, item)| match item {
+                        AssocItemId::FunctionId(it) => Some(it),
+                        _ => None,
+                    },
+                )
+            }))
+            .exactly_one()
+            .unwrap_or_else(|_| panic!("expected one function"));
+        let (body, source_map) = Body::with_source_map(&db, func.into());
+        let Some(upvars) = upvars_mentioned(&db, DefWithBodyId::from(func).into()) else {
+            expectation.assert_eq("");
+            return;
+        };
+        let mut closures = Vec::new();
+        for (&closure, upvars) in upvars {
+            let closure_range = source_map.expr_syntax(closure).unwrap().value.text_range();
+            let upvars = upvars
+                .iter()
+                .map(|local| body[local].name.display(&db, Edition::CURRENT))
+                .join(", ");
+            closures.push((closure_range, upvars));
+        }
+        closures.sort_unstable_by_key(|(range, _)| (range.start(), range.end()));
+        let closures =
+            closures.into_iter().map(|(range, upvars)| format!("{range:?}: {upvars}")).join("\n");
+        expectation.assert_eq(&closures);
     }
 
     #[test]

@@ -10,7 +10,7 @@ use std::{
 use base_db::{Crate, FxIndexMap};
 use either::Either;
 use hir_def::{
-    ExpressionStoreOwnerId, FindPathConfig, GenericDefId, GenericParamId, HasModule,
+    CallableDefId, ExpressionStoreOwnerId, FindPathConfig, GenericDefId, GenericParamId, HasModule,
     ItemContainerId, LocalFieldId, Lookup, ModuleDefId, ModuleId, TraitId, TypeAliasId,
     expr_store::{ExpressionStore, path::Path},
     find_path::{self, PrefixKind},
@@ -51,11 +51,10 @@ use span::Edition;
 use stdx::never;
 
 use crate::{
-    CallableDefId, FieldType, ImplTraitId, MemoryMap, ParamEnvAndCrate, consteval,
+    FieldType, GenericPredicates, ImplTraitId, MemoryMap, ParamEnvAndCrate, consteval,
     db::{GeneralConstId, HirDatabase},
     generics::{ProvenanceSplit, generics},
     layout::Layout,
-    lower::GenericPredicates,
     mir::{IsSigned, pad16},
     next_solver::{
         AliasTy, Allocation, Clause, ClauseKind, Const, ConstKind, DbInterner,
@@ -1510,7 +1509,7 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                     ));
                 }
                 let impl_trait_id = opaque_ty_id.loc(db);
-                let data = impl_trait_id.predicates(db);
+                let data = impl_trait_id.all_bounds(db);
                 let bounds = data
                     .iter_instantiated_copied(interner, alias_ty.args.as_slice())
                     .map(Unnormalized::skip_norm_wip)

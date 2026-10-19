@@ -16,7 +16,7 @@ use hir_expand::{
     mod_path::{ModPath, PathKind},
     name::Name,
 };
-use hir_ty::{
+use hir_ide::{
     db::HirDatabase,
     method_resolution::{self, CandidateId, MethodError, MethodResolutionContext},
     next_solver::{DbInterner, TypingMode, infer::DbInternerInferExt},
@@ -239,8 +239,8 @@ impl HasAttrs for Function {
 impl HasAttrs for Impl {
     fn attr_id(self, _db: &dyn HirDatabase) -> AttrsOwner {
         match self.id {
-            hir_ty::next_solver::AnyImplId::ImplId(id) => AttrsOwner::AttrDef(id.into()),
-            hir_ty::next_solver::AnyImplId::BuiltinDeriveImplId(..) => AttrsOwner::Dummy,
+            hir_ide::next_solver::AnyImplId::ImplId(id) => AttrsOwner::AttrDef(id.into()),
+            hir_ide::next_solver::AnyImplId::BuiltinDeriveImplId(..) => AttrsOwner::Dummy,
         }
     }
 }
@@ -506,8 +506,8 @@ fn resolve_impl_trait_item<'db>(
         traits_in_scope: &traits_in_scope,
         edition: krate.data(db).edition,
         features,
-        call_span: hir_ty::Span::Dummy,
-        receiver_span: hir_ty::Span::Dummy,
+        call_span: hir_ide::Span::Dummy,
+        receiver_span: hir_ide::Span::Dummy,
     };
     let resolution =
         ctx.probe_for_name(method_resolution::Mode::Path, name.clone(), ty.ty.skip_binder());
