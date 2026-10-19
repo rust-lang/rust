@@ -865,6 +865,9 @@ const impl<T: PointeeSized> Default for PhantomData<T> {
 #[unstable(feature = "structural_match", issue = "31434")]
 impl<T: PointeeSized> StructuralPartialEq for PhantomData<T> {}
 
+#[stable(feature = "phantomdata_unpin", since = "CURRENT_RUSTC_VERSION")]
+impl<T: PointeeSized> Unpin for PhantomData<T> {}
+
 /// Compiler-internal trait used to indicate the type of enum discriminants.
 ///
 /// This trait is automatically implemented for every type and does not add any
