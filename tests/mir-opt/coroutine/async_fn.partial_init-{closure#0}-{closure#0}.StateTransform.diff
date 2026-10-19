@@ -5,7 +5,7 @@
 - yields ()
 -  {
 -     debug _task_context => _2;
--     debug x => (_1.0: u32);
+-     debug x => ((_1.0: std::marker::CopyClosureCaptureContainer<u32>).0: u32);
 -     let mut _0: u32;
 + fn partial_init::{closure#0}::{closure#0}(_1: Pin<&mut {async block@$DIR/async_fn.rs:80:50: 80:55}>, _2: &mut Context<'_>) -> Poll<u32> {
 +     coroutine layout {
@@ -17,7 +17,7 @@
 +         storage_conflicts = BitMatrix(0x0) {}
 +     }
 +     debug _task_context => _8;
-+     debug x => ((*_7).0: u32);
++     debug x => (((*_7).0: std::marker::CopyClosureCaptureContainer<u32>).0: u32);
 +     let mut _0: std::task::Poll<u32>;
       let mut _3: u32;
       let mut _4: u32;
@@ -29,9 +29,9 @@
   
       bb0: {
 -         StorageLive(_3);
--         _3 = copy (_1.0: u32);
+-         _3 = copy ((_1.0: std::marker::CopyClosureCaptureContainer<u32>).0: u32);
 -         StorageLive(_4);
--         _4 = copy (_1.0: u32);
+-         _4 = copy ((_1.0: std::marker::CopyClosureCaptureContainer<u32>).0: u32);
 -         _0 = Add(move _3, move _4);
 -         StorageDead(_4);
 -         StorageDead(_3);
@@ -61,9 +61,9 @@
 + 
 +     bb4: {
 +         StorageLive(_3);
-+         _3 = copy ((*_7).0: u32);
++         _3 = copy (((*_7).0: std::marker::CopyClosureCaptureContainer<u32>).0: u32);
 +         StorageLive(_4);
-+         _4 = copy ((*_7).0: u32);
++         _4 = copy (((*_7).0: std::marker::CopyClosureCaptureContainer<u32>).0: u32);
 +         _5 = Add(move _3, move _4);
 +         StorageDead(_4);
 +         StorageDead(_3);

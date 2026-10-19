@@ -1,0 +1,72 @@
+error[E0277]: `Cell<()>` cannot be shared between threads safely
+  --> $DIR/cromulent-copy-closure-captures-auto-traits-fail.rs:16:24
+   |
+LL |       assert_auto_traits(|| {
+   |  _____------------------_^
+   | |     |
+   | |     required by a bound introduced by this call
+LL | |
+LL | |
+LL | |         let _foo = foo;
+LL | |     });
+   | |_____^ `Cell<()>` cannot be shared between threads safely
+   |
+   = help: within `Foo`, the trait `Sync` is not implemented for `Cell<()>`
+   = note: if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock`
+note: required because it appears within the type `PhantomData<Cell<()>>`
+  --> $SRC_DIR/core/src/marker.rs:LL:COL
+note: required because it appears within the type `Foo`
+  --> $DIR/cromulent-copy-closure-captures-auto-traits-fail.rs:12:12
+   |
+LL | struct Foo(PhantomData<Cell<()>>);
+   |            ^^^^^^^^^^^^^^^^^^^^^ required by this field
+   = note: required for `std::marker::CopyClosureCaptureContainer<Foo>` to implement `Send`
+note: required because `foo` is used within this closure
+  --> $DIR/cromulent-copy-closure-captures-auto-traits-fail.rs:19:20
+   |
+LL |         let _foo = foo;
+   |                    ^^^
+note: required by a bound in `assert_auto_traits`
+  --> $DIR/cromulent-copy-closure-captures-auto-traits-fail.rs:23:38
+   |
+LL | fn assert_auto_traits(_: impl Fn() + Send + UnwindSafe) {}
+   |                                      ^^^^ required by this bound in `assert_auto_traits`
+
+error[E0277]: the type `UnsafeCell<()>` may contain interior mutability and a reference may not be safely transferable across a catch_unwind boundary
+  --> $DIR/cromulent-copy-closure-captures-auto-traits-fail.rs:16:24
+   |
+LL |       assert_auto_traits(|| {
+   |  _____------------------_^
+   | |     |
+   | |     required by a bound introduced by this call
+LL | |
+LL | |
+LL | |         let _foo = foo;
+LL | |     });
+   | |_____^ `UnsafeCell<()>` may contain interior mutability and a reference may not be safely transferable across a catch_unwind boundary
+   |
+   = help: within `Foo`, the trait `RefUnwindSafe` is not implemented for `UnsafeCell<()>`
+note: required because it appears within the type `Cell<()>`
+  --> $SRC_DIR/core/src/cell.rs:LL:COL
+note: required because it appears within the type `PhantomData<Cell<()>>`
+  --> $SRC_DIR/core/src/marker.rs:LL:COL
+note: required because it appears within the type `Foo`
+  --> $DIR/cromulent-copy-closure-captures-auto-traits-fail.rs:12:12
+   |
+LL | struct Foo(PhantomData<Cell<()>>);
+   |            ^^^^^^^^^^^^^^^^^^^^^ required by this field
+   = note: required for `std::marker::CopyClosureCaptureContainer<Foo>` to implement `UnwindSafe`
+note: required because `foo` is used within this closure
+  --> $DIR/cromulent-copy-closure-captures-auto-traits-fail.rs:19:20
+   |
+LL |         let _foo = foo;
+   |                    ^^^
+note: required by a bound in `assert_auto_traits`
+  --> $DIR/cromulent-copy-closure-captures-auto-traits-fail.rs:23:45
+   |
+LL | fn assert_auto_traits(_: impl Fn() + Send + UnwindSafe) {}
+   |                                             ^^^^^^^^^^ required by this bound in `assert_auto_traits`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

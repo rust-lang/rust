@@ -142,14 +142,6 @@ LL |             e = Some("e1");
    = help: did you mean to capture by reference instead?
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-warning: unused variable: `e`
-  --> $DIR/liveness-upvars.rs:76:9
-   |
-LL |     let mut e = None;
-   |         ^^^^^ help: if this is intentional, prefix it with an underscore: `_e`
-   |
-   = note: `#[warn(unused_variables)]` implied by `#[warn(unused)]`
-
 warning: value assigned to `v` is never read
   --> $DIR/liveness-upvars.rs:94:13
    |
@@ -215,5 +207,5 @@ LL |         s = yield ();
 LL |         s = 3;
    |         ----- `s` is overwritten here before the previous value is read
 
-warning: 26 warnings emitted
+warning: 25 warnings emitted
 

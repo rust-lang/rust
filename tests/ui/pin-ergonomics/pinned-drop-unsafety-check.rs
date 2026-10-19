@@ -65,9 +65,12 @@ impl<T: PointeeSized> Deref for &mut T {
     }
 }
 
-
 #[lang = "copy"]
 trait Copy {}
+
+#[lang = "copy_closure_capture_container"]
+struct CopyClosureCaptureContainer<T: Copy>(T);
+impl<T: Copy> Copy for CopyClosureCaptureContainer<T> {}
 
 #[lang = "sized"]
 trait Sized: MetaSized {}
