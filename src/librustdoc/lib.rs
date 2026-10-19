@@ -5,6 +5,7 @@
 )]
 #![feature(ascii_char)]
 #![feature(ascii_char_variants)]
+#![feature(default_field_values)]
 #![feature(deref_patterns)]
 #![feature(exitcode_exit_method)]
 #![feature(file_buffered)]
