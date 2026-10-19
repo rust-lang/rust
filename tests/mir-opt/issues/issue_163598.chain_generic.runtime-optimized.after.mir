@@ -1,0 +1,15 @@
+// MIR for `chain_generic` after runtime-optimized
+
+fn chain_generic(_1: &(T, U), _2: &(T, U)) -> ControlFlow<bool> {
+    debug l => _1;
+    debug r => _2;
+    let mut _0: std::ops::ControlFlow<bool>;
+
+    bb0: {
+        _0 = <(T, U) as PartialOrd>::__chaining_le(move _1, move _2) -> [return: bb1, unwind continue];
+    }
+
+    bb1: {
+        return;
+    }
+}
