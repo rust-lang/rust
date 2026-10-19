@@ -98,6 +98,31 @@ impl FileDescription for UdpSocket {
         "udp socket"
     }
 
+    fn read<'tcx>(
+        self: FileDescriptionRef<Self>,
+        communicate_allowed: bool,
+        ptr: Pointer,
+        len: u64,
+        ecx: &mut MiriInterpCx<'tcx>,
+        finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
+    ) -> InterpResult<'tcx> {
+        self.recv(
+            communicate_allowed,
+            ptr,
+            len,
+            /* is_peek */ false,
+            /* is_non_block */ false,
+            ecx,
+            callback!(
+                @capture<'tcx> {
+                    finish: DynMachineCallback<'tcx, Result<u64, IoError>>,
+                } |ecx, result: Result<(u64, Option<SocketAddr>), IoError>| {
+                    finish.call(ecx, result.map(|(bytes, _)| bytes))
+                }
+            ),
+        )
+    }
+
     fn write<'tcx>(
         self: FileDescriptionRef<Self>,
         communicate_allowed: bool,
@@ -265,6 +290,28 @@ impl UnixSocketFileDescription for UdpSocket {
 
         let result = ecx.try_non_block_send(&self, ptr, len, dest_addr)?;
         finish.call(ecx, result)
+    }
+
+    fn recv<'tcx>(
+        self: FileDescriptionRef<Self>,
+        communicate_allowed: bool,
+        ptr: Pointer,
+        len: u64,
+        is_peek: bool,
+        is_non_block: bool,
+        ecx: &mut MiriInterpCx<'tcx>,
+        finish: DynMachineCallback<'tcx, Result<(u64, Option<SocketAddr>), IoError>>,
+    ) -> InterpResult<'tcx> {
+        assert!(communicate_allowed, "cannot have `UdpSocket` with isolation enabled!");
+
+        let is_non_block = is_non_block || self.is_non_block.get();
+
+        if !is_non_block {
+            throw_unsup_format!("send: blocking reads are currently unsupported for UDP sockets");
+        }
+
+        let result = ecx.try_non_block_recv(&self, ptr, len, is_peek)?;
+        finish.call(ecx, result.map(|(bytes, addr)| (bytes, Some(addr))))
     }
 
     fn setsockopt<'tcx>(
@@ -473,6 +520,87 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 interp_ok(Err(IoError::LibcError("EMSGSIZE")))
             }
             result => interp_ok(result),
+        }
+    }
+
+    /// Attempt to receive bytes from the socket in a non-blocking manner.
+    fn try_non_block_recv(
+        &mut self,
+        socket: &FileDescriptionRef<UdpSocket>,
+        buffer_ptr: Pointer,
+        length: u64,
+        should_peek: bool,
+    ) -> InterpResult<'tcx, Result<(u64, SocketAddr), IoError>> {
+        let ecx = self.eval_context_mut();
+
+        let host_socket = socket.socket.borrow();
+
+        // If the `read_from_host` below succeeds, this contains the address from where
+        // the data originated. Otherwise, this is `None`.
+        let mut origin_addr = None;
+
+        let mut recv_from_host_socket = |buf: &mut [u8]| {
+            let result =
+                if should_peek { host_socket.peek_from(buf) } else { host_socket.recv_from(buf) };
+
+            result.map(|(bytes, addr)| {
+                // Store the origin address in `origin_addr`. We need to do this since
+                // `read_from_host` expects the callback to return `io::Result<usize>`.
+                origin_addr.replace(addr);
+
+                // Return the amount of bytes received.
+                bytes
+            })
+        };
+
+        // This is a *non-blocking* read/peek.
+        let result = ecx.read_from_host(buffer_ptr, length, |buf| {
+            if cfg!(windows) {
+                // When trying to read a message from the socket which does not fit our
+                // provided buffer, POSIX specifies that the provided buffer should be
+                // filled and the remaining bytes should be discarded. The receive operation
+                // should then return the amount of bytes read. Windows hosts fill the buffer
+                // and discard the excess bytes but return WSAEMSGSIZE instead of the bytes read.
+                // Since the return type of the corresponding operations in the standard library
+                // (and thus also in mio) is `io::Result<(usize, SocketAddr)>`, we essentially
+                // "lose" the address from where this data originated.
+                // To circumvent this, we use a temporary 64KiB buffer which fits any UDP
+                // datagram, receive into this temporary buffer, and then copy at most the first
+                // `length` bytes from the temporary buffer into `buf`.
+
+                #[expect(clippy::as_conversions)]
+                let mut tmp_buf = [0u8; u16::MAX as usize];
+                let result = recv_from_host_socket(&mut tmp_buf).map(|bytes| {
+                    let bytes_received = bytes.min(usize::try_from(length).unwrap());
+                    buf[..bytes_received].copy_from_slice(&tmp_buf[..bytes_received]);
+
+                    // Return the actual amount of bytes written to `buf`.
+                    bytes_received
+                });
+
+                if let Err(ref e) = result {
+                    // Since we received into a big enough temporary buffer, we should never
+                    // fail with WSAEMSGSIZE.
+                    assert_ne!(e.raw_os_error(), Some(/* WSAEMSGSIZE */ 10040))
+                }
+
+                return result;
+            }
+
+            recv_from_host_socket(buf)
+        })?;
+
+        match result {
+            Err(IoError::HostError(e)) if matches!(e.kind(), io::ErrorKind::WouldBlock) => {
+                // We know that the source is not readable so we need to update its readiness.
+                socket.io_readiness.borrow_mut().readable = false;
+                ecx.update_fd_readiness(socket.clone(), ReadinessUpdateFlags::DEFAULT)?;
+
+                interp_ok(Err(IoError::HostError(e)))
+            }
+            // Since `origin_addr` is only `Some` when `result` is `Ok`, it's okay to unwrap
+            // `origin_addr` in the mapping function of `result`.
+            result => interp_ok(result.map(|bytes| (bytes, origin_addr.unwrap()))),
         }
     }
 }

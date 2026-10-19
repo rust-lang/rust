@@ -472,9 +472,10 @@ pub mod net {
     /// Wraps a call to a platform function that returns an IPv4 socket address.
     /// Returns a tuple containing the actual return value of the performed
     /// syscall and the written address of it.
-    pub fn sockname_ipv4<F>(f: F) -> io::Result<(libc::c_int, libc::sockaddr_in)>
+    pub fn sockname_ipv4<F, V>(f: F) -> io::Result<(V, libc::sockaddr_in)>
     where
-        F: FnOnce(*mut libc::sockaddr, *mut libc::socklen_t) -> libc::c_int,
+        F: FnOnce(*mut libc::sockaddr, *mut libc::socklen_t) -> V,
+        V: From<i8> + Ord,
     {
         let (result, addr) = sockname(f)?;
         let LibcSocketAddr::V4(addr) = addr else { panic!("expected IPv4 address") };
@@ -485,9 +486,10 @@ pub mod net {
     /// Wraps a call to a platform function that returns an IPv6 socket address.
     /// Returns a tuple containing the actual return value of the performed
     /// syscall and the written address of it.
-    pub fn sockname_ipv6<F>(f: F) -> io::Result<(libc::c_int, libc::sockaddr_in6)>
+    pub fn sockname_ipv6<F, V>(f: F) -> io::Result<(V, libc::sockaddr_in6)>
     where
-        F: FnOnce(*mut libc::sockaddr, *mut libc::socklen_t) -> libc::c_int,
+        F: FnOnce(*mut libc::sockaddr, *mut libc::socklen_t) -> V,
+        V: From<i8> + Ord,
     {
         let (result, addr) = sockname(f)?;
         let LibcSocketAddr::V6(addr) = addr else { panic!("expected IPv6 address") };
@@ -505,9 +507,10 @@ pub mod net {
     /// standard library implementation.
     /// Returns a tuple containing the actual return value of the performed
     /// syscall and the written address of it.
-    fn sockname<F>(f: F) -> io::Result<(libc::c_int, LibcSocketAddr)>
+    fn sockname<F, V>(f: F) -> io::Result<(V, LibcSocketAddr)>
     where
-        F: FnOnce(*mut libc::sockaddr, *mut libc::socklen_t) -> libc::c_int,
+        F: FnOnce(*mut libc::sockaddr, *mut libc::socklen_t) -> V,
+        V: From<i8> + Ord,
     {
         let mut storage = std::mem::MaybeUninit::<libc::sockaddr_storage>::zeroed();
         let mut len = size_of::<libc::sockaddr_storage>() as libc::socklen_t;
