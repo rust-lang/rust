@@ -28,13 +28,13 @@ const NEEDS_CANONICAL: TypeFlags = TypeFlags::from_bits(
 .unwrap();
 
 #[derive(Debug, Clone, Copy)]
-enum CanonicalizeInputKind {
+enum CanonicalizeInputKind<I: Interner> {
     /// When canonicalizing the `param_env`, we keep `'static` as merging
     /// trait candidates relies on it when deciding whether a where-bound
     /// is trivial.
     ParamEnv,
     /// When canonicalizing predicates, we don't keep `'static`.
-    Predicate,
+    Predicate { param_env_var_kinds: Option<I::CanonicalVarKinds> },
 }
 
 /// Whether we're canonicalizing a query input or the query response.
@@ -44,10 +44,7 @@ enum CanonicalizeInputKind {
 /// query.
 #[derive(Debug, Clone, Copy)]
 enum CanonicalizeMode<I: Interner> {
-    Input {
-        kind: CanonicalizeInputKind,
-        param_env_var_kinds: Option<I::CanonicalVarKinds>,
-    },
+    Input(CanonicalizeInputKind<I>),
     /// FIXME: We currently return region constraints referring to
     /// placeholders and inference variables from a binder instantiated
     /// inside of the query.
@@ -110,24 +107,20 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         if !param_env.has_type_flags(NEEDS_CANONICAL) {
             let rest_canonicalizer = Canonicalizer::new(
                 delegate,
-                CanonicalizeMode::Input {
-                    kind: CanonicalizeInputKind::Predicate,
+                CanonicalizeMode::Input(CanonicalizeInputKind::Predicate {
                     param_env_var_kinds: None,
-                },
+                }),
             );
 
             return (param_env, rest_canonicalizer);
         }
 
         // Do the `env` canonicalization, and then convert the canonicalizer to `rest` form for
-        // subsequent use.
-        let do_env_and_make_rest = || {
+        // subsequent use, also returning the optionally interned variable kinds.
+        let do_env_and_make_rest = |intern_var_kinds: bool| {
             let mut env_canonicalizer = Canonicalizer::new(
                 delegate,
-                CanonicalizeMode::Input {
-                    kind: CanonicalizeInputKind::ParamEnv,
-                    param_env_var_kinds: None,
-                },
+                CanonicalizeMode::Input(CanonicalizeInputKind::ParamEnv),
             );
             let param_env = param_env.fold_with(&mut env_canonicalizer);
 
@@ -144,14 +137,17 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             //
             // We clear the cache rather than deleting it or replacing it with an empty cache. This
             // lets the allocated capacity be reused later.
-            let mut rest_canonicalizer = env_canonicalizer;
-            rest_canonicalizer.canonicalize_mode = CanonicalizeMode::Input {
-                kind: CanonicalizeInputKind::Predicate,
-                param_env_var_kinds: None,
+            let param_env_var_kinds = intern_var_kinds
+                .then(|| delegate.cx().mk_canonical_var_kinds(&env_canonicalizer.state.var_kinds));
+            let mut rest_canonicalizer = Canonicalizer {
+                canonicalize_mode: CanonicalizeMode::Input(CanonicalizeInputKind::Predicate {
+                    param_env_var_kinds,
+                }),
+                ..env_canonicalizer
             };
             rest_canonicalizer.state.cache.clear();
 
-            (param_env, rest_canonicalizer)
+            (param_env, rest_canonicalizer, param_env_var_kinds)
         };
 
         // Check whether we can use the global cache for this param_env. As we only use
@@ -166,17 +162,11 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
                 Entry::Vacant(e) => {
                     // Cache miss. Do `env` canonicalization and get `rest_canonicalizer`, and
                     // fill in the cache entry.
-                    let (param_env, mut rest_canonicalizer) = do_env_and_make_rest();
-                    let var_kinds =
-                        delegate.cx().mk_canonical_var_kinds(&rest_canonicalizer.state.var_kinds);
-                    rest_canonicalizer.canonicalize_mode = CanonicalizeMode::Input {
-                        kind: CanonicalizeInputKind::Predicate,
-                        param_env_var_kinds: Some(var_kinds),
-                    };
+                    let (param_env, rest_canonicalizer, var_kinds) = do_env_and_make_rest(true);
                     e.insert(CanonicalParamEnvCacheEntry {
                         param_env,
                         variables: rest_canonicalizer.state.variables.clone(),
-                        var_kinds,
+                        var_kinds: var_kinds.unwrap(),
                         // SAFETY: The iterated elements go straight back into a hashmap.
                         #[allow(rustc::potential_query_instability)]
                         variable_lookup_table: rest_canonicalizer
@@ -193,10 +183,9 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
                     let e = e.get();
                     let mut rest_canonicalizer = Canonicalizer::new(
                         delegate,
-                        CanonicalizeMode::Input {
-                            kind: CanonicalizeInputKind::Predicate,
+                        CanonicalizeMode::Input(CanonicalizeInputKind::Predicate {
                             param_env_var_kinds: Some(e.var_kinds),
-                        },
+                        }),
                     );
                     rest_canonicalizer.state.variables.clone_from(&e.variables);
                     e.var_kinds.as_slice().clone_into(&mut rest_canonicalizer.state.var_kinds);
@@ -209,7 +198,8 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             })
         } else {
             // Do `env` canonicalization and get `rest_canonicalizer`.
-            do_env_and_make_rest()
+            let (param_env, rest_canonicalizer, _) = do_env_and_make_rest(false);
+            (param_env, rest_canonicalizer)
         }
     }
 
@@ -332,9 +322,9 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         };
         let variables = mem::take(&mut self.state.variables);
         let var_kinds = match self.canonicalize_mode {
-            CanonicalizeMode::Input { param_env_var_kinds: Some(cached), .. }
-                if cached.len() == variables.len() =>
-            {
+            CanonicalizeMode::Input(CanonicalizeInputKind::Predicate {
+                param_env_var_kinds: Some(cached),
+            }) if cached.len() == variables.len() => {
                 debug_assert_eq!(cached.as_slice(), self.state.var_kinds.as_slice());
                 cached
             }
@@ -459,13 +449,13 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
             // We don't canonicalize `ReStatic` in the `param_env` as we use it
             // when checking whether a `ParamEnv` candidate is global.
             ty::ReStatic => match self.canonicalize_mode {
-                CanonicalizeMode::Input { kind: CanonicalizeInputKind::Predicate, .. } => {
+                CanonicalizeMode::Input(CanonicalizeInputKind::Predicate { .. }) => {
                     CanonicalVarKind::PlaceholderRegion(ty::PlaceholderRegion::new_anon(
                         ty::UniverseIndex::ROOT,
                         self.state.variables.len().into(),
                     ))
                 }
-                CanonicalizeMode::Input { kind: CanonicalizeInputKind::ParamEnv, .. }
+                CanonicalizeMode::Input(CanonicalizeInputKind::ParamEnv)
                 | CanonicalizeMode::Response { .. } => return r,
             },
 
@@ -620,9 +610,9 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
 
     fn fold_clauses(&mut self, c: I::Clauses) -> I::Clauses {
         match self.canonicalize_mode {
-            CanonicalizeMode::Input { kind: CanonicalizeInputKind::ParamEnv, .. }
+            CanonicalizeMode::Input(CanonicalizeInputKind::ParamEnv)
             | CanonicalizeMode::Response { max_input_universe: _ } => {}
-            CanonicalizeMode::Input { kind: CanonicalizeInputKind::Predicate, .. } => {
+            CanonicalizeMode::Input(CanonicalizeInputKind::Predicate { .. }) => {
                 panic!("erasing 'static in env")
             }
         }
