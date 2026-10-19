@@ -127,6 +127,10 @@ pub(crate) struct TpdeComponentMissing {
 pub(crate) struct TpdeHighOptLevel;
 
 #[derive(Diagnostic)]
+#[diag("using TPDE with LTO enabled is not supported")]
+pub(crate) struct TpdeLtoUsed;
+
+#[derive(Diagnostic)]
 pub(crate) enum LlvmError<'a> {
     #[diag("could not write output to {$path}")]
     WriteOutput { path: &'a Path },

@@ -22,7 +22,7 @@ use rustc_errors::{DiagCtxt, DiagCtxtHandle};
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductMap};
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::{OptLevel, OutputFilenames, PrintKind, PrintRequest};
+use rustc_session::config::{LtoCli, OptLevel, OutputFilenames, PrintKind, PrintRequest};
 use rustc_session::{
     BorrowedIncrCompSession, CodegenBackendInit, EarlySession, IncrCompSession, Session,
 };
@@ -233,6 +233,13 @@ impl CodegenBackend for LlvmCodegenBackend {
                 && !matches!(sess.opts.optimize, OptLevel::No | OptLevel::Less)
             {
                 sess.dcx().emit_warn(crate::diagnostics::TpdeHighOptLevel);
+            }
+
+            if sess.opts.unstable_opts.llvm_tpde.is_some()
+                && (sess.target.requires_lto
+                    || !matches!(sess.early_lto(), LtoCli::No | LtoCli::Unspecified))
+            {
+                sess.dcx().emit_fatal(crate::diagnostics::TpdeLtoUsed);
             }
         }
 

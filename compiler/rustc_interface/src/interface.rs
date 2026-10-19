@@ -434,7 +434,6 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                     make_codegen_backend(&early_sess)
                 }
             };
-
             let codegen_backend_init = codegen_backend.init(&early_sess);
 
             let mut sess = rustc_session::build_session(
