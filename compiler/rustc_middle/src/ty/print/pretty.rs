@@ -3408,7 +3408,7 @@ define_print_and_forward_display! {
     }
 
     ty::ParamLayout<'tcx> {
-        write!(p, "{{size={} align={} ...}}", self.0.size.bytes(), self.0.align.bytes())?;
+        write!(p, "{:?}", self.0)?;
     }
 
     ty::Term<'tcx> {

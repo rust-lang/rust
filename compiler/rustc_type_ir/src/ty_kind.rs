@@ -493,7 +493,13 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
             }
             Alias(is_rigid, a) => f.debug_tuple("Alias").field(&is_rigid).field(&a).finish(),
             Param(p) => write!(f, "{p:?}"),
-            Erased(p, l) => write!(f, "{p:?}@{l:?}"),
+            Erased(p, l) => {
+                match p {
+                    Some(p) => write!(f, "{p:?}")?,
+                    None => write!(f, "erased")?,
+                }
+                write!(f, "@{l:?}")
+            }
             Bound(d, b) => crate::debug_bound_var(f, *d, b),
             Placeholder(p) => write!(f, "{p:?}"),
             Infer(t) => write!(f, "{:?}", t),
