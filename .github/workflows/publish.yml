@@ -4,20 +4,19 @@ name: Publish crates.io crates
 on:
   workflow_dispatch:
 
-permissions:
-  contents: read
-  id-token: write
-
 jobs:
   publish:
     name: Publish
     runs-on: ubuntu-latest
     environment: publish
+    permissions:
+      id-token: write # Required by `rust-lang/crates-io-auth-action` to fetch an OIDC token
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          persist-credentials: false
       - name: Install toolchain
         run: rustup toolchain install
       - uses: rust-lang/crates-io-auth-action@v1
