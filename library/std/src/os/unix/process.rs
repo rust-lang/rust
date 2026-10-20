@@ -213,7 +213,7 @@ pub impl(self) trait CommandExt {
     /// If no directory has been specified with [`process::Command::current_dir`], this will set the
     /// directory to `/`, to avoid leaving the current directory outside the chroot. (This is an
     /// intentional difference from the underlying `chroot` system call.)
-    #[unstable(feature = "process_chroot", issue = "141298")]
+    #[stable(feature = "process_chroot", since = "CURRENT_RUSTC_VERSION")]
     fn chroot<P: AsRef<Path>>(&mut self, dir: P) -> &mut process::Command;
 
     #[unstable(feature = "process_setsid", issue = "105376")]
