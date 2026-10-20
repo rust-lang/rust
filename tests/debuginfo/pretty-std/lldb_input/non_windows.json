@@ -162,7 +162,7 @@
     },
     {
      "name": "length",
-     "type": "unsigned long",
+     "type": "usize",
      "offset": 8
     }
    ]
@@ -178,7 +178,7 @@
     },
     {
      "name": "length",
-     "type": "unsigned long",
+     "type": "usize",
      "offset": 8
     }
    ]
@@ -273,7 +273,7 @@
     },
     {
      "name": "len",
-     "type": "unsigned long",
+     "type": "usize",
      "offset": 16
     }
    ],
@@ -293,7 +293,7 @@
     },
     {
      "name": "len",
-     "type": "unsigned long",
+     "type": "usize",
      "offset": 16
     }
    ],
@@ -322,7 +322,7 @@
    "fields": [
     {
      "name": "__0",
-     "type": "unsigned long",
+     "type": "usize",
      "offset": 0
     }
    ]
@@ -560,6 +560,11 @@
    "size": 2,
    "type_class": 4,
    "basic_type": 12
+  },
+  "usize": {
+   "size": 8,
+   "type_class": 32768,
+   "basic_type": 16
   }
  }
 }
