@@ -64,7 +64,7 @@ impl<'db> InferenceContext<'db> {
             self.write_expr_adj(
                 oprnd_expr,
                 Box::new([Adjustment {
-                    kind: Adjust::Borrow(AutoBorrow::Ref(AutoBorrowMutability::Not)),
+                    kind: Adjust::Borrow(AutoBorrow::Ref(AutoBorrowMutability::NOT)),
                     target: method.sig.inputs_and_output.inputs()[0].store(),
                 }]),
             );
@@ -157,7 +157,7 @@ impl<'db> InferenceContext<'db> {
                     method.sig.inputs_and_output.inputs()[0].kind()
                 {
                     adjustments.push(Adjustment {
-                        kind: Adjust::Borrow(AutoBorrow::Ref(AutoBorrowMutability::Not)),
+                        kind: Adjust::Borrow(AutoBorrow::Ref(AutoBorrowMutability::NOT)),
                         target: Ty::new_imm_ref(autoderef.ctx().interner(), region, adjusted_ty)
                             .store(),
                     });

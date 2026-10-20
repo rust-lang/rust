@@ -6,6 +6,8 @@ use core::convert::identity;
 
 fn assert_static_fn<Ret>(_: impl Fn() -> Ret + 'static) {}
 
+fn assert_static(_: impl Sized + 'static) {}
+
 fn main() {
     let closure = {
         let mut foo = 42;
@@ -81,4 +83,17 @@ fn main() {
     }
 
     baz(&MyStruct { _a: &Int(42), b: B(&42) })();
+
+    {
+        let outer = |i: &&i32| {
+            let inner = |j: &i32| j == *i;
+            inner(&17);
+            assert_static(inner);
+            //~^ ERROR borrowed data escapes outside of closure
+            //~| ERROR borrowed data escapes outside of closure
+        };
+
+        outer(&&42);
+        assert_static(outer);
+    }
 }

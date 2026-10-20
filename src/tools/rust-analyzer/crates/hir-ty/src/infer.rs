@@ -620,6 +620,15 @@ impl Adjustment {
     }
 }
 
+/// Relating to an immutable auto-borrow, whether it comes from
+/// one of the comparison operators (`==`, `!=`, `<`, `<=`, `>`, `>=`).
+/// These are special-cased in closure capture inference.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum ForComparisonOp {
+    No,
+    Yes,
+}
+
 /// At least for initial deployment, we want to limit two-phase borrows to
 /// only a few specific cases. Right now, those are mostly "things that desugar"
 /// into method calls:
@@ -660,8 +669,8 @@ pub struct OverloadedDeref(pub Mutability);
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum AutoBorrowMutability {
+    Not { for_comparison_op: ForComparisonOp },
     Mut { allow_two_phase_borrow: AllowTwoPhase },
-    Not,
 }
 
 impl AutoBorrowMutability {
@@ -670,17 +679,19 @@ impl AutoBorrowMutability {
     /// Note that when `mutbl.is_not()`, `allow_two_phase_borrow` is ignored
     pub fn new(mutbl: Mutability, allow_two_phase_borrow: AllowTwoPhase) -> Self {
         match mutbl {
-            Mutability::Not => Self::Not,
+            Mutability::Not => Self::Not { for_comparison_op: ForComparisonOp::No },
             Mutability::Mut => Self::Mut { allow_two_phase_borrow },
         }
     }
+
+    pub const NOT: Self = Self::Not { for_comparison_op: ForComparisonOp::No };
 }
 
 impl From<AutoBorrowMutability> for Mutability {
     fn from(m: AutoBorrowMutability) -> Self {
         match m {
             AutoBorrowMutability::Mut { .. } => Mutability::Mut,
-            AutoBorrowMutability::Not => Mutability::Not,
+            AutoBorrowMutability::Not { .. } => Mutability::Not,
         }
     }
 }
