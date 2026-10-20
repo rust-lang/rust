@@ -1,9 +1,8 @@
 //! Ensure that we call Windows TLS callbacks in the local crate.
 //@only-target: windows
 //@revisions: with_exit without_exit
-// Somehow there's apparently an extra thread natively in the `without_exit` variant
-// so the callback triggers too often.
-//@[with_exit] run-native
+// run-native does not work properly. It randomly sometimes calls the hook 3 times. I guess there's
+// sometimes another thread appearing from somewhere.
 
 // Printing without touching the Rust runtime.
 fn print_safe(msg: &str) {
