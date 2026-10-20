@@ -15,7 +15,7 @@ pub(crate) fn expand_deriving_hash(
 ) {
     let path = path_std!(cx, span, hash::Hash);
 
-    let arg = cx.ty_sym(span, sym::__H);
+    let arg = cx.ty_name(span, sym::__H);
 
     let param = {
         let path = path_std!(cx, span, hash::Hasher);
@@ -56,8 +56,7 @@ fn hash_substructure(cx: &ExtCtxt<'_>, span: Span, substr: Substructure<'_>) -> 
     let call_hash = |span, expr| {
         let strs = cx.std_path(span, &[sym::hash, sym::Hash, sym::hash]);
         let hash_path = cx.expr_path(strs);
-        let expr =
-            cx.expr_call(span, hash_path, thin_vec![expr, cx.expr_ident_sym(span, sym::state)]);
+        let expr = cx.expr_call(span, hash_path, thin_vec![expr, cx.expr_name(span, sym::state)]);
         cx.stmt_expr(expr)
     };
 

@@ -77,7 +77,7 @@ impl MultiItemModifier for BuiltinDerive {
 
 /// Constructs an expression that calls the `discriminant_value` intrinsic.
 fn call_discriminant_value(cx: &ExtCtxt<'_>, span: Span, arg: Symbol) -> Box<ast::Expr> {
-    cx.expr_call_intrinsic(span, sym::discriminant_value, thin_vec![cx.expr_ident_sym(span, arg)])
+    cx.expr_call_intrinsic(span, sym::discriminant_value, thin_vec![cx.expr_name(span, arg)])
 }
 
 /// Constructs an expression that calls the `unreachable` intrinsic.

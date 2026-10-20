@@ -135,8 +135,8 @@ impl AllocFnFactory<'_, '_> {
                     &[sym::alloc, sym::Layout, sym::from_size_alignment_unchecked],
                 );
                 let layout_new = self.cx.expr_path(layout_new);
-                let size = self.cx.expr_ident_sym(self.span, sym::size);
-                let align = self.cx.expr_ident_sym(self.span, sym::align);
+                let size = self.cx.expr_name(self.span, sym::size);
+                let align = self.cx.expr_name(self.span, sym::align);
                 let layout = self.cx.expr_call(self.span, layout_new, thin_vec![size, align]);
                 layout
             }
@@ -144,13 +144,13 @@ impl AllocFnFactory<'_, '_> {
             AllocatorTy::Ptr => {
                 let name = Symbol::intern(input.name);
                 args.push(self.cx.param(self.span, name, self.ptr_u8()));
-                self.cx.expr_ident_sym(self.span, name)
+                self.cx.expr_name(self.span, name)
             }
 
             AllocatorTy::Usize => {
                 let name = Symbol::intern(input.name);
                 args.push(self.cx.param(self.span, name, self.usize()));
-                self.cx.expr_ident_sym(self.span, name)
+                self.cx.expr_name(self.span, name)
             }
 
             AllocatorTy::Never | AllocatorTy::ResultPtr | AllocatorTy::Unit => {
@@ -172,7 +172,7 @@ impl AllocFnFactory<'_, '_> {
     }
 
     fn usize(&self) -> Box<Ty> {
-        self.cx.ty_sym(self.span, sym::usize)
+        self.cx.ty_name(self.span, sym::usize)
     }
 
     fn ptr_alignment(&self) -> Box<Ty> {
@@ -181,7 +181,7 @@ impl AllocFnFactory<'_, '_> {
     }
 
     fn ptr_u8(&self) -> Box<Ty> {
-        let ty_u8 = self.cx.ty_sym(self.span, sym::u8);
+        let ty_u8 = self.cx.ty_name(self.span, sym::u8);
         self.cx.ty_ptr(self.span, ty_u8, Mutability::Mut)
     }
 }

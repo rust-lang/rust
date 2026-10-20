@@ -711,7 +711,7 @@ impl<'a> TraitDef<'a> {
         // Other crates don't need stability attributes, so adding them is not useful, but libcore needs them
         // on all const trait impls.
         if self.is_const && cx.ecfg.features.staged_api() {
-            let rustc_const_unstable = cx.path_sym(self.span, sym::rustc_const_unstable);
+            let rustc_const_unstable = cx.path_name(self.span, sym::rustc_const_unstable);
 
             // #[rustc_const_unstable(feature = "derive_const", issue = "118304")]
             attrs.push(
@@ -871,7 +871,7 @@ impl<'a> MethodDef<'a> {
     ) -> BlockOrExpr {
         let self_expr = cx.expr_self(span);
         let selflike_args = if self.has_other_selflike_arg {
-            &[self_expr, cx.expr_ident_sym(span, self.nonself_args[0].1)][..]
+            &[self_expr, cx.expr_name(span, self.nonself_args[0].1)][..]
         } else {
             &[self_expr]
         };
@@ -1037,10 +1037,7 @@ impl<'a> MethodDef<'a> {
 
         let self_expr = cx.expr_self(span);
         let match_arg = if self.has_other_selflike_arg {
-            cx.expr_tuple(
-                span,
-                thin_vec![self_expr, cx.expr_ident_sym(span, self.nonself_args[0].1)],
-            )
+            cx.expr_tuple(span, thin_vec![self_expr, cx.expr_name(span, self.nonself_args[0].1)])
         } else {
             self_expr
         };
@@ -1071,7 +1068,7 @@ fn create_struct_patterns(
         .map(|prefix| {
             let pieces_iter = struct_def.fields().iter().enumerate().map(|(i, struct_field)| {
                 let ident = Symbol::intern(&format!("{prefix}_{i}"));
-                (struct_field.ident, cx.pat_ident(struct_field.span.with_ctxt(span.ctxt()), ident))
+                (struct_field.ident, cx.pat_name(struct_field.span.with_ctxt(span.ctxt()), ident))
             });
 
             let struct_path = struct_path.clone();
@@ -1135,7 +1132,7 @@ fn create_struct_pattern_fields(
     create_fields(span, struct_def, |i, _struct_field, sp| {
         prefixes
             .iter()
-            .map(|prefix| cx.expr_ident_sym(sp, Symbol::intern(&format!("{prefix}_{i}"))))
+            .map(|prefix| cx.expr_name(sp, Symbol::intern(&format!("{prefix}_{i}"))))
             .collect()
     })
 }

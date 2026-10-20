@@ -212,7 +212,7 @@ pub(crate) fn expand_test_or_bench(
                             cx.expr_call(
                                 ret_ty_sp,
                                 cx.expr_path(cx.path_ident(sp, fn_.ident)),
-                                thin_vec![cx.expr_ident_sym(sp, bencher_param)],
+                                thin_vec![cx.expr_name(sp, bencher_param)],
                             ),
                         ],
                     ),

@@ -76,7 +76,7 @@ fn show_substructure(
     };
 
     let name = cx.expr_str(span, ident.name);
-    let fmt = cx.expr_ident_sym(span, sym::f);
+    let fmt = cx.expr_name(span, sym::f);
 
     // Fieldless enums have been special-cased earlier
     if fmt_detail == FmtDebug::Shallow {
@@ -199,9 +199,9 @@ fn show_substructure(
         args.push(fmt);
         args.push(name);
         if is_struct {
-            args.push(cx.expr_ident_sym(span, sym::names));
+            args.push(cx.expr_name(span, sym::names));
         }
-        args.push(cx.expr_ident_sym(span, sym::values));
+        args.push(cx.expr_name(span, sym::values));
         let expr = cx.expr_call_global(span, fn_path_debug_internal, args);
 
         let mut stmts = ThinVec::with_capacity(2);
@@ -232,7 +232,7 @@ fn show_fieldless_enum(
     def: &EnumDef,
     type_ident: Ident,
 ) -> BlockOrExpr {
-    let fmt = cx.expr_ident_sym(span, sym::f);
+    let fmt = cx.expr_name(span, sym::f);
     let arms = def
         .variants
         .iter()

@@ -56,14 +56,14 @@ pub(crate) fn expand(
 //     handler(core::alloc::Layout::from_size_align_unchecked(size, align))
 // }
 fn generate_handler(cx: &ExtCtxt<'_>, handler: Ident, span: Span, sig_span: Span) -> Stmt {
-    let ty_usize = cx.ty_sym(span, sym::usize);
+    let ty_usize = cx.ty_name(span, sym::usize);
 
     let layout_new = cx.std_path(span, &[sym::alloc, sym::Layout, sym::from_size_align_unchecked]);
     let layout_new = cx.expr_path(layout_new);
     let layout = cx.expr_call(
         span,
         layout_new,
-        thin_vec![cx.expr_ident_sym(span, sym::size), cx.expr_ident_sym(span, sym::align)],
+        thin_vec![cx.expr_name(span, sym::size), cx.expr_name(span, sym::align)],
     );
 
     let call = cx.expr_call_ident(sig_span, handler, thin_vec![layout]);

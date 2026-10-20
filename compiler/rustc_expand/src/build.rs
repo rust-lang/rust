@@ -41,7 +41,7 @@ impl<'a> ExtCtxt<'a> {
         Path { span, segments }
     }
 
-    pub fn path_sym(&self, span: Span, name: Symbol) -> Path {
+    pub fn path_name(&self, span: Span, name: Symbol) -> Path {
         Path::from_ident(Ident::new(name, span))
     }
 
@@ -104,8 +104,8 @@ impl<'a> ExtCtxt<'a> {
         self.ty_path(self.path_ident(span, ident))
     }
 
-    pub fn ty_sym(&self, span: Span, name: Symbol) -> Box<ast::Ty> {
-        self.ty_path(self.path_sym(span, name))
+    pub fn ty_name(&self, span: Span, name: Symbol) -> Box<ast::Ty> {
+        self.ty_path(self.path_name(span, name))
     }
 
     pub fn anon_const(&self, span: Span, kind: ast::ExprKind) -> ast::AnonConst {
@@ -148,7 +148,7 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn ty_self(&self, span: Span) -> Box<ast::Ty> {
-        self.ty_path(self.path_sym(span, kw::SelfUpper))
+        self.ty_path(self.path_name(span, kw::SelfUpper))
     }
     pub fn ty_self_ref(&self, span: Span) -> Box<ast::Ty> {
         self.ty_ref(span, self.ty_self(span), None, ast::Mutability::Not)
@@ -252,9 +252,9 @@ impl<'a> ExtCtxt<'a> {
         ex: Box<ast::Expr>,
     ) -> ast::Stmt {
         let pat = if mutbl {
-            self.pat_ident_binding_mode(sp, name, ast::BindingMode::MUT)
+            self.pat_name_binding_mode(sp, name, ast::BindingMode::MUT)
         } else {
-            self.pat_ident(sp, name)
+            self.pat_name(sp, name)
         };
         let local = Box::new(ast::Local {
             super_: None,
@@ -328,8 +328,8 @@ impl<'a> ExtCtxt<'a> {
     pub fn expr_self(&self, span: Span) -> Box<ast::Expr> {
         self.expr_ident(span, Ident::new(kw::SelfLower, span))
     }
-    pub fn expr_ident_sym(&self, span: Span, sym: Symbol) -> Box<ast::Expr> {
-        self.expr_ident(span, Ident::new(sym, span))
+    pub fn expr_name(&self, span: Span, name: Symbol) -> Box<ast::Expr> {
+        self.expr_ident(span, Ident::new(name, span))
     }
 
     pub fn expr_macro_call(&self, span: Span, call: Box<ast::MacCall>) -> Box<ast::Expr> {
@@ -511,11 +511,11 @@ impl<'a> ExtCtxt<'a> {
     pub fn pat_wild(&self, span: Span) -> ast::Pat {
         self.pat(span, PatKind::Wild)
     }
-    pub fn pat_ident(&self, span: Span, name: Symbol) -> ast::Pat {
-        self.pat_ident_binding_mode(span, name, ast::BindingMode::NONE)
+    pub fn pat_name(&self, span: Span, name: Symbol) -> ast::Pat {
+        self.pat_name_binding_mode(span, name, ast::BindingMode::NONE)
     }
 
-    pub fn pat_ident_binding_mode(
+    pub fn pat_name_binding_mode(
         &self,
         span: Span,
         name: Symbol,
@@ -608,7 +608,7 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn param(&self, span: Span, name: Symbol, ty: Box<ast::Ty>) -> ast::Param {
-        let pat = Box::new(self.pat_ident(span, name));
+        let pat = Box::new(self.pat_name(span, name));
         ast::Param {
             attrs: AttrVec::default(),
             id: ast::DUMMY_NODE_ID,

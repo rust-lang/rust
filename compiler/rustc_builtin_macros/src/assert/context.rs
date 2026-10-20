@@ -99,7 +99,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
     fn build_initial_imports(&self) -> Stmt {
         let nested_tree = |this: &Self, sym| UseTreeAndId {
             inner: UseTree {
-                prefix: this.cx.path_sym(this.span, sym),
+                prefix: this.cx.path_name(this.span, sym),
                 kind: UseTreeKind::Simple(None),
             },
             id: DUMMY_NODE_ID,
@@ -371,7 +371,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
         let wrapper = self.cx.expr_call(
             self.span,
             self.cx.expr_path(self.cx.std_path(self.span, &[sym::asserting, sym::Wrapper])),
-            thin_vec![self.cx.expr_path(self.cx.path_sym(self.span, local_bind))],
+            thin_vec![self.cx.expr_path(self.cx.path_name(self.span, local_bind))],
         );
         let try_capture_call = self
             .cx
@@ -386,7 +386,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
                 )],
             ))
             .add_trailing_semicolon();
-        let local_bind_path = self.cx.expr_path(self.cx.path_sym(self.span, local_bind));
+        let local_bind_path = self.cx.expr_path(self.cx.path_name(self.span, local_bind));
         let rslt = if self.is_consumed {
             let ret = self.cx.stmt_expr(local_bind_path);
             self.cx.expr_block(self.cx.block(self.span, thin_vec![try_capture_call, ret]))

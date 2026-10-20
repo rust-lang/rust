@@ -28,7 +28,7 @@ pub(crate) fn expand_deriving_partial_ord(
     let default_substructure =
         combine_substructure(|cx, span, substr| cs_partial_cmp(cx, span, substr, discr_then_data));
     let simple_substructure = combine_substructure(|cx, span, _| {
-        cs_partial_cmp_simple(cx, span, cx.expr_ident_sym(span, sym::other))
+        cs_partial_cmp_simple(cx, span, cx.expr_name(span, sym::other))
     });
     let is_simple = match &item.kind {
         // For unit structs/zero-variant enums, the default generated code is better.
@@ -198,7 +198,7 @@ pub(crate) fn cmp_body(
                 expr1,
             );
             let cmp = sym::cmp;
-            let neq_arm = cx.arm(span, cx.pat_ident(span, cmp), cx.expr_ident_sym(span, cmp));
+            let neq_arm = cx.arm(span, cx.pat_name(span, cmp), cx.expr_name(span, cmp));
             cx.expr_match(span, expr2, thin_vec![eq_arm, neq_arm])
         }
     };

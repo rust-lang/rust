@@ -56,7 +56,7 @@ pub(crate) fn expand_option_env<'cx>(
                 &[sym::option, sym::Option, sym::None],
                 vec![GenericArg::Type(cx.ty_ref(
                     sp,
-                    cx.ty_sym(sp, sym::str),
+                    cx.ty_name(sp, sym::str),
                     Some(lt),
                     Mutability::Not,
                 ))],

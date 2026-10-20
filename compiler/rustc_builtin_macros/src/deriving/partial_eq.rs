@@ -41,7 +41,7 @@ pub(crate) fn expand_deriving_partial_eq(
         explicit_self: true,
         nonself_args: smallvec![(cx.ty_self_ref(span), sym::other)],
         has_other_selflike_arg: true,
-        ret_ty: cx.ty_sym(span, sym::bool),
+        ret_ty: cx.ty_name(span, sym::bool),
         attributes: thin_vec![cx.attr_word(sym::inline, span)],
         fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
         combine_substructure: combine_substructure(get_substructure_equality_expr),
