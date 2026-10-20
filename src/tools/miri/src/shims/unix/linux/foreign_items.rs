@@ -253,11 +253,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let dso = this.read_pointer(dso)?;
 
                 let dso_handle = Symbol::intern("__dso_handle");
-                // FIXME: we skip this check in std because std passes the wrong address,
-                // see <https://github.com/rust-lang/rust/pull/164576>
-                if dso.addr() != Pointer::from(this.machine.extern_statics[&dso_handle]).addr()
-                    && !this.frame_in_std()
-                {
+                if dso.addr() != Pointer::from(this.machine.extern_statics[&dso_handle]).addr() {
                     throw_unsup_format!(
                         "__cxa_thread_atexit_impl: a DSO value other than the address of `__dso_handle` is not supported"
                     );
