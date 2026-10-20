@@ -479,13 +479,7 @@ fn diagnostic_handler_callback_inner(
                 message: &opt.message,
             });
         }
-        llvm::diagnostic::Linker(diagnostic_ref) => {
-            let message = llvm::build_string(|s| unsafe {
-                llvm::LLVMRustWriteDiagnosticInfoToString(diagnostic_ref, s)
-            })
-            .expect("non-UTF8 diagnostic");
-            dcx.emit_warn(FromLlvmDiag { message });
-        }
+
         llvm::diagnostic::Other(diagnostic_ref) => {
             let message = llvm::build_string(|s| unsafe {
                 llvm::LLVMRustWriteDiagnosticInfoToString(diagnostic_ref, s)
