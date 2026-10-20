@@ -1,3 +1,4 @@
+// EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 //@ skip-filecheck
 //@ compile-flags: -Z mir-opt-level=3
 
