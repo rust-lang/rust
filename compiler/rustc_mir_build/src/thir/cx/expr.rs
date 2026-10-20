@@ -251,7 +251,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
             }
             Adjust::Borrow(AutoBorrow::Ref(m)) => {
                 // Don't emit no-op &T -> &T reborrows
-                if let AutoBorrowMutability::Not = m
+                if let AutoBorrowMutability::Not { .. } = m
                     && let ExprKind::Deref { arg: derefed_expr } = expr.kind
                     && self.thir.exprs[derefed_expr].ty.ref_mutability()
                         == Some(ty::Mutability::Not)
@@ -1774,7 +1774,7 @@ impl ToBorrowKind for AutoBorrowMutability {
                     AllowTwoPhase::No => mir::MutBorrowKind::Default,
                 },
             },
-            AutoBorrowMutability::Not => BorrowKind::Shared,
+            AutoBorrowMutability::Not { .. } => BorrowKind::Shared,
         }
     }
 }

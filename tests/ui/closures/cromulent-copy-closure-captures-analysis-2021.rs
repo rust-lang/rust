@@ -303,4 +303,46 @@ fn main() {
         let a = t.0;
         c();
     }
+
+    test_le();
+    test_eq();
+
+    #[derive(PartialEq)]
+    struct Foo;
+    impl Default for &Foo {
+        fn default() -> Self {
+            &Foo
+        }
+    }
+
+    test_eq_2(&Foo)();
+}
+
+fn test_le() -> impl Fn() -> bool {
+    let i = &42u8;
+    #[rustc_capture_analysis] || &42u8 <= i
+    //~^ ERROR First Pass analysis includes:
+    //~| ERROR Min Capture analysis includes:
+    //~| NOTE Capturing i[] -> ByCopy
+    //~| NOTE Min Capture i[] -> ByCopy
+}
+
+fn test_eq() -> impl Fn() -> bool {
+    let i = &42u8;
+    #[rustc_capture_analysis] || &42u8 == i
+    //~^ ERROR First Pass analysis includes:
+    //~| ERROR Min Capture analysis includes:
+    //~| NOTE Capturing i[] -> ByCopy
+    //~| NOTE Min Capture i[] -> ByCopy
+}
+
+fn test_eq_2<T>(i: &T) -> impl Fn() -> bool
+where
+    for<'a> &'a T: PartialEq + Default,
+{
+    #[rustc_capture_analysis] || <&T>::default() == i
+    //~^ ERROR First Pass analysis includes:
+    //~| ERROR Min Capture analysis includes:
+    //~| NOTE Capturing i[] -> ByCopy
+    //~| NOTE Min Capture i[] -> ByCopy
 }

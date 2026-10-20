@@ -25,8 +25,8 @@ use tracing::{debug, instrument, trace};
 use crate::{
     Adjust, Adjustment, AutoBorrow, Span,
     infer::{
-        ByRef, CaptureSourceStack, DerefPatBorrowMode, InferenceContext, PatAdjust, PatAdjustment,
-        UpvarCapture, closure::analysis::BorrowKind,
+        AutoBorrowMutability, ByRef, CaptureSourceStack, DerefPatBorrowMode, ForComparisonOp,
+        InferenceContext, PatAdjust, PatAdjustment, UpvarCapture, closure::analysis::BorrowKind,
     },
     method_resolution::CandidateId,
     next_solver::{ErrorGuaranteed, StoredTy, Ty, TyKind},
@@ -326,6 +326,16 @@ pub(crate) trait Delegate<'db> {
         ctx: &mut InferenceContext<'db>,
     );
 
+    /// The value found at `place` is being implicitly borrowed immutably
+    /// as an operand of one of the comparison operators (`==`, `!=`, `<`, `<=`, `>`, `>=`).
+    fn borrow_for_comparison(
+        &mut self,
+        place_with_id: PlaceWithOrigin,
+        ctx: &mut InferenceContext<'db>,
+    ) {
+        self.borrow(place_with_id, BorrowKind::Immutable, ctx);
+    }
+
     /// The value found at `place` is being copied.
     /// `diag_expr_id` is the id used for diagnostics (see `consume` for more details).
     ///
@@ -376,6 +386,14 @@ impl<'db, D: Delegate<'db>> Delegate<'db> for &mut D {
         ctx: &mut InferenceContext<'db>,
     ) {
         (**self).borrow(place_with_id, bk, ctx)
+    }
+
+    fn borrow_for_comparison(
+        &mut self,
+        place_with_id: PlaceWithOrigin,
+        ctx: &mut InferenceContext<'db>,
+    ) {
+        (**self).borrow_for_comparison(place_with_id, ctx)
     }
 
     fn copy(&mut self, place_with_id: PlaceWithOrigin, ctx: &mut InferenceContext<'db>) {
@@ -843,6 +861,12 @@ impl<'a, 'db, D: Delegate<'db>> ExprUseVisitor<'a, 'db, D> {
         debug!("walk_autoref(expr={:?} base_place={:?} autoref={:?})", expr, base_place, autoref);
 
         match *autoref {
+            AutoBorrow::Ref(AutoBorrowMutability::Not {
+                for_comparison_op: ForComparisonOp::Yes,
+            }) => {
+                self.delegate.borrow_for_comparison(base_place, self.cx);
+            }
+
             AutoBorrow::Ref(m) => {
                 self.delegate.borrow(base_place, BorrowKind::from_mutbl(m.into()), self.cx);
             }
