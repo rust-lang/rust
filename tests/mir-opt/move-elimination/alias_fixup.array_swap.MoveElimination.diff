@@ -1,0 +1,55 @@
+- // MIR for `array_swap` before MoveElimination
++ // MIR for `array_swap` after MoveElimination
+  
+  fn array_swap(_1: [u8; 2]) -> [u8; 2] {
+      debug array => _1;
+      let mut _0: [u8; 2];
+      let _2: u8;
+      let _3: u8;
+      let mut _4: u8;
+      let mut _5: u8;
++     let mut _6: u8;
+      scope 1 {
+-         debug a => _2;
+-         debug b => _3;
++         debug a => _5;
++         debug b => _1[1 of 2];
+      }
+  
+      bb0: {
+-         StorageLive(_2);
+-         _2 = copy _1[0 of 2];
+-         StorageLive(_3);
+-         _3 = copy _1[1 of 2];
+-         StorageLive(_4);
+-         _4 = copy _3;
+-         StorageLive(_5);
+-         _5 = copy _2;
+-         _1 = [move _4, move _5];
+-         StorageDead(_5);
+-         StorageDead(_4);
++         nop;
++         _5 = copy _1[0 of 2];
++         nop;
++         nop;
++         nop;
++         nop;
++         nop;
++         nop;
++         StorageLive(_6);
++         _6 = no_retag move _1[1 of 2];
++         _1[0 of 1] = no_retag move _6;
++         _1[1 of 2] = no_retag move _5;
++         nop;
++         StorageDead(_6);
++         nop;
++         nop;
+          _0 = copy _1;
+-         StorageDead(_3);
+-         StorageDead(_2);
++         nop;
++         nop;
+          return;
+      }
+  }
+  
