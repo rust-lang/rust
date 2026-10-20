@@ -77,7 +77,7 @@ impl TypeKindOptions {
             BaseTypeKind::Int => self.s,
             BaseTypeKind::UInt => self.u,
             BaseTypeKind::Poly => self.p,
-            BaseTypeKind::Bool => false,
+            BaseTypeKind::BFloat | BaseTypeKind::Bool => false,
         }
     }
 }
@@ -113,6 +113,7 @@ impl fmt::Display for TypeKindOptions {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum BaseTypeKind {
     Float,
+    BFloat,
     Int,
     UInt,
     Bool,
@@ -497,7 +498,7 @@ impl FromStr for VectorType {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         static RE: LazyLock<Regex> = LazyLock::new(|| {
-            Regex::new(r"^(?:(?:sv(?P<sv_ty>(?:uint|int|bool|float)(?:\d+)?))|(?:(?P<ty>(?:uint|int|bool|poly|float)(?:\d+)?)x(?P<lanes>(?:\d+)?)))(?:x(?P<tuple_size>2|3|4))?_t$").unwrap()
+            Regex::new(r"^(?:(?:sv(?P<sv_ty>(?:uint|int|bool|float|bfloat)(?:\d+)?))|(?:(?P<ty>(?:uint|int|bool|poly|float|bfloat)(?:\d+)?)x(?P<lanes>(?:\d+)?)))(?:x(?P<tuple_size>2|3|4))?_t$").unwrap()
         });
 
         if let Some(c) = RE.captures(s) {
@@ -634,6 +635,7 @@ impl FromStr for BaseTypeKind {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "float" | "f" => Ok(Self::Float),
+            "bfloat" | "bf16" => Ok(Self::BFloat),
             "int" | "i" => Ok(Self::Int),
             "uint" | "u" => Ok(Self::UInt),
             "poly" | "p" => Ok(Self::Poly),
@@ -647,9 +649,14 @@ impl ToRepr for BaseTypeKind {
     fn repr(&self, repr: TypeRepr) -> String {
         match (repr, self) {
             (TypeRepr::C, Self::Float) => "float",
+            (TypeRepr::C, Self::BFloat) => "bfloat16",
             (TypeRepr::C, Self::Int) => "int",
             (TypeRepr::C, Self::UInt) => "uint",
             (TypeRepr::C, Self::Poly) => "poly",
+
+            (TypeRepr::Rust, Self::BFloat) => "bfloat16_t",
+            (TypeRepr::LLVMMachine | TypeRepr::ACLENotation, Self::BFloat) => "bf16",
+
             (TypeRepr::Rust | TypeRepr::LLVMMachine | TypeRepr::ACLENotation, Self::Float) => "f",
             (TypeRepr::Rust, Self::Int) | (TypeRepr::LLVMMachine, Self::Int | Self::UInt) => "i",
             (TypeRepr::Rust | TypeRepr::ACLENotation, Self::UInt) => "u",
@@ -692,6 +699,10 @@ impl BaseType {
     pub fn is_float(&self) -> bool {
         self.kind() == &BaseTypeKind::Float
     }
+
+    pub fn is_bfloat(&self) -> bool {
+        self.kind() == &BaseTypeKind::BFloat
+    }
 }
 
 impl FromStr for BaseType {
@@ -709,6 +720,13 @@ impl FromStr for BaseType {
                 .map(u32::from_str)
                 .transpose()
                 .unwrap();
+
+            if kind == BaseTypeKind::BFloat && size != Some(16) {
+                return Err(format!(
+                    "a `bfloat` must have a size of `16`, got `{size:?}`"
+                ));
+            }
+
             match size {
                 Some(size) => Ok(Self::Sized(kind, size)),
                 None => Ok(Self::Unsized(kind)),
@@ -733,6 +751,7 @@ impl ToRepr for BaseType {
             (Sized(_, size), SizeLiteral) if *size == 128 => "q".to_string(),
             (_, SizeLiteral) => unreachable!("cannot represent {self:#?} as size literal"),
             (Sized(Float, _) | Unsized(Float), TypeKind) => "f".to_string(),
+            (Sized(BFloat, _) | Unsized(BFloat), TypeKind) => "bf16".to_string(),
             (Sized(Int, _) | Unsized(Int), TypeKind) => "s".to_string(),
             (Sized(UInt, _) | Unsized(UInt), TypeKind) => "u".to_string(),
             (Sized(_, size), Size) => size.to_string(),
@@ -740,7 +759,14 @@ impl ToRepr for BaseType {
                 assert!(size.is_power_of_two() && *size >= 8);
                 (size >> 3).trailing_zeros().to_string()
             }
-            (Sized(kind, size), _) => format!("{}{size}", kind.repr(repr)),
+            (Sized(kind, size), _) => {
+                if self.is_bfloat() {
+                    assert!(*size == 16);
+                    format!("{}", kind.repr(repr))
+                } else {
+                    format!("{}{size}", kind.repr(repr))
+                }
+            }
             (Unsized(kind), _) => kind.repr(repr),
         }
     }
