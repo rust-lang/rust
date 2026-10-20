@@ -1,4 +1,5 @@
 //@only-target: windows # this directly tests windows-only functions
+//@run-native
 
 use std::ffi::c_void;
 use std::{ptr, thread};
@@ -74,9 +75,12 @@ fn fls_2_dtor_update_value_ignored() {
 
         assert_eq!(unsafe { FlsSetValue(early_key, ptr::without_provenance_mut(1)) }, TRUE);
 
-        // Registering new fls slots doesn't cause their dtor to run.
-        let a_new_key_in_dtor = unsafe { FlsAlloc(Some(dtor_unreachable)) };
+        // Registering new fls slots in a dtor is always possible,
+        // but their dtor might not get called.
+        extern "system" fn new_in_dtor(_val: *mut c_void) { }
+        let a_new_key_in_dtor = unsafe { FlsAlloc(Some(new_in_dtor)) };
         assert_eq!(unsafe { FlsSetValue(a_new_key_in_dtor, ptr::without_provenance_mut(1)) }, TRUE);
+        assert_eq!(unsafe { FlsGetValue(a_new_key_in_dtor).addr() }, 1);
     }
 
     let early_key = unsafe { FlsAlloc(Some(early_dtor)) };
