@@ -3810,7 +3810,13 @@ impl CommandLineStep for CompilerBuiltins {
                 target,
                 Kind::Test,
             );
-            cargo.current_dir(&builder.src.join("library").join("compiler-builtins"));
+            // We have to run from the root directory to make offline builds work.
+            // We have to use the combined vendored dependencies
+            // from the `default_paths_to_vendor` function, rather than only the vendored
+            // dependencies of the standard library, which do not contain compiler-builtins
+            // dependencies.
+            cargo.arg("--manifest-path");
+            cargo.arg(builder.src.join("library").join("compiler-builtins").join("Cargo.toml"));
             cargo.allow_features(&COMPILER_BUILTINS_ALLOW_FEATURES.join(","));
             f(&mut cargo);
             cargo
