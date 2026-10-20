@@ -157,7 +157,6 @@ impl InlineAsmDiagnostic {
 pub(crate) enum Diagnostic<'ll> {
     Optimization(OptimizationDiagnostic<'ll>),
     InlineAsm(InlineAsmDiagnostic),
-    Linker(&'ll DiagnosticInfo),
 
     /// LLVM has other types that we do not distinguish here.
     Other(&'ll DiagnosticInfo),
@@ -197,8 +196,6 @@ impl<'ll> Diagnostic<'ll> {
                 Dk::OptimizationFailure => {
                     Optimization(OptimizationDiagnostic::unpack(OptimizationFailure, di))
                 }
-
-                Dk::Linker => Linker(di),
 
                 Dk::SrcMgr => InlineAsm(InlineAsmDiagnostic::unpackSrcMgr(di)),
 
