@@ -45,8 +45,8 @@ impl SupportedArchitecture for Arm {
         let a32 = cli_options.target.starts_with("armv7");
         match cli_options.cc_arg_style {
             CcArgStyle::Clang if !a32 && !big_endian => vec![
-                "-march=armv8.6a+crypto+crc+dotprod+fp16+sve2-aes+sve2-sm4+sve2-sha3+sve2-bitperm+\
-                 f32mm+f64mm+sve2p1",
+                "-march=armv8.6a+crypto+crc+dotprod+fp16+bf16+sve2-aes+sve2-sm4+sve2-sha3+\
+                 sve2-bitperm+f32mm+f64mm+sve2p1",
             ],
             CcArgStyle::Clang => vec!["-march=armv8.6a+crypto+crc+dotprod+fp16"],
             // SVE tests aren't run under GCC so there are no target features added for SVE
@@ -70,9 +70,6 @@ impl SupportedArchitecture for Arm {
             .into_iter()
             // Skip intrinsics that don't return a value.
             .filter(|i| i.results.kind() != TypeKind::Void)
-            // Skip bfloat intrinsics - not currently supported
-            .filter(|i| i.results.kind() != TypeKind::BFloat)
-            .filter(|i| !i.arguments.iter().any(|a| a.ty.kind() == TypeKind::BFloat))
             // Skip SVE intrinsics that have `f16` - not yet implemented!
             .filter(|i| {
                 let has_f16_arg = i
@@ -121,6 +118,8 @@ impl SupportedArchitecture for Arm {
             .filter(|i| !i.arguments.iter().any(|a| a.is_ptr()))
             // Skip intrinsics with 128-bit elements (e.g. `p128`)
             .filter(|i| !i.arguments.iter().any(|a| a.ty.inner_size() == 128))
+            // A32 does not provide polynomial 128-bit return types either.
+            .filter(|i| !(a32 && i.results.inner_size() == 128))
             // Skip intrinsics from `--skip`
             .filter(|i| !cli_options.skip.contains(&i.name))
             // Skip A64-specific intrinsics on A32
@@ -178,9 +177,13 @@ const RUST_PRELUDE: &str = r#"
 #![cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), feature(stdarch_neon_ftts))]
 #![cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), feature(stdarch_neon_feat_lut))]
 #![cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), feature(stdarch_neon_fp8))]
+#![cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), feature(stdarch_neon_bf16))]
 #![cfg_attr(all(any(target_arch = "aarch64", target_arch = "arm64ec"), target_endian = "little"), feature(stdarch_aarch64_sve))]
 #![cfg_attr(any(target_arch = "aarch64", target_arch = "arm64ec"), feature(faminmax))]
 #![feature(stdarch_neon_f16)]
+#![feature(f16b)]
+
+use core::num::f16b;
 
 #[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))]
 use core_arch::arch::aarch64::*;

@@ -79,6 +79,7 @@ impl TypeKind {
     pub fn c_prefix(&self) -> &str {
         match self {
             Self::Bool => "bool",
+            Self::BFloat => "bfloat",
             Self::Float => "float",
             Self::Int(Sign::Signed) => "int",
             Self::Int(Sign::Unsigned) => "uint",
@@ -253,6 +254,8 @@ pub(crate) fn default_fixed_vector_comparison<Ty: TypeDefinition>(
             ),
             ")",
         )
+    } else if ty.kind == TypeKind::BFloat {
+        ("NanEqF16b(".to_string(), ")")
     } else if ty.kind == TypeKind::Float {
         (
             match ty.inner_size() {

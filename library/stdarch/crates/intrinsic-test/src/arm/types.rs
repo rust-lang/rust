@@ -39,6 +39,12 @@ impl TypeDefinition for ArmType {
     }
 
     fn rust_type(&self) -> String {
+        // Scalar BF16 uses Rust's `f16b` spelling rather than `bf16`. This also
+        // gives the comparison wrapper its expected `NanEqF16b` name.
+        if self.kind() == TypeKind::BFloat && self.simd_len.is_none() && self.vec_len.is_none() {
+            return "f16b".to_string();
+        }
+
         let rust_prefix = self.kind.rust_prefix();
         let c_prefix = self.kind.c_prefix();
 
