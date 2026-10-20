@@ -147,6 +147,14 @@ impl FileType {
     }
 }
 
+impl ReadDir {
+    pub fn dir(&self) -> io::Result<Dir> {
+        let mut options = OpenOptions::new();
+        options.read(true);
+        Dir::open(&self.0.path(), &options)
+    }
+}
+
 impl fmt::Debug for ReadDir {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut b = f.debug_struct("ReadDir");
