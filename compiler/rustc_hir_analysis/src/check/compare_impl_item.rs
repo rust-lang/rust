@@ -2238,7 +2238,8 @@ fn compare_const_generic_param_types<'tcx>(
                 infcx.err_ctxt().note_type_err(
                     &mut diag,
                     &cause,
-                    param_trait_ty_span.map(|span| (span, Cow::from("type in trait"), false)),
+                    param_trait_ty_span
+                        .map(|span| (span.into(), Cow::from("type in trait"), false)),
                     Some(param_env.and(infer::ValuePairs::Terms(ExpectedFound {
                         expected: trait_ty.into(),
                         found: impl_ty.into(),
