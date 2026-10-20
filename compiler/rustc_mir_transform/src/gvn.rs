@@ -1735,6 +1735,13 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                 return true;
             }
             let depth = depth + 1;
+
+            // Box isn't actually a ref but in terms of aliasing/provenance, it is close enough for
+            // this case to justify returning true.
+            if outer_ty.is_box() {
+                return true;
+            }
+
             let result = match outer_ty.kind() {
                 ty::Int(_)
                 | ty::Uint(_)
@@ -1754,13 +1761,14 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                     ty_may_have_ref_inner(tcx, typing_env, cache, *ty, depth)
                 }
                 ty::Adt(adt_def, args) => adt_def.all_fields().any(|field| {
-                    ty_may_have_ref_inner(
-                        tcx,
-                        typing_env,
-                        cache,
-                        tcx.normalize_erasing_regions(typing_env, field.ty(tcx, args)),
-                        depth,
-                    )
+                    if let Ok(field_ty) =
+                        tcx.try_normalize_erasing_regions(typing_env, field.ty(tcx, args))
+                    {
+                        ty_may_have_ref_inner(tcx, typing_env, cache, field_ty, depth)
+                    } else {
+                        // Normalization failed, defensively say the type may contain a ref
+                        true
+                    }
                 }),
                 ty::Ref(..)
                 | ty::Bound(..)
