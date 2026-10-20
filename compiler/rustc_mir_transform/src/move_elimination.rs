@@ -504,8 +504,7 @@ impl<'tcx> Visitor<'tcx> for PlaceUnification<'_, 'tcx> {
                 }
                 AggregateKind::Adt(adt_did, var_idx, _, _, None) => {
                     let def = self.tcx.adt_def(adt_did);
-                    if def.repr().simd() {
-                        // MCP#838 banned projections into SIMD types.
+                    if !def.can_project_fields(self.tcx) {
                         return;
                     }
                     self.visit_aggregate_assign(
@@ -842,12 +841,12 @@ impl<'tcx> MutVisitor<'tcx> for AliasFixup<'_, 'tcx> {
                         location,
                     )
                 }
-                // MCP#838 banned projections into SIMD types, so use the
-                // general aliasing fallback below for those aggregates.
+                // Types that forbid field projections must use the general
+                // aliasing fallback below.
                 Rvalue::Aggregate(
                     AggregateKind::Adt(adt_did, var_idx, _, _, None),
                     ref mut operands,
-                ) if !self.tcx.adt_def(adt_did).repr().simd() => {
+                ) if self.tcx.adt_def(adt_did).can_project_fields(self.tcx) => {
                     let def = self.tcx.adt_def(adt_did);
                     self.visit_aggregate_assign(
                         *dest,
