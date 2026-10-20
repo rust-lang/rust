@@ -1598,6 +1598,13 @@ impl CrateMetadata {
         self.root.externally_implementable_items.decode((self, tcx))
     }
 
+    fn get_polymorphizable_fns(&self, tcx: TyCtxt<'_>) -> impl Iterator<Item = DefId> {
+        self.root
+            .polymorphizable_fns
+            .decode((self, tcx))
+            .map(|d| self.local_def_id(d.local_def_index))
+    }
+
     fn get_missing_lang_items<'tcx>(&self, tcx: TyCtxt<'tcx>) -> &'tcx [LangItem] {
         tcx.arena.alloc_from_iter(self.root.lang_items_missing.decode((self, tcx)))
     }

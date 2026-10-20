@@ -667,6 +667,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let externally_implementable_items = stat!("externally-implementable-items", || self
             .encode_externally_implementable_items());
 
+        let polymorphizable_fns =
+            stat!("polymorphizable-fns", || self.encode_polymorphizable_fns());
+
         let (crate_deps, dylib_dependency_formats) =
             stat!("dep", || (self.encode_crate_deps(), self.encode_dylib_dependency_formats()));
 
@@ -788,6 +791,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 has_panic_handler: tcx.has_panic_handler(LOCAL_CRATE),
                 has_default_lib_allocator: find_attr!(attrs, DefaultLibAllocator),
                 externally_implementable_items,
+                polymorphizable_fns,
                 proc_macro_data,
                 debugger_visualizers,
                 compiler_builtins: find_attr!(attrs, CompilerBuiltins),
@@ -1742,6 +1746,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 )
             },
         ))
+    }
+
+    fn encode_polymorphizable_fns(&mut self) -> LazyArray<LocalDefId> {
+        empty_proc_macro!(self);
+        let tcx = self.tcx;
+        let polymorphizable_fns = &tcx.polymorphizable_fns(LOCAL_CRATE);
+        self.lazy_array(polymorphizable_fns.iter().map(|cs| cs.expect_local()))
     }
 
     #[instrument(level = "trace", skip(self))]

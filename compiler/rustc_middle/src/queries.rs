@@ -2855,6 +2855,13 @@ rustc_queries! {
         desc { "polymorphizing an instance by erasing its concrete generic arguments" }
     }
 
+    query polymorphizable_fns(cnum: CrateNum) -> &'tcx FxIndexSet<DefId> {
+        arena_cache
+        desc { "computing the polymorphizable functions of a crate" }
+        cache_on_disk
+        separate_provide_extern
+    }
+
     //-----------------------------------------------------------------------------
     // "Non-queries" are special dep kinds that are not queries.
     //-----------------------------------------------------------------------------

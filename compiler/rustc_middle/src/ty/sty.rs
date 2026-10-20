@@ -1377,10 +1377,6 @@ impl<'tcx> Ty<'tcx> {
         )
     }
 
-    pub fn erase_escaping(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
-        if let Erased(_, layout) = *self.kind() { Ty::new_erased(tcx, None, layout) } else { self }
-    }
-
     #[inline]
     pub fn is_mutable_ptr(self) -> bool {
         matches!(self.kind(), RawPtr(_, hir::Mutability::Mut) | Ref(_, _, hir::Mutability::Mut))

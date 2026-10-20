@@ -280,6 +280,7 @@ pub(crate) struct CrateRoot {
     has_panic_handler: bool,
     has_default_lib_allocator: bool,
     externally_implementable_items: LazyArray<EiiMapEncodedKeyValue>,
+    polymorphizable_fns: LazyArray<LocalDefId>,
 
     crate_deps: LazyArray<CrateDep>,
     dylib_dependency_formats: LazyArray<Option<LinkagePreference>>,

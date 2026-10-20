@@ -351,6 +351,9 @@ provide! { tcx, def_id, other, cdata,
                 (decl, impls.into_iter().collect())
             )).collect()
     }
+    polymorphizable_fns => {
+        cdata.get_polymorphizable_fns(tcx).collect()
+    }
 
     is_profiler_runtime => { cdata.root.profiler_runtime }
     required_panic_strategy => { cdata.root.required_panic_strategy }

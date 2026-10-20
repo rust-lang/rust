@@ -2347,6 +2347,11 @@ impl<'tcx> TyCtxt<'tcx> {
             self.fn_abi_of_instance_no_deduced_attrs(query)
         }
     }
+
+    #[inline]
+    pub fn is_fn_polymorphizable(self, def_id: DefId) -> bool {
+        self.polymorphizable_fns(def_id.krate).contains(&def_id)
+    }
 }
 
 // `HasAttrs` impls: allow `find_attr!(tcx, id, ...)` to work with both DefId-like types and HirId.
