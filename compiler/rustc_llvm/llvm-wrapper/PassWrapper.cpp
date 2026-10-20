@@ -376,9 +376,9 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   }
 
   TargetOptions Options = codegen::InitTargetOptionsFromCodeGenFlags(Trip);
-  #if LLVM_VERSION_GE(24, 0)
+#if LLVM_VERSION_GE(24, 0)
   Options.MCOptions.LibraryOptions = &OptionsContext;
-  #endif
+#endif
 
 #if LLVM_VERSION_LT(24, 0)
   Options.FloatABIType = FloatABIType;
