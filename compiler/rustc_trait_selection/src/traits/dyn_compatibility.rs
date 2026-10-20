@@ -749,15 +749,18 @@ fn receiver_is_dispatchable<'tcx>(
         let trait_predicate = ty::TraitRef::new_from_args(tcx, trait_def_id, args);
         clauses.push(trait_predicate.upcast(tcx));
 
-        // U satisfies Trait's trait bounds. When normalizing `U: Trait<Arg1, ..., ArgN>`, aliases
-        // in the arguments of supertrait bounds can generate trait obligations which may only be
-        // be provable using where-clauses from Trait (#161621).
+        // U satisfies Trait's trait bounds. Supertrait bounds are already included by the expansion
+        // of `U: Trait<...>` done by param-env normalization. However, normalizing aliases in the
+        // arguments of those supertrait bounds can generate trait obligations which may only be
+        // provable using other where-clauses from Trait (#161621).
         clauses.extend(
             tcx.clauses_of(trait_def_id)
                 .instantiate(tcx, args)
                 .clauses
                 .into_iter()
                 .map(Unnormalized::skip_norm_wip)
+                // For simplicity, add all trait clauses, though strictly this should only need to
+                // add non-supertrait clauses involving Self.
                 .filter(|clause| matches!(clause.kind().skip_binder(), ty::ClauseKind::Trait(_))),
         );
         // FIXME(@dianne): we need projection clauses too in some form, but adding them all

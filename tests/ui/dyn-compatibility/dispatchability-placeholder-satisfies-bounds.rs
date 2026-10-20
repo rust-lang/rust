@@ -8,7 +8,7 @@
 //! supertraits that would be necessary for `RustaceansAreAwesome` to implement `Trait`.
 //@ check-pass
 
-// This works for `Self: Super<...Ty::<RustaceansAreAwesome>::Assoc...>` after the `where`.
+// This works for `Self: Super<...<Ty<RustaceansAreAwesome> as TraitWithAssoc>::Assoc...>`.
 // We need to assume `(Args, RustaceansAreAwesome::Output): SignatureToFnPtr`.
 
 use std::ops::Deref;
@@ -26,7 +26,7 @@ where
     fn method(&self);
 }
 
-// This works for `Trait: Super<...Ty<RustaceansAreAwesome>::Assoc...>` before the `where`.
+// This works for `Self: Super<...<Ty as TraitWithAssoc<RustaceansAreAwesome>>::Assoc...>`.
 // We need to assume `A: Associator<RustaceansAreAwesome>`.
 
 trait Associator<S: ?Sized> {
@@ -58,23 +58,24 @@ pub trait Transposable<T: Matrix2D<RowIndex = Self::RowIndex>>: Matrix2D {
     fn transpose(&self) -> T;
 }
 
+trait HasAssoc {
+    type Assoc;
+}
+
+trait Parent<T: ?Sized> {}
+
 // An example where we can't add any additional projections without introducing ambiguity: we don't
 // want to assume `<() as HasAssoc>::Assoc` is both `Self` and `RustaceansAreAwesome`. At the time
 // of writing, we let `<() as HasAssoc>::Assoc` normalize to `Self` during receiver dispatchability
 // checking. This should be fine, since to call methods on a `dyn TechnicallyDynCompatible`, we'd
 // need `<() as HasAssoc>::Assoc` to be `dyn TechnicallyDynCompatible`. This is the same reasoning
 // that lets us assume `RustaceansAreAwesome` implements its trait at all: to use the trait object,
-// it must implement the trait; otherwise, receiver dispatchability doesn't mean much.
-
-trait HasAssoc {
-    type Assoc;
-}
+// it must implement the trait; otherwise, receiver dispatchability doesn't mean much (except
+// insofar as it lets `TechnicallyDynCompatible` be dyn-compatible).
 
 impl HasAssoc for () {
     type Assoc = ();
 }
-
-trait Parent<T: ?Sized> {}
 
 trait TechnicallyDynCompatible
 where
