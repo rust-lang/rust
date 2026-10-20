@@ -159,7 +159,7 @@ const REGEX_IDENT = /\p{ID_Continue}+/uy;
 const REGEX_INVALID_TYPE_FILTER = /[^a-z]/ui;
 
 const MAX_RESULTS = 200;
-const NO_TYPE_FILTER = -1;
+const NO_TYPE_FILTER = 0;
 const DEPRECATED_COUNT_SELECTOR = "deprecated-count";
 
 /**
@@ -697,6 +697,9 @@ function getNextElem(query, parserState, elems, isInGenerics) {
             end = parserState.pos - 1;
         } else {
             end = getIdentEndPosition(parserState);
+            if (isInGenerics && parserState.userQuery.slice(start, end).includes(".")) {
+                throw ["Unexpected ", ".", " in generics (", "<>", ")"];
+            }
         }
         if (parserState.pos < parserState.length &&
             parserState.userQuery[parserState.pos] === "<"
@@ -1216,7 +1219,7 @@ const EMPTY_BINDINGS_MAP = new Map();
  * @param {string|null} typename
  * @returns {number}
  */
-function itemTypeFromName(typename) {
+function typeFilterFromName(typename) {
     if (typename === null) {
         return NO_TYPE_FILTER;
     }
@@ -1225,7 +1228,16 @@ function itemTypeFromName(typename) {
     if (index === undefined) {
         throw ["Unknown type filter ", typename];
     }
-    return index;
+    return 1 << index;
+}
+
+/**
+ * @param {number} typeFilter
+ * @param {number} type
+ * @returns {boolean}
+ */
+function typeFilterMatchesType(typeFilter, type) {
+    return (typeFilter & (1 << type)) !== 0;
 }
 
 class DocSearch {
@@ -1531,32 +1543,43 @@ class DocSearch {
         try {
             parseInput(query, parserState);
 
+            const needDotCheck = parserState.totalElems > 1 || query.hasReturnArrow;
+
             // Scan for invalid type filters, so that we can report the error
             // outside the search loop.
             /** @param {rustdoc.ParserQueryElement} elem */
-            const checkTypeFilter = elem => {
-                const ty = itemTypeFromName(elem.typeFilter);
-                if (ty === itemTypes.generic && elem.generics.length !== 0) {
+            const checkTypeFilterAndDot = elem => {
+                const typeFilter = typeFilterFromName(elem.typeFilter);
+                if (typeFilterMatchesType(typeFilter, itemTypes.generic) &&
+                    elem.generics.length !== 0
+                ) {
                     throw [
                         "Generic type parameter ",
                         elem.name,
                         " does not accept generic parameters",
                     ];
                 }
+                if (needDotCheck && elem.name.includes(".")) {
+                    if (parserState.totalElems > 1) {
+                        throw ["The ", ".", " can only be used in queries with one element"];
+                    } else {
+                        throw ["The ", ".", " cannot be used in returned position"];
+                    }
+                }
                 for (const generic of elem.generics) {
-                    checkTypeFilter(generic);
+                    checkTypeFilterAndDot(generic);
                 }
                 for (const constraints of elem.bindings.values()) {
                     for (const constraint of constraints) {
-                        checkTypeFilter(constraint);
+                        checkTypeFilterAndDot(constraint);
                     }
                 }
             };
             for (const elem of query.elems) {
-                checkTypeFilter(elem);
+                checkTypeFilterAndDot(elem);
             }
             for (const elem of query.returned) {
-                checkTypeFilter(elem);
+                checkTypeFilterAndDot(elem);
             }
         } catch (err) {
             query = newParsedQuery(userQuery);
@@ -3935,11 +3958,12 @@ class DocSearch {
          */
         function typePassesFilter(filter, type) {
             // No filter or Exact mach
-            if (filter <= NO_TYPE_FILTER || filter === type) return true;
+            if (filter === NO_TYPE_FILTER || typeFilterMatchesType(filter, type)) return true;
 
             // Match related items
             // @ts-expect-error
-            return filter === itemParents.get(type);
+            const parent = itemParents.get(type);
+            return parent !== undefined && typeFilterMatchesType(filter, parent);
         }
 
         const innerRunNameQuery =
@@ -4035,7 +4059,11 @@ class DocSearch {
                     return;
                 }
                 const elem = parsedQuery.elems[0];
-                const typeFilter = itemTypeFromName(elem.typeFilter);
+                let typeFilter = typeFilterFromName(elem.typeFilter);
+                if (elem.name.includes(".")) {
+                    typeFilter |= (1 << itemTypes.method) | (1 << itemTypes.tymethod) |
+                        (1 << itemTypes.structfield);
+                }
                 /**
                  * @param {number} id
                  * @returns {Promise<rustdoc.PlainResultObject?>}
@@ -4268,7 +4296,8 @@ class DocSearch {
                     if (!elem) {
                         return empty_postings_list;
                     }
-                    const typeFilter = itemTypeFromName(elem.typeFilter);
+                    const typeFilter = typeFilterFromName(elem.typeFilter);
+                    const isGenericFilter = typeFilterMatchesType(typeFilter, itemTypes.generic);
                     const [searchResults, upla, uplb] = await Promise.all([
                         index.search(elem.normalizedPathLast),
                         unpackPostingsListAll(elem.generics, polarity),
@@ -4283,7 +4312,7 @@ class DocSearch {
                      * ]>[]}
                      * */
                     const typePromises = [];
-                    if (typeFilter !== itemTypes.generic && searchResults) {
+                    if (!isGenericFilter && searchResults) {
                         for (const id of searchResults.matches().entries()) {
                             typePromises.push(Promise.all([
                                 this.getName(id),
@@ -4307,14 +4336,14 @@ class DocSearch {
                                 ) === 0),
                             );
                     if (types.length === 0) {
-                        const areGenericsAllowed = typeFilter === itemTypes.generic || (
-                            typeFilter === -1 &&
+                        const areGenericsAllowed = isGenericFilter || (
+                            typeFilter === NO_TYPE_FILTER &&
                             (parsedQuery.totalElems > 1 || parsedQuery.hasReturnArrow) &&
                             elem.pathWithoutLast.length === 0 &&
                             elem.generics.length === 0 &&
                             elem.bindings.size === 0
                         );
-                        if (typeFilter !== itemTypes.generic &&
+                        if (!isGenericFilter &&
                             (elem.name.length >= 3 || !areGenericsAllowed)
                         ) {
                             /** @type {string|null} */
@@ -4400,7 +4429,7 @@ class DocSearch {
                                 queryElem: {
                                     name: elem.name,
                                     id: (-genericId) - 1,
-                                    typeFilter: itemTypes.generic,
+                                    typeFilter: 1 << itemTypes.generic,
                                     generics: [],
                                     bindings: EMPTY_BINDINGS_MAP,
                                     fullPath: elem.fullPath,
