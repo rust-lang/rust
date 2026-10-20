@@ -13,7 +13,6 @@
 #![feature(byte_str_to_string)]
 #![feature(can_vector)]
 #![feature(casefold)]
-#![feature(const_btree_len)]
 #![feature(const_cmp)]
 #![feature(const_heap)]
 #![feature(const_trait_impl)]
