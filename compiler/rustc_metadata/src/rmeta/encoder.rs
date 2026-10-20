@@ -102,6 +102,8 @@ macro_rules! encoder_methods {
 }
 
 impl<'a, 'tcx> Encoder for EncodeContext<'a, 'tcx> {
+    const DETERMINISTIC_HASH_MAP_ENCODE: bool = true;
+
     encoder_methods! {
         emit_usize(usize);
         emit_u128(u128);
@@ -150,6 +152,10 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for ExpnIndex {
 }
 
 impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
+    fn def_path_hasher(&self) -> impl Fn(DefId) -> DefPathHash {
+        self.tcx.prelocked_def_path_hasher()
+    }
+
     fn encode_crate_num(&mut self, crate_num: CrateNum) {
         if crate_num != LOCAL_CRATE && self.is_proc_macro {
             panic!("Attempted to encode non-local CrateNum {crate_num:?} for proc-macro crate");
