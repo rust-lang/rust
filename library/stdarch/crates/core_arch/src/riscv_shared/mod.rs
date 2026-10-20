@@ -25,13 +25,11 @@
 //! single inline assembly block and make sure to restore the original rounding mode before the end
 //! of the block.
 mod p;
-#[cfg(target_arch = "riscv32")]
 mod zb;
 mod zk;
 
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub use p::*;
-#[cfg(target_arch = "riscv32")]
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub use zb::*;
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]

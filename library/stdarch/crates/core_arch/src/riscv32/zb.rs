@@ -15,16 +15,16 @@ unsafe extern "llvm-intrinsic" {
     fn _clmulr_32(rs1: i32, rs2: i32) -> i32;
 
     #[link_name = "llvm.riscv.zip.i32"]
-    fn _zip(rs1: i32) -> i32;
+    fn _zip_32(rs1: i32) -> i32;
 
     #[link_name = "llvm.riscv.unzip.i32"]
-    fn _unzip(rs1: i32) -> i32;
+    fn _unzip_32(rs1: i32) -> i32;
 }
 
-/// Byte-wise lookup of indicies into a vector in registers.
+/// Byte-wise lookup of indices into a vector in registers.
 ///
-/// The xperm8 instruction operates on bytes. The rs1 register contains a vector of XLEN/8
-/// 8-bit elements. The rs2 register contains a vector of XLEN/8 8-bit indexes. The result is
+/// The xperm8 instruction operates on bytes. The rs1 register contains a vector of 4
+/// 8-bit elements. The rs2 register contains a vector of 4 8-bit indexes. The result is
 /// each element in rs2 replaced by the indexed element in rs1, or zero if the index into rs2
 /// is out of bounds.
 ///
@@ -37,14 +37,14 @@ unsafe extern "llvm-intrinsic" {
 #[target_feature(enable = "zbkx")]
 #[cfg_attr(test, assert_instr(xperm8))]
 #[inline]
-pub fn xperm8(rs1: usize, rs2: usize) -> usize {
-    unsafe { _xperm8_32(rs1 as i32, rs2 as i32) as usize }
+pub fn xperm8_32(rs1: u32, rs2: u32) -> u32 {
+    unsafe { _xperm8_32(rs1 as i32, rs2 as i32) as u32 }
 }
 
-/// Nibble-wise lookup of indicies into a vector.
+/// Nibble-wise lookup of indices into a vector.
 ///
-/// The xperm4 instruction operates on nibbles. The rs1 register contains a vector of XLEN/4
-/// 4-bit elements. The rs2 register contains a vector of XLEN/4 4-bit indexes. The result is
+/// The xperm4 instruction operates on nibbles. The rs1 register contains a vector of 8
+/// 4-bit elements. The rs2 register contains a vector of 8 4-bit indexes. The result is
 /// each element in rs2 replaced by the indexed element in rs1, or zero if the index into rs2
 /// is out of bounds.
 ///
@@ -57,13 +57,13 @@ pub fn xperm8(rs1: usize, rs2: usize) -> usize {
 #[target_feature(enable = "zbkx")]
 #[cfg_attr(test, assert_instr(xperm4))]
 #[inline]
-pub fn xperm4(rs1: usize, rs2: usize) -> usize {
-    unsafe { _xperm4_32(rs1 as i32, rs2 as i32) as usize }
+pub fn xperm4_32(rs1: u32, rs2: u32) -> u32 {
+    unsafe { _xperm4_32(rs1 as i32, rs2 as i32) as u32 }
 }
 
 /// Carry-less multiply (high-part)
 ///
-/// clmulh produces the upper half of the 2·XLEN carry-less product.
+/// clmulh produces the upper half of the 64-bit carry-less product.
 ///
 /// Source: RISC-V Bit-Manipulation ISA-extensions
 ///
@@ -74,13 +74,13 @@ pub fn xperm4(rs1: usize, rs2: usize) -> usize {
 #[target_feature(enable = "zbkc")]
 #[cfg_attr(test, assert_instr(clmulh))]
 #[inline]
-pub fn clmulh(rs1: usize, rs2: usize) -> usize {
-    unsafe { _clmulh_32(rs1 as i32, rs2 as i32) as usize }
+pub fn clmulh_32(rs1: u32, rs2: u32) -> u32 {
+    unsafe { _clmulh_32(rs1 as i32, rs2 as i32) as u32 }
 }
 
 /// Carry-less multiply (reversed)
 ///
-/// clmulr produces bits 2·XLEN−2:XLEN-1 of the 2·XLEN carry-less product.
+/// clmulr produces bits 62:31 of the 64-bit carry-less product.
 ///
 /// Source: RISC-V Bit-Manipulation ISA-extensions
 ///
@@ -91,8 +91,8 @@ pub fn clmulh(rs1: usize, rs2: usize) -> usize {
 #[target_feature(enable = "zbc")]
 #[cfg_attr(test, assert_instr(clmulr))]
 #[inline]
-pub fn clmulr(rs1: usize, rs2: usize) -> usize {
-    unsafe { _clmulr_32(rs1 as i32, rs2 as i32) as usize }
+pub fn clmulr_32(rs1: u32, rs2: u32) -> u32 {
+    unsafe { _clmulr_32(rs1 as i32, rs2 as i32) as u32 }
 }
 
 /// Place upper/lower halves of the source register into odd/even bits of the destination
@@ -113,8 +113,8 @@ pub fn clmulr(rs1: usize, rs2: usize) -> usize {
 // #[cfg_attr(test, assert_instr(zip))]
 #[inline]
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
-pub fn zip(rs: u32) -> u32 {
-    unsafe { _zip(rs as i32) as u32 }
+pub fn zip_32(rs: u32) -> u32 {
+    unsafe { _zip_32(rs as i32) as u32 }
 }
 
 /// Place odd and even bits of the source word into upper/lower halves of the destination.
@@ -132,6 +132,6 @@ pub fn zip(rs: u32) -> u32 {
 #[cfg_attr(test, assert_instr(unzip))]
 #[inline]
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
-pub fn unzip(rs: u32) -> u32 {
-    unsafe { _unzip(rs as i32) as u32 }
+pub fn unzip_32(rs: u32) -> u32 {
+    unsafe { _unzip_32(rs as i32) as u32 }
 }

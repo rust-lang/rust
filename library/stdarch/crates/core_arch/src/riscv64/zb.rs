@@ -9,7 +9,7 @@ unsafe extern "llvm-intrinsic" {
     fn _xperm4_64(rs1: i64, rs2: i64) -> i64;
 
     #[link_name = "llvm.riscv.orc.b.i64"]
-    fn _orc_b_64(rs1: i64) -> i64;
+    fn _orc_b_64(rs: i64) -> i64;
 
     #[link_name = "llvm.riscv.clmul.i64"]
     fn _clmul_64(rs1: i64, rs2: i64) -> i64;
@@ -21,10 +21,10 @@ unsafe extern "llvm-intrinsic" {
     fn _clmulr_64(rs1: i64, rs2: i64) -> i64;
 }
 
-/// Byte-wise lookup of indicies into a vector in registers.
+/// Byte-wise lookup of indices into a vector in registers.
 ///
-/// The xperm8 instruction operates on bytes. The rs1 register contains a vector of XLEN/8
-/// 8-bit elements. The rs2 register contains a vector of XLEN/8 8-bit indexes. The result is
+/// The xperm8 instruction operates on bytes. The rs1 register contains a vector of 8
+/// 8-bit elements. The rs2 register contains a vector of 8 8-bit indexes. The result is
 /// each element in rs2 replaced by the indexed element in rs1, or zero if the index into rs2
 /// is out of bounds.
 ///
@@ -37,14 +37,14 @@ unsafe extern "llvm-intrinsic" {
 #[target_feature(enable = "zbkx")]
 #[cfg_attr(test, assert_instr(xperm8))]
 #[inline]
-pub fn xperm8(rs1: usize, rs2: usize) -> usize {
-    unsafe { _xperm8_64(rs1 as i64, rs2 as i64) as usize }
+pub fn xperm8_64(rs1: u64, rs2: u64) -> u64 {
+    unsafe { _xperm8_64(rs1 as i64, rs2 as i64) as u64 }
 }
 
-/// Nibble-wise lookup of indicies into a vector.
+/// Nibble-wise lookup of indices into a vector.
 ///
-/// The xperm4 instruction operates on nibbles. The rs1 register contains a vector of XLEN/4
-/// 4-bit elements. The rs2 register contains a vector of XLEN/4 4-bit indexes. The result is
+/// The xperm4 instruction operates on nibbles. The rs1 register contains a vector of 16
+/// 4-bit elements. The rs2 register contains a vector of 16 4-bit indexes. The result is
 /// each element in rs2 replaced by the indexed element in rs1, or zero if the index into rs2
 /// is out of bounds.
 ///
@@ -57,8 +57,8 @@ pub fn xperm8(rs1: usize, rs2: usize) -> usize {
 #[target_feature(enable = "zbkx")]
 #[cfg_attr(test, assert_instr(xperm4))]
 #[inline]
-pub fn xperm4(rs1: usize, rs2: usize) -> usize {
-    unsafe { _xperm4_64(rs1 as i64, rs2 as i64) as usize }
+pub fn xperm4_64(rs1: u64, rs2: u64) -> u64 {
+    unsafe { _xperm4_64(rs1 as i64, rs2 as i64) as u64 }
 }
 
 /// Bitwise OR-Combine, byte granule
@@ -76,13 +76,13 @@ pub fn xperm4(rs1: usize, rs2: usize) -> usize {
 #[target_feature(enable = "zbb")]
 #[cfg_attr(test, assert_instr(orc.b))]
 #[inline]
-pub fn orc_b(rs: usize) -> usize {
-    unsafe { _orc_b_64(rs as i64) as usize }
+pub fn orc_b_64(rs: u64) -> u64 {
+    unsafe { _orc_b_64(rs as i64) as u64 }
 }
 
 /// Carry-less multiply (low-part)
 ///
-/// clmul produces the lower half of the 2·XLEN carry-less product.
+/// clmul produces the lower half of the 128-bit carry-less product.
 ///
 /// Source: RISC-V Bit-Manipulation ISA-extensions
 ///
@@ -93,13 +93,13 @@ pub fn orc_b(rs: usize) -> usize {
 #[target_feature(enable = "zbkc")]
 #[cfg_attr(test, assert_instr(clmul))]
 #[inline]
-pub fn clmul(rs1: usize, rs2: usize) -> usize {
-    unsafe { _clmul_64(rs1 as i64, rs2 as i64) as usize }
+pub fn clmul_64(rs1: u64, rs2: u64) -> u64 {
+    unsafe { _clmul_64(rs1 as i64, rs2 as i64) as u64 }
 }
 
 /// Carry-less multiply (high-part)
 ///
-/// clmulh produces the upper half of the 2·XLEN carry-less product.
+/// clmulh produces the upper half of the 128-bit carry-less product.
 ///
 /// Source: RISC-V Bit-Manipulation ISA-extensions
 ///
@@ -110,13 +110,13 @@ pub fn clmul(rs1: usize, rs2: usize) -> usize {
 #[target_feature(enable = "zbkc")]
 #[cfg_attr(test, assert_instr(clmulh))]
 #[inline]
-pub fn clmulh(rs1: usize, rs2: usize) -> usize {
-    unsafe { _clmulh_64(rs1 as i64, rs2 as i64) as usize }
+pub fn clmulh_64(rs1: u64, rs2: u64) -> u64 {
+    unsafe { _clmulh_64(rs1 as i64, rs2 as i64) as u64 }
 }
 
 /// Carry-less multiply (reversed)
 ///
-/// clmulr produces bits 2·XLEN−2:XLEN-1 of the 2·XLEN carry-less product.
+/// clmulr produces bits 126:63 of the 128-bit carry-less product.
 ///
 /// Source: RISC-V Bit-Manipulation ISA-extensions
 ///
@@ -127,6 +127,6 @@ pub fn clmulh(rs1: usize, rs2: usize) -> usize {
 #[target_feature(enable = "zbc")]
 #[cfg_attr(test, assert_instr(clmulr))]
 #[inline]
-pub fn clmulr(rs1: usize, rs2: usize) -> usize {
-    unsafe { _clmulr_64(rs1 as i64, rs2 as i64) as usize }
+pub fn clmulr_64(rs1: u64, rs2: u64) -> u64 {
+    unsafe { _clmulr_64(rs1 as i64, rs2 as i64) as u64 }
 }
