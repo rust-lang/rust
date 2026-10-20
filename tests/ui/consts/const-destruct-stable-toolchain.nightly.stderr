@@ -1,5 +1,5 @@
 error[E0493]: destructor of `T` cannot be evaluated at compile-time
-  --> const-drop.rs:1:24
+  --> $DIR/const-destruct-stable-toolchain.rs:12:24
    |
 LL | const fn const_drop<T>(_: T) {}
    |                        ^      - value is dropped here
