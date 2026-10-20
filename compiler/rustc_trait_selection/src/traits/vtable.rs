@@ -314,7 +314,7 @@ pub(crate) fn first_method_vtable_slot<'tcx>(
     key: ty::TraitRef<'tcx>,
 ) -> Option<usize> {
     debug_assert!(!key.has_non_region_infer() && !key.has_non_region_param());
-    tcx.debug_assert_fully_normalized(ty::TypingEnv::fully_monomorphized(), key);
+    tcx.assert_fully_normalized(ty::TypingEnv::fully_monomorphized(), key);
 
     let ty::Dynamic(source, _) = *key.self_ty().kind() else {
         bug!();
