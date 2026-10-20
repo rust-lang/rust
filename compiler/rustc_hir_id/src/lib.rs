@@ -16,6 +16,7 @@ use rustc_data_structures::stable_hash::{
     StableHash, StableHashCtxt, StableHasher, StableOrd, ToStableHashKey,
 };
 use rustc_macros::{Decodable, Encodable, StableHash};
+use rustc_serialize::ContextOrd;
 use rustc_span::def_id::{CRATE_DEF_ID, DefId, DefIndex, DefPathHash, LocalDefId, LocalModId};
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable)]
@@ -174,6 +175,12 @@ rustc_index::newtype_index! {
     #[encodable]
     #[orderable]
     pub struct ItemLocalId {}
+}
+
+impl<E> ContextOrd<E> for ItemLocalId {
+    fn stable_cmp_with_context(_context: E) -> impl FnMut(&Self, &Self) -> std::cmp::Ordering {
+        <Self as Ord>::cmp
+    }
 }
 
 impl ItemLocalId {
