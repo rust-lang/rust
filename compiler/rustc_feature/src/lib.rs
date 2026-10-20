@@ -34,17 +34,38 @@ pub struct Feature {
     issue: Option<NonZero<u32>>,
 }
 
-#[derive(Clone, Copy, Debug, Hash)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub enum UnstableFeatures {
-    /// Disallow use of unstable features, as on beta/stable channels.
+    /// Disallow use of unstable features and unstable compiler flags.
+    ///
+    /// Used by default by beta/stable channels.
     Disallow,
-    /// Allow use of unstable features, as on nightly.
+    /// Allow use of unstable features and unstable compiler flags.
+    ///
+    /// Used by default by the nightly channel.
     Allow,
+    /// Allow use of unstable features and unstable compiler flags, even if it is not the default
+    /// behavior.
+    ///
+    /// Can be used to make a beta/stable channel act like a nightly channel.
+    ///
     /// Errors are bypassed for bootstrapping. This is required any time
     /// during the build that feature-related lints are set to warn or above
     /// because the build turns on warnings-as-errors and uses lots of unstable
     /// features. As a result, this is always required for building Rust itself.
     Cheat,
+    /// Allow the use of selected *unstable compiler flags*, but disallow the use of
+    /// *unstable language features*.
+    ///
+    /// **This mode is designed only for internal testing of rustc.**
+    ///
+    /// Specifically, we need it when we want to test how rustc behaves on the stable channel,
+    /// but at the same time we need to be able to pass it some unstable `-Z` compiler flags
+    /// required for the testing infrastructure itself to work.
+    AllowSelectedUnstableCompilerFlagsOnly {
+        /// Unstable compiler flags that we are allowed to use, without their `-Z` prefix.
+        allowed_flags: Vec<String>,
+    },
 }
 
 impl UnstableFeatures {
@@ -70,8 +91,15 @@ impl UnstableFeatures {
         let is_unstable_crate =
             |var: &str| krate.is_some_and(|name| var.split(',').any(|new_krate| new_krate == name));
 
+        let allow_unstable_flags_prefix = "-allow-unstable-compiler-flags=";
         if let Ok(val) = env_var_rustc_bootstrap.as_deref() {
             match val {
+                // Act as stable, but still accept unstable compiler flags required by compiletest
+                val if let Some(flags) = val.strip_prefix(allow_unstable_flags_prefix) => {
+                    return UnstableFeatures::AllowSelectedUnstableCompilerFlagsOnly {
+                        allowed_flags: flags.split(",").map(|s| s.trim().to_string()).collect(),
+                    };
+                }
                 val if val == "1" || is_unstable_crate(val) => return UnstableFeatures::Cheat,
                 // Hypnotize ourselves so that we think we are a stable compiler and thus don't
                 // allow any unstable features.
@@ -83,10 +111,26 @@ impl UnstableFeatures {
         if disable_unstable_features { UnstableFeatures::Disallow } else { UnstableFeatures::Allow }
     }
 
+    /// Are we allowed to use the given unstable `flag`?
+    /// If it is a `-Z<flag>`, it should be passed without the `-Z` prefix.
+    pub fn allow_unstable_compiler_flag(&self, flag: &str) -> bool {
+        match self {
+            UnstableFeatures::Allow | UnstableFeatures::Cheat => true,
+            UnstableFeatures::AllowSelectedUnstableCompilerFlagsOnly { allowed_flags }
+                if allowed_flags.iter().any(|allowed_flag| allowed_flag == flag) =>
+            {
+                true
+            }
+            UnstableFeatures::Disallow
+            | UnstableFeatures::AllowSelectedUnstableCompilerFlagsOnly { .. } => false,
+        }
+    }
+
     pub fn is_nightly_build(&self) -> bool {
         match *self {
             UnstableFeatures::Allow | UnstableFeatures::Cheat => true,
-            UnstableFeatures::Disallow => false,
+            UnstableFeatures::Disallow
+            | UnstableFeatures::AllowSelectedUnstableCompilerFlagsOnly { .. } => false,
         }
     }
 }
