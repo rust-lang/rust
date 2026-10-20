@@ -1,5 +1,7 @@
 //@only-target: windows # this directly tests windows-only functions
 //@revisions: with_exit without_exit in_thread
+// FIXME: run-native explodes for the other revisions. (https://github.com/rust-lang/miri/issues/5444)
+//@[without_exit] run-native
 
 use std::ffi::c_void;
 use std::ptr;

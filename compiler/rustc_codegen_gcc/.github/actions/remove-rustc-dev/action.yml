@@ -4,10 +4,16 @@ description: >
   to the standard library in the rustup sysroot and make `extern crate libc` ambiguous (E0464).
   Use it once nothing needs to compile rustc_codegen_gcc anymore.
 
+inputs:
+  directory:
+    description: The cg_gcc directory whose rust-toolchain.toml selects the toolchain.
+    required: true
+
 runs:
   using: composite
   steps:
     - shell: bash
+      working-directory: ${{ inputs.directory }}
       run: |
         # Otherwise, rustup reinstalls it on the next `cargo` or `rustc` call.
         sed -i -E 's/"rustc-dev",? *//' rust-toolchain.toml

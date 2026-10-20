@@ -2851,7 +2851,9 @@ impl DirEntry {
     ///
     /// On Windows this function is cheap to call (no extra system calls
     /// needed), but on Unix platforms this function is the equivalent of
-    /// calling `symlink_metadata` on the path.
+    /// calling `symlink_metadata` on the path. In that case, if the file has been renamed or
+    /// replaced since the `DirEntry` was created, this can fail or return the metadata of a
+    /// different file!
     ///
     /// # Examples
     ///
@@ -2884,9 +2886,11 @@ impl DirEntry {
     ///
     /// # Platform-specific behavior
     ///
-    /// On Windows and most Unix platforms this function is free (no extra
-    /// system calls needed), but some Unix platforms may require the equivalent
-    /// call to `symlink_metadata` to learn about the target file type.
+    /// On Windows and most Unix platforms and file systems this function is free (no extra
+    /// system calls needed), but some Unix platforms or file systems may require the equivalent of
+    /// calling `symlink_metadata` to learn about the target file type. In that case, if the file
+    /// has been renamed or replaced since the `DirEntry` was created, this can fail or return the
+    /// file type of a different file!
     ///
     /// # Examples
     ///
@@ -3572,7 +3576,9 @@ pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// carefully!
 ///
 /// This function does **not** follow symbolic links and it will simply remove the
-/// symbolic link itself.
+/// symbolic link itself. If `path` itself is a symbolic link to a directory, it will get
+/// removed. If it is a symbolic link to a file, behavior is platform-specific:
+/// currently, it will get removed on Unix-like systems but not on Windows.
 ///
 /// # Platform-specific behavior
 ///

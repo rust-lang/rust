@@ -20,7 +20,7 @@ jobs:
     environment: publish-auto
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           fetch-depth: 0
 
@@ -34,7 +34,7 @@ jobs:
       - name: Install cargo-workspaces
         run: cargo install --locked cargo-workspaces --version "0.3.6"
 
-      - uses: rust-lang/crates-io-auth-action@v1
+      - uses: rust-lang/crates-io-auth-action@c6f97d42243bad5fab37ca0427f495c86d5b1a18 # v1.0.5
         id: auth
 
       - name: Publish Crates

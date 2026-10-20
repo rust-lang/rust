@@ -215,7 +215,7 @@ macro_rules! size_and_align_expr {
             {
                 $($s)*
                 let val = { $($t)* };
-                $crate::layout::tests::check_size_and_align_expr(
+                $crate::tests::layout::check_size_and_align_expr(
                     &format!("{{ {} let val = {{ {} }}; val }}", stringify!($($s)*), stringify!($($t)*)),
                     &format!("//- minicore: {}\n", stringify!($($x),*)),
                     ::std::mem::size_of_val(&val) as u64,
@@ -229,7 +229,7 @@ macro_rules! size_and_align_expr {
             #[allow(dead_code)]
             {
                 let val = { $($t)* };
-                $crate::layout::tests::check_size_and_align_expr(
+                $crate::tests::layout::check_size_and_align_expr(
                     stringify!($($t)*),
                     "",
                     ::std::mem::size_of_val(&val) as u64,
@@ -299,6 +299,74 @@ struct Goal {
 }
 "#,
         LayoutError::RecursiveTypeWithoutIndirection,
+    );
+}
+
+#[test]
+fn pointer_to_infinite_struct() {
+    check_size_and_align(
+        r#"
+struct A { m: A }
+struct Goal(*const A);
+"#,
+        "",
+        8,
+        8,
+    );
+}
+
+#[test]
+fn reference_to_infinite_struct() {
+    check_size_and_align(
+        r#"
+struct A { m: A }
+struct Goal(&'static A);
+"#,
+        "",
+        8,
+        8,
+    );
+}
+
+#[test]
+fn pointer_to_mutually_infinite_structs() {
+    check_size_and_align(
+        r#"
+struct A { b: B }
+struct B { a: A }
+struct Goal(*const A);
+"#,
+        "",
+        8,
+        8,
+    );
+}
+
+#[test]
+fn pointer_to_infinite_struct_through_generic() {
+    check_size_and_align(
+        r#"
+struct W<T>(T);
+struct A { m: W<A> }
+struct Goal(*const W<A>);
+"#,
+        "",
+        8,
+        8,
+    );
+}
+
+#[test]
+fn box_like_infinite_struct() {
+    check_size_and_align(
+        r#"
+struct BoxLike<T: ?Sized>(*mut T);
+struct A { m: A }
+struct Goal(BoxLike<A>);
+"#,
+        "",
+        8,
+        8,
     );
 }
 

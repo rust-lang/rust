@@ -206,13 +206,14 @@ macro_rules! lexical_ord {
 
 // Same parameter interleaving as `lexical_ord` above
 macro_rules! lexical_chain {
-    ($chain_rel: ident, $a:expr, $b:expr $(,$rest_a:expr, $rest_b:expr)*) => {{
-        PartialOrd::$chain_rel(&$a, &$b)?;
-        lexical_chain!($chain_rel $(,$rest_a, $rest_b)*)
-    }};
-    ($chain_rel: ident) => {
+    ($chain_rel:ident $(, $a:expr, $b:expr)* $(,)?) => {{
+        // Using `?` here makes this harder on mir-opt due
+        // to the `Try` residuals bloating the function
+        $(if let r @ Break(_) = PartialOrd::$chain_rel(&$a, &$b) {
+            return r;
+        })*
         Continue(())
-    };
+    }};
 }
 
 macro_rules! lexical_partial_cmp {

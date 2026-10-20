@@ -22,7 +22,7 @@ pub const DEFAULT_LINTS: &[Lint] = &[
     Lint {
         label: "aarch64_softfloat_neon",
         description: r##"detects code that could be affected by ABI issues on aarch64 softfloat targets"##,
-        default_severity: Severity::Warning,
+        default_severity: Severity::Error,
         warn_since: None,
         deny_since: None,
     },
@@ -30,6 +30,13 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         label: "absolute_paths_not_starting_with_crate",
         description: r##"fully qualified paths that start with a module name instead of `crate`, `self`, or an extern crate name"##,
         default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "aligned_fields_in_packed",
+        description: r##"`repr(C, align)` types nested inside `repr(C, packed)` types do not always have a C-compatible layout"##,
+        default_severity: Severity::Error,
         warn_since: None,
         deny_since: None,
     },
@@ -174,6 +181,13 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         deny_since: None,
     },
     Lint {
+        label: "c_void_returns",
+        description: r##"detects use of `c_void` as a return type"##,
+        default_severity: Severity::Warning,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "clashing_extern_declarations",
         description: r##"detects when an extern fn has been declared with the same name but different types"##,
         default_severity: Severity::Warning,
@@ -272,13 +286,6 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         deny_since: None,
     },
     Lint {
-        label: "dependency_on_unit_never_type_fallback",
-        description: r##"never type fallback affecting unsafe function calls"##,
-        default_severity: Severity::Error,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
         label: "deprecated",
         description: r##"detects use of deprecated items"##,
         default_severity: Severity::Warning,
@@ -343,14 +350,14 @@ pub const DEFAULT_LINTS: &[Lint] = &[
     },
     Lint {
         label: "dropping_copy_types",
-        description: r##"calls to `std::mem::drop` with a value that implements Copy"##,
+        description: r##"calls to `drop` and `drop_in_place` where the dropped value implements Copy"##,
         default_severity: Severity::Warning,
         warn_since: None,
         deny_since: None,
     },
     Lint {
         label: "dropping_references",
-        description: r##"calls to `std::mem::drop` with a reference instead of an owned value"##,
+        description: r##"calls to `drop` and `drop_in_place` where the dropped type is a reference instead of an owned value"##,
         default_severity: Severity::Warning,
         warn_since: None,
         deny_since: None,
@@ -370,6 +377,13 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         deny_since: None,
     },
     Lint {
+        label: "duplicate_tools",
+        description: r##"duplicate tools found in crate-level `#[register_tools]` directives"##,
+        default_severity: Severity::Error,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "dyn_drop",
         description: r##"trait objects of the form `dyn Drop` are useless"##,
         default_severity: Severity::Warning,
@@ -380,13 +394,6 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         label: "edition_2024_expr_fragment_specifier",
         description: r##"The `expr` fragment specifier will accept more expressions in the 2024 edition. To keep the existing behavior, use the `expr_2021` fragment specifier."##,
         default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
-        label: "elided_lifetimes_in_associated_constant",
-        description: r##"elided lifetimes cannot be used in associated constants in impls"##,
-        default_severity: Severity::Error,
         warn_since: None,
         deny_since: None,
     },
@@ -489,13 +496,6 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         deny_since: None,
     },
     Lint {
-        label: "fuzzy_provenance_casts",
-        description: r##"a fuzzy integer to pointer cast is used"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
         label: "hidden_glob_reexports",
         description: r##"name introduced by a private item shadows a name introduced by a public glob re-export"##,
         default_severity: Severity::Warning,
@@ -531,6 +531,13 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         deny_since: None,
     },
     Lint {
+        label: "implicit_provenance_casts",
+        description: r##"an `as` cast relying on exposed provenance is used"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "improper_ctypes",
         description: r##"proper use of libc types in foreign modules"##,
         default_severity: Severity::Warning,
@@ -561,6 +568,13 @@ pub const DEFAULT_LINTS: &[Lint] = &[
     Lint {
         label: "incomplete_include",
         description: r##"trailing content in included file"##,
+        default_severity: Severity::Error,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "ineffective_unstable_reexports",
+        description: r##"detects ineffective `#[unstable]` attributes on re-exports"##,
         default_severity: Severity::Error,
         warn_since: None,
         deny_since: None,
@@ -657,6 +671,13 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         deny_since: None,
     },
     Lint {
+        label: "invalid_runtime_symbol_definitions",
+        description: r##"invalid definition of a symbol used by the standard library"##,
+        default_severity: Severity::Error,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "invalid_type_param_default",
         description: r##"type parameter default erroneously allowed in invalid location"##,
         default_severity: Severity::Error,
@@ -748,13 +769,6 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         deny_since: None,
     },
     Lint {
-        label: "lossy_provenance_casts",
-        description: r##"a lossy pointer to integer cast is used"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
         label: "macro_expanded_macro_exports_accessed_by_absolute_paths",
         description: r##"macro-expanded `macro_export` macros from the current crate cannot be referred to by absolute paths"##,
         default_severity: Severity::Error,
@@ -771,6 +785,13 @@ pub const DEFAULT_LINTS: &[Lint] = &[
     Lint {
         label: "malformed_diagnostic_attributes",
         description: r##"detects malformed diagnostic attributes"##,
+        default_severity: Severity::Warning,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "malformed_diagnostic_filters",
+        description: r##"detects malformed filters in diagnostic attributes"##,
         default_severity: Severity::Warning,
         warn_since: None,
         deny_since: None,
@@ -793,6 +814,13 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         label: "meta_variable_misuse",
         description: r##"possible meta-variable misuse at macro definition"##,
         default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "method_call_on_diverging_infer_var",
+        description: r##"detects method calls on a result of never-to-any coercion"##,
+        default_severity: Severity::Warning,
         warn_since: None,
         deny_since: None,
     },
@@ -909,13 +937,6 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         deny_since: None,
     },
     Lint {
-        label: "no_mangle_generic_items",
-        description: r##"generic items must be mangled"##,
-        default_severity: Severity::Warning,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
         label: "non_ascii_idents",
         description: r##"detects non-ASCII identifiers"##,
         default_severity: Severity::Allow,
@@ -1014,6 +1035,13 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         deny_since: None,
     },
     Lint {
+        label: "partial_stack_protector",
+        description: r##"partial use of stack-protector that was previously accepted and used in practice"##,
+        default_severity: Severity::Warning,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "path_statements",
         description: r##"path statements with no effect"##,
         default_severity: Severity::Warning,
@@ -1063,6 +1091,20 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         deny_since: None,
     },
     Lint {
+        label: "raw_borrows_via_references",
+        description: r##"creating raw borrows via references is discouraged"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "recursion_depth_exceeding_limit",
+        description: r##"detects trait solving overflow that only happens with the next solver"##,
+        default_severity: Severity::Warning,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "redundant_imports",
         description: r##"imports that are redundant due to being imported already"##,
         default_severity: Severity::Allow,
@@ -1105,16 +1147,16 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         deny_since: None,
     },
     Lint {
-        label: "repr_c_enums_larger_than_int",
-        description: r##"repr(C) enums with discriminant values that do not fit into a C int"##,
+        label: "repeated_reprs",
+        description: r##"detects repeated representations in `#[repr(..)]` attributes"##,
         default_severity: Severity::Warning,
         warn_since: None,
         deny_since: None,
     },
     Lint {
-        label: "repr_transparent_non_zst_fields",
-        description: r##"transparent type contains an external ZST that is marked #[non_exhaustive] or contains private fields"##,
-        default_severity: Severity::Error,
+        label: "repr_c_enums_larger_than_int",
+        description: r##"repr(C) enums with discriminant values that do not fit into a C int"##,
+        default_severity: Severity::Warning,
         warn_since: None,
         deny_since: None,
     },
@@ -1196,6 +1238,13 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         deny_since: None,
     },
     Lint {
+        label: "semicolon_in_expressions_from_non_local_macros",
+        description: r##"trailing semicolon in macro body used as expression"##,
+        default_severity: Severity::Warning,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "shadowing_supertrait_items",
         description: r##"detects when a supertrait item is shadowed by a subtrait item"##,
         default_severity: Severity::Allow,
@@ -1233,6 +1282,13 @@ pub const DEFAULT_LINTS: &[Lint] = &[
     Lint {
         label: "suspicious_double_ref_op",
         description: r##"suspicious call of trait method on `&&T`"##,
+        default_severity: Severity::Warning,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "suspicious_runtime_symbol_definitions",
+        description: r##"suspicious definition of a symbol used by the standard library"##,
         default_severity: Severity::Warning,
         warn_since: None,
         deny_since: None,
@@ -1337,8 +1393,15 @@ pub const DEFAULT_LINTS: &[Lint] = &[
     },
     Lint {
         label: "undropped_manually_drops",
-        description: r##"calls to `std::mem::drop` with `std::mem::ManuallyDrop` instead of it's inner value"##,
+        description: r##"calls to `drop` and `drop_in_place` where the dropped value is `std::mem::ManuallyDrop`"##,
         default_severity: Severity::Error,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "unevaluated_default_field_value",
+        description: r##"detects default field values on types that have const parameters"##,
+        default_severity: Severity::Warning,
         warn_since: None,
         deny_since: None,
     },
@@ -1486,6 +1549,13 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         label: "unstable_features",
         description: r##"enabling unstable features"##,
         default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "unstable_imports",
+        description: r##"lints on accidentally allowed unstable imports"##,
+        default_severity: Severity::Error,
         warn_since: None,
         deny_since: None,
     },
@@ -1728,6 +1798,13 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         deny_since: None,
     },
     Lint {
+        label: "x86_softfloat_sse",
+        description: r##"detects code that could be affected by LLVM backend issues on x86 softfloat targets"##,
+        default_severity: Severity::Error,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "deprecated_safe",
         description: r##"lint group for: deprecated-safe-2024"##,
         default_severity: Severity::Allow,
@@ -1736,7 +1813,7 @@ pub const DEFAULT_LINTS: &[Lint] = &[
     },
     Lint {
         label: "future_incompatible",
-        description: r##"lint group for: internal-eq-trait-method-impls, aarch64-softfloat-neon, ambiguous-associated-items, ambiguous-derive-helpers, ambiguous-glob-imported-traits, ambiguous-glob-imports, ambiguous-import-visibilities, ambiguous-panic-imports, coherence-leak-check, conflicting-repr-hints, const-evaluatable-unchecked, elided-lifetimes-in-associated-constant, float-literal-f32-fallback, forbidden-lint-groups, ill-formed-attribute-input, invalid-macro-export-arguments, invalid-type-param-default, late-bound-lifetime-arguments, legacy-derive-helpers, macro-expanded-macro-exports-accessed-by-absolute-paths, out-of-scope-macro-calls, patterns-in-fns-without-body, proc-macro-derive-resolution-fallback, pub-use-of-private-extern-crate, repr-c-enums-larger-than-int, repr-transparent-non-zst-fields, self-constructor-from-outer-item, semicolon-in-expressions-from-macros, uncovered-param-in-projection, uninhabited-static, unstable-name-collisions, unstable-syntax-pre-expansion, unsupported-calling-conventions, varargs-without-pattern"##,
+        description: r##"lint group for: internal-eq-trait-method-impls, aarch64-softfloat-neon, ambiguous-associated-items, ambiguous-derive-helpers, ambiguous-glob-imported-traits, ambiguous-glob-imports, ambiguous-import-visibilities, ambiguous-panic-imports, coherence-leak-check, conflicting-repr-hints, const-evaluatable-unchecked, float-literal-f32-fallback, forbidden-lint-groups, ill-formed-attribute-input, invalid-macro-export-arguments, invalid-type-param-default, late-bound-lifetime-arguments, legacy-derive-helpers, macro-expanded-macro-exports-accessed-by-absolute-paths, method-call-on-diverging-infer-var, out-of-scope-macro-calls, partial-stack-protector, patterns-in-fns-without-body, proc-macro-derive-resolution-fallback, pub-use-of-private-extern-crate, recursion-depth-exceeding-limit, repr-c-enums-larger-than-int, self-constructor-from-outer-item, semicolon-in-expressions-from-macros, semicolon-in-expressions-from-non-local-macros, uncovered-param-in-projection, uninhabited-static, unstable-imports, unstable-name-collisions, unstable-syntax-pre-expansion, unsupported-calling-conventions, varargs-without-pattern, x86-softfloat-sse"##,
         default_severity: Severity::Allow,
         warn_since: None,
         deny_since: None,
@@ -1785,14 +1862,14 @@ pub const DEFAULT_LINTS: &[Lint] = &[
     },
     Lint {
         label: "rust_2021_compatibility",
-        description: r##"lint group for: ellipsis-inclusive-range-patterns, array-into-iter, non-fmt-panics, bare-trait-objects, rust-2021-incompatible-closure-captures, rust-2021-incompatible-or-patterns, rust-2021-prefixes-incompatible-syntax, rust-2021-prelude-collisions"##,
+        description: r##"lint group for: ellipsis-inclusive-range-patterns, non-fmt-panics, array-into-iter, bare-trait-objects, rust-2021-incompatible-closure-captures, rust-2021-incompatible-or-patterns, rust-2021-prefixes-incompatible-syntax, rust-2021-prelude-collisions"##,
         default_severity: Severity::Allow,
         warn_since: None,
         deny_since: None,
     },
     Lint {
         label: "rust_2024_compatibility",
-        description: r##"lint group for: keyword-idents-2024, edition-2024-expr-fragment-specifier, boxed-slice-into-iter, impl-trait-overcaptures, if-let-rescope, static-mut-refs, dependency-on-unit-never-type-fallback, deprecated-safe-2024, missing-unsafe-on-extern, never-type-fallback-flowing-into-unsafe, rust-2024-guarded-string-incompatible-syntax, rust-2024-incompatible-pat, rust-2024-prelude-collisions, tail-expr-drop-order, unsafe-attr-outside-unsafe, unsafe-op-in-unsafe-fn"##,
+        description: r##"lint group for: keyword-idents-2024, edition-2024-expr-fragment-specifier, if-let-rescope, impl-trait-overcaptures, boxed-slice-into-iter, static-mut-refs, deprecated-safe-2024, missing-unsafe-on-extern, rust-2024-guarded-string-incompatible-syntax, rust-2024-incompatible-pat, rust-2024-prelude-collisions, tail-expr-drop-order, unsafe-attr-outside-unsafe, unsafe-op-in-unsafe-fn"##,
         default_severity: Severity::Allow,
         warn_since: None,
         deny_since: None,
@@ -1806,7 +1883,7 @@ pub const DEFAULT_LINTS: &[Lint] = &[
     },
     Lint {
         label: "unused",
-        description: r##"lint group for: unused-imports, unused-variables, unused-visibilities, unused-assignments, dead-code, unused-mut, unreachable-code, unreachable-patterns, unused-must-use, unused-unsafe, path-statements, unused-attributes, unused-macros, unused-macro-rules, unused-allocation, unused-doc-comments, unused-extern-crates, unused-features, unused-labels, unused-parens, unused-braces, redundant-semicolons, map-unit-fn"##,
+        description: r##"lint group for: unused-imports, unused-variables, unused-visibilities, unused-assignments, dead-code, unused-mut, unreachable-cfg-select-predicates, unreachable-code, unreachable-patterns, unused-must-use, unused-unsafe, path-statements, unused-attributes, unused-macros, unused-macro-rules, unused-allocation, unused-doc-comments, unused-extern-crates, unused-features, unused-labels, unused-parens, unused-braces, redundant-semicolons, map-unit-fn, repeated-reprs"##,
         default_severity: Severity::Allow,
         warn_since: None,
         deny_since: None,
@@ -1827,7 +1904,7 @@ pub const DEFAULT_LINT_GROUPS: &[LintGroup] = &[
     LintGroup {
         lint: Lint {
             label: "future_incompatible",
-            description: r##"lint group for: internal-eq-trait-method-impls, aarch64-softfloat-neon, ambiguous-associated-items, ambiguous-derive-helpers, ambiguous-glob-imported-traits, ambiguous-glob-imports, ambiguous-import-visibilities, ambiguous-panic-imports, coherence-leak-check, conflicting-repr-hints, const-evaluatable-unchecked, elided-lifetimes-in-associated-constant, float-literal-f32-fallback, forbidden-lint-groups, ill-formed-attribute-input, invalid-macro-export-arguments, invalid-type-param-default, late-bound-lifetime-arguments, legacy-derive-helpers, macro-expanded-macro-exports-accessed-by-absolute-paths, out-of-scope-macro-calls, patterns-in-fns-without-body, proc-macro-derive-resolution-fallback, pub-use-of-private-extern-crate, repr-c-enums-larger-than-int, repr-transparent-non-zst-fields, self-constructor-from-outer-item, semicolon-in-expressions-from-macros, uncovered-param-in-projection, uninhabited-static, unstable-name-collisions, unstable-syntax-pre-expansion, unsupported-calling-conventions, varargs-without-pattern"##,
+            description: r##"lint group for: internal-eq-trait-method-impls, aarch64-softfloat-neon, ambiguous-associated-items, ambiguous-derive-helpers, ambiguous-glob-imported-traits, ambiguous-glob-imports, ambiguous-import-visibilities, ambiguous-panic-imports, coherence-leak-check, conflicting-repr-hints, const-evaluatable-unchecked, float-literal-f32-fallback, forbidden-lint-groups, ill-formed-attribute-input, invalid-macro-export-arguments, invalid-type-param-default, late-bound-lifetime-arguments, legacy-derive-helpers, macro-expanded-macro-exports-accessed-by-absolute-paths, method-call-on-diverging-infer-var, out-of-scope-macro-calls, partial-stack-protector, patterns-in-fns-without-body, proc-macro-derive-resolution-fallback, pub-use-of-private-extern-crate, recursion-depth-exceeding-limit, repr-c-enums-larger-than-int, self-constructor-from-outer-item, semicolon-in-expressions-from-macros, semicolon-in-expressions-from-non-local-macros, uncovered-param-in-projection, uninhabited-static, unstable-imports, unstable-name-collisions, unstable-syntax-pre-expansion, unsupported-calling-conventions, varargs-without-pattern, x86-softfloat-sse"##,
             default_severity: Severity::Allow,
             warn_since: None,
             deny_since: None,
@@ -1844,7 +1921,6 @@ pub const DEFAULT_LINT_GROUPS: &[LintGroup] = &[
             "coherence_leak_check",
             "conflicting_repr_hints",
             "const_evaluatable_unchecked",
-            "elided_lifetimes_in_associated_constant",
             "float_literal_f32_fallback",
             "forbidden_lint_groups",
             "ill_formed_attribute_input",
@@ -1853,20 +1929,25 @@ pub const DEFAULT_LINT_GROUPS: &[LintGroup] = &[
             "late_bound_lifetime_arguments",
             "legacy_derive_helpers",
             "macro_expanded_macro_exports_accessed_by_absolute_paths",
+            "method_call_on_diverging_infer_var",
             "out_of_scope_macro_calls",
+            "partial_stack_protector",
             "patterns_in_fns_without_body",
             "proc_macro_derive_resolution_fallback",
             "pub_use_of_private_extern_crate",
+            "recursion_depth_exceeding_limit",
             "repr_c_enums_larger_than_int",
-            "repr_transparent_non_zst_fields",
             "self_constructor_from_outer_item",
             "semicolon_in_expressions_from_macros",
+            "semicolon_in_expressions_from_non_local_macros",
             "uncovered_param_in_projection",
             "uninhabited_static",
+            "unstable_imports",
             "unstable_name_collisions",
             "unstable_syntax_pre_expansion",
             "unsupported_calling_conventions",
             "varargs_without_pattern",
+            "x86_softfloat_sse",
         ],
     },
     LintGroup {
@@ -1943,15 +2024,15 @@ pub const DEFAULT_LINT_GROUPS: &[LintGroup] = &[
     LintGroup {
         lint: Lint {
             label: "rust_2021_compatibility",
-            description: r##"lint group for: ellipsis-inclusive-range-patterns, array-into-iter, non-fmt-panics, bare-trait-objects, rust-2021-incompatible-closure-captures, rust-2021-incompatible-or-patterns, rust-2021-prefixes-incompatible-syntax, rust-2021-prelude-collisions"##,
+            description: r##"lint group for: ellipsis-inclusive-range-patterns, non-fmt-panics, array-into-iter, bare-trait-objects, rust-2021-incompatible-closure-captures, rust-2021-incompatible-or-patterns, rust-2021-prefixes-incompatible-syntax, rust-2021-prelude-collisions"##,
             default_severity: Severity::Allow,
             warn_since: None,
             deny_since: None,
         },
         children: &[
             "ellipsis_inclusive_range_patterns",
-            "array_into_iter",
             "non_fmt_panics",
+            "array_into_iter",
             "bare_trait_objects",
             "rust_2021_incompatible_closure_captures",
             "rust_2021_incompatible_or_patterns",
@@ -1962,7 +2043,7 @@ pub const DEFAULT_LINT_GROUPS: &[LintGroup] = &[
     LintGroup {
         lint: Lint {
             label: "rust_2024_compatibility",
-            description: r##"lint group for: keyword-idents-2024, edition-2024-expr-fragment-specifier, boxed-slice-into-iter, impl-trait-overcaptures, if-let-rescope, static-mut-refs, dependency-on-unit-never-type-fallback, deprecated-safe-2024, missing-unsafe-on-extern, never-type-fallback-flowing-into-unsafe, rust-2024-guarded-string-incompatible-syntax, rust-2024-incompatible-pat, rust-2024-prelude-collisions, tail-expr-drop-order, unsafe-attr-outside-unsafe, unsafe-op-in-unsafe-fn"##,
+            description: r##"lint group for: keyword-idents-2024, edition-2024-expr-fragment-specifier, if-let-rescope, impl-trait-overcaptures, boxed-slice-into-iter, static-mut-refs, deprecated-safe-2024, missing-unsafe-on-extern, rust-2024-guarded-string-incompatible-syntax, rust-2024-incompatible-pat, rust-2024-prelude-collisions, tail-expr-drop-order, unsafe-attr-outside-unsafe, unsafe-op-in-unsafe-fn"##,
             default_severity: Severity::Allow,
             warn_since: None,
             deny_since: None,
@@ -1970,14 +2051,12 @@ pub const DEFAULT_LINT_GROUPS: &[LintGroup] = &[
         children: &[
             "keyword_idents_2024",
             "edition_2024_expr_fragment_specifier",
-            "boxed_slice_into_iter",
-            "impl_trait_overcaptures",
             "if_let_rescope",
+            "impl_trait_overcaptures",
+            "boxed_slice_into_iter",
             "static_mut_refs",
-            "dependency_on_unit_never_type_fallback",
             "deprecated_safe_2024",
             "missing_unsafe_on_extern",
-            "never_type_fallback_flowing_into_unsafe",
             "rust_2024_guarded_string_incompatible_syntax",
             "rust_2024_incompatible_pat",
             "rust_2024_prelude_collisions",
@@ -2004,7 +2083,7 @@ pub const DEFAULT_LINT_GROUPS: &[LintGroup] = &[
     LintGroup {
         lint: Lint {
             label: "unused",
-            description: r##"lint group for: unused-imports, unused-variables, unused-visibilities, unused-assignments, dead-code, unused-mut, unreachable-code, unreachable-patterns, unused-must-use, unused-unsafe, path-statements, unused-attributes, unused-macros, unused-macro-rules, unused-allocation, unused-doc-comments, unused-extern-crates, unused-features, unused-labels, unused-parens, unused-braces, redundant-semicolons, map-unit-fn"##,
+            description: r##"lint group for: unused-imports, unused-variables, unused-visibilities, unused-assignments, dead-code, unused-mut, unreachable-cfg-select-predicates, unreachable-code, unreachable-patterns, unused-must-use, unused-unsafe, path-statements, unused-attributes, unused-macros, unused-macro-rules, unused-allocation, unused-doc-comments, unused-extern-crates, unused-features, unused-labels, unused-parens, unused-braces, redundant-semicolons, map-unit-fn, repeated-reprs"##,
             default_severity: Severity::Allow,
             warn_since: None,
             deny_since: None,
@@ -2016,6 +2095,7 @@ pub const DEFAULT_LINT_GROUPS: &[LintGroup] = &[
             "unused_assignments",
             "dead_code",
             "unused_mut",
+            "unreachable_cfg_select_predicates",
             "unreachable_code",
             "unreachable_patterns",
             "unused_must_use",
@@ -2033,6 +2113,7 @@ pub const DEFAULT_LINT_GROUPS: &[LintGroup] = &[
             "unused_braces",
             "redundant_semicolons",
             "map_unit_fn",
+            "repeated_reprs",
         ],
     },
 ];
@@ -2041,6 +2122,13 @@ pub const RUSTDOC_LINTS: &[Lint] = &[
     Lint {
         label: "rustdoc::bare_urls",
         description: r##"detects URLs that are not hyperlinks"##,
+        default_severity: Severity::Warning,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "rustdoc::broken_footnote",
+        description: r##"detects footnote references with no associated definition"##,
         default_severity: Severity::Warning,
         warn_since: None,
         deny_since: None,
@@ -2062,6 +2150,13 @@ pub const RUSTDOC_LINTS: &[Lint] = &[
     Lint {
         label: "rustdoc::invalid_html_tags",
         description: r##"detects invalid HTML tags in doc comments"##,
+        default_severity: Severity::Warning,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "rustdoc::invalid_markdown_table",
+        description: r##"detects unescaped pipe in table rows in doc comments"##,
         default_severity: Severity::Warning,
         warn_since: None,
         deny_since: None,
@@ -2116,8 +2211,15 @@ pub const RUSTDOC_LINTS: &[Lint] = &[
         deny_since: None,
     },
     Lint {
+        label: "rustdoc::unused_footnote_definition",
+        description: r##"detects unused footnote definitions"##,
+        default_severity: Severity::Warning,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "rustdoc::all",
-        description: r##"lint group for: rustdoc::broken-intra-doc-links, rustdoc::private-intra-doc-links, rustdoc::private-doc-tests, rustdoc::invalid-codeblock-attributes, rustdoc::invalid-rust-codeblocks, rustdoc::invalid-html-tags, rustdoc::bare-urls, rustdoc::missing-crate-level-docs, rustdoc::unescaped-backticks, rustdoc::redundant-explicit-links"##,
+        description: r##"lint group for: rustdoc::broken-intra-doc-links, rustdoc::private-intra-doc-links, rustdoc::private-doc-tests, rustdoc::invalid-codeblock-attributes, rustdoc::invalid-rust-codeblocks, rustdoc::invalid-html-tags, rustdoc::bare-urls, rustdoc::missing-crate-level-docs, rustdoc::unescaped-backticks, rustdoc::redundant-explicit-links, rustdoc::broken-footnote, rustdoc::unused-footnote-definition, rustdoc::invalid-markdown-table"##,
         default_severity: Severity::Allow,
         warn_since: None,
         deny_since: None,
@@ -2127,7 +2229,7 @@ pub const RUSTDOC_LINTS: &[Lint] = &[
 pub const RUSTDOC_LINT_GROUPS: &[LintGroup] = &[LintGroup {
     lint: Lint {
         label: "rustdoc::all",
-        description: r##"lint group for: rustdoc::broken-intra-doc-links, rustdoc::private-intra-doc-links, rustdoc::private-doc-tests, rustdoc::invalid-codeblock-attributes, rustdoc::invalid-rust-codeblocks, rustdoc::invalid-html-tags, rustdoc::bare-urls, rustdoc::missing-crate-level-docs, rustdoc::unescaped-backticks, rustdoc::redundant-explicit-links"##,
+        description: r##"lint group for: rustdoc::broken-intra-doc-links, rustdoc::private-intra-doc-links, rustdoc::private-doc-tests, rustdoc::invalid-codeblock-attributes, rustdoc::invalid-rust-codeblocks, rustdoc::invalid-html-tags, rustdoc::bare-urls, rustdoc::missing-crate-level-docs, rustdoc::unescaped-backticks, rustdoc::redundant-explicit-links, rustdoc::broken-footnote, rustdoc::unused-footnote-definition, rustdoc::invalid-markdown-table"##,
         default_severity: Severity::Allow,
         warn_since: None,
         deny_since: None,
@@ -2143,6 +2245,9 @@ pub const RUSTDOC_LINT_GROUPS: &[LintGroup] = &[LintGroup {
         "rustdoc::missing_crate_level_docs",
         "rustdoc::unescaped_backticks",
         "rustdoc::redundant_explicit_links",
+        "rustdoc::broken_footnote",
+        "rustdoc::unused_footnote_definition",
+        "rustdoc::invalid_markdown_table",
     ],
 }];
 
@@ -2281,22 +2386,6 @@ call_nonsecure_function:
         add     sp, #16
         pop     {r7, pc}
 ```
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
-        label: "abi_custom",
-        description: r##"# `abi_custom`
-
-Allows `extern "custom" fn()`.
-
-The tracking issue for this feature is: [#140829]
-
-[#140829]: https://github.com/rust-lang/rust/issues/140829
-
-------------------------
 "##,
         default_severity: Severity::Allow,
         warn_since: None,
@@ -2467,20 +2556,6 @@ The tracking issue for this feature is: [#156481]
         deny_since: None,
     },
     Lint {
-        label: "abi_unadjusted",
-        description: r##"# `abi_unadjusted`
-
-Allows using the `unadjusted` ABI; perma-unstable.
-
-This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
         label: "abi_vectorcall",
         description: r##"# `abi_vectorcall`
 
@@ -2579,6 +2654,22 @@ The tracking issue for this feature is: [#121891]
 The tracking issue for this feature is: [#101035]
 
 [#101035]: https://github.com/rust-lang/rust/issues/101035
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "addr_unspecified_from",
+        description: r##"# `addr_unspecified_from`
+
+
+
+The tracking issue for this feature is: [#158975]
+
+[#158975]: https://github.com/rust-lang/rust/issues/158975
 
 ------------------------
 "##,
@@ -2691,6 +2782,22 @@ This feature has no tracking issue, and is therefore likely internal to the comp
         deny_since: None,
     },
     Lint {
+        label: "alloc_io",
+        description: r##"# `alloc_io`
+
+
+
+The tracking issue for this feature is: [#154046]
+
+[#154046]: https://github.com/rust-lang/rust/issues/154046
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "alloc_slice_into_array",
         description: r##"# `alloc_slice_into_array`
 
@@ -2707,12 +2814,12 @@ The tracking issue for this feature is: [#148082]
         deny_since: None,
     },
     Lint {
-        label: "allocator_api",
-        description: r##"# `allocator_api`
+        label: "allocator_ext",
+        description: r##"# `allocator_ext`
 
-The tracking issue for this feature is [#32838]
+The tracking issue for this feature is: [#163177]
 
-[#32838]: https://github.com/rust-lang/rust/issues/32838
+[#163177]: https://github.com/rust-lang/rust/issues/163177
 
 ------------------------
 
@@ -3056,6 +3163,22 @@ The tracking issue for this feature is: [#138938]
         deny_since: None,
     },
     Lint {
+        label: "arc_raw_get_strong",
+        description: r##"# `arc_raw_get_strong`
+
+
+
+The tracking issue for this feature is: [#157021]
+
+[#157021]: https://github.com/rust-lang/rust/issues/157021
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "arm_target_feature",
         description: r##"# `arm_target_feature`
 
@@ -3168,6 +3291,22 @@ The tracking issue for this feature is: [#110998]
         deny_since: None,
     },
     Lint {
+        label: "asm_const_ptr",
+        description: r##"# `asm_const_ptr`
+
+Allows using `const` operands with pointer in inline assembly.
+
+The tracking issue for this feature is: [#128464]
+
+[#128464]: https://github.com/rust-lang/rust/issues/128464
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "asm_experimental_arch",
         description: r##"# `asm_experimental_arch`
 
@@ -3189,6 +3328,7 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 - M68k
 - CSKY
 - SPARC
+- Xtensa
 
 ## Register classes
 
@@ -3217,6 +3357,10 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | CSKY         | `freg`         | `f[0-31]`                          | `f`                  |
 | SPARC        | `reg`          | `r[2-29]`                          | `r`                  |
 | SPARC        | `yreg`         | `y`                                | Only clobbers        |
+| Xtensa       | `reg`          | `a[2-15]`                          | `r`                  |
+| Xtensa       | `freg`         | `f[0-15]`                          | `f`                  |
+| Xtensa       | `sreg`         | `sar`, `scompare1`, `lbeg`, `lend`, `lcount`, `acclo`, `acchi`, `m[0-3]` | Only clobbers |
+| Xtensa       | `breg`         | `b[0-15]`                          | Only clobbers        |
 
 > **Notes**:
 > - NVPTX doesn't have a fixed register set, so named registers are not supported.
@@ -3248,6 +3392,10 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | CSKY         | `freg`                          | None           | `f32`,                                  |
 | SPARC        | `reg`                           | None           | `i8`, `i16`, `i32`, `i64` (SPARC64 only) |
 | SPARC        | `yreg`                          | N/A            | Only clobbers                           |
+| Xtensa       | `reg`                           | None           | `i8`, `i16`, `i32`                      |
+| Xtensa       | `freg`                          | `fp`           | `f32`                                   |
+| Xtensa       | `sreg`                          | N/A            | Only clobbers                           |
+| Xtensa       | `breg`                          | `bool`         | Only clobbers                           |
 
 ## Register aliases
 
@@ -3284,6 +3432,7 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | SPARC        | `r[8-15]`     | `o[0-7]`  |
 | SPARC        | `r[16-23]`    | `l[0-7]`  |
 | SPARC        | `r[24-31]`    | `i[0-7]`  |
+| Xtensa       | `a1`          | `sp`      |
 
 > **Notes**:
 > - TI does not mandate a frame pointer for MSP430, but toolchains are allowed
@@ -3316,6 +3465,9 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | SPARC        | `r5`/`g5`                               | Reserved for system. (SPARC32 only) |
 | SPARC        | `r6`/`g6`, `r7`/`g7`                    | Reserved for system. |
 | SPARC        | `r31`/`i7`                              | Return address cannot be used as inputs or outputs. |
+| Xtensa       | `a0`                                    | This is the return address register and is used internally by LLVM. |
+| Xtensa       | `a1`/`sp`                               | This is the stack pointer and is used internally by LLVM. |
+| Xtensa       | `a7` (windowed ABI) / `a15` (call0 ABI) | The frame pointer cannot be used as an input or output. |
 
 
 ## Template modifiers
@@ -3331,6 +3483,8 @@ This feature tracks `asm!` and `global_asm!` support for the following architect
 | SPARC        | `reg`          | None     | `%o0`          | None          |
 | CSKY         | `reg`          | None     | `r0`           | None          |
 | CSKY         | `freg`         | None     | `f0`           | None          |
+| Xtensa       | `reg`          | None     | `a2`           | None          |
+| Xtensa       | `freg`         | None     | `f0`           | None          |
 
 # Flags covered by `preserves_flags`
 
@@ -3353,7 +3507,7 @@ These flags registers must be restored upon exiting the asm block if the `preser
     },
     Lint {
         label: "asm_experimental_reg",
-        description: r##"# `asm_experimental_arch`
+        description: r##"# `asm_experimental_reg`
 
 The tracking issue for this feature is: [#133416]
 
@@ -3367,19 +3521,26 @@ This tracks support for additional registers in architectures where inline assem
 
 | Architecture | Register class | Registers | LLVM constraint code |
 | ------------ | -------------- | --------- | -------------------- |
+| LoongArch | `vreg` | `$vr[0-31]` | `f` |
+| LoongArch | `xreg` | `$xr[0-31]` | `f` |
+| AArch64 | `preg` | `p[0-16]` | `Upa` |
 
 ## Register class supported types
 
 | Architecture | Register class | Target feature | Allowed types |
 | ------------ | -------------- | -------------- | ------------- |
-| x86 | `xmm_reg` | `sse` | `i128` |
-| x86 | `ymm_reg` | `avx` | `i128` |
-| x86 | `zmm_reg` | `avx512f` | `i128` |
+| LoongArch | `vreg` | `lsx` | `i128`, `f32`, `f64`, <br> `i8x16`, `i16x8`, `i32x4`, `i64x2`, `f32x4`, `f64x2` |
+| LoongArch | `xreg` | `lasx` | `i128`, `f32`, `f64`, <br> `i8x16`, `i16x8`, `i32x4`, `i64x2`, `f32x4`, `f64x2`, <br> `i8x32`, `i16x16`, `i32x8`, `i64x4`, `f32x8`, `f64x4` |
+| AArch64 | `vreg` | `sve` | `i8xN`, `i16xB`, `i32xN`, `i64xN`, `f16xN`, `f32xN`, `f64xN` (scalable vector) |
+| AArch64 | `preg` | `sve` | `i1xN` (scalable vector predicate) |
 
 ## Register aliases
 
 | Architecture | Base register | Aliases |
 | ------------ | ------------- | ------- |
+| LoongArch | `$f[0-7]` | `$fa[0-7]`, `$vr[0-7]`, `$xr[0-7]` |
+| LoongArch | `$f[8-23]` | `$ft[0-15]`, `$vr[8-23]`, `$xr[8-23]` |
+| LoongArch | `$f[24-31]` | `$fs[0-7]`, `$vr[24-31]`, `$xr[24-31]` |
 
 ## Unsupported registers
 
@@ -3390,6 +3551,13 @@ This tracks support for additional registers in architectures where inline assem
 
 | Architecture | Register class | Modifier | Example output | LLVM modifier |
 | ------------ | -------------- | -------- | -------------- | ------------- |
+| LoongArch | `freg` | `w` | `$vr0` | `w` |
+| LoongArch | `freg` | `u` | `$xr0` | `u` |
+| LoongArch | `vreg` | None | `$vr0` | `w` |
+| LoongArch | `vreg` | `u` | `$xr0` | `u` |
+| LoongArch | `xreg` | None | `$xr0` | `u` |
+| LoongArch | `xreg` | `w` | `$vr0` | `w` |
+| AArch64 | `vreg` | `z` | `z0` | `z` |
 "##,
         default_severity: Severity::Allow,
         warn_since: None,
@@ -3608,22 +3776,6 @@ The tracking issue for this feature is: [#62290]
         deny_since: None,
     },
     Lint {
-        label: "atomic_from_mut",
-        description: r##"# `atomic_from_mut`
-
-
-
-The tracking issue for this feature is: [#76314]
-
-[#76314]: https://github.com/rust-lang/rust/issues/76314
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
         label: "atomic_internals",
         description: r##"# `atomic_internals`
 
@@ -3646,6 +3798,22 @@ This feature has no tracking issue, and is therefore likely internal to the comp
 The tracking issue for this feature is: [#150733]
 
 [#150733]: https://github.com/rust-lang/rust/issues/150733
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "atomic_volatile",
+        description: r##"# `atomic_volatile`
+
+
+
+The tracking issue for this feature is: [#158947]
+
+[#158947]: https://github.com/rust-lang/rust/issues/158947
 
 ------------------------
 "##,
@@ -3946,9 +4114,9 @@ The tracking issue for this feature is: [#151828]
 
 
 
-The tracking issue for this feature is: [#78485]
+The tracking issue for this feature is: [#160476]
 
-[#78485]: https://github.com/rust-lang/rust/issues/78485
+[#160476]: https://github.com/rust-lang/rust/issues/160476
 
 ------------------------
 "##,
@@ -3989,14 +4157,28 @@ The tracking issue for this feature is: [#145966]
         deny_since: None,
     },
     Lint {
-        label: "box_as_ptr",
-        description: r##"# `box_as_ptr`
+        label: "box_as_non_null",
+        description: r##"# `box_as_non_null`
 
 
 
-The tracking issue for this feature is: [#129090]
+The tracking issue for this feature is: [#157345]
 
-[#129090]: https://github.com/rust-lang/rust/issues/129090
+[#157345]: https://github.com/rust-lang/rust/issues/157345
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "box_internals",
+        description: r##"# `box_internals`
+
+
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
 
 ------------------------
 "##,
@@ -4037,79 +4219,6 @@ The tracking issue for this feature is: [#80437]
         deny_since: None,
     },
     Lint {
-        label: "box_patterns",
-        description: r##"# `box_patterns`
-
-The tracking issue for this feature is: [#29641]
-
-[#29641]: https://github.com/rust-lang/rust/issues/29641
-
-------------------------
-
-> **Note**: This feature will be superseded by [`deref_patterns`] in the future.
-
-Box patterns let you match on `Box<T>`s:
-
-
-```rust
-#![feature(box_patterns)]
-
-fn main() {
-    let b = Some(Box::new(5));
-    match b {
-        Some(box n) if n < 0 => {
-            println!("Box contains negative number {n}");
-        },
-        Some(box n) if n >= 0 => {
-            println!("Box contains non-negative number {n}");
-        },
-        None => {
-            println!("No box");
-        },
-        _ => unreachable!()
-    }
-}
-```
-
-[`deref_patterns`]: ./deref-patterns.md
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
-        label: "box_take",
-        description: r##"# `box_take`
-
-
-
-The tracking issue for this feature is: [#147212]
-
-[#147212]: https://github.com/rust-lang/rust/issues/147212
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
-        label: "box_vec_non_null",
-        description: r##"# `box_vec_non_null`
-
-
-
-The tracking issue for this feature is: [#130364]
-
-[#130364]: https://github.com/rust-lang/rust/issues/130364
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
         label: "bpf_target_feature",
         description: r##"# `bpf_target_feature`
 
@@ -4134,36 +4243,6 @@ The tracking issue for this feature is: [#150247]
 The tracking issue for this feature is: [#133724]
 
 [#133724]: https://github.com/rust-lang/rust/issues/133724
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
-        label: "bstr",
-        description: r##"# `bstr`
-
-
-
-The tracking issue for this feature is: [#134915]
-
-[#134915]: https://github.com/rust-lang/rust/issues/134915
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
-        label: "bstr_internals",
-        description: r##"# `bstr_internals`
-
-
-
-This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
 
 ------------------------
 "##,
@@ -4225,9 +4304,9 @@ The tracking issue for this feature is: [#133549]
 
 
 
-The tracking issue for this feature is: [#32838]
+The tracking issue for this feature is: [#163177]
 
-[#32838]: https://github.com/rust-lang/rust/issues/32838
+[#163177]: https://github.com/rust-lang/rust/issues/163177
 
 ------------------------
 "##,
@@ -4284,6 +4363,52 @@ The tracking issue for this feature is: [#110680]
         deny_since: None,
     },
     Lint {
+        label: "byte_str",
+        description: r##"# `byte_str`
+
+
+
+The tracking issue for this feature is: [#134915]
+
+[#134915]: https://github.com/rust-lang/rust/issues/134915
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "byte_str_internals",
+        description: r##"# `byte_str_internals`
+
+
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "byte_str_to_string",
+        description: r##"# `byte_str_to_string`
+
+
+
+The tracking issue for this feature is: [#134915]
+
+[#134915]: https://github.com/rust-lang/rust/issues/134915
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "c_size_t",
         description: r##"# `c_size_t`
 
@@ -4294,37 +4419,6 @@ The tracking issue for this feature is: [#88345]
 [#88345]: https://github.com/rust-lang/rust/issues/88345
 
 ------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
-        label: "c_variadic",
-        description: r##"# `c_variadic`
-
-The tracking issue for this feature is: [#44930]
-
-[#44930]: https://github.com/rust-lang/rust/issues/44930
-
-------------------------
-
-The `c_variadic` language feature enables C-variadic functions to be
-defined in Rust. They may be called both from within Rust and via FFI.
-
-## Examples
-
-```rust
-#![feature(c_variadic)]
-
-pub unsafe extern "C" fn add(n: usize, mut args: ...) -> usize {
-    let mut sum = 0;
-    for _ in 0..n {
-        sum += args.next_arg::<usize>();
-    }
-    sum
-}
-```
 "##,
         default_severity: Severity::Allow,
         warn_since: None,
@@ -4347,14 +4441,30 @@ The tracking issue for this feature is: [#155973]
         deny_since: None,
     },
     Lint {
-        label: "c_variadic_naked_functions",
-        description: r##"# `c_variadic_naked_functions`
+        label: "c_variadic_int128",
+        description: r##"# `c_variadic_int128`
 
-Allows defining c-variadic naked functions with any extern ABI that is allowed on c-variadic foreign functions.
 
-The tracking issue for this feature is: [#148767]
 
-[#148767]: https://github.com/rust-lang/rust/issues/148767
+The tracking issue for this feature is: [#155752]
+
+[#155752]: https://github.com/rust-lang/rust/issues/155752
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "c_variadic_va_arg_safe",
+        description: r##"# `c_variadic_va_arg_safe`
+
+
+
+The tracking issue for this feature is: [#162911]
+
+[#162911]: https://github.com/rust-lang/rust/issues/162911
 
 ------------------------
 "##,
@@ -4399,6 +4509,22 @@ The tracking issue for this feature is: [#69941]
 The tracking issue for this feature is: [#154848]
 
 [#154848]: https://github.com/rust-lang/rust/issues/154848
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "casefold",
+        description: r##"# `casefold`
+
+
+
+The tracking issue for this feature is: [#157000]
+
+[#157000]: https://github.com/rust-lang/rust/issues/157000
 
 ------------------------
 "##,
@@ -4638,6 +4764,34 @@ This feature has no tracking issue, and is therefore likely internal to the comp
         deny_since: None,
     },
     Lint {
+        label: "cfg_target_has_reliable_f16b",
+        description: r##"# `cfg_target_has_reliable_f16b`
+
+Allows checking whether or not the backend correctly supports the unstable `f16b` type.
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "cfg_target_has_threads",
+        description: r##"# `cfg_target_has_threads`
+
+Allows checking whether or not the target might have thread support.
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "cfg_target_object_format",
         description: r##"# `cfg_target_object_format`
 
@@ -4799,6 +4953,70 @@ This feature has no tracking issue, and is therefore likely internal to the comp
         deny_since: None,
     },
     Lint {
+        label: "char_to_u32",
+        description: r##"# `char_to_u32`
+
+
+
+The tracking issue for this feature is: [#158938]
+
+[#158938]: https://github.com/rust-lang/rust/issues/158938
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "char_unassigned_private_use",
+        description: r##"# `char_unassigned_private_use`
+
+
+
+The tracking issue for this feature is: [#158322]
+
+[#158322]: https://github.com/rust-lang/rust/issues/158322
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "checked_type_aliases",
+        description: r##"# `checked_type_aliases`
+
+Allow to have type alias types for inter-crate use.
+
+The tracking issue for this feature is: [#112792]
+
+[#112792]: https://github.com/rust-lang/rust/issues/112792
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "clamp_bounds",
+        description: r##"# `clamp_bounds`
+
+
+
+The tracking issue for this feature is: [#147781]
+
+[#147781]: https://github.com/rust-lang/rust/issues/147781
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "clamp_magnitude",
         description: r##"# `clamp_magnitude`
 
@@ -4807,6 +5025,22 @@ This feature has no tracking issue, and is therefore likely internal to the comp
 The tracking issue for this feature is: [#148519]
 
 [#148519]: https://github.com/rust-lang/rust/issues/148519
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "clamp_to",
+        description: r##"# `clamp_to`
+
+
+
+The tracking issue for this feature is: [#147781]
+
+[#147781]: https://github.com/rust-lang/rust/issues/147781
 
 ------------------------
 "##,
@@ -4914,6 +5148,38 @@ The tracking issue for this feature is: [#115939]
         deny_since: None,
     },
     Lint {
+        label: "cmp_splat",
+        description: r##"# `cmp_splat`
+
+
+
+The tracking issue for this feature is: [#160728]
+
+[#160728]: https://github.com/rust-lang/rust/issues/160728
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "cmp_splat_internals",
+        description: r##"# `cmp_splat_internals`
+
+
+
+The tracking issue for this feature is: [#160728]
+
+[#160728]: https://github.com/rust-lang/rust/issues/160728
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "cmse_nonsecure_entry",
         description: r##"# `cmse_nonsecure_entry`
 
@@ -4999,6 +5265,22 @@ $ arm-none-eabi-objdump -D function.o
         deny_since: None,
     },
     Lint {
+        label: "codeview_annotation",
+        description: r##"# `codeview_annotation`
+
+
+
+The tracking issue for this feature is: [#163964]
+
+[#163964]: https://github.com/rust-lang/rust/issues/163964
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "coerce_pointee_validated",
         description: r##"# `coerce_pointee_validated`
 
@@ -5049,6 +5331,22 @@ The tracking issue for this feature is: [#149070]
         description: r##"# `compiler_builtins`
 
 This feature is internal to the Rust compiler and is not intended for general use.
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "complex_numbers",
+        description: r##"# `complex_numbers`
+
+
+
+The tracking issue for this feature is: [#154023]
+
+[#154023]: https://github.com/rust-lang/rust/issues/154023
 
 ------------------------
 "##,
@@ -5121,6 +5419,38 @@ The tracking issue for this feature is: [#85368]
         deny_since: None,
     },
     Lint {
+        label: "const_atomic",
+        description: r##"# `const_atomic`
+
+
+
+The tracking issue for this feature is: [#160078]
+
+[#160078]: https://github.com/rust-lang/rust/issues/160078
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "const_binary_search",
+        description: r##"# `const_binary_search`
+
+
+
+The tracking issue for this feature is: [#159532]
+
+[#159532]: https://github.com/rust-lang/rust/issues/159532
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "const_block_items",
         description: r##"# `const_block_items`
 
@@ -5158,7 +5488,9 @@ The tracking issue for this feature is: [#151531]
 
 
 
-This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+The tracking issue for this feature is: [#71835]
+
+[#71835]: https://github.com/rust-lang/rust/issues/71835
 
 ------------------------
 "##,
@@ -5861,6 +6193,22 @@ The tracking issue for this feature is: [#152015]
         deny_since: None,
     },
     Lint {
+        label: "const_volatile",
+        description: r##"# `const_volatile`
+
+
+
+The tracking issue for this feature is: [#159094]
+
+[#159094]: https://github.com/rust-lang/rust/issues/159094
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "container_error_extra",
         description: r##"# `container_error_extra`
 
@@ -6045,6 +6393,20 @@ The tracking issue for this feature is: [#117693]
     Lint {
         label: "core_io_internals",
         description: r##"# `core_io_internals`
+
+
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "core_os",
+        description: r##"# `core_os`
 
 
 
@@ -6367,6 +6729,22 @@ does.
         deny_since: None,
     },
     Lint {
+        label: "covariant_unsafe_cell",
+        description: r##"# `covariant_unsafe_cell`
+
+
+
+The tracking issue for this feature is: [#159735]
+
+[#159735]: https://github.com/rust-lang/rust/issues/159735
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "coverage_attribute",
         description: r##"# `coverage_attribute`
 
@@ -6444,22 +6822,6 @@ The tracking issue for this feature is: [#150248]
 The tracking issue for this feature is: [#112115]
 
 [#112115]: https://github.com/rust-lang/rust/issues/112115
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
-        label: "cstr_display",
-        description: r##"# `cstr_display`
-
-
-
-The tracking issue for this feature is: [#139984]
-
-[#139984]: https://github.com/rust-lang/rust/issues/139984
 
 ------------------------
 "##,
@@ -6615,22 +6977,6 @@ The tracking issue for this feature is: [#46316]
         deny_since: None,
     },
     Lint {
-        label: "debug_closure_helpers",
-        description: r##"# `debug_closure_helpers`
-
-
-
-The tracking issue for this feature is: [#117729]
-
-[#117729]: https://github.com/rust-lang/rust/issues/117729
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
         label: "dec2flt",
         description: r##"# `dec2flt`
 
@@ -6668,7 +7014,7 @@ The tracking issue for this feature is: [#132162]
 
 The RFC for this feature is: [#3681]
 
-[#3681]: https://github.com/rust-lang/rfcs/blob/master/text/3681-default-field-values.md
+[#3681]: https://rust-lang.github.io/rfcs/3681-default-field-values.html
 
 ------------------------
 
@@ -6759,6 +7105,22 @@ impl Default for Pet {
         deny_since: None,
     },
     Lint {
+        label: "default_ignorable",
+        description: r##"# `default_ignorable`
+
+
+
+The tracking issue for this feature is: [#160583]
+
+[#160583]: https://github.com/rust-lang/rust/issues/160583
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "deprecated_suggestion",
         description: r##"# `deprecated_suggestion`
 
@@ -6800,7 +7162,7 @@ The tracking issue for this feature is: [#87121]
 
 ------------------------
 
-> **Note**: This feature supersedes [`box_patterns`].
+> **Note**: This feature supersedes `box_patterns`.
 
 This feature permits pattern matching on [smart pointers in the standard library] through their
 `Deref` target types, either implicitly or with explicit `deref!(_)` patterns (the syntax of which
@@ -6846,7 +7208,7 @@ if let [b] = &mut *v {
 assert_eq!(v, [Box::new(Some(2))]);
 ```
 
-Like [`box_patterns`], deref patterns may move out of boxes:
+Deref patterns may move out of boxes:
 
 ```rust
 # #![feature(deref_patterns)]
@@ -6892,7 +7254,6 @@ match *(b"test" as &[u8]) {
 }
 ```
 
-[`box_patterns`]: ./box-patterns.md
 [smart pointers in the standard library]: https://doc.rust-lang.org/std/ops/trait.DerefPure.html#implementors
 "##,
         default_severity: Severity::Allow,
@@ -7119,14 +7480,14 @@ error[E0382]: `Token` cannot be used multiple times
         deny_since: None,
     },
     Lint {
-        label: "diagnostic_on_unknown",
-        description: r##"# `diagnostic_on_unknown`
+        label: "diagnostic_on_type_error",
+        description: r##"# `diagnostic_on_type_error`
 
-Allows giving unresolved imports a custom diagnostic message
+Allows giving custom types diagnostic messages on type errors
 
-The tracking issue for this feature is: [#152900]
+The tracking issue for this feature is: [#155382]
 
-[#152900]: https://github.com/rust-lang/rust/issues/152900
+[#155382]: https://github.com/rust-lang/rust/issues/155382
 
 ------------------------
 "##,
@@ -7135,8 +7496,211 @@ The tracking issue for this feature is: [#152900]
         deny_since: None,
     },
     Lint {
-        label: "diagnostic_on_unmatch_args",
-        description: r##"# `diagnostic_on_unmatch_args`
+        label: "diagnostic_on_unknown",
+        description: r##"# `diagnostic_on_unknown`
+
+The tracking issue for this feature is: [#152900](https://github.com/rust-lang/rust/issues/152900)
+
+------------------------
+
+The `diagnostic_on_unknown` feature allows use of the `#[diagnostic::on_unknown]` attribute. It should be
+placed on use and module declarations as well as the crate root, though it is not an error to be located in other
+positions. This attribute is a hint to the compiler to supplement the error message when the
+annotated declaration is involved in a name resolution error.
+
+Format parameters with the given named parameter will be replaced with the following text:
+
+-  `{Unresolved}` — The `SimplePathSegment` of the import path that could not be resolved.
+-  `{this}` — The name of the annotated item. On `use` statements this is identical to `{unresolved}`.
+
+The original error message will not be suppressed but is emitted as a note instead.
+
+### On use declarations
+
+```rust,edition2018,compile_fail,E0432
+#![feature(diagnostic_on_unknown)]
+
+#[diagnostic::on_unknown(
+    message = "`{Unresolved}` doesn't exist",
+    label = "you did something silly here"
+)]
+use doesnt_exist;
+```
+This will result in the following error:
+```text
+error[E0432]: `doesnt_exist` doesn't exist
+ --> src/lib.rs:7:5
+  |
+7 | use doesnt_exist;
+  |     ^^^^^^^^^^^^ you did something silly here
+  |
+  = note: unresolved import `doesnt_exist`
+
+For more information about this error, try `rustc --explain E0432`.
+```
+
+### On module declarations
+
+```rust,edition2018,compile_fail,E0432
+#![feature(diagnostic_on_unknown)]
+
+#[diagnostic::on_unknown(
+    message = "module `{this}` is empty, there is no `{unresolved}` here",
+    label = "can't import something from an empty module"
+)]
+mod empty {}
+
+use empty::what;
+```
+This will result in the following error:
+
+```text
+error[E0432]: module `empty` is empty, there is no `what` here
+ --> src/lib.rs:9:5
+  |
+9 | use empty::what;
+  |     ^^^^^^^----
+  |            |
+  |            can't import something from an empty module
+  |
+  = note: unresolved import `empty::what`
+```
+
+### On the crate root
+
+This additionally requires the `#![feature(custom_inner_attributes)]` feature:
+
+```rust,edition2018,compile_fail,E0432
+#![feature(diagnostic_on_unknown)]
+#![feature(custom_inner_attributes)]
+#![diagnostic::on_unknown(message = "Say `{Unresolved}` again!")]
+
+use self::what;
+```
+### Example
+
+Consider the following pair of macros, one which creates a hidden module with a constant and another that reads it.
+
+```rust
+#![feature(macro_metavar_expr, macro_attr)]
+
+macro_rules! instrument {
+    attr() { $vis:vis fn $fn_name:ident ($($arg_name:ident : $arg_ty:ty),*) $(-> $ret:ty)? $body:block } => {
+        $vis fn $fn_name ($($arg_name:$arg_ty),*) $(-> $ret)? $body
+        #[doc(hidden)]
+        $vis mod $fn_name {
+            pub const LEN: usize = ${ count($arg_name) };
+        }
+    }
+}
+
+macro_rules! count_args {
+    ($name:ident) => {{
+        $name::LEN
+    }}
+}
+
+#[instrument]
+fn add(a: u8, b: u8) -> u8 {
+    a + b
+}
+
+fn main() {
+    let n = count_args!(add);
+    println!("`add` has {n} arguments");
+}
+```
+
+If the `#[instrument]` macro is omitted it will emit this confusing error:
+```text
+error[E0433]: cannot find module or crate `add` in this scope
+  --> src/main.rs:25:25
+   |
+25 |     let n = count_args!(add);
+   |                         ^^^ function `add` is not a crate or module
+```
+
+`#[diagnostic::on_unknown]` can be used to customize this error message:
+
+```rust,edition2018,compile_fail,E0432
+#![feature(diagnostic_on_unknown)]
+# #![feature(macro_metavar_expr, macro_attr)]
+#
+# #[allow(unused_macros)]
+# macro_rules! instrument {
+#     attr() { $vis:vis fn $fn_name:ident ($($arg_name:ident : $arg_ty:ty),*) $(-> $ret:ty)? $body:block } => {
+#         $vis fn $fn_name ($($arg_name:$arg_ty),*) $(-> $ret)? $body
+#         #[doc(hidden)]
+#         $vis  mod $fn_name {
+#             pub const LEN: usize = ${ count($arg_name) };
+#         }
+#     }
+# }
+
+macro_rules! count_args {
+    ($name:ident) => {{
+        #[diagnostic::on_unknown(
+            message = "cannot count arguments of `{Unresolved}`",
+            label = "`{Unresolved}` is not a function decorated \
+                    with the `#[instrument]` macro"
+        )]
+        use $name::LEN as length;
+        length
+    }}
+}
+
+// #[instrument]
+fn add(a: u8, b: u8) -> u8 {
+  a + b
+}
+
+fn main() {
+    let n = count_args!(add);
+    println!("`add` has {n} arguments");
+}
+```
+This produces:
+```text
+error[E0432]: cannot count arguments of `add`
+  --> src/main.rs:33:25
+   |
+33 |     let n = count_args!(add);
+   |                         ^^^ `add` is not a function decorated with
+   |                              the `#[instrument]` macro
+   |
+   = note: unresolved import `add`
+```
+
+### Edition differences
+
+In the 2015 edition, use paths are relative to the crate root. For example, `use empty` will be resolved relative to the crate root and resolution will not encounter the `mod empty {}` declaration.
+```rust,edition2015,compile_fail,E0432
+#![feature(diagnostic_on_unknown)]
+
+mod foo {
+   #[diagnostic::on_unknown(message = "oh oh")]
+   mod empty {}
+
+   use empty::what;
+}
+```
+
+```text
+error[E0432]: unresolved import `empty`
+ --> src/main.rs:9:8
+  |
+9 |    use empty::what;
+  |        ^^^^^
+  |
+```
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "diagnostic_on_unmatched_args",
+        description: r##"# `diagnostic_on_unmatched_args`
 
 The tracking issue for this feature is: [#155642]
 
@@ -7144,8 +7708,8 @@ The tracking issue for this feature is: [#155642]
 
 ------------------------
 
-The `diagnostic_on_unmatch_args` feature adds the
-`#[diagnostic::on_unmatch_args(...)]` attribute for declarative macros.
+The `diagnostic_on_unmatched_args` feature adds the
+`#[diagnostic::on_unmatched_args(...)]` attribute for declarative macros.
 It lets a macro definition customize diagnostics for matcher failures after all arms have been
 tried, such as incomplete invocations or trailing extra arguments.
 
@@ -7154,10 +7718,10 @@ It is currently used for errors emitted by declarative macro matching itself; fr
 errors still use their existing diagnostics.
 
 ```rust,compile_fail
-#![feature(diagnostic_on_unmatch_args)]
+#![feature(diagnostic_on_unmatched_args)]
 
-#[diagnostic::on_unmatch_args(
-    message = "invalid arguments to {This} macro invocation",
+#[diagnostic::on_unmatched_args(
+    message = "invalid arguments to {this} macro invocation",
     label = "expected a type and value here",
     note = "this macro expects a type and a value, like `pair!(u8, 0)`",
     note = "see <link/to/docs>",
@@ -7195,6 +7759,22 @@ note: while trying to match `,`
         deny_since: None,
     },
     Lint {
+        label: "diagnostic_opaque",
+        description: r##"# `diagnostic_opaque`
+
+Used by macros to not show their bodies in error messages. No-op with `-Z macro-backtrace`.
+
+The tracking issue for this feature is: [#158813]
+
+[#158813]: https://github.com/rust-lang/rust/issues/158813
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "dir_entry_ext2",
         description: r##"# `dir_entry_ext2`
 
@@ -7213,22 +7793,6 @@ The tracking issue for this feature is: [#85573]
     Lint {
         label: "dirfd",
         description: r##"# `dirfd`
-
-
-
-The tracking issue for this feature is: [#120426]
-
-[#120426]: https://github.com/rust-lang/rust/issues/120426
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
-        label: "dirhandle",
-        description: r##"# `dirhandle`
 
 
 
@@ -7443,22 +8007,6 @@ The tracking issue for this feature is: [#101122]
         deny_since: None,
     },
     Lint {
-        label: "drop_guard",
-        description: r##"# `drop_guard`
-
-
-
-The tracking issue for this feature is: [#144426]
-
-[#144426]: https://github.com/rust-lang/rust/issues/144426
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
         label: "dropck_eyepatch",
         description: r##"# `dropck_eyepatch`
 
@@ -7589,6 +8137,20 @@ The tracking issue for this feature is: [#143352]
         description: r##"# `eii_internals`
 
 Implementation details of externally implementable items
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "env_split_paths_ref",
+        description: r##"# `env_split_paths_ref`
+
+
 
 This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
 
@@ -7735,22 +8297,6 @@ The tracking issue for this feature is: [#139911]
 The tracking issue for this feature is: [#35428]
 
 [#35428]: https://github.com/rust-lang/rust/issues/35428
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
-        label: "exclusive_wrapper",
-        description: r##"# `exclusive_wrapper`
-
-
-
-The tracking issue for this feature is: [#98407]
-
-[#98407]: https://github.com/rust-lang/rust/issues/98407
 
 ------------------------
 "##,
@@ -7959,6 +8505,24 @@ The tracking issue for this feature is: [#116909]
 ---
 
 Enable the `f16` type for IEEE 16-bit floating numbers (half precision).
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "f16b",
+        description: r##"# `f16b`
+
+The tracking issue for this feature is: [#160630]
+
+[#160630]: https://github.com/rust-lang/rust/issues/160630
+
+---
+
+Enable the `core::num::f16b` type for values stored in the bfloat16 format.
+
+`f16b` is a nominal library type, not a primitive floating-point type: it has no literal suffix, arithmetic operators, or numeric `as` casts. A compiler lang item connects its layout to the chosen backend's representation.
 "##,
         default_severity: Severity::Allow,
         warn_since: None,
@@ -8177,22 +8741,6 @@ The tracking issue for this feature is: [#131179]
         deny_since: None,
     },
     Lint {
-        label: "float_algebraic",
-        description: r##"# `float_algebraic`
-
-
-
-The tracking issue for this feature is: [#136469]
-
-[#136469]: https://github.com/rust-lang/rust/issues/136469
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
         label: "float_bits_const",
         description: r##"# `float_bits_const`
 
@@ -8201,6 +8749,22 @@ The tracking issue for this feature is: [#136469]
 The tracking issue for this feature is: [#151073]
 
 [#151073]: https://github.com/rust-lang/rust/issues/151073
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "float_conversions",
+        description: r##"# `float_conversions`
+
+
+
+The tracking issue for this feature is: [#159913]
+
+[#159913]: https://github.com/rust-lang/rust/issues/159913
 
 ------------------------
 "##,
@@ -8281,6 +8845,38 @@ The tracking issue for this feature is: [#154064]
 The tracking issue for this feature is: [#91079]
 
 [#91079]: https://github.com/rust-lang/rust/issues/91079
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "float_mul_add_relaxed",
+        description: r##"# `float_mul_add_relaxed`
+
+
+
+The tracking issue for this feature is: [#151770]
+
+[#151770]: https://github.com/rust-lang/rust/issues/151770
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "float_nan_to",
+        description: r##"# `float_nan_to`
+
+
+
+The tracking issue for this feature is: [#161248]
+
+[#161248]: https://github.com/rust-lang/rust/issues/161248
 
 ------------------------
 "##,
@@ -8407,12 +9003,14 @@ The tracking issue for this feature is: [#118212]
         deny_since: None,
     },
     Lint {
-        label: "fn_ptr_trait",
-        description: r##"# `fn_ptr_trait`
+        label: "fn_static",
+        description: r##"# `fn_static`
 
+Traits for function pointers and items
 
+The tracking issue for this feature is: [#148768]
 
-This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+[#148768]: https://github.com/rust-lang/rust/issues/148768
 
 ------------------------
 "##,
@@ -8457,6 +9055,22 @@ fn main() {
     assert_eq!(adder(2), 5);
 }
 ```
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "forced_keywords",
+        description: r##"# `forced_keywords`
+
+Allows using forced keywords `k#fn`.
+
+The tracking issue for this feature is: [#153839]
+
+[#153839]: https://github.com/rust-lang/rust/issues/153839
+
+------------------------
 "##,
         default_severity: Severity::Allow,
         warn_since: None,
@@ -8571,16 +9185,181 @@ fn main() {
         deny_since: None,
     },
     Lint {
-        label: "fs_set_times",
-        description: r##"# `fs_set_times`
+        label: "fs_home_dirs",
+        description: r##"# `fs_home_dirs`
 
 
 
-The tracking issue for this feature is: [#147455]
+The tracking issue for this feature is: [#162082]
 
-[#147455]: https://github.com/rust-lang/rust/issues/147455
+[#162082]: https://github.com/rust-lang/rust/issues/162082
 
 ------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "fs_media_dirs",
+        description: r##"# `fs_media_dirs`
+
+
+
+The tracking issue for this feature is: [#162083]
+
+[#162083]: https://github.com/rust-lang/rust/issues/162083
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "function_arg_const_generics",
+        description: r##"# function_arg_const_generics
+
+The tracking issue for this feature is: [#163261]
+
+[#163261]: https://github.com/rust-lang/rust/issues/163261
+
+------------------------
+
+The `#![feature(function_arg_const_generics)]` allows const generic parameters to be declared in a function's value parameter list and supplied as ordinary call arguments, rather than through generic arguments (turbofish syntax).
+
+Warning: This feature is incomplete; its design and syntax may change.
+
+This feature requires either `#![feature(gca_min_const_items)]` or `#![feature(gca_adts)]`.
+
+## Examples
+
+Normally, const generic parameters are declared in the generic parameter list and supplied using turbofish syntax:
+
+```rust
+fn foo<const N: usize>(value: u8) {
+    let _ = N;
+}
+
+fn main() {
+    foo::<42>(10);
+}
+```
+
+With `function_arg_const_generics`, the const generic parameter can instead be declared in the function's value parameter list:
+
+```rust
+#![allow(incomplete_features)]
+#![feature(function_arg_const_generics, gca_min_const_items)]
+
+fn foo(const N: usize, value: u8) {
+    let _ = (N, value);
+}
+
+fn main() {
+    foo(42, 10);
+}
+```
+
+Here, `N` is still a const generic parameter, but its value is supplied as the first argument to the function call.
+
+### Methods and trait functions
+
+Argument position const generic parameters are supported in free functions, inherent methods, trait methods, and trait implementations.
+
+```rust
+#![allow(incomplete_features)]
+#![feature(function_arg_const_generics, gca_min_const_items)]
+
+struct Foo;
+
+impl Foo {
+    fn bar(&self, const N: usize) {
+        let _ = N;
+    }
+}
+
+trait Trait {
+    fn baz(const N: usize);
+}
+
+impl Trait for Foo {
+    fn baz(const N: usize) {
+        let _ = N;
+    }
+}
+
+fn main() {
+    Foo.bar(10);
+    Foo::baz(20);
+}
+```
+
+### Supported const arguments
+
+Currently, only the following forms of const arguments are supported:
+
+- Literals.
+- Paths to const generic parameters.
+- Paths to const items, provided the const item is marked for use in the type system, for example using `gca!`.
+
+```rust
+#![allow(incomplete_features)]
+#![feature(function_arg_const_generics, gca_min_const_items)]
+
+fn foo(const N: usize) {
+    let _ = N;
+}
+
+const VALUE: usize = core::gca!(42);
+
+fn bar<const K: usize>() {
+    foo(K);
+}
+
+fn main() {
+    foo(10);    // OK: integer literal
+    foo(VALUE); // OK: const item marked with gca!
+    bar::<20>();
+}
+```
+
+### Restrictions
+
+Argument position const generic parameters have the following restrictions:
+
+- They must be declared using a plain identifier, such as `const N: usize`.
+- They cannot be explicitly supplied using turbofish syntax.
+- Arguments must use one of the supported const argument forms described above.
+
+For example, a runtime local variable cannot be used as a const argument:
+
+```rust,compile_fail
+#![allow(incomplete_features)]
+#![feature(function_arg_const_generics, gca_min_const_items)]
+
+fn foo(const N: usize) {}
+
+fn main() {
+    let n = 10;
+    foo(n); // ERROR: runtime local variable
+}
+```
+
+Similarly, argument position const generic parameters cannot be specified using turbofish syntax:
+
+```rust,compile_fail,E0107
+#![allow(incomplete_features)]
+#![feature(function_arg_const_generics, gca_min_const_items)]
+
+fn foo(const N: usize) {}
+
+fn main() {
+    foo::<10>(10); // ERROR: N cannot be specified using turbofish
+}
+```
+
+Argument position const generic parameters are not currently supported in function pointer types, `Fn()` trait syntax, or foreign function declarations.
 "##,
         default_severity: Severity::Allow,
         warn_since: None,
@@ -8603,22 +9382,6 @@ The tracking issue for this feature is: [#29635]
         deny_since: None,
     },
     Lint {
-        label: "funnel_shifts",
-        description: r##"# `funnel_shifts`
-
-
-
-The tracking issue for this feature is: [#145686]
-
-[#145686]: https://github.com/rust-lang/rust/issues/145686
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
         label: "future_join",
         description: r##"# `future_join`
 
@@ -8629,6 +9392,380 @@ The tracking issue for this feature is: [#91642]
 [#91642]: https://github.com/rust-lang/rust/issues/91642
 
 ------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "gca_adts",
+        description: r##"# gca_adts
+
+Enables ADTs under the generic const args family of features (e.g. `gca!` macro).
+
+The tracking issue for this feature is: [#163420]
+
+[#163420]: https://github.com/rust-lang/rust/issues/163420
+
+## Examples
+
+```rust
+#![feature(gca_min_const_items, min_adt_const_params, gca_adts)]
+
+use std::gca;
+
+struct S<const A: [u32; 2]>;
+
+fn main() {
+    let _: S<gca!([1, 2])> = S::<gca!([1, 2])>;
+}
+```
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "gca_const_items",
+        description: r##"# gca_const_items
+
+Allows using generics in more complex const expressions, based on definitional equality.
+
+The tracking issue for this feature is: [#151972]
+
+[#151972]: https://github.com/rust-lang/rust/issues/151972
+
+------------------------
+
+Warning: This feature is incomplete; its design and syntax may change.
+
+This feature enables many of the same use cases supported by [generic_const_exprs],
+but based on the machinery developed for [gca_min_const_items]. In a way, it is
+meant to be an interim successor for GCE (though it might not currently support all
+the valid cases that supported by GCE).
+
+See also: [generic_const_items]
+
+[gca_min_const_items]: gca-min-const-items.md
+[generic_const_exprs]: generic-const-exprs.md
+[generic_const_items]: generic-const-items.md
+
+## Examples
+
+<!-- NOTE(ignore) gca_const_items requires -Znext-solver to compile -->
+```rust,ignore (requires-Z-next-solver)
+#![feature(generic_const_items)]
+#![feature(gca_min_const_items)]
+#![feature(gca_const_items)]
+#![expect(incomplete_features)]
+
+type const ADD1<const N: usize>: usize = const { N + 1 };
+
+type const INC<const N: usize>: usize = ADD1::<N>;
+
+const ARR: [(); ADD1::<0>] = [(); INC::<0>];
+```
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "gca_macroless_args",
+        description: r##"# gca_macroless_args
+
+Enables using `#![feature(gca_min_const_items)]` without the `gca!` macro.
+
+The tracking issue for this feature is: [#159006]
+
+[#159006]: https://github.com/rust-lang/rust/issues/159006
+
+------------------------
+
+Warning: This feature is incomplete; its design and syntax may change.
+
+Related features:
+- [gca_min_const_items]. See that doc for what the `gca!` is. This feature enables
+support for directly represented const arguments without the macro.
+- [gca_macroless_items]. For a version of this feature that works for const arguments
+as the right hand side of a const item.
+
+[gca_min_const_items]: gca-min-const-items.md
+[gca_macroless_items]: gca-macroless-items.md
+
+## Examples
+
+Here is an example from [gca_min_const_items]:
+
+[gca_min_const_items]: gca-min-const-items.md
+
+```rust
+#![allow(incomplete_features)]
+#![feature(gca_min_const_items)]
+
+trait Bar {
+    #[rustc_always_gca]
+    const VAL: usize;
+    #[rustc_always_gca]
+    const VAL2: usize;
+}
+
+struct Baz;
+
+impl Bar for Baz {
+    const VAL: usize = core::gca!(2);
+    const VAL2: usize = core::gca!(const { Self::VAL * 2 });
+}
+
+struct Foo<B: Bar> {
+    arr1: [usize; core::gca!(B::VAL)],
+    arr2: [usize; core::gca!(B::VAL2)],
+}
+```
+
+Using `#![feature(gca_macroless_args)]` enables you to write the above without the macro:
+
+```rust
+#![allow(incomplete_features)]
+#![feature(gca_min_const_items, gca_macroless_args)]
+
+trait Bar {
+    #[rustc_always_gca]
+    const VAL: usize;
+    #[rustc_always_gca]
+    const VAL2: usize;
+}
+
+struct Baz;
+
+impl Bar for Baz {
+    // note these still need a macro, macroless for these is `gca_macroless_items`
+    const VAL: usize = core::gca!(2);
+    const VAL2: usize = core::gca!(const { Self::VAL * 2 });
+}
+
+struct Foo<B: Bar> {
+    arr1: [usize; B::VAL],
+    arr2: [usize; B::VAL2],
+}
+```
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "gca_macroless_items",
+        description: r##"# gca_macroless_args
+
+Enables implementing const items under `#![feature(gca_min_const_items)]` and `#![feature(gca_const_items)]` without the `gca!` macro.
+
+The tracking issue for this feature is: [#162540]
+
+[#162540]: https://github.com/rust-lang/rust/issues/162540
+
+------------------------
+
+Warning: This feature is incomplete; its design and syntax may change.
+
+Related features:
+- [gca_min_const_items]. See that doc for what the `gca!` is. This feature enables
+support for directly represented const arguments as the rhs of const items without the macro.
+- [gca_macroless_args]. For a version of this feature that works for const arguments in other
+positions
+
+[gca_min_const_items]: gca-min-const-items.md
+[gca_macroless_args]: gca-macroless-args.md
+
+## Examples
+
+Here is an example from [gca_min_const_items]:
+
+[gca_min_const_items]: gca-min-const-items.md
+
+```rust,ignore (needs new solver)
+#![allow(incomplete_features)]
+#![feature(
+    gca_min_const_items,
+    gca_const_items,
+    gca_macroless_args,
+    generic_const_items,
+)]
+
+trait Trait {
+    const ASSOC<const N: usize>: usize;
+}
+
+impl Trait for () {
+    const ASSOC<const N: usize>: usize = core::gca!(N);
+}
+
+fn foo<const N: usize>() {
+    let a: [(); <() as Trait>::ASSOC::<N>]
+        = [(); N];
+}
+```
+
+Using `#![feature(gca_macroless_items)]` enables you to write the above without the macro:
+
+```rust,ignore (needs new solver)
+#![allow(incomplete_features)]
+#![feature(
+    gca_min_const_items,
+    gca_const_items,
+    gca_macroless_args,
+    gca_macroless_items,
+    generic_const_items,
+)]
+
+trait Trait {
+    const ASSOC<const N: usize>: usize;
+}
+
+impl Trait for () {
+    const ASSOC<const N: usize>: usize = N;
+}
+
+fn foo<const N: usize>() {
+    let a: [(); <() as Trait>::ASSOC::<N>]
+        = [(); N];
+}
+```
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "gca_min_const_items",
+        description: r##"# gca_min_const_items
+
+Enables the generic const args MVP (paths to direct const items and primitives).
+
+The tracking issue for this feature is: [#132980]
+
+[#132980]: https://github.com/rust-lang/rust/issues/132980
+
+------------------------
+
+Warning: This feature is incomplete; its design and syntax may change.
+
+This feature acts as a minimal alternative to [generic_const_exprs] that allows a smaller subset of functionality,
+and uses a different approach for implementation. It is intentionally more restrictive, which helps with avoiding edge
+cases that make the `generic_const_exprs` hard to implement properly. See [Feature background][feature_background]
+for more details.
+
+Related features: [gca_macroless_args], [gca_const_items], [generic_const_items].
+
+[feature_background]: https://github.com/rust-lang/project-const-generics/blob/main/documents/min_const_generics_plan.md
+[generic_const_exprs]: generic-const-exprs.md
+[gca_macroless_args]: gca-macroless-args.md
+[gca_const_items]: gca-const-items.md
+[generic_const_items]: generic-const-items.md
+
+## `gca!` macro
+
+This feature introduces a new macro: `gca!`.
+
+When an expression is used as a generic argument, it is typically lowered as an "anon const", which is an expression
+that is opaque to the type system and cannot contain generics. Using `gca!` instead represents the
+expression "directly", i.e. without an anon const, in a way that is visible to the type system.
+
+(Note that plain paths to generic parameters are always represented directly, without `gca!`, as this
+already works on stable)
+
+See [gca_macroless_args] as a feature to disable the requirement of writing `gca!`.
+
+[gca_macroless_args]: gca-macroless-args.md
+
+## direct const items
+
+This feature introduces a new item kind: consts with a `gca!` right-hand side.
+Constants with a direct right-hand side are allowed to be used in type contexts, e.g.:
+
+```compile_fail
+#![allow(incomplete_features)]
+#![feature(gca_min_const_items)]
+
+const X: usize = core::gca!(1);
+const Y: usize = 1;
+
+struct Foo {
+    good_arr: [(); core::gca!(X)], // Allowed
+    bad_arr: [(); core::gca!(Y)], // Will not compile
+}
+```
+
+## Examples
+
+```rust
+#![allow(incomplete_features)]
+#![feature(gca_min_const_items)]
+
+trait Bar {
+    #[rustc_always_gca]
+    const VAL: usize;
+    #[rustc_always_gca]
+    const VAL2: usize;
+}
+
+struct Baz;
+
+impl Bar for Baz {
+    const VAL: usize = core::gca!(2);
+    const VAL2: usize = core::gca!(const { Self::VAL * 2 });
+}
+
+struct Foo<B: Bar> {
+    arr1: [usize; core::gca!(B::VAL)],
+    arr2: [usize; core::gca!(B::VAL2)],
+}
+```
+
+Note that with [generic_const_exprs] the same example would look as follows:
+
+```rust
+#![allow(incomplete_features)]
+#![feature(generic_const_exprs)]
+
+trait Bar {
+    const VAL: usize;
+    const VAL2: usize;
+}
+
+struct Baz;
+
+impl Bar for Baz {
+    const VAL: usize = 2;
+    const VAL2: usize = const { Self::VAL * 2 };
+}
+
+struct Foo<B: Bar>
+where
+    [(); B::VAL]:,
+    [(); B::VAL2]:,
+{
+    arr1: [usize; B::VAL],
+    arr2: [usize; B::VAL2],
+}
+```
+
+Use of const functions is allowed:
+
+```rust
+#![allow(incomplete_features)]
+#![feature(gca_min_const_items)]
+
+const VAL: usize = 1;
+
+const fn inc(val: usize) -> usize {
+    val + 1
+}
+
+const INC: usize = core::gca!(const { inc(VAL) });
+
+const ARR: [usize; INC] = [0; INC];
+```
 "##,
         default_severity: Severity::Allow,
         warn_since: None,
@@ -8711,51 +9848,6 @@ The tracking issue for this feature is: [#130539]
         deny_since: None,
     },
     Lint {
-        label: "generic_const_args",
-        description: r##"# generic_const_args
-
-Allows using generics in more complex const expressions, based on definitional equality.
-
-The tracking issue for this feature is: [#151972]
-
-[#151972]: https://github.com/rust-lang/rust/issues/151972
-
-------------------------
-
-Warning: This feature is incomplete; its design and syntax may change.
-
-This feature enables many of the same use cases supported by [generic_const_exprs],
-but based on the machinery developed for [min_generic_const_args]. In a way, it is
-meant to be an interim successor for GCE (though it might not currently support all
-the valid cases that supported by GCE).
-
-See also: [generic_const_items]
-
-[min_generic_const_args]: min-generic-const-args.md
-[generic_const_exprs]: generic-const-exprs.md
-[generic_const_items]: generic-const-items.md
-
-## Examples
-
-<!-- NOTE(ignore) generic_const_args requires -Znext-solver to compile -->
-```rust,ignore (requires-Z-next-solver)
-#![feature(generic_const_items)]
-#![feature(min_generic_const_args)]
-#![feature(generic_const_args)]
-#![expect(incomplete_features)]
-
-type const ADD1<const N: usize>: usize = const { N + 1 };
-
-type const INC<const N: usize>: usize = ADD1::<N>;
-
-const ARR: [(); ADD1::<0>] = [(); INC::<0>];
-```
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
         label: "generic_const_exprs",
         description: r##"# generic_const_exprs
 
@@ -8771,10 +9863,10 @@ The tracking issue for this feature is: [#76560]
 
 Warning: This feature is incomplete; its design and syntax may change.
 
-See also: [min_generic_const_args], [generic_const_args]
+See also: [gca_min_const_items], [gca_const_items]
 
-[min_generic_const_args]: min-generic-const-args.md
-[generic_const_args]: generic-const-args.md
+[gca_min_const_items]: gca-min-const-items.md
+[gca_const_items]: gca-const-items.md
 
 ## Examples
 
@@ -8850,11 +9942,11 @@ The tracking issue for this feature is: [#113521]
 Warning: This feature is an [experiment] and lacks an RFC.
 There are no guarantees that it will ever be stabilized.
 
-See also: [generic_const_exprs], [min_generic_const_args].
+See also: [generic_const_exprs], [gca_min_const_items].
 
 [experiment]: https://lang-team.rust-lang.org/how_to/experiment.html
 [generic_const_exprs]: generic-const-exprs.md
-[min_generic_const_args]: min-generic-const-args.md
+[gca_min_const_items]: gca-min-const-items.md
 
 ## Examples
 
@@ -9335,14 +10427,14 @@ This feature has no tracking issue, and is therefore likely internal to the comp
         deny_since: None,
     },
     Lint {
-        label: "int_format_into",
-        description: r##"# `int_format_into`
+        label: "instrument_fn",
+        description: r##"# `instrument_fn`
 
+Enable #[instrument_fn] on function.
 
+The tracking issue for this feature is: [#157081]
 
-The tracking issue for this feature is: [#138215]
-
-[#138215]: https://github.com/rust-lang/rust/issues/138215
+[#157081]: https://github.com/rust-lang/rust/issues/157081
 
 ------------------------
 "##,
@@ -9407,6 +10499,22 @@ The tracking issue for this feature is: [#99069]
 The tracking issue for this feature is: [#154650]
 
 [#154650]: https://github.com/rust-lang/rust/issues/154650
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "integer_casts",
+        description: r##"# `integer_casts`
+
+
+
+The tracking issue for this feature is: [#157388]
+
+[#157388]: https://github.com/rust-lang/rust/issues/157388
 
 ------------------------
 "##,
@@ -9536,7 +10644,7 @@ These are written without a body:
 #![allow(internal_features)]
 
 #[rustc_intrinsic]
-pub fn abort() -> !;
+pub fn abort_immediate() -> !;
 ```
 "##,
         default_severity: Severity::Allow,
@@ -9574,6 +10682,20 @@ This feature has no tracking issue, and is therefore likely internal to the comp
         deny_since: None,
     },
     Lint {
+        label: "io_copy_internals",
+        description: r##"# `io_copy_internals`
+
+
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "io_error_inprogress",
         description: r##"# `io_error_inprogress`
 
@@ -9590,6 +10712,22 @@ The tracking issue for this feature is: [#130840]
         deny_since: None,
     },
     Lint {
+        label: "io_error_input_output_error",
+        description: r##"# `io_error_input_output_error`
+
+
+
+The tracking issue for this feature is: [#159066]
+
+[#159066]: https://github.com/rust-lang/rust/issues/159066
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "io_error_more",
         description: r##"# `io_error_more`
 
@@ -9598,6 +10736,22 @@ The tracking issue for this feature is: [#130840]
 The tracking issue for this feature is: [#86442]
 
 [#86442]: https://github.com/rust-lang/rust/issues/86442
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "io_error_too_many_open_files",
+        description: r##"# `io_error_too_many_open_files`
+
+
+
+The tracking issue for this feature is: [#158319]
+
+[#158319]: https://github.com/rust-lang/rust/issues/158319
 
 ------------------------
 "##,
@@ -9682,6 +10836,22 @@ This feature has no tracking issue, and is therefore likely internal to the comp
         deny_since: None,
     },
     Lint {
+        label: "ipv6_hop_limit",
+        description: r##"# `ipv6_hop_limit`
+
+
+
+The tracking issue for this feature is: [#139166]
+
+[#139166]: https://github.com/rust-lang/rust/issues/139166
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "is_ascii_octdigit",
         description: r##"# `is_ascii_octdigit`
 
@@ -9690,38 +10860,6 @@ This feature has no tracking issue, and is therefore likely internal to the comp
 The tracking issue for this feature is: [#101288]
 
 [#101288]: https://github.com/rust-lang/rust/issues/101288
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
-        label: "is_loongarch_feature_detected",
-        description: r##"# `is_loongarch_feature_detected`
-
-
-
-The tracking issue for this feature is: [#117425]
-
-[#117425]: https://github.com/rust-lang/rust/issues/117425
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
-        label: "is_riscv_feature_detected",
-        description: r##"# `is_riscv_feature_detected`
-
-
-
-The tracking issue for this feature is: [#111192]
-
-[#111192]: https://github.com/rust-lang/rust/issues/111192
 
 ------------------------
 "##,
@@ -10058,7 +11196,7 @@ unsafe fn allocate(size: usize, _align: usize) -> *mut u8 {
 
     // Check if `malloc` failed:
     if p.is_null() {
-        intrinsics::abort();
+        intrinsics::abort_immediate();
     }
 
     p
@@ -10075,7 +11213,7 @@ extern "C" fn main(_argc: c_int, _argv: *const *const u8) -> c_int {
 fn rust_eh_personality() {}
 
 #[panic_handler]
-fn panic_handler(_info: &PanicInfo) -> ! { intrinsics::abort() }
+fn panic_handler(_info: &PanicInfo) -> ! { intrinsics::abort_immediate() }
 ```
 
 Note the use of `abort`: the `exchange_malloc` lang item is assumed to
@@ -10085,7 +11223,7 @@ return a valid pointer, and so needs to do the check internally.
 
 An up-to-date list of all language items can be found [here] in the compiler code.
 
-[here]: https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc_hir/src/lang_items.rs
+[here]: https://github.com/rust-lang/rust/blob/ac62df9b49f9b9036af2a4957db70bf3850785e1/compiler/rustc_attr_ir/src/lang_items.rs#L158
 "##,
         default_severity: Severity::Allow,
         warn_since: None,
@@ -10108,22 +11246,6 @@ The tracking issue for this feature is: [#83518]
         deny_since: None,
     },
     Lint {
-        label: "layout_for_ptr",
-        description: r##"# `layout_for_ptr`
-
-
-
-The tracking issue for this feature is: [#69835]
-
-[#69835]: https://github.com/rust-lang/rust/issues/69835
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
         label: "lazy_cell_into_inner",
         description: r##"# `lazy_cell_into_inner`
 
@@ -10132,22 +11254,6 @@ The tracking issue for this feature is: [#69835]
 The tracking issue for this feature is: [#125623]
 
 [#125623]: https://github.com/rust-lang/rust/issues/125623
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
-        label: "lazy_type_alias",
-        description: r##"# `lazy_type_alias`
-
-Allow to have type alias types for inter-crate use.
-
-The tracking issue for this feature is: [#112792]
-
-[#112792]: https://github.com/rust-lang/rust/issues/112792
 
 ------------------------
 "##,
@@ -10252,6 +11358,20 @@ This feature is internal to the Rust compiler and is not intended for general us
         deny_since: None,
     },
     Lint {
+        label: "link_enzyme_intrinsics",
+        description: r##"# `link_enzyme_intrinsics`
+
+Allows using `#[link_name="__enzyme_*"]`.
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "link_llvm_intrinsics",
         description: r##"# `link_llvm_intrinsics`
 
@@ -10348,22 +11468,6 @@ The tracking issue for this feature is: [#82971]
         deny_since: None,
     },
     Lint {
-        label: "local_key_cell_update",
-        description: r##"# `local_key_cell_update`
-
-
-
-The tracking issue for this feature is: [#143989]
-
-[#143989]: https://github.com/rust-lang/rust/issues/143989
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
         label: "local_waker",
         description: r##"# `local_waker`
 
@@ -10422,6 +11526,41 @@ The tracking issue for this feature is: [#150252]
 [#150252]: https://github.com/rust-lang/rust/issues/150252
 
 ------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "loop_hints",
+        description: r##"# `loop_hints`
+
+The tracking issue for this feature is: [#156874]
+
+[#156874]: https://github.com/rust-lang/rust/issues/156874
+
+------
+
+<!--
+FIXME(#159429): temporarily renamed `#[unroll]` to mitigate a nameres ambiguity
+-->
+
+Loop unrolling can be a powerful optimization but like inlining, it is sometimes useful to
+manually provide hints to optimizations.
+
+`#[rustc_unroll]` will encourage unrolling of a loop.
+
+`#[rustc_unroll(full)]` is a stronger hint and can cause optimizations to completely ignore the code
+side growth from repeating a loop body.
+
+`#[rustc_unroll(never)]` is a strong hint to not unroll the loop at all. Note that other loop
+optimizations may still be applied.
+
+`#[rustc_unroll(N)]` is a hint to unroll `N` iterations of the loop.
+
+In all cases these are just hints and may be ignored. But unlike function inlining hints,
+loops tend to be heavily modified during compilation, which can make obeying hints challenging.
+If the attribute doesn't do what you want, please file an issue.
 "##,
         default_severity: Severity::Allow,
         warn_since: None,
@@ -10862,22 +12001,6 @@ The tracking issue for this feature is: [#96097]
         deny_since: None,
     },
     Lint {
-        label: "mem_conjure_zst",
-        description: r##"# `mem_conjure_zst`
-
-
-
-The tracking issue for this feature is: [#95383]
-
-[#95383]: https://github.com/rust-lang/rust/issues/95383
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
         label: "mem_copy_fn",
         description: r##"# `mem_copy_fn`
 
@@ -10886,22 +12009,6 @@ The tracking issue for this feature is: [#95383]
 The tracking issue for this feature is: [#98262]
 
 [#98262]: https://github.com/rust-lang/rust/issues/98262
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
-        label: "mgca_type_const_syntax",
-        description: r##"# `mgca_type_const_syntax`
-
-Enable mgca `type const` syntax before expansion.
-
-The tracking issue for this feature is: [#132980]
-
-[#132980]: https://github.com/rust-lang/rust/issues/132980
 
 ------------------------
 "##,
@@ -10920,123 +12027,6 @@ The tracking issue for this feature is: [#154042]
 [#154042]: https://github.com/rust-lang/rust/issues/154042
 
 ------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
-        label: "min_generic_const_args",
-        description: r##"# min_generic_const_args
-
-Enables the generic const args MVP (paths to type const items and constructors for ADTs and primitives).
-
-The tracking issue for this feature is: [#132980]
-
-[#132980]: https://github.com/rust-lang/rust/issues/132980
-
-------------------------
-
-Warning: This feature is incomplete; its design and syntax may change.
-
-This feature acts as a minimal alternative to [generic_const_exprs] that allows a smaller subset of functionality,
-and uses a different approach for implementation. It is intentionally more restrictive, which helps with avoiding edge
-cases that make the `generic_const_exprs` hard to implement properly. See [Feature background][feature_background]
-for more details.
-
-Related features: [generic_const_args], [generic_const_items].
-
-[feature_background]: https://github.com/rust-lang/project-const-generics/blob/main/documents/min_const_generics_plan.md
-[generic_const_exprs]: generic-const-exprs.md
-[generic_const_args]: generic-const-args.md
-[generic_const_items]: generic-const-items.md
-
-## `type const` syntax
-
-This feature introduces new syntax: `type const`.
-Constants marked as `type const` are allowed to be used in type contexts, e.g.:
-
-```compile_fail
-#![allow(incomplete_features)]
-#![feature(min_generic_const_args)]
-
-type const X: usize = 1;
-const Y: usize = 1;
-
-struct Foo {
-    good_arr: [(); X], // Allowed
-    bad_arr: [(); Y], // Will not compile, `Y` must be `type const`.
-}
-```
-
-## Examples
-
-```rust
-#![allow(incomplete_features)]
-#![feature(min_generic_const_args)]
-
-trait Bar {
-    type const VAL: usize;
-    type const VAL2: usize;
-}
-
-struct Baz;
-
-impl Bar for Baz {
-    type const VAL: usize = 2;
-    type const VAL2: usize = const { Self::VAL * 2 };
-}
-
-struct Foo<B: Bar> {
-    arr1: [usize; B::VAL],
-    arr2: [usize; B::VAL2],
-}
-```
-
-Note that with [generic_const_exprs] the same example would look as follows:
-
-```rust
-#![allow(incomplete_features)]
-#![feature(generic_const_exprs)]
-
-trait Bar {
-    const VAL: usize;
-    const VAL2: usize;
-}
-
-struct Baz;
-
-impl Bar for Baz {
-    const VAL: usize = 2;
-    const VAL2: usize = const { Self::VAL * 2 };
-}
-
-struct Foo<B: Bar>
-where
-    [(); B::VAL]:,
-    [(); B::VAL2]:,
-{
-    arr1: [usize; B::VAL],
-    arr2: [usize; B::VAL2],
-}
-```
-
-Use of const functions is allowed:
-
-```rust
-#![allow(incomplete_features)]
-#![feature(min_generic_const_args)]
-
-const VAL: usize = 1;
-
-const fn inc(val: usize) -> usize {
-    val + 1
-}
-
-type const INC: usize = const { inc(VAL) };
-
-const ARR: [usize; INC] = [0; INC];
-```
 "##,
         default_severity: Severity::Allow,
         warn_since: None,
@@ -11153,6 +12143,38 @@ impl A for Foo {
 The tracking issue for this feature is: [#147456]
 
 [#147456]: https://github.com/rust-lang/rust/issues/147456
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "movdir64b_target_feature",
+        description: r##"# `movdir64b_target_feature`
+
+The `movdir64b` target feature on x86.
+
+The tracking issue for this feature is: [#163741]
+
+[#163741]: https://github.com/rust-lang/rust/issues/163741
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "movdiri_target_feature",
+        description: r##"# `movdiri_target_feature`
+
+The `movdiri` target feature on x86.
+
+The tracking issue for this feature is: [#163741]
+
+[#163741]: https://github.com/rust-lang/rust/issues/163741
 
 ------------------------
 "##,
@@ -11337,6 +12359,22 @@ The tracking issue for this feature is: [#138568]
         deny_since: None,
     },
     Lint {
+        label: "named_fn_trait_parameters",
+        description: r##"# `named_fn_trait_parameters`
+
+Allows providing names to parameters of `impl Fn` etc
+
+The tracking issue for this feature is: [#158499]
+
+[#158499]: https://github.com/rust-lang/rust/issues/158499
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "native_link_modifiers_as_needed",
         description: r##"# `native_link_modifiers_as_needed`
 
@@ -11472,22 +12510,6 @@ The tracking issue for this feature is: [#118155]
         deny_since: None,
     },
     Lint {
-        label: "never_type",
-        description: r##"# `never_type`
-
-Allows the `!` type. Does not imply 'exhaustive_patterns' (below) any more.
-
-The tracking issue for this feature is: [#35121]
-
-[#35121]: https://github.com/rust-lang/rust/issues/35121
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
         label: "new_range",
         description: r##"# `new_range`
 
@@ -11498,22 +12520,6 @@ The tracking issue for this feature is: [#123741]
 ---
 
 Switch the syntaxes `a..`, `a..b`, and `a..=b` to resolve the new range types.
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
-        label: "new_range_api_legacy",
-        description: r##"# `new_range_api_legacy`
-
-
-
-The tracking issue for this feature is: [#125687]
-
-[#125687]: https://github.com/rust-lang/rust/issues/125687
-
-------------------------
 "##,
         default_severity: Severity::Allow,
         warn_since: None,
@@ -11672,22 +12678,6 @@ The tracking issue for this feature is: [#128281]
 The tracking issue for this feature is: [#106290]
 
 [#106290]: https://github.com/rust-lang/rust/issues/106290
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
-        label: "nonzero_from_str_radix",
-        description: r##"# `nonzero_from_str_radix`
-
-
-
-The tracking issue for this feature is: [#152193]
-
-[#152193]: https://github.com/rust-lang/rust/issues/152193
 
 ------------------------
 "##,
@@ -11903,6 +12893,22 @@ The tracking issue for this feature is: [#121641]
         deny_since: None,
     },
     Lint {
+        label: "once_cell_new_init",
+        description: r##"# `once_cell_new_init`
+
+
+
+The tracking issue for this feature is: [#159859]
+
+[#159859]: https://github.com/rust-lang/rust/issues/159859
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "once_cell_try",
         description: r##"# `once_cell_try`
 
@@ -11935,6 +12941,38 @@ The tracking issue for this feature is: [#116693]
         deny_since: None,
     },
     Lint {
+        label: "once_lazy_lock_get_unchecked",
+        description: r##"# `once_lazy_lock_get_unchecked`
+
+
+
+The tracking issue for this feature is: [#162716]
+
+[#162716]: https://github.com/rust-lang/rust/issues/162716
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "once_lock_new_init",
+        description: r##"# `once_lock_new_init`
+
+
+
+The tracking issue for this feature is: [#159860]
+
+[#159860]: https://github.com/rust-lang/rust/issues/159860
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "one_sided_range",
         description: r##"# `one_sided_range`
 
@@ -11959,22 +12997,6 @@ The tracking issue for this feature is: [#69780]
 The tracking issue for this feature is: [#143674]
 
 [#143674]: https://github.com/rust-lang/rust/issues/143674
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
-        label: "optimize_attribute",
-        description: r##"# `optimize_attribute`
-
-Allows using `#[optimize(X)]`.
-
-The tracking issue for this feature is: [#54882]
-
-[#54882]: https://github.com/rust-lang/rust/issues/54882
 
 ------------------------
 "##,
@@ -12313,22 +13335,6 @@ The tracking issue for this feature is: [#142503]
         deny_since: None,
     },
     Lint {
-        label: "pathbuf_into_string",
-        description: r##"# `pathbuf_into_string`
-
-
-
-The tracking issue for this feature is: [#156203]
-
-[#156203]: https://github.com/rust-lang/rust/issues/156203
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
         label: "pattern",
         description: r##"# `pattern`
 
@@ -12515,22 +13521,6 @@ The tracking issue for this feature is: [#96284]
         deny_since: None,
     },
     Lint {
-        label: "pointer_try_cast_aligned",
-        description: r##"# `pointer_try_cast_aligned`
-
-
-
-The tracking issue for this feature is: [#141221]
-
-[#141221]: https://github.com/rust-lang/rust/issues/141221
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
         label: "portable_simd",
         description: r##"# `portable_simd`
 
@@ -12574,6 +13564,22 @@ get_foo().match {
     Foo::Baz => panic!(),
 }
 ```
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "powerpc_ppcf128",
+        description: r##"# `powerpc_ppcf128`
+
+
+
+The tracking issue for this feature is: [#163323]
+
+[#163323]: https://github.com/rust-lang/rust/issues/163323
+
+------------------------
 "##,
         default_severity: Severity::Allow,
         warn_since: None,
@@ -12717,7 +13723,7 @@ The tracking issue for this feature is: [#90765]
         label: "proc_macro_hygiene",
         description: r##"# `proc_macro_hygiene`
 
-Allows macro attributes on expressions, statements and non-inline modules.
+Allows macro attributes on expressions and statements.
 
 The tracking issue for this feature is: [#54727]
 
@@ -12735,9 +13741,7 @@ The tracking issue for this feature is: [#54727]
 
 
 
-The tracking issue for this feature is: [#27812]
-
-[#27812]: https://github.com/rust-lang/rust/issues/27812
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
 
 ------------------------
 "##,
@@ -13006,20 +14010,6 @@ The tracking issue for this feature is: [#149103]
         deny_since: None,
     },
     Lint {
-        label: "ptr_internals",
-        description: r##"# `ptr_internals`
-
-
-
-This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
         label: "ptr_mask",
         description: r##"# `ptr_mask`
 
@@ -13224,10 +14214,40 @@ The tracking issue for this feature is: [#140771]
         deny_since: None,
     },
     Lint {
+        label: "read_le",
+        description: r##"# `read_le`
+
+
+
+The tracking issue for this feature is: [#156984]
+
+[#156984]: https://github.com/rust-lang/rust/issues/156984
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "read_le_be_internals",
+        description: r##"# `read_le_be_internals`
+
+
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "reborrow",
         description: r##"# `reborrow`
 
-
+Allows the `Reborrow` and `CoerceShared` traits.
 
 The tracking issue for this feature is: [#145612]
 
@@ -13445,6 +14465,22 @@ Tool lints:
         deny_since: None,
     },
     Lint {
+        label: "rename_noreplace",
+        description: r##"# `rename_noreplace`
+
+
+
+The tracking issue for this feature is: [#161427]
+
+[#161427]: https://github.com/rust-lang/rust/issues/161427
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "repr_simd",
         description: r##"# `repr_simd`
 
@@ -13467,22 +14503,6 @@ The tracking issue for this feature is: [#27731]
 
 
 This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
-        label: "result_option_map_or_default",
-        description: r##"# `result_option_map_or_default`
-
-
-
-The tracking issue for this feature is: [#138099]
-
-[#138099]: https://github.com/rust-lang/rust/issues/138099
 
 ------------------------
 "##,
@@ -13607,6 +14627,22 @@ Allows `extern "rust-preserve-none"`.
 The tracking issue for this feature is: [#151401]
 
 [#151401]: https://github.com/rust-lang/rust/issues/151401
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "rust_tail_cc",
+        description: r##"# `rust_tail_cc`
+
+Allows `extern "tail"`.
+
+The tracking issue for this feature is: [#157427]
+
+[#157427]: https://github.com/rust-lang/rust/issues/157427
 
 ------------------------
 "##,
@@ -13871,20 +14907,6 @@ impl MyTrait for () {
         deny_since: None,
     },
     Lint {
-        label: "sealed",
-        description: r##"# `sealed`
-
-
-
-This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
         label: "seek_io_take_position",
         description: r##"# `seek_io_take_position`
 
@@ -13893,6 +14915,22 @@ This feature has no tracking issue, and is therefore likely internal to the comp
 The tracking issue for this feature is: [#97227]
 
 [#97227]: https://github.com/rust-lang/rust/issues/97227
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "seek_read_exact_seek_write_all",
+        description: r##"# `seek_read_exact_seek_write_all`
+
+
+
+The tracking issue for this feature is: [#162868]
+
+[#162868]: https://github.com/rust-lang/rust/issues/162868
 
 ------------------------
 "##,
@@ -14373,6 +15411,22 @@ The tracking issue for this feature is: [#31844]
         deny_since: None,
     },
     Lint {
+        label: "splat",
+        description: r##"# `splat`
+
+Experimental "splatting" of function call arguments at the call site. e.g. `foo(a, b, c)` calls `#[rustc_splat] fn foo((a: A, b: B, c: C))`.
+
+The tracking issue for this feature is: [#153629]
+
+[#153629]: https://github.com/rust-lang/rust/issues/153629
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "split_array",
         description: r##"# `split_array`
 
@@ -14655,14 +15709,14 @@ The tracking issue for this feature is: [#130366]
         deny_since: None,
     },
     Lint {
-        label: "str_from_raw_parts",
-        description: r##"# `str_from_raw_parts`
+        label: "str_copy_from_str",
+        description: r##"# `str_copy_from_str`
 
 
 
-The tracking issue for this feature is: [#119206]
+The tracking issue for this feature is: [#159841]
 
-[#119206]: https://github.com/rust-lang/rust/issues/119206
+[#159841]: https://github.com/rust-lang/rust/issues/159841
 
 ------------------------
 "##,
@@ -14671,14 +15725,14 @@ The tracking issue for this feature is: [#119206]
         deny_since: None,
     },
     Lint {
-        label: "str_from_utf16_endian",
-        description: r##"# `str_from_utf16_endian`
+        label: "str_from_raw_parts",
+        description: r##"# `str_from_raw_parts`
 
 
 
-The tracking issue for this feature is: [#116258]
+The tracking issue for this feature is: [#119206]
 
-[#116258]: https://github.com/rust-lang/rust/issues/116258
+[#119206]: https://github.com/rust-lang/rust/issues/119206
 
 ------------------------
 "##,
@@ -14771,36 +15825,21 @@ The tracking issue for this feature is: [#130351]
 [#130351]: https://github.com/rust-lang/rust/issues/130351
 -----
 
-The `strict_provenance_lints` feature allows to enable the `fuzzy_provenance_casts` and `lossy_provenance_casts` lints.
-These lint on casts between integers and pointers, that are recommended against or invalid in the strict provenance model.
+The `strict_provenance_lints` feature allows to enable the `implicit_provenance_casts` lint.
 
 ## Example
 
 ```rust
 #![feature(strict_provenance_lints)]
-#![warn(fuzzy_provenance_casts)]
+#![warn(implicit_provenance_casts)]
 
 fn main() {
-    let _dangling = 16_usize as *const u8;
-    //~^ WARNING: strict provenance disallows casting integer `usize` to pointer `*const u8`
+    let dangling = 16_usize as *const u8;
+    //~^ WARNING: cast from `usize` to `*const u8` implicitly relies on exposed provenance
+    let _addr = dangling as usize;
+    //~^ WARNING: cast from `*const u8` to `usize` implicitly exposes pointer provenance
 }
 ```
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
-        label: "string_from_utf8_lossy_owned",
-        description: r##"# `string_from_utf8_lossy_owned`
-
-
-
-The tracking issue for this feature is: [#129436]
-
-[#129436]: https://github.com/rust-lang/rust/issues/129436
-
-------------------------
 "##,
         default_severity: Severity::Allow,
         warn_since: None,
@@ -14855,22 +15894,6 @@ The tracking issue for this feature is: [#147949]
         deny_since: None,
     },
     Lint {
-        label: "strip_circumfix",
-        description: r##"# `strip_circumfix`
-
-
-
-The tracking issue for this feature is: [#147946]
-
-[#147946]: https://github.com/rust-lang/rust/issues/147946
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
         label: "structural_match",
         description: r##"# `structural_match`
 
@@ -14879,22 +15902,6 @@ Allows using `#[structural_match]` which indicates that a type is structurally m
 The tracking issue for this feature is: [#31434]
 
 [#31434]: https://github.com/rust-lang/rust/issues/31434
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
-        label: "substr_range",
-        description: r##"# `substr_range`
-
-
-
-The tracking issue for this feature is: [#126769]
-
-[#126769]: https://github.com/rust-lang/rust/issues/126769
 
 ------------------------
 "##,
@@ -15226,6 +16233,20 @@ even when using either of the above.
         deny_since: None,
     },
     Lint {
+        label: "test_binder_constraints",
+        description: r##"# `test_binder_constraints`
+
+Perma-unstable, only used in the test suite for binders (`for<'a>`).
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "test_incomplete_feature",
         description: r##"# `test_incomplete_feature`
 
@@ -15306,6 +16327,22 @@ The tracking issue for this feature is: [#29594]
         description: r##"# `thread_local_internals`
 
 This feature is internal to the Rust compiler and is not intended for general use.
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "thread_os_id",
+        description: r##"# `thread_os_id`
+
+
+
+The tracking issue for this feature is: [#160215]
+
+[#160215]: https://github.com/rust-lang/rust/issues/160215
 
 ------------------------
 "##,
@@ -15651,22 +16688,6 @@ their application of these optimizations.
         deny_since: None,
     },
     Lint {
-        label: "trim_prefix_suffix",
-        description: r##"# `trim_prefix_suffix`
-
-
-
-The tracking issue for this feature is: [#142312]
-
-[#142312]: https://github.com/rust-lang/rust/issues/142312
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
         label: "trivial_bounds",
         description: r##"# `trivial_bounds`
 
@@ -15760,13 +16781,94 @@ The tracking issue for this feature is: [#85731]
         label: "try_as_dyn",
         description: r##"# `try_as_dyn`
 
-
-
 The tracking issue for this feature is: [#144361]
 
 [#144361]: https://github.com/rust-lang/rust/issues/144361
 
 ------------------------
+
+The `try_as_dyn` feature allows going from a generic `T` with no bounds
+to a `dyn Trait`, if `T: Trait` and various conditions are upheld. It is
+very related to specialization, as it allows you to specialize within
+function bodies, but in a more general manner than `Any::downcast`.
+
+```rust
+#![feature(try_as_dyn)]
+
+fn downcast_debug_format<T: 'static>(t: &T) -> String {
+    match std::any::try_as_dyn::<_, dyn std::fmt::Debug>(t) {
+        Some(d) => format!("{d:?}"),
+        None => "default".to_string()
+    }
+}
+```
+
+
+## Rules and reasons for them
+
+> [!IMPORTANT]
+> The main problem of **`try_as_dyn` and specialization is the compiler's inability, while trait-checking, to distinguish/_discriminate_ between any two given lifetimes**[^1].
+
+[^1]: the compiler cannot _branch_ on whether "`'a : 'b` holds": for soundness, it can either choose not to know the answer, or _assume_ that it holds and produce an obligation for the borrow-checker which shall "assert this" (making compilation fail in a fatal manner if not). Most usages of Rust lie in the latter category (typical `where` clauses anywhere), whilst specialization/`try_as_dyn()` wants to support fallibility of the operation (_i.e._, being queried on a type not fulfilling the predicate without causing a compilation error). This rules out the latter, resulting in the need for the former, _i.e._, for the `try_as_dyn()` attempt to unconditionally "fail" with `None`.
+
+### `'static` is not mentioned anywhere in the `impl` block header.
+
+The most obvious one: if you have `impl IsStatic for &'static str`, then determining whether `&'? str : IsStatic` does hold amounts to discriminating `'? : 'static`.
+
+### Each outlives `where` bound (`Type: 'a` and `'a: 'b`) does not mention lifetime-infected parameters.
+
+Parameters are considered lifetime-infected if they are defined in an `impl` block's generic parameter list.
+Const generics are exempt, as they can't affect lifetimes.
+`for<'a>` lifetimes (and in the future types) are not lifetime-infected.
+
+We can create lifetime discrimination this way. For instance, given `impl<'a, 'b> Outlives<'a> for &'b str where 'b : 'a {}`, `Outlives<'static>` amounts to `IsStatic` from previous bullet.
+
+### Each lifetime-infected parameter is mentioned at most once in the `Self` type and the implemented trait's generic parameters, combined.
+
+Repetition of a parameter entails equality of those two use-sites; in lifetime-terms, this would be a double `'a : 'b` / `'b : 'a` clause, for instance.
+Follow-up from the previous example: `impl<'a> Uses<'a> for &'a str {}`, and check whether `&'? str : Uses<'static>`.
+
+### Each individual trait where bound (`Type: Trait`) mentions each lifetime-infected parameter at most once.
+
+Mentioning a lifetime-infected parameter in multiple `where` bounds is allowed.
+
+Looking at the previous rules, which focuses on `Self : …`, this is just observing that shifting the requirements to other parameters within `where` clauses \[ought to\] boil down to the same set of issues.
+
+This is _unnecessarily restrictive_: we should be able to loosen it up somehow. Repetition only in `where` clauses seems fine.
+
+
+### The `impl` block is a handwritten impl
+
+as opposed to a type implementing a trait automatically by the compiler (such as auto-traits, `dyn Bounds… : Bounds…`, and closures)
+
+
+The reason for this is that some such auto-generated impls _come with hidden bounds or whatnot_, which run afoul of the previous rules, whilst also being _extremely challenging for the current compiler logic to know of such bounds_.
+IIUC, this restriction could be lifted in the future should the compiler logic be better at spotting these hidden bounds, when present.
+
+One contrived such example being the case of `dyn 'u + for<'a> Outlives<'a>`, where the compiler-generated `impl` for it of `Outlives` is: `impl<'b, 'u> Outlives<'b> for dyn 'u + for<'a> Outlives<'a> where 'b : 'u {}` which violates the "`'a: 'b` not to mention lt-infected params" rule, whilst also being hard to detect in current compiler logic.
+
+### Associated type projections (`<Type as Trait>::Assoc`) are not mentioned anywhere in the `impl` block header.
+
+Associated-type equality bounds can very much amount to lifetime-infected parameter equality constraints,
+which are problematic as per the "at most one mention of each lifetime-infected parameter in header" rule.
+To illustrate, with the following definitions, `&'? str: Trait<'static>` discriminates `'?` against `'static`:
+```rust
+trait Trait<'x> {}
+impl<'a, 'b> Trait<'b> for &'a str
+where
+    //     &'a str = &'b str,
+    Option<&'a str>: IntoIterator<Item = &'b str>,
+{}
+```
+
+```rust
+trait Trait<'x> {}
+impl<'a> Trait<'a> for &'a str {}
+```
+
+### Each trait `where` bound with an associated type equality (`Type: Trait<Assoc = Type2>`) does not mention lifetime-infected parameters.
+
+Checking whether `Option<&'? str>: IntoIterator<Item = &'static str>` holds discriminates `'?` against `'static`.
 "##,
         default_severity: Severity::Allow,
         warn_since: None,
@@ -15818,6 +16920,22 @@ Allows using `try bikeshed TargetType {...}` expressions.
 The tracking issue for this feature is: [#149488]
 
 [#149488]: https://github.com/rust-lang/rust/issues/149488
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "try_entry",
+        description: r##"# `try_entry`
+
+
+
+The tracking issue for this feature is: [#157354]
+
+[#157354]: https://github.com/rust-lang/rust/issues/157354
 
 ------------------------
 "##,
@@ -15941,11 +17059,9 @@ The tracking issue for this feature is: [#91913]
         label: "tuple_trait",
         description: r##"# `tuple_trait`
 
+The tracking issue for this feature is [#157987].
 
-
-This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
-
-------------------------
+[#157987]: https://github.com/rust-lang/rust/issues/157987
 "##,
         default_severity: Severity::Allow,
         warn_since: None,
@@ -16146,7 +17262,7 @@ The tracking issue for this feature is: [#86555]
 This implements [RFC2528]. When turned on, you can create instances of the same struct
 that have different generic type or lifetime parameters.
 
-[RFC2528]: https://github.com/rust-lang/rfcs/blob/master/text/2528-type-changing-struct-update-syntax.md
+[RFC2528]: https://rust-lang.github.io/rfcs/2528-type-changing-struct-update-syntax.html
 
 ```rust
 #![allow(unused_variables, dead_code)]
@@ -16182,6 +17298,22 @@ fn main () {
 The tracking issue for this feature is: [#146922]
 
 [#146922]: https://github.com/rust-lang/rust/issues/146922
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "u8_split_ascii_whitespace",
+        description: r##"# `u8_split_ascii_whitespace`
+
+
+
+The tracking issue for this feature is: [#147878]
+
+[#147878]: https://github.com/rust-lang/rust/issues/147878
 
 ------------------------
 "##,
@@ -16490,22 +17622,6 @@ The tracking issue for this feature is: [#130516]
         deny_since: None,
     },
     Lint {
-        label: "unsafe_cell_access",
-        description: r##"# `unsafe_cell_access`
-
-
-
-The tracking issue for this feature is: [#136327]
-
-[#136327]: https://github.com/rust-lang/rust/issues/136327
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
         label: "unsafe_fields",
         description: r##"# `unsafe_fields`
 
@@ -16575,9 +17691,9 @@ The tracking issue for this feature is: [#18598]
 
 Allows const generic parameters to be defined with types that are not `Sized`, e.g. `fn foo<const N: [u8]>() {`.
 
-The tracking issue for this feature is: [#95174]
+The tracking issue for this feature is: [#128028]
 
-[#95174]: https://github.com/rust-lang/rust/issues/95174
+[#128028]: https://github.com/rust-lang/rust/issues/128028
 
 ------------------------
 "##,
@@ -16594,22 +17710,6 @@ Allows unsized fn parameters.
 The tracking issue for this feature is: [#48055]
 
 [#48055]: https://github.com/rust-lang/rust/issues/48055
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
-        label: "unwrap_infallible",
-        description: r##"# `unwrap_infallible`
-
-
-
-The tracking issue for this feature is: [#61695]
-
-[#61695]: https://github.com/rust-lang/rust/issues/61695
 
 ------------------------
 "##,
@@ -16678,6 +17778,22 @@ The tracking issue for this feature is: [#73662]
         deny_since: None,
     },
     Lint {
+        label: "vec_as_non_null",
+        description: r##"# `vec_as_non_null`
+
+
+
+The tracking issue for this feature is: [#157843]
+
+[#157843]: https://github.com/rust-lang/rust/issues/157843
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "vec_deque_extract_if",
         description: r##"# `vec_deque_extract_if`
 
@@ -16710,14 +17826,14 @@ The tracking issue for this feature is: [#123947]
         deny_since: None,
     },
     Lint {
-        label: "vec_deque_truncate_front",
-        description: r##"# `vec_deque_truncate_front`
+        label: "vec_deque_retain_range",
+        description: r##"# `vec_deque_retain_range`
 
 
 
-The tracking issue for this feature is: [#140667]
+The tracking issue for this feature is: [#156215]
 
-[#140667]: https://github.com/rust-lang/rust/issues/140667
+[#156215]: https://github.com/rust-lang/rust/issues/156215
 
 ------------------------
 "##,
@@ -16734,22 +17850,6 @@ The tracking issue for this feature is: [#140667]
 The tracking issue for this feature is: [#152350]
 
 [#152350]: https://github.com/rust-lang/rust/issues/152350
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
-        label: "vec_from_fn",
-        description: r##"# `vec_from_fn`
-
-
-
-The tracking issue for this feature is: [#149698]
-
-[#149698]: https://github.com/rust-lang/rust/issues/149698
 
 ------------------------
 "##,
@@ -16838,14 +17938,14 @@ The tracking issue for this feature is: [#81944]
         deny_since: None,
     },
     Lint {
-        label: "vec_try_remove",
-        description: r##"# `vec_try_remove`
+        label: "view_type_macro",
+        description: r##"# `view_type_macro`
 
 
 
-The tracking issue for this feature is: [#146954]
+The tracking issue for this feature is: [#155938]
 
-[#146954]: https://github.com/rust-lang/rust/issues/146954
+[#155938]: https://github.com/rust-lang/rust/issues/155938
 
 ------------------------
 "##,
@@ -16910,6 +18010,20 @@ The tracking issue for this feature is: [#148457]
 The tracking issue for this feature is: [#71213]
 
 [#71213]: https://github.com/rust-lang/rust/issues/71213
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "wasip2",
+        description: r##"# `wasip2`
+
+
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
 
 ------------------------
 "##,
@@ -17098,6 +18212,22 @@ The tracking issue for this feature is: [#98289]
         deny_since: None,
     },
     Lint {
+        label: "windows_process_extensions_desktop",
+        description: r##"# `windows_process_extensions_desktop`
+
+
+
+The tracking issue for this feature is: [#158852]
+
+[#158852]: https://github.com/rust-lang/rust/issues/158852
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "windows_process_extensions_force_quotes",
         description: r##"# `windows_process_extensions_force_quotes`
 
@@ -17130,22 +18260,6 @@ The tracking issue for this feature is: [#146407]
         deny_since: None,
     },
     Lint {
-        label: "windows_process_extensions_main_thread_handle",
-        description: r##"# `windows_process_extensions_main_thread_handle`
-
-
-
-The tracking issue for this feature is: [#96723]
-
-[#96723]: https://github.com/rust-lang/rust/issues/96723
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
         label: "windows_process_extensions_raw_attribute",
         description: r##"# `windows_process_extensions_raw_attribute`
 
@@ -17154,22 +18268,6 @@ The tracking issue for this feature is: [#96723]
 The tracking issue for this feature is: [#114854]
 
 [#114854]: https://github.com/rust-lang/rust/issues/114854
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
-        label: "windows_process_extensions_show_window",
-        description: r##"# `windows_process_extensions_show_window`
-
-
-
-The tracking issue for this feature is: [#127544]
-
-[#127544]: https://github.com/rust-lang/rust/issues/127544
 
 ------------------------
 "##,
@@ -17346,6 +18444,22 @@ The tracking issue for this feature is: [#127208]
         deny_since: None,
     },
     Lint {
+        label: "xtensa_target_feature",
+        description: r##"# `xtensa_target_feature`
+
+Allows use of the Xtensa target-features
+
+The tracking issue for this feature is: [#157063]
+
+[#157063]: https://github.com/rust-lang/rust/issues/157063
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "yeet_desugar_details",
         description: r##"# `yeet_desugar_details`
 
@@ -17396,7 +18510,7 @@ assert_eq!(bar(), None);
         label: "yield_expr",
         description: r##"# `yield_expr`
 
-
+Allows the `yield` keyword for coroutines/generators.
 
 The tracking issue for this feature is: [#43122]
 

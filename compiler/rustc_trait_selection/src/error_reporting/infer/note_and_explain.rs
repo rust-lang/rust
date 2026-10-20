@@ -965,7 +965,7 @@ fn foo(&self) -> Self::T { String::new() }
                         }
                     };
                     diag.span_context(tcx.def_span(tcx.parent(assoc_item.def_id)));
-                    diag.span_label(tcx.def_span(assoc_item.def_id).into(), msg);
+                    diag.span_label(tcx.def_span(assoc_item.def_id), msg);
                     return true;
                 }
             }

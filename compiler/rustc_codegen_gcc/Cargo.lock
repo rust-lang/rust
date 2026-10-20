@@ -188,6 +188,7 @@ dependencies = [
  "boml",
  "gccjit",
  "lang_tester",
+ "libc",
  "object",
  "tempfile",
 ]
