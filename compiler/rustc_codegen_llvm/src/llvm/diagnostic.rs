@@ -157,12 +157,10 @@ impl InlineAsmDiagnostic {
 pub(crate) enum Diagnostic<'ll> {
     Optimization(OptimizationDiagnostic<'ll>),
     InlineAsm(InlineAsmDiagnostic),
-    PGO(&'ll DiagnosticInfo),
     Linker(&'ll DiagnosticInfo),
-    Unsupported(&'ll DiagnosticInfo),
 
-    /// LLVM has other types that we do not wrap here.
-    UnknownDiagnostic(&'ll DiagnosticInfo),
+    /// LLVM has other types that we do not distinguish here.
+    Other(&'ll DiagnosticInfo),
 }
 
 impl<'ll> Diagnostic<'ll> {
@@ -200,13 +198,11 @@ impl<'ll> Diagnostic<'ll> {
                     Optimization(OptimizationDiagnostic::unpack(OptimizationFailure, di))
                 }
 
-                Dk::PGOProfile => PGO(di),
                 Dk::Linker => Linker(di),
-                Dk::Unsupported => Unsupported(di),
 
                 Dk::SrcMgr => InlineAsm(InlineAsmDiagnostic::unpackSrcMgr(di)),
 
-                _ => UnknownDiagnostic(di),
+                _ => Other(di),
             }
         }
     }

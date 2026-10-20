@@ -486,9 +486,7 @@ fn diagnostic_handler_callback_inner(
             .expect("non-UTF8 diagnostic");
             dcx.emit_warn(FromLlvmDiag { message });
         }
-        llvm::diagnostic::PGO(diagnostic_ref)
-        | llvm::diagnostic::Unsupported(diagnostic_ref)
-        | llvm::diagnostic::UnknownDiagnostic(diagnostic_ref) => {
+        llvm::diagnostic::Other(diagnostic_ref) => {
             let message = llvm::build_string(|s| unsafe {
                 llvm::LLVMRustWriteDiagnosticInfoToString(diagnostic_ref, s)
             })
