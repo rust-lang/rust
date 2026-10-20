@@ -99,10 +99,7 @@ fn hash_mir_source<'tcx>(tcx: TyCtxt<'tcx>, hir_body: &'tcx hir::Body<'tcx>) -> 
         .as_u64()
 }
 
-fn extract_hole_spans_from_hir<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    hir_body: &'tcx hir::Body<'tcx>,
-) -> Vec<Span> {
+fn extract_hole_spans_from_hir<'tcx>(tcx: TyCtxt<'tcx>, hir_body: &hir::Body<'tcx>) -> Vec<Span> {
     struct HolesVisitor<'tcx> {
         tcx: TyCtxt<'tcx>,
         hole_spans: Vec<Span>,
@@ -159,7 +156,7 @@ fn extract_hole_spans_from_hir<'tcx>(
 fn find_nodes_to_ignore<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
-    hir_body: &'tcx hir::Body<'tcx>,
+    hir_body: &hir::Body<'tcx>,
 ) -> FxHashSet<HirId> {
     /// Top-level visitor used by [`find_nodes_to_ignore`].
     struct FindNodesToIgnoreVisitor<'tcx> {
