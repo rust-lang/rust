@@ -1,0 +1,215 @@
+//@ check-pass
+//@ run-rustfix
+
+#![feature(f16, f128)]
+
+extern crate core;
+
+fn main() {
+    let x = 5f16;
+    let _ = <f16>::is_nan(x);
+    //~^ WARN incorrect NaN comparison
+    let _ = !<f16>::is_nan(x);
+    //~^ WARN incorrect NaN comparison
+
+    let x = 5f32;
+    let _ = <f32>::is_nan(x);
+    //~^ WARN incorrect NaN comparison
+    let _ = !<f32>::is_nan(x);
+    //~^ WARN incorrect NaN comparison
+
+    let x = 5f64;
+    let _ = <f64>::is_nan(x);
+    //~^ WARN incorrect NaN comparison
+    let _ = !<f64>::is_nan(x);
+    //~^ WARN incorrect NaN comparison
+
+    let x = 5f128;
+    let _ = <f128>::is_nan(x);
+    //~^ WARN incorrect NaN comparison
+    let _ = !<f128>::is_nan(x);
+    //~^ WARN incorrect NaN comparison
+
+    let b = &2.3f32;
+    if !<f32>::is_nan(*b) {}
+    //~^ WARN incorrect NaN comparison
+
+    let b = &2.3f32;
+    if !<f32>::is_nan(*b) {}
+    //~^ WARN incorrect NaN comparison
+
+    let _ =
+        !<f32>::is_nan(*b);
+
+    // Issue #164143: an unsuffixed float is constrained by the `NAN` operand.
+    // Suggesting `.is_nan()` drops that constraint and does not compile.
+    let b = &3.3;
+    if !<f64>::is_nan(*b) {}
+    //~^ WARN incorrect NaN comparison
+
+    let mut m = &3.3;
+    if !<f64>::is_nan(*m) {
+        //~^ WARN incorrect NaN comparison
+        m = &1.0;
+    }
+    let _ = m;
+
+    let unary = &(-3.3);
+    if !<f64>::is_nan(*unary) {}
+    //~^ WARN incorrect NaN comparison
+
+    let block = &{ 3.3 };
+    if !<f64>::is_nan(*block) {}
+    //~^ WARN incorrect NaN comparison
+
+    let (tuple,) = (&3.3,);
+    if !<f64>::is_nan(*tuple) {}
+    //~^ WARN incorrect NaN comparison
+
+    let arithmetic = &(3.3 + 0.0);
+    if !<f64>::is_nan(*arithmetic) {}
+    //~^ WARN incorrect NaN comparison
+
+    let x = 1.0f64;
+    if !<f64>::is_nan(*&x) {}
+    //~^ WARN incorrect NaN comparison
+    let p = &x;
+    let _ = <f64>::is_nan(*p);
+    //~^ WARN incorrect NaN comparison
+    let _ = <f64>::is_nan(-x);
+    //~^ WARN incorrect NaN comparison
+
+    shadowed::check();
+    nested_operands();
+    macro_paths();
+    method_resolution::check();
+
+    let _ = <f64>::is_nan(3.3);
+    //~^ WARN incorrect NaN comparison
+
+    let _ = !<f64>::is_nan(*&3.3);
+    //~^ WARN incorrect NaN comparison
+
+    let suffixed = 3.3f64;
+    let copied = suffixed;
+    let _ = !<f64>::is_nan(copied);
+    //~^ WARN incorrect NaN comparison
+
+    let ascribed: f64 = 3.3;
+    let _ = !<f64>::is_nan(ascribed);
+    //~^ WARN incorrect NaN comparison
+
+    parameter(1.0);
+    parameter_ref(&1.0);
+    let _ = |x: f64| !<f64>::is_nan(x); //~ WARN incorrect NaN comparison
+
+    #[allow(unused_macros)]
+    macro_rules! nan { () => { f32::NAN }; }
+    macro_rules! number { () => { 5f32 }; }
+
+    let _ = ::std::primitive::f32::is_nan(number!());
+    //~^ WARN incorrect NaN comparison
+    let _ = !::std::primitive::f32::is_nan(number!());
+    //~^ WARN incorrect NaN comparison
+}
+
+fn parameter(x: f64) {
+    let _ = <f64>::is_nan(x);
+    //~^ WARN incorrect NaN comparison
+}
+
+fn parameter_ref(x: &f32) {
+    if !<f32>::is_nan(*x) {}
+    //~^ WARN incorrect NaN comparison
+}
+
+fn nested_operands() {
+    let x = 1.0f64;
+    let _ = <f64>::is_nan(*(&x as &f64));
+    //~^ WARN incorrect NaN comparison
+    let _ = !<f64>::is_nan(*{ &{ 3.3 } });
+    //~^ WARN incorrect NaN comparison
+    let _ = <f64>::is_nan(***&&&3.3);
+    //~^ WARN incorrect NaN comparison
+    let b = &&&3.3;
+    let _ = !<f64>::is_nan(***b);
+    //~^ WARN incorrect NaN comparison
+    let b = &mut 3.3;
+    let _ = !<f64>::is_nan(*b);
+    //~^ WARN incorrect NaN comparison
+    let b = &3.3;
+    let _ = <f64>::is_nan(*b);
+    //~^ WARN incorrect NaN comparison
+    let b = &3.3;
+    let _ = !<f64>::is_nan(*b);
+    //~^ WARN incorrect NaN comparison
+    let b = &&3.3;
+    let _ = <f64>::is_nan(**b);
+    //~^ WARN incorrect NaN comparison
+
+    let b = &(-3.3);
+    let _ = !<f16>::is_nan(*b);
+    //~^ WARN incorrect NaN comparison
+    let b = &(3.3 + 0.0);
+    let _ = <f128>::is_nan(*b);
+    //~^ WARN incorrect NaN comparison
+
+    macro_rules! borrowed { () => { &3.3 }; }
+    let _ = !<f64>::is_nan(*borrowed!());
+    //~^ WARN incorrect NaN comparison
+}
+
+pub type MacroFloat = f64;
+
+fn macro_paths() {
+    #[allow(unused_macros)]
+    macro_rules! nan { () => { $crate::MacroFloat::NAN }; }
+    let b = &3.3;
+    let _ = !::std::primitive::f64::is_nan(*b);
+    //~^ WARN incorrect NaN comparison
+}
+
+mod shadowed {
+    #[allow(dead_code, non_camel_case_types)]
+    struct f64;
+    use ::core::primitive::f64 as Float;
+
+    pub fn check() {
+        let b = &3.3;
+        if !<::core::primitive::f64>::is_nan(*b) {}
+        //~^ WARN incorrect NaN comparison
+        let c = &4.4;
+        if !<Float>::is_nan(*c) {}
+        //~^ WARN incorrect NaN comparison
+        let d = &5.5;
+        if !<Float>::is_nan(*d) {}
+        //~^ WARN incorrect NaN comparison
+    }
+}
+
+mod method_resolution {
+    mod f64 {
+        pub fn is_nan(_: ::core::primitive::f64) {}
+    }
+
+    trait IsNan {
+        fn is_nan(self);
+    }
+
+    impl IsNan for &f64 {
+        fn is_nan(self) {}
+    }
+
+    pub fn check() {
+        let _: () = f64::is_nan(5.0);
+        let _: () = (&5f64).is_nan();
+
+        let x = 5f64;
+        let _: bool = <f64>::is_nan(x);
+        //~^ WARN incorrect NaN comparison
+
+        let x = &5f64;
+        let _: bool = <f64>::is_nan(*x);
+        //~^ WARN incorrect NaN comparison
+    }
+}
