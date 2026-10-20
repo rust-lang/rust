@@ -1285,6 +1285,27 @@ impl<'db> euv::Delegate<'db> for InferBorrowKind {
     }
 
     #[instrument(skip(self), level = "debug")]
+    fn borrow_for_comparison(
+        &mut self,
+        place_with_id: PlaceWithOrigin,
+        ctx: &mut InferenceContext<'db>,
+    ) {
+        let PlaceBase::Upvar { closure: upvar_closure, .. } = place_with_id.place.base else {
+            return;
+        };
+        assert_eq!(self.closure_def_id, upvar_closure);
+
+        let place = ctx.normalize_capture_place(place_with_id.span(), place_with_id.place.clone());
+        if matches!(place.ty().kind(), TyKind::Ref(_, _, Mutability::Not))
+            && !place.projections.iter().any(|p| p.kind == ProjectionKind::Deref)
+        {
+            self.copy(place_with_id, ctx);
+        } else {
+            self.borrow(place_with_id, BorrowKind::Immutable, ctx);
+        }
+    }
+
+    #[instrument(skip(self), level = "debug")]
     fn copy(&mut self, place_with_id: PlaceWithOrigin, ctx: &mut InferenceContext<'db>) {
         let PlaceBase::Upvar { closure: upvar_closure, .. } = place_with_id.place.base else {
             return;
