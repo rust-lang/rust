@@ -3,7 +3,7 @@
 
 use std::{assert_matches, iter};
 
-use rustc_ast::{self as ast, GenericParamKind, Mutability, attr, join_path_idents};
+use rustc_ast::{self as ast, GeneratedAttr, GenericParamKind, Mutability, attr, join_path_idents};
 use rustc_ast_pretty::pprust;
 use rustc_attr_ir::{Attribute, AttributeKind};
 use rustc_attr_parsing::AttributeParser;
@@ -65,7 +65,9 @@ pub(crate) fn expand_test_case(
                 ident,
             ));
             item.vis = ast::Visibility { span: item.vis.span, kind: ast::VisibilityKind::Public };
-            item.attrs.push(ecx.attr_name_value_str(sym::rustc_test_marker, test_path_symbol, sp));
+            item.attrs.push(
+                ecx.generated_attr(attr_sp, GeneratedAttr::RustcTestMarker(test_path_symbol)),
+            );
         }
         _ => {}
     }
@@ -188,7 +190,7 @@ pub(crate) fn expand_test_or_bench(
     // corresponding macro declaration in `core::macros`.
     let coverage_off = |mut expr: Box<ast::Expr>| {
         assert_matches!(expr.kind, ast::ExprKind::Closure(_));
-        expr.attrs.push(cx.attr_nested_word(sym::coverage, sym::off, sp));
+        expr.attrs.push(cx.generated_attr(sp, GeneratedAttr::CoverageOff));
         expr
     };
 
@@ -266,9 +268,9 @@ pub(crate) fn expand_test_or_bench(
             // #[cfg(test)]
             cx.attr_nested_word(sym::cfg, sym::test, attr_sp),
             // #[rustc_test_marker = "test_case_sort_key"]
-            cx.attr_name_value_str(sym::rustc_test_marker, test_path_symbol, attr_sp),
+            cx.generated_attr(attr_sp, GeneratedAttr::RustcTestMarker(test_path_symbol)),
             // #[doc(hidden)]
-            cx.attr_nested_word(sym::doc, sym::hidden, attr_sp),
+            cx.generated_attr(attr_sp, GeneratedAttr::DocHidden),
         ],
         Ident::new(fn_.ident.name, sp),
         cx.ty_path(test_path("TestDescAndFn")),
