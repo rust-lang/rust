@@ -3576,7 +3576,9 @@ pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// carefully!
 ///
 /// This function does **not** follow symbolic links and it will simply remove the
-/// symbolic link itself.
+/// symbolic link itself. If `path` itself is a symbolic link to a directory, it will get
+/// removed. If it is a symbolic link to a file, behavior is platform-specific:
+/// currently, it will get removed on Unix-like systems but not on Windows.
 ///
 /// # Platform-specific behavior
 ///
