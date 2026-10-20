@@ -1,15 +1,11 @@
 //@ check-pass
-// This test requires a feature gated const fn and will stop working in the future.
+// NOTE: This test requires a feature gated const fn and will stop working in the future.
+// NOTE: See https://github.com/rust-lang/rust/issues/164718 for details on a permanent fix.
 
-#![feature(const_btree_len)]
+#![feature(const_unsigned_bigint_helpers)]
 
-use std::collections::BTreeMap;
-
-struct Foo(usize);
-impl Foo {
-    fn new() -> Self {
-        Self(BTreeMap::len(&BTreeMap::<u8, u8>::new()))
-    }
+fn test() -> (u32, bool) {
+    u32::carrying_add(10, 1, true)
 }
 
 fn main() {}
