@@ -1,0 +1,72 @@
+error[E0277]: the size for values of type `(dyn Fn() + 'static)` cannot be known at compilation time
+  --> $DIR/checked-alias-variant-pattern-unsized-arg-issue-152990.rs:10:1
+   |
+LL | type Supertype = Foo<dyn Fn()>;
+   | ^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn Fn() + 'static)`
+note: required by an implicit `Sized` bound in `Foo`
+  --> $DIR/checked-alias-variant-pattern-unsized-arg-issue-152990.rs:6:10
+   |
+LL | enum Foo<F: Fn()> {
+   |          ^ required by the implicit `Sized` requirement on this type parameter in `Foo`
+help: you could relax the implicit `Sized` bound on `F` if it were used through indirection like `&F` or `Box<F>`
+  --> $DIR/checked-alias-variant-pattern-unsized-arg-issue-152990.rs:6:10
+   |
+LL | enum Foo<F: Fn()> {
+   |          ^ this could be changed to `F: ?Sized`...
+LL |     Bar,
+LL |     Var(F),
+   |         - ...if indirection were used here: `Box<F>`
+
+error[E0308]: mismatched types
+  --> $DIR/checked-alias-variant-pattern-unsized-arg-issue-152990.rs:16:9
+   |
+LL |     match x {
+   |           - this expression has type `Inv`
+LL |         Foo::Var(Supertype::Bar) => {}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^ expected `Inv`, found `Foo<_>`
+   |
+   = note: expected struct `Inv`
+                found enum `Foo<_>`
+
+error[E0277]: the size for values of type `(dyn Fn() + 'static)` cannot be known at compilation time
+  --> $DIR/checked-alias-variant-pattern-unsized-arg-issue-152990.rs:16:18
+   |
+LL |         Foo::Var(Supertype::Bar) => {}
+   |                  ^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn Fn() + 'static)`
+note: required by a bound in `Foo::Bar`
+  --> $DIR/checked-alias-variant-pattern-unsized-arg-issue-152990.rs:6:10
+   |
+LL | enum Foo<F: Fn()> {
+   |          ^ required by this bound in `Foo::Bar`
+LL |     Bar,
+   |
+
+error[E0277]: expected `Fn()` signature, found `Foo<dyn Fn()>`
+  --> $DIR/checked-alias-variant-pattern-unsized-arg-issue-152990.rs:16:9
+   |
+LL |         Foo::Var(Supertype::Bar) => {}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^ expected `Fn()` signature, found `Foo<dyn Fn()>`
+   |
+help: the trait `Fn()` is not implemented for `Foo<dyn Fn()>`
+  --> $DIR/checked-alias-variant-pattern-unsized-arg-issue-152990.rs:6:1
+   |
+LL | enum Foo<F: Fn()> {
+   | ^^^^^^^^^^^^^^^^^
+   = note: wrap the `Foo<dyn Fn()>` in a closure with no arguments: `|| { /* code */ }`
+note: required by a bound in `Foo::Var`
+  --> $DIR/checked-alias-variant-pattern-unsized-arg-issue-152990.rs:6:13
+   |
+LL | enum Foo<F: Fn()> {
+   |             ^^^^ required by this bound in `Foo::Var`
+LL |     Bar,
+LL |     Var(F),
+   |
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.
