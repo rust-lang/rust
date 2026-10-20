@@ -354,12 +354,10 @@ fn sidebar_trait<'a>(
 
     sidebar_assoc_items(cx, it, blocks, deref_id_map);
 
-    if !t.is_dyn_compatible(tcx) {
-        blocks.push(LinkBlock::forced(
-            Link::new("dyn-compatibility", "Dyn Compatibility"),
-            "dyn-compatibility-note",
-        ));
-    }
+    blocks.push(LinkBlock::forced(
+        Link::new("dyn-compatibility", "Dyn Compatibility"),
+        "dyn-compatibility-note",
+    ));
 
     blocks.push(LinkBlock::new(
         Link::new("foreign-impls", "Implementations on Foreign Types"),
