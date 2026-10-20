@@ -719,10 +719,10 @@ impl GlobalState {
                 let fetch_semantic = self.vfs_done
                     && self.fetch_workspaces_queue.last_op_result().is_some()
                     && (!self.config.run_build_scripts(None)
-                        || (self.fetch_build_data_queue.last_op_result().is_none()
+                        || (self.fetch_build_data_queue.last_op_result().is_some()
                             && !self.fetch_build_data_queue.op_in_progress()))
                     && (!self.config.expand_proc_macros()
-                        || (self.fetch_proc_macros_queue.last_op_result().is_none()
+                        || (self.fetch_proc_macros_queue.last_op_result().is_some()
                             && !self.fetch_proc_macros_queue.op_in_progress()));
                 move |sender| {
                     // We aren't observing the semantics token cache here
