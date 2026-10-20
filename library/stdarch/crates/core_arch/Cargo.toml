@@ -25,7 +25,10 @@ stdarch-test = { version = "0.*", path = "../stdarch-test" }
 syscalls = { version = "0.6.18", default-features = false }
 
 [lints.rust]
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_has_reliable_f16)'] }
+unexpected_cfgs = { level = "warn", check-cfg = [
+    'cfg(target_has_reliable_f16b)',
+    'cfg(target_has_reliable_f16)',
+] }
 
 [lints.clippy]
 too_long_first_doc_paragraph = "allow"
