@@ -63,6 +63,10 @@ fn escaping_locals<'tcx>(
         if ty.is_union() || ty.is_enum() {
             return true;
         }
+        // Types like MaybeDangling relax validity requirements of inner references.
+        if ty.is_like_maybe_dangling() {
+            return true;
+        }
         if let ty::Adt(def, _args) = ty.kind()
             && (def.repr().simd()
                 || def.repr().scalable()

@@ -71,7 +71,7 @@ mod tests {
         {"id":29,"type":"vertex","label":"hoverResult","result":{"contents":{"kind":"markdown","value":"\n```rust\nextern crate foo\n```"}}}
         {"id":30,"type":"edge","label":"textDocument/hover","inV":29,"outV":5}
         {"id":31,"type":"vertex","label":"packageInformation","name":"foo","manager":"cargo","version":"0.0.0"}
-        {"id":32,"type":"vertex","label":"moniker","scheme":"rust-analyzer","identifier":"foo::crate","unique":"scheme","kind":"export"}
+        {"id":32,"type":"vertex","label":"moniker","scheme":"rust-analyzer","identifier":"foo::lib","unique":"scheme","kind":"export"}
         {"id":33,"type":"edge","label":"packageInformation","inV":31,"outV":32}
         {"id":34,"type":"edge","label":"moniker","inV":32,"outV":5}
         {"id":35,"type":"vertex","label":"definitionResult"}
@@ -88,7 +88,7 @@ mod tests {
         {"id":46,"type":"edge","label":"item","document":1,"property":"references","inVs":[7],"outV":44}
         {"id":47,"type":"vertex","label":"hoverResult","result":{"contents":{"kind":"markdown","value":"\n```rust\nfoo\n```\n\n```rust\nmacro_rules! generate_const_from_identifier\n```"}}}
         {"id":48,"type":"edge","label":"textDocument/hover","inV":47,"outV":11}
-        {"id":49,"type":"vertex","label":"moniker","scheme":"rust-analyzer","identifier":"foo::generate_const_from_identifier","unique":"scheme","kind":"export"}
+        {"id":49,"type":"vertex","label":"moniker","scheme":"rust-analyzer","identifier":"foo::lib::generate_const_from_identifier","unique":"scheme","kind":"export"}
         {"id":50,"type":"edge","label":"packageInformation","inV":31,"outV":49}
         {"id":51,"type":"edge","label":"moniker","inV":49,"outV":11}
         {"id":52,"type":"vertex","label":"definitionResult"}
@@ -100,7 +100,7 @@ mod tests {
         {"id":58,"type":"edge","label":"item","document":1,"property":"references","inVs":[13,23],"outV":55}
         {"id":59,"type":"vertex","label":"hoverResult","result":{"contents":{"kind":"markdown","value":"\n```rust\nfoo\n```\n\n```rust\nconst REQ_001: &str = \"encoded_data\"\n```"}}}
         {"id":60,"type":"edge","label":"textDocument/hover","inV":59,"outV":16}
-        {"id":61,"type":"vertex","label":"moniker","scheme":"rust-analyzer","identifier":"foo::REQ_001","unique":"scheme","kind":"export"}
+        {"id":61,"type":"vertex","label":"moniker","scheme":"rust-analyzer","identifier":"foo::lib::REQ_001","unique":"scheme","kind":"export"}
         {"id":62,"type":"edge","label":"packageInformation","inV":31,"outV":61}
         {"id":63,"type":"edge","label":"moniker","inV":61,"outV":16}
         {"id":64,"type":"vertex","label":"definitionResult"}
@@ -111,7 +111,7 @@ mod tests {
         {"id":69,"type":"edge","label":"item","document":1,"property":"definitions","inVs":[15],"outV":67}
         {"id":70,"type":"vertex","label":"hoverResult","result":{"contents":{"kind":"markdown","value":"\n```rust\nfoo\n```\n\n```rust\nmod tests\n```"}}}
         {"id":71,"type":"edge","label":"textDocument/hover","inV":70,"outV":19}
-        {"id":72,"type":"vertex","label":"moniker","scheme":"rust-analyzer","identifier":"foo::tests","unique":"scheme","kind":"export"}
+        {"id":72,"type":"vertex","label":"moniker","scheme":"rust-analyzer","identifier":"foo::lib::tests","unique":"scheme","kind":"export"}
         {"id":73,"type":"edge","label":"packageInformation","inV":31,"outV":72}
         {"id":74,"type":"edge","label":"moniker","inV":72,"outV":19}
         {"id":75,"type":"vertex","label":"definitionResult"}
@@ -122,7 +122,7 @@ mod tests {
         {"id":80,"type":"edge","label":"item","document":1,"property":"definitions","inVs":[18],"outV":78}
         {"id":81,"type":"vertex","label":"hoverResult","result":{"contents":{"kind":"markdown","value":"\n```rust\nfoo::tests\n```\n\n```rust\nconst REQ_002: &str = \"encoded_data\"\n```"}}}
         {"id":82,"type":"edge","label":"textDocument/hover","inV":81,"outV":26}
-        {"id":83,"type":"vertex","label":"moniker","scheme":"rust-analyzer","identifier":"foo::tests::REQ_002","unique":"scheme","kind":"export"}
+        {"id":83,"type":"vertex","label":"moniker","scheme":"rust-analyzer","identifier":"foo::lib::tests::REQ_002","unique":"scheme","kind":"export"}
         {"id":84,"type":"edge","label":"packageInformation","inV":31,"outV":83}
         {"id":85,"type":"edge","label":"moniker","inV":83,"outV":26}
         {"id":86,"type":"vertex","label":"definitionResult"}

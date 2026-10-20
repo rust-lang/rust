@@ -1,15 +1,54 @@
 name: Use the rustup cg_gcc
 description: >
-  Installs the cg_gcc backend and libgccjit that rustup distributes for the toolchain of
-  rust-toolchain.toml, and writes a config.toml that makes y.sh use them, along with the sysroot
-  of that toolchain (compiled by cg_llvm), instead of building the backend and the sysroot.
+  Installs the latest nightly that rustup distributes with cg_gcc and libgccjit, and checks out
+  the cg_gcc sources of that nightly from rust-lang/rust into `<path>/compiler/rustc_codegen_gcc`.
+  It writes there a config.toml that makes y.sh use the rustup backend, libgccjit and sysroot
+  (compiled by cg_llvm) instead of building them.
+
+inputs:
+  path:
+    description: Where to check out rust-lang/rust.
+    required: true
 
 runs:
   using: composite
   steps:
-    - shell: bash
+    - id: nightly
+      shell: bash
       run: |
-        rustup component add rustc-codegen-gcc gcc-x86_64-unknown-linux-gnu
+        # The newest nightlies sometimes lack a component, when its build failed.
+        rustup toolchain install nightly --profile minimal --allow-downgrade \
+          --component rustc-codegen-gcc,gcc-x86_64-unknown-linux-gnu,rust-src,rustc-dev,llvm-tools-preview
+        rustc +nightly -vV
+        commit="$(rustc +nightly -vV | sed -n 's/^commit-hash: //p')"
+        manifest="$(rustc +nightly --print sysroot)/lib/rustlib/multirust-channel-manifest.toml"
+        date="$(sed -n 's/^date = "\(.*\)"$/\1/p' "$manifest")"
+        if [ -z "$commit" ] || [ -z "$date" ]; then
+          echo "::error::could not find the commit ($commit) or the date ($date) of the nightly"
+          exit 1
+        fi
+        echo "commit=$commit" >> "$GITHUB_OUTPUT"
+        echo "Tested the cg_gcc of nightly-$date ([rust-lang/rust@${commit:0:11}](https://github.com/rust-lang/rust/commit/$commit))." >> "$GITHUB_STEP_SUMMARY"
+
+    - uses: actions/checkout@v7
+      with:
+        repository: rust-lang/rust
+        ref: ${{ steps.nightly.outputs.commit }}
+        path: ${{ inputs.path }}
+        sparse-checkout: compiler/rustc_codegen_gcc
+        # Only download the files of the sparse checkout.
+        filter: blob:none
+        persist-credentials: false
+
+    - shell: bash
+      working-directory: ${{ inputs.path }}/compiler/rustc_codegen_gcc
+      run: |
+        # The sources must be tested with the nightly that they were built into.
+        sed -i -E 's/^channel = .*/channel = "nightly"/' rust-toolchain.toml
+        if ! grep -qx 'channel = "nightly"' rust-toolchain.toml; then
+          echo "::error::failed to set the channel of rust-toolchain.toml to nightly"
+          exit 1
+        fi
         sysroot="$(rustc --print sysroot)"
         codegen_backends="$sysroot/lib/rustlib/x86_64-unknown-linux-gnu/codegen-backends"
         backends=("$codegen_backends"/librustc_codegen_gcc-*.so)

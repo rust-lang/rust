@@ -1,0 +1,78 @@
+// MIR for `chain_generic` after runtime-optimized
+
+fn chain_generic(_1: &(T, U), _2: &(T, U)) -> ControlFlow<bool> {
+    debug l => _1;
+    debug r => _2;
+    let mut _0: std::ops::ControlFlow<bool>;
+    scope 1 (inlined core::tuple::<impl PartialOrd for (T, U)>::__chaining_le) {
+        let _3: &T;
+        let _4: &T;
+        let mut _5: isize;
+        let _6: &U;
+        let _7: &U;
+        let mut _8: isize;
+        scope 2 {
+        }
+        scope 3 {
+        }
+    }
+
+    bb0: {
+        StorageLive(_5);
+        StorageLive(_8);
+        StorageLive(_3);
+        _3 = &((*_1).0: T);
+        StorageLive(_4);
+        _4 = &((*_2).0: T);
+        _0 = <T as PartialOrd>::__chaining_le(move _3, move _4) -> [return: bb1, unwind continue];
+    }
+
+    bb1: {
+        _5 = discriminant(_0);
+        switchInt(move _5) -> [1: bb2, 0: bb3, otherwise: bb8];
+    }
+
+    bb2: {
+        StorageDead(_4);
+        StorageDead(_3);
+        goto -> bb7;
+    }
+
+    bb3: {
+        StorageDead(_4);
+        StorageDead(_3);
+        StorageLive(_6);
+        _6 = &((*_1).1: U);
+        StorageLive(_7);
+        _7 = &((*_2).1: U);
+        _0 = <U as PartialOrd>::__chaining_le(move _6, move _7) -> [return: bb4, unwind continue];
+    }
+
+    bb4: {
+        _8 = discriminant(_0);
+        switchInt(move _8) -> [1: bb5, 0: bb6, otherwise: bb8];
+    }
+
+    bb5: {
+        StorageDead(_7);
+        StorageDead(_6);
+        goto -> bb7;
+    }
+
+    bb6: {
+        StorageDead(_7);
+        StorageDead(_6);
+        _0 = const ControlFlow::<bool>::Continue(());
+        goto -> bb7;
+    }
+
+    bb7: {
+        StorageDead(_8);
+        StorageDead(_5);
+        return;
+    }
+
+    bb8: {
+        unreachable;
+    }
+}

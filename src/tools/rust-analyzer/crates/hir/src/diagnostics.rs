@@ -32,7 +32,7 @@ use hir_expand::{
     HirFileId, InFile, MacroCallId, MacroCallKind, MacroKind, RenderedExpandError, ValueResult,
     mod_path::ModPath, name::Name,
 };
-use hir_ty::{
+use hir_ide::{
     CastError, ExplicitDropMethodUseKind, InferBodyId, InferenceDiagnostic, InferenceResult,
     ParamEnvAndCrate, PathGenericsSource, PathLoweringDiagnostic, TyLoweringDiagnostic,
     check_orphan_rules,
@@ -63,7 +63,7 @@ use crate::{
 };
 
 pub use hir_def::{VariantId, expr_store::MissingBodyItemKind};
-pub use hir_ty::{
+pub use hir_ide::{
     GenericArgsProhibitedReason, IncorrectGenericsLenKind, ReturnKind,
     diagnostics::{CaseType, IncorrectCase},
 };
@@ -872,7 +872,7 @@ impl<'a, 'db> DiagnosticsCollector<'a, 'db> {
 
     fn emit_case_diagnostics(&mut self, def: ModuleDefId) {
         self.acc
-            .extend(hir_ty::diagnostics::incorrect_case(self.db, def).into_iter().map(Into::into));
+            .extend(hir_ide::diagnostics::incorrect_case(self.db, def).into_iter().map(Into::into));
     }
 
     fn collect_macro_call(&mut self, macro_call_id: MacroCallId) {
@@ -1064,7 +1064,7 @@ impl<'a, 'db> DiagnosticsCollector<'a, 'db> {
                                 AssocItem::Const(it) => it.id.into(),
                                 AssocItem::TypeAlias(it) => it.id.into(),
                             };
-                            !hir_ty::dyn_compatibility::generics_require_sized_self(self.db, assoc_item)
+                            !hir_ide::dyn_compatibility::generics_require_sized_self(self.db, assoc_item)
                         });
                 }
             }
@@ -1243,7 +1243,7 @@ impl<'a, 'db> DiagnosticsCollector<'a, 'db> {
         self.emit_inference_errors(def.into(), source_map, type_owner);
 
         // FIXME: Missing unsafe and body validation should be defined for any `InferBodyId`.
-        let missing_unsafe = hir_ty::diagnostics::missing_unsafe(self.db, def);
+        let missing_unsafe = hir_ide::diagnostics::missing_unsafe(self.db, def);
         for (node, reason) in missing_unsafe.unsafe_exprs {
             match source_map.expr_or_pat_syntax(node) {
                 Ok(node) => self.acc.push(
@@ -2075,20 +2075,20 @@ impl<'db> AnyDiagnostic<'db> {
     }
 
     fn span_syntax(
-        span: hir_ty::Span,
+        span: hir_ide::Span,
         source_map: &ExpressionStoreSourceMap,
     ) -> Option<InFile<AstPtr<SpanAst>>> {
         Some(match span {
-            hir_ty::Span::ExprId(idx) => Self::expr_syntax(idx, source_map)?.map(|it| it.upcast()),
-            hir_ty::Span::PatId(idx) => Self::pat_syntax(idx, source_map)?.map(|it| it.upcast()),
-            hir_ty::Span::TypeRefId(idx) => {
+            hir_ide::Span::ExprId(idx) => Self::expr_syntax(idx, source_map)?.map(|it| it.upcast()),
+            hir_ide::Span::PatId(idx) => Self::pat_syntax(idx, source_map)?.map(|it| it.upcast()),
+            hir_ide::Span::TypeRefId(idx) => {
                 Self::type_syntax(idx, source_map)?.map(|it| it.upcast())
             }
-            hir_ty::Span::BindingId(idx) => {
+            hir_ide::Span::BindingId(idx) => {
                 let &pat = source_map.patterns_for_binding(idx).first()?;
                 Self::pat_syntax(pat, source_map)?.map(|it| it.upcast())
             }
-            hir_ty::Span::Dummy => {
+            hir_ide::Span::Dummy => {
                 never!("should never create a diagnostic for dummy spans");
                 return None;
             }

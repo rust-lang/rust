@@ -72,7 +72,7 @@ pub(super) fn check_fn<'tcx>(cx: &LateContext<'tcx>, kind: FnKind<'tcx>, body: &
             } else {
                 RetReplacement::Empty
             };
-            check_final_expr(cx, &body.value, vec![], replacement, None);
+            check_final_expr(cx, body.value, vec![], replacement, None);
         },
         FnKind::ItemFn(..) | FnKind::Method(..) => {
             check_block_return(cx, &body.value.kind, sp, vec![]);
@@ -190,7 +190,6 @@ fn check_final_expr<'tcx>(
                             LintCheck {
                                 tool: Some(Ident { name: sym::clippy, .. }),
                                 lint_name: sym::needless_return | sym::style | sym::all | sym::warnings,
-                                rest: None,
                                 kind: LintCheckKind::Expect,
                                 ..
                             }

@@ -27,3 +27,4 @@ tests/ui/scalable-vectors/transmute.rs
 tests/ui/scalable-vectors/transparent-wrappers.rs
 tests/ui/asm/aarch64/may_unwind.rs
 tests/ui/traits/next-solver/normalize/old-solver-hr-alias-norm-not-idempotent-129372.rs
+tests/ui/asm/binary_asm_labels_allowed.rs

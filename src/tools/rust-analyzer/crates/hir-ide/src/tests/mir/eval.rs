@@ -5,11 +5,11 @@ use syntax::{TextRange, TextSize};
 use test_fixture::WithFixture;
 
 use crate::{
-    db::HirDatabase, display::DisplayTarget, mir::MirLowerError, next_solver::GenericArgs,
-    setup_tracing, test_db::TestDB,
+    db::HirDatabase, display::DisplayTarget, mir::MirLowerError,
+    mir_pretty::MirEvalErrorPretty as _, next_solver::GenericArgs, setup_tracing, test_db::TestDB,
 };
 
-use super::{MirEvalError, interpret_mir};
+use crate::mir::{MirEvalError, interpret_mir};
 
 fn eval_main(db: &TestDB, file_id: EditionedFileId) -> Result<(String, String), MirEvalError<'_>> {
     crate::attach_db(db, || {

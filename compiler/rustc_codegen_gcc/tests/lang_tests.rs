@@ -1,6 +1,7 @@
 #![allow(clippy::uninlined_format_args)]
 
 use std::env::current_dir;
+use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -69,14 +70,40 @@ fn c_object_path(objects_dir: &Path, source: &Path) -> PathBuf {
     objects_dir.join(source.file_stem().expect("file_stem")).with_extension("o")
 }
 
+/// The address-space limit, in bytes, that a `//@ memory-limit: <n>G` line in the test puts on
+/// the compiler.
+fn memory_limit(path: &Path) -> Option<u64> {
+    let source = std::fs::read_to_string(path).expect("read file");
+    let value = source.lines().find_map(|line| line.strip_prefix("//@ memory-limit:"))?;
+    let gibibytes: u64 = value
+        .trim()
+        .strip_suffix('G')
+        .and_then(|number| number.parse().ok())
+        .unwrap_or_else(|| panic!("{}: expected `//@ memory-limit: <n>G`", path.display()));
+    Some(gibibytes << 30)
+}
+
 fn compile_and_run_cmds(
     compiler_args: Vec<String>,
+    memory_limit: Option<u64>,
     test_target: &Option<String>,
     exe: &Path,
     test_mode: TestMode,
 ) -> Vec<(&'static str, Command)> {
     let mut compiler = Command::new("rustc");
     compiler.args(compiler_args);
+    if let Some(limit) = memory_limit {
+        // SAFETY: the closure only calls `setrlimit`, which is async-signal-safe.
+        unsafe {
+            compiler.pre_exec(move || {
+                let rlimit = libc::rlimit { rlim_cur: limit, rlim_max: limit };
+                if libc::setrlimit(libc::RLIMIT_AS, &rlimit) != 0 {
+                    return Err(std::io::Error::last_os_error());
+                }
+                Ok(())
+            });
+        }
+    }
 
     // Test command 2: run `tempdir/x`.
     if test_target.is_some() {
@@ -202,6 +229,7 @@ fn build_test_runner(
                 .lines()
                 .skip_while(|l| !l.starts_with("//"))
                 .take_while(|l| l.starts_with("//"))
+                .filter(|l| !l.starts_with("//@"))
                 .map(|l| &l[2..])
                 .collect::<Vec<_>>()
                 .join("\n")
@@ -270,7 +298,7 @@ fn build_test_runner(
                 ]);
             }
 
-            compile_and_run_cmds(compiler_args, &test_target, &exe, test_mode)
+            compile_and_run_cmds(compiler_args, memory_limit(path), &test_target, &exe, test_mode)
         })
         .run();
 }

@@ -1,11 +1,19 @@
 name: CI with the cg_gcc distributed by rustup
 
-# FIXME: run nightly (`schedule: - cron: "0 4 * * *"`) once this workflow tests the cg_gcc sources
-# of the rust-lang/rust commit of the nightly instead of the ones of this repository.
-on: workflow_dispatch
+# Not run in PRs since it tests the cg_gcc sources of the latest nightly, not the ones of this
+# repository.
+on:
+  schedule:
+    - cron: "0 4 * * *"
+  workflow_dispatch:
 
 permissions:
   contents: read
+
+defaults:
+  run:
+    # Where the rustup-cg-gcc action checks out the cg_gcc sources of the nightly.
+    working-directory: rust/compiler/rustc_codegen_gcc
 
 env:
   # Enable backtraces for easier debugging
@@ -15,7 +23,7 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     # Above 3 times the longest job, so that a hang cannot run until GitHub's 6-hour limit.
     timeout-minutes: 90
 
@@ -26,10 +34,7 @@ jobs:
           "--std-tests --alloc-tests",
           # FIXME: re-enable asm tests when GCC can emit in the right syntax.
           # "--asm-tests",
-          "--test-libcore",
-          "--extended-rand-tests",
-          "--extended-regex-example-tests --test-libcore-doctests",
-          "--extended-regex-tests",
+          "--test-libcore --test-libcore-doctests",
           "--test-successful-rustc --nb-parts 2 --current-part 0",
           "--test-successful-rustc --nb-parts 2 --current-part 1",
           "--librsvg-tests",
@@ -40,38 +45,29 @@ jobs:
         ]
         # The tests that don't depend on the test command only run in the fastest job.
         include:
-          - commands: "--extended-rand-tests"
+          - commands: "--std-tests --alloc-tests"
             run_cargo_tests: true
 
     steps:
-    - uses: actions/checkout@v4
-
-    # `rustup show` installs from rust-toolchain.toml
-    - name: Setup rust toolchain
-      run: rustup show
+    - uses: actions/checkout@v7
+      with:
+        sparse-checkout: .github
+        sparse-checkout-cone-mode: false
 
     - name: Use the cg_gcc distributed by rustup
       uses: ./.github/actions/rustup-cg-gcc
-
-    - name: Setup rust cache
-      uses: Swatinem/rust-cache@v2
+      with:
+        path: rust
 
     - name: Add apt mirrors
       uses: ./.github/actions/apt-mirrors
 
     - name: Install packages
-      # `llvm-14-tools` is needed to install the `FileCheck` binary which is used for asm tests.
+      # `llvm-tools` is needed to install the `FileCheck` binary which is used for asm tests.
       timeout-minutes: 20
       run: |
         sudo apt-get update
-        sudo apt-get install ninja-build ripgrep llvm-14-tools llvm
-
-    # The libgccjit distributed by rustup emits `.base64`, which needs binutils >= 2.43.
-    # FIXME: remove when we have binutils version 2.43 in the repo.
-    - name: Install more recent binutils
-      # Without a limit, an unreachable mirror hangs the job until GitHub's 6-hour timeout.
-      timeout-minutes: 20
-      uses: ./.github/actions/recent-binutils
+        sudo apt-get install ninja-build ripgrep llvm-tools llvm
 
     - name: Install the libraries needed to build librsvg
       if: ${{ contains(matrix.commands, '--librsvg-tests') }}
@@ -81,6 +77,8 @@ jobs:
     - name: Set env
       run: |
         echo "workspace="$GITHUB_WORKSPACE >> $GITHUB_ENV
+        # /tmp is a small tmpfs, and rustdoc keeps every compiled doctest there until the run ends.
+        echo "TMPDIR=$RUNNER_TEMP" >> $GITHUB_ENV
 
     - name: Prepare
       if: ${{ matrix.run_cargo_tests }}
@@ -106,6 +104,8 @@ jobs:
 
     - name: Remove rustc-dev
       uses: ./.github/actions/remove-rustc-dev
+      with:
+        directory: rust/compiler/rustc_codegen_gcc
 
     - name: Prepare dependencies
       run: |
@@ -121,7 +121,7 @@ jobs:
   # (and cg_gcc can find them in the sysroot).
 
   stdarch:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     # Above 3 times the longest job, so that a hang cannot run until GitHub's 6-hour limit.
     timeout-minutes: 90
 
@@ -129,40 +129,33 @@ jobs:
       fail-fast: false
       matrix:
         cargo_runner: [
-          "sde -cpuid-in /home/runner/work/rustc_codegen_gcc/rustc_codegen_gcc/tests/cpuid.def -rtm_mode full --",
+          "sde -cpuid-in /home/runner/work/rustc_codegen_gcc/rustc_codegen_gcc/rust/compiler/rustc_codegen_gcc/tests/cpuid.def -rtm_mode full --",
           "",
         ]
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
+      with:
+        sparse-checkout: .github
+        sparse-checkout-cone-mode: false
 
-    # `rustup show` installs from rust-toolchain.toml
-    - name: Setup rust toolchain
-      run: rustup show
+    - name: Use the cg_gcc distributed by rustup
+      uses: ./.github/actions/rustup-cg-gcc
+      with:
+        path: rust
 
     # The stdarch-gen-common tests run rustfmt.
     - name: Install rustfmt
       run: rustup component add rustfmt
-
-    - name: Use the cg_gcc distributed by rustup
-      uses: ./.github/actions/rustup-cg-gcc
-
-    - name: Setup rust cache
-      uses: Swatinem/rust-cache@v2
 
     - name: Add apt mirrors
       uses: ./.github/actions/apt-mirrors
 
     - name: Install packages
       timeout-minutes: 20
-      run: sudo apt-get install ninja-build ripgrep
-
-    # The libgccjit distributed by rustup emits `.base64`, which needs binutils >= 2.43.
-    # FIXME: remove when we have binutils version 2.43 in the repo.
-    - name: Install more recent binutils
-      # Without a limit, an unreachable mirror hangs the job until GitHub's 6-hour timeout.
-      timeout-minutes: 20
-      uses: ./.github/actions/recent-binutils
+      run: |
+        sudo apt-get update
+        sudo apt-get install ninja-build ripgrep
 
     - name: Install Intel Software Development Emulator
       if: ${{ matrix.cargo_runner }}
@@ -203,6 +196,8 @@ jobs:
 
     - name: Remove rustc-dev
       uses: ./.github/actions/remove-rustc-dev
+      with:
+        directory: rust/compiler/rustc_codegen_gcc
 
     - name: Run stdarch tests
       if: ${{ !matrix.cargo_runner }}
@@ -220,39 +215,34 @@ jobs:
         STDARCH_TEST_SKIP_FUNCTION="xsave,xsaveopt,xsave64,xsaveopt64" STDARCH_TEST_EVERYTHING=1 CHANNEL=release CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER="${{ matrix.cargo_runner }}" TARGET=x86_64-unknown-linux-gnu CG_RUSTFLAGS="-Ainternal_features" ./y.sh cargo test --manifest-path build/build_sysroot/sysroot_src/library/stdarch/Cargo.toml -- --skip rtm --skip tbm --skip sse4a --skip test_tile_ --skip test__tile --skip test_mm_srav_epi64
 
   failures:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     # Above 3 times the longest job, so that a hang cannot run until GitHub's 6-hour limit.
     timeout-minutes: 90
 
     steps:
-    - uses: actions/checkout@v4
-
-    # `rustup show` installs from rust-toolchain.toml
-    - name: Setup rust toolchain
-      run: rustup show
+    - uses: actions/checkout@v7
+      with:
+        sparse-checkout: .github
+        sparse-checkout-cone-mode: false
 
     - name: Use the cg_gcc distributed by rustup
       uses: ./.github/actions/rustup-cg-gcc
+      with:
+        path: rust
 
     - name: Remove rustc-dev
       uses: ./.github/actions/remove-rustc-dev
-
-    - name: Setup rust cache
-      uses: Swatinem/rust-cache@v2
+      with:
+        directory: rust/compiler/rustc_codegen_gcc
 
     - name: Add apt mirrors
       uses: ./.github/actions/apt-mirrors
 
     - name: Install packages
       timeout-minutes: 20
-      run: sudo apt-get install ninja-build ripgrep
-
-    # The libgccjit distributed by rustup emits `.base64`, which needs binutils >= 2.43.
-    # FIXME: remove when we have binutils version 2.43 in the repo.
-    - name: Install more recent binutils
-      # Without a limit, an unreachable mirror hangs the job until GitHub's 6-hour timeout.
-      timeout-minutes: 20
-      uses: ./.github/actions/recent-binutils
+      run: |
+        sudo apt-get update
+        sudo apt-get install ninja-build ripgrep
 
     - name: Set env
       run: |

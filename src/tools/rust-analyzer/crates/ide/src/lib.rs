@@ -65,6 +65,7 @@ use std::time::Duration;
 use cfg::CfgOptions;
 use fetch_crates::CrateInfo;
 use hir::{ChangeWithProcMacros, EditionedFileId, crate_def_map, sym};
+use ide_db::base_db::TargetKind;
 use ide_db::{
     FxHashMap, FxIndexSet,
     base_db::{
@@ -280,7 +281,7 @@ impl Analysis {
             Env::default(),
             CrateOrigin::Local { repo: None, name: None },
             crate_attrs,
-            false,
+            TargetKind::Lib { is_proc_macro: false },
             proc_macro_cwd,
             Arc::new(CrateWorkspaceData {
                 target: Err("fixture has no layout".into()),
@@ -694,7 +695,7 @@ impl Analysis {
 
     /// Returns whether the given crate is a proc macro.
     pub fn is_proc_macro_crate(&self, crate_id: Crate) -> Cancellable<bool> {
-        self.with_db(|db| crate_id.data(db).is_proc_macro)
+        self.with_db(|db| crate_id.data(db).target_kind.is_proc_macro())
     }
 
     /// Returns true if this crate has `no_std` or `no_core` specified.

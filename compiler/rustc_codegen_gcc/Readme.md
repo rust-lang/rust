@@ -172,6 +172,7 @@ $ LIBRARY_PATH="[gcc-path value]" LD_LIBRARY_PATH="[gcc-path value]" rustc +$(ca
  * _**CG_GCCJIT_DUMP_EVERYTHING**_: Enables dumping of all intermediate representations and passes.
  * _**CG_GCCJIT_KEEP_INTERMEDIATES**_: Keeps intermediate files generated during the compilation process.
  * _**CG_GCCJIT_VERBOSE**_: Enables verbose output from the GCC driver.
+ * _**CG_GCCJIT_LIBRARY_PATH**_: Add a custom path to the `libgccjit` library file to load. If the specified file wasn't found (or couldn't be loaded), then it will error.
 
 ## Extra documentation
 
