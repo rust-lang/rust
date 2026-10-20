@@ -1,4 +1,3 @@
-use rustc_abi::CanonAbi;
 use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
@@ -150,14 +149,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(result, dest)?;
             }
             "sync_file_range" => {
-                let [fd, offset, nbytes, flags] =
-                    this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
+                let [fd, offset, nbytes, flags] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, libc::off64_t, libc::off64_t, u32) -> i32),
+                    (link_name, abi, args),
+                )?;
                 let result = this.sync_file_range(fd, offset, nbytes, flags)?;
                 this.write_scalar(result, dest)?;
             }
             "statx" => {
-                let [dirfd, pathname, flags, mask, statxbuf] =
-                    this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
+                let [dirfd, pathname, flags, mask, statxbuf] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, *_, i32, u32, *_) -> i32),
+                    (link_name, abi, args),
+                )?;
                 let result = this.linux_statx(dirfd, pathname, flags, mask, statxbuf)?;
                 this.write_scalar(result, dest)?;
             }
@@ -170,38 +173,48 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(result, dest)?;
             }
             "readdir64" => {
-                let [dirp] = this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
+                let [dirp] = &this
+                    .check_shim_sig(shim_sig!(extern "C" fn(*_) -> *_), (link_name, abi, args))?;
                 this.readdir(dirp, dest, "dirent64")?;
             }
 
             // epoll, eventfd
             "epoll_create1" => {
-                let [flag] = this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
+                let [flag] = &this
+                    .check_shim_sig(shim_sig!(extern "C" fn(i32) -> i32), (link_name, abi, args))?;
                 let result = this.epoll_create1(flag)?;
                 this.write_scalar(result, dest)?;
             }
             "epoll_ctl" => {
-                let [epfd, op, fd, event] =
-                    this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
+                let [epfd, op, fd, event] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, i32, i32, *_) -> i32),
+                    (link_name, abi, args),
+                )?;
                 let result = this.epoll_ctl(epfd, op, fd, event)?;
                 this.write_scalar(result, dest)?;
             }
             "epoll_wait" => {
-                let [epfd, events, maxevents, timeout] =
-                    this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
+                let [epfd, events, maxevents, timeout] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, *_, i32, i32) -> i32),
+                    (link_name, abi, args),
+                )?;
                 this.epoll_wait(epfd, events, maxevents, timeout, dest)?;
             }
             "eventfd" => {
-                let [val, flag] =
-                    this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
+                let [val, flag] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(u32, i32) -> i32),
+                    (link_name, abi, args),
+                )?;
                 let result = this.eventfd(val, flag)?;
                 this.write_scalar(result, dest)?;
             }
 
             // Threading
             "pthread_setname_np" => {
-                let [thread, name] =
-                    this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
+                let [thread, name] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(libc::pthread_t, *_) -> i32),
+                    (link_name, abi, args),
+                )?;
                 let res = match this.pthread_setname_np(
                     this.read_scalar(thread)?,
                     this.read_scalar(name)?,
@@ -214,8 +227,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(res, dest)?;
             }
             "pthread_getname_np" => {
-                let [thread, name, len] =
-                    this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
+                let [thread, name, len] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(libc::pthread_t, *_, usize) -> i32),
+                    (link_name, abi, args),
+                )?;
                 // The function's behavior isn't portable between platforms.
                 // In case of glibc, the length of the output buffer must
                 // be not shorter than TASK_COMM_LEN.
@@ -236,7 +251,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(res, dest)?;
             }
             "gettid" => {
-                let [] = this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
+                let [] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn() -> libc::pid_t),
+                    (link_name, abi, args),
+                )?;
                 let result = this.unix_gettid(link_name.as_str())?;
                 this.write_scalar(result, dest)?;
             }
@@ -277,8 +295,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // Miscellaneous
             "mmap64" => {
-                let [addr, length, prot, flags, fd, offset] =
-                    this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
+                let [addr, length, prot, flags, fd, offset] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*_, usize, i32, i32, i32, libc::off64_t) -> *_),
+                    (link_name, abi, args),
+                )?;
                 let offset = this.read_scalar(offset)?.to_i64()?;
                 let ptr = this.mmap(addr, length, prot, flags, fd, offset.into())?;
                 this.write_scalar(ptr, dest)?;
@@ -292,23 +312,28 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(ptr, dest)?;
             }
             "__xpg_strerror_r" => {
-                let [errnum, buf, buflen] =
-                    this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
+                let [errnum, buf, buflen] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, *_, usize) -> i32),
+                    (link_name, abi, args),
+                )?;
                 let result = this.strerror_r(errnum, buf, buflen)?;
                 this.write_scalar(result, dest)?;
             }
             "__errno_location" => {
-                let [] = this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
+                let [] = &this
+                    .check_shim_sig(shim_sig!(extern "C" fn() -> *_), (link_name, abi, args))?;
                 let errno_place = this.last_error_place()?;
                 this.write_scalar(errno_place.to_ref(this).to_scalar(), dest)?;
             }
             "__libc_current_sigrtmin" => {
-                let [] = this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
+                let [] = &this
+                    .check_shim_sig(shim_sig!(extern "C" fn() -> i32), (link_name, abi, args))?;
 
                 this.write_int(SIGRTMIN, dest)?;
             }
             "__libc_current_sigrtmax" => {
-                let [] = this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
+                let [] = &this
+                    .check_shim_sig(shim_sig!(extern "C" fn() -> i32), (link_name, abi, args))?;
 
                 this.write_int(SIGRTMAX, dest)?;
             }
@@ -316,15 +341,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
             // These shims are enabled only when the caller is in the standard library.
             "pthread_getattr_np" if this.frame_in_std() => {
-                let [_thread, _attr] =
-                    this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
+                let [_thread, _attr] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(libc::pthread_t, *_) -> i32),
+                    (link_name, abi, args),
+                )?;
                 this.write_null(dest)?;
             }
             "gnu_get_libc_version"
                 if this.frame_in_std()
                     && this.tcx.sess.target.env == rustc_target::spec::Env::Gnu =>
             {
-                let [] = this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
+                let [] = &this
+                    .check_shim_sig(shim_sig!(extern "C" fn() -> *_), (link_name, abi, args))?;
                 // We have to be at least version 2.26 so that std does not call `res_init`.
                 // This returns a C string, so we have to add a null terminator.
                 let version = "2.26\0";
