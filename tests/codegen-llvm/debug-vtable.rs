@@ -19,7 +19,7 @@
 // CHECK: @vtable.3 = private constant <{
 // CHECK: @vtable.4 = private constant <{
 
-// NONMSVC: ![[USIZE:[0-9]+]] = !DIBasicType(name: "usize"
+// NONMSVC: ![[USIZE:[0-9]+]] = !DIDerivedType(tag: DW_TAG_typedef, name: "usize"
 // MSVC: ![[USIZE:[0-9]+]] = !DIDerivedType(tag: DW_TAG_typedef, name: "usize"
 // NONMSVC: ![[PTR:[0-9]+]] = !DIDerivedType(tag: DW_TAG_pointer_type, name: "*const ()"
 // MSVC: ![[PTR:[0-9]+]] = !DIDerivedType(tag: DW_TAG_pointer_type, name: "ptr_const$<tuple$<> >"
