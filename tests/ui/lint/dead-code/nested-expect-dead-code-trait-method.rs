@@ -13,7 +13,7 @@ impl Trait for S {
     }
 }
 
-#[expect(dead_code)]
+#[expect(dead_code)] //~ ERROR: this lint expectation is unfulfilled
 fn helper() {}
 
 fn call<T: Trait>() {
