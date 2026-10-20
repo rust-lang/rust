@@ -1,3 +1,4 @@
+use std::num::NonZero;
 use std::sync::Arc;
 
 use parking_lot::{Condvar, Mutex};
@@ -7,7 +8,7 @@ use rustc_errors::FatalError;
 use rustc_middle::dep_graph::{
     DepGraphData, DepNode, DepNodeIndex, DepNodeKey, SerializedDepNodeIndex,
 };
-use rustc_middle::query::job::{ActiveJobGuard, current_query_job, next_job_id};
+use rustc_middle::query::job::{ActiveJobGuard, QueryExecutionKind};
 use rustc_middle::query::{
     ActiveKeyStatus, QueryCache, QueryCycle, QueryJob, QueryJobId, QueryLatch, QueryMode,
     QueryVTable, QueryWaiter,
@@ -16,7 +17,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::tls::{self, ImplicitCtxt};
 use rustc_middle::verify_ich::incremental_verify_ich;
 use rustc_span::def_id::LOCAL_CRATE;
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, bug};
 use rustc_structures::Limit;
 
 use crate::diagnostics::{QueryOverflow, QueryOverflowNote};
@@ -79,6 +80,19 @@ fn find_and_handle_cycle<'tcx, C: QueryCache>(
 
     let cycle = find_cycle_in_stack(try_execute, job_map, &current_query_job(), span);
     (handle_cycle(query, tcx, key, cycle), None)
+}
+
+#[inline]
+fn next_job_id<'tcx>(tcx: TyCtxt<'tcx>) -> QueryJobId {
+    QueryJobId(
+        NonZero::new(tcx.query_system.jobs.fetch_add(1, std::sync::atomic::Ordering::Relaxed))
+            .unwrap(),
+    )
+}
+
+#[inline]
+fn current_query_job() -> Option<QueryJobId> {
+    tls::with_context(|icx| icx.query)
 }
 
 /// Awaits for the query job to complete.
@@ -200,7 +214,7 @@ fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
             // in the state map.
             let id = next_job_id(tcx);
             let job = QueryJob::new(id, span, current_job_id);
-            entry.insert((key, ActiveKeyStatus::Started(job)));
+            entry.insert((key, ActiveKeyStatus::Started(QueryExecutionKind::Default(job))));
 
             // Drop the lock before we start executing the query.
             drop(state_lock);
@@ -228,24 +242,29 @@ fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
         }
         Entry::Occupied(mut entry) => {
             match &mut entry.get_mut().1 {
-                ActiveKeyStatus::Started(job) => {
-                    if sync::is_dyn_thread_safe() {
-                        // Get the latch out
-                        let latch = job.latch.get_or_insert_with(QueryLatch::new).clone();
-                        drop(state_lock);
+                ActiveKeyStatus::Started(exec_kind) => match exec_kind {
+                    QueryExecutionKind::Default(job) => {
+                        if sync::is_dyn_thread_safe() {
+                            // Get the latch out
+                            let latch = job.latch.get_or_insert_with(QueryLatch::new).clone();
+                            drop(state_lock);
 
-                        // Only call `wait_for_query` if we're using a Rayon thread pool
-                        // as it will attempt to mark the worker thread as blocked.
-                        wait_for_query(query, tcx, span, key, key_hash, latch, current_job_id)
-                    } else {
-                        let id = job.id;
-                        drop(state_lock);
+                            // Only call `wait_for_query` if we're using a Rayon thread pool
+                            // as it will attempt to mark the worker thread as blocked.
+                            wait_for_query(query, tcx, span, key, key_hash, latch, current_job_id)
+                        } else {
+                            let id = job.id;
+                            drop(state_lock);
 
-                        // If we are single-threaded we know that we have cycle error,
-                        // so we just return the error.
-                        find_and_handle_cycle(query, tcx, key, id, span)
+                            // If we are single-threaded we know that we have cycle error,
+                            // so we just return the error.
+                            find_and_handle_cycle(query, tcx, key, id, span)
+                        }
                     }
-                }
+                    QueryExecutionKind::Feeding => {
+                        bug!("trying to execute query while it is feeding")
+                    }
+                },
                 ActiveKeyStatus::Poisoned => FatalError.raise(),
             }
         }

@@ -12,7 +12,6 @@ use rustc_span::Span;
 use crate::dep_graph::DepNodeIndex;
 use crate::queries::TaggedQueryKey;
 use crate::query::QueryCache;
-use crate::ty::{TyCtxt, tls};
 
 /// A value uniquely identifying an active query job.
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
@@ -41,6 +40,11 @@ impl<'tcx> QueryJob<'tcx> {
     }
 }
 
+pub enum QueryExecutionKind<'tcx> {
+    Default(QueryJob<'tcx>),
+    Feeding,
+}
+
 /// For a particular query and key, tracks the status of a query evaluation
 /// that has started, but has not yet finished successfully.
 ///
@@ -50,7 +54,7 @@ pub enum ActiveKeyStatus<'tcx> {
     /// Some thread is already evaluating the query for this key.
     ///
     /// The enclosed [`QueryJob`] can be used to wait for it to finish.
-    Started(QueryJob<'tcx>),
+    Started(QueryExecutionKind<'tcx>),
 
     /// The query panicked. Queries trying to wait on this will raise a fatal error which will
     /// silently panic.
@@ -116,19 +120,6 @@ impl<'tcx> QueryLatch<'tcx> {
     }
 }
 
-#[inline]
-pub fn next_job_id<'tcx>(tcx: TyCtxt<'tcx>) -> QueryJobId {
-    QueryJobId(
-        NonZero::new(tcx.query_system.jobs.fetch_add(1, std::sync::atomic::Ordering::Relaxed))
-            .unwrap(),
-    )
-}
-
-#[inline]
-pub fn current_query_job() -> Option<QueryJobId> {
-    tls::with_context(|icx| icx.query)
-}
-
 /// Guard object representing the responsibility to execute a query job and
 /// mark it as completed.
 ///
@@ -185,7 +176,10 @@ where
 
         // Also signal the completion of the job, so waiters will continue execution.
         match status {
-            ActiveKeyStatus::Started(job) => signal_complete(job),
+            ActiveKeyStatus::Started(exec_kind) => match exec_kind {
+                QueryExecutionKind::Default(job) => signal_complete(job),
+                QueryExecutionKind::Feeding => {}
+            },
             ActiveKeyStatus::Poisoned => panic!(),
         }
     }
