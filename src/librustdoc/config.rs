@@ -452,7 +452,7 @@ impl Options {
         match (
             output_format_s.as_ref().map(|_| output_format),
             show_coverage,
-            nightly_options::is_unstable_enabled(matches),
+            nightly_options::unstable_options_enabled(matches),
         ) {
             (None | Some(OutputFormat::CoverageJson), true, _) => {}
             (_, true, _) => {
@@ -944,7 +944,7 @@ impl Options {
             output_format,
             json_unused_externs,
             scrape_examples_options,
-            unstable_features,
+            unstable_features: unstable_features.clone(),
             doctest_build_args,
             target_modifiers: collected_options.target_modifiers,
         };
