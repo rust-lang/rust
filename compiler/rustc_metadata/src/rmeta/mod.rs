@@ -604,7 +604,6 @@ define_tables! {
     explicit_implied_clauses_of: Table<LazyArray<(ty::Clause<'static>, Span)>>,
     explicit_implied_const_bounds: Table<LazyArray<(ty::PolyTraitRef<'static>, Span)>>,
     inherent_impls: Table<LazyArray<LocalDefId>>,
-    opt_rpitit_info: Table<Option<LazyValue<ty::ImplTraitInTraitData>>>,
     // Reexported names are not associated with individual `DefId`s,
     // e.g. a glob import can introduce a lot of names, all with the same `DefId`.
     // That's why the encoded list needs to contain `ModChild` structures describing all the names
@@ -619,6 +618,7 @@ define_tables! {
     impl_is_fully_generic_for_reflection: Table<bool>,
 
 - optional:
+    opt_rpitit_info: Table<LazyValue<ty::ImplTraitInTraitData>>,
     attributes: Table<LazyArray<Attribute>>,
     // For non-reexported names in a module every name is associated with a separate `DefId`,
     // so we can take their names, visibilities etc from other encoded tables.
