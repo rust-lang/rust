@@ -5303,7 +5303,7 @@ mod size_asserts {
     static_assert_size!(Res, 12);
     static_assert_size!(Stmt<'_>, 32);
     static_assert_size!(StmtKind<'_>, 16);
-    static_assert_size!(TraitImplHeader<'_>, 48);
+    static_assert_size!(TraitImplHeader<'_>, 40);
     static_assert_size!(TraitItem<'_>, 88);
     static_assert_size!(TraitItemKind<'_>, 48);
     static_assert_size!(Ty<'_>, 48);

@@ -4482,6 +4482,7 @@ impl TryFrom<ItemKind> for ForeignItemKind {
 }
 
 pub type ForeignItem = Item<ForeignItemKind>;
+
 // Some nodes are used a lot. Make sure they don't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
 mod size_asserts {
@@ -4497,10 +4498,10 @@ mod size_asserts {
     static_assert_size!(Expr, 64);
     static_assert_size!(ExprKind, 32);
     static_assert_size!(FieldDef, 80);
-    static_assert_size!(Fn, 192);
+    static_assert_size!(Fn, 184);
     static_assert_size!(FnDecl, 24);
-    static_assert_size!(FnHeader, 76);
-    static_assert_size!(FnSig, 96);
+    static_assert_size!(FnHeader, 72);
+    static_assert_size!(FnSig, 88);
     static_assert_size!(ForeignItem, 72);
     static_assert_size!(ForeignItemKind, 16);
     static_assert_size!(GenericArg, 24);
@@ -4508,12 +4509,12 @@ mod size_asserts {
     static_assert_size!(GenericBound, 80);
     static_assert_size!(GenericParam, 80);
     static_assert_size!(Generics, 40);
-    static_assert_size!(Impl, 80);
-    static_assert_size!(Item, 144);
-    static_assert_size!(ItemKind, 88);
+    static_assert_size!(Impl, 72);
+    static_assert_size!(Item, 136);
+    static_assert_size!(ItemKind, 80);
     static_assert_size!(Lifetime, 16);
     static_assert_size!(LitKind, 24);
-    static_assert_size!(Local, 96);
+    static_assert_size!(Local, 88);
     static_assert_size!(MetaItem, 80);
     static_assert_size!(MetaItemKind, 40);
     static_assert_size!(MetaItemLit, 40);
@@ -4526,7 +4527,7 @@ mod size_asserts {
     static_assert_size!(QSelf, 24);
     static_assert_size!(Stmt, 32);
     static_assert_size!(StmtKind, 16);
-    static_assert_size!(TraitImplHeader, 64);
+    static_assert_size!(TraitImplHeader, 56);
     static_assert_size!(Ty, 56);
     static_assert_size!(TyKind, 40);
     // tidy-alphabetical-end

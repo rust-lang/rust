@@ -2,14 +2,14 @@ ast-stats ================================================================
 ast-stats POST EXPANSION AST STATS: input_stats
 ast-stats Name                Accumulated Size         Count     Item Size
 ast-stats ----------------------------------------------------------------
-ast-stats Item                   1_584 (NN.N%)            11           144
-ast-stats - Enum                     144 (NN.N%)             1
-ast-stats - ExternCrate              144 (NN.N%)             1
-ast-stats - ForeignMod               144 (NN.N%)             1
-ast-stats - Impl                     144 (NN.N%)             1
-ast-stats - Trait                    144 (NN.N%)             1
-ast-stats - Fn                       288 (NN.N%)             2
-ast-stats - Use                      576 (NN.N%)             4
+ast-stats Item                   1_496 (NN.N%)            11           136
+ast-stats - Enum                     136 (NN.N%)             1
+ast-stats - ExternCrate              136 (NN.N%)             1
+ast-stats - ForeignMod               136 (NN.N%)             1
+ast-stats - Impl                     136 (NN.N%)             1
+ast-stats - Trait                    136 (NN.N%)             1
+ast-stats - Fn                       272 (NN.N%)             2
+ast-stats - Use                      544 (NN.N%)             4
 ast-stats PathSegment              840 (NN.N%)            35            24
 ast-stats Ty                       784 (NN.N%)            14            56
 ast-stats - Ptr                       56 (NN.N%)             1
@@ -47,8 +47,8 @@ ast-stats - Synthetic                 32 (NN.N%)             1
 ast-stats - Normal                    64 (NN.N%)             2
 ast-stats InlineAsm                120 (NN.N%)             1           120
 ast-stats FnDecl                   120 (NN.N%)             5            24
-ast-stats Local                     96 (NN.N%)             1            96
 ast-stats Arm                       96 (NN.N%)             2            48
+ast-stats Local                     88 (NN.N%)             1            88
 ast-stats ForeignItem               72 (NN.N%)             1            72
 ast-stats - Fn                        72 (NN.N%)             1
 ast-stats WherePredicate            56 (NN.N%)             1            56
@@ -58,7 +58,7 @@ ast-stats GenericArgs               40 (NN.N%)             1            40
 ast-stats - AngleBracketed            40 (NN.N%)             1
 ast-stats Crate                     40 (NN.N%)             1            40
 ast-stats ----------------------------------------------------------------
-ast-stats Total                  6_872                   126
+ast-stats Total                  6_776                   126
 ast-stats ================================================================
 hir-stats ================================================================
 hir-stats HIR STATS: input_stats
@@ -90,7 +90,7 @@ hir-stats Pat                      400 (NN.N%)             5            80
 hir-stats - Struct                    80 (NN.N%)             1
 hir-stats - Wild                      80 (NN.N%)             1
 hir-stats - Binding                  240 (NN.N%)             3
-hir-stats GenericParam             400 (NN.N%)             5            80
+hir-stats GenericParam             360 (NN.N%)             5            72
 hir-stats Block                    288 (NN.N%)             6            48
 hir-stats GenericBound             256 (NN.N%)             4            64
 hir-stats - Trait                    256 (NN.N%)             4
@@ -120,5 +120,5 @@ hir-stats TraitItemId                8 (NN.N%)             2             4
 hir-stats ImplItemId                 8 (NN.N%)             2             4
 hir-stats ForeignItemId              4 (NN.N%)             1             4
 hir-stats ----------------------------------------------------------------
-hir-stats Total                  8_760                   172
+hir-stats Total                  8_720                   172
 hir-stats ================================================================
