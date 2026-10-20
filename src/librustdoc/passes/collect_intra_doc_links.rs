@@ -1152,8 +1152,11 @@ impl LinkCollector<'_, '_> {
 
         // Also resolve links in the note text of `#[deprecated]`.
         for attr in &item.attrs.other_attrs {
-            let Attribute::Parsed(AttributeKind::Deprecated { span: depr_span, deprecation }) =
-                attr
+            let Attribute::Parsed(AttributeKind::Deprecated {
+                span: depr_span,
+                deprecation,
+                is_inner,
+            }) = attr
             else {
                 continue;
             };
@@ -1185,7 +1188,12 @@ impl LinkCollector<'_, '_> {
             } else {
                 item.item_id.expect_def_id()
             };
-            try_insert_links(item_id, &DocStrings { outer: note.to_owned(), inner: String::new() });
+            let attr = if *is_inner {
+                DocStrings { outer: String::new(), inner: note.to_owned() }
+            } else {
+                DocStrings { outer: note.to_owned(), inner: String::new() }
+            };
+            try_insert_links(item_id, &attr);
         }
     }
 
