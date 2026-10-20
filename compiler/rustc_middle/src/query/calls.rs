@@ -12,8 +12,8 @@ use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, bug};
 use crate::dep_graph;
 use crate::dep_graph::DepNodeKey;
 use crate::query::erase::{self, Erasable, Erased};
-use crate::query::job::{ActiveJobGuard, current_query_job, next_job_id};
-use crate::query::{ActiveKeyStatus, IntoQueryKey, QueryCache, QueryJob, QueryMode, QueryVTable};
+use crate::query::job::{ActiveJobGuard, QueryExecutionKind};
+use crate::query::{ActiveKeyStatus, IntoQueryKey, QueryCache, QueryMode, QueryVTable};
 use crate::ty::{self, TyCtxt};
 
 #[derive(Copy, Clone)]
@@ -265,15 +265,11 @@ pub(crate) fn query_feed<'tcx, C>(
     // 1) First we acquire state lock and check if there is already a cached value for this key,
     //    if so, we drop the lock and check consistency of a new and existing values. If there is
     //    no cached value then we start a query job as it is done in `try_execute_query`, next we drop
-    //    the lock and execute dep node creation operations, this section is mutually exclusive,
-    //    finally we store fed value into the cache. If regular query execution will be executed
-    //    at the same time as feeding, it will wait on the latch inside `ActiveJobGuard` and then
-    //    the fed value will be used.
-    // 2) If we try to feed query while it is executing we emit a bug, as in a single threaded
-    //    compiler it may be possible to feed query during its execution technically, but it
-    //    does not seem right semantically, and in a multi-threaded compiler if we wait
-    //    until other thread sets the value for further consistency checks we may encounter
-    //    deadlocks.
+    //    the lock and execute dep node creation operations, this section is mutually exclusive
+    //    (with respect to the key), finally we store fed value into the cache. If regular query will be executed
+    //    at the same time as feeding, it will emit bug as it is strange to have both regular and
+    //    feeding query execution (same works in reverse, if we try to feed query while it is executing
+    //    we will emit a bug).
     // 3) If query has poisoned status we emit fatal error as in other handlers of this status.
     // 4) Checking for cached value in `try_execute_query` is performed under the state lock too,
     //    so if we fed the value here, when trying to execute this query fed value will be seen.
@@ -286,11 +282,7 @@ pub(crate) fn query_feed<'tcx, C>(
                     check_consistency(existing)
                 }
                 None => {
-                    let current_job_id = current_query_job();
-                    let id = next_job_id(tcx);
-                    let job = QueryJob::new(id, DUMMY_SP, current_job_id);
-
-                    entry.insert((key, ActiveKeyStatus::Started(job)));
+                    entry.insert((key, ActiveKeyStatus::Started(QueryExecutionKind::Feeding)));
 
                     drop(shard);
 
@@ -312,9 +304,14 @@ pub(crate) fn query_feed<'tcx, C>(
             }
         }
         Entry::Occupied(status) => match status.get().1 {
-            ActiveKeyStatus::Started(_) => {
-                bug!("trying to feed query while it is executing")
-            }
+            ActiveKeyStatus::Started(ref exec_kind) => match exec_kind {
+                QueryExecutionKind::Default(_) => {
+                    bug!("trying to feed query while it is executing")
+                }
+                QueryExecutionKind::Feeding => {
+                    bug!("trying to feed query while it is already feeding")
+                }
+            },
             ActiveKeyStatus::Poisoned => FatalError.raise(),
         },
     }
