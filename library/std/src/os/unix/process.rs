@@ -221,6 +221,9 @@ pub impl(self) trait CommandExt {
     /// ability to `fork` then `chroot` then `exec` is a capability widely provided by Rust targets
     /// and relied upon by numerous programs.
     ///
+    /// `chroot` is not, by itself, a complete security or sandboxing measure. It may form some part
+    /// of a containment mechanism, but fully containing a process requires additional steps.
+    ///
     /// See the [`chroot`] manual page for more details.
     ///
     /// [`chroot`]: https://man7.org/linux/man-pages/man2/chroot.2.html
@@ -233,8 +236,8 @@ pub impl(self) trait CommandExt {
     /// use std::process::Command;
     /// use std::os::unix::process::CommandExt;
     ///
-    /// Command::new("contained")
-    ///    .chroot("/sandbox")
+    /// Command::new("binary-within-new-root")
+    ///    .chroot("/new-root")
     ///    .spawn()?
     ///    .wait()?;
     /// #
