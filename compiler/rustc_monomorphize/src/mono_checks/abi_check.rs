@@ -210,15 +210,10 @@ fn check_instance_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
 fn check_call_site_abi<'tcx>(
     tcx: TyCtxt<'tcx>,
     callee: Ty<'tcx>,
-    instance: Instance<'tcx>,
-    caller: InstanceKind<'tcx>,
+    caller: Instance<'tcx>,
     loc: impl Fn() -> (Span, HirId) + Copy,
 ) {
-    // The ABI does not depend on generic arguments.
-    let extern_abi = match *callee.kind() {
-        ty::FnDef(def_id, _) => tcx.fn_sig(def_id).skip_binder().abi(),
-        _ => callee.fn_sig(tcx).abi(),
-    };
+    let extern_abi = callee.fn_sig(tcx).abi();
     if extern_abi.is_rustic_abi() || extern_abi == ExternAbi::LlvmIntrinsic {
         // We directly handle the soundness of Rust ABIs -- so let's skip the majority of
         // call sites to avoid a perf regression.
@@ -230,7 +225,7 @@ fn check_call_site_abi<'tcx>(
         return;
     }
     let typing_env = ty::TypingEnv::fully_monomorphized();
-    let callee = instance.instantiate_mir_and_normalize_erasing_regions(
+    let callee = caller.instantiate_mir_and_normalize_erasing_regions(
         tcx,
         typing_env,
         ty::EarlyBinder::bind(tcx, callee),
@@ -299,7 +294,7 @@ fn check_callees_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>, body: &m
             mir::TerminatorKind::Call { ref func, ref fn_span, .. }
             | mir::TerminatorKind::TailCall { ref func, ref fn_span, .. } => {
                 let callee_ty = func.ty(body, tcx);
-                check_call_site_abi(tcx, callee_ty, instance, body.source.instance, || {
+                check_call_site_abi(tcx, callee_ty, instance, || {
                     let loc = Location {
                         block: bb,
                         statement_index: body.basic_blocks[bb].statements.len(),
