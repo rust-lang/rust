@@ -5,6 +5,8 @@
 
 fn assert_static_fn<Ret>(_: impl Fn() -> Ret + 'static) {}
 
+fn assert_static(_: impl Sized + 'static) {}
+
 fn callable(c: char) -> impl Fn() -> char {
     || c
 }
@@ -64,5 +66,46 @@ fn main() {
         let val = 21;
         let closure = || { val } == 21;
         assert_static_fn(closure);
+    }
+
+    // Test special-casing of equality on shared references
+
+    {
+        let r = &42u8;
+        let closure = || &21 == r;
+        assert_static_fn(closure);
+    }
+
+    {
+        let r = &42u8;
+        let closure = || &21 <= r;
+        assert_static_fn(closure);
+    }
+
+    pub fn test<T>(i: &T) -> impl Fn() -> bool + '_
+    where
+        for<'a> &'a T: PartialEq + Default,
+    {
+        || <&T>::default() == i
+    }
+
+    #[derive(PartialEq)]
+    struct Foo;
+    impl Default for &Foo {
+        fn default() -> Self {
+            &Foo
+        }
+    }
+
+    test(&Foo)();
+
+    {
+        let outer = |i: &&i32| {
+            let inner = |j: &i32| j == *i;
+            inner(&17);
+        };
+
+        outer(&&42);
+        assert_static(outer);
     }
 }

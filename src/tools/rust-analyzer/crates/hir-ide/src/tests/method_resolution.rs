@@ -1877,9 +1877,9 @@ impl Foo {
 }
 fn test() {
     Foo.foo();
-  //^^^ adjustments: Borrow(Ref(Not))
+  //^^^ adjustments: Borrow(Ref(Not { for_comparison_op: No }))
     (&Foo).foo();
-  // ^^^^ adjustments: Deref(None), Borrow(Ref(Not))
+  // ^^^^ adjustments: Deref(None), Borrow(Ref(Not { for_comparison_op: No }))
 }
 "#,
     );
@@ -1893,7 +1893,7 @@ fn receiver_adjustment_unsize_array() {
 fn test() {
     let a = [1, 2, 3];
     a.len();
-} //^ adjustments: Borrow(Ref(Not)), Pointer(Unsize)
+} //^ adjustments: Borrow(Ref(Not { for_comparison_op: No })), Pointer(Unsize)
 "#,
     );
 }
@@ -2107,7 +2107,7 @@ impl Foo {
 }
 fn test() {
     Box::new(Foo).foo();
-  //^^^^^^^^^^^^^ adjustments: Deref(None), Borrow(Ref(Not))
+  //^^^^^^^^^^^^^ adjustments: Deref(None), Borrow(Ref(Not { for_comparison_op: No }))
 }
 "#,
     );
@@ -2125,7 +2125,7 @@ impl Foo {
 use core::mem::ManuallyDrop;
 fn test() {
     ManuallyDrop::new(Foo).foo();
-  //^^^^^^^^^^^^^^^^^^^^^^ adjustments: Deref(Some(OverloadedDeref(Not))), Borrow(Ref(Not))
+  //^^^^^^^^^^^^^^^^^^^^^^ adjustments: Deref(Some(OverloadedDeref(Not))), Borrow(Ref(Not { for_comparison_op: No }))
 }
 "#,
     );

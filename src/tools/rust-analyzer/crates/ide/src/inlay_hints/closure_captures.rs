@@ -140,6 +140,7 @@ mod tests {
 #[derive(Copy, Clone)]
 struct Copy;
 
+#[derive(PartialEq)]
 struct NonCopy;
 
 fn main() {
@@ -170,6 +171,12 @@ fn main() {
         baz = NonCopy;
         *qux = NonCopy;
     };
+
+    let bar_ref = &bar;
+    || {
+ // ^ move(bar_ref)
+        &NonCopy == bar_ref
+    };
 }
 "#,
         );
@@ -185,6 +192,7 @@ fn main() {
 #[derive(Copy, Clone)]
 struct Copy;
 
+#[derive(PartialEq)]
 struct NonCopy;
 
 fn main() {
@@ -214,6 +222,12 @@ fn main() {
        // ^ move(&mut baz, &mut *qux)
         baz = NonCopy;
         *qux = NonCopy;
+    };
+
+    let bar_ref = &bar;
+    async || {
+       // ^ move(bar_ref)
+        &NonCopy == bar_ref
     };
 }
 
@@ -231,6 +245,7 @@ fn main() {
 #[derive(Copy, Clone)]
 struct Copy;
 
+#[derive(PartialEq)]
 struct NonCopy;
 
 fn main() {
@@ -260,6 +275,12 @@ fn main() {
        // ^ move(&mut baz, &mut *qux)
         baz = NonCopy;
         *qux = NonCopy;
+    };
+
+    let bar_ref = &bar;
+    async {
+       // ^ move(bar_ref)
+        &NonCopy == bar_ref
     };
 }
 "#,

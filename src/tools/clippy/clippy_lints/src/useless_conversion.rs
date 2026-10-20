@@ -492,7 +492,7 @@ fn adjustments(cx: &LateContext<'_>, expr: &Expr<'_>) -> String {
         match adj.kind {
             Adjust::Deref(_) => prefix = format!("*{prefix}"),
             Adjust::Borrow(AutoBorrow::Ref(AutoBorrowMutability::Mut { .. })) => prefix = format!("&mut {prefix}"),
-            Adjust::Borrow(AutoBorrow::Ref(AutoBorrowMutability::Not)) => prefix = format!("&{prefix}"),
+            Adjust::Borrow(AutoBorrow::Ref(AutoBorrowMutability::Not { .. })) => prefix = format!("&{prefix}"),
             _ => {},
         }
 

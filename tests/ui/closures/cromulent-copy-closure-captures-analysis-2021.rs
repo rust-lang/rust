@@ -333,4 +333,110 @@ fn main() {
         };
         cl();
     }
+
+    // Comparison operators
+
+    test_le()();
+    test_eq()();
+
+    #[derive(PartialEq)]
+    struct Foo;
+    impl Default for &Foo {
+        fn default() -> Self {
+            &Foo
+        }
+    }
+
+    test_eq_2(&Foo)();
+
+    {
+        let mut int = 42i32;
+        let cn = &raw const int;
+        let mt = &raw mut int;
+        let cl = #[rustc_capture_analysis] || {
+            //~^ ERROR First Pass analysis includes:
+            //~| ERROR Min Capture analysis includes:
+            cn == cn
+            //~^ NOTE Capturing cn[] -> ByCopy
+            //~| NOTE Capturing cn[] -> ByCopy
+            //~| NOTE Min Capture cn[] -> ByCopy
+        };
+        cl();
+        let cl = #[rustc_capture_analysis] || {
+            //~^ ERROR First Pass analysis includes:
+            //~| ERROR Min Capture analysis includes:
+            cn < cn
+            //~^ NOTE Capturing cn[] -> ByCopy
+            //~| NOTE Capturing cn[] -> ByCopy
+            //~| NOTE Min Capture cn[] -> ByCopy
+        };
+        cl();
+        let cl = #[rustc_capture_analysis] || {
+            //~^ ERROR First Pass analysis includes:
+            //~| ERROR Min Capture analysis includes:
+            mt != mt
+            //~^ NOTE Capturing mt[] -> ByCopy
+            //~| NOTE Capturing mt[] -> ByCopy
+            //~| NOTE Min Capture mt[] -> ByCopy
+        };
+        cl();
+        let cl = #[rustc_capture_analysis] || {
+            //~^ ERROR First Pass analysis includes:
+            //~| ERROR Min Capture analysis includes:
+            mt > mt
+            //~^ NOTE Capturing mt[] -> ByCopy
+            //~| NOTE Capturing mt[] -> ByCopy
+            //~| NOTE Min Capture mt[] -> ByCopy
+        };
+        cl();
+        let cl = #[rustc_capture_analysis] || {
+            //~^ ERROR First Pass analysis includes:
+            //~| ERROR Min Capture analysis includes:
+            cn == mt
+            //~^ NOTE Capturing cn[] -> ByCopy
+            //~| NOTE Capturing mt[] -> ByCopy
+            //~| NOTE Min Capture cn[] -> ByCopy
+            //~| NOTE Min Capture mt[] -> ByCopy
+        };
+        cl();
+        let cl = #[rustc_capture_analysis] || {
+            //~^ ERROR First Pass analysis includes:
+            //~| ERROR Min Capture analysis includes:
+            cn <= mt
+            //~^ NOTE Capturing mt[] -> ByCopy
+            //~| NOTE Capturing cn[] -> ByCopy
+            //~| NOTE Min Capture mt[] -> ByCopy
+            //~| NOTE Min Capture cn[] -> ByCopy
+        };
+        cl();
+    }
+}
+
+fn test_le() -> impl Fn() -> bool {
+    let i = &42u8;
+    #[rustc_capture_analysis] || &42u8 <= i
+    //~^ ERROR First Pass analysis includes:
+    //~| ERROR Min Capture analysis includes:
+    //~| NOTE Capturing i[] -> ByCopy
+    //~| NOTE Min Capture i[] -> ByCopy
+}
+
+fn test_eq() -> impl Fn() -> bool {
+    let i = &42u8;
+    #[rustc_capture_analysis] || &42u8 == i
+    //~^ ERROR First Pass analysis includes:
+    //~| ERROR Min Capture analysis includes:
+    //~| NOTE Capturing i[] -> ByCopy
+    //~| NOTE Min Capture i[] -> ByCopy
+}
+
+fn test_eq_2<T>(i: &T) -> impl Fn() -> bool
+where
+    for<'a> &'a T: PartialEq + Default,
+{
+    #[rustc_capture_analysis] || <&T>::default() == i
+    //~^ ERROR First Pass analysis includes:
+    //~| ERROR Min Capture analysis includes:
+    //~| NOTE Capturing i[] -> ByCopy
+    //~| NOTE Min Capture i[] -> ByCopy
 }

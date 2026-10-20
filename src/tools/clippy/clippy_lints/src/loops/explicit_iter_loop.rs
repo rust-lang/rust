@@ -70,7 +70,7 @@ impl AdjustKind {
 
     fn auto_borrow(mutbl: AutoBorrowMutability) -> Self {
         match mutbl {
-            AutoBorrowMutability::Not => Self::Borrow,
+            AutoBorrowMutability::Not { .. } => Self::Borrow,
             AutoBorrowMutability::Mut { .. } => Self::BorrowMut,
         }
     }
@@ -84,7 +84,7 @@ impl AdjustKind {
 
     fn auto_reborrow(mutbl: AutoBorrowMutability) -> Self {
         match mutbl {
-            AutoBorrowMutability::Not => Self::Reborrow,
+            AutoBorrowMutability::Not { .. } => Self::Reborrow,
             AutoBorrowMutability::Mut { .. } => Self::ReborrowMut,
         }
     }

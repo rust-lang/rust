@@ -9,7 +9,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, AssignOpKind, BinOpKind, Expr, ExprKind};
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::ty::adjustment::{
-    Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
+    Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, ForComparisonOp,
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt, TypeVisitableExt};
@@ -280,8 +280,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let by_ref_binop = !op.is_by_value();
 
                 if matches!(op, Op::AssignOp(_)) || by_ref_binop {
-                    if let ty::Ref(_, _, mutbl) = method.sig.inputs()[0].kind() {
-                        let mutbl = AutoBorrowMutability::new(*mutbl, AllowTwoPhase::Yes);
+                    if let Some(mutbl) = method.sig.inputs()[0].ref_mutability() {
+                        let mutbl = if by_ref_binop {
+                            debug_assert!(mutbl.is_not());
+                            AutoBorrowMutability::Not { for_comparison_op: ForComparisonOp::Yes }
+                        } else {
+                            AutoBorrowMutability::new(mutbl, AllowTwoPhase::Yes)
+                        };
                         let autoref = Adjustment {
                             kind: Adjust::Borrow(AutoBorrow::Ref(mutbl)),
                             target: method.sig.inputs()[0],
@@ -290,25 +295,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
 
                     if by_ref_binop {
-                        if let ty::Ref(_, _, mutbl) = method.sig.inputs()[1].kind() {
-                            // Allow two-phase borrows for binops in initial deployment
-                            // since they desugar to methods
-                            let mutbl = AutoBorrowMutability::new(*mutbl, AllowTwoPhase::Yes);
-                            let autoref = Adjustment {
-                                kind: Adjust::Borrow(AutoBorrow::Ref(mutbl)),
-                                target: method.sig.inputs()[1],
-                            };
-                            // HACK(eddyb) Bypass checks due to reborrows being in
-                            // some cases applied on the RHS, on top of which we need
-                            // to autoref, which is not allowed by apply_adjustments.
-                            // self.apply_adjustments(rhs_expr, vec![autoref]);
-                            self.typeck_results
-                                .borrow_mut()
-                                .adjustments_mut()
-                                .entry(rhs_expr.hir_id)
-                                .or_default()
-                                .push(autoref);
-                        }
+                        let Some(ty::Mutability::Not) = method.sig.inputs()[1].ref_mutability()
+                        else {
+                            bug!("comparison op should take shared reference")
+                        };
+
+                        let mutbl =
+                            AutoBorrowMutability::Not { for_comparison_op: ForComparisonOp::Yes };
+                        let autoref = Adjustment {
+                            kind: Adjust::Borrow(AutoBorrow::Ref(mutbl)),
+                            target: method.sig.inputs()[1],
+                        };
+                        // HACK(eddyb) Bypass checks due to reborrows being in
+                        // some cases applied on the RHS, on top of which we need
+                        // to autoref, which is not allowed by apply_adjustments.
+                        // self.apply_adjustments(rhs_expr, vec![autoref]);
+                        self.typeck_results
+                            .borrow_mut()
+                            .adjustments_mut()
+                            .entry(rhs_expr.hir_id)
+                            .or_default()
+                            .push(autoref);
                     }
                 }
 

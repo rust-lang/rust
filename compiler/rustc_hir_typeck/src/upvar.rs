@@ -2323,6 +2323,19 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
     }
 
     #[instrument(skip(self), level = "debug")]
+    fn borrow_for_comparison(&mut self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: HirId) {
+        let PlaceBase::Upvar(upvar_id) = place_with_id.place.base else { return };
+        assert_eq!(self.closure_def_id, upvar_id.closure_expr_id);
+        let span = self.fcx.tcx.hir_span(diag_expr_id);
+        let place = self.fcx.normalize(span, Unnormalized::new_wip(place_with_id.place.clone()));
+        if !place.is_indirect() && capture_by_copy_behind_reference(place.ty()) {
+            self.copy(place_with_id, diag_expr_id);
+        } else {
+            self.borrow(place_with_id, diag_expr_id, ty::BorrowKind::Immutable);
+        }
+    }
+
+    #[instrument(skip(self), level = "debug")]
     fn copy(&mut self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: HirId) {
         let PlaceBase::Upvar(upvar_id) = place_with_id.place.base else { return };
 
@@ -2352,7 +2365,8 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
 }
 
 /// Whether this type should be captured [`ty::UpvarCapture::ByCopy`]
-/// even behind a reference.
+/// even behind a reference,
+/// or as the argument to a comparison operand when not behind a reference.
 fn capture_by_copy_behind_reference<'tcx>(ty: Ty<'tcx>) -> bool {
     matches!(ty.kind(), ty::Ref(_, _, ty::Mutability::Not) | ty::RawPtr(..))
 }
