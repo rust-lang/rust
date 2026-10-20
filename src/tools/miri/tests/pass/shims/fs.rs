@@ -501,22 +501,24 @@ fn test_directory() {
     let dir_1 = dir_path.join("test_dir_1");
     create_dir(&dir_1).unwrap();
     // Test that read_dir metadata calls succeed
+    let mut dir_iter = read_dir(&dir_path).unwrap();
     assert_eq!(
         BTreeMap::from([
             (OsString::from("test_file_1"), true),
             (OsString::from("test_file_2"), true),
             (OsString::from("test_dir_1"), false)
         ]),
-        read_dir(&dir_path)
-            .unwrap()
+        (&mut dir_iter)
             .map(|e| {
                 let e = e.unwrap();
                 (e.file_name(), e.metadata().unwrap().is_file())
             })
             .collect::<BTreeMap<_, _>>()
     );
+    // We can access the directory handle from this iterator.
+    let dir_handle = dir_iter.dir().unwrap();
+    drop(dir_handle.open_file("test_file_1").unwrap());
     // Deleting the directory should fail, since it is not empty.
-
     // Solaris/Illumos `rmdir` call set errno to EEXIST if directory contains
     // other entries than `.` and `..`.
     // https://docs.oracle.com/cd/E86824_01/html/E54765/rmdir-2.html
