@@ -61,6 +61,32 @@ pub(crate) fn expand_deriving_partial_ord(
         combine_substructure: if is_simple { simple_substructure } else { default_substructure },
     };
 
+    let chain_ret_ty = cx.ty_path(new_path(
+        cx,
+        span,
+        pathvec!(ops::ControlFlow),
+        vec![cx.ty_ident(span, Ident::new(sym::bool, span))],
+    ));
+    let methods = std::iter::once(partial_cmp_def)
+        .chain(
+            [sym::__chaining_ge, sym::__chaining_gt, sym::__chaining_le, sym::__chaining_lt].map(
+                |name| MethodDef {
+                    name,
+                    generics: cx.empty_generics(span),
+                    explicit_self: true,
+                    nonself_args: smallvec![(cx.ty_self_ref(span), sym::other)],
+                    has_other_selflike_arg: true,
+                    ret_ty: chain_ret_ty.clone(),
+                    attributes: thin_vec![cx.attr_word(sym::inline, span)],
+                    fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
+                    combine_substructure: combine_substructure(move |cx, span, substr| {
+                        cs_chaining_op(name, cx, span, substr, discr_then_data)
+                    }),
+                },
+            ),
+        )
+        .collect();
+
     let trait_def = TraitDef {
         span,
         path: path_std!(cx, span, cmp::PartialOrd),
@@ -68,12 +94,12 @@ pub(crate) fn expand_deriving_partial_ord(
         needs_copy_as_bound_if_packed: true,
         additional_bounds: smallvec![],
         supports_unions: false,
-        methods: smallvec![partial_cmp_def],
+        methods,
         is_const,
         safety: Safety::Default,
         document: true,
     };
-    trait_def.expand_ext(cx, item, push, is_simple)
+    trait_def.expand_ext(cx, item, push, false)
 }
 
 pub(crate) fn discr_data_order(item: &ast::Item) -> bool {
@@ -239,4 +265,79 @@ pub(crate) fn cmp_body(
         }
         _ => cx.dcx().span_bug(span, "unexpected substructure in `derive`"),
     }
+}
+
+fn cs_chaining_op(
+    name: rustc_span::Symbol,
+    cx: &ExtCtxt<'_>,
+    span: Span,
+    substr: Substructure<'_>,
+    discr_then_data: bool,
+) -> BlockOrExpr {
+    let method_path = cx.std_path(&[sym::cmp, sym::PartialOrd, name]);
+
+    let break_pat = {
+        let brk = cx.std_path(&[sym::ops, sym::ControlFlow, sym::Break]);
+        let path = cx.path_global(span, brk);
+        cx.pat_tuple_struct(span, path, thin_vec![cx.pat_wild(span)])
+    };
+
+    let combine = |span, mut expr1: Box<Expr>, expr2| {
+        if !discr_then_data
+            && let ast::ExprKind::Match(_, arms, _) = &mut expr1.kind
+            && let Some(last) = arms.last_mut()
+            && let ast::PatKind::Wild = last.pat.kind
+        {
+            last.body = Some(expr2);
+            expr1
+        } else {
+            let cmp_ident = Ident::new(sym::cmp, span);
+            let break_arm = cx.arm(
+                span,
+                cx.pat_ident_alt(span, cmp_ident, break_pat.clone()),
+                cx.expr_ident(span, cmp_ident),
+            );
+            let cont_arm = cx.arm(span, cx.pat_wild(span), expr1);
+            cx.expr_match(span, expr2, thin_vec![break_arm, cont_arm])
+        }
+    };
+    // Builds:
+    //
+    // match ::core::cmp::PartialOrd::__chaining_op(&self.x, &other.x) {
+    //     cmp @ ::core::ops::ControlFlow::Break(_) => cmp,
+    //     _ => ::core::cmp::PartialOrd::__chaining_op(&self.y, &other.y),
+    // }
+    BlockOrExpr::new_expr(match substr.fields {
+        EnumMatching(.., all_fields) | Struct(_, all_fields) => {
+            let op = |old, field: FieldInfo| {
+                let other_expr =
+                    field.other_selflike_expr.expect("not exactly 2 arguments in `derive`");
+                let args = thin_vec![field.self_expr, other_expr];
+                let new = cx.expr_call_global(field.span, method_path.clone(), args);
+                match old {
+                    Some(old) => Some(combine(field.span, old, new)),
+                    None => Some(new),
+                }
+            };
+
+            all_fields.into_iter().rfold(None, op).unwrap_or_else(|| {
+                // The fallback case for a struct or enum variant with no fields.
+                // Expands to `Continue(())`
+                let cnt = cx.std_path(&[sym::ops, sym::ControlFlow, sym::Continue]);
+                cx.expr_call_global(span, cnt, thin_vec![cx.expr_unit(span)])
+            })
+        }
+        EnumDiscr(match_expr) => {
+            let self_expr = cx.expr_addr_of(span, call_discriminant_value(cx, span, kw::SelfLower));
+            let other_expr = cx.expr_addr_of(span, call_discriminant_value(cx, span, sym::other));
+            let args = thin_vec![self_expr, other_expr];
+            let discr_check_expr = cx.expr_call_global(span, method_path, args);
+            if let Some(match_expr) = match_expr {
+                combine(span, match_expr, discr_check_expr)
+            } else {
+                discr_check_expr
+            }
+        }
+        _ => cx.dcx().span_bug(span, "unexpected substructure in `derive`"),
+    })
 }

@@ -1621,7 +1621,7 @@ where
 /// The behavior of this macro is described in detail [here](PartialOrd#derivable).
 #[rustc_builtin_macro]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
-#[allow_internal_unstable(core_intrinsics)]
+#[allow_internal_unstable(core_intrinsics, partial_ord_chaining_methods)]
 pub macro PartialOrd($item:item) {
     /* compiler built-in */
 }
