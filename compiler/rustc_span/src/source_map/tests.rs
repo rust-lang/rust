@@ -833,3 +833,19 @@ fn filename_for_diagnostics_keeps_separators_without_dot_segments() {
     let name = filename(&sm, path);
     assert_eq!(sm.filename_for_diagnostics(&name).to_string(), path);
 }
+
+#[test]
+fn filename_for_diagnostics_keeps_remapped_dot_segments() {
+    let mapping = FilePathMapping::new(
+        vec![(path("abc/def"), path("fake"))],
+        RemapPathScopeComponents::all(),
+    );
+    let sm = SourceMap::new(mapping);
+
+    // The remapped name prints as given, `..` included.
+    let remapped = filename(&sm, "abc/def/sub/../helper.rs");
+    assert_eq!(
+        sm.filename_for_diagnostics(&remapped).to_string(),
+        path_str("fake/sub/../helper.rs"),
+    );
+}

@@ -529,9 +529,9 @@ impl SourceMap {
         self.lookup_char_pos(sp.lo()).file.name.clone()
     }
 
-    /// Paths are normalized lexically, which can name the wrong file if a
-    /// component is a symlink. `--verbose` skips normalization and prints the
-    /// path as given.
+    /// Local paths are normalized lexically, which can name the wrong file if
+    /// a component is a symlink. Remapped paths and `--verbose` skip
+    /// normalization and print the path as given.
     pub fn filename_for_diagnostics<'a>(&self, filename: &'a FileName) -> FileNameDisplay<'a> {
         if self.verbose {
             filename.display(RemapPathScopeComponents::DIAGNOSTICS)

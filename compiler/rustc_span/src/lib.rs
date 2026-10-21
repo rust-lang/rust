@@ -502,11 +502,16 @@ impl RealFileName {
                 .map_or_else(|| "".into(), |f| f.to_string_lossy()),
             FileNameDisplayPreference::Scope(scope) => self.path(scope).to_string_lossy(),
             FileNameDisplayPreference::Diagnostics(scope) => {
+                // Remapped names are printed as given: rebuilding them from components
+                // re-separates synthetic prefixes on Windows (`/rustc/<hash>` becomes
+                // `\rustc\<hash>`), changing output `--remap-path-prefix` users depend on.
+                if self.scopes.contains(scope) {
+                    return self.path(scope).to_string_lossy();
+                }
                 let path = self.path(scope);
-                // Paths without `.` or `..` are returned unchanged. `normalize_lexically`
-                // rebuilds the path from components, which on Windows turns `/` into `\`
-                // and breaks remapped paths like `/rustc/<hash>\library\...`.
-                // The dot check is on the string since `components()` skips interior `.`.
+                // Paths without `.` or `..` are returned unchanged, so their separators
+                // are not rewritten by a component rebuild. The dot check is on the
+                // string since `components()` skips interior `.`.
                 let path_str = path.to_string_lossy();
                 if !path_str.split(['/', '\\']).any(|seg| seg == "." || seg == "..") {
                     return path_str;
