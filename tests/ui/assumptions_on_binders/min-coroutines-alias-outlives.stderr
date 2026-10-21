@@ -1,0 +1,91 @@
+error: forall expect clause failed
+  --> $DIR/min-coroutines-alias-outlives.rs:26:9
+   |
+LL |         forall<'a> where T::Assoc: 'a {
+   |         ^^^^^^
+   |
+note: constraint from here
+  --> $DIR/min-coroutines-alias-outlives.rs:26:9
+   |
+LL |         forall<'a> where T::Assoc: 'a {
+   |         ^^^^^^
+   = note: expected: true
+   = note: actual: Alias {
+               kind: Projection {
+                   def_id: DefId(0:4 ~ min_coroutines_alias_outlives[HASH]::Trait::Assoc),
+               },
+               args: [
+                   T/#0,
+               ],
+               ..
+           }: '!1_0.Named(DefId(0:11 ~ min_coroutines_alias_outlives[HASH]::{test_binder_constraints#1}::'a))
+
+error[E0311]: the associated type `<T as Trait>::Assoc` may not live long enough
+  --> $DIR/min-coroutines-alias-outlives.rs:26:9
+   |
+LL |         forall<'a> where T::Assoc: 'a {
+   |         ^^^^^^
+   |         |
+   |         the associated type `<T as Trait>::Assoc` must be valid for lifetime `'a`...
+   |         ...so that a higher-ranked lifetime bound can be satisfied
+   |
+   = help: consider adding an explicit lifetime bound `<T as Trait>::Assoc: 'a`...
+
+error: forall expect clause failed
+  --> $DIR/min-coroutines-alias-outlives.rs:41:13
+   |
+LL |             forall<'inner> where T: 'inner {
+   |             ^^^^^^
+   |
+note: constraint from here
+  --> $DIR/min-coroutines-alias-outlives.rs:41:13
+   |
+LL |             forall<'inner> where T: 'inner {
+   |             ^^^^^^
+   = note: expected: true
+   = note: actual: Alias {
+               kind: Projection {
+                   def_id: DefId(0:4 ~ min_coroutines_alias_outlives[HASH]::Trait::Assoc),
+               },
+               args: [
+                   T/#0,
+               ],
+               ..
+           }: '!2_0.Named(DefId(0:15 ~ min_coroutines_alias_outlives[HASH]::{test_binder_constraints#2}::'inner))
+
+error: forall expect clause failed
+  --> $DIR/min-coroutines-alias-outlives.rs:38:9
+   |
+LL |         forall<'outer> where T: 'outer {
+   |         ^^^^^^
+   |
+note: constraint from here
+  --> $DIR/min-coroutines-alias-outlives.rs:38:9
+   |
+LL |         forall<'outer> where T: 'outer {
+   |         ^^^^^^
+   = note: expected: true
+   = note: actual: Alias {
+               kind: Projection {
+                   def_id: DefId(0:4 ~ min_coroutines_alias_outlives[HASH]::Trait::Assoc),
+               },
+               args: [
+                   T/#0,
+               ],
+               ..
+           }: '!2_0.Named(DefId(0:15 ~ min_coroutines_alias_outlives[HASH]::{test_binder_constraints#2}::'inner))
+
+error[E0311]: the associated type `<T as Trait>::Assoc` may not live long enough
+  --> $DIR/min-coroutines-alias-outlives.rs:38:9
+   |
+LL |         forall<'outer> where T: 'outer {
+   |         ^^^^^^
+   |         |
+   |         the associated type `<T as Trait>::Assoc` must be valid for lifetime `'inner`...
+   |         ...so that a higher-ranked lifetime bound can be satisfied
+   |
+   = help: consider adding an explicit lifetime bound `<T as Trait>::Assoc: 'inner`...
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0311`.

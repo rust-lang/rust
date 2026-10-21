@@ -170,7 +170,7 @@ pub(crate) fn type_check<'tcx>(
 
     let polonius_context = typeck.polonius_context;
 
-    if infcx.tcx.assumptions_on_binders() {
+    if infcx.tcx.assumptions_on_binders_any() {
         let mut converter = constraint_conversion::ConstraintConversion::new(
             typeck.infcx,
             typeck.universal_regions,
@@ -186,6 +186,7 @@ pub(crate) fn type_check<'tcx>(
             typeck.known_type_outlives_obligations,
             typeck.region_bound_pairs,
             universal_region_relations.outlives.clone(),
+            ty::Region::new_var(infcx.tcx, typeck.universal_regions.implicit_region_bound()),
         );
     }
 
