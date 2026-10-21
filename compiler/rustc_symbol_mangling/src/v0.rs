@@ -1,5 +1,4 @@
 use std::fmt::Write;
-use std::hash::Hasher;
 use std::iter;
 use std::ops::Range;
 
@@ -8,8 +7,6 @@ use rustc_data_structures::base_n::ToBaseN;
 use rustc_data_structures::either::Either;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::intern::Interned;
-use rustc_data_structures::stable_hash::StableHasher;
-use rustc_hashes::Hash64;
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::{CrateNum, DefId};
@@ -153,24 +150,11 @@ pub fn mangle_internal_symbol<'tcx>(tcx: TyCtxt<'tcx>, item_name: &str) -> Strin
     p.path_append_ns(
         |p| {
             p.push("C");
-            p.push_disambiguator({
-                if let Some(sized) = tcx.lang_items().sized_trait() {
-                    tcx.stable_crate_id(sized.krate).as_u64()
-                } else {
-                    let mut hasher = StableHasher::new();
-                    // Incorporate the rustc version to ensure #[rustc_std_internal_symbol] functions
-                    // get a different symbol name depending on the rustc version.
-                    hasher.write(tcx.sess.cfg_version.as_bytes());
-                    if let Some(val) = std::env::var_os("RUSTC_FORCE_RUSTC_VERSION") {
-                        hasher.write(val.to_string_lossy().into_owned().as_bytes())
-                    } else {
-                        hasher.write(tcx.sess.cfg_version.as_bytes())
-                    }
-
-                    let hash: Hash64 = hasher.finish();
-                    hash.as_u64()
-                }
-            });
+            // Use the same disambiguator as 'core' to ensure #[rustc_std_internal_symbol] functions
+            // get a different symbol name depending on the rustc version and -Cmetadata flags.
+            if let Some(sized) = tcx.lang_items().sized_trait() {
+                p.push_disambiguator(tcx.stable_crate_id(sized.krate).as_u64());
+            }
             p.push_ident("__rustc");
             Ok(())
         },
