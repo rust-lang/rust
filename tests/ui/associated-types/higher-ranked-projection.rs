@@ -21,5 +21,5 @@ fn foo<U, T>(_t: T)
 
 fn main() {
     foo(());
-    //[bad]~^ ERROR: higher-ranked lifetime error: lifetime outlives placeholder
+    //[bad]~^ ERROR mismatched types
 }

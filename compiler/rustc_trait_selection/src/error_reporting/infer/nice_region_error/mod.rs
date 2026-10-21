@@ -1,5 +1,6 @@
 use rustc_errors::{Diag, ErrorGuaranteed};
 use rustc_hir::def_id::LocalDefId;
+use rustc_infer::infer::SubregionOrigin;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::Span;
 
@@ -87,12 +88,16 @@ impl<'cx, 'tcx> NiceRegionError<'cx, 'tcx> {
             _vid,
             var_origin,
             universe,
-            _sub_origin,
+            sub_origin,
             sub_reg,
         )) = self.error.as_ref()
         else {
             return None;
         };
+
+if matches!(sub_origin, SubregionOrigin::Subtype(_)) {
+        return None;
+    }
 
         let span = var_origin.span();
 

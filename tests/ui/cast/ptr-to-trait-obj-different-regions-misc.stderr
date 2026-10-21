@@ -107,13 +107,14 @@ help: to declare that the trait object captures data from argument `x`, you can 
 LL | fn change_lt_hr<'a>(x: *mut dyn Trait<'a>) -> *mut dyn for<'b> Trait<'b> + 'a {
    |                                                                          ++++
 
-error: higher-ranked lifetime error: lifetime outlives placeholder
+error[E0308]: mismatched types
   --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:20:5
    |
 LL |     x as _
-   |     ^^^^^^ `'b` would have to outlive placeholder in universe `U0`
+   |     ^^^^^^ one type is more general than the other
    |
-   = note: outer lifetimes cannot depend on placeholders declared in a higher universe
+   = note: expected trait object `dyn for<'b> Trait<'b>`
+              found trait object `dyn Trait<'_>`
 
 error: lifetime may not live long enough
   --> $DIR/ptr-to-trait-obj-different-regions-misc.rs:31:5
@@ -248,4 +249,5 @@ LL |     require_static(ptr as _)
 
 error: aborting due to 14 previous errors
 
-For more information about this error, try `rustc --explain E0521`.
+Some errors have detailed explanations: E0308, E0521.
+For more information about an error, try `rustc --explain E0308`.

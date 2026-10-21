@@ -18,8 +18,8 @@ fn wrap<T, U: for<'a> Trait<'a, Assoc = T>>() {}
 
 fn foo() {
     wrap::<_, Thing>();
-    //[next]~^ ERROR type mismatch resolving `<Thing as Trait<'a>>::Assoc == &i32
-    //[current]~^^ ERROR higher-ranked lifetime error: lifetime outlives placeholder
+    //[next]~^ ERROR type mismatch resolving `<Thing as Trait<'a>>::Assoc == &i32`
+    //[current]~^^ ERROR mismatched types
 }
 
 fn main() {}
