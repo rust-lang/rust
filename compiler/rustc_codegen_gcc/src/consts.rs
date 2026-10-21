@@ -359,16 +359,28 @@ fn alloc_fields(cx: &CodegenCx<'_, '_>, alloc: &interpret::Allocation) -> Vec<Al
         assert_eq!(offset as usize as u64, offset);
         let offset = offset as usize;
         if offset > next_offset {
-            fields.push(AllocField::Bytes { range: next_offset..offset });
+            push_byte_runs(&mut fields, next_offset..offset);
         }
         fields.push(AllocField::Pointer { offset, prov });
         next_offset = offset + pointer_size;
     }
     if alloc.len() >= next_offset {
-        fields.push(AllocField::Bytes { range: next_offset..alloc.len() });
+        push_byte_runs(&mut fields, next_offset..alloc.len());
     }
 
     fields
+}
+
+/// `gcc_jit_context_new_array_from_bytes` rejects runs of `i32::MAX` bytes or more.
+const MAX_BYTE_RUN_LEN: usize = i32::MAX as usize - 1;
+
+fn push_byte_runs(fields: &mut Vec<AllocField>, range: Range<usize>) {
+    let mut start = range.start;
+    while range.end - start > MAX_BYTE_RUN_LEN {
+        fields.push(AllocField::Bytes { range: start..start + MAX_BYTE_RUN_LEN });
+        start += MAX_BYTE_RUN_LEN;
+    }
+    fields.push(AllocField::Bytes { range: start..range.end });
 }
 
 /// The type [`const_alloc_to_gcc`] gives `alloc`, computed without building any rvalue.
