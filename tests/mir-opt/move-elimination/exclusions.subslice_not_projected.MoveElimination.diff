@@ -1,0 +1,40 @@
+- // MIR for `subslice_not_projected` before MoveElimination
++ // MIR for `subslice_not_projected` after MoveElimination
+  
+  fn subslice_not_projected(_1: [u8; 4]) -> () {
+      debug array => _1;
+      let mut _0: ();
+      let _2: [u8; 2];
+      let _3: [u8; 2];
+      let mut _4: [u8; 2];
+      scope 1 {
+-         debug middle => _2;
++         debug middle => _4;
+      }
+  
+      bb0: {
+-         StorageLive(_2);
+-         _2 = copy _1[1..3];
+-         StorageLive(_3);
+-         StorageLive(_4);
+-         _4 = copy _2;
++         nop;
++         _4 = copy _1[1..3];
++         nop;
++         nop;
++         nop;
+          _3 = std::hint::black_box::<[u8; 2]>(move _4) -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+-         StorageDead(_4);
+-         StorageDead(_3);
++         nop;
++         nop;
+          _0 = const ();
+-         StorageDead(_2);
++         nop;
+          return;
+      }
+  }
+  
