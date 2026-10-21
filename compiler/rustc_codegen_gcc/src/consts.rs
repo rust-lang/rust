@@ -64,14 +64,18 @@ impl<'gcc, 'tcx> StaticCodegenMethods for CodegenCx<'gcc, 'tcx> {
         let cv = const_alloc_to_gcc(self, alloc);
         let align = alloc.inner().align;
 
-        if let Some(variable) = self.const_globals.borrow().get(&cv) {
-            if let Some(global_variable) = self.global_lvalues.borrow().get(variable) {
-                let alignment = align.bits() as i32;
-                if alignment > global_variable.get_alignment() {
-                    global_variable.set_alignment(alignment);
-                }
+        if let Some(&mut (variable, ref mut global_align)) =
+            self.const_globals.borrow_mut().get_mut(&cv)
+        {
+            // `set_alignment` replaces the alignment, which is on the global's type and thus not
+            // reported by `get_alignment`: only raise it, or a smaller use would lower it.
+            if align > *global_align
+                && let Some(global_variable) = self.global_lvalues.borrow().get(&variable)
+            {
+                global_variable.set_alignment(align.bytes() as i32);
+                *global_align = align;
             }
-            return *variable;
+            return variable;
         }
         let global_value = self.static_addr_of_mut(cv, align, kind);
         #[cfg(feature = "master")]
@@ -80,7 +84,7 @@ impl<'gcc, 'tcx> StaticCodegenMethods for CodegenCx<'gcc, 'tcx> {
             .get(&global_value)
             .expect("`static_addr_of_mut` did not add the global to `self.global_lvalues`")
             .global_set_readonly();
-        self.const_globals.borrow_mut().insert(cv, global_value);
+        self.const_globals.borrow_mut().insert(cv, (global_value, align));
         global_value
     }
 

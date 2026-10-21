@@ -126,8 +126,8 @@ pub struct CodegenCx<'gcc, 'tcx> {
     /// Local holding the return value of the defined functions returning it in memory.
     pub functions_with_indirect_return: RefCell<FxHashMap<Function<'gcc>, LValue<'gcc>>>,
 
-    /// Cache of emitted const globals (value -> global)
-    pub const_globals: RefCell<FxHashMap<RValue<'gcc>, RValue<'gcc>>>,
+    /// Cache of emitted const globals (value -> global and its alignment)
+    pub const_globals: RefCell<FxHashMap<RValue<'gcc>, (RValue<'gcc>, Align)>>,
 
     /// Map from the address of a global variable (rvalue) to the global variable itself (lvalue).
     /// FIXME(antoyo): remove when the rustc API is fixed.
