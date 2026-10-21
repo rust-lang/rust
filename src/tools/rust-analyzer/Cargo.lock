@@ -873,7 +873,6 @@ dependencies = [
  "tracing",
  "triomphe",
  "tt",
- "unicode-ident",
 ]
 
 [[package]]
@@ -2764,6 +2763,7 @@ dependencies = [
  "test-utils",
  "tracing",
  "triomphe",
+ "unicode-ident",
 ]
 
 [[package]]
