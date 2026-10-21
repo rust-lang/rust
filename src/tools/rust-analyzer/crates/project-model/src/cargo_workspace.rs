@@ -332,10 +332,19 @@ pub struct CargoMetadataConfig {
     /// Extra env vars to set when invoking the cargo command
     pub extra_env: FxHashMap<String, Option<String>>,
     /// What kind of metadata are we fetching: workspace, rustc, or sysroot.
-    pub kind: &'static str,
+    pub kind: CargoMetadataKind,
     /// The toolchain version, if known.
     /// Used to conditionally enable unstable cargo features.
     pub toolchain_version: Option<semver::Version>,
+}
+
+#[derive(Default, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CargoMetadataKind {
+    #[default]
+    Workspace,
+    DetachedFile,
+    Rustc,
+    Sysroot,
 }
 
 // Deserialize helper for the cargo metadata
@@ -637,7 +646,7 @@ pub(crate) struct FetchMetadata {
     manifest_path: ManifestPath,
     lockfile_copy: Option<LockfileCopy>,
     #[expect(dead_code)]
-    kind: &'static str,
+    kind: CargoMetadataKind,
     no_deps: bool,
     no_deps_result: anyhow::Result<cargo_metadata::Metadata>,
     other_options: Vec<String>,
@@ -704,10 +713,18 @@ impl FetchMetadata {
         if cargo_toml.is_rust_manifest() {
             other_options.push("-Zscript".to_owned());
         } else if let Some(v) = config.toolchain_version.as_ref() {
-            lockfile_copy = make_lockfile_copy(
-                v,
-                &<_ as AsRef<Utf8Path>>::as_ref(cargo_toml).with_extension("lock"),
-            );
+            let manifest: &Utf8Path = cargo_toml.as_ref();
+            let lockfile_path = if config.kind == CargoMetadataKind::Rustc {
+                // The `rustc-dev` component ships `rustc-src/rust/compiler/rustc/Cargo.toml`
+                // without the workspace root manifest, so the lockfile at
+                // `rustc-src/rust/Cargo.lock` is neither next to the manifest nor discoverable
+                // by cargo. Without a copy of it, `cargo metadata --locked` fails and we degrade
+                // to `--no-deps` metadata, losing all rustc crates (e.g. `rustc_middle`).
+                manifest.ancestors().nth(3).map(|dir| dir.join("Cargo.lock"))
+            } else {
+                Some(manifest.with_extension("lock"))
+            };
+            lockfile_copy = lockfile_path.and_then(|path| make_lockfile_copy(v, &path));
         }
 
         if !config.targets.is_empty() {
