@@ -265,7 +265,7 @@ fn show_fieldless_enum(
 /// impl ::core::fmt::Debug for A {
 ///     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
 ///         ::core::fmt::Formatter::debug_c_like_enum_write_str(f,
-///             "A B C ",
+///             "A B C",
 ///             match self {
 ///                 A::A => 0usize,
 ///                 A::B => 2usize,
@@ -308,12 +308,17 @@ fn show_fieldless_enum_concat_str(
     let arms = def
         .variants
         .iter()
-        .map(|v| {
+        .enumerate()
+        .map(|(i, v)| {
             let name_offset = concatenated_names.len();
 
             let name = v.ident.name.as_str();
             concatenated_names.push_str(name);
-            concatenated_names.push(' ');
+
+            let is_last = i == def.variants.len() - 1;
+            if !is_last {
+                concatenated_names.push(' ');
+            }
 
             let variant_path = cx.path(span, &[type_ident, v.ident]);
             let pat = match &v.data {

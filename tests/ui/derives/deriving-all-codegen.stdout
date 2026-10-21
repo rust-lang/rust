@@ -1252,7 +1252,7 @@ impl ::core::fmt::Debug for Fieldless10 {
     #[inline]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         ::core::fmt::Formatter::debug_c_like_enum_write_str(f,
-            "AAAAA BBBB CC DDDDDDDD E FFFFFFFFFFFFF GGGGGG Hatsune IIIIIII JJJJJJJJJ ",
+            "AAAAA BBBB CC DDDDDDDD E FFFFFFFFFFFFF GGGGGG Hatsune IIIIIII JJJJJJJJJ",
             match self {
                 Fieldless10::AAAAA => 0usize,
                 Fieldless10::BBBB => 6usize,
