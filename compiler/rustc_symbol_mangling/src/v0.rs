@@ -154,16 +154,22 @@ pub fn mangle_internal_symbol<'tcx>(tcx: TyCtxt<'tcx>, item_name: &str) -> Strin
         |p| {
             p.push("C");
             p.push_disambiguator({
-                let mut hasher = StableHasher::new();
-                // Incorporate the rustc version to ensure #[rustc_std_internal_symbol] functions
-                // get a different symbol name depending on the rustc version.
-                //
-                // RUSTC_FORCE_RUSTC_VERSION is ignored here as otherwise different we would get an
-                // abi incompatibility with the standard library.
-                hasher.write(tcx.sess.cfg_version.as_bytes());
+                if let Some(sized) = tcx.lang_items().sized_trait() {
+                    tcx.stable_crate_id(sized.krate).as_u64()
+                } else {
+                    let mut hasher = StableHasher::new();
+                    // Incorporate the rustc version to ensure #[rustc_std_internal_symbol] functions
+                    // get a different symbol name depending on the rustc version.
+                    hasher.write(tcx.sess.cfg_version.as_bytes());
+                    if let Some(val) = std::env::var_os("RUSTC_FORCE_RUSTC_VERSION") {
+                        hasher.write(val.to_string_lossy().into_owned().as_bytes())
+                    } else {
+                        hasher.write(tcx.sess.cfg_version.as_bytes())
+                    }
 
-                let hash: Hash64 = hasher.finish();
-                hash.as_u64()
+                    let hash: Hash64 = hasher.finish();
+                    hash.as_u64()
+                }
             });
             p.push_ident("__rustc");
             Ok(())
