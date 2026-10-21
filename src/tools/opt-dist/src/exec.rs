@@ -155,12 +155,21 @@ impl Bootstrap {
         Self { cmd, metrics_path }
     }
 
-    pub fn llvm_pgo_instrument(mut self, profile_dir: &Utf8Path) -> Self {
-        self.cmd = self.cmd.arg("--set").arg(format!(
+    pub fn llvm_pgo_instrument(
+        env: &Environment,
+        profile_dir: &Utf8Path,
+        rustc_profile: &RustcPGOProfile,
+    ) -> Self {
+        let mut builder = Self::build(env);
+        builder.cmd = builder.cmd.arg("--set").arg(format!(
             r#"pgo.llvm.generate="{}""#,
             normalize_path(&profile_dir.join("prof-%p")).as_str()
         ));
-        self
+        if env.supports_shared_llvm() {
+            builder.avoid_rustc_rebuild()
+        } else {
+            builder.rustc_pgo_optimize(rustc_profile).rustc_rebuild()
+        }
     }
 
     pub fn llvm_pgo_optimize(mut self, profile: Option<&LlvmPGOProfile>) -> Self {
@@ -316,3 +325,6 @@ fn add_shared_x_flags(env: &Environment, cmd: CmdBuilder) -> CmdBuilder {
         cmd
     }
 }
+
+#[cfg(test)]
+mod tests;
