@@ -3418,6 +3418,10 @@ impl TryFrom<Vec<u8>> for String {
     }
 }
 
+/// Note that all methods of this trait append to the `String`'s existing
+/// contents; they never truncate or replace what is already there. In
+/// particular, [`fmt::Write::write_str`] uses [`push_str`][String::push_str]
+/// and [`fmt::Write::write_char`] uses [`push`][String::push].
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Write for String {
