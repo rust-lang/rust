@@ -405,19 +405,13 @@ impl UnixSocketFileDescription for TcpSocket {
             // Turn the `socket2::Socket` into a `mio::TcpListener`.
             // We follow Tokio's TCP socket implementation:
             // See <https://github.com/tokio-rs/tokio/blob/2120bee/tokio/src/net/tcp/socket.rs#L906-L925>
-            // SAFETY: mio specifies that it is safe to use `from_raw_fd` and
-            // `from_raw_socket` as long as it's ensured that the socket is non-blocking.
-            // Because we immediately make the socket non-blocking after creation, that
-            // is always guaranteed.
             unix => {{
-                use std::os::fd::{FromRawFd, IntoRawFd};
-                let raw_fd = socket.into_raw_fd();
-                unsafe { TcpListener::from_raw_fd(raw_fd) }
+                use std::os::fd::OwnedFd;
+                TcpListener::from(OwnedFd::from(socket))
             }},
             windows => {{
-                use std::os::windows::io::{FromRawSocket, IntoRawSocket};
-                let raw_socket = socket.into_raw_socket();
-                unsafe { TcpListener::from_raw_socket(raw_socket) }
+                use std::os::windows::io::OwnedSocket;
+                TcpListener::from(OwnedSocket::from(socket))
             }},
             _ => unreachable!("unsupported host platform"),
         };
@@ -539,19 +533,13 @@ impl UnixSocketFileDescription for TcpSocket {
             // Turn the `socket2::Socket` into a `mio::TcpStream`.
             // We follow Tokio's TCP socket implementation:
             // See <https://github.com/tokio-rs/tokio/blob/2120bee/tokio/src/net/tcp/socket.rs#L841-L869>
-            // SAFETY: mio specifies that it is safe to use `from_raw_fd` and
-            // `from_raw_socket` as long as it's ensured that the socket is non-blocking.
-            // Because we immediately make the socket non-blocking after creation, that
-            // is always guaranteed.
             unix => {{
-                use std::os::fd::{FromRawFd, IntoRawFd};
-                let raw_fd = socket.into_raw_fd();
-                unsafe { TcpStream::from_raw_fd(raw_fd) }
+                use std::os::fd::OwnedFd;
+                TcpStream::from(OwnedFd::from(socket))
             }},
             windows => {{
-                use std::os::windows::io::{FromRawSocket, IntoRawSocket};
-                let raw_socket = socket.into_raw_socket();
-                unsafe { TcpStream::from_raw_socket(raw_socket) }
+                use std::os::windows::io::OwnedSocket;
+                TcpStream::from(OwnedSocket::from(socket))
             }},
             _ => unreachable!("unsupported host platform"),
         };
