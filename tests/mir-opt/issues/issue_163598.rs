@@ -1,6 +1,7 @@
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 //@ skip-filecheck
 //@ compile-flags: -Z mir-opt-level=3
+// EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
 // Regression test for #163598. If the output has changed significantly (for example, no longer
 // being mir-inlined), this may be acceptable if the final optimized assembly for `<=`
@@ -13,5 +14,5 @@ fn chain_generic<T: PartialOrd, U: PartialOrd>(
     l: &(T, U),
     r: &(T, U),
 ) -> core::ops::ControlFlow<bool> {
-    PartialOrd::__chaining_le(l, r)
+    PartialOrd::__chaining_less(l, r)
 }

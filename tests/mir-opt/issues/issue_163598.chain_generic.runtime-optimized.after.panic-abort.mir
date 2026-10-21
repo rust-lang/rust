@@ -4,7 +4,7 @@ fn chain_generic(_1: &(T, U), _2: &(T, U)) -> ControlFlow<bool> {
     debug l => _1;
     debug r => _2;
     let mut _0: std::ops::ControlFlow<bool>;
-    scope 1 (inlined core::tuple::<impl PartialOrd for (T, U)>::__chaining_le) {
+    scope 1 (inlined core::tuple::<impl PartialOrd for (T, U)>::__chaining_less) {
         let _3: &T;
         let _4: &T;
         let mut _5: isize;
@@ -24,7 +24,7 @@ fn chain_generic(_1: &(T, U), _2: &(T, U)) -> ControlFlow<bool> {
         _3 = &((*_1).0: T);
         StorageLive(_4);
         _4 = &((*_2).0: T);
-        _0 = <T as PartialOrd>::__chaining_le(move _3, move _4) -> [return: bb1, unwind unreachable];
+        _0 = <T as PartialOrd>::__chaining_less(move _3, move _4) -> [return: bb1, unwind unreachable];
     }
 
     bb1: {
@@ -45,7 +45,7 @@ fn chain_generic(_1: &(T, U), _2: &(T, U)) -> ControlFlow<bool> {
         _6 = &((*_1).1: U);
         StorageLive(_7);
         _7 = &((*_2).1: U);
-        _0 = <U as PartialOrd>::__chaining_le(move _6, move _7) -> [return: bb4, unwind unreachable];
+        _0 = <U as PartialOrd>::__chaining_less(move _6, move _7) -> [return: bb4, unwind unreachable];
     }
 
     bb4: {
