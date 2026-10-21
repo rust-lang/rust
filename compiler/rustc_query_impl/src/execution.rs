@@ -82,19 +82,6 @@ fn find_and_handle_cycle<'tcx, C: QueryCache>(
     (handle_cycle(query, tcx, key, cycle), None)
 }
 
-#[inline]
-fn next_job_id<'tcx>(tcx: TyCtxt<'tcx>) -> QueryJobId {
-    QueryJobId(
-        NonZero::new(tcx.query_system.jobs.fetch_add(1, std::sync::atomic::Ordering::Relaxed))
-            .unwrap(),
-    )
-}
-
-#[inline]
-fn current_query_job() -> Option<QueryJobId> {
-    tls::with_context(|icx| icx.query)
-}
-
 /// Awaits for the query job to complete.
 fn latch_wait_on<'tcx>(
     latch: &QueryLatch<'tcx>,
@@ -179,6 +166,19 @@ fn wait_for_query<'tcx, C: QueryCache>(
         }
         Err(cycle) => (handle_cycle(query, tcx, key, cycle), None),
     }
+}
+
+#[inline]
+fn next_job_id<'tcx>(tcx: TyCtxt<'tcx>) -> QueryJobId {
+    QueryJobId(
+        NonZero::new(tcx.query_system.jobs.fetch_add(1, std::sync::atomic::Ordering::Relaxed))
+            .unwrap(),
+    )
+}
+
+#[inline]
+fn current_query_job() -> Option<QueryJobId> {
+    tls::with_context(|icx| icx.query)
 }
 
 /// Shared main part of both [`execute_query_incr_inner`] and [`execute_query_non_incr_inner`].
