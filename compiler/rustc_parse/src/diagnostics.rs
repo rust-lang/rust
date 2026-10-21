@@ -2078,14 +2078,6 @@ pub(crate) struct PathFoundCVariadicParams {
 }
 
 #[derive(Diagnostic)]
-#[diag("`Trait(...)` syntax does not support attributes in parameters")]
-pub(crate) struct PathFoundAttributeInParams {
-    #[primary_span]
-    #[suggestion("remove the attributes", applicability = "machine-applicable", code = "")]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("path separator must be a double colon")]
 pub(crate) struct PathSingleColon {
     #[primary_span]

@@ -51,7 +51,8 @@ pub macro global_asm("assembly template", $(operands,)* $(options($(option),*))?
     /* compiler built-in */
 }
 
-/// Compiles to a target-specific software breakpoint instruction or equivalent.
+/// Compiles to a target-specific software breakpoint instruction if possible,
+/// falling back to an alternative trap or an abort.
 ///
 /// This will typically abort the program. It may result in a core dump, and/or the system logging
 /// debug information. Additional target-specific capabilities may be possible depending on

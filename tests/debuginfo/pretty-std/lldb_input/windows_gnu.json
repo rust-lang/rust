@@ -173,7 +173,7 @@
     },
     {
      "name": "length",
-     "type": "unsigned long long",
+     "type": "usize",
      "offset": 8
     }
    ]
@@ -284,7 +284,7 @@
     },
     {
      "name": "len",
-     "type": "unsigned long long",
+     "type": "usize",
      "offset": 16
     }
    ],

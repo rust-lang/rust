@@ -14,7 +14,7 @@ use rustc_hir::definitions::DefPathHash;
 use rustc_index::IndexVec;
 use rustc_macros::{Decodable, Encodable};
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder, IntEncodedWithFixedSize, MemDecoder};
-use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
+use rustc_serialize::{ContextOrd, Decodable, Decoder, Encodable, Encoder};
 use rustc_session::Session;
 use rustc_span::hygiene::{
     ExpnId, HygieneDecodeContext, HygieneEncodeContext, SyntaxContext, SyntaxContextKey,
@@ -115,6 +115,9 @@ struct Footer {
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Encodable, Decodable)]
 struct SourceFileIndex(u32);
+
+// this is never used by the on disk cache, since it is not required to be deterministic
+impl<E> ContextOrd<E> for SourceFileIndex {}
 
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq, Encodable, Decodable)]
 struct AbsoluteBytePos(u64);
@@ -283,10 +286,10 @@ impl OnDiskCache {
             HygieneEncodeContext::encode(
                 &Rc::clone(&encoder.hygiene_context),
                 &mut encoder,
-                |encoder, index, ctxt_data| {
+                |encoder, ctxt, ctxt_data| {
                     let pos = AbsoluteBytePos::new(encoder.position());
                     encoder.encode_tagged(TAG_SYNTAX_CONTEXT, ctxt_data);
-                    syntax_contexts.insert(index, pos);
+                    syntax_contexts.insert(ctxt.as_u32(), pos);
                 },
                 |encoder, expn_id, data, hash| {
                     if expn_id.krate == LOCAL_CRATE {
@@ -838,8 +841,8 @@ impl<'tcx> CacheEncoder<'tcx> {
 
 impl<'tcx> SpanEncoder for CacheEncoder<'tcx> {
     fn encode_syntax_context(&mut self, syntax_context: SyntaxContext) {
-        let idx = self.hygiene_context.borrow_mut().get_syntax_ctxt_encoding_index(syntax_context);
-        idx.encode(self);
+        self.hygiene_context.borrow_mut().enqueue_syntax_context_for_encoding(syntax_context);
+        self.emit_u32(syntax_context.as_u32());
     }
 
     fn encode_expn_id(&mut self, expn_id: ExpnId) {
