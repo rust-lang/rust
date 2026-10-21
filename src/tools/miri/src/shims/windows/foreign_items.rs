@@ -1047,10 +1047,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     (link_name, abi, args),
                 )?;
                 this.read_target_isize(console)?;
-                // FIXME: this should use deref_pointer_as, but CONSOLE_SCREEN_BUFFER_INFO is not in std
-                this.deref_pointer(buffer_info)?;
+                this.read_pointer(buffer_info)?;
                 // Indicate an error.
-                // FIXME: we should set last_error, but to what?
+                this.set_last_error(io::ErrorKind::Unsupported)?;
                 this.write_null(dest)?;
             }
             "GetStdHandle" => {

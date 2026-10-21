@@ -278,9 +278,11 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // When adding a new shim, you should follow the following pattern:
         // ```
         // "shim_name" => {
-        //     let [arg1, arg2, arg3] = this.check_shim(abi, CanonAbi::C , link_name, args)?;
-        //     let result = this.shim_name(arg1, arg2, arg3)?;
-        //     this.write_scalar(result, dest)?;
+        //     let [arg1, arg2, arg3] = &this.check_shim_sig(
+        //         shim_sig!(extern "C" fn(usize, *libc::some_type, *i32) -> u32),
+        //         (link_name, abi, args),
+        //     )?;
+        //     this.shim_name(arg1, arg2, arg3, dest)?;
         // }
         // ```
         // and then define `shim_name` as a helper function in an extension trait in a suitable file
@@ -291,19 +293,19 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         //     arg1: &OpTy<'tcx>,
         //     arg2: &OpTy<'tcx>,
         //     arg3: &OpTy<'tcx>,
-        //     arg4: &OpTy<'tcx>)
+        //     dest: &MPlaceTy<'tcx>)
         // -> InterpResult<'tcx, Scalar> {
         //     let this = self.eval_context_mut();
         //
         //     // First thing: load all the arguments. Details depend on the shim.
         //     let arg1 = this.read_scalar(arg1)?.to_u32()?;
         //     let arg2 = this.read_pointer(arg2)?; // when you need to work with the pointer directly
-        //     // when you want to load/store through the pointer
-        //     let arg3 = this.deref_pointer(arg3)?;
+        //     let arg3 = this.deref_pointer(arg3)?; // when you want to load/store through the pointer
         //
         //     // ...
         //
-        //     interp_ok(Scalar::from_u32(42))
+        //     this.write_int(42, dest)?;
+        //     interp_ok(())
         // }
         // ```
         // You might find existing shims not following this pattern, most
