@@ -6,7 +6,7 @@ use crate::deriving::generic::*;
 use crate::deriving::partial_ord::{OrdlikeDerive, cmp_body, discr_data_order};
 use crate::deriving::path_std;
 
-pub(crate) fn expand_deriving_ord(
+pub(crate) fn expand_derive_ord(
     cx: &ExtCtxt<'_>,
     span: Span,
     item: &ast::Item,

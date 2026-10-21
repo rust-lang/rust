@@ -10,7 +10,7 @@ use thin_vec::{ThinVec, thin_vec};
 use crate::deriving::generic::*;
 use crate::diagnostics;
 
-pub(crate) fn expand_deriving_default(
+pub(crate) fn expand_derive_default(
     cx: &ExtCtxt<'_>,
     span: Span,
     item: &ast::Item,

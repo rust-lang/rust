@@ -6,7 +6,7 @@ use thin_vec::thin_vec;
 use crate::deriving::generic::*;
 use crate::deriving::{call_discriminant_value, path_std, pathvec};
 
-pub(crate) fn expand_deriving_partial_ord(
+pub(crate) fn expand_derive_partial_ord(
     cx: &ExtCtxt<'_>,
     span: Span,
     item: &ast::Item,

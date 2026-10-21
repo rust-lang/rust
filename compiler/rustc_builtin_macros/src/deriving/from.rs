@@ -11,7 +11,7 @@ use crate::diagnostics;
 
 /// Generate an implementation of the `From` trait, provided that `item`
 /// is a struct or a tuple struct with exactly one field.
-pub(crate) fn expand_deriving_from(
+pub(crate) fn expand_derive_from(
     cx: &ExtCtxt<'_>,
     span: Span,
     item: &ast::Item,

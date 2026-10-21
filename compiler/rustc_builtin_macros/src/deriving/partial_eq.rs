@@ -8,7 +8,7 @@ use crate::deriving::{call_discriminant_value, path_std};
 
 /// Expands a `#[derive(PartialEq)]` attribute into an implementation for the
 /// target item.
-pub(crate) fn expand_deriving_partial_eq(
+pub(crate) fn expand_derive_partial_eq(
     cx: &ExtCtxt<'_>,
     span: Span,
     item: &ast::Item,

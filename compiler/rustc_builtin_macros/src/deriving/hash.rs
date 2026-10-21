@@ -6,7 +6,7 @@ use thin_vec::{ThinVec, thin_vec};
 use crate::deriving::generic::*;
 use crate::deriving::{call_discriminant_value, path_std};
 
-pub(crate) fn expand_deriving_hash(
+pub(crate) fn expand_derive_hash(
     cx: &ExtCtxt<'_>,
     span: Span,
     item: &ast::Item,

@@ -7,7 +7,7 @@ use thin_vec::{ThinVec, thin_vec};
 use crate::deriving::generic::*;
 use crate::deriving::path_std;
 
-pub(crate) fn expand_deriving_debug(
+pub(crate) fn expand_derive_debug(
     cx: &ExtCtxt<'_>,
     span: Span,
     item: &ast::Item,
