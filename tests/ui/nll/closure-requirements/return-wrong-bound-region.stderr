@@ -20,6 +20,30 @@ LL | fn test() {
    |
    = note: defining type: test
 
+note: no external requirements
+  --> $DIR/return-wrong-bound-region.rs:11:16
+   |
+LL |     expect_sig(|a, b| b); // ought to return `a`
+   |                ^^^^^^
+   |
+   = note: defining type: test::{closure#0} with closure args [
+               i16,
+               for<Region(BrAnon), Region(BrAnon)> extern "rust-call" fn((&'^0 i32, &'^1 i32)) -> &'^0 i32,
+               (),
+           ]
+   = note: late-bound region is '?1
+   = note: late-bound region is '?2
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+note: no external requirements
+  --> $DIR/return-wrong-bound-region.rs:10:1
+   |
+LL | fn test() {
+   | ^^^^^^^^^
+   |
+   = note: defining type: test
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 error: lifetime may not live long enough
   --> $DIR/return-wrong-bound-region.rs:11:23
    |

@@ -131,6 +131,7 @@ pub fn get_bodies_with_borrowck_facts(
         root_def_id,
         Some(BorrowckConsumer::new(options)),
         &tainted_by_errors,
+        crate::root_cx::WfCheckClosures::Yes,
     );
     root_cx.do_mir_borrowck();
     root_cx.consumer.unwrap().bodies
