@@ -14,7 +14,7 @@ use rustc_middle::mir::interpret::{
 };
 use rustc_middle::mono::MonoItem;
 use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
-use rustc_middle::ty::{self, Instance};
+use rustc_middle::ty::{self, Instance, Ty};
 use rustc_span::{Symbol, bug, span_bug};
 use rustc_target::spec::Arch;
 use tracing::{debug, instrument, trace};
@@ -187,6 +187,16 @@ fn set_global_alignment<'ll>(cx: &CodegenCx<'ll, '_>, gv: &'ll Value, mut align:
     llvm::set_alignment(gv, align);
 }
 
+/// The type a static with `#[linkage]` points to: a raw pointer, or an `Option` of a reference
+/// (see `check_static_linkage`). `None` if it is unsized or not one of those.
+fn extern_pointee_ty<'tcx>(cx: &CodegenCx<'_, 'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
+    let ptr_ty = match ty.kind() {
+        ty::Adt(def, args) if cx.tcx.is_lang_item(def.did(), LangItem::Option) => args.type_at(0),
+        _ => ty,
+    };
+    ptr_ty.builtin_deref(true).filter(|pointee| pointee.is_sized(cx.tcx, cx.typing_env()))
+}
+
 fn check_and_apply_linkage<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     attrs: &CodegenFnAttrs,
@@ -198,6 +208,7 @@ fn check_and_apply_linkage<'ll, 'tcx>(
         debug!("get_static: sym={} linkage={:?}", sym, linkage);
 
         let mut should_sign = false;
+        let mut weak_fn_abi = None;
         // Declare a symbol `foo`. If `foo` is an extern_weak symbol, we declare
         // an extern_weak function, otherwise a global with the desired linkage.
         let g1 = if matches!(attrs.import_linkage, Some(Linkage::ExternalWeak)) {
@@ -217,6 +228,7 @@ fn check_and_apply_linkage<'ll, 'tcx>(
                 {
                     should_sign = true;
                 }
+                weak_fn_abi = Some(fn_abi);
                 cx.declare_fn(sym, &fn_abi, None)
             } else {
                 cx.declare_global(sym, cx.type_i8())
@@ -229,6 +241,22 @@ fn check_and_apply_linkage<'ll, 'tcx>(
         // Normally this is done in `get_static_inner`, but when as we generate an internal global,
         // it will apply the dso_local to the internal global instead, so do it here, too.
         cx.assume_dso_local(g1, true);
+
+        // `foo` is the foreign declaration, the static only holds its address. So, as for any
+        // other foreign item, `foo` is what gets the section and the declaration debuginfo,
+        // with the type of what the static points to. This is how a weak kfunc or ksym, like
+        // clang's `__ksym __weak`, gets its BTF.
+        if cx.tcx.is_foreign_item(def_id) {
+            if cx.tcx.sess.target.arch == Arch::Bpf {
+                base::set_link_section(g1, attrs);
+            }
+            if let Some(fn_abi) = weak_fn_abi {
+                cx.dbg_declare_foreign_fn(def_id, fn_abi, g1);
+            } else {
+                let ty = Instance::mono(cx.tcx, def_id).ty(cx.tcx, cx.typing_env());
+                cx.dbg_declare_foreign_static(def_id, extern_pointee_ty(cx, ty), g1);
+            }
+        }
 
         // Declare an internal global `extern_with_linkage_foo` which
         // is initialized with the address of `foo`. If `foo` is
@@ -403,7 +431,17 @@ impl<'ll> CodegenCx<'ll, '_> {
         } else if let Some(methname) = fn_attrs.objc_selector {
             self.get_objc_selref(methname)
         } else {
-            check_and_apply_linkage(self, fn_attrs, llty, sym, def_id)
+            let g = check_and_apply_linkage(self, fn_attrs, llty, sym, def_id);
+            if self.tcx.is_foreign_item(def_id) && llvm::is_declaration(g) {
+                // Only BPF accepts `#[link_section]` on foreign statics (".ksyms" for ksyms);
+                // other targets warn that it is unused, so ignore it.
+                if self.tcx.sess.target.arch == Arch::Bpf {
+                    base::set_link_section(g, fn_attrs);
+                }
+                let ty = Instance::mono(self.tcx, def_id).ty(self.tcx, self.typing_env());
+                self.dbg_declare_foreign_static(def_id, Some(ty), g);
+            }
+            g
         };
 
         // Thread-local statics in some other crate need to *always* be linked

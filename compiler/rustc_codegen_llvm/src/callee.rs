@@ -11,6 +11,7 @@ use rustc_middle::ty::{self, Instance, TypeVisitableExt};
 use rustc_target::spec::{Arch, Env};
 use tracing::debug;
 
+use crate::base;
 use crate::context::CodegenCx;
 use crate::llvm::{self, Value};
 
@@ -144,6 +145,24 @@ pub(crate) fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'t
             && !matches!(tcx.sess.target.env, Env::Gnu | Env::Uclibc)
         {
             llvm::set_dllimport_storage_class(llfn);
+        }
+
+        if matches!(instance.def, ty::InstanceKind::Item(_)) && tcx.is_foreign_item(instance_def_id)
+        {
+            // A defined fn gets its section in predefine_fn(); a foreign one is only ever
+            // declared here. On BPF, `#[link_section = ".ksyms"]` is how a kfunc is marked;
+            // other targets warn that the attribute is unused on foreign fns, so ignore it.
+            if tcx.sess.target.arch == Arch::Bpf {
+                let attrs = tcx.codegen_fn_attrs(instance_def_id);
+                base::set_link_section(llfn, attrs);
+                // Declare kfuncs weak, as vmlinux.h does with `__weak __ksym`, so a kernel
+                // without the kfunc can still accept the program if the verifier can tell
+                // the call is never reached.
+                if attrs.link_section.is_some_and(|section| section.as_str() == ".ksyms") {
+                    llvm::set_linkage(llfn, llvm::Linkage::ExternalWeakLinkage);
+                }
+            }
+            cx.dbg_declare_foreign_fn(instance_def_id, fn_abi, llfn);
         }
 
         cx.assume_dso_local(llfn, true);
