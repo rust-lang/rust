@@ -16,7 +16,7 @@ struct Target<'a> {
 
 impl Reborrow for Source<'_> {}
 
-impl<'a> CoerceShared<Target<'a>> for Source<'a> {}
-//~^ ERROR
+impl<'a: 'b, 'b> CoerceShared<Target<'b>> for Source<'a> {}
+//~^ ERROR implementing `CoerceShared` currently requires source and target to have at most one non-ZST reborrow data field
 
 fn main() {}

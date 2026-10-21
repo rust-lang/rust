@@ -3,7 +3,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::ItemKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, TyCtxtInferExt};
+use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, SubregionOrigin, TyCtxtInferExt};
 use rustc_infer::traits::{Obligation, TraitErrors};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, TypingMode, Unnormalized};
 use rustc_span::Span;
@@ -239,10 +239,8 @@ pub(super) fn coerce_shared_info<'tcx>(
     let source = tcx.type_of(impl_did).instantiate_identity().skip_norm_wip();
     let trait_ref = tcx.impl_trait_ref(impl_did).instantiate_identity().skip_norm_wip();
 
-    if trait_impl_lifetime_params_count(tcx, impl_did) != 1 {
-        return Err(tcx
-            .dcx()
-            .emit_err(diagnostics::CoerceSharedNotSingleLifetimeParam { span, trait_name }));
+    if trait_impl_lifetime_params_count(tcx, impl_did) == 0 {
+        return Err(tcx.dcx().emit_err(diagnostics::ReborrowNoLifetimes { span, trait_name }));
     }
 
     assert_eq!(trait_ref.def_id, coerce_shared_trait);
@@ -266,25 +264,6 @@ pub(super) fn coerce_shared_info<'tcx>(
         (&ty::Adt(def_a, args_a), &ty::Adt(def_b, args_b))
             if def_a.is_struct() && def_b.is_struct() =>
         {
-            let a_lifetime = single_region_arg(args_a);
-            let b_lifetime = single_region_arg(args_b);
-
-            if a_lifetime.is_none() || b_lifetime.is_none() {
-                return Err(tcx.dcx().emit_err(diagnostics::CoerceSharedMulti {
-                    span: diagnostic_context.trait_span,
-                    trait_name,
-                }));
-            }
-
-            if a_lifetime != b_lifetime {
-                return Err(tcx.dcx().emit_err(diagnostics::CoerceSharedLifetimeMismatch {
-                    span: diagnostic_context.trait_span,
-                    source_lifetime_span: diagnostic_context.source_lifetime_span,
-                    target_lifetime_span: diagnostic_context.target_lifetime_span,
-                    trait_name,
-                }));
-            }
-
             validate_reborrow_field_access(
                 tcx,
                 impl_did,
@@ -339,12 +318,6 @@ struct CoerceSharedFields<'tcx> {
 enum CoerceSharedFieldPairError<'tcx> {
     FieldStyleMismatch,
     MissingSourceField { target: ReborrowDataField<'tcx> },
-}
-
-fn single_region_arg<'tcx>(args: ty::GenericArgsRef<'tcx>) -> Option<ty::Region<'tcx>> {
-    let mut lifetimes = args.iter().filter_map(|arg| arg.as_region());
-    let lifetime = lifetimes.next()?;
-    lifetimes.next().is_none().then_some(lifetime)
 }
 
 // This is a coherence/WF check only. It verifies that the CoerceShared impl
@@ -776,11 +749,17 @@ fn field_tys_satisfy_relation_after_normalization_and_resolution<'tcx>(
         return false;
     }
 
+    // impl<'a: 'b, 'b> CoerceShared<Target<'b>> for Source<'a> {}
+    //
+    // We expect all fields of `Source<'a>` to be one of:
+    // 1. `CoreceShared<TargetField<'b>>`: this is handled separately
+    // 2. assignable to target field: this is checked with a covariant .relate() call.
+    // 3. `&'a mut T` assigned to `&'b T`: this is checked below with .sub_regions() and .sup().
     match relation {
         FieldRelation::Equal => {
             if infcx
                 .at(&cause, param_env)
-                .relate(DefineOpaqueTypes::Yes, source_ty, ty::Variance::Invariant, target_ty)
+                .relate(DefineOpaqueTypes::Yes, source_ty, ty::Variance::Covariant, target_ty)
                 .is_err()
             {
                 return false;
@@ -794,9 +773,15 @@ fn field_tys_satisfy_relation_after_normalization_and_resolution<'tcx>(
             else {
                 return false;
             };
-            if source_region != target_region {
-                return false;
-            }
+            // Here we're effectively checking assignability of `&'source_region mut T` to
+            // `&'target_region T`, so we require `'source_region: 'target_region` using
+            // `.sub_regions()` and the `T`'s to be unifiable with `.sup()`.
+            infcx.sub_regions(
+                SubregionOrigin::Reborrow(span),
+                target_region,
+                source_region,
+                ty::VisibleForLeakCheck::Yes,
+            );
             if ocx.sup(&cause, param_env, target_referent_ty, source_referent_ty).is_err() {
                 return false;
             }
