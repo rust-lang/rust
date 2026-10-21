@@ -1,5 +1,5 @@
 use rustc_ast::token::{self, Delimiter, IdentKind, NonterminalKind, Token};
-use rustc_ast::tokenstream::TokenStreamIter;
+use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, TokenStreamIter};
 use rustc_ast::{NodeId, tokenstream};
 use rustc_ast_pretty::pprust;
 use rustc_errors::Applicability;
@@ -196,6 +196,23 @@ pub(super) fn parse_one_tt(
     parse(&tokenstream::TokenStream::new(vec![tree]), part, sess, node_id, features, edition)
         .pop()
         .unwrap()
+
+/// Parse delimited tokens.
+fn parse_delimited<R>(
+    parser: &mut Parser<'_>,
+    f: impl FnOnce(&mut Parser<'_>) -> R,
+) -> (DelimSpan, DelimSpacing, Delimiter, R) {
+    debug_assert!(parser.token.kind.open_delim().is_some());
+    let tokenstream::TokenTree::Delimited(dspan, dspacing, delim, _) =
+        parser.clone_enclosing_delim()
+    else {
+        unreachable!()
+    };
+    parser.bump();
+    let inner = (f)(parser);
+    debug_assert_eq!(parser.token.kind.close_delim(), Some(delim));
+    parser.bump();
+    (dspan, dspacing, delim, inner)
 }
 
 /// Asks for the `macro_metavar_expr` feature if it is not enabled
