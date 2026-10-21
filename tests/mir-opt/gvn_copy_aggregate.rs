@@ -1,5 +1,5 @@
 //@ test-mir-pass: GVN
-//@ compile-flags: -Cpanic=abort
+//@ compile-flags: -Cpanic=abort -Zmir-enable-passes=+AssumeVariant
 
 #![feature(core_intrinsics, custom_mir)]
 #![allow(internal_features)]

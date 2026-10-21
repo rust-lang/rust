@@ -327,7 +327,7 @@ fn mutate_discriminant() -> u8 {
             SetDiscriminant(x, 1);
             let y = CastTransmute::<_, std::pat::pattern_type!(usize is 1..=usize::MAX)>(0_usize);
             // This assignment overwrites the niche in which the discriminant is stored.
-            place!(Field(Field(Variant(x, 1), 0), 0)) = y;
+            place!(Field(Field(Variant(x, 1, false), 0), 0)) = y;
             // So we cannot know the value of this discriminant.
             let a = Discriminant(x);
             match a {

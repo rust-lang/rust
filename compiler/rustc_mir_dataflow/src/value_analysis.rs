@@ -985,7 +985,7 @@ impl<V, T> TryFrom<ProjectionElem<V, T>> for TrackElem {
     fn try_from(value: ProjectionElem<V, T>) -> Result<Self, Self::Error> {
         match value {
             ProjectionElem::Field(field, _) => Ok(TrackElem::Field(field)),
-            ProjectionElem::Downcast(_, idx) => Ok(TrackElem::Variant(idx)),
+            ProjectionElem::Downcast { variant_index, .. } => Ok(TrackElem::Variant(variant_index)),
             _ => Err(()),
         }
     }

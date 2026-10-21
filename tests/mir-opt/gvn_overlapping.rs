@@ -18,7 +18,7 @@ fn overlapping(_1: Adt) {
         {
             _2 = &mut _1;
             _4 = &(*_2);
-            _3 = Field(Variant((*_4), 1), 0);
+            _3 = Field(Variant((*_4), 1, false), 0);
             (*_2) = Adt::Some(_3);
             Return()
         }
@@ -41,7 +41,7 @@ fn stable_projection(_1: (Adt,)) {
         {
             _2 = &_1.0;
             _4 = &(*_2);
-            _3 = Field(Variant((*_4), 1), 0);
+            _3 = Field(Variant((*_4), 1, false), 0);
             _5.0 = Adt::Some(_3);
             Return()
         }
@@ -58,7 +58,7 @@ fn fields(_1: (Adt, Adt)) {
     mir! {
         let _2: u32;
         {
-            _2 = Field(Variant(_1.0, 1), 0);
+            _2 = Field(Variant(_1.0, 1, false), 0);
             _1.1 = Adt::Some(_2);
             Return()
         }
@@ -73,9 +73,9 @@ fn copy_overlapping() {
         let _2;
         let _3;
         {
-            place!(Field(Variant(_1, 1), 0)) = 0u32;
+            place!(Field(Variant(_1, 1, false), 0)) = 0u32;
             _3 = &_1;
-            _2 = Field(Variant(*_3, 1), 0);
+            _2 = Field(Variant(*_3, 1, false), 0);
             _1 = Adt::Some(_2);
             Return()
         }

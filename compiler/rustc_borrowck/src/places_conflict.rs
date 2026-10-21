@@ -337,7 +337,10 @@ fn place_projection_conflict<'tcx>(
                 }
             }
         }
-        (ProjectionElem::Downcast(_, v1), ProjectionElem::Downcast(_, v2)) => {
+        (
+            ProjectionElem::Downcast { variant_index: v1, .. },
+            ProjectionElem::Downcast { variant_index: v2, .. },
+        ) => {
             // different variants are treated as having disjoint fields,
             // even if they occupy the same "space", because it's
             // impossible for 2 variants of the same enum to exist
@@ -525,7 +528,7 @@ fn place_projection_conflict<'tcx>(
             | ProjectionElem::ConstantIndex { .. }
             | ProjectionElem::OpaqueCast { .. }
             | ProjectionElem::Subslice { .. }
-            | ProjectionElem::Downcast(..),
+            | ProjectionElem::Downcast { .. },
             _,
         ) => bug!(
             "mismatched projections in place_element_conflict: {:?} and {:?}",

@@ -1898,7 +1898,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             | ProjectionElem::Index(_)
             | ProjectionElem::ConstantIndex { .. }
             | ProjectionElem::Subslice { .. }
-            | ProjectionElem::Downcast(..) => {}
+            | ProjectionElem::Downcast { .. } => {}
             ProjectionElem::Field(field, fty) => {
                 let fty = self.normalize(ty::Unnormalized::new_wip(fty), location);
                 let ty = PlaceTy::field_ty(tcx, base_ty.ty, base_ty.variant_index, field);
@@ -2469,7 +2469,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     bug!("unexpected PhantomDeref in add_reborrow_constraint")
                 }
                 ProjectionElem::Field(..)
-                | ProjectionElem::Downcast(..)
+                | ProjectionElem::Downcast { .. }
                 | ProjectionElem::OpaqueCast(..)
                 | ProjectionElem::Index(..)
                 | ProjectionElem::ConstantIndex { .. }

@@ -59,7 +59,7 @@ fn adt() -> Onion {
                 b: 2,
             };
             y = Bar::Foo(Move(x), one);
-            RET = Onion { neon: Field(Variant(y, 0), 1) };
+            RET = Onion { neon: Field(Variant(y, 0, false), 1) };
             Return()
         }
     }

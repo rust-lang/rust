@@ -863,12 +863,16 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                 }
             }
             ProjectionElem::PhantomDeref => bug!("PhantomDeref in GVN"),
-            ProjectionElem::Downcast(name, index) => ProjectionElem::Downcast(name, index),
+            ProjectionElem::Downcast { name, variant_index, assume_variant } => {
+                ProjectionElem::Downcast { name, variant_index, assume_variant }
+            }
             ProjectionElem::Field(f, _) => match self.get(value) {
                 Value::Aggregate(_, fields) => return Some((projection_ty, fields[f.as_usize()])),
                 Value::Union(active, field) if active == f => return Some((projection_ty, field)),
-                Value::Projection(outer_value, ProjectionElem::Downcast(_, read_variant))
-                    if let Value::Aggregate(written_variant, fields) = self.get(outer_value)
+                Value::Projection(
+                    outer_value,
+                    ProjectionElem::Downcast { variant_index: read_variant, .. },
+                ) if let Value::Aggregate(written_variant, fields) = self.get(outer_value)
                     // This pass is not aware of control-flow, so we do not know whether the
                     // replacement we are doing is actually reachable. We could be in any arm of
                     // ```
@@ -1183,7 +1187,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
 
         let mut copy_from_local_value = copy_from_value;
         if let Value::Projection(pointer, proj) = self.get(copy_from_value)
-            && let ProjectionElem::Downcast(_, read_variant) = proj
+            && let ProjectionElem::Downcast { variant_index: read_variant, .. } = proj
         {
             if variant_index == read_variant {
                 // When copying a variant, there is no need to downcast.

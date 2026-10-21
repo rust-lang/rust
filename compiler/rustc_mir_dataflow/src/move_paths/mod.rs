@@ -459,7 +459,7 @@ impl MoveSubPath {
             ProjectionKind::ConstantIndex { offset, min_length: _, from_end: false } => {
                 MoveSubPath::ConstantIndex(offset)
             }
-            ProjectionKind::Downcast(_, idx) => MoveSubPath::Downcast(idx),
+            ProjectionKind::Downcast { variant_index, .. } => MoveSubPath::Downcast(variant_index),
             ProjectionKind::UnwrapUnsafeBinder(_) => MoveSubPath::UnwrapUnsafeBinder,
 
             // this should be the same move path as its parent

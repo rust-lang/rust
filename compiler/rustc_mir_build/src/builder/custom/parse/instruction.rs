@@ -419,10 +419,11 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
                 return Ok((place, PlaceTy::from_ty(field_ty)));
             },
             @call(mir_variant, args) => {
-                (args[0], PlaceElem::Downcast(
-                    None,
-                    VariantIdx::from_u32(self.parse_integer_literal(args[1])? as u32)
-                ))
+                (args[0], PlaceElem::Downcast {
+                    name: None,
+                    variant_index: VariantIdx::from_u32(self.parse_integer_literal(args[1])? as u32),
+                    assume_variant: self.parse_integer_literal(args[2])? == 1,
+                })
             },
             ExprKind::Deref { arg } => {
                 parse_by_kind!(self, *arg, _, "does not matter",
