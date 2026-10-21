@@ -23,16 +23,16 @@
 //! ### 1. Active Attributes
 //! These are attribute-like proc-macros that expand into other Rust code.
 //! They can be either user-defined or compiler-provided. Examples of compiler-provided active attributes:
-//!   - `#[derive(...)]`: Expands into trait implementations
-//!   - `#[cfg()]`: Expands based on configuration
-//!   - `#[cfg_attr()]`: Conditional attribute application
+//!   - `#[derive(Debug)]`: Expands into trait implementations
+//!   - `#[cfg(target_os = "windows")]`: Expands based on configuration
+//!   - `#[cfg_attr(feature = "foo", test)]`: Conditional attribute application
 //!
 //! ### 2. Inert Attributes
 //! These are pure markers that don't expand into other code. They guide the compilation process.
 //! They can be user-defined (in proc-macro helpers) or built-in. Examples of built-in inert attributes:
-//!   - `#[stable()]`: Marks stable API items
-//!   - `#[inline()]`: Suggests function inlining
-//!   - `#[repr()]`: Controls type representation
+//!   - `#[stable(feature = "scoped_threads", since = "1.63.0")]`: Marks stable API items
+//!   - `#[inline(never)]`: Suggests function inlining
+//!   - `#[repr(C)]`: Controls type representation
 //!
 //! ```text
 //!                      Active                 Inert
@@ -58,10 +58,10 @@
 //! In this crate, syntactical attributes (sequences of tokens that look like
 //! `#[something(something else)]`) are parsed into more semantic attributes, markers on items.
 //! Multiple syntactic attributes might influence a single semantic attribute. For example,
-//! `#[stable(...)]` and `#[unstable()]` cannot occur together, and both semantically define
+//! the `stable` and `unstable` attributes cannot occur together, and both semantically define
 //! a "stability" of an item. So, the stability attribute has an
-//! [`AttributeParser`](attributes::AttributeParser) that recognizes both the `#[stable()]`
-//! and `#[unstable()]` syntactic attributes, and at the end produces a single
+//! [`AttributeParser`](attributes::AttributeParser) that recognizes both the `stable`
+//! and `unstable` syntactic attributes, and at the end produces a single
 //! [`AttributeKind::Stability`](rustc_attr_ir::AttributeKind::Stability).
 //!
 //! When multiple instances of the same attribute are allowed, they're combined into a single
