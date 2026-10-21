@@ -60,14 +60,14 @@ pub fn inject(
             EditionFuture => sym::rust_future,
         }])
         .map(|&symbol| Ident::new(symbol, span))
-        .collect();
+        .collect::<Vec<_>>();
 
     // Inject the relevant crate's prelude.
     let use_item = cx.item(
         span,
         thin_vec![cx.attr_word(sym::prelude_import, span)],
         ast::ItemKind::Use(ast::UseTree {
-            prefix: cx.path(span, import_path),
+            prefix: cx.path(span, &import_path),
             kind: ast::UseTreeKind::Glob(span),
         }),
     );
