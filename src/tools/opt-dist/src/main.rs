@@ -381,7 +381,6 @@ fn execute_pipeline(
         })?;
 
     // Stage 2: Gather LLVM PGO profiles
-    // Here we build a PGO-instrumented LLVM, reusing the previously PGO-optimized rustc.
     // Then we use the instrumented LLVM to gather LLVM PGO profiles.
     let llvm_pgo_profile = if env.build_llvm() {
         timer.section("Stage 2 (LLVM PGO)", |stage| {
@@ -391,9 +390,7 @@ fn execute_pipeline(
             let llvm_profile_dir_root = env.artifact_dir().join("llvm-pgo");
 
             stage.section("Build PGO-instrumented LLVM", |section| {
-                Bootstrap::build(env)
-                    .llvm_pgo_instrument(&llvm_profile_dir_root)
-                    .avoid_rustc_rebuild()
+                Bootstrap::llvm_pgo_instrument(env, &llvm_profile_dir_root, &rustc_pgo_profile)
                     .run(section)
             })?;
 
