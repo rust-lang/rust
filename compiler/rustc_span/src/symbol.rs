@@ -881,6 +881,7 @@ symbols! {
         dreg,
         dreg_low8,
         dreg_low16,
+        dret,
         drop,
         drop_glue,
         drop_in_place,
