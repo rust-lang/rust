@@ -38,7 +38,6 @@ use rustc_macros::{Decodable, Encodable, StableHash};
 use rustc_serialize::opaque::mem_encoder::MemEncoder;
 use rustc_serialize::opaque::{FileEncoder, MemDecoder};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
-use tracing::debug;
 pub use unicode_width::UNICODE_VERSION;
 
 mod caching_source_map_view;
@@ -2009,6 +2008,8 @@ pub struct SourceFile {
     pub lines: FreezeLock<SourceFileLines>,
     /// Locations of multi-byte characters in the source code.
     pub multibyte_chars: Vec<MultiByteChar>,
+    /// Whether the source may contain a tab. Always true when the source text isn't available.
+    may_contain_tabs: bool,
     /// Locations of characters removed during normalization.
     pub normalized_pos: Vec<NormalizedPos>,
     /// A hash of the filename & crate-id, used for uniquely identifying source
@@ -2032,6 +2033,7 @@ impl Clone for SourceFile {
             unnormalized_source_len: self.unnormalized_source_len,
             lines: self.lines.clone(),
             multibyte_chars: self.multibyte_chars.clone(),
+            may_contain_tabs: self.may_contain_tabs,
             normalized_pos: self.normalized_pos.clone(),
             stable_id: self.stable_id,
             cnum: self.cnum,
@@ -2152,6 +2154,7 @@ impl<D: SpanDecoder> Decodable<D> for SourceFile {
             external_src: FreezeLock::frozen(ExternalSource::Unneeded),
             lines: FreezeLock::new(lines),
             multibyte_chars,
+            may_contain_tabs: true,
             normalized_pos,
             stable_id,
             cnum,
@@ -2246,6 +2249,7 @@ impl SourceFile {
         }
 
         let (lines, multibyte_chars) = analyze_source_file::analyze_source_file(&src);
+        let may_contain_tabs = src.contains('\t');
 
         Ok(SourceFile {
             name,
@@ -2258,6 +2262,7 @@ impl SourceFile {
             unnormalized_source_len,
             lines: FreezeLock::frozen(SourceFileLines::Lines(lines)),
             multibyte_chars,
+            may_contain_tabs,
             normalized_pos,
             stable_id,
             cnum: LOCAL_CRATE,
@@ -2515,72 +2520,40 @@ impl SourceFile {
         BytePos::from_u32(self.start_pos.0 + offset - diff)
     }
 
-    /// Converts an relative `RelativeBytePos` to a `CharPos` relative to the `SourceFile`.
-    fn bytepos_to_file_charpos(&self, bpos: RelativeBytePos) -> CharPos {
-        // The number of extra bytes due to multibyte chars in the `SourceFile`.
-        let mut total_extra_bytes = 0;
-
-        for mbc in self.multibyte_chars.iter() {
-            debug!("{}-byte char at {:?}", mbc.bytes, mbc.pos);
-            if mbc.pos < bpos {
-                // Every character is at least one byte, so we only
-                // count the actual extra bytes.
-                total_extra_bytes += mbc.bytes as u32 - 1;
-                // We should never see a byte position in the middle of a
-                // character.
-                assert!(bpos.to_u32() >= mbc.pos.to_u32() + mbc.bytes as u32);
-            } else {
-                break;
-            }
-        }
-
-        assert!(total_extra_bytes <= bpos.to_u32());
-        CharPos(bpos.to_usize() - total_extra_bytes as usize)
-    }
-
-    /// Looks up the file's (1-based) line number and (0-based `CharPos`) column offset, for a
-    /// given `RelativeBytePos`.
-    fn lookup_file_pos(&self, pos: RelativeBytePos) -> (usize, CharPos) {
-        let chpos = self.bytepos_to_file_charpos(pos);
-        match self.lookup_line(pos) {
-            Some(a) => {
-                let line = a + 1; // Line numbers start at 1
-                let linebpos = self.lines()[a];
-                let linechpos = self.bytepos_to_file_charpos(linebpos);
-                let col = chpos - linechpos;
-                debug!("byte pos {:?} is on the line at byte pos {:?}", pos, linebpos);
-                debug!("char pos {:?} is on the line at char pos {:?}", chpos, linechpos);
-                debug!("byte is on line: {}", line);
-                assert!(chpos >= linechpos);
-                (line, col)
-            }
-            None => (0, chpos),
-        }
-    }
-
     /// Looks up the file's (1-based) line number, (0-based `CharPos`) column offset, and (0-based)
     /// column offset when displayed, for a given `BytePos`.
     pub fn lookup_file_pos_with_col_display(&self, pos: BytePos) -> (usize, CharPos, usize) {
         let pos = self.relative_position(pos);
-        let (line, col_or_chpos) = self.lookup_file_pos(pos);
-        if line > 0 {
-            let Some(code) = self.get_line(line - 1) else {
-                // If we don't have the code available, it is ok as a fallback to return the bytepos
-                // instead of the "display" column, which is only used to properly show underlines
-                // in the terminal.
-                // FIXME: we'll want better handling of this in the future for the sake of tools
-                // that want to use the display col instead of byte offsets to modify Rust code, but
-                // that is a problem for another day, the previous code was already incorrect for
-                // both displaying *and* third party tools using the json output naïvely.
-                tracing::info!("couldn't find line {line} {:?}", self.name);
-                return (line, col_or_chpos, col_or_chpos.0);
-            };
-            let display_col = code.chars().take(col_or_chpos.0).map(|ch| char_width(ch)).sum();
-            (line, col_or_chpos, display_col)
-        } else {
-            // This is never meant to happen?
-            (0, col_or_chpos, col_or_chpos.0)
+        let Some(index) = self.lookup_line(pos) else {
+            // Only an empty file has no line.
+            return (0, CharPos(0), 0);
+        };
+        let line = index + 1;
+        let linebpos = self.lines()[index];
+        let first_mb = self.multibyte_chars.partition_point(|mbc| mbc.pos < linebpos);
+        let extra_bytes: usize = self.multibyte_chars[first_mb..]
+            .iter()
+            .take_while(|mbc| mbc.pos < pos)
+            .map(|mbc| mbc.bytes as usize - 1)
+            .sum();
+        let col = CharPos(pos.to_usize() - linebpos.to_usize() - extra_bytes);
+        if extra_bytes == 0 && !self.may_contain_tabs {
+            // Fast path for ascii without tabs where each byte is one column.
+            return (line, col, col.0);
         }
+        let Some(code) = self.get_line(line - 1) else {
+            // If we don't have the code available, it is ok as a fallback to return the bytepos
+            // instead of the "display" column, which is only used to properly show underlines
+            // in the terminal.
+            // FIXME: we'll want better handling of this in the future for the sake of tools
+            // that want to use the display col instead of byte offsets to modify Rust code, but
+            // that is a problem for another day, the previous code was already incorrect for
+            // both displaying *and* third party tools using the json output naïvely.
+            tracing::info!("couldn't find line {line} {:?}", self.name);
+            return (line, col, col.0);
+        };
+        let display_col = code.chars().take(col.0).map(char_width).sum();
+        (line, col, display_col)
     }
 }
 

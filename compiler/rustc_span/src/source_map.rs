@@ -416,6 +416,7 @@ impl SourceMap {
             unnormalized_source_len,
             lines: file_local_lines,
             multibyte_chars,
+            may_contain_tabs: true,
             normalized_pos,
             stable_id,
             cnum,
