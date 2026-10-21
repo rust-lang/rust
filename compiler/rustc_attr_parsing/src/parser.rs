@@ -175,7 +175,7 @@ impl ArgParser {
             }
             AttrArgs::Eq { eq_span, expr } => Self::NameValue(NameValueParser {
                 eq_span: *eq_span,
-                value: expr_to_lit(psess, expr, expr.span, should_emit)
+                value: expr_to_lit(psess, expr, should_emit)
                     .map_err(|e| should_emit.emit_err(e))
                     .ok()??,
                 value_span: expr.span,
@@ -408,9 +408,10 @@ impl NameValueParser {
 fn expr_to_lit<'sess>(
     psess: &'sess ParseSess,
     expr: &Expr,
-    span: Span,
     should_emit: ShouldEmit,
 ) -> PResult<'sess, Option<MetaItemLit>> {
+    crate::validate_attr::check_attrs_on_rhs_expr(psess, expr)?;
+
     if let ExprKind::Lit(token_lit) = expr.kind {
         let res = MetaItemLit::from_token_lit(token_lit, expr.span);
         match res {
@@ -451,7 +452,7 @@ fn expr_to_lit<'sess>(
         // - `#[foo = include_str!("nonexistent-file.rs")]`:
         //   results in `ast::ExprKind::Err`.
         let msg = "attribute value must be a literal";
-        let mut err = psess.dcx().struct_span_err(span, msg);
+        let mut err = psess.dcx().struct_span_err(expr.span, msg);
 
         // Suggest adding quotation marks to turn an identifier into a string literal
         if let ExprKind::Path(None, ref path) = expr.kind
@@ -618,6 +619,11 @@ impl<'a, 'sess> MetaItemListParserContext<'a, 'sess> {
     }
 
     fn expected_lit(&mut self) -> Diag<'sess> {
+        // FIXME: We currently emit a very confusing diagnostic if somebody tries to apply an
+        // attribute to the literal. For example, given `#![doc(key = #[a] "..")]` we say
+        // "expected a literal (..) here, found expression" and highlight the string literal
+        // only.
+
         let mut err = InvalidMetaItem {
             span: self.parser.token.span,
             descr: token_descr(&self.parser.token),
