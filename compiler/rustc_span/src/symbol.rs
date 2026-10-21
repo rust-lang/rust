@@ -11,6 +11,7 @@ use rustc_data_structures::hash_table::{Entry, HashTable};
 use rustc_data_structures::stable_hash::{StableCompare, StableHash, StableHashCtxt, StableHasher};
 use rustc_data_structures::sync::Lock;
 use rustc_macros::{Decodable, Encodable, StableHash, symbols};
+use rustc_serialize::ContextOrd;
 
 use crate::edit_distance::find_best_match_for_name;
 use crate::{DUMMY_SP, Edition, Span, with_session_globals};
@@ -2734,6 +2735,12 @@ impl fmt::Display for MacroRulesNormalizedIdent {
 /// implements `fmt::Debug`, `Encodable`, and `Decodable` in special ways.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Symbol(SymbolIndex);
+
+impl<E> ContextOrd<E> for Symbol {
+    fn stable_cmp_with_context(_context: E) -> impl FnMut(&Self, &Self) -> std::cmp::Ordering {
+        StableCompare::stable_cmp
+    }
+}
 
 // Used within both `Symbol` and `ByteSymbol`.
 rustc_index::newtype_index! {

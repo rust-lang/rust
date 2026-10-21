@@ -46,6 +46,7 @@ pub mod source_map;
 use source_map::{SourceMap, SourceMapInputs};
 
 pub use self::caching_source_map_view::CachingSourceMapView;
+use crate::def_id::DefPathHash;
 use crate::fatal_error::FatalError;
 
 pub mod edition;
@@ -1380,6 +1381,16 @@ rustc_index::newtype_index! {
 /// This trait is used to allow encoder specific encodings of certain types.
 /// It is similar to rustc_type_ir's TyEncoder.
 pub trait SpanEncoder: Encoder {
+    /// Only needed if the encoder wants deterministic encoding for `HashMap` and `HashSet` with
+    /// `CrateNum`, `DefId` or `LocalDefId` keys. Can be unimplemented otherwise
+    fn def_path_hasher(&self) -> impl Fn(DefId) -> DefPathHash {
+        panic!(
+            "Deterministic encoding of HashMap<DefId, V> requires overriding `SpanEncoder::def_path_hasher`"
+        );
+        #[allow(unreachable_code)]
+        |_def_id| unimplemented!()
+    }
+
     fn encode_span(&mut self, span: Span);
     fn encode_symbol(&mut self, sym: Symbol);
     fn encode_byte_symbol(&mut self, byte_sym: ByteSymbol);
