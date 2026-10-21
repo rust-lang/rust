@@ -75,7 +75,6 @@ impl<'ll> OptimizationDiagnostic<'ll> {
 }
 
 pub(crate) struct SrcMgrDiagnostic {
-    pub level: super::DiagnosticLevel,
     pub message: String,
     pub source: Option<(String, Vec<InnerSpan>)>,
 }
@@ -86,7 +85,6 @@ impl SrcMgrDiagnostic {
         // diagnostics.
         let mut have_source = false;
         let mut buffer = String::new();
-        let mut level = super::DiagnosticLevel::Error;
         let mut loc = 0;
         let mut ranges = [0; 8];
         let mut num_ranges = ranges.len() / 2;
@@ -96,7 +94,6 @@ impl SrcMgrDiagnostic {
                     diag,
                     message,
                     buffer,
-                    &mut level,
                     &mut loc,
                     ranges.as_mut_ptr(),
                     &mut num_ranges,
@@ -108,7 +105,6 @@ impl SrcMgrDiagnostic {
 
         SrcMgrDiagnostic {
             message,
-            level,
             source: have_source.then(|| {
                 let mut spans = vec![InnerSpan::new(loc as usize, loc as usize)];
                 for i in 0..num_ranges {
@@ -122,7 +118,7 @@ impl SrcMgrDiagnostic {
 
 #[derive(Clone)]
 pub(crate) struct InlineAsmDiagnostic {
-    pub level: super::DiagnosticLevel,
+    pub severity: super::DiagnosticSeverity,
     pub cookie: u64,
     pub message: String,
     pub source: Option<(String, Vec<InnerSpan>)>,
@@ -132,14 +128,13 @@ impl InlineAsmDiagnostic {
     unsafe fn unpackInlineAsm(di: &DiagnosticInfo) -> Self {
         let mut cookie = 0;
         let mut message = None;
-        let mut level = super::DiagnosticLevel::Error;
 
         unsafe {
-            super::LLVMRustUnpackInlineAsmDiagnostic(di, &mut level, &mut cookie, &mut message);
+            super::LLVMRustUnpackInlineAsmDiagnostic(di, &mut cookie, &mut message);
         }
 
         InlineAsmDiagnostic {
-            level,
+            severity: di.severity(),
             cookie,
             message: super::twine_to_string(message.unwrap()),
             source: None,
@@ -151,7 +146,7 @@ impl InlineAsmDiagnostic {
         let smdiag =
             unsafe { SrcMgrDiagnostic::unpack(super::LLVMRustGetSMDiagnostic(di, &mut cookie)) };
         InlineAsmDiagnostic {
-            level: smdiag.level,
+            severity: di.severity(),
             cookie,
             message: smdiag.message,
             source: smdiag.source,
@@ -162,13 +157,10 @@ impl InlineAsmDiagnostic {
 pub(crate) enum Diagnostic<'ll> {
     Optimization(OptimizationDiagnostic<'ll>),
     InlineAsm(InlineAsmDiagnostic),
-    PGO(&'ll DiagnosticInfo),
-    Linker(&'ll DiagnosticInfo),
-    Unsupported(&'ll DiagnosticInfo),
+    StackSize,
 
-    /// LLVM has other types that we do not wrap here.
-    #[expect(dead_code)]
-    UnknownDiagnostic(&'ll DiagnosticInfo),
+    /// LLVM has other types that we do not distinguish here.
+    Other(&'ll DiagnosticInfo),
 }
 
 impl<'ll> Diagnostic<'ll> {
@@ -206,14 +198,18 @@ impl<'ll> Diagnostic<'ll> {
                     Optimization(OptimizationDiagnostic::unpack(OptimizationFailure, di))
                 }
 
-                Dk::PGOProfile => PGO(di),
-                Dk::Linker => Linker(di),
-                Dk::Unsupported => Unsupported(di),
-
                 Dk::SrcMgr => InlineAsm(InlineAsmDiagnostic::unpackSrcMgr(di)),
 
-                _ => UnknownDiagnostic(di),
+                Dk::StackSize => StackSize,
+
+                _ => Other(di),
             }
         }
+    }
+}
+
+impl DiagnosticInfo {
+    pub(crate) fn severity(&self) -> super::DiagnosticSeverity {
+        unsafe { super::LLVMGetDiagInfoSeverity(self) }
     }
 }
