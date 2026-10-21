@@ -134,13 +134,8 @@ impl fmt::Debug for ExpnId {
 rustc_index::newtype_index! {
     /// A unique ID associated with a macro invocation and expansion.
     #[debug_format = "expn{}"]
+    #[default]
     pub struct LocalExpnId {}
-}
-
-impl Default for LocalExpnId {
-    fn default() -> LocalExpnId {
-        LocalExpnId::ROOT
-    }
 }
 
 // To ensure correctness of incremental compilation,
