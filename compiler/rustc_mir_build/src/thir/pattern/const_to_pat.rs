@@ -142,6 +142,24 @@ impl<'tcx> ConstToPat<'tcx> {
         let const_value = if self.tcx.features().gca_const_items()
             || alias_const.kind.is_direct_const(self.tcx)
         {
+            let def_id = match alias_const.kind {
+                ty::AliasConstKind::Projection { def_id }
+                | ty::AliasConstKind::InherentSelf { def_id }
+                | ty::AliasConstKind::InherentImpl { def_id }
+                | ty::AliasConstKind::Free { def_id }
+                | ty::AliasConstKind::Anon { def_id } => def_id,
+            };
+
+            // Direct consts aren't necessarily wf. While other kinds of consts may also be
+            // ill-formed, their well-formedness is checked during evaluation. Therefore, we
+            // need to explicitly check the well-formedness of direct conste here.
+            if let Some(def_id) = def_id.as_local()
+                && self.tcx.check_well_formed(def_id).is_err()
+            {
+                let err = self.tcx.dcx().create_err(CouldNotEvalConstPattern { span: self.span });
+                return self.mk_err(err, ty);
+            }
+
             let Ok(normalize) = self
                 .tcx
                 .try_normalize_erasing_regions(self.typing_env, Unnormalized::new_wip(self.c))

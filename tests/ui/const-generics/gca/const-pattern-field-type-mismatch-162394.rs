@@ -24,6 +24,7 @@ fn main() {
     let foo = Foo::FooA(());
     match foo {
         Foo::A2 => {}
+        //~^ ERROR: could not evaluate constant pattern
         _ => {}
     }
 }

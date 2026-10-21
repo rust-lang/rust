@@ -1,0 +1,18 @@
+error[E0425]: cannot find value `C` in this scope
+  --> $DIR/ill-formed-const-match-no-ice.rs:9:35
+   |
+LL | const C_INNER: (*const u8, u8) = (C, 0);
+   |                                   ^ not found in this scope
+
+error: could not evaluate constant pattern
+  --> $DIR/ill-formed-const-match-no-ice.rs:13:9
+   |
+LL | const C_INNER: (*const u8, u8) = (C, 0);
+   | ------------------------------ constant defined here
+...
+LL |         C_INNER => {}
+   |         ^^^^^^^ could not evaluate constant
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

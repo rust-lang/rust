@@ -7,8 +7,8 @@ error: ['a: *]
 error: ['a: *, 'a: o]
   --> $DIR/rustc_dump_variances_of_opaques.rs:12:32
    |
-12 | fn captured_early<'a: 'a>() -> impl Sized + Captures<'a> {}
-   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^
+12 | ...'a: 'a>() -> impl Sized + Captures<'a> {}
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: []
   --> $DIR/rustc_dump_variances_of_opaques.rs:14:40
@@ -19,8 +19,8 @@ error: []
 error: ['a: o]
   --> $DIR/rustc_dump_variances_of_opaques.rs:16:36
    |
-16 | fn captured_late<'a>(_: &'a ()) -> impl Sized + Captures<'a> {}
-   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+16 | ...: &'a ()) -> impl Sized + Captures<'a> {}
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 4 previous errors
 
