@@ -265,11 +265,14 @@ fn show_fieldless_enum(
 /// impl ::core::fmt::Debug for A {
 ///     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
 ///         ::core::fmt::Formatter::debug_c_like_enum_write_str(f,
-///             "A B C",
+///             "A B C D E F",
 ///             match self {
 ///                 A::A => 0usize,
 ///                 A::B => 2usize,
 ///                 A::C => 4usize,
+///                 A::D => 6usize,
+///                 A::E => 8usize,
+///                 A::F => 10usize,
 ///             })
 ///     }
 /// }
