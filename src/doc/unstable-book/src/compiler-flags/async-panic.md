@@ -1,5 +1,7 @@
 # `async-panic`
 
+The tracking issue for this feature is: [#164106](https://github.com/rust-lang/rust/issues/164106).
+
 Part of project goal [async statemachine optimisation](https://github.com/rust-lang/rust-project-goals/issues/623).
 
 --------------------
