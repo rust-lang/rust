@@ -20,6 +20,7 @@
 //! This API is completely unstable and subject to change.
 
 // tidy-alphabetical-start
+#![feature(default_field_values)]
 #![feature(deref_patterns)]
 #![feature(iter_order_by)]
 #![feature(option_into_flat_iter)]
