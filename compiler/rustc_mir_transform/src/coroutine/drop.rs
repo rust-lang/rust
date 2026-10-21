@@ -277,7 +277,11 @@ pub(super) fn create_coroutine_drop_shim_async<'tcx>(
             1,
             (
                 CoroutineArgs::POISONED,
-                insert_panic_block(tcx, &mut body, ResumedAfterPanic(transform.coroutine_kind)),
+                if tcx.sess.opts.unstable_opts.async_panic {
+                    insert_panic_block(tcx, &mut body, ResumedAfterPanic(transform.coroutine_kind))
+                } else {
+                    insert_poll_pending_block(tcx, &mut body, transform.old_ret_ty)
+                },
             ),
         );
     }

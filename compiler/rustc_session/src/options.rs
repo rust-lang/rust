@@ -2403,6 +2403,8 @@ options! {
     assumptions_on_binders: bool = (false, parse_bool, [TRACKED],
         "allow deducing higher-ranked outlives assumptions from all binders (`for<'a>`); \
          implies `-Znext-solver=globally`"),
+    async_panic: bool = (true, parse_bool, [TRACKED],
+        "let async blocks and functions panic when polled after completion"),
     autodiff: Vec<crate::config::AutoDiff> = (Vec::new(), parse_autodiff, [TRACKED],
         "a list of autodiff flags to enable
         Mandatory setting:
