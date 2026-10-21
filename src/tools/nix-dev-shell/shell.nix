@@ -24,8 +24,9 @@ pkgs.mkShell {
     # Avoid creating text files for ICEs.
     RUSTC_ICE = 0;
     SSL_CERT_FILE = cacert;
-    # cargo seems to dlopen libcurl, so we need it in the ld library path
-    LD_LIBRARY_PATH = "${makeLibraryPath [pkgs.stdenv.cc.cc.lib pkgs.curl]}";
+    # cargo seems to dlopen libcurl, so we need it in the ld library path.
+    # zlib is required by libLLVM.
+    LD_LIBRARY_PATH = "${makeLibraryPath [pkgs.stdenv.cc.cc.lib pkgs.curl pkgs.zlib]}";
   };
 
   # Without this, the c compiler runs with `-O2` by default. This causes
