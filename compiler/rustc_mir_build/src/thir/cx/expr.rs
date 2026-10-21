@@ -3,6 +3,7 @@ use rustc_abi::{FIRST_VARIANT, FieldIdx, Size, VariantIdx};
 use rustc_ast::UnsafeBinderCastKind;
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_attr_ir::{AttributeKind, HasAttrs, UnrollAttr, find_attr};
+use rustc_data_structures::smallvec::SmallVec;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
 use rustc_hir::HirId;
@@ -388,6 +389,108 @@ impl<'tcx> ThirBuildCx<'tcx> {
         }
     }
 
+    fn lower_raw_handle_deref(
+        &mut self,
+        temp_scope_id: hir::ItemLocalId,
+        cur_kind: ExprKind<'tcx>,
+        handle_ty: Ty<'tcx>,
+        span: Span,
+    ) -> (ExprKind<'tcx>, Ty<'tcx>) {
+        let tcx = self.tcx;
+        let pointee_handle_did = tcx.require_lang_item(LangItem::DerefPlacePointeeHandle, span);
+        let next_handle_ty = tcx.normalize_erasing_regions(
+            self.typing_env,
+            ty::Unnormalized::new_wip(Ty::new_projection_from_args(
+                tcx,
+                ty::IsRigid::No,
+                pointee_handle_did,
+                tcx.mk_args(&[handle_ty.into()]),
+            )),
+        );
+        let deref_fn_did = tcx.require_lang_item(LangItem::DerefPlaceDerefPlace, span);
+        let fun_ty =
+            tcx.type_of(deref_fn_did).instantiate(tcx, &[handle_ty.into()]).skip_norm_wip();
+        let fun = self.thir.exprs.push(Expr {
+            temp_scope_id,
+            ty: fun_ty,
+            span,
+            kind: ExprKind::ZstLiteral { user_ty: None },
+        });
+        let cur_expr =
+            self.thir.exprs.push(Expr { temp_scope_id, ty: handle_ty, span, kind: cur_kind });
+        let next_kind = ExprKind::Call {
+            ty: fun_ty,
+            fun,
+            args: Box::new([cur_expr]),
+            from_hir_call: false,
+            fn_span: span,
+        };
+        (next_kind, next_handle_ty)
+    }
+
+    fn lower_raw_handle_field(
+        &mut self,
+        temp_scope_id: hir::ItemLocalId,
+        proj: &'tcx hir::Expr<'tcx>,
+        base: &'tcx hir::Expr<'tcx>,
+        mut cur_kind: ExprKind<'tcx>,
+        mut handle_ty: Ty<'tcx>,
+    ) -> (ExprKind<'tcx>, Ty<'tcx>) {
+        let tcx = self.tcx;
+        let span = proj.span;
+        for adj in self.typeck_results.expr_adjustments(base) {
+            match adj.kind {
+                Adjust::Deref(_) => {
+                    (cur_kind, handle_ty) =
+                        self.lower_raw_handle_deref(temp_scope_id, cur_kind, handle_ty, span);
+                }
+                ref e => {
+                    span_bug!(span, "field projections don't know how to lower {e:?} yet")
+                }
+            }
+        }
+        let base_ty = self.typeck_results.expr_ty_adjusted(base);
+        let field_idx = self.typeck_results.field_index(proj.hir_id);
+        let subplace_ty = Ty::new_field_representing_type(tcx, base_ty, FIRST_VARIANT, field_idx);
+        let projected_did = tcx.require_lang_item(LangItem::ProjectPlaceProjected, span);
+        let next_handle_ty = tcx.normalize_erasing_regions(
+            self.typing_env,
+            ty::Unnormalized::new_wip(Ty::new_projection_from_args(
+                tcx,
+                ty::IsRigid::No,
+                projected_did,
+                tcx.mk_args(&[handle_ty.into(), subplace_ty.into()]),
+            )),
+        );
+        let project_fn_did = tcx.require_lang_item(LangItem::ProjectPlaceProjectPlace, span);
+        let fun_ty = tcx
+            .type_of(project_fn_did)
+            .instantiate(tcx, &[handle_ty.into(), subplace_ty.into()])
+            .skip_norm_wip();
+        let fun = self.thir.exprs.push(Expr {
+            temp_scope_id,
+            ty: fun_ty,
+            span,
+            kind: ExprKind::ZstLiteral { user_ty: None },
+        });
+        let cur_expr =
+            self.thir.exprs.push(Expr { temp_scope_id, ty: handle_ty, span, kind: cur_kind });
+        let subplace_expr = self.thir.exprs.push(Expr {
+            temp_scope_id,
+            ty: subplace_ty,
+            span,
+            kind: ExprKind::ZstLiteral { user_ty: None },
+        });
+        let next_kind = ExprKind::Call {
+            ty: fun_ty,
+            fun,
+            args: Box::new([cur_expr, subplace_expr]),
+            from_hir_call: false,
+            fn_span: span,
+        };
+        (next_kind, next_handle_ty)
+    }
+
     #[instrument(level = "debug", skip(self), ret)]
     fn make_mirror_unadjusted(&mut self, expr: &'tcx hir::Expr<'tcx>) -> Expr<'tcx> {
         let tcx = self.tcx;
@@ -629,6 +732,102 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 }
                 _ => span_bug!(expr.span, "unexpected type for pinned borrow: {:?}", expr_ty),
             },
+
+            hir::ExprKind::RawHandle(arg_expr) => {
+                let mut exprs = SmallVec::<[_; 1]>::new();
+                let mut opr = arg_expr;
+                let qpath = loop {
+                    match opr.kind {
+                        hir::ExprKind::Path(ref qpath) => break qpath,
+                        hir::ExprKind::Unary(hir::UnOp::Deref, base)
+                        | hir::ExprKind::Field(base, _)
+                        | hir::ExprKind::Index(base, _, _) => {
+                            exprs.push(opr);
+                            opr = base;
+                        }
+                        _ => span_bug!(opr.span, "unexpected base in raw_handle: {:?}", opr),
+                    }
+                };
+
+                let root_expr = opr;
+                let root_ty = self.typeck_results.expr_ty(root_expr);
+                let res = self.typeck_results.qpath_res(qpath, root_expr.hir_id);
+                let root_kind = self.convert_path_expr(root_expr, res);
+                let arg = self.thir.exprs.push(Expr {
+                    temp_scope_id: root_expr.hir_id.local_id,
+                    ty: root_ty,
+                    span: root_expr.span,
+                    kind: root_kind,
+                });
+
+                let temp_scope_id = expr.hir_id.local_id;
+                let mutbl = self.typeck_results.raw_handle_mutability.contains(&expr.hir_id);
+                let target_ptr_ty = Ty::new_mut_ptr(tcx, root_ty);
+                let raw_expr = if mutbl {
+                    self.thir.exprs.push(Expr {
+                        temp_scope_id,
+                        ty: target_ptr_ty,
+                        span: root_expr.span,
+                        kind: ExprKind::RawBorrow { mutability: hir::Mutability::Mut, arg },
+                    })
+                } else {
+                    let const_ptr_ty = Ty::new_imm_ptr(tcx, root_ty);
+                    let const_raw = self.thir.exprs.push(Expr {
+                        temp_scope_id,
+                        ty: const_ptr_ty,
+                        span: root_expr.span,
+                        kind: ExprKind::RawBorrow { mutability: hir::Mutability::Not, arg },
+                    });
+                    self.thir.exprs.push(Expr {
+                        temp_scope_id,
+                        ty: target_ptr_ty,
+                        span: root_expr.span,
+                        kind: ExprKind::Cast { source: const_raw },
+                    })
+                };
+
+                let local_handle_did = tcx.require_lang_item(LangItem::LocalHandle, root_expr.span);
+                let local_handle_adt = tcx.adt_def(local_handle_did);
+                let local_handle_args = tcx.mk_args(&[root_ty.into()]);
+                let mut handle_ty = Ty::new_adt(tcx, local_handle_adt, local_handle_args);
+                let mut cur_kind = ExprKind::Adt(Box::new(AdtExpr {
+                    adt_def: local_handle_adt,
+                    variant_index: FIRST_VARIANT,
+                    args: local_handle_args,
+                    fields: Box::new([FieldExpr { name: FieldIdx::from(0u32), expr: raw_expr }]),
+                    user_ty: None,
+                    base: AdtExprBase::None,
+                }));
+
+                for proj in exprs.into_iter().rev() {
+                    let span = proj.span;
+                    match proj.kind {
+                        hir::ExprKind::Path(_) => unreachable!(),
+                        hir::ExprKind::Unary(hir::UnOp::Deref, _) => {
+                            (cur_kind, handle_ty) = self.lower_raw_handle_deref(
+                                temp_scope_id,
+                                cur_kind,
+                                handle_ty,
+                                span,
+                            );
+                        }
+                        hir::ExprKind::Field(base, _) => {
+                            (cur_kind, handle_ty) = self.lower_raw_handle_field(
+                                temp_scope_id,
+                                proj,
+                                base,
+                                cur_kind,
+                                handle_ty,
+                            );
+                        }
+                        ref e => {
+                            span_bug!(span, "field projections don't know how to lower {e:?} yet")
+                        }
+                    }
+                }
+
+                cur_kind
+            }
 
             hir::ExprKind::Block(blk, _) => ExprKind::Block { block: self.mirror_block(blk) },
 

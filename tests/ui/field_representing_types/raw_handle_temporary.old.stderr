@@ -1,0 +1,15 @@
+error[E0745]: cannot take address of a temporary
+  --> $DIR/raw_handle_temporary.rs:13:25
+   |
+LL |     let _ = raw_handle!(42);
+   |                         ^^ temporary value
+
+error[E0745]: cannot take address of a temporary
+  --> $DIR/raw_handle_temporary.rs:16:25
+   |
+LL |     let _ = raw_handle!(temp());
+   |                         ^^^^^^ temporary value
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0745`.

@@ -405,6 +405,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::UnsafeBinderCast(kind, inner_expr, ty) => {
                 self.check_expr_unsafe_binder_cast(expr.span, kind, inner_expr, ty, expected)
             }
+            ExprKind::RawHandle(inner_expr) => self.check_expr_raw_handle(expr, inner_expr),
             ExprKind::Err(guar) => Ty::new_error(tcx, guar),
         }
     }
@@ -505,7 +506,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         match kind {
             hir::BorrowKind::Raw => {
-                self.check_named_place_expr(oprnd);
+                let _ = self.check_named_place_expr(oprnd);
                 Ty::new_ptr(self.tcx, ty, mutbl)
             }
             hir::BorrowKind::Ref | hir::BorrowKind::Pin => {
@@ -538,7 +539,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// * Contains a dereference
     /// Note that the adjustments for the children of `expr` should already
     /// have been resolved.
-    fn check_named_place_expr(&self, oprnd: &'tcx hir::Expr<'tcx>) {
+    fn check_named_place_expr(&self, oprnd: &'tcx hir::Expr<'tcx>) -> Result<(), ErrorGuaranteed> {
         let is_named = oprnd.is_place_expr(|base| {
             // Allow raw borrows if there are any deref adjustments.
             //
@@ -558,8 +559,161 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .is_some_and(|x| x.iter().any(|adj| matches!(adj.kind, Adjust::Deref(_))))
         });
         if !is_named {
-            self.dcx().emit_err(AddressOfTemporaryTaken { span: oprnd.span });
+            Err(self.dcx().emit_err(AddressOfTemporaryTaken { span: oprnd.span }))
+        } else {
+            Ok(())
         }
+    }
+
+    fn check_expr_raw_handle(
+        &self,
+        expr: &'tcx hir::Expr<'tcx>,
+        oprnd: &'tcx hir::Expr<'tcx>,
+    ) -> Ty<'tcx> {
+        // We don't need to adjust mutability in DerefHandle.
+        // Instead we always capture maximum access.
+        let ty = self.check_expr_with_expectation(oprnd, NoExpectation);
+        if let Err(guar) = ty.error_reported() {
+            return Ty::new_error(self.tcx, guar);
+        }
+        if let Err(guar) = self.check_named_place_expr(oprnd) {
+            return Ty::new_error(self.tcx, guar);
+        }
+        self.check_raw_handle_inner(expr, oprnd)
+    }
+
+    fn check_raw_handle_inner(
+        &self,
+        expr: &'tcx hir::Expr<'tcx>,
+        mut opr: &'tcx hir::Expr<'tcx>,
+    ) -> Ty<'tcx> {
+        let mut exprs = smallvec::SmallVec::<[_; 2]>::new();
+        let root_ty;
+        let root_span;
+        let root_cap;
+        loop {
+            match opr.kind {
+                ExprKind::Path(QPath::Resolved(_, ref path)) => {
+                    root_cap = match path.res {
+                        // Only a `static mut` is a mutable place on its own.
+                        Res::Def(DefKind::Static { mutability, .. }, _) => mutability,
+                        // `let (mut a, b)` and `fn foo(mut a: _, b: _)` produce the same bindings,
+                        // so the `mut` of this one binding decides.
+                        Res::Local(hir_id) => match self.tcx.hir_node(hir_id).expect_pat().kind {
+                            hir::PatKind::Binding(
+                                hir::BindingMode(_, hir::Mutability::Mut),
+                                ..,
+                            ) => hir::Mutability::Mut,
+                            _ => hir::Mutability::Not,
+                        },
+                        Res::Err => return Ty::new_misc_error(self.tcx),
+                        _ => {
+                            let guar =
+                                self.dcx().emit_err(AddressOfTemporaryTaken { span: opr.span });
+                            return Ty::new_error(self.tcx, guar);
+                        }
+                    };
+                    root_ty = self.typeck_results.borrow().expr_ty(opr);
+                    if root_cap.is_mut() {
+                        self.typeck_results.borrow_mut().raw_handle_mutability.insert(expr.hir_id);
+                    }
+                    exprs.push(opr);
+                    root_span = opr.span;
+                    break;
+                }
+
+                ExprKind::Unary(hir::UnOp::Deref, base)
+                | ExprKind::Field(base, _)
+                | ExprKind::Index(base, _, _) => {
+                    exprs.push(opr);
+                    opr = base;
+                }
+                _ => {
+                    let guar = self.dcx().emit_err(AddressOfTemporaryTaken { span: opr.span });
+                    return Ty::new_error(self.tcx, guar);
+                }
+            }
+        }
+        // We start with LocalHandle, but deduce the projection handle type by chasing the field
+        // projection traits.
+        // We also need to differentiate between imm. LocalHandle and mut. LocalHandle.
+        let mut handle_ty = Ty::new_adt(
+            self.tcx,
+            self.tcx.adt_def(self.tcx.require_lang_item(LangItem::LocalHandle, root_span)),
+            self.tcx.mk_args(&[root_ty.into()]),
+        );
+        for expr in exprs.into_iter().rev() {
+            let span = expr.span;
+            match expr.kind {
+                ExprKind::Path(..) => {}
+                // An explicit `*base` is not recorded as an adjustment, so account for it before
+                // the adjustments of the place that it produces.
+                ExprKind::Unary(hir::UnOp::Deref, _) => {
+                    handle_ty = self.normalize(
+                        span,
+                        ty::Unnormalized::new_wip(Ty::new_projection_from_args(
+                            self.tcx,
+                            ty::IsRigid::No,
+                            self.tcx.require_lang_item(LangItem::DerefPlacePointeeHandle, span),
+                            self.tcx.mk_args(&[handle_ty.into()]),
+                        )),
+                    );
+                    if handle_ty.error_reported().is_err() {
+                        return handle_ty;
+                    }
+                }
+                ExprKind::Field(base, _) => {
+                    let base_ty = self.structurally_resolve_type(
+                        span,
+                        self.typeck_results.borrow().expr_ty_adjusted(base),
+                    );
+                    let field_idx = self.typeck_results.borrow().field_index(expr.hir_id);
+                    let subplace_ty = Ty::new_field_representing_type(
+                        self.tcx,
+                        base_ty,
+                        FIRST_VARIANT,
+                        field_idx,
+                    );
+                    handle_ty = self.normalize(
+                        span,
+                        ty::Unnormalized::new_wip(Ty::new_projection_from_args(
+                            self.tcx,
+                            ty::IsRigid::No,
+                            self.tcx.require_lang_item(LangItem::ProjectPlaceProjected, span),
+                            self.tcx.mk_args(&[handle_ty.into(), subplace_ty.into()]),
+                        )),
+                    );
+                    if handle_ty.error_reported().is_err() {
+                        return handle_ty;
+                    }
+                }
+                ref e => bug!("field projections don't know how to lower {e:?} it yet"),
+            }
+            for adj in
+                self.typeck_results.borrow().adjustments().get(expr.hir_id).into_iter().flatten()
+            {
+                match &adj.kind {
+                    Adjust::Deref(_) => {
+                        // Project out DerefPlace::PointeeHandle
+                        // Normalize <$handle_ty as DerefPlace>::PointeeHandle
+                        handle_ty = self.normalize(
+                            span,
+                            ty::Unnormalized::new_wip(Ty::new_projection_from_args(
+                                self.tcx,
+                                ty::IsRigid::No,
+                                self.tcx.require_lang_item(LangItem::DerefPlacePointeeHandle, span),
+                                self.tcx.mk_args(&[handle_ty.into()]),
+                            )),
+                        );
+                        if handle_ty.error_reported().is_err() {
+                            return handle_ty;
+                        }
+                    }
+                    e => bug!("field projections don't know how to lower {e:?} it yet"),
+                }
+            }
+        }
+        handle_ty
     }
 
     pub(crate) fn check_expr_path(

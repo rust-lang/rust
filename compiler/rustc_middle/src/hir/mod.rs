@@ -244,7 +244,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     // Addr-of, field projections, and LHS of assignment don't constitute reads.
                     // Assignment does call `drop_glue`, though, but its safety requirements are
                     // not the same.
-                    ExprKind::AddrOf(..) | ExprKind::Field(..) => false,
+                    ExprKind::AddrOf(..) | ExprKind::Field(..) | ExprKind::RawHandle(..) => false,
 
                     // Place-preserving expressions only constitute reads if their
                     // parent expression constitutes a read.

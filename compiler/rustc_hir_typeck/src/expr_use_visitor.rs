@@ -475,6 +475,33 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 self.borrow_expr(base, bk)?;
             }
 
+            hir::ExprKind::RawHandle(mut opr) => {
+                let bk = if self.cx.typeck_results().raw_handle_mutability.contains(&expr.hir_id) {
+                    BorrowKind::Mutable
+                } else {
+                    BorrowKind::Immutable
+                };
+                loop {
+                    match opr.kind {
+                        hir::ExprKind::Unary(hir::UnOp::Deref, base)
+                        | hir::ExprKind::Field(base, _)
+                        | hir::ExprKind::Index(base, _, _) => {
+                            opr = base;
+                        }
+                        hir::ExprKind::Path(hir::QPath::Resolved(
+                            _,
+                            hir::Path { res: hir::def::Res::Local(..), .. },
+                        )) => break,
+                        e => unreachable!("impossible field projection: {e:?}"),
+                    }
+                }
+                let place_with_id = self.cat_expr_unadjusted(opr)?;
+                // NOTE(dingxiangfei2009,shaddydc): Technically we should capture the root
+                // local **via LocalHandle**, but upvar does not understand this yet.
+                // We shall come back and add a new upvar capture just for this.
+                self.delegate.borrow_mut().borrow(&place_with_id, place_with_id.hir_id, bk);
+            }
+
             hir::ExprKind::InlineAsm(asm) => {
                 for (op, _op_sp) in asm.operands {
                     match op {
@@ -1357,6 +1384,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
             }
 
             hir::ExprKind::AddrOf(..)
+            | hir::ExprKind::RawHandle(..)
             | hir::ExprKind::Call(..)
             | hir::ExprKind::Use(..)
             | hir::ExprKind::Assign(..)

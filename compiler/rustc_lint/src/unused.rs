@@ -154,6 +154,7 @@ trait UnusedDelimLint {
             | Try(expr)
             | Move(expr, _)
             | AddrOf(_, _, expr)
+            | RawHandle(expr)
             | UnsafeBinderCast(_, expr, _) => Self::expr_allows_remove_arg_block(expr),
             Array(exprs) | Tup(exprs) => {
                 exprs.iter().all(|expr| Self::expr_allows_remove_arg_block(expr))

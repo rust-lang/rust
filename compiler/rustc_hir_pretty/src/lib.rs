@@ -1783,6 +1783,11 @@ impl<'a> State<'a> {
 
                 self.word(")");
             }
+            hir::ExprKind::RawHandle(expr) => {
+                self.word("raw_handle!(");
+                self.print_expr(expr);
+                self.word(")");
+            }
             hir::ExprKind::UnsafeBinderCast(kind, expr, ty) => {
                 match kind {
                     ast::UnsafeBinderCastKind::Wrap => self.word("wrap_binder!("),

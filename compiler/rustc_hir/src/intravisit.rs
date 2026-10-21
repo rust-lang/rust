@@ -958,6 +958,9 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
             try_visit!(visitor.visit_ty_unambig(container));
             walk_list!(visitor, visit_ident, fields.iter().copied());
         }
+        ExprKind::RawHandle(ref subexpression) => {
+            try_visit!(visitor.visit_expr(subexpression));
+        }
         ExprKind::Yield(ref subexpression, _) => {
             try_visit!(visitor.visit_expr(subexpression));
         }

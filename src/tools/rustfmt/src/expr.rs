@@ -136,6 +136,13 @@ pub(crate) fn format_expr(
                 shape,
             )
         }
+        ast::ExprKind::RawHandle(ref subexpr) => rewrite_call(
+            context,
+            "raw_handle!",
+            std::slice::from_ref(subexpr),
+            expr.span,
+            shape,
+        ),
         ast::ExprKind::Paren(ref subexpr) => rewrite_paren(context, subexpr, shape, expr.span),
         ast::ExprKind::Binary(op, ref lhs, ref rhs) => {
             // FIXME: format comments between operands and operator

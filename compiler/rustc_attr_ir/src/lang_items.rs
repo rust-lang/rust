@@ -464,6 +464,15 @@ language_item_table! {
     FieldType,               sym::field_type,              field_type,                 Target::AssocTy(AssocCtxt::Trait),        GenericRequirement::Exact(0);
     FieldOffset,             sym::field_offset,            field_offset,               Target::AssocConst(AssocCtxt::Trait),     GenericRequirement::Exact(0);
 
+    // Place handles.
+    LocalHandle, sym::local_handle, local_handle, Target::Struct, GenericRequirement::Exact(1);
+    DerefPlace,              sym::deref_place,         deref_place_trait,          Target::Trait,          GenericRequirement::Exact(0);
+    DerefPlacePointeeHandle, sym::deref_place_pointee_handle, deref_place_pointee_handle, Target::AssocTy(AssocCtxt::Trait),                 GenericRequirement::None;
+    DerefPlaceDerefPlace,    sym::deref_place_deref_place, deref_place_deref_place, Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
+    ProjectPlace,            sym::project_place,       project_place_trait,        Target::Trait,          GenericRequirement::Exact(1);
+    ProjectPlaceProjected,   sym::project_place_projected, project_place_projected, Target::AssocTy(AssocCtxt::Trait),                 GenericRequirement::None;
+    ProjectPlaceProjectPlace, sym::project_place_project_place, project_place_project_place, Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
+
     // Used to fallback `{float}` to `f32` when `f32: From<{float}>`
     From,                    sym::From,                from_trait,                 Target::Trait,          GenericRequirement::Exact(1);
     FromFn,                  sym::from,                from_fn,                    Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
