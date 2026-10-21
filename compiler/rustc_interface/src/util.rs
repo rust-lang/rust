@@ -26,11 +26,13 @@ use rustc_session::config::{
     Cfg, Jobs, OptionsTargetModifiers, OutFileName, OutputFilenames, Sysroot, host_tuple,
 };
 use rustc_session::output::OutputTypes;
-use rustc_session::{CodegenBackendInit, EarlyDiagCtxt, EarlySession, Session, filesearch};
+use rustc_session::{
+    CodegenBackendInit, EarlyDiagCtxt, EarlySession, Session, SupportedBackendFeatures, filesearch,
+};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::SourceMapInputs;
 use rustc_span::{SessionGlobals, Symbol, sym};
-use rustc_structures::CrateType;
+use rustc_structures::{CrateType, SanitizerSet};
 use rustc_target::spec::{Arch, Target};
 use tracing::info;
 
@@ -437,7 +439,17 @@ impl CodegenBackend for DummyCodegenBackend {
     }
 
     fn init(&mut self, sess: &EarlySession) -> (CodegenBackendInit, TargetConfig) {
-        let init = CodegenBackendInit::default();
+        // Pretend we support all backend features since there's no codegen anyways
+        let init = CodegenBackendInit {
+            supported_backend_features: SupportedBackendFeatures {
+                sanitizers: SanitizerSet::all(),
+                fat_lto: true,
+                thin_lto: true,
+                split_debuginfo: true,
+                instrument_coverage: true,
+            },
+            ..Default::default()
+        };
 
         let abi_required_features = sess.target.abi_required_features();
         let internal_target_features = internal_target_features::<0>(

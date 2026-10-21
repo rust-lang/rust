@@ -453,8 +453,17 @@ pub struct CodegenBackendInit {
     /// See `Session::fallback_intrinsics`.
     pub fallback_rustc_intrinsics: Vec<Symbol>,
 
-    /// See `Session::thin_lto_supported`.
-    pub thin_lto_supported: bool = true,
+    /// See `Session::supported_backend_features`
+    pub supported_backend_features: SupportedBackendFeatures,
+}
+
+#[derive(Default)]
+pub struct SupportedBackendFeatures {
+    pub thin_lto: bool,
+    pub fat_lto: bool,
+    pub instrument_coverage: bool,
+    pub split_debuginfo: bool,
+    pub sanitizers: SanitizerSet,
 }
 
 /// Represents the data associated with a compilation
@@ -548,8 +557,7 @@ pub struct Session {
     /// with its own implementations, which means their fallback bodies can be MIR-inlined.
     pub fallback_rustc_intrinsics: FxHashSet<Symbol>,
 
-    /// Does the codegen backend support ThinLTO?
-    pub thin_lto_supported: bool,
+    pub supported_backend_features: SupportedBackendFeatures,
 
     /// Global per-session counter for MIR optimization pass applications.
     ///
@@ -1026,7 +1034,7 @@ impl Session {
             }
             config::LtoCli::Thin => {
                 // The user explicitly asked for ThinLTO
-                if !self.thin_lto_supported {
+                if !self.supported_backend_features.thin_lto {
                     // Backend doesn't support ThinLTO, fallback to fat LTO.
                     self.dcx().emit_warn(diagnostics::ThinLtoNotSupportedByBackend);
                     return config::Lto::Fat;
@@ -1035,7 +1043,7 @@ impl Session {
             }
         }
 
-        if !self.thin_lto_supported {
+        if !self.supported_backend_features.thin_lto {
             return config::Lto::No;
         }
 
@@ -1507,7 +1515,7 @@ pub fn build_session(
         global_backend_features,
         replaced_rustc_intrinsics: replaced_intrinsics,
         fallback_rustc_intrinsics: fallback_intrinsics,
-        thin_lto_supported,
+        supported_backend_features,
     } = codegen_backend_init;
 
     let sess = Session {
@@ -1539,7 +1547,7 @@ pub fn build_session(
         wasm_proc_macro_filesearch,
         replaced_rustc_intrinsics: FxHashSet::from_iter(replaced_intrinsics),
         fallback_rustc_intrinsics: FxHashSet::from_iter(fallback_intrinsics),
-        thin_lto_supported,
+        supported_backend_features,
         mir_opt_bisect_eval_count: AtomicUsize::new(0),
         removed_rustc_main_attr: AtomicBool::new(false),
         pointer_auth_config,

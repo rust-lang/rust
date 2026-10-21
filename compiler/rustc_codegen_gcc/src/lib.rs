@@ -36,6 +36,7 @@ extern crate rustc_macros;
 extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
+extern crate rustc_structures;
 extern crate rustc_symbol_mangling;
 extern crate rustc_target;
 extern crate rustc_type_ir;
@@ -92,8 +93,9 @@ use rustc_errors::{DiagCtxt, DiagCtxtHandle};
 use rustc_middle::dep_graph::{BorrowedIncrCompSession, IncrCompSession, WorkProduct};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{OptLevel, OutputFilenames};
-use rustc_session::{CodegenBackendInit, EarlySession, Session};
+use rustc_session::{CodegenBackendInit, EarlySession, Session, SupportedBackendFeatures};
 use rustc_span::{Symbol, sym};
+use rustc_structures::SanitizerSet;
 use rustc_target::spec::{RelocModel, TargetTuple};
 use tempfile::TempDir;
 
@@ -301,7 +303,13 @@ impl CodegenBackend for GccCodegenBackend {
             global_backend_features,
             replaced_rustc_intrinsics: vec![],
             fallback_rustc_intrinsics: vec![sym::type_id_eq],
-            thin_lto_supported: false,
+            supported_backend_features: SupportedBackendFeatures {
+                thin_lto: false,
+                fat_lto: true,
+                instrument_coverage: false,
+                split_debuginfo: true,
+                sanitizers: SanitizerSet::LEAK,
+            },
         };
 
         (init, target_config(sess, &self.config().target_info))
