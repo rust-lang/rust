@@ -477,6 +477,9 @@ impl<'a> ExtCtxt<'a> {
     pub fn expr_tuple(&self, sp: Span, exprs: ThinVec<Box<ast::Expr>>) -> Box<ast::Expr> {
         self.expr(sp, ast::ExprKind::Tup(exprs))
     }
+    pub fn expr_unit(&self, sp: Span) -> Box<ast::Expr> {
+        self.expr_tuple(sp, thin_vec![])
+    }
 
     pub fn expr_ok(&self, sp: Span, expr: Box<ast::Expr>) -> Box<ast::Expr> {
         let ok = self.std_path(&[sym::result, sym::Result, sym::Ok]);
@@ -500,6 +503,11 @@ impl<'a> ExtCtxt<'a> {
         ann: ast::BindingMode,
     ) -> ast::Pat {
         let pat = PatKind::Ident(ann, ident.with_span_pos(span), None);
+        self.pat(span, pat)
+    }
+    pub fn pat_ident_alt(&self, span: Span, ident: Ident, rhs: ast::Pat) -> ast::Pat {
+        let pat =
+            PatKind::Ident(ast::BindingMode::NONE, ident.with_span_pos(span), Some(Box::new(rhs)));
         self.pat(span, pat)
     }
     pub fn pat_path(&self, span: Span, path: ast::Path) -> ast::Pat {
