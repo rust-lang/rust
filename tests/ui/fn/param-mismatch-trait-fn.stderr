@@ -12,6 +12,7 @@ LL |     T::same_type([x], Some(y));
 note: associated function defined here
   --> $DIR/param-mismatch-trait-fn.rs:2:8
    |
+LL | trait Foo {
 LL |     fn same_type<T>(_: T, _: T);
    |        ^^^^^^^^^ -  -     - this parameter needs to match the `[X; 1]` type of parameter #1
    |                  |  |
