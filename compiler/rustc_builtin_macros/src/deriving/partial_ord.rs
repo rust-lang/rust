@@ -1,10 +1,10 @@
-use rustc_ast::{Expr, ItemKind, Safety, ast};
+use rustc_ast::{Expr, ItemKind, ast};
 use rustc_expand::base::ExtCtxt;
-use rustc_span::{Ident, Span, kw, sym};
+use rustc_span::{Span, kw, sym};
 use thin_vec::thin_vec;
 
 use crate::deriving::generic::*;
-use crate::deriving::{call_discriminant_value, new_path, path_std, pathvec};
+use crate::deriving::{call_discriminant_value, path_std, pathvec};
 
 pub(crate) fn expand_deriving_partial_ord(
     cx: &ExtCtxt<'_>,
@@ -14,7 +14,11 @@ pub(crate) fn expand_deriving_partial_ord(
     is_const: bool,
 ) {
     let ordering_ty = cx.ty_path(path_std!(cx, span, cmp::Ordering));
-    let ret_ty = cx.ty_path(new_path(cx, span, pathvec!(option::Option), vec![ordering_ty]));
+    let ret_ty = cx.ty_path(cx.std_path_all(
+        span,
+        pathvec!(option::Option),
+        vec![ast::GenericArg::Type(ordering_ty)],
+    ));
 
     // Order in which to perform matching
     let discr_then_data = discr_data_order(item);
@@ -24,7 +28,7 @@ pub(crate) fn expand_deriving_partial_ord(
     let default_substructure =
         combine_substructure(|cx, span, substr| cs_partial_cmp(cx, span, substr, discr_then_data));
     let simple_substructure = combine_substructure(|cx, span, _| {
-        cs_partial_cmp_simple(cx, span, cx.expr_ident_sym(span, sym::other))
+        cs_partial_cmp_simple(cx, span, cx.expr_name(span, sym::other))
     });
     let is_simple = match &item.kind {
         // For unit structs/zero-variant enums, the default generated code is better.
@@ -64,14 +68,12 @@ pub(crate) fn expand_deriving_partial_ord(
     let trait_def = TraitDef {
         span,
         path: path_std!(cx, span, cmp::PartialOrd),
-        skip_path_as_bound: false,
         needs_copy_as_bound_if_packed: true,
         additional_bounds: smallvec![],
         supports_unions: false,
         methods: smallvec![partial_cmp_def],
         is_const,
-        safety: Safety::Default,
-        document: true,
+        ..
     };
     trait_def.expand_ext(cx, item, push, is_simple)
 }
@@ -103,7 +105,7 @@ pub(crate) fn discr_data_order(item: &ast::Item) -> bool {
 // Some(::core::cmp::Ord::cmp(self, other))
 // ```
 fn cs_partial_cmp_simple(cx: &ExtCtxt<'_>, span: Span, other_expr: Box<ast::Expr>) -> BlockOrExpr {
-    let ord_cmp_path = cx.std_path(&[sym::cmp, sym::Ord, sym::cmp]);
+    let ord_cmp_path = cx.std_path(span, &[sym::cmp, sym::Ord, sym::cmp]);
     let cmp_expr =
         cx.expr_call_global(span, ord_cmp_path, thin_vec![cx.expr_self(span), other_expr]);
     BlockOrExpr::new_expr(cx.expr_some(span, cmp_expr))
@@ -141,11 +143,11 @@ pub(crate) fn cmp_body(
 ) -> Box<Expr> {
     let is_partial_ord = derive == OrdlikeDerive::PartialOrd;
     let method_path = if is_partial_ord {
-        cx.std_path(&[sym::cmp, sym::PartialOrd, sym::partial_cmp])
+        [sym::cmp, sym::PartialOrd, sym::partial_cmp]
     } else {
-        cx.std_path(&[sym::cmp, sym::Ord, sym::cmp])
+        [sym::cmp, sym::Ord, sym::cmp]
     };
-    let equal_path = cx.path_global(span, cx.std_path(&[sym::cmp, sym::Ordering, sym::Equal]));
+    let equal_path = cx.std_path(span, &[sym::cmp, sym::Ordering, sym::Equal]);
 
     // The combination of two field expressions. E.g. for `Ord::cmp` this
     // is something like `<field1 comparison> && <field2 comparison>`.
@@ -195,14 +197,13 @@ pub(crate) fn cmp_body(
                 if is_partial_ord { cx.pat_some(span, eq_pat) } else { eq_pat },
                 expr1,
             );
-            let cmp_ident = Ident::new(sym::cmp, span);
-            let neq_arm =
-                cx.arm(span, cx.pat_ident(span, cmp_ident), cx.expr_ident(span, cmp_ident));
+            let cmp = sym::cmp;
+            let neq_arm = cx.arm(span, cx.pat_name(span, cmp), cx.expr_name(span, cmp));
             cx.expr_match(span, expr2, thin_vec![eq_arm, neq_arm])
         }
     };
 
-    match substructure.fields {
+    match substructure {
         EnumMatching(.., all_fields) | Struct(_, all_fields) => {
             let op = |old, field: FieldInfo| {
                 // The basic case: a field expression for one or more selflike args. E.g.
@@ -210,7 +211,8 @@ pub(crate) fn cmp_body(
                 let other_expr =
                     field.other_selflike_expr.expect("not exactly 2 arguments in `derive`");
                 let args = thin_vec![field.self_expr, other_expr];
-                let new = cx.expr_call_global(field.span, method_path.clone(), args);
+                let new =
+                    cx.expr_call_global(field.span, cx.std_path(field.span, &method_path), args);
                 match old {
                     Some(old) => Some(combine(field.span, old, new)),
                     None => Some(new),
@@ -230,7 +232,7 @@ pub(crate) fn cmp_body(
             let self_expr = cx.expr_addr_of(span, call_discriminant_value(cx, span, kw::SelfLower));
             let other_expr = cx.expr_addr_of(span, call_discriminant_value(cx, span, sym::other));
             let args = thin_vec![self_expr, other_expr];
-            let discr_check_expr = cx.expr_call_global(span, method_path, args);
+            let discr_check_expr = cx.expr_call_global(span, cx.std_path(span, &method_path), args);
             if let Some(match_expr) = match_expr {
                 combine(span, match_expr, discr_check_expr)
             } else {
