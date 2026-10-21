@@ -1107,8 +1107,8 @@ pub fn emit_delayed_lints(tcx: TyCtxt<'_>) {
 fn run_required_analyses(tcx: TyCtxt<'_>) {
     let is_parallel = is_dyn_thread_safe();
 
-    // There is no point in prefectching hir owners when parallel compiler is
-    // deisabled, `print_hir_stats`, `check_crate` or `hir_crate_items` below will do it.
+    // There is no point in prefetching hir owners when parallel compiler is
+    // disabled, `print_hir_stats`, `check_crate` or `hir_crate_items` below will do it.
     if is_parallel {
         tcx.untracked().definitions.write().commit_end_of_determinism();
         tcx.ensure_done().resolve_type_relative_delegations(());
