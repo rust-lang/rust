@@ -1,0 +1,8 @@
+error: attributes are not allowed in this context
+  --> $DIR/crate-type-nested-attr.rs:17:17
+   |
+LL | #![crate_type = #[replace::with("bin")] "lib"]
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
