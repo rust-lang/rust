@@ -4,7 +4,7 @@
 #![allow(missing_debug_implementations)]
 
 cfg_select! {
-    any(unix, target_os = "qurt") => {
+    unix => {
         mod unix;
         pub use self::unix::*;
     }
