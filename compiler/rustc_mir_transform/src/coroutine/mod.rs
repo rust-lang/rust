@@ -817,7 +817,7 @@ fn insert_poll_pending_block<'tcx>(
     let source_info = SourceInfo::outermost(body.span);
     body.basic_blocks_mut().push(BasicBlockData::new_stmts(
         [return_poll_pending(tcx, source_info, return_type)].to_vec(),
-        Some(Terminator { source_info, kind: TerminatorKind::Return, attributes: ThinVec::new() }),
+        Some(Terminator { source_info, kind: TerminatorKind::Return }),
         false,
     ))
 }
