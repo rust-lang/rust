@@ -58,7 +58,6 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
             #[cfg(all(target_os = "linux", target_env = "gnu"))]
             use libc::open64 as open;
 
-            #[cfg(not(target_os = "qurt"))]
             if opened_devnull != -1 {
                 if libc::dup(opened_devnull) != -1 {
                     return;
@@ -84,7 +83,6 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
             target_os = "horizon",
             target_os = "vita",
             target_os = "rtems",
-            target_os = "qurt",
             // The poll on Darwin doesn't set POLLNVAL for closed fds when `events == 0`.
             target_vendor = "apple",
         )))]
@@ -132,7 +130,6 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
             target_os = "l4re",
             target_os = "horizon",
             target_os = "vita",
-            target_os = "qurt",
         )))]
         {
             use crate::sys::io::errno;
@@ -383,7 +380,6 @@ cfg_select! {
     target_os = "vita",
     target_os = "nuttx",
     target_os = "l4re",
-    target_os = "qurt",
 ))]
 pub fn unsupported<T>() -> crate::io::Result<T> {
     Err(unsupported_err())
@@ -395,7 +391,6 @@ pub fn unsupported<T>() -> crate::io::Result<T> {
     target_os = "vita",
     target_os = "nuttx",
     target_os = "l4re",
-    target_os = "qurt",
 ))]
 pub fn unsupported_err() -> crate::io::Error {
     io::Error::UNSUPPORTED_PLATFORM

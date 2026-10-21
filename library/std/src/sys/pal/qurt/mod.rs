@@ -4,21 +4,16 @@ use crate::io;
 
 #[path = "../unix/conf.rs"]
 pub mod conf;
-#[path = "../unix/stack_overflow.rs"]
+#[path = "../unix/stack_overflow/mod.rs"]
 pub mod stack_overflow;
 #[path = "../unix/sync/mod.rs"]
 pub mod sync;
-#[path = "../unix/thread_parking.rs"]
-pub mod thread_parking;
 #[path = "../unix/time.rs"]
 pub mod time;
 
 // SAFETY: must be called only once during runtime initialization.
 // NOTE: this is not guaranteed to run, for example when Rust code is called externally.
-pub unsafe fn init(argc: isize, argv: *const *const u8, _sigpipe: u8) {
-    stack_overflow::init();
-    unsafe { crate::sys::args::init(argc, argv) };
-}
+pub unsafe fn init(argc: isize, argv: *const *const u8, _sigpipe: u8) {}
 
 // SAFETY: must be called only once during runtime cleanup.
 // NOTE: this is not guaranteed to run, for example when the program aborts.
