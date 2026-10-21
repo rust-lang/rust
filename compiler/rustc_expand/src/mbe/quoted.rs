@@ -4,6 +4,7 @@ use rustc_ast::{NodeId, tokenstream};
 use rustc_ast_pretty::pprust;
 use rustc_errors::Applicability;
 use rustc_feature::Features;
+use rustc_parse::parser::Parser;
 use rustc_session::Session;
 use rustc_session::diagnostics::feature_err;
 use rustc_span::edition::Edition;
@@ -180,18 +181,19 @@ fn parse(
     result
 }
 
-/// Takes a `tokenstream::TokenTree` and returns a `self::TokenTree`. Like `parse`, but for a
-/// single token tree. Emits errors to `sess` if needed.
+/// Takes a `tokenstream::TokenTree` from `parser` and returns a `self::TokenTree`. Like `parse`,
+/// but for a single token tree. Emits errors to `sess` if needed.
 #[inline]
 pub(super) fn parse_one_tt(
-    input: tokenstream::TokenTree,
+    parser: &mut Parser<'_>,
     part: RulePart,
     sess: &Session,
     node_id: NodeId,
     features: &Features,
     edition: Edition,
 ) -> TokenTree {
-    parse(&tokenstream::TokenStream::new(vec![input]), part, sess, node_id, features, edition)
+    let tree = parser.parse_token_tree();
+    parse(&tokenstream::TokenStream::new(vec![tree]), part, sess, node_id, features, edition)
         .pop()
         .unwrap()
 }
