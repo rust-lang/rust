@@ -672,10 +672,22 @@ class MSVCStrSyntheticProvider:
         "ptr_const$<str$>": "*const str",
         "ptr_mut$<str$>": "*mut str",
     }
-    __slots__ = ["data_ptr", "length", "valobj"]
+    __slots__ = ("data_ptr", "length", "type_name", "valobj")
+
+    @staticmethod
+    def _normalize_type_name(name: str):
+        if (type_name := MSVCStrSyntheticProvider._name_map.get(name)) is not None:
+            return type_name
+        # we use `startswith` instead of an exact match because we don't know for sure which
+        # allocator is being used
+        elif name.startswith("alloc::boxed::Box<str$"):
+            return "Box<str>"
+        else:
+            return name
 
     def __init__(self, valobj: SBValue, _dict: LLDBOpaque):
         self.valobj = valobj
+        self.type_name = self._normalize_type_name(self.valobj.GetTypeName())
         self.update()
 
     def update(self):
@@ -709,14 +721,7 @@ class MSVCStrSyntheticProvider:
         return element
 
     def get_type_name(self):
-        name = self.valobj.GetTypeName()
-
-        if (type_name := self._name_map.get(name)) is not None:
-            return type_name
-        elif name.startswith("alloc::boxed::Box<str$"):
-            return "Box<str>"
-        else:
-            return name
+        return self.type_name
 
 
 def _getVariantName(variant: SBValue) -> str:
@@ -817,8 +822,23 @@ class MSVCEnumSyntheticProvider:
     valobj: SBValue
     variant: SBValue
     value: SBValue
+    type_name: str
 
-    __slots__ = ["valobj", "variant", "value"]
+    __slots__ = ("type_name", "valobj", "value", "variant")
+
+    @staticmethod
+    def _normalize_type_name(name: str) -> str:
+        # remove "enum2$<", str.removeprefix() is python 3.9+
+        name = name[7:]
+
+        # MSVC misinterprets ">>" as a shift operator, so spaces are inserted by rust to
+        # avoid that
+        if name.endswith(" >"):
+            name = name[:-2]
+        elif name.endswith(">"):
+            name = name[:-1]
+
+        return name
 
     def __init__(self, valobj: SBValue, _dict: LLDBOpaque):
         self.valobj = valobj
@@ -826,6 +846,7 @@ class MSVCEnumSyntheticProvider:
         # even if we can't find the variant for whatever reason
         self.variant = valobj
         self.value = valobj
+        self.type_name = self._normalize_type_name(self.valobj.GetTypeName())
         self.update()
 
     def update(self):
@@ -850,7 +871,6 @@ class MSVCEnumSyntheticProvider:
                 exact: SBTypeStaticField = variant_type.GetStaticFieldWithName(
                     "DISCR_EXACT"
                 )
-
 
                 if exact.IsValid():
                     discr: int = exact.GetConstantValue(
@@ -983,18 +1003,7 @@ class MSVCEnumSyntheticProvider:
         return self.value.MightHaveChildren()
 
     def get_type_name(self) -> str:
-        name = self.valobj.GetTypeName()
-        # remove "enum2$<", str.removeprefix() is python 3.9+
-        name = name[7:]
-
-        # MSVC misinterprets ">>" as a shift operator, so spaces are inserted by rust to
-        # avoid that
-        if name.endswith(" >"):
-            name = name[:-2]
-        elif name.endswith(">"):
-            name = name[:-1]
-
-        return name
+        return self.type_name
 
 
 def MSVCEnumSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
@@ -1082,10 +1091,12 @@ class TupleSyntheticProvider:
 
 
 class MSVCTupleSyntheticProvider:
-    __slots__ = ["valobj"]
+    __slots__ = ("type_name", "valobj")
 
     def __init__(self, valobj: SBValue, _dict: LLDBOpaque):
         self.valobj = valobj
+        type_name = self.valobj.GetTypeName()
+        self.type_name = f"({type_name[7:-1].strip()})"
 
     def num_children(self) -> int:
         return self.valobj.GetNumChildren()
@@ -1108,10 +1119,7 @@ class MSVCTupleSyntheticProvider:
         return self.valobj.MightHaveChildren()
 
     def get_type_name(self) -> str:
-        name = self.valobj.GetTypeName()
-        # remove "tuple$<" and ">", str.removeprefix and str.removesuffix require python 3.9+
-        name = name[7:-1].strip()
-        return "(" + name + ")"
+        return self.type_name
 
 
 class StdVecSyntheticProvider:
@@ -1144,7 +1152,9 @@ class StdVecSyntheticProvider:
         if not self.element_type.IsValid():
             arg_name = next(get_template_args(self.valobj.GetTypeName()))
 
-            self.element_type = resolve_msvc_template_arg(arg_name, self.valobj.GetTarget())
+            self.element_type = resolve_msvc_template_arg(
+                arg_name, self.valobj.GetTarget()
+            )
 
         self.element_type_size = self.element_type.GetByteSize()
         self.update()
@@ -1181,21 +1191,19 @@ class StdVecSyntheticProvider:
         else:
             self.length = self.valobj.GetChildMemberWithName("len").GetValueAsUnsigned()
 
-
-
     def has_children(self) -> bool:
         return True
 
 
 class StdSliceSyntheticProvider:
-    __slots__ = [
-        "valobj",
-        "length",
+    __slots__ = (
         "data_ptr",
-        "element_type",
         "element_size",
+        "element_type",
         "is_str",
-    ]
+        "length",
+        "valobj",
+    )
 
     def __init__(self, valobj: SBValue, _dict: LLDBOpaque):
         self.valobj = valobj
@@ -1349,8 +1357,6 @@ class StdVecDequeSyntheticProvider:
         self.data_ptr = unwrap_unique_or_non_null(
             self.buf.GetChildMemberWithName("ptr")
         )
-
-
 
     def has_children(self) -> bool:
         return True
@@ -1661,9 +1667,7 @@ class StdCellSyntheticProvider:
 
 def StdRefSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
     borrow = valobj.GetChildMemberWithName("borrow").GetValueAsSigned()
-    return (
-        f"borrow={borrow}" if borrow >= 0 else f"borrow_mut={-borrow}"
-    )
+    return f"borrow={borrow}" if borrow >= 0 else f"borrow_mut={-borrow}"
 
 
 class StdRefSyntheticProvider:
