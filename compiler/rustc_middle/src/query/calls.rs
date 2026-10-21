@@ -225,40 +225,6 @@ pub(crate) fn query_feed<'tcx, C>(
     C: QueryCache,
     C::Key: DepNodeKey<'tcx>,
 {
-    let check_consistency = |old| {
-        let format_value = query.format_value;
-
-        // The query already has a cached value for this key.
-        // That's OK if both values are the same, i.e. they have the same hash,
-        // so now we check their hashes.
-        if let Some(hash_value_fn) = query.hash_value_fn {
-            let (old_hash, value_hash) = tcx.with_stable_hashing_context(|ref mut hcx| {
-                (hash_value_fn(hcx, &old), hash_value_fn(hcx, &value))
-            });
-            if old_hash != value_hash {
-                // We have an inconsistency. This can happen if one of the two
-                // results is tainted by errors. In this case, delay a bug to
-                // ensure compilation is doomed, and keep the `old` value.
-                tcx.dcx().delayed_bug(format!(
-                    "Trying to feed an already recorded value for query {query:?} key={key:?}:\n\
-                        old value: {old}\nnew value: {value}",
-                    old = format_value(&old),
-                    value = format_value(&value),
-                ));
-            }
-        } else {
-            // The query is `no_hash`, so we have no way to perform a sanity check.
-            // If feeding the same value multiple times needs to be supported,
-            // the query should not be marked `no_hash`.
-            bug!(
-                "Trying to feed an already recorded value for query {query:?} key={key:?}:\n\
-                    old value: {old}\nnew value: {value}",
-                old = format_value(&old),
-                value = format_value(&value),
-            )
-        }
-    };
-
     let key_hash = sharded::make_hash(&key);
 
     // This code does several things:
@@ -270,16 +236,49 @@ pub(crate) fn query_feed<'tcx, C>(
     //    at the same time as feeding, it will emit bug as it is strange to have both regular and
     //    feeding query execution (same works in reverse, if we try to feed query while it is executing
     //    we will emit a bug).
-    // 3) If query has poisoned status we emit fatal error as in other handlers of this status.
-    // 4) Checking for cached value in `try_execute_query` is performed under the state lock too,
+    // 2) If query has poisoned status we emit fatal error as in other handlers of this status.
+    // 3) Checking for cached value in `try_execute_query` is performed under the state lock too,
     //    so if we fed the value here, when trying to execute this query fed value will be seen.
     let mut shard = query.state.active.lock_shard_by_hash(key_hash);
     match shard.entry(key_hash, |kv| kv.0 == key, |(k, _)| sharded::make_hash(k)) {
         Entry::Vacant(entry) => {
             match try_get_cached(tcx, &query.cache, key) {
-                Some(existing) => {
+                Some(old) => {
                     drop(shard);
-                    check_consistency(existing)
+
+                    let format_value = query.format_value;
+
+                    // The query already has a cached value for this key.
+                    // That's OK if both values are the same, i.e. they have the same hash,
+                    // so now we check their hashes.
+                    if let Some(hash_value_fn) = query.hash_value_fn {
+                        let (old_hash, value_hash) =
+                            tcx.with_stable_hashing_context(|ref mut hcx| {
+                                (hash_value_fn(hcx, &old), hash_value_fn(hcx, &value))
+                            });
+
+                        if old_hash != value_hash {
+                            // We have an inconsistency. This can happen if one of the two
+                            // results is tainted by errors. In this case, delay a bug to
+                            // ensure compilation is doomed, and keep the `old` value.
+                            tcx.dcx().delayed_bug(format!(
+                                "Trying to feed an already recorded value for query {query:?} key={key:?}:\n\
+                                    old value: {old}\nnew value: {value}",
+                                old = format_value(&old),
+                                value = format_value(&value),
+                            ));
+                        }
+                    } else {
+                        // The query is `no_hash`, so we have no way to perform a sanity check.
+                        // If feeding the same value multiple times needs to be supported,
+                        // the query should not be marked `no_hash`.
+                        bug!(
+                            "Trying to feed an already recorded value for query {query:?} key={key:?}:\n\
+                                old value: {old}\nnew value: {value}",
+                            old = format_value(&old),
+                            value = format_value(&value),
+                        )
+                    }
                 }
                 None => {
                     entry.insert((key, ActiveKeyStatus::Started(QueryExecutionKind::Feeding)));
