@@ -100,6 +100,8 @@ cargo dev setup git-hook
 cargo dev setup intellij
 # runs the `dogfood` tests
 cargo dev dogfood
+# lints all Markdown files with remark
+cargo dev remark
 ```
 
 More about [intellij] command usage and reasons.
