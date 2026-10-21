@@ -116,10 +116,16 @@ pub struct DirBuilder;
 
 impl ReadDir {
     pub fn dir(&self) -> io::Result<Dir> {
+        let handle = self.handle.as_raw_handle();
+        // SAFETY: the handle is valid and we are not dropping it.
+        let dir_handle = mem::ManuallyDrop::new(dir::Dir::from_inner(unsafe {
+            Handle::from_raw_handle(handle)
+        }));
+        // We don't want to expose the handle or any duplicate of it as the directory stream has
+        // state attached to it. So we open a completely new handle based on this one.
         let mut options = OpenOptions::new();
         options.read(true);
-        // FIXME: use race-free handle-based approach instead.
-        Dir::open(&self.root, &options)
+        dir_handle.open_dir(Path::new(""), &options)
     }
 }
 
