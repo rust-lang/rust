@@ -94,6 +94,30 @@ impl Command {
         let paths = self.find_path_var(envp.as_ref());
         let max_path_len = self.compute_max_len(paths);
         let mut buf = Box::new_uninit_slice(max_path_len);
+        let args = self.get_argv();
+        // Contains the shell path, the file to exec, the argument list, and nul ptr
+        let mut shell_argv = Vec::with_capacity(2 + args.len());
+
+        let call_shell = if cfg!(any(
+            target_vendor = "apple",
+            target_os = "android",
+            target_os = "openbsd",
+            target_os = "freebsd",
+            target_os = "dragonfly",
+            all(target_os = "linux", not(target_env = "musl")),
+            target_os = "haiku"
+        )) {
+            shell_argv.push(libc::_PATH_BSHELL);
+            // This value is updated in do_exec with the actual file to exec on.
+            shell_argv.push(crate::ptr::null());
+            // argv[0] contains the program name, but we are only interested in the
+            // arguments so skip it.
+            args.iter().skip(1).for_each(|arg| shell_argv.push(arg.as_ptr()));
+            true
+        } else {
+            false
+        };
+
         let pid = unsafe { self.do_fork()? };
 
         if pid == 0 {
@@ -104,7 +128,9 @@ impl Command {
             if self.get_create_pidfd() {
                 self.send_pidfd(&output);
             }
-            let Err(err) = unsafe { self.do_exec(theirs, envp.as_ref(), paths, &mut buf) };
+            let Err(err) = unsafe {
+                self.do_exec(theirs, envp.as_ref(), paths, &mut buf, &mut shell_argv, call_shell)
+            };
             let errno = err.raw_os_error().unwrap_or(libc::EINVAL) as u32;
             let errno = errno.to_be_bytes();
             let bytes = [
@@ -246,7 +272,37 @@ impl Command {
                     let paths = self.find_path_var(envp.as_ref());
                     let max_path_len = self.compute_max_len(paths);
                     let mut buf = Box::new_uninit_slice(max_path_len);
-                    let Err(e) = self.do_exec(theirs, envp.as_ref(), paths, &mut buf);
+                    let args = self.get_argv();
+                    let mut shell_argv = Vec::with_capacity(2 + args.len());
+
+                    let call_shell = if cfg!(any(
+                        target_vendor = "apple",
+                        target_os = "android",
+                        target_os = "openbsd",
+                        target_os = "netbsd",
+                        target_os = "freebsd",
+                        target_os = "dragonfly",
+                        all(target_os = "linux", not(target_env = "musl")),
+                        target_os = "haiku"
+                    )) {
+                        shell_argv.push(libc::_PATH_BSHELL);
+                        // This value is updated in do_exec with the actual file to exec on.
+                        shell_argv.push(crate::ptr::null());
+                        // argv[0] contains the program name, but we are only interested in the
+                        // arguments so skip it.
+                        args.iter().skip(1).for_each(|arg| shell_argv.push(arg.as_ptr()));
+                        true
+                    } else {
+                        false
+                    };
+                    let Err(e) = self.do_exec(
+                        theirs,
+                        envp.as_ref(),
+                        paths,
+                        &mut buf,
+                        &mut shell_argv,
+                        call_shell,
+                    );
                     e
                 }
             }
@@ -305,6 +361,40 @@ impl Command {
         self.get_program_cstr().count_bytes() + 1
     }
 
+    /// Retrieves the last error set by `libc::execve` from `Command::execvpe`.
+    unsafe fn last_execvpe_errno(
+        &self,
+        file: *const libc::c_char,
+        shell_argv: &mut Vec<*const libc::c_char>,
+        envp_ptr: *const *const libc::c_char,
+        got_perm_denied: &mut bool,
+        call_shell: bool,
+    ) -> Result<(), io::Error> {
+        let err = crate::sys::io::errno();
+
+        // If execve returns `ENOEXEC`, the file is accessible but it is not an
+        // executable file; invoke shell to interpret as a script
+        if err == libc::ENOEXEC && call_shell {
+            shell_argv[1] = file;
+            libc::execve(shell_argv[0], shell_argv.as_ptr(), envp_ptr);
+        }
+
+        match err {
+            // Record that we got a 'Permission Denied' error in the event that if we
+            // find no executable to use, we should report that there was a usable
+            // executable but we were denied access to it.
+            libc::EACCES => *got_perm_denied = true,
+            // Try the next path.
+            libc::ENOENT | libc::ESTALE | libc::ENOTDIR | libc::ENODEV | libc::ETIMEDOUT => {}
+            // Any other error returned by execve should be returned. For example,
+            // ENAMETOOLONG is an error that is returned due to security risks on
+            // executing the wrong program through setting a very long path
+            _ => return Err(io::Error::from_raw_os_error(err)),
+        }
+
+        Ok(())
+    }
+
     /// An internal helper function that replicates the behavior of execvpe for all unix
     /// platforms. Not all unix platforms support `execvpe` syscall, so this needs to be
     /// implemented manually through `execve`. Thix exec function is called in the context
@@ -315,19 +405,28 @@ impl Command {
         maybe_envp: Option<&CStringArray>,
         paths: Option<&[u8]>,
         buf: &mut [crate::mem::MaybeUninit<u8>],
-    ) -> Result<(), io::Error> {
+        shell_argv: &mut Vec<*const libc::c_char>,
+        call_shell: bool,
+    ) -> Result<!, io::Error> {
         let file = self.get_program_cstr();
         let file_as_bytes = file.to_bytes_with_nul();
         let argv = self.get_argv();
         let envp_ptr =
             maybe_envp.map(|envp| envp.as_ptr()).unwrap_or(unsafe { *sys::env::environ() });
         let paths = paths.unwrap_or(self.get_default_path().as_encoded_bytes());
+        let mut got_perm_denied = false;
 
         // Path searching does not occur when our file contains a `/`
         if file_as_bytes.contains(&b'/') {
             libc::execve(file.as_ptr(), argv.as_ptr(), envp_ptr);
+            self.last_execvpe_errno(
+                file.as_ptr(),
+                shell_argv,
+                envp_ptr,
+                &mut got_perm_denied,
+                call_shell,
+            )?;
         } else {
-            let mut got_perm_denied = false;
             for path in paths.split(|b| *b == b':') {
                 let path_len = path.len();
 
@@ -350,37 +449,24 @@ impl Command {
 
                 // Try executing on path
                 libc::execve(buf.as_ptr().cast(), argv.as_ptr(), envp_ptr);
-                let err = crate::sys::io::errno();
-
-                match err {
-                    // Record that we got a 'Permission Denied' error in the event that if we
-                    // find no executable to use, we should report that there was a usable
-                    // executable but we were denied access to it.
-                    libc::EACCES => got_perm_denied = true,
-                    // Try the next path.
-                    libc::ENOENT
-                    | libc::ESTALE
-                    | libc::ENOTDIR
-                    | libc::ENODEV
-                    | libc::ETIMEDOUT => {}
-                    // Any other error returned by execve should be returned. For example,
-                    // ENAMETOOLONG is an error that is returned due to security risks on
-                    // executing the wrong program through setting a very long path
-                    _ => return Err(io::Error::from_raw_os_error(err)),
-                }
+                self.last_execvpe_errno(
+                    buf.as_ptr().cast(),
+                    shell_argv,
+                    envp_ptr,
+                    &mut got_perm_denied,
+                    call_shell,
+                )?;
             }
-
-            // At least one failure was due to lack of permissions, so we should
-            // report that failure first
-            if got_perm_denied {
-                return Err(io::Error::from_raw_os_error(libc::EACCES));
-            }
-
-            // No paths were executable
-            return Err(io::Error::from_raw_os_error(libc::ENOENT));
         }
 
-        Ok(())
+        // At least one failure was due to lack of permissions, so we should
+        // report that failure first
+        if got_perm_denied {
+            return Err(io::Error::from_raw_os_error(libc::EACCES));
+        }
+
+        // No paths were executable
+        Err(io::Error::from_raw_os_error(libc::ENOENT))
     }
 
     // And at this point we've reached a special time in the life of the
@@ -420,6 +506,8 @@ impl Command {
         maybe_envp: Option<&CStringArray>,
         paths: Option<&[u8]>,
         buf: &mut [crate::mem::MaybeUninit<u8>],
+        shell_argv: &mut Vec<*const libc::c_char>,
+        call_shell: bool,
     ) -> Result<!, io::Error> {
         use crate::sys::{self, cvt_r};
 
@@ -525,9 +613,7 @@ impl Command {
             callback()?;
         }
 
-        self.execvpe(maybe_envp, paths, buf)?;
-
-        Err(io::Error::last_os_error())
+        self.execvpe(maybe_envp, paths, buf, shell_argv, call_shell)
     }
 
     #[cfg(any(target_os = "tvos", target_os = "watchos"))]
