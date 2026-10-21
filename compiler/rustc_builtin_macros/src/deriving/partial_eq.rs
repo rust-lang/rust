@@ -106,11 +106,6 @@ pub(crate) fn expand_deriving_partial_eq(
 /// ```
 ///
 /// For enums, the discriminant is compared first, then the rest of the fields.
-///
-/// # Panics
-///
-/// If called on static or all-fieldless enums/structs, which should not occur
-/// during derive expansion.
 fn get_substructure_equality_expr(
     cx: &ExtCtxt<'_>,
     span: Span,

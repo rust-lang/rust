@@ -5,17 +5,16 @@
 //!
 //! Supported features (fairly exhaustive):
 //!
-//! - Methods taking any number of parameters of any type, and returning
-//!   any type, other than vectors, bottom and closures.
+//! - Methods taking any number of parameters of any type and returning
+//!   any type.
 //! - Generating `impl`s for types with type parameters and lifetimes
 //!   (e.g., `Option<T>`), the parameters are automatically given the
 //!   current trait as a bound. (This includes separate type parameters
 //!   and lifetimes for methods.)
 //! - Additional bounds on the type parameters (`TraitDef.additional_bounds`)
 //!
-//! The most important thing for implementors is the `Substructure` and
-//! `SubstructureFields` objects. The latter groups 5 possibilities of the
-//! arguments:
+//! The most important thing for implementors is the `Substructure` objects.
+//! The latter groups 5 possibilities of the arguments:
 //!
 //! - `Struct`, when `Self` is a struct (including tuple structs, e.g
 //!   `struct T(i32, char)`).
@@ -30,7 +29,7 @@
 //! In the first two cases, the values from the corresponding fields in
 //! all the arguments are grouped together.
 //!
-//! The non-static cases have `Option<ident>` in several places associated
+//! The non-static cases have `Option<Ident>` in several places associated
 //! with field `expr`s. This represents the name of the field it is
 //! associated with. It is only not `None` when the associated field has
 //! an identifier in the source code. For example, the `x`s in the
@@ -50,22 +49,7 @@
 //! ```
 //!
 //! The `i32`s in `B` and `C0` don't have an identifier, so the
-//! `Option<ident>`s would be `None` for them.
-//!
-//! In the static cases, the structure is summarized, either into the just
-//! spans of the fields or a list of spans and the field idents (for tuple
-//! structs and record structs, respectively), or a list of these, for
-//! enums (one for each variant). For empty struct and empty enum
-//! variants, it is represented as a count of 0.
-//!
-//! # "`cs`" functions
-//!
-//! The `cs_...` functions ("combine substructure") are designed to
-//! make life easier by providing some pre-made recipes for common
-//! threads; mostly calling the function being derived on all the
-//! arguments and then combining them back together in some way (or
-//! letting the user chose that). They are not meant to be the only
-//! way to handle the structures that this code creates.
+//! `Option<Ident>`s would be `None` for them.
 //!
 //! # Examples
 //!
@@ -83,19 +67,19 @@
 //! }
 //! ```
 //!
-//! Some examples of the values of `SubstructureFields` follow, using the
+//! Some examples of the values of `Substructure` follow, using the
 //! above `PartialEq`, `A`, `B` and `C`.
 //!
 //! ## Structs
 //!
-//! When generating the `expr` for the `A` impl, the `SubstructureFields` is
+//! When generating the `expr` for the `A` impl, the `Substructure` is
 //!
 //! ```text
 //! Struct(vec![FieldInfo {
 //!     span: <span of x>,
 //!     name: Some(<ident of x>),
-//!     self_: <expr for &self.x>,
-//!     other: vec![<expr for &other.x>],
+//!     self_expr: <expr for &self.x>,
+//!     other_selflike_expr: Some(<expr for &other.x>),
 //! }])
 //! ```
 //!
@@ -105,25 +89,24 @@
 //! Struct(vec![FieldInfo {
 //!     span: <span of i32>,
 //!     name: None,
-//!     self_: <expr for &a>,
-//!     other: vec![<expr for &b>],
+//!     self_expr: <expr for &a>,
+//!     other_selflike_expr: Some(<expr for &b>),
 //! }])
 //! ```
 //!
 //! ## Enums
 //!
 //! When generating the `expr` for a call with `self == C0(a)` and `other
-//! == C0(b)`, the SubstructureFields is
+//! == C0(b)`, the Substructure is
 //!
 //! ```text
 //! EnumMatching(
-//!     0,
 //!     <ast::Variant for C0>,
 //!     vec![FieldInfo {
 //!         span: <span of i32>,
 //!         name: None,
-//!         self_: <expr for &a>,
-//!         other: vec![<expr for &b>],
+//!         self_expr: <expr for &a>,
+//!         other_selflike_expr: Some(<expr for &b>),
 //!     }],
 //! )
 //! ```
@@ -132,13 +115,12 @@
 //!
 //! ```text
 //! EnumMatching(
-//!     1,
 //!     <ast::Variant for C1>,
 //!     vec![FieldInfo {
 //!         span: <span of x>,
 //!         name: Some(<ident of x>),
-//!         self_: <expr for &self.x>,
-//!         other: vec![<expr for &other.x>],
+//!         self_expr: <expr for &self.x>,
+//!         other_selflike_expr: Some(<expr for &other.x>),
 //!     }],
 //! )
 //! ```
@@ -146,10 +128,7 @@
 //! For the discriminants,
 //!
 //! ```text
-//! EnumDiscr(
-//!     &[<ident of self discriminant>, <ident of other discriminant>],
-//!     <expr to combine with>,
-//! )
+//! EnumDiscr(<expr to combine with>)
 //! ```
 //!
 //! Note that this setup doesn't allow for the brute-force "match every variant
@@ -161,17 +140,11 @@
 //! A static method on the types above would result in,
 //!
 //! ```text
-//! StaticStruct(<ast::VariantData of A>, Named(vec![(<ident of x>, <span of x>)]))
+//! StaticStruct(<ast::VariantData of A>)
 //!
-//! StaticStruct(<ast::VariantData of B>, Unnamed(vec![<span of x>]))
+//! StaticStruct(<ast::VariantData of B>)
 //!
-//! StaticEnum(
-//!     <ast::EnumDef of C>,
-//!     vec![
-//!         (<ident of C0>, <span of C0>, Unnamed(vec![<span of i32>])),
-//!         (<ident of C1>, <span of C1>, Named(vec![(<ident of x>, <span of x>)])),
-//!     ],
-//! )
+//! StaticEnum(<ast::EnumDef of C>)
 //! ```
 
 use std::ops::Not;
@@ -274,6 +247,7 @@ pub(crate) struct FieldInfo {
 }
 
 /// A summary of the possible sets of fields.
+/// If the trait supports unions, they are treated like structs here.
 pub(crate) enum Substructure<'a> {
     /// A non-static method where `Self` is a struct.
     Struct(&'a ast::VariantData, Vec<FieldInfo>),
@@ -512,41 +486,6 @@ impl<'a> TraitDef<'a> {
         push(newitem);
     }
 
-    /// Given that we are deriving a trait `DerivedTrait` for a type like:
-    ///
-    /// ```ignore (only-for-syntax-highlight)
-    /// struct Struct<'a, ..., 'z, A, B: DeclaredTrait, C, ..., Z>
-    /// where
-    ///     C: WhereTrait,
-    /// {
-    ///     a: A,
-    ///     b: B::Item,
-    ///     b1: <B as DeclaredTrait>::Item,
-    ///     c1: <C as WhereTrait>::Item,
-    ///     c2: Option<<C as WhereTrait>::Item>,
-    ///     ...
-    /// }
-    /// ```
-    ///
-    /// create an impl like:
-    ///
-    /// ```ignore (only-for-syntax-highlight)
-    /// impl<'a, ..., 'z, A, B: DeclaredTrait, C, ..., Z>
-    /// where
-    ///     C: WhereTrait,
-    ///     A: DerivedTrait + B1 + ... + BN,
-    ///     B: DerivedTrait + B1 + ... + BN,
-    ///     C: DerivedTrait + B1 + ... + BN,
-    ///     B::Item: DerivedTrait + B1 + ... + BN,
-    ///     <C as WhereTrait>::Item: DerivedTrait + B1 + ... + BN,
-    ///     ...
-    /// {
-    ///     ...
-    /// }
-    /// ```
-    ///
-    /// where B1, ..., BN are the bounds given by `bounds_paths`.'. Z is a phantom type, and
-    /// therefore does not get bound by the derived trait.
     fn create_derived_impl(
         &self,
         cx: &ExtCtxt<'_>,
@@ -869,9 +808,7 @@ impl<'a> MethodDef<'a> {
     /// impl ::core::cmp::PartialEq for A {
     ///     #[inline]
     ///     fn eq(&self, other: &A) -> bool {
-    ///         let __self_discr = ::core::intrinsics::discriminant_value(self);
-    ///         let __arg1_discr = ::core::intrinsics::discriminant_value(other);
-    ///         __self_discr == __arg1_discr
+    ///         ::core::intrinsics::discriminant_value(self) == ::core::intrinsics::discriminant_value(other)
     ///             && match (self, other) {
     ///                 (A::A2(__self_0), A::A2(__arg1_0)) => *__self_0 == *__arg1_0,
     ///                 _ => true,
