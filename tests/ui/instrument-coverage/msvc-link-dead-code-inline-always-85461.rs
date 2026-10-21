@@ -3,6 +3,7 @@
 //@ build-pass
 //@ needs-profiler-runtime
 //@ needs-dynamic-linking
+//@ ignore-backends: gcc
 
 // Regression test for #85461 where MSVC sometimes fails to link instrument-coverage binaries
 // with dead code and #[inline(always)].
