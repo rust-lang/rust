@@ -1,5 +1,4 @@
 //@ edition:2015..2021
-#![feature(abort_immediate)]
 #![allow(non_fmt_panics)]
 #![crate_type = "lib"]
 
