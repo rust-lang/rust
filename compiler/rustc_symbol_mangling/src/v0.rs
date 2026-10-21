@@ -150,11 +150,21 @@ pub fn mangle_internal_symbol<'tcx>(tcx: TyCtxt<'tcx>, item_name: &str) -> Strin
     p.path_append_ns(
         |p| {
             p.push("C");
-            // Use the same disambiguator as 'core' to ensure #[rustc_std_internal_symbol] functions
-            // get a different symbol name depending on the rustc version and -Cmetadata flags.
-            if let Some(sized) = tcx.lang_items().sized_trait() {
-                p.push_disambiguator(tcx.stable_crate_id(sized.krate).as_u64());
-            }
+            p.push_disambiguator({
+                let core = tcx
+                    .lang_items()
+                    .sized_trait()
+                    // The Sized trait is guaranteed to exist at this point. If you try to define
+                    // any function or static without defining the Sized trait you will get an error
+                    // during type checking.
+                    .expect("#[rustc_std_internal_symbol] requires the Sized trait to be defined")
+                    .krate;
+
+                // Use the same disambiguator as 'core' to ensure #[rustc_std_internal_symbol]
+                // functions get a different symbol name depending on the rustc version and
+                // -Cmetadata flags.
+                tcx.stable_crate_id(core).as_u64()
+            });
             p.push_ident("__rustc");
             Ok(())
         },
