@@ -53,7 +53,7 @@ fn map_via_question_mark(_1: Option<i32>) -> Option<i32> {
 
     bb2: {
         StorageLive(_6);
-        _6 = copy ((_1 as Some).0: i32);
+        _6 = copy ((_1 is Some).0: i32);
         _7 = ControlFlow::<Option<!>, i32>::Continue(copy _6);
         StorageDead(_6);
         StorageDead(_2);

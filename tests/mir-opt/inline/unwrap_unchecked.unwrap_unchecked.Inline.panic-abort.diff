@@ -38,7 +38,7 @@
 +     }
 + 
 +     bb3: {
-+         _0 = move ((_2 as Some).0: T);
++         _0 = move ((_2 is Some).0: T);
 +         StorageDead(_4);
 +         StorageDead(_3);
           StorageDead(_2);

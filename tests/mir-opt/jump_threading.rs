@@ -67,11 +67,11 @@ fn identity(x: Result<i32, i32>) -> Result<i32, i32> {
     // CHECK: bb5: {
     // CHECK:     switchInt(move _5) -> [0: bb2, 1: bb3, otherwise: bb1];
     // CHECK: bb6: {
-    // CHECK:     {{_.*}} = move (([[x]] as Err).0: i32);
+    // CHECK:     {{_.*}} = move (([[x]] is Err).0: i32);
     // CHECK:     [[controlflow]] = ControlFlow::<Result<!, i32>, i32>::Break(
     // CHECK:     goto -> bb8;
     // CHECK: bb7: {
-    // CHECK:     {{_.*}} = move (([[x]] as Ok).0: i32);
+    // CHECK:     {{_.*}} = move (([[x]] is Ok).0: i32);
     // CHECK:     [[controlflow]] = ControlFlow::<Result<!, i32>, i32>::Continue(
     // CHECK:     goto -> bb9;
     // CHECK: bb8: {

@@ -43,7 +43,7 @@ fn demo_le_total(_1: &(u16, i16), _2: &(u16, i16)) -> bool {
         StorageDead(_5);
         StorageDead(_4);
         StorageDead(_3);
-        _0 = copy ((_7 as Break).0: bool);
+        _0 = copy ((_7 is Break).0: bool);
         goto -> bb3;
     }
 
