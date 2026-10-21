@@ -1,7 +1,7 @@
 use rustc_ast::{self as ast, Generics, ItemKind, Safety, VariantData};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_expand::base::ExtCtxt;
-use rustc_span::{DUMMY_SP, Ident, Span, kw, sym};
+use rustc_span::{DUMMY_SP, Ident, Span, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 use crate::deriving::generic::*;
@@ -45,7 +45,9 @@ pub(crate) fn expand_deriving_clone(
                 substructure = combine_substructure(|c, s, sub| cs_clone_simple(c, s, sub, false));
             } else {
                 is_simple = false;
-                substructure = combine_substructure(cs_clone);
+                substructure = combine_substructure(|c, s, sub| {
+                    cs_clone(c, s, sub, item.kind.ident().unwrap())
+                });
             }
         }
         ItemKind::Union(..) => {
@@ -62,7 +64,6 @@ pub(crate) fn expand_deriving_clone(
         let trivial_def = TraitDef {
             span,
             path: path_std!(cx, span, clone::TrivialClone),
-            skip_path_as_bound: false,
             needs_copy_as_bound_if_packed: true,
             additional_bounds: bounds.clone(),
             supports_unions: true,
@@ -72,6 +73,7 @@ pub(crate) fn expand_deriving_clone(
             // `TrivialClone` is not part of an API guarantee, so it shouldn't
             // appear in rustdoc output.
             document: false,
+            ..
         };
 
         trivial_def.expand(cx, item, push);
@@ -80,7 +82,6 @@ pub(crate) fn expand_deriving_clone(
     let trait_def = TraitDef {
         span,
         path: path_std!(cx, span, clone::Clone),
-        skip_path_as_bound: false,
         needs_copy_as_bound_if_packed: true,
         additional_bounds: bounds,
         supports_unions: true,
@@ -96,8 +97,7 @@ pub(crate) fn expand_deriving_clone(
             combine_substructure: substructure,
         }],
         is_const,
-        safety: Safety::Default,
-        document: true,
+        ..
     };
 
     trait_def.expand_ext(cx, item, push, is_simple)
@@ -138,7 +138,7 @@ fn cs_clone_simple(
     if is_union {
         // Just a single assertion for unions, that the union impls `Copy`.
         // let _: AssertParamIsCopy<Self>;
-        let self_ty = cx.ty_path(cx.path_ident(trait_span, Ident::with_dummy_span(kw::SelfUpper)));
+        let self_ty = cx.ty_self(DUMMY_SP);
         super::assert_ty_bounds(
             cx,
             &mut stmts,
@@ -147,7 +147,7 @@ fn cs_clone_simple(
             &[sym::clone, sym::AssertParamIsCopy],
         );
     } else {
-        match substr.fields {
+        match substr {
             StaticStruct(vdata, ..) => {
                 process_variant(vdata);
             }
@@ -162,24 +162,34 @@ fn cs_clone_simple(
     BlockOrExpr::new_mixed(stmts, Some(cx.expr_deref(trait_span, cx.expr_self(trait_span))))
 }
 
-fn cs_clone(cx: &ExtCtxt<'_>, trait_span: Span, substr: Substructure<'_>) -> BlockOrExpr {
-    let fn_path = cx.std_path(&[sym::clone, sym::Clone, sym::clone]);
+fn cs_clone(
+    cx: &ExtCtxt<'_>,
+    trait_span: Span,
+    substr: Substructure<'_>,
+    type_ident: Ident,
+) -> BlockOrExpr {
     let subcall = |field: FieldInfo| {
         let args = thin_vec![field.self_expr];
-        cx.expr_call_global(field.span, fn_path.clone(), args)
+        cx.expr_call_global(
+            field.span,
+            cx.std_path(field.span, &[sym::clone, sym::Clone, sym::clone]),
+            args,
+        )
     };
 
     let ctor_path;
     let all_fields;
     let vdata;
-    match substr.fields {
+    // We need to use `type_ident` instead of `Self` here,
+    // see https://github.com/rust-lang/rust/issues/163800
+    match substr {
         Struct(vdata_, af) => {
-            ctor_path = cx.path(trait_span, vec![substr.type_ident]);
+            ctor_path = cx.path(trait_span, &[type_ident]);
             all_fields = af;
             vdata = vdata_;
         }
         EnumMatching(.., variant, af) => {
-            ctor_path = cx.path(trait_span, vec![substr.type_ident, variant.ident]);
+            ctor_path = cx.path(trait_span, &[type_ident, variant.ident]);
             all_fields = af;
             vdata = &variant.data;
         }
