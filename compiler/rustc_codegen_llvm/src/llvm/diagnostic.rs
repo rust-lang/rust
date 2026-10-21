@@ -157,6 +157,7 @@ impl InlineAsmDiagnostic {
 pub(crate) enum Diagnostic<'ll> {
     Optimization(OptimizationDiagnostic<'ll>),
     InlineAsm(InlineAsmDiagnostic),
+    StackSize,
 
     /// LLVM has other types that we do not distinguish here.
     Other(&'ll DiagnosticInfo),
@@ -198,6 +199,8 @@ impl<'ll> Diagnostic<'ll> {
                 }
 
                 Dk::SrcMgr => InlineAsm(InlineAsmDiagnostic::unpackSrcMgr(di)),
+
+                Dk::StackSize => StackSize,
 
                 _ => Other(di),
             }

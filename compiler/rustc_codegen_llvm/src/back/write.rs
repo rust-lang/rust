@@ -480,6 +480,9 @@ fn diagnostic_handler_callback_inner(
             });
         }
 
+        // FIXME(#164677): Don't ignore stack size warnings.
+        llvm::diagnostic::StackSize => {}
+
         llvm::diagnostic::Other(diagnostic_ref) => {
             let message = llvm::build_string(|s| unsafe {
                 llvm::LLVMRustWriteDiagnosticInfoToString(diagnostic_ref, s)
