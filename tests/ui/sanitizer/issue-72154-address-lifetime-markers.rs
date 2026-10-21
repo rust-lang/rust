@@ -6,6 +6,7 @@
 //@ needs-sanitizer-support
 //@ needs-sanitizer-address
 //@ ignore-cross-compile
+//@ ignore-backends: gcc
 //
 //@ compile-flags: -Copt-level=0 -Zsanitizer=address -C unsafe-allow-abi-mismatch=sanitizer
 //@ run-pass
