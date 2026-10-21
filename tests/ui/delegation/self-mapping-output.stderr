@@ -241,6 +241,11 @@ note: method defined here
 LL |     trait Trait {
 LL |         fn method(&self) -> Self;
    |            ^^^^^^  ----
+note: method provided through this `impl`
+  --> $DIR/self-mapping-output.rs:238:5
+   |
+LL |     impl Trait for F {
+   |     ^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/self-mapping-output.rs:251:29
@@ -271,6 +276,11 @@ LL |     trait Trait {
 ...
 LL |         fn raw_S(&self) -> S { S }
    |            ^^^^^ -----
+note: method provided through this `impl`
+  --> $DIR/self-mapping-output.rs:238:5
+   |
+LL |     impl Trait for F {
+   |     ^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/self-mapping-output.rs:263:38
@@ -289,6 +299,11 @@ note: method defined here
 LL |     trait Trait {
 LL |         fn method(&self) -> Self;
    |            ^^^^^^  ----
+note: method provided through this `impl`
+  --> $DIR/self-mapping-output.rs:238:5
+   |
+LL |     impl Trait for F {
+   |     ^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/self-mapping-output.rs:263:29
@@ -319,6 +334,11 @@ LL |     trait Trait {
 ...
 LL |         fn raw_S(&self) -> S { S }
    |            ^^^^^ -----
+note: method provided through this `impl`
+  --> $DIR/self-mapping-output.rs:238:5
+   |
+LL |     impl Trait for F {
+   |     ^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/self-mapping-output.rs:296:31
