@@ -11,7 +11,8 @@ use smallvec::SmallVec;
 use thin_vec::ThinVec;
 
 use crate::AttributeKind;
-/// Arguments passed to an attribute macro.
+
+/// Arguments of a unparsed attribute.
 #[derive(Clone, Debug, StableHash, Encodable, Decodable)]
 pub enum AttrArgs {
     /// No arguments: `#[attr]`.
@@ -63,6 +64,9 @@ impl fmt::Display for AttrPath {
     }
 }
 
+/// A non built-in attribute.
+///
+/// This is either a tool attribute or a derive helper attribute.
 #[derive(Clone, Debug, StableHash, Encodable, Decodable)]
 pub struct AttrItem {
     // Not lowered to hir::Path because we have no NodeId to resolve to.
@@ -88,20 +92,27 @@ impl StableHash for HashIgnoredAttrId {
         /* we don't hash HashIgnoredAttrId, we ignore them */
     }
 }
-
-/// Many functions on this type have their documentation in the [`AttributeExt`] trait,
-/// since they defer their implementation directly to that trait.
+/// A high level representation of an attribute.
+///
+/// Not to be confused with [`ast::Attribute`], which represents the syntax-level form of
+/// an attribute.
+///
+/// [`ast::Attribute`]: rustc_ast::ast::Attribute
 #[derive(Clone, Debug, Encodable, Decodable, StableHash)]
 pub enum Attribute {
     /// A parsed built-in attribute.
     ///
-    /// Each attribute has a span connected to it. However, you must be somewhat careful using it.
-    /// That's because sometimes we merge multiple attributes together, like when an item has
-    /// multiple `repr` attributes. In this case the span might not be very useful.
+    /// Parsed attributes don't generally have a span associated with them. This is because
+    /// multiple syntax-level attributes can be represented into a single semantic attribute. For
+    /// example, an item can have multiple `repr` attributes on it, which will coalesce into a
+    /// single [`AttributeKind::Repr`], and the `stable`, `unstable`, and
+    /// `rustc_allowed_through_unstable_modules` all combine into a single
+    /// [`AttributeKind::Stability`] attribute. Most `Attribute` variants do have a [`Span`] field,
+    /// though, mostly for the purpose of generating diagnostics later in the compilation process.
     Parsed(AttributeKind),
-
-    /// An attribute that could not be parsed, out of a token-like representation.
-    /// This is the case for custom tool attributes.
+    /// Represents non built-in attributes, which are not converted into a parsed form.
+    ///
+    /// This is the case for custom tool attributes and derive helper attributes.
     Unparsed(Box<AttrItem>),
 }
 
