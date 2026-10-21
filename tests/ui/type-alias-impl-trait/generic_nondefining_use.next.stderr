@@ -17,10 +17,10 @@ LL | fn concrete_ty() -> OneTy<u32> {
    |                     ^^^^^^^^^^
 
 error: non-defining use of `OneLifetime<'_>` in the defining scope
-  --> $DIR/generic_nondefining_use.rs:27:1
+  --> $DIR/generic_nondefining_use.rs:27:27
    |
 LL | fn concrete_lifetime() -> OneLifetime<'static> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                           ^^^^^^^^^^^^^^^^^^^^
 
 error: item does not constrain `OneConst::{opaque#0}`
   --> $DIR/generic_nondefining_use.rs:35:4
