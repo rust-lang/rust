@@ -2584,7 +2584,7 @@ impl SourceFile {
     }
 }
 
-pub fn char_width(ch: char) -> usize {
+fn char_width(ch: char) -> usize {
     // FIXME: `unicode_width` sometimes disagrees with terminals on how wide a `char` is. For now,
     // just accept that sometimes the code line will be longer than desired.
     match ch {
@@ -2601,10 +2601,6 @@ pub fn char_width(ch: char) -> usize {
         | '\u{2067}' | '\u{2068}' | '\u{202C}' | '\u{2069}' => 1,
         _ => unicode_width::UnicodeWidthChar::width(ch).unwrap_or(1),
     }
-}
-
-pub fn str_width(s: &str) -> usize {
-    s.chars().map(char_width).sum()
 }
 
 /// Normalizes the source code and records the normalizations.
