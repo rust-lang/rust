@@ -1349,6 +1349,28 @@ fn link_natively(
             continue;
         }
 
+        // Check if linking failed with an error message that the linker doesn't recognise the
+        // cortex-a53 mitigation. We pass `-mfix-cortex-a53-843419` to CC-based linker drivers,
+        // which forward `--fix-cortex-a53-843419` to the linker itself, but either component may
+        // not recognise each flag. Notably this was only added to Clang in version 21.
+        if matches!(flavor, LinkerFlavor::Gnu(Cc::Yes, _))
+            && unknown_arg_regex.is_match(&out)
+            && out.contains("fix-cortex-a53-843419")
+            && cmd.get_args().iter().any(|e| e.to_string_lossy() == "-mfix-cortex-a53-843419")
+        {
+            info!("linker output: {:?}", out);
+            info!(
+                "The linker or linker driver do not support `fix-cortex-a53-843419`. Retrying without it."
+            );
+            for arg in cmd.take_args() {
+                if arg.to_string_lossy() != "-mfix-cortex-a53-843419" {
+                    cmd.arg(arg);
+                }
+            }
+            info!("{cmd:?}");
+            continue;
+        }
+
         // Detect '-static-pie' used with an older version of gcc or clang not supporting it,
         // or with glibc that's missing crt objects, e.g. for arches that don't support it.
         // Fallback from '-static-pie' to '-static' in either case.
