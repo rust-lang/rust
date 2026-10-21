@@ -168,10 +168,28 @@ impl<I: Interner> Assumptions<I> {
     }
 }
 
+/// The span stored in a [`RegionConstraint`] and friends.
+///
+/// Constraints are created with spans during type checking, but are also stored
+/// without any span, e.g. in query responses, in which case [`NoSpan`] is used.
+/// This trait exists so that code which is generic over the span only needs a
+/// single bound instead of repeating all of the supertrait bounds.
+pub trait ConstraintSpan: Clone + std::fmt::Debug + Eq + std::hash::Hash {}
+
+/// Placeholder for constraints which do not carry a span, see [`ConstraintSpan`].
+#[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq)]
+#[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
+pub struct NoSpan;
+
+impl ConstraintSpan for NoSpan {}
+
+#[cfg(feature = "nightly")]
+impl ConstraintSpan for rustc_span::Span {}
+
 #[derive_where(Clone, Hash, PartialEq, Eq; I: Interner, S)]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
-pub enum LeafRegionConstraint<I: Interner, S: Clone = ()> {
+pub enum LeafRegionConstraint<I: Interner, S: Clone = NoSpan> {
     Ambiguity(S),
     RegionOutlives(Region<I>, Region<I>, S),
     /// Requirement that a (potentially higher ranked) alias outlives some (potentially higher ranked)
@@ -224,32 +242,31 @@ impl<I: Interner, S: Clone> std::fmt::Debug for LeafRegionConstraint<I, S> {
 }
 
 impl<I: Interner> LeafRegionConstraint<I> {
-    pub fn with_span<S: Clone + std::fmt::Debug + Eq + std::hash::Hash>(
-        self,
-        span: S,
-    ) -> LeafRegionConstraint<I, S> {
+    pub fn with_span<S: ConstraintSpan>(self, span: S) -> LeafRegionConstraint<I, S> {
         use LeafRegionConstraint::*;
 
         match self {
-            Ambiguity(()) => Ambiguity(span),
-            RegionOutlives(r1, r2, ()) => RegionOutlives(r1, r2, span),
-            AliasTyOutlivesViaEnv(bound_outlives, ()) => {
+            Ambiguity(NoSpan) => Ambiguity(span),
+            RegionOutlives(r1, r2, NoSpan) => RegionOutlives(r1, r2, span),
+            AliasTyOutlivesViaEnv(bound_outlives, NoSpan) => {
                 AliasTyOutlivesViaEnv(bound_outlives, span)
             }
-            PlaceholderTyOutlives(ty, r, ()) => PlaceholderTyOutlives(ty, r, span),
+            PlaceholderTyOutlives(ty, r, NoSpan) => PlaceholderTyOutlives(ty, r, span),
         }
     }
 }
 
-impl<I: Interner, S: Clone + std::fmt::Debug + Eq + std::hash::Hash> LeafRegionConstraint<I, S> {
+impl<I: Interner, S: ConstraintSpan> LeafRegionConstraint<I, S> {
     pub fn without_span(self) -> LeafRegionConstraint<I> {
         use LeafRegionConstraint::*;
 
         match self {
-            Ambiguity(_) => Ambiguity(()),
-            RegionOutlives(r1, r2, _) => RegionOutlives(r1, r2, ()),
-            AliasTyOutlivesViaEnv(bound_outlives, _) => AliasTyOutlivesViaEnv(bound_outlives, ()),
-            PlaceholderTyOutlives(ty, r, _) => PlaceholderTyOutlives(ty, r, ()),
+            Ambiguity(_) => Ambiguity(NoSpan),
+            RegionOutlives(r1, r2, _) => RegionOutlives(r1, r2, NoSpan),
+            AliasTyOutlivesViaEnv(bound_outlives, _) => {
+                AliasTyOutlivesViaEnv(bound_outlives, NoSpan)
+            }
+            PlaceholderTyOutlives(ty, r, _) => PlaceholderTyOutlives(ty, r, NoSpan),
         }
     }
 
@@ -277,16 +294,13 @@ impl<I: Interner, S: Clone + std::fmt::Debug + Eq + std::hash::Hash> LeafRegionC
 /// than proving the subset, so it can never be the candidate which makes the OR hold. E.g.
 /// `OR(AND('a: 'b), AND('a: 'b, 'b: 'c))` really ought to just be `OR(AND('a: 'b))`. Only keeping
 /// an empty AND is the degenerate case of that rule.
-pub struct Or<I: Interner, S: Clone + std::fmt::Debug = ()>(pub SmallVec<[And<I, S>; 1]>);
+pub struct Or<I: Interner, S: Clone + std::fmt::Debug = NoSpan>(pub SmallVec<[And<I, S>; 1]>);
 impl<I: Interner> Or<I> {
-    pub fn with_spans<S: Clone + std::fmt::Debug + Eq + std::hash::Hash>(
-        self,
-        span: S,
-    ) -> Or<I, S> {
+    pub fn with_spans<S: ConstraintSpan>(self, span: S) -> Or<I, S> {
         Or(self.0.into_iter().map(|and| and.with_spans(span.clone())).collect())
     }
 }
-impl<I: Interner, S: Clone + std::hash::Hash + std::fmt::Debug + Eq> Or<I, S> {
+impl<I: Interner, S: ConstraintSpan> Or<I, S> {
     pub fn new_true() -> Self {
         Self(SmallVec::from_buf([And::new_true()]))
     }
@@ -385,18 +399,15 @@ impl<I: Interner, S: Clone + std::fmt::Debug> std::fmt::Debug for Or<I, S> {
 /// An AND of leaf constraints. Always in "canonical form", meaning:
 /// - No leaf constraints are present twice in this AND
 /// - No leaf constraint is trivially true, i.e. a reflexive `'a: 'a`
-pub struct And<I: Interner, S: Clone + std::fmt::Debug = ()>(
+pub struct And<I: Interner, S: Clone + std::fmt::Debug = NoSpan>(
     pub SmallVec<[LeafRegionConstraint<I, S>; 1]>,
 );
 impl<I: Interner> And<I> {
-    pub fn with_spans<S: Clone + std::fmt::Debug + Eq + std::hash::Hash>(
-        self,
-        span: S,
-    ) -> And<I, S> {
+    pub fn with_spans<S: ConstraintSpan>(self, span: S) -> And<I, S> {
         And(self.0.into_iter().map(|leaf| leaf.with_span(span.clone())).collect())
     }
 }
-impl<I: Interner, S: Clone + std::hash::Hash + std::fmt::Debug + Eq> And<I, S> {
+impl<I: Interner, S: ConstraintSpan> And<I, S> {
     pub fn new_true() -> Self {
         Self(SmallVec::new())
     }
@@ -466,23 +477,20 @@ impl<I: Interner, S: Clone + std::fmt::Debug> std::fmt::Debug for And<I, S> {
 ///
 /// This should be thought of as an AND consisting of a set of LEAF constraints as well
 /// as a single OR constraint.
-pub struct RegionConstraint<I: Interner, S: Clone + std::fmt::Debug = ()> {
+pub struct RegionConstraint<I: Interner, S: Clone + std::fmt::Debug = NoSpan> {
     pub and_constraint: And<I, S>,
     pub or_constraint: Or<I, S>,
 }
 
 impl<I: Interner> RegionConstraint<I> {
-    pub fn with_spans<S: Clone + std::fmt::Debug + Eq + std::hash::Hash>(
-        self,
-        span: S,
-    ) -> RegionConstraint<I, S> {
+    pub fn with_spans<S: ConstraintSpan>(self, span: S) -> RegionConstraint<I, S> {
         RegionConstraint {
             and_constraint: self.and_constraint.with_spans(span.clone()),
             or_constraint: self.or_constraint.with_spans(span.clone()),
         }
     }
 }
-impl<I: Interner, S: Clone + std::fmt::Debug + Eq + std::hash::Hash> RegionConstraint<I, S> {
+impl<I: Interner, S: ConstraintSpan> RegionConstraint<I, S> {
     pub fn new_from_or(or: Or<I, S>) -> Self {
         let Some(fst) = or.0.get(0).clone() else {
             return RegionConstraint::new_false();
@@ -666,10 +674,10 @@ fn compute_new_region_constraints<Infcx: InferCtxtLike<Interner = I>, I: Interne
                            and: &And<I>| {
         for c in &and.0 {
             match c {
-                Ambiguity(()) | PlaceholderTyOutlives(..) | AliasTyOutlivesViaEnv(..) => {
+                Ambiguity(NoSpan) | PlaceholderTyOutlives(..) | AliasTyOutlivesViaEnv(..) => {
                     constraints.push(c.clone())
                 }
-                RegionOutlives(r1, r2, ()) => {
+                RegionOutlives(r1, r2, NoSpan) => {
                     regions.insert(*r1);
                     regions.insert(*r2);
                     builder.add(*r2, *r1);
@@ -711,7 +719,7 @@ fn compute_new_region_constraints<Infcx: InferCtxtLike<Interner = I>, I: Interne
                 };
 
                 if is_placeholder_like(r) && is_placeholder_like(ub) {
-                    constraints.push(RegionOutlives(ub, r, ()));
+                    constraints.push(RegionOutlives(ub, r, NoSpan));
                 }
             }
         }
@@ -770,11 +778,11 @@ fn pull_region_outlives_constraints_out_of_universe<
         let mut pulled_constraints = Vec::new();
         for c in and.0 {
             match c {
-                Ambiguity(()) | PlaceholderTyOutlives(..) | AliasTyOutlivesViaEnv(..) => {
+                Ambiguity(NoSpan) | PlaceholderTyOutlives(..) | AliasTyOutlivesViaEnv(..) => {
                     assert!(max_universe(infcx, c.clone()) < u);
                     pulled_constraints.push(Or::new_leaf(c.clone()));
                 }
-                RegionOutlives(region_1, region_2, ()) => {
+                RegionOutlives(region_1, region_2, NoSpan) => {
                     let region_1_u = max_universe(infcx, region_1);
                     let region_2_u = max_universe(infcx, region_2);
 
@@ -805,7 +813,7 @@ fn pull_region_outlives_constraints_out_of_universe<
                             // As long as any region outlived by `region_1` outlives any region region which
                             // `region_2` outlives, we know that `region_1: region_2` holds. In other words,
                             // there exists some set of 4 regions for which `'r1: 'i1` `'i1: 'i2` `'i2: 'r2`
-                            candidates.push(RegionOutlives(ub, lb, ()));
+                            candidates.push(RegionOutlives(ub, lb, NoSpan));
                         }
                     }
 
@@ -834,7 +842,7 @@ fn pull_region_outlives_constraints_out_of_universe<
 pub fn destructure_type_outlives_constraints_in_root<
     Infcx: InferCtxtLike<Interner = I>,
     I: Interner,
-    S: Clone + std::fmt::Debug + Eq + std::hash::Hash,
+    S: ConstraintSpan,
 >(
     infcx: &Infcx,
     constraint: RegionConstraint<I, S>,
@@ -920,11 +928,13 @@ fn rewrite_type_outlives_constraints_in_universe_for_eager_placeholder_handling<
         let mut rewritten_constraints = Vec::new();
         for c in and.0 {
             match c {
-                Ambiguity(()) | RegionOutlives(..) => rewritten_constraints.push(Or::new_leaf(c)),
-                PlaceholderTyOutlives(ty, region, ()) => {
+                Ambiguity(NoSpan) | RegionOutlives(..) => {
+                    rewritten_constraints.push(Or::new_leaf(c))
+                }
+                PlaceholderTyOutlives(ty, region, NoSpan) => {
                     rewritten_constraints.push(rewrite_placeholder_ty_outlives_constraints_in_universe_for_eager_placeholder_handling(infcx, ty, region, u, assumptions));
                 }
-                AliasTyOutlivesViaEnv(bound_outlives, ()) => {
+                AliasTyOutlivesViaEnv(bound_outlives, NoSpan) => {
                     rewritten_constraints.push(rewrite_alias_ty_outlives_constraints_in_universe_for_eager_placeholder_handling(infcx, bound_outlives, u, assumptions));
                 }
             }
@@ -959,7 +969,7 @@ fn rewrite_placeholder_ty_outlives_constraints_in_universe_for_eager_placeholder
     let region_u = max_universe(infcx, region);
 
     if region_u != u && ty_u != u {
-        return Or::new_leaf(PlaceholderTyOutlives(ty, region, ()));
+        return Or::new_leaf(PlaceholderTyOutlives(ty, region, NoSpan));
     }
 
     let mut candidates = vec![];
@@ -968,7 +978,7 @@ fn rewrite_placeholder_ty_outlives_constraints_in_universe_for_eager_placeholder
     // smaller universe
     candidates.extend(
         regions_outlived_by_placeholder(ty, assumptions, infcx.cx())
-            .map(move |assumption_r| RegionOutlives(assumption_r, region, ())),
+            .map(move |assumption_r| RegionOutlives(assumption_r, region, NoSpan)),
     );
 
     // We can express `!T: 'region` as `!T: 'r` where `'r: 'region`. This is only necessary
@@ -978,7 +988,7 @@ fn rewrite_placeholder_ty_outlives_constraints_in_universe_for_eager_placeholder
         candidates.extend(
             regions_outliving::<I>(region, assumptions, infcx.cx())
                 .filter(|r| max_universe(infcx, *r) < u)
-                .map(|r| PlaceholderTyOutlives(ty, r, ())),
+                .map(|r| PlaceholderTyOutlives(ty, r, NoSpan)),
         );
     }
 
@@ -998,7 +1008,7 @@ fn rewrite_alias_ty_outlives_constraints_in_universe_for_eager_placeholder_handl
     use LeafRegionConstraint::*;
 
     if max_universe(infcx, bound_outlives) != u {
-        return Or::new_leaf(AliasTyOutlivesViaEnv(bound_outlives, ()));
+        return Or::new_leaf(AliasTyOutlivesViaEnv(bound_outlives, NoSpan));
     }
 
     let mut candidates = Vec::new();
@@ -1040,11 +1050,11 @@ fn rewrite_alias_ty_outlives_constraints_in_universe_for_eager_placeholder_handl
         // a placeholder type in `u`, so this type-outlives constraint cannot be
         // handled by the region-outlives-only eager placeholder machinery.
         if max_universe(infcx, bound_outlives) == u {
-            return Or::new_ambig(());
+            return Or::new_ambig(NoSpan);
         }
 
         debug!("higher ranked candidate: {bound_outlives:?}");
-        Or::new_leaf(AliasTyOutlivesViaEnv(bound_outlives, ()))
+        Or::new_leaf(AliasTyOutlivesViaEnv(bound_outlives, NoSpan))
     };
 
     // We elaborate something like `Alias<'a_u2>: 'b_u2` into alias outlives involving each
@@ -1076,7 +1086,7 @@ fn rewrite_alias_ty_outlives_constraints_in_universe_for_eager_placeholder_handl
     // let's be conservative and not let alias outlives' cause NoSolution
     // in coherence
     match infcx.typing_mode_raw() {
-        TypingMode::Coherence => candidates.push(Or::new_ambig(())),
+        TypingMode::Coherence => candidates.push(Or::new_ambig(NoSpan)),
         TypingMode::Typeck { .. }
         | TypingMode::Reflection
         | TypingMode::ErasedNotCoherence { .. }
@@ -1211,7 +1221,7 @@ fn alias_outlives_candidates_from_assumptions<Infcx: InferCtxtLike<Interner = I>
 
             let mut relation = HigherRankedAliasMatcher {
                 infcx,
-                region_constraints: vec![LeafRegionConstraint::RegionOutlives(r2, r, ())],
+                region_constraints: vec![LeafRegionConstraint::RegionOutlives(r2, r, NoSpan)],
             };
 
             // FIXME(#155345): Both sides should be rigid in the future.
@@ -1283,8 +1293,8 @@ impl<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeRelation<I>
 
     fn regions(&mut self, a: Region<I>, b: Region<I>) -> RelateResult<I, Region<I>> {
         if a != b {
-            self.region_constraints.push(LeafRegionConstraint::RegionOutlives(a, b, ()));
-            self.region_constraints.push(LeafRegionConstraint::RegionOutlives(b, a, ()));
+            self.region_constraints.push(LeafRegionConstraint::RegionOutlives(a, b, NoSpan));
+            self.region_constraints.push(LeafRegionConstraint::RegionOutlives(b, a, NoSpan));
         }
         Ok(a)
     }
