@@ -192,10 +192,21 @@ pub(super) fn parse_one_tt(
     features: &Features,
     edition: Edition,
 ) -> TokenTree {
-    let tree = parser.parse_token_tree();
-    parse(&tokenstream::TokenStream::new(vec![tree]), part, sess, node_id, features, edition)
-        .pop()
-        .unwrap()
+    if parser.token.kind.open_delim().is_none() {
+        // Single token; technically an error, but pass through as-is for "recovery".
+        let token = parser.token;
+        parser.bump();
+        return TokenTree::Token(token);
+    }
+
+    // Parse the delimited content.
+    let (dspan, dspacing, delim, tts) = parse_delimited(parser, |parser| {
+        let stream = parser.parse_tokens();
+        parse(&stream, part, sess, node_id, features, edition)
+    });
+
+    TokenTree::Delimited(dspan, dspacing, Delimited { delim, tts })
+}
 
 /// Parse delimited tokens.
 fn parse_delimited<R>(
