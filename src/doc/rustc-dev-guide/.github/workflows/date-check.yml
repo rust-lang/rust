@@ -8,6 +8,8 @@ on:
   # Allow manually starting the workflow
   workflow_dispatch:
 
+permissions: {}
+
 jobs:
   date-check:
     if: github.repository == 'rust-lang/rustc-dev-guide'

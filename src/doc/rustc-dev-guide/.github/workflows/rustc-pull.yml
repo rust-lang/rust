@@ -6,6 +6,8 @@ on:
     # Run at 04:00 UTC every Monday
     - cron: '0 4 * * 1'
 
+permissions: {}
+
 jobs:
   pull:
     if: github.repository == 'rust-lang/rustc-dev-guide'

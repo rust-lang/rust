@@ -9,6 +9,8 @@ on:
     # Run multiple times a day as the successful cached links are not checked every time.
     - cron: "0 */8 * * *"
 
+permissions: {}
+
 jobs:
   ci:
     if: github.repository == 'rust-lang/rustc-dev-guide'
