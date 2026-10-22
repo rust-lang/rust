@@ -1206,17 +1206,13 @@ extern "C" LLVMRustResult LLVMRustPrintModule(LLVMModuleRef M, const char *Path,
 
 extern "C" void LLVMRustPrintPasses() {
 #if LLVM_VERSION_GE(24, 0)
-  LLVMContextRef CtxRef = LLVMRustContextCreate();
-  PassBuilder PB(*unwrap(CtxRef));
+  LLVMContext C;
+  PassBuilder PB(C);
 #else
   PassBuilder PB;
 #endif
 
   PB.printPassNames(outs());
-
-#if LLVM_VERSION_GE(24, 0)
-  LLVMContextDispose(CtxRef);
-#endif
 }
 
 extern "C" void LLVMRustRunRestrictionPass(LLVMModuleRef M, char **Symbols,
