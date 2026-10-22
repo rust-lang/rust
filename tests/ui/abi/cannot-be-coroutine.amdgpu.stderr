@@ -19,5 +19,59 @@ LL | |
 LL | | }
    | |_^
 
-error: aborting due to 2 previous errors
+error: requires `ResumeTy` lang_item
+  --> $DIR/cannot-be-coroutine.rs:62:45
+   |
+LL |   async extern "gpu-kernel" fn async_kernel() {
+   |  _____________________________________________^
+LL | |
+LL | | }
+   | |_^
+
+error: requires `ResumeTy` lang_item
+  --> $DIR/cannot-be-coroutine.rs:42:39
+   |
+LL |   async extern "avr-interrupt" fn avr() {
+   |  _______________________________________^
+LL | |
+LL | | }
+   | |_^
+
+error: requires `ResumeTy` lang_item
+  --> $DIR/cannot-be-coroutine.rs:58:50
+   |
+LL |   async extern "x86-interrupt" fn x86(_p: *mut ()) {
+   |  __________________________________________________^
+LL | |
+LL | | }
+   | |_^
+
+error: requires `ResumeTy` lang_item
+  --> $DIR/cannot-be-coroutine.rs:46:45
+   |
+LL |   async extern "msp430-interrupt" fn msp430() {
+   |  _____________________________________________^
+LL | |
+LL | | }
+   | |_^
+
+error: requires `ResumeTy` lang_item
+  --> $DIR/cannot-be-coroutine.rs:54:47
+   |
+LL |   async extern "riscv-interrupt-s" fn riscv_s() {
+   |  _______________________________________________^
+LL | |
+LL | | }
+   | |_^
+
+error: requires `ResumeTy` lang_item
+  --> $DIR/cannot-be-coroutine.rs:50:47
+   |
+LL |   async extern "riscv-interrupt-m" fn riscv_m() {
+   |  _______________________________________________^
+LL | |
+LL | | }
+   | |_^
+
+error: aborting due to 8 previous errors
 
