@@ -1,5 +1,5 @@
 error[E0271]: expected `foo` to return `i32`, but it returns `()`
-  --> $DIR/issue-106991.rs:5:13
+  --> $DIR/issue-106991.rs:8:13
    |
 LL | fn bar() -> impl Iterator<Item = i32> {
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `i32`, found `()`
@@ -9,7 +9,7 @@ LL |     x.iter_mut().map(foo)
    |
    = note: required for `Map<std::slice::IterMut<'_, Vec<u8>>, for<'a> fn(&'a mut Vec<u8>) {foo}>` to implement `Iterator`
 note: the method call chain might not have had the expected associated types
-  --> $DIR/issue-106991.rs:8:18
+  --> $DIR/issue-106991.rs:11:18
    |
 LL |     let mut x: Vec<Vec<u8>> = vec![vec![0, 2, 1], vec![5, 4, 3]];
    |                               ---------------------------------- this expression has type `Vec<Vec<u8>>`
@@ -18,6 +18,15 @@ LL |     x.iter_mut().map(foo)
    |       |
    |       `Iterator::Item` is `&mut Vec<u8>` here
 
-error: aborting due to 1 previous error
+error[E0271]: expected `IterMut<'_, Vec<u8>>` to be an iterator that yields `i32`, but it yields `&mut Vec<u8>`
+  --> $DIR/issue-106991.rs:14:13
+   |
+LL | fn baz() -> impl Iterator<Item = i32> {
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `i32`, found `&mut Vec<u8>`
+   |
+   = note:           expected type `i32`
+           found mutable reference `&mut Vec<u8>`
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0271`.
