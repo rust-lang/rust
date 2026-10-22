@@ -1,0 +1,21 @@
+warning: `#[deprecated]` on a `use` item has no effect
+  --> $DIR/ineffective-deprecated-reexports-staged.rs:12:1
+   |
+LL | #[deprecated(since = "1.1.0", note = "moved")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this is a long-standing bug, see issue #30827 <https://github.com/rust-lang/rust/issues/30827> for more information
+   = help: to warn users of this path, deprecate the item itself, or replace the re-export with a `#[deprecated]` type alias or wrapper function where one applies
+   = note: `#[warn(ineffective_deprecated_reexports)]` on by default
+
+warning: `#[deprecated]` on a `use` item has no effect
+  --> $DIR/ineffective-deprecated-reexports-staged.rs:16:1
+   |
+LL | #[deprecated(since = "TBD", note = "will move")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this is a long-standing bug, see issue #30827 <https://github.com/rust-lang/rust/issues/30827> for more information
+   = help: to warn users of this path, deprecate the item itself, or replace the re-export with a `#[deprecated]` type alias or wrapper function where one applies
+
+warning: 2 warnings emitted
+

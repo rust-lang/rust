@@ -435,6 +435,11 @@ pub use self::hash_set::HashSet;
 #[stable(feature = "rust1", since = "1.0.0")]
 // FIXME(#82080) The deprecation here is only theoretical, and does not actually produce a warning.
 #[deprecated(note = "moved to `std::ops::Bound`", since = "1.26.0")]
+#[allow(clippy::useless_attribute)]
+#[expect(
+    ineffective_deprecated_reexports,
+    reason = "deprecating a re-export has no effect yet"
+)]
 #[doc(hidden)]
 pub use crate::ops::Bound;
 

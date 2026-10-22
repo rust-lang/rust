@@ -1,0 +1,97 @@
+warning: `#[deprecated]` on a `use` item has no effect
+  --> $DIR/ineffective-deprecated-reexports.rs:17:1
+   |
+LL | #[deprecated]
+   | ^^^^^^^^^^^^^
+   |
+   = note: this is a long-standing bug, see issue #30827 <https://github.com/rust-lang/rust/issues/30827> for more information
+   = help: to warn users of this path, deprecate the item itself, or replace the re-export with a `#[deprecated]` type alias or wrapper function where one applies
+   = note: `#[warn(ineffective_deprecated_reexports)]` on by default
+
+warning: `#[deprecated]` on a `use` item has no effect
+  --> $DIR/ineffective-deprecated-reexports.rs:20:1
+   |
+LL | #[deprecated = "use `inner::B` directly"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this is a long-standing bug, see issue #30827 <https://github.com/rust-lang/rust/issues/30827> for more information
+   = help: to warn users of this path, deprecate the item itself, or replace the re-export with a `#[deprecated]` type alias or wrapper function where one applies
+
+warning: `#[deprecated]` on a `use` item has no effect
+  --> $DIR/ineffective-deprecated-reexports.rs:23:1
+   |
+LL | #[deprecated(since = "1.0.0", note = "moved")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this is a long-standing bug, see issue #30827 <https://github.com/rust-lang/rust/issues/30827> for more information
+   = help: to warn users of this path, deprecate the item itself, or replace the re-export with a `#[deprecated]` type alias or wrapper function where one applies
+
+warning: `#[deprecated]` on a `use` item has no effect
+  --> $DIR/ineffective-deprecated-reexports.rs:26:1
+   |
+LL | #[deprecated]
+   | ^^^^^^^^^^^^^
+   |
+   = note: this is a long-standing bug, see issue #30827 <https://github.com/rust-lang/rust/issues/30827> for more information
+   = help: to warn users of this path, deprecate the item itself, or replace the re-export with a `#[deprecated]` type alias or wrapper function where one applies
+
+warning: `#[deprecated]` on a `use` item has no effect
+  --> $DIR/ineffective-deprecated-reexports.rs:29:1
+   |
+LL | #[deprecated]
+   | ^^^^^^^^^^^^^
+   |
+   = note: this is a long-standing bug, see issue #30827 <https://github.com/rust-lang/rust/issues/30827> for more information
+   = help: to warn users of this path, deprecate the item itself, or replace the re-export with a `#[deprecated]` type alias or wrapper function where one applies
+
+warning: `#[deprecated]` on a `use` item has no effect
+  --> $DIR/ineffective-deprecated-reexports.rs:38:5
+   |
+LL |     #[deprecated]
+   |     ^^^^^^^^^^^^^
+   |
+   = note: this is a long-standing bug, see issue #30827 <https://github.com/rust-lang/rust/issues/30827> for more information
+   = help: to warn users of this path, deprecate the item itself, or replace the re-export with a `#[deprecated]` type alias or wrapper function where one applies
+
+warning: `#[deprecated]` on a `use` item has no effect
+  --> $DIR/ineffective-deprecated-reexports.rs:44:9
+   |
+LL | macro_rules! reexport {
+LL |     ($name:ident) => {
+LL |         #[deprecated]
+   |         ^^^^^^^^^^^^^
+...
+LL | reexport!(FromMacro);
+   | -------------------- in this macro invocation
+   |
+   = note: this is a long-standing bug, see issue #30827 <https://github.com/rust-lang/rust/issues/30827> for more information
+   = help: to warn users of this path, deprecate the item itself, or replace the re-export with a `#[deprecated]` type alias or wrapper function where one applies
+
+warning: `#[deprecated]` on a `use` item has no effect
+  --> $DIR/ineffective-deprecated-reexports.rs:51:1
+   |
+LL | #[deprecated]
+   | ^^^^^^^^^^^^^
+   |
+   = note: this is a long-standing bug, see issue #30827 <https://github.com/rust-lang/rust/issues/30827> for more information
+   = help: to warn users of this path, deprecate the item itself, or replace the re-export with a `#[deprecated]` type alias or wrapper function where one applies
+
+warning: use of deprecated unit struct `inner::D`
+  --> $DIR/ineffective-deprecated-reexports.rs:52:16
+   |
+LL | pub use inner::D as DeprecatedTarget;
+   |                ^
+   |
+   = note: `#[warn(deprecated)]` on by default
+
+warning: `#[deprecated]` on a `use` item has no effect
+  --> $DIR/ineffective-deprecated-reexports.rs:33:5
+   |
+LL |     #[deprecated]
+   |     ^^^^^^^^^^^^^
+   |
+   = note: this is a long-standing bug, see issue #30827 <https://github.com/rust-lang/rust/issues/30827> for more information
+   = help: to warn users of this path, deprecate the item itself, or replace the re-export with a `#[deprecated]` type alias or wrapper function where one applies
+
+warning: 10 warnings emitted
+

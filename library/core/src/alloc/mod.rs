@@ -16,6 +16,12 @@ pub use self::layout::Layout;
     suggestion = "LayoutError"
 )]
 #[allow(deprecated)]
+// FIXME(#30827): this deprecation has no effect; the target's own deprecation is what warns.
+#[allow(clippy::useless_attribute)]
+#[expect(
+    ineffective_deprecated_reexports,
+    reason = "deprecating a re-export has no effect yet"
+)]
 pub use self::layout::LayoutErr;
 #[stable(feature = "alloc_layout_error", since = "1.50.0")]
 pub use self::layout::LayoutError;

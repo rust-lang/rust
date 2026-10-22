@@ -55,6 +55,7 @@ pub mod hardwired {
             HIDDEN_GLOB_REEXPORTS,
             ILL_FORMED_ATTRIBUTE_INPUT,
             INCOMPLETE_INCLUDE,
+            INEFFECTIVE_DEPRECATED_REEXPORTS,
             INEFFECTIVE_UNSTABLE_REEXPORTS,
             INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
             INLINE_NO_SANITIZE,
@@ -2820,6 +2821,39 @@ declare_lint! {
     pub USELESS_DEPRECATED,
     Deny,
     "detects deprecation attributes with no effect",
+}
+
+declare_lint! {
+    /// The `ineffective_deprecated_reexports` lint detects `#[deprecated]`
+    /// attributes on `use` items, where the attribute currently has no effect.
+    ///
+    /// ### Example
+    ///
+    #[cfg_attr(bootstrap, doc = "```rust,ignore")]
+    #[cfg_attr(not(bootstrap), doc = "```rust")]
+    /// mod inner {
+    ///     pub struct Item;
+    /// }
+    ///
+    /// #[deprecated]
+    /// pub use inner::Item as Alias;
+    /// # fn main() {}
+    #[doc = "```"]
+    ///
+    #[cfg_attr(not(bootstrap), doc = "{{produces}}")]
+    ///
+    /// ### Explanation
+    ///
+    /// Deprecation is checked on the item a path resolves to, not on the `use`
+    /// items the path went through, so the attribute has no effect. This is a
+    /// long-standing bug, tracked in [issue #30827]. Until it is fixed,
+    /// deprecate the item itself, or replace the re-export with a
+    /// `#[deprecated]` type alias or wrapper function where one applies.
+    ///
+    /// [issue #30827]: https://github.com/rust-lang/rust/issues/30827
+    pub INEFFECTIVE_DEPRECATED_REEXPORTS,
+    Warn,
+    "detects ineffective `#[deprecated]` attributes on `use` items",
 }
 
 declare_lint! {
