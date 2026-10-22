@@ -33,6 +33,8 @@ fn main() {
     test_fcntl_getfd();
     test_canonicalize_too_long();
     test_rename();
+    test_mkdir();
+    test_rmdir();
     test_ftruncate::<libc::off_t>(libc::ftruncate);
     #[cfg(target_os = "linux")]
     test_ftruncate::<libc::off64_t>(libc::ftruncate64);
@@ -679,6 +681,67 @@ fn test_rename() {
     assert_eq!(err.raw_os_error().unwrap(), libc::ENOENT);
 
     fs::remove_file(&path2).unwrap();
+}
+
+fn test_mkdir() {
+    let path = utils::prepare("miri_test_libc_mkdir");
+    let cpath = utils::into_c_string(&path);
+
+    // Creating a directory should succeed.
+    errno_check(unsafe { libc::mkdir(cpath.as_ptr(), 0o777) });
+    assert!(path.metadata().unwrap().is_dir());
+
+    // Creating the same directory again should fail since it already exists.
+    let err = errno_result(unsafe { libc::mkdir(cpath.as_ptr(), 0o777) }).unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::EEXIST);
+
+    // Creating a directory whose parent does not exist should fail.
+    let missing_parent = utils::into_c_string(path.join("nonexistent").join("child"));
+    let err = errno_result(unsafe { libc::mkdir(missing_parent.as_ptr(), 0o777) }).unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::ENOENT);
+
+    // Creating a directory below a path that is actually a file should fail.
+    let file_path = utils::prepare_with_content("miri_test_libc_mkdir_file.txt", b"hello");
+    let bad_child = utils::into_c_string(file_path.join("child"));
+    let err = errno_result(unsafe { libc::mkdir(bad_child.as_ptr(), 0o777) }).unwrap_err();
+
+    if cfg!(miri) {
+        // Miri error here is host-dependent (Windows returns ENOENT, the rest return ENOTDIR)
+        assert!(matches!(err.raw_os_error().unwrap(), libc::ENOENT | libc::ENOTDIR));
+    } else {
+        assert_eq!(err.raw_os_error().unwrap(), libc::ENOTDIR);
+    }
+
+    fs::remove_file(&file_path).unwrap();
+    fs::remove_dir(&path).unwrap();
+}
+
+fn test_rmdir() {
+    let path = utils::prepare("miri_test_libc_rmdir");
+    fs::create_dir(&path).unwrap();
+    let cpath = utils::into_c_string(&path);
+
+    // Removing a non-empty directory should fail.
+    let child = path.join("child");
+    fs::create_dir(&child).unwrap();
+    let err = errno_result(unsafe { libc::rmdir(cpath.as_ptr()) }).unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::ENOTEMPTY);
+    fs::remove_dir(&child).unwrap();
+
+    // Removing an empty directory should succeed.
+    errno_check(unsafe { libc::rmdir(cpath.as_ptr()) });
+    assert!(!path.exists());
+
+    // Removing it again should fail since it no longer exists.
+    let err = errno_result(unsafe { libc::rmdir(cpath.as_ptr()) }).unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::ENOENT);
+
+    // Removing a regular file (instead of a directory) should fail.
+    let file_path = utils::prepare_with_content("miri_test_libc_rmdir_file.txt", b"hello");
+    let c_file_path = utils::into_c_string(&file_path);
+    let err = errno_result(unsafe { libc::rmdir(c_file_path.as_ptr()) }).unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::ENOTDIR);
+    fs::remove_file(&file_path).unwrap();
 }
 
 fn test_ftruncate<T: From<i32>>(
