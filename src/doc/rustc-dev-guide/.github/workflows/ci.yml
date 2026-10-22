@@ -26,6 +26,7 @@ jobs:
         with:
           # linkcheck needs the base commit.
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Test CI scripts
         run: ci/tests/report-scheduled-linkcheck-failure.sh
@@ -109,6 +110,8 @@ jobs:
       issues: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Open an issue or comment on an existing one
         run: ci/report-scheduled-linkcheck-failure.sh
         env:
@@ -124,6 +127,8 @@ jobs:
       issues: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Close issue
         run: ci/close-scheduled-linkcheck-issues.sh
         env:
