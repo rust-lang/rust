@@ -173,7 +173,7 @@ For example, you can (cross-)run the driver on a particular file by doing
 Tests in ``pass-dep`` need to be run using ``./miri run --dep <filename>``.  
 For example:
 ```sh
-./miri run --dep tests/pass-dep/shims/libc-fs.rs
+./miri run --dep tests/pass-dep/libc/fs.rs
 ```
 
 You can (cross-)run the entire test suite using:
