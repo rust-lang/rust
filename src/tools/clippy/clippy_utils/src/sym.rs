@@ -130,6 +130,7 @@ generate! {
     Weak,
     Wrapping,
     abs,
+    allow_attributes,
     ambiguous_glob_reexports,
     app,
     append,

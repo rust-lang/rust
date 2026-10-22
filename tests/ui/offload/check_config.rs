@@ -6,7 +6,7 @@
 //@[pass] compile-flags: -Zunstable-options -Zoffload=Device -Clto=fat --emit=metadata
 //@[fail] compile-flags: -Clto=thin
 
-//[fail]~? ERROR: using the offload feature requires -Z offload=<Device or Host=/absolute/path/to/device.bin>
+//[fail]~? ERROR: using the offload feature requires -Z offload=<Device or Host=/absolute/path/to/<crate>.bc>
 //[fail]~? ERROR: using the offload feature requires -C lto=fat
 
 #![feature(gpu_offload)]

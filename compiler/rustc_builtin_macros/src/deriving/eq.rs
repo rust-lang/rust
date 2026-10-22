@@ -1,4 +1,4 @@
-use rustc_ast::{self as ast, Safety};
+use rustc_ast::{self as ast};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_expand::base::ExtCtxt;
 use rustc_span::{Span, sym};
@@ -19,7 +19,6 @@ pub(crate) fn expand_deriving_eq(
     let trait_def = TraitDef {
         span,
         path: path_std!(cx, span, cmp::Eq),
-        skip_path_as_bound: false,
         needs_copy_as_bound_if_packed: true,
         additional_bounds: SmallVec::new(),
         supports_unions: true,
@@ -41,8 +40,7 @@ pub(crate) fn expand_deriving_eq(
             combine_substructure: combine_substructure(cs_total_eq_assert),
         }],
         is_const,
-        safety: Safety::Default,
-        document: true,
+        ..
     };
     trait_def.expand_ext(cx, item, push, true)
 }

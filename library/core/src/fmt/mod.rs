@@ -1038,14 +1038,14 @@ impl Display for Arguments<'_> {
 #[rustc_on_unimplemented(
     on(
         all(crate_local, not(Self = "{union}")),
-        note = "add `#[derive(Debug)]` to `{Self}` or manually `impl {This} for {Self}`"
+        note = "add `#[derive(Debug)]` to `{Self}` or manually `impl {this} for {Self}`"
     ),
-    on(all(crate_local, Self = "{union}"), note = "manually `impl {This} for {Self}`"),
+    on(all(crate_local, Self = "{union}"), note = "manually `impl {this} for {Self}`"),
     on(
         from_desugaring = "FormatLiteral",
-        label = "`{Self}` cannot be formatted using `{{:?}}` because it doesn't implement `{This}`"
+        label = "`{Self}` cannot be formatted using `{{:?}}` because it doesn't implement `{this}`"
     ),
-    message = "`{Self}` doesn't implement `{This}`"
+    message = "`{Self}` doesn't implement `{this}`"
 )]
 #[doc(alias = "{:?}")]
 #[rustc_diagnostic_item = "Debug"]
@@ -1179,7 +1179,7 @@ pub use macros::Debug;
         note = "in format strings you may be able to use `{{:?}}` (or `{{:#?}}` for pretty-print) instead",
         label = "`{Self}` cannot be formatted with the default formatter",
     ),
-    message = "`{Self}` doesn't implement `{This}`"
+    message = "`{Self}` doesn't implement `{this}`"
 )]
 #[doc(alias = "{}")]
 #[rustc_diagnostic_item = "Display"]
@@ -2107,6 +2107,10 @@ impl<'a> Formatter<'a> {
     ///
     /// Writes some formatted information into this instance.
     ///
+    /// This method delegates to the underlying [`Write`] implementation, so
+    /// whether the formatted output is appended to, or replaces, previously
+    /// written data is up to that writer.
+    ///
     /// # Examples
     ///
     /// ```
@@ -2122,6 +2126,44 @@ impl<'a> Formatter<'a> {
     ///
     /// assert_eq!(format!("{}", Foo(-1)), "Foo -1");
     /// assert_eq!(format!("{:0>8}", Foo(2)), "Foo 2");
+    /// ```
+    ///
+    /// The same formatting code can produce different output depending on the
+    /// underlying writer:
+    ///
+    /// ```
+    /// use std::fmt;
+    ///
+    /// struct Hello;
+    ///
+    /// impl fmt::Display for Hello {
+    ///     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         formatter.write_fmt(format_args!("Hello"))?;
+    ///         formatter.write_fmt(format_args!(" world"))
+    ///     }
+    /// }
+    ///
+    /// // A writer that replaces its contents on every write.
+    /// struct Replace(String);
+    ///
+    /// impl fmt::Write for Replace {
+    ///     fn write_str(&mut self, s: &str) -> fmt::Result {
+    ///         self.0.clear();
+    ///         self.0.push_str(s);
+    ///         Ok(())
+    ///     }
+    /// }
+    ///
+    /// // With `String`, which appends, both writes are kept.
+    /// let mut s = String::new();
+    /// fmt::write(&mut s, format_args!("{Hello}"))?;
+    /// assert_eq!(s, "Hello world");
+    ///
+    /// // With a writer that replaces, the second write replaces the first.
+    /// let mut w = Replace(String::new());
+    /// fmt::write(&mut w, format_args!("{Hello}"))?;
+    /// assert_eq!(w.0, " world");
+    /// # Ok::<(), fmt::Error>(())
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]

@@ -13,12 +13,17 @@ use thin_vec::ThinVec;
 use crate::delegate::SolverDelegate;
 
 /// Does this have infer/placeholder/param, free regions or ReErased?
+// We're explicitly checking for fresh types and consts to trigger an
+// assert if they ever leak into the trait solver. They should never
+// exist with the new solver.
 const NEEDS_CANONICAL: TypeFlags = TypeFlags::from_bits(
     TypeFlags::HAS_INFER.bits()
         | TypeFlags::HAS_PLACEHOLDER.bits()
         | TypeFlags::HAS_PARAM.bits()
         | TypeFlags::HAS_FREE_REGIONS.bits()
-        | TypeFlags::HAS_RE_ERASED.bits(),
+        | TypeFlags::HAS_RE_ERASED.bits()
+        | TypeFlags::HAS_TY_FRESH.bits()
+        | TypeFlags::HAS_CT_FRESH.bits(),
 )
 .unwrap();
 
@@ -173,14 +178,12 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
                         delegate,
                         CanonicalizeMode::Input(CanonicalizeInputKind::Predicate),
                     );
-                    rest_canonicalizer.state.variables.extend(e.variables.iter().copied());
-                    rest_canonicalizer.state.var_kinds.extend(e.var_kinds.iter().copied());
-                    // SAFETY: The iterated elements go straight back into a hashmap.
-                    #[allow(rustc::potential_query_instability)]
+                    rest_canonicalizer.state.variables.clone_from(&e.variables);
+                    rest_canonicalizer.state.var_kinds.clone_from(&e.var_kinds);
                     rest_canonicalizer
                         .state
                         .variable_lookup_table
-                        .extend(e.variable_lookup_table.iter().map(|(&arg, &idx)| (arg, idx)));
+                        .clone_from(&e.variable_lookup_table);
                     (e.param_env, rest_canonicalizer)
                 }
             })

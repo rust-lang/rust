@@ -171,6 +171,7 @@ static ARM_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
         },
         &[],
     ),
+    ("bf16", Unstable(sym::arm_target_feature), &["neon"]),
     ("crc", Unstable(sym::arm_target_feature), &[]),
     ("d32", Unstable(sym::arm_target_feature), &[]),
     ("dotprod", Unstable(sym::arm_target_feature), &["neon"]),
@@ -859,7 +860,7 @@ static WASM_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("sign-ext", Stable, &[]),
     ("simd128", Stable, &[]),
     ("tail-call", Stable, &[]),
-    ("wide-arithmetic", Unstable(sym::wasm_target_feature), &[]),
+    ("wide-arithmetic", Stable, &[]),
     // tidy-alphabetical-end
 ];
 

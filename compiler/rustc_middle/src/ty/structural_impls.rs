@@ -218,6 +218,7 @@ TrivialTypeTraversalImpls! {
     rustc_ast::InlineAsmOptions,
     rustc_ast::InlineAsmTemplatePiece,
     rustc_attr_ir::AttributeKind,
+    rustc_attr_ir::UnrollAttr,
     rustc_hir::CoroutineKind,
     rustc_hir::HirId,
     rustc_hir::MatchSource,

@@ -13,7 +13,8 @@ use emmy_dap_types::prelude::types::{
     StoppedEventReason, Thread, Variable,
 };
 use emmy_dap_types::prelude::{Command, Event, Request, ResponseBody, Server};
-use miri::{InterpErrorInfo, InterpErrorKind, InterpResult, TerminationInfo, bug};
+use miri::{InterpErrorInfo, InterpErrorKind, InterpResult, TerminationInfo};
+use rustc_span::bug;
 
 use crate::debugger::{ExecutionResult, LocalDesc, PrirodaContext, StepResult};
 

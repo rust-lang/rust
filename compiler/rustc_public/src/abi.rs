@@ -86,30 +86,35 @@ pub enum PassMode {
     Cast { pad_i32_count: u8, cast: CastTarget },
     /// Pass the argument indirectly via a pointer.
     ///
+    /// The caller places the value in memory and depending on mode passes a
+    /// pointer to it, stores it at a fixed stack offset or stores it at a
+    /// fixed location in a different address space.
+    Indirect { attrs: ArgAttributes, address_space: Option<AddressSpace>, mode: IndirectMode },
+    /// Pass the unsized argument indirectly via a hidden pointer.
+    ///
     /// The caller places the value in memory and passes a pointer to it.
-    Indirect {
+    IndirectUnsized {
         attrs: ArgAttributes,
         /// Attributes for the metadata pointer (vtable or length) of unsized arguments.
-        /// Only present for unsized types (e.g., `dyn Trait`, `[T]`).
-        meta_attrs: Option<ArgAttributes>,
-        address_space: Option<AddressSpace>,
-        mode: IndirectMode,
+        meta_attrs: ArgAttributes,
     },
 }
 
-/// Attributes of a function argument that affect its ABI.
-///
-/// Not all internal compiler attributes are exposed here, as some are
-/// LLVM-specific optimization hints. The internal representation is kept
-/// private so it can be expanded in the future.
+/// Attributes of a function argument or return value.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
 pub struct ArgAttributes {
+    pub(crate) regular: ArgAttributeFlags,
     pub(crate) arg_ext: ArgExtension,
     pub(crate) pointee_size: Size,
     pub(crate) pointee_align: Option<Align>,
 }
 
 impl ArgAttributes {
+    /// Return the calling convention and optimization flags for this argument.
+    pub fn regular(&self) -> ArgAttributeFlags {
+        self.regular
+    }
+
     /// Return how this argument should be extended when passed in a register.
     ///
     /// Relevant for integer arguments smaller than the register width.
@@ -125,10 +130,32 @@ impl ArgAttributes {
         self.pointee_align
     }
 
-    /// Return the minimum dereferenceable size of the pointee, if known.
+    /// Return the minimum dereferenceable size of the pointee, if it is non-null,
+    /// at function entry (for arguments) or return (for return values).
+    ///
+    /// This alone does not guarantee dereferenceability for the duration of the call.
     pub fn pointee_size(&self) -> Size {
         self.pointee_size
     }
+}
+
+/// Calling convention and optimization flags for a function argument or return value.
+///
+/// The capture flags overlap: `captures_none` implies `captures_address`, which
+/// implies `captures_read_only`.
+#[non_exhaustive]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize)]
+pub struct ArgAttributeFlags {
+    pub captures_none: bool,
+    pub captures_address: bool,
+    pub captures_read_only: bool,
+    pub no_alias: bool,
+    pub non_null: bool,
+    pub read_only: bool,
+    pub in_reg: bool,
+    pub no_undef: bool,
+    pub writable: bool,
+    pub no_free: bool,
 }
 
 /// How a small integer argument should be extended to fill a register.
@@ -512,6 +539,7 @@ pub enum FloatLength {
     F32,
     F64,
     F128,
+    PpcF128,
 }
 
 impl IntegerLength {
@@ -533,6 +561,7 @@ impl FloatLength {
             FloatLength::F32 => 32,
             FloatLength::F64 => 64,
             FloatLength::F128 => 128,
+            FloatLength::PpcF128 => 128,
         }
     }
 }

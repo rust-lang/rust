@@ -27,7 +27,7 @@
 
 use relate::lattice::{LatticeOp, LatticeOpKind};
 use rustc_middle::ty::relate::solver_relating::RelateExt as NextSolverRelate;
-use rustc_middle::ty::{Const, TypingMode};
+use rustc_middle::ty::{Const, ParamEnv, TypingMode};
 use rustc_span::bug;
 
 use super::*;
@@ -78,6 +78,7 @@ impl<'tcx> InferCtxt<'tcx> {
             selection_cache: self.selection_cache.clone(),
             evaluation_cache: self.evaluation_cache.clone(),
             reported_trait_errors: self.reported_trait_errors.clone(),
+            reported_hir_errors: self.reported_hir_errors.clone(),
             reported_signature_mismatch: self.reported_signature_mismatch.clone(),
             tainted_by_errors: self.tainted_by_errors.clone(),
             universe: self.universe.clone(),
@@ -108,6 +109,7 @@ impl<'tcx> InferCtxt<'tcx> {
             selection_cache: Default::default(),
             evaluation_cache: Default::default(),
             reported_trait_errors: self.reported_trait_errors.clone(),
+            reported_hir_errors: self.reported_hir_errors.clone(),
             reported_signature_mismatch: self.reported_signature_mismatch.clone(),
             tainted_by_errors: self.tainted_by_errors.clone(),
             universe: self.universe.clone(),
@@ -122,19 +124,18 @@ impl<'tcx> InferCtxt<'tcx> {
         forked.inner.borrow_mut().projection_cache().clear();
         forked
     }
-}
 
-pub trait ToTrace<'tcx>: Relate<TyCtxt<'tcx>> + Copy {
-    fn to_trace(cause: &ObligationCause<'tcx>, a: Self, b: Self) -> TypeTrace<'tcx>;
-}
-
-impl<'a, 'tcx> At<'a, 'tcx> {
     /// Makes `actual <: expected`. For example, if type-checking a
     /// call like `foo(x)`, where `foo: fn(i32)`, you might have
     /// `sup(i32, x)`, since the "expected" type is the type that
     /// appears in the signature.
-    pub fn sup<T>(
-        self,
+    ///
+    /// If possible, prefer the wrapper methods on `ObligationCtxt`,
+    /// `FnCtxt`, or `TypeChecker`.
+    pub fn sup_raw<T>(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        param_env: ParamEnv<'tcx>,
         define_opaque_types: DefineOpaqueTypes,
         expected: T,
         actual: T,
@@ -142,21 +143,21 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     where
         T: ToTrace<'tcx>,
     {
-        if self.infcx.next_trait_solver {
+        if self.next_trait_solver {
             NextSolverRelate::relate(
-                self.infcx,
-                self.param_env,
+                self,
+                param_env,
                 expected,
                 ty::Contravariant,
                 actual,
-                self.cause.span,
+                cause.span,
             )
-            .map(|goals| self.goals_to_obligations(goals))
+            .map(|goals| self.goals_to_obligations(cause, goals))
         } else {
             let mut op = TypeRelating::new(
-                self.infcx,
-                ToTrace::to_trace(self.cause, expected, actual),
-                self.param_env,
+                &self,
+                ToTrace::to_trace(cause, expected, actual),
+                param_env,
                 define_opaque_types,
                 ty::Contravariant,
             );
@@ -166,6 +167,130 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     }
 
     /// Makes `expected <: actual`.
+    ///
+    /// If possible, prefer the wrapper methods on `ObligationCtxt`,
+    /// `FnCtxt`, or `TypeChecker`.
+    pub fn sub_raw<T>(
+        self,
+        cause: &ObligationCause<'tcx>,
+        param_env: ParamEnv<'tcx>,
+        define_opaque_types: DefineOpaqueTypes,
+        expected: T,
+        actual: T,
+    ) -> InferResult<'tcx, ()>
+    where
+        T: ToTrace<'tcx>,
+    {
+        self.at(cause, param_env).sub(define_opaque_types, expected, actual)
+    }
+
+    /// Makes `expected == actual`.
+    ///
+    /// If possible, prefer the wrapper methods on `ObligationCtxt`,
+    /// `FnCtxt`, or `TypeChecker`.
+    pub fn eq_raw<T>(
+        self,
+        cause: &ObligationCause<'tcx>,
+        param_env: ParamEnv<'tcx>,
+        define_opaque_types: DefineOpaqueTypes,
+        expected: T,
+        actual: T,
+    ) -> InferResult<'tcx, ()>
+    where
+        T: ToTrace<'tcx>,
+    {
+        self.eq_trace_raw(
+            cause,
+            param_env,
+            define_opaque_types,
+            ToTrace::to_trace(cause, expected, actual),
+            expected,
+            actual,
+        )
+    }
+
+    /// Makes `expected == actual`.
+    ///
+    /// If possible, prefer the wrapper methods on `ObligationCtxt`,
+    /// `FnCtxt`, or `TypeChecker`.
+    pub fn eq_trace_raw<T>(
+        self,
+        cause: &ObligationCause<'tcx>,
+        param_env: ParamEnv<'tcx>,
+        define_opaque_types: DefineOpaqueTypes,
+        trace: TypeTrace<'tcx>,
+        expected: T,
+        actual: T,
+    ) -> InferResult<'tcx, ()>
+    where
+        T: Relate<TyCtxt<'tcx>>,
+    {
+        self.at(cause, param_env).eq_trace(define_opaque_types, trace, expected, actual)
+    }
+
+    /// If possible, prefer the wrapper methods on `ObligationCtxt`,
+    /// `FnCtxt`, or `TypeChecker`.
+    pub fn relate_raw<T>(
+        self,
+        cause: &ObligationCause<'tcx>,
+        param_env: ParamEnv<'tcx>,
+        define_opaque_types: DefineOpaqueTypes,
+        expected: T,
+        variance: ty::Variance,
+        actual: T,
+    ) -> InferResult<'tcx, ()>
+    where
+        T: ToTrace<'tcx>,
+    {
+        self.at(cause, param_env).relate(define_opaque_types, expected, variance, actual)
+    }
+
+    /// Computes the least-upper-bound, or mutual supertype, of two
+    /// values. The order of the arguments doesn't matter, but since
+    /// this can result in an error (e.g., if asked to compute LUB of
+    /// u32 and i32), it is meaningful to call one of them the
+    /// "expected type".
+    ///
+    /// If possible, prefer the wrapper methods on `ObligationCtxt`,
+    /// `FnCtxt`, or `TypeChecker`.
+    pub fn lub_raw<T>(
+        self,
+        cause: &ObligationCause<'tcx>,
+        param_env: ParamEnv<'tcx>,
+        expected: T,
+        actual: T,
+    ) -> InferResult<'tcx, T>
+    where
+        T: ToTrace<'tcx>,
+    {
+        self.at(cause, param_env).lub(expected, actual)
+    }
+
+    pub fn goals_to_obligations(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        goals: Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
+    ) -> InferOk<'tcx, ()> {
+        InferOk {
+            value: (),
+            obligations: goals
+                .into_iter()
+                .map(|goal| {
+                    Obligation::new(self.tcx, cause.clone(), goal.param_env, goal.predicate)
+                })
+                .collect(),
+        }
+    }
+}
+
+pub trait ToTrace<'tcx>: Relate<TyCtxt<'tcx>> + Copy {
+    fn to_trace(cause: &ObligationCause<'tcx>, a: Self, b: Self) -> TypeTrace<'tcx>;
+}
+
+impl<'a, 'tcx> At<'a, 'tcx> {
+    /// Makes `expected <: actual`.
+    ///
+    /// FIXME: To be removed in favor of the [`InferCtxt::sub_raw`] method instead.
     pub fn sub<T>(
         self,
         define_opaque_types: DefineOpaqueTypes,
@@ -199,6 +324,8 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     }
 
     /// Makes `expected == actual`.
+    ///
+    /// FIXME: To be removed in favor of the [`InferCtxt::eq_raw`] method instead.
     pub fn eq<T>(
         self,
         define_opaque_types: DefineOpaqueTypes,
@@ -217,6 +344,8 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     }
 
     /// Makes `expected == actual`.
+    ///
+    /// FIXME: To be removed in favor of the [`InferCtxt::eq_trace_raw`] method instead.
     pub fn eq_trace<T>(
         self,
         define_opaque_types: DefineOpaqueTypes,
@@ -250,6 +379,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
         }
     }
 
+    /// FIXME: To be removed in favor of the [`InferCtxt::relate_raw`] method instead.
     pub fn relate<T>(
         self,
         define_opaque_types: DefineOpaqueTypes,
@@ -263,7 +393,13 @@ impl<'a, 'tcx> At<'a, 'tcx> {
         match variance {
             ty::Covariant => self.sub(define_opaque_types, expected, actual),
             ty::Invariant => self.eq(define_opaque_types, expected, actual),
-            ty::Contravariant => self.sup(define_opaque_types, expected, actual),
+            ty::Contravariant => self.infcx.sup_raw(
+                self.cause,
+                self.param_env,
+                define_opaque_types,
+                expected,
+                actual,
+            ),
 
             // We could make this make sense but it's not readily
             // exposed and I don't feel like dealing with it. Note
@@ -279,6 +415,8 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     /// this can result in an error (e.g., if asked to compute LUB of
     /// u32 and i32), it is meaningful to call one of them the
     /// "expected type".
+    ///
+    /// FIXME: To be removed in favor of the [`InferCtxt::lub_raw`] method instead.
     pub fn lub<T>(self, expected: T, actual: T) -> InferResult<'tcx, T>
     where
         T: ToTrace<'tcx>,
@@ -293,6 +431,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
         Ok(InferOk { value, obligations: op.into_obligations() })
     }
 
+    /// FIXME: To be removed in favor of the [`InferCtxt::goals_to_obligations`] method instead.
     fn goals_to_obligations(
         &self,
         goals: Vec<Goal<'tcx, ty::Predicate<'tcx>>>,

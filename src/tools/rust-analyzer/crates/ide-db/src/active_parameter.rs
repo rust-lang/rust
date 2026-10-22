@@ -16,6 +16,7 @@ use crate::RootDatabase;
 pub struct ActiveParameter<'db> {
     pub ty: Type<'db>,
     pub src: Option<InFile<Either<ast::SelfParam, ast::Param>>>,
+    pub original: Option<hir::Param<'db>>,
 }
 
 impl<'db> ActiveParameter<'db> {
@@ -46,8 +47,13 @@ impl<'db> ActiveParameter<'db> {
             cov_mark::hit!(too_many_arguments);
             return None;
         }
+        let original = signature.as_function().map(|func| {
+            let mut assoc_params = func.assoc_fn_params(sema.db);
+            let assoc_idx = assoc_params.len() - params.len() + idx;
+            assoc_params.swap_remove(assoc_idx)
+        });
         let param = params.swap_remove(idx);
-        Some(ActiveParameter { ty: param.ty().clone(), src: sema.source(param) })
+        Some(ActiveParameter { ty: param.ty().clone(), src: sema.source(param), original })
     }
 
     pub fn ident(&self) -> Option<ast::Name> {

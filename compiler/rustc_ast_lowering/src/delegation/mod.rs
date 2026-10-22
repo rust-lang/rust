@@ -51,7 +51,7 @@ use rustc_hir::{self as hir, FnDeclFlags, QPath};
 use rustc_middle::ty::Asyncness;
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::kw;
-use rustc_span::{Ident, Span, Symbol, sym};
+use rustc_span::{Ident, Span, Symbol};
 
 use crate::delegation::generics::{GenericsGenerationResults, GenericsPosition};
 use crate::delegation::resolution::resolver::DelegationResolver;
@@ -480,7 +480,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 self.arena.alloc_slice(&[hir::ExprField {
                     hir_id: self.next_id(),
                     is_shorthand: false,
-                    ident: Ident::new(sym::integer(0), span),
+                    ident: Ident::new(kw::Underscore, span),
                     expr: self.arena.alloc(call),
                     span,
                 }]),

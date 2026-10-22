@@ -17,16 +17,16 @@ fn main() {
         .actual_text("(rustc)", &out)
         .run();
 
-    // Ensure that we dont mention --edition when running rustdoc.
+    rustdoc().edition("2015").input("main.rs").run().assert_stderr_not_contains("--edition");
+    let out = rustdoc().input("main.rs").run().assert_stderr_contains("--edition").stderr_utf8();
+    diff().expected_file("rustdoc-unspecified-edition.stderr").actual_text("(rustc)", &out).run();
+
+    // Ensure that we only mention --edition when documenting.
     let out = rustdoc().run_fail().assert_stderr_not_contains("--edition").stderr_utf8();
     diff()
         .expected_text("(test)", "error: missing file operand\n\n")
         .actual_text("(rustc)", &out)
         .run();
-
-    let out =
-        rustdoc().input("main.rs").run().assert_stderr_not_contains("--edition").stderr_utf8();
-    diff().expected_text("(test)", "").actual_text("(rustc)", &out).run();
 
     // Ensure that we don't mention --edition when getting help.
     let result = bare_rustc().arg("--help").run();

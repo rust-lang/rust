@@ -266,6 +266,7 @@ impl<'sess> AttributeParser<'sess> {
             attr_path,
             #[cfg(debug_assertions)]
             has_target_been_checked: false,
+            attr_id: None,
         };
         parse_fn(&mut cx, args)
     }
@@ -304,6 +305,7 @@ impl<'sess> AttributeParser<'sess> {
         self.sess().dcx()
     }
 
+    #[track_caller]
     pub(crate) fn emit_err(&self, diag: impl for<'x> Diagnostic<'x>) -> ErrorGuaranteed {
         self.should_emit.emit_err(self.sess.dcx().create_err(diag))
     }
@@ -332,20 +334,6 @@ impl<'sess> AttributeParser<'sess> {
                 if !filter(attr) {
                     continue;
                 }
-            }
-
-            fn is_doc_non_lit_expr(attr: &ast::Attribute) -> bool {
-                if !attr.has_name(sym::doc) {
-                    return false;
-                }
-                let ast::AttrKind::Normal(n) = &attr.kind else { return false };
-                let ast::AttrArgs::Eq { expr, .. } = &n.item.args else { return false };
-                !matches!(expr.kind, ast::ExprKind::Lit(_))
-            }
-
-            // FIXME accidentally allowed on Stable Rust
-            if target == Target::MacroCall && is_doc_non_lit_expr(attr) {
-                continue;
             }
 
             let attr_span = lower_span(attr.span);
@@ -440,6 +428,7 @@ impl<'sess> AttributeParser<'sess> {
                             attr_path: attr_path.clone(),
                             #[cfg(debug_assertions)]
                             has_target_been_checked: false,
+                            attr_id: Some(HashIgnoredAttrId { attr_id: attr.id }),
                         };
 
                         (accept.accept_fn)(&mut cx, &args);

@@ -48,6 +48,11 @@ conflicts, in particular for simpler crate names).
 
 Contains tests to check the display of items implementing the `Deref` and/or `DerefMut` traits.
 
+## `tests/rustdoc-html/display`
+
+Contains tests checking how items are displayed in the docs. Ensuring that methods with a lot
+of arguments or with a lot of generics are correctly split between multiple lines for example.
+
 ## `tests/rustdoc-html/doc-cfg`
 
 Contains tests to check the rustdoc `doc_cfg` feature.
@@ -59,6 +64,10 @@ Contains tests for the rendering of enum types and in particular its variants.
 ## `tests/rustdoc-html/extern`
 
 Contains tests to check how extern items (like `extern "C"` functions) are rendered.
+
+## `tests/rustdoc-html/fn`
+
+Same as `tests/rustdoc-html/enum` but for function items.
 
 ## `tests/rustdoc-html/footnote`
 
@@ -139,9 +148,17 @@ page, etc.
 Contains tests checking the content of the source code pages (when you click on the `source`
 links).
 
+## `tests/rustdoc-html/struct`
+
+Same as `tests/rustdoc-html/enum` but for struct items.
+
 ## `tests/rustdoc-html/synthetic_auto`
 
 Somewhat equivalent to the `auto` folder's tests. Both should likely be merged.
+
+## `tests/rustdoc-html/trait`
+
+Same as `tests/rustdoc-html/enum` but for trait items.
 
 ## `tests/rustdoc-html/typedef`
 

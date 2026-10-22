@@ -21,7 +21,6 @@ use rustc_hir_analysis::autoderef::report_autoderef_recursion_limit_error;
 use rustc_infer::infer::RegionVariableOrigin;
 use rustc_lint_defs::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
 use rustc_middle::traits::PatternOriginExpr;
-use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::{self, Pinnedness, Ty, TypeVisitableExt, Unnormalized};
 use rustc_session::diagnostics::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
@@ -913,7 +912,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let (res, opt_ty, segments) =
                     self.resolve_ty_and_res_fully_qualified_call(qpath, lt.hir_id, lt.span);
                 self.instantiate_value_path(
-                    segments, opt_ty, res, lt.span, lt.span, lt.hir_id, false,
+                    segments, opt_ty, res, lt.span, lt.span, lt.hir_id, None,
                 )
                 .0
             }
@@ -1646,7 +1645,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Find the type of the path pattern, for later checking.
         let (pat_ty, pat_res) =
-            self.instantiate_value_path(segments, opt_ty, res, span, span, path_id, false);
+            self.instantiate_value_path(segments, opt_ty, res, span, span, path_id, None);
         Ok(ResolvedPat { ty: pat_ty, kind: ResolvedPatKind::Path { res, pat_res, segments } })
     }
 
@@ -1807,7 +1806,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Type-check the path.
         let (pat_ty, res) = self
-            .instantiate_value_path(segments, opt_ty, res, pat.span, pat.span, pat.hir_id, false);
+            .instantiate_value_path(segments, opt_ty, res, pat.span, pat.span, pat.hir_id, None);
         if !pat_ty.is_fn() {
             return report_unexpected_res(res);
         }

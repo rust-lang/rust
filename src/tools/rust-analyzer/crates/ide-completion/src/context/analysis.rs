@@ -25,9 +25,9 @@ use crate::{
     completions::postfix::{is_in_condition, is_in_value},
     context::{
         AttrCtx, BreakableKind, COMPLETION_MARKER, CompletionAnalysis, DotAccess, DotAccessExprCtx,
-        DotAccessKind, ItemListKind, LifetimeContext, LifetimeKind, NameContext, NameKind,
-        NameRefContext, NameRefKind, ParamContext, ParamKind, PathCompletionCtx, PathExprCtx,
-        PathKind, PatternContext, PatternRefutability, Qualified, QualifierCtx,
+        DotAccessKind, ExpectedInfo, ItemListKind, LifetimeContext, LifetimeKind, NameContext,
+        NameKind, NameRefContext, NameRefKind, ParamContext, ParamKind, PathCompletionCtx,
+        PathExprCtx, PathKind, PatternContext, PatternRefutability, Qualified, QualifierCtx,
         TypeAscriptionTarget, TypeLocation,
     },
 };
@@ -46,7 +46,7 @@ struct ExpansionResult {
 
 pub(super) struct AnalysisResult<'db> {
     pub(super) analysis: CompletionAnalysis<'db>,
-    pub(super) expected: (Option<Type<'db>>, Option<ast::NameOrNameRef>),
+    pub(super) expected: ExpectedInfo<'db>,
     pub(super) qualifier_ctx: QualifierCtx,
     /// the original token of the expanded file
     pub(super) token: SyntaxToken,
@@ -444,8 +444,7 @@ fn analyze<'db>(
     expansion_result: ExpansionResult,
     original_token: &SyntaxToken,
     self_token: &SyntaxToken,
-) -> Option<(CompletionAnalysis<'db>, (Option<Type<'db>>, Option<ast::NameOrNameRef>), QualifierCtx)>
-{
+) -> Option<(CompletionAnalysis<'db>, ExpectedInfo<'db>, QualifierCtx)> {
     let _p = tracing::info_span!("CompletionContext::analyze").entered();
     let ExpansionResult {
         original_file,
@@ -487,7 +486,7 @@ fn analyze<'db>(
             }
             return Some((
                 CompletionAnalysis::NameRef(nameref_ctx),
-                (None, None),
+                ExpectedInfo::default(),
                 QualifierCtx::default(),
             ));
         }
@@ -495,7 +494,9 @@ fn analyze<'db>(
     }
 
     let Some(name_like) = find_node_at_offset(&speculative_file, speculative_offset) else {
-        let analysis = if let Some(original) = ast::String::cast(original_token.clone()) {
+        let analysis = if let Some(original) = ast::String::cast(original_token.clone())
+            && self_token.parent().is_none_or(|it| !ast::CfgAtom::can_cast(it.kind()))
+        {
             CompletionAnalysis::String { original, expanded: ast::String::cast(self_token.clone()) }
         } else {
             // Fix up trailing whitespace problem
@@ -541,7 +542,7 @@ fn analyze<'db>(
                 return None;
             }
         };
-        return Some((analysis, (None, None), QualifierCtx::default()));
+        return Some((analysis, ExpectedInfo::default(), QualifierCtx::default()));
     };
 
     let expected = expected_type_and_name(sema, self_token, &name_like);
@@ -590,11 +591,11 @@ fn expected_type_and_name<'db>(
     sema: &Semantics<'db, RootDatabase>,
     self_token: &SyntaxToken,
     name_like: &ast::NameLike,
-) -> (Option<Type<'db>>, Option<NameOrNameRef>) {
+) -> ExpectedInfo<'db> {
     let token = prev_special_biased_token_at_trivia(self_token.clone());
     let mut node = match token.parent() {
         Some(it) => it,
-        None => return (None, None),
+        None => return ExpectedInfo::default(),
     };
 
     let strip_refs = |mut ty: Type<'db>| match name_like {
@@ -649,6 +650,7 @@ fn expected_type_and_name<'db>(
     };
 
     let mut generic_def = None;
+    let mut original_ty = None;
     let mut rebase_ty = {
         let node = node.clone();
         move |ty: hir::Type<'db>| {
@@ -709,6 +711,7 @@ fn expected_type_and_name<'db>(
                         token.clone(),
                     ).map(|ap| {
                         let name = ap.ident().map(NameOrNameRef::Name);
+                        original_ty.get_or_insert(ap.original.map(|it| it.ty().clone()));
                         (Some(ap.ty), name)
                     })
                     .unwrap_or((None, None))
@@ -876,7 +879,20 @@ fn expected_type_and_name<'db>(
             }
         };
     };
-    (ty.map(strip_refs), name)
+    // FIXME: Heuristic hack for PathExpr in ArgList
+    let expected_func = original_ty.flatten().and_then(|ty| {
+        let is_direct_arg = token
+            .parent()
+            .filter(|it| ast::NameLike::can_cast(it.kind()) || token.kind() == T![::])
+            .into_iter()
+            .flat_map(|it| it.ancestors().skip(1))
+            .find(|it| {
+                !Either::<Either<ast::PathSegment, ast::Path>, ast::PathExpr>::can_cast(it.kind())
+            })
+            == Some(node);
+        is_direct_arg.then_some(()).and_then(|()| ty.as_callable(sema.db))
+    });
+    ExpectedInfo { expected_type: ty.map(strip_refs), expected_name: name, expected_func }
 }
 
 fn classify_lifetime(
@@ -1032,7 +1048,7 @@ fn classify_name_ref<'db>(
         match parent {
             ast::PathSegment(segment) => segment,
             ast::FieldExpr(field) => {
-                return field_expr_handle(field.expr(), field.syntax());
+                return field_expr_handle(field.expr(), name_ref.syntax());
             },
             ast::ExternCrate(_) => {
                 let kind = NameRefKind::ExternCrate;
@@ -1041,14 +1057,14 @@ fn classify_name_ref<'db>(
             ast::MethodCallExpr(method) => {
                 let receiver = find_opt_node_in_file(original_file, method.receiver());
                 let has_parens = has_parens(&method);
-                if !has_parens && let Some(res) = field_expr_handle(method.receiver(), method.syntax()) {
+                if !has_parens && let Some(res) = field_expr_handle(method.receiver(), name_ref.syntax()) {
                     return Some(res)
                 }
                 let kind = NameRefKind::DotAccess(DotAccess {
                     receiver_ty: receiver.as_ref().and_then(|it| sema.type_of_expr(it)),
                     kind: DotAccessKind::Method,
                     receiver,
-                    ctx: DotAccessExprCtx { in_block_expr: is_in_block(method.syntax()), in_breakable: is_in_breakable(method.syntax()).unzip().0 }
+                    ctx: DotAccessExprCtx { in_block_expr: is_in_block(name_ref.syntax()), in_breakable: is_in_breakable(name_ref.syntax()).unzip().0 }
                 });
                 return Some(make_res(kind));
             },
@@ -1424,12 +1440,13 @@ fn classify_name_ref<'db>(
         let impl_ = fetch_immediate_impl_or_trait(sema, original_file, expr.syntax())
             .and_then(Either::left);
 
-        let in_match_guard = match it.parent().and_then(ast::MatchArm::cast) {
-            Some(arm) => arm
-                .fat_arrow_token()
-                .is_none_or(|arrow| it.text_range().start() < arrow.text_range().start()),
-            None => false,
-        };
+        let before_match_arrow = it.parent().and_then(ast::MatchArm::cast).map(|arm| {
+            arm.fat_arrow_token()
+                .is_none_or(|arrow| it.text_range().start() < arrow.text_range().start())
+        });
+        let in_match_guard = before_match_arrow == Some(true);
+        let at_optional_block = before_match_arrow == Some(false)
+            || it.parent().and_then(ast::ClosureExpr::cast).is_some();
 
         PathKind::Expr {
             expr_ctx: PathExprCtx {
@@ -1449,6 +1466,7 @@ fn classify_name_ref<'db>(
                 after_incomplete_let,
                 impl_,
                 in_match_guard,
+                at_optional_block,
             },
         }
     };
@@ -1725,12 +1743,14 @@ fn classify_name_ref<'db>(
                 qualifier_ctx.abi_node = error_node.children().find_map(ast::Abi::cast);
             }
 
+            let allowed_prev_kinds =
+                [T![;], T!['}'], T!['{'], T![']'], SyntaxKind::INNER_DOC_COMMENT];
             if let PathKind::Item { .. } = path_ctx.kind
                 && qualifier_ctx.none()
                 && let Some(t) = top.first_token()
                 && let Some(prev) =
                     t.prev_token().and_then(|t| syntax::algo::skip_trivia_token(t, Direction::Prev))
-                && ![T![;], T!['}'], T!['{'], T![']']].contains(&prev.kind())
+                && !allowed_prev_kinds.contains(&prev.kind())
             {
                 // This was inferred to be an item position path, but it seems
                 // to be part of some other broken node which leaked into an item
@@ -2024,11 +2044,20 @@ fn is_in_breakable(node: &SyntaxNode) -> Option<(BreakableKind, SyntaxNode)> {
 }
 
 fn is_in_block(node: &SyntaxNode) -> bool {
-    if has_in_newline_expr_first(node) {
+    let in_rightside = ast::NameRef::can_cast(node.kind());
+    let sense_node = node.ancestors().nth(in_rightside.into()).unwrap_or_else(|| node.clone());
+    if has_in_newline_expr_first(node, &sense_node) {
         return true;
     };
-    node.parent()
-        .map(|node| ast::ExprStmt::can_cast(node.kind()) || ast::StmtList::can_cast(node.kind()))
+    sense_node
+        .parent()
+        .map(|node| {
+            ast::ExprStmt::can_cast(node.kind())
+                || ast::StmtList::can_cast(node.kind())
+                // Because `is_in_block` is only called in the context of an expression,
+                // there is no need to consider expanding it into a type or pattern
+                || ast::MacroStmts::can_cast(node.kind())
+        })
         .unwrap_or(false)
 }
 
@@ -2036,16 +2065,21 @@ fn is_in_block(node: &SyntaxNode) -> bool {
 ///
 /// Heuristic:
 ///
-/// If the `PathExpr` is left part of the `Expr` and there is a newline after the `PathExpr`,
-/// it is considered that the `PathExpr` is not part of the `Expr`.
-fn has_in_newline_expr_first(node: &SyntaxNode) -> bool {
-    if ast::PathExpr::can_cast(node.kind())
-        && let Some(NodeOrToken::Token(next)) = node.next_sibling_or_token()
+/// Check if `node` follows a newline and if the ancestors of `sense_node` can be split all the way to `StmtList`
+fn has_in_newline_expr_first(node: &SyntaxNode, sense_node: &SyntaxNode) -> bool {
+    let sense_mode = sense_node != node;
+    let is_splitable = |node: &SyntaxNode| {
+        let range = node.text_range();
+        let sense = sense_node.text_range();
+        range.start() == sense.start() || sense_mode && range.end() == sense.end()
+    };
+    if (ast::PathExpr::can_cast(node.kind()) || sense_mode)
+        && let Some(next) = node.last_token().and_then(|it| it.next_token())
         && next.kind() == SyntaxKind::WHITESPACE
         && next.text().contains('\n')
-        && let Some(stmt_like) = node
+        && let Some(stmt_like) = sense_node
             .ancestors()
-            .take_while(|it| it.text_range().start() == node.text_range().start())
+            .take_while(is_splitable)
             .filter_map(Either::<ast::ExprStmt, ast::Expr>::cast)
             .last()
     {

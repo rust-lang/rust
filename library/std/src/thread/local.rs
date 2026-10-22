@@ -127,7 +127,14 @@ pub struct LocalKey<T: 'static> {
     // trivially devirtualizable by LLVM because the value of `inner` never
     // changes and the constant should be readonly within a crate. This mainly
     // only runs into problems when TLS statics are exported across crates.
-    inner: fn(Option<&mut Option<T>>) -> *const T,
+    //
+    // The argument of the function, `init`, can be used to initialize the key for the current
+    // thread: if it is not yet initialized, and if the argument is `Some(&mut Some(val))`, the
+    // inner `val` should be `take`en out and used as the initial value instead of the default.
+    // Also, in that case `inner` *must not* panic. However, it is okay (but potentially
+    // inefficient) for `inner` to ignore `init` and use a default value as long as that is
+    // guaranteed not to panic.
+    inner: fn(/* init */ Option<&mut Option<T>>) -> *const T,
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]

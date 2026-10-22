@@ -136,6 +136,7 @@ impl<I: Interner, T> Binder<I, T> {
         self.as_ref().map_bound(f)
     }
 
+    #[inline]
     pub fn map_bound<F, U: TypeVisitable<I>>(self, f: F) -> Binder<I, U>
     where
         F: FnOnce(T) -> U,
@@ -152,6 +153,7 @@ impl<I: Interner, T> Binder<I, T> {
     /// There are some uses of `map_bound` which are incredibly hot and trivially
     /// correct. Only use this if this significantly improves the performance of
     /// builds with debug assertions.
+    #[inline]
     pub fn map_bound_no_validate_bound_vars<F, U: TypeVisitable<I>>(self, f: F) -> Binder<I, U>
     where
         F: FnOnce(T) -> U,
@@ -263,10 +265,10 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
                 if debruijn == self.binder_index =>
             {
                 let idx = bound_ty.var().as_usize();
-                if self.bound_vars.len() <= idx {
+                let Some(bound_var) = self.bound_vars.get(idx) else {
                     panic!("Not enough bound vars: {:?} not found in {:?}", t, self.bound_vars);
-                }
-                bound_ty.assert_eq(self.bound_vars.get(idx).unwrap());
+                };
+                bound_ty.assert_eq(bound_var);
             }
             _ => {}
         };
@@ -283,10 +285,10 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
                 if debruijn == ty::BoundVarIndexKind::Bound(self.binder_index) =>
             {
                 let idx = bound_const.var().as_usize();
-                if self.bound_vars.len() <= idx {
+                let Some(bound_var) = self.bound_vars.get(idx) else {
                     panic!("Not enough bound vars: {:?} not found in {:?}", c, self.bound_vars);
-                }
-                bound_const.assert_eq(self.bound_vars.get(idx).unwrap());
+                };
+                bound_const.assert_eq(bound_var);
             }
             _ => {}
         };
@@ -298,10 +300,10 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
         match r.kind() {
             ty::ReBound(index, br) if index == ty::BoundVarIndexKind::Bound(self.binder_index) => {
                 let idx = br.var().as_usize();
-                if self.bound_vars.len() <= idx {
+                let Some(bound_var) = self.bound_vars.get(idx) else {
                     panic!("Not enough bound vars: {:?} not found in {:?}", r, self.bound_vars);
-                }
-                br.assert_eq(self.bound_vars.get(idx).unwrap());
+                };
+                br.assert_eq(bound_var);
             }
 
             _ => (),

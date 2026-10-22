@@ -5,26 +5,37 @@
     ":maintainLockFilesMonthly",
     "helpers:pinGitHubActionDigestsToSemver"
   ],
+  commitMessagePrefix: "deps:",
+  customManagers: [
+    {
+      customType: "regex",
+      managerFilePatterns: [".github/workflows/main.yaml"],
+      matchStrings: ["BENCHMARK_RUSTC:\\s*(?<currentValue>\\S+)"],
+      autoReplaceStringTemplate: "BENCHMARK_RUSTC: {{{newValue}}}",
+      depNameTemplate: "nightly",
+      datasourceTemplate: "rust-version",
+      versioningTemplate: "rust-release-channel",
+    },
+  ],
   packageRules: [
     {
-      matchCategories: [
-        "rust"
-      ],
-      matchJsonata: [
-        "isBreaking != true"
-      ],
+      matchCategories: ["rust"],
+      matchJsonata: ["isBreaking != true"],
       // Disable non-breaking change updates because they
       // are updated periodically with lockfile maintainance.
       enabled: false,
     },
     {
-      matchManagers: [
-        "github-actions"
-      ],
+      matchManagers: ["github-actions"],
       // Every month
       schedule: "* 0 1 * *",
+      commitMessagePrefix: "ci:",
       groupName: "Github Actions",
-    }
+    },
+    {
+      matchManagers: ["custom.regex"],
+      commitMessage: "bench: Update pinned toolchain to {{{newVersion}}}",
+    },
   ],
   // Receive any update that fixes security vulnerabilities.
   // We need this because we disabled "patch" updates for Rust.

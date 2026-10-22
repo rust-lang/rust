@@ -10,7 +10,7 @@ use rustc_hir::def_id::{CRATE_DEF_INDEX, CrateNum, DefId, LOCAL_CRATE};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
-use rustc_middle::ty::layout::{LayoutOf, MaybeResult, TyAndLayout};
+use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, FnSigKind, IntTy, Ty, TyCtxt, UintTy};
 use rustc_span::{Span, Symbol};
 use rustc_structures::CrateType;
@@ -109,6 +109,8 @@ pub fn resolve_path<'tcx>(
 /// Gets the layout of a type at a path.
 #[track_caller]
 pub fn path_ty_layout<'tcx>(cx: &impl LayoutOf<'tcx>, path: &[&str]) -> TyAndLayout<'tcx> {
+    use rustc_middle::ty::layout::MaybeResult;
+
     let ty = resolve_path(cx.tcx(), path, Namespace::TypeNS).ty(cx.tcx(), cx.typing_env());
     cx.layout_of(ty).to_result().ok().unwrap()
 }
@@ -419,9 +421,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             None => MPlaceTy::fake_alloc_zst(this.machine.layouts.unit),
         };
 
+        let with_caller_location = f.def.requires_caller_location(*this.tcx);
+
         // Construct a function pointer type representing the caller perspective.
         let sig = this.tcx.mk_fn_sig(
-            args.iter().map(|a| a.layout.ty),
+            args.iter()
+                .map(|a| a.layout.ty)
+                .chain(with_caller_location.then(|| this.tcx.caller_location_ty())),
             dest.layout.ty,
             // FIXME(splat): Do we need to set splatted here?
             // (Currently this also ignores c_variadic)
@@ -435,7 +441,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             mir,
             caller_fn_abi,
             &args.iter().map(|a| FnArg::Copy(a.clone().into())).collect::<Vec<_>>(),
-            /*with_caller_location*/ false,
+            with_caller_location,
             &dest.into(),
             cont,
         )

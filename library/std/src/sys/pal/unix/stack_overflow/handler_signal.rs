@@ -471,29 +471,18 @@ fn install_main_guard_freebsd(page_size: usize) -> Option<Range<usize>> {
     // the builtin guard page.
     let stackptr = stack_start_aligned(page_size)?;
     let guardaddr = stackptr.addr();
-    // Technically the number of guard pages is tunable and controlled
-    // by the security.bsd.stack_guard_page sysctl.
-    // By default it is 1, checking once is enough since it is
-    // a boot time config value.
-    // FIXME(joboet): this function is only called once, remove the caching.
-    static PAGES: crate::sync::OnceLock<usize> = crate::sync::OnceLock::new();
 
-    let pages = PAGES.get_or_init(|| {
-        let mut guard: usize = 0;
-        let mut size = size_of_val(&guard);
-        let oid = c"security.bsd.stack_guard_page";
+    // The number of guard pages is tunable and controlled by the
+    // security.bsd.stack_guard_page sysctl. By default it is 1,
+    // checking once is enough since it is a boot time config value.
+    let mut guard: usize = 0;
+    let mut size = size_of_val(&guard);
+    let oid = c"security.bsd.stack_guard_page";
+    let r = unsafe {
+        libc::sysctlbyname(oid.as_ptr(), (&raw mut guard).cast(), &raw mut size, ptr::null_mut(), 0)
+    };
+    let pages = if r == 0 { guard } else { 1 };
 
-        let r = unsafe {
-            libc::sysctlbyname(
-                oid.as_ptr(),
-                (&raw mut guard).cast(),
-                &raw mut size,
-                ptr::null_mut(),
-                0,
-            )
-        };
-        if r == 0 { guard } else { 1 }
-    });
     Some(guardaddr..guardaddr + pages * page_size)
 }
 

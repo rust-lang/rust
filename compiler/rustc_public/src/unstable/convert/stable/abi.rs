@@ -10,10 +10,11 @@ use rustc_target::callconv;
 
 use crate::IndexedVal;
 use crate::abi::{
-    AddressSpace, ArgAbi, ArgAttributes, ArgExtension, CallConvention, CastTarget, FieldsShape,
-    FloatLength, FnAbi, IndirectMode, IntegerLength, IntegerType, Layout, LayoutShape,
-    NumScalableVectors, PassMode, Primitive, Reg, RegKind, ReprFlags, ReprOptions, Scalar,
-    TagEncoding, TyAndLayout, Uniform, ValueRepr, VariantFields, VariantsShape, WrappingRange,
+    AddressSpace, ArgAbi, ArgAttributeFlags, ArgAttributes, ArgExtension, CallConvention,
+    CastTarget, FieldsShape, FloatLength, FnAbi, IndirectMode, IntegerLength, IntegerType, Layout,
+    LayoutShape, NumScalableVectors, PassMode, Primitive, Reg, RegKind, ReprFlags, ReprOptions,
+    Scalar, TagEncoding, TyAndLayout, Uniform, ValueRepr, VariantFields, VariantsShape,
+    WrappingRange,
 };
 use crate::compiler_interface::BridgeTys;
 use crate::target::MachineSize as Size;
@@ -188,12 +189,15 @@ impl<'tcx> Stable<'tcx> for callconv::PassMode {
             callconv::PassMode::Cast { pad_i32_count, cast } => {
                 PassMode::Cast { pad_i32_count: *pad_i32_count, cast: cast.stable(tables, cx) }
             }
-            callconv::PassMode::Indirect { attrs, meta_attrs, address_space, mode } => {
-                PassMode::Indirect {
+            callconv::PassMode::Indirect { attrs, address_space, mode } => PassMode::Indirect {
+                attrs: attrs.stable(tables, cx),
+                address_space: address_space.stable(tables, cx),
+                mode: mode.stable(tables, cx),
+            },
+            callconv::PassMode::IndirectUnsized { attrs, meta_attrs } => {
+                PassMode::IndirectUnsized {
                     attrs: attrs.stable(tables, cx),
-                    meta_attrs: meta_attrs.map(|a| a.stable(tables, cx)),
-                    address_space: address_space.stable(tables, cx),
-                    mode: mode.stable(tables, cx),
+                    meta_attrs: meta_attrs.stable(tables, cx),
                 }
             }
         }
@@ -244,6 +248,7 @@ impl<'tcx> Stable<'tcx> for rustc_abi::Reg {
             kind: match self.kind {
                 rustc_abi::RegKind::Integer => RegKind::Integer,
                 rustc_abi::RegKind::Float => RegKind::Float,
+                rustc_abi::RegKind::PpcF128 => RegKind::Float,
                 rustc_abi::RegKind::Vector { .. } => RegKind::Vector,
             },
             size: Size::from_bits(self.size.bits_usize()),
@@ -260,6 +265,18 @@ impl<'tcx> Stable<'tcx> for callconv::ArgAttributes {
         _: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         ArgAttributes {
+            regular: ArgAttributeFlags {
+                captures_none: self.regular.contains(callconv::ArgAttribute::CapturesNone),
+                captures_address: self.regular.contains(callconv::ArgAttribute::CapturesAddress),
+                captures_read_only: self.regular.contains(callconv::ArgAttribute::CapturesReadOnly),
+                no_alias: self.regular.contains(callconv::ArgAttribute::NoAlias),
+                non_null: self.regular.contains(callconv::ArgAttribute::NonNull),
+                read_only: self.regular.contains(callconv::ArgAttribute::ReadOnly),
+                in_reg: self.regular.contains(callconv::ArgAttribute::InReg),
+                no_undef: self.regular.contains(callconv::ArgAttribute::NoUndef),
+                writable: self.regular.contains(callconv::ArgAttribute::Writable),
+                no_free: self.regular.contains(callconv::ArgAttribute::NoFree),
+            },
             arg_ext: match self.arg_ext {
                 callconv::ArgExtension::None => ArgExtension::None,
                 callconv::ArgExtension::Zext => ArgExtension::Zext,
@@ -486,6 +503,7 @@ impl<'tcx> Stable<'tcx> for rustc_abi::Float {
             rustc_abi::Float::F32 => FloatLength::F32,
             rustc_abi::Float::F64 => FloatLength::F64,
             rustc_abi::Float::F128 => FloatLength::F128,
+            rustc_abi::Float::PpcF128 => FloatLength::PpcF128,
         }
     }
 }

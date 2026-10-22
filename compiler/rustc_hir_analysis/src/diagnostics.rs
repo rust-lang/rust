@@ -50,7 +50,7 @@ pub(crate) struct AssocKindMismatch {
     pub expected_because_label: Option<Span>,
     pub assoc_kind: &'static str,
     #[note("the associated {$assoc_kind} is defined here")]
-    pub def_span: Span,
+    pub def_span: MultiSpan,
     #[label("bounds are not allowed on associated constants")]
     pub bound_on_assoc_const_label: Option<Span>,
     #[subdiagnostic]
@@ -1707,6 +1707,16 @@ pub(crate) struct OnlyCurrentTraitsPointerSugg<'a> {
 }
 
 #[derive(Diagnostic)]
+#[diag("failed to inherit delegation {$kind}")]
+pub(crate) struct DelegationInheritanceFailed {
+    #[primary_span]
+    pub span: Span,
+    pub kind: &'static str,
+    #[label("callee defined here")]
+    pub callee_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("{$descr}")]
 pub(crate) struct UnsupportedDelegation<'a> {
     #[primary_span]
@@ -2156,4 +2166,25 @@ pub(crate) struct ParamInTyOfConstParam<'tcx> {
     #[label("the type `{$ty}` must not depend on other generic parameter")]
     pub(crate) span: Span,
     pub(crate) ty: Ty<'tcx>,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "field `{$field}` has a default value that is only checked when a value of `{$ty}` is \
+     constructed"
+)]
+#[help(
+    "structs and enums with type and const parameters only evaluate their default field values \
+     during construction, not eagerly when declared"
+)]
+pub(crate) struct UnevaluatedDefaultFieldValue {
+    pub(crate) field: Symbol,
+    pub(crate) ty: String,
+    #[suggestion(
+        "if this behavior is acceptable, allow the lint and preferably write a test relying on the default value",
+        code = "{padding}#[expect(unevaluated_default_field_value)]\n",
+        applicability = "maybe-incorrect"
+    )]
+    pub(crate) struct_start: Span,
+    pub(crate) padding: String,
 }

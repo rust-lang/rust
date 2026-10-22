@@ -8,17 +8,20 @@ use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Expr, ExprKind, HirId};
+use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_lint_defs::{declare_lint_pass, declare_tool_lint};
 use rustc_middle::ty::{self, ClausePolarity, GenericArgsRef};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
-use rustc_span::{Span, sym};
+use rustc_span::{DUMMY_SP, Span, sym};
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
+use rustc_trait_selection::traits::{Obligation, ObligationCause};
 
 use crate::diagnostics::{
     AttributeKindInFindAttr, BadOptAccessDiag, DefaultHashTypesDiag,
-    ImplicitSysrootCrateImportDiag, LintPassByHand, NonGlobImportTypeIrInherent, QueryInstability,
-    QueryUntracked, RustcMustMatchExhaustivelyNotExhaustive, SpanUseEqCtxtDiag,
-    SymbolInternStringLiteralDiag, TyQualified, TykindDiag, TykindKind, TypeIrDirectUse,
-    TypeIrInherentUsage, TypeIrTraitUsage,
+    ImplicitSysrootCrateImportDiag, LintPassByHand, MissingGenericTypeVisitableDeriveDiag,
+    NonGlobImportTypeIrInherent, QueryInstability, QueryUntracked,
+    RustcMustMatchExhaustivelyNotExhaustive, SymbolInternStringLiteralDiag, TyQualified,
+    TykindDiag, TykindKind, TypeIrDirectUse, TypeIrInherentUsage, TypeIrTraitUsage,
 };
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 
@@ -568,41 +571,6 @@ impl LateLintPass<'_> for BadOptAccess {
 }
 
 declare_tool_lint! {
-    pub rustc::SPAN_USE_EQ_CTXT,
-    Allow,
-    "forbid uses of `==` with `Span::ctxt`, suggest `Span::eq_ctxt` instead",
-    report_in_external_macro: true
-}
-
-declare_lint_pass!(SpanUseEqCtxt => [SPAN_USE_EQ_CTXT]);
-
-impl<'tcx> LateLintPass<'tcx> for SpanUseEqCtxt {
-    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &hir::Expr<'_>) {
-        if let hir::ExprKind::Binary(
-            hir::BinOp { node: hir::BinOpKind::Eq | hir::BinOpKind::Ne, .. },
-            lhs,
-            rhs,
-        ) = expr.kind
-        {
-            if is_span_ctxt_call(cx, lhs) && is_span_ctxt_call(cx, rhs) {
-                cx.emit_span_lint(SPAN_USE_EQ_CTXT, expr.span, SpanUseEqCtxtDiag);
-            }
-        }
-    }
-}
-
-fn is_span_ctxt_call(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
-    match &expr.kind {
-        hir::ExprKind::MethodCall(..) => cx
-            .typeck_results()
-            .type_dependent_def_id(expr.hir_id)
-            .is_some_and(|call_did| cx.tcx.is_diagnostic_item(sym::SpanCtxt, call_did)),
-
-        _ => false,
-    }
-}
-
-declare_tool_lint! {
     /// The `symbol_intern_string_literal` lint detects `Symbol::intern` or `Ident::from_str_and_span` being called on a string literal
     pub rustc::SYMBOL_INTERN_STRING_LITERAL,
     Allow,
@@ -870,6 +838,66 @@ impl<'tcx> LateLintPass<'tcx> for RustcMustMatchExhaustively {
                 }
             }
             _ => {}
+        }
+    }
+}
+
+declare_tool_lint! {
+    /// The `missing_generic_type_visitable_derive` lint detects types implementing `TypeVisitable`
+    /// but not deriving `GenericTypeVisitable`.
+    ///
+    /// `GenericTypeVisitable` is the analog of `TypeVisitable` used by rust-analyzer, and needs to
+    /// be implemented whenever `TypeVisitable` is. See [`rustc_type_ir::generic_visit`] for more
+    /// information.
+    pub rustc::MISSING_GENERIC_TYPE_VISITABLE_DERIVE,
+    // This lint is meant to be manually enabled in selected crates (currently only `rustc_type_ir`)
+    Allow,
+    "Forbid implementing `TypeVisitable` without deriving `GenericTypeVisitable`",
+    report_in_external_macro: true
+}
+
+declare_lint_pass!(MissingGenericTypeVisitableDerive => [MISSING_GENERIC_TYPE_VISITABLE_DERIVE]);
+
+impl<'tcx> LateLintPass<'tcx> for MissingGenericTypeVisitableDerive {
+    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
+        // lint ADTs except unions, as neither trait can be implemented on the latter
+        if matches!(item.kind, hir::ItemKind::Struct(..) | hir::ItemKind::Enum(..))
+            && let Some(regular_id) = cx.tcx.get_diagnostic_item(sym::TypeVisitable)
+            && let Some(generic_id) = cx.tcx.get_diagnostic_item(sym::GenericTypeVisitable)
+            && let (infcx, param_env) = cx.tcx.infer_ctxt().build_with_typing_env(cx.typing_env())
+            && let self_ty = {
+                let self_id = item.owner_id.to_def_id();
+                let args = infcx.fresh_args_for_item(DUMMY_SP, self_id);
+                cx.tcx.type_of(self_id).instantiate(cx.tcx, args).skip_norm_wip()
+            }
+            // check whether `Self: TypeVisitable<I>` holds for some `I`..
+            && {
+                let predicate =
+                    ty::TraitRef::new(cx.tcx, regular_id, [self_ty, infcx.next_ty_var(DUMMY_SP)]);
+                let obligation =
+                    Obligation::new(cx.tcx, ObligationCause::dummy(), param_env, predicate);
+
+                // NOTE: I initially went with `predicate_must_hold_modulo_regions` (which is what's
+                // used by Clippy's [`implements_trait`](https://doc.rust-lang.org/nightly/nightly-rustc/clippy_utils/ty/fn.implements_trait.html),
+                // but that returned `false` more often than I'd hoped, and so I went with the
+                // next-most strict function.
+                infcx.predicate_may_hold(&obligation)
+            }
+            // ..while `Self: GenericTypeVisitable<V>` doesn't
+            && {
+                let predicate =
+                    ty::TraitRef::new(cx.tcx, generic_id, [self_ty, infcx.next_ty_var(DUMMY_SP)]);
+                let obligation =
+                    Obligation::new(cx.tcx, ObligationCause::dummy(), param_env, predicate);
+
+                !infcx.predicate_may_hold(&obligation)
+            }
+        {
+            cx.emit_span_lint(
+                MISSING_GENERIC_TYPE_VISITABLE_DERIVE,
+                item.span,
+                MissingGenericTypeVisitableDeriveDiag,
+            );
         }
     }
 }

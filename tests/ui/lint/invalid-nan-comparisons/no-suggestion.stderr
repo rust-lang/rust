@@ -1,0 +1,50 @@
+warning: incorrect NaN comparison, NaN cannot be directly compared to itself
+  --> $DIR/no-suggestion.rs:7:13
+   |
+LL |       let _ = 3.3 == {
+   |  _____________^
+LL | |         effects += 1;
+LL | |         f64::NAN
+LL | |     };
+   | |_____^
+   |
+   = help: use the `is_nan` method instead
+   = note: `#[warn(invalid_nan_comparisons)]` on by default
+
+warning: incorrect NaN comparison, NaN cannot be directly compared to itself
+  --> $DIR/no-suggestion.rs:15:13
+   |
+LL |     let _ = 3.3 == scoped_nan!();
+   |             ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use the `is_nan` method instead
+
+warning: incorrect NaN comparison, NaN cannot be directly compared to itself
+  --> $DIR/no-suggestion.rs:19:13
+   |
+LL |     let _ = 3.3 == nan16!();
+   |             ^^^^^^^^^^^^^^^
+   |
+   = help: use the `is_nan` method instead
+
+warning: incorrect NaN comparison, NaN cannot be directly compared to itself
+  --> $DIR/no-suggestion.rs:22:13
+   |
+LL |     let _ = 3.3 != nan128!();
+   |             ^^^^^^^^^^^^^^^^
+   |
+   = help: use the `is_nan` method instead
+
+warning: incorrect NaN comparison, NaN cannot be directly compared to itself
+  --> $DIR/no-suggestion.rs:25:36
+   |
+LL |     macro_rules! compare { () => { 3.3 != f64::NAN }; }
+   |                                    ^^^^^^^^^^^^^^^
+LL |
+LL |     let _ = compare!();
+   |             ---------- in this macro invocation
+   |
+   = help: use the `is_nan` method instead
+
+warning: 5 warnings emitted
+

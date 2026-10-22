@@ -112,23 +112,24 @@ fn comply(content: &str) -> String {
         if in_code_block || ignore(&line) {
             continue;
         }
-        if REGEX_SPLIT.is_match(&line) {
-            let indent = if let Some(regex_match) = REGEX_LIST_ENTRY.find(&line) {
-                regex_match.len()
-            } else {
-                line.find(|ch: char| !ch.is_whitespace()).unwrap()
-            };
-            let mut newly_split_lines = line.split_inclusive(&*REGEX_SPLIT);
-            let first = newly_split_lines.next().unwrap().trim_end().to_owned();
-            let mut remaining: Vec<_> = newly_split_lines
-                .map(|portion| format!("{:indent$}{}", "", portion.trim_end()))
-                .collect();
-            let mut new_lines = Vec::new();
-            new_lines.push(first);
-            new_lines.append(&mut remaining);
-            new_content.splice(new_n..=new_n, new_lines.clone());
-            new_n += new_lines.len() - 1;
+        if !REGEX_SPLIT.is_match(&line) {
+            continue;
         }
+        let indent = if let Some(regex_match) = REGEX_LIST_ENTRY.find(&line) {
+            regex_match.len()
+        } else {
+            line.find(|ch: char| !ch.is_whitespace()).unwrap()
+        };
+        let mut newly_split_lines = line.split_inclusive(&*REGEX_SPLIT);
+        let first = newly_split_lines.next().unwrap().trim_end().to_owned();
+        let mut remaining: Vec<_> = newly_split_lines
+            .map(|portion| format!("{:indent$}{}", "", portion.trim_end()))
+            .collect();
+        let mut new_lines = Vec::new();
+        new_lines.push(first);
+        new_lines.append(&mut remaining);
+        new_content.splice(new_n..=new_n, new_lines.clone());
+        new_n += new_lines.len() - 1;
     }
     new_content.join("\n") + "\n"
 }
@@ -173,6 +174,15 @@ fn reformat(content: &str, limit: usize) -> String {
         if ignore(line) || REGEX_SPLIT.is_match(line) {
             continue;
         }
+        const SEP: &str = ", ";
+        if line.contains(SEP) && line.len() > limit {
+            let indent = line.find(|ch: char| !ch.is_whitespace()).unwrap();
+            let (before_sep, after_sep) = line.rsplit_once(SEP).unwrap();
+            new_content[new_n] = format!("{before_sep}{}", SEP.trim_end());
+            new_n += 1;
+            new_content.insert(new_n, format!("{:indent$}{after_sep}", ""));
+            continue;
+        }
         let Some(next_line) = content.get(n + 1) else {
             continue;
         };
@@ -191,7 +201,6 @@ fn reformat(content: &str, limit: usize) -> String {
             skip_next = true;
             continue;
         }
-        const SEP: &str = ", ";
         let indent = next_line.find(|ch: char| !ch.is_whitespace()).unwrap();
         if next_line.contains(SEP) {
             let (before_sep, after_sep) = next_line.split_once(SEP).unwrap();
@@ -326,6 +335,8 @@ comma (filler), of next line
   split on
   comma (filler), of next line
 
+ this overlong, sentence, should be split in two
+
 [a target]: https://example.com
 [another target]: https://example.com
 ";
@@ -368,6 +379,9 @@ of next line
 
   split on comma (filler),
   of next line
+
+ this overlong, sentence,
+ should be split in two
 
 [a target]: https://example.com
 [another target]: https://example.com

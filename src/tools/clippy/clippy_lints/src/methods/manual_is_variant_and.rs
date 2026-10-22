@@ -314,8 +314,8 @@ pub(super) fn check_is_some_is_none<'tcx>(
         .expr_ty_adjusted(recv)
         .peel_refs()
         .is_diag_item(cx, sym::Option)
-        && (is_some || msrv.meets(cx, msrvs::IS_NONE_OR))
         && let Ok(map_func) = MapFunc::try_from(arg)
+        && (is_some || msrv.meets(cx, msrvs::IS_NONE_OR))
     {
         let method = if is_some { "is_some_and" } else { "is_none_or" };
         let lint_span = recv.span.to(call_span);

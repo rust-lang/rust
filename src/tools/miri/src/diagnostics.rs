@@ -5,7 +5,7 @@ use std::sync::Mutex;
 use rustc_abi::{Align, Size};
 use rustc_data_structures::fx::{FxBuildHasher, FxHashSet};
 use rustc_errors::{Diag, Level};
-use rustc_span::{DUMMY_SP, Span, SpanData, Symbol};
+use rustc_span::{DUMMY_SP, Span, Symbol};
 
 use crate::borrow_tracker::stacked_borrows::diagnostics::TagHistory;
 use crate::borrow_tracker::tree_borrows::diagnostics as tree_diagnostics;
@@ -41,14 +41,14 @@ pub enum TerminationInfo {
     LocalDeadlock,
     MultipleSymbolDefinitions {
         link_name: Symbol,
-        first: SpanData,
+        first: Span,
         first_crate: Symbol,
-        second: SpanData,
+        second: Span,
         second_crate: Symbol,
     },
     SymbolShimClashing {
         link_name: Symbol,
-        span: SpanData,
+        span: Span,
     },
     DataRace {
         involves_non_atomic: bool,
@@ -64,7 +64,7 @@ pub enum TerminationInfo {
 pub struct RacingOp {
     pub action: String,
     pub thread_info: String,
-    pub span: SpanData,
+    pub span: Span,
 }
 
 impl fmt::Display for TerminationInfo {
@@ -554,8 +554,8 @@ fn report_msg<'tcx>(
     diag_level: DiagLevel,
     title: String,
     span_msg: Vec<String>,
-    notes: Vec<(Option<SpanData>, String)>,
-    helps: Vec<(Option<SpanData>, String)>,
+    notes: Vec<(Option<Span>, String)>,
+    helps: Vec<(Option<Span>, String)>,
     stacktrace: &[FrameInfo<'tcx>],
     thread: Option<ThreadId>,
     machine: &MiriMachine<'tcx>,
@@ -581,16 +581,16 @@ fn report_msg<'tcx>(
     }
 
     // Show note and help messages.
-    for (span_data, note) in notes {
-        if let Some(span_data) = span_data {
-            err.span_note(span_data.span(), note);
+    for (span, note) in notes {
+        if let Some(span) = span {
+            err.span_note(span, note);
         } else {
             err.note(note);
         }
     }
-    for (span_data, help) in helps {
-        if let Some(span_data) = span_data {
-            err.span_help(span_data.span(), help);
+    for (span, help) in helps {
+        if let Some(span) = span {
+            err.span_help(span, help);
         } else {
             err.help(help);
         }

@@ -85,6 +85,7 @@ pub mod hardwired {
             NON_EXHAUSTIVE_OMITTED_PATTERNS,
             OUT_OF_SCOPE_MACRO_CALLS,
             OVERLAPPING_RANGE_ENDPOINTS,
+            PARTIAL_STACK_PROTECTOR,
             PATTERNS_IN_FNS_WITHOUT_BODY,
             PRIVATE_BOUNDS,
             PRIVATE_INTERFACES,
@@ -124,6 +125,7 @@ pub mod hardwired {
             UNCONDITIONAL_PANIC,
             UNCONDITIONAL_RECURSION,
             UNCOVERED_PARAM_IN_PROJECTION,
+            UNEVALUATED_DEFAULT_FIELD_VALUE,
             UNEXPECTED_CFGS,
             UNFULFILLED_LINT_EXPECTATIONS,
             UNINHABITED_STATIC,
@@ -3024,7 +3026,7 @@ declare_lint! {
     "trailing semicolon in macro body used as expression",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #79813),
-        report_in_deps: true,
+        report_in_deps: false,
     };
 }
 
@@ -5921,4 +5923,99 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #163263),
     };
+}
+
+declare_lint! {
+    /// The `partial_stack_protector` lint detects uses of the `-Z stack-protector`
+    /// compile flag to build a program that contains crates that are not protected
+    /// by stack-protector, or protected by a weaker level of it than the crate
+    /// you are compiling.
+    ///
+    /// ### Example
+    ///
+    /// ```text
+    /// rustc -Z stack-protector=all
+    /// ```
+    ///
+    /// ```rust,ignore (needs command line option)
+    /// fn main() {}
+    /// ```
+    ///
+    /// This will produce:
+    ///
+    /// ```text
+    /// warning: your program uses the crate `std`, that is not compiled with `stack-protector=all` enabled
+    ///  |
+    ///  = note: recompile `std` with `stack-protector=all` enabled, or use `-Z allow-partial-mitigations=stack-protector` to allow creating an artifact that has the mitigation partially enabled
+    ///  = help: it is possible to disable `-Z allow-partial-mitigations=stack-protector` via `-Z deny-partial-mitigations=stack-protector`
+    ///  = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    ///  = note: for more information, see issue #154613 <https://github.com/rust-lang/rust/issues/154613>
+    ///  = note: `#[warn(partial_stack_protector)]` (part of `#[warn(future_incompatible)]`) on by default
+    /// ```
+    ///
+    /// ### Explanation
+    ///
+    /// Using the `-Z stack-protector` flag on only part of a compiled object
+    /// will lead to a compiled program that is not fully protected by stack-protector,
+    /// which is a security risk. This was previously accepted and used in practice,
+    /// and is now being phased out. This is a [future-incompatible] lint to transition this
+    /// to a hard error in the future. See [issue #154613] for more details.
+    ///
+    /// If you intentionally want to use the `-Z stack-protector` flag for only a part
+    /// of your compiled program, you can allow it in a future-compatible way
+    /// using the `-Z allow-partial-mitigations=stack-protector` flag, which must be
+    /// passed *after* the `-Z stack-protector` flag in the command line, for example:
+    ///
+    /// ```text
+    /// rustc -Z stack-protector=all -Z allow-partial-mitigations=stack-protector
+    /// ```
+    ///
+    /// The order dependency is by design, see the [RFC 3855] for details.
+    ///
+    /// [issue #154613]: https://github.com/rust-lang/rust/issues/154613
+    /// [RFC 3855]: https://github.com/rust-lang/rfcs/blob/master/text/3855-mitigation-enforcement.md
+    /// [future-incompatible]: ../index.md#future-incompatible-lints
+    pub PARTIAL_STACK_PROTECTOR,
+    Warn,
+    "partial use of stack-protector that was previously accepted and used in practice",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: fcw!(FutureReleaseError #154613),
+        report_in_deps: false,
+    };
+    crate_level_only
+}
+
+declare_lint! {
+    /// The `unevaluated_default_field_value` lint detects default field values that don't get
+    /// evaluated at the definition site because the corresponding struct or enum has type or const
+    /// parameters, meaning they only get evaluated when the struct or enum gets constructed using
+    /// that default (post-monormophization).
+    ///
+    /// ### Example
+    ///
+    /// ```rust,no_run
+    /// #![feature(default_field_values)]
+    ///
+    /// struct Struct<const T: u8> {
+    ///     field1: u8 = 100 + T, // none of these values will be checked until `Struct` is
+    ///     field2: u8 = 100,     // constructed, even if they don't refer to the cont param
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Const evaluation requires all values to be known. In the case of default field values, they
+    /// will get evaluated eagerly, but if there are any type or const parameters, the evaluation of
+    /// the default will only occur when materializing a value of its owning struct *and* leaving
+    /// the field with a default value unspecified. For the example above, if you wrote
+    /// `let _: Struct<180> = Struct { .. };`, you would get a const evaluation compile error.
+    ///
+    /// This inconsistency can be confusing, and surprising, because the fields *are* sometimes
+    /// evaluated eagerly.
+    pub UNEVALUATED_DEFAULT_FIELD_VALUE,
+    Warn,
+    r#"detects default field values on types that have const parameters"#,
+    @feature_gate = default_field_values;
 }

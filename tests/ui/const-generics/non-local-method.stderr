@@ -1,0 +1,25 @@
+error[E0053]: associated function `method` has an incompatible type for const generic parameter
+  --> $DIR/non-local-method.rs:12:24
+   |
+LL |     fn method<const N: u16>() {
+   |                        ^^^ expected `i32`, found `u16`
+
+error[E0271]: expected `impl Future<Output = [u16; L]>` to be a future that resolves to `[u8; L]`, but it resolves to `[u16; L]`
+  --> $DIR/non-local-method.rs:19:49
+   |
+LL |     async fn read<const L: usize>(&mut self) -> [u16; L] {
+   |                                                 ^^^^^^^^ expected `[u8; L]`, found `[u16; L]`
+   |
+   = note: expected array `[u8; L]`
+              found array `[u16; L]`
+note: required by a bound in `R::read::{anon_assoc#0}`
+  --> $DIR/auxiliary/non_local.rs:7:55
+   |
+LL | pub trait R {
+LL |     fn read<const L: usize>(&mut self) -> impl Future<Output = [u8; L]>;
+   |                                                       ^^^^^^^^^^^^^^^^ required by this bound in `R::read::{anon_assoc#0}`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0053, E0271.
+For more information about an error, try `rustc --explain E0053`.

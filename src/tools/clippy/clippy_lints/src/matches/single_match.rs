@@ -11,7 +11,6 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{Visitor, walk_pat};
 use rustc_hir::{Arm, Expr, ExprKind, HirId, Node, Pat, PatExpr, PatExprKind, PatKind, QPath, StmtKind};
 use rustc_lint::LateContext;
-use rustc_middle::ty::consts::ConstExt as _;
 use rustc_middle::ty::{self, AdtDef, TyCtxt, TypeckResults, VariantDef};
 use rustc_span::Span;
 

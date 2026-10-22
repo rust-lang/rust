@@ -1,5 +1,5 @@
 //@ needs-asm-support
-//@ reference: asm.operand-type.supported-operands.const
+//@ reference: asm.operand-type.supported-operands-const
 
 use std::arch::global_asm;
 

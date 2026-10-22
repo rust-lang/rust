@@ -114,7 +114,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // Network sockets
             "__xnet_socket" | "__xnet7_socket" => {
-                let [domain, type_, protocol] = this.check_shim_sig(
+                let [domain, type_, protocol] = &this.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, i32, i32) -> i32),
                     (link_name, abi, args),
                 )?;
@@ -122,7 +122,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(result, dest)?;
             }
             "__xnet_bind" => {
-                let [socket, address, address_len] = this.check_shim_sig(
+                let [socket, address, address_len] = &this.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, *_, libc::socklen_t) -> i32),
                     (link_name, abi, args),
                 )?;
@@ -130,14 +130,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(result, dest)?;
             }
             "__xnet_connect" => {
-                let [socket, address, address_len] = this.check_shim_sig(
+                let [socket, address, address_len] = &this.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, *_, libc::socklen_t) -> i32),
                     (link_name, abi, args),
                 )?;
                 this.connect(socket, address, address_len, dest)?;
             }
             "__xnet_getaddrinfo" => {
-                let [node, service, hints, res] = this.check_shim_sig(
+                let [node, service, hints, res] = &this.check_shim_sig(
                     shim_sig!(extern "C" fn(*_, *_, *_, *_) -> i32),
                     (link_name, abi, args),
                 )?;
@@ -145,7 +145,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(result, dest)?;
             }
             "__xnet_getsockopt" => {
-                let [socket, level, option_name, option_value, option_len] = this.check_shim_sig(
+                let [socket, level, option_name, option_value, option_len] = &this.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, i32, i32, *_, *_) -> i32),
                     (link_name, abi, args),
                 )?;

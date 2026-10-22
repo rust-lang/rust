@@ -19,15 +19,17 @@ use rustc_infer::traits::solve::{
 };
 use rustc_lint_defs::builtin::RECURSION_DEPTH_EXCEEDING_LIMIT;
 use rustc_middle::traits::query::NoSolution;
-use rustc_middle::traits::solve::{Certainty, MaybeInfo};
+use rustc_middle::traits::solve::MaybeInfo;
 use rustc_middle::ty::print::{FmtPrinter, Print};
+use rustc_middle::ty::transmute::Answer;
 use rustc_middle::ty::{
-    self, CanonicalizerState, MayBeErased, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeSuperVisitable,
-    TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
+    self, CanonicalizerState, MayBeErased, Region, Ty, TyCtxt, TypeFlags, TypeFoldable,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
 };
 use rustc_next_trait_solver::solve::{GoalStalledOn, GoalStalledOnOpaques, TyOrConstInferVar};
 use rustc_span::{DUMMY_SP, Span};
 use rustc_structures::Limit;
+use rustc_transmute::TransmuteTypeEnv;
 use thin_vec::{ThinVec, thin_vec};
 
 use super::inspect::InferCtxtProofTreeExt;
@@ -215,11 +217,16 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                     return Outcome::NoFastPath;
                 }
 
+                // We use `VisibleForLeakCheck::Yes` for `RegionOutlives` goals without
+                // the fast path. However, we always change region constraints from nested
+                // goals to `VisibleForLeakCheck::No`, so to be consistent with this
+                // behavior as we avoid the nested goal boundary, we have to manually
+                // set the flag.
                 self.0.sub_regions(
                     SubregionOrigin::RelateRegionParamBound(span, None),
                     outlives.1,
                     outlives.0,
-                    ty::VisibleForLeakCheck::Yes,
+                    ty::VisibleForLeakCheck::No,
                 );
                 Outcome::TriviallyHolds
             }
@@ -486,20 +493,10 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         src: Ty<'tcx>,
         dst: Ty<'tcx>,
         assume: ty::Const<'tcx>,
-    ) -> Result<Certainty, NoSolution> {
-        // Erase regions because we compute layouts in `rustc_transmute`,
-        // which will ICE for region vars.
-        let (dst, src) = self.tcx.erase_and_anonymize_regions((dst, src));
-
-        let Some(assume) = rustc_transmute::Assume::from_const(self.tcx, assume) else {
-            return Err(NoSolution);
-        };
-
-        // FIXME(transmutability): This really should be returning nested goals for `Answer::If*`
-        match rustc_transmute::TransmuteTypeEnv::new(self.0.tcx).is_transmutable(src, dst, assume) {
-            rustc_transmute::Answer::Yes => Ok(Certainty::Yes),
-            rustc_transmute::Answer::No(_) | rustc_transmute::Answer::If(_) => Err(NoSolution),
-        }
+    ) -> Result<Answer<Region<'tcx>, Ty<'tcx>>, NoSolution> {
+        rustc_transmute::Assume::from_const(self.tcx, assume)
+            .map(|assume| TransmuteTypeEnv::new(self.0.tcx).is_transmutable(src, dst, assume))
+            .ok_or(NoSolution)
     }
 
     fn obtain_canonicalizer_state(&self) -> CanonicalizerState<Self::Interner> {
@@ -515,27 +512,24 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
 
     fn emit_next_solver_overflow_fcw(&self, goal: Goal<'tcx, ty::Predicate<'tcx>>, span: Span) {
         let tcx = self.tcx;
-        let goal = self.deeply_resolve_ignoring_regions(goal);
-        let mut visitor = OverflowedGoalChain {
-            span,
-            predicates: vec![],
-            recursion_limit: usize::min(16, tcx.recursion_limit().0),
-        };
-
-        // HACK: avoid computing goal chains for dependencies by relying on the fact that
-        // `cargo` passes `lint_cap=allow` to deps. This should mitigate some of the perf/rss
-        // regression when compiling crates whose deps trigger a large number of these FCWs.
-        if !matches!(tcx.sess.opts.lint_cap, Some(rustc_lint_defs::Level::Allow)) {
-            let _ = self.with_disabled_next_solver_overflow_fcw(|| {
-                self.visit_proof_tree(goal, &mut visitor)
-            });
-        }
-
         tcx.emit_node_span_lint(
             RECURSION_DEPTH_EXCEEDING_LIMIT,
             CRATE_HIR_ID,
             span,
             rustc_errors::DiagDecorator(|diag| {
+                // We do this in the decorator as that avoids the work
+                // if we don't actually emit the lint.
+                let goal = self.deeply_resolve_ignoring_regions(goal);
+                let mut visitor = OverflowedGoalChain {
+                    span,
+                    predicates: vec![],
+                    recursion_limit: usize::min(16, tcx.recursion_limit().0),
+                };
+
+                let _ = self.with_disabled_next_solver_overflow_fcw(|| {
+                    self.visit_proof_tree(goal, &mut visitor)
+                });
+
                 // FIXME: share this with overflow error in fulfillment instead of duplicating.
                 let pred_str = |pred: ty::Predicate<'tcx>| {
                     let s = pred.to_string();

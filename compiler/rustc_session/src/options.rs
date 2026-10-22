@@ -2251,6 +2251,8 @@ options! {
         "version of DWARF debug information to emit (default: 2 or 4, depending on platform)"),
     embed_bitcode: bool = (true, parse_bool, [TRACKED],
         "emit bitcode in rlibs (default: yes)"),
+    embed_metadata: Option<bool> = (None, parse_opt_bool, [TRACKED],
+        "embed metadata in rlibs and dylibs (default: yes)"),
     extra_filename: String = (String::new(), parse_string, [UNTRACKED],
         "extra data to put in each output filename"),
     force_frame_pointers: FramePointer = (FramePointer::MayOmit, parse_frame_pointer, [TRACKED],
@@ -2514,7 +2516,8 @@ options! {
         them only if an error has not been emitted"),
     ehcont_guard: bool = (false, parse_bool, [TRACKED],
         "generate Windows EHCont Guard tables"),
-    embed_metadata: bool = (true, parse_bool, [TRACKED],
+    // FIXME(kobzol): remove in 2027
+    embed_metadata: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "embed metadata in rlibs and dylibs (default: yes)"),
     embed_source: bool = (false, parse_bool, [TRACKED],
         "embed source text in DWARF debug sections (default: no)"),
@@ -2687,7 +2690,7 @@ options! {
         "include extra comments in mir pretty printing, like line numbers and statement indices, \
          details about types, etc. (boolean for all passes, 'nll' to enable in NLL MIR only, default: 'nll')"),
     mir_move_elimination: bool = (false, parse_bool, [TRACKED],
-        "enable the experimental MIR move elimination pass (default: no)"),
+        "enable the experimental MIR semantics for the move elimination optimization (default: no)"),
     mir_opt_bisect_limit: Option<usize> = (None, parse_opt_number, [TRACKED],
         "limit the number of MIR optimization pass executions (global across all bodies). \
         Pass executions after this limit are skipped and reported. (default: no limit)"),
@@ -2823,7 +2826,7 @@ options! {
         \"C\", \"cdecl\", and \"stdcall\" fn.\
         It is UNSOUND to link together crates that use different values for this flag!"),
     relax_elf_relocations: Option<bool> = (None, parse_opt_bool, [TRACKED],
-        "whether ELF relocations can be relaxed"),
+        "whether ELF relocations can be relaxed (x86 only)"),
     remap_cwd_prefix: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED],
         "remap paths under the current working directory to this path prefix"),
     remark_dir: Option<PathBuf> = (None, parse_opt_pathbuf, [UNTRACKED],

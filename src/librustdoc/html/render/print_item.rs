@@ -960,11 +960,17 @@ fn item_trait(cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) -> impl fmt:
             )?;
 
             if let Some(list) = must_implement_one_of_functions.as_deref() {
-                write!(
-                    w,
-                    "<div class=\"stab must_implement\">At least one of the `{}` methods is required.</div>",
-                    fmt::from_fn(|f| list.iter().joined("`, `", f)),
+                w.write_str(
+                    "<span class=\"item-info\">\
+                         <div class=\"stab must_implement\">At least one of the ",
                 )?;
+                for (pos, method) in list.iter().enumerate() {
+                    if pos > 0 {
+                        w.write_str(", ")?;
+                    }
+                    write!(w, "<a href=\"#method.{method}\"><code>{method}</code></a>")?;
+                }
+                w.write_str(" methods is required.</div></span>")?;
             }
 
             for m in required_methods {

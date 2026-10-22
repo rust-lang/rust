@@ -1,6 +1,6 @@
 //@ check-pass
 //@ proc-macro: expect-modules.rs
-//@ reference: macro.invocation.attr.mod
+//@ reference: macro.proc.attribute.outline-mod
 
 // Verifies how module items are represented in proc macro input.
 

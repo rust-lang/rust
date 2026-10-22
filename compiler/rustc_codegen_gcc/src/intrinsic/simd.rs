@@ -15,8 +15,7 @@ use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, BuilderMethods, LayoutTy
 #[cfg(feature = "master")]
 use rustc_hir as hir;
 use rustc_middle::mir::BinOp;
-use rustc_middle::ty::consts::ConstExt;
-use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
+use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv as _, LayoutOf};
 use rustc_middle::ty::{self, Ty};
 use rustc_span::{ErrorGuaranteed, Span, Symbol, span_bug, sym};
 
@@ -540,7 +539,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         match *in_elem.kind() {
             ty::RawPtr(p_ty, _) => {
                 let metadata = p_ty.ptr_metadata_ty(bx.tcx, |ty| {
-                    bx.tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), ty)
+                    bx.tcx.normalize_erasing_regions(bx.typing_env(), ty)
                 });
                 require!(
                     metadata.is_unit(),
@@ -554,7 +553,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         match *out_elem.kind() {
             ty::RawPtr(p_ty, _) => {
                 let metadata = p_ty.ptr_metadata_ty(bx.tcx, |ty| {
-                    bx.tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), ty)
+                    bx.tcx.normalize_erasing_regions(bx.typing_env(), ty)
                 });
                 require!(
                     metadata.is_unit(),

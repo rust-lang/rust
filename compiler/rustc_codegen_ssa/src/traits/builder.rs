@@ -3,7 +3,7 @@ use std::ops::Deref;
 
 use rustc_abi::{Align, Scalar, Size, WrappingRange};
 use rustc_ast::expand::typetree::{FncTree, TypeTree};
-use rustc_attr_ir::AttributeKind;
+use rustc_attr_ir::UnrollAttr;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::mir;
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
@@ -94,7 +94,7 @@ pub trait BuilderMethods<'a, 'tcx>:
     fn ret_void(&mut self);
     fn ret(&mut self, v: Self::Value);
     fn br(&mut self, dest: Self::BasicBlock);
-    fn br_with_attrs(&mut self, dest: Self::BasicBlock, _loop_hint_attrs: &[AttributeKind]) {
+    fn br_with_attrs(&mut self, dest: Self::BasicBlock, _loop_hint_attrs: &[UnrollAttr]) {
         self.br(dest)
     }
     fn cond_br(
@@ -539,12 +539,15 @@ pub trait BuilderMethods<'a, 'tcx>:
             let tt = tt.add_indirection();
             let fnc_tree = FncTree { args: vec![tt.clone(), tt], ret: TypeTree::new() };
             let bytes = self.const_usize(layout.size.bytes());
-            let bytes = if layout.peel_transparent_wrappers(self).ty.is_scalable_vector() {
-                let vscale = self.vscale(self.type_i64());
-                self.mul(vscale, bytes)
-            } else {
-                bytes
-            };
+            let bytes =
+                // FIXME(rustc_scalable_vector/stdarch_aarch64_sve): Scalable vectors aren't
+                // actually sized, but we pretend they are. Here we have to hack around that.
+                if layout.peel_transparent_wrappers_from_non_1zst(self).ty.is_scalable_vector() {
+                    let vscale = self.vscale(self.type_i64());
+                    self.mul(vscale, bytes)
+                } else {
+                    bytes
+                };
             self.memcpy(dst.llval, dst.align, src.llval, src.align, bytes, flags, Some(fnc_tree));
         }
     }

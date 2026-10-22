@@ -17,7 +17,7 @@ use rustc_hir_pretty::PpAnn;
 use rustc_metadata::rendered_const;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::def_id::ModId;
-use rustc_span::{Pos, Symbol, bug, kw, sym};
+use rustc_span::{Pos, RemapPathScopeComponents, Symbol, bug, kw, sym};
 use rustdoc_json_types::*;
 
 use crate::clean::{self, ItemId};
@@ -191,17 +191,14 @@ impl FromClean<clean::Span> for Option<Span> {
     fn from_clean(span: &clean::Span, renderer: &JsonRenderer<'_>) -> Self {
         match span.filename(renderer.sess()) {
             rustc_span::FileName::Real(name) => {
-                if let Some(local_path) = name.into_local_path() {
-                    let hi = span.hi(renderer.sess());
-                    let lo = span.lo(renderer.sess());
-                    Some(Span {
-                        filename: local_path,
-                        begin: (lo.line, lo.col.to_usize() + 1),
-                        end: (hi.line, hi.col.to_usize() + 1),
-                    })
-                } else {
-                    None
-                }
+                let filename = name.path(RemapPathScopeComponents::DOCUMENTATION);
+                let hi = span.hi(renderer.sess());
+                let lo = span.lo(renderer.sess());
+                Some(Span {
+                    filename: filename.to_path_buf(),
+                    begin: (lo.line, lo.col.to_usize() + 1),
+                    end: (hi.line, hi.col.to_usize() + 1),
+                })
             }
             _ => None,
         }
@@ -1172,7 +1169,7 @@ fn maybe_from_hir_attr(
                 ret.push(Attribute::Other(format!("#[doc(alias = {:?})]", alias.as_str())));
             }
             toggle_attr(&mut ret, "hidden", hidden);
-            if let Some(inline) = inline.first() {
+            if let Some(inline) = inline {
                 ret.push(Attribute::Other(format!(
                     "#[doc({})]",
                     match inline.0 {

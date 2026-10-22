@@ -124,6 +124,11 @@ impl StableHash for Path {
         self.segments.len().stable_hash(hcx, hasher);
         for segment in &self.segments {
             segment.ident.stable_hash(hcx, hasher);
+            if segment.args.is_some() {
+                // This should never happen, because Path::stable_hash is only used for attributes,
+                // which never have generic args. Check that to make sure, though.
+                panic!("Paths with generic args should not appear in incremental state");
+            }
         }
     }
 }
@@ -2930,6 +2935,9 @@ pub struct Param {
     pub id: NodeId,
     pub span: Span,
     pub is_placeholder: bool,
+    /// Records whether `const` was written before the parameter.
+    /// This only tracks syntax, not whether it's a valid const generic param.
+    pub has_const_keyword: bool,
 }
 
 /// Alternative representation for `Arg`s describing `self` parameter of methods.
@@ -3027,7 +3035,27 @@ impl Param {
             ty,
             id: DUMMY_NODE_ID,
             is_placeholder: false,
+            has_const_keyword: false,
         }
+    }
+
+    /// Returns the ident if this param is a valid arg position const param.
+    /// Unlike has_const_keyword, this also checks the pats
+    pub fn const_param_ident(&self) -> Option<Ident> {
+        if !self.has_const_keyword {
+            return None;
+        }
+
+        match self.pat.kind {
+            PatKind::Ident(BindingMode::NONE, ident, None) => Some(ident),
+            _ => None,
+        }
+    }
+
+    /// Checks if this is an arg position const param.
+    /// Use this instead of has_const_keyword, which only checks for the keyword.
+    pub fn is_const_param(&self) -> bool {
+        self.const_param_ident().is_some()
     }
 }
 
@@ -4068,11 +4096,12 @@ pub struct TestBinderConstraints {
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct TestBinderBody {
+    pub span: Span,
     pub foralls: ThinVec<TestBinderForall>,
     pub exists: ThinVec<TestBinderExists>,
     pub constraints: Vec<TestBinderConstraint>,
     /// These are not where clauses, but rather predicates within the body to be proven
-    pub predicates: Vec<WhereClause>,
+    pub predicates: Vec<WherePredicate>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
@@ -4099,6 +4128,9 @@ pub enum TestBinderConstraint {
     },
     Or {
         items: ThinVec<TestBinderConstraint>,
+    },
+    Ambiguity {
+        span: Span,
     },
     Lifetime {
         #[visitable(extra = LifetimeCtxt::Bound)]

@@ -13,7 +13,7 @@ use crate::fs;
 use crate::marker::PhantomData;
 use crate::mem::ManuallyDrop;
 #[cfg(not(any(
-    all(target_arch = "wasm32", not(target_os = "emscripten")),
+    all(target_family = "wasm", not(target_os = "emscripten")),
     target_env = "sgx",
     target_os = "hermit",
     target_os = "trusty",
@@ -105,7 +105,7 @@ impl BorrowedFd<'_> {
     /// Creates a new `OwnedFd` instance that shares the same underlying file
     /// description as the existing `BorrowedFd` instance.
     #[cfg(not(any(
-        all(target_arch = "wasm32", not(target_os = "emscripten")),
+        all(target_family = "wasm", not(target_os = "emscripten")),
         target_os = "hermit",
         target_os = "trusty",
         target_os = "motor"
@@ -133,7 +133,7 @@ impl BorrowedFd<'_> {
     /// Creates a new `OwnedFd` instance that shares the same underlying file
     /// description as the existing `BorrowedFd` instance.
     #[cfg(any(
-        all(target_arch = "wasm32", not(target_os = "emscripten")),
+        all(target_family = "wasm", not(target_os = "emscripten")),
         target_os = "hermit",
         target_os = "trusty"
     ))]

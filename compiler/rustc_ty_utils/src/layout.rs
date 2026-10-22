@@ -41,20 +41,18 @@ fn layout_of<'tcx>(
     tcx: TyCtxt<'tcx>,
     query: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>,
 ) -> Result<TyAndLayout<'tcx>, &'tcx LayoutError<'tcx>> {
-    let PseudoCanonicalInput { typing_env: original_typing_env, value: original_ty } = query;
+    let PseudoCanonicalInput { typing_env, value: original_ty } = query;
     debug!(?original_ty);
 
     // Optimization: We convert to TypingMode::PostAnalysis and convert opaque types in
     // the where bounds to their hidden types. This reduces overall uncached invocations
     // of `layout_of` and is thus a small performance improvement.
-    let typing_env = original_typing_env.with_post_analysis_normalized(tcx);
+    //
     // Switching to `PostAnalysis` typing mode will reveal opaque types that's marked
     // as rigid in the original typing env.
-    let unnormalized_ty = if typing_env != original_typing_env {
-        ty::set_aliases_to_non_rigid(tcx, original_ty)
-    } else {
-        ty::Unnormalized::new_wip(original_ty)
-    };
+    let PseudoCanonicalInput { typing_env, value: unnormalized_ty } =
+        typing_env.with_post_analysis_normalized_invalidating_rigid_aliases(tcx, original_ty);
+    let unnormalized_ty = ty::Unnormalized::new_wip(unnormalized_ty);
 
     // FIXME: We might want to have two different versions of `layout_of`:
     // One that can be called after typecheck has completed and can use
@@ -824,6 +822,13 @@ fn layout_of_uncached<'tcx>(
                 assert_eq!(layout.size, abi::Float::F16B.size());
                 layout.align = abi::Float::F16B.align(cx);
                 layout.backend_repr = BackendRepr::Scalar(bfloat);
+            }
+
+            if tcx.is_lang_item(def.did(), LangItem::PpcF128) {
+                let ppcf128 = scalar_unit(Primitive::Float(abi::Float::PpcF128));
+                assert_eq!(layout.size, abi::Float::PpcF128.size());
+                layout.align = abi::Float::PpcF128.align(cx);
+                layout.backend_repr = BackendRepr::Scalar(ppcf128);
             }
 
             tcx.mk_layout(layout)

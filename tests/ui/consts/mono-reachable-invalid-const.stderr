@@ -1,6 +1,9 @@
 error[E0080]: index out of bounds: the length is 1 but the index is 1
   --> $DIR/mono-reachable-invalid-const.rs:8:9
    |
+LL | impl<const BITS: usize> Bar<BITS> {
+LL |     const ASSERT: bool = {
+LL |         let b = std::convert::identity(1);
 LL |         ["oops"][b];
    |         ^^^^^^^^^^^ evaluation of `Bar::<0>::ASSERT` failed here
 

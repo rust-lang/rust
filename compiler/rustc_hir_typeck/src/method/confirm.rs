@@ -13,6 +13,7 @@ use rustc_hir_analysis::hir_ty_lowering::{
 use rustc_infer::infer::{
     BoundRegionConversionTime, DefineOpaqueTypes, InferOk, RegionVariableOrigin,
 };
+use rustc_infer::traits::WellFormedLoc;
 use rustc_lint_defs::builtin::{
     AMBIGUOUS_GLOB_IMPORTED_TRAITS, RESOLVING_TO_ITEMS_SHADOWING_SUPERTRAIT_ITEMS,
 };
@@ -39,6 +40,7 @@ pub(crate) struct ConfirmContext<'a, 'tcx> {
     self_expr: &'tcx hir::Expr<'tcx>,
     call_expr: &'tcx hir::Expr<'tcx>,
     skip_record_for_diagnostics: bool,
+    call_args: Option<&'tcx [hir::Expr<'tcx>]>,
 }
 
 impl<'a, 'tcx> Deref for ConfirmContext<'a, 'tcx> {
@@ -63,6 +65,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         unadjusted_self_ty: Ty<'tcx>,
         pick: &probe::Pick<'tcx>,
         segment: &'tcx hir::PathSegment<'tcx>,
+        args: Option<&'tcx [hir::Expr<'tcx>]>,
     ) -> ConfirmResult<'tcx> {
         debug!(
             "confirm(unadjusted_self_ty={:?}, pick={:?}, generic_args={:?})",
@@ -70,6 +73,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
 
         let mut confirm_cx = ConfirmContext::new(self, span, self_expr, call_expr);
+        confirm_cx.call_args = args;
         confirm_cx.confirm(unadjusted_self_ty, pick, segment)
     }
 
@@ -95,7 +99,14 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         self_expr: &'tcx hir::Expr<'tcx>,
         call_expr: &'tcx hir::Expr<'tcx>,
     ) -> ConfirmContext<'a, 'tcx> {
-        ConfirmContext { fcx, span, self_expr, call_expr, skip_record_for_diagnostics: false }
+        ConfirmContext {
+            fcx,
+            span,
+            self_expr,
+            call_expr,
+            skip_record_for_diagnostics: false,
+            call_args: None,
+        }
     }
 
     fn confirm(
@@ -488,10 +499,19 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
             fn inferred_kind(
                 &mut self,
-                _preceding_args: &[ty::GenericArg<'tcx>],
+                preceding_args: &[ty::GenericArg<'tcx>],
                 param: &ty::GenericParamDef,
                 _infer_args: bool,
             ) -> ty::GenericArg<'tcx> {
+                if let Some(pos) = param.kind.arg_pos()
+                    && let Some(args) = self.cfcx.call_args
+                    && let Some(arg) = pos.checked_sub(1).and_then(|index| args.get(index as usize))
+                {
+                    let tcx = self.cfcx.tcx;
+                    let ty =
+                        tcx.type_of(param.def_id).instantiate(tcx, preceding_args).skip_norm_wip();
+                    return self.cfcx.lower_const_arg_expr(arg, ty).into();
+                }
                 self.cfcx.var_for_def(self.cfcx.span, param)
             }
         }
@@ -560,7 +580,8 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             self_ty, method_self_ty, self.span, pick
         );
         let cause = self.cause(self.self_expr.span, ObligationCauseCode::Misc);
-        match self.at(&cause, self.param_env).sup(DefineOpaqueTypes::Yes, method_self_ty, self_ty) {
+        match self.sup_raw(&cause, self.param_env, DefineOpaqueTypes::Yes, method_self_ty, self_ty)
+        {
             Ok(InferOk { obligations, value: () }) => {
                 self.register_predicates(obligations);
             }
@@ -648,7 +669,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
         // this is a projection from a trait reference, so we have to
         // make sure that the trait reference inputs are well-formed.
-        self.add_wf_bounds(all_args, self.call_expr.span);
+        self.add_wf_bounds(all_args, self.call_expr.span, self.call_expr.hir_id);
 
         // the function type must also be well-formed (this is not
         // implied by the args being well-formed because of inherent
@@ -657,7 +678,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             self.register_wf_obligation(
                 ty.into(),
                 self.span,
-                ObligationCauseCode::WellFormed(None),
+                ObligationCauseCode::WellFormed(WellFormedLoc::HirId(self.call_expr.hir_id)),
             );
         }
     }

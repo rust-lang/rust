@@ -2,7 +2,7 @@ use std::ffi::{CStr, CString};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::{fs, slice, str};
+use std::{fs, ptr, slice, str};
 
 use libc::{c_char, c_int, c_void, size_t};
 use rustc_codegen_ssa::back::link::ensure_removed;
@@ -26,6 +26,7 @@ use rustc_span::{BytePos, DUMMY_SP, InnerSpan, Pos, RemapPathScopeComponents};
 use rustc_target::spec::{CodeModel, FloatAbi, RelocModel, SanitizerSet, SplitDebuginfo, TlsModel};
 use tracing::{debug, trace};
 
+use crate::back::llvm_backend::ModuleRefs;
 use crate::back::lto::{Buffer, ModuleBuffer};
 use crate::back::owned_target_machine::OwnedTargetMachine;
 use crate::back::profiling::{
@@ -33,7 +34,6 @@ use crate::back::profiling::{
 };
 use crate::builder::SBuilder;
 use crate::builder::gpu_offload::scalar_width;
-use crate::common::AsCCharPtr;
 use crate::context::SimpleCx;
 use crate::diagnostics::{
     CopyBitcode, FromLlvmDiag, FromLlvmOptimizationDiag, LlvmError, ParseTargetMachineConfig,
@@ -207,7 +207,7 @@ pub(crate) fn target_machine_factory(
     let emit_stack_size_section = sess.opts.unstable_opts.emit_stack_sizes;
 
     let verbose_asm = sess.opts.unstable_opts.verbose_asm;
-    let relax_elf_relocations =
+    let relax_x86_elf_relocations =
         sess.opts.unstable_opts.relax_elf_relocations.unwrap_or(sess.target.relax_elf_relocations);
 
     let use_init_array =
@@ -276,7 +276,7 @@ pub(crate) fn target_machine_factory(
             singlethread,
             verbose_asm,
             emit_stack_size_section,
-            relax_elf_relocations,
+            relax_x86_elf_relocations,
             use_init_array,
             &split_dwarf_file,
             &output_obj_file,
@@ -303,11 +303,10 @@ pub(crate) fn save_temp_bitcode(
 }
 
 fn write_bitcode_to_file(module: &ModuleLlvm, path: &Path) {
-    unsafe {
-        let path = path_to_c_string(&path);
-        let llmod = module.llmod();
-        llvm::LLVMWriteBitcodeToFile(llmod, path.as_ptr());
-    }
+    let path = path_to_c_string(&path);
+    module.with_module_refs(|ModuleRefs { llmod, .. }| {
+        unsafe { llvm::LLVMWriteBitcodeToFile(llmod, path.as_ptr()) };
+    });
 }
 
 /// In what context is a diagnostic handler being attached to a codegen unit?
@@ -320,10 +319,22 @@ pub(crate) enum CodegenDiagnosticsStage {
     Codegen,
 }
 
+/// Context data that is passed to [`diagnostic_handler_callback`].
+#[derive(Clone, Copy)]
+struct DiagnosticHandlerCallbackData<'a> {
+    cgcx: &'a CodegenContext,
+    shared_emitter: &'a SharedEmitter,
+}
+
 pub(crate) struct DiagnosticHandlers<'a> {
-    data: *mut (&'a CodegenContext, &'a SharedEmitter),
     llcx: &'a llvm::Context,
-    old_handler: Option<&'a llvm::DiagnosticHandler>,
+    old_handler: Option<ptr::NonNull<llvm::DiagnosticHandler>>,
+
+    /// Ownership of the box-allocated data that was installed (as a pointer)
+    /// alongside [`diagnostic_handler_callback`].
+    ///
+    /// To be freed via [`Box::from_raw`] after the handler is removed.
+    diagnostic_handler_callback_data: *mut DiagnosticHandlerCallbackData<'a>,
 }
 
 impl<'a> DiagnosticHandlers<'a> {
@@ -364,13 +375,14 @@ impl<'a> DiagnosticHandlers<'a> {
             .and_then(|dir| dir.to_str().and_then(|p| CString::new(p).ok()));
 
         let pgo_available = cgcx.module_config.pgo_use.is_some();
-        let data = Box::into_raw(Box::new((cgcx, shared_emitter)));
+        let diagnostic_handler_callback_data =
+            Box::into_raw(Box::new(DiagnosticHandlerCallbackData { cgcx, shared_emitter }));
         unsafe {
-            let old_handler = llvm::LLVMRustContextGetDiagnosticHandler(llcx);
+            let old_handler = llvm::LLVMRustContextTakeDiagnosticHandler(llcx);
             llvm::LLVMRustContextConfigureDiagnosticHandler(
                 llcx,
-                diagnostic_handler,
-                data.cast(),
+                diagnostic_handler_callback,
+                diagnostic_handler_callback_data.cast::<c_void>(),
                 remark_passes_all,
                 remark_passes.as_ptr(),
                 remark_passes.len(),
@@ -379,7 +391,7 @@ impl<'a> DiagnosticHandlers<'a> {
                 remark_file.as_ref().map(|dir| dir.as_ptr()).unwrap_or(std::ptr::null()),
                 pgo_available,
             );
-            DiagnosticHandlers { data, llcx, old_handler }
+            DiagnosticHandlers { llcx, old_handler, diagnostic_handler_callback_data }
         }
     }
 }
@@ -388,7 +400,7 @@ impl<'a> Drop for DiagnosticHandlers<'a> {
     fn drop(&mut self) {
         unsafe {
             llvm::LLVMRustContextSetDiagnosticHandler(self.llcx, self.old_handler);
-            drop(Box::from_raw(self.data));
+            drop(Box::from_raw(self.diagnostic_handler_callback_data));
         }
     }
 }
@@ -419,11 +431,21 @@ fn report_inline_asm(
     InlineAsmError { lo, hi, msg, level, source }
 }
 
-unsafe extern "C" fn diagnostic_handler(info: &DiagnosticInfo, user: *mut c_void) {
-    if user.is_null() {
+unsafe extern "C" fn diagnostic_handler_callback(info: &DiagnosticInfo, data: *mut c_void) {
+    if data.is_null() {
         return;
     }
-    let (cgcx, shared_emitter) = unsafe { *(user as *const (&CodegenContext, &SharedEmitter)) };
+    // After casting the data pointer, pass it into an inner function to limit its lifetimes.
+    diagnostic_handler_callback_inner(info, unsafe {
+        &*data.cast::<DiagnosticHandlerCallbackData<'_>>()
+    });
+}
+
+fn diagnostic_handler_callback_inner(
+    info: &DiagnosticInfo,
+    data: &DiagnosticHandlerCallbackData<'_>,
+) {
+    let &DiagnosticHandlerCallbackData { cgcx, shared_emitter } = data;
 
     let dcx = DiagCtxt::new(Box::new(shared_emitter.clone()));
     let dcx = dcx.handle();
@@ -518,11 +540,11 @@ pub(crate) enum AutodiffStage {
     PostAD,
 }
 
-pub(crate) unsafe fn llvm_optimize(
+pub(crate) unsafe fn llvm_optimize<'ll>(
     cgcx: &CodegenContext,
     prof: &SelfProfilerRef,
     dcx: DiagCtxtHandle<'_>,
-    module: &ModuleCodegen<ModuleLlvm>,
+    module_refs: ModuleRefs<'ll>,
     thin_lto_buffer: Option<&mut Option<Buffer>>,
     thin_lto_summary_buffer: Option<&mut Option<Buffer>>,
     config: &ModuleConfig,
@@ -530,6 +552,8 @@ pub(crate) unsafe fn llvm_optimize(
     opt_stage: llvm::OptStage,
     autodiff_stage: AutodiffStage,
 ) {
+    let ModuleRefs { llcx, llmod, tm, .. } = module_refs;
+
     // Enzyme:
     // The whole point of compiler based AD is to differentiate optimized IR instead of unoptimized
     // source code. However, benchmarks show that optimizations increasing the code size
@@ -548,9 +572,7 @@ pub(crate) unsafe fn llvm_optimize(
     } else {
         None
     };
-    let passes_after_enzyme_ptr =
-        passes_after_enzyme.map_or(std::ptr::null(), |s| s.as_c_char_ptr());
-    let passes_after_enzyme_len = passes_after_enzyme.map_or(0, |s| s.len());
+
     let merge_functions;
     let unroll_loops;
     let vectorize_slp;
@@ -727,8 +749,7 @@ pub(crate) unsafe fn llvm_optimize(
     if cgcx.target_is_like_gpu
         && config.offload.iter().any(|o| matches!(o, config::Offload::Device(_)))
     {
-        let cx =
-            SimpleCx::new(module.module_llvm.llmod(), module.module_llvm.llcx, cgcx.pointer_size);
+        let cx = SimpleCx::new(llmod, llcx, cgcx.pointer_size);
         for func in cx.get_functions() {
             let offload_kernel = "offload-kernel";
             if attributes::has_string_attr(func, offload_kernel) {
@@ -758,8 +779,8 @@ pub(crate) unsafe fn llvm_optimize(
 
     let result = unsafe {
         llvm::LLVMRustOptimize(
-            module.module_llvm.llmod(),
-            &*module.module_llvm.tm.raw(),
+            llmod,
+            tm,
             to_pass_builder_opt_level(opt_level),
             opt_stage,
             cgcx.use_linker_plugin_lto,
@@ -788,37 +809,17 @@ pub(crate) unsafe fn llvm_optimize(
             llvm_selfprofiler,
             selfprofile_before_pass_callback,
             selfprofile_after_pass_callback,
-            passes_after_enzyme_ptr,
-            passes_after_enzyme_len,
-            extra_passes.as_c_char_ptr(),
+            passes_after_enzyme.map(|s| s.as_ptr()).unwrap_or(std::ptr::null()),
+            passes_after_enzyme.map(|s| s.len()).unwrap_or(0),
+            extra_passes.as_ptr(),
             extra_passes.len(),
-            llvm_plugins.as_c_char_ptr(),
+            llvm_plugins.as_ptr(),
             llvm_plugins.len(),
         )
     };
 
-    if cgcx.target_is_like_gpu
-        && config.offload.iter().any(|o| matches!(o, config::Offload::Device(_)))
-    {
-        let device_path = cgcx.output_filenames.path(OutputType::Object);
-        let device_dir = device_path.parent().unwrap();
-        let device_out = device_dir.join("device.bin");
-        let device_out_c = path_to_c_string(device_out.as_path());
-        // 1) Bundle device module into offload image device.bin (device TM)
-        let ok = unsafe {
-            llvm::RustOffloadWrapper::get_instance().llvm_rust_bundle_images(
-                module.module_llvm.llmod(),
-                module.module_llvm.tm.raw(),
-                device_out_c.as_c_str(),
-            )
-        };
-        if !ok || !device_out.exists() {
-            dcx.emit_err(crate::diagnostics::OffloadBundleImagesFailed);
-        }
-    }
-
     // This assumes that we previously compiled our kernels for a gpu target, which created a
-    // `device.bin` artifact. The user is supposed to provide us with a path to this artifact, we
+    // `<crate>.bc` artifact. The user is supposed to provide us with a path to this artifact, we
     // don't need any other artifacts from the previous run.
     if !cgcx.target_is_like_gpu && is_final_stage {
         if let Some(device_path) = config
@@ -829,21 +830,15 @@ pub(crate) unsafe fn llvm_optimize(
             let device_pathbuf = PathBuf::from(device_path);
             if device_pathbuf.is_relative() {
                 dcx.emit_err(crate::diagnostics::OffloadWithoutAbsPath);
-            } else if device_pathbuf
-                .file_name()
-                .and_then(|n| n.to_str())
-                .is_some_and(|n| n != "device.bin")
-            {
+            } else if device_pathbuf.extension().and_then(|e| e.to_str()) != Some("bc") {
                 dcx.emit_err(crate::diagnostics::OffloadWrongFileName);
             } else if !device_pathbuf.exists() {
                 dcx.emit_err(crate::diagnostics::OffloadNonexistingPath);
             }
-            let device_bin_c = path_to_c_string(device_pathbuf.as_path());
+            let device_bitcode_c = path_to_c_string(device_pathbuf.as_path());
             let ok = unsafe {
-                llvm::RustOffloadWrapper::get_instance().llvm_rust_offload_wrap_images(
-                    module.module_llvm.llmod(),
-                    device_bin_c.as_c_str(),
-                )
+                llvm::RustOffloadWrapper::get_instance()
+                    .llvm_rust_offload_wrap_images(llmod, device_bitcode_c.as_c_str())
             };
             if !ok {
                 dcx.emit_err(crate::diagnostics::OffloadWrapImagesFailed);
@@ -853,12 +848,28 @@ pub(crate) unsafe fn llvm_optimize(
     result.into_result().unwrap_or_else(|()| llvm_err(dcx, LlvmError::RunLlvmPasses))
 }
 
-// Unsafe due to LLVM calls.
 pub(crate) fn optimize(
     cgcx: &CodegenContext,
     prof: &SelfProfilerRef,
     shared_emitter: &SharedEmitter,
-    module: &mut ModuleCodegen<ModuleLlvm>,
+    module: &ModuleCodegen<ModuleLlvm>,
+    config: &ModuleConfig,
+) {
+    // Pass `module_refs` to an inner function to avoid having to indent the whole thing.
+    //
+    // It feels a bit odd to be passing both `module` and `module_refs` here, but it's
+    // unclear whether trying to avoid that would actually be an improvement.
+    module.module_llvm.with_module_refs(|module_refs| {
+        optimize_inner(cgcx, prof, shared_emitter, module, module_refs, config);
+    });
+}
+
+fn optimize_inner<'ll>(
+    cgcx: &CodegenContext,
+    prof: &SelfProfilerRef,
+    shared_emitter: &SharedEmitter,
+    module: &ModuleCodegen<ModuleLlvm>,
+    module_refs: ModuleRefs<'ll>, // Should be the refs from `module.module_llvm`
     config: &ModuleConfig,
 ) {
     let _timer = prof.generic_activity_with_arg("LLVM_module_optimize", &*module.name);
@@ -866,9 +877,13 @@ pub(crate) fn optimize(
     let dcx = DiagCtxt::new(Box::new(shared_emitter.clone()));
     let dcx = dcx.handle();
 
-    let llcx = &*module.module_llvm.llcx;
-    let _handlers =
-        DiagnosticHandlers::new(cgcx, shared_emitter, llcx, module, CodegenDiagnosticsStage::Opt);
+    let _handlers = DiagnosticHandlers::new(
+        cgcx,
+        shared_emitter,
+        module_refs.llcx,
+        module,
+        CodegenDiagnosticsStage::Opt,
+    );
 
     if module.kind == ModuleKind::Regular {
         save_temp_bitcode(cgcx, module, "no-opt");
@@ -906,7 +921,7 @@ pub(crate) fn optimize(
                 cgcx,
                 prof,
                 dcx,
-                module,
+                module_refs,
                 thin_lto_buffer.as_mut(),
                 thin_lto_summary_buffer.as_mut(),
                 config,
@@ -917,7 +932,11 @@ pub(crate) fn optimize(
         };
         if let Some(thin_lto_buffer) = thin_lto_buffer {
             let thin_lto_buffer = thin_lto_buffer.unwrap();
-            module.thin_lto_buffer = Some(thin_lto_buffer.data().to_vec());
+            module
+                .module_llvm
+                .thin_lto_buffer
+                .set(thin_lto_buffer.data().to_vec())
+                .expect("thin_lto_buffer should be unset");
             let bc_summary_out =
                 cgcx.output_filenames.temp_path_for_cgu(OutputType::ThinLinkBitcode, &module.name);
             if let Some(thin_lto_summary_buffer) = thin_lto_summary_buffer
@@ -954,10 +973,7 @@ pub(crate) fn codegen(
     let dcx = DiagCtxt::new(Box::new(shared_emitter.clone()));
     let dcx = dcx.handle();
 
-    {
-        let llmod = module.module_llvm.llmod();
-        let llcx = &*module.module_llvm.llcx;
-        let tm = &*module.module_llvm.tm;
+    module.module_llvm.with_module_refs(|ModuleRefs { llcx, llmod, tm, .. }| {
         let _handlers = DiagnosticHandlers::new(
             cgcx,
             shared_emitter,
@@ -1005,7 +1021,7 @@ pub(crate) fn codegen(
                 let _timer = prof
                     .generic_activity_with_arg("LLVM_module_codegen_embed_bitcode", &*module.name);
                 let thin_bc =
-                    module.thin_lto_buffer.as_deref().expect("cannot find embedded bitcode");
+                    module.module_llvm.thin_lto_buffer.get().expect("cannot find embedded bitcode");
                 embed_bitcode(cgcx, llcx, llmod, &thin_bc);
             }
         }
@@ -1071,7 +1087,7 @@ pub(crate) fn codegen(
             };
             write_output_file(
                 dcx,
-                tm.raw(),
+                tm,
                 config.no_builtins,
                 llmod,
                 &path,
@@ -1104,7 +1120,7 @@ pub(crate) fn codegen(
 
                 write_output_file(
                     dcx,
-                    tm.raw(),
+                    tm,
                     config.no_builtins,
                     llmod,
                     &obj_out,
@@ -1131,7 +1147,7 @@ pub(crate) fn codegen(
         }
 
         record_llvm_cgu_instructions_stats(prof, &module.name, llmod);
-    }
+    });
 
     // `.dwo` files are only emitted if:
     //

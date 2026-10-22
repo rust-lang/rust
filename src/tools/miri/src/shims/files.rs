@@ -195,25 +195,10 @@ pub trait FileDescription: std::fmt::Debug + FileDescriptionExt {
         false
     }
 
-    fn as_unix<'tcx>(
-        self: FileDescriptionRef<Self>,
-        _ecx: &MiriInterpCx<'tcx>,
-    ) -> FileDescriptionRef<dyn UnixFileDescription> {
-        panic!("Not a unix file descriptor: {}", self.name());
-    }
-
-    /// Implementation of fcntl(F_GETFL) for this FD.
-    fn get_flags<'tcx>(&self, _ecx: &mut MiriInterpCx<'tcx>) -> InterpResult<'tcx, Scalar> {
-        throw_unsup_format!("fcntl: {} is not supported for F_GETFL", self.name());
-    }
-
-    /// Implementation of fcntl(F_SETFL) for this FD.
-    fn set_flags<'tcx>(
-        &self,
-        _flag: i32,
-        _ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx, Scalar> {
-        throw_unsup_format!("fcntl: {} is not supported for F_SETFL", self.name());
+    /// Converts this FD into a unix file description. Must succeed for all FD types that can be
+    /// created on Unix targets!
+    fn as_unix(self: FileDescriptionRef<Self>) -> FileDescriptionRef<dyn UnixFileDescription> {
+        panic!("Not a unix file description: {}", self.name());
     }
 
     /// Get the `ReadinessWatched` of the file description.
@@ -228,7 +213,7 @@ pub trait FileDescription: std::fmt::Debug + FileDescriptionExt {
 }
 
 #[derive(Debug)]
-struct Stdin {
+pub struct Stdin {
     stdin: io::Stdin,
     watched: ReadinessWatched,
 }
@@ -278,10 +263,14 @@ impl FileDescription for Stdin {
         readiness.writable = true;
         readiness
     }
+
+    fn as_unix(self: FileDescriptionRef<Self>) -> FileDescriptionRef<dyn UnixFileDescription> {
+        self
+    }
 }
 
 #[derive(Debug)]
-struct Stdout {
+pub struct Stdout {
     stdout: io::Stdout,
     watched: ReadinessWatched,
 }
@@ -331,10 +320,14 @@ impl FileDescription for Stdout {
         readiness.writable = true;
         readiness
     }
+
+    fn as_unix(self: FileDescriptionRef<Self>) -> FileDescriptionRef<dyn UnixFileDescription> {
+        self
+    }
 }
 
 #[derive(Debug)]
-struct Stderr {
+pub struct Stderr {
     stderr: io::Stderr,
     watched: ReadinessWatched,
 }
@@ -378,6 +371,10 @@ impl FileDescription for Stderr {
         readiness.writable = true;
         readiness
     }
+
+    fn as_unix(self: FileDescriptionRef<Self>) -> FileDescriptionRef<dyn UnixFileDescription> {
+        self
+    }
 }
 
 /// Like /dev/null
@@ -419,6 +416,10 @@ impl FileDescription for NullOutput {
         readiness.writable = true;
         readiness
     }
+
+    fn as_unix(self: FileDescriptionRef<Self>) -> FileDescriptionRef<dyn UnixFileDescription> {
+        self
+    }
 }
 
 #[derive(Debug)]
@@ -444,7 +445,13 @@ impl FileDescription for FileHandle {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
 
         if !self.readable {
-            return finish.call(ecx, Err(ErrorKind::PermissionDenied.into()));
+            // Unix returns EBADF, Windows something that translates to `PermissionDenied`.
+            let err = if ecx.target_os_is_unix() {
+                LibcError("EBADF")
+            } else {
+                ErrorKind::PermissionDenied.into()
+            };
+            return finish.call(ecx, Err(err));
         }
 
         let mut file = &self.file;
@@ -463,13 +470,13 @@ impl FileDescription for FileHandle {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
 
         if !self.writable {
-            // Linux hosts return EBADF here which we can't translate via the platform-independent
-            // code since it does not map to any `io::ErrorKind` -- so if we don't do anything
-            // special, we'd throw an "unsupported error code" here. Windows returns something that
-            // gets translated to `PermissionDenied`. That seems like a good value so let's just use
-            // this everywhere, even if it means behavior on Unix targets does not match the real
-            // thing.
-            return finish.call(ecx, Err(ErrorKind::PermissionDenied.into()));
+            // Unix returns EBADF, Windows something that translates to `PermissionDenied`.
+            let err = if ecx.target_os_is_unix() {
+                LibcError("EBADF")
+            } else {
+                ErrorKind::PermissionDenied.into()
+            };
+            return finish.call(ecx, Err(err));
         }
         let result = ecx.write_to_host(&self.file, len, ptr)?;
         finish.call(ecx, result)
@@ -499,14 +506,7 @@ impl FileDescription for FileHandle {
         true
     }
 
-    fn as_unix<'tcx>(
-        self: FileDescriptionRef<Self>,
-        ecx: &MiriInterpCx<'tcx>,
-    ) -> FileDescriptionRef<dyn UnixFileDescription> {
-        assert!(
-            ecx.target_os_is_unix(),
-            "unix file operations are only available for unix targets"
-        );
+    fn as_unix(self: FileDescriptionRef<Self>) -> FileDescriptionRef<dyn UnixFileDescription> {
         self
     }
 }
@@ -516,21 +516,6 @@ pub struct DirHandle {
     pub(super) dir: Dir,
     #[cfg(bootstrap)]
     pub(super) fallback: std::path::PathBuf,
-    #[cfg(not(bootstrap))]
-    #[expect(unused)]
-    fallback: (),
-}
-
-impl DirHandle {
-    pub fn open(path: &std::path::Path) -> io::Result<Self> {
-        #[cfg(bootstrap)]
-        let fallback = path.canonicalize()?;
-        #[cfg(not(bootstrap))]
-        let fallback = ();
-
-        let dir = Dir::open(path)?;
-        Ok(DirHandle { dir, fallback })
-    }
 }
 
 impl FileDescription for DirHandle {
@@ -545,6 +530,43 @@ impl FileDescription for DirHandle {
         return interp_ok(Either::Left(self.dir.metadata()));
         #[cfg(not(bootstrap))]
         return interp_ok(Either::Left(self.dir.self_metadata()));
+    }
+
+    fn read<'tcx>(
+        self: FileDescriptionRef<Self>,
+        _communicate_allowed: bool,
+        _ptr: Pointer,
+        _len: usize,
+        ecx: &mut MiriInterpCx<'tcx>,
+        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+    ) -> InterpResult<'tcx> {
+        if ecx.target_os_is_unix() {
+            finish.call(ecx, Err(LibcError("EISDIR")))
+        } else {
+            // No idea what this should do on Windows.
+            throw_unsup_format!("reading directories is not supported on this target");
+        }
+    }
+
+    fn write<'tcx>(
+        self: FileDescriptionRef<Self>,
+        _communicate_allowed: bool,
+        _ptr: Pointer,
+        _len: usize,
+        ecx: &mut MiriInterpCx<'tcx>,
+        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+    ) -> InterpResult<'tcx> {
+        if ecx.target_os_is_unix() {
+            // Directories are opened for reading, so writing returns EBADF.
+            finish.call(ecx, Err(LibcError("EBADF")))
+        } else {
+            // No idea what this should do on Windows.
+            throw_unsup_format!("writing directories is not supported on this target");
+        }
+    }
+
+    fn as_unix(self: FileDescriptionRef<Self>) -> FileDescriptionRef<dyn UnixFileDescription> {
+        self
     }
 }
 
@@ -675,5 +697,67 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let bytes = this.read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(len))?;
         let result = file.write(bytes);
         interp_ok(result.map_err(IoError::HostError))
+    }
+}
+
+/// Open something for which we don't know ahead of time whether it is a file or a directory.
+///
+/// Note that on Windows hosts, `custom_flags` is ignored if `root` is `Some`!
+pub fn open_file_or_dir(
+    root: Option<&fs::Dir>,
+    path: &std::path::Path,
+    opts: &fs::OpenOptions,
+) -> io::Result<Either<fs::File, fs::Dir>> {
+    // On Unix, `open`/`openat` works for files and directories.
+    // On Windows, that fails with `PermissionDenied`, so we need to open an `fs::Dir` instead.
+    // (But that may succeed even on a file! So we still have to check the metadata.)
+    let file = match root {
+        Some(root) => root.open_file_with(path, opts),
+        None => opts.open(path),
+    };
+    #[cfg(windows)]
+    let file = file.or_else(|err| {
+        use std::os::windows::io::OwnedHandle;
+
+        if err.kind() == io::ErrorKind::PermissionDenied {
+            // Retry via `fs::Dir`. Opening a directory via `Dir::open_file` does not work so we
+            // have to use `open_dir`.
+            let dir = match root {
+                Some(root) => root.open_dir_with(path, opts),
+                None => Dir::open_with(path, opts),
+            };
+            match dir {
+                // Convert back to file so it always has the same type.
+                Ok(dir) => Ok(File::from(OwnedHandle::from(dir))),
+                Err(err2) => {
+                    // If this 2nd attempt says "not a directory", preserve the original error. It's
+                    // possible that we lost a race twice if this keeps being changed from directory
+                    // to file and back. However, in that case it was entirely non-existent for a
+                    // little while, so returning an error is still fine.
+                    Err(if err2.kind() == io::ErrorKind::NotADirectory { err } else { err2 })
+                }
+            }
+        } else {
+            Err(err)
+        }
+    });
+    let file = file?;
+
+    let metadata = file.metadata().expect("just-opened file/dir should have metadata");
+    if metadata.is_dir() {
+        assert!(!metadata.is_symlink()); // Rust makes this mutually exclusive with `is_dir`
+        // Convert to dir.
+        cfg_select! {
+            unix => {
+                use std::os::fd::OwnedFd;
+                Ok(Either::Right(OwnedFd::from(file).into()))
+            }
+            windows => {
+                use std::os::windows::io::OwnedHandle;
+                Ok(Either::Right(OwnedHandle::from(file).into()))
+            }
+        }
+    } else {
+        Ok(Either::Left(file))
     }
 }

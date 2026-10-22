@@ -45,12 +45,7 @@ fn expand<'cx>(
 
     ExpandResult::Ready(MacEager::expr(cx.expr_macro_call(
         sp,
-        cx.macro_call(
-            sp,
-            cx.path(sp, cx.std_path(&[sym::panic, mac])),
-            Delimiter::Parenthesis,
-            tts,
-        ),
+        cx.macro_call(sp, cx.std_path(sp, &[sym::panic, mac]), Delimiter::Parenthesis, tts),
     )))
 }
 

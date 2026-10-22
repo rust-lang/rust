@@ -1152,8 +1152,11 @@ impl LinkCollector<'_, '_> {
 
         // Also resolve links in the note text of `#[deprecated]`.
         for attr in &item.attrs.other_attrs {
-            let Attribute::Parsed(AttributeKind::Deprecated { span: depr_span, deprecation }) =
-                attr
+            let Attribute::Parsed(AttributeKind::Deprecated {
+                span: depr_span,
+                deprecation,
+                is_inner,
+            }) = attr
             else {
                 continue;
             };
@@ -1185,7 +1188,12 @@ impl LinkCollector<'_, '_> {
             } else {
                 item.item_id.expect_def_id()
             };
-            try_insert_links(item_id, &DocStrings { outer: note.to_owned(), inner: String::new() });
+            let attr = if *is_inner {
+                DocStrings { outer: String::new(), inner: note.to_owned() }
+            } else {
+                DocStrings { outer: note.to_owned(), inner: String::new() }
+            };
+            try_insert_links(item_id, &attr);
         }
     }
 
@@ -1251,7 +1259,7 @@ impl LinkCollector<'_, '_> {
 
     /// Returns `true` if a link could be generated from the given intra-doc information.
     ///
-    /// This is a very light version of `format::href_with_root_path` since we're only interested
+    /// This is a very light version of `format::href_with_jump_to_def_path_depth` since we're only interested
     /// about whether we can generate a link to an item or not.
     ///
     /// * If `original_did` is local, then we check if the item is reexported or public.

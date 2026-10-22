@@ -1,6 +1,7 @@
 // ignore-tidy-file-linelength
 //@ revisions: both enable-separately-disable-together enable-together-disable-separately
 //@ check-fail
+//@ compile-flags: -D future-incompatible
 //@ ignore-nvptx64 stack protector is not supported
 //@ ignore-wasm32-unknown-unknown stack protector is not supported
 //@ edition:future
@@ -29,3 +30,8 @@ fn main() {}
 //~? ERROR that is not compiled with
 //~? ERROR that is not compiled with
 //~? ERROR that is not compiled with
+//~? WARN this was previously accepted
+//~? WARN this was previously accepted
+//~? WARN this was previously accepted
+//~? WARN this was previously accepted
+//~? WARN this was previously accepted

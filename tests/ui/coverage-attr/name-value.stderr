@@ -1,5 +1,5 @@
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/name-value.rs:12:3
+  --> $DIR/name-value.rs:11:3
    |
 LL | #[coverage = "off"]
    |   ^^^^^^^^^-------
@@ -16,7 +16,7 @@ LL + #[coverage(on)]
    |
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/name-value.rs:17:8
+  --> $DIR/name-value.rs:16:8
    |
 LL |     #![coverage = "off"]
    |        ^^^^^^^^^-------
@@ -33,7 +33,7 @@ LL +     #![coverage(on)]
    |
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/name-value.rs:21:3
+  --> $DIR/name-value.rs:20:3
    |
 LL | #[coverage = "off"]
    |   ^^^^^^^^^-------
@@ -50,7 +50,7 @@ LL + #[coverage(on)]
    |
 
 error: the `coverage` attribute cannot be used on structs
-  --> $DIR/name-value.rs:21:3
+  --> $DIR/name-value.rs:20:3
    |
 LL | #[coverage = "off"]
    |   ^^^^^^^^
@@ -58,7 +58,7 @@ LL | #[coverage = "off"]
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/name-value.rs:26:3
+  --> $DIR/name-value.rs:25:3
    |
 LL | #[coverage = "off"]
    |   ^^^^^^^^^-------
@@ -75,7 +75,7 @@ LL + #[coverage(on)]
    |
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/name-value.rs:29:7
+  --> $DIR/name-value.rs:28:7
    |
 LL |     #[coverage = "off"]
    |       ^^^^^^^^^-------
@@ -92,7 +92,7 @@ LL +     #[coverage(on)]
    |
 
 error: the `coverage` attribute cannot be used on associated consts
-  --> $DIR/name-value.rs:29:7
+  --> $DIR/name-value.rs:28:7
    |
 LL |     #[coverage = "off"]
    |       ^^^^^^^^
@@ -100,7 +100,7 @@ LL |     #[coverage = "off"]
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/name-value.rs:35:3
+  --> $DIR/name-value.rs:34:3
    |
 LL | #[coverage = "off"]
    |   ^^^^^^^^^-------
@@ -117,7 +117,7 @@ LL + #[coverage(on)]
    |
 
 error: the `coverage` attribute cannot be used on traits
-  --> $DIR/name-value.rs:35:3
+  --> $DIR/name-value.rs:34:3
    |
 LL | #[coverage = "off"]
    |   ^^^^^^^^
@@ -125,7 +125,7 @@ LL | #[coverage = "off"]
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/name-value.rs:39:7
+  --> $DIR/name-value.rs:38:7
    |
 LL |     #[coverage = "off"]
    |       ^^^^^^^^^-------
@@ -142,7 +142,7 @@ LL +     #[coverage(on)]
    |
 
 error: the `coverage` attribute cannot be used on associated consts
-  --> $DIR/name-value.rs:39:7
+  --> $DIR/name-value.rs:38:7
    |
 LL |     #[coverage = "off"]
    |       ^^^^^^^^
@@ -150,7 +150,7 @@ LL |     #[coverage = "off"]
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/name-value.rs:44:7
+  --> $DIR/name-value.rs:43:7
    |
 LL |     #[coverage = "off"]
    |       ^^^^^^^^^-------
@@ -167,7 +167,7 @@ LL +     #[coverage(on)]
    |
 
 error: the `coverage` attribute cannot be used on associated types
-  --> $DIR/name-value.rs:44:7
+  --> $DIR/name-value.rs:43:7
    |
 LL |     #[coverage = "off"]
    |       ^^^^^^^^
@@ -175,7 +175,7 @@ LL |     #[coverage = "off"]
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/name-value.rs:50:3
+  --> $DIR/name-value.rs:49:3
    |
 LL | #[coverage = "off"]
    |   ^^^^^^^^^-------
@@ -192,7 +192,7 @@ LL + #[coverage(on)]
    |
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/name-value.rs:53:7
+  --> $DIR/name-value.rs:52:7
    |
 LL |     #[coverage = "off"]
    |       ^^^^^^^^^-------
@@ -209,7 +209,7 @@ LL +     #[coverage(on)]
    |
 
 error: the `coverage` attribute cannot be used on associated consts
-  --> $DIR/name-value.rs:53:7
+  --> $DIR/name-value.rs:52:7
    |
 LL |     #[coverage = "off"]
    |       ^^^^^^^^
@@ -217,7 +217,7 @@ LL |     #[coverage = "off"]
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/name-value.rs:58:7
+  --> $DIR/name-value.rs:57:7
    |
 LL |     #[coverage = "off"]
    |       ^^^^^^^^^-------
@@ -234,7 +234,7 @@ LL +     #[coverage(on)]
    |
 
 error: the `coverage` attribute cannot be used on associated types
-  --> $DIR/name-value.rs:58:7
+  --> $DIR/name-value.rs:57:7
    |
 LL |     #[coverage = "off"]
    |       ^^^^^^^^
@@ -242,7 +242,7 @@ LL |     #[coverage = "off"]
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/name-value.rs:64:3
+  --> $DIR/name-value.rs:63:3
    |
 LL | #[coverage = "off"]
    |   ^^^^^^^^^-------

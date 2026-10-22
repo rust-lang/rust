@@ -15,7 +15,9 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
+    # Above 3 times the longest job, so that a hang cannot run until GitHub's 6-hour limit.
+    timeout-minutes: 90
 
     strategy:
       fail-fast: false
@@ -26,7 +28,7 @@ jobs:
         ]
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
 
     # `rustup show` installs from rust-toolchain.toml
     - name: Setup rust toolchain
@@ -39,21 +41,14 @@ jobs:
     - name: Setup rust cache
       uses: Swatinem/rust-cache@v2
 
-    - name: Install packages
-      run: sudo apt-get install ninja-build ripgrep
+    - name: Add apt mirrors
+      uses: ./.github/actions/apt-mirrors
 
-    # FIXME: remove when we have binutils version 2.43 in the repo.
-    - name: Install more recent binutils
+    - name: Install packages
+      timeout-minutes: 20
       run: |
-        echo "deb http://archive.ubuntu.com/ubuntu plucky main universe" | sudo tee /etc/apt/sources.list.d/plucky-copies.list
-        sudo apt-get update -o Acquire::Retries=3
-        sudo apt-get install binutils
-        installed="$(dpkg-query --showformat='${Version}' --show binutils)"
-        echo "Installed binutils: $installed"
-        if dpkg --compare-versions "$installed" lt "2.44"; then
-            echo "::error::binutils upgrade failed (got $installed, need >= 2.44); the apt fetch probably failed"
-            exit 1
-        fi
+        sudo apt-get update
+        sudo apt-get install ninja-build ripgrep
 
     - name: Install Intel Software Development Emulator
       if: ${{ matrix.cargo_runner }}

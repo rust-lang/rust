@@ -670,9 +670,12 @@ auto:
 
   # x86_64-msvc is split into two jobs to run tests in parallel.
   - name: test-x86_64-msvc-1
+    # required to run LLDB 22
+    required_python_version: '3.11'
     env:
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-sanitizers --enable-profiler
       SCRIPT: make ci-msvc-py
+      LLDB_PATH: ./citools/clang-rust/bin/lldb.exe
     <<: *job-windows
 
   - name: test-x86_64-msvc-2
@@ -754,9 +757,12 @@ auto:
 
   # x86_64-mingw is split into two jobs to run tests in parallel.
   - name: test-x86_64-mingw-1
+    # required to run LLDB 22
+    required_python_version: '3.11'
     env:
       SCRIPT: make ci-mingw-x
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
+      LLDB_PATH: ./citools/clang-rust/bin/lldb.exe
     <<: *job-windows
 
   - name: test-x86_64-mingw-2

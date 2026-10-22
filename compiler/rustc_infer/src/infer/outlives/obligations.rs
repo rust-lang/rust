@@ -141,19 +141,7 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 
     pub fn register_solver_region_constraint(&self, c: SolverRegionConstraint<'tcx>) {
-        let mut inner = self.inner.borrow_mut();
-
-        let old_constraint = inner.solver_region_constraint_storage.get_constraint();
-        let new_constraint = rustc_type_ir::region_constraint::RegionConstraint::build_and(
-            c,
-            old_constraint.clone(),
-        );
-
-        // FIXME(-Zassumptions-on-binders): This is pretty bad for perf, we don't make incremental
-        // changes to the region constraints, instead we just rewrite the entire thing every time
-        // and store the old version.
-        inner.undo_log.push(UndoLog::OverwriteSolverRegionConstraint { old_constraint });
-        inner.solver_region_constraint_storage.overwrite(new_constraint);
+        self.inner.borrow_mut().unwrap_region_constraints().register_solver_constraint(c);
     }
 
     pub fn register_type_outlives_constraint(
@@ -279,7 +267,7 @@ impl<'tcx> InferCtxt<'tcx> {
         assert!(self.tcx.assumptions_on_binders());
         assert!(self.next_trait_solver());
 
-        let constraint = self.inner.borrow().solver_region_constraint_storage.get_constraint();
+        let constraint = self.get_solver_region_constraint();
         debug!(?constraint);
         let constraint = region_constraint::destructure_type_outlives_constraints_in_root(
             self,

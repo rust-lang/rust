@@ -21,6 +21,9 @@ note: `StreamExt` defines an item `filterx`, perhaps you need to implement it
    |
 LL | pub trait StreamExt
    | ^^^^^^^^^^^^^^^^^^^
+...
+LL |     fn filterx<F>(self, func: F) -> Filter<Self, F>
+   |
 
 error: aborting due to 1 previous error
 

@@ -1,6 +1,8 @@
 error[E0080]: attempting to call `const_make_global` twice on the same allocation ALLOC$ID
   --> $DIR/make-global-twice.rs:13:5
    |
+LL | const Y: &i32 = unsafe {
+...
 LL |     intrinsics::const_make_global(ptr);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `Y` failed here
 

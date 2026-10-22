@@ -28,7 +28,7 @@
           StorageLive(_5);
           _5 = copy _2;
 -         _0 = Eq(move _4, move _5);
-+         _0 = Eq(move _4, copy _2);
++         _0 = Eq(copy _2, move _4);
           StorageDead(_5);
           StorageDead(_4);
           StorageDead(_2);

@@ -224,8 +224,9 @@ new_draft = true
 [autolabel."needs-triage"]
 new_issue = true
 exclude_labels = [
-    "C-tracking-issue",
     "A-diagnostics",
+    "C-tracking-issue",
+    "relnotes-tracking-issue",
 ]
 
 [autolabel."I-prioritize"]
@@ -1414,7 +1415,7 @@ cc = ["@nnethercote"]
 
 [mentions."tests/ui/stats/input-stats.stderr"]
 message = "Changes to the size of AST and/or HIR nodes."
-cc = ["@nnethercote"]
+cc = ["@nnethercote", "@JonathanBrouwer"]
 
 [mentions."compiler/rustc_sanitizers"]
 cc = ["@rcvalle"]
@@ -1645,20 +1646,6 @@ branch = "stable"
 compiler_leads = [
     "@davidtwco",
     "@boxyuwu",
-]
-libs = [
-    "@Mark-Simulacrum",
-    "@workingjubilee",
-    "@jhpratt",
-    "@tgross35",
-    "@thomcc",
-    "@joboet",
-    "@nia-e",
-    "@LawnGnome",
-    "@clarfonthey",
-    "@aapoalas",
-    "@Darksonn",
-    "@JohnTitor",
 ]
 infra-ci = [
     "@Mark-Simulacrum",

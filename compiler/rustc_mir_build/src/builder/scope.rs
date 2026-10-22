@@ -84,14 +84,13 @@ that contains only loops and breakable blocks. It tracks where a `break`,
 use std::mem;
 
 use interpret::ErrorHandled;
+use rustc_attr_ir::find_attr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::HirId;
 use rustc_index::{IndexSlice, IndexVec};
-use rustc_lint_defs::Level;
 use rustc_middle::middle::region;
 use rustc_middle::mir::{self, *};
 use rustc_middle::thir::{AdtExpr, AdtExprBase, ArmId, ExprId, ExprKind};
-use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, ValTree};
 use rustc_pattern_analysis::rustc::RustcPatCtxt;
 use rustc_span::{DUMMY_SP, Span, Spanned, bug, span_bug};
@@ -447,7 +446,7 @@ impl DropTree {
                         // use `DUMMY_SP`.
                         let source_info =
                             SourceInfo { span: DUMMY_SP, ..drop_node.data.source_info };
-                        let terminator = TerminatorKind::Goto { target };
+                        let terminator = TerminatorKind::goto(target);
                         cfg.terminate(block, source_info, terminator);
                     }
                 }
@@ -467,7 +466,7 @@ impl DropTree {
                         // use `DUMMY_SP`.
                         let source_info =
                             SourceInfo { span: DUMMY_SP, ..drop_node.data.source_info };
-                        let terminator = TerminatorKind::Goto { target };
+                        let terminator = TerminatorKind::goto(target);
                         cfg.terminate(block, source_info, terminator);
                     }
                 }
@@ -569,12 +568,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.cfg.terminate(
                     normal_block.into_block(),
                     source_info,
-                    TerminatorKind::Goto { target },
+                    TerminatorKind::goto(target),
                 );
                 self.cfg.terminate(
                     exit_block.into_block(),
                     source_info,
-                    TerminatorKind::Goto { target },
+                    TerminatorKind::goto(target),
                 );
                 target.unit()
             }
@@ -622,12 +621,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.cfg.terminate(
                     normal_block.into_block(),
                     source_info,
-                    TerminatorKind::Goto { target },
+                    TerminatorKind::goto(target),
                 );
                 self.cfg.terminate(
                     exit_block.into_block(),
                     source_info,
-                    TerminatorKind::Goto { target },
+                    TerminatorKind::goto(target),
                 );
                 target.unit()
             }
@@ -1292,13 +1291,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // This is a moderately common case, mostly hit for previously unseen nodes.
                 break;
             }
-
-            if self
-                .tcx
-                .hir_attrs(id)
-                .iter()
-                .any(|attr| Level::from_opt_symbol(attr.name()).is_some())
-            {
+            if find_attr!(self.tcx, id, LintCheck(_)) {
                 // This is a rare case. It's for a node path that doesn't reach the root due to an
                 // intervening lint level attribute. This result doesn't get cached.
                 return id;
@@ -2117,7 +2110,7 @@ impl<'tcx> DropTreeBuilder<'tcx> for ExitScopes {
         // (The dummy is added by `break_scope` and `break_from_if_then_scope`.)
         let term = cfg.block_data_mut(from).terminator_mut();
         if let TerminatorKind::UnwindResume = term.kind {
-            term.kind = TerminatorKind::Goto { target: to };
+            term.kind = TerminatorKind::goto(to);
         } else {
             span_bug!(term.source_info.span, "unexpected dummy terminator kind: {:?}", term.kind);
         }
@@ -2158,7 +2151,7 @@ impl<'tcx> DropTreeBuilder<'tcx> for Unwind {
             TerminatorKind::Drop { unwind, .. } => {
                 if let UnwindAction::Cleanup(unwind) = *unwind {
                     let source_info = term.source_info;
-                    cfg.terminate(unwind, source_info, TerminatorKind::Goto { target: to });
+                    cfg.terminate(unwind, source_info, TerminatorKind::goto(to));
                 } else {
                     *unwind = UnwindAction::Cleanup(to);
                 }

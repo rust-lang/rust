@@ -212,6 +212,19 @@ impl<'tcx> AdtDef<'tcx> {
         self.0.0.repr
     }
 
+    /// Whether MIR may project into the fields of this ADT.
+    ///
+    /// MCP#838 bans field projections into SIMD types, including scalable
+    /// vectors.
+    ///
+    /// Codegen requires `DynMetadata` to be manipulated as a whole, with its
+    /// insides being treated as opaque..
+    pub fn can_project_fields(self, tcx: TyCtxt<'tcx>) -> bool {
+        !self.repr().simd()
+            && !self.repr().scalable()
+            && !tcx.is_lang_item(self.did(), LangItem::DynMetadata)
+    }
+
     pub fn field_representing_type_info(
         self,
         tcx: TyCtxt<'tcx>,
@@ -384,30 +397,17 @@ impl AdtDefData {
         if find_attr!(tcx, did, Fundamental) {
             flags |= AdtFlags::IS_FUNDAMENTAL;
         }
-        if tcx.is_lang_item(did, LangItem::PhantomData) {
-            flags |= AdtFlags::IS_PHANTOM_DATA;
-        }
-        if tcx.is_lang_item(did, LangItem::OwnedBox) {
-            flags |= AdtFlags::IS_BOX;
-        }
-        if tcx.is_lang_item(did, LangItem::ManuallyDrop) {
-            flags |= AdtFlags::IS_MANUALLY_DROP;
-        }
-        if tcx.is_lang_item(did, LangItem::MaybeDangling) {
-            flags |= AdtFlags::IS_MAYBE_DANGLING;
-        }
-        if tcx.is_lang_item(did, LangItem::UnsafeCell) {
-            flags |= AdtFlags::IS_UNSAFE_CELL;
-        }
-        if tcx.is_lang_item(did, LangItem::UnsafePinned) {
-            flags |= AdtFlags::IS_UNSAFE_PINNED;
-        }
-        if tcx.is_lang_item(did, LangItem::Pin) {
-            flags |= AdtFlags::IS_PIN;
-        }
-        if tcx.is_lang_item(did, LangItem::FieldRepresentingType) {
-            flags |= AdtFlags::IS_FIELD_REPRESENTING_TYPE;
-        }
+        flags |= match tcx.as_lang_item(did) {
+            Some(LangItem::PhantomData) => AdtFlags::IS_PHANTOM_DATA,
+            Some(LangItem::OwnedBox) => AdtFlags::IS_BOX,
+            Some(LangItem::ManuallyDrop) => AdtFlags::IS_MANUALLY_DROP,
+            Some(LangItem::MaybeDangling) => AdtFlags::IS_MAYBE_DANGLING,
+            Some(LangItem::UnsafeCell) => AdtFlags::IS_UNSAFE_CELL,
+            Some(LangItem::UnsafePinned) => AdtFlags::IS_UNSAFE_PINNED,
+            Some(LangItem::Pin) => AdtFlags::IS_PIN,
+            Some(LangItem::FieldRepresentingType) => AdtFlags::IS_FIELD_REPRESENTING_TYPE,
+            _ => AdtFlags::NO_ADT_FLAGS,
+        };
 
         AdtDefData { did, variants, flags, repr }
     }
