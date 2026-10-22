@@ -1192,6 +1192,7 @@ symbols! {
         into_iter,
         into_try_type,
         intra_doc_pointers,
+        intrinsic_fallback_is_spec,
         intrinsics,
         invariant,
         irrefutable_let_patterns,
