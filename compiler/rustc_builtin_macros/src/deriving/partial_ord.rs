@@ -26,9 +26,9 @@ pub(crate) fn expand_derive_partial_ord(
     let container_id = cx.current_expansion.id.expn_data().parent.expect_local();
     let has_derive_ord = cx.resolver.has_derive_ord(container_id);
     let default_substructure: CombineSubstructureFunc<'_> =
-        Box::new(|cx, span, substr| cs_partial_cmp(cx, span, substr, discr_then_data));
+        Box::new(|cx, span, substr| partial_cmp_body(cx, span, substr, discr_then_data));
     let simple_substructure: CombineSubstructureFunc<'_> =
-        Box::new(|cx, span, _| cs_partial_cmp_simple(cx, span, cx.expr_name(span, sym::other)));
+        Box::new(|cx, span, _| partial_cmp_simple_body(cx, span, cx.expr_name(span, sym::other)));
     let is_simple = match &item.kind {
         // For unit structs/zero-variant enums, the default generated code is better.
         ItemKind::Struct(.., ast::VariantData::Unit(..)) => false,
@@ -103,14 +103,18 @@ pub(crate) fn discr_data_order(item: &ast::Item) -> bool {
 // ```
 // Some(::core::cmp::Ord::cmp(self, other))
 // ```
-fn cs_partial_cmp_simple(cx: &ExtCtxt<'_>, span: Span, other_expr: Box<ast::Expr>) -> BlockOrExpr {
+fn partial_cmp_simple_body(
+    cx: &ExtCtxt<'_>,
+    span: Span,
+    other_expr: Box<ast::Expr>,
+) -> BlockOrExpr {
     let ord_cmp_path = cx.std_path(span, &[sym::cmp, sym::Ord, sym::cmp]);
     let cmp_expr =
         cx.expr_call_global(span, ord_cmp_path, thin_vec![cx.expr_self(span), other_expr]);
     BlockOrExpr::new_expr(cx.expr_some(span, cmp_expr))
 }
 
-fn cs_partial_cmp(
+fn partial_cmp_body(
     cx: &ExtCtxt<'_>,
     span: Span,
     substr: Substructure<'_>,

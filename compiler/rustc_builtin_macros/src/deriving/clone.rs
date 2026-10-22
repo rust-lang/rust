@@ -42,17 +42,17 @@ pub(crate) fn expand_derive_clone(
                     .any(|param| matches!(param.kind, ast::GenericParamKind::Type { .. }))
             {
                 is_simple = true;
-                substructure = Box::new(|c, s, sub| cs_clone_simple(c, s, sub, false));
+                substructure = Box::new(|c, s, sub| clone_simple_body(c, s, sub, false));
             } else {
                 is_simple = false;
                 substructure =
-                    Box::new(|c, s, sub| cs_clone(c, s, sub, item.kind.ident().unwrap()));
+                    Box::new(|c, s, sub| clone_body(c, s, sub, item.kind.ident().unwrap()));
             }
         }
         ItemKind::Union(..) => {
             bounds = smallvec![path_std!(cx, span, marker::Copy)];
             is_simple = true;
-            substructure = Box::new(|c, s, sub| cs_clone_simple(c, s, sub, true));
+            substructure = Box::new(|c, s, sub| clone_simple_body(c, s, sub, true));
         }
         _ => cx.dcx().span_bug(span, "`derive(Clone)` on wrong item kind"),
     }
@@ -102,7 +102,7 @@ pub(crate) fn expand_derive_clone(
     trait_def.expand_ext(cx, item, push, is_simple)
 }
 
-fn cs_clone_simple(
+fn clone_simple_body(
     cx: &ExtCtxt<'_>,
     trait_span: Span,
     substr: Substructure<'_>,
@@ -161,7 +161,7 @@ fn cs_clone_simple(
     BlockOrExpr::new_mixed(stmts, Some(cx.expr_deref(trait_span, cx.expr_self(trait_span))))
 }
 
-fn cs_clone(
+fn clone_body(
     cx: &ExtCtxt<'_>,
     trait_span: Span,
     substr: Substructure<'_>,

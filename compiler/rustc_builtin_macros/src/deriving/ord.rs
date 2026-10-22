@@ -30,28 +30,21 @@ pub(crate) fn expand_derive_ord(
             ret_ty: cx.ty_path(path_std!(cx, span, cmp::Ordering)),
             attributes: thin_vec![cx.generated_attr(span, ast::GeneratedAttr::Inline)],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
-            body: Box::new(|cx, span, substr| cs_cmp(cx, span, substr, discr_then_data)),
+            body: Box::new(|cx, span, substr| {
+                // Builds:
+                //
+                // match ::core::cmp::Ord::cmp(&self.x, &other.x) {
+                //     ::std::cmp::Ordering::Equal =>
+                //         ::core::cmp::Ord::cmp(&self.y, &other.y),
+                //     cmp => cmp,
+                // }
+                let expr = cmp_body(cx, span, substr, discr_then_data, OrdlikeDerive::Ord);
+                BlockOrExpr::new_expr(expr)
+            }),
         }],
         is_const,
         ..
     };
 
     trait_def.expand(cx, item, push)
-}
-
-pub(crate) fn cs_cmp(
-    cx: &ExtCtxt<'_>,
-    span: Span,
-    substr: Substructure<'_>,
-    discr_then_data: bool,
-) -> BlockOrExpr {
-    // Builds:
-    //
-    // match ::core::cmp::Ord::cmp(&self.x, &other.x) {
-    //     ::std::cmp::Ordering::Equal =>
-    //         ::core::cmp::Ord::cmp(&self.y, &other.y),
-    //     cmp => cmp,
-    // }
-    let expr = cmp_body(cx, span, substr, discr_then_data, OrdlikeDerive::Ord);
-    BlockOrExpr::new_expr(expr)
 }
