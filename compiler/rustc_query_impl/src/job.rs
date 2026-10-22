@@ -98,11 +98,18 @@ fn collect_active_query_jobs_inner<'tcx, C>(
 {
     let mut collect_shard_jobs = |shard: &HashTable<(C::Key, ActiveKeyStatus<'tcx>)>| {
         for (key, status) in shard.iter() {
-            if let ActiveKeyStatus::Started(QueryExecutionKind::Default(job)) = status {
+            if let ActiveKeyStatus::Started(exec_kind) = status {
+                let job = match exec_kind.clone() {
+                    QueryExecutionKind::Default(job) => job,
+                    QueryExecutionKind::Feeding { id, parent } => {
+                        QueryJob { id, parent, span: DUMMY_SP, latch: None }
+                    }
+                };
+
                 // It's fine to call `create_tagged_key` with the shard locked,
                 // because it's just a `TaggedQueryKey` variant constructor.
                 let tagged_key = (query.create_tagged_key)(*key);
-                job_map.insert(job.id, QueryJobInfo { tagged_key, job: job.clone() });
+                job_map.insert(job.id, QueryJobInfo { tagged_key, job });
             }
         }
     };
