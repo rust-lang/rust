@@ -732,7 +732,11 @@ extern "C" LLVMRustResult LLVMRustOptimize(
                    PGOOptions::ColdFuncOpt::Default, DebugInfoForProfiling);
   }
 
+#if LLVM_VERSION_GE(24, 0)
+  auto PB = PassBuilder(TheModule->getContext(), TM, PTO, PGOOpt, &PIC);
+#else
   auto PB = PassBuilder(TM, PTO, PGOOpt, &PIC);
+#endif
   LoopAnalysisManager LAM;
   FunctionAnalysisManager FAM;
   CGSCCAnalysisManager CGAM;
@@ -1201,8 +1205,18 @@ extern "C" LLVMRustResult LLVMRustPrintModule(LLVMModuleRef M, const char *Path,
 }
 
 extern "C" void LLVMRustPrintPasses() {
+#if LLVM_VERSION_GE(24, 0)
+  LLVMContextRef CtxRef = LLVMRustContextCreate();
+  PassBuilder PB(*unwrap(CtxRef));
+#else
   PassBuilder PB;
+#endif
+
   PB.printPassNames(outs());
+
+#if LLVM_VERSION_GE(24, 0)
+  LLVMContextDispose(CtxRef);
+#endif
 }
 
 extern "C" void LLVMRustRunRestrictionPass(LLVMModuleRef M, char **Symbols,
@@ -1554,7 +1568,11 @@ extern "C" LLVMRustBuffer *LLVMRustModuleSerialize(LLVMModuleRef M,
   {
     auto OS = raw_string_ostream(Ret->data);
     {
+#if LLVM_VERSION_GE(24, 0)
+      PassBuilder PB(unwrap(M)->getContext());
+#else
       PassBuilder PB;
+#endif
       LoopAnalysisManager LAM;
       FunctionAnalysisManager FAM;
       CGSCCAnalysisManager CGAM;
