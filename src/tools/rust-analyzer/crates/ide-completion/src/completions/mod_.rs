@@ -44,12 +44,15 @@ pub(crate) fn complete_mod(
         current_module.definition_source_file_id(ctx.db).original_file(ctx.db).file_id(ctx.db);
     let source_root_id = ctx.db.file_source_root(module_definition_file).source_root_id(ctx.db);
     let source_root = ctx.db.source_root(source_root_id).source_root(ctx.db);
-    let root_path = source_root.path_for_file(&ctx.krate.root_file(ctx.db))?;
+    let crate_roots = base_db::all_crates(ctx.db)
+        .iter()
+        .map(|krate| krate.root_file_id(ctx.db).file_id(ctx.db))
+        .collect::<FxHashSet<_>>();
 
     let directory_to_look_for_submodules = directory_to_look_for_submodules(
         current_module,
         ctx.db,
-        root_path,
+        crate_roots.contains(&module_definition_file),
         source_root.path_for_file(&module_definition_file)?,
     )?;
 
@@ -74,7 +77,7 @@ pub(crate) fn complete_mod(
             let submodule_path = source_root.path_for_file(&submodule_file)?;
             let directory_with_submodule = submodule_path.parent()?;
             let (name, ext) = submodule_path.name_and_extension()?;
-            if ext != Some("rs") || is_source_root(root_path, submodule_path) {
+            if ext != Some("rs") || crate_roots.contains(&submodule_file) {
                 return None;
             }
             match name {
@@ -116,7 +119,7 @@ pub(crate) fn complete_mod(
 fn directory_to_look_for_submodules(
     module: Module,
     db: &RootDatabase,
-    root_path: &VfsPath,
+    is_root: bool,
     module_file_path: &VfsPath,
 ) -> Option<VfsPath> {
     let directory_with_module_path = module_file_path.parent()?;
@@ -126,7 +129,7 @@ fn directory_to_look_for_submodules(
     }
     let base_directory = match name {
         "mod" => Some(directory_with_module_path),
-        _ if is_source_root(root_path, module_file_path) => Some(directory_with_module_path),
+        _ if is_root => Some(directory_with_module_path),
         regular_rust_file_name => {
             if matches!(
                 (
@@ -162,13 +165,6 @@ fn module_chain_to_containing_module_file(
             .collect::<Vec<_>>();
     path.reverse();
     path
-}
-
-// FIXME: It doesn't seem to support custom crate roots
-fn is_source_root(root_path: &VfsPath, path: &VfsPath) -> bool {
-    let Some(root_dir) = root_path.parent() else { return false };
-    let Some((name, _)) = path.name_and_extension() else { return false };
-    path.parent() == Some(root_dir) && matches!(name, "main" | "lib")
 }
 
 #[cfg(test)]
