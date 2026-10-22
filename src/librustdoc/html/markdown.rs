@@ -809,12 +809,10 @@ fn map_code_block(
 
         if mapped_line.as_ref() == line
             && let Some(extra_info) = extra_info
-            && let Some(fragments) = extra_info.fragments
         {
             let code_line = code_line_start..code_line_start + line.len();
             if let Some(md_range) = markdown_range_for_code_range(text_events, code_line)
-                && let Some((original, _)) =
-                    source_span_for_markdown_range(extra_info.tcx, doc, &md_range, fragments)
+                && let Some(original) = extra_info.span_for_markdown_range(doc, md_range)
             {
                 code_mappings.push(CodeLineMapping { generated, original });
             }
@@ -846,6 +844,7 @@ pub(crate) struct ExtraInfo<'doc, 'tcx> {
     sp: Span,
     tcx: TyCtxt<'tcx>,
     fragments: Option<&'doc [DocFragment]>,
+    fragment_ranges: &'doc [Range<usize>],
 }
 
 impl<'doc, 'tcx> ExtraInfo<'doc, 'tcx> {
@@ -854,8 +853,27 @@ impl<'doc, 'tcx> ExtraInfo<'doc, 'tcx> {
         def_id: LocalDefId,
         sp: Span,
         fragments: Option<&'doc [DocFragment]>,
+        fragment_ranges: &'doc [Range<usize>],
     ) -> ExtraInfo<'doc, 'tcx> {
-        ExtraInfo { def_id, sp, tcx, fragments }
+        ExtraInfo { def_id, sp, tcx, fragments, fragment_ranges }
+    }
+
+    /// Returns a `Span` corresponding to the doc attribute's span which corresponds to the given
+    /// `range` in the `markdown`.
+    fn span_for_markdown_range(&self, mut markdown: &str, mut range: Range<usize>) -> Option<Span> {
+        let mut fragments = self.fragments?;
+        if !self.fragment_ranges.is_empty() {
+            // The index of the `fragment_ranges` which contains `range`.
+            let index = self.fragment_ranges.iter().position(|fragment_range| {
+                fragment_range.start <= range.start && range.end <= fragment_range.end
+            })?;
+            let fragment_range = &self.fragment_ranges[index];
+            markdown = &markdown[fragment_range.clone()];
+            range = range.start - fragment_range.start..range.end - fragment_range.start;
+            // A slice with the doc fragment containing `range`.
+            fragments = &fragments[index..=index];
+        }
+        source_span_for_markdown_range(self.tcx, markdown, &range, fragments).map(|(span, _)| span)
     }
 
     fn error_invalid_codeblock_attr(&self, msg: impl Into<DiagMessage>) {

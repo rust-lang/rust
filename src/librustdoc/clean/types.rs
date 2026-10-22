@@ -1119,6 +1119,50 @@ impl Attributes {
         })
     }
 
+    /// Mostly the same as [`Self::doc_value`] except that it inserts empty lines to replace
+    /// "missing" lines. Like:
+    ///
+    /// `````rust
+    /// //! hey
+    /// // I'm a code comment.
+    /// #![cfg_attr(feature = "impossible", doc = "not in the docstring either")]
+    /// //! ``` // The doctest index is off by 2.
+    /// //! let x = 1;
+    /// //! ```
+    /// `````
+    pub(crate) fn opt_doctest_value(
+        &self,
+        doc_span: rustc_span::Span,
+        tcx: TyCtxt<'_>,
+    ) -> Option<(String, Vec<std::ops::Range<usize>>)> {
+        if self.doc_strings.is_empty() {
+            return None;
+        }
+        let source_map = tcx.sess.source_map();
+        let file_index = source_map.lookup_source_file_idx(doc_span.lo());
+
+        let mut res = String::new();
+        let mut fragment_ranges = Vec::with_capacity(self.doc_strings.len());
+        let mut frags = self.doc_strings.iter().peekable();
+        while let Some(frag) = frags.next() {
+            let start = res.len();
+            add_doc_fragment(&mut res, frag);
+            fragment_ranges.push(start..res.len());
+            if let Some(next_frag) = frags.peek()
+                // We check if both spans come from the current file, otherwise we ignore it.
+                && source_map.lookup_source_file_idx(next_frag.span.lo()) == file_index
+                && source_map.lookup_source_file_idx(frag.span.hi()) == file_index
+            {
+                let line_start = source_map.lookup_char_pos(frag.span.hi()).line + 1;
+                let line_end = source_map.lookup_char_pos(next_frag.span.lo()).line;
+                for _ in line_start..line_end {
+                    res.push('\n');
+                }
+            }
+        }
+        Some((res, fragment_ranges))
+    }
+
     pub(crate) fn get_doc_aliases(&self) -> Box<[Symbol]> {
         let mut aliases = FxIndexSet::default();
 

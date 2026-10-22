@@ -211,8 +211,8 @@ impl HirCollector<'_> {
         // The collapse-docs pass won't combine sugared/raw doc attributes, or included files with
         // anything else, this will combine them for us.
         let attrs = Attributes::from_hir(hir_attrs);
-        if let Some(doc) = attrs.opt_doc_value() {
-            let span = span_of_fragments(&attrs.doc_strings).unwrap_or(sp);
+        let span = span_of_fragments(&attrs.doc_strings).unwrap_or(sp);
+        if let Some((doc, fragment_ranges)) = attrs.opt_doctest_value(span, self.tcx) {
             self.collector.position = if span.edition().at_least_rust_2024() {
                 span
             } else {
@@ -235,6 +235,7 @@ impl HirCollector<'_> {
                     def_id,
                     span,
                     Some(&attrs.doc_strings),
+                    &fragment_ranges,
                 )),
             );
         }
