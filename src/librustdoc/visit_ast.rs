@@ -606,7 +606,11 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 };
                 let ident = match (tree.kind, self.glob_mode) {
                     (hir::UseKind::Single(ident), GlobMode::NoGlob | GlobMode::Everything) => {
-                        Some(ident.name)
+                        if ident.name == kw::SelfLower {
+                            None
+                        } else {
+                            Some(ident.name)
+                        }
                     }
                     (hir::UseKind::Glob, GlobMode::Only | GlobMode::Everything) => None,
                     (hir::UseKind::Single(_), GlobMode::Only)

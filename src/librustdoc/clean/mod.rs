@@ -127,9 +127,42 @@ pub(crate) fn clean_doc_module<'tcx>(
             match import {
                 hir::Node::Item(hir::Item { kind: hir::ItemKind::Use(tree), .. })
                 | hir::Node::NestedUseTree(tree) => {
-                    let hir::UsePath { segments, span, .. } = *tree.prefix;
+                    let mut segments = std::borrow::Cow::Borrowed(tree.prefix.segments);
+                    let mut span = tree.prefix.span;
+                    if res.opt_def_id().is_some_and(|did| !did.is_local() && did.is_crate_root())
+                        && tree
+                            .prefix
+                            .segments
+                            .last()
+                            .is_some_and(|s| s.ident.name == kw::SelfLower)
+                    {
+                        let mut segs = tree.prefix.segments.to_vec();
+                        let mut parent = cx.tcx.local_parent(*import_id);
+                        loop {
+                            match cx.tcx.hir_node_by_def_id(parent) {
+                                hir::Node::Item(hir::Item {
+                                    kind: hir::ItemKind::Use(parent_tree),
+                                    ..
+                                }) => {
+                                    span = parent_tree.prefix.span.to(span);
+                                    segs.splice(0..0, parent_tree.prefix.segments.iter().copied());
+                                    break;
+                                }
+                                hir::Node::NestedUseTree(parent_tree) => {
+                                    span = parent_tree.prefix.span.to(span);
+                                    segs.splice(0..0, parent_tree.prefix.segments.iter().copied());
+                                    parent = cx.tcx.local_parent(parent);
+                                }
+                                _ => break,
+                            }
+                        }
+                        if segs.last().is_some_and(|s| s.ident.name == kw::SelfLower) {
+                            segs.pop();
+                        }
+                        segments = std::borrow::Cow::Owned(segs);
+                    }
                     let path = hir::UsePath {
-                        segments,
+                        segments: &segments,
                         res: PerNS { value_ns: Some(*res), type_ns: None, macro_ns: None },
                         span,
                     };
