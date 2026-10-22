@@ -26,6 +26,7 @@ allow-unauthenticated = [
     "beta-nominated",
     "CI-spurious-*",
     "const-hack",
+    "llm-assisted",
     "llvm-*",
     "needs-fcp",
     "relnotes",
