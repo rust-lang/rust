@@ -9,6 +9,7 @@ use std::ops::{Index, IndexMut};
 
 pub use basic_blocks::BasicBlocks;
 use either::Either;
+pub use points::{DenseLocationMap, PointIndex};
 use polonius_engine::Atom;
 use rustc_abi::{FieldIdx, VariantIdx};
 pub use rustc_ast::{Mutability, Pinnedness};
@@ -43,6 +44,7 @@ mod generic_graph;
 pub mod generic_graphviz;
 pub mod graphviz;
 pub mod interpret;
+mod points;
 pub mod pretty;
 mod query;
 mod statement;

@@ -42,10 +42,9 @@ mod liveness_constraints;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
-use rustc_middle::mir::{Body, Local};
+use rustc_middle::mir::{Body, DenseLocationMap, Local, PointIndex};
 use rustc_middle::ty::RegionVid;
 use rustc_mir_dataflow::move_paths::MoveData;
-use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex};
 
 pub(self) use self::constraints::*;
 pub(crate) use self::dump::dump_polonius_mir;

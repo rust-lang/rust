@@ -1,5 +1,5 @@
 use std::iter;
-use std::rc::Rc;
+use std::sync::Arc;
 
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::FxIndexMap;
@@ -8,13 +8,12 @@ use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin, OpaqueTypeStorageEntries};
 use rustc_infer::traits::ObligationCause;
 use rustc_macros::extension;
-use rustc_middle::mir::{Body, ConstraintCategory};
+use rustc_middle::mir::{Body, ConstraintCategory, DenseLocationMap};
 use rustc_middle::ty::{
     self, DefiningScopeKind, DefinitionSiteHiddenType, FallibleTypeFolder, Flags, GenericArg,
     GenericArgsRef, OpaqueTypeKey, ProvisionalHiddenType, Region, RegionVid, Ty, TyCtxt,
     TypeFoldable, TypeSuperFoldable, TypeVisitableExt, Unnormalized, fold_regions,
 };
-use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_span::Span;
 use rustc_trait_selection::opaque_types::{
     NonDefiningUseReason, opaque_type_has_defining_use_args,
@@ -205,7 +204,7 @@ pub(crate) fn compute_definition_site_hidden_types<'tcx>(
     infcx: &BorrowckInferCtxt<'tcx>,
     universal_region_relations: &Frozen<UniversalRegionRelations<'tcx>>,
     constraints: &MirTypeckRegionConstraints<'tcx>,
-    location_map: Rc<DenseLocationMap>,
+    location_map: Arc<DenseLocationMap>,
     hidden_types: &mut FxIndexMap<LocalDefId, ty::DefinitionSiteHiddenType<'tcx>>,
     unconstrained_hidden_type_errors: &mut Vec<UnexpectedHiddenRegion<'tcx>>,
     opaque_types: &[(OpaqueTypeKey<'tcx>, ProvisionalHiddenType<'tcx>)],

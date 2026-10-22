@@ -1,8 +1,7 @@
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
-use rustc_middle::mir::{Body, Local, Location};
-use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex};
+use rustc_middle::mir::{Body, DenseLocationMap, Local, Location, PointIndex};
 
 use crate::def_use::{self, DefUse};
 

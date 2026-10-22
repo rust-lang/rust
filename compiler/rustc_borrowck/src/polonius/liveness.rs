@@ -1,8 +1,7 @@
 use rustc_index::IndexVec;
 use rustc_index::interval::{IntervalSet, SparseIntervalMatrix};
-use rustc_middle::mir::Local;
+use rustc_middle::mir::{Local, PointIndex};
 use rustc_middle::ty::{GenericArg, RegionVid, Ty, TyCtxt};
-use rustc_mir_dataflow::points::PointIndex;
 
 use crate::polonius::{ConstraintDirection, LiveRegionVariances};
 use crate::region_infer::values::LivenessValues;
