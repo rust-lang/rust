@@ -94,7 +94,7 @@ impl<'a> CommentStyle<'a> {
         }
     }
 
-    pub(crate) fn line_start(&self) -> &'a str {
+    pub(crate) fn comment_prefix(&self) -> &'a str {
         match *self {
             CommentStyle::DoubleSlash => "// ",
             CommentStyle::TripleSlash => "/// ",
@@ -107,7 +107,7 @@ impl<'a> CommentStyle<'a> {
     }
 
     pub(crate) fn to_str_tuplet(&self) -> (&'a str, &'a str, &'a str) {
-        (self.opener(), self.closer(), self.line_start())
+        (self.opener(), self.closer(), self.comment_prefix())
     }
 }
 
@@ -306,7 +306,7 @@ fn identify_comment(
 
     let (has_bare_lines, first_group_ending) = match style {
         CommentStyle::DoubleSlash | CommentStyle::TripleSlash | CommentStyle::Doc => {
-            let line_start = style.line_start().trim_start();
+            let line_start = style.comment_prefix().trim_start();
             consume_same_line_comments(style, orig, line_start)
         }
         CommentStyle::Custom(opener) => {
@@ -583,7 +583,7 @@ struct CommentRewrite<'a> {
 
     opener: String,
     closer: String,
-    line_start: String,
+    comment_prefix: String,
     style: CommentStyle<'a>,
 }
 
@@ -633,7 +633,7 @@ impl<'a> CommentRewrite<'a> {
 
             opener: opener.to_owned(),
             closer: closer.to_owned(),
-            line_start: line_start.to_owned(),
+            comment_prefix: line_start.to_owned(),
             style,
         };
         cr.result.push_str(opener);
@@ -883,7 +883,8 @@ impl<'a> CommentRewrite<'a> {
             self.fmt.shape = if self.is_prev_line_multi_line {
                 // 1 = " "
                 let offset = 1 + last_line_width(&self.result, self.fmt.config.tab_spaces())
-                    - self.line_start.len();
+                    - self.comment_prefix.len()
+                    - self.fmt_indent.width();
                 Shape {
                     width: self.max_width.saturating_sub(offset),
                     indent: self.fmt_indent,

@@ -1,4 +1,4 @@
-// rustfmt-trailing_comma: Vertical
+//@ rustfmt-trailing_comma: Vertical
 // Trailing comma
 
 fn main() {
