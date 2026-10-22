@@ -44,7 +44,7 @@ pub(crate) fn expand_derive_partial_eq(
         ret_ty: cx.ty_name(span, sym::bool),
         attributes: thin_vec![cx.generated_attr(span, ast::GeneratedAttr::Inline)],
         fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
-        combine_substructure: Box::new(get_substructure_equality_expr),
+        body: Box::new(get_substructure_equality_expr),
     }];
 
     let trait_def = TraitDef {

@@ -83,7 +83,7 @@ pub(crate) fn expand_derive_from(
             ret_ty: cx.ty_self(span),
             attributes: thin_vec![cx.generated_attr(span, ast::GeneratedAttr::Inline)],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
-            combine_substructure: Box::new(|cx, span, substructure| {
+            body: Box::new(|cx, span, substructure| {
                 let field = match field {
                     Ok(ref field) => field,
                     Err(guar) => {

@@ -45,9 +45,8 @@ pub(crate) fn expand_derive_clone(
                 substructure = Box::new(|c, s, sub| cs_clone_simple(c, s, sub, false));
             } else {
                 is_simple = false;
-                substructure = Box::new(|c, s, sub| {
-                    cs_clone(c, s, sub, item.kind.ident().unwrap())
-                });
+                substructure =
+                    Box::new(|c, s, sub| cs_clone(c, s, sub, item.kind.ident().unwrap()));
             }
         }
         ItemKind::Union(..) => {
@@ -94,7 +93,7 @@ pub(crate) fn expand_derive_clone(
             ret_ty: cx.ty_self(span),
             attributes: thin_vec![cx.generated_attr(span, ast::GeneratedAttr::Inline)],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
-            combine_substructure: substructure,
+            body: substructure,
         }],
         is_const,
         ..

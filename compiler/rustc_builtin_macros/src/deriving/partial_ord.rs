@@ -27,9 +27,8 @@ pub(crate) fn expand_derive_partial_ord(
     let has_derive_ord = cx.resolver.has_derive_ord(container_id);
     let default_substructure: CombineSubstructureFunc<'_> =
         Box::new(|cx, span, substr| cs_partial_cmp(cx, span, substr, discr_then_data));
-    let simple_substructure: CombineSubstructureFunc<'_> = Box::new(|cx, span, _| {
-        cs_partial_cmp_simple(cx, span, cx.expr_name(span, sym::other))
-    });
+    let simple_substructure: CombineSubstructureFunc<'_> =
+        Box::new(|cx, span, _| cs_partial_cmp_simple(cx, span, cx.expr_name(span, sym::other)));
     let is_simple = match &item.kind {
         // For unit structs/zero-variant enums, the default generated code is better.
         ItemKind::Struct(.., ast::VariantData::Unit(..)) => false,
@@ -62,7 +61,7 @@ pub(crate) fn expand_derive_partial_ord(
         ret_ty,
         attributes: thin_vec![cx.generated_attr(span, ast::GeneratedAttr::Inline)],
         fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
-        combine_substructure: if is_simple { simple_substructure } else { default_substructure },
+        body: if is_simple { simple_substructure } else { default_substructure },
     };
 
     let trait_def = TraitDef {

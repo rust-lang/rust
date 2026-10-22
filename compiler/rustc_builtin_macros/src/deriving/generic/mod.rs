@@ -216,7 +216,7 @@ pub(crate) struct MethodDef<'a> {
 
     pub fieldless_variants_strategy: FieldlessVariantsStrategy,
 
-    pub combine_substructure: CombineSubstructureFunc<'a>,
+    pub body: CombineSubstructureFunc<'a>,
 }
 
 /// How to handle fieldless enum variants.
@@ -669,7 +669,7 @@ impl<'a> MethodDef<'a> {
         span: Span,
         fields: Substructure<'_>,
     ) -> BlockOrExpr {
-        (self.combine_substructure)(cx, span, fields)
+        (self.body)(cx, span, fields)
     }
 
     fn is_static(&self) -> bool {

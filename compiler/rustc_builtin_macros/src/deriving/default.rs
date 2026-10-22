@@ -35,7 +35,7 @@ pub(crate) fn expand_derive_default(
             ret_ty: cx.ty_self(span),
             attributes: thin_vec![cx.generated_attr(span, ast::GeneratedAttr::Inline)],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
-            combine_substructure: Box::new(|cx, trait_span, substr| {
+            body: Box::new(|cx, trait_span, substr| {
                 match substr {
                     StaticStruct(variant_data) => default_struct_substructure(
                         cx,
