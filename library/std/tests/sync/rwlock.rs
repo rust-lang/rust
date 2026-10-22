@@ -922,14 +922,16 @@ fn test_rwlock_max_readers() {
             ) => (1 << 30) - 2,
             any(
                 target_family = "unix",
-                all(target_os = "windows", target_vendor = "win7", target_pointer_width = "64"),
+                all(target_os = "windows", target_vendor = "win7"),
                 all(target_vendor = "fortanix", target_env = "sgx"),
                 target_os = "xous",
                 target_os = "teeos",
-            ) => u32::MAX,
-            // Otherwise a form of deadlock is observed.
-            all(target_os = "windows", target_vendor = "win7", target_pointer_width = "32") => {
-                (1 << 28) - 1
+            ) => {
+                if usize::BITS - 4 > u32::BITS {
+                    u32::MAX
+                } else {
+                    (usize::MAX >> 4) as u32
+                }
             }
             target_os = "solid_asp3" => (1 << 30),
             _ => u32::MAX,
