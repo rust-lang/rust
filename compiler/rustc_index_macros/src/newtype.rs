@@ -337,6 +337,18 @@ impl Parse for Newtype {
                 }
             }
 
+            impl rustc_index::dense_map::DenseKey for #name {
+                #[inline]
+                fn new(value: usize) -> Self {
+                    Self::from_usize(value)
+                }
+
+                #[inline]
+                fn index(self) -> usize {
+                    self.as_usize()
+                }
+            }
+
             #step
 
             #stable_hash_impl

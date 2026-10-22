@@ -5,7 +5,7 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hash::{
     RawDefId, RawSpan, StableHash, StableHashControls, StableHashCtxt, StableHasher,
 };
-use rustc_data_structures::sync::AppendOnlyIndexVec;
+use rustc_data_structures::sync::AppendOnlyDenseMap;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_session::Session;
 use rustc_span::source_map::SourceMap;
@@ -222,7 +222,7 @@ impl SourceSpanCache {
     pub(crate) fn lookup(
         &mut self,
         def_id: LocalDefId,
-        source_span: &AppendOnlyIndexVec<LocalDefId, Span>,
+        source_span: &AppendOnlyDenseMap<LocalDefId, Span>,
     ) -> SpanData {
         if let Some(cache) = self.0
             && cache.0 == def_id

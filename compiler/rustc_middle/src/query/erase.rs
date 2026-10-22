@@ -13,6 +13,7 @@ use std::mem::MaybeUninit;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{DynSend, DynSync};
+use rustc_index::dense_map::{DenseKey, DenseMapRef};
 use rustc_index::{Idx, IndexSlice};
 use rustc_span::def_id::ModId;
 use rustc_span::{ErrorGuaranteed, Spanned};
@@ -120,6 +121,10 @@ impl<T> Erasable for &'_ [T] {
 }
 
 impl<I: Idx, T> Erasable for &'_ IndexSlice<I, T> {
+    type Storage = [u8; size_of::<&'_ [()]>()];
+}
+
+impl<'a, K: DenseKey, V> Erasable for DenseMapRef<'a, K, V> {
     type Storage = [u8; size_of::<&'_ [()]>()];
 }
 

@@ -3,7 +3,7 @@ use std::sync::OnceLock;
 use rustc_data_structures::sharded::ShardedHashMap;
 pub use rustc_data_structures::vec_cache::VecCache;
 use rustc_hir::def_id::LOCAL_CRATE;
-use rustc_index::Idx;
+use rustc_index::dense_map::DenseKey;
 use rustc_span::def_id::{DefId, DefIndex};
 
 use crate::dep_graph::DepNodeIndex;
@@ -192,7 +192,7 @@ where
 
 impl<K, V> QueryCache for VecCache<K, V, DepNodeIndex>
 where
-    K: Idx + QueryKey,
+    K: DenseKey + QueryKey,
     V: Copy,
 {
     type Key = K;

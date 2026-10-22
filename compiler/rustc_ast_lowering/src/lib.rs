@@ -64,7 +64,8 @@ use rustc_hir::{
     self as hir, AngleBrackets, CRATE_OWNER_ID, ConstArg, GenericArg, HirId, ItemLocalMap,
     LifetimeSource, LifetimeSyntax, MissingLifetimeKind, ParamName, TraitCandidate,
 };
-use rustc_index::{Idx, IndexSlice, IndexVec};
+use rustc_index::Idx;
+use rustc_index::dense_map::{DenseMap, DenseMapRef};
 use rustc_macros::extension;
 use rustc_middle::middle::resolve::{
     AstOwner, LifetimeRes, PartialRes, PerOwnerResolverData, ResolverAstLowering,
@@ -590,7 +591,7 @@ enum TryBlockScope {
 fn index_ast<'tcx>(
     tcx: TyCtxt<'tcx>,
     (): (),
-) -> &'tcx IndexSlice<LocalDefId, Option<Steal<(Arc<ResolverAstLowering<'tcx>>, AstOwner)>>> {
+) -> DenseMapRef<'tcx, LocalDefId, Option<Steal<(Arc<ResolverAstLowering<'tcx>>, AstOwner)>>> {
     // Queries that borrow `resolver_for_lowering`.
     tcx.ensure_done().output_filenames(());
     tcx.ensure_done().early_lint_checks(());
@@ -603,7 +604,7 @@ fn index_ast<'tcx>(
 
     let mut indexer = Indexer {
         owners: &resolver.owners,
-        index: IndexVec::new(),
+        index: Default::default(),
         next_node_id: resolver.next_node_id,
     };
     indexer.visit_crate(&mut krate);
@@ -612,20 +613,23 @@ fn index_ast<'tcx>(
 
     let index = indexer.index;
     let resolver = Arc::new(resolver);
-    return tcx.arena.alloc_index_slice_from_iter::<LocalDefId, _, _>(
+    return DenseMapRef::from_raw(tcx.arena.alloc_from_iter(
+        // We are delegating handling of stable iteration to the users of the returned
+        // `DenseMapRef`, it also has a warning for unstable iteration
+        #[allow(rustc::potential_query_instability)]
         index.into_iter().map(|owner| owner.map(|o| Steal::new((Arc::clone(&resolver), o)))),
-    );
+    ));
 
     struct Indexer<'s, 'hir> {
         owners: &'s NodeMap<PerOwnerResolverData<'hir>>,
-        index: IndexVec<LocalDefId, Option<AstOwner>>,
+        index: DenseMap<LocalDefId, Option<AstOwner>>,
         next_node_id: NodeId,
     }
 
     impl Indexer<'_, '_> {
         fn insert(&mut self, id: NodeId, node: AstOwner) {
             let def_id = self.owners[&id].def_id;
-            self.index.insert(def_id, node);
+            self.index.insert(def_id, Some(node));
         }
 
         fn make_dummy<K>(

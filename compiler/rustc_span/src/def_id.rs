@@ -9,6 +9,7 @@ use rustc_data_structures::stable_hash::{
 use rustc_data_structures::unhash::Unhasher;
 use rustc_hashes::Hash64;
 use rustc_index::Idx;
+use rustc_index::dense_map::DenseKey;
 use rustc_macros::{BlobDecodable, Decodable, Encodable, StableHash};
 use rustc_serialize::{ContextOrd, Decodable, Encodable};
 
@@ -376,7 +377,9 @@ impl !PartialOrd for LocalDefId {}
 pub const CRATE_DEF_ID: LocalDefId = LocalDefId { local_def_index: CRATE_DEF_INDEX };
 pub const CRATE_MOD_ID: LocalModId = LocalModId::new_unchecked(CRATE_DEF_ID);
 
-impl Idx for LocalDefId {
+impl !Idx for LocalDefId {}
+
+impl DenseKey for LocalDefId {
     #[inline]
     fn new(idx: usize) -> Self {
         LocalDefId { local_def_index: Idx::new(idx) }

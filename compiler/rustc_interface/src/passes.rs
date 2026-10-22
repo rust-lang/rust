@@ -14,7 +14,7 @@ use rustc_crate_store::Untracked;
 use rustc_data_structures::indexmap::IndexMap;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{
-    AppendOnlyIndexVec, DynSend, DynSync, FreezeLock, WorkerLocal, par_fns,
+    AppendOnlyDenseMap, DynSend, DynSync, FreezeLock, WorkerLocal, par_fns,
 };
 use rustc_data_structures::thousands;
 use rustc_errors::timings::TimingSection;
@@ -967,7 +967,7 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
     let stable_crate_ids = FreezeLock::new(StableCrateIdMap::default());
     let untracked = Untracked {
         cstore,
-        source_span: AppendOnlyIndexVec::new(),
+        source_span: AppendOnlyDenseMap::new(),
         definitions,
         stable_crate_ids,
         local_crate_hash: OnceLock::new(),

@@ -15,6 +15,7 @@ use std::fmt::{self, Debug};
 use rustc_data_structures::stable_hash::{
     StableHash, StableHashCtxt, StableHasher, StableOrd, ToStableHashKey,
 };
+use rustc_index::dense_map::DenseKey;
 use rustc_macros::{Decodable, Encodable, StableHash};
 use rustc_serialize::ContextOrd;
 use rustc_span::def_id::{CRATE_DEF_ID, DefId, DefIndex, DefPathHash, LocalDefId, LocalModId};
@@ -56,7 +57,7 @@ impl OwnerId {
     }
 }
 
-impl rustc_index::Idx for OwnerId {
+impl DenseKey for OwnerId {
     #[inline]
     fn new(idx: usize) -> Self {
         OwnerId { def_id: LocalDefId { local_def_index: DefIndex::from_usize(idx) } }
@@ -106,6 +107,7 @@ pub struct HirId {
 // See https://github.com/rust-lang/rust/issues/90317.
 impl !Ord for HirId {}
 impl !PartialOrd for HirId {}
+impl !rustc_index::Idx for OwnerId {}
 
 impl Debug for HirId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

@@ -1,14 +1,14 @@
 use std::marker::PhantomData;
 
-use rustc_index::Idx;
+use rustc_index::dense_map::DenseKey;
 
 #[derive(Default)]
-pub struct AppendOnlyIndexVec<I: Idx, T: Copy> {
+pub struct AppendOnlyDenseMap<I: DenseKey, T: Copy> {
     vec: elsa::sync::LockFreeFrozenVec<T>,
     _marker: PhantomData<fn(&I)>,
 }
 
-impl<I: Idx, T: Copy> AppendOnlyIndexVec<I, T> {
+impl<I: DenseKey, T: Copy> AppendOnlyDenseMap<I, T> {
     pub fn new() -> Self {
         Self { vec: elsa::sync::LockFreeFrozenVec::new(), _marker: PhantomData }
     }
