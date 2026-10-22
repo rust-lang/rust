@@ -1,4 +1,3 @@
-use std::num::NonZero;
 use std::sync::Arc;
 
 use parking_lot::{Condvar, Mutex};
@@ -8,7 +7,9 @@ use rustc_errors::FatalError;
 use rustc_middle::dep_graph::{
     DepGraphData, DepNode, DepNodeIndex, DepNodeKey, SerializedDepNodeIndex,
 };
-use rustc_middle::query::job::{ActiveJobGuard, QueryExecutionKind};
+use rustc_middle::query::job::{
+    ActiveJobGuard, QueryExecutionKind, current_query_job, next_job_id,
+};
 use rustc_middle::query::{
     ActiveKeyStatus, QueryCache, QueryCycle, QueryJob, QueryJobId, QueryLatch, QueryMode,
     QueryVTable, QueryWaiter,
@@ -168,19 +169,6 @@ fn wait_for_query<'tcx, C: QueryCache>(
     }
 }
 
-#[inline]
-fn next_job_id<'tcx>(tcx: TyCtxt<'tcx>) -> QueryJobId {
-    QueryJobId(
-        NonZero::new(tcx.query_system.jobs.fetch_add(1, std::sync::atomic::Ordering::Relaxed))
-            .unwrap(),
-    )
-}
-
-#[inline]
-fn current_query_job() -> Option<QueryJobId> {
-    tls::with_context(|icx| icx.query)
-}
-
 /// Shared main part of both [`execute_query_incr_inner`] and [`execute_query_non_incr_inner`].
 #[inline(never)]
 fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
@@ -261,7 +249,7 @@ fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
                             find_and_handle_cycle(query, tcx, key, id, span)
                         }
                     }
-                    QueryExecutionKind::Feeding => {
+                    QueryExecutionKind::Feeding { .. } => {
                         bug!("trying to execute query while it is feeding")
                     }
                 },

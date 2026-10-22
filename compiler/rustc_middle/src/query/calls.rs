@@ -12,7 +12,7 @@ use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, bug};
 use crate::dep_graph;
 use crate::dep_graph::DepNodeKey;
 use crate::query::erase::{self, Erasable, Erased};
-use crate::query::job::{ActiveJobGuard, QueryExecutionKind};
+use crate::query::job::{ActiveJobGuard, QueryExecutionKind, current_query_job, next_job_id};
 use crate::query::{ActiveKeyStatus, IntoQueryKey, QueryCache, QueryMode, QueryVTable};
 use crate::ty::{self, TyCtxt};
 
@@ -281,7 +281,13 @@ pub(crate) fn query_feed<'tcx, C>(
                     }
                 }
                 None => {
-                    entry.insert((key, ActiveKeyStatus::Started(QueryExecutionKind::Feeding)));
+                    let parent = current_query_job();
+                    let id = next_job_id(tcx);
+
+                    entry.insert((
+                        key,
+                        ActiveKeyStatus::Started(QueryExecutionKind::Feeding { parent, id }),
+                    ));
 
                     drop(shard);
 
@@ -307,7 +313,7 @@ pub(crate) fn query_feed<'tcx, C>(
                 QueryExecutionKind::Default(_) => {
                     bug!("trying to feed query while it is executing")
                 }
-                QueryExecutionKind::Feeding => {
+                QueryExecutionKind::Feeding { .. } => {
                     bug!("trying to feed query while it is already feeding")
                 }
             },

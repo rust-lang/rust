@@ -12,6 +12,7 @@ use rustc_span::Span;
 use crate::dep_graph::DepNodeIndex;
 use crate::queries::TaggedQueryKey;
 use crate::query::QueryCache;
+use crate::ty::{TyCtxt, tls};
 
 /// A value uniquely identifying an active query job.
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
@@ -40,9 +41,10 @@ impl<'tcx> QueryJob<'tcx> {
     }
 }
 
+#[derive(Clone)]
 pub enum QueryExecutionKind<'tcx> {
     Default(QueryJob<'tcx>),
-    Feeding,
+    Feeding { id: QueryJobId, parent: Option<QueryJobId> },
 }
 
 /// For a particular query and key, tracks the status of a query evaluation
@@ -178,7 +180,7 @@ where
         match status {
             ActiveKeyStatus::Started(exec_kind) => match exec_kind {
                 QueryExecutionKind::Default(job) => signal_complete(job),
-                QueryExecutionKind::Feeding => {}
+                QueryExecutionKind::Feeding { .. } => {}
             },
             ActiveKeyStatus::Poisoned => panic!(),
         }
@@ -213,4 +215,17 @@ fn signal_complete(job: QueryJob<'_>) {
             waiter.condvar.notify_one();
         }
     }
+}
+
+#[inline]
+pub fn next_job_id<'tcx>(tcx: TyCtxt<'tcx>) -> QueryJobId {
+    QueryJobId(
+        NonZero::new(tcx.query_system.jobs.fetch_add(1, std::sync::atomic::Ordering::Relaxed))
+            .unwrap(),
+    )
+}
+
+#[inline]
+pub fn current_query_job() -> Option<QueryJobId> {
+    tls::with_context(|icx| icx.query)
 }
