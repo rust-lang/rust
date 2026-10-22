@@ -775,4 +775,123 @@ fn make() -> Foo {
             "#]],
         );
     }
+
+    #[test]
+    fn custom_iterator_adapter_chaining() {
+        check_expect_clear_loc(
+            InlayHintsConfig { chaining_hints: true, ..DISABLED_CONFIG },
+            r#"
+//- minicore: iterators
+fn main() {
+    [1, 2, 3].into_iter()
+        .merge_by([2, 4, 6], |a,b|a<b)
+        .next();
+}
+
+pub struct MergeBy<I: Iterator, J: Iterator, F> {
+    left: I,
+    right: J,
+    cmp_fn: F,
+}
+impl<I, J, F> Iterator for MergeBy<I, J, F>
+where
+    I: Iterator,
+    J: Iterator<Item = I::Item>,
+    F: FnMut(&I::Item, &J::Item) -> bool,
+{
+    type Item = I::Item;
+
+    fn next(&mut self) -> Option<Self::Item> { loop {} }
+}
+
+trait Itertools: Iterator {
+    fn merge_by<J, F>(self, other: J, is_first: F) -> MergeBy<Self, J::IntoIter, F>
+    where
+        Self: Sized,
+        J: IntoIterator<Item = Self::Item>,
+        F: FnMut(&Self::Item, &Self::Item) -> bool,
+    {
+        MergeBy { left: self, right: other.into_iter(), cmp_fn: is_first }
+    }
+}
+impl<I: Iterator> Itertools for I {}
+"#,
+            expect![[r#"
+                [
+                    (
+                        16..76,
+                        [
+                            "impl ",
+                            InlayHintLabelPart {
+                                text: "Iterator",
+                                linked_location: Some(
+                                    Computed(
+                                        FileRangeWrapper {
+                                            file_id: FileId(
+                                                1,
+                                            ),
+                                            range: 0..0,
+                                        },
+                                    ),
+                                ),
+                                tooltip: "",
+                            },
+                            "<",
+                            InlayHintLabelPart {
+                                text: "Item",
+                                linked_location: Some(
+                                    Computed(
+                                        FileRangeWrapper {
+                                            file_id: FileId(
+                                                1,
+                                            ),
+                                            range: 0..0,
+                                        },
+                                    ),
+                                ),
+                                tooltip: "",
+                            },
+                            " = i32>",
+                        ],
+                    ),
+                    (
+                        16..37,
+                        [
+                            "impl ",
+                            InlayHintLabelPart {
+                                text: "Iterator",
+                                linked_location: Some(
+                                    Computed(
+                                        FileRangeWrapper {
+                                            file_id: FileId(
+                                                1,
+                                            ),
+                                            range: 0..0,
+                                        },
+                                    ),
+                                ),
+                                tooltip: "",
+                            },
+                            "<",
+                            InlayHintLabelPart {
+                                text: "Item",
+                                linked_location: Some(
+                                    Computed(
+                                        FileRangeWrapper {
+                                            file_id: FileId(
+                                                1,
+                                            ),
+                                            range: 0..0,
+                                        },
+                                    ),
+                                ),
+                                tooltip: "",
+                            },
+                            " = i32>",
+                        ],
+                    ),
+                ]
+            "#]],
+        );
+    }
 }

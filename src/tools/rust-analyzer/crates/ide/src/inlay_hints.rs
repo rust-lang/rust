@@ -861,16 +861,22 @@ fn hint_iterator<'db>(
     let db = sema.db;
     let strukt = ty.strip_references().as_adt()?;
     let krate = strukt.module(db).krate(db);
-    if krate != famous_defs.core()? {
-        return None;
-    }
     let iter_trait = famous_defs.core_iter_Iterator()?;
     let iter_mod = famous_defs.core_iter()?;
 
-    // Assert that this struct comes from `core::iter`.
-    if !(strukt.visibility(db) == hir::Visibility::Public
-        && strukt.module(db).path_to_root(db).contains(&iter_mod))
-    {
+    let is_core_adapter = Some(krate) == famous_defs.core()
+        && strukt.visibility(db) == hir::Visibility::Public
+        && strukt.module(db).path_to_root(db).contains(&iter_mod);
+    let is_custom_adapter = || {
+        let params = hir::GenericDef::Adt(strukt).type_or_const_params(db);
+        params
+            .iter()
+            .filter_map(|it| it.as_type_param(db))
+            .any(|it| it.trait_bounds(db).contains(&iter_trait))
+    };
+
+    // Assert that this struct iterator adapter, excludes like `Range<usize>`.
+    if !is_core_adapter && !is_custom_adapter() {
         return None;
     }
 
