@@ -259,6 +259,14 @@ impl AttributeExt for Attribute {
     fn is_rustc_doc_primitive(&self) -> bool {
         self.has_name(sym::rustc_doc_primitive)
     }
+
+    /// Returns whether this attribute is any of the proc macro attributes.
+    /// i.e. `proc_macro`, `proc_macro_attribute` or `proc_macro_derive`.
+    fn is_proc_macro_attr(&self) -> bool {
+        [sym::proc_macro, sym::proc_macro_attribute, sym::proc_macro_derive]
+            .iter()
+            .any(|kind| self.has_name(*kind))
+    }
 }
 
 impl Attribute {
@@ -962,11 +970,8 @@ pub trait AttributeExt: Debug + 'static {
 
     /// Returns whether this attribute is any of the proc macro attributes.
     /// i.e. `proc_macro`, `proc_macro_attribute` or `proc_macro_derive`.
-    fn is_proc_macro_attr(&self) -> bool {
-        [sym::proc_macro, sym::proc_macro_attribute, sym::proc_macro_derive]
-            .iter()
-            .any(|kind| self.has_name(*kind))
-    }
+    fn is_proc_macro_attr(&self) -> bool;
+
     /// Returns true if this attribute is `#[automatically_deived]`.
     fn is_automatically_derived_attr(&self) -> bool;
 
