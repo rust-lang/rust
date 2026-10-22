@@ -13,6 +13,7 @@ allow-unauthenticated = [
     "E-*",
     "F-*",
     "I-*",
+    "llm-assisted",
     "needs-rfc",
     "needs-triage",
     "regression-*",
