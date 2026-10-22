@@ -101,8 +101,8 @@ impl ::core::marker::Copy for Point { }
 impl ::core::fmt::Debug for Point {
     #[inline]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-        ::core::fmt::Formatter::debug_struct_field2_finish(f, "Point", "x",
-            &self.x, "y", &&self.y)
+        ::core::fmt::Formatter::debug_struct_field2_finish(f, &self.x,
+            &&self.y, "Point x y")
     }
 }
 #[automatically_derived]
@@ -185,8 +185,8 @@ impl ::core::marker::Copy for PackedPoint { }
 impl ::core::fmt::Debug for PackedPoint {
     #[inline]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-        ::core::fmt::Formatter::debug_struct_field2_finish(f, "PackedPoint",
-            "x", &{ self.x }, "y", &&{ self.y })
+        ::core::fmt::Formatter::debug_struct_field2_finish(f, &{ self.x },
+            &&{ self.y }, "PackedPoint x y")
     }
 }
 #[automatically_derived]
@@ -338,8 +338,8 @@ impl ::core::marker::Copy for SingleField { }
 impl ::core::fmt::Debug for SingleField {
     #[inline]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-        ::core::fmt::Formatter::debug_struct_field1_finish(f, "SingleField",
-            "foo", &&self.foo)
+        ::core::fmt::Formatter::debug_struct_field1_finish(f, &&self.foo,
+            "SingleField foo")
     }
 }
 #[automatically_derived]
@@ -750,8 +750,8 @@ impl<T: ::core::fmt::Debug + Trait, U: ::core::fmt::Debug> ::core::fmt::Debug
     for Generic<T, U> where T::A: ::core::fmt::Debug {
     #[inline]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-        ::core::fmt::Formatter::debug_struct_field3_finish(f, "Generic", "t",
-            &self.t, "ta", &self.ta, "u", &&self.u)
+        ::core::fmt::Formatter::debug_struct_field3_finish(f, &self.t,
+            &self.ta, &&self.u, "Generic t ta u")
     }
 }
 #[automatically_derived]
@@ -1039,7 +1039,7 @@ impl ::core::fmt::Debug for Enum1 {
         match self {
             Self::Single { x: __self_0 } =>
                 ::core::fmt::Formatter::debug_struct_field1_finish(f,
-                    "Single", "x", &__self_0),
+                    &__self_0, "Single x"),
         }
     }
 }
@@ -1305,8 +1305,8 @@ impl ::core::fmt::Debug for Mixed {
                 ::core::fmt::Formatter::debug_tuple_field1_finish(f, "R",
                     &__self_0),
             Self::S { d1: __self_0, d2: __self_1 } =>
-                ::core::fmt::Formatter::debug_struct_field2_finish(f, "S",
-                    "d1", __self_0, "d2", &__self_1),
+                ::core::fmt::Formatter::debug_struct_field2_finish(f,
+                    __self_0, &__self_1, "S d1 d2"),
         }
     }
 }
