@@ -1,4 +1,4 @@
-error: expected either `doc(notable_trait)` or `doc(notable_trait="...")`
+error: expected either `doc(notable_trait)` or `doc(notable_trait(color="..."))`
   --> $DIR/doc-notable_trait-check.rs:16:7
    |
 LL | #[doc(notable_trait="red")]
@@ -19,7 +19,7 @@ LL | #[doc(notable_trait)]
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
-error: expected either `doc(notable_trait)` or `doc(notable_trait="...")`
+error: expected either `doc(notable_trait)` or `doc(notable_trait(color="..."))`
   --> $DIR/doc-notable_trait-check.rs:26:7
    |
 LL | #[doc(notable_trait(check="red"))]
@@ -27,7 +27,7 @@ LL | #[doc(notable_trait(check="red"))]
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
-error: expected either `doc(notable_trait)` or `doc(notable_trait="...")`
+error: expected either `doc(notable_trait)` or `doc(notable_trait(color="..."))`
   --> $DIR/doc-notable_trait-check.rs:31:7
    |
 LL | #[doc(notable_trait(color))]
@@ -35,7 +35,7 @@ LL | #[doc(notable_trait(color))]
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
-error: expected either `doc(notable_trait)` or `doc(notable_trait="...")`
+error: expected either `doc(notable_trait)` or `doc(notable_trait(color="..."))`
   --> $DIR/doc-notable_trait-check.rs:36:7
    |
 LL | #[doc(notable_trait(color="invalid_color"))]
@@ -43,7 +43,7 @@ LL | #[doc(notable_trait(color="invalid_color"))]
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
-error: expected either `doc(notable_trait)` or `doc(notable_trait="...")`
+error: expected either `doc(notable_trait)` or `doc(notable_trait(color="..."))`
   --> $DIR/doc-notable_trait-check.rs:41:7
    |
 LL | #[doc(notable_trait(color="transparent", color="red"))]

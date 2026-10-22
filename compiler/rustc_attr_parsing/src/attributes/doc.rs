@@ -115,6 +115,8 @@ fn parse_notable_trait(
             }
         }
         ArgParser::NameValue(_) => {
+            // FIXME(notriddle): every invalid notable trait attribute lint produces exactly
+            // the same warning and we should switch to more specific diagnostics
             cx.emit_lint(INVALID_DOC_ATTRIBUTES, InvalidNotableTraitAttr, span);
             return;
         }
@@ -123,6 +125,8 @@ fn parse_notable_trait(
     let notable_trait_color_and_span =
         if let Some(notable_trait_color_attr) = notable_trait_color_attr {
             let Some(notable_trait_color_attr) = notable_trait_color_attr.meta_item() else {
+                // FIXME(notriddle): every invalid notable trait attribute lint produces exactly
+                // the same warning and we should switch to more specific diagnostics
                 cx.emit_lint(INVALID_DOC_ATTRIBUTES, InvalidNotableTraitAttr, span);
                 return;
             };
@@ -139,7 +143,7 @@ fn parse_notable_trait(
                 return;
             };
             let notable_trait_color = match notable_trait_color.as_str() {
-                "grey" => NotableTraitColor::Grey,
+                "grey" | "gray" => NotableTraitColor::Grey,
                 "red" => NotableTraitColor::Red,
                 "green" => NotableTraitColor::Green,
                 "yellow" => NotableTraitColor::Yellow,
@@ -244,14 +248,14 @@ impl DocParser {
             }
             Some(sym::attr) => {
                 let Some(list) = args.as_list() else {
-                    // FIXME: remove this method once merged and uncomment the line below instead.
-                    // cx.expected_list(cx.attr_span, args);
+                    // FIXME(164728): remove this method once merged and uncomment the line
+                    // below instead. cx.expected_list(cx.attr_span, args);
                     let span = cx.attr_span;
                     cx.emit_lint(INVALID_DOC_ATTRIBUTES, MalformedDoc, span);
                     return;
                 };
-
-                // FIXME: convert list into a Vec of `AttributeKind` because current code is awful.
+                // FIXME(164728): remove this method once merged and uncomment the line
+                // below instead. cx.expected_list(cx.attr_span, args);
                 for attr in list.mixed() {
                     // Arguments of `attr` are checked via the span, so can be safely ignored
                     attr.ignore_args();
