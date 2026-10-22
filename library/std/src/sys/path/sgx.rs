@@ -16,6 +16,11 @@ pub fn parse_prefix(_: &OsStr) -> Option<Prefix<'_>> {
 
 pub const HAS_PREFIXES: bool = false;
 
+#[inline]
+pub fn with_native_path<T>(path: &Path, f: &dyn Fn(&Path) -> io::Result<T>) -> io::Result<T> {
+    f(path)
+}
+
 pub(crate) fn absolute(_path: &Path) -> io::Result<PathBuf> {
     unsupported()
 }
