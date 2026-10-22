@@ -30,7 +30,7 @@ pub(crate) fn expand_derive_ord(
             ret_ty: cx.ty_path(path_std!(cx, span, cmp::Ordering)),
             attributes: thin_vec![cx.generated_attr(span, ast::GeneratedAttr::Inline)],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
-            combine_substructure: combine_substructure(|cx, span, substr| cs_cmp(
+            combine_substructure: Box::new(|cx, span, substr| cs_cmp(
                 cx,
                 span,
                 substr,

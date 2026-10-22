@@ -273,12 +273,6 @@ pub(crate) enum Substructure<'a> {
 pub(crate) type CombineSubstructureFunc<'a> =
     Box<dyn Fn(&ExtCtxt<'_>, Span, Substructure<'_>) -> BlockOrExpr + 'a>;
 
-pub(crate) fn combine_substructure<'a>(
-    f: impl Fn(&ExtCtxt<'_>, Span, Substructure<'_>) -> BlockOrExpr + 'a,
-) -> CombineSubstructureFunc<'a> {
-    Box::new(f)
-}
-
 struct TypeParameter {
     bound_generic_params: ThinVec<ast::GenericParam>,
     ty: Box<ast::Ty>,

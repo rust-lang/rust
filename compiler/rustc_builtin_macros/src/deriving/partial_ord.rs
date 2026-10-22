@@ -25,9 +25,9 @@ pub(crate) fn expand_derive_partial_ord(
 
     let container_id = cx.current_expansion.id.expn_data().parent.expect_local();
     let has_derive_ord = cx.resolver.has_derive_ord(container_id);
-    let default_substructure =
-        combine_substructure(|cx, span, substr| cs_partial_cmp(cx, span, substr, discr_then_data));
-    let simple_substructure = combine_substructure(|cx, span, _| {
+    let default_substructure: CombineSubstructureFunc<'_> =
+        Box::new(|cx, span, substr| cs_partial_cmp(cx, span, substr, discr_then_data));
+    let simple_substructure: CombineSubstructureFunc<'_> = Box::new(|cx, span, _| {
         cs_partial_cmp_simple(cx, span, cx.expr_name(span, sym::other))
     });
     let is_simple = match &item.kind {
