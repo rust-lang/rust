@@ -90,6 +90,13 @@ impl ModuleItems {
             .chain(self.foreign_items.iter().map(|id| id.owner_id))
     }
 
+    pub fn par_owners(
+        &self,
+        f: impl Fn(OwnerId) -> Result<(), ErrorGuaranteed> + DynSend + DynSync,
+    ) -> Result<(), ErrorGuaranteed> {
+        try_par_for_each_in(self.owners(), |&id| f(id))
+    }
+
     pub fn opaques(&self) -> impl Iterator<Item = LocalDefId> {
         self.opaques.iter().copied()
     }
