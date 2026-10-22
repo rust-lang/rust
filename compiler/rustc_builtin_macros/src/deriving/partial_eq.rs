@@ -44,7 +44,7 @@ pub(crate) fn expand_derive_partial_eq(
         ret_ty: cx.ty_name(span, sym::bool),
         attributes: thin_vec![cx.generated_attr(span, ast::GeneratedAttr::Inline)],
         fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
-        body: Box::new(get_substructure_equality_expr),
+        body: Box::new(partial_eq_body),
     }];
 
     let trait_def = TraitDef {
@@ -106,11 +106,7 @@ pub(crate) fn expand_derive_partial_eq(
 /// ```
 ///
 /// For enums, the discriminant is compared first, then the rest of the fields.
-fn get_substructure_equality_expr(
-    cx: &ExtCtxt<'_>,
-    span: Span,
-    substructure: Substructure<'_>,
-) -> BlockOrExpr {
+fn partial_eq_body(cx: &ExtCtxt<'_>, span: Span, substructure: Substructure<'_>) -> BlockOrExpr {
     BlockOrExpr::new_expr(match substructure {
         EnumMatching(.., fields) | Struct(.., fields) => {
             let combine = move |acc, field: &FieldInfo| {

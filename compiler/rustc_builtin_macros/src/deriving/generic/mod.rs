@@ -216,7 +216,7 @@ pub(crate) struct MethodDef<'a> {
 
     pub fieldless_variants_strategy: FieldlessVariantsStrategy,
 
-    pub body: CombineSubstructureFunc<'a>,
+    pub body: MethodBodyFunc<'a>,
 }
 
 /// How to handle fieldless enum variants.
@@ -270,7 +270,7 @@ pub(crate) enum Substructure<'a> {
 
 /// Combine the values of all the fields together. The last argument is
 /// all the fields of all the structures.
-pub(crate) type CombineSubstructureFunc<'a> =
+pub(crate) type MethodBodyFunc<'a> =
     Box<dyn Fn(&ExtCtxt<'_>, Span, Substructure<'_>) -> BlockOrExpr + 'a>;
 
 struct TypeParameter {

@@ -28,7 +28,7 @@ pub(crate) fn expand_derive_clone(
     //   enough. Whether Clone is implemented for fields is irrelevant so we
     //   don't assert it.)
     let bounds;
-    let substructure: CombineSubstructureFunc<'_>;
+    let body: MethodBodyFunc<'_>;
     let is_simple;
     match &item.kind {
         ItemKind::Struct(_, Generics { params, .. }, _)
@@ -42,17 +42,16 @@ pub(crate) fn expand_derive_clone(
                     .any(|param| matches!(param.kind, ast::GenericParamKind::Type { .. }))
             {
                 is_simple = true;
-                substructure = Box::new(|c, s, sub| clone_simple_body(c, s, sub, false));
+                body = Box::new(|c, s, sub| clone_simple_body(c, s, sub, false));
             } else {
                 is_simple = false;
-                substructure =
-                    Box::new(|c, s, sub| clone_body(c, s, sub, item.kind.ident().unwrap()));
+                body = Box::new(|c, s, sub| clone_body(c, s, sub, item.kind.ident().unwrap()));
             }
         }
         ItemKind::Union(..) => {
             bounds = smallvec![path_std!(cx, span, marker::Copy)];
             is_simple = true;
-            substructure = Box::new(|c, s, sub| clone_simple_body(c, s, sub, true));
+            body = Box::new(|c, s, sub| clone_simple_body(c, s, sub, true));
         }
         _ => cx.dcx().span_bug(span, "`derive(Clone)` on wrong item kind"),
     }
@@ -93,7 +92,7 @@ pub(crate) fn expand_derive_clone(
             ret_ty: cx.ty_self(span),
             attributes: thin_vec![cx.generated_attr(span, ast::GeneratedAttr::Inline)],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
-            body: substructure,
+            body,
         }],
         is_const,
         ..

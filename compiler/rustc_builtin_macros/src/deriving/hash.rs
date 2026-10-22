@@ -43,7 +43,7 @@ pub(crate) fn expand_derive_hash(
             ret_ty: cx.ty_unit(span),
             attributes: thin_vec![cx.generated_attr(span, ast::GeneratedAttr::Inline)],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
-            body: Box::new(hash_substructure),
+            body: Box::new(hash_body),
         }],
         is_const,
         ..
@@ -52,7 +52,7 @@ pub(crate) fn expand_derive_hash(
     hash_trait_def.expand(cx, item, push);
 }
 
-fn hash_substructure(cx: &ExtCtxt<'_>, span: Span, substr: Substructure<'_>) -> BlockOrExpr {
+fn hash_body(cx: &ExtCtxt<'_>, span: Span, substr: Substructure<'_>) -> BlockOrExpr {
     let call_hash = |span, expr| {
         let strs = cx.std_path(span, &[sym::hash, sym::Hash, sym::hash]);
         let hash_path = cx.expr_path(strs);
