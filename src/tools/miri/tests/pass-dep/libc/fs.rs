@@ -83,12 +83,19 @@ fn main() {
     test_readv_empty_bufs();
     #[cfg(not(target_os = "solaris"))]
     test_preadv();
-    test_pread();
+    test_pread::<libc::off_t>(libc::pread);
+    #[cfg(any(target_os = "linux", target_os = "android"))]
+    test_pread::<libc::off64_t>(libc::pread64);
     test_writev();
     test_writev_empty_bufs();
     #[cfg(not(target_os = "solaris"))]
     test_pwritev();
-    test_pwrite();
+    test_pwrite::<libc::off_t>(libc::pwrite);
+    #[cfg(any(target_os = "linux", target_os = "android"))]
+    test_pwrite::<libc::off64_t>(libc::pwrite64);
+    test_lseek::<libc::off_t>(libc::lseek);
+    #[cfg(any(target_os = "linux", target_os = "android"))]
+    test_lseek::<libc::off64_t>(libc::lseek64);
     test_readlink();
     test_linkat();
 }
@@ -1801,7 +1808,14 @@ fn test_preadv() {
 }
 
 /// Test reading with an offset.
-fn test_pread() {
+fn test_pread<T: From<i32>>(
+    pread: unsafe extern "C" fn(
+        fd: libc::c_int,
+        buf: *mut libc::c_void,
+        count: libc::size_t,
+        offset: T,
+    ) -> libc::ssize_t,
+) {
     let file_contents = [1u8, 2, 3, 4, 5, 6];
     let path = utils::prepare_with_content("miri-pass-libc-pread.txt", &file_contents);
     let cpath = utils::into_c_string(path);
@@ -1812,11 +1826,11 @@ fn test_pread() {
     // Read with a 2 byte offset.
     const OFFSET: usize = 2;
     let bytes_read = unsafe {
-        errno_result(libc::pread(
+        errno_result(pread(
             fd,
             buffer.as_mut_ptr().cast(),
             buffer.len() as libc::size_t,
-            OFFSET as libc::off_t,
+            T::from(OFFSET as i32),
         ))
         .unwrap() as usize
     };
@@ -1945,7 +1959,14 @@ fn test_pwritev() {
 }
 
 /// Test writing with an offset.
-fn test_pwrite() {
+fn test_pwrite<T: From<i32>>(
+    pwrite: unsafe extern "C" fn(
+        fd: libc::c_int,
+        buf: *const libc::c_void,
+        count: libc::size_t,
+        offset: T,
+    ) -> libc::ssize_t,
+) {
     let path = utils::prepare_with_content("miri-pass-libc-pwritev.txt", &[]);
     let cpath = utils::into_c_string(path);
     let fd = errno_result(unsafe { libc::open(cpath.as_ptr(), libc::O_WRONLY) }).unwrap();
@@ -1955,11 +1976,11 @@ fn test_pwrite() {
     // Write with a 2 byte offset.
     const OFFSET: usize = 2;
     let bytes_written = unsafe {
-        errno_result(libc::pwrite(
+        errno_result(pwrite(
             fd,
             write_buffer.as_ptr().cast(),
             write_buffer.len() as libc::size_t,
-            OFFSET as libc::off_t,
+            T::from(OFFSET as i32),
         ))
         .unwrap() as usize
     };
@@ -1983,6 +2004,56 @@ fn test_pwrite() {
 
     // The write should start at the provided byte offset.
     assert_eq!(&write_buffer[0..bytes_written], &read_buffer[OFFSET..(bytes_written + OFFSET)]);
+}
+
+/// Test repositioning the file offset.
+fn test_lseek<T: From<i32> + From<i8> + Ord + std::fmt::Debug>(
+    lseek: unsafe extern "C" fn(fd: libc::c_int, offset: T, whence: libc::c_int) -> T,
+) {
+    let file_contents = [1u8, 2, 3, 4, 5, 6];
+    let path = utils::prepare_with_content("miri-pass-libc-lseek.txt", &file_contents);
+    let cpath = utils::into_c_string(path);
+    let fd = errno_result(unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) }).unwrap();
+
+    // To make SEEK_SET and SEEK_CUR behave differently, read a byte to advance the position to 1.
+    assert_eq!(libc_utils::read_exact_array::<1>(fd).unwrap(), [file_contents[0]]);
+
+    // SEEK_SET: Offset relative to the start of the file.
+    assert_eq!(
+        errno_result(unsafe { lseek(fd, T::from(2i32), libc::SEEK_SET) }).unwrap(),
+        T::from(2i32)
+    );
+
+    assert_eq!(libc_utils::read_exact_array::<1>(fd).unwrap(), [file_contents[2]]);
+
+    // SEEK_CUR: Offset relative to the current position.
+    // The previous read advanced the current position to 3.
+    assert_eq!(
+        errno_result(unsafe { lseek(fd, T::from(1i32), libc::SEEK_CUR) }).unwrap(),
+        T::from(4i32)
+    );
+
+    assert_eq!(libc_utils::read_exact_array::<1>(fd).unwrap(), [file_contents[4]]);
+
+    // SEEK_END: Offset relative to the end of the file.
+    assert_eq!(
+        errno_result(unsafe { lseek(fd, T::from(-2i32), libc::SEEK_END) }).unwrap(),
+        T::from(4i32)
+    );
+
+    assert_eq!(libc_utils::read_exact_array::<1>(fd).unwrap(), [file_contents[4]]);
+
+    // invalid fd
+    let err = errno_result(unsafe { lseek(-1, T::from(2i32), libc::SEEK_SET) }).unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::EBADF);
+
+    // invalid offset + SEEK_SET
+    let err = errno_result(unsafe { lseek(fd, T::from(-1i32), libc::SEEK_SET) }).unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::EINVAL);
+
+    // invalid whence
+    let err = errno_result(unsafe { lseek(fd, T::from(2i32), 99) }).unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::EINVAL);
 }
 
 fn test_readlink() {
