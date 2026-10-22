@@ -58,9 +58,9 @@ jobs:
       - name: Install Dependencies
         if: steps.mdbook-cache.outputs.cache-hit != 'true'
         run: |
-          cargo install --locked mdbook --version ${{ env.MDBOOK_VERSION }}
-          cargo install --locked mdbook-linkcheck2 --version ${{ env.MDBOOK_LINKCHECK2_VERSION }}
-          cargo install --locked mdbook-mermaid --version ${{ env.MDBOOK_MERMAID_VERSION }}
+          cargo install --locked mdbook --version ${MDBOOK_VERSION}
+          cargo install --locked mdbook-linkcheck2 --version ${MDBOOK_LINKCHECK2_VERSION}
+          cargo install --locked mdbook-mermaid --version ${MDBOOK_MERMAID_VERSION}
 
       - name: Check build
         run: ENABLE_LINKCHECK=1 mdbook build
@@ -82,16 +82,16 @@ jobs:
       - name: Deploy to gh-pages
         if: github.event_name == 'push'
         run: |
-          touch "${{ env.DEPLOY_DIR }}/.nojekyll"
-          cp CNAME "${{ env.DEPLOY_DIR }}"
-          cd "${{ env.DEPLOY_DIR }}"
+          touch "${DEPLOY_DIR}/.nojekyll"
+          cp CNAME "${DEPLOY_DIR}"
+          cd "${DEPLOY_DIR}"
           rm -rf .git
           git init
           git config user.name "Deploy from CI"
           git config user.email ""
           git add .
           git commit -m "Deploy ${GITHUB_SHA} to gh-pages"
-          git push --quiet -f "https://x-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}" HEAD:gh-pages
+          git push --quiet -f "https://x-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}" HEAD:gh-pages
 
       - name: Check if files comply with semantic line breaks
         continue-on-error: true
