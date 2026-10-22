@@ -16,7 +16,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::{
     self, Instance, InstanceKind, ShimKind, Ty, TyCtxt, TypeFlags, TypeVisitableExt, Unnormalized,
 };
-use rustc_session::config::{DebugInfo, OptLevel};
+use rustc_session::config::{DebugInfo, OptimizationObjective};
 use rustc_span::{Spanned, bug};
 use tracing::{debug, instrument, trace, trace_span};
 
@@ -44,20 +44,26 @@ pub struct Inline;
 
 impl<'tcx> crate::MirPass<'tcx> for Inline {
     fn policy(&self, ctx: &crate::PassCtx<'_>) -> PassPolicy {
-        match ctx.opts.unstable_opts.inline_mir {
-            Some(enabled) => PassPolicy::optional(enabled),
-            None => PassPolicy::optional(match ctx.mir_opt_level() {
-                0 | 1 => false,
-                // Only inline for `-Copt-level >= 2`, and don't inline
-                // in incremental mode to increase incremental effectiveness.
-                // FIXME: This should be cleaned up to not rely on inspecting the global opt level.
-                2 => {
-                    (ctx.opts.optimize == OptLevel::More
-                        || ctx.opts.optimize == OptLevel::Aggressive)
-                        && ctx.opts.incremental.is_none()
+        if let Some(o) = ctx.opts.unstable_opts.inline_mir {
+            return PassPolicy::optional(o);
+        }
+        // `#[optimize]` on a body may lower the pass but not raise it, hence the `min`.
+        match ctx.mir_opt_level().min(ctx.session_mir_opt_level()) {
+            0 | 1 => PassPolicy::optional(false),
+            // Don't inline in incremental mode: it hurts incremental effectiveness.
+            2 => {
+                if ctx.opts.incremental.is_some() {
+                    return PassPolicy::optional(false);
                 }
-                _ => true,
-            }),
+                match ctx.optimization_objective() {
+                    OptimizationObjective::Size => PassPolicy::size_only(),
+                    OptimizationObjective::Speed => PassPolicy::optional(true),
+                    OptimizationObjective::None | OptimizationObjective::Balanced => {
+                        PassPolicy::optional(false)
+                    }
+                }
+            }
+            _ => PassPolicy::optional(true),
         }
     }
 

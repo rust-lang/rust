@@ -467,6 +467,7 @@ pub(crate) fn default_optimisation_attrs<'ll>(
     sess: &Session,
 ) -> SmallVec<[&'ll Attribute; 2]> {
     let mut attrs = SmallVec::new();
+    // `s` and `z` request different attributes, which the objective cannot distinguish.
     match sess.opts.optimize {
         OptLevel::Size => {
             attrs.push(llvm::AttributeKind::OptimizeForSize.create_attr(cx.llcx));

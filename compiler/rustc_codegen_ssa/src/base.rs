@@ -1219,23 +1219,19 @@ impl CrateInfo {
 
 pub(crate) fn provide(providers: &mut Providers) {
     providers.backend_optimization_level = |tcx, cratenum| {
-        let for_speed = match tcx.sess.opts.optimize {
-            // If globally no optimisation is done, #[optimize] has no effect.
-            //
-            // This is done because if we ended up "upgrading" to `-O2` here, we’d populate the
-            // pass manager and it is likely that some module-wide passes (such as inliner or
-            // cross-function constant propagation) would ignore the `optnone` annotation we put
-            // on the functions, thus necessarily involving these functions into optimisations.
-            config::OptLevel::No => return config::OptLevel::No,
-            // If globally optimise-speed is already specified, just use that level.
-            config::OptLevel::Less => return config::OptLevel::Less,
-            config::OptLevel::More => return config::OptLevel::More,
-            config::OptLevel::Aggressive => return config::OptLevel::Aggressive,
-            // If globally optimize-for-size has been requested, use -O2 instead (if optimize(size)
-            // are present).
-            config::OptLevel::Size => config::OptLevel::More,
-            config::OptLevel::SizeMin => config::OptLevel::More,
-        };
+        let global = tcx.sess.opts.optimize;
+
+        // The global level is the answer, except when a body asks for speed inside a size build.
+        // If globally no optimization is done, `#[optimize]` has no effect: upgrading to `-O2`
+        // here would populate the pass manager, and module-wide passes (such as inliner or
+        // cross-function constant propagation) would then ignore the `optnone` annotation we put
+        // on the functions.
+        if global.objective() != config::OptimizationObjective::Size {
+            return global;
+        }
+
+        // There is no "size level, but faster", so `-O2` is the lowest level fulfilling it.
+        let for_speed = config::OptLevel::More;
 
         let defids = tcx.collect_and_partition_mono_items(cratenum).all_mono_items;
 
@@ -1244,11 +1240,7 @@ pub(crate) fn provide(providers: &mut Providers) {
             matches!(optimize, OptimizeAttr::Speed)
         });
 
-        if any_for_speed {
-            return for_speed;
-        }
-
-        tcx.sess.opts.optimize
+        if any_for_speed { for_speed } else { global }
     };
 }
 
