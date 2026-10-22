@@ -3684,21 +3684,24 @@ fn only_keep_structural_changes<'tcx>(
 
         fn consts(
             &mut self,
-            mut formal: ty::Const<'tcx>,
-            mut expected: ty::Const<'tcx>,
+            formal: ty::Const<'tcx>,
+            expected: ty::Const<'tcx>,
         ) -> RelateResult<'tcx, ty::Const<'tcx>> {
             if formal == expected {
                 return Ok(formal);
             }
 
+            let mut normed_formal = formal;
+            let mut normed_expected = expected;
+
             // Avoid ICEs when in gce, and `structurally_relate_consts`
             // turns a non-infer const into an infer const
             if self.cx().features().generic_const_exprs() {
-                formal = self.cx().expand_abstract_consts(formal);
-                expected = self.cx().expand_abstract_consts(expected);
+                normed_formal = self.cx().expand_abstract_consts(formal);
+                normed_expected = self.cx().expand_abstract_consts(expected);
             }
 
-            match (formal.kind(), expected.kind()) {
+            match (normed_formal.kind(), normed_expected.kind()) {
                 // If both are an infer var, keep the formal one.
                 (ty::ConstKind::Infer(_), ty::ConstKind::Infer(_)) => return Ok(formal),
                 (ty::ConstKind::Infer(_), _) | (_, ty::ConstKind::Infer(_)) => return Ok(formal),
@@ -3706,7 +3709,10 @@ fn only_keep_structural_changes<'tcx>(
                 _ => {}
             }
 
-            relate::structurally_relate_consts(self, formal, expected)
+            let related = relate::structurally_relate_consts(self, normed_formal, normed_expected)?;
+            // Keep the original formal const under generic_const_exprs so speculative changes
+            // to inference variables in const expressions are not retained in the formal type.
+            Ok(if self.cx().features().generic_const_exprs() { formal } else { related })
         }
 
         fn binders<T>(
