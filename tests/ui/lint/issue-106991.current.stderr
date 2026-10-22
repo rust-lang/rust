@@ -9,7 +9,7 @@ LL |     x.iter_mut().map(foo)
    |
    = note: required for `Map<std::slice::IterMut<'_, Vec<u8>>, for<'a> fn(&'a mut Vec<u8>) {foo}>` to implement `Iterator`
 note: the method call chain might not have had the expected associated types
-  --> $DIR/issue-106991.rs:11:18
+  --> $DIR/issue-106991.rs:12:18
    |
 LL |     let mut x: Vec<Vec<u8>> = vec![vec![0, 2, 1], vec![5, 4, 3]];
    |                               ---------------------------------- this expression has type `Vec<Vec<u8>>`
@@ -19,7 +19,7 @@ LL |     x.iter_mut().map(foo)
    |       `Iterator::Item` is `&mut Vec<u8>` here
 
 error[E0271]: expected `IterMut<'_, Vec<u8>>` to be an iterator that yields `i32`, but it yields `&mut Vec<u8>`
-  --> $DIR/issue-106991.rs:14:13
+  --> $DIR/issue-106991.rs:15:13
    |
 LL | fn baz() -> impl Iterator<Item = i32> {
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `i32`, found `&mut Vec<u8>`

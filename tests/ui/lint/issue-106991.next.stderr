@@ -6,9 +6,19 @@ LL | fn bar() -> impl Iterator<Item = i32> {
 ...
 LL |     x.iter_mut().map(foo)
    |     --------------------- `Map<std::slice::IterMut<'_, Vec<u8>>, for<'a> fn(&'a mut Vec<u8>) {foo}>` returned here
+   |
+note: the method call chain might not have had the expected associated types
+  --> $DIR/issue-106991.rs:12:18
+   |
+LL |     let mut x: Vec<Vec<u8>> = vec![vec![0, 2, 1], vec![5, 4, 3]];
+   |                               ---------------------------------- this expression has type `Vec<Vec<u8>>`
+LL |     x.iter_mut().map(foo)
+   |       ---------- ^^^^^^^^ `Iterator::Item` changed to `()` here
+   |       |
+   |       `Iterator::Item` is `&mut Vec<u8>` here
 
 error[E0271]: expected `IterMut<'_, Vec<u8>>` to be an iterator that yields `i32`, but it yields `&mut Vec<u8>`
-  --> $DIR/issue-106991.rs:14:13
+  --> $DIR/issue-106991.rs:15:13
    |
 LL | fn baz() -> impl Iterator<Item = i32> {
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `i32`, found `&mut Vec<u8>`
@@ -19,6 +29,14 @@ LL |     }
 LL |     x.iter_mut()
    |     ------------ value returned here
    |
+note: the method call chain might not have had the expected associated types
+  --> $DIR/issue-106991.rs:20:18
+   |
+LL |     let mut x: Vec<Vec<u8>> = vec![vec![0, 2, 1], vec![5, 4, 3]];
+   |                               ---------------------------------- this expression has type `Vec<Vec<u8>>`
+LL |     if true {
+LL |         return x.iter_mut();
+   |                  ^^^^^^^^^^ `Iterator::Item` is `&mut Vec<u8>` here
    = note:           expected type `i32`
            found mutable reference `&mut Vec<u8>`
 

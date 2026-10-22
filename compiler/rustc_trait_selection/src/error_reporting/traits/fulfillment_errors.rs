@@ -1969,6 +1969,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             None => "value returned here".to_string(),
                         };
                         diag.span_label(span, msg);
+                        self.point_at_chain_in_return_position(
+                            obligation.cause.body_def_id,
+                            expr,
+                            typeck,
+                            obligation.param_env,
+                            &mut diag,
+                        );
                     }
                 }
             }

@@ -5970,7 +5970,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     ///    |     | `Iterator::Item` is `&mut Vec<u8>` here
     ///    |     this expression has type `Vec<Vec<u8>>`
     /// ```
-    fn point_at_chain_in_return_position(
+    pub fn point_at_chain_in_return_position(
         &self,
         body_def_id: LocalDefId,
         expr: &hir::Expr<'_>,
