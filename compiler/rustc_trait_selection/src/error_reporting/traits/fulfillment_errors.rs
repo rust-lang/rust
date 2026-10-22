@@ -32,8 +32,8 @@ use rustc_middle::ty::print::{
 };
 use rustc_middle::ty::transmute::{Answer, Reason};
 use rustc_middle::ty::{
-    self, GenericArgKind, GenericParamDefKind, TraitRef, Ty, TyCtxt, TypeFoldable, TypeFolder,
-    TypeSuperFoldable, TypeVisitableExt, Unnormalized, Upcast,
+    self, ClauseKind, GenericArgKind, GenericParamDefKind, TraitRef, Ty, TyCtxt, TypeFoldable,
+    TypeFolder, TypeSuperFoldable, TypeVisitableExt, Unnormalized, Upcast,
 };
 use rustc_span::def_id::CrateNum;
 use rustc_span::{BytePos, DUMMY_SP, STDLIB_STABLE_CRATES, Span, Symbol, bug, span_bug, sym};
@@ -48,6 +48,7 @@ use crate::diagnostics::{
 use crate::error_reporting::TypeErrCtxt;
 use crate::error_reporting::infer::TyCategory;
 use crate::error_reporting::traits::report_dyn_incompatibility;
+use crate::error_reporting::traits::suggestions::ReturnsVisitor;
 use crate::infer::{self, InferCtxt, InferCtxtExt as _};
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use crate::traits::{
@@ -1932,6 +1933,45 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     _ => None,
                 }
             });
+
+            // Account for errors caused on a return type.
+            if let ObligationCauseCode::ReturnType = obligation.cause.code() {
+                let body = self.tcx.hir_body_owned_by(obligation.cause.body_def_id);
+                let mut visitor = ReturnsVisitor::default();
+                visitor.visit_body(&body);
+                if visitor.returns.is_empty()
+                    && let hir::ExprKind::Block(block, _) = body.value.kind
+                {
+                    // We likely have an attempt to unify `<Something as Trait>Assoc == ()`, but we
+                    // have no returned expression.
+                    let span = match block.stmts {
+                        [] => body.value.span,
+                        [.., stmt] => stmt.span,
+                    };
+                    if let Some(clause) = predicate.as_clause()
+                        && let ClauseKind::Projection(projection) = clause.kind().skip_binder()
+                        && let Some(ty) = projection.term.as_type()
+                        && ty == self.tcx.types.unit
+                    {
+                        diag.span_label(span, "`()` returned here");
+                    }
+                } else if let Some(typeck) = &self.typeck_results {
+                    for expr in visitor.returns {
+                        let span = match expr.kind {
+                            hir::ExprKind::Closure(closure) => closure.fn_decl_span,
+                            _ => expr.span,
+                        };
+                        let msg = match typeck.expr_ty_adjusted_opt(expr) {
+                            Some(ty) => {
+                                let ty = self.tcx.short_string(ty, diag.long_ty_path());
+                                format!("`{ty}` returned here")
+                            }
+                            None => "value returned here".to_string(),
+                        };
+                        diag.span_label(span, msg);
+                    }
+                }
+            }
 
             self.note_type_err(
                 &mut diag,

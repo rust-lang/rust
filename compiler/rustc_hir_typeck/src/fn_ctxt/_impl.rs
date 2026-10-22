@@ -465,8 +465,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
+        self.normalize_with_cause(span, value, ObligationCauseCode::Misc)
+    }
+
+    pub(crate) fn normalize_with_cause<T>(
+        &self,
+        span: Span,
+        value: Unnormalized<'tcx, T>,
+        code: ObligationCauseCode<'tcx>,
+    ) -> T
+    where
+        T: TypeFoldable<TyCtxt<'tcx>>,
+    {
         self.register_infer_ok_obligations(
-            self.at(&self.misc(span), self.param_env).normalize(value),
+            self.at(&self.cause(span, code), self.param_env).normalize(value),
         )
     }
 
