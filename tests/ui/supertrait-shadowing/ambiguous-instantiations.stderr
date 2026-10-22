@@ -1,0 +1,91 @@
+error[E0221]: ambiguous associated type `Assoc` in bounds of `T`
+  --> $DIR/ambiguous-instantiations.rs:15:38
+   |
+LL |     type Assoc;
+   |     ----------
+   |     |
+   |     ambiguous `Assoc` from `Sub<u16>`
+   |     ambiguous `Assoc` from `Sub<u8>`
+...
+LL | fn forward<T: Sub<u8> + Sub<u16>>(_: T::Assoc) {}
+   |                                      ^^^^^^^^ ambiguous associated type `Assoc`
+   |
+help: use fully-qualified syntax to disambiguate
+   |
+LL - fn forward<T: Sub<u8> + Sub<u16>>(_: T::Assoc) {}
+LL + fn forward<T: Sub<u8> + Sub<u16>>(_: <T as Sub<u16>>::Assoc) {}
+   |
+help: use fully-qualified syntax to disambiguate
+   |
+LL - fn forward<T: Sub<u8> + Sub<u16>>(_: T::Assoc) {}
+LL + fn forward<T: Sub<u8> + Sub<u16>>(_: <T as Sub<u8>>::Assoc) {}
+   |
+
+error[E0221]: ambiguous associated type `Assoc` in bounds of `T`
+  --> $DIR/ambiguous-instantiations.rs:17:39
+   |
+LL |     type Assoc;
+   |     ----------
+   |     |
+   |     ambiguous `Assoc` from `Sub<u8>`
+   |     ambiguous `Assoc` from `Sub<u16>`
+...
+LL | fn reversed<T: Sub<u16> + Sub<u8>>(_: T::Assoc) {}
+   |                                       ^^^^^^^^ ambiguous associated type `Assoc`
+   |
+help: use fully-qualified syntax to disambiguate
+   |
+LL - fn reversed<T: Sub<u16> + Sub<u8>>(_: T::Assoc) {}
+LL + fn reversed<T: Sub<u16> + Sub<u8>>(_: <T as Sub<u8>>::Assoc) {}
+   |
+help: use fully-qualified syntax to disambiguate
+   |
+LL - fn reversed<T: Sub<u16> + Sub<u8>>(_: T::Assoc) {}
+LL + fn reversed<T: Sub<u16> + Sub<u8>>(_: <T as Sub<u16>>::Assoc) {}
+   |
+
+error[E0222]: ambiguous associated type `Assoc` in bounds of `Child`
+  --> $DIR/ambiguous-instantiations.rs:19:23
+   |
+LL |     type Assoc;
+   |     ----------
+   |     |
+   |     ambiguous `Assoc` from `Sub<u16>`
+   |     ambiguous `Assoc` from `Sub<u8>`
+...
+LL | fn inherited<T: Child<Assoc = ()>>() {}
+   |                       ^^^^^^^^^^ ambiguous associated type `Assoc`
+   |
+   = help: consider introducing a new type parameter `T` and adding `where` constraints:
+               where
+                   T: Child,
+                   T: Sub<u16>::Assoc = (),
+                   T: Sub<u8>::Assoc = ()
+
+error[E0221]: ambiguous associated type `Assoc` in bounds of `T`
+  --> $DIR/ambiguous-instantiations.rs:27:40
+   |
+LL |     type Assoc;
+   |     ----------
+   |     |
+   |     ambiguous `Assoc` from `Plain<u16>`
+   |     ambiguous `Assoc` from `Plain<u8>`
+LL | }
+LL | fn plain<T: Plain<u8> + Plain<u16>>(_: T::Assoc) {}
+   |                                        ^^^^^^^^ ambiguous associated type `Assoc`
+   |
+help: use fully-qualified syntax to disambiguate
+   |
+LL - fn plain<T: Plain<u8> + Plain<u16>>(_: T::Assoc) {}
+LL + fn plain<T: Plain<u8> + Plain<u16>>(_: <T as Plain<u16>>::Assoc) {}
+   |
+help: use fully-qualified syntax to disambiguate
+   |
+LL - fn plain<T: Plain<u8> + Plain<u16>>(_: T::Assoc) {}
+LL + fn plain<T: Plain<u8> + Plain<u16>>(_: <T as Plain<u8>>::Assoc) {}
+   |
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0221, E0222.
+For more information about an error, try `rustc --explain E0221`.
