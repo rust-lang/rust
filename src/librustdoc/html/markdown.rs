@@ -732,16 +732,6 @@ pub(crate) fn find_testable_code<T: doctest::DocTestVisitor>(
     error_codes: ErrorCodes,
     extra_info: Option<&ExtraInfo<'_, '_>>,
 ) {
-    find_codes(doc, tests, error_codes, extra_info, false)
-}
-
-pub(crate) fn find_codes<T: doctest::DocTestVisitor>(
-    doc: &str,
-    tests: &mut T,
-    error_codes: ErrorCodes,
-    extra_info: Option<&ExtraInfo<'_, '_>>,
-    include_non_rust: bool,
-) {
     let mut parser = Parser::new_ext(doc, main_body_opts()).into_offset_iter();
     let mut prev_offset = 0;
     let mut nb_lines = 0;
@@ -759,7 +749,7 @@ pub(crate) fn find_codes<T: doctest::DocTestVisitor>(
                     }
                     CodeBlockKind::Indented => Default::default(),
                 };
-                if !include_non_rust && !block_info.rust {
+                if !block_info.rust {
                     continue;
                 }
 
