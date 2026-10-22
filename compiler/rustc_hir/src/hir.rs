@@ -1421,15 +1421,9 @@ impl<'tcx> OwnerInfo<'tcx> {
 }
 
 #[derive(Copy, Clone, Debug, StableHash)]
-pub enum NonOwnerKind {
-    Existing(HirId),
-    Invalid,
-}
-
-#[derive(Copy, Clone, Debug, StableHash)]
 pub enum MaybeOwner<'tcx> {
     Owner(&'tcx OwnerInfo<'tcx>),
-    NonOwner(NonOwnerKind),
+    NonOwner(HirId),
 }
 
 impl<'tcx> MaybeOwner<'tcx> {

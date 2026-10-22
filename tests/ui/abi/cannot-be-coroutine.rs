@@ -39,26 +39,26 @@ async fn vanilla(){
     //~^ ERROR requires `ResumeTy` lang_item
 }
 
-async extern "avr-interrupt" fn avr() { //~ ERROR: requires `ResumeTy` lang_item
+async extern "avr-interrupt" fn avr() {
     //[avr]~^ ERROR functions with the "avr-interrupt" ABI cannot be `async`
 }
 
-async extern "msp430-interrupt" fn msp430() { //~ ERROR: requires `ResumeTy` lang_item
+async extern "msp430-interrupt" fn msp430() {
     //[msp430]~^ ERROR functions with the "msp430-interrupt" ABI cannot be `async`
 }
 
-async extern "riscv-interrupt-m" fn riscv_m() { //~ ERROR: requires `ResumeTy` lang_item
+async extern "riscv-interrupt-m" fn riscv_m() {
     //[riscv32,riscv64]~^ ERROR functions with the "riscv-interrupt-m" ABI cannot be `async`
 }
 
-async extern "riscv-interrupt-s" fn riscv_s() { //~ ERROR: requires `ResumeTy` lang_item
+async extern "riscv-interrupt-s" fn riscv_s() {
     //[riscv32,riscv64]~^ ERROR functions with the "riscv-interrupt-s" ABI cannot be `async`
 }
 
-async extern "x86-interrupt" fn x86(_p: *mut ()) { //~ ERROR: requires `ResumeTy` lang_item
+async extern "x86-interrupt" fn x86(_p: *mut ()) {
     //[x64,x64_win,i686]~^ ERROR functions with the "x86-interrupt" ABI cannot be `async`
 }
 
-async extern "gpu-kernel" fn async_kernel() { //~ ERROR: requires `ResumeTy` lang_item
+async extern "gpu-kernel" fn async_kernel() {
     //[amdgpu,nvptx]~^ ERROR functions with the "gpu-kernel" ABI cannot be `async`
 }

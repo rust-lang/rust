@@ -439,10 +439,7 @@ impl<'tcx> ProjectedMaybeOwner<'tcx> {
                 trait_map: &o.trait_map,
                 delayed_lints: &o.delayed_lints,
             }),
-            MaybeOwner::NonOwner(non_owner) => match non_owner {
-                NonOwnerKind::Existing(hir_id) => ProjectedMaybeOwner::NonOwner(hir_id),
-                NonOwnerKind::Invalid => bug!("trying to access non-existing NonOwner"),
-            },
+            MaybeOwner::NonOwner(hir_id) => ProjectedMaybeOwner::NonOwner(hir_id),
         }
     }
 

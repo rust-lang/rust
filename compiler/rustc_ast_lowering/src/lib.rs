@@ -714,7 +714,7 @@ fn lower_to_hir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::MaybeOwner<'_> {
 
         let parent_id = tcx.local_parent(def_id);
         let mut parent_info = tcx.lower_to_hir(parent_id);
-        while let hir::MaybeOwner::NonOwner(hir::NonOwnerKind::Existing(hir_id)) = parent_info {
+        while let hir::MaybeOwner::NonOwner(hir_id) = parent_info {
             // `parent_id` could also not be a owner either.
             // For instance if `def_id` is an enum variant field,
             // the direct parent is the enum variant.
@@ -723,11 +723,15 @@ fn lower_to_hir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::MaybeOwner<'_> {
             parent_info = tcx.lower_to_hir(hir_id.owner);
         }
 
-        parent_info
-            .as_owner()
-            .map(|owner| owner.children.get(&def_id).copied())
-            .flatten()
-            .unwrap_or(hir::MaybeOwner::NonOwner(hir::NonOwnerKind::Invalid))
+        let parent_info = parent_info.unwrap();
+        *parent_info.children.get(&def_id).unwrap_or_else(|| {
+            span_bug!(
+                tcx.source_span(def_id),
+                "{:?} does not appear in children of {:?}",
+                def_id,
+                parent_info.nodes.node().def_id()
+            )
+        })
     };
 
     let Some(Some(r_and_node)) = resolver_and_node else {
@@ -905,9 +909,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let hir_id = HirId { owner, local_id };
 
         if let Some(def_id) = self.opt_local_def_id(ast_node_id) {
-            self.curr_owner
-                .children
-                .insert(def_id, hir::MaybeOwner::NonOwner(hir::NonOwnerKind::Existing(hir_id)));
+            self.curr_owner.children.insert(def_id, hir::MaybeOwner::NonOwner(hir_id));
         }
 
         if let Some(traits) = self.curr_owner.owner.trait_map.get(&ast_node_id) {

@@ -23,9 +23,9 @@ use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level};
 use rustc_expand::base::{ExtCtxt, LintStoreExpand};
 use rustc_feature::Features;
 use rustc_fs_util::try_canonicalize;
+use rustc_hir::OwnerId;
 use rustc_hir::def_id::{DefIndex, LOCAL_CRATE, LocalDefId, StableCrateId, StableCrateIdMap};
 use rustc_hir::definitions::Definitions;
-use rustc_hir::{MaybeOwner, OwnerId};
 use rustc_incremental::setup_dep_graph;
 use rustc_lint::{BufferedEarlyLint, EarlyCheckNode, LintStore, unerased_lint_store};
 use rustc_metadata::EncodedMetadata;
@@ -1117,8 +1117,7 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
 
         par_range(0..index.len(), |idx| {
             let id = LocalDefId { local_def_index: DefIndex::from_usize(idx) };
-            let maybe_owner = tcx.lower_to_hir(id);
-            if !matches!(maybe_owner, MaybeOwner::NonOwner(rustc_hir::NonOwnerKind::Invalid)) {
+            if index[id].is_some() {
                 tcx.ensure_done().hir_owner(id);
                 tcx.ensure_done().hir_attr_map(OwnerId { def_id: id });
             }
