@@ -1117,6 +1117,10 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
 
         par_range(0..index.len(), |idx| {
             let id = LocalDefId { local_def_index: DefIndex::from_usize(idx) };
+
+            // FIXME: one can try to eliminate this filter in future,
+            // but it didn't lead to significant improvements at the moment
+            // of writing.
             if index[id].is_some() {
                 tcx.ensure_done().hir_owner(id);
                 tcx.ensure_done().hir_attr_map(OwnerId { def_id: id });
