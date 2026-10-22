@@ -270,6 +270,8 @@ declare_features! (
     (internal, profiler_runtime, "1.18.0", None),
     /// Allows using `rustc_*` attributes (RFC 572).
     (internal, rustc_attrs, "1.0.0", None),
+    /// Allows using internal rustdoc features like `doc(keyword)`.
+    (internal, rustdoc_internals, "1.58.0", None),
     /// Allows using the `#[stable]` and `#[unstable]` attributes.
     (internal, staged_api, "1.0.0", None),
     /// Perma-unstable, only used in the test suite for binders (`for<'a>`).
@@ -322,8 +324,6 @@ declare_features! (
     (internal, repr_simd, "1.4.0", Some(27731)),
     /// Allows using compiler's own crates.
     (unstable, rustc_private, "1.0.0", Some(27812)),
-    /// Allows using internal rustdoc features like `doc(keyword)`.
-    (internal, rustdoc_internals, "1.58.0", Some(90418)),
     /// Allows using the `rustdoc::missing_doc_code_examples` lint
     (unstable, rustdoc_missing_doc_code_examples, "1.31.0", Some(101730)),
     /// Introduces a hierarchy of `Sized` traits (RFC 3729).
@@ -666,7 +666,7 @@ declare_features! (
     /// Allows providing names to parameters of `impl Fn` etc
     (unstable, named_fn_trait_parameters, "1.99.0", Some(158499)),
     /// Allows specifying the as-needed link modifier
-    (unstable, native_link_modifiers_as_needed, "1.53.0", Some(81490)),
+    (unstable, native_link_modifiers_as_needed, "1.53.0", Some(99424)),
     /// Allow negative trait implementations.
     (unstable, negative_impls, "1.44.0", Some(68318)),
     /// Allows the `!` pattern.
@@ -725,7 +725,7 @@ declare_features! (
     /// Allows the use of the `sanitize` attribute.
     (unstable, sanitize, "1.91.0", Some(39699)),
     /// Allows the use of SIMD types in functions declared in `extern` blocks.
-    (unstable, simd_ffi, "1.0.0", Some(27731)),
+    (unstable, simd_ffi, "1.0.0", Some(63068)),
     /// Target features on sparc.
     (unstable, sparc_target_feature, "1.84.0", Some(132783)),
     /// Allows specialization of implementations (RFC 1210).
