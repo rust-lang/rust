@@ -3,6 +3,9 @@
 
 fn main() {
     let _ = #[cfg_eval] #[cfg(false)] 0;
-    //~^ ERROR removing an expression is not supported in this position
+    //~^ ERROR `cfg` is not supported in this position
+    //~| ERROR macro attributes on expressions are unstable
+    let _ = #[cfg_eval] #[cfg(true)] 1;
+    //~^ ERROR `cfg` is not supported in this position
     //~| ERROR macro attributes on expressions are unstable
 }

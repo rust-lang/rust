@@ -29,8 +29,8 @@ use rustc_span::{STDLIB_STABLE_CRATES, Span, Symbol, sym};
 use tracing::instrument;
 
 use crate::diagnostics::{
-    CrateNameInCfgAttr, CrateTypeInCfgAttr, FeatureNotAllowed, FeatureRemoved,
-    FeatureRemovedReason, RemoveExprNotSupported,
+    CfgNotSupportedInPosition, CrateNameInCfgAttr, CrateTypeInCfgAttr, FeatureNotAllowed,
+    FeatureRemoved, FeatureRemovedReason,
 };
 
 /// A folder that strips out items that do not belong in the current configuration.
@@ -432,7 +432,7 @@ impl<'a> StripUnconfigured<'a> {
         // N.B., this is intentionally not part of the visit_expr() function
         //     in order for filter_map_expr() to be able to avoid this check
         if let Some(attr) = expr.attrs().iter().find(|a| is_cfg(a)) {
-            self.sess.dcx().emit_err(RemoveExprNotSupported { span: attr.span });
+            self.sess.dcx().emit_err(CfgNotSupportedInPosition { span: attr.span });
         }
 
         self.process_cfg_attrs(expr);
