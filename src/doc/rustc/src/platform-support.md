@@ -215,7 +215,7 @@ target | std | notes
 [`thumbv8m.base-none-eabi`](platform-support/thumbv8m.base-none-eabi.md) | * | Bare Armv8-M Baseline
 [`thumbv8m.main-none-eabi`](platform-support/thumbv8m.main-none-eabi.md) | * | Bare Armv8-M Mainline
 [`thumbv8m.main-none-eabihf`](platform-support/thumbv8m.main-none-eabi.md) | * | Bare Armv8-M Mainline, hardfloat
-[`wasm32-unknown-emscripten`](platform-support/wasm32-unknown-emscripten.md) | ✓ | WebAssembly via Emscripten
+[`wasm32-unknown-emscripten`](platform-support/wasm-unknown-emscripten.md) | ✓ | WebAssembly via Emscripten
 [`wasm32-unknown-unknown`](platform-support/wasm32-unknown-unknown.md) | ✓ | WebAssembly
 [`wasm32-wasip1`](platform-support/wasm32-wasip1.md) | ✓ | WebAssembly with WASIp1
 [`wasm32-wasip1-threads`](platform-support/wasm32-wasip1-threads.md) | ✓ | WebAssembly with WASI Preview 1 and threads
@@ -449,6 +449,7 @@ target | std | host | notes
 [`thumbv8m.main-nuttx-eabi`](platform-support/nuttx.md) | ✓ |  | ARMv8M Mainline with NuttX
 [`thumbv8m.main-nuttx-eabihf`](platform-support/nuttx.md) | ✓ |  | ARMv8M Mainline with NuttX, hardfloat
 [`wasm32-none-component`](platform-support/wasm32-none-component.md) | * |  | WebAssembly bare components
+[`wasm64-unknown-emscripten`](platform-support/wasm-unknown-emscripten.md) | ✓ | WebAssembly with Memory64 via Emscripten
 [`wasm64-unknown-unknown`](platform-support/wasm64-unknown-unknown.md) | ? |  | WebAssembly
 [`wasm32-wali-linux-musl`](platform-support/wasm32-wali-linux.md) | ? |  | WebAssembly with [WALI](https://github.com/arjunr2/WALI)
 [`x86_64-apple-tvos`](platform-support/apple-tvos.md) | ✓ |  | x86 64-bit tvOS
