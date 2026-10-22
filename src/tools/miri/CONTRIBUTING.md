@@ -187,6 +187,10 @@ You can (cross-)run the entire test suite using:
 base directory, e.g. `./miri test fail` will run all compile-fail tests). Multiple filters are
 supported: `./miri test FILTER1 FILTER2` runs all tests that contain either string.
 
+Priroda has a separate test suite. Run it with `./miri test-priroda`, or use
+`./miri test-priroda --bless` to update its expected output files after an
+intentional output change.
+
 #### Fine grained logging
 
 You can get a trace of which MIR statements are being executed by setting the
