@@ -642,7 +642,16 @@ pub fn make_query_region_constraints<'tcx>(
             }
 
             ConstraintKind::VarEqVar | ConstraintKind::VarEqReg | ConstraintKind::RegEqReg => {
-                let constraint = ty::RegionEqPredicate(c.sup, c.sub).into();
+                let (sup, sub) = match (c.sup.kind(), c.sub.kind()) {
+                    (ty::RegionKind::RePlaceholder(a), ty::RegionKind::RePlaceholder(b))
+                        if a.bound.kind == b.bound.kind
+                            && (a.universe.index(), a.var()) > (b.universe.index(), b.var()) =>
+                    {
+                        (c.sub, c.sup)
+                    }
+                    _ => (c.sup, c.sub),
+                };
+                let constraint = ty::RegionEqPredicate(sup, sub).into();
                 QueryRegionConstraint {
                     constraint,
                     category: origin.to_constraint_category(),

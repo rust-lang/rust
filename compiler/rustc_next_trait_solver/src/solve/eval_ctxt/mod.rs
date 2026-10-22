@@ -52,6 +52,9 @@ pub mod fast_path;
 mod probe;
 mod solver_region_constraints;
 
+#[cfg(test)]
+mod tests;
+
 /// The kind of goal we're currently proving.
 ///
 /// This has effects on cycle handling handling and on how we compute
@@ -1703,13 +1706,18 @@ where
             .delegate
             .deeply_resolve_via_unification_table((self.var_values, external_constraints));
 
-        // Remove any trivial or duplicated region constraints once we've resolved regions
-        let mut unique = HashSet::default();
+        // Remove trivial constraints and merge duplicates after resolving regions.
         if let ExternalRegionConstraints::Old(r) = &mut external_constraints.region_constraints {
-            r.retain(|(outlives, _)| !outlives.is_trivial() && unique.insert(*outlives));
+            *r = ty::solve::deduplicate_region_constraints(std::mem::take(r), true);
         }
 
         filter_irrelevant_region_constraints(self.delegate, var_values, &mut external_constraints);
+
+        // Sort before canonicalization: local inference variable IDs aren't stable
+        // across solver iterations, but input positions are.
+        if let ExternalRegionConstraints::Old(r) = &mut external_constraints.region_constraints {
+            sort_anchored_region_constraints(r, var_values.as_slice());
+        }
 
         let canonical = canonicalize_response(
             self.delegate,
@@ -1824,6 +1832,415 @@ where
         });
         value.try_fold_with(&mut folder)
     }
+}
+
+// Inference variable IDs aren't stable enough to use as sort keys.
+type RegionOrderKey = (u8, usize, usize);
+type RegionConstraintOrderKey = (u8, u8, Vec<RegionOrderKey>, RegionOrderKey);
+
+// Prefer the keyed region in a symmetric equality.
+// Two unkeyed regions still have no stable order.
+fn swap_region_eq_operands(lhs: Option<RegionOrderKey>, rhs: Option<RegionOrderKey>) -> bool {
+    match (lhs, rhs) {
+        (Some(lhs), Some(rhs)) => lhs > rhs,
+        (None, Some(_)) => true,
+        _ => false,
+    }
+}
+
+fn region_order_key<I: Interner>(
+    region: Region<I>,
+    anchored: &[I::GenericArg],
+) -> Option<RegionOrderKey> {
+    let arg: I::GenericArg = region.into();
+    if let Some(index) = anchored.iter().position(|&candidate| candidate == arg) {
+        return Some((0, index, 0));
+    }
+    match region.kind() {
+        ty::ReStatic => Some((1, 0, 0)),
+        ty::RePlaceholder(p) => Some((2, p.universe.index(), p.var().index())),
+        _ => None,
+    }
+}
+
+// Include nested type structure and regions in the key. If a region
+// has no stable identity, we can't use this key for sorting.
+fn nested_closure_region_key<I: Interner>(
+    arg: I::GenericArg,
+    anchored: &[I::GenericArg],
+) -> Option<Vec<RegionOrderKey>> {
+    struct Collector<'a, I: Interner> {
+        anchored: &'a [I::GenericArg],
+        regions: Vec<RegionOrderKey>,
+        valid: bool,
+    }
+
+    impl<I: Interner> TypeVisitor<I> for Collector<'_, I> {
+        type Result = ();
+
+        fn visit_ty(&mut self, ty: I::Ty) {
+            // Region keys alone don't distinguish different type constructors.
+            let tag = match ty.kind() {
+                ty::Bool => 10,
+                ty::Char => 11,
+                ty::Int(kind) => {
+                    self.regions.push((12, kind as usize, 0));
+                    return;
+                }
+                ty::Uint(kind) => {
+                    self.regions.push((13, kind as usize, 0));
+                    return;
+                }
+                ty::Float(kind) => {
+                    self.regions.push((14, kind as usize, 0));
+                    return;
+                }
+                ty::Adt(..) => 15,
+                ty::Foreign(..) => 16,
+                ty::Str => 17,
+                ty::Array(..) => 18,
+                ty::Pat(..) => 19,
+                ty::Slice(..) => 20,
+                ty::RawPtr(_, mutability) => {
+                    self.regions.push((21, mutability as usize, 0));
+                    ty.super_visit_with(self);
+                    return;
+                }
+                ty::Ref(_, _, mutability) => {
+                    self.regions.push((22, mutability as usize, 0));
+                    ty.super_visit_with(self);
+                    return;
+                }
+                ty::FnDef(..) => 23,
+                ty::FnPtr(..) => 24,
+                ty::UnsafeBinder(..) => 25,
+                ty::Dynamic(..) => 26,
+                ty::Closure(..) => 27,
+                ty::CoroutineClosure(..) => 28,
+                ty::Coroutine(..) => 29,
+                ty::CoroutineWitness(..) => 30,
+                ty::Never => 31,
+                ty::Tuple(..) => 32,
+                ty::Alias(..) => 33,
+                ty::Param(param) => {
+                    self.regions.push((34, param.index() as usize, 0));
+                    return;
+                }
+                ty::Bound(..) => 35,
+                ty::Placeholder(placeholder) => {
+                    self.regions.push((
+                        36,
+                        placeholder.universe().index(),
+                        placeholder.var().index(),
+                    ));
+                    return;
+                }
+                ty::Infer(..) => 37,
+                ty::Error(..) => 38,
+            };
+
+            // Include definition identity; the caller rejects key collisions.
+            use std::hash::{Hash as _, Hasher as _};
+
+            let mut hasher = std::collections::hash_map::DefaultHasher::new();
+            let has_definition = match ty.kind() {
+                ty::FnDef(def, _) => {
+                    def.hash(&mut hasher);
+                    true
+                }
+                ty::Foreign(def) => {
+                    def.hash(&mut hasher);
+                    true
+                }
+                ty::Adt(def, _) => {
+                    def.hash(&mut hasher);
+                    true
+                }
+                ty::Alias(_, alias) => {
+                    alias.kind.hash(&mut hasher);
+                    true
+                }
+                ty::Closure(def, _) => {
+                    def.hash(&mut hasher);
+                    true
+                }
+                ty::CoroutineClosure(def, _) => {
+                    def.hash(&mut hasher);
+                    true
+                }
+                ty::Coroutine(def, _) => {
+                    def.hash(&mut hasher);
+                    true
+                }
+                ty::CoroutineWitness(def, _) => {
+                    def.hash(&mut hasher);
+                    true
+                }
+                _ => false,
+            };
+
+            if has_definition {
+                let hash = hasher.finish();
+                self.regions.push((tag, (hash >> 32) as usize, (hash as u32) as usize));
+            } else {
+                self.regions.push((tag, 0, 0));
+            }
+
+            ty.super_visit_with(self);
+        }
+
+        fn visit_region(&mut self, region: Region<I>) {
+            // Bound regions are local to their binder.
+            if matches!(region.kind(), ty::ReBound(..)) {
+                return;
+            }
+
+            match region_order_key(region, self.anchored) {
+                Some(key) => self.regions.push(key),
+                None => self.valid = false,
+            }
+        }
+    }
+
+    let mut collector = Collector { anchored, regions: Vec::new(), valid: true };
+
+    arg.visit_with(&mut collector);
+
+    collector.valid.then_some(collector.regions)
+}
+
+fn region_constraint_order_key<I: Interner>(
+    constraint: ty::RegionConstraint<I>,
+    anchored: &[I::GenericArg],
+) -> Option<RegionConstraintOrderKey> {
+    match constraint {
+        ty::RegionConstraint::Eq(ty::RegionEqPredicate(a, b)) => {
+            let a = region_order_key(a, anchored)?;
+            let b = region_order_key(b, anchored)?;
+            Some((0, 0, vec![a.min(b)], a.max(b)))
+        }
+        ty::RegionConstraint::Outlives(ty::OutlivesClause(lhs, rhs)) => {
+            let rhs = region_order_key(rhs, anchored)?;
+
+            if let Some(index) = anchored.iter().position(|&candidate| candidate == lhs) {
+                return Some((1, 0, vec![(0, index, 0)], rhs));
+            }
+
+            if let Some(region) = lhs.as_region() {
+                return Some((1, 1, vec![region_order_key(region, anchored)?], rhs));
+            }
+
+            // Nested regions must use stable keys, not inference IDs.
+            if lhs.as_type().is_some() {
+                let regions = nested_closure_region_key::<I>(lhs, anchored)?;
+                return Some((1, 2, regions, rhs));
+            }
+
+            if lhs.as_const().is_some() {
+                let regions = nested_closure_region_key::<I>(lhs, anchored)?;
+                return Some((1, 3, regions, rhs));
+            }
+
+            None
+        }
+    }
+}
+
+/// Sort constraints only when their keys are stable and unambiguous.
+/// Unknown keys or collisions leave the existing order unchanged.
+fn sort_anchored_region_constraints<I: Interner>(
+    constraints: &mut Vec<(ty::RegionConstraint<I>, ty::solve::VisibleForLeakCheck)>,
+    anchored: &[I::GenericArg],
+) {
+    // A single equality may still need its operands swapped.
+    if constraints.is_empty()
+        || (constraints.len() == 1
+            && matches!(constraints[0].0, ty::RegionConstraint::Outlives(..)))
+    {
+        return;
+    }
+
+    // Anchor region identities to input values, not constraint order.
+    struct NestedRegionAnchorCollector<'a, I: Interner> {
+        ordered: &'a mut Vec<I::GenericArg>,
+    }
+
+    impl<I: Interner> TypeVisitor<I> for NestedRegionAnchorCollector<'_, I> {
+        type Result = ();
+
+        fn visit_region(&mut self, region: Region<I>) {
+            if matches!(region.kind(), ty::ReVar(_)) {
+                let arg: I::GenericArg = region.into();
+                if !self.ordered.contains(&arg) {
+                    self.ordered.push(arg);
+                }
+            }
+        }
+    }
+
+    let mut ordered_anchors = anchored.to_vec();
+
+    // Nested input regions also have a stable traversal order.
+    {
+        let mut collector = NestedRegionAnchorCollector { ordered: &mut ordered_anchors };
+        for &arg in anchored {
+            arg.visit_with(&mut collector);
+        }
+    }
+
+    // A keyed LHS can anchor an otherwise unknown RHS region.
+    let mut rooted_rhs = Vec::new();
+
+    for &(constraint, _) in constraints.iter() {
+        if let ty::RegionConstraint::Outlives(ty::OutlivesClause(lhs, rhs)) = constraint
+            && matches!(rhs.kind(), ty::ReVar(_))
+            && let Some(lhs_region) = lhs.as_region()
+            && let Some(root_key) = region_order_key::<I>(lhs_region, anchored)
+        {
+            rooted_rhs.push((root_key, rhs));
+        }
+    }
+
+    rooted_rhs.sort_by_key(|&(key, _)| key);
+
+    // One root pointing to different regions isn't a unique anchor.
+    let mut i = 0;
+    while i < rooted_rhs.len() {
+        let mut end = i + 1;
+        while end < rooted_rhs.len() && rooted_rhs[end].0 == rooted_rhs[i].0 {
+            end += 1;
+        }
+
+        let region = rooted_rhs[i].1;
+        if rooted_rhs[i..end].iter().all(|&(_, other)| other == region) {
+            let arg: I::GenericArg = region.into();
+            if !ordered_anchors.contains(&arg) {
+                ordered_anchors.push(arg);
+            }
+        }
+
+        i = end;
+    }
+
+    // A single structural LHS has a fixed nested-region traversal order.
+    let mut structural_lhs = None;
+    let mut ambiguous_structure = false;
+
+    for &(constraint, _) in constraints.iter() {
+        if let ty::RegionConstraint::Outlives(ty::OutlivesClause(lhs, _)) = constraint
+            && lhs.as_type().is_some()
+        {
+            if structural_lhs.is_some() {
+                ambiguous_structure = true;
+                break;
+            }
+            structural_lhs = Some(lhs);
+        }
+    }
+
+    if !ambiguous_structure {
+        if let Some(lhs) = structural_lhs {
+            let mut collector = NestedRegionAnchorCollector { ordered: &mut ordered_anchors };
+            lhs.visit_with(&mut collector);
+        }
+    }
+
+    let anchored = ordered_anchors.as_slice();
+
+    // Universe and index alone miss a placeholder's bound-region kind.
+    // Reject any keys that refer to different regions.
+    struct RegionKeyCheck<'a, I: Interner> {
+        anchored: &'a [I::GenericArg],
+        seen: ty::data_structures::HashMap<RegionOrderKey, Region<I>>,
+        collided: bool,
+    }
+
+    impl<I: Interner> TypeVisitor<I> for RegionKeyCheck<'_, I> {
+        type Result = ();
+
+        fn visit_region(&mut self, region: Region<I>) {
+            if let Some(key) = region_order_key::<I>(region, self.anchored)
+                && self.seen.insert(key, region).is_some_and(|previous| previous != region)
+            {
+                self.collided = true;
+            }
+        }
+    }
+
+    let mut check =
+        RegionKeyCheck { anchored, seen: ty::data_structures::HashMap::default(), collided: false };
+
+    for &(constraint, _) in constraints.iter() {
+        match constraint {
+            ty::RegionConstraint::Eq(ty::RegionEqPredicate(a, b)) => {
+                a.visit_with(&mut check);
+                b.visit_with(&mut check);
+            }
+            ty::RegionConstraint::Outlives(ty::OutlivesClause(lhs, rhs)) => {
+                lhs.visit_with(&mut check);
+                rhs.visit_with(&mut check);
+            }
+        }
+    }
+
+    if check.collided {
+        return;
+    }
+
+    // Put keyed regions first so Eq direction can't change `var_kinds`.
+    for (constraint, _) in constraints.iter_mut() {
+        if let ty::RegionConstraint::Eq(ty::RegionEqPredicate(lhs, rhs)) = *constraint {
+            // Canonicalize the direction of a symmetric equality even if one
+            // side has no stable key. An unanchored inference region must not
+            // decide which canonical response variable is introduced first.
+            if swap_region_eq_operands(
+                region_order_key(lhs, anchored),
+                region_order_key(rhs, anchored),
+            ) {
+                *constraint = ty::RegionConstraint::Eq(ty::RegionEqPredicate(rhs, lhs));
+            }
+        }
+    }
+
+    // Different structural LHS values must not share a sort key.
+    let mut seen_lhs =
+        ty::data_structures::HashMap::<Vec<RegionOrderKey>, I::GenericArg>::default();
+
+    for &(constraint, _) in constraints.iter() {
+        if let ty::RegionConstraint::Outlives(ty::OutlivesClause(lhs, _)) = constraint
+            && (lhs.as_type().is_some() || lhs.as_const().is_some())
+        {
+            let Some(key) = nested_closure_region_key::<I>(lhs, anchored) else {
+                return;
+            };
+
+            if seen_lhs.insert(key, lhs).is_some_and(|previous| previous != lhs) {
+                return;
+            }
+        }
+    }
+
+    if constraints.len() < 2 {
+        return;
+    }
+
+    let mut seen = ty::data_structures::HashMap::default();
+    for &(constraint, visibility) in constraints.iter() {
+        let Some(key) = region_constraint_order_key(constraint, anchored) else {
+            return;
+        };
+        // Don't break ties arbitrarily when distinct constraints share a key.
+        if seen
+            .insert(key, (constraint, visibility))
+            .is_some_and(|previous| previous != (constraint, visibility))
+        {
+            return;
+        }
+    }
+
+    constraints.sort_by_cached_key(|(constraint, _)| {
+        region_constraint_order_key(*constraint, anchored).expect("key prechecked above")
+    });
 }
 
 fn filter_irrelevant_region_constraints<D, I>(

@@ -715,6 +715,40 @@ pub enum VisibleForLeakCheck {
     Unreachable,
 }
 
+/// Deduplicate region constraints, treating `Eq(a, b)` and `Eq(b, a)` alike.
+/// Merge leak-check visibility and optionally drop trivial constraints.
+pub fn deduplicate_region_constraints<I: Interner>(
+    constraints: impl IntoIterator<Item = (ty::RegionConstraint<I>, VisibleForLeakCheck)>,
+    remove_trivial: bool,
+) -> Vec<(ty::RegionConstraint<I>, VisibleForLeakCheck)> {
+    use crate::data_structures::HashMap;
+
+    let mut seen: HashMap<ty::RegionConstraint<I>, usize> = HashMap::default();
+    let mut result: Vec<(ty::RegionConstraint<I>, VisibleForLeakCheck)> = Vec::new();
+
+    for (constraint, vis) in constraints {
+        if remove_trivial && constraint.is_trivial() {
+            continue;
+        }
+
+        let index = seen.get(&constraint).copied().or_else(|| match constraint {
+            ty::RegionConstraint::Eq(ty::RegionEqPredicate(a, b)) => {
+                seen.get(&ty::RegionConstraint::Eq(ty::RegionEqPredicate(b, a))).copied()
+            }
+            _ => None,
+        });
+
+        if let Some(index) = index {
+            result[index].1 = result[index].1.or(vis);
+        } else {
+            seen.insert(constraint, result.len());
+            result.push((constraint, vis));
+        }
+    }
+
+    result
+}
+
 impl VisibleForLeakCheck {
     pub fn and(self, other: VisibleForLeakCheck) -> VisibleForLeakCheck {
         match (self, other) {
@@ -1135,3 +1169,6 @@ impl TyOrConstInferVar {
         }
     }
 }
+
+#[cfg(test)]
+mod tests;
