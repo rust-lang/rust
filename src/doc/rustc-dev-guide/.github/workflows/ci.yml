@@ -15,6 +15,8 @@ jobs:
   ci:
     if: github.repository == 'rust-lang/rustc-dev-guide'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # Required by `git push`
     env:
       MDBOOK_VERSION: 0.5.2
       MDBOOK_LINKCHECK2_VERSION: 0.13.0
@@ -107,9 +109,7 @@ jobs:
     if: failure() && github.event_name == 'schedule'
     runs-on: ubuntu-latest
     permissions:
-      actions: read
-      contents: read
-      issues: write
+      issues: write # Required to open issues with `gh issue create`
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -125,8 +125,7 @@ jobs:
     if: success() && github.event_name == 'schedule'
     runs-on: ubuntu-latest
     permissions:
-      contents: read
-      issues: write
+      issues: write # Required to close issues with `gh issue close`
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
