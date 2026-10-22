@@ -52,13 +52,14 @@ const _: () =
 extern "Rust" {
     #[attr = CfgAttrTrace([Bool(true, $DIR/cfg_on_eii.rs:13:12: 13:16 (#0))])]
     #[attr = Deprecated {deprecation: Deprecation {since: Unspecified,
-    note: bar#0}}]
+    note: bar#0},
+    is_inner: false}]
     #[attr = RustcEiiForeignItem]
     fn cfg_attr_on_eii();
 }
 #[attr = CfgAttrTrace([Bool(true, $DIR/cfg_on_eii.rs:13:12: 13:16 (#0))])]
 #[attr = Deprecated {deprecation: Deprecation {since: Unspecified,
-note: bar#0}}]
+note: bar#0}, is_inner: false}]
 #[attr = RustcMacroTransparency(SemiOpaque)]
 #[attr = RustcBuiltinMacro {builtin_name: "eii_shared_macro",
 helper_attrs: []}]

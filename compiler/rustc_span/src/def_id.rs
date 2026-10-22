@@ -10,7 +10,7 @@ use rustc_data_structures::unhash::Unhasher;
 use rustc_hashes::Hash64;
 use rustc_index::Idx;
 use rustc_macros::{BlobDecodable, Decodable, Encodable, StableHash};
-use rustc_serialize::{Decodable, Encodable};
+use rustc_serialize::{ContextOrd, Decodable, Encodable};
 
 use crate::{BlobDecoder, SpanEncoder, Symbol};
 
@@ -21,6 +21,13 @@ rustc_index::newtype_index! {
     #[orderable]
     #[debug_format = "crate{}"]
     pub struct CrateNum {}
+}
+
+impl<E: SpanEncoder> ContextOrd<&E> for CrateNum {
+    fn stable_cmp_with_context(context: &E) -> impl FnMut(&Self, &Self) -> std::cmp::Ordering {
+        let hasher = context.def_path_hasher();
+        move |id1, id2| hasher(id1.as_def_id()).cmp(&hasher(id2.as_def_id()))
+    }
 }
 
 /// Item definitions in the currently-compiled crate would have the `CrateNum`
@@ -410,12 +417,26 @@ impl<D: BlobDecoder> Decodable<D> for LocalDefId {
     }
 }
 
+impl<E: SpanEncoder> ContextOrd<&E> for LocalDefId {
+    fn stable_cmp_with_context(context: &E) -> impl FnMut(&Self, &Self) -> std::cmp::Ordering {
+        let hasher = context.def_path_hasher();
+        move |id1, id2| hasher(id1.to_def_id()).cmp(&hasher(id2.to_def_id()))
+    }
+}
+
 rustc_data_structures::define_id_collections!(
     LocalDefIdMap,
     LocalDefIdSet,
     LocalDefIdMapEntry,
     LocalDefId
 );
+
+impl<E: SpanEncoder> ContextOrd<&E> for DefId {
+    fn stable_cmp_with_context(context: &E) -> impl FnMut(&Self, &Self) -> std::cmp::Ordering {
+        let hasher = context.def_path_hasher();
+        move |id1, id2| hasher(*id1).cmp(&hasher(*id2))
+    }
+}
 
 impl StableHash for DefId {
     #[inline]

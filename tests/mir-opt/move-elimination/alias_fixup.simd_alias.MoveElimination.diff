@@ -1,0 +1,78 @@
+- // MIR for `simd_alias` before MoveElimination
++ // MIR for `simd_alias` after MoveElimination
+  
+  fn simd_alias(_1: bool) -> VectorUnion {
+      debug flag => _1;
+      let mut _0: VectorUnion;
+      let _2: VectorUnion;
+      let mut _3: Vector;
+      let mut _4: [u32; 4];
+      let mut _5: bool;
+      let mut _6: Vector;
+      let mut _7: [u32; 4];
++     let mut _8: Vector;
+      scope 1 {
+-         debug input => _2;
++         debug input => _0;
+      }
+  
+      bb0: {
+-         StorageLive(_2);
+-         StorageLive(_3);
+-         StorageLive(_4);
++         nop;
++         nop;
++         nop;
+          _4 = [const 0_u32; 4];
+-         _3 = Vector(move _4);
+-         StorageDead(_4);
+-         _2 = VectorUnion { vector: move _3 };
+-         StorageDead(_3);
+-         StorageLive(_5);
+-         _5 = copy _1;
+-         switchInt(move _5) -> [0: bb2, otherwise: bb1];
++         (_0.0: Vector) = Vector(move _4);
++         nop;
++         nop;
++         nop;
++         nop;
++         nop;
++         switchInt(move _1) -> [0: bb2, otherwise: bb1];
+      }
+  
+      bb1: {
+-         StorageLive(_6);
+-         StorageLive(_7);
+-         _7 = copy (_2.1: [u32; 4]);
+-         _6 = Vector(move _7);
+-         StorageDead(_7);
+-         _0 = VectorUnion { vector: move _6 };
+-         StorageDead(_6);
++         nop;
++         nop;
++         nop;
++         StorageLive(_8);
++         _8 = Vector(move (_0.1: [u32; 4]));
++         (_0.0: Vector) = no_retag move _8;
++         StorageDead(_8);
++         nop;
++         nop;
++         nop;
+          goto -> bb3;
+      }
+  
+      bb2: {
+-         _0 = move _2;
++         nop;
+          goto -> bb3;
+      }
+  
+      bb3: {
+-         StorageDead(_5);
+-         StorageDead(_2);
++         nop;
++         nop;
+          return;
+      }
+  }
+  

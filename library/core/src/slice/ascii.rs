@@ -26,7 +26,7 @@ impl [u8] {
     }
 
     /// If this slice [`is_ascii`](Self::is_ascii), returns it as a slice of
-    /// [ASCII characters](`ascii::Char`), otherwise returns `None`.
+    /// [ASCII characters](ascii::Char), otherwise returns `None`.
     #[unstable(feature = "ascii_char", issue = "110998")]
     #[must_use]
     #[inline]

@@ -155,7 +155,9 @@ pub(super) struct DestinationPropagation;
 
 impl<'tcx> crate::MirPass<'tcx> for DestinationPropagation {
     fn policy(&self, ctx: &crate::PassCtx<'_>) -> PassPolicy {
-        PassPolicy::optional(ctx.mir_opt_level() >= 2)
+        PassPolicy::optional(
+            ctx.mir_opt_level() >= 2 && !ctx.opts.unstable_opts.mir_move_elimination,
+        )
     }
 
     #[tracing::instrument(level = "trace", skip(self, tcx, body))]
