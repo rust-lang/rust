@@ -46,7 +46,7 @@
 #[must_use = "returns a pointer that does nothing unless used"]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-#[unstable(feature = "gpu_launch_sized_workgroup_mem", issue = "135513")]
+#[unstable(feature = "gpu_launch_sized_workgroup_mem", issue = "135516")]
 #[cfg(any(doc, target_arch = "amdgpu", target_arch = "nvptx64"))]
 pub fn gpu_launch_sized_workgroup_mem<T>() -> *mut T;
 
