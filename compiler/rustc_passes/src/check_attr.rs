@@ -384,7 +384,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcShowSpans(_) => (),
             AttributeKind::RustcSimdMonomorphizeLaneLimit(..) => (),
             AttributeKind::RustcSkipDuringMethodDispatch { .. } => (),
-
             AttributeKind::RustcSpecializationTrait => (),
             AttributeKind::RustcStdInternalSymbol => (),
             AttributeKind::RustcStrictCoherence(..) => (),
@@ -400,6 +399,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::ThreadLocal => (),
             AttributeKind::TrackCaller(_) => (),
             AttributeKind::TypeLengthLimit { .. } => (),
+            AttributeKind::UncheckedTypeAlias => (),
             AttributeKind::Unroll(..) => (),
             AttributeKind::UnstableFeatureBound(..) => (),
             AttributeKind::UnstableRemoved(..) => (),
