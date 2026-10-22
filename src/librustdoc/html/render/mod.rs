@@ -52,8 +52,8 @@ use indexmap::IndexMap;
 use itertools::Either;
 use rustc_ast::join_path_syms;
 use rustc_attr_ir::{
-    AttributeKind, ConstStability, DeprecatedSince, Deprecation, NotableTraitColor,
-    RustcVersion, StabilityLevel, StableSince, find_attr,
+    AttributeKind, ConstStability, DeprecatedSince, Deprecation, NotableTraitColor, RustcVersion,
+    StabilityLevel, StableSince, find_attr,
 };
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::Mutability;
