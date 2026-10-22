@@ -37,7 +37,8 @@ use rustc_data_structures::stable_hash::{
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_hashes::Hash64;
-use rustc_index::IndexVec;
+use rustc_index::dense_map::{DenseKey, DenseMap};
+use rustc_index::{Idx, IndexVec};
 use rustc_macros::{Decodable, Encodable, StableHash};
 use rustc_serialize::{ContextOrd, Decodable, Decoder, Encodable};
 use tracing::{debug, trace};
@@ -131,11 +132,45 @@ impl fmt::Debug for ExpnId {
     }
 }
 
-rustc_index::newtype_index! {
-    /// A unique ID associated with a macro invocation and expansion.
-    #[debug_format = "expn{}"]
-    #[default]
-    pub struct LocalExpnId {}
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub struct LocalExpnId(ExpnIndex);
+
+impl Default for LocalExpnId {
+    fn default() -> Self {
+        Self::ZERO
+    }
+}
+
+impl fmt::Debug for LocalExpnId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Example: HirId(DefId(0:1 ~ aa[7697]::{use#0}).10)
+        // Don't use debug_tuple to always keep this on one line.
+        write!(f, "expn({})", self.0.as_u32())
+    }
+}
+
+impl LocalExpnId {
+    pub const ZERO: Self = Self(ExpnIndex::ZERO);
+
+    pub const fn from_u32(i: u32) -> Self {
+        Self(ExpnIndex::from_u32(i))
+    }
+
+    pub const fn as_u32(self) -> u32 {
+        self.0.as_u32()
+    }
+}
+
+impl From<u32> for LocalExpnId {
+    fn from(value: u32) -> Self {
+        Self::from_u32(value)
+    }
+}
+
+impl From<LocalExpnId> for u32 {
+    fn from(value: LocalExpnId) -> Self {
+        value.as_u32()
+    }
 }
 
 // To ensure correctness of incremental compilation,
@@ -143,6 +178,19 @@ rustc_index::newtype_index! {
 // See https://github.com/rust-lang/rust/issues/90317.
 impl !Ord for LocalExpnId {}
 impl !PartialOrd for LocalExpnId {}
+impl !Idx for LocalExpnId {}
+
+impl DenseKey for LocalExpnId {
+    #[inline]
+    fn new(idx: usize) -> Self {
+        LocalExpnId(ExpnIndex::from_usize(idx))
+    }
+
+    #[inline]
+    fn index(self) -> usize {
+        self.0.as_usize()
+    }
+}
 
 /// A unique hash value associated to an expansion.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Encodable, Decodable, StableHash)]
@@ -214,12 +262,12 @@ impl LocalExpnId {
 
     #[inline]
     fn from_raw(idx: ExpnIndex) -> LocalExpnId {
-        LocalExpnId::from_u32(idx.as_u32())
+        LocalExpnId(idx)
     }
 
     #[inline]
     pub fn as_raw(self) -> ExpnIndex {
-        ExpnIndex::from_u32(self.as_u32())
+        self.0
     }
 
     pub fn fresh_empty() -> LocalExpnId {
@@ -502,8 +550,8 @@ pub(crate) struct HygieneData {
     /// Each expansion should have an associated expansion data, but sometimes there's a delay
     /// between creation of an expansion ID and obtaining its data (e.g. macros are collected
     /// first and then resolved later), so we use an `Option` here.
-    local_expn_data: IndexVec<LocalExpnId, Option<ExpnData>>,
-    local_expn_hashes: IndexVec<LocalExpnId, ExpnHash>,
+    local_expn_data: DenseMap<LocalExpnId, Option<ExpnData>>,
+    local_expn_hashes: DenseMap<LocalExpnId, ExpnHash>,
     /// Data and hash information from external crates. We may eventually want to remove these
     /// maps, and fetch the information directly from the other crate's metadata like DefIds do.
     foreign_expn_data: FxHashMap<ExpnId, ExpnData>,
@@ -535,8 +583,8 @@ impl HygieneData {
         // mutated afterwards. The lock-free root paths on `SyntaxContext` rely on that.
         let root_ctxt_data = SyntaxContextData::root();
         HygieneData {
-            local_expn_data: IndexVec::from_elem_n(Some(root_data), 1),
-            local_expn_hashes: IndexVec::from_elem_n(ExpnHash(Fingerprint::ZERO), 1),
+            local_expn_data: DenseMap::from_elem_n(Some(root_data), 1),
+            local_expn_hashes: DenseMap::from_elem_n(ExpnHash(Fingerprint::ZERO), 1),
             foreign_expn_data: FxHashMap::default(),
             foreign_expn_hashes: FxHashMap::default(),
             expn_hash_to_expn_id: iter::once((ExpnHash(Fingerprint::ZERO), ExpnId::root()))
@@ -833,6 +881,8 @@ pub fn debug_hygiene_data(verbose: bool) -> String {
                     expn_data.kind,
                 ))
             };
+            // FIXME make this output reproducible
+            #[expect(rustc::potential_query_instability)]
             data.local_expn_data.iter_enumerated().for_each(|(id, expn_data)| {
                 let expn_data = expn_data.as_ref().expect("no expansion data for an expansion ID");
                 debug_expn_data((&id.to_expn_id(), expn_data))
@@ -1538,10 +1588,7 @@ pub struct HygieneDecodeContext {
 /// Register an expansion which has been decoded from the on-disk-cache for the local crate.
 pub fn register_local_expn_id(data: ExpnData, hash: ExpnHash) -> ExpnId {
     HygieneData::with(|hygiene_data| {
-        let expn_id = hygiene_data.local_expn_data.next_index();
-        hygiene_data.local_expn_data.push(Some(data));
-        let _eid = hygiene_data.local_expn_hashes.push(hash);
-        debug_assert_eq!(expn_id, _eid);
+        let expn_id = hygiene_data.local_expn_data.push(Some(data));
 
         let expn_id = expn_id.to_expn_id();
 
