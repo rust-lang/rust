@@ -5,7 +5,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use proc_macro2::{TokenStream, TokenTree};
-use rustc_attr_ir::{AttributeKind, CfgEntry};
+use rustc_attr_ir::{AttributeKind, CfgEntry, find_attr};
 use rustc_attr_parsing::eval_config_entry;
 use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
 use rustc_hir::{self as hir, CRATE_HIR_ID, intravisit};
@@ -218,13 +218,10 @@ impl HirCollector<'_> {
             } else {
                 // this span affects filesystem path resolution,
                 // so we need to keep it the same as it was previously
-                hir_attrs
-                    .iter()
-                    .find(|attr| attr.doc_str().is_some())
-                    .map(|attr| {
-                        attr.span().ctxt().outer_expn().expansion_cause().unwrap_or(attr.span())
-                    })
-                    .unwrap_or(DUMMY_SP)
+                let first_doc_str_span = find_attr!(hir_attrs, DocComment { span, .. } => *span);
+                let cause_span = first_doc_str_span
+                    .map(|sp| sp.ctxt().outer_expn().expansion_cause().unwrap_or(sp));
+                cause_span.unwrap_or(DUMMY_SP)
             };
             markdown::find_testable_code(
                 &doc,

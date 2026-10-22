@@ -137,8 +137,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(attr_kind) => {
                     self.check_one_parsed_attribute(hir_id, span, target, item, attr_kind);
                 }
-                Attribute::Unparsed(_) => {
-                    match attr.path().as_slice() {
+                Attribute::Unparsed(u) => {
+                    match &*u.path.segments {
                         [name, rest @ ..] => {
                             if BUILTIN_ATTRIBUTE_SET.contains(name) {
                                 if rest.len() > 0
@@ -152,7 +152,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                                 }
 
                                 span_bug!(
-                                    attr.span(),
+                                    u.span,
                                     "builtin attribute {name:?} not handled by `CheckAttrVisitor`"
                                 )
                             }

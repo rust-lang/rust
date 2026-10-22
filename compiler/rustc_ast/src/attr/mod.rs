@@ -77,10 +77,6 @@ impl Attribute {
 }
 
 impl AttributeExt for Attribute {
-    fn id(&self) -> AttrId {
-        self.id
-    }
-
     fn value_span(&self) -> Option<Span> {
         match &self.kind {
             AttrKind::Normal(normal) => match &normal.item.args {
@@ -146,10 +142,6 @@ impl AttributeExt for Attribute {
         }
     }
 
-    fn span(&self) -> Span {
-        self.span
-    }
-
     fn is_word(&self) -> bool {
         match &self.kind {
             AttrKind::Normal(normal) => matches!(normal.item.args, AttrArgs::Empty),
@@ -195,20 +187,24 @@ impl AttributeExt for Attribute {
         }
     }
 
-    /// Returns the documentation and its kind if this is a doc comment or a sugared doc comment.
-    /// * `///doc` returns `Some(("doc", DocFragmentKind::Sugared(CommentKind::Line)))`.
-    /// * `/** doc */` returns `Some(("doc", DocFragmentKind::Sugared(CommentKind::Block)))`.
-    /// * `#[doc = "doc"]` returns `Some(("doc", DocFragmentKind::Raw))`.
+    /// Returns the documentation, its kind if this is a doc comment or a sugared doc comment
+    /// and the span of the entire comment (or the entire attribute if raw - see the span in
+    /// [`DocFragmentKind`] for the literal span.)
+    /// * `///doc` returns `Some(("doc", DocFragmentKind::Sugared(CommentKind::Line)), _)`.
+    /// * `/** doc */` returns `Some(("doc", DocFragmentKind::Sugared(CommentKind::Block), _))`.
+    /// * `#[doc = "doc"]` returns `Some(("doc", DocFragmentKind::Raw), _)`.
     /// * `#[doc(...)]` returns `None`.
-    fn doc_str_and_fragment_kind(&self) -> Option<(Symbol, DocFragmentKind)> {
+    fn doc_str_and_fragment_kind(&self) -> Option<(Symbol, DocFragmentKind, Span)> {
         match &self.kind {
-            AttrKind::DocComment(kind, data) => Some((*data, DocFragmentKind::Sugared(*kind))),
+            AttrKind::DocComment(kind, data) => {
+                Some((*data, DocFragmentKind::Sugared(*kind), self.span))
+            }
             AttrKind::Normal(normal)
                 if normal.item.path == sym::doc
                     && let Some(value) = normal.item.value_str()
                     && let Some(value_span) = normal.item.value_span() =>
             {
-                Some((value, DocFragmentKind::Raw(value_span)))
+                Some((value, DocFragmentKind::Raw(value_span), self.span))
             }
             AttrKind::Normal(..) | AttrKind::Synthetic(..) => None,
         }
@@ -909,9 +905,7 @@ impl MetaItemLit {
     }
 }
 
-pub trait AttributeExt: Debug {
-    fn id(&self) -> AttrId;
-
+pub trait AttributeExt: Debug + 'static {
     /// For a single-segment attribute (i.e., `#[attr]` and not `#[path::atrr]`),
     /// return the name of the attribute; otherwise, returns `None`.
     fn name(&self) -> Option<Symbol>;
@@ -948,10 +942,6 @@ pub trait AttributeExt: Debug {
     fn has_any_name(&self, names: &[Symbol]) -> bool {
         names.iter().any(|&name| self.has_name(name))
     }
-
-    /// get the span of the entire attribute
-    fn span(&self) -> Span;
-
     /// Returns whether the attribute is a path, without any arguments.
     fn is_word(&self) -> bool;
 
@@ -985,7 +975,7 @@ pub trait AttributeExt: Debug {
     /// * `/** doc */` returns `Some(("doc", CommentKind::Block))`.
     /// * `#[doc = "doc"]` returns `Some(("doc", CommentKind::Line))`.
     /// * `#[doc(...)]` returns `None`.
-    fn doc_str_and_fragment_kind(&self) -> Option<(Symbol, DocFragmentKind)>;
+    fn doc_str_and_fragment_kind(&self) -> Option<(Symbol, DocFragmentKind, Span)>;
 
     /// Returns outer or inner if this is a doc attribute or a sugared doc
     /// comment, otherwise None.
@@ -1009,10 +999,6 @@ pub trait AttributeExt: Debug {
 // FIXME(fn_delegation): use function delegation instead of manually forwarding
 
 impl Attribute {
-    pub fn id(&self) -> AttrId {
-        AttributeExt::id(self)
-    }
-
     pub fn name(&self) -> Option<Symbol> {
         AttributeExt::name(self)
     }
@@ -1048,10 +1034,6 @@ impl Attribute {
         AttributeExt::has_any_name(self, names)
     }
 
-    pub fn span(&self) -> Span {
-        AttributeExt::span(self)
-    }
-
     pub fn is_word(&self) -> bool {
         AttributeExt::is_word(self)
     }
@@ -1068,7 +1050,7 @@ impl Attribute {
         AttributeExt::is_proc_macro_attr(self)
     }
 
-    pub fn doc_str_and_fragment_kind(&self) -> Option<(Symbol, DocFragmentKind)> {
+    pub fn doc_str_and_fragment_kind(&self) -> Option<(Symbol, DocFragmentKind, Span)> {
         AttributeExt::doc_str_and_fragment_kind(self)
     }
 }

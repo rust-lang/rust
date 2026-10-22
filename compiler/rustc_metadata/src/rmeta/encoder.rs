@@ -42,7 +42,7 @@ use rustc_span::hygiene::{
 };
 use rustc_span::{
     ByteSymbol, ExternalSource, FileName, LocalExpnId, SourceFile, SpanData, SpanEncoder,
-    StableSourceFileId, Symbol, SyntaxContext, bug, span_bug, sym,
+    StableSourceFileId, Symbol, SyntaxContext, bug, span_bug,
 };
 use rustc_structures::CrateType;
 use tracing::{debug, instrument, trace};
@@ -988,12 +988,6 @@ fn analyze_attr(attr: &rustc_attr_ir::Attribute, state: &mut AnalyzeAttrState) -
     if let rustc_attr_ir::Attribute::Parsed(p) = attr
         && p.encode_cross_crate() == EncodeCrossCrate::No
     {
-        // Attributes not marked encode-cross-crate don't need to be encoded for downstream crates.
-    } else if let Some(name) = attr.name()
-        && [sym::warn, sym::allow, sym::expect, sym::forbid, sym::deny].contains(&name)
-    {
-        // Lint attributes don't need to be encoded for downstream crates.
-        // FIXME remove this when #152369 is re-merged
     } else if let rustc_attr_ir::Attribute::Parsed(AttributeKind::DocComment { .. }) = attr {
         // We keep all doc comments reachable to rustdoc because they might be "imported" into
         // downstream crates if they use `#[doc(inline)]` to copy an item's documentation into
