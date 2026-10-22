@@ -369,7 +369,6 @@ fn gen_bind_body(
             _ => panic!("unsupported type"),
         }
     };
-    let mut rustc_legacy_const_generics = "";
     let fn_decl = {
         let fn_output = if out_t.to_lowercase() == "void" {
             String::new()
@@ -410,7 +409,6 @@ fn gen_bind_body(
                 ),
                 _ => panic!("unsupported assembly format: {}", asm_fmts[1]),
             };
-            rustc_legacy_const_generics = "rustc_legacy_const_generics(0)";
         } else if para_num == 2 && (in_t[1] == "UQI" || in_t[1] == "USI") {
             fn_inputs = if asm_fmts[2].starts_with("ui") {
                 format!(
@@ -422,7 +420,6 @@ fn gen_bind_body(
             } else {
                 panic!("unsupported assembly format: {}", asm_fmts[2]);
             };
-            rustc_legacy_const_generics = "rustc_legacy_const_generics(1)";
         } else if para_num == 2 && in_t[1] == "QI" {
             fn_inputs = if asm_fmts[2].starts_with("si") {
                 format!(
@@ -434,7 +431,6 @@ fn gen_bind_body(
             } else {
                 panic!("unsupported assembly format: {}", asm_fmts[2]);
             };
-            rustc_legacy_const_generics = "rustc_legacy_const_generics(1)";
         } else if para_num == 2 && in_t[0] == "CVPOINTER" && in_t[1] == "SI" {
             fn_inputs = if asm_fmts[2].starts_with("si") {
                 format!(
@@ -446,7 +442,6 @@ fn gen_bind_body(
             } else {
                 panic!("unsupported assembly format: {}", asm_fmts[2]);
             };
-            rustc_legacy_const_generics = "rustc_legacy_const_generics(1)";
         } else if para_num == 2 && in_t[0] == "CVPOINTER" && in_t[1] == "DI" {
             fn_inputs = match asm_fmts[2].as_str() {
                 "rk" => format!(
@@ -468,7 +463,6 @@ fn gen_bind_body(
             } else {
                 panic!("unsupported assembly format: {}", asm_fmts[2])
             };
-            rustc_legacy_const_generics = "rustc_legacy_const_generics(2)";
         } else if para_num == 3 && in_t[1] == "CVPOINTER" && in_t[2] == "SI" {
             fn_inputs = match asm_fmts[2].as_str() {
                 "si12" => format!(
@@ -479,7 +473,6 @@ fn gen_bind_body(
                 ),
                 _ => panic!("unsupported assembly format: {}", asm_fmts[2]),
             };
-            rustc_legacy_const_generics = "rustc_legacy_const_generics(2)";
         } else if para_num == 3 && in_t[1] == "CVPOINTER" && in_t[2] == "DI" {
             fn_inputs = match asm_fmts[2].as_str() {
                 "rk" => format!(
@@ -505,7 +498,6 @@ fn gen_bind_body(
                     asm_fmts[2], current_name
                 ),
             };
-            rustc_legacy_const_generics = "rustc_legacy_const_generics(2, 3)";
         }
         format!(
             "pub {}fn {current_name}{fn_inputs} {fn_output}",
@@ -612,30 +604,16 @@ fn gen_bind_body(
             ),
         }
     }
-    let function = if !rustc_legacy_const_generics.is_empty() {
-        format!(
-            r#"
+    let function = format!(
+        r#"
 #[inline]{target_feature}
-#[{rustc_legacy_const_generics}]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+#[stable(feature = "stdarch_loongarch_simd", since = "CURRENT_RUSTC_VERSION")]
 {fn_decl}{{
     {call_params}
 }}
 "#,
-            target_feature = target.to_target_feature_attr(current_name)
-        )
-    } else {
-        format!(
-            r#"
-#[inline]{target_feature}
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-{fn_decl}{{
-    {call_params}
-}}
-"#,
-            target_feature = target.to_target_feature_attr(current_name)
-        )
-    };
+        target_feature = target.to_target_feature_attr(current_name)
+    );
     (link_function, function)
 }
 
