@@ -140,29 +140,29 @@ fn show_substructure(
         BlockOrExpr::new_expr(expr)
     } else {
         // Enough fields that we must use the any-length method.
-        let mut name_exprs = ThinVec::with_capacity(fields.len());
+        let mut names = String::new();
         let mut value_exprs = ThinVec::with_capacity(fields.len());
 
+        let fields_len = fields.len();
         for (i, field) in fields.into_iter().enumerate() {
             if is_struct {
-                name_exprs.push(cx.expr_str(field.span, field.name.unwrap().name));
+                names.push_str(field.name.unwrap().name.as_str());
+                let is_last = i == fields_len - 1;
+                if !is_last {
+                    names.push(' ');
+                }
             }
 
             let field = expr_for_field(field, i);
             value_exprs.push(field);
         }
 
-        // `let names: &'static _ = &["field1", "field2"];`
+        // `let names: &'static _ = "field1 field2"`
         let names_let = is_struct.then(|| {
             let lt_static = Some(cx.lifetime_static(span));
             let ty_static_ref = cx.ty_ref(span, cx.ty_infer(span), lt_static, ast::Mutability::Not);
-            cx.stmt_let_ty(
-                span,
-                false,
-                sym::names,
-                Some(ty_static_ref),
-                cx.expr_array_ref(span, name_exprs),
-            )
+            let names_expr = cx.expr_str(span, Symbol::intern(&names));
+            cx.stmt_let_ty(span, false, sym::names, Some(ty_static_ref), names_expr)
         });
 
         // `let values: &[&dyn Debug] = &[&&self.field1, &&self.field2];`
