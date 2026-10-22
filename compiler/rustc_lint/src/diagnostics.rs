@@ -3266,3 +3266,15 @@ pub(crate) enum RawBorrowViaReferenceSuggestion<'a> {
     "or, if `GenericTypeVisitable` is derived, check whether all fields implement `GenericTypeVisitable`"
 )]
 pub(crate) struct MissingGenericTypeVisitableDeriveDiag;
+
+#[derive(Diagnostic)]
+#[diag("unchecked type alias lacks attribute `#[rustc_unchecked_type_alias]`")]
+pub(crate) struct UnmarkedUncheckedTypeAlias {
+    #[suggestion(
+        "annotate the type alias with `#[rustc_unchecked_type_alias]`",
+        code = "{padding}#[rustc_unchecked_type_alias]\n",
+        applicability = "machine-applicable"
+    )]
+    pub sugg: Span,
+    pub padding: String,
+}
