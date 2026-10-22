@@ -4530,6 +4530,7 @@ declare_clippy_lint! {
     ///  - `or_else` to `or`
     ///  - `get_or_insert_with` to `get_or_insert`
     ///  - `ok_or_else` to `ok_or`
+    ///  - `map_or_else` to `map_or`
     ///  - `then` to `then_some` (for msrv >= 1.62.0)
     ///
     /// ### Why is this bad?
@@ -5812,6 +5813,7 @@ impl Methods {
                     result_map_or_else_none::check(cx, expr, recv, def, map);
                     unnecessary_map_or_else::check(cx, expr, recv, def, map, call_span);
                     unnecessary_map_or::check_map_or_else(cx, expr, recv, def, map);
+                    unnecessary_lazy_eval::check_map_or_else(cx, expr, recv, def, map, call_span);
                 },
                 (sym::next, []) => {
                     if let Some((name2, recv2, args2, _, _)) = method_call(recv) {
