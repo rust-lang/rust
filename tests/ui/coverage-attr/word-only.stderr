@@ -1,5 +1,5 @@
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/word-only.rs:12:3
+  --> $DIR/word-only.rs:11:3
    |
 LL | #[coverage]
    |   ^^^^^^^^ expected this to be a list
@@ -12,7 +12,7 @@ LL | #[coverage(on)]
    |           ++++
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/word-only.rs:17:8
+  --> $DIR/word-only.rs:16:8
    |
 LL |     #![coverage]
    |        ^^^^^^^^ expected this to be a list
@@ -25,7 +25,7 @@ LL |     #![coverage(on)]
    |                ++++
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/word-only.rs:21:3
+  --> $DIR/word-only.rs:20:3
    |
 LL | #[coverage]
    |   ^^^^^^^^ expected this to be a list
@@ -38,7 +38,7 @@ LL | #[coverage(on)]
    |           ++++
 
 error: the `coverage` attribute cannot be used on structs
-  --> $DIR/word-only.rs:21:3
+  --> $DIR/word-only.rs:20:3
    |
 LL | #[coverage]
    |   ^^^^^^^^
@@ -46,7 +46,7 @@ LL | #[coverage]
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/word-only.rs:26:3
+  --> $DIR/word-only.rs:25:3
    |
 LL | #[coverage]
    |   ^^^^^^^^ expected this to be a list
@@ -59,7 +59,7 @@ LL | #[coverage(on)]
    |           ++++
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/word-only.rs:29:7
+  --> $DIR/word-only.rs:28:7
    |
 LL |     #[coverage]
    |       ^^^^^^^^ expected this to be a list
@@ -72,7 +72,7 @@ LL |     #[coverage(on)]
    |               ++++
 
 error: the `coverage` attribute cannot be used on associated consts
-  --> $DIR/word-only.rs:29:7
+  --> $DIR/word-only.rs:28:7
    |
 LL |     #[coverage]
    |       ^^^^^^^^
@@ -80,7 +80,7 @@ LL |     #[coverage]
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/word-only.rs:35:3
+  --> $DIR/word-only.rs:34:3
    |
 LL | #[coverage]
    |   ^^^^^^^^ expected this to be a list
@@ -93,7 +93,7 @@ LL | #[coverage(on)]
    |           ++++
 
 error: the `coverage` attribute cannot be used on traits
-  --> $DIR/word-only.rs:35:3
+  --> $DIR/word-only.rs:34:3
    |
 LL | #[coverage]
    |   ^^^^^^^^
@@ -101,7 +101,7 @@ LL | #[coverage]
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/word-only.rs:39:7
+  --> $DIR/word-only.rs:38:7
    |
 LL |     #[coverage]
    |       ^^^^^^^^ expected this to be a list
@@ -114,7 +114,7 @@ LL |     #[coverage(on)]
    |               ++++
 
 error: the `coverage` attribute cannot be used on associated consts
-  --> $DIR/word-only.rs:39:7
+  --> $DIR/word-only.rs:38:7
    |
 LL |     #[coverage]
    |       ^^^^^^^^
@@ -122,7 +122,7 @@ LL |     #[coverage]
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/word-only.rs:44:7
+  --> $DIR/word-only.rs:43:7
    |
 LL |     #[coverage]
    |       ^^^^^^^^ expected this to be a list
@@ -135,7 +135,7 @@ LL |     #[coverage(on)]
    |               ++++
 
 error: the `coverage` attribute cannot be used on associated types
-  --> $DIR/word-only.rs:44:7
+  --> $DIR/word-only.rs:43:7
    |
 LL |     #[coverage]
    |       ^^^^^^^^
@@ -143,7 +143,7 @@ LL |     #[coverage]
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/word-only.rs:50:3
+  --> $DIR/word-only.rs:49:3
    |
 LL | #[coverage]
    |   ^^^^^^^^ expected this to be a list
@@ -156,7 +156,7 @@ LL | #[coverage(on)]
    |           ++++
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/word-only.rs:53:7
+  --> $DIR/word-only.rs:52:7
    |
 LL |     #[coverage]
    |       ^^^^^^^^ expected this to be a list
@@ -169,7 +169,7 @@ LL |     #[coverage(on)]
    |               ++++
 
 error: the `coverage` attribute cannot be used on associated consts
-  --> $DIR/word-only.rs:53:7
+  --> $DIR/word-only.rs:52:7
    |
 LL |     #[coverage]
    |       ^^^^^^^^
@@ -177,7 +177,7 @@ LL |     #[coverage]
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/word-only.rs:58:7
+  --> $DIR/word-only.rs:57:7
    |
 LL |     #[coverage]
    |       ^^^^^^^^ expected this to be a list
@@ -190,7 +190,7 @@ LL |     #[coverage(on)]
    |               ++++
 
 error: the `coverage` attribute cannot be used on associated types
-  --> $DIR/word-only.rs:58:7
+  --> $DIR/word-only.rs:57:7
    |
 LL |     #[coverage]
    |       ^^^^^^^^
@@ -198,7 +198,7 @@ LL |     #[coverage]
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/word-only.rs:64:3
+  --> $DIR/word-only.rs:63:3
    |
 LL | #[coverage]
    |   ^^^^^^^^ expected this to be a list

@@ -19,13 +19,31 @@ fn main() {
     symbols_check(&exe_name);
 }
 
+fn is_symbol_ok(sym: &str) -> bool {
+    let sym = strip_underscore_if_apple(sym);
+    // There are debuginfo helper symbols that get prefixed with DW.ref.
+    let sym = sym.strip_prefix("DW.ref.").unwrap_or(sym);
+
+    if sym.starts_with("_ZN") || sym.starts_with("_R") {
+        return true; // Correctly mangled
+    }
+
+    if sym.contains(".llvm.") {
+        // Starting in LLVM 21 we get various implementation-detail functions which
+        // contain .llvm. that are not a problem.
+        return true;
+    }
+
+    false
+}
+
 fn symbols_check_archive(path: &str) {
     let binary_data = rfs::read(path);
     let file = object::read::archive::ArchiveFile::parse(&*binary_data).unwrap();
     for symbol in file.symbols().unwrap().unwrap() {
         let symbol = symbol.unwrap();
-        let name = strip_underscore_if_apple(std::str::from_utf8(symbol.name()).unwrap());
-        if name.starts_with("_ZN") || name.starts_with("_R") {
+        let name = std::str::from_utf8(symbol.name()).unwrap();
+        if is_symbol_ok(name) {
             continue; // Correctly mangled
         }
 
@@ -33,16 +51,6 @@ fn symbols_check_archive(path: &str) {
             std::str::from_utf8(file.member(symbol.offset()).unwrap().name()).unwrap();
         if !member_name.ends_with(".rcgu.o") || member_name.contains("compiler_builtins") {
             continue; // All compiler-builtins symbols must remain unmangled
-        }
-
-        if name.contains("rust_eh_personality") {
-            continue; // Unfortunately LLVM doesn't allow us to mangle this symbol
-        }
-
-        if name.contains(".llvm.") {
-            // Starting in LLVM 21 we get various implementation-detail functions which
-            // contain .llvm. that are not a problem.
-            continue;
         }
 
         panic!("Unmangled symbol found in {path}: {name}");
@@ -59,8 +67,8 @@ fn symbols_check(path: &str) {
         if symbol.is_weak() {
             continue; // Likely an intrinsic from compiler-builtins
         }
-        let name = strip_underscore_if_apple(symbol.name().unwrap());
-        if name.starts_with("_ZN") || name.starts_with("_R") {
+        let name = symbol.name().unwrap();
+        if is_symbol_ok(name) {
             continue; // Correctly mangled
         }
 
@@ -68,16 +76,6 @@ fn symbols_check(path: &str) {
             // Assume that this symbol doesn't originate from rustc. This may
             // be wrong, but even if so symbol_check_archive will likely
             // catch it.
-            continue;
-        }
-
-        if name.contains("rust_eh_personality") {
-            continue; // Unfortunately LLVM doesn't allow us to mangle this symbol
-        }
-
-        if name.contains(".llvm.") {
-            // Starting in LLVM 21 we get various implementation-detail functions which
-            // contain .llvm. that are not a problem.
             continue;
         }
 

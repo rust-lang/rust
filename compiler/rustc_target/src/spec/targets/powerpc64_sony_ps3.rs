@@ -85,8 +85,6 @@ pub(crate) fn target() -> Target {
             // This limits us to 64KB of ToC, but yields smaller binaries and less assembly.
             // Only becomes a problem for binaries with thousands of dependencies.
             code_model: Some(CodeModel::Small),
-            // Prevents LLVM from emitting modern linker relaxation relocations.
-            relax_elf_relocations: false,
             // CellOS main executables (`EBOOT.ELF`) **must be static executables** (ET_EXEC).
             relocation_model: RelocModel::Static,
 

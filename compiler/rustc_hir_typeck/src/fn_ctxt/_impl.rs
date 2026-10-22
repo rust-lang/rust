@@ -22,7 +22,7 @@ use rustc_hir_analysis::hir_ty_lowering::{
 };
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_infer::infer::{DefineOpaqueTypes, InferResult};
-use rustc_infer::traits::TraitErrors;
+use rustc_infer::traits::{TraitErrors, WellFormedLoc};
 use rustc_lint_defs::builtin::{SELF_CONSTRUCTOR_FROM_OUTER_ITEM, UNREACHABLE_CODE};
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AutoBorrow, AutoBorrowMutability, DerefAdjustKind,
@@ -543,7 +543,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub(crate) fn lower_ty(&self, hir_ty: &hir::Ty<'_>) -> LoweredTy<'tcx> {
         let ty = self.lowerer().lower_ty(hir_ty);
-        self.register_wf_obligation(ty.into(), hir_ty.span, ObligationCauseCode::WellFormed(None));
+        self.register_wf_obligation(
+            ty.into(),
+            hir_ty.span,
+            ObligationCauseCode::WellFormed(WellFormedLoc::HirId(hir_ty.hir_id)),
+        );
         LoweredTy::from_raw(self, hir_ty.span, ty)
     }
 
@@ -608,7 +612,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.register_wf_obligation(
             ct.into(),
             self.tcx.hir_span(const_arg.hir_id),
-            ObligationCauseCode::WellFormed(None),
+            ObligationCauseCode::WellFormed(WellFormedLoc::HirId(const_arg.hir_id)),
+        );
+        ct
+    }
+
+    pub(crate) fn lower_const_arg_expr(
+        &self,
+        expr: &hir::Expr<'_>,
+        ty: Ty<'tcx>,
+    ) -> ty::Const<'tcx> {
+        let ct = self.lowerer().lower_const_arg_expr(expr, ty);
+        self.register_wf_obligation(
+            ct.into(),
+            expr.span,
+            ObligationCauseCode::WellFormed(WellFormedLoc::None),
         );
         ct
     }
@@ -664,9 +682,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Registers obligations that all `args` are well-formed.
-    pub(crate) fn add_wf_bounds(&self, args: GenericArgsRef<'tcx>, span: Span) {
+    pub(crate) fn add_wf_bounds(&self, args: GenericArgsRef<'tcx>, span: Span, hir_id: HirId) {
         for term in args.iter().filter_map(ty::GenericArg::as_term) {
-            self.register_wf_obligation(term, span, ObligationCauseCode::WellFormed(None));
+            self.register_wf_obligation(
+                term,
+                span,
+                ObligationCauseCode::WellFormed(WellFormedLoc::HirId(hir_id)),
+            );
         }
     }
 
@@ -810,7 +832,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.register_wf_obligation(
             ty.raw.into(),
             qself.span,
-            ObligationCauseCode::WellFormed(None),
+            ObligationCauseCode::WellFormed(WellFormedLoc::HirId(hir_id)),
         );
         self.select_obligations_where_possible(|_| {});
 
@@ -1006,8 +1028,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
         path_span: Span,
         hir_id: HirId,
-        has_args: bool,
+        call_args: Option<&'tcx [hir::Expr<'tcx>]>,
     ) -> (Ty<'tcx>, Res) {
+        let has_args = call_args.is_some();
         let tcx = self.tcx;
 
         let generic_segments = match res {
@@ -1325,6 +1348,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             generic_segments: &'a [GenericPathSegment],
             infer_args_for_err: &'a FxHashSet<usize>,
             segments: &'tcx [hir::PathSegment<'tcx>],
+            call_args: Option<&'tcx [hir::Expr<'tcx>]>,
         }
         impl<'a, 'tcx> GenericArgsLowerer<'a, 'tcx> for CtorGenericArgsCtxt<'a, 'tcx> {
             fn args_for_def_id(
@@ -1393,6 +1417,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 infer_args: bool,
             ) -> ty::GenericArg<'tcx> {
                 let tcx = self.fcx.tcx();
+                // For arg position params, the generic arg comes from the call argument
+                // rather than an inference variable.
+                if let Some(pos) = param.kind.arg_pos() {
+                    let Some(args) = self.call_args else {
+                        let guard =
+                            self.fcx.dcx().span_err(self.span, "argument should be provided");
+                        return ty::Const::new_error(tcx, guard).into();
+                    };
+
+                    let Some(arg) = args.get(pos as usize) else {
+                        let guard = self
+                            .fcx
+                            .dcx()
+                            .span_delayed_bug(self.span, "missing argument for const param");
+                        return ty::Const::new_error(tcx, guard).into();
+                    };
+                    let ty =
+                        tcx.type_of(param.def_id).instantiate(tcx, preceding_args).skip_norm_wip();
+                    return self.fcx.lower_const_arg_expr(arg, ty).into();
+                }
                 if !infer_args && let Some(default) = param.default_value(tcx) {
                     // If we have a default, then it doesn't matter that we're not inferring
                     // the type/const arguments: We provide the default where any is missing.
@@ -1420,6 +1464,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     generic_segments: &generic_segments,
                     infer_args_for_err: &infer_args_for_err,
                     segments,
+                    call_args,
                 },
             )
         });

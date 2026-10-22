@@ -142,9 +142,10 @@ pub(crate) fn inline_into_callers(acc: &mut Assists, ctx: &AssistContext<'_, '_>
                     let replaced = call_infos
                         .into_iter()
                         .map(|call_info| {
+                            let indent = call_info.node.indent_level();
                             let replacement = inline(
                                 &ctx.sema, def_file, function, &func_body, &params, &call_info,
-                                editor,
+                                editor, indent,
                             );
                             editor.replace(call_info.node.syntax(), replacement.syntax());
                         })
@@ -219,7 +220,7 @@ pub(super) fn split_refs_and_uses<T: ast::AstNode>(
 // }
 // ```
 pub(crate) fn inline_call(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
-    let name_ref: ast::NameRef = ctx.find_node_at_offset()?;
+    let name_ref: ast::NameRef = ctx.find_node_at_offset_with_descend()?;
     let call_info = CallInfo::from_name_ref(
         name_ref.clone(),
         ctx.sema.file_to_module_def(ctx.vfs_file_id())?.krate(ctx.db()).into(),
@@ -250,8 +251,10 @@ pub(crate) fn inline_call(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Opt
         cov_mark::hit!(inline_call_recursive);
         return None;
     }
-    let syntax = call_info.node.syntax().clone();
-    let editor = SyntaxEditor::new(syntax.tree_top()).0;
+    let original = ctx.sema.original_range_opt(call_info.node.syntax())?.range;
+    let edit_range = crate::utils::cover_edit_range(ctx.source_file().syntax(), original);
+    let editor = SyntaxEditor::new(ctx.source_file().syntax().clone()).0;
+    let text_range = edit_range.start().text_range().cover(edit_range.end().text_range());
     let params = get_fn_params(ctx.sema.db, function, &param_list, editor.make())?;
 
     if call_info.arguments.len() != params.len() {
@@ -261,10 +264,18 @@ pub(crate) fn inline_call(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Opt
         return None;
     }
 
-    acc.add(AssistId::refactor_inline("inline_call"), label, syntax.text_range(), |builder| {
-        let replacement =
-            inline(&ctx.sema, file_id, function, &fn_body, &params, &call_info, &editor);
-        editor.replace(call_info.node.syntax(), replacement.syntax());
+    acc.add(AssistId::refactor_inline("inline_call"), label, text_range, |builder| {
+        let replacement = inline(
+            &ctx.sema,
+            file_id,
+            function,
+            &fn_body,
+            &params,
+            &call_info,
+            &editor,
+            IndentLevel::from_element(edit_range.start()),
+        );
+        editor.replace_all(edit_range, vec![replacement.syntax().clone().into()]);
         builder.add_file_edits(ctx.vfs_file_id(), editor);
     })
 }
@@ -343,6 +354,7 @@ fn inline<'db>(
     params: &[(ast::Pat, Option<ast::Type>, hir::Param<'db>)],
     CallInfo { node, arguments, generic_arg_list, krate }: &CallInfo,
     file_editor: &SyntaxEditor,
+    original_indentation: IndentLevel,
 ) -> ast::Expr {
     let make = file_editor.make();
     let file_id = sema.hir_file_for(fn_body.syntax());
@@ -629,10 +641,6 @@ fn inline<'db>(
         original_body_indent = IndentLevel(0);
     }
 
-    let original_indentation = match node {
-        ast::CallableExpr::Call(it) => it.indent_level(),
-        ast::CallableExpr::MethodCall(it) => it.indent_level(),
-    };
     body = body.dedent(original_body_indent).indent(original_indentation);
 
     let no_stmts = body.statements().next().is_none();
@@ -764,6 +772,46 @@ fn main() {
         let y = x - b;
         x * y
     };
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn call_inside_macro() {
+        check_assist(
+            inline_call,
+            r#"
+macro_rules! identity { ($($t:tt)*) => { $($t)* }; }
+fn foo(a: u32, b: u32) -> u32 {
+    let x = a + b;
+    let y = x - b;
+    x * y
+}
+
+fn main() {
+    identity! {
+        let x = foo$0(1, 2);
+    }
+}
+"#,
+            r#"
+macro_rules! identity { ($($t:tt)*) => { $($t)* }; }
+fn foo(a: u32, b: u32) -> u32 {
+    let x = a + b;
+    let y = x - b;
+    x * y
+}
+
+fn main() {
+    identity! {
+        let x = {
+            let b = 2;
+            let x = 1 + b;
+            let y = x - b;
+            x * y
+        };
+    }
 }
 "#,
         );

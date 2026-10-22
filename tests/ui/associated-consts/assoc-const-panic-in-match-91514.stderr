@@ -1,6 +1,7 @@
 error[E0080]: evaluation panicked: explicit panic
   --> $DIR/assoc-const-panic-in-match-91514.rs:15:23
    |
+LL | impl S {
 LL |     const CONST: u8 = panic!();
    |                       ^^^^^^^^ evaluation of `S::CONST` failed here
 

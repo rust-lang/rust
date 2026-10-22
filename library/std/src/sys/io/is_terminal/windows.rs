@@ -12,10 +12,45 @@ fn handle_is_console(handle: BorrowedHandle<'_>) -> bool {
         return false;
     }
 
-    let mut out = 0;
-    if unsafe { c::GetConsoleMode(handle.as_raw_handle(), &mut out) != 0 } {
-        // False positives aren't possible. If we got a console then we definitely have a console.
-        return true;
+    cfg_select! {
+        target_vendor = "win7" => {
+            let mut out = 0;
+            if unsafe { c::GetConsoleMode(handle.as_raw_handle(), &mut out) != 0 } {
+                // False positives aren't possible. If we got a console then we definitely have a console.
+                return true;
+            }
+
+            // Early return if the handle is not FILE_TYPE_PIPE, implying it cannot be an msys PTY.
+            if unsafe { c::GetFileType(handle.as_raw_handle()) != 0x0003 } {
+                return false;
+            }
+        }
+        _ => unsafe {
+            use crate::mem::MaybeUninit;
+            // `GetConsoleMode` incurs a remote RPC round-trip (= bad), so it's best avoided.
+            // `NtQueryVolumeInformationFile` lets us test the handle directly.
+            // The required `FILE_DEVICE_CONSOLE` type was introduced in Windows 8.
+            // Fun fact: `GetFileType` uses `NtQueryVolumeInformationFile` internally.
+            let mut io_status = MaybeUninit::<c::IO_STATUS_BLOCK>::uninit();
+            let mut device_info = MaybeUninit::<c::FILE_FS_DEVICE_INFORMATION>::uninit();
+            let status = c::NtQueryVolumeInformationFile(
+                handle.as_raw_handle(),
+                io_status.as_mut_ptr(),
+                device_info.as_mut_ptr().cast(),
+                size_of_val(&device_info) as u32,
+                c::FileFsDeviceInformation,
+            );
+            if status < 0 {
+                return false;
+            }
+
+            match device_info.assume_init_ref().DeviceType {
+                c::FILE_DEVICE_CONSOLE => return true,
+                // If it's a named pipe, it may be an msys PTY.
+                c::FILE_DEVICE_NAMED_PIPE => {} // aka FILE_TYPE_PIPE
+                _ => return false,
+            }
+        },
     }
 
     // Otherwise, we fall back to an msys hack to see if we can detect the presence of a pty.
@@ -23,11 +58,6 @@ fn handle_is_console(handle: BorrowedHandle<'_>) -> bool {
 }
 
 fn msys_tty_on(handle: BorrowedHandle<'_>) -> bool {
-    // Early return if the handle is not a pipe.
-    if unsafe { c::GetFileType(handle.as_raw_handle()) != c::FILE_TYPE_PIPE } {
-        return false;
-    }
-
     /// Mirrors [`FILE_NAME_INFO`], giving it a fixed length that we can stack
     /// allocate
     ///

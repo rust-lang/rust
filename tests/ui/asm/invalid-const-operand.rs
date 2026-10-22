@@ -2,7 +2,7 @@
 //@ needs-asm-support
 //@ ignore-nvptx64
 //@ ignore-spirv
-//@ reference: asm.operand-type.supported-operands.const
+//@ reference: asm.operand-type.supported-operands-const
 
 #![feature(asm_const_ptr)]
 

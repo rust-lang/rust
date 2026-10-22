@@ -101,9 +101,9 @@ fn render(
         }
         _ => (false, false, None),
     };
-    let complete_call_parens = cap
-        .filter(|_| !has_call_parens)
-        .and_then(|cap| Some((cap, params(ctx.completion, func, &func_kind, has_dot_receiver)?)));
+    let complete_call_parens = cap.filter(|_| !has_call_parens).and_then(|cap| {
+        Some((cap, params(ctx.completion, func, &func_kind, has_dot_receiver, &ret_type)?))
+    });
 
     let function = assoc_item
         .and_then(|assoc_item| assoc_item.implementing_ty(db))
@@ -162,6 +162,7 @@ fn render(
             self_param,
             params,
             &ret_type,
+            func,
         );
     }
 
@@ -218,11 +219,23 @@ pub(super) fn add_call_parens<'b>(
     self_param: Option<hir::SelfParam>,
     params: Vec<hir::Param<'_>>,
     ret_type: &hir::Type<'_>,
+    func: hir::Function,
 ) -> &'b mut Builder {
     cov_mark::hit!(inserts_parens_for_function_calls);
 
     let (mut snippet, label_suffix) = if self_param.is_none() && params.is_empty() {
-        (format!("{escaped_name}()$0"), "()")
+        let snippet = if ctx.config.enable_turbofish
+            && let gen_params = hir::GenericDef::Function(func).type_or_const_params(ctx.db)
+            && gen_params.iter().any(|it| it.as_type_param(ctx.db).is_some())
+            && !ret_type.contains_unknown()
+        {
+            // Return type not contained any generic param, so can't infer param
+            // `fn size_of<T>() -> usize` -> `size_of::<$1>()$0`
+            format!("{escaped_name}::<$1>()$0")
+        } else {
+            format!("{escaped_name}()$0")
+        };
+        (snippet, "()")
     } else {
         builder.trigger_call_info();
         let snippet = if let Some(CallableSnippets::FillArguments) = ctx.config.callable {
@@ -376,6 +389,7 @@ fn params<'db>(
     func: hir::Function,
     func_kind: &FuncKind<'_>,
     has_dot_receiver: bool,
+    ret_type: &hir::Type<'_>,
 ) -> Option<(Option<hir::SelfParam>, Vec<hir::Param<'db>>)> {
     ctx.config.callable.as_ref()?;
 
@@ -386,6 +400,17 @@ fn params<'db>(
         && expected.sig() == completed.sig()
     {
         cov_mark::hit!(no_call_parens_if_fn_ptr_needed);
+        return None;
+    }
+    // Handle generic signature, do not use FnSig::eq
+    if ctx.expected_type.as_ref().is_none_or(|it| it.is_unknown()) // only process generic expected
+        && let Some(expected) = &ctx.expected_func
+        && let Some(completed) = func.ty(ctx.db).as_callable(ctx.db)
+        && expected.n_params() == completed.n_params()
+        && ctx.rebase_ty(&expected.return_type()).could_unify_with(ctx.db, ret_type)
+        && !completed.return_type().impls_fnonce(ctx.db)
+    {
+        cov_mark::hit!(no_call_parens_if_ty_with_fn_bounds);
         return None;
     }
 
@@ -989,6 +1014,120 @@ fn bar() {
 fn foo() {}
 fn bar() {
     match foo()$0 {}
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn turbofish() {
+        check_edit(
+            "size_of",
+            r#"
+//- minicore: size_of
+fn main() {
+    si$0
+}
+"#,
+            r#"
+fn main() {
+    size_of::<$1>()$0
+}
+"#,
+        );
+        check_edit_with_config(
+            CompletionConfig { enable_turbofish: false, ..TEST_CONFIG },
+            "size_of",
+            r#"
+//- minicore: size_of
+fn main() {
+    si$0
+}
+"#,
+            r#"
+fn main() {
+    size_of()$0
+}
+"#,
+        );
+        check_edit(
+            "new",
+            r#"
+struct Layout;
+impl Layout {
+    pub const fn new<T>() -> Self {
+        Self
+    }
+}
+fn main() {
+    Layout::$0
+}
+"#,
+            r#"
+struct Layout;
+impl Layout {
+    pub const fn new<T>() -> Self {
+        Self
+    }
+}
+fn main() {
+    Layout::new::<$1>()$0
+}
+"#,
+        );
+        check_edit(
+            "handle",
+            r#"
+//- minicore: result
+struct State;
+enum E { E }
+impl State {
+    fn handle<T>(&mut self) -> Result<(), E> {
+    }
+}
+fn main() {
+    State.$0
+}
+"#,
+            r#"
+struct State;
+enum E { E }
+impl State {
+    fn handle<T>(&mut self) -> Result<(), E> {
+    }
+}
+fn main() {
+    State.handle::<$1>()$0
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn no_turbofish() {
+        check_edit(
+            "handle",
+            r#"
+//- minicore: result
+struct State;
+enum E { E }
+impl State {
+    fn handle<T>(&mut self) -> Result<T, E> {
+    }
+}
+fn main() {
+    State.$0
+}
+"#,
+            r#"
+struct State;
+enum E { E }
+impl State {
+    fn handle<T>(&mut self) -> Result<T, E> {
+    }
+}
+fn main() {
+    State.handle()$0
 }
 "#,
         );

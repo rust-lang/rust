@@ -419,7 +419,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    /// Walks the contents of the local crate. See also `visit_all_item_likes_in_crate`.
+    /// Walks the contents of the local crate. See also `hir_visit_all_item_likes_in_crate`.
     pub fn hir_walk_toplevel_module<V>(self, visitor: &mut V) -> V::Result
     where
         V: Visitor<'tcx>,
@@ -473,7 +473,7 @@ impl<'tcx> TyCtxt<'tcx> {
         V::Result::output()
     }
 
-    /// This method is the equivalent of `visit_all_item_likes_in_crate` but restricted to
+    /// This method is the equivalent of `hir_visit_all_item_likes_in_crate` but restricted to
     /// item-likes in a single module.
     pub fn hir_visit_item_likes_in_module<V>(self, module: LocalModId, visitor: &mut V) -> V::Result
     where
@@ -910,8 +910,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.hir_opt_name(id).unwrap_or_else(|| bug!("no name for {}", self.hir_id_to_string(id)))
     }
 
-    /// Given a node ID, gets a list of attributes associated with the AST
-    /// corresponding to the node-ID.
+    /// Retrieves the attributes associated with this hir ID.
     pub fn hir_attrs(self, id: HirId) -> &'tcx [Attribute] {
         self.hir_attr_map(id.owner).get(id.local_id)
     }

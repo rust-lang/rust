@@ -60,14 +60,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(result, dest)?;
             }
             "fstat$INODE64" => {
-                let [fd, buf] =
-                    this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
+                let [fd, buf] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, *libc::stat) -> i32),
+                    (link_name, abi, args),
+                )?;
                 let result = this.fstat(fd, buf)?;
                 this.write_scalar(result, dest)?;
             }
             "fstatat$INODE64" => {
-                let [dirfd, path, buf, flags] = this.check_shim_sig(
-                    shim_sig!(extern "C" fn(i32, *_, *_, i32) -> i32),
+                let [dirfd, path, buf, flags] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, *_, *libc::stat, i32) -> i32),
                     (link_name, abi, args),
                 )?;
                 let result = this.fstatat(dirfd, path, buf, flags)?;
@@ -80,7 +82,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "readdir$INODE64" => {
                 let [dirp] = this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
-                this.readdir(dirp, dest)?;
+                this.readdir(dirp, dest, "dirent")?;
             }
             "realpath$DARWIN_EXTSN" => {
                 let [path, resolved_path] =
@@ -150,9 +152,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let buf_ptr = this.read_pointer(buf)?;
                 let bufsize = this.deref_pointer_as(bufsize, this.machine.layouts.u32)?;
 
-                // Using the host current_exe is a bit off, but consistent with Linux
-                // (where stdlib reads /proc/self/exe).
-                let path = std::env::current_exe().unwrap();
+                let Some(path) = this.machine.current_exe.clone() else {
+                    throw_unsup_format!(
+                        "_NSGetExecutablePath only works when Miri is run on a file"
+                    )
+                };
                 let (written, size_needed) = this.write_path_to_c_str(
                     &path,
                     buf_ptr,
@@ -335,6 +339,39 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let [lock_op] =
                     this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
                 this.os_unfair_lock_assert_not_owner(lock_op)?;
+            }
+            "dispatch_semaphore_create" => {
+                let [value] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(isize) -> *_),
+                    (link_name, abi, args),
+                )?;
+                this.dispatch_semaphore_create(value, dest)?;
+            }
+            "dispatch_semaphore_wait" => {
+                let [sem, timeout] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*_, u64) -> isize),
+                    (link_name, abi, args),
+                )?;
+                this.dispatch_semaphore_wait(sem, timeout, dest)?;
+            }
+            "dispatch_semaphore_signal" => {
+                let [sem] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*_) -> isize),
+                    (link_name, abi, args),
+                )?;
+                this.dispatch_semaphore_signal(sem, dest)?;
+            }
+            "dispatch_release" => {
+                let [sem] = &this
+                    .check_shim_sig(shim_sig!(extern "C" fn(*_) -> ()), (link_name, abi, args))?;
+                this.dispatch_release(sem)?;
+            }
+            "dispatch_time" => {
+                let [when, delta] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(u64, i64) -> u64),
+                    (link_name, abi, args),
+                )?;
+                this.dispatch_time(when, delta, dest)?;
             }
 
             "pthread_cond_timedwait_relative_np" => {

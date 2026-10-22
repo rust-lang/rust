@@ -513,7 +513,7 @@ impl LinkerFeaturesCli {
 
     /// When *not* using `-Z unstable-options` on the CLI, ensure only stable linker features are
     /// used, for the given `TargetTuple`. Returns `Ok` if no unstable variants are used.
-    /// The caller should ensure that e.g. `nightly_options::is_unstable_enabled()`
+    /// The caller should ensure that e.g. [`nightly_options::unstable_options_enabled`]
     /// returns false.
     pub(crate) fn check_unstable_variants(&self, target_tuple: &TargetTuple) -> Result<(), String> {
         // `-C linker-features=-lld` is only stable on x64 linux.
@@ -1062,6 +1062,15 @@ impl Default for NextSolverConfig {
 pub enum Input {
     /// Load source code from a file.
     File(PathBuf),
+    /// Load source code from a doctest string.
+    DocTestStr {
+        /// The file associated with this input.
+        file: PathBuf,
+        // Line associated with this input
+        line: isize,
+        /// An anonymous string containing the source code.
+        input: String,
+    },
     /// Load source code from a string.
     Str {
         /// A string that is shown in place of a filename.
@@ -1092,6 +1101,14 @@ impl Input {
                     .path_mapping()
                     .to_real_filename(session.psess.source_map().working_dir(), ifile.as_path()),
             ),
+            Input::DocTestStr { ref file, line, .. } => FileName::DocTest(
+                session
+                    .psess
+                    .source_map()
+                    .path_mapping()
+                    .to_real_filename(session.psess.source_map().working_dir(), file.as_path()),
+                line,
+            ),
             Input::Str { ref name, .. } => name.clone(),
         }
     }
@@ -1099,6 +1116,7 @@ impl Input {
     pub fn opt_path(&self) -> Option<&Path> {
         match self {
             Input::File(file) => Some(file),
+            Input::DocTestStr { file, .. } => Some(file),
             Input::Str { name, .. } => match name {
                 FileName::Real(real) => real.local_path(),
                 FileName::CfgSpec(_) => None,
@@ -1107,7 +1125,7 @@ impl Input {
                 FileName::ProcMacroSourceCode(_) => None,
                 FileName::CliCrateAttr(_) => None,
                 FileName::Custom(_) => None,
-                FileName::DocTest(path, _) => Some(path),
+                FileName::DocTest(path, _) => path.local_path(),
                 FileName::InlineAsm(_) => None,
             },
         }
@@ -2393,7 +2411,7 @@ pub fn parse_crate_edition(
         }
     };
 
-    if !edition.is_stable() && !nightly_options::is_unstable_enabled(matches) {
+    if !edition.is_stable() && !nightly_options::unstable_options_enabled(matches) {
         let msg = if !is_nightly {
             format!(
                 "the crate requires edition {edition}, but the latest edition supported by this \
@@ -2411,10 +2429,10 @@ pub fn parse_crate_edition(
 fn check_error_format_stability(
     early_dcx: &EarlyDiagCtxt,
     unstable_opts: &UnstableOptions,
-    is_nightly_build: bool,
+    unstable_flags_enabled: bool,
     format: ErrorOutputType,
 ) {
-    if unstable_opts.unstable_options || is_nightly_build {
+    if unstable_opts.unstable_options || unstable_flags_enabled {
         return;
     }
     let format = match format {
@@ -2774,7 +2792,7 @@ pub fn build_session_options(
     check_error_format_stability(
         early_dcx,
         &unstable_opts,
-        unstable_features.is_nightly_build(),
+        unstable_features.allow_unstable_compiler_flag("error-format"),
         error_format,
     );
 
@@ -2870,7 +2888,7 @@ pub fn build_session_options(
         }
     }
 
-    let unstable_options_enabled = nightly_options::is_unstable_enabled(matches);
+    let unstable_options_enabled = nightly_options::unstable_options_enabled(matches);
     if !unstable_options_enabled && cg.force_frame_pointers == FramePointer::NonLeaf {
         early_dcx.early_fatal(
             "`-Cforce-frame-pointers=non-leaf` or `always` also requires `-Zunstable-options` \
@@ -2878,7 +2896,7 @@ pub fn build_session_options(
         )
     }
 
-    if !nightly_options::is_unstable_enabled(matches) && !unstable_opts.offload.is_empty() {
+    if !unstable_options_enabled && !unstable_opts.offload.is_empty() {
         early_dcx.early_fatal(
             "`-Zoffload=Enable` also requires `-Zunstable-options` and a nightly compiler",
         )
@@ -2956,7 +2974,7 @@ pub fn build_session_options(
     }
 
     // Parse any `-l` flags, which link to native libraries.
-    let libs = parse_native_libs(early_dcx, &unstable_opts, unstable_features, matches);
+    let libs = parse_native_libs(early_dcx, &unstable_opts, &unstable_features, matches);
 
     let test = matches.opt_present("test");
 
@@ -2967,6 +2985,10 @@ pub fn build_session_options(
     if cg.remark.is_empty() && unstable_opts.remark_dir.is_some() {
         early_dcx
             .early_warn("using -Z remark-dir without enabling remarks using e.g. -C remark=all");
+    }
+
+    if cg.embed_metadata.is_some() && unstable_opts.embed_metadata.is_some() {
+        early_dcx.early_fatal("can't use both -Z embed-metadata and -C embed-metadata");
     }
 
     let externs = parse_externs(early_dcx, matches, &unstable_opts);
@@ -3181,17 +3203,17 @@ pub mod nightly_options {
     use super::{OptionStability, RustcOptGroup};
     use crate::EarlyDiagCtxt;
 
-    pub fn is_unstable_enabled(matches: &getopts::Matches) -> bool {
-        match_is_nightly_build(matches)
+    /// Are we allowed to use -Z compiler flags *and* -Zunstable-options was passed?
+    pub fn unstable_options_enabled(matches: &getopts::Matches) -> bool {
+        let unstable_features =
+            UnstableFeatures::from_environment(matches.opt_str("crate-name").as_deref());
+        unstable_features.allow_unstable_compiler_flag("unstable-options")
             && matches.opt_strs("Z").iter().any(|x| *x == "unstable-options")
     }
 
     pub fn match_is_nightly_build(matches: &getopts::Matches) -> bool {
-        is_nightly_build(matches.opt_str("crate-name").as_deref())
-    }
-
-    fn is_nightly_build(krate: Option<&str>) -> bool {
-        UnstableFeatures::from_environment(krate).is_nightly_build()
+        let krate = matches.opt_str("crate-name");
+        UnstableFeatures::from_environment(krate.as_deref()).is_nightly_build()
     }
 
     pub fn check_nightly_options(
@@ -3200,7 +3222,8 @@ pub mod nightly_options {
         flags: &[RustcOptGroup],
     ) {
         let has_z_unstable_option = matches.opt_strs("Z").iter().any(|x| *x == "unstable-options");
-        let really_allows_unstable_options = match_is_nightly_build(matches);
+        let unstable_features =
+            UnstableFeatures::from_environment(matches.opt_str("crate-name").as_deref());
         let mut nightly_options_on_stable = 0;
 
         for opt in flags.iter() {
@@ -3217,7 +3240,38 @@ pub mod nightly_options {
                     opt.name
                 ));
             }
-            if really_allows_unstable_options {
+
+            // Check if the matched values are enabled
+            // If we're dealing with -Z, then check all the matched values (i.e. -Zfoo, -Zbar, etc.)
+            // If we're dealing with other flags, check their name directly
+            if opt.name == "Z" {
+                // For `-Zui-testing -Zfoo=bar -Zfoo=baz`, this returns
+                // ["ui-testing", "foo=bar", "foo=baz"].
+                // Check that all of them are allowed
+                let values = matches.opt_strs(opt.name);
+                let disallowed_flags = values
+                    .iter()
+                    .map(|flag| flag.split_once("=").map(|(k, _)| k).unwrap_or(flag))
+                    .filter(|flag| !unstable_features.allow_unstable_compiler_flag(flag))
+                    .collect::<Vec<_>>();
+                if disallowed_flags.is_empty() {
+                    continue;
+                }
+
+                // Check if we're using the "allow specified unstable flags only" mode.
+                // In this case, if the user allowed only foo and bar, but then -Zbaz was also
+                // passed, rustc would only print that `-Z` is not allowed, which doesn't tell the
+                // user the actual -Z flag value that was disallowed. So we try to provide better
+                // diagnostics here (solely for the use-case of debugging compiletest itself).
+                if matches!(
+                    unstable_features,
+                    UnstableFeatures::AllowSelectedUnstableCompilerFlagsOnly { .. }
+                ) {
+                    for flag in disallowed_flags {
+                        let _ = early_dcx.early_err(format!("the -Z{flag} option was not allowed through `-allow-unstable-compiler-flags`"));
+                    }
+                }
+            } else if unstable_features.allow_unstable_compiler_flag(opt.name) {
                 continue;
             }
 

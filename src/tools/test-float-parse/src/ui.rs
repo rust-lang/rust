@@ -8,7 +8,7 @@ use std::time::Duration;
 
 use indicatif::{ProgressBar, ProgressStyle};
 
-use crate::{Completed, Config, EarlyExit, FinishedAll, TestInfo};
+use crate::{Completed, Config, EarlyExit, FinishedAll, SEED, SEED_ENV, TestInfo};
 
 /// Templates for progress bars.
 const PB_TEMPLATE: &str = "[{elapsed:3} {percent:3}%] {bar:20.cyan/blue} NAME \
@@ -135,6 +135,16 @@ pub fn finish_all(tests: &[TestInfo], total_elapsed: Duration, cfg: &Config) -> 
     );
 
     if failed_generators > 0 || stopped_generators > 0 {
+        println!();
+        println!(
+            "ERROR: Some float parsing/printing tests failed.\n\
+            \n\
+            If you ever encounter this failure when not expected, PLEASE OPEN AN ISSUE!! The \
+            failure will likely go away on the next run, but may represent a real bug.\n\
+            \n\
+            To reproduce, rerun with the same seed: {}={}",
+            SEED_ENV, SEED.1
+        );
         ExitCode::FAILURE
     } else {
         ExitCode::SUCCESS

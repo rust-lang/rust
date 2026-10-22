@@ -957,13 +957,14 @@ fn foo(&self) -> Self::T { String::new() }
                 {
                     let msg = match assoc_item.container {
                         ty::AssocContainer::Trait => {
-                            "associated type defaults can't be assumed inside the \
-                                            trait defining them"
+                            "associated type defaults can't be assumed inside the trait defining \
+                             them"
                         }
                         ty::AssocContainer::InherentImpl | ty::AssocContainer::TraitImpl(_) => {
                             "associated type is `default` and may be overridden"
                         }
                     };
+                    diag.span_context(tcx.def_span(tcx.parent(assoc_item.def_id)));
                     diag.span_label(tcx.def_span(assoc_item.def_id), msg);
                     return true;
                 }

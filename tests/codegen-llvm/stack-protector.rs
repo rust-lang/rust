@@ -1,8 +1,8 @@
 //@ revisions: all strong basic none
 //@ ignore-nvptx64 stack protector not supported
-//@ [all] compile-flags: -Z stack-protector=all
-//@ [strong] compile-flags: -Z stack-protector=strong
-//@ [basic] compile-flags: -Z stack-protector=basic
+//@ [all] compile-flags: -Z stack-protector=all -Z allow-partial-mitigations=stack-protector
+//@ [strong] compile-flags: -Z stack-protector=strong -Z allow-partial-mitigations=stack-protector
+//@ [basic] compile-flags: -Z stack-protector=basic -Z allow-partial-mitigations=stack-protector
 
 #![crate_type = "lib"]
 

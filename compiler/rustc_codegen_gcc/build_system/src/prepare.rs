@@ -148,24 +148,6 @@ fn prepare_libcore(
     Ok(())
 }
 
-// FIXME: remove when we can ignore warnings in rustdoc tests.
-fn prepare_rand() -> Result<(), String> {
-    // Apply patch for the rand crate.
-    let file_path = "patches/crates/0001-Remove-deny-warnings.patch";
-    let rand_dir = Path::new("build/rand");
-    println!("[GIT] apply `{file_path}`");
-    let path = Path::new("../..").join(file_path);
-    run_git_command_with_output(&"apply", &[&path], Some(rand_dir))?;
-    run_git_command_with_output(&"add", &[&"-A"], Some(rand_dir))?;
-    run_git_command_with_output(
-        &"commit",
-        &[&"-m", &format!("Patch {}", path.display())],
-        Some(rand_dir),
-    )?;
-
-    Ok(())
-}
-
 // build with cg_llvm for perf comparison
 fn build_raytracer(repo_dir: &Path) -> Result<(), String> {
     run_command(&[&"cargo", &"build"], Some(repo_dir))?;
@@ -263,29 +245,11 @@ pub fn run() -> Result<(), String> {
     if !args.only_libcore {
         cargo_install("hyperfine")?;
 
-        let to_clone = &[
-            (
-                "https://github.com/rust-random/rand.git",
-                "1f4507a8e1cf8050e4ceef95eeda8f64645b6719",
-                None,
-            ),
-            (
-                "https://github.com/rust-lang/regex.git",
-                "341f207c1071f7290e3f228c710817c280c8dca1",
-                None,
-            ),
-            (
-                "https://github.com/ebobby/simple-raytracer",
-                "804a7a21b9e673a482797aa289a18ed480e4d813",
-                Some(build_raytracer),
-            ),
-        ];
-
-        for (repo_url, checkout_commit, cb) in to_clone {
-            clone_and_setup(repo_url, checkout_commit, *cb)?;
-        }
-
-        prepare_rand()?;
+        clone_and_setup(
+            "https://github.com/ebobby/simple-raytracer",
+            "804a7a21b9e673a482797aa289a18ed480e4d813",
+            Some(build_raytracer),
+        )?;
     }
 
     println!("Successfully ran `prepare`");

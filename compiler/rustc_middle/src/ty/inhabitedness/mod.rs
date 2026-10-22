@@ -50,7 +50,6 @@ use rustc_type_ir::TyKind::*;
 use tracing::instrument;
 
 use crate::query::Providers;
-use crate::ty::consts::ConstExt;
 use crate::ty::{
     self, AdtDef, DefId, Ty, TyCtxt, TypeVisitableExt, TypingEnv, VariantDef, Visibility,
 };
@@ -325,7 +324,7 @@ impl<'tcx> OpsemInhabitedCtx<'tcx> {
                 args.upvar_tys().iter().all(|ty| self.is_inhabited_ty(ty))
             }
             ty::UnsafeBinder(base) => {
-                let base = tcx.instantiate_bound_regions_with_erased((*base).into());
+                let base = tcx.instantiate_bound_regions_with_erased(*base);
                 self.is_inhabited_ty(base)
             }
             ty::Adt(def, args) => self.is_inhabited_adt_ty(def, args),

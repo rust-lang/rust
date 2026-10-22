@@ -81,6 +81,7 @@ define_config! {
         parallel_frontend_threads: Option<u32> = "parallel-frontend-threads",
         stdlib_semver_baseline: Option<String> = "stdlib-semver-baseline",
         wasm_proc_macros: Option<bool> = "wasm-proc-macros",
+        wasm_panic_unwind_default: Option<bool> = "wasm-panic-unwind-default",
     }
 }
 
@@ -400,6 +401,7 @@ pub fn check_incompatible_options_for_ci_rustc(
         rustflags: _,
         stdlib_semver_baseline: _,
         wasm_proc_macros: _,
+        wasm_panic_unwind_default: _,
     } = ci_rust_config;
 
     // There are two kinds of checks for CI rustc incompatible options:

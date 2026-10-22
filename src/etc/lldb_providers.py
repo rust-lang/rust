@@ -495,11 +495,9 @@ def StdStrSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
     data_ptr = valobj.GetChildMemberWithName("data_ptr")
 
     start = data_ptr.GetValueAsUnsigned()
-    error = SBError()
     process = data_ptr.GetProcess()
-    data = process.ReadMemory(start, length, error)
-    data = data.decode(encoding="UTF-8") if PY3 else data
-    return '"%s"' % data
+
+    return read_string(process, start, length)
 
 
 def StdPathBufSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:

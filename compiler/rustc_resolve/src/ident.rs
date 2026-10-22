@@ -1511,9 +1511,28 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
                 for rib in ribs {
                     match rib.kind {
+                        // `first_rib` marks the start of the closure or coroutine scope.
+                        // The initializer is evaluated outside that scope, so bindings defined
+                        // inside it are unavailable, while outer bindings remain accessible.
+                        RibKind::MoveExpr { first_rib, move_expr_span, scope_span }
+                            if rib_index >= first_rib =>
+                        {
+                            if let Some(span) = finalize {
+                                self.report_error(
+                                    span,
+                                    CannotUseInnerLocalInMoveExpr {
+                                        move_expr_span,
+                                        ident: original_rib_ident_def,
+                                        scope_span,
+                                    },
+                                );
+                            }
+                            return Res::Err;
+                        }
                         RibKind::Normal
                         | RibKind::Block(..)
                         | RibKind::FnOrCoroutine
+                        | RibKind::MoveExpr { .. }
                         | RibKind::Module(..)
                         | RibKind::MacroDefinition(..)
                         | RibKind::ForwardGenericParamBan(_) => {
@@ -1610,6 +1629,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         RibKind::Normal
                         | RibKind::Block(..)
                         | RibKind::FnOrCoroutine
+                        | RibKind::MoveExpr { .. }
                         | RibKind::Module(..)
                         | RibKind::MacroDefinition(..)
                         | RibKind::InlineAsmSym
@@ -1717,6 +1737,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         RibKind::Normal
                         | RibKind::Block(..)
                         | RibKind::FnOrCoroutine
+                        | RibKind::MoveExpr { .. }
                         | RibKind::Module(..)
                         | RibKind::MacroDefinition(..)
                         | RibKind::InlineAsmSym

@@ -3,9 +3,15 @@
 #![feature(gpu_offload)]
 
 fn main() {
-    // args_ty is not a tuple
+    // `args` is not a tuple literal.
     core::offload::offload! { kernel = kernel_0, args = 42 }
-    //~^ ERROR `{integer}` is not a tuple
+    //~^ ERROR `args` must be a tuple literal
+
+    // FIXME(offload): Binding a tuple to a variable would currently bypass the
+    // per-argument launch checks, so the macro rejects it for now.
+    let args = ();
+    core::offload::offload! { kernel = kernel_0, args = args }
+    //~^ ERROR `args` must be a tuple literal
 }
 
 fn kernel_0() {}

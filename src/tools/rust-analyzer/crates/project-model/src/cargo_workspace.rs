@@ -3,7 +3,7 @@
 use std::{borrow::Cow, ops, str::from_utf8};
 
 use anyhow::Context;
-use base_db::Env;
+use base_db::{Env, TargetKind};
 use cargo_metadata::{CargoOpt, MetadataCommand, PackageId};
 use la_arena::{Arena, Idx};
 use paths::{AbsPath, AbsPathBuf, Utf8Path, Utf8PathBuf};
@@ -255,66 +255,24 @@ pub struct TargetData {
     pub required_features: Vec<String>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TargetKind {
-    Bin,
-    /// Any kind of Cargo lib crate-type (dylib, rlib, proc-macro, ...).
-    Lib {
-        /// Is this target a proc-macro
-        is_proc_macro: bool,
-    },
-    Example,
-    Test,
-    Bench,
-    /// Cargo calls this kind `custom-build`
-    BuildScript,
-    Other,
-}
-
-impl TargetKind {
-    pub fn new(kinds: &[cargo_metadata::TargetKind]) -> TargetKind {
-        for kind in kinds {
-            return match kind {
-                cargo_metadata::TargetKind::Bin => TargetKind::Bin,
-                cargo_metadata::TargetKind::Test => TargetKind::Test,
-                cargo_metadata::TargetKind::Bench => TargetKind::Bench,
-                cargo_metadata::TargetKind::Example => TargetKind::Example,
-                cargo_metadata::TargetKind::CustomBuild => TargetKind::BuildScript,
-                cargo_metadata::TargetKind::ProcMacro => TargetKind::Lib { is_proc_macro: true },
-                cargo_metadata::TargetKind::Lib
-                | cargo_metadata::TargetKind::DyLib
-                | cargo_metadata::TargetKind::CDyLib
-                | cargo_metadata::TargetKind::StaticLib
-                | cargo_metadata::TargetKind::RLib => TargetKind::Lib { is_proc_macro: false },
-                _ => continue,
-            };
-        }
-        TargetKind::Other
+fn convert_target_kind(kinds: &[cargo_metadata::TargetKind]) -> TargetKind {
+    for kind in kinds {
+        return match kind {
+            cargo_metadata::TargetKind::Bin => TargetKind::Bin,
+            cargo_metadata::TargetKind::Test => TargetKind::Test,
+            cargo_metadata::TargetKind::Bench => TargetKind::Bench,
+            cargo_metadata::TargetKind::Example => TargetKind::Example,
+            cargo_metadata::TargetKind::CustomBuild => TargetKind::BuildScript,
+            cargo_metadata::TargetKind::ProcMacro => TargetKind::Lib { is_proc_macro: true },
+            cargo_metadata::TargetKind::Lib
+            | cargo_metadata::TargetKind::DyLib
+            | cargo_metadata::TargetKind::CDyLib
+            | cargo_metadata::TargetKind::StaticLib
+            | cargo_metadata::TargetKind::RLib => TargetKind::Lib { is_proc_macro: false },
+            _ => continue,
+        };
     }
-
-    pub fn is_executable(self) -> bool {
-        matches!(self, TargetKind::Bin | TargetKind::Example)
-    }
-
-    pub fn is_proc_macro(self) -> bool {
-        matches!(self, TargetKind::Lib { is_proc_macro: true })
-    }
-
-    /// If this is a valid cargo target, returns the name cargo uses in command line arguments
-    /// and output, otherwise None.
-    /// <https://docs.rs/cargo_metadata/latest/cargo_metadata/enum.TargetKind.html>
-    pub fn as_cargo_target(self) -> Option<&'static str> {
-        match self {
-            TargetKind::Bin => Some("bin"),
-            TargetKind::Lib { is_proc_macro: true } => Some("proc-macro"),
-            TargetKind::Lib { is_proc_macro: false } => Some("lib"),
-            TargetKind::Example => Some("example"),
-            TargetKind::Test => Some("test"),
-            TargetKind::Bench => Some("bench"),
-            TargetKind::BuildScript => Some("custom-build"),
-            TargetKind::Other => None,
-        }
-    }
+    TargetKind::Other
 }
 
 #[derive(Default, Clone, Debug, PartialEq, Eq)]
@@ -439,7 +397,7 @@ impl CargoWorkspace {
             for meta_tgt in meta_targets {
                 let cargo_metadata::Target { name, kind, required_features, src_path, .. } =
                     meta_tgt;
-                let kind = TargetKind::new(&kind);
+                let kind = convert_target_kind(&kind);
                 let tgt = targets.alloc(TargetData {
                     package: pkg,
                     name,

@@ -95,8 +95,8 @@
 #![feature(async_fn_traits)]
 #![feature(async_iterator)]
 #![feature(borrowed_buf_init)]
-#![feature(bstr)]
-#![feature(bstr_internals)]
+#![feature(byte_str)]
+#![feature(byte_str_internals)]
 #![feature(can_vector)]
 #![feature(case_ignorable)]
 #![feature(cast_maybe_uninit)]
@@ -157,7 +157,6 @@
 #![feature(pin_coerce_unsized_trait)]
 #![feature(ptr_alignment_type)]
 #![feature(ptr_cast_slice)]
-#![feature(ptr_internals)]
 #![feature(ptr_metadata)]
 #![feature(random)]
 #![feature(raw_os_error_ty)]
@@ -208,7 +207,6 @@
 #![feature(min_specialization)]
 #![feature(multiple_supertrait_upcastable)]
 #![feature(negative_impls)]
-#![feature(optimize_attribute)]
 #![feature(rustc_attrs)]
 #![feature(slice_internals)]
 #![feature(staged_api)]
@@ -258,8 +256,8 @@ pub mod alloc;
 // to allow code to have `use boxed::Box;` declarations.
 pub mod borrow;
 pub mod boxed;
-#[unstable(feature = "bstr", issue = "134915")]
-pub mod bstr;
+#[unstable(feature = "byte_str", issue = "134915")]
+pub mod byte_str;
 pub mod collections;
 #[cfg(all(not(no_rc), not(no_sync), not(no_global_oom_handling)))]
 pub mod ffi;

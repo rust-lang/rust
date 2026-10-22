@@ -511,6 +511,59 @@ mod tests {
     };
 
     #[test]
+    fn add_reference_when_tail_expr_of_block() {
+        check_fix(
+            r#"
+fn main() {
+    let a = 0;
+    let b = 1;
+    if false { &a } else { b$0 };
+}
+            "#,
+            r#"
+fn main() {
+    let a = 0;
+    let b = 1;
+    if false { &a } else { &b };
+}
+            "#,
+        );
+    }
+
+    #[test]
+    fn str_ref_to_owned_in_block() {
+        check_has_fix(
+            r#"
+struct String;
+fn main() {
+    if true { String } else { ""$0 };
+}
+            "#,
+            r#"
+struct String;
+fn main() {
+    if true { String } else { "".to_owned() };
+}
+            "#,
+        );
+
+        check_has_fix(
+            r#"
+struct String;
+fn main() {
+    if true { String } else { { ""$0 } };
+}
+            "#,
+            r#"
+struct String;
+fn main() {
+    if true { String } else { { "".to_owned() } };
+}
+            "#,
+        );
+    }
+
+    #[test]
     fn missing_reference() {
         check_diagnostics(
             r#"
@@ -2015,6 +2068,22 @@ fn make() -> Result<bar::T, qux::E> { loop {} }
 fn test(_: Result<foo::T, baz::E>) {
     test(make());
        //^^^^^^ error: expected Result<foo::T, baz::E>, found Result<bar::T, qux::E>
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn type_match_cfg_macros() {
+        check_diagnostics(
+            r#"
+//- minicore: cfg
+fn main() {
+    let _: bool = cfg!(true);
+    match true {
+        cfg!(true) => (),
+        false => (),
+    }
 }
 "#,
         );

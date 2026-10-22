@@ -399,7 +399,7 @@ fn update_target_reliable_float_cfg(target: &Target, cfg: &mut TargetConfig) {
         // This is similar to <https://github.com/llvm/llvm-project/issues/94434>, however
         // does not work until LLVM 23 on Windows.
         (Arch::Arm64EC, _) => major >= 23,
-        (Arch::AArch64, _) => true,
+        (Arch::AArch64 | Arch::Arm, _) => true,
         // FIXME(f16b) until <https://github.com/llvm/llvm-project/issues/97896>
         // is resolved the below do not have a reliable `f16b`, on a widening
         // path a call to `__truncsfbf2` is emitted. Or when using architectural

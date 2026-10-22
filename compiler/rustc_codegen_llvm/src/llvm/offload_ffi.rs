@@ -2,9 +2,8 @@ use std::ffi::{CStr, c_char};
 use std::path::PathBuf;
 use std::sync::OnceLock;
 
-use super::ffi::{Module, TargetMachine, Value};
+use super::ffi::{Module, Value};
 
-type LLVMRustBundleImagesFn = unsafe extern "C" fn(&Module, &TargetMachine, *const c_char) -> bool;
 type LLVMRustOffloadMapperFn = unsafe extern "C" fn(&Value, &Value, *const &Value);
 type LLVMRustOffloadWrapImagesFn =
     unsafe extern "C" fn(&Module, *const c_char, *const c_char) -> bool;
@@ -16,7 +15,6 @@ use rustc_session::filesearch;
 use crate::llvm;
 
 pub(crate) struct RustOffloadWrapper {
-    LLVMRustBundleImages: LLVMRustBundleImagesFn,
     LLVMRustOffloadMapper: LLVMRustOffloadMapperFn,
     LLVMRustOffloadWrapImages: LLVMRustOffloadWrapImagesFn,
     lld_path: Option<PathBuf>,
@@ -54,15 +52,6 @@ impl RustOffloadWrapper {
             .expect("RustOffloadWrapper not initialized. Call get_or_init with sysroot first.")
     }
 
-    pub(crate) unsafe fn llvm_rust_bundle_images(
-        &self,
-        m: &Module,
-        tm: &TargetMachine,
-        c: &CStr,
-    ) -> bool {
-        unsafe { (self.LLVMRustBundleImages)(m, tm, c.as_ptr()) }
-    }
-
     pub(crate) unsafe fn llvm_rust_offload_wrapper(&self, v1: &Value, v2: &Value, vs: &[&Value]) {
         unsafe { (self.LLVMRustOffloadMapper)(v1, v2, vs.as_ptr()) }
     }
@@ -70,11 +59,11 @@ impl RustOffloadWrapper {
     pub(crate) unsafe fn llvm_rust_offload_wrap_images(
         &self,
         host_m: &Module,
-        device_bin_path: &CStr,
+        device_bitcode_path: &CStr,
     ) -> bool {
         let lld_c = self.lld_path.as_deref().map(path_to_c_string).unwrap_or_default();
         unsafe {
-            (self.LLVMRustOffloadWrapImages)(host_m, lld_c.as_ptr(), device_bin_path.as_ptr())
+            (self.LLVMRustOffloadWrapImages)(host_m, lld_c.as_ptr(), device_bitcode_path.as_ptr())
         }
     }
 
@@ -84,15 +73,12 @@ impl RustOffloadWrapper {
         let (rust_offload_path, lld_path) = Self::get_offload_and_lld_paths(sysroot)?;
         let lib = unsafe { libloading::Library::new(rust_offload_path)? };
 
-        let llvm_rust_bundle_images =
-            *unsafe { lib.get::<LLVMRustBundleImagesFn>(b"LLVMRustBundleImages\0")? };
         let llvm_rust_offload_wrapper =
             *unsafe { lib.get::<LLVMRustOffloadMapperFn>(b"LLVMRustOffloadMapper\0")? };
         let llvm_rust_offload_wrap_images =
             *unsafe { lib.get::<LLVMRustOffloadWrapImagesFn>(b"LLVMRustOffloadWrapImages\0")? };
 
         Ok(Self {
-            LLVMRustBundleImages: llvm_rust_bundle_images,
             LLVMRustOffloadMapper: llvm_rust_offload_wrapper,
             LLVMRustOffloadWrapImages: llvm_rust_offload_wrap_images,
             lld_path,

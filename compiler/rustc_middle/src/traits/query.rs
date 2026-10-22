@@ -101,7 +101,7 @@ pub struct MirBorrowckImpliedOutlivesBounds<'tcx> {
     pub normalized_inputs_and_output: Vec<Ty<'tcx>>,
 }
 
-#[derive(Clone, Debug, Default, StableHash, TypeFoldable, TypeVisitable)]
+#[derive(Clone, Debug, Default, PartialEq, StableHash, TypeFoldable, TypeVisitable)]
 pub struct DropckOutlivesResult<'tcx> {
     pub kinds: Vec<GenericArg<'tcx>>,
     pub overflows: Vec<Ty<'tcx>>,
@@ -207,7 +207,7 @@ pub struct NormalizationResult<'tcx> {
 /// case they are called implied bounds). They are fed to the
 /// `OutlivesEnv` which in turn is supplied to the region checker and
 /// other parts of the inference system.
-#[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable, StableHash)]
+#[derive(Copy, Clone, Debug, PartialEq, TypeFoldable, TypeVisitable, StableHash)]
 pub enum OutlivesBound<'tcx> {
     RegionSubRegion(ty::Region<'tcx>, ty::Region<'tcx>),
     RegionSubParam(ty::Region<'tcx>, ty::ParamTy),

@@ -42,7 +42,6 @@ use rustc_infer::traits::DynCompatibilityViolation;
 use rustc_lint_defs::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::middle::stability::AllowUnstable;
-use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::{
     self, Const, FnSigKind, GenericArgKind, GenericArgsRef, GenericParamDefKind, LitToConstInput,
     Ty, TyCtxt, TypeSuperFoldable, TypeVisitableExt, TypingMode, Unnormalized, Upcast,
@@ -2385,6 +2384,43 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         self.check_param_uses_if_mcg(ct, tcx.hir_span(path_hir_id), false)
     }
 
+    /// Lowers a call-argument expression into a ty::Const for an arg position
+    /// const param.
+    pub fn lower_const_arg_expr(&self, expr: &hir::Expr<'_>, ty: Ty<'tcx>) -> Const<'tcx> {
+        let tcx = self.tcx();
+        match expr.kind {
+            hir::ExprKind::Lit(lit) => {
+                self.lower_const_arg_literal(&lit.node, false, ty, expr.span)
+            }
+            hir::ExprKind::Unary(
+                hir::UnOp::Neg,
+                hir::Expr { kind: hir::ExprKind::Lit(lit), .. },
+            ) => self.lower_const_arg_literal(&lit.node, true, ty, expr.span),
+            hir::ExprKind::Path(hir::QPath::Resolved(_, hir::Path { res: Res::Local(_), .. })) => {
+                Const::new_error(tcx, self.dcx().span_err(expr.span, "Path error"))
+            }
+            hir::ExprKind::Path(hir::QPath::Resolved(maybe_qself, path)) => {
+                let opt_self_ty = maybe_qself.as_ref().map(|qself| self.lower_ty(qself));
+                self.lower_resolved_const_path(opt_self_ty, path, expr.hir_id)
+            }
+            hir::ExprKind::Path(hir::QPath::TypeRelative(hir_self_ty, segment)) => {
+                let self_ty = self.lower_ty(hir_self_ty);
+                self.lower_type_relative_const_path(
+                    self_ty,
+                    hir_self_ty,
+                    segment,
+                    expr.hir_id,
+                    expr.span,
+                )
+                .unwrap_or_else(|guard| Const::new_error(tcx, guard))
+            }
+            _ => Const::new_error(
+                tcx,
+                self.dcx().span_err(expr.span, "Some other variant we dont support"),
+            ),
+        }
+    }
+
     /// Lower a [`hir::ConstArg`] to a (type-level) [`ty::Const`].
     #[instrument(skip(self), level = "debug")]
     pub fn lower_const_arg(&self, const_arg: &hir::ConstArg<'_>, ty: Ty<'tcx>) -> Const<'tcx> {
@@ -2541,7 +2577,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         &self,
         hir_id: HirId,
         qpath: hir::QPath<'_>,
-        args: &[&hir::ConstArg<'_>],
+        args: &[hir::ConstArg<'_>],
         span: Span,
     ) -> Const<'tcx> {
         let tcx = self.tcx();
@@ -2642,7 +2678,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
     fn lower_const_arg_tup(
         &self,
-        exprs: &[&hir::ConstArg<'_>],
+        exprs: &[hir::ConstArg<'_>],
         ty: Ty<'tcx>,
         span: Span,
     ) -> Const<'tcx> {
@@ -2685,7 +2721,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         &self,
         hir_id: HirId,
         qpath: hir::QPath<'_>,
-        inits: &[&hir::ConstArgExprField<'_>],
+        inits: &[hir::ConstArgExprField<'_>],
         span: Span,
     ) -> Const<'tcx> {
         // FIXME(mgca): try to deduplicate this function with

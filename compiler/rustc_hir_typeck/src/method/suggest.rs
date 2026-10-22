@@ -2330,8 +2330,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 } else {
                     // We found a method but either the expression is not a method call or
                     // the argument count didn't match.
+                    let mut span: MultiSpan = tcx.def_span(similar_candidate.def_id).into();
+                    span.push_span_context(
+                        tcx.def_span(similar_candidate.container_id(tcx)).shrink_to_lo(),
+                    );
                     err.span_help(
-                        tcx.def_span(similar_candidate.def_id),
+                        span,
                         format!(
                             "{msg}{}",
                             if let None = args { "" } else { ", but with different arguments" },
@@ -2365,7 +2369,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             // The expression is a function or method call, but the item we found is an
             // associated const or type.
-            err.span_help(tcx.def_span(similar_candidate.def_id), msg);
+            let mut span: MultiSpan = tcx.def_span(similar_candidate.def_id).into();
+            span.push_span_context(
+                tcx.def_span(similar_candidate.container_id(tcx)).shrink_to_lo(),
+            );
+            err.span_help(span, msg);
         }
     }
 
@@ -4735,8 +4743,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if impls_trait(trait_info.def_id) {
                         self.suggest_valid_traits(err, item_name, vec![trait_info.def_id], false);
                     } else {
+                        let mut span: MultiSpan = self.tcx.def_span(trait_info.def_id).into();
+                        for assoc in self
+                            .tcx
+                            .associated_items(trait_info.def_id)
+                            .filter_by_name_unhygienic(item_name.name)
+                        {
+                            span.push_span_context(self.tcx.def_span(assoc.def_id).shrink_to_lo());
+                        }
                         err.subdiagnostic(CandidateTraitNote {
-                            span: self.tcx.def_span(trait_info.def_id),
+                            span,
                             trait_name: self.tcx.def_path_str(trait_info.def_id),
                             item_name,
                             action_or_ty: if trait_missing_method {

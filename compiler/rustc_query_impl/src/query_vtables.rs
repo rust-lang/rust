@@ -139,7 +139,7 @@ macro_rules! define_queries {
                     }
                 }
 
-                pub(crate) fn make_query_vtable<'tcx>(incremental: bool)
+                pub(crate) fn make_query_vtable<'tcx>(incremental: bool, track_present: bool)
                     -> QueryVTable<'tcx, rustc_middle::queries::$name::Cache<'tcx>>
                 {
                     use rustc_middle::queries::$name::Value;
@@ -150,7 +150,11 @@ macro_rules! define_queries {
                         feedable: $feedable,
                         dep_kind: rustc_middle::dep_graph::DepKind::$name,
                         state: Default::default(),
-                        cache: Default::default(),
+                        cache: if track_present {
+                            Default::default()
+                        } else {
+                            QueryCache::without_track_present()
+                        },
                         cache_on_disk_local: $cache_on_disk,
                         separate_provide_extern: $separate_provide_extern,
 
@@ -214,12 +218,12 @@ macro_rules! define_queries {
             }
         )*
 
-        pub(crate) fn make_query_vtables<'tcx>(incremental: bool)
+        pub(crate) fn make_query_vtables<'tcx>(incremental: bool, track_present: bool)
             -> rustc_middle::queries::QueryVTables<'tcx>
         {
             rustc_middle::queries::QueryVTables {
                 $(
-                    $name: crate::query_vtables::$name::make_query_vtable(incremental),
+                    $name: crate::query_vtables::$name::make_query_vtable(incremental, track_present),
                 )*
             }
         }

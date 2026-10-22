@@ -3,6 +3,8 @@
 //! similar to queries, but queries come with a lot of machinery for caching and incremental
 //! compilation, whereas hooks are just plain function pointers without any of the query magic.
 
+use std::io;
+
 use rustc_hir::def_id::{DefId, DefPathHash};
 use rustc_index::bit_set::DenseBitSet;
 use rustc_session::StableCrateId;
@@ -123,6 +125,12 @@ declare_hooks! {
         instance: ty::Instance<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
     ) -> DenseBitSet<mir::BasicBlock>;
+
+    /// Configures extra data to be included when pretty printing MIR
+    hook mir_pretty_extra_data(
+        body: &mir::Body<'tcx>,
+    ) -> Option<Box<dyn Fn(mir::PassWhere, &mut dyn io::Write) -> io::Result<()>>>;
+
 }
 
 #[cold]

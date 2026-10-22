@@ -6,7 +6,7 @@ use core::fmt;
 use hir::{Adt, AsAssocItem, Crate, HirDisplay, MacroKind, Semantics};
 use ide_db::{
     FilePosition, RootDatabase,
-    base_db::{CrateOrigin, LangCrateOrigin},
+    base_db::{CrateOrigin, LangCrateOrigin, TargetKind},
     defs::{Definition, IdentClass},
     helpers::pick_best_token,
 };
@@ -324,8 +324,28 @@ fn def_to_non_local_moniker(
                 } else {
                     match def {
                         Definition::Module(module) if module.is_crate_root(db) => {
-                            // only include `crate` namespace by itself because we prefer
-                            // `rust-analyzer cargo foo . bar/` over `rust-analyzer cargo foo . crate/bar/`
+                            let krate = module.krate(db);
+
+                            // There can be only one lib, proc-macro or build script per crates, so we don't need to specify the display name in these cases.
+                            if !matches!(
+                                krate.target_kind(db),
+                                TargetKind::Lib { .. } | TargetKind::BuildScript
+                            ) && let Some(display_name) = krate.display_name(db)
+                            {
+                                reverse_description.push(MonikerDescriptor {
+                                    name: display_name.to_string(),
+                                    desc: MonikerDescriptorKind::Namespace,
+                                });
+                            }
+
+                            if let Some(target_type) = krate.target_kind(db).as_cargo_target() {
+                                reverse_description.push(MonikerDescriptor {
+                                    name: target_type.to_owned(),
+                                    desc: MonikerDescriptorKind::Namespace,
+                                });
+                            }
+
+                            // Fallback in case we didn't get anything: when we have a target_kind of Other and no display name.
                             if reverse_description.is_empty() {
                                 reverse_description.push(MonikerDescriptor {
                                     name: "crate".to_owned(),
@@ -477,7 +497,7 @@ pub mod module {
     pub fn func() {}
 }
 "#,
-            "foo::module::func",
+            "foo::lib::module::func",
             r#"PackageInformation { name: "foo", repo: Some("https://a.b/foo.git"), version: Some("0.1.0") }"#,
             MonikerKind::Import,
         );
@@ -493,7 +513,7 @@ pub mod module {
     pub fn func$0() {}
 }
 "#,
-            "foo::module::func",
+            "foo::lib::module::func",
             r#"PackageInformation { name: "foo", repo: Some("https://a.b/foo.git"), version: Some("0.1.0") }"#,
             MonikerKind::Export,
         );
@@ -510,7 +530,7 @@ pub mod module {
     }
 }
 "#,
-            "foo::module::MyTrait::func",
+            "foo::lib::module::MyTrait::func",
             r#"PackageInformation { name: "foo", repo: Some("https://a.b/foo.git"), version: Some("0.1.0") }"#,
             MonikerKind::Export,
         );
@@ -527,7 +547,7 @@ pub mod module {
     }
 }
 "#,
-            "foo::module::MyTrait::MY_CONST",
+            "foo::lib::module::MyTrait::MY_CONST",
             r#"PackageInformation { name: "foo", repo: Some("https://a.b/foo.git"), version: Some("0.1.0") }"#,
             MonikerKind::Export,
         );
@@ -544,7 +564,7 @@ pub mod module {
     }
 }
 "#,
-            "foo::module::MyTrait::MyType",
+            "foo::lib::module::MyTrait::MyType",
             r#"PackageInformation { name: "foo", repo: Some("https://a.b/foo.git"), version: Some("0.1.0") }"#,
             MonikerKind::Export,
         );
@@ -565,7 +585,7 @@ pub mod module {
     }
 }
 "#,
-            "foo::module::impl::MyStruct::MyTrait::func",
+            "foo::lib::module::impl::MyStruct::MyTrait::func",
             r#"PackageInformation { name: "foo", repo: Some("https://a.b/foo.git"), version: Some("0.1.0") }"#,
             MonikerKind::Export,
         );
@@ -585,7 +605,7 @@ pub struct St {
     pub a: i32,
 }
 "#,
-            "foo::St::a",
+            "foo::lib::St::a",
             r#"PackageInformation { name: "foo", repo: Some("https://a.b/foo.git"), version: Some("0.1.0") }"#,
             MonikerKind::Import,
         );
@@ -607,7 +627,7 @@ pub mod module {
     }
 }
 "#,
-            "foo::module::func",
+            "foo::lib::module::func",
             r#"PackageInformation { name: "foo", repo: Some("https://a.b/foo.git"), version: Some("0.1.0") }"#,
             MonikerKind::Export,
         );

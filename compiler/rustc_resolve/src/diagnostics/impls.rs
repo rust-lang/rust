@@ -206,21 +206,18 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             .iter()
             .map(|(import, import_error)| {
                 if let Some(ModuleOrUniformRoot::Module(module_data)) = import.imported_module.get()
-                    && let ModuleKind::Def(DefKind::Mod, def_id, _, name) = module_data.kind
+                    && let ModuleKind::Def(DefKind::Mod, def_id, ..) = module_data.kind
                 {
-                    let Some(directive) = self.on_unknown_data(def_id) else {
+                    let Some((this, directive)) = self.on_unknown_data(def_id) else {
                         return CustomDiagnostic::default();
                     };
 
-                    let this = if let Some(name) = name {
-                        name.to_string()
-                    } else if let Some(crate_name) = &self.tcx.sess.opts.crate_name {
-                        crate_name.to_string()
-                    } else {
-                        "<unnamed crate>".to_string()
-                    };
                     let unresolved = import_error.segment.map(|s| s.name).unwrap_or(kw::Underscore);
-                    let args = FormatArgs { this, unresolved: unresolved.to_string(), .. };
+                    let args = FormatArgs {
+                        this: this.to_string(),
+                        unresolved: unresolved.to_string(),
+                        ..
+                    };
 
                     directive.eval(None, &args)
                 } else {
@@ -1436,6 +1433,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ResolutionError::BindingInNeverPattern => {
                 self.dcx().create_err(diagnostics::BindingInNeverPattern { span })
             }
+            ResolutionError::CannotUseInnerLocalInMoveExpr {
+                move_expr_span,
+                ident,
+                scope_span,
+            } => self.dcx().create_err(diagnostics::CannotUseInnerLocalInMoveExpr {
+                span,
+                ident,
+                binding_span: ident.span,
+                move_expr_span,
+                scope_span,
+            }),
         }
     }
 
@@ -2031,7 +2039,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             return;
         }
 
-        let unused_macro = self.unused_macros.iter().find_map(|(def_id, (_, unused_ident))| {
+        let unused_macro = self.unused_macros.iter().find_map(|(def_id, (_, unused_ident, _))| {
             if unused_ident.name == ident.name { Some((def_id, unused_ident)) } else { None }
         });
 
@@ -2166,8 +2174,21 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
         }
 
-        if self.macro_names.contains(&IdentKey::new(ident)) {
-            err.subdiagnostic(AddedMacroUse);
+        if let Some(def_id) = self.macro_names.get(&IdentKey::new(ident)) {
+            let macro_span = self.def_span(def_id.to_def_id());
+            let mut span: MultiSpan = macro_span.into();
+            span.push_span_label(
+                macro_span,
+                "a macro with the same name is defined here".to_string(),
+            );
+            if let Some(def_id) = self.local_macro_def_scopes[def_id].opt_def_id() {
+                span.push_span_label(
+                    self.def_span(def_id),
+                    "consider annotating this `mod` with `#[macro_use]`".to_string(),
+                );
+            }
+
+            err.subdiagnostic(AddedMacroUse { span });
             return;
         }
     }
@@ -2314,6 +2335,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 //    |              ^
                 return;
             }
+            if span.in_derive_expansion() {
+                return;
+            }
             let span = self.tcx.sess.source_map().guess_head_span(def_span);
             let candidate_descr = suggestion.res.descr();
             let candidate = suggestion.candidate;
@@ -2436,7 +2460,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
             if kind != AmbiguityKind::GlobVsGlob {
                 if let Scope::ModuleNonGlobs(module, _) | Scope::ModuleGlobs(module, _) = scope {
-                    if module == self.graph_root.to_module() {
+                    if b.res() == Res::Err {
+                        help_msgs.push("consider removing this".to_string());
+                    } else if module == self.graph_root.to_module() {
                         help_msgs.push(format!(
                             "use `crate::{ident}` to refer to this {thing} unambiguously"
                         ));
@@ -3849,12 +3875,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
     }
 
-    /// Gets the `#[diagnostic::on_unknown]` attribute data associated with this `DefId`.
-    pub(crate) fn on_unknown_data(&self, def_id: DefId) -> Option<&Directive> {
-        match def_id.as_local() {
+    /// Gets the name and `#[diagnostic::on_unknown]` attribute data associated with this `DefId`.
+    pub(crate) fn on_unknown_data(&self, def_id: DefId) -> Option<(Symbol, &Directive)> {
+        let directive = match def_id.as_local() {
             Some(local) => Some(self.on_unknown_data.get(&local)?.directive.as_ref()),
-            None => find_attr!(self.tcx, def_id, OnUnknown{ directive } => directive)?.as_deref(),
-        }
+            None => find_attr!(self.tcx, def_id, OnUnknown { directive } => directive)?.as_deref(),
+        }?;
+
+        let name =
+            self.expect_module(def_id).name().unwrap_or_else(|| self.tcx.crate_name(def_id.krate));
+
+        Some((name, directive))
     }
 }
 

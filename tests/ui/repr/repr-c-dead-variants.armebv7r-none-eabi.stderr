@@ -45,6 +45,7 @@ error: layout_of(Univariant) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
+           repr_c: true,
            randomization_seed: $SEED,
        }
   --> $DIR/repr-c-dead-variants.rs:44:1
@@ -119,6 +120,7 @@ error: layout_of(TwoVariants) = Layout {
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
+           repr_c: true,
            randomization_seed: $SEED,
        }
   --> $DIR/repr-c-dead-variants.rs:51:1
@@ -191,6 +193,7 @@ error: layout_of(DeadBranchHasOtherField) = Layout {
                Align(8 bytes),
            ),
            unadjusted_abi_align: Align(8 bytes),
+           repr_c: true,
            randomization_seed: $SEED,
        }
   --> $DIR/repr-c-dead-variants.rs:63:1

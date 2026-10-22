@@ -114,7 +114,6 @@ use rustc_index::{IndexVec, newtype_index};
 use rustc_middle::mir::interpret::{AllocRange, GlobalAlloc};
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
-use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::layout::HasTypingEnv;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
 use rustc_mir_dataflow::{Analysis, ResultsCursor};
@@ -122,8 +121,8 @@ use rustc_span::{DUMMY_SP, bug};
 use smallvec::SmallVec;
 use tracing::{debug, instrument, trace};
 
-use crate::PassPolicy;
 use crate::ssa::{MaybeUninitializedLocals, SsaLocals};
+use crate::{PassPolicy, canonicalization};
 
 pub(super) struct GVN;
 
@@ -1393,6 +1392,18 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         let lhs = self.simplify_operand(lhs_operand, location);
         let rhs = self.simplify_operand(rhs_operand, location);
 
+        let (lhs, rhs) = if canonicalization::canonicalize_binary_operands(
+            self.tcx,
+            self.local_decls,
+            op,
+            lhs_operand,
+            rhs_operand,
+        ) {
+            (rhs, lhs)
+        } else {
+            (lhs, rhs)
+        };
+
         // Only short-circuit options after we called `simplify_operand`
         // on both operands for side effect.
         let mut lhs = lhs?;
@@ -1950,6 +1961,8 @@ fn op_to_prop_const<'tcx>(
             // Transmuting a constant is just an offset in the allocation. If the alignment of the
             // allocation is not enough, fallback to copying into a properly aligned value.
             && alloc.inner().align >= op.layout.align.abi
+            // If this is a packed field the offset must also be sufficiently aligned.
+            && offset.bytes().is_multiple_of(op.layout.align.abi.bytes())
         {
             return Some(ConstValue::Indirect { alloc_id, offset });
         }

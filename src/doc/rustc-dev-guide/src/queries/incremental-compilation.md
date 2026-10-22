@@ -1,7 +1,7 @@
 # Incremental compilation
 
-The incremental compilation scheme is, in essence, a surprisingly
-simple extension to the overall query system.
+The incremental compilation scheme is, in essence,
+a surprisingly simple extension to the overall query system.
 We'll start by describing
 a slightly simplified variant of the real thing – the "basic algorithm" –
 and then describe some possible improvements.
@@ -10,8 +10,8 @@ and then describe some possible improvements.
 
 The basic algorithm is called the **red-green** algorithm[^salsa].
 The high-level idea is that, after each run of the compiler, we will save the results of all
-the queries that we do, as well as the **query DAG**. The
-**query DAG** is a [DAG] that indexes which queries executed which other queries.
+the queries that we do, as well as the **query DAG**.
+The **query DAG** is a [DAG] that indexes which queries executed which other queries.
 So, for example, there would be an [edge] from a query Q1
 to another query Q2 if computing Q1 required computing Q2 (note that
 because queries cannot depend on themselves, this results in a DAG and not a general graph).
@@ -32,35 +32,35 @@ because queries cannot depend on themselves, this results in a DAG and not a gen
 > In short, the word query is here not just used to mean the definition of a query,
 > but also for a specific instance of that query with given arguments.
 
-On the next run of the compiler, then, we can sometimes reuse these
-query results to avoid re-executing a query.
+On the next run of the compiler, then,
+we can sometimes reuse these query results to avoid re-executing a query.
 We do this by assigning every query a **color**:
 
-- If a query is colored **red**, that means that its result during
-  this compilation has **changed** from the previous compilation.
-- If a query is colored **green**, that means that its result is
-  the **same** as the previous compilation.
+- If a query is colored **red**,
+  that means that its result during this compilation has **changed** from the previous compilation.
+- If a query is colored **green**,
+  that means that its result is the **same** as the previous compilation.
 
 There are two key insights here:
 
-- First, if all the inputs to query Q are colored green, then the
-  query Q **must** result in the same value as last time and hence
+- First, if all the inputs to query Q are colored green,
+  then the query Q **must** result in the same value as last time and hence
   need not be re-executed (or else the compiler is not deterministic).
-- Second, even if some inputs to a query changes, it may be that it
-  **still** produces the same result as the previous compilation.
+- Second, even if some inputs to a query changes,
+  it may be that it **still** produces the same result as the previous compilation.
   In particular, the query may only use part of its input.
-  - Therefore, after executing a query, we always check whether it
-    produced the same result as the previous time.
-    **If it did,** we can still mark the query as green, and hence avoid re-executing
-    dependent queries.
+  - Therefore, after executing a query,
+    we always check whether it produced the same result as the previous time.
+    **If it did,** we can still mark the query as green,
+    and hence avoid re-executing dependent queries.
 
 ### The try-mark-green algorithm
 
 At the core of incremental compilation is an algorithm called "try-mark-green".
 It has the job of determining the color of a given query Q (which must not have yet been executed).
 In cases where Q has red inputs, determining Q's color may involve re-executing Q so that
-we can compare its output, but if all of Q's inputs are green, then we
-can conclude that Q must be green without re-executing it or inspecting its value at all.
+we can compare its output, but if all of Q's inputs are green,
+then we can conclude that Q must be green without re-executing it or inspecting its value at all.
 In the compiler, this allows us to avoid deserializing the result from disk when we don't need it,
 and in fact
 enables us to sometimes skip *serializing* the result as well (see the refinements section below).
@@ -95,8 +95,7 @@ we not only track the queries that Q reads;
 we also track the **order** in which they were read.
 This allows try-mark-green to walk those queries back in the same order.
 This is important because once a subquery comes back as red,
-we can no longer be sure that Q will continue
-along the same path as before.
+we can no longer be sure that Q will continue along the same path as before.
 That is, imagine a query like this:
 
 ```rust,ignore
@@ -111,14 +110,14 @@ fn main_query(tcx) {
 
 Now imagine that in the first compilation, `main_query` starts by executing `subquery1`,
 and this returns true.
-In that case, the next query `main_query` executes will be `subquery2`, and `subquery3` will
-not be executed at all.
+In that case, the next query `main_query` executes will be `subquery2`,
+and `subquery3` will not be executed at all.
 
-But now imagine that in the **next** compilation, the input has
-changed such that `subquery1` returns **false**. In this case, `subquery2` would never execute.
+But now imagine that in the **next** compilation,
+the input has changed such that `subquery1` returns **false**.
+In this case, `subquery2` would never execute.
 If try-mark-green were to visit `reads(main_query)` out of order,
-however, it might visit `subquery2` before `subquery1`, and hence
-execute it.
+however, it might visit `subquery2` before `subquery1`, and hence execute it.
 This can lead to ICEs and other problems in the compiler.
 
 [dep_graph]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/dep_graph/index.html
@@ -133,8 +132,7 @@ In practice, what we would do is to save **the hashes** of all the subqueries th
 Then, in select cases, we **also** save the results.
 
 This is why the incremental algorithm separates computing the **color** of a node,
-which often does not require its value, from
-computing the **result** of a node.
+which often does not require its value, from computing the **result** of a node.
 Computing the result is done via a simple algorithm like so:
 
 - Check if a saved result for Q is available.

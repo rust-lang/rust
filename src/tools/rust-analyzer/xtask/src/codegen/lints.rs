@@ -68,11 +68,12 @@ pub struct LintGroup {
     contents.push('\n');
 
     let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".to_owned());
+    let rustc = std::env::var("RUSTC").unwrap_or_else(|_| "rustc".to_owned());
     let unstable_book = project_root().join("./target/unstable-book-gen");
     cmd!(
         sh,
         "{cargo} run --manifest-path {rust_repo}/src/tools/unstable-book-gen/Cargo.toml --
-         {rust_repo}/library {rust_repo}/compiler {rust_repo}/src {unstable_book}"
+         {rust_repo}/library {rust_repo}/compiler {rust_repo}/src {rustc} {unstable_book}"
     )
     .run()
     .unwrap();

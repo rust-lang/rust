@@ -190,19 +190,24 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                             .filter_map(ty::GenericArg::as_term)
                             .find(|term| term.is_infer())
                             .unwrap_or_else(|| hidden_type.ty.into());
-                        self.err_ctxt()
-                            .emit_inference_failure_err(
-                                self.body_def_id,
-                                hidden_type.span,
-                                infer_var,
-                                TypeAnnotationNeeded::E0282,
-                                false,
-                            )
-                            // The shared E0282 label only says "cannot infer type", which gives no
-                            // hint that the ambiguity is in an opaque's hidden type rather than an
-                            // ordinary local inference failure.
-                            .with_note("cannot infer type of hidden type of opaque")
-                            .emit_err()
+                        let mut err = self.err_ctxt().emit_inference_failure_err(
+                            self.body_def_id,
+                            hidden_type.span,
+                            infer_var,
+                            TypeAnnotationNeeded::E0282,
+                            false,
+                        );
+                        // The shared E0282 label only says "cannot infer type", which gives no
+                        // hint that the ambiguity is in an opaque's hidden type rather than an
+                        // ordinary local inference failure.
+                        let msg = "cannot infer type of hidden type of opaque";
+                        let opaque_span = self.tcx.def_span(def_id);
+                        if err.span.primary_span().is_some_and(|sp| opaque_span.contains(sp)) {
+                            err.note(msg);
+                        } else {
+                            err.span_note(opaque_span, msg);
+                        }
+                        err.emit_err()
                     }
                 }
             };

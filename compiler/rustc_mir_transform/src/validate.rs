@@ -209,7 +209,7 @@ impl<'a, 'tcx> CfgChecker<'a, 'tcx> {
                     }
                     Some(e) if *e == s => (),
                     Some(e) => self.fail(
-                        Location { block: bb, statement_index: 0 },
+                        bb.start_location(),
                         format!(
                             "Cleanup control flow violation: The blocks dominated by {:?} have edges to both {:?} and {:?}",
                             bb,
@@ -231,7 +231,7 @@ impl<'a, 'tcx> CfgChecker<'a, 'tcx> {
                 let no_cycle = stack.insert(parent);
                 if !no_cycle {
                     self.fail(
-                        Location { block: bb, statement_index: 0 },
+                        bb.start_location(),
                         format!(
                             "Cleanup control flow violation: Cycle involving edge {bb:?} -> {parent:?}",
                         ),
@@ -339,7 +339,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
 
     fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
         match &terminator.kind {
-            TerminatorKind::Goto { target } => {
+            TerminatorKind::Goto { target, .. } => {
                 self.check_edge(location, *target, EdgeKind::Normal);
             }
             TerminatorKind::SwitchInt { targets, discr: _ } => {
@@ -629,11 +629,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // is annoying. It is harmless enough to just not validate anything
         // in that case. We still check this after analysis as all opaque
         // types have been revealed at this point.
-        if pred.has_opaque_types() {
+        if !self.tcx.next_trait_solver_globally() && pred.has_opaque_types() {
             return true;
         }
 
-        let (infcx, param_env) = self.tcx.infer_ctxt().build_with_typing_env(self.typing_env);
+        let (infcx, param_env) =
+            self.tcx.infer_ctxt().ignoring_regions().build_with_typing_env(self.typing_env);
         let ocx = ObligationCtxt::new(&infcx);
         ocx.register_obligation(Obligation::new(
             self.tcx,
@@ -715,24 +716,19 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     // Debug info is allowed to project into pattern types
                     ty::Pat(base, _) => check_equal(self, location, *base),
                     ty::Adt(adt_def, args) => {
-                        // see <https://github.com/rust-lang/rust/blob/7601adcc764d42c9f2984082b49948af652df986/compiler/rustc_middle/src/ty/layout.rs#L861-L864>
-                        if self.tcx.is_lang_item(adt_def.did(), LangItem::DynMetadata) {
-                            self.fail(
-                                location,
-                                format!(
-                                    "You can't project to field {f:?} of `DynMetadata` because \
+                        if !adt_def.can_project_fields(self.tcx) {
+                            let message =
+                                if self.tcx.is_lang_item(adt_def.did(), LangItem::DynMetadata) {
+                                    format!(
+                                        "You can't project to field {f:?} of `DynMetadata` because \
                                      layout is weird and thinks it doesn't have fields."
-                                ),
-                            );
-                        }
-
-                        if adt_def.repr().simd() || adt_def.repr().scalable() {
-                            self.fail(
-                                location,
-                                format!(
-                                    "Projecting into SIMD type {adt_def:?} is banned by MCP#838"
-                                ),
-                            );
+                                    )
+                                } else {
+                                    format!(
+                                        "Projecting into SIMD type {adt_def:?} is banned by MCP#838"
+                                    )
+                                };
+                            self.fail(location, message);
                         }
 
                         let var = parent_ty.variant_index.unwrap_or(FIRST_VARIANT);

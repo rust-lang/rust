@@ -245,7 +245,8 @@ fn overlap<'tcx>(
         .inner
         .borrow_mut()
         .unwrap_region_constraints()
-        .data()
+        // FIXME(-Zassumptions-on-binders): Handle solver_data
+        .legacy_data()
         .constraints
         .iter()
         .any(|c| c.0.involves_placeholders());

@@ -12,8 +12,7 @@
 //@[narrow] compile-flags: --diagnostic-width=20
 //@[wide] compile-flags: --diagnostic-width=300
 //@[next] compile-flags: -Znext-solver
-//@[next] known-bug: trait-system-refactor-initiative#302
-//@[next] check-pass
+//@check-fail
 
 #![feature(yield_expr, iter_macro)]
 
@@ -29,5 +28,5 @@ fn main() {
     }};
 
     call_async_once(f);
-    //[narrow,wide]~^ ERROR AsyncFnOnce()` is not satisfied
+    //~^ ERROR AsyncFnOnce()` is not satisfied
 }

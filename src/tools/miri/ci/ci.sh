@@ -1,4 +1,7 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# Since FreeBSD stores user-installed binaries in `/usr/local/bin` we
+# cannot use the `/bin/bash` shebang and instead use the the bash from PATH.
+
 set -eu
 
 function begingroup {
@@ -20,12 +23,14 @@ if ! rustc -vV | grep -q "^host: $HOST_TARGET\$"; then
   exit 1
 fi
 
+export CI=true # just to be sure that it is truly set
+
 endgroup
 
 begingroup "Building Miri"
 
 # Global configuration
-export RUSTFLAGS="-D warnings"
+export CARGO_BUILD_WARNINGS=deny
 export CARGO_INCREMENTAL=0
 export CARGO_EXTRA_FLAGS="--locked"
 export CARGO_UNSTABLE_BUILD_DIR_NEW_LAYOUT=true
@@ -40,6 +45,10 @@ time ./miri install
 echo "Building debug version of Miri"
 export FEATURES="--features=expensive-consistency-checks,genmc"
 time ./miri build $FEATURES # the build that all the `./miri test` below will use
+
+# We don't want to error on warnings during the sysroot build, so unset this.
+# (Bootstrap sets this so the tier 1 targets are checked in rustc CI.)
+unset CARGO_BUILD_WARNINGS
 
 endgroup
 
@@ -199,6 +208,10 @@ case $HOST_TARGET in
     GC_STRESS=1 MIR_OPT=1 MANY_SEEDS=64 TEST_BENCH=1 CARGO_MIRI_ENV=1 run_tests
     # Extra tier 1
     MANY_SEEDS=64 TEST_TARGET=i686-unknown-linux-gnu run_tests
+    ;;
+  x86_64-unknown-freebsd)
+    # Host
+    MIR_OPT=1 MANY_SEEDS=64 TEST_BENCH=1 CARGO_MIRI_ENV=1 run_tests
     ;;
   *)
     echo "FATAL: unknown host target: $HOST_TARGET"

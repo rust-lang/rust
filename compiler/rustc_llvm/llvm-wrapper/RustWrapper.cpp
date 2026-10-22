@@ -1002,11 +1002,6 @@ extern "C" void LLVMRustRemoveFnAttribute(LLVMValueRef Fn, const char *Name,
   }
 }
 
-extern "C" void LLVMRustGlobalAddMetadata(LLVMValueRef Global, unsigned Kind,
-                                          LLVMMetadataRef MD) {
-  unwrap<GlobalObject>(Global)->addMetadata(Kind, *unwrap<MDNode>(MD));
-}
-
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateCompileUnit(
     LLVMDIBuilderRef Builder, unsigned Lang, LLVMMetadataRef FileRef,
     const char *Producer, size_t ProducerLen, bool isOptimized,
@@ -1500,7 +1495,7 @@ extern "C" uint64_t LLVMRustModuleInstructionStats(LLVMModuleRef M) {
 
 // Transfers ownership of DiagnosticHandler unique_ptr to the caller.
 extern "C" DiagnosticHandler *
-LLVMRustContextGetDiagnosticHandler(LLVMContextRef C) {
+LLVMRustContextTakeDiagnosticHandler(LLVMContextRef C) {
   std::unique_ptr<DiagnosticHandler> DH = unwrap(C)->getDiagnosticHandler();
   return DH.release();
 }
@@ -1512,7 +1507,9 @@ extern "C" void LLVMRustContextSetDiagnosticHandler(LLVMContextRef C,
   unwrap(C)->setDiagnosticHandler(std::unique_ptr<DiagnosticHandler>(DH));
 }
 
-using LLVMDiagnosticHandlerTy = DiagnosticHandler::DiagnosticHandlerTy;
+// Must match `rustc_codegen_llvm::llvm::ffi::DiagnosticHandlerCallback`.
+typedef void (*LLVMRustDiagnosticHandlerCallback)(LLVMDiagnosticInfoRef,
+                                                  void *);
 
 // Configures a diagnostic handler that invokes provided callback when a
 // backend needs to emit a diagnostic.
@@ -1524,22 +1521,23 @@ using LLVMDiagnosticHandlerTy = DiagnosticHandler::DiagnosticHandlerTy;
 // If RemarkFilePath is not NULL, optimization remarks will be streamed directly
 // into this file, bypassing the diagnostics handler.
 extern "C" void LLVMRustContextConfigureDiagnosticHandler(
-    LLVMContextRef C, LLVMDiagnosticHandlerTy DiagnosticHandlerCallback,
-    void *DiagnosticHandlerContext, bool RemarkAllPasses,
+    LLVMContextRef C,
+    LLVMRustDiagnosticHandlerCallback DiagnosticHandlerCallback,
+    void *DiagnosticHandlerCallbackData, bool RemarkAllPasses,
     const char *const *RemarkPasses, size_t RemarkPassesLen,
     const char *RemarkFilePath, bool PGOAvailable) {
 
   class RustDiagnosticHandler final : public DiagnosticHandler {
   public:
     RustDiagnosticHandler(
-        LLVMDiagnosticHandlerTy DiagnosticHandlerCallback,
-        void *DiagnosticHandlerContext, bool RemarkAllPasses,
+        LLVMRustDiagnosticHandlerCallback DiagnosticHandlerCallback,
+        void *DiagnosticHandlerCallbackData, bool RemarkAllPasses,
         std::vector<std::string> RemarkPasses,
         std::unique_ptr<ToolOutputFile> RemarksFile,
         std::unique_ptr<llvm::remarks::RemarkStreamer> RemarkStreamer,
         std::unique_ptr<LLVMRemarkStreamer> LlvmRemarkStreamer)
         : DiagnosticHandlerCallback(DiagnosticHandlerCallback),
-          DiagnosticHandlerContext(DiagnosticHandlerContext),
+          DiagnosticHandlerCallbackData(DiagnosticHandlerCallbackData),
           RemarkAllPasses(RemarkAllPasses),
           RemarkPasses(std::move(RemarkPasses)),
           RemarksFile(std::move(RemarksFile)),
@@ -1571,7 +1569,7 @@ extern "C" void LLVMRustContextConfigureDiagnosticHandler(
         }
       }
       if (DiagnosticHandlerCallback) {
-        DiagnosticHandlerCallback(&DI, DiagnosticHandlerContext);
+        DiagnosticHandlerCallback(wrap(&DI), DiagnosticHandlerCallbackData);
         return true;
       }
       return false;
@@ -1605,8 +1603,8 @@ extern "C" void LLVMRustContextConfigureDiagnosticHandler(
       return false;
     }
 
-    LLVMDiagnosticHandlerTy DiagnosticHandlerCallback = nullptr;
-    void *DiagnosticHandlerContext = nullptr;
+    LLVMRustDiagnosticHandlerCallback DiagnosticHandlerCallback = nullptr;
+    void *DiagnosticHandlerCallbackData = nullptr;
 
     bool RemarkAllPasses = false;
     std::vector<std::string> RemarkPasses;
@@ -1659,7 +1657,7 @@ extern "C" void LLVMRustContextConfigureDiagnosticHandler(
   }
 
   unwrap(C)->setDiagnosticHandler(std::make_unique<RustDiagnosticHandler>(
-      DiagnosticHandlerCallback, DiagnosticHandlerContext, RemarkAllPasses,
+      DiagnosticHandlerCallback, DiagnosticHandlerCallbackData, RemarkAllPasses,
       Passes, std::move(RemarkFile), std::move(RemarkStreamer),
       std::move(LlvmRemarkStreamer)));
 }
