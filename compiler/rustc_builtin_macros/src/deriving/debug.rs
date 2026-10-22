@@ -153,16 +153,15 @@ fn show_substructure(
     } else {
         // Enough fields that we must use the any-length method.
         let mut names = String::new();
+        if is_struct {
+            names.push_str(ident.name.as_str());
+        }
         let mut value_exprs = ThinVec::with_capacity(fields.len());
 
-        let fields_len = fields.len();
         for (i, field) in fields.into_iter().enumerate() {
             if is_struct {
+                names.push(' ');
                 names.push_str(field.name.unwrap().name.as_str());
-                let is_last = i == fields_len - 1;
-                if !is_last {
-                    names.push(' ');
-                }
             }
 
             let field = expr_for_field(field, i);
@@ -209,9 +208,10 @@ fn show_substructure(
 
         let mut args = ThinVec::with_capacity(4);
         args.push(fmt);
-        args.push(name);
         if is_struct {
             args.push(cx.expr_name(span, sym::names));
+        } else {
+            args.push(name);
         }
         args.push(cx.expr_name(span, sym::values));
         let expr = cx.expr_call_global(span, fn_path_debug_internal, args);

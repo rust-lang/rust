@@ -2594,12 +2594,11 @@ impl<'a> Formatter<'a> {
     #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
     pub fn debug_struct_fields_finish<'b>(
         &'b mut self,
-        name: &str,
         names: &str,
         values: &[&dyn Debug],
     ) -> Result {
         let mut names = names.split(' ');
-        let mut builder = builders::debug_struct_new(self, name);
+        let mut builder = builders::debug_struct_new(self, names.next().unwrap());
         for value in values.into_iter() {
             let name = names.next().unwrap();
             builder.field(name, value);
