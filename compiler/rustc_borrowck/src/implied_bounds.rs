@@ -40,7 +40,7 @@ pub(super) fn mir_borrowck_implied_outlives_bounds<'tcx>(
     // parent body, so for these we do want to define opaque types. Not doing so can result
     // in incorrect errors when normalizing implied bounds.
     let typing_env = if tcx.is_typeck_child(body_def_id.to_def_id()) {
-        TypingEnv::post_typeck_until_borrowck(tcx, body_def_id)
+        TypingEnv::post_typeck_through_borrowck(tcx, body_def_id)
     } else {
         TypingEnv::non_body_analysis(tcx, body_def_id)
     };

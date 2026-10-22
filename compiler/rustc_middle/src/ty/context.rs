@@ -2871,9 +2871,8 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[allow(rustc::bad_opt_access)]
-    pub fn use_typing_mode_post_typeck_until_borrowck(self) -> bool {
+    pub fn use_typing_mode_post_typeck_through_borrowck(self) -> bool {
         self.next_trait_solver_globally()
-            || self.sess.opts.unstable_opts.typing_mode_post_typeck_until_borrowck
     }
 
     pub fn assumptions_on_binders(self) -> bool {

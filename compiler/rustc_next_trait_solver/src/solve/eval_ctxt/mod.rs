@@ -774,7 +774,7 @@ where
             let skip_erased_attempt = match typing_mode {
                 TypingMode::Reflection | TypingMode::Coherence => true,
                 TypingMode::Typeck { .. }
-                | TypingMode::PostTypeckUntilBorrowck { .. }
+                | TypingMode::PostTypeckThroughBorrowck { .. }
                 | TypingMode::PostBorrowck { .. }
                 | TypingMode::Codegen
                 | TypingMode::PostAnalysis
@@ -1963,7 +1963,7 @@ fn should_rerun_after_erased_canonicalization<I: Interner>(
             RerunCondition::OpaqueInStorage(defids),
             TypingMode::PostBorrowck { defined_opaque_types: opaques }
             | TypingMode::Typeck { defining_opaque_types_and_generators: opaques }
-            | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: opaques },
+            | TypingMode::PostTypeckThroughBorrowck { defining_opaque_types: opaques },
         ) => opaque_in_storage(opaques, defids),
         // =============================
         (RerunCondition::AnyOpaqueHasInferAsHidden, TypingMode::Typeck { .. }) => {
@@ -1975,7 +1975,7 @@ fn should_rerun_after_erased_canonicalization<I: Interner>(
             | TypingMode::PostAnalysis
             | TypingMode::Codegen
             | TypingMode::Reflection
-            | TypingMode::PostTypeckUntilBorrowck { .. },
+            | TypingMode::PostTypeckThroughBorrowck { .. },
         ) => RerunDecision::No,
         // =============================
         (
@@ -1997,7 +1997,7 @@ fn should_rerun_after_erased_canonicalization<I: Interner>(
         (
             RerunCondition::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(defids),
             TypingMode::PostBorrowck { defined_opaque_types: opaques }
-            | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: opaques },
+            | TypingMode::PostTypeckThroughBorrowck { defining_opaque_types: opaques },
         ) => opaque_in_storage(opaques, defids),
     }
 }
