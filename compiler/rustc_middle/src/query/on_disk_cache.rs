@@ -552,15 +552,19 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for Vec<u8> {
 impl<'a, 'tcx> SpanDecoder for CacheDecoder<'a, 'tcx> {
     fn decode_syntax_context(&mut self) -> SyntaxContext {
         let syntax_contexts = self.syntax_contexts;
-        rustc_span::hygiene::decode_syntax_context(self, self.hygiene_context, |this, id| {
-            // This closure is invoked if we haven't already decoded the data for the `SyntaxContext` we are deserializing.
-            // We look up the position of the associated `SyntaxData` and decode it.
-            let pos = syntax_contexts.get(&id).unwrap();
-            this.with_position(pos.to_usize(), |decoder| {
-                let data: SyntaxContextKey = decode_tagged(decoder, TAG_SYNTAX_CONTEXT);
-                data
-            })
-        })
+        rustc_span::hygiene::decode_syntax_context(
+            self,
+            self.hygiene_context,
+            |this, external_ctxt| {
+                // This closure is invoked if we haven't already decoded the data for the `SyntaxContext` we are deserializing.
+                // We look up the position of the associated `SyntaxData` and decode it.
+                let pos = syntax_contexts.get(&external_ctxt.as_u32()).unwrap();
+                this.with_position(pos.to_usize(), |decoder| {
+                    let data: SyntaxContextKey = decode_tagged(decoder, TAG_SYNTAX_CONTEXT);
+                    data
+                })
+            },
+        )
     }
 
     fn decode_expn_id(&mut self) -> ExpnId {
