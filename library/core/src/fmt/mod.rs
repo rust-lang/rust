@@ -9,7 +9,7 @@ use crate::marker::{PhantomData, PointeeSized};
 use crate::num::imp::fmt as numfmt;
 use crate::ops::Deref;
 use crate::ptr::NonNull;
-use crate::{iter, mem, result, str};
+use crate::{mem, result, str};
 
 mod builders;
 #[cfg(not(no_fp_fmt_parse))]
@@ -2603,17 +2603,19 @@ impl<'a> Formatter<'a> {
 
     /// Shrinks `derive(Debug)` code, for faster compilation and smaller binaries.
     /// For the cases not covered by `debug_struct_field[12345]_finish`.
+    /// Field names should be separated by space.
     #[doc(hidden)]
     #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
     pub fn debug_struct_fields_finish<'b>(
         &'b mut self,
         name: &str,
-        names: &[&str],
+        names: &str,
         values: &[&dyn Debug],
     ) -> Result {
-        assert_eq!(names.len(), values.len());
+        let mut names = names.split(' ');
         let mut builder = builders::debug_struct_new(self, name);
-        for (name, value) in iter::zip(names, values) {
+        for value in values.into_iter() {
+            let name = names.next().unwrap();
             builder.field(name, value);
         }
         builder.finish()
