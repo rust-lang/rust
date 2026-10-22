@@ -24,7 +24,6 @@ mod arch;
 
 // This module needs to be public because the `is_{arch}_feature_detected!`
 // macros expand calls to items within it in user crates.
-#[doc(hidden)]
 #[unstable(feature = "stdarch_internal", issue = "none")]
 pub use self::arch::__is_feature_detected;
 pub(crate) use self::arch::Feature;

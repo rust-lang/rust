@@ -181,7 +181,6 @@ macro_rules! features {
         /// to change.
         #[doc(hidden)]
         #[cfg($cfg)]
-        #[unstable(feature = "stdarch_internal", issue = "none")]
         pub mod __is_feature_detected {
             $(
 
