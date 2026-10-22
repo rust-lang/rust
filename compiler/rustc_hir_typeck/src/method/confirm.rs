@@ -14,9 +14,7 @@ use rustc_infer::infer::{
     BoundRegionConversionTime, DefineOpaqueTypes, InferOk, RegionVariableOrigin,
 };
 use rustc_infer::traits::WellFormedLoc;
-use rustc_lint_defs::builtin::{
-    AMBIGUOUS_GLOB_IMPORTED_TRAITS, RESOLVING_TO_ITEMS_SHADOWING_SUPERTRAIT_ITEMS,
-};
+use rustc_lint_defs::builtin::AMBIGUOUS_GLOB_IMPORTED_TRAITS;
 use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, DerefAdjustKind,
@@ -31,7 +29,6 @@ use rustc_trait_selection::traits;
 use tracing::debug;
 
 use super::{MethodCallee, probe};
-use crate::diagnostics::{SupertraitItemShadowee, SupertraitItemShadower, SupertraitItemShadowing};
 use crate::{FnCtxt, callee};
 
 pub(crate) struct ConfirmContext<'a, 'tcx> {
@@ -159,9 +156,6 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
         // Make sure nobody calls `drop()` explicitly.
         self.check_for_illegal_method_calls(pick);
-
-        // Lint when an item is shadowing a supertrait item.
-        self.lint_shadowed_supertrait_items(pick, segment);
 
         // Lint when a trait is ambiguously imported
         self.lint_ambiguously_glob_imported_traits(pick, segment);
@@ -729,45 +723,6 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         {
             self.set_tainted_by_errors(e);
         }
-    }
-
-    fn lint_shadowed_supertrait_items(
-        &self,
-        pick: &probe::Pick<'_>,
-        segment: &hir::PathSegment<'tcx>,
-    ) {
-        if pick.shadowed_candidates.is_empty() {
-            return;
-        }
-
-        let shadower_span = self.tcx.def_span(pick.item.def_id);
-        let subtrait = self.tcx.item_name(pick.item.trait_container(self.tcx).unwrap());
-        let shadower = SupertraitItemShadower { span: shadower_span, subtrait };
-
-        let shadowee = if let [shadowee] = &pick.shadowed_candidates[..] {
-            let shadowee_span = self.tcx.def_span(shadowee.def_id);
-            let supertrait = self.tcx.item_name(shadowee.trait_container(self.tcx).unwrap());
-            SupertraitItemShadowee::Labeled { span: shadowee_span, supertrait }
-        } else {
-            let (traits, spans): (Vec<_>, Vec<_>) = pick
-                .shadowed_candidates
-                .iter()
-                .map(|item| {
-                    (
-                        self.tcx.item_name(item.trait_container(self.tcx).unwrap()),
-                        self.tcx.def_span(item.def_id),
-                    )
-                })
-                .unzip();
-            SupertraitItemShadowee::Several { traits: traits.into(), spans: spans.into() }
-        };
-
-        self.tcx.emit_node_span_lint(
-            RESOLVING_TO_ITEMS_SHADOWING_SUPERTRAIT_ITEMS,
-            segment.hir_id,
-            segment.ident.span,
-            SupertraitItemShadowing { shadower, shadowee, item: segment.ident.name, subtrait },
-        );
     }
 
     fn lint_ambiguously_glob_imported_traits(

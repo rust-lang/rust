@@ -38,7 +38,9 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, AnonConst, GenericArg, GenericArgs, HirId};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::DynCompatibilityViolation;
-use rustc_lint_defs::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
+use rustc_lint_defs::builtin::{
+    AMBIGUOUS_ASSOCIATED_ITEMS, RESOLVING_TO_ITEMS_SHADOWING_SUPERTRAIT_ITEMS,
+};
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::middle::stability::AllowUnstable;
 use rustc_middle::ty::{
@@ -61,6 +63,57 @@ use crate::hir_ty_lowering::errors::{
 };
 use crate::hir_ty_lowering::generics::{check_generic_arg_count, lower_generic_args};
 use crate::middle::resolve_bound_vars as rbv;
+
+/// Lints if an associated item was resolved by shadowing supertrait items with
+/// the same name.
+pub fn lint_shadowed_supertrait_item_usage(
+    tcx: TyCtxt<'_>,
+    hir_id: HirId,
+    ident: Ident,
+    selected: ty::AssocItem,
+    shadowed: &[ty::AssocItem],
+) {
+    if shadowed.is_empty() {
+        return;
+    }
+
+    // Deduplicate multiple instances of the same trait with different generic arguments.
+    let mut seen = FxHashSet::default();
+    let shadowed: Vec<_> = shadowed.iter().filter(|item| seen.insert(item.def_id)).collect();
+
+    let shadower_span = tcx.def_span(selected.def_id);
+    let subtrait = tcx.item_name(selected.trait_container(tcx).unwrap());
+    let shadower = diagnostics::SupertraitItemUsageShadower { span: shadower_span, subtrait };
+
+    let shadowee = if let [shadowee] = &shadowed[..] {
+        let shadowee_span = tcx.def_span(shadowee.def_id);
+        let supertrait = tcx.item_name(shadowee.trait_container(tcx).unwrap());
+        diagnostics::SupertraitItemUsageShadowee::Labeled { span: shadowee_span, supertrait }
+    } else {
+        let (traits, spans): (Vec<_>, Vec<_>) = shadowed
+            .iter()
+            .map(|item| {
+                (tcx.item_name(item.trait_container(tcx).unwrap()), tcx.def_span(item.def_id))
+            })
+            .unzip();
+        diagnostics::SupertraitItemUsageShadowee::Several {
+            traits: traits.into(),
+            spans: spans.into(),
+        }
+    };
+
+    tcx.emit_node_span_lint(
+        RESOLVING_TO_ITEMS_SHADOWING_SUPERTRAIT_ITEMS,
+        hir_id,
+        ident.span,
+        diagnostics::SupertraitItemShadowingUsage {
+            shadower,
+            shadowee,
+            item: ident.name,
+            subtrait,
+        },
+    );
+}
 
 /// The context in which an implied bound is being added to a item being lowered (i.e. a sizedness
 /// trait or a default trait)
@@ -1248,6 +1301,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         ty_param_span: Span,
         assoc_tag: ty::AssocTag,
         assoc_ident: Ident,
+        hir_id: HirId,
         span: Span,
     ) -> Result<ty::PolyTraitRef<'tcx>, ErrorGuaranteed> {
         debug!(?ty_param_def_id, ?assoc_ident, ?span);
@@ -1267,6 +1321,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             AssocItemQSelf::TyParam(ty_param_def_id, ty_param_span),
             assoc_tag,
             assoc_ident,
+            hir_id,
             span,
             None,
         )
@@ -1284,14 +1339,21 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         qself: AssocItemQSelf,
         assoc_tag: ty::AssocTag,
         assoc_ident: Ident,
+        hir_id: HirId,
         span: Span,
         constraint: Option<&hir::AssocItemConstraint<'_>>,
     ) -> Result<ty::PolyTraitRef<'tcx>, ErrorGuaranteed>
     where
         I: Iterator<Item = ty::PolyTraitRef<'tcx>>,
     {
-        let mut matching_candidates = all_candidates().filter(|r| {
-            self.probe_trait_that_defines_assoc_item(r.def_id(), assoc_tag, assoc_ident)
+        let mut matching_candidates = all_candidates().filter_map(|bound| {
+            let item = self.tcx().associated_items(bound.def_id()).find_by_ident_and_kind(
+                self.tcx(),
+                assoc_ident,
+                assoc_tag,
+                bound.def_id(),
+            )?;
+            Some((bound, *item))
         });
 
         let Some(bound1) = matching_candidates.next() else {
@@ -1310,13 +1372,23 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 [bound1, bound2].into_iter().chain(matching_candidates).collect();
             if self.tcx().features().supertrait_item_shadowing() {
                 let candidate_traits: Vec<_> =
-                    all_matching_candidates.iter().map(|bound| bound.def_id()).collect();
+                    all_matching_candidates.iter().map(|(bound, _)| bound.def_id()).collect();
                 if let Some(selected) = ty::util::unique_subtrait(self.tcx(), &candidate_traits) {
-                    all_matching_candidates.retain(|bound| bound.def_id() == selected);
+                    let shadowed_items: Vec<_> = all_matching_candidates
+                        .extract_if(.., |(bound, _)| bound.def_id() != selected)
+                        .map(|(_, item)| item)
+                        .collect();
 
                     // Shadowing selects a trait, but cannot disambiguate
                     // different instantiations of that trait.
-                    if let [bound] = all_matching_candidates[..] {
+                    if let [(bound, selected_item)] = all_matching_candidates[..] {
+                        lint_shadowed_supertrait_item_usage(
+                            self.tcx(),
+                            hir_id,
+                            assoc_ident,
+                            selected_item,
+                            &shadowed_items,
+                        );
                         return Ok(bound);
                     }
                 }
@@ -1332,7 +1404,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             ));
         }
 
-        Ok(bound1)
+        Ok(bound1.0)
     }
 
     /// Lower a [type-relative](hir::QPath::TypeRelative) path in type position to a type.
@@ -1595,6 +1667,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     AssocItemQSelf::SelfTyAlias,
                     assoc_tag,
                     segment.ident,
+                    qpath_hir_id,
                     span,
                     None,
                 )?
@@ -1607,6 +1680,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 hir_self_ty.span,
                 assoc_tag,
                 segment.ident,
+                qpath_hir_id,
                 span,
             )?,
             _ => {
