@@ -232,6 +232,9 @@ fn show_fieldless_enum(
     def: &EnumDef,
     type_ident: Ident,
 ) -> BlockOrExpr {
+    if let Some(expr) = show_fieldless_enum_concat_str(cx, span, def, type_ident) {
+        return BlockOrExpr::new_expr(expr);
+    }
     let fmt = cx.expr_name(span, sym::f);
     let arms = def
         .variants
@@ -255,4 +258,95 @@ fn show_fieldless_enum(
     let name = cx.expr_match(span, cx.expr_self(span), arms);
     let fn_path_write_str = cx.std_path(span, &[sym::fmt, sym::Formatter, sym::write_str]);
     BlockOrExpr::new_expr(cx.expr_call_global(span, fn_path_write_str, thin_vec![fmt, name]))
+}
+
+/// Special case for large enums with no fields. Builds:
+/// ```text
+/// impl ::core::fmt::Debug for A {
+///     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+///         ::core::fmt::Formatter::debug_c_like_enum_write_str(f,
+///             "A B C D E F",
+///             match self {
+///                 A::A => 0usize,
+///                 A::B => 2usize,
+///                 A::C => 4usize,
+///                 A::D => 6usize,
+///                 A::E => 8usize,
+///                 A::F => 10usize,
+///             })
+///     }
+/// }
+/// ```
+fn show_fieldless_enum_concat_str(
+    cx: &ExtCtxt<'_>,
+    span: Span,
+    def: &EnumDef,
+    type_ident: Ident,
+) -> Option<Box<ast::Expr>> {
+    // Minimum variant count where this optimization starts to pay off.
+    // Initial value of 10 came from https://github.com/rust-lang/rust/pull/155452.
+    // Refined with the new impl in https://github.com/rust-lang/rust/pull/162535.
+    // Tested with thresholds 10,5,2 on rustc-perf
+    // and by comparing MIR sizes for various enums in GodBolt.
+    //
+    // `match` with strings generates:
+    //  - a local for each arm
+    //  - a basic block with 5 statements for each arm,
+    //
+    // `match` with integers to index a concatenated string generates
+    //  - a single local for the string
+    //  - a single local for the index
+    //  - a basic block with 2 statements for each arm
+    //
+    // This reduces borrowck costs on larger enums.
+    const THRESHOLD: usize = 5;
+    let variants_count = def.variants.len();
+    if variants_count < THRESHOLD {
+        return None;
+    }
+    let fmt = cx.expr_name(span, sym::f);
+
+    let mut concatenated_names = String::new();
+
+    let arms = def
+        .variants
+        .iter()
+        .enumerate()
+        .map(|(i, v)| {
+            let name_offset = concatenated_names.len();
+
+            let name = v.ident.name.as_str();
+            concatenated_names.push_str(name);
+
+            let is_last = i == def.variants.len() - 1;
+            if !is_last {
+                concatenated_names.push(' ');
+            }
+
+            let variant_path = cx.path(span, &[type_ident, v.ident]);
+            let pat = match &v.data {
+                ast::VariantData::Tuple(fields, _) => {
+                    debug_assert!(fields.is_empty());
+                    cx.pat_tuple_struct(span, variant_path, ThinVec::new())
+                }
+                ast::VariantData::Struct { fields, .. } => {
+                    debug_assert!(fields.is_empty());
+                    cx.pat_struct(span, variant_path, ThinVec::new())
+                }
+                ast::VariantData::Unit(_) => cx.pat_path(span, variant_path),
+            };
+
+            cx.arm(span, pat, cx.expr_usize(span, name_offset))
+        })
+        .collect::<ThinVec<_>>();
+
+    let names_str_body = cx.expr_str(span, Symbol::intern(&concatenated_names));
+
+    let variant_index_expr = cx.expr_match(span, cx.expr_self(span), arms);
+
+    let fn_path = cx.std_path(span, &[sym::fmt, sym::Formatter, sym::debug_c_like_enum_write_str]);
+    let call_expr =
+        cx.expr_call_global(span, fn_path, thin_vec![fmt, names_str_body, variant_index_expr]);
+
+    Some(call_expr)
 }

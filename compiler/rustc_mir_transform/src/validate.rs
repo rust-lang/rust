@@ -716,24 +716,19 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     // Debug info is allowed to project into pattern types
                     ty::Pat(base, _) => check_equal(self, location, *base),
                     ty::Adt(adt_def, args) => {
-                        // see <https://github.com/rust-lang/rust/blob/7601adcc764d42c9f2984082b49948af652df986/compiler/rustc_middle/src/ty/layout.rs#L861-L864>
-                        if self.tcx.is_lang_item(adt_def.did(), LangItem::DynMetadata) {
-                            self.fail(
-                                location,
-                                format!(
-                                    "You can't project to field {f:?} of `DynMetadata` because \
+                        if !adt_def.can_project_fields(self.tcx) {
+                            let message =
+                                if self.tcx.is_lang_item(adt_def.did(), LangItem::DynMetadata) {
+                                    format!(
+                                        "You can't project to field {f:?} of `DynMetadata` because \
                                      layout is weird and thinks it doesn't have fields."
-                                ),
-                            );
-                        }
-
-                        if adt_def.repr().simd() || adt_def.repr().scalable() {
-                            self.fail(
-                                location,
-                                format!(
-                                    "Projecting into SIMD type {adt_def:?} is banned by MCP#838"
-                                ),
-                            );
+                                    )
+                                } else {
+                                    format!(
+                                        "Projecting into SIMD type {adt_def:?} is banned by MCP#838"
+                                    )
+                                };
+                            self.fail(location, message);
                         }
 
                         let var = parent_ty.variant_index.unwrap_or(FIRST_VARIANT);

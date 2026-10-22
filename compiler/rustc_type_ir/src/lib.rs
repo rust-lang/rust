@@ -375,6 +375,7 @@ rustc_index::newtype_index! {
     /// type -- an idealized representative of "types in general" that we
     /// use for checking generic functions.
     #[stable_hash]
+    #[default]
     #[encodable]
     #[orderable]
     #[debug_format = "U{}"]
@@ -419,12 +420,6 @@ impl UniverseIndex {
     /// Returns `true` if `self` is the root universe, otherwise false.
     pub fn is_root(self) -> bool {
         self == Self::ROOT
-    }
-}
-
-impl Default for UniverseIndex {
-    fn default() -> Self {
-        Self::ROOT
     }
 }
 

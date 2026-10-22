@@ -2299,19 +2299,21 @@ pub(crate) enum InvalidNanComparisons {
 #[derive(Subdiagnostic)]
 pub(crate) enum InvalidNanComparisonsSuggestion {
     #[multipart_suggestion(
-        "use `f32::is_nan()` or `f64::is_nan()` instead",
+        "use the `is_nan` method instead",
         style = "verbose",
         applicability = "machine-applicable"
     )]
-    Spanful {
-        #[suggestion_part(code = "!")]
-        neg: Option<Span>,
-        #[suggestion_part(code = ".is_nan()")]
-        float: Span,
+    Ufcs {
+        prefix: String,
+        #[suggestion_part(code = "{prefix}")]
+        prefix_span: Span,
+        suffix: &'static str,
+        #[suggestion_part(code = "{suffix}")]
+        close_span: Span,
         #[suggestion_part(code = "")]
-        nan_plus_binop: Span,
+        remove_nan: Span,
     },
-    #[help("use `f32::is_nan()` or `f64::is_nan()` instead")]
+    #[help("use the `is_nan` method instead")]
     Spanless,
 }
 

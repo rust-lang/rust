@@ -2403,6 +2403,8 @@ options! {
     assumptions_on_binders: bool = (false, parse_bool, [TRACKED],
         "allow deducing higher-ranked outlives assumptions from all binders (`for<'a>`); \
          implies `-Znext-solver=globally`"),
+    async_panic: bool = (true, parse_bool, [TRACKED],
+        "let async blocks and functions panic when polled after completion"),
     autodiff: Vec<crate::config::AutoDiff> = (Vec::new(), parse_autodiff, [TRACKED],
         "a list of autodiff flags to enable
         Mandatory setting:
@@ -2690,7 +2692,7 @@ options! {
         "include extra comments in mir pretty printing, like line numbers and statement indices, \
          details about types, etc. (boolean for all passes, 'nll' to enable in NLL MIR only, default: 'nll')"),
     mir_move_elimination: bool = (false, parse_bool, [TRACKED],
-        "enable the experimental MIR move elimination pass (default: no)"),
+        "enable the experimental MIR semantics for the move elimination optimization (default: no)"),
     mir_opt_bisect_limit: Option<usize> = (None, parse_opt_number, [TRACKED],
         "limit the number of MIR optimization pass executions (global across all bodies). \
         Pass executions after this limit are skipped and reported. (default: no limit)"),

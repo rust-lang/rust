@@ -23,11 +23,13 @@ mod to_reuse {
     fn foo_no_reason(x: usize) -> usize { x }
 
     #[attr = Cold]
-    #[attr = Deprecated {deprecation: Deprecation {since: Unspecified}}]
+    #[attr = Deprecated {deprecation: Deprecation {since: Unspecified},
+    is_inner: false}]
     fn bar(x: usize) -> usize { x }
 }
 
-#[attr = Deprecated {deprecation: Deprecation {since: Unspecified}}]
+#[attr = Deprecated {deprecation: Deprecation {since: Unspecified},
+is_inner: false}]
 #[attr = MustUse {reason: "foo: some reason"}]
 #[attr = Inline(Hint)]
 fn foo1(arg0: _) -> _ { to_reuse::foo(self + 1) }
@@ -36,7 +38,8 @@ fn foo1(arg0: _) -> _ { to_reuse::foo(self + 1) }
 #[attr = Inline(Hint)]
 fn foo_no_reason(arg0: _) -> _ { to_reuse::foo_no_reason(self + 1) }
 
-#[attr = Deprecated {deprecation: Deprecation {since: Unspecified}}]
+#[attr = Deprecated {deprecation: Deprecation {since: Unspecified},
+is_inner: false}]
 #[attr = MustUse {reason: "some reason"}]
 #[attr = Inline(Hint)]
 fn foo2(arg0: _) -> _ { to_reuse::foo(self + 1) }

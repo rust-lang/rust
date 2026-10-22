@@ -3268,10 +3268,6 @@ fn test_dir_rename_file() {
     assert_eq!(b"bar", &buf);
 }
 
-// FIXME: re-enable once QNX fixes TOCTOU bug for fs::remove_dir
-// Note that it may get fixed in QNX 8 in a future libc release
-// ... https://github.com/rust-lang/rust/issues/153781
-#[cfg_attr(any(target_os = "nto", target_os = "qnx"), ignore)]
 #[test]
 fn test_dir_remove_dir() {
     let tmpdir = tmpdir();
@@ -3339,6 +3335,19 @@ fn test_dir_metadata() {
     let metadata = check!(dir.symlink_metadata("link"));
     assert!(!metadata.is_file());
     assert!(metadata.is_symlink());
+}
+
+#[test]
+fn test_read_dir_dir() {
+    let tmpdir = tmpdir();
+    check!(fs::write(tmpdir.path().join("file.txt"), b"hello"));
+
+    let read_dir = check!(fs::read_dir(tmpdir.path()));
+    let dir = check!(read_dir.dir());
+    let mut f = check!(dir.open_file("file.txt"));
+    let mut data = vec![];
+    check!(f.read_to_end(&mut data));
+    assert_eq!(data, b"hello");
 }
 
 fn root_test_dir(what: &str) -> PathBuf {

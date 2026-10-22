@@ -1,0 +1,41 @@
+- // MIR for `constant_index_projected` before MoveElimination
++ // MIR for `constant_index_projected` after MoveElimination
+  
+  fn constant_index_projected(_1: [[u8; 4]; 2]) -> () {
+      debug array => _1;
+      let mut _0: ();
+      let _2: [u8; 4];
+      let _3: [u8; 4];
+      let mut _4: [u8; 4];
+      scope 1 {
+-         debug first => _2;
++         debug first => _1[0 of 2];
+      }
+  
+      bb0: {
+-         StorageLive(_2);
+-         _2 = copy _1[0 of 2];
+-         StorageLive(_3);
+-         StorageLive(_4);
+-         _4 = copy _2;
+-         _3 = std::hint::black_box::<[u8; 4]>(move _4) -> [return: bb1, unwind unreachable];
++         nop;
++         nop;
++         nop;
++         nop;
++         nop;
++         _3 = std::hint::black_box::<[u8; 4]>(move _1[0 of 2]) -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+-         StorageDead(_4);
+-         StorageDead(_3);
++         nop;
++         nop;
+          _0 = const ();
+-         StorageDead(_2);
++         nop;
+          return;
+      }
+  }
+  

@@ -3,6 +3,37 @@ struct Dog {
     age: u32,
 }
 
+pub mod foo {
+    pub struct Bar {
+        pub field1: (),
+        field2: (),
+    }
+    impl Bar {
+        pub fn new() -> Self {
+            Bar {
+                field1: (),
+                field2: (),
+            }
+        }
+    }
+    pub struct Baz {
+        pub field1: (),
+        pub field2: (),
+        pub field3: (),
+        field4: (),
+    }
+    impl Baz {
+        pub fn new() -> Self {
+            Baz {
+                field1: (),
+                field2: (),
+                field3: (),
+                field4: (),
+            }
+        }
+    }
+}
+
 
 fn main() {
     let d = Dog { name: "Rusty".to_string(), age: 8 };
@@ -19,6 +50,18 @@ fn main() {
         Dog { name: x  , } => {} //~ ERROR pattern does not mention field `age`
     }
     match d {
-        Dog {} => {} //~ ERROR pattern does not mention fields `name`, `age`
+        Dog {} => {} //~ ERROR pattern does not mention fields `name` and `age`
+    }
+    match foo::Bar::new() {
+        foo::Bar {} => {} //~ ERROR pattern does not mention field `field1` and inaccessible fields
+    }
+    match foo::Baz::new() {
+        foo::Baz {} => {} //~ ERROR pattern does not mention fields `field1`, `field2`, `field3` and inaccessible fields
+    }
+    match foo::Baz::new() {
+        foo::Baz { field1 } => {} //~ ERROR pattern does not mention fields `field2`, `field3` and inaccessible fields
+    }
+    match foo::Baz::new() {
+        foo::Baz { field1, field2, field3 } => {} //~ ERROR pattern requires `..` due to inaccessible fields
     }
 }
