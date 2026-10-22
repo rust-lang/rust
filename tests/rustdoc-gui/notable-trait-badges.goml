@@ -21,10 +21,26 @@ define-function: (
         })
         store-css: (".top-doc > .docblock", {"margin-left": top_docblock_margin_left})
         assert-css: (".notable-trait-badge-container", {"margin-left": |top_docblock_margin_left|})
+
+        set-window-size: (1280, 1024)
         store-position: (".top-doc > .docblock", {"x": top_docblock_x})
         assert-position: (".notable-trait-badge-container", {"x": |top_docblock_x|})
         store-position: (".top-doc > summary::before", {"x": top_docblock_toggle_x})
         assert-position: (".notable-trait-badge-container > a.tooltip", {"x": |top_docblock_toggle_x|})
+        store-position: (".notable-trait-badge-container > a.tooltip + a", {"x": notable_trait_badge_first_x})
+        store-position: (".notable-trait-badge-container > a.tooltip", {"x": notable_trait_tooltip_x})
+        store-size: (".notable-trait-badge-container > a.tooltip", {"width": notable_trait_tooltip_width})
+        assert: |notable_trait_tooltip_x| + |notable_trait_tooltip_width| < |notable_trait_badge_first_x|
+
+        set-window-size: (320, 480)
+        store-position: (".top-doc > .docblock", {"x": top_docblock_x})
+        assert-position: (".notable-trait-badge-container", {"x": |top_docblock_x|})
+        store-position: (".top-doc > summary::before", {"x": top_docblock_toggle_x})
+        assert-position: (".notable-trait-badge-container > a.tooltip", {"x": |top_docblock_toggle_x|})
+        store-position: (".notable-trait-badge-container > a.tooltip + a", {"x": notable_trait_badge_first_x})
+        store-position: (".notable-trait-badge-container > a.tooltip", {"x": notable_trait_tooltip_x})
+        store-size: (".notable-trait-badge-container > a.tooltip", {"width": notable_trait_tooltip_width})
+        assert: |notable_trait_tooltip_x| + |notable_trait_tooltip_width| < |notable_trait_badge_first_x|
     }
 )
 call-function: ("switch-theme", {"theme": "dark"})

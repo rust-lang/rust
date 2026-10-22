@@ -1682,6 +1682,7 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	line-height: 1.5rem;
 	vertical-align: center;
 	left: calc(-1 * var(--docblock-indent));
+	text-decoration: none;
 }
 
 .notable-trait-badge-container > a:not(.tooltip) {
@@ -2980,6 +2981,10 @@ in src-script.js and main.js
 	#main-content > details.toggle > summary::before,
 	#main-content > div > details.toggle > summary::before {
 		left: -11px;
+	}
+
+	.notable-trait-badge-container > a.tooltip {
+		left: calc(-1 * var(--docblock-indent) - 11px);
 	}
 
 	/* sidebar button becomes topbar button */
