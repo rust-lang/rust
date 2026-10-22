@@ -115,7 +115,7 @@ fn parse_notable_trait(
             }
         }
         ArgParser::NameValue(_) => {
-            // FIXME(notriddle): every invalid notable trait attribute lint produces exactly
+            // FIXME(164728): every invalid notable trait attribute lint produces exactly
             // the same warning and we should switch to more specific diagnostics
             cx.emit_lint(INVALID_DOC_ATTRIBUTES, InvalidNotableTraitAttr, span);
             return;
@@ -125,7 +125,7 @@ fn parse_notable_trait(
     let notable_trait_color_and_span =
         if let Some(notable_trait_color_attr) = notable_trait_color_attr {
             let Some(notable_trait_color_attr) = notable_trait_color_attr.meta_item() else {
-                // FIXME(notriddle): every invalid notable trait attribute lint produces exactly
+                // FIXME(164728): every invalid notable trait attribute lint produces exactly
                 // the same warning and we should switch to more specific diagnostics
                 cx.emit_lint(INVALID_DOC_ATTRIBUTES, InvalidNotableTraitAttr, span);
                 return;
