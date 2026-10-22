@@ -2,6 +2,10 @@
 //@revisions: isolation no_isolation
 //@[no_isolation]compile-flags: -Zmiri-disable-isolation
 
+#[path = "../../utils/libc.rs"]
+mod libc_utils;
+use libc_utils::{errno_check, errno_result};
+
 fn main() {
     test_getentropy();
     #[cfg(not(target_os = "macos"))]
@@ -16,9 +20,10 @@ fn test_getentropy() {
     let mut buf1 = [0u8; 256];
     let mut buf2 = [0u8; 257];
     unsafe {
-        assert_eq!(getentropy(buf1.as_mut_ptr() as *mut libc::c_void, buf1.len()), 0);
-        assert_eq!(getentropy(buf2.as_mut_ptr() as *mut libc::c_void, buf2.len()), -1);
-        assert_eq!(std::io::Error::last_os_error().raw_os_error().unwrap(), libc::EIO);
+        errno_check(getentropy(buf1.as_mut_ptr() as *mut libc::c_void, buf1.len()));
+        let error = errno_result(getentropy(buf2.as_mut_ptr() as *mut libc::c_void, buf2.len()))
+            .unwrap_err();
+        assert_eq!(error.raw_os_error().unwrap(), libc::EIO);
     }
 }
 
