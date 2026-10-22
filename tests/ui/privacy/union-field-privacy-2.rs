@@ -13,3 +13,5 @@ fn main() {
     let b = u.b; // OK
     let c = u.c; //~ ERROR field `c` of union `U` is private
 }
+
+//@ reference: items.union.ref.use
