@@ -94,7 +94,7 @@ fn show_substructure(
             (false, 0)
         }
         ast::VariantData::Tuple(..) => (false, 1),
-        ast::VariantData::Struct { .. } => (true, 2),
+        ast::VariantData::Struct { .. } => (true, 1),
     };
 
     // The number of fields that can be handled without an array.
@@ -125,16 +125,28 @@ fn show_substructure(
         };
         let fn_path_debug = cx.std_path(span, &[sym::fmt, sym::Formatter, Symbol::intern(&debug)]);
 
-        let mut args = ThinVec::with_capacity(2 + fields.len() * args_per_field);
-        args.extend([fmt, name]);
+        let mut args = ThinVec::with_capacity(3 + fields.len() * args_per_field);
+        args.extend([fmt]);
+
+        let mut names = String::new();
+        if is_struct {
+            names.push_str(ident.name.as_str())
+        } else {
+            args.push(name);
+        };
+
         for (i, field) in fields.into_iter().enumerate() {
             if is_struct {
-                let name = cx.expr_str(field.span, field.name.unwrap().name);
-                args.push(name);
+                names.push(' ');
+                names.push_str(field.name.unwrap().name.as_str());
             }
 
             let field = expr_for_field(field, i);
             args.push(field);
+        }
+        if is_struct {
+            let name_expr = cx.expr_str(span, Symbol::intern(&names));
+            args.push(name_expr);
         }
         let expr = cx.expr_call_global(span, fn_path_debug, args);
         BlockOrExpr::new_expr(expr)
