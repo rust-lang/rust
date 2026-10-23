@@ -1110,11 +1110,13 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
     // There is no point in prefetching hir owners when parallel compiler is
     // disabled, `print_hir_stats`, `check_crate` or `hir_crate_items` below will do it.
     if is_parallel {
-        tcx.untracked().definitions.write().commit_end_of_determinism();
+        // Prefetch this as it is invoked in each `lower_to_hir`.
         tcx.ensure_done().resolve_type_relative_delegations(());
 
         let index = tcx.index_ast(());
 
+        // Invoke right before the parallel loop starts.
+        tcx.untracked().definitions.write().commit_end_of_determinism();
         par_range(0..index.len(), |idx| {
             let id = LocalDefId { local_def_index: DefIndex::from_usize(idx) };
 
