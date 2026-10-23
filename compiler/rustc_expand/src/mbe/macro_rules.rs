@@ -823,7 +823,7 @@ pub fn compile_declarative_macro(
                 return dummy_syn_ext(guar);
             }
             check_args_parens(sess, sym::attr, &p);
-            let args = parse_one_tt(&mut p, RulePart::Pattern, sess, node_id, features, edition);
+            let args = parse_one_tt(&mut p, RulePart::Pattern, sess, features, edition);
             check_emission(check_lhs(sess, features, node_id, &args));
             if let Some(guar) = check_no_eof(sess, &p, "expected macro attr body") {
                 return dummy_syn_ext(guar);
@@ -871,7 +871,7 @@ pub fn compile_declarative_macro(
             }
             (None, false)
         };
-        let lhs_tt = parse_one_tt(&mut p, RulePart::Pattern, sess, node_id, features, edition);
+        let lhs_tt = parse_one_tt(&mut p, RulePart::Pattern, sess, features, edition);
         check_emission(check_lhs(sess, features, node_id, &lhs_tt));
         if let Err(e) = p.expect(exp!(FatArrow)) {
             return dummy_syn_ext(e.emit_err());
@@ -879,7 +879,7 @@ pub fn compile_declarative_macro(
         if let Some(guar) = check_no_eof(sess, &p, "expected right-hand side of macro rule") {
             return dummy_syn_ext(guar);
         }
-        let rhs = parse_one_tt(&mut p, RulePart::Body, sess, node_id, features, edition);
+        let rhs = parse_one_tt(&mut p, RulePart::Body, sess, features, edition);
         check_emission(check_rhs(sess, &rhs));
         check_emission(check_meta_variables(&sess.psess, node_id, args.as_ref(), &lhs_tt, &rhs));
         let lhs_span = lhs_tt.span();
