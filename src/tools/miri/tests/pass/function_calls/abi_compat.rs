@@ -1,3 +1,5 @@
+#![feature(cfi_encoding)]
+
 use std::rc::Rc;
 use std::{mem, num, ptr};
 
@@ -77,6 +79,37 @@ fn test_abi_newtype<T: Copy + Default>() {
     test_abi_compat(t, mem::MaybeUninit::new(t));
 }
 
+/// The `#[cfi_encoding]` has the ability of changing the C struct tag,
+/// like `typedef struct Foo { int x; int y; } Bar;`, where `Foo` is the important name for ABI.
+/// In the future, we may want to use a better syntax for this mechanism which is not CFI specific,
+/// like `#[repr(C, tag = "Foo")]`
+fn test_abi_cfi_encoding() {
+    #[repr(C)]
+    #[derive(Copy, Clone)]
+    #[cfi_encoding = "10CfiEncoded"] // CFI encodings say that we should prefix the struct tag with its length
+    pub struct CfiEncoded1 {
+        pub x: i32,
+        pub y: i32,
+    }
+    #[repr(C)]
+    #[derive(Copy, Clone)]
+    #[cfi_encoding = "10CfiEncoded"]
+    pub struct CfiEncoded2 {
+        pub x: i32,
+        pub y: i32,
+    }
+    test_abi_compat(
+        CfiEncoded1 {
+            x: 2,
+            y: 6,
+        },
+        CfiEncoded2 {
+            x: 2,
+            y: 6,
+        },
+    );
+}
+
 fn main() {
     // Here we check some of the guaranteed ABI compatibilities:
     // - Different integer types of the same size and sign.
@@ -154,4 +187,6 @@ fn main() {
     // Make sure that does not break newtype wrapping for them.
     let non_capturing_closure = || {};
     test_abi_compat(non_capturing_closure.clone(), Wrapper(non_capturing_closure));
+
+    test_abi_cfi_encoding();
 }
