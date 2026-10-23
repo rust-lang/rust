@@ -1093,6 +1093,80 @@ impl char {
         }
     }
 
+    /// Returns `true` if this `char` has the `XID_Continue` property.
+    ///
+    /// `XID_Continue` is [specified] in the Unicode Character Database [`DerivedCoreProperties.txt`].
+    ///
+    /// [specified]: https://www.unicode.org/reports/tr31
+    /// [`DerivedCoreProperties.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/DerivedCoreProperties.txt
+    ///
+    /// New versions of Unicode may add new characters to this set, in accordance with its [stability policy].
+    /// This is *not* considered a [breaking change].
+    ///
+    /// [stability policy]: https://www.unicode.org/policies/stability_policy.html#Identifier
+    /// [breaking change]: char::UNICODE_VERSION
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(char_is_xid)]
+    ///
+    /// assert!('A'.is_xid_continue());
+    /// assert!('9'.is_xid_continue());
+    /// assert!('_'.is_xid_continue());
+    ///
+    /// assert!(!' '.is_xid_continue());
+    /// ```
+    #[must_use]
+    #[unstable(feature = "char_is_xid", issue = "none", reason = "to be created")]
+    #[inline]
+    pub fn is_xid_continue(self) -> bool {
+        match self {
+            'a'..='z' | 'A'..='Z' | '0'..='9' | '_' => true,
+            '\0'..='\u{A9}' => false,
+            _ => unicode::XID_Continue(self),
+        }
+    }
+
+    /// Returns `true` if this `char` has the `XID_Start` property.
+    ///
+    /// `XID_Start` is [specified] in the Unicode Character Database [`DerivedCoreProperties.txt`].
+    ///
+    /// [specified]: https://www.unicode.org/reports/tr31
+    /// [`DerivedCoreProperties.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/DerivedCoreProperties.txt
+    ///
+    /// New versions of Unicode may add new characters to this set, in accordance with its [stability policy].
+    /// This is *not* considered a [breaking change].
+    ///
+    /// [stability policy]: https://www.unicode.org/policies/stability_policy.html#Identifier
+    /// [breaking change]: char::UNICODE_VERSION
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(char_is_xid)]
+    ///
+    /// assert!('A'.is_xid_start());
+    ///
+    /// assert!(!' '.is_xid_start());
+    /// assert!(!'9'.is_xid_start());
+    /// assert!(!'_'.is_xid_start());
+    /// ```
+    #[must_use]
+    #[unstable(feature = "char_is_xid", issue = "none", reason = "to be created")]
+    #[inline]
+    pub fn is_xid_start(self) -> bool {
+        match self {
+            'a'..='z' | 'A'..='Z' => true,
+            '\0'..='\u{A9}' => false,
+            _ => unicode::XID_Start(self),
+        }
+    }
+
     /// Returns `true` if this `char` has the general category for control codes.
     ///
     /// Control codes (code points with the general category of `Cc`) are [described] in Chapter 23
