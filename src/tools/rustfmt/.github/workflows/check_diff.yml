@@ -67,6 +67,7 @@ jobs:
         GITHUB_EVENT_INPUTS_CLONE_URL: ${{ github.event.inputs.clone_url }}
         GITHUB_EVENT_INPUTS_BRANCH_NAME: ${{ github.event.inputs.branch_name }}
         GITHUB_EVENT_INPUTS_LANGUAGE_EDITION: ${{ github.event.inputs.language_edition }}
+        GITHUB_EVENT_INPUTS_STYLE_EDITION: ${{ github.event.inputs.style_edition }}
       shell: bash
       run: |
         OPTIONS=""
@@ -81,5 +82,5 @@ jobs:
 
         target/release/check_diff ${GITHUB_EVENT_INPUTS_CLONE_URL} ${GITHUB_EVENT_INPUTS_BRANCH_NAME} \
           --edition ${GITHUB_EVENT_INPUTS_LANGUAGE_EDITION} \
-          --style-edition ${{ github.event.inputs.style_edition }} \
+          --style-edition ${GITHUB_EVENT_INPUTS_STYLE_EDITION} \
           $OPTIONS
