@@ -839,7 +839,7 @@ symbols! {
         deref_target,
         derive,
         derive_const,
-        derive_const_issue: "118304",
+        derive_const_issue: "143874",
         derive_default_enum,
         derive_from,
         derive_smart_pointer,
