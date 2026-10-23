@@ -53,7 +53,7 @@ rustc_index::newtype_index! {
     /// A `SyntaxContext` represents a chain of pairs `(ExpnId, Transparency)` named "marks".
     ///
     /// See <https://rustc-dev-guide.rust-lang.org/macro-expansion.html> for more explanation.
-    #[max = 0x1FFF_FFFF] // `u32::MAX` >> 3, as `SyntaxContext` should be fit in 29 bits (see `span_encoding`).
+    //#[max = 0x1FFF_FFFF] // `u32::MAX` >> 3, as `SyntaxContext` should be fit in 29 bits (see `span_encoding`).
     #[debug_format = "#{}"]
     #[default]
     pub struct SyntaxContext {}
@@ -1584,7 +1584,7 @@ rustc_index::newtype_index! {
     /// A syntax context that is obtained from metadata of an external crate and
     /// was not yet remapped to local `SyntaxContext`.
     #[encodable]
-    #[max = 0x1FFF_FFFF] // `u32::MAX` >> 3, as `SyntaxContext` should be fit in 29 bits (see `span_encoding`).
+    // #[max = 0x1FFF_FFFF] // `u32::MAX` >> 3, as `SyntaxContext` should be fit in 29 bits (see `span_encoding`).
     #[debug_format = "#decoded{}"]
     pub struct DecodedSyntaxContext {}
 }
