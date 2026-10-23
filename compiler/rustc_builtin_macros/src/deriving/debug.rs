@@ -206,7 +206,7 @@ fn show_substructure(
         };
         let fn_path_debug_internal = cx.std_path(span, &[sym::fmt, sym::Formatter, sym_debug]);
 
-        let mut args = ThinVec::with_capacity(4);
+        let mut args = ThinVec::with_capacity(3);
         args.push(fmt);
         if is_struct {
             args.push(cx.expr_name(span, sym::names));
