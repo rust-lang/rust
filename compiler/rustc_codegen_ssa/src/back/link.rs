@@ -1336,12 +1336,12 @@ fn link_natively(
         if matches!(flavor, LinkerFlavor::Gnu(Cc::Yes, Lld::Yes))
             && unknown_arg_regex.is_match(&out)
             && out.contains("-fuse-ld=lld")
-            && cmd.get_args().iter().any(|e| e.to_string_lossy() == "-fuse-ld=lld")
+            && cmd.get_args().iter().any(|e| e == "-fuse-ld=lld")
         {
             info!("linker output: {:?}", out);
             info!("The linker driver does not support `-fuse-ld=lld`. Retrying without it.");
             for arg in cmd.take_args() {
-                if arg.to_string_lossy() != "-fuse-ld=lld" {
+                if arg != "-fuse-ld=lld" {
                     cmd.arg(arg);
                 }
             }
@@ -1356,14 +1356,14 @@ fn link_natively(
         if matches!(flavor, LinkerFlavor::Gnu(Cc::Yes, _))
             && unknown_arg_regex.is_match(&out)
             && out.contains("fix-cortex-a53-843419")
-            && cmd.get_args().iter().any(|e| e.to_string_lossy() == "-mfix-cortex-a53-843419")
+            && cmd.get_args().iter().any(|e| e == "-mfix-cortex-a53-843419")
         {
             info!("linker output: {:?}", out);
             info!(
                 "The linker or linker driver do not support `fix-cortex-a53-843419`. Retrying without it."
             );
             for arg in cmd.take_args() {
-                if arg.to_string_lossy() != "-mfix-cortex-a53-843419" {
+                if arg != "-mfix-cortex-a53-843419" {
                     cmd.arg(arg);
                 }
             }
