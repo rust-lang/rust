@@ -4,6 +4,34 @@ use core::mem::MaybeUninit;
 use core::ptr::NonNull;
 
 #[test]
+fn try_clone_from_ref_in_zero_sized_type_skips_allocation() {
+    use std::alloc::Global;
+
+    struct CountingAllocator {
+        allocations: Cell<usize>,
+    }
+
+    unsafe impl Allocator for CountingAllocator {
+        fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+            self.allocations.set(self.allocations.get() + 1);
+            Global.allocate(layout)
+        }
+
+        unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
+            unsafe { Global.deallocate(ptr, layout) }
+        }
+    }
+
+    let alloc = CountingAllocator { allocations: Cell::new(0) };
+
+    let value = ();
+    let boxed = Box::try_clone_from_ref_in(&value, &alloc).unwrap();
+
+    assert_eq!(*boxed, ());
+    assert_eq!(alloc.allocations.get(), 0);
+}
+
+#[test]
 #[expect(dangling_pointers_from_temporaries)]
 fn uninitialized_zero_size_box() {
     assert_eq!(
