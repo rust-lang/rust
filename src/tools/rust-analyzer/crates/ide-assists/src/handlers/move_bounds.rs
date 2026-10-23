@@ -153,6 +153,20 @@ mod tests {
     fn move_bounds_to_where_clause_type_alias() {
         check_assist(
             move_bounds_to_where_clause,
+            r#"type Ty<$0T: Copy>;"#,
+            r#"type Ty<T> where T: Copy;"#,
+        );
+        check_assist(
+            move_bounds_to_where_clause,
+            r#"type Ty<$0T: Copy> = ();"#,
+            r#"type Ty<T> where T: Copy = ();"#,
+        );
+    }
+
+    #[test]
+    fn move_bounds_to_where_clause_assoc_type_alias() {
+        check_assist(
+            move_bounds_to_where_clause,
             r#"trait T { type Gat<$0T: Copy>; }"#,
             r#"trait T { type Gat<T> where T: Copy; }"#,
         );
