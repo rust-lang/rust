@@ -175,7 +175,7 @@ struct ColdInvokeOutlinerPass
           }
           BasicBlock *NormalDest = II->getNormalDest();
           if (!NormalDest->phis().empty() ||
-              !isa<UnreachableInst>(NormalDest->getFirstNonPHIOrAlloca()))
+              !isa<UnreachableInst>(NormalDest->getFirstNonPHIIt()))
             continue;
           BasicBlock *UnwindDest = II->getUnwindDest();
           bool Valid = true;
