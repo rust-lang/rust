@@ -408,91 +408,67 @@ fn parse_tree(
     })
 }
 
-/// Takes a token and returns `Some(KleeneOp)` if the token is `+` `*` or `?`. Otherwise, return
-/// `None`.
-fn kleene_op(token: &Token) -> Option<KleeneOp> {
-    match token.kind {
-        token::Star => Some(KleeneOp::ZeroOrMore),
-        token::Plus => Some(KleeneOp::OneOrMore),
-        token::Question => Some(KleeneOp::ZeroOrOne),
-        _ => None,
-    }
-}
-
-/// Parse the next token tree of the input looking for a KleeneOp. Returns
+/// Parses a Kleene operator, possibly with a separator.
 ///
-/// - Ok(Ok((op, span))) if the next token tree is a KleeneOp
-/// - Ok(Err(tok, span)) if the next token tree is a token but not a KleeneOp
-/// - Err(span) if the next token tree is not a token
-fn parse_kleene_op(
-    parser: &mut Parser<'_>,
-    span: Span,
-) -> Result<Result<(KleeneOp, Span), Token>, Span> {
-    if parser.token.kind.is_close_delim_or_eof() {
-        return Err(span);
-    }
-
-    match parser.parse_token_tree() {
-        tokenstream::TokenTree::Token(token, _) => match kleene_op(&token) {
-            Some(op) => Ok(Ok((op, token.span))),
-            None => Ok(Err(token)),
-        },
-        tree => Err(tree.span()),
-    }
-}
-
-/// Attempt to parse a single Kleene star, possibly with a separator.
-///
-/// For example, in a pattern such as `$(a),*`, `a` is the pattern to be repeated, `,` is the
-/// separator, and `*` is the Kleene operator. This function is specifically concerned with parsing
-/// the last two tokens of such a pattern: namely, the optional separator and the Kleene operator
-/// itself. Note that here we are parsing the _macro_ itself, rather than trying to match some
-/// stream of tokens in an invocation of a macro.
-///
-/// This function will take some input iterator `iter` corresponding to `span` and a parsing
-/// session `sess`. If the next one (or possibly two) tokens in `iter` correspond to a Kleene
-/// operator and separator, then a tuple with `(separator, KleeneOp)` is returned. Otherwise, an
-/// error with the appropriate span is emitted to `sess` and a dummy value is returned.
+/// Parses `,*` in `$(a),*`. `parser` should be located at `,`; one or two token trees will be
+/// consumed. On failure, an error is emitted and a dummy value is returned.
 fn parse_sep_and_kleene_op(
     parser: &mut Parser<'_>,
     span: Span,
     sess: &Session,
 ) -> (Option<Token>, KleeneToken) {
-    // We basically look at two token trees here, denoted as #1 and #2 below
-    let span = match parse_kleene_op(parser, span) {
-        // #1 is a `?`, `+`, or `*` KleeneOp
-        Ok(Ok((op, span))) => return (None, KleeneToken::new(op, span)),
+    /// Identify a Kleene op.
+    fn kleene_op(token: &Token) -> Option<KleeneOp> {
+        match token.kind {
+            token::Star => Some(KleeneOp::ZeroOrMore),
+            token::Plus => Some(KleeneOp::OneOrMore),
+            token::Question => Some(KleeneOp::ZeroOrOne),
+            _ => None,
+        }
+    }
 
-        // #1 is a separator followed by #2, a KleeneOp
-        Ok(Err(token)) => match parse_kleene_op(parser, token.span) {
-            // #2 is the `?` Kleene op, which does not take a separator (error)
-            Ok(Ok((KleeneOp::ZeroOrOne, span))) => {
-                // Error!
-                sess.dcx().span_err(
-                    token.span,
-                    "the `?` macro repetition operator does not take a separator",
-                );
+    if let Some(op) = kleene_op(&parser.token) {
+        // Kleene op without a separator
+        let token = parser.token;
+        parser.bump();
+        (None, KleeneToken::new(op, token.span))
+    } else if !parser.token.kind.is_delim()
+        && let Some(op) = parser.look_ahead(1, kleene_op)
+    {
+        // Separator followed by a Kleene op
+        let token = parser.token;
+        parser.bump();
+        let kleene = parser.token;
+        parser.bump();
 
-                // Return a dummy
-                return (None, KleeneToken::new(KleeneOp::ZeroOrMore, span));
-            }
+        if let KleeneOp::ZeroOrOne = op {
+            sess.dcx().span_err(
+                token.span,
+                "the `?` macro repetition operator does not take a separator",
+            );
 
-            // #2 is a KleeneOp :D
-            Ok(Ok((op, span))) => return (Some(token), KleeneToken::new(op, span)),
+            // Recover by ignoring the separator.
+            return (None, KleeneToken::new(KleeneOp::ZeroOrMore, kleene.span));
+        }
 
-            // #2 is a random token or not a token at all :(
-            Ok(Err(Token { span, .. })) | Err(span) => span,
-        },
+        (Some(token), KleeneToken::new(op, kleene.span))
+    } else {
+        // No Kleene op found -- error
 
-        // #1 is not a token
-        Err(span) => span,
-    };
+        let span = if parser.token.kind.is_close_delim_or_eof() {
+            span
+        } else if parser.token.kind.open_delim().is_some() {
+            parser.parse_token_tree().span()
+        } else {
+            parser.bump(); // skip potential separator
+            parser.parse_token_tree().span()
+        };
 
-    // If we ever get to this point, we have experienced an "unexpected token" error
-    sess.dcx().span_err(span, "expected one of: `*`, `+`, or `?`");
+        sess.dcx().span_err(span, "expected one of: `*`, `+`, or `?`");
 
-    // Return a dummy
-    (None, KleeneToken::new(KleeneOp::ZeroOrMore, span))
+        // Recover using a dummy Kleene op.
+        (None, KleeneToken::new(KleeneOp::ZeroOrMore, span))
+    }
 }
 
 // `$$` or a meta-variable is the lhs of a macro but shouldn't.
