@@ -1,6 +1,6 @@
 use rustc_ast::token::{self, Delimiter, IdentKind, NonterminalKind, Token};
+use rustc_ast::tokenstream;
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan};
-use rustc_ast::{NodeId, tokenstream};
 use rustc_ast_pretty::pprust;
 use rustc_errors::Applicability;
 use rustc_feature::Features;
@@ -54,7 +54,6 @@ impl RulePart {
 ///     body of a macro rule -- just in the pattern.
 ///   - Metavariable expressions are only valid in the "body", not the "pattern".
 /// - `sess`: the parsing session. Any errors will be emitted to this session.
-/// - `node_id`: the NodeId of the macro we are parsing.
 /// - `features`: language features so we can do feature gating.
 ///
 /// # Returns
@@ -64,7 +63,6 @@ fn parse(
     parser: &mut Parser<'_>,
     part: RulePart,
     sess: &Session,
-    node_id: NodeId,
     features: &Features,
     edition: Edition,
 ) -> Vec<TokenTree> {
@@ -76,7 +74,7 @@ fn parse(
     while !parser.token.kind.is_close_delim_or_eof() {
         // Given the parsed tree, if there is a metavar and we are expecting matchers, actually
         // parse out the matcher (i.e., in `$id:ident` this would parse the `:` and `ident`).
-        let tree = parse_tree(parser, part, sess, node_id, features, edition);
+        let tree = parse_tree(parser, part, sess, features, edition);
 
         if part.is_body() {
             // No matchers allowed, nothing to process here
@@ -175,7 +173,6 @@ pub(super) fn parse_one_tt(
     parser: &mut Parser<'_>,
     part: RulePart,
     sess: &Session,
-    node_id: NodeId,
     features: &Features,
     edition: Edition,
 ) -> TokenTree {
@@ -188,7 +185,7 @@ pub(super) fn parse_one_tt(
 
     // Parse the delimited content.
     let (dspan, dspacing, delim, tts) =
-        parse_delimited(parser, |parser| parse(parser, part, sess, node_id, features, edition));
+        parse_delimited(parser, |parser| parse(parser, part, sess, features, edition));
 
     TokenTree::Delimited(dspan, dspacing, Delimited { delim, tts })
 }
@@ -277,7 +274,6 @@ fn parse_tree(
     parser: &mut Parser<'_>,
     part: RulePart,
     sess: &Session,
-    node_id: NodeId,
     features: &Features,
     edition: Edition,
 ) -> TokenTree {
@@ -289,9 +285,8 @@ fn parse_tree(
         } else {
             // `tree` is the beginning of a delimited set of tokens (e.g., `(` or `{`). We need to
             // descend into the delimited set and further parse it.
-            let (dspan, dspacing, delim, tts) = parse_delimited(parser, |parser| {
-                parse(parser, part, sess, node_id, features, edition)
-            });
+            let (dspan, dspacing, delim, tts) =
+                parse_delimited(parser, |parser| parse(parser, part, sess, features, edition));
             return TokenTree::Delimited(dspan, dspacing, Delimited { delim, tts });
         }
     };
@@ -305,7 +300,7 @@ fn parse_tree(
             // A repetition sequence in the macro (e.g. `$(pat)*`). Parse the contents of the sequence
             // itself
             let open_span = parser.prev_token.span;
-            let sequence = parse(parser, part, sess, node_id, features, edition);
+            let sequence = parse(parser, part, sess, features, edition);
             debug_assert_eq!(parser.token.kind, token::CloseParen);
             parser.bump();
             let close_span = parser.prev_token.span;
@@ -357,9 +352,8 @@ fn parse_tree(
             }
         } else if parser.token.kind.open_delim().is_some() {
             // Disallowed kind of delimiters.
-            let (dspan, _, delim, tts) = parse_delimited(parser, |parser| {
-                parse(parser, part, sess, node_id, features, edition)
-            });
+            let (dspan, _, delim, tts) =
+                parse_delimited(parser, |parser| parse(parser, part, sess, features, edition));
             if part.is_pattern() {
                 span_dollar_dollar_or_metavar_in_the_lhs_err(
                     sess,
