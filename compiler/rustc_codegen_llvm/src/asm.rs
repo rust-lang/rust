@@ -460,10 +460,7 @@ impl<'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
                                         self.alloc_to_backend(global_alloc, true, None).unwrap();
 
                                     self.add_compiler_used_global(llval);
-                                    let symbol = llvm::build_string(|s| unsafe {
-                                        llvm::LLVMRustGetMangledName(llval, s);
-                                    })
-                                    .expect("symbol is not valid UTF-8");
+                                    let symbol = get_mangled_name(llval);
                                     template_str
                                         .push_str(&escape_symbol_name(self.tcx, &symbol, span));
 
@@ -483,10 +480,7 @@ impl<'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
                                 .copied()
                                 .unwrap_or_else(|| self.get_static(def_id));
                             self.add_compiler_used_global(llval);
-                            let symbol = llvm::build_string(|s| unsafe {
-                                llvm::LLVMRustGetMangledName(llval, s);
-                            })
-                            .expect("symbol is not valid UTF-8");
+                            let symbol = get_mangled_name(llval);
                             template_str.push_str(&escape_symbol_name(self.tcx, &symbol, span));
                         }
                     }
@@ -526,11 +520,15 @@ impl<'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
 
     fn mangled_name(&self, instance: Instance<'tcx>) -> String {
         let llval = self.get_fn(instance);
-        llvm::build_string(|s| unsafe {
-            llvm::LLVMRustGetMangledName(llval, s);
-        })
-        .expect("symbol is not valid UTF-8")
+        get_mangled_name(llval)
     }
+}
+
+fn get_mangled_name(llval: &Value) -> String {
+    llvm::build_string(|s| unsafe {
+        llvm::LLVMRustGetMangledName(llval, s);
+    })
+    .expect("symbol is not valid UTF-8")
 }
 
 pub(crate) fn inline_asm_call<'ll>(
