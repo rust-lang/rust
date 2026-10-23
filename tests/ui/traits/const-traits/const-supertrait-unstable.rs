@@ -4,7 +4,9 @@
 //@ needs-target-std
 //@ ignore-backends: gcc
 
+//@ normalize-stderr: "dev release channel" -> "nightly release channel"
 //@ compile-flags: --check-cfg=cfg(feature_enabled)
+
 //@ revisions: stable stable-enabled nightly nightly-enabled
 //@[stable] act-as-stable
 //@[stable-enabled] act-as-stable
