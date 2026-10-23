@@ -1,5 +1,5 @@
-// Test that we check usage sites of lazy type aliases, aka free alias types, for well-formedness.
-// We check trailing where-clauses separately in `trailing-where-clause.rs`.
+// Test that we check usage sites of checked type aliases, aka free alias types,
+// for well-formedness. We check trailing where-clauses separately in `trailing-where-clause.rs`.
 
 #![feature(checked_type_aliases)]
 

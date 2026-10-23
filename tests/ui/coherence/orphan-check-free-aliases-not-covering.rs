@@ -1,4 +1,4 @@
-// Weak aliases might not cover type parameters.
+// Free alias types might not cover type parameters.
 
 //@ aux-crate:foreign=parametrized-trait.rs
 //@ edition:2021

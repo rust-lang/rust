@@ -215,7 +215,7 @@ Tests for the `--check-cfg` compiler mechanism  for checking cfg configurations,
 
 See [Checking conditional configurations | The rustc book](https://doc.rust-lang.org/rustc/check-cfg.html).
 
-## `tests/ui/checked-type-alias/`
+## `tests/ui/checked-type-aliases/`
 
 Tests for `#![feature(checked_type_aliases)]`. See [Tracking issue for checked type aliases](https://github.com/rust-lang/rust/issues/112792).
 
