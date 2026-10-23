@@ -119,6 +119,7 @@ LL |         reuse Trait::method { self.0 }
 note: method defined here
   --> $DIR/self-mapping-output.rs:194:12
    |
+LL |     trait Trait {
 LL |         fn method(&self) -> ();
    |            ^^^^^^  ----
 help: consider borrowing here
@@ -155,6 +156,8 @@ LL |         reuse Trait::raw_S { self.0 }
 note: method defined here
   --> $DIR/self-mapping-output.rs:196:12
    |
+LL |     trait Trait {
+...
 LL |         fn raw_S(&self) -> S { S }
    |            ^^^^^ -----
 help: consider borrowing here
@@ -175,6 +178,7 @@ LL |         reuse Trait::method { self.0 }
 note: method defined here
   --> $DIR/self-mapping-output.rs:194:12
    |
+LL |     trait Trait {
 LL |         fn method(&self) -> ();
    |            ^^^^^^  ----
 help: consider borrowing here
@@ -211,6 +215,8 @@ LL |         reuse Trait::raw_S { self.0 }
 note: method defined here
   --> $DIR/self-mapping-output.rs:196:12
    |
+LL |     trait Trait {
+...
 LL |         fn raw_S(&self) -> S { S }
    |            ^^^^^ -----
 help: consider borrowing here
@@ -232,6 +238,7 @@ LL |         reuse <F as Trait>::method { self.0 }
 note: method defined here
   --> $DIR/self-mapping-output.rs:232:12
    |
+LL |     trait Trait {
 LL |         fn method(&self) -> Self;
    |            ^^^^^^  ----
 
@@ -260,6 +267,8 @@ LL |         reuse <F as Trait>::raw_S { self.0 }
 note: method defined here
   --> $DIR/self-mapping-output.rs:234:12
    |
+LL |     trait Trait {
+...
 LL |         fn raw_S(&self) -> S { S }
    |            ^^^^^ -----
 
@@ -277,6 +286,7 @@ LL |         reuse <F as Trait>::method { self.0 }
 note: method defined here
   --> $DIR/self-mapping-output.rs:232:12
    |
+LL |     trait Trait {
 LL |         fn method(&self) -> Self;
    |            ^^^^^^  ----
 
@@ -305,6 +315,8 @@ LL |         reuse <F as Trait>::raw_S { self.0 }
 note: method defined here
   --> $DIR/self-mapping-output.rs:234:12
    |
+LL |     trait Trait {
+...
 LL |         fn raw_S(&self) -> S { S }
    |            ^^^^^ -----
 
@@ -322,6 +334,7 @@ LL |         reuse Trait::method { F }
 note: method defined here
   --> $DIR/self-mapping-output.rs:277:12
    |
+LL |     trait Trait {
 LL |         fn method(&self) -> Self;
    |            ^^^^^^  ----
 
@@ -339,6 +352,7 @@ LL |         reuse Trait::method { F }
 note: method defined here
   --> $DIR/self-mapping-output.rs:277:12
    |
+LL |     trait Trait {
 LL |         fn method(&self) -> Self;
    |            ^^^^^^  ----
 

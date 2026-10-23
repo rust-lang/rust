@@ -34,6 +34,7 @@ LL |     reuse <S as Trait>::description { &self.0 }
 note: method defined here
   --> $DIR/ice-issue-122550.rs:4:8
    |
+LL | trait Trait {
 LL |     fn description(&self) -> &str {}
    |        ^^^^^^^^^^^ -----
 

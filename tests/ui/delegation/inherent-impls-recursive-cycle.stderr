@@ -67,6 +67,7 @@ LL |     reuse Trait1::foo { self.0 }
 note: associated function defined here
   --> $DIR/inherent-impls-recursive-cycle.rs:4:31
    |
+LL | trait Trait1 {
 LL |     reuse trait_foo_reused as foo;
    |                               ^^^
 help: remove the extra argument
@@ -84,6 +85,7 @@ LL |     reuse S1::<()>::foo { self.0 }
 note: associated function defined here
   --> $DIR/inherent-impls-recursive-cycle.rs:12:19
    |
+LL | impl<T: Trait1> S1<T> {
 LL |     reuse Trait1::foo { self.0 }
    |                   ^^^
 help: remove the extra argument
@@ -101,6 +103,7 @@ LL |     reuse S2::foo { S2(S1(())) }
 note: associated function defined here
   --> $DIR/inherent-impls-recursive-cycle.rs:19:21
    |
+LL | impl S2 {
 LL |     reuse S1::<()>::foo { self.0 }
    |                     ^^^
 help: remove the extra argument
@@ -118,6 +121,7 @@ LL |     reuse <S3 as Trait1>::foo { S3 }
 note: associated function defined here
   --> $DIR/inherent-impls-recursive-cycle.rs:4:31
    |
+LL | trait Trait1 {
 LL |     reuse trait_foo_reused as foo;
    |                               ^^^
 help: remove the extra argument
