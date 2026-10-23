@@ -437,7 +437,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(result, dest)?;
             }
             "rename" => {
-                // FIXME: This does not have a direct test (#3179).
                 let [oldpath, newpath] = &this.check_shim_sig(
                     shim_sig!(extern "C" fn(*_, *_) -> i32),
                     (link_name, abi, args),
