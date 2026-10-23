@@ -75,13 +75,13 @@ fn show_substructure(
         _ => cx.dcx().span_bug(span, "unexpected substructure in `derive(Debug)`"),
     };
 
-    let name = cx.expr_str(span, ident.name);
+    let expr_name = cx.expr_str(span, ident.name);
     let fmt = cx.expr_name(span, sym::f);
 
     // Fieldless enums have been special-cased earlier
     if fmt_detail == FmtDebug::Shallow {
         let fn_path_write_str = cx.std_path(span, &[sym::fmt, sym::Formatter, sym::write_str]);
-        let expr = cx.expr_call_global(span, fn_path_write_str, thin_vec![fmt, name]);
+        let expr = cx.expr_call_global(span, fn_path_write_str, thin_vec![fmt, expr_name]);
         return BlockOrExpr::new_expr(expr);
     }
 
@@ -114,7 +114,7 @@ fn show_substructure(
     if fields.is_empty() {
         // Special case for no fields.
         let fn_path_write_str = cx.std_path(span, &[sym::fmt, sym::Formatter, sym::write_str]);
-        let expr = cx.expr_call_global(span, fn_path_write_str, thin_vec![fmt, name]);
+        let expr = cx.expr_call_global(span, fn_path_write_str, thin_vec![fmt, expr_name]);
         BlockOrExpr::new_expr(expr)
     } else if fields.len() <= CUTOFF {
         // Few enough fields that we can use a specific-length method.
@@ -132,7 +132,7 @@ fn show_substructure(
         if is_struct {
             names.push_str(ident.name.as_str())
         } else {
-            args.push(name);
+            args.push(expr_name);
         };
 
         for (i, field) in fields.into_iter().enumerate() {
@@ -208,7 +208,7 @@ fn show_substructure(
 
         let args = thin_vec![
             fmt,
-            if is_struct { cx.expr_name(span, sym::names) } else { name },
+            if is_struct { cx.expr_name(span, sym::names) } else { expr_name },
             cx.expr_name(span, sym::values)
         ];
 
