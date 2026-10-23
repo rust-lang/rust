@@ -1,4 +1,4 @@
-// rustfmt-wrap_comments: true
+//@ rustfmt-wrap_comments: true
 
 /// This may panic if:
 /// - there are fewer than `max_header_bytes` bytes preceding the body

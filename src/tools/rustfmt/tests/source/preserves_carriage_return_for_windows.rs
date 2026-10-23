@@ -1,2 +1,2 @@
-// rustfmt-newline_style: Windows
+//@ rustfmt-newline_style: Windows
 // FooBar

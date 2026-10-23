@@ -1,4 +1,4 @@
-// rustfmt-force_explicit_abi: true
+//@ rustfmt-force_explicit_abi: true
 // Force explicit abi
 
 extern "C" {

@@ -83,8 +83,8 @@ pub(super) struct EncodeContext<'a, 'tcx> {
     // Used for both `Symbol`s and `ByteSymbol`s.
     symbol_index_table: FxHashMap<u32, usize>,
     local_defs_remapping: LocalDefsRemapping,
-    syntax_context_remapping: HygieneRemappingResults<SyntaxContext>,
-    local_expn_id_remapping: HygieneRemappingResults<LocalExpnId>,
+    syntax_context_remapping: HygieneRemappingResults<SyntaxContext, RemappedSyntaxContext>,
+    local_expn_id_remapping: HygieneRemappingResults<LocalExpnId, RemappedLocalExpnIndex>,
 }
 
 /// If the current crate is a proc-macro, returns early with `LazyArray::default()`.
@@ -198,12 +198,12 @@ impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
         }
         expn_id.krate.encode(self);
 
-        let expn_index = match expn_id.as_local() {
-            Some(local_expn) => self.local_expn_id_remapping.map_id(local_expn).as_raw(),
-            None => expn_id.local_id,
+        let raw_expn_index = match expn_id.as_local() {
+            Some(local_expn) => self.local_expn_id_remapping.map_id(local_expn).as_u32(),
+            None => expn_id.local_id.as_u32(),
         };
 
-        expn_index.encode(self);
+        raw_expn_index.encode(self);
     }
 
     fn encode_span(&mut self, span: Span) {
@@ -2087,12 +2087,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             &Rc::clone(&self.hygiene_ctxt),
             &mut (&mut *self, &mut syntax_contexts, &mut expn_data_table, &mut expn_hash_table),
             |(this, syntax_contexts, _, _), ctxt, ctxt_data| {
-                let context = this.syntax_context_remapping.map_id(ctxt);
-                syntax_contexts.set_some(context.as_u32(), this.lazy(ctxt_data));
+                let ctxt = this.syntax_context_remapping.map_id(ctxt);
+                syntax_contexts.set_some(ctxt, this.lazy(ctxt_data));
             },
             |(this, _, expn_data_table, expn_hash_table), expn_id, expn_data, hash| {
                 if let Some(expn_id) = expn_id.as_local() {
-                    let expn_index = this.local_expn_id_remapping.map_id(expn_id).as_raw();
+                    let expn_index = this.local_expn_id_remapping.map_id(expn_id);
 
                     expn_data_table.set_some(expn_index, this.lazy(expn_data.expect("local expn")));
                     expn_hash_table.set_some(expn_index, this.lazy(hash));

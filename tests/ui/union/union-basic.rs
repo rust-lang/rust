@@ -58,3 +58,6 @@ fn main() {
     local();
     xcrate();
 }
+
+//@ reference: items.union.common-storage
+//@ reference: items.union.init.result

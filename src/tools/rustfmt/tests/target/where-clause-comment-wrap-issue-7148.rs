@@ -1,6 +1,6 @@
-// rustfmt-wrap_comments: true
-// rustfmt-max_width: 100
-// rustfmt-comment_width: 100
+//@ rustfmt-wrap_comments: true
+//@ rustfmt-max_width: 100
+//@ rustfmt-comment_width: 100
 
 // Comments between `where` and the first predicate should be formatted using
 // the full column budget rather than a budget derived from the header width.

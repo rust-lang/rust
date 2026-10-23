@@ -1,4 +1,4 @@
-// rustfmt-condense_wildcard_suffixes: false
+//@ rustfmt-condense_wildcard_suffixes: false
 // Condense wildcard suffixes
 
 fn main() {
