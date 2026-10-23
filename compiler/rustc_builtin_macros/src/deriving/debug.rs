@@ -168,7 +168,7 @@ fn show_substructure(
             value_exprs.push(field);
         }
 
-        // `let names: &'static _ = "field1 field2"`
+        // `let names: &'static _ = "StructName field1 field2"`
         let names_let = is_struct.then(|| {
             let lt_static = Some(cx.lifetime_static(span));
             let ty_static_ref = cx.ty_ref(span, cx.ty_infer(span), lt_static, ast::Mutability::Not);
