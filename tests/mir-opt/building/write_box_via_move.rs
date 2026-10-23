@@ -23,7 +23,13 @@ fn vec_macro() -> Vec<i32> {
     vec![0, 1, 2, 3, 4, 5, 6, 7]
 }
 
+fn vec_macro_in_alloc() -> Vec<i32> {
+    // CHECK: (*[[TEMP1:_.+]]) = [const 0_i32, const 1_i32,
+    vec![in alloc::alloc::Global; 0, 1, 2, 3, 4, 5, 6, 7]
+}
+
 fn main() {
     box_new(0);
     vec_macro();
+    vec_macro_in_allocator();
 }
