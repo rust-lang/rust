@@ -37,10 +37,13 @@ jobs:
 
         # Run build
       - name: install rustup
+        shell: bash
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > rustup-init.sh
           sh rustup-init.sh -y --default-toolchain none
-          rustup target add ${{ matrix.target }}
+          rustup target add ${MATRIX_TARGET}
+        env:
+          MATRIX_TARGET: ${{ matrix.target }}
 
       - name: Add mingw64 to path for x86_64-gnu
         run: echo "C:\msys64\mingw64\bin" >> $GITHUB_PATH

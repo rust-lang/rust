@@ -54,7 +54,9 @@ jobs:
         Invoke-WebRequest https://win.rustup.rs/ -OutFile rustup-init.exe
         .\rustup-init.exe -y --default-host=x86_64-pc-windows-msvc --default-toolchain=none
         del rustup-init.exe
-        rustup target add ${{ matrix.target }}
+        rustup target add ${env:MATRIX_TARGET}
+      env:
+        MATRIX_TARGET: ${{ matrix.target }}
       shell: powershell
 
     - name: Add mingw32 to path for i686-gnu
@@ -73,7 +75,9 @@ jobs:
       run: |
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > rustup-init.sh
         sh rustup-init.sh -y --default-toolchain none
-        rustup target add ${{ matrix.target }}
+        rustup target add ${MATRIX_TARGET}
+      env:
+        MATRIX_TARGET: ${{ matrix.target }}
 
     # Run build
     - name: Build and Test
