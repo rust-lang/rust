@@ -44,5 +44,7 @@ jobs:
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > rustup-init.sh
           sh rustup-init.sh -y --default-toolchain none
       - name: clippy
-        run: cargo clippy --locked --manifest-path ${{ matrix.package }}/Cargo.toml
+        run: cargo clippy --locked --manifest-path "${MATRIX_PACKAGE}/Cargo.toml"
+        env:
+          MATRIX_PACKAGE: ${{ matrix.package }}
 
