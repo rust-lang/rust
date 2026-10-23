@@ -20,6 +20,6 @@ fn main() {
 struct Store(dyn Trait);
 //~^ ERROR the value of the associated constant `K` in `Trait` must be specified
 
-// item ctxt & no wfcking (eager ty alias)
+// item ctxt & no wfcking (unchecked ty alias)
 type DynTrait = dyn Trait;
 //~^ ERROR the value of the associated constant `K` in `Trait` must be specified
