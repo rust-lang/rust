@@ -6,7 +6,10 @@
 
 #![crate_type = "rlib"]
 type Result<T> = core::result::Result<T, u32>;
-fn map<T, F, U>(value: Result<T>, op: F) -> Result<U> where F: FnOnce(T) -> U {
+fn map<T, F, U>(value: Result<T>, op: F) -> Result<U>
+where
+    F: FnOnce(T) -> U,
+{
     value.map(op)
 }
 
