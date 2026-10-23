@@ -478,17 +478,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let caller_location = with_caller_location.then(|| self.caller_location());
 
         // The first order of business is to figure out the callee signature.
-        // However, that requires the list of variadic arguments.
-        // We use the *caller* information to determine where to split the list of arguments,
-        // and then later check that the callee indeed has the same number of fixed arguments.
-        let extra_tys = if caller_fn_abi.c_variadic {
-            let fixed_count = usize::try_from(caller_fn_abi.fixed_count).unwrap();
-            let extra_tys = args[fixed_count..].iter().map(|arg| arg.layout().ty);
-            self.tcx.mk_type_list_from_iter(extra_tys)
-        } else {
-            ty::List::empty()
-        };
-        let callee_fn_abi = self.fn_abi_of_instance_no_deduced_attrs(instance, extra_tys)?;
+        // We leave the list of extra c-variadic args empty because the callee cannot know about
+        // them, and we don't need them in the `FnAbi`. This also avoids ICEs if the callee is
+        // not actually c-variadic.
+        let extra_args = ty::List::empty();
+        let callee_fn_abi = self.fn_abi_of_instance_no_deduced_attrs(instance, extra_args)?;
 
         if caller_fn_abi.conv != callee_fn_abi.conv {
             throw_ub_format!(
@@ -641,11 +635,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         ecx.eval_place(dest, /* skip_validity_for_simple_deref */ false)?;
                     let mplace = ecx.force_allocation(&place)?;
 
+                    // There should be no more callee ABI arguments.
+                    assert!(callee_args_abis.next().is_none());
                     // Consume the remaining arguments by putting them into the variable argument
                     // list. We disable retagging to avoid creating protected tags. Protection should
                     // only use callee-side information, and the varargs have no static callee-side type.
                     let varargs = M::with_retag_mode(ecx, RetagMode::None, |ecx| {
-                        ecx.allocate_varargs(&mut caller_args, &mut callee_args_abis)
+                        ecx.allocate_varargs(&mut caller_args)
                     })?;
 
                     // When the frame is dropped, these variable arguments are deallocated.
