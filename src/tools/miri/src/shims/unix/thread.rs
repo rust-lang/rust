@@ -20,7 +20,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, ()> {
         let this = self.eval_context_mut();
 
-        let thread_info_place = this.deref_pointer_as(thread, this.libc_ty_layout("pthread_t"))?;
+        let thread_info_place = this.deref_pointer(thread)?;
 
         let start_routine = this.read_pointer(start_routine)?;
 

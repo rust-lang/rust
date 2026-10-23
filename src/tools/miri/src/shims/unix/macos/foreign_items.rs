@@ -287,7 +287,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "pthread_threadid_np" => {
                 let [thread, tid_ptr] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(libc::pthread_t, *_) -> i32),
+                    shim_sig!(extern "C" fn(libc::pthread_t, *u64) -> i32),
                     (link_name, abi, args),
                 )?;
                 let res = this.apple_pthread_threadid_np(thread, tid_ptr)?;

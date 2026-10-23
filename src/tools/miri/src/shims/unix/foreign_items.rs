@@ -190,8 +190,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     link_name,
                 )?;
 
-                let [uname] = &this
-                    .check_shim_sig(shim_sig!(extern "C" fn(*_) -> i32), (link_name, abi, args))?;
+                let [uname] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*libc::utsname) -> i32),
+                    (link_name, abi, args),
+                )?;
                 let result = this.uname(uname, None)?;
                 this.write_scalar(result, dest)?;
             }
@@ -1124,7 +1126,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Threading
             "pthread_create" => {
                 let [thread, attr, start, arg] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(*_, *_, fn(..) -> _, *_) -> i32),
+                    shim_sig!(extern "C" fn(*libc::pthread_t, *_, fn(..) -> _, *_) -> i32),
                     (link_name, abi, args),
                 )?;
                 this.pthread_create(thread, attr, start, arg)?;
