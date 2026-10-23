@@ -214,11 +214,12 @@ fn show_substructure(
 
         let expr = cx.expr_call_global(span, fn_path_debug_internal, args);
 
-        let mut stmts = ThinVec::with_capacity(2);
-        if is_struct {
-            stmts.push(names_let.unwrap());
-        }
-        stmts.push(values_let);
+        let stmts = if is_struct {
+            thin_vec![names_let.unwrap(), values_let]
+        } else {
+            thin_vec![values_let]
+        };
+
         BlockOrExpr::new_mixed(stmts, Some(expr))
     }
 }
