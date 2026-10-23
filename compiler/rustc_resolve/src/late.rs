@@ -2964,9 +2964,14 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         let mut mod_inner_attrs_start = None;
         match item.kind {
             ItemKind::Mod(..) => {
-                // We only handle outer doc comments for modules here.
+                // We only handle outer attributes which can contain intra-doc links (doc comments
+                // and `deprecated`) for modules here.
                 let attrs = if let Some(pos) = item.attrs.iter().position(|a| {
                     a.doc_resolution_scope().is_some_and(|style| style == AttrStyle::Inner)
+                    || matches!(
+                        a.kind,
+                        AttrKind::Normal(ref n)
+                            if n.item.name() == Some(sym::deprecated) && a.style == AttrStyle::Inner)
                 }) {
                     mod_inner_attrs_start = Some(pos);
                     &item.attrs[..pos]
