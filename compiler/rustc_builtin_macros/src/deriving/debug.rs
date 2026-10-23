@@ -87,14 +87,14 @@ fn show_substructure(
 
     // Struct and tuples are similar enough that we use the same code for both,
     // with some extra pieces for structs due to the field names.
-    let (is_struct, args_per_field) = match vdata {
+    let is_struct = match vdata {
         ast::VariantData::Unit(..) => {
             // Special fast path for unit variants.
             assert!(fields.is_empty());
-            (false, 0)
+            false
         }
-        ast::VariantData::Tuple(..) => (false, 1),
-        ast::VariantData::Struct { .. } => (true, 1),
+        ast::VariantData::Tuple(..) => false,
+        ast::VariantData::Struct { .. } => true,
     };
 
     // The number of fields that can be handled without an array.
@@ -125,7 +125,7 @@ fn show_substructure(
         };
         let fn_path_debug = cx.std_path(span, &[sym::fmt, sym::Formatter, Symbol::intern(&debug)]);
 
-        let mut args = ThinVec::with_capacity(2 + fields.len() * args_per_field);
+        let mut args = ThinVec::with_capacity(2 + fields.len());
         args.extend([fmt]);
 
         let mut names = String::new();
