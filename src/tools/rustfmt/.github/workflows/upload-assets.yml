@@ -56,7 +56,7 @@ jobs:
       - name: Build archive
         shell: bash
         run: |
-          staging="rustfmt_${{ matrix.build }}_${GITHUB_EVENT_RELEASE_TAG_NAME}"
+          staging="rustfmt_${MATRIX_BUILD}_${GITHUB_EVENT_RELEASE_TAG_NAME}"
           mkdir -p "$staging"
 
           cp {README.md,Configurations.md,CHANGELOG.md,LICENSE-MIT,LICENSE-APACHE} "$staging/"
@@ -72,6 +72,7 @@ jobs:
           fi
         env:
           MATRIX_OS: ${{ matrix.os }}
+          MATRIX_BUILD: ${{ matrix.build }}
           GITHUB_EVENT_RELEASE_TAG_NAME: ${{ github.event.release.tag_name }}
 
       - name: Upload Release Asset
