@@ -98,7 +98,7 @@ pub trait TypeFoldable<I: Interner>: TypeVisitable<I> + Clone {
     /// to `TypeFolder`.
     ///
     /// Same as [`TypeFoldable::try_fold_with`], but not fallible.
-    #[inline]
+    #[inline(always)]
     fn fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self {
         let Ok(v) = self.try_fold_with(InfallibleTypeFolder::from_mut(folder));
         v
@@ -121,7 +121,7 @@ pub trait TypeSuperFoldable<I: Interner>: TypeFoldable<I> {
     /// A convenient alternative to `try_super_fold_with` for use with
     /// infallible folders. Do not override this method, to ensure coherence
     /// with `try_super_fold_with`.
-    #[inline]
+    #[inline(always)]
     fn super_fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self {
         let Ok(v) = self.try_super_fold_with(InfallibleTypeFolder::from_mut(folder));
         v
@@ -241,7 +241,7 @@ pub trait FallibleTypeFolder<I: Interner>: Sized {
 pub struct InfallibleTypeFolder<F>(F);
 
 impl<F> InfallibleTypeFolder<F> {
-    #[inline]
+    #[inline(always)]
     fn from_mut(f: &mut F) -> &mut InfallibleTypeFolder<F> {
         // SAFETY: repr(transparent)
         unsafe { mem::transmute(f) }
@@ -251,12 +251,12 @@ impl<F> InfallibleTypeFolder<F> {
 impl<F: TypeFolder<I>, I: Interner> FallibleTypeFolder<I> for InfallibleTypeFolder<F> {
     type Error = Infallible;
 
-    #[inline]
+    #[inline(always)]
     fn cx(&self) -> I {
         self.0.cx()
     }
 
-    #[inline]
+    #[inline(always)]
     fn try_fold_binder<T>(&mut self, t: Binder<I, T>) -> Result<Binder<I, T>, Self::Error>
     where
         T: TypeFoldable<I>,
@@ -264,27 +264,27 @@ impl<F: TypeFolder<I>, I: Interner> FallibleTypeFolder<I> for InfallibleTypeFold
         Ok(self.0.fold_binder(t))
     }
 
-    #[inline]
+    #[inline(always)]
     fn try_fold_ty(&mut self, t: I::Ty) -> Result<I::Ty, Self::Error> {
         Ok(self.0.fold_ty(t))
     }
 
-    #[inline]
+    #[inline(always)]
     fn try_fold_region(&mut self, r: Region<I>) -> Result<Region<I>, Self::Error> {
         Ok(self.0.fold_region(r))
     }
 
-    #[inline]
+    #[inline(always)]
     fn try_fold_const(&mut self, c: Const<I>) -> Result<Const<I>, Self::Error> {
         Ok(self.0.fold_const(c))
     }
 
-    #[inline]
+    #[inline(always)]
     fn try_fold_predicate<P: PredicateProxy<I>>(&mut self, p: P) -> Result<P, Self::Error> {
         Ok(self.0.fold_predicate(p))
     }
 
-    #[inline]
+    #[inline(always)]
     fn try_fold_clauses(&mut self, c: I::Clauses) -> Result<I::Clauses, Self::Error> {
         Ok(self.0.fold_clauses(c))
     }
