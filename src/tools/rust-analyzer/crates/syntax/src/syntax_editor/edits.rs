@@ -68,7 +68,11 @@ impl GetOrCreateWhereClause for ast::Trait {
 
 impl GetOrCreateWhereClause for ast::TypeAlias {
     fn where_clause_position(&self) -> Option<Position> {
-        if let Some(gpl) = self.generic_param_list() {
+        if let Some(ty) = self.ty()
+            && self.syntax().parent().is_some_and(|it| ast::AssocItemList::can_cast(it.kind()))
+        {
+            Some(Position::after(ty.syntax()))
+        } else if let Some(gpl) = self.generic_param_list() {
             Some(Position::after(gpl.syntax()))
         } else if let Some(name) = self.name() {
             Some(Position::after(name.syntax()))

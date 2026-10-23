@@ -148,4 +148,18 @@ mod tests {
             r#"trait T<'a, T> where 'a: 'static, T: u32 {}"#,
         );
     }
+
+    #[test]
+    fn move_bounds_to_where_clause_type_alias() {
+        check_assist(
+            move_bounds_to_where_clause,
+            r#"trait T { type Gat<$0T: Copy>; }"#,
+            r#"trait T { type Gat<T> where T: Copy; }"#,
+        );
+        check_assist(
+            move_bounds_to_where_clause,
+            r#"impl T for () { type Gat<$0T: Copy> = (); }"#,
+            r#"impl T for () { type Gat<T> = () where T: Copy; }"#,
+        );
+    }
 }
