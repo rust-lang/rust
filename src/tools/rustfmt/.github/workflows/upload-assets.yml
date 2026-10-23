@@ -53,7 +53,7 @@ jobs:
       - name: Build archive
         shell: bash
         run: |
-          staging="rustfmt_${{ matrix.build }}_${{ github.event.release.tag_name }}"
+          staging="rustfmt_${{ matrix.build }}_${GITHUB_EVENT_RELEASE_TAG_NAME}"
           mkdir -p "$staging"
 
           cp {README.md,Configurations.md,CHANGELOG.md,LICENSE-MIT,LICENSE-APACHE} "$staging/"
@@ -67,9 +67,13 @@ jobs:
             tar czf "$staging.tar.gz" "$staging"
             echo "ASSET=$staging.tar.gz" >> $GITHUB_ENV
           fi
+        env:
+          GITHUB_EVENT_RELEASE_TAG_NAME: ${{ github.event.release.tag_name }}
 
       - name: Upload Release Asset
+        shell: bash
         if: github.event_name == 'release'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "${{ github.event.release.tag_name }}" "${{ env.ASSET }}"
+          GITHUB_EVENT_RELEASE_TAG_NAME: ${{ github.event.release.tag_name }}
+        run: gh release upload "${GITHUB_EVENT_RELEASE_TAG_NAME}" "${{ env.ASSET }}"
