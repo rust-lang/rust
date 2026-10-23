@@ -2,7 +2,9 @@ error: the constant `M` is not of type `usize`
   --> $DIR/dyn-trait-ill-typed.rs:9:27
    |
 LL | fn foo<const M: u32>() -> Box<dyn Tr<M>> {
-   |                           ^^^^^^^^^^^^^^ expected `usize`, found `u32`
+   |        ------------       ^^^^^^^^^^^^^^ expected `usize`, found `u32`
+   |        |
+   |        found this const parameter
    |
 note: required by a const generic parameter in `Tr`
   --> $DIR/dyn-trait-ill-typed.rs:13:10

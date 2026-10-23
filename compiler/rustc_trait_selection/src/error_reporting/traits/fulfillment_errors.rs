@@ -32,8 +32,8 @@ use rustc_middle::ty::print::{
 };
 use rustc_middle::ty::transmute::{Answer, Reason};
 use rustc_middle::ty::{
-    self, GenericArgKind, GenericParamDefKind, TraitRef, Ty, TyCtxt, TypeFoldable, TypeFolder,
-    TypeSuperFoldable, TypeVisitableExt, Unnormalized, Upcast,
+    self, ConstKind, GenericArgKind, GenericParamDefKind, TraitRef, Ty, TyCtxt, TypeFoldable,
+    TypeFolder, TypeSuperFoldable, TypeVisitableExt, Unnormalized, Upcast,
 };
 use rustc_span::def_id::CrateNum;
 use rustc_span::{BytePos, DUMMY_SP, STDLIB_STABLE_CRATES, Span, Symbol, bug, span_bug, sym};
@@ -872,6 +872,25 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     format!("the constant `{ct_str}` is not of type `{expected_ty_str}`"),
                 );
                 diag.long_ty_path = long_ty_file;
+                if let ConstKind::Param(param_const) = ct.kind() {
+                    for param in self
+                        .tcx
+                        .generics_of(obligation.cause.body_def_id.to_def_id())
+                        .own_params
+                        .iter()
+                    {
+                        match param.kind {
+                            GenericParamDefKind::Const { .. }
+                                if param.index == param_const.index
+                                    && param.name == param_const.name =>
+                            {
+                                let span = self.tcx.def_span(param.def_id);
+                                diag.span_label(span, "found this const parameter");
+                            }
+                            _ => {}
+                        }
+                    }
+                }
 
                 self.note_type_err(
                     &mut diag,
