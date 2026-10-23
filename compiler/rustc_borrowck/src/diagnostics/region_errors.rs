@@ -1028,7 +1028,9 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                 hir::ExprKind::Struct(hir::QPath::Resolved(_, path), fields, _tail) => {
                     let Def(_, def_id) = path.res else { continue };
                     let Some(def_id) = def_id.as_local() else { continue };
-                    let Some(field) = fields.iter().find(|f| f.expr.span == span) else { continue };
+                    let Some(field) = fields.iter().find(|f| f.expr.span.contains(span)) else {
+                        continue;
+                    };
                     (def_id, NameOrPos::Name(field.ident.name))
                 }
                 hir::ExprKind::Call(callee, args)
@@ -1036,7 +1038,8 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                 {
                     let Def(_, def_id) = path.res else { continue };
                     let Some(def_id) = def_id.as_local() else { continue };
-                    let Some((pos, _)) = args.iter().enumerate().find(|(_, a)| a.span == span)
+                    let Some((pos, _)) =
+                        args.iter().enumerate().find(|(_, a)| a.span.contains(span))
                     else {
                         continue;
                     };
@@ -1122,7 +1125,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             };
             diag.span_note(
                 span,
-                format!("{these} trait object{s} {introduce} an implicit `'static` obligation"),
+                format!("{these} `dyn Trait`{s} {introduce} an implicit `'static` obligation"),
             );
             let suggestion_param_name = generics
                 .params

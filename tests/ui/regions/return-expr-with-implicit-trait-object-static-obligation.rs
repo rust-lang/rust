@@ -98,4 +98,54 @@ mod g {
     }
 }
 
+mod h {
+    pub struct Thing {
+        chars: Box<dyn Iterator<Item = char>>,
+        other_chars: Box<dyn Iterator<Item = char>>,
+    }
+
+    impl Thing {
+        pub fn new(string: &str) -> Self {
+            Thing {
+                chars: Box::new(string.chars()), //~ ERROR: lifetime may not live long enough
+                other_chars: Box::new(string.chars()),
+            }
+        }
+    }
+}
+
+mod i {
+    // Explicit check for more than one `dyn Trait` introducing the `'static` lifetime
+    pub struct Thing {
+        chars: (Box<dyn Iterator<Item = char>>, Box<dyn Iterator<Item = char>>),
+    }
+
+    impl Thing {
+        pub fn new(string: &str) -> Self {
+            Thing {
+                chars: (Box::new(string.chars()), Box::new(string.chars())), //~ ERROR: lifetime may not live long enough
+            }
+        }
+    }
+}
+
+mod j {
+    pub struct Thing {
+        chars: Box<dyn Iterator<Item = char>>,
+    }
+
+    impl Thing {
+        pub fn new(string: &str) -> Self {
+            if true {
+                return Thing {
+                    chars: Box::new(string.chars()), //~ ERROR: lifetime may not live long enough
+                };
+            }
+            Thing {
+                chars: Box::new(string.chars()),
+            }
+        }
+    }
+}
+
 fn main() {}
