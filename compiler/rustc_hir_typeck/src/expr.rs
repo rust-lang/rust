@@ -45,10 +45,11 @@ use crate::callee::SplatLoweringInfo;
 use crate::coercion::CoerceMany;
 use crate::diagnostics::{
     AddressOfTemporaryTaken, BaseExpressionDoubleDot, BaseExpressionDoubleDotAddExpr,
-    BaseExpressionDoubleDotRemove, CantDereference, ExprParenthesesNeeded,
-    FieldMultiplySpecifiedInInitializer, FunctionalRecordUpdateOnNonStruct, HelpUseLatestEdition,
-    NakedAsmOutsideNakedFn, NoFieldOnVariant, ReturnLikeStatementKind, ReturnStmtOutsideOfFnBody,
-    StructExprNonExhaustive, TypeMismatchFruTypo, YieldExprOutsideOfCoroutine,
+    BaseExpressionDoubleDotRemove, CantDereference, DelegationNoFieldForSelfMapping,
+    ExprParenthesesNeeded, FieldMultiplySpecifiedInInitializer, FunctionalRecordUpdateOnNonStruct,
+    HelpUseLatestEdition, NakedAsmOutsideNakedFn, NoFieldOnVariant, ReturnLikeStatementKind,
+    ReturnStmtOutsideOfFnBody, StructExprNonExhaustive, TypeMismatchFruTypo,
+    YieldExprOutsideOfCoroutine,
 };
 use crate::op::contains_let_in_chain;
 use crate::{
@@ -1938,16 +1939,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // what field to use to initialize the struct.
                 // The `_` is a keyword so if user uses it during struct initialization as a field name
                 // it will be error anyway.
-                if let [v_field] = &variant.fields[..] {
-                    Ok(get_field_ident(v_field))
-                } else {
-                    Err(tcx.dcx().span_delayed_bug(
+                match &variant.fields[..] {
+                    // If there are no fields in the delegation parent then emit an error,
+                    // as no other errors may be emitted and delayed bug will be shown (#164760).
+                    [] => Err(tcx.dcx().emit_err(DelegationNoFieldForSelfMapping {
+                        span: tcx.def_span(self.body_def_id),
+                    })),
+                    [v_field] => Ok(get_field_ident(v_field)),
+                    // If there are more than two fields then emit a delayed bug, as error
+                    // will be emitted by other checks.
+                    _ => Err(tcx.dcx().span_delayed_bug(
                         field.ident.span,
                         format!(
                             "can not infer the delegation `Self` mapping field for {:?}",
                             self.body_def_id
                         ),
-                    ))
+                    )),
                 }
             } else {
                 Ok(tcx.adjust_ident(field.ident, variant.def_id))

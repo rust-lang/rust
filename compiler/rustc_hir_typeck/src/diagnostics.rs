@@ -1394,3 +1394,10 @@ pub(crate) struct WrapConstBlock {
     #[suggestion_part(code = " }}")]
     pub right: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag("the delegation parent does not have a field for `Self` mapping")]
+pub(crate) struct DelegationNoFieldForSelfMapping {
+    #[primary_span]
+    pub span: Span,
+}
