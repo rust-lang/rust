@@ -490,9 +490,9 @@ impl<Ie: Idx, Id: Idx, const N: usize, T: FixedSizeEncoding<ByteArray = [u8; N]>
         } else {
             len
         };
-        // Use dense encoding when at least 75% of the entries are non-default.
+        // Use dense encoding when at least 50% of the entries are non-default.
         // This avoids sparse lookup overhead for tables with few default entries.
-        let sparse = len - non_defaults > len / 4
+        let sparse = len - non_defaults > len / 2
             && u32::try_from(non_defaults).is_ok()
             && index_bytes + non_defaults * width < len * width;
 
