@@ -381,7 +381,6 @@
 #![feature(slice_internals)]
 #![feature(slice_ptr_get)]
 #![feature(slice_range)]
-#![feature(slice_split_once)]
 #![feature(std_internals)]
 #![feature(str_internals)]
 #![feature(sync_unsafe_cell)]
@@ -711,6 +710,8 @@ pub mod arch {
     pub use std_detect::is_arm_feature_detected;
     #[stable(feature = "stdarch_loongarch_feature", since = "1.89.0")]
     pub use std_detect::is_loongarch_feature_detected;
+    #[unstable(feature = "stdarch_powerpc_feature_detection", issue = "111191")]
+    pub use std_detect::is_powerpc_feature_detected;
     #[stable(feature = "riscv_ratified", since = "1.78.0")]
     pub use std_detect::is_riscv_feature_detected;
     #[stable(feature = "stdarch_s390x_feature_detection", since = "1.93.0")]
@@ -719,8 +720,6 @@ pub mod arch {
     pub use std_detect::is_x86_feature_detected;
     #[unstable(feature = "stdarch_mips_feature_detection", issue = "111188")]
     pub use std_detect::{is_mips_feature_detected, is_mips64_feature_detected};
-    #[unstable(feature = "stdarch_powerpc_feature_detection", issue = "111191")]
-    pub use std_detect::{is_powerpc_feature_detected, is_powerpc64_feature_detected};
 }
 
 // This was stabilized in the crate root so we have to keep it there.

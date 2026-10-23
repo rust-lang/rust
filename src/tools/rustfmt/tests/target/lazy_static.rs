@@ -1,4 +1,4 @@
-// rustfmt-style_edition: 2027
+//@ rustfmt-style_edition: 2027
 // Format `lazy_static!` and `lazy_static::lazy_static!`.
 
 lazy_static! {

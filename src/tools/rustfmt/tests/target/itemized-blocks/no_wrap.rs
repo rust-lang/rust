@@ -1,5 +1,5 @@
-// rustfmt-normalize_comments: true
-// rustfmt-format_code_in_doc_comments: true
+//@ rustfmt-normalize_comments: true
+//@ rustfmt-format_code_in_doc_comments: true
 
 //! This is an itemized markdown list (see also issue #3224):
 //!  * Outer

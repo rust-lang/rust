@@ -1,5 +1,5 @@
-// rustfmt-wrap_comments: true
-// rustfmt-newline_style: Windows
+//@ rustfmt-wrap_comments: true
+//@ rustfmt-newline_style: Windows
 
 //! ```rust
 //! extern crate uom;

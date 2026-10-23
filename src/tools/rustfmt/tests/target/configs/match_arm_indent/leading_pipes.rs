@@ -1,5 +1,5 @@
-// rustfmt-match_arm_indent: false
-// rustfmt-match_arm_leading_pipes: Always
+//@ rustfmt-match_arm_indent: false
+//@ rustfmt-match_arm_leading_pipes: Always
 
 fn pipes() {
     match value {

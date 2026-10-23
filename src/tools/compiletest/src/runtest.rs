@@ -260,6 +260,28 @@ enum CompilerKind {
     Rustdoc,
 }
 
+/// Unstable compiler flags that compiletest passes to UI tests on its own, i.e. without specific
+/// tests opting into them explicitly.
+/// This should include both flags that are always passed unconditionally (e.g. `-Zui-testing`) and
+/// flags that are enabled across the whole test suite when compiletest is configured in a
+/// certain way (e.g. a specific `-Zcodegen-backend` being used for all tests).
+///
+/// Note: try to keep this up-to-date with [`TestCx::make_compile_args`].
+pub(crate) const COMPILETEST_UI_SUITE_UNSTABLE_FLAGS: &[&str] = &[
+    "simulate-remapped-rust-src-base",
+    "translate-remapped-path-to-local-path",
+    "ignore-directory-in-diagnostics-source-blocks",
+    "deduplicate-diagnostics",
+    "write-long-types-to-disk",
+    "codegen-backend",
+    "next-solver",
+    "polonius",
+    "wasm-proc-macros",
+    "threads",
+    "ui-testing",
+    "unstable-options",
+];
+
 impl<'test> TestCx<'test> {
     /// Code executed for each revision in turn (or, if there are no
     /// revisions, exactly once, with revision == None).
@@ -1660,6 +1682,9 @@ impl<'test> TestCx<'test> {
         {
             compiler.arg("-Zunstable-options").arg("--disable-minification");
         }
+
+        // Note: when adding new unstable compile flags here, also update
+        // `COMPILETEST_UI_SUITE_UNSTABLE_FLAGS`
 
         // Hide libstd sources from ui tests to make sure we generate the stderr
         // output that users will see.

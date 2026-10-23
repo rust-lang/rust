@@ -71,7 +71,9 @@ pub fn stable_only_test(_args: TokenStream, input: TokenStream) -> TokenStream {
 }
 
 /// Used to conditionally output the TokenStream for tests that should be run as part of rustfmts
-/// test suite, but should be ignored when running in the rust-lang/rust test suite.
+/// test suite, but should be ignored when running in the rust-lang/rust test suite. Mosty commonly
+/// this is because rust-lang/rust mounts the repo in a [read-only filesystem](
+/// https://github.com/rust-lang/rust/blob/1.99.0/src/ci/docker/run.sh#L261)
 #[proc_macro_attribute]
 pub fn rustfmt_only_ci_test(_args: TokenStream, input: TokenStream) -> TokenStream {
     if option_env!("RUSTFMT_CI").is_some() {

@@ -101,7 +101,7 @@ fn annotation_kind(tcx: TyCtxt<'_>, def_id: LocalDefId) -> AnnotationKind {
 
 fn lookup_deprecation_entry(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<DeprecationEntry> {
     let depr = find_attr!(tcx, def_id,
-        Deprecated { deprecation, span: _ } => *deprecation
+        Deprecated { deprecation, .. } => *deprecation
     );
 
     let Some(depr) = depr else {

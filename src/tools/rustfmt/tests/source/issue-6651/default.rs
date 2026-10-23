@@ -1,4 +1,4 @@
-// rustfmt-format_macro_bodies: true
+//@ rustfmt-format_macro_bodies: true
 
 macro_rules! short {
     () => {
