@@ -1,0 +1,19 @@
+error: unnecessary parentheses around type
+  --> $DIR/unused-parens-bare-fn-path-no-bounds.rs:12:32
+   |
+LL | type SingleBound = Box<Fn() -> (dyn Send)>;
+   |                                ^        ^
+   |
+note: the lint level is defined here
+  --> $DIR/unused-parens-bare-fn-path-no-bounds.rs:4:9
+   |
+LL | #![deny(unused_parens)]
+   |         ^^^^^^^^^^^^^
+help: remove these parentheses
+   |
+LL - type SingleBound = Box<Fn() -> (dyn Send)>;
+LL + type SingleBound = Box<Fn() -> dyn Send>;
+   |
+
+error: aborting due to 1 previous error
+
