@@ -63,6 +63,7 @@ jobs:
       env:
         CHECK_DIFF_LOG: info
         GITHUB_EVENT_INPUTS_COMMIT_HASH: ${{ github.event.inputs.commit_hash }}
+        GITHUB_EVENT_INPUTS_RUSTFMT_CONFIGS: ${{ github.event.inputs.rustfmt_configs }}
       shell: bash
       run: |
         OPTIONS=""
@@ -71,8 +72,8 @@ jobs:
           OPTIONS+="--commit-hash ${GITHUB_EVENT_INPUTS_COMMIT_HASH} "
         fi
 
-        if [[ -n "${{ github.event.inputs.rustfmt_configs }}" ]]; then
-          OPTIONS+="--rustfmt-config ${{ github.event.inputs.rustfmt_configs }} "
+        if [[ -n "${GITHUB_EVENT_INPUTS_RUSTFMT_CONFIGS}" ]]; then
+          OPTIONS+="--rustfmt-config ${GITHUB_EVENT_INPUTS_RUSTFMT_CONFIGS} "
         fi
 
         target/release/check_diff ${{ github.event.inputs.clone_url }} ${{ github.event.inputs.branch_name }} \
