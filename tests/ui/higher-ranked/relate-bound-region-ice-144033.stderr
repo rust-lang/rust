@@ -45,7 +45,7 @@ note: method defined here
   --> $DIR/relate-bound-region-ice-144033.rs:6:8
    |
 LL |     fn bar<I>(self, _: I)
-   |        ^^^          -
+   |        ^^^          ----
 
 error: aborting due to 2 previous errors
 

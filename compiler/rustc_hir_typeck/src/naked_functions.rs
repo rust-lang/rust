@@ -18,11 +18,12 @@ use crate::diagnostics::{
 pub(crate) fn typeck_naked_fn<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
+    decl: &'tcx hir::FnDecl<'tcx>,
     body: &'tcx hir::Body<'tcx>,
 ) {
     debug_assert!(find_attr!(tcx, def_id, Naked(..)));
-    check_no_patterns(tcx, body.params);
-    check_no_parameters_use(tcx, body);
+    check_no_patterns(tcx, decl.inputs);
+    check_no_parameters_use(tcx, decl, body);
     check_asm(tcx, def_id, body);
 }
 
@@ -39,9 +40,13 @@ fn check_no_patterns(tcx: TyCtxt<'_>, params: &[hir::Param<'_>]) {
 }
 
 /// Checks that function parameters aren't used in the function body.
-fn check_no_parameters_use<'tcx>(tcx: TyCtxt<'tcx>, body: &'tcx hir::Body<'tcx>) {
+fn check_no_parameters_use<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    decl: &'tcx hir::FnDecl<'tcx>,
+    body: &'tcx hir::Body<'tcx>,
+) {
     let mut params = HirIdSet::default();
-    for param in body.params {
+    for param in decl.inputs {
         param.pat.each_binding(|_binding_mode, hir_id, _span, _ident| {
             params.insert(hir_id);
         });

@@ -16,9 +16,11 @@ pub(crate) fn provide(providers: &mut Providers) {
         }
 
         let local_def_id = def_id.expect_local();
+        let fn_decl = tcx.hir_fn_decl_by_hir_id(tcx.local_def_id_to_hir_id(local_def_id))?;
         let body = tcx.hir_maybe_body_owned_by(local_def_id)?;
 
         let mut local_collector = LocalCollector::default();
+        local_collector.visit_fn_decl(fn_decl);
         local_collector.visit_body(&body);
 
         let mut capture_collector = CaptureCollector {
@@ -26,6 +28,7 @@ pub(crate) fn provide(providers: &mut Providers) {
             locals: &local_collector.locals,
             upvars: FxIndexMap::default(),
         };
+        capture_collector.visit_fn_decl(fn_decl);
         capture_collector.visit_body(&body);
 
         if !capture_collector.upvars.is_empty() {

@@ -5,7 +5,7 @@ use clippy_utils::{is_from_proc_macro, last_path_segment, over};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{Body, Expr, ExprKind, PatKind, Safety};
+use rustc_hir::{Expr, ExprKind, PatKind, Safety, FnDecl};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
@@ -134,14 +134,14 @@ fn same_functions_modulo_safety<'tcx>(
     unchecked_def_id: DefId,
     unwrapped_ret_ty: Ty<'tcx>,
 ) -> bool {
-    let hir_body = |def_id: DefId| -> Option<&'tcx Body<'tcx>> { cx.tcx.hir_maybe_body_owned_by(def_id.as_local()?) };
+    let hir_decl = |def_id: DefId| -> Option<&'tcx FnDecl<'tcx>> { cx.tcx.hir_fn_decl_by_hir_id(cx.tcx.local_def_id_to_hir_id(def_id.as_local()?)) };
     let fn_sig = |def_id| cx.tcx.fn_sig(def_id).skip_binder().skip_binder();
 
-    if match (hir_body(checked_def_id), hir_body(unchecked_def_id)) {
+    if match (hir_decl(checked_def_id), hir_decl(unchecked_def_id)) {
         // For local functions, we can get the parameter names. In that case, we want to make sure
         // that the latter are equal between the checked and unchecked versions.
-        (Some(checked_body), Some(unchecked_body)) => {
-            over(checked_body.params, unchecked_body.params, |p1, p2| {
+        (Some(checked_decl), Some(unchecked_decl)) => {
+            over(checked_decl.inputs, unchecked_decl.inputs, |p1, p2| {
                 // We only allow simple params (plain bindings) for now, to stay on the safer side.
                 if let PatKind::Binding(bm1, _, ident1, None) = p1.pat.kind
                     && let PatKind::Binding(bm2, _, ident2, None) = p2.pat.kind

@@ -56,7 +56,7 @@ pub fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
             // Walk over the inputs and outputs manually in order to get good spans for them.
             try_visit!(visitor.visit(hir_sig.output.span(), ty_sig.output()));
             for (hir, ty) in hir_sig.inputs.iter().zip(ty_sig.inputs().iter()) {
-                try_visit!(visitor.visit(hir.span, ty.map_bound(|x| *x)));
+                try_visit!(visitor.visit(hir.ty.span, ty.map_bound(|x| *x)));
             }
             for (clause, span) in tcx.explicit_clauses_of(item).instantiate_identity(tcx) {
                 try_visit!(visitor.visit(span, clause.skip_norm_wip()));

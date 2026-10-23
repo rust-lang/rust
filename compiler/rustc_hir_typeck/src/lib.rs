@@ -147,19 +147,18 @@ fn typeck_with_inspect<'tcx>(
         };
 
         check_abi(tcx, id, span, fn_sig.abi());
-
         loops::check(tcx, def_id, body);
 
         // Compute the function signature from point of view of inside the fn.
         let mut fn_sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), fn_sig);
-
         // Normalize the input and output types one at a time, using a different
         // `WellFormedLoc` for each. We cannot call `normalize_associated_types`
         // on the entire `FnSig`, since this would use the same `WellFormedLoc`
         // for each type, preventing the HIR wf check from generating
         // a nice error message.
-        let arg_span =
-            |idx| decl.inputs.get(idx).map_or(decl.output.span(), |arg: &hir::Ty<'_>| arg.span);
+        let arg_span = |idx| {
+            decl.inputs.get(idx).map_or(decl.output.span(), |param: &hir::Param<'_>| param.ty.span)
+        };
 
         fn_sig.inputs_and_output = tcx.mk_type_list_from_iter(
             fn_sig
@@ -170,7 +169,7 @@ fn typeck_with_inspect<'tcx>(
         );
 
         if tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::NAKED) {
-            naked_functions::typeck_naked_fn(tcx, def_id, body);
+            naked_functions::typeck_naked_fn(tcx, def_id, decl, body);
         }
 
         check_fn(&mut fcx, fn_sig, None, decl, def_id, body, tcx.features().unsized_fn_params());
@@ -265,7 +264,7 @@ fn typeck_with_inspect<'tcx>(
 
     fcx.check_asms();
 
-    let typeck_results = fcx.resolve_type_vars_in_body(body);
+    let typeck_results = fcx.resolve_type_vars_in_body(node, body);
 
     fcx.detect_opaque_types_added_during_writeback();
 

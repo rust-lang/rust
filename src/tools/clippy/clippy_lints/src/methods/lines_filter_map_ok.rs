@@ -3,7 +3,7 @@ use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::{MaybeDef as _, MaybeResPath as _, MaybeTypeckRes as _};
 use clippy_utils::sym;
 use rustc_errors::Applicability;
-use rustc_hir::{Body, Closure, Expr, ExprKind};
+use rustc_hir::{Closure, Expr, ExprKind};
 use rustc_lint::LateContext;
 use rustc_span::Span;
 
@@ -41,15 +41,14 @@ pub(super) fn check_filter_or_flat_map(
                 .qpath_res(qpath, method_arg.hir_id)
                 .is_diag_item(cx, sym::result_ok_method),
             // Detect `|x| x.ok()`
-            ExprKind::Closure(&Closure { body, .. }) => {
-                if let Body {
-                    params: [param], value, ..
-                } = cx.tcx.hir_body(body)
+            ExprKind::Closure(&Closure { fn_decl, body, .. }) => {
+                let value = cx.tcx.hir_body(body).value;
+                if let [param] = fn_decl.inputs
                     && let ExprKind::MethodCall(method, receiver, [], _) = value.kind
                 {
                     method.ident.name == sym::ok
                         && receiver.res_local_id() == Some(param.pat.hir_id)
-                        && cx.ty_based_def(*value).is_diag_item(cx, sym::result_ok_method)
+                        && cx.ty_based_def(value).is_diag_item(cx, sym::result_ok_method)
                 } else {
                     false
                 }

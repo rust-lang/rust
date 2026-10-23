@@ -497,14 +497,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ));
                 let fn_def = this.arena.alloc(hir::Expr { hir_id: this.next_id(), kind, span });
                 let args = this.arena.alloc([this.lower_expr_mut(&e.value)]);
-                (
-                    &[],
-                    hir::Expr {
-                        hir_id: this.next_id(),
-                        kind: hir::ExprKind::Call(fn_def, args),
-                        span,
-                    },
-                )
+                hir::Expr { hir_id: this.next_id(), kind: hir::ExprKind::Call(fn_def, args), span }
             });
             hir::AnonConst { def_id, hir_id, body, span }
         });
@@ -550,7 +543,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             self.arena.alloc(hir::AnonConst {
                 def_id,
                 hir_id,
-                body: this.lower_body(|_this| (&[], path_expr)),
+                body: this.lower_body(|_this| path_expr),
                 span,
             })
         });

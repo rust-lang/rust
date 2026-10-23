@@ -244,7 +244,7 @@ fn check_must_use_candidate<'tcx>(
     item_id: hir::OwnerId,
     msg: &'static str,
 ) {
-    if has_mutable_arg(cx, body)
+    if has_mutable_arg(cx, decl)
         || mutates_static(cx, body)
         || returns_unit(decl)
         || !cx.effective_visibilities.is_exported(item_id.def_id)
@@ -281,9 +281,9 @@ fn returns_unit(decl: &hir::FnDecl<'_>) -> bool {
     }
 }
 
-fn has_mutable_arg(cx: &LateContext<'_>, body: &hir::Body<'_>) -> bool {
+fn has_mutable_arg(cx: &LateContext<'_>, decl: &hir::FnDecl<'_>,) -> bool {
     let mut tys = DefIdSet::default();
-    body.params.iter().any(|param| is_mutable_pat(cx, param.pat, &mut tys))
+    decl.inputs.iter().any(|param| is_mutable_pat(cx, param.pat, &mut tys))
 }
 
 fn is_mutable_pat(cx: &LateContext<'_>, pat: &hir::Pat<'_>, tys: &mut DefIdSet) -> bool {
