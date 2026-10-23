@@ -3,14 +3,14 @@ error[E0080]: evaluation panicked: called `Option::unwrap()` on a `None` value
    |
 LL | fn main() {
 LL |     const {
-LL |         core::mem::type_info::env::var_os("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA").unwrap();
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `main::{constant#0}` failed here
+LL |         core::mem::type_info::const_env::var_os("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA").unwrap();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `main::{constant#0}` failed here
 
 note: erroneous constant encountered
   --> $DIR/reflection_env_var_reading_error.rs:6:5
    |
 LL | /     const {
-LL | |         core::mem::type_info::env::var_os("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA").unwrap();
+LL | |         core::mem::type_info::const_env::var_os("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA").unwrap();
 LL | |
 LL | |     };
    | |_____^
@@ -19,7 +19,7 @@ note: erroneous constant encountered
   --> $DIR/reflection_env_var_reading_error.rs:6:5
    |
 LL | /     const {
-LL | |         core::mem::type_info::env::var_os("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA").unwrap();
+LL | |         core::mem::type_info::const_env::var_os("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA").unwrap();
 LL | |
 LL | |     };
    | |_____^

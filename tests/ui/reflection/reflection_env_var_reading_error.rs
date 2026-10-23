@@ -4,7 +4,7 @@
 
 fn main() {
     const {
-        core::mem::type_info::env::var_os("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA").unwrap();
+        core::mem::type_info::const_env::var_os("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA").unwrap();
         //~^ ERROR: evaluation panicked: called `Option::unwrap()` on a `None` value
     };
 }

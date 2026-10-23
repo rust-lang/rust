@@ -791,7 +791,7 @@ impl FieldId {
 }
 
 /// Temporary feature, part of comptime. Not really type info related
-pub mod env {
+pub mod const_env {
     /// Returns the raw bytes of an environment variable that is visible to the compiler
     /// while compile-time constant evaluation.
     ///
@@ -799,7 +799,7 @@ pub mod env {
     /// #![feature(type_info)]
     ///
     /// assert_eq!(
-    ///     const { core::mem::type_info::env::var_os("HELLO") },
+    ///     const { core::mem::type_info::const_env::var_os("HELLO") },
     ///     b"THERE"
     /// )
     /// ```
