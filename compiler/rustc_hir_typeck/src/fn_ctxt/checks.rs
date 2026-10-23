@@ -3229,6 +3229,9 @@ impl<'a, 'tcx> ArgMatchingCtxt<'a, 'tcx> {
     }
 
     fn detect_missing_turbofish(&self, err: &mut Diag<'_>) {
+        if self.tcx.dcx().has_errors().is_none() {
+            return;
+        }
         let mut iter = self.provided_args.iter().peekable();
         while let Some(arg) = iter.next() {
             let hir::ExprKind::Binary(lt, lt_left, lt_right) = arg.kind else {
