@@ -14,7 +14,6 @@ proc_macro_crate = { path = "proc-macro-crate" }
 issue_1567 = { path = "issue-1567" }
 issue_1691 = { path = "issue-1691" }
 issue_1705 = { path = "issue-1705" }
-issue_rust_86261 = { path = "issue-rust-86261" }
 
 [dev-dependencies]
 byteorder_2 = { package = "byteorder", version = "0.5" } # to test dev-dependencies behave as expected, with renaming

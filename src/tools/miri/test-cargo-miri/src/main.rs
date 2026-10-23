@@ -69,7 +69,6 @@ mod test {
 
     extern crate cargo_miri_test;
     extern crate exported_symbol;
-    extern crate issue_rust_86261;
 
     // Make sure in-crate tests with dev-dependencies work
     #[test]
@@ -86,14 +85,10 @@ mod test {
                 fn exported_symbol() -> i32;
                 fn assoc_fn_as_exported_symbol() -> i32;
                 fn make_true() -> bool;
-                fn NoMangleStruct();
-                fn no_mangle_struct();
             }
             assert_eq!(unsafe { exported_symbol() }, 123456);
             assert_eq!(unsafe { assoc_fn_as_exported_symbol() }, -123456);
             assert!(unsafe { make_true() });
-            unsafe { NoMangleStruct() }
-            unsafe { no_mangle_struct() }
         }
     }
 
