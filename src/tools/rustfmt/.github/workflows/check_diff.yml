@@ -62,12 +62,13 @@ jobs:
       working-directory: ./check_diff
       env:
         CHECK_DIFF_LOG: info
+        GITHUB_EVENT_INPUTS_COMMIT_HASH: ${{ github.event.inputs.commit_hash }}
       shell: bash
       run: |
         OPTIONS=""
 
-        if [[ -n "${{ github.event.inputs.commit_hash }}" ]]; then
-          OPTIONS+="--commit-hash ${{ github.event.inputs.commit_hash }} "
+        if [[ -n "${GITHUB_EVENT_INPUTS_COMMIT_HASH}" ]]; then
+          OPTIONS+="--commit-hash ${GITHUB_EVENT_INPUTS_COMMIT_HASH} "
         fi
 
         if [[ -n "${{ github.event.inputs.rustfmt_configs }}" ]]; then
