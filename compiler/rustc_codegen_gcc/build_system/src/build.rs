@@ -140,7 +140,7 @@ pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Resu
     // Record the sysroot sources under the path the `rust-src` component uses, which is where
     // rustc looks for them to turn a sysroot span into `/rustc/$hash`. Without this, ui tests
     // print the build path where they expect `$SRC_DIR`.
-    let sysroot_source_dir = lib_path.join("rustlib/src/rust/library");
+    let sysroot_source_dir = lib_path.join("rustlib/src/rust");
     rustflags.push_str(&format!(
         " --remap-path-prefix={library_dir}={sysroot_source_dir}",
         library_dir = std::path::absolute(&library_dir)
