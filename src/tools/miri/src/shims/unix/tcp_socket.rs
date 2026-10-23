@@ -117,7 +117,11 @@ pub(super) struct TcpSocket {
 }
 
 impl TcpSocket {
-    pub fn new(family: socket2::Domain, is_non_block: bool) -> io::Result<Self> {
+    pub fn new<'tcx>(
+        family: socket2::Domain,
+        is_non_block: bool,
+        ecx: &mut MiriInterpCx<'tcx>,
+    ) -> io::Result<FileDescriptionRef<Self>> {
         let socket =
             socket2::Socket::new(family, socket2::Type::STREAM, Some(socket2::Protocol::TCP))?;
         // The underlying host socket needs to be non-blocking. The actual
@@ -131,7 +135,7 @@ impl TcpSocket {
         // does have a static initial readiness until `connect` or `listen` is
         // invoked on it.
 
-        Ok(TcpSocket {
+        let tcp_socket = TcpSocket {
             family,
             state: RefCell::new(SocketState::Initial(socket)),
             is_non_block: Cell::new(is_non_block),
@@ -141,13 +145,15 @@ impl TcpSocket {
             read_timeout: Cell::new(None),
             write_timeout: Cell::new(None),
             watched: ReadinessWatched::default(),
-        })
+        };
+
+        Ok(ecx.machine.fds.new_ref(tcp_socket))
     }
 }
 
 impl FileDescription for TcpSocket {
     fn name(&self) -> &'static str {
-        "socket"
+        "tcp socket"
     }
 
     fn read<'tcx>(
