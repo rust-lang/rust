@@ -1,5 +1,5 @@
-// rustfmt-style_edition: 2024
-// rustfmt-reorder_modules: true
+//@ rustfmt-style_edition: 2024
+//@ rustfmt-reorder_modules: true
 
 mod x86;
 mod v0s;

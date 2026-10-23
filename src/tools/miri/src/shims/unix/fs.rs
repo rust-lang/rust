@@ -795,7 +795,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1_i32(ErrorKind::PermissionDenied);
         }
 
-        #[rustfmt::skip] // work around https://github.com/rust-lang/rustfmt/issues/7045
         let result = cfg_select! {
             unix => fs::remove_file(path),
             windows => {{
@@ -1331,7 +1330,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1_i32(ErrorKind::PermissionDenied);
         }
 
-        #[rustfmt::skip] // work around https://github.com/rust-lang/rustfmt/issues/7045
         let result = cfg_select! {
             unix => fs::remove_dir(path),
             windows => {{

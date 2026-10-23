@@ -1,4 +1,4 @@
-// rustfmt-merge_derives:false
+//@ rustfmt-merge_derives: false
 
 #[rustfmt::skip::attributes(derive)]
 #[allow(dead_code)]

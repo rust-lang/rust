@@ -1,4 +1,4 @@
-// rustfmt-skip_children: true
+//@ rustfmt-skip_children: true
 
 mod foo;
 mod void;

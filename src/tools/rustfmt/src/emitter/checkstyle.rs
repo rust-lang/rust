@@ -68,6 +68,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use indoc::indoc;
     use std::path::PathBuf;
 
     #[test]
@@ -89,11 +90,27 @@ mod tests {
     #[test]
     fn emits_single_xml_tree_containing_all_files() {
         let bin_file = "src/bin.rs";
-        let bin_original = ["fn main() {", "println!(\"Hello, world!\");", "}"];
-        let bin_formatted = ["fn main() {", "    println!(\"Hello, world!\");", "}"];
+        let bin_original = indoc! {r#"
+            fn main() {
+            println!("Hello, world!");
+            }
+        "#};
+        let bin_formatted = indoc! {r#"
+            fn main() {
+                println!("Hello, world!");
+            }
+        "#};
         let lib_file = "src/lib.rs";
-        let lib_original = ["fn greet() {", "println!(\"Greetings!\");", "}"];
-        let lib_formatted = ["fn greet() {", "    println!(\"Greetings!\");", "}"];
+        let lib_original = indoc! {r#"
+            fn greet() {
+            println!("Greetings!");
+            }
+        "#};
+        let lib_formatted = indoc! {r#"
+            fn greet() {
+                println!("Greetings!");
+            }
+        "#};
         let mut writer = Vec::new();
         let mut emitter = CheckstyleEmitter::default();
         let _ = emitter.emit_header(&mut writer);
@@ -102,8 +119,8 @@ mod tests {
                 &mut writer,
                 FormattedFile {
                     filename: &FileName::Real(PathBuf::from(bin_file)),
-                    original_text: &bin_original.join("\n"),
-                    formatted_text: &bin_formatted.join("\n"),
+                    original_text: bin_original,
+                    formatted_text: bin_formatted,
                 },
             )
             .unwrap();
@@ -112,8 +129,8 @@ mod tests {
                 &mut writer,
                 FormattedFile {
                     filename: &FileName::Real(PathBuf::from(lib_file)),
-                    original_text: &lib_original.join("\n"),
-                    formatted_text: &lib_formatted.join("\n"),
+                    original_text: lib_original,
+                    formatted_text: lib_formatted,
                 },
             )
             .unwrap();

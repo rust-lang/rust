@@ -1,4 +1,4 @@
-// rustfmt-wrap_comments: true
+//@ rustfmt-wrap_comments: true
 
 /*!
  * Lorem ipsum dolor sit amet, consectetur adipiscing elit. In lacinia

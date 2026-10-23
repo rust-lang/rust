@@ -1,4 +1,4 @@
-// rustfmt-hard_tabs: true
+//@ rustfmt-hard_tabs: true
 // Hard tabs
 
 fn lorem() -> usize {

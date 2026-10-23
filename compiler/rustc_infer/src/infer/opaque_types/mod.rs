@@ -253,7 +253,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     );
                 }
             }
-            ty::TypingMode::PostTypeckUntilBorrowck { .. } => {
+            ty::TypingMode::PostTypeckThroughBorrowck { .. } => {
                 let prev = self
                     .inner
                     .borrow_mut()
