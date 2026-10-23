@@ -14,8 +14,8 @@ LL | impl<'a> Reborrow for PhantomData<'a> {}
    |
 help: add missing generic argument
    |
-LL | impl<'a> Reborrow for PhantomData<'a, T> {}
-   |                                     +++
+LL | impl<T, 'a> Reborrow for PhantomData<'a, T> {}
+   |      ++                                +++
 
 error: implementing `Reborrow` requires exactly one lifetime argument in the reborrowed type
   --> $DIR/invalid-reborrow-impl-phantom-data-wrong-generics.rs:9:1

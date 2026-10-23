@@ -28,8 +28,8 @@ LL | impl<'a, T> CoerceShared for CustomMut<'reborrow, T> {}
    |
 help: add missing generic argument
    |
-LL | impl<'a, T> CoerceShared<Target> for CustomMut<'reborrow, T> {}
-   |                         ++++++++
+LL | impl<Target, 'a, T> CoerceShared<Target> for CustomMut<'reborrow, T> {}
+   |      +++++++                    ++++++++
 
 error[E0377]: the trait `CoerceShared` may only be implemented for a coercion between structures
   --> $DIR/invalid-coerce-shared-next-solver.rs:11:1
