@@ -11,8 +11,8 @@ LL | struct S<T>(T);
    |        ^ -
 help: add missing generic argument
    |
-LL | impl Trait for S<T> {
-   |                 +++
+LL | impl<T> Trait for S<T> {
+   |     +++            +++
 
 error: aborting due to 1 previous error
 
