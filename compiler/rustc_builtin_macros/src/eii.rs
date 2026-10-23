@@ -237,8 +237,7 @@ fn split_attrs(
                     }
                     Some(sym::eii) => unreachable!("should already be filtered out"),
                     _ => {
-                        ecx.dcx()
-                            .emit_err(EiiAttributeNotSupported { span, attr_span: attr.span() });
+                        ecx.dcx().emit_err(EiiAttributeNotSupported { span, attr_span: attr.span });
                     }
                 }
             }

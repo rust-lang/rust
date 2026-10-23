@@ -2,7 +2,7 @@ use std::fmt;
 
 use rustc_ast::attr::AttributeExt;
 use rustc_ast::token::DocFragmentKind;
-use rustc_ast::{AttrStyle, DelimArgs, MetaItemInner, MetaItemLit, ast, join_path_idents};
+use rustc_ast::{AttrStyle, DelimArgs, MetaItemLit, ast, join_path_idents};
 use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
 use rustc_macros::{Decodable, Encodable, StableHash};
@@ -117,13 +117,6 @@ pub enum Attribute {
 }
 
 impl Attribute {
-    pub fn get_normal_item(&self) -> &AttrItem {
-        match &self {
-            Attribute::Unparsed(normal) => &normal,
-            _ => panic!("unexpected parsed attribute"),
-        }
-    }
-
     pub fn value_lit(&self) -> Option<&MetaItemLit> {
         match &self {
             Attribute::Unparsed(n) => match n.as_ref() {
@@ -131,13 +124,6 @@ impl Attribute {
                 _ => None,
             },
             _ => None,
-        }
-    }
-
-    pub fn is_parsed_attr(&self) -> bool {
-        match self {
-            Attribute::Parsed(_) => true,
-            Attribute::Unparsed(_) => false,
         }
     }
 
@@ -152,14 +138,6 @@ impl Attribute {
 }
 
 impl AttributeExt for Attribute {
-    #[inline]
-    fn id(&self) -> AttrId {
-        match &self {
-            Attribute::Unparsed(u) => u.id.attr_id,
-            _ => panic!(),
-        }
-    }
-
     #[inline]
     fn meta_item_list(&self) -> Option<ThinVec<ast::MetaItemInner>> {
         match &self {
@@ -216,18 +194,6 @@ impl AttributeExt for Attribute {
     }
 
     #[inline]
-    fn span(&self) -> Span {
-        match &self {
-            Attribute::Unparsed(u) => u.span,
-            // FIXME: should not be needed anymore when all attrs are parsed
-            Attribute::Parsed(AttributeKind::DocComment { span, .. }) => *span,
-            Attribute::Parsed(AttributeKind::Deprecated { span, .. }) => *span,
-            Attribute::Parsed(AttributeKind::CfgTrace(cfgs)) => cfgs[0].1,
-            a => panic!("can't get the span of an arbitrary parsed attribute: {a:?}"),
-        }
-    }
-
-    #[inline]
     fn is_word(&self) -> bool {
         match &self {
             Attribute::Unparsed(n) => {
@@ -265,10 +231,10 @@ impl AttributeExt for Attribute {
     }
 
     #[inline]
-    fn doc_str_and_fragment_kind(&self) -> Option<(Symbol, DocFragmentKind)> {
+    fn doc_str_and_fragment_kind(&self) -> Option<(Symbol, DocFragmentKind, Span)> {
         match &self {
-            Attribute::Parsed(AttributeKind::DocComment { kind, comment, .. }) => {
-                Some((*comment, *kind))
+            Attribute::Parsed(AttributeKind::DocComment { kind, comment, span, .. }) => {
+                Some((*comment, *kind, *span))
             }
             _ => None,
         }
@@ -305,83 +271,5 @@ impl AttributeExt for Attribute {
 
     fn is_rustc_doc_primitive(&self) -> bool {
         matches!(self, Attribute::Parsed(AttributeKind::RustcDocPrimitive(..)))
-    }
-}
-
-// FIXME(fn_delegation): use function delegation instead of manually forwarding
-impl Attribute {
-    #[inline]
-    pub fn id(&self) -> AttrId {
-        AttributeExt::id(self)
-    }
-
-    #[inline]
-    pub fn name(&self) -> Option<Symbol> {
-        AttributeExt::name(self)
-    }
-
-    #[inline]
-    pub fn meta_item_list(&self) -> Option<ThinVec<MetaItemInner>> {
-        AttributeExt::meta_item_list(self)
-    }
-
-    #[inline]
-    pub fn value_str(&self) -> Option<Symbol> {
-        AttributeExt::value_str(self)
-    }
-
-    #[inline]
-    pub fn value_span(&self) -> Option<Span> {
-        AttributeExt::value_span(self)
-    }
-
-    #[inline]
-    pub fn path_matches(&self, name: &[Symbol]) -> bool {
-        AttributeExt::path_matches(self, name)
-    }
-
-    #[inline]
-    pub fn is_doc_comment(&self) -> Option<Span> {
-        AttributeExt::is_doc_comment(self)
-    }
-
-    #[inline]
-    pub fn has_name(&self, name: Symbol) -> bool {
-        AttributeExt::has_name(self, name)
-    }
-
-    #[inline]
-    pub fn has_any_name(&self, names: &[Symbol]) -> bool {
-        AttributeExt::has_any_name(self, names)
-    }
-
-    #[inline]
-    pub fn span(&self) -> Span {
-        AttributeExt::span(self)
-    }
-
-    #[inline]
-    pub fn is_word(&self) -> bool {
-        AttributeExt::is_word(self)
-    }
-
-    #[inline]
-    pub fn path(&self) -> SmallVec<[Symbol; 1]> {
-        AttributeExt::path(self)
-    }
-
-    #[inline]
-    pub fn doc_str(&self) -> Option<Symbol> {
-        AttributeExt::doc_str(self)
-    }
-
-    #[inline]
-    pub fn is_proc_macro_attr(&self) -> bool {
-        AttributeExt::is_proc_macro_attr(self)
-    }
-
-    #[inline]
-    pub fn doc_str_and_fragment_kind(&self) -> Option<(Symbol, DocFragmentKind)> {
-        AttributeExt::doc_str_and_fragment_kind(self)
     }
 }
