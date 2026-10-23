@@ -1,3 +1,9 @@
+//@ run-rustfix
+
+// Import suggestions should bypass private module aliases in favor of accessible functions.
+
+#![allow(unused_imports, dead_code)]
+
 mod foo {
     pub fn f() {}
 
