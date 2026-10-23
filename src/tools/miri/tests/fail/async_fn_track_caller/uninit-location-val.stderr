@@ -1,0 +1,59 @@
+error: Undefined Behavior: reading memory at ALLOC[0xX..0xY], but memory is uninitialized at [0xX..0xY], and this operation requires initialized memory
+  --> RUSTLIB/core/src/ptr/non_null.rs:LL:CC
+   |
+LL |         unsafe { &*self.as_ptr().cast_const() }
+   |                    ^^^^ Undefined Behavior occurred here
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: stack backtrace:
+           0: std::ptr::NonNull::<str>::as_ref::<'_>
+               at RUSTLIB/core/src/ptr/non_null.rs:LL:CC
+           1: std::panic::Location::<'_>::file
+               at RUSTLIB/core/src/panic/location.rs:LL:CC
+           2: <std::panic::Location<'_> as std::fmt::Display>::fmt
+               at RUSTLIB/core/src/panic/location.rs:LL:CC
+           3: <&std::panic::Location<'_> as std::fmt::Display>::fmt
+               at RUSTLIB/core/src/fmt/mod.rs:LL:CC
+           4: core::fmt::rt::Argument::<'_>::fmt
+               at RUSTLIB/core/src/fmt/rt.rs:LL:CC
+           5: std::fmt::write
+               at RUSTLIB/core/src/fmt/mod.rs:LL:CC
+           6: core::io::write::default_write_fmt::<std::io::Cursor<&mut [u8]>>
+               at RUSTLIB/core/src/io/write.rs:LL:CC
+           7: <std::io::Cursor<&mut [u8]> as std::io::Write>::write_fmt
+               at RUSTLIB/core/src/io/write.rs:LL:CC
+           8: std::panicking::default_hook::{closure#0}::{closure#0}::{closure#0}
+               at RUSTLIB/core/src/macros/mod.rs:LL:CC
+           9: std::panicking::default_hook::{closure#0}::{closure#0}
+               at RUSTLIB/std/src/panicking.rs:LL:CC
+           10: std::thread::current::with_current_name::<{closure@std::panicking::default_hook::{closure#0}::{closure#0}}, ()>::{closure#0}
+               at RUSTLIB/std/src/thread/current.rs:LL:CC
+           11: std::thread::current::try_with_current::<{closure@std::thread::current::with_current_name<{closure@std::panicking::default_hook::{closure#0}::{closure#0}}, ()>::{closure#0}}, ()>
+               at RUSTLIB/std/src/thread/current.rs:LL:CC
+           12: std::thread::current::with_current_name::<{closure@std::panicking::default_hook::{closure#0}::{closure#0}}, ()>
+               at RUSTLIB/std/src/thread/current.rs:LL:CC
+           13: std::panicking::default_hook::{closure#0}
+               at RUSTLIB/std/src/panicking.rs:LL:CC
+           14: std::panicking::default_hook
+               at RUSTLIB/std/src/panicking.rs:LL:CC
+           15: std::panicking::panic_with_hook
+               at RUSTLIB/std/src/panicking.rs:LL:CC
+           16: std::panicking::panic_handler::{closure#0}
+               at RUSTLIB/std/src/panicking.rs:LL:CC
+           17: std::sys::backtrace::__rust_end_short_backtrace::<{closure@std::panicking::panic_handler::{closure#0}}, !>
+               at RUSTLIB/std/src/sys/backtrace.rs:LL:CC
+           18: std::panicking::panic_handler
+               at RUSTLIB/std/src/panicking.rs:LL:CC
+           19: foo::{closure#0}
+               at tests/fail/async_fn_track_caller/uninit-location-val.rs:LL:CC
+           20: main
+               at tests/fail/async_fn_track_caller/uninit-location-val.rs:LL:CC
+
+Uninitialized memory occurred at ALLOC[0xX..0xY], in this allocation:
+ALLOC DUMP
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+

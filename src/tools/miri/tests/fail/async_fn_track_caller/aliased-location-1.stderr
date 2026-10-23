@@ -1,0 +1,31 @@
+error: Undefined Behavior: write access through <TAG> at ALLOC[RANGE] is forbidden
+  --> tests/fail/async_fn_track_caller/aliased-location-1.rs:LL:CC
+   |
+LL |     *l = *Location::caller();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ Undefined Behavior occurred here
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
+   = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/tree-borrows.md for further information
+   = help: the accessed tag <TAG> has state Frozen which forbids this child write access
+help: the accessed tag <TAG> was created here, in the initial state Reserved
+  --> tests/fail/async_fn_track_caller/aliased-location-1.rs:LL:CC
+   |
+LL |     let l = &mut fake_caller_location;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+help: the accessed tag <TAG> later transitioned to Unique due to a child write access at offsets [RANGE]
+  --> tests/fail/async_fn_track_caller/aliased-location-1.rs:LL:CC
+   |
+LL |     *l = *Location::caller();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: this transition corresponds to the first write to a 2-phase borrowed mutable reference
+help: the accessed tag <TAG> later transitioned to Frozen due to a reborrow (acting as a foreign read access) at offsets [RANGE]
+  --> tests/fail/async_fn_track_caller/aliased-location-1.rs:LL:CC
+   |
+LL |     let location: &Location = Location::caller();
+   |                               ^^^^^^^^^^^^^^^^^^
+   = help: this transition corresponds to a loss of write permissions
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+
