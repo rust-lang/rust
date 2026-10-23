@@ -1,6 +1,8 @@
 error: the constant `N` is not of type `bool`
   --> $DIR/wf-mismatch-2.rs:13:12
    |
+LL | fn f<const N: i32>() {
+   |      ------------ found this const parameter
 LL |     let _: dyn Trait<CT = { N }>;
    |            ^^^^^^^^^^^^^^^^^^^^^ expected `bool`, found `i32`
 
