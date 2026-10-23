@@ -11,7 +11,9 @@ error: the constant `N` is not of type `usize`
   --> $DIR/type_mismatch.rs:8:26
    |
 LL | impl<const N: u64> Q for [u8; N] {}
-   |                          ^^^^^^^ expected `usize`, found `u64`
+   |      ------------        ^^^^^^^ expected `usize`, found `u64`
+   |      |
+   |      found this const parameter
    |
    = note: the length of array `[u8; N]` must be type `usize`
 
