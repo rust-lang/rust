@@ -429,6 +429,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
             // These shims are enabled only when the caller is in the standard library.
             "confstr" => {
+                // FIXME: This does not have a direct test (#3179).
                 let [_key, _buf, _buflen] = &this.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, *_, usize) -> usize),
                     (link_name, abi, args),

@@ -505,7 +505,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_pointer(new_ptr, dest)?;
             }
             "LocalFree" => {
-                // FIXME: This does not have a direct test (#3179).
                 let [ptr] = &this.check_shim_sig(
                     shim_sig!(extern "system" fn(winapi::HLOCAL) -> winapi::HLOCAL),
                     (link_name, abi, args),
@@ -586,7 +585,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // Thread-local storage
             "TlsAlloc" => {
-                // FIXME: This does not have a direct test (#3179).
                 // This just creates a key; Windows does not natively support TLS destructors.
 
                 // Create key and return it.
@@ -598,7 +596,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(Scalar::from_uint(key, dest.layout.size), dest)?;
             }
             "TlsGetValue" => {
-                // FIXME: This does not have a direct test (#3179).
                 let [key] = &this.check_shim_sig(
                     shim_sig!(extern "system" fn(u32) -> *_),
                     (link_name, abi, args),
@@ -609,7 +606,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_pointer(ptr, dest)?;
             }
             "TlsSetValue" => {
-                // FIXME: This does not have a direct test (#3179).
                 let [key, new_ptr] = &this.check_shim_sig(
                     shim_sig!(extern "system" fn(u32, *_) -> winapi::BOOL),
                     (link_name, abi, args),
@@ -623,7 +619,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_int(1, dest)?;
             }
             "TlsFree" => {
-                // FIXME: This does not have a direct test (#3179).
                 let [key] = &this.check_shim_sig(
                     shim_sig!(extern "system" fn(u32) -> winapi::BOOL),
                     (link_name, abi, args),
@@ -637,7 +632,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // Fiber-local storage - similar to TLS but supports destructors.
             "FlsAlloc" => {
-                // FIXME: This does not have a direct test (#3179).
                 // Create key and return it.
                 let [dtor] = &this.check_shim_sig(
                     shim_sig!(extern "system" fn(winapi::PFLS_CALLBACK_FUNCTION) -> u32),
@@ -659,7 +653,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(Scalar::from_uint(key, dest.layout.size), dest)?;
             }
             "FlsGetValue" => {
-                // FIXME: This does not have a direct test (#3179).
                 let [key] = &this.check_shim_sig(
                     shim_sig!(extern "system" fn(u32) -> *_),
                     (link_name, abi, args),
@@ -670,7 +663,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_pointer(ptr, dest)?;
             }
             "FlsSetValue" => {
-                // FIXME: This does not have a direct test (#3179).
                 let [key, new_ptr] = &this.check_shim_sig(
                     shim_sig!(extern "system" fn(u32, *_) -> winapi::BOOL),
                     (link_name, abi, args),
@@ -684,7 +676,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_int(1, dest)?;
             }
             "FlsFree" => {
-                // FIXME: This does not have a direct test (#3179).
                 let [key] = &this.check_shim_sig(
                     shim_sig!(extern "system" fn(u32) -> winapi::BOOL),
                     (link_name, abi, args),
@@ -703,7 +694,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_int(1, dest)?;
             }
             "IsThreadAFiber" => {
-                // FIXME: This does not have a direct test (#3179).
                 let [] = &this.check_shim_sig(
                     shim_sig!(extern "system" fn() -> winapi::BOOL),
                     (link_name, abi, args),
@@ -991,7 +981,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(Scalar::from_bool(true), dest)?;
             }
             "ProcessPrng" => {
-                // FIXME: This does not have a direct test (#3179).
                 // used by `std`
                 let [ptr, len] = &this.check_shim_sig(
                     shim_sig!(extern "system" fn(*_, usize) -> winapi::BOOL),
