@@ -401,9 +401,6 @@ impl UnixSocketFileDescription for TcpSocket {
             unreachable!()
         };
 
-        // FIXME: Rustfmt has a bug where it incorrectly removes the outer braces of {{ .. }} inside
-        // a `cfg_select!` block. See <https://github.com/rust-lang/rustfmt/issues/7045>.
-        #[rustfmt::skip]
         let listener = cfg_select! {
             // Turn the `socket2::Socket` into a `mio::TcpListener`.
             // We follow Tokio's TCP socket implementation:
@@ -412,18 +409,17 @@ impl UnixSocketFileDescription for TcpSocket {
             // `from_raw_socket` as long as it's ensured that the socket is non-blocking.
             // Because we immediately make the socket non-blocking after creation, that
             // is always guaranteed.
-
             unix => {{
-                use std::os::fd::{IntoRawFd, FromRawFd};
+                use std::os::fd::{FromRawFd, IntoRawFd};
                 let raw_fd = socket.into_raw_fd();
                 unsafe { TcpListener::from_raw_fd(raw_fd) }
             }},
             windows => {{
-                use std::os::windows::io::{IntoRawSocket, FromRawSocket};
+                use std::os::windows::io::{FromRawSocket, IntoRawSocket};
                 let raw_socket = socket.into_raw_socket();
                 unsafe { TcpListener::from_raw_socket(raw_socket) }
             }},
-            _ => unreachable!("unsupported host platform")
+            _ => unreachable!("unsupported host platform"),
         };
 
         *state = SocketState::Listening(listener);
@@ -539,9 +535,6 @@ impl UnixSocketFileDescription for TcpSocket {
             unreachable!()
         };
 
-        // FIXME: Rustfmt has a bug where it incorrectly removes the outer braces of {{ .. }} inside
-        // a `cfg_select!` block. See <https://github.com/rust-lang/rustfmt/issues/7045>.
-        #[rustfmt::skip]
         let stream = cfg_select! {
             // Turn the `socket2::Socket` into a `mio::TcpStream`.
             // We follow Tokio's TCP socket implementation:
@@ -550,19 +543,18 @@ impl UnixSocketFileDescription for TcpSocket {
             // `from_raw_socket` as long as it's ensured that the socket is non-blocking.
             // Because we immediately make the socket non-blocking after creation, that
             // is always guaranteed.
-
-             unix => {{
-                 use std::os::fd::{IntoRawFd, FromRawFd};
-                 let raw_fd = socket.into_raw_fd();
-                 unsafe { TcpStream::from_raw_fd(raw_fd) }
-             }},
-             windows => {{
-                 use std::os::windows::io::{IntoRawSocket, FromRawSocket};
-                 let raw_socket = socket.into_raw_socket();
-                 unsafe { TcpStream::from_raw_socket(raw_socket) }
-             }},
-             _ => unreachable!("unsupported host platform")
-         };
+            unix => {{
+                use std::os::fd::{FromRawFd, IntoRawFd};
+                let raw_fd = socket.into_raw_fd();
+                unsafe { TcpStream::from_raw_fd(raw_fd) }
+            }},
+            windows => {{
+                use std::os::windows::io::{FromRawSocket, IntoRawSocket};
+                let raw_socket = socket.into_raw_socket();
+                unsafe { TcpStream::from_raw_socket(raw_socket) }
+            }},
+            _ => unreachable!("unsupported host platform"),
+        };
 
         *state = SocketState::Connecting(stream);
         drop(state);
