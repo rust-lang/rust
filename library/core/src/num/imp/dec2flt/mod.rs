@@ -186,7 +186,6 @@ impl Lemire for f64 {
     }
 }
 
-// Only used in unit tests, keep public.
 #[inline]
 pub(super) fn pfe_empty() -> ParseFloatError {
     ParseFloatError { kind: FloatErrorKind::Empty }
