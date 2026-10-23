@@ -66,6 +66,7 @@ jobs:
         GITHUB_EVENT_INPUTS_RUSTFMT_CONFIGS: ${{ github.event.inputs.rustfmt_configs }}
         GITHUB_EVENT_INPUTS_CLONE_URL: ${{ github.event.inputs.clone_url }}
         GITHUB_EVENT_INPUTS_BRANCH_NAME: ${{ github.event.inputs.branch_name }}
+        GITHUB_EVENT_INPUTS_LANGUAGE_EDITION: ${{ github.event.inputs.language_edition }}
       shell: bash
       run: |
         OPTIONS=""
@@ -79,6 +80,6 @@ jobs:
         fi
 
         target/release/check_diff ${GITHUB_EVENT_INPUTS_CLONE_URL} ${GITHUB_EVENT_INPUTS_BRANCH_NAME} \
-          --edition ${{ github.event.inputs.language_edition }} \
+          --edition ${GITHUB_EVENT_INPUTS_LANGUAGE_EDITION} \
           --style-edition ${{ github.event.inputs.style_edition }} \
           $OPTIONS
