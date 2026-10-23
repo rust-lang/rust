@@ -54,6 +54,7 @@ use rustc_target::spec::{PanicStrategy, TargetTuple};
 use table::TableBuilder;
 
 use crate::eii::EiiMapEncodedKeyValue;
+use crate::rmeta::parameterized::EncodeFrom;
 use crate::rmeta::remapped_def_id::RemappedRawDefId;
 
 mod decoder;
@@ -582,10 +583,45 @@ macro_rules! define_tables {
                 }
             }
         }
+
+        impl<'a, 'tcx, 'b> TableWriter<'a, 'tcx, 'b> {
+            $(
+                /// Records a value into the corresponding `TableBuilders` field, encoding it in
+                /// the process when necessary
+                fn $name1<T>(&mut self, i: LocalDefId, v: T)
+                where
+                    $T1: EncodeFrom<'tcx, T>
+                {
+                    let encoded = <$T1 as EncodeFrom<'tcx, T>>::encode_from(self.encoder, v);
+                    let idx = self.encoder.local_defs_remapping.map_local_def_id(i);
+                    self.encoder.tables.$name1.set(idx, encoded);
+                }
+            )+
+            $(
+                /// Records a value into the corresponding `TableBuilders` field, encoding it in
+                /// the process when necessary
+                fn $name2<T>(&mut self, i: LocalDefId, v: T)
+                where
+                    $T2: EncodeFrom<'tcx, T>
+                {
+                    let encoded = <$T2 as EncodeFrom<'tcx, T>>::encode_from(self.encoder, v);
+                    let idx = self.encoder.local_defs_remapping.map_local_def_id(i);
+                    self.encoder.tables.$name2.set(idx, Some(encoded));
+                }
+            )+
+        }
     }
 }
 
+/// Helper struct for writing values into [`TableBuilders`].
+#[must_use]
+struct TableWriter<'a, 'tcx, 'b> {
+    encoder: &'b mut EncodeContext<'a, 'tcx>,
+}
+
 define_tables! {
+// If the compiler complains about `EncodeFrom` or `ParameterizedOverTcx` bounds when calling a
+// function generated in this macro, add them to parameterized.rs
 - defaulted:
     intrinsic: Table<Option<LazyValue<ty::IntrinsicDef>>>,
     is_macro_rules: Table<bool>,
@@ -604,7 +640,6 @@ define_tables! {
     explicit_implied_clauses_of: Table<LazyArray<(ty::Clause<'static>, Span)>>,
     explicit_implied_const_bounds: Table<LazyArray<(ty::PolyTraitRef<'static>, Span)>>,
     inherent_impls: Table<LazyArray<LocalDefId>>,
-    opt_rpitit_info: Table<Option<LazyValue<ty::ImplTraitInTraitData>>>,
     // Reexported names are not associated with individual `DefId`s,
     // e.g. a glob import can introduce a lot of names, all with the same `DefId`.
     // That's why the encoded list needs to contain `ModChild` structures describing all the names
@@ -619,6 +654,7 @@ define_tables! {
     impl_is_fully_generic_for_reflection: Table<bool>,
 
 - optional:
+    opt_rpitit_info: Table<LazyValue<ty::ImplTraitInTraitData>>,
     attributes: Table<LazyArray<Attribute>>,
     // For non-reexported names in a module every name is associated with a separate `DefId`,
     // so we can take their names, visibilities etc from other encoded tables.
@@ -684,7 +720,6 @@ define_tables! {
     anon_const_kind: Table<LazyValue<ty::AnonConstKind>>,
     const_of_item: Table<LazyValue<Option<ty::EarlyBinder<'static, ty::Const<'static>>>>>,
     associated_types_for_impl_traits_in_trait_or_impl: Table<LazyValue<DefIdMap<Vec<DefId>>>>,
-    live_args_for_alias_from_outlives_bounds: Table<LazyValue<DenseBitSet<u32>>>,
     args_known_to_outlive_alias_params: Table<LazyValue<Vec<(usize, DenseBitSet<u32>)>>>,
     mut_restriction: Table<LazyValue<ty::RestrictionKind>>,
 }
