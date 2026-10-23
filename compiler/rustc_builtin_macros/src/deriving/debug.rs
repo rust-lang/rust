@@ -206,14 +206,12 @@ fn show_substructure(
         };
         let fn_path_debug_internal = cx.std_path(span, &[sym::fmt, sym::Formatter, sym_debug]);
 
-        let mut args = ThinVec::with_capacity(3);
-        args.push(fmt);
-        if is_struct {
-            args.push(cx.expr_name(span, sym::names));
-        } else {
-            args.push(name);
-        }
-        args.push(cx.expr_name(span, sym::values));
+        let args = thin_vec![
+            fmt,
+            if is_struct { cx.expr_name(span, sym::names) } else { name },
+            cx.expr_name(span, sym::values)
+        ];
+
         let expr = cx.expr_call_global(span, fn_path_debug_internal, args);
 
         let mut stmts = ThinVec::with_capacity(2);
