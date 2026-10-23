@@ -713,7 +713,7 @@ impl<'a> TraitDef<'a> {
         if self.is_const && cx.ecfg.features.staged_api() {
             let rustc_const_unstable = cx.path_name(self.span, sym::rustc_const_unstable);
 
-            // #[rustc_const_unstable(feature = "derive_const", issue = "118304")]
+            // #[rustc_const_unstable(feature = "derive_const", issue = "143874")]
             attrs.push(
                 cx.attr_nested(
                     rustc_ast::AttrItem {

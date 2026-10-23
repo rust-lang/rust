@@ -170,7 +170,7 @@ impl RegionName {
                 RegionNameHighlight::CannotMatchHirTy(span, type_name),
                 mir_description,
             ) => {
-                diag.span_label(*span, format!("return type{mir_description} is {type_name}"));
+                diag.span_label(*span, format!("return type{mir_description} is `{type_name}`"));
             }
             RegionNameSource::AnonRegionFromYieldTy(span, type_name) => {
                 diag.span_label(*span, format!("yield type is {type_name}"));

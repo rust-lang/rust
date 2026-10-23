@@ -2218,7 +2218,7 @@ pub const fn mul_with_overflow<T: Copy>(x: T, y: T) -> (T, bool);
 /// This currently supports unsigned integers *only*, no signed ones.
 /// The stabilized versions of this intrinsic are available on integers.
 #[unstable(feature = "core_intrinsics", issue = "none")]
-#[rustc_const_unstable(feature = "const_carrying_mul_add", issue = "85532")]
+#[rustc_const_unstable(feature = "const_carrying_mul_add", issue = "152015")]
 #[rustc_nounwind]
 #[rustc_intrinsic]
 #[miri::intrinsic_fallback_is_spec]
