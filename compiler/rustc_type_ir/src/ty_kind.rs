@@ -115,7 +115,7 @@ impl<I: Interner> AliasTyKind<I> {
 /// Rigidness becomes outdated when the surrounding typing mode or param env changes,
 /// because further normalization might be possible.
 /// We should also note that rigidness can be shared within some typing mode groups
-/// if the param env is the same, e.g., `Typeck/PostTypeckUntilBorrowck` and
+/// if the param env is the same, e.g., `Typeck/PostTypeckThroughBorrowck` and
 /// `PostAnalysis/Codegen`.
 ///
 /// We always reveal auto traits for rigid aliases and this can cause query cycle in

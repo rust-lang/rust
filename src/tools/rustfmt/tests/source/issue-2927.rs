@@ -1,4 +1,4 @@
-// rustfmt-edition: 2018
+//@ rustfmt-edition: 2018
 #![feature(uniform_paths)]
 use futures::prelude::*;
 use http_03::cli::Cli;

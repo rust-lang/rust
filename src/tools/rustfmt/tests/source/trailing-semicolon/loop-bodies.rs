@@ -1,5 +1,5 @@
-// rustfmt-edition: 2024
-// rustfmt-style_edition: 2027
+//@ rustfmt-edition: 2024
+//@ rustfmt-style_edition: 2027
 
 macro_rules! dummy {
     () => {};

@@ -684,7 +684,7 @@ dependencies = [
  "anstream 0.6.21",
  "chrono",
  "clap",
- "indoc",
+ "indoc 1.0.9",
  "itertools",
  "memchr",
  "opener",
@@ -1995,6 +1995,15 @@ name = "indoc"
 version = "1.0.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bfa799dd5ed20a7e349f3b4639aa80d74549c81716d9ec4f994c9b5815598306"
+
+[[package]]
+name = "indoc"
+version = "2.0.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a37b2691796cffeb8a8cd305ac66e65841559f147f4e63231d0eafa4db5384d1"
+dependencies = [
+ "rustversion",
+]
 
 [[package]]
 name = "inout"
@@ -5171,6 +5180,7 @@ dependencies = [
  "dirs",
  "getopts",
  "ignore",
+ "indoc 2.0.8",
  "insta",
  "itertools",
  "regex",
@@ -5184,6 +5194,7 @@ dependencies = [
  "toml 1.1.0+spec-1.1.0",
  "tracing",
  "tracing-subscriber",
+ "tracing-tree",
  "unicode-properties",
  "unicode-segmentation",
  "unicode-width 0.1.14",

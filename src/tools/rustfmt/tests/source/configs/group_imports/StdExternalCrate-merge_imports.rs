@@ -1,5 +1,5 @@
-// rustfmt-group_imports: StdExternalCrate
-// rustfmt-imports_granularity: Crate
+//@ rustfmt-group_imports: StdExternalCrate
+//@ rustfmt-imports_granularity: Crate
 use chrono::Utc;
 use super::update::convert_publish_payload;
 

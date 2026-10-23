@@ -48,7 +48,7 @@ use rustc_serialize::opaque::FileEncoder;
 use rustc_session::config::mitigation_coverage::DeniedPartialMitigation;
 use rustc_session::config::{SymbolManglingVersion, TargetModifier};
 use rustc_span::edition::Edition;
-use rustc_span::hygiene::{ExpnIndex, MacroKind, SyntaxContextKey};
+use rustc_span::hygiene::{DecodedSyntaxContext, ExpnIndex, MacroKind, SyntaxContextKey};
 use rustc_span::{self, ExpnData, ExpnHash, ExpnId, Ident, Span, Symbol};
 use rustc_target::spec::{PanicStrategy, TargetTuple};
 use table::TableBuilder;
@@ -209,9 +209,10 @@ enum LazyState {
     Previous(NonZero<usize>),
 }
 
-type SyntaxContextTable = LazyTable<u32, u32, Option<LazyValue<SyntaxContextKey>>>;
-type ExpnDataTable = LazyTable<ExpnIndex, ExpnIndex, Option<LazyValue<ExpnData>>>;
-type ExpnHashTable = LazyTable<ExpnIndex, ExpnIndex, Option<LazyValue<ExpnHash>>>;
+type SyntaxContextTable =
+    LazyTable<RemappedSyntaxContext, DecodedSyntaxContext, Option<LazyValue<SyntaxContextKey>>>;
+type ExpnDataTable = LazyTable<RemappedLocalExpnIndex, ExpnIndex, Option<LazyValue<ExpnData>>>;
+type ExpnHashTable = LazyTable<RemappedLocalExpnIndex, ExpnIndex, Option<LazyValue<ExpnHash>>>;
 
 #[derive(MetadataEncodable, LazyDecodable)]
 pub(crate) struct ProcMacroData {
@@ -341,6 +342,17 @@ pub(crate) struct CrateRootUnhashed {
     /// crate's encoding. The `LOCAL_CRATE` slot is unused filler so that dependency `CrateNum`s
     /// can index this directly; this crate's own value is `extra_filename` above.
     dep_extra_filenames: IndexVec<CrateNum, String>,
+}
+
+rustc_index::newtype_index! {
+    #[max = 0x1FFF_FFFF] // `u32::MAX` >> 3, as `SyntaxContext` should be fit in 29 bits (see `span_encoding`).
+    #[default]
+    pub(super) struct RemappedSyntaxContext {}
+}
+
+rustc_index::newtype_index! {
+    #[default]
+    pub(super) struct RemappedLocalExpnIndex {}
 }
 
 #[derive(Default)]

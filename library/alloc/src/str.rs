@@ -58,7 +58,7 @@ use crate::vec::Vec;
 /// Note: `str` in `Concat<str>` is not meaningful here.
 /// This type parameter of the trait only exists to enable another impl.
 #[cfg(not(no_global_oom_handling))]
-#[unstable(feature = "slice_concat_ext", issue = "27747")]
+#[unstable(feature = "slice_concat_ext", issue = "none", reason = "implementation detail")]
 impl<S: Borrow<str>> Concat<str> for [S] {
     type Output = String;
 
@@ -68,7 +68,7 @@ impl<S: Borrow<str>> Concat<str> for [S] {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[unstable(feature = "slice_concat_ext", issue = "27747")]
+#[unstable(feature = "slice_concat_ext", issue = "none", reason = "implementation detail")]
 impl<S: Borrow<str>> Join<&str> for [S] {
     type Output = String;
 
