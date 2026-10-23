@@ -1582,7 +1582,7 @@ impl<T, const N: usize> *const [T; N] {
     }
 }
 
-/// Pointer equality is by address, as produced by the [`<*const T>::addr`](pointer::addr) method.
+/// For thin pointers, equality is by address, as produced by the [`<*const T>::addr`](pointer::addr) method.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[diagnostic::on_const(
     message = "pointers cannot be reliably compared during const eval",
@@ -1604,7 +1604,7 @@ impl<T: PointeeSized> PartialEq for *const T {
 )]
 impl<T: PointeeSized> Eq for *const T {}
 
-/// Pointer comparison is by address, as produced by the [`<*const T>::addr`](pointer::addr) method.
+/// For thin pointers, comparison is by address, as produced by the [`<*const T>::addr`](pointer::addr) method.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[diagnostic::on_const(
     message = "pointers cannot be reliably compared during const eval",
@@ -1624,7 +1624,7 @@ impl<T: PointeeSized> Ord for *const T {
     }
 }
 
-/// Pointer comparison is by address, as produced by the [`<*const T>::addr`](pointer::addr) method.
+/// For thin pointers, comparison is by address, as produced by the [`<*const T>::addr`](pointer::addr) method.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[diagnostic::on_const(
     message = "pointers cannot be reliably compared during const eval",
