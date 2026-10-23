@@ -1711,7 +1711,7 @@ impl fmt::Display for Display<'_> {
     }
 }
 
-#[unstable(feature = "slice_concat_ext", issue = "27747")]
+#[unstable(feature = "slice_concat_ext", issue = "none", reason = "implementation detail")]
 impl<S: Borrow<OsStr>> alloc::slice::Join<&OsStr> for [S] {
     type Output = OsString;
 
