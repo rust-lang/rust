@@ -1,3 +1,4 @@
+//! Callee is variadic, caller not.
 unsafe extern "C" fn helper(_: i32, _: ...) {}
 
 fn main() {
