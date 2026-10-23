@@ -129,14 +129,14 @@ pub struct ParseFloatError {
 /// }
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq, Copy, Hash)]
-#[unstable(feature = "extended_float_error_kind", issue = "none")]
+#[unstable(feature = "extended_float_error_kind", issue = "164793")]
 #[non_exhaustive]
 pub enum FloatErrorKind {
     /// Cannot parse float from empty string.
-    #[unstable(feature = "extended_float_error_kind", issue = "none")]
+    #[unstable(feature = "extended_float_error_kind", issue = "164793")]
     Empty,
     /// Invalid float literal.
-    #[unstable(feature = "extended_float_error_kind", issue = "none")]
+    #[unstable(feature = "extended_float_error_kind", issue = "164793")]
     Invalid,
 }
 
@@ -144,8 +144,8 @@ impl ParseFloatError {
     /// Outputs the detailed cause of parsing a float failing.
     #[must_use]
     #[inline]
-    #[rustc_const_unstable(feature = "extended_float_error_kind", issue = "none")]
-    #[unstable(feature = "extended_float_error_kind", issue = "none")]
+    #[rustc_const_unstable(feature = "extended_float_error_kind", issue = "164793")]
+    #[unstable(feature = "extended_float_error_kind", issue = "164793")]
     pub const fn kind(&self) -> &FloatErrorKind {
         &self.kind
     }
