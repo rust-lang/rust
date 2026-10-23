@@ -2061,8 +2061,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             IndirectMode::Pointer => {}
                         }
                         // Though `extern "Rust"` doesn't pass ZSTs, some ABIs pass
-                        // a pointer for `repr(C)` structs even when empty, so get
-                        // one from an `alloca` (which can be left uninitialized).
+                        // a pointer for `repr(C)` structs even when empty, and MIPS64
+                        // unaligned argument padding mechanism does not ignore ZSTs,
+                        // so get one from an `alloca` (which can be left uninitialized).
                         PlaceRef::alloca(bx, arg.layout).val
                     }
                 };
