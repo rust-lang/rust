@@ -7,6 +7,7 @@
 #![allow(unused_features)] // only used on some targets
 
 fn gettid() -> u64 {
+    #[rustfmt::skip] // FIXME rustfmt is eating comments <https://github.com/rust-lang/rustfmt/issues/7209>
     cfg_select! {
         any(target_os = "android", target_os = "linux") => gettid_linux_like(),
         any(target_os = "nto", target_os = "qnx") => unsafe { libc::gettid() as u64 },
