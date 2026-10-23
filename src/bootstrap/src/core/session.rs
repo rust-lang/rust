@@ -63,6 +63,7 @@ pub(crate) struct Session {
     pub(crate) ar: HashMap<TargetSelection, PathBuf>,
     pub(crate) ranlib: HashMap<TargetSelection, PathBuf>,
     pub(crate) wasi_sdk_path: Option<PathBuf>,
+    pub(crate) qtee_sdk_path: Option<PathBuf>,
 
     // Miscellaneous
     // allow bidirectional lookups: both name -> path and path -> name
@@ -386,6 +387,7 @@ impl Session {
             ar: HashMap::new(),
             ranlib: HashMap::new(),
             wasi_sdk_path: env::var_os("WASI_SDK_PATH").map(PathBuf::from),
+            qtee_sdk_path: env::var_os("QTEE_SDK_PATH").map(PathBuf::from),
             crates: HashMap::new(),
             crate_paths: HashMap::new(),
             is_sudo,
@@ -1169,6 +1171,19 @@ impl Session {
         env_root.push("lib");
         env_root.push(target.to_string());
         Some(env_root)
+    }
+
+    /// Returns the `lib` directory for the QTEE target specified, if configured.
+    ///
+    /// Will first consult `qtee-libdir` as configured in per-target configuration, if
+    /// that fails then it will check $QTEE_SDK_PATH environment variable, and if that
+    /// fails it will return `None`. Note that paths specified must be absolute paths.
+    pub(crate) fn qtee_libdir(&self, target: TargetSelection) -> Option<PathBuf> {
+        self.config
+            .target_config
+            .get(&target)
+            .and_then(|t| t.qtee_libdir.clone())
+            .or_else(|| self.qtee_sdk_path.clone())
     }
 
     /// Returns `true` if this is a no-std `target`, if defined

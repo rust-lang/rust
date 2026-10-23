@@ -466,6 +466,19 @@ fn copy_self_contained_objects(
             builder.copy_link(&src, &dst, FileType::NativeLibrary);
             target_deps.push((dst, DependencyType::TargetSelfContained));
         }
+    } else if target.ends_with("-qtee")
+        && let Some(srcdir) = builder.qtee_libdir(target)
+    {
+        for &obj in &["applib.lib", "common_applib.o", "libcmnlib.so"] {
+            copy_and_stamp(
+                builder,
+                &libdir_self_contained,
+                &srcdir,
+                obj,
+                &mut target_deps,
+                DependencyType::TargetSelfContained,
+            );
+        }
     }
 
     target_deps

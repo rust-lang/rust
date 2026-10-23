@@ -968,6 +968,7 @@ impl Config {
                     musl_root: target_musl_root,
                     musl_libdir: target_musl_libdir,
                     wasi_root: target_wasi_root,
+                    qtee_libdir: target_qtee_libdir,
                     qemu_rootfs: target_qemu_rootfs,
                     no_std: target_no_std,
                     codegen_backends: target_codegen_backends,
@@ -1043,6 +1044,7 @@ impl Config {
                 target.musl_root = target_musl_root.map(PathBuf::from);
                 target.musl_libdir = target_musl_libdir.map(PathBuf::from);
                 target.wasi_root = target_wasi_root.map(PathBuf::from);
+                target.qtee_libdir = target_qtee_libdir.map(PathBuf::from);
                 target.qemu_rootfs = target_qemu_rootfs.map(PathBuf::from);
                 target.runner = target_runner;
                 target.sanitizers = target_sanitizers;
