@@ -226,6 +226,36 @@ fn parse_delimited<R>(
     (dspan, dspacing, delim, inner)
 }
 
+/// Parse through invisible delimiters, ignoring unused content.
+///
+/// This only exists for compatibility with previous behavior.
+fn badly_parse_invis_delimited<R>(
+    parser: &mut Parser<'_>,
+    f: impl FnOnce(&mut Parser<'_>) -> R,
+) -> R {
+    let Some(delim) = parser.token.kind.open_delim().filter(|d| d.skip()) else {
+        // No invisible delimiters to skip through.
+        return (f)(parser);
+    };
+
+    // Skip the opening delimiter.
+    parser.bump();
+
+    let result = (f)(parser);
+
+    // Ignore unused content inside the delimiters.
+    // FIXME(@bal-e): fail instead of ignoring unused content.
+    while !parser.token.kind.is_close_delim_or_eof() {
+        parser.parse_token_tree();
+    }
+
+    // Skip the closing delimiter.
+    debug_assert_eq!(parser.token.kind.close_delim(), Some(delim));
+    parser.bump();
+
+    result
+}
+
 /// Asks for the `macro_metavar_expr` feature if it is not enabled
 fn maybe_emit_macro_metavar_expr_feature(features: &Features, sess: &Session, span: Span) {
     if !features.macro_metavar_expr() {
