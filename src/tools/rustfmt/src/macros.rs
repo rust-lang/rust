@@ -1630,7 +1630,7 @@ fn format_cfg_select(
                 }
             };
 
-            match arm.double_block_inner() {
+            match arm.maybe_double_block_concise_formatting(context) {
                 // FIXME(ytmimi) The formatting for the `$predicate => {{}}` case isn't very robust.
                 // There's the potential that we'll lose comments in between the predicate, the `=>`
                 // and the body. We also don't handle comments like `{/*comment*/{}/*comment*/}`.

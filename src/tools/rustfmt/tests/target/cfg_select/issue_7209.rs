@@ -3,8 +3,9 @@
 
 fn gettid() -> u64 {
     cfg_select! {
-        any(target_os = "solaris", target_os = "illumos") => {unsafe {
-            libc::pthread_self() as u64
-        }}
+        any(target_os = "solaris", target_os = "illumos") => {
+            // On Solaris and Illumos, the `pthread_t` is the OS TID.
+            unsafe { libc::pthread_self() as u64 }
+        }
     }
 }

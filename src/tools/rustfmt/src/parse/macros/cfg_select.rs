@@ -13,9 +13,11 @@ use rustc_parse::parser::{AllowConstBlockItems, ForceCollect};
 use rustc_span::Span;
 use tracing::debug;
 
+use crate::comment::contains_comment;
 use crate::expr::is_unsafe_block;
 use crate::parse::macros::build_stream_parser;
 use crate::parse::session::ParseSess;
+use crate::rewrite::RewriteContext;
 use crate::spanned::Spanned;
 
 // NB: parser recovery can return `Ok(expr)` (or other non-terminals) and still emit errors. We need
@@ -161,26 +163,59 @@ impl std::fmt::Debug for CfgSelectArm {
 }
 
 impl CfgSelectArm {
-    /// Is the cfg_select! arm written with two consecutive blocks.
-    /// For example `$predicate => {{}}`. If so, extract the inner block.
-    /// rustfmt will preserve the double block syntax.
-    pub(crate) fn double_block_inner(&self) -> Option<&ast::Expr> {
-        // In order to see if we can reach in and grab the inner block we'll
-        // check the following properties of the outer block:
+    /// Is the `cfg_select!` arm written with two consecutive blocks in a way that we can apply a
+    /// concise formatting happy path? For example:
+    ///
+    /// ```text
+    /// $predicate => {{}}
+    /// ```
+    ///
+    /// If so, extract the inner block. rustfmt will preserve the double block syntax.
+    pub(crate) fn maybe_double_block_concise_formatting(
+        &self,
+        context: &RewriteContext<'_>,
+    ) -> Option<&ast::Expr> {
+        // To be able to safely use the concise double block `{{ ... }}` concise formatting, the
+        // outer block must satisfy all of the following properties:
+        //
         // 1. It has a single statement that's also a block
         // 2. It doesn't have a label
         // 3. It isn't an unsafe block
         // 4. It doesn't have any attributes
-        match &self.expr.kind {
-            ast::ExprKind::Block(b, label)
-                if b.stmts.len() == 1
+        // 5. There are no comments between the outer blocks and the inner blocks, i.e.
+        //    ```
+        //    { /* A */ { ... } /* B */ }
+        //    ```
+        let outer_expr = &self.expr;
+        match &outer_expr.kind {
+            ast::ExprKind::Block(outer_block, label)
+                if let [stmt] = outer_block.stmts.as_slice()
                     && label.is_none()
-                    && !is_unsafe_block(b)
+                    && !is_unsafe_block(&outer_block)
                     && self.expr.attrs.is_empty() =>
             {
-                match &b.stmts[0].kind {
-                    // This is where we check that the inner block's statement is also a block
-                    ast::StmtKind::Expr(e) if matches!(e.kind, ast::ExprKind::Block(..)) => Some(e),
+                match &stmt.kind {
+                    // The inner expr has to be a block.
+                    ast::StmtKind::Expr(e)
+                        if let ast::ExprKind::Block(ref inner_block, _inner_label) = e.kind =>
+                    {
+                        // Check for comments in between outer/inner blocks. If there are in-between
+                        // comments, we should not apply the concise formatting. Let's call them
+                        // ```
+                        // {   { ... }   }
+                        // ^---       ^---
+                        // pre_sp     post_sp
+                        // ```
+                        let pre_sp = outer_block.span.until(inner_block.span);
+                        let post_sp = inner_block.span.until(outer_block.span);
+                        if contains_comment(context.snippet(pre_sp))
+                            || contains_comment(context.snippet(post_sp))
+                        {
+                            None
+                        } else {
+                            Some(e)
+                        }
+                    }
                     _ => None,
                 }
             }
