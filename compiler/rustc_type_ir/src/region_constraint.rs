@@ -1080,7 +1080,7 @@ fn rewrite_alias_ty_outlives_constraints_in_universe_for_eager_placeholder_handl
         TypingMode::Typeck { .. }
         | TypingMode::Reflection
         | TypingMode::ErasedNotCoherence { .. }
-        | TypingMode::PostTypeckUntilBorrowck { .. }
+        | TypingMode::PostTypeckThroughBorrowck { .. }
         | TypingMode::PostBorrowck { .. }
         | TypingMode::PostAnalysis
         | TypingMode::Codegen => (),

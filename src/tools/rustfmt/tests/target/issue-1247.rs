@@ -1,4 +1,4 @@
-// rustfmt-max_width: 80
+//@ rustfmt-max_width: 80
 
 fn foo() {
     polyfill::slice::fill(

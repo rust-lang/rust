@@ -1,4 +1,4 @@
-// rustfmt-imports_granularity: One
+//@ rustfmt-imports_granularity: One
 
 use {
     a::{

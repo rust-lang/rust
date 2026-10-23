@@ -1,5 +1,6 @@
 // Integration tests for cargo-fmt.
 
+use indoc::panicdoc;
 use std::env;
 use std::path::Path;
 use std::process::Command;
@@ -43,17 +44,17 @@ macro_rules! assert_that {
     ($args:expr, $check:ident $check_args:tt) => {
         let (stdout, stderr) = cargo_fmt($args);
         if !stdout.$check$check_args {
-            panic!(
-                "Output not expected for cargo-fmt {:?}\n\
-                 expected: {}{}\n\
-                 actual stdout:\n{}\n\
-                 actual stderr:\n{}",
-                $args,
-                stringify!($check),
-                stringify!($check_args),
-                stdout,
-                stderr
-            );
+            let args = $args;
+            let check = stringify!($check);
+            let check_args = stringify!($check_args);
+            panicdoc! {"
+                Output not expected for cargo-fmt {args:?}
+                expected: {check}{check_args}
+                actual stdout:
+                {stdout}
+                actual stderr:
+                {stderr}",
+            };
         }
     };
 }

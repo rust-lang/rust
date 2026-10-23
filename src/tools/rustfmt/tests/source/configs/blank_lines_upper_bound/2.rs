@@ -1,4 +1,4 @@
-// rustfmt-blank_lines_upper_bound: 2
+//@ rustfmt-blank_lines_upper_bound: 2
 
 fn do_stuff()
 
