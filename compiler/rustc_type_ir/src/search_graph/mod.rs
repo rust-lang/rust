@@ -1205,6 +1205,10 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
             return false;
         }
 
+        if self.provisional_cache.is_empty() {
+            return true;
+        }
+
         // The global cache entry is also invalid if there's a provisional cache entry
         // would apply for any of its nested goals.
         // Any matching provisional entry rejects the candidate,
