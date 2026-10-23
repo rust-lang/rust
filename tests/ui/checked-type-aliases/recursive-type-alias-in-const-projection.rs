@@ -1,4 +1,4 @@
-//! Ensure a self-referencing lazy type alias with `gca_min_const_items`
+//! Ensure a self-referencing checked type alias with `gca_min_const_items`
 //! doesn't ICE during normalization.
 //!
 //! Regression test for <https://github.com/rust-lang/rust/issues/152633>.

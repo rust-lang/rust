@@ -1,13 +1,12 @@
 // Demonstrate that free alias types don't constrain their lifetime & type arguments if the corresp.
-// lifetime & type parameters are unused in the lazy type alias (before normalization) since we
+// lifetime & type parameters are unused in the checked type alias (before normalization) since we
 // eagerly expand them during variance computation unlike other alias types which constrain args to
 // be invariant.
 
 // FIXME(checked_type_aliases): Revisit this before stabilization (altho it's not blocking):
-//                         Do we want to compute variances for lazy type aliases & free alias types
-//                         again and "force bivariant parameters to be invariant" if they're not
-//                         constrained by a projection?
-//                         This would make `struct WrapDiscard` below compile.
+//     Do we want to compute variances for checked type aliases & free alias types again and
+//     "force bivariant parameters to be invariant" if they're not constrained by a projection?
+//     This would make `struct WrapDiscard` below compile.
 
 #![feature(checked_type_aliases)]
 
@@ -31,7 +30,7 @@ type Co<'a> = std::vec::IntoIter<(&'a (), &'a ())>;
 
 // NOTE: If we end up switching back to computing variances for free alias types with the special
 //       rule explained in the FIXME above, then this function should still compile since
-//       LTA `DiscardConstrained` should be bivariant over `'a` and `T`, not invariant due to them
+//       CTA `DiscardConstrained` should be bivariant over `'a` and `T`, not invariant due to them
 //       being constrained by a projection.
 fn bi<'r>(
     x: WrapDiscardConstrained<'static, &'static (), Co<'static>>,

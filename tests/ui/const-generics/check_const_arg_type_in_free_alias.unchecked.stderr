@@ -1,5 +1,5 @@
 error: the constant `B` is not of type `usize`
-  --> $DIR/check_const_arg_type_in_free_alias.rs:15:1
+  --> $DIR/check_const_arg_type_in_free_alias.rs:14:1
    |
 LL | type ArrLen<const B: bool> = [(); B];
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `usize`, found `bool`
@@ -7,31 +7,31 @@ LL | type ArrLen<const B: bool> = [(); B];
    = note: the length of array `[(); B]` must be type `usize`
 
 error: the constant `B` is not of type `usize`
-  --> $DIR/check_const_arg_type_in_free_alias.rs:19:1
+  --> $DIR/check_const_arg_type_in_free_alias.rs:18:1
    |
 LL | type ConstArg<const B: bool> = Foo<B>;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `usize`, found `bool`
    |
 note: required by a const generic parameter in `Foo`
-  --> $DIR/check_const_arg_type_in_free_alias.rs:13:12
+  --> $DIR/check_const_arg_type_in_free_alias.rs:12:12
    |
 LL | struct Foo<const N: usize>;
    |            ^^^^^^^^^^^^^^ required by this const generic parameter in `Foo`
 
 error: the constant `B` is not of type `usize`
-  --> $DIR/check_const_arg_type_in_free_alias.rs:32:1
+  --> $DIR/check_const_arg_type_in_free_alias.rs:31:1
    |
 LL | type Alias<const B: bool> = <() as IdentityWithUnused<B>>::This;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `usize`, found `bool`
    |
 note: required by a const generic parameter in `IdentityWithUnused`
-  --> $DIR/check_const_arg_type_in_free_alias.rs:24:26
+  --> $DIR/check_const_arg_type_in_free_alias.rs:23:26
    |
 LL | trait IdentityWithUnused<const N: usize> {
    |                          ^^^^^^^^^^^^^^ required by this const generic parameter in `IdentityWithUnused`
 
 error: the constant `B` is not of type `usize`
-  --> $DIR/check_const_arg_type_in_free_alias.rs:38:1
+  --> $DIR/check_const_arg_type_in_free_alias.rs:37:1
    |
 LL | type UseFree<const B: bool> = Free<B>;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `usize`, found `bool`
@@ -39,7 +39,7 @@ LL | type UseFree<const B: bool> = Free<B>;
    = note: the length of array `[(); B]` must be type `usize`
 
 error: the constant `B` is not of type `usize`
-  --> $DIR/check_const_arg_type_in_free_alias.rs:58:1
+  --> $DIR/check_const_arg_type_in_free_alias.rs:57:1
    |
 LL | type IndirectArr<const B: bool> = Wrap<Wrap<[(); B]>>;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `usize`, found `bool`
@@ -47,19 +47,19 @@ LL | type IndirectArr<const B: bool> = Wrap<Wrap<[(); B]>>;
    = note: the length of array `[(); B]` must be type `usize`
 
 error: the constant `B` is not of type `usize`
-  --> $DIR/check_const_arg_type_in_free_alias.rs:62:1
+  --> $DIR/check_const_arg_type_in_free_alias.rs:61:1
    |
 LL | type IndirectConstArg<const B: bool> = Wrap<Wrap<Foo<B>>>;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `usize`, found `bool`
    |
 note: required by a const generic parameter in `Foo`
-  --> $DIR/check_const_arg_type_in_free_alias.rs:13:12
+  --> $DIR/check_const_arg_type_in_free_alias.rs:12:12
    |
 LL | struct Foo<const N: usize>;
    |            ^^^^^^^^^^^^^^ required by this const generic parameter in `Foo`
 
 error[E0308]: mismatched types
-  --> $DIR/check_const_arg_type_in_free_alias.rs:17:24
+  --> $DIR/check_const_arg_type_in_free_alias.rs:16:24
    |
 LL | type AnonArrLen = [(); true];
    |                        ^^^^ expected `usize`, found `bool`
@@ -67,49 +67,49 @@ LL | type AnonArrLen = [(); true];
    = note: array length can only be `usize`
 
 error[E0308]: mismatched types
-  --> $DIR/check_const_arg_type_in_free_alias.rs:21:25
+  --> $DIR/check_const_arg_type_in_free_alias.rs:20:25
    |
 LL | type AnonConstArg = Foo<true>;
    |                         ^^^^ expected `usize`, found `bool`
    |
 note: expected because of the type of the const parameter
-  --> $DIR/check_const_arg_type_in_free_alias.rs:13:12
+  --> $DIR/check_const_arg_type_in_free_alias.rs:12:12
    |
 LL | struct Foo<const N: usize>;
    |            ^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
-  --> $DIR/check_const_arg_type_in_free_alias.rs:34:44
+  --> $DIR/check_const_arg_type_in_free_alias.rs:33:44
    |
 LL | type AnonAlias = <() as IdentityWithUnused<true>>::This;
    |                                            ^^^^ expected `usize`, found `bool`
 
 error[E0308]: mismatched types
-  --> $DIR/check_const_arg_type_in_free_alias.rs:40:25
+  --> $DIR/check_const_arg_type_in_free_alias.rs:39:25
    |
 LL | type AnonUseFree = Free<true>;
    |                         ^^^^ expected `usize`, found `bool`
    |
 note: expected because of the type of the const parameter
-  --> $DIR/check_const_arg_type_in_free_alias.rs:37:11
+  --> $DIR/check_const_arg_type_in_free_alias.rs:36:11
    |
 LL | type Free<const N: usize> = [(); N];
    |           ^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
-  --> $DIR/check_const_arg_type_in_free_alias.rs:53:45
+  --> $DIR/check_const_arg_type_in_free_alias.rs:52:45
    |
 LL | type AnonUseFreeIndirectlyCorrect = UseFree<1_usize>;
    |                                             ^^^^^^^ expected `bool`, found `usize`
    |
 note: expected because of the type of the const parameter
-  --> $DIR/check_const_arg_type_in_free_alias.rs:38:14
+  --> $DIR/check_const_arg_type_in_free_alias.rs:37:14
    |
 LL | type UseFree<const B: bool> = Free<B>;
    |              ^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
-  --> $DIR/check_const_arg_type_in_free_alias.rs:60:39
+  --> $DIR/check_const_arg_type_in_free_alias.rs:59:39
    |
 LL | type AnonIndirectArr = Wrap<Wrap<[(); true]>>;
    |                                       ^^^^ expected `usize`, found `bool`
@@ -117,13 +117,13 @@ LL | type AnonIndirectArr = Wrap<Wrap<[(); true]>>;
    = note: array length can only be `usize`
 
 error[E0308]: mismatched types
-  --> $DIR/check_const_arg_type_in_free_alias.rs:64:43
+  --> $DIR/check_const_arg_type_in_free_alias.rs:63:43
    |
 LL | type AnonIndirectConstArg = Wrap<Wrap<Foo<true>>>;
    |                                           ^^^^ expected `usize`, found `bool`
    |
 note: expected because of the type of the const parameter
-  --> $DIR/check_const_arg_type_in_free_alias.rs:13:12
+  --> $DIR/check_const_arg_type_in_free_alias.rs:12:12
    |
 LL | struct Foo<const N: usize>;
    |            ^^^^^^^^^^^^^^

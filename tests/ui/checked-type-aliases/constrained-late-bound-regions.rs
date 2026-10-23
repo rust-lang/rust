@@ -1,5 +1,5 @@
 //@ check-pass
-// Weak alias types constrain late-bound regions if their normalized form constrains them.
+// Free alias types constrain late-bound regions if their expanded form constrains them.
 
 #![feature(checked_type_aliases)]
 #![allow(incomplete_features)]

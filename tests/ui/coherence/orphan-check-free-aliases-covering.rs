@@ -1,4 +1,4 @@
-// Weak aliases cover type parameters if they normalize to a (local) type that covers them.
+// Free alias types cover type parameters if they normalize to a (local) type that covers them.
 
 //@ check-pass
 //@ revisions: classic next

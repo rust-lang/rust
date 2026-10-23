@@ -1,12 +1,12 @@
-// We currently fail to wfcheck generic arguments that correspond to unused LTA generic parameters
+// We currently fail to wfcheck generic arguments that correspond to unused CTA generic parameters
 // since we generally normalize types before wfchecking them, so we accidentally "expand them away"
 // before we can check them.
 //
 // (We do still check predicates that reference unused parameters, of course.)
 //
-// FIXME(checked_type_aliases): I consider #100041 to be a stabilization-blocking concern for
-//                         the checked version of LTA! The *entire premise* of checked_LTA
-//                         is wfchecking; we can't have such obvious holes in it!
+// FIXME(checked_type_aliases): I consider #100041 to be a stabilization-blocking concern for CTA!
+// The *entire premise* of CTA is wfchecking; we can't have such obvious holes in it!
+// For a hypothetical `retained_type_aliases` this would not matter, of course.
 //
 //@ revisions: current-bugged next-bugged next-fixed
 //
