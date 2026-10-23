@@ -2429,7 +2429,11 @@ fn add_post_link_objects(
 fn add_pre_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
     // Emit the CC flag for the A53 mitigation early, as later linker args can override it if
     // required with `-mno-fix-cortex-a53-843419`
-    if sess.target.arch == Arch::AArch64 && matches!(flavor, LinkerFlavor::Gnu(Cc::Yes, ..)) {
+    if sess.target.arch == Arch::AArch64
+        && !sess.target.is_like_darwin
+        && sess.target.os != Os::Windows
+        && matches!(flavor, LinkerFlavor::Gnu(Cc::Yes, ..))
+    {
         cmd.cc_arg("-mfix-cortex-a53-843419");
     }
 
