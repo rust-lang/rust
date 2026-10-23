@@ -1,5 +1,5 @@
 error[E0107]: missing generics for struct `Ref`
-  --> $DIR/with-fn-mut-and-impl-sized.rs:9:22
+  --> $DIR/with-fn-mut-and-impl-sized.rs:11:22
    |
 LL | fn delay<Make: FnMut(Ref) -> C, C: std::mem::TransmuteFrom()>(make: Make) -> impl Sized {}
    |                      ^^^ expected 1 generic argument
@@ -10,7 +10,7 @@ LL | fn delay<Make: FnMut(Ref<T>) -> C, C: std::mem::TransmuteFrom()>(make: Make
    |                         +++
 
 error[E0220]: associated type `Output` not found for `TransmuteFrom`
-  --> $DIR/with-fn-mut-and-impl-sized.rs:9:46
+  --> $DIR/with-fn-mut-and-impl-sized.rs:11:46
    |
 LL | fn delay<Make: FnMut(Ref) -> C, C: std::mem::TransmuteFrom()>(make: Make) -> impl Sized {}
    |                                              ^^^^^^^^^^^^^^^ associated type `Output` not found

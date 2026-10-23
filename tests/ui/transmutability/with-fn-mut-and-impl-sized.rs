@@ -1,5 +1,7 @@
 // Regression test for: https://github.com/rust-lang/rust/issues/153357
-//@compile-flags: -Znext-solver
+//@ revisions: old next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@ [next] compile-flags: -Znext-solver
 
 #![feature(transmutability)]
 #![feature(unboxed_closures)]

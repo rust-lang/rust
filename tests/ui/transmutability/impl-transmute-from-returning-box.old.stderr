@@ -1,11 +1,11 @@
 error[E0220]: associated type `Output` not found for `TransmuteFrom`
-  --> $DIR/impl-transmute-from-returning-box.rs:7:40
+  --> $DIR/impl-transmute-from-returning-box.rs:9:40
    |
 LL | pub fn box_factory() -> impl std::mem::TransmuteFrom() {
    |                                        ^^^^^^^^^^^^^^^ associated type `Output` not found
 
 error[E0220]: associated type `Output` not found for `TransmuteFrom`
-  --> $DIR/impl-transmute-from-returning-box.rs:7:40
+  --> $DIR/impl-transmute-from-returning-box.rs:9:40
    |
 LL | pub fn box_factory() -> impl std::mem::TransmuteFrom() {
    |                                        ^^^^^^^^^^^^^^^ associated type `Output` not found
@@ -13,7 +13,7 @@ LL | pub fn box_factory() -> impl std::mem::TransmuteFrom() {
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: `()` cannot be safely transmuted into `Box<()>`
-  --> $DIR/impl-transmute-from-returning-box.rs:7:25
+  --> $DIR/impl-transmute-from-returning-box.rs:9:25
    |
 LL | pub fn box_factory() -> impl std::mem::TransmuteFrom() {
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ analyzing the transmutability of `Box<()>` is not yet supported
