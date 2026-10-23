@@ -16,7 +16,7 @@ pub use super::polonius::legacy::{
     PoloniusFacts as PoloniusInput, PoloniusLocationTable, PoloniusOutput, PoloniusRegionVid,
     RichLocation, RustcFacts,
 };
-use super::region_infer::RegionInferenceContext;
+pub use super::region_infer::RegionInferenceContext;
 use crate::BorrowCheckRootCtxt;
 
 /// Struct used during mir borrowck to collect bodies with facts for a typeck root and all
