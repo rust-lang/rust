@@ -2,7 +2,7 @@
 
 use std::borrow::Cow;
 use std::ffi::OsString;
-use std::fs::{self, DirBuilder, File, FileTimes, FileType, OpenOptions, TryLockError};
+use std::fs::{self, DirBuilder, File, FileTimes, OpenOptions, TryLockError};
 use std::io::{self, ErrorKind, Read, Seek, SeekFrom, Write};
 use std::path::{self, Path};
 use std::time::SystemTime;
@@ -373,39 +373,15 @@ trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(0)
     }
 
-    fn file_type_to_d_type(&self, file_type: std::io::Result<FileType>) -> InterpResult<'tcx, i32> {
-        #[cfg(unix)]
-        use std::os::unix::fs::FileTypeExt;
-
+    #[cfg(windows)]
+    fn file_type_to_d_type(&self, file_type: fs::FileType) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_ref();
-        match file_type {
-            Ok(file_type) => {
-                match () {
-                    _ if file_type.is_dir() => interp_ok(this.eval_libc("DT_DIR").to_u8()?.into()),
-                    _ if file_type.is_file() => interp_ok(this.eval_libc("DT_REG").to_u8()?.into()),
-                    _ if file_type.is_symlink() =>
-                        interp_ok(this.eval_libc("DT_LNK").to_u8()?.into()),
-                    // Certain file types are only supported when the host is a Unix system.
-                    #[cfg(unix)]
-                    _ if file_type.is_block_device() =>
-                        interp_ok(this.eval_libc("DT_BLK").to_u8()?.into()),
-                    #[cfg(unix)]
-                    _ if file_type.is_char_device() =>
-                        interp_ok(this.eval_libc("DT_CHR").to_u8()?.into()),
-                    #[cfg(unix)]
-                    _ if file_type.is_fifo() =>
-                        interp_ok(this.eval_libc("DT_FIFO").to_u8()?.into()),
-                    #[cfg(unix)]
-                    _ if file_type.is_socket() =>
-                        interp_ok(this.eval_libc("DT_SOCK").to_u8()?.into()),
-                    // Fallback
-                    _ => interp_ok(this.eval_libc("DT_UNKNOWN").to_u8()?.into()),
-                }
-            }
-            Err(_) => {
-                // Fallback on error
-                interp_ok(this.eval_libc("DT_UNKNOWN").to_u8()?.into())
-            }
+        match () {
+            _ if file_type.is_dir() => interp_ok(this.eval_libc("DT_DIR").to_u8()?.into()),
+            _ if file_type.is_file() => interp_ok(this.eval_libc("DT_REG").to_u8()?.into()),
+            _ if file_type.is_symlink() => interp_ok(this.eval_libc("DT_LNK").to_u8()?.into()),
+            // Fallback
+            _ => interp_ok(this.eval_libc("DT_UNKNOWN").to_u8()?.into()),
         }
     }
 
@@ -416,15 +392,28 @@ trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_ref();
         interp_ok(match entry {
             Either::Left(dir_entry) => {
-                DirEntry {
-                    name: dir_entry.file_name(),
-                    d_type: this.file_type_to_d_type(dir_entry.file_type())?,
-                    // If the host is a Unix system, fill in the inode number with its real value.
-                    // If not, use 0 as a fallback value.
-                    #[cfg(unix)]
-                    ino: std::os::unix::fs::DirEntryExt::ino(&dir_entry),
-                    #[cfg(not(unix))]
-                    ino: 0u64,
+                cfg_select! {
+                    unix => {
+                        use std::os::unix::fs::DirEntryExt;
+                        DirEntry {
+                            name: dir_entry.file_name(),
+                            d_type: {
+                                // We cannot rely on `dir_entry.file_type`, it might use a separate
+                                // syscall based on `file_name` which is racy.
+                                // It's always okay to return DT_UNKNOWN instead.
+                                this.eval_libc("DT_UNKNOWN").to_u8()?.into()
+                            },
+                            ino: dir_entry.ino(),
+                        }
+                    }
+                    windows => {
+                        DirEntry {
+                            name: dir_entry.file_name(),
+                            // `DirEntry::file_type` is always race-free and never fails on Windows.
+                            d_type: this.file_type_to_d_type(dir_entry.file_type().unwrap())?,
+                            ino: 0u64,
+                        }
+                    }
                 }
             }
             Either::Right(special) =>
