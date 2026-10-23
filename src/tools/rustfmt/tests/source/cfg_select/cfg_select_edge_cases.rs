@@ -123,6 +123,27 @@ fn cfg_select_comments_that_might_get_lost() {
         c // before arrow
         => x,
     }
+
+    cfg_select! {
+        _ => x /* before comma */,
+    }
+
+    cfg_select! {
+        _ => {{ x }} /* before comma */,
+    }
+
+    cfg_select! {
+        a   =>   b,
+    }
+
+    cfg_select! {
+        _ => xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx /* too long */,
+    }
+
+    cfg_select! {
+        _ => x // trailing newline
+        ,
+    }
 }
 
 fn other_cfg_select_cases() {
