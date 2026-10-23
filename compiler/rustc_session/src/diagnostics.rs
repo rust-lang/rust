@@ -321,6 +321,10 @@ pub(crate) struct SanitizerCfiRequiresLto;
 pub(crate) struct SanitizerCfiRequiresSingleCodegenUnit;
 
 #[derive(Diagnostic)]
+#[diag("`-Zsanitizer=hwaddress` with `-Clto` requires `-Ccodegen-units=1`")]
+pub(crate) struct SanitizerHwasanRequiresSingleCodegenUnit;
+
+#[derive(Diagnostic)]
 #[diag("`-Zsanitizer-cfi-canonical-jump-tables` requires `-Zsanitizer=cfi`")]
 pub(crate) struct SanitizerCfiCanonicalJumpTablesRequiresCfi;
 

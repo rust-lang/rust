@@ -1667,6 +1667,14 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         sess.dcx().emit_err(diagnostics::SanitizerCfiRequiresSingleCodegenUnit);
     }
 
+    // LLVM HWAddressSanitizer using rustc LTO requires a single codegen unit.
+    if sess.sanitizers().contains(SanitizerSet::HWADDRESS)
+        && sess.lto() == config::Lto::Fat
+        && (sess.codegen_units().as_usize() != 1)
+    {
+        sess.dcx().emit_err(diagnostics::SanitizerHwasanRequiresSingleCodegenUnit);
+    }
+
     // Canonical jump tables requires CFI.
     if sess.is_sanitizer_cfi_canonical_jump_tables_disabled() {
         if !sess.is_sanitizer_cfi_enabled() {
