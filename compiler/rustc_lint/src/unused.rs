@@ -1176,7 +1176,9 @@ impl EarlyLintPass for UnusedParens {
             ..
         }) = &pred.kind
         {
-            if let ast::TyKind::Paren(_) = &bounded_ty.kind && bound_generic_params.is_empty() {
+            if let ast::TyKind::Paren(_) = &bounded_ty.kind
+                && bound_generic_params.is_empty()
+            {
                 self.with_self_ty_parens = true;
             }
             self.register_no_bounds_positions(bounds);
