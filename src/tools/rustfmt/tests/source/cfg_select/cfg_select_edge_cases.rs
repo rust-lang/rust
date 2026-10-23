@@ -108,6 +108,21 @@ fn cfg_select_comments_that_might_get_lost() {
         _ => /* multi
         line */ {{ x }}
     }
+
+    // Comments before `=>`
+    cfg_select! {
+        _ /* before arrow */ => {{ x }}
+        _ /* before arrow */ => x,
+        _ /* before arrow */ => /* after arrow */ {{ x }}
+        all(target_os = "linux", target_arch = "x86_64", target_env = "gnu") /* long comment before arrow */ => {{ x }}
+        _ /* before arrow */ => {}
+    }
+
+    cfg_select! {
+        // Not formatted: a line comment before `=>`.
+        c // before arrow
+        => x,
+    }
 }
 
 fn other_cfg_select_cases() {

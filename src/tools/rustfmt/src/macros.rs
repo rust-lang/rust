@@ -21,7 +21,8 @@ use rustc_span::{BytePos, DUMMY_SP, Ident, Pos, Span, Symbol};
 use tracing::debug;
 
 use crate::comment::{
-    CharClasses, FindUncommented, FullCodeCharKind, LineClasses, contains_comment, rewrite_comment,
+    CharClasses, FindUncommented, FullCodeCharKind, LineClasses,
+    combine_strs_with_missing_comments, contains_comment, rewrite_comment,
 };
 use crate::config::StyleEdition;
 use crate::config::lists::*;
@@ -40,8 +41,9 @@ use crate::shape::{Indent, Shape};
 use crate::source_map::SpanUtils;
 use crate::spanned::Spanned;
 use crate::utils::{
-    NodeIdExt, extra_offset, filtered_str_fits, indent_next_line, is_empty_line, mk_sp,
-    remove_trailing_white_spaces, rewrite_ident, trim_left_preserve_layout,
+    NodeIdExt, extra_offset, filtered_str_fits, indent_next_line, is_empty_line,
+    last_line_contains_single_line_comment, mk_sp, remove_trailing_white_spaces, rewrite_ident,
+    trim_left_preserve_layout,
 };
 use crate::visitor::FmtVisitor;
 
@@ -1630,12 +1632,30 @@ fn format_cfg_select(
                 }
             };
 
+            // We need to account for comments between predicate and `=>`.
+            let before_arrow_sp = arm.predicate.span().between(arm.arrow.span);
+            let before_arrow = context.snippet(before_arrow_sp);
+            let predicate_str = if contains_comment(before_arrow) {
+                // We cannot rewrite if the last line is a line comment, it will comment out `=>`.
+                if last_line_contains_single_line_comment(before_arrow.trim_end()) {
+                    return Err(RewriteError::Unknown);
+                }
+                Cow::Owned(combine_strs_with_missing_comments(
+                    context,
+                    &predicate_str,
+                    "",
+                    before_arrow_sp,
+                    nested_shape,
+                    true,
+                )?)
+            } else {
+                predicate_str
+            };
+
             match arm.maybe_double_block_concise_formatting(context) {
-                // FIXME(ytmimi) The formatting for the `$predicate => {{}}` case isn't very robust.
-                // There's the potential that we'll lose comments in between the predicate, the `=>`
-                // and the body. We also don't handle comments like `{/*comment*/{}/*comment*/}`.
-                // The `rewrite_match_body` branch also handles `control_brace_style` better.
-                // That said, it helps fix <https://github.com/rust-lang/rustfmt/issues/7045>.
+                // FIXME(ytmimi): the `rewrite_match_body` branch also handles `control_brace_style`
+                // better. That said, it helps fix
+                // <https://github.com/rust-lang/rustfmt/issues/7045>.
                 Some(inner_expr) => {
                     // ```
                     // => /* comment */ {{ ... }}

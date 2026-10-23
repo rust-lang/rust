@@ -277,7 +277,8 @@ cfg_select! {
         true, /* comment */
         true, true, // true,
         true,
-    ) => {}
+    )
+    /* comment before arrow */ => {}
 
     not(
         false // comment
@@ -288,9 +289,10 @@ cfg_select! {
     ) => "any",
 }
 
-// comments before and after the `=>` get dropped right now
+// comments before and after the `=>` are kept
 cfg_select! {
-    any(true, true, true, true,) => {}
+    any(true, true, true, true,)
+    /* comment before arrow */ => {}
 
     not(false) =>
         /* comment before opening brace */
@@ -301,6 +303,15 @@ cfg_select! {
     {
         "any"
     }
+}
+
+// FIXME: not formatted, a line comment before `=>` would comment out the `=>`
+cfg_select! {
+    any(true,
+        true, true,
+        true, )
+        // line comment before arrow
+        => {}
 }
 
 // A bunch of mixed predicates
@@ -695,7 +706,8 @@ mod nested {
             true, /* comment */
             true, true, // true,
             true,
-        ) => {}
+        )
+        /* comment before arrow */ => {}
 
         not(
             false // comment
@@ -706,9 +718,10 @@ mod nested {
         ) => "any",
     }
 
-    // comments before and after the `=>` get dropped right now
+    // comments before and after the `=>` are kept
     cfg_select! {
-        any(true, true, true, true,) => {}
+        any(true, true, true, true,)
+        /* comment before arrow */ => {}
 
         not(false) =>
             /* comment before opening brace */
