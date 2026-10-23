@@ -7,7 +7,7 @@ use rustc_abi::{
 };
 use rustc_ast as ast;
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
-use rustc_attr_ir::{InlineAttr, UnrollAttr};
+use rustc_attr_ir::UnrollAttr;
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::packed::Pu128;
 use rustc_lint_defs::builtin::TAIL_CALL_TRACK_CALLER;

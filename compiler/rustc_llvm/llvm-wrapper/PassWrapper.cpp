@@ -12,6 +12,7 @@
 #include "llvm/CodeGen/CommandFlags.h"
 #include "llvm/IR/AssemblyAnnotationWriter.h"
 #include "llvm/IR/AutoUpgrade.h"
+#include "llvm/IR/EHPersonalities.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/PassManager.h"
 #include "llvm/IR/Verifier.h"
@@ -36,10 +37,6 @@
 #include "llvm/Transforms/IPO/LowerTypeTests.h"
 #include "llvm/Transforms/IPO/MergeFunctions.h"
 #include "llvm/Transforms/IPO/ThinLTOBitcodeWriter.h"
-#include "llvm/Transforms/Utils/CodeExtractor.h"
-#include "llvm/IR/EHPersonalities.h"
-#include <atomic>
-#include <cstdlib>
 #include "llvm/Transforms/Instrumentation/AddressSanitizer.h"
 #include "llvm/Transforms/Instrumentation/DataFlowSanitizer.h"
 #include "llvm/Transforms/Instrumentation/HWAddressSanitizer.h"
@@ -48,12 +45,15 @@
 #include "llvm/Transforms/Instrumentation/RealtimeSanitizer.h"
 #include "llvm/Transforms/Instrumentation/ThreadSanitizer.h"
 #include "llvm/Transforms/Scalar/AnnotationRemarks.h"
+#include "llvm/Transforms/Utils/CodeExtractor.h"
 #if LLVM_VERSION_GE(23, 0)
 #include "llvm/Transforms/Utils/AssignGUID.h"
 #endif
 #include "llvm/Transforms/Utils/CanonicalizeAliases.h"
 #include "llvm/Transforms/Utils/FunctionImportUtils.h"
 #include "llvm/Transforms/Utils/NameAnonGlobals.h"
+#include <atomic>
+#include <cstdlib>
 #include <set>
 #include <string>
 #include <vector>
@@ -86,13 +86,11 @@ struct ColdInvokeOutlinerPass
           F.hasFnAttribute(Attribute::Naked))
         continue;
       if (F.hasPersonalityFn() &&
-          isScopedEHPersonality(
-              classifyEHPersonality(F.getPersonalityFn())))
+          isScopedEHPersonality(classifyEHPersonality(F.getPersonalityFn())))
         continue;
 
       auto collectColdOnlyAllocas =
-          [&](BasicBlock *TargetBB,
-              SmallVectorImpl<AllocaInst *> &ColdAllocas,
+          [&](BasicBlock *TargetBB, SmallVectorImpl<AllocaInst *> &ColdAllocas,
               SmallVectorImpl<Instruction *> &DeadLifetimes) {
             for (Instruction &EntryI : F.getEntryBlock()) {
               auto *AI = dyn_cast<AllocaInst>(&EntryI);
@@ -160,8 +158,8 @@ struct ColdInvokeOutlinerPass
 
       SmallVector<BasicBlock *, 8> Candidates;
       for (BasicBlock &BB : F) {
-        if (&BB == &F.getEntryBlock() || BB.isEHPad() ||
-            BB.hasAddressTaken() || pred_empty(&BB))
+        if (&BB == &F.getEntryBlock() || BB.isEHPad() || BB.hasAddressTaken() ||
+            pred_empty(&BB))
           continue;
 
         if (auto *II = dyn_cast<InvokeInst>(BB.getTerminator())) {
@@ -350,7 +348,7 @@ struct ColdInvokeOutlinerPass
               ReferencedColdAllocas.insert(ValAI);
           }
         }
-        SmallVector<std::pair<StoreInst *, SelectInst *>, 4> ProxiedConsts;
+        SmallVector<SelectInst *, 4> ProxiedConsts;
         BasicBlock &EntryBB = F.getEntryBlock();
         for (Instruction &I : *BB) {
           if (ProxiedConsts.size() >= 4)
@@ -364,7 +362,7 @@ struct ColdInvokeOutlinerPass
                   ConstantInt::getTrue(F.getContext()), C, C, "cold.const",
                   EntryBB.getTerminator()->getIterator());
               SI->setOperand(0, Proxy);
-              ProxiedConsts.emplace_back(SI, Proxy);
+              ProxiedConsts.push_back(Proxy);
             }
           }
         }
@@ -381,10 +379,10 @@ struct ColdInvokeOutlinerPass
         bool Profitable =
             Outputs.empty() && Inputs.size() <= 6 &&
             (NonTrivialInsts >= 2 || OrigCallArgSize > Inputs.size());
-        Function *OutF =
-            (Profitable && CE.isEligible()) ? CE.extractCodeRegion(CEAC)
-                                            : nullptr;
-        for (auto &[SI, Proxy] : ProxiedConsts) {
+        Function *OutF = (Profitable && CE.isEligible())
+                             ? CE.extractCodeRegion(CEAC)
+                             : nullptr;
+        for (SelectInst *Proxy : ProxiedConsts) {
           Value *OrigC = Proxy->getTrueValue();
           Proxy->replaceAllUsesWith(OrigC);
           Proxy->eraseFromParent();
@@ -399,9 +397,9 @@ struct ColdInvokeOutlinerPass
             BasicBlock *CodeRepl = OutCI->getParent();
             Instruction *ReplTerm = CodeRepl->getTerminator();
             SmallVector<Value *, 8> OutArgs(OutCI->args());
-            InvokeInst *NewII = InvokeInst::Create(
-                OutF, NormalDest, UnwindDest, OutArgs, "",
-                ReplTerm->getIterator());
+            InvokeInst *NewII =
+                InvokeInst::Create(OutF, NormalDest, UnwindDest, OutArgs, "",
+                                   ReplTerm->getIterator());
             NewII->setCallingConv(OutCI->getCallingConv());
             NewII->setAttributes(OutCI->getAttributes());
             NewII->setDebugLoc(OrigDL);
@@ -1356,7 +1354,7 @@ extern "C" LLVMRustResult LLVMRustOptimize(
           OptLevel != OptimizationLevel::O0) {
         PB.registerPipelineEarlySimplificationEPCallback(
             [](ModulePassManager &EarlyMPM, OptimizationLevel Level,
-               ThinOrFullLTOPhase Phase) {
+               ThinOrFullLTOPhase /*Phase*/) {
               if (Level == OptimizationLevel::O0)
                 return;
               EarlyMPM.addPass(ColdInvokeOutlinerPass());

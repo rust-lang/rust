@@ -302,8 +302,10 @@ impl<'a, 'tcx> Analysis<'a, 'tcx> {
             },
             // `Ok(())` and other field-less values are constants after GVN.
             Rvalue::Use(Operand::Constant(constant), _) => {
-                let op =
-                    self.ecx.eval_mir_constant(&constant.const_, constant.span, None).discard_err()?;
+                let op = self
+                    .ecx
+                    .eval_mir_constant(&constant.const_, constant.span, None)
+                    .discard_err()?;
                 self.ecx.read_discriminant(&op).discard_err()
             }
             _ => None,
@@ -559,7 +561,13 @@ fn apply_rewrites<'tcx>(
                 );
                 statement.debuginfos.prepend(&mut data.after_last_stmt_debuginfos);
                 data.statements.push(statement);
-                TerminatorKind::Drop { place: Place::from(temp), target, unwind, replace, drop: None }
+                TerminatorKind::Drop {
+                    place: Place::from(temp),
+                    target,
+                    unwind,
+                    replace,
+                    drop: None,
+                }
             }
             DropAction::Whole => bug!("whole-value drops are not rewritten"),
         };

@@ -146,8 +146,7 @@ pub(crate) fn find_cold_blocks<'tcx>(
     mir: &Body<'tcx>,
 ) -> IndexVec<BasicBlock, bool> {
     let local_decls = &mir.local_decls;
-    let mut cold_blocks: IndexVec<BasicBlock, bool> =
-        IndexVec::from_elem(false, &mir.basic_blocks);
+    let mut cold_blocks: IndexVec<BasicBlock, bool> = IndexVec::from_elem(false, &mir.basic_blocks);
 
     if *COLD_CATCH_UNWIND || is_enabled(tcx) {
         mark_caught_panic_blocks_cold(tcx, mir, &mut cold_blocks);
@@ -183,8 +182,7 @@ pub(crate) fn find_cold_blocks<'tcx>(
         }
 
         // Propagate coldness backwards across normal (non-cleanup) edges.
-        let mut normal_succs =
-            terminator.successors().filter(|&s| !mir.basic_blocks[s].is_cleanup);
+        let mut normal_succs = terminator.successors().filter(|&s| !mir.basic_blocks[s].is_cleanup);
         if let Some(first) = normal_succs.next()
             && cold_blocks[first]
             && normal_succs.all(|s| cold_blocks[s])
@@ -255,8 +253,7 @@ fn sink_cold_only_statements<'tcx>(
     body: &mut Body<'tcx>,
     cold_blocks: &IndexVec<BasicBlock, bool>,
 ) -> bool {
-    let mut pred_counts: IndexVec<BasicBlock, usize> =
-        IndexVec::from_elem(0, &body.basic_blocks);
+    let mut pred_counts: IndexVec<BasicBlock, usize> = IndexVec::from_elem(0, &body.basic_blocks);
     for data in body.basic_blocks.iter() {
         for succ in data.terminator().successors() {
             pred_counts[succ] += 1;
@@ -272,11 +269,10 @@ fn sink_cold_only_statements<'tcx>(
             continue;
         };
         let discr_local = discr.place().and_then(|p| p.as_local());
-        let mut cold_targets = targets
-            .all_targets()
-            .iter()
-            .copied()
-            .filter(|&t| cold_blocks[t] && !body.basic_blocks[t].is_cleanup && pred_counts[t] == 1);
+        let mut cold_targets =
+            targets.all_targets().iter().copied().filter(|&t| {
+                cold_blocks[t] && !body.basic_blocks[t].is_cleanup && pred_counts[t] == 1
+            });
         let Some(cold_target) = cold_targets.next() else {
             continue;
         };
@@ -316,22 +312,22 @@ fn sink_cold_only_statements<'tcx>(
                 continue;
             }
             // Ensure no later statement in `bb_hot` reads `local` or writes any local read by `rvalue`.
-            let used_or_clobbered_later = statements[idx + 1..].iter().any(|later| match &later.kind
-            {
-                StatementKind::Assign(later_assign) => {
-                    let (later_place, ref later_rvalue) = **later_assign;
-                    rvalue_reads_local(later_rvalue, local)
-                        || later_place.local == local
-                        || rvalue_reads_local(rvalue, later_place.local)
-                }
-                StatementKind::SetDiscriminant { place: later_place, .. } => {
-                    later_place.local == local || rvalue_reads_local(rvalue, later_place.local)
-                }
-                StatementKind::StorageLive(l) | StatementKind::StorageDead(l) => {
-                    *l == local || rvalue_reads_local(rvalue, *l)
-                }
-                _ => true,
-            });
+            let used_or_clobbered_later =
+                statements[idx + 1..].iter().any(|later| match &later.kind {
+                    StatementKind::Assign(later_assign) => {
+                        let (later_place, ref later_rvalue) = **later_assign;
+                        rvalue_reads_local(later_rvalue, local)
+                            || later_place.local == local
+                            || rvalue_reads_local(rvalue, later_place.local)
+                    }
+                    StatementKind::SetDiscriminant { place: later_place, .. } => {
+                        later_place.local == local || rvalue_reads_local(rvalue, later_place.local)
+                    }
+                    StatementKind::StorageLive(l) | StatementKind::StorageDead(l) => {
+                        *l == local || rvalue_reads_local(rvalue, *l)
+                    }
+                    _ => true,
+                });
             if !used_or_clobbered_later {
                 to_sink_indices.push(idx);
             }
@@ -430,9 +426,8 @@ fn decouple_cold_borrows<'tcx>(
                     let ty = body.local_decls[local].ty;
                     if tcx.type_is_copy_modulo_regions(typing_env, ty) {
                         let source_info = stmt.source_info;
-                        let cold_local = body
-                            .local_decls
-                            .push(LocalDecl::with_source_info(ty, source_info));
+                        let cold_local =
+                            body.local_decls.push(LocalDecl::with_source_info(ty, source_info));
                         *borrowed_place = Place::from(cold_local);
                         let _ = region;
                         copy_prefix = Some((cold_local, local, source_info));
