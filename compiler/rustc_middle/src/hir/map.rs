@@ -375,7 +375,8 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn par_hir_body_owners(self, f: impl Fn(LocalDefId) + DynSend + DynSync) {
-        par_for_each_in(&self.hir_crate_items(()).body_owners[..], |&&def_id| f(def_id));
+        let slice = &self.hir_crate_items(()).body_owners[..];
+        par_for_each_in(slice, |&def_id| f(def_id));
     }
 
     pub fn hir_ty_param_owner(self, def_id: LocalDefId) -> LocalDefId {
@@ -505,7 +506,8 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn par_hir_for_each_module(self, f: impl Fn(LocalModId) + DynSend + DynSync) {
         let crate_items = self.hir_crate_items(());
-        par_for_each_in(&crate_items.submodules[..], |&&module| f(module));
+        let slice = &crate_items.submodules[..];
+        par_for_each_in(slice, |&module| f(module));
     }
 
     #[inline]
@@ -514,7 +516,7 @@ impl<'tcx> TyCtxt<'tcx> {
         f: impl Fn(LocalModId) -> Result<(), ErrorGuaranteed> + DynSend + DynSync,
     ) -> Result<(), ErrorGuaranteed> {
         let crate_items = self.hir_crate_items(());
-        try_par_for_each_in(&crate_items.submodules[..], |&&module| f(module))
+        try_par_for_each_in(&crate_items.submodules[..], |&module| f(module))
     }
 
     /// Returns an iterator for the nodes in the ancestor tree of the `current_id`
