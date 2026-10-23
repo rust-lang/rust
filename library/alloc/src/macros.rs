@@ -62,6 +62,76 @@ macro_rules! vec {
     );
 }
 
+/// Creates a [`Vec`] containing the arguments with the specified Allocator.
+///
+/// `vec!` allows `Vec`s to be defined with the same syntax as array expressions.
+/// There are two forms of this macro:
+///
+/// - Create a [`Vec`] containing a given list of elements:
+///
+/// ```
+/// # #![feature(allocator_ext)]
+/// # use alloc::alloc::Global;
+/// # use alloc::vec_in;
+/// let v = vec_in![in Global: 1, 2, 3];
+/// assert_eq!(v[0], 1);
+/// assert_eq!(v[1], 2);
+/// assert_eq!(v[2], 3);
+/// ```
+///
+/// - Create a [`Vec`] from a given element and size:
+///
+/// ```
+/// # #![feature(allocator_ext)]
+/// # use alloc::alloc::Global;
+/// # use alloc::vec_in;
+/// let v = vec_in![in Global: 1; 3];
+/// assert_eq!(v, [1, 1, 1]);
+/// ```
+///
+/// Note that unlike array expressions this syntax supports all elements
+/// which implement [`Clone`] and the number of elements doesn't have to be
+/// a constant.
+///
+/// This will use `clone` to duplicate an expression, so one should be careful
+/// using this with types having a nonstandard `Clone` implementation. For
+/// example, `vec_in![Rc::new(1); 5 in Global]` will create a vector of five references
+/// to the same boxed integer value, not five references pointing to independently
+/// boxed integers.
+///
+/// Also, note that `vec_in![in Global: expr; 0]` is allowed, and produces an empty vector.
+/// This will still evaluate `expr`, however, and immediately drop the resulting value, so
+/// be mindful of side effects.
+///
+/// [`Vec`]: crate::vec::Vec
+#[cfg(not(no_global_oom_handling))]
+#[macro_export]
+#[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
+#[rustc_diagnostic_item = "vec_in_macro"]
+#[allow_internal_unstable(rustc_attrs, liballoc_internals)]
+#[rustc_diagnostic_opaque]
+macro_rules! vec_in {
+    (in $alloc:ident) => (
+        $crate::vec::Vec::new_in($alloc)
+    );
+    (in $alloc:ident: $elem:expr; $n:expr) => (
+        $crate::vec::from_elem_in($elem, $n, $alloc)
+    );
+    (in $alloc:ident: $($x:expr),+ $(,)? ) => (
+        // Using `write_box_via_move` produces a dramatic improvement in stack usage for unoptimized
+        // programs using this code path to construct large Vecs. We can't use `write_via_move`
+        // because this entire invocation has to remain a call chain without `let` bindings, or else
+        // inference and temporary lifetimes change and things break (see `vec-macro-rvalue-scope`,
+        // `vec-macro-coercions`, and `autoderef-vec-box-fn-36786` tests).
+        //
+        // `box_assume_init_into_vec_unsafe` isn't actually safe but the way we use it here is. We
+        // can't use an unsafe block as that would also wrap `$x`.
+        $crate::boxed::box_assume_init_into_vec_unsafe(
+            $crate::intrinsics::write_box_via_move($crate::boxed::Box::new_uninit_in($alloc), [$($x),+])
+        )
+    );
+}
+
 /// Creates a `String` using interpolation of runtime expressions.
 ///
 /// The first argument `format!` receives is a format string. This must be a string
