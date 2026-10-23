@@ -79,7 +79,9 @@ fn cfg_select_comments_that_might_get_lost() {
         }
     }
     cfg_select! {
-        _ => {{ x }}
+        _ =>
+        /* after => */
+        {{ x }}
     }
     cfg_select! {
         _ => {{ x }}
@@ -101,6 +103,61 @@ fn cfg_select_comments_that_might_get_lost() {
                 c
             } /* d */
         }}
+    }
+
+    cfg_select! {
+        _ => {
+            { x } /* after */
+        }
+    }
+
+    cfg_select! {
+        _ => {
+            { x } // after newline
+        }
+    }
+
+    cfg_select! {
+        _ =>
+        /* between */
+        {{ x }}
+    }
+
+    cfg_select! {
+        _ =>
+        // between trailing
+        {{ x }}
+    }
+
+    // Trailing comma
+    cfg_select! {
+        _ =>
+        /* between */
+        {{ x }},
+    }
+    cfg_select! {
+        _ =>
+        /* between */
+        {{
+            a;
+            b
+        }},
+    }
+
+    cfg_select! {
+        _ =>
+        /* between */
+        {{
+            a;
+            b
+        }}
+    }
+
+    cfg_select! {
+        _ =>
+        /* multi
+        line */
+        {{ x }}
     }
 }
 
@@ -281,6 +338,41 @@ fn other_cfg_select_cases() {
             || {}
         }
     };
+
+    cfg_select! {
+        _ =>
+        /* before attr */
+        #[attr]
+        {
+            z
+        }
+    }
+
+    cfg_select! {
+        _ =>
+        #[attr] /* after attr */
+        {
+            z
+        }
+    }
+
+    cfg_select! {
+        _ =>
+        // line comment before attr
+        #[attr]
+        {
+            z
+        }
+    }
+
+    cfg_select! {
+        _ =>
+        /* before attr */
+        #[attr] /* after attr */
+        {
+            z
+        }
+    }
 }
 
 fn long_predicate() {

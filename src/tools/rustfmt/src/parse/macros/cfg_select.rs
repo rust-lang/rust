@@ -207,7 +207,7 @@ impl CfgSelectArm {
                         // pre_sp     post_sp
                         // ```
                         let pre_sp = outer_block.span.until(inner_block.span);
-                        let post_sp = inner_block.span.until(outer_block.span);
+                        let post_sp = outer_block.span.with_lo(inner_block.span.hi());
                         if contains_comment(context.snippet(pre_sp))
                             || contains_comment(context.snippet(post_sp))
                         {

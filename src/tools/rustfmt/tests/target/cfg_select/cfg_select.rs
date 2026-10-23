@@ -292,9 +292,15 @@ cfg_select! {
 cfg_select! {
     any(true, true, true, true,) => {}
 
-    not(false) => {}
+    not(false) =>
+        /* comment before opening brace */
+        {}
 
-    any(false) => "any",
+    any(false) =>
+    // comment before brace
+    {
+        "any"
+    }
 }
 
 // A bunch of mixed predicates
@@ -704,9 +710,15 @@ mod nested {
     cfg_select! {
         any(true, true, true, true,) => {}
 
-        not(false) => {}
+        not(false) =>
+            /* comment before opening brace */
+            {}
 
-        any(false) => "any",
+        any(false) =>
+        // comment before brace
+        {
+            "any"
+        }
     }
 
     // A bunch of mixed predicates

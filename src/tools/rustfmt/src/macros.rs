@@ -21,7 +21,7 @@ use rustc_span::{BytePos, DUMMY_SP, Ident, Pos, Span, Symbol};
 use tracing::debug;
 
 use crate::comment::{
-    CharClasses, FindUncommented, FullCodeCharKind, LineClasses, contains_comment,
+    CharClasses, FindUncommented, FullCodeCharKind, LineClasses, contains_comment, rewrite_comment,
 };
 use crate::config::StyleEdition;
 use crate::config::lists::*;
@@ -1636,31 +1636,72 @@ fn format_cfg_select(
                 // and the body. We also don't handle comments like `{/*comment*/{}/*comment*/}`.
                 // The `rewrite_match_body` branch also handles `control_brace_style` better.
                 // That said, it helps fix <https://github.com/rust-lang/rustfmt/issues/7045>.
-                Some(expr) => {
+                Some(inner_expr) => {
+                    // ```
+                    // => /* comment */ {{ ... }}
+                    //    ^------------- between span
+                    // ```
+                    let after_arrow_comment = context
+                        .snippet(arm.arrow.span.between(arm.expr.span()))
+                        .trim();
+                    let after_arrow_comment = if after_arrow_comment.is_empty() {
+                        None
+                    } else {
+                        Some(rewrite_comment(
+                            after_arrow_comment,
+                            false,
+                            nested_shape,
+                            context.config,
+                        )?)
+                    };
+
                     let trailing_comma = if arm.trailing_comma.is_some() {
                         ","
                     } else {
                         ""
                     };
-                    let offset = extra_offset(&predicate_str, nested_shape) + " => {".len();
-                    let nested_shape = nested_shape
-                        .offset_left(offset, arm.span())?
-                        .sub_width("}".len() + trailing_comma.len(), arm.span())?;
-                    let body = expr
-                        .rewrite_result(context, nested_shape)
-                        .map(|rw| format!("{{{rw}}}"))?;
 
-                    Ok(format!("{predicate_str} => {body}{trailing_comma}"))
+                    // Match `match` layout for after arrow comment, where comment and expr each go
+                    // on own lines.
+                    let prefix_width = if after_arrow_comment.is_some() {
+                        0
+                    } else {
+                        extra_offset(&predicate_str, nested_shape) + " => ".len()
+                    };
+
+                    let body_shape = nested_shape
+                        .offset_left(prefix_width + "{".len(), arm.span())?
+                        .sub_width("}".len() + trailing_comma.len(), arm.span())?;
+                    let body = inner_expr.rewrite_result(context, body_shape)?;
+
+                    let body = format!("{{{body}}}{trailing_comma}");
+                    match after_arrow_comment {
+                        Some(comment) => {
+                            let indent = nested_shape.indent.to_string_with_newline(context.config);
+                            Ok(format!("{predicate_str} =>{indent}{comment}{indent}{body}"))
+                        }
+                        None => Ok(format!("{predicate_str} => {body}")),
+                    }
                 }
-                None => crate::matches::rewrite_match_body(
-                    context,
-                    &arm.expr,
-                    &predicate_str,
-                    nested_shape,
-                    false,
-                    arm.arrow.span,
-                    last_arm.is_some_and(|la| la == arm),
-                ),
+                None => {
+                    // Note that we can't _just_ pass the `=>`'s span, we need to pass
+                    //
+                    // ```
+                    // => /* comment */ #[attr] { ... }
+                    // ^--------------- this whole span until outer expr
+                    // ```
+                    //
+                    // Using `Spanned::span` here for `arm.expr` to account for outer attributes.
+                    crate::matches::rewrite_match_body(
+                        context,
+                        &arm.expr,
+                        &predicate_str,
+                        nested_shape,
+                        false,
+                        arm.arrow.span.until(arm.expr.span()),
+                        last_arm.is_some_and(|la| la == arm),
+                    )
+                }
             }
         },
         // Start Span after the opening delimiter. For example,
