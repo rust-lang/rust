@@ -197,7 +197,7 @@ fn show_substructure(
             cx.expr_array_ref(span, value_exprs),
         );
 
-        // `fmt::Formatter::debug_struct_fields_finish(fmt, name, names, values)` or
+        // `fmt::Formatter::debug_struct_fields_finish(fmt, names, values)` or
         // `fmt::Formatter::debug_tuple_fields_finish(fmt, name, values)`
         let sym_debug = if is_struct {
             sym::debug_struct_fields_finish
