@@ -475,7 +475,7 @@ fn declare_offload_fn<'ll>(
     )
 }
 
-pub(crate) fn scalar_width<'ll>(cx: &'ll SimpleCx<'_>, ty: &'ll Type) -> u64 {
+pub(crate) fn scalar_width<'ll>(cx: &SimpleCx<'ll>, ty: &'ll Type) -> u64 {
     match cx.type_kind(ty) {
         TypeKind::Half
         | TypeKind::Float
