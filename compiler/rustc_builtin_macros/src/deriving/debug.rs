@@ -125,7 +125,7 @@ fn show_substructure(
         };
         let fn_path_debug = cx.std_path(span, &[sym::fmt, sym::Formatter, Symbol::intern(&debug)]);
 
-        let mut args = ThinVec::with_capacity(3 + fields.len() * args_per_field);
+        let mut args = ThinVec::with_capacity(2 + fields.len() * args_per_field);
         args.extend([fmt]);
 
         let mut names = String::new();
