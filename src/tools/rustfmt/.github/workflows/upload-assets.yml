@@ -11,6 +11,8 @@ permissions: {}
 jobs:
   build-release:
     name: build-release
+    permissions:
+      contents: write # Required by `gh release upload`
     strategy:
       matrix:
         build: [linux-x86_64, macos-x86_64, windows-x86_64-gnu, windows-x86_64-msvc]
