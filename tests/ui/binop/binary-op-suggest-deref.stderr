@@ -1,10 +1,11 @@
-error[E0308]: mismatched types
-  --> $DIR/binary-op-suggest-deref.rs:6:12
+error[E0277]: can't compare `&i64` with `{integer}`
+  --> $DIR/binary-op-suggest-deref.rs:6:10
    |
 LL |     if i < 0 {}
-   |            ^ expected `&i64`, found integer
+   |          ^ no implementation for `&i64 < {integer}` and `&i64 > {integer}`
    |
-help: consider dereferencing the borrow
+   = help: the trait `PartialOrd<{integer}>` is not implemented for `&i64`
+help: consider dereferencing here
    |
 LL |     if *i < 0 {}
    |        +

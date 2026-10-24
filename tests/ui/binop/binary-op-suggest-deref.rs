@@ -4,7 +4,7 @@ fn foo() {
     // Issue #52544
     let i: &i64 = &1;
     if i < 0 {}
-    //~^ ERROR mismatched types [E0308]
+    //~^ ERROR can't compare `&i64` with `{integer}`
 }
 
 fn bar() {
