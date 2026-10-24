@@ -346,7 +346,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             this.invalid_handle("GetFileInformationByHandle")?
         };
 
-        let metadata = match desc.metadata()? {
+        let metadata = match desc.metadata(this.machine.communicate())? {
             Either::Left(Ok(meta)) => meta,
             Either::Left(Err(e)) => {
                 this.set_last_error(e)?;

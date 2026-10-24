@@ -1111,6 +1111,16 @@ fn test_fstat() {
         errno_check(libc::close(fds[0]));
         errno_check(libc::close(fds[1]));
     }
+
+    // And test it on the standard FDs.
+    for fd in [0, 1, 2] {
+        let mut stat = MaybeUninit::<libc::stat>::uninit();
+        errno_check(unsafe { libc::fstat(fd, stat.as_mut_ptr()) });
+        let stat = unsafe { stat.assume_init_ref() };
+
+        // This is IFCHR when running on the terminal and IFIFO when running in ui_test.
+        assert!(matches!(stat.st_mode & libc::S_IFMT, libc::S_IFCHR | libc::S_IFIFO));
+    }
 }
 
 fn test_fstatat() {

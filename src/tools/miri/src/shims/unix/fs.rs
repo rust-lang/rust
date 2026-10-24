@@ -2283,7 +2283,7 @@ impl FileMetadata {
         let Some(fd) = ecx.machine.fds.get(fd_num) else {
             return interp_ok(Err(LibcError("EBADF")));
         };
-        match fd.metadata()? {
+        match fd.metadata(ecx.machine.communicate())? {
             Either::Left(host) => Self::from_host(ecx, host),
             Either::Right(mode_name) => Self::synthetic(ecx, mode_name),
         }
