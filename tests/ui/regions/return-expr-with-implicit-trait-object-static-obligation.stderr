@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/return-expr-with-implicit-trait-object-static-obligation.rs:11:24
+  --> $DIR/return-expr-with-implicit-trait-object-static-obligation.rs:14:24
    |
 LL |         pub fn new(string: &str) -> Self {
    |                            - let's call the lifetime of this reference `'1`
@@ -8,7 +8,7 @@ LL |                 chars: Box::new(string.chars()),
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^ coercion requires that `'1` must outlive `'static`
    |
 note: this `dyn Trait` introduces an implicit `'static` obligation
-  --> $DIR/return-expr-with-implicit-trait-object-static-obligation.rs:5:20
+  --> $DIR/return-expr-with-implicit-trait-object-static-obligation.rs:8:20
    |
 LL |     pub struct Thing {
 LL |         chars: Box<dyn Iterator<Item = char>>,
@@ -20,8 +20,10 @@ LL ~         chars: Box<dyn Iterator<Item = char> + 'a>,
    |
 
 error: lifetime may not live long enough
-  --> $DIR/return-expr-with-implicit-trait-object-static-obligation.rs:24:13
+  --> $DIR/return-expr-with-implicit-trait-object-static-obligation.rs:30:13
    |
+LL |       impl Thing<'_> {
+   |                  -- lifetime `'2` introduced here
 LL |           pub fn new(string: &str) -> Self {
    |                              -        ---- return type is `b::Thing<'2>`
    |                              |
@@ -32,7 +34,7 @@ LL | |             }
    | |_____________^ associated function was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
 
 error: lifetime may not live long enough
-  --> $DIR/return-expr-with-implicit-trait-object-static-obligation.rs:36:19
+  --> $DIR/return-expr-with-implicit-trait-object-static-obligation.rs:43:19
    |
 LL |         pub fn new(string: &str) -> Self {
    |                            - let's call the lifetime of this reference `'1`
@@ -40,7 +42,7 @@ LL |             Thing(Box::new(string.chars()))
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^ coercion requires that `'1` must outlive `'static`
    |
 note: this `dyn Trait` introduces an implicit `'static` obligation
-  --> $DIR/return-expr-with-implicit-trait-object-static-obligation.rs:32:26
+  --> $DIR/return-expr-with-implicit-trait-object-static-obligation.rs:39:26
    |
 LL |     pub struct Thing(Box<dyn Iterator<Item = char>>);
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -50,7 +52,7 @@ LL |     pub struct Thing<'a>(Box<dyn Iterator<Item = char> + 'a>);
    |                     ++++                               ++++
 
 error: lifetime may not live long enough
-  --> $DIR/return-expr-with-implicit-trait-object-static-obligation.rs:48:24
+  --> $DIR/return-expr-with-implicit-trait-object-static-obligation.rs:56:24
    |
 LL |         pub fn new(string: &str) -> Self {
    |                            - let's call the lifetime of this reference `'1`
@@ -58,7 +60,7 @@ LL |             Thing::Foo(Box::new(string.chars()))
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^ coercion requires that `'1` must outlive `'static`
    |
 note: this `dyn Trait` introduces an implicit `'static` obligation
-  --> $DIR/return-expr-with-implicit-trait-object-static-obligation.rs:43:17
+  --> $DIR/return-expr-with-implicit-trait-object-static-obligation.rs:51:17
    |
 LL |     pub enum Thing {
 LL |         Foo(Box<dyn Iterator<Item = char>>),
@@ -70,7 +72,7 @@ LL ~         Foo(Box<dyn Iterator<Item = char> + 'a>),
    |
 
 error: lifetime may not live long enough
-  --> $DIR/return-expr-with-implicit-trait-object-static-obligation.rs:63:24
+  --> $DIR/return-expr-with-implicit-trait-object-static-obligation.rs:72:24
    |
 LL |         pub fn new(string: &str) -> Self {
    |                            - let's call the lifetime of this reference `'1`
@@ -79,7 +81,7 @@ LL |                 chars: Box::new(string.chars()),
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^ coercion requires that `'1` must outlive `'static`
    |
 note: this `dyn Trait` introduces an implicit `'static` obligation
-  --> $DIR/return-expr-with-implicit-trait-object-static-obligation.rs:56:24
+  --> $DIR/return-expr-with-implicit-trait-object-static-obligation.rs:65:24
    |
 LL |     pub enum Thing {
 LL |         Foo {
@@ -93,7 +95,7 @@ LL ~             chars: Box<dyn Iterator<Item = char> + 'a>,
    |
 
 error: lifetime may not live long enough
-  --> $DIR/return-expr-with-implicit-trait-object-static-obligation.rs:78:24
+  --> $DIR/return-expr-with-implicit-trait-object-static-obligation.rs:87:24
    |
 LL |         pub fn new(string: &str) -> Self {
    |                            - let's call the lifetime of this reference `'1`
@@ -102,7 +104,7 @@ LL |                 chars: Box::new(string.chars()),
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^ coercion requires that `'1` must outlive `'static`
    |
 note: this `dyn Trait` introduces an implicit `'static` obligation
-  --> $DIR/return-expr-with-implicit-trait-object-static-obligation.rs:71:20
+  --> $DIR/return-expr-with-implicit-trait-object-static-obligation.rs:80:20
    |
 LL |     pub struct Thing<'a> {
 LL |         chars: Box<dyn Iterator<Item = char>>,
@@ -113,7 +115,7 @@ LL |         chars: Box<dyn Iterator<Item = char> + 'a>,
    |                                              ++++
 
 error: lifetime may not live long enough
-  --> $DIR/return-expr-with-implicit-trait-object-static-obligation.rs:94:24
+  --> $DIR/return-expr-with-implicit-trait-object-static-obligation.rs:103:24
    |
 LL |         pub fn new(string: &str) -> Self {
    |                            - let's call the lifetime of this reference `'1`
@@ -122,7 +124,7 @@ LL |                 chars: Box::new(string.chars()),
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^ coercion requires that `'1` must outlive `'static`
    |
 note: this `dyn Trait` introduces an implicit `'static` obligation
-  --> $DIR/return-expr-with-implicit-trait-object-static-obligation.rs:87:20
+  --> $DIR/return-expr-with-implicit-trait-object-static-obligation.rs:96:20
    |
 LL |     pub struct Thing<'a> {
 LL |         chars: Box<dyn Iterator<Item = char>>,
@@ -133,7 +135,7 @@ LL |         chars: Box<dyn Iterator<Item = char> + 'a>,
    |                                              ++++
 
 error: lifetime may not live long enough
-  --> $DIR/return-expr-with-implicit-trait-object-static-obligation.rs:110:24
+  --> $DIR/return-expr-with-implicit-trait-object-static-obligation.rs:121:24
    |
 LL |         pub fn new(string: &str) -> Self {
    |                            - let's call the lifetime of this reference `'1`
@@ -142,7 +144,7 @@ LL |                 chars: Box::new(string.chars()),
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^ coercion requires that `'1` must outlive `'static`
    |
 note: this `dyn Trait` introduces an implicit `'static` obligation
-  --> $DIR/return-expr-with-implicit-trait-object-static-obligation.rs:103:20
+  --> $DIR/return-expr-with-implicit-trait-object-static-obligation.rs:114:20
    |
 LL |     pub struct Thing {
 LL |         chars: Box<dyn Iterator<Item = char>>,
@@ -154,7 +156,7 @@ LL ~         chars: Box<dyn Iterator<Item = char> + 'a>,
    |
 
 error: lifetime may not live long enough
-  --> $DIR/return-expr-with-implicit-trait-object-static-obligation.rs:126:25
+  --> $DIR/return-expr-with-implicit-trait-object-static-obligation.rs:137:25
    |
 LL |         pub fn new(string: &str) -> Self {
    |                            - let's call the lifetime of this reference `'1`
@@ -163,7 +165,7 @@ LL |                 chars: (Box::new(string.chars()), Box::new(string.chars()))
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^ coercion requires that `'1` must outlive `'static`
    |
 note: these `dyn Trait`s introduce an implicit `'static` obligation
-  --> $DIR/return-expr-with-implicit-trait-object-static-obligation.rs:120:21
+  --> $DIR/return-expr-with-implicit-trait-object-static-obligation.rs:131:21
    |
 LL |     pub struct Thing {
 LL |         chars: (Box<dyn Iterator<Item = char>>, Box<dyn Iterator<Item = char>>),
@@ -175,7 +177,7 @@ LL ~         chars: (Box<dyn Iterator<Item = char> + 'a>, Box<dyn Iterator<Item 
    |
 
 error: lifetime may not live long enough
-  --> $DIR/return-expr-with-implicit-trait-object-static-obligation.rs:141:28
+  --> $DIR/return-expr-with-implicit-trait-object-static-obligation.rs:153:28
    |
 LL |         pub fn new(string: &str) -> Self {
    |                            - let's call the lifetime of this reference `'1`
@@ -184,7 +186,7 @@ LL |                     chars: Box::new(string.chars()),
    |                            ^^^^^^^^^^^^^^^^^^^^^^^^ coercion requires that `'1` must outlive `'static`
    |
 note: this `dyn Trait` introduces an implicit `'static` obligation
-  --> $DIR/return-expr-with-implicit-trait-object-static-obligation.rs:134:20
+  --> $DIR/return-expr-with-implicit-trait-object-static-obligation.rs:146:20
    |
 LL |     pub struct Thing {
 LL |         chars: Box<dyn Iterator<Item = char>>,
@@ -195,5 +197,19 @@ LL ~     pub struct Thing<'a> {
 LL ~         chars: Box<dyn Iterator<Item = char> + 'a>,
    |
 
-error: aborting due to 10 previous errors
+error[E0621]: explicit lifetime required in the type of `string`
+  --> $DIR/return-expr-with-implicit-trait-object-static-obligation.rs:172:13
+   |
+LL | /             Thing {
+LL | |                 chars: Box::new(string.chars()),
+LL | |             }
+   | |_____________^ lifetime `'a` required
+   |
+help: add explicit lifetime `'a` to the type of `string`
+   |
+LL |         pub fn new(string: &'a str) -> Self {
+   |                             ++
 
+error: aborting due to 11 previous errors
+
+For more information about this error, try `rustc --explain E0621`.

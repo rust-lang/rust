@@ -1,6 +1,9 @@
 // Detect. #78547.
 
 mod a {
+    // Originally reported case, where `dyn Trait` had implicit `'static` requirement.
+    // We ensure we point at `dyn Iterator<Item = char>` and we should be suggesting to add a named
+    // lifetime to `Thing`.
     pub struct Thing {
         chars: Box<dyn Iterator<Item = char>>,
     }
@@ -15,6 +18,9 @@ mod a {
 }
 
 mod b {
+    // Similar to above, but the `dyn Trait` has an explicit named bound on the type, but an
+    // implicit one in the `impl`.
+    // We ensure we point at `impl Thing<'_>` as introducing the unmet lifetime in `-> Self`.
     pub struct Thing<'a> {
         chars: Box<dyn Iterator<Item = char> + 'a>,
     }
@@ -29,6 +35,7 @@ mod b {
 }
 
 mod c {
+    // Ensure that we are handling tuple-structs.
     pub struct Thing(Box<dyn Iterator<Item = char>>);
 
     impl Thing {
@@ -39,6 +46,7 @@ mod c {
 }
 
 mod d {
+    // Ensure that we are handling tuple enum variants.
     pub enum Thing {
         Foo(Box<dyn Iterator<Item = char>>),
     }
@@ -51,6 +59,7 @@ mod d {
 }
 
 mod e {
+    // Ensure that we are handling struct enum variants.
     pub enum Thing {
         Foo {
             chars: Box<dyn Iterator<Item = char>>,
@@ -99,6 +108,8 @@ mod g {
 }
 
 mod h {
+    // Multiple lifetime failures on the same expression. We currently only talk about the first
+    // field's lifetime failure, and point at the first field in the definition.
     pub struct Thing {
         chars: Box<dyn Iterator<Item = char>>,
         other_chars: Box<dyn Iterator<Item = char>>,
@@ -130,6 +141,7 @@ mod i {
 }
 
 mod j {
+    // Multiple returned values with the same problem. We currently ignore the second incident.
     pub struct Thing {
         chars: Box<dyn Iterator<Item = char>>,
     }
@@ -147,5 +159,22 @@ mod j {
         }
     }
 }
+
+mod k {
+    // Similar to `b`, but with a named lifetime in the `impl`. We flat out tell people to use the
+    // exisitng named lifetime in `fn new(&str)`.
+    pub struct Thing<'a> {
+        chars: Box<dyn Iterator<Item = char> + 'a>,
+    }
+
+    impl<'a> Thing<'a> {
+        pub fn new(string: &str) -> Self {
+            Thing { //~ ERROR: explicit lifetime required in the type of `string`
+                chars: Box::new(string.chars()),
+            }
+        }
+    }
+}
+
 
 fn main() {}

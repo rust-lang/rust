@@ -2,7 +2,9 @@ error[E0716]: temporary value dropped while borrowed
   --> $DIR/static-reference-to-fn-2.rs:18:22
    |
 LL | fn state1(self_: &mut StateMachineIter) -> Option<&'static str> {
-   |           ----- has type `&mut StateMachineIter<'1>`
+   |           -----       ---------------- lifetime `'1` introduced here
+   |           |
+   |           has type `&mut StateMachineIter<'1>`
 LL |     self_.statefn = &id(state2 as StateMachineFunc);
    |     -----------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^- temporary value is freed at the end of this statement
    |     |                |
@@ -13,7 +15,9 @@ error[E0716]: temporary value dropped while borrowed
   --> $DIR/static-reference-to-fn-2.rs:24:22
    |
 LL | fn state2(self_: &mut StateMachineIter) -> Option<(&'static str)> {
-   |           ----- has type `&mut StateMachineIter<'1>`
+   |           -----       ---------------- lifetime `'1` introduced here
+   |           |
+   |           has type `&mut StateMachineIter<'1>`
 LL |     self_.statefn = &id(state3 as StateMachineFunc);
    |     -----------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^- temporary value is freed at the end of this statement
    |     |                |
@@ -24,7 +28,9 @@ error[E0716]: temporary value dropped while borrowed
   --> $DIR/static-reference-to-fn-2.rs:30:22
    |
 LL | fn state3(self_: &mut StateMachineIter) -> Option<(&'static str)> {
-   |           ----- has type `&mut StateMachineIter<'1>`
+   |           -----       ---------------- lifetime `'1` introduced here
+   |           |
+   |           has type `&mut StateMachineIter<'1>`
 LL |     self_.statefn = &id(finished as StateMachineFunc);
    |     -----------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^- temporary value is freed at the end of this statement
    |     |                |
