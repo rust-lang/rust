@@ -4,9 +4,9 @@ use rustc_feature::AttributeStability;
 use super::prelude::*;
 use crate::diagnostics::RustcPubTransparent;
 
-pub(crate) struct RustcAsPtrParser;
-impl NoArgsAttributeParser for RustcAsPtrParser {
-    const PATH: &[Symbol] = &[sym::rustc_as_ptr];
+pub(crate) struct LintAsPtrParser;
+impl NoArgsAttributeParser for LintAsPtrParser {
+    const PATH: &[Symbol] = &[sym::lint, sym::as_ptr];
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
@@ -15,7 +15,23 @@ impl NoArgsAttributeParser for RustcAsPtrParser {
         Allow(Target::Method(MethodKind::TraitImpl)),
     ]);
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
-    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcAsPtr;
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::LintAsPtr;
+}
+
+pub(crate) struct LintNeverReturnsNullPtrParser;
+
+impl NoArgsAttributeParser for LintNeverReturnsNullPtrParser {
+    const PATH: &[Symbol] = &[sym::lint, sym::never_returns_null_ptr];
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
+        Allow(Target::Fn),
+        Allow(Target::Method(MethodKind::Inherent)),
+        Allow(Target::Method(MethodKind::Trait { body: false })),
+        Allow(Target::Method(MethodKind::Trait { body: true })),
+        Allow(Target::Method(MethodKind::TraitImpl)),
+    ]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
+
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::LintNeverReturnsNullPtr;
 }
 
 pub(crate) struct RustcPubTransparentParser;
@@ -53,15 +69,15 @@ impl NoArgsAttributeParser for RustcPassByValueParser {
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcPassByValue;
 }
 
-pub(crate) struct RustcShouldNotBeCalledOnConstItemsParser;
-impl NoArgsAttributeParser for RustcShouldNotBeCalledOnConstItemsParser {
-    const PATH: &[Symbol] = &[sym::rustc_should_not_be_called_on_const_items];
+pub(crate) struct LintShouldNotBeCalledOnConstItemsParser;
+impl NoArgsAttributeParser for LintShouldNotBeCalledOnConstItemsParser {
+    const PATH: &[Symbol] = &[sym::lint, sym::should_not_be_called_on_const_items];
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::TraitImpl)),
     ]);
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
-    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcShouldNotBeCalledOnConstItems;
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::LintShouldNotBeCalledOnConstItems;
 }
 
 pub(crate) struct AutomaticallyDerivedParser;
