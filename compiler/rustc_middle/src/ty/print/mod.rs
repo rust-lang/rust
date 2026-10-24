@@ -322,6 +322,10 @@ fn characteristic_def_id_of_type_cached<'a>(
             return None;
         }),
 
+        ty::UnsafeBinder(bound_ty) => {
+            characteristic_def_id_of_type_cached(bound_ty.skip_binder(), visited)
+        }
+
         ty::FnDef(def_id, _)
         | ty::Closure(def_id, _)
         | ty::CoroutineClosure(def_id, _)
@@ -335,7 +339,6 @@ fn characteristic_def_id_of_type_cached<'a>(
         | ty::Uint(_)
         | ty::Str
         | ty::FnPtr(..)
-        | ty::UnsafeBinder(_)
         | ty::Alias(..)
         | ty::Placeholder(..)
         | ty::Param(_)

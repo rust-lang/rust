@@ -780,6 +780,7 @@ bidirectional_lang_item_map! {
 
 // tidy-alphabetical-start
     DynMetadata,
+    ManuallyDrop,
     Option,
     OwnedBox,
     Poll,

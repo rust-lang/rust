@@ -1,0 +1,5 @@
+
+thread 'rustc' ($TID) panicked at src/librustdoc/json/conversions.rs:LL:CC:
+not implemented
+error: the compiler unexpectedly panicked. This is a bug
+

@@ -1,3 +1,4 @@
+//@ compile-flags: -Znext-solver
 //@ check-pass
 
 #![feature(unsafe_binders)]

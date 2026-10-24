@@ -1,3 +1,5 @@
+//@ compile-flags: -Znext-solver
+
 #![feature(unsafe_binders)]
 #![expect(incomplete_features)]
 #![deny(improper_ctypes)]
