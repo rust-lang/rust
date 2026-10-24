@@ -120,12 +120,7 @@ impl SingleAttributeParser for ExportNameParser {
         Allow(Target::Static),
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
-        Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
-        Warn(Target::Field),
-        Warn(Target::Arm),
-        Warn(Target::MacroDef),
-        Warn(Target::MacroCall),
     ]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "name");
     const STABILITY: AttributeStability = AttributeStability::Stable;
@@ -386,13 +381,12 @@ impl NoArgsAttributeParser for NoMangleParser {
         note: "the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them",
         unsafe_since: Some(Edition2024),
     };
-    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Static),
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::TraitImpl)),
         AllowSilent(Target::Const), // Handled in the `InvalidNoMangleItems` pass
-        Error(Target::Closure),
     ]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::NoMangle;

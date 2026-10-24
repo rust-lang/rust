@@ -6,7 +6,6 @@
 
 #![crate_type = "lib"]
 
-#[no_mangle]
 pub struct F32(f32);
 
 // other: define{{.*}}float @add_newtype_f32(float %a, float %b)
@@ -17,7 +16,6 @@ pub fn add_newtype_f32(a: F32, b: F32) -> F32 {
     F32(a.0 + b.0)
 }
 
-#[no_mangle]
 pub struct F64(f64);
 
 // other: define{{.*}}double @add_newtype_f64(double %a, double %b)

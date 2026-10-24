@@ -32,7 +32,6 @@ dependencies = [
  "issue_1567",
  "issue_1691",
  "issue_1705",
- "issue_rust_86261",
  "proc-macro2",
  "proc_macro_crate",
 ]
@@ -81,10 +80,6 @@ version = "0.1.0"
 dependencies = [
  "byteorder 1.5.0",
 ]
-
-[[package]]
-name = "issue_rust_86261"
-version = "0.1.0"
 
 [[package]]
 name = "once_cell"

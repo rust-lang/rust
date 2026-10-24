@@ -48,8 +48,16 @@ LL | #![automatically_derived]
    |
    = help: the `automatically_derived` attribute can only be applied to trait impl blocks
 
+error: the `no_mangle` attribute cannot be used on crates
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:24:4
+   |
+LL | #![no_mangle]
+   |    ^^^^^^^^^
+   |
+   = help: the `no_mangle` attribute can be applied to functions and statics
+
 error: the `no_link` attribute cannot be used on crates
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:30:4
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:29:4
    |
 LL | #![no_link]
    |    ^^^^^^^
@@ -57,7 +65,7 @@ LL | #![no_link]
    = help: the `no_link` attribute can only be applied to extern crates
 
 error: the `export_name` attribute cannot be used on crates
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:32:4
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:31:4
    |
 LL | #![export_name = "2200"]
    |    ^^^^^^^^^^^
@@ -65,7 +73,7 @@ LL | #![export_name = "2200"]
    = help: the `export_name` attribute can be applied to functions and statics
 
 error: the `inline` attribute cannot be used on crates
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:35:4
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:34:4
    |
 LL | #![inline]
    |    ^^^^^^
@@ -73,7 +81,7 @@ LL | #![inline]
    = help: the `inline` attribute can only be applied to functions
 
 error: the `inline` attribute cannot be used on modules
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:37:3
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:36:3
    |
 LL | #[inline]
    |   ^^^^^^
@@ -81,7 +89,7 @@ LL | #[inline]
    = help: the `inline` attribute can only be applied to functions
 
 error: the `inline` attribute cannot be used on modules
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:40:20
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:39:20
    |
 LL |     mod inner { #![inline] }
    |                    ^^^^^^
@@ -89,7 +97,7 @@ LL |     mod inner { #![inline] }
    = help: the `inline` attribute can only be applied to functions
 
 error: the `inline` attribute cannot be used on structs
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:49:7
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:48:7
    |
 LL |     #[inline] struct S;
    |       ^^^^^^
@@ -97,7 +105,7 @@ LL |     #[inline] struct S;
    = help: the `inline` attribute can only be applied to functions
 
 error: the `inline` attribute cannot be used on type aliases
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:52:7
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:51:7
    |
 LL |     #[inline] type T = S;
    |       ^^^^^^
@@ -105,7 +113,7 @@ LL |     #[inline] type T = S;
    = help: the `inline` attribute can only be applied to functions
 
 error: the `inline` attribute cannot be used on inherent impl blocks
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:55:7
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:54:7
    |
 LL |     #[inline] impl S { }
    |       ^^^^^^
@@ -113,7 +121,7 @@ LL |     #[inline] impl S { }
    = help: the `inline` attribute can only be applied to functions
 
 error: the `no_link` attribute cannot be used on modules
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:59:3
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:58:3
    |
 LL | #[no_link]
    |   ^^^^^^^
@@ -121,7 +129,7 @@ LL | #[no_link]
    = help: the `no_link` attribute can only be applied to extern crates
 
 error: the `no_link` attribute cannot be used on modules
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:62:20
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:61:20
    |
 LL |     mod inner { #![no_link] }
    |                    ^^^^^^^
@@ -129,7 +137,7 @@ LL |     mod inner { #![no_link] }
    = help: the `no_link` attribute can only be applied to extern crates
 
 error: the `no_link` attribute cannot be used on functions
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:65:7
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:64:7
    |
 LL |     #[no_link] fn f() {
    |       ^^^^^^^
@@ -137,7 +145,7 @@ LL |     #[no_link] fn f() {
    = help: the `no_link` attribute can only be applied to extern crates
 
 error: the `no_link` attribute cannot be used on structs
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:75:7
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:74:7
    |
 LL |     #[no_link]
    |       ^^^^^^^
@@ -145,7 +153,7 @@ LL |     #[no_link]
    = help: the `no_link` attribute can only be applied to extern crates
 
 error: the `no_link` attribute cannot be used on type aliases
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:84:7
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:83:7
    |
 LL |     #[no_link]type T = S;
    |       ^^^^^^^
@@ -153,7 +161,7 @@ LL |     #[no_link]type T = S;
    = help: the `no_link` attribute can only be applied to extern crates
 
 error: the `no_link` attribute cannot be used on inherent impl blocks
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:87:7
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:86:7
    |
 LL |     #[no_link] impl S { }
    |       ^^^^^^^
@@ -161,7 +169,7 @@ LL |     #[no_link] impl S { }
    = help: the `no_link` attribute can only be applied to extern crates
 
 error: the `export_name` attribute cannot be used on modules
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:96:3
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:95:3
    |
 LL | #[export_name = "2200"]
    |   ^^^^^^^^^^^
@@ -169,7 +177,7 @@ LL | #[export_name = "2200"]
    = help: the `export_name` attribute can be applied to functions and statics
 
 error: the `export_name` attribute cannot be used on modules
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:99:20
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:98:20
    |
 LL |     mod inner { #![export_name="2200"] }
    |                    ^^^^^^^^^^^
@@ -177,7 +185,7 @@ LL |     mod inner { #![export_name="2200"] }
    = help: the `export_name` attribute can be applied to functions and statics
 
 error: the `export_name` attribute cannot be used on structs
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:104:7
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:103:7
    |
 LL |     #[export_name = "2200"] struct S;
    |       ^^^^^^^^^^^
@@ -185,7 +193,7 @@ LL |     #[export_name = "2200"] struct S;
    = help: the `export_name` attribute can be applied to functions and statics
 
 error: the `export_name` attribute cannot be used on type aliases
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:107:7
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:106:7
    |
 LL |     #[export_name = "2200"] type T = S;
    |       ^^^^^^^^^^^
@@ -193,7 +201,7 @@ LL |     #[export_name = "2200"] type T = S;
    = help: the `export_name` attribute can be applied to functions and statics
 
 error: the `export_name` attribute cannot be used on inherent impl blocks
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:110:7
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:109:7
    |
 LL |     #[export_name = "2200"] impl S { }
    |       ^^^^^^^^^^^
@@ -201,12 +209,20 @@ LL |     #[export_name = "2200"] impl S { }
    = help: the `export_name` attribute can be applied to functions and statics
 
 error: the `export_name` attribute cannot be used on required trait methods
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:114:11
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:113:11
    |
 LL |         #[export_name = "2200"] fn foo();
    |           ^^^^^^^^^^^
    |
    = help: the `export_name` attribute can be applied to functions with a body and statics
+
+error: the `export_name` attribute cannot be used on provided trait methods
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:116:11
+   |
+LL |         #[export_name = "2200"] fn bar() {}
+   |           ^^^^^^^^^^^
+   |
+   = help: the `export_name` attribute can be applied to functions, inherent methods, statics, and trait methods in impl blocks
 
 error: the `repr(C)` attribute cannot be used on modules
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:121:3
@@ -288,6 +304,62 @@ LL |     #[repr(Rust)] impl S { }
    |
    = help: the `repr(Rust)` attribute can only be applied to data types
 
+error: the `no_mangle` attribute cannot be used on modules
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:158:3
+   |
+LL | #[no_mangle]
+   |   ^^^^^^^^^
+   |
+   = help: the `no_mangle` attribute can be applied to functions and statics
+
+error: the `no_mangle` attribute cannot be used on modules
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:161:20
+   |
+LL |     mod inner { #![no_mangle] }
+   |                    ^^^^^^^^^
+   |
+   = help: the `no_mangle` attribute can be applied to functions and statics
+
+error: the `no_mangle` attribute cannot be used on structs
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:166:7
+   |
+LL |     #[no_mangle] struct S;
+   |       ^^^^^^^^^
+   |
+   = help: the `no_mangle` attribute can be applied to functions and statics
+
+error: the `no_mangle` attribute cannot be used on type aliases
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:169:7
+   |
+LL |     #[no_mangle] type T = S;
+   |       ^^^^^^^^^
+   |
+   = help: the `no_mangle` attribute can be applied to functions and statics
+
+error: the `no_mangle` attribute cannot be used on inherent impl blocks
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:172:7
+   |
+LL |     #[no_mangle] impl S { }
+   |       ^^^^^^^^^
+   |
+   = help: the `no_mangle` attribute can be applied to functions and statics
+
+error: the `no_mangle` attribute cannot be used on required trait methods
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:176:11
+   |
+LL |         #[no_mangle] fn foo();
+   |           ^^^^^^^^^
+   |
+   = help: the `no_mangle` attribute can be applied to functions with a body and statics
+
+error: the `no_mangle` attribute cannot be used on provided trait methods
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:179:11
+   |
+LL |         #[no_mangle] fn bar() {}
+   |           ^^^^^^^^^
+   |
+   = help: the `no_mangle` attribute can be applied to functions, inherent methods, statics, and trait methods in impl blocks
+
 warning: `#[no_mangle]` attribute may not be used in combination with `#[export_name]`
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:24:1
    |
@@ -295,7 +367,7 @@ LL | #![no_mangle]
    | ^^^^^^^^^^^^^ `#[no_mangle]` is ignored
    |
 note: `#[export_name]` takes precedence
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:32:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:31:1
    |
 LL | #![export_name = "2200"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -313,17 +385,8 @@ LL | #![repr()]
    |
    = note: using `repr` with an empty list has no effect
 
-warning: the `no_mangle` attribute cannot be used on crates
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:24:4
-   |
-LL | #![no_mangle]
-   |    ^^^^^^^^^
-   |
-   = help: the `no_mangle` attribute can be applied to functions and statics
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-
 error: valid forms for the attribute are `inline`, `inline(always)`, and `inline(never)`
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:43:7
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:42:7
    |
 LL |     #[inline = "2100"] fn f() { }
    |       ^^^^^^^^^^^^^^^
@@ -333,7 +396,7 @@ LL |     #[inline = "2100"] fn f() { }
    = note: `#[deny(ill_formed_attribute_input)]` (part of `#[deny(future_incompatible)]`) on by default
 
 warning: the `no_link` attribute cannot be used on match arms
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:68:15
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:67:15
    |
 LL |             #[no_link]
    |               ^^^^^^^
@@ -342,7 +405,7 @@ LL |             #[no_link]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: the `no_link` attribute cannot be used on struct fields
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:78:11
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:77:11
    |
 LL |         #[no_link]
    |           ^^^^^^^
@@ -351,7 +414,7 @@ LL |         #[no_link]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: the `no_link` attribute cannot be used on macro defs
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:90:7
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:89:7
    |
 LL |     #[no_link]
    |       ^^^^^^^
@@ -359,12 +422,12 @@ LL |     #[no_link]
    = help: the `no_link` attribute can only be applied to extern crates
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
-error: aborting due to 37 previous errors; 6 warnings emitted
+error: aborting due to 46 previous errors; 5 warnings emitted
 
 For more information about this error, try `rustc --explain E0658`.
 Future incompatibility report: Future breakage diagnostic:
 error: valid forms for the attribute are `inline`, `inline(always)`, and `inline(never)`
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:43:7
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:42:7
    |
 LL |     #[inline = "2100"] fn f() { }
    |       ^^^^^^^^^^^^^^^

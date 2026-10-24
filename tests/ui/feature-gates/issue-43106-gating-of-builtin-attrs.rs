@@ -330,53 +330,6 @@ mod automatically_derived {
     #[automatically_derived] impl W for S { }
 }
 
-#[no_mangle]
-//~^ WARN attribute cannot be used on
-//~| WARN previously accepted
-//~| HELP can be applied to
-//~| HELP remove the attribute
-mod no_mangle {
-    mod inner { #![no_mangle] }
-    //~^ WARN attribute cannot be used on
-//~| WARN previously accepted
-    //~| HELP can be applied to
-    //~| HELP remove the attribute
-
-    #[no_mangle] fn f() { }
-
-    #[no_mangle] struct S;
-    //~^ WARN attribute cannot be used on
-//~| WARN previously accepted
-    //~| HELP can be applied to
-    //~| HELP remove the attribute
-
-    #[no_mangle] type T = S;
-    //~^ WARN attribute cannot be used on
-//~| WARN previously accepted
-    //~| HELP can be applied to
-    //~| HELP remove the attribute
-
-    #[no_mangle] impl S { }
-    //~^ WARN attribute cannot be used on
-//~| WARN previously accepted
-    //~| HELP can be applied to
-    //~| HELP remove the attribute
-
-    trait Tr {
-        #[no_mangle] fn foo();
-        //~^ WARN attribute cannot be used on
-//~| WARN previously accepted
-        //~| HELP can be applied to
-        //~| HELP remove the attribute
-
-        #[no_mangle] fn bar() {}
-        //~^ WARN attribute cannot be used on
-//~| WARN previously accepted
-        //~| HELP can be applied to
-        //~| HELP remove the attribute
-    }
-}
-
 #[should_panic]
 //~^ WARN attribute cannot be used on
 //~| WARN previously accepted
