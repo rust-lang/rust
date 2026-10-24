@@ -1389,7 +1389,8 @@ pub macro CoerceShared($item:item) {
 }
 
 // FIXME(cromulent_copy_closure_captures): remove this hack once `marker_trait_attr` is usable
-/// Closure capture implementation detail, make sure they have the correct auto traits.
+/// Closure capture implementation detail: ensures that captures of `Copy` types
+/// implement the auto traits that a shared reference to said type would.
 #[expect(missing_debug_implementations)]
 #[lang = "copy_closure_capture_container"]
 #[doc(hidden)]
@@ -1401,9 +1402,17 @@ pub struct CopyClosureCaptureContainer<T: Copy>(T);
 #[unstable(feature = "cromulent_copy_closure_capture_internals", issue = "none")]
 impl<T: Copy> Unpin for CopyClosureCaptureContainer<T> {}
 
+// Why not the simpler `where T: Sync`?
+// Because
+// - users can write `for<'a> &'a T: Send` bounds themselves
+// - one crate actually did so
+// - the compiler can't currently tell that it implies `T: Sync`
 #[unstable(feature = "cromulent_copy_closure_capture_internals", issue = "none")]
 // SAFETY: `Copy` allows moving out of a shared reference
-unsafe impl<T: Copy + Sync> Send for CopyClosureCaptureContainer<T> {}
+unsafe impl<T: Copy> Send for CopyClosureCaptureContainer<T> where for<'a> &'a T: Send {}
+
+#[unstable(feature = "cromulent_copy_closure_capture_internals", issue = "none")]
+unsafe impl<T: Copy> Sync for CopyClosureCaptureContainer<T> where for<'a> &'a T: Sync {}
 
 #[unstable(feature = "cromulent_copy_closure_capture_internals", issue = "none")]
 impl<T: Copy + RefUnwindSafe> UnwindSafe for CopyClosureCaptureContainer<T> {}
