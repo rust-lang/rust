@@ -819,8 +819,9 @@ pub(crate) unsafe fn llvm_optimize<'ll>(
     };
 
     // This assumes that we previously compiled our kernels for a gpu target, which created a
-    // `<crate>.bc` artifact. The user is supposed to provide us with a path to this artifact, we
-    // don't need any other artifacts from the previous run.
+    // `<crate>.ptx` (NVPTX) or `<crate>.elf` (AMDGPU) artifact.
+    // The user is supposed to provide us with a path to this artifact,
+    // we don't need any other artifacts from the previous run.
     if !cgcx.target_is_like_gpu && is_final_stage {
         if let Some(device_path) = config
             .offload
@@ -830,15 +831,18 @@ pub(crate) unsafe fn llvm_optimize<'ll>(
             let device_pathbuf = PathBuf::from(device_path);
             if device_pathbuf.is_relative() {
                 dcx.emit_err(crate::diagnostics::OffloadWithoutAbsPath);
-            } else if device_pathbuf.extension().and_then(|e| e.to_str()) != Some("bc") {
+            } else if !matches!(
+                device_pathbuf.extension().and_then(|e| e.to_str()),
+                Some("ptx" | "elf")
+            ) {
                 dcx.emit_err(crate::diagnostics::OffloadWrongFileName);
             } else if !device_pathbuf.exists() {
                 dcx.emit_err(crate::diagnostics::OffloadNonexistingPath);
             }
-            let device_bitcode_c = path_to_c_string(device_pathbuf.as_path());
+            let device_image_c = path_to_c_string(device_pathbuf.as_path());
             let ok = unsafe {
                 llvm::RustOffloadWrapper::get_instance()
-                    .llvm_rust_offload_wrap_images(llmod, device_bitcode_c.as_c_str())
+                    .llvm_rust_offload_wrap_images(llmod, device_image_c.as_c_str())
             };
             if !ok {
                 dcx.emit_err(crate::diagnostics::OffloadWrapImagesFailed);
