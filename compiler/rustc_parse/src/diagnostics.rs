@@ -4681,3 +4681,57 @@ pub(crate) struct MissingElseInLet {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+pub(crate) enum CStyleReferenceMut {
+    #[diag("`mut` must be written after the lifetime")]
+    WithLifetime {
+        #[primary_span]
+        span: Span,
+        #[subdiagnostic]
+        sugg: CStyleReferenceMutLifetimeSugg,
+    },
+    #[diag("reference types must be written as `&mut /* Type */`")]
+    Plain {
+        #[primary_span]
+        span: Span,
+        #[subdiagnostic]
+        sugg: CStyleReferenceMutPlainSugg,
+    },
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion("put `mut` after the lifetime", applicability = "machine-applicable")]
+pub(crate) struct CStyleReferenceMutLifetimeSugg {
+    #[suggestion_part(code = "")]
+    pub remove: Span,
+    #[suggestion_part(code = " mut")]
+    pub insert: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion("put the `&` before `mut`", applicability = "machine-applicable")]
+pub(crate) struct CStyleReferenceMutPlainSugg {
+    #[suggestion_part(code = "")]
+    pub remove: Span,
+    #[suggestion_part(code = "&")]
+    pub insert: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("reference types must be written as `&/* Type */`")]
+pub(crate) struct CStyleReference {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub sugg: CStyleReferenceSugg,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion("put the `&` before the type", applicability = "machine-applicable")]
+pub(crate) struct CStyleReferenceSugg {
+    #[suggestion_part(code = "")]
+    pub remove: Span,
+    #[suggestion_part(code = "&")]
+    pub insert: Span,
+}
