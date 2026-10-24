@@ -62,10 +62,10 @@
   
       bb2: {
           _12 = copy _13 as *mut () (PtrToPtr);
+          StorageDead(_13);
 -         (*_12) = move _4;
 +         (*_12) = const ();
-          _3 = copy _13 as std::boxed::Box<()> (Transmute);
-          StorageDead(_13);
+          _3 = copy _12 as std::boxed::Box<()> (Transmute);
           StorageDead(_12);
           StorageDead(_4);
           _2 = &_3;

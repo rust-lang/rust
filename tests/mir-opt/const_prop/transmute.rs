@@ -60,28 +60,4 @@ pub unsafe fn unreachable_direct() -> ! {
     match x {}
 }
 
-// EMIT_MIR transmute.unreachable_ref.GVN.diff
-pub unsafe fn unreachable_ref() -> ! {
-    // CHECK-LABEL: fn unreachable_ref(
-    // CHECK: = const {0x1 as &Never};
-    let x: &Never = unsafe { transmute(1_usize) };
-    match *x {}
-}
-
-// EMIT_MIR transmute.unreachable_mut.GVN.diff
-pub unsafe fn unreachable_mut() -> ! {
-    // CHECK-LABEL: fn unreachable_mut(
-    // CHECK: = const {0x1 as &mut Never};
-    let x: &mut Never = unsafe { transmute(1_usize) };
-    match *x {}
-}
-
-// EMIT_MIR transmute.unreachable_box.GVN.diff
-pub unsafe fn unreachable_box() -> ! {
-    // CHECK-LABEL: fn unreachable_box(
-    // CHECK: = const Box::<Never>(
-    let x: Box<Never> = unsafe { transmute(1_usize) };
-    match *x {}
-}
-
 enum Never {}

@@ -105,7 +105,7 @@ use rustc_const_eval::interpret::{
     ImmTy, Immediate, InterpCx, MemPlaceMeta, MemoryKind, OpTy, Projectable, Scalar,
     intern_const_alloc_for_constprop,
 };
-use rustc_data_structures::fx::FxHasher;
+use rustc_data_structures::fx::{FxHashMap, FxHasher};
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_data_structures::hash_table::{Entry, HashTable};
 use rustc_hir::def::DefKind;
@@ -115,7 +115,7 @@ use rustc_middle::mir::interpret::{AllocRange, GlobalAlloc};
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::HasTypingEnv;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
+use rustc_middle::ty::{self, Ty, TyCtxt, Unnormalized};
 use rustc_mir_dataflow::{Analysis, ResultsCursor};
 use rustc_span::{DUMMY_SP, bug};
 use smallvec::SmallVec;
@@ -397,6 +397,7 @@ struct VnState<'body, 'a, 'tcx> {
     dominators: &'a Dominators<BasicBlock>,
     reused_locals: DenseBitSet<Local>,
     arena: &'a DroplessArena,
+    cache: FxHashMap<Ty<'tcx>, bool>,
 }
 
 impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
@@ -429,6 +430,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             dominators,
             reused_locals: DenseBitSet::new_empty(local_decls.len()),
             arena,
+            cache: FxHashMap::default(),
         }
     }
 
@@ -826,6 +828,13 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         proj: ProjectionElem<VnIndex, Ty<'tcx>>,
     ) -> Option<(PlaceTy<'tcx>, VnIndex)> {
         let projection_ty = place_ty.projection_ty(self.tcx, proj);
+        // References that we load from a union field or MaybeDangling cannot be unified.
+        // See https://github.com/rust-lang/rust/issues/163825
+        if (place_ty.ty.is_union() || place_ty.ty.is_like_maybe_dangling())
+            && self.ty_may_have_ref(projection_ty.ty)
+        {
+            return None;
+        }
         let proj = match proj {
             ProjectionElem::Deref => {
                 if let Some(Mutability::Not) = place_ty.ty.ref_mutability()
@@ -1584,6 +1593,10 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             return Some(self.new_opaque(to));
         }
 
+        if matches!(kind, CastKind::Transmute) && self.ty_may_have_ref(to) {
+            return Some(self.new_opaque(to));
+        }
+
         let mut was_ever_updated = false;
         loop {
             let mut was_updated_this_iteration = false;
@@ -1706,13 +1719,29 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         }
     }
 
-    fn ty_may_have_ref(&self, ty: Ty<'tcx>) -> bool {
-        fn ty_may_have_ref_inner<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, depth: usize) -> bool {
+    fn ty_may_have_ref(&mut self, ty: Ty<'tcx>) -> bool {
+        fn ty_may_have_ref_inner<'tcx>(
+            tcx: TyCtxt<'tcx>,
+            typing_env: ty::TypingEnv<'tcx>,
+            cache: &mut FxHashMap<Ty<'tcx>, bool>,
+            outer_ty: Ty<'tcx>,
+            depth: usize,
+        ) -> bool {
+            if let Some(cached) = cache.get(&outer_ty) {
+                return *cached;
+            }
             if !tcx.recursion_limit().value_within_limit(depth) {
                 return true;
             }
             let depth = depth + 1;
-            match ty.kind() {
+
+            // Box isn't actually a ref but in terms of aliasing/provenance, it is close enough for
+            // this case to justify returning true.
+            if outer_ty.is_box() {
+                return true;
+            }
+
+            let result = match outer_ty.kind() {
                 ty::Int(_)
                 | ty::Uint(_)
                 | ty::Float(_)
@@ -1722,26 +1751,25 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                 | ty::Never
                 | ty::FnDef(..)
                 | ty::Error(_)
-                | ty::FnPtr(..) => false,
-                ty::Tuple(fields) => {
-                    fields.iter().any(|field| ty_may_have_ref_inner(tcx, field, depth))
-                }
-                ty::Pat(ty, _) | ty::Slice(ty) | ty::Array(ty, _) => {
-                    ty_may_have_ref_inner(tcx, *ty, depth)
-                }
-                ty::Adt(adt_def, args) => {
-                    adt_def.has_param()
-                        || adt_def.has_aliases()
-                        || adt_def.all_fields().any(|field| {
-                            ty_may_have_ref_inner(
-                                tcx,
-                                field.ty(tcx, args).skip_normalization(),
-                                depth,
-                            )
-                        })
-                }
-                ty::Ref(..)
                 | ty::RawPtr(_, _)
+                | ty::FnPtr(..) => false,
+                ty::Tuple(fields) => fields
+                    .iter()
+                    .any(|field| ty_may_have_ref_inner(tcx, typing_env, cache, field, depth)),
+                ty::Pat(ty, _) | ty::Slice(ty) | ty::Array(ty, _) => {
+                    ty_may_have_ref_inner(tcx, typing_env, cache, *ty, depth)
+                }
+                ty::Adt(adt_def, args) => adt_def.all_fields().any(|field| {
+                    if let Ok(field_ty) =
+                        tcx.try_normalize_erasing_regions(typing_env, field.ty(tcx, args))
+                    {
+                        ty_may_have_ref_inner(tcx, typing_env, cache, field_ty, depth)
+                    } else {
+                        // Normalization failed, defensively say the type may contain a ref
+                        true
+                    }
+                }),
+                ty::Ref(..)
                 | ty::Bound(..)
                 | ty::Closure(..)
                 | ty::CoroutineClosure(..)
@@ -1754,9 +1782,11 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                 | ty::Alias(..)
                 | ty::Param(_)
                 | ty::Placeholder(_) => true,
-            }
+            };
+            cache.insert(outer_ty, result);
+            result
         }
-        ty_may_have_ref_inner(self.tcx, ty, 0)
+        ty_may_have_ref_inner(self.tcx, self.typing_env(), &mut self.cache, ty, 0)
     }
 
     /// Returns `false` if we're confident that the middle type doesn't have an
