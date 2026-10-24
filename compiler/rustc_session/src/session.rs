@@ -1517,7 +1517,7 @@ pub fn build_session(
         let mut diag =
             early_sess.dcx().create_fatal(FeatureNotSupportedByBackend { feat: "sanitizer" });
         for sanitizer in unsupported_sanitizers.iter().flat_map(|sanitizer| sanitizer.as_str()) {
-            diag.note(format!("required sanitizer `{sanitizer}` not supported by backend"));
+            diag.note(format!("required sanitizer `{sanitizer}` not supported"));
         }
         diag.emit_fatal();
     }
