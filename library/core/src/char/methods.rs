@@ -1120,7 +1120,7 @@ impl char {
     /// assert!(!' '.is_xid_continue());
     /// ```
     #[must_use]
-    #[unstable(feature = "char_is_xid", issue = "none", reason = "to be created")]
+    #[unstable(feature = "char_is_xid", issue = "164841")]
     #[inline]
     pub fn is_xid_continue(self) -> bool {
         match self {
@@ -1157,7 +1157,7 @@ impl char {
     /// assert!(!'_'.is_xid_start());
     /// ```
     #[must_use]
-    #[unstable(feature = "char_is_xid", issue = "none", reason = "to be created")]
+    #[unstable(feature = "char_is_xid", issue = "164841")]
     #[inline]
     pub fn is_xid_start(self) -> bool {
         match self {
