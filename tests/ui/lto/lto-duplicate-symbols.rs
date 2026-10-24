@@ -10,5 +10,4 @@ extern crate lto_duplicate_symbols2;
 
 fn main() {}
 
-//~? WARN Linking globals named 'foo': symbol multiply defined
-//~? ERROR failed to load bitcode of module "lto-duplicate-symbols2.lto_duplicate_symbols2
+//~? ERROR Linking globals named 'foo': symbol multiply defined

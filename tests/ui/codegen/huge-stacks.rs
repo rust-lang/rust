@@ -1,5 +1,6 @@
 //@ revisions: unoptimized optimized
 //@[optimized]compile-flags: -O
+//@[unoptimized]compile-flags: -C opt-level=0
 //@ run-pass
 //@ only-64bit
 
