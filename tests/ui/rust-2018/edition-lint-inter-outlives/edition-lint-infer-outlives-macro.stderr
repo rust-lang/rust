@@ -28,12 +28,12 @@ LL |     m!('b: 'a);
    |     ---------- in this macro invocation
 
 error: outlives requirements can be inferred
-  --> $DIR/edition-lint-infer-outlives-macro.rs:43:44
+  --> $DIR/edition-lint-infer-outlives-macro.rs:43:43
    |
 LL |     macro_rules! m {
 ...
 LL |             struct Bar<'a, 'b>(&'a &'b ()) where 'b: 'a;
-   |                                            ^^^^^^^^^^^^ help: remove this bound
+   |                                           ^^^^^^^^^^^^^ help: remove this bound
 ...
 LL |     m!('b: 'a);
    |     ---------- in this macro invocation
@@ -61,12 +61,12 @@ LL |     m!('b: 'a);
    |     ---------- in this macro invocation
 
 error: outlives requirements can be inferred
-  --> $DIR/edition-lint-infer-outlives-macro.rs:57:44
+  --> $DIR/edition-lint-infer-outlives-macro.rs:57:43
    |
 LL |     macro_rules! m {
 ...
 LL |             struct Bar<'a, $b>(&'a &$b ()) where $b: 'a;
-   |                                            ^^^^^^^^^^^^ help: remove this bound
+   |                                           ^^^^^^^^^^^^^ help: remove this bound
 ...
 LL |     m!('b: 'a);
    |     ---------- in this macro invocation
@@ -83,12 +83,12 @@ LL |     m!('b: 'a);
    |     ---------- in this macro invocation
 
 error: outlives requirements can be inferred
-  --> $DIR/edition-lint-infer-outlives-macro.rs:117:44
+  --> $DIR/edition-lint-infer-outlives-macro.rs:117:43
    |
 LL |     macro_rules! m {
 ...
 LL |             struct Bar<$a, $b>(&$a &$b ()) where $b $colon $a;
-   |                                            ^^^^^^^^^^^^^^^^^^ help: remove this bound
+   |                                           ^^^^^^^^^^^^^^^^^^^ help: remove this bound
 ...
 LL |     m!('b: 'a);
    |     ---------- in this macro invocation
@@ -105,12 +105,12 @@ LL |     m!('b: 'a);
    |     ---------- in this macro invocation
 
 error: outlives requirements can be inferred
-  --> $DIR/edition-lint-infer-outlives-macro.rs:132:44
+  --> $DIR/edition-lint-infer-outlives-macro.rs:132:43
    |
 LL |     macro_rules! m {
 ...
 LL |             struct Bar<$a, $b>(&$a &$b ()) where $b $colon $a;
-   |                                            ^^^^^^^^^^^^^^^^^^ help: remove this bound
+   |                                           ^^^^^^^^^^^^^^^^^^^ help: remove this bound
 ...
 LL |     m!('b: 'a);
    |     ---------- in this macro invocation
