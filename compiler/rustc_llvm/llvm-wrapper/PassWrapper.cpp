@@ -420,10 +420,10 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   if (Singlethread) {
     Options.ThreadModel = ThreadModel::Single;
   }
-#endif
 
   if (UseWasmEH)
     Options.ExceptionModel = ExceptionHandling::Wasm;
+#endif
 
   Options.EmitStackSizeSection = EmitStackSizeSection;
 
