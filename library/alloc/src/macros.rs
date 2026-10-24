@@ -19,6 +19,16 @@
 /// assert_eq!(v, [1, 1, 1]);
 /// ```
 ///
+/// Additionally, an allocator can be specified which will be used to create the `Vec` storage:
+///
+/// ```
+/// # #![feature(allocator_ext)]
+/// # use alloc::alloc::Global;
+/// let v = vec![in Global; 1, 2, 3];
+/// let v = vec![in Global; 1; 3];
+/// assert!(matches!(v.into_parts_with_allocator(), (_,3, _, Global)));
+/// ```
+///
 /// Note that unlike array expressions this syntax supports all elements
 /// which implement [`Clone`] and the number of elements doesn't have to be
 /// a constant.
@@ -44,8 +54,14 @@ macro_rules! vec {
     () => (
         $crate::vec::Vec::new()
     );
+    (in $alloc:expr) => (
+        $crate::vec::Vec::new_in($alloc)
+    );
     ($elem:expr; $n:expr) => (
         $crate::vec::from_elem($elem, $n)
+    );
+    (in $alloc:expr; $elem:expr; $n:expr) => (
+        $crate::vec::from_elem_in($elem, $n, $alloc)
     );
     ($($x:expr),+ $(,)?) => (
         // Using `write_box_via_move` produces a dramatic improvement in stack usage for unoptimized
@@ -58,6 +74,13 @@ macro_rules! vec {
         // can't use an unsafe block as that would also wrap `$x`.
         $crate::boxed::box_assume_init_into_vec_unsafe(
             $crate::intrinsics::write_box_via_move($crate::boxed::Box::new_uninit(), [$($x),+])
+        )
+    );
+    (in $alloc:expr; $($x:expr),+ $(,)?) => (
+        $crate::boxed::box_assume_init_into_vec_unsafe(
+            $crate::intrinsics::write_box_via_move(
+                $crate::boxed::Box::new_uninit_in($alloc), [$($x),+]
+            )
         )
     );
 }
