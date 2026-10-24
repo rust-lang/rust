@@ -8,7 +8,7 @@ LL |     let b = B::from(a);
    |
 note: associated function defined here
   --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
-note: associated function provided through this `impl`
+note: associated function provided through this blanket `impl`
   --> $SRC_DIR/core/src/convert/mod.rs:LL:COL
 
 error: aborting due to 1 previous error

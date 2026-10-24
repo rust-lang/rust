@@ -1,3 +1,4 @@
+// ignore-tidy-file-filelength
 use std::ops::Deref;
 use std::{fmt, iter};
 
@@ -1923,7 +1924,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && let Some(callee_ty) = callee_ty
                 && let ty::FnDef(_def_id, args) = callee_ty.kind()
                 && let DefKind::Trait = self.tcx.def_kind(parent_def_id)
-                && let Ok(Some(traits::ImplSource::UserDefined(x))) = self.probe(|_| {
+                && let Ok(Some(traits::ImplSource::UserDefined(pick))) = self.probe(|_| {
                     let trait_ref = ty::TraitRef::new(
                         self.tcx,
                         parent_def_id,
@@ -1940,8 +1941,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 })
             {
                 err.span_note(
-                    self.tcx.def_span(x.impl_def_id),
-                    format!("{} provided through this `impl`", self.tcx.def_descr(def_id)),
+                    self.tcx.def_span(pick.impl_def_id),
+                    format!(
+                        "{} provided through this {}`impl`",
+                        self.tcx.def_descr(def_id),
+                        if let ty::Param(_) =
+                            self.tcx.type_of(pick.impl_def_id).skip_binder().kind()
+                        {
+                            "blanket "
+                        } else {
+                            ""
+                        },
+                    ),
                 );
             }
             if let DefKind::Fn | DefKind::AssocFn = def_kind
