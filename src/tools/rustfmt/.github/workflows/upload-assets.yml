@@ -6,6 +6,8 @@ on:
     types: [created]
   workflow_dispatch:
 
+permissions: {}
+
 jobs:
   build-release:
     name: build-release
