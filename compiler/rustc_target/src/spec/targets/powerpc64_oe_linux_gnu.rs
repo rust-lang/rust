@@ -1,0 +1,17 @@
+use crate::spec::{Target, TargetMetadata};
+
+pub(crate) fn target() -> Target {
+    let mut base = super::powerpc64_unknown_linux_gnu::target();
+
+    base.metadata = TargetMetadata {
+        description: Some("PowerPC64 Linux (kernel 3.2, glibc 2.17) for yocto".into()),
+        tier: Some(3),
+        host_tools: Some(false),
+        std: Some(true),
+    };
+
+    base.llvm_target = "powerpc64-oe-linux-gnu".into();
+    base.options.linker = Some("powerpc64-oe-linux-gcc".into());
+
+    base
+}
