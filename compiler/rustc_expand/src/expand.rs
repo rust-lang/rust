@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::{iter, mem, slice};
 
 use rustc_ast::mut_visit::*;
-use rustc_ast::tokenstream::TokenStream;
+use rustc_ast::tokenarena::ArenaTokenStream;
 use rustc_ast::visit::{AssocCtxt, Visitor, VisitorResult, try_visit, walk_list};
 use rustc_ast::{
     self as ast, AssocItemKind, AstNodeWrapper, AttrArgs, AttrKind, AttrStyle, AttrVec,
@@ -1052,7 +1052,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
     fn parse_ast_fragment(
         &mut self,
-        toks: TokenStream,
+        toks: ArenaTokenStream,
         kind: AstFragmentKind,
         path: &ast::Path,
         span: Span,

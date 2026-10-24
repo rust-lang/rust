@@ -1,6 +1,7 @@
 use rustc_ast::ast;
 use rustc_ast::token::{Delimiter, IdentKind, Token, TokenKind};
-use rustc_ast::tokenstream::{DelimSpan, Spacing, TokenStream, TokenTree};
+use rustc_ast::tokenarena::ArenaTokenStream;
+use rustc_ast::tokenstream::{DelimSpan, Spacing};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_session::config::Offload;
 use rustc_span::{DUMMY_SP, Ident, Span, sym};
@@ -113,7 +114,7 @@ pub(crate) fn expand_kernel(
             span,
             ecx.std_path(span, &[sym::unimplemented]),
             Delimiter::Parenthesis,
-            TokenStream::default(),
+            ArenaTokenStream::default(),
         ),
     );
     let stmt = ecx.stmt_expr(macro_expr);
@@ -127,15 +128,13 @@ pub(crate) fn expand_kernel(
     }
 
     // inline(never) attr
-    let ts = vec![TokenTree::Token(
-        Token::new(TokenKind::Ident(sym::never, IdentKind::Normal), span),
-        Spacing::Joint,
-    )];
-
     let never_arg = ast::DelimArgs {
         dspan: DelimSpan::from_single(span),
         delim: Delimiter::Parenthesis,
-        tokens: TokenStream::from_iter(ts),
+        tokens: ArenaTokenStream::from_token_iter(std::iter::once((
+            Token::new(TokenKind::Ident(sym::never, IdentKind::Normal), span),
+            Spacing::Joint,
+        ))),
     };
 
     let inline_item = ast::AttrItem {
