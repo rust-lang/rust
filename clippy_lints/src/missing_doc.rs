@@ -1,7 +1,7 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::{is_doc_hidden, is_from_proc_macro};
-use rustc_attr_ir::{AttrArgs, Attribute, AttributeKind};
+use rustc_attr_ir::{ Attribute, AttributeKind};
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{Body, BodyId, FieldDef, HirId, ImplItem, Item, ItemKind, Node, TraitItem, Variant};
 use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
@@ -94,7 +94,7 @@ impl MissingDoc {
             None => {},
         }
 
-        !cx.tcx.hir_attrs(hir_id).iter().any(is_doc_attr)
+        !cx.tcx.hir_attrs(hir_id).iter().any(is_doc_comment)
     }
 }
 
@@ -281,15 +281,6 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
     }
 }
 
-fn is_doc_attr(attr: &Attribute) -> bool {
-    match attr {
-        Attribute::Parsed(AttributeKind::DocComment { .. }) => true,
-        Attribute::Unparsed(attr)
-            if let [name] = &*attr.path.segments
-                && *name == sym::doc =>
-        {
-            matches!(attr.args, AttrArgs::Eq { .. })
-        },
-        _ => false,
-    }
+fn is_doc_comment(attr: &Attribute) -> bool {
+    matches!(attr, Attribute::Parsed(AttributeKind::DocComment { .. }))
 }
