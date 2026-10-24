@@ -12,6 +12,7 @@ use io::{Read, Write};
 use crate::ffi::OsStr;
 use crate::fs::{self, File, OpenOptions};
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
+use crate::macros::rustdoc_skip_body;
 #[cfg(target_env = "p1")]
 use crate::os::fd::AsRawFd;
 use crate::path::Path;
@@ -333,12 +334,15 @@ pub trait MetadataExt {
 }
 
 impl MetadataExt for fs::Metadata {
+    #[rustdoc_skip_body]
     fn dev(&self) -> u64 {
         self.as_inner().as_inner().st_dev
     }
+    #[rustdoc_skip_body]
     fn ino(&self) -> u64 {
         self.as_inner().as_inner().st_ino
     }
+    #[rustdoc_skip_body]
     fn nlink(&self) -> u64 {
         self.as_inner().as_inner().st_nlink
     }
@@ -358,12 +362,15 @@ pub trait FileTypeExt {
 }
 
 impl FileTypeExt for fs::FileType {
+    #[rustdoc_skip_body]
     fn is_block_device(&self) -> bool {
         self.as_inner().is(libc::S_IFBLK)
     }
+    #[rustdoc_skip_body]
     fn is_char_device(&self) -> bool {
         self.as_inner().is(libc::S_IFCHR)
     }
+    #[rustdoc_skip_body]
     fn is_socket(&self) -> bool {
         self.as_inner().is(libc::S_IFSOCK)
     }
