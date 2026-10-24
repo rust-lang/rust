@@ -127,9 +127,32 @@ pub(crate) fn clean_doc_module<'tcx>(
             match import {
                 hir::Node::Item(hir::Item { kind: hir::ItemKind::Use(tree), .. })
                 | hir::Node::NestedUseTree(tree) => {
-                    let hir::UsePath { segments, span, .. } = *tree.prefix;
+                    let mut segments = tree.prefix.segments.to_vec();
+                    let mut span = tree.prefix.span;
+                    let mut parent = cx.tcx.local_parent(*import_id);
+                    loop {
+                        match cx.tcx.hir_node_by_def_id(parent) {
+                            hir::Node::Item(hir::Item {
+                                kind: hir::ItemKind::Use(parent_tree),
+                                ..
+                            }) => {
+                                span = parent_tree.prefix.span.to(span);
+                                segments.splice(0..0, parent_tree.prefix.segments.iter().copied());
+                                break;
+                            }
+                            hir::Node::NestedUseTree(parent_tree) => {
+                                span = parent_tree.prefix.span.to(span);
+                                segments.splice(0..0, parent_tree.prefix.segments.iter().copied());
+                                parent = cx.tcx.local_parent(parent);
+                            }
+                            _ => break,
+                        }
+                    }
+                    if segments.last().is_some_and(|s| s.ident.name == kw::SelfLower) {
+                        segments.pop();
+                    }
                     let path = hir::UsePath {
-                        segments,
+                        segments: &segments,
                         res: PerNS { value_ns: Some(*res), type_ns: None, macro_ns: None },
                         span,
                     };
