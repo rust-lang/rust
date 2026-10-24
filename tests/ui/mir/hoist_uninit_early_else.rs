@@ -1,9 +1,5 @@
+//@ run-pass
 //@ revisions: noopt opt disabled
-//@[noopt] run-pass
-//@[opt] run-fail
-//@[opt] error-pattern: left: 200
-//@[opt] error-pattern: right: 999
-//@[disabled] run-pass
 //@[noopt] compile-flags: -C opt-level=0
 //@[opt] compile-flags: -C opt-level=3
 //@[disabled] compile-flags: -C opt-level=3 -Zmir-enable-passes=-EarlyOtherwiseBranch
