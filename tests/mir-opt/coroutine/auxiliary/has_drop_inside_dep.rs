@@ -1,4 +1,6 @@
 //@ edition: 2024
+//@ no-prefer-dynamic
+//@ compile-flags: -Zdump-mir=none
 
 // WARNING: If you would ever want to modify this test,
 // please consider modifying rustc's async drop test at
