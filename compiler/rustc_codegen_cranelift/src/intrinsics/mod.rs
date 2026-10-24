@@ -402,7 +402,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             fx.bcx.ins().trap(TrapCode::user(2).unwrap());
             return Ok(());
         }
-        sym::breakpoint => {
+        sym::breakpoint | sym::resumable_breakpoint => {
             intrinsic_args!(fx, args => (); intrinsic);
 
             fx.bcx.ins().debugtrap();
