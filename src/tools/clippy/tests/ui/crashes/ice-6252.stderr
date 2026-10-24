@@ -29,7 +29,35 @@ LL |     const VAL: T;
 LL | impl<N, M> TypeVal<usize> for Multiply<N, M> where N: TypeVal<VAL> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `VAL` in implementation
 
-error: aborting due to 3 previous errors
+error[E0599]: the associated function or constant `VAL` exists for struct `Multiply<Five, Five>`, but its trait bounds were not satisfied
+  --> tests/ui/crashes/ice-6252.rs:17:33
+   |
+LL | struct Five;
+   | ----------- doesn't satisfy `Five: TypeVal<{type error}>`
+LL | struct Multiply<N, M> {
+   | --------------------- associated function or constant `VAL` not found for this struct because it doesn't satisfy `Multiply<Five, Five>: TypeVal<_>`
+...
+LL |     [1; <Multiply<Five, Five>>::VAL];
+   |                                 ^^^ associated function or constant cannot be called on `Multiply<Five, Five>` due to unsatisfied trait bounds
+   |
+note: trait bound `Five: TypeVal<{type error}>` was not satisfied
+  --> tests/ui/crashes/ice-6252.rs:12:55
+   |
+LL | impl<N, M> TypeVal<usize> for Multiply<N, M> where N: TypeVal<VAL> {}
+   |            --------------     --------------          ^^^^^^^^^^^^ unsatisfied trait bound introduced here
+note: the trait `TypeVal` must be implemented
+  --> tests/ui/crashes/ice-6252.rs:4:1
+   |
+LL | trait TypeVal<T> {
+   | ^^^^^^^^^^^^^^^^
+   = help: items from traits can only be used if the trait is implemented and in scope
+note: `TypeVal` defines an item `VAL`, perhaps you need to implement it
+  --> tests/ui/crashes/ice-6252.rs:4:1
+   |
+LL | trait TypeVal<T> {
+   | ^^^^^^^^^^^^^^^^
 
-Some errors have detailed explanations: E0046, E0425.
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0046, E0425, E0599.
 For more information about an error, try `rustc --explain E0046`.

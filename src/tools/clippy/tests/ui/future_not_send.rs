@@ -1,4 +1,5 @@
 //@revisions: current next
+//@[current] compile-flags: -Znext-solver=coherence
 //@[next] compile-flags: -Znext-solver=globally
 
 #![warn(clippy::future_not_send)]

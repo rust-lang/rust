@@ -1,4 +1,6 @@
 //! This file tests for the `DOC_MARKDOWN` lint.
+// Disabling the new solver due to GCE.
+//@ compile-flags: -Znext-solver=coherence
 
 #![expect(incomplete_features)]
 #![warn(clippy::doc_markdown)]

@@ -15,4 +15,5 @@ impl<N, M> TypeVal<usize> for Multiply<N, M> where N: TypeVal<VAL> {}
 
 fn main() {
     [1; <Multiply<Five, Five>>::VAL];
+    //~^ ERROR: the associated function or constant `VAL` exists for struct `Multiply<Five, Five>`, but its trait bounds were not satisfied
 }
