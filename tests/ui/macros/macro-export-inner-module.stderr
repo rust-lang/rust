@@ -1,0 +1,31 @@
+warning: use of deprecated `no_link` attribute
+  --> $DIR/macro-export-inner-module.rs:6:14
+   |
+LL | #[macro_use] #[no_link]
+   |              ^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #164032 <https://github.com/rust-lang/rust/issues/164032>
+note: the lint level is defined here
+  --> $DIR/macro-export-inner-module.rs:4:9
+   |
+LL | #![warn(no_link_attributes)]
+   |         ^^^^^^^^^^^^^^^^^^
+
+warning: 1 warning emitted
+
+Future incompatibility report: Future breakage diagnostic:
+warning: use of deprecated `no_link` attribute
+  --> $DIR/macro-export-inner-module.rs:6:14
+   |
+LL | #[macro_use] #[no_link]
+   |              ^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #164032 <https://github.com/rust-lang/rust/issues/164032>
+note: the lint level is defined here
+  --> $DIR/macro-export-inner-module.rs:4:9
+   |
+LL | #![warn(no_link_attributes)]
+   |         ^^^^^^^^^^^^^^^^^^
+
