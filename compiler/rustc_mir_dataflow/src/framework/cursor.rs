@@ -3,11 +3,10 @@
 use std::cmp::Ordering;
 use std::ops::Deref;
 
-#[cfg(debug_assertions)]
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::{self, BasicBlock, Location};
 
-use super::{Analysis, Direction, Effect, EffectIndex, Results};
+use super::{Analysis, Direction, Effect, EffectIndex, MaybeReachable, Results};
 
 /// This is like `Cow`, but it lacks the `T: ToOwned` bound and doesn't support
 /// `to_owned`/`into_owned`.
@@ -43,7 +42,9 @@ where
 {
     body: &'mir mir::Body<'tcx>,
     results: SimpleCow<'mir, Results<'tcx, A>>,
-    state: A::Domain,
+
+    state: MaybeReachable<A::Domain>,
+    bottom_value: A::Domain,
 
     pos: CursorPosition,
 
@@ -52,7 +53,6 @@ where
     /// When this flag is set, we need to reset to an entry set before doing a seek.
     state_needs_reset: bool,
 
-    #[cfg(debug_assertions)]
     reachable_blocks: DenseBitSet<BasicBlock>,
 }
 
@@ -62,7 +62,10 @@ where
 {
     /// Returns the dataflow state at the current location.
     pub fn get(&self) -> &A::Domain {
-        &self.state
+        match &self.state {
+            MaybeReachable::Reachable(state) => state,
+            MaybeReachable::Unreachable => &self.bottom_value,
+        }
     }
 
     /// Returns the body this analysis was run on.
@@ -80,10 +83,10 @@ where
             // it needs to reset to block entry before the first seek. The cursor position is
             // immaterial.
             state_needs_reset: true,
-            state: bottom_value,
+            state: MaybeReachable::Unreachable,
+            bottom_value,
             pos: CursorPosition::block_entry(mir::START_BLOCK),
 
-            #[cfg(debug_assertions)]
             reachable_blocks: mir::traversal::reachable_as_bitset(body),
         }
     }
@@ -116,10 +119,12 @@ where
     ///
     /// For backward dataflow analyses, this is the dataflow state after the terminator.
     pub(super) fn seek_to_block_entry(&mut self, block: BasicBlock) {
-        #[cfg(debug_assertions)]
-        assert!(self.reachable_blocks.contains(block));
+        if self.reachable_blocks.contains(block) {
+            self.state = MaybeReachable::Reachable(self.results.entry_states[block].clone());
+        } else {
+            self.state = MaybeReachable::Unreachable
+        }
 
-        self.state.clone_from(&self.results.entry_states[block]);
         self.pos = CursorPosition::block_entry(block);
         self.state_needs_reset = false;
     }
@@ -203,7 +208,9 @@ where
 
         let mut idx = next_effect;
         loop {
-            self.results.analysis.apply_effect(&mut self.state, target.block, block_data, idx);
+            if let MaybeReachable::Reachable(state) = &mut self.state {
+                self.results.analysis.apply_effect(state, target.block, block_data, idx);
+            }
             if idx == target_effect_index {
                 break;
             }
@@ -218,8 +225,11 @@ where
     ///
     /// This can be used, e.g., to apply the call return effect directly to the cursor without
     /// creating an extra copy of the dataflow state.
+    /// The effect will only be applied when the cursor state is reachable.
     pub fn apply_custom_effect(&mut self, f: impl FnOnce(&A, &mut A::Domain)) {
-        f(&self.results.analysis, &mut self.state);
+        if let MaybeReachable::Reachable(bottom_value) = &mut self.state {
+            f(&self.results.analysis, bottom_value);
+        }
         self.state_needs_reset = true;
     }
 }
