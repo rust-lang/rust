@@ -358,8 +358,8 @@ fn any_debug() {
     assert_eq!(x.downcast_ref::<MyStruct>(), Some(&MyStruct { x: 7 }));
 }
 
-/// These tests use insta for snapshot testing.
-/// See bootstrap's README on how to bless the snapshots.
+/// These tests use expect-test for snapshot testing.
+/// Run `x test bootstrap --bless` to update them.
 mod snapshot {
     use crate::core::build_steps::test;
     use crate::core::builder::tests::{RenderConfig, TEST_TRIPLE_1, TEST_TRIPLE_2, host_target};
