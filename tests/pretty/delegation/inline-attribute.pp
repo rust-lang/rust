@@ -1,4 +1,4 @@
-#![attr = LintCheck([LintCheck {lint_name: "incomplete_features",
+#![attr = LintCheck([LintCheck {lint_name: LintName { tool: None, name: "incomplete_features" },
 kind: Allow}])]
 #![attr = Feature([fn_delegation#0])]
 extern crate std;
