@@ -320,8 +320,8 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
 pub(crate) fn extract_ast(attrs: &[rustc_ast::ast::Attribute]) -> Option<(Symbol, Span)> {
     attrs.iter().find_map(|attr| {
         Some(match attr {
-            _ if attr.has_name(sym::lang) => (attr.value_str()?, attr.span()),
-            _ if attr.has_name(sym::panic_handler) => (sym::panic_impl, attr.span()),
+            _ if attr.has_name(sym::lang) => (attr.value_str()?, attr.span),
+            _ if attr.has_name(sym::panic_handler) => (sym::panic_impl, attr.span),
             _ => return None,
         })
     })

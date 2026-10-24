@@ -1,3 +1,4 @@
+use crate::rustc_ast::attr::AttributeExt;
 use clippy_config::Conf;
 use clippy_utils::attrs::is_doc_hidden;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_then};
@@ -880,13 +881,13 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
 
     let (fragments, _) = attrs_to_doc_fragments(
         attrs.iter().filter_map(|attr| {
-            let (_, kind) = attr.doc_str_and_fragment_kind()?;
+            let (_, kind, attr_span) = attr.doc_str_and_fragment_kind()?;
             let (is_raw, doc_str_span) = match kind {
-                DocFragmentKind::Sugared(_) => (false, attr.span()),
+                DocFragmentKind::Sugared(_) => (false, attr_span),
                 DocFragmentKind::Raw(span) => (true, span),
             };
             let from_include_str_macro = is_raw
-                && !attr.span().in_external_macro(cx.sess().source_map())
+                && !attr_span.in_external_macro(cx.sess().source_map())
                 && originated_from_include_str_macro(cx, doc_str_span);
             (from_include_str_macro || !doc_str_span.in_external_macro(cx.sess().source_map())).then_some((attr, None))
         }),

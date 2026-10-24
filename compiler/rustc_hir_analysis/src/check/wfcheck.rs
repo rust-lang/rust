@@ -2199,7 +2199,7 @@ fn report_bivariance<'tcx>(
     );
 
     if !usage_spans.is_empty() {
-        // First, check if the ADT/LTA is (probably) cyclical. We say probably here, since we're
+        // First, check if the ADT is (probably) cyclical. We say probably here, since we're
         // not actually looking into substitutions, just walking through fields / the "RHS".
         // We don't recurse into the hidden types of opaques or anything else fancy.
         let item_def_id = item.owner_id.to_def_id();
@@ -2207,7 +2207,7 @@ fn report_bivariance<'tcx>(
             IsProbablyCyclical { tcx, item_def_id, seen: Default::default() }
                 .visit_def(item_def_id)
                 .is_break();
-        // If the ADT/LTA is cyclical, then if at least one usage of the type parameter or
+        // If the ADT is cyclical, then if at least one usage of the type parameter or
         // the `Self` alias is present in the, then it's probably a cyclical struct/ type
         // alias, and we should call those parameter usages recursive rather than just saying
         // they're unused...
@@ -2247,8 +2247,8 @@ fn report_bivariance<'tcx>(
     }
 }
 
-/// Detects cases where an ADT/LTA is trivially cyclical -- we want to detect this so
-/// we only mention that its parameters are used cyclically if the ADT/LTA is truly
+/// Detects cases where an ADT is trivially cyclical -- we want to detect this so
+/// we only mention that its parameters are used cyclically if the ADT is truly
 /// cyclical.
 ///
 /// Notably, we don't consider substitutions here, so this may have false positives.

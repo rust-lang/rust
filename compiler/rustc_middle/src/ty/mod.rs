@@ -1906,17 +1906,6 @@ impl<'tcx> TyCtxt<'tcx> {
         body
     }
 
-    /// Gets all attributes with the given name.
-    #[deprecated = "Though there are valid usecases for this method, especially when your attribute is not a parsed attribute, usually you want to use `rustc_attr_ir::find_attr!` instead."]
-    pub fn get_attrs(
-        self,
-        did: impl Into<DefId>,
-        attr: Symbol,
-    ) -> impl Iterator<Item = &'tcx rustc_attr_ir::Attribute> {
-        #[expect(deprecated)]
-        self.get_all_attrs(did).iter().filter(move |a: &&rustc_attr_ir::Attribute| a.has_name(attr))
-    }
-
     /// Gets all attributes.
     ///
     /// <div class="warning">
@@ -1933,19 +1922,6 @@ impl<'tcx> TyCtxt<'tcx> {
             self.hir_attrs(self.local_def_id_to_hir_id(did))
         } else {
             self.attrs_for_def(did)
-        }
-    }
-
-    pub fn get_attrs_by_path(
-        self,
-        did: DefId,
-        attr: &[Symbol],
-    ) -> impl Iterator<Item = &'tcx rustc_attr_ir::Attribute> {
-        let filter_fn = move |a: &&rustc_attr_ir::Attribute| a.path_matches(attr);
-        if let Some(did) = did.as_local() {
-            self.hir_attrs(self.local_def_id_to_hir_id(did)).iter().filter(filter_fn)
-        } else {
-            self.attrs_for_def(did).iter().filter(filter_fn)
         }
     }
 

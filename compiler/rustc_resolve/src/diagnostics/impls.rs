@@ -1744,15 +1744,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 let child_doc_visible = doc_visible
                     && did.is_none_or(|did| did.is_local() || !this.tcx.is_doc_hidden(did));
 
-                // collect results based on the filter function
-                // avoid suggesting anything from the same module in which we are resolving
-                // avoid suggesting anything with a hygienic name
-                if ident.name == lookup_ident.name
-                    && ns == namespace
-                    && in_module != parent_scope.module
-                    && ident.ctxt.is_root()
-                    && filter_fn(res)
-                {
+                let mk_path = |target_name| {
                     // create the path
                     let mut segms = if lookup_ident.span.at_least_rust_2018() {
                         // crate-local absolute paths start with `crate::` in edition 2018
@@ -1763,8 +1755,49 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     };
                     segms.append(&mut path_segments.clone());
 
-                    segms.push(ast::PathSegment::from_ident(ident.orig(orig_ident_span)));
-                    let path = Path { span: name_binding.span, segments: segms };
+                    segms.push(ast::PathSegment::from_ident(Ident::new(
+                        target_name,
+                        orig_ident_span,
+                    )));
+                    Path { span: name_binding.span, segments: segms }
+                };
+                if let DeclKind::Import { import, source_decl, .. } = name_binding.kind
+                    && let ImportKind::Single { source, target, .. } = import.kind
+                    && source != target
+                    && source.name == lookup_ident.name
+                    && ns == namespace
+                    && ident.ctxt.is_root()
+                    && filter_fn(res)
+                    && this.is_accessible_from(source_decl.vis(), parent_scope.module)
+                    && this.is_accessible_from(name_binding.vis(), parent_scope.module)
+                    && !matches!(res, Res::Err | Res::SelfTyAlias { .. } | Res::SelfTyParam { .. })
+                    && lookup_ident.name != kw::SelfLower
+                    && lookup_ident.name != kw::SelfUpper
+                {
+                    // Detect we've already imported the item with a different name.
+                    candidates.push(ImportSuggestion {
+                        did,
+                        descr: res.descr(),
+                        path: mk_path(target.name),
+                        accessible: child_accessible,
+                        doc_visible: child_doc_visible,
+                        note: None,
+                        via_import,
+                        is_stable,
+                    });
+                }
+
+                // collect results based on the filter function
+                // avoid suggesting anything from the same module in which we are resolving
+                // avoid suggesting anything with a hygienic name
+                if ident.name == lookup_ident.name
+                    && ns == namespace
+                    && in_module != parent_scope.module
+                    && ident.ctxt.is_root()
+                    && filter_fn(res)
+                    && !matches!(res, Res::Err | Res::SelfTyAlias { .. } | Res::SelfTyParam { .. })
+                {
+                    let path = mk_path(ident.name);
 
                     if child_accessible
                         // Remove invisible match if exists
@@ -4105,19 +4138,34 @@ fn show_candidates(
 
     let mut showed = false;
     let mut accessible_path_strings: Vec<PathString<'_>> = Vec::new();
+    let mut accessible_renames: Vec<PathString<'_>> = Vec::new();
     let mut inaccessible_path_strings: Vec<PathString<'_>> = Vec::new();
 
     candidates.iter().for_each(|c| {
         if c.accessible {
             // Don't suggest `#[doc(hidden)]` items from other crates
             if c.doc_visible {
-                accessible_path_strings.push((
-                    pprust::path_to_string(&c.path),
-                    c.descr,
-                    c.did.and_then(|did| Some(tcx.source_span(did.as_local()?))),
-                    &c.note,
-                    c.via_import,
-                ))
+                if let [first, .., last] | [first @ last] = &path
+                    && !first.ident.span.in_external_macro(tcx.sess.source_map())
+                    && first.ident.span.eq_ctxt(last.ident.span)
+                    && c.path.segments.len() == 1
+                {
+                    accessible_renames.push((
+                        pprust::path_to_string(&c.path),
+                        c.descr,
+                        c.did.and_then(|did| Some(tcx.source_span(did.as_local()?))),
+                        &c.note,
+                        c.via_import,
+                    ));
+                } else {
+                    accessible_path_strings.push((
+                        pprust::path_to_string(&c.path),
+                        c.descr,
+                        c.did.and_then(|did| Some(tcx.source_span(did.as_local()?))),
+                        &c.note,
+                        c.via_import,
+                    ));
+                }
             }
         } else {
             inaccessible_path_strings.push((
@@ -4126,13 +4174,15 @@ fn show_candidates(
                 c.did.and_then(|did| Some(tcx.source_span(did.as_local()?))),
                 &c.note,
                 c.via_import,
-            ))
+            ));
         }
     });
 
     // we want consistent results across executions, but candidates are produced
     // by iterating through a hash map, so make sure they are ordered:
-    for path_strings in [&mut accessible_path_strings, &mut inaccessible_path_strings] {
+    for path_strings in
+        [&mut accessible_path_strings, &mut accessible_renames, &mut inaccessible_path_strings]
+    {
         path_strings.sort_by(|a, b| a.0.cmp(&b.0));
         path_strings.dedup_by(|a, b| a.0 == b.0);
         let core_path_strings =
@@ -4155,6 +4205,39 @@ fn show_candidates(
         path_strings.extend(foreign_crate_path_strings);
     }
 
+    if !accessible_renames.is_empty() {
+        let (determiner, kind, s, through) =
+            if let [(_, descr, _, _, via_import)] = &accessible_renames[..] {
+                ("this", *descr, "", if *via_import { " through its public re-export" } else { "" })
+            } else {
+                // Get the unique item kinds and if there's only one, we use the right kind name
+                // instead of the more generic "items".
+                let kinds = accessible_path_strings
+                    .iter()
+                    .map(|(_, descr, _, _, _)| *descr)
+                    .collect::<UnordSet<&str>>();
+                let kind = if let Some(kind) = kinds.get_only() { kind } else { "item" };
+                let s = if kind.ends_with('s') { "es" } else { "s" };
+
+                ("one of these", kind, s, "")
+            };
+
+        let instead = if let Instead::Yes = instead { " instead" } else { "" };
+        let msg = format!("consider using {determiner} {kind}{s}{through}{instead}");
+
+        for note in accessible_path_strings.iter().flat_map(|cand| cand.3.as_ref()) {
+            err.note(note.clone());
+        }
+
+        err.span_suggestions_with_style(
+            path[0].ident.span.to(path[path.len() - 1].ident.span),
+            msg,
+            accessible_renames.into_iter().map(|a| a.0),
+            Applicability::MaybeIncorrect,
+            SuggestionStyle::ShowAlways,
+        );
+        showed = true;
+    }
     if !accessible_path_strings.is_empty() {
         let (determiner, kind, s, name, through) =
             if let [(name, descr, _, _, via_import)] = &accessible_path_strings[..] {

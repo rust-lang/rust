@@ -57,6 +57,7 @@ LL | |     }
 note: method defined here
   --> $DIR/self-mapping-arguments-errors.rs:5:12
    |
+LL |     trait MyAdd {
 LL |         fn add(self, other: Self) -> Self;
    |            ^^^       -----
 help: provide the argument
@@ -109,6 +110,7 @@ LL |     struct W(usize);
 note: method defined here
   --> $DIR/self-mapping-arguments-errors.rs:34:12
    |
+LL |     trait MyAdd {
 LL |         fn add(self, other: Box<Self>) -> Self;
    |            ^^^       -----
 help: store this in the heap by calling `Box::new`

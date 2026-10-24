@@ -381,6 +381,8 @@ pub(super) fn create_coroutine_drop_shim_proxy_async<'tcx>(
     };
     body.basic_blocks_mut()[call_bb].terminator = Some(Terminator { source_info, kind });
 
+    make_coroutine_state_argument_pinned(tcx, &mut body);
+
     // Run derefer to fix Derefs that are not in the first place
     deref_finder(tcx, &mut body, false);
 
