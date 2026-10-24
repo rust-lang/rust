@@ -301,4 +301,6 @@ jobs:
 
       - name: Test (Miri) (partition ${{ matrix.shard }}/4)
         run: |
-          cargo miri nextest run --partition count:${{ matrix.shard }}/4
+          cargo miri nextest run --partition count:${SHARD}/4
+        env:
+          SHARD: ${{ matrix.shard }}
