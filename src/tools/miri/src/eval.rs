@@ -22,7 +22,6 @@ use rustc_session::config::EntryFnType;
 use rustc_target::spec::Os;
 
 use crate::concurrency::GenmcCtx;
-use crate::concurrency::thread::TlsAllocAction;
 use crate::diagnostics::report_leaks;
 use crate::helpers::is_no_core;
 use crate::shims::{global_ctor, tls};
@@ -84,10 +83,10 @@ pub fn entry_fn(tcx: TyCtxt<'_>) -> (DefId, MiriEntryFnType) {
     }
 }
 
-/// When the main thread would exit, we will yield to any other thread that is ready to execute.
+/// When the program exits, we will yield to any other thread that is ready to execute.
 /// But we must only do that a finite number of times, or a background thread running `loop {}`
 /// will hang the program.
-const MAIN_THREAD_YIELDS_AT_SHUTDOWN: u32 = 256;
+const THREAD_YIELDS_AT_EXIT: u32 = 256;
 
 /// Configuration needed to spawn a Miri instance.
 #[derive(Clone)]
@@ -219,6 +218,94 @@ impl Default for MiriConfig {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+pub enum ExitType {
+    MainThreadFinish,
+    ExitCalled,
+}
+
+/// A state machine that's run when the program is exiting.
+#[derive(Debug)]
+pub struct ProgramExitHandler<'tcx> {
+    state: ProgramExitState<'tcx>,
+    exit_code: i32,
+    exit_type: ExitType,
+}
+#[derive(Debug)]
+enum ProgramExitState<'tcx> {
+    TlsDtors(tls::TlsDtorsState<'tcx>),
+    Yield { remaining: u32 },
+    Done,
+    Unreachable,
+}
+
+impl<'tcx> ProgramExitHandler<'tcx> {
+    pub fn new(exit_code: i32, exit_type: ExitType) -> Self {
+        Self {
+            state: ProgramExitState::TlsDtors(tls::TlsDtorsState::new_for_exit()),
+            exit_code,
+            exit_type,
+        }
+    }
+    pub fn on_stack_empty(
+        &mut self,
+        this: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, Poll<()>> {
+        use ProgramExitState::*;
+        match &mut self.state {
+            TlsDtors(state) =>
+                match state.on_stack_empty(this)? {
+                    Poll::Pending => {} // just keep going
+                    Poll::Ready(()) => {
+                        if this.machine.data_race.as_genmc_ref().is_some() {
+                            // In GenMC mode, we don't yield at the end of the main thread. Instead,
+                            // the `GenmcCtx` will ensure that unfinished threads get a chance to
+                            // run at this point.
+                            self.state = Done;
+                        } else {
+                            // Give background threads a chance to finish by yielding the main
+                            // thread a couple of times.
+                            self.state = Yield { remaining: THREAD_YIELDS_AT_EXIT };
+                        }
+                    }
+                },
+            Yield { remaining } =>
+                match remaining.checked_sub(1) {
+                    None => self.state = Done,
+                    Some(new_remaining) => {
+                        *remaining = new_remaining;
+                        this.yield_active_thread();
+                    }
+                },
+            Done => {
+                // Terminate this thread in the scheduler.
+                this.terminate_active_thread(/* for_exit */ true)?;
+
+                // We cannot come back.
+                self.state = Unreachable;
+
+                // In GenMC mode, we do not immediately stop execution on exit.
+                if let Some(genmc_ctx) = this.machine.data_race.as_genmc_ref() {
+                    // If there's no error, execution will continue (on another thread).
+                    genmc_ctx.handle_exit(
+                        this.machine.threads.active_thread(),
+                        self.exit_code,
+                        self.exit_type,
+                    )?;
+                } else {
+                    // Stop interpreter loop.
+                    throw_machine_stop!(TerminationInfo::Exit {
+                        exit_code: self.exit_code,
+                        leak_check: matches!(self.exit_type, ExitType::MainThreadFinish),
+                    });
+                }
+            }
+            Unreachable => unreachable!(),
+        }
+        interp_ok(Poll::Pending)
+    }
+}
+
 /// The state of the main thread. Implementation detail of `on_main_stack_empty`.
 #[derive(Debug)]
 enum MainThreadState<'tcx> {
@@ -232,11 +319,7 @@ enum MainThreadState<'tcx> {
         argv: ImmTy<'tcx>,
     },
     Running,
-    TlsDtors(tls::TlsDtorsState<'tcx>),
-    Yield {
-        remaining: u32,
-    },
-    Done,
+    Exiting(ProgramExitHandler<'tcx>),
 }
 
 impl<'tcx> MainThreadState<'tcx> {
@@ -256,69 +339,22 @@ impl<'tcx> MainThreadState<'tcx> {
                 }
             }
             Running => {
-                *self = TlsDtors(Default::default());
-            }
-            TlsDtors(state) =>
-                match state.on_stack_empty(this)? {
-                    Poll::Pending => {} // just keep going
-                    Poll::Ready(()) => {
-                        if this.machine.data_race.as_genmc_ref().is_some() {
-                            // In GenMC mode, we don't yield at the end of the main thread.
-                            // Instead, the `GenmcCtx` will ensure that unfinished threads get a chance to run at this point.
-                            *self = Done;
-                        } else {
-                            // Give background threads a chance to finish by yielding the main thread a
-                            // couple of times -- but only if we would also preempt threads randomly.
-                            if this.machine.preemption_rate > 0.0 {
-                                // There is a non-zero chance they will yield back to us often enough to
-                                // make Miri terminate eventually.
-                                *self = Yield { remaining: MAIN_THREAD_YIELDS_AT_SHUTDOWN };
-                            } else {
-                                // The other threads did not get preempted, so no need to yield back to
-                                // them.
-                                *self = Done;
-                            }
-                        }
-                    }
-                },
-            Yield { remaining } =>
-                match remaining.checked_sub(1) {
-                    None => *self = Done,
-                    Some(new_remaining) => {
-                        *remaining = new_remaining;
-                        this.yield_active_thread();
-                    }
-                },
-            Done => {
+                // Main code is done, the program is exiting.
+
                 // Figure out exit code.
                 let ret_place = this.machine.main_fn_ret_place.clone().unwrap();
                 let exit_code = this.read_target_isize(&ret_place)?;
                 // Rust uses `isize` but the underlying type of an exit code is `i32`.
-                // Do a saturating cast.
-                let exit_code = i32::try_from(exit_code).unwrap_or(if exit_code >= 0 {
-                    i32::MAX
-                } else {
-                    i32::MIN
-                });
-                // Deal with our thread-local memory. We do *not* want to actually free it, instead we consider TLS
-                // to be like a global `static`, so that all memory reached by it is considered to "not leak".
-                this.terminate_active_thread(TlsAllocAction::Leak)?;
-
-                // In GenMC mode, we do not immediately stop execution on main thread exit.
-                if let Some(genmc_ctx) = this.machine.data_race.as_genmc_ref() {
-                    // If there's no error, execution will continue (on another thread).
-                    genmc_ctx.handle_exit(
-                        ThreadId::MAIN_THREAD,
-                        exit_code,
-                        crate::concurrency::ExitType::MainThreadFinish,
-                    )?;
-                } else {
-                    // Stop interpreter loop.
-                    throw_machine_stop!(TerminationInfo::Exit {
-                        code: exit_code,
-                        leak_check: true
-                    });
-                }
+                let Ok(exit_code) = i32::try_from(exit_code) else {
+                    throw_ub_format!(
+                        "lang_start item return an exit code that does not fit into `i32`"
+                    );
+                };
+                *self = Exiting(ProgramExitHandler::new(exit_code, ExitType::MainThreadFinish));
+            }
+            Exiting(state) => {
+                // This is a sink state, we stay here forever.
+                return state.on_stack_empty(this);
             }
         }
         interp_ok(Poll::Pending)

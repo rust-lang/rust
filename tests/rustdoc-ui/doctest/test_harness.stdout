@@ -1,12 +1,12 @@
 
 running 3 tests
 test $DIR/test_harness.rs - (line 20) ... ok
-test $DIR/test_harness.rs - (line 25) ... FAILED
-test $DIR/test_harness.rs - (line 34) ... FAILED
+test $DIR/test_harness.rs - (line 27) ... FAILED
+test $DIR/test_harness.rs - (line 38) ... FAILED
 
 failures:
 
----- $DIR/test_harness.rs - (line 25) stdout ----
+---- $DIR/test_harness.rs - (line 27) stdout ----
 Test executable failed ($STATUS).
 
 stdout:
@@ -30,9 +30,9 @@ test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; 
 
 
 
----- $DIR/test_harness.rs - (line 34) stdout ----
+---- $DIR/test_harness.rs - (line 38) stdout ----
 error: non-item macro in item position: assert
-  --> $DIR/test_harness.rs:35:1
+  --> $DIR/test_harness.rs:39:1
    |
 LL | assert!(true);
    | ^^^^^^^^^^^^^
@@ -42,8 +42,8 @@ error: aborting due to 1 previous error
 Couldn't compile the test.
 
 failures:
-    $DIR/test_harness.rs - (line 25)
-    $DIR/test_harness.rs - (line 34)
+    $DIR/test_harness.rs - (line 27)
+    $DIR/test_harness.rs - (line 38)
 
 test result: FAILED. 1 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
 

@@ -20,7 +20,10 @@ fn gcc_features_by_flags(sess: &EarlySession, features: &mut Vec<String>) {
 
 /// The list of GCC features computed from CLI flags (`-Ctarget-cpu`, `-Ctarget-feature`,
 /// `--target` and similar).
-pub(crate) fn global_gcc_features(sess: &EarlySession) -> Vec<String> {
+///
+/// If `for_cfg` is `true`, only the features implied by `--target` are included, to configure the
+/// target info that populates [`rustc_codegen_ssa::TargetConfig`].
+pub(crate) fn global_gcc_features(sess: &EarlySession, for_cfg: bool) -> Vec<String> {
     // Features that come earlier are overridden by conflicting features later in the string.
     // Typically we'll want more explicit settings to override the implicit ones, so:
     //
@@ -56,6 +59,12 @@ pub(crate) fn global_gcc_features(sess: &EarlySession) -> Vec<String> {
 
     // Features implied by an implicit or explicit `--target`.
     target_features::target_spec_to_backend_features(sess, &mut extend_backend_features);
+
+    // `internal_target_features` applies -Ctarget-features itself, and GCC has no options for the
+    // features implied by other flags (e.g. retpoline), which would break the target info.
+    if for_cfg {
+        return features;
+    }
 
     // -Ctarget-features
     target_features::flag_to_backend_features(sess, extend_backend_features);
@@ -267,25 +276,7 @@ pub fn new_context<'gcc>(sess: &Session) -> Context<'gcc> {
         context.add_command_line_option("-mavx");
     }
 
-    if sess.target.arch == Arch::AArch64 {
-        // Unlike LLVM, GCC enables outline atomics by default, but their libgcc helpers are
-        // missing on targets without this feature, like the Linux kernel. Only AArch64 has it.
-        let outline_atomics = sess
-            .global_backend_features
-            .iter()
-            .rev()
-            .find_map(|feature| match feature.as_str() {
-                "outline-atomics" | "+outline-atomics" => Some(true),
-                "-outline-atomics" => Some(false),
-                _ => None,
-            })
-            .unwrap_or(false);
-        context.add_command_line_option(if outline_atomics {
-            "-moutline-atomics"
-        } else {
-            "-mno-outline-atomics"
-        });
-    }
+    add_feature_options(&context, &sess.target.arch, &sess.global_backend_features);
 
     for arg in &sess.opts.cg.llvm_args {
         context.add_command_line_option(arg);
@@ -385,6 +376,80 @@ pub fn new_context<'gcc>(sess: &Session) -> Context<'gcc> {
     }
 
     context
+}
+
+/// Add the options for the global `features` that are not applied with function attributes.
+fn add_feature_options(context: &Context<'_>, arch: &Arch, features: &[String]) {
+    if *arch == Arch::AArch64 {
+        // Unlike LLVM, GCC enables outline atomics by default, but their libgcc helpers are
+        // missing on targets without this feature, like the Linux kernel. Only AArch64 has it.
+        let outline_atomics =
+            feature_setting(features, "outline-atomics") == FeatureSetting::Enabled;
+        context.add_command_line_option(if outline_atomics {
+            "-moutline-atomics"
+        } else {
+            "-mno-outline-atomics"
+        });
+
+        // Rust's `neon` covers both FP and SIMD, so without it (e.g. on softfloat targets like the
+        // Linux kernel) GCC must not touch those registers at all.
+        if feature_setting(features, "neon") == FeatureSetting::Disabled {
+            context.add_command_line_option("-mgeneral-regs-only");
+        }
+    }
+}
+
+/// Configure the target info `context` with the global `features`, like codegen does.
+#[cfg(feature = "master")]
+pub fn add_target_info_feature_options(context: &Context<'_>, arch: &Arch, features: &[String]) {
+    add_feature_options(context, arch, features);
+    // Codegen applies these as function attributes, which the target info does not see. Of the
+    // arches using these attributes, libgccjit only has target info for x86, not PowerPC.
+    if matches!(arch, Arch::X86 | Arch::X86_64) {
+        for feature in
+            features.iter().filter_map(|feature| to_gcc_target_attribute_feature(feature))
+        {
+            context.add_command_line_option(format!("-m{}", feature));
+        }
+    }
+}
+
+/// The spelling of a global `feature` in a GCC `target` attribute, e.g. `no-sse` for `-sse`.
+pub fn to_gcc_target_attribute_feature(feature: &str) -> Option<String> {
+    // FIXME(antoyo): support soft-float.
+    if feature.contains("soft-float") {
+        return None;
+    }
+
+    if feature.starts_with('-') {
+        Some(format!("no{}", feature))
+    } else if let Some(stripped) = feature.strip_prefix('+') {
+        Some(stripped.to_string())
+    } else {
+        Some(feature.to_string())
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum FeatureSetting {
+    Enabled,
+    Disabled,
+    /// No global feature mentions it.
+    Unspecified,
+}
+
+/// The last setting of `feature` in `features`.
+fn feature_setting(features: &[String], feature: &str) -> FeatureSetting {
+    features
+        .iter()
+        .rev()
+        .find_map(|global_feature| match global_feature.strip_prefix('-') {
+            Some(disabled) if disabled == feature => Some(FeatureSetting::Disabled),
+            Some(_) => None,
+            None => (global_feature.strip_prefix('+').unwrap_or(global_feature) == feature)
+                .then_some(FeatureSetting::Enabled),
+        })
+        .unwrap_or(FeatureSetting::Unspecified)
 }
 
 pub fn add_pic_option<'gcc>(context: &Context<'gcc>, relocation_model: RelocModel) {

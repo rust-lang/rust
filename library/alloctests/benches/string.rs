@@ -159,3 +159,15 @@ fn bench_insert_str_long(b: &mut Bencher) {
         x
     })
 }
+
+#[bench]
+fn bench_from_escape_default_ascii(b: &mut Bencher) {
+    let s = super::str::corpora::en::LARGE;
+    b.iter(|| black_box(s).escape_default().to_string())
+}
+
+#[bench]
+fn bench_from_escape_default_multibyte(b: &mut Bencher) {
+    let s = super::str::corpora::emoji::LARGE;
+    b.iter(|| black_box(s).escape_default().to_string())
+}

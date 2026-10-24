@@ -128,7 +128,7 @@ impl GenmcCtx {
                     "If the execution is finished, we should have a return value from the program.",
                 );
                 throw_machine_stop!(TerminationInfo::Exit {
-                    code: exit_status.exit_code,
+                    exit_code: exit_status.exit_code,
                     leak_check: matches!(exit_status.exit_type, super::ExitType::MainThreadFinish),
                 });
             }
