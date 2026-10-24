@@ -1,6 +1,5 @@
 tests/ui/asm/may_unwind.rs
 tests/ui/asm/x86_64/may_unwind.rs
-tests/ui/intrinsics/panic-uninitialized-zeroed.rs
 tests/ui/simd/issue-17170.rs
 tests/ui/simd/issue-39720.rs
 tests/ui/process/println-with-broken-pipe.rs
@@ -12,7 +11,6 @@ tests/ui/process/nofile-limit.rs
 tests/ui/attributes/fn-align-dyn.rs
 tests/ui/linkage-attr/raw-dylib/elf/glibc-x86_64.rs
 tests/ui/statics/const_generics.rs
-tests/ui/thir-print/offset_of.rs
 tests/ui/asm/x86_64/global_asm_escape.rs
 tests/ui/lto/all-crates.rs
 tests/ui/explicit-tail-calls/tailcc-no-signature-restriction.rs
@@ -20,7 +18,6 @@ tests/ui/explicit-tail-calls/become-indirect-return.rs
 tests/ui/explicit-tail-calls/indirect.rs
 tests/ui/abi/rust-tail-cc.rs
 tests/ui/abi/rust-preserve-none-cc.rs
-tests/ui/extern/extern-types-field-offset.rs
 tests/ui/scalable-vectors/debuginfo-does-not-spill.rs
 tests/ui/scalable-vectors/debuginfo-no-opt-llvm-ice.rs
 tests/ui/scalable-vectors/transmute.rs

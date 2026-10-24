@@ -2,14 +2,14 @@
 running 4 tests
 test $DIR/main-alongside-macro-calls.rs - (line 19) ... ok
 test $DIR/main-alongside-macro-calls.rs - (line 24) ... ok
-test $DIR/main-alongside-macro-calls.rs - (line 28) ... FAILED
-test $DIR/main-alongside-macro-calls.rs - (line 33) ... FAILED
+test $DIR/main-alongside-macro-calls.rs - (line 35) ... FAILED
+test $DIR/main-alongside-macro-calls.rs - (line 41) ... FAILED
 
 failures:
 
----- $DIR/main-alongside-macro-calls.rs - (line 28) stdout ----
+---- $DIR/main-alongside-macro-calls.rs - (line 35) stdout ----
 error: macros that expand to items must be delimited with braces or followed by a semicolon
-  --> $DIR/main-alongside-macro-calls.rs:30:1
+  --> $DIR/main-alongside-macro-calls.rs:37:1
    |
 LL | println!();
    | ^^^^^^^^^^
@@ -17,7 +17,7 @@ LL | println!();
 error: macro expansion ignores `{` and any tokens following
   --> $SRC_DIR/std/src/macros.rs:LL:COL
    |
-  ::: $DIR/main-alongside-macro-calls.rs:30:1
+  ::: $DIR/main-alongside-macro-calls.rs:37:1
    |
 LL | println!();
    | ---------- caused by the macro expansion here
@@ -27,9 +27,9 @@ LL | println!();
 error: aborting due to 2 previous errors
 
 Couldn't compile the test.
----- $DIR/main-alongside-macro-calls.rs - (line 33) stdout ----
+---- $DIR/main-alongside-macro-calls.rs - (line 41) stdout ----
 error: macros that expand to items must be delimited with braces or followed by a semicolon
-  --> $DIR/main-alongside-macro-calls.rs:34:1
+  --> $DIR/main-alongside-macro-calls.rs:42:1
    |
 LL | println!();
    | ^^^^^^^^^^
@@ -37,7 +37,7 @@ LL | println!();
 error: macro expansion ignores `{` and any tokens following
   --> $SRC_DIR/std/src/macros.rs:LL:COL
    |
-  ::: $DIR/main-alongside-macro-calls.rs:34:1
+  ::: $DIR/main-alongside-macro-calls.rs:42:1
    |
 LL | println!();
    | ---------- caused by the macro expansion here
@@ -49,8 +49,8 @@ error: aborting due to 2 previous errors
 Couldn't compile the test.
 
 failures:
-    $DIR/main-alongside-macro-calls.rs - (line 28)
-    $DIR/main-alongside-macro-calls.rs - (line 33)
+    $DIR/main-alongside-macro-calls.rs - (line 35)
+    $DIR/main-alongside-macro-calls.rs - (line 41)
 
 test result: FAILED. 2 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
 

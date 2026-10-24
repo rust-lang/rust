@@ -365,6 +365,7 @@ fn join_orders_after_tls_destructors() {
 // ** glibc: https://github.com/bminor/glibc/blob/e5893e6349541d871e8a25120bca014551d13ff5/nptl/nptl_deallocate_tsd.c#L59
 // ** musl: https://github.com/kraj/musl/blob/1880359b54ff7dd9f5016002bfdae4b136007dde/src/thread/pthread_key_create.c#L87
 #[test]
+#[cfg_attr(miri, ignore)] // FIXME: fails in Miri ever since we support  __cxa_thread_atexit_impl
 fn thread_current_in_dtor() {
     use std::thread::Builder;
 
