@@ -119,7 +119,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidFromUtf8 {
                         .map(|e| match &e.kind {
                             ExprKind::Lit(Spanned { node: lit, .. }) => match lit {
                                 LitKind::Byte(b) => Some(*b),
-                                LitKind::Int(b, _) => Some(b.get() as u8),
+                                LitKind::Int(b, _) => Some(b.as_u128() as u8),
                                 _ => None,
                             },
                             _ => None,

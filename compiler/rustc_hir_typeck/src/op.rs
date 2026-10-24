@@ -1,7 +1,6 @@
 //! Code related to processing overloaded binary and unary operators.
 
 use rustc_ast::{self as ast, AssignOp, BinOp};
-use rustc_data_structures::packed::Pu128;
 use rustc_data_structures::thin_vec::{ThinVec, thin_vec};
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, struct_span_code_err};
@@ -1032,12 +1031,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     Expr {
                                         kind:
                                             ExprKind::Lit(Spanned {
-                                                node: ast::LitKind::Int(Pu128(1), _),
+                                                node: ast::LitKind::Int(int, _),
                                                 ..
                                             }),
                                         ..
                                     },
                                 ) = ex.kind
+                                    && int.as_u128() == 1
                                 {
                                     let span = if let hir::Node::Expr(parent) =
                                         self.tcx.parent_hir_node(ex.hir_id)

@@ -34,6 +34,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         match LitKind::from_token_lit(lit) {
             Ok(LitKind::Str(s, _)) => Some(s),
             Ok(LitKind::Int(n, ty)) => {
+                let n = n.as_u128();
                 match ty {
                     // unsuffixed integer literals are assumed to be i32's
                     LitIntType::Unsuffixed => {
