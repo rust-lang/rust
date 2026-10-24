@@ -502,11 +502,11 @@ impl Duration {
     pub const fn try_from_weeks(weeks: u64) -> Result<Duration, DurationConversionError> {
         const SECS_PER_WEEK: u64 = SECS_PER_MINUTE * MINS_PER_HOUR * HOURS_PER_DAY * DAYS_PER_WEEK;
 
-        if weeks > u64::MAX / SECS_PER_WEEK {
-            Err(DurationConversionError { kind: DurationConversionErrorKind::WeeksOverflow })
-        } else {
-            Ok(Duration::from_secs(weeks * SECS_PER_WEEK))
-        }
+        let Some(seconds) = weeks.checked_mul(SECS_PER_WEEK) else {
+            return Err(DurationConversionError { kind: DurationConversionErrorKind::WeeksOverflow });
+        };
+
+        Ok(Duration::from_secs(seconds))
     }
 
     /// Creates a new `Duration` from the specified number of days.
@@ -560,11 +560,11 @@ impl Duration {
     pub const fn try_from_days(days: u64) -> Result<Duration, DurationConversionError> {
         const SECS_PER_DAY: u64 = SECS_PER_MINUTE * MINS_PER_HOUR * HOURS_PER_DAY;
 
-        if days > u64::MAX / SECS_PER_DAY {
-            Err(DurationConversionError { kind: DurationConversionErrorKind::DaysOverflow })
-        } else {
-            Ok(Duration::from_secs(days * SECS_PER_DAY))
-        }
+        let Some(seconds) = days.checked_mul(SECS_PER_DAY) else {
+            return Err(DurationConversionError { kind: DurationConversionErrorKind::DaysOverflow });
+        };
+
+        Ok(Duration::from_secs(seconds))
     }
 
     /// Creates a new `Duration` from the specified number of hours.
@@ -618,11 +618,11 @@ impl Duration {
     pub const fn try_from_hours(hours: u64) -> Result<Duration, DurationConversionError> {
         const SECS_PER_HOUR: u64 = SECS_PER_MINUTE * MINS_PER_HOUR;
 
-        if hours > u64::MAX / SECS_PER_HOUR {
-            Err(DurationConversionError { kind: DurationConversionErrorKind::HoursOverflow })
-        } else {
-            Ok(Duration::from_secs(hours * SECS_PER_HOUR))
-        }
+        let Some(seconds) = hours.checked_mul(SECS_PER_HOUR) else {
+            return Err(DurationConversionError { kind: DurationConversionErrorKind::HoursOverflow });
+        };
+
+        Ok(Duration::from_secs(seconds))
     }
 
     /// Creates a new `Duration` from the specified number of minutes.
@@ -674,11 +674,11 @@ impl Duration {
     #[unstable(feature = "non_panicking_duration_conversion", issue = "153678")]
     #[inline]
     pub const fn try_from_mins(mins: u64) -> Result<Duration, DurationConversionError> {
-        if mins > u64::MAX / SECS_PER_MINUTE {
-            Err(DurationConversionError { kind: DurationConversionErrorKind::MinutesOverflow })
-        } else {
-            Ok(Duration::from_secs(mins * SECS_PER_MINUTE))
-        }
+        let Some(seconds) = mins.checked_mul(SECS_PER_MINUTE) else {
+            return Err(DurationConversionError { kind: DurationConversionErrorKind::MinutesOverflow });
+        };
+
+        Ok(Duration::from_secs(seconds))
     }
 
     /// Returns true if this `Duration` spans no time.
