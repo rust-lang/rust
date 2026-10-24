@@ -1,0 +1,129 @@
+[package]
+name = "hashbrown"
+version = "0.17.1"
+description = "A Rust port of Google's SwissTable hash map"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/rust-lang/hashbrown"
+readme = "README.md"
+keywords = ["hash", "no_std", "hashmap", "swisstable"]
+categories = ["data-structures", "no-std"]
+exclude = [".github", "/ci/*"]
+edition = "2024"
+
+# Make sure to sync this MSRV in the README badge and CI workflows
+rust-version = "1.85.0"
+autobenches = false
+
+[lints.rust]
+missing_docs = "warn"
+unreachable_pub = "warn"
+unsafe_op_in_unsafe_fn = "warn"
+
+# rust_2018_idioms
+bare_trait_objects = "warn"
+elided_lifetimes_in_paths = "warn"
+ellipsis_inclusive_range_patterns = "warn"
+explicit_outlives_requirements = "warn"
+unused_extern_crates = "warn"
+
+[lints.clippy]
+doc_markdown = "allow"
+manual_map = "allow"
+missing_errors_doc = "allow"
+missing_safety_doc = "allow"
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+option_if_let_else = "allow"
+
+borrow_as_ptr = "warn"
+elidable_lifetime_names = "warn"
+manual_assert = "warn"
+manual_assert_eq = "warn"
+manual_let_else = "warn"
+needless_continue = "warn"
+ptr_as_ptr = "warn"
+ptr_cast_constness = "warn"
+redundant_else = "warn"
+ref_as_ptr = "warn"
+semicolon_if_nothing_returned = "warn"
+str_to_string = "warn"
+
+[dependencies]
+# For the default hasher
+foldhash = { version = "0.2.0", default-features = false, optional = true }
+
+# For external trait impls
+rayon = { version = "1.9.0", optional = true }
+serde_core = { version = "1.0.221", default-features = false, optional = true }
+
+# When built as part of libstd
+core = { version = "1.0.0", optional = true, package = "rustc-std-workspace-core" }
+alloc = { version = "1.0.0", optional = true, package = "rustc-std-workspace-alloc" }
+
+# Support for allocators that use allocator-api2
+allocator-api2 = { version = "0.2.9", optional = true, default-features = false, features = [
+  "alloc",
+] }
+
+# Equivalent trait which can be shared with other hash table implementations.
+# NB: this is a public dependency because `Equivalent` is re-exported!
+equivalent = { version = "1.0", optional = true, default-features = false }
+
+# serde v1.0.220 is the first version that released with `serde_core`.
+# This is required to avoid conflict with other `serde` users which may require an older version.
+[target.'cfg(any())'.dependencies]
+serde = { version = "1.0.220", default-features = false, optional = true }
+
+[dev-dependencies]
+rand = { version = "0.9.0", features = ["small_rng"] }
+rayon = "1.2"
+fnv = "1.0.7"
+serde_test = "1.0"
+bumpalo = { version = "3.13.0", features = ["allocator-api2"] }
+criterion = { version = "0.7", features = ["html_reports"] }
+
+[target.'cfg(unix)'.dev-dependencies]
+libc = "0.2.155"
+
+[features]
+default = [
+  "default-hasher",
+  "inline-more",
+  "allocator-api2",
+  "equivalent",
+  "raw-entry",
+]
+
+# Enables use of nightly features. This is only guaranteed to work on the latest
+# version of nightly Rust.
+nightly = ["foldhash?/nightly", "bumpalo/allocator_api"]
+
+# Enables the RustcEntry API used to provide the standard library's Entry API.
+rustc-internal-api = []
+
+# Internal feature used when building as part of the standard library.
+rustc-dep-of-std = ["nightly", "core", "alloc", "rustc-internal-api"]
+
+# Enables serde support.
+serde = ["dep:serde_core", "dep:serde"]
+
+# Enables the deprecated RawEntry API.
+raw-entry = []
+
+# Provides a default hasher. Currently this is foldhash but this is subject to
+# change in the future. Note that the default hasher does *not* provide HashDoS
+# resistance, unlike the one in the standard library.
+default-hasher = ["dep:foldhash"]
+
+# Enables usage of `#[inline]` on far more functions than by default in this
+# crate. This may lead to a performance increase but often comes at a compile
+# time cost.
+inline-more = []
+
+[[bench]]
+name = "bench"
+harness = false
+
+[package.metadata.docs.rs]
+features = ["nightly", "rayon", "serde", "raw-entry"]
+rustdoc-args = ["--generate-link-to-definition"]
