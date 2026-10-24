@@ -21,6 +21,7 @@ use derive_where::derive_where;
 use rustc_type_ir_macros::{GenericTypeVisitable, TypeFoldable_Generic, TypeVisitable_Generic};
 use thin_vec::ThinVec;
 
+use crate::predicates::Predicate;
 use crate::search_graph::RequiredDepth;
 use crate::solve::{CandidateSource, Certainty, Goal, GoalSource, QueryResult};
 use crate::{Canonical, Interner};
@@ -49,7 +50,7 @@ pub type CanonicalState<I, T> = Canonical<I, State<I, T>>;
 /// of the solver query to the `InferCtxt` of the caller.
 #[derive_where(PartialEq, Eq, Hash; I: Interner)]
 pub struct GoalEvaluation<I: Interner> {
-    pub uncanonicalized_goal: Goal<I, I::Predicate>,
+    pub uncanonicalized_goal: Goal<I, Predicate<I>>,
     pub orig_values: ThinVec<I::GenericArg>,
     pub final_revision: I::Probe,
     pub result: QueryResult<I>,
@@ -71,7 +72,7 @@ pub struct Probe<I: Interner> {
 pub enum ProbeStep<I: Interner> {
     /// We added a goal to the `EvalCtxt` which will get proven
     /// the next time `EvalCtxt::try_evaluate_added_goals` is called.
-    AddGoal(GoalSource, CanonicalState<I, Goal<I, I::Predicate>>),
+    AddGoal(GoalSource, CanonicalState<I, Goal<I, Predicate<I>>>),
     /// A call to `probe` while proving the current goal. This is
     /// used whenever there are multiple candidates to prove the
     /// current goal.

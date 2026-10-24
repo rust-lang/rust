@@ -13,7 +13,7 @@ mod ok {
 }
 
 mod direct {
-    use rustc_type_ir::inherent::Predicate; //~ ERROR non-glob import of `rustc_type_ir::inherent`
+    use rustc_type_ir::inherent::Clause; //~ ERROR non-glob import of `rustc_type_ir::inherent`
     use rustc_type_ir::inherent::{AdtDef, Ty};
     //~^ ERROR non-glob import of `rustc_type_ir::inherent`
     //~| ERROR non-glob import of `rustc_type_ir::inherent`
