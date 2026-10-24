@@ -1,4 +1,4 @@
-use crate::ffi::{OsString, c_char};
+use crate::ffi::{CStr, OsString, c_char};
 use crate::fmt;
 use crate::fs::TryLockError;
 use crate::hash::Hash;
@@ -11,10 +11,7 @@ use crate::sys::{unsupported, unsupported_err};
 #[expect(dead_code)]
 #[path = "unsupported.rs"]
 mod unsupported_fs;
-pub use unsupported_fs::{
-    Dir, DirBuilder, FileTimes, canonicalize, link, readlink, remove_dir_all, rename,
-    rename_noreplace, rmdir, symlink, unlink,
-};
+pub use unsupported_fs::{Dir, DirBuilder, FileTimes};
 
 pub use crate::sys::fs::common::{ExtraHomeDirs, ExtraMediaDirs};
 
@@ -157,7 +154,7 @@ impl DirEntry {
     }
 
     pub fn metadata(&self) -> io::Result<FileAttr> {
-        stat(&self.path)
+        run_path_with_cstr(&self.path(), &stat)
     }
 
     pub fn file_type(&self) -> io::Result<FileType> {
@@ -199,84 +196,85 @@ impl OpenOptions {
 
 impl File {
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
-        run_path_with_cstr(path, &|path| {
-            // Enforce the invariants of `create_new`/`create`.
-            //
-            // Since VEXos doesn't have anything akin to POSIX's `oflags`, we need to enforce
-            // the requirements that `create_new` can't have an existing file and `!create`
-            // doesn't create a file ourselves.
-            if !opts.read && (opts.write || opts.append) && (opts.create_new || !opts.create) {
-                let status = unsafe { vex_sdk::vexFileStatus(path.as_ptr()) };
+        run_path_with_cstr(path, &|path| File::open_c(path, opts))
+    }
 
-                if opts.create_new && status != 0 {
-                    return Err(io::const_error!(io::ErrorKind::AlreadyExists, "file exists",));
-                } else if !opts.create && status == 0 {
-                    return Err(io::const_error!(
-                        io::ErrorKind::NotFound,
-                        "no such file or directory",
-                    ));
-                }
+    pub fn open_c(path: &CStr, opts: &OpenOptions) -> io::Result<File> {
+        // Enforce the invariants of `create_new`/`create`.
+        //
+        // Since VEXos doesn't have anything akin to POSIX's `oflags`, we need to enforce
+        // the requirements that `create_new` can't have an existing file and `!create`
+        // doesn't create a file ourselves.
+        if !opts.read && (opts.write || opts.append) && (opts.create_new || !opts.create) {
+            let status = unsafe { vex_sdk::vexFileStatus(path.as_ptr()) };
+
+            if opts.create_new && status != 0 {
+                return Err(io::const_error!(io::ErrorKind::AlreadyExists, "file exists",));
+            } else if !opts.create && status == 0 {
+                return Err(
+                    io::const_error!(io::ErrorKind::NotFound, "no such file or directory",),
+                );
+            }
+        }
+
+        let file = match opts {
+            // read + write - unsupported
+            OpenOptions { read: true, write: true, .. } => {
+                return Err(io::const_error!(
+                    io::ErrorKind::InvalidInput,
+                    "opening files with read and write access is unsupported on this target",
+                ));
             }
 
-            let file = match opts {
-                // read + write - unsupported
-                OpenOptions { read: true, write: true, .. } => {
-                    return Err(io::const_error!(
-                        io::ErrorKind::InvalidInput,
-                        "opening files with read and write access is unsupported on this target",
-                    ));
+            // read
+            OpenOptions {
+                read: true,
+                write: false,
+                append: _,
+                truncate: false,
+                create: false,
+                create_new: false,
+            } => unsafe { vex_sdk::vexFileOpen(path.as_ptr(), c"".as_ptr()) },
+
+            // append
+            OpenOptions {
+                read: false,
+                write: _,
+                append: true,
+                truncate: false,
+                create: _,
+                create_new: _,
+            } => unsafe { vex_sdk::vexFileOpenWrite(path.as_ptr()) },
+
+            // write
+            OpenOptions {
+                read: false,
+                write: true,
+                append: false,
+                truncate,
+                create: _,
+                create_new: _,
+            } => unsafe {
+                if *truncate {
+                    vex_sdk::vexFileOpenCreate(path.as_ptr())
+                } else {
+                    // Open in append, but jump to the start of the file.
+                    let fd = vex_sdk::vexFileOpenWrite(path.as_ptr());
+                    vex_sdk::vexFileSeek(fd, 0, 0);
+                    fd
                 }
+            },
 
-                // read
-                OpenOptions {
-                    read: true,
-                    write: false,
-                    append: _,
-                    truncate: false,
-                    create: false,
-                    create_new: false,
-                } => unsafe { vex_sdk::vexFileOpen(path.as_ptr(), c"".as_ptr()) },
-
-                // append
-                OpenOptions {
-                    read: false,
-                    write: _,
-                    append: true,
-                    truncate: false,
-                    create: _,
-                    create_new: _,
-                } => unsafe { vex_sdk::vexFileOpenWrite(path.as_ptr()) },
-
-                // write
-                OpenOptions {
-                    read: false,
-                    write: true,
-                    append: false,
-                    truncate,
-                    create: _,
-                    create_new: _,
-                } => unsafe {
-                    if *truncate {
-                        vex_sdk::vexFileOpenCreate(path.as_ptr())
-                    } else {
-                        // Open in append, but jump to the start of the file.
-                        let fd = vex_sdk::vexFileOpenWrite(path.as_ptr());
-                        vex_sdk::vexFileSeek(fd, 0, 0);
-                        fd
-                    }
-                },
-
-                _ => {
-                    return Err(io::const_error!(io::ErrorKind::InvalidInput, "invalid argument"));
-                }
-            };
-
-            if file.is_null() {
-                Err(io::const_error!(io::ErrorKind::NotFound, "could not open file"))
-            } else {
-                Ok(Self { fd: FileDesc(file) })
+            _ => {
+                return Err(io::const_error!(io::ErrorKind::InvalidInput, "invalid argument"));
             }
-        })
+        };
+
+        if file.is_null() {
+            Err(io::const_error!(io::ErrorKind::NotFound, "could not open file"))
+        } else {
+            Ok(Self { fd: FileDesc(file) })
+        }
     }
 
     pub fn file_attr(&self) -> io::Result<FileAttr> {
@@ -503,49 +501,82 @@ pub fn readdir(_p: &Path) -> io::Result<ReadDir> {
     unsupported()
 }
 
-pub fn set_perm(_p: &Path, _perm: FilePermissions) -> io::Result<()> {
+pub fn unlink(_p: &CStr) -> io::Result<()> {
     unsupported()
 }
 
-pub fn set_perm_nofollow(_p: &Path, _perm: FilePermissions) -> io::Result<()> {
+pub fn rename(_old: &CStr, _new: &CStr) -> io::Result<()> {
     unsupported()
 }
 
-pub fn set_times(_p: &Path, _times: FileTimes) -> io::Result<()> {
+pub fn rename_noreplace(_old: &CStr, _new: &CStr) -> io::Result<()> {
     unsupported()
 }
 
-pub fn set_times_nofollow(_p: &Path, _times: FileTimes) -> io::Result<()> {
+pub fn set_perm(_p: &CStr, _perm: FilePermissions) -> io::Result<()> {
     unsupported()
 }
 
-pub fn exists(path: &Path) -> io::Result<bool> {
-    run_path_with_cstr(path, &|path| Ok(unsafe { vex_sdk::vexFileStatus(path.as_ptr()) } != 0))
+pub fn set_perm_nofollow(_p: &CStr, _perm: FilePermissions) -> io::Result<()> {
+    unsupported()
 }
 
-pub fn stat(p: &Path) -> io::Result<FileAttr> {
+pub fn set_times(_p: &CStr, _times: FileTimes) -> io::Result<()> {
+    unsupported()
+}
+
+pub fn set_times_nofollow(_p: &CStr, _times: FileTimes) -> io::Result<()> {
+    unsupported()
+}
+
+pub fn rmdir(_p: &CStr) -> io::Result<()> {
+    unsupported()
+}
+
+pub fn remove_dir_all(_path: &Path) -> io::Result<()> {
+    unsupported()
+}
+
+pub fn exists(path: &CStr) -> io::Result<bool> {
+    Ok(unsafe { vex_sdk::vexFileStatus(path.as_ptr()) } != 0)
+}
+
+pub fn readlink(_p: &CStr) -> io::Result<PathBuf> {
+    unsupported()
+}
+
+pub fn symlink(_original: &CStr, _link: &CStr) -> io::Result<()> {
+    unsupported()
+}
+
+pub fn link(_src: &CStr, _dst: &CStr) -> io::Result<()> {
+    unsupported()
+}
+
+pub fn stat(p: &CStr) -> io::Result<FileAttr> {
     // `vexFileStatus` returns 3 if the given path is a directory, 1 if the path is a
     // file, or 0 if no such path exists.
     const FILE_STATUS_DIR: u32 = 3;
+    let file_type = unsafe { vex_sdk::vexFileStatus(p.as_ptr()) };
 
-    run_path_with_cstr(p, &|c_path| {
-        let file_type = unsafe { vex_sdk::vexFileStatus(c_path.as_ptr()) };
-
-        // We can't get the size if its a directory because we cant open it as a file
-        if file_type == FILE_STATUS_DIR {
-            Ok(FileAttr::Dir)
-        } else {
-            let mut opts = OpenOptions::new();
-            opts.read(true);
-            let file = File::open(p, &opts)?;
-            file.file_attr()
-        }
-    })
+    // We can't get the size if its a directory because we cant open it as a file
+    if file_type == FILE_STATUS_DIR {
+        Ok(FileAttr::Dir)
+    } else {
+        let mut opts = OpenOptions::new();
+        opts.read(true);
+        let file = File::open_c(p, &opts)?;
+        file.file_attr()
+    }
 }
 
-pub fn lstat(p: &Path) -> io::Result<FileAttr> {
+pub fn lstat(p: &CStr) -> io::Result<FileAttr> {
     // Symlinks aren't supported in this filesystem
     stat(p)
+}
+
+pub fn canonicalize(_p: &CStr) -> io::Result<PathBuf> {
+    unsupported()
 }
 
 // Cannot use `copy` from `common` here, since `File::set_permissions` is unsupported on this target.
