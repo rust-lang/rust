@@ -1,0 +1,51 @@
+//@ edition: 2021
+//@ run-rustfix
+
+#![deny(unused_parens)]
+#![allow(warnings)]
+#![feature(trait_alias)]
+
+// The return type of a parenthesized trait bound is a `TypeNoBounds`: its parentheses are
+// required if it has more than one bound, or if its bound is not the last one.
+
+fn where_predicate<F>(_: F) where F: for<'a> Fn(&'a ()) -> (dyn Send + 'a) {}
+fn where_predicate_not_last<F>(_: F) where F: Fn(&()) -> (dyn Send) + Sync {}
+
+fn generic_param<F: Fn(&()) -> (dyn Send + 'static)>(_: F) {}
+
+trait Supertrait: Fn(&()) -> (dyn Send + 'static) {}
+
+trait TraitAlias = Fn(&()) -> (dyn Send + 'static);
+
+trait AssocType {
+    type Assoc: Fn(&()) -> (dyn Send + 'static);
+}
+
+fn impl_trait(_: impl Fn(&()) -> (dyn Send + 'static)) {}
+
+trait AssocConstraintSupertrait: Iterator<Item: Fn() -> (dyn Send + 'static)> {}
+
+type FnPtr = fn() -> (dyn Send + 'static);
+
+type NestedFnPtr = Box<dyn Fn() -> fn() -> (dyn Send) + Sync>;
+
+//~v ERROR unnecessary parentheses around type
+fn removable_where_predicate<F>(_: F) where F: Fn(&()) -> (dyn Send) {}
+//~v ERROR unnecessary parentheses around type
+fn removable_generic_param<F: Fn(&()) -> (dyn Send)>(_: F) {}
+//~v ERROR unnecessary parentheses around type
+trait RemovableSupertrait: Fn(&()) -> (dyn Send) {}
+//~v ERROR unnecessary parentheses around type
+trait RemovableTraitAlias = Fn(&()) -> (dyn Send);
+trait RemovableAssocType {
+    //~v ERROR unnecessary parentheses around type
+    type Assoc: Fn(&()) -> (dyn Send);
+}
+//~v ERROR unnecessary parentheses around type
+fn removable_impl_trait(_: impl Fn(&()) -> (dyn Send)) {}
+//~v ERROR unnecessary parentheses around type
+trait RemovableAssocConstraint: Iterator<Item: Fn() -> (dyn Send)> {}
+//~v ERROR unnecessary parentheses around type
+type RemovableFnPtr = fn() -> (dyn Send);
+
+fn main() {}
