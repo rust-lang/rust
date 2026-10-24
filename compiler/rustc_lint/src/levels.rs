@@ -2,10 +2,9 @@ use std::fmt::Debug;
 
 use rustc_ast as ast;
 use rustc_ast::CRATE_NODE_ID;
-use rustc_ast::attr::AttributeExt;
 use rustc_attr_ir::lint::{LintCheck, LintCheckKind};
 use rustc_attr_ir::target::Target;
-use rustc_attr_ir::{Attribute, find_attr};
+use rustc_attr_ir::{Attribute, DocAttribute, find_attr};
 use rustc_attr_parsing::{AttributeParser, Recovery, ShouldEmit};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::UnordSet;
@@ -654,19 +653,6 @@ where
         };
     }
 
-    fn insert_lint_level_overrides(&mut self, attrs: &[impl AttributeExt]) {
-        for attr in attrs {
-            // `#[doc(hidden)]` disables missing_docs check.
-            if attr.is_doc_hidden() {
-                self.provider.insert(
-                    LintId::of(MISSING_DOCS),
-                    LevelSpec::new(Level::Allow, None, LintLevelSource::Default),
-                );
-                continue;
-            }
-        }
-    }
-
     fn add_ast(&mut self, attrs: &[rustc_ast::Attribute], is_crate_node: bool) {
         if attrs.is_empty() {
             return;
@@ -679,7 +665,6 @@ where
                 );
             }
         }
-        self.insert_lint_level_overrides(attrs);
         let parsed = AttributeParser::parse_limited_all(
             self.sess,
             attrs,
@@ -723,7 +708,12 @@ where
         if attrs.is_empty() {
             return;
         }
-        self.insert_lint_level_overrides(attrs);
+        if find_attr!(attrs, Doc(DocAttribute { hidden: Some(_), .. })) {
+            self.provider.insert(
+                LintId::of(MISSING_DOCS),
+                LevelSpec::new(Level::Allow, None, LintLevelSource::Default),
+            );
+        }
         self.add_hir_inner(attrs, is_crate_node)
     }
 
