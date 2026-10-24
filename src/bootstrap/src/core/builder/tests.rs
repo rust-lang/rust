@@ -966,6 +966,7 @@ mod snapshot {
         [doc] rustdoc (book) <host>
         [doc] rust-by-example (book) <host>
         [build] rustc 0 <host> -> LintDocs 1 <host>
+        [build] rustc 0 <host> -> TargetDocs 1 <host>
         [doc] rustc (book) <host>
         [doc] cargo (book) <host>
         [doc] clippy (book) <host>
@@ -1030,6 +1031,7 @@ mod snapshot {
         [doc] rustdoc (book) <host>
         [doc] rust-by-example (book) <host>
         [build] rustc 0 <host> -> LintDocs 1 <host>
+        [build] rustc 0 <host> -> TargetDocs 1 <host>
         [doc] rustc (book) <host>
         [doc] cargo (book) <host>
         [doc] clippy (book) <host>
@@ -1112,6 +1114,7 @@ mod snapshot {
         [doc] rust-by-example (book) <host>
         [doc] rust-by-example (book) <target1>
         [build] rustc 0 <host> -> LintDocs 1 <host>
+        [build] rustc 0 <host> -> TargetDocs 1 <host>
         [doc] rustc (book) <host>
         [doc] cargo (book) <host>
         [doc] cargo (book) <target1>
@@ -1181,6 +1184,7 @@ mod snapshot {
         [doc] rustdoc (book) <host>
         [doc] rust-by-example (book) <host>
         [build] rustc 0 <host> -> LintDocs 1 <host>
+        [build] rustc 0 <host> -> TargetDocs 1 <host>
         [doc] rustc (book) <host>
         [doc] rustc (book) <target1>
         [doc] cargo (book) <host>
@@ -1255,6 +1259,7 @@ mod snapshot {
         [doc] rust-by-example (book) <host>
         [doc] rust-by-example (book) <target1>
         [build] rustc 0 <host> -> LintDocs 1 <host>
+        [build] rustc 0 <host> -> TargetDocs 1 <host>
         [doc] rustc (book) <host>
         [doc] rustc (book) <target1>
         [doc] cargo (book) <host>
@@ -1371,6 +1376,7 @@ mod snapshot {
         [doc] rustdoc (book) <target1>
         [doc] rust-by-example (book) <target1>
         [build] rustc 0 <host> -> LintDocs 1 <host>
+        [build] rustc 0 <host> -> TargetDocs 1 <host>
         [doc] rustc (book) <target1>
         [doc] cargo (book) <target1>
         [doc] clippy (book) <target1>
@@ -1513,6 +1519,7 @@ mod snapshot {
         [doc] rustdoc (book) <host>
         [doc] rust-by-example (book) <host>
         [build] rustc 0 <host> -> LintDocs 1 <host>
+        [build] rustc 0 <host> -> TargetDocs 1 <host>
         [doc] rustc (book) <host>
         [doc] cargo (book) <host>
         [doc] clippy (book) <host>
@@ -1913,6 +1920,7 @@ mod snapshot {
         [doc] rustdoc (book) <host>
         [doc] rust-by-example (book) <host>
         [build] rustc 0 <host> -> LintDocs 1 <host>
+        [build] rustc 0 <host> -> TargetDocs 1 <host>
         [doc] rustc (book) <host>
         [doc] cargo (book) <host>
         [doc] clippy (book) <host>
@@ -2097,6 +2105,7 @@ mod snapshot {
         [doc] rustdoc (book) <host>
         [doc] rust-by-example (book) <host>
         [build] rustc 0 <host> -> LintDocs 1 <host>
+        [build] rustc 0 <host> -> TargetDocs 1 <host>
         [doc] rustc (book) <host>
         [doc] cargo (book) <host>
         [doc] clippy (book) <host>
@@ -2357,6 +2366,7 @@ mod snapshot {
         [doc] rustdoc (book) <host>
         [doc] rust-by-example (book) <host>
         [build] rustc 0 <host> -> LintDocs 1 <host>
+        [build] rustc 0 <host> -> TargetDocs 1 <host>
         [doc] rustc (book) <host>
         [doc] cargo (book) <host>
         [doc] clippy (book) <host>
@@ -2743,6 +2753,7 @@ mod snapshot {
         [doc] rustdoc (book) <x86_64-unknown-linux-gnu>
         [doc] rust-by-example (book) <x86_64-unknown-linux-gnu>
         [build] rustc 0 <x86_64-unknown-linux-gnu> -> LintDocs 1 <x86_64-unknown-linux-gnu>
+        [build] rustc 0 <x86_64-unknown-linux-gnu> -> TargetDocs 1 <x86_64-unknown-linux-gnu>
         [doc] rustc (book) <x86_64-unknown-linux-gnu>
         [doc] cargo (book) <x86_64-unknown-linux-gnu>
         [doc] clippy (book) <x86_64-unknown-linux-gnu>
@@ -2859,6 +2870,7 @@ mod snapshot {
         [doc] rustdoc (book) <x86_64-unknown-linux-gnu>
         [doc] rust-by-example (book) <x86_64-unknown-linux-gnu>
         [build] rustc 0 <x86_64-unknown-linux-gnu> -> LintDocs 1 <x86_64-unknown-linux-gnu>
+        [build] rustc 0 <x86_64-unknown-linux-gnu> -> TargetDocs 1 <x86_64-unknown-linux-gnu>
         [doc] rustc (book) <x86_64-unknown-linux-gnu>
         [doc] cargo (book) <x86_64-unknown-linux-gnu>
         [doc] clippy (book) <x86_64-unknown-linux-gnu>
