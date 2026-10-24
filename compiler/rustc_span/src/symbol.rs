@@ -1602,6 +1602,8 @@ symbols! {
         pattern_type,
         pattern_type_range_trait,
         pattern_types,
+        pdep,
+        pext,
         phantom_data,
         phase,
         pic,

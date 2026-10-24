@@ -143,6 +143,8 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::offload_get_num_devices
         | sym::offset_of
         | sym::overflow_checks
+        | sym::pdep
+        | sym::pext
         | sym::powf
         | sym::powi
         | sym::prefetch_read_data
@@ -745,6 +747,8 @@ pub(crate) fn check_intrinsic_type(
         sym::atomic_fence | sym::atomic_singlethreadfence => (0, 1, Vec::new(), tcx.types.unit),
 
         sym::return_address => (0, 0, vec![], Ty::new_imm_ptr(tcx, tcx.types.unit)),
+
+        sym::pext | sym::pdep => (1, 0, vec![param(0), param(0)], param(0)),
 
         other => {
             tcx.dcx().emit_err(UnrecognizedIntrinsicFunction { span, name: other });
