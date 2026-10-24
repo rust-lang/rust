@@ -332,7 +332,8 @@ pub trait FnPtr: Copy {
         self.as_ptr().addr().get()
     }
 
-    /// Returns the function pointer as a [`NonNull<Code>`].
+    /// Returns the function pointer as a [`NonNull<Code>`], thus forgetting the signature and
+    /// everything else about the type except except the fact that it was a function pointer.
     #[unstable(feature = "fn_static", issue = "148768")]
     #[lang = "fn_ptr_as_ptr"]
     fn as_ptr(self) -> NonNull<Code>;
@@ -341,9 +342,9 @@ pub trait FnPtr: Copy {
     ///
     /// # Safety
     ///
-    /// The function pointer must have been obtained
-    /// from an [`FnPtr::as_ptr`] call from a function
-    /// pointer type that is ABI compatible.
+    /// `ptr` must have been obtained from calling [`FnPtr::as_ptr`] on a function pointer type
+    /// that is ABI-compatible, or from an equivalent foreign operation (e.g. requesting a function
+    /// pointer, of the appropriate ABI, from a dynamic loader by name).
     #[unstable(feature = "fn_static", issue = "148768")]
     #[lang = "fn_ptr_from_ptr"]
     unsafe fn from_ptr(ptr: NonNull<Code>) -> Self;
