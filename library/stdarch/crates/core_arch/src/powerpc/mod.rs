@@ -2,6 +2,20 @@
 
 pub(crate) mod macros;
 
+macro_rules! ppcf128_doctest_prelude {
+    () => {
+        concat!(
+            "#![feature(powerpc_ppcf128)]\n",
+            "# #![feature(stdarch_powerpc)]\n",
+            cfg_select! {
+                target_arch = "powerpc" => "# use core::arch::powerpc::ppcf128;\n",
+                target_arch = "powerpc64" => "# use core::arch::powerpc64::ppcf128;\n",
+                _ => "", // just for docs
+            },
+        )
+    };
+}
+
 /// The IBM extended-precision (double-double) floating-point type.
 ///
 /// This type consists of two `f64` components, `large` and `small`, with the logical
@@ -47,7 +61,21 @@ pub(crate) mod macros;
 /// unintuitive when treating the bits as a `u128`. The sign bit of the large component
 /// is in position 127 on big-endian, but in position 63 on little-endian.
 ///
-/// See [`ppcf128::to_bits()`] for an example.
+/// ```
+#[doc = ppcf128_doctest_prelude!()]
+///
+/// fn to_bits(v: ppcf128) -> u128 {
+///     u128::from_ne_bytes(v.to_ne_bytes())
+/// }
+///
+/// if cfg!(target_endian = "little") {
+///     assert_eq!(to_bits(ppcf128::from(1.0_f64)),  0x0000_0000_0000_0000_3ff0_0000_0000_0000);
+///     assert_eq!(to_bits(ppcf128::from(-1.0_f64)), 0x0000_0000_0000_0000_bff0_0000_0000_0000);
+/// } else {
+///     assert_eq!(to_bits(ppcf128::from(1.0_f64)),  0x3ff0_0000_0000_0000_0000_0000_0000_0000);
+///     assert_eq!(to_bits(ppcf128::from(-1.0_f64)), 0xbff0_0000_0000_0000_0000_0000_0000_0000);
+/// }
+/// ```
 ///
 /// [NaN]: f64#associatedconstant.NAN
 /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
@@ -114,24 +142,6 @@ impl From<f16> for ppcf128 {
     }
 }
 
-macro_rules! ppcf128_doctest_prelude {
-    () => {
-        concat!(
-            "```",
-            // ignore the examples when running doc tests on non-powerpc targets.
-            cfg_select! {
-                any(target_arch = "powerpc", target_arch = "powerpc64") => "\n",
-                _ => "only-powerpc\n",
-            },
-            "#![feature(powerpc_ppcf128)]\n",
-            "# #![feature(stdarch_powerpc)]\n",
-            "# #[cfg(any(target_arch = \"powerpc\", target_arch = \"powerpc64\"))] {\n",
-            "# #[cfg(target_arch = \"powerpc\")] use core::arch::powerpc::ppcf128;\n",
-            "# #[cfg(target_arch = \"powerpc64\")] use core::arch::powerpc64::ppcf128;\n",
-        )
-    };
-}
-
 impl ppcf128 {
     /// The size of this float type in bits.
     #[unstable(feature = "powerpc_ppcf128", issue = "163323")]
@@ -185,6 +195,7 @@ impl ppcf128 {
     ///
     /// # Examples
     ///
+    /// ```
     #[doc = ppcf128_doctest_prelude!()]
     ///
     /// let bytes = ppcf128::from(12.5_f64).to_ne_bytes();
@@ -198,7 +209,6 @@ impl ppcf128 {
     ///          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
     ///     }
     /// );
-    /// # }
     /// ```
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
@@ -215,6 +225,7 @@ impl ppcf128 {
     ///
     /// # Examples
     ///
+    /// ```
     #[doc = ppcf128_doctest_prelude!()]
     ///
     /// let bytes = ppcf128::from(12.5_f64).to_le_bytes();
@@ -223,7 +234,6 @@ impl ppcf128 {
     ///     [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x29, 0x40,
     ///      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
     /// );
-    /// # }
     /// ```
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
@@ -244,6 +254,7 @@ impl ppcf128 {
     ///
     /// # Examples
     ///
+    /// ```
     #[doc = ppcf128_doctest_prelude!()]
     ///
     /// let bytes = ppcf128::from(12.5_f64).to_be_bytes();
@@ -252,7 +263,6 @@ impl ppcf128 {
     ///     [0x40, 0x29, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     ///      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
     /// );
-    /// # }
     /// ```
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
@@ -268,43 +278,14 @@ impl ppcf128 {
         bytes
     }
 
-    /// Raw transmutation to `u128`.
-    ///
-    /// This is currently identical to `transmute::<ppcf128, u128>(self)` on all platforms.
-    ///
-    /// See [`f64::from_bits`](f64#method.from_bits) for some discussion of the
-    /// portability of this operation (there are almost no issues).
-    ///
-    /// # Examples
-    ///
-    #[doc = ppcf128_doctest_prelude!()]
-    ///
-    /// if cfg!(target_endian = "little") {
-    ///     assert_eq!(ppcf128::from(1.0_f64).to_bits(),  0x0000_0000_0000_0000_3ff0_0000_0000_0000);
-    ///     assert_eq!(ppcf128::from(-1.0_f64).to_bits(), 0x0000_0000_0000_0000_bff0_0000_0000_0000);
-    /// } else {
-    ///     assert_eq!(ppcf128::from(1.0_f64).to_bits(),  0x3ff0_0000_0000_0000_0000_0000_0000_0000);
-    ///     assert_eq!(ppcf128::from(-1.0_f64).to_bits(), 0xbff0_0000_0000_0000_0000_0000_0000_0000);
-    /// }
-    /// # }
-    /// ```
-    #[must_use = "this returns the result of the operation, \
-                  without modifying the original"]
-    #[unstable(feature = "powerpc_ppcf128", issue = "163323")]
-    #[rustc_const_unstable(feature = "powerpc_ppcf128", issue = "163323")]
-    #[inline]
-    pub const fn to_bits(self) -> u128 {
-        u128::from_ne_bytes(self.to_ne_bytes())
-    }
-
     /// Returns the large and small component of this floating point number.
     ///
+    /// ```
     #[doc = ppcf128_doctest_prelude!()]
     ///
     /// assert_eq!(ppcf128::default().to_components(), (0.0, 0.0));
     /// assert_eq!(ppcf128::INFINITY.to_components(), (f64::INFINITY, 0.0));
     /// assert_eq!(ppcf128::MAX.to_components(), (f64::MAX, f64::MAX * f64::EPSILON / 4.0));
-    /// # }
     /// ```
     #[unstable(feature = "powerpc_ppcf128", issue = "163323")]
     #[rustc_const_unstable(feature = "powerpc_ppcf128", issue = "163323")]
@@ -336,6 +317,7 @@ impl ppcf128 {
     /// The result has the intuitive value of `large + small`. This function will normalize
     /// the components if they are not already in [normal form](ppcf128#normal-form).
     ///
+    /// ```
     #[doc = ppcf128_doctest_prelude!()]
     ///
     /// assert_eq!(ppcf128::from_components(1.0, 0.0).to_components(), (1.0, 0.0));
@@ -345,7 +327,6 @@ impl ppcf128 {
     ///     ppcf128::from_components(f64::INFINITY, 1.0).to_components(),
     ///     (f64::INFINITY, 0.0)
     /// );
-    /// # }
     /// ```
     #[unstable(feature = "powerpc_ppcf128", issue = "163323")]
     pub const fn from_components(large: f64, small: f64) -> Self {
@@ -390,13 +371,13 @@ impl ppcf128 {
     ///
     /// Returns `None` when the components are not in normal form.
     ///
+    /// ```
     #[doc = ppcf128_doctest_prelude!()]
     ///
     /// assert!(ppcf128::from_components_checked(1.0, 0.0).is_some());
     /// assert!(ppcf128::from_components_checked(f64::NAN, 0.0).is_some());
     /// assert!(ppcf128::from_components_checked(0.0, 1.0).is_none());
     /// assert!(ppcf128::from_components_checked(0.0, f64::NAN).is_none());
-    /// # }
     /// ```
     #[unstable(feature = "powerpc_ppcf128", issue = "163323")]
     pub const fn from_components_checked(large: f64, small: f64) -> Option<Self> {
@@ -410,6 +391,7 @@ impl ppcf128 {
 
     /// Returns `true` if this value is NaN.
     ///
+    /// ```
     #[doc = ppcf128_doctest_prelude!()]
     ///
     /// let nan = ppcf128::NAN;
@@ -417,7 +399,6 @@ impl ppcf128 {
     ///
     /// assert!(nan.is_nan());
     /// assert!(!f.is_nan());
-    /// # }
     /// ```
     #[must_use]
     #[unstable(feature = "powerpc_ppcf128", issue = "163323")]
@@ -430,6 +411,7 @@ impl ppcf128 {
     /// Returns `true` if this value is positive infinity or negative infinity, and
     /// `false` otherwise.
     ///
+    /// ```
     #[doc = ppcf128_doctest_prelude!()]
     ///
     /// let f = ppcf128::from(7.0_f64);
@@ -442,7 +424,6 @@ impl ppcf128 {
     ///
     /// assert!(inf.is_infinite());
     /// assert!(neg_inf.is_infinite());
-    /// # }
     /// ```
     #[must_use]
     #[unstable(feature = "powerpc_ppcf128", issue = "163323")]
@@ -454,6 +435,7 @@ impl ppcf128 {
 
     /// Returns `true` if this number is neither infinite nor NaN.
     ///
+    /// ```
     #[doc = ppcf128_doctest_prelude!()]
     ///
     /// let f = ppcf128::from(7.0_f64);
@@ -466,7 +448,6 @@ impl ppcf128 {
     /// assert!(!nan.is_finite());
     /// assert!(!inf.is_finite());
     /// assert!(!neg_inf.is_finite());
-    /// # }
     /// ```
     #[must_use]
     #[unstable(feature = "powerpc_ppcf128", issue = "163323")]
@@ -487,6 +468,7 @@ impl ppcf128 {
     /// `self.signum() == ppcf128::from(1.0_f64)` if you need fully portable behavior
     /// (evaluates to `false` for all NaNs).
     ///
+    /// ```
     #[doc = ppcf128_doctest_prelude!()]
     ///
     /// let f = ppcf128::from(7.0_f64);
@@ -494,7 +476,6 @@ impl ppcf128 {
     ///
     /// assert!(f.is_sign_positive());
     /// assert!(!g.is_sign_positive());
-    /// # }
     /// ```
     #[must_use]
     #[unstable(feature = "powerpc_ppcf128", issue = "163323")]
@@ -515,6 +496,7 @@ impl ppcf128 {
     /// `self.signum() == ppcf128::from(-1.0_f64)` if you need fully portable behavior
     /// (evaluates to `false` for all NaNs).
     ///
+    /// ```
     #[doc = ppcf128_doctest_prelude!()]
     ///
     /// let f = ppcf128::from(7.0_f64);
@@ -522,7 +504,6 @@ impl ppcf128 {
     ///
     /// assert!(!f.is_sign_negative());
     /// assert!(g.is_sign_negative());
-    /// # }
     /// ```
     #[must_use]
     #[unstable(feature = "powerpc_ppcf128", issue = "163323")]
@@ -540,6 +521,7 @@ impl ppcf128 {
     ///
     /// # Examples
     ///
+    /// ```
     #[doc = ppcf128_doctest_prelude!()]
     ///
     /// let f = ppcf128::from(3.5_f64);
@@ -548,7 +530,6 @@ impl ppcf128 {
     /// assert_eq!(ppcf128::NEG_INFINITY.signum(), ppcf128::from(-1.0_f64));
     ///
     /// assert!(ppcf128::NAN.signum().is_nan());
-    /// # }
     /// ```
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "powerpc_ppcf128", issue = "163323")]
