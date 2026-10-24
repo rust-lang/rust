@@ -1,0 +1,66 @@
+error: lifetime may not live long enough
+  --> $DIR/return-expr-with-implicit-trait-object-static-obligation.rs:11:24
+   |
+LL |         pub fn new(string: &str) -> Self {
+   |                            - let's call the lifetime of this reference `'1`
+LL |             Thing {
+LL |                 chars: Box::new(string.chars()),
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^ coercion requires that `'1` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/return-expr-with-implicit-trait-object-static-obligation.rs:24:13
+   |
+LL |           pub fn new(string: &str) -> Self {
+   |                              -        ---- return type is `b::Thing<'2>`
+   |                              |
+   |                              let's call the lifetime of this reference `'1`
+LL | /             Thing {
+LL | |                 chars: Box::new(string.chars()),
+LL | |             }
+   | |_____________^ associated function was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+
+error: lifetime may not live long enough
+  --> $DIR/return-expr-with-implicit-trait-object-static-obligation.rs:36:19
+   |
+LL |         pub fn new(string: &str) -> Self {
+   |                            - let's call the lifetime of this reference `'1`
+LL |             Thing(Box::new(string.chars()))
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^ coercion requires that `'1` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/return-expr-with-implicit-trait-object-static-obligation.rs:48:24
+   |
+LL |         pub fn new(string: &str) -> Self {
+   |                            - let's call the lifetime of this reference `'1`
+LL |             Thing::Foo(Box::new(string.chars()))
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^ coercion requires that `'1` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/return-expr-with-implicit-trait-object-static-obligation.rs:63:24
+   |
+LL |         pub fn new(string: &str) -> Self {
+   |                            - let's call the lifetime of this reference `'1`
+LL |             Thing::Foo {
+LL |                 chars: Box::new(string.chars()),
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^ coercion requires that `'1` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/return-expr-with-implicit-trait-object-static-obligation.rs:78:24
+   |
+LL |         pub fn new(string: &str) -> Self {
+   |                            - let's call the lifetime of this reference `'1`
+LL |             Thing {
+LL |                 chars: Box::new(string.chars()),
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^ coercion requires that `'1` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/return-expr-with-implicit-trait-object-static-obligation.rs:94:24
+   |
+LL |         pub fn new(string: &str) -> Self {
+   |                            - let's call the lifetime of this reference `'1`
+LL |             Thing {
+LL |                 chars: Box::new(string.chars()),
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^ coercion requires that `'1` must outlive `'static`
+
+error: aborting due to 7 previous errors
+
