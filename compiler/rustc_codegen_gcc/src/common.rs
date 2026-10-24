@@ -28,12 +28,14 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         self.const_uint(self.type_u16(), i as u64)
     }
 
-    fn global_string(&self, string: &str) -> LValue<'gcc> {
-        // FIXME(antoyo): handle non-null-terminated strings.
-        let string = self.context.new_string_literal(string);
+    fn global_const_string(&self, string: &str) -> LValue<'gcc> {
+        // The bytes of a Rust string are not NUL-terminated and can contain NULs.
+        let string = bytes_in_context(self, string.as_bytes());
         let sym = self.generate_local_symbol_name("str");
         let global = self.declare_private_global(&sym, self.val_ty(string));
         global.global_set_initializer_rvalue(string);
+        #[cfg(feature = "master")]
+        global.global_set_readonly();
         global
         // FIXME(antoyo): set linkage.
     }
@@ -245,7 +247,7 @@ impl<'gcc, 'tcx> ConstCodegenMethods for CodegenCx<'gcc, 'tcx> {
     fn const_str(&self, s: &str) -> (RValue<'gcc>, RValue<'gcc>) {
         let mut const_str_cache = self.const_str_cache.borrow_mut();
         let str_global = const_str_cache.get(s).copied().unwrap_or_else(|| {
-            let g = self.global_string(s);
+            let g = self.global_const_string(s);
             const_str_cache.insert(s.to_owned(), g);
             g
         });
