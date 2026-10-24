@@ -47,14 +47,6 @@ impl SourceMap {
             None
         }
     }
-
-    /// Converts an absolute `BytePos` to a `CharPos` relative to the `SourceFile`.
-    fn bytepos_to_file_charpos(&self, bpos: BytePos) -> CharPos {
-        let idx = self.lookup_source_file_idx(bpos);
-        let sf = &(*self.files.borrow().source_files)[idx];
-        let bpos = sf.relative_position(bpos);
-        sf.bytepos_to_file_charpos(bpos)
-    }
 }
 
 /// Tests `lookup_byte_offset`.
@@ -73,18 +65,6 @@ fn t3() {
     let srcfbp2 = sm.lookup_byte_offset(BytePos(25));
     assert_eq!(srcfbp2.sf.name, filename(&sm, "blork2.rs"));
     assert_eq!(srcfbp2.pos, BytePos(0));
-}
-
-/// Tests `bytepos_to_file_charpos`.
-#[test]
-fn t4() {
-    let sm = init_source_map();
-
-    let cp1 = sm.bytepos_to_file_charpos(BytePos(22));
-    assert_eq!(cp1, CharPos(22));
-
-    let cp2 = sm.bytepos_to_file_charpos(BytePos(25));
-    assert_eq!(cp2, CharPos(0));
 }
 
 /// Tests zero-length `SourceFile`s.
@@ -111,22 +91,22 @@ fn init_source_map_mbc() -> SourceMap {
     sm
 }
 
-/// Tests `bytepos_to_file_charpos` in the presence of multi-byte chars.
+/// Tests `lookup_char_pos` in the presence of multi-byte chars.
 #[test]
 fn t6() {
     let sm = init_source_map_mbc();
 
-    let cp1 = sm.bytepos_to_file_charpos(BytePos(3));
-    assert_eq!(cp1, CharPos(3));
+    let loc = sm.lookup_char_pos(BytePos(3));
+    assert_eq!((loc.line, loc.col), (1, CharPos(3)));
 
-    let cp2 = sm.bytepos_to_file_charpos(BytePos(6));
-    assert_eq!(cp2, CharPos(4));
+    let loc = sm.lookup_char_pos(BytePos(6));
+    assert_eq!((loc.line, loc.col), (1, CharPos(4)));
 
-    let cp3 = sm.bytepos_to_file_charpos(BytePos(56));
-    assert_eq!(cp3, CharPos(12));
+    let loc = sm.lookup_char_pos(BytePos(56));
+    assert_eq!((loc.line, loc.col), (1, CharPos(12)));
 
-    let cp4 = sm.bytepos_to_file_charpos(BytePos(61));
-    assert_eq!(cp4, CharPos(15));
+    let loc = sm.lookup_char_pos(BytePos(61));
+    assert_eq!((loc.line, loc.col), (2, CharPos(1)));
 }
 
 /// Test `span_to_lines` for a span ending at the end of a `SourceFile`.
