@@ -11,14 +11,13 @@ pub mod diy_float;
 pub mod flt2dec;
 pub mod fmt;
 
-// Public for core_arch.
-pub mod ppcf128;
-
-pub(crate) mod int_bits;
 pub(crate) mod int_log10;
 pub(crate) mod int_sqrt;
 pub(crate) mod libm;
 pub(crate) mod overflow_panic;
+
+// Public for core_arch.
+pub mod ppcf128;
 mod traits;
 
 pub use traits::{Float, FloatExt, Int};

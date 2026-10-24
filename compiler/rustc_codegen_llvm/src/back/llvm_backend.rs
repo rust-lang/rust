@@ -216,7 +216,7 @@ impl CodegenBackend for LlvmCodegenBackend {
         // Intrinsics whose fallback body will not be used by the LLVM backend.
         let replaced_intrinsics = {
             #[rustfmt::skip]
-            let will_not_use_fallback = vec![
+            let mut will_not_use_fallback = vec![
                 // These are mapped to LLVM intrinsics instead.
                 sym::unchecked_funnel_shl,
                 sym::unchecked_funnel_shr,
@@ -242,6 +242,11 @@ impl CodegenBackend for LlvmCodegenBackend {
 
                 sym::copysignf16, sym::copysignf32, sym::copysignf64, sym::copysignf128,
             ];
+
+            if llvm_util::get_version() >= (23, 0, 0) {
+                will_not_use_fallback.push(sym::extract_bits);
+                will_not_use_fallback.push(sym::deposit_bits);
+            }
 
             will_not_use_fallback
         };
