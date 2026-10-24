@@ -12,4 +12,4 @@ doc = false
 
 [build-dependencies]
 # Pinned so `cargo update` bumps don't cause breakage
-cc = "=1.4.3"
+cc = "=1.9.0"

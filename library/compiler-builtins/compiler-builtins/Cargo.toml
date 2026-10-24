@@ -31,7 +31,7 @@ doc = false
 core = { path = "../../core", optional = true }
 
 [build-dependencies]
-cc = { version = "1.2", optional = true }
+cc = { version = "1.9", optional = true }
 
 [features]
 default = ["arch"]
