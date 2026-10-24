@@ -1,0 +1,111 @@
+error: the constant `1f64` is not of type `usize`
+  --> $DIR/mismatched-const-arg-type.rs:28:12
+   |
+LL |     let _: [(); ADD1::<1f64>];
+   |            ^^^^^^^^^^^^^^^^^^ expected `usize`, found `f64`
+
+error: the constant `1` is not of type `usize`
+  --> $DIR/mismatched-const-arg-type.rs:31:12
+   |
+LL |     let _: [(); ADD1::<1u8>];
+   |            ^^^^^^^^^^^^^^^^^ expected `usize`, found `u8`
+
+error: the constant `1` is not of type `usize`
+  --> $DIR/mismatched-const-arg-type.rs:34:12
+   |
+LL |     let _: [(); ADD1::<1i32>];
+   |            ^^^^^^^^^^^^^^^^^^ expected `usize`, found `i32`
+
+error: the constant `true` is not of type `usize`
+  --> $DIR/mismatched-const-arg-type.rs:37:12
+   |
+LL |     let _: [(); ADD1::<true>];
+   |            ^^^^^^^^^^^^^^^^^^ expected `usize`, found `bool`
+
+error: the constant `'a'` is not of type `usize`
+  --> $DIR/mismatched-const-arg-type.rs:40:12
+   |
+LL |     let _: [(); ADD1::<'a'>];
+   |            ^^^^^^^^^^^^^^^^^ expected `usize`, found `char`
+
+error: the constant `"s"` is not of type `usize`
+  --> $DIR/mismatched-const-arg-type.rs:43:12
+   |
+LL |     let _: [(); ADD1::<"s">];
+   |            ^^^^^^^^^^^^^^^^^ expected `usize`, found `&'static str`
+
+error: the constant `1f64` is not of type `usize`
+  --> $DIR/mismatched-const-arg-type.rs:46:12
+   |
+LL |     let _: [(); ADD1::<F>];
+   |            ^^^^^^^^^^^^^^^ expected `usize`, found `f64`
+
+error: the constant `1f64` is not of type `usize`
+  --> $DIR/mismatched-const-arg-type.rs:49:12
+   |
+LL |     let _: [(); IGNORE::<1f64>];
+   |            ^^^^^^^^^^^^^^^^^^^^ expected `usize`, found `f64`
+
+error[E0271]: type mismatch resolving `<() as Tr>::C<1f64> == _`
+  --> $DIR/mismatched-const-arg-type.rs:52:12
+   |
+LL |     let _: [(); <() as Tr>::C::<1f64>];
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^ types differ
+
+error: the type `[(); ADD1::<1f64>]` is not well-formed
+  --> $DIR/mismatched-const-arg-type.rs:28:12
+   |
+LL |     let _: [(); ADD1::<1f64>];
+   |            ^^^^^^^^^^^^^^^^^^
+
+error: the type `[(); ADD1::<1>]` is not well-formed
+  --> $DIR/mismatched-const-arg-type.rs:31:12
+   |
+LL |     let _: [(); ADD1::<1u8>];
+   |            ^^^^^^^^^^^^^^^^^
+
+error: the type `[(); ADD1::<1>]` is not well-formed
+  --> $DIR/mismatched-const-arg-type.rs:34:12
+   |
+LL |     let _: [(); ADD1::<1i32>];
+   |            ^^^^^^^^^^^^^^^^^^
+
+error: the type `[(); ADD1::<true>]` is not well-formed
+  --> $DIR/mismatched-const-arg-type.rs:37:12
+   |
+LL |     let _: [(); ADD1::<true>];
+   |            ^^^^^^^^^^^^^^^^^^
+
+error: the type `[(); ADD1::<'a'>]` is not well-formed
+  --> $DIR/mismatched-const-arg-type.rs:40:12
+   |
+LL |     let _: [(); ADD1::<'a'>];
+   |            ^^^^^^^^^^^^^^^^^
+
+error: the type `[(); ADD1::<"s">]` is not well-formed
+  --> $DIR/mismatched-const-arg-type.rs:43:12
+   |
+LL |     let _: [(); ADD1::<"s">];
+   |            ^^^^^^^^^^^^^^^^^
+
+error: the type `[(); ADD1::<1f64>]` is not well-formed
+  --> $DIR/mismatched-const-arg-type.rs:46:12
+   |
+LL |     let _: [(); ADD1::<F>];
+   |            ^^^^^^^^^^^^^^^
+
+error: the type `[(); IGNORE::<1f64>]` is not well-formed
+  --> $DIR/mismatched-const-arg-type.rs:49:12
+   |
+LL |     let _: [(); IGNORE::<1f64>];
+   |            ^^^^^^^^^^^^^^^^^^^^
+
+error: the type `[(); <() as Tr>::C::<1f64>]` is not well-formed
+  --> $DIR/mismatched-const-arg-type.rs:52:12
+   |
+LL |     let _: [(); <() as Tr>::C::<1f64>];
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 18 previous errors
+
+For more information about this error, try `rustc --explain E0271`.
