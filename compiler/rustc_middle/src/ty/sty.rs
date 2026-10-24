@@ -7,12 +7,19 @@ use std::debug_assert_matches;
 use std::ops::{ControlFlow, Range};
 
 use hir::def::{CtorKind, DefKind};
-use rustc_abi::{FIRST_VARIANT, FieldIdx, NumScalableVectors, ScalableElt, VariantIdx};
+use rustc_abi::{
+    Align, BackendRepr, FIRST_VARIANT, FieldIdx, Niche, NumScalableVectors, ScalableElt, Size,
+    VariantIdx,
+};
 use rustc_attr_ir::lang_items::LangItem;
+use rustc_data_structures::intern::Interned;
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_macros::{StableHash, TyDecodable, TyEncodable, TypeFoldable, extension};
+use rustc_macros::{
+    Decodable_NoContext, Encodable_NoContext, StableHash, TyDecodable, TyEncodable, TypeFoldable,
+    extension,
+};
 use rustc_span::{DUMMY_SP, Span, Symbol, bug, kw, sym};
 use rustc_type_ir::TyKind::*;
 use rustc_type_ir::solve::SizedTraitKind;
@@ -359,6 +366,17 @@ impl ParamConst {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, StableHash)]
+pub struct ParamLayout<'tcx>(pub Interned<'tcx, ParamLayoutData>);
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash, StableHash, Encodable_NoContext, Decodable_NoContext)]
+pub struct ParamLayoutData {
+    pub backend_repr: BackendRepr,
+    pub largest_niche: Option<Niche>,
+    pub align: Align,
+    pub size: Size,
+}
+
 /// Constructors for `Ty`
 impl<'tcx> Ty<'tcx> {
     /// Avoid using this in favour of more specific `new_*` methods, where possible.
@@ -426,6 +444,15 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn new_param(tcx: TyCtxt<'tcx>, index: u32, name: Symbol) -> Ty<'tcx> {
         Ty::new(tcx, Param(ParamTy { index, name }))
+    }
+
+    #[inline]
+    pub fn new_erased(
+        tcx: TyCtxt<'tcx>,
+        param: Option<ParamTy>,
+        layout: ParamLayout<'tcx>,
+    ) -> Ty<'tcx> {
+        Ty::new(tcx, Erased(param, layout))
     }
 
     #[inline]
@@ -954,6 +981,14 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
         Ty::new_param(tcx, param.index, param.name)
     }
 
+    fn new_erased(
+        tcx: TyCtxt<'tcx>,
+        param: Option<ty::ParamTy>,
+        layout: ty::ParamLayout<'tcx>,
+    ) -> Self {
+        Ty::new_erased(tcx, param, layout)
+    }
+
     fn new_placeholder(tcx: TyCtxt<'tcx>, placeholder: ty::PlaceholderType<'tcx>) -> Self {
         Ty::new_placeholder(tcx, placeholder)
     }
@@ -1253,6 +1288,11 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
+    pub fn is_erased(self) -> bool {
+        matches!(self.kind(), ty::Erased(..))
+    }
+
+    #[inline]
     pub fn is_slice(self) -> bool {
         matches!(self.kind(), Slice(_))
     }
@@ -1342,6 +1382,10 @@ impl<'tcx> Ty<'tcx> {
                 .expect("expected SIMD field to have definite array size"),
             *f0_elem_ty,
         )
+    }
+
+    pub fn erase_escaping(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+        if let Erased(_, layout) = *self.kind() { Ty::new_erased(tcx, None, layout) } else { self }
     }
 
     #[inline]
@@ -1719,7 +1763,7 @@ impl<'tcx> Ty<'tcx> {
             ty::Adt(adt, _) if adt.is_enum() => adt.repr().discr_type().to_ty(tcx),
             ty::Coroutine(_, args) => args.as_coroutine().discr_ty(tcx),
 
-            ty::Param(_) | ty::Alias(..) | ty::Infer(ty::TyVar(_)) => {
+            ty::Param(_) | ty::Erased(..) | ty::Alias(..) | ty::Infer(ty::TyVar(_)) => {
                 let assoc_items = tcx.associated_item_def_ids(
                     tcx.require_lang_item(LangItem::DiscriminantKind, DUMMY_SP),
                 );
@@ -1812,7 +1856,7 @@ impl<'tcx> Ty<'tcx> {
 
             // We don't know the metadata of `self`, but it must be equal to the
             // metadata of `tail`.
-            ty::Param(_) | ty::Alias(..) => Err(tail),
+            ty::Param(_) | ty::Erased(..) | ty::Alias(..) => Err(tail),
 
             ty::UnsafeBinder(_) => unimplemented!("FIXME(unsafe_binder)"),
 
@@ -1991,6 +2035,7 @@ impl<'tcx> Ty<'tcx> {
                 SizedTraitKind::Sized => false,
                 SizedTraitKind::MetaSized => true,
             },
+            ty::Erased(..) => true,
 
             ty::Foreign(..) => match sizedness {
                 SizedTraitKind::Sized | SizedTraitKind::MetaSized => false,
@@ -2065,9 +2110,12 @@ impl<'tcx> Ty<'tcx> {
             // Needs normalization or revealing to determine, so no is the safe answer.
             ty::Alias(..) => false,
 
-            ty::Param(..) | ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) | ty::Error(..) => {
-                false
-            }
+            ty::Param(..)
+            | ty::Erased(..)
+            | ty::Placeholder(..)
+            | ty::Bound(..)
+            | ty::Infer(..)
+            | ty::Error(..) => false,
         }
     }
 
@@ -2081,6 +2129,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Str
             | ty::Never
             | ty::Param(_)
+            | ty::Erased(..)
             | ty::Placeholder(_)
             | ty::Bound(..) => true,
 

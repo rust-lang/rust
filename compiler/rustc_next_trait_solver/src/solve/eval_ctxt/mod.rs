@@ -698,6 +698,7 @@ where
                             | ty::Tuple(..)
                             | ty::UnsafeBinder(_)
                             | ty::Param(..)
+                            | ty::Erased(..)
                             | ty::Placeholder(..)
                             | ty::Bound(..)
                             | ty::Infer(..)

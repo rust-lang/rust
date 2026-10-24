@@ -446,6 +446,10 @@ fn push_debuginfo_type_name<'tcx>(
                 push_close_angle_bracket(cpp_like_debuginfo, output);
             }
         }
+        ty::Erased(..) => {
+            output.push_str("{erased}")
+            // TODO: should we include the param/layout as well?
+        }
         ty::Param(_)
         | ty::Error(_)
         | ty::Infer(_)

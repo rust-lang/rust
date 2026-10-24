@@ -47,6 +47,8 @@ pub trait Ty<I: Interner<Ty = Self>>:
 
     fn new_param(interner: I, param: I::ParamTy) -> Self;
 
+    fn new_erased(interner: I, param: Option<I::ParamTy>, layout: I::ParamLayout) -> Self;
+
     fn new_placeholder(interner: I, param: ty::PlaceholderType<I>) -> Self;
 
     fn new_bound(interner: I, debruijn: ty::DebruijnIndex, var: ty::BoundTy<I>) -> Self;
@@ -198,6 +200,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
             | ty::Tuple(_)
             | ty::Alias(_, _)
             | ty::Param(_)
+            | ty::Erased(..)
             | ty::Bound(_, _)
             | ty::Placeholder(_)
             | ty::Infer(_)

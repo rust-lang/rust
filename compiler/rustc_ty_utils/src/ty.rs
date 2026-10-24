@@ -47,7 +47,7 @@ fn sizedness_constraint_for_ty<'tcx>(
         },
 
         // Maybe `Sized` or `MetaSized`
-        ty::Param(..) | ty::Alias(..) | ty::Error(_) => Some(ty),
+        ty::Param(..) | ty::Erased(..) | ty::Alias(..) | ty::Error(_) => Some(ty),
 
         // We cannot instantiate the binder, so just return the *original* type back,
         // but only if the inner type has a sized constraint. Thus we skip the binder,
@@ -389,6 +389,7 @@ fn impl_self_is_guaranteed_unsized<'tcx>(tcx: TyCtxt<'tcx>, impl_def_id: DefId) 
         | ty::Tuple(_)
         | ty::Alias(_, _)
         | ty::Param(_)
+        | ty::Erased(..)
         | ty::Bound(_, _)
         | ty::Placeholder(_)
         | ty::Infer(_)

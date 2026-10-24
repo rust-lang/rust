@@ -309,6 +309,7 @@ fn is_ty_fully_unsafe_celled<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool
             | ty::Dynamic(..)
             | ty::Alias(..)
             | ty::Param(_)
+            | ty::Erased(..)
             | ty::Bound(..)
             | ty::Placeholder(..)
             | ty::Infer(_)

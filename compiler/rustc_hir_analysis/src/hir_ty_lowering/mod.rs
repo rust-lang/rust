@@ -3644,6 +3644,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             | ty::CoroutineWitness(_, _)
             | ty::Never
             | ty::Param(_)
+            | ty::Erased(..)
             | ty::Bound(_, _)
             | ty::Placeholder(_)
             | ty::Slice(..) => Ty::new_error(
