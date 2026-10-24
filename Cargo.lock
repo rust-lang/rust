@@ -1319,6 +1319,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "edd0f118536f44f5ccd48bcb8b111bdc3de888b58c74639dfb034a357d0f206d"
 
 [[package]]
+name = "emmy_dap_types"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2310ff06ab812a0332ffa037bbda9d994b3721a7f8a308ff38c28bdb20c37f56"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror 1.0.69",
+]
+
+[[package]]
 name = "ena"
 version = "0.14.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2551,6 +2562,7 @@ dependencies = [
  "chrono-tz",
  "colored",
  "directories",
+ "emmy_dap_types",
  "genmc-sys",
  "getrandom 0.4.3",
  "ipc-channel",
