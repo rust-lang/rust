@@ -1,5 +1,6 @@
 //@ revisions: block branch condition bad
 //@ compile-flags: -Cinstrument-coverage -Zno-profiler-runtime
+//@ ignore-backends: gcc
 
 //@ [block] check-pass
 //@ [block] compile-flags: -Zcoverage-options=block

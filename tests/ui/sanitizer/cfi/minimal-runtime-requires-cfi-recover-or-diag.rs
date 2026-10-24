@@ -3,6 +3,7 @@
 //
 //@ needs-sanitizer-cfi
 //@ compile-flags: -Clto -Cno-prepopulate-passes -Ctarget-feature=-crt-static -Zsanitizer=cfi -Zsanitizer-cfi-minimal-runtime
+//@ ignore-backends: gcc
 
 #![feature(no_core)]
 #![no_core]
