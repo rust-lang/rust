@@ -656,14 +656,6 @@ where
 
     fn insert_lint_level_overrides(&mut self, attrs: &[impl AttributeExt]) {
         for attr in attrs {
-            if attr.is_automatically_derived_attr() {
-                self.provider.insert(
-                    LintId::of(SINGLE_USE_LIFETIMES),
-                    LevelSpec::new(Level::Allow, None, LintLevelSource::Default),
-                );
-                continue;
-            }
-
             // `#[doc(hidden)]` disables missing_docs check.
             if attr.is_doc_hidden() {
                 self.provider.insert(
@@ -678,6 +670,14 @@ where
     fn add_ast(&mut self, attrs: &[rustc_ast::Attribute], is_crate_node: bool) {
         if attrs.is_empty() {
             return;
+        }
+        for attr in attrs {
+            if attr.has_name(sym::automatically_derived) {
+                self.provider.insert(
+                    LintId::of(SINGLE_USE_LIFETIMES),
+                    LevelSpec::new(Level::Allow, None, LintLevelSource::Default),
+                );
+            }
         }
         self.insert_lint_level_overrides(attrs);
         let parsed = AttributeParser::parse_limited_all(
