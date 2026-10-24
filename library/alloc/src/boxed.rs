@@ -207,6 +207,7 @@ use core::ops::{
 };
 #[cfg(not(no_global_oom_handling))]
 use core::ops::{Residual, Try};
+use core::panic::UnwindSafe;
 use core::pin::{Pin, PinSafePointer};
 use core::ptr::{self, NonNull};
 use core::task::{Context, Poll};
@@ -240,10 +241,8 @@ struct BoxRaw<T: ?Sized> {
     _marker: PhantomData<T>,
 }
 
-unsafe impl<T: ?Sized + Send> Send for BoxRaw<T> {}
-unsafe impl<T: ?Sized + Sync> Sync for BoxRaw<T> {}
-impl<T: ?Sized + core::panic::UnwindSafe> core::panic::UnwindSafe for BoxRaw<T> {}
 impl<T: ?Sized, U: ?Sized> CoerceUnsized<BoxRaw<U>> for BoxRaw<T> where T: Unsize<U> {}
+
 impl<T: ?Sized, U: ?Sized> DispatchFromDyn<BoxRaw<U>> for BoxRaw<T> where T: Unsize<U> {}
 
 impl<T: ?Sized> BoxRaw<T> {
@@ -2121,6 +2120,15 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
         unsafe { Pin::new_unchecked(boxed) }
     }
 }
+
+#[stable(feature = "rust1", since = "1.0.0")]
+unsafe impl<T: ?Sized + Send, A: Allocator + Send> Send for Box<T, A> {}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+unsafe impl<T: ?Sized + Sync, A: Allocator + Sync> Sync for Box<T, A> {}
+
+#[stable(feature = "catch_unwind", since = "1.9.0")]
+impl<T: ?Sized + UnwindSafe, A: Allocator + UnwindSafe> UnwindSafe for Box<T, A> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for Box<T, A> {
