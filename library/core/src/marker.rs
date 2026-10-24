@@ -865,6 +865,9 @@ const impl<T: PointeeSized> Default for PhantomData<T> {
 #[unstable(feature = "structural_match", issue = "31434")]
 impl<T: PointeeSized> StructuralPartialEq for PhantomData<T> {}
 
+#[stable(feature = "phantomdata_unpin", since = "CURRENT_RUSTC_VERSION")]
+impl<T: PointeeSized> Unpin for PhantomData<T> {}
+
 /// Compiler-internal trait used to indicate the type of enum discriminants.
 ///
 /// This trait is automatically implemented for every type and does not add any
@@ -1022,7 +1025,7 @@ pub auto trait Unpin {}
 // marker in your struct acts as if you wrapped the entire struct in an `UnsafePinned`. This type
 // will likely eventually be deprecated, and all new code should be using `UnsafePinned` instead.
 #[stable(feature = "pin", since = "1.33.0")]
-#[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Debug, Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)] // deliberately not `Copy`
 #[rustc_diagnostic_item = "PhantomPinned"]
 pub struct PhantomPinned;
 
