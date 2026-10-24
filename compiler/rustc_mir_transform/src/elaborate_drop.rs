@@ -677,7 +677,7 @@ where
         }
 
         let is_async_drop_feature_enabled = if self.tcx().features().async_drop()
-            || matches!(self.elaborator.body().source.instance, ty::InstanceKind::Shim(..))
+            || matches!(self.elaborator.body().source.instance, ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlue(..)))
         {
             true
         } else {
