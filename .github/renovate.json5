@@ -83,6 +83,7 @@
     "compiler/rustc_codegen_cranelift/**",
     "compiler/rustc_codegen_gcc/**",
     "library/compiler-builtins/**",
+    "library/hashbrown/**",
     "library/portable-simd/**",
     "library/stdarch/**",
     "src/doc/rustc-dev-guide/**",
