@@ -3,6 +3,7 @@
 use std::assert_matches;
 use std::borrow::Cow;
 use std::cmp::Ordering::{Equal, Greater, Less};
+use std::num::NonZero;
 use std::str::{from_utf8, from_utf8_unchecked};
 
 #[test]
@@ -1208,6 +1209,41 @@ fn test_iterator_advance() {
     assert_eq!(it.next(), Some(chars[1]));
     it.advance_by(33).unwrap();
     assert_eq!(it.next(), Some(chars[35]));
+}
+
+#[test]
+fn test_iterator_advance_back() {
+    let s = "「赤錆」と呼ばれる鉄錆は、水の存在下での鉄の自然酸化によって生じる、オキシ水酸化鉄(III) 等の（含水）酸化物粒子の疎な凝集膜であるとみなせる。";
+    let chars: Vec<char> = s.chars().collect();
+    let n = chars.len();
+    let mut it = s.chars();
+    it.advance_back_by(1).unwrap();
+    assert_eq!(it.next_back(), Some(chars[n - 2]));
+    it.advance_back_by(33).unwrap();
+    assert_eq!(it.next_back(), Some(chars[n - 36]));
+}
+
+#[test]
+fn test_iterator_advance_back_matches_next_back() {
+    // Mix of 1, 2, 3 and 4 byte chars, long enough to span several chunks.
+    let s = "aé€😀b".repeat(20) + "x" + &"ß中🦀".repeat(15);
+    for (start, _) in s.char_indices().take(6) {
+        let s = &s[start..];
+        let len = s.chars().count();
+        for n in 0..=len + 2 {
+            let mut expected = s.chars();
+            for _ in 0..n {
+                expected.next_back();
+            }
+
+            let mut it = s.chars();
+            let res = it.advance_back_by(n);
+            assert_eq!(res, NonZero::new(n.saturating_sub(len)).map_or(Ok(()), Err), "n = {n}");
+            assert_eq!(it.as_str(), expected.as_str(), "n = {n}");
+
+            assert_eq!(s.chars().nth_back(n), expected.next_back(), "n = {n}");
+        }
+    }
 }
 
 #[test]
