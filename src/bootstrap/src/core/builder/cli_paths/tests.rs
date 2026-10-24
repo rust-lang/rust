@@ -124,10 +124,7 @@ macro_rules! declare_tests {
 
 // Snapshot tests for bootstrap's command-line path-to-step handling.
 //
-// To bless these tests as necessary, choose one:
-// - Run `INSTA_UPDATE=always ./x test bootstrap`
-// - Run `./x test bootstrap --bless`
-// - Follow the instructions for `cargo-insta` in bootstrap's README.md
+// To bless these tests as necessary, run `./x test bootstrap --bless`.
 //
 // These snapshot tests capture _current_ behavior, to prevent unintended
 // changes or regressions. If the current behavior is wrong or undersirable,
