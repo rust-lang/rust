@@ -72,7 +72,6 @@ pub struct AttrItem {
     // Not lowered to hir::Path because we have no NodeId to resolve to.
     pub path: AttrPath,
     pub args: AttrArgs,
-    pub id: HashIgnoredAttrId,
     /// Denotes if the attribute decorates the following construct (outer)
     /// or the construct this attribute is contained within (inner).
     pub style: AttrStyle,

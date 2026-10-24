@@ -445,7 +445,6 @@ impl<'sess> AttributeParser<'sess> {
                         let attr = AttrItem {
                             path: attr_path.clone(),
                             args: self.lower_attr_args(&n.item.args, lower_span),
-                            id: HashIgnoredAttrId { attr_id: attr.id },
                             style: attr.style,
                             span: attr_span,
                         };
