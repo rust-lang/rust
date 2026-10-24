@@ -4,7 +4,7 @@ fn foo::{closure#0}::{closure#0}(_1: {async closure body@$DIR/async_closure_fake
 yields ()
  {
     debug _task_context => _2;
-    debug f => (*(_1.0: &Foo));
+    debug f => ((_1.0: std::marker::CopyClosureCaptureContainer<&Foo>).0: &Foo);
     let mut _0: ();
     let mut _3: &Foo;
     let mut _4: &&Foo;
@@ -12,7 +12,8 @@ yields ()
     let mut _6: bool;
 
     bb0: {
-        _5 = discriminant((*(_1.0: &Foo)));
+        PlaceMention(((_1.0: std::marker::CopyClosureCaptureContainer<&Foo>).0: &Foo));
+        _5 = discriminant((*((_1.0: std::marker::CopyClosureCaptureContainer<&Foo>).0: &Foo)));
         switchInt(move _5) -> [0: bb2, otherwise: bb1];
     }
 
@@ -30,12 +31,13 @@ yields ()
     }
 
     bb4: {
+        FakeRead(ForMatchedPlace(None), ((_1.0: std::marker::CopyClosureCaptureContainer<&Foo>).0: &Foo));
         unreachable;
     }
 
     bb5: {
-        _3 = &fake shallow (*(_1.0: &Foo));
-        _4 = &fake shallow (_1.0: &Foo);
+        _3 = &fake shallow (*((_1.0: std::marker::CopyClosureCaptureContainer<&Foo>).0: &Foo));
+        _4 = &fake shallow ((_1.0: std::marker::CopyClosureCaptureContainer<&Foo>).0: &Foo);
         StorageLive(_6);
         _6 = const true;
         switchInt(move _6) -> [0: bb8, otherwise: bb7];

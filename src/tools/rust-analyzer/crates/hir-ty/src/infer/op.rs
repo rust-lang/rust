@@ -10,7 +10,10 @@ use tracing::debug;
 
 use crate::{
     Adjust, Adjustment, AutoBorrow, InferenceDiagnostic,
-    infer::{AllowTwoPhase, AutoBorrowMutability, Expectation, InferenceContext, expr::ExprIsRead},
+    infer::{
+        AllowTwoPhase, AutoBorrowMutability, Expectation, ForComparisonOp, InferenceContext,
+        expr::ExprIsRead,
+    },
     method_resolution::{MethodCallee, TreatNotYetDefinedOpaques},
     next_solver::{
         GenericArgs, TraitRef, Ty, TyKind,
@@ -211,20 +214,25 @@ impl<'db> InferenceContext<'db> {
                     && let TyKind::Ref(_, _, mutbl) =
                         method.sig.inputs_and_output.inputs()[0].kind()
                 {
-                    let mutbl = AutoBorrowMutability::new(mutbl, AllowTwoPhase::Yes);
+                    let mutbl = if by_ref_binop {
+                        debug_assert!(mutbl.is_not());
+                        AutoBorrowMutability::Not { for_comparison_op: ForComparisonOp::Yes }
+                    } else {
+                        AutoBorrowMutability::new(mutbl, AllowTwoPhase::Yes)
+                    };
                     let autoref = Adjustment {
                         kind: Adjust::Borrow(AutoBorrow::Ref(mutbl)),
                         target: method.sig.inputs_and_output.inputs()[0].store(),
                     };
                     self.write_expr_adj(lhs_expr, Box::new([autoref]));
                 }
-                if by_ref_binop
-                    && let TyKind::Ref(_, _, mutbl) =
-                        method.sig.inputs_and_output.inputs()[1].kind()
-                {
-                    // Allow two-phase borrows for binops in initial deployment
-                    // since they desugar to methods
-                    let mutbl = AutoBorrowMutability::new(mutbl, AllowTwoPhase::Yes);
+                if by_ref_binop {
+                    let TyKind::Ref(_, _, Mutability::Not) = method.sig.inputs()[1].kind() else {
+                        panic!("comparison op should take shared reference")
+                    };
+
+                    let mutbl =
+                        AutoBorrowMutability::Not { for_comparison_op: ForComparisonOp::Yes };
 
                     let autoref = Adjustment {
                         kind: Adjust::Borrow(AutoBorrow::Ref(mutbl)),

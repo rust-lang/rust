@@ -270,7 +270,7 @@ fn late_bound_lifetimes() {
     {
     }
     map_str(|s| take_asref_path(s));
-    map_str_to_path(|s| s.as_ref());
+    map_str_to_path(std::convert::AsRef::as_ref); //~ redundant_closure_for_method_calls
 }
 
 mod type_param_bound {

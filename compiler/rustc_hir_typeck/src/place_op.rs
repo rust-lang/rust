@@ -33,7 +33,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.apply_adjustments(
                 oprnd_expr,
                 vec![Adjustment {
-                    kind: Adjust::Borrow(AutoBorrow::Ref(AutoBorrowMutability::Not)),
+                    kind: Adjust::Borrow(AutoBorrow::Ref(AutoBorrowMutability::NOT)),
                     target: method.sig.inputs()[0],
                 }],
             );
@@ -166,7 +166,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let mut adjustments = self.adjust_steps(autoderef);
                 if let ty::Ref(region, _, hir::Mutability::Not) = method.sig.inputs()[0].kind() {
                     adjustments.push(Adjustment {
-                        kind: Adjust::Borrow(AutoBorrow::Ref(AutoBorrowMutability::Not)),
+                        kind: Adjust::Borrow(AutoBorrow::Ref(AutoBorrowMutability::NOT)),
                         target: Ty::new_imm_ref(self.tcx, *region, adjusted_ty),
                     });
                 } else {

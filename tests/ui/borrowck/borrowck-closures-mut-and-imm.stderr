@@ -5,8 +5,8 @@ LL |     let c1 = || x = 4;
    |              -- - first borrow occurs due to use of `x` in closure
    |              |
    |              mutable borrow occurs here
-LL |     let c2 = || x * 5;
-   |              ^^ - second borrow occurs due to use of `x` in closure
+LL |     let c2 = || *&x * 5;
+   |              ^^   - second borrow occurs due to use of `x` in closure
    |              |
    |              immutable borrow occurs here
 LL |
@@ -35,8 +35,8 @@ LL |     let c1 = || set(&mut x);
    |              --          - first borrow occurs due to use of `x` in closure
    |              |
    |              mutable borrow occurs here
-LL |     let c2 = || x * 5;
-   |              ^^ - second borrow occurs due to use of `x` in closure
+LL |     let c2 = || *&x * 5;
+   |              ^^   - second borrow occurs due to use of `x` in closure
    |              |
    |              immutable borrow occurs here
 LL |
@@ -46,8 +46,8 @@ LL |     drop(c1);
 error[E0506]: cannot assign to `x` because it is borrowed
   --> $DIR/borrowck-closures-mut-and-imm.rs:42:5
    |
-LL |     let c2 = || x * 5;
-   |              -- - borrow occurs due to use in closure
+LL |     let c2 = || *&x * 5;
+   |              --   - borrow occurs due to use in closure
    |              |
    |              `x` is borrowed here
 LL |     x = 5;

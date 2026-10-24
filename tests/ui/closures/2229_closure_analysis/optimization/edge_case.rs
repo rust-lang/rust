@@ -21,7 +21,7 @@ fn foo<'a, 'b>(m: &'a MyStruct<'b>) -> impl FnMut() + 'static {
     //~^ ERROR: First Pass analysis includes:
     //~| ERROR: Min Capture analysis includes:
     //~| NOTE: Capturing m[Deref,(0, 0),Deref,(0, 0)] -> Immutable
-    //~| NOTE: Min Capture m[Deref,(0, 0),Deref] -> Immutable
+    //~| NOTE: Min Capture m[Deref,(0, 0)] -> ByCopy
     c
 }
 

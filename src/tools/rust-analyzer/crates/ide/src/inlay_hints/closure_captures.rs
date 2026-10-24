@@ -140,6 +140,7 @@ mod tests {
 #[derive(Copy, Clone)]
 struct Copy;
 
+#[derive(PartialEq)]
 struct NonCopy;
 
 fn main() {
@@ -148,7 +149,7 @@ fn main() {
     let mut baz = NonCopy;
     let qux = &mut NonCopy;
     || {
- // ^ move(&foo, bar, baz, qux)
+ // ^ move(foo, bar, baz, qux)
         foo;
         bar;
         baz;
@@ -170,6 +171,12 @@ fn main() {
         baz = NonCopy;
         *qux = NonCopy;
     };
+
+    let bar_ref = &bar;
+    || {
+ // ^ move(bar_ref)
+        &NonCopy == bar_ref
+    };
 }
 "#,
         );
@@ -185,6 +192,7 @@ fn main() {
 #[derive(Copy, Clone)]
 struct Copy;
 
+#[derive(PartialEq)]
 struct NonCopy;
 
 fn main() {
@@ -193,7 +201,7 @@ fn main() {
     let mut baz = NonCopy;
     let qux = &mut NonCopy;
     async || {
-       // ^ move(&foo, bar, baz, qux)
+       // ^ move(foo, bar, baz, qux)
         foo;
         bar;
         baz;
@@ -214,6 +222,12 @@ fn main() {
        // ^ move(&mut baz, &mut *qux)
         baz = NonCopy;
         *qux = NonCopy;
+    };
+
+    let bar_ref = &bar;
+    async || {
+       // ^ move(bar_ref)
+        &NonCopy == bar_ref
     };
 }
 
@@ -231,6 +245,7 @@ fn main() {
 #[derive(Copy, Clone)]
 struct Copy;
 
+#[derive(PartialEq)]
 struct NonCopy;
 
 fn main() {
@@ -239,7 +254,7 @@ fn main() {
     let mut baz = NonCopy;
     let qux = &mut NonCopy;
     async {
-       // ^ move(&foo, bar, baz, qux)
+       // ^ move(foo, bar, baz, qux)
         foo;
         bar;
         baz;
@@ -261,6 +276,12 @@ fn main() {
         baz = NonCopy;
         *qux = NonCopy;
     };
+
+    let bar_ref = &bar;
+    async {
+       // ^ move(bar_ref)
+        &NonCopy == bar_ref
+    };
 }
 "#,
         );
@@ -276,7 +297,7 @@ fn main() {
     async {
         let foo = 1;
         async {
-           // ^ move(&foo)
+           // ^ move(foo)
             foo;
         }
     };
@@ -294,12 +315,12 @@ fn main() {
 fn main() {
     let foo = 0;
     gen {
-     // ^ move(&foo)
+     // ^ move(foo)
         foo;
         yield ();
     };
     async gen {
-           // ^ move(&foo)
+           // ^ move(foo)
         foo;
         yield ();
     };
@@ -317,7 +338,7 @@ fn main() {
 fn main() {
     let foo = 0;
     let coroutine = #[coroutine] || {
-                              // ^ move(&foo)
+                              // ^ move(foo)
         foo;
         yield ();
     };

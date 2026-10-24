@@ -15,7 +15,7 @@ fn set(x: &mut isize) {
 fn a() {
     let mut x = 3;
     let c1 = || x = 4;
-    let c2 = || x * 5;
+    let c2 = || *&x * 5;
     //~^ ERROR cannot borrow `x` as immutable because it is also borrowed as mutable
     drop(c1);
 }
@@ -31,14 +31,14 @@ fn b() {
 fn c() {
     let mut x = 3;
     let c1 = || set(&mut x);
-    let c2 = || x * 5;
+    let c2 = || *&x * 5;
     //~^ ERROR cannot borrow `x` as immutable because it is also borrowed as mutable
     drop(c1);
 }
 
 fn d() {
     let mut x = 3;
-    let c2 = || x * 5;
+    let c2 = || *&x * 5;
     x = 5;
     //~^ ERROR cannot assign to `x` because it is borrowed
     drop(c2);

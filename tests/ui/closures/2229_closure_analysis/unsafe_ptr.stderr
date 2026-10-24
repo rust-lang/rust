@@ -26,7 +26,7 @@ LL | |         println!("{:?}", (*t.0).s);
 LL | |     };
    | |_____^
    |
-note: Min Capture t[(0, 0)] -> Immutable
+note: Min Capture t[(0, 0)] -> ByCopy
   --> $DIR/unsafe_ptr.rs:29:26
    |
 LL |         println!("{:?}", (*t.0).s);
@@ -62,7 +62,7 @@ LL | |         *x = "s".into();
 LL | |     };
    | |_____^
    |
-note: Min Capture p[] -> Immutable
+note: Min Capture p[] -> ByCopy
   --> $DIR/unsafe_ptr.rs:47:31
    |
 LL |         let x = unsafe { &mut (*p).s };

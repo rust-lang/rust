@@ -24,7 +24,7 @@ fn fun(_1: &[T]) -> &T {
         _2 = &(*_1)[_3];
         FakeRead(ForLet(None), _2);
         StorageDead(_3);
-        _0 = &(*_2);
+        _0 = copy _2;
         StorageDead(_2);
         return;
     }

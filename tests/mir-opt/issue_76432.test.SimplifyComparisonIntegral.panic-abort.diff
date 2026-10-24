@@ -5,7 +5,7 @@
       debug x => _1;
       let mut _0: ();
       let _2: &[T];
-      let _3: &[T; 3];
+      let mut _3: &[T; 3];
       let _4: [T; 3];
       let mut _8: !;
       scope 1 {

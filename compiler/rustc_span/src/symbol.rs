@@ -746,6 +746,8 @@ symbols! {
         convert,
         coprocessor,
         copy,
+        // FIXME(cromulent_copy_closure_captures): remove this hack once `marker_trait_attr` is usable
+        copy_closure_capture_container,
         copy_closures,
         copy_nonoverlapping,
         copysignf16,

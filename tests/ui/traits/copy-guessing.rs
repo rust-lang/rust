@@ -18,7 +18,6 @@ fn assert_impls_fn<R,T: Fn()->R>(_: &T){}
 
 fn main() {
     let n = None;
-    //~^ ERROR type annotations needed for `Option<_>`
     let e = S(&n);
     let f = || {
         // S being copy is critical for this to work
@@ -32,6 +31,7 @@ fn main() {
         // S being Copy is not critical here, but
         // we check it anyway.
         let n = None;
+        //~^ ERROR type annotations needed for `Option<_>`
         let e = S(&n);
         let ret = mem::size_of_val(e.0);
         drop(e);

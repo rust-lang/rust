@@ -30,6 +30,10 @@ pub trait Sized: MetaSized {}
 #[lang = "copy"]
 pub trait Copy {}
 
+#[lang = "copy_closure_capture_container"]
+pub struct CopyClosureCaptureContainer<T: Copy>(T);
+impl<T: Copy> Copy for CopyClosureCaptureContainer<T> {}
+
 impl Copy for bool {}
 impl Copy for u8 {}
 impl<T: PointeeSized> Copy for &T {}
