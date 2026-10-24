@@ -4,7 +4,7 @@ use std::collections::btree_map::Entry as BTreeEntry;
 use std::collections::{BTreeMap, VecDeque};
 use std::task::Poll;
 
-use rustc_abi::{ExternAbi, HasDataLayout, Size};
+use rustc_abi::{ExternAbi, Size};
 use rustc_middle::ty;
 use rustc_span::Span;
 use rustc_target::spec::Os;
@@ -15,9 +15,9 @@ pub type TlsKey = u128;
 
 #[derive(Clone, Debug)]
 pub struct TlsEntry<'tcx> {
-    /// The data for this key. None is used to represent NULL.
+    /// The data for this key. Absence of data for a thread ID is used to represent NULL.
     /// (We normalize this early to avoid having to do a NULL-ptr-test each time we access the data.)
-    pub data: BTreeMap<ThreadId, Scalar>,
+    pub data: BTreeMap<ThreadId, Pointer>,
     pub dtor: Option<(ty::Instance<'tcx>, Span)>,
 }
 
@@ -46,9 +46,8 @@ pub struct TlsData<'tcx> {
     /// pthreads-style thread-local storage.
     keys: BTreeMap<TlsKey, TlsEntry<'tcx>>,
 
-    /// On macOS, each thread holds a list of destructor functions with their
-    /// respective data arguments.
-    macos_thread_dtors: BTreeMap<ThreadId, Vec<(ty::Instance<'tcx>, Scalar, Span)>>,
+    /// Linux and macOS allow registering callbacks that will be executed each time a thread exits.
+    thread_atexit: BTreeMap<ThreadId, Vec<(ty::Instance<'tcx>, Scalar, Span)>>,
 }
 
 impl<'tcx> Default for TlsData<'tcx> {
@@ -56,7 +55,7 @@ impl<'tcx> Default for TlsData<'tcx> {
         TlsData {
             next_key: 1, // start with 1 as we must not use 0 on Windows
             keys: Default::default(),
-            macos_thread_dtors: Default::default(),
+            thread_atexit: Default::default(),
         }
     }
 }
@@ -91,17 +90,12 @@ impl<'tcx> TlsData<'tcx> {
         }
     }
 
-    pub fn load_tls(
-        &self,
-        key: TlsKey,
-        thread_id: ThreadId,
-        cx: &impl HasDataLayout,
-    ) -> InterpResult<'tcx, Scalar> {
+    pub fn load_tls(&self, key: TlsKey, thread_id: ThreadId) -> InterpResult<'tcx, Pointer> {
         match self.keys.get(&key) {
             Some(TlsEntry { data, .. }) => {
                 let value = data.get(&thread_id).copied();
                 trace!("TLS key {} for thread {:?} loaded: {:?}", key, thread_id, value);
-                interp_ok(value.unwrap_or_else(|| Scalar::null_ptr(cx)))
+                interp_ok(value.unwrap_or_else(Pointer::null))
             }
             None => throw_ub_format!("loading from a non-existing TLS key: {}", key),
         }
@@ -111,12 +105,11 @@ impl<'tcx> TlsData<'tcx> {
         &mut self,
         key: TlsKey,
         thread_id: ThreadId,
-        new_data: Scalar,
-        cx: &impl HasDataLayout,
+        new_data: Pointer,
     ) -> InterpResult<'tcx> {
         match self.keys.get_mut(&key) {
             Some(TlsEntry { data, .. }) => {
-                if new_data.to_target_usize(cx)? != 0 {
+                if new_data.addr() != Size::ZERO {
                     trace!("TLS key {} for thread {:?} stored: {:?}", key, thread_id, new_data);
                     data.insert(thread_id, new_data);
                 } else {
@@ -131,14 +124,14 @@ impl<'tcx> TlsData<'tcx> {
 
     /// Add a thread local storage destructor for the given thread. This function
     /// is used to implement the `_tlv_atexit` shim on MacOS.
-    pub fn add_macos_thread_dtor(
+    pub fn add_thread_atexit(
         &mut self,
         thread: ThreadId,
         dtor: ty::Instance<'tcx>,
         data: Scalar,
         span: Span,
     ) -> InterpResult<'tcx> {
-        self.macos_thread_dtors.entry(thread).or_default().push((dtor, data, span));
+        self.thread_atexit.entry(thread).or_default().push((dtor, data, span));
         interp_ok(())
     }
 
@@ -165,7 +158,7 @@ impl<'tcx> TlsData<'tcx> {
         &mut self,
         key: Option<TlsKey>,
         thread_id: ThreadId,
-    ) -> Option<(ty::Instance<'tcx>, Scalar, TlsKey, Span)> {
+    ) -> Option<(ty::Instance<'tcx>, Pointer, TlsKey, Span)> {
         use std::ops::Bound::*;
 
         let thread_local = &mut self.keys;
@@ -185,8 +178,8 @@ impl<'tcx> TlsData<'tcx> {
                 BTreeEntry::Occupied(entry) => {
                     if let Some((dtor, span)) = dtor {
                         // Set TLS data to NULL, and call dtor with old value.
-                        let data_scalar = entry.remove();
-                        return Some((*dtor, data_scalar, key, *span));
+                        let data = entry.remove();
+                        return Some((*dtor, data, key, *span));
                     }
                 }
                 BTreeEntry::Vacant(_) => {}
@@ -202,15 +195,26 @@ impl<'tcx> TlsData<'tcx> {
             data.remove(&thread_id);
         }
 
-        if let Some(dtors) = self.macos_thread_dtors.remove(&thread_id) {
+        if let Some(dtors) = self.thread_atexit.remove(&thread_id) {
             assert!(dtors.is_empty(), "the destructors should have already been run");
+        }
+    }
+
+    pub fn leak_all_thread_tls(&self, thread_id: ThreadId, static_roots: &mut Vec<AllocId>) {
+        for TlsEntry { data, .. } in self.keys.values() {
+            if let Some(ptr) = data.get(&thread_id) {
+                if let Some(alloc) = ptr.provenance.and_then(|p| p.get_alloc_id()) {
+                    trace!("Thread-local key value leaked and stored as static root: {:?}", alloc);
+                    static_roots.push(alloc);
+                }
+            }
         }
     }
 }
 
 impl VisitProvenance for TlsData<'_> {
     fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
-        let TlsData { keys, macos_thread_dtors, next_key: _ } = self;
+        let TlsData { keys, thread_atexit: macos_thread_dtors, next_key: _ } = self;
 
         for scalar in keys.values().flat_map(|v| v.data.values()) {
             scalar.visit_provenance(visit);
@@ -228,8 +232,10 @@ pub struct TlsDtorsState<'tcx>(TlsDtorsStatePriv<'tcx>);
 enum TlsDtorsStatePriv<'tcx> {
     #[default]
     Init,
-    MacOsDtors,
+    InitForExit,
     PthreadDtors(RunningPthreadDtorState),
+    AfterPthreadDtors,
+    ThreadAtexit,
     /// For Windows, we support two different ways dtors can be registered.
     /// 1. Functions that are registered via the `FlsAlloc` function, which are invoked one by one.
     /// 2. Functions from the magic `.CRT$XLB` linker section.
@@ -239,6 +245,12 @@ enum TlsDtorsStatePriv<'tcx> {
 }
 
 impl<'tcx> TlsDtorsState<'tcx> {
+    /// Returns the state we should start running when the program is exiting.
+    pub fn new_for_exit() -> Self {
+        // Pthread destructors get skipped on `exit`.
+        Self(TlsDtorsStatePriv::InitForExit)
+    }
+
     pub fn on_stack_empty(
         &mut self,
         this: &mut MiriInterpCx<'tcx>,
@@ -247,16 +259,35 @@ impl<'tcx> TlsDtorsState<'tcx> {
         let new_state = 'new_state: {
             match &mut self.0 {
                 Init => {
+                    if this.target_os_is_unix() {
+                        // We run the pthread destructors first, since they get skipped on `exit`.
+                        break 'new_state PthreadDtors(Default::default());
+                    } else {
+                        break 'new_state AfterPthreadDtors;
+                    }
+                }
+                InitForExit => {
+                    // We skip the pthread dtors, but we mark them as static roots so they do not
+                    // acount as leaked.
+                    if this.target_os_is_unix() {
+                        this.machine.tls.leak_all_thread_tls(
+                            this.active_thread(),
+                            &mut this.machine.static_roots,
+                        );
+                    }
+                    break 'new_state AfterPthreadDtors;
+                }
+                PthreadDtors(state) => {
+                    match this.schedule_next_pthread_tls_dtor(state)? {
+                        Poll::Pending => return interp_ok(Poll::Pending), // just keep going
+                        Poll::Ready(()) => break 'new_state AfterPthreadDtors,
+                    }
+                }
+                AfterPthreadDtors => {
+                    // Next, we run the platform-specific destructors
                     match this.tcx.sess.target.os {
-                        Os::MacOs => {
-                            // macOS has a _tlv_atexit function that allows
-                            // registering destructors without associated keys.
-                            // These are run first.
-                            break 'new_state MacOsDtors;
-                        }
-                        _ if this.target_os_is_unix() => {
-                            // All other Unixes directly jump to running the pthread dtors.
-                            break 'new_state PthreadDtors(Default::default());
+                        Os::MacOs | Os::Linux => {
+                            break 'new_state ThreadAtexit;
                         }
                         Os::Windows => {
                             // Determine which destructors to run.
@@ -276,22 +307,15 @@ impl<'tcx> TlsDtorsState<'tcx> {
                             );
                         }
                         _ => {
-                            // No TLS dtor support.
                             break 'new_state Done;
                         }
                     }
                 }
-                MacOsDtors => {
-                    match this.schedule_macos_tls_dtor()? {
+                ThreadAtexit => {
+                    match this.schedule_thread_atexit()? {
                         Poll::Pending => return interp_ok(Poll::Pending),
                         // After all macOS destructors are run, the system switches
                         // to destroying the pthread destructors.
-                        Poll::Ready(()) => break 'new_state PthreadDtors(Default::default()),
-                    }
-                }
-                PthreadDtors(state) => {
-                    match this.schedule_next_pthread_tls_dtor(state)? {
-                        Poll::Pending => return interp_ok(Poll::Pending), // just keep going
                         Poll::Ready(()) => break 'new_state Done,
                     }
                 }
@@ -336,8 +360,8 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     /// Lookup all the FLS keys (which are stored as TLS keys) that have a destructor.
     /// See also: `schedule_next_windows_fls_dtor`.
-    fn lookup_windows_fls_keys_with_dtors(&mut self) -> InterpResult<'tcx, VecDeque<TlsKey>> {
-        let this = self.eval_context_mut();
+    fn lookup_windows_fls_keys_with_dtors(&self) -> InterpResult<'tcx, VecDeque<TlsKey>> {
+        let this = self.eval_context_ref();
 
         interp_ok(
             this.machine
@@ -376,15 +400,15 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     /// Schedule the macOS thread local storage destructors to be executed.
-    fn schedule_macos_tls_dtor(&mut self) -> InterpResult<'tcx, Poll<()>> {
+    fn schedule_thread_atexit(&mut self) -> InterpResult<'tcx, Poll<()>> {
         let this = self.eval_context_mut();
         let thread_id = this.active_thread();
         // macOS keeps track of TLS destructors in a stack. If a destructor
         // registers another destructor, it will be run next.
         // See https://github.com/apple-oss-distributions/dyld/blob/d552c40cd1de105f0ec95008e0e0c0972de43456/dyld/DyldRuntimeState.cpp#L2277
-        let dtor = this.machine.tls.macos_thread_dtors.get_mut(&thread_id).and_then(Vec::pop);
+        let dtor = this.machine.tls.thread_atexit.get_mut(&thread_id).and_then(Vec::pop);
         if let Some((instance, data, span)) = dtor {
-            trace!("Running macos dtor {:?} on {:?} at {:?}", instance, data, thread_id);
+            trace!("Running thread_atexit hook {:?} on {:?} at {:?}", instance, data, thread_id);
 
             this.call_thread_root_function(
                 instance,
@@ -418,15 +442,15 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if let Some((instance, ptr, key, span)) = dtor {
             state.last_key = Some(key);
             trace!("Running TLS dtor {:?} on {:?} at {:?}", instance, ptr, active_thread);
-            assert!(
-                ptr.to_target_usize(this).unwrap() != 0,
-                "data can't be NULL when dtor is called!"
-            );
+            assert!(ptr.addr() != Size::ZERO, "data can't be NULL when dtor is called!");
 
             this.call_thread_root_function(
                 instance,
                 ExternAbi::C { unwind: false },
-                &[ImmTy::from_scalar(ptr, this.machine.layouts.unit_ptr_mut)],
+                &[ImmTy::from_scalar(
+                    Scalar::from_maybe_pointer(ptr, this),
+                    this.machine.layouts.unit_ptr_mut,
+                )],
                 None,
                 span,
             )?;
@@ -480,7 +504,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             let Some(&ptr) = data.get(&active_thread) else { continue };
 
             assert!(
-                ptr.to_target_usize(this).unwrap() != 0,
+                ptr.addr() != Size::ZERO,
                 "TLS key's value can't be null (should be absent instead)"
             );
 
@@ -492,7 +516,10 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             this.call_thread_root_function(
                 instance,
                 ExternAbi::System { unwind: false },
-                &[ImmTy::from_scalar(ptr, this.machine.layouts.unit_ptr_mut)],
+                &[ImmTy::from_scalar(
+                    Scalar::from_maybe_pointer(ptr, this),
+                    this.machine.layouts.unit_ptr_mut,
+                )],
                 None,
                 span,
             )?;

@@ -2,11 +2,11 @@ use std::ffi::OsStr;
 use std::str;
 use std::time::Duration;
 
-use rustc_abi::{CanonAbi, Size};
+use rustc_abi::Size;
 use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
-use rustc_target::spec::{Env, Os};
+use rustc_target::spec::{Env, Os, Target};
 
 use self::shims::unix::android::foreign_items as android;
 use self::shims::unix::freebsd::foreign_items as freebsd;
@@ -19,7 +19,7 @@ use crate::shims::cpu_affinity::EvalContextExt as _;
 use crate::shims::unix::*;
 use crate::{shim_sig, *};
 
-pub fn is_dyn_sym(name: &str, target_os: &Os) -> bool {
+pub fn is_dyn_sym(name: &str, target: &Target) -> bool {
     match name {
         // Used for (std and Miri) tests.
         "strlen" => true,
@@ -34,13 +34,13 @@ pub fn is_dyn_sym(name: &str, target_os: &Os) -> bool {
         // `preadv`/`pwritev` are set up as weak symbols in `init_extern_statics` (on Android,
         // where std uses them via `weak!` since bionic only gained them in API level 24), so
         // we allow them here too. They do not exist on Solaris.
-        "preadv" | "pwritev" if !matches!(*target_os, Os::Solaris) => true,
+        "preadv" | "pwritev" if !matches!(target.os, Os::Solaris) => true,
         // Give specific OSes a chance to allow their symbols.
         _ =>
-            match *target_os {
+            match target.os {
                 Os::Android => android::is_dyn_sym(name),
                 Os::FreeBsd => freebsd::is_dyn_sym(name),
-                Os::Linux => linux::is_dyn_sym(name),
+                Os::Linux => linux::is_dyn_sym(name, target),
                 Os::MacOs => macos::is_dyn_sym(name),
                 Os::Solaris | Os::Illumos => solarish::is_dyn_sym(name),
                 Os::NetBsd => netbsd::is_dyn_sym(name),
@@ -52,8 +52,8 @@ pub fn is_dyn_sym(name: &str, target_os: &Os) -> bool {
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     // Querying system information
-    fn sysconf(&mut self, val: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
+    fn sysconf(&self, val: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_ref();
 
         let name = this.read_scalar(val)?.to_i32()?;
         // FIXME: Which of these are POSIX, and which are GNU/Linux?
@@ -437,7 +437,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(result, dest)?;
             }
             "rename" => {
-                // FIXME: This does not have a direct test (#3179).
                 let [oldpath, newpath] = &this.check_shim_sig(
                     shim_sig!(extern "C" fn(*_, *_) -> i32),
                     (link_name, abi, args),
@@ -865,7 +864,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let Ok(name) = str::from_utf8(name) else {
                     throw_unsup_format!("dlsym: non UTF-8 symbol name not supported")
                 };
-                if is_dyn_sym(name, &this.tcx.sess.target.os) {
+                if this.is_dyn_sym(name) {
                     let ptr = this.fn_ptr(FnVal::Other(DynSym::from_str(name)));
                     this.write_pointer(ptr, dest)?;
                 } else if let Some(&ptr) = this.machine.extern_statics.get(&Symbol::intern(name)) {
@@ -902,7 +901,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_null(dest)?;
             }
             "pthread_key_delete" => {
-                // FIXME: This does not have a direct test (#3179).
                 let [key] = &this.check_shim_sig(
                     shim_sig!(extern "C" fn(libc::pthread_key_t) -> i32),
                     (link_name, abi, args),
@@ -913,15 +911,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_null(dest)?;
             }
             "pthread_getspecific" => {
-                // FIXME: This does not have a direct test (#3179).
                 let [key] = &this.check_shim_sig(
                     shim_sig!(extern "C" fn(libc::pthread_key_t) -> *_),
                     (link_name, abi, args),
                 )?;
                 let key = this.read_scalar(key)?.to_bits(key.layout.size)?;
                 let active_thread = this.active_thread();
-                let ptr = this.machine.tls.load_tls(key, active_thread, this)?;
-                this.write_scalar(ptr, dest)?;
+                let ptr = this.machine.tls.load_tls(key, active_thread)?;
+                this.write_pointer(ptr, dest)?;
             }
             "pthread_setspecific" => {
                 let [key, new_ptr] = &this.check_shim_sig(
@@ -930,8 +927,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 )?;
                 let key = this.read_scalar(key)?.to_bits(key.layout.size)?;
                 let active_thread = this.active_thread();
-                let new_data = this.read_scalar(new_ptr)?;
-                this.machine.tls.store_tls(key, active_thread, new_data, &*this.tcx)?;
+                let new_data = this.read_pointer(new_ptr)?;
+                this.machine.tls.store_tls(key, active_thread, new_data)?;
 
                 // Return success (`0`).
                 this.write_null(dest)?;
@@ -1332,8 +1329,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
             // These shims are enabled only when the caller is in the standard library.
             "pthread_attr_getguardsize" if this.frame_in_std() => {
-                let [_attr, guard_size] =
-                    this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
+                let [_attr, guard_size] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*_, *_) -> i32),
+                    (link_name, abi, args),
+                )?;
                 let guard_size_layout = this.machine.layouts.usize;
                 let guard_size = this.deref_pointer_as(guard_size, guard_size_layout)?;
                 this.write_scalar(
@@ -1346,19 +1345,26 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
 
             "pthread_attr_init" | "pthread_attr_destroy" if this.frame_in_std() => {
-                let [_] = this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
+                let [_] = &this
+                    .check_shim_sig(shim_sig!(extern "C" fn(*_) -> i32), (link_name, abi, args))?;
                 this.write_null(dest)?;
             }
+
             "pthread_attr_setstacksize" if this.frame_in_std() => {
-                let [_, _] = this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
+                let [_, _] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*_, usize) -> i32),
+                    (link_name, abi, args),
+                )?;
                 this.write_null(dest)?;
             }
 
             "pthread_attr_getstack" if this.frame_in_std() => {
                 // We don't support "pthread_attr_setstack", so we just pretend all stacks have the same values here.
                 // Hence we can mostly ignore the input `attr_place`.
-                let [attr_place, addr_place, size_place] =
-                    this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
+                let [attr_place, addr_place, size_place] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*_, *_, *_) -> i32),
+                    (link_name, abi, args),
+                )?;
                 let _attr_place =
                     this.deref_pointer_as(attr_place, this.libc_ty_layout("pthread_attr_t"))?;
                 let addr_place = this.deref_pointer_as(addr_place, this.machine.layouts.usize)?;
@@ -1377,20 +1383,34 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_null(dest)?;
             }
 
-            "signal" | "sigaltstack" if this.frame_in_std() => {
-                let [_, _] = this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
+            "signal" if this.frame_in_std() => {
+                let [_, _] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, libc::sighandler_t) -> libc::sighandler_t),
+                    (link_name, abi, args),
+                )?;
+                this.write_null(dest)?;
+            }
+            "sigaltstack" if this.frame_in_std() => {
+                let [_, _] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*_, *_) -> i32),
+                    (link_name, abi, args),
+                )?;
                 this.write_null(dest)?;
             }
             "sigaction" if this.frame_in_std() => {
-                let [_, _, _] =
-                    this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
+                let [_, _, _] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, *_, *_) -> i32),
+                    (link_name, abi, args),
+                )?;
                 this.write_null(dest)?;
             }
 
             "getpwuid_r" | "__posix_getpwuid_r" if this.frame_in_std() => {
                 // getpwuid_r is the standard name, __posix_getpwuid_r is used on solarish
-                let [uid, pwd, buf, buflen, result] =
-                    this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
+                let [uid, pwd, buf, buflen, result] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(libc::uid_t, *_, *_, usize, *_) -> i32),
+                    (link_name, abi, args),
+                )?;
                 this.check_no_isolation("`getpwuid_r`")?;
 
                 let uid = this.read_scalar(uid)?.to_u32()?;
