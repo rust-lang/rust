@@ -1,0 +1,63 @@
+error[E0391]: cycle detected when computing type of `Test::{opaque#0}`
+  --> $DIR/reveal-auto-trait-send-outer-id-left.rs:32:13
+   |
+LL | type Test = impl Sized;
+   |             ^^^^^^^^^^
+   |
+note: ...which requires computing type of opaque `Test::{opaque#0}`...
+  --> $DIR/reveal-auto-trait-send-outer-id-left.rs:32:13
+   |
+LL | type Test = impl Sized;
+   |             ^^^^^^^^^^
+note: ...which requires borrow-checking `test`...
+  --> $DIR/reveal-auto-trait-send-outer-id-left.rs:36:1
+   |
+LL | fn test(x: Test) {
+   | ^^^^^^^^^^^^^^^^
+note: ...which requires promoting constants in MIR for `test`...
+  --> $DIR/reveal-auto-trait-send-outer-id-left.rs:36:1
+   |
+LL | fn test(x: Test) {
+   | ^^^^^^^^^^^^^^^^
+note: ...which requires preparing `test` for borrow checking...
+  --> $DIR/reveal-auto-trait-send-outer-id-left.rs:36:1
+   |
+LL | fn test(x: Test) {
+   | ^^^^^^^^^^^^^^^^
+note: ...which requires unsafety-checking `test`...
+  --> $DIR/reveal-auto-trait-send-outer-id-left.rs:36:1
+   |
+LL | fn test(x: Test) {
+   | ^^^^^^^^^^^^^^^^
+note: ...which requires building MIR for `test`...
+  --> $DIR/reveal-auto-trait-send-outer-id-left.rs:36:1
+   |
+LL | fn test(x: Test) {
+   | ^^^^^^^^^^^^^^^^
+note: ...which requires resolving instance `<&W<Test> as OnWSend>::show`...
+  --> $DIR/reveal-auto-trait-send-outer-id-left.rs:20:5
+   |
+LL |     fn show(&self) -> OnWSendShow {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires computing candidate for `<&W<Test> as OnWSend>`...
+  --> $DIR/reveal-auto-trait-send-outer-id-left.rs:19:1
+   |
+LL | trait OnWSend {
+   | ^^^^^^^^^^^^^
+   = note: ...which again requires computing type of `Test::{opaque#0}`, completing the cycle
+note: cycle used when checking item types in top-level module
+  --> $DIR/reveal-auto-trait-send-outer-id-left.rs:7:1
+   |
+LL | / #![feature(type_alias_impl_trait)]
+LL | |
+LL | | struct W<T>(T);
+LL | |
+...  |
+LL | |
+LL | | fn main() {}
+   | |____________^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0391`.
