@@ -10,3 +10,6 @@ use-boolean-and = true
 
 [output.html.playground]
 runnable = false
+
+[output.html.redirect]
+"/platform-support/wasm32-unknown-emscripten.html" = "/platform-support/wasm-unknown-emscripten.html"
