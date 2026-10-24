@@ -88,7 +88,9 @@ impl<'a> Validator<'a> {
 
     fn check_item(&mut self, id: &'a Id) {
         if let Some(item) = &self.krate.index.get(id) {
-            item.links.values().for_each(|id| self.add_any_id(id));
+            for doc in &item.docs {
+                doc.links.values().for_each(|id| self.add_any_id(id));
+            }
 
             match &item.inner {
                 ItemEnum::Use(x) => self.check_use(x),
