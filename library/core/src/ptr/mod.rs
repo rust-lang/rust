@@ -96,7 +96,7 @@
 //! it is, the only safe approach is to ensure that they are indeed initialized.)
 //!
 //! An example of the implications of the above rules is that an expression such
-//! as `unsafe { &*(0 as *const u8) }` is Immediate Undefined Behavior.
+//! as `unsafe { &*(0 as *const u8) }` is Undefined Behavior.
 //!
 //! [valid value]: ../../reference/behavior-considered-undefined.html#invalid-values
 //!
