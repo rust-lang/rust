@@ -8,6 +8,7 @@
 #[eii(foo)]
 fn bar<T>(x: T) where T: FnOnce() -> u64 { x() }
 //~^ ERROR externally implementable items may not have type parameters
+//~| ERROR mismatched types
 
 #[foo]
 fn y(a: u64) -> u64 {
