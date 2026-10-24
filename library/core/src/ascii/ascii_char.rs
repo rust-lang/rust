@@ -1167,15 +1167,15 @@ macro_rules! into_int_impl {
             #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
             const impl From<AsciiChar> for $ty {
                 #[inline]
-                fn from(chr: AsciiChar) -> $ty {
-                    chr as u8 as $ty
+                fn from(chr: AsciiChar) -> Self {
+                    chr as u8 as Self
                 }
             }
         )*
     }
 }
 
-into_int_impl!(u8 u16 u32 u64 u128 char);
+into_int_impl!(i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 char);
 
 impl [AsciiChar] {
     /// Views this slice of ASCII characters as a UTF-8 `str`.
