@@ -11,7 +11,6 @@
 
 use std::arch::aarch64::*;
 
-#[expect(improper_ctypes)]
 unsafe extern "C" {
     fn svcreate2_s16_wrapper(__dst: *mut svint16x2_t, x0: *const svint16_t, x1: *const svint16_t);
     fn svcreate3_s16_wrapper(
