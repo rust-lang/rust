@@ -1,5 +1,4 @@
 //@ needs-asm-support
-//@ reference: asm.attributes.supported-attributes
 
 use std::arch::asm;
 
@@ -55,3 +54,6 @@ fn main() {
         );
     }
 }
+
+//@ reference: asm.attributes.starts-with-template
+//@ reference: asm.attributes.supported-attributes

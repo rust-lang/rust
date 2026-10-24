@@ -115,3 +115,9 @@ fn main() {
         asm!("{:x}", inout(reg) main => val_u64);
     }
 }
+
+//@ reference: asm.operand-type.supported-operands-inout-arrow
+//@ reference: asm.register-operands.separate-input-output
+//@ reference: asm.register-operands.value-type-constraints
+//@ reference: asm.template-modifiers.smaller-value
+//@ reference: asm.template-modifiers.supported-modifiers

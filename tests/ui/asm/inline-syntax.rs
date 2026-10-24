@@ -49,3 +49,7 @@ global_asm!(".intel_syntax noprefix", "nop");
 // Global assembly errors don't have line numbers, so no error on ARM.
 
 //[arm]~? ERROR unknown directive
+
+//@ reference: asm.directives.stateful
+//@ reference: asm.directives.subset-supported
+//@ reference: asm.ts-args.llvm-syntax
