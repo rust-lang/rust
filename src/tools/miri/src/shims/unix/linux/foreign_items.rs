@@ -158,7 +158,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "statx" => {
                 let [dirfd, pathname, flags, mask, statxbuf] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(i32, *_, i32, u32, *_) -> i32),
+                    shim_sig!(extern "C" fn(i32, *_, i32, u32, *libc::statx) -> i32),
                     (link_name, abi, args),
                 )?;
                 let result = this.linux_statx(dirfd, pathname, flags, mask, statxbuf)?;
@@ -187,7 +187,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "epoll_ctl" => {
                 let [epfd, op, fd, event] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(i32, i32, i32, *_) -> i32),
+                    shim_sig!(extern "C" fn(i32, i32, i32, *libc::epoll_event) -> i32),
                     (link_name, abi, args),
                 )?;
                 let result = this.epoll_ctl(epfd, op, fd, event)?;
