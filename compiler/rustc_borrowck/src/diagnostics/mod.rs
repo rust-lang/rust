@@ -369,7 +369,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                             autoderef_index = match place.projection.iter().rposition(|elem| {
                                 !matches!(
                                     elem,
-                                    ProjectionElem::Deref | ProjectionElem::Downcast(..)
+                                    ProjectionElem::Deref | ProjectionElem::Downcast { .. }
                                 )
                             }) {
                                 Some(index) => Some(index + 1),
@@ -382,8 +382,8 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                     }
                 }
                 ProjectionElem::PhantomDeref => (),
-                ProjectionElem::Downcast(..) if opt.including_downcast => return None,
-                ProjectionElem::Downcast(..) => (),
+                ProjectionElem::Downcast { .. } if opt.including_downcast => return None,
+                ProjectionElem::Downcast { .. } => (),
                 ProjectionElem::OpaqueCast(..) => (),
                 ProjectionElem::UnwrapUnsafeBinder(_) => (),
                 ProjectionElem::Field(field, _ty) => {
@@ -425,15 +425,13 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
     }
 
     fn describe_name(&self, place: PlaceRef<'tcx>) -> Option<Symbol> {
-        for elem in place.projection.into_iter() {
-            match elem {
-                ProjectionElem::Downcast(Some(name), _) => {
-                    return Some(*name);
-                }
-                _ => {}
+        place.projection.into_iter().find_map(|elem| {
+            if let ProjectionElem::Downcast { name: Some(name), .. } = elem {
+                Some(*name)
+            } else {
+                None
             }
-        }
-        None
+        })
     }
 
     /// Appends end-user visible description of the `local` place to `buf`. If `local` doesn't have
@@ -465,7 +463,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                 | ProjectionElem::Subslice { .. } => {
                     PlaceRef { local, projection: proj_base }.ty(self.body, self.infcx.tcx)
                 }
-                ProjectionElem::Downcast(..) => place.ty(self.body, self.infcx.tcx),
+                ProjectionElem::Downcast { .. } => place.ty(self.body, self.infcx.tcx),
                 ProjectionElem::OpaqueCast(ty) | ProjectionElem::UnwrapUnsafeBinder(ty) => {
                     PlaceTy::from_ty(*ty)
                 }
@@ -1055,12 +1053,15 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
             }
         }
 
-        let normal_ret =
-            if moved_place.projection.iter().any(|p| matches!(p, ProjectionElem::Downcast(..))) {
-                PatUse(stmt.source_info.span)
-            } else {
-                OtherUse(stmt.source_info.span)
-            };
+        let normal_ret = if moved_place
+            .projection
+            .iter()
+            .any(|p| matches!(p, ProjectionElem::Downcast { .. }))
+        {
+            PatUse(stmt.source_info.span)
+        } else {
+            OtherUse(stmt.source_info.span)
+        };
 
         // We are trying to find MIR of the form:
         // ```

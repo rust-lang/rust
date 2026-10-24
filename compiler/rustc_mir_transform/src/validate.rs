@@ -967,7 +967,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         // Ensure all downcast projections are followed by field projections.
         let mut projections_iter = place.projection.iter();
         while let Some(proj) = projections_iter.next() {
-            if matches!(proj, ProjectionElem::Downcast(..)) {
+            if matches!(proj, ProjectionElem::Downcast { .. }) {
                 if !matches!(projections_iter.next(), Some(ProjectionElem::Field(..))) {
                     self.fail(
                         location,

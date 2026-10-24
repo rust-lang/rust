@@ -29,12 +29,12 @@
       bb1: {
           StorageDead(_4);
 -         StorageLive(_5);
--         _5 = move ((_3 as Some).0: T);
+-         _5 = move ((_3 is Some).0: T);
 -         _2 = move _5;
 -         StorageDead(_5);
 -         StorageDead(_3);
 +         nop;
-+         _5 = copy ((_3 as Some).0: T);
++         _5 = copy ((_3 is Some).0: T);
 +         _2 = copy _5;
 +         nop;
 +         nop;

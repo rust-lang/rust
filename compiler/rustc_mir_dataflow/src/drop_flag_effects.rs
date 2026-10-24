@@ -193,11 +193,11 @@ pub(crate) fn on_all_inactive_variants<'tcx>(
         let (downcast, base_proj) = variant_path.place.projection.split_last().unwrap();
         assert_eq!(enum_place.projection.len(), base_proj.len());
 
-        let mir::ProjectionElem::Downcast(_, variant_idx) = *downcast else {
+        let mir::ProjectionElem::Downcast { variant_index, .. } = *downcast else {
             unreachable!();
         };
 
-        if inactive_variants.contains(variant_idx) {
+        if inactive_variants.contains(variant_index) {
             on_all_children_bits(move_data, variant_mpi, |mpi| handle_inactive_variant(mpi));
         }
     }

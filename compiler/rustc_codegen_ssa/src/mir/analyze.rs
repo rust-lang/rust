@@ -143,12 +143,12 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> LocalAnalyzer<'a, 'b, 'tcx, Bx>
             for elem in place_ref.projection {
                 layout = match *elem {
                     mir::PlaceElem::Field(fidx, ..) => layout.field(self.fx.cx, fidx.as_usize()),
-                    mir::PlaceElem::Downcast(_, vidx)
+                    mir::PlaceElem::Downcast { variant_index, .. }
                         if let abi::Variants::Single { index: single_variant } =
                             layout.variants
-                            && vidx == single_variant =>
+                            && variant_index == single_variant =>
                     {
-                        layout.for_variant(self.fx.cx, vidx)
+                        layout.for_variant(self.fx.cx, variant_index)
                     }
                     _ => {
                         self.locals[place_ref.local] = LocalKind::Memory;

@@ -1048,8 +1048,8 @@ pub(crate) fn codegen_place<'tcx>(
                     _ => unreachable!(),
                 }
             }
-            PlaceElem::Downcast(_adt_def, variant) => {
-                cplace = cplace.downcast_variant(fx, variant);
+            PlaceElem::Downcast { variant_index, .. } => {
+                cplace = cplace.downcast_variant(fx, variant_index);
             }
         }
     }

@@ -38,7 +38,7 @@ fn tuples(i: (u32, i32)) -> (u32, i32) {
 fn unwrap(opt: Option<i32>) -> i32 {
     mir! {
         {
-            RET = Field(Variant(opt, 1), 0);
+            RET = Field(Variant(opt, 1, false), 0);
             Return()
         }
     }
@@ -49,7 +49,7 @@ fn unwrap(opt: Option<i32>) -> i32 {
 fn unwrap_deref(opt: Option<&i32>) -> i32 {
     mir! {
         {
-            RET = *Field::<&i32>(Variant(opt, 1), 0);
+            RET = *Field::<&i32>(Variant(opt, 1, false), 0);
             Return()
         }
     }
@@ -60,7 +60,7 @@ fn unwrap_deref(opt: Option<&i32>) -> i32 {
 fn set(opt: &mut Option<i32>) {
     mir! {
         {
-            place!(Field(Variant(*opt, 1), 0)) = 10;
+            place!(Field(Variant(*opt, 1, false), 0)) = 10;
             Return()
         }
     }

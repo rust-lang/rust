@@ -4279,7 +4279,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                         },
                         ProjectionElem::OpaqueCast { .. }
                         | ProjectionElem::Field(..)
-                        | ProjectionElem::Downcast(..) => {
+                        | ProjectionElem::Downcast { .. } => {
                             match place_ty.ty.kind() {
                                 ty::Adt(def, _) if def.has_dtor(tcx) => {
                                     // Report the outermost adt with a destructor

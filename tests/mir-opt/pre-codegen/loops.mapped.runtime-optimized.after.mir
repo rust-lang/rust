@@ -84,7 +84,7 @@ fn mapped(_1: impl Iterator<Item = T>, _2: impl Fn(T) -> U) -> () {
 
     bb6: {
         StorageLive(_9);
-        _9 = move ((_6 as Some).0: T);
+        _9 = move ((_6 is Some).0: T);
         StorageLive(_11);
         StorageLive(_10);
         _10 = (copy _9,);

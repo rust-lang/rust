@@ -69,7 +69,7 @@ fn demo_le(_1: &MultiField, _2: &MultiField) -> bool {
         StorageDead(_7);
         StorageDead(_5);
         StorageLive(_11);
-        _11 = move ((_6 as Some).0: std::cmp::Ordering);
+        _11 = move ((_6 is Some).0: std::cmp::Ordering);
         StorageLive(_12);
         _12 = discriminant(_11);
         _0 = Le(move _12, const 0_i8);

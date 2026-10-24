@@ -1090,12 +1090,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             );
                             o = o.extract_field(self, bx, f.index());
                         }
-                        mir::PlaceElem::Downcast(_, vidx) => {
+                        mir::PlaceElem::Downcast { variant_index, .. } => {
                             debug_assert_eq!(
                                 o.layout.variants,
-                                abi::Variants::Single { index: vidx },
+                                abi::Variants::Single { index: variant_index },
                             );
-                            let layout = o.layout.for_variant(bx.cx(), vidx);
+                            let layout = o.layout.for_variant(bx.cx(), variant_index);
                             o = OperandRef { layout, ..o }
                         }
                         _ => return None,

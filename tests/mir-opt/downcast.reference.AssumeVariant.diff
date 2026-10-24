@@ -1,0 +1,52 @@
+- // MIR for `reference` before AssumeVariant
++ // MIR for `reference` after AssumeVariant
+  
+  fn reference(_1: &Reference) -> &RefCell<u32> {
+      debug r => _1;
+      let mut _0: &std::cell::RefCell<u32>;
+      let _2: &std::cell::RefCell<u32>;
+      let mut _3: isize;
+      let _4: &std::cell::RefCell<u32>;
+      let _5: &std::cell::RefCell<u32>;
+      scope 1 {
+          debug c => _4;
+      }
+      scope 2 {
+          debug c => _5;
+      }
+  
+      bb0: {
+          StorageLive(_2);
+          _3 = discriminant((*_1));
+          switchInt(move _3) -> [0: bb3, 1: bb2, otherwise: bb1];
+      }
+  
+      bb1: {
+          unreachable;
+      }
+  
+      bb2: {
+          StorageLive(_5);
+-         _5 = &(((*_1) as B).0: std::cell::RefCell<u32>);
++         _5 = &(((*_1) is B).0: std::cell::RefCell<u32>);
+          _2 = &(*_5);
+          StorageDead(_5);
+          goto -> bb4;
+      }
+  
+      bb3: {
+          StorageLive(_4);
+-         _4 = &(((*_1) as A).0: std::cell::RefCell<u32>);
++         _4 = &(((*_1) is A).0: std::cell::RefCell<u32>);
+          _2 = &(*_4);
+          StorageDead(_4);
+          goto -> bb4;
+      }
+  
+      bb4: {
+          _0 = &(*_2);
+          StorageDead(_2);
+          return;
+      }
+  }
+  

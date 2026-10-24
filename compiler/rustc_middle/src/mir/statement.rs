@@ -241,8 +241,8 @@ impl<'tcx> PlaceTy<'tcx> {
                     _ => bug!("cannot subslice non-array type: `{:?}`", self),
                 })
             }
-            ProjectionElem::Downcast(_name, index) => {
-                PlaceTy { ty: self.ty, variant_index: Some(index) }
+            ProjectionElem::Downcast { variant_index, .. } => {
+                PlaceTy { ty: self.ty, variant_index: Some(variant_index) }
             }
             ProjectionElem::Field(f, fty) => {
                 PlaceTy::from_ty(handle_field(self.ty, self.variant_index, f, fty))
@@ -269,7 +269,7 @@ impl<V, T> ProjectionElem<V, T> {
             | Self::OpaqueCast(_)
             | Self::ConstantIndex { .. }
             | Self::Subslice { .. }
-            | Self::Downcast(_, _)
+            | Self::Downcast { .. }
             | Self::UnwrapUnsafeBinder(..) => false,
         }
     }
@@ -283,7 +283,7 @@ impl<V, T> ProjectionElem<V, T> {
             | Self::OpaqueCast(_)
             | Self::ConstantIndex { .. }
             | Self::Subslice { .. }
-            | Self::Downcast(_, _)
+            | Self::Downcast { .. }
             | Self::UnwrapUnsafeBinder(..)
             | Self::PhantomDeref => true,
         }
@@ -291,7 +291,7 @@ impl<V, T> ProjectionElem<V, T> {
 
     /// Returns `true` if this is a `Downcast` projection with the given `VariantIdx`.
     pub fn is_downcast_to(&self, v: VariantIdx) -> bool {
-        matches!(*self, Self::Downcast(_, x) if x == v)
+        matches!(*self, Self::Downcast { variant_index: x, .. } if x == v)
     }
 
     /// Returns `true` if this is a `Field` projection with the given index.
@@ -304,7 +304,7 @@ impl<V, T> ProjectionElem<V, T> {
         match self {
             Self::ConstantIndex { from_end: false, .. }
             | Self::Deref
-            | Self::Downcast(_, _)
+            | Self::Downcast { .. }
             | Self::Field(_, _) => true,
             Self::ConstantIndex { from_end: true, .. }
             | Self::Index(_)
@@ -331,8 +331,8 @@ impl<V, T> ProjectionElem<V, T> {
         Some(match self {
             ProjectionElem::Deref => ProjectionElem::Deref,
             ProjectionElem::PhantomDeref => bug!("PhantomDeref shouldn't hopefully come here"),
-            ProjectionElem::Downcast(name, read_variant) => {
-                ProjectionElem::Downcast(name, read_variant)
+            ProjectionElem::Downcast { name: symbol, variant_index, assume_variant } => {
+                ProjectionElem::Downcast { name: symbol, variant_index, assume_variant }
             }
             ProjectionElem::Field(f, ty) => ProjectionElem::Field(f, t(ty)),
             ProjectionElem::ConstantIndex { offset, min_length, from_end } => {
@@ -572,7 +572,7 @@ impl<'tcx> PlaceRef<'tcx> {
             | ProjectionElem::Field(_, _)
             | ProjectionElem::ConstantIndex { .. }
             | ProjectionElem::Subslice { .. }
-            | ProjectionElem::Downcast(_, _)
+            | ProjectionElem::Downcast { .. }
             | ProjectionElem::OpaqueCast(_)
             | ProjectionElem::UnwrapUnsafeBinder(_) => None,
         }))

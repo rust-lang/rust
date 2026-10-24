@@ -1,0 +1,12 @@
+- // MIR for `unknown` before AssumeVariant
++ // MIR for `unknown` after AssumeVariant
+  
+  fn unknown(_1: Foo) -> u32 {
+      let mut _0: u32;
+  
+      bb0: {
+          _0 = copy ((_1 as variant#0).0: u32);
+          return;
+      }
+  }
+  

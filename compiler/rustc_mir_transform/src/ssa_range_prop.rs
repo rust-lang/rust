@@ -172,13 +172,9 @@ impl<'tcx> MutVisitor<'tcx> for RangeSet<'tcx, '_, '_> {
                     // Reduce the potential compile-time overhead.
                     && targets.all_targets().len() < 16 =>
             {
-                let mut distinct_targets: FxHashMap<BasicBlock, u64> = FxHashMap::default();
-                for (_, target) in targets.iter() {
-                    let targets = distinct_targets.entry(target).or_default();
-                    *targets += 1;
-                }
+                let unique_targets = targets.unique_targets();
                 for (val, target) in targets.iter() {
-                    if distinct_targets[&target] != 1 {
+                    if !unique_targets.contains(&target) {
                         // FIXME: For multiple targets, the range can be the union of their values.
                         continue;
                     }

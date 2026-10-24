@@ -105,6 +105,19 @@ impl SwitchTargets {
     pub fn is_distinct(&self) -> bool {
         self.targets.iter().collect::<FxHashSet<_>>().len() == self.targets.len()
     }
+
+    /// Returns a set with non-otherwise targets that have exactly one value.
+    pub fn unique_targets(&self) -> FxHashSet<BasicBlock> {
+        let mut is_unique: FxHashMap<BasicBlock, bool> = FxHashMap::default();
+        for (_, target) in self.iter() {
+            is_unique.entry(target).and_modify(|unique| *unique = false).or_insert(true);
+        }
+        #[allow(rustc::potential_query_instability)]
+        is_unique
+            .into_iter()
+            .filter_map(|(target, unique)| if unique { Some(target) } else { None })
+            .collect()
+    }
 }
 
 pub struct SwitchTargetsIter<'a> {
