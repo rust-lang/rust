@@ -53,9 +53,13 @@ jobs:
         with:
           persist-credentials: false
       - name: Setup Rust
-        run: rustup target add ${{ matrix.target }}
+        run: rustup target add ${TARGET}
+        env:
+          TARGET: ${{ matrix.target }}
       - name: Run Clippy
-        run: cargo clippy --all-targets --target ${{ matrix.target }}
+        run: cargo clippy --all-targets --target ${TARGET}
+        env:
+          TARGET: ${{ matrix.target }}
 
   x86-tests:
     name: "${{ matrix.target_feature }} on ${{ matrix.target }}"
@@ -88,7 +92,9 @@ jobs:
         with:
           persist-credentials: false
       - name: Setup Rust
-        run: rustup target add ${{ matrix.target }}
+        run: rustup target add ${TARGET}
+        env:
+          TARGET: ${{ matrix.target }}
 
       - name: Configure RUSTFLAGS
         shell: bash
@@ -112,23 +118,30 @@ jobs:
           echo "Caveat: not all target features are expected to be logged"
 
           echo "## Requested target configuration (RUSTFLAGS=$RUSTFLAGS)"
-          rustc --print=cfg --target=${{ matrix.target }} $RUSTFLAGS
+          rustc --print=cfg --target=${TARGET} $RUSTFLAGS
 
-          echo "## Supported target configuration for --target=${{ matrix.target }}"
-          rustc --print=cfg --target=${{ matrix.target }} -Ctarget-cpu=native
+          echo "## Supported target configuration for --target=${TARGET}"
+          rustc --print=cfg --target=${TARGET} -Ctarget-cpu=native
 
           echo "## Natively supported target configuration"
           rustc --print=cfg -Ctarget-cpu=native
+        env:
+          TARGET: ${{ matrix.target }}
 
       - name: Test (debug)
-        run: cargo test --verbose --target=${{ matrix.target }}
+        run: cargo test --verbose --target=${TARGET}
+        env:
+          TARGET: ${{ matrix.target }}
 
       - name: Test (release)
-        run: cargo test --verbose --target=${{ matrix.target }} --release
+        run: cargo test --verbose --target=${TARGET} --release
+        env:
+          TARGET: ${{ matrix.target }}
 
       - name: Generate docs
-        run: cargo doc --verbose --target=${{ matrix.target }}
+        run: cargo doc --verbose --target=${TARGET}
         env:
+          TARGET: ${{ matrix.target }}
           RUSTDOCFLAGS: -Dwarnings
 
   macos-tests:
@@ -145,21 +158,28 @@ jobs:
         with:
           persist-credentials: false
       - name: Setup Rust
-        run: rustup target add ${{ matrix.target }}
+        run: rustup target add ${TARGET}
+        env:
+          TARGET: ${{ matrix.target }}
 
       - name: Configure RUSTFLAGS
         shell: bash
         run: echo "RUSTFLAGS=-Dwarnings" >> $GITHUB_ENV
 
       - name: Test (debug)
-        run: cargo test --verbose --target=${{ matrix.target }}
+        run: cargo test --verbose --target=${TARGET}
+        env:
+          TARGET: ${{ matrix.target }}
 
       - name: Test (release)
-        run: cargo test --verbose --target=${{ matrix.target }} --release
+        run: cargo test --verbose --target=${TARGET} --release
+        env:
+          TARGET: ${{ matrix.target }}
 
       - name: Generate docs
-        run: cargo doc --verbose --target=${{ matrix.target }}
+        run: cargo doc --verbose --target=${TARGET}
         env:
+          TARGET: ${{ matrix.target }}
           RUSTDOCFLAGS: -Dwarnings
 
   wasm-tests:
@@ -222,7 +242,9 @@ jobs:
         with:
           persist-credentials: false
       - name: Setup Rust
-        run: rustup target add ${{ matrix.target }}
+        run: rustup target add ${TARGET}
+        env:
+          TARGET: ${{ matrix.target }}
 
       - name: Install Cross
         # Install the latest git version for newer targets.
@@ -246,10 +268,14 @@ jobs:
           esac
 
       - name: Test (debug)
-        run: cross test --verbose --target=${{ matrix.target }}
+        run: cross test --verbose --target=${TARGET}
+        env:
+          TARGET: ${{ matrix.target }}
 
       - name: Test (release)
-        run: cross test --verbose --target=${{ matrix.target }} --release
+        run: cross test --verbose --target=${TARGET} --release
+        env:
+          TARGET: ${{ matrix.target }}
 
   miri:
     runs-on: ubuntu-latest
