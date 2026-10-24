@@ -2244,6 +2244,12 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    /// Gets the name of the crate, taking into account `--extern` renames.
+    query crate_name_with_rename(_: CrateNum) -> Symbol {
+        desc { "fetching what name a crate is accessible under" }
+    }
+
+
     /// Iterates over all named children of the given module,
     /// including both proper items and reexports.
     /// Module here is understood in name resolution sense - it can be a `mod` item,
