@@ -1,26 +1,39 @@
 error[E0425]: cannot find value `field` in this scope
   --> $DIR/field-and-method-in-self-not-available-in-assoc-fn.rs:11:9
    |
-LL |     field: u32,
-   |     ----- a field by that name exists in `Self`
-...
+LL | impl Foo {
 LL |     fn field(&self) -> u32 {
    |        ----- a method by that name is available on `Self` here
 ...
+LL |     fn new() -> Foo {
 LL |         field;
    |         ^^^^^
+   |
+note: a field by that name exists in `Self`
+  --> $DIR/field-and-method-in-self-not-available-in-assoc-fn.rs:2:5
+   |
+LL | struct Foo {
+LL |     field: u32,
+   |     ^^^^^
 
 error[E0425]: cannot find value `field` in this scope
   --> $DIR/field-and-method-in-self-not-available-in-assoc-fn.rs:12:15
    |
-LL |     field: u32,
-   |     ----- a field by that name exists in `Self`
-...
+LL | impl Foo {
 LL |     fn field(&self) -> u32 {
    |        ----- a method by that name is available on `Self` here
 ...
+LL |     fn new() -> Foo {
+LL |         field;
 LL |         Foo { field }
    |               ^^^^^
+   |
+note: a field by that name exists in `Self`
+  --> $DIR/field-and-method-in-self-not-available-in-assoc-fn.rs:2:5
+   |
+LL | struct Foo {
+LL |     field: u32,
+   |     ^^^^^
 
 error[E0425]: cannot find value `field` in this scope
   --> $DIR/field-and-method-in-self-not-available-in-assoc-fn.rs:15:15
