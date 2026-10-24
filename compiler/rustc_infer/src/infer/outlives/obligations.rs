@@ -67,7 +67,7 @@ use rustc_middle::ty::{
     self, GenericArgKind, GenericArgsRef, PolyTypeOutlivesClause, Region, RegionVid, Ty, TyCtxt,
     TypeVisitableExt, Upcast,
 };
-use rustc_span::bug;
+use rustc_span::{Span, bug};
 use rustc_type_ir::region_constraint::{self, LeafRegionConstraint};
 use smallvec::smallvec;
 use tracing::{debug, instrument};
@@ -266,26 +266,53 @@ impl<'tcx> InferCtxt<'tcx> {
     ) {
         assert!(self.tcx.assumptions_on_binders());
         assert!(self.next_trait_solver());
+        use LeafRegionConstraint::*;
 
         let constraint = self.get_solver_region_constraint();
         debug!(?constraint);
-        let constraint = region_constraint::destructure_type_outlives_constraints_in_root(
+        let constraint: (
+            region_constraint::RegionConstraint<TyCtxt<'tcx>, Span>,
+            Vec<LeafRegionConstraint<TyCtxt<'tcx>, Span>>,
+        ) = region_constraint::destructure_type_outlives_constraints_in_root(
             self,
             constraint,
             &assumptions,
         );
         debug!(?constraint);
 
+        if constraint.0.is_false() {
+            match &constraint.1.first() {
+                Some(PlaceholderTyOutlives(_a, _b, span)) => {
+                    self.dcx()
+                        .struct_span_err(
+                            *span,
+                            "unable to satisfy constraints because it cannot be proven",
+                        )
+                        .emit();
+                }
+                Some(AliasTyOutlivesViaEnv(_, span)) => {
+                    self.dcx()
+                        .struct_span_err(
+                            *span,
+                            "unable to satisfy constraints because it cannot be proven",
+                        )
+                        .emit();
+                }
+                _ => {
+                    unreachable!()
+                }
+            }
+        }
+
         // FIXME(-Zassumptions-on-binders): actually implement OR as an  OR
-        for c in constraint.and_constraint.0.into_iter().chain(
+        for c in constraint.0.and_constraint.0.into_iter().chain(
             constraint
+                .0
                 .or_constraint
                 .0
                 .into_iter()
                 .flat_map(|and_constraint| and_constraint.0.into_iter()),
         ) {
-            use LeafRegionConstraint::*;
-
             match c {
                 Ambiguity(span) => {
                     self.dcx()
