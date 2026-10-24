@@ -463,7 +463,13 @@ impl<'sess> AttributeParser<'sess> {
                             self.check_invalid_crate_level_attr_item(&attr, inner_span);
                         }
 
-                        attributes.push(Attribute::Unparsed(Box::new(attr)));
+                        let attr = match attr_path.segments.len() {
+                            0 => unreachable!("no path for {attr:?}"),
+                            1 => Attribute::DeriveHelper(Box::new(attr)),
+                            _ => Attribute::Tool(Box::new(attr)),
+                        };
+
+                        attributes.push(attr);
                     };
                 }
             }

@@ -62,7 +62,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             #[expect(deprecated, reason = "not actually deprecated for unparsed tool attributes")]
             let intrinsic_fallback_is_spec = this.tcx.get_all_attrs(instance.def_id()).iter().any(|a| {
-                matches!(a, Attribute::Unparsed(u) if *u.path.segments == [sym::miri, sym::intrinsic_fallback_is_spec])
+                matches!(a, Attribute::Tool(u) if *u.path.segments == [sym::miri, sym::intrinsic_fallback_is_spec])
             });
             if !intrinsic_fallback_is_spec {
                 throw_unsup_format!(

@@ -301,7 +301,7 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
             .get_all_attrs(def_id)
             .into_iter()
             .filter_map(|attribute| {
-                if let Attribute::Unparsed(u) = attribute
+                if let Attribute::Tool(u) = attribute
                     && u.path.segments.iter().eq(&attr_name)
                 {
                     let attr_str = rustc_hir_pretty::attribute_to_string(self, attribute);
@@ -322,7 +322,7 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
         };
         attrs_iter
             .filter_map(|attribute| {
-                if let Attribute::Unparsed(u) = attribute {
+                if let Attribute::Tool(u) = attribute {
                     let attr_str = rustc_hir_pretty::attribute_to_string(self, attribute);
                     Some((attr_str, u.span))
                 } else {

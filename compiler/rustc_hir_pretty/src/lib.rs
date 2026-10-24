@@ -101,7 +101,7 @@ impl<'a> State<'a> {
     /// actual style of the attribute.
     fn print_attribute_as_style(&mut self, attr: &Attribute, style: ast::AttrStyle) {
         match &attr {
-            Attribute::Unparsed(unparsed) => {
+            Attribute::Tool(unparsed) | Attribute::DeriveHelper(unparsed) => {
                 self.maybe_print_comment(unparsed.span.lo());
                 match style {
                     ast::AttrStyle::Inner => self.word("#!["),

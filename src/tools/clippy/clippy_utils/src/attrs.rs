@@ -71,7 +71,7 @@ pub fn span_of_clippy_attr(attr: &(impl AttributeExt + 'static)) -> Span {
     let a: &dyn core::any::Any = attr;
     if let Some(a) = a.downcast_ref::<rustc_ast::ast::Attribute>() {
         a.span
-    } else if let Some(rustc_attr_ir::Attribute::Unparsed(u)) = a.downcast_ref::<rustc_attr_ir::Attribute>() {
+    } else if let Some(rustc_attr_ir::Attribute::Tool(u)) = a.downcast_ref::<rustc_attr_ir::Attribute>() {
         u.span
     } else {
         panic!("attribute {attr:?} is not a clippy attribute")
