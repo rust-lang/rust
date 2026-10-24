@@ -1,0 +1,19 @@
+error[E0284]: type annotations needed
+  --> $DIR/auxiliary/foreign-gce-retry-164449.rs:15:5
+   |
+LL |     pub fn new() -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^ cannot infer the value of the constant `_`
+   |
+   = note: cannot satisfy `S<N>::{constant#0} == _`
+
+error[E0284]: type annotations needed
+  --> $DIR/auxiliary/foreign-gce-retry-164449.rs:4:1
+   |
+LL | pub struct S<const N: usize>
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer the value of the constant `_`
+   |
+   = note: cannot satisfy `S<N>::{constant#0} == _`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0284`.

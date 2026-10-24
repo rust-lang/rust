@@ -289,6 +289,7 @@ pub trait Interner:
         def_id: Self::LocalOpaqueTyId,
     ) -> ty::EarlyBinder<Self, Self::Ty>;
     fn is_direct_const(self, alias: ty::AliasConstKind<Self>) -> bool;
+    fn anon_const_kind(self, def_id: Self::DefId) -> ty::AnonConstKind;
     fn const_of_item(
         self,
         alias: ty::AliasConstKind<Self>,
