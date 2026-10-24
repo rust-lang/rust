@@ -418,7 +418,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             "pthread_cond_timedwait_relative_np" => {
                 let [cond, mutex, reltime] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(*_, *_, *_) -> i32),
+                    shim_sig!(extern "C" fn(*libc::pthread_cond_t, *libc::pthread_mutex_t, *libc::timespec) -> i32),
                     (link_name, abi, args),
                 )?;
                 this.pthread_cond_timedwait(
