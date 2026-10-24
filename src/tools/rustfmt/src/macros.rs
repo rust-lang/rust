@@ -21,7 +21,8 @@ use rustc_span::{BytePos, DUMMY_SP, Ident, Pos, Span, Symbol};
 use tracing::debug;
 
 use crate::comment::{
-    CharClasses, FindUncommented, FullCodeCharKind, LineClasses, contains_comment,
+    CharClasses, FindUncommented, FullCodeCharKind, LineClasses,
+    combine_strs_with_missing_comments, contains_comment, recover_comment_removed, rewrite_comment,
 };
 use crate::config::StyleEdition;
 use crate::config::lists::*;
@@ -30,7 +31,9 @@ use crate::header::{HeaderPart, format_header};
 use crate::is_nightly_channel;
 use crate::lists::{ListFormatting, itemize_list, write_list};
 use crate::overflow;
-use crate::parse::macros::cfg_select::{CfgSelectFormatPredicate, parse_cfg_select_arms};
+use crate::parse::macros::cfg_select::{
+    CfgSelectArm, CfgSelectFormatPredicate, parse_cfg_select_arms,
+};
 use crate::parse::macros::lazy_static::parse_lazy_static;
 use crate::parse::macros::{ParsedMacroArgs, parse_expr, parse_macro_args};
 use crate::rewrite::{
@@ -40,8 +43,9 @@ use crate::shape::{Indent, Shape};
 use crate::source_map::SpanUtils;
 use crate::spanned::Spanned;
 use crate::utils::{
-    NodeIdExt, extra_offset, filtered_str_fits, indent_next_line, is_empty_line, mk_sp,
-    remove_trailing_white_spaces, rewrite_ident, trim_left_preserve_layout,
+    NodeIdExt, extra_offset, filtered_str_fits, indent_next_line, is_empty_line,
+    last_line_contains_single_line_comment, mk_sp, remove_trailing_white_spaces, rewrite_ident,
+    trim_left_preserve_layout,
 };
 use crate::visitor::FmtVisitor;
 
@@ -1622,47 +1626,7 @@ fn format_cfg_select(
         "}",
         |arm| arm.span().lo(),
         |arm| arm.span().hi(),
-        |arm| {
-            let predicate_str = match &arm.predicate {
-                CfgSelectFormatPredicate::Wildcard(_t) => Cow::Borrowed("_"),
-                CfgSelectFormatPredicate::Cfg(meta_item_inner) => {
-                    Cow::Owned(meta_item_inner.rewrite_result(context, nested_shape)?)
-                }
-            };
-
-            match arm.double_block_inner() {
-                // FIXME(ytmimi) The formatting for the `$predicate => {{}}` case isn't very robust.
-                // There's the potential that we'll lose comments in between the predicate, the `=>`
-                // and the body. We also don't handle comments like `{/*comment*/{}/*comment*/}`.
-                // The `rewrite_match_body` branch also handles `control_brace_style` better.
-                // That said, it helps fix <https://github.com/rust-lang/rustfmt/issues/7045>.
-                Some(expr) => {
-                    let trailing_comma = if arm.trailing_comma.is_some() {
-                        ","
-                    } else {
-                        ""
-                    };
-                    let offset = extra_offset(&predicate_str, nested_shape) + " => {".len();
-                    let nested_shape = nested_shape
-                        .offset_left(offset, arm.span())?
-                        .sub_width("}".len() + trailing_comma.len(), arm.span())?;
-                    let body = expr
-                        .rewrite_result(context, nested_shape)
-                        .map(|rw| format!("{{{rw}}}"))?;
-
-                    Ok(format!("{predicate_str} => {body}{trailing_comma}"))
-                }
-                None => crate::matches::rewrite_match_body(
-                    context,
-                    &arm.expr,
-                    &predicate_str,
-                    nested_shape,
-                    false,
-                    arm.arrow.span,
-                    last_arm.is_some_and(|la| la == arm),
-                ),
-            }
-        },
+        |arm| rewrite_cfg_select_arm(context, nested_shape, last_arm, arm),
         // Start Span after the opening delimiter. For example,
         // ```
         // cfg_select! {
@@ -1693,4 +1657,119 @@ fn format_cfg_select(
     rewrite.push_str(closing_delim);
 
     Ok(rewrite)
+}
+
+fn rewrite_cfg_select_arm(
+    context: &RewriteContext<'_>,
+    nested_shape: Shape,
+    last_arm: Option<&CfgSelectArm>,
+    arm: &CfgSelectArm,
+) -> Result<String, RewriteError> {
+    let try_rewrite = || {
+        let predicate_str = match &arm.predicate {
+            CfgSelectFormatPredicate::Wildcard(_t) => Cow::Borrowed("_"),
+            CfgSelectFormatPredicate::Cfg(meta_item_inner) => {
+                Cow::Owned(meta_item_inner.rewrite_result(context, nested_shape)?)
+            }
+        };
+
+        // We need to account for comments between predicate and `=>`.
+        let before_arrow_sp = arm.predicate.span().between(arm.arrow.span);
+        let before_arrow = context.snippet(before_arrow_sp);
+        let predicate_str = if contains_comment(before_arrow) {
+            // We cannot rewrite if the last line is a line comment, it will comment out
+            // `=>`.
+            if last_line_contains_single_line_comment(before_arrow.trim_end()) {
+                return Ok(context.snippet(arm.span()).to_owned());
+            }
+
+            Cow::Owned(combine_strs_with_missing_comments(
+                context,
+                &predicate_str,
+                "",
+                before_arrow_sp,
+                nested_shape,
+                true,
+            )?)
+        } else {
+            predicate_str
+        };
+
+        match arm.maybe_double_block_concise_formatting(context) {
+            // FIXME(ytmimi): the `rewrite_match_body` branch also handles
+            // `control_brace_style` better. That said, it helps fix
+            // <https://github.com/rust-lang/rustfmt/issues/7045>.
+            Some(inner_expr) => {
+                // ```
+                // => /* comment */ {{ ... }}
+                //    ^------------- between span
+                // ```
+                let after_arrow_comment = context
+                    .snippet(arm.arrow.span.between(arm.expr.span()))
+                    .trim();
+                let after_arrow_comment = if after_arrow_comment.is_empty() {
+                    None
+                } else {
+                    Some(rewrite_comment(
+                        after_arrow_comment,
+                        false,
+                        nested_shape,
+                        context.config,
+                    )?)
+                };
+
+                let trailing_comma = if arm.trailing_comma.is_some() {
+                    ","
+                } else {
+                    ""
+                };
+
+                // Match `match` layout for after arrow comment, where comment and expr each
+                // go on own lines.
+                let prefix_width = if after_arrow_comment.is_some() {
+                    0
+                } else {
+                    extra_offset(&predicate_str, nested_shape) + " => ".len()
+                };
+
+                let body_shape = nested_shape
+                    .offset_left(prefix_width + "{".len(), arm.span())?
+                    .sub_width("}".len() + trailing_comma.len(), arm.span())?;
+                let body = inner_expr.rewrite_result(context, body_shape)?;
+
+                let body = format!("{{{body}}}{trailing_comma}");
+                match after_arrow_comment {
+                    Some(comment) => {
+                        let indent = nested_shape.indent.to_string_with_newline(context.config);
+                        Ok(format!("{predicate_str} =>{indent}{comment}{indent}{body}"))
+                    }
+                    None => Ok(format!("{predicate_str} => {body}")),
+                }
+            }
+            None => {
+                // Note that we can't _just_ pass the `=>`'s span, we need to pass
+                //
+                // ```
+                // => /* comment */ #[attr] { ... }
+                // ^--------------- this whole span until outer expr
+                // ```
+                //
+                // Using `Spanned::span` here for `arm.expr` to account for outer
+                // attributes.
+                crate::matches::rewrite_match_body(
+                    context,
+                    &arm.expr,
+                    &predicate_str,
+                    nested_shape,
+                    false,
+                    arm.arrow.span.until(arm.expr.span()),
+                    last_arm.is_some_and(|la| la == arm),
+                )
+            }
+        }
+    };
+
+    let rw = try_rewrite()?;
+    // NB: there could be a comment between body and trailing comma.
+    Ok(recover_comment_removed(rw, arm.span(), context))
 }

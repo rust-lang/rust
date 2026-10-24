@@ -72,13 +72,19 @@ fn check_match_block_formatting() {
 
 fn cfg_select_comments_that_might_get_lost() {
     cfg_select! {
-        _ => {{ x }}
+        _ => {
+            // after opening brace
+            { x }
+            // before closing brace
+        }
     }
     cfg_select! {
-        _ => {{ x }}
+        _ =>
+        /* after => */
+        {{ x }}
     }
     cfg_select! {
-        _ => {{ x }}
+        _ /* before arrow */ => {{ x }}
     }
 
     cfg_select! {
@@ -97,6 +103,100 @@ fn cfg_select_comments_that_might_get_lost() {
                 c
             } /* d */
         }}
+    }
+
+    cfg_select! {
+        _ => {
+            { x } /* after */
+        }
+    }
+
+    cfg_select! {
+        _ => {
+            { x } // after newline
+        }
+    }
+
+    cfg_select! {
+        _ =>
+        /* between */
+        {{ x }}
+    }
+
+    cfg_select! {
+        _ =>
+        // between trailing
+        {{ x }}
+    }
+
+    // Trailing comma
+    cfg_select! {
+        _ =>
+        /* between */
+        {{ x }},
+    }
+    cfg_select! {
+        _ =>
+        /* between */
+        {{
+            a;
+            b
+        }},
+    }
+
+    cfg_select! {
+        _ =>
+        /* between */
+        {{
+            a;
+            b
+        }}
+    }
+
+    cfg_select! {
+        _ =>
+        /* multi
+        line */
+        {{ x }}
+    }
+
+    // Comments before `=>`
+    cfg_select! {
+        _ /* before arrow */ => {{ x }}
+        _ /* before arrow */ => x,
+        _ /* before arrow */ =>
+        /* after arrow */
+        {{ x }}
+        all(target_os = "linux", target_arch = "x86_64", target_env = "gnu")
+        /* long comment before arrow */ => {{ x }}
+        _ /* before arrow */ => {}
+    }
+
+    cfg_select! {
+        // Not formatted: a line comment before `=>`.
+        c // before arrow
+        => x,
+    }
+
+    cfg_select! {
+        _ => x /* before comma */,
+    }
+
+    cfg_select! {
+        _ => {{ x }} /* before comma */,
+    }
+
+    cfg_select! {
+        a => b,
+    }
+
+    cfg_select! {
+        _ => xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx /* too long */,
+    }
+
+    cfg_select! {
+        _ => x // trailing newline
+        ,
     }
 }
 
@@ -277,6 +377,41 @@ fn other_cfg_select_cases() {
             || {}
         }
     };
+
+    cfg_select! {
+        _ =>
+        /* before attr */
+        #[attr]
+        {
+            z
+        }
+    }
+
+    cfg_select! {
+        _ =>
+        #[attr] /* after attr */
+        {
+            z
+        }
+    }
+
+    cfg_select! {
+        _ =>
+        // line comment before attr
+        #[attr]
+        {
+            z
+        }
+    }
+
+    cfg_select! {
+        _ =>
+        /* before attr */
+        #[attr] /* after attr */
+        {
+            z
+        }
+    }
 }
 
 fn long_predicate() {

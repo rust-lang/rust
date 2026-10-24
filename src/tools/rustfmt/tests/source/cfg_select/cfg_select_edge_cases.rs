@@ -73,6 +73,77 @@ fn cfg_select_comments_that_might_get_lost() {
         // No trailing comma in source
         three_blocks_exclamation_point => {{/* a */{ b; c } /* d */}}
     }
+
+    cfg_select! {
+        _ => { { x } /* after */ }
+    }
+
+    cfg_select! {
+        _ => { { x } // after newline
+        }
+    }
+
+    cfg_select! {
+        _ => /* between */ {{ x }}
+    }
+
+    cfg_select! {
+        _ => // between trailing
+        {{ x }}
+    }
+
+    // Trailing comma
+    cfg_select! {
+        _ => /* between */ {{ x }},
+    }
+    cfg_select! {
+        _ => /* between */ {{ a; b }},
+    }
+
+    cfg_select! {
+        _ => /* between */ {{ a; b }}
+    }
+    
+    cfg_select! {
+        _ => /* multi
+        line */ {{ x }}
+    }
+
+    // Comments before `=>`
+    cfg_select! {
+        _ /* before arrow */ => {{ x }}
+        _ /* before arrow */ => x,
+        _ /* before arrow */ => /* after arrow */ {{ x }}
+        all(target_os = "linux", target_arch = "x86_64", target_env = "gnu") /* long comment before arrow */ => {{ x }}
+        _ /* before arrow */ => {}
+    }
+
+    cfg_select! {
+        // Not formatted: a line comment before `=>`.
+        c // before arrow
+        => x,
+    }
+
+    cfg_select! {
+        _ => x /* before comma */,
+    }
+
+    cfg_select! {
+        _ => {{ x }} /* before comma */,
+    }
+
+    cfg_select! {
+        a   =>   b,
+    }
+
+    cfg_select! {
+        _ => xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx /* too long */,
+    }
+
+    cfg_select! {
+        _ => x // trailing newline
+        ,
+    }
 }
 
 fn other_cfg_select_cases() {
@@ -197,6 +268,23 @@ fn other_cfg_select_cases() {
     #[inline]
     || {     }}
             };
+
+    cfg_select! {
+        _ => /* before attr */ #[attr] { z }
+    }
+
+    cfg_select! {
+        _ => #[attr] /* after attr */ { z }
+    }
+
+    cfg_select! {
+        _ => // line comment before attr
+        #[attr] { z }
+    }
+
+    cfg_select! {
+        _ => /* before attr */ #[attr] /* after attr */ { z }
+    }
 }
 
 fn long_predicate() {
