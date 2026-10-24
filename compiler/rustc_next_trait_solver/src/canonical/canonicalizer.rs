@@ -1,14 +1,18 @@
 use std::collections::hash_map::Entry;
 use std::mem;
+use std::ops::ControlFlow;
 
 use rustc_type_ir::inherent::*;
-use rustc_type_ir::solve::{Goal, QueryInput};
+use rustc_type_ir::solve::inspect::State;
+use rustc_type_ir::solve::{Certainty, ExternalConstraintsData, Goal, QueryInput, Response};
 use rustc_type_ir::{
     self as ty, Canonical, CanonicalParamEnvCacheEntry, CanonicalVarKind, CanonicalizerState,
     Const, Flags, InferCtxtLike, Interner, PlaceholderConst, PlaceholderType, PredicateProxy,
-    Region, TypeFlags, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
+    Region, TypeFlags, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeSuperVisitable,
+    TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
 use thin_vec::ThinVec;
+use tracing::trace;
 
 use crate::delegate::SolverDelegate;
 
@@ -81,18 +85,53 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         Canonicalizer { delegate, canonicalize_mode, state: delegate.obtain_canonicalizer_state() }
     }
 
-    pub(super) fn canonicalize_response<T: TypeFoldable<I>>(
+    pub(super) fn canonicalize_inspect_state<T: TypeFoldable<I>>(
         delegate: &'a D,
         max_input_universe: ty::UniverseIndex,
-        value: T,
-    ) -> ty::Canonical<I, T> {
+        value: State<I, T>,
+    ) -> ty::Canonical<I, State<I, T>> {
         let mut canonicalizer =
             Canonicalizer::new(delegate, CanonicalizeMode::Response { max_input_universe });
-        let value = if value.has_type_flags(NEEDS_CANONICAL) {
-            value.fold_with(&mut canonicalizer)
-        } else {
-            value
+        let value = canonicalizer.canonicalize_value(value);
+        debug_assert!(!value.has_infer(), "unexpected infer in {value:?}");
+        debug_assert!(!value.has_placeholders(), "unexpected placeholders in {value:?}");
+        let (max_universe, _variables, var_kinds) = canonicalizer.finalize();
+
+        Canonical { max_universe, var_kinds, value }
+    }
+
+    pub(super) fn canonicalize_query_response(
+        delegate: &'a D,
+        max_input_universe: ty::UniverseIndex,
+        var_values: I::GenericArgs,
+        certainty: Certainty,
+        external_constraints: ExternalConstraintsData<I>,
+    ) -> ty::Canonical<I, Response<I>> {
+        let mut canonicalizer =
+            Canonicalizer::new(delegate, CanonicalizeMode::Response { max_input_universe });
+
+        let var_values = canonicalizer.canonicalize_value(var_values);
+
+        let ExternalConstraintsData {
+            region_constraints,
+            opaque_types,
+            normalization_nested_goals,
+        } = external_constraints;
+        let region_constraints = canonicalizer.canonicalize_value(region_constraints);
+        let normalization_nested_goals =
+            canonicalizer.canonicalize_value(normalization_nested_goals);
+        let opaque_types = canonicalizer.filter_and_canonicalize_opaque_types(opaque_types);
+
+        let value = Response {
+            certainty,
+            var_values,
+            external_constraints: delegate.cx().mk_external_constraints(ExternalConstraintsData {
+                region_constraints,
+                opaque_types,
+                normalization_nested_goals,
+            }),
         };
+
         debug_assert!(!value.has_infer(), "unexpected infer in {value:?}");
         debug_assert!(!value.has_placeholders(), "unexpected placeholders in {value:?}");
         let (max_universe, _variables, var_kinds) = canonicalizer.finalize();
@@ -203,24 +242,20 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
     /// variable in the future by changing the way we detect global where-bounds.
     pub(super) fn canonicalize_input<P: TypeFoldable<I>>(
         delegate: &'a D,
-        input: QueryInput<I, P>,
+        Goal { param_env, predicate }: Goal<I, P>,
+        predefined_opaques_in_body: Vec<(ty::OpaqueTypeKey<I>, I::Ty)>,
     ) -> (ThinVec<I::GenericArg>, ty::Canonical<I, QueryInput<I, P>>) {
         // First canonicalize the `param_env` while keeping `'static`. This produces a
         // canonicalizer that can canonicalize the rest of the input without keeping `'static`.
-        let (param_env, mut rest_canonicalizer) =
-            Self::canonicalize_param_env(delegate, input.goal.param_env);
+        let (param_env, mut rest_canonicalizer) = Self::canonicalize_param_env(delegate, param_env);
 
-        let predicate = input.goal.predicate;
         let predicate = predicate.fold_with(&mut rest_canonicalizer);
         let goal = Goal { param_env, predicate };
 
-        let predefined_opaques_in_body = input.predefined_opaques_in_body;
         let predefined_opaques_in_body =
-            if predefined_opaques_in_body.has_type_flags(NEEDS_CANONICAL) {
-                predefined_opaques_in_body.fold_with(&mut rest_canonicalizer)
-            } else {
-                predefined_opaques_in_body
-            };
+            rest_canonicalizer.filter_and_canonicalize_opaque_types(predefined_opaques_in_body);
+        let predefined_opaques_in_body =
+            delegate.cx().mk_predefined_opaques_in_body(&predefined_opaques_in_body);
 
         let value = QueryInput { goal, predefined_opaques_in_body };
 
@@ -228,6 +263,10 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         debug_assert!(!value.has_placeholders(), "unexpected placeholders in {value:?}");
         let (max_universe, variables, var_kinds) = rest_canonicalizer.finalize();
         (variables, Canonical { max_universe, var_kinds, value })
+    }
+
+    fn canonicalize_value<T: TypeFoldable<I>>(&mut self, value: T) -> T {
+        if value.has_type_flags(NEEDS_CANONICAL) { value.fold_with(self) } else { value }
     }
 
     fn get_or_insert_bound_var(
@@ -411,6 +450,202 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         let var = self.get_or_insert_bound_var(t, kind);
 
         Ty::new_canonical_bound(self.cx(), var)
+    }
+
+    /// Filter out not-so-useful opaque types, i.e. whose hidden type is not
+    /// mentioned in `variables` so far and has any var within opaque type key
+    /// that is not mentioned in the same manner. This helps the perf by avoiding
+    /// having many inputs/outputs differing only on some not interesting opaques
+    /// and even saves us from overflowing due to having too many opaques.
+    fn filter_and_canonicalize_opaque_types(
+        &mut self,
+        mut opaque_types: Vec<(ty::OpaqueTypeKey<I>, I::Ty)>,
+    ) -> Vec<(ty::OpaqueTypeKey<I>, I::Ty)> {
+        struct HasUnmentionedVarVisitor<'a, D: SolverDelegate<Interner = I>, I: Interner> {
+            canonicalizer: &'a Canonicalizer<'a, D, I>,
+        }
+
+        impl<'a, D: SolverDelegate<Interner = I>, I: Interner> HasUnmentionedVarVisitor<'a, D, I> {
+            fn arg_is_mentioned(&self, arg: impl Into<I::GenericArg>) -> bool {
+                let arg = arg.into();
+                if self.canonicalizer.state.variable_lookup_table.is_empty() {
+                    self.canonicalizer.state.variables.iter().any(|a| *a == arg)
+                } else {
+                    self.canonicalizer.state.variable_lookup_table.contains_key(&arg)
+                }
+            }
+        }
+
+        // This should be synced with `Canonicalizer`'s `TypeFolder` implementation.
+        impl<'a, D: SolverDelegate<Interner = I>, I: Interner> TypeVisitor<I>
+            for HasUnmentionedVarVisitor<'a, D, I>
+        {
+            type Result = ControlFlow<()>;
+
+            fn visit_ty(&mut self, t: I::Ty) -> Self::Result {
+                if !t.flags().intersects(NEEDS_CANONICAL) {
+                    return ControlFlow::Continue(());
+                }
+
+                match t.kind() {
+                    ty::Infer(ty::TyVar(ty_vid)) => {
+                        if self.canonicalizer.state.sub_root_lookup_table.contains_key(
+                            &self.canonicalizer.delegate.sub_unification_table_root_var(ty_vid),
+                        ) {
+                            ControlFlow::Continue(())
+                        } else {
+                            ControlFlow::Break(())
+                        }
+                    }
+                    ty::Infer(_) | ty::Placeholder(_) | ty::Param(_) => {
+                        if self.arg_is_mentioned(t) {
+                            ControlFlow::Continue(())
+                        } else {
+                            ControlFlow::Break(())
+                        }
+                    }
+
+                    ty::Bool
+                    | ty::Char
+                    | ty::Int(_)
+                    | ty::Uint(_)
+                    | ty::Float(_)
+                    | ty::Adt(_, _)
+                    | ty::Foreign(_)
+                    | ty::Str
+                    | ty::Array(_, _)
+                    | ty::Pat(_, _)
+                    | ty::Slice(_)
+                    | ty::RawPtr(_, _)
+                    | ty::Ref(_, _, _)
+                    | ty::FnDef(_, _)
+                    | ty::FnPtr(_, _)
+                    | ty::UnsafeBinder(_)
+                    | ty::Dynamic(_, _)
+                    | ty::Closure(_, _)
+                    | ty::CoroutineClosure(_, _)
+                    | ty::Coroutine(_, _)
+                    | ty::CoroutineWitness(_, _)
+                    | ty::Never
+                    | ty::Tuple(_)
+                    | ty::Alias(_, _)
+                    | ty::Bound(_, _)
+                    | ty::Error(_) => t.super_visit_with(self),
+                }
+            }
+
+            fn visit_region(&mut self, r: Region<I>) -> Self::Result {
+                match r.kind() {
+                    ty::ReBound(_, _) => ControlFlow::Continue(()),
+
+                    ty::ReStatic => match self.canonicalizer.canonicalize_mode {
+                        CanonicalizeMode::Input(CanonicalizeInputKind::Predicate) => {
+                            if self.arg_is_mentioned(r) {
+                                ControlFlow::Continue(())
+                            } else {
+                                ControlFlow::Break(())
+                            }
+                        }
+                        CanonicalizeMode::Input(CanonicalizeInputKind::ParamEnv)
+                        | CanonicalizeMode::Response { .. } => ControlFlow::Continue(()),
+                    },
+
+                    ty::ReErased | ty::ReError(_) => match self.canonicalizer.canonicalize_mode {
+                        CanonicalizeMode::Input(_) => {
+                            if self.arg_is_mentioned(r) {
+                                ControlFlow::Continue(())
+                            } else {
+                                ControlFlow::Break(())
+                            }
+                        }
+                        CanonicalizeMode::Response { .. } => ControlFlow::Continue(()),
+                    },
+
+                    ty::ReEarlyParam(_)
+                    | ty::ReLateParam(_)
+                    | ty::ReVar(_)
+                    | ty::RePlaceholder(_) => {
+                        if self.arg_is_mentioned(r) {
+                            ControlFlow::Continue(())
+                        } else {
+                            ControlFlow::Break(())
+                        }
+                    }
+                }
+            }
+
+            fn visit_const(&mut self, c: Const<I>) -> Self::Result {
+                if !c.flags().intersects(NEEDS_CANONICAL) {
+                    return ControlFlow::Continue(());
+                }
+
+                match c.kind() {
+                    ty::ConstKind::Param(_)
+                    | ty::ConstKind::Infer(_)
+                    | ty::ConstKind::Placeholder(_) => {
+                        if self.arg_is_mentioned(c) {
+                            ControlFlow::Continue(())
+                        } else {
+                            ControlFlow::Break(())
+                        }
+                    }
+
+                    ty::ConstKind::Bound(_, _)
+                    | ty::ConstKind::Alias(_, _)
+                    | ty::ConstKind::Value(_)
+                    | ty::ConstKind::Error(_)
+                    | ty::ConstKind::Expr(_) => c.super_visit_with(self),
+                }
+            }
+        }
+
+        let mut res = vec![];
+
+        // This should be through fixed-point iterations as opaque types can
+        // mention each other. For example, if we have
+        // [
+        //   (OpaqueTypeKey#0 { args: [] }, ?x),
+        //   (OpaqueTypeKey#1 { args: [?x] }, ?mentioned_var),
+        // ],
+        // just iterating through them once in order will filter out the first item
+        // even though it is relevant with the second item, which is relevant with
+        // the mentioned var.
+        while !opaque_types.is_empty() {
+            let len = res.len();
+            opaque_types.retain(|&(key, hidden_ty)| {
+                let hidden_ty_is_mentioned = if let ty::Infer(ty::TyVar(vid)) = hidden_ty.kind() {
+                    self.state
+                        .sub_root_lookup_table
+                        .contains_key(&self.delegate.sub_unification_table_root_var(vid))
+                } else {
+                    false
+                };
+
+                if !hidden_ty_is_mentioned
+                    && key
+                        .visit_with(&mut HasUnmentionedVarVisitor { canonicalizer: self })
+                        .is_break()
+                {
+                    true
+                } else {
+                    res.push(self.canonicalize_value((key, hidden_ty)));
+                    false
+                }
+            });
+            if res.len() == len {
+                break;
+            }
+        }
+
+        if !opaque_types.is_empty() {
+            trace!(
+                ?self.state.variables,
+                ?self.state.sub_root_lookup_table,
+                "filtering out excessive opaques: {opaque_types:?}",
+            );
+        }
+
+        res
     }
 }
 
