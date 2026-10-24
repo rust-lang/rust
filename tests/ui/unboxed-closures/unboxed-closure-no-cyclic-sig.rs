@@ -1,3 +1,7 @@
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
+
 // Test that unboxed closures cannot capture their own type.
 //
 // Also regression test for issue #21410.
