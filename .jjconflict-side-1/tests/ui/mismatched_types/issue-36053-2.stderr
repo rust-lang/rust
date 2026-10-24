@@ -1,0 +1,37 @@
+error[E0631]: type mismatch in closure arguments
+  --> $DIR/issue-36053-2.rs:7:32
+   |
+LL |     once::<&str>("str").fuse().filter(|a: &str| true).count();
+   |                                ^^^^^^ --------- found signature defined here
+   |                                |
+   |                                expected due to this
+   |
+   = note: expected closure signature `for<'a> fn(&'a &_) -> _`
+              found closure signature `fn(&_) -> _`
+note: required by a bound in `filter`
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+help: consider adjusting the signature so it borrows its argument
+   |
+LL |     once::<&str>("str").fuse().filter(|a: &&str| true).count();
+   |                                           +
+
+error[E0599]: the method `count` exists for struct `Filter<Fuse<std::iter::Once<&str>>, {closure@$DIR/issue-36053-2.rs:7:39: 7:48}>`, but its trait bounds were not satisfied
+  --> $DIR/issue-36053-2.rs:7:55
+   |
+LL |     once::<&str>("str").fuse().filter(|a: &str| true).count();
+   |                                       ---------       ^^^^^ method cannot be called due to unsatisfied trait bounds
+   |                                       |
+   |                                       doesn't satisfy `<_ as FnOnce<(&&str,)>>::Output = bool` or `_: FnMut<(&&str,)>`
+   |
+   = note: the following trait bounds were not satisfied:
+           `<{closure@$DIR/issue-36053-2.rs:7:39: 7:48} as FnOnce<(&&str,)>>::Output = bool`
+           which is required by `Filter<Fuse<std::iter::Once<&str>>, {closure@$DIR/issue-36053-2.rs:7:39: 7:48}>: Iterator`
+           `{closure@$DIR/issue-36053-2.rs:7:39: 7:48}: FnMut<(&&str,)>`
+           which is required by `Filter<Fuse<std::iter::Once<&str>>, {closure@$DIR/issue-36053-2.rs:7:39: 7:48}>: Iterator`
+           `Filter<Fuse<std::iter::Once<&str>>, {closure@$DIR/issue-36053-2.rs:7:39: 7:48}>: Iterator`
+           which is required by `&mut Filter<Fuse<std::iter::Once<&str>>, {closure@$DIR/issue-36053-2.rs:7:39: 7:48}>: Iterator`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0599, E0631.
+For more information about an error, try `rustc --explain E0599`.

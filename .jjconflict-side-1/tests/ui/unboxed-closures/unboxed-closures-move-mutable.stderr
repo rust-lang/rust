@@ -1,0 +1,49 @@
+warning: value captured by `x` is never read
+  --> $DIR/unboxed-closures-move-mutable.rs:24:17
+   |
+LL |         move || x += 1;
+   |                 ^
+   |
+   = help: did you mean to capture by reference instead?
+   = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
+
+warning: value assigned to `x` is never read
+  --> $DIR/unboxed-closures-move-mutable.rs:24:17
+   |
+LL |         move || x += 1;
+   |                 ^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+
+warning: value captured by `x` is never read
+  --> $DIR/unboxed-closures-move-mutable.rs:17:17
+   |
+LL |         move || x += 1;
+   |                 ^
+   |
+   = help: did you mean to capture by reference instead?
+
+warning: value assigned to `x` is never read
+  --> $DIR/unboxed-closures-move-mutable.rs:17:17
+   |
+LL |         move || x += 1;
+   |                 ^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+
+warning: unused variable: `x`
+  --> $DIR/unboxed-closures-move-mutable.rs:15:13
+   |
+LL |         let mut x = 0_usize;
+   |             ^^^^^ help: if this is intentional, prefix it with an underscore: `_x`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `x`
+  --> $DIR/unboxed-closures-move-mutable.rs:22:13
+   |
+LL |         let mut x = 0_usize;
+   |             ^^^^^ help: if this is intentional, prefix it with an underscore: `_x`
+
+warning: 6 warnings emitted
+

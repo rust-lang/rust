@@ -1,0 +1,11 @@
+error: ld: warning: search path '/no/such/file/or/directory' not found
+       
+   |
+note: the lint level is defined here
+  --> $DIR/macos-search-path.rs:4:9
+   |
+LL | #![deny(linker_info)]
+   |         ^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,15 @@
+error[E0609]: no field `bar` on type `S`
+  --> $DIR/must-exist.rs:10:24
+   |
+LL | fn f(_: view_type!(S.{ bar })) {}
+   |                        ^^^
+
+error[E0609]: no field `bar` on type `S`
+  --> $DIR/must-exist.rs:12:29
+   |
+LL | fn g(_: view_type!(S.{ foo, bar })) {}
+   |                             ^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0609`.

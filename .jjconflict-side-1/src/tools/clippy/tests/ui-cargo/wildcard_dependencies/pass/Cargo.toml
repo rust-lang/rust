@@ -1,0 +1,12 @@
+[package]
+name = "wildcard-dependencies"
+version = "0.1.0"
+publish = false
+
+[workspace]
+
+[dependencies]
+regex = "1"
+
+[lints.cargo]
+unused_dependencies = "allow"

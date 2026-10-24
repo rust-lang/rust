@@ -1,0 +1,128 @@
+// MIR for `full_tested_match` after built
+
+fn full_tested_match() -> () {
+    let mut _0: ();
+    let mut _1: (i32, i32);
+    let mut _2: std::option::Option<i32>;
+    let mut _3: &std::option::Option<i32>;
+    let mut _4: isize;
+    let _5: i32;
+    let _6: &i32;
+    let mut _7: bool;
+    let mut _8: i32;
+    let _9: i32;
+    let mut _10: i32;
+    scope 1 {
+    }
+    scope 2 {
+        debug x => _5;
+        debug x => _6;
+    }
+    scope 3 {
+        debug y => _9;
+    }
+
+    bb0: {
+        StorageLive(_1);
+        StorageLive(_2);
+        _2 = Option::<i32>::Some(const 42_i32);
+        PlaceMention(_2);
+        _4 = discriminant(_2);
+        switchInt(move _4) -> [0: bb5, 1: bb2, otherwise: bb1];
+    }
+
+    bb1: {
+        FakeRead(ForMatchedPlace(None), _2);
+        unreachable;
+    }
+
+    bb2: {
+        falseEdge -> [real: bb8, imaginary: bb3];
+    }
+
+    bb3: {
+        falseEdge -> [real: bb7, imaginary: bb5];
+    }
+
+    bb4: {
+        goto -> bb1;
+    }
+
+    bb5: {
+        _1 = (const 3_i32, const 3_i32);
+        goto -> bb14;
+    }
+
+    bb6: {
+        goto -> bb1;
+    }
+
+    bb7: {
+        StorageLive(_9);
+        _9 = copy ((_2 as Some).0: i32);
+        StorageLive(_10);
+        _10 = copy _9;
+        _1 = (const 2_i32, move _10);
+        StorageDead(_10);
+        StorageDead(_9);
+        goto -> bb14;
+    }
+
+    bb8: {
+        StorageLive(_6);
+        _6 = &((_2 as Some).0: i32);
+        _3 = &fake shallow _2;
+        StorageLive(_7);
+        _7 = guard() -> [return: bb10, unwind: bb16];
+    }
+
+    bb9: {
+        goto -> bb3;
+    }
+
+    bb10: {
+        switchInt(move _7) -> [0: bb12, otherwise: bb11];
+    }
+
+    bb11: {
+        StorageDead(_7);
+        FakeRead(ForMatchGuard, _3);
+        FakeRead(ForGuardBinding, _6);
+        StorageLive(_5);
+        _5 = copy ((_2 as Some).0: i32);
+        StorageLive(_8);
+        _8 = copy _5;
+        _1 = (const 1_i32, move _8);
+        StorageDead(_8);
+        StorageDead(_5);
+        StorageDead(_6);
+        goto -> bb14;
+    }
+
+    bb12: {
+        goto -> bb13;
+    }
+
+    bb13: {
+        StorageDead(_7);
+        StorageDead(_6);
+        goto -> bb9;
+    }
+
+    bb14: {
+        PlaceMention(_1);
+        StorageDead(_2);
+        StorageDead(_1);
+        _0 = const ();
+        return;
+    }
+
+    bb15: {
+        FakeRead(ForMatchedPlace(None), _1);
+        unreachable;
+    }
+
+    bb16 (cleanup): {
+        resume;
+    }
+}

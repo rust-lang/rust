@@ -1,0 +1,12 @@
+warning: method `dummy` is never used
+  --> $DIR/enum-null-pointer-opt.rs:10:18
+   |
+LL | trait Trait { fn dummy(&self) { } }
+   |       -----      ^^^^^
+   |       |
+   |       method in this trait
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: 1 warning emitted
+

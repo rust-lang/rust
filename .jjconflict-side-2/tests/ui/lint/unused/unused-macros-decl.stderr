@@ -1,0 +1,32 @@
+error: unused macro definition: `unused`
+  --> $DIR/unused-macros-decl.rs:7:7
+   |
+LL | macro unused {
+   |       ^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/unused-macros-decl.rs:2:9
+   |
+LL | #![deny(unused_macros)]
+   |         ^^^^^^^^^^^^^
+
+error: unused macro definition: `unused`
+  --> $DIR/unused-macros-decl.rs:17:11
+   |
+LL |     macro unused {
+   |           ^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/unused-macros-decl.rs:16:12
+   |
+LL |     #[deny(unused_macros)]
+   |            ^^^^^^^^^^^^^
+
+error: unused macro definition: `unused`
+  --> $DIR/unused-macros-decl.rs:23:22
+   |
+LL |     pub(crate) macro unused {
+   |                      ^^^^^^
+
+error: aborting due to 3 previous errors
+

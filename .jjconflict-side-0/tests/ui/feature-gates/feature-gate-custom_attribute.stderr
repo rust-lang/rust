@@ -1,0 +1,80 @@
+error: cannot find attribute `fake_attr` in this scope
+  --> $DIR/feature-gate-custom_attribute.rs:3:3
+   |
+LL | #[fake_attr]
+   |   ^^^^^^^^^
+
+error: cannot find attribute `fake_attr` in this scope
+  --> $DIR/feature-gate-custom_attribute.rs:4:3
+   |
+LL | #[fake_attr(100)]
+   |   ^^^^^^^^^
+
+error: cannot find attribute `fake_attr` in this scope
+  --> $DIR/feature-gate-custom_attribute.rs:5:3
+   |
+LL | #[fake_attr(1, 2, 3)]
+   |   ^^^^^^^^^
+
+error: cannot find attribute `fake_attr` in this scope
+  --> $DIR/feature-gate-custom_attribute.rs:6:3
+   |
+LL | #[fake_attr("hello")]
+   |   ^^^^^^^^^
+
+error: cannot find attribute `fake_attr` in this scope
+  --> $DIR/feature-gate-custom_attribute.rs:7:3
+   |
+LL | #[fake_attr(name = "hello")]
+   |   ^^^^^^^^^
+
+error: cannot find attribute `fake_attr` in this scope
+  --> $DIR/feature-gate-custom_attribute.rs:8:3
+   |
+LL | #[fake_attr(1, "hi", key = 12, true, false)]
+   |   ^^^^^^^^^
+
+error: cannot find attribute `fake_attr` in this scope
+  --> $DIR/feature-gate-custom_attribute.rs:9:3
+   |
+LL | #[fake_attr(key = "hello", val = 10)]
+   |   ^^^^^^^^^
+
+error: cannot find attribute `fake_attr` in this scope
+  --> $DIR/feature-gate-custom_attribute.rs:10:3
+   |
+LL | #[fake_attr(key("hello"), val(10))]
+   |   ^^^^^^^^^
+
+error: cannot find attribute `fake_attr` in this scope
+  --> $DIR/feature-gate-custom_attribute.rs:11:3
+   |
+LL | #[fake_attr(enabled = true, disabled = false)]
+   |   ^^^^^^^^^
+
+error: cannot find attribute `fake_attr` in this scope
+  --> $DIR/feature-gate-custom_attribute.rs:12:3
+   |
+LL | #[fake_attr(true)]
+   |   ^^^^^^^^^
+
+error: cannot find attribute `fake_attr` in this scope
+  --> $DIR/feature-gate-custom_attribute.rs:13:3
+   |
+LL | #[fake_attr(pi = 3.14159)]
+   |   ^^^^^^^^^
+
+error: cannot find attribute `fake_attr` in this scope
+  --> $DIR/feature-gate-custom_attribute.rs:14:3
+   |
+LL | #[fake_attr(b"hi")]
+   |   ^^^^^^^^^
+
+error: cannot find attribute `fake_doc` in this scope
+  --> $DIR/feature-gate-custom_attribute.rs:15:3
+   |
+LL | #[fake_doc(r"doc")]
+   |   ^^^^^^^^
+
+error: aborting due to 13 previous errors
+

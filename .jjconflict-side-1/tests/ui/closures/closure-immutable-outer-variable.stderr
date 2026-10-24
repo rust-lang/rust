@@ -1,0 +1,14 @@
+error[E0594]: cannot assign to `y`, as it is not declared as mutable
+  --> $DIR/closure-immutable-outer-variable.rs:11:26
+   |
+LL |     foo(Box::new(move || y = !y) as Box<_>);
+   |                          ^^^^^^ cannot assign
+   |
+help: consider changing this to be mutable
+   |
+LL |     let mut y = true;
+   |         +++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0594`.

@@ -1,0 +1,31 @@
+print-type-size type: `Packed2C`: 12 bytes, alignment: 2 bytes
+print-type-size     field `.a`: 1 bytes
+print-type-size     field `.b`: 1 bytes
+print-type-size     field `.g`: 4 bytes
+print-type-size     field `.c`: 1 bytes
+print-type-size     padding: 1 bytes
+print-type-size     field `.h`: 2 bytes
+print-type-size     field `.d`: 1 bytes
+print-type-size     end padding: 1 bytes
+print-type-size type: `Padded`: 12 bytes, alignment: 4 bytes
+print-type-size     field `.g`: 4 bytes
+print-type-size     field `.h`: 2 bytes
+print-type-size     field `.a`: 1 bytes
+print-type-size     field `.b`: 1 bytes
+print-type-size     field `.c`: 1 bytes
+print-type-size     field `.d`: 1 bytes
+print-type-size     end padding: 2 bytes
+print-type-size type: `Packed1`: 10 bytes, alignment: 1 bytes
+print-type-size     field `.a`: 1 bytes
+print-type-size     field `.b`: 1 bytes
+print-type-size     field `.g`: 4 bytes
+print-type-size     field `.c`: 1 bytes
+print-type-size     field `.h`: 2 bytes
+print-type-size     field `.d`: 1 bytes
+print-type-size type: `Packed2`: 10 bytes, alignment: 2 bytes
+print-type-size     field `.g`: 4 bytes
+print-type-size     field `.h`: 2 bytes
+print-type-size     field `.a`: 1 bytes
+print-type-size     field `.b`: 1 bytes
+print-type-size     field `.c`: 1 bytes
+print-type-size     field `.d`: 1 bytes

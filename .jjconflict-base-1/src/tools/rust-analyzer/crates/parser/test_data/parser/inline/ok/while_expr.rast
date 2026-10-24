@@ -1,0 +1,87 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          WHILE_EXPR
+            WHILE_KW "while"
+            WHITESPACE " "
+            LITERAL
+              TRUE_KW "true"
+            WHITESPACE " "
+            BLOCK_EXPR
+              STMT_LIST
+                L_CURLY "{"
+                R_CURLY "}"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          WHILE_EXPR
+            WHILE_KW "while"
+            WHITESPACE " "
+            LET_EXPR
+              LET_KW "let"
+              WHITESPACE " "
+              TUPLE_STRUCT_PAT
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "Some"
+                L_PAREN "("
+                IDENT_PAT
+                  NAME
+                    IDENT "x"
+                R_PAREN ")"
+              WHITESPACE " "
+              EQ "="
+              WHITESPACE " "
+              METHOD_CALL_EXPR
+                PATH_EXPR
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "it"
+                DOT "."
+                NAME_REF
+                  IDENT "next"
+                ARG_LIST
+                  L_PAREN "("
+                  R_PAREN ")"
+            WHITESPACE " "
+            BLOCK_EXPR
+              STMT_LIST
+                L_CURLY "{"
+                R_CURLY "}"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          WHILE_EXPR
+            WHILE_KW "while"
+            WHITESPACE " "
+            BLOCK_EXPR
+              STMT_LIST
+                L_CURLY "{"
+                WHITESPACE " "
+                LITERAL
+                  TRUE_KW "true"
+                WHITESPACE " "
+                R_CURLY "}"
+            WHITESPACE " "
+            BLOCK_EXPR
+              STMT_LIST
+                L_CURLY "{"
+                R_CURLY "}"
+          SEMICOLON ";"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"

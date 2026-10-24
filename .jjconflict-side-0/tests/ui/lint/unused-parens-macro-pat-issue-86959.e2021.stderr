@@ -1,0 +1,42 @@
+error: unnecessary parentheses around pattern
+  --> $DIR/unused-parens-macro-pat-issue-86959.rs:76:16
+   |
+LL |     match_pat!(('a'));
+   |                ^   ^
+   |
+note: the lint level is defined here
+  --> $DIR/unused-parens-macro-pat-issue-86959.rs:9:9
+   |
+LL | #![deny(unused_parens)]
+   |         ^^^^^^^^^^^^^
+help: remove these parentheses
+   |
+LL -     match_pat!(('a'));
+LL +     match_pat!('a');
+   |
+
+error: unnecessary parentheses around pattern
+  --> $DIR/unused-parens-macro-pat-issue-86959.rs:54:13
+   |
+LL | macro_rules! body_or_pat {
+...
+LL |             ('a' | 'A') => {}
+   |             ^^^^^^^^^^^
+...
+LL |     body_or_pat!();
+   |     -------------- in this macro invocation
+
+error: unnecessary parentheses around pattern
+  --> $DIR/unused-parens-macro-pat-issue-86959.rs:80:9
+   |
+LL |     let (_x) = 1;
+   |         ^  ^
+   |
+help: remove these parentheses
+   |
+LL -     let (_x) = 1;
+LL +     let _x = 1;
+   |
+
+error: aborting due to 3 previous errors
+

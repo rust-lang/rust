@@ -1,0 +1,61 @@
+[package]
+name = "ide"
+version = "0.0.0"
+repository.workspace = true
+description = "IDE-centric APIs for rust-analyzer."
+
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[lib]
+doctest = false
+
+[dependencies]
+cov-mark = "2.0.0"
+arrayvec.workspace = true
+either.workspace = true
+itertools.workspace = true
+tracing.workspace = true
+oorandom.workspace = true
+pulldown-cmark-to-cmark.workspace = true
+pulldown-cmark.workspace = true
+url.workspace = true
+dot.workspace = true
+smallvec.workspace = true
+triomphe.workspace = true
+nohash-hasher.workspace = true
+rustc_apfloat = "0.2.3"
+
+# local deps
+cfg.workspace = true
+ide-assists.workspace = true
+ide-completion.workspace = true
+ide-db.workspace = true
+ide-diagnostics.workspace = true
+ide-ssr.workspace = true
+profile.workspace = true
+stdx.workspace = true
+syntax.workspace = true
+span.workspace = true
+# ide should depend only on the top-level `hir` package. if you need
+# something from some `hir-xxx` subpackage, reexport the API via `hir`.
+hir.workspace = true
+macros.workspace = true
+
+[target.'cfg(not(any(target_arch = "wasm32", target_os = "emscripten")))'.dependencies]
+toolchain.workspace = true
+
+[dev-dependencies]
+expect-test = "1.5.1"
+
+# local deps
+test-utils.workspace = true
+test-fixture.workspace = true
+
+[features]
+in-rust-tree = []
+
+[lints]
+workspace = true

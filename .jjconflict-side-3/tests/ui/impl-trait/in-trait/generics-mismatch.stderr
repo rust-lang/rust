@@ -1,0 +1,12 @@
+error[E0049]: method `bar` has 1 type parameter but its trait declaration has 0 type parameters
+  --> $DIR/generics-mismatch.rs:8:12
+   |
+LL |     fn bar(&self) -> impl Sized;
+   |           - expected 0 type parameters
+...
+LL |     fn bar<T>(&self) {}
+   |            ^ found 1 type parameter
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0049`.

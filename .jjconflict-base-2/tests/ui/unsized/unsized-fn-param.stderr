@@ -1,0 +1,55 @@
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/unsized-fn-param.rs:11:11
+   |
+LL |     foo11("bar", &"baz");
+   |           ^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+   = note: required for the cast from `&'static str` to `&dyn AsRef<Path>`
+help: consider borrowing the value, since `&&'static str` can be coerced into `&dyn AsRef<Path>`
+   |
+LL |     foo11(&"bar", &"baz");
+   |           +
+
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/unsized-fn-param.rs:13:19
+   |
+LL |     foo12(&"bar", "baz");
+   |                   ^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+   = note: required for the cast from `&'static str` to `&dyn AsRef<Path>`
+help: consider borrowing the value, since `&&'static str` can be coerced into `&dyn AsRef<Path>`
+   |
+LL |     foo12(&"bar", &"baz");
+   |                   +
+
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/unsized-fn-param.rs:16:11
+   |
+LL |     foo21("bar", &"baz");
+   |           ^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+   = note: required for the cast from `&'static str` to `&dyn AsRef<str>`
+help: consider borrowing the value, since `&&'static str` can be coerced into `&dyn AsRef<str>`
+   |
+LL |     foo21(&"bar", &"baz");
+   |           +
+
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/unsized-fn-param.rs:18:19
+   |
+LL |     foo22(&"bar", "baz");
+   |                   ^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+   = note: required for the cast from `&'static str` to `&dyn AsRef<str>`
+help: consider borrowing the value, since `&&'static str` can be coerced into `&dyn AsRef<str>`
+   |
+LL |     foo22(&"bar", &"baz");
+   |                   +
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

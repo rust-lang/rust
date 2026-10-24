@@ -1,0 +1,58 @@
+error[E0658]: use of unstable library feature `gca_min_const_items`
+  --> $DIR/feature-gate-gca-adts.rs:15:14
+   |
+LL |     let _: S<gca!([1, 2])> = S::<gca!([1, 2])>;
+   |              ^^^
+   |
+   = note: see issue #132980 <https://github.com/rust-lang/rust/issues/132980> for more information
+   = help: add `#![feature(gca_min_const_items)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `gca_min_const_items`
+  --> $DIR/feature-gate-gca-adts.rs:15:34
+   |
+LL |     let _: S<gca!([1, 2])> = S::<gca!([1, 2])>;
+   |                                  ^^^
+   |
+   = note: see issue #132980 <https://github.com/rust-lang/rust/issues/132980> for more information
+   = help: add `#![feature(gca_min_const_items)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: expected type, found `gca!()` constant
+  --> $DIR/feature-gate-gca-adts.rs:15:14
+   |
+LL |     let _: S<gca!([1, 2])> = S::<gca!([1, 2])>;
+   |              ^^^^^^^^^^^^
+
+error: expected type, found `gca!()` constant
+  --> $DIR/feature-gate-gca-adts.rs:15:34
+   |
+LL |     let _: S<gca!([1, 2])> = S::<gca!([1, 2])>;
+   |                                  ^^^^^^^^^^^^
+
+error[E0658]: use of unstable library feature `gca_min_const_items`
+  --> $DIR/feature-gate-gca-adts.rs:9:5
+   |
+LL | use std::gca;
+   |     ^^^^^^^^
+   |
+   = note: see issue #132980 <https://github.com/rust-lang/rust/issues/132980> for more information
+   = help: add `#![feature(gca_min_const_items)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0747]: type provided when a constant was expected
+  --> $DIR/feature-gate-gca-adts.rs:15:14
+   |
+LL |     let _: S<gca!([1, 2])> = S::<gca!([1, 2])>;
+   |              ^^^^^^^^^^^^
+
+error[E0747]: type provided when a constant was expected
+  --> $DIR/feature-gate-gca-adts.rs:15:34
+   |
+LL |     let _: S<gca!([1, 2])> = S::<gca!([1, 2])>;
+   |                                  ^^^^^^^^^^^^
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0658, E0747.
+For more information about an error, try `rustc --explain E0658`.

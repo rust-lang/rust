@@ -1,0 +1,23 @@
+//@ run-rustfix
+//@ edition: 2024
+
+// Replacing `await!(...)` must preserve grouping and any following `?`.
+
+use std::future::ready;
+
+async fn check() -> Result<(), ()> {
+    let future = ready(1);
+    let _: i32 = future.await;
+    //~^ ERROR incorrect use of `await`
+    let _: i32 = ready(1).await;
+    //~^ ERROR incorrect use of `await`
+    let _: i32 = ready(Ok::<i32, ()>(1)).await?;
+    //~^ ERROR incorrect use of `await`
+    let _: i32 = (/* keep */ &mut ready(1) /* keep */).await;
+    //~^ ERROR incorrect use of `await`
+    Ok(())
+}
+
+fn main() {
+    let _ = check();
+}

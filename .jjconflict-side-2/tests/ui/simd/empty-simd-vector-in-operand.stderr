@@ -1,0 +1,15 @@
+error[E0075]: SIMD vector cannot be empty
+  --> $DIR/empty-simd-vector-in-operand.rs:7:1
+   |
+LL | struct A();
+   | ^^^^^^^^
+
+error: use of empty SIMD vector `A`
+  --> $DIR/empty-simd-vector-in-operand.rs:12:43
+   |
+LL |         std::arch::asm!("{}", in(xmm_reg) A());
+   |                                           ^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0075`.

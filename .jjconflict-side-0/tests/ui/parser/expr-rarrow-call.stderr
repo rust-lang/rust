@@ -1,0 +1,67 @@
+error: `->` is not valid syntax for field accesses and method calls
+  --> $DIR/expr-rarrow-call.rs:14:10
+   |
+LL |     named->foo;
+   |          ^^
+   |
+   = help: the `.` operator will automatically dereference the value, except if the value is a raw pointer
+help: try using `.` instead
+   |
+LL -     named->foo;
+LL +     named.foo;
+   |
+
+error: `->` is not valid syntax for field accesses and method calls
+  --> $DIR/expr-rarrow-call.rs:18:12
+   |
+LL |     unnamed->0;
+   |            ^^
+   |
+   = help: the `.` operator will automatically dereference the value, except if the value is a raw pointer
+help: try using `.` instead
+   |
+LL -     unnamed->0;
+LL +     unnamed.0;
+   |
+
+error: `->` is not valid syntax for field accesses and method calls
+  --> $DIR/expr-rarrow-call.rs:22:6
+   |
+LL |     t->0;
+   |      ^^
+   |
+   = help: the `.` operator will automatically dereference the value, except if the value is a raw pointer
+help: try using `.` instead
+   |
+LL -     t->0;
+LL +     t.0;
+   |
+
+error: `->` is not valid syntax for field accesses and method calls
+  --> $DIR/expr-rarrow-call.rs:23:6
+   |
+LL |     t->1;
+   |      ^^
+   |
+   = help: the `.` operator will automatically dereference the value, except if the value is a raw pointer
+help: try using `.` instead
+   |
+LL -     t->1;
+LL +     t.1;
+   |
+
+error: `->` is not valid syntax for field accesses and method calls
+  --> $DIR/expr-rarrow-call.rs:30:8
+   |
+LL |     foo->clone();
+   |        ^^
+   |
+   = help: the `.` operator will automatically dereference the value, except if the value is a raw pointer
+help: try using `.` instead
+   |
+LL -     foo->clone();
+LL +     foo.clone();
+   |
+
+error: aborting due to 5 previous errors
+

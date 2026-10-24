@@ -1,0 +1,8 @@
+// This test ensures that the default settings are correctly applied.
+//
+// The "settings" crate uses "ayu" as default setting, which is what we will
+// check.
+go-to: "file://" + |DOC_PATH| + "/settings/index.html"
+// Wait a bit to be sure the default theme is applied.
+// If the theme isn't applied, the command will time out.
+wait-for-css: ("body", {"background-color": "#0f1419"})

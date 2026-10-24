@@ -1,0 +1,8 @@
+error: +avx2
+  --> $DIR/crt-static-with-target-features-works.rs:23:1
+   |
+LL | compile_error!("+avx2");
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

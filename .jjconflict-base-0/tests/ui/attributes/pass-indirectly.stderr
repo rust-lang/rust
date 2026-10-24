@@ -1,0 +1,10 @@
+error: the `rustc_pass_indirectly_in_non_rustic_abis` attribute cannot be used on functions
+  --> $DIR/pass-indirectly.rs:6:3
+   |
+LL | #[rustc_pass_indirectly_in_non_rustic_abis]
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: the `rustc_pass_indirectly_in_non_rustic_abis` attribute can only be applied to structs
+
+error: aborting due to 1 previous error
+

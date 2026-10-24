@@ -1,0 +1,28 @@
+error: vtable entries: [
+           MetadataDropInPlace,
+           MetadataSize,
+           MetadataAlign,
+           Method(<S as A>::foo_a1),
+           Vacant,
+       ]
+  --> $DIR/vtable-vacant.rs:20:1
+   |
+LL | impl A for S {}
+   | ^^^^^^^^^^^^
+
+error: vtable entries: [
+           MetadataDropInPlace,
+           MetadataSize,
+           MetadataAlign,
+           Method(<S as A>::foo_a1),
+           Vacant,
+           Method(<S as B>::foo_b1),
+           Vacant,
+       ]
+  --> $DIR/vtable-vacant.rs:24:1
+   |
+LL | impl B for S {}
+   | ^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

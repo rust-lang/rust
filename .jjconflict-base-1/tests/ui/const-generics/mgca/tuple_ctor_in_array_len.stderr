@@ -1,0 +1,23 @@
+error: the constant `S` is not of type `usize`
+  --> $DIR/tuple_ctor_in_array_len.rs:9:19
+   |
+LL |     pub fn f() -> [u8; S] {
+   |                   ^^^^^^^ expected `usize`, found struct constructor
+   |
+   = note: the length of array `[u8; S]` must be type `usize`
+
+error[E0308]: mismatched types
+  --> $DIR/tuple_ctor_in_array_len.rs:11:9
+   |
+LL |     pub fn f() -> [u8; S] {
+   |                   ------- expected `[u8; S]` because of return type
+LL |
+LL |         []
+   |         ^^ expected an array with a size of S, found one with a size of 0
+   |
+   = note: expected array `[u8; S]`
+              found array `[_; 0]`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

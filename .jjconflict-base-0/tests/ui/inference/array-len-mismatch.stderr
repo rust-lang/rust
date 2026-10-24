@@ -1,0 +1,31 @@
+error[E0308]: mismatched types
+  --> $DIR/array-len-mismatch.rs:6:26
+   |
+LL |     let wrong: [u8; 3] = [10, 20];
+   |                -------   ^^^^^^^^ expected an array with a size of 3, found one with a size of 2
+   |                |
+   |                expected due to this
+   |
+help: consider specifying the actual array length
+   |
+LL -     let wrong: [u8; 3] = [10, 20];
+LL +     let wrong: [u8; 2] = [10, 20];
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/array-len-mismatch.rs:9:26
+   |
+LL |     let wrong: [u8; 3] = returns_arr();
+   |                -------   ^^^^^^^^^^^^^ expected an array with a size of 3, found one with a size of 2
+   |                |
+   |                expected due to this
+   |
+help: consider specifying the actual array length
+   |
+LL -     let wrong: [u8; 3] = returns_arr();
+LL +     let wrong: [u8; 2] = returns_arr();
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

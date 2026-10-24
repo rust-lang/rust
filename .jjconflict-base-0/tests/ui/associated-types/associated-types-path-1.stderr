@@ -1,0 +1,33 @@
+error[E0220]: associated type `A` not found for `T`
+  --> $DIR/associated-types-path-1.rs:10:26
+   |
+LL | pub fn f1<T>(a: T, x: T::A) {}
+   |                          ^ associated type `A` not found
+
+error[E0221]: ambiguous associated type `A` in bounds of `T`
+  --> $DIR/associated-types-path-1.rs:11:34
+   |
+LL |     type A;
+   |     ------ ambiguous `A` from `Foo`
+...
+LL |     type A;
+   |     ------ ambiguous `A` from `Bar`
+...
+LL | pub fn f2<T: Foo + Bar>(a: T, x: T::A) {}
+   |                                  ^^^^ ambiguous associated type `A`
+   |
+help: use fully-qualified syntax to disambiguate
+   |
+LL - pub fn f2<T: Foo + Bar>(a: T, x: T::A) {}
+LL + pub fn f2<T: Foo + Bar>(a: T, x: <T as Bar>::A) {}
+   |
+help: use fully-qualified syntax to disambiguate
+   |
+LL - pub fn f2<T: Foo + Bar>(a: T, x: T::A) {}
+LL + pub fn f2<T: Foo + Bar>(a: T, x: <T as Foo>::A) {}
+   |
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0220, E0221.
+For more information about an error, try `rustc --explain E0220`.

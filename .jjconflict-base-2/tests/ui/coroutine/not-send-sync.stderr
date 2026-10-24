@@ -1,0 +1,60 @@
+error: coroutine cannot be shared between threads safely
+  --> $DIR/not-send-sync.rs:14:5
+   |
+LL | /     assert_sync(#[coroutine] || {
+LL | |
+LL | |         let a = NotSync;
+LL | |         yield;
+LL | |         drop(a);
+LL | |     });
+   | |______^ coroutine is not `Sync`
+   |
+help: within `{coroutine@$DIR/not-send-sync.rs:14:30: 14:32}`, the trait `Sync` is not implemented for `NotSync`
+  --> $DIR/not-send-sync.rs:5:1
+   |
+LL | struct NotSync;
+   | ^^^^^^^^^^^^^^
+note: coroutine is not `Sync` as this value is used across a yield
+  --> $DIR/not-send-sync.rs:17:9
+   |
+LL |         let a = NotSync;
+   |             - has type `NotSync` which is not `Sync`
+LL |         yield;
+   |         ^^^^^ yield occurs here, with `a` maybe used later
+note: required by a bound in `assert_sync`
+  --> $DIR/not-send-sync.rs:11:23
+   |
+LL |     fn assert_sync<T: Sync>(_: T) {}
+   |                       ^^^^ required by this bound in `assert_sync`
+
+error: coroutine cannot be sent between threads safely
+  --> $DIR/not-send-sync.rs:21:5
+   |
+LL | /     assert_send(#[coroutine] || {
+LL | |
+LL | |         let a = NotSend;
+LL | |         yield;
+LL | |         drop(a);
+LL | |     });
+   | |______^ coroutine is not `Send`
+   |
+help: within `{coroutine@$DIR/not-send-sync.rs:21:30: 21:32}`, the trait `Send` is not implemented for `NotSend`
+  --> $DIR/not-send-sync.rs:4:1
+   |
+LL | struct NotSend;
+   | ^^^^^^^^^^^^^^
+note: coroutine is not `Send` as this value is used across a yield
+  --> $DIR/not-send-sync.rs:24:9
+   |
+LL |         let a = NotSend;
+   |             - has type `NotSend` which is not `Send`
+LL |         yield;
+   |         ^^^^^ yield occurs here, with `a` maybe used later
+note: required by a bound in `assert_send`
+  --> $DIR/not-send-sync.rs:12:23
+   |
+LL |     fn assert_send<T: Send>(_: T) {}
+   |                       ^^^^ required by this bound in `assert_send`
+
+error: aborting due to 2 previous errors
+

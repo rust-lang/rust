@@ -1,0 +1,33 @@
+error[E0597]: `a` does not live long enough
+  --> $DIR/borrowing.rs:9:46
+   |
+LL |     let _b = {
+   |         -- borrow later stored here
+LL |         let a = 3;
+   |             - binding `a` declared here
+LL |         Pin::new(&mut #[coroutine] || yield &a).resume(())
+   |                                    --        ^ borrowed value does not live long enough
+   |                                    |
+   |                                    value captured here by coroutine
+LL |
+LL |     };
+   |     - `a` dropped here while still borrowed
+
+error[E0597]: `a` does not live long enough
+  --> $DIR/borrowing.rs:16:20
+   |
+LL |     let _b = {
+   |         -- borrow later stored here
+LL |         let a = 3;
+   |             - binding `a` declared here
+LL |         #[coroutine] || {
+   |                      -- value captured here by coroutine
+LL |             yield &a
+   |                    ^ borrowed value does not live long enough
+...
+LL |     };
+   |     - `a` dropped here while still borrowed
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

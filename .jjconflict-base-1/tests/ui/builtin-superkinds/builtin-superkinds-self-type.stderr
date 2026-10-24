@@ -1,0 +1,36 @@
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/builtin-superkinds-self-type.rs:10:16
+   |
+LL | impl <T: Sync> Foo for T { }
+   |                ^^^
+   |                |
+   |                the parameter type `T` must be valid for the static lifetime...
+   |                ...so that the type `T` will meet its required lifetime bounds...
+   |
+note: ...that is required by this bound
+  --> $DIR/builtin-superkinds-self-type.rs:6:24
+   |
+LL | trait Foo : Sized+Sync+'static {
+   |                        ^^^^^^^
+help: consider adding an explicit lifetime bound
+   |
+LL | impl <T: Sync + 'static> Foo for T { }
+   |               +++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/builtin-superkinds-self-type.rs:16:27
+   |
+LL |     assert_eq!(rx.recv(), 1193182);
+   |                           ^^^^^^^ expected `Result<{integer}, RecvError>`, found integer
+   |
+   = note: expected enum `Result<{integer}, RecvError>`
+              found type `{integer}`
+help: try wrapping the expression in `Ok`
+   |
+LL |     assert_eq!(rx.recv(), Ok(1193182));
+   |                           +++       +
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0308, E0310.
+For more information about an error, try `rustc --explain E0308`.

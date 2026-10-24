@@ -1,0 +1,8 @@
+error: bare CR not allowed in frontmatter
+  --> $DIR/content-cr.rs:2:17
+   |
+LL | package.name = "␍" #
+   |                 ^
+
+error: aborting due to 1 previous error
+

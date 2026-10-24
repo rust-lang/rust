@@ -1,0 +1,25 @@
+- // MIR for `bar` before CopyProp
++ // MIR for `bar` after CopyProp
+  
+  fn bar(_1: u8) -> () {
+      debug x => _1;
+      let mut _0: ();
+      let _2: u8;
+      let mut _3: u8;
+  
+      bb0: {
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = copy _1;
+          _2 = dummy(move _3) -> [return: bb1, unwind continue];
+      }
+  
+      bb1: {
+          StorageDead(_3);
+          StorageDead(_2);
+          _1 = const 5_u8;
+          _0 = const ();
+          return;
+      }
+  }
+  

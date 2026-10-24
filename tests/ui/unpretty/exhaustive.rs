@@ -16,7 +16,6 @@
 #![feature(deref_patterns)]
 #![feature(explicit_tail_calls)]
 #![feature(gen_blocks)]
-#![feature(more_qualified_paths)]
 #![feature(never_patterns)]
 #![feature(pattern_types)]
 #![feature(pattern_type_macro)]

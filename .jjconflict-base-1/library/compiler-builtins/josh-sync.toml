@@ -1,0 +1,3 @@
+org = "rust-lang"
+repo = "compiler-builtins"
+path = "library/compiler-builtins"

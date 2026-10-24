@@ -1,0 +1,24 @@
+error: incorrect unicode escape sequence
+  --> $DIR/issue-62913.rs:1:2
+   |
+LL | "\u\"
+   |  ^^^ incorrect unicode escape sequence
+   |
+   = help: format of unicode escape sequences is `\u{...}`
+
+error: invalid trailing slash in literal
+  --> $DIR/issue-62913.rs:1:5
+   |
+LL | "\u\"
+   |     ^ invalid trailing slash in literal
+
+error: expected item, found `"\u\"`
+  --> $DIR/issue-62913.rs:1:1
+   |
+LL | "\u\"
+   | ^^^^^^ expected item
+   |
+   = note: for a full list of items that can appear in modules, see <https://doc.rust-lang.org/reference/items.html>
+
+error: aborting due to 3 previous errors
+

@@ -1,0 +1,12 @@
+error[E0119]: conflicting implementations of trait `Trait<_>`
+  --> $DIR/issue-45814.rs:10:1
+   |
+LL | default impl<T, U> Trait<T> for U {}
+   | --------------------------------- first implementation here
+LL |
+LL | impl<T> Trait<<T as Iterator>::Item> for T {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0119`.

@@ -1,0 +1,36 @@
+error[E0496]: lifetime name `'a` shadows a lifetime name that is already in scope
+  --> $DIR/shadowing.rs:2:14
+   |
+LL | trait Shadow<'a> {
+   |              -- first declared here
+LL |     type Bar<'a>;
+   |              ^^ lifetime `'a` already in scope
+
+error[E0496]: lifetime name `'a` shadows a lifetime name that is already in scope
+  --> $DIR/shadowing.rs:11:14
+   |
+LL | impl<'a> NoShadow<'a> for &'a u32 {
+   |      -- first declared here
+LL |     type Bar<'a> = i32;
+   |              ^^ lifetime `'a` already in scope
+
+error[E0403]: the name `T` is already used for a generic parameter in this item's generic parameters
+  --> $DIR/shadowing.rs:16:14
+   |
+LL | trait ShadowT<T> {
+   |               - first use of `T`
+LL |     type Bar<T>;
+   |              ^ already used
+
+error[E0403]: the name `T` is already used for a generic parameter in this item's generic parameters
+  --> $DIR/shadowing.rs:25:14
+   |
+LL | impl<T> NoShadowT<T> for Option<T> {
+   |      - first use of `T`
+LL |     type Bar<T> = i32;
+   |              ^ already used
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0403, E0496.
+For more information about an error, try `rustc --explain E0403`.
