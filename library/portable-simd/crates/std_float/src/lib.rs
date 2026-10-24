@@ -134,7 +134,7 @@ pub impl(self) trait StdFloat: Sized {
         unsafe { intrinsics::simd_floor(self) }
     }
 
-    /// Rounds to the nearest integer value. Ties round toward zero.
+    /// Rounds to the nearest integer value. Ties round away from zero.
     #[must_use = "method returns a new vector and does not mutate the original value"]
     #[inline]
     fn round(self) -> Self {
