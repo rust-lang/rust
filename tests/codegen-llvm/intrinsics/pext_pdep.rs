@@ -11,7 +11,7 @@
 pub fn extract_bits_u32(x: u32, mask: u32) -> u32 {
     // LLVM23: call i32 @llvm.pext.i32(i32 {{.*}}, i32 {{.*}})
     // LLVM22-NOT: @llvm.pext
-    // LLVM22: call {{.*}}extract{{.*}}impl
+    // LLVM22: call {{.*}}pext
     x.extract_bits(mask)
 }
 
@@ -20,7 +20,7 @@ pub fn extract_bits_u32(x: u32, mask: u32) -> u32 {
 pub fn deposit_bits_u32(x: u32, mask: u32) -> u32 {
     // LLVM23: call i32 @llvm.pdep.i32(i32 {{.*}}, i32 {{.*}})
     // LLVM22-NOT: @llvm.pdep
-    // LLVM22: call {{.*}}deposit{{.*}}impl
+    // LLVM22: call {{.*}}pdep
     x.deposit_bits(mask)
 }
 
@@ -29,7 +29,7 @@ pub fn deposit_bits_u32(x: u32, mask: u32) -> u32 {
 pub fn extract_bits_u64(x: u64, mask: u64) -> u64 {
     // LLVM23: call i64 @llvm.pext.i64(i64 {{.*}}, i64 {{.*}})
     // LLVM22-NOT: @llvm.pext
-    // LLVM22: call {{.*}}extract{{.*}}impl
+    // LLVM22: call {{.*}}pext
     x.extract_bits(mask)
 }
 
@@ -38,6 +38,6 @@ pub fn extract_bits_u64(x: u64, mask: u64) -> u64 {
 pub fn deposit_bits_u64(x: u64, mask: u64) -> u64 {
     // LLVM23: call i64 @llvm.pdep.i64(i64 {{.*}}, i64 {{.*}})
     // LLVM22-NOT: @llvm.pdep
-    // LLVM22: call {{.*}}deposit{{.*}}impl
+    // LLVM22: call {{.*}}pdep
     x.deposit_bits(mask)
 }
