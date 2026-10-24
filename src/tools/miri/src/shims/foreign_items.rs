@@ -19,6 +19,7 @@ use rustc_target::spec::Os;
 use super::alloc::EvalContextExt as _;
 use super::backtrace::EvalContextExt as _;
 use crate::concurrency::GenmcEvalContextExt as _;
+use crate::eval::{ExitType, ProgramExitHandler};
 use crate::helpers::EvalContextExt as _;
 use crate::*;
 
@@ -89,7 +90,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn is_dyn_sym(&self, name: &str) -> bool {
         let this = self.eval_context_ref();
         match &this.tcx.sess.target.os {
-            os if this.target_os_is_unix() => shims::unix::foreign_items::is_dyn_sym(name, os),
+            _ if this.target_os_is_unix() =>
+                shims::unix::foreign_items::is_dyn_sym(name, &this.tcx.sess.target),
             Os::Windows => shims::windows::foreign_items::is_dyn_sym(name),
             _ => false,
         }
@@ -276,9 +278,11 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // When adding a new shim, you should follow the following pattern:
         // ```
         // "shim_name" => {
-        //     let [arg1, arg2, arg3] = this.check_shim(abi, CanonAbi::C , link_name, args)?;
-        //     let result = this.shim_name(arg1, arg2, arg3)?;
-        //     this.write_scalar(result, dest)?;
+        //     let [arg1, arg2, arg3] = &this.check_shim_sig(
+        //         shim_sig!(extern "C" fn(usize, *libc::some_type, *i32) -> u32),
+        //         (link_name, abi, args),
+        //     )?;
+        //     this.shim_name(arg1, arg2, arg3, dest)?;
         // }
         // ```
         // and then define `shim_name` as a helper function in an extension trait in a suitable file
@@ -289,19 +293,19 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         //     arg1: &OpTy<'tcx>,
         //     arg2: &OpTy<'tcx>,
         //     arg3: &OpTy<'tcx>,
-        //     arg4: &OpTy<'tcx>)
+        //     dest: &MPlaceTy<'tcx>)
         // -> InterpResult<'tcx, Scalar> {
         //     let this = self.eval_context_mut();
         //
         //     // First thing: load all the arguments. Details depend on the shim.
         //     let arg1 = this.read_scalar(arg1)?.to_u32()?;
         //     let arg2 = this.read_pointer(arg2)?; // when you need to work with the pointer directly
-        //     // when you want to load/store through the pointer
-        //     let arg3 = this.deref_pointer(arg3)?;
+        //     let arg3 = this.deref_pointer(arg3)?; // when you want to load/store through the pointer
         //
         //     // ...
         //
-        //     interp_ok(Scalar::from_u32(42))
+        //     this.write_int(42, dest)?;
+        //     interp_ok(())
         // }
         // ```
         // You might find existing shims not following this pattern, most
@@ -608,19 +612,17 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Aborting the process.
             "exit" => {
                 // FIXME: This does not have a direct test (#3179).
-                let [code] = &this
+                let [exit_code] = &this
                     .check_shim_sig(shim_sig!(extern "C" fn(i32) -> ()), (link_name, abi, args))?;
-                let code = this.read_scalar(code)?.to_i32()?;
-                if let Some(genmc_ctx) = this.machine.data_race.as_genmc_ref() {
-                    // If there is no error, execution should continue (on a different thread).
-                    genmc_ctx.handle_exit(
-                        this.machine.threads.active_thread(),
-                        code,
-                        crate::concurrency::ExitType::ExitCalled,
-                    )?;
-                    return interp_ok(EmulateItemResult::AlreadyJumped);
-                }
-                throw_machine_stop!(TerminationInfo::Exit { code, leak_check: false });
+                let exit_code = this.read_scalar(exit_code)?.to_i32()?;
+                // Initialize the at-exit state machine.
+                this.replace_active_thread_stack({
+                    let mut state_machine =
+                        ProgramExitHandler::new(exit_code, ExitType::ExitCalled);
+                    Box::new(move |m| state_machine.on_stack_empty(m))
+                });
+                // We "jumped" to the exit handling.
+                return interp_ok(EmulateItemResult::AlreadyJumped);
             }
             "abort" => {
                 // FIXME: This does not have a direct test (#3179).

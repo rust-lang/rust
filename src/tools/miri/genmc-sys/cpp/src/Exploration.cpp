@@ -298,11 +298,10 @@ void MiriGenmcInterface::handle_fence(ThreadId thread_id, MemOrdering ord) {
     MemOrdering fail_load_ordering,
     bool can_fail_spuriously
 ) -> CompareExchangeResult {
-    // NOTE: Both the store and load events should get the same `ordering`, it should not be split
+    // NOTE: On success, both the load and the store get `success_ordering`, it should not be split
     // into a load and a store component. This means we can have for example `AcqRel` loads and
-    // stores, but this is intended for CAS operations.
-
-    // FIXME(GenMC): properly handle failure memory ordering.
+    // stores, but this is intended for CAS operations. On failure, the load gets
+    // `fail_load_ordering`.
 
     auto expectedVal = GenmcScalarExt::to_sval(expected_value);
     auto new_val = GenmcScalarExt::to_sval(new_value);
@@ -312,11 +311,13 @@ void MiriGenmcInterface::handle_fence(ThreadId thread_id, MemOrdering ord) {
         curr_pos(thread_id),
         GenmcScalarExt::try_to_sval(old_val),
         success_ordering,
+        fail_load_ordering,
         SAddr(address),
         ASize(size),
         expectedVal,
         new_val,
         WriteAttr(),
+        can_fail_spuriously,
         nullptr,
         std::nullopt,
         EventDeps()
@@ -327,14 +328,12 @@ void MiriGenmcInterface::handle_fence(ThreadId thread_id, MemOrdering ord) {
     if (std::holds_alternative<GenMCDriver::Invalid>(load_ret.result))
         return CompareExchangeResultExt::from_invalid();
 
-    const auto* ret_val = std::get_if<SVal>(&load_ret.result);
+    const auto* ret_val = std::get_if<GenMCDriver::CasReadResult>(&load_ret.result);
     // FIXME(genmc): handle `HandleResult::Reset` return values.
     ERROR_ON(nullptr == ret_val, "Unimplemented: load returned unexpected result.");
-    const auto read_old_val = *ret_val;
-    if (read_old_val != expectedVal)
+    const auto read_old_val = ret_val->val;
+    if (!ret_val->success)
         return CompareExchangeResultExt::failure(read_old_val);
-
-    // FIXME(GenMC): Add support for modelling spurious failures.
 
     const auto store_ret = GenMCDriver::handleCasWrite(
         nullptr,

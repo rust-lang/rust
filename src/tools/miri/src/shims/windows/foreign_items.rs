@@ -9,6 +9,7 @@ use rustc_target::callconv::FnAbi;
 use rustc_target::spec::Env;
 
 use self::shims::windows::handle::{Handle, PseudoHandle};
+use crate::eval::{ExitType, ProgramExitHandler};
 use crate::shims::os_str::bytes_to_os_str;
 use crate::shims::windows::*;
 use crate::*;
@@ -504,7 +505,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_pointer(new_ptr, dest)?;
             }
             "LocalFree" => {
-                // FIXME: This does not have a direct test (#3179).
                 let [ptr] = &this.check_shim_sig(
                     shim_sig!(extern "system" fn(winapi::HLOCAL) -> winapi::HLOCAL),
                     (link_name, abi, args),
@@ -585,7 +585,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // Thread-local storage
             "TlsAlloc" => {
-                // FIXME: This does not have a direct test (#3179).
                 // This just creates a key; Windows does not natively support TLS destructors.
 
                 // Create key and return it.
@@ -597,32 +596,29 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(Scalar::from_uint(key, dest.layout.size), dest)?;
             }
             "TlsGetValue" => {
-                // FIXME: This does not have a direct test (#3179).
                 let [key] = &this.check_shim_sig(
                     shim_sig!(extern "system" fn(u32) -> *_),
                     (link_name, abi, args),
                 )?;
                 let key = u128::from(this.read_scalar(key)?.to_u32()?);
                 let active_thread = this.active_thread();
-                let ptr = this.machine.tls.load_tls(key, active_thread, this)?;
-                this.write_scalar(ptr, dest)?;
+                let ptr = this.machine.tls.load_tls(key, active_thread)?;
+                this.write_pointer(ptr, dest)?;
             }
             "TlsSetValue" => {
-                // FIXME: This does not have a direct test (#3179).
                 let [key, new_ptr] = &this.check_shim_sig(
                     shim_sig!(extern "system" fn(u32, *_) -> winapi::BOOL),
                     (link_name, abi, args),
                 )?;
                 let key = u128::from(this.read_scalar(key)?.to_u32()?);
                 let active_thread = this.active_thread();
-                let new_data = this.read_scalar(new_ptr)?;
-                this.machine.tls.store_tls(key, active_thread, new_data, &*this.tcx)?;
+                let new_data = this.read_pointer(new_ptr)?;
+                this.machine.tls.store_tls(key, active_thread, new_data)?;
 
                 // Return success (`1`).
                 this.write_int(1, dest)?;
             }
             "TlsFree" => {
-                // FIXME: This does not have a direct test (#3179).
                 let [key] = &this.check_shim_sig(
                     shim_sig!(extern "system" fn(u32) -> winapi::BOOL),
                     (link_name, abi, args),
@@ -636,7 +632,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // Fiber-local storage - similar to TLS but supports destructors.
             "FlsAlloc" => {
-                // FIXME: This does not have a direct test (#3179).
                 // Create key and return it.
                 let [dtor] = &this.check_shim_sig(
                     shim_sig!(extern "system" fn(winapi::PFLS_CALLBACK_FUNCTION) -> u32),
@@ -658,32 +653,29 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(Scalar::from_uint(key, dest.layout.size), dest)?;
             }
             "FlsGetValue" => {
-                // FIXME: This does not have a direct test (#3179).
                 let [key] = &this.check_shim_sig(
                     shim_sig!(extern "system" fn(u32) -> *_),
                     (link_name, abi, args),
                 )?;
                 let key = u128::from(this.read_scalar(key)?.to_u32()?);
                 let active_thread = this.active_thread();
-                let ptr = this.machine.tls.load_tls(key, active_thread, this)?;
-                this.write_scalar(ptr, dest)?;
+                let ptr = this.machine.tls.load_tls(key, active_thread)?;
+                this.write_pointer(ptr, dest)?;
             }
             "FlsSetValue" => {
-                // FIXME: This does not have a direct test (#3179).
                 let [key, new_ptr] = &this.check_shim_sig(
                     shim_sig!(extern "system" fn(u32, *_) -> winapi::BOOL),
                     (link_name, abi, args),
                 )?;
                 let key = u128::from(this.read_scalar(key)?.to_u32()?);
                 let active_thread = this.active_thread();
-                let new_data = this.read_scalar(new_ptr)?;
-                this.machine.tls.store_tls(key, active_thread, new_data, &*this.tcx)?;
+                let new_data = this.read_pointer(new_ptr)?;
+                this.machine.tls.store_tls(key, active_thread, new_data)?;
 
                 // Return success (`1`).
                 this.write_int(1, dest)?;
             }
             "FlsFree" => {
-                // FIXME: This does not have a direct test (#3179).
                 let [key] = &this.check_shim_sig(
                     shim_sig!(extern "system" fn(u32) -> winapi::BOOL),
                     (link_name, abi, args),
@@ -702,7 +694,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_int(1, dest)?;
             }
             "IsThreadAFiber" => {
-                // FIXME: This does not have a direct test (#3179).
                 let [] = &this.check_shim_sig(
                     shim_sig!(extern "system" fn() -> winapi::BOOL),
                     (link_name, abi, args),
@@ -966,8 +957,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     (link_name, abi, args),
                 )?;
                 // Windows technically uses u32, but we unify everything to a Unix-style i32.
-                let code = this.read_scalar(code)?.to_i32()?;
-                throw_machine_stop!(TerminationInfo::Exit { code, leak_check: false });
+                let exit_code = this.read_scalar(code)?.to_i32()?;
+                // Initialize the at-exit state machine.
+                this.replace_active_thread_stack({
+                    let mut state_machine =
+                        ProgramExitHandler::new(exit_code, ExitType::ExitCalled);
+                    Box::new(move |m| state_machine.on_stack_empty(m))
+                });
+                // We "jumped" to the exit handling.
+                return interp_ok(EmulateItemResult::AlreadyJumped);
             }
             "SystemFunction036" => {
                 // used by getrandom 0.1
@@ -983,7 +981,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(Scalar::from_bool(true), dest)?;
             }
             "ProcessPrng" => {
-                // FIXME: This does not have a direct test (#3179).
                 // used by `std`
                 let [ptr, len] = &this.check_shim_sig(
                     shim_sig!(extern "system" fn(*_, usize) -> winapi::BOOL),
@@ -1039,10 +1036,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     (link_name, abi, args),
                 )?;
                 this.read_target_isize(console)?;
-                // FIXME: this should use deref_pointer_as, but CONSOLE_SCREEN_BUFFER_INFO is not in std
-                this.deref_pointer(buffer_info)?;
+                this.read_pointer(buffer_info)?;
                 // Indicate an error.
-                // FIXME: we should set last_error, but to what?
+                this.set_last_error(io::ErrorKind::Unsupported)?;
                 this.write_null(dest)?;
             }
             "GetStdHandle" => {
