@@ -325,7 +325,15 @@ pub(crate) fn codegen_fn_prelude<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, start_
         .collect::<Vec<(Local, ArgKind<'tcx>, Ty<'tcx>)>>();
 
     assert!(fx.caller_location.is_none());
-    if fx.instance.def.requires_caller_location(fx.tcx) {
+    if let Some(coro_info) = fx.mir.coroutine.as_deref()
+        && let Some(captured_caller_location_idx) = coro_info.captured_caller_location
+    {
+        assert!(
+            !fx.instance.def.requires_caller_location(fx.tcx),
+            "should have only one source of truth for caller_location"
+        );
+        fx.caller_location = Some(CallerLocation::Captured(captured_caller_location_idx));
+    } else if fx.instance.def.requires_caller_location(fx.tcx) {
         // Store caller location for `#[track_caller]`.
         let arg_abi = arg_abis_iter.next().unwrap();
         let param = cvalue_for_param(fx, None, None, arg_abi, &mut block_params_iter).unwrap();
@@ -333,7 +341,7 @@ pub(crate) fn codegen_fn_prelude<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, start_
             !param.is_underaligned_pointee,
             "caller location argument should not be underaligned",
         );
-        fx.caller_location = Some(param.value);
+        fx.caller_location = Some(CallerLocation::Direct(param.value));
     }
 
     assert_eq!(arg_abis_iter.next(), None, "ArgAbi left behind for {:?}", fx.fn_abi);
@@ -557,7 +565,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
 
     // Pass the caller location for `#[track_caller]`.
     if instance.is_some_and(|inst| inst.def.requires_caller_location(fx.tcx)) {
-        let caller_location = fx.get_caller_location(source_info);
+        let caller_location = fx.codegen_caller_location(source_info);
         args.push(CallArgument { value: caller_location, is_owned: false });
     }
 
@@ -811,7 +819,7 @@ pub(crate) fn codegen_drop<'tcx>(
 
                 if drop_instance.def.requires_caller_location(fx.tcx) {
                     // Pass the caller location for `#[track_caller]`.
-                    let caller_location = fx.get_caller_location(source_info);
+                    let caller_location = fx.codegen_caller_location(source_info);
                     call_args.extend(adjust_arg_for_abi(
                         fx,
                         caller_location,

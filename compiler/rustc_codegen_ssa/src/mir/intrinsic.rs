@@ -158,7 +158,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             sym::caller_location => {
-                let location = self.get_caller_location(bx, source_info);
+                let location = self.codegen_caller_location(bx, source_info);
                 location.val
             }
 

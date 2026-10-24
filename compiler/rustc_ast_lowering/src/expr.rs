@@ -5,6 +5,7 @@ use std::sync::Arc;
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::visit::{Visitor, walk_expr};
 use rustc_ast::*;
+use rustc_attr_ir::find_attr;
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_attr_ir::target::Target;
 use rustc_errors::msg;
@@ -411,6 +412,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             |this| {
                                 this.with_new_scopes(e.span, |this| this.lower_block_expr(block))
                             },
+                            None,
                         )
                     });
                 let Some(move_expr_state) = move_expr_state else {
@@ -866,6 +868,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         desugaring_kind: hir::CoroutineDesugaring,
         coroutine_source: hir::CoroutineSource,
         body: impl FnOnce(&mut Self) -> hir::Expr<'hir>,
+        captured_caller_location: Option<HirId>,
     ) -> hir::ExprKind<'hir> {
         let closure_def_id = self.local_def_id(closure_node_id);
         let coroutine_kind = hir::CoroutineKind::Desugared(desugaring_kind, coroutine_source);
@@ -957,11 +960,49 @@ impl<'hir> LoweringContext<'_, 'hir> {
             kind: hir::ClosureKind::Coroutine(coroutine_kind),
             constness: hir::Constness::NotConst,
             explicit_captures,
+            captured_caller_location,
         }))
+    }
+
+    /// Checks whether `#[track_caller]` annotation on a coroutine function
+    /// or coroutine closure exists, and should affect the generated coroutine inside.
+    /// Currently used only for coroutine fns, not coroutine closures.
+    ///
+    /// FIXME(closure_track_caller): Change coroutine closures to use this.
+    pub(super) fn should_track_caller_in_coroutine(
+        &self,
+        hir_id: HirId,
+        node_id: NodeId,
+        span: Span,
+        is_in_trait_impl: bool,
+    ) -> bool {
+        if !self.tcx.features().async_fn_track_caller() {
+            return false;
+        }
+        if let Some(attrs) = self.curr_owner.attrs.get(&hir_id.local_id)
+            && find_attr!(*attrs, TrackCaller(_))
+        {
+            // The coroutine function itself is annotated with #[track_caller]
+            return true;
+        }
+        if is_in_trait_impl {
+            // Check if we need to "inherit" #[track_caller] from the trait definition.
+            let Some(trait_item_def_id) =
+                self.get_partial_res(node_id).and_then(|r| r.expect_full_res().opt_def_id())
+            else {
+                self.dcx().span_delayed_bug(span, "could not resolve trait item being implemented");
+                return false;
+            };
+            return find_attr!(self.tcx, trait_item_def_id, TrackCaller(_));
+        }
+        false
     }
 
     /// Forwards a possible `#[track_caller]` annotation from `outer_hir_id` to
     /// `inner_hir_id` in case the `async_fn_track_caller` feature is enabled.
+    /// Currently only used for coroutine closures, not coroutine fns.
+    ///
+    /// FIXME(closure_track_caller): Remove this function.
     pub(super) fn maybe_forward_track_caller(&mut self, outer_hir_id: HirId, inner_hir_id: HirId) {
         if self.tcx.features().async_fn_track_caller()
             && let Some(attrs) = self.curr_owner.attrs.get(&outer_hir_id.local_id)
