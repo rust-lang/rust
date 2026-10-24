@@ -3,13 +3,17 @@
 
 use std::ops::Deref;
 
+use rustc_data_structures::hash_table::Entry;
+use rustc_data_structures::sharded;
+use rustc_errors::FatalError;
 use rustc_hir::def_id::LocalDefId;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, bug};
 
 use crate::dep_graph;
 use crate::dep_graph::DepNodeKey;
 use crate::query::erase::{self, Erasable, Erased};
-use crate::query::{IntoQueryKey, QueryCache, QueryMode, QueryVTable};
+use crate::query::job::{ActiveJobGuard, QueryExecutionKind, current_query_job, next_job_id};
+use crate::query::{ActiveKeyStatus, IntoQueryKey, QueryCache, QueryMode, QueryVTable};
 use crate::ty::{self, TyCtxt};
 
 #[derive(Copy, Clone)]
@@ -221,53 +225,99 @@ pub(crate) fn query_feed<'tcx, C>(
     C: QueryCache,
     C::Key: DepNodeKey<'tcx>,
 {
-    let format_value = query.format_value;
+    let key_hash = sharded::make_hash(&key);
 
-    // Check whether the in-memory cache already has a value for this key.
-    match try_get_cached(tcx, &query.cache, key) {
-        Some(old) => {
-            // The query already has a cached value for this key.
-            // That's OK if both values are the same, i.e. they have the same hash,
-            // so now we check their hashes.
-            if let Some(hash_value_fn) = query.hash_value_fn {
-                let (old_hash, value_hash) = tcx.with_stable_hashing_context(|ref mut hcx| {
-                    (hash_value_fn(hcx, &old), hash_value_fn(hcx, &value))
-                });
-                if old_hash != value_hash {
-                    // We have an inconsistency. This can happen if one of the two
-                    // results is tainted by errors. In this case, delay a bug to
-                    // ensure compilation is doomed, and keep the `old` value.
-                    tcx.dcx().delayed_bug(format!(
-                        "Trying to feed an already recorded value for query {query:?} key={key:?}:\n\
-                        old value: {old}\nnew value: {value}",
-                        old = format_value(&old),
-                        value = format_value(&value),
-                    ));
+    // This code does several things:
+    // 1) First we acquire state lock and check if there is already a cached value for this key,
+    //    if so, we drop the lock and check consistency of a new and existing values. If there is
+    //    no cached value then we start a query job as it is done in `try_execute_query`, next we drop
+    //    the lock and execute dep node creation operations, this section is mutually exclusive
+    //    (with respect to the key), finally we store fed value into the cache. If regular query will be executed
+    //    at the same time as feeding, it will emit bug as it is strange to have both regular and
+    //    feeding query execution (same works in reverse, if we try to feed query while it is executing
+    //    we will emit a bug).
+    // 2) If query has poisoned status we emit fatal error as in other handlers of this status.
+    // 3) Checking for cached value in `try_execute_query` is performed under the state lock too,
+    //    so if we fed the value here, when trying to execute this query fed value will be seen.
+    let mut shard = query.state.active.lock_shard_by_hash(key_hash);
+    match shard.entry(key_hash, |kv| kv.0 == key, |(k, _)| sharded::make_hash(k)) {
+        Entry::Vacant(entry) => {
+            match try_get_cached(tcx, &query.cache, key) {
+                Some(old) => {
+                    drop(shard);
+
+                    let format_value = query.format_value;
+
+                    // The query already has a cached value for this key.
+                    // That's OK if both values are the same, i.e. they have the same hash,
+                    // so now we check their hashes.
+                    if let Some(hash_value_fn) = query.hash_value_fn {
+                        let (old_hash, value_hash) =
+                            tcx.with_stable_hashing_context(|ref mut hcx| {
+                                (hash_value_fn(hcx, &old), hash_value_fn(hcx, &value))
+                            });
+
+                        if old_hash != value_hash {
+                            // We have an inconsistency. This can happen if one of the two
+                            // results is tainted by errors. In this case, delay a bug to
+                            // ensure compilation is doomed, and keep the `old` value.
+                            tcx.dcx().delayed_bug(format!(
+                                "Trying to feed an already recorded value for query {query:?} key={key:?}:\n\
+                                    old value: {old}\nnew value: {value}",
+                                old = format_value(&old),
+                                value = format_value(&value),
+                            ));
+                        }
+                    } else {
+                        // The query is `no_hash`, so we have no way to perform a sanity check.
+                        // If feeding the same value multiple times needs to be supported,
+                        // the query should not be marked `no_hash`.
+                        bug!(
+                            "Trying to feed an already recorded value for query {query:?} key={key:?}:\n\
+                                old value: {old}\nnew value: {value}",
+                            old = format_value(&old),
+                            value = format_value(&value),
+                        )
+                    }
                 }
-            } else {
-                // The query is `no_hash`, so we have no way to perform a sanity check.
-                // If feeding the same value multiple times needs to be supported,
-                // the query should not be marked `no_hash`.
-                bug!(
-                    "Trying to feed an already recorded value for query {query:?} key={key:?}:\n\
-                    old value: {old}\nnew value: {value}",
-                    old = format_value(&old),
-                    value = format_value(&value),
-                )
+                None => {
+                    let parent = current_query_job();
+                    let id = next_job_id(tcx);
+
+                    entry.insert((
+                        key,
+                        ActiveKeyStatus::Started(QueryExecutionKind::Feeding { parent, id }),
+                    ));
+
+                    drop(shard);
+
+                    let job_guard = ActiveJobGuard { state: &query.state, key, key_hash };
+
+                    // There is no cached value for this key, so feed the query by
+                    // adding the provided value to the cache.
+                    let dep_node = dep_graph::DepNode::construct(tcx, query.dep_kind, &key);
+                    let dep_node_index = tcx.dep_graph.with_feed_task(
+                        dep_node,
+                        tcx,
+                        &value,
+                        query.hash_value_fn,
+                        query.format_value,
+                    );
+
+                    job_guard.complete(&query.cache, value, dep_node_index);
+                }
             }
         }
-        None => {
-            // There is no cached value for this key, so feed the query by
-            // adding the provided value to the cache.
-            let dep_node = dep_graph::DepNode::construct(tcx, query.dep_kind, &key);
-            let dep_node_index = tcx.dep_graph.with_feed_task(
-                dep_node,
-                tcx,
-                &value,
-                query.hash_value_fn,
-                query.format_value,
-            );
-            query.cache.complete(key, value, dep_node_index);
-        }
+        Entry::Occupied(status) => match status.get().1 {
+            ActiveKeyStatus::Started(ref exec_kind) => match exec_kind {
+                QueryExecutionKind::Default(_) => {
+                    bug!("trying to feed query while it is executing")
+                }
+                QueryExecutionKind::Feeding { .. } => {
+                    bug!("trying to feed query while it is already feeding")
+                }
+            },
+            ActiveKeyStatus::Poisoned => FatalError.raise(),
+        },
     }
 }
