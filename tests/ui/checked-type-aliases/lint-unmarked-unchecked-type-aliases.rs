@@ -1,0 +1,12 @@
+//@ run-rustfix
+//@ check-pass
+
+#![feature(marked_unchecked_type_aliases)]
+#![warn(unmarked_unchecked_type_aliases)]
+#![allow(dead_code)]
+
+type Alias = [(); panic!()];
+//~^ WARN unchecked type alias lacks attribute `#[rustc_unchecked_type_alias]` [unmarked_unchecked_type_aliases]
+//~| WARN this changes meaning in Rust future
+
+fn main() {}
