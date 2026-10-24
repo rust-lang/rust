@@ -122,6 +122,7 @@ pub trait TyAbiInterface<'a, C>: Sized + std::fmt::Debug + std::fmt::Display {
     fn is_unit(this: TyAndLayout<'a, Self>) -> bool;
     fn is_transparent(this: TyAndLayout<'a, Self>) -> bool;
     fn is_complex_number_lang_item(this: TyAndLayout<'a, Self>, cx: &C) -> bool;
+    fn is_x87_f80_lang_item(this: TyAndLayout<'a, Self>, cx: &C) -> bool;
     fn is_scalable_vector(this: TyAndLayout<'a, Self>) -> bool;
     /// See [`TyAndLayout::pass_indirectly_in_non_rustic_abis`] for details.
     fn is_pass_indirectly_in_non_rustic_abis_flag_set(this: TyAndLayout<'a, Self>) -> bool;
@@ -230,6 +231,14 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         Ty: TyAbiInterface<'a, C>,
     {
         Ty::is_scalable_vector(self)
+    }
+
+    pub fn is_x87_f80<C>(self, cx: &C) -> bool
+    where
+        Ty: TyAbiInterface<'a, C> + Copy,
+    {
+        // A 1-ZST is never x87_f80.
+        Ty::is_x87_f80_lang_item(self.peel_transparent_wrappers_from_non_1zst(cx), cx)
     }
 
     /// If this method returns `true`, then this type should always have a `PassMode` of
@@ -351,7 +360,12 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         match primitive {
             Primitive::Int(integer, is_signed) => Some(Numeric::Int(integer, is_signed)),
             Primitive::Float(
-                float @ (Float::F16 | Float::F32 | Float::F64 | Float::F128 | Float::PpcF128),
+                float @ (Float::F16
+                | Float::F32
+                | Float::F64
+                | Float::X87F80
+                | Float::F128
+                | Float::PpcF128),
             ) => Some(Numeric::Float(float)),
             Primitive::Pointer(..) | Primitive::Float(Float::F16B) => None,
         }
