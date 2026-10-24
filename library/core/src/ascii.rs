@@ -11,7 +11,7 @@
 
 use crate::escape::{AlwaysEscaped, EscapeIterInner};
 use crate::fmt;
-use crate::iter::FusedIterator;
+use crate::iter::{FusedIterator, TrustedLen};
 use crate::num::NonZero;
 
 mod ascii_char;
@@ -158,6 +158,9 @@ impl ExactSizeIterator for EscapeDefault {
         self.0.len()
     }
 }
+
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl TrustedLen for EscapeDefault {}
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl FusedIterator for EscapeDefault {}
