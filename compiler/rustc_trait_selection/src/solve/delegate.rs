@@ -1,10 +1,9 @@
-use std::collections::hash_map::Entry;
 use std::fmt::Debug;
 use std::mem;
 use std::ops::{ControlFlow, Deref};
 
 use rustc_attr_ir::lang_items::LangItem;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::CRATE_HIR_ID;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE};
@@ -385,25 +384,14 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
             )
         });
 
-        let mut seen = FxHashMap::default();
-        let mut constraints = vec![];
-        for QueryRegionConstraint { constraint: outlives, visible_for_leak_check: vis, .. } in
-            region_constraints.constraints
-        {
-            match seen.entry(outlives) {
-                Entry::Occupied(occupied) => {
-                    let idx = occupied.get();
-                    let (_, prev_vis): &mut (_, ty::VisibleForLeakCheck) =
-                        constraints.get_mut(*idx).unwrap();
-                    *prev_vis = (*prev_vis).or(vis);
-                }
-                Entry::Vacant(vacant) => {
-                    vacant.insert(constraints.len());
-                    constraints.push((outlives, vis));
-                }
-            }
-        }
-        constraints
+        rustc_next_trait_solver::solve::deduplicate_region_constraints(
+            region_constraints.constraints.into_iter().map(
+                |QueryRegionConstraint { constraint, visible_for_leak_check, .. }| {
+                    (constraint, visible_for_leak_check)
+                },
+            ),
+            false,
+        )
     }
 
     fn instantiate_canonical<V>(

@@ -1703,10 +1703,9 @@ where
             .delegate
             .deeply_resolve_via_unification_table((self.var_values, external_constraints));
 
-        // Remove any trivial or duplicated region constraints once we've resolved regions
-        let mut unique = HashSet::default();
+        // Remove trivial constraints and merge duplicates after resolving regions.
         if let ExternalRegionConstraints::Old(r) = &mut external_constraints.region_constraints {
-            r.retain(|(outlives, _)| !outlives.is_trivial() && unique.insert(*outlives));
+            *r = ty::solve::deduplicate_region_constraints(std::mem::take(r), true);
         }
 
         filter_irrelevant_region_constraints(self.delegate, var_values, &mut external_constraints);
