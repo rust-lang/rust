@@ -25,7 +25,10 @@ use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::SolverTraitLangItem;
 pub use rustc_type_ir::solve::*;
 use rustc_type_ir::transmute::Condition;
-use rustc_type_ir::{self as ty, Const, Interner, Region, TraitClause, TypeVisitableExt, Upcast};
+use rustc_type_ir::{
+    self as ty, BoundVarIndexKind, Const, Interner, Region, TraitClause, TypeFlags,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, Upcast,
+};
 use thin_vec::{ThinVec, thin_vec};
 use tracing::instrument;
 
@@ -89,25 +92,107 @@ fn equal_response_modulo_region_constraints<I: Interner>(
     b: &CanonicalResponse<I>,
 ) -> bool {
     let CanonicalResponse {
-        max_universe: a_max_universe,
-        var_kinds: a_var_kinds,
-        value:
-            Response {
-                var_values: a_var_values,
-                certainty: a_certainty,
-                external_constraints: a_external_constraints,
-            },
+        max_universe: _, // implied by `var_kinds` being equal.
+        var_kinds,
+        value: Response { var_values, certainty, external_constraints },
     } = a;
 
     let ExternalConstraintsData { region_constraints: _, opaque_types, normalization_nested_goals } =
-        &**a_external_constraints;
+        &**external_constraints;
 
-    a_max_universe == &b.max_universe
-        && a_var_kinds == &b.var_kinds
-        && a_var_values == &b.value.var_values
-        && a_certainty == &b.value.certainty
+    let eq_up_to_var_kinds = var_values == &b.value.var_values
+        && certainty == &b.value.certainty
         && opaque_types == &b.value.external_constraints.opaque_types
-        && normalization_nested_goals == &b.value.external_constraints.normalization_nested_goals
+        && normalization_nested_goals == &b.value.external_constraints.normalization_nested_goals;
+
+    if !eq_up_to_var_kinds {
+        return false;
+    }
+
+    if var_kinds == &b.var_kinds {
+        true
+    } else {
+        // If only the `var_kinds` are different, we have to check whether they only
+        // differ due to region constraints.
+        //
+        // FIXME: This is only only sufficient if region constraints are canonicalized
+        // last, which they are not. This means this check incorrectly returns `false` if
+        // either the `opaque_types` or `normalization_nested_goals` reference variables
+        // not mentioned before. The only way this happens is if they mention placeholders
+        // or higher-ranked existential variables created inside of the query. This feels
+        // very unlikely and maybe not even worth fixing.
+        let num_shared: usize =
+            var_kinds.iter().zip(b.var_kinds.iter()).take_while(|(a, b)| a == b).count();
+        response_only_references_shared_vars_outside_of_region_constraints(num_shared, a)
+            && response_only_references_shared_vars_outside_of_region_constraints(num_shared, b)
+    }
+}
+
+/// This is slightly hacky. If responses differ in their `var_values`, then even if their
+/// `opaque_types` are structurally equal, they could still be different because the
+/// same `var_value` maps to a different value when instantiating the response.
+///
+/// To handle this, we make sure that everything but the region constraints only reference
+/// `var_values` which are the same for both responses.
+fn response_only_references_shared_vars_outside_of_region_constraints<I: Interner>(
+    num_shared: usize,
+    response: &CanonicalResponse<I>,
+) -> bool {
+    struct OnlyReferencesSharedVars {
+        num_shared: usize,
+    }
+    impl<I: Interner> TypeVisitor<I> for OnlyReferencesSharedVars {
+        type Result = Result<(), ()>;
+
+        fn visit_ty(&mut self, t: I::Ty) -> Result<(), ()> {
+            if let ty::Bound(BoundVarIndexKind::Canonical, b) = t.kind() {
+                if b.var.as_usize() >= self.num_shared { Err(()) } else { Ok(()) }
+            } else if t.has_type_flags(TypeFlags::HAS_CANONICAL_BOUND) {
+                t.super_visit_with(self)
+            } else {
+                Ok(())
+            }
+        }
+
+        fn visit_region(&mut self, r: Region<I>) -> Result<(), ()> {
+            if let ty::ReBound(BoundVarIndexKind::Canonical, b) = r.kind() {
+                if b.var.as_usize() >= self.num_shared { Err(()) } else { Ok(()) }
+            } else {
+                Ok(())
+            }
+        }
+
+        fn visit_const(&mut self, c: Const<I>) -> Result<(), ()> {
+            if let ty::ConstKind::Bound(BoundVarIndexKind::Canonical, b) = c.kind() {
+                if b.var.as_usize() >= self.num_shared { Err(()) } else { Ok(()) }
+            } else if c.has_type_flags(TypeFlags::HAS_CANONICAL_BOUND) {
+                c.super_visit_with(self)
+            } else {
+                Ok(())
+            }
+        }
+
+        fn visit_predicate<P: rustc_type_ir::PredicateProxy<I>>(&mut self, p: P) -> Result<(), ()> {
+            if p.has_type_flags(TypeFlags::HAS_CANONICAL_BOUND) {
+                p.super_visit_with(self)
+            } else {
+                Ok(())
+            }
+        }
+    }
+
+    let CanonicalResponse {
+        max_universe: _,
+        var_kinds: _,
+        value: Response { var_values, certainty: _, external_constraints },
+    } = response;
+    let ExternalConstraintsData { region_constraints: _, opaque_types, normalization_nested_goals } =
+        &**external_constraints;
+
+    let mut visitor = OnlyReferencesSharedVars { num_shared };
+    var_values.visit_with(&mut visitor).is_ok()
+        && opaque_types.visit_with(&mut visitor).is_ok()
+        && normalization_nested_goals.visit_with(&mut visitor).is_ok()
 }
 
 impl<'a, D, I> EvalCtxt<'a, D>
@@ -318,66 +403,50 @@ where
     }
 }
 
-#[derive(Debug)]
-enum MergeCandidateInfo {
-    AlwaysApplicable(usize),
-    EqualResponse,
-}
-
 impl<D, I> EvalCtxt<'_, D>
 where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
     /// Try to merge multiple possible ways to prove a goal, if that is not possible returns `None`.
+    /// We only merge candidates which are equal modulo region constraints. Long-term, we want to
+    /// emit an OR of the constraints of all candidates, for now we fail with ambiguity unless all
+    /// candidates have the same constraints or one candidate has no region constraints at all.
     ///
     /// In this case we tend to flounder and return ambiguity by calling `[EvalCtxt::flounder]`.
     #[instrument(level = "trace", skip(self), ret)]
     fn try_merge_candidates(
         &mut self,
         candidates: &[Candidate<I>],
-    ) -> Option<(CanonicalResponse<I>, MergeCandidateInfo)> {
-        if candidates.is_empty() {
+    ) -> Option<CanonicalResponse<I>> {
+        let Some((first, rest)) = candidates.split_first() else {
+            return None;
+        };
+
+        // Check whether all candidates are equal modulo regions.
+        if rest.iter().any(|candidate| {
+            !equal_response_modulo_region_constraints(&first.result, &candidate.result)
+        }) {
             return None;
         }
 
-        let always_applicable = candidates.iter().enumerate().find(|(_, candidate)| {
-            candidate.result.value.certainty == Certainty::Yes
-                && has_no_inference_or_external_constraints(candidate.result)
-        });
-
-        if let Some((i, candidate)) = always_applicable {
-            return Some((candidate.result, MergeCandidateInfo::AlwaysApplicable(i)));
+        // Merging constraints is trivial if they are same.
+        let region_constraints = &first.result.value.external_constraints.region_constraints;
+        if candidates[1..].iter().all(|candidate| {
+            &candidate.result.value.external_constraints.region_constraints == region_constraints
+        }) {
+            return Some(first.result);
         }
 
-        let one: CanonicalResponse<I> = candidates[0].result;
-
-        if candidates[1..]
+        // If candidates differ only in region constraints, their merged region
+        // constraints are an OR of their respective constraints. We don't support
+        // OR constraints yet, so the only way we can merge differing candidates
+        // if one of them has no region constraints as then the OR constraint
+        // is trivially true.
+        candidates
             .iter()
-            .all(|candidate| equal_response_modulo_region_constraints(&one, &candidate.result))
-        {
-            let region_constraints = &one.value.external_constraints.region_constraints;
-            if candidates[1..].iter().all(|candidate| {
-                &candidate.result.value.external_constraints.region_constraints
-                    == region_constraints
-            }) {
-                return Some((one, MergeCandidateInfo::EqualResponse));
-            }
-
-            // If candidates differ only in region constraints, their merged region
-            // constraints are an `Or` of their respective constraints. If one of them
-            // has no region constraints, the `Or` constraint evaluates to `true`.
-            //
-            // This is a special case of `-Zassumptions-on-binders` and should be
-            // replaced eventually.
-            if let Some(candidate) = candidates.iter().find(|candidate| {
-                candidate.result.value.external_constraints.region_constraints.is_empty()
-            }) {
-                return Some((candidate.result, MergeCandidateInfo::EqualResponse));
-            }
-        }
-
-        None
+            .find(|c| c.result.value.external_constraints.region_constraints.is_empty())
+            .map(|c| c.result)
     }
 
     fn bail_with_ambiguity(&mut self, candidates: &[Candidate<I>]) -> CanonicalResponse<I> {
