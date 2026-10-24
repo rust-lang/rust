@@ -251,7 +251,9 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Install cargo-nextest
-        uses: taiki-e/install-action@nextest
+        uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.87.31
+        with:
+          tool: cargo-nextest
 
       - name: Test (Miri) (partition ${{ matrix.shard }}/4)
         run: |
