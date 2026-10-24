@@ -91,6 +91,7 @@ pub struct Command {
     program: CString,
     args: CStringArray,
     env: CommandEnv,
+    default_path: OsString,
 
     program_kind: ProgramKind,
     cwd: Option<CString>,
@@ -163,15 +164,51 @@ impl ProgramKind {
 
 impl Command {
     pub fn new(program: &OsStr) -> Command {
+        #[cfg(any(
+            all(target_os = "linux", not(target_env = "gnu")),
+            target_vendor = "apple",
+            target_os = "android",
+            target_os = "openbsd",
+            target_os = "freebsd",
+            target_os = "dragonfly"
+        ))]
+        use crate::os::unix::ffi::OsStrExt;
+        #[cfg(all(target_os = "linux", target_env = "gnu"))]
+        use crate::sys::conf::confstr;
+
         let mut saw_nul = false;
         let program_kind = ProgramKind::new(program.as_ref());
         let program = os2c(program, &mut saw_nul);
         let mut args = CStringArray::with_capacity(1);
         args.push(program.clone());
+
         Command {
             program,
             args,
             env: Default::default(),
+            default_path: cfg_select! {
+                all(target_os = "linux", target_env = "gnu") => {
+                    confstr(libc::_CS_PATH, None).unwrap_or(OsString::new())
+                }
+                any(
+                    all(target_os = "linux", not(target_env = "gnu")),
+                    target_vendor = "apple",
+                    target_os = "android",
+                    target_os = "openbsd",
+                    target_os = "freebsd",
+                    target_os = "dragonfly",
+                ) => {
+                    // SAFETY: libc::_PATH_DEFPATH is a nul-terminated char pointer
+                    unsafe {
+                        OsStr::from_bytes(crate::slice::from_raw_parts(
+                            libc::_PATH_DEFPATH.cast(),
+                            libc::strlen(libc::_PATH_DEFPATH),
+                        ))
+                        .into()
+                    }
+                }
+                _ => OsString::new(),
+            },
             program_kind,
             cwd: None,
             chroot: None,
@@ -269,6 +306,10 @@ impl Command {
 
     pub fn get_env_clear(&self) -> bool {
         self.env.does_clear()
+    }
+
+    pub fn get_default_path(&self) -> &OsStr {
+        &self.default_path
     }
 
     pub fn get_resolved_envs(&self) -> CommandResolvedEnvs {
