@@ -1,5 +1,5 @@
 use std::collections::{BTreeSet, HashSet};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use crate::core::builder::{Builder, CommandLineStepDescription};
@@ -59,12 +59,17 @@ fn render_steps_for_cli_args(args_str: &str) -> String {
 }
 
 fn snapshot_test_inner(name: &str, args_str: &str) {
-    let mut settings = insta::Settings::clone_current();
-    // Use the test name as the snapshot filename, not its whole fully-qualified name.
-    settings.set_prepend_module_to_snapshot(false);
-    settings.bind(|| {
-        insta::assert_snapshot!(name, render_steps_for_cli_args(args_str), args_str);
-    });
+    let name = Path::new("snapshots").join(format!("{name}.snap"));
+    let steps = render_steps_for_cli_args(args_str);
+    let file = file!();
+    let content = format!(
+        r"---
+source: {file}
+expression: {args_str}
+---
+{steps}"
+    );
+    expect_test::expect_file![name].assert_eq(&content);
 }
 
 /// Keep the snapshots directory tidy by forbidding `.snap` files that don't
