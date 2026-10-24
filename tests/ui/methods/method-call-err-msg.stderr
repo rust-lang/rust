@@ -7,6 +7,7 @@ LL |     x.zero(0)
 note: method defined here
   --> $DIR/method-call-err-msg.rs:5:8
    |
+LL | impl Foo {
 LL |     fn zero(self) -> Foo { self }
    |        ^^^^
 help: remove the extra argument
@@ -24,6 +25,8 @@ LL |      .one()
 note: method defined here
   --> $DIR/method-call-err-msg.rs:6:8
    |
+LL | impl Foo {
+LL |     fn zero(self) -> Foo { self }
 LL |     fn one(self, _: isize) -> Foo { self }
    |        ^^^       --------
 help: provide the argument
@@ -40,6 +43,8 @@ LL |      .two(0);
 note: method defined here
   --> $DIR/method-call-err-msg.rs:7:8
    |
+LL | impl Foo {
+...
 LL |     fn two(self, _: isize, _: isize) -> Foo { self }
    |        ^^^                 --------
 help: provide the argument
@@ -76,6 +81,8 @@ LL |     y.three::<usize>();
 note: method defined here
   --> $DIR/method-call-err-msg.rs:8:8
    |
+LL | impl Foo {
+...
 LL |     fn three<T>(self, _: T, _: T, _: T) -> Foo { self }
    |        ^^^^^          ----  ----  ----
 help: provide the arguments

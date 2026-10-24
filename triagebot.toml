@@ -26,6 +26,7 @@ allow-unauthenticated = [
     "beta-nominated",
     "CI-spurious-*",
     "const-hack",
+    "llm-assisted",
     "llvm-*",
     "needs-fcp",
     "relnotes",
@@ -614,7 +615,6 @@ trigger_files = [
     "src/doc/rustc/src/exploit-mitigations.md",
     "src/doc/unstable-book/src/compiler-flags/branch-protection.md",
     "src/doc/unstable-book/src/compiler-flags/cf-protection.md",
-    "src/doc/unstable-book/src/compiler-flags/control-flow-guard.md",
     "src/doc/unstable-book/src/compiler-flags/sanitizer.md",
     "src/doc/unstable-book/src/language-features/cfg-sanitize.md",
     "src/doc/unstable-book/src/language-features/cfi-encoding.md",
@@ -1429,9 +1429,6 @@ cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 [mentions."src/doc/unstable-book/src/compiler-flags/cf-protection.md"]
 cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 
-[mentions."src/doc/unstable-book/src/compiler-flags/control-flow-guard.md"]
-cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
-
 [mentions."src/doc/unstable-book/src/compiler-flags/sanitizer.md"]
 cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 
@@ -1646,20 +1643,6 @@ branch = "stable"
 compiler_leads = [
     "@davidtwco",
     "@boxyuwu",
-]
-libs = [
-    "@Mark-Simulacrum",
-    "@workingjubilee",
-    "@jhpratt",
-    "@tgross35",
-    "@thomcc",
-    "@joboet",
-    "@nia-e",
-    "@LawnGnome",
-    "@clarfonthey",
-    "@aapoalas",
-    "@Darksonn",
-    "@JohnTitor",
 ]
 infra-ci = [
     "@Mark-Simulacrum",

@@ -44,7 +44,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     shim_sig!(extern "C" fn(*_, i32, ...) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = this.open(None, path_raw, flag, varargs)?;
+                let result = this.open(None, &path_raw, &flag, varargs)?;
                 this.write_scalar(result, dest)?;
             }
             "openat64" => {
@@ -54,12 +54,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     shim_sig!(extern "C" fn(i32, *_, i32, ...) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = this.open(Some(dirfd), path_raw, flag, varargs)?;
+                let result = this.open(Some(&dirfd), &path_raw, &flag, varargs)?;
                 this.write_scalar(result, dest)?;
             }
             "pread64" => {
                 // FIXME: This does not have a direct test (#3179).
-                let [fd, buf, count, offset] = this.check_shim_sig(
+                let [fd, buf, count, offset] = &this.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, *_, usize, libc::off64_t) -> isize),
                     (link_name, abi, args),
                 )?;
@@ -71,7 +71,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "pwrite64" => {
                 // FIXME: This does not have a direct test (#3179).
-                let [fd, buf, n, offset] = this.check_shim_sig(
+                let [fd, buf, n, offset] = &this.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, *_, usize, libc::off64_t) -> isize),
                     (link_name, abi, args),
                 )?;
@@ -84,7 +84,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "lseek64" => {
                 // FIXME: This does not have a direct test (#3179).
-                let [fd, offset, whence] = this.check_shim_sig(
+                let [fd, offset, whence] = &this.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, libc::off64_t, i32) -> libc::off64_t),
                     (link_name, abi, args),
                 )?;
@@ -94,7 +94,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.lseek(fd, offset, whence, dest)?;
             }
             "posix_fallocate64" => {
-                let [fd, offset, len] = this.check_shim_sig(
+                let [fd, offset, len] = &this.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, libc::off64_t, libc::off64_t) -> i32),
                     (link_name, abi, args),
                 )?;
@@ -107,7 +107,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(result, dest)?;
             }
             "fallocate" => {
-                let [fd, mode, offset, len] = this.check_shim_sig(
+                let [fd, mode, offset, len] = &this.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, i32, libc::off_t, libc::off_t) -> i32),
                     (link_name, abi, args),
                 )?;
@@ -123,7 +123,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(result, dest)?;
             }
             "fallocate64" => {
-                let [fd, mode, offset, len] = this.check_shim_sig(
+                let [fd, mode, offset, len] = &this.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, i32, libc::off64_t, libc::off64_t) -> i32),
                     (link_name, abi, args),
                 )?;
@@ -137,7 +137,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(result, dest)?;
             }
             "ftruncate64" => {
-                let [fd, length] = this.check_shim_sig(
+                let [fd, length] = &this.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, libc::off64_t) -> i32),
                     (link_name, abi, args),
                 )?;
@@ -159,11 +159,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(result, dest)?;
             }
             "fstat64" => {
-                let [fd, buf] = this.check_shim_sig(
-                    shim_sig!(extern "C" fn(i32, *_) -> i32),
+                let [fd, buf] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, *libc::stat64) -> i32),
                     (link_name, abi, args),
                 )?;
-                let result = this.fstat(fd, buf, "stat64")?;
+                let result = this.fstat(fd, buf)?;
                 this.write_scalar(result, dest)?;
             }
             "readdir64" => {
@@ -257,7 +257,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     shim_sig!(extern "C" fn(*_, usize, usize, i32, ...) -> *_),
                     (link_name, abi, args),
                 )?;
-                let ptr = this.mremap(old_address, old_size, new_size, flags)?;
+                let ptr = this.mremap(&old_address, &old_size, &new_size, &flags)?;
                 this.write_scalar(ptr, dest)?;
             }
             "__xpg_strerror_r" => {

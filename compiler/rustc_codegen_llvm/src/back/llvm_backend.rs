@@ -23,7 +23,9 @@ use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductMap};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{OptLevel, OutputFilenames, PrintKind, PrintRequest};
-use rustc_session::{CodegenBackendInit, EarlySession, IncrCompSession, Session};
+use rustc_session::{
+    BorrowedIncrCompSession, CodegenBackendInit, EarlySession, IncrCompSession, Session,
+};
 use rustc_span::{Symbol, sym};
 use rustc_target::spec::{RelocModel, TlsModel};
 
@@ -122,6 +124,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     fn run_thin_lto(
         cgcx: &CodegenContext,
         prof: &SelfProfilerRef,
+        incr_comp_session: Option<&BorrowedIncrCompSession>,
         dcx: DiagCtxtHandle<'_>,
         exported_symbols_for_lto: &[String],
         each_linked_rlib_for_lto: &[PathBuf],
@@ -130,6 +133,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         back::lto::run_thin(
             cgcx,
             prof,
+            incr_comp_session,
             dcx,
             exported_symbols_for_lto,
             each_linked_rlib_for_lto,
@@ -221,21 +225,20 @@ impl CodegenBackend for LlvmCodegenBackend {
                 sym::integer_max,
                 sym::integer_min,
 
-                // Fallback via libm, but the LLVM intrinsic is used instead.
+                // Fallback via libm/compiler-builtins, but the LLVM intrinsic is used instead.
                 sym::sin,
                 sym::cos,
-                sym::powf16, sym::powf32, sym::powf64,
+                sym::powf,
+                sym::powi,
+                sym::sqrt,
                 sym::exp,
                 sym::exp2,
                 sym::log,
                 sym::log10,
                 sym::log2,
-
-                // Fallback via f32 or f64, but the LLVM intrinsic is used instead.
-                sym::floorf16, sym::ceilf16, sym::truncf16,
-                sym::round_ties_even_f16, sym::roundf16,
-                sym::sqrtf16, sym::powif16,
-                sym::fmaf16,
+                sym::floor, sym::ceil, sym::trunc,
+                sym::round, sym::round_ties_even,
+                sym::fma,
 
                 sym::copysignf16, sym::copysignf32, sym::copysignf64, sym::copysignf128,
             ];
@@ -381,21 +384,35 @@ impl CodegenBackend for LlvmCodegenBackend {
             });
         }
 
+        if sess.codegen_units().as_usize() == 1 && sess.opts.unstable_opts.time_llvm_passes {
+            let timings =
+                llvm::build_string(|s| unsafe { llvm::LLVMRustPrintPassTimings(s) }).unwrap();
+            print!("{timings}");
+        }
+
+        if sess.print_llvm_stats() {
+            let stats =
+                llvm::build_string(|s| unsafe { llvm::LLVMRustPrintStatistics(s) }).unwrap();
+            print!("{stats}");
+        }
+
+        if let Some(out_path) = sess.print_llvm_stats_json() {
+            let llvm_stats_json =
+                llvm::build_string(|s| unsafe { llvm::LLVMRustPrintStatisticsJSON(s) }).unwrap();
+
+            if !llvm_stats_json.is_empty() {
+                if let Err(e) = std::fs::write(&out_path, llvm_stats_json) {
+                    sess.dcx().err(format!("failed to write stats to {out_path}: {e}"));
+                }
+            } else {
+                sess.dcx().warn(format!(
+                    "requested to print LLVM statistics to JSON file {out_path}, but the codegen backend \
+                    did not provide any statistics",
+                ));
+            }
+        }
+
         (compiled_modules, work_products)
-    }
-
-    fn print_pass_timings(&self) {
-        let timings = llvm::build_string(|s| unsafe { llvm::LLVMRustPrintPassTimings(s) }).unwrap();
-        print!("{timings}");
-    }
-
-    fn print_statistics(&self) {
-        let stats = llvm::build_string(|s| unsafe { llvm::LLVMRustPrintStatistics(s) }).unwrap();
-        print!("{stats}");
-    }
-
-    fn print_statistics_json(&self) -> String {
-        llvm::build_string(|s| unsafe { llvm::LLVMRustPrintStatisticsJSON(s) }).unwrap()
     }
 
     fn link(

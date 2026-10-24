@@ -4403,6 +4403,30 @@ fn main() {
             ba true
         "#]],
     );
+    check(
+        r#"
+//- minicore: cfg
+//- /main.rs cfg:test,dbg=false,opt_level=2
+fn main() {
+    if cfg!(opt_level = $0)
+}
+        "#,
+        expect![[r#"
+            ba 2
+        "#]],
+    );
+    check(
+        r#"
+//- minicore: cfg
+//- /main.rs cfg:test,dbg=false,opt_level=2
+fn main() {
+    if cfg!(opt_level = "$0")
+}
+        "#,
+        expect![[r#"
+            ba 2
+        "#]],
+    );
 }
 
 #[test]

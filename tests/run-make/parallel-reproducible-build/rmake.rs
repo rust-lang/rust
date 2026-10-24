@@ -47,6 +47,16 @@ fn main() {
                 "-Clink-dead-code=true",
             ],
         ),
+        (
+            "generics-of-issue-163878",
+            &[
+                "-Zthreads=2",
+                "--edition=2024",
+                "-Zremap-cwd-prefix=reproducible_dir",
+                "-Ccodegen-units=1",
+                "--crate-type=lib",
+            ],
+        ),
     ];
 
     for (file, args) in TESTS {

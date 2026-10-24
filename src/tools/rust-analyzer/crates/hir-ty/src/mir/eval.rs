@@ -1,6 +1,6 @@
 //! This module provides a MIR interpreter, which is used in const eval.
 
-use std::{borrow::Cow, cell::RefCell, fmt::Write, iter, mem, ops::Range};
+use std::{borrow::Cow, cell::RefCell, iter, mem, ops::Range};
 
 use base_db::{Crate, target::TargetLoadError};
 use either::Either;
@@ -12,10 +12,7 @@ use hir_def::{
     lang_item::LangItems,
     layout::{TagEncoding, Variants},
     resolver::{HasResolver, ValueNs},
-    signatures::{
-        EnumSignature, FunctionSignature, StaticFlags, StaticSignature, StructFlags,
-        StructSignature, TraitSignature,
-    },
+    signatures::{EnumSignature, StaticFlags, StaticSignature, StructFlags, StructSignature},
 };
 use hir_expand::{InFile, mod_path::path};
 use la_arena::ArenaMap;
@@ -41,7 +38,6 @@ use crate::{
     CallableDefId, ComplexMemoryMap, InferBodyId, InferenceResult, MemoryMap, ParamEnvAndCrate,
     consteval::{self, ConstEvalError, try_const_usize},
     db::{GeneralConstId, HirDatabase, InternedClosureId},
-    display::{ClosureStyle, DisplayTarget, HirDisplay},
     infer::PointerCast,
     layout::{Layout, LayoutError, RustcEnumVariantIdx},
     method_resolution::{is_dyn_method, lookup_impl_const},
@@ -62,8 +58,6 @@ use super::{
 };
 
 mod shim;
-#[cfg(test)]
-mod tests;
 
 macro_rules! from_bytes {
     ($ty:tt, $value:expr) => {
@@ -375,148 +369,6 @@ pub enum MirEvalError<'db> {
     CoerceUnsizedError(StoredTy),
     /// These should not occur, usually indicates a bug in mir lowering.
     InternalError(Box<str>),
-}
-
-impl MirEvalError<'_> {
-    pub fn pretty_print(
-        &self,
-        f: &mut String,
-        db: &dyn HirDatabase,
-        span_formatter: impl Fn(FileId, TextRange) -> String,
-        display_target: DisplayTarget,
-    ) -> std::result::Result<(), std::fmt::Error> {
-        writeln!(f, "Mir eval error:")?;
-        let mut err = self;
-        while let MirEvalError::InFunction(e, stack) = err {
-            err = e;
-            for (func, span, def) in stack.iter().take(30).rev() {
-                match func {
-                    Either::Left(func) => {
-                        let function_name = FunctionSignature::of(db, *func);
-                        writeln!(
-                            f,
-                            "In function {} ({:?})",
-                            function_name.name.display(db, display_target.edition),
-                            func
-                        )?;
-                    }
-                    Either::Right(closure) => {
-                        writeln!(f, "In {closure:?}")?;
-                    }
-                }
-                let (source_map, self_param_syntax) = match *def {
-                    InferBodyId::DefWithBodyId(def) => {
-                        let body = &Body::with_source_map(db, def).1;
-                        (&**body, body.self_param_syntax())
-                    }
-                    InferBodyId::AnonConstId(def) => {
-                        let store = ExpressionStore::with_source_map(db, def.loc(db).owner).1;
-                        (store, None)
-                    }
-                };
-                let span: InFile<SyntaxNodePtr> = match *span {
-                    MirSpan::ExprId(e) => match source_map.expr_syntax(e) {
-                        Ok(s) => s.map(|it| it.into()),
-                        Err(_) => continue,
-                    },
-                    MirSpan::PatId(p) => match source_map.pat_syntax(p) {
-                        Ok(s) => s.map(|it| it.syntax_node_ptr()),
-                        Err(_) => continue,
-                    },
-                    MirSpan::BindingId(b) => {
-                        match source_map
-                            .patterns_for_binding(b)
-                            .iter()
-                            .find_map(|p| source_map.pat_syntax(*p).ok())
-                        {
-                            Some(s) => s.map(|it| it.syntax_node_ptr()),
-                            None => continue,
-                        }
-                    }
-                    MirSpan::SelfParam => match self_param_syntax {
-                        Some(s) => s.map(|it| it.syntax_node_ptr()),
-                        None => continue,
-                    },
-                    MirSpan::Unknown => continue,
-                };
-                let file_id = span.file_id.original_file(db);
-                let text_range = span.value.text_range();
-                writeln!(f, "{}", span_formatter(file_id.file_id(db), text_range))?;
-            }
-        }
-        match err {
-            MirEvalError::InFunction(..) => unreachable!(),
-            MirEvalError::LayoutError(err, ty) => {
-                write!(
-                    f,
-                    "Layout for type `{}` is not available due {err:?}",
-                    ty.as_ref()
-                        .display(db, display_target)
-                        .with_closure_style(ClosureStyle::ClosureWithId)
-                )?;
-            }
-            MirEvalError::MirLowerError(func, err) => {
-                let function_name = FunctionSignature::of(db, *func);
-                let self_ = match func.lookup(db).container {
-                    ItemContainerId::ImplId(impl_id) => Some({
-                        db.impl_self_ty(impl_id)
-                            .instantiate_identity()
-                            .skip_norm_wip()
-                            .display(db, display_target)
-                            .to_string()
-                    }),
-                    ItemContainerId::TraitId(it) => Some(
-                        TraitSignature::of(db, it)
-                            .name
-                            .display(db, display_target.edition)
-                            .to_string(),
-                    ),
-                    _ => None,
-                };
-                writeln!(
-                    f,
-                    "MIR lowering for function `{}{}{}` ({:?}) failed due:",
-                    self_.as_deref().unwrap_or_default(),
-                    if self_.is_some() { "::" } else { "" },
-                    function_name.name.display(db, display_target.edition),
-                    func
-                )?;
-                err.pretty_print(f, db, span_formatter, display_target)?;
-            }
-            MirEvalError::ConstEvalError(name, err) => {
-                MirLowerError::ConstEvalError((**name).into(), err.clone()).pretty_print(
-                    f,
-                    db,
-                    span_formatter,
-                    display_target,
-                )?;
-            }
-            MirEvalError::UndefinedBehavior(_)
-            | MirEvalError::TargetDataLayoutNotAvailable(_)
-            | MirEvalError::Panic(_)
-            | MirEvalError::MirLowerErrorForClosure(_, _)
-            | MirEvalError::TypeIsUnsized(_, _)
-            | MirEvalError::NotSupported(_)
-            | MirEvalError::InvalidConst
-            | MirEvalError::ExecutionLimitExceeded
-            | MirEvalError::StackOverflow
-            | MirEvalError::CoerceUnsizedError(_)
-            | MirEvalError::InternalError(_)
-            | MirEvalError::InvalidVTableId(_) => writeln!(f, "{err:?}")?,
-        }
-        Ok(())
-    }
-
-    pub fn is_panic(&self) -> Option<&str> {
-        let mut err = self;
-        while let MirEvalError::InFunction(e, _) = err {
-            err = e;
-        }
-        match err {
-            MirEvalError::Panic(msg) => Some(msg),
-            _ => None,
-        }
-    }
 }
 
 impl std::fmt::Debug for MirEvalError<'_> {

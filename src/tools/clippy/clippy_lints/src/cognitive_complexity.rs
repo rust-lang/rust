@@ -3,14 +3,14 @@ use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::res::MaybeDef as _;
 use clippy_utils::source::{IntoSpan as _, SpanExt as _};
 use clippy_utils::visitors::for_each_expr_without_closures;
-use clippy_utils::{LimitStack, get_async_fn_body, sym};
+use clippy_utils::{LimitStack, get_async_fn_body, is_test_function, sym};
 use core::ops::ControlFlow;
 use rustc_attr_ir::Attribute;
+use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, Expr, ExprKind, FnDecl};
 use rustc_lint::{LateContext, LateLintPass, LintContext as _, impl_lint_pass};
 use rustc_span::Span;
-use rustc_span::def_id::LocalDefId;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -144,8 +144,7 @@ impl<'tcx> LateLintPass<'tcx> for CognitiveComplexity {
         span: Span,
         def_id: LocalDefId,
     ) {
-        #[allow(deprecated)]
-        if cx.tcx.get_attrs(def_id, sym::test).next().is_none() {
+        if !is_test_function(cx.tcx, def_id) {
             let expr = if kind.asyncness().is_async() {
                 match get_async_fn_body(cx.tcx, body) {
                     Some(b) => b,
@@ -154,7 +153,7 @@ impl<'tcx> LateLintPass<'tcx> for CognitiveComplexity {
                     },
                 }
             } else {
-                &body.value
+                body.value
             };
 
             self.check(cx, kind, decl, expr, span);

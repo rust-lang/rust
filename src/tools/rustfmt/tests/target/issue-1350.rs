@@ -1,5 +1,5 @@
-// rustfmt-max_width: 120
-// rustfmt-comment_width: 110
+//@ rustfmt-max_width: 120
+//@ rustfmt-comment_width: 110
 
 impl Struct {
     fn fun() {

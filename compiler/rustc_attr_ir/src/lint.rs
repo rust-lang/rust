@@ -45,10 +45,12 @@ impl LintCheckKind {
 pub struct LintCheck {
     /// The lint's tool name, if present.
     pub tool: Option<Ident>,
-    /// The lint's name.
+    /// The lint's name, minus the tool name if any.
     ///
-    /// With e.g. `clippy::blah` this will be `blah`.
-    /// Any extra segments are stored in `rest`.
+    /// For example:
+    /// - `clippy::blah` -> `blah`
+    /// - `unstable_imports` -> `unstable_imports`
+    /// - `custom_tool::blah::bleh` -> `blah::bleh`
     pub lint_name: Symbol,
     /// The span of the lint name.
     ///
@@ -66,8 +68,4 @@ pub struct LintCheck {
     /// inside one attribute are all smooshed and flattened together, so
     /// multiple `LintCheck`s can have the same `attr_span`.
     pub attr_span: Span,
-    /// Any extra segments of the lint name (not including `tool` and `lint_name`),
-    /// this should be rare and indicates misuse of the attribute as nothing supports
-    /// 3+ segment lints like `#[allow(tool::two::three)]`.
-    pub rest: Option<Box<[Symbol]>>,
 }

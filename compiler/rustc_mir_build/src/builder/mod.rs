@@ -496,7 +496,7 @@ fn construct_fn<'tcx>(
         );
     }
 
-    let typing_mode = if tcx.use_typing_mode_post_typeck_until_borrowck() {
+    let typing_mode = if tcx.use_typing_mode_post_typeck_through_borrowck() {
         TypingMode::borrowck(tcx, fn_def)
     } else {
         // FIXME(#132279): This should be able to reveal opaque
@@ -606,7 +606,7 @@ fn construct_const<'a, 'tcx>(
         _ => span_bug!(tcx.def_span(def), "can't build MIR for {:?}", def),
     };
 
-    let typing_mode = if tcx.use_typing_mode_post_typeck_until_borrowck() {
+    let typing_mode = if tcx.use_typing_mode_post_typeck_through_borrowck() {
         TypingMode::borrowck(tcx, def)
     } else {
         // FIXME(#132279): This should be able to reveal opaque

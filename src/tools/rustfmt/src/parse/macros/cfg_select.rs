@@ -13,19 +13,27 @@ use rustc_parse::parser::{AllowConstBlockItems, ForceCollect};
 use rustc_span::Span;
 use tracing::debug;
 
+use crate::expr::is_unsafe_block;
 use crate::parse::macros::build_stream_parser;
 use crate::parse::session::ParseSess;
 use crate::spanned::Spanned;
+
+// NB: parser recovery can return `Ok(expr)` (or other non-terminals) and still emit errors. We need
+// to properly reset the shared error count.
 
 pub(crate) fn parse_items_from_cfg_select<'a>(
     psess: &'a ParseSess,
     mac: &'a ast::MacCall,
 ) -> Result<Vec<ast::Item>, &'static str> {
-    match catch_unwind(AssertUnwindSafe(|| {
+    let result = catch_unwind(AssertUnwindSafe(|| {
         parse_items_from_cfg_select_inner(psess, mac)
-    })) {
-        Ok(Ok(items)) => Ok(items),
-        Ok(err @ Err(_)) => err,
+    }));
+    let dcx = psess.inner().dcx();
+    let recovered = dcx.has_errors().is_some();
+    dcx.reset_err_count();
+    match result {
+        Ok(Ok(_)) if recovered => Err("cfg_select! parsed with recovery"),
+        Ok(res) => res,
         Err(..) => Err("failed to parse cfg_select!"),
     }
 }
@@ -71,7 +79,6 @@ fn parse_items_from_cfg_select_inner<'a>(
                 }
                 Err(err) => {
                     err.cancel();
-                    parser.psess.dcx().reset_err_count();
                     return Err(
                         "Expected item inside cfg_select block, but failed to parse it as an item",
                     );
@@ -153,12 +160,59 @@ impl std::fmt::Debug for CfgSelectArm {
     }
 }
 
+impl CfgSelectArm {
+    /// Is the cfg_select! arm written with two consecutive blocks.
+    /// For example `$predicate => {{}}`. If so, extract the inner block.
+    /// rustfmt will preserve the double block syntax.
+    pub(crate) fn double_block_inner(&self) -> Option<&ast::Expr> {
+        // In order to see if we can reach in and grab the inner block we'll
+        // check the following properties of the outer block:
+        // 1. It has a single statement that's also a block
+        // 2. It doesn't have a label
+        // 3. It isn't an unsafe block
+        // 4. It doesn't have any attributes
+        match &self.expr.kind {
+            ast::ExprKind::Block(b, label)
+                if b.stmts.len() == 1
+                    && label.is_none()
+                    && !is_unsafe_block(b)
+                    && self.expr.attrs.is_empty() =>
+            {
+                match &b.stmts[0].kind {
+                    // This is where we check that the inner block's statement is also a block
+                    ast::StmtKind::Expr(e) if matches!(e.kind, ast::ExprKind::Block(..)) => Some(e),
+                    _ => None,
+                }
+            }
+            _ => None,
+        }
+    }
+}
+
 // FIXME(ytmimi) would be nice if rustfmt didn't need to implement parsing logic on its own
 // and could instead just call rustc_attr_parsing::parse_cfg_select, but this is fine for now.
 pub(crate) fn parse_cfg_select_arms(
     psess: &ParseSess,
     ts: TokenStream,
 ) -> Option<Vec<CfgSelectArm>> {
+    let result = catch_unwind(AssertUnwindSafe(|| parse_cfg_select_arms_inner(psess, ts)));
+    let dcx = psess.inner().dcx();
+    let recovered = dcx.has_errors().is_some();
+    dcx.reset_err_count();
+    match result {
+        Ok(Some(_)) if recovered => {
+            debug!("cfg_select! arms parsed with recovery");
+            None
+        }
+        Ok(arms) => arms,
+        Err(..) => {
+            debug!("failed to parse cfg_select! arms");
+            None
+        }
+    }
+}
+
+fn parse_cfg_select_arms_inner(psess: &ParseSess, ts: TokenStream) -> Option<Vec<CfgSelectArm>> {
     let mut cfg_select_predicates = vec![];
     let mut parser = build_stream_parser(psess.inner(), ts);
 
@@ -170,12 +224,13 @@ pub(crate) fn parse_cfg_select_arms(
                 debug!("Failed to parse cfg entry in cfg_select! predicate");
                 return None;
             };
+
             CfgSelectFormatPredicate::Cfg(meta_item)
         };
 
         if let Err(e) = parser.expect(exp!(FatArrow)) {
             e.cancel();
-            debug!("Expected to find a `=>` after cfg_selec! predicate.");
+            debug!("Expected to find a `=>` after cfg_select! predicate.");
             return None;
         };
 

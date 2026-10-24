@@ -104,7 +104,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             }
             ty::TypingMode::Coherence
             | ty::TypingMode::Reflection
-            | ty::TypingMode::PostTypeckUntilBorrowck { .. }
+            | ty::TypingMode::PostTypeckThroughBorrowck { .. }
             | ty::TypingMode::PostBorrowck { .. }
             | ty::TypingMode::PostAnalysis
             | ty::TypingMode::Codegen => {

@@ -18,6 +18,7 @@ pub use rustc_span::def_id::DefPathHash;
 use rustc_span::def_id::{
     CRATE_DEF_INDEX, CrateNum, DefIndex, LOCAL_CRATE, LocalDefId, LocalDefIdMap, StableCrateId,
 };
+use rustc_span::hygiene::{HygieneRemapper, LocalExpnIdRemapper, SyntaxContextRemapper};
 use rustc_span::{SpanEncoder, Symbol, kw, sym};
 use tracing::{debug, instrument};
 
@@ -313,6 +314,9 @@ impl Definitions {
 
         let def_index = DefIndex::from_usize(self.def_id_to_key.len());
         self.first_non_det_index.replace(def_index);
+
+        SyntaxContextRemapper::with(|mut r| r.commit_end_of_determinism());
+        LocalExpnIdRemapper::with(|mut r| r.commit_end_of_determinism());
     }
 
     pub fn first_non_det_index(&self) -> DefIndex {

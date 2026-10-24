@@ -732,7 +732,11 @@ extern "C" LLVMRustResult LLVMRustOptimize(
                    PGOOptions::ColdFuncOpt::Default, DebugInfoForProfiling);
   }
 
+#if LLVM_VERSION_GE(24, 0)
+  auto PB = PassBuilder(TheModule->getContext(), TM, PTO, PGOOpt, &PIC);
+#else
   auto PB = PassBuilder(TM, PTO, PGOOpt, &PIC);
+#endif
   LoopAnalysisManager LAM;
   FunctionAnalysisManager FAM;
   CGSCCAnalysisManager CGAM;
@@ -903,6 +907,44 @@ extern "C" LLVMRustResult LLVMRustOptimize(
     }
   }
 
+  bool AddingExtraPassesFailed = false;
+  if (ExtraPassesLen) {
+    OptimizerLastEPCallbacks.push_back([&](ModulePassManager &MPM,
+                                           OptimizationLevel Level,
+                                           ThinOrFullLTOPhase Phase) {
+      if (auto Err = PB.parsePassPipeline(
+              MPM, StringRef(ExtraPasses, ExtraPassesLen))) {
+        std::string ErrMsg = toString(std::move(Err));
+        LLVMRustSetLastError(ErrMsg.c_str());
+        AddingExtraPassesFailed = true;
+      }
+    });
+  }
+
+  // Ensure that the callbacks are only run once, even if we run multiple
+  // optimization pipelines, or if -Cpasses introduces an extra optimization
+  // pipeline.
+  bool RanPipelineStartCallbacks = false;
+  auto PipelineStartEPCallback = [&](ModulePassManager &MPM,
+                                     OptimizationLevel Level) {
+    if (RanPipelineStartCallbacks)
+      return;
+    RanPipelineStartCallbacks = true;
+    for (const auto &C : PipelineStartEPCallbacks)
+      C(MPM, Level);
+  };
+
+  bool RanOptimizerLastCallbacks = false;
+  auto OptimizerLastEPCallback = [&](ModulePassManager &MPM,
+                                     OptimizationLevel Level,
+                                     ThinOrFullLTOPhase Phase) {
+    if (RanOptimizerLastCallbacks)
+      return;
+    RanOptimizerLastCallbacks = true;
+    for (const auto &C : OptimizerLastEPCallbacks)
+      C(MPM, Level, Phase);
+  };
+
   ModulePassManager MPM;
   bool NeedThinLTOBufferPasses = true;
   auto ThinLTOBuffer = std::make_unique<LLVMRustBuffer>();
@@ -920,10 +962,8 @@ extern "C" LLVMRustResult LLVMRustOptimize(
     }
   } else {
     if (!NoPrepopulatePasses) {
-      for (const auto &C : PipelineStartEPCallbacks)
-        PB.registerPipelineStartEPCallback(C);
-      for (const auto &C : OptimizerLastEPCallbacks)
-        PB.registerOptimizerLastEPCallback(C);
+      PB.registerPipelineStartEPCallback(PipelineStartEPCallback);
+      PB.registerOptimizerLastEPCallback(OptimizerLastEPCallback);
 
       // The pre-link pipelines don't support O0 and require using
       // buildO0DefaultPipeline() instead. At the same time, the LTO pipelines
@@ -974,20 +1014,12 @@ extern "C" LLVMRustResult LLVMRustOptimize(
     } else {
       // We're not building any of the default pipelines but we still want to
       // add the verifier, instrumentation, etc passes if they were requested
-      for (const auto &C : PipelineStartEPCallbacks)
-        C(MPM, OptLevel);
-      for (const auto &C : OptimizerLastEPCallbacks)
-        C(MPM, OptLevel, ThinOrFullLTOPhase::None);
+      PipelineStartEPCallback(MPM, OptLevel);
+      OptimizerLastEPCallback(MPM, OptLevel, ThinOrFullLTOPhase::None);
     }
 
-    if (ExtraPassesLen) {
-      if (auto Err = PB.parsePassPipeline(
-              MPM, StringRef(ExtraPasses, ExtraPassesLen))) {
-        std::string ErrMsg = toString(std::move(Err));
-        LLVMRustSetLastError(ErrMsg.c_str());
-        return LLVMRustResult::Failure;
-      }
-    }
+    if (AddingExtraPassesFailed)
+      return LLVMRustResult::Failure;
 
     if (NeedThinLTOBufferPasses) {
       MPM.addPass(CanonicalizeAliasesPass());
@@ -1173,7 +1205,13 @@ extern "C" LLVMRustResult LLVMRustPrintModule(LLVMModuleRef M, const char *Path,
 }
 
 extern "C" void LLVMRustPrintPasses() {
+#if LLVM_VERSION_GE(24, 0)
+  LLVMContext C;
+  PassBuilder PB(C);
+#else
   PassBuilder PB;
+#endif
+
   PB.printPassNames(outs());
 }
 
@@ -1526,7 +1564,11 @@ extern "C" LLVMRustBuffer *LLVMRustModuleSerialize(LLVMModuleRef M,
   {
     auto OS = raw_string_ostream(Ret->data);
     {
+#if LLVM_VERSION_GE(24, 0)
+      PassBuilder PB(unwrap(M)->getContext());
+#else
       PassBuilder PB;
+#endif
       LoopAnalysisManager LAM;
       FunctionAnalysisManager FAM;
       CGSCCAnalysisManager CGAM;

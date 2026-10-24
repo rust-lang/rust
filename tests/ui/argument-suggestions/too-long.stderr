@@ -9,6 +9,7 @@ LL |     qux.foo(a, b, c, d, e, f, g, h, i, j, k, l);
 note: method defined here
   --> $DIR/too-long.rs:4:8
    |
+LL | impl Qux {
 LL |     fn foo(
    |        ^^^
 ...

@@ -267,7 +267,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 };
 
                 let ([start], _) = this.check_varargs(shim_varargs![i32], varargs, cmd_name)?;
-                let start = this.read_scalar(start)?.to_i32()?;
+                let start = this.read_scalar(&start)?.to_i32()?;
 
                 if let Some(fd) = this.machine.fds.get(fd_num) {
                     interp_ok(Scalar::from_i32(this.machine.fds.insert_with_min_num(fd, start)))
@@ -291,7 +291,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 let ([flag], _) =
                     this.check_varargs(shim_varargs![i32], varargs, "fcntl(fd, F_SETFL, ...)")?;
-                let flag = this.read_scalar(flag)?.to_i32()?;
+                let flag = this.read_scalar(&flag)?.to_i32()?;
 
                 // Ignore flags that never get stored by SETFL.
                 // "File access mode (O_RDONLY, O_WRONLY, O_RDWR) and file

@@ -210,6 +210,7 @@ impl SingleAttributeParser for DeprecatedParser {
         Some(AttributeKind::Deprecated {
             deprecation: Deprecation { since, note, suggestion },
             span: cx.attr_span,
+            is_inner: matches!(cx.attr_style, rustc_ast::AttrStyle::Inner),
         })
     }
 }

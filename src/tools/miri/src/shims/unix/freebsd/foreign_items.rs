@@ -151,7 +151,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // FreeBSD uses __xuname under the hood to implement uname, see:
                 // https://github.com/freebsd/freebsd-src/blob/3542d60fb8042474f66fbf2d779ed8c5a80d0f78/sys/sys/utsname.h#L64
                 // https://github.com/freebsd/freebsd-src/blob/3542d60fb8042474f66fbf2d779ed8c5a80d0f78/lib/libc/gen/uname.c#L44
-                let [size, uname] = this.check_shim_sig(
+                let [size, uname] = &this.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, *_) -> i32),
                     (link_name, abi, args),
                 )?;
