@@ -345,7 +345,7 @@ pub(crate) struct CrateRootUnhashed {
 }
 
 rustc_index::newtype_index! {
-    // #[max = 0x1FFF_FFFF] // `u32::MAX` >> 3, as `SyntaxContext` should be fit in 29 bits (see `span_encoding`).
+    #[max = 0xFFFF_FFFF] // `u32::MAX` >> 3, as `SyntaxContext` should be fit in 29 bits (see `span_encoding`).
     #[default]
     pub(super) struct RemappedSyntaxContext {}
 }
