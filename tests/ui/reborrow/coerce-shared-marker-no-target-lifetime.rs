@@ -1,5 +1,6 @@
-//@ known-bug: unknown
 //@ edition: 2024
+//! Regression test for an ICE when coercing through a `CoerceShared` impl whose target has no
+//! lifetime parameter.
 
 #![feature(reborrow)]
 
@@ -17,5 +18,4 @@ fn method(_a: CustomMarkerRef) {}
 fn main() {
     let a = CustomMarker(PhantomData);
     method(a);
-    //~^ ERROR
 }

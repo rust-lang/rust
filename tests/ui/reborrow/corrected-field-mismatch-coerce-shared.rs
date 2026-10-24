@@ -1,4 +1,6 @@
-//@ known-bug: unknown
+//! Regression test for an ICE in borrowck when a `CoerceShared` coercion goes through an impl
+//! whose target field does not correspond to the source field.
+//! See <https://github.com/rust-lang/rust/issues/156315>.
 
 #![feature(reborrow)]
 
