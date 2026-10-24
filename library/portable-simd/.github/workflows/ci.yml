@@ -99,16 +99,18 @@ jobs:
       - name: Configure RUSTFLAGS
         shell: bash
         run: |
-          case "${{ matrix.target_feature }}" in
+          case "${TARGET_FEATURE}" in
             default)
               echo "RUSTFLAGS=-Dwarnings" >> $GITHUB_ENV;;
             native)
               echo "RUSTFLAGS=-Dwarnings -Ctarget-cpu=native" >> $GITHUB_ENV
               ;;
             *)
-              echo "RUSTFLAGS=-Dwarnings -Ctarget-feature=${{ matrix.target_feature }}" >> $GITHUB_ENV
+              echo "RUSTFLAGS=-Dwarnings -Ctarget-feature=${TARGET_FEATURE}" >> $GITHUB_ENV
               ;;
           esac
+        env:
+          TARGET_FEATURE: ${{ matrix.target_feature }}
 
       # Super useful for debugging why a SIGILL occurred.
       - name: Dump target configuration and support
@@ -259,13 +261,15 @@ jobs:
       - name: Configure RUSTFLAGS
         shell: bash
         run: |
-          case "${{ matrix.target_feature }}" in
+          case "${TARGET_FEATURE}" in
             default)
               echo "RUSTFLAGS=" >> $GITHUB_ENV;;
             *)
-              echo "RUSTFLAGS=-Ctarget-feature=${{ matrix.target_feature }}" >> $GITHUB_ENV
+              echo "RUSTFLAGS=-Ctarget-feature=${TARGET_FEATURE}" >> $GITHUB_ENV
               ;;
           esac
+        env:
+          TARGET_FEATURE: ${{ matrix.target_feature }}
 
       - name: Test (debug)
         run: cross test --verbose --target=${TARGET}
