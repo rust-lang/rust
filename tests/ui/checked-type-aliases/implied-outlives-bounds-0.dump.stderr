@@ -1,0 +1,34 @@
+error: rustc_dump_inferred_outlives
+  --> $DIR/implied-outlives-bounds-0.rs:10:1
+   |
+LL | type TypeOutlives<'a, T> = &'a T;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: T: 'a
+
+error: rustc_dump_inferred_outlives
+  --> $DIR/implied-outlives-bounds-0.rs:15:1
+   |
+LL | type RegionOutlives<'a, 'b> = &'a &'b ();
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: 'b: 'a
+
+error: rustc_dump_inferred_outlives
+  --> $DIR/implied-outlives-bounds-0.rs:21:1
+   |
+LL | struct Outer0<'a, T>(ExplicitTypeOutlives<'a, T>);
+   | ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: T: 'a
+
+error: rustc_dump_inferred_outlives
+  --> $DIR/implied-outlives-bounds-0.rs:29:1
+   |
+LL | type Outer1<'b, U> = TypeOutlives<'b, U>;
+   | ^^^^^^^^^^^^^^^^^^
+   |
+   = note: U: 'b
+
+error: aborting due to 4 previous errors
+
