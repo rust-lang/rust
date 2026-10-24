@@ -1104,6 +1104,10 @@ cc = ["@BoxyUwU"]
 message = "Some changes occurred in `rustc_ty_utils::consts.rs`"
 cc = ["@BoxyUwU"]
 
+[mentions."compiler/rustc_ty_utils/src/layout/invariant.rs"]
+message = "Layout invariants are being changed"
+cc = ["@RalfJung"]
+
 [mentions."compiler/rustc_trait_selection/src/solve/"]
 message = "Some changes occurred to the core trait solver"
 cc = ["@rust-lang/initiative-trait-system-refactor"]
