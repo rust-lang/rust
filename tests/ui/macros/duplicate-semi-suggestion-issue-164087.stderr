@@ -1,0 +1,35 @@
+error: expected expression, found keyword `trait`
+  --> $DIR/duplicate-semi-suggestion-issue-164087.rs:2:12
+   |
+LL | macro_rules! a {
+LL |     () => {trait A {}; 0}
+   |            ^^^^^ expected expression
+...
+LL |     let a = a!();
+   |             ---- in this macro invocation
+   |
+   = note: the macro call doesn't expand to an expression, but it can expand to a statement
+help: surround the macro invocation with `{}` to interpret the expansion as a statement
+   |
+LL -     let a = a!();
+LL +     let a = { a!(); };
+   |
+
+error: expected expression, found keyword `trait`
+  --> $DIR/duplicate-semi-suggestion-issue-164087.rs:2:12
+   |
+LL | macro_rules! a {
+LL |     () => {trait A {}; 0}
+   |            ^^^^^ expected expression
+...
+LL |     a!()
+   |     ---- in this macro invocation
+   |
+   = note: the macro call doesn't expand to an expression, but it can expand to a statement
+help: add `;` to interpret the expansion as a statement
+   |
+LL |     a!();
+   |         +
+
+error: aborting due to 2 previous errors
+
