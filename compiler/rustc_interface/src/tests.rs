@@ -70,14 +70,8 @@ where
         static USING_INTERNAL_FEATURES: AtomicBool = AtomicBool::new(false);
 
         let sess = build_early_session(sessopts, target, None);
-        let sess = build_session(
-            sess,
-            CodegenBackendInit::default(),
-            io,
-            Default::default(),
-            "",
-            &USING_INTERNAL_FEATURES,
-        );
+        let sess =
+            build_session(sess, CodegenBackendInit::default(), io, "", &USING_INTERNAL_FEATURES);
         let cfg = parse_cfg(&sess, matches.opt_strs("cfg"));
         f(sess, cfg)
     });
