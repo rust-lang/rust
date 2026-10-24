@@ -28,9 +28,10 @@ wasi = "=0.14.2"
 
 
 [dependencies.tikv-jemalloc-sys]
-version = "0.6.1"
 optional = true
 features = ['override_allocator_on_supported_platforms']
+git = "https://github.com/mati865/jemallocator"
+rev = "c4d16a3de335b4a930cbb1ecaebcb860e4eccb0a"
 
 [features]
 # tidy-alphabetical-start
