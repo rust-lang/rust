@@ -16,7 +16,7 @@ use rustc_session::diagnostics::report_lit_error;
 use rustc_span::{
     ByteSymbol, DUMMY_SP, DesugaringKind, Ident, Span, Spanned, Symbol, respan, span_bug, sym,
 };
-use thin_vec::{ThinVec, thin_vec};
+use thin_vec::ThinVec;
 mod closure;
 
 use crate::diagnostics::{
@@ -1933,13 +1933,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
     /// Desugar `ExprKind::Try` from: `<expr>?` into:
     /// ```ignore (pseudo-rust)
     /// match Try::branch(<expr>) {
-    ///     ControlFlow::Continue(val) => #[allow(unreachable_code)] val,,
+    ///     ControlFlow::Continue(val) => val,
     ///     ControlFlow::Break(residual) =>
-    ///         #[allow(unreachable_code)]
-    ///         // If there is an enclosing `try {...}`:
-    ///         break 'catch_target Residual::into_try_type(residual),
+    ///         // If there is an enclosing homogeneous `try {...}`:
+    ///         break 'catch_target residual_into_try_type(residual),
+    ///         // If there is an enclosing heterogeneous`try {...}`:
+    ///         break 'catch_target FromResidual::from_residual(residual),
     ///         // Otherwise:
-    ///         return Try::from_residual(residual),
+    ///         return FromResidual::from_residual(residual),
     /// }
     /// ```
     fn lower_expr_try(&mut self, span: Span, sub_expr: &Expr) -> hir::ExprKind<'hir> {
@@ -1967,21 +1968,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
             )
         };
 
-        let attrs: AttrVec = thin_vec![self.unreachable_code_attr(try_span)];
-
-        // `ControlFlow::Continue(val) => #[allow(unreachable_code)] val,`
+        // `ControlFlow::Continue(val) => val,`
         let continue_arm = {
             let val_ident = Ident::with_dummy_span(sym::val);
             let (val_pat, val_pat_nid) = self.pat_ident(span, val_ident);
             let val_expr = self.expr_ident(span, val_ident, val_pat_nid);
-            self.lower_attrs(val_expr.hir_id, &attrs, span, Target::Expression);
             let continue_pat = self.pat_cf_continue(unstable_span, val_pat);
             self.arm(continue_pat, val_expr, try_span)
         };
 
-        // `ControlFlow::Break(residual) =>
-        //     #[allow(unreachable_code)]
-        //     return Try::from_residual(residual),`
+        // `ControlFlow::Break(residual) => <return or break> <constructor>(residual),`
         let break_arm = {
             let residual_ident = Ident::with_dummy_span(sym::residual);
             let (residual_local, residual_local_nid) = self.pat_ident(try_span, residual_ident);
@@ -2016,7 +2012,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let ret_expr = self.checked_return(Some(from_residual_expr));
                 self.arena.alloc(self.expr(try_span, ret_expr))
             };
-            self.lower_attrs(ret_expr.hir_id, &attrs, span, Target::Expression);
 
             let break_pat = self.pat_cf_break(try_span, residual_local);
             self.arm(break_pat, ret_expr, try_span)
@@ -2356,18 +2351,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
             span: self.lower_span(span),
             body: expr,
         }
-    }
-
-    /// `#[allow(unreachable_code)]`
-    pub(super) fn unreachable_code_attr(&mut self, span: Span) -> Attribute {
-        let attr = attr::mk_attr_nested_word(
-            &self.tcx.sess.psess.attr_id_generator,
-            AttrStyle::Outer,
-            sym::allow,
-            sym::unreachable_code,
-            span,
-        );
-        attr
     }
 }
 

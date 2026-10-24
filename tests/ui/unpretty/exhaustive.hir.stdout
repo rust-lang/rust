@@ -236,14 +236,8 @@ mod expressions {
         type_ascribe!({ from_output(()) }, Option<_>);
         type_ascribe!({
                 from_output(match branch(None) {
-                        Break {  0: residual } =>
-                            #[attr = LintCheck([LintCheck {lint_name: "unreachable_code",
-                            kind: Allow}])]
-                            break from_residual(residual),
-                        Continue {  0: val } =>
-                            #[attr = LintCheck([LintCheck {lint_name: "unreachable_code",
-                            kind: Allow}])]
-                            val,
+                        Break {  0: residual } => break from_residual(residual),
+                        Continue {  0: val } => val,
                     })
             }, Option<String>)
     }
@@ -364,14 +358,8 @@ mod expressions {
     fn expr_try() {
         let expr;
         match branch(expr) {
-            Break {  0: residual } =>
-                #[attr = LintCheck([LintCheck {lint_name: "unreachable_code",
-                kind: Allow}])]
-                return from_residual(residual),
-            Continue {  0: val } =>
-                #[attr = LintCheck([LintCheck {lint_name: "unreachable_code",
-                kind: Allow}])]
-                val,
+            Break {  0: residual } => return from_residual(residual),
+            Continue {  0: val } => val,
         };
     }
     /// ExprKind::Yield
