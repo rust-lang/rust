@@ -805,6 +805,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
         {
             body
         } else {
+            let remove_span = if arm.span.eq_ctxt(arm.pat.span) {
+                arm.span.with_lo(arm.pat.span.hi())
+            } else {
+                // This will remove the never pattern too, but that is syntactically correct.
+                arm.span
+            };
             // Either `body.is_none()` or `is_never_pattern` here.
             if !is_never_pattern {
                 if self.tcx.features().never_patterns() {
@@ -813,9 +819,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self.dcx().emit_err(MatchArmWithNoBody { span, suggestion });
                 }
             } else if let Some(body) = &arm.body {
-                self.dcx().emit_err(NeverPatternWithBody { span: body.span });
+                self.dcx().emit_err(NeverPatternWithBody { span: body.span, remove_span });
             } else if let Some(g) = &arm.guard {
-                self.dcx().emit_err(NeverPatternWithGuard { span: g.span() });
+                self.dcx().emit_err(NeverPatternWithGuard { span: g.span(), remove_span });
             }
 
             // We add a fake `loop {}` arm body so that it typecks to `!`. The mir lowering of never
