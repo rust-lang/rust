@@ -435,8 +435,6 @@ impl Duration {
     /// assert!(result.is_err());
     /// ```
     #[unstable(feature = "non_panicking_duration_conversion", issue = "153678")]
-    #[rustc_const_unstable(feature = "non_panicking_duration_conversion", issue = "153678")]
-    #[rustc_const_stable_indirect]
     #[inline]
     pub const fn try_from_nanos_u128(nanos: u128) -> Result<Duration, DurationConversionError> {
         const NANOS_PER_SEC: u128 = self::NANOS_PER_SEC as u128;
@@ -500,8 +498,6 @@ impl Duration {
     /// assert!(result.is_err());
     /// ```
     #[unstable(feature = "non_panicking_duration_conversion", issue = "153678")]
-    #[rustc_const_unstable(feature = "non_panicking_duration_conversion", issue = "153678")]
-    #[rustc_const_stable_indirect]
     #[inline]
     pub const fn try_from_weeks(weeks: u64) -> Result<Duration, DurationConversionError> {
         const SECS_PER_WEEK: u64 = SECS_PER_MINUTE * MINS_PER_HOUR * HOURS_PER_DAY * DAYS_PER_WEEK;
@@ -560,8 +556,6 @@ impl Duration {
     /// assert!(result.is_err());
     /// ```
     #[unstable(feature = "non_panicking_duration_conversion", issue = "153678")]
-    #[rustc_const_unstable(feature = "non_panicking_duration_conversion", issue = "153678")]
-    #[rustc_const_stable_indirect]
     #[inline]
     pub const fn try_from_days(days: u64) -> Result<Duration, DurationConversionError> {
         const SECS_PER_DAY: u64 = SECS_PER_MINUTE * MINS_PER_HOUR * HOURS_PER_DAY;
@@ -620,8 +614,6 @@ impl Duration {
     /// assert!(result.is_err());
     /// ```
     #[unstable(feature = "non_panicking_duration_conversion", issue = "153678")]
-    #[rustc_const_unstable(feature = "non_panicking_duration_conversion", issue = "153678")]
-    #[rustc_const_stable_indirect]
     #[inline]
     pub const fn try_from_hours(hours: u64) -> Result<Duration, DurationConversionError> {
         const SECS_PER_HOUR: u64 = SECS_PER_MINUTE * MINS_PER_HOUR;
@@ -680,8 +672,6 @@ impl Duration {
     /// assert!(result.is_err());
     /// ```
     #[unstable(feature = "non_panicking_duration_conversion", issue = "153678")]
-    #[rustc_const_unstable(feature = "non_panicking_duration_conversion", issue = "153678")]
-    #[rustc_const_stable_indirect]
     #[inline]
     pub const fn try_from_mins(mins: u64) -> Result<Duration, DurationConversionError> {
         if mins > u64::MAX / SECS_PER_MINUTE {
