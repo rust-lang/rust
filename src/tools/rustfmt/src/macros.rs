@@ -24,8 +24,8 @@ use crate::comment::{
     CharClasses, FindUncommented, FullCodeCharKind, LineClasses,
     combine_strs_with_missing_comments, contains_comment, recover_comment_removed, rewrite_comment,
 };
-use crate::config::StyleEdition;
 use crate::config::lists::*;
+use crate::config::{ControlBraceStyle, StyleEdition};
 use crate::expr::{RhsAssignKind, rewrite_array, rewrite_assign_rhs};
 use crate::header::{HeaderPart, format_header};
 use crate::is_nightly_channel;
@@ -1724,9 +1724,13 @@ fn rewrite_cfg_select_arm(
                     ""
                 };
 
-                // Match `match` layout for after arrow comment, where comment and expr each
-                // go on own lines.
-                let prefix_width = if after_arrow_comment.is_some() {
+                // Force next-line layout if there's a comment after `=>`, like `match` arms.
+                let next_line_open_brace = matches!(
+                    context.config.control_brace_style(),
+                    ControlBraceStyle::AlwaysNextLine,
+                ) || after_arrow_comment.is_some();
+
+                let prefix_width = if next_line_open_brace {
                     0
                 } else {
                     extra_offset(&predicate_str, nested_shape) + " => ".len()
@@ -1742,6 +1746,10 @@ fn rewrite_cfg_select_arm(
                     Some(comment) => {
                         let indent = nested_shape.indent.to_string_with_newline(context.config);
                         Ok(format!("{predicate_str} =>{indent}{comment}{indent}{body}"))
+                    }
+                    None if next_line_open_brace => {
+                        let indent = nested_shape.indent.to_string_with_newline(context.config);
+                        Ok(format!("{predicate_str} =>{indent}{body}"))
                     }
                     None => Ok(format!("{predicate_str} => {body}")),
                 }

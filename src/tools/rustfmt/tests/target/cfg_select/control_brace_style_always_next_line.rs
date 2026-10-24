@@ -11,11 +11,13 @@ cfg_select! {
 }
 
 cfg_select! {
-    _ => {{ x }}
+    _ =>
+    {{ x }}
 }
 
 cfg_select! {
-    _ => {{ x }}
+    _ =>
+    {{ x }}
 }
 
 cfg_select! {
@@ -24,5 +26,6 @@ cfg_select! {
 }
 
 cfg_select! {
-    _ => {unsafe { x }}
+    _ =>
+    {unsafe { x }}
 }
