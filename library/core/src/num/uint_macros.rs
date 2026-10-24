@@ -778,11 +778,12 @@ macro_rules! uint_impl {
         /// ```
         #[doc(alias = "pext")]
         #[unstable(feature = "uint_gather_scatter_bits", issue = "149069")]
+        #[rustc_const_unstable(feature = "uint_gather_scatter_bits", issue = "149069")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
         pub const fn extract_bits(self, mask: Self) -> Self {
-            imp::int_bits::$ActualT::extract_impl(self as $ActualT, mask as $ActualT) as $SelfT
+            intrinsics::extract_bits(self as $ActualT, mask as $ActualT) as $SelfT
         }
 
         /// Returns an integer with the least significant bits of `self`
@@ -796,11 +797,12 @@ macro_rules! uint_impl {
         /// ```
         #[doc(alias = "pdep")]
         #[unstable(feature = "uint_gather_scatter_bits", issue = "149069")]
+        #[rustc_const_unstable(feature = "uint_gather_scatter_bits", issue = "149069")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
         pub const fn deposit_bits(self, mask: Self) -> Self {
-            imp::int_bits::$ActualT::deposit_impl(self as $ActualT, mask as $ActualT) as $SelfT
+            intrinsics::deposit_bits(self as $ActualT, mask as $ActualT) as $SelfT
         }
 
         /// Reverses the order of bits in the integer. The least significant bit becomes the most significant bit,
