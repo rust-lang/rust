@@ -471,6 +471,7 @@ macro_rules! hash_map {
 ///
 /// The function's signature must still be valid on the documentation target.
 #[rustc_builtin_macro]
+#[allow(unused_macros)]
 pub(crate) macro rustdoc_skip_body($item:item) {
     /* compiler built-in */
 }
