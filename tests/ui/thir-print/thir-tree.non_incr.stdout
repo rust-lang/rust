@@ -5,7 +5,7 @@ body:
     Expr {
         ty: ()
         temp_scope_id: 2
-        span: $DIR/thir-tree.rs:4:15: 4:17 (#0)
+        span: $DIR/thir-tree.rs:8:15: 8:17 (#0)
         kind: 
             Scope {
                 region_scope: Node(2)
@@ -14,11 +14,11 @@ body:
                     Expr {
                         ty: ()
                         temp_scope_id: 2
-                        span: $DIR/thir-tree.rs:4:15: 4:17 (#0)
+                        span: $DIR/thir-tree.rs:8:15: 8:17 (#0)
                         kind: 
                             Block {
                                 targeted_by_break: false
-                                span: $DIR/thir-tree.rs:4:15: 4:17 (#0)
+                                span: $DIR/thir-tree.rs:8:15: 8:17 (#0)
                                 region_scope: Node(1)
                                 safety_mode: Safe
                                 stmts: []
