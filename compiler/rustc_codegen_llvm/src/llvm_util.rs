@@ -271,6 +271,7 @@ pub(crate) fn to_llvm_features<'a>(target: &Target, s: &'a str) -> Option<LLVMFe
             s => Some(LLVMFeature::new(s)),
         },
         Arch::Nvptx64 => match s {
+            "ptx91" | "ptx92" | "ptx93" if major < 23 => None,
             "sm_101" if major >= 24 => Some(LLVMFeature::new("sm_110")),
             "sm_101a" if major >= 24 => Some(LLVMFeature::new("sm_110a")),
             "sm_101f" if major >= 24 => Some(LLVMFeature::new("sm_110f")),
