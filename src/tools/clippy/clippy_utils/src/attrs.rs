@@ -63,6 +63,21 @@ pub fn get_builtin_attr<'a, A: AttributeExt + 'a>(attrs: &'a [A], name: Symbol) 
     })
 }
 
+/// Retrieves the span of a Clippy attribute, such as `#[clippy::format_args]`.
+///
+/// Panics if used on an attribute that isn't a tool attribute, so always check
+/// for that first with e.g. `path` or `path_matches`.
+pub fn span_of_clippy_attr(attr: &(impl AttributeExt + 'static)) -> Span {
+    let a: &dyn core::any::Any = attr;
+    if let Some(a) = a.downcast_ref::<rustc_ast::ast::Attribute>() {
+        a.span
+    } else if let Some(rustc_attr_ir::Attribute::Unparsed(u)) = a.downcast_ref::<rustc_attr_ir::Attribute>() {
+        u.span
+    } else {
+        panic!("attribute {attr:?} is not a clippy attribute")
+    }
+}
+
 /// If `attrs` contain exactly one instance of a built-in Clippy attribute called `name`,
 /// returns that attribute, and `None` otherwise
 pub fn get_unique_builtin_attr<'a, A: AttributeExt>(sess: &'a Session, attrs: &'a [A], name: Symbol) -> Option<&'a A> {
@@ -70,8 +85,8 @@ pub fn get_unique_builtin_attr<'a, A: AttributeExt>(sess: &'a Session, attrs: &'
     for attr in get_builtin_attr(attrs, name) {
         if let Some(duplicate) = unique_attr {
             sess.dcx()
-                .struct_span_err(attr.span(), format!("`{name}` is defined multiple times"))
-                .with_span_note(duplicate.span(), "first definition found here")
+                .struct_span_err(span_of_clippy_attr(attr), format!("`{name}` is defined multiple times"))
+                .with_span_note(span_of_clippy_attr(duplicate), "first definition found here")
                 .emit();
         } else {
             unique_attr = Some(attr);
@@ -181,11 +196,11 @@ impl LimitStack {
 fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &[impl AttributeExt], name: Symbol, mut f: F) {
     for attr in get_builtin_attr(attrs, name) {
         let Some(value) = attr.value_str() else {
-            sess.dcx().span_err(attr.span(), "bad clippy attribute");
+            sess.dcx().span_err(span_of_clippy_attr(attr), "bad clippy attribute");
             continue;
         };
         let Ok(value) = u64::from_str(value.as_str()) else {
-            sess.dcx().span_err(attr.span(), "not a number");
+            sess.dcx().span_err(span_of_clippy_attr(attr), "not a number");
             continue;
         };
         f(value);

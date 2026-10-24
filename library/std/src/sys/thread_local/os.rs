@@ -253,8 +253,25 @@ unsafe extern "C" fn destroy_value<T: 'static, const ALIGN: usize>(ptr: *mut u8)
 #[rustc_macro_transparency = "semiopaque"]
 pub(crate) macro local_pointer {
     () => {},
+    // A local pointer stays readable until `crate::rt::thread_cleanup` has run.
+    // The guard decides whether the key needs a destructor for that, which
+    // stores the value again for as long as the cleanup is pending.
     ($vis:vis static $name:ident; $($rest:tt)*) => {
-        $vis static $name: $crate::sys::thread_local::LocalPointer = $crate::sys::thread_local::LocalPointer::__new();
+        $vis static $name: $crate::sys::thread_local::LocalPointer = {
+            unsafe extern "C" fn keep(value: *mut u8) {
+                if $crate::sys::thread_local::guard::cleanup_pending() {
+                    $name.set(value.cast());
+                }
+            }
+
+            $crate::sys::thread_local::LocalPointer::__new(
+                if $crate::sys::thread_local::guard::LOCAL_POINTER_NEEDS_DTOR {
+                    Some(keep)
+                } else {
+                    None
+                },
+            )
+        };
         $crate::sys::thread_local::local_pointer! { $($rest)* }
     },
 }
@@ -264,8 +281,8 @@ pub(crate) struct LocalPointer {
 }
 
 impl LocalPointer {
-    pub const fn __new() -> LocalPointer {
-        LocalPointer { key: LazyKey::new(None) }
+    pub const fn __new(dtor: Option<unsafe extern "C" fn(*mut u8)>) -> LocalPointer {
+        LocalPointer { key: LazyKey::new(dtor) }
     }
 
     pub fn get(&'static self) -> *mut () {
