@@ -248,10 +248,6 @@ impl AttributeExt for Attribute {
         }
     }
 
-    fn is_automatically_derived_attr(&self) -> bool {
-        self.has_name(sym::automatically_derived)
-    }
-
     fn is_doc_hidden(&self) -> bool {
         match &self.kind {
             AttrKind::Normal(_) => {
@@ -999,9 +995,6 @@ pub trait AttributeExt: Debug + 'static {
     /// Returns whether this attribute is any of the proc macro attributes.
     /// i.e. `proc_macro`, `proc_macro_attribute` or `proc_macro_derive`.
     fn is_proc_macro_attr(&self) -> bool;
-
-    /// Returns true if this attribute is `#[automatically_deived]`.
-    fn is_automatically_derived_attr(&self) -> bool;
 
     /// Returns the documentation and its kind if this is a doc comment or a sugared doc comment.
     /// * `///doc` returns `Some(("doc", CommentKind::Line))`.
