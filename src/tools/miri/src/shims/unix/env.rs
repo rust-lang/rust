@@ -367,7 +367,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1_i32(LibcError("EFAULT"));
         }
 
-        let uname = this.deref_pointer_as(uname, this.libc_ty_layout("utsname"))?;
+        let uname = this.deref_pointer(uname)?;
         let arch = this.machine.tcx.sess.target.arch.desc_symbol();
         // Values required by POSIX.
         let mut values = vec![
@@ -428,7 +428,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // This returns an `int`, not a `pthread_t`, so we treat it like we treat `gettid` on Linux.
         let tid = this.get_tid(thread);
-        let tid_dest = this.deref_pointer_as(tid_op, this.machine.layouts.u64)?;
+        let tid_dest = this.deref_pointer(tid_op)?;
         this.write_int(tid, &tid_dest)?;
 
         // Possible errors have been handled, return success.
