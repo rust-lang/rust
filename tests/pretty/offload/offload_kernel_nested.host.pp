@@ -22,7 +22,7 @@ fn kernel() {
     #[inline(never)]
     fn inner_kernel() {
 
-        ::core::panicking::panic("not implemented")
+        ::core::panicking::unimplemented_default_msg()
     }
 }
 fn main() {}
