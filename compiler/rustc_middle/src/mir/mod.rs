@@ -310,15 +310,6 @@ pub struct Body<'tcx> {
 
     pub tainted_by_errors: Option<ErrorGuaranteed>,
 
-    /// Coverage information collected at the THIR/MIR boundary during MIR
-    /// building, to be used by the `InstrumentCoverage` pass.
-    ///
-    /// Only present if coverage is enabled and this function is eligible.
-    /// Boxed to limit space overhead in non-coverage builds.
-    #[type_foldable(identity)]
-    #[type_visitable(ignore)]
-    pub coverage_early_info: Option<Box<coverage::CoverageEarlyInfo>>,
-
     /// Per-function coverage information added by the `InstrumentCoverage`
     /// pass, to be used in conjunction with the coverage statements injected
     /// into this body's blocks.
@@ -369,7 +360,6 @@ impl<'tcx> Body<'tcx> {
             is_polymorphic: false,
             injection_phase: None,
             tainted_by_errors,
-            coverage_early_info: None,
             coverage_mir_info: None,
         };
         body.is_polymorphic = body.has_non_region_param();
@@ -400,7 +390,6 @@ impl<'tcx> Body<'tcx> {
             is_polymorphic: false,
             injection_phase: None,
             tainted_by_errors: None,
-            coverage_early_info: None,
             coverage_mir_info: None,
         };
         body.is_polymorphic = body.has_non_region_param();

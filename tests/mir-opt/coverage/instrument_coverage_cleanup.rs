@@ -2,7 +2,7 @@
 // inserted during MIR building (after InstrumentCoverage is done with them),
 // but leaves the statements that were added by InstrumentCoverage.
 //
-// Removed statement kinds: Point, BlockMarker
+// Removed statement kinds: Point
 // Retained statement kinds: VirtualCounter
 
 //@ test-mir-pass: InstrumentCoverage
@@ -15,7 +15,5 @@ fn main() {
 }
 
 // CHECK-NOT: Coverage::Point
-// CHECK-NOT: Coverage::BlockMarker
 // CHECK:     Coverage::VirtualCounter
 // CHECK-NOT: Coverage::Point
-// CHECK-NOT: Coverage::BlockMarker
