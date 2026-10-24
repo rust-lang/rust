@@ -6,7 +6,6 @@ use io::Error as IoError;
 use thiserror::Error;
 
 use rustfmt_nightly as rustfmt;
-use tracing_subscriber::EnvFilter;
 
 use std::collections::HashMap;
 use std::env;
@@ -30,9 +29,8 @@ extern crate rustc_driver;
 fn main() {
     rustc_driver::install_ice_hook(BUG_REPORT_URL, |_| ());
 
-    tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::from_env("RUSTFMT_LOG"))
-        .init();
+    setup_tracing();
+
     let opts = make_opts();
 
     let exit_code = match execute(&opts) {
@@ -50,6 +48,24 @@ fn main() {
     // NOTE: this immediately terminates the process without doing any cleanup,
     // so make sure to finish all necessary cleanup before this is called.
     std::process::exit(exit_code);
+}
+
+fn setup_tracing() {
+    use tracing_subscriber::EnvFilter;
+    use tracing_subscriber::layer::SubscriberExt;
+    use tracing_subscriber::util::SubscriberInitExt;
+    use tracing_tree::HierarchicalLayer;
+
+    let layer = HierarchicalLayer::default()
+        .with_writer(std::io::stderr)
+        .with_targets(true)
+        .with_bracketed_fields(true)
+        .with_indent_amount(2);
+
+    tracing_subscriber::registry()
+        .with(EnvFilter::from_env("RUSTFMT_LOG"))
+        .with(layer)
+        .init();
 }
 
 /// Rustfmt operations.

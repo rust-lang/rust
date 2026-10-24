@@ -19,6 +19,11 @@ sync process (both pulls and pushes). You can install it with `cargo install --g
 4. Run `rustc-josh-sync pull`
 5. Confirm the creation of a PR directly by `rustc-josh-sync`, or create a PR to `rust-lang/rustfmt` repository
 
+> [!CAUTION]
+>
+> For now, do not use the `--allow-noop` option of `rustc-josh-sync`. See
+> <https://rust-lang.zulipchat.com/#narrow/channel/242791-t-infra/topic/Nightly.20sync.20mode.20of.20josh-sync.20issue/with/633238190>.
+
 The `rustfmt` maintainers will run Diff Check against the PR to catch any unexpected formatting changes.
 
 - Maintainers should trigger Diff-Check for the combinations of Edition {2021, 2024} x Style
@@ -32,7 +37,7 @@ Where applicable, we may need to update the CHANGELOG entries with merged PRs (b
 repository and also in the `rust-lang/rust` `rustfmt` subtree that was included in the subtree-push
 merge), and then bump rustfmt version number.
 
-## Subtree push direction: syncing changes from `rustfmt` to rust-lang/rust`
+## Subtree push direction: syncing changes from `rustfmt` to `rust-lang/rust`
 
 1. Be in a `rustfmt` checkout
 2. Checkout the latest `main` branch from upstream

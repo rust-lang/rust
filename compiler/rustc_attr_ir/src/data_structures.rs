@@ -859,6 +859,8 @@ pub enum AttributeKind {
     Deprecated {
         deprecation: Deprecation,
         span: Span,
+        /// `true` if this an inner attribute (ie `#![]`).
+        is_inner: bool,
     },
 
     /// Represents `#[diagnostic::do_not_recommend]`.

@@ -99,11 +99,11 @@ pub fn swap_big_aligned(x: &mut BigButHighlyAligned, y: &mut BigButHighlyAligned
     // CHECK-NOT: load i8
     // CHECK-NOT: store i8
 
-    // CHECK-COUNT-2: load <{{2|4}} x i64>{{.+}}align 64,
-    // CHECK-COUNT-2: store <{{2|4}} x i64>{{.+}}align 64,
+    // CHECK-COUNT-2: load <{{2|4}} x i64>{{.+}}align 64
+    // CHECK-COUNT-2: store <{{2|4}} x i64>{{.+}}align 64
 
-    // CHECK-COUNT-2: load <{{2|4}} x i64>{{.+}}align 32,
-    // CHECK-COUNT-2: store <{{2|4}} x i64>{{.+}}align 32,
+    // CHECK-COUNT-2: load <{{2|4}} x i64>{{.+}}align 32
+    // CHECK-COUNT-2: store <{{2|4}} x i64>{{.+}}align 32
 
     // CHECK-NOT: load i32
     // CHECK-NOT: store i32

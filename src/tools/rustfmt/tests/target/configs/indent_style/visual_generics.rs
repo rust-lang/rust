@@ -1,4 +1,4 @@
-// rustfmt-indent_style: Visual
+//@ rustfmt-indent_style: Visual
 // Generics indent
 
 fn lorem<Ipsum: Eq = usize,

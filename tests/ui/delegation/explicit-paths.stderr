@@ -49,6 +49,7 @@ LL |         reuse <F as Trait>::foo1 { self }
 note: method defined here
   --> $DIR/explicit-paths.rs:5:8
    |
+LL | trait Trait {
 LL |     fn foo1(&self, x: i32) -> i32 { x }
    |        ^^^^ -----
 
@@ -89,6 +90,7 @@ LL |         reuse <S2 as Trait>::foo1;
 note: method defined here
   --> $DIR/explicit-paths.rs:5:8
    |
+LL | trait Trait {
 LL |     fn foo1(&self, x: i32) -> i32 { x }
    |        ^^^^ -----
 

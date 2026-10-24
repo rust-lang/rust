@@ -70,35 +70,27 @@ const impl<T: [const] PartialOrd> PartialOrd for [T] {
         // see <https://github.com/llvm/llvm-project/issues/132678>, or we generate
         // niche discriminant checks in a way that doesn't trigger it.
 
-        as_underlying(self.__chaining_lt(other)) == 1
+        as_underlying(self.__chaining_less(other)) == 1
     }
     #[inline]
     fn le(&self, other: &Self) -> bool {
-        as_underlying(self.__chaining_le(other)) != 0
+        as_underlying(self.__chaining_less(other)) != 0
     }
     #[inline]
     fn gt(&self, other: &Self) -> bool {
-        as_underlying(self.__chaining_gt(other)) == 1
+        as_underlying(self.__chaining_greater(other)) == 1
     }
     #[inline]
     fn ge(&self, other: &Self) -> bool {
-        as_underlying(self.__chaining_ge(other)) != 0
+        as_underlying(self.__chaining_greater(other)) != 0
     }
     #[inline]
-    fn __chaining_lt(&self, other: &Self) -> ControlFlow<bool> {
-        SliceChain::chaining_lt(self, other)
+    fn __chaining_less(&self, other: &Self) -> ControlFlow<bool> {
+        SliceChain::chaining_less(self, other)
     }
     #[inline]
-    fn __chaining_le(&self, other: &Self) -> ControlFlow<bool> {
-        SliceChain::chaining_le(self, other)
-    }
-    #[inline]
-    fn __chaining_gt(&self, other: &Self) -> ControlFlow<bool> {
-        SliceChain::chaining_gt(self, other)
-    }
-    #[inline]
-    fn __chaining_ge(&self, other: &Self) -> ControlFlow<bool> {
-        SliceChain::chaining_ge(self, other)
+    fn __chaining_greater(&self, other: &Self) -> ControlFlow<bool> {
+        SliceChain::chaining_greater(self, other)
     }
 }
 
@@ -167,10 +159,8 @@ const trait SlicePartialOrd: Sized {
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
 // intermediate trait for specialization of slice's PartialOrd chaining methods
 const trait SliceChain: Sized {
-    fn chaining_lt(left: &[Self], right: &[Self]) -> ControlFlow<bool>;
-    fn chaining_le(left: &[Self], right: &[Self]) -> ControlFlow<bool>;
-    fn chaining_gt(left: &[Self], right: &[Self]) -> ControlFlow<bool>;
-    fn chaining_ge(left: &[Self], right: &[Self]) -> ControlFlow<bool>;
+    fn chaining_less(left: &[Self], right: &[Self]) -> ControlFlow<bool>;
+    fn chaining_greater(left: &[Self], right: &[Self]) -> ControlFlow<bool>;
 }
 
 type AlwaysBreak<B> = ControlFlow<B, !>;
@@ -192,17 +182,11 @@ const impl<A: [const] PartialOrd> SlicePartialOrd for A {
 
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
 const impl<A: [const] PartialOrd> SliceChain for A {
-    default fn chaining_lt(left: &[Self], right: &[Self]) -> ControlFlow<bool> {
-        chaining_impl(left, right, PartialOrd::__chaining_lt, usize::__chaining_lt)
+    default fn chaining_less(left: &[Self], right: &[Self]) -> ControlFlow<bool> {
+        chaining_impl(left, right, PartialOrd::__chaining_less, usize::__chaining_less)
     }
-    default fn chaining_le(left: &[Self], right: &[Self]) -> ControlFlow<bool> {
-        chaining_impl(left, right, PartialOrd::__chaining_le, usize::__chaining_le)
-    }
-    default fn chaining_gt(left: &[Self], right: &[Self]) -> ControlFlow<bool> {
-        chaining_impl(left, right, PartialOrd::__chaining_gt, usize::__chaining_gt)
-    }
-    default fn chaining_ge(left: &[Self], right: &[Self]) -> ControlFlow<bool> {
-        chaining_impl(left, right, PartialOrd::__chaining_ge, usize::__chaining_ge)
+    default fn chaining_greater(left: &[Self], right: &[Self]) -> ControlFlow<bool> {
+        chaining_impl(left, right, PartialOrd::__chaining_greater, usize::__chaining_greater)
     }
 }
 
@@ -343,31 +327,17 @@ const impl<A: [const] Ord + [const] UnsignedBytewiseOrd> SliceOrd for A {
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
 const impl<A: [const] PartialOrd + [const] UnsignedBytewiseOrd> SliceChain for A {
     #[inline]
-    fn chaining_lt(left: &[Self], right: &[Self]) -> ControlFlow<bool> {
+    fn chaining_less(left: &[Self], right: &[Self]) -> ControlFlow<bool> {
         match SliceOrd::compare(left, right) {
             Ordering::Equal => ControlFlow::Continue(()),
             ne => ControlFlow::Break(ne.is_lt()),
         }
     }
     #[inline]
-    fn chaining_le(left: &[Self], right: &[Self]) -> ControlFlow<bool> {
-        match SliceOrd::compare(left, right) {
-            Ordering::Equal => ControlFlow::Continue(()),
-            ne => ControlFlow::Break(ne.is_le()),
-        }
-    }
-    #[inline]
-    fn chaining_gt(left: &[Self], right: &[Self]) -> ControlFlow<bool> {
+    fn chaining_greater(left: &[Self], right: &[Self]) -> ControlFlow<bool> {
         match SliceOrd::compare(left, right) {
             Ordering::Equal => ControlFlow::Continue(()),
             ne => ControlFlow::Break(ne.is_gt()),
-        }
-    }
-    #[inline]
-    fn chaining_ge(left: &[Self], right: &[Self]) -> ControlFlow<bool> {
-        match SliceOrd::compare(left, right) {
-            Ordering::Equal => ControlFlow::Continue(()),
-            ne => ControlFlow::Break(ne.is_ge()),
         }
     }
 }

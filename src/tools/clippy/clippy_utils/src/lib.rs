@@ -1671,36 +1671,8 @@ pub fn clip(tcx: TyCtxt<'_>, u: u128, ity: UintTy) -> u128 {
     (u << amt) >> amt
 }
 
-/// Checks if an attribute is present.
-///
-/// NOTE: this does not work for most attributes:
-/// - parsed attributes: use `find_attr!` for these
-/// - tool attributes: these have multi-segmented names (and diagnostic attrs are parsed anyway)
-///
-/// At this time, these only work for lint attributes (allow, warn, etc)
-/// and derive helpers.
-///
-/// FIXME: remove after lint attributes are parsed
-pub fn has_attr(attrs: &[rustc_attr_ir::Attribute], symbol: Symbol) -> bool {
-    attrs.iter().any(|attr| attr.has_name(symbol))
-}
-
 pub fn has_repr_attr(cx: &LateContext<'_>, hir_id: HirId) -> bool {
     find_attr!(cx.tcx, hir_id, Repr { .. })
-}
-
-pub fn any_parent_has_attr(tcx: TyCtxt<'_>, node: HirId, symbol: Symbol) -> bool {
-    let mut prev_enclosing_node = None;
-    let mut enclosing_node = node;
-    while Some(enclosing_node) != prev_enclosing_node {
-        if has_attr(tcx.hir_attrs(enclosing_node), symbol) {
-            return true;
-        }
-        prev_enclosing_node = Some(enclosing_node);
-        enclosing_node = tcx.hir_get_parent_item(enclosing_node).into();
-    }
-
-    false
 }
 
 /// Checks if the given HIR node is inside an `impl` block with the `automatically_derived`
@@ -1709,6 +1681,11 @@ pub fn in_automatically_derived(tcx: TyCtxt<'_>, id: HirId) -> bool {
     tcx.hir_parent_owner_iter(id)
         .filter(|(_, node)| matches!(node, OwnerNode::Item(item) if matches!(item.kind, ItemKind::Impl(_))))
         .any(|(id, _)| find_attr!(tcx, id.def_id, AutomaticallyDerived))
+}
+
+/// Functions marked with these attributes must have an exact signature.
+pub fn requires_exact_signature(attrs: &[rustc_attr_ir::Attribute]) -> bool {
+    find_attr!(attrs, ProcMacro | ProcMacroAttribute | ProcMacroDerive { .. })
 }
 
 /// Checks if the given `DefId` matches the `libc` item.
@@ -1779,7 +1756,7 @@ pub fn get_async_closure_expr<'tcx>(tcx: TyCtxt<'tcx>, expr: &Expr<'_>) -> Optio
 
 /// Peels away all the compiler generated code surrounding the body of an async function,
 pub fn get_async_fn_body<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'_>) -> Option<&'tcx Expr<'tcx>> {
-    get_async_closure_expr(tcx, &body.value)
+    get_async_closure_expr(tcx, body.value)
 }
 
 // check if expr is calling method or function with #[must_use] attribute
@@ -1842,7 +1819,7 @@ fn is_body_identity_function<'hir>(cx: &LateContext<'_>, func: &Body<'hir>) -> b
         true
     };
 
-    let mut expr = &func.value;
+    let mut expr = func.value;
     loop {
         match expr.kind {
             ExprKind::Block(

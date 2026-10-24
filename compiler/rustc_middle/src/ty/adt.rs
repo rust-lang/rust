@@ -212,6 +212,19 @@ impl<'tcx> AdtDef<'tcx> {
         self.0.0.repr
     }
 
+    /// Whether MIR may project into the fields of this ADT.
+    ///
+    /// MCP#838 bans field projections into SIMD types, including scalable
+    /// vectors.
+    ///
+    /// Codegen requires `DynMetadata` to be manipulated as a whole, with its
+    /// insides being treated as opaque..
+    pub fn can_project_fields(self, tcx: TyCtxt<'tcx>) -> bool {
+        !self.repr().simd()
+            && !self.repr().scalable()
+            && !tcx.is_lang_item(self.did(), LangItem::DynMetadata)
+    }
+
     pub fn field_representing_type_info(
         self,
         tcx: TyCtxt<'tcx>,

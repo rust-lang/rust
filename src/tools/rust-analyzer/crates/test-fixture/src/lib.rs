@@ -11,7 +11,7 @@ use base_db::target::TargetData;
 use base_db::{
     Crate, CrateDisplayName, CrateGraphBuilder, CrateName, CrateOrigin, CrateWorkspaceData,
     DependencyBuilder, Env, FileChange, FileSet, FxIndexMap, LangCrateOrigin, SourceDatabase,
-    SourceRoot, Version, VfsPath, all_crates,
+    SourceRoot, TargetKind, Version, VfsPath, all_crates,
 };
 use cfg::CfgOptions;
 use hir_expand::{
@@ -336,19 +336,19 @@ impl ChangeFixture {
                 roots.push(prev_root);
             }
 
-            if let Some((krate, origin, version)) = meta.krate {
-                let crate_name = CrateName::normalize_dashes(&krate);
+            if let Some(crate_meta) = meta.krate {
+                let crate_name = CrateName::normalize_dashes(&crate_meta.name);
                 let crate_id = crate_graph.add_crate_root(
                     file_id,
                     meta.edition,
                     Some(crate_name.clone().into()),
-                    version,
+                    crate_meta.version,
                     meta.cfg.clone(),
                     Some(meta.cfg),
                     meta.env,
-                    origin,
+                    crate_meta.origin,
                     meta.crate_attrs,
-                    false,
+                    crate_meta.target_kind,
                     proc_macro_cwd.clone(),
                     crate_ws_data.clone(),
                 );
@@ -402,7 +402,7 @@ impl ChangeFixture {
                 )]),
                 CrateOrigin::Lang(LangCrateOrigin::Core),
                 Vec::new(),
-                false,
+                TargetKind::Lib { is_proc_macro: false },
                 proc_macro_cwd.clone(),
                 crate_ws_data.clone(),
             );
@@ -433,7 +433,7 @@ impl ChangeFixture {
                 default_env,
                 CrateOrigin::Local { repo: None, name: None },
                 Vec::new(),
-                false,
+                TargetKind::Lib { is_proc_macro: false },
                 proc_macro_cwd.clone(),
                 crate_ws_data.clone(),
             );
@@ -497,7 +497,7 @@ impl ChangeFixture {
                 )]),
                 CrateOrigin::Local { repo: None, name: None },
                 Vec::new(),
-                true,
+                TargetKind::Lib { is_proc_macro: true },
                 proc_macro_cwd,
                 crate_ws_data,
             );
@@ -739,9 +739,17 @@ enum SourceRootKind {
 }
 
 #[derive(Debug)]
+struct CrateMeta {
+    name: String,
+    origin: CrateOrigin,
+    version: Option<String>,
+    target_kind: TargetKind,
+}
+
+#[derive(Debug)]
 struct FileMeta {
     path: String,
-    krate: Option<(String, CrateOrigin, Option<String>)>,
+    krate: Option<CrateMeta>,
     deps: Vec<String>,
     extern_prelude: Option<Vec<String>>,
     cfg: CfgOptions,
@@ -795,7 +803,7 @@ fn parse_crate(
     crate_str: String,
     current_source_root_kind: SourceRootKind,
     explicit_non_workspace_member: bool,
-) -> (String, CrateOrigin, Option<String>) {
+) -> CrateMeta {
     let (crate_str, force_non_lang_origin) = if let Some(s) = crate_str.strip_prefix("r#") {
         (s.to_owned(), ForceNoneLangOrigin::Yes)
     } else {
@@ -805,12 +813,31 @@ fn parse_crate(
     // syntax:
     //   "my_awesome_crate"
     //   "my_awesome_crate@0.0.1,http://example.com"
+    //   "bin:my_awesome_crate"
+    //   "bin:my_awesome_crate@0.0.1,http://example.com"
     let (name, repo, version) = if let Some((name, remain)) = crate_str.split_once('@') {
         let (version, repo) =
             remain.split_once(',').expect("crate meta: found '@' without version and url");
         (name.to_owned(), Some(repo.to_owned()), Some(version.to_owned()))
     } else {
         (crate_str, None, None)
+    };
+
+    let (target_kind, name) = if let Some((target_kind, name)) = name.split_once(':') {
+        let target_kind = match target_kind {
+            "lib" => TargetKind::Lib { is_proc_macro: true },
+            "proc-macro" => TargetKind::Lib { is_proc_macro: true },
+            "bin" => TargetKind::Bin,
+            "example" => TargetKind::Example,
+            "test" => TargetKind::Test,
+            "bench" => TargetKind::Bench,
+            "custom-build" => TargetKind::BuildScript,
+            "other" => TargetKind::Other,
+            _ => panic!("crate meta: unexpected target kind {target_kind}"),
+        };
+        (target_kind, name.to_owned())
+    } else {
+        (TargetKind::Lib { is_proc_macro: false }, name)
     };
 
     let non_workspace_member = explicit_non_workspace_member
@@ -837,7 +864,7 @@ fn parse_crate(
         }
     };
 
-    (name, origin, version)
+    CrateMeta { name, origin, version, target_kind }
 }
 
 // Identity mapping

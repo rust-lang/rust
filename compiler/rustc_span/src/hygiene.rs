@@ -25,7 +25,8 @@
 // trigger runtime aborts. (Fortunately these are obvious and easy to fix.)
 
 use std::cell::RefCell;
-use std::hash::Hash;
+use std::hash::{Hash, Hasher};
+use std::marker::PhantomData;
 use std::sync::Arc;
 use std::{fmt, iter, mem};
 
@@ -39,7 +40,7 @@ use rustc_data_structures::unhash::UnhashMap;
 use rustc_hashes::Hash64;
 use rustc_index::IndexVec;
 use rustc_macros::{Decodable, Encodable, StableHash};
-use rustc_serialize::{Decodable, Decoder, Encodable};
+use rustc_serialize::{ContextOrd, Decodable, Decoder, Encodable};
 use tracing::{debug, trace};
 
 use crate::def_id::{CRATE_DEF_ID, CrateNum, DefId, LOCAL_CRATE, ModId, StableCrateId};
@@ -48,11 +49,15 @@ use crate::source_map::SourceMap;
 use crate::symbol::{Symbol, kw, sym};
 use crate::{DUMMY_SP, Span, SpanDecoder, SpanEncoder, with_session_globals};
 
-/// A `SyntaxContext` represents a chain of pairs `(ExpnId, Transparency)` named "marks".
-///
-/// See <https://rustc-dev-guide.rust-lang.org/macro-expansion.html> for more explanation.
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub struct SyntaxContext(u32);
+rustc_index::newtype_index! {
+    /// A `SyntaxContext` represents a chain of pairs `(ExpnId, Transparency)` named "marks".
+    ///
+    /// See <https://rustc-dev-guide.rust-lang.org/macro-expansion.html> for more explanation.
+    #[max = 0x1FFF_FFFF] // `u32::MAX` >> 3, as `SyntaxContext` should be fit in 29 bits (see `span_encoding`).
+    #[debug_format = "#{}"]
+    #[default]
+    pub struct SyntaxContext {}
+}
 
 // To ensure correctness of incremental compilation,
 // `SyntaxContext` must not implement `Ord` or `PartialOrd`.
@@ -120,6 +125,7 @@ impl fmt::Debug for ExpnId {
 rustc_index::newtype_index! {
     /// A unique ID associated with a macro invocation and expansion.
     #[debug_format = "expn{}"]
+    #[default]
     pub struct LocalExpnId {}
 }
 
@@ -132,6 +138,12 @@ impl !PartialOrd for LocalExpnId {}
 /// A unique hash value associated to an expansion.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Encodable, Decodable, StableHash)]
 pub struct ExpnHash(Fingerprint);
+
+impl<E> ContextOrd<E> for ExpnHash {
+    fn stable_cmp_with_context(_context: E) -> impl FnMut(&Self, &Self) -> std::cmp::Ordering {
+        |h1, h2| h1.0.cmp(&h2.0)
+    }
+}
 
 impl ExpnHash {
     /// Returns the [StableCrateId] identifying the crate this [ExpnHash]
@@ -341,6 +353,151 @@ impl ExpnId {
     }
 }
 
+#[derive(Default)]
+pub struct HygieneRemappingResults<TKey, TRemappedKey> {
+    remapping: FxHashMap<u32, u32>,
+    first_non_det_index: u32,
+    data: PhantomData<(TKey, TRemappedKey)>,
+}
+
+pub trait RemappableIdx = Hash + Eq + Copy;
+impl<TKey: RemappableIdx + Into<u32>, TRemappedKey: RemappableIdx + From<u32>>
+    HygieneRemappingResults<TKey, TRemappedKey>
+{
+    #[inline]
+    pub fn map_id(&self, idx: TKey) -> TRemappedKey {
+        let raw_idx: u32 = idx.into();
+        let remapped_idx = if raw_idx < self.first_non_det_index {
+            raw_idx
+        } else {
+            self.remapping.get(&raw_idx).copied().unwrap_or(raw_idx)
+        };
+
+        TRemappedKey::from(remapped_idx)
+    }
+}
+
+/// Includes common logic for remapping both expansion ids and syntax contexts.
+/// FIXME: this solution does not take into account syntax contexts and expansion ids
+/// that are allocated during metadata encoding, if we will have non-determinism there
+/// this remapping will not help as it is constructed before metadata encoding.
+pub trait HygieneRemapper<T> {
+    fn stable_hash(&self, t: T, hcx: &mut impl StableHashCtxt, hasher: &mut StableHasher);
+    fn len(&self) -> usize;
+    fn first_non_det_index_mut(&mut self) -> &mut Option<T>;
+    fn first_non_det_index(&self) -> u32;
+
+    fn commit_end_of_determinism(&mut self)
+    where
+        T: From<u32>,
+    {
+        let len = self.len() as u32;
+
+        let prev = self.first_non_det_index_mut().replace(T::from(len));
+        assert!(prev.is_none(), "this function can be called only once")
+    }
+
+    fn remapping_results<TRemappedKey>(
+        &self,
+        hcx: &mut impl StableHashCtxt,
+    ) -> HygieneRemappingResults<T, TRemappedKey>
+    where
+        T: RemappableIdx + From<u32>,
+    {
+        let start = self.first_non_det_index();
+        let range = start..self.len() as u32;
+
+        let mut indices_to_remap = range.collect::<Vec<_>>();
+        indices_to_remap.sort_by_cached_key(|&key| {
+            let hasher = &mut StableHasher::new();
+            self.stable_hash(T::from(key), hcx, hasher);
+
+            hasher.finish()
+        });
+
+        let mut remapping = FxHashMap::default();
+
+        for (idx, key) in indices_to_remap.into_iter().enumerate() {
+            let from = key;
+            let to = start + idx as u32;
+
+            if from != to {
+                remapping.insert(from, to);
+            }
+        }
+
+        HygieneRemappingResults { remapping, first_non_det_index: start, data: PhantomData }
+    }
+}
+
+pub struct SyntaxContextRemapper<'a>(&'a mut HygieneData);
+impl SyntaxContextRemapper<'_> {
+    pub fn with<T>(f: impl FnOnce(SyntaxContextRemapper<'_>) -> T) -> T {
+        HygieneData::with(|data| f(SyntaxContextRemapper(data)))
+    }
+}
+
+pub struct LocalExpnIdRemapper<'a>(&'a mut HygieneData);
+impl LocalExpnIdRemapper<'_> {
+    pub fn with<T>(f: impl FnOnce(LocalExpnIdRemapper<'_>) -> T) -> T {
+        HygieneData::with(|data| f(LocalExpnIdRemapper(data)))
+    }
+}
+
+impl HygieneRemapper<SyntaxContext> for SyntaxContextRemapper<'_> {
+    #[inline]
+    fn len(&self) -> usize {
+        self.0.syntax_context_data.len()
+    }
+
+    #[inline]
+    fn first_non_det_index_mut(&mut self) -> &mut Option<SyntaxContext> {
+        &mut self.0.first_non_det_syntax_context
+    }
+
+    #[inline]
+    fn first_non_det_index(&self) -> u32 {
+        self.0.first_non_det_syntax_context.map(|s| s.as_u32()).expect("must be set at this point")
+    }
+
+    #[inline]
+    fn stable_hash(
+        &self,
+        ctxt: SyntaxContext,
+        hcx: &mut impl StableHashCtxt,
+        hasher: &mut StableHasher,
+    ) {
+        ctxt.stable_hash_internal(Some(self.0), hcx, hasher);
+    }
+}
+
+impl HygieneRemapper<LocalExpnId> for LocalExpnIdRemapper<'_> {
+    #[inline]
+    fn len(&self) -> usize {
+        self.0.local_expn_data.len()
+    }
+
+    #[inline]
+    fn first_non_det_index_mut(&mut self) -> &mut Option<LocalExpnId> {
+        &mut self.0.first_non_det_local_expn_id
+    }
+
+    #[inline]
+    fn first_non_det_index(&self) -> u32 {
+        self.0.first_non_det_local_expn_id.map(|l| l.as_u32()).expect("must be set at this point")
+    }
+
+    #[inline]
+    fn stable_hash(
+        &self,
+        local_expn_id: LocalExpnId,
+        hcx: &mut impl StableHashCtxt,
+        hasher: &mut StableHasher,
+    ) {
+        local_expn_id.to_expn_id().stable_hash_internal(Some(self.0), hcx, hasher);
+    }
+}
+
 #[derive(Debug)]
 pub(crate) struct HygieneData {
     /// Each expansion should have an associated expansion data, but sometimes there's a delay
@@ -353,7 +510,9 @@ pub(crate) struct HygieneData {
     foreign_expn_data: FxHashMap<ExpnId, ExpnData>,
     foreign_expn_hashes: FxHashMap<ExpnId, ExpnHash>,
     expn_hash_to_expn_id: UnhashMap<ExpnHash, ExpnId>,
-    syntax_context_data: Vec<SyntaxContextData>,
+    syntax_context_data: IndexVec<SyntaxContext, SyntaxContextData>,
+    first_non_det_syntax_context: Option<SyntaxContext>,
+    first_non_det_local_expn_id: Option<LocalExpnId>,
     syntax_context_map: FxHashMap<SyntaxContextKey, SyntaxContext>,
     /// Maps the `local_hash` of an `ExpnData` to the next disambiguator value.
     /// This is used by `update_disambiguator` to keep track of which `ExpnData`s
@@ -383,9 +542,11 @@ impl HygieneData {
             foreign_expn_hashes: FxHashMap::default(),
             expn_hash_to_expn_id: iter::once((ExpnHash(Fingerprint::ZERO), ExpnId::root()))
                 .collect(),
-            syntax_context_data: vec![root_ctxt_data],
-            syntax_context_map: iter::once((root_ctxt_data.key(), SyntaxContext(0))).collect(),
+            syntax_context_data: IndexVec::from_elem_n(root_ctxt_data, 1),
+            syntax_context_map: iter::once((root_ctxt_data.key(), SyntaxContext::root())).collect(),
             expn_data_disambiguators: UnhashMap::default(),
+            first_non_det_syntax_context: None,
+            first_non_det_local_expn_id: None,
         }
     }
 
@@ -436,30 +597,30 @@ impl HygieneData {
 
     #[inline]
     fn normalize_to_macros_2_0(&self, ctxt: SyntaxContext) -> SyntaxContext {
-        self.syntax_context_data[ctxt.0 as usize].opaque
+        self.syntax_context_data[ctxt].opaque
     }
 
     #[inline]
     fn normalize_to_macro_rules(&self, ctxt: SyntaxContext) -> SyntaxContext {
-        self.syntax_context_data[ctxt.0 as usize].opaque_and_semiopaque
+        self.syntax_context_data[ctxt].opaque_and_semiopaque
     }
 
     /// See [`SyntaxContextData::outer_expn`]
     #[inline]
     fn outer_expn(&self, ctxt: SyntaxContext) -> ExpnId {
-        self.syntax_context_data[ctxt.0 as usize].outer_expn
+        self.syntax_context_data[ctxt].outer_expn
     }
 
     /// The last macro expansion and its Transparency
     #[inline]
     fn outer_mark(&self, ctxt: SyntaxContext) -> (ExpnId, Transparency) {
-        let data = &self.syntax_context_data[ctxt.0 as usize];
+        let data = &self.syntax_context_data[ctxt];
         (data.outer_expn, data.outer_transparency)
     }
 
     #[inline]
     fn parent_ctxt(&self, ctxt: SyntaxContext) -> SyntaxContext {
-        self.syntax_context_data[ctxt.0 as usize].parent
+        self.syntax_context_data[ctxt].parent
     }
 
     fn remove_mark(&self, ctxt: &mut SyntaxContext) -> (ExpnId, Transparency) {
@@ -578,15 +739,16 @@ impl HygieneData {
         // Reserve a new syntax context.
         // The inserted dummy data can only be potentially accessed by nested `alloc_ctxt` calls,
         // the assert below ensures that it doesn't happen.
-        let ctxt = SyntaxContext::from_usize(self.syntax_context_data.len());
-        self.syntax_context_data
+        let ctxt = self
+            .syntax_context_data
             .push(SyntaxContextData { dollar_crate_name: sym::dummy, ..SyntaxContextData::root() });
+
         self.syntax_context_map.insert(key, ctxt);
 
         // Opaque and semi-opaque versions of the parent. Note that they may be equal to the
         // parent itself. E.g. `parent_opaque` == `parent` if the expn chain contains only opaques,
         // and `parent_opaque_and_semiopaque` == `parent` if the expn contains only (semi-)opaques.
-        let parent_data = &self.syntax_context_data[parent.0 as usize];
+        let parent_data = &self.syntax_context_data[parent];
         assert_ne!(parent_data.dollar_crate_name, sym::dummy);
         let parent_opaque = parent_data.opaque;
         let parent_opaque_and_semiopaque = parent_data.opaque_and_semiopaque;
@@ -608,7 +770,7 @@ impl HygieneData {
         };
 
         // Fill the full data, now that we have it.
-        self.syntax_context_data[ctxt.as_u32() as usize] = SyntaxContextData {
+        self.syntax_context_data[ctxt] = SyntaxContextData {
             outer_expn: expn_id,
             outer_transparency: transparency,
             parent,
@@ -637,7 +799,7 @@ pub fn update_dollar_crate_names(mut get_name: impl FnMut(SyntaxContext) -> Symb
     // The new contexts that need updating are at the end of the list and have `$crate` as a name.
     let mut to_update = vec![];
     HygieneData::with(|data| {
-        for (idx, scdata) in data.syntax_context_data.iter().enumerate().rev() {
+        for (idx, scdata) in data.syntax_context_data.iter_enumerated().rev() {
             if scdata.dollar_crate_name == kw::DollarCrate {
                 to_update.push((idx, kw::DollarCrate));
             } else {
@@ -647,12 +809,12 @@ pub fn update_dollar_crate_names(mut get_name: impl FnMut(SyntaxContext) -> Symb
     });
     // The callback must be called from outside of the `HygieneData` lock,
     // since it will try to acquire it too.
-    for (idx, name) in &mut to_update {
-        *name = get_name(SyntaxContext::from_usize(*idx));
+    for (ctxt, name) in &mut to_update {
+        *name = get_name(*ctxt);
     }
     HygieneData::with(|data| {
-        for (idx, name) in to_update {
-            data.syntax_context_data[idx].dollar_crate_name = name;
+        for (ctxt, name) in to_update {
+            data.syntax_context_data[ctxt].dollar_crate_name = name;
         }
     })
 }
@@ -697,29 +859,14 @@ pub fn debug_hygiene_data(verbose: bool) -> String {
 }
 
 impl SyntaxContext {
-    #[inline]
-    pub const fn root() -> Self {
-        SyntaxContext(0)
+    #[inline(always)]
+    pub const fn root() -> SyntaxContext {
+        SyntaxContext::from_u32(0)
     }
 
     #[inline]
     pub const fn is_root(self) -> bool {
-        self.0 == SyntaxContext::root().as_u32()
-    }
-
-    #[inline]
-    pub(crate) const fn as_u32(self) -> u32 {
-        self.0
-    }
-
-    #[inline]
-    pub(crate) const fn from_u32(raw: u32) -> SyntaxContext {
-        SyntaxContext(raw)
-    }
-
-    #[inline]
-    fn from_usize(raw: usize) -> SyntaxContext {
-        SyntaxContext(u32::try_from(raw).unwrap())
+        self.as_u32() == SyntaxContext::root().as_u32()
     }
 
     /// Extend a syntax context with a given expansion and transparency.
@@ -910,7 +1057,7 @@ impl SyntaxContext {
 
     #[inline]
     pub(crate) fn dollar_crate_name(self) -> Symbol {
-        HygieneData::with(|data| data.syntax_context_data[self.0 as usize].dollar_crate_name)
+        HygieneData::with(|data| data.syntax_context_data[self].dollar_crate_name)
     }
 
     #[inline]
@@ -944,12 +1091,6 @@ impl SyntaxContext {
             }
             ExpnKind::Macro { .. } => true, // definitely a plugin
         }
-    }
-}
-
-impl fmt::Debug for SyntaxContext {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "#{}", self.0)
     }
 }
 
@@ -1284,43 +1425,10 @@ impl DesugaringKind {
 pub struct HygieneEncodeContext {
     /// All `SyntaxContexts` for which we have written `SyntaxContextData` into crate metadata.
     serialized_ctxts: FxHashSet<SyntaxContext>,
-    /// The `SyntaxContexts` that we have serialized (e.g. as a result of encoding `Spans`)
-    /// in the most recent 'round' of serializing. Serializing `SyntaxContextData`
-    /// may cause us to serialize more `SyntaxContext`s, so serialize in a loop
-    /// until we reach a fixed point.
-    latest_ctxts: Vec<(u32 /* Encoding index */, SyntaxContext)>,
+    latest_ctxts: Vec<SyntaxContext>,
 
     serialized_expns: FxHashSet<ExpnId>,
     latest_expns: Vec<ExpnId>,
-
-    /// Maps every `SyntaxContext` into its encoding index.
-    /// Earlier the `ctxt.0` was used when writing metadata, however,
-    /// this results into non-deterministic metadata (see #129094).
-    /// The non-determinism is encountered when decoding syntax contexts
-    /// in `decode_syntax_context` function below. The syntax contexts from
-    /// other crate metadata can be decoded in different order, which results
-    /// into different ids assigned to decoded syntax contexts.
-    /// First invocation:
-    /// (ALLOC - syntax context id, ORIG - original id of decoded syntax context:
-    /// `raw_id` in `decode_syntax_context`)
-    /// ALLOC: #3, ORIG: 1
-    /// ALLOC: #9, ORIG: 18769
-    /// ALLOC: #10, ORIG: 25868
-    /// ALLOC: #11, ORIG: 18822
-    /// ALLOC: #12, ORIG: 23092
-    ///
-    /// Second invocation:
-    /// ALLOC: #3, ORIG: 1
-    /// ALLOC: #9, ORIG: 25868
-    /// ALLOC: #10, ORIG: 18769
-    /// ALLOC: #11, ORIG: 18822
-    /// ALLOC: #12, ORIG: 23092
-    ///
-    /// We see that `18769` and `25868` assigned different syntax context ids,
-    /// however, the order of encoding is deterministic, so we can remap allocated
-    /// syntax context ids into encoding indices and use them, thus outputting
-    /// same metadata.
-    encoding_indices: FxHashMap<SyntaxContext, u32>,
 }
 
 impl Default for HygieneEncodeContext {
@@ -1330,20 +1438,11 @@ impl Default for HygieneEncodeContext {
             latest_ctxts: Default::default(),
             serialized_expns: Default::default(),
             latest_expns: Default::default(),
-            // Zero is taken by root syntax context.
-            encoding_indices: FxHashMap::from_iter(iter::once((SyntaxContext::root(), 0))),
         }
     }
 }
 
 impl HygieneEncodeContext {
-    #[inline]
-    fn get_encoding_index(&mut self, ctxt: SyntaxContext) -> u32 {
-        let map = &mut self.encoding_indices;
-        let len = map.len();
-        *map.entry(ctxt).or_insert(len as u32)
-    }
-
     /// Record the fact that we need to serialize the corresponding `ExpnData`.
     #[inline]
     pub fn schedule_expn_data_for_encoding(&mut self, expn: ExpnId) {
@@ -1355,7 +1454,7 @@ impl HygieneEncodeContext {
     pub fn encode<T>(
         h_ctxt: &RefCell<HygieneEncodeContext>,
         encoder: &mut T,
-        mut encode_ctxt: impl FnMut(&mut T, u32, &SyntaxContextKey),
+        mut encode_ctxt: impl FnMut(&mut T, SyntaxContext, &SyntaxContextKey),
         mut encode_expn: impl FnMut(&mut T, ExpnId, Option<&ExpnData>, ExpnHash),
     ) {
         // When we serialize a `SyntaxContextData`, we may end up serializing
@@ -1376,9 +1475,9 @@ impl HygieneEncodeContext {
             #[allow(rustc::potential_query_instability)]
             let latest_contexts = { mem::take(&mut h_ctxt.borrow_mut().latest_ctxts) }.into_iter();
 
-            for (idx, ctxt) in latest_contexts {
-                let key = HygieneData::with(|data| data.syntax_context_data[ctxt.0 as usize].key());
-                encode_ctxt(encoder, idx, &key);
+            for ctxt in latest_contexts {
+                let key = HygieneData::with(|data| data.syntax_context_data[ctxt].key());
+                encode_ctxt(encoder, ctxt, &key);
             }
 
             // Same as above, but for expansions instead of syntax contexts.
@@ -1402,18 +1501,10 @@ impl HygieneEncodeContext {
     }
 
     #[inline]
-    pub fn get_syntax_ctxt_encoding_index(&mut self, ctxt: SyntaxContext) -> u32 {
-        let index = self.get_encoding_index(ctxt);
+    pub fn enqueue_syntax_context_for_encoding(&mut self, ctxt: SyntaxContext) {
         if self.serialized_ctxts.insert(ctxt) {
-            // If we created new encoding index then it is greater
-            // than any previous index, so this vector is in ascending order.
-            // We can't push existing, possibly out-of-order, index
-            // as we check if we already saw this syntax context above.
-            // This property is important for deterministic output (see #129094).
-            self.latest_ctxts.push((index, ctxt));
+            self.latest_ctxts.push(ctxt);
         }
-
-        index
     }
 }
 
@@ -1422,7 +1513,7 @@ impl HygieneEncodeContext {
 pub struct HygieneDecodeContext {
     // A cache mapping raw serialized per-crate syntax context ids to corresponding decoded
     // `SyntaxContext`s in the current global `HygieneData`.
-    remapped_ctxts: Lock<IndexVec<u32, Option<SyntaxContext>>>,
+    remapped_ctxts: Lock<IndexVec<DecodedSyntaxContext, Option<SyntaxContext>>>,
 }
 
 /// Register an expansion which has been decoded from the on-disk-cache for the local crate.
@@ -1489,6 +1580,22 @@ pub fn decode_expn_id(
     register_expn_id(krate, index, expn_data, hash)
 }
 
+rustc_index::newtype_index! {
+    /// A syntax context that is obtained from metadata of an external crate and
+    /// was not yet remapped to local `SyntaxContext`.
+    #[encodable]
+    #[max = 0x1FFF_FFFF] // `u32::MAX` >> 3, as `SyntaxContext` should be fit in 29 bits (see `span_encoding`).
+    #[debug_format = "#decoded{}"]
+    pub struct DecodedSyntaxContext {}
+}
+
+impl DecodedSyntaxContext {
+    #[inline(always)]
+    fn is_root(self) -> bool {
+        self.as_u32() == 0
+    }
+}
+
 // Decodes `SyntaxContext`, using the provided `HygieneDecodeContext`
 // to track which `SyntaxContext`s we have already decoded.
 // The provided closure will be invoked to deserialize a `SyntaxContextData`
@@ -1496,10 +1603,10 @@ pub fn decode_expn_id(
 pub fn decode_syntax_context<D: Decoder>(
     d: &mut D,
     context: &HygieneDecodeContext,
-    decode_data: impl FnOnce(&mut D, u32) -> SyntaxContextKey,
+    decode_data: impl FnOnce(&mut D, DecodedSyntaxContext) -> SyntaxContextKey,
 ) -> SyntaxContext {
-    let raw_id: u32 = Decodable::decode(d);
-    if raw_id == 0 {
+    let decoded_ctxt: DecodedSyntaxContext = Decodable::decode(d);
+    if decoded_ctxt.is_root() {
         trace!("decode_syntax_context: deserialized root");
         // The root is special
         return SyntaxContext::root();
@@ -1508,19 +1615,19 @@ pub fn decode_syntax_context<D: Decoder>(
     // Look into the cache first.
     // Reminder: `HygieneDecodeContext` is per-crate, so there are no collisions between
     // raw ids from different crate metadatas.
-    if let Some(Some(ctxt)) = context.remapped_ctxts.lock().get(raw_id) {
+    if let Some(Some(ctxt)) = context.remapped_ctxts.lock().get(decoded_ctxt) {
         return *ctxt;
     }
 
     // Don't try to decode data while holding the lock, since we need to
     // be able to recursively decode a SyntaxContext
-    let (parent, expn_id, transparency) = decode_data(d, raw_id);
-    let ctxt =
+    let (parent, expn_id, transparency) = decode_data(d, decoded_ctxt);
+    let remapped_ctxt =
         HygieneData::with(|hygiene_data| hygiene_data.alloc_ctxt(parent, expn_id, transparency));
 
-    context.remapped_ctxts.lock().insert(raw_id, ctxt);
+    context.remapped_ctxts.lock().insert(decoded_ctxt, remapped_ctxt);
 
-    ctxt
+    remapped_ctxt
 }
 
 impl<E: SpanEncoder> Encodable<E> for LocalExpnId {
@@ -1579,8 +1686,13 @@ fn update_disambiguator(expn_data: &mut ExpnData, mut hcx: impl StableHashCtxt) 
     ExpnHash::new(LOCAL_CRATE.as_def_id().to_stable_hash_key(&mut hcx).stable_crate_id(), expn_hash)
 }
 
-impl StableHash for SyntaxContext {
-    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+impl SyntaxContext {
+    fn stable_hash_internal(
+        self,
+        data: Option<&HygieneData>,
+        hcx: &mut impl StableHashCtxt,
+        hasher: &mut StableHasher,
+    ) {
         const TAG_EXPANSION: u8 = 0;
         const TAG_NO_EXPANSION: u8 = 1;
 
@@ -1591,32 +1703,64 @@ impl StableHash for SyntaxContext {
             // This duplicates `ExpnId::stable_hash`, but reads the outer mark and
             // expansion hash in a single `HygieneData::with` call to avoid extra locking.
             hcx.assert_default_stable_hash_controls("ExpnId");
-            let (hash, transparency) = HygieneData::with(|data| {
-                let (expn_id, transparency) = data.outer_mark(*self);
+
+            let get_hashing_data = |data: &HygieneData| {
+                let (expn_id, transparency) = data.outer_mark(self);
                 (data.expn_hash(expn_id).0, transparency)
-            });
+            };
+
+            let (hash, transparency) = match data {
+                Some(data) => get_hashing_data(data),
+                None => HygieneData::with(|data| get_hashing_data(data)),
+            };
+
             hash.stable_hash(hcx, hasher);
             transparency.stable_hash(hcx, hasher);
         }
     }
 }
 
-impl StableHash for ExpnId {
+impl StableHash for SyntaxContext {
+    #[inline]
     fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        self.stable_hash_internal(None, hcx, hasher);
+    }
+}
+
+impl ExpnId {
+    fn stable_hash_internal(
+        self,
+        data: Option<&HygieneData>,
+        hcx: &mut impl StableHashCtxt,
+        hasher: &mut StableHasher,
+    ) {
         hcx.assert_default_stable_hash_controls("ExpnId");
-        let hash = if *self == ExpnId::root() {
+        let hash = if self == ExpnId::root() {
             // Avoid fetching TLS storage for a trivial often-used value.
             Fingerprint::ZERO
         } else {
-            self.expn_hash().0
+            let get_hashing_data = |data: &HygieneData| data.expn_hash(self).0;
+
+            match data {
+                Some(data) => get_hashing_data(data),
+                None => HygieneData::with(|data| get_hashing_data(data)),
+            }
         };
 
         hash.stable_hash(hcx, hasher);
     }
 }
 
-impl StableHash for LocalExpnId {
+impl StableHash for ExpnId {
+    #[inline]
     fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        self.to_expn_id().stable_hash(hcx, hasher);
+        self.stable_hash_internal(None, hcx, hasher)
+    }
+}
+
+impl StableHash for LocalExpnId {
+    #[inline]
+    fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+        self.to_expn_id().stable_hash_internal(None, hcx, hasher);
     }
 }

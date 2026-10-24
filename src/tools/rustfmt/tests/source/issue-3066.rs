@@ -1,4 +1,4 @@
-// rustfmt-indent_style: Visual
+//@ rustfmt-indent_style: Visual
 fn main() {
     Struct { field: aaaaaaaaaaa };
     Struct { field: aaaaaaaaaaaa, };

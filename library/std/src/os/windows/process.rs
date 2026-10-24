@@ -381,7 +381,10 @@ pub impl(self) trait CommandExt {
     /// see the [Remarks][1] section of the `CreateProcessW` documentation.
     ///
     /// [1]: https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-createprocessw#remarks
-    #[unstable(feature = "windows_process_extensions_inherit_handles", issue = "146407")]
+    #[stable(
+        feature = "windows_process_extensions_inherit_handles",
+        since = "CURRENT_RUSTC_VERSION"
+    )]
     fn inherit_handles(&mut self, inherit_handles: bool) -> &mut process::Command;
 }
 
@@ -466,7 +469,7 @@ impl ChildExt for process::Child {
 }
 
 /// Windows-specific extensions to [`process::ExitCode`].
-#[unstable(feature = "windows_process_exit_code_from", issue = "111688")]
+#[stable(feature = "windows_process_exit_code_from", since = "CURRENT_RUSTC_VERSION")]
 pub impl(self) trait ExitCodeExt {
     /// Creates a new `ExitCode` from the raw underlying `u32` return value of
     /// a process.
@@ -474,11 +477,11 @@ pub impl(self) trait ExitCodeExt {
     /// The exit code should not be 259, as this conflicts with the `STILL_ACTIVE`
     /// macro returned from the `GetExitCodeProcess` function to signal that the
     /// process has yet to run to completion.
-    #[unstable(feature = "windows_process_exit_code_from", issue = "111688")]
+    #[stable(feature = "windows_process_exit_code_from", since = "CURRENT_RUSTC_VERSION")]
     fn from_raw(raw: u32) -> Self;
 }
 
-#[unstable(feature = "windows_process_exit_code_from", issue = "111688")]
+#[stable(feature = "windows_process_exit_code_from", since = "CURRENT_RUSTC_VERSION")]
 impl ExitCodeExt for process::ExitCode {
     fn from_raw(raw: u32) -> Self {
         process::ExitCode::from_inner(From::from(raw))

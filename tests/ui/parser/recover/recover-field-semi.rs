@@ -16,3 +16,5 @@ enum Baz {
 fn main() {
     let _ = Foo { foo: "" }; //~ ERROR mismatched types
 }
+
+//@ reference: items.union.syntax

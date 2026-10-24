@@ -175,7 +175,7 @@ where
             TypingMode::Typeck { defining_opaque_types_and_generators } => {
                 defining_opaque_types_and_generators
             }
-            TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: _ }
+            TypingMode::PostTypeckThroughBorrowck { defining_opaque_types: _ }
             | TypingMode::PostBorrowck { defined_opaque_types: _ }
             | TypingMode::Reflection
             | TypingMode::PostAnalysis

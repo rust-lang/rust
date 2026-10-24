@@ -296,10 +296,14 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
     /// Multi-segmented name like `#[rustfmt::skip]` is specified as `&["rustfmt".to_string(), "skip".to_string()]`.
     pub fn tool_attrs(&self, def_id: DefId, attr: &[String]) -> Vec<(String, Span)> {
         let attr_name: Vec<_> = attr.iter().map(|seg| Symbol::intern(&seg)).collect();
+        #[allow(deprecated)]
         self.tcx
-            .get_attrs_by_path(def_id, &attr_name)
+            .get_all_attrs(def_id)
+            .into_iter()
             .filter_map(|attribute| {
-                if let Attribute::Unparsed(u) = attribute {
+                if let Attribute::Unparsed(u) = attribute
+                    && u.path.segments.iter().eq(&attr_name)
+                {
                     let attr_str = rustc_hir_pretty::attribute_to_string(self, attribute);
                     Some((attr_str, u.span))
                 } else {

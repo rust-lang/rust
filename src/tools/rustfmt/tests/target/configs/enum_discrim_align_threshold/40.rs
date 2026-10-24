@@ -1,4 +1,4 @@
-// rustfmt-enum_discrim_align_threshold: 40
+//@ rustfmt-enum_discrim_align_threshold: 40
 
 enum Standard {
     A     = 1,

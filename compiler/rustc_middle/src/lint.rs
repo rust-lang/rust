@@ -565,7 +565,6 @@ pub fn emit_lint_base<'a, D: Diagnostic<'a> + 'a>(
                     )
                 }
                 FutureIncompatibilityReason::Custom(reason, _) => reason.to_owned(),
-                FutureIncompatibilityReason::Unreachable => unreachable!(),
             };
 
             if future_incompatible.explain_reason {

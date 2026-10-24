@@ -12,6 +12,8 @@ LL |     reuse S::<(), 123>::by_box { self.get_s() }
 note: method defined here
   --> $DIR/inherent-impls-self-replacement.rs:14:8
    |
+LL | impl<'a, 'b, 'c, A, const C: usize> S<A, C> {
+...
 LL |     fn by_box<'d: 'd, 'e, T, const B: bool>(self: Box<Self>) {}
    |        ^^^^^^                               ----
 help: store this in the heap by calling `Box::new`
@@ -32,6 +34,8 @@ LL |     reuse S::<(), 123>::by_rc { self.get_s() }
 note: method defined here
   --> $DIR/inherent-impls-self-replacement.rs:15:8
    |
+LL | impl<'a, 'b, 'c, A, const C: usize> S<A, C> {
+...
 LL |     fn by_rc<'d: 'd, 'e, T, const B: bool>(self: Rc<Self>) {}
    |        ^^^^^                               ----
 help: call `Into::into` on this expression to convert `S<(), 123>` into `Rc<S<(), 123>>`
@@ -52,6 +56,8 @@ LL |     reuse S::<(), 123>::by_pin { self.get_s() }
 note: method defined here
   --> $DIR/inherent-impls-self-replacement.rs:16:8
    |
+LL | impl<'a, 'b, 'c, A, const C: usize> S<A, C> {
+...
 LL |     fn by_pin<'d: 'd, 'e, T, const B: bool>(self: Pin<Box<Self>>) {}
    |        ^^^^^^                               ----
 help: you need to pin and box this expression

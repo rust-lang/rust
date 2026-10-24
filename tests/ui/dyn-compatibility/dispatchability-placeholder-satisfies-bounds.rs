@@ -8,7 +8,7 @@
 //! supertraits that would be necessary for `RustaceansAreAwesome` to implement `Trait`.
 //@ check-pass
 
-// This works for `Self: Super<...Ty::<RustaceansAreAwesome>::Assoc...>` after the `where`.
+// This works for `Self: Super<...<Ty<RustaceansAreAwesome> as TraitWithAssoc>::Assoc...>`.
 // We need to assume `(Args, RustaceansAreAwesome::Output): SignatureToFnPtr`.
 
 use std::ops::Deref;
@@ -26,7 +26,7 @@ where
     fn method(&self);
 }
 
-// This works for `Trait: Super<...Ty<RustaceansAreAwesome>::Assoc...>` before the `where`.
+// This works for `Self: Super<...<Ty as TraitWithAssoc<RustaceansAreAwesome>>::Assoc...>`.
 // We need to assume `A: Associator<RustaceansAreAwesome>`.
 
 trait Associator<S: ?Sized> {
@@ -58,23 +58,52 @@ pub trait Transposable<T: Matrix2D<RowIndex = Self::RowIndex>>: Matrix2D {
     fn transpose(&self) -> T;
 }
 
+// Here, we need to assume `<(RustaceansAreAwesome,) as HasAssoc>::Assoc == str` in order to prove
+// `<(RustaceansAreAwesome,) as HasAssoc>::Assoc: ToOwned`; some projection clauses are necessary.
+
+trait HasAssoc {
+    type Assoc;
+}
+
+trait Parent<T: ?Sized> {}
+
+trait NeedProjectionNotInExpansion
+where
+    // The projection clause `<(Self,) as HasAssoc>::Assoc == str` isn't written as part of a
+    // supertrait bound, so the expansion of `RustaceansAreAwesome: NeedProjectionNotInExpansion`
+    // done by param-env normalization won't include a version of it for `RustaceansAreAwesome`.
+    (Self,): HasAssoc<Assoc = str>,
+    Self: Parent<<<(Self,) as HasAssoc>::Assoc as ToOwned>::Owned>,
+{
+    fn f(&self);
+}
+
+// When adding projection clauses involving `RustaceansAreAwesome`, we shouldn't conflict with those
+// that will be added by expansion. Due to the suprtrait bound `Self:HasAssoc<Assoc = Self>`, param-
+// env normalization expands the assumption `RustaceansAreAwesome: CarefulOfProjectionFromExpansion`
+// to also assume `<RustaceansAreAwesome as HasAssoc>::Assoc == RustaceansAreAwesome`. Adding any
+// differing projection clause for it would lead to ambiguity here.
+
+trait CarefulOfProjectionFromExpansion
+where
+    Self: HasAssoc<Assoc = Self>,
+    Self: Parent<<<Self as HasAssoc>::Assoc as HasAssoc>::Assoc>,
+{
+    fn f(&self);
+}
+
 // An example where we can't add any additional projections without introducing ambiguity: we don't
 // want to assume `<() as HasAssoc>::Assoc` is both `Self` and `RustaceansAreAwesome`. At the time
 // of writing, we let `<() as HasAssoc>::Assoc` normalize to `Self` during receiver dispatchability
 // checking. This should be fine, since to call methods on a `dyn TechnicallyDynCompatible`, we'd
 // need `<() as HasAssoc>::Assoc` to be `dyn TechnicallyDynCompatible`. This is the same reasoning
 // that lets us assume `RustaceansAreAwesome` implements its trait at all: to use the trait object,
-// it must implement the trait; otherwise, receiver dispatchability doesn't mean much.
-
-trait HasAssoc {
-    type Assoc;
-}
+// it must implement the trait; otherwise, receiver dispatchability doesn't mean much (except
+// insofar as it lets `TechnicallyDynCompatible` be dyn-compatible).
 
 impl HasAssoc for () {
     type Assoc = ();
 }
-
-trait Parent<T: ?Sized> {}
 
 trait TechnicallyDynCompatible
 where

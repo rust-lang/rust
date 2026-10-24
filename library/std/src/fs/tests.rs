@@ -1416,7 +1416,7 @@ fn recursive_rmdir() {
 }
 
 #[test]
-fn recursive_rmdir_of_symlink() {
+fn recursive_rmdir_of_dir_symlink() {
     // test we do not recursively delete a symlink but only dirs.
     let tmpdir = tmpdir();
     let link = tmpdir.join("d1");
@@ -1443,8 +1443,6 @@ fn recursive_rmdir_of_file_fails() {
 }
 
 #[test]
-// only Windows makes a distinction between file and directory symlinks.
-#[cfg(windows)]
 fn recursive_rmdir_of_file_symlink() {
     let tmpdir = tmpdir();
     if !got_symlink_permission(&tmpdir) {
@@ -1455,9 +1453,12 @@ fn recursive_rmdir_of_file_symlink() {
     let f2 = tmpdir.join("f2");
     check!(check!(File::create(&f1)).write(b"foo"));
     check!(symlink_file(&f1, &f2));
-    match fs::remove_dir_all(&f2) {
-        Ok(..) => panic!("wanted a failure"),
-        Err(..) => {}
+    let res = fs::remove_dir_all(&f2);
+    // Windows and Unix behavior differs here.
+    if cfg!(windows) {
+        let _err = res.unwrap_err();
+    } else {
+        let _ok = res.unwrap();
     }
 }
 
@@ -1831,7 +1832,6 @@ fn fchmod_works() {
     check!(file.set_permissions(p));
 }
 
-#[cfg(not(target_os = "android"))]
 #[test]
 fn fchmodat_works() {
     let tmpdir = tmpdir();
@@ -3268,10 +3268,6 @@ fn test_dir_rename_file() {
     assert_eq!(b"bar", &buf);
 }
 
-// FIXME: re-enable once QNX fixes TOCTOU bug for fs::remove_dir
-// Note that it may get fixed in QNX 8 in a future libc release
-// ... https://github.com/rust-lang/rust/issues/153781
-#[cfg_attr(any(target_os = "nto", target_os = "qnx"), ignore)]
 #[test]
 fn test_dir_remove_dir() {
     let tmpdir = tmpdir();
@@ -3339,6 +3335,19 @@ fn test_dir_metadata() {
     let metadata = check!(dir.symlink_metadata("link"));
     assert!(!metadata.is_file());
     assert!(metadata.is_symlink());
+}
+
+#[test]
+fn test_read_dir_dir() {
+    let tmpdir = tmpdir();
+    check!(fs::write(tmpdir.path().join("file.txt"), b"hello"));
+
+    let read_dir = check!(fs::read_dir(tmpdir.path()));
+    let dir = check!(read_dir.dir());
+    let mut f = check!(dir.open_file("file.txt"));
+    let mut data = vec![];
+    check!(f.read_to_end(&mut data));
+    assert_eq!(data, b"hello");
 }
 
 fn root_test_dir(what: &str) -> PathBuf {

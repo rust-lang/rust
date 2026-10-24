@@ -1,4 +1,4 @@
-use rustc_ast::{self as ast, EnumDef, Safety};
+use rustc_ast::{self as ast, EnumDef};
 use rustc_expand::base::ExtCtxt;
 use rustc_session::config::FmtDebug;
 use rustc_span::{Ident, Span, Symbol, sym};
@@ -22,10 +22,16 @@ pub(crate) fn expand_deriving_debug(
         ast::Mutability::Mut,
     );
 
+    let all_fieldless = match &item.kind {
+        ast::ItemKind::Enum(_, _, def) => {
+            def.variants.len() > 1 && def.variants.iter().all(|v| v.data.fields().is_empty())
+        }
+        _ => false,
+    };
+
     let trait_def = TraitDef {
         span,
         path: path_std!(cx, span, fmt::Debug),
-        skip_path_as_bound: false,
         needs_copy_as_bound_if_packed: true,
         additional_bounds: SmallVec::new(),
         supports_unions: false,
@@ -33,12 +39,11 @@ pub(crate) fn expand_deriving_debug(
             name: sym::fmt,
             generics: cx.empty_generics(span),
             explicit_self: true,
-            nonself_args: smallvec![(fmtr, sym::character('f'))],
+            nonself_args: smallvec![(fmtr, sym::f)],
             has_other_selflike_arg: false,
             ret_ty: cx.ty_path(path_std!(cx, span, fmt::Result)),
             attributes: thin_vec![cx.attr_word(sym::inline, span)],
-            fieldless_variants_strategy:
-                FieldlessVariantsStrategy::SpecializeIfAllVariantsFieldless,
+            fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
             combine_substructure: combine_substructure(|cx, span, substr| show_substructure(
                 cx,
                 span,
@@ -47,14 +52,9 @@ pub(crate) fn expand_deriving_debug(
             )),
         }],
         is_const,
-        safety: Safety::Default,
-        document: true,
+        ..
     };
-    trait_def.expand(cx, item, push)
-}
-
-fn formatter_ident(cx: &ExtCtxt<'_>, span: Span) -> Box<ast::Expr> {
-    cx.expr_ident_sym(span, sym::character('f'))
+    trait_def.expand_ext(cx, item, push, all_fieldless);
 }
 
 fn show_substructure(
@@ -68,19 +68,19 @@ fn show_substructure(
         return BlockOrExpr::new_expr(cx.expr_ok(span, cx.expr_tuple(span, ThinVec::new())));
     }
 
-    let (ident, vdata, fields) = match substr.fields {
+    let (ident, vdata, fields) = match substr {
         Struct(vdata, fields) => (type_ident, vdata, fields),
         EnumMatching(v, fields) => (v.ident, &v.data, fields),
-        AllFieldlessEnum(enum_def) => return show_fieldless_enum(cx, span, enum_def, type_ident),
+        StaticEnum(enum_def) => return show_fieldless_enum(cx, span, enum_def, type_ident),
         _ => cx.dcx().span_bug(span, "unexpected substructure in `derive(Debug)`"),
     };
 
     let name = cx.expr_str(span, ident.name);
-    let fmt = formatter_ident(cx, span);
+    let fmt = cx.expr_name(span, sym::f);
 
     // Fieldless enums have been special-cased earlier
     if fmt_detail == FmtDebug::Shallow {
-        let fn_path_write_str = cx.std_path(&[sym::fmt, sym::Formatter, sym::write_str]);
+        let fn_path_write_str = cx.std_path(span, &[sym::fmt, sym::Formatter, sym::write_str]);
         let expr = cx.expr_call_global(span, fn_path_write_str, thin_vec![fmt, name]);
         return BlockOrExpr::new_expr(expr);
     }
@@ -113,7 +113,7 @@ fn show_substructure(
 
     if fields.is_empty() {
         // Special case for no fields.
-        let fn_path_write_str = cx.std_path(&[sym::fmt, sym::Formatter, sym::write_str]);
+        let fn_path_write_str = cx.std_path(span, &[sym::fmt, sym::Formatter, sym::write_str]);
         let expr = cx.expr_call_global(span, fn_path_write_str, thin_vec![fmt, name]);
         BlockOrExpr::new_expr(expr)
     } else if fields.len() <= CUTOFF {
@@ -123,7 +123,7 @@ fn show_substructure(
         } else {
             format!("debug_tuple_field{}_finish", fields.len())
         };
-        let fn_path_debug = cx.std_path(&[sym::fmt, sym::Formatter, Symbol::intern(&debug)]);
+        let fn_path_debug = cx.std_path(span, &[sym::fmt, sym::Formatter, Symbol::intern(&debug)]);
 
         let mut args = ThinVec::with_capacity(2 + fields.len() * args_per_field);
         args.extend([fmt, name]);
@@ -159,14 +159,14 @@ fn show_substructure(
             cx.stmt_let_ty(
                 span,
                 false,
-                Ident::new(sym::names, span),
+                sym::names,
                 Some(ty_static_ref),
                 cx.expr_array_ref(span, name_exprs),
             )
         });
 
         // `let values: &[&dyn Debug] = &[&&self.field1, &&self.field2];`
-        let path_debug = cx.path_global(span, cx.std_path(&[sym::fmt, sym::Debug]));
+        let path_debug = cx.std_path(span, &[sym::fmt, sym::Debug]);
         let ty_dyn_debug = cx.ty(
             span,
             ast::TyKind::TraitObject(
@@ -181,7 +181,7 @@ fn show_substructure(
         let values_let = cx.stmt_let_ty(
             span,
             false,
-            Ident::new(sym::values, span),
+            sym::values,
             Some(cx.ty_ref(span, ty_slice, None, ast::Mutability::Not)),
             cx.expr_array_ref(span, value_exprs),
         );
@@ -193,15 +193,15 @@ fn show_substructure(
         } else {
             sym::debug_tuple_fields_finish
         };
-        let fn_path_debug_internal = cx.std_path(&[sym::fmt, sym::Formatter, sym_debug]);
+        let fn_path_debug_internal = cx.std_path(span, &[sym::fmt, sym::Formatter, sym_debug]);
 
         let mut args = ThinVec::with_capacity(4);
         args.push(fmt);
         args.push(name);
         if is_struct {
-            args.push(cx.expr_ident_sym(span, sym::names));
+            args.push(cx.expr_name(span, sym::names));
         }
-        args.push(cx.expr_ident_sym(span, sym::values));
+        args.push(cx.expr_name(span, sym::values));
         let expr = cx.expr_call_global(span, fn_path_debug_internal, args);
 
         let mut stmts = ThinVec::with_capacity(2);
@@ -232,12 +232,15 @@ fn show_fieldless_enum(
     def: &EnumDef,
     type_ident: Ident,
 ) -> BlockOrExpr {
-    let fmt = formatter_ident(cx, span);
+    if let Some(expr) = show_fieldless_enum_concat_str(cx, span, def, type_ident) {
+        return BlockOrExpr::new_expr(expr);
+    }
+    let fmt = cx.expr_name(span, sym::f);
     let arms = def
         .variants
         .iter()
         .map(|v| {
-            let variant_path = cx.path(span, vec![type_ident, v.ident]);
+            let variant_path = cx.path(span, &[type_ident, v.ident]);
             let pat = match &v.data {
                 ast::VariantData::Tuple(fields, _) => {
                     debug_assert!(fields.is_empty());
@@ -253,6 +256,97 @@ fn show_fieldless_enum(
         })
         .collect::<ThinVec<_>>();
     let name = cx.expr_match(span, cx.expr_self(span), arms);
-    let fn_path_write_str = cx.std_path(&[sym::fmt, sym::Formatter, sym::write_str]);
+    let fn_path_write_str = cx.std_path(span, &[sym::fmt, sym::Formatter, sym::write_str]);
     BlockOrExpr::new_expr(cx.expr_call_global(span, fn_path_write_str, thin_vec![fmt, name]))
+}
+
+/// Special case for large enums with no fields. Builds:
+/// ```text
+/// impl ::core::fmt::Debug for A {
+///     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+///         ::core::fmt::Formatter::debug_c_like_enum_write_str(f,
+///             "A B C D E F",
+///             match self {
+///                 A::A => 0usize,
+///                 A::B => 2usize,
+///                 A::C => 4usize,
+///                 A::D => 6usize,
+///                 A::E => 8usize,
+///                 A::F => 10usize,
+///             })
+///     }
+/// }
+/// ```
+fn show_fieldless_enum_concat_str(
+    cx: &ExtCtxt<'_>,
+    span: Span,
+    def: &EnumDef,
+    type_ident: Ident,
+) -> Option<Box<ast::Expr>> {
+    // Minimum variant count where this optimization starts to pay off.
+    // Initial value of 10 came from https://github.com/rust-lang/rust/pull/155452.
+    // Refined with the new impl in https://github.com/rust-lang/rust/pull/162535.
+    // Tested with thresholds 10,5,2 on rustc-perf
+    // and by comparing MIR sizes for various enums in GodBolt.
+    //
+    // `match` with strings generates:
+    //  - a local for each arm
+    //  - a basic block with 5 statements for each arm,
+    //
+    // `match` with integers to index a concatenated string generates
+    //  - a single local for the string
+    //  - a single local for the index
+    //  - a basic block with 2 statements for each arm
+    //
+    // This reduces borrowck costs on larger enums.
+    const THRESHOLD: usize = 5;
+    let variants_count = def.variants.len();
+    if variants_count < THRESHOLD {
+        return None;
+    }
+    let fmt = cx.expr_name(span, sym::f);
+
+    let mut concatenated_names = String::new();
+
+    let arms = def
+        .variants
+        .iter()
+        .enumerate()
+        .map(|(i, v)| {
+            let name_offset = concatenated_names.len();
+
+            let name = v.ident.name.as_str();
+            concatenated_names.push_str(name);
+
+            let is_last = i == def.variants.len() - 1;
+            if !is_last {
+                concatenated_names.push(' ');
+            }
+
+            let variant_path = cx.path(span, &[type_ident, v.ident]);
+            let pat = match &v.data {
+                ast::VariantData::Tuple(fields, _) => {
+                    debug_assert!(fields.is_empty());
+                    cx.pat_tuple_struct(span, variant_path, ThinVec::new())
+                }
+                ast::VariantData::Struct { fields, .. } => {
+                    debug_assert!(fields.is_empty());
+                    cx.pat_struct(span, variant_path, ThinVec::new())
+                }
+                ast::VariantData::Unit(_) => cx.pat_path(span, variant_path),
+            };
+
+            cx.arm(span, pat, cx.expr_usize(span, name_offset))
+        })
+        .collect::<ThinVec<_>>();
+
+    let names_str_body = cx.expr_str(span, Symbol::intern(&concatenated_names));
+
+    let variant_index_expr = cx.expr_match(span, cx.expr_self(span), arms);
+
+    let fn_path = cx.std_path(span, &[sym::fmt, sym::Formatter, sym::debug_c_like_enum_write_str]);
+    let call_expr =
+        cx.expr_call_global(span, fn_path, thin_vec![fmt, names_str_body, variant_index_expr]);
+
+    Some(call_expr)
 }

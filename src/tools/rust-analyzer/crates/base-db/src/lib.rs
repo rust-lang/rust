@@ -30,7 +30,7 @@ pub use crate::{
         BuiltCrateData, BuiltDependency, Crate, CrateBuilder, CrateBuilderId, CrateDataBuilder,
         CrateDisplayName, CrateGraphBuilder, CrateName, CrateOrigin, CratesIdMap, CratesMap,
         DependencyBuilder, Env, ExtraCrateData, LangCrateOrigin, ProcMacroLoadingError,
-        ProcMacroPaths, ReleaseChannel, SourceRoot, SourceRootId, UniqueCrateData,
+        ProcMacroPaths, ReleaseChannel, SourceRoot, SourceRootId, TargetKind, UniqueCrateData,
     },
 };
 use dashmap::{DashMap, mapref::entry::Entry};

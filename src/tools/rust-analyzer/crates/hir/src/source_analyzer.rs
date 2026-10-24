@@ -33,7 +33,7 @@ use hir_expand::{
     mod_path::{ModPath, PathKind, path},
     name::{AsName, Name},
 };
-use hir_ty::{
+use hir_ide::{
     Adjustment, InferBodyId, InferenceResult, LifetimeElisionKind, LifetimeLoweringMode,
     ParamEnvAndCrate, TyLoweringContext, TyLoweringInferVarsCtx,
     diagnostics::{
@@ -480,8 +480,8 @@ impl<'db> SourceAnalyzer<'db> {
         }
 
         impl<'db> TyLoweringInferVarsCtx<'db> for VarsCtx<'_, 'db> {
-            fn next_ty_var(&mut self, span: hir_ty::Span) -> Ty<'db> {
-                if let hir_ty::Span::TypeRefId(type_ref) = span
+            fn next_ty_var(&mut self, span: hir_ide::Span) -> Ty<'db> {
+                if let hir_ide::Span::TypeRefId(type_ref) = span
                     && let Some(ty) =
                         self.infer.and_then(|infer| infer.type_of_type_placeholder(type_ref))
                 {
@@ -490,10 +490,10 @@ impl<'db> SourceAnalyzer<'db> {
                     self.types.types.error
                 }
             }
-            fn next_const_var(&mut self, _span: hir_ty::Span) -> hir_ty::next_solver::Const<'db> {
+            fn next_const_var(&mut self, _span: hir_ide::Span) -> hir_ide::next_solver::Const<'db> {
                 self.types.consts.error
             }
-            fn next_region_var(&mut self, _span: hir_ty::Span) -> Region<'db> {
+            fn next_region_var(&mut self, _span: hir_ide::Span) -> Region<'db> {
                 self.types.regions.error
             }
         }
@@ -602,11 +602,11 @@ impl<'db> SourceAnalyzer<'db> {
         let id = self.pat_id(&pat.clone().into())?;
         let infer = self.infer()?;
         Some(match infer.binding_mode(id.as_pat()?)? {
-            hir_ty::BindingMode(hir_ty::ByRef::No, _) => BindingMode::Move,
-            hir_ty::BindingMode(hir_ty::ByRef::Yes(hir_ty::next_solver::Mutability::Mut), _) => {
+            hir_ide::BindingMode(hir_ide::ByRef::No, _) => BindingMode::Move,
+            hir_ide::BindingMode(hir_ide::ByRef::Yes(hir_ide::next_solver::Mutability::Mut), _) => {
                 BindingMode::Ref(Mutability::Mut)
             }
-            hir_ty::BindingMode(hir_ty::ByRef::Yes(hir_ty::next_solver::Mutability::Not), _) => {
+            hir_ide::BindingMode(hir_ide::ByRef::Yes(hir_ide::next_solver::Mutability::Not), _) => {
                 BindingMode::Ref(Mutability::Shared)
             }
         })
@@ -1942,7 +1942,7 @@ fn resolve_hir_path_<'db>(
             Some(unresolved) => resolver
                 .generic_def()
                 .and_then(|def| {
-                    hir_ty::associated_type_shorthand_candidates(
+                    hir_ide::associated_type_shorthand_candidates(
                         db,
                         def,
                         res.in_type_ns()?,
@@ -2143,7 +2143,7 @@ fn resolve_hir_path_qualifier<'db>(
             Some(unresolved) => resolver
                 .generic_def()
                 .and_then(|def| {
-                    hir_ty::associated_type_shorthand_candidates(
+                    hir_ide::associated_type_shorthand_candidates(
                         db,
                         def,
                         res.in_type_ns()?,

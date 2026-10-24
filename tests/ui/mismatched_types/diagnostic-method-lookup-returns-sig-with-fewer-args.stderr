@@ -9,6 +9,8 @@ LL |     target.unique_name(10.0); // (used to crash here)
 note: method defined here
   --> $DIR/diagnostic-method-lookup-returns-sig-with-fewer-args.rs:22:12
    |
+LL | impl Target {
+LL |     // correct function with arguments
 LL |     pub fn unique_name(&self, data: i32) {
    |            ^^^^^^^^^^^        ---------
 

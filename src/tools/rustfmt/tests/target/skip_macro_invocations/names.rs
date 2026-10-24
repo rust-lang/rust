@@ -1,4 +1,4 @@
-// rustfmt-skip_macro_invocations: ["foo","bar"]
+//@ rustfmt-skip_macro_invocations: ["foo","bar"]
 
 // Should skip this invocation
 foo!(

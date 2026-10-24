@@ -204,7 +204,6 @@ where
                         ecx.evaluate_added_goals_and_make_canonical_response(certainty)
                     },
                 )
-                .map_err(Into::into)
             });
 
         Ok(match result.map_err_to_rerun()? {
@@ -530,7 +529,7 @@ where
                 let assemble_impls = match self.typing_mode() {
                     TypingMode::Coherence => true,
                     TypingMode::Typeck { .. }
-                    | TypingMode::PostTypeckUntilBorrowck { .. }
+                    | TypingMode::PostTypeckThroughBorrowck { .. }
                     | TypingMode::Reflection
                     | TypingMode::PostBorrowck { .. }
                     | TypingMode::PostAnalysis
@@ -1137,7 +1136,7 @@ where
         let opaque_types = match self.typing_mode() {
             TypingMode::Typeck { .. } => self.opaques_with_sub_unified_hidden_type(self_ty),
             TypingMode::Coherence
-            | TypingMode::PostTypeckUntilBorrowck { .. }
+            | TypingMode::PostTypeckThroughBorrowck { .. }
             | TypingMode::PostBorrowck { .. }
             | TypingMode::PostAnalysis
             | TypingMode::Reflection

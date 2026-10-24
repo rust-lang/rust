@@ -163,7 +163,7 @@ fn resolve_associated_item<'tcx>(
                 match typing_env.typing_mode().assert_not_erased() {
                     ty::TypingMode::Coherence
                     | ty::TypingMode::Typeck { .. }
-                    | ty::TypingMode::PostTypeckUntilBorrowck { .. }
+                    | ty::TypingMode::PostTypeckThroughBorrowck { .. }
                     | ty::TypingMode::Reflection
                     | ty::TypingMode::PostBorrowck { .. } => false,
                     ty::TypingMode::PostAnalysis | ty::TypingMode::Codegen => {

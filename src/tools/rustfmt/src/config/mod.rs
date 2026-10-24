@@ -242,7 +242,10 @@ impl PartialConfig {
 }
 
 fn check_semver_version(range_requirement: &str, actual: &str) -> bool {
-    let mut version_req = match semver::VersionReq::parse(range_requirement) {
+    // A bare version (no comparator prefix) is left as `semver`'s own default,
+    // which is a caret requirement, matching how Cargo treats dependency version
+    // requirements.
+    let version_req = match semver::VersionReq::parse(range_requirement) {
         Ok(r) => r,
         Err(e) => {
             eprintln!("Error: failed to parse required version {range_requirement:?}: {e}");
@@ -256,24 +259,6 @@ fn check_semver_version(range_requirement: &str, actual: &str) -> bool {
             return false;
         }
     };
-
-    range_requirement
-        .split(',')
-        .enumerate()
-        .for_each(|(i, label)| {
-            // the label refers to the current comparator
-            let Some(comparator) = version_req.comparators.get_mut(i) else {
-                return;
-            };
-
-            // semver crate handles "1.0.0" as "^1.0.0", and we want to treat it as "=1.0.0"
-            // because of this, we need to iterate over the comparators, and change each one
-            // that has "default caret operator" to an exact operator
-            // this condition overrides the "default caret operator" of semver create.
-            if !label.starts_with('^') && comparator.op == semver::Op::Caret {
-                comparator.op = semver::Op::Exact;
-            }
-        });
 
     version_req.matches(&actual_version)
 }
@@ -354,7 +339,12 @@ impl Config {
         style_edition: Option<StyleEdition>,
         version: Option<Version>,
     ) -> Result<(Config, Option<PathBuf>), Error> {
-        match resolve_project_file(dir).or_else(|_| config_from_user_dirs())? {
+        let path = match resolve_project_file(dir)? {
+            Some(path) => Some(path),
+            None => config_from_user_dirs()?,
+        };
+
+        match path {
             None => Ok((
                 Config::default_for_possible_style_edition(style_edition, edition, version),
                 None,
@@ -550,6 +540,7 @@ fn config_path(options: &dyn CliOptions) -> Result<Option<PathBuf>, Error> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use indoc::formatdoc;
     use std::str;
 
     use crate::config::macro_names::{MacroName, MacroSelectors};
@@ -726,7 +717,10 @@ mod test {
         let toml = used_options.to_toml().unwrap();
         assert_eq!(
             toml,
-            format!("merge_derives = {merge_derives}\nskip_children = {skip_children}\n",)
+            formatdoc! {"
+                merge_derives = {merge_derives}
+                skip_children = {skip_children}
+            "}
         );
     }
 
@@ -1566,13 +1560,25 @@ make_backup = false
         use super::*;
 
         #[test]
-        fn test_exact_version_match() {
+        fn test_default_caret_match() {
+            // A bare version (no operator) defaults to a caret requirement,
+            // matching how Cargo treats dependency version requirements.
             assert!(check_semver_version("1.0.0", "1.0.0"));
-            assert!(!check_semver_version("1.0.0", "1.1.0"));
-            assert!(!check_semver_version("1.0.0", "1.0.1"));
+            assert!(check_semver_version("1.0.0", "1.1.0"));
+            assert!(check_semver_version("1.0.0", "1.0.1"));
             assert!(!check_semver_version("1.0.0", "2.1.0"));
             assert!(!check_semver_version("1.0.0", "0.1.0"));
             assert!(!check_semver_version("1.0.0", "0.0.1"));
+        }
+
+        #[test]
+        fn test_explicit_exact_match() {
+            assert!(check_semver_version("=1.0.0", "1.0.0"));
+            assert!(!check_semver_version("=1.0.0", "1.1.0"));
+            assert!(!check_semver_version("=1.0.0", "1.0.1"));
+            assert!(!check_semver_version("=1.0.0", "2.1.0"));
+            assert!(!check_semver_version("=1.0.0", "0.1.0"));
+            assert!(!check_semver_version("=1.0.0", "0.0.1"));
         }
 
         #[test]

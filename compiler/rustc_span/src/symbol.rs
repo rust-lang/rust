@@ -11,6 +11,7 @@ use rustc_data_structures::hash_table::{Entry, HashTable};
 use rustc_data_structures::stable_hash::{StableCompare, StableHash, StableHashCtxt, StableHasher};
 use rustc_data_structures::sync::Lock;
 use rustc_macros::{Decodable, Encodable, StableHash, symbols};
+use rustc_serialize::ContextOrd;
 
 use crate::edit_distance::find_best_match_for_name;
 use crate::{DUMMY_SP, Edition, Span, with_session_globals};
@@ -601,10 +602,7 @@ symbols! {
         catch_unwind,
         cause,
         cdylib,
-        ceilf16,
-        ceilf32,
-        ceilf64,
-        ceilf128,
+        ceil,
         cfg,
         cfg_accessible,
         cfg_attr,
@@ -803,6 +801,7 @@ symbols! {
         debug_assert_macro,
         debug_assert_ne_macro,
         debug_assertions,
+        debug_c_like_enum_write_str,
         debug_struct_fields_finish,
         debug_tuple_fields_finish,
         debugger_visualizer,
@@ -837,7 +836,7 @@ symbols! {
         deref_target,
         derive,
         derive_const,
-        derive_const_issue: "118304",
+        derive_const_issue: "143874",
         derive_default_enum,
         derive_from,
         derive_smart_pointer,
@@ -880,6 +879,7 @@ symbols! {
         dreg,
         dreg_low8,
         dreg_low16,
+        dret,
         drop,
         drop_glue,
         drop_in_place,
@@ -1005,23 +1005,14 @@ symbols! {
         final_associated_functions,
         float_mul_add_relaxed,
         float_to_int_unchecked,
-        floorf16,
-        floorf32,
-        floorf64,
-        floorf128,
+        floor,
+        fma,
         fma4_target_feature,
-        fmaf16,
-        fmaf32,
-        fmaf64,
-        fmaf128,
         fmt,
         fmt_debug,
         fmul_algebraic,
         fmul_fast,
-        fmuladdf16,
-        fmuladdf32,
-        fmuladdf64,
-        fmuladdf128,
+        fmuladd,
         fn_align,
         fn_body,
         fn_delegation,
@@ -1189,6 +1180,7 @@ symbols! {
         into_iter,
         into_try_type,
         intra_doc_pointers,
+        intrinsic_fallback_is_spec,
         intrinsics,
         invariant,
         irrefutable_let_patterns,
@@ -1513,6 +1505,7 @@ symbols! {
         offload,
         offload_get_num_devices,
         offload_kernel,
+        offload_region,
         offset,
         offset_of,
         offset_of_enum,
@@ -1631,14 +1624,8 @@ symbols! {
         powerpc,
         powerpc64,
         powerpc_target_feature,
-        powf16,
-        powf32,
-        powf64,
-        powf128,
-        powif16,
-        powif32,
-        powif64,
-        powif128,
+        powf,
+        powi,
         ppcf128,
         pre_dash_lto: "pre-lto",
         precise_capturing,
@@ -1780,14 +1767,8 @@ symbols! {
         ropi_rwpi: "ropi-rwpi",
         rotate_left,
         rotate_right,
-        round_ties_even_f16,
-        round_ties_even_f32,
-        round_ties_even_f64,
-        round_ties_even_f128,
-        roundf16,
-        roundf32,
-        roundf64,
-        roundf128,
+        round,
+        round_ties_even,
         rtm_target_feature,
         runtime,
         rust,
@@ -2078,10 +2059,7 @@ symbols! {
         splat,
         splatted_index,
         spotlight,
-        sqrtf16,
-        sqrtf32,
-        sqrtf64,
-        sqrtf128,
+        sqrt,
         sreg,
         sreg_low16,
         sse,
@@ -2205,10 +2183,7 @@ symbols! {
         transparent_unions,
         trivial_bounds,
         trivial_clone,
-        truncf16,
-        truncf32,
-        truncf64,
-        truncf128,
+        trunc,
         try_as_dyn,
         try_blocks,
         try_blocks_heterogeneous,
@@ -2734,6 +2709,12 @@ impl fmt::Display for MacroRulesNormalizedIdent {
 /// implements `fmt::Debug`, `Encodable`, and `Decodable` in special ways.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Symbol(SymbolIndex);
+
+impl<E> ContextOrd<E> for Symbol {
+    fn stable_cmp_with_context(_context: E) -> impl FnMut(&Self, &Self) -> std::cmp::Ordering {
+        StableCompare::stable_cmp
+    }
+}
 
 // Used within both `Symbol` and `ByteSymbol`.
 rustc_index::newtype_index! {

@@ -1,12 +1,13 @@
 use std::collections::HashMap;
 use std::sync::{Arc, LazyLock};
 
-use crate::common::{Config, PassFailMode, TestMode};
+use crate::common::{Config, PassFailMode, TestMode, TestSuite};
 use crate::directives::{
     DirectiveLine, NormalizeKind, NormalizeRule, TestProps, parse_and_update_aux,
     parse_edition_range, split_flags,
 };
 use crate::errors::ErrorKind;
+use crate::runtest::COMPILETEST_UI_SUITE_UNSTABLE_FLAGS;
 
 pub(crate) static DIRECTIVE_HANDLERS_MAP: LazyLock<HashMap<&str, Handler>> =
     LazyLock::new(make_directive_handlers_map);
@@ -64,6 +65,23 @@ fn make_directive_handlers_map() -> HashMap<&'static str, Handler> {
     // these handlers, e.g. by getting rid of now-redundant name checks.
 
     let handlers: Vec<NamedHandler> = vec![
+        handler(ACT_AS_STABLE, |config, ln, props| {
+            if ln.name == ACT_AS_STABLE {
+                if ![TestSuite::Ui, TestSuite::UiFullDeps].contains(&config.suite) {
+                    panic!(
+                        "The {ACT_AS_STABLE} directive is only usable in the ui and ui-fulldeps test suites"
+                    );
+                }
+                // Simulate the stable toolchain, but allow unstable -Z flags passed by compiletest
+                props.rustc_env.push((
+                    "RUSTC_BOOTSTRAP".to_string(),
+                    format!(
+                        "-allow-unstable-compiler-flags={}",
+                        COMPILETEST_UI_SUITE_UNSTABLE_FLAGS.join(",")
+                    ),
+                ));
+            }
+        }),
         handler(ERROR_PATTERN, |config, ln, props| {
             config.push_name_value_directive(ln, ERROR_PATTERN, &mut props.error_patterns, |r| r);
         }),
