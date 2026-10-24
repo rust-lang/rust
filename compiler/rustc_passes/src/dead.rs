@@ -1437,6 +1437,47 @@ impl<'tcx> DeadVisitor<'tcx> {
     }
 }
 
+/// Returns whether `dead_code_pub_in_binary` should be checked for this crate.
+///
+/// Under `--test`, the effective crate type is always `Executable`, even for
+/// library unit tests. Check the crate types passed on the command line instead.
+///
+/// When `--test` is used without `--crate-type` on the command line, the
+/// original crate type cannot be determined reliably. In that case, the lint
+/// is suppressed to avoid false positives in libraries, at the cost of
+/// potential false negatives for binary tests, integration tests, and
+/// benchmarks.
+pub(crate) fn lints_dead_code_pub_in_binary(tcx: TyCtxt<'_>) -> bool {
+    if tcx.sess.is_test_crate() {
+        // under `--test`, `tcx.crate_types()` contains `Executable` even for library unit
+        // tests, so it cannot distinguish library and binary test harnesses.
+        // `tcx.sess.opts.crate_types` retains command-line crate types when supplied.
+        #[allow(rustc::bad_opt_access)]
+        let requested = &tcx.sess.opts.crate_types;
+        requested.contains(&CrateType::Executable)
+    } else {
+        tcx.crate_types().contains(&CrateType::Executable)
+    }
+}
+
+/// Returns true only when `dead_code_pub_in_binary` is known to have no effect.
+///
+/// With `--test` and no `--crate-type` on the command line, we cannot distinguish
+/// a library test harness from a binary one, so this returns false.
+pub(crate) fn dead_code_pub_in_binary_known_no_effect(tcx: TyCtxt<'_>) -> bool {
+    if tcx.sess.is_test_crate() {
+        // under `--test`, `tcx.crate_types()` contains `Executable` even for library unit
+        // tests, so it cannot distinguish library and binary test harnesses.
+        // `tcx.sess.opts.crate_types` retains command-line crate types when supplied.
+        #[allow(rustc::bad_opt_access)]
+        let requested = &tcx.sess.opts.crate_types;
+
+        !requested.is_empty() && !requested.contains(&CrateType::Executable)
+    } else {
+        !tcx.crate_types().contains(&CrateType::Executable)
+    }
+}
+
 fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalModId) {
     let Ok(DeadCodeLivenessSummary { pre_deferred_seeding, final_result }) =
         tcx.live_symbols_and_ignored_derived_traits(()).as_ref()
@@ -1446,7 +1487,7 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalModId) {
 
     let module_items = tcx.hir_module_items(module);
 
-    if tcx.crate_types().contains(&CrateType::Executable) {
+    if lints_dead_code_pub_in_binary(tcx) {
         let is_unused_pub = |def_id: LocalDefId| {
             tcx.effective_visibilities(()).is_public_at_level(def_id, Level::Reachable)
                 && !pre_deferred_seeding.live_symbols.contains(&def_id)
