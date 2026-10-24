@@ -1036,7 +1036,8 @@ impl<'a> PartialEq for Components<'a> {
             && self.front == other.front
             && self.back == State::Body
             && other.back == State::Body
-            && self.prefix_verbatim() == other.prefix_verbatim()
+            && self.prefix == other.prefix
+            && self.has_physical_root == other.has_physical_root
         {
             // possible future improvement: this could bail out earlier if there were a
             // reverse memcmp/bcmp comparing back to front
