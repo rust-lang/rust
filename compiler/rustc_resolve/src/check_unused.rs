@@ -148,7 +148,7 @@ impl<'a, 'ra, 'tcx> UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
         }
     }
 
-    fn check_imports_as_underscore(&mut self, items: &[ast::UseTreeAndId]) {
+    fn check_imports_as_underscore(&mut self, items: &[ast::AnnotatableUseTree]) {
         for use_tree in items {
             self.check_import_as_underscore(&use_tree.inner, use_tree.id);
         }
@@ -287,9 +287,9 @@ impl<'a, 'ra, 'tcx> Visitor<'a> for UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
         visit::walk_item(self, item);
     }
 
-    fn visit_use_tree_and_id(&mut self, tree: &'a ast::UseTreeAndId) {
+    fn visit_annotatable_use_tree(&mut self, tree: &'a ast::AnnotatableUseTree) {
         self.check_use_tree(&tree.inner, tree.id, self.r.local_def_id(tree.id));
-        visit::walk_use_tree_and_id(self, tree);
+        visit::walk_annotatable_use_tree(self, tree);
     }
 }
 

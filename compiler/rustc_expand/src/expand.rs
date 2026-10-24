@@ -263,6 +263,11 @@ ast_fragments! {
         one fn visit_crate;
         fn make_crate;
     }
+    AnnotatableUseTree(SmallVec<[ast::AnnotatableUseTree;1]>){
+        "annotatable use tree";
+        many fn flat_map_annotatable_use_tree; fn visit_annotatable_use_tree();
+        fn make_annotatable_use_tree;
+    }
 }
 
 pub enum SupportsMacroExpansion {
@@ -296,7 +301,8 @@ impl AstFragmentKind {
             | AstFragmentKind::Params
             | AstFragmentKind::FieldDefs
             | AstFragmentKind::Variants
-            | AstFragmentKind::WherePredicates => SupportsMacroExpansion::No,
+            | AstFragmentKind::WherePredicates
+            | AstFragmentKind::AnnotatableUseTree => SupportsMacroExpansion::No,
         }
     }
 
@@ -363,6 +369,9 @@ impl AstFragmentKind {
             AstFragmentKind::Pat | AstFragmentKind::Ty => {
                 panic!("patterns and types aren't annotatable")
             }
+            AstFragmentKind::AnnotatableUseTree => AstFragment::AnnotatableUseTree(
+                items.map(Annotatable::expect_annotatable_use_tree).collect(),
+            ),
         }
     }
 }
@@ -1036,7 +1045,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             | Annotatable::Param(..)
             | Annotatable::FieldDef(..)
             | Annotatable::Variant(..)
-            | Annotatable::WherePredicate(..) => panic!("unexpected annotatable"),
+            | Annotatable::WherePredicate(..)
+            | Annotatable::AnnotatableUseTree(..) => panic!("unexpected annotatable"),
         };
         if self.cx.ecfg.features.proc_macro_hygiene() {
             return;
@@ -1148,7 +1158,8 @@ pub fn parse_ast_fragment<'a>(
         | AstFragmentKind::Params
         | AstFragmentKind::FieldDefs
         | AstFragmentKind::Variants
-        | AstFragmentKind::WherePredicates => panic!("unexpected AST fragment kind"),
+        | AstFragmentKind::WherePredicates
+        | AstFragmentKind::AnnotatableUseTree => panic!("unexpected AST fragment kind"),
     })
 }
 
@@ -1317,6 +1328,7 @@ declared_idents! {
     ast::Ty,
     ast::Pat,
     ast::Expr,
+    ast::AnnotatableUseTree,
     AstNodeWrapper<Box<ast::Expr>, OptExprTag>,
     AstNodeWrapper<ast::Expr, MethodReceiverTag>
 }
@@ -2035,6 +2047,23 @@ impl InvocationCollectorNode for AstNodeWrapper<ast::Expr, MethodReceiverTag> {
     }
 }
 
+impl InvocationCollectorNode for ast::AnnotatableUseTree {
+    //    type OutputTy = Option<AnnotatableUseTree>;
+    const KIND: AstFragmentKind = AstFragmentKind::AnnotatableUseTree;
+    fn to_annotatable(self) -> Annotatable {
+        Annotatable::AnnotatableUseTree(self)
+    }
+    fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
+        fragment.make_annotatable_use_tree()
+    }
+    fn walk_flat_map(self, collector: &mut InvocationCollector<'_, '_>) -> Self::OutputTy {
+        walk_flat_map_annotatable_use_tree(collector, self)
+    }
+    fn as_target(&self) -> Target {
+        Target::Use
+    }
+}
+
 fn build_single_delegations<'a, Node: InvocationCollectorNode>(
     ecx: &ExtCtxt<'_>,
     deleg: &'a ast::DelegationMac,
@@ -2581,6 +2610,13 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         }
 
         self.flat_map_node(node)
+    }
+
+    fn flat_map_annotatable_use_tree(
+        &mut self,
+        annotatable_use_tree: rustc_ast::AnnotatableUseTree,
+    ) -> SmallVec<[rustc_ast::AnnotatableUseTree; 1]> {
+        self.flat_map_node(annotatable_use_tree)
     }
 
     fn visit_crate(&mut self, node: &mut ast::Crate) {
