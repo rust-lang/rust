@@ -698,7 +698,7 @@ impl<'a> Parser<'a> {
     fn eat_metavar_pat(&mut self) -> Option<Pat> {
         // Must try both kinds of pattern nonterminals.
         if let Some(pat) = self.eat_metavar_seq_with_matcher(
-            |mv_kind| matches!(mv_kind, MetaVarKind::Pat(PatParam { .. })),
+            |mv_kind| matches!(mv_kind, MetaVarKind::Pat(PatParam | Pat2018)),
             |this| this.parse_pat_no_top_alt(None, None),
         ) {
             Some(pat)
@@ -733,9 +733,7 @@ impl<'a> Parser<'a> {
         let mut lo = self.token.span;
 
         if self.token.is_keyword(kw::Let)
-            && self.look_ahead(1, |tok| {
-                tok.can_begin_pattern(token::NtPatKind::PatParam { inferred: false })
-            })
+            && self.look_ahead(1, |tok| tok.can_begin_pattern(PatParam))
         {
             self.bump();
             // Trim extra space after the `let`
