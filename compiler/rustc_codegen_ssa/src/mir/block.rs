@@ -1971,120 +1971,98 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         lifetime_ends_after_call: &mut Vec<(Bx::Value, Size)>,
     ) {
         match arg.mode {
-            PassMode::Ignore => return,
-            PassMode::Cast { pad_i32_count, .. } => {
-                // Fill padding with undef value, where applicable.
-                let undef = bx.const_undef(bx.type_i32());
-                llargs.extend(std::iter::repeat_n(undef, usize::from(pad_i32_count)));
-            }
+            PassMode::Ignore => {}
             PassMode::Direct(_) => match op.val {
-                Immediate(v) => {
-                    llargs.push(v);
-                    return;
-                }
+                Immediate(v) => llargs.push(v),
                 _ => bug!("codegen_argument: {:?} invalid for direct argument", op),
             },
             PassMode::Pair(..) => match op.val {
                 Pair(a, b) => {
                     llargs.push(a);
                     llargs.push(b);
-                    return;
                 }
                 _ => bug!("codegen_argument: {:?} invalid for pair argument", op),
             },
-            PassMode::IndirectUnsized { attrs: _, meta_attrs: _ } => match op.val {
-                Ref(PlaceValue { llval: a, llextra: Some(b), .. }) => {
-                    llargs.push(a);
-                    llargs.push(b);
-                    return;
-                }
-                _ => bug!("codegen_argument: {:?} invalid for unsized indirect argument", op),
-            },
-            _ => {}
-        }
-
-        // Force by-ref if we have to load through a cast pointer.
-        let mut value = match op.val {
-            Immediate(_) | Pair(..) => match arg.mode {
-                PassMode::Indirect { attrs, .. } => {
-                    // Indirect argument may have higher alignment requirements than the type's
-                    // alignment. This can happen, e.g. when passing types with <4 byte alignment
-                    // on the stack on x86.
-                    let required_align = match attrs.pointee_align {
-                        Some(pointee_align) => cmp::max(pointee_align, arg.layout.align.abi),
-                        None => arg.layout.align.abi,
-                    };
-                    let scratch = PlaceValue::alloca(bx, arg.layout.size, required_align);
-                    bx.lifetime_start(scratch.llval, arg.layout.size);
-                    op.store_with_annotation(bx, scratch.with_type(arg.layout));
-                    lifetime_ends_after_call.push((scratch.llval, arg.layout.size));
-                    scratch
-                }
-                PassMode::Cast { .. } => {
-                    let scratch = PlaceRef::alloca(bx, arg.layout);
-                    op.store_with_annotation(bx, scratch);
-                    scratch.val
-                }
-                PassMode::Ignore
-                | PassMode::Direct(_)
-                | PassMode::Pair(..)
-                | PassMode::IndirectUnsized { .. } => {
-                    unreachable!("handled above")
-                }
-            },
-            Ref(op_place_val) => match arg.mode {
-                PassMode::Indirect { attrs, mode, .. } => {
-                    if mode == IndirectMode::AmdgpuKernelArg {
-                        bug!("{op:?} passed as amdgpu kernel argument with abi {arg:?}");
-                    }
-                    // For `foo(packed.large_field)`, and types with <4 byte alignment on x86,
-                    // alignment requirements may be higher than the type's alignment, so copy
-                    // to a higher-aligned alloca.
-                    let required_align = match attrs.pointee_align {
-                        Some(pointee_align) => cmp::max(pointee_align, arg.layout.align.abi),
-                        None => arg.layout.align.abi,
-                    };
-                    // Copy to an alloca when the argument is neither by-val nor by-move.
-                    if op_place_val.align < required_align
-                        || (mode == IndirectMode::Pointer && !by_move)
-                    {
+            PassMode::Indirect { attrs, address_space: _, mode } => {
+                let value = match op.val {
+                    Immediate(_) | Pair(..) => {
+                        // Indirect argument may have higher alignment requirements than the type's
+                        // alignment. This can happen, e.g. when passing types with <4 byte alignment
+                        // on the stack on x86.
+                        let required_align = match attrs.pointee_align {
+                            Some(pointee_align) => cmp::max(pointee_align, arg.layout.align.abi),
+                            None => arg.layout.align.abi,
+                        };
                         let scratch = PlaceValue::alloca(bx, arg.layout.size, required_align);
                         bx.lifetime_start(scratch.llval, arg.layout.size);
                         op.store_with_annotation(bx, scratch.with_type(arg.layout));
                         lifetime_ends_after_call.push((scratch.llval, arg.layout.size));
                         scratch
-                    } else {
-                        op_place_val
                     }
-                }
-                PassMode::IndirectUnsized { .. } => unreachable!("handled above"),
-                _ => op_place_val,
-            },
-            ZeroSized => match arg.mode {
-                PassMode::Indirect { mode, .. } => {
-                    match mode {
-                        IndirectMode::AmdgpuKernelArg => {
-                            bug!("{op:?} passed as amdgpu kernel argument with abi {arg:?}")
+                    Ref(op_place_val) => {
+                        if mode == IndirectMode::AmdgpuKernelArg {
+                            bug!("{op:?} passed as amdgpu kernel argument with abi {arg:?}");
                         }
-                        // It doesn't seem like any target can have `byval` ZSTs, so this assert
-                        // is here to replace a would-be untested codepath.
-                        IndirectMode::OnStack => {
-                            bug!("ZST {op:?} passed on stack with abi {arg:?}")
+                        // For `foo(packed.large_field)`, and types with <4 byte alignment on x86,
+                        // alignment requirements may be higher than the type's alignment, so copy
+                        // to a higher-aligned alloca.
+                        let required_align = match attrs.pointee_align {
+                            Some(pointee_align) => cmp::max(pointee_align, arg.layout.align.abi),
+                            None => arg.layout.align.abi,
+                        };
+                        // Copy to an alloca when the argument is neither by-val nor by-move.
+                        if op_place_val.align < required_align
+                            || (mode == IndirectMode::Pointer && !by_move)
+                        {
+                            let scratch = PlaceValue::alloca(bx, arg.layout.size, required_align);
+                            bx.lifetime_start(scratch.llval, arg.layout.size);
+                            op.store_with_annotation(bx, scratch.with_type(arg.layout));
+                            lifetime_ends_after_call.push((scratch.llval, arg.layout.size));
+                            scratch
+                        } else {
+                            op_place_val
                         }
-                        IndirectMode::Pointer => {}
                     }
-                    // Though `extern "Rust"` doesn't pass ZSTs, some ABIs pass
-                    // a pointer for `repr(C)` structs even when empty, so get
-                    // one from an `alloca` (which can be left uninitialized).
-                    PlaceRef::alloca(bx, arg.layout).val
+                    ZeroSized => {
+                        match mode {
+                            IndirectMode::AmdgpuKernelArg => {
+                                bug!("{op:?} passed as amdgpu kernel argument with abi {arg:?}")
+                            }
+                            // It doesn't seem like any target can have `byval` ZSTs, so this assert
+                            // is here to replace a would-be untested codepath.
+                            IndirectMode::OnStack => {
+                                bug!("ZST {op:?} passed on stack with abi {arg:?}")
+                            }
+                            IndirectMode::Pointer => {}
+                        }
+                        // Though `extern "Rust"` doesn't pass ZSTs, some ABIs pass
+                        // a pointer for `repr(C)` structs even when empty, so get
+                        // one from an `alloca` (which can be left uninitialized).
+                        PlaceRef::alloca(bx, arg.layout).val
+                    }
+                };
+                llargs.push(value.llval);
+            }
+            PassMode::IndirectUnsized { attrs: _, meta_attrs: _ } => match op.val {
+                Ref(PlaceValue { llval: a, llextra: Some(b), .. }) => {
+                    llargs.push(a);
+                    llargs.push(b);
                 }
-                _ => bug!("ZST {op:?} wasn't ignored, but was passed with abi {arg:?}"),
+                _ => bug!("codegen_argument: {:?} invalid for unsized indirect argument", op),
             },
-        };
-
-        if !arg.is_indirect() {
-            // Have to load the argument, maybe while casting it.
-            if let PassMode::Cast { cast, pad_i32_count: _ } = &arg.mode {
+            PassMode::Cast { pad_i32_count, ref cast } => {
+                // Fill padding with undef value, where applicable.
+                let undef = bx.const_undef(bx.type_i32());
+                llargs.extend(std::iter::repeat_n(undef, usize::from(pad_i32_count)));
+                let value = match op.val {
+                    Immediate(_) | Pair(..) => {
+                        let scratch = PlaceRef::alloca(bx, arg.layout);
+                        op.store_with_annotation(bx, scratch);
+                        scratch.val
+                    }
+                    Ref(op_place_val) => op_place_val,
+                    ZeroSized => bug!("ZST {op:?} wasn't ignored, but was passed with abi {arg:?}"),
+                };
                 // The ABI mandates that the value is passed as a different struct representation.
                 // Spill and reload it from the stack to convert from the Rust representation to
                 // the ABI representation.
@@ -2118,12 +2096,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
 
                 // ...and then load it with the ABI type.
-                value.llval = load_cast(bx, cast, scratch, scratch_align);
+                llargs.push(load_cast(bx, cast, scratch, scratch_align));
                 bx.lifetime_end(scratch, scratch_size);
             }
         }
-
-        llargs.push(value.llval);
     }
 
     fn codegen_arguments_untupled(
