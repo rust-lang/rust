@@ -176,6 +176,8 @@ impl fmt::Display for AllocError {
 /// may be lifted in the future by ensuring unwinding out of an allocating function always
 /// aborts. If an implementor of `Allocator` also has drop glue or directly implements `Drop`,
 /// dropping the allocator must not result in an unwind.
+/// Note however that consumers of the `Allocator` API that handle errors using
+/// [`handle_alloc_error`] may unwind.
 ///
 /// It is undefined behavior for the allocator to read, write, or deallocate any memory that
 /// is currently allocated. This memory is owned by the user; the allocator must not touch it.
@@ -188,6 +190,7 @@ impl fmt::Display for AllocError {
 ///
 /// [*currently allocated*]: #currently-allocated-memory
 /// [*invalidated*]: #invalidating-memory-blocks
+/// [`handle_alloc_error`]: ../../std/alloc/fn.handle_alloc_error.html
 // NOTE: the above bound on allocating methods not unwinding, alongside the similar
 // bound on `AllocatorClone`, are currently load-bearing in std! see the below issues
 // and make sure they cannot be triggered before relaxing this:
