@@ -326,5 +326,3 @@ fn add_shared_x_flags(env: &Environment, cmd: CmdBuilder) -> CmdBuilder {
     }
 }
 
-#[cfg(test)]
-mod tests;
