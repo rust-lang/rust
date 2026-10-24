@@ -3284,6 +3284,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             });
 
             explanation.add_explanation_to_diagnostic(&self, &mut err, "", Some(borrow_span), None);
+            self.suggest_annotating_closure_param(&mut err, &explanation);
 
             // Detect buffer reuse pattern
             if let BorrowExplanation::UsedLater(_dropped_local, _, _, _) = explanation {
@@ -3320,6 +3321,61 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
         }
 
         err
+    }
+
+    fn suggest_annotating_closure_param(
+        &self,
+        err: &mut Diag<'_>,
+        explanation: &BorrowExplanation<'tcx>,
+    ) {
+        let BorrowExplanation::MustBeValidFor { region_name, .. } = explanation else { return };
+        let RegionNameSource::AnonRegionFromUpvar(upvar_span, _) = region_name.source else {
+            return;
+        };
+
+        // Find upvar whose binding span matches the one in the variant
+        let Some(var_hir_id) = self
+            .upvars
+            .iter()
+            .map(|upvar| upvar.get_root_variable())
+            .find(|&id| self.infcx.tcx.hir_span(id) == upvar_span)
+        else {
+            // No upvar matches span
+            return;
+        };
+
+        let hir::Node::LetStmt(let_stmt) = self.infcx.tcx.parent_hir_node(var_hir_id) else {
+            // Binding is not a let statement
+            return;
+        };
+        let Some(hir::Expr { kind: hir::ExprKind::Closure(closure), .. }) = let_stmt.init else {
+            // Initializer is not a closure expression
+            return;
+        };
+
+        // Collect unannotated parameters whose inferred type is a reference
+        let typeck = self.infcx.tcx.typeck(closure.def_id);
+        let suggestions: Vec<_> = closure
+            .fn_decl
+            .inputs
+            .iter()
+            .zip(self.infcx.tcx.hir_body(closure.body).params)
+            .filter_map(|(ty, param)| {
+                (matches!(ty.kind, hir::TyKind::Infer(..))
+                    && typeck.node_type(param.hir_id).is_ref())
+                .then_some((param.pat.span.shrink_to_hi(), ": &_".to_string()))
+            })
+            .collect();
+        if suggestions.is_empty() {
+            return;
+        }
+
+        err.multipart_suggestion(
+            "consider annotating the closure parameter as a reference so it is \
+             generic over the reference's lifetime",
+            suggestions,
+            Applicability::MaybeIncorrect,
+        );
     }
 
     fn report_borrow_conflicts_with_destructor(

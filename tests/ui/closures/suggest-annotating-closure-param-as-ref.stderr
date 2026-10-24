@@ -1,0 +1,22 @@
+error[E0597]: `a` does not live long enough
+  --> $DIR/suggest-annotating-closure-param-as-ref.rs:7:12
+   |
+LL |     let f = |_a| {};
+   |         - lifetime `'1` appears in the type of `f`
+...
+LL |     (|a| f(&a))(a.clone());
+   |       -  --^^-
+   |       |  | | |
+   |       |  | | `a` dropped here while still borrowed
+   |       |  | borrowed value does not live long enough
+   |       |  argument requires that `a` is borrowed for `'1`
+   |       binding `a` declared here
+   |
+help: consider annotating the closure parameter as a reference so it is generic over the reference's lifetime
+   |
+LL |     let f = |_a: &_| {};
+   |                ++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0597`.
