@@ -789,3 +789,24 @@ impl FieldId {
         intrinsics::field_representing_type_offset(self.frt_type_id)
     }
 }
+
+/// Temporary feature, part of comptime. Not really type info related
+pub mod const_env {
+    /// Returns the raw bytes of an environment variable that is visible to the compiler
+    /// while compile-time constant evaluation.
+    ///
+    /// ```
+    /// #![feature(type_info)]
+    ///
+    /// assert_eq!(
+    ///     const { core::mem::type_info::const_env::var_os("HELLO") },
+    ///     b"THERE"
+    /// )
+    /// ```
+    #[unstable(feature = "type_info", issue = "146922")]
+    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    #[rustc_comptime]
+    pub fn var_os(name: &str) -> Option<&'static [u8]> {
+        super::intrinsics::reflection::type_id_env_var(name)
+    }
+}
