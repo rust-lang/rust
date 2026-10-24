@@ -1073,6 +1073,21 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateMethod(
   return wrap(Sub);
 }
 
+// LLVM-C's `LLVMDIBuilderCreateGlobalVariableExpression` always marks the
+// variable as defined, which is wrong for an extern global that is only
+// declared in this module.
+extern "C" LLVMMetadataRef
+LLVMRustDIBuilderCreateExternGlobalVariableExpression(
+    LLVMDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
+    size_t NameLen, LLVMMetadataRef File, unsigned LineNo, LLVMMetadataRef Ty,
+    uint32_t AlignInBits) {
+  return wrap(unwrap(Builder)->createGlobalVariableExpression(
+      unwrapDI<DIScope>(Scope), StringRef(Name, NameLen), StringRef(),
+      unwrapDI<DIFile>(File), LineNo, unwrapDI<DIType>(Ty),
+      /* IsLocalToUnit */ false, /* isDefined */ false, /* Expr */ nullptr,
+      /* Decl */ nullptr, /* TemplateParams */ nullptr, AlignInBits));
+}
+
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateVariantPart(
     LLVMDIBuilderRef Builder, LLVMMetadataRef Scope, const char *Name,
     size_t NameLen, LLVMMetadataRef File, unsigned LineNumber,

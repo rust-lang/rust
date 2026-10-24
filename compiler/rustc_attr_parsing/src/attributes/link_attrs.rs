@@ -517,6 +517,24 @@ fn check_link_section_macho(name: Symbol) -> Result<(), InvalidMachoSectionReaso
     Ok(())
 }
 
+const LINK_SECTION_ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
+    Allow(Target::Static),
+    Allow(Target::Fn),
+    Allow(Target::Method(MethodKind::Inherent)),
+    Allow(Target::Method(MethodKind::Trait { body: true })),
+    Allow(Target::Method(MethodKind::TraitImpl)),
+]);
+
+const BPF_LINK_SECTION_ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
+    Allow(Target::Static),
+    Allow(Target::Fn),
+    Allow(Target::Method(MethodKind::Inherent)),
+    Allow(Target::Method(MethodKind::Trait { body: true })),
+    Allow(Target::Method(MethodKind::TraitImpl)),
+    Allow(Target::ForeignFn),
+    Allow(Target::ForeignStatic),
+]);
+
 impl SingleAttributeParser for LinkSectionParser {
     const PATH: &[Symbol] = &[sym::link_section];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
@@ -525,19 +543,23 @@ impl SingleAttributeParser for LinkSectionParser {
         unsafe_since: Some(Edition2024),
     };
     const STABILITY: AttributeStability = AttributeStability::Stable;
-    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowListWarnRest(&[
-        Allow(Target::Static),
-        Allow(Target::Fn),
-        Allow(Target::Method(MethodKind::Inherent)),
-        Allow(Target::Method(MethodKind::Trait { body: true })),
-        Allow(Target::Method(MethodKind::TraitImpl)),
-    ]);
+    // Which targets are allowed depends on the compilation target, see `convert`.
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::ManuallyChecked;
     const TEMPLATE: AttributeTemplate = template!(
         NameValueStr: "name",
         "https://doc.rust-lang.org/reference/abi.html#the-link_section-attribute"
     );
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
+        // On BPF, an extern placed in ".ksyms" is a kfunc or ksym, as with clang's __ksym.
+        // Elsewhere a section on an extern declaration has no effect, so keep warning.
+        let allowed_targets = if cx.sess.target.arch == Arch::Bpf {
+            &BPF_LINK_SECTION_ALLOWED_TARGETS
+        } else {
+            &LINK_SECTION_ALLOWED_TARGETS
+        };
+        cx.check_target("", allowed_targets);
+
         let nv = cx.expect_name_value(args, cx.attr_span, None)?;
         let name = cx.expect_string_literal(nv)?;
         if name.as_str().contains('\0') {
