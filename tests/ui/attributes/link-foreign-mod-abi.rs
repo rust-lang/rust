@@ -27,19 +27,19 @@ extern "tail" {}
 #[cfg_attr(any(), link(name = "disabled"))]
 extern "Rust" {}
 
-#[expect(unused_attributes)]
+#[expect(harmful_unused_attributes)]
 #[cfg_attr(all(), link(name = "enabled"))]
 extern "Rust" {}
 
-#[allow(unused_attributes)]
+#[expect(harmful_unused_attributes)]
 #[link(name = "allowed")]
 extern "Rust" {}
 
-#[expect(unused_attributes)]
+#[expect(harmful_unused_attributes)]
 #[link(name = "expected")]
 extern "Rust" {}
 
-#[expect(unused_attributes)]
+#[expect(harmful_unused_attributes)]
 #[link(name = "first")]
 #[link(name = "second")]
 extern "Rust" {}

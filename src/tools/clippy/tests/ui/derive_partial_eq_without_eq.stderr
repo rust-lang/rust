@@ -68,13 +68,13 @@ LL |     #[derive(PartialEq)]
    |              ^^^^^^^^^ help: consider deriving `Eq` as well: `PartialEq, Eq`
 
 error: you are deriving `PartialEq` and can implement `Eq`
-  --> tests/ui/derive_partial_eq_without_eq.rs:192:14
+  --> tests/ui/derive_partial_eq_without_eq.rs:193:14
    |
 LL |     #[derive(PartialEq)]
    |              ^^^^^^^^^ help: consider deriving `Eq` as well: `PartialEq, Eq`
 
 error: you are deriving `PartialEq` and can implement `Eq`
-  --> tests/ui/derive_partial_eq_without_eq.rs:201:14
+  --> tests/ui/derive_partial_eq_without_eq.rs:202:14
    |
 LL |     #[derive(PartialEq)]
    |              ^^^^^^^^^ help: consider deriving `Eq` as well: `PartialEq, Eq`

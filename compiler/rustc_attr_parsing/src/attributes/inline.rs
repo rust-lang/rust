@@ -9,7 +9,7 @@ pub(crate) struct InlineParser;
 
 impl SingleAttributeParser for InlineParser {
     const PATH: &[Symbol] = &[sym::inline];
-    const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
+    const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnAndFutureError;
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
