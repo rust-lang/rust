@@ -486,11 +486,11 @@ LLVMRustWriteOutputFile(LLVMTargetMachineRef Target, LLVMModuleRef M,
     return LLVMRustResult::Failure;
   }
 
-  std::unique_ptr<llvm::ToolOutputFile> DwoOS;
+  std::unique_ptr<llvm::raw_pwrite_stream> DwoOS = nullptr;
+  std::unique_ptr<llvm::raw_pwrite_stream> BDwoOS = nullptr;
   auto BOS = buffer_ostream(OS);
   if (DwoPath) {
-    DwoOS = std::make_unique<llvm::ToolOutputFile>(DwoPath, EC,
-                                                   llvm::sys::fs::OF_None);
+    DwoOS = std::make_unique<raw_fd_ostream>(DwoPath, EC, sys::fs::OF_None);
     if (EC) {
       ErrorInfo = EC.message();
       DwoOS.reset();
@@ -499,13 +499,14 @@ LLVMRustWriteOutputFile(LLVMTargetMachineRef Target, LLVMModuleRef M,
       LLVMRustSetLastError(ErrorInfo.c_str());
       return LLVMRustResult::Failure;
     }
-    DwoOS->keep();
+    if (DwoOS)
+      BDwoOS = std::make_unique<llvm::buffer_ostream>(*DwoOS);
   }
 
 #if LLVM_VERSION_GE(24, 0)
   Error CodeGenError =
-      runCodeGenPipeline(*unwrap(Target), *unwrap(M), BOS, DwoOS, FileType,
-                         !VerifyIR, DisableSimplifyLibCalls);
+      runCodeGenPipeline(*unwrap(Target), *unwrap(M), BOS, BDwoOS.get(),
+                         FileType, !VerifyIR, DisableSimplifyLibCalls);
 #else
   std::unique_ptr<llvm::legacy::PassManager> PM =
       std::make_unique<llvm::legacy::PassManager>();
@@ -528,8 +529,8 @@ LLVMRustWriteOutputFile(LLVMTargetMachineRef Target, LLVMModuleRef M,
   // TargetMachine::addPassesToEmitFile stores pointers to the output streams
   // in a couple of places inside of the object. Explicitly delete the PM after
   // we call run() to avoid dangling references.
-  unwrap(Target)->addPassesToEmitFile(*PM, BOS, DwoOS ? &DwoOS->os() : nullptr,
-                                      FileType, !VerifyIR);
+  unwrap(Target)->addPassesToEmitFile(*PM, BOS, BDwoOS.get(), FileType,
+                                      !VerifyIR);
   PM->run(*unwrap(M));
   PM.reset();
 #endif
