@@ -268,3 +268,60 @@ macro_rules! impl_carryless_mul{
 impl_carryless_mul! {
     u8, u16, u32, u64, u128, usize
 }
+
+#[rustc_const_unstable(feature = "core_intrinsics_fallbacks", issue = "none")]
+pub const trait Pext: Copy + 'static {
+    fn pext(self, mask: Self) -> Self;
+}
+
+#[rustc_const_unstable(feature = "core_intrinsics_fallbacks", issue = "none")]
+pub const trait Pdep: Copy + 'static {
+    fn pdep(self, mask: Self) -> Self;
+}
+
+macro_rules! impl_pext_pdep {
+    ($($type:ident),*) => {$(
+        #[rustc_const_unstable(feature = "core_intrinsics_fallbacks", issue = "none")]
+        const impl Pext for $type {
+            #[inline]
+            fn pext(self, mask: Self) -> Self {
+                crate::num::imp::int_bits::$type::extract_impl(self, mask)
+            }
+        }
+
+        #[rustc_const_unstable(feature = "core_intrinsics_fallbacks", issue = "none")]
+        const impl Pdep for $type {
+            #[inline]
+            fn pdep(self, mask: Self) -> Self {
+                crate::num::imp::int_bits::$type::deposit_impl(self, mask)
+            }
+        }
+    )*};
+}
+
+impl_pext_pdep! {
+    u8, u16, u32, u64, u128
+}
+
+#[cfg(target_pointer_width = "16")]
+type UsizeActual = u16;
+#[cfg(target_pointer_width = "32")]
+type UsizeActual = u32;
+#[cfg(target_pointer_width = "64")]
+type UsizeActual = u64;
+
+#[rustc_const_unstable(feature = "core_intrinsics_fallbacks", issue = "none")]
+const impl Pext for usize {
+    #[inline]
+    fn pext(self, mask: Self) -> Self {
+        <UsizeActual as Pext>::pext(self as UsizeActual, mask as UsizeActual) as usize
+    }
+}
+
+#[rustc_const_unstable(feature = "core_intrinsics_fallbacks", issue = "none")]
+const impl Pdep for usize {
+    #[inline]
+    fn pdep(self, mask: Self) -> Self {
+        <UsizeActual as Pdep>::pdep(self as UsizeActual, mask as UsizeActual) as usize
+    }
+}
