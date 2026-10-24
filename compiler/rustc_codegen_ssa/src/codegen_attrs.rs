@@ -196,6 +196,9 @@ fn process_builtin_attrs(
             AttributeKind::Sanitize { span, .. } => {
                 interesting_spans.sanitize = Some(*span);
             }
+            AttributeKind::RustcLlvmIntrinsic(name, _) => {
+                codegen_fn_attrs.llvm_intrinsic = Some(*name);
+            }
             AttributeKind::RustcObjcClass { classname } => {
                 codegen_fn_attrs.objc_class = Some(*classname);
             }

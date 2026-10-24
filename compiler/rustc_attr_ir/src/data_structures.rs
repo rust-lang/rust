@@ -1343,6 +1343,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_lint_untracked_query_information]`
     RustcLintUntrackedQueryInformation,
 
+    /// Represents `#[rustc_llvm_intrinsic = "llvm..."]`
+    RustcLlvmIntrinsic(Symbol, Span),
+
     /// Represents `#[rustc_macro_transparency]`.
     RustcMacroTransparency(Transparency),
 

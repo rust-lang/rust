@@ -520,6 +520,21 @@ impl NoArgsAttributeParser for RustcLintUntrackedQueryInformationParser {
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcLintUntrackedQueryInformation;
 }
 
+pub(crate) struct RustcLlvmIntrinsicParser;
+
+impl SingleAttributeParser for RustcLlvmIntrinsicParser {
+    const PATH: &[Symbol] = &[sym::rustc_llvm_intrinsic];
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
+    const TEMPLATE: AttributeTemplate = template!(NameValueStr: "intrinsic_name");
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
+
+    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
+        let nv = cx.expect_name_value(args, cx.attr_span, None)?;
+        let symbol = cx.expect_string_literal(nv)?;
+        Some(AttributeKind::RustcLlvmIntrinsic(symbol, cx.attr_span))
+    }
+}
+
 pub(crate) struct RustcSimdMonomorphizeLaneLimitParser;
 
 impl SingleAttributeParser for RustcSimdMonomorphizeLaneLimitParser {
