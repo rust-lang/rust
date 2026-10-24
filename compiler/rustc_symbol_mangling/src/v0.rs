@@ -1,5 +1,4 @@
 use std::fmt::Write;
-use std::hash::Hasher;
 use std::iter;
 use std::ops::Range;
 
@@ -8,8 +7,6 @@ use rustc_data_structures::base_n::ToBaseN;
 use rustc_data_structures::either::Either;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::intern::Interned;
-use rustc_data_structures::stable_hash::StableHasher;
-use rustc_hashes::Hash64;
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::{CrateNum, DefId};
@@ -161,16 +158,19 @@ pub fn mangle_internal_symbol<'tcx>(tcx: TyCtxt<'tcx>, item_name: &str) -> Strin
         |p| {
             p.push("C");
             p.push_disambiguator({
-                let mut hasher = StableHasher::new();
-                // Incorporate the rustc version to ensure #[rustc_std_internal_symbol] functions
-                // get a different symbol name depending on the rustc version.
-                //
-                // RUSTC_FORCE_RUSTC_VERSION is ignored here as otherwise different we would get an
-                // abi incompatibility with the standard library.
-                hasher.write(tcx.sess.cfg_version.as_bytes());
+                let core = tcx
+                    .lang_items()
+                    .sized_trait()
+                    // The Sized trait is guaranteed to exist at this point. If you try to define
+                    // any function or static without defining the Sized trait you will get an error
+                    // during type checking.
+                    .expect("#[rustc_std_internal_symbol] requires the Sized trait to be defined")
+                    .krate;
 
-                let hash: Hash64 = hasher.finish();
-                hash.as_u64()
+                // Use the same disambiguator as 'core' to ensure #[rustc_std_internal_symbol]
+                // functions get a different symbol name depending on the rustc version and
+                // -Cmetadata flags.
+                tcx.stable_crate_id(core).as_u64()
             });
             p.push_ident("__rustc");
             Ok(())
