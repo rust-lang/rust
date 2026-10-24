@@ -1,8 +1,9 @@
-// Demonstrate that we don't check the definition site of (eager) type aliases for well-formedness.
+// Demonstrate that we don't check the definition site of (unchecked) type aliases for
+// well-formedness.
 //
 // Listed below are ill-formed type system entities which we don't reject since they appear inside
-// the definition of (eager) type aliases. These type aliases are intentionally not referenced from
-// anywhere to prevent the eagerly expanded / instantiated aliased types from getting wfchecked
+// the definition of (unchecked) type aliases. These type aliases are intentionally not referenced
+// from anywhere to prevent the eagerly expanded / instantiated aliased types from getting wfchecked
 // since that's not what we're testing here.
 
 //@ check-pass

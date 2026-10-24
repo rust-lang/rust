@@ -7,6 +7,7 @@ LL |     reuse HasSelf::method;
 note: method defined here
   --> $DIR/ice-issue-138362.rs:4:8
    |
+LL | trait HasSelf {
 LL |     fn method(self);
    |        ^^^^^^ ----
 help: provide the argument
