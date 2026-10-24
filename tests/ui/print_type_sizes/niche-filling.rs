@@ -1,7 +1,7 @@
 //! This file illustrates how niche-filling enums are handled,
 //! modelled after cases like `Option<&u32>`, `Option<bool>` and such.
 //!
-//! It uses `NonZero<u32>` rather than `&_` or `Unique<_>`, because
+//! It uses `NonZero<u32>` rather than `&_` or `NonNull<_>`, because
 //! the test is not set up to deal with target-dependent pointer width.
 //!
 //! It avoids using `u64`/`i64` because on some targets that is only 4-byte
