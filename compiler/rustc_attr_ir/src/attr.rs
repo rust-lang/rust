@@ -257,10 +257,6 @@ impl AttributeExt for Attribute {
         )
     }
 
-    fn is_doc_hidden(&self) -> bool {
-        matches!(self, Attribute::Parsed(AttributeKind::Doc(d)) if d.hidden.is_some())
-    }
-
     fn is_doc_keyword_or_attribute(&self) -> bool {
         matches!(self, Attribute::Parsed(AttributeKind::Doc(d)) if d.attribute.is_some() || d.keyword.is_some())
     }
