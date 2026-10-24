@@ -36,6 +36,11 @@
 /// borrowed and owned values: `x.borrow() == y.borrow()` should give the
 /// same result as `x == y`.
 ///
+/// Additionally, if `PartialEq` and `PartialOrd` allow comparisons between
+/// types and their borrowed versions, those comparisons must allow the user
+/// to satisfy all the relevant transitive requirements of these traits, e.g
+/// `x.borrow() == y` and `y == z.borrow()` should imply `x == z` as well.
+///
 /// If generic code merely needs to work for all types that can
 /// provide a reference to related type `T`, it is often better to use
 /// [`AsRef<T>`] as more types can safely implement it.
