@@ -1,0 +1,13 @@
+error: cannot evaluate associated constant with unresolved type dependencies `First::<dyn Ob<A = u16>>::SIZE`
+  --> $DIR/unresolved-dyn-associated-const-two-definitions-issue-311.rs:15:5
+   |
+LL |     const SIZE: usize = size_of::<T::A>();
+   |     ^^^^^^^^^^^^^^^^^
+
+error: cannot evaluate associated constant with unresolved type dependencies `Second::<dyn Ob<A = u16>>::SIZE`
+  --> $DIR/unresolved-dyn-associated-const-two-definitions-issue-311.rs:18:5
+   |
+LL |     const SIZE: usize = size_of::<T::A>();
+   |     ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
