@@ -115,10 +115,6 @@ impl TokenTree {
         }
     }
 
-    fn token(kind: TokenKind, span: Span) -> TokenTree {
-        TokenTree::Token(Token::new(kind, span))
-    }
-
     // Used only in diagnostics.
     fn meta_vars(&self, vars: &mut Vec<Ident>) {
         match self {
