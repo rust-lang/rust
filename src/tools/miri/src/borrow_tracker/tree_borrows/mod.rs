@@ -560,8 +560,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     /// Display the tree.
-    fn print_tree(&mut self, alloc_id: AllocId, show_unnamed: bool) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+    fn print_tree(&self, alloc_id: AllocId, show_unnamed: bool) -> InterpResult<'tcx> {
+        let this = self.eval_context_ref();
         let alloc_extra = this.get_alloc_extra(alloc_id)?;
         let tree_borrows = alloc_extra.borrow_tracker_tb().borrow();
         let borrow_tracker = &this.machine.borrow_tracker.as_ref().unwrap().borrow();
@@ -572,12 +572,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// The name given is `name` and the pointer that receives it is the `nth_parent`
     /// of `ptr` (with 0 representing `ptr` itself)
     fn tb_give_pointer_debug_name(
-        &mut self,
+        &self,
         ptr: Pointer,
         nth_parent: u8,
         name: &str,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let this = self.eval_context_ref();
         let (tag, alloc_id) = match ptr.provenance {
             Some(Provenance::Concrete { tag, alloc_id }) => (tag, alloc_id),
             Some(Provenance::Wildcard) => {

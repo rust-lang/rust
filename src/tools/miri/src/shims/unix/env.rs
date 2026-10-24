@@ -126,8 +126,8 @@ fn alloc_environ_block<'tcx>(
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
-    fn getenv(&mut self, name_op: &OpTy<'tcx>) -> InterpResult<'tcx, Pointer> {
-        let this = self.eval_context_mut();
+    fn getenv(&self, name_op: &OpTy<'tcx>) -> InterpResult<'tcx, Pointer> {
+        let this = self.eval_context_ref();
         this.assert_target_os_is_unix("getenv");
 
         let name_ptr = this.read_pointer(name_op)?;
@@ -326,8 +326,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(())
     }
 
-    fn getpid(&mut self) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
+    fn getpid(&self) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_ref();
         this.assert_target_os_is_unix("getpid");
 
         // The reason we need to do this wacky of a conversion is because

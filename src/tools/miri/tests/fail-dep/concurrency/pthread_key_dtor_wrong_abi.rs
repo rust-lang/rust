@@ -1,6 +1,6 @@
 //@ignore-target: windows # No pthreads on Windows
 
-use std::{mem, ptr};
+use std::{mem, ptr, thread};
 
 pub type Key = libc::pthread_key_t;
 
@@ -16,6 +16,10 @@ unsafe fn dtor(_ptr: *mut u8) {}
 fn main() {
     unsafe {
         let key = create(dtor);
-        libc::pthread_setspecific(key, ptr::without_provenance(1));
+
+        // Main thread never calls these dtors, so set the key in another thread.
+        thread::spawn(move || {
+            libc::pthread_setspecific(key, ptr::without_provenance(1));
+        });
     }
 }

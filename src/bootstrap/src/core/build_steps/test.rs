@@ -915,10 +915,11 @@ impl CommandLineStep for Priroda {
             Mode::ToolRustcPrivate,
             host,
             Kind::Test,
-            "src/tools/miri/priroda",
+            "src/tools/miri",
             SourceType::InTree,
-            &[],
+            &["priroda".into()],
         );
+        cargo.args(["--test", "priroda"]);
 
         cargo.add_rustc_lib_path(builder);
 
