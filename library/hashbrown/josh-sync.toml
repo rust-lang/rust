@@ -1,0 +1,5 @@
+org = "rust-lang"
+repo = "hashbrown"
+path = "library/hashbrown"
+filter-version = 2
+pull-mode = "Latest"
