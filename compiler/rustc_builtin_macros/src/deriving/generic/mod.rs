@@ -770,15 +770,51 @@ impl<'a> MethodDef<'a> {
         struct_def: &'b VariantData,
         is_packed: bool,
     ) -> BlockOrExpr {
-        let self_expr = cx.expr_self(span);
-        let selflike_args = if self.has_other_selflike_arg {
-            &[self_expr, cx.expr_name(span, self.nonself_args[0].0)][..]
-        } else {
-            &[self_expr]
-        };
+        let selflike_fields = struct_def
+            .fields()
+            .iter()
+            .enumerate()
+            .map(|(i, struct_field)| {
+                // For this field, get an expr for each selflike_arg. E.g. for
+                // `PartialEq::eq`, one for each of `&self` and `other`.
+                let field_span = struct_field.span.with_ctxt(span.ctxt());
+                let expr_for_selflike_arg = |selflike_arg| {
+                    // Note: we must use `struct_field.span` rather than `sp` in the
+                    // `unwrap_or_else` case otherwise the hygiene is wrong and we get
+                    // "field `0` of struct `Point` is private" errors on tuple
+                    // structs.
+                    let mut field_expr = cx.expr(
+                        field_span,
+                        ast::ExprKind::Field(
+                            selflike_arg,
+                            struct_field
+                                .ident
+                                .unwrap_or_else(|| Ident::new(sym::integer(i), struct_field.span)),
+                        ),
+                    );
+                    if is_packed {
+                        // Fields in packed structs are wrapped in a block, e.g. `&{self.0}`,
+                        // causing a copy instead of a (potentially misaligned) reference.
+                        field_expr = cx.expr_block(
+                            cx.block(struct_field.span, thin_vec![cx.stmt_expr(field_expr)]),
+                        );
+                    }
+                    cx.expr_ref(field_span, field_expr)
+                };
 
-        let selflike_fields =
-            create_struct_field_access_fields(span, cx, selflike_args, struct_def, is_packed);
+                let self_expr = expr_for_selflike_arg(cx.expr_self(span));
+                let other_selflike_expr = self
+                    .has_other_selflike_arg
+                    .then(|| expr_for_selflike_arg(cx.expr_name(span, self.nonself_args[0].0)));
+                FieldInfo {
+                    span: field_span,
+                    name: struct_field.ident,
+                    self_expr,
+                    other_selflike_expr,
+                    maybe_scalar: struct_field.ty.peel_refs().kind.maybe_scalar(),
+                }
+            })
+            .collect();
         self.call_substructure_method(cx, span, Struct(struct_def, selflike_fields))
     }
 
@@ -996,10 +1032,12 @@ fn create_struct_patterns(
         .collect()
 }
 
-fn create_fields<F>(span: Span, struct_def: &VariantData, mk_exprs: F) -> Vec<FieldInfo>
-where
-    F: Fn(usize, &ast::FieldDef, Span) -> Vec<Box<Expr>>,
-{
+fn create_struct_pattern_fields(
+    span: Span,
+    cx: &ExtCtxt<'_>,
+    struct_def: &VariantData,
+    prefixes: &[&str],
+) -> Vec<FieldInfo> {
     struct_def
         .fields()
         .iter()
@@ -1008,69 +1046,19 @@ where
             // For this field, get an expr for each selflike_arg. E.g. for
             // `PartialEq::eq`, one for each of `&self` and `other`.
             let span = struct_field.span.with_ctxt(span.ctxt());
-            let mut exprs: Vec<_> = mk_exprs(i, struct_field, span);
-            let self_expr = exprs.remove(0);
-            debug_assert!(exprs.len() <= 1);
+            let mut exprs = prefixes
+                .iter()
+                .map(|prefix| cx.expr_name(span, Symbol::intern(&format!("{prefix}_{i}"))));
+            let self_expr = exprs.next().unwrap();
             FieldInfo {
                 span,
                 name: struct_field.ident,
                 self_expr,
-                other_selflike_expr: exprs.pop(),
+                other_selflike_expr: exprs.next(),
                 maybe_scalar: struct_field.ty.peel_refs().kind.maybe_scalar(),
             }
         })
         .collect()
-}
-
-fn create_struct_pattern_fields(
-    span: Span,
-    cx: &ExtCtxt<'_>,
-    struct_def: &VariantData,
-    prefixes: &[&str],
-) -> Vec<FieldInfo> {
-    create_fields(span, struct_def, |i, _struct_field, sp| {
-        prefixes
-            .iter()
-            .map(|prefix| cx.expr_name(sp, Symbol::intern(&format!("{prefix}_{i}"))))
-            .collect()
-    })
-}
-
-fn create_struct_field_access_fields(
-    span: Span,
-    cx: &ExtCtxt<'_>,
-    selflike_args: &[Box<Expr>],
-    struct_def: &VariantData,
-    is_packed: bool,
-) -> Vec<FieldInfo> {
-    create_fields(span, struct_def, |i, struct_field, sp| {
-        selflike_args
-            .iter()
-            .map(|selflike_arg| {
-                // Note: we must use `struct_field.span` rather than `sp` in the
-                // `unwrap_or_else` case otherwise the hygiene is wrong and we get
-                // "field `0` of struct `Point` is private" errors on tuple
-                // structs.
-                let mut field_expr = cx.expr(
-                    sp,
-                    ast::ExprKind::Field(
-                        selflike_arg.clone(),
-                        struct_field
-                            .ident
-                            .unwrap_or_else(|| Ident::new(sym::integer(i), struct_field.span)),
-                    ),
-                );
-                if is_packed {
-                    // Fields in packed structs are wrapped in a block, e.g. `&{self.0}`,
-                    // causing a copy instead of a (potentially misaligned) reference.
-                    field_expr = cx.expr_block(
-                        cx.block(struct_field.span, thin_vec![cx.stmt_expr(field_expr)]),
-                    );
-                }
-                cx.expr_ref(sp, field_expr)
-            })
-            .collect()
-    })
 }
 
 pub(crate) fn generic_param_to_arg(cx: &ExtCtxt<'_>, p: &GenericParam, span: Span) -> GenericArg {
