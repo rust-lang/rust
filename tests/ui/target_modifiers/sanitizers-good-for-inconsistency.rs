@@ -1,6 +1,7 @@
 // AddressSanitizer, LeakSanitizer are good to be inconsistent (they are not a target modifiers)
 
 //@ revisions: wrong_address_san wrong_leak_san
+//@ ignore-backends: gcc
 
 //@[wrong_address_san] needs-sanitizer-address
 //@[wrong_leak_san] needs-sanitizer-leak

@@ -40,6 +40,7 @@ use crate::config::{
     ErrorOutputType, FunctionReturn, Input, InstrumentCoverage, InstrumentMcount, LtoCli,
     NATIVE_CPU, OutFileName, OutputType, PAuthKey, PointerAuthOption, SwitchWithOptPath,
 };
+use crate::diagnostics::FeatureNotSupportedByBackend;
 use crate::filesearch::FileSearch;
 use crate::lint::LintId;
 use crate::parse::ParseSess;
@@ -445,8 +446,15 @@ pub struct CodegenBackendInit {
     /// See `Session::fallback_intrinsics`.
     pub fallback_intrinsics: Vec<Symbol>,
 
-    /// See `Session::thin_lto_supported`.
-    pub thin_lto_supported: bool = true,
+    pub supported_backend_features: SupportedBackendFeatures,
+}
+
+#[derive(Default)]
+pub struct SupportedBackendFeatures {
+    pub thin_lto: bool,
+    pub fat_lto: bool,
+    pub instrument_coverage: bool,
+    pub sanitizers: SanitizerSet,
 }
 
 /// Represents the data associated with a compilation
@@ -540,8 +548,7 @@ pub struct Session {
     /// with its own implementations, which means their fallback bodies can be MIR-inlined.
     pub fallback_intrinsics: FxHashSet<Symbol>,
 
-    /// Does the codegen backend support ThinLTO?
-    pub thin_lto_supported: bool,
+    pub supported_backend_features: SupportedBackendFeatures,
 
     /// Global per-session counter for MIR optimization pass applications.
     ///
@@ -705,7 +712,14 @@ impl Session {
     }
 
     pub fn instrument_coverage(&self) -> bool {
-        self.opts.cg.instrument_coverage() != InstrumentCoverage::No
+        if self.opts.cg.instrument_coverage() != InstrumentCoverage::No {
+            if !self.supported_backend_features.instrument_coverage {
+                self.dcx().emit_fatal(FeatureNotSupportedByBackend { feat: "instrument coverage" })
+            }
+            true
+        } else {
+            false
+        }
     }
 
     pub fn instrument_coverage_branch(&self) -> bool {
@@ -992,6 +1006,9 @@ impl Session {
     pub fn lto(&self) -> config::Lto {
         // If our target has codegen requirements ignore the command line
         if self.target.requires_lto {
+            if !self.supported_backend_features.fat_lto {
+                self.dcx().emit_fatal(FeatureNotSupportedByBackend { feat: "fat LTO" });
+            }
             return config::Lto::Fat;
         }
 
@@ -1009,20 +1026,26 @@ impl Session {
             }
             config::LtoCli::Yes | config::LtoCli::Fat | config::LtoCli::NoParam => {
                 // All of these mean fat LTO
+                if !self.supported_backend_features.fat_lto {
+                    self.dcx().emit_fatal(FeatureNotSupportedByBackend { feat: "fat LTO" });
+                }
                 return config::Lto::Fat;
             }
             config::LtoCli::Thin => {
                 // The user explicitly asked for ThinLTO
-                if !self.thin_lto_supported {
+                if !self.supported_backend_features.thin_lto {
                     // Backend doesn't support ThinLTO, fallback to fat LTO.
                     self.dcx().emit_warn(diagnostics::ThinLtoNotSupportedByBackend);
+                    if !self.supported_backend_features.fat_lto {
+                        self.dcx().emit_fatal(FeatureNotSupportedByBackend { feat: "fat LTO" });
+                    }
                     return config::Lto::Fat;
                 }
                 return config::Lto::Thin;
             }
         }
 
-        if !self.thin_lto_supported {
+        if !self.supported_backend_features.thin_lto {
             return config::Lto::No;
         }
 
@@ -1488,12 +1511,22 @@ pub fn build_session(
     // `EarlySess::sanitizers` does some computation but is called infrequently. `Sess::sanitizers`
     // is called much more often so we cache the value.
     let sanitizers = early_sess.sanitizers();
+    let unsupported_sanitizers =
+        sanitizers.difference(codegen_backend_init.supported_backend_features.sanitizers);
+    if !unsupported_sanitizers.is_empty() {
+        let mut diag =
+            early_sess.dcx().create_fatal(FeatureNotSupportedByBackend { feat: "sanitizer" });
+        for sanitizer in unsupported_sanitizers.iter().flat_map(|sanitizer| sanitizer.as_str()) {
+            diag.note(format!("required sanitizer `{sanitizer}` not supported"));
+        }
+        diag.emit_fatal();
+    }
 
     let CodegenBackendInit {
         global_backend_features,
         replaced_intrinsics,
         fallback_intrinsics,
-        thin_lto_supported,
+        supported_backend_features,
     } = codegen_backend_init;
 
     let sess = Session {
@@ -1525,7 +1558,7 @@ pub fn build_session(
         wasm_proc_macro_filesearch,
         replaced_intrinsics: FxHashSet::from_iter(replaced_intrinsics),
         fallback_intrinsics: FxHashSet::from_iter(fallback_intrinsics),
-        thin_lto_supported,
+        supported_backend_features,
         mir_opt_bisect_eval_count: AtomicUsize::new(0),
         removed_rustc_main_attr: AtomicBool::new(false),
         pointer_auth_config,

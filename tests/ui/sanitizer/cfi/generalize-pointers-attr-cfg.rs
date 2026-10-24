@@ -5,6 +5,7 @@
 //@ check-pass
 //@ compile-flags: -Clto -Cno-prepopulate-passes -Ctarget-feature=-crt-static -Zsanitizer=cfi -Zsanitizer-cfi-generalize-pointers
 //@ compile-flags: -C unsafe-allow-abi-mismatch=sanitizer
+//@ ignore-backends: gcc
 
 #![feature(cfg_sanitizer_cfi)]
 

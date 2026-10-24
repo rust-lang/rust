@@ -25,8 +25,10 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{OptLevel, OutputFilenames, PrintKind, PrintRequest};
 use rustc_session::{
     BorrowedIncrCompSession, CodegenBackendInit, EarlySession, IncrCompSession, Session,
+    SupportedBackendFeatures,
 };
 use rustc_span::{Symbol, sym};
+use rustc_structures::SanitizerSet;
 use rustc_target::spec::{RelocModel, TlsModel};
 
 use crate::back::owned_target_machine::OwnedTargetMachine;
@@ -257,7 +259,12 @@ impl CodegenBackend for LlvmCodegenBackend {
             global_backend_features,
             replaced_intrinsics,
             fallback_intrinsics,
-            thin_lto_supported: true,
+            supported_backend_features: SupportedBackendFeatures {
+                thin_lto: true,
+                fat_lto: true,
+                instrument_coverage: true,
+                sanitizers: SanitizerSet::all(),
+            },
         }
     }
 
