@@ -222,6 +222,7 @@ LL |     delegation!();
 note: associated function defined here
   --> $DIR/unused-target-expr-in-glob-or-list.rs:4:8
    |
+LL | pub trait Trait: Sized {
 LL |     fn static_self() -> F { F }
    |        ^^^^^^^^^^^
 
@@ -286,6 +287,7 @@ LL |         delegation2!();
 note: associated function defined here
   --> $DIR/unused-target-expr-in-glob-or-list.rs:4:8
    |
+LL | pub trait Trait: Sized {
 LL |     fn static_self() -> F { F }
    |        ^^^^^^^^^^^
 

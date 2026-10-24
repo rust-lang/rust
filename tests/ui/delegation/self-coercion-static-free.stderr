@@ -22,6 +22,8 @@ LL |     reuse <F as Trait>::{static_value, static_mut_ref, static_ref} {
 note: associated function defined here
   --> $DIR/self-coercion-static-free.rs:10:8
    |
+LL | pub trait Trait: Sized {
+...
 LL |     fn static_value(_: Self) -> i32 { 1 }
    |        ^^^^^^^^^^^^ -------
 
@@ -39,6 +41,8 @@ LL |     reuse <F as Trait>::{static_value, static_mut_ref, static_ref} {
 note: associated function defined here
   --> $DIR/self-coercion-static-free.rs:11:8
    |
+LL | pub trait Trait: Sized {
+...
 LL |     fn static_mut_ref(_: &mut Self) -> i32 { 2 }
    |        ^^^^^^^^^^^^^^ ------------
 
@@ -56,6 +60,8 @@ LL |     reuse <F as Trait>::{static_value, static_mut_ref, static_ref} {
 note: associated function defined here
   --> $DIR/self-coercion-static-free.rs:12:8
    |
+LL | pub trait Trait: Sized {
+...
 LL |     fn static_ref(_: &Self) -> i32 { 3 }
    |        ^^^^^^^^^^ --------
 
@@ -71,6 +77,8 @@ LL |     reuse <F as Trait>::{static_value, static_mut_ref, static_ref} {
 note: associated function defined here
   --> $DIR/self-coercion-static-free.rs:10:8
    |
+LL | pub trait Trait: Sized {
+...
 LL |     fn static_value(_: Self) -> i32 { 1 }
    |        ^^^^^^^^^^^^ -------
 
@@ -88,6 +96,8 @@ LL |     reuse <F as Trait>::{static_value, static_mut_ref, static_ref} {
 note: associated function defined here
   --> $DIR/self-coercion-static-free.rs:11:8
    |
+LL | pub trait Trait: Sized {
+...
 LL |     fn static_mut_ref(_: &mut Self) -> i32 { 2 }
    |        ^^^^^^^^^^^^^^ ------------
 
@@ -105,6 +115,8 @@ LL |     reuse <F as Trait>::{static_value, static_mut_ref, static_ref} {
 note: associated function defined here
   --> $DIR/self-coercion-static-free.rs:12:8
    |
+LL | pub trait Trait: Sized {
+...
 LL |     fn static_ref(_: &Self) -> i32 { 3 }
    |        ^^^^^^^^^^ --------
 

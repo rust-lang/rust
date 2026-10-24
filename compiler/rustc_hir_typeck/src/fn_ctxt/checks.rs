@@ -1912,8 +1912,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
             }
+            let def_kind = self.tcx.def_kind(def_id);
+            if let DefKind::AssocFn = def_kind {
+                spans.push_span_context(self.tcx.def_span(self.tcx.parent(def_id)).shrink_to_lo());
+            }
             err.span_note(spans, format!("{} defined here", self.tcx.def_descr(def_id)));
-            if let DefKind::Fn | DefKind::AssocFn = self.tcx.def_kind(def_id)
+            if let DefKind::Fn | DefKind::AssocFn = def_kind
                 && let ty::Param(_) =
                     self.tcx.fn_sig(def_id).instantiate_identity().skip_binder().output().kind()
                 && let parent = self.tcx.hir_get_parent_item(call_expr.hir_id).def_id
