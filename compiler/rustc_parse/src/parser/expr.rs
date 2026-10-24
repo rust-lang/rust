@@ -3894,8 +3894,6 @@ impl<'a> Parser<'a> {
         let attrs = self.parse_outer_attributes()?;
         self.recover_vcs_conflict_marker();
         self.collect_tokens(None, attrs, ForceCollect::No, |this, attrs| {
-            let lo = this.token.span;
-
             // Check if a colon exists one ahead. This means we're parsing a fieldname.
             let is_shorthand = !this.look_ahead(1, |t| t == &token::Colon || t == &token::Eq);
             // Proactively check whether parsing the field will be incorrect.
@@ -3914,22 +3912,25 @@ impl<'a> Parser<'a> {
                     token: pprust::token_to_string(&this.look_ahead(1, |t| *t)),
                 }));
             }
-            let (ident, expr) = if is_shorthand {
+            let (ident, expr, span) = if is_shorthand {
                 // Mimic `x: x` for the `x` field shorthand.
                 let ident = this.parse_ident_common(false)?;
                 let path = ast::Path::from_ident(ident);
-                (ident, this.mk_expr(ident.span, ExprKind::Path(None, path)))
+                (ident, this.mk_expr(ident.span, ExprKind::Path(None, path)), ident.span)
             } else {
                 let ident = this.parse_field_name()?;
+                let span = ident.span.to(this.token.span);
                 this.error_on_eq_field_init(ident);
                 this.bump(); // `:`
-                (ident, this.parse_expr()?)
+                let expr = this.parse_expr()?;
+                let span = span.to(expr.span);
+                (ident, expr, span)
             };
 
             Ok((
                 ast::ExprField {
                     ident,
-                    span: lo.to(expr.span),
+                    span,
                     expr,
                     is_shorthand,
                     attrs,
