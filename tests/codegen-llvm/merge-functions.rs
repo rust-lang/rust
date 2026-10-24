@@ -1,5 +1,6 @@
-//@ revisions: O Os
+//@ revisions: O Os Oz
 //@[Os] compile-flags: -Copt-level=s
+//@[Oz] compile-flags: -Copt-level=z
 //@[O] compile-flags: -Copt-level=3
 #![crate_type = "lib"]
 

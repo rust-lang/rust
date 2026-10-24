@@ -8,7 +8,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::mir::{Body, MirDumper, MirPhase, RuntimePhase};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
-use rustc_session::config::OptLevel;
+use rustc_session::config::{OptLevel, OptimizationObjective};
 use rustc_span::bug;
 use tracing::trace;
 
@@ -96,13 +96,31 @@ pub(crate) enum PassPolicy {
         /// Whether this pass should be enabled in the absence of an explicit
         /// `-Zmir-enable-passes` override.
         enabled_by_default: bool,
+        /// Whether this pass trades runtime speed for binary size, and so is enabled only when the
+        /// objective is size.
+        size_only: bool,
     },
 }
 
 impl PassPolicy {
     /// Create a [`PassPolicy::Optional`] enabled by default under the given condition.
     pub(crate) fn optional(enabled_by_default: bool) -> Self {
-        Self::Optional { enabled_by_default }
+        Self::Optional { enabled_by_default, size_only: false }
+    }
+
+    /// Create a [`PassPolicy::Optional`] that is enabled only when size is the objective.
+    pub(crate) fn size_only() -> Self {
+        Self::Optional { enabled_by_default: false, size_only: true }
+    }
+
+    fn runs_by_default(self, ctx: &PassCtx<'_>) -> bool {
+        match self {
+            PassPolicy::Required => true,
+            PassPolicy::Optional { enabled_by_default, size_only } => {
+                enabled_by_default
+                    || (size_only && ctx.optimization_objective() == OptimizationObjective::Size)
+            }
+        }
     }
 }
 
@@ -151,9 +169,17 @@ impl<'sess> PassCtx<'sess> {
         Self { session: tcx.sess, body_mir_opt_level }
     }
 
-    /// The effective MIR optimization level for this body, including `#[optimize]` overrides.
+    /// The MIR optimization level for this body, possibly overridden by `#[optimize]`.
+    ///
+    /// A pass deciding whether the compilation wants it should ask
+    /// [`session_mir_opt_level`](Self::session_mir_opt_level) instead.
     pub(super) fn mir_opt_level(&self) -> usize {
         self.body_mir_opt_level
+    }
+
+    /// The compilation's MIR optimization level, ignoring this body's `#[optimize]` override.
+    pub(super) fn session_mir_opt_level(&self) -> usize {
+        self.session.mir_opt_level()
     }
 }
 
@@ -218,8 +244,9 @@ where
         let policy = self.1.policy(ctx);
         match policy {
             PassPolicy::Required => bug!("required pass cannot be gated by an opt level"),
-            PassPolicy::Optional { enabled_by_default } => PassPolicy::Optional {
+            PassPolicy::Optional { enabled_by_default, size_only } => PassPolicy::Optional {
                 enabled_by_default: enabled_by_default && ctx.mir_opt_level() >= self.0,
+                size_only,
             },
         }
     }
@@ -260,21 +287,26 @@ where
             .find_map(|(name_, polarity)| if name == name_ { Some(*polarity) } else { None })
     };
 
-    match pass.policy(ctx) {
-        PassPolicy::Required => true,
-        PassPolicy::Optional { enabled_by_default } => {
-            if let Some(o) = pass_override() {
-                trace!(
-                    pass = %name,
-                    "{} as requested by flag",
-                    if o { "Running" } else { "Not running" }
-                );
-                o
-            } else {
-                enabled_by_default
-            }
-        }
+    let policy = pass.policy(ctx);
+
+    // Only `Optional` passes consult `-Zmir-enable-passes`; `Required` ones implement MIR semantics
+    // and cannot be turned off.
+    if let PassPolicy::Optional { .. } = policy
+        && let Some(o) = pass_override()
+    {
+        trace!(
+            pass = %name,
+            "{} as requested by flag",
+            if o { "Running" } else { "Not running" }
+        );
+        return o;
     }
+
+    let runs = policy.runs_by_default(ctx);
+    if !runs {
+        trace!(pass = %name, "Not running: not enabled by default for this body");
+    }
+    runs
 }
 
 fn run_passes_inner<'tcx>(

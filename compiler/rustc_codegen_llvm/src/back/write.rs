@@ -121,6 +121,8 @@ pub(crate) fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> OwnedTar
     target_machine_factory(tcx.sess, tcx.backend_optimization_level(()))(tcx.dcx(), config)
 }
 
+// LLVM expresses "optimize for size" as a sub-setting of a numeric level, and `s` and `z` differ
+// there, so this keeps matching `OptLevel`.
 fn to_llvm_opt_settings(cfg: config::OptLevel) -> (llvm::CodeGenOptLevel, llvm::CodeGenOptSize) {
     use self::config::OptLevel::*;
     match cfg {
@@ -592,8 +594,7 @@ pub(crate) unsafe fn llvm_optimize<'ll>(
         vectorize_slp = false;
         vectorize_loop = false;
     } else {
-        unroll_loops =
-            opt_level != config::OptLevel::Size && opt_level != config::OptLevel::SizeMin;
+        unroll_loops = opt_level.objective() != config::OptimizationObjective::Size;
         merge_functions = config.merge_functions;
         vectorize_slp = config.vectorize_slp;
         vectorize_loop = config.vectorize_loop;
