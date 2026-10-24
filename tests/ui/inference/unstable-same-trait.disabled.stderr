@@ -1,0 +1,25 @@
+warning: a method with this name may be added to the standard library in the future
+  --> $DIR/unstable-same-trait.rs:31:7
+   |
+LL |     x.value()
+   |       ^^^^^
+   |
+   = help: call with fully qualified syntax `Stable::value(...)` to keep using the current method
+   = warning: once this associated item is added to the standard library, the ambiguity may cause an error or change in behavior!
+   = note: for more information, see issue #48919 <https://github.com/rust-lang/rust/issues/48919>
+   = note: `#[warn(unstable_name_collisions)]` (part of `#[warn(future_incompatible)]`) on by default
+help: add `#![feature(unstable_value)]` to the crate attributes to enable `value`
+   |
+LL + #![feature(unstable_value)]
+   |
+help: add `#![feature(unstable_value)]` to the crate attributes to enable `value`
+   |
+LL + #![feature(unstable_value)]
+   |
+help: add `#![feature(unstable_value)]` to the crate attributes to enable `value`
+   |
+LL + #![feature(unstable_value)]
+   |
+
+warning: 1 warning emitted
+
