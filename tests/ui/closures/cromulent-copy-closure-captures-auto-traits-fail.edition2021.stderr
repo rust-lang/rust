@@ -20,6 +20,8 @@ note: required because it appears within the type `Foo`
    |
 LL | struct Foo(PhantomData<Cell<()>>);
    |            ^^^^^^^^^^^^^^^^^^^^^ required by this field
+   = note: required for `&'a Foo` to implement `for<'a> Send`
+   = note: 1 redundant requirement hidden
    = note: required for `std::marker::CopyClosureCaptureContainer<Foo>` to implement `Send`
 note: required because `foo` is used within this closure
   --> $DIR/cromulent-copy-closure-captures-auto-traits-fail.rs:19:20
