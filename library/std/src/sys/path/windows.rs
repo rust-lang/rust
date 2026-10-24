@@ -11,8 +11,6 @@ pub use super::windows_prefix::parse_prefix;
 
 path_separator_bytes!(b'\\', b'/');
 
-pub const HAS_PREFIXES: bool = true;
-
 /// A null terminated wide string.
 #[repr(transparent)]
 pub struct WCStr([u16]);
@@ -209,7 +207,7 @@ pub(crate) fn absolute(path: &Path) -> io::Result<PathBuf> {
 }
 
 pub(crate) fn is_absolute(path: &Path) -> bool {
-    path.has_root() && path.prefix().is_some()
+    path.has_root() && path.components().0.prefix().is_some()
 }
 
 /// Test that the path is absolute, fully qualified and unchanged when processed by the Windows API.
