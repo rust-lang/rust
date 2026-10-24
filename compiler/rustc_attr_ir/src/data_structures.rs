@@ -293,6 +293,22 @@ pub enum Linkage {
     WeakODR,
 }
 
+impl Linkage {
+    /// Returns whether this linkage type indicates that the function definition is exactly what
+    /// will be present at runtime.
+    pub fn is_definition_exact(self) -> bool {
+        match self {
+            Linkage::External | Linkage::Internal => true,
+            Linkage::AvailableExternally
+            | Linkage::ExternalWeak
+            | Linkage::WeakAny
+            | Linkage::WeakODR
+            | Linkage::LinkOnceAny
+            | Linkage::LinkOnceODR => false,
+        }
+    }
+}
+
 #[derive(Clone, Copy, Decodable, Debug, Encodable, PartialEq)]
 #[derive(StableHash, PrintAttribute)]
 pub enum MirDialect {
