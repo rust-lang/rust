@@ -4,7 +4,13 @@ error[E0365]: `foo` is only public within the crate, and cannot be re-exported o
 LL | pub use foo as foo2;
    |         ^^^^^^^^^^^ re-export of crate public `foo`
    |
-   = note: consider declaring type or module `foo` with `pub`
+note: consider declaring module `foo` with `pub`
+  --> $DIR/E0365.rs:1:1
+   |
+LL | / mod foo {
+LL | |     pub const X: u32 = 1;
+LL | | }
+   | |_^
 
 error: aborting due to 1 previous error
 
