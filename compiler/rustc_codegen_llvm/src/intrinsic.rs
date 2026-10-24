@@ -909,10 +909,27 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         assert!(!fn_sig.c_variadic());
 
         let ret_layout = self.layout_of(fn_sig.output());
-        let llreturn_ty = if ret_layout.is_zst() {
-            self.type_void()
+        let (llreturn_ty, return_struct_fields) = if ret_layout.is_zst() {
+            (self.type_void(), vec![])
+        } else if ret_layout.is_aggregate() {
+            let ret_layout = ret_layout.peel_transparent_wrappers_from_non_1zst(self.cx);
+            match ret_layout.ty.kind() {
+                ty::Adt(adt_def, _) if adt_def.is_struct() => {}
+                ty::Tuple(_) => {}
+                _ => bug!("invalid LLVM intrinsic return type: {ret_layout:?}"),
+            }
+            let fields = (0..ret_layout.fields.count())
+                .filter_map(|i| {
+                    let field = ret_layout.field(self, i);
+                    (!field.is_zst())
+                        .then(|| (field.immediate_llvm_type(self), ret_layout.fields.offset(i)))
+                })
+                .collect::<Vec<_>>();
+            assert!(fields.len() < 2, "invalid LLVM intrinsic return type: {ret_layout:?}");
+            let llvm_fields = fields.iter().copied().map(|(t, _)| t).collect::<Vec<_>>();
+            (self.type_struct(&llvm_fields, false), fields)
         } else {
-            ret_layout.immediate_llvm_type(self)
+            (ret_layout.immediate_llvm_type(self), vec![])
         };
 
         let mut llargument_tys = Vec::with_capacity(fn_sig.inputs().len());
@@ -996,14 +1013,72 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             )
         };
 
-        let src_ty = self.val_ty(llret);
-        let dest_ty = llreturn_ty;
-        assert!(
-            can_autocast(self, dest_ty, src_ty),
-            "Cannot match `{src_ty:?}` (expected) with `{dest_ty:?}` (found) in `{fn_ptr:?}`"
-        );
+        if return_struct_fields.is_empty() {
+            let src_ty = self.val_ty(llret);
+            let dest_ty = llreturn_ty;
+            assert!(
+                can_autocast(self, dest_ty, src_ty),
+                "Cannot match `{src_ty:?}` (expected) with `{dest_ty:?}` (found) in `{fn_ptr:?}`"
+            );
 
-        autocast(self, llret, src_ty, dest_ty)
+            autocast(self, llret, src_ty, dest_ty)
+        } else {
+            match ret_layout.backend_repr {
+                BackendRepr::ScalarPair { a: _, b: _, b_offset } => {
+                    let a_index = if return_struct_fields[0].1 == b_offset { 1 } else { 0 };
+                    let b_index = if return_struct_fields[1].1 == b_offset { 1 } else { 0 };
+                    assert!((a_index == 1 || b_index == 1) && a_index != b_index);
+                    let a_value = self.extract_value(llret, a_index);
+                    let b_value = self.extract_value(llret, b_index);
+                    let a_src_ty = self.val_ty(a_value);
+                    let b_src_ty = self.val_ty(b_value);
+                    let a_dest_ty = return_struct_fields[a_index as usize].0;
+                    let b_dest_ty = return_struct_fields[b_index as usize].0;
+                    assert!(
+                        can_autocast(self, a_dest_ty, a_src_ty),
+                        "Cannot match `{a_src_ty:?}` (expected) with `{a_dest_ty:?}` (found) in `{fn_ptr:?}`"
+                    );
+                    assert!(
+                        can_autocast(self, b_dest_ty, b_src_ty),
+                        "Cannot match `{b_src_ty:?}` (expected) with `{b_dest_ty:?}` (found) in `{fn_ptr:?}`"
+                    );
+                    let a_value = autocast(self, a_value, a_src_ty, a_dest_ty);
+                    let b_value = autocast(self, b_value, b_src_ty, b_dest_ty);
+                    let mut pair = self.cx.const_poison(ret_layout.immediate_llvm_type(self));
+                    pair = self.insert_value(pair, a_value, 0);
+                    pair = self.insert_value(pair, b_value, 1);
+                    pair
+                }
+                BackendRepr::Memory { sized: true } => {
+                    // FIXME: Store directly to the return destination
+                    let scratch = PlaceRef::alloca(self, ret_layout);
+                    for (index, (dest_ty, offset)) in return_struct_fields.into_iter().enumerate() {
+                        let value = self.extract_value(llret, index as u64);
+                        let src_ty = self.val_ty(value);
+                        assert!(
+                            can_autocast(self, dest_ty, src_ty),
+                            "Cannot match `{src_ty:?}` (expected) with `{dest_ty:?}` (found) in `{fn_ptr:?}`"
+                        );
+                        let value = autocast(self, value, src_ty, dest_ty);
+                        let pointer = if offset.bytes() != 0 {
+                            self.inbounds_ptradd(
+                                scratch.val.llval,
+                                self.const_usize(offset.bytes()),
+                            )
+                        } else {
+                            scratch.val.llval
+                        };
+                        self.store(value, pointer, scratch.val.align.restrict_for_offset(offset));
+                    }
+                    self.load(
+                        ret_layout.immediate_llvm_type(self),
+                        scratch.val.llval,
+                        scratch.val.align,
+                    )
+                }
+                _ => bug!("unexpected aggregate return layout: {ret_layout:?}"),
+            }
+        }
     }
 
     fn abort_immediate(&mut self) {
@@ -1089,23 +1164,6 @@ fn can_autocast<'ll>(cx: &CodegenCx<'ll, '_>, rust_ty: &'ll Type, llvm_ty: &'ll 
     }
 
     match cx.type_kind(llvm_ty) {
-        // Some LLVM intrinsics return **non-packed** structs, but they can't be mimicked from Rust
-        // due to auto field-alignment in non-packed structs (packed structs are represented in LLVM
-        // as, well, packed structs, so they won't match with those either)
-        TypeKind::Struct if cx.type_kind(rust_ty) == TypeKind::Struct => {
-            let rust_element_tys = cx.struct_element_types(rust_ty);
-            let llvm_element_tys = cx.struct_element_types(llvm_ty);
-
-            if rust_element_tys.len() != llvm_element_tys.len() {
-                return false;
-            }
-
-            iter::zip(rust_element_tys, llvm_element_tys).all(
-                |(rust_element_ty, llvm_element_ty)| {
-                    can_autocast(cx, rust_element_ty, llvm_element_ty)
-                },
-            )
-        }
         TypeKind::Vector => {
             let llvm_element_ty = cx.element_type(llvm_ty);
             let element_count = cx.vector_length(llvm_ty) as u64;
@@ -1152,19 +1210,6 @@ fn autocast<'ll>(
         return val;
     }
     match (bx.type_kind(src_ty), bx.type_kind(dest_ty)) {
-        // re-pack structs
-        (TypeKind::Struct, TypeKind::Struct) => {
-            let mut ret = bx.const_poison(dest_ty);
-            for (idx, (src_element_ty, dest_element_ty)) in
-                iter::zip(bx.struct_element_types(src_ty), bx.struct_element_types(dest_ty))
-                    .enumerate()
-            {
-                let elt = bx.extract_value(val, idx as u64);
-                let casted_elt = autocast(bx, elt, src_element_ty, dest_element_ty);
-                ret = bx.insert_value(ret, casted_elt, idx as u64);
-            }
-            ret
-        }
         // cast from the i1xN vector type to the primitive type
         (TypeKind::Vector, TypeKind::Integer) if bx.element_type(src_ty) == bx.type_i1() => {
             let vector_length = bx.vector_length(src_ty) as u64;
@@ -1258,9 +1303,17 @@ fn intrinsic_fn<'ll, 'tcx>(
         let llvm_argument_tys = bx.func_params_types(llvm_fn_ty);
         let llvm_is_variadic = bx.func_is_variadic(llvm_fn_ty);
 
+        let (rust_return_tys, llvm_return_tys) = if bx.type_kind(rust_return_ty) == TypeKind::Struct
+            && bx.type_kind(llvm_return_ty) == TypeKind::Struct
+        {
+            (bx.struct_element_types(rust_return_ty), bx.struct_element_types(llvm_return_ty))
+        } else {
+            (vec![rust_return_ty], vec![llvm_return_ty])
+        };
         let is_correct_signature = !llvm_is_variadic
             && rust_argument_tys.len() == llvm_argument_tys.len()
-            && iter::once((rust_return_ty, llvm_return_ty))
+            && rust_return_tys.len() == llvm_return_tys.len()
+            && iter::zip(rust_return_tys, llvm_return_tys)
                 .chain(iter::zip(rust_argument_tys, llvm_argument_tys))
                 .all(|(rust_ty, llvm_ty)| can_autocast(bx, rust_ty, llvm_ty));
 
