@@ -1067,7 +1067,7 @@ fn create_struct_field_access_fields(
                         cx.block(struct_field.span, thin_vec![cx.stmt_expr(field_expr)]),
                     );
                 }
-                cx.expr_addr_of(sp, field_expr)
+                cx.expr_ref(sp, field_expr)
             })
             .collect()
     })

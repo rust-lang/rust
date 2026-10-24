@@ -350,7 +350,7 @@ impl<'a> ExtCtxt<'a> {
         self.expr(sp, ast::ExprKind::Unary(UnOp::Deref, e))
     }
 
-    pub fn expr_addr_of(&self, sp: Span, e: Box<ast::Expr>) -> Box<ast::Expr> {
+    pub fn expr_ref(&self, sp: Span, e: Box<ast::Expr>) -> Box<ast::Expr> {
         self.expr(sp, ast::ExprKind::AddrOf(ast::BorrowKind::Ref, ast::Mutability::Not, e))
     }
 
@@ -475,7 +475,7 @@ impl<'a> ExtCtxt<'a> {
 
     /// `&[expr1, expr2, ...]`
     pub fn expr_array_ref(&self, sp: Span, exprs: ThinVec<Box<ast::Expr>>) -> Box<ast::Expr> {
-        self.expr_addr_of(sp, self.expr_array(sp, exprs))
+        self.expr_ref(sp, self.expr_array(sp, exprs))
     }
 
     pub fn expr_some(&self, sp: Span, expr: Box<ast::Expr>) -> Box<ast::Expr> {

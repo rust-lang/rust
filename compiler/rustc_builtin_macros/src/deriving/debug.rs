@@ -107,7 +107,7 @@ fn debug_body(
         } else {
             // Unsized types need an extra indirection, but only the last field
             // may be unsized.
-            cx.expr_addr_of(field.span, field.self_expr)
+            cx.expr_ref(field.span, field.self_expr)
         }
     };
 

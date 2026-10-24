@@ -69,7 +69,7 @@ fn hash_body(cx: &ExtCtxt<'_>, span: Span, substr: Substructure<'_>) -> BlockOrE
         EnumDiscr(match_expr) => {
             let stmts = thin_vec![call_hash(
                 span,
-                cx.expr_addr_of(span, call_discriminant_value(cx, span, kw::SelfLower))
+                cx.expr_ref(span, call_discriminant_value(cx, span, kw::SelfLower))
             )];
             (stmts, match_expr)
         }

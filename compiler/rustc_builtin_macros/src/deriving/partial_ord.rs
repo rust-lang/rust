@@ -232,8 +232,8 @@ pub(crate) fn cmp_body(
             })
         }
         EnumDiscr(match_expr) => {
-            let self_expr = cx.expr_addr_of(span, call_discriminant_value(cx, span, kw::SelfLower));
-            let other_expr = cx.expr_addr_of(span, call_discriminant_value(cx, span, sym::other));
+            let self_expr = cx.expr_ref(span, call_discriminant_value(cx, span, kw::SelfLower));
+            let other_expr = cx.expr_ref(span, call_discriminant_value(cx, span, sym::other));
             let args = thin_vec![self_expr, other_expr];
             let discr_check_expr = cx.expr_call_global(span, cx.std_path(span, &method_path), args);
             if let Some(match_expr) = match_expr {
