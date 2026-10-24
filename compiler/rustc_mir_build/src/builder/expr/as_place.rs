@@ -587,7 +587,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // A reborrow is an rvalue. If a place is needed for it, materialize
             // the rvalue in a temporary instead of treating the reborrow
             // expression itself as an assignable place.
-            | ExprKind::Reborrow { .. }
+            | ExprKind::CoerceShared { .. }
             | ExprKind::WrapUnsafeBinder { .. } => {
                 // these are not places, so we need to make a temporary.
                 debug_assert!(!matches!(Category::of(&expr.kind), Some(Category::Place)));

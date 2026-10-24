@@ -6,42 +6,34 @@
       let mut _0: usize;
       let _2: &[u8];
       let mut _3: &[u8; N];
-      let _4: &[u8; N];
-      let mut _6: &[u8];
-      let _7: &[u8];
+      let mut _5: &[u8];
       scope 1 {
           debug arr => _2;
-          let _5: *const [u8];
+          let _4: *const [u8];
           scope 2 {
-              debug arr => _5;
+              debug arr => _4;
           }
       }
   
       bb0: {
           StorageLive(_2);
           StorageLive(_3);
-          StorageLive(_4);
-          _4 = &_1;
-          _3 = &(*_4);
+          _3 = &_1;
           _2 = move _3 as &[u8] (PointerCoercion(Unsize, Implicit));
           StorageDead(_3);
-          StorageDead(_4);
+          StorageLive(_4);
+          _4 = &raw const (*_2);
           StorageLive(_5);
-          _5 = &raw const (*_2);
-          StorageLive(_6);
-          StorageLive(_7);
-          _7 = &(*_5);
-          _6 = &(*_7);
--         _0 = PtrMetadata(move _6);
+          _5 = &(*_4);
+-         _0 = PtrMetadata(move _5);
 +         _0 = const N;
           goto -> bb1;
       }
   
       bb1: {
-          StorageDead(_6);
           StorageDead(_5);
+          StorageDead(_4);
           StorageDead(_2);
-          StorageDead(_7);
           return;
       }
   }

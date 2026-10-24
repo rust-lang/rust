@@ -29,7 +29,7 @@ pub fn in_fn_mut<F: FnMut() -> Result<(), ()>>(mut f: F) -> Result<(), ()> {
 pub fn fn_closure(foos: &mut [&mut Foo]) -> Result<(), ()> {
     in_fn(|| {
         for _ in foos {
-            //~^ ERROR cannot move out of `foos`, a captured variable in an `Fn` closure
+            //~^ ERROR cannot borrow `*foos` as mutable, as `Fn` closures cannot mutate their captured variables
         }
         Ok(())
     })
@@ -38,9 +38,7 @@ pub fn fn_closure(foos: &mut [&mut Foo]) -> Result<(), ()> {
 // `FnMut` closure: a mutable reborrow is valid, so the suggestion is offered.
 pub fn fn_mut_closure(foos: &mut [&mut Foo]) -> Result<(), ()> {
     in_fn_mut(|| {
-        for _ in foos {
-            //~^ ERROR cannot move out of `foos`, a captured variable in an `FnMut` closure
-        }
+        for _ in foos {}
         Ok(())
     })
 }

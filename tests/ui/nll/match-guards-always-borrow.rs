@@ -8,7 +8,7 @@ fn should_reject_destructive_mutate_in_guard() {
         None => {},
         ref mut foo if {
             (|| { let mut bar = foo; bar.take() })();
-            //~^ ERROR cannot move out of `foo` in pattern guard [E0507]
+            //~^ ERROR cannot borrow `*foo` as mutable, as it is immutable for the pattern guard [E0596]
             false } => { },
         Some(s) => std::process::exit(*s),
     }
@@ -17,7 +17,7 @@ fn should_reject_destructive_mutate_in_guard() {
         None => {},
         ref mut foo if let Some(()) = {
             (|| { let mut bar = foo; bar.take() })();
-            //~^ ERROR cannot move out of `foo` in pattern guard [E0507]
+            //~^ ERROR cannot borrow `*foo` as mutable, as it is immutable for the pattern guard [E0596]
             None } => { },
         Some(s) => std::process::exit(*s),
     }

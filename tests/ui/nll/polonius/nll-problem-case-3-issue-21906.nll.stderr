@@ -1,39 +1,30 @@
 error[E0499]: cannot borrow `*map` as mutable more than once at a time
   --> $DIR/nll-problem-case-3-issue-21906.rs:27:13
    |
-LL |   fn from_the_rfc<'r, K: Hash + Eq + Copy, V: Default>(
-   |                   -- lifetime `'r` defined here
+LL | fn from_the_rfc<'r, K: Hash + Eq + Copy, V: Default>(
+   |                 -- lifetime `'r` defined here
 ...
-LL |       match map.get_mut(&key) {
-   |       -     --- first mutable borrow occurs here
-   |  _____|
-   | |
-LL | |         Some(value) => value,
-LL | |         None => {
-LL | |             map.insert(key, V::default());
-   | |             ^^^ second mutable borrow occurs here
-...  |
-LL | |     }
-   | |_____- returning this value requires that `*map` is borrowed for `'r`
+LL |     match map.get_mut(&key) {
+   |           --- first mutable borrow occurs here
+LL |         Some(value) => value,
+   |                        ----- returning this value requires that `*map` is borrowed for `'r`
+LL |         None => {
+LL |             map.insert(key, V::default());
+   |             ^^^ second mutable borrow occurs here
 
 error[E0499]: cannot borrow `*map` as mutable more than once at a time
   --> $DIR/nll-problem-case-3-issue-21906.rs:28:13
    |
-LL |   fn from_the_rfc<'r, K: Hash + Eq + Copy, V: Default>(
-   |                   -- lifetime `'r` defined here
+LL | fn from_the_rfc<'r, K: Hash + Eq + Copy, V: Default>(
+   |                 -- lifetime `'r` defined here
 ...
-LL |       match map.get_mut(&key) {
-   |       -     --- first mutable borrow occurs here
-   |  _____|
-   | |
-LL | |         Some(value) => value,
-LL | |         None => {
-LL | |             map.insert(key, V::default());
-LL | |             map.get_mut(&key).unwrap()
-   | |             ^^^ second mutable borrow occurs here
-LL | |         }
-LL | |     }
-   | |_____- returning this value requires that `*map` is borrowed for `'r`
+LL |     match map.get_mut(&key) {
+   |           --- first mutable borrow occurs here
+LL |         Some(value) => value,
+   |                        ----- returning this value requires that `*map` is borrowed for `'r`
+...
+LL |             map.get_mut(&key).unwrap()
+   |             ^^^ second mutable borrow occurs here
 
 error[E0499]: cannot borrow `*map` as mutable more than once at a time
   --> $DIR/nll-problem-case-3-issue-21906.rs:46:41
