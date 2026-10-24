@@ -2162,8 +2162,19 @@ fn compare_const_generic_param_types<'tcx>(
             },
         );
 
-        let impl_ty =
-            ocx.normalize(&cause, param_env, tcx.type_of(param_impl.def_id).instantiate_identity());
+        // If `impl_item` comes from RPITIT, its hidden type reuses the traits
+        // generic params, so const param types use the traits indices.
+        // We need to translate them using trait_to_impl_args, just like we do
+        // for the trait side, to avoid mismatches.
+        let impl_ty = if impl_item.is_impl_trait_in_trait() {
+            ocx.normalize(
+                &cause,
+                param_env,
+                tcx.type_of(param_impl.def_id).instantiate(tcx, trait_to_impl_args),
+            )
+        } else {
+            ocx.normalize(&cause, param_env, tcx.type_of(param_impl.def_id).instantiate_identity())
+        };
 
         let trait_ty = ocx.normalize(
             &cause,
