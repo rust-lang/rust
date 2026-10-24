@@ -64,7 +64,7 @@ where
                 // NOTE: we intentionally pass in the `InherentConstImpl` form as the term to
                 // instantiate to upon too-generic CTFE failure, as we ought to consistently compare
                 // identities via `InherentConstImpl` rather than `InherentConstSelf`.
-                return self.evaluate_const_and_instantiate_projection_term(
+                return self.evaluate_const(
                     goal.param_env,
                     term,
                     goal.predicate.term,
