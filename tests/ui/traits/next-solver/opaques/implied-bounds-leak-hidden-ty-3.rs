@@ -33,6 +33,8 @@ fn foo<T: Trait>(x: <T as Trait>::Assoc) -> (Box<dyn Any>, impl Sized) {
     //~| ERROR the associated type `<T as Trait>::Assoc` may not live long enough
     //~| ERROR the associated type `<T as Trait>::Assoc` may not live long enough
     //[current]~| ERROR the associated type `<T as Trait>::Assoc` may not live long enough
+    //~| ERROR the associated type `<T as Trait>::Assoc` may not live long enough
+    //~| ERROR the associated type `<T as Trait>::Assoc` may not live long enough
 }
 
 fn main() {
