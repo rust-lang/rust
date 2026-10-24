@@ -1,18 +1,18 @@
 
 running 7 tests
-test $DIR/expect-item-after-attribute.rs - (line 13) ... FAILED
-test $DIR/expect-item-after-attribute.rs - (line 17) ... FAILED
+test $DIR/expect-item-after-attribute.rs - (line 15) ... FAILED
 test $DIR/expect-item-after-attribute.rs - (line 20) ... FAILED
+test $DIR/expect-item-after-attribute.rs - (line 24) ... FAILED
 test $DIR/expect-item-after-attribute.rs - (line 5) ... FAILED
-test $DIR/expect-item-after-attribute.rs - (line 8) ... FAILED
+test $DIR/expect-item-after-attribute.rs - (line 9) ... FAILED
 test $DIR/expect-item-after-attribute.rs - Test (line 28) ... FAILED
 test $DIR/expect-item-after-attribute.rs - wtf (line 33) ... FAILED
 
 failures:
 
----- $DIR/expect-item-after-attribute.rs - (line 13) stdout ----
+---- $DIR/expect-item-after-attribute.rs - (line 15) stdout ----
 error: expected item after attributes
-  --> $DIR/expect-item-after-attribute.rs:15:1
+  --> $DIR/expect-item-after-attribute.rs:17:1
    |
 LL | #[should_panic]
    | ^^^^^^^^^^^^^^^ expected an item after this
@@ -20,9 +20,9 @@ LL | #[should_panic]
 error: aborting due to 1 previous error
 
 Couldn't compile the test.
----- $DIR/expect-item-after-attribute.rs - (line 17) stdout ----
+---- $DIR/expect-item-after-attribute.rs - (line 20) stdout ----
 error: expected item, found keyword `let`
-  --> $DIR/expect-item-after-attribute.rs:18:1
+  --> $DIR/expect-item-after-attribute.rs:21:1
    |
 LL | let x = 0; #[should_panic]
    | ^^^
@@ -35,9 +35,9 @@ LL | let x = 0; #[should_panic]
 error: aborting due to 1 previous error
 
 Couldn't compile the test.
----- $DIR/expect-item-after-attribute.rs - (line 20) stdout ----
+---- $DIR/expect-item-after-attribute.rs - (line 24) stdout ----
 error: expected item, found keyword `let`
-  --> $DIR/expect-item-after-attribute.rs:21:1
+  --> $DIR/expect-item-after-attribute.rs:25:1
    |
 LL | let x = 0; //! assert!(true);
    | ^^^
@@ -60,9 +60,9 @@ LL | #[should_panic]
 error: aborting due to 1 previous error
 
 Couldn't compile the test.
----- $DIR/expect-item-after-attribute.rs - (line 8) stdout ----
+---- $DIR/expect-item-after-attribute.rs - (line 9) stdout ----
 error: expected statement after outer attribute
-  --> $DIR/expect-item-after-attribute.rs:10:5
+  --> $DIR/expect-item-after-attribute.rs:11:5
    |
 LL |     #[should_panic]
    |     ^^^^^^^^^^^^^^^
@@ -92,11 +92,11 @@ error: aborting due to 1 previous error
 Couldn't compile the test.
 
 failures:
-    $DIR/expect-item-after-attribute.rs - (line 13)
-    $DIR/expect-item-after-attribute.rs - (line 17)
+    $DIR/expect-item-after-attribute.rs - (line 15)
     $DIR/expect-item-after-attribute.rs - (line 20)
+    $DIR/expect-item-after-attribute.rs - (line 24)
     $DIR/expect-item-after-attribute.rs - (line 5)
-    $DIR/expect-item-after-attribute.rs - (line 8)
+    $DIR/expect-item-after-attribute.rs - (line 9)
     $DIR/expect-item-after-attribute.rs - Test (line 28)
     $DIR/expect-item-after-attribute.rs - wtf (line 33)
 
