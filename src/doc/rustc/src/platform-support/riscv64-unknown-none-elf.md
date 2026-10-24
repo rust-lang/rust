@@ -1,4 +1,8 @@
-# `riscv64im-unknown-none-elf`
+# `riscv64{im,imac,gc}-unknown-none-elf`
+
+**Tier: 2**
+
+Bare-metal target for RISC-V CPUs with the RV64IMAC and RV64GC ISAs.
 
 **Tier: 3**
 
@@ -44,4 +48,5 @@ This is a cross-compiled `no-std` target, which must be run either in a simulato
 
 ## Cross-compilation toolchains and C code
 
-This target supports C code. If interlinking with C or C++, you may need to use `riscv64-unknown-elf-gcc` with the appropriate `-march=rv64im -mabi=lp64` flags as a linker instead of `rust-lld`.
+This target supports C code. If interlinking with C or C++, you may need to use `riscv64-unknown-elf-gcc` as a linker instead of `rust-lld`. On `riscv64im*` targets
+without the `a` extension, the flags `-march=rv64im -mabi=lp64` may be needed.
