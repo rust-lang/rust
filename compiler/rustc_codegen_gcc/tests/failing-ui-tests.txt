@@ -11,7 +11,6 @@ tests/ui/process/nofile-limit.rs
 tests/ui/attributes/fn-align-dyn.rs
 tests/ui/linkage-attr/raw-dylib/elf/glibc-x86_64.rs
 tests/ui/statics/const_generics.rs
-tests/ui/thir-print/offset_of.rs
 tests/ui/asm/x86_64/global_asm_escape.rs
 tests/ui/lto/all-crates.rs
 tests/ui/explicit-tail-calls/tailcc-no-signature-restriction.rs
