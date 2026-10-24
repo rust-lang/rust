@@ -22,7 +22,7 @@ use rustc_errors::{DiagCtxt, DiagCtxtHandle};
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductMap};
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::{OptLevel, OutputFilenames, PrintKind, PrintRequest};
+use rustc_session::config::{LtoCli, OptLevel, OutputFilenames, PrintKind, PrintRequest};
 use rustc_session::{
     BorrowedIncrCompSession, CodegenBackendInit, EarlySession, IncrCompSession, Session,
 };
@@ -210,6 +210,36 @@ impl CodegenBackend for LlvmCodegenBackend {
                     }
                 }
                 enable_autodiff_settings(&sess.opts.unstable_opts.autodiff);
+            }
+        }
+
+        // -Zllvm-tpde requires the TPDE pass plugin, which may not be available. If TPDE is used but not available,
+        // we emit an early error here and abort compilation.
+        {
+            match llvm::TpdeWrapper::get_or_init(
+                &sess.opts.sysroot,
+                &sess.opts.unstable_opts.llvm_tpde,
+            ) {
+                Ok(_) => {}
+                Err(llvm::TpdeLibraryError::NotFound { err }) => {
+                    sess.dcx().emit_fatal(crate::diagnostics::TpdeComponentMissing { err });
+                }
+                Err(llvm::TpdeLibraryError::LoadFailed { err }) => {
+                    sess.dcx().emit_fatal(crate::diagnostics::TpdeComponentUnavailable { err });
+                }
+            }
+
+            if sess.opts.unstable_opts.llvm_tpde.is_some()
+                && !matches!(sess.opts.optimize, OptLevel::No | OptLevel::Less)
+            {
+                sess.dcx().emit_warn(crate::diagnostics::TpdeHighOptLevel);
+            }
+
+            if sess.opts.unstable_opts.llvm_tpde.is_some()
+                && (sess.target.requires_lto
+                    || !matches!(sess.early_lto(), LtoCli::No | LtoCli::Unspecified))
+            {
+                sess.dcx().emit_fatal(crate::diagnostics::TpdeLtoUsed);
             }
         }
 
