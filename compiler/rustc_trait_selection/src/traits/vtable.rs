@@ -309,9 +309,12 @@ fn vtable_entries<'tcx>(
 
 // Given a `dyn Subtrait: Supertrait` trait ref, find corresponding first slot
 // for `Supertrait`'s methods in the vtable of `Subtrait`.
-pub(crate) fn first_method_vtable_slot<'tcx>(tcx: TyCtxt<'tcx>, key: ty::TraitRef<'tcx>) -> usize {
+pub(crate) fn first_method_vtable_slot<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    key: ty::TraitRef<'tcx>,
+) -> Option<usize> {
     debug_assert!(!key.has_non_region_infer() && !key.has_non_region_param());
-    tcx.debug_assert_fully_normalized(ty::TypingEnv::fully_monomorphized(), key);
+    tcx.assert_fully_normalized(ty::TypingEnv::fully_monomorphized(), key);
 
     let ty::Dynamic(source, _) = *key.self_ty().kind() else {
         bug!();
@@ -324,7 +327,7 @@ pub(crate) fn first_method_vtable_slot<'tcx>(tcx: TyCtxt<'tcx>, key: ty::TraitRe
     if tcx
         .instantiate_and_check_impossible_clauses((source_principal.def_id, source_principal.args))
     {
-        return 0;
+        return Some(0);
     }
 
     let target_principal = ty::ExistentialTraitRef::erase_self_ty(tcx, key);
@@ -355,7 +358,7 @@ pub(crate) fn first_method_vtable_slot<'tcx>(tcx: TyCtxt<'tcx>, key: ty::TraitRe
         }
     };
 
-    prepare_vtable_segments(tcx, source_principal, vtable_segment_callback).unwrap()
+    prepare_vtable_segments(tcx, source_principal, vtable_segment_callback)
 }
 
 /// Given a `dyn Subtrait` and `dyn Supertrait` trait object, find the slot of
