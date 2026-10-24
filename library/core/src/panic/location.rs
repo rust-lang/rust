@@ -250,6 +250,8 @@ impl<'a> Location<'a> {
 
     /// Returns the line number from which the panic originated.
     ///
+    /// The line number will be consistent with the [`line!()`] macro.
+    ///
     /// # Examples
     ///
     /// ```should_panic
@@ -274,6 +276,8 @@ impl<'a> Location<'a> {
     }
 
     /// Returns the column from which the panic originated.
+    ///
+    /// The column number will be consistent with the [`column!()`] macro.
     ///
     /// # Examples
     ///
