@@ -1170,12 +1170,14 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         fields: &[VnIndex],
     ) -> Option<VnIndex> {
         let Some(&first_field) = fields.first() else { return None };
-        let Value::Projection(copy_from_value, _) = self.get(first_field) else { return None };
+        let Value::Projection(mut src, ProjectionElem::Field(..)) = self.get(first_field) else {
+            return None;
+        };
 
         // All fields must correspond one-to-one and come from the same aggregate value.
         if fields.iter().enumerate().any(|(index, &v)| {
             if let Value::Projection(pointer, ProjectionElem::Field(from_index, _)) = self.get(v)
-                && copy_from_value == pointer
+                && src == pointer
                 && from_index.index() == index
             {
                 return false;
@@ -1185,13 +1187,15 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             return None;
         }
 
-        let mut copy_from_local_value = copy_from_value;
-        if let Value::Projection(pointer, proj) = self.get(copy_from_value)
-            && let ProjectionElem::Downcast { variant_index: read_variant, .. } = proj
+        if let Value::Projection(
+            pointer,
+            ProjectionElem::Downcast { variant_index: read_variant, assume_variant, .. },
+        ) = self.get(src)
         {
-            if variant_index == read_variant {
+            // We cannot copy a value that downcasts from an inactive variant.
+            if assume_variant && variant_index == read_variant {
                 // When copying a variant, there is no need to downcast.
-                copy_from_local_value = pointer;
+                src = pointer;
             } else {
                 // The copied variant must be identical.
                 return None;
@@ -1199,7 +1203,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         }
 
         // Both must be variants of the same type.
-        if self.ty(copy_from_local_value) == ty { Some(copy_from_local_value) } else { None }
+        if self.ty(src) == ty { Some(src) } else { None }
     }
 
     fn simplify_aggregate(

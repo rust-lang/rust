@@ -1,4 +1,4 @@
-//@ compile-flags: -Cdebuginfo=full
+//@ compile-flags: -Cdebuginfo=full -Zmir-enable-passes=+AssumeVariant
 
 // Check if we have transformed the nested clone to the copy in the complete pipeline.
 
