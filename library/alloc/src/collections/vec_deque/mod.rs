@@ -22,6 +22,7 @@ use core::ops::{Index, IndexMut, Range, RangeBounds};
 use core::{fmt, ptr, slice};
 
 use crate::alloc::{Allocator, AllocatorNightly, Global};
+use crate::collections::retain::retain_raw;
 use crate::collections::{TryReserveError, TryReserveErrorKind};
 use crate::raw_vec::RawVec;
 use crate::vec::Vec;
@@ -2870,38 +2871,15 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(buf, [3, 5]);
     /// ```
     #[stable(feature = "vec_retain_mut", since = "1.61.0")]
-    pub fn retain_mut<F>(&mut self, mut f: F)
+    pub fn retain_mut<F>(&mut self, f: F)
     where
         F: FnMut(&mut T) -> bool,
     {
-        let len = self.len;
-        let mut idx = 0;
-        let mut cur = 0;
-
-        // Stage 1: All values are retained.
-        while cur < len {
-            if !f(&mut self[cur]) {
-                cur += 1;
-                break;
-            }
-            cur += 1;
-            idx += 1;
-        }
-        // Stage 2: Swap retained value into current idx.
-        while cur < len {
-            if !f(&mut self[cur]) {
-                cur += 1;
-                continue;
-            }
-
-            self.swap(idx, cur);
-            cur += 1;
-            idx += 1;
-        }
-        // Stage 3: Truncate all values after idx.
-        if cur != idx {
-            self.truncate(idx);
-        }
+        let (buf, head, cap) = (self.ptr(), self.head.as_index(), self.capacity());
+        let front_len = cmp::min(cap - head, self.len());
+        // SAFETY: Initialized elements are splitted into two regions,
+        // `head..head + front_len` and `0..self.len - front_len`.
+        unsafe { retain_raw(buf.add(head), front_len, buf, &mut self.len, f) }
     }
 
     // Double the buffer size. This method is inline(never), so we expect it to only

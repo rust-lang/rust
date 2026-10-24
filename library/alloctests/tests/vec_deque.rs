@@ -7,6 +7,7 @@ use std::collections::vec_deque::Drain;
 use std::fmt::Debug;
 use std::ops::Bound::*;
 use std::panic::{AssertUnwindSafe, catch_unwind};
+use std::rc::Rc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use Taggy::*;
@@ -1095,6 +1096,323 @@ fn test_retain() {
     buf.retain(|&x| x % 2 == 0);
     let v: Vec<_> = buf.into_iter().collect();
     assert_eq!(&v[..], &[2, 4]);
+}
+
+fn wrapped_deque<T>(mut items: Vec<T>) -> VecDeque<T> {
+    let mut v = VecDeque::with_capacity(items.len());
+    let back = items.split_off(items.len() / 2);
+    v.extend(back);
+    for x in items.into_iter().rev() {
+        v.push_front(x);
+    }
+    v
+}
+
+fn deque_with_head<T>(
+    cap: usize,
+    head: usize,
+    items: Vec<T>,
+    mut filler: impl FnMut() -> T,
+) -> VecDeque<T> {
+    let mut v = VecDeque::with_capacity(cap);
+    let cap = v.capacity();
+    assert!(head < cap);
+    for _ in 0..head {
+        v.push_back(filler());
+    }
+    for _ in 0..head {
+        let _ = v.pop_front();
+    }
+    let len = items.len();
+    v.extend(items);
+    assert_eq!(v.capacity(), cap);
+    assert_eq!(v.as_slices().1.len(), (head + len).saturating_sub(cap));
+    v
+}
+
+#[test]
+fn test_retain_empty() {
+    let mut v = VecDeque::<u64>::new();
+    v.retain(|_| unreachable!());
+    assert!(v.is_empty());
+
+    let mut v = VecDeque::<u64>::with_capacity(8);
+    v.extend([1, 2, 3]);
+    v.clear();
+    v.retain(|_| unreachable!());
+    assert!(v.is_empty());
+}
+
+const RETAIN_LENS: [usize; 9] = [0, 1, 2, 3, 5, 8, 17, 64, 100];
+
+fn retain_keep(pattern: usize, len: usize, i: usize) -> bool {
+    match pattern {
+        0 => true,
+        1 => false,
+        2 => i % 2 == 0,
+        3 => i % 3 != 1,
+        _ => i >= len / 2,
+    }
+}
+
+fn retain_expected(len: usize, pattern: usize) -> Vec<usize> {
+    (0..len).filter(|&i| retain_keep(pattern, len, i)).collect()
+}
+
+fn check_retain_pattern(mut v: VecDeque<usize>, len: usize, pattern: usize) -> VecDeque<usize> {
+    let mut calls = 0;
+    v.retain(|&x| {
+        assert_eq!(x, calls);
+        calls += 1;
+        retain_keep(pattern, len, x)
+    });
+    assert_eq!(calls, len);
+    v
+}
+
+#[test]
+fn test_retain_matches_filter() {
+    for len in RETAIN_LENS {
+        let items: Vec<usize> = (0..len).collect();
+        for pattern in 0..5 {
+            for wrapped in [false, true] {
+                let v = if wrapped {
+                    wrapped_deque(items.clone())
+                } else {
+                    VecDeque::from(items.clone())
+                };
+                let v = check_retain_pattern(v, len, pattern);
+                assert_eq!(
+                    v,
+                    retain_expected(len, pattern),
+                    "len={len} pattern={pattern} wrapped={wrapped}"
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn test_retain_head_positions() {
+    let cap = VecDeque::<usize>::with_capacity(8).capacity();
+    for head in 0..cap {
+        for len in 0..=cap {
+            let items: Vec<usize> = (0..len).collect();
+            for pattern in 0..5 {
+                let v = deque_with_head(cap, head, items.clone(), || usize::MAX);
+                let v = check_retain_pattern(v, len, pattern);
+                assert_eq!(
+                    v,
+                    retain_expected(len, pattern),
+                    "head={head} len={len} pattern={pattern}"
+                );
+                assert_eq!(v.capacity(), cap);
+            }
+        }
+    }
+}
+
+thread_local! {
+    static RETAIN_DROPS: Cell<usize> = const { Cell::new(0) };
+    static RETAIN_DROP_PANIC_AT: Cell<usize> = const { Cell::new(usize::MAX) };
+}
+
+struct Counted(usize);
+
+impl Drop for Counted {
+    fn drop(&mut self) {
+        let n = RETAIN_DROPS.with(|d| {
+            d.set(d.get() + 1);
+            d.get()
+        });
+        if n == RETAIN_DROP_PANIC_AT.with(Cell::get) {
+            panic!();
+        }
+    }
+}
+
+fn counted_deque(len: usize, layout: usize) -> VecDeque<Counted> {
+    let items: Vec<Counted> = (0..len).map(Counted).collect();
+    let v = match layout {
+        0 => VecDeque::from(items),
+        1 => wrapped_deque(items),
+        _ => deque_with_head(len, layout - 2, items, || Counted(usize::MAX)),
+    };
+    RETAIN_DROPS.with(|d| d.set(0));
+    v
+}
+
+#[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
+fn test_retain_pred_panic_counted() {
+    for len in [7, 20] {
+        for panic_at in [0, 3, len / 2 + 1, len - 1] {
+            for layout in 0..len + 2 {
+                let mut v = counted_deque(len, layout);
+                catch_unwind(AssertUnwindSafe(|| {
+                    v.retain(|c| {
+                        if c.0 == panic_at {
+                            panic!();
+                        }
+                        retain_keep(3, len, c.0)
+                    })
+                }))
+                .unwrap_err();
+                let expected = (0..len).filter(|&i| i >= panic_at || retain_keep(3, len, i));
+                let rejected = (0..panic_at).filter(|&i| !retain_keep(3, len, i)).count();
+                let ctx = format!("len={len} panic_at={panic_at} layout={layout}");
+                assert_eq!(RETAIN_DROPS.with(Cell::get), rejected, "{ctx}");
+                assert!(v.iter().map(|c| c.0).eq(expected), "{ctx}");
+                drop(v);
+                assert_eq!(RETAIN_DROPS.with(Cell::get), len, "{ctx}");
+            }
+        }
+    }
+}
+
+#[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
+fn test_retain_drop_panic_counted() {
+    for len in [7, 20] {
+        let rejected: Vec<usize> = (0..len).filter(|&i| !retain_keep(3, len, i)).collect();
+        for nth in [1, 2, rejected.len() / 2, rejected.len()] {
+            for layout in 0..len + 2 {
+                let mut v = counted_deque(len, layout);
+                RETAIN_DROP_PANIC_AT.with(|p| p.set(nth));
+                catch_unwind(AssertUnwindSafe(|| v.retain(|c| retain_keep(3, len, c.0))))
+                    .unwrap_err();
+                RETAIN_DROP_PANIC_AT.with(|p| p.set(usize::MAX));
+                let panicked = rejected[nth - 1];
+                let expected = (0..len).filter(|&i| i > panicked || retain_keep(3, len, i));
+                let ctx = format!("len={len} nth={nth} layout={layout}");
+                assert_eq!(RETAIN_DROPS.with(Cell::get), nth, "{ctx}");
+                assert!(v.iter().map(|c| c.0).eq(expected), "{ctx}");
+                drop(v);
+                assert_eq!(RETAIN_DROPS.with(Cell::get), len, "{ctx}");
+            }
+        }
+    }
+}
+
+#[test]
+fn test_retain_zst_wrapping_head() {
+    thread_local! {
+        static ZST_DROPS: Cell<usize> = const { Cell::new(0) };
+    }
+
+    struct Zst;
+
+    impl Drop for Zst {
+        fn drop(&mut self) {
+            ZST_DROPS.with(|d| d.set(d.get() + 1));
+        }
+    }
+
+    for front in [1, 5, 64] {
+        for back in [0, 1, 5, 64] {
+            let mut v = VecDeque::new();
+            for _ in 0..front {
+                v.push_front(Zst);
+            }
+            for _ in 0..back {
+                v.push_back(Zst);
+            }
+            let len = front + back;
+            ZST_DROPS.with(|d| d.set(0));
+            let mut calls = 0;
+            v.retain(|_| {
+                calls += 1;
+                calls % 3 != 0
+            });
+            let rejected = len / 3;
+            assert_eq!(calls, len);
+            assert_eq!(v.len(), len - rejected);
+            assert_eq!(ZST_DROPS.with(Cell::get), rejected);
+            drop(v);
+            assert_eq!(ZST_DROPS.with(Cell::get), len);
+        }
+    }
+}
+
+#[test]
+fn test_retain_predicate_order() {
+    for len in [5u64, 200] {
+        for to_keep in [true, false] {
+            let mut number_of_executions = 0;
+            let mut v = wrapped_deque((0..len).collect());
+            let mut next_expected = 0;
+            v.retain(|&x| {
+                assert_eq!(next_expected, x);
+                next_expected += 1;
+                number_of_executions += 1;
+                to_keep
+            });
+            assert_eq!(number_of_executions, len);
+        }
+    }
+}
+
+#[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
+fn test_retain_pred_panic_with_hole() {
+    for len in [5, 200] {
+        let rcs = (0..len).map(Rc::new).collect::<Vec<_>>();
+        catch_unwind(AssertUnwindSafe(|| {
+            let mut v = wrapped_deque(rcs.clone());
+            v.retain(|r| match **r {
+                1 => false,
+                x if x == len - 2 => panic!(),
+                x => x % 3 != 0,
+            });
+        }))
+        .unwrap_err();
+        assert!(rcs.iter().all(|r| Rc::strong_count(r) == 1));
+    }
+}
+
+#[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
+fn test_retain_pred_panic_no_hole() {
+    for len in [5, 200] {
+        let rcs = (0..len).map(Rc::new).collect::<Vec<_>>();
+        catch_unwind(AssertUnwindSafe(|| {
+            let mut v = wrapped_deque(rcs.clone());
+            v.retain(|r| match **r {
+                x if x == len - 2 => panic!(),
+                _ => true,
+            });
+        }))
+        .unwrap_err();
+        assert!(rcs.iter().all(|r| Rc::strong_count(r) == 1));
+    }
+}
+
+#[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
+fn test_retain_drop_panic() {
+    struct Wrap(Rc<i32>);
+
+    impl Drop for Wrap {
+        fn drop(&mut self) {
+            if *self.0 == 3 {
+                panic!();
+            }
+        }
+    }
+
+    for len in [5, 200] {
+        let rcs = (0..len).map(Rc::new).collect::<Vec<_>>();
+        catch_unwind(AssertUnwindSafe(|| {
+            let mut v = wrapped_deque(rcs.iter().map(|r| Wrap(r.clone())).collect());
+            v.retain(|w| match *w.0 {
+                1 => false,
+                3 => false,
+                x => x % 3 != 0,
+            });
+        }))
+        .unwrap_err();
+        assert!(rcs.iter().all(|r| Rc::strong_count(r) == 1));
+    }
 }
 
 #[test]
