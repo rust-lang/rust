@@ -1,23 +1,27 @@
-warning: the feature `extern_item_impls` is incomplete and may not be safe to use and/or cause compiler crashes
 error[E0044]: externally implementable items may not have type parameters
- --> tests/ui/eii/type_checking/generic_declaration_and_impl.rs:6:1
-  |
-6 | fn bar<T>(x: T) where T: FnOnce() -> u64 { x() }
-  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't have type parameters
-  |
-  = help: replace the type parameters with concrete types like `u32`
+  --> $DIR/generic_declaration_and_impl.rs:9:1
+   |
+LL | fn bar<T>(x: T) where T: FnOnce() -> u64 { x() }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't have type parameters
+   |
+   = help: replace the type parameters with concrete types like `u32`
 
 error[E0308]: mismatched types
- --> tests/ui/eii/type_checking/generic_declaration_and_impl.rs:6:44
-  |
-6 | fn bar<T>(x: T) where T: FnOnce() -> u64 { x() }
-  |                                            ^^ expected `()`, found `u64`
-  |
-help: consider using a semicolon here
-  |
-6 | fn bar<T>(x: T) where T: FnOnce() -> u64 { x(); }
-  |                                              +
-help: try adding a return type
-  |
-6 | fn bar<T>(x: T) -> u64 where T: FnOnce() -> u64 { x() }
-  |                 ++++++
+  --> $DIR/generic_declaration_and_impl.rs:9:44
+   |
+LL | fn bar<T>(x: T) where T: FnOnce() -> u64 { x() }
+   |                                            ^^^ expected `()`, found `u64`
+   |
+  help: consider using a semicolon here
+   |
+LL | fn bar<T>(x: T) where T: FnOnce() -> u64 { x(); }
+   |                                               +
+  help: try adding a return type
+   |
+LL | fn bar<T>(x: T) -> u64 where T: FnOnce() -> u64 { x() }
+   |                 ++++++
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0044, E0308.
+For more information about an error, try `rustc --explain E0044`.
