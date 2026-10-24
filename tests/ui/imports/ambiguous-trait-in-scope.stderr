@@ -21,9 +21,9 @@ LL |     0u8.method2();
    = help: items from traits can only be used if the trait is in scope
 help: the following traits which provide `method2` are implemented but not in scope; perhaps you want to import one of them
    |
-LL + use ambiguous_trait_reexport::m2::Trait;
-   |
 LL + use crate::m2::Trait;
+   |
+LL + use external::m2::Trait;
    |
 
 error[E0599]: no method named `method1` found for type `u8` in the current scope
@@ -35,9 +35,9 @@ LL |     0u8.method1();
    = help: items from traits can only be used if the trait is in scope
 help: the following traits which provide `method1` are implemented but not in scope; perhaps you want to import one of them
    |
-LL + use ambiguous_trait_reexport::m1::Trait;
-   |
 LL + use crate::m1::Trait;
+   |
+LL + use external::m1::Trait;
    |
 
 warning: use of ambiguously glob imported trait `Trait`
@@ -75,9 +75,9 @@ LL |     0u8.method2();
    = help: items from traits can only be used if the trait is in scope
 help: the following traits which provide `method2` are implemented but not in scope; perhaps you want to import one of them
    |
-LL + use ambiguous_trait_reexport::m2::Trait;
-   |
 LL + use crate::m2::Trait;
+   |
+LL + use external::m2::Trait;
    |
 
 warning: use of ambiguously glob imported trait `Trait`
@@ -101,9 +101,9 @@ LL |     0u8.method2();
    = help: items from traits can only be used if the trait is in scope
 help: the following traits which provide `method2` are implemented but not in scope; perhaps you want to import one of them
    |
-LL + use ambiguous_trait_reexport::m2::Trait;
-   |
 LL + use crate::m2::Trait;
+   |
+LL + use external::m2::Trait;
    |
 
 warning: use of ambiguously glob imported trait `Trait`
@@ -128,9 +128,9 @@ LL |     0u8.method2();
    = help: items from traits can only be used if the trait is in scope
 help: the following traits which provide `method2` are implemented but not in scope; perhaps you want to import one of them
    |
-LL + use ambiguous_trait_reexport::m2::Trait;
-   |
 LL + use crate::m2::Trait;
+   |
+LL + use external::m2::Trait;
    |
 
 warning: use of ambiguously glob imported trait `Trait`
@@ -155,9 +155,9 @@ LL |     0u8.method2();
    = help: items from traits can only be used if the trait is in scope
 help: the following traits which provide `method2` are implemented but not in scope; perhaps you want to import one of them
    |
-LL + use ambiguous_trait_reexport::m2::Trait;
-   |
 LL + use crate::m2::Trait;
+   |
+LL + use external::m2::Trait;
    |
 
 warning: use of ambiguously glob imported trait `Trait`
@@ -181,9 +181,9 @@ LL |     0u8.method2();
    = help: items from traits can only be used if the trait is in scope
 help: the following traits which provide `method2` are implemented but not in scope; perhaps you want to import one of them
    |
-LL + use ambiguous_trait_reexport::m2::Trait;
-   |
 LL + use crate::m2::Trait;
+   |
+LL + use external::m2::Trait;
    |
 
 error: aborting due to 7 previous errors; 7 warnings emitted
