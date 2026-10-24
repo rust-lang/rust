@@ -1169,6 +1169,3 @@ impl TyOrConstInferVar {
         }
     }
 }
-
-#[cfg(test)]
-mod tests;
