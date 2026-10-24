@@ -10,10 +10,10 @@ LL |     x
               found fn pointer `fn(for<'a> fn(&'a (), &'a ()))`
 
 error[E0308]: mismatched types
-  --> $DIR/nested-binder-cmp-fn-sig-print.rs:13:22
+  --> $DIR/nested-binder-cmp-fn-sig-print.rs:13:12
    |
 LL |     let _: &mut F2 = a;
-   |                      ^ one type is more general than the other
+   |            ^^^^^^^ one type is more general than the other
    |
    = note: expected mutable reference `&mut for<'a> fn(fn(&'a ()))`
               found mutable reference `&mut fn(fn(&()))`

@@ -522,14 +522,16 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // a total no-op. We end up with the type `&'a T` just as
         // we started with. In that case, just skip it altogether.
 
-        let can_skip_noop_reborrow = if mutbl_b.is_not() {
+        let can_skip_noop_reborrow = if mutbl_b.is_not()
+            || self.allow_two_phase == AllowTwoPhase::No
+        {
             if self.tcx.is_closure_like(self.body_def_id.to_def_id()) {
                 // FIXME: Inside a closure, reborrows can affect capture inference.
                 // So we have to keep the existing elision behavior stable.
                 // Ideally we wouldn't have to do this, as it makes lifetime
                 // annotations affect codegen.
                 // See `tests/ui/coercion/structural_identity_dependent_reborrows.rs`
-                coerced_a == a && autoderef_step_count == 1
+                mutbl_b.is_not() && coerced_a == a && autoderef_step_count == 1
             } else {
                 if matches!(
                     adjustments.last(),
@@ -544,7 +546,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                         ty::Ref(r_a, mt_a.ty, mt_a.mutbl)
                     };
 
-                    matches!(ty_before_deref, ty::Ref(_, _, ty::Mutability::Not))
+                    matches!(ty_before_deref, ty::Ref(_, _, mutbl_before_deref) if mutbl_before_deref == mutbl_b)
                 } else {
                     // Last adjustment is not a builtin deref adjustment,
                     // so this can't be a shared ref reborrow.
@@ -552,13 +554,15 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 }
             }
         } else {
-            // FIXME: Ideally we would also skip `&mut` -> `&mut` reborrow,
-            // and handle that in MIR.
+            // FIXME: Could we skip 2-phase borrows as well?
             false
         };
 
         if can_skip_noop_reborrow {
             adjustments.pop();
+            if let Some(adjustment) = adjustments.last_mut() {
+                adjustment.target = coerced_a;
+            }
         } else {
             // Now apply the autoref
             let mutbl = AutoBorrowMutability::new(mutbl_b, self.allow_two_phase);
@@ -658,12 +662,12 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // Handle reborrows before selecting `Source: CoerceUnsized<Target>`.
         let reborrow = match (source.kind(), target.kind()) {
             // Don't emit a no-op shared -> shared reborrow.
-            (&ty::Ref(_, _, ty::Mutability::Not), &ty::Ref(_, _, ty::Mutability::Not))
+            (&ty::Ref(_, _, mt_a), &ty::Ref(_, _, mt_b))
                 // FIXME: Inside a closure, reborrows can affect capture inference.
                 // So we have to emit them anyway.
                 // Ideally we wouldn't have to do this, it makes lifetime
                 // annotations affect codegen
-                if !self.tcx.is_closure_like(self.body_def_id.to_def_id()) =>
+                if mt_a == mt_b && !self.tcx.is_closure_like(self.body_def_id.to_def_id()) =>
             {
                 None
             }
