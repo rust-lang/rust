@@ -1,0 +1,18 @@
+error: expected type, found keyword `unsafe`
+  --> $DIR/unsafe-fields-parse.rs:7:15
+   |
+LL | enum A {
+   |      - while parsing this enum
+LL |     TupleLike(unsafe u32),
+   |               ^^^^^^ expected type
+   |
+   = help: enum variants can be `Variant`, `Variant = <integer>`, `Variant(Type, ..., TypeN)` or `Variant { fields: Types }`
+
+error: expected type, found keyword `unsafe`
+  --> $DIR/unsafe-fields-parse.rs:10:10
+   |
+LL | struct B(unsafe u32);
+   |          ^^^^^^ expected type
+
+error: aborting due to 2 previous errors
+

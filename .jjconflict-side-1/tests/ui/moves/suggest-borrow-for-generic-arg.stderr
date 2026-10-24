@@ -1,0 +1,93 @@
+error[E0382]: borrow of moved value: `stdout`
+  --> $DIR/suggest-borrow-for-generic-arg.rs:14:14
+   |
+LL |     let mut stdout = io::stdout();
+   |         ---------- move occurs because `stdout` has type `Stdout`, which does not implement the `Copy` trait
+LL |     aux::write_stuff(stdout)?;
+   |                      ------ value moved here
+LL |     writeln!(stdout, "second line")?;
+   |              ^^^^^^ value borrowed here after move
+   |
+help: consider borrowing `stdout`
+   |
+LL |     aux::write_stuff(&stdout)?;
+   |                      +
+
+error[E0382]: borrow of moved value: `buf`
+  --> $DIR/suggest-borrow-for-generic-arg.rs:19:14
+   |
+LL |     let mut buf = Vec::new();
+   |         ------- move occurs because `buf` has type `Vec<u8>`, which does not implement the `Copy` trait
+LL |     aux::write_stuff(buf)?;
+   |                      --- value moved here
+LL |
+LL |     writeln!(buf, "second_line")
+   |              ^^^ value borrowed here after move
+   |
+help: consider mutably borrowing `buf`
+   |
+LL |     aux::write_stuff(&mut buf)?;
+   |                      ++++
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     aux::write_stuff(buf.clone())?;
+   |                         ++++++++
+
+error[E0382]: use of moved value: `stdin`
+  --> $DIR/suggest-borrow-for-generic-arg.rs:26:27
+   |
+LL |     let stdin = io::stdin();
+   |         ----- move occurs because `stdin` has type `Stdin`, which does not implement the `Copy` trait
+LL |     aux::read_and_discard(stdin)?;
+   |                           ----- value moved here
+LL |     aux::read_and_discard(stdin)?;
+   |                           ^^^^^ value used here after move
+   |
+help: consider borrowing `stdin`
+   |
+LL |     aux::read_and_discard(&stdin)?;
+   |                           +
+
+error[E0382]: use of moved value: `bytes`
+  --> $DIR/suggest-borrow-for-generic-arg.rs:31:27
+   |
+LL |     let mut bytes = std::collections::VecDeque::from([1, 2, 3, 4, 5, 6]);
+   |         --------- move occurs because `bytes` has type `VecDeque<u8>`, which does not implement the `Copy` trait
+LL |     aux::read_and_discard(bytes)?;
+   |                           ----- value moved here
+LL |
+LL |     aux::read_and_discard(bytes)
+   |                           ^^^^^ value used here after move
+   |
+help: consider mutably borrowing `bytes`
+   |
+LL |     aux::read_and_discard(&mut bytes)?;
+   |                           ++++
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     aux::read_and_discard(bytes.clone())?;
+   |                                ++++++++
+
+error[E0382]: use of moved value: `iter`
+  --> $DIR/suggest-borrow-for-generic-arg.rs:39:42
+   |
+LL |     let mut iter = [1, 2, 3, 4, 5, 6].into_iter();
+   |         -------- move occurs because `iter` has type `std::array::IntoIter<usize, 6>`, which does not implement the `Copy` trait
+LL |     let _six: usize = aux::sum_three(iter);
+   |                                      ---- value moved here
+LL |
+LL |     let _fifteen: usize = aux::sum_three(iter);
+   |                                          ^^^^ value used here after move
+   |
+help: consider mutably borrowing `iter`
+   |
+LL |     let _six: usize = aux::sum_three(&mut iter);
+   |                                      ++++
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let _six: usize = aux::sum_three(iter.clone());
+   |                                          ++++++++
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0382`.

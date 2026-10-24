@@ -1,0 +1,187 @@
+error: using `map` over `inspect`
+  --> tests/ui/manual_inspect.rs:5:21
+   |
+LL |     let _ = Some(0).map(|x| {
+   |                     ^^^
+   |
+   = note: `-D clippy::manual-inspect` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_inspect)]`
+help: try
+   |
+LL ~     let _ = Some(0).inspect(|&x| {
+LL |
+LL ~         println!("{}", x);
+   |
+
+error: using `map` over `inspect`
+  --> tests/ui/manual_inspect.rs:11:21
+   |
+LL |     let _ = Some(0).map(|x| {
+   |                     ^^^
+   |
+help: try
+   |
+LL ~     let _ = Some(0).inspect(|&x| {
+LL |
+LL ~         println!("{x}");
+   |
+
+error: using `map` over `inspect`
+  --> tests/ui/manual_inspect.rs:17:21
+   |
+LL |     let _ = Some(0).map(|x| {
+   |                     ^^^
+   |
+help: try
+   |
+LL ~     let _ = Some(0).inspect(|&x| {
+LL |
+LL ~         println!("{}", x * 5 + 1);
+   |
+
+error: using `map` over `inspect`
+  --> tests/ui/manual_inspect.rs:23:21
+   |
+LL |     let _ = Some(0).map(|x| {
+   |                     ^^^
+   |
+help: try
+   |
+LL ~     let _ = Some(0).inspect(|&x| {
+LL |
+LL |         if x == 0 {
+LL |             panic!();
+LL ~         }
+   |
+
+error: using `map` over `inspect`
+  --> tests/ui/manual_inspect.rs:31:21
+   |
+LL |     let _ = Some(0).map(|x| {
+   |                     ^^^
+   |
+help: try
+   |
+LL ~     let _ = Some(0).inspect(|&x| {
+LL |
+...
+LL |             panic!();
+LL ~         }
+   |
+
+error: using `map` over `inspect`
+  --> tests/ui/manual_inspect.rs:83:41
+   |
+LL |     let _ = Some((String::new(), 0u32)).map(|x| {
+   |                                         ^^^
+   |
+help: try
+   |
+LL ~     let _ = Some((String::new(), 0u32)).inspect(|x| {
+LL |
+...
+LL |             panic!();
+LL ~         }
+   |
+
+error: using `map` over `inspect`
+  --> tests/ui/manual_inspect.rs:110:33
+   |
+LL |     let _ = Some(String::new()).map(|x| {
+   |                                 ^^^
+   |
+help: try
+   |
+LL ~     let _ = Some(String::new()).inspect(|x| {
+LL |
+LL |         if x.is_empty() {
+LL |             let _ = || {
+LL ~                 let _x = x;
+LL |             };
+LL ~             return;
+LL |         }
+LL ~         println!("test");
+   |
+
+error: using `map` over `inspect`
+  --> tests/ui/manual_inspect.rs:122:21
+   |
+LL |     let _ = Some(0).map(|x| {
+   |                     ^^^
+   |
+help: try
+   |
+LL ~     let _ = Some(0).inspect(|&x| {
+LL |
+...
+LL |             panic!();
+LL ~         }
+   |
+
+error: using `map` over `inspect`
+  --> tests/ui/manual_inspect.rs:138:46
+   |
+LL |         let _ = Some(Cell2(Cell::new(0u32))).map(|x| {
+   |                                              ^^^
+   |
+help: try
+   |
+LL ~         let _ = Some(Cell2(Cell::new(0u32))).inspect(|x| {
+LL |
+LL ~             x.0.set(1);
+   |
+
+error: using `map` over `inspect`
+  --> tests/ui/manual_inspect.rs:155:34
+   |
+LL |     let _: Result<_, ()> = Ok(0).map(|x| {
+   |                                  ^^^
+   |
+help: try
+   |
+LL ~     let _: Result<_, ()> = Ok(0).inspect(|&x| {
+LL |
+LL ~         println!("{}", x);
+   |
+
+error: using `map_err` over `inspect_err`
+  --> tests/ui/manual_inspect.rs:161:35
+   |
+LL |     let _: Result<(), _> = Err(0).map_err(|x| {
+   |                                   ^^^^^^^
+   |
+help: try
+   |
+LL ~     let _: Result<(), _> = Err(0).inspect_err(|&x| {
+LL |
+LL ~         println!("{}", x);
+   |
+
+error: using `map` over `inspect`
+  --> tests/ui/manual_inspect.rs:169:10
+   |
+LL |         .map(|x| {
+   |          ^^^
+   |
+help: try
+   |
+LL ~         .inspect(|&x| {
+LL |
+LL ~             println!("{}", x);
+   |
+
+error: using `map` over `inspect`
+  --> tests/ui/manual_inspect.rs:202:30
+   |
+LL |     if let Some(x) = Some(1).map(|x| { println!("{x}");
+   |                              ^^^
+   |
+help: try
+   |
+LL ~     if let Some(x) = Some(1).inspect(|&x| { println!("{x}");
+LL |         // Do not collapse code into this comment
+LL ~          }) {
+   |
+
+error: aborting due to 13 previous errors
+

@@ -1,0 +1,21 @@
+error[E0038]: the trait `Trait` is not dyn compatible
+  --> $DIR/dyn-proj-non-dyn-compat.rs:15:14
+   |
+LL | fn make() -> impl Trait<Output = <dyn Trait<Output = &'static str> as Trait>::Output> {
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Trait` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/dyn-proj-non-dyn-compat.rs:5:8
+   |
+LL | trait Trait {
+   |       ----- this trait is not dyn compatible...
+LL |     type Output;
+LL |     fn process<T>(&mut self, input: T) -> T;
+   |        ^^^^^^^ ...because method `process` has generic type parameters
+   = help: consider moving `process` to another trait
+   = help: only type `MyImpl` implements `Trait`; consider using it directly instead.
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0038`.

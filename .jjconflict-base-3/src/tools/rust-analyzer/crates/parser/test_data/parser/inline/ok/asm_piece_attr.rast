@@ -1,0 +1,29 @@
+SOURCE_FILE
+  ASM_EXPR
+    BUILTIN_KW "builtin"
+    WHITESPACE " "
+    POUND "#"
+    WHITESPACE " "
+    GLOBAL_ASM_KW "global_asm"
+    L_PAREN "("
+    LITERAL
+      STRING "\"\""
+    COMMA ","
+    WHITESPACE " "
+    ASM_OPTIONS
+      ATTR
+        POUND "#"
+        L_BRACK "["
+        CFG_META
+          CFG_KW "cfg"
+          L_PAREN "("
+          CFG_ATOM
+            FALSE_KW "false"
+          R_PAREN ")"
+        R_BRACK "]"
+      WHITESPACE " "
+      OPTIONS_KW "options"
+      L_PAREN "("
+      R_PAREN ")"
+    R_PAREN ")"
+  WHITESPACE "\n"

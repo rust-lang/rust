@@ -1,0 +1,28 @@
+PRINT-BANG INPUT (DISPLAY): Vec<u8>
+PRINT-BANG DEEP-RE-COLLECTED (DISPLAY): Vec < u8 >
+PRINT-BANG INPUT (DEBUG): TokenStream [
+    Group {
+        delimiter: None,
+        stream: TokenStream [
+            Ident {
+                ident: "Vec",
+                span: $DIR/capture-unglued-token.rs:19:24: 19:27 (#0),
+            },
+            Punct {
+                ch: '<',
+                spacing: Alone,
+                span: $DIR/capture-unglued-token.rs:19:27: 19:28 (#0),
+            },
+            Ident {
+                ident: "u8",
+                span: $DIR/capture-unglued-token.rs:19:28: 19:30 (#0),
+            },
+            Punct {
+                ch: '>',
+                spacing: Alone,
+                span: $DIR/capture-unglued-token.rs:19:30: 19:31 (#0),
+            },
+        ],
+        span: $DIR/capture-unglued-token.rs:15:42: 15:48 (#3),
+    },
+]

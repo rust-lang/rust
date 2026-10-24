@@ -1,0 +1,18 @@
+error: unknown character escape: `{`
+  --> $DIR/wrong-escape-of-curly-braces.rs:3:17
+   |
+LL |     let bad = "\{it is wrong\}";
+   |                 ^ unknown character escape
+   |
+   = help: if used in a formatting string, curly braces are escaped with `{{` and `}}`
+
+error: unknown character escape: `}`
+  --> $DIR/wrong-escape-of-curly-braces.rs:3:30
+   |
+LL |     let bad = "\{it is wrong\}";
+   |                              ^ unknown character escape
+   |
+   = help: if used in a formatting string, curly braces are escaped with `{{` and `}}`
+
+error: aborting due to 2 previous errors
+

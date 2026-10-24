@@ -1,0 +1,22 @@
+error[E0382]: use of moved value: `c`
+  --> $DIR/move-fnonce.rs:12:5
+   |
+LL |     c();
+   |     --- `c` moved due to this call
+LL |     c();
+   |     ^ value used here after move
+   |
+note: closure cannot be invoked more than once because it moves the variable `__move_expr_0` out of its environment
+  --> $DIR/move-fnonce.rs:7:17
+   |
+LL |         let t = move(s);
+   |                 ^^^^^^^
+note: this value implements `FnOnce`, which causes it to be moved when called
+  --> $DIR/move-fnonce.rs:11:5
+   |
+LL |     c();
+   |     ^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.

@@ -1,0 +1,11 @@
+error[E0119]: conflicting implementations of trait `Send` for type `MyStruct`
+  --> $DIR/overlap-not-permitted-for-builtin-trait.rs:7:1
+   |
+LL | impl !Send for MyStruct {}
+   | ----------------------- first implementation here
+LL | impl !Send for MyStruct {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `MyStruct`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0119`.

@@ -1,0 +1,111 @@
+error: `let` bindings require top-level or-patterns in parentheses
+  --> $DIR/nested-undelimited-precedence.rs:19:9
+   |
+LL |     let b @ A | B: E = A;
+   |         ^^^^^^^^^
+   |
+help: wrap the pattern in parentheses
+   |
+LL |     let (b @ A | B): E = A;
+   |         +         +
+
+error: `let` bindings require top-level or-patterns in parentheses
+  --> $DIR/nested-undelimited-precedence.rs:34:9
+   |
+LL |     let &A(_) | B(_): F = A(3);
+   |         ^^^^^^^^^^^^
+   |
+help: wrap the pattern in parentheses
+   |
+LL |     let (&A(_) | B(_)): F = A(3);
+   |         +            +
+
+error: `let` bindings require top-level or-patterns in parentheses
+  --> $DIR/nested-undelimited-precedence.rs:36:9
+   |
+LL |     let &&A(_) | B(_): F = A(3);
+   |         ^^^^^^^^^^^^^
+   |
+help: wrap the pattern in parentheses
+   |
+LL |     let (&&A(_) | B(_)): F = A(3);
+   |         +             +
+
+error: `let` bindings require top-level or-patterns in parentheses
+  --> $DIR/nested-undelimited-precedence.rs:38:9
+   |
+LL |     let &mut A(_) | B(_): F = A(3);
+   |         ^^^^^^^^^^^^^^^^
+   |
+help: wrap the pattern in parentheses
+   |
+LL |     let (&mut A(_) | B(_)): F = A(3);
+   |         +                +
+
+error: `let` bindings require top-level or-patterns in parentheses
+  --> $DIR/nested-undelimited-precedence.rs:40:9
+   |
+LL |     let &&mut A(_) | B(_): F = A(3);
+   |         ^^^^^^^^^^^^^^^^^
+   |
+help: wrap the pattern in parentheses
+   |
+LL |     let (&&mut A(_) | B(_)): F = A(3);
+   |         +                 +
+
+error[E0408]: variable `b` is not bound in all patterns
+  --> $DIR/nested-undelimited-precedence.rs:19:17
+   |
+LL |     let b @ A | B: E = A;
+   |         -       ^ pattern doesn't bind `b`
+   |         |
+   |         variable not in all patterns
+
+error[E0308]: mismatched types
+  --> $DIR/nested-undelimited-precedence.rs:34:9
+   |
+LL |     let &A(_) | B(_): F = A(3);
+   |         ^^^^^         - expected due to this
+   |         |
+   |         expected `F`, found `&_`
+   |
+   = note:   expected enum `F`
+           found reference `&_`
+
+error[E0308]: mismatched types
+  --> $DIR/nested-undelimited-precedence.rs:36:9
+   |
+LL |     let &&A(_) | B(_): F = A(3);
+   |         ^^^^^^         - expected due to this
+   |         |
+   |         expected `F`, found `&_`
+   |
+   = note:   expected enum `F`
+           found reference `&_`
+
+error[E0308]: mismatched types
+  --> $DIR/nested-undelimited-precedence.rs:38:9
+   |
+LL |     let &mut A(_) | B(_): F = A(3);
+   |         ^^^^^^^^^         - expected due to this
+   |         |
+   |         expected `F`, found `&mut _`
+   |
+   = note:           expected enum `F`
+           found mutable reference `&mut _`
+
+error[E0308]: mismatched types
+  --> $DIR/nested-undelimited-precedence.rs:40:9
+   |
+LL |     let &&mut A(_) | B(_): F = A(3);
+   |         ^^^^^^^^^^         - expected due to this
+   |         |
+   |         expected `F`, found `&_`
+   |
+   = note:   expected enum `F`
+           found reference `&_`
+
+error: aborting due to 10 previous errors
+
+Some errors have detailed explanations: E0308, E0408.
+For more information about an error, try `rustc --explain E0308`.

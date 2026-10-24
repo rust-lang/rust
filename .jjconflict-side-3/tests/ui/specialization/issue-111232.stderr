@@ -1,0 +1,14 @@
+error[E0520]: `from` specializes an item from a parent `impl`, but that item is not marked `default`
+  --> $DIR/issue-111232.rs:15:5
+   |
+LL | impl<T> From<T> for T {
+   | --------------------- parent `impl` is here
+...
+LL |     fn from(s: S) -> S {
+   |     ^^^^^^^^^^^^^^^^^^ cannot specialize default item `from`
+   |
+   = note: to specialize, `from` in the parent `impl` must be marked `default`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0520`.

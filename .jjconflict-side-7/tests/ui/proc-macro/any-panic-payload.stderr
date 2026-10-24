@@ -1,0 +1,20 @@
+error: proc macro panicked
+  --> $DIR/any-panic-payload.rs:9:1
+   |
+LL | cause_panic!();
+   | ^^^^^^^^^^^^^^
+
+error: custom attribute panicked
+  --> $DIR/any-panic-payload.rs:11:1
+   |
+LL | #[cause_panic_attr]
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: proc-macro derive panicked
+  --> $DIR/any-panic-payload.rs:14:10
+   |
+LL | #[derive(CausePanic)]
+   |          ^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

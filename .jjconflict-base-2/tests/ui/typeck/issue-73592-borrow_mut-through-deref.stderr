@@ -1,0 +1,24 @@
+warning: variable does not need to be mutable
+  --> $DIR/issue-73592-borrow_mut-through-deref.rs:42:17
+   |
+LL | fn test_mut_pin(mut s: Pin<&S>) {
+   |                 ----^
+   |                 |
+   |                 help: remove this `mut`
+   |
+note: the lint level is defined here
+  --> $DIR/issue-73592-borrow_mut-through-deref.rs:20:9
+   |
+LL | #![warn(unused_mut)]
+   |         ^^^^^^^^^^
+
+warning: variable does not need to be mutable
+  --> $DIR/issue-73592-borrow_mut-through-deref.rs:47:21
+   |
+LL | fn test_mut_pin_mut(mut s: Pin<&mut S>) {
+   |                     ----^
+   |                     |
+   |                     help: remove this `mut`
+
+warning: 2 warnings emitted
+

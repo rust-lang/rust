@@ -1,0 +1,16 @@
+error[E0381]: used binding `s` isn't initialized
+  --> $DIR/const-generic-default-wont-borrowck.rs:3:26
+   |
+LL |     let s: &'static str; s.len()
+   |         -                ^ `*s` used here but it isn't initialized
+   |         |
+   |         binding declared here but left uninitialized
+   |
+help: consider assigning a value
+   |
+LL |     let s: &'static str = ""; s.len()
+   |                         ++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0381`.

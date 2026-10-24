@@ -1,0 +1,72 @@
+error[E0382]: use of moved value: `x`
+  --> $DIR/union-move.rs:26:18
+   |
+LL | fn test1(x: U1) {
+   |          - move occurs because `x` has type `U1`, which does not implement the `Copy` trait
+...
+LL |         move_out(x.f1_nocopy);
+   |                  ----------- value moved here
+LL |         move_out(x.f2_nocopy);
+   |                  ^^^^^^^^^^^ value used here after move
+   |
+note: consider changing this parameter type in function `move_out` to borrow instead if owning the value isn't necessary
+  --> $DIR/union-move.rs:7:19
+   |
+LL | fn move_out<T>(x: T) {}
+   |    --------       ^ this parameter takes ownership of the value
+   |    |
+   |    in this function
+note: if `U1` implemented `Clone`, you could clone the value
+  --> $DIR/union-move.rs:9:1
+   |
+LL | union U1 {
+   | ^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |         move_out(x.f1_nocopy);
+   |                  ----------- you could clone this value
+
+error[E0382]: use of moved value: `x`
+  --> $DIR/union-move.rs:42:18
+   |
+LL | fn test3(x: U1) {
+   |          - move occurs because `x` has type `U1`, which does not implement the `Copy` trait
+...
+LL |         move_out(x.f2_nocopy);
+   |                  ----------- value moved here
+LL |         move_out(x.f3_copy);
+   |                  ^^^^^^^^^ value used here after move
+   |
+note: consider changing this parameter type in function `move_out` to borrow instead if owning the value isn't necessary
+  --> $DIR/union-move.rs:7:19
+   |
+LL | fn move_out<T>(x: T) {}
+   |    --------       ^ this parameter takes ownership of the value
+   |    |
+   |    in this function
+note: if `U1` implemented `Clone`, you could clone the value
+  --> $DIR/union-move.rs:9:1
+   |
+LL | union U1 {
+   | ^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |         move_out(x.f2_nocopy);
+   |                  ----------- you could clone this value
+
+error[E0509]: cannot move out of type `U2`, which implements the `Drop` trait
+  --> $DIR/union-move.rs:49:18
+   |
+LL |         move_out(x.f1_nocopy);
+   |                  ^^^^^^^^^^^
+   |                  |
+   |                  cannot move out of here
+   |                  move occurs because `x.f1_nocopy` has type `ManuallyDrop<RefCell<i32>>`, which does not implement the `Copy` trait
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         move_out(x.f1_nocopy.clone());
+   |                             ++++++++
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0382, E0509.
+For more information about an error, try `rustc --explain E0382`.

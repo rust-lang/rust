@@ -1,0 +1,22 @@
+error: `m` is both a module and a macro
+  --> $DIR/bad-link-to-proc-macro.rs:4:15
+   |
+LL | //! Link to [`m`].
+   |               ^ ambiguous link
+   |
+note: the lint level is defined here
+  --> $DIR/bad-link-to-proc-macro.rs:2:9
+   |
+LL | #![deny(rustdoc::broken_intra_doc_links)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: to link to the module, prefix with `mod@`
+   |
+LL | //! Link to [`mod@m`].
+   |               ++++
+help: to link to the macro, add an exclamation mark
+   |
+LL | //! Link to [`m!`].
+   |                +
+
+error: aborting due to 1 previous error
+

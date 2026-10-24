@@ -1,0 +1,13 @@
+error: expected one of `>`, a const expression, lifetime, or type, found `,`
+  --> $DIR/issue-20616-5.rs:22:34
+   |
+LL | type Type_5<'a> = Type_1_<'a, (),,>;
+   |                                  ^ expected one of `>`, a const expression, lifetime, or type
+   |
+help: you might have meant to end the type parameters here
+   |
+LL | type Type_5<'a> = Type_1_<'a, ()>,,>;
+   |                                 +
+
+error: aborting due to 1 previous error
+

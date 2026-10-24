@@ -1,0 +1,8 @@
+error: values of the type `Option<TYPE>` are too big for the target architecture
+  --> $DIR/huge-enum.rs:17:9
+   |
+LL |     let big: BIG = None;
+   |         ^^^
+
+error: aborting due to 1 previous error
+

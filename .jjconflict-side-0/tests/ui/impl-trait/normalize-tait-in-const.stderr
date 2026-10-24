@@ -1,0 +1,30 @@
+error: unconstrained opaque type
+  --> $DIR/normalize-tait-in-const.rs:14:26
+   |
+LL |     pub type Alias<'a> = impl T<Item = &'a ()>;
+   |                          ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `Alias` must be used in combination with a concrete type within the same crate
+
+error[E0308]: mismatched types
+  --> $DIR/normalize-tait-in-const.rs:22:9
+   |
+LL |     pub type Alias<'a> = impl T<Item = &'a ()>;
+   |                          --------------------- the expected opaque type
+...
+LL |     pub const fn filter_positive<'a>() -> &'a Alias<'a> {
+   |                                           ------------- expected `&'a foo::Alias<'a>` because of return type
+LL |         &&S
+   |         ^^^ expected `&Alias<'_>`, found `&&S`
+   |
+   = note: expected reference `&'a foo::Alias<'a>`
+              found reference `&&S`
+note: this item must have a `#[define_opaque(foo::Alias)]` attribute to be able to define hidden types
+  --> $DIR/normalize-tait-in-const.rs:21:18
+   |
+LL |     pub const fn filter_positive<'a>() -> &'a Alias<'a> {
+   |                  ^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

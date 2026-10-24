@@ -1,0 +1,66 @@
+error[E0277]: the trait bound `u16: A` is not satisfied
+  --> $DIR/default-type-self-projection-ice-issue-125014.rs:18:12
+   |
+LL | impl A for <u16 as A>::B {
+   |            ^^^^^^^^^^^^^ the trait `A` is not implemented for `u16`
+   |
+help: the trait `A` is implemented for `<u16 as A>::B`
+  --> $DIR/default-type-self-projection-ice-issue-125014.rs:18:1
+   |
+LL | impl A for <u16 as A>::B {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `u16: A` is not satisfied
+  --> $DIR/default-type-self-projection-ice-issue-125014.rs:18:12
+   |
+LL | impl A for <u16 as A>::B {
+   |            ^^^^^^^^^^^^^ the trait `A` is not implemented for `u16`
+   |
+help: the trait `A` is implemented for `<u16 as A>::B`
+  --> $DIR/default-type-self-projection-ice-issue-125014.rs:18:1
+   |
+LL | impl A for <u16 as A>::B {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0277]: the trait bound `u16: A` is not satisfied
+  --> $DIR/default-type-self-projection-ice-issue-125014.rs:23:22
+   |
+LL |     default type B = ();
+   |                      ^^ the trait `A` is not implemented for `u16`
+   |
+help: the trait `A` is implemented for `<u16 as A>::B`
+  --> $DIR/default-type-self-projection-ice-issue-125014.rs:18:1
+   |
+LL | impl A for <u16 as A>::B {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `u16: A` is not satisfied
+  --> $DIR/default-type-self-projection-ice-issue-125014.rs:18:12
+   |
+LL | impl A for <u16 as A>::B {
+   |            ^^^^^^^^^^^^^ the trait `A` is not implemented for `u16`
+   |
+help: the trait `A` is implemented for `<u16 as A>::B`
+  --> $DIR/default-type-self-projection-ice-issue-125014.rs:18:1
+   |
+LL | impl A for <u16 as A>::B {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0277]: the trait bound `u16: A` is not satisfied
+  --> $DIR/default-type-self-projection-ice-issue-125014.rs:18:12
+   |
+LL | impl A for <u16 as A>::B {
+   |            ^^^^^^^^^^^^^ the trait `A` is not implemented for `u16`
+   |
+help: the trait `A` is implemented for `<u16 as A>::B`
+  --> $DIR/default-type-self-projection-ice-issue-125014.rs:18:1
+   |
+LL | impl A for <u16 as A>::B {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

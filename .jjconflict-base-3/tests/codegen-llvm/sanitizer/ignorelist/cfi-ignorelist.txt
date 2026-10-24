@@ -1,0 +1,11 @@
+[cfi]
+fun:*test_cfi*
+
+[memory]
+fun:*test_memory*
+
+[cfi-icall]
+fun:*test_cfi_icall*
+
+[all]
+fun:*test_all*

@@ -1,0 +1,42 @@
+// Checks that the first sentence of an impl block doc is always visible even when the impl
+// block is collapsed.
+go-to: "file://" + |DOC_PATH| + "/test_docs/struct.ImplDoc.html"
+
+set-window-size: (900, 600)
+
+define-function: (
+    "compare-size-and-pos",
+    [nth_impl],
+    block {
+        // First we collapse the impl block.
+        store-value: (impl_path, "#implementations-list details:nth-of-type(" + |nth_impl| + ")")
+        set-property: (|impl_path|, {"open": false})
+        wait-for: |impl_path| + ":not([open])"
+
+        store-value: (impl_path, |impl_path| + " summary")
+        store-size: (|impl_path|, {"height": impl_height})
+        store-position: (|impl_path|, {"y": impl_y})
+
+        store-size: (|impl_path| + " .docblock", {"height": doc_height})
+        store-position: (|impl_path| + " .docblock", {"y": doc_y})
+
+        assert: |impl_y| + |impl_height| >= |doc_y|
+    }
+)
+
+call-function: ("compare-size-and-pos", {"nth_impl": 1})
+// Since the first impl block has a long line, we ensure that it doesn't display all of it.
+assert: (|impl_y| + |impl_height|) <= (|doc_y| + |doc_height|)
+
+call-function: ("compare-size-and-pos", {"nth_impl": 2})
+// The second impl block has a short line.
+assert: (|impl_y| + |impl_height|) >= (|doc_y| + |doc_height|)
+
+// FIXME: Needs `if` condition to make this test check that `padding-top` on the "..." element
+// is as expected for tables.
+call-function: ("compare-size-and-pos", {"nth_impl": 3})
+assert: (|impl_y| + |impl_height|) >= (|doc_y| + |doc_height|)
+call-function: ("compare-size-and-pos", {"nth_impl": 4})
+assert: (|impl_y| + |impl_height|) >= (|doc_y| + |doc_height|)
+call-function: ("compare-size-and-pos", {"nth_impl": 5})
+assert: (|impl_y| + |impl_height|) >= (|doc_y| + |doc_height|)

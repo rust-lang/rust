@@ -1,0 +1,60 @@
+error: coroutine cannot be shared between threads safely
+  --> $DIR/coroutine-print-verbose-2.rs:17:5
+   |
+LL | /     assert_sync(#[coroutine] || {
+LL | |
+LL | |         let a = NotSync;
+LL | |         yield;
+LL | |         drop(a);
+LL | |     });
+   | |______^ coroutine is not `Sync`
+   |
+help: within `{main::{closure#0} upvar_tys=() resume_ty=() yield_ty=() return_ty=()}`, the trait `Sync` is not implemented for `NotSync`
+  --> $DIR/coroutine-print-verbose-2.rs:8:1
+   |
+LL | struct NotSync;
+   | ^^^^^^^^^^^^^^
+note: coroutine is not `Sync` as this value is used across a yield
+  --> $DIR/coroutine-print-verbose-2.rs:20:9
+   |
+LL |         let a = NotSync;
+   |             - has type `NotSync` which is not `Sync`
+LL |         yield;
+   |         ^^^^^ yield occurs here, with `a` maybe used later
+note: required by a bound in `assert_sync`
+  --> $DIR/coroutine-print-verbose-2.rs:14:23
+   |
+LL |     fn assert_sync<T: Sync>(_: T) {}
+   |                       ^^^^ required by this bound in `assert_sync`
+
+error: coroutine cannot be sent between threads safely
+  --> $DIR/coroutine-print-verbose-2.rs:24:5
+   |
+LL | /     assert_send(#[coroutine] || {
+LL | |
+LL | |         let a = NotSend;
+LL | |         yield;
+LL | |         drop(a);
+LL | |     });
+   | |______^ coroutine is not `Send`
+   |
+help: within `{main::{closure#1} upvar_tys=() resume_ty=() yield_ty=() return_ty=()}`, the trait `Send` is not implemented for `NotSend`
+  --> $DIR/coroutine-print-verbose-2.rs:7:1
+   |
+LL | struct NotSend;
+   | ^^^^^^^^^^^^^^
+note: coroutine is not `Send` as this value is used across a yield
+  --> $DIR/coroutine-print-verbose-2.rs:27:9
+   |
+LL |         let a = NotSend;
+   |             - has type `NotSend` which is not `Send`
+LL |         yield;
+   |         ^^^^^ yield occurs here, with `a` maybe used later
+note: required by a bound in `assert_send`
+  --> $DIR/coroutine-print-verbose-2.rs:15:23
+   |
+LL |     fn assert_send<T: Send>(_: T) {}
+   |                       ^^^^ required by this bound in `assert_send`
+
+error: aborting due to 2 previous errors
+

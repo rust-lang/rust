@@ -1,0 +1,8 @@
+error: scalable vectors cannot be tuple fields
+  --> $DIR/closure-capture.rs:46:9
+   |
+LL |         run(move || {
+   |         ^^^
+
+error: aborting due to 1 previous error
+

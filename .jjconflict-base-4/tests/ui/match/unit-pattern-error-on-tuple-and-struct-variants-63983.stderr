@@ -1,0 +1,24 @@
+error[E0532]: expected unit struct, unit variant or constant, found tuple variant `MyEnum::HasTupleField`
+  --> $DIR/unit-pattern-error-on-tuple-and-struct-variants-63983.rs:9:9
+   |
+LL |     HasTupleField(i32),
+   |     ------------------ `MyEnum::HasTupleField` defined here
+...
+LL |         MyEnum::HasTupleField => "",
+   |         ^^^^^^^^^^^^^^^^^^^^^ help: use the tuple variant pattern syntax instead: `MyEnum::HasTupleField(_)`
+
+error[E0533]: expected unit struct, unit variant or constant, found struct variant `MyEnum::HasStructField`
+  --> $DIR/unit-pattern-error-on-tuple-and-struct-variants-63983.rs:11:9
+   |
+LL |         MyEnum::HasStructField => "",
+   |         ^^^^^^^^^^^^^^^^^^^^^^ not a unit struct, unit variant or constant
+   |
+help: add the names to match a struct variant's fields
+   |
+LL |         MyEnum::HasStructField { s: _ } => "",
+   |                                ++++++++
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0532, E0533.
+For more information about an error, try `rustc --explain E0532`.

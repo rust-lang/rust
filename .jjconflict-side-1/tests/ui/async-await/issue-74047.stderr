@@ -1,0 +1,12 @@
+error[E0046]: not all trait items implemented, missing: `Error`, `try_from`
+  --> $DIR/issue-74047.rs:14:1
+   |
+LL | impl TryFrom<OtherStream> for MyStream {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `Error`, `try_from` in implementation
+   |
+   = help: implement the missing item: `type Error = /* Type */;`
+   = help: implement the missing item: `fn try_from(_: OtherStream) -> Result<Self, <Self as TryFrom<OtherStream>>::Error> { todo!() }`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0046`.

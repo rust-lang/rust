@@ -1,0 +1,39 @@
+warning: constant `my_static` should have an upper case name
+  --> $DIR/lint-non-uppercase-usages.rs:11:7
+   |
+LL | const my_static: u32 = 0;
+   |       ^^^^^^^^^
+   |
+   = note: `#[warn(non_upper_case_globals)]` (part of `#[warn(nonstandard_style)]`) on by default
+help: convert the identifier to upper case
+   |
+LL - const my_static: u32 = 0;
+LL + const MY_STATIC: u32 = 0;
+   |
+
+warning: constant `fooFOO` should have an upper case name
+  --> $DIR/lint-non-uppercase-usages.rs:24:12
+   |
+LL |     static fooFOO: Cell<usize> = unreachable!();
+   |            ^^^^^^
+   |
+help: convert the identifier to upper case
+   |
+LL -     static fooFOO: Cell<usize> = unreachable!();
+LL +     static FOO_FOO: Cell<usize> = unreachable!();
+   |
+
+warning: const parameter `foo` should have an upper case name
+  --> $DIR/lint-non-uppercase-usages.rs:29:14
+   |
+LL | fn foo<const foo: u32>() {
+   |              ^^^
+   |
+help: convert the identifier to upper case (notice the capitalization)
+   |
+LL - fn foo<const foo: u32>() {
+LL + fn foo<const FOO: u32>() {
+   |
+
+warning: 3 warnings emitted
+

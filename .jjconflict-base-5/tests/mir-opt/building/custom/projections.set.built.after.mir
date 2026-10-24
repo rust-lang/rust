@@ -1,0 +1,10 @@
+// MIR for `set` after built
+
+fn set(_1: &mut Option<i32>) -> () {
+    let mut _0: ();
+
+    bb0: {
+        (((*_1) as variant#1).0: i32) = const 10_i32;
+        return;
+    }
+}

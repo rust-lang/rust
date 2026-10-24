@@ -1,0 +1,12 @@
+error[E0046]: not all trait items implemented, missing: `missing`
+  --> $DIR/rendering.rs:10:1
+   |
+LL |     fn missing() -> impl Sized;
+   |     --------------------------- `missing` from trait
+...
+LL | impl Foo for () {
+   | ^^^^^^^^^^^^^^^ missing `missing` in implementation
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0046`.

@@ -1,0 +1,17 @@
+error[E0321]: traits with a default impl, like `Marker`, cannot be implemented for trait object `(dyn Send + 'static)`
+  --> $DIR/auto-trait-impls.rs:50:1
+   |
+LL | impl Marker for ToDyn {}
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: a trait object implements `Marker` if and only if `Marker` is one of the trait object's trait bounds
+
+error[E0321]: cross-crate traits with a default impl, like `Send`, can only be implemented for a struct/enum type, not `&'static NotSync`
+  --> $DIR/auto-trait-impls.rs:45:1
+   |
+LL | unsafe impl Send for ToRef {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ can't implement cross-crate trait with a default impl for non-struct/enum type
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0321`.

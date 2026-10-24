@@ -1,0 +1,2 @@
+error: `--output-format=html` is not supported for the `--show-coverage` option
+

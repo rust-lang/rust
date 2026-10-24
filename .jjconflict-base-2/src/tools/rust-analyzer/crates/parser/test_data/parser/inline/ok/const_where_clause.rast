@@ -1,0 +1,89 @@
+SOURCE_FILE
+  CONST
+    CONST_KW "const"
+    WHITESPACE " "
+    NAME
+      IDENT "C"
+    GENERIC_PARAM_LIST
+      L_ANGLE "<"
+      TYPE_PARAM
+        NAME
+          IDENT "i32"
+      R_ANGLE ">"
+    COLON ":"
+    WHITESPACE " "
+    PATH_TYPE
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "u32"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    LITERAL
+      INT_NUMBER "0"
+    WHITESPACE "\n"
+    WHERE_CLAUSE
+      WHERE_KW "where"
+      WHITESPACE " "
+      WHERE_PRED
+        PATH_TYPE
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "i32"
+        COLON ":"
+        WHITESPACE " "
+        TYPE_BOUND_LIST
+          TYPE_BOUND
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "Copy"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  TRAIT
+    TRAIT_KW "trait"
+    WHITESPACE " "
+    NAME
+      IDENT "Foo"
+    WHITESPACE " "
+    ASSOC_ITEM_LIST
+      L_CURLY "{"
+      WHITESPACE "\n    "
+      CONST
+        CONST_KW "const"
+        WHITESPACE " "
+        NAME
+          IDENT "C"
+        COLON ":"
+        WHITESPACE " "
+        PATH_TYPE
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "i32"
+        WHITESPACE " "
+        WHERE_CLAUSE
+          WHERE_KW "where"
+          WHITESPACE " "
+          WHERE_PRED
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "i32"
+            COLON ":"
+            WHITESPACE " "
+            TYPE_BOUND_LIST
+              TYPE_BOUND
+                PATH_TYPE
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "Copy"
+        SEMICOLON ";"
+      WHITESPACE "\n"
+      R_CURLY "}"
+  WHITESPACE "\n"

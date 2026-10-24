@@ -1,0 +1,31 @@
+error[E0220]: associated type `Baa` not found for `T`
+  --> $DIR/issue-55673.rs:9:8
+   |
+LL |     T::Baa: std::fmt::Debug,
+   |        ^^^ there is a similarly named associated type `Bar` in the trait `Foo`
+   |
+help: change the associated type name to use `Bar` from `Foo`
+   |
+LL -     T::Baa: std::fmt::Debug,
+LL +     T::Bar: std::fmt::Debug,
+   |
+
+error[E0220]: associated type `Baa` not found for `T`
+  --> $DIR/issue-55673.rs:16:8
+   |
+LL |     T::Baa: std::fmt::Debug,
+   |        ^^^ there is a similarly named associated type `Bar` in the trait `Foo`
+   |
+help: consider further restricting type parameter `T` with trait `Foo`
+   |
+LL |     T::Baa: std::fmt::Debug, T: Foo
+   |                              ++++++
+help: ...and changing the associated type name
+   |
+LL -     T::Baa: std::fmt::Debug,
+LL +     T::Bar: std::fmt::Debug,
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0220`.

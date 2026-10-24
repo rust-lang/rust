@@ -1,0 +1,5 @@
+
+thread 'main' ($TID) panicked at $DIR/assert-long-condition.rs:7:5:
+assertion failed: 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 9 + 10 + 11 + 12 + 13 + 14 + 15 + 16 + 17 + 18
+                                + 19 + 20 + 21 + 22 + 23 + 24 + 25 == 0
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

@@ -1,0 +1,71 @@
+error: inline module found
+ --> src/other.rs:1:1
+  |
+1 | mod foo {}
+  | ^^^^^^^^^^
+  |
+  = help: move the contents of the module to `src/other/foo.rs` or `src/other/foo/mod.rs`, and replace this with `mod foo;`
+  = note: `-D clippy::inline-modules` implied by `-D warnings`
+  = help: to override `-D warnings` add `#[allow(clippy::inline_modules)]`
+
+error: inline module found
+ --> src/qux/foo.rs:1:1
+  |
+1 | mod bar {}
+  | ^^^^^^^^^^
+  |
+  = help: move the contents of the module to `src/qux/foo/bar.rs` or `src/qux/foo/bar/mod.rs`, and replace this with `mod bar;`
+
+error: inline module found
+  --> src/lib.rs:9:1
+   |
+ 9 | / pub mod test_nested_inline_mods {
+10 | |     mod bar {
+11 | |         mod baz {}
+12 | |     }
+13 | | }
+   | |_^
+   |
+   = help: move the contents of the module to `src/test_nested_inline_mods.rs` or `src/test_nested_inline_mods/mod.rs`, and replace this with `pub mod test_nested_inline_mods;`
+
+error: inline module found
+  --> src/lib.rs:10:5
+   |
+10 | /     mod bar {
+11 | |         mod baz {}
+12 | |     }
+   | |_____^
+   |
+   = help: move the contents of the module to `src/test_nested_inline_mods/bar.rs` or `src/test_nested_inline_mods/bar/mod.rs`, and replace this with `mod bar;`
+
+error: inline module found
+  --> src/lib.rs:11:9
+   |
+11 |         mod baz {}
+   |         ^^^^^^^^^^
+   |
+   = help: move the contents of the module to `src/test_nested_inline_mods/bar/baz.rs` or `src/test_nested_inline_mods/bar/baz/mod.rs`, and replace this with `mod baz;`
+
+error: inline module found
+  --> src/lib.rs:20:1
+   |
+20 | / mod partially_escaped_test_mod {
+21 | |     #[cfg(test)]
+22 | |     mod tests {
+23 | |         mod bar {}
+24 | |     }
+25 | |     mod baz {}
+26 | | }
+   | |_^
+   |
+   = help: move the contents of the module to `src/partially_escaped_test_mod.rs` or `src/partially_escaped_test_mod/mod.rs`, and replace this with `mod partially_escaped_test_mod;`
+
+error: inline module found
+  --> src/lib.rs:25:5
+   |
+25 |     mod baz {}
+   |     ^^^^^^^^^^
+   |
+   = help: move the contents of the module to `src/partially_escaped_test_mod/baz.rs` or `src/partially_escaped_test_mod/baz/mod.rs`, and replace this with `mod baz;`
+
+error: could not compile `inline-mod` (lib) due to 7 previous errors

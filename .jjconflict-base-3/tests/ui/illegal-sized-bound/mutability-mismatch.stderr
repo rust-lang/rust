@@ -1,0 +1,18 @@
+error: the `function` method cannot be invoked on `&dyn MutTrait`
+  --> $DIR/mutability-mismatch.rs:26:33
+   |
+LL |     (&MutType as &dyn MutTrait).function();
+   |                                 ^^^^^^^^
+   |
+   = help: you need `&mut dyn MutTrait` instead of `&dyn MutTrait`
+
+error: the `function` method cannot be invoked on `&mut dyn Trait`
+  --> $DIR/mutability-mismatch.rs:29:35
+   |
+LL |     (&mut Type as &mut dyn Trait).function();
+   |                                   ^^^^^^^^
+   |
+   = help: you need `&dyn Trait` instead of `&mut dyn Trait`
+
+error: aborting due to 2 previous errors
+

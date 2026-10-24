@@ -1,0 +1,24 @@
+error: format argument must be a string literal
+  --> $DIR/bad_hello.rs:2:14
+   |
+LL |     println!(3 + 4);
+   |              ^^^^^
+   |
+help: you might be missing a string literal to format with
+   |
+LL |     println!("{}", 3 + 4);
+   |              +++++
+
+error: format argument must be a string literal
+  --> $DIR/bad_hello.rs:4:14
+   |
+LL |     println!(3, 4);
+   |              ^
+   |
+help: you might be missing a string literal to format with
+   |
+LL |     println!("{} {}", 3, 4);
+   |              ++++++++
+
+error: aborting due to 2 previous errors
+

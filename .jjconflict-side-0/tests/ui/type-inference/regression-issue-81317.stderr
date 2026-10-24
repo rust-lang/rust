@@ -1,0 +1,17 @@
+error[E0282]: type annotations needed
+  --> $DIR/regression-issue-81317.rs:44:9
+   |
+LL |     let iv = S ^ index.into();
+   |         ^^
+LL |
+LL |     &iv.to_bytes_be();
+   |      -- type must be known at this point
+   |
+help: consider giving `iv` an explicit type
+   |
+LL |     let iv: /* Type */ = S ^ index.into();
+   |           ++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0282`.

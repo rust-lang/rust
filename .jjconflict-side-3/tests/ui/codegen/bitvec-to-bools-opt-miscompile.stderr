@@ -1,0 +1,10 @@
+warning: trait `methods` is never used
+  --> $DIR/bitvec-to-bools-opt-miscompile.rs:6:7
+   |
+LL | trait methods {
+   |       ^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: 1 warning emitted
+

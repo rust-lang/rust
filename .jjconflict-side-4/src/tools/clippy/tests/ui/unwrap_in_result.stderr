@@ -1,0 +1,107 @@
+error: `unwrap` used in a function that returns a `Result`
+  --> tests/ui/unwrap_in_result.rs:25:17
+   |
+LL |         let i = i_str.parse::<i32>().unwrap();
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: in this function signature
+  --> tests/ui/unwrap_in_result.rs:23:45
+   |
+LL |     fn bad_divisible_by_3(i_str: String) -> Result<bool, String> {
+   |                                             ^^^^^^^^^^^^^^^^^^^^
+   = help: consider using the `?` operator or calling the `.map_err()` method
+   = note: `-D clippy::unwrap-in-result` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unwrap_in_result)]`
+
+error: `expect` used in a function that returns an `Option`
+  --> tests/ui/unwrap_in_result.rs:35:17
+   |
+LL |         let i = i_str.parse::<i32>().ok().expect("not a number");
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: in this function signature
+  --> tests/ui/unwrap_in_result.rs:34:48
+   |
+LL |     fn example_option_expect(i_str: String) -> Option<bool> {
+   |                                                ^^^^^^^^^^^^
+   = help: consider using the `?` operator
+
+error: `unwrap` used in a function that returns an `Option`
+  --> tests/ui/unwrap_in_result.rs:49:17
+   |
+LL |         let _ = a.unwrap();
+   |                 ^^^^^^^^^^
+   |
+note: in this function signature
+  --> tests/ui/unwrap_in_result.rs:43:39
+   |
+LL |     fn in_closure(a: Option<bool>) -> Option<bool> {
+   |                                       ^^^^^^^^^^^^
+   = help: consider using the `?` operator
+
+error: `unwrap` used in a function that returns an `Option`
+  --> tests/ui/unwrap_in_result.rs:58:22
+   |
+LL |                 Some(b.unwrap())
+   |                      ^^^^^^^^^^
+   |
+note: in this function signature
+  --> tests/ui/unwrap_in_result.rs:57:48
+   |
+LL |             const fn inner(b: Option<bool>) -> Option<bool> {
+   |                                                ^^^^^^^^^^^^
+   = help: consider using the `?` operator
+
+error: `unwrap` used in a function that returns an `Option`
+  --> tests/ui/unwrap_in_result.rs:71:22
+   |
+LL |                 Some(b.unwrap())
+   |                      ^^^^^^^^^^
+   |
+note: in this function signature
+  --> tests/ui/unwrap_in_result.rs:70:48
+   |
+LL |             const fn inner(b: Option<bool>) -> Option<bool> {
+   |                                                ^^^^^^^^^^^^
+   = help: consider using the `?` operator
+
+error: `unwrap` used in a function that returns an `Option`
+  --> tests/ui/unwrap_in_result.rs:89:9
+   |
+LL |     _ = Option::unwrap(Some(3));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: in this function signature
+  --> tests/ui/unwrap_in_result.rs:88:30
+   |
+LL | fn type_relative_unwrap() -> Option<()> {
+   |                              ^^^^^^^^^^
+   = help: consider using the `?` operator
+
+error: `unwrap` used in a function that returns a `Result`
+  --> tests/ui/unwrap_in_result.rs:99:5
+   |
+LL |     A::bad_divisible_by_3("3".to_string()).unwrap();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: in this function signature
+  --> tests/ui/unwrap_in_result.rs:98:14
+   |
+LL | fn main() -> Result<(), ()> {
+   |              ^^^^^^^^^^^^^^
+   = help: consider using the `?` operator or calling the `.map_err()` method
+
+error: `unwrap` used in a function that returns a `Result`
+  --> tests/ui/unwrap_in_result.rs:101:5
+   |
+LL |     A::good_divisible_by_3("3".to_string()).unwrap();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `unwrap` used in a function that returns a `Result`
+  --> tests/ui/unwrap_in_result.rs:103:5
+   |
+LL |     Result::unwrap(A::good_divisible_by_3("3".to_string()));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 9 previous errors
+

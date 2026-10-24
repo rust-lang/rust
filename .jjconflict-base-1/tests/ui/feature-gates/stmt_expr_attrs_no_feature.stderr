@@ -1,0 +1,93 @@
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/stmt_expr_attrs_no_feature.rs:14:5
+   |
+LL |     #[rustfmt::skip]
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/stmt_expr_attrs_no_feature.rs:95:18
+   |
+LL |     fn y(a: [u8; #[rustc_dummy] 5]);
+   |                  ^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/stmt_expr_attrs_no_feature.rs:102:19
+   |
+LL |     const Y: u8 = #[rustc_dummy] 5;
+   |                   ^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/stmt_expr_attrs_no_feature.rs:108:19
+   |
+LL |     const Y: [u8; #[rustc_dummy] 5];
+   |                   ^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/stmt_expr_attrs_no_feature.rs:114:18
+   |
+LL |     field2: [u8; #[rustc_dummy] 5]
+   |                  ^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/stmt_expr_attrs_no_feature.rs:119:10
+   |
+LL |     [u8; #[rustc_dummy] 5]
+   |          ^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/stmt_expr_attrs_no_feature.rs:125:14
+   |
+LL |         [u8; #[rustc_dummy] 5]
+   |              ^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/stmt_expr_attrs_no_feature.rs:130:22
+   |
+LL |         field2: [u8; #[rustc_dummy] 5]
+   |                      ^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/stmt_expr_attrs_no_feature.rs:138:14
+   |
+LL |         6 => #[rustc_dummy] (),
+   |              ^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

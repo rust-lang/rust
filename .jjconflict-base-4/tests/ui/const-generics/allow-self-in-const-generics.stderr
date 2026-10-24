@@ -1,0 +1,9 @@
+error[E0770]: the type of const parameters must not depend on other generic parameters
+  --> $DIR/allow-self-in-const-generics.rs:15:19
+   |
+LL |     fn f<const N: Self>() {}
+   |                   ^^^^ the type `Wrap<T>` must not depend on other generic parameter
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0770`.

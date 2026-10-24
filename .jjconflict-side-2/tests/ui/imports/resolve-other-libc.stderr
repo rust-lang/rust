@@ -1,0 +1,8 @@
+error: extern location for libc does not exist: test.rlib
+  --> $DIR/resolve-other-libc.rs:12:1
+   |
+LL | extern crate libc;
+   | ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

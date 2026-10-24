@@ -1,0 +1,11 @@
+error[E0741]: `[T; N]` can't be used as a const parameter type
+  --> $DIR/no_const_param_ty_bound.rs:6:45
+   |
+LL | struct UsesType<T, const N: usize, const M: [T; N]>(PhantomData<T>);
+   |                                             ^^^^^^
+   |
+   = note: `T` must implement `ConstParamTy_`, but it does not
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0741`.

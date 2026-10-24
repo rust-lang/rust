@@ -1,0 +1,62 @@
+error: unknown lint: `x`
+  --> $DIR/unknown-renamed-lints.rs:5:9
+   |
+LL | #![deny(x)]
+   |         ^
+   |
+note: the lint level is defined here
+  --> $DIR/unknown-renamed-lints.rs:1:9
+   |
+LL | #![deny(unknown_lints)]
+   |         ^^^^^^^^^^^^^
+
+error: unknown lint: `rustdoc::x`
+  --> $DIR/unknown-renamed-lints.rs:7:9
+   |
+LL | #![deny(rustdoc::x)]
+   |         ^^^^^^^^^^ help: did you mean: `rustdoc::all`
+
+error: lint `intra_doc_link_resolution_failure` has been renamed to `rustdoc::broken_intra_doc_links`
+  --> $DIR/unknown-renamed-lints.rs:9:9
+   |
+LL | #![deny(intra_doc_link_resolution_failure)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `rustdoc::broken_intra_doc_links`
+   |
+note: the lint level is defined here
+  --> $DIR/unknown-renamed-lints.rs:3:9
+   |
+LL | #![deny(renamed_and_removed_lints)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: lint `non_autolinks` has been renamed to `rustdoc::bare_urls`
+  --> $DIR/unknown-renamed-lints.rs:11:9
+   |
+LL | #![deny(non_autolinks)]
+   |         ^^^^^^^^^^^^^ help: use the new name: `rustdoc::bare_urls`
+
+error: lint `rustdoc::non_autolinks` has been renamed to `rustdoc::bare_urls`
+  --> $DIR/unknown-renamed-lints.rs:13:9
+   |
+LL | #![deny(rustdoc::non_autolinks)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `rustdoc::bare_urls`
+
+error: lint `private_doc_tests` has been renamed to `rustdoc::private_doc_tests`
+  --> $DIR/unknown-renamed-lints.rs:16:9
+   |
+LL | #![deny(private_doc_tests)]
+   |         ^^^^^^^^^^^^^^^^^ help: use the new name: `rustdoc::private_doc_tests`
+
+error: lint `rustdoc` has been removed: use `rustdoc::all` instead
+  --> $DIR/unknown-renamed-lints.rs:19:9
+   |
+LL | #![deny(rustdoc)]
+   |         ^^^^^^^
+
+error: unknown lint: `rustdoc::intra_doc_link_resolution_failure`
+  --> $DIR/unknown-renamed-lints.rs:23:9
+   |
+LL | #![deny(rustdoc::intra_doc_link_resolution_failure)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 8 previous errors
+

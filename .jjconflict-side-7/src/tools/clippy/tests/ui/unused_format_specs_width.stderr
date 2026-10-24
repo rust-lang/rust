@@ -1,0 +1,148 @@
+error: format width has no effect on the output for this format trait
+  --> tests/ui/unused_format_specs_width.rs:9:15
+   |
+LL |     println!("{:#02X}", 1u8);
+   |               ^^^^^^^
+   |
+   = help: consider removing the width or increasing it to at least 4
+   = note: `-D clippy::unused-format-specs` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unused_format_specs)]`
+
+error: format width has no effect on the output for this format trait
+  --> tests/ui/unused_format_specs_width.rs:10:15
+   |
+LL |     println!("{:#2X}", 1u8);
+   |               ^^^^^^
+   |
+   = help: consider removing the width or increasing it to at least 4
+
+error: format width has no effect on the output for this format trait
+  --> tests/ui/unused_format_specs_width.rs:11:15
+   |
+LL |     println!("{:#02x}", 1u8);
+   |               ^^^^^^^
+   |
+   = help: consider removing the width or increasing it to at least 4
+
+error: format width has no effect on the output for this format trait
+  --> tests/ui/unused_format_specs_width.rs:12:15
+   |
+LL |     println!("{:#02o}", 1u8);
+   |               ^^^^^^^
+   |
+   = help: consider removing the width or increasing it to at least 4
+
+error: format width has no effect on the output for this format trait
+  --> tests/ui/unused_format_specs_width.rs:13:15
+   |
+LL |     println!("{:#02b}", 1u8);
+   |               ^^^^^^^
+   |
+   = help: consider removing the width or increasing it to at least 4
+
+error: format width has no effect on the output for this format trait
+  --> tests/ui/unused_format_specs_width.rs:16:15
+   |
+LL |     println!("{:02e}", 1u8);
+   |               ^^^^^^
+   |
+   = help: consider removing the width or increasing it to at least 4
+
+error: format width has no effect on the output for this format trait
+  --> tests/ui/unused_format_specs_width.rs:17:15
+   |
+LL |     println!("{:02E}", 1u8);
+   |               ^^^^^^
+   |
+   = help: consider removing the width or increasing it to at least 4
+
+error: format width has no effect on the output for this format trait
+  --> tests/ui/unused_format_specs_width.rs:18:15
+   |
+LL |     println!("{:2e}", 1.0);
+   |               ^^^^^
+   |
+   = help: consider removing the width or increasing it to at least 4
+
+error: format width has no effect on the output for this format trait
+  --> tests/ui/unused_format_specs_width.rs:19:15
+   |
+LL |     println!("{:2E}", 1.0);
+   |               ^^^^^
+   |
+   = help: consider removing the width or increasing it to at least 4
+
+error: format width has no effect on the output for this format trait
+  --> tests/ui/unused_format_specs_width.rs:20:15
+   |
+LL |     println!("{:2e}", 0.1);
+   |               ^^^^^
+   |
+   = help: consider removing the width or increasing it to at least 4
+
+error: format width has no effect on the output for this format trait
+  --> tests/ui/unused_format_specs_width.rs:21:15
+   |
+LL |     println!("{:2E}", 0.1);
+   |               ^^^^^
+   |
+   = help: consider removing the width or increasing it to at least 4
+
+error: format width has no effect on the output for this format trait
+  --> tests/ui/unused_format_specs_width.rs:24:15
+   |
+LL |     println!("{:2p}", 0 as *const usize);
+   |               ^^^^^
+   |
+   = help: consider removing the width or increasing it to at least 4
+
+error: format width has no effect on the output for this format trait
+  --> tests/ui/unused_format_specs_width.rs:25:15
+   |
+LL |     println!("{:02p}", 1 as *const usize);
+   |               ^^^^^^
+   |
+   = help: consider removing the width or increasing it to at least 4
+
+error: format width has no effect on the output for this format trait
+  --> tests/ui/unused_format_specs_width.rs:28:15
+   |
+LL |     println!("{:2.2e}", 1.0);
+   |               ^^^^^^^
+   |
+   = help: consider removing the width or increasing it to at least 4
+
+error: format width has no effect on the output for this format trait
+  --> tests/ui/unused_format_specs_width.rs:29:15
+   |
+LL |     println!("{:2.2E}", 1.0);
+   |               ^^^^^^^
+   |
+   = help: consider removing the width or increasing it to at least 4
+
+error: format width has no effect on the output for this format trait
+  --> tests/ui/unused_format_specs_width.rs:30:15
+   |
+LL |     println!("{:2.2e}", 0.1);
+   |               ^^^^^^^
+   |
+   = help: consider removing the width or increasing it to at least 4
+
+error: format width has no effect on the output for this format trait
+  --> tests/ui/unused_format_specs_width.rs:31:15
+   |
+LL |     println!("{:2.2E}", 0.1);
+   |               ^^^^^^^
+   |
+   = help: consider removing the width or increasing it to at least 4
+
+error: format width has no effect on the output for this format trait
+  --> tests/ui/unused_format_specs_width.rs:34:15
+   |
+LL |     println!("{:#03X}", 1u8);
+   |               ^^^^^^^
+   |
+   = help: consider removing the width or increasing it to at least 4
+
+error: aborting due to 18 previous errors
+

@@ -1,0 +1,29 @@
+error: needless `fn main` in doctest
+  --> tests/ui/needless_doc_main.rs:7:5
+   |
+LL | /// fn main() {
+   |     ^^^^^^^
+   |
+   = note: `-D clippy::needless-doctest-main` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_doctest_main)]`
+
+error: needless `fn main` in doctest
+  --> tests/ui/needless_doc_main.rs:15:5
+   |
+LL | /// fn main() -> () {
+   |     ^^^^^^^
+
+error: needless `fn main` in doctest
+  --> tests/ui/needless_doc_main.rs:23:5
+   |
+LL | /// fn main() {
+   |     ^^^^^^^
+
+error: needless `fn main` in doctest
+  --> tests/ui/needless_doc_main.rs:32:5
+   |
+LL | /// fn main() {
+   |     ^^^^^^^
+
+error: aborting due to 4 previous errors
+

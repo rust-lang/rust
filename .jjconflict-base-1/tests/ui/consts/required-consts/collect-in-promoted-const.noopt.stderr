@@ -1,0 +1,21 @@
+error[E0080]: evaluation panicked: explicit panic
+  --> $DIR/collect-in-promoted-const.rs:9:19
+   |
+LL |     const C: () = panic!();
+   |                   ^^^^^^^^ evaluation of `Fail::<i32>::C` failed here
+
+note: erroneous constant encountered
+  --> $DIR/collect-in-promoted-const.rs:17:21
+   |
+LL |         let _val = &Fail::<T>::C;
+   |                     ^^^^^^^^^^^^
+
+note: the above error was encountered while instantiating `fn f::<i32>`
+  --> $DIR/collect-in-promoted-const.rs:22:5
+   |
+LL |     f::<i32>();
+   |     ^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

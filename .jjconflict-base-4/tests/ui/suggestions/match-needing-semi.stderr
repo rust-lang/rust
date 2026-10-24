@@ -1,0 +1,37 @@
+error[E0308]: mismatched types
+  --> $DIR/match-needing-semi.rs:7:13
+   |
+LL | /     match 3 {
+LL | |         4 => 1,
+LL | |         3 => {
+LL | |             foo()
+   | |             ^^^^^ expected `()`, found `i32`
+LL | |         }
+LL | |         _ => 2
+LL | |     }
+   | |_____- expected this to be `()`
+   |
+help: consider using a semicolon here
+   |
+LL |             foo();
+   |                  +
+help: consider using a semicolon here
+   |
+LL |     };
+   |      +
+
+error[E0308]: mismatched types
+  --> $DIR/match-needing-semi.rs:11:5
+   |
+LL | /     match 3 {
+LL | |         4 => 1,
+LL | |         3 => 2,
+LL | |         _ => 2
+LL | |     }
+   | |     ^- help: consider using a semicolon here
+   | |_____|
+   |       expected `()`, found integer
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

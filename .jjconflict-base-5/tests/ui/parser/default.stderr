@@ -1,0 +1,40 @@
+error: `default` is not followed by an item
+  --> $DIR/default.rs:22:5
+   |
+LL |     default pub fn foo<T: Default>() -> T { T::default() }
+   |     ^^^^^^^ the `default` qualifier
+   |
+   = note: only `fn`, `const`, `type`, or `impl` items may be prefixed by `default`
+
+error: non-item in item list
+  --> $DIR/default.rs:22:13
+   |
+LL | impl Foo for u32 {
+   |                  - item list starts here
+LL |     default pub fn foo<T: Default>() -> T { T::default() }
+   |             ^^^ non-item starts here
+...
+LL | }
+   | - item list ends here
+
+error[E0449]: visibility qualifiers are not permitted here
+  --> $DIR/default.rs:16:5
+   |
+LL |     pub default fn foo<T: Default>() -> T {
+   |     ^^^ help: remove the qualifier
+   |
+   = note: trait items always share the visibility of their trait
+
+error[E0046]: not all trait items implemented, missing: `foo`
+  --> $DIR/default.rs:21:1
+   |
+LL |     fn foo<T: Default>() -> T;
+   |     -------------------------- `foo` from trait
+...
+LL | impl Foo for u32 {
+   | ^^^^^^^^^^^^^^^^ missing `foo` in implementation
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0046, E0449.
+For more information about an error, try `rustc --explain E0046`.

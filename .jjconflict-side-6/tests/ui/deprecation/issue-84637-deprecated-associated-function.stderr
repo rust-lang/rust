@@ -1,0 +1,43 @@
+error: use of deprecated method `core::str::<impl str>::trim_left`: superseded by `trim_start`
+  --> $DIR/issue-84637-deprecated-associated-function.rs:6:21
+   |
+LL |     let _foo = str::trim_left("   aoeu");
+   |                     ^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/issue-84637-deprecated-associated-function.rs:3:9
+   |
+LL | #![deny(deprecated)]
+   |         ^^^^^^^^^^
+help: replace the use of the deprecated method
+   |
+LL -     let _foo = str::trim_left("   aoeu");
+LL +     let _foo = str::trim_start("   aoeu");
+   |
+
+error: use of deprecated method `core::str::<impl str>::trim_left`: superseded by `trim_start`
+  --> $DIR/issue-84637-deprecated-associated-function.rs:8:26
+   |
+LL |     let _bar = "   aoeu".trim_left();
+   |                          ^^^^^^^^^
+   |
+help: replace the use of the deprecated method
+   |
+LL -     let _bar = "   aoeu".trim_left();
+LL +     let _bar = "   aoeu".trim_start();
+   |
+
+error: use of deprecated method `std::slice::<impl [T]>::connect`: renamed to join
+  --> $DIR/issue-84637-deprecated-associated-function.rs:10:27
+   |
+LL |     let _baz = ["a", "b"].connect(" ");
+   |                           ^^^^^^^
+   |
+help: replace the use of the deprecated method
+   |
+LL -     let _baz = ["a", "b"].connect(" ");
+LL +     let _baz = ["a", "b"].join(" ");
+   |
+
+error: aborting due to 3 previous errors
+

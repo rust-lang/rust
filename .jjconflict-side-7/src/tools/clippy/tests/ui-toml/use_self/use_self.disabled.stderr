@@ -1,0 +1,11 @@
+error: unnecessary structure name repetition
+  --> tests/ui-toml/use_self/use_self.rs:15:13
+   |
+LL |     fn x(_: Basic) {}
+   |             ^^^^^ help: use the applicable keyword: `Self`
+   |
+   = note: `-D clippy::use-self` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::use_self)]`
+
+error: aborting due to 1 previous error
+

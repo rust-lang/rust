@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!--
+This is a Windows application manifest file.
+See: https://docs.microsoft.com/en-us/windows/win32/sbscs/application-manifests
+-->
+<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0" xmlns:asmv3="urn:schemas-microsoft-com:asm.v3">
+    <!-- Versions rustc supports as compiler hosts -->
+    <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1"> 
+        <application> 
+            <!-- Windows 7 --><supportedOS Id="{35138b9a-5d96-4fbd-8e2d-a2440225f93a}"/>
+            <!-- Windows 8 --><supportedOS Id="{4a2f28e3-53b9-4441-ba9c-d69d4a4a6e38}"/>
+            <!-- Windows 8.1 --><supportedOS Id="{1f676c76-80e1-4239-95bb-83d0f6d0da78}"/>
+            <!-- Windows 10 and 11 --><supportedOS Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}"/>
+        </application> 
+    </compatibility>
+    <!-- Use UTF-8 code page -->
+    <asmv3:application>
+        <asmv3:windowsSettings xmlns="http://schemas.microsoft.com/SMI/2019/WindowsSettings">
+            <activeCodePage>UTF-8</activeCodePage>
+        </asmv3:windowsSettings>
+    </asmv3:application>
+    <!-- Remove (most) legacy path limits -->
+    <asmv3:application>
+        <asmv3:windowsSettings xmlns:ws2="http://schemas.microsoft.com/SMI/2016/WindowsSettings">
+            <ws2:longPathAware>true</ws2:longPathAware>
+        </asmv3:windowsSettings>
+    </asmv3:application>
+</assembly>

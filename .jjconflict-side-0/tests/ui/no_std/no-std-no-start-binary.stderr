@@ -1,0 +1,6 @@
+error: using `fn main` requires the standard library
+   |
+   = help: use `#![no_main]` to bypass the Rust generated entrypoint and declare a platform specific entrypoint yourself, usually with `#[no_mangle]`
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,14 @@
+error[E0428]: the name `_D8` is defined multiple times
+  --> $DIR/duplicated-enum-variant.rs:234:9
+   |
+LL |         _D8(X),
+   |         ------ previous definition of the type `_D8` here
+...
+LL |         _D8(X),
+   |         ^^^^^^ `_D8` redefined here
+   |
+   = note: `_D8` must be defined only once in the type namespace of this enum
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0428`.

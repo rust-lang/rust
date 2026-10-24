@@ -1,0 +1,21 @@
+error[E0530]: match bindings cannot shadow statics
+  --> $DIR/issue-17718-patterns.rs:7:9
+   |
+LL | static A1: usize = 1;
+   | --------------------- the static `A1` is defined here
+...
+LL |         A1 => {}
+   |         ^^ cannot be named the same as a static
+
+error[E0530]: match bindings cannot shadow statics
+  --> $DIR/issue-17718-patterns.rs:8:9
+   |
+LL | static mut A2: usize = 1;
+   | ------------------------- the static `A2` is defined here
+...
+LL |         A2 => {}
+   |         ^^ cannot be named the same as a static
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0530`.

@@ -1,0 +1,31 @@
+error: the constant `N` is not of type `usize`
+  --> $DIR/type_mismatch.rs:6:26
+   |
+LL | fn bar<const N: u8>() -> [u8; N] {}
+   |                          ^^^^^^^ expected `usize`, found `u8`
+   |
+   = note: the length of array `[u8; N]` must be type `usize`
+
+error: the constant `N` is not of type `u8`
+  --> $DIR/type_mismatch.rs:2:11
+   |
+LL |     bar::<N>()
+   |           ^ expected `u8`, found `usize`
+   |
+note: required by a const generic parameter in `bar`
+  --> $DIR/type_mismatch.rs:6:8
+   |
+LL | fn bar<const N: u8>() -> [u8; N] {}
+   |        ^^^^^^^^^^^ required by this const generic parameter in `bar`
+
+error[E0308]: mismatched types
+  --> $DIR/type_mismatch.rs:6:26
+   |
+LL | fn bar<const N: u8>() -> [u8; N] {}
+   |    ---                   ^^^^^^^ expected `[u8; N]`, found `()`
+   |    |
+   |    implicitly returns `()` as its body has no tail or `return` expression
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

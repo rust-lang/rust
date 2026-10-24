@@ -1,0 +1,18 @@
+error[E0276]: impl has stricter requirements than trait
+  --> $DIR/region-extra.rs:9:24
+   |
+LL |     fn foo();
+   |     --------- definition of `foo` from trait
+...
+LL |     fn foo() where 'a: 'b { }
+   |                        ^^ impl has extra requirement `'a: 'b`
+   |
+help: remove the `where` clause
+   |
+LL -     fn foo() where 'a: 'b { }
+LL +     fn foo()  { }
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0276`.

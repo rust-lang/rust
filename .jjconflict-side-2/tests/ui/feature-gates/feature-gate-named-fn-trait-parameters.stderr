@@ -1,0 +1,13 @@
+error[E0658]: named parameters in parenthesized generic argument lists are experimental
+  --> $DIR/feature-gate-named-fn-trait-parameters.rs:3:18
+   |
+LL |     log: impl Fn(msg: String),
+   |                  ^^^
+   |
+   = note: see issue #158499 <https://github.com/rust-lang/rust/issues/158499> for more information
+   = help: add `#![feature(named_fn_trait_parameters)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0658`.

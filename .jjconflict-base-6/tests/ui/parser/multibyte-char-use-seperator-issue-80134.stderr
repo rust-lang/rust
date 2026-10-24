@@ -1,0 +1,33 @@
+error: expected one of `)`, `,`, `.`, `?`, or an operator, found `é`
+  --> $DIR/multibyte-char-use-seperator-issue-80134.rs:4:8
+   |
+LL |     (()é);
+   |        ^
+   |        |
+   |        expected one of `)`, `,`, `.`, `?`, or an operator
+   |        help: missing `,`
+
+error: expected one of `)`, `,`, `.`, `?`, or an operator, found `氷`
+  --> $DIR/multibyte-char-use-seperator-issue-80134.rs:7:8
+   |
+LL |     (()氷);
+   |        -^
+   |        |
+   |        expected one of `)`, `,`, `.`, `?`, or an operator
+   |        help: missing `,`
+
+error[E0425]: cannot find value `é` in this scope
+  --> $DIR/multibyte-char-use-seperator-issue-80134.rs:4:8
+   |
+LL |     (()é);
+   |        ^ not found in this scope
+
+error[E0425]: cannot find value `氷` in this scope
+  --> $DIR/multibyte-char-use-seperator-issue-80134.rs:7:8
+   |
+LL |     (()氷);
+   |        ^^ not found in this scope
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

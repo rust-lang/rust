@@ -1,0 +1,13 @@
+warning: calls to `std::mem::drop` with a value that implements `Copy` does nothing
+  --> $DIR/can-have-side-effects-consider-element.rs:12:15
+   |
+LL |         () => drop([0; 1]), // No side effects
+   |               ^^^^^------^
+   |                    |
+   |                    argument has type `[i32; 1]`
+   |
+   = note: use `let _ = ...` to ignore the expression or result
+   = note: `#[warn(dropping_copy_types)]` on by default
+
+warning: 1 warning emitted
+

@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+message: If you use this guide, please cite it using these metadata.
+title: Rust Compiler Development Guide (rustc-dev-guide)
+abstract: A guide to developing the Rust compiler (rustc)
+authors:
+  - name: "The Rust Project Developers"
+date-released: "2018-01-16"
+license: "MIT OR Apache-2.0"
+repository-code: "https://github.com/rust-lang/rustc-dev-guide"

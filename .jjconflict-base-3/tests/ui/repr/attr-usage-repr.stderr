@@ -1,0 +1,59 @@
+error: the `repr(C)` attribute cannot be used on functions
+  --> $DIR/attr-usage-repr.rs:3:3
+   |
+LL | #[repr(C)]
+   |   ^^^^^^^
+   |
+   = help: the `repr(C)` attribute can only be applied to data types
+
+error: the `repr(i8)` attribute cannot be used on structs
+  --> $DIR/attr-usage-repr.rs:15:3
+   |
+LL | #[repr(i8)]
+   |   ^^^^^^^^
+   |
+   = help: the `repr(i8)` attribute can only be applied to enums
+
+error: the `repr(packed)` attribute cannot be used on enums
+  --> $DIR/attr-usage-repr.rs:30:3
+   |
+LL | #[repr(packed)]
+   |   ^^^^^^^^^^^^
+   |
+   = help: the `repr(packed)` attribute can be applied to structs and unions
+
+error: the `repr(simd)` attribute cannot be used on enums
+  --> $DIR/attr-usage-repr.rs:36:3
+   |
+LL | #[repr(simd)]
+   |   ^^^^^^^^^^
+   |
+   = help: the `repr(simd)` attribute can only be applied to structs
+
+error: the `repr()` attribute cannot be used on type aliases
+  --> $DIR/attr-usage-repr.rs:48:3
+   |
+LL | #[repr()]
+   |   ^^^^^^
+   |
+   = help: the `repr()` attribute can only be applied to data types
+
+warning: unused attribute
+  --> $DIR/attr-usage-repr.rs:48:1
+   |
+LL | #[repr()]
+   | ^^^^^^^^^ help: remove this attribute
+   |
+   = note: using `repr` with an empty list has no effect
+   = note: requested on the command line with `-W unused-attributes`
+
+warning: unused attribute
+  --> $DIR/attr-usage-repr.rs:52:1
+   |
+LL | #[repr()]
+   | ^^^^^^^^^ help: remove this attribute
+   |
+   = note: using `repr` with an empty list has no effect
+
+error: aborting due to 5 previous errors; 2 warnings emitted
+

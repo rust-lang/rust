@@ -1,0 +1,105 @@
+error[E0308]: mismatched types
+  --> $DIR/abridged.rs:16:5
+   |
+LL | fn a() -> Foo {
+   |           --- expected `Foo` because of return type
+LL |     Some(Foo { bar: 1 })
+   |     ^^^^^^^^^^^^^^^^^^^^ expected `Foo`, found `Option<Foo>`
+   |
+   = note: expected struct `Foo`
+                found enum `Option<Foo>`
+
+error[E0308]: mismatched types
+  --> $DIR/abridged.rs:20:5
+   |
+LL | fn a2() -> Foo {
+   |            --- expected `Foo` because of return type
+LL |     Ok(Foo { bar: 1})
+   |     ^^^^^^^^^^^^^^^^^ expected `Foo`, found `Result<Foo, _>`
+   |
+   = note: expected struct `Foo`
+                found enum `Result<Foo, _>`
+
+error[E0308]: mismatched types
+  --> $DIR/abridged.rs:24:5
+   |
+LL | fn b() -> Option<Foo> {
+   |           ----------- expected `Option<Foo>` because of return type
+LL |     Foo { bar: 1 }
+   |     ^^^^^^^^^^^^^^ expected `Option<Foo>`, found `Foo`
+   |
+   = note: expected enum `Option<Foo>`
+            found struct `Foo`
+help: try wrapping the expression in `Some`
+   |
+LL |     Some(Foo { bar: 1 })
+   |     +++++              +
+
+error[E0308]: mismatched types
+  --> $DIR/abridged.rs:28:5
+   |
+LL | fn c() -> Result<Foo, Bar> {
+   |           ---------------- expected `Result<Foo, Bar>` because of return type
+LL |     Foo { bar: 1 }
+   |     ^^^^^^^^^^^^^^ expected `Result<Foo, Bar>`, found `Foo`
+   |
+   = note: expected enum `Result<Foo, Bar>`
+            found struct `Foo`
+help: try wrapping the expression in `Ok`
+   |
+LL |     Ok(Foo { bar: 1 })
+   |     +++              +
+
+error[E0308]: mismatched types
+  --> $DIR/abridged.rs:39:5
+   |
+LL | fn d() -> X<X<String, String>, String> {
+   |           ---------------------------- expected `X<X<String, String>, String>` because of return type
+...
+LL |     x
+   |     ^ expected `X<X<String, String>, String>`, found `X<X<String, {integer}>, {integer}>`
+   |
+   = note: expected struct `X<X<_, String>, String>`
+              found struct `X<X<_, {integer}>, {integer}>`
+
+error[E0308]: mismatched types
+  --> $DIR/abridged.rs:50:5
+   |
+LL | fn e() -> X<X<String, String>, String> {
+   |           ---------------------------- expected `X<X<String, String>, String>` because of return type
+...
+LL |     x
+   |     ^ expected `X<X<String, String>, String>`, found `X<X<String, {integer}>, String>`
+   |
+   = note: expected struct `X<X<_, String>, _>`
+              found struct `X<X<_, {integer}>, _>`
+
+error[E0308]: mismatched types
+  --> $DIR/abridged.rs:54:5
+   |
+LL | fn f() -> String {
+   |           ------ expected `String` because of return type
+LL |     1+2
+   |     ^^^ expected `String`, found integer
+   |
+help: try using a conversion method
+   |
+LL |     (1+2).to_string()
+   |     +   +++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/abridged.rs:59:5
+   |
+LL | fn g() -> String {
+   |           ------ expected `String` because of return type
+LL |     -2
+   |     ^^ expected `String`, found integer
+   |
+help: try using a conversion method
+   |
+LL |     (-2).to_string()
+   |     +  +++++++++++++
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

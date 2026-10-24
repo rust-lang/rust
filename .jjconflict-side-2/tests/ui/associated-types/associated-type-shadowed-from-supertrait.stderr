@@ -1,0 +1,15 @@
+error[E0191]: the value of the associated type `X` in `Super` must be specified
+  --> $DIR/associated-type-shadowed-from-supertrait.rs:12:27
+   |
+LL |     type X;
+   |     ------ `Super::X` defined here, consider renaming it
+...
+LL |     type X;
+   |     ------ `Super::X` shadowed here, consider renaming it
+...
+LL | impl<T> Clone for Box<dyn Sub<X = T>> {
+   |                           ^^^^^^^^^^ associated type `X` must be specified
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0191`.

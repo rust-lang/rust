@@ -1,0 +1,17 @@
+warning: `extern` block uses type `svint32_t`, which is not FFI-safe
+  --> $DIR/value-type.rs:20:37
+   |
+LL |         fn _svdup_n_s32(op: i32) -> svint32_t;
+   |                                     ^^^^^^^^^ not FFI-safe
+   |
+   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
+   = note: this struct has unspecified layout
+note: the type is defined here
+  --> $DIR/value-type.rs:14:1
+   |
+LL | pub struct svint32_t(i32);
+   | ^^^^^^^^^^^^^^^^^^^^
+   = note: `#[warn(improper_ctypes)]` on by default
+
+warning: 1 warning emitted
+

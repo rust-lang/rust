@@ -1,0 +1,26 @@
+error: the `link_ordinal` attribute cannot be used on structs
+  --> $DIR/link-ordinal-not-foreign-fn.rs:1:3
+   |
+LL | #[link_ordinal(123)]
+   |   ^^^^^^^^^^^^
+   |
+   = help: the `link_ordinal` attribute can be applied to foreign functions and foreign statics
+
+error: the `link_ordinal` attribute cannot be used on functions
+  --> $DIR/link-ordinal-not-foreign-fn.rs:5:3
+   |
+LL | #[link_ordinal(123)]
+   |   ^^^^^^^^^^^^
+   |
+   = help: the `link_ordinal` attribute can be applied to foreign functions and foreign statics
+
+error: the `link_ordinal` attribute cannot be used on statics
+  --> $DIR/link-ordinal-not-foreign-fn.rs:9:3
+   |
+LL | #[link_ordinal(42)]
+   |   ^^^^^^^^^^^^
+   |
+   = help: the `link_ordinal` attribute can be applied to foreign functions and foreign statics
+
+error: aborting due to 3 previous errors
+

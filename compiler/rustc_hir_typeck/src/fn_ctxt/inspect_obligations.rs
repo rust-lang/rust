@@ -1,14 +1,19 @@
 //! A utility module to inspect currently ambiguous obligations in the current context.
 
+use std::ops::ControlFlow;
+
 use rustc_data_structures::unord::UnordSet;
 use rustc_hir::def_id::DefId;
+use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::{self, ObligationCause, PredicateObligations, TraitEngine};
-use rustc_middle::ty::{self, Ty, TypeVisitableExt};
+use rustc_middle::ty::{
+    self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+};
 use rustc_span::Span;
-use rustc_trait_selection::solve::Certainty;
 use rustc_trait_selection::solve::inspect::{
     InferCtxtProofTreeExt, InspectConfig, InspectGoal, ProofTreeVisitor,
 };
+use rustc_trait_selection::solve::{Certainty, MaybeInfo};
 use tracing::{debug, instrument, trace};
 
 use crate::FnCtxt;
@@ -49,6 +54,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    /// Returns a list of all obligations whose self type has been unified
+    /// with the unconstrained type `self_ty`.
+    #[instrument(skip(self), level = "debug")]
+    pub(crate) fn obligations_referencing_infer_var(
+        &self,
+        infer: ty::TyVid,
+    ) -> PredicateObligations<'tcx> {
+        if self.next_trait_solver() {
+            self.obligations_referencing_infer_var_next(infer)
+        } else {
+            let ty_var_root = self.root_var(infer);
+            let mut obligations = self.fulfillment_cx.borrow().pending_obligations();
+            trace!("pending_obligations = {:#?}", obligations);
+            obligations.retain(|obligation| {
+                self.predicate_references_infer_var(obligation.predicate, ty_var_root)
+            });
+            obligations
+        }
+    }
+
     #[instrument(level = "debug", skip(self), ret)]
     fn predicate_has_self_ty(
         &self,
@@ -66,6 +91,36 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 } else {
                     false
                 }
+            }
+            ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(..))
+            | ty::PredicateKind::Subtype(..)
+            | ty::PredicateKind::Coerce(..)
+            | ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(..))
+            | ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(..))
+            | ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(..))
+            | ty::PredicateKind::DynCompatible(..)
+            | ty::PredicateKind::NormalizesTo(..)
+            | ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..))
+            | ty::PredicateKind::ConstEquate(..)
+            | ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(..))
+            | ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(_))
+            | ty::PredicateKind::Ambiguous => false,
+        }
+    }
+
+    #[instrument(level = "debug", skip(self), ret)]
+    fn predicate_references_infer_var(
+        &self,
+        predicate: ty::Predicate<'tcx>,
+        expected_vid: ty::TyVid,
+    ) -> bool {
+        match predicate.kind().skip_binder() {
+            ty::PredicateKind::Clause(ty::ClauseKind::Trait(data)) => {
+                references_infer_var(data.trait_ref.args, expected_vid, &self.infcx)
+            }
+            ty::PredicateKind::Clause(ty::ClauseKind::Projection(data)) => {
+                data.projection_term.kind.is_trait_projection()
+                    && references_infer_var(data.projection_term.args, expected_vid, &self.infcx)
             }
             ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(..))
             | ty::PredicateKind::Subtype(..)
@@ -143,6 +198,43 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             !obligation.predicate.has_placeholders()
         });
         obligations_for_self_ty
+    }
+
+    pub(crate) fn obligations_referencing_infer_var_next(
+        &self,
+        infer: ty::TyVid,
+    ) -> PredicateObligations<'tcx> {
+        // We only look at obligations which may reference the self type.
+        // This lookup uses the `sub_root` instead of the inference variable
+        // itself as that's slightly nicer to implement. It shouldn't really
+        // matter.
+        //
+        // This is really impactful when typechecking functions with a lot of
+        // stalled obligations, e.g. in the `wg-grammar` benchmark.
+        let sub_root_var = self.sub_unification_table_root_var(infer);
+        let obligations = self
+            .fulfillment_cx
+            .borrow()
+            .pending_obligations_potentially_referencing_sub_root(&self.infcx, sub_root_var);
+        debug!(?obligations);
+        let mut obligations_referencing_infer_var = PredicateObligations::new();
+        for obligation in obligations {
+            let mut visitor = NestedObligationsReferencingInferVar {
+                fcx: self,
+                infer,
+                obligations_referencing_infer_var: &mut obligations_referencing_infer_var,
+                root_cause: &obligation.cause,
+            };
+
+            let goal = obligation.as_goal();
+            self.visit_proof_tree(goal, &mut visitor);
+        }
+
+        obligations_referencing_infer_var.retain_mut(|obligation| {
+            obligation.predicate = self.resolve_vars_if_possible(obligation.predicate);
+            !obligation.predicate.has_placeholders()
+        });
+        obligations_referencing_infer_var
     }
 
     /// Only needed for the `From<{float}>` for `f32` type fallback.
@@ -274,6 +366,73 @@ impl<'tcx> ProofTreeVisitor<'tcx> for NestedObligationsForSelfTy<'_, 'tcx> {
     }
 }
 
+struct NestedObligationsReferencingInferVar<'a, 'tcx> {
+    fcx: &'a FnCtxt<'a, 'tcx>,
+    infer: ty::TyVid,
+    root_cause: &'a ObligationCause<'tcx>,
+    obligations_referencing_infer_var: &'a mut PredicateObligations<'tcx>,
+}
+
+impl<'tcx> ProofTreeVisitor<'tcx> for NestedObligationsReferencingInferVar<'_, 'tcx> {
+    fn span(&self) -> Span {
+        self.root_cause.span
+    }
+
+    fn config(&self) -> InspectConfig {
+        InspectConfig { max_depth: MAX_DEPTH_FOR_OBLIGATIONS_VISITORS }
+    }
+
+    fn visit_goal(&mut self, inspect_goal: &InspectGoal<'_, 'tcx>) {
+        // No need to walk into goal subtrees that certainly hold, since they
+        // wouldn't then be stalled on an infer var.
+        //
+        // TODO: do this on both visitors + make match not uglyaf
+        match inspect_goal.result().unwrap() {
+            Certainty::Yes
+            | Certainty::Maybe(MaybeInfo {
+                cause:
+                    ty::solve::MaybeCause::Overflow {
+                        suggest_increasing_limit: _,
+                        keep_constraints: true,
+                    },
+                ..
+            }) => return,
+            Certainty::Maybe(_) => (),
+        }
+
+        // We don't care about any pending goals which don't actually
+        // use the self type.
+        if !inspect_goal
+            .orig_values()
+            .iter()
+            .filter_map(|arg| arg.as_type())
+            .any(|ty| self.fcx.type_matches_expected_vid(ty, self.infer, UseSubtyping::Yes))
+        {
+            debug!(goal = ?inspect_goal.goal(), "goal does not mention self type");
+            return;
+        }
+
+        let tcx = self.fcx.tcx;
+        let goal = inspect_goal.goal();
+        if self.fcx.predicate_references_infer_var(goal.predicate, self.infer) {
+            self.obligations_referencing_infer_var.push(traits::Obligation::new(
+                tcx,
+                self.root_cause.clone(),
+                goal.param_env,
+                goal.predicate,
+            ));
+        }
+
+        // If there's a unique way to prove a given goal, recurse into
+        // that candidate. This means that for `impl<F: FnOnce(u32)> Trait<F> for () {}`
+        // and a `(): Trait<?0>` goal we recurse into the impl and look at
+        // the nested `?0: FnOnce(u32)` goal.
+        if let Some(candidate) = inspect_goal.unique_applicable_candidate() {
+            candidate.visit_nested_no_probe(self)
+        }
+    }
+}
+
 struct FindFromFloatForF32RootVids<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
     from_trait: DefId,
@@ -320,4 +479,36 @@ impl<'tcx> ProofTreeVisitor<'tcx> for FindFromFloatForF32RootVids<'_, 'tcx> {
             candidate.visit_nested_no_probe(self);
         }
     }
+}
+
+/// Returns `true` if `t` contains a type inference variable that is related via subtyping to `vid`.
+fn references_infer_var<'tcx>(
+    t: impl TypeVisitable<TyCtxt<'tcx>>,
+    vid: ty::TyVid,
+    infcx: &InferCtxt<'_>,
+) -> bool {
+    struct InferVarFinder<'a, 'b> {
+        vid: ty::TyVid,
+        infcx: &'a InferCtxt<'b>,
+    }
+
+    impl TypeVisitor<TyCtxt<'_>> for InferVarFinder<'_, '_> {
+        type Result = ControlFlow<()>;
+
+        fn visit_ty(&mut self, t: Ty<'_>) -> Self::Result {
+            match t.kind() {
+                &ty::Infer(ty::InferTy::TyVar(vid)) => {
+                    if self.infcx.sub_unification_table_root_var(vid) == self.vid {
+                        ControlFlow::Break(())
+                    } else {
+                        ControlFlow::Continue(())
+                    }
+                }
+                _ => t.super_visit_with(self),
+            }
+        }
+    }
+
+    t.visit_with(&mut InferVarFinder { vid: infcx.sub_unification_table_root_var(vid), infcx })
+        .is_break()
 }

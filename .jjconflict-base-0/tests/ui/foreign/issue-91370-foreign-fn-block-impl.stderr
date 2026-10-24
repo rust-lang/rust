@@ -1,0 +1,19 @@
+error: incorrect function inside `extern` block
+  --> $DIR/issue-91370-foreign-fn-block-impl.rs:5:8
+   |
+LL |   extern "C" {
+   |   ---------- `extern` blocks define existing foreign functions and functions inside of them cannot have a body
+LL |
+LL |       fn f() {
+   |  ________^___-
+   | |        |
+   | |        cannot have a body
+...  |
+LL | |     }
+   | |_____- help: remove the invalid body: `;`
+   |
+   = help: you might have meant to write a function accessible through FFI, which can be done by writing `extern fn` outside of the `extern` block
+   = note: for more information, visit https://doc.rust-lang.org/std/keyword.extern.html
+
+error: aborting due to 1 previous error
+

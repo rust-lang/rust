@@ -1,0 +1,19 @@
+error: this item has comments with 4 forward slashes (`////`). These look like doc comments, but they aren't
+  --> tests/ui/four_forward_slashes_first_line.rs:1:1
+   |
+LL | / //// borked doc comment on the first line. doesn't combust!
+LL | |
+LL | | fn a() {}
+   | |_^
+   |
+   = note: `-D clippy::four-forward-slashes` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::four_forward_slashes)]`
+help: make this a doc comment by removing one `/`
+   |
+LL - //// borked doc comment on the first line. doesn't combust!
+LL -
+LL + /// borked doc comment on the first line. doesn't combust!
+   |
+
+error: aborting due to 1 previous error
+

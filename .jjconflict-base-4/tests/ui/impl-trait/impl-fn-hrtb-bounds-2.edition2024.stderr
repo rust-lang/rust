@@ -1,0 +1,15 @@
+error[E0657]: `impl Trait` cannot capture higher-ranked lifetime from outer `impl Trait`
+  --> $DIR/impl-fn-hrtb-bounds-2.rs:7:27
+   |
+LL | fn a() -> impl Fn(&u8) -> impl Debug {
+   |                           ^^^^^^^^^^ `impl Trait` implicitly captures all lifetimes in scope
+   |
+note: lifetime declared here
+  --> $DIR/impl-fn-hrtb-bounds-2.rs:7:19
+   |
+LL | fn a() -> impl Fn(&u8) -> impl Debug {
+   |                   ^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0657`.

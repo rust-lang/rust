@@ -1,0 +1,2 @@
+error: `-C link-self-contained=-linker` is unstable on the `x86_64-unknown-linux-musl` target. The `-Z unstable-options` flag must also be passed to use it on this target
+

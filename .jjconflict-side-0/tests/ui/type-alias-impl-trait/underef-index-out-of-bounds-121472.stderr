@@ -1,0 +1,31 @@
+error: unconstrained opaque type
+  --> $DIR/underef-index-out-of-bounds-121472.rs:7:26
+   |
+LL |     pub type Alias<'a> = impl T;
+   |                          ^^^^^^
+   |
+   = note: `Alias` must be used in combination with a concrete type within the same crate
+
+error[E0308]: mismatched types
+  --> $DIR/underef-index-out-of-bounds-121472.rs:10:31
+   |
+LL |     pub type Alias<'a> = impl T;
+   |                          ------ the expected opaque type
+...
+LL |         super::with_positive(|&n| ());
+   |                               ^^
+   |                               |
+   |                               expected opaque type, found `&_`
+   |                               expected due to this
+   |
+   = note: expected opaque type `foo::Alias<'_>`
+                found reference `&_`
+help: consider removing `&` from the pattern
+   |
+LL -         super::with_positive(|&n| ());
+LL +         super::with_positive(|n| ());
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

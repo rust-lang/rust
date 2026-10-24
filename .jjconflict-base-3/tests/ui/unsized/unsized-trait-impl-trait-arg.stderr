@@ -1,0 +1,36 @@
+error[E0046]: not all trait items implemented, missing: `foo`
+  --> $DIR/unsized-trait-impl-trait-arg.rs:8:1
+   |
+LL |     fn foo(&self, z: Z);
+   |     -------------------- `foo` from trait
+...
+LL | impl<X: ?Sized> T2<X> for S4<X> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `foo` in implementation
+
+error[E0277]: the size for values of type `X` cannot be known at compilation time
+  --> $DIR/unsized-trait-impl-trait-arg.rs:8:17
+   |
+LL | impl<X: ?Sized> T2<X> for S4<X> {
+   |      -          ^^^^^ doesn't have a size known at compile-time
+   |      |
+   |      this type parameter needs to be `Sized`
+   |
+note: required by an implicit `Sized` bound in `T2`
+  --> $DIR/unsized-trait-impl-trait-arg.rs:4:10
+   |
+LL | trait T2<Z> {
+   |          ^ required by the implicit `Sized` requirement on this type parameter in `T2`
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL - impl<X: ?Sized> T2<X> for S4<X> {
+LL + impl<X> T2<X> for S4<X> {
+   |
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | trait T2<Z: ?Sized> {
+   |           ++++++++
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0046, E0277.
+For more information about an error, try `rustc --explain E0046`.

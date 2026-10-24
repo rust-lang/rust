@@ -1,0 +1,12 @@
+error: mismatched signatures
+  --> $DIR/ret-ty-hr-mismatch.rs:5:5
+   |
+LL |     become bar();
+   |     ^^^^^^^^^^^^
+   |
+   = note: `become` requires caller and callee to have matching signatures
+   = note: caller signature: `fn() -> for<'a> fn(&'a i32)`
+   = note: callee signature: `fn() -> fn(&'static i32)`
+
+error: aborting due to 1 previous error
+

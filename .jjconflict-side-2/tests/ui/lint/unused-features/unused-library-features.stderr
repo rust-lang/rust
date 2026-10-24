@@ -1,0 +1,28 @@
+warning: the feature `is_sorted` has been stable since 1.82.0 and no longer requires an attribute to enable
+  --> $DIR/unused-library-features.rs:7:12
+   |
+LL | #![feature(is_sorted)]
+   |            ^^^^^^^^^
+   |
+   = note: `#[warn(stable_features)]` on by default
+
+error: feature `step_trait` is declared but not used
+  --> $DIR/unused-library-features.rs:5:12
+   |
+LL | #![feature(step_trait)]
+   |            ^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/unused-library-features.rs:2:9
+   |
+LL | #![deny(unused_features)]
+   |         ^^^^^^^^^^^^^^^
+
+error: feature `slice_ptr_get` is declared but not used
+  --> $DIR/unused-library-features.rs:11:28
+   |
+LL | #![cfg_attr(all(), feature(slice_ptr_get))]
+   |                            ^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors; 1 warning emitted
+

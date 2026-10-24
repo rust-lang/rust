@@ -1,0 +1,9 @@
+error[E0275]: overflow evaluating the requirement `<Number as Foo>::Item == _`
+  --> $DIR/projection-bound-cycle.rs:26:5
+   |
+LL |     type Item = str where str: Sized;
+   |     ^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0275`.

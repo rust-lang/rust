@@ -1,0 +1,39 @@
+warning: `#[no_mangle]` attribute may not be used in combination with `#[export_name]`
+  --> $DIR/mixed_export_name_and_no_mangle.rs:6:1
+   |
+LL | #[no_mangle]
+   | ^^^^^^^^^^^^ `#[no_mangle]` is ignored
+   |
+note: `#[export_name]` takes precedence
+  --> $DIR/mixed_export_name_and_no_mangle.rs:8:1
+   |
+LL | #[export_name = "foo"]
+   | ^^^^^^^^^^^^^^^^^^^^^^
+note: the lint level is defined here
+  --> $DIR/mixed_export_name_and_no_mangle.rs:5:9
+   |
+LL | #![warn(unused_attributes)]
+   |         ^^^^^^^^^^^^^^^^^
+help: remove the `#[no_mangle]` attribute
+   |
+LL - #[no_mangle]
+   |
+
+warning: `#[no_mangle]` attribute may not be used in combination with `#[export_name]`
+  --> $DIR/mixed_export_name_and_no_mangle.rs:11:1
+   |
+LL | #[unsafe(no_mangle)]
+   | ^^^^^^^^^^^^^^^^^^^^ `#[no_mangle]` is ignored
+   |
+note: `#[export_name]` takes precedence
+  --> $DIR/mixed_export_name_and_no_mangle.rs:13:1
+   |
+LL | #[export_name = "baz"]
+   | ^^^^^^^^^^^^^^^^^^^^^^
+help: remove the `#[no_mangle]` attribute
+   |
+LL - #[unsafe(no_mangle)]
+   |
+
+warning: 2 warnings emitted
+

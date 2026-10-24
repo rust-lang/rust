@@ -1,0 +1,10 @@
+warning: found async drop types in dependency `async_drop_crate_dep`, but async_drop feature is disabled for `async_drop_run_without_feature`
+  --> $DIR/async-drop-run-without-feature.rs:6:1
+   |
+LL | use std::{
+   | ^
+   |
+   = help: if async drop type will be dropped in a crate without `feature(async_drop)`, sync Drop will be used
+
+warning: 1 warning emitted
+

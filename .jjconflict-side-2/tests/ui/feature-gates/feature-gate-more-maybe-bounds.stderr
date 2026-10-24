@@ -1,0 +1,54 @@
+error: relaxed bounds are not permitted in supertrait bounds
+  --> $DIR/feature-gate-more-maybe-bounds.rs:6:15
+   |
+LL | trait Trait3: ?Trait1 {}
+   |               ^^^^^^^
+
+error: relaxed bounds are not permitted in trait object types
+  --> $DIR/feature-gate-more-maybe-bounds.rs:12:28
+   |
+LL | fn foo(_: Box<dyn Trait1 + ?Trait2>) {}
+   |                            ^^^^^^^
+
+error: bound modifier `?` can only be applied to `Sized`
+  --> $DIR/feature-gate-more-maybe-bounds.rs:6:15
+   |
+LL | trait Trait3: ?Trait1 {}
+   |               ^^^^^^^
+
+error: bound modifier `?` can only be applied to `Sized`
+  --> $DIR/feature-gate-more-maybe-bounds.rs:6:15
+   |
+LL | trait Trait3: ?Trait1 {}
+   |               ^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: bound modifier `?` can only be applied to `Sized`
+  --> $DIR/feature-gate-more-maybe-bounds.rs:6:15
+   |
+LL | trait Trait3: ?Trait1 {}
+   |               ^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: bound modifier `?` can only be applied to `Sized`
+  --> $DIR/feature-gate-more-maybe-bounds.rs:12:28
+   |
+LL | fn foo(_: Box<dyn Trait1 + ?Trait2>) {}
+   |                            ^^^^^^^
+
+error: bound modifier `?` can only be applied to `Sized`
+  --> $DIR/feature-gate-more-maybe-bounds.rs:15:11
+   |
+LL | fn bar<T: ?Trait1 + ?Trait2>(_: T) {}
+   |           ^^^^^^^
+
+error: bound modifier `?` can only be applied to `Sized`
+  --> $DIR/feature-gate-more-maybe-bounds.rs:15:21
+   |
+LL | fn bar<T: ?Trait1 + ?Trait2>(_: T) {}
+   |                     ^^^^^^^
+
+error: aborting due to 8 previous errors
+

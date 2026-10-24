@@ -1,0 +1,66 @@
+error[E0308]: mismatched types
+  --> $DIR/incompatible-captures-without-drop-location.rs:5:14
+   |
+LL |     Square = |b| move || format!("{b}"),
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `isize`, found closure
+   |
+   = note: expected type `isize`
+           found closure `{closure@$DIR/incompatible-captures-without-drop-location.rs:5:14: 5:17}`
+   = note: enum variant discriminant can only be of a primitive type compatible with the enum's `repr`
+
+error[E0308]: mismatched types
+  --> $DIR/incompatible-captures-without-drop-location.rs:10:22
+   |
+LL | static _static: () = |b| move || b;
+   |                 --   ^^^^^^^^^^^^^ expected `()`, found closure
+   |                 |
+   |                 expected because of the type of the static
+   |
+   = note: expected unit type `()`
+                found closure `{closure@$DIR/incompatible-captures-without-drop-location.rs:10:22: 10:25}`
+
+error[E0308]: mismatched types
+  --> $DIR/incompatible-captures-without-drop-location.rs:19:17
+   |
+LL |     let _: () = |b| move || b;
+   |            --   ^^^^^^^^^^^^^ expected `()`, found closure
+   |            |
+   |            expected due to this
+   |
+   = note: expected unit type `()`
+                found closure `{closure@$DIR/incompatible-captures-without-drop-location.rs:19:17: 19:20}`
+
+warning: changes to closure capture in Rust 2021 will affect drop order
+  --> $DIR/incompatible-captures-without-drop-location.rs:19:21
+   |
+LL |     let _: () = |b| move || b;
+   |                     ^^^^^^^ - in Rust 2018, this causes the closure to capture `b`, but in Rust 2021, it has no effect
+...
+LL | }
+   | - in Rust 2018, `b` is dropped here along with the closure, but in Rust 2021 `b` is not part of the closure
+   |
+   = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2021/disjoint-capture-in-closures.html>
+note: the lint level is defined here
+  --> $DIR/incompatible-captures-without-drop-location.rs:18:12
+   |
+LL |     #[warn(rust_2021_incompatible_closure_captures)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: add a dummy let to cause `b` to be fully captured
+   |
+LL |     let _: () = |b| move || { let _ = &b; b };
+   |                             +++++++++++++   +
+
+error[E0308]: mismatched types
+  --> $DIR/incompatible-captures-without-drop-location.rs:15:19
+   |
+LL |     const _: () = |b| move || b;
+   |              --   ^^^^^^^^^^^^^ expected `()`, found closure
+   |              |
+   |              expected because of the type of the constant
+   |
+   = note: expected unit type `()`
+                found closure `{closure@$DIR/incompatible-captures-without-drop-location.rs:15:19: 15:22}`
+
+error: aborting due to 4 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0308`.

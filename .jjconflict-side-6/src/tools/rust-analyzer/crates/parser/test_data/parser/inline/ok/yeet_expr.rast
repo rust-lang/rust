@@ -1,0 +1,31 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          YEET_EXPR
+            DO_KW "do"
+            WHITESPACE " "
+            YEET_KW "yeet"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        YEET_EXPR
+          DO_KW "do"
+          WHITESPACE " "
+          YEET_KW "yeet"
+          WHITESPACE " "
+          LITERAL
+            INT_NUMBER "1"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"

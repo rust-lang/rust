@@ -1,0 +1,26 @@
+error[E0308]: mismatched types
+  --> $DIR/shadowed-lplace-method-2.rs:22:17
+   |
+LL |     *x.foo(0) = ();
+   |     ---------   ^^ expected `X`, found `()`
+   |     |
+   |     expected due to the type of this binding
+   |
+note: the `foo` call is resolved to the method in `X`, shadowing the method of the same name on trait `A`
+  --> $DIR/shadowed-lplace-method-2.rs:22:8
+   |
+LL |     *x.foo(0) = ();
+   |        ^^^ refers to `X::foo`
+help: you might have meant to call the other method; you can use the fully-qualified path to call it explicitly
+   |
+LL -     *x.foo(0) = ();
+LL +     *<_ as A>::foo(&mut x, 0) = ();
+   |
+help: try wrapping the expression in `X`
+   |
+LL |     *x.foo(0) = X { x: () };
+   |                 ++++++    +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

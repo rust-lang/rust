@@ -1,0 +1,21 @@
+error[E0308]: `match` arms have incompatible types
+  --> $DIR/issue-67273-assignment-match-prior-arm-bool-expected-unit.rs:22:14
+   |
+LL | /     match i {
+LL | |         // Add `bool` to the overall `coercion`.
+LL | |         0 => true,
+   | |              ---- this is found to be of type `bool`
+...  |
+LL | |         1 => true,
+   | |              ---- this is found to be of type `bool`
+...  |
+LL | |         2 => i = 1,
+   | |              ^^^^^ expected `bool`, found `()`
+...  |
+LL | |         _ => (),
+LL | |     }
+   | |_____- `match` arms have incompatible types
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

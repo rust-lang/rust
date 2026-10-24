@@ -1,0 +1,18 @@
+error: encountered `const_allocate` pointer in final value that was not made global
+  --> $DIR/ptr_not_made_global.rs:10:1
+   |
+LL | const FOO: &i32 = foo();
+   | ^^^^^^^^^^^^^^^
+   |
+   = note: use `const_make_global` to turn allocated pointers into immutable globals before returning
+
+error: encountered `const_allocate` pointer in final value that was not made global
+  --> $DIR/ptr_not_made_global.rs:12:1
+   |
+LL | const FOO_RAW: *const i32 = foo();
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: use `const_make_global` to turn allocated pointers into immutable globals before returning
+
+error: aborting due to 2 previous errors
+

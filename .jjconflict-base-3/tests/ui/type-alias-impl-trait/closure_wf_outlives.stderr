@@ -1,0 +1,67 @@
+error[E0478]: lifetime bound not satisfied
+  --> $DIR/closure_wf_outlives.rs:21:9
+   |
+LL |         || {}
+   |         ^^^^^
+   |
+note: lifetime parameter instantiated with the lifetime `'a` as defined here
+  --> $DIR/closure_wf_outlives.rs:14:17
+   |
+LL |     type Opaque<'a, 'b> = impl Sized + 'a + 'b;
+   |                 ^^
+note: but lifetime parameter must outlive the lifetime `'b` as defined here
+  --> $DIR/closure_wf_outlives.rs:14:21
+   |
+LL |     type Opaque<'a, 'b> = impl Sized + 'a + 'b;
+   |                     ^^
+
+error[E0803]: cannot infer an appropriate lifetime due to conflicting requirements
+  --> $DIR/closure_wf_outlives.rs:36:9
+   |
+LL |         || {}
+   |         ^^^^^
+   |
+note: first, the lifetime cannot outlive the lifetime `'a` as defined here...
+  --> $DIR/closure_wf_outlives.rs:28:17
+   |
+LL |     type Opaque<'a, 'b> = impl Sized + 'a + 'b;
+   |                 ^^
+note: ...so that the declared lifetime parameter bounds are satisfied
+  --> $DIR/closure_wf_outlives.rs:36:9
+   |
+LL |         || {}
+   |         ^^^^^
+note: but, the lifetime must be valid for the lifetime `'b` as defined here...
+  --> $DIR/closure_wf_outlives.rs:28:21
+   |
+LL |     type Opaque<'a, 'b> = impl Sized + 'a + 'b;
+   |                     ^^
+note: ...so that the declared lifetime parameter bounds are satisfied
+  --> $DIR/closure_wf_outlives.rs:36:9
+   |
+LL |         || {}
+   |         ^^^^^
+
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/closure_wf_outlives.rs:64:9
+   |
+LL |         || {}
+   |         ^^^^^
+   |         |
+   |         the parameter type `T` must be valid for the static lifetime...
+   |         ...so that the type `T` will meet its required lifetime bounds...
+   |
+note: ...that is required by this bound
+  --> $DIR/closure_wf_outlives.rs:62:12
+   |
+LL |         T: 'static,
+   |            ^^^^^^^
+help: consider adding an explicit lifetime bound
+   |
+LL |     type Opaque<T: 'static> = impl Sized;
+   |                  +++++++++
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0310, E0478, E0803.
+For more information about an error, try `rustc --explain E0310`.

@@ -1,0 +1,49 @@
+error: First Pass analysis includes:
+  --> $DIR/deep-multilevel-tuple.rs:9:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let x = &t.0.0.0;
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Capturing t[(0, 0),(0, 0),(0, 0)] -> Immutable
+  --> $DIR/deep-multilevel-tuple.rs:12:18
+   |
+LL |         let x = &t.0.0.0;
+   |                  ^^^^^^^
+note: Capturing t[(1, 0),(1, 0),(1, 0)] -> Mutable
+  --> $DIR/deep-multilevel-tuple.rs:14:9
+   |
+LL |         t.1.1.1 = 9;
+   |         ^^^^^^^
+note: Capturing t[] -> Immutable
+  --> $DIR/deep-multilevel-tuple.rs:17:26
+   |
+LL |         println!("{:?}", t);
+   |                          ^
+
+error: Min Capture analysis includes:
+  --> $DIR/deep-multilevel-tuple.rs:9:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let x = &t.0.0.0;
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture t[] -> Mutable
+  --> $DIR/deep-multilevel-tuple.rs:14:9
+   |
+LL |         t.1.1.1 = 9;
+   |         ^^^^^^^ t[] captured as Mutable here
+...
+LL |         println!("{:?}", t);
+   |                          ^ t[] used here
+
+error: aborting due to 2 previous errors
+

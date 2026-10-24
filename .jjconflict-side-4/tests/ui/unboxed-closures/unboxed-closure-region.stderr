@@ -1,0 +1,21 @@
+error[E0373]: closure may outlive the current block, but it borrows `x`, which is owned by the current block
+  --> $DIR/unboxed-closure-region.rs:8:9
+   |
+LL |         || x
+   |         ^^ - `x` is borrowed here
+   |         |
+   |         may outlive borrowed value `x`
+   |
+note: block requires argument type to outlive `'1`
+  --> $DIR/unboxed-closure-region.rs:6:9
+   |
+LL |     let _f = {
+   |         ^^
+help: to force the closure to take ownership of `x` (and any other referenced variables), use the `move` keyword
+   |
+LL |         move || x
+   |         ++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0373`.

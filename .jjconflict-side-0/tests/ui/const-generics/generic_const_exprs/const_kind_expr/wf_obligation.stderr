@@ -1,0 +1,23 @@
+error[E0308]: mismatched types
+  --> $DIR/wf_obligation.rs:17:17
+   |
+LL |     foo::<_, L>([(); L + 1 + L]);
+   |                 ^^^^^^^^^^^^^^^ expected `N + 1 + M`, found `L + 1 + L`
+   |
+   = note: expected constant `N + 1 + M`
+              found constant `L + 1 + L`
+
+error: unconstrained generic constant
+  --> $DIR/wf_obligation.rs:17:22
+   |
+LL |     foo::<_, L>([(); L + 1 + L]);
+   |                      ^^^^^^^^^
+   |
+help: try adding a `where` bound
+   |
+LL |     [(); (L - 1) + 1 + L]:, [(); L + 1 + L]:
+   |                             ++++++++++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

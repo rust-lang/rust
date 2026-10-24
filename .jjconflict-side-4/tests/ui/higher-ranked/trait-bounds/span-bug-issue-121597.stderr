@@ -1,0 +1,18 @@
+error[E0038]: the trait `Foo` is not dyn compatible
+  --> $DIR/span-bug-issue-121597.rs:14:17
+   |
+LL |     let x: &dyn Foo = &();
+   |                 ^^^ `Foo` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/span-bug-issue-121597.rs:4:12
+   |
+LL | trait Foo: for<T> Bar<T> {}
+   |       ---  ^^^^^^^^^^^^^ ...because where clause cannot reference non-lifetime `for<...>` variables
+   |       |
+   |       this trait is not dyn compatible...
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0038`.

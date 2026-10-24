@@ -1,0 +1,41 @@
+error: `into_iter` call on a collection with only one item
+  --> tests/ui/iter_on_single_items.rs:5:16
+   |
+LL |     assert_eq!([123].into_iter().next(), Some(123));
+   |                ^^^^^^^^^^^^^^^^^ help: try: `std::iter::once(123)`
+   |
+   = note: `-D clippy::iter-on-single-items` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::iter_on_single_items)]`
+
+error: `iter_mut` call on a collection with only one item
+  --> tests/ui/iter_on_single_items.rs:7:16
+   |
+LL |     assert_eq!([123].iter_mut().next(), Some(&mut 123));
+   |                ^^^^^^^^^^^^^^^^ help: try: `std::iter::once(&mut 123)`
+
+error: `iter` call on a collection with only one item
+  --> tests/ui/iter_on_single_items.rs:9:16
+   |
+LL |     assert_eq!([123].iter().next(), Some(&123));
+   |                ^^^^^^^^^^^^ help: try: `std::iter::once(&123)`
+
+error: `into_iter` call on a collection with only one item
+  --> tests/ui/iter_on_single_items.rs:11:16
+   |
+LL |     assert_eq!(Some(123).into_iter().next(), Some(123));
+   |                ^^^^^^^^^^^^^^^^^^^^^ help: try: `std::iter::once(123)`
+
+error: `iter_mut` call on a collection with only one item
+  --> tests/ui/iter_on_single_items.rs:13:16
+   |
+LL |     assert_eq!(Some(123).iter_mut().next(), Some(&mut 123));
+   |                ^^^^^^^^^^^^^^^^^^^^ help: try: `std::iter::once(&mut 123)`
+
+error: `iter` call on a collection with only one item
+  --> tests/ui/iter_on_single_items.rs:15:16
+   |
+LL |     assert_eq!(Some(123).iter().next(), Some(&123));
+   |                ^^^^^^^^^^^^^^^^ help: try: `std::iter::once(&123)`
+
+error: aborting due to 6 previous errors
+
