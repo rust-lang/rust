@@ -22,7 +22,7 @@ use rustc_codegen_ssa::{MemFlags, RetagInfo};
 use rustc_data_structures::fx::FxHashSet;
 #[cfg(feature = "master")]
 use rustc_middle::ty::layout::FnAbiOf;
-use rustc_middle::ty::layout::LayoutOf;
+use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_session::config::OptLevel;
 use rustc_span::{Span, Symbol, bug, span_bug, sym};
@@ -556,6 +556,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
         &mut self,
         instance: ty::Instance<'tcx>,
         args: &[OperandRef<'tcx, Self::Value>],
+        memory_return_place: Option<PlaceValue<Self::Value>>,
         is_cleanup: bool,
     ) -> Self::Value {
         let func = if let Some(&func) = self.intrinsic_instances.borrow().get(&instance) {
@@ -602,7 +603,33 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
             self.apply_attrs_to_cleanup_callsite(llret);
         }
 
-        llret
+        let fn_sig = match *instance.ty(self.tcx, self.typing_env()).kind() {
+            ty::FnDef(def_id, args) => self.tcx.instantiate_bound_regions_with_erased(
+                self.tcx
+                    .fn_sig(def_id)
+                    .instantiate(self.tcx, args.no_bound_vars().unwrap())
+                    .skip_norm_wip(),
+            ),
+            _ => unreachable!(),
+        };
+        let ret_layout = self.layout_of(fn_sig.output());
+
+        if !ret_layout.is_zst() && ret_layout.is_aggregate() {
+            let fields =
+                rustc_codegen_ssa::mir::intrinsic_return_struct_non_zst_fields(self.cx, ret_layout)
+                    .into_iter()
+                    .enumerate()
+                    .map(|(i, (_, offset))| (offset, self.extract_value(llret, i as u64)))
+                    .collect();
+            rustc_codegen_ssa::mir::store_intrinsic_return_struct(
+                self,
+                ret_layout,
+                memory_return_place,
+                fields,
+            )
+        } else {
+            llret
+        }
     }
 
     fn abort_immediate(&mut self) {
