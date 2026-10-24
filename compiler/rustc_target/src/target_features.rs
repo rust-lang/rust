@@ -703,7 +703,11 @@ static RISCV_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     //
     // See discussion in the PR adding Zmmul: https://github.com/rust-lang/rust/pull/162552
     ("m", Stable, &["zmmul"]),
-    ("relax", Unstable(sym::riscv_target_feature), &[]),
+    (
+        "relax",
+        Stability::InternalOnly { reason: "enabled by default in target specs", hard_error: true },
+        &[],
+    ),
     (
         "rva23u64",
         Unstable(sym::riscv_target_feature),
