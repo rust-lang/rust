@@ -8,6 +8,10 @@ on:
 
 permissions: {}
 
+defaults:
+  run:
+    shell: bash
+
 env:
   CARGO_NET_RETRY: 10
   RUSTUP_MAX_RETRIES: 10
