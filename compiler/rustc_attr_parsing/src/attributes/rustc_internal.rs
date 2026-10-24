@@ -1,10 +1,10 @@
 use std::path::PathBuf;
 
-use rustc_ast::{GenericParamKind, ItemKind, LitIntType, LitKind, MetaItemLit};
+use rustc_ast::{GenericParamKind, ItemKind, LitIntType, LitKind, MetaItemLit, VariantData};
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_attr_ir::{
-    BorrowckGraphvizFormatKind, CguFields, CguKind, RustcAssertVarianceKind, RustcCleanAttribute,
-    RustcCleanQueries, RustcMirKind,
+    BorrowckGraphvizFormatKind, CguFields, CguKind, RustcCleanAttribute, RustcCleanQueries,
+    RustcMirKind, RustcVarianceKind,
 };
 use rustc_data_structures::fx::FxHashMap;
 use rustc_feature::AttributeStability;
@@ -1186,36 +1186,75 @@ impl SingleAttributeParser for RustcAssertVarianceParser {
         template!(OneOf: &[sym::covariant, sym::invariant, sym::contravariant, sym::bivariant]);
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
-        let arg = cx.expect_single_element_list(args, cx.attr_span)?;
-
-        let mut fail_arg = |span| {
-            cx.adcx().expected_specific_argument(
-                span,
-                &[sym::covariant, sym::invariant, sym::contravariant, sym::bivariant],
-            )
-        };
-
-        let Some(arg) = arg.meta_item_no_args() else {
-            fail_arg(arg.span());
-            return None;
-        };
-
-        let Some(arg) = arg.ident() else {
-            fail_arg(arg.span());
-            return None;
-        };
-
-        let kind = match arg.name {
-            sym::covariant => RustcAssertVarianceKind::Covariant,
-            sym::invariant => RustcAssertVarianceKind::Invariant,
-            sym::contravariant => RustcAssertVarianceKind::Contravariant,
-            sym::bivariant => RustcAssertVarianceKind::Bivariant,
-            _ => {
-                fail_arg(arg.span);
-                return None;
-            }
-        };
-
+        let kind = parse_variance(cx, args)?;
         Some(AttributeKind::RustcAssertVariance { span: cx.attr_span, kind })
+    }
+}
+
+pub(crate) struct RustcForceVarianceParser;
+
+impl SingleAttributeParser for RustcForceVarianceParser {
+    const PATH: &[Symbol] = &[sym::rustc_force_variance];
+    const ALLOWED_TARGETS: AllowedTargets<'_> =
+        AllowedTargets::AllowList(&[Allow(Target::TypeParam), Allow(Target::LifetimeParam)]);
+    const TEMPLATE: AttributeTemplate =
+        template!(OneOf: &[sym::covariant, sym::invariant, sym::contravariant, sym::bivariant]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
+
+    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
+        let kind = parse_variance(cx, args)?;
+        Some(AttributeKind::RustcForceVariance(kind))
+    }
+}
+
+fn parse_variance(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<RustcVarianceKind> {
+    let arg = cx.expect_single_element_list(args, cx.attr_span)?;
+
+    let mut fail_arg = |span| {
+        cx.adcx().expected_specific_argument(
+            span,
+            &[sym::covariant, sym::invariant, sym::contravariant, sym::bivariant],
+        )
+    };
+
+    let Some(arg) = arg.meta_item_no_args() else {
+        fail_arg(arg.span());
+        return None;
+    };
+
+    let Some(arg) = arg.ident() else {
+        fail_arg(arg.span());
+        return None;
+    };
+
+    let kind = match arg.name {
+        sym::covariant => RustcVarianceKind::Covariant,
+        sym::invariant => RustcVarianceKind::Invariant,
+        sym::contravariant => RustcVarianceKind::Contravariant,
+        sym::bivariant => RustcVarianceKind::Bivariant,
+        _ => {
+            fail_arg(arg.span);
+            return None;
+        }
+    };
+
+    Some(kind)
+}
+
+pub(crate) struct RustcPhantomMarkerParser;
+
+impl NoArgsAttributeParser for RustcPhantomMarkerParser {
+    const PATH: &[Symbol] = &[sym::rustc_phantom_marker];
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcPhantomMarker;
+
+    fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
+        let Some(item) = cx.target_item else { return };
+        if let ItemKind::Struct(_, _, data) = &item.kind
+            && !matches!(data, VariantData::Unit(_))
+        {
+            cx.emit_err(crate::diagnostics::InvalidPhantomMarkerTarget { attr_span });
+        }
     }
 }

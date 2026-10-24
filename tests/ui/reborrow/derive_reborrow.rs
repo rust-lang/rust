@@ -3,10 +3,10 @@
 //! Test that deriving Reborrow works for named fields, tuple fields, with generics behind
 //! referenes, and for markers.
 
-#![feature(reborrow)]
+#![feature(reborrow, phantom_variance_markers)]
 #![allow(dead_code)]
 
-use std::marker::{PhantomData, Reborrow};
+use std::marker::*;
 
 #[derive(Reborrow)]
 struct Named<'a, T> {
@@ -25,7 +25,15 @@ where
 }
 
 #[derive(Reborrow)]
-struct Marker<'a>(PhantomData<&'a ()>);
+struct Marker<'a>(
+    PhantomData<&'a ()>,
+    PhantomCovariant<&'a ()>,
+    PhantomContravariant<u32>,
+    PhantomInvariant<u32>,
+    PhantomCovariantLifetime<'a>,
+    PhantomContravariantLifetime<'static>,
+    PhantomInvariantLifetime<'static>,
+);
 
 fn take_named(_: Named<'_, ()>) {}
 fn take_tuple(_: Tuple<'_, ()>) {}
@@ -47,7 +55,15 @@ fn main() {
     take_generic(generic);
     take_generic(generic);
 
-    let marker = Marker(PhantomData);
+    let marker = Marker(
+        PhantomData,
+        PhantomCovariant,
+        PhantomContravariant,
+        PhantomInvariant,
+        PhantomCovariantLifetime,
+        PhantomContravariantLifetime,
+        PhantomInvariantLifetime,
+    );
     let _ = take_marker(marker);
     let _ = take_marker(marker);
 }
