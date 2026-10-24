@@ -18,6 +18,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
       - name: Run rustfmt
         run: cargo fmt --all -- --check
 
@@ -48,6 +50,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
       - name: Setup Rust
         run: rustup target add ${{ matrix.target }}
       - name: Run Clippy
@@ -81,6 +85,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
       - name: Setup Rust
         run: rustup target add ${{ matrix.target }}
 
@@ -136,6 +142,8 @@ jobs:
           - x86_64-apple-darwin
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
       - name: Setup Rust
         run: rustup target add ${{ matrix.target }}
 
@@ -164,6 +172,8 @@ jobs:
           - { name: simd128, RUSTFLAGS: "-C target-feature=+simd128" }
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
       - name: Install wasm-pack
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
       - name: Test (debug)
@@ -209,6 +219,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
       - name: Setup Rust
         run: rustup target add ${{ matrix.target }}
 
@@ -249,6 +261,8 @@ jobs:
       PROPTEST_CASES: 16
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Install cargo-nextest
         uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.87.31
