@@ -179,6 +179,11 @@ where
                 arg.cast_to(cast_target);
             }
         }
+    } else if arg.is_ignore() {
+        if pad_i32 > 0 {
+            // Use pointer indirection as padding for 16-byte-aligned ZSTs.
+            arg.make_indirect_from_ignore();
+        }
     } else {
         match arg.layout.fields {
             FieldsShape::Primitive => unreachable!(),
@@ -245,7 +250,7 @@ where
     }
 
     for arg in fn_abi.args.iter_mut() {
-        if arg.is_ignore() || !arg.layout.is_sized() {
+        if !arg.layout.is_sized() {
             continue;
         }
         classify_arg(cx, arg, &mut offset);
