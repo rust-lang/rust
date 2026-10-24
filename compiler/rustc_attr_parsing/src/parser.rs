@@ -30,8 +30,9 @@ use thin_vec::ThinVec;
 
 use crate::ShouldEmit;
 use crate::diagnostics::{
-    AdditionalCommaSuggestion, ExpectedComma, InvalidMetaItem, InvalidMetaItemQuoteIdentSugg,
-    InvalidMetaItemRemoveNegSugg, MetaBadDelim, MetaBadDelimSugg, SuffixedLiteralInAttribute,
+    AdditionalCommaSuggestion, AttributeInEarlyAttribute, ExpectedComma, InvalidMetaItem,
+    InvalidMetaItemQuoteIdentSugg, InvalidMetaItemRemoveNegSugg, MetaBadDelim, MetaBadDelimSugg,
+    SuffixedLiteralInAttribute,
 };
 
 #[derive(Clone, Debug)]
@@ -175,7 +176,7 @@ impl ArgParser {
             }
             AttrArgs::Eq { eq_span, expr } => Self::NameValue(NameValueParser {
                 eq_span: *eq_span,
-                value: expr_to_lit(psess, expr, expr.span, should_emit)
+                value: expr_to_lit(psess, expr, should_emit)
                     .map_err(|e| should_emit.emit_err(e))
                     .ok()??,
                 value_span: expr.span,
@@ -408,9 +409,16 @@ impl NameValueParser {
 fn expr_to_lit<'sess>(
     psess: &'sess ParseSess,
     expr: &Expr,
-    span: Span,
     should_emit: ShouldEmit,
 ) -> PResult<'sess, Option<MetaItemLit>> {
+    // FIXME: HACK: Misappropriating `ShouldEmit` here!
+    if let ShouldEmit::EarlyFatal { .. } = should_emit
+        && let Some(attr) = expr.attrs.first()
+    {
+        let span = attr.span.to(expr.attrs.last().unwrap().span);
+        return Err(psess.dcx().create_err(AttributeInEarlyAttribute { span }));
+    }
+
     if let ExprKind::Lit(token_lit) = expr.kind {
         let res = MetaItemLit::from_token_lit(token_lit, expr.span);
         match res {
@@ -451,7 +459,7 @@ fn expr_to_lit<'sess>(
         // - `#[foo = include_str!("nonexistent-file.rs")]`:
         //   results in `ast::ExprKind::Err`.
         let msg = "attribute value must be a literal";
-        let mut err = psess.dcx().struct_span_err(span, msg);
+        let mut err = psess.dcx().struct_span_err(expr.span, msg);
 
         // Suggest adding quotation marks to turn an identifier into a string literal
         if let ExprKind::Path(None, ref path) = expr.kind
