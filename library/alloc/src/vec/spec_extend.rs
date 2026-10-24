@@ -52,6 +52,7 @@ impl<'a, T: 'a, A: Allocator> SpecExtend<&'a T, slice::Iter<'a, T>> for Vec<T, A
 where
     T: TrivialClone,
 {
+    #[inline]
     fn spec_extend(&mut self, iterator: slice::Iter<'a, T>) {
         let slice = iterator.as_slice();
         // ignore-tidy-undocumented-unsafe
