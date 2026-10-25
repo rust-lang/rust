@@ -919,7 +919,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 )?;
                 let key = this.read_scalar(key)?.to_bits(key.layout.size)?;
                 let active_thread = this.active_thread();
-                let ptr = this.machine.tls.load_tls(key, active_thread)?;
+                let ptr = this.machine.tls.load_tls_key(key, active_thread)?;
                 this.write_pointer(ptr, dest)?;
             }
             "pthread_setspecific" => {
@@ -930,7 +930,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let key = this.read_scalar(key)?.to_bits(key.layout.size)?;
                 let active_thread = this.active_thread();
                 let new_data = this.read_pointer(new_ptr)?;
-                this.machine.tls.store_tls(key, active_thread, new_data)?;
+                this.machine.tls.store_tls_key(key, active_thread, new_data)?;
 
                 // Return success (`0`).
                 this.write_null(dest)?;
