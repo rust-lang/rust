@@ -681,7 +681,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Create the new thread
         let current_span = this.machine.current_user_relevant_span();
         let new_thread_id = this.machine.threads.create_thread({
-            let mut state = tls::TlsDtorsState::default();
+            let mut state = tls::TlsDtorsState::new_for_thread_finish();
             Box::new(move |m| state.on_stack_empty(m))
         });
         match &mut this.machine.data_race {

@@ -31,7 +31,7 @@ struct RunningPthreadDtorState {
 
 #[derive(Default, Debug)]
 struct RunningWindowsDtorState {
-    /// The last TlsKey for which a TLS destructor ran. `None` means that we
+    /// The last TlsKey for which a TLS (really, FLS) destructor ran. `None` means that we
     /// have not run a TLS destructor yet. This is used to clear the TLS value after the dtor returned.
     last_key: Option<TlsKey>,
     // Keys that have destructors that we still need to run.
@@ -225,17 +225,20 @@ impl VisitProvenance for TlsData<'_> {
     }
 }
 
-#[derive(Debug, Default)]
-pub struct TlsDtorsState<'tcx>(TlsDtorsStatePriv<'tcx>);
+#[derive(Debug)]
+pub struct TlsDtorsState<'tcx> {
+    state: TlsDtorsStatePriv<'tcx>,
+    /// Whether this is for program exit vs thread finish.
+    for_exit: bool,
+}
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 enum TlsDtorsStatePriv<'tcx> {
-    #[default]
     Init,
-    InitForExit,
-    PthreadDtors(RunningPthreadDtorState),
-    AfterPthreadDtors,
+    /// Running native thread destructors (`TlsData::thread_atexit`).
     ThreadAtexit,
+    /// Running pthread key destructors.
+    PthreadDtors(RunningPthreadDtorState),
     /// For Windows, we support two different ways dtors can be registered.
     /// 1. Functions that are registered via the `FlsAlloc` function, which are invoked one by one.
     /// 2. Functions from the magic `.CRT$XLB` linker section.
@@ -248,7 +251,13 @@ impl<'tcx> TlsDtorsState<'tcx> {
     /// Returns the state we should start running when the program is exiting.
     pub fn new_for_exit() -> Self {
         // Pthread destructors get skipped on `exit`.
-        Self(TlsDtorsStatePriv::InitForExit)
+        Self { state: TlsDtorsStatePriv::Init, for_exit: true }
+    }
+
+    /// Returns the state we should start running when a thread finished running.
+    pub fn new_for_thread_finish() -> Self {
+        // Pthread destructors get skipped on `exit`.
+        Self { state: TlsDtorsStatePriv::Init, for_exit: false }
     }
 
     pub fn on_stack_empty(
@@ -257,43 +266,35 @@ impl<'tcx> TlsDtorsState<'tcx> {
     ) -> InterpResult<'tcx, Poll<()>> {
         use TlsDtorsStatePriv::*;
         let new_state = 'new_state: {
-            match &mut self.0 {
+            match &mut self.state {
                 Init => {
-                    if this.target_os_is_unix() {
-                        // We run the pthread destructors first, since they get skipped on `exit`.
-                        break 'new_state PthreadDtors(Default::default());
-                    } else {
-                        break 'new_state AfterPthreadDtors;
-                    }
+                    break 'new_state ThreadAtexit;
                 }
-                InitForExit => {
-                    // We skip the pthread dtors, but we mark them as static roots so they do not
-                    // acount as leaked.
-                    if this.target_os_is_unix() {
-                        this.machine.tls.leak_all_thread_tls(
-                            this.active_thread(),
-                            &mut this.machine.static_roots,
-                        );
-                    }
-                    break 'new_state AfterPthreadDtors;
-                }
-                PthreadDtors(state) => {
-                    match this.schedule_next_pthread_tls_dtor(state)? {
-                        Poll::Pending => return interp_ok(Poll::Pending), // just keep going
-                        Poll::Ready(()) => break 'new_state AfterPthreadDtors,
-                    }
-                }
-                AfterPthreadDtors => {
-                    // Next, we run the platform-specific destructors
+                ThreadAtexit => {
+                    let Poll::Ready(()) = this.schedule_thread_atexit()? else {
+                        return interp_ok(Poll::Pending);
+                    };
+                    // What's next? Depends on the target!
                     match this.tcx.sess.target.os {
-                        Os::MacOs | Os::Linux => {
-                            break 'new_state ThreadAtexit;
+                        _ if this.target_os_is_unix() => {
+                            // On thread finish, we run pthread dtors. But not on exit!
+                            if self.for_exit {
+                                // Leak pthread dtor contents, like thread-local statics.
+                                this.machine.tls.leak_all_thread_tls(
+                                    this.active_thread(),
+                                    &mut this.machine.static_roots,
+                                );
+                                break 'new_state Done;
+                            } else {
+                                break 'new_state PthreadDtors(Default::default());
+                            }
                         }
                         Os::Windows => {
                             // Determine which destructors to run.
                             let dtors = this.lookup_windows_tls_dtors()?;
 
-                            // Fetch fls keys that have destructors. Keys registered during thread exit will not have their destructor called.
+                            // Fetch fls keys that have destructors. Keys registered during thread
+                            // exit may or may not have their destructor called.
                             // See also: `schedule_next_windows_fls_dtor`.
                             let fls_keys_with_dtors = this.lookup_windows_fls_keys_with_dtors()?;
 
@@ -311,21 +312,19 @@ impl<'tcx> TlsDtorsState<'tcx> {
                         }
                     }
                 }
-                ThreadAtexit => {
-                    match this.schedule_thread_atexit()? {
-                        Poll::Pending => return interp_ok(Poll::Pending),
-                        // After all macOS destructors are run, the system switches
-                        // to destroying the pthread destructors.
-                        Poll::Ready(()) => break 'new_state Done,
-                    }
+                PthreadDtors(state) => {
+                    let Poll::Ready(()) = this.schedule_next_pthread_tls_dtor(state)? else {
+                        return interp_ok(Poll::Pending);
+                    };
+                    break 'new_state Done;
                 }
                 WindowsDtors(state, dtors) => {
                     // Fls destructors are scheduled before the tls callback.
-                    match this.schedule_next_windows_fls_dtor(state)? {
-                        Poll::Pending => return interp_ok(Poll::Pending), // just keep going
-                        Poll::Ready(()) => {}
-                    }
+                    let Poll::Ready(()) = this.schedule_next_windows_fls_dtor(state)? else {
+                        return interp_ok(Poll::Pending);
+                    };
 
+                    // So if there's another callback to run
                     if let Some((dtor, span)) = dtors.pop() {
                         this.schedule_windows_tls_dtor(dtor, span)?;
                         return interp_ok(Poll::Pending); // we stay in this state (but `dtors` got shorter)
@@ -341,7 +340,7 @@ impl<'tcx> TlsDtorsState<'tcx> {
             }
         };
 
-        self.0 = new_state;
+        self.state = new_state;
         interp_ok(Poll::Pending)
     }
 }
