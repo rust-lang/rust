@@ -1433,7 +1433,7 @@ impl<'a> Parser<'a> {
             |p| p.parse_expr_res(restrictions.intersection(Restrictions::ALLOW_LET)),
         ) {
             Ok(x) => x,
-            Err(err) => {
+            Err(err) if self.may_recover() => {
                 return Ok(self.recover_seq_parse_error(
                     exp!(OpenParen),
                     exp!(CloseParen),
@@ -1441,6 +1441,7 @@ impl<'a> Parser<'a> {
                     err,
                 ));
             }
+            Err(err) => return Err(err),
         };
         let kind = if es.len() == 1 && matches!(trailing_comma, Trailing::No) {
             // `(e)` is parenthesized `e`.
