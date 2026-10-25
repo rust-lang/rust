@@ -4,8 +4,8 @@ The key observation here is that the Rust trait system is basically a kind of lo
 and it can be mapped onto standard logical inference
 rules.
 We can then look for solutions to those inference rules in a
-very similar fashion to how e.g. a [Prolog] solver works. It turns out
-that we can't *quite* use Prolog rules (also called Horn clauses) but
+very similar fashion to how e.g. a [Prolog] solver works.
+It turns out that we can't *quite* use Prolog rules (also called Horn clauses) but
 rather need a somewhat more expressive variant.
 
 [Prolog]: https://en.wikipedia.org/wiki/Prolog
@@ -46,8 +46,7 @@ considered true).
 So the first rule just says "Clone is implemented for `usize`".
 The next rule says "for any type `?T`,
 Clone is implemented for `Vec<?T>` if clone is implemented for `?T`".
-So
-e.g. if we wanted to prove that `Clone(Vec<Vec<usize>>)`, we would do
+As an example, if we wanted to prove that `Clone(Vec<Vec<usize>>)`, we would do
 so by applying the rules recursively:
 
 - `Clone(Vec<Vec<usize>>)` is provable if:
@@ -146,7 +145,7 @@ fn bar<U: Eq<U>>() { }
 ```
 
 To type-check the body of `foo`, we need to be able to hold the type `T` "abstract".
- That is, we need to check that the body of `foo` is type-safe *for all types `T`*,
+That is, we need to check that the body of `foo` is type-safe *for all types `T`*,
 not just for some specific type.
 We might express this like so:
 
@@ -167,8 +166,8 @@ prototype implementation; it's similar to standard mathematical notation but a b
 Anyway, the problem is that standard Horn clauses don't allow universal quantification (`forall`) or
 implication (`if`) in goals (though many Prolog engines do support them, as an extension).
 For this reason,
-we need to accept something called "first-order hereditary harrop" (FOHH) clauses – this long
-name basically means "standard Horn clauses with `forall` and `if` in the body".
+we need to accept something called "first-order hereditary harrop" (FOHH) clauses.
+This long name basically means "standard Horn clauses with `forall` and `if` in the body".
 But it's nice to know the proper name,
 because there is a lot of work describing how to efficiently handle FOHH clauses; see for
 example Gopalan Nadathur's excellent
