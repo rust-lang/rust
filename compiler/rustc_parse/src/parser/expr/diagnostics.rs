@@ -1,5 +1,5 @@
 use rustc_ast::util::parser::AssocOp;
-use rustc_ast::{BinOpKind, Block, Expr, ExprKind, StmtKind, token};
+use rustc_ast::{BinOpKind, Block, Expr, ExprKind, Path, QSelf, StmtKind, token};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, Diag, PResult};
 use rustc_span::{Span, Spanned, respan, sym};
@@ -295,8 +295,27 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Error for a struct literal appearing where struct literals aren't allowed, suggesting
+    /// parentheses around it: `if foo == Foo { x } {` -> `if foo == (Foo { x }) {`.
+    pub(super) fn struct_literal_not_allowed_here_err(
+        &self,
+        path_span: Span,
+        lit_span: Span,
+    ) -> Diag<'a> {
+        self.dcx().create_err(diagnostics::StructLiteralNotAllowedHere {
+            span: lit_span,
+            sub: diagnostics::StructLiteralNotAllowedHereSugg {
+                left: path_span.shrink_to_lo(),
+                right: lit_span.shrink_to_hi(),
+            },
+        })
+    }
+
     /// Recover from `if cond Path { field } { ... }` and the `while` equivalent, where `{ field }`
-    /// is a valid block and only the following `{` reveals that a struct literal was intended.
+    /// is a valid block, so the ambiguity can only be resolved by the `{` following the "body".
+    ///
+    /// The complementary half of this recovery covers the `Path { ident: … }` / `Path { ident, … }`
+    /// shapes, whose brace cannot start a block; see `recover_from_non_shorthand_struct_literal`.
     pub(super) fn recover_from_shorthand_struct_literal(
         &self,
         head: &Expr,
@@ -324,16 +343,39 @@ impl<'a> Parser<'a> {
             && field.is_single_argless_ident()
         {
             let span = tail.span.to(body.span);
-            return Err(self.dcx().create_err(diagnostics::StructLiteralNotAllowedHere {
-                span,
-                sub: diagnostics::StructLiteralNotAllowedHereSugg {
-                    left: tail.span.shrink_to_lo(),
-                    right: span.shrink_to_hi(),
-                },
-            }));
+            return Err(self.struct_literal_not_allowed_here_err(tail.span, span));
         }
 
         Ok(())
+    }
+
+    /// Recover from `Path { ident: … }` / `Path { ident, … }` in a position that doesn't allow
+    /// struct literals, e.g. `match foo { bar:` or `if foo == Foo { x: 1 } {`. The brace cannot
+    /// start a block, so this needs no lookahead past the literal, unlike the shorthand
+    /// `Path { ident }` shape handled by `recover_from_shorthand_struct_literal`.
+    pub(super) fn recover_from_non_shorthand_struct_literal(
+        &mut self,
+        qself: &Option<Box<QSelf>>,
+        path: &Path,
+    ) -> Option<PResult<'a, Box<Expr>>> {
+        let snapshot = self.create_snapshot_for_diagnostic();
+        if let Err(err) = self.expect(exp!(OpenBrace)) {
+            return Some(Err(err));
+        }
+        match self.parse_expr_struct(qself.clone(), path.clone(), false) {
+            Ok(expr) => {
+                // This is a struct literal, but we don't accept them here.
+                self.struct_literal_not_allowed_here_err(path.span, expr.span).emit();
+                Some(Ok(expr))
+            }
+            Err(err) => {
+                // We couldn't parse a valid struct, rollback and let the parser emit an error
+                // elsewhere.
+                err.cancel();
+                self.restore_snapshot(snapshot);
+                None
+            }
+        }
     }
 }
 
