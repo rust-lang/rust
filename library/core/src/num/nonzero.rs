@@ -1506,10 +1506,12 @@ macro_rules! nonzero_integer {
 
             #[inline]
             const fn from_ascii_bytes_radix_impl(src: &[u8], radix: u32) -> Result<Self, ParseIntError> {
+                // FIXME(const-hack): This should use `?` again, once it's `const`
                 let n = match <$Int>::from_ascii_bytes_radix_impl(src, radix) {
                     Ok(n) => n,
                     Err(err) => return Err(err),
                 };
+                // FIXME(const-hack): This should use `Option::ok_or` again, once it's `const`
                 if let Some(n) = Self::new(n) {
                     Ok(n)
                 } else {
