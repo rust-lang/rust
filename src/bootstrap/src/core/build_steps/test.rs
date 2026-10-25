@@ -4155,9 +4155,6 @@ impl CommandLineStep for Bootstrap {
         let build_compiler = builder.compiler(0, host);
         let record_failed_tests = builder.ensure(SetupFailedTestsFile);
 
-        // Some tests require cargo submodule to be present.
-        builder.sess.require_submodule("src/tools/cargo", None);
-
         let mut cargo = tool::prepare_tool_cargo(
             builder,
             build_compiler,
