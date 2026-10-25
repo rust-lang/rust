@@ -69,7 +69,6 @@ note: constraint from here
    |
 LL |         forall<'a> where 'b: 'a {
    |         ^^^^^^
-<<<<<<< HEAD
    = note: expected: or {
                'c/#1: 'b/#0,
                'b/#0: 'c/#1,
@@ -78,18 +77,6 @@ LL |         forall<'a> where 'b: 'a {
                'c/#1: 'b/#0,
                'c/#1: 'static,
            }
-=======
-   = note: expected: RegionOutlives(
-               'b/#0,
-               'c/#1,
-               $DIR/test-infra-fails-properly.rs:64:17: 64:23 (#0),
-           )
-   = note: actual: RegionOutlives(
-               'c/#1,
-               'static,
-               $DIR/test-infra-fails-properly.rs:59:9: 59:15 (#0),
-           )
->>>>>>> 8d0d61d25 (normalize hash and type id instead of reblessing ad nauseam)
 
 error: bound type test binder constraint must be alias (it's a AliasTyOutlivesViaEnv)
   --> $DIR/test-infra-fails-properly.rs:73:15
