@@ -1274,17 +1274,8 @@ macro_rules! nonzero_integer {
             ///
             /// # Safety
             ///
-            /// This results in undefined behavior when
-            #[doc = sign_dependent_expr!{
-                $signedness ?
-                if signed {
-                    concat!("`self * rhs > ", stringify!($Int), "::MAX`, ",
-                            "or `self * rhs < ", stringify!($Int), "::MIN`.")
-                }
-                if unsigned {
-                    concat!("`self * rhs > ", stringify!($Int), "::MAX`.")
-                }
-            }]
+            /// This results in undefined behavior when overflow occurs, i.e.
+            /// when [`checked_mul`] would return `None`.
             ///
             /// # Examples
             ///
@@ -1302,6 +1293,8 @@ macro_rules! nonzero_integer {
             /// # Some(())
             /// # }
             /// ```
+            ///
+            /// [`checked_mul`]: Self::checked_mul
             #[unstable(feature = "nonzero_ops", issue = "84186")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
@@ -1871,8 +1864,8 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         ///
         /// # Safety
         ///
-        /// This results in undefined behavior when
-        #[doc = concat!("`self + rhs > ", stringify!($Int), "::MAX`.")]
+        /// This results in undefined behavior when overflow occurs, i.e. when
+        /// [`checked_add`] would return `None`.
         ///
         /// # Examples
         ///
@@ -1890,6 +1883,8 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         /// # Some(())
         /// # }
         /// ```
+        ///
+        /// [`checked_add`]: Self::checked_add
         #[unstable(feature = "nonzero_ops", issue = "84186")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]

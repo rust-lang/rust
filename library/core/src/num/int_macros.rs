@@ -638,9 +638,8 @@ macro_rules! int_impl {
         ///
         /// # Safety
         ///
-        /// This results in undefined behavior when
-        #[doc = concat!("`self + rhs > ", stringify!($SelfT), "::MAX` or `self + rhs < ", stringify!($SelfT), "::MIN`,")]
-        /// i.e. when [`checked_add`] would return `None`.
+        /// This results in undefined behavior when overflow occurs, i.e. when
+        /// [`checked_add`] would return `None`.
         ///
         /// [`unwrap_unchecked`]: option/enum.Option.html#method.unwrap_unchecked
         #[doc = concat!("[`checked_add`]: ", stringify!($SelfT), "::checked_add")]
@@ -778,9 +777,8 @@ macro_rules! int_impl {
         ///
         /// # Safety
         ///
-        /// This results in undefined behavior when
-        #[doc = concat!("`self - rhs > ", stringify!($SelfT), "::MAX` or `self - rhs < ", stringify!($SelfT), "::MIN`,")]
-        /// i.e. when [`checked_sub`] would return `None`.
+        /// This results in undefined behavior when overflow occurs, i.e. when
+        /// [`checked_sub`] would return `None`.
         ///
         /// [`unwrap_unchecked`]: option/enum.Option.html#method.unwrap_unchecked
         #[doc = concat!("[`checked_sub`]: ", stringify!($SelfT), "::checked_sub")]
@@ -918,9 +916,8 @@ macro_rules! int_impl {
         ///
         /// # Safety
         ///
-        /// This results in undefined behavior when
-        #[doc = concat!("`self * rhs > ", stringify!($SelfT), "::MAX` or `self * rhs < ", stringify!($SelfT), "::MIN`,")]
-        /// i.e. when [`checked_mul`] would return `None`.
+        /// This results in undefined behavior when overflow occurs, i.e. when
+        /// [`checked_mul`] would return `None`.
         ///
         /// [`unwrap_unchecked`]: option/enum.Option.html#method.unwrap_unchecked
         #[doc = concat!("[`checked_mul`]: ", stringify!($SelfT), "::checked_mul")]
