@@ -654,22 +654,17 @@ pub(crate) unsafe fn llvm_optimize<'ll>(
         None
     };
 
-    fn handle_offload<'ll>(cx: &SimpleCx<'ll>, old_fn: &'ll llvm::Value) {
+    // Wraps `old_fn` into a new kernel that takes the implicit `dyn_ptr` as its first argument.
+    // Returns the new function, or `None` if nothing was wrapped
+    fn handle_offload<'ll>(
+        cx: &SimpleCx<'ll>,
+        old_fn: &'ll llvm::Value,
+    ) -> Option<&'ll llvm::Value> {
         let old_fn_ty = cx.get_type_of_global(old_fn);
         let old_param_types = cx.func_params_types(old_fn_ty);
         let old_param_count = old_param_types.len();
         if old_param_count == 0 {
-            return;
-        }
-
-        let first_param = llvm::get_param(old_fn, 0);
-        let c_name = llvm::get_value_name(first_param);
-        let first_arg_name = str::from_utf8(&c_name).unwrap();
-        // We might call llvm_optimize (and thus this code) multiple times on the same IR,
-        // but we shouldn't add this helper ptr multiple times.
-        // FIXME(offload): This could break if the user calls his first argument `dyn_ptr`.
-        if first_arg_name == "dyn_ptr" {
-            return;
+            return None;
         }
 
         // Create the new parameter list, with ptr as the first argument
@@ -744,6 +739,7 @@ pub(crate) unsafe fn llvm_optimize<'ll>(
         }
         // Now we can re-use the old name, without name collision.
         llvm::set_value_name(new_fn, &name);
+        Some(new_fn)
     }
 
     if cgcx.target_is_like_gpu
@@ -752,10 +748,13 @@ pub(crate) unsafe fn llvm_optimize<'ll>(
         let cx = SimpleCx::new(llmod, llcx, cgcx.pointer_size);
         for func in cx.get_functions() {
             let offload_kernel = "offload-kernel";
-            if attributes::has_string_attr(func, offload_kernel) {
-                handle_offload(&cx, func);
+            if !attributes::has_string_attr(func, offload_kernel) {
+                continue;
             }
-            attributes::remove_string_attr_from_llfn(func, offload_kernel);
+            match handle_offload(&cx, func) {
+                Some(new_fn) => attributes::remove_string_attr_from_llfn(new_fn, offload_kernel),
+                None => attributes::remove_string_attr_from_llfn(func, offload_kernel),
+            }
         }
     }
 
