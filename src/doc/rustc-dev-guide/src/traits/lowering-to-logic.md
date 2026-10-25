@@ -1,8 +1,7 @@
 # Lowering to logic
 
 The key observation here is that the Rust trait system is basically a kind of logic,
-and it can be mapped onto standard logical inference
-rules.
+and it can be mapped onto standard logical inference rules.
 We can then look for solutions to those inference rules in a
 very similar fashion to how e.g. a [Prolog] solver works.
 It turns out that we can't *quite* use Prolog rules (also called Horn clauses) but
@@ -46,8 +45,8 @@ considered true).
 So the first rule just says "Clone is implemented for `usize`".
 The next rule says "for any type `?T`,
 Clone is implemented for `Vec<?T>` if clone is implemented for `?T`".
-As an example, if we wanted to prove that `Clone(Vec<Vec<usize>>)`, we would do
-so by applying the rules recursively:
+As an example, if we wanted to prove that `Clone(Vec<Vec<usize>>)`,
+we would do so by applying the rules recursively:
 
 - `Clone(Vec<Vec<usize>>)` is provable if:
   - `Clone(Vec<usize>)` is provable if:
@@ -84,8 +83,7 @@ So far so good.
 OK, now that we have defined some logical rules that are able to
 express when traits are implemented and to handle associated types,
 let's turn our focus a bit towards **type-checking**.
-Type-checking is interesting because it is what gives us the goals that we need to
-prove.
+Type-checking is interesting because it is what gives us the goals that we need to prove.
 That is, everything we've seen so far has been about how we
 derive the rules by which we can prove goals from the traits and impls
 in the program; but we are also interested in how to derive the goals that we need to prove,
@@ -113,8 +111,7 @@ barWellFormed(?U) :- Eq(?U, ?U).
 ```
 
 Then we can say that `foo()` type-checks if the reference to `bar::<usize>` (that is,
-`bar()` applied to the type `usize`) is
-well-formed:
+`bar()` applied to the type `usize`) is well-formed:
 
 ```text
 fooTypeChecks :- barWellFormed(usize).
@@ -135,8 +132,7 @@ In the last section, we used standard Prolog horn-clauses (augmented with Rust's
 notion of type equality) to type-check some simple Rust functions.
 But that only works when we are type-checking non-generic functions.
 If we want to type-check a generic function,
-it turns out we need a stronger notion of goal than what Prolog
-can provide.
+it turns out we need a stronger notion of goal than what Prolog can provide.
 To see what I'm talking about, let's revamp our previous example to make `foo` generic:
 
 ```rust,ignore
@@ -178,8 +174,8 @@ in [the bibliography of Chalk Book][bibliography].
 [pphhf]: https://rust-lang.github.io/chalk/book/bibliography.html#pphhf
 
 It turns out that supporting FOHH is not really all that hard.
-And once we are able to do that, we can easily describe the type-checking
-rule for generic functions like `foo` in our logic.
+And once we are able to do that,
+we can easily describe the type-checking rule for generic functions like `foo` in our logic.
 
 ## Source
 
