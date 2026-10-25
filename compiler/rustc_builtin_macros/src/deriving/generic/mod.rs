@@ -1015,10 +1015,15 @@ impl<'a> MethodDef<'a> {
                 )
             }
             _ if variants.len() > 1 && self.has_other_selflike_arg => {
-                // Because we know that all the arguments will match if we reach
-                // the match expression we add the unreachable intrinsic as the
-                // result of the default which should help llvm in optimizing it.
-                Some(deriving::call_unreachable(cx, span))
+                // If we reach the match, all the arguments must be of the same
+                // variant, so this arm is unreachable in well-formed code.
+                // However, a non-inert attribute macro applied after this
+                // derive can remove or alter variants once we have seen them,
+                // which makes this arm reachable. Comparing the discriminants
+                // again is always sound and optimizes away in well-formed
+                // code, unlike `core::intrinsics::unreachable()`, which would
+                // be undefined behavior here (#148423).
+                Some(self.call_substructure_method(cx, span, EnumDiscr(None)).into_expr(cx, span))
             }
             _ => None,
         };
@@ -1032,7 +1037,7 @@ impl<'a> MethodDef<'a> {
         //          (Variant1, Variant1) => Body1
         //          (Variant2, Variant2) => Body2,
         //          ...
-        //          _ => ::core::intrinsics::unreachable(),
+        //          _ => <discriminant comparison>,
         //      }
 
         let self_expr = cx.expr_self(span);

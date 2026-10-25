@@ -81,16 +81,6 @@ fn call_discriminant_value(cx: &ExtCtxt<'_>, span: Span, arg: Symbol) -> Box<ast
 }
 
 /// Constructs an expression that calls the `unreachable` intrinsic.
-fn call_unreachable(cx: &ExtCtxt<'_>, span: Span) -> Box<ast::Expr> {
-    let call = cx.expr_call_intrinsic(span, sym::unreachable, ThinVec::new());
-    cx.expr_block(Box::new(ast::Block {
-        stmts: thin_vec![cx.stmt_expr(call)],
-        id: ast::DUMMY_NODE_ID,
-        rules: ast::BlockCheckMode::Unsafe(ast::CompilerGenerated),
-        span,
-    }))
-}
-
 fn assert_ty_bounds(
     cx: &ExtCtxt<'_>,
     stmts: &mut ThinVec<ast::Stmt>,

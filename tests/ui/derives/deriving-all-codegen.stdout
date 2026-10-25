@@ -1520,7 +1520,9 @@ impl ::core::cmp::PartialEq for Fielded {
                     __self_0 == __arg1_0,
                 (Self::Z(__self_0), Self::Z(__arg1_0)) =>
                     __self_0 == __arg1_0,
-                _ => unsafe { ::core::intrinsics::unreachable() }
+                _ =>
+                    ::core::intrinsics::discriminant_value(self) ==
+                        ::core::intrinsics::discriminant_value(other),
             }
     }
 }
@@ -1624,7 +1626,9 @@ impl<T: ::core::cmp::PartialEq, U: ::core::cmp::PartialEq>
                     __self_0 == __arg1_0,
                 (Self::Two(__self_0), Self::Two(__arg1_0)) =>
                     __self_0 == __arg1_0,
-                _ => unsafe { ::core::intrinsics::unreachable() }
+                _ =>
+                    ::core::intrinsics::discriminant_value(self) ==
+                        ::core::intrinsics::discriminant_value(other),
             }
     }
 }
