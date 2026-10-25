@@ -349,107 +349,110 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn apply_adjustments(&self, expr: &hir::Expr<'_>, adj: Vec<Adjustment<'tcx>>) {
         debug!("expr = {:#?}", expr);
 
-        if adj.is_empty() {
-            return;
-        }
-
         let mut expr_ty = self.typeck_results.borrow().expr_ty_adjusted(expr);
 
-        for a in &adj {
-            match a.kind {
-                Adjust::NeverToAny => {
-                    if let ty::Infer(ty::TyVar(a_id)) = a.target.kind() {
-                        self.diverging_type_vars.borrow_mut().push(*a_id);
-                        debug!("apply_adjustments: adding `{:?}` as diverging type var", a.target);
+        let mut autoborrow_mut = false;
+
+        if !adj.is_empty() {
+            for a in &adj {
+                match a.kind {
+                    Adjust::NeverToAny => {
+                        if let ty::Infer(ty::TyVar(a_id)) = a.target.kind() {
+                            self.diverging_type_vars.borrow_mut().push(*a_id);
+                            debug!(
+                                "apply_adjustments: adding `{:?}` as diverging type var",
+                                a.target
+                            );
+                        }
                     }
-                }
-                Adjust::Deref(DerefAdjustKind::Overloaded(overloaded_deref)) => {
-                    self.enforce_context_effects(
-                        None,
-                        expr.span,
-                        overloaded_deref.method_call(self.tcx),
-                        self.tcx.mk_args(&[expr_ty.into()]),
-                    );
-                }
-                Adjust::Deref(DerefAdjustKind::Builtin) => {
-                    // FIXME(const_trait_impl): We *could* enforce `&T: [const] Deref` here.
-                }
-                Adjust::Deref(DerefAdjustKind::Pin) => {
-                    // FIXME(const_trait_impl): We *could* enforce `Pin<&T>: [const] Deref` here.
-                }
-                Adjust::Pointer(_pointer_coercion) => {
-                    // FIXME(const_trait_impl): We should probably enforce these.
-                }
-                Adjust::GenericReborrow(_) => {
-                    // FIXME(reborrow): figure out if we have effects to enforce here.
-                }
-                Adjust::Borrow(_) => {
-                    // No effects to enforce here.
-                }
-            }
-
-            expr_ty = a.target;
-        }
-
-        let autoborrow_mut = adj.iter().any(|adj| {
-            matches!(
-                adj,
-                &Adjustment {
-                    kind: Adjust::Borrow(AutoBorrow::Ref(AutoBorrowMutability::Mut { .. })),
-                    ..
-                }
-            )
-        });
-
-        match self.typeck_results.borrow_mut().adjustments_mut().entry(expr.hir_id) {
-            Entry::Vacant(entry) => {
-                entry.insert(adj);
-            }
-            Entry::Occupied(mut entry) => {
-                debug!(" - composing on top of {:?}", entry.get());
-                match (&mut entry.get_mut()[..], &adj[..]) {
-                    (
-                        [Adjustment { kind: Adjust::NeverToAny, target }],
-                        &[.., Adjustment { target: new_target, .. }],
-                    ) => {
-                        // NeverToAny coercion can target any type, so instead of adding a new
-                        // adjustment on top we can change the target.
-                        //
-                        // This is required for things like `a == a` (where `a: !`) to produce
-                        // valid MIR -- we need borrow adjustment from things like `==` to change
-                        // the type to `&!` (or `&()` depending on the fallback). This might be
-                        // relevant even in unreachable code.
-                        *target = new_target;
-                    }
-
-                    (
-                        &mut [
-                            Adjustment { kind: Adjust::Deref(_), .. },
-                            Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(..)), .. },
-                        ],
-                        &[
-                            Adjustment { kind: Adjust::Deref(_), .. },
-                            .., // Any following adjustments are allowed.
-                        ],
-                    ) => {
-                        // A reborrow has no effect before a dereference, so we can safely replace adjustments.
-                        *entry.get_mut() = adj;
-                    }
-
-                    _ => {
-                        // FIXME: currently we never try to compose autoderefs
-                        // and ReifyFnPointer/UnsafeFnPointer, but we could.
-                        self.dcx().span_delayed_bug(
+                    Adjust::Deref(DerefAdjustKind::Overloaded(overloaded_deref)) => {
+                        self.enforce_context_effects(
+                            None,
                             expr.span,
-                            format!(
-                                "while adjusting {:?}, can't compose {:?} and {:?}",
-                                expr,
-                                entry.get(),
-                                adj
-                            ),
+                            overloaded_deref.method_call(self.tcx),
+                            self.tcx.mk_args(&[expr_ty.into()]),
                         );
+                    }
+                    Adjust::Deref(DerefAdjustKind::Builtin) => {
+                        // FIXME(const_trait_impl): We *could* enforce `&T: [const] Deref` here.
+                    }
+                    Adjust::Deref(DerefAdjustKind::Pin) => {
+                        // FIXME(const_trait_impl): We *could* enforce `Pin<&T>: [const] Deref` here.
+                    }
+                    Adjust::Pointer(_pointer_coercion) => {
+                        // FIXME(const_trait_impl): We should probably enforce these.
+                    }
+                    Adjust::GenericReborrow(_) => {
+                        // FIXME(reborrow): figure out if we have effects to enforce here.
+                    }
+                    Adjust::Borrow(_) => {
+                        // No effects to enforce here.
+                    }
+                }
 
-                        *entry.get_mut() = adj;
+                expr_ty = a.target;
+            }
+
+            autoborrow_mut = adj.iter().any(|adj| {
+                matches!(
+                    adj,
+                    &Adjustment {
+                        kind: Adjust::Borrow(AutoBorrow::Ref(AutoBorrowMutability::Mut { .. })),
+                        ..
+                    }
+                )
+            });
+
+            match self.typeck_results.borrow_mut().adjustments_mut().entry(expr.hir_id) {
+                Entry::Vacant(entry) => {
+                    entry.insert(adj);
+                }
+                Entry::Occupied(mut entry) => {
+                    debug!(" - composing on top of {:?}", entry.get());
+                    match (&mut entry.get_mut()[..], &adj[..]) {
+                        (
+                            [Adjustment { kind: Adjust::NeverToAny, target }],
+                            &[.., Adjustment { target: new_target, .. }],
+                        ) => {
+                            // NeverToAny coercion can target any type, so instead of adding a new
+                            // adjustment on top we can change the target.
+                            //
+                            // This is required for things like `a == a` (where `a: !`) to produce
+                            // valid MIR -- we need borrow adjustment from things like `==` to change
+                            // the type to `&!` (or `&()` depending on the fallback). This might be
+                            // relevant even in unreachable code.
+                            *target = new_target;
+                        }
+
+                        (
+                            &mut [
+                                Adjustment { kind: Adjust::Deref(_), .. },
+                                Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(..)), .. },
+                            ],
+                            &[
+                                Adjustment { kind: Adjust::Deref(_), .. },
+                                .., // Any following adjustments are allowed.
+                            ],
+                        ) => {
+                            // A reborrow has no effect before a dereference, so we can safely replace adjustments.
+                            *entry.get_mut() = adj;
+                        }
+
+                        _ => {
+                            // FIXME: currently we never try to compose autoderefs
+                            // and ReifyFnPointer/UnsafeFnPointer, but we could.
+                            self.dcx().span_delayed_bug(
+                                expr.span,
+                                format!(
+                                    "while adjusting {:?}, can't compose {:?} and {:?}",
+                                    expr,
+                                    entry.get(),
+                                    adj
+                                ),
+                            );
+
+                            *entry.get_mut() = adj;
+                        }
                     }
                 }
             }
@@ -458,7 +461,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // If there is an mutable auto-borrow, it is equivalent to `&mut <expr>`.
         // In this case implicit use of `Deref` and `Index` within `<expr>` should
         // instead be `DerefMut` and `IndexMut`, so fix those up.
-        if autoborrow_mut {
+        // The same applies to expressions which produce a mutable reference directly.
+        if autoborrow_mut || matches!(expr_ty.kind(), ty::Ref(_, _, ty::Mutability::Mut)) {
             self.convert_place_derefs_to_mutable(expr);
         }
     }
