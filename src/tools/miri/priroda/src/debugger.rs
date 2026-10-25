@@ -1,4 +1,3 @@
-use std::collections::{HashMap, HashSet};
 use std::ops::Range;
 use std::path::PathBuf;
 
@@ -6,10 +5,11 @@ use miri::Immediate::Uninit;
 use miri::{InterpErrorInfo, InterpErrorKind, TerminationInfo, *};
 use rustc_abi::{FIRST_VARIANT, FieldIdx, Size};
 use rustc_data_structures::either::Either;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def::CtorKind;
 use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::mir::{self, Local, ProjectionElem, VarDebugInfoContents, VarDebugInfoFragment};
-use rustc_middle::ty::{self, TyKind};
+use rustc_middle::ty;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{Span, Symbol};
 
@@ -30,7 +30,7 @@ impl SourceLocation {
 }
 
 /// Source-level breakpoints indexed by normalized path, then line.
-type BreakpointTable = HashMap<PathBuf, HashSet<usize>>;
+type BreakpointTable = FxHashMap<PathBuf, FxHashSet<usize>>;
 
 /// Owns one interpreter session and its debugger state.
 ///
@@ -161,7 +161,7 @@ impl<'tcx> PrirodaContext<'tcx> {
     pub(super) fn new(ecx: MiriInterpCx<'tcx>) -> Self {
         Self {
             ecx,
-            breakpoints: HashMap::new(),
+            breakpoints: FxHashMap::default(),
             current_location: None,
             last_location: None,
             exit_code: None,
@@ -300,11 +300,11 @@ impl<'tcx> PrirodaContext<'tcx> {
         // FIXME: Preserve `TerminationInfo::Exit::leak_check` and run Miri's
         // leak/thread-leak diagnostics once Priroda grows a proper post-exit
         // finalization path. For now, program exit only records the debuggee exit code.
-        let Some(TerminationInfo::Exit { code, .. }) = info.downcast_ref::<TerminationInfo>()
+        let Some(TerminationInfo::Exit { exit_code, .. }) = info.downcast_ref::<TerminationInfo>()
         else {
             return None;
         };
-        Some(*code)
+        Some(*exit_code)
     }
 
     fn stop_at_exception(&mut self, err: InterpErrorInfo<'tcx>) -> StepResult {
@@ -827,14 +827,13 @@ impl<'tcx> PrirodaContext<'tcx> {
                     match elem {
                         ProjectionElem::Field(field_idx, field_ty) => {
                             let rendered = match projection_ty.kind() {
-                                TyKind::Adt(adt_def, _args) if adt_def.is_struct() => {
+                                ty::Adt(adt_def, _args) if adt_def.is_struct() => {
                                     let variant = adt_def.non_enum_variant();
                                     let field = &variant.fields[*field_idx];
                                     Symbol::intern(&format!(".{}", field.name))
                                 }
 
-                                TyKind::Tuple(_) =>
-                                    Symbol::intern(&format!(".{}", field_idx.index())),
+                                ty::Tuple(_) => Symbol::intern(&format!(".{}", field_idx.index())),
 
                                 _ => Symbol::intern(".<unexpected>"),
                             };
