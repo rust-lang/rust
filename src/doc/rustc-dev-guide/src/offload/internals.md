@@ -3,7 +3,7 @@
 This module is under active development.
 Once upstream, it should allow Rust developers to run Rust code on GPUs.
 We aim to develop a `rusty` GPU programming interface, which is safe,
-convenient and sufficiently fast by default.
+convenient, and sufficiently fast by default.
 This includes automatic data movement to and from the GPU, in a efficient way.
 We will (later) also offer more advanced,
 possibly unsafe, interfaces which allow a higher degree of control.
