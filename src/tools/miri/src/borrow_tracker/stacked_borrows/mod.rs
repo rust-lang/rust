@@ -929,8 +929,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(())
     }
 
-    fn print_stacks(&mut self, alloc_id: AllocId) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+    fn print_stacks(&self, alloc_id: AllocId) -> InterpResult<'tcx> {
+        let this = self.eval_context_ref();
         let alloc_extra = this.get_alloc_extra(alloc_id)?;
         let stacks = alloc_extra.borrow_tracker_sb().borrow();
         for (range, stack) in stacks.stacks.iter_all() {
