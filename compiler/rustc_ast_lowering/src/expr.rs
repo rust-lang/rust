@@ -6,7 +6,7 @@ use rustc_ast::node_id::NodeMap;
 use rustc_ast::visit::{Visitor, walk_expr};
 use rustc_ast::*;
 use rustc_attr_ir::lang_items::LangItem;
-use rustc_attr_ir::target::Target;
+use rustc_attr_ir::target::{AstTarget, Target};
 use rustc_errors::msg;
 use rustc_hir as hir;
 use rustc_hir::HirId;
@@ -231,7 +231,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let old_attrs =
                         self.curr_owner.attrs.get(&ex.hir_id.local_id).copied().unwrap_or(&[]);
                     let new_attrs = self
-                        .lower_attrs_vec(&e.attrs, e.span, ex.hir_id, Target::from_expr(e), None)
+                        .lower_attrs_vec(
+                            &e.attrs,
+                            e.span,
+                            ex.hir_id,
+                            Target::from_expr(e),
+                            AstTarget::Expression(e),
+                        )
                         .into_iter()
                         .chain(old_attrs.iter().cloned());
                     let new_attrs = &*self.arena.alloc_from_iter(new_attrs);
@@ -255,7 +261,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
 
         let expr_hir_id = self.lower_node_id(e.id);
-        self.lower_attrs(expr_hir_id, &e.attrs, e.span, Target::from_expr(e));
+        self.lower_attrs(
+            expr_hir_id,
+            &e.attrs,
+            e.span,
+            Target::from_expr(e),
+            AstTarget::Expression(e),
+        );
 
         let kind = match &e.kind {
             ExprKind::Array(exprs) => hir::ExprKind::Array(self.lower_exprs(exprs)),
@@ -480,11 +492,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
             ExprKind::Continue(opt_label) => {
                 hir::ExprKind::Continue(self.lower_jump_destination(e.id, *opt_label))
             }
-            ExprKind::Ret(e) => {
-                let expr = e.as_ref().map(|x| self.lower_expr(x));
-                self.checked_return(expr)
+            ExprKind::Ret(box_e) => {
+                let expr = box_e.as_ref().map(|x| self.lower_expr(x));
+                self.checked_return(expr, e)
             }
-            ExprKind::Yeet(sub_expr) => self.lower_expr_yeet(e.span, sub_expr.as_deref()),
+            ExprKind::Yeet(sub_expr) => self.lower_expr_yeet(e.span, sub_expr.as_deref(), e),
             ExprKind::Become(sub_expr) => {
                 let sub_expr = self.lower_expr(sub_expr);
                 hir::ExprKind::Become(sub_expr)
@@ -795,7 +807,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let guard = arm.guard.as_ref().map(|guard| self.lower_expr(&guard.cond));
         let hir_id = self.next_id();
         let span = self.lower_span(arm.span);
-        self.lower_attrs(hir_id, &arm.attrs, arm.span, Target::Arm);
+        self.lower_attrs(hir_id, &arm.attrs, arm.span, Target::Arm, AstTarget::Arm(arm));
         let is_never_pattern = pat.is_never_pattern();
         // We need to lower the body even if it's unneeded for never pattern in match,
         // ensure that we can get HirId for DefId if need (issue #137708).
@@ -1659,7 +1671,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_expr_field(&mut self, f: &ExprField) -> hir::ExprField<'hir> {
         let hir_id = self.lower_node_id(f.id);
-        self.lower_attrs(hir_id, &f.attrs, f.span, Target::ExprField);
+        self.lower_attrs(hir_id, &f.attrs, f.span, Target::ExprField, AstTarget::ExprField(f));
         hir::ExprField {
             hir_id,
             ident: self.lower_ident(f.ident),
@@ -1926,7 +1938,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
         //
         // Also, add the attributes to the outer returned expr node.
         let expr = self.expr_drop_temps_mut(for_span, match_expr);
-        self.lower_attrs(expr.hir_id, &e.attrs, e.span, Target::from_expr(e));
+        self.lower_attrs(
+            expr.hir_id,
+            &e.attrs,
+            e.span,
+            Target::from_expr(e),
+            AstTarget::Expression(e),
+        );
         expr
     }
 
@@ -1974,7 +1992,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let val_ident = Ident::with_dummy_span(sym::val);
             let (val_pat, val_pat_nid) = self.pat_ident(span, val_ident);
             let val_expr = self.expr_ident(span, val_ident, val_pat_nid);
-            self.lower_attrs(val_expr.hir_id, &attrs, span, Target::Expression);
+            self.lower_attrs(
+                val_expr.hir_id,
+                &attrs,
+                span,
+                Target::Expression,
+                AstTarget::Expression(sub_expr),
+            );
             let continue_pat = self.pat_cf_continue(unstable_span, val_pat);
             self.arm(continue_pat, val_expr, try_span)
         };
@@ -2013,10 +2037,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     ),
                 ))
             } else {
-                let ret_expr = self.checked_return(Some(from_residual_expr));
+                let ret_expr = self.checked_return(Some(from_residual_expr), sub_expr);
                 self.arena.alloc(self.expr(try_span, ret_expr))
             };
-            self.lower_attrs(ret_expr.hir_id, &attrs, span, Target::Expression);
+            self.lower_attrs(
+                ret_expr.hir_id,
+                &attrs,
+                span,
+                Target::Expression,
+                AstTarget::Expression(sub_expr),
+            );
 
             let break_pat = self.pat_cf_break(try_span, residual_local);
             self.arm(break_pat, ret_expr, try_span)
@@ -2038,7 +2068,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
     /// ```
     /// But to simplify this, there's a `from_yeet` lang item function which
     /// handles the combined `FromResidual::from_residual(Yeet(residual))`.
-    fn lower_expr_yeet(&mut self, span: Span, sub_expr: Option<&Expr>) -> hir::ExprKind<'hir> {
+    fn lower_expr_yeet(
+        &mut self,
+        span: Span,
+        sub_expr: Option<&Expr>,
+        ast_expr: &rustc_ast::Expr,
+    ) -> hir::ExprKind<'hir> {
         // The expression (if present) or `()` otherwise.
         let (yeeted_span, yeeted_expr) = if let Some(sub_expr) = sub_expr {
             (sub_expr.span, self.lower_expr(sub_expr))
@@ -2066,7 +2101,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     Some(from_yeet_expr),
                 )
             }
-            TryBlockScope::Function => self.checked_return(Some(from_yeet_expr)),
+            TryBlockScope::Function => self.checked_return(Some(from_yeet_expr), ast_expr),
         }
     }
 
