@@ -42,9 +42,8 @@ with a path similar to `<some_dir>/rust/build/<x86/arm/...-target-triple>/ci-llv
 If you build LLVM from source, you'll likely need to replace `ci-llvm` with `build`.
 Also find `llvmenzyme-21.<so/dll/dylib>` path,
 similar to `/rust/build/target-triple/enzyme/build/enzyme/llvmenzyme-21`.
-Please keep in mind that llvm frequently updates it's llvm backend, so the version number might be higher (20,
-21,
-...).
+Please keep in mind that llvm frequently updates it's llvm backend,
+so the version number might be higher (20, 21, ...).
 Once you have both, run the following command:
 
 ```sh
