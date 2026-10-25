@@ -30,10 +30,6 @@ jobs:
             gcc_cross: i686-linux-gnu
           - host_target: aarch64-unknown-linux-gnu
             os: ubuntu-24.04-arm
-          - host_target: armv7-unknown-linux-gnueabihf
-            os: ubuntu-24.04-arm
-            multiarch: armhf
-            gcc_cross: arm-linux-gnueabihf
           # Ubuntu mirrors are not reliable enough for these architectures
           # (see <https://bugs.launchpad.net/ubuntu/+bug/2130309>).
           # - host_target: riscv64gc-unknown-linux-gnu
