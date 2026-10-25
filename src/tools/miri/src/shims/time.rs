@@ -219,7 +219,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         this.assert_target_os(Os::Windows, shim_name);
         this.check_no_isolation(shim_name)?;
 
-        let filetime = this.deref_pointer_as(LPFILETIME_op, this.windows_ty_layout("FILETIME"))?;
+        let filetime = this.deref_pointer(LPFILETIME_op)?;
 
         let duration = this.system_time_since_windows_epoch(&SystemTime::now())?;
         let duration_ticks = this.windows_ticks_for(duration)?;
@@ -248,10 +248,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             err_unsup_format!("programs running longer than 2^63 nanoseconds are not supported")
         })?;
 
-        this.write_scalar(
-            Scalar::from_i64(qpc),
-            &this.deref_pointer_as(lpPerformanceCount_op, this.machine.layouts.i64)?,
-        )?;
+        this.write_scalar(Scalar::from_i64(qpc), &this.deref_pointer(lpPerformanceCount_op)?)?;
         interp_ok(Scalar::from_i32(-1)) // return non-zero on success
     }
 
@@ -269,10 +266,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // is consistent across all processors.
         // Miri emulates a "hardware" performance counter with a resolution of 1ns,
         // and thus 10^9 counts per second.
-        this.write_scalar(
-            Scalar::from_i64(1_000_000_000),
-            &this.deref_pointer_as(lpFrequency_op, this.machine.layouts.u64)?,
-        )?;
+        this.write_scalar(Scalar::from_i64(1_000_000_000), &this.deref_pointer(lpFrequency_op)?)?;
         interp_ok(Scalar::from_i32(-1)) // Return non-zero on success
     }
 
@@ -317,7 +311,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         this.assert_target_os(Os::MacOs, "mach_timebase_info");
 
-        let info = this.deref_pointer_as(info_op, this.libc_ty_layout("mach_timebase_info"))?;
+        let info = this.deref_pointer(info_op)?;
 
         // Since our emulated ticks in `mach_absolute_time` *are* nanoseconds,
         // no scaling needs to happen.
@@ -358,7 +352,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         this.assert_target_os_is_unix("nanosleep");
 
-        let duration = this.deref_pointer_as(duration, this.libc_ty_layout("timespec"))?;
+        let duration = this.deref_pointer(duration)?;
         let _rem = this.read_pointer(rem)?; // Signal handlers are not supported, so rem will never be written to.
 
         let Some(duration) = this.read_timespec(&duration)? else {
@@ -391,7 +385,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let clockid_t_size = this.libc_ty_layout("clockid_t").size;
 
         let clock_id = this.read_scalar(clock_id)?.to_int(clockid_t_size)?;
-        let timespec = this.deref_pointer_as(timespec, this.libc_ty_layout("timespec"))?;
+        let timespec = this.deref_pointer(timespec)?;
         let flags = this.read_scalar(flags)?.to_i32()?;
         let _rem = this.read_pointer(rem)?; // Signal handlers are not supported, so rem will never be written to.
 
