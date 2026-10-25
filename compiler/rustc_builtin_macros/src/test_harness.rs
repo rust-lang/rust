@@ -8,7 +8,7 @@ use rustc_ast::attr::contains_name;
 use rustc_ast::entry::EntryPointType;
 use rustc_ast::mut_visit::*;
 use rustc_ast::visit::Visitor;
-use rustc_ast::{ModKind, attr};
+use rustc_ast::{GeneratedAttr, ModKind, attr};
 use rustc_attr_ir::AttributeKind;
 use rustc_attr_parsing::AttributeParser;
 use rustc_expand::base::{ExtCtxt, ResolverExpand};
@@ -317,9 +317,9 @@ fn add_main(cx: &mut TestCtxt<'_>, c: &mut ast::Crate) {
     // #[rustc_main]
     let main_attr = ecx.attr_word(sym::rustc_main, sp);
     // #[coverage(off)]
-    let coverage_attr = ecx.attr_nested_word(sym::coverage, sym::off, sp);
+    let coverage_attr = ecx.generated_attr(sp, GeneratedAttr::CoverageOff);
     // #[doc(hidden)]
-    let doc_hidden_attr = ecx.attr_nested_word(sym::doc, sym::hidden, sp);
+    let doc_hidden_attr = ecx.generated_attr(sp, GeneratedAttr::DocHidden);
 
     // pub fn main() -> ExitCode { ... }
     let main_ret_ty = if cx.test_runner.is_none() {
