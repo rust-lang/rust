@@ -17,10 +17,9 @@ This is a bootstrap/compiler implementation detail, but it can also be useful fo
   the compiler will still accept the passed unstable compiler flags `<flags>` (the allowed flag
   should be separated by commas).
   For example, if you use `RUSTC_BOOTSTRAP=-allow-unstable-compiler-flags=foo,bar`,
-  it will be possible to
-  pass `-Zfoo` and `-Zbar` to the compiler.
-  This is useful for internal testing of the compiler, where we need to pass
-  unstable flags required by compiletest,
+  it will be possible to pass `-Zfoo` and `-Zbar` to the compiler.
+  This is useful for internal testing of the compiler,
+  where we need to pass unstable flags required by compiletest,
   but we also want to test the compiler's behavior on the stable channel.
 
 ### UI tests
