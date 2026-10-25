@@ -64,7 +64,16 @@ macro_rules! test_mask_api {
                         &|_, _| true,
                     );
                 }
+            }
 
+            // LLVM can crash compiling this test on Windows x86-64 with AVX-512.
+            // https://github.com/llvm/llvm-project/issues/231707
+            #[cfg(not(all(
+                target_arch = "x86_64",
+                target_os = "windows",
+                target_feature = "avx512f",
+            )))]
+            test_helpers::test_lanes! {
                 fn simd_clamp<const LANES: usize>() {
                     test_helpers::test_ternary_elementwise(
                         &|value: Mask<$type, LANES>, a: Mask<$type, LANES>, b: Mask<$type, LANES>| {
