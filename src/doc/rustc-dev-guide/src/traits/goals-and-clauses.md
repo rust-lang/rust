@@ -32,7 +32,7 @@ K = <type>     // a "kind"
 ```
 
 The proof procedure for these sorts of goals is actually quite straightforward.
- Essentially, it's a form of depth-first search.
+Essentially, it's a form of depth-first search.
 The paper
 ["A Proof Procedure for the Logic of Hereditary Harrop Formulas"][pphhf] gives the details.
 
