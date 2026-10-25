@@ -118,22 +118,15 @@ LL | #[doc = "single line with \"escaping\" [error]"]
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `error`
-  --> $DIR/warning.rs:74:1
+  --> $DIR/warning.rs:76:6
    |
-LL | / /// Item docs.
-LL | | #[doc="Hello there!"]
-LL | | /// [error]
-   | |___________^
+LL | /// [error]
+   |      ^^^^^ no item named `error` in scope
    |
-   = note: the link appears in this line:
-           
-           [error]
-            ^^^^^
-   = note: no item named `error` in scope
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `error1`
-  --> $DIR/warning.rs:80:11
+  --> $DIR/warning.rs:81:11
    |
 LL | /// docs [error1]
    |           ^^^^^^ no item named `error1` in scope
@@ -141,7 +134,7 @@ LL | /// docs [error1]
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
 warning: unresolved link to `error2`
-  --> $DIR/warning.rs:82:11
+  --> $DIR/warning.rs:83:11
    |
 LL | /// docs [error2]
    |           ^^^^^^ no item named `error2` in scope
