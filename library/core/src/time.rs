@@ -503,7 +503,9 @@ impl Duration {
         const SECS_PER_WEEK: u64 = SECS_PER_MINUTE * MINS_PER_HOUR * HOURS_PER_DAY * DAYS_PER_WEEK;
 
         let Some(seconds) = weeks.checked_mul(SECS_PER_WEEK) else {
-            return Err(DurationConversionError { kind: DurationConversionErrorKind::WeeksOverflow });
+            return Err(DurationConversionError {
+                kind: DurationConversionErrorKind::WeeksOverflow,
+            });
         };
 
         Ok(Duration::from_secs(seconds))
@@ -561,7 +563,9 @@ impl Duration {
         const SECS_PER_DAY: u64 = SECS_PER_MINUTE * MINS_PER_HOUR * HOURS_PER_DAY;
 
         let Some(seconds) = days.checked_mul(SECS_PER_DAY) else {
-            return Err(DurationConversionError { kind: DurationConversionErrorKind::DaysOverflow });
+            return Err(DurationConversionError {
+                kind: DurationConversionErrorKind::DaysOverflow,
+            });
         };
 
         Ok(Duration::from_secs(seconds))
@@ -619,7 +623,9 @@ impl Duration {
         const SECS_PER_HOUR: u64 = SECS_PER_MINUTE * MINS_PER_HOUR;
 
         let Some(seconds) = hours.checked_mul(SECS_PER_HOUR) else {
-            return Err(DurationConversionError { kind: DurationConversionErrorKind::HoursOverflow });
+            return Err(DurationConversionError {
+                kind: DurationConversionErrorKind::HoursOverflow,
+            });
         };
 
         Ok(Duration::from_secs(seconds))
@@ -675,7 +681,9 @@ impl Duration {
     #[inline]
     pub const fn try_from_mins(mins: u64) -> Result<Duration, DurationConversionError> {
         let Some(seconds) = mins.checked_mul(SECS_PER_MINUTE) else {
-            return Err(DurationConversionError { kind: DurationConversionErrorKind::MinutesOverflow });
+            return Err(DurationConversionError {
+                kind: DurationConversionErrorKind::MinutesOverflow,
+            });
         };
 
         Ok(Duration::from_secs(seconds))
