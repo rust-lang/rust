@@ -221,6 +221,7 @@ pub impl(self) trait CommandExt {
 }
 
 impl CommandExt for process::Command {
+    #[rustdoc_skip_body]
     fn create_pidfd(&mut self, val: bool) -> &mut process::Command {
         self.as_inner_mut().create_pidfd(val);
         self
