@@ -283,11 +283,8 @@ impl<'tcx> CompilerInterface<'tcx> {
 
     /// Return registered tool attributes with the given attribute name.
     ///
-    /// FIXME(jdonszelmann): may panic on non-tool attributes. After more attribute work, non-tool
-    /// attributes will simply return an empty list.
-    ///
-    /// Single segmented name like `#[clippy]` is specified as `&["clippy".to_string()]`.
-    /// Multi-segmented name like `#[rustfmt::skip]` is specified as `&["rustfmt".to_string(), "skip".to_string()]`.
+    /// For example, `#[rustfmt::skip]` can be specified as
+    /// `&["rustfmt".to_string(), "skip".to_string()]`.
     pub(crate) fn tool_attrs(&self, def_id: DefId, attr: &[Symbol]) -> Vec<Attribute> {
         self.with_cx(|tables, cx| {
             let did = tables[def_id];
