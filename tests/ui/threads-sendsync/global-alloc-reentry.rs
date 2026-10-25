@@ -1,19 +1,23 @@
 //! test for <https://github.com/rust-lang/rust/issues/160776>
 //@ run-pass
 //@ needs-threads
-//@ only-unix because we use pthread
+//@ edition: 2024
 
 #![feature(rustc_private)]
-extern crate libc;
 
 use std::alloc::{GlobalAlloc, Layout, System};
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+#[cfg(unix)]
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread::Thread;
-use std::{mem, ptr};
 
 static ALLOCATED: AtomicUsize = AtomicUsize::new(0);
+
+#[cfg(unix)]
 static PTHREAD_ACTIVE: AtomicBool = AtomicBool::new(false);
+#[cfg(unix)]
 static PTHREAD_SUCCEEDED_ALLOC: AtomicBool = AtomicBool::new(false);
+#[cfg(unix)]
 static PTHREAD_SUCCEEDED_DEALLOC: AtomicBool = AtomicBool::new(false);
 
 #[global_allocator]
@@ -48,21 +52,6 @@ fn guarantee_functions() {
     });
 }
 
-extern "C" fn start(c: *mut libc::c_void) -> *mut libc::c_void {
-    PTHREAD_ACTIVE.swap(true, Ordering::Relaxed);
-    std::hint::black_box(vec![1, 2]);
-
-    guarantee_functions();
-
-    unsafe {
-        let c: *mut u32 = c.cast();
-        drop(Box::from_raw(c))
-    }
-
-    PTHREAD_ACTIVE.swap(false, Ordering::Relaxed);
-    ptr::null_mut()
-}
-
 struct LocalForAllocatorWithDrop(Thread);
 
 thread_local! {
@@ -73,18 +62,18 @@ thread_local! {
 
 unsafe impl GlobalAlloc for Alloc {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        #[cfg(unix)]
         if PTHREAD_ACTIVE.load(Ordering::Relaxed) {
             PTHREAD_SUCCEEDED_ALLOC.swap(true, Ordering::Relaxed);
         }
 
         let ret = unsafe { System.alloc(layout) };
-        if !ret.is_null() {
-            ALLOCATED.fetch_add(1, Ordering::Relaxed);
-        }
+        ALLOCATED.fetch_add(1, Ordering::Relaxed);
         ret
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+        #[cfg(unix)]
         if PTHREAD_ACTIVE.load(Ordering::Relaxed) {
             PTHREAD_SUCCEEDED_DEALLOC.swap(true, Ordering::Relaxed);
         }
@@ -96,7 +85,28 @@ unsafe impl GlobalAlloc for Alloc {
     }
 }
 
-fn main() {
+// A non-Rust spawned thread will lazily initialize the thread::current structure
+// so needs its own test.
+#[cfg(unix)]
+fn run_pthread() {
+    extern crate libc;
+    use std::{mem, ptr};
+
+    extern "C" fn start(c: *mut libc::c_void) -> *mut libc::c_void {
+        PTHREAD_ACTIVE.swap(true, Ordering::Relaxed);
+        std::hint::black_box(vec![1, 2]);
+
+        guarantee_functions();
+
+        unsafe {
+            let c: *mut u32 = c.cast();
+            drop(Box::from_raw(c))
+        }
+
+        PTHREAD_ACTIVE.swap(false, Ordering::Relaxed);
+        ptr::null_mut()
+    }
+
     unsafe {
         let c: *mut u32 = Box::into_raw(Box::new(1));
         let mut t: libc::pthread_t = mem::zeroed();
@@ -104,12 +114,16 @@ fn main() {
         libc::pthread_join(t, ptr::null_mut());
     }
 
-    // I mostly did this because I wanted to see if the allocator would run in pthreads
+    // testing if pthread is allocing and deallocing with the global allocator.
     assert!(PTHREAD_SUCCEEDED_ALLOC.load(Ordering::Relaxed));
     assert!(PTHREAD_SUCCEEDED_DEALLOC.load(Ordering::Relaxed));
+}
+
+fn main() {
+    #[cfg(unix)]
+    run_pthread();
 
     std::thread::spawn(|| {
-        std::hint::black_box(vec![1, 2]);
         guarantee_functions();
     })
     .join()
