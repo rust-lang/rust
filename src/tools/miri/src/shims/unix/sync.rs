@@ -185,7 +185,7 @@ fn mutex_create<'tcx>(
     mutex_ptr: &OpTy<'tcx>,
     kind: MutexKind,
 ) -> InterpResult<'tcx> {
-    let mutex = ecx.deref_pointer_as(mutex_ptr, ecx.libc_ty_layout("pthread_mutex_t"))?;
+    let mutex = ecx.deref_pointer(mutex_ptr)?;
     let data = PthreadMutex { mutex_ref: MutexRef::new(), kind };
     ecx.init_immovable_sync(&mutex, mutex_init_offset(ecx)?, PTHREAD_INIT, data)?;
     interp_ok(())
@@ -200,7 +200,7 @@ fn mutex_get_data<'tcx, 'a>(
 where
     'tcx: 'a,
 {
-    let mutex = ecx.deref_pointer_as(mutex_ptr, ecx.libc_ty_layout("pthread_mutex_t"))?;
+    let mutex = ecx.deref_pointer(mutex_ptr)?;
     ecx.get_immovable_sync_with_static_init(
         &mutex,
         mutex_init_offset(ecx)?,
@@ -302,7 +302,7 @@ fn rwlock_get_data<'tcx, 'a>(
 where
     'tcx: 'a,
 {
-    let rwlock = ecx.deref_pointer_as(rwlock_ptr, ecx.libc_ty_layout("pthread_rwlock_t"))?;
+    let rwlock = ecx.deref_pointer(rwlock_ptr)?;
     ecx.get_immovable_sync_with_static_init(
         &rwlock,
         rwlock_init_offset(ecx)?,
@@ -423,7 +423,7 @@ fn cond_create<'tcx>(
     cond_ptr: &OpTy<'tcx>,
     clock: TimeoutClock,
 ) -> InterpResult<'tcx> {
-    let cond = ecx.deref_pointer_as(cond_ptr, ecx.libc_ty_layout("pthread_cond_t"))?;
+    let cond = ecx.deref_pointer(cond_ptr)?;
     let data = PthreadCondvar { condvar_ref: CondvarRef::new(), clock };
     ecx.init_immovable_sync(&cond, cond_init_offset(ecx)?, PTHREAD_INIT, data)?;
     interp_ok(())
@@ -436,7 +436,7 @@ fn cond_get_data<'tcx, 'a>(
 where
     'tcx: 'a,
 {
-    let cond = ecx.deref_pointer_as(cond_ptr, ecx.libc_ty_layout("pthread_cond_t"))?;
+    let cond = ecx.deref_pointer(cond_ptr)?;
     ecx.get_immovable_sync_with_static_init(
         &cond,
         cond_init_offset(ecx)?,
@@ -504,7 +504,7 @@ fn sem_create<'tcx>(
     sem_ptr: &OpTy<'tcx>,
     value: u32,
 ) -> InterpResult<'tcx> {
-    let sem = ecx.deref_pointer_as(sem_ptr, ecx.libc_ty_layout("sem_t"))?;
+    let sem = ecx.deref_pointer(sem_ptr)?;
     let data = PthreadSem { sem_ref: SemaphoreRef::new(value.into()) };
     ecx.init_immovable_sync(&sem, sem_init_offset(ecx)?, PTHREAD_INIT, data)?;
     interp_ok(())
@@ -517,7 +517,7 @@ fn sem_get_data<'tcx, 'a>(
 where
     'tcx: 'a,
 {
-    let sem = ecx.deref_pointer_as(sem_ptr, ecx.libc_ty_layout("sem_t"))?;
+    let sem = ecx.deref_pointer(sem_ptr)?;
     ecx.get_immovable_sync_with_static_init(
         &sem,
         sem_init_offset(ecx)?,
@@ -579,9 +579,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // However, the way libstd uses the pthread APIs works in our favor here, so we can get away with this.
         // This can always be revisited to have some external state to catch double-destroys
         // but not complain about the above code. See https://github.com/rust-lang/miri/pull/1933
-        this.write_uninit(
-            &this.deref_pointer_as(attr_op, this.libc_ty_layout("pthread_mutexattr_t"))?,
-        )?;
+        this.write_uninit(&this.deref_pointer(attr_op)?)?;
 
         interp_ok(())
     }
@@ -710,8 +708,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // This write also deletes the interpreter state for this mutex.
         // This might lead to false positives, see comment in pthread_mutexattr_destroy
-        let mutex_place =
-            this.deref_pointer_as(mutex_op, this.libc_ty_layout("pthread_mutex_t"))?;
+        let mutex_place = this.deref_pointer(mutex_op)?;
         this.write_uninit(&mutex_place)?;
 
         interp_ok(())
@@ -828,8 +825,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // This write also deletes the interpreter state for this rwlock.
         // This might lead to false positives, see comment in pthread_mutexattr_destroy
-        let rwlock_place =
-            this.deref_pointer_as(rwlock_op, this.libc_ty_layout("pthread_rwlock_t"))?;
+        let rwlock_place = this.deref_pointer(rwlock_op)?;
         this.write_uninit(&rwlock_place)?;
 
         interp_ok(())
@@ -876,10 +872,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let clock_id = condattr_get_clock_id(this, attr_op)?;
-        this.write_scalar(
-            clock_id,
-            &this.deref_pointer_as(clk_id_op, this.libc_ty_layout("clockid_t"))?,
-        )?;
+        this.write_scalar(clock_id, &this.deref_pointer(clk_id_op)?)?;
 
         interp_ok(())
     }
@@ -895,9 +888,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // De-init the entire thing.
         // This might lead to false positives, see comment in pthread_mutexattr_destroy
-        this.write_uninit(
-            &this.deref_pointer_as(attr_op, this.libc_ty_layout("pthread_condattr_t"))?,
-        )?;
+        this.write_uninit(&this.deref_pointer(attr_op)?)?;
 
         interp_ok(())
     }
@@ -977,9 +968,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let mutex_ref = mutex_get_data(this, mutex_op)?.mutex_ref.clone();
 
         // Extract the timeout.
-        let Some(duration) = this
-            .read_timespec(&this.deref_pointer_as(timeout_op, this.libc_ty_layout("timespec"))?)?
-        else {
+        let Some(duration) = this.read_timespec(&this.deref_pointer(timeout_op)?)? else {
             let einval = this.eval_libc("EINVAL");
             this.write_scalar(einval, dest)?;
             return interp_ok(());
@@ -1021,7 +1010,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // This write also deletes the interpreter state for this condvar.
         // This might lead to false positives, see comment in pthread_mutexattr_destroy
-        let cond_place = this.deref_pointer_as(cond_op, this.libc_ty_layout("pthread_cond_t"))?;
+        let cond_place = this.deref_pointer(cond_op)?;
         this.write_uninit(&cond_place)?;
 
         interp_ok(())
@@ -1084,7 +1073,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
         this.check_no_isolation("`pthread_sem_timedwait`")?;
 
-        let abs_timeout = this.deref_pointer_as(abs_timeout_op, this.libc_ty_layout("timespec"))?;
+        let abs_timeout = this.deref_pointer(abs_timeout_op)?;
 
         let Some(duration) = this.read_timespec(&abs_timeout)? else {
             return this.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
@@ -1142,7 +1131,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // This write also deletes the interpreter state for this semaphore.
         // This might lead to false positives, see comment in pthread_mutexattr_destroy
-        let sem_place = this.deref_pointer_as(sem_op, this.libc_ty_layout("sem_t"))?;
+        let sem_place = this.deref_pointer(sem_op)?;
         this.write_uninit(&sem_place)?;
 
         this.write_null(dest)?; // we always succeed

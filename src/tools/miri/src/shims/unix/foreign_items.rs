@@ -938,99 +938,125 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // Synchronization primitives
             "pthread_mutexattr_init" => {
-                let [attr] = &this
-                    .check_shim_sig(shim_sig!(extern "C" fn(*_) -> i32), (link_name, abi, args))?;
+                let [attr] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*libc::pthread_mutexattr_t) -> i32),
+                    (link_name, abi, args),
+                )?;
                 this.pthread_mutexattr_init(attr)?;
                 this.write_null(dest)?;
             }
             "pthread_mutexattr_settype" => {
                 let [attr, kind] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(*_, i32) -> i32),
+                    shim_sig!(extern "C" fn(*libc::pthread_mutexattr_t, i32) -> i32),
                     (link_name, abi, args),
                 )?;
                 let result = this.pthread_mutexattr_settype(attr, kind)?;
                 this.write_scalar(result, dest)?;
             }
             "pthread_mutexattr_destroy" => {
-                let [attr] = &this
-                    .check_shim_sig(shim_sig!(extern "C" fn(*_) -> i32), (link_name, abi, args))?;
+                let [attr] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*libc::pthread_mutexattr_t) -> i32),
+                    (link_name, abi, args),
+                )?;
                 this.pthread_mutexattr_destroy(attr)?;
                 this.write_null(dest)?;
             }
             "pthread_mutex_init" => {
                 let [mutex, attr] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(*_, *_) -> i32),
+                    shim_sig!(extern "C" fn(*libc::pthread_mutex_t, *libc::pthread_mutexattr_t) -> i32),
                     (link_name, abi, args),
                 )?;
                 this.pthread_mutex_init(mutex, attr)?;
                 this.write_null(dest)?;
             }
             "pthread_mutex_lock" => {
-                let [mutex] = &this
-                    .check_shim_sig(shim_sig!(extern "C" fn(*_) -> i32), (link_name, abi, args))?;
+                let [mutex] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*libc::pthread_mutex_t) -> i32),
+                    (link_name, abi, args),
+                )?;
                 this.pthread_mutex_lock(mutex, dest)?;
             }
             "pthread_mutex_trylock" => {
-                let [mutex] = &this
-                    .check_shim_sig(shim_sig!(extern "C" fn(*_) -> i32), (link_name, abi, args))?;
+                let [mutex] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*libc::pthread_mutex_t) -> i32),
+                    (link_name, abi, args),
+                )?;
                 let result = this.pthread_mutex_trylock(mutex)?;
                 this.write_scalar(result, dest)?;
             }
             "pthread_mutex_unlock" => {
-                let [mutex] = &this
-                    .check_shim_sig(shim_sig!(extern "C" fn(*_) -> i32), (link_name, abi, args))?;
+                let [mutex] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*libc::pthread_mutex_t) -> i32),
+                    (link_name, abi, args),
+                )?;
                 let result = this.pthread_mutex_unlock(mutex)?;
                 this.write_scalar(result, dest)?;
             }
             "pthread_mutex_destroy" => {
-                let [mutex] = &this
-                    .check_shim_sig(shim_sig!(extern "C" fn(*_) -> i32), (link_name, abi, args))?;
+                let [mutex] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*libc::pthread_mutex_t) -> i32),
+                    (link_name, abi, args),
+                )?;
                 this.pthread_mutex_destroy(mutex)?;
                 this.write_int(0, dest)?;
             }
             "pthread_rwlock_rdlock" => {
-                let [rwlock] = &this
-                    .check_shim_sig(shim_sig!(extern "C" fn(*_) -> i32), (link_name, abi, args))?;
+                let [rwlock] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*libc::pthread_rwlock_t) -> i32),
+                    (link_name, abi, args),
+                )?;
                 this.pthread_rwlock_rdlock(rwlock, dest)?;
             }
             "pthread_rwlock_tryrdlock" => {
-                let [rwlock] = &this
-                    .check_shim_sig(shim_sig!(extern "C" fn(*_) -> i32), (link_name, abi, args))?;
+                let [rwlock] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*libc::pthread_rwlock_t) -> i32),
+                    (link_name, abi, args),
+                )?;
                 let result = this.pthread_rwlock_tryrdlock(rwlock)?;
                 this.write_scalar(result, dest)?;
             }
             "pthread_rwlock_wrlock" => {
-                let [rwlock] = &this
-                    .check_shim_sig(shim_sig!(extern "C" fn(*_) -> i32), (link_name, abi, args))?;
+                let [rwlock] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*libc::pthread_rwlock_t) -> i32),
+                    (link_name, abi, args),
+                )?;
                 this.pthread_rwlock_wrlock(rwlock, dest)?;
             }
             "pthread_rwlock_trywrlock" => {
-                let [rwlock] = &this
-                    .check_shim_sig(shim_sig!(extern "C" fn(*_) -> i32), (link_name, abi, args))?;
+                let [rwlock] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*libc::pthread_rwlock_t) -> i32),
+                    (link_name, abi, args),
+                )?;
                 let result = this.pthread_rwlock_trywrlock(rwlock)?;
                 this.write_scalar(result, dest)?;
             }
             "pthread_rwlock_unlock" => {
-                let [rwlock] = &this
-                    .check_shim_sig(shim_sig!(extern "C" fn(*_) -> i32), (link_name, abi, args))?;
+                let [rwlock] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*libc::pthread_rwlock_t) -> i32),
+                    (link_name, abi, args),
+                )?;
                 this.pthread_rwlock_unlock(rwlock)?;
                 this.write_null(dest)?;
             }
             "pthread_rwlock_destroy" => {
-                let [rwlock] = &this
-                    .check_shim_sig(shim_sig!(extern "C" fn(*_) -> i32), (link_name, abi, args))?;
+                let [rwlock] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*libc::pthread_rwlock_t) -> i32),
+                    (link_name, abi, args),
+                )?;
                 this.pthread_rwlock_destroy(rwlock)?;
                 this.write_null(dest)?;
             }
             "pthread_condattr_init" => {
-                let [attr] = &this
-                    .check_shim_sig(shim_sig!(extern "C" fn(*_) -> i32), (link_name, abi, args))?;
+                let [attr] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*libc::pthread_condattr_t) -> i32),
+                    (link_name, abi, args),
+                )?;
                 this.pthread_condattr_init(attr)?;
                 this.write_null(dest)?;
             }
             "pthread_condattr_setclock" => {
                 let [attr, clock_id] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(*_, i32) -> i32),
+                    shim_sig!(extern "C" fn(*libc::pthread_condattr_t, i32) -> i32),
                     (link_name, abi, args),
                 )?;
                 let result = this.pthread_condattr_setclock(attr, clock_id)?;
@@ -1038,48 +1064,54 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "pthread_condattr_getclock" => {
                 let [attr, clock_id] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(*_, *_) -> i32),
+                    shim_sig!(extern "C" fn(*libc::pthread_condattr_t, *libc::clockid_t) -> i32),
                     (link_name, abi, args),
                 )?;
                 this.pthread_condattr_getclock(attr, clock_id)?;
                 this.write_null(dest)?;
             }
             "pthread_condattr_destroy" => {
-                let [attr] = &this
-                    .check_shim_sig(shim_sig!(extern "C" fn(*_) -> i32), (link_name, abi, args))?;
+                let [attr] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*libc::pthread_condattr_t) -> i32),
+                    (link_name, abi, args),
+                )?;
                 this.pthread_condattr_destroy(attr)?;
                 this.write_null(dest)?;
             }
             "pthread_cond_init" => {
                 let [cond, attr] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(*_, *_) -> i32),
+                    shim_sig!(extern "C" fn(*libc::pthread_cond_t, *libc::pthread_condattr_t) -> i32),
                     (link_name, abi, args),
                 )?;
                 this.pthread_cond_init(cond, attr)?;
                 this.write_null(dest)?;
             }
             "pthread_cond_signal" => {
-                let [cond] = &this
-                    .check_shim_sig(shim_sig!(extern "C" fn(*_) -> i32), (link_name, abi, args))?;
+                let [cond] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*libc::pthread_cond_t) -> i32),
+                    (link_name, abi, args),
+                )?;
                 this.pthread_cond_signal(cond)?;
                 this.write_null(dest)?;
             }
             "pthread_cond_broadcast" => {
-                let [cond] = &this
-                    .check_shim_sig(shim_sig!(extern "C" fn(*_) -> i32), (link_name, abi, args))?;
+                let [cond] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*libc::pthread_cond_t) -> i32),
+                    (link_name, abi, args),
+                )?;
                 this.pthread_cond_broadcast(cond)?;
                 this.write_null(dest)?;
             }
             "pthread_cond_wait" => {
                 let [cond, mutex] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(*_, *_) -> i32),
+                    shim_sig!(extern "C" fn(*libc::pthread_cond_t, *libc::pthread_mutex_t) -> i32),
                     (link_name, abi, args),
                 )?;
                 this.pthread_cond_wait(cond, mutex, dest)?;
             }
             "pthread_cond_timedwait" => {
                 let [cond, mutex, abstime] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(*_, *_, *_) -> i32),
+                    shim_sig!(extern "C" fn(*libc::pthread_cond_t, *libc::pthread_mutex_t, *libc::timespec) -> i32),
                     (link_name, abi, args),
                 )?;
                 this.pthread_cond_timedwait(
@@ -1087,38 +1119,46 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 )?;
             }
             "pthread_cond_destroy" => {
-                let [cond] = &this
-                    .check_shim_sig(shim_sig!(extern "C" fn(*_) -> i32), (link_name, abi, args))?;
+                let [cond] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*libc::pthread_cond_t) -> i32),
+                    (link_name, abi, args),
+                )?;
                 this.pthread_cond_destroy(cond)?;
                 this.write_null(dest)?;
             }
             "sem_init" => {
                 let [sem, pshared, value] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(*_, i32, u32) -> i32),
+                    shim_sig!(extern "C" fn(*libc::sem_t, i32, u32) -> i32),
                     (link_name, abi, args),
                 )?;
                 this.pthread_sem_init(sem, pshared, value, dest)?;
             }
             "sem_wait" => {
-                let [sem] = &this
-                    .check_shim_sig(shim_sig!(extern "C" fn(*_) -> i32), (link_name, abi, args))?;
+                let [sem] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*libc::sem_t) -> i32),
+                    (link_name, abi, args),
+                )?;
                 this.pthread_sem_wait(sem, dest)?;
             }
             "sem_timedwait" => {
                 let [sem, abs_timeout] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(*_, *_) -> i32),
+                    shim_sig!(extern "C" fn(*libc::sem_t, *libc::timespec) -> i32),
                     (link_name, abi, args),
                 )?;
                 this.pthread_sem_timedwait(sem, abs_timeout, dest)?;
             }
             "sem_post" => {
-                let [sem] = &this
-                    .check_shim_sig(shim_sig!(extern "C" fn(*_) -> i32), (link_name, abi, args))?;
+                let [sem] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*libc::sem_t) -> i32),
+                    (link_name, abi, args),
+                )?;
                 this.pthread_sem_post(sem, dest)?;
             }
             "sem_destroy" => {
-                let [sem] = &this
-                    .check_shim_sig(shim_sig!(extern "C" fn(*_) -> i32), (link_name, abi, args))?;
+                let [sem] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*libc::sem_t) -> i32),
+                    (link_name, abi, args),
+                )?;
                 this.pthread_sem_destroy(sem, dest)?;
             }
 
