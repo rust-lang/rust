@@ -1,4 +1,4 @@
-use rustc_ast::tokenstream::TokenStream;
+use rustc_ast::tokenarena::ArenaTokenStream;
 use rustc_ast::{ExprKind, LitIntType, LitKind, StrStyle, UintTy, token};
 use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacEager, MacroExpanderResult};
 use rustc_session::diagnostics::report_lit_error;
@@ -135,7 +135,7 @@ fn handle_array_element(
 pub(crate) fn expand_concat_bytes(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
-    tts: TokenStream,
+    tts: ArenaTokenStream,
 ) -> MacroExpanderResult<'static> {
     let ExpandResult::Ready(mac) = get_exprs_from_tts(cx, tts) else {
         return ExpandResult::Retry(());
