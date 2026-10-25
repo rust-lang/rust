@@ -39,6 +39,7 @@ pub fn get_limits(krate_attrs: &[ast::Attribute], sess: &Session, features: &Fea
         // So, no lints here to avoid duplicates.
         ShouldEmit::EarlyFatal { also_emit_lints: false },
         None,
+        None,
     );
     let attrs = &attrs;
     Limits {

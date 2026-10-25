@@ -704,6 +704,7 @@ where
             CRATE_NODE_ID,
             Some(self.features),
             ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },
+            None,
             Some(self.registered_lint_tools),
         );
         self.add_hir_inner(&parsed, is_crate_node)
