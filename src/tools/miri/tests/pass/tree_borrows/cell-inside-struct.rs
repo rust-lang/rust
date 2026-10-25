@@ -1,4 +1,4 @@
-//! The same as `tests/fail/tree-borrows/cell-inside-struct` but with
+//! The same as `tests/fail/tree_borrows/cell-inside-struct` but with
 //! precise tracking of interior mutability disabled.
 //@revisions: tree tree_implicit_writes
 //@[tree_implicit_writes]compile-flags: -Zmiri-tree-borrows-implicit-writes

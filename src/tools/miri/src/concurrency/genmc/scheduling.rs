@@ -74,7 +74,7 @@ fn get_function_kind<'tcx>(
             // these calls are not *that* common.
             return interp_ok(MaybeAtomic(ActionKind::Load));
         }
-        // NOTE: Functions intercepted by Miri in `concurrency/genmc/intercep.rs` must also be added here.
+        // NOTE: Functions intercepted by Miri in `concurrency/genmc/shims.rs` must also be added here.
         // Such intercepted functions, like `sys::Mutex::lock`, should be treated as atomics to ensure we call the scheduler when we encounter one of them.
         // These functions must also be classified whether they may have load semantics.
         if ecx.tcx.is_diagnostic_item(sym::sys_mutex_lock, callee_def_id)

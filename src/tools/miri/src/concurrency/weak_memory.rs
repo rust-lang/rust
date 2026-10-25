@@ -62,7 +62,7 @@
 //! can only happen after all previous accesses on the same locations. This implementation is adapted to allow these operations.
 //! A mixed atomicity read that races with writes, or a write that races with reads or writes will still cause UBs to be thrown.
 //! Mixed size atomic accesses must not race with any other atomic access, whether read or write, or a UB will be thrown.
-//! You can refer to test cases in weak_memory/extra_cpp.rs and weak_memory/extra_cpp_unsafe.rs for examples of these operations.
+//! You can refer to test cases in tests/pass/0weak_memory/extra_cpp.rs for examples of these operations.
 
 // Our and the author's own implementation (tsan11) of the paper have some deviations from the provided operational semantics in §5.3:
 // 1. In the operational semantics, loads acquire the vector clock of the atomic location
