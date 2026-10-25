@@ -1,17 +1,17 @@
 error: `[const]` is not allowed here
-  --> $DIR/const-supertrait-unstable.rs:25:12
+  --> $DIR/const-supertrait-unstable.rs:26:12
    |
 LL | trait Bar: [const] Foo {}
    |            ^^^^^^^
    |
 note: this trait is not `const`, so it cannot have `[const]` trait bounds
-  --> $DIR/const-supertrait-unstable.rs:25:1
+  --> $DIR/const-supertrait-unstable.rs:26:1
    |
 LL | trait Bar: [const] Foo {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0658]: const trait impls are experimental
-  --> $DIR/const-supertrait-unstable.rs:25:12
+  --> $DIR/const-supertrait-unstable.rs:26:12
    |
 LL | trait Bar: [const] Foo {}
    |            ^^^^^^^
@@ -21,7 +21,7 @@ LL | trait Bar: [const] Foo {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: const trait impls are experimental
-  --> $DIR/const-supertrait-unstable.rs:32:17
+  --> $DIR/const-supertrait-unstable.rs:33:17
    |
 LL | const fn foo<T: [const] Bar>(x: &T) {
    |                 ^^^^^^^
@@ -31,7 +31,7 @@ LL | const fn foo<T: [const] Bar>(x: &T) {
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: `[const]` can only be applied to `const` traits
-  --> $DIR/const-supertrait-unstable.rs:25:12
+  --> $DIR/const-supertrait-unstable.rs:26:12
    |
 LL | trait Bar: [const] Foo {}
    |            ^^^^^^^ can't be applied to `Foo`
@@ -42,19 +42,7 @@ LL | const trait Foo {
    | +++++
 
 error: `[const]` can only be applied to `const` traits
-  --> $DIR/const-supertrait-unstable.rs:25:12
-   |
-LL | trait Bar: [const] Foo {}
-   |            ^^^^^^^ can't be applied to `Foo`
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: enable `#![feature(const_trait_impl)]` in your crate and mark `Foo` as `const` to allow it to have `const` implementations
-   |
-LL | const trait Foo {
-   | +++++
-
-error: `[const]` can only be applied to `const` traits
-  --> $DIR/const-supertrait-unstable.rs:25:12
+  --> $DIR/const-supertrait-unstable.rs:26:12
    |
 LL | trait Bar: [const] Foo {}
    |            ^^^^^^^ can't be applied to `Foo`
@@ -66,7 +54,19 @@ LL | const trait Foo {
    | +++++
 
 error: `[const]` can only be applied to `const` traits
-  --> $DIR/const-supertrait-unstable.rs:32:17
+  --> $DIR/const-supertrait-unstable.rs:26:12
+   |
+LL | trait Bar: [const] Foo {}
+   |            ^^^^^^^ can't be applied to `Foo`
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: enable `#![feature(const_trait_impl)]` in your crate and mark `Foo` as `const` to allow it to have `const` implementations
+   |
+LL | const trait Foo {
+   | +++++
+
+error: `[const]` can only be applied to `const` traits
+  --> $DIR/const-supertrait-unstable.rs:33:17
    |
 LL | const fn foo<T: [const] Bar>(x: &T) {
    |                 ^^^^^^^ can't be applied to `Bar`
@@ -77,7 +77,7 @@ LL | const trait Bar: [const] Foo {}
    | +++++
 
 error: `[const]` can only be applied to `const` traits
-  --> $DIR/const-supertrait-unstable.rs:32:17
+  --> $DIR/const-supertrait-unstable.rs:33:17
    |
 LL | const fn foo<T: [const] Bar>(x: &T) {
    |                 ^^^^^^^ can't be applied to `Bar`
@@ -89,13 +89,13 @@ LL | const trait Bar: [const] Foo {}
    | +++++
 
 error[E0015]: cannot call non-const method `<T as Foo>::a` in constant functions
-  --> $DIR/const-supertrait-unstable.rs:36:7
+  --> $DIR/const-supertrait-unstable.rs:37:7
    |
 LL |     x.a();
    |       ^^^
    |
 note: method `a` is not const because trait `Foo` is not const
-  --> $DIR/const-supertrait-unstable.rs:21:1
+  --> $DIR/const-supertrait-unstable.rs:22:1
    |
 LL | trait Foo {
    | ^^^^^^^^^ this trait is not const
