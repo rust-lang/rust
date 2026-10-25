@@ -518,8 +518,11 @@ fn run_with_deps(target: String, mode: String) -> Result<()> {
         miri_config(&target, "", Mode::RunDep { native }, Some(WithDependencies { bless: false }));
     config.comment_defaults.base().custom.remove("edition"); // `./miri` adds an `--edition` in `args`, so don't set it twice
     config.fill_host_and_target()?;
-    // Reset `args` (otherwise we'll get JSON output).
-    config.program.args = vec![];
+    // Remove the error-format flag that is added by default.
+    config
+        .program
+        .args
+        .retain(|arg| !arg.to_str().is_some_and(|arg| arg.starts_with("--error-format=")));
 
     // Compute the actual Miri invocation command.
     let test_config = TestConfig::one_off_runner(config.clone(), PathBuf::new());
