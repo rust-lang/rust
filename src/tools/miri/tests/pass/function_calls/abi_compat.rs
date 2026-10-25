@@ -98,16 +98,7 @@ fn test_abi_cfi_encoding() {
         pub x: i32,
         pub y: i32,
     }
-    test_abi_compat(
-        CfiEncoded1 {
-            x: 2,
-            y: 6,
-        },
-        CfiEncoded2 {
-            x: 2,
-            y: 6,
-        },
-    );
+    test_abi_compat(CfiEncoded1 { x: 2, y: 6 }, CfiEncoded2 { x: 2, y: 6 });
 }
 
 fn main() {

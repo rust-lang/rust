@@ -8,8 +8,24 @@ use ui_test::status_emitter::StatusEmitter;
 use ui_test::{CommandBuilder, Config, default_file_filter, run_tests_generic};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let miri_dir = manifest_dir.parent().unwrap();
+    // `priroda` is a target of the `miri` package, so `CARGO_MANIFEST_DIR` is the Miri repo root.
+    let miri_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let priroda_dir = miri_dir.join("priroda");
+
+    // The fixtures assume a host build of Miri, so skip them under cross-target bootstrap runs.
+    // The bootstrap Priroda test step sets `MIRI_TEST_TARGET`.
+    if let Some(miri_test_target) = env::var_os("MIRI_TEST_TARGET") {
+        let host_target = Command::new("rustc").arg("--print").arg("host-tuple").output()?;
+        let host_target = String::from_utf8(host_target.stdout)?.trim().to_owned();
+        if miri_test_target.to_str() != Some(&host_target) {
+            println!("skipping Priroda tests for non-host target {miri_test_target:?}");
+            return Ok(());
+        }
+    }
+
+    // The test fixtures use paths relative to the Priroda directory; run the harness from there
+    // so the relative `tests/ui/...` paths resolve in the same way as a standalone crate.
+    std::env::set_current_dir(&priroda_dir)?;
 
     let rustc_sysroot = Command::new("rustc").arg("--print").arg("sysroot").output()?;
     let rustc_sysroot = String::from_utf8(rustc_sysroot.stdout)?.trim().to_owned();
@@ -29,7 +45,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Replace the dynamic paths in the actual stdout with the stable placeholders
     let manifest_dir_regex =
-        Regex::new(&regex::escape(&manifest_dir.display().to_string())).unwrap();
+        Regex::new(&regex::escape(&priroda_dir.display().to_string())).unwrap();
     let miri_dir_regex = Regex::new(&regex::escape(&miri_dir.display().to_string())).unwrap();
     let rustc_sysroot_regex = Regex::new(&regex::escape(&rustc_sysroot)).unwrap();
     let pointer_regex = Regex::new(r"0x[0-9a-f]+\[alloc[0-9]+\]<[0-9]+>").unwrap();
@@ -49,7 +65,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         (content_length_regex.into(), b"Content-Length: {CONTENT_LENGTH}".to_vec()),
     ]);
 
-    // Priroda CLI tests do not currently require annotation comments in the test files
+    // Priroda UI tests do not currently require annotation comments in the test files.
     config.comment_defaults.base().exit_status = Spanned::dummy(0).into();
     config.comment_defaults.base().require_annotations = Spanned::dummy(false).into();
 
