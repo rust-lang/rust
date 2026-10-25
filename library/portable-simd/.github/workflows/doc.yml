@@ -5,14 +5,24 @@ on:
     branches:
       - main
 
+permissions: {}
+
+defaults:
+  run:
+    shell: bash
+
 jobs:
   release:
     name: Deploy Documentation
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # Required by `peaceiris/actions-gh-pages`
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Setup Rust
         run: |
@@ -23,7 +33,7 @@ jobs:
         run: cargo doc --no-deps
       
       - name: Deploy Documentation
-        uses: peaceiris/actions-gh-pages@v3
+        uses: peaceiris/actions-gh-pages@373f7f263a76c20808c831209c920827a82a2847 # v3.9.3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_branch: gh-pages
