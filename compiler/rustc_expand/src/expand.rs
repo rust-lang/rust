@@ -2238,6 +2238,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
             Some(self.cx.ecfg.features),
             ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },
             Some(self.cx.resolver.registered_attr_tools()),
+            Some(self.cx.resolver.registered_lint_tools()),
         );
     }
 
