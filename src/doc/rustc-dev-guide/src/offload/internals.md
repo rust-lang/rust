@@ -23,8 +23,7 @@ This pass does not perform codegen; instead it writes a manifest that records ev
 `#[offload_kernel]` instance (with its concrete generic arguments) needed by the host code.
 
 We then compile all functions that should be offloaded for the device (e.g nvptx64,
-amdgcn-amd-amdhsa, intel in the future), passing the manifest via
-`-Zoffload=Device=<manifest>`.
+amdgcn-amd-amdhsa, intel in the future), passing the manifest via `-Zoffload=Device=<manifest>`.
 The recorded kernel instances are added as monomorphization roots,
 so the required generic kernels are codegened.
 Currently we require cumbersome `#cfg(target_os="")` annotations,
@@ -64,8 +63,7 @@ therefore there shouldn't be a runtime performance difference between the two ap
 The `Region` type (`core::offload::Region`) is a host-side handle to a contiguous memory region
 that should be partitioned across the execution units (threads) of an offloaded kernel.
 Creating a `Region` takes a mutable borrow of the underlying slice,
-so Rust's borrow checker prevents the host
-from accessing the memory while the region is alive.
+so Rust's borrow checker prevents the host from accessing the memory while the region is alive.
 `Region` is deliberately neither `Copy` nor `Clone`,
 which avoids aliasing the same memory through multiple handles.
 A region can be reborrowed with `Region::reborrow` when a shorter lifetime is needed.
