@@ -57,8 +57,7 @@ The [`compiler/`] crates all have names starting with `rustc_*`.
 These are a collection of around 50 interdependent crates ranging in size from tiny to huge.
 There is also the `rustc` crate which is the actual binary (i.e. the
 `main` function); it doesn't actually do anything besides calling the [`rustc_driver`] crate,
-which drives the various parts of compilation in other
-crates.
+which drives the various parts of compilation in other crates.
 
 The dependency order of these crates is complex, but roughly it is something like this:
 
@@ -124,12 +123,10 @@ the compiler's [query system][query] gets set up.
 The query system is set up in a clever way using function pointers.
 This allows us to break dependencies between crates, allowing more parallel compilation.
 The query system is defined in [`rustc_middle`],
-so nearly all subsequent parts of the compiler depend on
-this crate.
+so nearly all subsequent parts of the compiler depend on this crate.
 It is a really large crate, leading to long compile times.
 Some efforts have been made to move stuff out of it with varying success.
-Another side-effect is that sometimes related functionality gets scattered across
-different crates.
+Another side-effect is that sometimes related functionality gets scattered across different crates.
 For example, linting functionality is found across earlier parts of the crate,
 [`rustc_lint`], [`rustc_middle`], and other places.
 
