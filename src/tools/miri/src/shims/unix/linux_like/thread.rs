@@ -23,7 +23,7 @@ pub fn prctl<'tcx>(
     let pr_set_name = ecx.eval_libc_i32("PR_SET_NAME");
     let pr_get_name = ecx.eval_libc_i32("PR_GET_NAME");
 
-    let res = match ecx.read_scalar(op)?.to_i32()? {
+    let res = match ecx.read_scalar(&op)?.to_i32()? {
         op if op == pr_set_name => {
             let ([name], _) = ecx.check_varargs(
                 shim_varargs![*libc::c_char],
@@ -31,7 +31,7 @@ pub fn prctl<'tcx>(
                 "prctl(PR_SET_NAME, ...)",
             )?;
 
-            let name = ecx.read_scalar(name)?;
+            let name = ecx.read_scalar(&name)?;
             let thread = ecx.pthread_self()?;
             // The Linux kernel silently truncates long names.
             // https://www.man7.org/linux/man-pages/man2/PR_SET_NAME.2const.html
@@ -47,7 +47,7 @@ pub fn prctl<'tcx>(
                 "prctl(PR_GET_NAME, ...)",
             )?;
 
-            let name = ecx.read_scalar(name)?;
+            let name = ecx.read_scalar(&name)?;
             let thread = ecx.pthread_self()?;
             let len = Scalar::from_target_usize(TASK_COMM_LEN, ecx);
             ecx.check_ptr_access(

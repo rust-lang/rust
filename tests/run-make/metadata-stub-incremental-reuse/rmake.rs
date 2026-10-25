@@ -1,6 +1,6 @@
 //@ needs-target-std
 //
-// Under `-Zembed-metadata=no` the rlib carries only a metadata stub, which
+// Under `-Cembed-metadata=no` the rlib carries only a metadata stub, which
 // rustc writes as a separate file alongside the full metadata. Recompiling
 // with `-C incremental` can reuse the full metadata from a work product, and
 // the stub must still be produced on that path.
@@ -13,7 +13,7 @@ fn build(out_dir: &str, incremental: &str) {
         .crate_name("foo")
         .crate_type("lib")
         .emit("dep-info,metadata,link")
-        .arg("-Zembed-metadata=no")
+        .arg("-Cembed-metadata=no")
         .incremental(incremental)
         .out_dir(out_dir)
         .run();

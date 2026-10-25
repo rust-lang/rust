@@ -1,5 +1,3 @@
-#![feature(optimize_attribute)]
-
 use compiler_builtins::mem::{memcmp, memcpy, memmove, memset, strlen, wchar_t};
 
 const WORD_SIZE: usize = core::mem::size_of::<usize>();

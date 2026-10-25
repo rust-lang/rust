@@ -29,6 +29,7 @@ pub mod diagnostic;
 pub mod diagnostic_items;
 mod encode_cross_crate;
 pub mod lang_items;
+pub mod lint;
 mod pretty_printing;
 mod stability;
 pub mod target;

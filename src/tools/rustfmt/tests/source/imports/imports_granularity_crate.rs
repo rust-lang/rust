@@ -1,4 +1,4 @@
-// rustfmt-imports_granularity: Crate
+//@ rustfmt-imports_granularity: Crate
 
 use a::{c,d,b};
 use a::{d, e, b, a, f};

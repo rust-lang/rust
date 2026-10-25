@@ -1,8 +1,8 @@
-// rustfmt-max_width: 110
-// rustfmt-use_small_heuristics: Max
-// rustfmt-hard_tabs: true
-// rustfmt-use_field_init_shorthand: true
-// rustfmt-overflow_delimited_expr: true
+//@ rustfmt-max_width: 110
+//@ rustfmt-use_small_heuristics: Max
+//@ rustfmt-hard_tabs: true
+//@ rustfmt-use_field_init_shorthand: true
+//@ rustfmt-overflow_delimited_expr: true
 
 // https://github.com/rust-lang/rustfmt/issues/4049
 fn foo() {

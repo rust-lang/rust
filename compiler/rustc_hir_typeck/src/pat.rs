@@ -21,7 +21,6 @@ use rustc_hir_analysis::autoderef::report_autoderef_recursion_limit_error;
 use rustc_infer::infer::RegionVariableOrigin;
 use rustc_lint_defs::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
 use rustc_middle::traits::PatternOriginExpr;
-use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::{self, Pinnedness, Ty, TypeVisitableExt, Unnormalized};
 use rustc_session::diagnostics::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
@@ -913,7 +912,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let (res, opt_ty, segments) =
                     self.resolve_ty_and_res_fully_qualified_call(qpath, lt.hir_id, lt.span);
                 self.instantiate_value_path(
-                    segments, opt_ty, res, lt.span, lt.span, lt.hir_id, false,
+                    segments, opt_ty, res, lt.span, lt.span, lt.hir_id, None,
                 )
                 .0
             }
@@ -1646,7 +1645,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Find the type of the path pattern, for later checking.
         let (pat_ty, pat_res) =
-            self.instantiate_value_path(segments, opt_ty, res, span, span, path_id, false);
+            self.instantiate_value_path(segments, opt_ty, res, span, span, path_id, None);
         Ok(ResolvedPat { ty: pat_ty, kind: ResolvedPatKind::Path { res, pat_res, segments } })
     }
 
@@ -1807,7 +1806,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Type-check the path.
         let (pat_ty, res) = self
-            .instantiate_value_path(segments, opt_ty, res, pat.span, pat.span, pat.hir_id, false);
+            .instantiate_value_path(segments, opt_ty, res, pat.span, pat.span, pat.hir_id, None);
         if !pat_ty.is_fn() {
             return report_unexpected_res(res);
         }
@@ -2319,21 +2318,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         args: ty::GenericArgsRef<'tcx>,
     ) -> Diag<'a> {
         let tcx = self.tcx;
-        let (field_names, t, plural) = if let [field] = inexistent_fields {
-            (format!("a field named `{}`", field.ident), "this", "")
-        } else {
-            (
+        let (field_names, t, plural) = match inexistent_fields {
+            [field] => (format!("a field named `{}`", field.ident), "this", ""),
+            [fields @ .., last] => (
                 format!(
-                    "fields named {}",
-                    inexistent_fields
+                    "fields named {} and `{}`",
+                    fields
                         .iter()
                         .map(|field| format!("`{}`", field.ident))
                         .collect::<Vec<String>>()
-                        .join(", ")
+                        .join(", "),
+                    last.ident,
                 ),
                 "these",
                 "s",
-            )
+            ),
+            [] => unreachable!(),
         };
         let spans = inexistent_fields.iter().map(|field| field.ident.span).collect::<Vec<_>>();
         let mut err = struct_span_code_err!(
@@ -2631,23 +2631,34 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         have_inaccessible_fields: bool,
         fields: &'tcx [hir::PatField<'tcx>],
     ) -> Diag<'a> {
-        let inaccessible = if have_inaccessible_fields { " and inaccessible fields" } else { "" };
-        let field_names = if let [(_, field)] = unmentioned_fields {
-            format!("field `{field}`{inaccessible}")
-        } else {
-            let fields = unmentioned_fields
-                .iter()
-                .map(|(_, name)| format!("`{name}`"))
-                .collect::<Vec<String>>()
-                .join(", ");
-            format!("fields {fields}{inaccessible}")
+        let field_names = match unmentioned_fields {
+            [(_, field)] if have_inaccessible_fields => {
+                format!("field `{field}` and inaccessible fields")
+            }
+            [(_, field)] => format!("field `{field}`"),
+            fields if have_inaccessible_fields => format!(
+                "fields {} and inaccessible fields",
+                fields
+                    .iter()
+                    .map(|(_, name)| format!("`{name}`"))
+                    .collect::<Vec<String>>()
+                    .join(", ")
+            ),
+            [fields @ .., (_, last)] => format!(
+                "fields {} and `{last}`",
+                fields
+                    .iter()
+                    .map(|(_, name)| format!("`{name}`"))
+                    .collect::<Vec<String>>()
+                    .join(", ")
+            ),
+            [] => unreachable!("{pat:?} with unmentioned fields but no fields?"),
         };
         let mut err = struct_span_code_err!(
             self.dcx(),
             pat.span,
             E0027,
-            "pattern does not mention {}",
-            field_names
+            "pattern does not mention {field_names}",
         );
         err.span_label(pat.span, format!("missing {field_names}"));
         let len = unmentioned_fields.len();

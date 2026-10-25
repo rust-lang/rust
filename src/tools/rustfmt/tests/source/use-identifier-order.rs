@@ -1,6 +1,6 @@
-// rustfmt-edition: 2021
-// rustfmt-style_edition: 2021
-// rustfmt-reorder_imports: true
+//@ rustfmt-edition: 2021
+//@ rustfmt-style_edition: 2021
+//@ rustfmt-reorder_imports: true
 
 use a::{
     Big, small, t_i_n_y, HUGE, SCREAMING_LOUDLY, or_quietly, OrInTheMiddle

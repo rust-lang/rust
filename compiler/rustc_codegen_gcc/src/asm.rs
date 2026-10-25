@@ -1,5 +1,3 @@
-// cSpell:ignoreRegExp [afkspqvwy]reg
-
 use std::borrow::Cow;
 use std::fmt::Write;
 

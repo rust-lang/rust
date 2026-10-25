@@ -940,6 +940,10 @@ impl String {
     /// into a `String` with the [`from_raw_parts`] function, allowing
     /// the destructor to perform the cleanup.
     ///
+    /// If `capacity == 0`, then `pointer` may be dangling. Otherwise,
+    /// it will always be valid for reads and writes over `capacity`
+    /// bytes, and point to the start of the string.
+    ///
     /// [`from_raw_parts`]: String::from_raw_parts
     ///
     /// # Examples
@@ -3414,6 +3418,10 @@ impl TryFrom<Vec<u8>> for String {
     }
 }
 
+/// Note that all methods of this trait append to the `String`'s existing
+/// contents; they never truncate or replace what is already there. In
+/// particular, [`fmt::Write::write_str`] uses [`push_str`][String::push_str]
+/// and [`fmt::Write::write_char`] uses [`push`][String::push].
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Write for String {

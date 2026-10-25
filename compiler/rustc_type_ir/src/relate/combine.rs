@@ -129,7 +129,7 @@ where
                 }
                 TypingMode::Typeck { .. }
                 | TypingMode::Reflection
-                | TypingMode::PostTypeckUntilBorrowck { .. }
+                | TypingMode::PostTypeckThroughBorrowck { .. }
                 | TypingMode::PostBorrowck { .. }
                 | TypingMode::PostAnalysis
                 | TypingMode::Codegen => structurally_relate_tys(relation, a, b),

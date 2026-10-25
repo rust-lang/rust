@@ -13,7 +13,6 @@ use rustc_lint_defs::builtin::LONG_RUNNING_CONST_EVAL;
 use rustc_middle::mir::AssertMessage;
 use rustc_middle::mir::interpret::ReportedErrorInfo;
 use rustc_middle::query::TyCtxtAt;
-use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, TyAndLayout, ValidityRequirement};
 use rustc_middle::ty::{self, FieldInfo, ScalarInt, Ty, TyCtxt};
 use rustc_middle::{mir, throw_machine_stop};
@@ -253,7 +252,7 @@ impl<'tcx> CompileTimeInterpCx<'tcx> {
             }
 
             let msg = Symbol::intern(self.read_str(&msg_place)?);
-            let span = self.find_closest_untracked_caller_location();
+            let span = self.caller_location();
             let (file, line, col) = self.location_triple_for_span(span);
             return Err(ConstEvalErrKind::Panic { msg, file, line, col }).into();
         } else if self.tcx.is_lang_item(def_id, LangItem::PanicFmt) {
@@ -470,7 +469,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
 
     fn panic_nounwind(ecx: &mut InterpCx<'tcx, Self>, msg: &str) -> InterpResult<'tcx> {
         let msg = Symbol::intern(msg);
-        let span = ecx.find_closest_untracked_caller_location();
+        let span = ecx.caller_location();
         let (file, line, col) = ecx.location_triple_for_span(span);
         Err(ConstEvalErrKind::Panic { msg, file, line, col }).into()
     }
@@ -1132,7 +1131,10 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
             return interp_ok(None);
         }
         // If it's a frozen shared reference that's not already immutable, potentially make it immutable.
-        // (Do nothing on `None` provenance, that cannot store immutability anyway.)
+        // (Do nothing on `None` provenance, that cannot be used to perform mutation anyway.)
+        // Note that const-checking relies on the UB detection we are implementing here! Specifically,
+        // the analysis for which destructors may be invoked relies on `&impl Freeze` references not
+        // being able to change what gets dropped.
         if let ty::Ref(_, ty, mutbl) = val.layout.ty.kind()
             && *mutbl == Mutability::Not
             && val.to_scalar_and_meta().0.to_pointer(ecx).provenance.is_some_and(|p| !p.immutable())

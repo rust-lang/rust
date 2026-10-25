@@ -1,5 +1,5 @@
-// rustfmt-hard_tabs = true
-// rustfmt-normalize_comments = true
+//@ rustfmt-hard_tabs: true
+//@ rustfmt-normalize_comments: true
 
 /// ```
 /// println!("Hello, World!");

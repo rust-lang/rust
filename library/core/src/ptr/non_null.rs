@@ -4,7 +4,6 @@ use crate::marker::{Destruct, PointeeSized, Unsize};
 use crate::mem::{MaybeUninit, SizedTypeProperties, transmute};
 use crate::num::NonZero;
 use crate::ops::{CoerceUnsized, DispatchFromDyn};
-use crate::ptr::Unique;
 use crate::slice::{self, SliceIndex};
 use crate::ub_checks::assert_unsafe_precondition;
 use crate::{fmt, hash, intrinsics, mem, ptr};
@@ -76,7 +75,7 @@ use crate::{fmt, hash, intrinsics, mem, ptr};
 #[repr(transparent)]
 #[rustc_nonnull_optimization_guaranteed]
 #[lang = "non_null"]
-pub struct NonNull<T: PointeeSized> {
+pub struct NonNull<#[rustc_assert_variance(covariant)] T: PointeeSized> {
     pointer: crate::pattern_type!(*const T is !null),
 }
 
@@ -1327,13 +1326,13 @@ impl<T> NonNull<T> {
     ///
     /// The `len` argument is the number of **elements**, not the number of bytes.
     ///
-    /// This function is safe, but dereferencing the return value is unsafe.
-    /// See the documentation of [`slice::from_raw_parts`] for slice safety requirements.
+    /// See [`ptr::slice_from_raw_parts`] for more information.
+    ///
+    /// [`ptr::slice_from_raw_parts`]: crate::ptr::slice_from_raw_parts
     ///
     /// # Examples
     ///
     /// ```rust
-    /// #![feature(ptr_cast_slice)]
     /// use std::ptr::NonNull;
     ///
     /// // create a slice pointer when starting out with a pointer to the first element
@@ -1347,7 +1346,8 @@ impl<T> NonNull<T> {
     /// but `let slice = NonNull::from(&x[..]);` would be a better way to write code like this.)
     #[inline]
     #[must_use]
-    #[unstable(feature = "ptr_cast_slice", issue = "149103")]
+    #[stable(feature = "ptr_cast_slice", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "ptr_cast_slice", since = "CURRENT_RUSTC_VERSION")]
     pub const fn cast_slice(self, len: usize) -> NonNull<[T]> {
         NonNull::slice_from_raw_parts(self, len)
     }
@@ -1688,15 +1688,6 @@ impl<T: PointeeSized> hash::Hash for NonNull<T> {
     #[inline]
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         self.as_ptr().hash(state)
-    }
-}
-
-#[unstable(feature = "ptr_internals", issue = "none")]
-#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
-const impl<T: PointeeSized> From<Unique<T>> for NonNull<T> {
-    #[inline]
-    fn from(unique: Unique<T>) -> Self {
-        unique.as_non_null_ptr()
     }
 }
 

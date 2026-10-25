@@ -13,11 +13,11 @@ error: expected unsuffixed literal, found `<eof>`
 LL | #[derive(::)] pub struct D;
    |          ^^
 
-error: expected unsuffixed literal, found `::`
+error: expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found expression
   --> $DIR/meta-item-global-path-fail-issue-53048.rs:15:13
    |
 LL | #[allow(a = ::b::c)]
-   |             ^^
+   |             ^^^^^^ expressions are not allowed here
 
 error: aborting due to 3 previous errors
 

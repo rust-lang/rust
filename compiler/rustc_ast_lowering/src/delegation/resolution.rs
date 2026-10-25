@@ -484,16 +484,22 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
                 }
             }
 
+            // Heuristic: don't do wrapping if there is no target expression.
+            if delegation.body.is_some() {
+                let arguments_to_map = sig
+                    .inputs()
+                    .iter()
+                    .enumerate()
+                    .skip(1) // Already checked above.
+                    .filter_map(|(idx, &param)| SelfFinder::contains_self(param).then_some(idx));
+
+                mapping.arguments_to_map.extend(arguments_to_map);
+            }
+
+            // Even if there is no target expression an output should be mapped,
+            // this is the case for functions without receiver which return `Self`
+            // for example.
             mapping.map_return = SelfFinder::contains_self(sig.output());
-
-            let arguments_to_map = sig
-                .inputs()
-                .iter()
-                .enumerate()
-                .skip(1) // Already checked above.
-                .filter_map(|(idx, &param)| SelfFinder::contains_self(param).then_some(idx));
-
-            mapping.arguments_to_map.extend(arguments_to_map);
         }
 
         // We can't yet map more than one argument if there are definitions inside.
@@ -513,11 +519,6 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
         parent: LocalDefId,
         span: Span,
     ) -> bool {
-        // Heuristic: don't do wrapping if there is no target expression.
-        if delegation.body.is_none() {
-            return false;
-        }
-
         let tcx = self.tcx();
 
         // Apply wrapping for delegations inside

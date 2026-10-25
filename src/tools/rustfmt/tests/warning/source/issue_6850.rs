@@ -1,4 +1,4 @@
-// rustfmt-max_width: 50
+//@ rustfmt-max_width: 50
 fn main() {
     "☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃☃";
 }

@@ -1,7 +1,7 @@
 warning: format specifiers are not permitted in diagnostic attributes
   --> $DIR/report_warning_on_invalid_formats.rs:3:88
    |
-LL | #[diagnostic::on_type_error(note = "custom on_type_error note: invalid format {Expected:123}")]
+LL | #[diagnostic::on_type_error(note = "custom on_type_error note: invalid format {expected:123}")]
    |                                                                                        ^^^^ remove this format specifier
    |
    = note: `#[warn(malformed_diagnostic_format_literals)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
@@ -9,7 +9,7 @@ LL | #[diagnostic::on_type_error(note = "custom on_type_error note: invalid form
 warning: format specifiers are not permitted in diagnostic attributes
   --> $DIR/report_warning_on_invalid_formats.rs:9:88
    |
-LL | #[diagnostic::on_type_error(note = "custom on_type_error note: invalid format {Expected:!}")]
+LL | #[diagnostic::on_type_error(note = "custom on_type_error note: invalid format {expected:!}")]
    |                                                                                        ^^ remove this format specifier
 
 error[E0308]: mismatched types

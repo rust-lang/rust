@@ -94,7 +94,7 @@ impl<'a, 'll> SBuilder<'a, 'll> {
 impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
     fn with_cx(scx: &'a GenericCx<'ll, CX>) -> Self {
         // Create a fresh builder from the simple context.
-        let llbuilder = unsafe { llvm::LLVMCreateBuilderInContext(scx.deref().borrow().llcx) };
+        let llbuilder = unsafe { llvm::LLVMCreateBuilderForModule(scx.deref().borrow().llmod) };
         GenericBuilder { llbuilder, cx: scx, span: rustc_span::DUMMY_SP }
     }
 
@@ -2081,18 +2081,20 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
                 );
 
                 let mut expected_ty = String::from("fn(");
-                for (i, arg) in fn_abi.args.iter().enumerate() {
-                    if i > 0 {
-                        expected_ty.push_str(", ");
+                ty::print::with_no_trimmed_paths!({
+                    for (i, arg) in fn_abi.args.iter().enumerate() {
+                        if i > 0 {
+                            expected_ty.push_str(", ");
+                        }
+                        use std::fmt::Write;
+                        write!(&mut expected_ty, "{}", arg.layout.ty).unwrap();
                     }
-                    use std::fmt::Write;
-                    write!(&mut expected_ty, "{}", arg.layout.ty).unwrap();
-                }
-                expected_ty.push(')');
-                if !fn_abi.ret.layout.ty.is_unit() {
-                    use std::fmt::Write;
-                    write!(&mut expected_ty, " -> {}", fn_abi.ret.layout.ty).unwrap();
-                }
+                    expected_ty.push(')');
+                    if !fn_abi.ret.layout.ty.is_unit() {
+                        use std::fmt::Write;
+                        write!(&mut expected_ty, " -> {}", fn_abi.ret.layout.ty).unwrap();
+                    }
+                });
 
                 // 4 for cfi-icall (indirect call)
                 let check_kind = 4;

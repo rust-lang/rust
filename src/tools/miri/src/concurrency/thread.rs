@@ -89,6 +89,8 @@ pub enum BlockReason {
     Condvar,
     /// Blocked on a reader-writer lock.
     RwLock,
+    /// Blocked on a semaphore.
+    Semaphore,
     /// Blocked on a Futex variable.
     Futex,
     /// Blocked on an InitOnce.

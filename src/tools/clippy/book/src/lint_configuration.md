@@ -530,6 +530,7 @@ Whether to also run the listed lints on private items.
 * [`missing_errors_doc`](https://rust-lang.github.io/rust-clippy/main/index.html#missing_errors_doc)
 * [`missing_panics_doc`](https://rust-lang.github.io/rust-clippy/main/index.html#missing_panics_doc)
 * [`missing_safety_doc`](https://rust-lang.github.io/rust-clippy/main/index.html#missing_safety_doc)
+* [`too_long_first_doc_paragraph`](https://rust-lang.github.io/rust-clippy/main/index.html#too_long_first_doc_paragraph)
 * [`unnecessary_safety_doc`](https://rust-lang.github.io/rust-clippy/main/index.html#unnecessary_safety_doc)
 
 
@@ -1013,6 +1014,7 @@ The minimum rust version that the project supports. Defaults to the `rust-versio
 * [`type_repetition_in_bounds`](https://rust-lang.github.io/rust-clippy/main/index.html#type_repetition_in_bounds)
 * [`unchecked_time_subtraction`](https://rust-lang.github.io/rust-clippy/main/index.html#unchecked_time_subtraction)
 * [`uninlined_format_args`](https://rust-lang.github.io/rust-clippy/main/index.html#uninlined_format_args)
+* [`unnecessary_box_pin`](https://rust-lang.github.io/rust-clippy/main/index.html#unnecessary_box_pin)
 * [`unnecessary_lazy_evaluations`](https://rust-lang.github.io/rust-clippy/main/index.html#unnecessary_lazy_evaluations)
 * [`unnecessary_unwrap`](https://rust-lang.github.io/rust-clippy/main/index.html#unnecessary_unwrap)
 * [`unnested_or_patterns`](https://rust-lang.github.io/rust-clippy/main/index.html#unnested_or_patterns)

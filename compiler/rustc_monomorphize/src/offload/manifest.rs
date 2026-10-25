@@ -8,7 +8,7 @@ use std::fs;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lock;
-use rustc_hir::def_id::{DefId, DefIndex, LOCAL_CRATE, StableCrateId};
+use rustc_hir::def_id::{DefId, DefIndex, DefPathHash, LOCAL_CRATE, StableCrateId};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mono::MonoItem;
 use rustc_middle::ty::codec::{TyDecoder, TyEncoder};
@@ -44,6 +44,8 @@ impl<'a, 'tcx> OffloadManifestEncoder<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Encoder for OffloadManifestEncoder<'a, 'tcx> {
+    const DETERMINISTIC_HASH_MAP_ENCODE: bool = true;
+
     fn emit_usize(&mut self, v: usize) {
         self.encoder.emit_usize(v);
     }
@@ -86,6 +88,10 @@ impl<'a, 'tcx> Encoder for OffloadManifestEncoder<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> SpanEncoder for OffloadManifestEncoder<'a, 'tcx> {
+    fn def_path_hasher(&self) -> impl Fn(DefId) -> DefPathHash {
+        self.tcx.prelocked_def_path_hasher()
+    }
+
     fn encode_span(&mut self, _span: Span) {
         // Spans are not needed in the manifest, encode a dummy span.
         self.emit_usize(0);
@@ -119,8 +125,8 @@ impl<'a, 'tcx> SpanEncoder for OffloadManifestEncoder<'a, 'tcx> {
         self.tcx.stable_crate_id(crate_num).encode(self);
     }
 
-    fn encode_def_index(&mut self, def_index: rustc_span::def_id::DefIndex) {
-        def_index.as_u32().encode(self);
+    fn encode_def_index(&mut self, _: rustc_span::def_id::DefIndex) {
+        panic!("encode def id instead")
     }
 
     fn encode_def_id(&mut self, def_id: rustc_span::def_id::DefId) {
@@ -287,8 +293,7 @@ impl<'a, 'tcx> BlobDecoder for OffloadManifestDecoder<'a, 'tcx> {
     }
 
     fn decode_def_index(&mut self) -> rustc_span::def_id::DefIndex {
-        let v = self.read_u32();
-        rustc_span::def_id::DefIndex::from_u32(v)
+        panic!("can't decode def indices as we do not encode them")
     }
 
     fn decode_local_def_id(&mut self) -> rustc_hir::def_id::LocalDefId {

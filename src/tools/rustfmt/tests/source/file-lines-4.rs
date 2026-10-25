@@ -1,4 +1,4 @@
-// rustfmt-file_lines: []
+//@ rustfmt-file_lines: []
 // (Test that nothing is formatted if an empty array is specified.)
 
 fn floaters() {

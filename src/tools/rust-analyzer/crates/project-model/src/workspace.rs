@@ -1214,7 +1214,7 @@ fn project_json_to_crate_graph(
                         CrateOrigin::Local { repo: None, name: None }
                     },
                     crate_attrs.clone(),
-                    *is_proc_macro,
+                    TargetKind::Lib { is_proc_macro: *is_proc_macro },
                     match proc_macro_cwd {
                         Some(path) => Arc::new(path.clone()),
                         None => project_root.clone(),
@@ -1521,7 +1521,7 @@ fn detached_file_to_crate_graph(
             name: display_name.map(|n| n.canonical_name().to_owned()),
         },
         Vec::new(),
-        false,
+        TargetKind::Lib { is_proc_macro: false },
         Arc::new(detached_file.parent().to_path_buf()),
         crate_ws_data,
     );
@@ -1702,7 +1702,7 @@ fn add_target_crate_root(
         env,
         origin,
         Vec::new(),
-        matches!(kind, TargetKind::Lib { is_proc_macro: true }),
+        kind,
         proc_macro_cwd,
         crate_ws_data,
     );
@@ -1886,7 +1886,7 @@ fn sysroot_to_crate_graph(
                         Env::default(),
                         CrateOrigin::Lang(LangCrateOrigin::from(&*stitched[krate].name)),
                         Vec::new(),
-                        false,
+                        TargetKind::Lib { is_proc_macro: false },
                         Arc::new(stitched[krate].root.parent().to_path_buf()),
                         crate_ws_data.clone(),
                     );

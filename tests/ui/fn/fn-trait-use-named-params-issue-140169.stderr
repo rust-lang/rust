@@ -4,11 +4,11 @@ error: `Trait(...)` syntax does not support c_variadic parameters
 LL | fn f5(_: impl Fn(u8, ...)) {}
    |                      ^^^ help: remove the `...`
 
-error: `Trait(...)` syntax does not support attributes in parameters
-  --> $DIR/fn-trait-use-named-params-issue-140169.rs:9:22
+error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
+  --> $DIR/fn-trait-use-named-params-issue-140169.rs:10:18
    |
-LL | fn f6(_: impl Fn(u8, #[allow(unused_attributes)] u8)) {}
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove the attributes
+LL | fn f7(_: impl Fn(#[inline] u8)) {}
+   |                  ^^^^^^^^^
 
 error[E0658]: named parameters in parenthesized generic argument lists are experimental
   --> $DIR/fn-trait-use-named-params-issue-140169.rs:2:22
@@ -50,6 +50,44 @@ LL | fn f4(_: impl Fn(aaaa: u8, vvvv: u8)) {}
    = help: add `#![feature(named_fn_trait_parameters)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: aborting due to 6 previous errors
+error[E0658]: named parameters in parenthesized generic argument lists are experimental
+  --> $DIR/fn-trait-use-named-params-issue-140169.rs:9:18
+   |
+LL | fn f6(f: impl Fn(#[cfg(false)] u8)) { f() }
+   |                  ^^^^^^^^^^^^^
+   |
+   = note: see issue #158499 <https://github.com/rust-lang/rust/issues/158499> for more information
+   = help: add `#![feature(named_fn_trait_parameters)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: named parameters in parenthesized generic argument lists are experimental
+  --> $DIR/fn-trait-use-named-params-issue-140169.rs:10:18
+   |
+LL | fn f7(_: impl Fn(#[inline] u8)) {}
+   |                  ^^^^^^^^^
+   |
+   = note: see issue #158499 <https://github.com/rust-lang/rust/issues/158499> for more information
+   = help: add `#![feature(named_fn_trait_parameters)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: named parameters in parenthesized generic argument lists are experimental
+  --> $DIR/fn-trait-use-named-params-issue-140169.rs:14:22
+   |
+LL | fn f8(_: impl Fn(u8, #[allow(unused_attributes)] u8)) {}
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #158499 <https://github.com/rust-lang/rust/issues/158499> for more information
+   = help: add `#![feature(named_fn_trait_parameters)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: the `inline` attribute cannot be used on function params
+  --> $DIR/fn-trait-use-named-params-issue-140169.rs:10:20
+   |
+LL | fn f7(_: impl Fn(#[inline] u8)) {}
+   |                    ^^^^^^
+   |
+   = help: the `inline` attribute can only be applied to functions
+
+error: aborting due to 10 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

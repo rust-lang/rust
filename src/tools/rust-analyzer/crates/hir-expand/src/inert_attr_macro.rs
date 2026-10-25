@@ -280,9 +280,8 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     gated!(no_core, CrateLevel, template!(Word), WarnFollowing, experimental!(no_core)),
     // RFC 2412
-    gated!(
-        optimize, Normal, template!(List: "size|speed"), ErrorPreceding, optimize_attribute,
-        experimental!(optimize),
+    ungated!(
+        optimize, Normal, template!(List: "size|speed|none"), ErrorPreceding
     ),
 
     gated!(ffi_pure, Normal, template!(Word), WarnFollowing, experimental!(ffi_pure)),

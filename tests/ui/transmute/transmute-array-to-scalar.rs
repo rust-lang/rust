@@ -1,7 +1,9 @@
 //! Verify transmuting from a single-element array to a scalar is allowed.
 //!
 //! Regression test: <https://github.com/rust-lang/rust/issues/7988>
-
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@ [next] compile-flags: -Znext-solver
 //@ run-pass
 
 pub fn main() {

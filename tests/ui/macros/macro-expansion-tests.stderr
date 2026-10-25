@@ -4,7 +4,11 @@ error: cannot find macro `m` in this scope
 LL |     fn g() -> i32 { m!() }
    |                     ^
    |
-   = help: have you added the `#[macro_use]` on the module/import?
+help: you might be missing a `#[macro_use]` attribute on a `mod` module or `use` import
+  --> $DIR/macro-expansion-tests.rs:28:5
+   |
+LL |     macro_rules! m { (a) => { 13 } }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ a macro with the same name is defined here
 
 error: cannot find macro `m` in this scope
   --> $DIR/macro-expansion-tests.rs:15:21
@@ -12,7 +16,11 @@ error: cannot find macro `m` in this scope
 LL |     fn g() -> i32 { m!() }
    |                     ^
    |
-   = help: have you added the `#[macro_use]` on the module/import?
+help: you might be missing a `#[macro_use]` attribute on a `mod` module or `use` import
+  --> $DIR/macro-expansion-tests.rs:28:5
+   |
+LL |     macro_rules! m { (a) => { 13 } }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ a macro with the same name is defined here
 
 error: aborting due to 2 previous errors
 

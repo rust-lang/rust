@@ -1135,7 +1135,7 @@ marker_impls! {
 }
 
 marker_impls! {
-    #[unstable(feature = "unsized_const_params", issue = "95174")]
+    #[unstable(feature = "unsized_const_params", issue = "128028")]
     #[unstable_feature_bound(unsized_const_params)]
     ConstParamTy_ for
         str,

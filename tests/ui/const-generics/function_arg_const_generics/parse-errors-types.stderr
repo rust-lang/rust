@@ -1,0 +1,14 @@
+error: expected one of `(`, `+`, `::`, or `<`, found `:`
+  --> $DIR/parse-errors-types.rs:3:24
+   |
+LL | type FnPtr = fn(const N: usize);
+   |                        ^ expected one of `(`, `+`, `::`, or `<`
+
+error: expected one of `(`, `+`, `::`, or `<`, found `:`
+  --> $DIR/parse-errors-types.rs:5:26
+   |
+LL | fn fn_sugar<F: Fn(const N: usize)>() {}
+   |                          ^ expected one of `(`, `+`, `::`, or `<`
+
+error: aborting due to 2 previous errors
+

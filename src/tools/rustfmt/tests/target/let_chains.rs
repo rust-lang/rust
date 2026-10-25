@@ -1,4 +1,4 @@
-// rustfmt-edition: 2024
+//@ rustfmt-edition: 2024
 
 fn main() {
     if let x = x

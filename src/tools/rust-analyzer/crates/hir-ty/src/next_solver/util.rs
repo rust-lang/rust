@@ -2,21 +2,26 @@
 
 use std::ops::ControlFlow;
 
-use hir_def::TraitId;
+use hir_def::{HasModule, ImplId, TraitId, TypeAliasId};
 use rustc_abi::{Float, HasDataLayout, Integer, IntegerType, Primitive, ReprOptions};
+use rustc_hash::FxHashSet;
 use rustc_type_ir::{
     ConstKind, CoroutineArgs, DebruijnIndex, FloatTy, INNERMOST, IntTy, Interner,
     PredicatePolarity, RegionKind, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeSuperVisitable,
-    TypeVisitableExt, TypeVisitor, UintTy, UniverseIndex, elaborate,
+    TypeVisitableExt, TypeVisitor, UintTy, UniverseIndex, Upcast,
+    elaborate::{self, elaborate},
     inherent::{AdtDef, GenericArg as _, IntoKind, ParamEnv as _, SliceLike, Ty as _},
     lang_items::SolverTraitLangItem,
     solve::SizedTraitKind,
 };
+use stdx::impl_from;
 
 use crate::{
+    ImplTraitId,
+    db::{HirDatabase, InternedOpaqueTyId},
     next_solver::{
-        BoundConst, FxIndexMap, ParamEnv, PlaceholderConst, PlaceholderRegion, PlaceholderType,
-        PolyTraitRef,
+        BoundConst, Clauses, FxIndexMap, ParamEnv, PlaceholderConst, PlaceholderRegion,
+        PlaceholderType, PolyTraitRef, StoredClauses, StoredEarlyBinder,
         infer::{
             InferCtxt,
             traits::{Obligation, ObligationCause, PredicateObligation},
@@ -454,32 +459,112 @@ pub fn apply_args_to_binder<'db, T: TypeFoldable<DbInterner<'db>>>(
     b.skip_binder().fold_with(&mut instantiate)
 }
 
-pub fn explicit_item_bounds<'db>(
-    interner: DbInterner<'db>,
-    def_id: SolverDefId<'db>,
-) -> EarlyBinder<'db, impl DoubleEndedIterator<Item = Clause<'db>> + ExactSizeIterator> {
-    let db = interner.db();
-    let clauses = match def_id {
-        SolverDefId::TypeAliasId(type_alias) => crate::lower::type_alias_bounds(db, type_alias),
-        SolverDefId::InternedOpaqueTyId(id) => id.predicates(db),
-        _ => panic!("Unexpected GenericDefId"),
-    };
-    clauses.map_bound(|clauses| clauses.iter().copied())
+#[derive(salsa::Supertype)]
+pub(crate) enum ItemWithBounds<'db> {
+    TypeAliasId(TypeAliasId),
+    InternedOpaqueTyId(InternedOpaqueTyId<'db>),
+}
+impl_from!(impl<'db> TypeAliasId, InternedOpaqueTyId<'db> for ItemWithBounds<'db>);
+
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) struct ItemBounds {
+    bounds: StoredEarlyBinder<StoredClauses>,
+    non_self_bounds_start: u32,
 }
 
-pub fn explicit_item_self_bounds<'db>(
-    interner: DbInterner<'db>,
-    def_id: SolverDefId<'db>,
-) -> EarlyBinder<'db, impl DoubleEndedIterator<Item = Clause<'db>> + ExactSizeIterator> {
-    let db = interner.db();
-    let clauses = match def_id {
-        SolverDefId::TypeAliasId(type_alias) => {
-            crate::lower::type_alias_self_bounds(db, type_alias)
-        }
-        SolverDefId::InternedOpaqueTyId(id) => id.self_predicates(db),
-        _ => panic!("Unexpected GenericDefId"),
-    };
-    clauses.map_bound(|clauses| clauses.iter().copied())
+impl ItemBounds {
+    #[inline]
+    pub(crate) fn of_solver_def<'db>(
+        db: &'db dyn HirDatabase,
+        def_id: SolverDefId<'db>,
+    ) -> &'db ItemBounds {
+        let def_id = match def_id {
+            SolverDefId::TypeAliasId(def_id) => def_id.into(),
+            SolverDefId::InternedOpaqueTyId(def_id) => def_id.into(),
+            _ => panic!("unexpected SolverDefId"),
+        };
+        ItemBounds::of(db, def_id)
+    }
+
+    #[inline]
+    pub(crate) fn all_bounds(&self) -> EarlyBinder<'_, impl Iterator<Item = Clause<'_>>> {
+        self.bounds.get().map_bound(|it| it.iter())
+    }
+
+    #[inline]
+    pub(crate) fn self_bounds(&self) -> EarlyBinder<'_, impl Iterator<Item = Clause<'_>>> {
+        self.bounds
+            .get()
+            .map_bound(|it| it.as_slice()[..self.non_self_bounds_start as usize].iter().copied())
+    }
+
+    #[inline]
+    pub(crate) fn non_self_bounds(&self) -> EarlyBinder<'_, impl Iterator<Item = Clause<'_>>> {
+        self.bounds
+            .get()
+            .map_bound(|it| it.as_slice()[self.non_self_bounds_start as usize..].iter().copied())
+    }
+}
+
+#[salsa::tracked]
+impl ItemBounds {
+    #[allow(
+        clippy::drop_non_drop,
+        reason = "this happens in a Salsa macro, not sure why only here"
+    )]
+    #[salsa::tracked]
+    fn of(db: &dyn HirDatabase, def_id: ItemWithBounds<'_>) -> ItemBounds {
+        let (krate, explicit_bounds) = match def_id {
+            ItemWithBounds::TypeAliasId(type_alias) => (
+                type_alias.krate(db),
+                &crate::lower::type_alias_bounds_with_diagnostics(db, type_alias).value,
+            ),
+            ItemWithBounds::InternedOpaqueTyId(id) => {
+                let loc = id.loc(db);
+                let krate = match loc {
+                    ImplTraitId::ReturnTypeImplTrait(def, _) => def.krate(db),
+                    ImplTraitId::TypeAliasImplTrait(def, _) => def.krate(db),
+                };
+                (krate, loc.bounds(db))
+            }
+        };
+        let interner = DbInterner::new_with(db, krate);
+
+        let all_bounds =
+            elaborate(interner, explicit_bounds.all_bounds().skip_binder().iter().copied());
+        let self_bounds =
+            elaborate(interner, explicit_bounds.self_bounds().skip_binder().iter().copied())
+                .filter_only_self();
+
+        let self_bounds = FxHashSet::from_iter(self_bounds);
+        let non_self_bounds = all_bounds.filter(|bound| !self_bounds.contains(bound));
+
+        let non_self_bounds_start = self_bounds.len() as u32;
+        let bounds = StoredEarlyBinder::bind(
+            Clauses::new_from_iter(self_bounds.iter().copied().chain(non_self_bounds)).store(),
+        );
+
+        ItemBounds { bounds, non_self_bounds_start }
+    }
+}
+
+#[salsa::tracked]
+pub(crate) fn impl_super_outlives(
+    db: &dyn HirDatabase,
+    impl_: ImplId,
+) -> StoredEarlyBinder<StoredClauses> {
+    let interner = DbInterner::new_with(db, impl_.krate(db));
+    let trait_ref = db.impl_trait(impl_).expect("invalid impl passed to trait solver");
+    let result = trait_ref.map_bound(|trait_ref| {
+        let clause: Clause<'_> = trait_ref.upcast(interner);
+        elaborate(interner, [clause]).filter(|clause| {
+            matches!(
+                clause.kind().skip_binder(),
+                ClauseKind::TypeOutlives(_) | ClauseKind::RegionOutlives(_)
+            )
+        })
+    });
+    StoredEarlyBinder::bind(Clauses::new_from_iter(result.skip_binder()).store())
 }
 
 pub struct ContainsTypeErrors;

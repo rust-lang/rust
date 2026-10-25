@@ -277,7 +277,11 @@ pub(super) fn create_coroutine_drop_shim_async<'tcx>(
             1,
             (
                 CoroutineArgs::POISONED,
-                insert_panic_block(tcx, &mut body, ResumedAfterPanic(transform.coroutine_kind)),
+                if tcx.sess.opts.unstable_opts.async_panic {
+                    insert_panic_block(tcx, &mut body, ResumedAfterPanic(transform.coroutine_kind))
+                } else {
+                    insert_poll_pending_block(tcx, &mut body, transform.old_ret_ty)
+                },
             ),
         );
     }
@@ -376,6 +380,8 @@ pub(super) fn create_coroutine_drop_shim_proxy_async<'tcx>(
         drop: None,
     };
     body.basic_blocks_mut()[call_bb].terminator = Some(Terminator { source_info, kind });
+
+    make_coroutine_state_argument_pinned(tcx, &mut body);
 
     // Run derefer to fix Derefs that are not in the first place
     deref_finder(tcx, &mut body, false);

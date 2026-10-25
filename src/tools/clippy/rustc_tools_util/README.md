@@ -45,7 +45,7 @@ This project is part of the rust-lang/rust-clippy repository. The source code
 can be found under `./rustc_tools_util/`.
 
 The changelog for `rustc_tools_util` is available under:
-[`rustc_tools_util/CHANGELOG.md`](https://github.com/rust-lang/rust-clippy/blob/master/rustc_tools_util/CHANGELOG.md)
+[`rustc_tools_util/CHANGELOG.md`](https://github.com/rust-lang/rust-clippy/blob/HEAD/rustc_tools_util/CHANGELOG.md)
 
 ## License
 

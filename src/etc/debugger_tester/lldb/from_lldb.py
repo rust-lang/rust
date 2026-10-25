@@ -127,7 +127,7 @@ def type_unpack_fmt(kind: int, size: int) -> str:
     fmt = _SIZE_TO_INT_FMT[size]
 
     if kind in _UNSIGNED_INT_TYPES:
-        fmt.upper()
+        fmt = fmt.upper()
 
     return fmt
 

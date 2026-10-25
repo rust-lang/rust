@@ -1,0 +1,73 @@
+- // MIR for `union_field` before JumpThreading
++ // MIR for `union_field` after JumpThreading
+  
+  fn union_field(_1: u8) -> u8 {
+      debug x => _1;
+      let mut _0: u8;
+      let mut _2: U;
+      let mut _3: u8;
+      let mut _6: u8;
+      let mut _7: u8;
+      scope 1 {
+          debug u => _2;
+          let _4: u8;
+          scope 2 {
+              debug r => _4;
+              let _5: u8;
+              scope 3 {
+                  debug r2 => _5;
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = copy _1;
+          _2 = U { a: move _3 };
+          StorageDead(_3);
+          StorageLive(_4);
+          switchInt(copy (_2.0: u8)) -> [0: bb2, otherwise: bb1];
+      }
+  
+      bb1: {
+          _4 = const 200_u8;
+          goto -> bb3;
+      }
+  
+      bb2: {
+          _4 = const 100_u8;
+          goto -> bb3;
+      }
+  
+      bb3: {
+          (_2.1: u8) = const 5_u8;
+          StorageLive(_5);
+          switchInt(copy (_2.0: u8)) -> [0: bb5, otherwise: bb4];
+      }
+  
+      bb4: {
+          _5 = const 2_u8;
+          goto -> bb6;
+      }
+  
+      bb5: {
+          _5 = const 1_u8;
+          goto -> bb6;
+      }
+  
+      bb6: {
+          StorageLive(_6);
+          _6 = copy _4;
+          StorageLive(_7);
+          _7 = copy _5;
+          _0 = Add(move _6, move _7);
+          StorageDead(_7);
+          StorageDead(_6);
+          StorageDead(_5);
+          StorageDead(_4);
+          StorageDead(_2);
+          return;
+      }
+  }
+  

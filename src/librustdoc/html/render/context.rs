@@ -725,14 +725,12 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
 
         info!("Recursing into {}", self.dst.display());
 
-        if !item.is_stripped() {
-            let buf = self.render_item(item, true);
-            // buf will be empty if the module is stripped and there is no redirect for it
-            if !buf.is_empty() {
-                self.shared.ensure_dir(&self.dst)?;
-                let joint_dst = self.dst.join("index.html");
-                self.shared.fs.write(joint_dst, buf)?;
-            }
+        let buf = self.render_item(item, true);
+        // buf will be empty if the module is stripped and there is no redirect for it
+        if !buf.is_empty() {
+            self.shared.ensure_dir(&self.dst)?;
+            let joint_dst = self.dst.join("index.html");
+            self.shared.fs.write(joint_dst, buf)?;
         }
         if !self.info.is_inside_inlined_module {
             if let Some(def_id) = item.def_id()

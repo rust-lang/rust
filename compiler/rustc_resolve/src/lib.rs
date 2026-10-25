@@ -262,7 +262,10 @@ enum ResolutionError<'ra> {
     /// Error E0416: identifier is bound more than once in the same pattern.
     IdentifierBoundMoreThanOnceInSamePattern(Ident),
     /// Error E0426: use of undeclared label.
-    UndeclaredLabel { name: Symbol, suggestion: Option<LabelSuggestion> },
+    UndeclaredLabel {
+        name: Symbol,
+        suggestion: Option<LabelSuggestion>,
+    },
     /// Error E0433: failed to resolve.
     FailedToResolve {
         segment: Symbol,
@@ -273,7 +276,9 @@ enum ResolutionError<'ra> {
         message: String,
     },
     /// Error E0434: can't capture dynamic environment in a fn item.
-    CannotCaptureDynamicEnvironmentInFnItem { suggest_closure: bool },
+    CannotCaptureDynamicEnvironmentInFnItem {
+        suggest_closure: bool,
+    },
     /// Error E0435: attempt to use a non-constant value in a constant.
     AttemptToUseNonConstantValueInConstant {
         ident: Ident,
@@ -296,7 +301,9 @@ enum ResolutionError<'ra> {
     // FIXME(generic_const_parameter_types): This should give custom output specifying it's only
     // problematic to use *forward declared* parameters when the feature is enabled.
     /// ERROR E0770: the type of const parameters must not depend on other generic parameters.
-    ParamInTyOfConstParam { name: Symbol },
+    ParamInTyOfConstParam {
+        name: Symbol,
+    },
     /// cannot use self in const param
     SelfInConstParam,
     /// generic parameters must not be used inside const evaluations.
@@ -310,11 +317,18 @@ enum ResolutionError<'ra> {
     /// generic parameters must not be used inside enum discriminants.
     ///
     /// This error is emitted even with `generic_const_exprs`.
-    ParamInEnumDiscriminant { name: Symbol, param_kind: ParamKindInEnumDiscriminant },
+    ParamInEnumDiscriminant {
+        name: Symbol,
+        param_kind: ParamKindInEnumDiscriminant,
+    },
     /// Error E0735: generic parameters with a default cannot use `Self`
     ForwardDeclaredSelf(ForwardGenericParamBanReason),
     /// Error E0767: use of unreachable label
-    UnreachableLabel { name: Symbol, definition_span: Span, suggestion: Option<LabelSuggestion> },
+    UnreachableLabel {
+        name: Symbol,
+        definition_span: Span,
+        suggestion: Option<LabelSuggestion>,
+    },
     /// Error E0323, E0324, E0325: mismatch between trait item and impl item.
     TraitImplMismatch {
         name: Ident,
@@ -339,6 +353,11 @@ enum ResolutionError<'ra> {
     LowercaseSelf,
     /// A never pattern has a binding.
     BindingInNeverPattern,
+    CannotUseInnerLocalInMoveExpr {
+        move_expr_span: Span,
+        ident: Ident,
+        scope_span: Span,
+    },
 }
 
 #[derive(Debug)]
@@ -1445,7 +1464,7 @@ pub struct Resolver<'ra, 'tcx> {
     builtin_type_decls: FxHashMap<Symbol, Decl<'ra>>,
     builtin_attr_decls: FxHashMap<Symbol, Decl<'ra>>,
     registered_attr_tool_decls: FxHashMap<IdentKey, Decl<'ra>>,
-    macro_names: FxHashSet<IdentKey> = default::fx_hash_set(),
+    macro_names: FxHashMap<IdentKey, LocalDefId> = default::fx_hash_map(),
     builtin_macros: FxHashMap<Symbol, SyntaxExtensionKind> = default::fx_hash_map(),
     registered_attr_tools: &'tcx RegisteredTools,
     registered_lint_tools: &'tcx RegisteredTools,
@@ -1459,7 +1478,8 @@ pub struct Resolver<'ra, 'tcx> {
     non_macro_attr: &'ra Arc<SyntaxExtension>,
     local_macro_def_scopes: FxHashMap<LocalDefId, LocalModule<'ra>> = default::fx_hash_map(),
     ast_transform_scopes: FxHashMap<LocalExpnId, LocalModule<'ra>> = default::fx_hash_map(),
-    unused_macros: FxIndexMap<LocalDefId, (NodeId, Ident)> = default::fx_index_map(),
+    unused_macros: FxIndexMap<LocalDefId, (NodeId, Ident, Option<DefId>)> = default::fx_index_map(),
+    macro_use_mods: FxIndexSet<NodeId> = default::fx_index_set(),
     /// A map from the macro to all its potentially unused arms and the `LocalDefId` of the macro itself.
     unused_macro_rules: FxIndexMap<NodeId, (LocalDefId, DenseBitSet<usize>)> = default::fx_index_map(),
     proc_macro_stubs: FxHashSet<LocalDefId> = default::fx_hash_set(),
@@ -1760,7 +1780,7 @@ impl<'tcx> Resolver<'_, 'tcx> {
                 .filter_map(|param| match param.kind {
                     ty::GenericParamDefKind::Lifetime => Some("'_"),
                     ty::GenericParamDefKind::Type { has_default, .. }
-                    | ty::GenericParamDefKind::Const { has_default } => {
+                    | ty::GenericParamDefKind::Const { has_default, arg_pos: _ } => {
                         if has_default {
                             None
                         } else {

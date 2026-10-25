@@ -1,4 +1,4 @@
-// rustfmt-match_arm_indent: false
+//@ rustfmt-match_arm_indent: false
 // Don't indent the match arms
 
 fn foo() {

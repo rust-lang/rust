@@ -2244,6 +2244,9 @@ impl<'a> State<'a> {
                     self.print_explicit_self(&eself);
                 } else {
                     if !matches!(input.pat.kind, PatKind::Missing) {
+                        if input.has_const_keyword {
+                            self.word_nbsp("const");
+                        }
                         self.print_pat(&input.pat);
                         self.word(":");
                         self.space();

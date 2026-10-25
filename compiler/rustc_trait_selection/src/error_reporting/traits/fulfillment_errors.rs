@@ -25,12 +25,12 @@ use rustc_infer::traits::{ImplSource, TraitErrors, WellFormedLoc};
 use rustc_middle::traits::SignatureMismatchData;
 use rustc_middle::traits::select::OverflowError;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
-use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::print::{
     PrintPolyTraitClauseExt, PrintPolyTraitRefExt as _, PrintTraitClauseExt as _,
     PrintTraitRefExt as _, with_forced_trimmed_paths,
 };
+use rustc_middle::ty::transmute::{Answer, Reason};
 use rustc_middle::ty::{
     self, GenericArgKind, GenericParamDefKind, TraitRef, Ty, TyCtxt, TypeFoldable, TypeFolder,
     TypeSuperFoldable, TypeVisitableExt, Unnormalized, Upcast,
@@ -57,6 +57,35 @@ use crate::traits::{
 };
 
 impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
+    /// Checks for an explicit `Self: Trait` bound on an associated type impl.
+    fn is_explicit_self_trait_bound_on_impl_assoc_type(
+        &self,
+        body_def_id: LocalDefId,
+        cause_code: &ObligationCauseCode<'tcx>,
+        trait_def_id: DefId,
+    ) -> bool {
+        let ObligationCauseCode::WhereClause(item_def_id, span) = *cause_code.peel_derives() else {
+            return false;
+        };
+        // Continue only if there is an impl associated type corresponding to the expected trait item.
+        if !self.tcx.opt_associated_item(body_def_id.to_def_id()).is_some_and(|assoc_item| {
+            assoc_item.trait_item_def_id().is_some_and(|trait_item_def_id| {
+                trait_item_def_id == item_def_id
+                    && matches!(assoc_item.kind, ty::AssocKind::Type { .. })
+            })
+        }) {
+            return false;
+        }
+
+        self.tcx.clauses_of(item_def_id).instantiate_own_identity().any(|(clause, clause_span)| {
+            clause_span == span
+                && clause.skip_norm_wip().as_trait_clause().is_some_and(|trait_pred| {
+                    trait_pred.def_id() == trait_def_id
+                        && trait_pred.skip_binder().self_ty().is_self_param()
+                })
+        })
+    }
+
     /// The `root_obligation` parameter should be the `root_obligation` field
     /// from a `FulfillmentError`. If no `FulfillmentError` is available,
     /// then it should be the same as `obligation`.
@@ -174,6 +203,18 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
                         if let Err(guar) = leaf_trait_predicate.error_reported() {
                             return guar;
+                        }
+                        if self.is_explicit_self_trait_bound_on_impl_assoc_type(
+                            obligation.cause.body_def_id,
+                            obligation.cause.code(),
+                            leaf_trait_predicate.def_id(),
+                        ) && let ty::Param(param_ty) =
+                            *leaf_trait_predicate.skip_binder().self_ty().kind()
+                        {
+                            span = param_ty.span_from_generics(
+                                self.tcx,
+                                obligation.cause.body_def_id.to_def_id(),
+                            );
                         }
                         // Silence redundant errors on binding access that are already
                         // reported on the binding definition (#56607).
@@ -3253,7 +3294,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 trait_ref.args.type_at(0),
                 assume,
             ),
-            rustc_transmute::Answer::Yes,
+            Answer::Yes,
         );
 
         // If the normalized check unexpectedly passes, fall back to root obligation for reporting.
@@ -3274,7 +3315,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         trait_pred: ty::PolyTraitClause<'tcx>,
         span: Span,
     ) -> GetSafeTransmuteErrorAndReason {
-        use rustc_transmute::Answer;
         self.probe(|_| {
             // We don't assemble a transmutability candidate for types that are generic
             // and we should have ambiguity for types that still have non-region infer.
@@ -3311,69 +3351,61 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             {
                 Answer::No(reason) => {
                     let safe_transmute_explanation = match reason {
-                        rustc_transmute::Reason::SrcIsNotYetSupported => {
+                        Reason::SrcIsNotYetSupported => {
                             format!("analyzing the transmutability of `{src}` is not yet supported")
                         }
-                        rustc_transmute::Reason::DstIsNotYetSupported => {
+                        Reason::DstIsNotYetSupported => {
                             format!("analyzing the transmutability of `{dst}` is not yet supported")
                         }
-                        rustc_transmute::Reason::DstIsBitIncompatible => {
+                        Reason::DstIsBitIncompatible => {
                             format!(
                                 "at least one value of `{src}` isn't a bit-valid value of `{dst}`"
                             )
                         }
-                        rustc_transmute::Reason::DstUninhabited => {
+                        Reason::DstUninhabited => {
                             format!("`{dst}` is uninhabited")
                         }
-                        rustc_transmute::Reason::DstMayHaveSafetyInvariants => {
+                        Reason::DstMayHaveSafetyInvariants => {
                             format!("`{dst}` may carry safety invariants")
                         }
-                        rustc_transmute::Reason::DstIsTooBig => {
+                        Reason::DstIsTooBig => {
                             format!("the size of `{src}` is smaller than the size of `{dst}`")
                         }
-                        rustc_transmute::Reason::DstRefIsTooBig {
-                            src,
-                            src_size,
-                            dst,
-                            dst_size,
-                        } => {
+                        Reason::DstRefIsTooBig { src, src_size, dst, dst_size } => {
                             format!(
                                 "the size of `{src}` ({src_size} bytes) \
                         is smaller than that of `{dst}` ({dst_size} bytes)"
                             )
                         }
-                        rustc_transmute::Reason::SrcSizeOverflow => {
+                        Reason::SrcSizeOverflow => {
                             format!(
                                 "values of the type `{src}` are too big for the target architecture"
                             )
                         }
-                        rustc_transmute::Reason::DstSizeOverflow => {
+                        Reason::DstSizeOverflow => {
                             format!(
                                 "values of the type `{dst}` are too big for the target architecture"
                             )
                         }
-                        rustc_transmute::Reason::DstHasStricterAlignment {
-                            src_min_align,
-                            dst_min_align,
-                        } => {
+                        Reason::DstHasStricterAlignment { src_min_align, dst_min_align } => {
                             format!(
                                 "the minimum alignment of `{src}` ({src_min_align}) should be \
                                  greater than that of `{dst}` ({dst_min_align})"
                             )
                         }
-                        rustc_transmute::Reason::DstIsMoreUnique => {
+                        Reason::DstIsMoreUnique => {
                             format!(
                                 "`{src}` is a shared reference, but `{dst}` is a unique reference"
                             )
                         }
                         // Already reported by rustc
-                        rustc_transmute::Reason::TypeError => {
+                        Reason::TypeError => {
                             return GetSafeTransmuteErrorAndReason::Silent;
                         }
-                        rustc_transmute::Reason::SrcLayoutUnknown => {
+                        Reason::SrcLayoutUnknown => {
                             format!("`{src}` has an unknown layout")
                         }
-                        rustc_transmute::Reason::DstLayoutUnknown => {
+                        Reason::DstLayoutUnknown => {
                             format!("`{dst}` has an unknown layout")
                         }
                     };
@@ -3632,9 +3664,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             // Print type mismatch
             let (expected_args, given_args) = self.cmp(expected_ty, given_ty);
             err.note_expected_found(
-                "a closure with signature",
+                "type with signature",
                 expected_args,
-                "a closure with signature",
+                &format!(
+                    "{} with signature",
+                    trait_pred.self_ty().skip_binder().prefix_string(self.tcx)
+                ),
                 given_args,
             );
         }

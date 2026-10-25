@@ -151,19 +151,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if !this.ptr_is_null(security_attributes)? {
             throw_unsup_format!("CreateFileW: Security attributes are not supported");
         }
-
-        if attributes.contains(FileAttributes::OPEN_REPARSE) && creation_disposition == CreateAlways
-        {
-            throw_machine_stop!(TerminationInfo::Abort("Invalid CreateFileW argument combination: FILE_FLAG_OPEN_REPARSE_POINT with CREATE_ALWAYS".to_string()));
-        }
-        if attributes.contains(FileAttributes::OPEN_REPARSE) && creation_disposition != CreateNew {
-            // We have no logic to "open" a symlink below, but std uses FILE_FLAG_OPEN_REPARSE_POINT
-            // to implement `create_new` so we have to support that specific combination.
-            throw_unsup_format!(
-                "CreateFileW: FILE_FLAG_OPEN_REPARSE_POINT is only supported with CREATE_NEW"
-            );
-        }
-
         if template_file != 0 {
             throw_unsup_format!("CreateFileW: Template files are not supported");
         }
@@ -183,6 +170,30 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if desired_access != 0 {
             throw_unsup_format!(
                 "CreateFileW: Unsupported bits set for access mode: {desired_access:#x}"
+            );
+        }
+
+        // Attribute validation.
+        if attributes.contains(FileAttributes::OPEN_REPARSE) != (creation_disposition == CreateNew)
+        {
+            // For CreateNew, the effect of OPEN_REPARSE is to avoid creating a file wherever
+            // a dangling symlink points to. That's always how `OpenOptions::create_new` behaves
+            // so we cannot even support anything else.
+            // But for all other creation dispositions we'd have to do actual work, so reject those.
+            throw_unsup_format!(
+                "CreateFileW: FILE_FLAG_OPEN_REPARSE_POINT is only supported if and only if CREATE_NEW is set"
+            );
+        }
+        if attributes.contains(FileAttributes::BACKUP_SEMANTICS)
+            && creation_disposition != OpenExisting
+        {
+            throw_unsup_format!(
+                "CreateFileW: FILE_FLAG_BACKUP_SEMANTICS is only supported with OPEN_EXISTING"
+            );
+        }
+        if attributes.contains(FileAttributes::BACKUP_SEMANTICS) && desired_write {
+            throw_unsup_format!(
+                "CreateFileW: FILE_FLAG_BACKUP_SEMANTICS is not supported with GENERIC_WRITE"
             );
         }
 
@@ -257,7 +268,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
 
             // Let's see what we get when we open this!
-            return match open_file_or_dir(&file_name, options, /* custom_flags */ 0) {
+            return match open_file_or_dir(None, &file_name, &options) {
                 Err(err) => {
                     let kind = err.kind();
                     if exists_already && kind == io::ErrorKind::NotFound {
@@ -289,7 +300,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         unreachable!()
                     }
 
-                    let fd_num = this.machine.fds.insert_new(DirHandle::new(dir, &file_name));
+                    let fd_num = this.machine.fds.insert_new(DirHandle {
+                        dir,
+                        #[cfg(bootstrap)]
+                        fallback: file_name.canonicalize().unwrap(),
+                    });
                     interp_ok(Handle::File(fd_num))
                 }
                 Ok(Either::Left(file)) => {

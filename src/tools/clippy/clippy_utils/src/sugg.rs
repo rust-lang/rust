@@ -391,6 +391,7 @@ impl<'a> Sugg<'a> {
         }
     }
 
+    /// Format this suggestion into a [`String`] to be displayed to the user.
     pub fn into_string(self) -> String {
         match self {
             Sugg::NonParen(p) | Sugg::MaybeParen(p) => p.into_owned(),

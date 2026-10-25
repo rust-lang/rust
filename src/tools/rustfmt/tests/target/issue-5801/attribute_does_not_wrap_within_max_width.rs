@@ -1,4 +1,4 @@
-// rustfmt-config: issue-5801-v2.toml
+//@ rustfmt-config: issue-5801-v2.toml
 
 pub enum Severity {
     #[something(AAAAAAAAAAAAA, BBBBBBBBBBBBBB, CCCCCCCCCCCCCCCC, DDDDDDDDDDDDD, EEEEEEEEEEEE, FFFFFFFFFFF, GGGGGGGGGGG)]

@@ -506,6 +506,9 @@ pub fn emit_lint_base<'a, D: Diagnostic<'a> + 'a>(
             for (label_span, label) in span.span_labels_raw() {
                 err.span.push_span_diag(*label_span, label.clone());
             }
+            for span in span.span_context() {
+                err.span.push_span_context(*span);
+            }
         }
 
         if disable_suggestions {
@@ -562,7 +565,6 @@ pub fn emit_lint_base<'a, D: Diagnostic<'a> + 'a>(
                     )
                 }
                 FutureIncompatibilityReason::Custom(reason, _) => reason.to_owned(),
-                FutureIncompatibilityReason::Unreachable => unreachable!(),
             };
 
             if future_incompatible.explain_reason {

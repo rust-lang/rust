@@ -1,5 +1,5 @@
 error[E0027]: pattern does not mention field `name`
-  --> $DIR/E0027.rs:11:9
+  --> $DIR/E0027.rs:42:9
    |
 LL |         Dog { age: x } => {}
    |         ^^^^^^^^^^^^^^ missing field `name`
@@ -18,7 +18,7 @@ LL |         Dog { age: x, .. } => {}
    |                     ++++
 
 error[E0027]: pattern does not mention field `age`
-  --> $DIR/E0027.rs:15:9
+  --> $DIR/E0027.rs:46:9
    |
 LL |         Dog { name: x, } => {}
    |         ^^^^^^^^^^^^^^^^ missing field `age`
@@ -37,7 +37,7 @@ LL |         Dog { name: x, .. } => {}
    |                        ++
 
 error[E0027]: pattern does not mention field `age`
-  --> $DIR/E0027.rs:19:9
+  --> $DIR/E0027.rs:50:9
    |
 LL |         Dog { name: x  , } => {}
    |         ^^^^^^^^^^^^^^^^^^ missing field `age`
@@ -55,11 +55,11 @@ help: or always ignore missing fields here
 LL |         Dog { name: x, .. } => {}
    |                      ~~~~~~
 
-error[E0027]: pattern does not mention fields `name`, `age`
-  --> $DIR/E0027.rs:22:9
+error[E0027]: pattern does not mention fields `name` and `age`
+  --> $DIR/E0027.rs:53:9
    |
 LL |         Dog {} => {}
-   |         ^^^^^^ missing fields `name`, `age`
+   |         ^^^^^^ missing fields `name` and `age`
    |
 help: include the missing fields in the pattern
    |
@@ -74,6 +74,74 @@ help: or always ignore missing fields here
 LL |         Dog { .. } => {}
    |               ++
 
-error: aborting due to 4 previous errors
+error[E0027]: pattern does not mention field `field1` and inaccessible fields
+  --> $DIR/E0027.rs:56:9
+   |
+LL |         foo::Bar {} => {}
+   |         ^^^^^^^^^^^ missing field `field1` and inaccessible fields
+   |
+help: include the missing field in the pattern and ignore the inaccessible fields
+   |
+LL |         foo::Bar { field1, .. } => {}
+   |                    ++++++++++
+help: if you don't care about this missing field, you can explicitly ignore it
+   |
+LL |         foo::Bar { field1: _, .. } => {}
+   |                    +++++++++++++
+help: or always ignore missing fields here
+   |
+LL |         foo::Bar { .. } => {}
+   |                    ++
+
+error[E0027]: pattern does not mention fields `field1`, `field2`, `field3` and inaccessible fields
+  --> $DIR/E0027.rs:59:9
+   |
+LL |         foo::Baz {} => {}
+   |         ^^^^^^^^^^^ missing fields `field1`, `field2`, `field3` and inaccessible fields
+   |
+help: include the missing fields in the pattern and ignore the inaccessible fields
+   |
+LL |         foo::Baz { field1, field2, field3, .. } => {}
+   |                    ++++++++++++++++++++++++++
+help: if you don't care about these missing fields, you can explicitly ignore them
+   |
+LL |         foo::Baz { field1: _, field2: _, field3: _, .. } => {}
+   |                    +++++++++++++++++++++++++++++++++++
+help: or always ignore missing fields here
+   |
+LL |         foo::Baz { .. } => {}
+   |                    ++
+
+error[E0027]: pattern does not mention fields `field2`, `field3` and inaccessible fields
+  --> $DIR/E0027.rs:62:9
+   |
+LL |         foo::Baz { field1 } => {}
+   |         ^^^^^^^^^^^^^^^^^^^ missing fields `field2`, `field3` and inaccessible fields
+   |
+help: include the missing fields in the pattern and ignore the inaccessible fields
+   |
+LL |         foo::Baz { field1, field2, field3, .. } => {}
+   |                          ++++++++++++++++++++
+help: if you don't care about these missing fields, you can explicitly ignore them
+   |
+LL |         foo::Baz { field1, field2: _, field3: _, .. } => {}
+   |                          ++++++++++++++++++++++++++
+help: or always ignore missing fields here
+   |
+LL |         foo::Baz { field1, .. } => {}
+   |                          ++++
+
+error: pattern requires `..` due to inaccessible fields
+  --> $DIR/E0027.rs:65:9
+   |
+LL |         foo::Baz { field1, field2, field3 } => {}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: ignore the inaccessible and unused fields
+   |
+LL |         foo::Baz { field1, field2, field3, .. } => {}
+   |                                          ++++
+
+error: aborting due to 8 previous errors
 
 For more information about this error, try `rustc --explain E0027`.

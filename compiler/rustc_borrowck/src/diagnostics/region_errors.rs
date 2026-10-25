@@ -444,6 +444,11 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             return;
         };
         let def_id = instance.def_id();
+        if tcx.is_closure_like(def_id) {
+            // Closures don't have a `fn_sig` query result and cannot introduce the `'static`
+            // obligations this function looks for
+            return;
+        }
         let mut bounds =
             tcx.clauses_of(def_id)
                 .instantiate(tcx, instance.args)

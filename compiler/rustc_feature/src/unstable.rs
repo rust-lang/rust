@@ -270,6 +270,8 @@ declare_features! (
     (internal, profiler_runtime, "1.18.0", None),
     /// Allows using `rustc_*` attributes (RFC 572).
     (internal, rustc_attrs, "1.0.0", None),
+    /// Allows using internal rustdoc features like `doc(keyword)`.
+    (internal, rustdoc_internals, "1.58.0", None),
     /// Allows using the `#[stable]` and `#[unstable]` attributes.
     (internal, staged_api, "1.0.0", None),
     /// Perma-unstable, only used in the test suite for binders (`for<'a>`).
@@ -322,8 +324,6 @@ declare_features! (
     (internal, repr_simd, "1.4.0", Some(27731)),
     /// Allows using compiler's own crates.
     (unstable, rustc_private, "1.0.0", Some(27812)),
-    /// Allows using internal rustdoc features like `doc(keyword)`.
-    (internal, rustdoc_internals, "1.58.0", Some(90418)),
     /// Allows using the `rustdoc::missing_doc_code_examples` lint
     (unstable, rustdoc_missing_doc_code_examples, "1.31.0", Some(101730)),
     /// Introduces a hierarchy of `Sized` traits (RFC 3729).
@@ -546,7 +546,7 @@ declare_features! (
     /// Allows using `#[align(...)]` on function items
     (unstable, fn_align, "1.53.0", Some(82232)),
     /// Support delegating implementation of functions to other already implemented functions.
-    (incomplete, fn_delegation, "1.76.0", Some(118212)),
+    (unstable, fn_delegation, "1.76.0", Some(118212)),
     /// Traits for function pointers and items
     (unstable, fn_static, "1.100.0", Some(148768)),
     /// Allows using forced keywords `k#fn`.
@@ -555,6 +555,8 @@ declare_features! (
     (internal, freeze_impls, "1.78.0", Some(121675)),
     /// Frontmatter `---` blocks for use by external tools.
     (unstable, frontmatter, "1.88.0", Some(136889)),
+    /// Allow function args to be const generics
+    (incomplete, function_arg_const_generics, "CURRENT_RUSTC_VERSION", Some(163261)),
     /// Allows using ADTs in directly represented generic const args.
     (incomplete, gca_adts, "CURRENT_RUSTC_VERSION", Some(163420)),
     /// Allows using generics in more complex const expressions, based on definitional equality.
@@ -664,7 +666,7 @@ declare_features! (
     /// Allows providing names to parameters of `impl Fn` etc
     (unstable, named_fn_trait_parameters, "1.99.0", Some(158499)),
     /// Allows specifying the as-needed link modifier
-    (unstable, native_link_modifiers_as_needed, "1.53.0", Some(81490)),
+    (unstable, native_link_modifiers_as_needed, "1.53.0", Some(99424)),
     /// Allow negative trait implementations.
     (unstable, negative_impls, "1.44.0", Some(68318)),
     /// Allows the `!` pattern.
@@ -723,7 +725,7 @@ declare_features! (
     /// Allows the use of the `sanitize` attribute.
     (unstable, sanitize, "1.91.0", Some(39699)),
     /// Allows the use of SIMD types in functions declared in `extern` blocks.
-    (unstable, simd_ffi, "1.0.0", Some(27731)),
+    (unstable, simd_ffi, "1.0.0", Some(63068)),
     /// Target features on sparc.
     (unstable, sparc_target_feature, "1.84.0", Some(132783)),
     /// Allows specialization of implementations (RFC 1210).
@@ -768,7 +770,7 @@ declare_features! (
     (incomplete, unsafe_fields, "1.85.0", Some(132922)),
     /// Allows const generic parameters to be defined with types that
     /// are not `Sized`, e.g. `fn foo<const N: [u8]>() {`.
-    (incomplete, unsized_const_params, "1.82.0", Some(95174)),
+    (incomplete, unsized_const_params, "1.82.0", Some(128028)),
     /// Allows unsized fn parameters.
     (internal, unsized_fn_params, "1.49.0", Some(48055)),
     /// Allows using the `#[used(linker)]` (or `#[used(compiler)]`) attribute.
@@ -879,6 +881,13 @@ pub enum DependentFeature {
 /// Some features require one or more other features to be enabled.
 pub const DEPENDENT_FEATURES: &[(Symbol, DependentFeature)] = &[
     // tidy-alphabetical-start
+    (
+        sym::function_arg_const_generics,
+        DependentFeature::Or(&[
+            DependentFeature::Leaf(sym::gca_min_const_items),
+            DependentFeature::Leaf(sym::gca_adts),
+        ]),
+    ),
     (
         sym::gca_adts,
         DependentFeature::Or(&[

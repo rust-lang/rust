@@ -106,6 +106,7 @@ impl JsonEmitter {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use indoc::indoc;
     use std::path::PathBuf;
 
     #[test]
@@ -122,7 +123,12 @@ mod tests {
                 expected_begin_line: 79,
                 expected_end_line: 82,
                 original: String::from("fn Foo<T>() where T: Bar {\n"),
-                expected: String::from("fn Foo<T>()\nwhere\n    T: Bar,\n{\n"),
+                expected: String::from(indoc! {"
+                    fn Foo<T>()
+                    where
+                        T: Bar,
+                    {
+                "}),
             }],
         };
         let mismatch = Mismatch {
@@ -213,32 +219,32 @@ mod tests {
     #[test]
     fn emits_array_with_files_with_diffs() {
         let file_name = "src/bin.rs";
-        let original = [
-            "fn main() {",
-            "println!(\"Hello, world!\");",
-            "}",
-            "",
-            "#[cfg(test)]",
-            "mod tests {",
-            "#[test]",
-            "fn it_works() {",
-            "    assert_eq!(2 + 2, 4);",
-            "}",
-            "}",
-        ];
-        let formatted = [
-            "fn main() {",
-            "    println!(\"Hello, world!\");",
-            "}",
-            "",
-            "#[cfg(test)]",
-            "mod tests {",
-            "    #[test]",
-            "    fn it_works() {",
-            "        assert_eq!(2 + 2, 4);",
-            "    }",
-            "}",
-        ];
+        let original = indoc! {r#"
+            fn main() {
+            println!("Hello, world!");
+            }
+
+            #[cfg(test)]
+            mod tests {
+            #[test]
+            fn it_works() {
+                assert_eq!(2 + 2, 4);
+            }
+            }
+        "#};
+        let formatted = indoc! {r#"
+            fn main() {
+                println!("Hello, world!");
+            }
+
+            #[cfg(test)]
+            mod tests {
+                #[test]
+                fn it_works() {
+                    assert_eq!(2 + 2, 4);
+                }
+            }
+        "#};
         let mut writer = Vec::new();
         let mut emitter = JsonEmitter::default();
         let _ = emitter.emit_header(&mut writer);
@@ -247,8 +253,8 @@ mod tests {
                 &mut writer,
                 FormattedFile {
                     filename: &FileName::Real(PathBuf::from(file_name)),
-                    original_text: &original.join("\n"),
-                    formatted_text: &formatted.join("\n"),
+                    original_text: original,
+                    formatted_text: formatted,
                 },
             )
             .unwrap();
@@ -269,9 +275,12 @@ mod tests {
                     original_end_line: 10,
                     expected_begin_line: 7,
                     expected_end_line: 10,
-                    original: String::from(
-                        "#[test]\nfn it_works() {\n    assert_eq!(2 + 2, 4);\n}\n",
-                    ),
+                    original: String::from(indoc! {"
+                        #[test]
+                        fn it_works() {
+                            assert_eq!(2 + 2, 4);
+                        }
+                    "}),
                     expected: String::from(
                         "    #[test]\n    fn it_works() {\n        assert_eq!(2 + 2, 4);\n    }\n",
                     ),
@@ -286,11 +295,27 @@ mod tests {
     #[test]
     fn emits_valid_json_with_multiple_files() {
         let bin_file = "src/bin.rs";
-        let bin_original = ["fn main() {", "println!(\"Hello, world!\");", "}"];
-        let bin_formatted = ["fn main() {", "    println!(\"Hello, world!\");", "}"];
+        let bin_original = indoc! {r#"
+            fn main() {
+            println!("Hello, world!");
+            }
+        "#};
+        let bin_formatted = indoc! {r#"
+            fn main() {
+                println!("Hello, world!");
+            }
+        "#};
         let lib_file = "src/lib.rs";
-        let lib_original = ["fn greet() {", "println!(\"Greetings!\");", "}"];
-        let lib_formatted = ["fn greet() {", "    println!(\"Greetings!\");", "}"];
+        let lib_original = indoc! {r#"
+            fn greet() {
+            println!("Greetings!");
+            }
+        "#};
+        let lib_formatted = indoc! {r#"
+            fn greet() {
+                println!("Greetings!");
+            }
+        "#};
         let mut writer = Vec::new();
         let mut emitter = JsonEmitter::default();
         let _ = emitter.emit_header(&mut writer);
@@ -299,8 +324,8 @@ mod tests {
                 &mut writer,
                 FormattedFile {
                     filename: &FileName::Real(PathBuf::from(bin_file)),
-                    original_text: &bin_original.join("\n"),
-                    formatted_text: &bin_formatted.join("\n"),
+                    original_text: bin_original,
+                    formatted_text: bin_formatted,
                 },
             )
             .unwrap();
@@ -309,8 +334,8 @@ mod tests {
                 &mut writer,
                 FormattedFile {
                     filename: &FileName::Real(PathBuf::from(lib_file)),
-                    original_text: &lib_original.join("\n"),
-                    formatted_text: &lib_formatted.join("\n"),
+                    original_text: lib_original,
+                    formatted_text: lib_formatted,
                 },
             )
             .unwrap();

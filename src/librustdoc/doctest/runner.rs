@@ -198,7 +198,7 @@ test::test_main(test_args, tests)
         let runnable_test = RunnableDocTest {
             full_test_code: format!("{code_prefix}{code}", code = self.output),
             full_test_line_offset: 0,
-            test_opts: &test_options,
+            test_opts: test_options,
             global_opts: opts,
             langstr: LangString::default(),
             line: 0,

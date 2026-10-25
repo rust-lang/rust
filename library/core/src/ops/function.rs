@@ -67,8 +67,8 @@ use crate::ptr::NonNull;
         // SAFETY: tidy is not smart enough to tell that the below unsafe block is a string
         label = "call the function in a closure: `|| unsafe {{ /* code */ }}`"
     ),
-    message = "expected an `{This:resolved}` closure, found `{Self}`",
-    label = "expected an `{This:resolved}` closure, found `{Self}`"
+    message = "expected `{this:resolved}` signature, found `{Self}`",
+    label = "expected `{this:resolved}` signature, found `{Self}`"
 )]
 #[fundamental] // so that regex can rely that `&str: !FnMut`
 #[must_use = "closures are lazy and do nothing unless called"]
@@ -154,8 +154,8 @@ pub const trait Fn<Args: Tuple>: [const] FnMut<Args> {
         // SAFETY: tidy is not smart enough to tell that the below unsafe block is a string
         label = "call the function in a closure: `|| unsafe {{ /* code */ }}`"
     ),
-    message = "expected an `{This:resolved}` closure, found `{Self}`",
-    label = "expected an `{This:resolved}` closure, found `{Self}`"
+    message = "expected `{this:resolved}` signature, found `{Self}`",
+    label = "expected `{this:resolved}` signature, found `{Self}`"
 )]
 #[fundamental] // so that regex can rely that `&str: !FnMut`
 #[must_use = "closures are lazy and do nothing unless called"]
@@ -233,8 +233,8 @@ pub const trait FnMut<Args: Tuple>: FnOnce<Args> {
         // SAFETY: tidy is not smart enough to tell that the below unsafe block is a string
         label = "call the function in a closure: `|| unsafe {{ /* code */ }}`"
     ),
-    message = "expected an `{This:resolved}` closure, found `{Self}`",
-    label = "expected an `{This:resolved}` closure, found `{Self}`"
+    message = "expected `{this:resolved}` signature, found `{Self}`",
+    label = "expected `{this:resolved}` signature, found `{Self}`"
 )]
 #[fundamental] // so that regex can rely that `&str: !FnMut`
 #[must_use = "closures are lazy and do nothing unless called"]

@@ -27,7 +27,7 @@
 #![feature(try_blocks)]
 #![feature(try_blocks_heterogeneous)]
 #![feature(yeet_expr)]
-#![allow(incomplete_features)]
+#![allow(incomplete_features, unused_attributes)]
 
 mod prelude {
     pub use std::prelude::rust_2024::*;
