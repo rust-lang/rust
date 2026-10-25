@@ -128,25 +128,24 @@ fn show_substructure(
         let mut args = ThinVec::with_capacity(2 + fields.len());
         args.extend([fmt]);
 
-        let mut names = String::new();
         if is_struct {
-            names.push_str(ident.name.as_str())
+            let mut names = String::new();
+            names.push_str(ident.name.as_str());
+
+            for field in fields.iter() {
+                names.push(' ');
+                names.push_str(field.name.unwrap().name.as_str());
+            }
+
+            let name_expr = cx.expr_str(span, Symbol::intern(&names));
+            args.push(name_expr);
         } else {
             args.push(expr_name());
         };
 
         for (i, field) in fields.into_iter().enumerate() {
-            if is_struct {
-                names.push(' ');
-                names.push_str(field.name.unwrap().name.as_str());
-            }
-
             let field = expr_for_field(field, i);
             args.push(field);
-        }
-        if is_struct {
-            let name_expr = cx.expr_str(span, Symbol::intern(&names));
-            args.push(name_expr);
         }
         let expr = cx.expr_call_global(span, fn_path_debug, args);
         BlockOrExpr::new_expr(expr)

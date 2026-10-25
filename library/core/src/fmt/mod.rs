@@ -2496,7 +2496,7 @@ impl<'a> Formatter<'a> {
     /// faster for 1 field.
     #[doc(hidden)]
     #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
-    pub fn debug_struct_field1_finish<'b>(&'b mut self, value1: &dyn Debug, names: &str) -> Result {
+    pub fn debug_struct_field1_finish<'b>(&'b mut self, names: &str, value1: &dyn Debug) -> Result {
         let mut names = names.split(' ');
         let mut builder = builders::debug_struct_new(self, names.next().unwrap());
         builder.field(names.next().unwrap(), value1);
@@ -2510,9 +2510,9 @@ impl<'a> Formatter<'a> {
     #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
     pub fn debug_struct_field2_finish<'b>(
         &'b mut self,
+        names: &str,
         value1: &dyn Debug,
         value2: &dyn Debug,
-        names: &str,
     ) -> Result {
         let mut names = names.split(' ');
         let mut builder = builders::debug_struct_new(self, names.next().unwrap());
@@ -2528,10 +2528,10 @@ impl<'a> Formatter<'a> {
     #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
     pub fn debug_struct_field3_finish<'b>(
         &'b mut self,
+        names: &str,
         value1: &dyn Debug,
         value2: &dyn Debug,
         value3: &dyn Debug,
-        names: &str,
     ) -> Result {
         let mut names = names.split(' ');
         let mut builder = builders::debug_struct_new(self, names.next().unwrap());
@@ -2548,11 +2548,11 @@ impl<'a> Formatter<'a> {
     #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
     pub fn debug_struct_field4_finish<'b>(
         &'b mut self,
+        names: &str,
         value1: &dyn Debug,
         value2: &dyn Debug,
         value3: &dyn Debug,
         value4: &dyn Debug,
-        names: &str,
     ) -> Result {
         let mut names = names.split(' ');
         let mut builder = builders::debug_struct_new(self, names.next().unwrap());
@@ -2570,12 +2570,12 @@ impl<'a> Formatter<'a> {
     #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
     pub fn debug_struct_field5_finish<'b>(
         &'b mut self,
+        names: &str,
         value1: &dyn Debug,
         value2: &dyn Debug,
         value3: &dyn Debug,
         value4: &dyn Debug,
         value5: &dyn Debug,
-        names: &str,
     ) -> Result {
         let mut names = names.split(' ');
         let mut builder = builders::debug_struct_new(self, names.next().unwrap());
