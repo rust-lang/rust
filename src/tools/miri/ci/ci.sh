@@ -54,48 +54,57 @@ endgroup
 
 # Run tests. Recognizes these variables:
 # - TEST_TARGET: the target to test. Empty for host target.
-# - GC_STRESS: if non-empty, run the GC stress test for the main test suite.
-# - MIR_OPT: if non-empty, re-run test `pass` tests with mir-opt-level=4
-# - MANY_SEEDS: if set to N, run the "many-seeds" tests N times
-# - TEST_BENCH: if non-empty, check that the benchmarks all build
-# - CARGO_MIRI_ENV: if non-empty, set some env vars and config to potentially confuse cargo-miri
+# - TEST_TIER: configure which and how many tests to run.
+#   Tier 2: many-seeds tests run 16 times, nothing extra
+#   Tier 1: many-seeds tests run 64 times, check `./miri run`
+#   Tier 0: tier 1 checks plus mir-opt, test suite runs with GC stress tests,
+#   check that benchmarks build, and mess with cargo-miri configuration
 function run_tests {
   if [ -n "${TEST_TARGET-}" ]; then
-    begingroup "Testing foreign architecture $TEST_TARGET"
+    begingroup "Testing foreign architecture $TEST_TARGET (at tier $TEST_TIER)"
     TARGET_FLAG="--target $TEST_TARGET"
     MULTI_TARGET_FLAG=""
   else
-    begingroup "Testing host architecture"
+    begingroup "Testing host architecture (at tier $TEST_TIER)"
     TARGET_FLAG=""
     MULTI_TARGET_FLAG="--multi-target"
   fi
 
   ## ui test suite
-  if [ -n "${GC_STRESS-}" ]; then
+  if (( $TEST_TIER <= 0 )); then
+    # We set this only for  the `./miri test`, not the rest
     MIRIFLAGS_EXTRA="-Zmiri-provenance-gc=1"
   fi
   time MIRIFLAGS="${MIRIFLAGS-} ${MIRIFLAGS_EXTRA-}" ./miri test $FEATURES $TARGET_FLAG
+  unset MIRIFLAGS_EXTRA
 
-  ## advanced tests
-  if [ -n "${MIR_OPT-}" ]; then
-    # Tests with optimizations (`-O` is what cargo passes, but crank MIR optimizations up all the
-    # way, too).
-    # Optimizations change diagnostics (mostly backtraces), so we don't check
-    # them. Also error locations change so we don't run the failing tests.
-    # We explicitly enable debug-assertions here, they are disabled by -O but we have tests
-    # which exist to check that we panic on debug assertion failures.
+  ## mir-opt tests
+  if (( $TEST_TIER <= 0 )); then
+    # Run tests with optimizations. `-O` is what cargo passes, but crank MIR optimizations up all
+    # the way, too. Optimizations change diagnostics (mostly backtraces), so we don't check them.
+    # Also error locations change so we don't run the failing tests. We explicitly enable
+    # debug-assertions here, they are disabled by -O but we have tests which exist to check that we
+    # panic on debug assertion failures.
     time MIRIFLAGS="${MIRIFLAGS-} -O -Zmir-opt-level=4 -Cdebug-assertions=yes" MIRI_SKIP_UI_CHECKS=1 ./miri test $FEATURES $TARGET_FLAG tests/{pass,panic}
   fi
-  if [ -n "${MANY_SEEDS-}" ]; then
-    # Run many-seeds tests. (Also tests `./miri run`.)
-    time for FILE in tests/many-seeds/*.rs; do
-      ./miri run $FEATURES "-Zmiri-many-seeds=0..$MANY_SEEDS" $TARGET_FLAG "$FILE"
-    done
-    # Smoke-test `./miri run --dep`.
+  ## many-seeds tests
+  if (( $TEST_TIER <= 1 )); then
+    MANY_SEEDS=64
+  else
+    MANY_SEEDS=16
+  fi
+  time for FILE in tests/many-seeds/*.rs; do
+    ./miri run $FEATURES "-Zmiri-many-seeds=0..$MANY_SEEDS" $TARGET_FLAG "$FILE"
+  done
+  ## `./miri run` (including `--native`, but that only works for the host)
+  if (( $TEST_TIER <= 1 )); then
     ./miri run $FEATURES $TARGET_FLAG --dep tests/pass-dep/getrandom.rs
   fi
-  if [ -n "${TEST_BENCH-}" ]; then
-    # Check that the benchmarks build and run, but only once.
+  if [ -z "${TEST_TARGET-}" ]; then
+    ./miri run $FEATURES --native tests/pass-dep/getrandom.rs
+  fi
+  ## benchmarks
+  if (( $TEST_TIER <= 0 )); then
     time HYPERFINE="hyperfine -w0 -r1 --show-output" ./miri bench $TARGET_FLAG --no-install
   fi
 
@@ -107,7 +116,7 @@ function run_tests {
     PYTHON=python
   fi
   # Some environment setup that attempts to confuse the heck out of cargo-miri.
-  if [ -n "${CARGO_MIRI_ENV-}" ]; then
+  if (( $TEST_TIER == 0 )); then
     # These act up on Windows (`which miri` produces a filename that does not exist?!?).
     # RUSTC is the main thing to set (it changes the first argument our wrapper will see).
     # Unless MIRI is also set, that produces a warning.
@@ -145,65 +154,49 @@ function run_tests_minimal {
 
 ## Main Testing Logic ##
 
-# In particular, fully cover all tier 1 targets with MANY_SEEDS=64.
+# Key constraints:
+# - all tier 1 targets covered with TEST_TIER=1, plus s390x-unknown-linux-gnu
+# - every tier 1 OS & arch covered with TEST_TIER=0 ("extended tests")
 case $HOST_TARGET in
   x86_64-unknown-linux-gnu)
-    # Host
-    GC_STRESS=1 MIR_OPT=1 MANY_SEEDS=64 TEST_BENCH=1 CARGO_MIRI_ENV=1 run_tests # Linux GC_STRESS
-    # Extra tier 1
-    MANY_SEEDS=64 TEST_TARGET=x86_64-pc-windows-gnu run_tests # Windows on Linux
+    TEST_TIER=0 run_tests # Linux, x86_64 extended tests
+    TEST_TIER=1 TEST_TARGET=x86_64-pc-windows-gnu run_tests # Windows on Linux
     ;;
   i686-unknown-linux-gnu)
-    # Host
-    MIR_OPT=1 MANY_SEEDS=64 TEST_BENCH=1 CARGO_MIRI_ENV=1 run_tests
-    # Not officially supported tier 2
-    MANY_SEEDS=16 TEST_TARGET=aarch64-linux-android run_tests # 64bit on 32bit
-    MANY_SEEDS=16 TEST_TARGET=loongarch64-unknown-linux-gnu run_tests
-    MANY_SEEDS=16 TEST_TARGET=riscv64a23-unknown-linux-gnu run_tests
-    # Partially supported targets (no_std, tier 2)
-    TEST_TARGET=wasm32-unknown-unknown run_tests_minimal no_std empty_main wasm # this target doesn't really have std
-    TEST_TARGET=thumbv7em-none-eabihf  run_tests_minimal no_std
+    TEST_TIER=0 run_tests # i686 extended tests
+    TEST_TIER=2 TEST_TARGET=aarch64-linux-android run_tests # 64bit on 32bit
     ;;
   aarch64-unknown-linux-gnu)
-    # Host
-    MIR_OPT=1 MANY_SEEDS=64 TEST_BENCH=1 CARGO_MIRI_ENV=1 run_tests
-    # Extra tier 2
-    MANY_SEEDS=16 TEST_TARGET=aarch64-pc-windows-gnullvm run_tests # gnullvm ABI
-    # Not officially supported tier 2
-    MANY_SEEDS=16 TEST_TARGET=x86_64-pc-solaris run_tests
-    MANY_SEEDS=16 TEST_TARGET=i686-unknown-freebsd run_tests # 32bit on 64bit
-    MANY_SEEDS=16 TEST_TARGET=x86_64-unknown-illumos run_tests
-    MANY_SEEDS=16 TEST_TARGET=x86_64-unknown-netbsd run_tests_minimal hello libc/env.rs libc/misc.rs
+    TEST_TIER=1 run_tests
+    TEST_TIER=2 TEST_TARGET=loongarch64-unknown-linux-gnu run_tests
+    TEST_TIER=2 TEST_TARGET=riscv64a23-unknown-linux-gnu run_tests
+    TEST_TIER=2 TEST_TARGET=armv7-unknown-linux-gnueabihf run_tests
+    TEST_TIER=2 TEST_TARGET=i686-unknown-freebsd run_tests # 32bit on 64bit
+    TEST_TIER=2 TEST_TARGET=mips-unknown-linux-gnu run_tests # a 32bit big-endian target, and also a target without 64bit atomics
+    TEST_TIER=2 TEST_TARGET=x86_64-unknown-illumos run_tests
+    TEST_TARGET=wasm32-unknown-unknown run_tests_minimal no_std empty_main wasm # this target doesn't really have std
+    TEST_TARGET=thumbv7em-none-eabihf  run_tests_minimal no_std
+    TEST_TARGET=x86_64-unknown-netbsd run_tests_minimal hello libc/env.rs libc/misc.rs
     ;;
   aarch64-apple-darwin)
-    # Host
-    GC_STRESS=1 MIR_OPT=1 MANY_SEEDS=64 TEST_BENCH=1 CARGO_MIRI_ENV=1 run_tests # macOS GC_STRESS
-    # Extra tier 1
-    MANY_SEEDS=64 TEST_TARGET=i686-pc-windows-gnu run_tests
-    MANY_SEEDS=64 TEST_TARGET=x86_64-pc-windows-msvc CARGO_MIRI_ENV=1 run_tests
+    TEST_TIER=0 run_tests # macOS, aarch64 extended tests
+    TEST_TIER=1 TEST_TARGET=x86_64-pc-windows-msvc run_tests
     ;;
   x86_64-pc-windows-msvc)
-    # Host
-    MIR_OPT=1 MANY_SEEDS=64 TEST_BENCH=1 run_tests
-    # Extra tier 1
-    MANY_SEEDS=64 TEST_TARGET=x86_64-apple-darwin run_tests
-    # Not officially supported tier 2
-    MANY_SEEDS=16 TEST_TARGET=s390x-unknown-linux-gnu run_tests # big-endian architecture of choice, Linux on Windows
+    TEST_TIER=0 run_tests # Windows extended tests
+    TEST_TIER=2 TEST_TARGET=x86_64-apple-darwin run_tests
+    TEST_TIER=2 TEST_TARGET=i686-pc-windows-gnu run_tests
     ;;
   aarch64-pc-windows-msvc)
-    # Host
-    GC_STRESS=1 MIR_OPT=1 MANY_SEEDS=64 TEST_BENCH=1 CARGO_MIRI_ENV=1 run_tests # Windows GC_STRESS
-    # Extra tier 1
-    MANY_SEEDS=64 TEST_TARGET=i686-unknown-linux-gnu run_tests
+    TEST_TIER=1 run_tests
+    TEST_TIER=1 TEST_TARGET=s390x-unknown-linux-gnu run_tests # big-endian, Linux on Windows
+    TEST_TIER=2 TEST_TARGET=x86_64-pc-solaris run_tests
     ;;
   x86_64-unknown-freebsd)
-    # Host
-    MIR_OPT=1 MANY_SEEDS=16 TEST_BENCH=1 CARGO_MIRI_ENV=1 run_tests
-    # Custom target JSON file
-    TEST_TARGET=tests/x86_64-unknown-kernel.json MIRI_NO_STD=1 MIRIFLAGS="-Zunstable-options" run_tests_minimal no_std
-    # Not officially supported tier 2
-    MANY_SEEDS=16 TEST_TARGET=armv7-unknown-linux-gnueabihf run_tests # 32bit ARM
-    MANY_SEEDS=16 TEST_TARGET=mips-unknown-linux-gnu run_tests # a 32bit big-endian target, and also a target without 64bit atomics
+    TEST_TIER=2 run_tests
+    # Don't put Linux targets here, they need address 127.0.1.1 which the VM does not seem to have.
+    TEST_TIER=2 TEST_TARGET=x86_64-pc-windows-gnullvm run_tests # gnullvm ABI
+    TEST_TARGET=tests/x86_64-unknown-kernel.json MIRI_NO_STD=1 MIRIFLAGS="-Zunstable-options" run_tests_minimal no_std # JSON target
     ;;
   *)
     echo "FATAL: unknown host target: $HOST_TARGET"
