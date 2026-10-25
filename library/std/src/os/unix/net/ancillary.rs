@@ -2,6 +2,7 @@
 
 use super::{SocketAddr, sockaddr_un};
 use crate::io::{self, IoSlice, IoSliceMut};
+use crate::macros::rustdoc_skip_body;
 use crate::marker::PhantomData;
 use crate::mem::zeroed;
 use crate::os::unix::io::RawFd;
@@ -30,6 +31,7 @@ mod libc {
     pub type uid_t = u32;
 }
 
+#[rustdoc_skip_body]
 pub(super) fn recv_vectored_with_ancillary_from(
     socket: &Socket,
     bufs: &mut [IoSliceMut<'_>],
@@ -60,6 +62,7 @@ pub(super) fn recv_vectored_with_ancillary_from(
     }
 }
 
+#[rustdoc_skip_body]
 pub(super) fn send_vectored_with_ancillary_to(
     socket: &Socket,
     path: Option<&Path>,
@@ -87,6 +90,7 @@ pub(super) fn send_vectored_with_ancillary_to(
     }
 }
 
+#[rustdoc_skip_body]
 fn add_to_ancillary_data<T>(
     buffer: &mut [u8],
     length: &mut usize,
@@ -503,6 +507,7 @@ impl<'a> AncillaryData<'a> {
         AncillaryData::ScmCredentials(scm_credentials)
     }
 
+    #[rustdoc_skip_body]
     fn try_from_cmsghdr(cmsg: &'a libc::cmsghdr) -> Result<Self, AncillaryError> {
         unsafe {
             let cmsg_len_zero = libc::CMSG_LEN(0) as usize;
@@ -543,6 +548,7 @@ pub struct Messages<'a> {
 impl<'a> Iterator for Messages<'a> {
     type Item = Result<AncillaryData<'a>, AncillaryError>;
 
+    #[rustdoc_skip_body]
     fn next(&mut self) -> Option<Self::Item> {
         unsafe {
             let mut msg: libc::msghdr = zeroed();
