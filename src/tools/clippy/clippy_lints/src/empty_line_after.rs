@@ -250,7 +250,7 @@ impl Stop {
         Some(Self {
             span: attr.span,
             kind: match attr.kind {
-                AttrKind::Normal(_) | AttrKind::Synthetic(_) => StopKind::Attr,
+                AttrKind::Normal(_) | AttrKind::Synthetic(_) | AttrKind::Generated(..) => StopKind::Attr,
                 AttrKind::DocComment(comment_kind, _) => StopKind::Doc(comment_kind),
             },
             first: file.lookup_line(file.relative_position(lo))?,
