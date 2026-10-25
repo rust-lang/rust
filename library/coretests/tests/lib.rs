@@ -35,6 +35,7 @@
 #![feature(const_eval_select)]
 #![feature(const_index)]
 #![feature(const_iter)]
+#![feature(const_nonzero_strict_ops)]
 #![feature(const_ops)]
 #![feature(const_option_ops)]
 #![feature(const_ref_cell)]
@@ -92,6 +93,7 @@
 #![feature(min_specialization)]
 #![feature(next_index)]
 #![feature(non_exhaustive_omitted_patterns_lint)]
+#![feature(nonzero_strict_ops)]
 #![feature(num_internals)]
 #![feature(numfmt)]
 #![feature(one_sided_range)]
@@ -200,7 +202,6 @@ mod macros;
 mod manually_drop;
 mod mem;
 mod net;
-mod nonzero;
 mod num;
 mod ops;
 mod option;
