@@ -233,6 +233,7 @@ impl FileExt for File {
         self.as_inner().read_buf_at(buf, offset)
     }
 
+    #[rustdoc_skip_body]
     fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
         self.as_inner().read_vectored_at(bufs, offset)
     }
@@ -241,6 +242,7 @@ impl FileExt for File {
         self.as_inner().write_at(buf, offset)
     }
 
+    #[rustdoc_skip_body]
     fn write_vectored_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
         self.as_inner().write_vectored_at(bufs, offset)
     }
@@ -317,6 +319,7 @@ pub trait OpenOptionsExt {
 }
 
 impl OpenOptionsExt for OpenOptions {
+    #[rustdoc_skip_body]
     fn custom_flags(&mut self, flags: i32) -> &mut OpenOptions {
         self.as_inner_mut().custom_flags(flags);
         self
@@ -383,6 +386,7 @@ pub trait DirEntryExt {
 }
 
 impl DirEntryExt for fs::DirEntry {
+    #[rustdoc_skip_body]
     fn ino(&self) -> u64 {
         self.as_inner().ino()
     }

@@ -10,6 +10,7 @@ use super::raw::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
 use crate::alloc::Allocator;
 #[cfg(not(target_os = "trusty"))]
 use crate::fs;
+use crate::macros::rustdoc_skip_body;
 use crate::marker::PhantomData;
 use crate::mem::ManuallyDrop;
 #[cfg(not(any(
@@ -111,6 +112,7 @@ impl BorrowedFd<'_> {
         target_os = "motor"
     )))]
     #[stable(feature = "io_safety", since = "1.63.0")]
+    #[rustdoc_skip_body]
     pub fn try_clone_to_owned(&self) -> io::Result<OwnedFd> {
         // We want to atomically duplicate this file descriptor and set the
         // CLOEXEC flag, and currently that's done via F_DUPFD_CLOEXEC. This
@@ -319,6 +321,7 @@ impl AsFd for OwnedFd {
 #[cfg(not(target_os = "trusty"))]
 impl AsFd for fs::File {
     #[inline]
+    #[rustdoc_skip_body]
     fn as_fd(&self) -> BorrowedFd<'_> {
         self.as_inner().as_fd()
     }
@@ -329,6 +332,7 @@ impl AsFd for fs::File {
 impl From<fs::File> for OwnedFd {
     /// Takes ownership of a [`File`](fs::File)'s underlying file descriptor.
     #[inline]
+    #[rustdoc_skip_body]
     fn from(file: fs::File) -> OwnedFd {
         file.into_inner().into_inner().into_inner()
     }
@@ -340,6 +344,7 @@ impl From<OwnedFd> for fs::File {
     /// Returns a [`File`](fs::File) that takes ownership of the given
     /// file descriptor.
     #[inline]
+    #[rustdoc_skip_body]
     fn from(owned_fd: OwnedFd) -> Self {
         Self::from_inner(FromInner::from_inner(FromInner::from_inner(owned_fd)))
     }
@@ -349,6 +354,7 @@ impl From<OwnedFd> for fs::File {
 #[cfg(not(target_os = "trusty"))]
 impl AsFd for crate::net::TcpStream {
     #[inline]
+    #[rustdoc_skip_body]
     fn as_fd(&self) -> BorrowedFd<'_> {
         self.as_inner().socket().as_fd()
     }
@@ -359,6 +365,7 @@ impl AsFd for crate::net::TcpStream {
 impl From<crate::net::TcpStream> for OwnedFd {
     /// Takes ownership of a [`TcpStream`](crate::net::TcpStream)'s socket file descriptor.
     #[inline]
+    #[rustdoc_skip_body]
     fn from(tcp_stream: crate::net::TcpStream) -> OwnedFd {
         tcp_stream.into_inner().into_socket().into_inner().into_inner()
     }
@@ -368,6 +375,7 @@ impl From<crate::net::TcpStream> for OwnedFd {
 #[cfg(not(target_os = "trusty"))]
 impl From<OwnedFd> for crate::net::TcpStream {
     #[inline]
+    #[rustdoc_skip_body]
     fn from(owned_fd: OwnedFd) -> Self {
         Self::from_inner(FromInner::from_inner(FromInner::from_inner(FromInner::from_inner(
             owned_fd,
@@ -379,6 +387,7 @@ impl From<OwnedFd> for crate::net::TcpStream {
 #[cfg(not(target_os = "trusty"))]
 impl AsFd for crate::net::TcpListener {
     #[inline]
+    #[rustdoc_skip_body]
     fn as_fd(&self) -> BorrowedFd<'_> {
         self.as_inner().socket().as_fd()
     }
@@ -389,6 +398,7 @@ impl AsFd for crate::net::TcpListener {
 impl From<crate::net::TcpListener> for OwnedFd {
     /// Takes ownership of a [`TcpListener`](crate::net::TcpListener)'s socket file descriptor.
     #[inline]
+    #[rustdoc_skip_body]
     fn from(tcp_listener: crate::net::TcpListener) -> OwnedFd {
         tcp_listener.into_inner().into_socket().into_inner().into_inner()
     }
@@ -398,6 +408,7 @@ impl From<crate::net::TcpListener> for OwnedFd {
 #[cfg(not(target_os = "trusty"))]
 impl From<OwnedFd> for crate::net::TcpListener {
     #[inline]
+    #[rustdoc_skip_body]
     fn from(owned_fd: OwnedFd) -> Self {
         Self::from_inner(FromInner::from_inner(FromInner::from_inner(FromInner::from_inner(
             owned_fd,
@@ -409,6 +420,7 @@ impl From<OwnedFd> for crate::net::TcpListener {
 #[cfg(not(target_os = "trusty"))]
 impl AsFd for crate::net::UdpSocket {
     #[inline]
+    #[rustdoc_skip_body]
     fn as_fd(&self) -> BorrowedFd<'_> {
         self.as_inner().socket().as_fd()
     }
@@ -419,6 +431,7 @@ impl AsFd for crate::net::UdpSocket {
 impl From<crate::net::UdpSocket> for OwnedFd {
     /// Takes ownership of a [`UdpSocket`](crate::net::UdpSocket)'s file descriptor.
     #[inline]
+    #[rustdoc_skip_body]
     fn from(udp_socket: crate::net::UdpSocket) -> OwnedFd {
         udp_socket.into_inner().into_socket().into_inner().into_inner()
     }
@@ -428,6 +441,7 @@ impl From<crate::net::UdpSocket> for OwnedFd {
 #[cfg(not(target_os = "trusty"))]
 impl From<OwnedFd> for crate::net::UdpSocket {
     #[inline]
+    #[rustdoc_skip_body]
     fn from(owned_fd: OwnedFd) -> Self {
         Self::from_inner(FromInner::from_inner(FromInner::from_inner(FromInner::from_inner(
             owned_fd,
@@ -536,6 +550,7 @@ impl<'a> AsFd for io::StderrLock<'a> {
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
 #[cfg(not(target_os = "trusty"))]
 impl AsFd for io::PipeReader {
+    #[rustdoc_skip_body]
     fn as_fd(&self) -> BorrowedFd<'_> {
         self.0.as_fd()
     }
@@ -544,6 +559,7 @@ impl AsFd for io::PipeReader {
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
 #[cfg(not(target_os = "trusty"))]
 impl From<io::PipeReader> for OwnedFd {
+    #[rustdoc_skip_body]
     fn from(pipe: io::PipeReader) -> Self {
         pipe.0.into_inner()
     }
@@ -552,6 +568,7 @@ impl From<io::PipeReader> for OwnedFd {
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
 #[cfg(not(target_os = "trusty"))]
 impl AsFd for io::PipeWriter {
+    #[rustdoc_skip_body]
     fn as_fd(&self) -> BorrowedFd<'_> {
         self.0.as_fd()
     }
@@ -560,6 +577,7 @@ impl AsFd for io::PipeWriter {
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
 #[cfg(not(target_os = "trusty"))]
 impl From<io::PipeWriter> for OwnedFd {
+    #[rustdoc_skip_body]
     fn from(pipe: io::PipeWriter) -> Self {
         pipe.0.into_inner()
     }
