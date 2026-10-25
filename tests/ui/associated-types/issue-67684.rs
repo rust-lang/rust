@@ -1,10 +1,17 @@
-//@ revisions: check build
-//@ [check]check-pass
+//@ revisions: check build next_ice
+//@[check] check-pass
 //
 // This second configuration aims to verify that we do not ICE in ConstProp because of
 // normalization failure.
-//@ [build]build-pass
-//@ [build]compile-flags: -Zmir-opt-level=3 --emit=mir
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next_ice] compile-flags: -Znext-solver
+//@[next_ice] known-bug: #163817
+//@[next_ice] failure-status: 101
+//@[next_ice] dont-check-compiler-stderr
+//@[next_ice] needs-rustc-debug-assertions
+//@[next_ice] compile-flags: -Zmir-opt-level=3 --emit=mir
+//@[build] build-pass
+//@[build] compile-flags: -Zmir-opt-level=3 --emit=mir
 
 #![allow(dead_code)]
 

@@ -1,4 +1,4 @@
-// rustfmt-wrap_comments: true
+//@ rustfmt-wrap_comments: true
 
 /// [MyType](VeryLongPathToMyType::NoLineBreak::Here::Okay::ThatWouldBeNice::Thanks)
 fn documented_with_longtype() {

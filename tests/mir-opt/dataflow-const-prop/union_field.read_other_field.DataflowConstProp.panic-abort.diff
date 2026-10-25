@@ -1,0 +1,21 @@
+- // MIR for `read_other_field` before DataflowConstProp
++ // MIR for `read_other_field` after DataflowConstProp
+  
+  fn read_other_field() -> u8 {
+      let mut _0: u8;
+      let mut _1: U;
+      scope 1 {
+          debug u => _1;
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          _1 = U { a: const 0_u8 };
+          (_1.0: u8) = const 1_u8;
+          (_1.1: u8) = const 5_u8;
+          _0 = copy (_1.0: u8);
+          StorageDead(_1);
+          return;
+      }
+  }
+  

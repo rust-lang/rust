@@ -1,14 +1,13 @@
 use core::ops::ControlFlow;
 
 use rustc_ast::visit::{Visitor, visit_opt};
-use rustc_ast::{self as ast, EnumDef, Safety, VariantData, attr};
+use rustc_ast::{self as ast, EnumDef, VariantData, attr};
 use rustc_expand::base::{DummyResult, ExtCtxt};
 use rustc_span::{ErrorGuaranteed, Ident, Span, kw, sym};
 use smallvec::SmallVec;
 use thin_vec::{ThinVec, thin_vec};
 
 use crate::deriving::generic::*;
-use crate::deriving::new_path;
 use crate::diagnostics;
 
 pub(crate) fn expand_deriving_default(
@@ -22,7 +21,7 @@ pub(crate) fn expand_deriving_default(
 
     let trait_def = TraitDef {
         span,
-        path: new_path(cx, span, &[kw::Default, sym::Default], vec![]),
+        path: cx.std_path(span, &[kw::Default, sym::Default]),
         skip_path_as_bound: has_a_default_variant(item),
         needs_copy_as_bound_if_packed: false,
         additional_bounds: SmallVec::new(),
@@ -37,10 +36,14 @@ pub(crate) fn expand_deriving_default(
             attributes: thin_vec![cx.attr_word(sym::inline, span)],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
             combine_substructure: combine_substructure(|cx, trait_span, substr| {
-                match substr.fields {
-                    StaticStruct(variant_data) => {
-                        default_struct_substructure(cx, trait_span, variant_data, substr.type_ident)
-                    }
+                match substr {
+                    StaticStruct(variant_data) => default_struct_substructure(
+                        cx,
+                        trait_span,
+                        variant_data,
+                        // We cannot use `Self` here, see https://github.com/rust-lang/rust/issues/163800
+                        item.kind.ident().unwrap(),
+                    ),
                     StaticEnum(enum_def) => {
                         default_enum_substructure(cx, trait_span, enum_def, item.span)
                     }
@@ -51,15 +54,14 @@ pub(crate) fn expand_deriving_default(
             }),
         }],
         is_const,
-        safety: Safety::Default,
-        document: true,
+        ..
     };
     trait_def.expand(cx, item, push)
 }
 
 fn default_call(cx: &ExtCtxt<'_>, span: Span) -> Box<ast::Expr> {
     // Note that `kw::Default` is "default" and `sym::Default` is "Default"!
-    let default_ident = cx.std_path(&[kw::Default, sym::Default, kw::Default]);
+    let default_ident = cx.std_path(span, &[kw::Default, sym::Default, kw::Default]);
     cx.expr_call_global(span, default_ident, ThinVec::new())
 }
 
@@ -69,7 +71,15 @@ fn default_struct_substructure(
     variant_data: &VariantData,
     type_ident: Ident,
 ) -> BlockOrExpr {
+    // FIXME: This is currently needed to avoid a regression with attribute macros after
+    // derives that incorrectly rely on the generated code using `Unit {}` instead of `Unit`.
+    // See https://github.com/rust-lang/rust/issues/164078.
+    if variant_data.fields().is_empty() {
+        return BlockOrExpr::new_expr(cx.expr_struct_ident(trait_span, type_ident, ThinVec::new()));
+    }
+
     let expr = match variant_data {
+        // This is currently unreachable due to the above hack.
         VariantData::Unit(_) => cx.expr_ident(trait_span, type_ident),
         VariantData::Tuple(fields, _) => {
             let exprs = fields
@@ -118,7 +128,7 @@ fn default_enum_substructure(
             match &default_variant.data {
                 VariantData::Unit(_) => cx.expr_path(cx.path(
                     default_variant.span,
-                    vec![Ident::new(kw::SelfUpper, default_variant.span), default_variant.ident],
+                    &[Ident::new(kw::SelfUpper, default_variant.span), default_variant.ident],
                 )),
                 VariantData::Struct { fields, .. } => {
                     // This only happens if `#![feature(default_field_values)]`. We have validated
@@ -143,10 +153,7 @@ fn default_enum_substructure(
                         .collect();
                     let path = cx.path(
                         default_variant.span,
-                        vec![
-                            Ident::new(kw::SelfUpper, default_variant.span),
-                            default_variant.ident,
-                        ],
+                        &[Ident::new(kw::SelfUpper, default_variant.span), default_variant.ident],
                     );
                     cx.expr_struct(default_variant.span, path, default_fields)
                 }

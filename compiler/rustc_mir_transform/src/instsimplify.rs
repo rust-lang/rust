@@ -6,7 +6,6 @@ use rustc_attr_ir::lang_items::LangItem;
 use rustc_index::IndexVec;
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::*;
-use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::layout::{IntegerExt, ValidityRequirement};
 use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, layout};
 use rustc_span::{Symbol, bug, sym};

@@ -8,7 +8,7 @@ use crate::{ErrorKind, Input, Session};
 
 /// Load the config, but hide expected parse errors
 fn read_config_hide_parse_errors(filename: &std::path::Path) -> crate::Config {
-    let mut config = read_config(&filename);
+    let mut config = read_config(&filename).expect("config should be valid");
     config.set().show_parse_errors(false);
     config
 }

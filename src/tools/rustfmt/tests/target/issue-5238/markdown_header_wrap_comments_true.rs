@@ -1,4 +1,4 @@
-// rustfmt-wrap_comments: true
+//@ rustfmt-wrap_comments: true
 
 /// no markdown header so rustfmt should wrap this comment when
 /// `format_code_in_doc_comments = true` and `wrap_comments = true`

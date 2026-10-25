@@ -63,25 +63,6 @@ impl Subdiagnostic for OverruledAttributeSub {
 }
 
 #[derive(Diagnostic)]
-#[diag("malformed lint attribute input", code = E0452)]
-pub(crate) struct MalformedAttribute {
-    #[primary_span]
-    pub span: Span,
-    #[subdiagnostic]
-    pub sub: MalformedAttributeSub,
-}
-
-#[derive(Subdiagnostic)]
-pub(crate) enum MalformedAttributeSub {
-    #[label("bad attribute argument")]
-    BadAttributeArgument(#[primary_span] Span),
-    #[label("reason must be a string literal")]
-    ReasonMustBeStringLiteral(#[primary_span] Span),
-    #[label("reason in lint attribute must come last")]
-    ReasonMustComeLast(#[primary_span] Span),
-}
-
-#[derive(Diagnostic)]
 #[diag("unknown tool name `{$tool_name}` found in scoped lint: `{$tool_name}::{$lint_name}`", code = E0710)]
 pub(crate) struct UnknownToolInScopedLint {
     #[primary_span]
@@ -1232,10 +1213,6 @@ pub(crate) struct QueryUntracked {
 }
 
 #[derive(Diagnostic)]
-#[diag("use `.eq_ctxt()` instead of `.ctxt() == .ctxt()`")]
-pub(crate) struct SpanUseEqCtxtDiag;
-
-#[derive(Diagnostic)]
 #[diag("using `{$fn_name}` on a string literal")]
 #[help("consider adding the symbol to `compiler/rustc_span/src/symbol.rs`")]
 pub(crate) struct SymbolInternStringLiteralDiag {
@@ -2322,19 +2299,21 @@ pub(crate) enum InvalidNanComparisons {
 #[derive(Subdiagnostic)]
 pub(crate) enum InvalidNanComparisonsSuggestion {
     #[multipart_suggestion(
-        "use `f32::is_nan()` or `f64::is_nan()` instead",
+        "use the `is_nan` method instead",
         style = "verbose",
         applicability = "machine-applicable"
     )]
-    Spanful {
-        #[suggestion_part(code = "!")]
-        neg: Option<Span>,
-        #[suggestion_part(code = ".is_nan()")]
-        float: Span,
+    Ufcs {
+        prefix: String,
+        #[suggestion_part(code = "{prefix}")]
+        prefix_span: Span,
+        suffix: &'static str,
+        #[suggestion_part(code = "{suffix}")]
+        close_span: Span,
         #[suggestion_part(code = "")]
-        nan_plus_binop: Span,
+        remove_nan: Span,
     },
-    #[help("use `f32::is_nan()` or `f64::is_nan()` instead")]
+    #[help("use the `is_nan` method instead")]
     Spanless,
 }
 

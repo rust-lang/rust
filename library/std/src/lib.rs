@@ -317,8 +317,8 @@
 // Library features (core):
 // tidy-alphabetical-start
 #![feature(borrowed_buf_init)]
-#![feature(bstr)]
-#![feature(bstr_internals)]
+#![feature(byte_str)]
+#![feature(byte_str_internals)]
 #![feature(c_size_t)]
 #![feature(can_vector)]
 #![feature(cast_maybe_uninit)]
@@ -358,6 +358,7 @@
 #![feature(io_error_uncategorized)]
 #![feature(io_slice_as_bytes)]
 #![feature(ip)]
+#![feature(ipv6_hop_limit)]
 #![feature(iter_advance_by)]
 #![feature(iter_next_chunk)]
 #![feature(maybe_dangling)]
@@ -370,7 +371,6 @@
 #![feature(pointer_is_aligned_to)]
 #![feature(portable_simd)]
 #![feature(ptr_as_uninit)]
-#![feature(ptr_cast_slice)]
 #![feature(ptr_mask)]
 #![feature(random)]
 #![feature(raw_os_error_ty)]
@@ -380,7 +380,6 @@
 #![feature(slice_internals)]
 #![feature(slice_ptr_get)]
 #![feature(slice_range)]
-#![feature(slice_split_once)]
 #![feature(std_internals)]
 #![feature(str_internals)]
 #![feature(sync_unsafe_cell)]
@@ -624,8 +623,8 @@ pub mod f64;
 pub mod thread;
 pub mod ascii;
 pub mod backtrace;
-#[unstable(feature = "bstr", issue = "134915")]
-pub mod bstr;
+#[unstable(feature = "byte_str", issue = "134915")]
+pub mod byte_str;
 pub mod collections;
 pub mod env;
 pub mod error;
@@ -710,6 +709,8 @@ pub mod arch {
     pub use std_detect::is_arm_feature_detected;
     #[stable(feature = "stdarch_loongarch_feature", since = "1.89.0")]
     pub use std_detect::is_loongarch_feature_detected;
+    #[unstable(feature = "stdarch_powerpc_feature_detection", issue = "111191")]
+    pub use std_detect::is_powerpc_feature_detected;
     #[stable(feature = "riscv_ratified", since = "1.78.0")]
     pub use std_detect::is_riscv_feature_detected;
     #[stable(feature = "stdarch_s390x_feature_detection", since = "1.93.0")]
@@ -718,8 +719,6 @@ pub mod arch {
     pub use std_detect::is_x86_feature_detected;
     #[unstable(feature = "stdarch_mips_feature_detection", issue = "111188")]
     pub use std_detect::{is_mips_feature_detected, is_mips64_feature_detected};
-    #[unstable(feature = "stdarch_powerpc_feature_detection", issue = "111191")]
-    pub use std_detect::{is_powerpc_feature_detected, is_powerpc64_feature_detected};
 }
 
 // This was stabilized in the crate root so we have to keep it there.

@@ -3,7 +3,6 @@ use rustc_abi::{BackendRepr, Endian};
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_apfloat::{Float, Round};
 use rustc_middle::mir::interpret::{InterpErrorKind, Pointer, UndefinedBehaviorInfo};
-use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::{FloatTy, ScalarInt, SimdAlign};
 use rustc_middle::{err_ub_format, mir, throw_unsup_format, ty};
 use rustc_span::{Symbol, bug, span_bug, sym};
@@ -146,10 +145,18 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                             };
                             let op = op.to_scalar();
                             match float_ty {
-                                FloatTy::F16 => self.float_round::<Half>(op, rounding)?,
-                                FloatTy::F32 => self.float_round::<Single>(op, rounding)?,
-                                FloatTy::F64 => self.float_round::<Double>(op, rounding)?,
-                                FloatTy::F128 => self.float_round::<Quad>(op, rounding)?,
+                                FloatTy::F16 => {
+                                    self.float_round::<Half>(op.to_float()?, rounding)?
+                                }
+                                FloatTy::F32 => {
+                                    self.float_round::<Single>(op.to_float()?, rounding)?
+                                }
+                                FloatTy::F64 => {
+                                    self.float_round::<Double>(op.to_float()?, rounding)?
+                                }
+                                FloatTy::F128 => {
+                                    self.float_round::<Quad>(op.to_float()?, rounding)?
+                                }
                             }
                         }
                         Op::Numeric(name) => {

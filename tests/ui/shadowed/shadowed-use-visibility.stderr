@@ -14,7 +14,10 @@ note: ...and refers to the module `foo` which is defined here
    |
 LL | mod foo {
    | ^^^^^^^
-help: consider importing this function instead
+help: consider importing one of these functions instead
+   |
+LL -     use crate::foo::bar::f as g;
+LL +     use foo::bar as g;
    |
 LL -     use crate::foo::bar::f as g;
 LL +     use foo::f as g;
@@ -36,10 +39,13 @@ note: ...and refers to the module `foo` which is defined here
    |
 LL | mod foo {
    | ^^^^^^^
-help: consider importing this function through its public re-export instead
+help: consider importing one of these functions instead
    |
 LL - use bar::f::f;
 LL + use bar::f;
+   |
+LL - use bar::f::f;
+LL + use foo::bar;
    |
 
 error: aborting due to 2 previous errors

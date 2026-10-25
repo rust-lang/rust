@@ -146,10 +146,6 @@ pub(crate) struct RustcForceInlineCoro {
 
 #[derive(Subdiagnostic)]
 pub(crate) enum UnusedNote {
-    #[note("attribute `{$name}` with an empty list has no effect")]
-    EmptyList { name: Symbol },
-    #[note("attribute `{$name}` without any lints has no effect")]
-    NoLints { name: Symbol },
     #[note(
         "the `linker_messages` and `linker_info` lints can only be controlled at the root of a crate that needs to be linked"
     )]
@@ -1030,7 +1026,7 @@ pub(crate) struct GlobOrListDelegationUnusedTargetExpr {
 
 #[derive(Diagnostic)]
 #[diag("unknown parameter `{$name}`")]
-#[help(r#"expect either a generic argument name, {"`{This}`"}, {"`{Expected}`"} or {"`{Found}`"} as format argument"#)]
+#[help(r#"expect either a generic argument name, {"`{this}`"}, {"`{expected}`"} or {"`{found}`"} as format argument"#)]
 pub(crate) struct OnTypeErrorMalformedFormatLiterals {
     pub name: Symbol,
 }
@@ -1078,4 +1074,26 @@ pub(crate) struct RustcAtumSuggestion {
         applicability = "machine-applicable"
     )]
     pub unstable_mod_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("`{$item_ident}` is expected to be {$expected_variance} in `{$param_ident}` but is not")]
+pub(crate) struct RustcAssertVarianceFailed {
+    #[primary_span]
+    pub item_span: Span,
+    #[subdiagnostic]
+    pub note: RustcAssertVarianceFailedNote,
+    #[label("`{$item_ident}` is {$actual_variance} in `{$param_ident}`")]
+    pub param_span: Span,
+    pub param_ident: Ident,
+    pub item_ident: Ident,
+    pub expected_variance: Symbol,
+    pub actual_variance: Symbol,
+}
+
+#[derive(Subdiagnostic)]
+#[note("required by this attribute")]
+pub(crate) struct RustcAssertVarianceFailedNote {
+    #[primary_span]
+    pub span: Span,
 }

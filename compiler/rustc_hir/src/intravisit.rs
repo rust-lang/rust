@@ -1129,13 +1129,13 @@ pub fn walk_const_arg<'v, V: Visitor<'v>>(
         ConstArgKind::TupleCall(qpath, args) => {
             try_visit!(visitor.visit_qpath(qpath, *hir_id, qpath.span()));
             for arg in *args {
-                try_visit!(visitor.visit_const_arg_unambig(*arg));
+                try_visit!(visitor.visit_const_arg_unambig(arg));
             }
             V::Result::output()
         }
         ConstArgKind::Array(array_expr) => {
             for arg in array_expr.elems {
-                try_visit!(visitor.visit_const_arg_unambig(*arg));
+                try_visit!(visitor.visit_const_arg_unambig(arg));
             }
             V::Result::output()
         }
@@ -1170,7 +1170,7 @@ pub fn walk_generic_param<'v, V: Visitor<'v>>(
         GenericParamKind::Type { ref default, .. } => {
             visit_opt!(visitor, visit_ty_unambig, default)
         }
-        GenericParamKind::Const { ref ty, ref default } => {
+        GenericParamKind::Const { ref ty, ref default, arg_pos: _ } => {
             try_visit!(visitor.visit_ty_unambig(ty));
             if let Some(default) = default {
                 try_visit!(visitor.visit_const_param_default(*hir_id, default));
@@ -1600,7 +1600,7 @@ pub fn walk_test_binder_body<'v, V: Visitor<'v>>(
     visitor: &mut V,
     body: &'v TestBinderBody<'v>,
 ) -> V::Result {
-    let TestBinderBody { foralls, exists, constraints, predicates } = body;
+    let TestBinderBody { span: _, foralls, exists, constraints, predicates } = body;
     walk_list!(visitor, visit_test_binder_forall, *foralls);
     walk_list!(visitor, visit_test_binder_exists, *exists);
     try_visit!(visitor.visit_test_binder_constraint(&constraints));

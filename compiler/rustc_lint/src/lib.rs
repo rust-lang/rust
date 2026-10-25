@@ -20,6 +20,7 @@
 //! This API is completely unstable and subject to change.
 
 // tidy-alphabetical-start
+#![feature(default_field_values)]
 #![feature(deref_patterns)]
 #![feature(iter_order_by)]
 #![feature(option_into_flat_iter)]
@@ -301,7 +302,6 @@ late_lint_methods!(
             MissingGenericTypeVisitableDerive: MissingGenericTypeVisitableDerive,
             QueryStability: QueryStability,
             RustcMustMatchExhaustively: RustcMustMatchExhaustively,
-            SpanUseEqCtxt: SpanUseEqCtxt,
             SymbolInternStringLiteral: SymbolInternStringLiteral,
             TyTyKind: TyTyKind,
             TypeIr: TypeIr,
@@ -699,7 +699,9 @@ fn register_builtins(store: &mut LintStore) {
     store.register_removed("soft_unstable", "the general soft-unstable mechanism has been removed");
     store.register_removed(
         "inline_always_mismatching_target_features",
-        "replaced by a hard error for `#[inline(always)]` with `#[target_feature]`",
+        "replaced by a hard error for `#[inline(always)]` with `#[target_feature]`. \
+        This was prior to LLVM23 where combining these could be unsound. See \
+        <https://github.com/rust-lang/rust/issues/145574> for more information",
     );
     store.register_removed(
         "repr_transparent_external_private_fields",
@@ -759,8 +761,6 @@ fn register_internals(store: &mut LintStore) {
             LintId::of(BAD_OPT_ACCESS),
             // Late pass: DisallowedPassByRef
             LintId::of(DISALLOWED_PASS_BY_REF),
-            // Late pass: SpanUseEqCtxt
-            LintId::of(SPAN_USE_EQ_CTXT),
             // Late pass: SymbolInternStringLiteral
             // Note: this one is not included in rustc::internal because rustc_driver crates
             // outside the compiler can't/shouldn't add preinterned symbols. For rustc itself,

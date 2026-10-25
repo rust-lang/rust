@@ -366,8 +366,8 @@ where
             // Block style in non-vertical mode.
             let block_mode = tactic == DefinitiveListTactic::Horizontal;
             // Width restriction is only relevant in vertical mode.
-            let comment =
-                rewrite_comment(comment, block_mode, formatting.shape, formatting.config)?;
+            let comment_shape = formatting.shape.comment(formatting.config);
+            let comment = rewrite_comment(comment, block_mode, comment_shape, formatting.config)?;
             result.push_str(&comment);
 
             if !inner_item.is_empty() {

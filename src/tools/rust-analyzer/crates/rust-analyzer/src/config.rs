@@ -712,6 +712,9 @@ config_data! {
         /// Term search fuel in "units of work" for autocompletion (Defaults to 1000).
         completion_termSearch_fuel: usize = 1000,
 
+        /// Complete turbofish (`::<>`) at the call site (if needed).
+        completion_turbofish_enable: bool = true,
+
         /// List of rust-analyzer diagnostics to disable.
         diagnostics_disabled: FxHashSet<String> = FxHashSet::default(),
 
@@ -1928,6 +1931,7 @@ impl Config {
             limit: self.completion_limit(source_root).to_owned(),
             enable_term_search: self.completion_termSearch_enable(source_root).to_owned(),
             term_search_fuel: self.completion_termSearch_fuel(source_root).to_owned() as u64,
+            enable_turbofish: self.completion_turbofish_enable(source_root).to_owned(),
             fields_to_resolve: if self.client_is_neovim() {
                 CompletionFieldsToResolve::empty()
             } else {

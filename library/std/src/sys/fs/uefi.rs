@@ -147,6 +147,14 @@ impl FileType {
     }
 }
 
+impl ReadDir {
+    pub fn dir(&self) -> io::Result<Dir> {
+        let mut options = OpenOptions::new();
+        options.read(true);
+        Dir::open(&self.0.path(), &options)
+    }
+}
+
 impl fmt::Debug for ReadDir {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut b = f.debug_struct("ReadDir");
@@ -472,6 +480,10 @@ pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
     let new_info = file_info.with_file_name(new_relative.as_os_str())?;
 
     f.set_file_info(new_info)
+}
+
+pub fn rename_noreplace(_old: &Path, _new: &Path) -> io::Result<()> {
+    unsupported()
 }
 
 pub fn set_perm(p: &Path, perm: FilePermissions) -> io::Result<()> {

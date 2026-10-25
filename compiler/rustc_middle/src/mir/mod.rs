@@ -36,7 +36,7 @@ use crate::ty::{
     TypeVisitableExt, TypingEnv, UserTypeAnnotationIndex,
 };
 
-mod basic_blocks;
+pub mod basic_blocks;
 mod consts;
 pub mod coverage;
 mod generic_graph;
@@ -413,7 +413,7 @@ impl<'tcx> Body<'tcx> {
     }
 
     pub fn typing_env(&self, tcx: TyCtxt<'tcx>) -> TypingEnv<'tcx> {
-        if tcx.use_typing_mode_post_typeck_until_borrowck() {
+        if tcx.use_typing_mode_post_typeck_through_borrowck() {
             match self.phase {
                 MirPhase::Built | MirPhase::Analysis(AnalysisPhase::Initial)
                     if let Some(def_id) = self.source.def_id().as_local() =>

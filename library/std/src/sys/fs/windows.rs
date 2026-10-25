@@ -113,6 +113,15 @@ impl fmt::Debug for c::FILETIME {
 #[derive(Debug)]
 pub struct DirBuilder;
 
+impl ReadDir {
+    pub fn dir(&self) -> io::Result<Dir> {
+        let mut options = OpenOptions::new();
+        options.read(true);
+        // FIXME: use race-free handle-based approach instead.
+        Dir::open(&self.root, &options)
+    }
+}
+
 impl fmt::Debug for ReadDir {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // This will only be called from std::fs::ReadDir, which will add a "ReadDir()" frame.
@@ -862,6 +871,7 @@ impl File {
     /// `restart` is set to `true`.
     ///
     /// The returned bool indicates if there are more entries or not.
+    /// You must only iterate the buffer if this returned `true`!
     /// It is an error if `self` is not a directory.
     ///
     /// # Symlinks and other reparse points
@@ -883,6 +893,8 @@ impl File {
                 buffer.capacity() as _,
             );
             if result == 0 {
+                // Apparently ERROR_NO_MORE_FILES also means that the buffer is empty / was left
+                // unchanged. FIXME: find docs that say this.
                 let err = api::get_last_error();
                 if err.code == c::ERROR_NO_MORE_FILES { Ok(false) } else { Err(err) }
             } else {
@@ -952,8 +964,8 @@ impl<'a> Iterator for DirBuffIter<'a> {
             // While this is guaranteed to be aligned in documentation for
             // https://docs.microsoft.com/en-us/windows/win32/api/winbase/ns-winbase-file_id_both_dir_info
             // it does not seem that reality is so kind, and assuming this
-            // caused crashes in some cases (https://github.com/rust-lang/rust/issues/104530)
-            // presumably, this can be blamed on buggy filesystem drivers, but who knows.
+            // caused crashes in some cases (https://github.com/rust-lang/rust/issues/104530).
+            // Presumably, this can be blamed on buggy filesystem drivers, but who knows.
             let next_entry = (&raw const (*info).NextEntryOffset).read_unaligned() as usize;
             let length = (&raw const (*info).FileNameLength).read_unaligned() as usize;
             let attrs = (&raw const (*info).FileAttributes).read_unaligned();
@@ -1303,8 +1315,8 @@ pub fn unlink(path: &WCStr) -> io::Result<()> {
     }
 }
 
-pub fn rename(old: &WCStr, new: &WCStr) -> io::Result<()> {
-    if unsafe { c::MoveFileExW(old.as_ptr(), new.as_ptr(), c::MOVEFILE_REPLACE_EXISTING) } == 0 {
+fn rename_inner(old: &WCStr, new: &WCStr, move_flags: u32, rename_flags: u32) -> io::Result<()> {
+    if unsafe { c::MoveFileExW(old.as_ptr(), new.as_ptr(), move_flags) } == 0 {
         let err = api::get_last_error();
         // if `MoveFileExW` fails with ERROR_ACCESS_DENIED then try to move
         // the file while ignoring the readonly attribute.
@@ -1336,10 +1348,8 @@ pub fn rename(old: &WCStr, new: &WCStr) -> io::Result<()> {
                     return Err(io::ErrorKind::OutOfMemory.into());
                 }
 
-                (&raw mut (*file_rename_info).Anonymous).write(c::FILE_RENAME_INFO_0 {
-                    Flags: c::FILE_RENAME_FLAG_REPLACE_IF_EXISTS
-                        | c::FILE_RENAME_FLAG_POSIX_SEMANTICS,
-                });
+                (&raw mut (*file_rename_info).Anonymous)
+                    .write(c::FILE_RENAME_INFO_0 { Flags: rename_flags });
 
                 (&raw mut (*file_rename_info).RootDirectory).write(ptr::null_mut());
                 // Don't include the NULL in the size
@@ -1372,6 +1382,21 @@ pub fn rename(old: &WCStr, new: &WCStr) -> io::Result<()> {
         }
     }
     Ok(())
+}
+
+pub fn rename(old: &WCStr, new: &WCStr) -> io::Result<()> {
+    rename_inner(
+        old,
+        new,
+        c::MOVEFILE_REPLACE_EXISTING,
+        c::FILE_RENAME_FLAG_REPLACE_IF_EXISTS | c::FILE_RENAME_FLAG_POSIX_SEMANTICS,
+    )
+}
+
+pub fn rename_noreplace(old: &WCStr, new: &WCStr) -> io::Result<()> {
+    // Without `MOVEFILE_REPLACE_EXISTING`, `MoveFileExW` fails if the destination
+    // exists.
+    rename_inner(old, new, 0, c::FILE_RENAME_FLAG_POSIX_SEMANTICS)
 }
 
 pub fn rmdir(p: &WCStr) -> io::Result<()> {

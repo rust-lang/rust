@@ -1,5 +1,5 @@
 error: this could be simplified with `bool::then`
-  --> tests/ui/if_then_some_else_none_unfixable.rs:13:9
+  --> tests/ui/if_then_some_else_none_unfixable.rs:12:9
    |
 LL | /         if i % 2 == 0 {
 LL | |
@@ -13,7 +13,7 @@ LL | |         }
    = help: to override `-D warnings` add `#[allow(clippy::if_then_some_else_none)]`
 
 error: this could be simplified with `bool::then`
-  --> tests/ui/if_then_some_else_none_unfixable.rs:28:22
+  --> tests/ui/if_then_some_else_none_unfixable.rs:27:22
    |
 LL |           do_something(if i.rem(2) == 0 {
    |  ______________________^

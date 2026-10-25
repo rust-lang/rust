@@ -1,4 +1,4 @@
-// rustfmt-indent_style: Visual
+//@ rustfmt-indent_style: Visual
 fn main() {
     match option {
         None => some_function(first_reasonably_long_argument,

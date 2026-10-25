@@ -1,6 +1,6 @@
 use std::iter;
 
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::{
     Applicability, Diag, E0309, E0310, E0311, E0803, Subdiagnostic, msg, struct_span_code_err,
 };
@@ -8,6 +8,8 @@ use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, ParamName};
+use rustc_middle::hir::nested_filter;
+use rustc_middle::middle::resolve_bound_vars as rbv;
 use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::print::RegionHighlightMode;
@@ -845,39 +847,39 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             };
 
             let mut suggs = vec![];
-            let lt_name = self.suggest_name_region(generic_param_scope, sub, &mut suggs);
-
-            if let Some((sp, suggestion_type)) = type_param_sugg_span
-                && suggestion_scope == type_scope
-            {
-                match suggestion_type {
-                    LifetimeSuggestion::NeedsPlus(open_paren_sp) => {
-                        let suggestion = format!(" + {lt_name}");
-                        if let Some(open_paren_sp) = open_paren_sp {
-                            suggs.push((open_paren_sp, "(".to_string()));
-                            suggs.push((sp, format!("){suggestion}")));
-                        } else {
-                            suggs.push((sp, suggestion));
+            if let Some(lt_name) = self.suggest_name_region(generic_param_scope, sub, &mut suggs) {
+                if let Some((sp, suggestion_type)) = type_param_sugg_span
+                    && suggestion_scope == type_scope
+                {
+                    match suggestion_type {
+                        LifetimeSuggestion::NeedsPlus(open_paren_sp) => {
+                            let suggestion = format!(" + {lt_name}");
+                            if let Some(open_paren_sp) = open_paren_sp {
+                                suggs.push((open_paren_sp, "(".to_string()));
+                                suggs.push((sp, format!("){suggestion}")));
+                            } else {
+                                suggs.push((sp, suggestion));
+                            }
                         }
+                        LifetimeSuggestion::NeedsColon => suggs.push((sp, format!(": {lt_name}"))),
+                        LifetimeSuggestion::HasColon => suggs.push((sp, format!(" {lt_name}"))),
                     }
-                    LifetimeSuggestion::NeedsColon => suggs.push((sp, format!(": {lt_name}"))),
-                    LifetimeSuggestion::HasColon => suggs.push((sp, format!(" {lt_name}"))),
+                } else if let GenericKind::Alias(ref p) = bound_kind
+                    && let ty::Projection { def_id } = p.kind(self.tcx)
+                    && let DefKind::AssocTy = self.tcx.def_kind(def_id)
+                    && let Some(ty::ImplTraitInTraitData::Trait { .. }) =
+                        self.tcx.opt_rpitit_info(def_id)
+                {
+                    // The lifetime found in the `impl` is longer than the one on the RPITIT.
+                    // Do not suggest `<Type as Trait>::{opaque}: 'static`.
+                } else if let Some(generics) = self.tcx.hir_get_generics(suggestion_scope) {
+                    let pred = format!("{bound_kind}: {lt_name}");
+                    let suggestion = format!("{} {}", generics.add_where_or_trailing_comma(), pred);
+                    suggs.push((generics.tail_span_for_predicate_suggestion(), suggestion))
+                } else {
+                    let consider = format!("{msg} `{bound_kind}: {sub}`...");
+                    err.help(consider);
                 }
-            } else if let GenericKind::Alias(ref p) = bound_kind
-                && let ty::Projection { def_id } = p.kind
-                && let DefKind::AssocTy = self.tcx.def_kind(def_id)
-                && let Some(ty::ImplTraitInTraitData::Trait { .. }) =
-                    self.tcx.opt_rpitit_info(def_id)
-            {
-                // The lifetime found in the `impl` is longer than the one on the RPITIT.
-                // Do not suggest `<Type as Trait>::{opaque}: 'static`.
-            } else if let Some(generics) = self.tcx.hir_get_generics(suggestion_scope) {
-                let pred = format!("{bound_kind}: {lt_name}");
-                let suggestion = format!("{} {}", generics.add_where_or_trailing_comma(), pred);
-                suggs.push((generics.tail_span_for_predicate_suggestion(), suggestion))
-            } else {
-                let consider = format!("{msg} `{bound_kind}: {sub}`...");
-                err.help(consider);
             }
 
             if !suggs.is_empty() {
@@ -933,73 +935,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         generic_param_scope: LocalDefId,
         lifetime: Region<'tcx>,
         add_lt_suggs: &mut Vec<(Span, String)>,
-    ) -> String {
-        struct LifetimeReplaceVisitor<'a> {
-            needle: hir::LifetimeKind,
-            new_lt: &'a str,
-            add_lt_suggs: &'a mut Vec<(Span, String)>,
-        }
-
-        impl<'hir> hir::intravisit::Visitor<'hir> for LifetimeReplaceVisitor<'_> {
-            fn visit_lifetime(&mut self, lt: &'hir hir::Lifetime) {
-                if lt.kind == self.needle {
-                    self.add_lt_suggs.push(lt.suggestion(self.new_lt));
-                }
-            }
-        }
-
-        let (lifetime_def_id, lifetime_scope) =
-            match self.tcx.is_suitable_region(generic_param_scope, lifetime) {
-                Some(info) if !lifetime.is_named(self.tcx) => {
-                    (info.region_def_id.expect_local(), info.scope)
-                }
-                _ => return lifetime.get_name_or_anon(self.tcx).to_string(),
-            };
-
-        let new_lt = {
-            let generics = self.tcx.generics_of(lifetime_scope);
-            let mut used_names =
-                iter::successors(Some(generics), |g| g.parent.map(|p| self.tcx.generics_of(p)))
-                    .flat_map(|g| &g.own_params)
-                    .filter(|p| matches!(p.kind, ty::GenericParamDefKind::Lifetime))
-                    .map(|p| p.name)
-                    .collect::<Vec<_>>();
-            let hir_id = self.tcx.local_def_id_to_hir_id(lifetime_scope);
-            // consider late-bound lifetimes ...
-            used_names.extend(self.tcx.late_bound_vars(hir_id).into_iter().filter_map(
-                |p| match p {
-                    ty::BoundVariableKind::Region(lt) => lt.get_name(self.tcx),
-                    _ => None,
-                },
-            ));
-            (b'a'..=b'z')
-                .map(|c| format!("'{}", c as char))
-                .find(|candidate| !used_names.iter().any(|e| e.as_str() == candidate))
-                .unwrap_or_else(|| "'lt".to_string())
-        };
-
-        let mut visitor = LifetimeReplaceVisitor {
-            needle: hir::LifetimeKind::Param(lifetime_def_id),
-            add_lt_suggs,
-            new_lt: &new_lt,
-        };
-        match self.tcx.expect_hir_owner_node(lifetime_scope) {
-            hir::OwnerNode::Item(i) => visitor.visit_item(i),
-            hir::OwnerNode::ForeignItem(i) => visitor.visit_foreign_item(i),
-            hir::OwnerNode::ImplItem(i) => visitor.visit_impl_item(i),
-            hir::OwnerNode::TraitItem(i) => visitor.visit_trait_item(i),
-            hir::OwnerNode::Crate(_) => bug!("OwnerNode::Crate doesn't not have generics"),
-            hir::OwnerNode::Synthetic => unreachable!(),
-        }
-
-        let ast_generics = self.tcx.hir_get_generics(lifetime_scope).unwrap();
-        let sugg = ast_generics
-            .span_for_lifetime_suggestion()
-            .map(|span| (span, format!("{new_lt}, ")))
-            .unwrap_or_else(|| (ast_generics.span, format!("<{new_lt}>")));
-        add_lt_suggs.push(sugg);
-
-        new_lt
+    ) -> Option<String> {
+        let [name] =
+            suggest_name_regions(self.tcx, generic_param_scope, &[lifetime], add_lt_suggs)?
+                .try_into()
+                .unwrap();
+        Some(name)
     }
 
     fn report_sub_sup_conflict(
@@ -1169,6 +1110,101 @@ pub(super) fn note_and_explain_region<'tcx>(
     emit_msg_span(err, prefix, description, span, suffix);
 }
 
+fn suggest_name_regions<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    generic_param_scope: LocalDefId,
+    lifetimes: &[Region<'tcx>],
+    add_lt_suggs: &mut Vec<(Span, String)>,
+) -> Option<Vec<String>> {
+    struct LifetimeReplaceVisitor<'a> {
+        new_lts: &'a [(LocalDefId, String)],
+        add_lt_suggs: &'a mut Vec<(Span, String)>,
+    }
+
+    impl<'hir> hir::intravisit::Visitor<'hir> for LifetimeReplaceVisitor<'_> {
+        fn visit_lifetime(&mut self, lt: &'hir hir::Lifetime) {
+            if let hir::LifetimeKind::Param(def_id) = lt.kind
+                && let Some((_, new_lt)) = self.new_lts.iter().find(|(id, _)| *id == def_id)
+            {
+                self.add_lt_suggs.push(lt.suggestion(new_lt));
+            }
+        }
+    }
+
+    let mut lifetime_scope = None;
+    let mut used_names = vec![];
+    let mut new_lts: Vec<(LocalDefId, String)> = vec![];
+    let names: Vec<_> = lifetimes
+        .iter()
+        .map(|&lifetime| {
+            let (lifetime_def_id, scope) =
+                match tcx.is_suitable_region(generic_param_scope, lifetime) {
+                    Some(info) if !lifetime.is_named(tcx) => {
+                        (info.region_def_id.expect_local(), info.scope)
+                    }
+                    _ => return Some(lifetime.get_name(tcx)?.to_string()),
+                };
+            if *lifetime_scope.get_or_insert_with(|| {
+                used_names.extend(
+                    iter::successors(Some(tcx.generics_of(scope)), |g| {
+                        g.parent.map(|p| tcx.generics_of(p))
+                    })
+                    .flat_map(|g| &g.own_params)
+                    .filter(|p| matches!(p.kind, ty::GenericParamDefKind::Lifetime))
+                    .map(|p| p.name),
+                );
+                // consider late-bound lifetimes ...
+                used_names.extend(
+                    tcx.late_bound_vars(tcx.local_def_id_to_hir_id(scope)).into_iter().filter_map(
+                        |p| match p {
+                            ty::BoundVariableKind::Region(lt) => lt.get_name(tcx),
+                            _ => None,
+                        },
+                    ),
+                );
+                scope
+            }) != scope
+            {
+                return Some(lifetime.get_name(tcx)?.to_string());
+            }
+            if let Some((_, name)) = new_lts.iter().find(|(id, _)| *id == lifetime_def_id) {
+                return Some(name.clone());
+            }
+            let new_lt = (b'a'..=b'z')
+                .map(|c| format!("'{}", c as char))
+                .find(|candidate| !used_names.iter().any(|e| e.as_str() == candidate))
+                .unwrap_or_else(|| "'lt".to_string());
+            used_names.push(Symbol::intern(&new_lt));
+            new_lts.push((lifetime_def_id, new_lt.clone()));
+            Some(new_lt)
+        })
+        .collect::<Option<_>>()?;
+
+    let Some(lifetime_scope) = lifetime_scope else {
+        return Some(names);
+    };
+
+    let mut visitor = LifetimeReplaceVisitor { new_lts: &new_lts, add_lt_suggs };
+    match tcx.expect_hir_owner_node(lifetime_scope) {
+        hir::OwnerNode::Item(i) => visitor.visit_item(i),
+        hir::OwnerNode::ForeignItem(i) => visitor.visit_foreign_item(i),
+        hir::OwnerNode::ImplItem(i) => visitor.visit_impl_item(i),
+        hir::OwnerNode::TraitItem(i) => visitor.visit_trait_item(i),
+        hir::OwnerNode::Crate(_) => bug!("OwnerNode::Crate doesn't not have generics"),
+        hir::OwnerNode::Synthetic => unreachable!(),
+    }
+
+    let new_lt = new_lts.into_iter().map(|(_, name)| name).collect::<Vec<_>>().join(", ");
+    let ast_generics = tcx.hir_get_generics(lifetime_scope).unwrap();
+    let sugg = ast_generics
+        .span_for_lifetime_suggestion()
+        .map(|span| (span, format!("{new_lt}, ")))
+        .unwrap_or_else(|| (ast_generics.span, format!("<{new_lt}>")));
+    add_lt_suggs.push(sugg);
+
+    Some(names)
+}
+
 fn explain_free_region<'tcx>(
     tcx: TyCtxt<'tcx>,
     err: &mut Diag<'_>,
@@ -1319,7 +1355,14 @@ pub fn unexpected_hidden_region_diagnostic<'a, 'tcx>(
                 "",
             );
             if let Some(_) = tcx.is_suitable_region(generic_param_scope, hidden_region) {
-                suggest_precise_capturing(tcx, opaque_ty_key.def_id, hidden_region, &mut err);
+                suggest_precise_capturing(
+                    tcx,
+                    generic_param_scope,
+                    opaque_ty_key.def_id,
+                    hidden_ty.value,
+                    hidden_region,
+                    &mut err,
+                );
             }
         }
         ty::RePlaceholder(_) => {
@@ -1368,7 +1411,9 @@ pub fn unexpected_hidden_region_diagnostic<'a, 'tcx>(
 
 fn suggest_precise_capturing<'tcx>(
     tcx: TyCtxt<'tcx>,
+    generic_param_scope: LocalDefId,
     opaque_def_id: LocalDefId,
+    hidden_ty: Ty<'tcx>,
     captured_lifetime: ty::Region<'tcx>,
     diag: &mut Diag<'_>,
 ) {
@@ -1455,10 +1500,29 @@ fn suggest_precise_capturing<'tcx>(
             }
         }
 
-        if !captured_lifetimes.insert(new_lifetime) {
+        if captured_lifetimes.contains(&new_lifetime) {
             // Uh, strange. This lifetime appears to already be captured...
             return;
         }
+
+        // `'_` in a capture list only resolves when the signature has a single anonymous
+        // lifetime, so when there are several the suggestion has to name them first.
+        if synthetics.is_empty()
+            && let Some(suggs) = name_anon_lifetimes_suggestion(
+                tcx,
+                generic_param_scope,
+                opaque_def_id,
+                fn_def_id,
+                hidden_ty,
+                &captured_lifetimes,
+                &captured_non_lifetimes,
+            )
+        {
+            diag.subdiagnostic(diagnostics::AddPreciseCapturingAndNameLifetimes { suggs });
+            return;
+        }
+
+        captured_lifetimes.insert(new_lifetime);
 
         if synthetics.is_empty() {
             let concatenated_bounds = captured_lifetimes
@@ -1540,6 +1604,106 @@ fn suggest_precise_capturing<'tcx>(
                 new_lifetime,
                 apit_spans,
             });
+        }
+    }
+}
+
+/// Build a suggestion that names every anonymous lifetime the hidden type captures and then
+/// lists them in a `use<..>` bound.
+///
+/// This exists because a `use<..>` list cannot refer to more than one anonymous lifetime: `'_`
+/// resolves like any other elided lifetime, so with several in the signature it either picks the
+/// wrong one or fails to resolve at all. Naming them is the only way to write the bound the hidden
+/// type actually needs.
+///
+/// Returns `None` whenever the plain `'_` suggestion is still correct, so that the common
+/// single-lifetime case keeps its shorter form.
+fn name_anon_lifetimes_suggestion<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    generic_param_scope: LocalDefId,
+    opaque_def_id: LocalDefId,
+    fn_def_id: LocalDefId,
+    hidden_ty: Ty<'tcx>,
+    captured_lifetimes: &FxIndexSet<Symbol>,
+    captured_non_lifetimes: &FxIndexSet<Symbol>,
+) -> Option<Vec<(Span, String)>> {
+    let fn_sig = tcx.hir_node_by_def_id(fn_def_id).fn_sig()?;
+
+    let mut collector = AnonLifetimeCollector { tcx, anon_lifetimes: Default::default() };
+    for input in fn_sig.decl.inputs {
+        collector.visit_ty_unambig(input);
+    }
+    // With a single anonymous lifetime in the signature `'_` resolves to it, so leave that case
+    // to the caller.
+    if collector.anon_lifetimes.len() < 2 {
+        return None;
+    }
+
+    let mut hidden_regions = FxIndexMap::default();
+    tcx.for_each_free_region(&hidden_ty, |region| {
+        if let Some(info) = tcx.is_suitable_region(generic_param_scope, region) {
+            hidden_regions.entry(info.region_def_id).or_insert(region);
+        }
+    });
+
+    // A lifetime the user already named stays as it is; only the anonymous ones need inventing
+    // a name, and they are named in the order they appear in the signature.
+    let named = hidden_regions
+        .iter()
+        .filter(|(def_id, _)| !collector.anon_lifetimes.contains(*def_id))
+        .map(|(_, &region)| region);
+    let anon: Vec<_> = collector
+        .anon_lifetimes
+        .iter()
+        .filter_map(|def_id| hidden_regions.get(def_id).copied())
+        .collect();
+    if anon.is_empty() {
+        return None;
+    }
+    let regions: Vec<_> = named.chain(anon).collect();
+
+    let mut suggs = vec![];
+    let mut bounds = captured_lifetimes.clone();
+    bounds.extend(
+        suggest_name_regions(tcx, generic_param_scope, &regions, &mut suggs)?
+            .iter()
+            .map(|name| Symbol::intern(name)),
+    );
+
+    let concatenated_bounds = bounds
+        .into_iter()
+        .chain(captured_non_lifetimes.iter().copied())
+        .map(|sym| sym.to_string())
+        .collect::<Vec<_>>()
+        .join(", ");
+    suggs.push((
+        tcx.def_span(opaque_def_id).shrink_to_hi(),
+        format!(" + use<{concatenated_bounds}>"),
+    ));
+
+    Some(suggs)
+}
+
+/// Collects every anonymous lifetime written in a function signature.
+struct AnonLifetimeCollector<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    anon_lifetimes: FxIndexSet<DefId>,
+}
+
+impl<'tcx> Visitor<'tcx> for AnonLifetimeCollector<'tcx> {
+    type NestedFilter = nested_filter::OnlyBodies;
+
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tcx
+    }
+
+    fn visit_lifetime(&mut self, lifetime: &'tcx hir::Lifetime) {
+        if lifetime.is_anonymous()
+            && let Some(
+                rbv::ResolvedArg::EarlyBound(def_id) | rbv::ResolvedArg::LateBound(_, _, def_id),
+            ) = self.tcx.named_bound_var(lifetime.hir_id)
+        {
+            self.anon_lifetimes.insert(def_id.to_def_id());
         }
     }
 }

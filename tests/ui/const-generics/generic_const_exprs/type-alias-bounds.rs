@@ -6,7 +6,7 @@
 #![allow(incomplete_features)]
 
 // FIXME(generic_const_exprs): Revisit this before stabilization.
-// Check that we don't emit the lint `type_alias_bounds` for (eager) type aliases
+// Check that we don't emit the lint `type_alias_bounds` for (unchecked) type aliases
 // whose RHS contains a const projection (aka uneval'ed const).
 // Since anon consts inherit the parent generics and predicates and we effectively
 // check them before and after instantiaton for well-formedness, the type alias

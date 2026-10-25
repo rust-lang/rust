@@ -1,6 +1,7 @@
 mod allow_attributes;
 mod allow_attributes_without_reason;
 mod blanket_clippy_restriction_lints;
+mod deprecated_attributes_without_fields;
 mod deprecated_cfg_attr;
 mod deprecated_semver;
 mod duplicated_attributes;
@@ -14,9 +15,9 @@ mod useless_attribute;
 mod utils;
 
 use clippy_config::Conf;
-use clippy_utils::check_clippy_attr;
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::msrvs::{self, Msrv, MsrvStack};
+use clippy_utils::{check_clippy_attr, is_from_proc_macro};
 use rustc_ast::{self as ast, AttrArgs, AttrKind, Attribute, MetaItemInner, MetaItemKind};
 use rustc_hir::{ImplItem, ImplItemKind, Item, ItemKind, TraitFn, TraitItem, TraitItemKind};
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext as _, impl_lint_pass};
@@ -102,6 +103,78 @@ declare_clippy_lint! {
     pub BLANKET_CLIPPY_RESTRICTION_LINTS,
     suspicious,
     "enabling the complete restriction group"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for attributes that deprecate items without a `note` field.
+    ///
+    /// ### Why restrict this?
+    /// This is typically used to provide an explanation about the deprecation
+    /// and preferred alternatives.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// #[deprecated]
+    /// pub fn foo() { /* ... */ }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// #[deprecated(note = "foo was rarely used. Users should instead use bar")]
+    /// pub fn foo() { /* ... */ }
+    /// ```
+    #[clippy::version = "1.100.0"]
+    pub DEPRECATED_ATTRIBUTES_WITHOUT_NOTE,
+    restriction,
+    "ensures that all `deprecated` attributes have a `note` field"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for attributes that deprecate items without a `since` field.
+    ///
+    /// ### Why is this bad?
+    /// It can be difficult for users of your crate to know when an item was
+    /// deprecated if it was not documented. Knowing when an item was deprecated
+    /// helps users determine how long they have to migrate and act accordingly.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// #[deprecated]
+    /// pub fn foo() { /* ... */ }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// #[deprecated(since = "5.2.0")]
+    /// pub fn foo() { /* ... */ }
+    /// ```
+    ///
+    /// ### Note
+    /// If you're using `git` for version control and tagging releases, you may
+    /// be able to find the correct value for the `since` field fairly easily.
+    ///
+    /// If the `deprecated` attribute missing the `since` field is in the file
+    /// `foo/bar/baz.rs` on line 42, then:
+    ///
+    /// ```bash
+    /// git blame -L 42 -- foo/bar/baz.rs
+    /// ```
+    ///
+    /// May help you find the commit that originally deprecated the item. From
+    /// there, if the commit that deprecated the item was commit
+    /// `d34dbe3fd34dbe3fd34dbe3fd34dbe3fd34dbe3f`, you can do:
+    ///
+    /// ```bash
+    /// git tag --contains d34dbe3fd34dbe3fd34dbe3fd34dbe3fd34dbe3f
+    /// ```
+    ///
+    /// To list the tags which contain that commit, the earliest of which
+    /// corresponds to a release would be the version the item was deprecated
+    /// in.
+    #[clippy::version = "1.100.0"]
+    pub DEPRECATED_ATTRIBUTES_WITHOUT_SINCE,
+    pedantic,
+    "ensures that all `deprecated` attributes have a `since` field"
 }
 
 declare_clippy_lint! {
@@ -478,7 +551,12 @@ declare_clippy_lint! {
     "use of lint attributes on `extern crate` items"
 }
 
-impl_lint_pass!(Attributes => [INLINE_ALWAYS, REPR_PACKED_WITHOUT_ABI]);
+impl_lint_pass!(Attributes => [
+    DEPRECATED_ATTRIBUTES_WITHOUT_NOTE,
+    DEPRECATED_ATTRIBUTES_WITHOUT_SINCE,
+    INLINE_ALWAYS,
+    REPR_PACKED_WITHOUT_ABI,
+]);
 
 impl_lint_pass!(EarlyAttributes => [
     DEPRECATED_CFG_ATTR,
@@ -601,6 +679,13 @@ impl EarlyLintPass for PostExpansionEarlyAttributes {
                     deprecated_semver::check(cx, item.span(), lit);
                 }
             }
+        }
+
+        if attr.has_name(sym::deprecated)
+            && !attr.span.in_external_macro(cx.sess().source_map())
+            && !is_from_proc_macro(cx, attr)
+        {
+            deprecated_attributes_without_fields::check_fields(cx, attr.meta_item_list().as_deref(), attr);
         }
 
         if attr.has_name(sym::should_panic) {

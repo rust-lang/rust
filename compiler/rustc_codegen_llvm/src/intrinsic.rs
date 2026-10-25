@@ -18,8 +18,8 @@ use rustc_codegen_ssa::traits::*;
 use rustc_hir as hir;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_lint_defs::builtin::DEPRECATED_LLVM_INTRINSIC;
-use rustc_middle::mir::BinOp;
-use rustc_middle::ty::consts::ConstExt;
+use rustc_middle::mir::interpret::{AllocId, Allocation, ErrorHandled, GlobalAlloc, alloc_range};
+use rustc_middle::mir::{self, BinOp};
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, LayoutOf};
 use rustc_middle::ty::offload_meta::OffloadMetadata;
 use rustc_middle::ty::{self, GenericArgsRef, Instance, SimdAlign, Ty, TyCtxt};
@@ -44,7 +44,7 @@ use crate::diagnostics::{
     OffloadWithoutEnable, OffloadWithoutFatLTO, UnknownIntrinsic,
 };
 use crate::intrinsic::ty::typetree::fnc_typetrees;
-use crate::llvm::{self, Attribute, AttributePlace, Type, Value};
+use crate::llvm::{self, Attribute, AttributePlace, Metadata, Type, Value};
 use crate::type_of::LayoutLlvmExt;
 use crate::va_arg::emit_va_arg;
 
@@ -60,31 +60,6 @@ fn call_simple_intrinsic<'ll, 'tcx>(
     let fixed_minmax = llvm_version >= (23, 0, 0);
 
     let (base_name, type_params): (&'static str, &[&'ll Type]) = match name {
-        sym::sqrtf16 => ("llvm.sqrt", &[bx.type_f16()]),
-        sym::sqrtf32 => ("llvm.sqrt", &[bx.type_f32()]),
-        sym::sqrtf64 => ("llvm.sqrt", &[bx.type_f64()]),
-        sym::sqrtf128 => ("llvm.sqrt", &[bx.type_f128()]),
-
-        sym::powif16 => ("llvm.powi", &[bx.type_f16(), bx.type_i32()]),
-        sym::powif32 => ("llvm.powi", &[bx.type_f32(), bx.type_i32()]),
-        sym::powif64 => ("llvm.powi", &[bx.type_f64(), bx.type_i32()]),
-        sym::powif128 => ("llvm.powi", &[bx.type_f128(), bx.type_i32()]),
-
-        sym::powf16 => ("llvm.pow", &[bx.type_f16()]),
-        sym::powf32 => ("llvm.pow", &[bx.type_f32()]),
-        sym::powf64 => ("llvm.pow", &[bx.type_f64()]),
-        sym::powf128 => ("llvm.pow", &[bx.type_f128()]),
-
-        sym::fmaf16 => ("llvm.fma", &[bx.type_f16()]),
-        sym::fmaf32 => ("llvm.fma", &[bx.type_f32()]),
-        sym::fmaf64 => ("llvm.fma", &[bx.type_f64()]),
-        sym::fmaf128 => ("llvm.fma", &[bx.type_f128()]),
-
-        sym::fmuladdf16 => ("llvm.fmuladd", &[bx.type_f16()]),
-        sym::fmuladdf32 => ("llvm.fmuladd", &[bx.type_f32()]),
-        sym::fmuladdf64 => ("llvm.fmuladd", &[bx.type_f64()]),
-        sym::fmuladdf128 => ("llvm.fmuladd", &[bx.type_f128()]),
-
         sym::minimumf16 => ("llvm.minimum", &[bx.type_f16()]),
         sym::minimumf32 => ("llvm.minimum", &[bx.type_f32()]),
         sym::minimumf64 if fixed_minmax => ("llvm.minimum", &[bx.type_f64()]),
@@ -99,35 +74,6 @@ fn call_simple_intrinsic<'ll, 'tcx>(
         sym::copysignf32 => ("llvm.copysign", &[bx.type_f32()]),
         sym::copysignf64 => ("llvm.copysign", &[bx.type_f64()]),
         sym::copysignf128 => ("llvm.copysign", &[bx.type_f128()]),
-
-        sym::floorf16 => ("llvm.floor", &[bx.type_f16()]),
-        sym::floorf32 => ("llvm.floor", &[bx.type_f32()]),
-        sym::floorf64 => ("llvm.floor", &[bx.type_f64()]),
-        sym::floorf128 => ("llvm.floor", &[bx.type_f128()]),
-
-        sym::ceilf16 => ("llvm.ceil", &[bx.type_f16()]),
-        sym::ceilf32 => ("llvm.ceil", &[bx.type_f32()]),
-        sym::ceilf64 => ("llvm.ceil", &[bx.type_f64()]),
-        sym::ceilf128 => ("llvm.ceil", &[bx.type_f128()]),
-
-        sym::truncf16 => ("llvm.trunc", &[bx.type_f16()]),
-        sym::truncf32 => ("llvm.trunc", &[bx.type_f32()]),
-        sym::truncf64 => ("llvm.trunc", &[bx.type_f64()]),
-        sym::truncf128 => ("llvm.trunc", &[bx.type_f128()]),
-
-        // We could use any of `rint`, `nearbyint`, or `roundeven`
-        // for this -- they are all identical in semantics when
-        // assuming the default FP environment.
-        // `rint` is what we used for $forever.
-        sym::round_ties_even_f16 => ("llvm.rint", &[bx.type_f16()]),
-        sym::round_ties_even_f32 => ("llvm.rint", &[bx.type_f32()]),
-        sym::round_ties_even_f64 => ("llvm.rint", &[bx.type_f64()]),
-        sym::round_ties_even_f128 => ("llvm.rint", &[bx.type_f128()]),
-
-        sym::roundf16 => ("llvm.round", &[bx.type_f16()]),
-        sym::roundf32 => ("llvm.round", &[bx.type_f32()]),
-        sym::roundf64 => ("llvm.round", &[bx.type_f64()]),
-        sym::roundf128 => ("llvm.round", &[bx.type_f128()]),
 
         _ => return None,
     };
@@ -351,8 +297,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                         // Supported on some targets, especially where long double is IEEE f128.
                     }
                     Primitive::Float(Float::PpcF128) => {
-                        // FIXME(ppcf128) we should support this.
-                        bug!("the va_arg intrinsic does not currently support `ppcf128`")
+                        // Supported on powerpc and powerpc64 targets.
                     }
                 }
 
@@ -554,13 +499,23 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             }
 
             sym::fabs
+            | sym::sqrt
+            | sym::powf
+            | sym::fma
+            | sym::fmuladd
+            | sym::floor
+            | sym::ceil
+            | sym::trunc
+            | sym::round
+            | sym::round_ties_even
             | sym::exp
             | sym::exp2
             | sym::log
             | sym::log10
             | sym::log2
             | sym::sin
-            | sym::cos => {
+            | sym::cos
+            | sym::powi => {
                 let ty = args[0].layout.ty;
                 let ty::Float(f) = ty.kind() else {
                     span_bug!(
@@ -573,6 +528,19 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 let llty = self.type_float_from_ty(*f);
                 let llvm_name = match name {
                     sym::fabs => "llvm.fabs",
+                    sym::sqrt => "llvm.sqrt",
+                    sym::powf => "llvm.pow",
+                    sym::fma => "llvm.fma",
+                    sym::fmuladd => "llvm.fmuladd",
+                    sym::floor => "llvm.floor",
+                    sym::ceil => "llvm.ceil",
+                    sym::trunc => "llvm.trunc",
+                    sym::round => "llvm.round",
+                    // We could use any of `rint`, `nearbyint`, or `roundeven`
+                    // for this -- they are all identical in semantics when
+                    // assuming the default FP environment.
+                    // `rint` is what we used for $forever.
+                    sym::round_ties_even => "llvm.rint",
                     sym::exp => "llvm.exp",
                     sym::exp2 => "llvm.exp2",
                     sym::log => "llvm.log",
@@ -580,11 +548,19 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     sym::log2 => "llvm.log2",
                     sym::sin => "llvm.sin",
                     sym::cos => "llvm.cos",
+                    sym::powi => "llvm.powi",
+
                     _ => bug!(),
                 };
+
+                let params: &[&'ll Type] = match name {
+                    sym::powi => &[llty, self.type_i32()],
+                    _ => &[llty],
+                };
+
                 self.call_intrinsic(
                     llvm_name,
-                    &[llty],
+                    params,
                     &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
                 )
             }
@@ -884,6 +860,13 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                         self.call_intrinsic("llvm.returnaddress", type_params, &[val])
                     }
                 }
+            }
+
+            sym::codeview_annotation => {
+                if self.sess().target.uses_pdb_debuginfo() {
+                    codegen_codeview_annotation(self, instance, span);
+                }
+                return IntrinsicResult::Operand(OperandValue::ZeroSized);
             }
 
             _ => {
@@ -3470,4 +3453,140 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     }
 
     span_bug!(span, "unknown SIMD intrinsic");
+}
+
+fn codegen_codeview_annotation<'ll, 'tcx>(
+    bx: &mut Builder<'_, 'll, 'tcx>,
+    instance: ty::Instance<'tcx>,
+    span: Span,
+) {
+    // This function lowers the `codeview_annotation` intrinsic,
+    // which is declared like this:
+    //
+    // trait CodeViewAnnotationArgs {
+    //     const ARGS: &[&str];
+    // }
+    //
+    // fn codeview_annotation<T: CodeViewAnnotationArgs>() {}
+    //
+    // It finds the `T: CodeViewAnnotationArgs` trait bound, locates
+    // `ARGS`, const evaluates it, reads the strings off the resulting
+    // allocation and lowers them.
+
+    const ARGS_CONST_NAME: &str = "`CodeViewAnnotationArgs::ARGS`";
+
+    let tcx = bx.tcx();
+
+    // Locate `ARGS`
+    let Some((args_const_def_id, generic_args)) = tcx
+        .explicit_clauses_of(instance.def_id())
+        .instantiate_own(tcx, instance.args)
+        .filter_map(|(clause, _)| clause.skip_norm_wip().as_trait_clause())
+        .find_map(|trait_clause| {
+            let trait_ref = trait_clause.skip_binder().trait_ref;
+            tcx.associated_items(trait_ref.def_id)
+                .in_definition_order()
+                .find(|item| {
+                    item.tag() == ty::AssocTag::Const
+                        && tcx.item_name(item.def_id).as_str() == "ARGS"
+                })
+                .map(|item| (item.def_id, trait_ref.args))
+        })
+    else {
+        span_bug!(span, "could not find {ARGS_CONST_NAME}");
+    };
+
+    // Const evaluate `ARGS`
+    let args_const_val = match tcx.const_eval_resolve(
+        bx.typing_env(),
+        mir::UnevaluatedConst::new(args_const_def_id, generic_args),
+        span,
+    ) {
+        Ok(val) => val,
+        Err(ErrorHandled::Reported(..)) => return,
+        Err(ErrorHandled::TooGeneric(_)) => {
+            span_bug!(span, "{ARGS_CONST_NAME} is too generic")
+        }
+    };
+
+    // Read the strings
+    let array_alloc = match args_const_val {
+        mir::ConstValue::Indirect { alloc_id, offset } => read_slice_pointer(tcx, alloc_id, offset)
+            .unwrap_or_else(|_| span_bug!(span, "invalid {ARGS_CONST_NAME} slice pointer")),
+        _ => span_bug!(span, "unexpected {ARGS_CONST_NAME} value: {args_const_val:?}"),
+    };
+
+    let strings = array_alloc.into_iter().flat_map(|(array_alloc_id, array_offset, array_len)| {
+        (0..array_len).map(move |index| {
+            let elem_size = tcx.data_layout.pointer_size().bytes() * 2; // Multiplying by 2 for fat pointers
+            let elem_offset = array_offset + Size::from_bytes(index * elem_size);
+
+            let (string_alloc_id, string_offset, string_len) =
+                match read_slice_pointer(tcx, array_alloc_id, elem_offset) {
+                    Ok(Some(slice)) => slice,
+                    Ok(None) => return &[] as &[u8],
+                    Err(()) => span_bug!(span, "invalid {ARGS_CONST_NAME} string pointer"),
+                };
+
+            resolve_alloc(tcx, string_alloc_id)
+                .unwrap_or_else(|_| span_bug!(span, "invalid {ARGS_CONST_NAME} string allocation"))
+                .get_bytes_strip_provenance(
+                    &tcx,
+                    alloc_range(string_offset, Size::from_bytes(string_len)),
+                )
+                .unwrap_or_else(|_| span_bug!(span, "invalid {ARGS_CONST_NAME} string bytes"))
+        })
+    });
+
+    // Lower the strings
+    let md_strings: Vec<&Metadata> = strings.map(|s| bx.cx.create_metadata(s)).collect();
+    let md_tuple = bx.cx.md_node_in_context(&md_strings);
+    let md_value = bx.cx.get_metadata_value(md_tuple);
+    let (fn_ty, intrinsic_fn) = bx.cx.get_intrinsic("llvm.codeview.annotation".into(), &[]);
+
+    bx.call(fn_ty, None, None, intrinsic_fn, ReturnSlot::Direct, &[md_value], None, None);
+}
+
+// Reads the slice pointer stored at `offset` in `alloc_id` and
+// returns its pointee's allocation ID, relative byte offset
+// and slice length. Returns `None` for an empty slice.
+fn read_slice_pointer<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    alloc_id: AllocId,
+    offset: Size,
+) -> Result<Option<(AllocId, Size, u64)>, ()> {
+    let alloc = resolve_alloc(tcx, alloc_id)?;
+    let pointer_size = tcx.data_layout.pointer_size();
+
+    let pointer = alloc
+        .read_scalar(&tcx, alloc_range(offset, pointer_size), true)
+        .map_err(|_| ())?
+        .to_pointer(&tcx);
+
+    let len = alloc
+        .read_scalar(&tcx, alloc_range(offset + pointer_size, pointer_size), false)
+        .map_err(|_| ())?
+        .to_target_usize(&tcx)
+        .discard_err()
+        .ok_or(())?;
+
+    if len == 0 {
+        return Ok(None);
+    }
+
+    let (provenance, offset) =
+        pointer.into_pointer_or_addr().map_err(|_| ())?.prov_and_relative_offset();
+
+    Ok(Some((provenance.alloc_id(), offset, len)))
+}
+
+fn resolve_alloc<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId) -> Result<&'tcx Allocation, ()> {
+    let alloc = match tcx.global_alloc(alloc_id) {
+        GlobalAlloc::Memory(alloc) => alloc,
+        GlobalAlloc::Static(def_id) => tcx.eval_static_initializer(def_id).map_err(|_| ())?,
+        _ => return Err(()),
+    }
+    .inner();
+
+    Ok(alloc)
 }

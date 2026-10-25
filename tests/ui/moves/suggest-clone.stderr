@@ -9,6 +9,7 @@ LL |     foo.foo();
 note: `Foo::foo` takes ownership of the receiver `self`, which moves `*foo`
   --> $DIR/suggest-clone.rs:6:12
    |
+LL | impl Foo {
 LL |     fn foo(self) {}
    |            ^^^^
 help: consider cloning the value if the performance cost is acceptable

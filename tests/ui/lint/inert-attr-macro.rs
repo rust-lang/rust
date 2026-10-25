@@ -12,8 +12,10 @@ fn main() {
 
     // This does nothing, since `#[allow(warnings)]` is itself
     // an inert attribute on a macro call
-    #[allow(warnings)] #[inline] foo!(); //~ WARN unused attribute `allow`
-    //~^ WARN the `inline` attribute cannot be used on macro calls
+    #[allow(warnings)] #[inline] foo!();
+    //~^ WARN the `allow` attribute cannot be used on macro calls
+    //~| WARN previously accepted
+    //~| WARN the `inline` attribute cannot be used on macro calls
     //~| WARN previously accepted
 
     // This does work, since the attribute is on a parent

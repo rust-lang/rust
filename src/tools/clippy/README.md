@@ -4,7 +4,7 @@
 
 A collection of lints to catch common mistakes and improve your [Rust](https://github.com/rust-lang/rust) code.
 
-[There are over 800 lints included in this crate!](https://rust-lang.github.io/rust-clippy/master/index.html)
+[There are over 800 lints included in this crate!](https://rust-lang.github.io/rust-clippy/main/index.html)
 
 Lints are divided into categories, each with a default [lint level](https://doc.rust-lang.org/rustc/lints/levels.html).
 You can choose how much Clippy is supposed to ~~annoy~~ help you by changing the lint level by category.
@@ -35,9 +35,9 @@ on a case-by-case basis before enabling.
     - Preventing panicking in certain functions (e.g. [`clippy::unwrap_used`]).
     - Running a lint only on a subset of code (e.g. `#[forbid(clippy::float_arithmetic)]` on a module).
 
-[`clippy::else_if_without_else`]: https://rust-lang.github.io/rust-clippy/master/index.html#else_if_without_else
-[`clippy::todo`]: https://rust-lang.github.io/rust-clippy/master/index.html#todo
-[`clippy::unwrap_used`]: https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+[`clippy::else_if_without_else`]: https://rust-lang.github.io/rust-clippy/main/index.html#else_if_without_else
+[`clippy::todo`]: https://rust-lang.github.io/rust-clippy/main/index.html#todo
+[`clippy::unwrap_used`]: https://rust-lang.github.io/rust-clippy/main/index.html#unwrap_used
 
 ---
 
@@ -224,11 +224,11 @@ disallowed-names = ["toto", "tata", "titi"]
 
 The [table of configurations](https://doc.rust-lang.org/nightly/clippy/lint_configuration.html)
 contains all config values, their default, and a list of lints they affect.
-Each [configurable lint](https://rust-lang.github.io/rust-clippy/master/index.html#Configuration)
+Each [configurable lint](https://rust-lang.github.io/rust-clippy/main/index.html#Configuration)
 , also contains information about these values.
 
 For configurations that are a list type with default values such as
-[disallowed-names](https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_names),
+[disallowed-names](https://rust-lang.github.io/rust-clippy/main/index.html#disallowed_names),
 you can use the unique value `".."` to extend the default values instead of replacing them.
 
 ```toml
@@ -276,11 +276,11 @@ is equivalent to `msrv = 1.30.0`.
 
 Note: `custom_inner_attributes` is an unstable feature, so it has to be enabled explicitly.
 
-Lints that recognize this configuration option can be found [here](https://rust-lang.github.io/rust-clippy/master/index.html#msrv)
+Lints that recognize this configuration option can be found [here](https://rust-lang.github.io/rust-clippy/main/index.html#msrv)
 
 ## Contributing
 
-If you want to contribute to Clippy, you can find more information in [CONTRIBUTING.md](https://github.com/rust-lang/rust-clippy/blob/master/CONTRIBUTING.md).
+If you want to contribute to Clippy, you can find more information in [CONTRIBUTING.md](https://github.com/rust-lang/rust-clippy/blob/HEAD/CONTRIBUTING.md).
 
 ## License
 

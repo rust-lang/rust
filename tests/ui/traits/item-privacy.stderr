@@ -61,6 +61,7 @@ LL |     S::a(&S);
 help: there is an associated constant `B` with a similar name
   --> $DIR/item-privacy.rs:30:9
    |
+LL |     pub trait B {
 LL |         const B: u8 = 0;
    |         ^^^^^^^^^^^
 
@@ -77,6 +78,7 @@ LL |     S::b(&S);
 help: there is an associated constant `B` with a similar name
   --> $DIR/item-privacy.rs:30:9
    |
+LL |     pub trait B {
 LL |         const B: u8 = 0;
    |         ^^^^^^^^^^^
 help: trait `B` which provides `b` is implemented but not in scope; perhaps you want to import it
@@ -123,6 +125,7 @@ LL |     S::B;
 help: there is a method `b` with a similar name
   --> $DIR/item-privacy.rs:12:9
    |
+LL |     pub trait B {
 LL |         fn b(&self) { }
    |         ^^^^^^^^^^^
 help: trait `B` which provides `B` is implemented but not in scope; perhaps you want to import it

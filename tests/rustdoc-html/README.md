@@ -65,6 +65,10 @@ Contains tests for the rendering of enum types and in particular its variants.
 
 Contains tests to check how extern items (like `extern "C"` functions) are rendered.
 
+## `tests/rustdoc-html/fn`
+
+Same as `tests/rustdoc-html/enum` but for function items.
+
 ## `tests/rustdoc-html/footnote`
 
 Contains tests checking the markdown footnote features and how it is rendered.
@@ -144,9 +148,17 @@ page, etc.
 Contains tests checking the content of the source code pages (when you click on the `source`
 links).
 
+## `tests/rustdoc-html/struct`
+
+Same as `tests/rustdoc-html/enum` but for struct items.
+
 ## `tests/rustdoc-html/synthetic_auto`
 
 Somewhat equivalent to the `auto` folder's tests. Both should likely be merged.
+
+## `tests/rustdoc-html/trait`
+
+Same as `tests/rustdoc-html/enum` but for trait items.
 
 ## `tests/rustdoc-html/typedef`
 

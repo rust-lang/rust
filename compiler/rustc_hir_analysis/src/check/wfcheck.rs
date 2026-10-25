@@ -9,7 +9,9 @@ use rustc_attr_ir::{EiiDecl, EiiImpl, EiiImplResolution, find_attr};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::transitive_relation::TransitiveRelationBuilder;
 use rustc_errors::codes::*;
-use rustc_errors::{Applicability, ErrorGuaranteed, msg, pluralize, struct_span_code_err};
+use rustc_errors::{
+    Applicability, ErrorGuaranteed, MultiSpan, msg, pluralize, struct_span_code_err,
+};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -17,10 +19,13 @@ use rustc_hir::{AmbigArg, ItemKind};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{BoundRegionConversionTime, SolverRegionConstraint, TyCtxtInferExt};
 use rustc_infer::traits::{PredicateObligations, TraitErrors};
-use rustc_lint_defs::builtin::{REDUNDANT_LIFETIMES, SHADOWING_SUPERTRAIT_ITEMS};
+use rustc_lint_defs::builtin::{
+    REDUNDANT_LIFETIMES, SHADOWING_SUPERTRAIT_ITEMS, UNEVALUATED_DEFAULT_FIELD_VALUE,
+};
 use rustc_macros::{Diagnostic, TypeFoldable, TypeVisitable};
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::traits::solve::NoSolution;
+use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::region_constraint::{And, LeafRegionConstraint, Or};
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
 use rustc_middle::ty::{
@@ -47,7 +52,9 @@ use tracing::{debug, instrument};
 use super::compare_eii::{compare_eii_function_types, compare_eii_statics};
 use crate::autoderef::Autoderef;
 use crate::constrained_generic_params::{Parameter, identify_constrained_generic_params};
-use crate::diagnostics::{self, InvalidReceiverTyHint, ParamInTyOfConstParam};
+use crate::diagnostics::{
+    self, InvalidReceiverTyHint, ParamInTyOfConstParam, UnevaluatedDefaultFieldValue,
+};
 
 pub(super) struct WfCheckingCtxt<'a, 'tcx> {
     pub(super) ocx: ObligationCtxt<'a, 'tcx, FulfillmentError<'tcx>>,
@@ -980,28 +987,44 @@ pub(crate) fn check_type_defn<'tcx>(
     enter_wf_checking_ctxt(tcx, item, |wfcx| {
         let variants = adt_def.variants();
         let packed = adt_def.repr().packed();
+        let own_params_require_monomorphization =
+            tcx.generics_of(item).own_requires_monomorphization();
 
         for variant in variants.iter() {
             // All field types must be well-formed.
             for field in &variant.fields {
-                if let Some(def_id) = field.value
-                    && let Some(_ty) = tcx.type_of(def_id).no_bound_vars()
-                {
-                    // FIXME(generic_const_exprs, default_field_values): this is a hack and needs to
-                    // be refactored to check the instantiate-ability of the code better.
-                    if let Some(def_id) = def_id.as_local()
-                        && let DefKind::AnonConst = tcx.def_kind(def_id)
-                        && let hir::Node::AnonConst(anon) = tcx.hir_node_by_def_id(def_id)
-                        && let expr = &tcx.hir_body(anon.body).value
-                        && let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind
-                        && let Res::Def(DefKind::ConstParam, _def_id) = path.res
-                    {
-                        // Do not evaluate bare `const` params, as those would ICE and are only
-                        // usable if `#![feature(generic_const_exprs)]` is enabled.
-                    } else {
-                        // Evaluate the constant proactively, to emit an error if the constant has
-                        // an unconditional error. We only do so if the const has no type params.
+                if let Some(def_id) = field.value {
+                    if !own_params_require_monomorphization {
                         let _ = tcx.const_eval_poly(def_id);
+                    } else if tcx.features().default_field_values()
+                        && let Some(local_def_id) = def_id.as_local()
+                    {
+                        // Do not redundantly trigger lint if the feature is not actually available.
+
+                        // We use the callsite span for default values that are actually macro calls
+                        // into other crates, like for example `field: () = panic!(),`.
+                        let field_span = tcx.def_span(def_id).source_callsite();
+                        let mut multispan: MultiSpan = field_span.into();
+                        multispan
+                            .push_span_label(field_span, "this can't be const-evaluated until use");
+                        let struct_start = tcx.def_span(item).shrink_to_lo();
+                        multispan.push_span_context(tcx.def_span(field.did));
+                        multispan.push_span_context(struct_start);
+                        tcx.emit_node_span_lint(
+                            UNEVALUATED_DEFAULT_FIELD_VALUE,
+                            tcx.local_def_id_to_hir_id(local_def_id),
+                            multispan,
+                            UnevaluatedDefaultFieldValue {
+                                field: field.name,
+                                ty: with_no_trimmed_paths!(tcx.def_path_str(item)),
+                                padding: tcx
+                                    .sess
+                                    .source_map()
+                                    .indentation_before(struct_start)
+                                    .unwrap_or_default(),
+                                struct_start,
+                            },
+                        );
                     }
                 }
                 let field_id = field.did.expect_local();
@@ -1102,6 +1125,7 @@ pub(crate) fn check_trait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), Err
                 E0714,
                 "marker traits cannot have associated items",
             )
+            .with_span_context(tcx.def_span(def_id))
             .emit();
         }
     }
@@ -2175,7 +2199,7 @@ fn report_bivariance<'tcx>(
     );
 
     if !usage_spans.is_empty() {
-        // First, check if the ADT/LTA is (probably) cyclical. We say probably here, since we're
+        // First, check if the ADT is (probably) cyclical. We say probably here, since we're
         // not actually looking into substitutions, just walking through fields / the "RHS".
         // We don't recurse into the hidden types of opaques or anything else fancy.
         let item_def_id = item.owner_id.to_def_id();
@@ -2183,7 +2207,7 @@ fn report_bivariance<'tcx>(
             IsProbablyCyclical { tcx, item_def_id, seen: Default::default() }
                 .visit_def(item_def_id)
                 .is_break();
-        // If the ADT/LTA is cyclical, then if at least one usage of the type parameter or
+        // If the ADT is cyclical, then if at least one usage of the type parameter or
         // the `Self` alias is present in the, then it's probably a cyclical struct/ type
         // alias, and we should call those parameter usages recursive rather than just saying
         // they're unused...
@@ -2223,8 +2247,8 @@ fn report_bivariance<'tcx>(
     }
 }
 
-/// Detects cases where an ADT/LTA is trivially cyclical -- we want to detect this so
-/// we only mention that its parameters are used cyclically if the ADT/LTA is truly
+/// Detects cases where an ADT is trivially cyclical -- we want to detect this so
+/// we only mention that its parameters are used cyclically if the ADT is truly
 /// cyclical.
 ///
 /// Notably, we don't consider substitutions here, so this may have false positives.
@@ -2356,7 +2380,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     pub(super) fn check_test_binder_body(&self, body: TestBinderBody<'tcx>) {
-        let TestBinderBody { foralls, exists, constraints, predicates } = body;
+        let TestBinderBody { span, foralls, exists, constraints, predicates } = body;
         if !predicates.is_empty() {
             for (predicate, span) in predicates {
                 let cause = traits::ObligationCause::misc(span, self.body_def_id);
@@ -2376,6 +2400,10 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
             Ok(()) => constraints,
             Err(_guar) => ty::region_constraint::RegionConstraint::new_true(),
         };
+        if constraints.is_false() {
+            self.tcx().dcx().span_err(span, "top level false constraints are not supported");
+            return;
+        }
 
         self.infcx.register_solver_region_constraint(constraints);
 
@@ -2455,6 +2483,13 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
                 u,
             )
             .with_spans(forall.span);
+            if constraint.is_false() {
+                self.tcx().dcx().span_err(forall.span, "forall evaluated to false");
+                self.infcx.overwrite_solver_region_constraint(
+                    ty::region_constraint::RegionConstraint::new_true(),
+                );
+                return;
+            }
             if let Some(assert_on_exit) = &forall.assert_on_exit {
                 self.check_test_binder_region_constraints(forall.span, assert_on_exit, &constraint);
             }
@@ -2515,22 +2550,6 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
         expected: &SolverRegionConstraint<'tcx>,
         actual: &SolverRegionConstraint<'tcx>,
     ) {
-        fn err<'tcx>(
-            tcx: TyCtxt<'tcx>,
-            expected_span: Span,
-            expected: impl std::fmt::Debug,
-            actual_span: Option<Span>,
-            actual: impl std::fmt::Debug,
-        ) {
-            let mut err = tcx.dcx().struct_span_err(expected_span, "forall expect clause failed");
-            if let Some(actual_span) = actual_span {
-                err.span_note(actual_span, "constraint from here");
-            }
-            err.note(format!("expected: {expected:#?}"));
-            err.note(format!("actual: {actual:#?}"));
-            err.emit();
-        }
-
         let span_of_and = |c: &And<_, _>| {
             c.0.iter().map(|leaf| leaf.span()).reduce(|span: Span, acc| acc.to(span))
         };
@@ -2540,64 +2559,68 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
         };
 
         let check_leaf_constraint =
-            |expected: LeafRegionConstraint<_, _>, actual: LeafRegionConstraint<_, _>| {
+            |expected: &LeafRegionConstraint<_, _>, actual: &LeafRegionConstraint<_, _>| {
                 if let LeafRegionConstraint::AliasTyOutlivesViaEnv(expected, expected_span) =
                     expected
                     && let LeafRegionConstraint::AliasTyOutlivesViaEnv(actual, actual_span) = actual
                 {
-                    let expected_anon = self.tcx().anonymize_bound_vars(expected);
-                    let actual_anon = self.tcx().anonymize_bound_vars(actual);
-                    if expected_anon != actual_anon {
-                        let mut err = self
-                            .tcx()
-                            .dcx()
-                            .struct_span_err(expected_span, "forall expect clause failed");
-                        err.span_note(actual_span, "constraint from here");
-                        err.note(format!("expected: {expected:#?}"));
-                        err.note(format!("actual: {actual:#?}"));
-                        err.note(format!("expected_anon: {expected_anon:#?}"));
-                        err.note(format!("actual_anon: {actual_anon:#?}"));
-                        err.emit();
+                    let expected_anon = self.tcx().anonymize_bound_vars(expected.clone());
+                    let actual_anon = self.tcx().anonymize_bound_vars(actual.clone());
+                    if expected_anon == actual_anon {
+                        Ok(())
+                    } else {
+                        Err((Some(*expected_span), Some(*actual_span)))
                     }
-                } else if expected.clone().without_span() != actual.clone().without_span() {
-                    err(self.tcx(), expected.span(), expected, Some(actual.span()), actual);
+                } else {
+                    if expected.clone().without_span() == actual.clone().without_span() {
+                        Ok(())
+                    } else {
+                        Err((Some(expected.span()), Some(actual.span())))
+                    }
                 }
             };
 
-        let check_and_constraint = |expected: And<_, _>, actual: And<_, _>| {
+        let check_and_constraint = |expected: &And<_, _>, actual: &And<_, _>| {
             if expected.0.len() != actual.0.len() {
-                err(
-                    self.tcx(),
-                    span_of_and(&expected).unwrap_or(fallback_span),
-                    expected,
-                    span_of_and(&actual),
-                    actual,
-                )
+                Err((span_of_and(expected), span_of_and(actual)))
             } else {
-                for (expected, actual) in expected.0.into_iter().zip(actual.0.into_iter()) {
-                    check_leaf_constraint(expected, actual);
+                for (expected, actual) in expected.0.iter().zip(&actual.0) {
+                    check_leaf_constraint(expected, actual)?;
                 }
+                Ok(())
             }
         };
 
-        let check_or_constraint = |expected: Or<_, _>, actual: Or<_, _>| {
+        let check_or_constraint = |expected: &Or<_, _>, actual: &Or<_, _>| {
             if expected.0.len() != actual.0.len() {
-                err(
-                    self.tcx(),
-                    span_of_or(&expected).unwrap_or(fallback_span),
-                    expected,
-                    span_of_or(&actual),
-                    actual,
-                )
+                Err((span_of_or(expected), span_of_or(actual)))
             } else {
-                for (expected, actual) in expected.0.into_iter().zip(actual.0.into_iter()) {
-                    check_and_constraint(expected, actual);
+                for (expected, actual) in expected.0.iter().zip(&actual.0) {
+                    check_and_constraint(expected, actual)?;
                 }
+                Ok(())
             }
         };
 
-        check_or_constraint(expected.or_constraint.clone(), actual.or_constraint.clone());
-        check_and_constraint(expected.and_constraint.clone(), actual.and_constraint.clone());
+        let check = |expected: &SolverRegionConstraint<'tcx>,
+                     actual: &SolverRegionConstraint<'tcx>| {
+            check_or_constraint(&expected.or_constraint, &actual.or_constraint)?;
+            check_and_constraint(&expected.and_constraint, &actual.and_constraint)?;
+            Ok(())
+        };
+
+        if let Err((expected_span, actual_span)) = check(expected, actual) {
+            let mut err = self.tcx().dcx().struct_span_err(
+                expected_span.unwrap_or(fallback_span),
+                "forall expect clause failed",
+            );
+            if let Some(actual_span) = actual_span {
+                err.span_note(actual_span, "constraint from here");
+            }
+            err.note(format!("expected: {expected:#?}"));
+            err.note(format!("actual: {actual:#?}"));
+            err.emit();
+        }
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -2774,6 +2797,7 @@ struct RedundantLifetimeArgsLint<'tcx> {
 
 #[derive(Clone, Debug, TypeFoldable, TypeVisitable)]
 pub(crate) struct TestBinderBody<'tcx> {
+    pub span: Span,
     pub foralls: Vec<TestBinderForall<'tcx>>,
     pub exists: Vec<TestBinderExists<'tcx>>,
     /// Constraints to be inserted directly into constraint storage to be proven

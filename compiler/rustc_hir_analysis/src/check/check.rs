@@ -20,7 +20,6 @@ use rustc_macros::Diagnostic;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_bound_vars::ResolvedArg;
 use rustc_middle::middle::stability::EvalResult;
-use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::error::TypeErrorToStringExt;
 use rustc_middle::ty::layout::LayoutError;
 use rustc_middle::ty::util::Discr;
@@ -2356,7 +2355,7 @@ pub(super) fn check_coroutine_obligations(
         }
     } else {
         // We're not checking region constraints here, so we can simply drop the
-        // added opaque type uses in `TypingMode::PostTypeckUntilBorrowck`.
+        // added opaque type uses in `TypingMode::PostTypeckThroughBorrowck`.
         let _ = infcx.take_opaque_types();
     }
 
@@ -2373,7 +2372,7 @@ pub(super) fn check_potentially_region_dependent_goals<'tcx>(
     let typeck_results = tcx.typeck(def_id);
     let param_env = tcx.param_env(def_id);
 
-    // We use `TypingMode::PostTypeckUntilBorrowck` as we want to use the opaque types computed by HIR typeck.
+    // We use `TypingMode::PostTypeckThroughBorrowck` as we want to use the opaque types computed by HIR typeck.
     let typing_mode = TypingMode::borrowck(tcx, def_id);
     let infcx = tcx.infer_ctxt().ignoring_regions().build(typing_mode);
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);

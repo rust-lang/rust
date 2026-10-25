@@ -59,6 +59,7 @@ pub(super) fn dummy_arg(ident: Ident, guar: ErrorGuaranteed) -> Param {
         span: ident.span,
         ty: Box::new(ty),
         is_placeholder: false,
+        has_const_keyword: false,
     }
 }
 
@@ -1141,6 +1142,13 @@ impl<'a> Parser<'a> {
                 }
             }
         }
+    }
+
+    pub(super) fn recover_missing_turbofish_for_lifetimes(&self, lt_span: Span) {
+        self.dcx().emit_err(crate::diagnostics::MissingTurbofishForLifetime {
+            span: lt_span,
+            suggest_turbofish: lt_span.shrink_to_lo(),
+        });
     }
 
     /// When writing a turbofish with multiple type parameters missing the leading `::`, we will

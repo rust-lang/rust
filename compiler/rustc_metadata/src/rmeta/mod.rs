@@ -1,6 +1,7 @@
 use std::marker::PhantomData;
 use std::mem::size_of;
 use std::num::NonZero;
+use std::rc::Rc;
 
 use decoder::LazyDecoder;
 pub(crate) use decoder::{CrateMetadata, CrateNumMap, MetadataBlob, TargetModifiers};
@@ -22,11 +23,12 @@ use rustc_hir as hir;
 use rustc_hir::PreciseCapturingArgKind;
 use rustc_hir::def::{CtorKind, DefKind, MacroKinds};
 use rustc_hir::def_id::{
-    CrateNum, DefId, DefIdMap, DefIndex, DefPathHash, LocalDefId, StableCrateId,
+    CRATE_DEF_INDEX, CrateNum, DefId, DefIdMap, DefIndex, DefPathHash, LOCAL_CRATE, LocalDefId,
+    StableCrateId,
 };
 use rustc_hir::definitions::DefKey;
-use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
+use rustc_index::{Idx, IndexVec};
 use rustc_macros::{
     BlobDecodable, Decodable, Encodable, LazyDecodable, MetadataEncodable, TyDecodable, TyEncodable,
 };
@@ -46,12 +48,14 @@ use rustc_serialize::opaque::FileEncoder;
 use rustc_session::config::mitigation_coverage::DeniedPartialMitigation;
 use rustc_session::config::{SymbolManglingVersion, TargetModifier};
 use rustc_span::edition::Edition;
-use rustc_span::hygiene::{ExpnIndex, MacroKind, SyntaxContextKey};
+use rustc_span::hygiene::{DecodedSyntaxContext, ExpnIndex, MacroKind, SyntaxContextKey};
 use rustc_span::{self, ExpnData, ExpnHash, ExpnId, Ident, Span, Symbol};
 use rustc_target::spec::{PanicStrategy, TargetTuple};
 use table::TableBuilder;
 
 use crate::eii::EiiMapEncodedKeyValue;
+use crate::rmeta::parameterized::EncodeFrom;
+use crate::rmeta::remapped_def_id::RemappedRawDefId;
 
 mod decoder;
 mod def_path_hash_map;
@@ -206,9 +210,10 @@ enum LazyState {
     Previous(NonZero<usize>),
 }
 
-type SyntaxContextTable = LazyTable<u32, u32, Option<LazyValue<SyntaxContextKey>>>;
-type ExpnDataTable = LazyTable<ExpnIndex, ExpnIndex, Option<LazyValue<ExpnData>>>;
-type ExpnHashTable = LazyTable<ExpnIndex, ExpnIndex, Option<LazyValue<ExpnHash>>>;
+type SyntaxContextTable =
+    LazyTable<RemappedSyntaxContext, DecodedSyntaxContext, Option<LazyValue<SyntaxContextKey>>>;
+type ExpnDataTable = LazyTable<RemappedLocalExpnIndex, ExpnIndex, Option<LazyValue<ExpnData>>>;
+type ExpnHashTable = LazyTable<RemappedLocalExpnIndex, ExpnIndex, Option<LazyValue<ExpnHash>>>;
 
 #[derive(MetadataEncodable, LazyDecodable)]
 pub(crate) struct ProcMacroData {
@@ -245,7 +250,7 @@ pub(crate) struct CrateHeader {
     /// Stubs do not contain the full metadata (it will be typically stored
     /// in a separate rmeta file).
     ///
-    /// This is used inside rlibs and dylibs when using `-Zembed-metadata=no`.
+    /// This is used inside rlibs and dylibs when using `-Cembed-metadata=no`.
     pub(crate) is_stub: bool,
 }
 
@@ -340,27 +345,190 @@ pub(crate) struct CrateRootUnhashed {
     dep_extra_filenames: IndexVec<CrateNum, String>,
 }
 
-/// On-disk representation of `DefId`.
-/// This creates a type-safe way to enforce that we remap the CrateNum between the on-disk
-/// representation and the compilation session.
-#[derive(Copy, Clone, Hash, PartialEq, Eq, Encodable, BlobDecodable)]
-pub(crate) struct RawDefId {
-    krate: u32,
-    index: u32,
+rustc_index::newtype_index! {
+    #[max = 0x1FFF_FFFF] // `u32::MAX` >> 3, as `SyntaxContext` should be fit in 29 bits (see `span_encoding`).
+    #[default]
+    pub(super) struct RemappedSyntaxContext {}
 }
 
-impl From<DefId> for RawDefId {
-    fn from(val: DefId) -> Self {
-        RawDefId { krate: val.krate.as_u32(), index: val.index.as_u32() }
+rustc_index::newtype_index! {
+    #[default]
+    pub(super) struct RemappedLocalExpnIndex {}
+}
+
+#[derive(Default)]
+pub(crate) struct LocalDefsRemapping {
+    /// See `Definitions::first_non_det_index`, it is just cached version of it.
+    pub first_non_det_index: u32,
+
+    /// The map where for each non-det local def id the remapped def index
+    /// is stored. It can be accessed by
+    /// `remapping[id.local_def_index - first_non_det_index]`, the caller should
+    /// ensure that `id.local_def_index >= first_non_det_index`.
+    pub remapping: Vec<DefIndex>,
+
+    /// The ordered list of NON-remapped non-det local def ids. This
+    /// list is used when we need to iterate over all local defs in a
+    /// stable order.
+    pub sorted_non_det_ids: Rc<[LocalDefId]>,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+pub(crate) struct RemappedLocalDefId {
+    pub index: DefIndex,
+}
+
+impl Idx for RemappedLocalDefId {
+    #[inline]
+    fn new(idx: usize) -> Self {
+        RemappedLocalDefId { index: DefIndex::from_usize(idx) }
+    }
+
+    #[inline]
+    fn index(self) -> usize {
+        self.index.as_usize()
     }
 }
 
-impl RawDefId {
-    /// This exists so that `provide_one!` is happy
-    fn decode(self, meta: (&CrateMetadata, TyCtxt<'_>)) -> DefId {
-        let krate = CrateNum::from_u32(self.krate);
-        let krate = meta.0.map_encoded_cnum_to_current(krate);
-        DefId { krate, index: DefIndex::from_u32(self.index) }
+impl LocalDefsRemapping {
+    /// This method should be used whenever the `LocalDefId` is encoded, as it remaps
+    /// it's `local_def_index` for deterministic metadata encoding, this
+    /// remapping needs to be applied to all `LocalDefId`s during metadata encoding.
+    /// Note that when implementing custom structs that represent `LocalDefId` the
+    /// remapping should also be applied (see `RawDefId`).
+    #[inline]
+    fn map_local_def_id(&self, local_def_id: LocalDefId) -> RemappedLocalDefId {
+        RemappedLocalDefId { index: self.map_index(local_def_id.local_def_index) }
+    }
+
+    /// Remaps `DefId` only if it local for deterministic metadata encoding. External
+    /// def ids are not needed to be remapped as they are already deterministic.
+    /// Whenever a `DefId` is encoded this method should be called.
+    /// Note that when implementing custom structs that represent `DefId` the
+    /// remapping should also be applied (see `RawDefId`).
+    #[inline]
+    fn map_def_id(&self, def_id: DefId) -> DefId {
+        if def_id.is_local() {
+            DefId { krate: LOCAL_CRATE, index: self.map_index(def_id.index) }
+        } else {
+            def_id
+        }
+    }
+
+    /// Shared part of `map_local_def_id` and `map_def_id` which remaps a def index.
+    /// Given only def index we do not know whether it belongs to local or external
+    /// def id, so this method should not be called on `DefIndex`es whose origin is unknown.
+    /// Prefer to use above-mentioned methods instead or use it when it is clear that
+    /// `DefIndex` is local.
+    #[inline]
+    fn map_index(&self, def_index: DefIndex) -> DefIndex {
+        let index = def_index.as_u32();
+
+        if index < self.first_non_det_index {
+            def_index
+        } else {
+            let shifted_idx = index - self.first_non_det_index;
+            self.remapping[shifted_idx as usize]
+        }
+    }
+
+    fn iter_sorted_local_ids(&self) -> impl Iterator<Item = LocalDefId> + use<> {
+        let first_non_det_index = self.first_non_det_index;
+        let non_det_part = Rc::clone(&self.sorted_non_det_ids);
+
+        gen move {
+            for i in 0..first_non_det_index {
+                yield LocalDefId { local_def_index: DefIndex::from_u32(i) }
+            }
+
+            let len = non_det_part.len();
+            for i in 0..len {
+                yield non_det_part[i]
+            }
+        }
+    }
+
+    fn new(tcx: TyCtxt<'_>) -> LocalDefsRemapping {
+        let defs = tcx.definitions();
+
+        let mut non_det_ids = vec![];
+        let start = defs.first_non_det_index().as_usize();
+        let num_defs = defs.num_definitions();
+
+        for idx in start..num_defs {
+            let def_id_level = |mut id| {
+                let mut level = 0;
+                while let Some(parent) = tcx.opt_local_parent(id) {
+                    level += 1;
+                    id = parent;
+                }
+
+                level
+            };
+
+            let def_id = LocalDefId { local_def_index: idx.into() };
+            non_det_ids.push((
+                def_id,
+                def_id_level(def_id),
+                defs.def_path_hash(def_id).local_hash(),
+            ));
+        }
+
+        // Sort by level first in order to satisfy the invariant that child def id
+        // always has a higher def index than its parent (see `def_id_partial_cmp`),
+        // in context of one level sort by stable hash. Ids from higher level will
+        // get higher remapped def index.
+        non_det_ids.sort_by_key(|(_, level, hash)| (*level, *hash));
+
+        let mut remapping = vec![CRATE_DEF_INDEX; non_det_ids.len()];
+        for (idx, (id, ..)) in non_det_ids.into_iter().enumerate() {
+            remapping[id.local_def_index.as_usize() - start] = DefIndex::from_usize(start + idx);
+        }
+
+        let mut sorted_non_det_ids = (start..num_defs)
+            .into_iter()
+            .map(|idx| LocalDefId { local_def_index: DefIndex::from(idx) })
+            .collect::<Vec<_>>();
+
+        sorted_non_det_ids.sort_by_key(|id| remapping[id.local_def_index.as_usize() - start]);
+
+        let sorted_non_det_ids = Rc::from(sorted_non_det_ids);
+        LocalDefsRemapping { first_non_det_index: start as u32, remapping, sorted_non_det_ids }
+    }
+}
+
+pub(crate) mod remapped_def_id {
+    use super::*;
+
+    /// On-disk representation of `DefId`.
+    /// This creates a type-safe way to enforce that we remap the CrateNum between the on-disk
+    /// representation and the compilation session.
+    #[derive(Copy, Clone, Hash, PartialEq, Eq, Encodable, BlobDecodable)]
+    pub(crate) struct RemappedRawDefId {
+        krate: u32,
+        index: u32,
+    }
+
+    impl RemappedRawDefId {
+        pub(crate) fn new_unchecked(krate: u32, index: u32) -> RemappedRawDefId {
+            RemappedRawDefId { krate, index }
+        }
+
+        pub(crate) fn create(def_id: DefId, remapping: &LocalDefsRemapping) -> RemappedRawDefId {
+            let def_id = remapping.map_def_id(def_id);
+            RemappedRawDefId { krate: def_id.krate.as_u32(), index: def_id.index.as_u32() }
+        }
+
+        /// This exists so that `provide_one!` is happy
+        pub(crate) fn decode(self, meta: (&CrateMetadata, TyCtxt<'_>)) -> DefId {
+            let krate = CrateNum::from_u32(self.krate);
+            let krate = meta.0.map_encoded_cnum_to_current(krate);
+            DefId { krate, index: DefIndex::from_u32(self.index) }
+        }
+
+        pub(crate) fn decompose(&self) -> (u32, u32) {
+            (self.krate, self.index)
+        }
     }
 }
 
@@ -379,7 +547,7 @@ pub(crate) struct CrateDep {
 
 #[derive(MetadataEncodable, LazyDecodable)]
 pub(crate) struct TraitImpls {
-    trait_id: RawDefId,
+    trait_id: RemappedRawDefId,
     impls: LazyArray<(LocalDefId, Option<SimplifiedType>)>,
 }
 
@@ -397,14 +565,14 @@ macro_rules! define_tables {
     ) => {
         #[derive(MetadataEncodable, LazyDecodable)]
         pub(crate) struct LazyTables {
-            $($name1: LazyTable<LocalDefId, DefIndex, $T1>,)+
-            $($name2: LazyTable<LocalDefId, DefIndex, Option<$T2>>,)+
+            $($name1: LazyTable<RemappedLocalDefId, DefIndex, $T1>,)+
+            $($name2: LazyTable<RemappedLocalDefId, DefIndex, Option<$T2>>,)+
         }
 
         #[derive(Default)]
         struct TableBuilders {
-            $($name1: TableBuilder<LocalDefId, DefIndex, $T1>,)+
-            $($name2: TableBuilder<LocalDefId, DefIndex, Option<$T2>>,)+
+            $($name1: TableBuilder<RemappedLocalDefId, DefIndex, $T1>,)+
+            $($name2: TableBuilder<RemappedLocalDefId, DefIndex, Option<$T2>>,)+
         }
 
         impl TableBuilders {
@@ -415,10 +583,45 @@ macro_rules! define_tables {
                 }
             }
         }
+
+        impl<'a, 'tcx, 'b> TableWriter<'a, 'tcx, 'b> {
+            $(
+                /// Records a value into the corresponding `TableBuilders` field, encoding it in
+                /// the process when necessary
+                fn $name1<T>(&mut self, i: LocalDefId, v: T)
+                where
+                    $T1: EncodeFrom<'tcx, T>
+                {
+                    let encoded = <$T1 as EncodeFrom<'tcx, T>>::encode_from(self.encoder, v);
+                    let idx = self.encoder.local_defs_remapping.map_local_def_id(i);
+                    self.encoder.tables.$name1.set(idx, encoded);
+                }
+            )+
+            $(
+                /// Records a value into the corresponding `TableBuilders` field, encoding it in
+                /// the process when necessary
+                fn $name2<T>(&mut self, i: LocalDefId, v: T)
+                where
+                    $T2: EncodeFrom<'tcx, T>
+                {
+                    let encoded = <$T2 as EncodeFrom<'tcx, T>>::encode_from(self.encoder, v);
+                    let idx = self.encoder.local_defs_remapping.map_local_def_id(i);
+                    self.encoder.tables.$name2.set(idx, Some(encoded));
+                }
+            )+
+        }
     }
 }
 
+/// Helper struct for writing values into [`TableBuilders`].
+#[must_use]
+struct TableWriter<'a, 'tcx, 'b> {
+    encoder: &'b mut EncodeContext<'a, 'tcx>,
+}
+
 define_tables! {
+// If the compiler complains about `EncodeFrom` or `ParameterizedOverTcx` bounds when calling a
+// function generated in this macro, add them to parameterized.rs
 - defaulted:
     intrinsic: Table<Option<LazyValue<ty::IntrinsicDef>>>,
     is_macro_rules: Table<bool>,
@@ -437,7 +640,6 @@ define_tables! {
     explicit_implied_clauses_of: Table<LazyArray<(ty::Clause<'static>, Span)>>,
     explicit_implied_const_bounds: Table<LazyArray<(ty::PolyTraitRef<'static>, Span)>>,
     inherent_impls: Table<LazyArray<LocalDefId>>,
-    opt_rpitit_info: Table<Option<LazyValue<ty::ImplTraitInTraitData>>>,
     // Reexported names are not associated with individual `DefId`s,
     // e.g. a glob import can introduce a lot of names, all with the same `DefId`.
     // That's why the encoded list needs to contain `ModChild` structures describing all the names
@@ -452,6 +654,7 @@ define_tables! {
     impl_is_fully_generic_for_reflection: Table<bool>,
 
 - optional:
+    opt_rpitit_info: Table<LazyValue<ty::ImplTraitInTraitData>>,
     attributes: Table<LazyArray<Attribute>>,
     // For non-reexported names in a module every name is associated with a separate `DefId`,
     // so we can take their names, visibilities etc from other encoded tables.
@@ -481,7 +684,7 @@ define_tables! {
     mir_coroutine_witnesses: Table<LazyValue<mir::CoroutineLayout<'static>>>,
     promoted_mir: Table<LazyValue<IndexVec<mir::Promoted, mir::Body<'static>>>>,
     thir_abstract_const: Table<LazyValue<ty::EarlyBinder<'static, ty::Const<'static>>>>,
-    impl_parent: Table<RawDefId>,
+    impl_parent: Table<RemappedRawDefId>,
     const_conditions: Table<LazyValue<ty::ConstConditions<'static>>>,
     // FIXME(eddyb) perhaps compute this on the fly if cheap enough?
     coerce_unsized_info: Table<LazyValue<ty::adjustment::CoerceUnsizedInfo>>,
@@ -490,10 +693,10 @@ define_tables! {
     rendered_precise_capturing_args: Table<LazyArray<PreciseCapturingArgKind<Symbol, Symbol>>>,
     fn_arg_idents: Table<LazyArray<Option<Ident>>>,
     coroutine_kind: Table<hir::CoroutineKind>,
-    coroutine_for_closure: Table<RawDefId>,
+    coroutine_for_closure: Table<RemappedRawDefId>,
     adt_destructor: Table<LazyValue<ty::Destructor>>,
     adt_async_destructor: Table<LazyValue<ty::AsyncDestructor>>,
-    coroutine_by_move_body_def_id: Table<RawDefId>,
+    coroutine_by_move_body_def_id: Table<RemappedRawDefId>,
     eval_static_initializer: Table<LazyValue<mir::interpret::ConstAllocation<'static>>>,
     trait_def: Table<LazyValue<ty::TraitDef>>,
     expn_that_defined: Table<LazyValue<ExpnId>>,
@@ -517,7 +720,6 @@ define_tables! {
     anon_const_kind: Table<LazyValue<ty::AnonConstKind>>,
     const_of_item: Table<LazyValue<Option<ty::EarlyBinder<'static, ty::Const<'static>>>>>,
     associated_types_for_impl_traits_in_trait_or_impl: Table<LazyValue<DefIdMap<Vec<DefId>>>>,
-    live_args_for_alias_from_outlives_bounds: Table<LazyValue<DenseBitSet<u32>>>,
     args_known_to_outlive_alias_params: Table<LazyValue<Vec<(usize, DenseBitSet<u32>)>>>,
     mut_restriction: Table<LazyValue<ty::RestrictionKind>>,
 }

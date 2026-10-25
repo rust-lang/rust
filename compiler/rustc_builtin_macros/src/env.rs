@@ -51,13 +51,12 @@ pub(crate) fn expand_option_env<'cx>(
     let e = match value {
         Err(VarError::NotPresent) => {
             let lt = cx.lifetime(sp, Ident::new(kw::StaticLifetime, sp));
-            cx.expr_path(cx.path_all(
+            cx.expr_path(cx.std_path_all(
                 sp,
-                true,
-                cx.std_path(&[sym::option, sym::Option, sym::None]),
+                &[sym::option, sym::Option, sym::None],
                 vec![GenericArg::Type(cx.ty_ref(
                     sp,
-                    cx.ty_ident(sp, Ident::new(sym::str, sp)),
+                    cx.ty_name(sp, sym::str),
                     Some(lt),
                     Mutability::Not,
                 ))],
@@ -70,7 +69,7 @@ pub(crate) fn expand_option_env<'cx>(
         }
         Ok(value) => cx.expr_call_global(
             sp,
-            cx.std_path(&[sym::option, sym::Option, sym::Some]),
+            cx.std_path(sp, &[sym::option, sym::Option, sym::Some]),
             thin_vec![cx.expr_str(sp, value)],
         ),
     };

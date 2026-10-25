@@ -404,7 +404,7 @@ impl<'a, 'db> ConfirmContext<'a, 'db> {
                             unreachable!("non-const param ID for const param");
                         };
                         let const_ty = self.ctx.db.const_param_ty(const_id);
-                        self.ctx.create_anon_const(konst.expr, const_ty, false).into()
+                        self.ctx.create_anon_const(konst.expr, const_ty).into()
                     }
                     _ => unreachable!("unmatching param kinds were passed to `provided_kind()`"),
                 }

@@ -1,5 +1,5 @@
-// rustfmt-indent_style: Block
-// rustfmt-combine_control_expr: true
+//@ rustfmt-indent_style: Block
+//@ rustfmt-combine_control_expr: true
 
 // Combining openings and closings. See rust-lang/fmt-rfcs#61.
 

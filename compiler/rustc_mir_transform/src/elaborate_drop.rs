@@ -7,7 +7,6 @@ use rustc_hir::{CoroutineDesugaring, CoroutineKind};
 use rustc_index::Idx;
 use rustc_middle::mir::*;
 use rustc_middle::ty::adjustment::PointerCoercion;
-use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
 use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt};
 use rustc_mir_dataflow::DropFlagState;
@@ -771,7 +770,7 @@ where
                     ty::TypingMode::Coherence
                     | ty::TypingMode::Reflection
                     | ty::TypingMode::Typeck { .. }
-                    | ty::TypingMode::PostTypeckUntilBorrowck { .. }
+                    | ty::TypingMode::PostTypeckThroughBorrowck { .. }
                     | ty::TypingMode::PostBorrowck { .. } => {
                         bug!()
                     }
