@@ -1,0 +1,122 @@
+//@ run-rustfix
+
+#![allow(dead_code)]
+
+use std::error::Error;
+
+fn is_caused_by<T: Error + 'static>(err: &(dyn Error + 'static)) -> bool {
+    err.is::<T>() //~ ERROR borrowed data escapes outside of function
+        || err.source().is_some_and(|cause| is_caused_by::<T>(cause))
+}
+
+fn named<'a, T: Error + 'static>(err: &'a (dyn Error + 'static)) -> bool {
+    err.is::<T>() //~ ERROR borrowed data escapes outside of function
+}
+
+fn early_bound<'a: 'a, T: Error + 'static>(err: &'a (dyn Error + 'static)) -> bool {
+    err.is::<T>() //~ ERROR borrowed data escapes outside of function
+}
+
+fn mutable<'a, T: Error + 'static>(err: &'a mut (dyn Error + 'static)) -> Option<&'a mut T> {
+    err.downcast_mut::<T>() //~ ERROR borrowed data escapes outside of function
+}
+
+fn parenthesized<T: Error + 'static>(err: &(dyn Error + 'static)) -> bool {
+    err.is::<T>() //~ ERROR borrowed data escapes outside of function
+}
+
+fn other_bounds<T: Error + 'static>(err: &(dyn Error + Send + Sync + 'static)) -> bool {
+    err.is::<T>() //~ ERROR borrowed data escapes outside of function
+}
+
+fn takes_static_object(_: &(dyn Error + 'static)) {}
+
+fn function_call(err: &(dyn Error + 'static)) {
+    takes_static_object(err); //~ ERROR borrowed data escapes outside of function
+}
+
+fn takes_two_static_objects(_: &(dyn Error + 'static), _: &(dyn Error + 'static)) {}
+
+fn repeated_argument(err: &(dyn Error + 'static)) {
+    takes_two_static_objects(err, err); //~ ERROR borrowed data escapes outside of function
+}
+
+fn shared_region<'a, T: Error + 'static>(_: &'a u32, err: &'a (dyn Error + 'static)) -> bool {
+    err.is::<T>() //~ ERROR lifetime may not live long enough
+}
+
+fn same_trait<'a, T: Error + 'static>(_: &'a dyn Error, err: &'a (dyn Error + 'static)) -> bool {
+    err.is::<T>() //~ ERROR lifetime may not live long enough
+}
+
+fn takes_static_callable(_: &(dyn Fn() -> &'static (dyn std::fmt::Debug) + 'static)) {}
+
+fn callable(value: &(dyn Fn() -> &'static (dyn std::fmt::Debug) + 'static)) {
+    takes_static_callable(value); //~ ERROR borrowed data escapes outside of function
+}
+
+trait DerivedLifetime<'a>: 'a {}
+
+fn takes_derived_lifetime<'a>(_: &(dyn DerivedLifetime<'a> + 'static)) {}
+
+fn derived_lifetime<'a, 'b>(arg: &'b (dyn DerivedLifetime<'a> + 'static)) {
+    takes_derived_lifetime(arg); //~ ERROR borrowed data escapes outside of function
+}
+
+trait LifetimeArgument<'a> {}
+
+fn takes_lifetime_argument<'a>(_: &(dyn LifetimeArgument<'a> + 'static)) {}
+
+fn matching_lifetime_argument<'a>(arg: &'a (dyn LifetimeArgument<'a> + 'static)) {
+    takes_lifetime_argument(arg); //~ ERROR borrowed data escapes outside of function
+}
+
+trait IndependentLifetimes<'a, 'b> {}
+
+fn takes_independent_lifetimes<'c, 'd>(_: &(dyn IndependentLifetimes<'c, 'd> + 'static)) {}
+
+fn matching_independent_lifetimes<'a, 'b>(arg: &'a (dyn IndependentLifetimes<'a, 'b> + 'static)) {
+    takes_independent_lifetimes(arg); //~ ERROR borrowed data escapes outside of function
+}
+
+trait AssociatedType {
+    type Item;
+}
+
+fn takes_associated_type<'a>(_: &(dyn AssociatedType<Item = &'a u32> + 'static)) {}
+
+fn matching_associated_type<'a>(arg: &'a (dyn AssociatedType<Item = &'a u32> + 'static)) {
+    takes_associated_type(arg); //~ ERROR borrowed data escapes outside of function
+}
+
+fn drop_auto_trait(arg: &(dyn Error + Send + 'static)) {
+    takes_static_object(arg); //~ ERROR borrowed data escapes outside of function
+}
+
+fn takes_higher_ranked(_: &(dyn Fn(&str) + 'static)) {}
+
+fn higher_ranked(arg: &(dyn Fn(&str) + 'static)) {
+    takes_higher_ranked(arg); //~ ERROR borrowed data escapes outside of function
+}
+
+trait Typed<T> {}
+
+fn takes_typed<T>(_: &(dyn Typed<T> + 'static)) {}
+
+fn typed<T>(arg: &(dyn Typed<T> + 'static)) {
+    takes_typed(arg); //~ ERROR borrowed data escapes outside of function
+}
+
+fn main() {
+    let mut err = std::fmt::Error;
+    is_caused_by::<std::fmt::Error>(&err);
+    named::<std::fmt::Error>(&err);
+    early_bound::<std::fmt::Error>(&err);
+    mutable::<std::fmt::Error>(&mut err);
+    parenthesized::<std::fmt::Error>(&err);
+    other_bounds::<std::fmt::Error>(&err);
+    function_call(&err);
+    repeated_argument(&err);
+    shared_region::<std::fmt::Error>(&0, &err);
+    same_trait::<std::fmt::Error>(&err, &err);
+}
