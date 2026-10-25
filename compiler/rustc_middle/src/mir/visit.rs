@@ -120,6 +120,15 @@ macro_rules! make_mir_visitor {
                 self.super_assign(place, rvalue, location);
             }
 
+            fn visit_dead_assign(
+                &mut self,
+                place: & $($mutability)? Place<'tcx>,
+                rvalue: & $($mutability)? Option<Rvalue<'tcx>>,
+                location: Location,
+            ) {
+                self.super_dead_assign(place, rvalue, location);
+            }
+
             fn visit_terminator(
                 &mut self,
                 terminator: & $($mutability)? Terminator<'tcx>,
@@ -144,12 +153,28 @@ macro_rules! make_mir_visitor {
                 self.super_rvalue(rvalue, location);
             }
 
+            fn visit_dead_rvalue(
+                &mut self,
+                rvalue: & $($mutability)? Option<Rvalue<'tcx>>,
+                location: Location,
+            ) {
+                self.super_dead_rvalue(rvalue, location);
+            }
+
             fn visit_operand(
                 &mut self,
                 operand: & $($mutability)? Operand<'tcx>,
                 location: Location,
             ) {
                 self.super_operand(operand, location);
+            }
+
+            fn visit_dead_operand(
+                &mut self,
+                operand: & $($mutability)? Operand<'tcx>,
+                location: Location,
+            ) {
+                self.super_dead_operand(operand, location);
             }
 
             fn visit_ascribe_user_ty(
@@ -424,6 +449,9 @@ macro_rules! make_mir_visitor {
                     StatementKind::Assign((place, rvalue)) => {
                         self.visit_assign(place, rvalue, location);
                     }
+                    StatementKind::DeadAssign((place, src_place)) => {
+                        self.visit_dead_assign(place, src_place, location);
+                    }
                     StatementKind::FakeRead((_, place)) => {
                         self.visit_place(
                             place,
@@ -512,6 +540,24 @@ macro_rules! make_mir_visitor {
                 );
                 self.visit_rvalue(rvalue, location);
             }
+
+            fn super_dead_assign(
+                &mut self,
+                place: & $($mutability)? Place<'tcx>,
+                rvalue: & $($mutability)? Option<Rvalue<'tcx>>,
+                location: Location,
+            ) {
+                self.visit_place(
+                    place,
+                    PlaceContext::NonUse(NonUseContext::StorageAlloc),
+                    location
+                );
+                self.visit_dead_rvalue(
+                    rvalue,
+                    location
+                );
+            }
+
 
             fn super_terminator(
                 &mut self,
@@ -813,6 +859,122 @@ macro_rules! make_mir_visitor {
                 }
             }
 
+            fn super_dead_rvalue(
+                &mut self,
+                rvalue: & $($mutability)? Option<Rvalue<'tcx>>,
+                location: Location
+            ) {
+                let Some(rvalue) = rvalue else { return; };
+                match rvalue {
+                    Rvalue::Use(operand, _with_retag) => {
+                        self.visit_dead_operand(operand, location);
+                    }
+
+                    Rvalue::Repeat(value, ct) => {
+                        self.visit_dead_operand(value, location);
+                        // TODO: remove?
+                        self.visit_ty_const($(&$mutability)? *ct, location);
+                    }
+
+                    Rvalue::ThreadLocalRef(_) => {}
+
+                    Rvalue::Ref(r, _, path) => {
+                        // TODO: remove?
+                        self.visit_region($(& $mutability)? *r, location);
+                        self.visit_place(path, PlaceContext::NonUse(NonUseContext::Dead), location);
+                    }
+
+                    Rvalue::Reborrow(target, _, place) => {
+                        // TODO: remove?
+                        self.visit_ty($(& $mutability)? *target, TyContext::Location(location));
+                        self.visit_place(
+                            place,
+                            PlaceContext::NonUse(NonUseContext::Dead),
+                            location
+                        );
+                    }
+
+                    Rvalue::CopyForDeref(place) => {
+                        self.visit_place(
+                            place,
+                            PlaceContext::NonUse(NonUseContext::Dead),
+                            location
+                        );
+                    }
+
+                    Rvalue::RawPtr(_, path) => {
+                        self.visit_place(path,
+                            PlaceContext::NonUse(NonUseContext::Dead),
+                             location);
+                    }
+
+                    Rvalue::Cast(_cast_kind, operand, ty) => {
+                        self.visit_dead_operand(operand, location);
+                        // TODO: remove?
+                        self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
+                    }
+
+                    Rvalue::BinaryOp(_bin_op, (lhs, rhs)) => {
+                        self.visit_dead_operand(lhs, location);
+                        self.visit_dead_operand(rhs, location);
+                    }
+
+                    Rvalue::UnaryOp(_un_op, op) => {
+                        self.visit_dead_operand(op, location);
+                    }
+
+                    Rvalue::Discriminant(place) => {
+                        self.visit_place(
+                            place,
+                            PlaceContext::NonUse(NonUseContext::Dead),
+                            location
+                        );
+                    }
+
+                    Rvalue::Aggregate(kind, operands) => {
+                        // TODO: remove?
+                        let kind = &$($mutability)? **kind;
+                        match kind {
+                            AggregateKind::Array(ty) => {
+                                self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
+                            }
+                            AggregateKind::Tuple => {}
+                            AggregateKind::Adt(
+                                _adt_def,
+                                _variant_index,
+                                args,
+                                _user_args,
+                                _active_field_index
+                            ) => {
+                                self.visit_args(args, location);
+                            }
+                            AggregateKind::Closure(_, closure_args) => {
+                                self.visit_args(closure_args, location);
+                            }
+                            AggregateKind::Coroutine(_, coroutine_args) => {
+                                self.visit_args(coroutine_args, location);
+                            }
+                            AggregateKind::CoroutineClosure(_, coroutine_closure_args) => {
+                                self.visit_args(coroutine_closure_args, location);
+                            }
+                            AggregateKind::RawPtr(ty, _) => {
+                                self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
+                            }
+                        }
+
+                        for operand in operands {
+                            self.visit_dead_operand(operand, location);
+                        }
+                    }
+
+                    Rvalue::WrapUnsafeBinder(op, ty) => {
+                        self.visit_dead_operand(op, location);
+                        // TODO: remove?
+                        self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
+                    }
+                }
+            }
+
             fn super_operand(
                 &mut self,
                 operand: & $($mutability)? Operand<'tcx>,
@@ -834,6 +996,34 @@ macro_rules! make_mir_visitor {
                         );
                     }
                     Operand::Constant(constant) => {
+                        self.visit_const_operand(constant, location);
+                    }
+                    Operand::RuntimeChecks(_) => {}
+                }
+            }
+
+            fn super_dead_operand(
+                &mut self,
+                operand: & $($mutability)? Operand<'tcx>,
+                location: Location
+            ) {
+                match operand {
+                    Operand::Copy(place) => {
+                        self.visit_place(
+                            place,
+                            PlaceContext::NonUse(NonUseContext::Dead),
+                            location
+                        );
+                    }
+                    Operand::Move(place) => {
+                        self.visit_place(
+                            place,
+                            PlaceContext::NonUse(NonUseContext::Dead),
+                            location
+                        );
+                    }
+                    Operand::Constant(constant) => {
+                        // TODO: remove?
                         self.visit_const_operand(constant, location);
                     }
                     Operand::RuntimeChecks(_) => {}
@@ -1365,6 +1555,10 @@ pub enum NonUseContext {
     StorageLive,
     /// Ending a storage live range.
     StorageDead,
+    /// Allocate a new storage if it is uninitialized.
+    StorageAlloc,
+    /// Unused.
+    Dead,
     /// User type annotation assertions for NLL.
     AscribeUserTy(ty::Variance),
     /// The data of a user variable, for debug info.
@@ -1464,7 +1658,12 @@ impl PlaceContext {
         match self {
             PlaceContext::MutatingUse(_) => ty::Invariant,
             PlaceContext::NonUse(
-                StorageDead | StorageLive | VarDebugInfo | BackwardIncompatibleDropHint,
+                StorageDead
+                | StorageLive
+                | StorageAlloc
+                | Dead
+                | VarDebugInfo
+                | BackwardIncompatibleDropHint,
             ) => ty::Invariant,
             PlaceContext::NonMutatingUse(
                 Inspect | Copy | Move | PlaceMention | SharedBorrow | FakeBorrow | RawBorrow

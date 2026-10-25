@@ -82,6 +82,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LoanInvalidationsGenerator<'a, 'tcx> {
                 );
             }
             StatementKind::ConstEvalCounter
+            | StatementKind::DeadAssign(..)
             | StatementKind::Nop
             | StatementKind::SetDiscriminant { .. } => {
                 bug!("Statement not allowed in this MIR phase")

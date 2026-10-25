@@ -28,17 +28,20 @@ pub struct Statement<'tcx> {
 impl<'tcx> Statement<'tcx> {
     /// Changes a statement to a nop. This is both faster than deleting instructions and avoids
     /// invalidating statement indices in `Location`s.
-    pub fn make_nop(&mut self, drop_debuginfo: bool) {
+    pub fn make_nop(&mut self, _drop_debuginfo: bool) {
+        // TODO: remove `drop_debuginfo`.
         if self.kind == StatementKind::Nop {
             return;
         }
+        // TODO: Should it fallback to a dead assignment?
+        self.kind = StatementKind::Nop;
+    }
+
+    pub fn make_dead_assign(&mut self) {
         let replaced_stmt = std::mem::replace(&mut self.kind, StatementKind::Nop);
-        if !drop_debuginfo {
-            let Some(debuginfo) = replaced_stmt.as_debuginfo() else {
-                bug!("debuginfo is not yet supported.")
-            };
-            self.debuginfos.push(debuginfo);
-        }
+        assert!(replaced_stmt.is_assign_like());
+        let new_stmt = replaced_stmt.to_dead_assign().expect("unimplemented dead assignments");
+        self.kind = new_stmt;
     }
 
     pub fn new(source_info: SourceInfo, kind: StatementKind<'tcx>) -> Self {
@@ -52,6 +55,7 @@ impl<'tcx> StatementKind<'tcx> {
     pub const fn name(&self) -> &'static str {
         match self {
             StatementKind::Assign(..) => "Assign",
+            StatementKind::DeadAssign(..) => "DeadAssign",
             StatementKind::FakeRead(..) => "FakeRead",
             StatementKind::SetDiscriminant { .. } => "SetDiscriminant",
             StatementKind::StorageLive(..) => "StorageLive",
@@ -79,6 +83,47 @@ impl<'tcx> StatementKind<'tcx> {
         }
     }
 
+    pub fn is_assign_like(&self) -> bool {
+        match self {
+            StatementKind::Assign(_) => true,
+            StatementKind::SetDiscriminant { .. } => true,
+            StatementKind::DeadAssign(_)
+            | StatementKind::FakeRead(_)
+            | StatementKind::StorageLive(_)
+            | StatementKind::StorageDead(_)
+            | StatementKind::PlaceMention(_)
+            | StatementKind::AscribeUserType(..)
+            | StatementKind::Coverage(..)
+            | StatementKind::Intrinsic(_)
+            | StatementKind::ConstEvalCounter
+            | StatementKind::Nop
+            | StatementKind::BackwardIncompatibleDropHint { .. } => false,
+        }
+    }
+
+    pub fn to_dead_assign(self) -> Option<StatementKind<'tcx>> {
+        match self {
+            StatementKind::Assign((place, rvalue)) => {
+                Some(StatementKind::DeadAssign(Box::new((place, Some(rvalue)))))
+            }
+            StatementKind::SetDiscriminant { place, .. } => {
+                // FIXME: variant_idx is a constant.
+                Some(StatementKind::DeadAssign(Box::new((*place, None))))
+            }
+            _ => None,
+        }
+    }
+
+    pub fn support_dead_assign_debuginfo(&self) -> bool {
+        if let Some((place, Rvalue::Ref(..))) = self.as_assign()
+            && place.as_local().is_some()
+        {
+            return true;
+        }
+        false
+    }
+
+    // TODO: remove
     pub fn as_debuginfo(&self) -> Option<StmtDebugInfo<'tcx>> {
         match self {
             StatementKind::Assign((place, Rvalue::Ref(_, _, ref_place)))
@@ -424,6 +469,11 @@ impl<'tcx> Place<'tcx> {
         self,
     ) -> impl Iterator<Item = (PlaceRef<'tcx>, PlaceElem<'tcx>)> + DoubleEndedIterator {
         self.as_ref().iter_projections()
+    }
+
+    /// Return the place accessed locals that include the base local.
+    pub fn accessed_locals(self) -> impl Iterator<Item = Local> {
+        self.as_ref().accessed_locals()
     }
 
     /// Generates a new place by appending `more_projections` to the existing ones

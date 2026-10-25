@@ -7,6 +7,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use rustc_middle::mir::{Place, Rvalue};
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::{Instance, Ty};
 use rustc_middle::{mir, ty};
@@ -678,6 +679,51 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
         }
         Some((per_local, constants))
+    }
+
+    pub(crate) fn codegen_dead_assign_debuginfo(
+        &mut self,
+        bx: &mut Bx,
+        dest: &Place<'tcx>,
+        rvalue: &Option<Rvalue<'tcx>>,
+    ) {
+        let Some(dest) = dest.as_local() else {
+            debug_assert!(false, "unimplemented support for debuginfo");
+            return;
+        };
+        let Some(rvalue) = rvalue else {
+            self.debug_poison_to_local(bx, dest);
+            return;
+        };
+        let Rvalue::Ref(_, _, src) = rvalue else {
+            debug_assert!(false, "unimplemented support for debuginfo");
+            return;
+        };
+        let local_ref = match self.locals[src.local] {
+            // For an rvalue like `&(_1.1)`, when `BackendRepr` is `BackendRepr::Memory`, we allocate a block of memory to this place.
+            // The place is an indirect pointer, we can refer to it directly.
+            LocalRef::Place(place_ref) => Some((place_ref, src.projection.as_slice())),
+            // For an rvalue like `&((*_1).1)`, we are calculating the address of `_1.1`.
+            // The deref projection is no-op here.
+            LocalRef::Operand(operand_ref) if src.is_indirect_first_projection() => {
+                Some((operand_ref.deref(bx.cx()), &src.projection[1..]))
+            }
+            // For an rvalue like `&1`, when `BackendRepr` is `BackendRepr::Scalar`,
+            // we cannot get the address.
+            // N.B. `non_ssa_locals` returns that this is an SSA local.
+            LocalRef::Operand(_) => None,
+            LocalRef::UnsizedPlace(_) | LocalRef::PendingOperand => None,
+        }
+        .filter(|(_, projection)| {
+            // Drop unsupported projections.
+            projection.iter().all(|p| p.can_use_in_debuginfo())
+        });
+        if let Some((base, projection)) = local_ref {
+            self.debug_new_val_to_local(bx, dest, base, projection);
+        } else {
+            // If the address cannot be calculated, use poison to indicate that the value has been optimized out.
+            self.debug_poison_to_local(bx, dest);
+        }
     }
 
     pub(crate) fn codegen_stmt_debuginfo(

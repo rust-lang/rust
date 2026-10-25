@@ -705,6 +705,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
         match statement.kind {
             StatementKind::Assign(..)
+            | StatementKind::DeadAssign(..)
             | StatementKind::SetDiscriminant { .. }
             | StatementKind::FakeRead(..)
             | StatementKind::StorageLive(_)

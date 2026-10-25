@@ -613,7 +613,7 @@ fn save_as_intervals<'tcx>(
                     DefUse::Def | DefUse::Use | DefUse::PartialWrite => {
                         state.insert_single(relevant);
                     }
-                    DefUse::NonUse => {}
+                    DefUse::NonUse | DefUse::Alloc => {}
                 }
             }
         })
@@ -651,7 +651,7 @@ fn save_as_intervals<'tcx>(
                         DefUse::Use if !is_simple_assignment => {
                             state.insert_single(relevant);
                         }
-                        DefUse::Use | DefUse::NonUse => {}
+                        DefUse::Use | DefUse::Alloc | DefUse::NonUse => {}
                     }
                 }
             })

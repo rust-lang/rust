@@ -339,6 +339,16 @@ pub enum StatementKind<'tcx> {
     /// See [`Rvalue`] documentation for details on each of those.
     Assign(Box<(Place<'tcx>, Rvalue<'tcx>)>),
 
+    /// When executed at runtime, this is a nop. This suggests there is a dead assignment.
+    ///
+    /// The backends of codegen should emit debuginfos rather than instructions.
+    /// In the MIR semantics of the move elimination,
+    /// this implicitly allocate the storage for this local, if the local is not allocated.
+    ///
+    /// FIXME: extend to all rvalues.
+    ///
+    DeadAssign(Box<(Place<'tcx>, Option<Rvalue<'tcx>>)>),
+
     /// When executed at runtime, this is a nop.
     ///
     /// During static analysis, a fake read:

@@ -55,7 +55,7 @@ where
 {
     fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, _: Location) {
         match DefUse::for_place(*place, context) {
-            DefUse::Def | DefUse::PartialWrite => (self.0)(place.local, context),
+            DefUse::Def | DefUse::PartialWrite | DefUse::Alloc => (self.0)(place.local, context),
             DefUse::Use | DefUse::NonUse => {}
         }
     }

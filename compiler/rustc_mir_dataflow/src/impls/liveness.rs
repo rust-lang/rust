@@ -1,5 +1,7 @@
 use rustc_index::bit_set::DenseBitSet;
-use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
+use rustc_middle::mir::visit::{
+    MutatingUseContext, NonMutatingUseContext, NonUseContext, PlaceContext, Visitor,
+};
 use rustc_middle::mir::{self, CallReturnPlaces, Local, Location, Place, StatementKind};
 
 use crate::{Analysis, Backward, GenKill};
@@ -106,7 +108,7 @@ where
                 }
             }
             DefUse::Use => self.0.gen_(place.local),
-            DefUse::PartialWrite | DefUse::NonUse => {}
+            DefUse::PartialWrite | DefUse::Alloc | DefUse::NonUse => {}
         }
 
         self.visit_projection(place.as_ref(), context, location);
@@ -137,6 +139,8 @@ pub enum DefUse {
     Use,
     /// Partial write to the local.
     PartialWrite,
+    /// Allocate a new storage if it is uninitialized.
+    Alloc,
     /// Non-use, like debuginfo.
     NonUse,
 }
@@ -146,13 +150,21 @@ impl DefUse {
         match DefUse::for_place(place, context) {
             DefUse::Def => state.kill(place.local),
             DefUse::Use => state.gen_(place.local),
-            DefUse::PartialWrite | DefUse::NonUse => {}
+            DefUse::PartialWrite | DefUse::Alloc | DefUse::NonUse => {}
         }
     }
 
     pub fn for_place(place: Place<'_>, context: PlaceContext) -> DefUse {
         match context {
-            PlaceContext::NonUse(_) => DefUse::NonUse,
+            PlaceContext::NonUse(non_use) => match non_use {
+                NonUseContext::StorageDead => DefUse::Alloc,
+                NonUseContext::StorageAlloc
+                | NonUseContext::StorageLive
+                | NonUseContext::Dead
+                | NonUseContext::AscribeUserTy(..)
+                | NonUseContext::VarDebugInfo
+                | NonUseContext::BackwardIncompatibleDropHint => DefUse::NonUse,
+            },
 
             PlaceContext::MutatingUse(
                 MutatingUseContext::Call
@@ -234,12 +246,13 @@ impl<'a> MaybeTransitiveLiveLocals<'a> {
                 // FIXME: We are not sure how we should represent this debugging information for some statements,
                 // keep it for now.
                 && (!debuginfo_locals.contains(place.local)
-                    || (place.as_local().is_some() && stmt_kind.as_debuginfo().is_some())))
+                    || stmt_kind.support_dead_assign_debuginfo()))
             .then_some(*place),
             StatementKind::SetDiscriminant { place, .. } => {
                 (!debuginfo_locals.contains(place.local)).then_some(**place)
             }
-            StatementKind::FakeRead(_)
+            StatementKind::DeadAssign(..)
+            | StatementKind::FakeRead(_)
             | StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
             | StatementKind::AscribeUserType(..)

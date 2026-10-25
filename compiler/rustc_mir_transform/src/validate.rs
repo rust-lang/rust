@@ -325,6 +325,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                 }
             }
             StatementKind::Assign(..)
+            | StatementKind::DeadAssign(..)
             | StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
             | StatementKind::Intrinsic(_)
@@ -1504,6 +1505,25 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     && !matches!(rvalue, Rvalue::CopyForDeref(_))
                 {
                     self.fail(location, "assignment to a `DerefTemp` must use `CopyForDeref`")
+                }
+            }
+            StatementKind::DeadAssign((dest, rvalue)) => {
+                if let Some(rvalue) = rvalue {
+                    // LHS and RHS of the assignment must have the same type.
+                    let left_ty = dest.ty(&self.body.local_decls, self.tcx).ty;
+                    let right_ty = rvalue.ty(&self.body.local_decls, self.tcx);
+
+                    if !self.mir_assign_valid_types(right_ty, left_ty) {
+                        self.fail(
+                            location,
+                            format!(
+                                "encountered `{:?}` with incompatible types:\n\
+                            left-hand side has type: {}\n\
+                            right-hand side has type: {}",
+                                statement.kind, left_ty, right_ty,
+                            ),
+                        );
+                    }
                 }
             }
             StatementKind::AscribeUserType(..) => {

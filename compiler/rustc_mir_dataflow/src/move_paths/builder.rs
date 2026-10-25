@@ -394,6 +394,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
                 self.gather_init(place.as_ref(), InitKind::Deep);
                 self.gather_rvalue(rval);
             }
+            StatementKind::DeadAssign(..) => {}
             StatementKind::FakeRead((_, place)) => {
                 self.create_move_path(*place);
             }

@@ -129,6 +129,7 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
                 Some(local.into())
             }
             StatementKind::Coverage(_)
+            | StatementKind::DeadAssign(..)
             | StatementKind::Intrinsic(_)
             | StatementKind::Nop
             | StatementKind::BackwardIncompatibleDropHint { .. }

@@ -575,6 +575,7 @@ impl<'tcx> Visitor<'tcx> for UsedLocals {
 
             StatementKind::ConstEvalCounter
             | StatementKind::Nop
+            | StatementKind::DeadAssign(..)
             | StatementKind::StorageLive(..)
             | StatementKind::StorageDead(..) => {}
             StatementKind::Assign((ref place, ref rvalue)) => {
@@ -625,6 +626,7 @@ fn remove_unused_definitions_helper(used_locals: &mut UsedLocals, body: &mut Bod
                         used_locals.is_used(*local)
                     }
                     StatementKind::Assign((place, _)) => used_locals.is_used(place.local),
+                    StatementKind::DeadAssign((place, _)) => used_locals.is_used(place.local),
                     StatementKind::SetDiscriminant { place, .. }
                     | StatementKind::BackwardIncompatibleDropHint { place, .. } => {
                         used_locals.is_used(place.local)
@@ -637,7 +639,11 @@ fn remove_unused_definitions_helper(used_locals: &mut UsedLocals, body: &mut Bod
                 trace!("removing statement {:?}", statement);
                 modified = true;
                 used_locals.statement_removed(statement);
-                statement.make_nop(true);
+                if statement.kind.is_assign_like() {
+                    statement.make_dead_assign();
+                } else {
+                    statement.make_nop(true);
+                }
             }
             data.strip_nops();
         }
@@ -670,6 +676,16 @@ impl<'tcx> MutVisitor<'tcx> for LocalUpdater<'tcx> {
         self.super_statement_debuginfo(stmt_debuginfo, location);
     }
 
+    fn visit_dead_rvalue(&mut self, rvalue: &mut Option<Rvalue<'tcx>>, location: Location) {
+        if rvalue
+            .as_ref()
+            .is_some_and(|rvalue| !LocalMap::can_map_rvalue(&self.map, rvalue, location))
+        {
+            *rvalue = None;
+        }
+        self.super_dead_rvalue(rvalue, location);
+    }
+
     fn visit_local(&mut self, l: &mut Local, _: PlaceContext, _: Location) {
         *l = self.map[*l].unwrap();
     }
@@ -690,9 +706,9 @@ impl UsedInStmtLocals {
         for data in body.basic_blocks.as_mut_preserves_cfg() {
             // Remove unnecessary StorageLive and StorageDead annotations.
             for statement in data.statements.iter_mut() {
-                let keep_statement = match &statement.kind {
+                let keep_statement = match statement.kind {
                     StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
-                        self.locals.contains(*local)
+                        self.locals.contains(local)
                     }
                     _ => continue,
                 };
@@ -711,5 +727,31 @@ impl<'tcx> Visitor<'tcx> for UsedInStmtLocals {
             return;
         }
         self.locals.insert(local);
+    }
+}
+
+struct LocalMap<'a> {
+    map: &'a IndexVec<Local, Option<Local>>,
+    can_map_all: bool,
+}
+
+impl<'tcx, 'a> Visitor<'tcx> for LocalMap<'a> {
+    fn visit_local(&mut self, local: Local, _: PlaceContext, _: Location) {
+        if !self.can_map_all {
+            return;
+        }
+        self.can_map_all = !self.map[local].is_none();
+    }
+}
+
+impl<'a> LocalMap<'a> {
+    fn can_map_rvalue(
+        map: &'a IndexVec<Local, Option<Local>>,
+        rvalue: &Rvalue<'_>,
+        location: Location,
+    ) -> bool {
+        let mut local_map = LocalMap { map, can_map_all: true };
+        local_map.visit_rvalue(rvalue, location);
+        local_map.can_map_all
     }
 }

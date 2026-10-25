@@ -1309,6 +1309,7 @@ impl<'tcx> Visitor<'tcx> for EnsureCoroutineFieldAssignmentsNeverAlias<'_> {
             }
 
             StatementKind::FakeRead(..)
+            | StatementKind::DeadAssign(..)
             | StatementKind::SetDiscriminant { .. }
             | StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)

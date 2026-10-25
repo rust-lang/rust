@@ -158,6 +158,7 @@ impl<'tcx> Stable<'tcx> for mir::StatementKind<'tcx> {
                 assign.0.stable(tables, cx),
                 assign.1.stable(tables, cx),
             ),
+            mir::StatementKind::DeadAssign(..) => crate::mir::StatementKind::Nop,
             mir::StatementKind::FakeRead(fake_read_place) => crate::mir::StatementKind::FakeRead(
                 fake_read_place.0.stable(tables, cx),
                 fake_read_place.1.stable(tables, cx),

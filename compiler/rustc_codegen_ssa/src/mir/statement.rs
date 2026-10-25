@@ -67,6 +67,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                 }
             }
+            mir::StatementKind::DeadAssign((ref dest, ref src)) => {
+                self.codegen_dead_assign_debuginfo(bx, dest, src);
+            }
             mir::StatementKind::SetDiscriminant { ref place, variant_index } => {
                 self.codegen_place(bx, (**place).as_ref()).codegen_set_discr(bx, variant_index);
             }

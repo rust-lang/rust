@@ -875,6 +875,10 @@ impl Debug for StatementKind<'_> {
         use self::StatementKind::*;
         match *self {
             Assign((ref place, ref rv)) => write!(fmt, "{place:?} = {rv:?}"),
+            DeadAssign((ref place, ref rv)) => {
+                write!(fmt, "dead {place:?} = ")?;
+                if let Some(rv) = rv { write!(fmt, "{rv:?}") } else { write!(fmt, "?") }
+            }
             FakeRead((ref cause, ref place)) => {
                 write!(fmt, "FakeRead({cause:?}, {place:?})")
             }

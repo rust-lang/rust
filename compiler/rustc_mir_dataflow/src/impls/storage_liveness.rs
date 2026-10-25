@@ -196,6 +196,7 @@ impl<'tcx> Analysis<'tcx> for MaybeRequiresStorage {
             // Nothing to do for these. Match exhaustively so this fails to compile when new
             // variants are added.
             StatementKind::AscribeUserType(..)
+            | StatementKind::DeadAssign(..)
             | StatementKind::PlaceMention(..)
             | StatementKind::Coverage(..)
             | StatementKind::FakeRead(..)
@@ -228,6 +229,7 @@ impl<'tcx> Analysis<'tcx> for MaybeRequiresStorage {
             }
 
             StatementKind::StorageDead(_)
+            | StatementKind::DeadAssign(..)
             | StatementKind::AscribeUserType(..)
             | StatementKind::PlaceMention(..)
             | StatementKind::Coverage(..)

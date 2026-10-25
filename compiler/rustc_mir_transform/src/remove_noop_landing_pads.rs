@@ -84,6 +84,7 @@ impl RemoveNoopLandingPads {
         for stmt in &bbdata.statements {
             match &stmt.kind {
                 StatementKind::FakeRead(..)
+                | StatementKind::DeadAssign(..)
                 | StatementKind::StorageLive(_)
                 | StatementKind::StorageDead(_)
                 | StatementKind::PlaceMention(..)

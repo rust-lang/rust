@@ -549,6 +549,7 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Borrows<'_, 'tcx> {
             }
 
             mir::StatementKind::FakeRead(..)
+            | mir::StatementKind::DeadAssign(..)
             | mir::StatementKind::SetDiscriminant { .. }
             | mir::StatementKind::StorageLive(..)
             | mir::StatementKind::PlaceMention(..)
