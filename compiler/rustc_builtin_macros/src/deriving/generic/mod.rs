@@ -894,35 +894,86 @@ impl<'a> MethodDef<'a> {
         let unify_fieldless_variants =
             self.fieldless_variants_strategy == FieldlessVariantsStrategy::Unify;
 
-        let prefixes: &[&str] =
-            if self.has_other_selflike_arg { &["__self", "__arg1"] } else { &["__self"] };
-
         // These arms are of the form:
-        // (Variant1, Variant1, ...) => Body1
-        // (Variant2, Variant2, ...) => Body2
+        // (Variant1, Variant1) => Body1
+        // (Variant2, Variant2) => Body2
         // ...
-        // where each tuple has length = selflike_args.len()
+        // where each tuple has length 2 if `self.has_other_selflike_arg` and 1 otherwise
         let mut match_arms: ThinVec<ast::Arm> = variants
             .iter()
             .filter(|&v| !(unify_fieldless_variants && v.data.fields().is_empty()))
             .map(|variant| {
-                // A single arm has form (&VariantK, &VariantK, ...) => BodyK
+                // A single arm has form (&VariantK, &VariantK) => BodyK
                 // (see "Final wrinkle" note below for why.)
-
-                let fields = create_struct_pattern_fields(span, cx, &variant.data, &prefixes);
-
                 let sp = variant.span.with_ctxt(span.ctxt());
-                let variant_path = cx.path(sp, &[Ident::new(kw::SelfUpper, span), variant.ident]);
-                let mut subpats =
-                    create_struct_patterns(span, cx, variant_path, &variant.data, &prefixes);
+                let pat_for_field = |prefix| {
+                    let pieces_iter =
+                        variant.data.fields().iter().enumerate().map(|(i, struct_field)| {
+                            let ident = Symbol::intern(&format!("{prefix}_{i}"));
+                            (
+                                struct_field.ident,
+                                cx.pat_name(struct_field.span.with_ctxt(span.ctxt()), ident),
+                            )
+                        });
 
-                // `(VariantK, VariantK, ...)` or just `VariantK`.
-                let single_pat = if subpats.len() == 1 {
-                    subpats.pop().unwrap()
-                } else {
-                    cx.pat_tuple(span, subpats)
+                    let struct_path =
+                        cx.path(sp, &[Ident::new(kw::SelfUpper, span), variant.ident]);
+
+                    match variant.data {
+                        VariantData::Struct { .. } => {
+                            let field_pats = pieces_iter
+                                .map(|(ident, pat)| ast::PatField {
+                                    ident: ident
+                                        .expect("a braced struct with unnamed fields in `derive`"),
+                                    is_shorthand: false,
+                                    attrs: ast::AttrVec::new(),
+                                    id: ast::DUMMY_NODE_ID,
+                                    span: pat.span.with_ctxt(span.ctxt()),
+                                    pat: Box::new(pat),
+                                    is_placeholder: false,
+                                })
+                                .collect();
+                            cx.pat_struct(span, struct_path, field_pats)
+                        }
+                        VariantData::Tuple(..) => {
+                            let subpats = pieces_iter.map(|(_, subpat)| subpat).collect();
+                            cx.pat_tuple_struct(span, struct_path, subpats)
+                        }
+                        VariantData::Unit(..) => cx.pat_path(span, struct_path),
+                    }
                 };
 
+                // `(VariantK, VariantK)` or just `VariantK`.
+                let single_pat = if self.has_other_selflike_arg {
+                    cx.pat_tuple(span, thin_vec![pat_for_field("__self"), pat_for_field("__arg1"),])
+                } else {
+                    pat_for_field("__self")
+                };
+
+                let fields = variant
+                    .data
+                    .fields()
+                    .iter()
+                    .enumerate()
+                    .map(|(i, struct_field)| {
+                        // For this field, get an expr for each selflike_arg. E.g. for
+                        // `PartialEq::eq`, one for each of `&self` and `other`.
+                        let span = struct_field.span.with_ctxt(span.ctxt());
+                        let expr_for_field =
+                            |prefix| cx.expr_name(span, Symbol::intern(&format!("{prefix}_{i}")));
+
+                        let self_expr = expr_for_field("__self");
+                        let other_selflike_expr =
+                            self.has_other_selflike_arg.then(|| expr_for_field("__arg1"));
+                        FieldInfo {
+                            span,
+                            name: struct_field.ident,
+                            self_expr,
+                            other_selflike_expr,
+                            maybe_scalar: struct_field.ty.peel_refs().kind.maybe_scalar(),
+                        }
+                    })
+                    .collect();
                 // For the BodyK, we need to delegate to our caller,
                 // passing it an EnumMatching to indicate which case
                 // we are in.
@@ -988,77 +1039,6 @@ impl<'a> MethodDef<'a> {
             BlockOrExpr(ThinVec::new(), Some(match_expr))
         }
     }
-}
-
-// general helper methods.
-fn create_struct_patterns(
-    span: Span,
-    cx: &ExtCtxt<'_>,
-    struct_path: ast::Path,
-    struct_def: &VariantData,
-    prefixes: &[&str],
-) -> ThinVec<ast::Pat> {
-    prefixes
-        .iter()
-        .map(|prefix| {
-            let pieces_iter = struct_def.fields().iter().enumerate().map(|(i, struct_field)| {
-                let ident = Symbol::intern(&format!("{prefix}_{i}"));
-                (struct_field.ident, cx.pat_name(struct_field.span.with_ctxt(span.ctxt()), ident))
-            });
-
-            let struct_path = struct_path.clone();
-            match *struct_def {
-                VariantData::Struct { .. } => {
-                    let field_pats = pieces_iter
-                        .map(|(ident, pat)| ast::PatField {
-                            ident: ident.expect("a braced struct with unnamed fields in `derive`"),
-                            is_shorthand: false,
-                            attrs: ast::AttrVec::new(),
-                            id: ast::DUMMY_NODE_ID,
-                            span: pat.span.with_ctxt(span.ctxt()),
-                            pat: Box::new(pat),
-                            is_placeholder: false,
-                        })
-                        .collect();
-                    cx.pat_struct(span, struct_path, field_pats)
-                }
-                VariantData::Tuple(..) => {
-                    let subpats = pieces_iter.map(|(_, subpat)| subpat).collect();
-                    cx.pat_tuple_struct(span, struct_path, subpats)
-                }
-                VariantData::Unit(..) => cx.pat_path(span, struct_path),
-            }
-        })
-        .collect()
-}
-
-fn create_struct_pattern_fields(
-    span: Span,
-    cx: &ExtCtxt<'_>,
-    struct_def: &VariantData,
-    prefixes: &[&str],
-) -> Vec<FieldInfo> {
-    struct_def
-        .fields()
-        .iter()
-        .enumerate()
-        .map(|(i, struct_field)| {
-            // For this field, get an expr for each selflike_arg. E.g. for
-            // `PartialEq::eq`, one for each of `&self` and `other`.
-            let span = struct_field.span.with_ctxt(span.ctxt());
-            let mut exprs = prefixes
-                .iter()
-                .map(|prefix| cx.expr_name(span, Symbol::intern(&format!("{prefix}_{i}"))));
-            let self_expr = exprs.next().unwrap();
-            FieldInfo {
-                span,
-                name: struct_field.ident,
-                self_expr,
-                other_selflike_expr: exprs.next(),
-                maybe_scalar: struct_field.ty.peel_refs().kind.maybe_scalar(),
-            }
-        })
-        .collect()
 }
 
 pub(crate) fn generic_param_to_arg(cx: &ExtCtxt<'_>, p: &GenericParam, span: Span) -> GenericArg {
