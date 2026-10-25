@@ -33,7 +33,22 @@ fn main() {
         test_avx512ternarylogic();
         test_avx512vnni();
         test_avx512vbmi();
+        test_avx512_shifts();
     }
+}
+
+#[target_feature(enable = "avx512f")]
+unsafe fn test_avx512_shifts() {
+    let a = transmute([1u64, u64::MAX, u64::MAX, u64::MAX, u64::MAX, u64::MAX, u64::MAX, u64::MAX]);
+    let counts = transmute([0u64, 1, 63, 64, 65, 256, 1 << 32, u64::MAX]);
+    assert_eq!(
+        transmute::<_, [u64; 8]>(_mm512_sllv_epi64(a, counts)),
+        [1, u64::MAX - 1, 1 << 63, 0, 0, 0, 0, 0],
+    );
+    assert_eq!(
+        transmute::<_, [u64; 8]>(_mm512_srlv_epi64(a, counts)),
+        [1, u64::MAX >> 1, 1, 0, 0, 0, 0, 0],
+    );
 }
 
 #[target_feature(enable = "avx512bw")]
