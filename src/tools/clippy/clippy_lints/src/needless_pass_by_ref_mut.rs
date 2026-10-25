@@ -385,6 +385,8 @@ impl<'tcx> euv::Delegate<'tcx> for MutablyUsedVariablesCtxt<'tcx> {
             if let Some(bind_id) = self.prev_bind.take() {
                 if bind_id != *vid {
                     self.add_alias(bind_id, *vid);
+                } else {
+                    self.add_mutably_used_var(*vid);
                 }
             } else if !self.prev_move_to_closure.contains(vid)
                 && matches!(base_ty.ref_mutability(), Some(Mutability::Mut))
