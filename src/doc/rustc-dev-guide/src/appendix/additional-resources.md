@@ -79,7 +79,8 @@ There are a few relevant documents for PowerPC ABI:
   Its source is hosted at <https://github.com/ryanarn/powerabi>, but is effectively unmaintained.
 * [_64-bit PowerPC ELF Application Binary Interface Supplement
   1.9_](https://refspecs.linuxfoundation.org/ELF/ppc64/PPC-elf64abi-1.9.html) is the original 64-bit
-  ABI, last updated in 2004. This is known as ELFv1,
+  ABI, last updated in 2004.
+  This is known as ELFv1,
   and still used by default on some big endian PowerPC64 targets.
 * [_64-bit ELF V2 ABI Specification: Power
   Architecture_](https://openpower.foundation/specifications/64bitelfabi/) is the replacement ABI
