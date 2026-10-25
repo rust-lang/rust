@@ -277,18 +277,7 @@ impl<'a> Parser<'a> {
                 self.psess.gated_spans.gate(sym::min_specialization, span);
                 self.psess.gated_spans.ungate_last(sym::specialization, span);
             }
-            let (ident, sig, generics, contract, body) =
-                self.parse_fn(attrs, fn_parse_mode, lo, vis, case)?;
-            ItemKind::Fn(Box::new(Fn {
-                defaultness,
-                ident,
-                sig,
-                generics,
-                contract,
-                body,
-                define_opaque: None,
-                eii_impl: None,
-            }))
+            self.parse_fn(attrs, fn_parse_mode, lo, vis, defaultness, case)?
         } else if self.eat_keyword_case(exp!(Extern), case) {
             if self.eat_keyword_case(exp!(Crate), case) {
                 // EXTERN CRATE
@@ -325,15 +314,7 @@ impl<'a> Parser<'a> {
             // CONST ITEM
             self.recover_const_mut(const_span);
             self.recover_missing_kw_before_item()?;
-            let (ident, generics, ty, body) = self.parse_const_item(const_span)?;
-            ItemKind::Const(Box::new(ConstItem {
-                defaultness: def_(),
-                ident,
-                generics,
-                ty,
-                body,
-                define_opaque: None,
-            }))
+            self.parse_const_item(const_span, def_())?
         } else if let Some(kind) = self.is_reuse_item() {
             self.parse_item_delegation(attrs, def_(), kind)?
         } else if self.check_keyword_case(exp!(Mod), case)
@@ -1774,20 +1755,17 @@ impl<'a> Parser<'a> {
 
     /// Parse a constant item with the prefix `"const"` already parsed.
     ///
-    /// If `const_arg` is true, any expression assigned to the const will be parsed
-    /// as a const_arg instead of a body expression.
-    ///
     /// ```ebnf
     /// Const = "const" ($ident | "_") Generics ":" $ty (= $expr)? WhereClause ";" ;
     /// ```
     fn parse_const_item(
         &mut self,
         const_span: Span,
-    ) -> PResult<'a, (Ident, Generics, Box<Ty>, Option<Box<Expr>>)> {
+        defaultness: Defaultness,
+    ) -> PResult<'a, ItemKind> {
         let ident = self.parse_ident_or_underscore()?;
 
         let mut generics = self.parse_generics()?;
-
         // Check the span for emptiness instead of the list of parameters in order to correctly
         // recognize and subsequently flag empty parameter lists (`<>`) as unstable.
         if !generics.span.is_empty() {
@@ -1810,7 +1788,7 @@ impl<'a> Parser<'a> {
         let before_where_clause =
             if self.may_recover() { self.parse_where_clause()? } else { WhereClause::default() };
 
-        let rhs = if self.eat(exp!(Eq)) { Some(self.parse_expr()?) } else { None };
+        let body = if self.eat(exp!(Eq)) { Some(self.parse_expr()?) } else { None };
 
         let after_where_clause = self.parse_where_clause()?;
 
@@ -1818,18 +1796,18 @@ impl<'a> Parser<'a> {
         // Users may be tempted to write such code if they are still used to the deprecated
         // where-clause location on type aliases and associated types. See also #89122.
         if before_where_clause.has_where_token
-            && let Some(rhs) = &rhs
+            && let Some(body) = &body
         {
             self.dcx().emit_err(diagnostics::WhereClauseBeforeConstBody {
                 span: before_where_clause.span,
                 name: ident.span,
-                body: rhs.span,
+                body: body.span,
                 sugg: if !after_where_clause.has_where_token {
-                    self.psess.source_map().span_to_snippet(rhs.span).ok().map(|body_s| {
+                    self.psess.source_map().span_to_snippet(body.span).ok().map(|body_s| {
                         diagnostics::WhereClauseBeforeConstBodySugg {
                             left: before_where_clause.span.shrink_to_lo(),
                             snippet: body_s,
-                            right: before_where_clause.span.shrink_to_hi().to(rhs.span),
+                            right: before_where_clause.span.shrink_to_hi().to(body.span),
                         }
                     })
                 } else {
@@ -1865,12 +1843,21 @@ impl<'a> Parser<'a> {
 
         generics.where_clause = where_clause;
 
-        if let Some(rhs) = self.try_recover_const_missing_semi(&rhs, const_span) {
-            return Ok((ident, generics, ty, Some(rhs)));
-        }
-        self.expect_semi()?;
+        let body = if let body @ Some(_) = self.try_recover_const_missing_semi(&body, const_span) {
+            body
+        } else {
+            self.expect_semi()?;
+            body
+        };
 
-        Ok((ident, generics, ty, rhs))
+        Ok(ItemKind::Const(Box::new(ConstItem {
+            defaultness,
+            ident,
+            generics,
+            ty,
+            body,
+            define_opaque: None,
+        })))
     }
 
     /// We were supposed to parse `":" $ty` but the `:` or the type was missing.
@@ -2535,6 +2522,7 @@ impl<'a> Parser<'a> {
                     fn_parse_mode,
                     lo,
                     &inherited_vis,
+                    Defaultness::Implicit,
                     Case::Insensitive,
                 ) {
                     Ok(_) => self
