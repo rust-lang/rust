@@ -1,11 +1,22 @@
 //@only-target: freebsd
-//@compile-flags: -Zmiri-deterministic-concurrency -Zmiri-disable-isolation
+//@compile-flags: -Zmiri-fixed-schedule -Zmiri-disable-isolation
+//@run-native
 
 use std::mem::{self, MaybeUninit};
 use std::ptr::{self, addr_of};
 use std::sync::atomic::AtomicU32;
 use std::time::Instant;
 use std::{io, thread};
+
+fn yield_now() {
+    if cfg!(miri) {
+        // We control the scheduler so we know this is enough.
+        thread::yield_now();
+    } else {
+        // Without scheduler control, we hope that sleeping a bit is enough.
+        thread::sleep(std::time::Duration::from_millis(20));
+    }
+}
 
 fn wait_wake() {
     fn wake_nobody() {
@@ -15,6 +26,7 @@ fn wait_wake() {
         static mut FUTEX: u32 = 0;
 
         let waker = thread::spawn(|| {
+            yield_now(); // let main thread go first
             unsafe {
                 assert_eq!(
                     libc::_umtx_op(
@@ -29,8 +41,8 @@ fn wait_wake() {
             }
         });
 
-        // 10ms should be enough.
-        let mut timeout = libc::timespec { tv_sec: 0, tv_nsec: 10_000_000 };
+        // 50ms should be enough.
+        let mut timeout = libc::timespec { tv_sec: 0, tv_nsec: 50_000_000 };
         let timeout_size_arg =
             ptr::without_provenance_mut::<libc::c_void>(mem::size_of::<libc::timespec>());
         unsafe {
@@ -79,7 +91,7 @@ fn wait_wake() {
         let t3 = thread::spawn(waiter);
 
         // Run all the waiters, so they can go to sleep.
-        thread::yield_now();
+        yield_now();
 
         // Wake up 2 thread and make sure 1 is still waiting.
         unsafe {
@@ -108,6 +120,10 @@ fn wait_wake() {
 }
 
 fn wake_dangling() {
+    if !cfg!(miri) {
+        return; // can't really test this natively (FIXME: test with mmap?)
+    }
+
     let futex = Box::new(0);
     let ptr: *const u32 = &*futex;
     drop(futex);
@@ -152,10 +168,10 @@ fn wait_relative_timeout() {
 
         let futex: u32 = 123;
 
-        let mut timeout = libc::timespec { tv_sec: 0, tv_nsec: 200_000_000 };
+        let mut timeout = libc::timespec { tv_sec: 0, tv_nsec: 100_000_000 };
         let timeout_size_arg =
             ptr::without_provenance_mut::<libc::c_void>(mem::size_of::<libc::timespec>());
-        // Wait for 200ms, with nobody waking us up early
+        // Wait for 100ms, with nobody waking us up early
         unsafe {
             assert_eq!(
                 libc::_umtx_op(
@@ -170,13 +186,13 @@ fn wait_relative_timeout() {
             assert_eq!(io::Error::last_os_error().raw_os_error().unwrap(), libc::ETIMEDOUT);
         }
 
-        assert!((200..1000).contains(&start.elapsed().as_millis()));
+        assert!((100..1000).contains(&start.elapsed().as_millis()));
     }
 
     fn with_timespec() {
         let futex: u32 = 123;
         let mut timeout = libc::_umtx_time {
-            _timeout: libc::timespec { tv_sec: 0, tv_nsec: 200_000_000 },
+            _timeout: libc::timespec { tv_sec: 0, tv_nsec: 100_000_000 },
             _flags: 0,
             _clockid: libc::CLOCK_MONOTONIC as u32,
         };
@@ -185,7 +201,7 @@ fn wait_relative_timeout() {
 
         let start = Instant::now();
 
-        // Wait for 200ms, with nobody waking us up early
+        // Wait for 100ms, with nobody waking us up early
         unsafe {
             assert_eq!(
                 libc::_umtx_op(
@@ -199,7 +215,7 @@ fn wait_relative_timeout() {
             );
             assert_eq!(io::Error::last_os_error().raw_os_error().unwrap(), libc::ETIMEDOUT);
         }
-        assert!((200..1000).contains(&start.elapsed().as_millis()));
+        assert!((100..1000).contains(&start.elapsed().as_millis()));
     }
 
     without_timespec();
@@ -216,8 +232,8 @@ fn wait_absolute_timeout() {
         now.assume_init()
     };
 
-    // Add 200ms.
-    timeout.tv_nsec += 200_000_000;
+    // Add 100ms.
+    timeout.tv_nsec += 100_000_000;
     if timeout.tv_nsec > 1_000_000_000 {
         timeout.tv_nsec -= 1_000_000_000;
         timeout.tv_sec += 1;
@@ -234,7 +250,7 @@ fn wait_absolute_timeout() {
 
     let futex: u32 = 123;
 
-    // Wait for 200ms from now, with nobody waking us up early.
+    // Wait for 100ms from now, with nobody waking us up early.
     unsafe {
         assert_eq!(
             libc::_umtx_op(
@@ -248,7 +264,7 @@ fn wait_absolute_timeout() {
         );
         assert_eq!(io::Error::last_os_error().raw_os_error().unwrap(), libc::ETIMEDOUT);
     }
-    assert!((200..1000).contains(&start.elapsed().as_millis()));
+    assert!((100..1000).contains(&start.elapsed().as_millis()));
 }
 
 fn main() {

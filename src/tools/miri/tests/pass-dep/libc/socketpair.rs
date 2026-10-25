@@ -1,6 +1,6 @@
 //@ignore-target: windows # No libc socketpair on Windows
 // test_race depends on a deterministic schedule.
-//@compile-flags: -Zmiri-deterministic-concurrency
+//@compile-flags: -Zmiri-fixed-schedule
 //@run-native
 
 // FIXME(static_mut_refs): use raw pointers instead of references
@@ -12,6 +12,16 @@ use std::time::Duration;
 #[path = "../../utils/libc.rs"]
 mod libc_utils;
 use libc_utils::*;
+
+fn yield_now() {
+    if cfg!(miri) {
+        // We control the scheduler so we know this is enough.
+        thread::yield_now();
+    } else {
+        // Without scheduler control, we hope that sleeping a bit is enough.
+        thread::sleep(Duration::from_millis(10));
+    }
+}
 
 fn main() {
     test_socketpair();
@@ -107,13 +117,13 @@ fn test_socketpair_threaded() {
         let buf = read_exact_array::<5>(fds[1]).unwrap();
         assert_eq!(&buf, b"abcde");
     });
-    thread::yield_now();
+    yield_now(); // thread1 should go first
     write_all(fds[0], b"abcde").unwrap();
     thread1.join().unwrap();
 
     // Read and write from different direction
     let thread2 = thread::spawn(move || {
-        thread::yield_now();
+        yield_now(); // main thread should go first
         write_all(fds[1], b"12345").unwrap();
     });
     let buf = read_exact_array::<5>(fds[0]).unwrap();
@@ -126,6 +136,7 @@ fn test_race() {
     let mut fds = [-1, -1];
     errno_check(unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) });
     let thread1 = thread::spawn(move || {
+        yield_now(); // main thread should go first
         // write() from the main thread will occur before the read() here
         // because preemption is disabled and the main thread yields after write().
         let buf = read_exact_array::<1>(fds[1]).unwrap();
@@ -135,7 +146,6 @@ fn test_race() {
     });
     unsafe { VAL = 1 };
     write_all(fds[0], b"a").unwrap();
-    thread::yield_now();
     thread1.join().unwrap();
 }
 
@@ -149,6 +159,7 @@ fn test_blocking_read() {
         assert_eq!(&buf, b"abc");
     });
     let thread2 = thread::spawn(move || {
+        yield_now(); // thread1 should go first
         // Unblock thread1 by doing writing something.
         write_all(fds[0], b"abc").unwrap();
     });
@@ -173,6 +184,7 @@ fn test_blocking_write() {
         write_all(fds[0], b"abc").unwrap();
     });
     let thread2 = thread::spawn(move || {
+        yield_now(); // thread1 should go first
         // Unblock thread1 by freeing up some space.
         let buf = read_exact_array::<3>(fds[1]).unwrap();
         assert_eq!(buf, [1, 1, 1]);
@@ -197,10 +209,7 @@ fn test_unblock_after_socket_close() {
 
     // Spawn server thread.
     let server_thread = thread::spawn(move || {
-        if !cfg!(miri) {
-            // Ensure main thread is blocked on reading from the client socket.
-            thread::sleep(Duration::from_millis(10));
-        }
+        yield_now(); // main thread should go first
 
         unsafe { errno_check(libc::close(client_fd)) };
 

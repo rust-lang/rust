@@ -1,5 +1,6 @@
 //@only-target: linux android
-//@compile-flags: -Zmiri-disable-isolation
+//@compile-flags: -Zmiri-disable-isolation -Zmiri-fixed-schedule
+//@run-native
 
 // FIXME(static_mut_refs): use raw pointers instead of references
 #![allow(static_mut_refs)]
@@ -9,6 +10,16 @@ use std::ptr::{self, addr_of};
 use std::sync::atomic::{AtomicI32, Ordering};
 use std::time::{Duration, Instant};
 use std::{io, thread};
+
+fn yield_now() {
+    if cfg!(miri) {
+        // We control the scheduler so we know this is enough.
+        thread::yield_now();
+    } else {
+        // Without scheduler control, we hope that sleeping a bit is enough.
+        thread::sleep(std::time::Duration::from_millis(20));
+    }
+}
 
 fn wake_nobody() {
     let futex = 0;
@@ -41,6 +52,10 @@ fn wake_nobody() {
 }
 
 fn wake_dangling() {
+    if !cfg!(miri) {
+        return; // can't really test this natively (FIXME: test with mmap?)
+    }
+
     let futex = Box::new(0);
     let ptr: *const u32 = &*futex;
     drop(futex);
@@ -239,7 +254,7 @@ fn concurrent_wait_wake() {
     static WOKEN: AtomicI32 = AtomicI32::new(0);
 
     let rounds = 64;
-    for _ in 0..rounds {
+    for r in 0..rounds {
         unsafe { DATA = 0 }; // Reset
         // Suppose the main thread is holding a lock implemented using futex...
         FUTEX.store(HELD, Ordering::Relaxed);
@@ -269,9 +284,9 @@ fn concurrent_wait_wake() {
                 }
             }
         });
-        // Increase the chance that the other thread actually goes to sleep.
-        for _ in 0..6 {
-            thread::yield_now();
+        // Let other thread go first half the time
+        if r % 2 == 0 {
+            yield_now();
         }
 
         FUTEX.store(FREE, Ordering::Relaxed);
@@ -286,7 +301,7 @@ fn concurrent_wait_wake() {
     // Make sure we got the interesting case (of having woken a thread) at least once, but not *each* time.
     let woken = WOKEN.load(Ordering::Relaxed);
     //eprintln!("waking happened {woken} times");
-    assert!(woken > 0 && woken < rounds);
+    assert!(woken > 0 && woken < rounds, "woke {woken} times");
 }
 
 fn main() {

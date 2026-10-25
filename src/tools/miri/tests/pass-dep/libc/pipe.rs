@@ -1,12 +1,22 @@
 //@ignore-target: windows # No libc pipe on Windows
 // test_race depends on a deterministic schedule.
-//@compile-flags: -Zmiri-deterministic-concurrency
+//@compile-flags: -Zmiri-fixed-schedule
 //@run-native
 use std::thread;
 
 #[path = "../../utils/libc.rs"]
 mod libc_utils;
 use libc_utils::*;
+
+fn yield_now() {
+    if cfg!(miri) {
+        // We control the scheduler so we know this is enough.
+        thread::yield_now();
+    } else {
+        // Without scheduler control, we hope that sleeping a bit is enough.
+        thread::sleep(std::time::Duration::from_millis(10));
+    }
+}
 
 fn main() {
     test_pipe();
@@ -56,13 +66,13 @@ fn test_pipe_threaded() {
         let buf = read_exact_array::<5>(fds[0]).unwrap();
         assert_eq!(&buf, b"abcde");
     });
-    thread::yield_now();
+    yield_now();
     write_all(fds[1], b"abcde").unwrap();
     thread1.join().unwrap();
 
     // Read and write from different direction
     let thread2 = thread::spawn(move || {
-        thread::yield_now();
+        yield_now();
         write_all(fds[1], b"12345").unwrap();
     });
     let buf = read_exact_array::<5>(fds[0]).unwrap();
@@ -86,7 +96,6 @@ fn test_race() {
     });
     unsafe { VAL = 1 };
     write_all(fds[1], b"a").unwrap();
-    thread::yield_now();
     thread1.join().unwrap();
 }
 

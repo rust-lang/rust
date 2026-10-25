@@ -1,11 +1,12 @@
 //@ignore-target: windows # No pthreads on Windows
 // We use `yield` to test specific interleavings, so disable automatic preemption.
-//@compile-flags: -Zmiri-deterministic-concurrency
+//@compile-flags: -Zmiri-fixed-schedule
+//@run-native
 #![feature(sync_unsafe_cell)]
 
 use std::cell::SyncUnsafeCell;
 use std::mem::MaybeUninit;
-use std::{mem, ptr, thread, time};
+use std::{assert_matches, mem, ptr, thread, time};
 
 #[path = "../../utils/libc.rs"]
 mod libc_utils;
@@ -357,17 +358,18 @@ fn test_rwlock() {
         assert_eq!(libc::pthread_rwlock_unlock(rw.get()), 0);
         assert_eq!(libc::pthread_rwlock_tryrdlock(rw.get()), 0);
         assert_eq!(libc::pthread_rwlock_unlock(rw.get()), 0);
-        assert_eq!(libc::pthread_rwlock_trywrlock(rw.get()), libc::EBUSY);
+        // It's EBUSY on Linux, EDEADLK on macOS
+        assert_matches!(libc::pthread_rwlock_trywrlock(rw.get()), libc::EBUSY | libc::EDEADLK);
         assert_eq!(libc::pthread_rwlock_unlock(rw.get()), 0);
 
         assert_eq!(libc::pthread_rwlock_wrlock(rw.get()), 0);
-        assert_eq!(libc::pthread_rwlock_tryrdlock(rw.get()), libc::EBUSY);
-        assert_eq!(libc::pthread_rwlock_trywrlock(rw.get()), libc::EBUSY);
+        assert_matches!(libc::pthread_rwlock_tryrdlock(rw.get()), libc::EBUSY | libc::EDEADLK);
+        assert_matches!(libc::pthread_rwlock_trywrlock(rw.get()), libc::EBUSY | libc::EDEADLK);
         assert_eq!(libc::pthread_rwlock_unlock(rw.get()), 0);
 
         assert_eq!(libc::pthread_rwlock_trywrlock(rw.get()), 0);
-        assert_eq!(libc::pthread_rwlock_tryrdlock(rw.get()), libc::EBUSY);
-        assert_eq!(libc::pthread_rwlock_trywrlock(rw.get()), libc::EBUSY);
+        assert_matches!(libc::pthread_rwlock_tryrdlock(rw.get()), libc::EBUSY | libc::EDEADLK);
+        assert_matches!(libc::pthread_rwlock_trywrlock(rw.get()), libc::EBUSY | libc::EDEADLK);
         assert_eq!(libc::pthread_rwlock_unlock(rw.get()), 0);
 
         assert_eq!(libc::pthread_rwlock_destroy(rw.get()), 0);
