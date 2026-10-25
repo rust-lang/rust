@@ -2,12 +2,17 @@ use rustc_ast::join_path_syms;
 use rustc_attr_ir::AttributeKind;
 use rustc_attr_ir::lint::{LintCheck, LintCheckKind};
 use rustc_attr_ir::target::{AssocCtxt, MethodKind, Target};
-use rustc_lint_defs::builtin::UNUSED_ATTRIBUTES;
-use rustc_span::{Symbol, sym};
+use rustc_lint_defs::builtin::{RENAMED_AND_REMOVED_LINTS, UNKNOWN_LINTS, UNUSED_ATTRIBUTES};
+use rustc_lint_defs::{CheckLintNameResult, LintId};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, sym};
 use thin_vec::ThinVec;
 
 use crate::attributes::{AcceptMapping, AttributeParser, AttributeStability};
 use crate::context::{AcceptContext, ExpectStringLiteral, FinalizeContext};
+use crate::diagnostics::{
+    DeprecatedLintName, RemovedLint, RenamedLint, RenamedLintSuggestion, UnknownLint,
+    UnknownLintSuggestion, UnknownToolInScopedLint,
+};
 use crate::parser::{ArgParser, MetaItemOrLitParser};
 use crate::target_checking::AllowedTargets;
 use crate::target_checking::Policy::{Allow, Warn};
@@ -69,9 +74,18 @@ impl LintParser {
                                     ),
                                 };
 
+                                let lint_name_normalized = if let Some((_lint_ids, new_lint_name)) =
+                                    Self::check_lint_name(lint_name, tool, p.span(), cx)
+                                {
+                                    new_lint_name
+                                } else {
+                                    // Discard lint attributes with unknown lints in them
+                                    continue;
+                                };
+
                                 self.lints.push(LintCheck {
                                     tool,
-                                    lint_name,
+                                    lint_name_normalized,
                                     lint_span: p.span(),
                                     kind,
                                     attr_id,
@@ -129,6 +143,142 @@ impl LintParser {
                 );
             }
         }
+    }
+
+    fn check_lint_name<'a>(
+        lint_name: Symbol,
+        tool: Option<Ident>,
+        lint_span: Span,
+        cx: &mut AcceptContext<'_, 'a>,
+    ) -> Option<(&'a [LintId], Symbol)> {
+        let lint_result = cx.sess.lint_store.as_ref().unwrap().check_lint_name(
+            lint_name.as_str(),
+            tool.map(|tool| tool.name),
+            cx.lint_tools.unwrap(),
+        );
+
+        // FIXME(164898) Lint attributes are parsed twice, once on the AST and once on the HIR
+        // Both times emit diagnostics, for historic reasons
+        // We only want to emit these lints once, on the HIR.
+        // On the AST `target_span` will be `DUMMY_SP`, which we use to detect which instance we are.
+        // #164898 will fix this, after that PR this check can be removed
+        let should_lint = cx.target_span != DUMMY_SP;
+
+        let (ids, name) = match lint_result {
+            CheckLintNameResult::Ok(ids) => (ids, lint_name),
+
+            CheckLintNameResult::Tool(ids, new_lint_name) => {
+                let name = match new_lint_name {
+                    None => {
+                        let complete_name = &format!("{}::{lint_name}", tool.unwrap().name);
+                        Symbol::intern(complete_name)
+                    }
+                    Some(new_lint_name) => {
+                        let symbol = Symbol::intern(&new_lint_name);
+                        if should_lint {
+                            cx.emit_lint(
+                                RENAMED_AND_REMOVED_LINTS,
+                                DeprecatedLintName {
+                                    name: lint_name.to_string(),
+                                    suggestion: lint_span,
+                                    replace: new_lint_name,
+                                },
+                                lint_span,
+                            );
+                        }
+                        symbol
+                    }
+                };
+                (ids, name)
+            }
+
+            CheckLintNameResult::MissingTool => {
+                // If `MissingTool` is returned, then either the lint does not
+                // exist in the tool or the code was not compiled with the tool and
+                // therefore the lint was never added to the `LintStore`. To detect
+                // this is the responsibility of the lint tool.
+                return None;
+            }
+
+            CheckLintNameResult::NoTool => {
+                if should_lint {
+                    cx.emit_err(UnknownToolInScopedLint {
+                        span: Some(tool.unwrap().span),
+                        tool_name: tool.unwrap().name,
+                        lint_name: lint_name.to_string(),
+                        is_nightly_build: cx.sess.is_nightly_build(),
+                    });
+                }
+                return None;
+            }
+
+            CheckLintNameResult::Renamed(ref replace) => {
+                if should_lint {
+                    let suggestion = RenamedLintSuggestion::WithSpan {
+                        suggestion: lint_span,
+                        replace: replace.clone(),
+                    };
+                    let name = tool
+                        .map(|Ident { name, .. }| format!("{name}::{lint_name}"))
+                        .unwrap_or_else(|| lint_name.to_string());
+                    cx.emit_lint(
+                        RENAMED_AND_REMOVED_LINTS,
+                        RenamedLint { name, replace: replace.clone(), suggestion },
+                        lint_span,
+                    );
+                }
+
+                // If this lint was renamed, apply the new lint instead of ignoring the
+                // attribute. Ignore any errors or warnings that happen because the new
+                // name is inaccurate.
+                // NOTE: `new_name` already includes the tool name, so we don't
+                // have to add it again.
+                let CheckLintNameResult::Ok(ids) = cx
+                    .sess
+                    .lint_store
+                    .as_ref()
+                    .unwrap()
+                    .check_lint_name(replace, None, cx.lint_tools.unwrap())
+                else {
+                    panic!("renamed lint does not exist: {replace}");
+                };
+
+                (ids, Symbol::intern(&replace))
+            }
+
+            CheckLintNameResult::Removed(ref reason) => {
+                if should_lint {
+                    let name = if let Some(Ident { name, .. }) = tool {
+                        format!("{name}::{lint_name}")
+                    } else {
+                        lint_name.to_string()
+                    };
+                    cx.emit_lint(
+                        RENAMED_AND_REMOVED_LINTS,
+                        RemovedLint { name, reason: reason.clone() },
+                        lint_span,
+                    );
+                }
+                return None;
+            }
+
+            CheckLintNameResult::NoLint(suggestion) => {
+                if should_lint {
+                    let name = tool
+                        .map(|Ident { name, .. }| format!("{name}::{lint_name}"))
+                        .unwrap_or_else(|| lint_name.to_string());
+                    let suggestion =
+                        suggestion.map(|(replace, from_rustc)| UnknownLintSuggestion::WithSpan {
+                            suggestion: lint_span,
+                            replace,
+                            from_rustc,
+                        });
+                    cx.emit_lint(UNKNOWN_LINTS, UnknownLint { name, suggestion }, lint_span);
+                }
+                return None;
+            }
+        };
+        Some((ids, name))
     }
 }
 

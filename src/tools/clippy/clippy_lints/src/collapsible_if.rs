@@ -253,7 +253,7 @@ impl CollapsibleIf {
                             }
                         )
                     })
-                    .any(|lint| [expected_lint_name, sym::style, sym::all].contains(&lint.lint_name)) =>
+                    .any(|lint| [&format!("clippy::{expected_lint_name}"), "clippy::style", "clippy::all"].contains(&lint.lint_name_normalized.as_str())) =>
             {
                 let attr_span = lints.first().unwrap().attr_span.to(lints.last().unwrap().attr_span);
                 // There is an `expect` attribute -- check that there is no _other_ significant text

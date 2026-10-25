@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::{
     binary_expr_needs_parentheses, is_from_proc_macro, leaks_droppable_temporary_with_limited_lifetime,
-    span_contains_cfg, span_find_starting_semi, sym,
+    span_contains_cfg, span_find_starting_semi,
 };
 
 use rustc_attr_ir::lang_items::LangItem;
@@ -13,7 +13,7 @@ use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, Expr, ExprKind, HirId, MatchSource, StmtKind};
 use rustc_lint::{LateContext, LintContext as _};
 use rustc_middle::ty::{self, Ty};
-use rustc_span::{BytePos, Ident, Pos as _, Span};
+use rustc_span::{BytePos, Pos as _, Span};
 use std::borrow::Cow;
 use std::fmt::Display;
 
@@ -188,11 +188,11 @@ fn check_final_expr<'tcx>(
                         matches!(
                             lint,
                             LintCheck {
-                                tool: Some(Ident { name: sym::clippy, .. }),
-                                lint_name: sym::needless_return | sym::style | sym::all | sym::warnings,
+                                lint_name_normalized,
                                 kind: LintCheckKind::Expect,
                                 ..
-                            }
+                            } if ["clippy::needless_return", "clippy::style", "clippy::all", "clippy::warnings"].contains(&lint_name_normalized.as_str())
+
                         )
                     }) =>
                 {

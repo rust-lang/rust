@@ -45,13 +45,12 @@ impl LintCheckKind {
 pub struct LintCheck {
     /// The lint's tool name, if present.
     pub tool: Option<Ident>,
-    /// The lint's name, minus the tool name if any.
+    /// The full normalized lint name of an existing lint, including the tool name.
+    /// This may not be what we user wrote down, in case of renamed lints the new lint name is here.
+    /// The above implies that `LintStore::find_lints` is guaranteed to find this lint using this symbol.
     ///
-    /// For example:
-    /// - `clippy::blah` -> `blah`
-    /// - `unstable_imports` -> `unstable_imports`
-    /// - `custom_tool::blah::bleh` -> `blah::bleh`
-    pub lint_name: Symbol,
+    /// For example, `single_use_lifetime` is changed to `single_use_lifetimes`.
+    pub lint_name_normalized: Symbol,
     /// The span of the lint name.
     ///
     /// For example `#[deny(foo, bar, reason = "reason")]`

@@ -2199,3 +2199,84 @@ pub(crate) struct Unused {
 #[derive(Diagnostic)]
 #[diag("use of deprecated `no_link` attribute")]
 pub(crate) struct NoLinkAttrUsed;
+
+#[derive(Diagnostic)]
+#[diag("lint name `{$name}` is deprecated and may not have an effect in the future")]
+pub(crate) struct DeprecatedLintName {
+    pub name: String,
+    #[suggestion("change it to", code = "{replace}", applicability = "machine-applicable")]
+    pub suggestion: Span,
+    pub replace: String,
+}
+
+#[derive(Diagnostic)]
+#[diag("unknown tool name `{$tool_name}` found in scoped lint: `{$tool_name}::{$lint_name}`", code = E0710)]
+pub(crate) struct UnknownToolInScopedLint {
+    #[primary_span]
+    pub span: Option<Span>,
+    pub tool_name: Symbol,
+    pub lint_name: String,
+    #[help("add `#![register_tool({$tool_name})]` to the crate root")]
+    pub is_nightly_build: bool,
+}
+
+#[derive(Diagnostic)]
+#[diag("lint `{$name}` has been renamed to `{$replace}`")]
+pub(crate) struct RenamedLint {
+    pub name: String,
+    pub replace: String,
+    #[subdiagnostic]
+    pub suggestion: RenamedLintSuggestion,
+}
+
+#[derive(Subdiagnostic)]
+pub enum RenamedLintSuggestion {
+    #[suggestion("use the new name", code = "{replace}", applicability = "machine-applicable")]
+    WithSpan {
+        #[primary_span]
+        suggestion: Span,
+        replace: String,
+    },
+    #[help("use the new name `{$replace}`")]
+    WithoutSpan { replace: String },
+}
+
+#[derive(Diagnostic)]
+#[diag("unknown lint: `{$name}`")]
+pub(crate) struct UnknownLint {
+    pub name: String,
+    #[subdiagnostic]
+    pub suggestion: Option<UnknownLintSuggestion>,
+}
+
+#[derive(Subdiagnostic)]
+pub enum UnknownLintSuggestion {
+    #[suggestion(
+        "{$from_rustc ->
+            [true] a lint with a similar name exists in `rustc` lints
+            *[false] did you mean
+        }",
+        code = "{replace}",
+        applicability = "maybe-incorrect"
+    )]
+    WithSpan {
+        #[primary_span]
+        suggestion: Span,
+        replace: Symbol,
+        from_rustc: bool,
+    },
+    #[help(
+        "{$from_rustc ->
+            [true] a lint with a similar name exists in `rustc` lints: `{$replace}`
+            *[false] did you mean: `{$replace}`
+        }"
+    )]
+    WithoutSpan { replace: Symbol, from_rustc: bool },
+}
+
+#[derive(Diagnostic)]
+#[diag("lint `{$name}` has been removed: {$reason}")]
+pub(crate) struct RemovedLint {
+    pub name: String,
+    pub reason: String,
+}
