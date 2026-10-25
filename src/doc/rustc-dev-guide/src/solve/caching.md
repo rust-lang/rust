@@ -84,9 +84,9 @@ itself.
 
 We track the query dependencies of all global cache entries.
 This causes the caching of cycle participants to be non-trivial.
-We cannot simply reuse the `DepNode` of the cycle root.[^2] If we have a cycle `A -> B -> A`,
-then the `DepNode` for `A` contains a dependency
-from `A -> B`.
+We cannot simply reuse the `DepNode` of the cycle root.[^2]
+If we have a cycle `A -> B -> A`,
+then the `DepNode` for `A` contains a dependency from `A -> B`.
 Reusing this entry for `B` may break if the source is changed.
 The `B -> A` edge may not exist anymore and `A` may have been completely removed.
 This can easily result in an ICE.
