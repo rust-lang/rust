@@ -18,16 +18,16 @@ pub fn system_time_to_duration<'tcx>(time: &SystemTime) -> InterpResult<'tcx, Du
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
-    fn parse_clockid(&self, clk_id: Scalar) -> Option<TimeoutClock> {
+    fn parse_clockid(&self, clk_id: i32) -> Option<TimeoutClock> {
         // This clock support is deliberately minimal because a lot of clock types have fiddly
         // properties (is it possible for Miri to be suspended independently of the host?). If you
         // have a use for another clock type, please open an issue.
         let this = self.eval_context_ref();
 
         // Portable names that exist everywhere.
-        if clk_id == this.eval_libc("CLOCK_REALTIME") {
+        if clk_id == this.eval_libc_i32("CLOCK_REALTIME") {
             return Some(TimeoutClock::RealTime);
-        } else if clk_id == this.eval_libc("CLOCK_MONOTONIC") {
+        } else if clk_id == this.eval_libc_i32("CLOCK_MONOTONIC") {
             return Some(TimeoutClock::Monotonic);
         }
 
@@ -37,9 +37,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Linux further distinguishes regular and "coarse" clocks, but the "coarse" version
                 // is just specified to be "faster and less precise", so we treat it like normal
                 // clocks.
-                if clk_id == this.eval_libc("CLOCK_REALTIME_COARSE") {
+                if clk_id == this.eval_libc_i32("CLOCK_REALTIME_COARSE") {
                     return Some(TimeoutClock::RealTime);
-                } else if clk_id == this.eval_libc("CLOCK_MONOTONIC_COARSE") {
+                } else if clk_id == this.eval_libc_i32("CLOCK_MONOTONIC_COARSE") {
                     return Some(TimeoutClock::Monotonic);
                 }
             }
@@ -48,7 +48,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // `CLOCK_UPTIME_RAW` supposed to not increment while the system is asleep... but
                 // that's not really something a program running inside Miri can tell, anyway.
                 // We need to support it because std uses it.
-                if clk_id == this.eval_libc("CLOCK_UPTIME_RAW") {
+                if clk_id == this.eval_libc_i32("CLOCK_UPTIME_RAW") {
                     return Some(TimeoutClock::Monotonic);
                 }
             }
@@ -68,7 +68,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         this.assert_target_os_is_unix("clock_gettime");
 
-        let clk_id = this.read_scalar(clk_id_op)?;
+        let clk_id = this.read_scalar(clk_id_op)?.to_i32()?;
         let tp = this.deref_pointer(tp_op)?;
 
         let duration = match this.parse_clockid(clk_id) {

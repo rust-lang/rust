@@ -188,6 +188,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 // Saturating cast for when usize is smaller than u64.
                 let count = usize::try_from(val).unwrap_or(usize::MAX);
+                if count == 0 {
+                    // Native testing seems to indicate that this still wakes up a thread.
+                    // Just consider this unsupported for now.
+                    throw_unsup_format!(
+                        "UMTX_OP_WAKE with a val (number of threads to wake up) of 0 is not supported"
+                    );
+                }
 
                 // Read the Linux futex wake implementation in Miri to understand why this fence is needed.
                 this.atomic_fence(AtomicFenceOrd::SeqCst)?;
@@ -236,7 +243,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
 
         let clock_id_place = this.project_field(ut, FieldIdx::from_u32(2))?;
-        let clock_id = this.read_scalar(&clock_id_place)?;
+        let clock_id = this.read_scalar(&clock_id_place)?.to_i32()?;
         let Some(timeout_clock) = this.parse_clockid(clock_id) else {
             throw_unsup_format!("unsupported clock")
         };

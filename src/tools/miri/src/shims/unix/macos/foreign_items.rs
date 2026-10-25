@@ -131,7 +131,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
 
             "mach_timebase_info" => {
-                // FIXME: This does not have a direct test (#3179).
                 let [info] = &this.check_shim_sig(
                     shim_sig!(extern "C" fn(*libc::mach_timebase_info) -> i32),
                     (link_name, abi, args),

@@ -1,5 +1,5 @@
 //@ignore-target: windows
-//@compile-flags: -Zmiri-disable-isolation
+//@compile-flags: -Zmiri-disable-isolation -Zmiri-fixed-schedule
 //@run-native
 
 //@revisions: windows_host unix_host
@@ -18,6 +18,16 @@ use std::{ptr, thread};
 use libc_utils::*;
 
 const TEST_BYTES: &[u8] = b"these are some test bytes!";
+
+fn yield_now() {
+    if cfg!(miri) {
+        // We control the scheduler so we know this is enough.
+        thread::yield_now();
+    } else {
+        // Without scheduler control, we hope that sleeping a bit is enough.
+        thread::sleep(Duration::from_millis(20));
+    }
+}
 
 fn main() {
     test_fcntl_nonblock_opt();
@@ -159,7 +169,7 @@ fn test_accept_nonblock() {
     let server_thread = thread::spawn(move || {
         // Instantly yield to main thread to ensure that the `connect` syscall
         // was called before we call the `accept` on the server.
-        thread::sleep(Duration::from_millis(10));
+        yield_now();
 
         net::accept_ipv4(server_sockfd).unwrap();
     });
@@ -227,7 +237,7 @@ fn test_connect_nonblock() {
     });
 
     // Yield to server thread to ensure that it's currently accepting.
-    thread::sleep(Duration::from_millis(10));
+    yield_now();
 
     let Err(err) = net::connect_ipv4(client_sockfd, addr) else {
         // The connection could be established immediately. We don't
@@ -256,7 +266,7 @@ fn test_connect_nonblock() {
             }
             Err(err) if err.kind() == ErrorKind::NotConnected => {
                 // The client is still connecting.
-                thread::sleep(Duration::from_millis(10));
+                yield_now();
             }
             Err(err) => panic!("unexpected error whilst ensuring connection: {err}"),
         }
@@ -278,7 +288,7 @@ fn test_send_recv_nonblock() {
         // reads/writes.
 
         // Yield back to client so that it starts receiving before we start sending.
-        thread::sleep(Duration::from_millis(10));
+        yield_now();
 
         unsafe {
             libc_utils::write_all_generic(
@@ -394,7 +404,7 @@ fn test_send_recv_dontwait() {
         // Similar to above we use blocking operations on the server side.
 
         // Yield back to client so that it starts receiving before we start sending.
-        thread::sleep(Duration::from_millis(10));
+        yield_now();
 
         unsafe {
             libc_utils::write_all_generic(
@@ -501,7 +511,7 @@ fn test_write_read_nonblock() {
         // Similar to above we use blocking operations on the server side.
 
         // Yield back to client so that it starts receiving before we start sending.
-        thread::sleep(Duration::from_millis(10));
+        yield_now();
 
         libc_utils::write_all(peerfd, TEST_BYTES).unwrap();
 
@@ -727,7 +737,7 @@ fn test_getpeername_ipv4_nonblock() {
     });
 
     // Yield to server thread to ensure that it's currently accepting.
-    thread::sleep(Duration::from_millis(10));
+    yield_now();
 
     let Err(err) = net::connect_ipv4(client_sockfd, addr) else {
         // The connection could be established immediately. We don't
@@ -753,7 +763,7 @@ fn test_getpeername_ipv4_nonblock() {
             }
             Err(err) if err.kind() == ErrorKind::NotConnected => {
                 // Connection is not yet established; wait and retry later.
-                thread::sleep(Duration::from_millis(10))
+                yield_now();
             }
             Err(err) => {
                 panic!("error whilst getting peername: {err}")

@@ -1,6 +1,6 @@
 //@only-target: darwin
 // We use `yield` to test specific interleavings, so disable automatic preemption.
-//@compile-flags: -Zmiri-disable-isolation -Zmiri-deterministic-concurrency
+//@compile-flags: -Zmiri-disable-isolation -Zmiri-fixed-schedule
 #![allow(non_camel_case_types)]
 
 use std::{ffi, thread, time};
