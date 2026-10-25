@@ -124,7 +124,7 @@ fn push_marker_impl(
 
     push(cx.item_trait_impl(
         span,
-        thin_vec::thin_vec![cx.attr_word(sym::automatically_derived, span)],
+        thin_vec::thin_vec![cx.generated_attr(span, ast::GeneratedAttr::AutomaticallyDerived)],
         generics_without_defaults(generics),
         ast::Safety::Default,
         false,

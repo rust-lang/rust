@@ -432,6 +432,7 @@ macro_rules! common_visitor_and_walkers {
         impl_visitable_noop! {
             // tidy-alphabetical-start
             AttrId,
+            GeneratedAttr,
             Movability,
             Mutability,
             Pinnedness,
