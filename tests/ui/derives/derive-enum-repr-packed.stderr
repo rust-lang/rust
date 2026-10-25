@@ -3,6 +3,7 @@ error: the `repr(packed)` attribute cannot be used on enums
    |
 LL | #[repr(packed)]
    |   ^^^^^^^^^^^^
+LL | enum COption<T> {
    |
    = help: the `repr(packed)` attribute can be applied to structs and unions
 
