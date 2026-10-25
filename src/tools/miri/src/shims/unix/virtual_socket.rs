@@ -109,6 +109,7 @@ impl FileDescription for VirtualSocket {
 
     fn metadata<'tcx>(
         &self,
+        _communicate_allowed: bool,
     ) -> InterpResult<'tcx, Either<io::Result<std::fs::Metadata>, &'static str>> {
         let mode_name = match self.fd_type {
             VirtualSocketType::Socketpair => "S_IFSOCK",
