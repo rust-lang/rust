@@ -3,6 +3,7 @@ error: the `rustc_abi` attribute cannot be used on constants
    |
 LL | #[rustc_abi(debug)]
    |   ^^^^^^^^^
+LL | const C: () = ();
    |
    = help: the `rustc_abi` attribute can be applied to functions and type aliases
 
@@ -11,6 +12,7 @@ error: the `rustc_abi` attribute cannot be used on associated consts
    |
 LL |     #[rustc_abi(debug)]
    |       ^^^^^^^^^
+LL |     const C: () = ();
    |
    = help: the `rustc_abi` attribute can be applied to functions and type aliases
 

@@ -3,6 +3,8 @@ error: the `link_ordinal` attribute cannot be used on structs
    |
 LL | #[link_ordinal(123)]
    |   ^^^^^^^^^^^^
+LL |
+LL | struct Foo {}
    |
    = help: the `link_ordinal` attribute can be applied to foreign functions and foreign statics
 
@@ -11,6 +13,8 @@ error: the `link_ordinal` attribute cannot be used on functions
    |
 LL | #[link_ordinal(123)]
    |   ^^^^^^^^^^^^
+LL |
+LL | fn test() {}
    |
    = help: the `link_ordinal` attribute can be applied to foreign functions and foreign statics
 
@@ -19,6 +23,8 @@ error: the `link_ordinal` attribute cannot be used on statics
    |
 LL | #[link_ordinal(42)]
    |   ^^^^^^^^^^^^
+LL |
+LL | static mut imported_val: i32 = 123;
    |
    = help: the `link_ordinal` attribute can be applied to foreign functions and foreign statics
 

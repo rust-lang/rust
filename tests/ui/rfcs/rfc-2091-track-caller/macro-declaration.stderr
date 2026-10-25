@@ -3,6 +3,8 @@ warning: the `track_caller` attribute cannot be used on macro defs
    |
 LL | #[track_caller]
    |   ^^^^^^^^^^^^
+...
+LL | macro_rules! _foo {
    |
    = help: the `track_caller` attribute can only be applied to functions
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!

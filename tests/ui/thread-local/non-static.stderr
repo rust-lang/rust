@@ -3,6 +3,8 @@ error: the `thread_local` attribute cannot be used on constants
    |
 LL | #[thread_local]
    |   ^^^^^^^^^^^^
+LL |
+LL | const A: u32 = 0;
    |
    = help: the `thread_local` attribute can be applied to foreign statics and statics
 
@@ -11,6 +13,8 @@ error: the `thread_local` attribute cannot be used on functions
    |
 LL | #[thread_local]
    |   ^^^^^^^^^^^^
+LL |
+LL | fn main() {
    |
    = help: the `thread_local` attribute can be applied to foreign statics and statics
 
@@ -27,6 +31,8 @@ error: the `thread_local` attribute cannot be used on struct fields
    |
 LL |     #[thread_local]
    |       ^^^^^^^^^^^^
+LL |
+LL |     a: String,
    |
    = help: the `thread_local` attribute can be applied to foreign statics and statics
 

@@ -3,6 +3,8 @@ error: the `sanitize` attribute cannot be used on macro calls
    |
 LL |     #[sanitize(address = "off")]
    |       ^^^^^^^^
+LL |
+LL |     unreachable!();
    |
    = help: the `sanitize` attribute can be applied to crates, functions, impl blocks, modules, and statics
    = note: placing this attribute on a macro invocation does nothing even if the macro expands to what would be a valid target for the attribute
@@ -22,6 +24,8 @@ error: the `repr(simd)` attribute cannot be used on macro calls
    |
 LL |     #[repr(simd)]
    |       ^^^^^^^^^^
+...
+LL |     unreachable!();
    |
    = help: the `repr(simd)` attribute can only be applied to structs
    = note: placing this attribute on a macro invocation does nothing even if the macro expands to what would be a valid target for the attribute
@@ -76,6 +80,8 @@ warning: the `export_name` attribute cannot be used on macro calls
    |
 LL |     #[export_name = "x"]
    |       ^^^^^^^^^^^
+...
+LL |     unreachable!();
    |
    = help: the `export_name` attribute can be applied to functions and statics
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -91,6 +97,8 @@ warning: the `naked` attribute cannot be used on macro calls
    |
 LL |     #[unsafe(naked)]
    |              ^^^^^
+...
+LL |     unreachable!();
    |
    = help: the `naked` attribute can only be applied to functions
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -101,6 +109,8 @@ warning: the `track_caller` attribute cannot be used on macro calls
    |
 LL |     #[track_caller]
    |       ^^^^^^^^^^^^
+...
+LL |     unreachable!();
    |
    = help: the `track_caller` attribute can only be applied to functions
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -111,6 +121,8 @@ warning: the `used` attribute cannot be used on macro calls
    |
 LL |     #[used]
    |       ^^^^
+...
+LL |     unreachable!();
    |
    = help: the `used` attribute can only be applied to statics
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -121,6 +133,8 @@ warning: the `target_feature` attribute cannot be used on macro calls
    |
 LL |     #[target_feature(enable = "x")]
    |       ^^^^^^^^^^^^^^
+...
+LL |     unreachable!();
    |
    = help: the `target_feature` attribute can only be applied to functions
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -131,6 +145,8 @@ warning: the `deprecated` attribute cannot be used on macro calls
    |
 LL |     #[deprecated]
    |       ^^^^^^^^^^
+...
+LL |     unreachable!();
    |
    = help: the `deprecated` attribute can be applied to associated consts, associated types, constants, crates, data types, enum variants, foreign statics, functions, inherent impl blocks, macro defs, modules, statics, struct fields, traits, type aliases, and use statements
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -141,6 +157,8 @@ warning: the `inline` attribute cannot be used on macro calls
    |
 LL |     #[inline]
    |       ^^^^^^
+...
+LL |     unreachable!();
    |
    = help: the `inline` attribute can only be applied to functions
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -151,6 +169,8 @@ warning: the `link_name` attribute cannot be used on macro calls
    |
 LL |     #[link_name = "x"]
    |       ^^^^^^^^^
+...
+LL |     unreachable!();
    |
    = help: the `link_name` attribute can be applied to foreign functions and foreign statics
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -161,6 +181,8 @@ warning: the `link_section` attribute cannot be used on macro calls
    |
 LL |     #[link_section = "__TEXT,__text"]
    |       ^^^^^^^^^^^^
+...
+LL |     unreachable!();
    |
    = help: the `link_section` attribute can be applied to functions and statics
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -171,6 +193,8 @@ warning: the `link_ordinal` attribute cannot be used on macro calls
    |
 LL |     #[link_ordinal(42)]
    |       ^^^^^^^^^^^^
+...
+LL |     unreachable!();
    |
    = help: the `link_ordinal` attribute can be applied to foreign functions and foreign statics
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -181,6 +205,8 @@ warning: the `non_exhaustive` attribute cannot be used on macro calls
    |
 LL |     #[non_exhaustive]
    |       ^^^^^^^^^^^^^^
+...
+LL |     unreachable!();
    |
    = help: the `non_exhaustive` attribute can be applied to data types and enum variants
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -191,6 +217,8 @@ warning: the `proc_macro` attribute cannot be used on macro calls
    |
 LL |     #[proc_macro]
    |       ^^^^^^^^^^
+...
+LL |     unreachable!();
    |
    = help: the `proc_macro` attribute can only be applied to functions
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -201,6 +229,8 @@ warning: the `cold` attribute cannot be used on macro calls
    |
 LL |     #[cold]
    |       ^^^^
+...
+LL |     unreachable!();
    |
    = help: the `cold` attribute can only be applied to functions
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -211,6 +241,8 @@ warning: the `no_mangle` attribute cannot be used on macro calls
    |
 LL |     #[no_mangle]
    |       ^^^^^^^^^
+...
+LL |     unreachable!();
    |
    = help: the `no_mangle` attribute can be applied to functions and statics
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -221,6 +253,8 @@ warning: the `deprecated` attribute cannot be used on macro calls
    |
 LL |     #[deprecated]
    |       ^^^^^^^^^^
+...
+LL |     unreachable!();
    |
    = help: the `deprecated` attribute can be applied to associated consts, associated types, constants, crates, data types, enum variants, foreign statics, functions, inherent impl blocks, macro defs, modules, statics, struct fields, traits, type aliases, and use statements
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -231,6 +265,8 @@ warning: the `automatically_derived` attribute cannot be used on macro calls
    |
 LL |     #[automatically_derived]
    |       ^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     unreachable!();
    |
    = help: the `automatically_derived` attribute can only be applied to trait impl blocks
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -241,6 +277,8 @@ warning: the `macro_use` attribute cannot be used on macro calls
    |
 LL |     #[macro_use]
    |       ^^^^^^^^^
+...
+LL |     unreachable!();
    |
    = help: the `macro_use` attribute can be applied to extern crates and modules
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -251,6 +289,8 @@ warning: the `must_use` attribute cannot be used on macro calls
    |
 LL |     #[must_use]
    |       ^^^^^^^^
+...
+LL |     unreachable!();
    |
    = help: the `must_use` attribute can be applied to data types, functions, and traits
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -261,6 +301,8 @@ warning: the `no_implicit_prelude` attribute cannot be used on macro calls
    |
 LL |     #[no_implicit_prelude]
    |       ^^^^^^^^^^^^^^^^^^^
+...
+LL |     unreachable!();
    |
    = help: the `no_implicit_prelude` attribute can be applied to crates and modules
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -271,6 +313,8 @@ warning: the `path` attribute cannot be used on macro calls
    |
 LL |     #[path = ""]
    |       ^^^^
+...
+LL |     unreachable!();
    |
    = help: the `path` attribute can only be applied to modules
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -281,6 +325,8 @@ warning: the `ignore` attribute cannot be used on macro calls
    |
 LL |     #[ignore]
    |       ^^^^^^
+...
+LL |     unreachable!();
    |
    = help: the `ignore` attribute can only be applied to functions
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -291,6 +337,8 @@ warning: the `should_panic` attribute cannot be used on macro calls
    |
 LL |     #[should_panic]
    |       ^^^^^^^^^^^^
+...
+LL |     unreachable!();
    |
    = help: the `should_panic` attribute can only be applied to functions
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -301,6 +349,8 @@ warning: the `link_name` attribute cannot be used on macro calls
    |
 LL |     #[link_name = "x"]
    |       ^^^^^^^^^
+...
+LL |     unreachable!();
    |
    = help: the `link_name` attribute can be applied to foreign functions and foreign statics
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -311,6 +361,8 @@ warning: the `repr()` attribute cannot be used on macro calls
    |
 LL |     #[repr()]
    |       ^^^^^^
+...
+LL |     unreachable!();
    |
    = help: the `repr()` attribute can only be applied to data types
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -329,6 +381,8 @@ warning: the `repr(u8)` attribute cannot be used on macro calls
    |
 LL |     #[repr(u8)]
    |       ^^^^^^^^
+...
+LL |     unreachable!();
    |
    = help: the `repr(u8)` attribute can only be applied to enums
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -339,6 +393,8 @@ warning: the `repr(align(...))` attribute cannot be used on macro calls
    |
 LL |     #[repr(align(8))]
    |       ^^^^^^^^^^^^^^
+...
+LL |     unreachable!();
    |
    = help: the `repr(align(...))` attribute can only be applied to data types
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -349,6 +405,8 @@ warning: the `repr(packed)` attribute cannot be used on macro calls
    |
 LL |     #[repr(packed)]
    |       ^^^^^^^^^^^^
+...
+LL |     unreachable!();
    |
    = help: the `repr(packed)` attribute can only be applied to data types
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -359,6 +417,8 @@ warning: the `repr(C)` attribute cannot be used on macro calls
    |
 LL |     #[repr(C)]
    |       ^^^^^^^
+...
+LL |     unreachable!();
    |
    = help: the `repr(C)` attribute can only be applied to data types
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -369,6 +429,8 @@ warning: the `repr(Rust)` attribute cannot be used on macro calls
    |
 LL |     #[repr(Rust)]
    |       ^^^^^^^^^^
+...
+LL |     unreachable!();
    |
    = help: the `repr(Rust)` attribute can only be applied to data types
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!

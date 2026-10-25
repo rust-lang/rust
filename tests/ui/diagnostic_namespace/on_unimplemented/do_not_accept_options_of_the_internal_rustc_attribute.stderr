@@ -157,6 +157,8 @@ warning: the `diagnostic::on_unimplemented` attribute cannot be used on trait im
    |
 LL | #[diagnostic::on_unimplemented(message = "Not allowed to apply it on a impl")]
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | impl Bar for i32 {}
    |
    = help: the `diagnostic::on_unimplemented` attribute can only be applied to traits
    = note: `#[warn(misplaced_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
