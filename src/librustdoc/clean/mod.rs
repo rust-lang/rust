@@ -3221,7 +3221,7 @@ fn clean_use_statement<'tcx>(
             for (tree, hir_id, def_id) in items {
                 let mut segments = path.segments.to_vec();
                 segments.extend(tree.prefix.segments.iter());
-                if segments.last().unwrap().ident.name == kw::SelfLower {
+                if segments.last().is_some_and(|seg| seg.ident.name == kw::SelfLower) {
                     segments.pop();
                 }
                 let path = hir::UsePath {
