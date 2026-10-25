@@ -16,8 +16,7 @@ It does this by "lowering" Rust code into a kind of logic program we can then ex
 queries against.
 
 The key observation here is that the Rust trait system is basically a kind of logic,
-and it can be mapped onto standard logical inference
-rules.
+and it can be mapped onto standard logical inference rules.
 We can then look for solutions to those inference rules in a
 very similar fashion to how e.g. a [Prolog] solver works. It turns out
 that we can't *quite* use Prolog rules (also called Horn clauses) but
