@@ -602,7 +602,19 @@ pub fn source_span_for_markdown_range_inner(
         if pat.is_empty() {
             return None;
         }
+        let mut buffer = String::new();
+        let mut offset = 0;
         for (i, fragment) in fragments.iter().enumerate() {
+            // Ignore fragments outside of the specified range
+            buffer.clear();
+            add_doc_fragment(&mut buffer, fragment);
+            let frag_start = offset;
+            offset += buffer.len();
+            let frag_end = offset;
+            if !(frag_start <= md_range.start && md_range.end <= frag_end) {
+                continue;
+            }
+
             if let Ok(snippet) = map.span_to_snippet(fragment.span)
                 && let Some(match_start) = snippet.find(pat)
             {
@@ -621,6 +633,7 @@ pub fn source_span_for_markdown_range_inner(
                     return None;
                 }
             }
+            break; // only one fragment can contain the range
         }
         if let Some((i, match_start)) = match_data {
             let fragment = &fragments[i];
