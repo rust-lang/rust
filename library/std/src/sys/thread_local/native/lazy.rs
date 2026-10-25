@@ -1,7 +1,7 @@
 use crate::cell::{Cell, UnsafeCell};
 use crate::mem::MaybeUninit;
 use crate::ptr;
-use crate::sys::thread_local::{abort_on_dtor_unwind, destructors};
+use crate::sys::thread_local::abort_on_dtor_unwind;
 
 pub unsafe trait DestroyedState: Sized + Copy {
     fn register_dtor<T>(s: &Storage<T, Self>);
@@ -14,7 +14,7 @@ unsafe impl DestroyedState for ! {
 unsafe impl DestroyedState for () {
     fn register_dtor<T>(s: &Storage<T, ()>) {
         unsafe {
-            destructors::register(ptr::from_ref(s).cast_mut().cast(), destroy::<T>);
+            super::destructors::register(ptr::from_ref(s).cast_mut().cast(), destroy::<T>);
         }
     }
 }
