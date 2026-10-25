@@ -879,10 +879,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Thread-local storage
             "pthread_key_create" => {
                 let [key, dtor] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(*_, fn(..) -> _) -> i32),
+                    shim_sig!(extern "C" fn(*libc::pthread_key_t, fn(..) -> _) -> i32),
                     (link_name, abi, args),
                 )?;
-                let key_place = this.deref_pointer_as(key, this.libc_ty_layout("pthread_key_t"))?;
+                let key_place = this.deref_pointer(key)?;
                 let dtor = this.read_pointer(dtor)?;
 
                 // Extract the function type out of the signature (that seems easier than constructing it ourselves).
@@ -1332,13 +1332,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // These shims are enabled only when the caller is in the standard library.
             "pthread_attr_getguardsize" if this.frame_in_std() => {
                 let [_attr, guard_size] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(*_, *_) -> i32),
+                    shim_sig!(extern "C" fn(*_, *usize) -> i32),
                     (link_name, abi, args),
                 )?;
-                let guard_size_layout = this.machine.layouts.usize;
-                let guard_size = this.deref_pointer_as(guard_size, guard_size_layout)?;
+                let guard_size = this.deref_pointer(guard_size)?;
                 this.write_scalar(
-                    Scalar::from_uint(this.machine.page_size, guard_size_layout.size),
+                    Scalar::from_uint(this.machine.page_size, guard_size.layout.size),
                     &guard_size,
                 )?;
 
@@ -1364,13 +1363,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // We don't support "pthread_attr_setstack", so we just pretend all stacks have the same values here.
                 // Hence we can mostly ignore the input `attr_place`.
                 let [attr_place, addr_place, size_place] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(*_, *_, *_) -> i32),
+                    shim_sig!(extern "C" fn(*libc::pthread_attr_t, *usize, *usize) -> i32),
                     (link_name, abi, args),
                 )?;
-                let _attr_place =
-                    this.deref_pointer_as(attr_place, this.libc_ty_layout("pthread_attr_t"))?;
-                let addr_place = this.deref_pointer_as(addr_place, this.machine.layouts.usize)?;
-                let size_place = this.deref_pointer_as(size_place, this.machine.layouts.usize)?;
+                let _attr_place = this.deref_pointer(attr_place)?;
+                let addr_place = this.deref_pointer(addr_place)?;
+                let size_place = this.deref_pointer(size_place)?;
 
                 this.write_scalar(
                     Scalar::from_uint(this.machine.stack_addr, this.pointer_size()),
@@ -1410,16 +1408,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "getpwuid_r" | "__posix_getpwuid_r" if this.frame_in_std() => {
                 // getpwuid_r is the standard name, __posix_getpwuid_r is used on solarish
                 let [uid, pwd, buf, buflen, result] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(libc::uid_t, *_, *_, usize, *_) -> i32),
+                    shim_sig!(extern "C" fn(libc::uid_t, *libc::passwd, *_, usize, **()) -> i32),
                     (link_name, abi, args),
                 )?;
                 this.check_no_isolation("`getpwuid_r`")?;
 
                 let uid = this.read_scalar(uid)?.to_u32()?;
-                let pwd = this.deref_pointer_as(pwd, this.libc_ty_layout("passwd"))?;
+                let pwd = this.deref_pointer(pwd)?;
                 let buf = this.read_pointer(buf)?;
                 let buflen = this.read_target_usize(buflen)?;
-                let result = this.deref_pointer_as(result, this.machine.layouts.unit_ptr_mut)?;
+                let result = this.deref_pointer(result)?;
 
                 // Must be for "us".
                 if uid != UID {
