@@ -12,46 +12,44 @@
       let _9: ();
       let mut _10: usize;
       let mut _13: &mut usize;
-      let mut _14: &mut usize;
-      let _16: ();
-      let mut _17: ();
-      let _18: ();
-      let mut _19: usize;
-      let _23: ();
-      let mut _24: &&mut usize;
-      let _25: ();
-      let mut _26: usize;
-      let _30: ();
-      let mut _31: *mut &mut usize;
-      let _32: ();
-      let mut _33: usize;
-      let _36: ();
+      let _15: ();
+      let mut _16: ();
+      let _17: ();
+      let mut _18: usize;
+      let _22: ();
+      let mut _23: &&mut usize;
+      let _24: ();
+      let mut _25: usize;
+      let _29: ();
+      let mut _30: *mut &mut usize;
+      let _31: ();
+      let mut _32: usize;
+      let _35: ();
+      let mut _36: &mut usize;
       let mut _37: &mut usize;
-      let mut _38: &mut usize;
-      let _39: ();
-      let mut _40: usize;
-      let mut _44: &mut usize;
-      let mut _47: &mut usize;
-      let _48: ();
+      let _38: ();
+      let mut _39: usize;
+      let mut _43: &mut usize;
+      let mut _46: &mut usize;
+      let _47: ();
+      let mut _48: &mut usize;
       let mut _49: &mut usize;
-      let mut _50: &mut usize;
-      let _51: ();
-      let _52: &mut T;
-      let _54: ();
-      let mut _55: ();
-      let _56: ();
-      let _57: &mut T;
-      let mut _58: &mut T;
-      let mut _59: &mut T;
+      let _50: ();
+      let _51: &mut T;
+      let _53: ();
+      let mut _54: ();
+      let _55: ();
+      let _56: &mut T;
+      let mut _57: &mut T;
+      let _59: ();
+      let mut _60: ();
       let _61: ();
-      let mut _62: ();
-      let _63: ();
-      let mut _64: usize;
-      let _68: ();
-      let mut _69: ();
-      let mut _70: usize;
-      let _74: ();
-      let mut _75: ();
+      let mut _62: usize;
+      let _66: ();
+      let mut _67: ();
+      let mut _68: usize;
+      let _72: ();
+      let mut _73: ();
       scope 1 {
           debug a => _4;
           let _5: &mut usize;
@@ -71,73 +69,73 @@
               let mut _12: &mut usize;
               scope 6 {
                   debug b => _12;
-                  let _15: usize;
+                  let _14: usize;
                   scope 7 {
-                      debug c => _15;
+                      debug c => _14;
                   }
               }
           }
       }
       scope 8 {
-          debug a => _19;
-          let _20: &mut usize;
+          debug a => _18;
+          let _19: &mut usize;
           scope 9 {
-              debug b => _20;
-              let _21: &&mut usize;
+              debug b => _19;
+              let _20: &&mut usize;
               scope 10 {
-                  debug d => _21;
-                  let _22: usize;
+                  debug d => _20;
+                  let _21: usize;
                   scope 11 {
-                      debug c => _22;
+                      debug c => _21;
                   }
               }
           }
       }
       scope 12 {
-          debug a => _26;
-          let mut _27: &mut usize;
+          debug a => _25;
+          let mut _26: &mut usize;
           scope 13 {
-              debug b => _27;
-              let _28: *mut &mut usize;
+              debug b => _26;
+              let _27: *mut &mut usize;
               scope 14 {
-                  debug d => _28;
-                  let _29: usize;
+                  debug d => _27;
+                  let _28: usize;
                   scope 15 {
-                      debug c => _29;
+                      debug c => _28;
                   }
               }
           }
       }
       scope 16 {
-          debug a => _33;
-          let _34: &mut usize;
+          debug a => _32;
+          let _33: &mut usize;
           scope 17 {
-              debug b => _34;
-              let _35: usize;
+              debug b => _33;
+              let _34: usize;
               scope 18 {
-                  debug c => _35;
+                  debug c => _34;
               }
           }
       }
       scope 19 {
-          debug a => _40;
-          let _41: &mut usize;
+          debug a => _39;
+          let _40: &mut usize;
           scope 20 {
-              debug b1 => _41;
-              let _42: usize;
+              debug b1 => _40;
+              let _41: usize;
               scope 21 {
-                  debug c => _42;
-                  let _43: &mut usize;
+                  debug c => _41;
+                  let _42: &mut usize;
                   scope 22 {
--                     debug b2 => _43;
-+                     debug b2 => _41;
-                      let _45: usize;
+-                     debug b2 => _42;
++                     debug b2 => _40;
+                      let _44: usize;
                       scope 23 {
-                          debug c2 => _45;
-                          let _46: &mut usize;
+                          debug c2 => _44;
+                          let _45: &mut usize;
                           scope 24 {
--                             debug b3 => _46;
-+                             debug b3 => _41;
+-                             debug b3 => _45;
++                             debug b3 => _40;
                           }
                       }
                   }
@@ -145,46 +143,46 @@
           }
       }
       scope 25 {
--         debug a => _52;
+-         debug a => _51;
 +         debug a => _1;
-          let _53: T;
+          let _52: T;
           scope 26 {
-              debug b => _53;
+              debug b => _52;
           }
       }
       scope 27 {
-          debug a => _57;
-          let _60: T;
+          debug a => _56;
+          let _58: T;
           scope 28 {
-              debug b => _60;
+              debug b => _58;
           }
       }
       scope 29 {
-          debug a => _64;
-          let _65: &mut usize;
+          debug a => _62;
+          let _63: &mut usize;
           scope 30 {
-              debug b => _65;
-              let _66: &&mut usize;
+              debug b => _63;
+              let _64: &&mut usize;
               scope 31 {
-                  debug d => _66;
-                  let _67: usize;
+                  debug d => _64;
+                  let _65: usize;
                   scope 32 {
-                      debug c => _67;
+                      debug c => _65;
                   }
               }
           }
       }
       scope 33 {
-          debug a => _70;
-          let mut _71: &mut usize;
+          debug a => _68;
+          let mut _69: &mut usize;
           scope 34 {
-              debug b => _71;
-              let _72: &mut &mut usize;
+              debug b => _69;
+              let _70: &mut &mut usize;
               scope 35 {
-                  debug d => _72;
-                  let _73: usize;
+                  debug d => _70;
+                  let _71: usize;
                   scope 36 {
-                      debug c => _73;
+                      debug c => _71;
                   }
               }
           }
@@ -221,237 +219,229 @@
           StorageLive(_12);
           _12 = &mut _10;
           StorageLive(_13);
--         StorageLive(_14);
--         _14 = &mut _11;
--         _13 = &mut (*_14);
+          _13 = &mut _11;
 -         _12 = move _13;
-+         _13 = &mut _11;
 +         _12 = copy _13;
           StorageDead(_13);
--         StorageDead(_14);
+          StorageLive(_14);
+          _14 = copy (*_12);
           StorageLive(_15);
-          _15 = copy (*_12);
           StorageLive(_16);
-          StorageLive(_17);
-          _17 = ();
-          _16 = opaque::<()>(move _17) -> [return: bb2, unwind continue];
+          _16 = ();
+          _15 = opaque::<()>(move _16) -> [return: bb2, unwind continue];
       }
   
       bb2: {
-          StorageDead(_17);
           StorageDead(_16);
--         _9 = const ();
           StorageDead(_15);
+-         _9 = const ();
+          StorageDead(_14);
           StorageDead(_12);
           StorageDead(_11);
           StorageDead(_10);
 -         StorageDead(_9);
--         StorageLive(_18);
+-         StorageLive(_17);
+          StorageLive(_18);
+          _18 = const 5_usize;
           StorageLive(_19);
-          _19 = const 5_usize;
+          _19 = &mut _18;
           StorageLive(_20);
-          _20 = &mut _19;
+          _20 = &_19;
           StorageLive(_21);
-          _21 = &_20;
+          _21 = copy (*_19);
           StorageLive(_22);
-          _22 = copy (*_20);
           StorageLive(_23);
-          StorageLive(_24);
-          _24 = copy _21;
--         _23 = opaque::<&&mut usize>(move _24) -> [return: bb3, unwind continue];
-+         _23 = opaque::<&&mut usize>(copy _24) -> [return: bb3, unwind continue];
+          _23 = copy _20;
+-         _22 = opaque::<&&mut usize>(move _23) -> [return: bb3, unwind continue];
++         _22 = opaque::<&&mut usize>(copy _23) -> [return: bb3, unwind continue];
       }
   
       bb3: {
-          StorageDead(_24);
           StorageDead(_23);
--         _18 = const ();
           StorageDead(_22);
+-         _17 = const ();
           StorageDead(_21);
           StorageDead(_20);
           StorageDead(_19);
--         StorageDead(_18);
--         StorageLive(_25);
+          StorageDead(_18);
+-         StorageDead(_17);
+-         StorageLive(_24);
+          StorageLive(_25);
+          _25 = const 5_usize;
           StorageLive(_26);
-          _26 = const 5_usize;
+          _26 = &mut _25;
           StorageLive(_27);
-          _27 = &mut _26;
+          _27 = &raw mut _26;
           StorageLive(_28);
-          _28 = &raw mut _27;
+          _28 = copy (*_26);
           StorageLive(_29);
-          _29 = copy (*_27);
           StorageLive(_30);
-          StorageLive(_31);
-          _31 = copy _28;
--         _30 = opaque::<*mut &mut usize>(move _31) -> [return: bb4, unwind continue];
-+         _30 = opaque::<*mut &mut usize>(copy _31) -> [return: bb4, unwind continue];
+          _30 = copy _27;
+-         _29 = opaque::<*mut &mut usize>(move _30) -> [return: bb4, unwind continue];
++         _29 = opaque::<*mut &mut usize>(copy _30) -> [return: bb4, unwind continue];
       }
   
       bb4: {
-          StorageDead(_31);
           StorageDead(_30);
--         _25 = const ();
           StorageDead(_29);
+-         _24 = const ();
           StorageDead(_28);
           StorageDead(_27);
           StorageDead(_26);
--         StorageDead(_25);
--         StorageLive(_32);
+          StorageDead(_25);
+-         StorageDead(_24);
+-         StorageLive(_31);
+          StorageLive(_32);
+          _32 = const 7_usize;
           StorageLive(_33);
-          _33 = const 7_usize;
+          _33 = &mut _32;
           StorageLive(_34);
-          _34 = &mut _33;
+-         _34 = copy (*_33);
++         _34 = copy _32;
           StorageLive(_35);
--         _35 = copy (*_34);
-+         _35 = copy _33;
           StorageLive(_36);
-          StorageLive(_37);
--         _38 = &mut (*_34);
--         _37 = move _38;
--         _36 = opaque::<&mut usize>(move _37) -> [return: bb5, unwind continue];
-+         _38 = &mut _33;
-+         _37 = copy _38;
-+         _36 = opaque::<&mut usize>(copy _37) -> [return: bb5, unwind continue];
+-         _37 = &mut (*_33);
+-         _36 = move _37;
+-         _35 = opaque::<&mut usize>(move _36) -> [return: bb5, unwind continue];
++         _37 = &mut _32;
++         _36 = copy _37;
++         _35 = opaque::<&mut usize>(copy _36) -> [return: bb5, unwind continue];
       }
   
       bb5: {
-          StorageDead(_37);
           StorageDead(_36);
--         _32 = const ();
           StorageDead(_35);
+-         _31 = const ();
           StorageDead(_34);
           StorageDead(_33);
--         StorageDead(_32);
--         StorageLive(_39);
-          StorageLive(_40);
-          _40 = const 7_usize;
--         StorageLive(_41);
-          _41 = &mut _40;
-          StorageLive(_42);
--         _42 = copy (*_41);
--         StorageLive(_43);
--         _44 = &mut (*_41);
--         _43 = move _44;
-+         _42 = copy _40;
-          StorageLive(_45);
--         _45 = copy (*_43);
--         StorageLive(_46);
--         _47 = &mut (*_43);
--         _46 = move _47;
-+         _45 = copy _40;
+          StorageDead(_32);
+-         StorageDead(_31);
+-         StorageLive(_38);
+          StorageLive(_39);
+          _39 = const 7_usize;
+-         StorageLive(_40);
+          _40 = &mut _39;
+          StorageLive(_41);
+-         _41 = copy (*_40);
+-         StorageLive(_42);
+-         _43 = &mut (*_40);
+-         _42 = move _43;
++         _41 = copy _39;
+          StorageLive(_44);
+-         _44 = copy (*_42);
+-         StorageLive(_45);
+-         _46 = &mut (*_42);
+-         _45 = move _46;
++         _44 = copy _39;
+          StorageLive(_47);
           StorageLive(_48);
-          StorageLive(_49);
--         _50 = &mut (*_46);
--         _49 = move _50;
--         _48 = opaque::<&mut usize>(move _49) -> [return: bb6, unwind continue];
-+         _50 = &mut _40;
-+         _49 = copy _50;
-+         _48 = opaque::<&mut usize>(copy _49) -> [return: bb6, unwind continue];
+-         _49 = &mut (*_45);
+-         _48 = move _49;
+-         _47 = opaque::<&mut usize>(move _48) -> [return: bb6, unwind continue];
++         _49 = &mut _39;
++         _48 = copy _49;
++         _47 = opaque::<&mut usize>(copy _48) -> [return: bb6, unwind continue];
       }
   
       bb6: {
-          StorageDead(_49);
           StorageDead(_48);
--         _39 = const ();
--         StorageDead(_46);
-          StorageDead(_45);
--         StorageDead(_43);
-          StorageDead(_42);
--         StorageDead(_41);
-          StorageDead(_40);
--         StorageDead(_39);
+          StorageDead(_47);
+-         _38 = const ();
+-         StorageDead(_45);
+          StorageDead(_44);
+-         StorageDead(_42);
+          StorageDead(_41);
+-         StorageDead(_40);
+          StorageDead(_39);
+-         StorageDead(_38);
+-         StorageLive(_50);
 -         StorageLive(_51);
--         StorageLive(_52);
--         _52 = &mut (*_1);
+-         _51 = &mut (*_1);
+          StorageLive(_52);
+-         _52 = copy (*_51);
++         _52 = copy (*_1);
           StorageLive(_53);
--         _53 = copy (*_52);
-+         _53 = copy (*_1);
           StorageLive(_54);
-          StorageLive(_55);
-          _55 = ();
-          _54 = opaque::<()>(move _55) -> [return: bb7, unwind continue];
+          _54 = ();
+          _53 = opaque::<()>(move _54) -> [return: bb7, unwind continue];
       }
   
       bb7: {
-          StorageDead(_55);
           StorageDead(_54);
--         _51 = const ();
           StorageDead(_53);
--         StorageDead(_52);
+-         _50 = const ();
+          StorageDead(_52);
 -         StorageDead(_51);
--         StorageLive(_56);
+-         StorageDead(_50);
+-         StorageLive(_55);
+          StorageLive(_56);
+          _56 = &mut (*_2);
           StorageLive(_57);
-          _57 = &mut (*_2);
+          _57 = &mut (*_1);
+-         _2 = move _57;
++         _2 = copy _57;
+          StorageDead(_57);
           StorageLive(_58);
--         StorageLive(_59);
--         _59 = &mut (*_1);
--         _58 = &mut (*_59);
--         _2 = move _58;
-+         _58 = &mut (*_1);
-+         _2 = copy _58;
-          StorageDead(_58);
--         StorageDead(_59);
+          _58 = copy (*_56);
+          StorageLive(_59);
           StorageLive(_60);
-          _60 = copy (*_57);
-          StorageLive(_61);
-          StorageLive(_62);
-          _62 = ();
-          _61 = opaque::<()>(move _62) -> [return: bb8, unwind continue];
+          _60 = ();
+          _59 = opaque::<()>(move _60) -> [return: bb8, unwind continue];
       }
   
       bb8: {
-          StorageDead(_62);
-          StorageDead(_61);
--         _56 = const ();
           StorageDead(_60);
-          StorageDead(_57);
--         StorageDead(_56);
--         StorageLive(_63);
+          StorageDead(_59);
+-         _55 = const ();
+          StorageDead(_58);
+          StorageDead(_56);
+-         StorageDead(_55);
+-         StorageLive(_61);
+          StorageLive(_62);
+          _62 = const 5_usize;
+          StorageLive(_63);
+          _63 = &mut _62;
           StorageLive(_64);
-          _64 = const 5_usize;
+          _64 = &_63;
           StorageLive(_65);
-          _65 = &mut _64;
+          _65 = copy (*_63);
           StorageLive(_66);
-          _66 = &_65;
           StorageLive(_67);
-          _67 = copy (*_65);
-          StorageLive(_68);
-          StorageLive(_69);
-          _69 = ();
-          _68 = opaque::<()>(move _69) -> [return: bb9, unwind continue];
+          _67 = ();
+          _66 = opaque::<()>(move _67) -> [return: bb9, unwind continue];
       }
   
       bb9: {
-          StorageDead(_69);
-          StorageDead(_68);
--         _63 = const ();
           StorageDead(_67);
           StorageDead(_66);
+-         _61 = const ();
           StorageDead(_65);
           StorageDead(_64);
--         StorageDead(_63);
+          StorageDead(_63);
+          StorageDead(_62);
+-         StorageDead(_61);
+          StorageLive(_68);
+          _68 = const 5_usize;
+          StorageLive(_69);
+          _69 = &mut _68;
           StorageLive(_70);
-          _70 = const 5_usize;
+          _70 = &mut _69;
           StorageLive(_71);
-          _71 = &mut _70;
+          _71 = copy (*_69);
           StorageLive(_72);
-          _72 = &mut _71;
           StorageLive(_73);
-          _73 = copy (*_71);
-          StorageLive(_74);
-          StorageLive(_75);
-          _75 = ();
-          _74 = opaque::<()>(move _75) -> [return: bb10, unwind continue];
+          _73 = ();
+          _72 = opaque::<()>(move _73) -> [return: bb10, unwind continue];
       }
   
       bb10: {
-          StorageDead(_75);
-          StorageDead(_74);
-          _0 = const ();
           StorageDead(_73);
           StorageDead(_72);
+          _0 = const ();
           StorageDead(_71);
           StorageDead(_70);
+          StorageDead(_69);
+          StorageDead(_68);
           return;
       }
   }
