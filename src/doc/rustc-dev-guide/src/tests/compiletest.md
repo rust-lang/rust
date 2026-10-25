@@ -375,6 +375,12 @@ even if the test is `#![no_std]`/`#![no_core]`.
 If you need to work with `#![no_std]` cross-compiling tests,
 consult the [`minicore` test auxiliary](./minicore.md) chapter.
 
+> [!IMPORTANT]
+> Several of these tests use the [`ignore-std-debug-assertions` directive].
+> If `rust.debug-assertions-std` is set to `true` in `bootstrap.toml`
+> (including transitively via `rust.debug` or `rust.debug-assertions`),
+> they will not be run!
+
 [`tests/codegen-llvm`]: https://github.com/rust-lang/rust/tree/HEAD/tests/codegen-llvm
 [FileCheck]: https://llvm.org/docs/CommandGuide/FileCheck.html
 
@@ -465,7 +471,14 @@ problematic in the presence of pointers in constants or other bit width dependen
 In that case you can add `// EMIT_MIR_FOR_EACH_BIT_WIDTH` to your test,
 causing separate files to be generated for 32bit and 64bit systems.
 
+> [!IMPORTANT]
+> Several of these tests use the [`ignore-std-debug-assertions` directive].
+> If `rust.debug-assertions-std` is set to `true` in `bootstrap.toml`
+> (including transitively via `rust.debug` or `rust.debug-assertions`),
+> they will not be run!
+
 [`tests/mir-opt`]: https://github.com/rust-lang/rust/tree/HEAD/tests/mir-opt
+[`ignore-std-debug-assertions` directive]: ./directives.md#controlling-when-tests-are-run
 
 
 ### `run-make` tests
