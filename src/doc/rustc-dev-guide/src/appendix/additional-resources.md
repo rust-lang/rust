@@ -76,7 +76,7 @@ There are a few relevant documents for PowerPC ABI:
 * [_Power Architecture™ 32-bit Application Binary Interface Supplement 1.0 - Linux® &
   Embedded_](https://web.archive.org/web/20120608163804/https://www.power.org/resources/downloads/Power-Arch-32-bit-ABI-supp-1.0-Unified.pdf)
   (web archive) is the latest version of the 32-bit ABI.
-  Its source is hosted at <https://github.com/ryanarn/powerabi> but effectively unmaintained.
+  Its source is hosted at <https://github.com/ryanarn/powerabi>, but is effectively unmaintained.
 * [_64-bit PowerPC ELF Application Binary Interface Supplement
   1.9_](https://refspecs.linuxfoundation.org/ELF/ppc64/PPC-elf64abi-1.9.html) is the original 64-bit
   ABI, last updated in 2004. This is known as ELFv1,
