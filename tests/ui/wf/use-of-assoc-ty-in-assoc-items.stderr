@@ -35,18 +35,6 @@ LL | struct AssertCopy<T: Copy>(T);
    |                      ^^^^ required by this bound in `AssertCopy`
 
 error[E0277]: the trait bound `String: Copy` is not satisfied
-  --> $DIR/use-of-assoc-ty-in-assoc-items.rs:15:23
-   |
-LL |     fn my_method() -> Self::Assoc {
-   |                       ^^^^^^^^^^^ the trait `Copy` is not implemented for `String`
-   |
-note: required by a bound in `AssertCopy`
-  --> $DIR/use-of-assoc-ty-in-assoc-items.rs:1:22
-   |
-LL | struct AssertCopy<T: Copy>(T);
-   |                      ^^^^ required by this bound in `AssertCopy`
-
-error[E0277]: the trait bound `String: Copy` is not satisfied
   --> $DIR/use-of-assoc-ty-in-assoc-items.rs:13:28
    |
 LL |     const X: Self::Other = panic!();
@@ -58,6 +46,6 @@ note: required by a bound in `AssertCopy`
 LL | struct AssertCopy<T: Copy>(T);
    |                      ^^^^ required by this bound in `AssertCopy`
 
-error: aborting due to 5 previous errors
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

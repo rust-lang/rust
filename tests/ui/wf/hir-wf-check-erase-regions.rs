@@ -14,8 +14,7 @@ impl<'a, T, const N: usize> IntoIterator for &'a Table<T, N> {
     type Item = &'a T;
 
     fn into_iter(self) -> Self::IntoIter {
-        //~^ ERROR `&'a T` is not an iterator
-        //~| ERROR `&T` is not an iterator
+        //~^ ERROR `&T` is not an iterator
         unimplemented!()
     }
 }

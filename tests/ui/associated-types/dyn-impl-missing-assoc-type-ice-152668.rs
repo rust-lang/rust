@@ -11,7 +11,6 @@ impl Sub for dyn Vector2 {
     //~^ ERROR: the size for values of type `(dyn Vector2 + 'static)` cannot be known at compilation time [E0277]
     //~| ERROR: the size for values of type `(dyn Vector2 + 'static)` cannot be known at compilation time [E0277]
     //~| ERROR: the size for values of type `(dyn Vector2 + 'static)` cannot be known at compilation time [E0277]
-    //~| ERROR: the size for values of type `(dyn Vector2 + 'static)` cannot be known at compilation time [E0277]
     //~| ERROR: mismatched types [E0308]
 }
 

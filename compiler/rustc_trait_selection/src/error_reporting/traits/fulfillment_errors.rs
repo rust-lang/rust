@@ -3141,7 +3141,43 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             | ObligationCauseCode::VariableType(hir_id)
             | ObligationCauseCode::WhereClauseInExpr(_, _, hir_id, _)
             | ObligationCauseCode::SizedCallReturnType(hir_id) => *hir_id,
-            ObligationCauseCode::WellFormed(WellFormedLoc::Param { function, .. }) => {
+            ObligationCauseCode::WellFormed(WellFormedLoc::Param { function, param_idx }) => {
+                if let hir::def::DefKind::AssocFn = self.tcx.def_kind(*function) {
+                    let sig = self.tcx.fn_sig(*function).instantiate_identity().skip_norm_wip();
+                    let sig = self.tcx.liberate_late_bound_regions(function.to_def_id(), sig);
+                    if let Some(ty) = sig.inputs_and_output.get(*param_idx)
+                        && let ty::Alias(_, alias) = ty.kind()
+                        && let Some(def_id) = alias.kind.try_to_projection()
+                        && let hir::def::DefKind::AssocTy = self.tcx.def_kind(def_id)
+                        && let fn_parent = self.tcx.parent((*function).into())
+                        && let hir::def::DefKind::Impl { of_trait: true } =
+                            self.tcx.def_kind(fn_parent)
+                        && Some(self.tcx.parent(def_id)) == self.tcx.impl_opt_trait_id(fn_parent)
+                    {
+                        // We have
+                        //
+                        // struct AssertCopy<T: Copy>(T);
+                        //
+                        // trait Foo {
+                        //     type Assoc;
+                        //     fn my_method() -> Self::Assoc;
+                        // }
+                        //
+                        // impl Foo for bool {
+                        //     type Assoc = AssertCopy<String>;
+                        //                  ^^^^^^^^^^^^^^^^^^ WF-check of this will have failed
+                        //     fn my_method() -> Self::Assoc {
+                        //                       ^^^^^^^^^^^ this is the current obligation
+                        //                                   it is redundant to complain about it
+                        //         panic!();
+                        //     }
+                        // }
+                        //
+                        // We will have already emitted a wf-error for the assoc type, do not also
+                        // emit wf-error merely because we are referencing it.
+                        err.downgrade_to_delayed_bug();
+                    }
+                }
                 self.tcx.local_def_id_to_hir_id(*function)
             }
             _ => return,

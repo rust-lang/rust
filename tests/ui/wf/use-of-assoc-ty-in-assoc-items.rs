@@ -12,7 +12,7 @@ impl Foo for bool {
     type Other = Self::Assoc; //~ ERROR: E0277
     const X: Self::Other = panic!(); //~ ERROR: E0277
     //~^ ERROR: E0277
-    fn my_method() -> Self::Assoc { //~ ERROR: E0277
+    fn my_method() -> Self::Assoc {
         panic!();
     }
 }
