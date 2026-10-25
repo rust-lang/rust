@@ -362,8 +362,8 @@ macro_rules! carrying_carryless_mul_impl {
         /// ```
         /// #![feature(uint_carryless_mul)]
         ///
-        /// assert_eq!(0b1000_0000u8.carrying_carryless_mul(0b1000_0000, 0b0000), (0, 0b0100_0000));
-        /// assert_eq!(0b1000_0000u8.carrying_carryless_mul(0b1000_0000, 0b1111), (0b1111, 0b0100_0000));
+        /// assert_eq!(0b1000_0000_u8.carrying_carryless_mul(0b1000_0000, 0b0000), (0, 0b0100_0000));
+        /// assert_eq!(0b1000_0000_u8.carrying_carryless_mul(0b1000_0000, 0b1111), (0b1111, 0b0100_0000));
         #[doc = concat!("assert_eq!(",
             stringify!($SelfT), "::MAX.carrying_carryless_mul(", stringify!($SelfT), "::MAX, ", stringify!($SelfT), "::MAX), ",
             "(!(", stringify!($SelfT), "::MAX / 3), ", stringify!($SelfT), "::MAX / 3));"
@@ -622,8 +622,8 @@ impl u8 {
     /// # Examples
     ///
     /// ```
-    /// let ascii = 97u8;
-    /// let non_ascii = 150u8;
+    /// let ascii = 97_u8;
+    /// let non_ascii = 150_u8;
     ///
     /// assert!(ascii.is_ascii());
     /// assert!(!non_ascii.is_ascii());
@@ -675,7 +675,7 @@ impl u8 {
     /// # Examples
     ///
     /// ```
-    /// let lowercase_a = 97u8;
+    /// let lowercase_a = 97_u8;
     ///
     /// assert_eq!(65, lowercase_a.to_ascii_uppercase());
     /// ```
@@ -700,7 +700,7 @@ impl u8 {
     /// # Examples
     ///
     /// ```
-    /// let uppercase_a = 65u8;
+    /// let uppercase_a = 65_u8;
     ///
     /// assert_eq!(97, uppercase_a.to_ascii_lowercase());
     /// ```
@@ -728,8 +728,8 @@ impl u8 {
     /// # Examples
     ///
     /// ```
-    /// let lowercase_a = 97u8;
-    /// let uppercase_a = 65u8;
+    /// let lowercase_a = 97_u8;
+    /// let uppercase_a = 65_u8;
     ///
     /// assert!(lowercase_a.eq_ignore_ascii_case(&uppercase_a));
     /// ```
@@ -1273,10 +1273,10 @@ impl u16 {
     /// ```
     /// #![feature(utf16_extra)]
     ///
-    /// let low_non_surrogate = 0xA000u16;
-    /// let low_surrogate = 0xD800u16;
-    /// let high_surrogate = 0xDC00u16;
-    /// let high_non_surrogate = 0xE000u16;
+    /// let low_non_surrogate = 0xA000_u16;
+    /// let low_surrogate = 0xD800_u16;
+    /// let high_surrogate = 0xDC00_u16;
+    /// let high_non_surrogate = 0xE000_u16;
     ///
     /// assert!(!low_non_surrogate.is_utf16_surrogate());
     /// assert!(low_surrogate.is_utf16_surrogate());
@@ -1516,8 +1516,8 @@ impl usize {
 ///
 /// let num = 12.4_f32;
 /// let inf = f32::INFINITY;
-/// let zero = 0f32;
-/// let sub: f32 = 1.1754942e-38;
+/// let zero = 0_f32;
+/// let sub: f32 = 1.175_494_2e-38;
 /// let nan = f32::NAN;
 ///
 /// assert_eq!(num.classify(), FpCategory::Normal);
