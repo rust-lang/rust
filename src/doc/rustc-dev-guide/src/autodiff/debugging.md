@@ -21,7 +21,7 @@ keep in mind two techniques that can help ensure the relevant rust code is visib
 - **`std::hint::black_box`**: wrap rust variables or expressions in `std::hint::black_box()` to prevent rust and llvm from optimizing them away.
   This is useful when you need to inspect or manually manipulate specific values in the llvm-ir.
 - **`extern "rust"` or `extern "c"`**: if you want to see how a specific function declaration is lowered to llvm-ir,
-you can declare it as `extern "rust"` or `extern "c"`.
+  you can declare it as `extern "rust"` or `extern "c"`.
   You can also look for existing `__enzyme_autodiff` or similar declarations within the generated module for examples.
 
 ## 1) Generate an llvm-ir reproducer
@@ -125,8 +125,7 @@ Run:
 <path/to/llvm-reduce> --test=script.sh mwe.ll
 ```
 
-If you see `input isn't interesting!
-verify interesting-ness test`,
+If you see `input isn't interesting! verify interesting-ness test`,
 you got the error message in script.sh wrong,
 and need to make sure that grep matches your actual error.
 If all works out, you will see a lot of iterations, ending with a new `reduced.ll` file.
@@ -152,7 +151,7 @@ you should be able to copy and paste your `mwe.ll` (or `reduced.ll`) example int
 - Hopefully, you will see once again your now familiar error.
 - Please use the share button to copy links to them.
 - Please create an issue on [https://github.com/enzymead/enzyme/issues](https://github.com/enzymead/enzyme/issues) and share `mwe.ll` and (if you have it) `reduced.ll`,
-as well as links to the compiler explorer.
+  as well as links to the compiler explorer.
   Please feel free to also add your rust code or a link to it.
 
 #### Documenting findings
