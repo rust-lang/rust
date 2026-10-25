@@ -601,7 +601,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 )?;
                 let key = u128::from(ecx.read_scalar(key)?.to_u32()?);
                 let active_thread = ecx.active_thread();
-                let ptr = ecx.machine.tls.load_tls(key, active_thread)?;
+                let ptr = ecx.machine.tls.load_tls_key(key, active_thread)?;
                 ecx.write_pointer(ptr, dest)?;
             }
             "TlsSetValue" => {
@@ -612,7 +612,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let key = u128::from(ecx.read_scalar(key)?.to_u32()?);
                 let active_thread = ecx.active_thread();
                 let new_data = ecx.read_pointer(new_ptr)?;
-                ecx.machine.tls.store_tls(key, active_thread, new_data)?;
+                ecx.machine.tls.store_tls_key(key, active_thread, new_data)?;
 
                 // Return success (`1`).
                 ecx.write_int(1, dest)?;
@@ -658,7 +658,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 )?;
                 let key = u128::from(ecx.read_scalar(key)?.to_u32()?);
                 let active_thread = ecx.active_thread();
-                let ptr = ecx.machine.tls.load_tls(key, active_thread)?;
+                let ptr = ecx.machine.tls.load_tls_key(key, active_thread)?;
                 ecx.write_pointer(ptr, dest)?;
             }
             "FlsSetValue" => {
@@ -669,7 +669,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let key = u128::from(ecx.read_scalar(key)?.to_u32()?);
                 let active_thread = ecx.active_thread();
                 let new_data = ecx.read_pointer(new_ptr)?;
-                ecx.machine.tls.store_tls(key, active_thread, new_data)?;
+                ecx.machine.tls.store_tls_key(key, active_thread, new_data)?;
 
                 // Return success (`1`).
                 ecx.write_int(1, dest)?;

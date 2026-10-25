@@ -46,7 +46,7 @@ pub struct TlsData<'tcx> {
     /// pthreads-style thread-local storage.
     keys: BTreeMap<TlsKey, TlsEntry<'tcx>>,
 
-    /// Linux and macOS allow registering callbacks that will be executed each time a thread exits.
+    /// Linux and macOS allow registering callbacks that are run when the current thread exits.
     thread_atexit: BTreeMap<ThreadId, Vec<(ty::Instance<'tcx>, Scalar, Span)>>,
 }
 
@@ -90,7 +90,7 @@ impl<'tcx> TlsData<'tcx> {
         }
     }
 
-    pub fn load_tls(&self, key: TlsKey, thread_id: ThreadId) -> InterpResult<'tcx, Pointer> {
+    pub fn load_tls_key(&self, key: TlsKey, thread_id: ThreadId) -> InterpResult<'tcx, Pointer> {
         match self.keys.get(&key) {
             Some(TlsEntry { data, .. }) => {
                 let value = data.get(&thread_id).copied();
@@ -101,7 +101,7 @@ impl<'tcx> TlsData<'tcx> {
         }
     }
 
-    pub fn store_tls(
+    pub fn store_tls_key(
         &mut self,
         key: TlsKey,
         thread_id: ThreadId,
@@ -154,7 +154,7 @@ impl<'tcx> TlsData<'tcx> {
     /// with associated destructors, implementations may stop calling destructors,
     /// or they may continue calling destructors until no non-NULL values with
     /// associated destructors exist, even though this might result in an infinite loop.
-    fn fetch_tls_dtor(
+    fn fetch_tls_key_dtor(
         &mut self,
         key: Option<TlsKey>,
         thread_id: ThreadId,
@@ -190,7 +190,7 @@ impl<'tcx> TlsData<'tcx> {
 
     /// Delete all TLS entries for the given thread. This function should be
     /// called after all TLS destructors have already finished.
-    fn delete_all_thread_tls(&mut self, thread_id: ThreadId) {
+    fn delete_all_thread_tls_keys(&mut self, thread_id: ThreadId) {
         for TlsEntry { data, .. } in self.keys.values_mut() {
             data.remove(&thread_id);
         }
@@ -200,7 +200,7 @@ impl<'tcx> TlsData<'tcx> {
         }
     }
 
-    pub fn leak_all_thread_tls(&self, thread_id: ThreadId, static_roots: &mut Vec<AllocId>) {
+    pub fn leak_all_thread_tls_keys(&self, thread_id: ThreadId, static_roots: &mut Vec<AllocId>) {
         for TlsEntry { data, .. } in self.keys.values() {
             if let Some(ptr) = data.get(&thread_id) {
                 if let Some(alloc) = ptr.provenance.and_then(|p| p.get_alloc_id()) {
@@ -250,13 +250,11 @@ enum TlsDtorsStatePriv<'tcx> {
 impl<'tcx> TlsDtorsState<'tcx> {
     /// Returns the state we should start running when the program is exiting.
     pub fn new_for_exit() -> Self {
-        // Pthread destructors get skipped on `exit`.
         Self { state: TlsDtorsStatePriv::Init, for_exit: true }
     }
 
     /// Returns the state we should start running when a thread finished running.
     pub fn new_for_thread_finish() -> Self {
-        // Pthread destructors get skipped on `exit`.
         Self { state: TlsDtorsStatePriv::Init, for_exit: false }
     }
 
@@ -271,13 +269,14 @@ impl<'tcx> TlsDtorsState<'tcx> {
                     let Poll::Ready(()) = ecx.schedule_thread_atexit()? else {
                         return interp_ok(Poll::Pending);
                     };
+                    // Native thread_atexit handlers are done.
                     // What's next? Depends on the target!
                     match ecx.tcx.sess.target.os {
                         _ if ecx.target_os_is_unix() => {
                             // On thread finish, we run pthread dtors. But not on exit!
                             if self.for_exit {
                                 // Leak pthread dtor contents, like thread-local statics.
-                                ecx.machine.tls.leak_all_thread_tls(
+                                ecx.machine.tls.leak_all_thread_tls_keys(
                                     ecx.active_thread(),
                                     &mut ecx.machine.static_roots,
                                 );
@@ -291,8 +290,8 @@ impl<'tcx> TlsDtorsState<'tcx> {
                             let dtors = ecx.lookup_windows_tls_dtors()?;
 
                             // Fetch fls keys that have destructors. Keys registered during thread
-                            // exit may or may not have their destructor called.
-                            // See also: `schedule_next_windows_fls_dtor`.
+                            // exit may or may not have their destructor called. We decide not to
+                            // call them. See also: `schedule_next_windows_fls_dtor`.
                             let fls_keys_with_dtors = ecx.lookup_windows_fls_keys_with_dtors()?;
 
                             // And move to the next state, that runs them.
@@ -321,7 +320,7 @@ impl<'tcx> TlsDtorsState<'tcx> {
                         return interp_ok(Poll::Pending);
                     };
 
-                    // So if there's another callback to run
+                    // See if there's another callback to run
                     if let Some((dtor, span)) = dtors.pop() {
                         ecx.schedule_windows_tls_dtor(dtor, span)?;
                         return interp_ok(Poll::Pending); // we stay in this state (but `dtors` got shorter)
@@ -331,7 +330,9 @@ impl<'tcx> TlsDtorsState<'tcx> {
                     }
                 }
                 Done => {
-                    ecx.machine.tls.delete_all_thread_tls(ecx.active_thread());
+                    // All destructors are called. Clean up remaining keys so they don't linger in
+                    // the interpreter state.
+                    ecx.machine.tls.delete_all_thread_tls_keys(ecx.active_thread());
                     return interp_ok(Poll::Ready(()));
                 }
             }
@@ -430,10 +431,10 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let active_thread = ecx.active_thread();
 
         // Fetch next dtor after `key`.
-        let dtor = match ecx.machine.tls.fetch_tls_dtor(state.last_key, active_thread) {
+        let dtor = match ecx.machine.tls.fetch_tls_key_dtor(state.last_key, active_thread) {
             dtor @ Some(_) => dtor,
             // We ran each dtor once, start over from the beginning.
-            None => ecx.machine.tls.fetch_tls_dtor(None, active_thread),
+            None => ecx.machine.tls.fetch_tls_key_dtor(None, active_thread),
         };
         if let Some((instance, ptr, key, span)) = dtor {
             state.last_key = Some(key);
@@ -475,7 +476,8 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // 3. Fetch the value associated with the key.
         // 4. If it is non-zero, call the registered dtor.
         // 5. After the dtor is called, clear the key's value, setting it to zero.
-        // New keys registered during thread exit are ignored, but values set before the dtor is scheduled are visible.
+        // New keys registered during thread exit can be ignored (but sometimes they do run
+        // natively, just not reliably), but values set before the dtor is scheduled are visible.
         // Keys without dtors will not be set to zero.
         // [PflsCallbackFunction's docs]: https://learn.microsoft.com/en-us/windows/win32/api/winnt/nc-winnt-pfls_callback_function
         // [`RtlProcessFlsData`]: https://github.com/wine-mirror/wine/blob/wine-11.0/dlls/ntdll/thread.c#L679
