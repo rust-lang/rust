@@ -2,10 +2,9 @@
 
 In logic programming terms,
 a **goal** is something that you must prove and a **clause** is something that you know is true.
-As described in the [lowering to logic](./lowering-to-logic.md)
-chapter, Rust's trait solver is based on an extension of hereditary harrop (HH) clauses,
-which extend traditional Prolog Horn clauses with
-a few new superpowers.
+As described in the [lowering to logic](./lowering-to-logic.md) chapter,
+Rust's trait solver is based on an extension of hereditary harrop (HH) clauses,
+which extend traditional Prolog Horn clauses with a few new superpowers.
 
 ## Goals and clauses meta structure
 
@@ -36,8 +35,8 @@ Essentially, it's a form of depth-first search.
 The paper
 ["A Proof Procedure for the Logic of Hereditary Harrop Formulas"][pphhf] gives the details.
 
-In terms of code, these types are defined in
-[`rustc_middle/src/traits/mod.rs`][traits_mod] in rustc,
+In terms of code,
+these types are defined in [`rustc_middle/src/traits/mod.rs`][traits_mod] in rustc,
 and in [`chalk-ir/src/lib.rs`][chalk_ir] in chalk.
 
 [pphhf]: https://rust-lang.github.io/chalk/book/bibliography.html#pphhf
@@ -49,8 +48,8 @@ and in [`chalk-ir/src/lib.rs`][chalk_ir] in chalk.
 ## Domain goals
 
 *Domain goals* are the atoms of the trait logic.
-As can be seen in the definitions given above, general goals basically consist in a combination of
-domain goals.
+As can be seen in the definitions given above,
+general goals basically consist in a combination of domain goals.
 
 Moreover, flattening a bit the definition of clauses given previously,
 one can see that clauses are always of the form:
@@ -73,8 +72,8 @@ TraitRef = P0: TraitName<P1..Pn>
 
 So, for example, `u32: Display` is a trait reference, as is `Vec<T>: IntoIterator`.
 Note that Rust surface syntax also permits some extra things,
-like associated type bindings (`Vec<T>: IntoIterator<Item =
-T>`), that are not part of a trait reference.
+like associated type bindings (`Vec<T>: IntoIterator<Item = T>`),
+that are not part of a trait reference.
 
 <a id="projection"></a>
 
@@ -175,8 +174,8 @@ fn loud_insert<K>(set: &mut HashSet<K>, item: K) {
 ```
 
 `HashSet<K>` is an input type of the `loud_insert` function.
-Hence, we assume it to be well-formed, so we would have `FromEnv(HashSet<K>)` inside the body of our
-function.
+Hence, we assume it to be well-formed,
+so we would have `FromEnv(HashSet<K>)` inside the body of our function.
 As we'll see in the section on lowering,
 `FromEnv(HashSet<K>)` implies `Implemented(K: Hash)` because the
 `HashSet` declaration was written with a `K: Hash` where clause.
@@ -220,16 +219,14 @@ Consider this example clause:
 ```
 
 Considered inductively, this clause is useless: if we are trying to prove `Implemented(Foo: Bar)`,
-we would then recursively have to prove
-`Implemented(Foo: Bar)`, and that cycle would continue ad infinitum
-(the trait solver will terminate here,
+we would then recursively have to prove `Implemented(Foo: Bar)`,
+and that cycle would continue ad infinitum (the trait solver will terminate here,
 it would just consider that `Implemented(Foo: Bar)` is not known to be true).
 
 However, some goals are *co-inductive*.
 Simply put, this means that cycles are OK.
 So, if `Bar` were a co-inductive trait, then the rule above would be perfectly valid,
-and it would indicate that
-`Implemented(Foo: Bar)` is true.
+and it would indicate that `Implemented(Foo: Bar)` is true.
 
 *Auto traits* are one example in Rust where co-inductive goals are used.
 Consider the `Send` trait, and imagine that we have this struct:
@@ -251,8 +248,7 @@ Implemented(Foo: Send) :-
 As you can probably imagine, proving that `Option<Box<Foo>>: Send` is
 going to wind up circularly requiring us to prove that `Foo: Send` again.
 So this would be an example where we wind up in a cycle – but that's ok,
-we *do* consider `Foo: Send` to hold, even though it
-references itself.
+we *do* consider `Foo: Send` to hold, even though it references itself.
 
 In general, co-inductive traits are used in Rust trait solving when we
 want to enumerate a fixed set of possibilities.
