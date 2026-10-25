@@ -2,12 +2,12 @@
 //! and related traits for the LLVM codegen backend.
 
 use std::any::Any;
+use std::cell::OnceCell;
 use std::ffi::CStr;
 use std::marker::PhantomData;
 use std::mem::ManuallyDrop;
 use std::path::PathBuf;
 use std::ptr;
-use std::sync::OnceLock;
 
 use rustc_ast::expand::allocator::AllocatorMethod;
 use rustc_codegen_ssa::back::lto::ThinModule;
@@ -451,13 +451,15 @@ pub struct ModuleLlvm {
 
     /// Saved ThinLTO buffer for embedding in the object file.
     ///
-    /// This is currently a `OnceLock` to avoid aliasing problems when writing to it
+    /// This is currently a `OnceCell` to avoid aliasing problems when writing to it
     /// from code that also wants to pass around a shared ref to `ModuleCodegen`.
-    pub(crate) thin_lto_buffer: OnceLock<Vec<u8>>,
+    pub(crate) thin_lto_buffer: OnceCell<Vec<u8>>,
 }
 
+// An LLVM context can only be used by one thread at a time. But we can move the entire context and
+// all objects inside it to another thread (needed for parallel codegen). This is sound because
+// `ModuleLlvm` owns the context and only allows borrowing LLVM objects tied to the context.
 unsafe impl Send for ModuleLlvm {}
-unsafe impl Sync for ModuleLlvm {}
 
 /// Shared helper to call [`llvm::LLVMContextCreate`] and then configure
 /// [`llvm::LLVMContextSetDiscardValueNames`].
@@ -478,7 +480,7 @@ impl ModuleLlvm {
                 llmod_raw,
                 llcx_raw,
                 tm: ManuallyDrop::new(create_target_machine(tcx, mod_name)),
-                thin_lto_buffer: OnceLock::new(),
+                thin_lto_buffer: OnceCell::new(),
             }
         }
     }
@@ -491,7 +493,7 @@ impl ModuleLlvm {
                 llmod_raw,
                 llcx_raw,
                 tm: ManuallyDrop::new(create_informational_target_machine(tcx.sess)),
-                thin_lto_buffer: OnceLock::new(),
+                thin_lto_buffer: OnceCell::new(),
             }
         }
     }
@@ -512,7 +514,7 @@ impl ModuleLlvm {
                 llmod_raw,
                 llcx_raw,
                 tm: ManuallyDrop::new(tm),
-                thin_lto_buffer: OnceLock::new(),
+                thin_lto_buffer: OnceCell::new(),
             }
         }
     }
