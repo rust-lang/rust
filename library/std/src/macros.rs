@@ -461,3 +461,17 @@ macro_rules! hash_map {
         map
     }}
 }
+
+/// Attribute macro to replace a function's body with `loop {}` under rustdoc.
+///
+/// This allows target-specific functions to be documented on other targets,
+/// even when their bodies reference items unavailable on the target used to
+/// build the documentation. Use this with `#[cfg(any(doc, ...))]` to include
+/// such functions in documentation builds.
+///
+/// The function's signature must still be valid on the documentation target.
+#[rustc_builtin_macro]
+#[allow(unused_macros)]
+pub(crate) macro rustdoc_skip_body($item:item) {
+    /* compiler built-in */
+}
