@@ -658,6 +658,7 @@ where
             return;
         }
         for attr in attrs {
+            // `SINGLE_USE_LIFETIMES` is an AST lint so we only insert this here
             if attr.has_name(sym::automatically_derived) {
                 self.provider.insert(
                     LintId::of(SINGLE_USE_LIFETIMES),
@@ -708,6 +709,7 @@ where
         if attrs.is_empty() {
             return;
         }
+        // `MISSING_DOCS` is a HIR lint so we only insert this here
         if find_attr!(attrs, Doc(DocAttribute { hidden: Some(_), .. })) {
             self.provider.insert(
                 LintId::of(MISSING_DOCS),
