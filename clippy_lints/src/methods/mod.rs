@@ -6095,7 +6095,7 @@ impl Methods {
 
             // Those methods do their own method name checking as they deal with multiple methods.
             or_fun_call::check(cx, expr, method_span, path.ident.name, recv, args, self.msrv);
-            unnecessary_to_owned::check(cx, expr, path.ident.name, recv, args, self.msrv);
+            unnecessary_to_owned::check(cx, expr, path.ident.name, call_span, recv, args, self.msrv);
 
             match (path.ident.name, args) {
                 (sym::clone, []) => {
