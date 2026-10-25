@@ -42,7 +42,8 @@ with a path similar to `<some_dir>/rust/build/<x86/arm/...-target-triple>/ci-llv
 If you build LLVM from source, you'll likely need to replace `ci-llvm` with `build`.
 Also find `llvmenzyme-21.<so/dll/dylib>` path,
 similar to `/rust/build/target-triple/enzyme/build/enzyme/llvmenzyme-21`.
-Please keep in mind that llvm frequently updates it's llvm backend, so the version number might be higher (20, 21,
+Please keep in mind that llvm frequently updates it's llvm backend, so the version number might be higher (20,
+21,
 ...).
 Once you have both, run the following command:
 
@@ -125,7 +126,8 @@ Run:
 <path/to/llvm-reduce> --test=script.sh mwe.ll
 ```
 
-If you see `input isn't interesting! verify interesting-ness test`,
+If you see `input isn't interesting!
+verify interesting-ness test`,
 you got the error message in script.sh wrong,
 and need to make sure that grep matches your actual error.
 If all works out, you will see a lot of iterations, ending with a new `reduced.ll` file.
@@ -156,7 +158,8 @@ you should be able to copy and paste your `mwe.ll` (or `reduced.ll`) example int
 
 #### Documenting findings
 
-Some enzyme errors, like `"attempting to call an indirect active function whose runtime value is inactive"`,
+Some enzyme errors,
+like `"attempting to call an indirect active function whose runtime value is inactive"`,
 have historically caused confusion.
 If you investigate such an issue, even if you don't find a complete solution,
 please consider documenting your findings.
@@ -181,5 +184,6 @@ which avoids regressions for the future.
 There are a few solutions to help you with minimizing the rust reproducer.
 This is probably the most simple automated approach: [cargo-minimize](https://github.com/nilstrieb/cargo-minimize).
 
-Otherwise we have various alternatives, including [`treereduce`](https://github.com/langston-barrett/treereduce), [`halfempty`](https://github.com/googleprojectzero/halfempty), or [`picireny`](https://github.com/renatahodovan/picireny),
+Otherwise we have various alternatives, including [`treereduce`](https://github.com/langston-barrett/treereduce), [`halfempty`](https://github.com/googleprojectzero/halfempty),
+or [`picireny`](https://github.com/renatahodovan/picireny),
 potentially also [`creduce`](https://github.com/csmith-project/creduce).
