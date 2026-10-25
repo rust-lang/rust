@@ -22,13 +22,13 @@ The repository consists of three main directories:
 
 - [`compiler/`] contains the source code for `rustc`.
   It consists of many crates that together make up the compiler.
-  
+
 - [`library/`] contains the standard libraries ([`core`], [`alloc`], [`std`],
   [`proc_macro`], [`test`]), as well as the Rust runtime ([`backtrace`], [`rtstartup`],
   [`lang_start`]).
-  
+
 - [`tests/`] contains the compiler tests.
-  
+
 - [`src/`] contains the source code for [`rustdoc`], [`clippy`], [`cargo`], the build system,
   language docs, etc.
 
@@ -54,8 +54,8 @@ The repository consists of three main directories:
 
 The compiler is implemented in the various [`compiler/`] crates.
 The [`compiler/`] crates all have names starting with `rustc_*`.
-These are a collection of around 50 interdependent crates ranging in size from tiny to
-huge. There is also the `rustc` crate which is the actual binary (i.e. the
+These are a collection of around 50 interdependent crates ranging in size from tiny to huge.
+There is also the `rustc` crate which is the actual binary (i.e. the
 `main` function); it doesn't actually do anything besides calling the [`rustc_driver`] crate,
 which drives the various parts of compilation in other
 crates.
@@ -116,7 +116,7 @@ The dependency structure of the compiler is influenced by two main factors:
 
 At the very bottom of the dependency tree are a handful of crates that are used
 by the whole compiler (e.g. [`rustc_span`]). The very early parts of the
-compilation process (e.g. [parsing and the Abstract Syntax Tree (`AST`)][parser]) 
+compilation process (e.g. [parsing and the Abstract Syntax Tree (`AST`)][parser])
 depend on only these.
 
 After the [`AST`][parser] is constructed and other early analysis is done,
@@ -214,7 +214,7 @@ Most of the time you don't need to worry about them.
 
 These include:
 - [`src/ci`]: The CI configuration.
-  This actually quite extensive because we run a lot of tests on a lot of platforms.
+  This is quite extensive because we run a lot of tests on a lot of platforms.
 - [`src/doc`]: Various documentation, including submodules for a few books.
 - [`src/etc`]: Miscellaneous utilities.
 - And more...
