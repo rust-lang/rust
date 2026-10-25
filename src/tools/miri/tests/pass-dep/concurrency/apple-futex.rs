@@ -257,32 +257,16 @@ fn param_mismatch() {
             .unwrap_err();
             assert_eq!(err.raw_os_error().unwrap(), libc::ETIMEDOUT);
         });
-
-        s.spawn(|| unsafe {
-            yield_now(); // let other thread go first
-            let err = errno_result(libc::os_sync_wait_on_address_with_timeout(
-                ptr::from_ref(&futex).cast_mut().cast(),
-                0,
-                size_of::<i32>(),
-                libc::OS_SYNC_WAIT_ON_ADDRESS_SHARED,
-                libc::OS_CLOCK_MACH_ABSOLUTE_TIME,
-                100_000_000,
-            ))
-            .unwrap_err();
-            // This call fails because it uses the shared flag whereas the first waiter didn't.
-            assert_eq!(err.raw_os_error().unwrap(), libc::EINVAL);
-        });
-
-        yield_now();
+        yield_now(); // let thread block
 
         unsafe {
             let err = errno_result(libc::os_sync_wake_by_address_any(
                 ptr::from_ref(&futex).cast_mut().cast(),
-                size_of::<i32>(),
+                size_of::<i8>(),
                 libc::OS_SYNC_WAIT_ON_ADDRESS_SHARED,
             ))
             .unwrap_err();
-            // This call fails because it uses the shared flag whereas the waiter didn't.
+            // This call fails because there is a size mismatch
             assert_eq!(err.raw_os_error().unwrap(), libc::EINVAL);
         }
     });

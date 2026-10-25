@@ -69,8 +69,6 @@ struct MacOsFutex {
     futex: FutexRef,
     /// The size in bytes of the atomic primitive underlying this futex.
     size: Cell<u64>,
-    /// Whether the futex is shared across process boundaries.
-    shared: Cell<bool>,
 }
 
 impl SyncObj for MacOsFutex {}
@@ -184,7 +182,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let none = this.eval_libc_u32("OS_SYNC_WAIT_ON_ADDRESS_NONE");
-        let shared = this.eval_libc_u32("OS_SYNC_WAIT_ON_ADDRESS_SHARED");
         let absolute_clock = this.eval_libc_u32("OS_CLOCK_MACH_ABSOLUTE_TIME");
 
         let ptr = this.read_pointer(addr_op)?;
@@ -211,7 +208,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if addr == 0
             || !matches!(size, 4 | 8)
             || !addr.is_multiple_of(size)
-            || (flags != none && flags != shared)
+            || (flags != none)
             || clock_timeout
                 .is_some_and(|(clock, _, timeout)| clock != absolute_clock || timeout == 0)
         {
@@ -219,7 +216,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return interp_ok(());
         }
 
-        let is_shared = flags == shared;
         let deadline = clock_timeout.map(|(_, style, timeout)| {
             // The only clock that is currently supported is the monotonic clock (checked above).
             // While the deadline argument of `os_sync_wait_on_address_with_deadline`
@@ -238,11 +234,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let futex = this
             .get_sync_or_init(ptr, |_| {
-                MacOsFutex {
-                    futex: Default::default(),
-                    size: Cell::new(size),
-                    shared: Cell::new(is_shared),
-                }
+                MacOsFutex { futex: Default::default(), size: Cell::new(size) }
             })
             .unwrap();
 
@@ -252,8 +244,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // parameters.
         if futex.futex.waiters() == 0 {
             futex.size.set(size);
-            futex.shared.set(is_shared);
-        } else if futex.size.get() != size || futex.shared.get() != is_shared {
+        } else if futex.size.get() != size {
             this.set_errno_and_return_neg1(LibcError("EINVAL"), dest)?;
             return interp_ok(());
         }
@@ -307,7 +298,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let none = this.eval_libc_u32("OS_SYNC_WAKE_BY_ADDRESS_NONE");
-        let shared = this.eval_libc_u32("OS_SYNC_WAKE_BY_ADDRESS_SHARED");
 
         let ptr = this.read_pointer(addr_op)?;
         let size = this.read_target_usize(size_op)?;
@@ -315,19 +305,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Perform validation of the arguments.
         let addr = ptr.addr().bytes();
-        if addr == 0 || !matches!(size, 4 | 8) || (flags != none && flags != shared) {
+        if addr == 0 || !matches!(size, 4 | 8) || (flags != none) {
             this.set_errno_and_return_neg1(LibcError("EINVAL"), dest)?;
             return interp_ok(());
         }
 
-        let is_shared = flags == shared;
-
         let Some(futex) = this.get_sync_or_init(ptr, |_| {
-            MacOsFutex {
-                futex: Default::default(),
-                size: Cell::new(size),
-                shared: Cell::new(is_shared),
-            }
+            MacOsFutex { futex: Default::default(), size: Cell::new(size) }
         }) else {
             // No AllocId, or no live allocation at that AllocId. Return an
             // error code. (That seems nicer than silently doing something
@@ -345,7 +329,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // stored in `futex` (we check this in `os_sync_wait_on_address` above).
         // Detect mismatches between "our" parameters and the parameters used by
         // the waiters and return an error in that case.
-        } else if futex.size.get() != size || futex.shared.get() != is_shared {
+        } else if futex.size.get() != size {
             this.set_errno_and_return_neg1(LibcError("EINVAL"), dest)?;
             return interp_ok(());
         }
