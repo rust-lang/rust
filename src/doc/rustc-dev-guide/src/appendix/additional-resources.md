@@ -4,8 +4,8 @@
 
 ### System V
 
-The System V ABIs are defined by a General ABI (gABI), which cross-platform things like linking
-behavior and the ELF format,
+The System V ABIs are defined by a General ABI (gABI),
+which cross-platform things like linking behavior and the ELF format,
 and by processor-speciic ABIs (psABI) that define data layout and calling convention.
 The gABI can be found at <https://www.sco.com/developers/gabi/>.
 
@@ -88,8 +88,8 @@ There are a few relevant documents for PowerPC ABI:
 #### RISC-V
 
 Ratified RISC-V ABIs are located at <https://docs.riscv.org/reference/abi/v1.0/index.html>.
-More recent snapshots can be viewed at <https://riscv-non-isa.github.io/riscv-elf-psabi-doc/>, with
-development happening at <https://github.com/riscv-non-isa/riscv-elf-psabi-doc>.
+More recent snapshots can be viewed at <https://riscv-non-isa.github.io/riscv-elf-psabi-doc/>,
+with development happening at <https://github.com/riscv-non-isa/riscv-elf-psabi-doc>.
 
 #### s390x
 
