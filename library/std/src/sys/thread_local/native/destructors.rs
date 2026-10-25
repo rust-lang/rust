@@ -6,7 +6,7 @@ use crate::sys::thread_local::guard;
 static DTORS: RefCell<Vec<(*mut u8, unsafe extern "C" fn(*mut u8)), System>> =
     RefCell::new(Vec::new_in(System));
 
-pub unsafe fn register(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
+pub(super) unsafe fn register(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
     let Ok(mut dtors) = DTORS.try_borrow_mut() else {
         rtabort!("the System allocator may not use TLS with destructors")
     };
@@ -25,7 +25,8 @@ pub unsafe fn register(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
 /// # Safety
 ///
 /// May only be run on thread exit to guarantee that there are no live references
-/// to TLS variables while they are destroyed.
+/// to TLS variables while they are destroyed. It is safe to run this function
+/// multiple times, however.
 pub unsafe fn run() {
     loop {
         let mut dtors = DTORS.borrow_mut();
