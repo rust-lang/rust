@@ -56,7 +56,7 @@ error[E0499]: cannot borrow `*x` as mutable more than once at a time
   --> $DIR/borrowck-borrow-overloaded-auto-deref-mut.rs:101:5
    |
 LL |     let _p: &mut Point = &mut **x;
-   |                                -- first mutable borrow occurs here
+   |                                 - first mutable borrow occurs here
 LL |     x.y = 3;
    |     ^ second mutable borrow occurs here
 LL |     use_mut(_p);

@@ -15,7 +15,8 @@ use rustc_middle::middle::region;
 use rustc_middle::mir::{self, AssignOp, BinOp, BorrowKind, UnOp};
 use rustc_middle::thir::*;
 use rustc_middle::ty::adjustment::{
-    Adjust, Adjustment, AutoBorrow, AutoBorrowMutability, DerefAdjustKind, PointerCoercion,
+    Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, DerefAdjustKind,
+    PointerCoercion,
 };
 use rustc_middle::ty::{
     self, AdtKind, GenericArgs, InlineConstArgs, InlineConstArgsParts, ScalarInt, SplattedDef, Ty,
@@ -251,10 +252,11 @@ impl<'tcx> ThirBuildCx<'tcx> {
             }
             Adjust::Borrow(AutoBorrow::Ref(m)) => {
                 // Don't emit no-op &T -> &T reborrows
-                if let AutoBorrowMutability::Not = m
+                if let AutoBorrowMutability::Not | AutoBorrowMutability::Mut { allow_two_phase_borrow: AllowTwoPhase::No } = m
                     && let ExprKind::Deref { arg: derefed_expr } = expr.kind
-                    && self.thir.exprs[derefed_expr].ty.ref_mutability()
-                        == Some(ty::Mutability::Not)
+                    && let Some(target_mutbl) =
+                        self.thir.exprs[derefed_expr].ty.ref_mutability()
+                    && ty::Mutability::from(m) == target_mutbl
                     // FIXME: removing these reborrows may prevent closure upvars from resolving
                     && !self.tcx.is_closure_like(self.body_owner)
                 {
