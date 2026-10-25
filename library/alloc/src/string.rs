@@ -2067,8 +2067,6 @@ impl String {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(string_into_chars)]
-    ///
     /// let word = String::from("goodbye");
     ///
     /// let mut chars = word.into_chars();
@@ -2087,8 +2085,6 @@ impl String {
     /// Remember, [`char`]s might not match your intuition about characters:
     ///
     /// ```
-    /// #![feature(string_into_chars)]
-    ///
     /// let y = String::from("y̆");
     ///
     /// let mut chars = y.into_chars();
@@ -2102,7 +2098,7 @@ impl String {
     /// [`char`]: prim@char
     #[inline]
     #[must_use = "`self` will be dropped if the result is not used"]
-    #[unstable(feature = "string_into_chars", issue = "133125")]
+    #[stable(feature = "string_into_chars", since = "CURRENT_RUSTC_VERSION")]
     pub fn into_chars(self) -> IntoChars {
         IntoChars { bytes: self.into_bytes().into_iter() }
     }
@@ -3614,12 +3610,12 @@ impl fmt::Write for String {
 /// [`into_chars`]: String::into_chars
 #[cfg_attr(not(no_global_oom_handling), derive(Clone))]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
-#[unstable(feature = "string_into_chars", issue = "133125")]
+#[stable(feature = "string_into_chars", since = "CURRENT_RUSTC_VERSION")]
 pub struct IntoChars {
     bytes: vec::IntoIter<u8>,
 }
 
-#[unstable(feature = "string_into_chars", issue = "133125")]
+#[stable(feature = "string_into_chars", since = "CURRENT_RUSTC_VERSION")]
 impl fmt::Debug for IntoChars {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("IntoChars").field(&self.as_str()).finish()
@@ -3632,8 +3628,6 @@ impl IntoChars {
     /// # Examples
     ///
     /// ```
-    /// #![feature(string_into_chars)]
-    ///
     /// let mut chars = String::from("abc").into_chars();
     ///
     /// assert_eq!(chars.as_str(), "abc");
@@ -3643,7 +3637,7 @@ impl IntoChars {
     /// chars.next();
     /// assert_eq!(chars.as_str(), "");
     /// ```
-    #[unstable(feature = "string_into_chars", issue = "133125")]
+    #[stable(feature = "string_into_chars", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     #[inline]
     pub fn as_str(&self) -> &str {
@@ -3656,8 +3650,6 @@ impl IntoChars {
     /// # Examples
     ///
     /// ```
-    /// #![feature(string_into_chars)]
-    ///
     /// let chars = String::from("abc").into_chars();
     /// assert_eq!(chars.into_string(), "abc");
     ///
@@ -3666,7 +3658,7 @@ impl IntoChars {
     /// assert_eq!(chars.into_string(), "ef");
     /// ```
     #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "string_into_chars", issue = "133125")]
+    #[stable(feature = "string_into_chars", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub fn into_string(self) -> String {
         // SAFETY: `bytes` are kept in UTF-8 form, only removing whole `char`s at a time.
@@ -3679,7 +3671,7 @@ impl IntoChars {
     }
 }
 
-#[unstable(feature = "string_into_chars", issue = "133125")]
+#[stable(feature = "string_into_chars", since = "CURRENT_RUSTC_VERSION")]
 impl Iterator for IntoChars {
     type Item = char;
 
@@ -3713,7 +3705,7 @@ impl Iterator for IntoChars {
     }
 }
 
-#[unstable(feature = "string_into_chars", issue = "133125")]
+#[stable(feature = "string_into_chars", since = "CURRENT_RUSTC_VERSION")]
 impl DoubleEndedIterator for IntoChars {
     #[inline]
     fn next_back(&mut self) -> Option<char> {
@@ -3730,7 +3722,7 @@ impl DoubleEndedIterator for IntoChars {
     }
 }
 
-#[unstable(feature = "string_into_chars", issue = "133125")]
+#[stable(feature = "string_into_chars", since = "CURRENT_RUSTC_VERSION")]
 impl FusedIterator for IntoChars {}
 
 /// A draining iterator for `String`.
