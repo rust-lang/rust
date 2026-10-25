@@ -100,6 +100,7 @@ fn test_mutex_libc_init_recursive() {
 fn test_mutex_libc_init_normal() {
     unsafe {
         let mut mutexattr: libc::pthread_mutexattr_t = mem::zeroed();
+        assert_eq!(libc::pthread_mutexattr_init(&mut mutexattr as *mut _), 0);
         assert_eq!(
             libc::pthread_mutexattr_settype(&mut mutexattr as *mut _, 0x12345678),
             libc::EINVAL,
@@ -122,6 +123,7 @@ fn test_mutex_libc_init_normal() {
 fn test_mutex_libc_init_errorcheck() {
     unsafe {
         let mut mutexattr: libc::pthread_mutexattr_t = mem::zeroed();
+        assert_eq!(libc::pthread_mutexattr_init(&mut mutexattr as *mut _), 0);
         assert_eq!(
             libc::pthread_mutexattr_settype(
                 &mut mutexattr as *mut _,

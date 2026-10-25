@@ -236,7 +236,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
 
         let clock_id_place = this.project_field(ut, FieldIdx::from_u32(2))?;
-        let clock_id = this.read_scalar(&clock_id_place)?;
+        let clock_id = this.read_scalar(&clock_id_place)?.to_i32()?;
         let Some(timeout_clock) = this.parse_clockid(clock_id) else {
             throw_unsup_format!("unsupported clock")
         };

@@ -31,6 +31,7 @@ const PTHREAD_INIT: u8 = 1;
 // # pthread_mutexattr_t
 // We store some data directly inside the type, ignoring the platform layout:
 // - kind: i32
+// We store the `kind` bit-inverted so that 0 is not a valid representation.
 
 #[inline]
 fn mutexattr_kind_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, u64> {
@@ -50,13 +51,19 @@ fn mutexattr_get_kind<'tcx>(
     ecx: &MiriInterpCx<'tcx>,
     attr_ptr: &OpTy<'tcx>,
 ) -> InterpResult<'tcx, i32> {
-    ecx.deref_pointer_and_read(
-        attr_ptr,
-        mutexattr_kind_offset(ecx)?,
-        ecx.libc_ty_layout("pthread_mutexattr_t"),
-        ecx.machine.layouts.i32,
-    )?
-    .to_i32()
+    let kind = ecx
+        .deref_pointer_and_read(
+            attr_ptr,
+            mutexattr_kind_offset(ecx)?,
+            ecx.libc_ty_layout("pthread_mutexattr_t"),
+            ecx.machine.layouts.i32,
+        )?
+        .to_i32()?;
+    if kind == 0 {
+        throw_ub_format!("this `pthread_mutexattr_t` is not initialized");
+    }
+    // Undo the bit-inversion we did when storing this.
+    interp_ok(!kind)
 }
 
 fn mutexattr_set_kind<'tcx>(
@@ -64,6 +71,8 @@ fn mutexattr_set_kind<'tcx>(
     attr_ptr: &OpTy<'tcx>,
     kind: i32,
 ) -> InterpResult<'tcx, ()> {
+    let kind = !kind; // we store the kind bit-inverted
+    assert!(kind != 0); // 0 indicates "uninitialized"
     ecx.deref_pointer_and_write(
         attr_ptr,
         mutexattr_kind_offset(ecx)?,
@@ -333,6 +342,7 @@ where
 // # pthread_condattr_t
 // We store some data directly inside the type, ignoring the platform layout:
 // - clock: i32
+// We store the `clock` bit-inverted so that 0 is not a valid representation.
 
 #[inline]
 fn condattr_clock_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, u64> {
@@ -346,13 +356,20 @@ fn condattr_clock_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, u
 fn condattr_get_clock_id<'tcx>(
     ecx: &MiriInterpCx<'tcx>,
     attr_ptr: &OpTy<'tcx>,
-) -> InterpResult<'tcx, Scalar> {
-    ecx.deref_pointer_and_read(
-        attr_ptr,
-        condattr_clock_offset(ecx)?,
-        ecx.libc_ty_layout("pthread_condattr_t"),
-        ecx.machine.layouts.i32,
-    )
+) -> InterpResult<'tcx, i32> {
+    let clock_id = ecx
+        .deref_pointer_and_read(
+            attr_ptr,
+            condattr_clock_offset(ecx)?,
+            ecx.libc_ty_layout("pthread_condattr_t"),
+            ecx.machine.layouts.i32,
+        )?
+        .to_i32()?;
+    if clock_id == 0 {
+        throw_ub_format!("this `pthread_condattr_t` is not initialized");
+    }
+    // Undo the bit-inversion we did when storing this.
+    interp_ok(!clock_id)
 }
 
 fn condattr_set_clock_id<'tcx>(
@@ -360,6 +377,8 @@ fn condattr_set_clock_id<'tcx>(
     attr_ptr: &OpTy<'tcx>,
     clock_id: i32,
 ) -> InterpResult<'tcx, ()> {
+    let clock_id = !clock_id; // we store the clock_id bit-inverted
+    assert!(clock_id != 0); // 0 indicates "uninitialized"
     ecx.deref_pointer_and_write(
         attr_ptr,
         condattr_clock_offset(ecx)?,
@@ -543,6 +562,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         kind_op: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
+
+        // Let's get the old value, to ensure that this is initialized.
+        mutexattr_get_kind(this, attr_op)?;
 
         let kind = this.read_scalar(kind_op)?.to_i32()?;
         if kind == this.eval_libc_i32("PTHREAD_MUTEX_NORMAL")
@@ -853,9 +875,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        let clock_id = this.read_scalar(clock_id_op)?;
+        let clock_id = this.read_scalar(clock_id_op)?.to_i32()?;
+
+        // Make sure it is initialized.
+        condattr_get_clock_id(this, attr_op)?;
+
         if this.parse_clockid(clock_id).is_some() {
-            condattr_set_clock_id(this, attr_op, clock_id.to_i32()?)?;
+            condattr_set_clock_id(this, attr_op, clock_id)?;
         } else {
             let einval = this.eval_libc_i32("EINVAL");
             return interp_ok(Scalar::from_i32(einval));
@@ -872,7 +898,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let clock_id = condattr_get_clock_id(this, attr_op)?;
-        this.write_scalar(clock_id, &this.deref_pointer(clk_id_op)?)?;
+        this.write_int(clock_id, &this.deref_pointer(clk_id_op)?)?;
 
         interp_ok(())
     }
@@ -903,7 +929,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let attr = this.read_pointer(attr_op)?;
         // Default clock if `attr` is null, and on macOS where there is no clock attribute.
         let clock_id = if this.ptr_is_null(attr)? || this.tcx.sess.target.os == Os::MacOs {
-            this.eval_libc("CLOCK_REALTIME")
+            this.eval_libc_i32("CLOCK_REALTIME")
         } else {
             condattr_get_clock_id(this, attr_op)?
         };
