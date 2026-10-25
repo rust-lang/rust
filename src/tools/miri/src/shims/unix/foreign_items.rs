@@ -775,7 +775,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Allocation
             "posix_memalign" => {
                 let [memptr, align, size] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(*_, usize, usize) -> i32),
+                    shim_sig!(extern "C" fn(**_, usize, usize) -> i32),
                     (link_name, abi, args),
                 )?;
                 let result = this.posix_memalign(memptr, align, size)?;
@@ -1163,7 +1163,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "nanosleep" => {
                 let [duration, rem] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(*_, *_) -> i32),
+                    shim_sig!(extern "C" fn(*libc::timespec, *_) -> i32),
                     (link_name, abi, args),
                 )?;
                 let result = this.nanosleep(duration, rem)?;
@@ -1177,7 +1177,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 )?;
 
                 let [clock_id, flags, req, rem] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(libc::clockid_t, i32, *_, *_) -> i32),
+                    shim_sig!(extern "C" fn(libc::clockid_t, i32, *libc::timespec, *_) -> i32),
                     (link_name, abi, args),
                 )?;
                 let result = this.clock_nanosleep(clock_id, flags, req, rem)?;
