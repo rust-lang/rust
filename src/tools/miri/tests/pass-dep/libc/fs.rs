@@ -1111,6 +1111,16 @@ fn test_fstat() {
         errno_check(libc::close(fds[0]));
         errno_check(libc::close(fds[1]));
     }
+
+    // And test it on the standard FDs.
+    for fd in [0, 1, 2] {
+        let mut stat = MaybeUninit::<libc::stat>::uninit();
+        errno_check(unsafe { libc::fstat(fd, stat.as_mut_ptr()) });
+        let stat = unsafe { stat.assume_init_ref() };
+
+        // This is IFCHR when running on the terminal and IFIFO when running in ui_test.
+        assert!(matches!(stat.st_mode & libc::S_IFMT, libc::S_IFCHR | libc::S_IFIFO));
+    }
 }
 
 fn test_fstatat() {
@@ -1596,11 +1606,11 @@ fn test_readdir() {
     let dir_path = utils::prepare("miri_test_libc_readdir");
     fs::create_dir(&dir_path).ok();
 
-    // Create test files
-    let file1 = dir_path.join("file1.txt");
-    let file2 = dir_path.join("file2.txt");
-    fs::write(&file1, b"content1").unwrap();
-    fs::write(&file2, b"content2").unwrap();
+    // Create test files & dir
+    fs::write(dir_path.join("file.txt"), b"content").unwrap();
+    fs::create_dir(dir_path.join("dir")).unwrap();
+    fs::symlink("file.txt", dir_path.join("link1")).unwrap();
+    fs::symlink("dir", dir_path.join("link2")).unwrap();
 
     let c_path = utils::into_c_string(&dir_path);
 
@@ -1616,11 +1626,26 @@ fn test_readdir() {
             let name_ptr = std::ptr::addr_of!((*entry_ptr).d_name) as *const libc::c_char;
             let name = CStr::from_ptr(name_ptr);
             let name_str = name.to_string_lossy();
+
+            // Check d_type field, if it exists.
+            #[cfg(not(any(target_os = "solaris", target_os = "illumos")))]
+            {
+                let type_ = (*entry_ptr).d_type;
+                if type_ != libc::DT_UNKNOWN {
+                    match &*name_str {
+                        "." | ".." | "dir" => assert_eq!(type_, libc::DT_DIR),
+                        "file.txt" => assert_eq!(type_, libc::DT_REG),
+                        "link1" | "link2" => assert_eq!(type_, libc::DT_LNK),
+                        _ => panic!("unexpected filename {name_str:?}"),
+                    }
+                }
+            }
+
             entries.push(name_str.into_owned());
         }
         errno_check(libc::closedir(dirp));
         entries.sort();
-        assert_eq!(&entries, &[".", "..", "file1.txt", "file2.txt"]);
+        assert_eq!(&entries, &[".", "..", "dir", "file.txt", "link1", "link2"]);
     }
 
     // On Linux, also test `readdir64`.
@@ -1639,16 +1664,29 @@ fn test_readdir() {
             let name_ptr = std::ptr::addr_of!((*entry_ptr).d_name) as *const libc::c_char;
             let name = CStr::from_ptr(name_ptr);
             let name_str = name.to_string_lossy();
+
+            // Check d_type field, if it exists.
+            #[cfg(not(any(target_os = "solaris", target_os = "illumos")))]
+            {
+                let type_ = (*entry_ptr).d_type;
+                if type_ != libc::DT_UNKNOWN {
+                    match &*name_str {
+                        "." | ".." | "dir" => assert_eq!(type_, libc::DT_DIR),
+                        "file.txt" => assert_eq!(type_, libc::DT_REG),
+                        "link1" | "link2" => assert_eq!(type_, libc::DT_LNK),
+                        _ => panic!("unexpected filename {name_str:?}"),
+                    }
+                }
+            }
+
             entries.push(name_str.into_owned());
         }
         errno_check(libc::closedir(dirp));
         entries.sort();
-        assert_eq!(&entries, &[".", "..", "file1.txt", "file2.txt"]);
+        assert_eq!(&entries, &[".", "..", "dir", "file.txt", "link1", "link2"]);
     }
 
-    fs::remove_file(&file1).unwrap();
-    fs::remove_file(&file2).unwrap();
-    fs::remove_dir(&dir_path).unwrap();
+    fs::remove_dir_all(&dir_path).unwrap();
 }
 
 fn test_dirfd() {
