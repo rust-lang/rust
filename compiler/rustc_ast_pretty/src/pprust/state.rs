@@ -667,7 +667,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                 // to keep the printed code reasonably parse-able.
                 return false;
             }
-            AttrKind::Normal(_) | AttrKind::DocComment(..) => {}
+            AttrKind::Normal(_) | AttrKind::DocComment(..) | AttrKind::Generated(..) => {}
         }
         if !is_inline {
             self.hardbreak_if_not_bol();
@@ -691,6 +691,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                 ));
                 self.hardbreak()
             }
+            AttrKind::Generated(generated) => self.word(generated.descr()),
         }
         true
     }
