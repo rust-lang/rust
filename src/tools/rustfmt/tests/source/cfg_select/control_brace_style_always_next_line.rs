@@ -71,3 +71,30 @@ cfg_select! {
         a; b
     }
 }
+
+cfg_select! {
+    _ /* this comment is _very_ long but brace should fit ---------------------------------- */ => { a; b }
+}
+
+cfg_select! {
+    _ /* this comment is _very_ long and adds up to 101 columns incl. arrow ------------------- */ => { a; b }
+}
+
+cfg_select! {
+    _ /* this comment is _very_ long and adds up to 100 columns itself -------------------------- */ => { a; b }
+}
+
+cfg_select! {
+    _ /* this comment is _very_ long but shouldn't change next next line --------------------- */ =>
+    {{ ThisLineIsShort }}
+}
+
+cfg_select! {
+    _ /* this comment is _very_ long and adds up to 101 columns incl. arrow ------------------- */ =>
+    {{ ThisLineIsShort }}
+}
+
+cfg_select! {
+    _ /* this comment is _very_ long and adds up to 100 columns itself -------------------------- */ =>
+    {{ ThisLineIsShort }}
+}
