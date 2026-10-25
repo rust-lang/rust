@@ -99,6 +99,8 @@ error: the `repr(C)` attribute cannot be used on match arms
    |
 LL |         #[repr(C)]
    |           ^^^^^^^
+...
+LL |         _ => {}
    |
    = help: the `repr(C)` attribute can only be applied to data types
 

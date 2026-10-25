@@ -1,0 +1,43 @@
+error[E0261]: use of undeclared lifetime name `'reborrow`
+  --> $DIR/invalid-coerce-shared-next-solver.rs:11:40
+   |
+LL | impl<'a, T> CoerceShared for CustomMut<'reborrow, T> {}
+   |                                        ^^^^^^^^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'reborrow` here
+   |
+LL | impl<'reborrow, 'a, T> CoerceShared for CustomMut<'reborrow, T> {}
+   |      ++++++++++
+
+error[E0261]: use of undeclared lifetime name `'CustomMut`
+  --> $DIR/invalid-coerce-shared-next-solver.rs:16:26
+   |
+LL | struct CustomRef<'a, T>(&'CustomMut T);
+   |                          ^^^^^^^^^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'CustomMut` here
+   |
+LL | struct CustomRef<'CustomMut, 'a, T>(&'CustomMut T);
+   |                  +++++++++++
+
+error[E0107]: missing generics for trait `CoerceShared`
+  --> $DIR/invalid-coerce-shared-next-solver.rs:11:13
+   |
+LL | impl<'a, T> CoerceShared for CustomMut<'reborrow, T> {}
+   |             ^^^^^^^^^^^^ expected 1 generic argument
+   |
+help: add missing generic argument
+   |
+LL | impl<'a, T> CoerceShared<Target> for CustomMut<'reborrow, T> {}
+   |                         ++++++++
+
+error[E0377]: the trait `CoerceShared` may only be implemented for a coercion between structures
+  --> $DIR/invalid-coerce-shared-next-solver.rs:11:1
+   |
+LL | impl<'a, T> CoerceShared for CustomMut<'reborrow, T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0107, E0261, E0377.
+For more information about an error, try `rustc --explain E0107`.

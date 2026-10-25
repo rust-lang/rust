@@ -9,6 +9,8 @@ error: the `proc_macro_derive` attribute cannot be used on modules
    |
 LL | #[proc_macro_derive(Test)]
    |   ^^^^^^^^^^^^^^^^^
+LL |
+LL | mod proc_macro_derive1 {
    |
    = help: the `proc_macro_derive` attribute can only be applied to functions
 

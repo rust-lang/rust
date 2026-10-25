@@ -3,6 +3,8 @@ error: the `target_feature` attribute cannot be used on extern crates
    |
 LL | #[target_feature(enable = "sse2")]
    |   ^^^^^^^^^^^^^^
+LL |
+LL | extern crate minicore;
    |
    = help: the `target_feature` attribute can only be applied to functions
 
@@ -11,6 +13,8 @@ error: the `target_feature` attribute cannot be used on use statements
    |
 LL | #[target_feature(enable = "sse2")]
    |   ^^^^^^^^^^^^^^
+LL |
+LL | use minicore::mem::transmute;
    |
    = help: the `target_feature` attribute can only be applied to functions
 
@@ -19,6 +23,8 @@ error: the `target_feature` attribute cannot be used on foreign modules
    |
 LL | #[target_feature(enable = "sse2")]
    |   ^^^^^^^^^^^^^^
+LL |
+LL | extern "Rust" {}
    |
    = help: the `target_feature` attribute can only be applied to functions
 
@@ -69,6 +75,8 @@ error: the `target_feature` attribute cannot be used on modules
    |
 LL | #[target_feature(enable = "sse2")]
    |   ^^^^^^^^^^^^^^
+LL |
+LL | mod another {}
    |
    = help: the `target_feature` attribute can only be applied to functions
 
@@ -77,6 +85,8 @@ error: the `target_feature` attribute cannot be used on constants
    |
 LL | #[target_feature(enable = "sse2")]
    |   ^^^^^^^^^^^^^^
+LL |
+LL | const FOO: usize = 7;
    |
    = help: the `target_feature` attribute can only be applied to functions
 
@@ -85,6 +95,8 @@ error: the `target_feature` attribute cannot be used on structs
    |
 LL | #[target_feature(enable = "sse2")]
    |   ^^^^^^^^^^^^^^
+LL |
+LL | struct Foo;
    |
    = help: the `target_feature` attribute can only be applied to functions
 
@@ -93,6 +105,8 @@ error: the `target_feature` attribute cannot be used on enums
    |
 LL | #[target_feature(enable = "sse2")]
    |   ^^^^^^^^^^^^^^
+LL |
+LL | enum Bar {}
    |
    = help: the `target_feature` attribute can only be applied to functions
 
@@ -101,6 +115,8 @@ error: the `target_feature` attribute cannot be used on unions
    |
 LL | #[target_feature(enable = "sse2")]
    |   ^^^^^^^^^^^^^^
+LL |
+LL | union Qux {
    |
    = help: the `target_feature` attribute can only be applied to functions
 
@@ -109,6 +125,8 @@ error: the `target_feature` attribute cannot be used on type aliases
    |
 LL | #[target_feature(enable = "sse2")]
    |   ^^^^^^^^^^^^^^
+LL |
+LL | type Uwu = ();
    |
    = help: the `target_feature` attribute can only be applied to functions
 
@@ -117,6 +135,8 @@ error: the `target_feature` attribute cannot be used on traits
    |
 LL | #[target_feature(enable = "sse2")]
    |   ^^^^^^^^^^^^^^
+LL |
+LL | trait Baz {}
    |
    = help: the `target_feature` attribute can only be applied to functions
 
@@ -125,6 +145,8 @@ error: the `target_feature` attribute cannot be used on statics
    |
 LL | #[target_feature(enable = "sse2")]
    |   ^^^^^^^^^^^^^^
+LL |
+LL | static A: () = ();
    |
    = help: the `target_feature` attribute can only be applied to functions
 
@@ -133,6 +155,8 @@ error: the `target_feature` attribute cannot be used on trait impl blocks
    |
 LL | #[target_feature(enable = "sse2")]
    |   ^^^^^^^^^^^^^^
+LL |
+LL | impl Quux for u8 {}
    |
    = help: the `target_feature` attribute can only be applied to functions
 
@@ -141,6 +165,8 @@ error: the `target_feature` attribute cannot be used on inherent impl blocks
    |
 LL | #[target_feature(enable = "sse2")]
    |   ^^^^^^^^^^^^^^
+LL |
+LL | impl Foo {}
    |
    = help: the `target_feature` attribute can only be applied to functions
 
@@ -149,6 +175,8 @@ error: the `target_feature` attribute cannot be used on expressions
    |
 LL |     #[target_feature(enable = "sse2")]
    |       ^^^^^^^^^^^^^^
+LL |
+LL |     unsafe {
    |
    = help: the `target_feature` attribute can only be applied to functions
 
@@ -157,6 +185,8 @@ error: the `target_feature` attribute cannot be used on closures
    |
 LL |     #[target_feature(enable = "sse2")]
    |       ^^^^^^^^^^^^^^
+LL |
+LL |     || {};
    |
    = help: the `target_feature` attribute can be applied to functions and methods
 
