@@ -18,8 +18,8 @@ trait Foo {
 impl Foo for &(dyn Foo + ?Move) {
     #[rustc_dump_symbol_name]
     //[v0]~^ ERROR symbol-name
-    //[v0]~| ERROR demangling
-    //[v0]~| ERROR demangling-alt
+    //[v0]~| NOTE demangling
+    //[v0]~| NOTE demangling-alt
     fn method(&self) {}
 }
 
