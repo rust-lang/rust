@@ -17,7 +17,6 @@ cfg_select! {
     all(
         target_feature = "sse2",
         any(target_arch = "x86", target_arch = "x86_64"),
-        not(miri),
     ) => {
         mod sse2;
         use sse2 as imp;
@@ -28,7 +27,6 @@ cfg_select! {
         // NEON intrinsics are currently broken on big-endian targets.
         // See https://github.com/rust-lang/stdarch/issues/1484.
         target_endian = "little",
-        not(miri),
     ) => {
         mod neon;
         use neon as imp;
@@ -37,7 +35,7 @@ cfg_select! {
         feature = "nightly",
         target_arch = "loongarch64",
         target_feature = "lsx",
-        not(miri),
+        not(miri), // Miri does not support lsx
     ) => {
         mod lsx;
         use lsx as imp;
