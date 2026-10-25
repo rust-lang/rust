@@ -1,6 +1,6 @@
 # Background topics
 
-This section covers a numbers of common compiler terms that arise in this guide.
+This section covers a number of common compiler terms that arise in this guide.
 We try to give the general definition while providing some Rust-specific context.
 
 <a id="cfg"></a>
@@ -167,14 +167,14 @@ It could also be the case that
 `some_cond` depends on something random (e.g. the time), so `x` may not be
 initialized.
 In general, we cannot know statically (due to [Rice's Theorem][rice]).
- So what should the value of `init` be in block (C)?
+So what should the value of `init` be in block (C)?
 
 [rice]: https://en.wikipedia.org/wiki/Rice%27s_theorem
 
 Generally, in dataflow analyses, if a block has multiple parents (like (C) in our example),
 its dataflow value will be some function of all its parents (and
 of course, what happens in (C)).
- Which function we use depends on the analysis we are doing.
+Which function we use depends on the analysis we are doing.
 
 In this case, we want to be able to prove definitively that `x` must be initialized before use.
 This forces us to be conservative and assume that `some_cond` might be false sometimes.
@@ -182,7 +182,7 @@ So our "merging function" is "and".
 That is, `init = true` in (C) if `init = true` in (A) _and_ in (B) (or if `x` is
 initialized in (C)).
 But this is not the case; in particular, `init = false` in (A), and `x` is not initialized in (C).
- Thus, `init = false` in (C); we can report an error that "`x` may not be initialized before use".
+Thus, `init = false` in (C); we can report an error that "`x` may not be initialized before use".
 
 There is definitely a lot more that can be said about dataflow analyses.
 There is an extensive body of research literature on the topic, including a lot of theory.
@@ -304,7 +304,7 @@ the set of variables that "appear free".
 So what does this have to do with regions?
 Well, we can apply the analogous concept to type and regions.
 For example, in the type `&'a u32`, `'a` appears free.
- But in the type `for<'a> fn(&'a u32)`, it does not.
+But in the type `for<'a> fn(&'a u32)`, it does not.
 
 # Further Reading About Compilers
 
