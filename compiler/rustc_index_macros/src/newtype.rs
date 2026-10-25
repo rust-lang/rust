@@ -134,7 +134,7 @@ impl Parse for Newtype {
 
                     #[inline]
                     fn forward_checked(start: Self, u: usize) -> Option<Self> {
-                        Self::index(start).checked_add(u).map(Self::from_usize)
+                        Self::index(start).checked_add(u).filter(|&i| i <= Self::MAX.index()).map(Self::from_usize)
                     }
 
                     #[inline]
@@ -144,14 +144,12 @@ impl Parse for Newtype {
 
                     #[inline]
                     fn forward_overflowing(start: Self, u: usize) -> (Self, bool) {
-                        let (s, o) = Self::index(start).overflowing_add(u);
-                        (Self::from_usize(s), o)
+                        Self::forward_checked(start, u).map_or((Self::MAX, true), |next| (next, false))
                     }
 
                     #[inline]
                     fn backward_overflowing(start: Self, u: usize) -> (Self, bool) {
-                        let (s, o) = Self::index(start).overflowing_sub(u);
-                        (Self::from_usize(s), o)
+                        Self::backward_checked(start, u).map_or((Self::ZERO, true), |prev| (prev, false))
                     }
                 }
                 impl ::std::cmp::Ord for #name {

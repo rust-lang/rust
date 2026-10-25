@@ -53,3 +53,29 @@ fn range_size_hint_is_correct() {
     let range = MyIdx::from_u32(1)..MyIdx::from_u32(4);
     assert_eq!(range.size_hint(), (3, Some(3)));
 }
+
+#[test]
+fn range_inclusive_iterator_iterates_backwards() {
+    let range = MyIdx::ZERO..=MyIdx::from_u32(1);
+    assert_eq!(range.rev().collect::<Vec<_>>(), [MyIdx::from_u32(1), MyIdx::ZERO]);
+}
+
+#[test]
+fn range_inclusive_iterator_iterates_forwards() {
+    let range = MyIdx::from_u32(MyIdx::MAX_AS_U32 - 1)..=MyIdx::MAX;
+    assert_eq!(range.collect::<Vec<_>>(), [MyIdx::from_u32(MyIdx::MAX_AS_U32 - 1), MyIdx::MAX]);
+}
+
+#[test]
+fn step_forward_checked_is_correct() {
+    assert_eq!(std::iter::Step::forward_checked(MyIdx::MAX, 1), None);
+}
+
+#[test]
+fn range_inclusive_nth_past_the_bounds_does_not_panic() {
+    let max = MyIdx::MAX_AS_U32 as usize;
+    assert_eq!((MyIdx::ZERO..=MyIdx::MAX).nth(max), Some(MyIdx::MAX));
+    assert_eq!((MyIdx::ZERO..=MyIdx::MAX).nth(max + 1), None);
+    assert_eq!((MyIdx::ZERO..=MyIdx::MAX).nth_back(max), Some(MyIdx::ZERO));
+    assert_eq!((MyIdx::ZERO..=MyIdx::MAX).nth_back(max + 1), None);
+}
