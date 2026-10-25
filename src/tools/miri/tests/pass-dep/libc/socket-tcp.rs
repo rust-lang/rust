@@ -1,5 +1,5 @@
 //@ignore-target: windows # No libc socket on Windows
-//@compile-flags: -Zmiri-disable-isolation
+//@compile-flags: -Zmiri-disable-isolation -Zmiri-fixed-schedule
 //@run-native
 
 #[path = "../../utils/libc.rs"]
@@ -14,6 +14,16 @@ use std::{ptr, thread};
 use libc_utils::*;
 
 const TEST_BYTES: &[u8] = b"these are some test bytes!";
+
+fn yield_now() {
+    if cfg!(miri) {
+        // We control the scheduler so we know this is enough.
+        thread::yield_now();
+    } else {
+        // Without scheduler control, we hope that sleeping a bit is enough.
+        thread::sleep(Duration::from_millis(20));
+    }
+}
 
 fn main() {
     test_bind_twice();
@@ -186,16 +196,15 @@ fn test_accept_connect() {
         // Ensure that peer socket is blocking.
         assert_eq!(flags & libc::O_NONBLOCK, 0);
 
-        // Yield back to the client thread to test whether calling `connect` first also
-        // works.
-        thread::sleep(Duration::from_millis(10));
+        // Yield back to the client thread to test whether calling `connect` first also works.
+        yield_now();
 
         net::accept_ipv4(server_sockfd).unwrap();
     });
 
     // Yield to server thread to ensure `accept` is called before we try
     // to connect.
-    thread::sleep(Duration::from_millis(10));
+    yield_now();
 
     // Test connecting to an already accepting server.
     net::connect_ipv4(client_sockfd, addr).unwrap();
@@ -732,7 +741,7 @@ fn test_unblock_after_socket_close() {
     let server_thread = thread::spawn(move || {
         // Ensure main thread is blocked on reading from
         // the client socket.
-        thread::sleep(Duration::from_millis(10));
+        yield_now();
 
         unsafe { errno_check(libc::close(client_sockfd)) };
 
