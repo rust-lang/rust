@@ -3,7 +3,6 @@ use std::ptr;
 use rustc_ast::expand::autodiff_attrs::{DiffActivity, DiffMode};
 use rustc_ast::expand::typetree::FncTree;
 use rustc_attr_ir::RustcAutodiff;
-use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::mir::IntrinsicResult;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::PlaceValue;
@@ -18,7 +17,7 @@ use tracing::debug;
 use crate::builder::{Builder, UNNAMED};
 use crate::context::SimpleCx;
 use crate::declare::declare_simple_fn;
-use crate::llvm::{self, TRUE, Type, Value};
+use crate::llvm::{self, TRUE, Type, TypeKind, Value};
 
 pub(crate) fn adjust_activity_to_abi<'tcx>(
     tcx: TyCtxt<'tcx>,
