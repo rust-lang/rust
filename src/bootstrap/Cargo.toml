@@ -89,7 +89,7 @@ features = [
 ]
 
 [dev-dependencies]
-insta = "1.43"
+expect-test = "1"
 
 # We care a lot about bootstrap's compile times, so don't include debuginfo for
 # dependencies, only bootstrap itself.
