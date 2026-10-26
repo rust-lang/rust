@@ -65,7 +65,7 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        #[doc = concat!("let n = 0b01001100", stringify!($SelfT), ";")]
+        #[doc = concat!("let n = 0b0100_1100", stringify!($SelfT), ";")]
         /// assert_eq!(n.count_ones(), 3);
         ///
         #[doc = concat!("let max = ", stringify!($SelfT),"::MAX;")]
@@ -160,7 +160,7 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        #[doc = concat!("let n = 0b0101000", stringify!($SelfT), ";")]
+        #[doc = concat!("let n = 0b010_1000", stringify!($SelfT), ";")]
         /// assert_eq!(n.trailing_zeros(), 3);
         ///
         #[doc = concat!("let zero = 0", stringify!($SelfT), ";")]
@@ -207,7 +207,7 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        #[doc = concat!("let n = 0b1010111", stringify!($SelfT), ";")]
+        #[doc = concat!("let n = 0b101_0111", stringify!($SelfT), ";")]
         /// assert_eq!(n.trailing_ones(), 3);
         ///
         #[doc = concat!("let zero = 0", stringify!($SelfT), ";")]
@@ -2130,7 +2130,7 @@ macro_rules! uint_impl {
         #[doc = concat!("assert_eq!(0x1_", stringify!($SelfT), ".unbounded_shl(129), 0);")]
         #[doc = concat!("assert_eq!(0b101_", stringify!($SelfT), ".unbounded_shl(0), 0b101);")]
         #[doc = concat!("assert_eq!(0b101_", stringify!($SelfT), ".unbounded_shl(1), 0b1010);")]
-        #[doc = concat!("assert_eq!(0b101_", stringify!($SelfT), ".unbounded_shl(2), 0b10100);")]
+        #[doc = concat!("assert_eq!(0b101_", stringify!($SelfT), ".unbounded_shl(2), 0b10_100);")]
         #[doc = concat!("assert_eq!(42_", stringify!($SelfT), ".unbounded_shl(", stringify!($BITS), "), 0);")]
         #[doc = concat!("assert_eq!(42_", stringify!($SelfT), ".unbounded_shl(1).unbounded_shl(", stringify!($BITS_MINUS_ONE), "), 0);")]
         ///
@@ -2906,7 +2906,7 @@ macro_rules! uint_impl {
         #[doc = concat!("assert_eq!(1_", stringify!($SelfT), ".wrapping_shl(7), 128);")]
         #[doc = concat!("assert_eq!(0b101_", stringify!($SelfT), ".wrapping_shl(0), 0b101);")]
         #[doc = concat!("assert_eq!(0b101_", stringify!($SelfT), ".wrapping_shl(1), 0b1010);")]
-        #[doc = concat!("assert_eq!(0b101_", stringify!($SelfT), ".wrapping_shl(2), 0b10100);")]
+        #[doc = concat!("assert_eq!(0b101_", stringify!($SelfT), ".wrapping_shl(2), 0b10_100);")]
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.wrapping_shl(2), ", stringify!($SelfT), "::MAX - 3);")]
         #[doc = concat!("assert_eq!(42_", stringify!($SelfT), ".wrapping_shl(", stringify!($BITS), "), 42);")]
         #[doc = concat!("assert_eq!(42_", stringify!($SelfT), ".wrapping_shl(1).wrapping_shl(", stringify!($BITS_MINUS_ONE), "), 0);")]
