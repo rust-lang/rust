@@ -313,7 +313,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             return true;
         };
 
-        let is_private = !self.cx.cache.effective_visibilities.is_directly_public(tcx, ori_res_did);
+        let is_private = (is_glob || !self.cx.document_private())
+            && !self.cx.cache.effective_visibilities.is_directly_public(tcx, ori_res_did);
         debug!(?is_private);
         let item = tcx.hir_node_by_def_id(res_did);
 
