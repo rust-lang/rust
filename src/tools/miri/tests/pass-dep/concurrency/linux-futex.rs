@@ -191,7 +191,7 @@ fn wait_wake_bitset() {
     static mut FUTEX: i32 = 0;
 
     let t = thread::spawn(move || {
-        thread::sleep(Duration::from_millis(100));
+        thread::sleep(Duration::from_millis(50));
         unsafe {
             assert_eq!(
                 libc::syscall(
@@ -206,7 +206,7 @@ fn wait_wake_bitset() {
                 0, // Didn't match any thread.
             );
         }
-        thread::sleep(Duration::from_millis(100));
+        thread::sleep(Duration::from_millis(50));
         unsafe {
             assert_eq!(
                 libc::syscall(
@@ -240,7 +240,8 @@ fn wait_wake_bitset() {
         );
     }
 
-    assert!((200..1000).contains(&start.elapsed().as_millis()));
+    let wait_time = start.elapsed().as_millis();
+    assert!((100..1000).contains(&wait_time), "wait time was {wait_time}ms");
     t.join().unwrap();
 }
 
