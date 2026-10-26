@@ -224,8 +224,12 @@ pub fn type_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> String {
 
     try {
         match *ty.kind() {
-            ty::Adt(def, args) if let Some(FieldInfo { name, .. }) =
-                    def.field_representing_type_info(tcx, args) => write!(s, "{name}")?,
+            ty::Adt(def, args)
+                if let Some(FieldInfo { name, .. }) =
+                    def.field_representing_type_info(tcx, args) =>
+            {
+                write!(s, "{name}")?
+            }
             ty::Adt(def, _) => write!(s, "{}", tcx.item_name(def.did()))?,
             ty::Dynamic(data, _) => {
                 let trait_def_id = data
@@ -241,7 +245,8 @@ pub fn type_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> String {
             }
             _ => (),
         }
-    }.unwrap();
+    }
+    .unwrap();
 
     s
 }
