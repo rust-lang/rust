@@ -746,7 +746,6 @@ declare_lint! {
     ///
     /// ```rust
     /// #![deny(duplicate_parameter_names)]
-    /// // edition 2015
     /// pub trait Foo {
     ///     fn foo(x: usize, x: usize);
     /// }
@@ -755,6 +754,11 @@ declare_lint! {
     ///
     /// {{produces}}
     ///
+    /// ### Explanation
+    ///
+    /// Duplicate parameter names are allowed in body-less functions,
+    /// in function pointers, and in parenthesised generic args, but this
+    /// is confusing and inconsistent behaviour, and is discouraged.
     pub DUPLICATE_PARAMETER_NAMES,
     Warn,
     "detects duplicate parameter names",

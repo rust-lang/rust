@@ -3,7 +3,7 @@
 // error in #102161 since there is no test exercising it. I am not sure if
 // this _should_ be the desired behavior, but at least we should know if it
 // changes.
-// The `duplicate_parameter_names` lint now warns against it.
+// The `duplicate_parameter_names` lint warns against it.
 
 fn main() {}
 
