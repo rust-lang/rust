@@ -732,7 +732,7 @@ mod uefi_fs {
             if r.is_error() {
                 Err(io::Error::from_raw_os_error(r.as_usize()))
             } else {
-                Ok(Some(info))
+                info.check_size().map(Some)
             }
         }
 
@@ -783,7 +783,11 @@ mod uefi_fs {
                 )
             };
 
-            if r.is_error() { Err(io::Error::from_raw_os_error(r.as_usize())) } else { Ok(info) }
+            if r.is_error() {
+                Err(io::Error::from_raw_os_error(r.as_usize()))
+            } else {
+                info.check_size()
+            }
         }
 
         pub(crate) fn set_file_info(&self, mut info: UefiBox<file::Info>) -> io::Result<()> {

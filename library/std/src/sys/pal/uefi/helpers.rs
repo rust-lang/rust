@@ -828,6 +828,14 @@ impl UefiBox<file::Info> {
         unsafe { (*self.as_mut_ptr()).size = s }
     }
 
+    pub(crate) fn check_size(self) -> io::Result<Self> {
+        let min = size_of::<file::Info<0>>() + size_of::<u16>();
+        if self.size() < min as u64 || self.size() > self.len() as u64 {
+            return Err(const_error!(io::ErrorKind::InvalidData, "invalid file info size"));
+        }
+        Ok(self)
+    }
+
     // Length of string (including NULL), not number of bytes.
     fn file_name_len(&self) -> usize {
         (self.size() as usize - size_of::<file::Info<0>>()) / size_of::<u16>()
