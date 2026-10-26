@@ -3,6 +3,8 @@ warning: the `link_section` attribute cannot be used on foreign statics
    |
 LL |     #[unsafe(link_section = "__DATA,__buffer")]
    |              ^^^^^^^^^^^^
+LL |
+LL |     pub static mut a: [u8; 1024];
    |
    = help: the `link_section` attribute can be applied to functions and statics
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!

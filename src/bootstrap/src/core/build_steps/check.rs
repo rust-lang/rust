@@ -856,10 +856,9 @@ tool_check_step!(Clippy { path: "src/tools/clippy", mode: Mode::ToolRustcPrivate
 tool_check_step!(Miri {
     path: "src/tools/miri",
     mode: Mode::ToolRustcPrivate,
-    enable_features: ["check_only"],
+    enable_features: ["check_only", "priroda"],
 });
 tool_check_step!(CargoMiri { path: "src/tools/miri/cargo-miri", mode: Mode::ToolRustcPrivate });
-tool_check_step!(Priroda { path: "src/tools/miri/priroda", mode: Mode::ToolRustcPrivate });
 tool_check_step!(Rustfmt { path: "src/tools/rustfmt", mode: Mode::ToolRustcPrivate });
 tool_check_step!(RustAnalyzer {
     path: "src/tools/rust-analyzer",

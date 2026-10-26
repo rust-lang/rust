@@ -203,6 +203,8 @@ impl MiriEnv {
                 let json: serde_json::Value = serde_json::from_str(&line)?;
                 if json["reason"] == "compiler-artifact"
                     && !json["profile"]["test"].as_bool().unwrap()
+                    // The "miri" crate ships a second binary ("priroda"); pick the "miri" driver.
+                    && json["target"]["name"] == "miri"
                     && !json["executable"].is_null()
                 {
                     if bin.is_some() {

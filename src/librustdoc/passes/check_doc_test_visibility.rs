@@ -14,7 +14,7 @@ use crate::clean::utils::inherits_doc_hidden;
 use crate::clean::{self, *};
 use crate::core::DocContext;
 use crate::html::markdown::{
-    CodeLineMapping, ErrorCodes, Ignore, LangString, MdRelLine, find_testable_code,
+    CodeBlockPosition, CodeLineMapping, ErrorCodes, Ignore, LangString, find_testable_code,
 };
 use crate::visit::DocVisitor;
 
@@ -41,7 +41,13 @@ pub(crate) struct Tests {
 }
 
 impl crate::doctest::DocTestVisitor for Tests {
-    fn visit_test(&mut self, _: String, config: LangString, _: MdRelLine, _: Vec<CodeLineMapping>) {
+    fn visit_test(
+        &mut self,
+        _: String,
+        config: LangString,
+        _: CodeBlockPosition,
+        _: Vec<CodeLineMapping>,
+    ) {
         if config.rust && config.ignore == Ignore::None {
             self.found_tests += 1;
         }

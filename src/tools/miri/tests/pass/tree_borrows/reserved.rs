@@ -13,7 +13,7 @@ use std::cell::UnsafeCell;
 // - with or without a protector
 // - for a foreign read or write
 // Of these cases, those in this file are the ones that must not cause
-// immediate UB, and those that do are in tests/fail/tree-borrows/reserved/
+// immediate UB, and those that do are in tests/fail/tree_borrows/reserved/
 // and are the combinations [_ + protected + write]
 
 fn main() {

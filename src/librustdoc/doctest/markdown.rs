@@ -14,7 +14,7 @@ use super::{
 };
 use crate::config::Options;
 use crate::html::markdown::{
-    CodeLineMapping, ErrorCodes, LangString, MdRelLine, find_testable_code,
+    CodeBlockPosition, CodeLineMapping, ErrorCodes, LangString, find_testable_code,
 };
 
 struct MdCollector {
@@ -28,12 +28,19 @@ impl DocTestVisitor for MdCollector {
         &mut self,
         test: String,
         config: LangString,
-        rel_line: MdRelLine,
+        position: CodeBlockPosition,
         code_mappings: Vec<CodeLineMapping>,
     ) {
         let filename = self.filename.clone();
-        // First line of Markdown is line 1.
-        let line = 1 + rel_line.offset();
+        let line = match position {
+            CodeBlockPosition::Relative(rel_line) => {
+                // First line of Markdown is line 1.
+                1 + rel_line.offset()
+            }
+            CodeBlockPosition::Span(_) => {
+                rustc_span::bug!("markdown collector doesn't produce spans")
+            }
+        };
         self.tests.push(ScrapedDocTest::new(
             filename,
             line,

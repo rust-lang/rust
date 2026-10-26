@@ -1,7 +1,7 @@
 // We're testing x86 target specific features
 //@only-target: x86_64 i686
 //@compile-flags: -C target-feature=+avx512f,+avx512vl,+avx512bw,+avx512bitalg,+avx512vpopcntdq,+avx512vnni,+avx512vbmi
-//@run-native
+//@run-native: ignore-output
 
 #[cfg(target_arch = "x86")]
 use std::arch::x86::*;

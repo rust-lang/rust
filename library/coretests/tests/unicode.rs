@@ -123,6 +123,20 @@ fn white_space() {
 
 #[test]
 #[cfg_attr(miri, ignore)] // Miri is too slow
+fn xid_continue() {
+    test_boolean_property(test_data::XID_CONTINUE, unicode_data::xid_continue::lookup);
+    test_boolean_property(test_data::XID_CONTINUE, char::is_xid_continue);
+}
+
+#[test]
+#[cfg_attr(miri, ignore)] // Miri is too slow
+fn xid_start() {
+    test_boolean_property(test_data::XID_START, unicode_data::xid_start::lookup);
+    test_boolean_property(test_data::XID_START, char::is_xid_start);
+}
+
+#[test]
+#[cfg_attr(miri, ignore)] // Miri is too slow
 fn to_lowercase() {
     test_case_mapping(test_data::TO_LOWER, unicode_data::conversions::to_lower, |c| {
         [c, '\0', '\0']

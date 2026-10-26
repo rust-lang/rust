@@ -67,6 +67,9 @@ pub use error::IntErrorKind;
 pub use error::ParseIntError;
 #[stable(feature = "try_from", since = "1.34.0")]
 pub use error::TryFromIntError;
+#[unstable(feature = "extended_float_error_kind", issue = "164793")]
+#[cfg(not(no_fp_fmt_parse))]
+pub use float_parse::FloatErrorKind;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg(not(no_fp_fmt_parse))]
 pub use float_parse::ParseFloatError;

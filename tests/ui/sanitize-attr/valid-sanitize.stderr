@@ -11,6 +11,7 @@ error: the `sanitize` attribute cannot be used on type aliases
    |
 LL | #[sanitize(address = "off")]
    |   ^^^^^^^^
+LL | type MyTypeAlias = ();
    |
    = help: the `sanitize` attribute can be applied to crates, functions, impl blocks, modules, and statics
 
@@ -19,6 +20,7 @@ error: the `sanitize` attribute cannot be used on traits
    |
 LL | #[sanitize(address = "off")]
    |   ^^^^^^^^
+LL | trait MyTrait {
    |
    = help: the `sanitize` attribute can be applied to crates, functions, impl blocks, modules, and statics
 
@@ -27,6 +29,7 @@ error: the `sanitize` attribute cannot be used on associated consts
    |
 LL |     #[sanitize(address = "off")]
    |       ^^^^^^^^
+LL |     const TRAIT_ASSOC_CONST: u32;
    |
    = help: the `sanitize` attribute can be applied to crates, functions, impl blocks, modules, and statics
 
@@ -35,6 +38,7 @@ error: the `sanitize` attribute cannot be used on associated types
    |
 LL |     #[sanitize(address = "off")]
    |       ^^^^^^^^
+LL |     type TraitAssocType;
    |
    = help: the `sanitize` attribute can be applied to crates, functions, impl blocks, modules, and statics
 
@@ -43,6 +47,7 @@ error: the `sanitize` attribute cannot be used on required trait methods
    |
 LL |     #[sanitize(address = "off")]
    |       ^^^^^^^^
+LL |     fn trait_method(&self);
    |
    = help: the `sanitize` attribute can be applied to crates, functions with a body, impl blocks, modules, and statics
 
@@ -51,6 +56,7 @@ error: the `sanitize` attribute cannot be used on required trait methods
    |
 LL |     #[sanitize(address = "off")]
    |       ^^^^^^^^
+LL |     fn trait_assoc_fn();
    |
    = help: the `sanitize` attribute can be applied to crates, functions with a body, impl blocks, modules, and statics
 
@@ -59,6 +65,7 @@ error: the `sanitize` attribute cannot be used on associated types
    |
 LL |     #[sanitize(address = "off")]
    |       ^^^^^^^^
+LL |     type TraitAssocType = Self;
    |
    = help: the `sanitize` attribute can be applied to crates, functions, impl blocks, modules, and statics
 
@@ -67,6 +74,7 @@ error: the `sanitize` attribute cannot be used on associated types
    |
 LL |     #[sanitize(address = "off")]
    |       ^^^^^^^^
+LL |     type T = impl Copy;
    |
    = help: the `sanitize` attribute can be applied to crates, functions, impl blocks, modules, and statics
 
@@ -75,6 +83,7 @@ error: the `sanitize` attribute cannot be used on structs
    |
 LL | #[sanitize(address = "off")]
    |   ^^^^^^^^
+LL | struct MyStruct {
    |
    = help: the `sanitize` attribute can be applied to crates, functions, impl blocks, modules, and statics
 
@@ -83,6 +92,7 @@ error: the `sanitize` attribute cannot be used on struct fields
    |
 LL |     #[sanitize(address = "off")]
    |       ^^^^^^^^
+LL |     field: u32,
    |
    = help: the `sanitize` attribute can be applied to crates, functions, impl blocks, modules, and statics
 
@@ -91,6 +101,7 @@ error: the `sanitize` attribute cannot be used on foreign statics
    |
 LL |     #[sanitize(address = "off", thread = "on")]
    |       ^^^^^^^^
+LL |     static X: u32;
    |
    = help: the `sanitize` attribute can be applied to crates, functions, impl blocks, modules, and statics
 
@@ -99,6 +110,7 @@ error: the `sanitize` attribute cannot be used on foreign types
    |
 LL |     #[sanitize(address = "off", thread = "on")]
    |       ^^^^^^^^
+LL |     type T;
    |
    = help: the `sanitize` attribute can be applied to crates, functions, impl blocks, modules, and statics
 
@@ -107,6 +119,7 @@ error: the `sanitize` attribute cannot be used on foreign functions
    |
 LL |     #[sanitize(address = "off", thread = "on")]
    |       ^^^^^^^^
+LL |     fn foreign_fn();
    |
    = help: the `sanitize` attribute can be applied to crates, functions with a body, impl blocks, modules, and statics
 
@@ -115,6 +128,7 @@ error: the `sanitize` attribute cannot be used on statements
    |
 LL |     #[sanitize(address = "off", thread = "on")]
    |       ^^^^^^^^
+LL |     let _ = ();
    |
    = help: the `sanitize` attribute can be applied to crates, functions, impl blocks, modules, and statics
 
@@ -123,6 +137,7 @@ error: the `sanitize` attribute cannot be used on statements
    |
 LL |     #[sanitize(address = "off")]
    |       ^^^^^^^^
+LL |     let _let_closure = || ();
    |
    = help: the `sanitize` attribute can be applied to crates, functions, impl blocks, modules, and statics
 
@@ -131,6 +146,7 @@ error: the `sanitize` attribute cannot be used on match arms
    |
 LL |         #[sanitize(address = "off")]
    |           ^^^^^^^^
+LL |         () => (),
    |
    = help: the `sanitize` attribute can be applied to crates, functions, impl blocks, modules, and statics
 
@@ -139,6 +155,7 @@ error: the `sanitize` attribute cannot be used on expressions
    |
 LL |     #[sanitize(address = "off")]
    |       ^^^^^^^^
+LL |     return ();
    |
    = help: the `sanitize` attribute can be applied to crates, functions, impl blocks, modules, and statics
 

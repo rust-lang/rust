@@ -151,6 +151,28 @@ fn test_file() {
     } else {
         assert_eq!(err.kind(), ErrorKind::PermissionDenied);
     }
+
+    // We can get a file for stderr/stdout (but not on Windows).
+    cfg_select! {
+        unix => {
+            use std::os::fd::AsFd;
+
+            let fd = std::io::stdout().as_fd().try_clone_to_owned().unwrap();
+            let mut f = std::fs::File::from(fd);
+            f.metadata().unwrap();
+            writeln!(f, "hello stdout").unwrap();
+
+            let fd = std::io::stderr().as_fd().try_clone_to_owned().unwrap();
+            let mut f = std::fs::File::from(fd);
+            f.metadata().unwrap();
+            writeln!(f, "hello stderr").unwrap();
+        }
+        _ => {
+            // keep the output consistent.
+            println!("hello stdout");
+            eprintln!("hello stderr");
+        }
+    }
 }
 
 fn test_file_partial_reads_writes() {

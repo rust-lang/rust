@@ -20,6 +20,8 @@ LL |     () => (
 LL |         #[allow_internal_unstable()]
    |           ^^^^^^^^^^^^^^^^^^^^^^^
 ...
+LL |         bar!();
+...
 LL | foo!();
    | ------ in this macro invocation
    |

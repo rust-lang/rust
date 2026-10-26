@@ -31,6 +31,7 @@ error: the `instrument_fn` attribute cannot be used on structs
    |
 LL | #[instrument_fn = "on"]
    |   ^^^^^^^^^^^^^
+LL | struct F;
    |
    = help: the `instrument_fn` attribute can only be applied to functions
 
@@ -39,6 +40,7 @@ error: the `instrument_fn` attribute cannot be used on modules
    |
 LL | #[instrument_fn = "on"]
    |   ^^^^^^^^^^^^^
+LL | mod module {}
    |
    = help: the `instrument_fn` attribute can only be applied to functions
 
@@ -47,6 +49,7 @@ error: the `instrument_fn` attribute cannot be used on inherent impl blocks
    |
 LL | #[instrument_fn = "on"]
    |   ^^^^^^^^^^^^^
+LL | impl F {
    |
    = help: the `instrument_fn` attribute can only be applied to functions
 
@@ -55,6 +58,8 @@ error: the `instrument_fn` attribute cannot be used on expressions
    |
 LL |         #[instrument_fn = "off"]
    |           ^^^^^^^^^^^^^
+LL |
+LL |         x * 2
    |
    = help: the `instrument_fn` attribute can only be applied to functions
 
@@ -63,6 +68,7 @@ error: the `instrument_fn` attribute cannot be used on traits
    |
 LL | #[instrument_fn = "off"]
    |   ^^^^^^^^^^^^^
+LL | trait Foo {
    |
    = help: the `instrument_fn` attribute can only be applied to functions
 
@@ -71,6 +77,7 @@ error: the `instrument_fn` attribute cannot be used on required trait methods
    |
 LL |     #[instrument_fn = "off"]
    |       ^^^^^^^^^^^^^
+LL |     fn bar();
    |
    = help: the `instrument_fn` attribute can only be applied to functions with a body
 
@@ -118,6 +125,7 @@ error: the `instrument_fn` attribute cannot be used on closures
    |
 LL |     let _x = #[instrument_fn = "on"]
    |                ^^^^^^^^^^^^^
+LL |     || {};
    |
    = help: the `instrument_fn` attribute can be applied to functions and methods
 

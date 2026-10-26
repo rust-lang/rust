@@ -1508,11 +1508,11 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
     /// Update the data-race detector for an atomic write occurring at the
     /// associated memory-place and on the current thread.
     fn validate_atomic_store(
-        &mut self,
+        &self,
         place: &MPlaceTy<'tcx>,
         atomic: AtomicWriteOrd,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let this = self.eval_context_ref();
         this.validate_atomic_op(
             place,
             atomic,
@@ -1530,14 +1530,14 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
     /// Update the data-race detector for an atomic read-modify-write occurring
     /// at the associated memory place and on the current thread.
     fn validate_atomic_rmw(
-        &mut self,
+        &self,
         place: &MPlaceTy<'tcx>,
         atomic: AtomicRwOrd,
     ) -> InterpResult<'tcx> {
         use AtomicRwOrd::*;
         let acquire = matches!(atomic, Acquire | AcqRel | SeqCst);
         let release = matches!(atomic, Release | AcqRel | SeqCst);
-        let this = self.eval_context_mut();
+        let this = self.eval_context_ref();
         this.validate_atomic_op(
             place,
             atomic,

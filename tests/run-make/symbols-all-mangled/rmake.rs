@@ -34,6 +34,10 @@ fn is_symbol_ok(sym: &str) -> bool {
         return true;
     }
 
+    if sym == "rust_eh_personality" {
+        return true; // Unfortunately we have to not mangle this for now
+    }
+
     false
 }
 

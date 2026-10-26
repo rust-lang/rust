@@ -786,4 +786,13 @@ impl<'a> ExtCtxt<'a> {
             span,
         }
     }
+    pub fn generated_attr(&self, span: Span, generated: ast::GeneratedAttr) -> ast::Attribute {
+        let id = self.sess.psess.attr_id_generator.mk_attr_id();
+        ast::Attribute {
+            kind: ast::AttrKind::Generated(generated),
+            id,
+            span,
+            style: ast::AttrStyle::Outer,
+        }
+    }
 }

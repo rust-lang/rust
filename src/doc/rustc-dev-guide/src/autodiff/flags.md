@@ -1,6 +1,8 @@
 # Supported `RUSTFLAGS`
 
-To support you while debugging or profiling, we have added support for an experimental `-Z autodiff` rustc flag (which can be passed to cargo via `RUSTFLAGS`), which allow changing the behaviour of Enzyme, without recompiling rustc. We currently support the following values for `autodiff`.
+To support you while debugging or profiling, we have added support for an experimental `-Z autodiff` rustc flag (which can be passed to cargo via `RUSTFLAGS`), which allow changing the behaviour of Enzyme,
+without recompiling rustc.
+We currently support the following values for `autodiff`.
 
 ### Debug Flags
 
@@ -18,7 +20,10 @@ LooseTypes // Risk incorrect derivatives instead of aborting when missing Type I
 
 <div class="warning">
 
-`LooseTypes` is often helpful to get rid of Enzyme errors stating `Can not deduce type of <X>` and to be able to run some code. But please keep in mind that this flag absolutely has the chance to cause incorrect gradients. Even worse, the gradients might be correct for certain input values, but not for others. So please create issues about such bugs and only use this flag temporarily while you wait for your bug to be fixed.
+`LooseTypes` is often helpful to get rid of Enzyme errors stating `Can not deduce type of <X>` and to be able to run some code.
+But please keep in mind that this flag absolutely has the chance to cause incorrect gradients.
+Even worse, the gradients might be correct for certain input values, but not for others.
+So please create issues about such bugs and only use this flag temporarily while you wait for your bug to be fixed.
 
 </div>
 
@@ -40,6 +45,8 @@ RUSTFLAGS="-Z autodiff=Enable,LooseTypes,PrintPerf" cargo +enzyme build
 
 Using `-Zautodiff=Enable` will allow using autodiff and update your normal rustc compilation pipeline:
 
-1. Run your selected compilation pipeline. If you selected a release build, we will disable vectorization and loop unrolling.
+1. Run your selected compilation pipeline.
+   If you selected a release build, we will disable vectorization and loop unrolling.
 2. Differentiate your functions.
-3. Run your selected compilation pipeline again on the whole module. This time we do not disable vectorization or loop unrolling.
+3. Run your selected compilation pipeline again on the whole module.
+   This time we do not disable vectorization or loop unrolling.

@@ -1389,6 +1389,8 @@ pub(crate) struct InvalidTarget {
     pub attr_span: Span,
     pub name: AttrPath,
     pub target: &'static str,
+    #[context]
+    pub target_span: Span,
     pub applied: DiagArgValue,
     pub only: &'static str,
     pub attribute_args: String,

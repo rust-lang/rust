@@ -13,7 +13,6 @@
 
 #![feature(no_core, intrinsics, rustc_attrs)]
 #![no_core]
-#![allow(improper_ctypes_definitions)]
 
 extern crate minicore;
 use minicore::*;

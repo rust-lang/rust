@@ -450,8 +450,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let otherwise = targets.otherwise();
             let lltarget = helper.llbb_with_cleanup(self, target);
             let llotherwise = helper.llbb_with_cleanup(self, otherwise);
-            let target_cold = self.cold_blocks[target];
-            let otherwise_cold = self.cold_blocks[otherwise];
+            let target_cold = self.cold_blocks.contains(target);
+            let otherwise_cold = self.cold_blocks.contains(otherwise);
             // If `target_cold == otherwise_cold`, the branches have the same weight
             // so there is no expectation. If they differ, the `target` branch is expected
             // when the `otherwise` branch is cold.
@@ -490,7 +490,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let expected_cond_value = if self.cx.sess().opts.optimize == OptLevel::No {
                 None
             } else {
-                match (self.cold_blocks[true_bb], self.cold_blocks[false_bb]) {
+                match (self.cold_blocks.contains(true_bb), self.cold_blocks.contains(false_bb)) {
                     // Same coldness, no expectation
                     (true, true) | (false, false) => None,
                     // Different coldness, expect the non-cold one
@@ -533,9 +533,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             bx.cond_br(cmp, ll1, ll2);
         } else {
             let otherwise = targets.otherwise();
-            let otherwise_cold = self.cold_blocks[otherwise];
+            let otherwise_cold = self.cold_blocks.contains(otherwise);
             let otherwise_unreachable = self.mir[otherwise].is_empty_unreachable();
-            let cold_count = targets.iter().filter(|(_, target)| self.cold_blocks[*target]).count();
+            let cold_count =
+                targets.iter().filter(|(_, target)| self.cold_blocks.contains(*target)).count();
             let none_cold = cold_count == 0;
             let all_cold = cold_count == targets.iter().len();
             if (none_cold && (!otherwise_cold || otherwise_unreachable))
@@ -556,7 +557,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     helper.llbb_with_cleanup(self, targets.otherwise()),
                     otherwise_cold,
                     target_iter.map(|(value, target)| {
-                        (value, helper.llbb_with_cleanup(self, target), self.cold_blocks[target])
+                        let target_llbb = helper.llbb_with_cleanup(self, target);
+                        let is_target_cold = self.cold_blocks.contains(target);
+                        (value, target_llbb, is_target_cold)
                     }),
                 );
             }

@@ -213,8 +213,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     /// Parses a `_umtx_time` struct.
     /// Returns `None` if the underlying `timespec` struct is invalid.
-    fn read_umtx_time(&mut self, ut: &MPlaceTy<'tcx>) -> InterpResult<'tcx, Option<UmtxTime>> {
-        let this = self.eval_context_mut();
+    fn read_umtx_time(&self, ut: &MPlaceTy<'tcx>) -> InterpResult<'tcx, Option<UmtxTime>> {
+        let this = self.eval_context_ref();
         // Only flag allowed is UMTX_ABSTIME.
         let abs_time = this.eval_libc_u32("UMTX_ABSTIME");
 

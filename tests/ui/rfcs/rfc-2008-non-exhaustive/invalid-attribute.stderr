@@ -17,6 +17,8 @@ error: the `non_exhaustive` attribute cannot be used on traits
    |
 LL | #[non_exhaustive]
    |   ^^^^^^^^^^^^^^
+LL |
+LL | trait Bar { }
    |
    = help: the `non_exhaustive` attribute can be applied to data types and enum variants
 
@@ -25,6 +27,8 @@ error: the `non_exhaustive` attribute cannot be used on unions
    |
 LL | #[non_exhaustive]
    |   ^^^^^^^^^^^^^^
+LL |
+LL | union Baz {
    |
    = help: the `non_exhaustive` attribute can be applied to enum variants, enums, and structs
 

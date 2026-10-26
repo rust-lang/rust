@@ -9,6 +9,8 @@ error: the `proc_macro_derive` attribute cannot be used on structs
    |
 LL | #[proc_macro_derive(Foo)]
    |   ^^^^^^^^^^^^^^^^^
+LL |
+LL | pub struct Foo {
    |
    = help: the `proc_macro_derive` attribute can only be applied to functions
 

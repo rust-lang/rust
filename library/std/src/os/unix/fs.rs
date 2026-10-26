@@ -220,7 +220,7 @@ pub trait FileExt {
             let prev_written = buf.written();
             match self.read_buf_at(buf.reborrow(), offset) {
                 Ok(()) => {}
-                Err(e) if e.is_interrupted() => {}
+                Err(e) if e.is_interrupted() => continue,
                 Err(e) => return Err(e),
             }
             let n = buf.written() - prev_written;

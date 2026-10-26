@@ -3,6 +3,8 @@ error: the `rustc_pass_indirectly_in_non_rustic_abis` attribute cannot be used o
    |
 LL | #[rustc_pass_indirectly_in_non_rustic_abis]
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | fn not_a_struct() {}
    |
    = help: the `rustc_pass_indirectly_in_non_rustic_abis` attribute can only be applied to structs
 

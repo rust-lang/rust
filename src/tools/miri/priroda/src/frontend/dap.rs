@@ -702,9 +702,10 @@ impl<R: Read, W: Write> DapSession<R, W> {
     fn interp_error_outcome<'tcx>(err: InterpErrorInfo<'tcx>) -> ExecutionOutcome {
         let kind = err.into_kind();
         if let InterpErrorKind::MachineStop(info) = &kind
-            && let Some(TerminationInfo::Exit { code, .. }) = info.downcast_ref::<TerminationInfo>()
+            && let Some(TerminationInfo::Exit { exit_code, .. }) =
+                info.downcast_ref::<TerminationInfo>()
         {
-            return ExecutionOutcome::Terminated { code: *code };
+            return ExecutionOutcome::Terminated { code: *exit_code };
         }
 
         ExecutionOutcome::Failed(kind.to_string())

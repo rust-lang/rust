@@ -3,16 +3,11 @@ use rustc_const_eval::interpret::{AllocId, InterpCx, InterpResult};
 
 pub use self::intercept::EvalContextExt as GenmcEvalContextExt;
 pub use self::run::run_genmc_mode;
+use crate::eval::ExitType;
 use crate::{
     AtomicFenceOrd, AtomicReadOrd, AtomicRmwOp, AtomicRwOrd, AtomicWriteOrd, MemoryKind,
     MiriMachine, OpTy, Scalar, ThreadId, ThreadManager, VisitProvenance, VisitWith,
 };
-
-#[derive(Clone, Copy, Debug)]
-pub enum ExitType {
-    MainThreadFinish,
-    ExitCalled,
-}
 
 #[derive(Debug)]
 pub struct GenmcCtx {}

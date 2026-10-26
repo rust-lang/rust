@@ -1,5 +1,7 @@
 use crate::ffi::c_void;
+use crate::mem::MaybeUninit;
 use crate::os::windows::io::{AsHandle, AsRawHandle, BorrowedHandle};
+use crate::sys::api::utf16;
 use crate::sys::c;
 
 pub fn is_terminal(h: &impl AsHandle) -> bool {
@@ -66,9 +68,10 @@ fn msys_tty_on(handle: BorrowedHandle<'_>) -> bool {
     #[allow(non_snake_case)]
     struct FILE_NAME_INFO {
         FileNameLength: u32,
-        FileName: [u16; c::MAX_PATH as usize],
+        FileName: [MaybeUninit<u16>; c::MAX_PATH as usize],
     }
-    let mut name_info = FILE_NAME_INFO { FileNameLength: 0, FileName: [0; c::MAX_PATH as usize] };
+    let mut name_info =
+        FILE_NAME_INFO { FileNameLength: 0, FileName: [const { MaybeUninit::uninit() }; _] };
     // Safety: buffer length is fixed.
     let res = unsafe {
         c::GetFileInformationByHandleEx(
@@ -85,16 +88,20 @@ fn msys_tty_on(handle: BorrowedHandle<'_>) -> bool {
     // Use `get` because `FileNameLength` can be out of range.
     let s = match name_info.FileName.get(..name_info.FileNameLength as usize / 2) {
         None => return false,
-        Some(s) => s,
+        // SAFETY: As per the API contract, `FileNameLength`-many bytes have been initialized.
+        Some(s) => unsafe { s.assume_init_ref() },
     };
-    let name = String::from_utf16_lossy(s);
+
     // Get the file name only.
-    let name = name.rsplit('\\').next().unwrap_or(&name);
+    let name = s.rsplit(|&unit| unit == b'\\' as u16).next().unwrap_or(s);
+
     // This checks whether 'pty' exists in the file name, which indicates that
     // a pseudo-terminal is attached. To mitigate against false positives
     // (e.g., an actual file name that contains 'pty'), we also require that
     // the file name begins with either the strings 'msys-' or 'cygwin-'.)
-    let is_msys = name.starts_with("msys-") || name.starts_with("cygwin-");
-    let is_pty = name.contains("-pty");
-    is_msys && is_pty
+    //
+    // Lambdas are used to allow the compiler to short-circuit the is_pty check.
+    let is_msys = || name.starts_with(utf16!("msys-")) || name.starts_with(utf16!("cygwin-"));
+    let is_pty = || name.array_windows::<4>().any(|part| part == utf16!("-pty"));
+    is_msys() && is_pty()
 }

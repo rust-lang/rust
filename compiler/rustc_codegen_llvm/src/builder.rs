@@ -94,7 +94,7 @@ impl<'a, 'll> SBuilder<'a, 'll> {
 impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
     fn with_cx(scx: &'a GenericCx<'ll, CX>) -> Self {
         // Create a fresh builder from the simple context.
-        let llbuilder = unsafe { llvm::LLVMCreateBuilderInContext(scx.deref().borrow().llcx) };
+        let llbuilder = unsafe { llvm::LLVMCreateBuilderForModule(scx.deref().borrow().llmod) };
         GenericBuilder { llbuilder, cx: scx, span: rustc_span::DUMMY_SP }
     }
 

@@ -22,7 +22,7 @@ pub use self::unwind_safe::{AssertUnwindSafe, RefUnwindSafe, UnwindSafe};
 #[rustc_macro_transparency = "semiopaque"]
 pub macro panic_2015 {
     () => (
-        $crate::panicking::panic("explicit panic")
+        $crate::panicking::panic_default_msg()
     ),
     ($msg:literal $(,)?) => (
         $crate::panicking::panic($msg)
@@ -49,7 +49,7 @@ pub macro panic_2015 {
 #[rustc_macro_transparency = "semiopaque"]
 pub macro panic_2021 {
     () => (
-        $crate::panicking::panic("explicit panic")
+        $crate::panicking::panic_default_msg()
     ),
     // Special-case the single-argument case for const_panic.
     ("{}", $arg:expr $(,)?) => ({
@@ -69,7 +69,7 @@ pub macro panic_2021 {
 #[rustc_macro_transparency = "semiopaque"]
 pub macro unreachable_2015 {
     () => (
-        $crate::panicking::panic("internal error: entered unreachable code")
+        $crate::panicking::unreachable_default_msg()
     ),
     // Use of `unreachable_display` for non_fmt_panic lint.
     // NOTE: the message ("internal error ...") is embedded directly in unreachable_display
@@ -87,7 +87,7 @@ pub macro unreachable_2015 {
 #[rustc_macro_transparency = "semiopaque"]
 pub macro unreachable_2021 {
     () => (
-        $crate::panicking::panic("internal error: entered unreachable code")
+        $crate::panicking::unreachable_default_msg()
     ),
     ($($t:tt)+) => (
         $crate::panic!("internal error: entered unreachable code: {}", $crate::format_args!($($t)+))

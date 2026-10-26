@@ -82,13 +82,6 @@
     </Expand>
   </Type>
 
-  <Type Name="core::ptr::unique::Unique&lt;*&gt;">
-    <DisplayString>Unique({(void*)pointer.pointer}: {pointer.pointer})</DisplayString>
-    <Expand>
-      <ExpandedItem>pointer</ExpandedItem>
-    </Expand>
-  </Type>
-
   <Type Name="core::sync::atomic::Atomic&lt;bool&gt;">
     <DisplayString>{(bool)v.value.__0}</DisplayString>
   </Type>

@@ -1196,7 +1196,7 @@ unsafe extern "C" {
     );
 
     // Instruction builders
-    pub(crate) fn LLVMCreateBuilderInContext(C: &Context) -> &mut Builder<'_>;
+    pub(crate) fn LLVMCreateBuilderForModule(M: &Module) -> &mut Builder<'_>;
     pub(crate) fn LLVMPositionBuilderAtEnd<'a>(Builder: &Builder<'a>, Block: &'a BasicBlock);
     pub(crate) fn LLVMGetInsertBlock<'a>(Builder: &Builder<'a>) -> &'a BasicBlock;
     pub(crate) fn LLVMDisposeBuilder<'a>(Builder: &'a mut Builder<'a>);

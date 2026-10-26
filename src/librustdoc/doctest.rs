@@ -37,7 +37,7 @@ use tracing::{debug, info};
 
 use self::rust::HirCollector;
 use crate::config::{MergeDoctests, Options as RustdocOptions, OutputFormat};
-use crate::html::markdown::{CodeLineMapping, ErrorCodes, Ignore, LangString, MdRelLine};
+use crate::html::markdown::{CodeBlockPosition, CodeLineMapping, ErrorCodes, Ignore, LangString};
 use crate::lint::init_lints;
 
 /// Type used to display times (compilation and total) information for merged doctests.
@@ -1020,7 +1020,7 @@ pub(crate) trait DocTestVisitor {
         &mut self,
         test: String,
         config: LangString,
-        rel_line: MdRelLine,
+        position: CodeBlockPosition,
         code_mappings: Vec<CodeLineMapping>,
     );
     fn visit_header(&mut self, _name: &str, _level: u32) {}
@@ -1274,10 +1274,14 @@ impl DocTestVisitor for Vec<usize> {
         &mut self,
         _test: String,
         _config: LangString,
-        rel_line: MdRelLine,
+        position: CodeBlockPosition,
         _code_mappings: Vec<CodeLineMapping>,
     ) {
-        self.push(1 + rel_line.offset());
+        let line = match position {
+            CodeBlockPosition::Relative(rel_line) => 1 + rel_line.offset(),
+            CodeBlockPosition::Span(_) => unreachable!(),
+        };
+        self.push(line);
     }
 }
 

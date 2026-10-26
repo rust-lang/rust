@@ -3,6 +3,7 @@ error: the `linkage` attribute cannot be used on type aliases
    |
 LL | #[linkage = "weak"]
    |   ^^^^^^^
+LL | type InvalidTy = ();
    |
    = help: the `linkage` attribute can be applied to foreign statics, functions, and statics
 
@@ -11,6 +12,7 @@ error: the `linkage` attribute cannot be used on modules
    |
 LL | #[linkage = "weak"]
    |   ^^^^^^^
+LL | mod invalid_module {}
    |
    = help: the `linkage` attribute can be applied to foreign statics, functions, and statics
 
@@ -19,6 +21,7 @@ error: the `linkage` attribute cannot be used on structs
    |
 LL | #[linkage = "weak"]
    |   ^^^^^^^
+LL | struct F;
    |
    = help: the `linkage` attribute can be applied to foreign statics, functions, and statics
 
@@ -27,6 +30,7 @@ error: the `linkage` attribute cannot be used on inherent impl blocks
    |
 LL | #[linkage = "weak"]
    |   ^^^^^^^
+LL | impl F {
    |
    = help: the `linkage` attribute can be applied to foreign statics, functions, and statics
 
@@ -35,6 +39,7 @@ error: the `linkage` attribute cannot be used on expressions
    |
 LL |     #[linkage = "weak"]
    |       ^^^^^^^
+LL |     {
    |
    = help: the `linkage` attribute can be applied to foreign statics, functions, and statics
 
@@ -43,6 +48,7 @@ error: the `linkage` attribute cannot be used on closures
    |
 LL |     let _ = #[linkage = "weak"]
    |               ^^^^^^^
+LL |     (|| 1);
    |
    = help: the `linkage` attribute can be applied to foreign functions, foreign statics, functions, methods, and statics
 

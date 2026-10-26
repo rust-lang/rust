@@ -173,7 +173,7 @@ For example, you can (cross-)run the driver on a particular file by doing
 Tests in ``pass-dep`` need to be run using ``./miri run --dep <filename>``.  
 For example:
 ```sh
-./miri run --dep tests/pass-dep/shims/libc-fs.rs
+./miri run --dep tests/pass-dep/libc/fs.rs
 ```
 
 You can (cross-)run the entire test suite using:
@@ -186,6 +186,10 @@ You can (cross-)run the entire test suite using:
 `./miri test FILTER` only runs those tests that contain `FILTER` in their filename (including the
 base directory, e.g. `./miri test fail` will run all compile-fail tests). Multiple filters are
 supported: `./miri test FILTER1 FILTER2` runs all tests that contain either string.
+
+Priroda has a separate test suite. Run it with `./miri test-priroda`, or use
+`./miri test-priroda --bless` to update its expected output files after an
+intentional output change.
 
 #### Fine grained logging
 

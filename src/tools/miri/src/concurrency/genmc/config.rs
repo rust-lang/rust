@@ -19,6 +19,8 @@ pub struct GenmcConfig {
     /// Enable more verbose output, such as number of executions estimate
     /// and time to completion of verification step.
     pub(super) verbose_output: bool,
+    /// Model spurious failures of `compare_exchange_weak`.
+    pub(super) weak_cas_spurious_failures: bool,
 }
 
 impl GenmcConfig {
@@ -74,6 +76,8 @@ impl GenmcConfig {
             genmc_config.print_genmc_output = true;
         } else if trimmed_arg == "verbose" {
             genmc_config.verbose_output = true;
+        } else if trimmed_arg == "weak-cas-spurious-failures" {
+            genmc_config.weak_cas_spurious_failures = true;
         } else {
             return Err(format!("Invalid GenMC argument: \"-Zmiri-genmc-{trimmed_arg}\""));
         }

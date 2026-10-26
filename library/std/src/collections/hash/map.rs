@@ -2704,6 +2704,7 @@ impl<'a, K, V, A: Allocator> Entry<'a, K, V, A> {
     /// let entry = map.entry("poneyland").insert_entry("hoho".to_string());
     ///
     /// assert_eq!(entry.key(), &"poneyland");
+    /// assert_eq!(entry.get(), &"hoho");
     /// ```
     #[inline]
     #[stable(feature = "entry_insert", since = "1.83.0")]

@@ -60,8 +60,9 @@ fn connect_timeout_error() {
     let socket_addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), port));
 
     // Ensure we error immediately rather than timing out.
-    let result = TcpStream::connect_timeout(&socket_addr, Duration::MAX);
-    assert!(!matches!(result, Err(e) if e.kind() == ErrorKind::TimedOut));
+    let err = TcpStream::connect_timeout(&socket_addr, Duration::MAX)
+        .expect_err("connected to a port with no listener");
+    assert_ne!(err.kind(), ErrorKind::TimedOut, "unexpected error: {err}");
 
     let _listener = TcpListener::bind(&socket_addr).unwrap();
     assert!(TcpStream::connect_timeout(&socket_addr, Duration::MAX).is_ok());

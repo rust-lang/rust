@@ -1,6 +1,6 @@
 //! Everything related to checking the signature of shim invocations.
 
-use rustc_abi::{CanonAbi, ExternAbi};
+use rustc_abi::ExternAbi;
 use rustc_middle::ty::{Binder, FnSig, FnSigKind, Ty};
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
@@ -21,7 +21,7 @@ pub struct ShimSig<'tcx, const ARGS: usize> {
 /// ```
 ///
 /// The following types are supported:
-/// - primitive integer types
+/// - primitive integer and floating-point types
 /// - `()`
 /// - (thin) raw pointers, written `*_` since the mutability and pointee type are irrelevant
 /// - `$crate::$mod::...::$ty` for a type from the given crate (most commonly that is `libc`)
@@ -139,6 +139,12 @@ macro_rules! shim_sig_arg {
     };
     ($this:ident, usize) => {
         $this.tcx.types.usize
+    };
+    ($this:ident, f32) => {
+        $this.tcx.types.f32
+    };
+    ($this:ident, f64) => {
+        $this.tcx.types.f64
     };
     ($this:ident, ()) => {
         $this.tcx.types.unit
@@ -288,38 +294,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             })
         }
         interp_ok(())
-    }
-
-    /// 'Lenient' signature check. Deprecated; use `check_shim_sig` instead.
-    fn check_shim_sig_deprecated<'a, const N: usize>(
-        &mut self,
-        abi: &FnAbi<'tcx, Ty<'tcx>>,
-        exp_abi: CanonAbi,
-        link_name: Symbol,
-        args: &'a [OpTy<'tcx>],
-    ) -> InterpResult<'tcx, &'a [OpTy<'tcx>; N]> {
-        self.check_shim_symbol_clash(link_name)?;
-
-        if abi.conv != exp_abi {
-            throw_ub_format!(
-                r#"calling a function with calling convention "{exp_abi}" using caller calling convention "{}""#,
-                abi.conv
-            );
-        }
-        if abi.c_variadic {
-            throw_ub_format!(
-                "calling a non-variadic function with a c-variadic caller-side signature"
-            );
-        }
-
-        if let Ok(ops) = args.try_into() {
-            return interp_ok(ops);
-        }
-        throw_ub_format!(
-            "incorrect number of arguments for `{link_name}`: got {}, expected {}",
-            args.len(),
-            N
-        )
     }
 
     /// Check that the given `caller_fn_abi` matches the expected ABI described by `shim_sig`, and

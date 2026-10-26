@@ -17,6 +17,7 @@
 //! - [`MacroDef`], [`MacStmtStyle`], [`MacCall`]: Macro definition and invocation.
 //! - [`Attribute`]: Metadata associated with item.
 //! - [`UnOp`], [`BinOp`], and [`BinOpKind`]: Unary and binary operators.
+// ignore-tidy-file-filelength
 
 use std::borrow::{Borrow, Cow};
 use std::{cmp, fmt};
@@ -33,12 +34,13 @@ use rustc_span::{
     ByteSymbol, DUMMY_SP, ErrorGuaranteed, Ident, LocalExpnId, Span, Spanned, Symbol, kw, respan,
     sym,
 };
+use smallvec::{SmallVec, smallvec};
 use thin_vec::{ThinVec, thin_vec};
 
 use crate::attr::data_structures::CfgEntry;
 pub use crate::format::*;
 use crate::token::{self, CommentKind, Delimiter};
-use crate::tokenstream::{DelimSpan, LazyAttrTokenStream, TokenStream};
+use crate::tokenstream::{DelimSpan, LazyAttrTokenStream, TokenStream, TokenTree};
 use crate::util::parser::{ExprPrecedence, Fixity};
 use crate::visit::{AssocCtxt, BoundKind, LifetimeCtxt};
 
@@ -3464,13 +3466,151 @@ pub enum AttrKind {
     /// A normal attribute.
     Normal(Box<NormalAttr>),
 
-    /// A synthetic attribute inserted by the compiler.
-    Synthetic(Box<SyntheticAttr>),
-
     /// A doc comment (e.g. `/// ...`, `//! ...`, `/** ... */`, `/*! ... */`).
+    ///
     /// Doc attributes (e.g. `#[doc="..."]`) are represented with the `Normal`
     /// variant (which is much less compact and thus more expensive).
     DocComment(CommentKind, Symbol),
+
+    /// A synthetic attribute inserted by the compiler.
+    ///
+    /// See [`SyntheticAttr`] for the semantics of "synthetic" attributes.
+    Synthetic(Box<SyntheticAttr>),
+
+    /// A macro generated attribute inserted by a builtin macro.
+    ///
+    /// See [`GeneratedAttr`] for the semantics of "generated" attributes.
+    Generated(GeneratedAttr),
+}
+
+/// An attribute created by a macro expansion.
+///
+/// This attribute has no tokens, which means it cannot be allowed to re-enter the parser. This
+/// means it can only be added to items that cannot later be observed by other macros.
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
+pub enum GeneratedAttr {
+    AutomaticallyDerived,
+    RustcConstUnstableDerived,
+    Inline,
+    DocHidden,
+    CoverageOff,
+    RustcTestMarker(Symbol),
+}
+
+impl GeneratedAttr {
+    pub fn descr(&self) -> String {
+        match self {
+            GeneratedAttr::AutomaticallyDerived => "#[automatically_derived]".into(),
+            GeneratedAttr::RustcConstUnstableDerived => {
+                "#[rustc_const_unstable(feature = \"derive_const\", issue = \"143874\")]".into()
+            }
+            GeneratedAttr::Inline => "#[inline]".into(),
+            GeneratedAttr::DocHidden => "#[doc(hidden)]".into(),
+            GeneratedAttr::CoverageOff => "#[coverage(off)]".into(),
+            GeneratedAttr::RustcTestMarker(test_path) => {
+                format!("#[rustc_test_marker = \"{test_path}\"]")
+            }
+        }
+    }
+    pub fn value_span(&self) -> Option<Span> {
+        match self {
+            GeneratedAttr::AutomaticallyDerived => None,
+            GeneratedAttr::RustcConstUnstableDerived => None,
+            GeneratedAttr::Inline => None,
+            GeneratedAttr::DocHidden => None,
+            GeneratedAttr::CoverageOff => None,
+            GeneratedAttr::RustcTestMarker(_) => None,
+        }
+    }
+
+    pub fn is_doc_comment(&self) -> Option<Span> {
+        match self {
+            GeneratedAttr::AutomaticallyDerived => None,
+            GeneratedAttr::RustcConstUnstableDerived => None,
+            GeneratedAttr::Inline => None,
+            GeneratedAttr::DocHidden => None,
+            GeneratedAttr::CoverageOff => None,
+            GeneratedAttr::RustcTestMarker(_) => None,
+        }
+    }
+
+    pub fn name(&self) -> Option<Symbol> {
+        match self {
+            GeneratedAttr::AutomaticallyDerived => Some(sym::automatically_derived),
+            GeneratedAttr::RustcConstUnstableDerived => Some(sym::rustc_const_unstable),
+            GeneratedAttr::Inline => Some(sym::inline),
+            GeneratedAttr::DocHidden => Some(sym::doc),
+            GeneratedAttr::CoverageOff => Some(sym::coverage),
+            GeneratedAttr::RustcTestMarker(_) => Some(sym::rustc_test_marker),
+        }
+    }
+
+    pub fn path_matches(&self, name: &[Symbol]) -> bool {
+        let path = match self {
+            GeneratedAttr::AutomaticallyDerived => &[sym::automatically_derived],
+            GeneratedAttr::RustcConstUnstableDerived => &[sym::rustc_const_unstable],
+            GeneratedAttr::Inline => &[sym::inline],
+            GeneratedAttr::DocHidden => &[sym::doc],
+            GeneratedAttr::CoverageOff => &[sym::coverage],
+            GeneratedAttr::RustcTestMarker(_) => &[sym::rustc_test_marker],
+        };
+
+        path == name
+    }
+
+    pub fn symbol_path(&self) -> Option<SmallVec<[Symbol; 1]>> {
+        self.name().map(|n| smallvec![n])
+    }
+
+    pub fn path_span(&self) -> Option<Span> {
+        match self {
+            GeneratedAttr::AutomaticallyDerived => None,
+            GeneratedAttr::RustcConstUnstableDerived => None,
+            GeneratedAttr::Inline => None,
+            GeneratedAttr::DocHidden => None,
+            GeneratedAttr::CoverageOff => None,
+            GeneratedAttr::RustcTestMarker(_) => None,
+        }
+    }
+
+    pub fn is_word(&self) -> bool {
+        match self {
+            GeneratedAttr::AutomaticallyDerived => true,
+            GeneratedAttr::RustcConstUnstableDerived => false,
+            GeneratedAttr::Inline => true,
+            GeneratedAttr::DocHidden => false,
+            GeneratedAttr::CoverageOff => false,
+            GeneratedAttr::RustcTestMarker(_) => false,
+        }
+    }
+    pub fn value_str(&self) -> Option<Symbol> {
+        match self {
+            GeneratedAttr::AutomaticallyDerived => None,
+            GeneratedAttr::RustcConstUnstableDerived => None,
+            GeneratedAttr::Inline => None,
+            GeneratedAttr::DocHidden => None,
+            GeneratedAttr::CoverageOff => None,
+            GeneratedAttr::RustcTestMarker(test_path) => Some(*test_path),
+        }
+    }
+
+    pub fn doc_str_and_fragment_kind(&self) -> Option<!> {
+        match self {
+            GeneratedAttr::AutomaticallyDerived => None,
+            GeneratedAttr::RustcConstUnstableDerived => None,
+            GeneratedAttr::Inline => None,
+            GeneratedAttr::DocHidden => None,
+            GeneratedAttr::CoverageOff => None,
+            GeneratedAttr::RustcTestMarker(_) => None,
+        }
+    }
+
+    pub fn token_trees(&self) -> Vec<TokenTree> {
+        unimplemented!(
+            "generated attribute `{}` cannot re-enter the parser at this time",
+            self.descr()
+        )
+    }
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]

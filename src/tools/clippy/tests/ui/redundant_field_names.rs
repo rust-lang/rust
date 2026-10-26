@@ -106,3 +106,10 @@ fn msrv_1_17() {
     let _ = RangeFrom { start: start };
     //~^ redundant_field_names
 }
+
+fn issue_17525() {
+    let v = 1;
+    external! {
+        let _ = S { $v: $v };
+    }
+}

@@ -13,9 +13,11 @@ use rustc_parse::parser::{AllowConstBlockItems, ForceCollect};
 use rustc_span::Span;
 use tracing::debug;
 
+use crate::comment::contains_comment;
 use crate::expr::is_unsafe_block;
 use crate::parse::macros::build_stream_parser;
 use crate::parse::session::ParseSess;
+use crate::rewrite::RewriteContext;
 use crate::spanned::Spanned;
 
 // NB: parser recovery can return `Ok(expr)` (or other non-terminals) and still emit errors. We need
@@ -164,7 +166,7 @@ impl CfgSelectArm {
     /// Is the cfg_select! arm written with two consecutive blocks.
     /// For example `$predicate => {{}}`. If so, extract the inner block.
     /// rustfmt will preserve the double block syntax.
-    pub(crate) fn double_block_inner(&self) -> Option<&ast::Expr> {
+    pub(crate) fn double_block_inner(&self, context: &RewriteContext<'_>) -> Option<&ast::Expr> {
         // In order to see if we can reach in and grab the inner block we'll
         // check the following properties of the outer block:
         // 1. It has a single statement that's also a block
@@ -180,7 +182,21 @@ impl CfgSelectArm {
             {
                 match &b.stmts[0].kind {
                     // This is where we check that the inner block's statement is also a block
-                    ast::StmtKind::Expr(e) if matches!(e.kind, ast::ExprKind::Block(..)) => Some(e),
+                    ast::StmtKind::Expr(e) if matches!(e.kind, ast::ExprKind::Block(..)) => {
+                        let pre_span = b.span.shrink_to_lo().between(e.span());
+                        let pre_snippet = context.snippet(pre_span).trim();
+
+                        let post_span = e.span().shrink_to_hi().between(b.span.shrink_to_hi());
+                        let post_snippet = context.snippet(post_span).trim();
+
+                        if !contains_comment(pre_snippet) && !contains_comment(post_snippet) {
+                            // To prevent comment loss between the blocks we only want to return
+                            // the inner block if there aren't any pre / post comments.
+                            Some(e)
+                        } else {
+                            None
+                        }
+                    }
                     _ => None,
                 }
             }

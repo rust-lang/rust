@@ -161,12 +161,14 @@ class ValueBuilder:
         return self.valobj.CreateValueFromData(name, data, type)
 
 
-def unwrap_unique_or_non_null(unique_or_nonnull: SBValue) -> SBValue:
+# Gets the raw pointer out of a `NonNull` or a wrapper struct with a
+# `pointer: NonNull` field (with that exact name)
+def unwrap_non_null_or_wrapper(ptr: SBValue) -> SBValue:
     # BACKCOMPAT: rust 1.32
     # https://github.com/rust-lang/rust/commit/7a0911528058e87d22ea305695f4047572c5e067
     # BACKCOMPAT: rust 1.60
     # https://github.com/rust-lang/rust/commit/2a91eeac1a2d27dd3de1bf55515d765da20fd86f
-    ptr = unique_or_nonnull.GetChildMemberWithName("pointer")
+    ptr = ptr.GetChildMemberWithName("pointer")
     return ptr if ptr.TypeIsPointerType() else ptr.GetChildAtIndex(0)
 
 
@@ -417,7 +419,7 @@ def StdStringSummaryProvider(valobj: SBValue, dict: LLDBOpaque):
         .GetNonSyntheticValue()
     )
 
-    pointer = unwrap_unique_or_non_null(
+    pointer = unwrap_non_null_or_wrapper(
         inner_vec.GetChildMemberWithName("buf")
         .GetChildMemberWithName("inner")
         .GetChildMemberWithName("ptr")
@@ -453,7 +455,7 @@ def StdOsStringSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
     if is_windows:
         inner_vec = inner_vec.GetChildAtIndex(0)
 
-    pointer = unwrap_unique_or_non_null(
+    pointer = unwrap_non_null_or_wrapper(
         inner_vec.GetChildMemberWithName("buf")
         .GetChildMemberWithName("inner")
         .GetChildMemberWithName("ptr")
@@ -614,7 +616,7 @@ class StdStringSyntheticProvider:
 
     def update(self):
         inner_vec = self.valobj.GetChildMemberWithName("vec").GetNonSyntheticValue()
-        self.data_ptr = unwrap_unique_or_non_null(
+        self.data_ptr = unwrap_non_null_or_wrapper(
             inner_vec.GetChildMemberWithName("buf")
             .GetChildMemberWithName("inner")
             .GetChildMemberWithName("ptr")
@@ -1158,7 +1160,7 @@ class StdVecSyntheticProvider:
 
     def update(self):
         buf: SBValue = self.valobj.GetChildMemberWithName("buf")
-        self.data_ptr = unwrap_unique_or_non_null(
+        self.data_ptr = unwrap_non_null_or_wrapper(
             buf.GetChildMemberWithName("inner").GetChildMemberWithName("ptr")
         )
 
@@ -1333,7 +1335,7 @@ class StdVecDequeSyntheticProvider:
             cap = cap.GetChildAtIndex(0)
         self.cap = cap.GetValueAsUnsigned()
 
-        self.data_ptr = unwrap_unique_or_non_null(
+        self.data_ptr = unwrap_non_null_or_wrapper(
             self.buf.GetChildMemberWithName("ptr")
         )
 
@@ -1569,7 +1571,7 @@ class StdRcSyntheticProvider:
     def __init__(self, valobj: SBValue, _dict: LLDBOpaque, is_atomic: bool = False):
         self.valobj = valobj
 
-        self.ptr = unwrap_unique_or_non_null(self.valobj.GetChildMemberWithName("ptr"))
+        self.ptr = unwrap_non_null_or_wrapper(self.valobj.GetChildMemberWithName("ptr"))
 
         self.value = self.ptr.GetChildMemberWithName("data" if is_atomic else "value")
 
