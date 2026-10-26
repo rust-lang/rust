@@ -97,5 +97,28 @@ help: you might have meant to write a field access
 LL |     for _ in x.a.b {}
    |               +
 
-error: aborting due to 9 previous errors
+error: expected `{`, found `0`
+  --> $DIR/missing-dot-on-if-condition-expression.rs:59:20
+   |
+LL |         for _ in x 0 {}
+   |                    ^ expected `{`
+   |
+help: you might have meant to write a field access
+   |
+LL |         for _ in x.0 {}
+   |                   +
+
+error: expected `{`, found `0`
+  --> $DIR/missing-dot-on-if-condition-expression.rs:59:20
+   |
+LL |         for _ in x 0 {}
+   |                    ^ expected `{`
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: you might have meant to write a field access
+   |
+LL |         for _ in x.0 {}
+   |                   +
+
+error: aborting due to 11 previous errors
 
