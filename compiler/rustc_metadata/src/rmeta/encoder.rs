@@ -28,9 +28,9 @@ use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::mir::interpret;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::specialization_graph;
-use rustc_middle::ty::AssocContainer;
 use rustc_middle::ty::codec::TyEncoder;
 use rustc_middle::ty::fast_reject::{self, TreatParams};
+use rustc_middle::ty::AssocContainer;
 use rustc_serialize::opaque::FileEncoder;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_session::config::mitigation_coverage::DeniedPartialMitigation;
@@ -156,7 +156,7 @@ impl<'a, 'tcx, T> Encodable<EncodeContext<'a, 'tcx>> for LazyArray<T> {
     }
 }
 
-impl<'a, 'tcx, Ie, Id, T> Encodable<EncodeContext<'a, 'tcx>> for LazyTable<Ie, Id, T> {
+impl<'a, 'tcx, I: TableIdx, T> Encodable<EncodeContext<'a, 'tcx>> for LazyTable<I, T> {
     fn encode(&self, e: &mut EncodeContext<'a, 'tcx>) {
         e.emit_usize(self.width_and_sparse);
         e.emit_usize(self.len);
@@ -621,7 +621,7 @@ impl<'a, 'tcx, 'b> MetadataBuilder<'a, 'tcx, 'b> {
 
     fn encode_source_map(
         &mut self,
-    ) -> LazyTable<u32, u32, Option<LazyValue<rustc_span::SourceFile>>> {
+    ) -> LazyTable<OnDiskSourceFileIdx, Option<LazyValue<rustc_span::SourceFile>>> {
         let source_map = self.tcx().sess.source_map();
         let all_source_files = source_map.files();
 
@@ -630,7 +630,7 @@ impl<'a, 'tcx, 'b> MetadataBuilder<'a, 'tcx, 'b> {
         // is done.
         let required_source_files = self.encoder.required_source_files.take().unwrap();
 
-        let mut adapted = TableBuilder::<_, _, _>::default();
+        let mut adapted = TableBuilder::<OnDiskSourceFileIdx, _>::default();
 
         let local_crate_stable_id = self.tcx().stable_crate_id(LOCAL_CRATE);
 
@@ -683,7 +683,7 @@ impl<'a, 'tcx, 'b> MetadataBuilder<'a, 'tcx, 'b> {
 
             let on_disk_index: u32 =
                 on_disk_index.try_into().expect("cannot export more than U32_MAX files");
-            adapted.set_some(on_disk_index, self.lazy(&adapted_source_file));
+            adapted.set_some(OnDiskSourceFileIdx(on_disk_index), self.lazy(&adapted_source_file));
         }
 
         adapted.encode(&mut self.encoder.opaque)
@@ -2146,9 +2146,9 @@ impl<'a, 'tcx, 'b> MetadataBuilder<'a, 'tcx, 'b> {
     }
 
     fn encode_hygiene(&mut self) -> (SyntaxContextTable, ExpnDataTable, ExpnHashTable) {
-        let mut syntax_contexts: TableBuilder<_, _, _> = Default::default();
-        let mut expn_data_table: TableBuilder<_, _, _> = Default::default();
-        let mut expn_hash_table: TableBuilder<_, _, _> = Default::default();
+        let mut syntax_contexts: TableBuilder<SyntaxContext, _> = Default::default();
+        let mut expn_data_table: TableBuilder<LocalExpnId, _> = Default::default();
+        let mut expn_hash_table: TableBuilder<LocalExpnId, _> = Default::default();
 
         HygieneEncodeContext::encode(
             &Rc::clone(&self.encoder.hygiene_ctxt),
@@ -2259,7 +2259,7 @@ impl<'a, 'tcx, 'b> MetadataBuilder<'a, 'tcx, 'b> {
 
             let mut proc_macro_quoted_spans = TableBuilder::default();
             for (i, span) in tcx.sess.proc_macro_quoted_spans() {
-                proc_macro_quoted_spans.set_some(i, self.lazy(span));
+                proc_macro_quoted_spans.set_some(ProcMacroQuotedSpansIdx(i), self.lazy(span));
             }
 
             let proc_macro_quoted_spans = proc_macro_quoted_spans.encode(&mut self.encoder.opaque);

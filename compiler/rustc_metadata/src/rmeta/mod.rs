@@ -49,13 +49,16 @@ use rustc_session::config::mitigation_coverage::DeniedPartialMitigation;
 use rustc_session::config::{SymbolManglingVersion, TargetModifier};
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{DecodedSyntaxContext, ExpnIndex, MacroKind, SyntaxContextKey};
-use rustc_span::{self, ExpnData, ExpnHash, ExpnId, Ident, Span, Symbol};
+use rustc_span::{
+    self, ExpnData, ExpnHash, ExpnId, Ident, LocalExpnId, Span, Symbol, SyntaxContext,
+};
 use rustc_target::spec::{PanicStrategy, TargetTuple};
 use table::TableBuilder;
 
 use crate::eii::EiiMapEncodedKeyValue;
 use crate::rmeta::parameterized::EncodeFrom;
 use crate::rmeta::remapped_def_id::RemappedRawDefId;
+use crate::rmeta::table::TableIdx;
 
 mod decoder;
 mod def_path_hash_map;
@@ -154,7 +157,7 @@ impl<T> LazyArray<T> {
 ///
 /// `IdxEncode` - is a type of index that is used to write to the table,
 /// `IdxDecode` - is a type of index that is used to read from the table.
-struct LazyTable<IdxEncode, IdxDecode, T> {
+struct LazyTable<I, T> {
     position: NonZero<usize>,
     /// The encoded size of the elements of a table is selected at runtime to drop
     /// trailing zeroes. The low bit selects sparse encoding; the remaining bits
@@ -162,15 +165,15 @@ struct LazyTable<IdxEncode, IdxDecode, T> {
     width_and_sparse: usize,
     /// How many elements are in the table.
     len: usize,
-    _marker: PhantomData<fn(IdxEncode, IdxDecode) -> T>,
+    _marker: PhantomData<fn(I) -> T>,
 }
 
-impl<Ie, Id, T> LazyTable<Ie, Id, T> {
+impl<I, T> LazyTable<I, T> {
     fn from_position_and_encoded_size(
         position: NonZero<usize>,
         width_and_sparse: usize,
         len: usize,
-    ) -> LazyTable<Ie, Id, T> {
+    ) -> LazyTable<I, T> {
         LazyTable { position, width_and_sparse, len, _marker: PhantomData }
     }
 }
@@ -189,8 +192,8 @@ impl<T> Clone for LazyArray<T> {
     }
 }
 
-impl<Ie, Id, T> Copy for LazyTable<Ie, Id, T> {}
-impl<Ie, Id, T> Clone for LazyTable<Ie, Id, T> {
+impl<I, T> Copy for LazyTable<I, T> {}
+impl<I, T> Clone for LazyTable<I, T> {
     fn clone(&self) -> Self {
         *self
     }
@@ -211,17 +214,16 @@ enum LazyState {
     Previous(NonZero<usize>),
 }
 
-type SyntaxContextTable =
-    LazyTable<RemappedSyntaxContext, DecodedSyntaxContext, Option<LazyValue<SyntaxContextKey>>>;
-type ExpnDataTable = LazyTable<RemappedLocalExpnIndex, ExpnIndex, Option<LazyValue<ExpnData>>>;
-type ExpnHashTable = LazyTable<RemappedLocalExpnIndex, ExpnIndex, Option<LazyValue<ExpnHash>>>;
+type SyntaxContextTable = LazyTable<SyntaxContext, Option<LazyValue<SyntaxContextKey>>>;
+type ExpnDataTable = LazyTable<LocalExpnId, Option<LazyValue<ExpnData>>>;
+type ExpnHashTable = LazyTable<LocalExpnId, Option<LazyValue<ExpnHash>>>;
 
 #[derive(MetadataEncodable, LazyDecodable)]
 pub(crate) struct ProcMacroData {
     proc_macro_decls_static: LazyValue<LocalDefId>,
     stability: Option<Stability>,
     macros: LazyArray<(LocalDefId, LazyValue<ProcMacroKind>)>,
-    proc_macro_quoted_spans: LazyTable<usize, usize, Option<LazyValue<Span>>>,
+    proc_macro_quoted_spans: LazyTable<ProcMacroQuotedSpansIdx, Option<LazyValue<Span>>>,
 }
 
 #[derive(MetadataEncodable, LazyDecodable)]
@@ -319,7 +321,7 @@ pub(crate) struct CrateRoot {
 
     def_path_hash_map: LazyValue<DefPathHashMapRef<'static>>,
 
-    source_map: LazyTable<u32, u32, Option<LazyValue<rustc_span::SourceFile>>>,
+    source_map: LazyTable<OnDiskSourceFileIdx, Option<LazyValue<rustc_span::SourceFile>>>,
     target_modifiers: LazyArray<TargetModifier>,
     denied_partial_mitigations: LazyArray<DeniedPartialMitigation>,
 
@@ -334,6 +336,42 @@ pub(crate) struct CrateRoot {
     specialization_enabled_in: bool,
 
     rdr_hashes: RDRHashes,
+}
+
+#[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
+struct OnDiskSourceFileIdx(u32);
+
+impl TableIdx for OnDiskSourceFileIdx {
+    type Decoded = Self;
+    type Encoded = Self;
+}
+
+impl Idx for OnDiskSourceFileIdx {
+    fn new(idx: usize) -> Self {
+        Self(idx.try_into().unwrap())
+    }
+
+    fn index(self) -> usize {
+        self.0.try_into().unwrap()
+    }
+}
+
+#[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
+struct ProcMacroQuotedSpansIdx(usize);
+
+impl TableIdx for ProcMacroQuotedSpansIdx {
+    type Decoded = Self;
+    type Encoded = Self;
+}
+
+impl Idx for ProcMacroQuotedSpansIdx {
+    fn new(idx: usize) -> Self {
+        Self(idx)
+    }
+
+    fn index(self) -> usize {
+        self.0
+    }
 }
 
 /// Hashes used for the feature [relink don't rebuild](https://github.com/rust-lang/compiler-team/issues/790)
@@ -581,22 +619,27 @@ macro_rules! define_tables {
     ) => {
         #[derive(MetadataEncodable, LazyDecodable)]
         pub(crate) struct LazyTables {
-            $($name1: LazyTable<RemappedLocalDefId, DefIndex, $T1>,)+
-            $($name2: LazyTable<RemappedLocalDefId, DefIndex, Option<$T2>>,)+
+            $($name1: LazyTable<LocalDefId, $T1>,)+
+            $($name2: LazyTable<LocalDefId, Option<$T2>>,)+
         }
 
         #[derive(Default)]
         struct TableBuilders {
-            $($name1: TableBuilder<RemappedLocalDefId, DefIndex, $T1>,)+
-            $($name2: TableBuilder<RemappedLocalDefId, DefIndex, Option<$T2>>,)+
+            $($name1: TableBuilder<LocalDefId, $T1>,)+
+            $($name2: TableBuilder<LocalDefId, Option<$T2>>,)+
         }
 
         impl TableBuilders {
-            fn encode(&self, buf: &mut FileEncoder<'_>) -> LazyTables {
-                LazyTables {
+            fn encode(
+                &self,
+                buf: &mut FileEncoder<'_>,
+            ) -> LazyTables
+            {
+                let tables = LazyTables {
                     $($name1: self.$name1.encode(buf),)+
                     $($name2: self.$name2.encode(buf),)+
-                }
+                };
+                tables
             }
         }
 
