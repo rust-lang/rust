@@ -854,22 +854,14 @@ impl<'a, 'tcx> ResultsVisitor<'tcx, Borrowck<'a, 'tcx>> for MirBorrowckCtxt<'a, 
             // Only relevant for liveness and unsafeck,
             // except for dereferences which must be materialized
             StatementKind::PlaceMention(place) => {
-                if let Some((idx, _)) = place
-                    .projection
-                    .iter()
-                    .enumerate()
-                    .rev()
-                    .find(|(_, proj)| matches!(proj.kind(), ProjectionKind::Deref))
+                if let Some((dereferenced_place, _)) = place
+                    .iter_projections()
+                    .rfind(|(_, proj)| matches!(proj, ProjectionElem::Deref))
                 {
-                    let truncated_projections = place.projection[..idx].to_vec();
-                    let truncated_place = Place {
-                        local: place.local,
-                        projection: self.infcx.tcx.mk_place_elems(&truncated_projections),
-                    };
                     self.check_if_full_path_is_moved(
                         location,
                         InitializationRequiringAction::Use,
-                        (truncated_place.as_ref(), span),
+                        (dereferenced_place, span),
                         state,
                     );
                 }
