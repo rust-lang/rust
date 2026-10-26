@@ -11,12 +11,11 @@ use rustc_ast::ast::{AttrKind, Attribute, DUMMY_NODE_ID, Expr};
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::node_id::NodeId;
 use rustc_ast::token;
-use rustc_ast::tokenstream::{AttrTokenStream, AttrTokenTree, LazyAttrTokenStream};
+use rustc_ast::tokenstream::{DelimSpan, LazyAttrTokenStream, TokenStream, TokenTree};
 use rustc_errors::Diag;
 use rustc_parse::parser::Recovery;
 use rustc_session::parse::ParseSess;
 use rustc_span::{AttrId, DUMMY_SP, FileName, Span};
-use std::sync::Arc;
 
 pub fn parse_expr(psess: &ParseSess, source_code: &str) -> Option<Box<Expr>> {
     let parser = rustc_parse::unwrap_or_emit_fatal(rustc_parse::new_parser_from_source_str(
@@ -53,8 +52,7 @@ impl MutVisitor for Normalize {
         attr.id = AttrId::from_u32(0);
         if let AttrKind::Normal(normal_attr) = &mut attr.kind {
             if let Some(tokens) = &mut normal_attr.tokens {
-                let mut stream = tokens.to_attr_token_stream();
-                normalize_attr_token_stream(&mut stream);
+                let stream = normalize_token_stream(&tokens.to_token_stream());
                 *tokens = LazyAttrTokenStream::new_direct(stream);
             }
         }
@@ -62,22 +60,24 @@ impl MutVisitor for Normalize {
     }
 }
 
-fn normalize_attr_token_stream(stream: &mut AttrTokenStream) {
-    Arc::make_mut(&mut stream.0)
-        .iter_mut()
-        .for_each(normalize_attr_token_tree);
+fn normalize_token_stream(stream: &TokenStream) -> TokenStream {
+    TokenStream::new(stream.iter().map(normalize_token_tree).collect())
 }
 
-fn normalize_attr_token_tree(token: &mut AttrTokenTree) {
-    match token {
-        AttrTokenTree::Token(token, _spacing) => {
+fn normalize_token_tree(tt: &TokenTree) -> TokenTree {
+    match tt {
+        TokenTree::Token(token, spacing) => {
+            let mut token = *token;
             Normalize.visit_span(&mut token.span);
+            TokenTree::Token(token, *spacing)
         }
-        AttrTokenTree::Delimited(dspan, _spacing, _delim, stream) => {
-            normalize_attr_token_stream(stream);
-            Normalize.visit_span(&mut dspan.open);
-            Normalize.visit_span(&mut dspan.close);
+        TokenTree::Delimited(_dspan, spacing, delim, stream) => {
+            TokenTree::Delimited(
+                DelimSpan::dummy(),
+                *spacing,
+                *delim,
+                normalize_token_stream(stream),
+            )
         }
-        AttrTokenTree::AttrsTarget(_) => unimplemented!("AttrTokenTree::AttrsTarget"),
     }
 }

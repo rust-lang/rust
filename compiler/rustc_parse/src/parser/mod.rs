@@ -260,14 +260,12 @@ struct ClosureSpans {
     body: Span,
 }
 
-/// Controls how we capture tokens. Capturing can be expensive,
-/// so we try to avoid performing capturing in cases where
-/// we will never need an `AttrTokenStream`.
+/// Controls how we capture tokens. Capturing can be expensive, so we avoid it when possible.
 #[derive(Copy, Clone, Debug)]
 enum Capturing {
     /// We aren't performing any capturing - this is the default mode.
     No,
-    /// We are capturing tokens
+    /// We are capturing tokens.
     Yes,
 }
 

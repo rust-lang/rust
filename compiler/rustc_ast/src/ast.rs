@@ -3605,7 +3605,7 @@ impl GeneratedAttr {
         }
     }
 
-    pub fn token_trees(&self) -> Vec<TokenTree> {
+    pub fn append_token_trees_to(&self, _res: &mut Vec<TokenTree>) {
         unimplemented!(
             "generated attribute `{}` cannot re-enter the parser at this time",
             self.descr()

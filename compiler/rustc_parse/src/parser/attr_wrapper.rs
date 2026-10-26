@@ -287,7 +287,7 @@ impl<'a> Parser<'a> {
             // breaking a `>>=` token twice into `>` + `>` + `=`), then extend the range of
             // captured tokens to include it, because the parser was not actually bumped past it.
             // (Even if we broke twice, it was still just one token originally, hence the `1`.)
-            // When the `LazyAttrTokenStream` gets converted into an `AttrTokenStream`, we will
+            // When the `LazyAttrTokenStream` gets converted into a `TokenStream`, we will
             // rebreak that final token once or twice.
             + if self.break_last_token == 0 { 0 } else { 1 };
 
@@ -318,8 +318,7 @@ impl<'a> Parser<'a> {
         } else {
             // Grab any replace ranges that occur *inside* the current AST node. Convert them
             // from `ParserRange` form to `NodeRange` form. We will perform the actual
-            // replacement only when we convert the `LazyAttrTokenStream` to an
-            // `AttrTokenStream`.
+            // replacement only when we convert the `LazyAttrTokenStream` to a `TokenStream`.
             self.capture_state.parser_replacements
                 [parser_replacements_start..parser_replacements_end]
                 .iter()
