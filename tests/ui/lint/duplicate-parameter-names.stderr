@@ -1,0 +1,15 @@
+error[E0415]: identifier `x` is bound more than once in this parameter list
+  --> $DIR/duplicate-parameter-names.rs:11:31
+   |
+LL |     fn fn_with_body(x: usize, x: u64) {}
+   |                               ^ used as parameter more than once
+
+error[E0415]: identifier `x` is bound more than once in this parameter list
+  --> $DIR/duplicate-parameter-names.rs:35:27
+   |
+LL | fn fn_with_body(x: usize, x: u64) {}
+   |                           ^ used as parameter more than once
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0415`.
