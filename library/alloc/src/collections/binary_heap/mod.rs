@@ -979,6 +979,10 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
 
     /// Moves all the elements of `other` into `self`, leaving `other` empty.
     ///
+    /// When `self` has fewer elements than `other`, a swap happens so as to optimize the time complexity.
+    /// This swap also swaps the allocator for `other` and `self`.
+    /// Whenever a drop occurs, dropping `self` drops the allocator that originally belonged to `other` and vice versa.
+    ///
     /// # Examples
     ///
     /// Basic usage:
