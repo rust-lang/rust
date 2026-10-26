@@ -2,8 +2,7 @@ use std::cmp;
 use std::ops::Range;
 
 use rustc_abi::{
-    Align, ArmCall, BackendRepr, CanonAbi, ExternAbi, FieldsShape, HasDataLayout, Reg, Size,
-    VariantIdx, Variants, WrappingRange,
+    Align, ArmCall, CanonAbi, ExternAbi, FieldsShape, HasDataLayout, Size, VariantIdx, Variants,
 };
 use rustc_ast as ast;
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
@@ -1975,9 +1974,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             PassMode::Ignore => return,
             PassMode::Cast { pad_i32_count, .. } => {
                 // Fill padding with undef value, where applicable.
-                let undef = bx.const_undef(bx.reg_backend_type(&Reg::i32()));
+                let undef = bx.const_undef(bx.type_i32());
                 llargs.extend(std::iter::repeat_n(undef, usize::from(pad_i32_count)));
             }
+            PassMode::Direct(_) => match op.val {
+                Immediate(v) => {
+                    llargs.push(v);
+                    return;
+                }
+                _ => bug!("codegen_argument: {:?} invalid for direct argument", op),
+            },
             PassMode::Pair(..) => match op.val {
                 Pair(a, b) => {
                     llargs.push(a);
@@ -1998,7 +2004,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
 
         // Force by-ref if we have to load through a cast pointer.
-        let (mut llval, align, by_ref) = match op.val {
+        let mut value = match op.val {
             Immediate(_) | Pair(..) => match arg.mode {
                 PassMode::Indirect { attrs, .. } => {
                     // Indirect argument may have higher alignment requirements than the type's
@@ -2012,15 +2018,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     bx.lifetime_start(scratch.llval, arg.layout.size);
                     op.store_with_annotation(bx, scratch.with_type(arg.layout));
                     lifetime_ends_after_call.push((scratch.llval, arg.layout.size));
-                    (scratch.llval, scratch.align, true)
+                    scratch
                 }
                 PassMode::Cast { .. } => {
                     let scratch = PlaceRef::alloca(bx, arg.layout);
                     op.store_with_annotation(bx, scratch);
-                    (scratch.val.llval, scratch.val.align, true)
+                    scratch.val
                 }
-                PassMode::Direct(_) => (op.immediate(), arg.layout.align.abi, false),
-                PassMode::Ignore | PassMode::Pair(..) | PassMode::IndirectUnsized { .. } => {
+                PassMode::Ignore
+                | PassMode::Direct(_)
+                | PassMode::Pair(..)
+                | PassMode::IndirectUnsized { .. } => {
                     unreachable!("handled above")
                 }
             },
@@ -2044,35 +2052,37 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         bx.lifetime_start(scratch.llval, arg.layout.size);
                         op.store_with_annotation(bx, scratch.with_type(arg.layout));
                         lifetime_ends_after_call.push((scratch.llval, arg.layout.size));
-                        (scratch.llval, scratch.align, true)
+                        scratch
                     } else {
-                        (op_place_val.llval, op_place_val.align, true)
+                        op_place_val
                     }
                 }
                 PassMode::IndirectUnsized { .. } => unreachable!("handled above"),
-                _ => (op_place_val.llval, op_place_val.align, true),
+                _ => op_place_val,
             },
             ZeroSized => match arg.mode {
                 PassMode::Indirect { mode, .. } => {
-                    if mode == IndirectMode::AmdgpuKernelArg {
-                        bug!("{op:?} passed as amdgpu kernel argument with abi {arg:?}");
-                    }
-                    if mode == IndirectMode::OnStack {
+                    match mode {
+                        IndirectMode::AmdgpuKernelArg => {
+                            bug!("{op:?} passed as amdgpu kernel argument with abi {arg:?}")
+                        }
                         // It doesn't seem like any target can have `byval` ZSTs, so this assert
                         // is here to replace a would-be untested codepath.
-                        bug!("ZST {op:?} passed on stack with abi {arg:?}");
+                        IndirectMode::OnStack => {
+                            bug!("ZST {op:?} passed on stack with abi {arg:?}")
+                        }
+                        IndirectMode::Pointer => {}
                     }
                     // Though `extern "Rust"` doesn't pass ZSTs, some ABIs pass
                     // a pointer for `repr(C)` structs even when empty, so get
                     // one from an `alloca` (which can be left uninitialized).
-                    let scratch = PlaceRef::alloca(bx, arg.layout);
-                    (scratch.val.llval, scratch.val.align, true)
+                    PlaceRef::alloca(bx, arg.layout).val
                 }
                 _ => bug!("ZST {op:?} wasn't ignored, but was passed with abi {arg:?}"),
             },
         };
 
-        if by_ref && !arg.is_indirect() {
+        if !arg.is_indirect() {
             // Have to load the argument, maybe while casting it.
             if let PassMode::Cast { cast, pad_i32_count: _ } = &arg.mode {
                 // The ABI mandates that the value is passed as a different struct representation.
@@ -2088,14 +2098,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 //   when passed by value, making it larger.
                 let copy_bytes = cmp::min(cast.unaligned_size(bx).bytes(), arg.layout.size.bytes());
                 // Allocate some scratch space...
-                let llscratch = bx.alloca(scratch_size, scratch_align);
-                bx.lifetime_start(llscratch, scratch_size);
+                let scratch = bx.alloca(scratch_size, scratch_align);
+                bx.lifetime_start(scratch, scratch_size);
                 // ...memcpy the value...
                 bx.memcpy(
-                    llscratch,
+                    scratch,
                     scratch_align,
-                    llval,
-                    align,
+                    value.llval,
+                    value.align,
                     bx.const_usize(copy_bytes),
                     MemFlags::empty(),
                     None,
@@ -2104,35 +2114,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // The arguments of an `extern "cmse-nonsecure-call"` function cross the secure
                 // boundary. Clear any padding bytes so information does not leak.
                 if conv == CanonAbi::Arm(ArmCall::CCmseNonSecureCall) {
-                    self.clear_padding_cmse(
-                        bx,
-                        llscratch,
-                        Size::from_bytes(copy_bytes),
-                        arg.layout,
-                    );
+                    self.clear_padding_cmse(bx, scratch, Size::from_bytes(copy_bytes), arg.layout);
                 }
 
                 // ...and then load it with the ABI type.
-                llval = load_cast(bx, cast, llscratch, scratch_align);
-                bx.lifetime_end(llscratch, scratch_size);
-            } else {
-                // We can't use `PlaceRef::load` here because the argument
-                // may have a type we don't treat as immediate, but the ABI
-                // used for this call is passing it by-value. In that case,
-                // the load would just produce `OperandValue::Ref` instead
-                // of the `OperandValue::Immediate` we need for the call.
-                llval = bx.load(bx.backend_type(arg.layout), llval, align);
-                if let BackendRepr::Scalar(scalar) = arg.layout.backend_repr {
-                    if scalar.is_bool() {
-                        bx.range_metadata(llval, WrappingRange { start: 0, end: 1 });
-                    }
-                    // We store bools as `i8` so we need to truncate to `i1`.
-                    llval = bx.to_immediate_scalar(llval, scalar);
-                }
+                value.llval = load_cast(bx, cast, scratch, scratch_align);
+                bx.lifetime_end(scratch, scratch_size);
             }
         }
 
-        llargs.push(llval);
+        llargs.push(value.llval);
     }
 
     fn codegen_arguments_untupled(
