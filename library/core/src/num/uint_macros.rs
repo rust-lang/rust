@@ -1756,6 +1756,7 @@ macro_rules! uint_impl {
         /// bits, i.e. `lhs & rhs` must be zero.
         #[stable(feature = "disjoint_bitor", since = "CURRENT_RUSTC_VERSION")]
         #[rustc_const_stable(feature = "disjoint_bitor", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_allow_const_fn_unstable(const_trait_impl)]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]

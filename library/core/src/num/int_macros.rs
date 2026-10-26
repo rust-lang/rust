@@ -1346,6 +1346,7 @@ macro_rules! int_impl {
         /// Notably, this prevents both values from being negative.
         #[stable(feature = "disjoint_bitor", since = "CURRENT_RUSTC_VERSION")]
         #[rustc_const_stable(feature = "disjoint_bitor", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_allow_const_fn_unstable(const_trait_impl)]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
