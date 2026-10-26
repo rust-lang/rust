@@ -321,13 +321,6 @@ pub(crate) struct DocTestUnknown {
 pub(crate) struct DocTestLiteral;
 
 #[derive(Diagnostic)]
-#[diag("this attribute can only be applied at the crate level")]
-#[note(
-    "read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#at-the-crate-level> for more information"
-)]
-pub(crate) struct AttrCrateLevelOnly;
-
-#[derive(Diagnostic)]
 #[diag("conflicting doc inlining attributes")]
 #[help("remove one of the conflicting attributes")]
 pub(crate) struct DocInlineConflict {
@@ -346,6 +339,13 @@ pub(crate) struct DocInlineOnlyUse {
     #[label("not a `use` item")]
     pub item_span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag("this attribute can only be applied at the crate level")]
+#[note(
+    "read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#at-the-crate-level> for more information"
+)]
+pub(crate) struct AttrCrateLevelOnly;
 
 #[derive(Diagnostic)]
 #[diag("`#[diagnostic::do_not_recommend]` does not expect any arguments")]
