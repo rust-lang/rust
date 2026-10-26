@@ -3762,7 +3762,7 @@ pub fn vandq_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -3797,7 +3797,7 @@ pub fn vbfdot_f32(a: float32x2_t, b: bfloat16x4_t, c: bfloat16x4_t) -> float32x2
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -3832,7 +3832,7 @@ pub fn vbfdotq_f32(a: float32x4_t, b: bfloat16x8_t, c: bfloat16x8_t) -> float32x
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -3868,7 +3868,7 @@ pub fn vbfdot_lane_f32<const LANE: i32>(
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -3904,7 +3904,7 @@ pub fn vbfdotq_lane_f32<const LANE: i32>(
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -3940,7 +3940,7 @@ pub fn vbfdot_laneq_f32<const LANE: i32>(
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -3977,7 +3977,7 @@ pub fn vbfdotq_laneq_f32<const LANE: i32>(
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -4013,7 +4013,7 @@ pub fn vbfmlalbq_f32(a: float32x4_t, b: bfloat16x8_t, c: bfloat16x8_t) -> float3
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -4054,7 +4054,7 @@ pub fn vbfmlalbq_f32(a: float32x4_t, b: bfloat16x8_t, c: bfloat16x8_t) -> float3
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -4089,7 +4089,7 @@ pub fn vbfmlalbq_lane_f32<const LANE: i32>(
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -4125,7 +4125,7 @@ pub fn vbfmlalbq_laneq_f32<const LANE: i32>(
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -4161,7 +4161,7 @@ pub fn vbfmlaltq_f32(a: float32x4_t, b: bfloat16x8_t, c: bfloat16x8_t) -> float3
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -4202,7 +4202,7 @@ pub fn vbfmlaltq_f32(a: float32x4_t, b: bfloat16x8_t, c: bfloat16x8_t) -> float3
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -4237,7 +4237,7 @@ pub fn vbfmlaltq_lane_f32<const LANE: i32>(
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -4273,7 +4273,7 @@ pub fn vbfmlaltq_laneq_f32<const LANE: i32>(
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -4309,7 +4309,7 @@ pub fn vbfmmlaq_f32(a: float32x4_t, b: bfloat16x8_t, c: bfloat16x8_t) -> float32
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -8355,7 +8355,7 @@ pub fn vcntq_p8(a: poly8x16_t) -> poly8x16_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -8379,7 +8379,7 @@ pub fn vcombine_bf16(a: bfloat16x4_t, b: bfloat16x4_t) -> bfloat16x8_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -8955,7 +8955,7 @@ pub fn vcombine_p64(a: poly64x1_t, b: poly64x1_t) -> poly64x2_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -9253,7 +9253,7 @@ pub fn vcreate_p64(a: u64) -> poly64x1_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -9276,7 +9276,7 @@ pub fn vcvt_bf16_f32(a: float32x4_t) -> bfloat16x4_t {
 #[target_feature(enable = "neon,bf16")]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg(not(target_arch = "arm"))]
 #[cfg_attr(
@@ -9406,7 +9406,7 @@ pub fn vcvtq_f16_u16(a: uint16x8_t) -> float16x8_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -10327,7 +10327,7 @@ pub fn vcvtq_u32_f32(a: float32x4_t) -> uint32x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -10350,7 +10350,7 @@ pub fn vcvtah_f32_bf16(a: bfloat16_t) -> f32 {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -10387,7 +10387,7 @@ pub fn vcvth_bf16_f32(a: f32) -> bfloat16_t {
 #[target_feature(enable = "neon,bf16")]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -10427,7 +10427,7 @@ pub unsafe fn vcvtq_high_bf16_f32(_inactive: bfloat16x8_t, a: float32x4_t) -> bf
 #[target_feature(enable = "neon,bf16")]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -10470,7 +10470,7 @@ pub unsafe fn vcvtq_high_bf16_f32(_inactive: bfloat16x8_t, a: float32x4_t) -> bf
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -10496,7 +10496,7 @@ pub unsafe fn vcvtq_high_bf16_f32(_inactive: bfloat16x8_t, a: float32x4_t) -> bf
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -10533,7 +10533,7 @@ pub fn vcvtq_high_f32_bf16(a: bfloat16x8_t) -> float32x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -10566,7 +10566,7 @@ pub unsafe fn vcvtq_low_bf16_f32(a: float32x4_t) -> bfloat16x8_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -10601,7 +10601,7 @@ pub unsafe fn vcvtq_low_bf16_f32(a: float32x4_t) -> bfloat16x8_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -10634,7 +10634,7 @@ pub unsafe fn vcvtq_low_bf16_f32(a: float32x4_t) -> bfloat16x8_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -10666,7 +10666,7 @@ pub unsafe fn vcvtq_low_bf16_f32(a: float32x4_t) -> bfloat16x8_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -11162,7 +11162,7 @@ pub fn vdotq_u32(a: uint32x4_t, b: uint8x16_t, c: uint8x16_t) -> uint32x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -12297,7 +12297,7 @@ pub fn vdup_lane_u64<const N: i32>(a: uint64x1_t) -> uint64x1_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -12324,7 +12324,7 @@ pub unsafe fn vdup_laneq_bf16<const LANE: i32>(a: bfloat16x8_t) -> bfloat16x4_t 
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -12353,7 +12353,7 @@ pub unsafe fn vdup_laneq_bf16<const LANE: i32>(a: bfloat16x8_t) -> bfloat16x4_t 
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -12380,7 +12380,7 @@ pub unsafe fn vdupq_laneq_bf16<const LANE: i32>(a: bfloat16x8_t) -> bfloat16x8_t
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -13520,7 +13520,7 @@ pub fn vdup_laneq_u64<const N: i32>(a: uint64x2_t) -> uint64x1_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -14081,7 +14081,7 @@ fn vdupq_n_f32_vfp4(value: f32) -> float32x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -14107,7 +14107,7 @@ pub unsafe fn vduph_lane_bf16<const LANE: i32>(a: bfloat16x4_t) -> bfloat16_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -14133,7 +14133,7 @@ pub unsafe fn vduph_laneq_bf16<const LANE: i32>(a: bfloat16x8_t) -> bfloat16_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -14367,7 +14367,7 @@ pub fn vdupq_laneq_u64<const N: i32>(a: uint64x2_t) -> uint64x2_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -16572,7 +16572,7 @@ pub fn vfmsq_n_f32(a: float32x4_t, b: float32x4_t, c: f32) -> float32x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -16598,7 +16598,7 @@ pub unsafe fn vget_high_bf16(a: bfloat16x8_t) -> bfloat16x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -17434,7 +17434,7 @@ pub fn vget_high_u64(a: uint64x2_t) -> uint64x1_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -17461,7 +17461,7 @@ pub unsafe fn vget_lane_bf16<const LANE: i32>(a: bfloat16x4_t) -> bfloat16_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -18533,7 +18533,7 @@ pub fn vget_lane_u64<const IMM5: i32>(v: uint64x1_t) -> u64 {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -19039,7 +19039,7 @@ pub fn vget_low_u64(a: uint64x2_t) -> uint64x1_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -19066,7 +19066,7 @@ pub unsafe fn vgetq_lane_bf16<const LANE: i32>(a: bfloat16x8_t) -> bfloat16_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -19789,7 +19789,7 @@ pub fn vhsubq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -19814,7 +19814,7 @@ pub unsafe fn vld1_bf16(ptr: *const bfloat16_t) -> bfloat16x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -19839,7 +19839,7 @@ pub unsafe fn vld1q_bf16(ptr: *const bfloat16_t) -> bfloat16x8_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg(target_arch = "arm")]
 #[cfg_attr(
@@ -19865,7 +19865,7 @@ pub unsafe fn vld1_bf16_x2(ptr: *const bfloat16_t) -> bfloat16x4x2_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg(target_arch = "arm")]
 #[cfg_attr(
@@ -19891,7 +19891,7 @@ pub unsafe fn vld1_bf16_x3(ptr: *const bfloat16_t) -> bfloat16x4x3_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg(target_arch = "arm")]
 #[cfg_attr(
@@ -19917,7 +19917,7 @@ pub unsafe fn vld1_bf16_x4(ptr: *const bfloat16_t) -> bfloat16x4x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg(target_arch = "arm")]
 #[cfg_attr(
@@ -19943,7 +19943,7 @@ pub unsafe fn vld1q_bf16_x2(ptr: *const bfloat16_t) -> bfloat16x8x2_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg(target_arch = "arm")]
 #[cfg_attr(
@@ -19969,7 +19969,7 @@ pub unsafe fn vld1q_bf16_x3(ptr: *const bfloat16_t) -> bfloat16x8x3_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg(target_arch = "arm")]
 #[cfg_attr(
@@ -19995,7 +19995,7 @@ pub unsafe fn vld1q_bf16_x4(ptr: *const bfloat16_t) -> bfloat16x8x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg(not(target_arch = "arm"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8"))]
@@ -20024,7 +20024,7 @@ pub unsafe fn vld1_bf16_x2(ptr: *const bfloat16_t) -> bfloat16x4x2_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg(not(target_arch = "arm"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8"))]
@@ -20053,7 +20053,7 @@ pub unsafe fn vld1_bf16_x3(ptr: *const bfloat16_t) -> bfloat16x4x3_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg(not(target_arch = "arm"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8"))]
@@ -20082,7 +20082,7 @@ pub unsafe fn vld1_bf16_x4(ptr: *const bfloat16_t) -> bfloat16x4x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg(not(target_arch = "arm"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8"))]
@@ -20111,7 +20111,7 @@ pub unsafe fn vld1q_bf16_x2(ptr: *const bfloat16_t) -> bfloat16x8x2_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg(not(target_arch = "arm"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8"))]
@@ -20140,7 +20140,7 @@ pub unsafe fn vld1q_bf16_x3(ptr: *const bfloat16_t) -> bfloat16x8x3_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg(not(target_arch = "arm"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8"))]
@@ -20169,7 +20169,7 @@ pub unsafe fn vld1q_bf16_x4(ptr: *const bfloat16_t) -> bfloat16x8x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -20194,7 +20194,7 @@ pub unsafe fn vld1_dup_bf16(ptr: *const bfloat16_t) -> bfloat16x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -21288,7 +21288,7 @@ pub unsafe fn vld1q_f32_x4(a: *const f32) -> float32x4x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -21316,7 +21316,7 @@ pub unsafe fn vld1_lane_bf16<const LANE: i32>(
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -23806,7 +23806,7 @@ pub unsafe fn vld1q_dup_p64(ptr: *const p64) -> poly64x2_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg(target_arch = "arm")]
 #[cfg_attr(
@@ -23832,7 +23832,7 @@ pub unsafe fn vld2_bf16(ptr: *const bfloat16_t) -> bfloat16x4x2_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg(target_arch = "arm")]
 #[cfg_attr(
@@ -23858,7 +23858,7 @@ pub unsafe fn vld2q_bf16(ptr: *const bfloat16_t) -> bfloat16x8x2_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg(target_arch = "arm")]
 #[cfg_attr(
@@ -23884,7 +23884,7 @@ pub unsafe fn vld3_bf16(ptr: *const bfloat16_t) -> bfloat16x4x3_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg(target_arch = "arm")]
 #[cfg_attr(
@@ -23910,7 +23910,7 @@ pub unsafe fn vld3q_bf16(ptr: *const bfloat16_t) -> bfloat16x8x3_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg(target_arch = "arm")]
 #[cfg_attr(
@@ -23936,7 +23936,7 @@ pub unsafe fn vld4_bf16(ptr: *const bfloat16_t) -> bfloat16x4x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg(target_arch = "arm")]
 #[cfg_attr(
@@ -23962,7 +23962,7 @@ pub unsafe fn vld4q_bf16(ptr: *const bfloat16_t) -> bfloat16x8x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg(not(target_arch = "arm"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld2.16"))]
@@ -23991,7 +23991,7 @@ pub unsafe fn vld2_bf16(ptr: *const bfloat16_t) -> bfloat16x4x2_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg(not(target_arch = "arm"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld2.16"))]
@@ -24020,7 +24020,7 @@ pub unsafe fn vld2q_bf16(ptr: *const bfloat16_t) -> bfloat16x8x2_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg(not(target_arch = "arm"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld3.16"))]
@@ -24049,7 +24049,7 @@ pub unsafe fn vld3_bf16(ptr: *const bfloat16_t) -> bfloat16x4x3_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg(not(target_arch = "arm"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld3.16"))]
@@ -24078,7 +24078,7 @@ pub unsafe fn vld3q_bf16(ptr: *const bfloat16_t) -> bfloat16x8x3_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg(not(target_arch = "arm"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld4.16"))]
@@ -24107,7 +24107,7 @@ pub unsafe fn vld4_bf16(ptr: *const bfloat16_t) -> bfloat16x4x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg(not(target_arch = "arm"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld4.16"))]
@@ -24136,7 +24136,7 @@ pub unsafe fn vld4q_bf16(ptr: *const bfloat16_t) -> bfloat16x8x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -24161,7 +24161,7 @@ pub unsafe fn vld2_dup_bf16(ptr: *const bfloat16_t) -> bfloat16x4x2_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -24186,7 +24186,7 @@ pub unsafe fn vld2q_dup_bf16(ptr: *const bfloat16_t) -> bfloat16x8x2_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -24211,7 +24211,7 @@ pub unsafe fn vld3_dup_bf16(ptr: *const bfloat16_t) -> bfloat16x4x3_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -24236,7 +24236,7 @@ pub unsafe fn vld3q_dup_bf16(ptr: *const bfloat16_t) -> bfloat16x8x3_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -24261,7 +24261,7 @@ pub unsafe fn vld4_dup_bf16(ptr: *const bfloat16_t) -> bfloat16x4x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -25329,7 +25329,7 @@ pub unsafe fn vld2q_s32(a: *const i32) -> int32x4x2_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -25357,7 +25357,7 @@ pub unsafe fn vld2_lane_bf16<const LANE: i32>(
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -27290,7 +27290,7 @@ pub unsafe fn vld3q_s32(a: *const i32) -> int32x4x3_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -27318,7 +27318,7 @@ pub unsafe fn vld3_lane_bf16<const LANE: i32>(
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -29297,7 +29297,7 @@ pub unsafe fn vld4q_s32(a: *const i32) -> int32x4x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -29325,7 +29325,7 @@ pub unsafe fn vld4_lane_bf16<const LANE: i32>(
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -44966,7 +44966,7 @@ pub fn vrecpsq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -44991,7 +44991,7 @@ pub unsafe fn vreinterpret_bf16_f16(a: float16x4_t) -> bfloat16x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -45016,7 +45016,7 @@ pub unsafe fn vreinterpret_bf16_f32(a: float32x2_t) -> bfloat16x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -45041,7 +45041,7 @@ pub unsafe fn vreinterpret_bf16_p16(a: poly16x4_t) -> bfloat16x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -45066,7 +45066,7 @@ pub unsafe fn vreinterpret_bf16_p64(a: poly64x1_t) -> bfloat16x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -45091,7 +45091,7 @@ pub unsafe fn vreinterpret_bf16_p8(a: poly8x8_t) -> bfloat16x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -45116,7 +45116,7 @@ pub unsafe fn vreinterpret_bf16_s16(a: int16x4_t) -> bfloat16x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -45141,7 +45141,7 @@ pub unsafe fn vreinterpret_bf16_s32(a: int32x2_t) -> bfloat16x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -45166,7 +45166,7 @@ pub unsafe fn vreinterpret_bf16_s64(a: int64x1_t) -> bfloat16x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -45191,7 +45191,7 @@ pub unsafe fn vreinterpret_bf16_s8(a: int8x8_t) -> bfloat16x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -45216,7 +45216,7 @@ pub unsafe fn vreinterpret_bf16_u16(a: uint16x4_t) -> bfloat16x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -45241,7 +45241,7 @@ pub unsafe fn vreinterpret_bf16_u32(a: uint32x2_t) -> bfloat16x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -45266,7 +45266,7 @@ pub unsafe fn vreinterpret_bf16_u64(a: uint64x1_t) -> bfloat16x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -45291,7 +45291,7 @@ pub unsafe fn vreinterpret_bf16_u8(a: uint8x8_t) -> bfloat16x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -45316,7 +45316,7 @@ pub unsafe fn vreinterpret_f16_bf16(a: bfloat16x4_t) -> float16x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -45341,7 +45341,7 @@ pub unsafe fn vreinterpret_f32_bf16(a: bfloat16x4_t) -> float32x2_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -45366,7 +45366,7 @@ pub unsafe fn vreinterpret_p16_bf16(a: bfloat16x4_t) -> poly16x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -45391,7 +45391,7 @@ pub unsafe fn vreinterpret_p64_bf16(a: bfloat16x4_t) -> poly64x1_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -45416,7 +45416,7 @@ pub unsafe fn vreinterpret_p8_bf16(a: bfloat16x4_t) -> poly8x8_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -45441,7 +45441,7 @@ pub unsafe fn vreinterpret_s16_bf16(a: bfloat16x4_t) -> int16x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -45466,7 +45466,7 @@ pub unsafe fn vreinterpret_s32_bf16(a: bfloat16x4_t) -> int32x2_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -45491,7 +45491,7 @@ pub unsafe fn vreinterpret_s64_bf16(a: bfloat16x4_t) -> int64x1_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -45516,7 +45516,7 @@ pub unsafe fn vreinterpret_s8_bf16(a: bfloat16x4_t) -> int8x8_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -45541,7 +45541,7 @@ pub unsafe fn vreinterpret_u16_bf16(a: bfloat16x4_t) -> uint16x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -45566,7 +45566,7 @@ pub unsafe fn vreinterpret_u32_bf16(a: bfloat16x4_t) -> uint32x2_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -45591,7 +45591,7 @@ pub unsafe fn vreinterpret_u64_bf16(a: bfloat16x4_t) -> uint64x1_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -47424,7 +47424,7 @@ pub fn vreinterpretq_u16_p16(a: poly16x8_t) -> uint16x8_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -47449,7 +47449,7 @@ pub unsafe fn vreinterpretq_bf16_f16(a: float16x8_t) -> bfloat16x8_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -47474,7 +47474,7 @@ pub unsafe fn vreinterpretq_bf16_f32(a: float32x4_t) -> bfloat16x8_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -47499,7 +47499,7 @@ pub unsafe fn vreinterpretq_bf16_p128(a: p128) -> bfloat16x8_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -47524,7 +47524,7 @@ pub unsafe fn vreinterpretq_bf16_p16(a: poly16x8_t) -> bfloat16x8_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -47549,7 +47549,7 @@ pub unsafe fn vreinterpretq_bf16_p64(a: poly64x2_t) -> bfloat16x8_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -47574,7 +47574,7 @@ pub unsafe fn vreinterpretq_bf16_p8(a: poly8x16_t) -> bfloat16x8_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -47599,7 +47599,7 @@ pub unsafe fn vreinterpretq_bf16_s16(a: int16x8_t) -> bfloat16x8_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -47624,7 +47624,7 @@ pub unsafe fn vreinterpretq_bf16_s32(a: int32x4_t) -> bfloat16x8_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -47649,7 +47649,7 @@ pub unsafe fn vreinterpretq_bf16_s64(a: int64x2_t) -> bfloat16x8_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -47674,7 +47674,7 @@ pub unsafe fn vreinterpretq_bf16_s8(a: int8x16_t) -> bfloat16x8_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -47699,7 +47699,7 @@ pub unsafe fn vreinterpretq_bf16_u16(a: uint16x8_t) -> bfloat16x8_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -47724,7 +47724,7 @@ pub unsafe fn vreinterpretq_bf16_u32(a: uint32x4_t) -> bfloat16x8_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -47749,7 +47749,7 @@ pub unsafe fn vreinterpretq_bf16_u64(a: uint64x2_t) -> bfloat16x8_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -47774,7 +47774,7 @@ pub unsafe fn vreinterpretq_bf16_u8(a: uint8x16_t) -> bfloat16x8_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -47799,7 +47799,7 @@ pub unsafe fn vreinterpretq_f16_bf16(a: bfloat16x8_t) -> float16x8_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -47824,7 +47824,7 @@ pub unsafe fn vreinterpretq_f32_bf16(a: bfloat16x8_t) -> float32x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -47849,7 +47849,7 @@ pub unsafe fn vreinterpretq_p128_bf16(a: bfloat16x8_t) -> p128 {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -47874,7 +47874,7 @@ pub unsafe fn vreinterpretq_p16_bf16(a: bfloat16x8_t) -> poly16x8_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -47899,7 +47899,7 @@ pub unsafe fn vreinterpretq_p64_bf16(a: bfloat16x8_t) -> poly64x2_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -47924,7 +47924,7 @@ pub unsafe fn vreinterpretq_p8_bf16(a: bfloat16x8_t) -> poly8x16_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -47949,7 +47949,7 @@ pub unsafe fn vreinterpretq_s16_bf16(a: bfloat16x8_t) -> int16x8_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -47974,7 +47974,7 @@ pub unsafe fn vreinterpretq_s32_bf16(a: bfloat16x8_t) -> int32x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -47999,7 +47999,7 @@ pub unsafe fn vreinterpretq_s64_bf16(a: bfloat16x8_t) -> int64x2_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -48024,7 +48024,7 @@ pub unsafe fn vreinterpretq_s8_bf16(a: bfloat16x8_t) -> int8x16_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -48049,7 +48049,7 @@ pub unsafe fn vreinterpretq_u16_bf16(a: bfloat16x8_t) -> uint16x8_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -48074,7 +48074,7 @@ pub unsafe fn vreinterpretq_u32_bf16(a: bfloat16x8_t) -> uint32x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -48099,7 +48099,7 @@ pub unsafe fn vreinterpretq_u64_bf16(a: bfloat16x8_t) -> uint64x2_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -57375,7 +57375,7 @@ pub fn vrsubhn_u64(a: uint64x2_t, b: uint64x2_t) -> uint32x2_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -57402,7 +57402,7 @@ pub unsafe fn vset_lane_bf16<const LANE: i32>(a: bfloat16_t, v: bfloat16x4_t) ->
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -57431,7 +57431,7 @@ pub unsafe fn vset_lane_bf16<const LANE: i32>(a: bfloat16_t, v: bfloat16x4_t) ->
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -57458,7 +57458,7 @@ pub unsafe fn vsetq_lane_bf16<const LANE: i32>(a: bfloat16_t, v: bfloat16x8_t) -
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -61898,7 +61898,7 @@ pub fn vsriq_n_p16<const N: i32>(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -61923,7 +61923,7 @@ pub unsafe fn vst1_bf16(ptr: *mut bfloat16_t, val: bfloat16x4_t) {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -61948,7 +61948,7 @@ pub unsafe fn vst1q_bf16(ptr: *mut bfloat16_t, val: bfloat16x8_t) {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -61973,7 +61973,7 @@ pub unsafe fn vst1_bf16_x2(ptr: *mut bfloat16_t, val: bfloat16x4x2_t) {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -61998,7 +61998,7 @@ pub unsafe fn vst1_bf16_x3(ptr: *mut bfloat16_t, val: bfloat16x4x3_t) {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -62023,7 +62023,7 @@ pub unsafe fn vst1_bf16_x4(ptr: *mut bfloat16_t, val: bfloat16x4x4_t) {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -62048,7 +62048,7 @@ pub unsafe fn vst1q_bf16_x2(ptr: *mut bfloat16_t, val: bfloat16x8x2_t) {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -62073,7 +62073,7 @@ pub unsafe fn vst1q_bf16_x3(ptr: *mut bfloat16_t, val: bfloat16x8x3_t) {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -62926,7 +62926,7 @@ pub unsafe fn vst1q_f32_x4(a: *mut f32, b: float32x4x4_t) {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -62951,7 +62951,7 @@ pub unsafe fn vst1_lane_bf16<const LANE: i32>(a: *mut bfloat16_t, v: bfloat16x4_
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -65598,7 +65598,7 @@ pub unsafe fn vst1q_lane_p64<const LANE: i32>(a: *mut p64, b: poly64x2_t) {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -65623,7 +65623,7 @@ pub unsafe fn vst2_bf16(a: *mut bfloat16_t, b: bfloat16x4x2_t) {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -65952,7 +65952,7 @@ pub unsafe fn vst2q_s32(a: *mut i32, b: int32x4x2_t) {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -65977,7 +65977,7 @@ pub unsafe fn vst2_lane_bf16<const LANE: i32>(a: *mut bfloat16_t, v: bfloat16x4x
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -66863,7 +66863,7 @@ pub unsafe fn vst2q_p16(a: *mut p16, b: poly16x8x2_t) {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -66888,7 +66888,7 @@ pub unsafe fn vst3_bf16(a: *mut bfloat16_t, b: bfloat16x4x3_t) {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -67185,7 +67185,7 @@ pub unsafe fn vst3q_s32(a: *mut i32, b: int32x4x3_t) {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -67210,7 +67210,7 @@ pub unsafe fn vst3_lane_bf16<const LANE: i32>(a: *mut bfloat16_t, v: bfloat16x4x
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -68152,7 +68152,7 @@ pub unsafe fn vst3q_p16(a: *mut p16, b: poly16x8x3_t) {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -68177,7 +68177,7 @@ pub unsafe fn vst4_bf16(a: *mut bfloat16_t, b: bfloat16x4x4_t) {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -68569,7 +68569,7 @@ pub unsafe fn vst4q_s32(a: *mut i32, b: int32x4x4_t) {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",
@@ -68594,7 +68594,7 @@ pub unsafe fn vst4_lane_bf16<const LANE: i32>(a: *mut bfloat16_t, v: bfloat16x4x
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(
     not(target_arch = "arm"),
-    unstable(feature = "stdarch_neon_bf16", issue = "none")
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
 )]
 #[cfg_attr(
     target_arch = "arm",

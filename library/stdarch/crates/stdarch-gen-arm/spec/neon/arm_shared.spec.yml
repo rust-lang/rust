@@ -136,9 +136,9 @@ neon-unstable-f16: &neon-unstable-f16
 all-neon-target-aarch64-arm64ec-little-endian: &all-neon-target-aarch64-arm64ec-little-endian
   FnCall: [all, [test, {FnCall: [any, ['target_arch = "aarch64"', 'target_arch = "arm64ec"']]}, 'target_endian = "little"']]
 
-# #[cfg_attr(not(target_arch = "arm"), unstable(feature = "stdarch_neon_bf16", issue = "none"))]
+# #[cfg_attr(not(target_arch = "arm"), unstable(feature = "stdarch_neon_bf16", issue = "164986"))]
 neon-unstable-bf16: &neon-unstable-bf16
-  FnCall: [cfg_attr, [*not-arm, {FnCall: [unstable, ['feature = "stdarch_neon_bf16"', 'issue = "none"']]}]]
+  FnCall: [cfg_attr, [*not-arm, {FnCall: [unstable, ['feature = "stdarch_neon_bf16"', 'issue = "164986"']]}]]
 
 # #[cfg(any(target_has_reliable_f16b, doc))]
 cfg-reliable-bf16: &cfg-reliable-bf16

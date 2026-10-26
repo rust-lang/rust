@@ -63,9 +63,9 @@ aarch64-crc-stable: &aarch64-crc-stable
 neon-unstable-f16: &neon-unstable-f16
   FnCall: [unstable, ['feature = "stdarch_neon_f16"', 'issue = "136306"']]
 
-# #[unstable(feature = "stdarch_neon_bf16", issue = "none")]
+# #[unstable(feature = "stdarch_neon_bf16", issue = "164986")]
 neon-unstable-bf16: &neon-unstable-bf16
-  FnCall: [unstable, ['feature = "stdarch_neon_bf16"', 'issue = "none"']]
+  FnCall: [unstable, ['feature = "stdarch_neon_bf16"', 'issue = "164986"']]
 
 # #[cfg(any(target_has_reliable_f16b, doc))]
 cfg-reliable-bf16: &cfg-reliable-bf16

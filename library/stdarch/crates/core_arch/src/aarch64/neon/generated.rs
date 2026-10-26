@@ -4611,7 +4611,7 @@ pub fn vcombine_f64(a: float64x1_t, b: float64x1_t) -> float64x2_t {
 #[rustc_legacy_const_generics(1, 3)]
 #[cfg(any(target_has_reliable_f16b, doc))]
 #[doc(cfg(target_has_reliable_f16b))]
-#[unstable(feature = "stdarch_neon_bf16", issue = "none")]
+#[unstable(feature = "stdarch_neon_bf16", issue = "164986")]
 pub fn vcopy_lane_bf16<const LANE1: i32, const LANE2: i32>(
     a: bfloat16x4_t,
     b: bfloat16x4_t,
@@ -4626,7 +4626,7 @@ pub fn vcopy_lane_bf16<const LANE1: i32, const LANE2: i32>(
 #[rustc_legacy_const_generics(1, 3)]
 #[cfg(any(target_has_reliable_f16b, doc))]
 #[doc(cfg(target_has_reliable_f16b))]
-#[unstable(feature = "stdarch_neon_bf16", issue = "none")]
+#[unstable(feature = "stdarch_neon_bf16", issue = "164986")]
 pub fn vcopyq_lane_bf16<const LANE1: i32, const LANE2: i32>(
     a: bfloat16x8_t,
     b: bfloat16x4_t,
@@ -4848,7 +4848,7 @@ pub fn vcopy_lane_p64<const LANE1: i32, const LANE2: i32>(
 #[rustc_legacy_const_generics(1, 3)]
 #[cfg(any(target_has_reliable_f16b, doc))]
 #[doc(cfg(target_has_reliable_f16b))]
-#[unstable(feature = "stdarch_neon_bf16", issue = "none")]
+#[unstable(feature = "stdarch_neon_bf16", issue = "164986")]
 pub fn vcopy_laneq_bf16<const LANE1: i32, const LANE2: i32>(
     a: bfloat16x4_t,
     b: bfloat16x8_t,
@@ -4863,7 +4863,7 @@ pub fn vcopy_laneq_bf16<const LANE1: i32, const LANE2: i32>(
 #[rustc_legacy_const_generics(1, 3)]
 #[cfg(any(target_has_reliable_f16b, doc))]
 #[doc(cfg(target_has_reliable_f16b))]
-#[unstable(feature = "stdarch_neon_bf16", issue = "none")]
+#[unstable(feature = "stdarch_neon_bf16", issue = "164986")]
 pub fn vcopyq_laneq_bf16<const LANE1: i32, const LANE2: i32>(
     a: bfloat16x8_t,
     b: bfloat16x8_t,
@@ -11480,7 +11480,7 @@ pub unsafe fn vldap1q_lane_p64<const LANE: i32>(ptr: *const p64, src: poly64x2_t
 #[rustc_legacy_const_generics(2)]
 #[cfg(any(target_has_reliable_f16b, doc))]
 #[doc(cfg(target_has_reliable_f16b))]
-#[unstable(feature = "stdarch_neon_bf16", issue = "none")]
+#[unstable(feature = "stdarch_neon_bf16", issue = "164986")]
 pub unsafe fn vluti2_lane_bf16<const LANE: i32>(a: bfloat16x4_t, b: uint8x8_t) -> bfloat16x8_t {
     static_assert!(LANE >= 0 && LANE <= 3);
     unsafe extern "llvm-intrinsic" {
@@ -11502,7 +11502,7 @@ pub unsafe fn vluti2_lane_bf16<const LANE: i32>(a: bfloat16x4_t, b: uint8x8_t) -
 #[rustc_legacy_const_generics(2)]
 #[cfg(any(target_has_reliable_f16b, doc))]
 #[doc(cfg(target_has_reliable_f16b))]
-#[unstable(feature = "stdarch_neon_bf16", issue = "none")]
+#[unstable(feature = "stdarch_neon_bf16", issue = "164986")]
 pub unsafe fn vluti2q_lane_bf16<const LANE: i32>(a: bfloat16x8_t, b: uint8x8_t) -> bfloat16x8_t {
     static_assert!(LANE >= 0 && LANE <= 3);
     unsafe extern "llvm-intrinsic" {
@@ -11734,7 +11734,7 @@ pub unsafe fn vluti2q_lane_s16<const LANE: i32>(a: int16x8_t, b: uint8x8_t) -> i
 #[rustc_legacy_const_generics(2)]
 #[cfg(any(target_has_reliable_f16b, doc))]
 #[doc(cfg(target_has_reliable_f16b))]
-#[unstable(feature = "stdarch_neon_bf16", issue = "none")]
+#[unstable(feature = "stdarch_neon_bf16", issue = "164986")]
 pub unsafe fn vluti2_laneq_bf16<const LANE: i32>(a: bfloat16x4_t, b: uint8x16_t) -> bfloat16x8_t {
     static_assert!(LANE >= 0 && LANE <= 7);
     unsafe extern "llvm-intrinsic" {
@@ -11756,7 +11756,7 @@ pub unsafe fn vluti2_laneq_bf16<const LANE: i32>(a: bfloat16x4_t, b: uint8x16_t)
 #[rustc_legacy_const_generics(2)]
 #[cfg(any(target_has_reliable_f16b, doc))]
 #[doc(cfg(target_has_reliable_f16b))]
-#[unstable(feature = "stdarch_neon_bf16", issue = "none")]
+#[unstable(feature = "stdarch_neon_bf16", issue = "164986")]
 pub unsafe fn vluti2q_laneq_bf16<const LANE: i32>(a: bfloat16x8_t, b: uint8x16_t) -> bfloat16x8_t {
     static_assert!(LANE >= 0 && LANE <= 7);
     unsafe extern "llvm-intrinsic" {
@@ -11988,7 +11988,7 @@ pub unsafe fn vluti2q_laneq_s16<const INDEX: i32>(a: int16x8_t, b: uint8x16_t) -
 #[rustc_legacy_const_generics(2)]
 #[cfg(any(target_has_reliable_f16b, doc))]
 #[doc(cfg(target_has_reliable_f16b))]
-#[unstable(feature = "stdarch_neon_bf16", issue = "none")]
+#[unstable(feature = "stdarch_neon_bf16", issue = "164986")]
 pub unsafe fn vluti4q_lane_bf16_x2<const LANE: i32>(
     a: bfloat16x8x2_t,
     b: uint8x8_t,
@@ -12123,7 +12123,7 @@ pub unsafe fn vluti4q_lane_p8<const LANE: i32>(a: poly8x16_t, b: uint8x8_t) -> p
 #[rustc_legacy_const_generics(2)]
 #[cfg(any(target_has_reliable_f16b, doc))]
 #[doc(cfg(target_has_reliable_f16b))]
-#[unstable(feature = "stdarch_neon_bf16", issue = "none")]
+#[unstable(feature = "stdarch_neon_bf16", issue = "164986")]
 pub unsafe fn vluti4q_laneq_bf16_x2<const LANE: i32>(
     a: bfloat16x8x2_t,
     b: uint8x16_t,
@@ -21400,7 +21400,7 @@ pub fn vrecpxh_f16(a: f16) -> f16 {
 #[target_feature(enable = "neon")]
 #[cfg(any(target_has_reliable_f16b, doc))]
 #[doc(cfg(target_has_reliable_f16b))]
-#[unstable(feature = "stdarch_neon_bf16", issue = "none")]
+#[unstable(feature = "stdarch_neon_bf16", issue = "164986")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(nop))]
 pub fn vreinterpret_bf16_f64(a: float64x1_t) -> bfloat16x4_t {
@@ -21412,7 +21412,7 @@ pub fn vreinterpret_bf16_f64(a: float64x1_t) -> bfloat16x4_t {
 #[target_feature(enable = "neon")]
 #[cfg(any(target_has_reliable_f16b, doc))]
 #[doc(cfg(target_has_reliable_f16b))]
-#[unstable(feature = "stdarch_neon_bf16", issue = "none")]
+#[unstable(feature = "stdarch_neon_bf16", issue = "164986")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(nop))]
 pub fn vreinterpretq_bf16_f64(a: float64x2_t) -> bfloat16x8_t {
@@ -21424,7 +21424,7 @@ pub fn vreinterpretq_bf16_f64(a: float64x2_t) -> bfloat16x8_t {
 #[target_feature(enable = "neon")]
 #[cfg(any(target_has_reliable_f16b, doc))]
 #[doc(cfg(target_has_reliable_f16b))]
-#[unstable(feature = "stdarch_neon_bf16", issue = "none")]
+#[unstable(feature = "stdarch_neon_bf16", issue = "164986")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(nop))]
 pub fn vreinterpret_f64_bf16(a: bfloat16x4_t) -> float64x1_t {
@@ -21436,7 +21436,7 @@ pub fn vreinterpret_f64_bf16(a: bfloat16x4_t) -> float64x1_t {
 #[target_feature(enable = "neon")]
 #[cfg(any(target_has_reliable_f16b, doc))]
 #[doc(cfg(target_has_reliable_f16b))]
-#[unstable(feature = "stdarch_neon_bf16", issue = "none")]
+#[unstable(feature = "stdarch_neon_bf16", issue = "164986")]
 #[cfg(not(target_arch = "arm64ec"))]
 #[cfg_attr(test, assert_instr(nop))]
 pub fn vreinterpretq_f64_bf16(a: bfloat16x8_t) -> float64x2_t {
