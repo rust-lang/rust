@@ -541,10 +541,12 @@ impl<'sess> AttributeParser<'sess> {
             for item in items.mixed() {
                 if let crate::parser::MetaItemOrLitParser::MetaItemParser(item) = item {
                     if !item.are_args_checked() {
-                        self.dcx().span_delayed_bug(
+                        let mut diag = self.dcx().struct_span_err(
                             item.span(),
                             "attribute args were not properly checked",
                         );
+                        diag.downgrade_to_delayed_bug();
+                        self.should_emit.emit_err(diag);
                         return;
                     }
                     self.check_args_used(attr, item.args());

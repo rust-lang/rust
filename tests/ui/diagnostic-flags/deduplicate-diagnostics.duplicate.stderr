@@ -1,11 +1,3 @@
-error: expected a lint, found literal
-  --> $DIR/deduplicate-diagnostics.rs:10:8
-   |
-LL | #[deny("literal")]
-   |        ^^^^^^^^^ not the name of a lint
-   |
-   = help: try using `#[deny(literal)]`
-
 error: cannot find derive macro `Unresolved` in this scope
   --> $DIR/deduplicate-diagnostics.rs:6:10
    |
@@ -27,16 +19,6 @@ LL | #[deny("literal")]
    |        ^^^^^^^^^ not the name of a lint
    |
    = help: try using `#[deny(literal)]`
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: expected a lint, found literal
-  --> $DIR/deduplicate-diagnostics.rs:10:8
-   |
-LL | #[deny("literal")]
-   |        ^^^^^^^^^ not the name of a lint
-   |
-   = help: try using `#[deny(literal)]`
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: aborting due to 5 previous errors
+error: aborting due to 3 previous errors
 
