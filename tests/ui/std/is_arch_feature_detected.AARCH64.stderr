@@ -14,9 +14,9 @@ LL |     let _ = arch::is_aarch64_feature_detected!("not-a-feature");
    |
    = note: this error originates in the macro `arch::is_aarch64_feature_detected` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: This macro cannot be used on the current target.
-                                   You can prevent it from being used in other architectures by
-                                   guarding it behind a cfg(any(target_arch = "x86", target_arch = "x86_64")).
+error: This macro cannot be used on the current target. You can prevent
+       it from being used in other architectures by guarding it behind
+       a `cfg(any(target_arch = "x86", target_arch = "x86_64"))`.
   --> $DIR/is_arch_feature_detected.rs:25:13
    |
 LL |     let _ = arch::is_x86_feature_detected!("sse");
@@ -24,9 +24,9 @@ LL |     let _ = arch::is_x86_feature_detected!("sse");
    |
    = note: this error originates in the macro `arch::is_x86_feature_detected` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: This macro cannot be used on the current target.
-                                   You can prevent it from being used in other architectures by
-                                   guarding it behind a cfg(any(target_arch = "x86", target_arch = "x86_64")).
+error: This macro cannot be used on the current target. You can prevent
+       it from being used in other architectures by guarding it behind
+       a `cfg(any(target_arch = "x86", target_arch = "x86_64"))`.
   --> $DIR/is_arch_feature_detected.rs:32:13
    |
 LL |     let _ = arch::is_x86_feature_detected!("avx512gfni");
@@ -52,9 +52,9 @@ LL |     let _ = arch::is_mips_feature_detected!("msa");
    = help: add `#![feature(stdarch_mips_feature_detection)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: This macro cannot be used on the current target.
-                                   You can prevent it from being used in other architectures by
-                                   guarding it behind a cfg(target_arch = "mips").
+error: This macro cannot be used on the current target. You can prevent
+       it from being used in other architectures by guarding it behind
+       a `cfg(target_arch = "mips")`.
   --> $DIR/is_arch_feature_detected.rs:41:13
    |
 LL |     let _ = arch::is_mips_feature_detected!("msa");

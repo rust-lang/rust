@@ -44,6 +44,7 @@ macro_rules! features {
           $(implied by target_features: [$($target_feature_lit:tt),*];)?
           $(#[$feature_comment:meta])*)*
     ) => {
+        // The current arch's version actually does the feature detection.
         #[macro_export]
         $(#[$macro_attrs])*
         #[allow_internal_unstable(stdarch_internal)]
@@ -81,14 +82,12 @@ macro_rules! features {
             };
             ($t:tt) => {
                 compile_error!(
-                    concat!(
-                        concat!("unknown ", stringify!($target)),
-                        concat!(" target feature: ", $t)
-                    )
+                    concat!("unknown ", stringify!($target), " target feature: ", $t)
                 )
             };
         }
 
+        // All other arches still validate the features, but also
         $(#[$macro_attrs])*
         #[macro_export]
         #[cfg(not($cfg))]
@@ -98,11 +97,9 @@ macro_rules! features {
                 ($feature_lit) => {
                     compile_error!(
                         concat!(
-                            r#"This macro cannot be used on the current target.
-                            You can prevent it from being used in other architectures by
-                            guarding it behind a cfg("#,
-                            stringify!($cfg),
-                            ")."
+                            "This macro cannot be used on the current target. You can prevent\n\
+                            it from being used in other architectures by guarding it behind\n\
+                            a `cfg(", stringify!($cfg), ")`."
                         )
                     )
                 };
@@ -125,10 +122,7 @@ macro_rules! features {
             };
             ($t:tt) => {
                 compile_error!(
-                    concat!(
-                        concat!("unknown ", stringify!($target)),
-                        concat!(" target feature: ", $t)
-                    )
+                    concat!("unknown ", stringify!($target), " target feature: ", $t)
                 )
             };
         }
