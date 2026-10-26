@@ -1306,7 +1306,8 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             _ => return,
         };
         let Some(body) = tcx.hir_maybe_body_owned_by(self.mir_def_id()) else { return };
-        let Some(decl) = tcx.hir_fn_decl_by_hir_id(self.mir_hir_id()) else { return };
+        let Some(hir_sig) = tcx.hir_fn_sig_by_hir_id(self.mir_hir_id()) else { return };
+        let decl = hir_sig.decl;
         let callee_sig = tcx.fn_sig(def_id).instantiate(tcx, args).skip_norm_wip().skip_binder();
         // Typeck results have erased regions. The liberated signature retains the object lifetime.
         let caller_sig = tcx.liberate_late_bound_regions(
