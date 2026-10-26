@@ -4177,10 +4177,9 @@ impl CommandLineStep for Bootstrap {
             .env("RUSTC_BOOTSTRAP", "1");
 
         if builder.config.cmd.bless() {
-            // Tell `insta` to automatically bless any failing `.snap` files.
-            // Unlike compiletest blessing, the tests might still report failure.
-            // Does not bless inline snapshots.
-            cargo.env("INSTA_UPDATE", "always");
+            // Tell `expect-test` to automatically bless any failing `.snap` files
+            // and inline snapshots.
+            cargo.env("UPDATE_EXPECT", "1");
         }
 
         run_cargo_test(cargo, &[], &[], None, host, builder, record_failed_tests);
