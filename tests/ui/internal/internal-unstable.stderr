@@ -9,6 +9,8 @@ error: the `allow_internal_unstable` attribute cannot be used on struct fields
    |
 LL |     #[allow_internal_unstable]
    |       ^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |     baz: u8,
    |
    = help: the `allow_internal_unstable` attribute can be applied to functions and macro defs
 
@@ -23,6 +25,8 @@ error: the `allow_internal_unstable` attribute cannot be used on match arms
    |
 LL |         #[allow_internal_unstable]
    |           ^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |         _ => {}
    |
    = help: the `allow_internal_unstable` attribute can be applied to functions and macro defs
 

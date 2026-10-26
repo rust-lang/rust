@@ -86,7 +86,7 @@ pub(crate) fn expand_deriving_coerce_pointee(
 
     // Declare helper function that adds implementation blocks.
     // FIXME(dingxiangfei2009): Investigate the set of attributes on target struct to be propagated to impls
-    let attrs = thin_vec![cx.attr_word(sym::automatically_derived, span),];
+    let attrs = thin_vec![cx.generated_attr(span, ast::GeneratedAttr::AutomaticallyDerived)];
     // # Validity assertion which will be checked later in `rustc_hir_analysis::coherence::builtins`.
     {
         let trait_path = path_std!(cx, span, marker::CoercePointeeValidated);

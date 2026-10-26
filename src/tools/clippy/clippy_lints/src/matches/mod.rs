@@ -1252,8 +1252,8 @@ fn walk_intra_arm_text(
     mut f: impl FnMut(&str),
 ) -> bool {
     if let Some(src) = match_sp.get_source_range(cx)
-        && let scrutinee_sp = scrutinee_sp.source_callsite().data()
-        && let block_start = (scrutinee_sp.hi.0 - src.sf.start_pos.0) as usize
+        && let scrutinee_sp_hi = scrutinee_sp.source_callsite().hi()
+        && let block_start = (scrutinee_sp_hi.0 - src.sf.start_pos.0) as usize
         && let Some(src_text) = src.sf.src.as_ref().map(|x| &***x)
         && let Some(block_text) = src_text.get(block_start..src.range.end)
         && let Some(stripped_text) = block_text.trim_start_matches(is_whitespace).strip_prefix('{')
@@ -1263,8 +1263,8 @@ fn walk_intra_arm_text(
             .strip_suffix('}')
             .map(|s| src.range.end - (stripped_text.len() - s.len()))
         && let Some(range) = arms.iter().try_fold(arms_start..arms_end, |range, arm| {
-            let arm_sp: rustc_span::SpanData = arm.span.source_callsite().data();
-            let arm_range = (arm_sp.lo.0 - src.sf.start_pos.0) as usize..(arm_sp.hi.0 - src.sf.start_pos.0) as usize;
+            let (arm_sp_lo, arm_sp_hi) = arm.span.source_callsite().lo_hi();
+            let arm_range = (arm_sp_lo.0 - src.sf.start_pos.0) as usize..(arm_sp_hi.0 - src.sf.start_pos.0) as usize;
             if range.start <= arm_range.start
                 && arm_range.end <= range.end
                 && let Some(src) = src_text.get(range.start..arm_range.start)

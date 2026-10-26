@@ -947,7 +947,7 @@ mod private {
 macro_rules! format_smolstr {
     ($($tt:tt)*) => {{
         let mut w = $crate::SmolStrBuilder::new();
-        ::core::fmt::Write::write_fmt(&mut w, format_args!($($tt)*)).expect("a formatting trait implementation returned an error");
+        ::core::fmt::Write::write_fmt(&mut w, ::core::format_args!($($tt)*)).expect("a formatting trait implementation returned an error");
         w.finish()
     }};
 }

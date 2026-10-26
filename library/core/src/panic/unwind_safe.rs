@@ -174,7 +174,6 @@ pub struct AssertUnwindSafe<T>(#[stable(feature = "catch_unwind", since = "1.9.0
 //
 // * By default everything is unwind safe
 // * pointers T contains mutability of some form are not unwind safe
-// * Unique, an owning pointer, lifts an implementation
 // * Types like Mutex/RwLock which are explicitly poisoned are unwind safe
 // * Our custom AssertUnwindSafe wrapper is indeed unwind safe
 

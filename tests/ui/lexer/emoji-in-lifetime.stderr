@@ -1,0 +1,41 @@
+error: identifiers cannot contain emoji: `'🐛🐛🐛family👨👩👧👦`
+  --> $DIR/emoji-in-lifetime.rs:3:5
+   |
+LL |     '🐛🐛🐛family👨👩👧👦,
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+error: identifiers cannot contain emoji: `'a🐛`
+  --> $DIR/emoji-in-lifetime.rs:5:5
+   |
+LL |     'a🐛,
+   |     ^^^^
+...
+LL |     'a🐛: { // pointed at on the error from line 5
+   |     ^^^^
+
+error: identifiers cannot contain emoji: `'1🐛`
+  --> $DIR/emoji-in-lifetime.rs:6:5
+   |
+LL |     '1🐛,
+   |     ^^^^
+
+error: lifetimes cannot start with a number: `'12`
+  --> $DIR/emoji-in-lifetime.rs:4:6
+   |
+LL |     '12,
+   |     -^-
+
+error: lifetimes cannot start with a number: `'1🐛`
+  --> $DIR/emoji-in-lifetime.rs:6:6
+   |
+LL |     '1🐛,
+   |     -^--
+
+error: lifetimes cannot start with a number: `'1`
+  --> $DIR/emoji-in-lifetime.rs:8:5
+   |
+LL |     '1,
+   |     ^^
+
+error: aborting due to 6 previous errors
+

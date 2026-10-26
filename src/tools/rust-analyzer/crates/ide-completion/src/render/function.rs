@@ -121,7 +121,7 @@ fn render(
         } else {
             compute_type_match(completion, &ctx.completion.rebase_ty(&func.ty(db)))
         },
-        exact_name_match: compute_exact_name_match(completion, &call),
+        exact_name_match: compute_exact_name_match(completion, name.as_str()),
         function,
         trait_: trait_info,
         is_skipping_completion: matches!(func_kind, FuncKind::Method(_, Some(_))),

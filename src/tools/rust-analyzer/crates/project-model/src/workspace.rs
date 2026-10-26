@@ -28,7 +28,9 @@ use crate::{
     WorkspaceBuildScripts,
     build_dependencies::{BuildScriptOutput, ProcMacroDylibPath},
     cargo_config_file::CargoConfigFile,
-    cargo_workspace::{CargoMetadataConfig, DepKind, FetchMetadata, PackageData, RustLibSource},
+    cargo_workspace::{
+        CargoMetadataConfig, CargoMetadataKind, DepKind, FetchMetadata, PackageData, RustLibSource,
+    },
     env::{cargo_config_env, inject_cargo_env, inject_cargo_package_env, inject_rustc_tool_env},
     project_json::{Crate, CrateArrayIdx},
     sysroot::RustLibSrcWorkspace,
@@ -296,7 +298,7 @@ impl ProjectWorkspace {
                 config_path: config_path.clone(),
                 extra_env: extra_env.clone(),
                 toolchain_version: toolchain.clone(),
-                kind: "workspace",
+                kind: CargoMetadataKind::Workspace,
             },
             &sysroot,
             *no_deps,
@@ -357,7 +359,7 @@ impl ProjectWorkspace {
                             config_path: config_path.clone(),
                             extra_env: extra_env.clone(),
                             toolchain_version: toolchain.clone(),
-                            kind: "rustc-dev"
+                            kind: CargoMetadataKind::Rustc
                         },
                         &sysroot,
                         *no_deps,
@@ -602,7 +604,7 @@ impl ProjectWorkspace {
                 config_path: config.config_path.clone(),
                 extra_env: config.extra_env.clone(),
                 toolchain_version: toolchain.clone(),
-                kind: "detached-file",
+                kind: CargoMetadataKind::DetachedFile,
             },
             &sysroot,
             config.no_deps,
@@ -1999,6 +2001,6 @@ fn sysroot_metadata_config(
         // extra_args.
         extra_env: config.extra_env.clone(),
         toolchain_version,
-        kind: "sysroot",
+        kind: CargoMetadataKind::Sysroot,
     }
 }

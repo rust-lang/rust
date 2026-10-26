@@ -99,6 +99,8 @@ error: the `rustc_confusables` attribute cannot be used on functions
    |
 LL | #[rustc_confusables]
    |   ^^^^^^^^^^^^^^^^^
+...
+LL | fn test() {
    |
    = help: the `rustc_confusables` attribute can only be applied to inherent methods
 
@@ -130,6 +132,8 @@ error: the `rustc_macro_transparency` attribute cannot be used on functions
    |
 LL | #[rustc_macro_transparency]
    |   ^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn test() {
    |
    = help: the `rustc_macro_transparency` attribute can only be applied to macro defs
 
@@ -330,6 +334,8 @@ error: the `used` attribute cannot be used on functions
    |
 LL | #[used()]
    |   ^^^^
+...
+LL | fn test() {
    |
    = help: the `used` attribute can only be applied to statics
 
@@ -901,6 +907,8 @@ warning: the `link` attribute cannot be used on functions
    |
 LL | #[link]
    |   ^^^^
+...
+LL | fn test() {
    |
    = help: the `link` attribute can only be applied to foreign modules
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -910,6 +918,8 @@ warning: the `link_name` attribute cannot be used on functions
    |
 LL | #[link_name]
    |   ^^^^^^^^^
+...
+LL | fn test() {
    |
    = help: the `link_name` attribute can be applied to foreign functions and foreign statics
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -928,6 +938,8 @@ warning: the `no_implicit_prelude` attribute cannot be used on functions
    |
 LL | #[no_implicit_prelude = 23]
    |   ^^^^^^^^^^^^^^^^^^^
+...
+LL | fn test() {
    |
    = help: the `no_implicit_prelude` attribute can be applied to crates and modules
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -960,6 +972,8 @@ warning: the `automatically_derived` attribute cannot be used on modules
    |
 LL | #[automatically_derived = 18]
    |   ^^^^^^^^^^^^^^^^^^^^^
+...
+LL | mod yooo {
    |
    = help: the `automatically_derived` attribute can only be applied to trait impl blocks
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!

@@ -15,8 +15,8 @@ use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{Parser, Restrictions, TokenType};
 use crate::ast::{PatKind, TyKind};
 use crate::diagnostics::{
-    self, ConstGenericWithoutBraces, ConstGenericWithoutBracesSugg, PathFoundCVariadicParams,
-    PathSingleColon, PathTripleColon,
+    self, ConstGenericWithoutBraces, ConstGenericWithoutBracesSugg, PathSingleColon,
+    PathTripleColon,
 };
 use crate::exp;
 use crate::parser::{CommaRecoveryMode, Expr, FnContext, FnParseMode, RecoverColon, RecoverComma};
@@ -412,7 +412,6 @@ impl<'a> Parser<'a> {
                         snapshot = Some(self.create_snapshot_for_diagnostic());
                     }
 
-                    let dcx = self.dcx();
                     let mut first_param = true;
                     let parse_params_result = self.parse_paren_comma_seq(|p| {
                         // Inside parenthesized type arguments, we want types only, not names.
@@ -430,7 +429,9 @@ impl<'a> Parser<'a> {
                                 .gate(sym::named_fn_trait_parameters, param.pat.span);
                         }
                         if matches!(param.ty.kind, TyKind::CVarArgs) {
-                            dcx.emit_err(PathFoundCVariadicParams { span: param.pat.span });
+                            self.psess
+                                .gated_spans
+                                .gate(sym::named_fn_trait_parameters, param.ty.span);
                         }
                         if !param.attrs.is_empty() {
                             self.psess

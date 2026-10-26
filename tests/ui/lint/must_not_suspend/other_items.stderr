@@ -3,6 +3,7 @@ error: the `must_not_suspend` attribute cannot be used on modules
    |
 LL | #[must_not_suspend]
    |   ^^^^^^^^^^^^^^^^
+LL | mod inner {}
    |
    = help: the `must_not_suspend` attribute can be applied to data types and traits
 

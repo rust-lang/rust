@@ -5,7 +5,7 @@ use std::{collections::hash_map, ops::ControlFlow};
 use hir::{Complete, Function, HasContainer, ItemContainer, MethodCandidateCallback, Name};
 use ide_db::{FxHashMap, FxHashSet};
 use itertools::Either;
-use syntax::SmolStr;
+use syntax::{AstNode, SmolStr, ast};
 
 use crate::{
     CompletionItem, CompletionItemKind, Completions,
@@ -150,6 +150,17 @@ pub(crate) fn complete_undotted_self(
         _ => return,
     };
 
+    let receiver =
+        path_ctx.original_path.as_ref().and_then(|it| ast::Expr::cast(it.syntax().parent()?));
+    let fake_dot_access = &DotAccess {
+        receiver,
+        receiver_ty: None,
+        kind: DotAccessKind::Field { receiver_is_ambiguous_float_literal: false },
+        ctx: DotAccessExprCtx {
+            in_block_expr: expr_ctx.in_block_expr,
+            in_breakable: expr_ctx.in_breakable,
+        },
+    };
     let (param_name, ty) = match self_param {
         Either::Left(self_param) => ("self", &self_param.ty(ctx.db)),
         Either::Right(this_param) => ("this", this_param.ty()),
@@ -159,21 +170,7 @@ pub(crate) fn complete_undotted_self(
         ctx,
         ty,
         |acc, field, ty| {
-            acc.add_field(
-                ctx,
-                &DotAccess {
-                    receiver: None,
-                    receiver_ty: None,
-                    kind: DotAccessKind::Field { receiver_is_ambiguous_float_literal: false },
-                    ctx: DotAccessExprCtx {
-                        in_block_expr: expr_ctx.in_block_expr,
-                        in_breakable: expr_ctx.in_breakable,
-                    },
-                },
-                Some(SmolStr::new_static(param_name)),
-                field,
-                &ty,
-            )
+            acc.add_field(ctx, fake_dot_access, Some(SmolStr::new_static(param_name)), field, &ty)
         },
         |acc, field, ty| {
             acc.add_tuple_field(ctx, Some(SmolStr::new_static(param_name)), field, &ty)
@@ -181,21 +178,7 @@ pub(crate) fn complete_undotted_self(
         false,
     );
     complete_methods(ctx, ty, &ctx.traits_in_scope(), |func| {
-        acc.add_method(
-            ctx,
-            &DotAccess {
-                receiver: None,
-                receiver_ty: None,
-                kind: DotAccessKind::Field { receiver_is_ambiguous_float_literal: false },
-                ctx: DotAccessExprCtx {
-                    in_block_expr: expr_ctx.in_block_expr,
-                    in_breakable: expr_ctx.in_breakable,
-                },
-            },
-            func,
-            Some(SmolStr::new_static(param_name)),
-            None,
-        )
+        acc.add_method(ctx, fake_dot_access, func, Some(SmolStr::new_static(param_name)), None)
     });
 }
 

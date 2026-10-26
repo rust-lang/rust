@@ -30,7 +30,7 @@ fn track_span_parent(def_id: rustc_span::def_id::LocalDefId) {
             if tracks_deps {
                 let _span = icx.tcx.source_span(def_id);
                 // Sanity check: relative span's parent must be an absolute span.
-                debug_assert_eq!(_span.data_untracked().parent, None);
+                debug_assert_eq!(_span.parent(), None);
             }
         }
     })

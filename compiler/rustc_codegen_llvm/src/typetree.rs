@@ -6,10 +6,10 @@ use crate::attributes;
 use crate::context::FullCx;
 use crate::llvm::{self, EnzymeWrapper, Value};
 
-fn to_enzyme_typetree(
+fn to_enzyme_typetree<'ll>(
     rust_typetree: &RustTypeTree,
     _data_layout: &str,
-    llcx: &llvm::Context,
+    llcx: llvm::Context<'ll>,
 ) -> (llvm::TypeTree, Vec<llvm::TypeTree>) {
     let mut enzyme_tt = llvm::TypeTree::new();
     let extra_ints = process_typetree_recursive(&mut enzyme_tt, &rust_typetree, &[], llcx);
@@ -24,11 +24,11 @@ fn to_enzyme_typetree(
     (enzyme_tt, int_vec)
 }
 
-fn process_typetree_recursive(
+fn process_typetree_recursive<'ll>(
     enzyme_tt: &mut llvm::TypeTree,
     rust_typetree: &RustTypeTree,
     parent_indices: &[i64],
-    llcx: &llvm::Context,
+    llcx: llvm::Context<'ll>,
 ) -> u32 {
     let mut extra_ints = 0;
     for rust_type in &rust_typetree.0 {

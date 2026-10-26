@@ -1,6 +1,7 @@
 // tidy-alphabetical-start
 #![cfg_attr(not(panic = "abort"), feature(reentrant_lock))]
 #![cfg_attr(target_has_atomic = "128", feature(integer_atomics))]
+#![feature(abort_immediate)]
 #![feature(array_ptr_get)]
 #![feature(array_try_from_fn)]
 #![feature(array_try_map)]
@@ -10,6 +11,7 @@
 #![feature(async_iterator)]
 #![feature(atomic_volatile)]
 #![feature(borrowed_buf_init)]
+#![feature(breakpoint)]
 #![feature(byte_str)]
 #![feature(casefold)]
 #![feature(cfg_overflow_checks)]
@@ -35,6 +37,7 @@
 #![feature(const_eval_select)]
 #![feature(const_index)]
 #![feature(const_iter)]
+#![feature(const_nonzero_strict_ops)]
 #![feature(const_ops)]
 #![feature(const_option_ops)]
 #![feature(const_ref_cell)]
@@ -92,6 +95,7 @@
 #![feature(min_specialization)]
 #![feature(next_index)]
 #![feature(non_exhaustive_omitted_patterns_lint)]
+#![feature(nonzero_strict_ops)]
 #![feature(num_internals)]
 #![feature(numfmt)]
 #![feature(one_sided_range)]
@@ -200,7 +204,6 @@ mod macros;
 mod manually_drop;
 mod mem;
 mod net;
-mod nonzero;
 mod num;
 mod ops;
 mod option;
@@ -208,6 +211,7 @@ mod panic;
 mod pattern;
 mod pin;
 mod pin_macro;
+mod process;
 mod ptr;
 mod result;
 mod simd;

@@ -956,3 +956,14 @@ fn test_str_concat() {
     let s: String = format!("{a}{b}");
     assert_eq!(s.as_bytes()[9], 'd' as u8);
 }
+
+// alloc has a specialization for EscapeDefault's ToString impl, which isn't covered by core tests.
+#[test]
+fn test_from_escaped_str() {
+    assert_eq!("abcABC012".escape_default().to_string(), "abcABC012");
+    assert_eq!("\t\n\"".escape_default().to_string(), r#"\t\n\""#);
+    assert_eq!("\u{10FFFF}".escape_default().to_string(), "\\u{10ffff}");
+    assert_eq!("\u{0}".escape_default().to_string(), "\\u{0}");
+    assert_eq!("\u{1}".escape_default().to_string(), "\\u{1}");
+    assert_eq!("\u{100}".escape_default().to_string(), "\\u{100}");
+}

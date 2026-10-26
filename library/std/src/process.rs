@@ -2642,6 +2642,9 @@ pub fn abort() -> ! {
 #[doc(inline)]
 #[unstable(feature = "abort_immediate", issue = "154601")]
 pub use core::process::abort_immediate;
+#[doc(inline)]
+#[unstable(feature = "breakpoint", issue = "133724")]
+pub use core::process::resumable_breakpoint;
 
 /// Returns the OS-assigned process identifier associated with this process.
 ///

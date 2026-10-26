@@ -193,6 +193,8 @@ warning: the `link_section` attribute cannot be used on structs
    |
 LL | #[cfg_attr(true, link_section)]
    |                  ^^^^^^^^^^^^
+...
+LL | struct S13;
    |
    = help: the `link_section` attribute can be applied to functions and statics
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!

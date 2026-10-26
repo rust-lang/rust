@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use rustc_ast::{self as ast, *};
-use rustc_attr_ir::target::Target;
+use rustc_attr_ir::target::{AstTarget, Target};
 use rustc_errors::StashKey;
 use rustc_hir::def::{DefKind, PerNS, Res};
 use rustc_hir::def_id::DefId;
@@ -523,7 +523,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // FIXME uses the segments HIR id which is not correct, it should
         // be the parameters HIR id instead. This is currently not lowered.
         for input in inputs {
-            self.lower_attrs(segment_hir_id, &input.attrs, input.span, Target::Param);
+            self.lower_attrs(
+                segment_hir_id,
+                &input.attrs,
+                input.span,
+                Target::Param,
+                AstTarget::Param(input),
+            );
         }
 
         let inputs = self.arena.alloc_from_iter(inputs.iter().map(|param| {

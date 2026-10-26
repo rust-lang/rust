@@ -14,7 +14,7 @@ use crate::back::write::{
 use crate::{CompiledModule, ModuleCodegen};
 
 pub trait WriteBackendMethods: Clone + 'static {
-    type Module: Send + Sync;
+    type Module: Send;
     type TargetMachine;
     type ModuleBuffer: ModuleBufferMethods;
     type ThinData: Send + Sync;

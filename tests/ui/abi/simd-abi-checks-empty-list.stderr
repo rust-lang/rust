@@ -1,5 +1,5 @@
 error: this function definition uses SIMD vector type `Simd<i32, 4>` which is not currently supported with the chosen ABI
-  --> $DIR/simd-abi-checks-empty-list.rs:15:1
+  --> $DIR/simd-abi-checks-empty-list.rs:14:1
    |
 LL | pub extern "C" fn pass_by_vec(_: Simd<i32, 4>) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here

@@ -242,7 +242,9 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 args[1].immediate(),
                 args[2].immediate(),
             ),
-            sym::breakpoint => self.call_intrinsic("llvm.debugtrap", &[], &[]),
+            sym::breakpoint | sym::resumable_breakpoint => {
+                self.call_intrinsic("llvm.debugtrap", &[], &[])
+            }
             sym::va_arg => {
                 let target = &self.cx.tcx.sess.target;
                 let stability = target.supports_c_variadic_definitions();
@@ -985,7 +987,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
 
         let llret = unsafe {
             llvm::LLVMBuildCallWithOperandBundles(
-                self.llbuilder,
+                self.llbuilder(),
                 fn_ty,
                 fn_ptr,
                 llargs.as_ptr(),

@@ -9,6 +9,8 @@ error: the `repr(packed)` attribute cannot be used on enums
    |
 LL | #[repr(u8, packed)]
    |   ^^^^^^^^^^^^^^^^
+LL |
+LL | enum Foo3 {
    |
    = help: the `repr(packed)` attribute can be applied to structs and unions
 

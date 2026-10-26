@@ -179,9 +179,7 @@ jobs:
       - name: check build
         run: |
           cd ../rust # ./x does not seem to like being invoked from elsewhere
-          # FIXME: skipping the priroda check as it is temporarily broken while
-          # we reorganize the Miri crate.
-          ./x check miri cargo-miri
+          ./x check src/tools/miri
 
   # This job is intentionally separate from `test` so that the Priroda test
   # suite is exercised on its own (it is gated behind the `priroda` feature of

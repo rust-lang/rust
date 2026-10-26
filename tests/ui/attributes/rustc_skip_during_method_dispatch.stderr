@@ -96,6 +96,8 @@ error: the `rustc_skip_during_method_dispatch` attribute cannot be used on trait
    |
 LL | #[rustc_skip_during_method_dispatch(array)]
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | impl OK for () {}
    |
    = help: the `rustc_skip_during_method_dispatch` attribute can only be applied to traits
 

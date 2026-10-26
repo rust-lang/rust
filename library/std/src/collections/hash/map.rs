@@ -2704,6 +2704,7 @@ impl<'a, K, V, A: Allocator> Entry<'a, K, V, A> {
     /// let entry = map.entry("poneyland").insert_entry("hoho".to_string());
     ///
     /// assert_eq!(entry.key(), &"poneyland");
+    /// assert_eq!(entry.get(), &"hoho");
     /// ```
     #[inline]
     #[stable(feature = "entry_insert", since = "1.83.0")]
@@ -2988,7 +2989,8 @@ impl<'a, K: 'a, V: 'a, A: Allocator> VacantEntry<'a, K, V, A> {
     /// let mut map: HashMap<&str, u32> = HashMap::new();
     ///
     /// if let Entry::Vacant(o) = map.entry("poneyland") {
-    ///     o.insert_entry(37);
+    ///     let entry = o.insert_entry(37);
+    ///     assert_eq!(entry.get(), &37);
     /// }
     /// assert_eq!(map["poneyland"], 37);
     /// ```

@@ -121,7 +121,7 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
 
 impl<'ll> Builder<'_, 'll, '_> {
     pub(crate) fn get_dbg_loc(&self) -> Option<&'ll DILocation> {
-        unsafe { llvm::LLVMGetCurrentDebugLocation2(self.llbuilder) }
+        unsafe { llvm::LLVMGetCurrentDebugLocation2(self.llbuilder()) }
     }
 }
 
@@ -576,13 +576,13 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
 
     fn set_dbg_loc(&mut self, dbg_loc: &'ll DILocation) {
         unsafe {
-            llvm::LLVMSetCurrentDebugLocation2(self.llbuilder, dbg_loc);
+            llvm::LLVMSetCurrentDebugLocation2(self.llbuilder(), dbg_loc);
         }
     }
 
     fn clear_dbg_loc(&mut self) {
         unsafe {
-            llvm::LLVMSetCurrentDebugLocation2(self.llbuilder, ptr::null());
+            llvm::LLVMSetCurrentDebugLocation2(self.llbuilder(), ptr::null());
         }
     }
 

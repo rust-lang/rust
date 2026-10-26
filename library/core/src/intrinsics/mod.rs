@@ -566,10 +566,18 @@ pub const fn prefetch_write_instruction<T, const LOCALITY: i32>(data: *const T) 
 
 /// Executes a breakpoint trap, for inspection by a debugger.
 ///
-/// This intrinsic does not have a stable counterpart.
+/// The public version of this intrinsic is [`core::arch::breakpoint`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub fn breakpoint();
+
+/// Executes a breakpoint trap, for inspection by a debugger. This is allowed to resume.
+///
+/// The public version of this intrinsic is [`core::process::resumable_breakpoint`].
+#[rustc_intrinsic]
+#[rustc_nounwind]
+#[miri::intrinsic_fallback_is_spec]
+pub const fn resumable_breakpoint() {}
 
 /// A container for the string arguments passed to [`codeview_annotation`].
 #[unstable(feature = "codeview_annotation", issue = "163964")]

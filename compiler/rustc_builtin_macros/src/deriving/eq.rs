@@ -32,9 +32,9 @@ pub(crate) fn expand_deriving_eq(
             attributes: thin_vec![
                 // This method will never be called, so doing codegen etc. for it is unnecessary.
                 // We prevent this by adding `#[inline]`, which improves compile-time.
-                cx.attr_word(sym::inline, span),
-                cx.attr_nested_word(sym::doc, sym::hidden, span),
-                cx.attr_nested_word(sym::coverage, sym::off, span),
+                cx.generated_attr(span, ast::GeneratedAttr::Inline),
+                cx.generated_attr(span, ast::GeneratedAttr::DocHidden),
+                cx.generated_attr(span, ast::GeneratedAttr::CoverageOff),
             ],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
             combine_substructure: combine_substructure(cs_total_eq_assert),

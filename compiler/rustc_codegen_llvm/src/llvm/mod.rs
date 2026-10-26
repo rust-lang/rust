@@ -63,7 +63,7 @@ pub(crate) fn AddCallSiteAttributes<'ll>(
 }
 
 pub(crate) fn CreateAttrStringValue<'ll>(
-    llcx: &'ll Context,
+    llcx: Context<'ll>,
     attr: &str,
     value: &str,
 ) -> &'ll Attribute {
@@ -78,7 +78,7 @@ pub(crate) fn CreateAttrStringValue<'ll>(
     }
 }
 pub(crate) fn CreateAttrStringValueFromCStr<'ll>(
-    llcx: &'ll Context,
+    llcx: Context<'ll>,
     attr: &std::ffi::CStr,
     value: &std::ffi::CStr,
 ) -> &'ll Attribute {
@@ -95,7 +95,7 @@ pub(crate) fn CreateAttrStringValueFromCStr<'ll>(
     }
 }
 
-pub(crate) fn CreateAttrString<'ll>(llcx: &'ll Context, attr: &str) -> &'ll Attribute {
+pub(crate) fn CreateAttrString<'ll>(llcx: Context<'ll>, attr: &str) -> &'ll Attribute {
     unsafe {
         LLVMCreateStringAttribute(
             llcx,
@@ -107,43 +107,53 @@ pub(crate) fn CreateAttrString<'ll>(llcx: &'ll Context, attr: &str) -> &'ll Attr
     }
 }
 
-pub(crate) fn CreateAlignmentAttr(llcx: &Context, bytes: u64) -> &Attribute {
+pub(crate) fn CreateAlignmentAttr<'ll>(llcx: Context<'ll>, bytes: u64) -> &'ll Attribute {
     unsafe { LLVMRustCreateAlignmentAttr(llcx, bytes) }
 }
 
-pub(crate) fn CreateDereferenceableAttr(llcx: &Context, bytes: u64) -> &Attribute {
+pub(crate) fn CreateDereferenceableAttr<'ll>(llcx: Context<'ll>, bytes: u64) -> &'ll Attribute {
     unsafe { LLVMRustCreateDereferenceableAttr(llcx, bytes) }
 }
 
-pub(crate) fn CreateDereferenceableOrNullAttr(llcx: &Context, bytes: u64) -> &Attribute {
+pub(crate) fn CreateDereferenceableOrNullAttr<'ll>(
+    llcx: Context<'ll>,
+    bytes: u64,
+) -> &'ll Attribute {
     unsafe { LLVMRustCreateDereferenceableOrNullAttr(llcx, bytes) }
 }
 
-pub(crate) fn CreateByValAttr<'ll>(llcx: &'ll Context, ty: &'ll Type) -> &'ll Attribute {
+pub(crate) fn CreateByValAttr<'ll>(llcx: Context<'ll>, ty: &'ll Type) -> &'ll Attribute {
     unsafe { LLVMRustCreateByValAttr(llcx, ty) }
 }
 
-pub(crate) fn CreateByRefAttr<'ll>(llcx: &'ll Context, ty: &'ll Type) -> &'ll Attribute {
+pub(crate) fn CreateByRefAttr<'ll>(llcx: Context<'ll>, ty: &'ll Type) -> &'ll Attribute {
     unsafe { LLVMRustCreateByRefAttr(llcx, ty) }
 }
 
-pub(crate) fn CreateStructRetAttr<'ll>(llcx: &'ll Context, ty: &'ll Type) -> &'ll Attribute {
+pub(crate) fn CreateStructRetAttr<'ll>(llcx: Context<'ll>, ty: &'ll Type) -> &'ll Attribute {
     unsafe { LLVMRustCreateStructRetAttr(llcx, ty) }
 }
 
-pub(crate) fn CreateUWTableAttr(llcx: &Context, async_: bool) -> &Attribute {
+pub(crate) fn CreateUWTableAttr<'ll>(llcx: Context<'ll>, async_: bool) -> &'ll Attribute {
     unsafe { LLVMRustCreateUWTableAttr(llcx, async_) }
 }
 
-pub(crate) fn CreateAllocSizeAttr(llcx: &Context, size_arg: u32) -> &Attribute {
+pub(crate) fn CreateAllocSizeAttr<'ll>(llcx: Context<'ll>, size_arg: u32) -> &'ll Attribute {
     unsafe { LLVMRustCreateAllocSizeAttr(llcx, size_arg) }
 }
 
-pub(crate) fn CreateAllocKindAttr(llcx: &Context, kind_arg: AllocKindFlags) -> &Attribute {
+pub(crate) fn CreateAllocKindAttr<'ll>(
+    llcx: Context<'ll>,
+    kind_arg: AllocKindFlags,
+) -> &'ll Attribute {
     unsafe { LLVMRustCreateAllocKindAttr(llcx, kind_arg.bits()) }
 }
 
-pub(crate) fn CreateRangeAttr(llcx: &Context, size: Size, range: WrappingRange) -> &Attribute {
+pub(crate) fn CreateRangeAttr<'ll>(
+    llcx: Context<'ll>,
+    size: Size,
+    range: WrappingRange,
+) -> &'ll Attribute {
     let lower = range.start;
     // LLVM treats the upper bound as exclusive, but allows wrapping.
     let upper = range.end.wrapping_add(1);
@@ -229,14 +239,14 @@ pub(crate) fn set_thread_local_mode(global: &Value, mode: ThreadLocalMode) {
 
 impl AttributeKind {
     /// Create an LLVM Attribute with no associated value.
-    pub(crate) fn create_attr(self, llcx: &Context) -> &Attribute {
+    pub(crate) fn create_attr<'ll>(self, llcx: Context<'ll>) -> &'ll Attribute {
         unsafe { LLVMRustCreateAttrNoValue(llcx, self) }
     }
 }
 
 impl MemoryEffects {
     /// Create an LLVM Attribute with these memory effects.
-    pub(crate) fn create_attr(self, llcx: &Context) -> &Attribute {
+    pub(crate) fn create_attr<'ll>(self, llcx: Context<'ll>) -> &'ll Attribute {
         unsafe { LLVMRustCreateMemoryEffectsAttr(llcx, self) }
     }
 }
