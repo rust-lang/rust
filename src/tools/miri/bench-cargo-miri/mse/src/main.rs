@@ -5,7 +5,8 @@ static PCM: &[i16] = &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
 
 fn main() {
     for _ in 0..2 {
-        mse(PCM.len(), PCM, EXPECTED);
+        let diff = mse(PCM, EXPECTED);
+        assert!(diff < 0.1);
     }
 }
 
@@ -13,12 +14,12 @@ fn read_i16(buffer: &[u8], index: usize) -> i16 {
     const SIZE: usize = size_of::<i16>();
     let mut bytes: [u8; SIZE] = [0u8; SIZE];
     bytes.copy_from_slice(&buffer[(index * SIZE)..(index * SIZE + SIZE)]);
-    i16::from_ne_bytes(bytes)
+    i16::from_le_bytes(bytes)
 }
 
-fn mse(samples: usize, frame_buf: &[i16], buf_ref: &[u8]) -> f64 {
+fn mse(frame_buf: &[i16], buf_ref: &[u8]) -> f64 {
     let mut mse = 0.0;
-    let max_samples = std::cmp::min(buf_ref.len() / 2, samples as usize);
+    let max_samples = std::cmp::min(buf_ref.len() / 2, frame_buf.len());
     for i in 0..max_samples {
         let ref_res = read_i16(buf_ref, i);
         let info_res = frame_buf[i as usize];
