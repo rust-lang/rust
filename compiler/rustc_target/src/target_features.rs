@@ -803,7 +803,7 @@ static RISCV_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("zksed", Stable, &[]),
     ("zksh", Stable, &[]),
     ("zkt", Stable, &[]),
-    ("zmmul", Unstable(sym::riscv_target_feature), &[]),
+    ("zmmul", Stable, &[]),
     ("ztso", Stable, &[]),
     ("zvbb", Unstable(sym::riscv_target_feature), &["zvkb"]), // Zvbb ⊃ Zvkb
     ("zvbc", Unstable(sym::riscv_target_feature), &["zve64x"]),
