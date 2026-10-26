@@ -64,14 +64,18 @@ impl<'gcc, 'tcx> StaticCodegenMethods for CodegenCx<'gcc, 'tcx> {
         let cv = const_alloc_to_gcc(self, alloc);
         let align = alloc.inner().align;
 
-        if let Some(variable) = self.const_globals.borrow().get(&cv) {
-            if let Some(global_variable) = self.global_lvalues.borrow().get(variable) {
-                let alignment = align.bits() as i32;
-                if alignment > global_variable.get_alignment() {
-                    global_variable.set_alignment(alignment);
-                }
+        if let Some(&mut (variable, ref mut global_align)) =
+            self.const_globals.borrow_mut().get_mut(&cv)
+        {
+            // `set_alignment` replaces the alignment, which is on the global's type and thus not
+            // reported by `get_alignment`: only raise it, or a smaller use would lower it.
+            if align > *global_align
+                && let Some(global_variable) = self.global_lvalues.borrow().get(&variable)
+            {
+                global_variable.set_alignment(align.bytes() as i32);
+                *global_align = align;
             }
-            return *variable;
+            return variable;
         }
         let global_value = self.static_addr_of_mut(cv, align, kind);
         #[cfg(feature = "master")]
@@ -80,7 +84,7 @@ impl<'gcc, 'tcx> StaticCodegenMethods for CodegenCx<'gcc, 'tcx> {
             .get(&global_value)
             .expect("`static_addr_of_mut` did not add the global to `self.global_lvalues`")
             .global_set_readonly();
-        self.const_globals.borrow_mut().insert(cv, global_value);
+        self.const_globals.borrow_mut().insert(cv, (global_value, align));
         global_value
     }
 
@@ -359,16 +363,28 @@ fn alloc_fields(cx: &CodegenCx<'_, '_>, alloc: &interpret::Allocation) -> Vec<Al
         assert_eq!(offset as usize as u64, offset);
         let offset = offset as usize;
         if offset > next_offset {
-            fields.push(AllocField::Bytes { range: next_offset..offset });
+            push_byte_runs(&mut fields, next_offset..offset);
         }
         fields.push(AllocField::Pointer { offset, prov });
         next_offset = offset + pointer_size;
     }
     if alloc.len() >= next_offset {
-        fields.push(AllocField::Bytes { range: next_offset..alloc.len() });
+        push_byte_runs(&mut fields, next_offset..alloc.len());
     }
 
     fields
+}
+
+/// `gcc_jit_context_new_array_from_bytes` rejects runs of `i32::MAX` bytes or more.
+const MAX_BYTE_RUN_LEN: usize = i32::MAX as usize - 1;
+
+fn push_byte_runs(fields: &mut Vec<AllocField>, range: Range<usize>) {
+    let mut start = range.start;
+    while range.end - start > MAX_BYTE_RUN_LEN {
+        fields.push(AllocField::Bytes { range: start..start + MAX_BYTE_RUN_LEN });
+        start += MAX_BYTE_RUN_LEN;
+    }
+    fields.push(AllocField::Bytes { range: start..range.end });
 }
 
 /// The type [`const_alloc_to_gcc`] gives `alloc`, computed without building any rvalue.

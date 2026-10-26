@@ -6,7 +6,8 @@ use std::path::{Path, PathBuf};
 
 use crate::config::{Channel, ConfigInfo};
 use crate::utils::{
-    create_dir, get_sysroot_dir, run_command, run_command_with_output_and_env, walk_dir,
+    create_dir, get_sysroot_dir, run_command, run_command_with_output_and_env, rustc_version_info,
+    walk_dir,
 };
 
 #[derive(Default)]
@@ -137,17 +138,16 @@ pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Resu
     // Builds libs
     let mut rustflags = env.get("RUSTFLAGS").cloned().unwrap_or_default();
 
-    // Record the sysroot sources under the path the `rust-src` component uses, which is where
-    // rustc looks for them to turn a sysroot span into `/rustc/$hash`. Without this, ui tests
-    // print the build path where they expect `$SRC_DIR`.
-    let sysroot_source_dir = lib_path.join("rustlib/src/rust/library");
+    // Remap both source spans and embedded panic locations to the standard virtual path.
+    let sysroot_source_dir = start_dir.join("sysroot_src");
+    let rustc_commit = rustc_version_info(env.get("RUSTC").map(String::as_str))?
+        .commit_hash
+        .ok_or_else(|| "Couldn't retrieve rustc commit hash".to_string())?;
+    // Cargo passes workspace-relative filenames, including those used by panic locations.
+    // Also: the `==` is intentional! The first `=` is "FROM" and the second `=` is for "TO".
+    rustflags.push_str(&format!(" --remap-path-prefix==/rustc/{rustc_commit}/library"));
     rustflags.push_str(&format!(
-        " --remap-path-prefix={library_dir}={sysroot_source_dir}",
-        library_dir = std::path::absolute(&library_dir)
-            .map_err(|error| format!(
-                "Failed to get the absolute path of the sysroot sources: {error:?}"
-            ))?
-            .display(),
+        " --remap-path-prefix={sysroot_source_dir}=/rustc/{rustc_commit}",
         sysroot_source_dir = std::path::absolute(&sysroot_source_dir)
             .map_err(|error| format!(
                 "Failed to get the absolute path of the sysroot sources: {error:?}"

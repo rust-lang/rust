@@ -77,8 +77,6 @@ jobs:
     - name: Set env
       run: |
         echo "workspace="$GITHUB_WORKSPACE >> $GITHUB_ENV
-        # /tmp is a small tmpfs, and rustdoc keeps every compiled doctest there until the run ends.
-        echo "TMPDIR=$RUNNER_TEMP" >> $GITHUB_ENV
 
     - name: Prepare
       if: ${{ matrix.run_cargo_tests }}
