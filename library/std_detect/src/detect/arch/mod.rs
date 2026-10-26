@@ -41,11 +41,11 @@ cfg_select! {
         #[unstable(feature = "stdarch_powerpc_feature_detection", issue = "111191")]
         pub use powerpc::*;
     }
-    target_arch = "mips" => {
+    any(target_arch = "mips", target_arch = "mips32r6") => {
         #[unstable(feature = "stdarch_mips_feature_detection", issue = "111188")]
         pub use mips::*;
     }
-    target_arch = "mips64" => {
+    any(target_arch = "mips64", target_arch = "mips64r6") => {
         #[unstable(feature = "stdarch_mips_feature_detection", issue = "111188")]
         pub use mips64::*;
     }
