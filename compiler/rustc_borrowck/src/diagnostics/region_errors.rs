@@ -1448,8 +1448,8 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                 // Otherwise `+ 'static` would bind to the callable's output trait object.
                 let start = (output.span.lo() - object_ty.span.lo()).to_usize();
                 let end = (output.span.hi() - object_ty.span.lo()).to_usize();
-                snippet.insert_str(end, ")");
-                snippet.insert_str(start, "(");
+                snippet.insert(end, ')');
+                snippet.insert(start, '(');
             }
             let prefix = source_map
                 .span_to_snippet(param_ty.span.with_hi(object_ty.span.lo()))
