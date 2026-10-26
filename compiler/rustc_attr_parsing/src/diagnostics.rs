@@ -2153,17 +2153,17 @@ pub(crate) enum MalformedAttributeKind {
 }
 
 #[derive(Diagnostic)]
-#[diag("expected a lint, found literal")]
-pub(crate) struct BadAttributeLit {
+#[diag("expected a lint")]
+pub(crate) struct MalformedLintAttributeInput {
     #[primary_span]
     #[label("not the name of a lint")]
     pub span: Span,
     #[subdiagnostic]
-    pub help: BadAttributeLitHelp,
+    pub help: MalformedLintAttributeInputHelp,
 }
 
 #[derive(Subdiagnostic)]
-pub(crate) enum BadAttributeLitHelp {
+pub(crate) enum MalformedLintAttributeInputHelp {
     #[help("try using `#[{$kind}({$sym})]`")]
     StrLit { sym: Symbol, kind: Symbol },
     #[help("for example, write `#[{$kind}(dead_code)]` for `dead_code`")]
