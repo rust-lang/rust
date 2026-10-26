@@ -58,8 +58,6 @@ fn foo9() {
         let x = (vec![1, 2, 3],);
         for _ in x 0 {}
         //~^ ERROR expected `{`, found `0`
-        //~| ERROR expected `{`, found `0`
-        //~| HELP you might have meant to write a field access
         //~| HELP you might have meant to write a field access
     } }
 }
