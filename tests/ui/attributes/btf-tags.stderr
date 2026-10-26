@@ -1,0 +1,97 @@
+error[E0539]: malformed `btf_decl_tag` attribute input
+  --> $DIR/btf-tags.rs:25:3
+   |
+LL | #[btf_decl_tag]
+   |   ^^^^^^^^^^^^ expected this to be a list
+   |
+help: must be of the form
+   |
+LL | #[btf_decl_tag("tag")]
+   |               +++++++
+
+error[E0539]: malformed `btf_decl_tag` attribute input
+  --> $DIR/btf-tags.rs:28:3
+   |
+LL | #[btf_decl_tag = "x"]
+   |   ^^^^^^^^^^^^^-----
+   |                |
+   |                expected this to be a list
+   |
+help: must be of the form
+   |
+LL - #[btf_decl_tag = "x"]
+LL + #[btf_decl_tag("tag")]
+   |
+
+error[E0539]: malformed `btf_decl_tag` attribute input
+  --> $DIR/btf-tags.rs:31:3
+   |
+LL | #[btf_decl_tag("")]
+   |   ^^^^^^^^^^^^^--^
+   |                |
+   |                string is not allowed to be empty
+   |
+help: must be of the form
+   |
+LL | #[btf_decl_tag("tag")]
+   |                 +++
+
+error[E0805]: malformed `btf_decl_tag` attribute input
+  --> $DIR/btf-tags.rs:34:3
+   |
+LL | #[btf_decl_tag("a", "b")]
+   |   ^^^^^^^^^^^^----------
+   |               |
+   |               expected a single argument here
+   |
+help: must be of the form
+   |
+LL - #[btf_decl_tag("a", "b")]
+LL + #[btf_decl_tag("tag")]
+   |
+
+error[E0539]: malformed `btf_type_tag` attribute input
+  --> $DIR/btf-tags.rs:37:3
+   |
+LL | #[btf_type_tag(1)]
+   |   ^^^^^^^^^^^^^-^
+   |                |
+   |                expected a string literal here
+   |
+help: must be of the form
+   |
+LL - #[btf_type_tag(1)]
+LL + #[btf_type_tag("tag")]
+   |
+
+error: the `btf_type_tag` attribute cannot be used on functions
+  --> $DIR/btf-tags.rs:40:3
+   |
+LL | #[btf_type_tag("x")]
+   |   ^^^^^^^^^^^^
+LL | pub fn type_tag_on_fn() {}
+   |
+   = help: the `btf_type_tag` attribute can be applied to foreign statics, function params, statics, and struct fields
+
+error: the `btf_decl_tag` attribute cannot be used on enums
+  --> $DIR/btf-tags.rs:43:3
+   |
+LL | #[btf_decl_tag("x")]
+   |   ^^^^^^^^^^^^
+LL | pub enum E {
+   |
+   = help: the `btf_decl_tag` attribute can be applied to foreign statics, function params, functions, statics, struct fields, structs, and unions
+
+error: the `btf_decl_tag` attribute cannot be used on constants
+  --> $DIR/btf-tags.rs:48:3
+   |
+LL | #[btf_decl_tag("x")]
+   |   ^^^^^^^^^^^^
+LL | pub const C: u32 = 0;
+   |
+   = help: the `btf_decl_tag` attribute can be applied to data types, foreign statics, function params, functions, statics, and struct fields
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0539, E0805.
+For more information about an error, try `rustc --explain E0539`.

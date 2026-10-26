@@ -1,7 +1,7 @@
 use rustc_abi::{Align, ExternAbi};
 use rustc_attr_ir::{
-    Attribute, AttributeKind, EiiImplResolution, InlineAttr, Linkage, OptimizeAttr, RtsanSetting,
-    UsedBy, find_attr,
+    Attribute, AttributeKind, EiiImplResolution, HasAttrs, InlineAttr, Linkage, OptimizeAttr,
+    RtsanSetting, UsedBy, find_attr,
 };
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -9,7 +9,7 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_lint_defs::builtin::{INLINE_NO_SANITIZE, RTSAN_NONBLOCKING_ASYNC};
 use rustc_macros::Diagnostic;
 use rustc_middle::middle::codegen_fn_attrs::{
-    CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry, SanitizerFnAttrs,
+    BtfTags, CodegenFnAttrFlags, CodegenFnAttrs, PatchableFunctionEntry, SanitizerFnAttrs,
 };
 use rustc_middle::mono::Visibility;
 use rustc_middle::query::Providers;
@@ -683,9 +683,34 @@ fn inherited_align<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Option<Align> {
     tcx.codegen_fn_attrs(tcx.trait_item_of(def_id)?).alignment
 }
 
+fn btf_tags_of<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    id: impl HasAttrs<'tcx, TyCtxt<'tcx>> + Copy,
+) -> BtfTags<'tcx> {
+    BtfTags {
+        decl_tags: find_attr!(tcx, id, BtfDeclTag(tags) => &tags[..]).unwrap_or(&[]),
+        type_tags: find_attr!(tcx, id, BtfTypeTag(tags) => &tags[..]).unwrap_or(&[]),
+    }
+}
+
+fn btf_tags(tcx: TyCtxt<'_>, def_id: DefId) -> BtfTags<'_> {
+    btf_tags_of(tcx, def_id)
+}
+
+fn fn_param_btf_tags(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &[BtfTags<'_>] {
+    let Some(body) = tcx.hir_maybe_body_owned_by(def_id) else { return &[] };
+    let tags = |param: &hir::Param<'_>| btf_tags_of(tcx, param.hir_id);
+    if body.params.iter().all(|param| tags(param).is_empty()) {
+        return &[];
+    }
+    tcx.arena.alloc_from_iter(body.params.iter().map(tags))
+}
+
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {
         codegen_fn_attrs,
+        btf_tags,
+        fn_param_btf_tags,
         should_inherit_track_caller,
         inherited_align,
         sanitizer_settings_for,

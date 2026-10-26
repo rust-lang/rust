@@ -1,6 +1,5 @@
 use std::cell::RefCell;
 
-use libc::c_uint;
 use rustc_abi::{Align, Size, VariantIdx};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
@@ -13,7 +12,7 @@ use super::{DefinitionLocation, SmallVec, UNKNOWN_LINE_NUMBER, unknown_file_meta
 use crate::common::CodegenCx;
 use crate::debuginfo::utils::{DIB, create_DIArray, debug_context};
 use crate::llvm;
-use crate::llvm::debuginfo::{DIFlags, DIScope, DIType};
+use crate::llvm::debuginfo::{DIArray, DIFlags, DIScope, DIType};
 
 mod private {
     use rustc_macros::StableHash;
@@ -173,11 +172,36 @@ pub(super) fn stub<'ll, 'tcx>(
     unique_type_id: UniqueTypeId<'tcx>,
     name: &str,
     def_location: Option<DefinitionLocation<'ll>>,
-    (size, align): (Size, Align),
+    size_and_align: (Size, Align),
     containing_scope: Option<&'ll DIScope>,
     flags: DIFlags,
 ) -> StubInfo<'ll, 'tcx> {
-    let no_elements: &[Option<&llvm::Metadata>] = &[];
+    stub_with_annotations(
+        cx,
+        kind,
+        unique_type_id,
+        name,
+        def_location,
+        size_and_align,
+        containing_scope,
+        flags,
+        None,
+    )
+}
+
+/// Like [`stub`], but additionally attaches `annotations` (e.g. BTF decl tags) to the node.
+pub(super) fn stub_with_annotations<'ll, 'tcx>(
+    cx: &CodegenCx<'ll, 'tcx>,
+    kind: Stub<'ll>,
+    unique_type_id: UniqueTypeId<'tcx>,
+    name: &str,
+    def_location: Option<DefinitionLocation<'ll>>,
+    (size, align): (Size, Align),
+    containing_scope: Option<&'ll DIScope>,
+    flags: DIFlags,
+    annotations: Option<&'ll DIArray>,
+) -> StubInfo<'ll, 'tcx> {
+    let no_elements = create_DIArray(DIB(cx), &[]);
     let unique_type_id_str = unique_type_id.generate_unique_id_string(cx.tcx);
 
     let (file_metadata, line_number) = if let Some(def_location) = def_location {
@@ -193,7 +217,7 @@ pub(super) fn stub<'ll, 'tcx>(
                 _ => None,
             };
             unsafe {
-                llvm::LLVMDIBuilderCreateStructType(
+                llvm::LLVMRustDIBuilderCreateStructType(
                     DIB(cx),
                     containing_scope,
                     name.as_ptr(),
@@ -203,18 +227,16 @@ pub(super) fn stub<'ll, 'tcx>(
                     size.bits(),
                     align.bits() as u32,
                     flags,
-                    None,
-                    no_elements.as_ptr(),
-                    no_elements.len() as c_uint,
-                    0u32, // (Objective-C runtime version; default is 0)
+                    no_elements,
                     vtable_holder,
                     unique_type_id_str.as_ptr(),
                     unique_type_id_str.len(),
+                    annotations,
                 )
             }
         }
         Stub::Union => unsafe {
-            llvm::LLVMDIBuilderCreateUnionType(
+            llvm::LLVMRustDIBuilderCreateUnionType(
                 DIB(cx),
                 containing_scope,
                 name.as_ptr(),
@@ -224,11 +246,10 @@ pub(super) fn stub<'ll, 'tcx>(
                 size.bits(),
                 align.bits() as u32,
                 flags,
-                no_elements.as_ptr(),
-                no_elements.len() as c_uint,
-                0u32, // (Objective-C runtime version; default is 0)
+                no_elements,
                 unique_type_id_str.as_ptr(),
                 unique_type_id_str.len(),
+                annotations,
             )
         },
     };

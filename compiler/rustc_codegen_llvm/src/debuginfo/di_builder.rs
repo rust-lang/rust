@@ -3,8 +3,8 @@ use std::ptr;
 use libc::c_uint;
 use rustc_abi::Align;
 
-use crate::llvm::debuginfo::DIBuilder;
-use crate::llvm::{self, Module, ToLlvmBool};
+use crate::llvm::debuginfo::{DIArray, DIBuilder};
+use crate::llvm::{self, Module};
 
 /// Owning pointer to a `DIBuilder<'ll>` that will dispose of the builder
 /// when dropped. Use `.as_ref()` to get the underlying `&DIBuilder`
@@ -55,6 +55,7 @@ pub(crate) trait DIBuilderExt<'ll> {
         val: llvm::Value<'ll>,
         decl: Option<&'ll llvm::Metadata>,
         align: Option<Align>,
+        annotations: Option<&'ll DIArray>,
     ) -> &'ll llvm::Metadata {
         let this = self.as_di_builder();
         let align_in_bits = align.map_or(0, |align| align.bits() as u32);
@@ -66,7 +67,7 @@ pub(crate) trait DIBuilderExt<'ll> {
         let expr = self.create_expression(&[]);
 
         let global_var_expr = unsafe {
-            llvm::LLVMDIBuilderCreateGlobalVariableExpression(
+            llvm::LLVMRustDIBuilderCreateGlobalVariableExpression(
                 this,
                 scope,
                 name.as_ptr(),
@@ -76,10 +77,11 @@ pub(crate) trait DIBuilderExt<'ll> {
                 file,
                 line_number,
                 ty,
-                is_local_to_unit.to_llvm_bool(),
+                is_local_to_unit,
                 expr,
                 decl,
                 align_in_bits,
+                annotations,
             )
         };
 

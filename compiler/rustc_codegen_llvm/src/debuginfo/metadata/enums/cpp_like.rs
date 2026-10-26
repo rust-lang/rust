@@ -850,6 +850,7 @@ fn build_union_fields_for_direct_tag_enum_or_coroutine<'ll, 'tcx>(
             Size::ZERO,
             di_flags,
             variant_struct_type_wrapper,
+            None,
         )
     }));
 

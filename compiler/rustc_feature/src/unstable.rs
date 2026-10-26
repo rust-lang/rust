@@ -408,6 +408,8 @@ declare_features! (
     (unstable, avx10_target_feature, "1.88.0", Some(138843)),
     /// Target features on bpf.
     (unstable, bpf_target_feature, "1.54.0", Some(150247)),
+    /// Allows the `#[btf_decl_tag("...")]` and `#[btf_type_tag("...")]` attributes.
+    (unstable, btf_tags, "CURRENT_RUSTC_VERSION", Some(165422)),
     /// Allows defining c-variadic functions on targets where this feature has not yet
     /// undergone sufficient testing for stabilization.
     (unstable, c_variadic_experimental_arch, "1.97.0", Some(155973)),

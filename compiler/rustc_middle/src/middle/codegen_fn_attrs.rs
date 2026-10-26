@@ -298,3 +298,16 @@ const impl Default for SanitizerFnAttrs {
         Self { disabled: SanitizerSet::empty(), rtsan_setting: RtsanSetting::default() }
     }
 }
+
+/// The `#[btf_decl_tag]` and `#[btf_type_tag]` symbols of an item, field or function parameter.
+#[derive(Clone, Copy, Debug, Default, StableHash)]
+pub struct BtfTags<'tcx> {
+    pub decl_tags: &'tcx [Symbol],
+    pub type_tags: &'tcx [Symbol],
+}
+
+impl BtfTags<'_> {
+    pub fn is_empty(&self) -> bool {
+        self.decl_tags.is_empty() && self.type_tags.is_empty()
+    }
+}
