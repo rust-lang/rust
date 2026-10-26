@@ -23,7 +23,7 @@ declare_clippy_lint! {
     /// ```no_run
     /// # fn a() -> bool { false }
     /// fn b(b1: bool) -> bool {
-    ///     if b1 { a() } else { false}
+    ///     if b1 { a() } else { false }
     /// }
     ///
     /// ```
