@@ -46,6 +46,7 @@ mod iter;
 mod log_syntax;
 mod offload;
 mod pattern_type;
+mod rustdoc_skip_body;
 mod source_util;
 mod test;
 mod test_binder_constraints;
@@ -125,6 +126,7 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         eii_shared_macro: eii::eii_shared_macro,
         global_allocator: global_allocator::expand,
         offload_kernel: offload::expand_kernel,
+        rustdoc_skip_body: rustdoc_skip_body::expand,
         test: test::expand_test,
         test_case: test::expand_test_case,
         unsafe_eii: eii::unsafe_eii,
