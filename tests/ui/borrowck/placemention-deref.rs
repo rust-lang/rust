@@ -30,4 +30,13 @@ fn main() {
     drop(x);
     _ = ******x;
     //~^ ERROR use of moved value: `x`
+
+    let x = Box::new(Box::new(Box::new(0)));
+    drop(**x);
+    _ = ***x;
+    //~^ ERROR use of moved value: `**x`
+
+    let x = Box::new(Box::new(Box::new(0)));
+    drop(**x);
+    _ = **x; // OK
 }
