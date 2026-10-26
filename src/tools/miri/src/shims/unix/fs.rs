@@ -14,7 +14,7 @@ use rustc_target::spec::Os;
 
 use self::shims::time::system_time_to_duration;
 use crate::shims::FdId;
-use crate::shims::files::{DirHandle, FdNum, FileHandle, open_file_or_dir};
+use crate::shims::files::{DirHandle, DynFileDescriptionRef, FdNum, FileHandle, open_file_or_dir};
 use crate::shims::os_str::{PathConversion, bytes_to_os_str};
 use crate::shims::sig::Varargs;
 use crate::shims::unix::fd::{EvalContextExt as _, FlockOp, UnixFileDescription};
@@ -615,7 +615,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
         }
         let o_append = ecx.eval_libc_i32("O_APPEND");
-        if flag & o_append == o_append {
+        let append = flag & o_append == o_append;
+        if append {
             flag &= !o_append;
             options.append(true);
         }
@@ -761,7 +762,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     panic!("we should not get a symlink here");
                 }
 
-                let Some(fd) = ecx.machine.fds.insert_new(FileHandle { file, writable, readable })
+                let Some(fd) =
+                    ecx.machine.fds.insert_new(FileHandle { file, writable, readable, append })
                 else {
                     return ecx.set_errno_and_return_neg1_i32(LibcError("EMFILE"));
                 };
@@ -2188,6 +2190,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         file: f,
                         writable: true,
                         readable: true,
+                        append: false,
                     }) else {
                         return this.set_errno_and_return_neg1_i32(LibcError("EMFILE"));
                     };
@@ -2209,6 +2212,75 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // We ran out of attempts to create the file, return an error.
         this.set_errno_and_return_neg1_i32(LibcError("EEXIST"))
+    }
+
+    /// Only supports null offset pointers, i.e. copying from and advancing the file positions.
+    fn linux_copy_file_range(
+        &mut self,
+        fd_in_op: &OpTy<'tcx>,
+        off_in_op: &OpTy<'tcx>,
+        fd_out_op: &OpTy<'tcx>,
+        off_out_op: &OpTy<'tcx>,
+        len_op: &OpTy<'tcx>,
+        flags_op: &OpTy<'tcx>,
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let ecx = self.eval_context_mut();
+
+        let fd_in = ecx.read_scalar(fd_in_op)?.to_i32()?;
+        let off_in = ecx.read_pointer(off_in_op)?;
+        let fd_out = ecx.read_scalar(fd_out_op)?.to_i32()?;
+        let off_out = ecx.read_pointer(off_out_op)?;
+        let len = ecx.read_target_usize(len_op)?;
+        let flags = ecx.read_scalar(flags_op)?.to_u32()?;
+
+        let (Some(fd_in), Some(fd_out)) = (ecx.machine.fds.get(fd_in), ecx.machine.fds.get(fd_out))
+        else {
+            return ecx.set_errno_and_return_neg1(LibcError("EBADF"), dest);
+        };
+        if flags != 0 {
+            throw_unsup_format!("`copy_file_range` with non-zero flags is not supported");
+        }
+        if !ecx.ptr_is_null(off_in)? || !ecx.ptr_is_null(off_out)? {
+            throw_unsup_format!("`copy_file_range` with non-null offset pointers is not supported");
+        }
+        // Like Linux, check for directories (EISDIR), then other non-regular files (EINVAL),
+        // then the access modes (EBADF).
+        let is_dir = |fd: &DynFileDescriptionRef| fd.clone().downcast::<DirHandle>().is_some();
+        let as_regular_file = |fd: DynFileDescriptionRef| {
+            let file = fd.downcast::<FileHandle>()?;
+            // Ensure we catch on-disk FIFOs and unix domain sockets.
+            file.file.metadata().is_ok_and(|metadata| metadata.is_file()).then_some(file)
+        };
+        if is_dir(&fd_in) || is_dir(&fd_out) {
+            return ecx.set_errno_and_return_neg1(LibcError("EISDIR"), dest);
+        }
+        let (Some(file_in), Some(file_out)) = (as_regular_file(fd_in), as_regular_file(fd_out))
+        else {
+            return ecx.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
+        };
+        if !file_in.readable || !file_out.writable || file_out.append {
+            // The docs explicitly say that O_APPEND on the output file is forbidden.
+            return ecx.set_errno_and_return_neg1(LibcError("EBADF"), dest);
+        }
+        // FIXME: Linux returns EINVAL if both FDs refer to the same file and the ranges overlap.
+
+        assert!(ecx.machine.communicate(), "isolation should have prevented even opening a file");
+
+        let copy = || -> io::Result<u64> {
+            let (mut input, mut output) = (&file_in.file, &file_out.file);
+            let (pos_in, pos_out) = (input.stream_position()?, output.stream_position()?);
+            io::copy(&mut input.take(len), &mut output).inspect_err(|_| {
+                // Like Linux, leave the file positions unchanged on error. See
+                // <https://github.com/torvalds/linux/blob/81dfa035891f0502674332ee97db348a16486de0/fs/read_write.c#L1686-L1703>.
+                let _ = input.seek(SeekFrom::Start(pos_in));
+                let _ = output.seek(SeekFrom::Start(pos_out));
+            })
+        };
+        match copy() {
+            Ok(copied) => ecx.write_int(copied, dest),
+            Err(err) => ecx.set_errno_and_return_neg1(err, dest),
+        }
     }
 }
 
