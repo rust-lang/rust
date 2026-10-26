@@ -764,11 +764,12 @@ declare_lint_pass!(
     /// Checks for duplicate parameter names
     DuplicateParameterNames => [DUPLICATE_PARAMETER_NAMES]
 );
-fn find_duplicated_parameters(cx: &EarlyContext<'_>, sig: &FnSig) {
+
+fn find_duplicated_parameters(cx: &EarlyContext<'_>, params: &[rustc_ast::ast::Param]) {
     let mut map = FxHashMap::default();
 
-    for arg in sig.decl.inputs.iter() {
-        if let ast::PatKind::Ident(_, ident, _) = arg.pat.kind {
+    for param in params {
+        if let ast::PatKind::Ident(_, ident, _) = param.pat.kind {
             if let Some(_prev_span) = map.get(&ident.name) {
                 cx.emit_span_lint(
                     DUPLICATE_PARAMETER_NAMES,
@@ -788,13 +789,17 @@ fn find_duplicated_parameters(cx: &EarlyContext<'_>, sig: &FnSig) {
 
 impl EarlyLintPass for DuplicateParameterNames {
     fn check_fn(&mut self, cx: &EarlyContext<'_>, fk: FnKind<'_>, _span: Span, _: ast::NodeId) {
-        match fk {
-            FnKind::Fn(_, _, Fn { sig, body, ..}) => {
-                if body.is_none() {
-                    find_duplicated_parameters(cx, sig);
-                }
-            },
-            _ => {},
+        if let FnKind::Fn(_, _, Fn { sig, body, ..}) = fk {
+            // if there's a body, an error is already thrown, so we shouldn't warn
+            if body.is_none() {
+                find_duplicated_parameters(cx, &sig.decl.inputs);
+            }
+        }
+    }
+
+    fn check_generic_args(&mut self, cx: &EarlyContext<'_>, args: &rustc_ast::GenericArgs) {
+        if let rustc_ast::GenericArgs::Parenthesized(parens) = args {
+            find_duplicated_parameters(cx, &parens.inputs);
         }
     }
 }

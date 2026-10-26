@@ -28,6 +28,30 @@ LL |     fn extern_fn(x: usize, x: usize);
    |                  |
    |                  used here already
 
-error: aborting due to 2 previous errors; 2 warnings emitted
+warning: identifier `x` is bound more than once in this parameter list
+  --> $DIR/duplicate-parameter-names.rs:23:33
+   |
+LL | fn generic_type<T: Fn(x: usize, x: usize), U>()
+   |                       -         ^ used as parameter more than once
+   |                       |
+   |                       used here already
+
+warning: identifier `x` is bound more than once in this parameter list
+  --> $DIR/duplicate-parameter-names.rs:25:31
+   |
+LL |     where U: FnOnce(x: usize, x: usize)
+   |                     -         ^ used as parameter more than once
+   |                     |
+   |                     used here already
+
+warning: identifier `x` is bound more than once in this parameter list
+  --> $DIR/duplicate-parameter-names.rs:29:40
+   |
+LL | fn impl_trait(f: impl FnOnce(x: usize, x: usize)) {}
+   |                              -         ^ used as parameter more than once
+   |                              |
+   |                              used here already
+
+error: aborting due to 2 previous errors; 5 warnings emitted
 
 For more information about this error, try `rustc --explain E0415`.
