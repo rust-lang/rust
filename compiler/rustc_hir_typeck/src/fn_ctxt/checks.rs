@@ -1,3 +1,4 @@
+// ignore-tidy-file-filelength
 use std::ops::Deref;
 use std::{fmt, iter};
 
@@ -41,9 +42,8 @@ use crate::diagnostics::{ExprParenthesesNeeded, SuggestPtrNullMut, SuggestRawMut
 use crate::fn_ctxt::arg_matrix::{ArgMatrix, Compatibility, Error, ExpectedIdx, ProvidedIdx};
 use crate::gather_locals::Declaration;
 use crate::inline_asm::InlineAsmCtxt;
-use crate::method::probe::IsSuggestion;
-use crate::method::probe::Mode::MethodCall;
 use crate::method::probe::ProbeScope::TraitsInScope;
+use crate::method::probe::{IsSuggestion, Mode};
 use crate::{
     BreakableCtxt, Diverges, Expectation, FnCtxt, GatherLocalsVisitor, LoweredTy, Needs,
     TupleArgumentsFlag, diagnostics, struct_span_code_err,
@@ -1914,9 +1914,47 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             let def_kind = self.tcx.def_kind(def_id);
             if let DefKind::AssocFn = def_kind {
-                spans.push_span_context(self.tcx.def_span(self.tcx.parent(def_id)).shrink_to_lo());
+                let parent_def_id = self.tcx.parent(def_id);
+                spans.push_span_context(self.tcx.def_span(parent_def_id).shrink_to_lo());
             }
             err.span_note(spans, format!("{} defined here", self.tcx.def_descr(def_id)));
+            if let DefKind::AssocFn = def_kind
+                && !is_method
+                && let parent_def_id = self.tcx.parent(def_id)
+                && let Some(callee_ty) = callee_ty
+                && let ty::FnDef(_def_id, args) = callee_ty.kind()
+                && let DefKind::Trait = self.tcx.def_kind(parent_def_id)
+                && let Ok(Some(traits::ImplSource::UserDefined(pick))) = self.probe(|_| {
+                    let trait_ref = ty::TraitRef::new(
+                        self.tcx,
+                        parent_def_id,
+                        args.skip_binder()
+                            .truncate_to(self.tcx, self.tcx.generics_of(parent_def_id)),
+                    );
+                    let obligation = traits::Obligation::new(
+                        self.tcx,
+                        traits::ObligationCause::dummy(),
+                        self.param_env,
+                        trait_ref,
+                    );
+                    SelectionContext::new(self).select(&obligation)
+                })
+            {
+                err.span_note(
+                    self.tcx.def_span(pick.impl_def_id),
+                    format!(
+                        "{} provided through this {}`impl`",
+                        self.tcx.def_descr(def_id),
+                        if let ty::Param(_) =
+                            self.tcx.type_of(pick.impl_def_id).skip_binder().kind()
+                        {
+                            "blanket "
+                        } else {
+                            ""
+                        },
+                    ),
+                );
+            }
             if let DefKind::Fn | DefKind::AssocFn = def_kind
                 && let ty::Param(_) =
                     self.tcx.fn_sig(def_id).instantiate_identity().skip_binder().output().kind()
@@ -3430,7 +3468,7 @@ impl<'a, 'tcx> ArgsCtxt<'a, 'tcx> {
         if let Some(callee_ty) = self.call_ctxt.callee_ty
             && let Ok(Some(assoc)) = self.call_ctxt.fn_ctxt.probe_op(
                 call_name.span,
-                MethodCall,
+                Mode::MethodCall,
                 Some(call_name),
                 None,
                 IsSuggestion(true),
