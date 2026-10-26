@@ -98,10 +98,10 @@ function run_tests {
   done
   ## `./miri run` (including `--native`, but that only works for the host)
   if (( $TEST_TIER <= 1 )); then
-    ./miri run $FEATURES $TARGET_FLAG --dep tests/pass-dep/getrandom.rs
+    time ./miri run $FEATURES $TARGET_FLAG --dep tests/pass-dep/getrandom.rs
   fi
   if [ -z "${TEST_TARGET-}" ]; then
-    ./miri run $FEATURES --native tests/pass-dep/getrandom.rs
+    time ./miri run $FEATURES --native tests/pass-dep/getrandom.rs
   fi
   ## benchmarks
   if (( $TEST_TIER <= 0 )); then
@@ -174,18 +174,18 @@ case $HOST_TARGET in
     TEST_TIER=2 TEST_TARGET=i686-unknown-freebsd run_tests # 32bit on 64bit
     TEST_TIER=2 TEST_TARGET=mips-unknown-linux-gnu run_tests # a 32bit big-endian target, and also a target without 64bit atomics
     TEST_TIER=2 TEST_TARGET=x86_64-unknown-illumos run_tests
+    TEST_TIER=2 TEST_TARGET=i686-pc-windows-gnu run_tests
     TEST_TARGET=wasm32-unknown-unknown run_tests_minimal no_std empty_main wasm # this target doesn't really have std
     TEST_TARGET=thumbv7em-none-eabihf  run_tests_minimal no_std
     TEST_TARGET=x86_64-unknown-netbsd run_tests_minimal hello libc/env.rs libc/misc.rs
     ;;
   aarch64-apple-darwin)
     TEST_TIER=0 run_tests # macOS, aarch64 extended tests
-    TEST_TIER=1 TEST_TARGET=x86_64-pc-windows-msvc run_tests
+    TEST_TIER=2 TEST_TARGET=i686-pc-windows-msvc run_tests
     ;;
   x86_64-pc-windows-msvc)
     TEST_TIER=0 run_tests # Windows extended tests
     TEST_TIER=2 TEST_TARGET=x86_64-apple-darwin run_tests
-    TEST_TIER=2 TEST_TARGET=i686-pc-windows-gnu run_tests
     ;;
   aarch64-pc-windows-msvc)
     TEST_TIER=1 run_tests
@@ -195,7 +195,7 @@ case $HOST_TARGET in
   x86_64-unknown-freebsd)
     TEST_TIER=2 run_tests
     # Don't put Linux targets here, they need address 127.0.1.1 which the VM does not seem to have.
-    TEST_TIER=2 TEST_TARGET=x86_64-pc-windows-gnullvm run_tests # gnullvm ABI
+    TEST_TIER=2 TEST_TARGET=x86_64-pc-windows-gnullvm run_tests
     TEST_TARGET=tests/x86_64-unknown-kernel.json MIRI_NO_STD=1 MIRIFLAGS="-Zunstable-options" run_tests_minimal no_std # JSON target
     ;;
   *)
