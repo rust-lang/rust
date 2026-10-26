@@ -49,16 +49,16 @@ use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _
 
 use crate::diagnostics::{
     BuiltinAnonymousParams, BuiltinConstNoMangle, BuiltinDerefNullptr, BuiltinDoubleNegations,
-    BuiltinDoubleNegationsAddParens, BuiltinDuplicateParameterNames, BuiltinEllipsisInclusiveRangePatterns,
-    BuiltinEllipsisInclusiveRangePatternsLint, BuiltinExplicitOutlives,
-    BuiltinExplicitOutlivesSuggestion, BuiltinFeatureIssueNote, BuiltinIncompleteFeatures,
-    BuiltinIncompleteFeaturesHelp, BuiltinInternalFeatures, BuiltinKeywordIdents,
-    BuiltinMissingCopyImpl, BuiltinMissingDebugImpl, BuiltinMissingDoc, BuiltinMutablesTransmutes,
-    BuiltinNonShorthandFieldPatterns, BuiltinSpecialModuleNameUsed, BuiltinTrivialBounds,
-    BuiltinTypeAliasBounds, BuiltinUngatedAsyncFnTrackCaller, BuiltinUnpermittedTypeInit,
-    BuiltinUnpermittedTypeInitSub, BuiltinUnreachablePub, BuiltinUnsafe, BuiltinUnstableFeatures,
-    BuiltinUnusedDocComment, BuiltinUnusedDocCommentSub, BuiltinWhileTrue,
-    EqInternalMethodImplemented, InvalidAsmLabel,
+    BuiltinDoubleNegationsAddParens, BuiltinDuplicateParameterNames,
+    BuiltinEllipsisInclusiveRangePatterns, BuiltinEllipsisInclusiveRangePatternsLint,
+    BuiltinExplicitOutlives, BuiltinExplicitOutlivesSuggestion, BuiltinFeatureIssueNote,
+    BuiltinIncompleteFeatures, BuiltinIncompleteFeaturesHelp, BuiltinInternalFeatures,
+    BuiltinKeywordIdents, BuiltinMissingCopyImpl, BuiltinMissingDebugImpl, BuiltinMissingDoc,
+    BuiltinMutablesTransmutes, BuiltinNonShorthandFieldPatterns, BuiltinSpecialModuleNameUsed,
+    BuiltinTrivialBounds, BuiltinTypeAliasBounds, BuiltinUngatedAsyncFnTrackCaller,
+    BuiltinUnpermittedTypeInit, BuiltinUnpermittedTypeInitSub, BuiltinUnreachablePub,
+    BuiltinUnsafe, BuiltinUnstableFeatures, BuiltinUnusedDocComment, BuiltinUnusedDocCommentSub,
+    BuiltinWhileTrue, EqInternalMethodImplemented, InvalidAsmLabel,
 };
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 
@@ -765,20 +765,16 @@ declare_lint_pass!(
     DuplicateParameterNames => [DUPLICATE_PARAMETER_NAMES]
 );
 
-fn find_duplicated_parameters(cx: &EarlyContext<'_>, params: &[rustc_ast::ast::Param]) {
+fn find_duplicated_parameters(cx: &EarlyContext<'_>, params: &[ast::Param]) {
     let mut map = FxHashMap::default();
 
     for param in params {
         if let ast::PatKind::Ident(_, ident, _) = param.pat.kind {
-            if let Some(_prev_span) = map.get(&ident.name) {
+            if let Some(&prev_use) = map.get(&ident.name) {
                 cx.emit_span_lint(
                     DUPLICATE_PARAMETER_NAMES,
                     ident.span,
-                    BuiltinDuplicateParameterNames {
-                        span: ident.span,
-                        identifier: ident,
-                        prev_use: *_prev_span,
-                    },
+                    BuiltinDuplicateParameterNames { span: ident.span, ident, prev_use },
                 );
             } else {
                 map.insert(ident.name, ident.span);
@@ -788,8 +784,8 @@ fn find_duplicated_parameters(cx: &EarlyContext<'_>, params: &[rustc_ast::ast::P
 }
 
 impl EarlyLintPass for DuplicateParameterNames {
-    fn check_fn(&mut self, cx: &EarlyContext<'_>, fk: FnKind<'_>, _span: Span, _: ast::NodeId) {
-        if let FnKind::Fn(_, _, Fn { sig, body, ..}) = fk {
+    fn check_fn(&mut self, cx: &EarlyContext<'_>, fk: FnKind<'_>, _: Span, _: ast::NodeId) {
+        if let FnKind::Fn(_, _, Fn { sig, body, .. }) = fk {
             // if there's a body, an error is already thrown, so we shouldn't warn
             if body.is_none() {
                 find_duplicated_parameters(cx, &sig.decl.inputs);
@@ -797,8 +793,14 @@ impl EarlyLintPass for DuplicateParameterNames {
         }
     }
 
-    fn check_generic_args(&mut self, cx: &EarlyContext<'_>, args: &rustc_ast::GenericArgs) {
-        if let rustc_ast::GenericArgs::Parenthesized(parens) = args {
+    fn check_ty(&mut self, cx: &EarlyContext<'_>, ty: &ast::Ty) {
+        if let TyKind::FnPtr(f) = &ty.kind {
+            find_duplicated_parameters(cx, &f.decl.inputs);
+        }
+    }
+
+    fn check_generic_args(&mut self, cx: &EarlyContext<'_>, args: &ast::GenericArgs) {
+        if let ast::GenericArgs::Parenthesized(parens) = args {
             find_duplicated_parameters(cx, &parens.inputs);
         }
     }
