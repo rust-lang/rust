@@ -1,0 +1,26 @@
+error[E0392]: lifetime parameter `'a` is never used
+  --> $DIR/reborrow-static-mut-field.rs:7:14
+   |
+LL | struct Thing<'a> {
+   |              ^^ unused lifetime parameter
+   |
+   = help: consider removing `'a`, referring to it in a field, or using a marker such as `PhantomData`
+
+error[E0277]: the trait bound `&'static mut u8: Copy` is not satisfied
+  --> $DIR/reborrow-static-mut-field.rs:9:5
+   |
+LL |     field: &'static mut u8,
+   |     ^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `&'static mut u8`
+   |
+help: the trait `Copy` is implemented for `u8`
+  --> $SRC_DIR/core/src/marker.rs:LL:COL
+  ::: $SRC_DIR/core/src/marker.rs:LL:COL
+   |
+   = note: in this macro invocation
+   = note: `Copy` is implemented for `&'static u8`, but not for `&'static mut u8`
+   = note: this error originates in the macro `marker_impls` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0277, E0392.
+For more information about an error, try `rustc --explain E0277`.

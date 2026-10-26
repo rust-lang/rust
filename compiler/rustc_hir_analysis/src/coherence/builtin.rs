@@ -524,15 +524,17 @@ pub(crate) fn reborrow_info<'tcx>(
                 Unnormalized::new_wip(field.ty),
             )
             .map_err(|errors| infcx.err_ctxt().report_fulfillment_errors(errors))?;
-        if field_type_is_reborrow(
-            tcx,
-            &infcx,
-            reborrow_trait,
-            impl_did,
-            param_env,
-            field.ty,
-            field.span,
-        ) {
+        if !field_is_static_mut_ref(field.declared_ty)
+            && field_type_is_reborrow(
+                tcx,
+                &infcx,
+                reborrow_trait,
+                impl_did,
+                param_env,
+                field.ty,
+                field.span,
+            )
+        {
             // Field implements Reborrow, check remaining fields.
             continue;
         }
@@ -570,6 +572,7 @@ struct ReborrowDataField<'tcx> {
     ident: Ident,
     name: Symbol,
     ty: Ty<'tcx>,
+    declared_ty: Ty<'tcx>,
     span: Span,
 }
 
@@ -587,12 +590,20 @@ fn collect_reborrow_data_fields<'tcx>(
                 ident: field.ident(tcx),
                 name: field.name,
                 ty,
+                declared_ty: tcx.type_of(field.did).instantiate_identity().skip_norm_wip(),
                 span: tcx.def_span(field.did),
             })
         })
         .collect()
 }
 
+/// Whether the declared field type is literally `&'static mut T`.
+fn field_is_static_mut_ref(declared_ty: Ty<'_>) -> bool {
+    matches!(
+        declared_ty.kind(),
+        ty::Ref(region, _, ty::Mutability::Mut) if region.is_static()
+    )
+}
 fn field_type_is_reborrow<'tcx>(
     tcx: TyCtxt<'tcx>,
     infcx: &InferCtxt<'tcx>,
