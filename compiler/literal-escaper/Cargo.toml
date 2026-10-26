@@ -1,0 +1,14 @@
+[package]
+name = "rustc-literal-escaper"
+version = "0.0.8"
+edition = "2021"
+description = "Provides code to unescape string literals"
+license = "Apache-2.0 OR MIT"
+repository = "https://github.com/rust-lang/literal-escaper"
+rust-version = "1.89" # for NonZero<char>
+
+[dependencies]
+core = { version = '1.0.0', optional = true, package = 'rustc-std-workspace-core' }
+
+[features]
+rustc-dep-of-std = ["dep:core"]
