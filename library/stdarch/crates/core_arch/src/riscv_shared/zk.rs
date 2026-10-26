@@ -3,28 +3,28 @@ use stdarch_test::assert_instr;
 
 unsafe extern "llvm-intrinsic" {
     #[link_name = "llvm.riscv.sm4ed"]
-    fn _sm4ed(rs1: i32, rs2: i32, bs: i32) -> i32;
+    fn _sm4ed(rs1: u32, rs2: u32, bs: u32) -> u32;
 
     #[link_name = "llvm.riscv.sm4ks"]
-    fn _sm4ks(rs1: i32, rs2: i32, bs: i32) -> i32;
+    fn _sm4ks(rs1: u32, rs2: u32, bs: u32) -> u32;
 
     #[link_name = "llvm.riscv.sm3p0"]
-    fn _sm3p0(rs1: i32) -> i32;
+    fn _sm3p0(rs1: u32) -> u32;
 
     #[link_name = "llvm.riscv.sm3p1"]
-    fn _sm3p1(rs1: i32) -> i32;
+    fn _sm3p1(rs1: u32) -> u32;
 
     #[link_name = "llvm.riscv.sha256sig0"]
-    fn _sha256sig0(rs1: i32) -> i32;
+    fn _sha256sig0(rs1: u32) -> u32;
 
     #[link_name = "llvm.riscv.sha256sig1"]
-    fn _sha256sig1(rs1: i32) -> i32;
+    fn _sha256sig1(rs1: u32) -> u32;
 
     #[link_name = "llvm.riscv.sha256sum0"]
-    fn _sha256sum0(rs1: i32) -> i32;
+    fn _sha256sum0(rs1: u32) -> u32;
 
     #[link_name = "llvm.riscv.sha256sum1"]
-    fn _sha256sum1(rs1: i32) -> i32;
+    fn _sha256sum1(rs1: u32) -> u32;
 }
 
 /// Implements the Sigma0 transformation function as used in the SHA2-256 hash function \[49\]
@@ -47,7 +47,7 @@ unsafe extern "llvm-intrinsic" {
 #[cfg_attr(test, assert_instr(sha256sig0))]
 #[inline]
 pub fn sha256sig0(rs1: u32) -> u32 {
-    unsafe { _sha256sig0(rs1 as i32) as u32 }
+    unsafe { _sha256sig0(rs1) }
 }
 
 /// Implements the Sigma1 transformation function as used in the SHA2-256 hash function \[49\]
@@ -70,7 +70,7 @@ pub fn sha256sig0(rs1: u32) -> u32 {
 #[cfg_attr(test, assert_instr(sha256sig1))]
 #[inline]
 pub fn sha256sig1(rs1: u32) -> u32 {
-    unsafe { _sha256sig1(rs1 as i32) as u32 }
+    unsafe { _sha256sig1(rs1) }
 }
 
 /// Implements the Sum0 transformation function as used in the SHA2-256 hash function \[49\]
@@ -93,7 +93,7 @@ pub fn sha256sig1(rs1: u32) -> u32 {
 #[cfg_attr(test, assert_instr(sha256sum0))]
 #[inline]
 pub fn sha256sum0(rs1: u32) -> u32 {
-    unsafe { _sha256sum0(rs1 as i32) as u32 }
+    unsafe { _sha256sum0(rs1) }
 }
 
 /// Implements the Sum1 transformation function as used in the SHA2-256 hash function \[49\]
@@ -116,7 +116,7 @@ pub fn sha256sum0(rs1: u32) -> u32 {
 #[cfg_attr(test, assert_instr(sha256sum1))]
 #[inline]
 pub fn sha256sum1(rs1: u32) -> u32 {
-    unsafe { _sha256sum1(rs1 as i32) as u32 }
+    unsafe { _sha256sum1(rs1) }
 }
 
 /// Accelerates the block encrypt/decrypt operation of the SM4 block cipher \[5, 31\].
@@ -192,7 +192,7 @@ pub fn sha256sum1(rs1: u32) -> u32 {
 pub fn sm4ed<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
     static_assert!(BS < 4);
 
-    unsafe { _sm4ed(rs1 as i32, rs2 as i32, BS as i32) as u32 }
+    unsafe { _sm4ed(rs1, rs2, BS as u32) }
 }
 
 /// Accelerates the Key Schedule operation of the SM4 block cipher \[5, 31\] with `bs=0`.
@@ -268,7 +268,7 @@ pub fn sm4ed<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
 pub fn sm4ks<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
     static_assert!(BS < 4);
 
-    unsafe { _sm4ks(rs1 as i32, rs2 as i32, BS as i32) as u32 }
+    unsafe { _sm4ks(rs1, rs2, BS as u32) }
 }
 
 /// Implements the P0 transformation function as used in the SM3 hash function [4, 30].
@@ -303,7 +303,7 @@ pub fn sm4ks<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
 #[cfg_attr(test, assert_instr(sm3p0))]
 #[inline]
 pub fn sm3p0(rs1: u32) -> u32 {
-    unsafe { _sm3p0(rs1 as i32) as u32 }
+    unsafe { _sm3p0(rs1) }
 }
 
 /// Implements the P1 transformation function as used in the SM3 hash function [4, 30].
@@ -344,5 +344,5 @@ pub fn sm3p0(rs1: u32) -> u32 {
 #[cfg_attr(test, assert_instr(sm3p1))]
 #[inline]
 pub fn sm3p1(rs1: u32) -> u32 {
-    unsafe { _sm3p1(rs1 as i32) as u32 }
+    unsafe { _sm3p1(rs1) }
 }

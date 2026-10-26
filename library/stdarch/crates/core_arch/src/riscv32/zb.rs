@@ -3,22 +3,22 @@ use stdarch_test::assert_instr;
 
 unsafe extern "llvm-intrinsic" {
     #[link_name = "llvm.riscv.xperm8.i32"]
-    fn _xperm8_32(rs1: i32, rs2: i32) -> i32;
+    fn _xperm8_32(rs1: u32, rs2: u32) -> u32;
 
     #[link_name = "llvm.riscv.xperm4.i32"]
-    fn _xperm4_32(rs1: i32, rs2: i32) -> i32;
+    fn _xperm4_32(rs1: u32, rs2: u32) -> u32;
 
     #[link_name = "llvm.riscv.clmulh.i32"]
-    fn _clmulh_32(rs1: i32, rs2: i32) -> i32;
+    fn _clmulh_32(rs1: u32, rs2: u32) -> u32;
 
     #[link_name = "llvm.riscv.clmulr.i32"]
-    fn _clmulr_32(rs1: i32, rs2: i32) -> i32;
+    fn _clmulr_32(rs1: u32, rs2: u32) -> u32;
 
     #[link_name = "llvm.riscv.zip.i32"]
-    fn _zip_32(rs1: i32) -> i32;
+    fn _zip_32(rs1: u32) -> u32;
 
     #[link_name = "llvm.riscv.unzip.i32"]
-    fn _unzip_32(rs1: i32) -> i32;
+    fn _unzip_32(rs1: u32) -> u32;
 }
 
 /// Byte-wise lookup of indices into a vector in registers.
@@ -38,7 +38,7 @@ unsafe extern "llvm-intrinsic" {
 #[cfg_attr(test, assert_instr(xperm8))]
 #[inline]
 pub fn xperm8_32(rs1: u32, rs2: u32) -> u32 {
-    unsafe { _xperm8_32(rs1 as i32, rs2 as i32) as u32 }
+    unsafe { _xperm8_32(rs1, rs2) }
 }
 
 /// Nibble-wise lookup of indices into a vector.
@@ -58,7 +58,7 @@ pub fn xperm8_32(rs1: u32, rs2: u32) -> u32 {
 #[cfg_attr(test, assert_instr(xperm4))]
 #[inline]
 pub fn xperm4_32(rs1: u32, rs2: u32) -> u32 {
-    unsafe { _xperm4_32(rs1 as i32, rs2 as i32) as u32 }
+    unsafe { _xperm4_32(rs1, rs2) }
 }
 
 /// Carry-less multiply (high-part)
@@ -75,7 +75,7 @@ pub fn xperm4_32(rs1: u32, rs2: u32) -> u32 {
 #[cfg_attr(test, assert_instr(clmulh))]
 #[inline]
 pub fn clmulh_32(rs1: u32, rs2: u32) -> u32 {
-    unsafe { _clmulh_32(rs1 as i32, rs2 as i32) as u32 }
+    unsafe { _clmulh_32(rs1, rs2) }
 }
 
 /// Carry-less multiply (reversed)
@@ -92,7 +92,7 @@ pub fn clmulh_32(rs1: u32, rs2: u32) -> u32 {
 #[cfg_attr(test, assert_instr(clmulr))]
 #[inline]
 pub fn clmulr_32(rs1: u32, rs2: u32) -> u32 {
-    unsafe { _clmulr_32(rs1 as i32, rs2 as i32) as u32 }
+    unsafe { _clmulr_32(rs1, rs2) }
 }
 
 /// Place upper/lower halves of the source register into odd/even bits of the destination
@@ -114,7 +114,7 @@ pub fn clmulr_32(rs1: u32, rs2: u32) -> u32 {
 #[inline]
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn zip_32(rs: u32) -> u32 {
-    unsafe { _zip_32(rs as i32) as u32 }
+    unsafe { _zip_32(rs) }
 }
 
 /// Place odd and even bits of the source word into upper/lower halves of the destination.
@@ -133,5 +133,5 @@ pub fn zip_32(rs: u32) -> u32 {
 #[inline]
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn unzip_32(rs: u32) -> u32 {
-    unsafe { _unzip_32(rs as i32) as u32 }
+    unsafe { _unzip_32(rs) }
 }

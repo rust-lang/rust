@@ -3,34 +3,34 @@ use stdarch_test::assert_instr;
 
 unsafe extern "llvm-intrinsic" {
     #[link_name = "llvm.riscv.aes32esi"]
-    fn _aes32esi(rs1: i32, rs2: i32, bs: i32) -> i32;
+    fn _aes32esi(rs1: u32, rs2: u32, bs: u32) -> u32;
 
     #[link_name = "llvm.riscv.aes32esmi"]
-    fn _aes32esmi(rs1: i32, rs2: i32, bs: i32) -> i32;
+    fn _aes32esmi(rs1: u32, rs2: u32, bs: u32) -> u32;
 
     #[link_name = "llvm.riscv.aes32dsi"]
-    fn _aes32dsi(rs1: i32, rs2: i32, bs: i32) -> i32;
+    fn _aes32dsi(rs1: u32, rs2: u32, bs: u32) -> u32;
 
     #[link_name = "llvm.riscv.aes32dsmi"]
-    fn _aes32dsmi(rs1: i32, rs2: i32, bs: i32) -> i32;
+    fn _aes32dsmi(rs1: u32, rs2: u32, bs: u32) -> u32;
 
     #[link_name = "llvm.riscv.sha512sig0h"]
-    fn _sha512sig0h(rs1: i32, rs2: i32) -> i32;
+    fn _sha512sig0h(rs1: u32, rs2: u32) -> u32;
 
     #[link_name = "llvm.riscv.sha512sig0l"]
-    fn _sha512sig0l(rs1: i32, rs2: i32) -> i32;
+    fn _sha512sig0l(rs1: u32, rs2: u32) -> u32;
 
     #[link_name = "llvm.riscv.sha512sig1h"]
-    fn _sha512sig1h(rs1: i32, rs2: i32) -> i32;
+    fn _sha512sig1h(rs1: u32, rs2: u32) -> u32;
 
     #[link_name = "llvm.riscv.sha512sig1l"]
-    fn _sha512sig1l(rs1: i32, rs2: i32) -> i32;
+    fn _sha512sig1l(rs1: u32, rs2: u32) -> u32;
 
     #[link_name = "llvm.riscv.sha512sum0r"]
-    fn _sha512sum0r(rs1: i32, rs2: i32) -> i32;
+    fn _sha512sum0r(rs1: u32, rs2: u32) -> u32;
 
     #[link_name = "llvm.riscv.sha512sum1r"]
-    fn _sha512sum1r(rs1: i32, rs2: i32) -> i32;
+    fn _sha512sum1r(rs1: u32, rs2: u32) -> u32;
 }
 
 /// AES final round encryption instruction for RV32.
@@ -59,10 +59,10 @@ unsafe extern "llvm-intrinsic" {
 pub fn aes32esi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
     static_assert!(BS < 4);
 
-    unsafe { _aes32esi(rs1 as i32, rs2 as i32, BS as i32) as u32 }
+    unsafe { _aes32esi(rs1, rs2, BS as u32) }
 }
 
-/// AES middle round encryption instruction for RV32 with.
+/// AES middle round encryption instruction for RV32.
 ///
 /// This instruction sources a single byte from rs2 according to bs. To this it applies the
 /// forward AES SBox operation, and a partial forward MixColumn, before XOR’ing the result with
@@ -88,7 +88,7 @@ pub fn aes32esi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
 pub fn aes32esmi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
     static_assert!(BS < 4);
 
-    unsafe { _aes32esmi(rs1 as i32, rs2 as i32, BS as i32) as u32 }
+    unsafe { _aes32esmi(rs1, rs2, BS as u32) }
 }
 
 /// AES final round decryption instruction for RV32.
@@ -116,7 +116,7 @@ pub fn aes32esmi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
 pub fn aes32dsi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
     static_assert!(BS < 4);
 
-    unsafe { _aes32dsi(rs1 as i32, rs2 as i32, BS as i32) as u32 }
+    unsafe { _aes32dsi(rs1, rs2, BS as u32) }
 }
 
 /// AES middle round decryption instruction for RV32.
@@ -145,7 +145,7 @@ pub fn aes32dsi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
 pub fn aes32dsmi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
     static_assert!(BS < 4);
 
-    unsafe { _aes32dsmi(rs1 as i32, rs2 as i32, BS as i32) as u32 }
+    unsafe { _aes32dsmi(rs1, rs2, BS as u32) }
 }
 
 /// Implements the high half of the Sigma0 transformation, as used in the SHA2-512 hash
@@ -168,7 +168,7 @@ pub fn aes32dsmi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
 #[inline]
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn sha512sig0h(rs1: u32, rs2: u32) -> u32 {
-    unsafe { _sha512sig0h(rs1 as i32, rs2 as i32) as u32 }
+    unsafe { _sha512sig0h(rs1, rs2) }
 }
 
 /// Implements the low half of the Sigma0 transformation, as used in the SHA2-512 hash function
@@ -191,7 +191,7 @@ pub fn sha512sig0h(rs1: u32, rs2: u32) -> u32 {
 #[inline]
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn sha512sig0l(rs1: u32, rs2: u32) -> u32 {
-    unsafe { _sha512sig0l(rs1 as i32, rs2 as i32) as u32 }
+    unsafe { _sha512sig0l(rs1, rs2) }
 }
 
 /// Implements the high half of the Sigma1 transformation, as used in the SHA2-512 hash
@@ -214,7 +214,7 @@ pub fn sha512sig0l(rs1: u32, rs2: u32) -> u32 {
 #[inline]
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn sha512sig1h(rs1: u32, rs2: u32) -> u32 {
-    unsafe { _sha512sig1h(rs1 as i32, rs2 as i32) as u32 }
+    unsafe { _sha512sig1h(rs1, rs2) }
 }
 
 /// Implements the low half of the Sigma1 transformation, as used in the SHA2-512 hash function
@@ -236,7 +236,7 @@ pub fn sha512sig1h(rs1: u32, rs2: u32) -> u32 {
 #[inline]
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn sha512sig1l(rs1: u32, rs2: u32) -> u32 {
-    unsafe { _sha512sig1l(rs1 as i32, rs2 as i32) as u32 }
+    unsafe { _sha512sig1l(rs1, rs2) }
 }
 
 /// Implements the Sum0 transformation, as used in the SHA2-512 hash function \[49\] (Section
@@ -258,7 +258,7 @@ pub fn sha512sig1l(rs1: u32, rs2: u32) -> u32 {
 #[inline]
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn sha512sum0r(rs1: u32, rs2: u32) -> u32 {
-    unsafe { _sha512sum0r(rs1 as i32, rs2 as i32) as u32 }
+    unsafe { _sha512sum0r(rs1, rs2) }
 }
 
 /// Implements the Sum1 transformation, as used in the SHA2-512 hash function \[49\] (Section
@@ -280,5 +280,5 @@ pub fn sha512sum0r(rs1: u32, rs2: u32) -> u32 {
 #[inline]
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn sha512sum1r(rs1: u32, rs2: u32) -> u32 {
-    unsafe { _sha512sum1r(rs1 as i32, rs2 as i32) as u32 }
+    unsafe { _sha512sum1r(rs1, rs2) }
 }

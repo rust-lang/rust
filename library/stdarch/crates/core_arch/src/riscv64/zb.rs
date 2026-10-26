@@ -3,22 +3,22 @@ use stdarch_test::assert_instr;
 
 unsafe extern "llvm-intrinsic" {
     #[link_name = "llvm.riscv.xperm8.i64"]
-    fn _xperm8_64(rs1: i64, rs2: i64) -> i64;
+    fn _xperm8_64(rs1: u64, rs2: u64) -> u64;
 
     #[link_name = "llvm.riscv.xperm4.i64"]
-    fn _xperm4_64(rs1: i64, rs2: i64) -> i64;
+    fn _xperm4_64(rs1: u64, rs2: u64) -> u64;
 
     #[link_name = "llvm.riscv.orc.b.i64"]
-    fn _orc_b_64(rs: i64) -> i64;
+    fn _orc_b_64(rs: u64) -> u64;
 
     #[link_name = "llvm.riscv.clmul.i64"]
-    fn _clmul_64(rs1: i64, rs2: i64) -> i64;
+    fn _clmul_64(rs1: u64, rs2: u64) -> u64;
 
     #[link_name = "llvm.riscv.clmulh.i64"]
-    fn _clmulh_64(rs1: i64, rs2: i64) -> i64;
+    fn _clmulh_64(rs1: u64, rs2: u64) -> u64;
 
     #[link_name = "llvm.riscv.clmulr.i64"]
-    fn _clmulr_64(rs1: i64, rs2: i64) -> i64;
+    fn _clmulr_64(rs1: u64, rs2: u64) -> u64;
 }
 
 /// Byte-wise lookup of indices into a vector in registers.
@@ -38,7 +38,7 @@ unsafe extern "llvm-intrinsic" {
 #[cfg_attr(test, assert_instr(xperm8))]
 #[inline]
 pub fn xperm8_64(rs1: u64, rs2: u64) -> u64 {
-    unsafe { _xperm8_64(rs1 as i64, rs2 as i64) as u64 }
+    unsafe { _xperm8_64(rs1, rs2) }
 }
 
 /// Nibble-wise lookup of indices into a vector.
@@ -58,7 +58,7 @@ pub fn xperm8_64(rs1: u64, rs2: u64) -> u64 {
 #[cfg_attr(test, assert_instr(xperm4))]
 #[inline]
 pub fn xperm4_64(rs1: u64, rs2: u64) -> u64 {
-    unsafe { _xperm4_64(rs1 as i64, rs2 as i64) as u64 }
+    unsafe { _xperm4_64(rs1, rs2) }
 }
 
 /// Bitwise OR-Combine, byte granule
@@ -77,7 +77,7 @@ pub fn xperm4_64(rs1: u64, rs2: u64) -> u64 {
 #[cfg_attr(test, assert_instr(orc.b))]
 #[inline]
 pub fn orc_b_64(rs: u64) -> u64 {
-    unsafe { _orc_b_64(rs as i64) as u64 }
+    unsafe { _orc_b_64(rs) }
 }
 
 /// Carry-less multiply (low-part)
@@ -94,7 +94,7 @@ pub fn orc_b_64(rs: u64) -> u64 {
 #[cfg_attr(test, assert_instr(clmul))]
 #[inline]
 pub fn clmul_64(rs1: u64, rs2: u64) -> u64 {
-    unsafe { _clmul_64(rs1 as i64, rs2 as i64) as u64 }
+    unsafe { _clmul_64(rs1, rs2) }
 }
 
 /// Carry-less multiply (high-part)
@@ -111,7 +111,7 @@ pub fn clmul_64(rs1: u64, rs2: u64) -> u64 {
 #[cfg_attr(test, assert_instr(clmulh))]
 #[inline]
 pub fn clmulh_64(rs1: u64, rs2: u64) -> u64 {
-    unsafe { _clmulh_64(rs1 as i64, rs2 as i64) as u64 }
+    unsafe { _clmulh_64(rs1, rs2) }
 }
 
 /// Carry-less multiply (reversed)
@@ -128,5 +128,5 @@ pub fn clmulh_64(rs1: u64, rs2: u64) -> u64 {
 #[cfg_attr(test, assert_instr(clmulr))]
 #[inline]
 pub fn clmulr_64(rs1: u64, rs2: u64) -> u64 {
-    unsafe { _clmulr_64(rs1 as i64, rs2 as i64) as u64 }
+    unsafe { _clmulr_64(rs1, rs2) }
 }
