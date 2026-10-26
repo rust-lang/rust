@@ -28,6 +28,8 @@ macro_rules! check_cfg_feature {
     };
 }
 
+// Make sure any additions to this macro are tested in
+// `tests/ui/std/is_arch_feature_detected.AARCH64.stderr`.
 #[allow(unused)]
 macro_rules! features {
     (
