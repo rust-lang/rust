@@ -2,9 +2,9 @@ use std::num::NonZero;
 
 use rustc_ast::attr::version::RustcVersion;
 use rustc_macros::{BlobDecodable, Decodable, Encodable, PrintAttribute, StableHash};
-use rustc_span::{ErrorGuaranteed, Symbol, sym};
+use rustc_span::{Symbol, sym};
 
-use crate::PrintAttribute;
+use crate::{AttrErrorGuaranteed, PrintAttribute};
 
 /// The version placeholder that recently stabilized features contain inside the
 /// `since` field of the `#[stable]` attribute.
@@ -154,7 +154,7 @@ pub enum StableSince {
     /// Stabilized in the upcoming version, whatever number that is.
     Current,
     /// Failed to parse a stabilization version.
-    Err(ErrorGuaranteed),
+    Err(AttrErrorGuaranteed),
 }
 
 impl StabilityLevel {

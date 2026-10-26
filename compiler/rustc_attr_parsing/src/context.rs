@@ -10,7 +10,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use rustc_ast::{AttrStyle, MetaItemLit, Safety};
 use rustc_attr_ir::target::Target;
-use rustc_attr_ir::{AttrPath, Attribute, AttributeKind, HashIgnoredAttrId};
+use rustc_attr_ir::{AttrErrorGuaranteed, AttrPath, Attribute, AttributeKind, HashIgnoredAttrId};
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_errors::{Diag, DiagCtxtHandle, DiagLocation, Diagnostic, Level, MultiSpan};
 use rustc_feature::AttributeStability;
@@ -18,7 +18,7 @@ use rustc_lint_defs::builtin::UNUSED_ATTRIBUTES;
 use rustc_lint_defs::{Lint, LintId};
 use rustc_parse::parser::Recovery;
 use rustc_session::Session;
-use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol};
+use rustc_span::{Ident, Span, Symbol};
 
 // Glob imports to avoid big, bitrotty import lists
 use crate::attributes::allow_unstable::*;
@@ -418,7 +418,7 @@ pub struct AcceptContext<'f, 'sess> {
 
 impl<'f, 'sess: 'f> SharedContext<'f, 'sess> {
     #[track_caller]
-    pub(crate) fn emit_err(&self, diag: impl for<'x> Diagnostic<'x>) -> ErrorGuaranteed {
+    pub(crate) fn emit_err(&self, diag: impl for<'x> Diagnostic<'x>) -> AttrErrorGuaranteed {
         self.cx.emit_err(diag)
     }
 
@@ -928,7 +928,7 @@ pub enum ShouldEmit {
 
 impl ShouldEmit {
     #[track_caller]
-    pub(crate) fn emit_err(self, diag: Diag<'_>) -> ErrorGuaranteed {
+    pub(crate) fn emit_err(self, diag: Diag<'_>) -> AttrErrorGuaranteed {
         match self {
             ShouldEmit::EarlyFatal { .. } if diag.level() == Level::DelayedBug => diag.emit_err(),
             ShouldEmit::EarlyFatal { .. } => diag.upgrade_to_fatal().emit_fatal(),
@@ -936,7 +936,7 @@ impl ShouldEmit {
             ShouldEmit::Nothing => diag.delay_as_bug(),
             ShouldEmit::NothingNoBug => {
                 diag.cancel();
-                return ErrorGuaranteed::unchecked_error_guaranteed();
+                return AttrErrorGuaranteed::unchecked_attr_error_guaranteed();
             }
         }
         .into()
@@ -957,7 +957,7 @@ impl<'a, 'f, 'sess: 'f> AttributeDiagnosticContext<'a, 'f, 'sess> {
         &mut self,
         mut span: Span,
         reason: AttributeParseErrorReason<'_>,
-    ) -> ErrorGuaranteed {
+    ) -> AttrErrorGuaranteed {
         let suggestions = if self.custom_suggestions.is_empty() {
             AttributeParseErrorSuggestions::CreatedByTemplate(self.suggestions())
         } else {
@@ -997,7 +997,7 @@ impl<'a, 'f, 'sess: 'f> AttributeDiagnosticContext<'a, 'f, 'sess> {
         span: Span,
         lower_bound: isize,
         upper_bound: isize,
-    ) -> ErrorGuaranteed {
+    ) -> AttrErrorGuaranteed {
         self.emit_parse_error(
             span,
             AttributeParseErrorReason::ExpectedIntegerLiteralInRange { lower_bound, upper_bound },
@@ -1007,7 +1007,7 @@ impl<'a, 'f, 'sess: 'f> AttributeDiagnosticContext<'a, 'f, 'sess> {
     /// The provided span is used as a fallback in case `args` does not contain any. It should be
     /// the span of the node that contains `args`.
     #[track_caller]
-    pub(crate) fn expected_list(&mut self, span: Span, args: &ArgParser) -> ErrorGuaranteed {
+    pub(crate) fn expected_list(&mut self, span: Span, args: &ArgParser) -> AttrErrorGuaranteed {
         let span = match args {
             ArgParser::NoArgs => span,
             ArgParser::List(list) => list.span,
@@ -1021,7 +1021,7 @@ impl<'a, 'f, 'sess: 'f> AttributeDiagnosticContext<'a, 'f, 'sess> {
         &mut self,
         args: usize,
         span: Span,
-    ) -> ErrorGuaranteed {
+    ) -> AttrErrorGuaranteed {
         self.emit_parse_error(
             span,
             AttributeParseErrorReason::ExpectedListWithNumArgsOrMore { args },
@@ -1029,54 +1029,54 @@ impl<'a, 'f, 'sess: 'f> AttributeDiagnosticContext<'a, 'f, 'sess> {
     }
 
     #[track_caller]
-    pub(crate) fn expected_list_or_no_args(&mut self, span: Span) -> ErrorGuaranteed {
+    pub(crate) fn expected_list_or_no_args(&mut self, span: Span) -> AttrErrorGuaranteed {
         self.emit_parse_error(span, AttributeParseErrorReason::ExpectedListOrNoArgs)
     }
 
     #[track_caller]
-    pub(crate) fn expected_nv_or_no_args(&mut self, span: Span) -> ErrorGuaranteed {
+    pub(crate) fn expected_nv_or_no_args(&mut self, span: Span) -> AttrErrorGuaranteed {
         self.emit_parse_error(span, AttributeParseErrorReason::ExpectedNameValueOrNoArgs)
     }
 
     #[track_caller]
-    pub(crate) fn expected_non_empty_string_literal(&mut self, span: Span) -> ErrorGuaranteed {
+    pub(crate) fn expected_non_empty_string_literal(&mut self, span: Span) -> AttrErrorGuaranteed {
         self.emit_parse_error(span, AttributeParseErrorReason::ExpectedNonEmptyStringLiteral)
     }
 
     #[track_caller]
-    pub(crate) fn expected_no_args(&mut self, span: Span) -> ErrorGuaranteed {
+    pub(crate) fn expected_no_args(&mut self, span: Span) -> AttrErrorGuaranteed {
         self.emit_parse_error(span, AttributeParseErrorReason::ExpectedNoArgs)
     }
 
     /// Emit an error that a `name` was expected here
     #[track_caller]
-    pub(crate) fn expected_identifier(&mut self, span: Span) -> ErrorGuaranteed {
+    pub(crate) fn expected_identifier(&mut self, span: Span) -> AttrErrorGuaranteed {
         self.emit_parse_error(span, AttributeParseErrorReason::ExpectedIdentifier)
     }
 
     /// Emit an error that a `name = value` pair was expected at this span. The symbol can be given for
     /// a nicer error message talking about the specific name that was found lacking a value.
     #[track_caller]
-    fn expected_name_value(&mut self, span: Span, name: Option<Symbol>) -> ErrorGuaranteed {
+    fn expected_name_value(&mut self, span: Span, name: Option<Symbol>) -> AttrErrorGuaranteed {
         self.emit_parse_error(span, AttributeParseErrorReason::ExpectedNameValue(name))
     }
 
     /// Emit an error that a `name = value` argument is missing in a list of name-value pairs.
     #[track_caller]
-    pub(crate) fn missing_name_value(&mut self, span: Span, name: Symbol) -> ErrorGuaranteed {
+    pub(crate) fn missing_name_value(&mut self, span: Span, name: Symbol) -> AttrErrorGuaranteed {
         self.emit_parse_error(span, AttributeParseErrorReason::MissingNameValue(name))
     }
 
     /// Emit an error that a `name = value` pair was found where that name was already seen.
     #[track_caller]
-    pub(crate) fn duplicate_key(&mut self, span: Span, key: Symbol) -> ErrorGuaranteed {
+    pub(crate) fn duplicate_key(&mut self, span: Span, key: Symbol) -> AttrErrorGuaranteed {
         self.emit_parse_error(span, AttributeParseErrorReason::DuplicateKey(key))
     }
 
     /// An error that should be emitted when a [`MetaItemOrLitParser`]
     /// was expected *not* to be a literal, but instead a meta item.
     #[track_caller]
-    pub(crate) fn expected_not_literal(&mut self, span: Span) -> ErrorGuaranteed {
+    pub(crate) fn expected_not_literal(&mut self, span: Span) -> AttrErrorGuaranteed {
         self.emit_parse_error(span, AttributeParseErrorReason::ExpectedNotLiteral)
     }
 
@@ -1089,7 +1089,7 @@ impl<'a, 'f, 'sess: 'f> AttributeDiagnosticContext<'a, 'f, 'sess> {
         &mut self,
         span: Span,
         provided_arguments: usize,
-    ) -> ErrorGuaranteed {
+    ) -> AttrErrorGuaranteed {
         let reason = if provided_arguments == 0 {
             AttributeParseErrorReason::ExpectedArgument
         } else {
@@ -1100,7 +1100,7 @@ impl<'a, 'f, 'sess: 'f> AttributeDiagnosticContext<'a, 'f, 'sess> {
     }
 
     #[track_caller]
-    pub(crate) fn expected_at_least_one_argument(&mut self, span: Span) -> ErrorGuaranteed {
+    pub(crate) fn expected_at_least_one_argument(&mut self, span: Span) -> AttrErrorGuaranteed {
         self.emit_parse_error(span, AttributeParseErrorReason::ExpectedAtLeastOneArgument)
     }
 
@@ -1110,7 +1110,7 @@ impl<'a, 'f, 'sess: 'f> AttributeDiagnosticContext<'a, 'f, 'sess> {
         &mut self,
         span: Span,
         possibilities: &[Symbol],
-    ) -> ErrorGuaranteed {
+    ) -> AttrErrorGuaranteed {
         self.emit_parse_error(
             span,
             AttributeParseErrorReason::ExpectedSpecificArgument {
@@ -1128,7 +1128,7 @@ impl<'a, 'f, 'sess: 'f> AttributeDiagnosticContext<'a, 'f, 'sess> {
         &mut self,
         span: Span,
         possibilities: &[Symbol],
-    ) -> ErrorGuaranteed {
+    ) -> AttrErrorGuaranteed {
         self.emit_parse_error(
             span,
             AttributeParseErrorReason::ExpectedSpecificArgument {
@@ -1145,7 +1145,7 @@ impl<'a, 'f, 'sess: 'f> AttributeDiagnosticContext<'a, 'f, 'sess> {
         &mut self,
         span: Span,
         possibilities: &[Symbol],
-    ) -> ErrorGuaranteed {
+    ) -> AttrErrorGuaranteed {
         self.emit_parse_error(
             span,
             AttributeParseErrorReason::ExpectedSpecificArgument {
@@ -1198,7 +1198,7 @@ impl<'a, 'f, 'sess: 'f> AttributeDiagnosticContext<'a, 'f, 'sess> {
         &mut self,
         span: Span,
         actual_literal: Option<&MetaItemLit>,
-    ) -> ErrorGuaranteed {
+    ) -> AttrErrorGuaranteed {
         self.emit_parse_error(
             span,
             AttributeParseErrorReason::ExpectedStringLiteral {
@@ -1214,7 +1214,7 @@ impl<'a, 'f, 'sess: 'f> AttributeDiagnosticContext<'a, 'f, 'sess> {
         self.emit_parse_error(span, AttributeParseErrorReason::ExpectedFilenameLiteral);
     }
 
-    pub(crate) fn expected_integer_literal(&mut self, span: Span) -> ErrorGuaranteed {
+    pub(crate) fn expected_integer_literal(&mut self, span: Span) -> AttrErrorGuaranteed {
         self.emit_parse_error(span, AttributeParseErrorReason::ExpectedIntegerLiteral)
     }
 }

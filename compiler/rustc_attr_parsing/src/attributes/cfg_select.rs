@@ -2,7 +2,7 @@ use rustc_ast::token::Token;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{AttrStyle, NodeId, token};
 use rustc_attr_ir::target::Target;
-use rustc_attr_ir::{AttrPath, CfgEntry};
+use rustc_attr_ir::{AttrErrorGuaranteed, AttrPath, CfgEntry};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Diagnostic;
 use rustc_feature::Features;
@@ -10,7 +10,7 @@ use rustc_lint_defs::builtin::UNREACHABLE_CFG_SELECT_PREDICATES;
 use rustc_parse::exp;
 use rustc_parse::parser::{Parser, Recovery};
 use rustc_session::Session;
-use rustc_span::{ErrorGuaranteed, Span, Symbol, sym};
+use rustc_span::{Span, Symbol, sym};
 
 use crate::attributes::AttributeSafety;
 use crate::parser::{AllowExprMetavar, MetaItemOrLitParser};
@@ -85,7 +85,7 @@ pub fn parse_cfg_select(
     sess: &Session,
     features: Option<&Features>,
     lint_node_id: NodeId,
-) -> Result<CfgSelectBranches, ErrorGuaranteed> {
+) -> Result<CfgSelectBranches, AttrErrorGuaranteed> {
     let mut branches = CfgSelectBranches::default();
 
     while p.token != token::Eof {
