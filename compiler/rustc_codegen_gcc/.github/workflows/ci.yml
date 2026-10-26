@@ -173,6 +173,10 @@ jobs:
       if: ${{ matrix.libgccjit_version.gcc == 'gcc-15-without-int128' }}
       run: cat tests/failing-ui-tests-without-128bit-integers.txt >> tests/failing-ui-tests.txt
 
+    - name: Check out rust-lang/rust
+      if: ${{ contains(matrix.commands, '-rustc') }}
+      uses: ./.github/actions/checkout-rust
+
     - name: Run tests
       run: |
         ./y.sh test --release --clean --build-sysroot --no-builtins-tests ${{ matrix.commands }}

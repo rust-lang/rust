@@ -111,6 +111,12 @@ jobs:
         git config --global user.name "User"
         ./y.sh prepare
 
+    - name: Check out rust-lang/rust
+      if: ${{ contains(matrix.commands, '-rustc') }}
+      uses: ./.github/actions/checkout-rust
+      with:
+        path: rust/compiler/rustc_codegen_gcc
+
     - name: Run tests
       run: |
         ./y.sh test --release --clean --build-sysroot --no-builtins-tests ${{ matrix.commands }}
@@ -251,6 +257,11 @@ jobs:
         git config --global user.email "user@example.com"
         git config --global user.name "User"
         ./y.sh prepare
+
+    - name: Check out rust-lang/rust
+      uses: ./.github/actions/checkout-rust
+      with:
+        path: rust/compiler/rustc_codegen_gcc
 
     - name: Run tests
       run: |

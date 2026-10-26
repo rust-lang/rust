@@ -83,6 +83,9 @@ jobs:
     - name: Add more failing tests (some panic and debuginfo tests fail)
       run: cat tests/failing-lto-tests.txt >> tests/failing-ui-tests.txt
 
+    - name: Check out rust-lang/rust
+      uses: ./.github/actions/checkout-rust
+
     - name: Run tests
       run: |
         # FIXME(antoyo): we cannot enable LTO for stdarch tests currently because of some failing LTO tests using proc-macros.
