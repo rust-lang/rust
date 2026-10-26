@@ -1,6 +1,7 @@
 //! Linux and Android-specific socket functionality.
 
 use crate::io;
+use crate::macros::rustdoc_skip_body;
 use crate::os::unix::net;
 use crate::sys::AsInner;
 
@@ -51,10 +52,12 @@ pub impl(self) trait UnixSocketExt {
 
 #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
 impl UnixSocketExt for net::UnixDatagram {
+    #[rustdoc_skip_body]
     fn passcred(&self) -> io::Result<bool> {
         self.as_inner().passcred()
     }
 
+    #[rustdoc_skip_body]
     fn set_passcred(&self, passcred: bool) -> io::Result<()> {
         self.as_inner().set_passcred(passcred)
     }
@@ -62,10 +65,12 @@ impl UnixSocketExt for net::UnixDatagram {
 
 #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
 impl UnixSocketExt for net::UnixStream {
+    #[rustdoc_skip_body]
     fn passcred(&self) -> io::Result<bool> {
         self.as_inner().passcred()
     }
 
+    #[rustdoc_skip_body]
     fn set_passcred(&self, passcred: bool) -> io::Result<()> {
         self.as_inner().set_passcred(passcred)
     }
