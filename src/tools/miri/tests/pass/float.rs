@@ -1,3 +1,4 @@
+//@run-native: ignore-output
 #![feature(stmt_expr_attributes)]
 #![feature(float_erf)]
 #![feature(float_gamma)]
@@ -68,6 +69,17 @@ const F128_SNAN: f128 =
     f128::from_bits(f128::NAN.to_bits() ^ (0b11 << (f128::MANTISSA_DIGITS - 3)));
 
 fn main() {
+    // Natively we only run if f16 and f128 work as we are using them all over this file.
+    // Except on x86-64 Linux where it seems to work anyway.
+    if !cfg!(any(
+        miri,
+        all(target_arch = "x86_64", target_os = "linux"),
+        all(has_reliable_f16_math, has_reliable_f128_math)
+    )) {
+        eprintln!("skipping due to lack of f16/f128 support");
+        return;
+    }
+
     basic();
     casts();
     more_casts();
@@ -1534,6 +1546,10 @@ fn test_non_determinism() {
         frem_algebraic, frem_fast, fsub_algebraic, fsub_fast,
     };
     use std::{f32, f64};
+
+    if !cfg!(miri) {
+        return; // this test does not make sense natively
+    }
 
     macro_rules! test_operations_f {
         ($a:expr, $b:expr) => {
