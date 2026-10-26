@@ -195,9 +195,7 @@ impl ParseSess {
     }
 
     pub(crate) fn span_to_file_contents(&self, span: Span) -> Arc<rustc_span::SourceFile> {
-        self.raw_psess
-            .source_map()
-            .lookup_source_file(span.data().lo)
+        self.raw_psess.source_map().lookup_source_file(span.lo())
     }
 
     pub(crate) fn span_to_first_line_string(&self, span: Span) -> String {

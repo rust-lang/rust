@@ -733,12 +733,6 @@ impl SpanData {
     }
 }
 
-impl Default for SpanData {
-    fn default() -> Self {
-        Self { lo: BytePos(0), hi: BytePos(0), ctxt: SyntaxContext::root(), parent: None }
-    }
-}
-
 impl Span {
     #[inline]
     pub fn lo(self) -> BytePos {
@@ -1279,7 +1273,7 @@ impl Span {
 
         // Don't return something if it's marked with `#[diagnostic::opaque]`.
         // This already accounts for `-Zmacro-backtrace`.
-        if within.data().ctxt.outer_expn_data().diagnostic_opaque {
+        if within.ctxt().outer_expn_data().diagnostic_opaque {
             return None;
         }
 
@@ -1420,9 +1414,9 @@ pub trait SpanEncoder: Encoder {
 
 impl SpanEncoder for FileEncoder<'_> {
     fn encode_span(&mut self, span: Span) {
-        let span = span.data();
-        span.lo.encode(self);
-        span.hi.encode(self);
+        let (lo, hi) = span.lo_hi();
+        lo.encode(self);
+        hi.encode(self);
     }
 
     fn encode_symbol(&mut self, sym: Symbol) {
@@ -1457,9 +1451,9 @@ impl SpanEncoder for FileEncoder<'_> {
 
 impl SpanEncoder for MemEncoder {
     fn encode_span(&mut self, span: Span) {
-        let span = span.data();
-        span.lo.encode(self);
-        span.hi.encode(self);
+        let (lo, hi) = span.lo_hi();
+        lo.encode(self);
+        hi.encode(self);
     }
 
     fn encode_symbol(&mut self, sym: Symbol) {
