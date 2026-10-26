@@ -2,6 +2,7 @@ use rustc_errors::MultiSpan;
 use rustc_hir as hir;
 use rustc_lint_defs::{declare_lint, declare_lint_pass};
 use rustc_middle::ty;
+use rustc_middle::ty::adjustment::Adjust;
 use rustc_span::{Symbol, sym};
 
 use crate::diagnostics::{NonBindingLet, NonBindingLetSub};
@@ -106,6 +107,18 @@ const SYNC_GUARD_SYMBOLS: [Symbol; 3] = [
 impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
     fn check_local(&mut self, cx: &LateContext<'_>, local: &hir::LetStmt<'_>) {
         if matches!(local.source, rustc_hir::LocalSource::AsyncFn) {
+            return;
+        }
+
+        // `let _ = place;` doesn't move out of the place, so nothing gets dropped.
+        if let Some(init) = local.init
+            && init.is_place_expr(|base| {
+                cx.typeck_results()
+                    .adjustments()
+                    .get(base.hir_id)
+                    .is_some_and(|adjs| adjs.iter().any(|adj| matches!(adj.kind, Adjust::Deref(_))))
+            })
+        {
             return;
         }
 

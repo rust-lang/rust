@@ -17,6 +17,8 @@ fn main() {
 
     (_ , _) = (data.lock(), 1); //~ERROR non-binding let on a synchronization lock
 
+    let _ = (data.lock(), 1).0; //~ERROR non-binding let on a synchronization lock
+
     let _b;
     (_b, Struct { a: _ }) = (0, Struct { a: data.lock() }); //~ERROR non-binding let on a synchronization lock
 }

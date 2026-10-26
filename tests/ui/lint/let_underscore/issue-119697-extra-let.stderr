@@ -1,8 +1,8 @@
 error: non-binding let on a type that has a destructor
   --> $DIR/issue-119697-extra-let.rs:16:5
    |
-LL |     _ = field;
-   |     ^^^^^^^^^
+LL |     _ = field.clone();
+   |     ^^^^^^^^^^^^^^^^^
    |
 note: the lint level is defined here
   --> $DIR/issue-119697-extra-let.rs:1:9
@@ -11,29 +11,29 @@ LL | #![deny(let_underscore_drop)]
    |         ^^^^^^^^^^^^^^^^^^^
 help: consider binding to an unused variable to avoid immediately dropping the value
    |
-LL -     _ = field;
-LL +     let _unused = field;
+LL -     _ = field.clone();
+LL +     let _unused = field.clone();
    |
 help: consider immediately dropping the value
    |
-LL -     _ = field;
-LL +     drop(field);
+LL -     _ = field.clone();
+LL +     drop(field.clone());
    |
 
 error: non-binding let on a type that has a destructor
   --> $DIR/issue-119697-extra-let.rs:18:5
    |
-LL |     let _ = field;
-   |     ^^^^^^^^^^^^^^
+LL |     let _ = field.clone();
+   |     ^^^^^^^^^^^^^^^^^^^^^^
    |
 help: consider binding to an unused variable to avoid immediately dropping the value
    |
-LL |     let _unused = field;
+LL |     let _unused = field.clone();
    |          ++++++
 help: consider immediately dropping the value
    |
-LL -     let _ = field;
-LL +     drop(field);
+LL -     let _ = field.clone();
+LL +     drop(field.clone());
    |
 
 error: aborting due to 2 previous errors
