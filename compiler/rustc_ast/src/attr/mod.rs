@@ -11,7 +11,6 @@ use rustc_span::{Ident, Span, Symbol, sym};
 use smallvec::{SmallVec, smallvec};
 use thin_vec::{ThinVec, thin_vec};
 
-use crate::GeneratedAttr;
 use crate::ast::{
     AttrArgs, AttrId, AttrItem, AttrKind, AttrStyle, AttrVec, Attribute, DUMMY_NODE_ID, DelimArgs,
     Expr, ExprKind, LitKind, MetaItem, MetaItemInner, MetaItemKind, MetaItemLit, NormalAttr, Path,
@@ -245,21 +244,6 @@ impl AttributeExt for Attribute {
                 Some(self.style)
             }
             _ => None,
-        }
-    }
-
-    fn is_automatically_derived_attr(&self) -> bool {
-        self.has_name(sym::automatically_derived)
-    }
-
-    fn is_doc_hidden(&self) -> bool {
-        match &self.kind {
-            AttrKind::Normal(_) => {
-                self.has_name(sym::doc)
-                    && self.meta_item_list().is_some_and(|l| list_contains_name(&l, sym::hidden))
-            }
-            AttrKind::Generated(GeneratedAttr::DocHidden) => true,
-            _ => false,
         }
     }
 
@@ -1000,9 +984,6 @@ pub trait AttributeExt: Debug + 'static {
     /// i.e. `proc_macro`, `proc_macro_attribute` or `proc_macro_derive`.
     fn is_proc_macro_attr(&self) -> bool;
 
-    /// Returns true if this attribute is `#[automatically_deived]`.
-    fn is_automatically_derived_attr(&self) -> bool;
-
     /// Returns the documentation and its kind if this is a doc comment or a sugared doc comment.
     /// * `///doc` returns `Some(("doc", CommentKind::Line))`.
     /// * `/** doc */` returns `Some(("doc", CommentKind::Block))`.
@@ -1018,9 +999,6 @@ pub trait AttributeExt: Debug + 'static {
     /// commented module (for inner doc) vs within its parent module (for outer
     /// doc).
     fn doc_resolution_scope(&self) -> Option<AttrStyle>;
-
-    /// Returns `true` if this attribute contains `doc(hidden)`.
-    fn is_doc_hidden(&self) -> bool;
 
     /// Returns `true` is this attribute contains `doc(keyword)` or `doc(attribute)`.
     fn is_doc_keyword_or_attribute(&self) -> bool;
