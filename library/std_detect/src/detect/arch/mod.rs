@@ -41,11 +41,11 @@ cfg_select! {
         pub use powerpc::__is_feature_detected;
         pub(crate) use powerpc::Feature;
     }
-    target_arch = "mips" => {
+    any(target_arch = "mips", target_arch = "mips32r6") => {
         pub use mips::__is_feature_detected;
         pub(crate) use mips::Feature;
     }
-    target_arch = "mips64" => {
+    any(target_arch = "mips64", target_arch = "mips64r6") => {
         pub use mips64::__is_feature_detected;
         pub(crate) use mips64::Feature;
     }
