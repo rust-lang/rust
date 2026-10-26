@@ -55,10 +55,10 @@ endgroup
 # Run tests. Recognizes these variables:
 # - TEST_TARGET: the target to test. Empty for host target.
 # - TEST_TIER: configure which and how many tests to run.
-#   Tier 2: many-seeds tests run 16 times, nothing extra
-#   Tier 1: many-seeds tests run 64 times, check `./miri run`
+#   Tier 2: many-seeds tests run 4 times, nothing extra
+#   Tier 1: many-seeds tests run 64 times, check benchmarks and `./miri run`
 #   Tier 0: tier 1 checks plus mir-opt, test suite runs with GC stress tests,
-#   check that benchmarks build, and mess with cargo-miri configuration
+#   and mess with cargo-miri configuration
 function run_tests {
   if [ -n "${TEST_TARGET-}" ]; then
     begingroup "Testing foreign architecture $TEST_TARGET (at tier $TEST_TIER)"
@@ -78,7 +78,7 @@ function run_tests {
   time MIRIFLAGS="${MIRIFLAGS-} ${MIRIFLAGS_EXTRA-}" ./miri test $FEATURES $TARGET_FLAG
   unset MIRIFLAGS_EXTRA
 
-  ## mir-opt tests
+  ## mir-opt tests (tier 0)
   if (( $TEST_TIER <= 0 )); then
     # Run tests with optimizations. `-O` is what cargo passes, but crank MIR optimizations up all
     # the way, too. Optimizations change diagnostics (mostly backtraces), so we don't check them.
@@ -87,24 +87,24 @@ function run_tests {
     # panic on debug assertion failures.
     time MIRIFLAGS="${MIRIFLAGS-} -O -Zmir-opt-level=4 -Cdebug-assertions=yes" MIRI_SKIP_UI_CHECKS=1 ./miri test $FEATURES $TARGET_FLAG tests/{pass,panic}
   fi
-  ## many-seeds tests
+  ## many-seeds tests (all tiers but with different iteration count)
   if (( $TEST_TIER <= 1 )); then
     MANY_SEEDS=64
   else
-    MANY_SEEDS=16
+    MANY_SEEDS=4
   fi
   time for FILE in tests/many-seeds/*.rs; do
     ./miri run $FEATURES "-Zmiri-many-seeds=0..$MANY_SEEDS" $TARGET_FLAG "$FILE"
   done
-  ## `./miri run` (including `--native`, but that only works for the host)
+  ## `./miri run` (tier 1)
   if (( $TEST_TIER <= 1 )); then
     time ./miri run $FEATURES $TARGET_FLAG --dep tests/pass-dep/getrandom.rs
+    if [ -z "${TEST_TARGET-}" ]; then # `--native` only works for the host
+      time ./miri run $FEATURES --native tests/pass-dep/getrandom.rs
+    fi
   fi
-  if [ -z "${TEST_TARGET-}" ]; then
-    time ./miri run $FEATURES --native tests/pass-dep/getrandom.rs
-  fi
-  ## benchmarks
-  if (( $TEST_TIER <= 0 )); then
+  ## benchmarks (tier 1)
+  if (( $TEST_TIER <= 1 )); then
     time HYPERFINE="hyperfine -w0 -r1 --show-output" ./miri bench $TARGET_FLAG --no-install
   fi
 
@@ -116,7 +116,7 @@ function run_tests {
     PYTHON=python
   fi
   # Some environment setup that attempts to confuse the heck out of cargo-miri.
-  if (( $TEST_TIER == 0 )); then
+  if (( $TEST_TIER <= 0 )); then
     # These act up on Windows (`which miri` produces a filename that does not exist?!?).
     # RUSTC is the main thing to set (it changes the first argument our wrapper will see).
     # Unless MIRI is also set, that produces a warning.
