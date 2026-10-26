@@ -2370,7 +2370,7 @@ impl<'a> Parser<'a> {
             let move_kw_span = self.prev_token.span;
             // Check for `move async` and recover
             if self.check_keyword(exp!(Async)) {
-                let move_async_span = self.token.span.with_lo(self.prev_token.span.data().lo);
+                let move_async_span = self.token.span.with_lo(self.prev_token.span.lo());
                 Err(self.dcx().create_err(crate::diagnostics::AsyncMoveOrderIncorrect {
                     span: move_async_span,
                 }))
@@ -2382,7 +2382,7 @@ impl<'a> Parser<'a> {
             self.psess.gated_spans.gate(sym::ergonomic_clones, use_kw_span);
             // Check for `use async` and recover
             if self.check_keyword(exp!(Async)) {
-                let use_async_span = self.token.span.with_lo(self.prev_token.span.data().lo);
+                let use_async_span = self.token.span.with_lo(self.prev_token.span.lo());
                 Err(self.dcx().create_err(crate::diagnostics::AsyncUseOrderIncorrect {
                     span: use_async_span,
                 }))

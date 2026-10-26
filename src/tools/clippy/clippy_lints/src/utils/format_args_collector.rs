@@ -109,9 +109,10 @@ impl FormatArgsCollector {
             .explicit_args()
             .iter()
             .try_fold(src.range.end, |start, arg| {
-                let expr_sp = walk_span_to_context(arg.expr.span, fmt_sp.ctxt)?.data();
-                let expr_start = (expr_sp.lo.0 - src.sf.start_pos.0) as usize;
-                let expr_end = (expr_sp.hi.0 - src.sf.start_pos.0) as usize;
+                let (expr_sp_lo, expr_sp_hi) =
+                    walk_span_to_context(arg.expr.span, fmt_sp.ctxt)?.lo_hi();
+                let expr_start = (expr_sp_lo.0 - src.sf.start_pos.0) as usize;
+                let expr_end = (expr_sp_hi.0 - src.sf.start_pos.0) as usize;
                 let mut tks = tokenize(src_text.get(start..expr_start)?, FrontmatterAllowed::No)
                     .map(|x| x.kind)
                     .filter(|x| {
