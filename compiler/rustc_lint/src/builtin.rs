@@ -24,6 +24,7 @@ use rustc_ast_pretty::pprust::expr_to_string;
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_attr_ir::{AttributeKind, DocAttribute, find_attr};
 use rustc_attr_parsing::AttributeParser;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, Diagnostic, msg};
 use rustc_feature::GateIssue;
 use rustc_hir::def::{DefKind, Res};
@@ -48,7 +49,7 @@ use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _
 
 use crate::diagnostics::{
     BuiltinAnonymousParams, BuiltinConstNoMangle, BuiltinDerefNullptr, BuiltinDoubleNegations,
-    BuiltinDoubleNegationsAddParens, BuiltinEllipsisInclusiveRangePatterns,
+    BuiltinDoubleNegationsAddParens, BuiltinDuplicateParameterNames, BuiltinEllipsisInclusiveRangePatterns,
     BuiltinEllipsisInclusiveRangePatternsLint, BuiltinExplicitOutlives,
     BuiltinExplicitOutlivesSuggestion, BuiltinFeatureIssueNote, BuiltinIncompleteFeatures,
     BuiltinIncompleteFeaturesHelp, BuiltinInternalFeatures, BuiltinKeywordIdents,
@@ -734,6 +735,66 @@ impl EarlyLintPass for AnonymousParameters {
                     );
                 }
             }
+        }
+    }
+}
+
+declare_lint! {
+    /// The `duplicate_parameter_names` lint detects duplicate parameter names.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// #![deny(duplicate_parameter_names)]
+    /// // edition 2015
+    /// pub trait Foo {
+    ///     fn foo(x: usize, x: usize);
+    /// }
+    /// fn main() {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    pub DUPLICATE_PARAMETER_NAMES,
+    Warn,
+    "detects duplicate parameter names",
+}
+
+declare_lint_pass!(
+    /// Checks for duplicate parameter names
+    DuplicateParameterNames => [DUPLICATE_PARAMETER_NAMES]
+);
+fn find_duplicated_parameters(cx: &EarlyContext<'_>, sig: &FnSig) {
+    let mut map = FxHashMap::default();
+
+    for arg in sig.decl.inputs.iter() {
+        if let ast::PatKind::Ident(_, ident, _) = arg.pat.kind {
+            if let Some(_prev_span) = map.get(&ident.name) {
+                cx.emit_span_lint(
+                    DUPLICATE_PARAMETER_NAMES,
+                    ident.span,
+                    BuiltinDuplicateParameterNames {
+                        span: ident.span,
+                        identifier: ident,
+                        prev_use: *_prev_span,
+                    },
+                );
+            } else {
+                map.insert(ident.name, ident.span);
+            }
+        }
+    }
+}
+
+impl EarlyLintPass for DuplicateParameterNames {
+    fn check_fn(&mut self, cx: &EarlyContext<'_>, fk: FnKind<'_>, _span: Span, _: ast::NodeId) {
+        match fk {
+            FnKind::Fn(_, _, Fn { sig, body, ..}) => {
+                if body.is_none() {
+                    find_duplicated_parameters(cx, sig);
+                }
+            },
+            _ => {},
         }
     }
 }

@@ -11885,7 +11885,7 @@ pub unsafe fn vluti4q_lane_s16_x2<const LANE: i32>(a: int16x8x2_t, b: uint8x8_t)
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.vluti4q.lane.x2.v8i16"
         )]
-        fn _vluti4q_lane_s16_x2(a: int16x8_t, a: int16x8_t, b: uint8x8_t, n: i32) -> int16x8_t;
+        fn _vluti4q_lane_s16_x2(a1: int16x8_t, a2: int16x8_t, b: uint8x8_t, n: i32) -> int16x8_t;
     }
     _vluti4q_lane_s16_x2(a.0, a.1, b, LANE)
 }

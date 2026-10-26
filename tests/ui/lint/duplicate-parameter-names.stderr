@@ -10,6 +10,24 @@ error[E0415]: identifier `x` is bound more than once in this parameter list
 LL | fn fn_with_body(x: usize, x: u64) {}
    |                           ^ used as parameter more than once
 
-error: aborting due to 2 previous errors
+warning: identifier `x` is bound more than once in this parameter list
+  --> $DIR/duplicate-parameter-names.rs:7:27
+   |
+LL |     fn trait_fn(x: usize, x: usize);
+   |                 -         ^ used as parameter more than once
+   |                 |
+   |                 used here already
+   |
+   = note: `#[warn(duplicate_parameter_names)]` on by default
+
+warning: identifier `x` is bound more than once in this parameter list
+  --> $DIR/duplicate-parameter-names.rs:16:28
+   |
+LL |     fn extern_fn(x: usize, x: usize);
+   |                  -         ^ used as parameter more than once
+   |                  |
+   |                  used here already
+
+error: aborting due to 2 previous errors; 2 warnings emitted
 
 For more information about this error, try `rustc --explain E0415`.

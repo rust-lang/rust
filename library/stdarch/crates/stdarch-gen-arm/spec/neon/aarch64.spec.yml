@@ -14043,8 +14043,8 @@ intrinsics:
       - LLVMLink:
           name: "vluti4q_lane_{neon_type[0]}_x2"
           arguments:
-            - 'a: {neon_type[2]}'
-            - 'a: {neon_type[2]}'
+            - 'a1: {neon_type[2]}'
+            - 'a2: {neon_type[2]}'
             - 'b: {neon_type[1]}'
             - 'n: i32'
           links:
