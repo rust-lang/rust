@@ -392,8 +392,16 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     fn report_with_use_injections(&mut self, krate: &Crate, use_injections: Vec<UseError<'tcx>>) {
-        for UseError { mut err, candidates, node_id, instead, suggestion, path, is_call } in
-            use_injections
+        for UseError {
+            mut err,
+            candidates,
+            node_id,
+            instead,
+            suggestion,
+            path,
+            is_call,
+            is_async,
+        } in use_injections
         {
             let (span, found_use) = if node_id != DUMMY_NODE_ID {
                 UsePlacementFinder::check(krate, node_id)
@@ -401,7 +409,16 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 (None, FoundUse::No)
             };
 
-            if !candidates.is_empty() {
+            if is_async && let [segment] = path {
+                self.tcx
+                    .sess
+                    .early_sess
+                    .psess
+                    .async_fn_in_2015
+                    .borrow_mut()
+                    .insert(segment.ident.span);
+                err.stash(segment.ident.span, rustc_errors::StashKey::Edition2015);
+            } else if !candidates.is_empty() {
                 show_candidates(
                     self.tcx,
                     &mut err,
