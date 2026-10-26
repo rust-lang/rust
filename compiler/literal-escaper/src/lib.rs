@@ -317,6 +317,7 @@ trait Unescape {
     }
 
     /// Unescape the first unit of a string (double quoted syntax)
+    #[inline(always)]
     fn unescape_1(chars: &mut Chars<'_>) -> Result<Self::Unit, EscapeError> {
         // Previous character was '\\', unescape what follows.
         let c = chars.next().ok_or(EscapeError::LoneSlash)?;
