@@ -33,6 +33,8 @@ fn main() {
     // `pipe2` only exists in some specific os.
     test_pipe2();
     test_pipe_setfl_getfl();
+    #[cfg(not(any(target_os = "solaris", target_os = "illumos")))]
+    test_pipe_ioctl_fionbio();
     test_pipe_fcntl_threaded();
     test_send_recv();
 }
@@ -185,6 +187,36 @@ fn test_pipe_setfl_getfl() {
         errno_result(unsafe { libc::fcntl(fds[0], libc::F_GETFL) }).unwrap(),
         libc::O_NONBLOCK | libc::O_RDONLY
     );
+}
+
+#[cfg(not(any(target_os = "solaris", target_os = "illumos")))]
+/// Test changing the blocking state of one end of a pipe using the `ioctl(fd, FIONBIO, ...)` syscall.
+fn test_pipe_ioctl_fionbio() {
+    let mut fds = [-1, -1];
+    errno_check(unsafe { libc::pipe(fds.as_mut_ptr()) });
+
+    unsafe {
+        // Change socket to be non-blocking.
+        let mut value = 1 as libc::c_int;
+        errno_check(libc::ioctl(fds[0], libc::FIONBIO, &mut value));
+    }
+
+    let flags_read_end = unsafe { errno_result(libc::fcntl(fds[0], libc::F_GETFL, 0)).unwrap() };
+    let flags_write_end = unsafe { errno_result(libc::fcntl(fds[1], libc::F_GETFL, 0)).unwrap() };
+    // Ensure that the read end is really non-blocking.
+    assert_eq!(flags_read_end & libc::O_NONBLOCK, libc::O_NONBLOCK);
+    // Ensure that the write end is still blocking.
+    assert_eq!(flags_write_end & libc::O_NONBLOCK, 0);
+
+    unsafe {
+        // Change read end back to be blocking.
+        let mut value = 0 as libc::c_int;
+        errno_check(libc::ioctl(fds[0], libc::FIONBIO, &mut value));
+    }
+
+    let flags = unsafe { errno_result(libc::fcntl(fds[0], libc::F_GETFL, 0)).unwrap() };
+    // Ensure that the read end is really blocking.
+    assert_eq!(flags & libc::O_NONBLOCK, 0);
 }
 
 /// Test the behaviour of F_SETFL/F_GETFL when a fd is blocking.
