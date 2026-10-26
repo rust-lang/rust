@@ -3,7 +3,6 @@
 
 use std::mem;
 
-use rustc_ast::attr::AttributeExt;
 use rustc_attr_ir::{DocInline, find_attr};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_hir::def::{DefKind, MacroKinds, Res};
@@ -282,7 +281,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             Doc(d)
             if d.inline.is_some_and(|(inline, _)| inline == DocInline::NoInline)
         ) || (document_hidden
-            && use_attrs.iter().any(|attr| attr.is_doc_hidden()));
+            && find_attr!(use_attrs, Doc(rustc_attr_ir::DocAttribute { hidden: Some(_), .. })));
 
         if is_no_inline {
             debug!("doc::no_inline or doc::hidden");

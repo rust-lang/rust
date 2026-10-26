@@ -2,10 +2,9 @@ use std::fmt::Debug;
 
 use rustc_ast as ast;
 use rustc_ast::CRATE_NODE_ID;
-use rustc_ast::attr::AttributeExt;
 use rustc_attr_ir::lint::{LintCheck, LintCheckKind};
 use rustc_attr_ir::target::Target;
-use rustc_attr_ir::{Attribute, AttributeKind, find_attr};
+use rustc_attr_ir::{Attribute, DocAttribute, find_attr};
 use rustc_attr_parsing::{AttributeParser, Recovery, ShouldEmit};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::UnordSet;
@@ -32,7 +31,6 @@ use rustc_middle::ty::{RegisteredTools, TyCtxt};
 use rustc_session::Session;
 use rustc_span::def_id::CRATE_MOD_ID;
 use rustc_span::{AttrId, DUMMY_SP, Ident, Span, Symbol, sym};
-use thin_vec::ThinVec;
 use tracing::{debug, instrument};
 
 use crate::builtin::MISSING_DOCS;
@@ -293,7 +291,7 @@ impl LintLevelsProvider for LintLevelQueryMap<'_> {
 impl<'tcx> LintLevelsBuilder<'_, LintLevelQueryMap<'tcx>> {
     fn add_id(&mut self, hir_id: HirId) {
         self.provider.cur = hir_id;
-        self.add(self.provider.attrs.get(hir_id.local_id), hir_id == hir::CRATE_HIR_ID);
+        self.add_hir(self.provider.attrs.get(hir_id.local_id), hir_id == hir::CRATE_HIR_ID);
     }
 }
 
@@ -413,7 +411,7 @@ impl<'s> LintLevelsBuilder<'s, TopDown> {
         crate_attrs: &[ast::Attribute],
     ) -> Self {
         let mut builder = Self::new(sess, features, lint_added_lints, store, registered_lint_tools);
-        builder.add(crate_attrs, true);
+        builder.add_ast(crate_attrs, true);
         builder
     }
 
@@ -445,7 +443,7 @@ impl<'s> LintLevelsBuilder<'s, TopDown> {
         self.provider.cur =
             self.provider.sets.list.push(LintSet { specs: FxIndexMap::default(), parent: prev });
 
-        self.add(attrs, is_crate_node);
+        self.add_ast(attrs, is_crate_node);
 
         if self.provider.current_specs().is_empty() {
             self.provider.sets.list.pop();
@@ -655,31 +653,22 @@ where
         };
     }
 
-    fn parse_lint_attributes(
-        &mut self,
-        attrs: &[impl AttributeExt + 'static],
-    ) -> ThinVec<LintCheck> {
-        fn try_cast_slice<T: 'static, U: 'static>(slice: &[T]) -> Option<&[U]> {
-            use std::any::TypeId;
-            if TypeId::of::<T>() == TypeId::of::<U>() {
-                // SAFETY: T == U, so it is sound to cast `&[T]` to `&[U]`
-                unsafe {
-                    Some(core::slice::from_raw_parts(slice.as_ptr().cast::<U>(), slice.len()))
-                }
-            } else {
-                None
+    fn add_ast(&mut self, attrs: &[rustc_ast::Attribute], is_crate_node: bool) {
+        if attrs.is_empty() {
+            return;
+        }
+        for attr in attrs {
+            // `SINGLE_USE_LIFETIMES` is an AST lint so we only insert this here
+            if attr.has_name(sym::automatically_derived) {
+                self.provider.insert(
+                    LintId::of(SINGLE_USE_LIFETIMES),
+                    LevelSpec::new(Level::Allow, None, LintLevelSource::Default),
+                );
             }
         }
-
-        if let Some(attrs) = try_cast_slice::<_, rustc_attr_ir::Attribute>(attrs) {
-            return find_attr!(attrs, LintCheck(lints) => lints.clone()).unwrap_or_default();
-        }
-
         let parsed = AttributeParser::parse_limited_all(
             self.sess,
-            try_cast_slice(attrs).unwrap_or_else(|| {
-                unreachable!("unknown `&[implAttributeExt]` {}", std::any::type_name_of_val(attrs))
-            }),
+            attrs,
             Some(&|attr| {
                 // This is ...complicated. Sometimes we need to parse lint check
                 // attributes pre-expansion, but of course things are allowed to
@@ -713,41 +702,27 @@ where
             ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },
             Some(self.registered_lint_tools),
         );
-        parsed
-            .into_iter()
-            .find_map(|p| {
-                if let Attribute::Parsed(AttributeKind::LintCheck(lints)) = p {
-                    Some(lints)
-                } else {
-                    None
-                }
-            })
-            .unwrap_or_default()
+        self.add_hir_inner(&parsed, is_crate_node)
     }
 
-    fn add(&mut self, attrs: &[impl AttributeExt + 'static], is_crate_node: bool) {
+    fn add_hir(&mut self, attrs: &[Attribute], is_crate_node: bool) {
         if attrs.is_empty() {
             return;
         }
-        for attr in attrs {
-            if attr.is_automatically_derived_attr() {
-                self.provider.insert(
-                    LintId::of(SINGLE_USE_LIFETIMES),
-                    LevelSpec::new(Level::Allow, None, LintLevelSource::Default),
-                );
-                continue;
-            }
-
-            // `#[doc(hidden)]` disables missing_docs check.
-            if attr.is_doc_hidden() {
-                self.provider.insert(
-                    LintId::of(MISSING_DOCS),
-                    LevelSpec::new(Level::Allow, None, LintLevelSource::Default),
-                );
-                continue;
-            }
+        // `MISSING_DOCS` is a HIR lint so we only insert this here
+        if find_attr!(attrs, Doc(DocAttribute { hidden: Some(_), .. })) {
+            self.provider.insert(
+                LintId::of(MISSING_DOCS),
+                LevelSpec::new(Level::Allow, None, LintLevelSource::Default),
+            );
         }
-        let lint_checks = self.parse_lint_attributes(attrs);
+        self.add_hir_inner(attrs, is_crate_node)
+    }
+
+    fn add_hir_inner(&mut self, attrs: &[Attribute], is_crate_node: bool) {
+        let Some(lint_checks) = find_attr!(attrs, LintCheck(lints) => lints.clone()) else {
+            return;
+        };
 
         let sess = self.sess;
 
