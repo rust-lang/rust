@@ -6,14 +6,16 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use rustc_ast::token::DocFragmentKind;
 use rustc_ast::{self as ast, AttrStyle, CRATE_NODE_ID, NodeId, Safety};
 use rustc_attr_ir::target::{AstTarget, Target};
-use rustc_attr_ir::{AttrArgs, AttrItem, AttrPath, Attribute, AttributeKind, HashIgnoredAttrId};
+use rustc_attr_ir::{
+    AttrArgs, AttrErrorGuaranteed, AttrItem, AttrPath, Attribute, AttributeKind, HashIgnoredAttrId,
+};
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level, MultiSpan};
 use rustc_feature::{BUILTIN_ATTRIBUTE_SET, Features};
 use rustc_lint_defs::Reflectiveness::NonReflective;
 use rustc_lint_defs::{LintId, RegisteredTools, ToolOptions};
 use rustc_session::Session;
-use rustc_span::{DUMMY_SP, ErrorGuaranteed, Ident, Span, Symbol, sym};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, sym};
 
 use crate::attributes::AttributeSafety;
 use crate::attributes::doc_comment::target_check_doc_comment;
@@ -335,7 +337,7 @@ impl<'sess> AttributeParser<'sess> {
     }
 
     #[track_caller]
-    pub(crate) fn emit_err(&self, diag: impl for<'x> Diagnostic<'x>) -> ErrorGuaranteed {
+    pub(crate) fn emit_err(&self, diag: impl for<'x> Diagnostic<'x>) -> AttrErrorGuaranteed {
         self.should_emit.emit_err(self.sess.dcx().create_err(diag))
     }
 
