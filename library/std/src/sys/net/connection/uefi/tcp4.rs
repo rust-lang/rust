@@ -279,7 +279,7 @@ impl Tcp4 {
             fragment_table: [fragment],
         };
 
-        self.read_inner((&raw mut rx_data).cast(), timeout)
+        self.read_inner((&raw mut rx_data).cast(), data_len, timeout)
     }
 
     pub(crate) fn read_vectored(
@@ -319,12 +319,13 @@ impl Tcp4 {
             );
         };
 
-        self.read_inner(rx_data.as_mut_ptr(), timeout)
+        self.read_inner(rx_data.as_mut_ptr(), data_length, timeout)
     }
 
     pub(crate) fn read_inner(
         &self,
         rx_data: *mut tcp4::ReceiveData,
+        max_len: u32,
         timeout: Option<Duration>,
     ) -> io::Result<usize> {
         let evt = unsafe { self.create_evt() }?;
@@ -344,8 +345,9 @@ impl Tcp4 {
         if completion_token.status.is_error() {
             Err(io::Error::from_raw_os_error(completion_token.status.as_usize()))
         } else {
+            // Don't trust the driver to stay within the buffers we provided.
             let data_length = unsafe { (*rx_data).data_length };
-            Ok(data_length as usize)
+            Ok(data_length.min(max_len) as usize)
         }
     }
 
