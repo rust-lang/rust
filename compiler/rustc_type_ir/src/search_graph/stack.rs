@@ -116,6 +116,16 @@ impl<X: Cx> Stack<X> {
         self.entries.raw[head.index() + 1..].iter().map(|entry| entry.step_kind_from_parent)
     }
 
+    pub(super) fn path_kind_to_top(&self, path_kind: PathKind) -> IndexVec<StackDepth, PathKind> {
+        let mut path_kinds_to_top = IndexVec::from_elem(path_kind, &self.entries);
+        let mut acc = path_kind;
+        for (idx, entry) in self.entries.iter_enumerated().rev() {
+            path_kinds_to_top[idx] = acc;
+            acc = acc.extend(entry.step_kind_from_parent);
+        }
+        path_kinds_to_top
+    }
+
     pub(super) fn iter(&self) -> impl Iterator<Item = &StackEntry<X>> {
         self.entries.iter()
     }

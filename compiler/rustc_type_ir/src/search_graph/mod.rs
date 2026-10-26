@@ -1016,6 +1016,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
         rebase_reason: RebaseReason<X>,
     ) {
         let popped_head_index = self.stack.next_index();
+        let path_kinds_to_top = self.stack.path_kind_to_top(stack_entry.step_kind_from_parent);
         // Rebasing decisions depend only on each provisional entry and the current stack state,
         // so traversing the cache in hash order cannot change the final cache contents.
         #[allow(rustc::potential_query_instability)]
@@ -1059,11 +1060,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
                     let ep = popped_head.paths_to_head;
                     for (head_index, head) in stack_entry.heads.iter() {
                         let ph = head.paths_to_head;
-                        let hp = Self::cycle_path_kind(
-                            &self.stack,
-                            stack_entry.step_kind_from_parent,
-                            head_index,
-                        );
+                        let hp = path_kinds_to_top[head_index];
                         // We first validate that all cycles while computing `p` would stay
                         // the same if we were to recompute it as a nested goal of `e`.
                         let he = hp.extend(*path_from_head);
@@ -1117,11 +1114,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
 
                 // We now care about the path from the next highest cycle head to the
                 // provisional cache entry.
-                *path_from_head = path_from_head.extend(Self::cycle_path_kind(
-                    &self.stack,
-                    stack_entry.step_kind_from_parent,
-                    new_highest_head_index,
-                ));
+                *path_from_head = path_from_head.extend(path_kinds_to_top[new_highest_head_index]);
 
                 trace!(?input, ?entry, "rebased provisional cache entry");
 
@@ -1209,6 +1202,8 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
             return true;
         }
 
+        let mut path_kinds_to_top = None;
+
         // The global cache entry is also invalid if there's a provisional cache entry
         // would apply for any of its nested goals.
         // Any matching provisional entry rejects the candidate,
@@ -1241,8 +1236,9 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
                 // We check if any of the paths taken while computing the global goal
                 // would end up with an applicable provisional cache entry.
                 let head_index = heads.highest_cycle_head_index();
-                let head_to_curr =
-                    Self::cycle_path_kind(&self.stack, step_kind_from_parent, head_index);
+                let head_to_curr = path_kinds_to_top
+                    .get_or_insert_with(|| self.stack.path_kind_to_top(step_kind_from_parent))
+                    [head_index];
                 let full_paths = path_from_global_entry.extend_with(head_to_curr);
                 if full_paths.contains(head_to_provisional.into()) {
                     debug!(
