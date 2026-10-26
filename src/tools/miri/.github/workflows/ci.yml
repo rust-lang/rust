@@ -68,8 +68,8 @@ jobs:
         if: ${{ matrix.multiarch != '' }}
         run: |
           set -x
-          # armhf, s390x, ppc64el, riscv64 need Ubuntu Ports to be in the mirror list
-          sudo bash -c "echo 'https://ports.ubuntu.com/	priority:4' >> /etc/apt/apt-mirrors.txt"
+          # s390x, ppc64el, riscv64 need Ubuntu Ports to be in the mirror list
+          #sudo bash -c "echo 'https://ports.ubuntu.com/	priority:0' >> /etc/apt/apt-mirrors.txt"
           # Add architecture
           sudo dpkg --add-architecture ${{ matrix.multiarch }}
           # Ubuntu Ports often has outdated mirrors so try a few times to get the apt repo
