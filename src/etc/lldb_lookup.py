@@ -1,50 +1,51 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, List, Callable
+
+from typing import TYPE_CHECKING, Callable, List
 
 import lldb
-
 from lldb_providers import (
-    LLDBFeature,
     FEATURE_FLAGS,
-    LLDBOpaque,
-    StructSyntheticProvider,
-    StdHashMapSyntheticProvider,
-    StdOldHashMapSyntheticProvider,
-    StdRcSyntheticProvider,
-    TupleSyntheticProvider,
-    EmptySyntheticProvider,
     ClangEncodedEnumProvider,
+    ClangEncodedEnumSummaryProvider,
     DefaultSyntheticProvider,
-    StdStringSyntheticProvider,
-    StdStringSummaryProvider,
-    StdSliceSyntheticProvider,
-    StdStrSummaryProvider,
-    MSVCStrSyntheticProvider,
-    SizeSummaryProvider,
+    EmptySyntheticProvider,
+    LLDBFeature,
+    LLDBOpaque,
+    MSVCEnumSummaryProvider,
+    MSVCEnumSyntheticProvider,
     MSVCStdSliceSyntheticProvider,
-    StdSliceSummaryProvider,
-    StdOsStringSummaryProvider,
-    StdVecSyntheticProvider,
-    StdVecDequeSyntheticProvider,
-    StdRcSummaryProvider,
+    MSVCStrSyntheticProvider,
+    MSVCTupleSyntheticProvider,
+    SizeSummaryProvider,
     StdCellSyntheticProvider,
-    StdRefSyntheticProvider,
-    StdRefSummaryProvider,
+    StdHashMapSyntheticProvider,
     StdNonZeroNumberSummaryProvider,
+    StdOldHashMapSyntheticProvider,
+    StdOsStringSummaryProvider,
     StdPathBufSummaryProvider,
     StdPathSummaryProvider,
-    MSVCEnumSyntheticProvider,
-    MSVCEnumSummaryProvider,
-    TupleSummaryProvider,
-    MSVCTupleSyntheticProvider,
-    ClangEncodedEnumSummaryProvider,
+    StdRcSummaryProvider,
+    StdRcSyntheticProvider,
+    StdRefSummaryProvider,
+    StdRefSyntheticProvider,
+    StdSliceSummaryProvider,
+    StdSliceSyntheticProvider,
+    StdStringSummaryProvider,
+    StdStringSyntheticProvider,
+    StdStrSummaryProvider,
+    StdVecDequeSyntheticProvider,
+    StdVecSyntheticProvider,
     StructSummaryProvider,
+    StructSyntheticProvider,
+    TupleSummaryProvider,
+    TupleSyntheticProvider,
     f16SummaryProvider,
     f128SummaryProvider,
-    # re-exports
-    get_template_args as get_template_args,
-    resolve_msvc_template_arg as resolve_msvc_template_arg,
 )
+
+# re-exports
+from lldb_providers import get_template_args as get_template_args
+from lldb_providers import resolve_msvc_template_arg as resolve_msvc_template_arg
 from rust_types import (
     ENUM_DISR_FIELD_NAME,
     ENUM_LLDB_ENCODED_VARIANTS,

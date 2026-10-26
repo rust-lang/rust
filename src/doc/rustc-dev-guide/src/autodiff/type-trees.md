@@ -1,7 +1,8 @@
 # TypeTrees for Autodiff
 
 ## What are TypeTrees?
-Memory layout descriptors for Enzyme. Tell Enzyme exactly how types are structured in memory so it can compute derivatives efficiently.
+Memory layout descriptors for Enzyme.
+Tell Enzyme exactly how types are structured in memory so it can compute derivatives efficiently.
 
 ## Structure
 ```rust

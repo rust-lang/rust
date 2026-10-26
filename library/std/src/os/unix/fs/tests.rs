@@ -57,6 +57,33 @@ fn write_vectored_at() {
 }
 
 #[test]
+fn read_buf_exact_at_interrupted() {
+    struct InterruptOnce(crate::cell::Cell<bool>);
+
+    impl FileExt for InterruptOnce {
+        fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
+            if self.0.replace(false) {
+                return Err(io::ErrorKind::Interrupted.into());
+            }
+            let data = &b"pread is working!"[offset as usize..];
+            let n = buf.len().min(data.len());
+            buf[..n].copy_from_slice(&data[..n]);
+            Ok(n)
+        }
+
+        fn write_at(&self, _buf: &[u8], _offset: u64) -> io::Result<usize> {
+            unimplemented!()
+        }
+    }
+
+    let file = InterruptOnce(crate::cell::Cell::new(true));
+    let mut buf = [0; 10];
+    let mut buf = io::BorrowedBuf::from(buf.as_mut_slice());
+    file.read_buf_exact_at(buf.unfilled(), 6).unwrap();
+    assert_eq!(buf.filled(), b"is working");
+}
+
+#[test]
 fn test_mkfifo() {
     let tmp_dir = crate::test_helpers::tmpdir();
 

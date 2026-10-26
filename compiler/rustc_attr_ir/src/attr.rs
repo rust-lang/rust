@@ -226,10 +226,6 @@ impl AttributeExt for Attribute {
         }
     }
 
-    fn is_automatically_derived_attr(&self) -> bool {
-        matches!(self, Attribute::Parsed(AttributeKind::AutomaticallyDerived))
-    }
-
     #[inline]
     fn doc_str_and_fragment_kind(&self) -> Option<(Symbol, DocFragmentKind, Span)> {
         match &self {
@@ -259,10 +255,6 @@ impl AttributeExt for Attribute {
                     | AttributeKind::ProcMacroDerive { .. }
             )
         )
-    }
-
-    fn is_doc_hidden(&self) -> bool {
-        matches!(self, Attribute::Parsed(AttributeKind::Doc(d)) if d.hidden.is_some())
     }
 
     fn is_doc_keyword_or_attribute(&self) -> bool {

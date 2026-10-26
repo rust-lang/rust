@@ -717,7 +717,7 @@ impl File {
     fn readlink(&self) -> io::Result<PathBuf> {
         let mut space =
             Align8([MaybeUninit::<u8>::uninit(); c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE as usize]);
-        let (_bytes, buf) = self.reparse_point(&mut space)?;
+        let (bytes, buf) = self.reparse_point(&mut space)?;
         unsafe {
             let (path_buffer, subst_off, subst_len, relative) = match (*buf).ReparseTag {
                 c::IO_REPARSE_TAG_SYMLINK => {
@@ -747,6 +747,17 @@ impl File {
                     ));
                 }
             };
+            // Check that the reparse point offsets and length stay within the data that
+            // was actually returned, before the slice is built from them. This keeps
+            // malformed filesystem data from causing an out-of-bounds access.
+            let path_offset = path_buffer.addr() - buf.addr();
+            let end = path_offset + (subst_off as usize * 2) + (subst_len as usize * 2);
+            if end > bytes as usize {
+                return Err(io::const_error!(
+                    io::ErrorKind::Uncategorized,
+                    "Invalid reparse point data",
+                ));
+            }
             let subst_ptr = path_buffer.add(subst_off.into());
             let subst = slice::from_raw_parts_mut(subst_ptr, subst_len as usize);
             // Absolute paths start with an NT internal namespace prefix `\??\`

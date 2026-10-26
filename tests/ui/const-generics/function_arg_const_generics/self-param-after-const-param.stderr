@@ -1,0 +1,42 @@
+error: unexpected `self` parameter in function
+  --> $DIR/self-param-after-const-param.rs:4:26
+   |
+LL |     fn a(const N: usize, self: [isize; N]) -> isize;
+   |                          ^^^^ must be the first parameter of an associated function
+
+error[E0185]: method `a` has a `&self` declaration in the impl, but not in the trait
+  --> $DIR/self-param-after-const-param.rs:11:5
+   |
+LL |     fn a(const N: usize, self: [isize; N]) -> isize;
+   |     ------------------------------------------------ trait method declared without `&self`
+...
+LL |     fn a(&self) -> isize {
+   |     ^^^^^^^^^^^^^^^^^^^^ `&self` used in impl
+
+error[E0599]: no method named `a` found for reference `&Self` in the current scope
+  --> $DIR/self-param-after-const-param.rs:6:14
+   |
+LL |         self.a() + 2
+   |              ^ this is an associated function, not a method
+   |
+   = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
+note: the candidate is defined in the trait `Foo`
+  --> $DIR/self-param-after-const-param.rs:4:5
+   |
+LL |     fn a(const N: usize, self: [isize; N]) -> isize;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: use associated function syntax instead
+   |
+LL -         self.a() + 2
+LL +         Self::a() + 2
+   |
+help: there is a method `b` with a similar name
+   |
+LL -         self.a() + 2
+LL +         self.b() + 2
+   |
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0185, E0599.
+For more information about an error, try `rustc --explain E0185`.

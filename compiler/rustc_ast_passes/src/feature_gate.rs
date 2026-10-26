@@ -491,7 +491,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     );
     gate_all!(
         named_fn_trait_parameters,
-        "named parameters in parenthesized generic argument lists are experimental"
+        "parameters in parenthesized generic argument lists with names, attributes, or c-variadics are experimental"
     );
 
     // `associated_const_equality` will be stabilized as part of `gca_min_const_items`.

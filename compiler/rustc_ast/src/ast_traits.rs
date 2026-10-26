@@ -170,13 +170,17 @@ impl HasTokens for Attribute {
     fn tokens(&self) -> Option<&LazyAttrTokenStream> {
         match &self.kind {
             AttrKind::Normal(normal) => normal.tokens.as_ref(),
-            AttrKind::Synthetic(..) | AttrKind::DocComment(..) => unreachable!(),
+            AttrKind::Synthetic(..) | AttrKind::DocComment(..) | AttrKind::Generated(..) => {
+                unreachable!()
+            }
         }
     }
     fn tokens_mut(&mut self) -> Option<&mut Option<LazyAttrTokenStream>> {
         Some(match &mut self.kind {
             AttrKind::Normal(normal) => &mut normal.tokens,
-            AttrKind::Synthetic(..) | AttrKind::DocComment(..) => unreachable!(),
+            AttrKind::Synthetic(..) | AttrKind::DocComment(..) | AttrKind::Generated(..) => {
+                unreachable!()
+            }
         })
     }
 }

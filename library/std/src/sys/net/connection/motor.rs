@@ -151,6 +151,14 @@ impl TcpStream {
         moto_rt::net::ttl(self.inner.as_raw_fd()).map_err(map_motor_error)
     }
 
+    pub fn set_hop_limit_v6(&self, _: u8) -> io::Result<()> {
+        unsupported()
+    }
+
+    pub fn hop_limit_v6(&self) -> io::Result<u8> {
+        unsupported()
+    }
+
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
         moto_rt::net::take_error(self.inner.as_raw_fd())
             .map(|e| e.map(map_motor_error))
@@ -210,6 +218,14 @@ impl TcpListener {
 
     pub fn ttl(&self) -> io::Result<u32> {
         moto_rt::net::ttl(self.inner.as_raw_fd()).map_err(map_motor_error)
+    }
+
+    pub fn set_hop_limit_v6(&self, _: u8) -> io::Result<()> {
+        unsupported()
+    }
+
+    pub fn hop_limit_v6(&self) -> io::Result<u8> {
+        unsupported()
     }
 
     pub fn set_only_v6(&self, only_v6: bool) -> io::Result<()> {
@@ -369,6 +385,22 @@ impl UdpSocket {
 
     pub fn ttl(&self) -> io::Result<u32> {
         moto_rt::net::ttl(self.inner.as_raw_fd()).map_err(map_motor_error)
+    }
+
+    pub fn set_multicast_hop_limit_v6(&self, _: u8) -> io::Result<()> {
+        unsupported()
+    }
+
+    pub fn multicast_hop_limit_v6(&self) -> io::Result<u8> {
+        unsupported()
+    }
+
+    pub fn set_hop_limit_v6(&self, _: u8) -> io::Result<()> {
+        unsupported()
+    }
+
+    pub fn hop_limit_v6(&self) -> io::Result<u8> {
+        unsupported()
     }
 
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {

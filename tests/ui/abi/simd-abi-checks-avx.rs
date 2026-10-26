@@ -4,7 +4,6 @@
 
 #![feature(portable_simd)]
 #![feature(simd_ffi)]
-#![expect(improper_ctypes_definitions)]
 
 use std::arch::x86_64::*;
 
@@ -82,7 +81,6 @@ fn main() {
     }
 
     unsafe {
-        #[expect(improper_ctypes)]
         extern "C" {
             fn some_extern() -> __m256;
         }

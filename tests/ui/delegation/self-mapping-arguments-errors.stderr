@@ -113,6 +113,11 @@ note: method defined here
 LL |     trait MyAdd {
 LL |         fn add(self, other: Box<Self>) -> Self;
    |            ^^^       -----
+note: method provided through this `impl`
+  --> $DIR/self-mapping-arguments-errors.rs:37:5
+   |
+LL |     impl MyAdd for usize {
+   |     ^^^^^^^^^^^^^^^^^^^^
 help: store this in the heap by calling `Box::new`
    |
 LL |     reuse impl MyAdd for W { Box::new(self.0) }

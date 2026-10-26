@@ -193,7 +193,7 @@ fn match_args_from_caller_to_enzyme<'ll, 'tcx>(
             // Now we multiply `4 * next_outer_arg` to get the stride.
             let mul = unsafe {
                 llvm::LLVMBuildMul(
-                    builder.llbuilder,
+                    builder.llbuilder(),
                     cx.get_const_int(cx.type_i64(), elem_bytes_size),
                     next_outer_arg,
                     UNNAMED,

@@ -3,6 +3,8 @@ error: the `must_use` attribute cannot be used on macro calls
    |
 LL | #[must_use]
    |   ^^^^^^^^
+...
+LL | global_asm!("");
    |
    = help: the `must_use` attribute can be applied to data types, functions, and traits
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -18,6 +20,8 @@ error: the `must_use` attribute cannot be used on extern crates
    |
 LL | #[must_use]
    |   ^^^^^^^^
+LL |
+LL | extern crate std as std2;
    |
    = help: the `must_use` attribute can be applied to data types, functions, and traits
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -27,6 +31,8 @@ error: the `must_use` attribute cannot be used on modules
    |
 LL | #[must_use]
    |   ^^^^^^^^
+LL |
+LL | mod test_mod {}
    |
    = help: the `must_use` attribute can be applied to data types, functions, and traits
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -36,6 +42,8 @@ error: the `must_use` attribute cannot be used on use statements
    |
 LL | #[must_use]
    |   ^^^^^^^^
+LL |
+LL | use std::arch::global_asm;
    |
    = help: the `must_use` attribute can be applied to data types, functions, and traits
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -45,6 +53,8 @@ error: the `must_use` attribute cannot be used on constants
    |
 LL | #[must_use]
    |   ^^^^^^^^
+LL |
+LL | const CONST: usize = 4;
    |
    = help: the `must_use` attribute can be applied to data types, functions, and traits
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -54,6 +64,8 @@ error: the `must_use` attribute cannot be used on statics
    |
 LL | #[must_use]
    |   ^^^^^^^^
+...
+LL | static STATIC: usize = 4;
    |
    = help: the `must_use` attribute can be applied to data types, functions, and traits
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -63,6 +75,8 @@ error: the `must_use` attribute cannot be used on inherent impl blocks
    |
 LL | #[must_use]
    |   ^^^^^^^^
+LL |
+LL | impl U {
    |
    = help: the `must_use` attribute can be applied to data types, functions, and traits
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -72,6 +86,8 @@ error: the `must_use` attribute cannot be used on foreign modules
    |
 LL | #[must_use]
    |   ^^^^^^^^
+LL |
+LL | extern "Rust" {
    |
    = help: the `must_use` attribute can be applied to data types, functions, and traits
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -81,6 +97,8 @@ error: the `must_use` attribute cannot be used on type aliases
    |
 LL | #[must_use]
    |   ^^^^^^^^
+LL |
+LL | type UseMe = ();
    |
    = help: the `must_use` attribute can be applied to data types, functions, and traits
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -99,6 +117,8 @@ error: the `must_use` attribute cannot be used on trait impl blocks
    |
 LL | #[must_use]
    |   ^^^^^^^^
+LL |
+LL | impl Use for () {
    |
    = help: the `must_use` attribute can be applied to data types, functions, and traits
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -108,6 +128,8 @@ error: the `must_use` attribute cannot be used on trait aliases
    |
 LL | #[must_use]
    |   ^^^^^^^^
+LL |
+LL | trait Alias = Use;
    |
    = help: the `must_use` attribute can be applied to data types, functions, and traits
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -117,6 +139,8 @@ error: the `must_use` attribute cannot be used on macro defs
    |
 LL | #[must_use]
    |   ^^^^^^^^
+LL |
+LL | macro_rules! cool_macro {
    |
    = help: the `must_use` attribute can be applied to data types, functions, and traits
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -126,6 +150,8 @@ error: the `must_use` attribute cannot be used on statements
    |
 LL |     #[must_use]
    |       ^^^^^^^^
+LL |
+LL |     let x = || {};
    |
    = help: the `must_use` attribute can be applied to data types, functions, and traits
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -135,6 +161,8 @@ error: the `must_use` attribute cannot be used on closures
    |
 LL |     let x = #[must_use]
    |               ^^^^^^^^
+LL |
+LL |     || {};
    |
    = help: the `must_use` attribute can be applied to data types, foreign functions, functions, methods, and traits
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -144,6 +172,8 @@ error: the `must_use` attribute cannot be used on match arms
    |
 LL |         #[must_use]
    |           ^^^^^^^^
+LL |
+LL |         Some(res) => res,
    |
    = help: the `must_use` attribute can be applied to data types, functions, and traits
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -171,6 +201,8 @@ error: the `must_use` attribute cannot be used on associated consts
    |
 LL |     #[must_use]
    |       ^^^^^^^^
+LL |
+LL |     const ASSOC_CONST: usize = 4;
    |
    = help: the `must_use` attribute can be applied to data types, functions, and traits
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -180,6 +212,8 @@ error: the `must_use` attribute cannot be used on associated types
    |
 LL |     #[must_use]
    |       ^^^^^^^^
+LL |
+LL |     type AssocTy;
    |
    = help: the `must_use` attribute can be applied to data types, functions, and traits
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -189,6 +223,8 @@ error: the `must_use` attribute cannot be used on trait methods in impl blocks
    |
 LL |     #[must_use]
    |       ^^^^^^^^
+LL |
+LL |     fn get_four(&self) -> usize {
    |
    = help: the `must_use` attribute can be applied to data types, foreign functions, functions, inherent methods, provided trait methods, required trait methods, and traits
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -198,6 +234,8 @@ error: the `must_use` attribute cannot be used on foreign statics
    |
 LL |     #[must_use]
    |       ^^^^^^^^
+LL |
+LL |     static FOREIGN_STATIC: usize;
    |
    = help: the `must_use` attribute can be applied to data types, functions, and traits
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!

@@ -6,7 +6,7 @@ use rustc_attr_ir::{AttrItem, Attribute, AttributeKind};
 use rustc_errors::{DiagArgValue, MultiSpan, StashKey};
 use rustc_feature::Features;
 use rustc_lint_defs::builtin::{
-    MISPLACED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES, USELESS_DEPRECATED,
+    INVALID_DOC_ATTRIBUTES, MISPLACED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES, USELESS_DEPRECATED,
 };
 use rustc_span::{BytePos, FileName, RemapPathScopeComponents, Span, Symbol, sym};
 
@@ -131,23 +131,31 @@ impl<'sess> AttributeParser<'sess> {
         let (applied, only) = allowed_targets_applied(allowed_targets, cx.target, cx.features);
         let is_diagnostic_attr = cx.attr_path.segments[0] == sym::diagnostic;
 
+        let span = if attribute_args.is_empty() {
+            // Example: for the attribute `#[inline]`, name+attribute_args gives "inline",
+            // and the path span covers `inline` which is just what we want.
+            cx.attr_path.span
+        } else {
+            // Example 1: for the attribute `#[repr(C)]`, name+attribute_args gives
+            // "repr(C)", and the inner span covers `repr(C)` which is just what we want.
+            //
+            // Example 2: for the attribute `#[repr(C, packed)]`, name+attribute_args gives
+            // "repr(C)", and the inner span covers `repr(C, packed)` which doesn't match
+            // exactly but is as close as we can get.
+            cx.inner_span
+        };
+        let target_span = if span.eq_ctxt(cx.target_span) && cx.target != Target::Crate {
+            cx.target_span.shrink_to_lo()
+        } else {
+            span
+        };
+
         let diag = InvalidTarget {
-            span: if attribute_args.is_empty() {
-                // Example: for the attribute `#[inline]`, name+attribute_args gives "inline",
-                // and the path span covers `inline` which is just what we want.
-                cx.attr_path.span
-            } else {
-                // Example 1: for the attribute `#[repr(C)]`, name+attribute_args gives
-                // "repr(C)", and the inner span covers `repr(C)` which is just what we want.
-                //
-                // Example 2: for the attribute `#[repr(C, packed)]`, name+attribute_args gives
-                // "repr(C)", and the inner span covers `repr(C, packed)` which doesn't match
-                // exactly but is as close as we can get.
-                cx.inner_span
-            },
+            span,
             attr_span: cx.attr_span,
             name: cx.attr_path.clone(),
             target: cx.target.plural_name(),
+            target_span,
             only: if only { "only " } else { "" },
             applied: DiagArgValue::StrListSepByAnd(applied.into_iter().map(Cow::Owned).collect()),
             attribute_args: attribute_args.to_string(),
@@ -235,6 +243,16 @@ impl<'sess> AttributeParser<'sess> {
                 (true, src.path(RemapPathScopeComponents::DIAGNOSTICS).display().to_string())
             })
             .unwrap_or_default();
+
+        if name == "doc" {
+            let diag = crate::diagnostics::AttrCrateLevelOnly;
+            if warn {
+                cx.emit_lint(INVALID_DOC_ATTRIBUTES, diag, attr_span);
+            } else {
+                cx.emit_err(diag);
+            }
+            return;
+        }
 
         let diag = crate::diagnostics::InvalidAttrStyle {
             name,

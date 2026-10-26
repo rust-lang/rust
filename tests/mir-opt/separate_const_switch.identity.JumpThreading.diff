@@ -10,31 +10,27 @@
       let _5: i32;
       scope 1 {
           debug residual => _4;
-          scope 2 {
-              scope 8 (inlined #[track_caller] <Result<i32, i32> as FromResidual<Result<!, i32>>>::from_residual) {
-                  let mut _10: isize;
-                  let _11: i32;
-                  let mut _12: bool;
-                  scope 9 {
-                      scope 10 (inlined <i32 as From<i32>>::from) {
-                      }
+          scope 6 (inlined #[track_caller] <Result<i32, i32> as FromResidual<Result<!, i32>>>::from_residual) {
+              let mut _10: isize;
+              let _11: i32;
+              let mut _12: bool;
+              scope 7 {
+                  scope 8 (inlined <i32 as From<i32>>::from) {
                   }
               }
           }
       }
-      scope 3 {
+      scope 2 {
           debug val => _5;
-          scope 4 {
-          }
       }
-      scope 5 (inlined <Result<i32, i32> as Try>::branch) {
+      scope 3 (inlined <Result<i32, i32> as Try>::branch) {
           let mut _6: isize;
           let _7: i32;
           let _8: i32;
           let mut _9: std::result::Result<!, i32>;
-          scope 6 {
+          scope 4 {
           }
-          scope 7 {
+          scope 5 {
           }
       }
   

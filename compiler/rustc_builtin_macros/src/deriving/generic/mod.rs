@@ -178,11 +178,8 @@ use std::ops::Not;
 
 pub(crate) use Substructure::*;
 pub(crate) use rustc_ast as ast;
-use rustc_ast::token::{IdentKind, LitKind, Token, TokenKind};
-use rustc_ast::tokenstream::{DelimSpan, Spacing, TokenTree};
 use rustc_ast::{
-    AttrArgs, DelimArgs, EnumDef, Expr, GenericArg, GenericParam, GenericParamKind, Generics,
-    Safety, VariantData,
+    EnumDef, Expr, GenericArg, GenericParam, GenericParamKind, Generics, Safety, VariantData,
 };
 use rustc_attr_ir::{Attribute, AttributeKind, ReprPacked};
 use rustc_attr_parsing::AttributeParser;
@@ -705,47 +702,18 @@ impl<'a> TraitDef<'a> {
         let path = cx.path_all(type_ident.span.with_ctxt(ctxt), &[type_ident], self_params);
         let self_type = cx.ty_path(path);
 
-        let mut attrs = thin_vec![cx.attr_word(sym::automatically_derived, self.span),];
+        let mut attrs =
+            thin_vec![cx.generated_attr(self.span, ast::GeneratedAttr::AutomaticallyDerived)];
 
         // Only add `rustc_const_unstable` attributes if `derive_const` is used within libcore/libstd,
         // Other crates don't need stability attributes, so adding them is not useful, but libcore needs them
         // on all const trait impls.
         if self.is_const && cx.ecfg.features.staged_api() {
-            let rustc_const_unstable = cx.path_name(self.span, sym::rustc_const_unstable);
-
-            // #[rustc_const_unstable(feature = "derive_const", issue = "143874")]
-            attrs.push(
-                cx.attr_nested(
-                    rustc_ast::AttrItem {
-                        unsafety: Safety::Default,
-                        path: rustc_const_unstable,
-                        args: AttrArgs::Delimited(DelimArgs {
-                            dspan: DelimSpan::from_single(self.span),
-                            delim: rustc_ast::token::Delimiter::Parenthesis,
-                            tokens: [
-                                TokenKind::Ident(sym::feature, IdentKind::Normal),
-                                TokenKind::Eq,
-                                TokenKind::lit(LitKind::Str, sym::derive_const, None),
-                                TokenKind::Comma,
-                                TokenKind::Ident(sym::issue, IdentKind::Normal),
-                                TokenKind::Eq,
-                                TokenKind::lit(LitKind::Str, sym::derive_const_issue, None),
-                            ]
-                            .into_iter()
-                            .map(|kind| {
-                                TokenTree::Token(Token { kind, span: self.span }, Spacing::Alone)
-                            })
-                            .collect(),
-                        }),
-                        span: self.span,
-                    },
-                    self.span,
-                ),
-            )
+            attrs.push(cx.generated_attr(self.span, ast::GeneratedAttr::RustcConstUnstableDerived));
         }
 
         if !self.document {
-            attrs.push(cx.attr_nested_word(sym::doc, sym::hidden, self.span));
+            attrs.push(cx.generated_attr(self.span, ast::GeneratedAttr::DocHidden));
         }
 
         cx.item_trait_impl(

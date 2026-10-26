@@ -1,0 +1,67 @@
+warning: this attribute can only be applied at the crate level
+  --> $DIR/doc-crate-level.rs:4:1
+   |
+LL | #[doc(rust_logo)]
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = note: read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#at-the-crate-level> for more information
+   = note: `#[warn(invalid_doc_attributes)]` on by default
+
+warning: this attribute can only be applied at the crate level
+  --> $DIR/doc-crate-level.rs:6:1
+   |
+LL | #[doc(html_favicon_url = "example.org")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#at-the-crate-level> for more information
+
+warning: this attribute can only be applied at the crate level
+  --> $DIR/doc-crate-level.rs:8:1
+   |
+LL | #[doc(html_logo_url = "example.org")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#at-the-crate-level> for more information
+
+warning: this attribute can only be applied at the crate level
+  --> $DIR/doc-crate-level.rs:10:1
+   |
+LL | #[doc(html_playground_url = "example.org")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#at-the-crate-level> for more information
+
+warning: this attribute can only be applied at the crate level
+  --> $DIR/doc-crate-level.rs:12:1
+   |
+LL | #[doc(issue_tracker_base_url = "example.org")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#at-the-crate-level> for more information
+
+warning: this attribute can only be applied at the crate level
+  --> $DIR/doc-crate-level.rs:14:1
+   |
+LL | #[doc(html_root_url = "example.org")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#at-the-crate-level> for more information
+
+warning: this attribute can only be applied at the crate level
+  --> $DIR/doc-crate-level.rs:16:1
+   |
+LL | #[doc(html_no_source)]
+   | ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#at-the-crate-level> for more information
+
+warning: this attribute can only be applied at the crate level
+  --> $DIR/doc-crate-level.rs:18:1
+   |
+LL | #[doc(test(no_crate_inject))]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#at-the-crate-level> for more information
+
+warning: 8 warnings emitted
+

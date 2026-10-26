@@ -155,10 +155,12 @@ where
         let ty::OutlivesClause(a, b) = goal.predicate;
 
         if self.cx().assumptions_on_binders() {
-            use rustc_type_ir::region_constraint::{LeafRegionConstraint, RegionConstraint};
+            use rustc_type_ir::region_constraint::{
+                LeafRegionConstraint, NoSpan, RegionConstraint,
+            };
 
             let constraint =
-                RegionConstraint::new_leaf(LeafRegionConstraint::RegionOutlives(a, b, ()));
+                RegionConstraint::new_leaf(LeafRegionConstraint::RegionOutlives(a, b, NoSpan));
             self.register_solver_region_constraint(constraint);
         } else {
             self.register_region_outlives(a, b, VisibleForLeakCheck::Yes);

@@ -84,6 +84,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // `.await` operator.
             Some(DesugaringKind::Await) => return,
 
+            // Don't lint *within* contract attrs
+            Some(DesugaringKind::Contract) => return,
             _ => {}
         }
 

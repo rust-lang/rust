@@ -41,7 +41,7 @@ pub(crate) fn expand_deriving_hash(
             nonself_args: smallvec![(cx.ty_ref(span, arg, None, Mutability::Mut), sym::state)],
             has_other_selflike_arg: false,
             ret_ty: cx.ty_unit(span),
-            attributes: thin_vec![cx.attr_word(sym::inline, span)],
+            attributes: thin_vec![cx.generated_attr(span, ast::GeneratedAttr::Inline)],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
             combine_substructure: combine_substructure(hash_substructure),
         }],

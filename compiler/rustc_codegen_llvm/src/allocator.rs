@@ -106,13 +106,13 @@ pub(crate) unsafe fn codegen(
     }
 }
 
-fn create_wrapper_function(
+fn create_wrapper_function<'ll>(
     tcx: TyCtxt<'_>,
-    cx: &SimpleCx<'_>,
+    cx: &SimpleCx<'ll>,
     from_name: &str,
     to_name: Option<&str>,
-    args: &[&Type],
-    output: Option<&Type>,
+    args: &[&'ll Type],
+    output: Option<&'ll Type>,
     no_return: bool,
     attrs: &CodegenFnAttrs,
 ) {

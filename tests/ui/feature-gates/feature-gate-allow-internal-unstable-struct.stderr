@@ -12,6 +12,8 @@ error: the `allow_internal_unstable` attribute cannot be used on structs
    |
 LL | #[allow_internal_unstable(something)]
    |   ^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | struct S;
    |
    = help: the `allow_internal_unstable` attribute can be applied to functions and macro defs
 

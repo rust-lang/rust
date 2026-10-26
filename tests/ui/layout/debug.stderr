@@ -9,6 +9,7 @@ error: the `rustc_dump_layout` attribute cannot be used on constants
    |
 LL | #[rustc_dump_layout(debug)]
    |   ^^^^^^^^^^^^^^^^^
+LL | const C: () = ();
    |
    = help: the `rustc_dump_layout` attribute can be applied to data types and type aliases
 
@@ -17,6 +18,7 @@ error: the `rustc_dump_layout` attribute cannot be used on associated consts
    |
 LL |     #[rustc_dump_layout(debug)]
    |       ^^^^^^^^^^^^^^^^^
+LL |     const C: () = ();
    |
    = help: the `rustc_dump_layout` attribute can be applied to data types and type aliases
 

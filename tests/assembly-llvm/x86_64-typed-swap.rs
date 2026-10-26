@@ -3,7 +3,7 @@
 //@ [LIN] only-linux
 //@ only-x86_64
 //@ assembly-output: emit-asm
-//@ compile-flags: --crate-type=lib -Copt-level=3
+//@ compile-flags: --crate-type=lib -Copt-level=3 -Ctarget-cpu=x86-64-v2
 
 use std::arch::x86_64::__m128;
 use std::mem::swap;

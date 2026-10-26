@@ -3,6 +3,8 @@ error: the `rustc_lint_query_instability` attribute cannot be used on structs
    |
 LL | #[rustc_lint_query_instability]
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | struct Foo;
    |
    = help: the `rustc_lint_query_instability` attribute can only be applied to functions
 

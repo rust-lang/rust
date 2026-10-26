@@ -132,6 +132,13 @@ pub fn eh_personality_symbol<'tcx>(tcx: TyCtxt<'tcx>) -> String {
 
 pub fn mangle_internal_symbol<'tcx>(tcx: TyCtxt<'tcx>, item_name: &str) -> String {
     match item_name {
+        // Some projects manually define rust_eh_personality as they use no_std on a target where
+        // libcore is compiled with panic=unwind and thus need rust_eh_personality to be present
+        // while it is only defined in libstd. These projects don't want to use unstable features
+        // and thus can't use a proper #[lang = "eh_personality"]
+        // FIXME mangle again once no_std on a target with std support doesn't need it or build-std
+        // is possible on stable for non-Cargo build systems.
+        "rust_eh_personality" => return item_name.to_owned(),
         // Apple availability symbols need to not be mangled to be usable by
         // C/Objective-C code.
         "__isPlatformVersionAtLeast" | "__isOSVersionAtLeast" => return item_name.to_owned(),

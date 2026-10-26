@@ -3,6 +3,7 @@ error: the `repr(C)` attribute cannot be used on functions
    |
 LL | #[repr(C)]
    |   ^^^^^^^
+LL | fn f() {}
    |
    = help: the `repr(C)` attribute can only be applied to data types
 
@@ -11,6 +12,7 @@ error: the `repr(i8)` attribute cannot be used on structs
    |
 LL | #[repr(i8)]
    |   ^^^^^^^^
+LL | struct SInt(f64, f64);
    |
    = help: the `repr(i8)` attribute can only be applied to enums
 
@@ -19,6 +21,7 @@ error: the `repr(packed)` attribute cannot be used on enums
    |
 LL | #[repr(packed)]
    |   ^^^^^^^^^^^^
+LL | enum EPacked {
    |
    = help: the `repr(packed)` attribute can be applied to structs and unions
 
@@ -27,6 +30,7 @@ error: the `repr(simd)` attribute cannot be used on enums
    |
 LL | #[repr(simd)]
    |   ^^^^^^^^^^
+LL | enum ESimd {
    |
    = help: the `repr(simd)` attribute can only be applied to structs
 
@@ -35,6 +39,8 @@ error: the `repr()` attribute cannot be used on type aliases
    |
 LL | #[repr()]
    |   ^^^^^^
+LL |
+LL | type SirThisIsAType = i32;
    |
    = help: the `repr()` attribute can only be applied to data types
 

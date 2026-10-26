@@ -1,5 +1,5 @@
 error: this function definition requires the `sse` target feature, which is not enabled
-  --> $DIR/simd-abi-checks-sse.rs:18:1
+  --> $DIR/simd-abi-checks-sse.rs:17:1
    |
 LL | pub unsafe extern "C" fn f(_: Simd<i64, 2>) {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here

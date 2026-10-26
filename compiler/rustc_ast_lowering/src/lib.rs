@@ -47,7 +47,7 @@ use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{self as ast, *};
 use rustc_attr_ir::find_attr;
 use rustc_attr_ir::lang_items::LangItem;
-use rustc_attr_ir::target::Target;
+use rustc_attr_ir::target::{AstTarget, Target};
 use rustc_attr_parsing::{AttributeParser, Recovery, ShouldEmit};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sorted_map::SortedMap;
@@ -762,7 +762,13 @@ fn lower_to_hir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::MaybeOwner<'_> {
         AstOwner::Crate(c) => with_lctx(tcx, &*resolver, CRATE_NODE_ID, |lctx| {
             debug_assert_eq!(lctx.curr_owner.owner_id(), CRATE_OWNER_ID);
             let module = lctx.lower_mod(&c.items, &c.spans);
-            lctx.lower_attrs(hir::CRATE_HIR_ID, &c.attrs, c.spans.inner_span, Target::Crate);
+            lctx.lower_attrs(
+                hir::CRATE_HIR_ID,
+                &c.attrs,
+                c.spans.inner_span,
+                Target::Crate,
+                AstTarget::Crate(c),
+            );
             hir::OwnerNode::Crate(module)
         }),
         AstOwner::Item(item) => {
@@ -1149,8 +1155,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         attrs: &[Attribute],
         target_span: Span,
         target: Target,
+        ast_target: AstTarget<'_>,
     ) -> &'hir [rustc_attr_ir::Attribute] {
-        self.lower_attrs_with_extra(id, attrs, target_span, target, None, &[])
+        self.lower_attrs_with_extra(id, attrs, target_span, target, ast_target, &[])
     }
 
     fn lower_attrs_with_extra(
@@ -1159,14 +1166,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
         attrs: &[Attribute],
         target_span: Span,
         target: Target,
-        target_item: Option<&ast::Item>,
+        ast_target: AstTarget<'_>,
         extra_hir_attributes: &[rustc_attr_ir::Attribute],
     ) -> &'hir [rustc_attr_ir::Attribute] {
         if attrs.is_empty() && extra_hir_attributes.is_empty() {
             &[]
         } else {
             let mut lowered_attrs =
-                self.lower_attrs_vec(attrs, self.lower_span(target_span), id, target, target_item);
+                self.lower_attrs_vec(attrs, self.lower_span(target_span), id, target, ast_target);
             lowered_attrs.extend(extra_hir_attributes.iter().cloned());
 
             assert_eq!(id.owner, self.curr_owner.owner_id());
@@ -1193,14 +1200,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
         target_span: Span,
         target_hir_id: HirId,
         target: Target,
-        target_item: Option<&ast::Item>,
+        ast_target: AstTarget<'_>,
     ) -> Vec<rustc_attr_ir::Attribute> {
         let l = self.span_lowerer();
         self.attribute_parser.parse_attribute_list(
             attrs,
             target_span,
             target,
-            target_item,
+            ast_target,
             |s| l.lower(s),
             |lint_id, span, kind| {
                 self.curr_owner.delayed_lints.push(DelayedLint {
@@ -1993,7 +2000,26 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     colon_span: None,
                     source: hir::GenericParamSource::Generics,
                 };
-                self.lower_attrs(hir_id, &param.attrs, param.span, Target::from(&generic_param));
+                let ast_generic_param = ast::GenericParam {
+                    id: param.id,
+                    ident,
+                    attrs: param.attrs.clone(),
+                    bounds: Default::default(),
+                    is_placeholder: false,
+                    kind: ast::GenericParamKind::Const {
+                        ty: param.ty.clone(),
+                        span: param.span,
+                        default: None,
+                    },
+                    colon_span: None,
+                };
+                self.lower_attrs(
+                    hir_id,
+                    &param.attrs,
+                    param.span,
+                    Target::from(&generic_param),
+                    AstTarget::GenericParam(&ast_generic_param),
+                );
                 self.curr_owner.const_defs.push(generic_param);
                 return None;
             }
@@ -2001,7 +2027,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // FIXME This uses `fn_hir_id`, which is not correct, it should use the parameter hir id instead
                 // The parameter is currently not lowered for functions without bodies, so there is no place to store the lowered hir id
                 // This should be fixed by storing function parameters in the `hir::FnSig` instead of `hir::Body`
-                self.lower_attrs(fn_hir_id, &param.attrs, param.span, Target::Param);
+                self.lower_attrs(
+                    fn_hir_id,
+                    &param.attrs,
+                    param.span,
+                    Target::Param,
+                    AstTarget::Param(param),
+                );
             }
             let itctx = match kind {
                 FnDeclKind::Fn | FnDeclKind::Inherent | FnDeclKind::Impl | FnDeclKind::Trait => {
@@ -2318,7 +2350,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let hir_id = self.lower_node_id(param.id);
         let param_attrs = &param.attrs;
         let param_span = param.span();
-        let param = hir::GenericParam {
+        let param_hir = hir::GenericParam {
             hir_id,
             def_id: self.local_def_id(param.id),
             name,
@@ -2328,8 +2360,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
             colon_span: param.colon_span.map(|s| self.lower_span(s)),
             source,
         };
-        self.lower_attrs(hir_id, param_attrs, param_span, Target::from(&param));
-        param
+        self.lower_attrs(
+            hir_id,
+            param_attrs,
+            param_span,
+            Target::from(&param_hir),
+            AstTarget::GenericParam(param),
+        );
+        param_hir
     }
 
     fn lower_generic_param_kind(
@@ -2932,7 +2970,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     // FIXME(mgca): This might result in lowering attributes that
                     // then go unused as the `Target::ExprField` is not actually
                     // corresponding to `Node::ExprField`.
-                    self.lower_attrs(hir_id, &f.attrs, f.span, Target::ExprField);
+                    self.lower_attrs(
+                        hir_id,
+                        &f.attrs,
+                        f.span,
+                        Target::ExprField,
+                        AstTarget::ExprField(f),
+                    );
                     let expr = self.lower_expr_to_const_arg_direct(&f.expr, None);
 
                     hir::ConstArgExprField {

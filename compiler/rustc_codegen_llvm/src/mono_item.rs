@@ -131,7 +131,11 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     /// since for those we don't care about target architecture anyway.
     ///
     /// So, this function is for static aliases. See [`add_function_aliases`](Self::add_function_aliases) for the alternative.
-    fn add_static_aliases(&self, aliasee: &llvm::Value, aliases: &[(DefId, Linkage, Visibility)]) {
+    fn add_static_aliases(
+        &self,
+        aliasee: &'ll llvm::Value,
+        aliases: &[(DefId, Linkage, Visibility)],
+    ) {
         let ty = self.get_type_of_global(aliasee);
 
         for (alias, linkage, visibility) in aliases {

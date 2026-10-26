@@ -535,7 +535,9 @@ impl<'a> AstValidator<'a> {
                     ];
                     !attr.has_any_name(&arr) && rustc_attr_parsing::is_builtin_attr(&normal.item)
                 }
-                AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace(_)) => false,
+                AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace(_)) | AttrKind::Generated(..) => {
+                    false
+                }
                 AttrKind::DocComment(..) => true,
             })
             .for_each(|attr| {
@@ -2233,6 +2235,19 @@ impl Visitor<'_> for AstValidator<'_> {
             Self::check_decl_no_pat(&args.inputs, |span, _, _| {
                 self.dcx().emit_err(diagnostics::PatternParenthesizedArgList { span });
             });
+
+            let mut args = args.inputs.iter().peekable();
+            while let Some(arg) = args.next() {
+                if matches!(arg.ty.kind, TyKind::CVarArgs) {
+                    let sugg_span = arg
+                        .span
+                        .until(args.peek().map(|a| a.span).unwrap_or(arg.span.shrink_to_hi()));
+                    self.dcx().emit_err(diagnostics::PathFoundCVariadicParams {
+                        span: arg.ty.span,
+                        sugg_span,
+                    });
+                }
+            }
         }
         visit::walk_path_segment(self, seg);
     }

@@ -6,7 +6,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use rustc_ast as ast;
 use rustc_ast::token::DocFragmentKind;
 use rustc_ast::{AttrStyle, CRATE_NODE_ID, NodeId, Safety};
-use rustc_attr_ir::target::Target;
+use rustc_attr_ir::target::{AstTarget, Target};
 use rustc_attr_ir::{AttrArgs, AttrItem, AttrPath, Attribute, AttributeKind, HashIgnoredAttrId};
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level, MultiSpan};
@@ -21,6 +21,7 @@ use crate::context::{
     FinalizeFn, FinalizeOutput, SharedContext,
 };
 use crate::diagnostics::ParsedDescription;
+use crate::generated::GeneratedAttrState;
 use crate::parser::{AllowExprMetavar, ArgParser, PathParser, RefPathParser};
 use crate::synthetic::SyntheticAttrState;
 use crate::{AttributeTemplate, ShouldEmit};
@@ -161,7 +162,7 @@ impl<'sess> AttributeParser<'sess> {
             attrs,
             target_span,
             target,
-            None,
+            AstTarget::None,
             std::convert::identity,
             |lint_id, span, kind| {
                 sess.psess.dyn_buffer_lint_sess(lint_id.lint, span, target_node_id, kind.0)
@@ -318,13 +319,14 @@ impl<'sess> AttributeParser<'sess> {
         attrs: &[ast::Attribute],
         target_span: Span,
         target: Target,
-        target_item: Option<&ast::Item>,
+        ast_target: AstTarget<'_>,
         lower_span: impl Copy + Fn(Span) -> Span,
         mut emit_lint: impl FnMut(LintId, MultiSpan, EmitAttribute),
     ) -> Vec<Attribute> {
         let mut attributes = Vec::new();
         let mut attr_paths: Vec<RefPathParser<'_>> = Vec::new();
         let mut synthetic_attr_state = SyntheticAttrState::default();
+        let mut generated_attr_state = GeneratedAttrState::default();
 
         let mut finalizers: Vec<FinalizeFn> = Vec::with_capacity(attrs.len());
 
@@ -348,6 +350,9 @@ impl<'sess> AttributeParser<'sess> {
                 }
                 ast::AttrKind::Synthetic(synthetic) => {
                     synthetic_attr_state.accept_synthetic_attr(attr_span, lower_span, synthetic);
+                }
+                ast::AttrKind::Generated(generated) => {
+                    generated_attr_state.accept_generated_attr(attr_span, generated)
                 }
                 ast::AttrKind::Normal(n) => {
                     attr_paths.push(PathParser(&n.item.path));
@@ -471,6 +476,7 @@ impl<'sess> AttributeParser<'sess> {
         }
 
         synthetic_attr_state.finalize_synthetic_attrs(&mut attributes);
+        generated_attr_state.finalize_generated_attrs(&mut attributes);
 
         // First, run all finalizers to produce the parsed attributes. Cross-attribute
         // checks that need to inspect the fully parsed attributes are deferred until all
@@ -513,7 +519,7 @@ impl<'sess> AttributeParser<'sess> {
                         },
                         all_attrs: &attr_paths,
                         parsed_attrs: &attributes,
-                        target_item,
+                        ast_target,
                     },
                     attr_span,
                 );

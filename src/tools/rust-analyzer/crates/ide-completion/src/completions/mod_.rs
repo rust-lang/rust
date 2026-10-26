@@ -41,15 +41,19 @@ pub(crate) fn complete_mod(
     }
 
     let module_definition_file =
-        current_module.definition_source_file_id(ctx.db).original_file(ctx.db);
-    let source_root_id =
-        ctx.db.file_source_root(module_definition_file.file_id(ctx.db)).source_root_id(ctx.db);
+        current_module.definition_source_file_id(ctx.db).original_file(ctx.db).file_id(ctx.db);
+    let source_root_id = ctx.db.file_source_root(module_definition_file).source_root_id(ctx.db);
     let source_root = ctx.db.source_root(source_root_id).source_root(ctx.db);
+    let crate_roots = base_db::all_crates(ctx.db)
+        .iter()
+        .map(|krate| krate.root_file_id(ctx.db).file_id(ctx.db))
+        .collect::<FxHashSet<_>>();
 
     let directory_to_look_for_submodules = directory_to_look_for_submodules(
         current_module,
         ctx.db,
-        source_root.path_for_file(&module_definition_file.file_id(ctx.db))?,
+        crate_roots.contains(&module_definition_file),
+        source_root.path_for_file(&module_definition_file)?,
     )?;
 
     let existing_mod_declarations = current_module
@@ -65,9 +69,7 @@ pub(crate) fn complete_mod(
 
     source_root
         .iter()
-        .filter(|&submodule_candidate_file| {
-            submodule_candidate_file != module_definition_file.file_id(ctx.db)
-        })
+        .filter(|&submodule_candidate_file| submodule_candidate_file != module_definition_file)
         .filter(|&submodule_candidate_file| {
             module_declaration_file.is_none_or(|it| it.file_id(ctx.db) != submodule_candidate_file)
         })
@@ -75,11 +77,10 @@ pub(crate) fn complete_mod(
             let submodule_path = source_root.path_for_file(&submodule_file)?;
             let directory_with_submodule = submodule_path.parent()?;
             let (name, ext) = submodule_path.name_and_extension()?;
-            if ext != Some("rs") {
+            if ext != Some("rs") || crate_roots.contains(&submodule_file) {
                 return None;
             }
             match name {
-                "lib" | "main" => None,
                 "mod" => {
                     if directory_with_submodule.parent()? == directory_to_look_for_submodules {
                         match directory_with_submodule.name_and_extension()? {
@@ -118,6 +119,7 @@ pub(crate) fn complete_mod(
 fn directory_to_look_for_submodules(
     module: Module,
     db: &RootDatabase,
+    is_root: bool,
     module_file_path: &VfsPath,
 ) -> Option<VfsPath> {
     let directory_with_module_path = module_file_path.parent()?;
@@ -126,7 +128,8 @@ fn directory_to_look_for_submodules(
         return None;
     }
     let base_directory = match name {
-        "mod" | "lib" | "main" => Some(directory_with_module_path),
+        "mod" => Some(directory_with_module_path),
+        _ if is_root => Some(directory_with_module_path),
         regular_rust_file_name => {
             if matches!(
                 (
@@ -221,6 +224,68 @@ mod $0
 "#,
             expect![[r#"
                 md bar;
+            "#]],
+        );
+    }
+
+    #[test]
+    fn exclude_crate_roots() {
+        check(
+            r#"
+//- /lib.rs crate:lib
+mod $0
+//- /main.rs crate:main
+//- /sub.rs
+"#,
+            expect![[r#"
+                md sub;
+            "#]],
+        );
+        check(
+            r#"
+//- /main.rs crate:main
+mod $0
+//- /lib.rs crate:lib
+//- /sub.rs
+"#,
+            expect![[r#"
+                md sub;
+            "#]],
+        );
+    }
+
+    #[test]
+    fn contained_submodule_name_same_as_root() {
+        check(
+            r#"
+//- /lib.rs
+mod sub {
+    mod $0
+}
+//- /sub/lib.rs
+//- /sub/main.rs
+"#,
+            expect![[r#"
+                md lib;
+                md main;
+            "#]],
+        );
+    }
+
+    #[test]
+    fn inside_name_same_as_root() {
+        check(
+            r#"
+//- /foo/lib.rs
+mod $0
+//- /foo/lib/loader.rs
+//- /lib.rs
+mod foo {
+    mod lib;
+}
+"#,
+            expect![[r#"
+                md loader;
             "#]],
         );
     }

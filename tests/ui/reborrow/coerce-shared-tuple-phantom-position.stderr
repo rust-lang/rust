@@ -1,0 +1,29 @@
+error: implementing `CoerceShared` requires every target field to have a corresponding source field
+  --> $DIR/coerce-shared-tuple-phantom-position.rs:13:32
+   |
+LL | struct SourceLeadingRef<'a, T>(&'a T);
+   |                                ^^^^^ target field `0` has no corresponding source field
+...
+LL | impl<'a, T> CoerceShared<SourceLeadingRef<'a, T>> for SourceLeadingMut<'a, T> {}
+   |                                                       ----------------------- source type `SourceLeadingMut` does not contain field `0`
+
+error: implementing `CoerceShared` requires every target field to have a corresponding source field
+  --> $DIR/coerce-shared-tuple-phantom-position.rs:30:52
+   |
+LL | struct TargetLeadingRef<'a, T>(PhantomData<&'a T>, &'a T);
+   |                                                    ^^^^^ target field `1` has no corresponding source field
+...
+LL | impl<'a, T> CoerceShared<TargetLeadingRef<'a, T>> for TargetLeadingMut<'a, T> {}
+   |                                                       ----------------------- source type `TargetLeadingMut` does not contain field `1`
+
+error: implementing `CoerceShared` requires every target field to have a corresponding source field
+  --> $DIR/coerce-shared-tuple-phantom-position.rs:52:33
+   |
+LL | struct InterleavedRef<'a, T, U>(&'a T, PhantomData<&'a T>, &'a U, PhantomData<&'a U>);
+   |                                 ^^^^^ target field `0` has no corresponding source field
+...
+LL | impl<'a, T, U> CoerceShared<InterleavedRef<'a, T, U>> for InterleavedMut<'a, T, U> {}
+   |                                                           ------------------------ source type `InterleavedMut` does not contain field `0`
+
+error: aborting due to 3 previous errors
+

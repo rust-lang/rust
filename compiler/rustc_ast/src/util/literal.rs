@@ -1,6 +1,5 @@
 //! Code related to parsing literals.
 
-use std::fmt::Write as _;
 use std::{ascii, fmt, str};
 
 use rustc_literal_escaper::{
@@ -38,19 +37,8 @@ pub fn escape_string_symbol(symbol: Symbol) -> Symbol {
     let mut escaped = String::with_capacity(s.len() + 1);
     escaped.push_str(prefix);
 
-    // Don't use escape_default() here, because using it is slower than escaping manually.
-    for c in suffix.chars() {
-        match c {
-            '\t' => escaped.push_str("\\t"),
-            '\r' => escaped.push_str("\\r"),
-            '\n' => escaped.push_str("\\n"),
-            '\\' => escaped.push_str("\\\\"),
-            '\'' => escaped.push_str("\\'"),
-            '\"' => escaped.push_str("\\\""),
-            '\x20'..='\x7e' => escaped.push(c),
-            c => write!(escaped, "\\u{{{:x}}}", c as u32).unwrap(),
-        }
-    }
+    escaped.extend(suffix.escape_default());
+
     Symbol::intern(&escaped)
 }
 

@@ -13,6 +13,7 @@ error: the `coverage` attribute cannot be used on type aliases
    |
 LL | #[coverage(off)]
    |   ^^^^^^^^
+LL | type MyTypeAlias = ();
    |
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
@@ -21,6 +22,7 @@ error: the `coverage` attribute cannot be used on traits
    |
 LL | #[coverage(off)]
    |   ^^^^^^^^
+LL | trait MyTrait {
    |
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
@@ -29,6 +31,7 @@ error: the `coverage` attribute cannot be used on associated consts
    |
 LL |     #[coverage(off)]
    |       ^^^^^^^^
+LL |     const TRAIT_ASSOC_CONST: u32;
    |
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
@@ -37,6 +40,7 @@ error: the `coverage` attribute cannot be used on associated types
    |
 LL |     #[coverage(off)]
    |       ^^^^^^^^
+LL |     type TraitAssocType;
    |
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
@@ -45,6 +49,7 @@ error: the `coverage` attribute cannot be used on required trait methods
    |
 LL |     #[coverage(off)]
    |       ^^^^^^^^
+LL |     fn trait_method(&self);
    |
    = help: the `coverage` attribute can be applied to crates, functions with a body, impl blocks, and modules
 
@@ -53,6 +58,7 @@ error: the `coverage` attribute cannot be used on required trait methods
    |
 LL |     #[coverage(off)]
    |       ^^^^^^^^
+LL |     fn trait_assoc_fn();
    |
    = help: the `coverage` attribute can be applied to crates, functions with a body, impl blocks, and modules
 
@@ -61,6 +67,7 @@ error: the `coverage` attribute cannot be used on associated types
    |
 LL |     #[coverage(off)]
    |       ^^^^^^^^
+LL |     type TraitAssocType = Self;
    |
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
@@ -69,6 +76,7 @@ error: the `coverage` attribute cannot be used on associated types
    |
 LL |     #[coverage(off)]
    |       ^^^^^^^^
+LL |     type T = impl Copy;
    |
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
@@ -77,6 +85,7 @@ error: the `coverage` attribute cannot be used on structs
    |
 LL | #[coverage(off)]
    |   ^^^^^^^^
+LL | struct MyStruct {
    |
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
@@ -85,6 +94,7 @@ error: the `coverage` attribute cannot be used on struct fields
    |
 LL |     #[coverage(off)]
    |       ^^^^^^^^
+LL |     field: u32,
    |
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
@@ -93,6 +103,7 @@ error: the `coverage` attribute cannot be used on foreign statics
    |
 LL |     #[coverage(off)]
    |       ^^^^^^^^
+LL |     static X: u32;
    |
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
@@ -101,6 +112,7 @@ error: the `coverage` attribute cannot be used on foreign types
    |
 LL |     #[coverage(off)]
    |       ^^^^^^^^
+LL |     type T;
    |
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
@@ -109,6 +121,7 @@ error: the `coverage` attribute cannot be used on foreign functions
    |
 LL |     #[coverage(off)]
    |       ^^^^^^^^
+LL |     fn foreign_fn();
    |
    = help: the `coverage` attribute can be applied to crates, functions with a body, impl blocks, and modules
 
@@ -117,6 +130,7 @@ error: the `coverage` attribute cannot be used on statements
    |
 LL |     #[coverage(off)]
    |       ^^^^^^^^
+LL |     let _ = ();
    |
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
@@ -125,6 +139,7 @@ error: the `coverage` attribute cannot be used on statements
    |
 LL |     #[coverage(off)]
    |       ^^^^^^^^
+LL |     let _let_closure = || ();
    |
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
@@ -133,6 +148,7 @@ error: the `coverage` attribute cannot be used on match arms
    |
 LL |         #[coverage(off)]
    |           ^^^^^^^^
+LL |         () => (),
    |
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
@@ -141,6 +157,7 @@ error: the `coverage` attribute cannot be used on expressions
    |
 LL |     #[coverage(off)]
    |       ^^^^^^^^
+LL |     return ();
    |
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 

@@ -1515,9 +1515,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .type_of(param.def_id)
                         .instantiate(self.tcx, method.args)
                         .skip_norm_wip();
+
                     // Insert function argument const param types back into the inputs.
                     // We use pos - 1 since method_inputs skips self, but arg_pos counts it.
-                    method_inputs.to_mut().insert(pos as usize - 1, ty);
+                    method_inputs.to_mut().insert(
+                        pos.checked_sub(1).expect("pos should always be greater than 0") as usize,
+                        ty,
+                    );
                 }
 
                 let method_tuple_args_flag =
