@@ -85,17 +85,49 @@ LL +     drop((data.lock(), 1).0);
    |
 
 error: non-binding let on a synchronization lock
-  --> $DIR/let_underscore_lock.rs:23:22
+  --> $DIR/let_underscore_lock.rs:22:9
+   |
+LL |     let _ = *Box::new(data.lock());
+   |         ^ this lock is not assigned to a binding and is immediately dropped
+   |
+help: consider binding to an unused variable to avoid immediately dropping the value
+   |
+LL |     let _unused = *Box::new(data.lock());
+   |          ++++++
+help: consider immediately dropping the value
+   |
+LL -     let _ = *Box::new(data.lock());
+LL +     drop(*Box::new(data.lock()));
+   |
+
+error: non-binding let on a synchronization lock
+  --> $DIR/let_underscore_lock.rs:24:9
+   |
+LL |     let _ = Box::new(Struct { a: data.lock() }).a;
+   |         ^ this lock is not assigned to a binding and is immediately dropped
+   |
+help: consider binding to an unused variable to avoid immediately dropping the value
+   |
+LL |     let _unused = Box::new(Struct { a: data.lock() }).a;
+   |          ++++++
+help: consider immediately dropping the value
+   |
+LL -     let _ = Box::new(Struct { a: data.lock() }).a;
+LL +     drop(Box::new(Struct { a: data.lock() }).a);
+   |
+
+error: non-binding let on a synchronization lock
+  --> $DIR/let_underscore_lock.rs:27:22
    |
 LL |     (_b, Struct { a: _ }) = (0, Struct { a: data.lock() });
    |                      ^ this lock is not assigned to a binding and is immediately dropped
    |
 help: consider binding to an unused variable to avoid immediately dropping the value
-  --> $DIR/let_underscore_lock.rs:23:22
+  --> $DIR/let_underscore_lock.rs:27:22
    |
 LL |     (_b, Struct { a: _ }) = (0, Struct { a: data.lock() });
    |                      ^
    = help: consider immediately dropping the value using `drop(..)` after the `let` statement
 
-error: aborting due to 7 previous errors
+error: aborting due to 9 previous errors
 

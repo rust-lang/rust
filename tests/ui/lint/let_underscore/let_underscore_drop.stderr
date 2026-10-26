@@ -19,5 +19,21 @@ LL -     let _ = NontrivialDrop;
 LL +     drop(NontrivialDrop);
    |
 
-warning: 1 warning emitted
+warning: non-binding let on a type that has a destructor
+  --> $DIR/let_underscore_drop.rs:18:5
+   |
+LL |     let _: Box<dyn Send> = boxed;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider binding to an unused variable to avoid immediately dropping the value
+   |
+LL |     let _unused: Box<dyn Send> = boxed;
+   |          ++++++
+help: consider immediately dropping the value
+   |
+LL -     let _: Box<dyn Send> = boxed;
+LL +     drop(boxed);
+   |
+
+warning: 2 warnings emitted
 

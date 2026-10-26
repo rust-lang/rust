@@ -13,4 +13,7 @@ fn main() {
     let _ = NontrivialDrop; //~WARNING non-binding let on a type that has a destructor
 
     let (_, _) = (NontrivialDrop, NontrivialDrop); // This should be ignored.
+
+    let boxed = Box::new(NontrivialDrop);
+    let _: Box<dyn Send> = boxed; //~WARNING non-binding let on a type that has a destructor
 }
