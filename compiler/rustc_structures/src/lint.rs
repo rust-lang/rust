@@ -39,7 +39,7 @@ impl LintName {
         LintName { tool, name }
     }
 
-    /// Panics if `lint` is empty.
+    /// `lint` must not be empty.
     pub fn from_str(lint: &str) -> LintName {
         if lint.is_empty() {
             if cfg!(debug_assertions) {
