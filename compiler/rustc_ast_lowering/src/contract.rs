@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use rustc_attr_ir::lang_items::LangItem;
-use rustc_attr_ir::target::{AstTarget, Target};
 use rustc_span::sym;
 
 use crate::LoweringContext;
@@ -61,12 +60,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     postcond_checker,
                 );
 
-                let wrapped_body = self.wrap_body_with_contract_check(
-                    body,
-                    contract_check,
-                    postcond_checker.span,
-                    ens,
-                );
+                let wrapped_body =
+                    self.wrap_body_with_contract_check(body, contract_check, postcond_checker.span);
                 self.expr_block(wrapped_body)
             }
             (None, Some(ens)) => {
@@ -95,12 +90,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let contract_check =
                     self.lower_contract_check_with_postcond(contract_decls, None, postcond_checker);
 
-                let wrapped_body = self.wrap_body_with_contract_check(
-                    body,
-                    contract_check,
-                    postcond_checker.span,
-                    ens,
-                );
+                let wrapped_body =
+                    self.wrap_body_with_contract_check(body, contract_check, postcond_checker.span);
                 self.expr_block(wrapped_body)
             }
             (Some(req), None) => {
@@ -245,7 +236,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         body: impl FnOnce(&mut Self) -> rustc_hir::Expr<'hir>,
         contract_check: &'hir rustc_hir::Expr<'hir>,
         postcond_span: rustc_span::Span,
-        ast_expr: &rustc_ast::Expr,
     ) -> &'hir rustc_hir::Block<'hir> {
         let check_ident: rustc_span::Ident =
             rustc_span::Ident::new(sym::__ensures_checker, postcond_span);
@@ -274,8 +264,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let body = self.arena.alloc(body(self));
 
         // Finally, inject an ensures check on the implicit return of the body.
-        let body =
-            self.inject_ensures_check(body, postcond_span, check_ident, check_hir_id, ast_expr);
+        let body = self.inject_ensures_check(body, postcond_span, check_ident, check_hir_id);
 
         // Flatten the body into precond, then postcond, then wrapped body.
         let wrapped_body = self.block_all(
@@ -291,16 +280,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
     pub(super) fn checked_return(
         &mut self,
         opt_expr: Option<&'hir rustc_hir::Expr<'hir>>,
-        ast_expr: &rustc_ast::Expr,
     ) -> rustc_hir::ExprKind<'hir> {
-        let checked_ret = if let Some((check_span, check_ident, check_hir_id)) =
-            self.contract_ensures
-        {
-            let expr = opt_expr.unwrap_or_else(|| self.expr_unit(check_span));
-            Some(self.inject_ensures_check(expr, check_span, check_ident, check_hir_id, ast_expr))
-        } else {
-            opt_expr
-        };
+        let checked_ret =
+            if let Some((check_span, check_ident, check_hir_id)) = self.contract_ensures {
+                let expr = opt_expr.unwrap_or_else(|| self.expr_unit(check_span));
+                Some(self.inject_ensures_check(expr, check_span, check_ident, check_hir_id))
+            } else {
+                opt_expr
+            };
         rustc_hir::ExprKind::Ret(checked_ret)
     }
 
@@ -311,7 +298,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         span: rustc_span::Span,
         cond_ident: rustc_span::Ident,
         cond_hir_id: rustc_hir::HirId,
-        ast_expr: &rustc_ast::Expr,
     ) -> &'hir rustc_hir::Expr<'hir> {
         // {
         //     let ret = { body };

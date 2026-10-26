@@ -494,9 +494,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             ExprKind::Ret(box_e) => {
                 let expr = box_e.as_ref().map(|x| self.lower_expr(x));
-                self.checked_return(expr, e)
+                self.checked_return(expr)
             }
-            ExprKind::Yeet(sub_expr) => self.lower_expr_yeet(e.span, sub_expr.as_deref(), e),
+            ExprKind::Yeet(sub_expr) => self.lower_expr_yeet(e.span, sub_expr.as_deref()),
             ExprKind::Become(sub_expr) => {
                 let sub_expr = self.lower_expr(sub_expr);
                 hir::ExprKind::Become(sub_expr)
@@ -2027,7 +2027,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     ),
                 ))
             } else {
-                let ret_expr = self.checked_return(Some(from_residual_expr), sub_expr);
+                let ret_expr = self.checked_return(Some(from_residual_expr));
                 self.arena.alloc(self.expr(try_span, ret_expr))
             };
 
@@ -2051,12 +2051,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     /// ```
     /// But to simplify this, there's a `from_yeet` lang item function which
     /// handles the combined `FromResidual::from_residual(Yeet(residual))`.
-    fn lower_expr_yeet(
-        &mut self,
-        span: Span,
-        sub_expr: Option<&Expr>,
-        ast_expr: &rustc_ast::Expr,
-    ) -> hir::ExprKind<'hir> {
+    fn lower_expr_yeet(&mut self, span: Span, sub_expr: Option<&Expr>) -> hir::ExprKind<'hir> {
         // The expression (if present) or `()` otherwise.
         let (yeeted_span, yeeted_expr) = if let Some(sub_expr) = sub_expr {
             (sub_expr.span, self.lower_expr(sub_expr))
@@ -2084,7 +2079,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     Some(from_yeet_expr),
                 )
             }
-            TryBlockScope::Function => self.checked_return(Some(from_yeet_expr), ast_expr),
+            TryBlockScope::Function => self.checked_return(Some(from_yeet_expr)),
         }
     }
 
