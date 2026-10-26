@@ -1,3 +1,6 @@
+mod int;
+mod uint;
+
 use core::num::{IntErrorKind, NonZero};
 use core::option::Option::None;
 
