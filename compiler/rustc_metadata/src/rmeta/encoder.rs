@@ -952,7 +952,7 @@ fn analyze_attr(attr: &rustc_attr_ir::Attribute, state: &mut AnalyzeAttrState) -
     } else if let rustc_attr_ir::Attribute::Parsed(AttributeKind::DocComment { .. }) = attr {
         // We keep all doc comments reachable to rustdoc because they might be "imported" into
         // downstream crates if they use `#[doc(inline)]` to copy an item's documentation into
-        // their own.
+        // their own. Using reflection, they can also be queried from another crate.
         if state.is_exported {
             should_encode = true;
         }

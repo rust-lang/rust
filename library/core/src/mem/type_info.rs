@@ -656,6 +656,26 @@ impl TypeId {
     pub fn function_ptr(self) -> Option<FnPtr> {
         intrinsics::reflection::type_id_function_ptr(self)
     }
+
+    /// Returns the raw documentation attributes when given a `TypeId` which represents a structure, enumeration or union.
+    /// ```
+    /// #![feature(type_info)]
+    /// # use std::any::TypeId;
+    ///
+    /// #[doc = "first"]
+    /// /** second
+    /// *  third
+    /// */
+    /// struct A;
+    ///
+    /// assert_eq!(const { TypeId::of::<A>().docs() }, ["first", " second\n*  third\n"]);
+    /// ```
+    #[unstable(feature = "type_info", issue = "146922")]
+    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    #[rustc_comptime]
+    pub fn docs(self) -> &'static [&'static str] {
+        intrinsics::reflection::type_id_docs(self)
+    }
 }
 
 /// Variant representing type ID. Representing a variant of an enum.
@@ -696,6 +716,28 @@ impl VariantId {
     #[rustc_comptime]
     pub fn name(self) -> &'static str {
         intrinsics::reflection::type_id_variant_name(self.base, self.variant)
+    }
+
+    /// Returns the raw documentation attributes when given a `VariantId`.
+    /// ```
+    /// #![feature(type_info)]
+    /// # use std::any::TypeId;
+    ///
+    /// enum A {
+    ///     #[doc = "first"]
+    ///     /** second
+    ///      * third*/
+    ///     B,
+    ///     C,
+    /// }
+    ///
+    /// assert_eq!(const { TypeId::of::<A>().variant(0).docs() }, ["first", " second\n     * third"]);
+    /// ```
+    #[unstable(feature = "type_info", issue = "146922")]
+    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    #[rustc_comptime]
+    pub fn docs(self) -> &'static [&'static str] {
+        intrinsics::reflection::type_id_variant_docs(self.base, self.variant)
     }
 
     /// Returns whether this variant is marked with `#[non_exhaustive]`.
@@ -766,6 +808,27 @@ impl FieldId {
     pub fn name(self) -> &'static str {
         intrinsics::field_representing_type_name(self.frt_type_id)
     }
+
+    /// Returns the raw documentation attributes when given a `FieldId`.
+    /// ```
+    /// #![feature(type_info)]
+    /// # use std::any::TypeId;
+    ///
+    /// struct A {
+    ///     #[doc = "first"]
+    ///     /// second
+    ///     first: u8,
+    /// }
+    ///
+    /// assert_eq!(const { TypeId::of::<A>().field(0, 0).docs() }, ["first", " second"]);
+    /// ```
+    #[unstable(feature = "type_info", issue = "146922")]
+    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    #[rustc_comptime]
+    pub fn docs(self) -> &'static [&'static str] {
+        intrinsics::reflection::type_id_docs(self.frt_type_id)
+    }
+
     /// Returns the offset of the field wrt to its containing type.
     ///
     /// ```

@@ -4,6 +4,7 @@ use std::borrow::Cow;
 
 use rustc_abi::{ExternAbi, FieldIdx};
 use rustc_attr_ir::lang_items::LangItem;
+use rustc_attr_ir::{Attribute, AttributeKind};
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, FnHeader, FnSigKind, FnSigTys, ScalarInt, Ty, TyCtxt};
 use rustc_span::{Symbol, span_bug, sym};
@@ -16,7 +17,7 @@ use crate::interpret::{
 
 impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
     // A general method to write an array to a static slice place.
-    fn allocate_fill_and_write_slice_ptr(
+    pub(crate) fn allocate_fill_and_write_slice_ptr(
         &mut self,
         slice_place: &impl Writeable<'tcx, CtfeProvenance>,
         len: u64,
@@ -345,5 +346,33 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
         }
 
         interp_ok(())
+    }
+
+    pub(crate) fn write_doc_attributes(
+        &mut self,
+        place: &impl Writeable<'tcx, CtfeProvenance>,
+        attrs: &'tcx [rustc_attr_ir::Attribute],
+    ) -> InterpResult<'tcx> {
+        let docs = attrs
+            .iter()
+            .filter_map(|x| match x {
+                Attribute::Parsed(AttributeKind::DocComment { comment, .. }) => Some(*comment),
+                _ => None,
+            })
+            .collect::<Vec<Symbol>>();
+
+        self.allocate_fill_and_write_slice_ptr(place, docs.len() as _, |this, i, place| {
+            let doc = docs[i as usize];
+
+            let ptr = this.allocate_bytes_dedup(doc.as_str().as_bytes())?;
+
+            this.write_immediate(
+                Immediate::ScalarPair(
+                    Scalar::from_pointer(ptr, this),
+                    Scalar::from_target_usize(doc.as_str().len() as u64, this),
+                ),
+                &place,
+            )
+        })
     }
 }
