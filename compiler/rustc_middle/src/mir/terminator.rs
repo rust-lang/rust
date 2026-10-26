@@ -89,6 +89,13 @@ impl SwitchTargets {
         self.iter().find_map(|(v, t)| (v == value).then_some(t)).unwrap_or_else(|| self.otherwise())
     }
 
+    #[inline]
+    pub fn target_for_value_ref(&self, value: u128) -> &BasicBlock {
+        iter::zip(&self.values, &self.targets)
+            .find_map(|(v, t)| (*v == value).then_some(t))
+            .unwrap_or_else(|| self.targets.last().unwrap())
+    }
+
     /// Adds a new target to the switch. Panics if you add an already present value.
     #[inline]
     pub fn add_target(&mut self, value: u128, bb: BasicBlock) {
@@ -493,12 +500,12 @@ mod helper {
     // Note: this method ensures all paths below produce an iterator with the same concrete type.
     #[inline]
     #[define_opaque(Successors)]
-    fn mk_successors(
-        slice: &[BasicBlock],
-        option1: Option<BasicBlock>,
-        option2: Option<BasicBlock>,
-    ) -> Successors<'_> {
-        slice.iter().copied().chain(option1.into_iter().chain(option2))
+    fn mk_successors<'a>(
+        slice: &'a [BasicBlock],
+        slice2: &'a [BasicBlock],
+        slice3: &'a [BasicBlock],
+    ) -> Successors<'a> {
+        [slice, slice2, slice3].into_iter().flatten().copied()
     }
 
     impl SwitchTargets {
@@ -506,8 +513,8 @@ mod helper {
         /// [`Terminator::successors`].
         #[inline]
         pub fn successors_for_value(&self, value: u128) -> Successors<'_> {
-            let target = self.target_for_value(value);
-            mk_successors(&[], Some(target), None)
+            let target = self.target_for_value_ref(value);
+            mk_successors(&[], slice::from_ref(target), &[])
         }
     }
 
@@ -517,17 +524,22 @@ mod helper {
             use self::TerminatorKind::*;
             match *self {
                 // 3-successors for async drop: target, unwind, dropline (parent coroutine drop)
-                Drop { target: ref t, unwind: UnwindAction::Cleanup(u), drop: Some(d), .. } => {
-                    mk_successors(slice::from_ref(t), Some(u), Some(d))
-                }
+                Drop {
+                    target: ref t,
+                    unwind: UnwindAction::Cleanup(ref u),
+                    drop: Some(ref d),
+                    ..
+                } => mk_successors(slice::from_ref(t), slice::from_ref(u), slice::from_ref(d)),
                 // 2-successors
-                Call { target: Some(ref t), unwind: UnwindAction::Cleanup(u), .. }
-                | Yield { resume: ref t, drop: Some(u), .. }
-                | Drop { target: ref t, unwind: UnwindAction::Cleanup(u), drop: None, .. }
-                | Drop { target: ref t, unwind: _, drop: Some(u), .. }
-                | Assert { target: ref t, unwind: UnwindAction::Cleanup(u), .. }
-                | FalseUnwind { real_target: ref t, unwind: UnwindAction::Cleanup(u) } => {
-                    mk_successors(slice::from_ref(t), Some(u), None)
+                Call { target: Some(ref t), unwind: UnwindAction::Cleanup(ref u), .. }
+                | Yield { resume: ref t, drop: Some(ref u), .. }
+                | Drop {
+                    target: ref t, unwind: UnwindAction::Cleanup(ref u), drop: None, ..
+                }
+                | Drop { target: ref t, unwind: _, drop: Some(ref u), .. }
+                | Assert { target: ref t, unwind: UnwindAction::Cleanup(ref u), .. }
+                | FalseUnwind { real_target: ref t, unwind: UnwindAction::Cleanup(ref u) } => {
+                    mk_successors(slice::from_ref(t), slice::from_ref(u), &[])
                 }
                 // single successor
                 Goto { target: ref t, .. }
@@ -537,7 +549,7 @@ mod helper {
                 | Drop { target: ref t, unwind: _, .. }
                 | Assert { target: ref t, unwind: _, .. }
                 | FalseUnwind { real_target: ref t, unwind: _ } => {
-                    mk_successors(slice::from_ref(t), None, None)
+                    mk_successors(slice::from_ref(t), &[], &[])
                 }
                 // No successors
                 UnwindResume
@@ -546,17 +558,19 @@ mod helper {
                 | Return
                 | Unreachable
                 | TailCall { .. }
-                | Call { target: None, unwind: _, .. } => mk_successors(&[], None, None),
+                | Call { target: None, unwind: _, .. } => mk_successors(&[], &[], &[]),
                 // Multiple successors
-                InlineAsm { ref targets, unwind: UnwindAction::Cleanup(u), .. } => {
-                    mk_successors(targets, Some(u), None)
+                InlineAsm { ref targets, unwind: UnwindAction::Cleanup(ref u), .. } => {
+                    mk_successors(targets, slice::from_ref(u), &[])
                 }
-                InlineAsm { ref targets, unwind: _, .. } => mk_successors(targets, None, None),
-                SwitchInt { ref targets, .. } => mk_successors(&targets.targets, None, None),
+                InlineAsm { ref targets, unwind: _, .. } => mk_successors(targets, &[], &[]),
+                SwitchInt { ref targets, .. } => mk_successors(&targets.targets, &[], &[]),
                 // FalseEdge
-                FalseEdge { ref real_target, imaginary_target } => {
-                    mk_successors(slice::from_ref(real_target), Some(imaginary_target), None)
-                }
+                FalseEdge { ref real_target, ref imaginary_target } => mk_successors(
+                    slice::from_ref(real_target),
+                    slice::from_ref(imaginary_target),
+                    &[],
+                ),
             }
         }
 
