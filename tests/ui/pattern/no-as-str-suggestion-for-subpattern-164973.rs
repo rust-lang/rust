@@ -17,4 +17,8 @@ fn main() {
     let pair = (String::new(), 1);
     if let ("a", 1) = pair {}
     //~^ ERROR mismatched types
+
+    let opt = Some(String::new());
+    if let Some("a") = opt {}
+    //~^ ERROR mismatched types
 }
