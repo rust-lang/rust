@@ -183,6 +183,10 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
     pub(crate) fn type_bf16(&self) -> &'ll Type {
         unsafe { llvm::LLVMBFloatTypeInContext(self.llcx()) }
     }
+
+    pub(crate) fn type_array(&self, ty: &'ll Type, len: u64) -> &'ll Type {
+        unsafe { llvm::LLVMArrayType2(ty, len) }
+    }
 }
 
 impl<'ll, CX: Borrow<SCx<'ll>>> BaseTypeCodegenMethods for GenericCx<'ll, CX> {
@@ -279,10 +283,6 @@ impl<'ll, CX: Borrow<SCx<'ll>>> BaseTypeCodegenMethods for GenericCx<'ll, CX> {
 
     fn val_ty(&self, v: &'ll Value) -> &'ll Type {
         common::val_ty(v)
-    }
-
-    fn type_array(&self, ty: &'ll Type, len: u64) -> &'ll Type {
-        unsafe { llvm::LLVMArrayType2(ty, len) }
     }
 }
 
