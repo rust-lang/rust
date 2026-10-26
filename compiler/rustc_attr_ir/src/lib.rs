@@ -17,6 +17,7 @@
 
 pub use attr::*;
 pub use data_structures::*;
+pub use diagnostic::AttrErrorGuaranteed;
 pub use encode_cross_crate::EncodeCrossCrate;
 pub use lang_items::*;
 pub use pretty_printing::PrintAttribute;

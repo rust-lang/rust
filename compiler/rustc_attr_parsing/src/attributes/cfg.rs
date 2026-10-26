@@ -4,7 +4,7 @@ use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::{DelimSpan, WithTokens};
 use rustc_ast::{AttrItem, Attribute, LitKind, ast, token};
 use rustc_attr_ir::target::Target;
-use rustc_attr_ir::{AttrPath, CfgEntry, RustcVersion};
+use rustc_attr_ir::{AttrErrorGuaranteed, AttrPath, CfgEntry, RustcVersion};
 use rustc_errors::{Applicability, Diagnostic, PResult, msg};
 use rustc_feature::{Features, GatedCfg, find_gated_cfg};
 use rustc_lint_defs::builtin::UNEXPECTED_CFGS;
@@ -14,7 +14,7 @@ use rustc_session::Session;
 use rustc_session::config::ExpectedValues;
 use rustc_session::diagnostics::feature_err;
 use rustc_session::parse::ParseSess;
-use rustc_span::{ErrorGuaranteed, Span, Symbol, sym};
+use rustc_span::{Span, Symbol, sym};
 use thin_vec::ThinVec;
 
 use crate::attributes::AttributeSafety;
@@ -79,7 +79,7 @@ pub fn parse_cfg(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<Cfg
 pub fn parse_cfg_entry(
     cx: &mut AcceptContext<'_, '_>,
     item: &MetaItemOrLitParser,
-) -> Result<CfgEntry, ErrorGuaranteed> {
+) -> Result<CfgEntry, AttrErrorGuaranteed> {
     Ok(match item {
         MetaItemOrLitParser::MetaItemParser(meta) => match meta.args() {
             ArgParser::List(list) => match meta.path().word_sym() {
@@ -126,7 +126,7 @@ fn parse_cfg_entry_version(
     cx: &mut AcceptContext<'_, '_>,
     list: &MetaItemListParser,
     meta_span: Span,
-) -> Result<CfgEntry, ErrorGuaranteed> {
+) -> Result<CfgEntry, AttrErrorGuaranteed> {
     try_gate_cfg(sym::version, meta_span, cx.sess(), cx.features_option());
     let Some(version) = list.as_single() else {
         return Err(cx.emit_err(diagnostics::ExpectedSingleVersionLiteral { span: list.span }));
@@ -150,7 +150,7 @@ fn parse_cfg_entry_target(
     cx: &mut AcceptContext<'_, '_>,
     list: &MetaItemListParser,
     meta_span: Span,
-) -> Result<CfgEntry, ErrorGuaranteed> {
+) -> Result<CfgEntry, AttrErrorGuaranteed> {
     if let Some(features) = cx.features_option()
         && !features.cfg_target_compact()
     {
@@ -188,7 +188,7 @@ pub(crate) fn parse_name_value(
     value: Option<&NameValueParser>,
     span: Span,
     cx: &mut AcceptContext<'_, '_>,
-) -> Result<CfgEntry, ErrorGuaranteed> {
+) -> Result<CfgEntry, AttrErrorGuaranteed> {
     try_gate_cfg(name, span, cx.sess(), cx.features_option());
 
     let value = match value {
@@ -408,8 +408,8 @@ fn parse_cfg_attr_internal<'a>(
         parse_cfg_entry,
         &CFG_ATTR_TEMPLATE,
     )
-    .map_err(|_err: ErrorGuaranteed| {
-        // We have an `ErrorGuaranteed` so this delayed bug cannot fail, but we need a `Diag` for the `PResult` so we make one anyways
+    .map_err(|_err: AttrErrorGuaranteed| {
+        // We have an `AttrErrorGuaranteed` so this delayed bug cannot fail, but we need a `Diag` for the `PResult` so we make one anyways
         let mut diag = sess.dcx().struct_err(
             "cfg_entry parsing failing with `ShouldEmit::ErrorsAndLints` should emit a error.",
         );

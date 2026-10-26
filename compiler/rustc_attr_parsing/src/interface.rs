@@ -7,13 +7,15 @@ use rustc_ast as ast;
 use rustc_ast::token::DocFragmentKind;
 use rustc_ast::{AttrStyle, CRATE_NODE_ID, NodeId, Safety};
 use rustc_attr_ir::target::Target;
-use rustc_attr_ir::{AttrArgs, AttrItem, AttrPath, Attribute, AttributeKind, HashIgnoredAttrId};
+use rustc_attr_ir::{
+    AttrArgs, AttrErrorGuaranteed, AttrItem, AttrPath, Attribute, AttributeKind, HashIgnoredAttrId,
+};
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level, MultiSpan};
 use rustc_feature::{BUILTIN_ATTRIBUTE_SET, Features};
 use rustc_lint_defs::{LintId, RegisteredTools};
 use rustc_session::Session;
-use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
+use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 
 use crate::attributes::AttributeSafety;
 use crate::context::{
@@ -307,7 +309,7 @@ impl<'sess> AttributeParser<'sess> {
     }
 
     #[track_caller]
-    pub(crate) fn emit_err(&self, diag: impl for<'x> Diagnostic<'x>) -> ErrorGuaranteed {
+    pub(crate) fn emit_err(&self, diag: impl for<'x> Diagnostic<'x>) -> AttrErrorGuaranteed {
         self.should_emit.emit_err(self.sess.dcx().create_err(diag))
     }
 
@@ -541,10 +543,12 @@ impl<'sess> AttributeParser<'sess> {
             for item in items.mixed() {
                 if let crate::parser::MetaItemOrLitParser::MetaItemParser(item) = item {
                     if !item.are_args_checked() {
-                        self.dcx().span_delayed_bug(
+                        let mut diag = self.dcx().struct_span_err(
                             item.span(),
                             "attribute args were not properly checked",
                         );
+                        diag.downgrade_to_delayed_bug();
+                        self.should_emit.emit_err(diag);
                         return;
                     }
                     self.check_args_used(attr, item.args());

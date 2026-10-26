@@ -8,6 +8,4 @@
 struct S;
 
 #[deny("literal")] //~ ERROR expected a lint, found literal
-                   //[duplicate]~| ERROR expected a lint, found literal
-                   //[duplicate]~| ERROR expected a lint, found literal
 fn main() {}

@@ -2,10 +2,9 @@ use std::num::NonZero;
 
 use rustc_attr_ir::target::{AssocCtxt, MethodKind, Target};
 use rustc_attr_ir::{
-    DefaultBodyStability, PartialConstStability, Stability, StabilityLevel, StableSince,
-    UnstableReason, UnstableRemovedFeature, VERSION_PLACEHOLDER,
+    AttrErrorGuaranteed, DefaultBodyStability, PartialConstStability, Stability, StabilityLevel,
+    StableSince, UnstableReason, UnstableRemovedFeature, VERSION_PLACEHOLDER,
 };
-use rustc_errors::ErrorGuaranteed;
 use rustc_feature::{ACCEPTED_LANG_FEATURES, AttributeStability};
 
 use super::prelude::*;
@@ -384,7 +383,7 @@ pub(crate) fn parse_stability(
             let level = StabilityLevel::Stable { since, allowed_through_unstable_modules: None };
             Some((feature, level))
         }
-        Err(ErrorGuaranteed { .. }) => None,
+        Err(AttrErrorGuaranteed { .. }) => None,
     }
 }
 
@@ -483,7 +482,7 @@ pub(crate) fn parse_unstability(
             };
             Some((feature, level))
         }
-        (Err(ErrorGuaranteed { .. }), _) | (_, Err(ErrorGuaranteed { .. })) => None,
+        (Err(AttrErrorGuaranteed { .. }), _) | (_, Err(AttrErrorGuaranteed { .. })) => None,
     }
 }
 
