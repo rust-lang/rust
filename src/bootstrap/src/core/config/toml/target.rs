@@ -133,10 +133,10 @@ impl<'de> Deserialize<'de> for DefaultLinuxLinkerOverride {
 pub fn default_linux_linker_overrides(
     channel: &str,
 ) -> HashMap<String, DefaultLinuxLinkerOverride> {
-    let mut overrides = HashMap::from([(
-        "x86_64-unknown-linux-gnu".to_string(),
-        DefaultLinuxLinkerOverride::SelfContainedLldCc,
-    )]);
+    let mut overrides = HashMap::from([
+        ("x86_64-unknown-linux-gnu".to_string(), DefaultLinuxLinkerOverride::SelfContainedLldCc),
+        ("aarch64-unknown-linux-gnu".to_string(), DefaultLinuxLinkerOverride::SelfContainedLldCc),
+    ]);
     if channel == "nightly" || channel == "dev" {
         overrides.insert(
             "loongarch64-unknown-linux-gnu".to_string(),
