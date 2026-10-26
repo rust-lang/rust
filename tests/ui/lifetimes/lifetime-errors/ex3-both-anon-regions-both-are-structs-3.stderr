@@ -2,8 +2,10 @@ error: lifetime may not live long enough
   --> $DIR/ex3-both-anon-regions-both-are-structs-3.rs:7:5
    |
 LL | fn foo(mut x: Ref) {
-   |        -----
-   |        |
+   |        -----  ---
+   |        |      |
+   |        |      lifetime `'1` introduced here
+   |        |      lifetime `'2` introduced here
    |        has type `Ref<'_, '1>`
    |        has type `Ref<'2, '_>`
 LL |     x.a = x.b;

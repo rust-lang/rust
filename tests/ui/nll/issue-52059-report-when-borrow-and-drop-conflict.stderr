@@ -2,7 +2,9 @@ error[E0713]: borrow may still be in use when destructor runs
   --> $DIR/issue-52059-report-when-borrow-and-drop-conflict.rs:11:5
    |
 LL | fn finish_1(s: S) -> &mut String {
-   |             - has type `S<'1>`
+   |             -  - lifetime `'1` introduced here
+   |             |
+   |             has type `S<'1>`
 LL |     s.url
    |     ^^^^^ returning this value requires that `*s.url` is borrowed for `'1`
 LL | }
@@ -12,7 +14,9 @@ error[E0713]: borrow may still be in use when destructor runs
   --> $DIR/issue-52059-report-when-borrow-and-drop-conflict.rs:16:13
    |
 LL | fn finish_2(s: S) -> &mut String {
-   |             - has type `S<'1>`
+   |             -  - lifetime `'1` introduced here
+   |             |
+   |             has type `S<'1>`
 LL |     let p = &mut *s.url; p
    |             ^^^^^^^^^^^  - returning this value requires that `*s.url` is borrowed for `'1`
 LL | }
@@ -22,7 +26,9 @@ error[E0713]: borrow may still be in use when destructor runs
   --> $DIR/issue-52059-report-when-borrow-and-drop-conflict.rs:21:21
    |
 LL | fn finish_3(s: S) -> &mut String {
-   |             - has type `S<'1>`
+   |             -  - lifetime `'1` introduced here
+   |             |
+   |             has type `S<'1>`
 LL |     let p: &mut _ = s.url; p
    |                     ^^^^^  - returning this value requires that `*s.url` is borrowed for `'1`
 LL | }
