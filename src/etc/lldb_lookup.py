@@ -39,6 +39,8 @@ from lldb_providers import (
     StructSyntheticProvider,
     TupleSummaryProvider,
     TupleSyntheticProvider,
+    UnsizedSyntheticProvider,
+    WidePtrSyntheticProvider,
     f16SummaryProvider,
     f128SummaryProvider,
 )
@@ -193,6 +195,26 @@ def register_providers_compatibility():
                 ),
                 DEFAULT_TYPE_OPTIONS | lldb.eTypeOptionHideChildren,
             )
+
+        # Catches all types of the form `T[]` and `[T]`
+        # MUST be registered before slice and &str visualizers so that those specialized ones can
+        # override this one.
+        register_synth(
+            UnsizedSyntheticProvider,
+            lldb.SBTypeNameSpecifier(
+                MOD_PREFIX + is_empty_array_type.__name__, lldb.eFormatterMatchCallback
+            ),
+        )
+
+        # Handles generic wide pointers.
+        # MUST be registered before slice and &str visualizers so that those specialized ones can
+        # override this one.
+        register_synth(
+            WidePtrSyntheticProvider,
+            lldb.SBTypeNameSpecifier(
+                MOD_PREFIX + is_wide_ptr_type.__name__, lldb.eFormatterMatchCallback
+            ),
+        )
 
         # Tuple-structs
         register_synth(
@@ -517,6 +539,40 @@ def is_msvc_f16(type: lldb.SBType, _dict: LLDBOpaque) -> bool:
 def is_msvc_f128(type: lldb.SBType, _dict: LLDBOpaque) -> bool:
     # Most Windows debuggers don't support PDB f128.
     return type.GetName() == "f128" and type.IsAggregateType()
+
+
+def is_wide_ptr_type(type: lldb.SBType, _dict: LLDBOpaque) -> bool:
+    if type.GetNumberOfFields() == 2:
+        data_ptr = None
+        length = None
+
+        for f in type.fields:
+            if f.GetName() == "data_ptr":
+                data_ptr = f
+            elif f.GetName() == "length":
+                length = f
+
+        return (
+            length is not None
+            and data_ptr is not None
+            and data_ptr.GetType().IsPointerType()
+        )
+
+    return False
+
+
+def is_empty_array_type(type: lldb.SBType, _dict: LLDBOpaque) -> bool:
+    # there's not a great way to check if an array is 0-sized. `GetByteSize` returns the
+    # same size as an array of length 1. The length isn't considered a template arg.
+    # `GetNumberOfFields` returns 0 regardless of the number of elements.
+    # While we could just check if the type name ends in `[]` (normalized) or starts
+    # with '[' and ends with ']' (non-normalized), it's a bit safer and more general
+    # purpose to compare it with the expected type.
+    if not type.IsArrayType():
+        return False
+    expected = type.GetArrayElementType().GetArrayType(0)
+
+    return type.GetName() == expected.GetName()
 
 
 def classify_rust_type(type: lldb.SBType, is_msvc: bool) -> RustType:
