@@ -21,6 +21,10 @@ use std::ptr;
 use std::simd::StdFloat;
 use std::simd::prelude::*;
 
+#[path = "../../utils/mod.rs"]
+mod utils;
+use utils::check_nondet;
+
 // small hack to make type inference better
 macro_rules! assert_eq {
     ($a:expr, $b:expr $(,$t:tt)* $(,)?) => {{
@@ -1135,6 +1139,37 @@ fn test_simd_ops_non_pow2() {
     assert_eq!(unsafe { *(&raw const z).cast::<[u32; 3]>() }, [3u32; 3]);
 }
 
+fn test_non_determinism() {
+    use std::intrinsics::simd::{
+        simd_add_algebraic,
+        simd_sub_algebraic,
+        simd_mul_algebraic,
+        simd_div_algebraic,
+        simd_rem_algebraic,
+        simd_reduce_add_algebraic,
+        simd_reduce_mul_algebraic,
+    };
+
+    if !cfg!(miri) {
+        return; // this test does not make sense natively
+    }
+
+    macro_rules! check_nondet {
+        ($scalar:ty, $a:expr, $b:expr) => {
+            check_nondet(|| { unsafe { simd_add_algebraic($a, $b) } });
+            check_nondet(|| { unsafe { simd_sub_algebraic($a, $b) } });
+            check_nondet(|| { unsafe { simd_mul_algebraic($a, $b) } });
+            check_nondet(|| { unsafe { simd_div_algebraic($a, $b) } });
+            check_nondet(|| { unsafe { simd_rem_algebraic($a, $b) } });
+            check_nondet(|| { unsafe { simd_reduce_add_algebraic::<_, $scalar>($a) } });
+            check_nondet(|| { unsafe { simd_reduce_mul_algebraic::<_, $scalar>($a) } });
+        }
+    }
+
+    check_nondet!(f32, f32x4::from_array([1.0, 2.0, 3.0, 4.0]), f32x4::from_array([5.0, 6.0, 7.0, 8.0]));
+    check_nondet!(f64, f64x4::from_array([1.0, 2.0, 3.0, 4.0]), f64x4::from_array([5.0, 6.0, 7.0, 8.0]));
+}
+
 fn main() {
     test_simd_mask();
     #[cfg(any(miri, target_has_reliable_f16_math))]
@@ -1153,4 +1188,5 @@ fn main() {
     test_simd_intrinsics();
     test_simd_float_intrinsics();
     test_simd_masked_loadstore();
+    test_non_determinism();
 }

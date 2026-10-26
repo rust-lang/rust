@@ -307,6 +307,14 @@ pub trait Machine<'tcx>: Sized {
         interp_ok(val)
     }
 
+    /// Generate a non-deterministic index iterator.
+    fn nondet_index_iterator(
+        _ecx: &mut InterpCx<'tcx, Self>,
+        len: u64,
+    ) -> impl Iterator<Item = u64> + use<'tcx, Self> {
+        (0..len).into_iter()
+    }
+
     /// Determines the result of `min`/`max` on floats when the arguments are equal.
     fn equal_float_min_max<F: Float>(_ecx: &InterpCx<'tcx, Self>, a: F, _b: F) -> F {
         // By default, we pick the left argument.

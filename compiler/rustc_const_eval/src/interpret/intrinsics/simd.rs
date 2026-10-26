@@ -204,6 +204,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 enum Op {
                     MirOp(BinOp),
                     SaturatingOp(BinOp),
+                    AlgebraicOp(BinOp),
                     FMinMax(MinMax),
                     WrappingOffset,
                 }
@@ -228,30 +229,21 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     sym::simd_minimum_number_nsz => Op::FMinMax(MinMax::MinimumNumberNsz),
                     sym::simd_saturating_add => Op::SaturatingOp(BinOp::Add),
                     sym::simd_saturating_sub => Op::SaturatingOp(BinOp::Sub),
-                    sym::simd_add_algebraic => Op::MirOp(BinOp::Add),
-                    sym::simd_sub_algebraic => Op::MirOp(BinOp::Sub),
-                    sym::simd_mul_algebraic => Op::MirOp(BinOp::Mul),
-                    sym::simd_div_algebraic => Op::MirOp(BinOp::Div),
-                    sym::simd_rem_algebraic => Op::MirOp(BinOp::Rem),
+                    sym::simd_add_algebraic => Op::AlgebraicOp(BinOp::Add),
+                    sym::simd_sub_algebraic => Op::AlgebraicOp(BinOp::Sub),
+                    sym::simd_mul_algebraic => Op::AlgebraicOp(BinOp::Mul),
+                    sym::simd_div_algebraic => Op::AlgebraicOp(BinOp::Div),
+                    sym::simd_rem_algebraic => Op::AlgebraicOp(BinOp::Rem),
                     sym::simd_arith_offset => Op::WrappingOffset,
                     _ => unreachable!(),
                 };
-
-                let nondet = matches!(
-                    intrinsic_name,
-                    sym::simd_add_algebraic
-                        | sym::simd_sub_algebraic
-                        | sym::simd_mul_algebraic
-                        | sym::simd_div_algebraic
-                        | sym::simd_rem_algebraic
-                );
 
                 for i in 0..dest_len {
                     let left = self.read_immediate(&self.project_index(&left, i)?)?;
                     let right = self.read_immediate(&self.project_index(&right, i)?)?;
                     let dest = self.project_index(&dest, i)?;
                     let val = match which {
-                        Op::MirOp(mir_op) => {
+                        Op::MirOp(mir_op) | Op::AlgebraicOp(mir_op) => {
                             // this does NaN adjustments.
                             let mut val = self.binary_op(mir_op, &left, &right).map_err_kind(|kind| {
                                 match kind {
@@ -266,7 +258,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                                     kind => kind
                                 }
                             })?;
-                            if val.layout.ty.is_floating_point() && nondet {
+                            if matches!(which, Op::AlgebraicOp(_))
+                                && val.layout.ty.is_floating_point()
+                            {
                                 val = M::apply_float_nondet(self, val)?;
                             }
                             if matches!(
@@ -373,13 +367,35 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 }
                 self.write_immediate(*res, &dest)?;
             }
-            sym::simd_reduce_add_ordered
-            | sym::simd_reduce_mul_ordered
-            | sym::simd_reduce_add_unordered
+            sym::simd_reduce_add_ordered | sym::simd_reduce_mul_ordered => {
+                use mir::BinOp;
+
+                let (op, op_len) = self.project_to_simd(&args[0])?;
+                let init = self.read_immediate(&args[1])?;
+
+                let mir_op = match intrinsic_name {
+                    sym::simd_reduce_add_ordered => BinOp::Add,
+                    sym::simd_reduce_mul_ordered => BinOp::Mul,
+                    _ => unreachable!(),
+                };
+
+                let mut res = init;
+                for i in 0..op_len {
+                    let op = self.read_immediate(&self.project_index(&op, i)?)?;
+                    res = self.binary_op(mir_op, &res, &op)?;
+                }
+                self.write_immediate(*res, &dest)?;
+            }
+            sym::simd_reduce_add_unordered
             | sym::simd_reduce_mul_unordered
             | sym::simd_reduce_add_algebraic
             | sym::simd_reduce_mul_algebraic => {
                 use mir::BinOp;
+
+                let algebraic = matches!(
+                    intrinsic_name,
+                    sym::simd_reduce_add_algebraic | sym::simd_reduce_mul_algebraic
+                );
 
                 let (op, op_len) = self.project_to_simd(&args[0])?;
 
@@ -392,37 +408,21 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         dest.layout,
                     )
                 };
-                let init = match intrinsic_name {
-                    sym::simd_reduce_add_ordered | sym::simd_reduce_mul_ordered => {
-                        self.read_immediate(&args[1])?
-                    }
+                let (init, mir_op) = match intrinsic_name {
                     sym::simd_reduce_add_unordered | sym::simd_reduce_add_algebraic => {
-                        scalar(-0.0)?
+                        (scalar(-0.0)?, BinOp::Add)
                     }
-                    sym::simd_reduce_mul_unordered | sym::simd_reduce_mul_algebraic => scalar(1.0)?,
+                    sym::simd_reduce_mul_unordered | sym::simd_reduce_mul_algebraic => {
+                        (scalar(1.0)?, BinOp::Mul)
+                    }
                     _ => unreachable!(),
                 };
 
-                let mir_op = match intrinsic_name {
-                    sym::simd_reduce_add_ordered
-                    | sym::simd_reduce_add_unordered
-                    | sym::simd_reduce_add_algebraic => BinOp::Add,
-                    sym::simd_reduce_mul_ordered
-                    | sym::simd_reduce_mul_unordered
-                    | sym::simd_reduce_mul_algebraic => BinOp::Mul,
-                    _ => unreachable!(),
-                };
-
-                let nondet = dest.layout.ty.is_floating_point()
-                    && matches!(
-                        intrinsic_name,
-                        sym::simd_reduce_add_algebraic | sym::simd_reduce_mul_algebraic
-                    );
                 let mut res = init;
-                for i in 0..op_len {
+                for i in M::nondet_index_iterator(self, op_len) {
                     let op = self.read_immediate(&self.project_index(&op, i)?)?;
                     res = self.binary_op(mir_op, &res, &op)?;
-                    if nondet {
+                    if algebraic && dest.layout.ty.is_floating_point() {
                         res = M::apply_float_nondet(self, res)?;
                     }
                 }
