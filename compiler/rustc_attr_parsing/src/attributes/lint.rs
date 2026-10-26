@@ -100,7 +100,7 @@ impl LintParser {
                         }
                     }
                     MetaItemOrLitParser::Lit(lit) => {
-                        cx.emit_err(diagnostics::BadAttributeLit {
+                        cx.emit_err(diagnostics::ExpectedLint {
                             span: item.span(),
                             help: if lit.kind.is_str() {
                                 diagnostics::BadAttributeLitHelp::StrLit {

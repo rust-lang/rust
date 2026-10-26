@@ -2153,8 +2153,8 @@ pub(crate) enum MalformedAttributeKind {
 }
 
 #[derive(Diagnostic)]
-#[diag("expected a lint, found literal")]
-pub(crate) struct BadAttributeLit {
+#[diag("expected a lint")]
+pub(crate) struct ExpectedLint {
     #[primary_span]
     #[label("not the name of a lint")]
     pub span: Span,
