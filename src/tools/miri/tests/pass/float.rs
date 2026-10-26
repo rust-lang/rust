@@ -1,3 +1,4 @@
+//@run-native
 #![feature(stmt_expr_attributes)]
 #![feature(float_erf)]
 #![feature(float_gamma)]
@@ -1534,6 +1535,10 @@ fn test_non_determinism() {
         frem_algebraic, frem_fast, fsub_algebraic, fsub_fast,
     };
     use std::{f32, f64};
+
+    if !cfg!(miri) {
+        return; // this test does not make sense natively
+    }
 
     macro_rules! test_operations_f {
         ($a:expr, $b:expr) => {
