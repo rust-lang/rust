@@ -1,0 +1,12 @@
+warning: identifier `b` is bound more than once in this parameter list
+  --> $DIR/name-collision-in-trait-fn-sig.rs:11:58
+   |
+LL |     fn fn_with_type_named_same_as_local_in_param(b: i32, b: i32);
+   |                                                  -       ^ used as parameter more than once
+   |                                                  |
+   |                                                  used here already
+   |
+   = note: `#[warn(duplicate_parameter_names)]` on by default
+
+warning: 1 warning emitted
+

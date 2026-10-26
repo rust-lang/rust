@@ -5,6 +5,7 @@ fn allowed<F>(
     f3: fn(String, msg: String),
     f4: fn(msg: String, String),
     f5: fn(duplicate_name: bool, duplicate_name: bool),
+    //~^ WARN identifier `duplicate_name` is bound more than once in this parameter list
 ) { }
 
 
@@ -27,6 +28,7 @@ fn semantics<F>(
     self2: fn(self, self),
     //~^ ERROR `self` parameter is only allowed in associated functions
     //~| ERROR unexpected `self` parameter in function
+    //~| WARN identifier `self` is bound more than once in this parameter list
     self3: fn(bool, self),
     //~^ ERROR unexpected `self` parameter in function
 
@@ -46,6 +48,7 @@ fn semantics<F>(
     variadics: extern "C" fn(...),
 
     duplicate_names: fn(x: usize, x: usize),
+    //~^ WARN identifier `x` is bound more than once in this parameter list
 ) { }
 
 // Patterns are also syntactically rejected, but restricted patterns are not
