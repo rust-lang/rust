@@ -69,6 +69,12 @@ pub const fn of<T: ?Sized>() -> TypeId {
     const { intrinsics::reflection::type_id::<T>() }
 }
 
+#[rustc_const_unstable(feature = "type_info", issue = "146922")]
+#[rustc_comptime]
+pub(crate) fn size_of<T: Sized>() -> usize {
+    of::<T>().size().unwrap()
+}
+
 /// Compile-time type information.
 #[derive(Debug)]
 #[non_exhaustive]
@@ -310,24 +316,6 @@ impl TypeId {
     #[rustc_comptime]
     pub fn array_len(self) -> usize {
         intrinsics::reflection::type_id_array_len(self)
-    }
-
-    /// Returns the size of the type represented by this `TypeId`. `None` if it is unsized.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(type_info)]
-    /// use std::any::TypeId;
-    ///
-    /// assert_eq!(const { TypeId::of::<u32>().size() }, Some(4));
-    /// assert_eq!(const { TypeId::of::<[u8; 16]>().size() }, Some(16));
-    /// ```
-    #[unstable(feature = "type_info", issue = "146922")]
-    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
-    #[rustc_comptime]
-    pub fn size(self) -> Option<usize> {
-        intrinsics::reflection::type_id_size_of(self)
     }
 
     /// Returns the number of variants of the type represented by this `TypeId`.

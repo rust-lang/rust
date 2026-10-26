@@ -388,9 +388,6 @@ pub mod mem {
 
     #[rustc_nounwind]
     #[rustc_intrinsic]
-    pub const fn size_of<T>() -> usize;
-    #[rustc_nounwind]
-    #[rustc_intrinsic]
     pub const fn align_of<T>() -> usize;
 }
 

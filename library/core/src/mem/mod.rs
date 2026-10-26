@@ -1469,7 +1469,7 @@ pub trait SizedTypeProperties: Sized {
     #[doc(hidden)]
     #[unstable(feature = "sized_type_properties", issue = "none")]
     #[lang = "mem_size_const"]
-    const SIZE: usize = intrinsics::size_of::<Self>();
+    const SIZE: usize = type_info::size_of::<Self>();
 
     #[doc(hidden)]
     #[unstable(feature = "sized_type_properties", issue = "none")]
