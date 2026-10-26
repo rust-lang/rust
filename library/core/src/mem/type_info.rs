@@ -579,7 +579,7 @@ impl TypeId {
     #[rustc_comptime]
     pub fn field(self, variant_index: usize, field_index: usize) -> FieldId {
         FieldId {
-            frt_type_id: intrinsics::reflection::type_id_field_representing_type(
+            frt_type_id: intrinsics::reflection::type_id_field_representing(
                 self,
                 variant_index,
                 field_index,
@@ -886,7 +886,7 @@ impl FieldId {
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
     #[rustc_comptime]
     pub fn type_id(self) -> TypeId {
-        intrinsics::field_representing_type_actual_type_id(self.frt_type_id)
+        intrinsics::reflection::type_id_field_representing_outer_type_id(self.frt_type_id)
     }
 
     /// Returns the name of the field.
@@ -951,7 +951,7 @@ impl FieldId {
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
     #[rustc_comptime]
     pub fn offset(self) -> usize {
-        intrinsics::field_representing_type_offset(self.frt_type_id)
+        intrinsics::reflection::type_id_field_representing_field_offset(self.frt_type_id)
     }
 
     /// Given given a `FieldId` returns a list of attributes.

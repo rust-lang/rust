@@ -118,7 +118,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                 self.write_scalar(Scalar::from_target_usize(fields_num as u64, self), dest)?;
             }
 
-            sym::type_id_field_representing_type => {
+            sym::type_id_field_representing => {
                 let ty = self.read_type_id(&args[0])?;
                 let variant_idx = self.read_target_usize(&args[1])? as usize;
                 let field_idx = self.read_target_usize(&args[2])? as usize;
@@ -270,7 +270,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                 self.write_scalar(Scalar::from_bool(non_exhaustive), dest)?;
             }
 
-            sym::field_representing_type_offset => {
+            sym::type_id_field_representing_field_offset => {
                 let frt_ty = self.read_type_id(&args[0])?;
 
                 let (ty, variant, field) = if let ty::Adt(def, args) = frt_ty.kind()
@@ -290,7 +290,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                 self.write_scalar(Scalar::from_target_usize(offset, self), dest)?;
             }
 
-            sym::field_representing_type_actual_type_id => {
+            sym::type_id_field_representing_outer_type_id => {
                 let frt_ty = self.read_type_id(&args[0])?;
 
                 let field_ty = if let ty::Adt(def, args) = frt_ty.kind()
