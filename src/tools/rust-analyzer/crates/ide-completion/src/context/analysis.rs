@@ -598,6 +598,7 @@ fn expected_type_and_name<'db>(
         None => return ExpectedInfo::default(),
     };
 
+    let mut refs_level = 0;
     let strip_refs = |mut ty: Type<'db>| match name_like {
         ast::NameLike::NameRef(n) => {
             let p = match n.syntax().parent() {
@@ -624,7 +625,7 @@ fn expected_type_and_name<'db>(
                 Some(it) => it,
                 None => return ty,
             };
-            let refs_level = top_syn
+            refs_level = top_syn
                 .ancestors()
                 .skip(1)
                 .map_while(Either::<ast::RefExpr, ast::PrefixExpr>::cast)
@@ -892,7 +893,7 @@ fn expected_type_and_name<'db>(
             == Some(node);
         is_direct_arg.then_some(()).and_then(|()| ty.as_callable(sema.db))
     });
-    ExpectedInfo { ty: ty.map(strip_refs), name, func: expected_func }
+    ExpectedInfo { ty: ty.map(strip_refs), refs_level, name, func: expected_func }
 }
 
 fn classify_lifetime(

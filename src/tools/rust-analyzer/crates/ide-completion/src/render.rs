@@ -738,6 +738,7 @@ fn compute_ref_match(
     let completion_without_ref = completion_ty.as_reference();
 
     if let Some((expected_without_ref, _)) = &expected_without_ref
+        && ctx.expected.refs_level >= 0
         && (completion_without_ref.is_none()
             || completion_ty.could_unify_with(ctx.db, expected_without_ref))
         && completion_ty
@@ -3766,6 +3767,32 @@ fn main() {
                 fn main() fn() []
             "#]],
         )
+    }
+
+    #[test]
+    fn do_not_suggest_ref_after_deref() {
+        check_relevance(
+            r#"
+struct S;
+fn foo(s: S) {}
+fn main() {
+    let val = S;
+    let valref = &S;
+    let valmut = &mut S;
+    foo(*$0);
+}
+            "#,
+            expect![[r#"
+                lc valmut &mut S [type+local]
+                lc valref &S [type+local]
+                ex valref  [type]
+                st S S []
+                lc val S [local]
+                st S S []
+                fn foo(…) fn(S) []
+                fn main() fn() []
+            "#]],
+        );
     }
 
     #[test]

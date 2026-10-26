@@ -521,6 +521,8 @@ pub(crate) struct CompletionContext<'a, 'db> {
 pub(crate) struct ExpectedInfo<'db> {
     /// The expected type of what we are completing.
     pub(crate) ty: Option<Type<'db>>,
+    /// If `refs_level > 0`, exists `&...place`, if `refs_level < 0`, exists `*...place`
+    pub(crate) refs_level: i32,
     /// The expected name of what we are completing.
     /// This is usually the parameter name of the function argument we are completing.
     pub(crate) name: Option<NameOrNameRef>,
