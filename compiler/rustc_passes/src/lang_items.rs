@@ -243,7 +243,6 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
 fn get_lang_items(tcx: TyCtxt<'_>, (): ()) -> LanguageItems {
     let (resolver, krate) = tcx.resolver_for_lowering();
     let resolver = &*resolver.borrow();
-    let krate = &*krate.borrow();
 
     // Initialize the collector.
     let mut collector = LanguageItemCollector::new(tcx, resolver);

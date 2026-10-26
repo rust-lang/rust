@@ -89,7 +89,7 @@ use crate::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use crate::middle::lib_features::LibFeatures;
 use crate::middle::privacy::EffectiveVisibilities;
 use crate::middle::resolve::{
-    AstOwner, DocLinkResMap, ModChild, ResolverAstLowering, ResolverGlobalCtxt,
+    AstOwnerRef, DocLinkResMap, ModChild, ResolverAstLowering, ResolverGlobalCtxt,
 };
 use crate::middle::resolve_bound_vars::{ObjectLifetimeDefault, ResolveBoundVars, ResolvedArg};
 use crate::middle::stability::DeprecationEntry;
@@ -198,7 +198,7 @@ rustc_queries! {
         // Those two fields are consumed by `index_ast`.
         // We want them to be eventually dropped after lowering.
         &'tcx Steal<ResolverAstLowering<'tcx>>,
-        &'tcx Steal<ast::Crate>,
+        &'tcx ast::Crate,
         &'tcx ResolverGlobalCtxt,
     ) {
         eval_always
@@ -210,7 +210,7 @@ rustc_queries! {
     // We want to drop it once the whole HIR has been lowered.
     // We rely on reference counting to know when all definitions have been stolen.
     // None if the `LocalDefId` is not an owner.
-    query index_ast(_: ()) -> &'tcx IndexSlice<LocalDefId, Option<Steal<(Arc<ResolverAstLowering<'tcx>>, AstOwner)>>>  {
+    query index_ast(_: ()) -> &'tcx IndexSlice<LocalDefId, Option<Steal<(Arc<ResolverAstLowering<'tcx>>, AstOwnerRef<'tcx>)>>>  {
         eval_always
         no_hash
         desc { "getting the AST for lowering" }

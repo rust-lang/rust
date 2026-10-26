@@ -332,11 +332,11 @@ pub type DocLinkResMap = FxIndexMap<(Symbol, Namespace), Option<Res<NodeId>>>;
 ///
 /// This type isn't produced by name resolution but it is paired with `ResolverAstLowering` so this
 /// is as good a place as any for it.
-#[derive(Debug)]
-pub enum AstOwner {
-    Crate(Box<ast::Crate>),
-    Item(Box<ast::Item>),
-    TraitItem(Box<ast::AssocItem>),
-    ImplItem(Box<ast::AssocItem>),
-    ForeignItem(Box<ast::ForeignItem>),
+#[derive(Debug, Clone, Copy)]
+pub enum AstOwnerRef<'ast> {
+    Crate(&'ast ast::Crate),
+    Item(&'ast ast::Item),
+    TraitItem(&'ast ast::AssocItem),
+    ImplItem(&'ast ast::AssocItem),
+    ForeignItem(&'ast ast::ForeignItem),
 }

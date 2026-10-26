@@ -66,10 +66,10 @@ impl<'ast> rustc_ast::visit::Visitor<'ast> for DebuggerVisualizerCollector<'_> {
 
 /// Traverses and collects the debugger visualizers for a specific crate.
 fn debugger_visualizers(tcx: TyCtxt<'_>, _: LocalCrate) -> Vec<DebuggerVisualizerFile> {
-    let krate = &tcx.resolver_for_lowering().1;
+    let krate = tcx.resolver_for_lowering().1;
 
     let mut visitor = DebuggerVisualizerCollector { sess: tcx.sess, visualizers: Vec::new() };
-    rustc_ast::visit::Visitor::visit_crate(&mut visitor, &*krate.borrow());
+    rustc_ast::visit::Visitor::visit_crate(&mut visitor, krate);
 
     // We are collecting visualizers in AST-order, which is deterministic,
     // so we don't need to do any explicit sorting in order to get a

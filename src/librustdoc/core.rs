@@ -354,10 +354,7 @@ pub(crate) fn run_global_ctxt(
     // so type-check everything other than function bodies in this crate before running lints.
 
     let expanded_macros = {
-        // We need for these variables to be removed to ensure that the `Crate` won't be "stolen"
-        // anymore.
-        let krate = &*tcx.resolver_for_lowering().1.borrow();
-
+        let krate = tcx.resolver_for_lowering().1;
         source_macro_expansion(&krate, &render_options, output_format, tcx.sess.source_map())
     };
 

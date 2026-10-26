@@ -6,7 +6,7 @@ use rustc_ast::{self as ast, AssocItemKind, Delegation, DelegationSource, Item, 
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir as hir;
 use rustc_middle::middle::resolve::{
-    self as mid_res, AstOwner, DelegationInherentFnKind, TypeRelativeDelegationRes,
+    self as mid_res, AstOwnerRef, DelegationInherentFnKind, TypeRelativeDelegationRes,
 };
 use rustc_middle::ty::{
     self as ty, AssocKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor,
@@ -60,9 +60,9 @@ pub(crate) fn resolve_type_relative_delegations(
                 let (r, owner) = &*r_and_owner;
 
                 let delegation = match owner {
-                    AstOwner::Item(Item { kind: ItemKind::Delegation(d), .. })
-                    | AstOwner::TraitItem(Item { kind: AssocItemKind::Delegation(d), .. })
-                    | AstOwner::ImplItem(Item { kind: AssocItemKind::Delegation(d), .. }) => d,
+                    AstOwnerRef::Item(Item { kind: ItemKind::Delegation(d), .. })
+                    | AstOwnerRef::TraitItem(Item { kind: AssocItemKind::Delegation(d), .. })
+                    | AstOwnerRef::ImplItem(Item { kind: AssocItemKind::Delegation(d), .. }) => d,
                     _ => unreachable!("we are processing only delegations"),
                 };
 
