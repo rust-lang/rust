@@ -1,6 +1,7 @@
 use std::fmt;
 
-pub(crate) use region_context::*;
+// To be reexported in `super::consumers`
+pub use region_context::RegionInferenceContext;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::graph::scc::Sccs;
 use rustc_hir::def_id::CRATE_DEF_ID;
@@ -261,7 +262,7 @@ fn sccs_info<'tcx>(infcx: &BorrowckInferCtxt<'tcx>, sccs: &ConstraintSccs) {
 
 #[derive(Clone, Debug)]
 pub(crate) struct BestBlame<'tcx> {
-    /// See docs on [`RegionInferenceContextInner::best_blame_constraint`] for what this is.
+    /// See docs on [`region_context::RegionInferenceContextInner::best_blame_constraint`] for what this is.
     path: Vec<OutlivesConstraint<'tcx>>,
     /// Index into `path` of the constraint most relevant to report to users.
     idx: usize,
@@ -275,11 +276,11 @@ impl<'tcx> BestBlame<'tcx> {
             .path
             .iter()
             .find_map(|constraint| {
-                if let ConstraintCategory::Predicate(predicate_span) = constraint.category {
+                if let ConstraintCategory::Predicate(predicate_span, def_id) = constraint.category {
                     // We currently do not store the `DefId` in the `ConstraintCategory`
                     // for performances reasons. The error reporting code used by NLL only
                     // uses the span, so this doesn't cause any problems at the moment.
-                    Some(ObligationCauseCode::WhereClause(CRATE_DEF_ID.to_def_id(), predicate_span))
+                    Some(ObligationCauseCode::WhereClause(def_id, predicate_span))
                 } else {
                     None
                 }

@@ -1,14 +1,14 @@
 //@ check-pass
 
 #![feature(
-    generic_const_items,
-    gca_min_const_items,
-    gca_macroless_args,
     adt_const_params,
-    generic_const_parameter_types,
-    const_param_ty_trait
+    const_param_ty_trait,
+    gca_adts,
+    gca_macroless_args,
+    gca_min_const_items,
+    generic_const_items,
+    generic_const_parameter_types
 )]
-#![expect(incomplete_features)]
 
 use std::gca;
 use std::marker::{ConstParamTy, ConstParamTy_, PhantomData};

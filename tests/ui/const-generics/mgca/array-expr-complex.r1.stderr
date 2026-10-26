@@ -1,5 +1,5 @@
 error: complex const arguments must be placed inside of a `const` block
-  --> $DIR/array-expr-complex.rs:13:33
+  --> $DIR/array-expr-complex.rs:12:33
    |
 LL |     takes_array::<{ gca!([1, 2, 1 + 2]) }>();
    |                                 ^^^^^

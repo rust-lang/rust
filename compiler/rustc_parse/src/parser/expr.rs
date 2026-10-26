@@ -36,7 +36,7 @@ use super::{
 };
 use crate::{exp, maybe_recover_from_interpolated_ty_qpath};
 
-mod diagnostics;
+pub(super) mod diagnostics;
 
 #[derive(Debug)]
 pub(super) enum DestructuredFloat {
@@ -149,7 +149,7 @@ impl<'a> Parser<'a> {
         mut lhs: Box<Expr>,
     ) -> PResult<'a, (Box<Expr>, bool)> {
         let mut parsed_something = false;
-        if !self.should_continue_as_assoc_expr(&lhs) {
+        if self.expr_is_complete(&lhs) && !self.recover_from_bin_op_after_complete_stmt_expr(&lhs) {
             return Ok((lhs, parsed_something));
         }
 
@@ -224,52 +224,6 @@ impl<'a> Parser<'a> {
         }
 
         Ok((lhs, parsed_something))
-    }
-
-    fn should_continue_as_assoc_expr(&mut self, lhs: &Expr) -> bool {
-        match (self.expr_is_complete(lhs), AssocOp::from_token(&self.token)) {
-            // Semi-statement forms are odd:
-            // See https://github.com/rust-lang/rust/issues/29071
-            (true, None) => false,
-            (false, _) => true, // Continue parsing the expression.
-            // An exhaustive check is done in the following block, but these are checked first
-            // because they *are* ambiguous but also reasonable looking incorrect syntax, so we
-            // want to keep their span info to improve diagnostics in these cases in a later stage.
-            (true, Some(AssocOp::Binary(
-                BinOpKind::Mul | // `{ 42 } *foo = bar;` or `{ 42 } * 3`
-                BinOpKind::Sub | // `{ 42 } -5`
-                BinOpKind::Add | // `{ 42 } + 42` (unary plus)
-                BinOpKind::And | // `{ 42 } &&x` (#61475) or `{ 42 } && if x { 1 } else { 0 }`
-                BinOpKind::Or | // `{ 42 } || 42` ("logical or" or closure)
-                BinOpKind::BitOr // `{ 42 } | 42` or `{ 42 } |x| 42`
-            ))) => {
-                // These cases are ambiguous and can't be identified in the parser alone.
-                //
-                // Bitwise AND is left out because guessing intent is hard. We can make
-                // suggestions based on the assumption that double-refs are rarely intentional,
-                // and closures are distinct enough that they don't get mixed up with their
-                // return value.
-                let sp = self.psess.source_map().start_point(self.token.span);
-                self.psess.ambiguous_block_expr_parse.borrow_mut().insert(sp, lhs.span);
-                false
-            }
-            (true, Some(op)) if !op.can_continue_expr_unambiguously() => false,
-            (true, Some(_)) => {
-                self.error_found_expr_would_be_stmt(lhs);
-                true
-            }
-        }
-    }
-
-    /// We've found an expression that would be parsed as a statement,
-    /// but the next token implies this should be parsed as an expression.
-    /// For example: `if let Some(x) = x { x } else { 0 } / 2`.
-    fn error_found_expr_would_be_stmt(&self, lhs: &Expr) {
-        self.dcx().emit_err(crate::diagnostics::FoundExprWouldBeStmt {
-            span: self.token.span,
-            token: pprust::token_to_string(&self.token),
-            suggestion: crate::diagnostics::ExprParenthesesNeeded::surrounding(lhs.span),
-        });
     }
 
     /// Possibly translate the current token to an associative operator.
@@ -425,7 +379,9 @@ impl<'a> Parser<'a> {
                 };
 
                 // a block on the LHS might have been intended to be an expression instead
-                if let Some(sp) = this.psess.ambiguous_block_expr_parse.borrow().get(&lo) {
+                if let Some(sp) =
+                    this.psess.complete_stmt_exprs_before_bin_op_lookalike.borrow().get(&lo)
+                {
                     err.add_parentheses =
                         Some(crate::diagnostics::ExprParenthesesNeeded::surrounding(*sp));
                 } else {
@@ -453,12 +409,6 @@ impl<'a> Parser<'a> {
                     diagnostics::UnaryFixity::Pre,
                     pre_span,
                 ));
-            }
-            token::Ident(..)
-                if this.token.is_keyword(kw::Move)
-                    && this.look_ahead(1, |t| *t == token::OpenParen) =>
-            {
-                make_it!(this, attrs, |this, _| this.parse_expr_move(lo))
             }
             token::Ident(..) if this.may_recover() && this.is_mistaken_not_ident_negation() => {
                 make_it!(this, attrs, |this, _| this.recover_not_expr(lo))
@@ -489,16 +439,6 @@ impl<'a> Parser<'a> {
         self.dcx().emit_err(crate::diagnostics::TildeAsUnaryOperator(lo));
 
         self.parse_expr_unary(lo, UnOp::Not)
-    }
-
-    fn parse_expr_move(&mut self, move_kw: Span) -> PResult<'a, (Span, ExprKind)> {
-        self.bump();
-        self.psess.gated_spans.gate(sym::move_expr, move_kw);
-        self.expect(exp!(OpenParen))?;
-        let expr = self.parse_expr()?;
-        self.expect(exp!(CloseParen))?;
-        let span = move_kw.to(self.prev_token.span);
-        Ok((span, ExprKind::Move(expr, move_kw)))
     }
 
     fn is_mistaken_not_ident_negation(&self) -> bool {
@@ -1364,7 +1304,9 @@ impl<'a> Parser<'a> {
                 this.parse_expr_closure().map_err(|mut err| {
                     // If the input is something like `if a { 1 } else { 2 } | if a { 3 } else { 4 }`
                     // then suggest parens around the lhs.
-                    if let Some(sp) = this.psess.ambiguous_block_expr_parse.borrow().get(&lo) {
+                    if let Some(sp) =
+                        this.psess.complete_stmt_exprs_before_bin_op_lookalike.borrow().get(&lo)
+                    {
                         err.subdiagnostic(crate::diagnostics::ExprParenthesesNeeded::surrounding(
                             *sp,
                         ));
@@ -1377,6 +1319,10 @@ impl<'a> Parser<'a> {
                 this.parse_expr_builtin()
             } else if this.check_path() {
                 this.parse_expr_path_start()
+            } else if this.token.is_keyword(kw::Move)
+                && this.look_ahead(1, |t| *t == token::OpenParen)
+            {
+                this.parse_expr_move()
             } else if this.check_keyword(exp!(Move))
                 || this.check_keyword(exp!(Use))
                 || this.check_keyword(exp!(Static))
@@ -1487,7 +1433,7 @@ impl<'a> Parser<'a> {
             |p| p.parse_expr_res(restrictions.intersection(Restrictions::ALLOW_LET)),
         ) {
             Ok(x) => x,
-            Err(err) => {
+            Err(err) if self.may_recover() => {
                 return Ok(self.recover_seq_parse_error(
                     exp!(OpenParen),
                     exp!(CloseParen),
@@ -1495,6 +1441,7 @@ impl<'a> Parser<'a> {
                     err,
                 ));
             }
+            Err(err) => return Err(err),
         };
         let kind = if es.len() == 1 && matches!(trailing_comma, Trailing::No) {
             // `(e)` is parenthesized `e`.
@@ -2258,6 +2205,17 @@ impl<'a> Parser<'a> {
         Ok(self.mk_expr(blk.span, ExprKind::Block(blk, None)))
     }
 
+    fn parse_expr_move(&mut self) -> PResult<'a, Box<Expr>> {
+        let move_kw = self.token.span;
+        self.expect_keyword(exp!(Move))?;
+        self.expect(exp!(OpenParen))?;
+        let expr = self.parse_expr()?;
+        self.expect(exp!(CloseParen))?;
+        let span = move_kw.to(self.prev_token.span);
+        self.psess.gated_spans.gate(sym::move_expr, span);
+        Ok(self.mk_expr(span, ExprKind::Move(expr, move_kw)))
+    }
+
     /// Parses a closure expression (e.g., `move |args| expr`).
     fn parse_expr_closure(&mut self) -> PResult<'a, Box<Expr>> {
         let lo = self.token.span;
@@ -2482,6 +2440,7 @@ impl<'a> Parser<'a> {
                     span: lo.to(this.prev_token.span),
                     id: DUMMY_NODE_ID,
                     is_placeholder: false,
+                    has_const_keyword: false,
                 },
                 Trailing::from(this.token == token::Comma),
                 UsePreAttrPos::No,
@@ -3936,8 +3895,6 @@ impl<'a> Parser<'a> {
         let attrs = self.parse_outer_attributes()?;
         self.recover_vcs_conflict_marker();
         self.collect_tokens(None, attrs, ForceCollect::No, |this, attrs| {
-            let lo = this.token.span;
-
             // Check if a colon exists one ahead. This means we're parsing a fieldname.
             let is_shorthand = !this.look_ahead(1, |t| t == &token::Colon || t == &token::Eq);
             // Proactively check whether parsing the field will be incorrect.
@@ -3956,22 +3913,25 @@ impl<'a> Parser<'a> {
                     token: pprust::token_to_string(&this.look_ahead(1, |t| *t)),
                 }));
             }
-            let (ident, expr) = if is_shorthand {
+            let (ident, expr, span) = if is_shorthand {
                 // Mimic `x: x` for the `x` field shorthand.
                 let ident = this.parse_ident_common(false)?;
                 let path = ast::Path::from_ident(ident);
-                (ident, this.mk_expr(ident.span, ExprKind::Path(None, path)))
+                (ident, this.mk_expr(ident.span, ExprKind::Path(None, path)), ident.span)
             } else {
                 let ident = this.parse_field_name()?;
+                let span = ident.span.to(this.token.span);
                 this.error_on_eq_field_init(ident);
                 this.bump(); // `:`
-                (ident, this.parse_expr()?)
+                let expr = this.parse_expr()?;
+                let span = span.to(expr.span);
+                (ident, expr, span)
             };
 
             Ok((
                 ast::ExprField {
                     ident,
-                    span: lo.to(expr.span),
+                    span,
                     expr,
                     is_shorthand,
                     attrs,

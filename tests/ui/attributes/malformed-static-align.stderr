@@ -29,6 +29,7 @@ error: the `repr(align(...))` attribute cannot be used on statics
    |
 LL | #[repr(align(16))]
    |   ^^^^^^^^^^^^^^^
+LL | static S4: () = ();
    |
    = help: the `repr(align(...))` attribute can only be applied to data types
    = help: use `#[rustc_align_static(...)]` instead
@@ -38,6 +39,7 @@ error: the `rustc_align_static` attribute cannot be used on structs
    |
 LL | #[rustc_align_static(16)]
    |   ^^^^^^^^^^^^^^^^^^
+LL | struct Struct1;
    |
    = help: the `rustc_align_static` attribute can be applied to foreign statics and statics
 

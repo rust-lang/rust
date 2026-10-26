@@ -242,13 +242,30 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let ty::Adt(caller_adt, caller_args) = caller_type.kind() else { return false };
         let ty::Adt(callee_adt, callee_args) = callee_type.kind() else { return false };
 
+        // We want to reject compatibility between structs with and without `#[cfi_encoding]` attr,
+        // see https://github.com/rust-lang/rust/pull/164739#discussion_r4360457828
+        #[derive(PartialEq, Eq)]
+        enum AbiNameClass {
+            CfiEncoded,
+            Normal,
+        }
+
+        let abi_name = |adt: AdtDef<'tcx>| {
+            find_attr!(
+                self.tcx,
+                adt.did(),
+                CfiEncoding { encoding } => (AbiNameClass::CfiEncoded, *encoding)
+            )
+            .unwrap_or_else(|| (AbiNameClass::Normal, self.tcx.item_name(adt.did())))
+        };
+
         if !(
             // They must both be structs.
             (caller_adt.is_struct() && callee_adt.is_struct())
             // They must have equal `repr`, and it must be `repr(C)`.
             && (caller_adt.repr().c() && caller_adt.repr().equal_up_to_seed(&callee_adt.repr()))
             // They must have the same name.
-            && self.tcx.item_name(caller_adt.did()) == self.tcx.item_name(callee_adt.did())
+            && abi_name(*caller_adt) == abi_name(*callee_adt)
         ) {
             return false;
         }
@@ -462,18 +479,27 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let _trace = enter_trace_span!(M, step::init_stack_frame, %instance, tracing_separate_thread = Empty);
         let def_id = instance.def_id();
 
+        match (instance.def.requires_caller_location(*self.tcx), with_caller_location) {
+            (false, true) => {
+                throw_ub_format!(
+                    "calling a non-`#[track_caller]` function from a `#[track_caller]` declaration"
+                )
+            }
+            (true, false) => {
+                throw_ub_format!(
+                    "calling a `#[track_caller]` function from a non-`#[track_caller]` declaration"
+                )
+            }
+            _ => {}
+        }
+        let caller_location = with_caller_location.then(|| self.caller_location());
+
         // The first order of business is to figure out the callee signature.
-        // However, that requires the list of variadic arguments.
-        // We use the *caller* information to determine where to split the list of arguments,
-        // and then later check that the callee indeed has the same number of fixed arguments.
-        let extra_tys = if caller_fn_abi.c_variadic {
-            let fixed_count = usize::try_from(caller_fn_abi.fixed_count).unwrap();
-            let extra_tys = args[fixed_count..].iter().map(|arg| arg.layout().ty);
-            self.tcx.mk_type_list_from_iter(extra_tys)
-        } else {
-            ty::List::empty()
-        };
-        let callee_fn_abi = self.fn_abi_of_instance_no_deduced_attrs(instance, extra_tys)?;
+        // We leave the list of extra c-variadic args empty because the callee cannot know about
+        // them, and we don't need them in the `FnAbi`. This also avoids ICEs if the callee is
+        // not actually c-variadic.
+        let extra_args = ty::List::empty();
+        let callee_fn_abi = self.fn_abi_of_instance_no_deduced_attrs(instance, extra_args)?;
 
         if caller_fn_abi.conv != callee_fn_abi.conv {
             throw_ub_format!(
@@ -542,6 +568,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 .collect::<Vec<_>>()
         );
 
+        // Initialize special caller_location "local", if this function has it.
+        self.frame_mut().track_caller_arg = caller_location;
+
         // Determine whether there is a special VaList argument. This is always the
         // last argument, and since arguments start at index 1 that's `arg_count`.
         let va_list_arg = callee_fn_abi.c_variadic.then(|| mir::Local::from_usize(body.arg_count));
@@ -563,7 +592,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // The "where they come from" part is easy, we expect the caller to do any special handling
         // that might be required here (e.g. for untupling).
         // If `with_caller_location` is set we pretend there is an extra argument (that
-        // we will not pass; our `caller_location` intrinsic implementation walks the stack instead).
+        // we will not pass normally; our `caller_location` intrinsic implementation handles
+        // that separately).
         assert_eq!(
             args.len() + if with_caller_location { 1 } else { 0 },
             caller_fn_abi.args.len(),
@@ -622,11 +652,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         ecx.eval_place(dest, /* skip_validity_for_simple_deref */ false)?;
                     let mplace = ecx.force_allocation(&place)?;
 
+                    // There should be no more callee ABI arguments.
+                    assert!(callee_args_abis.next().is_none());
                     // Consume the remaining arguments by putting them into the variable argument
                     // list. We disable retagging to avoid creating protected tags. Protection should
                     // only use callee-side information, and the varargs have no static callee-side type.
                     let varargs = M::with_retag_mode(ecx, RetagMode::None, |ecx| {
-                        ecx.allocate_varargs(&mut caller_args, &mut callee_args_abis)
+                        ecx.allocate_varargs(&mut caller_args)
                     })?;
 
                     // When the frame is dropped, these variable arguments are deallocated.
@@ -705,6 +737,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             throw_ub_format!("calling a function with more arguments than it expected");
         }
 
+        // All function arguments have gotten initialized, call corresponding hook.
+        M::after_stack_frame_init(self)?;
+
         // Done!
         self.push_stack_frame_done()
     }
@@ -757,6 +792,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         match instance.def {
             ty::InstanceKind::Intrinsic(def_id) => {
                 assert!(self.tcx.intrinsic(def_id).is_some());
+                assert!(!with_caller_location);
                 // FIXME: Should `InPlace` arguments be reset to uninit?
                 if let Some(fallback) = M::call_intrinsic(
                     self,
@@ -768,11 +804,16 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 )? {
                     assert!(!self.tcx.intrinsic(fallback.def_id()).unwrap().must_be_overridden);
                     assert_matches!(fallback.def, ty::InstanceKind::Item(_));
+                    // For `#[rustc_intrinsic] fn`, two `Instance`s are involved:
+                    // the original `InstanceKind::Intrinsic` (no caller location arg), and
+                    // the fallback `InstanceKind::Item` (has caller location arg if
+                    // it's `#[track_caller]`).
+                    // We replace the former with the latter.
                     return self.init_fn_call(
                         FnVal::Instance(fallback),
                         (caller_abi, caller_fn_abi),
                         args,
-                        with_caller_location,
+                        fallback.def.requires_caller_location(*self.tcx),
                         destination,
                         target,
                         unwind,

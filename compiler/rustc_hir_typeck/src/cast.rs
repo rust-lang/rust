@@ -39,7 +39,7 @@ use rustc_lint_defs::builtin::{TRIVIAL_CASTS, TRIVIAL_NUMERIC_CASTS};
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::mir::Mutability;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
-use rustc_middle::ty::cast::{CastKind, CastTy};
+use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeAndMut, TypeVisitableExt, Unnormalized, VariantDef, elaborate,
@@ -51,6 +51,22 @@ use tracing::{debug, instrument};
 
 use super::FnCtxt;
 use crate::{diagnostics, type_error_struct};
+
+/// Cast Kind. See [RFC 401](https://rust-lang.github.io/rfcs/0401-coercions.html)
+/// (or rustc_hir_typeck/src/cast.rs).
+#[derive(Copy, Clone, Debug)]
+pub enum CastKind {
+    PtrPtrCast,
+    PtrAddrCast,
+    AddrPtrCast,
+    NumericCast,
+    EnumCast,
+    PrimIntCast,
+    U8CharCast,
+    ArrayPtrCast,
+    FnPtrPtrCast,
+    FnPtrAddrCast,
+}
 
 /// Reifies a cast check to be checked once we have full type information for
 /// a function context.
@@ -912,7 +928,6 @@ impl<'a, 'tcx> CastCheck<'tcx> {
     /// directly. coercion-cast is handled in check instead of here.
     fn do_check(&self, fcx: &FnCtxt<'a, 'tcx>) -> Result<CastKind, CastError<'tcx>> {
         use rustc_middle::ty::cast::CastTy::*;
-        use rustc_middle::ty::cast::IntTy::*;
 
         let (t_from, t_cast) = match (CastTy::from_ty(self.expr_ty), CastTy::from_ty(self.cast_ty))
         {
@@ -947,7 +962,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     // a cast.
                     ty::Ref(_, inner_ty, mutbl) => {
                         return match t_cast {
-                            Int(_) | Float => match *inner_ty.kind() {
+                            Int | CEnum | Bool | Char | Float => match *inner_ty.kind() {
                                 ty::Int(_)
                                 | ty::Uint(_)
                                 | ty::Float(_)
@@ -979,19 +994,21 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         }
         match (t_from, t_cast) {
             // These types have invariants! can't cast into them.
-            (_, Int(CEnum) | FnPtr) => Err(CastError::NonScalar),
+            (_, CEnum | FnPtr) => Err(CastError::NonScalar),
 
             // * -> Bool
-            (_, Int(Bool)) => Err(CastError::CastToBool),
+            (_, Bool) => Err(CastError::CastToBool),
 
             // * -> Char
-            (Int(U(ty::UintTy::U8)), Int(Char)) => Ok(CastKind::U8CharCast), // u8-char-cast
-            (_, Int(Char)) => Err(CastError::CastToChar),
+            (Int, Char) if self.expr_ty == fcx.tcx.types.u8 => {
+                Ok(CastKind::U8CharCast) // u8-char-cast
+            }
+            (_, Char) => Err(CastError::CastToChar),
 
             // prim -> float,ptr
-            (Int(Bool) | Int(CEnum) | Int(Char), Float) => Err(CastError::NeedViaInt),
+            (Bool | CEnum | Char, Float) => Err(CastError::NeedViaInt),
 
-            (Int(Bool) | Int(CEnum) | Int(Char) | Float, Ptr(_)) | (Ptr(_) | FnPtr, Float) => {
+            (Bool | CEnum | Char | Float, Ptr(_)) | (Ptr(_) | FnPtr, Float) => {
                 Err(CastError::IllegalCast)
             }
 
@@ -999,24 +1016,24 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             (Ptr(m_e), Ptr(m_c)) => self.check_ptr_ptr_cast(fcx, m_e, m_c), // ptr-ptr-cast
 
             // ptr-addr-cast
-            (Ptr(m_expr), Int(_)) => self.check_ptr_addr_cast(fcx, m_expr),
+            (Ptr(m_expr), Int) => self.check_ptr_addr_cast(fcx, m_expr),
 
-            (FnPtr, Int(_)) => {
+            (FnPtr, Int) => {
                 // FIXME(#95489): there should eventually be a lint for these casts
                 Ok(CastKind::FnPtrAddrCast)
             }
             // addr-ptr-cast
-            (Int(_), Ptr(mt)) => self.check_addr_ptr_cast(fcx, mt),
+            (Int, Ptr(mt)) => self.check_addr_ptr_cast(fcx, mt),
             // fn-ptr-cast
             (FnPtr, Ptr(mt)) => self.check_fptr_ptr_cast(fcx, mt),
 
             // enum -> int
-            (Int(CEnum), Int(_)) => self.check_enum_cast(fcx),
+            (CEnum, Int) => self.check_enum_cast(fcx),
 
             // prim -> prim
-            (Int(Char) | Int(Bool), Int(_)) => Ok(CastKind::PrimIntCast),
+            (Char | Bool, Int) => Ok(CastKind::PrimIntCast),
 
-            (Int(_) | Float, Int(_) | Float) => Ok(CastKind::NumericCast),
+            (Int | Float, Int | Float) => Ok(CastKind::NumericCast),
         }
     }
 

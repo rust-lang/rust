@@ -3,6 +3,8 @@ error: the `rustc_comptime` attribute cannot be used on required trait methods
    |
 LL |     #[rustc_comptime]
    |       ^^^^^^^^^^^^^^
+LL |
+LL |     fn foo();
    |
    = help: the `rustc_comptime` attribute can be applied to functions with a body and inherent impl blocks
 
@@ -11,6 +13,8 @@ error: the `rustc_comptime` attribute cannot be used on provided trait methods
    |
 LL |     #[rustc_comptime]
    |       ^^^^^^^^^^^^^^
+LL |
+LL |     fn bar() {}
    |
    = help: the `rustc_comptime` attribute can be applied to functions, inherent impl blocks, and inherent methods
 
@@ -19,6 +23,8 @@ error: the `rustc_comptime` attribute cannot be used on trait methods in impl bl
    |
 LL |     #[rustc_comptime]
    |       ^^^^^^^^^^^^^^
+LL |
+LL |     fn foo() {}
    |
    = help: the `rustc_comptime` attribute can be applied to functions, inherent impl blocks, and inherent methods
 

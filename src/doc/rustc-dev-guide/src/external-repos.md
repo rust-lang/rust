@@ -27,12 +27,12 @@ The following external projects are managed using some form of a `subtree`:
 * [compiler-builtins](https://github.com/rust-lang/compiler-builtins)
 * [stdarch](https://github.com/rust-lang/stdarch)
 
-In contrast to `submodule` dependencies
-(see below for those), the `subtree` dependencies are just regular files and directories which can
-be updated in-tree. However, if possible, enhancements, bug fixes, etc. specific
+In contrast to `submodule` dependencies (see below for those),
+the `subtree` dependencies are just regular files and directories which can be updated in-tree.
+However, if possible, enhancements, bug fixes, etc. specific
 to these tools should be filed against the tools directly in their respective upstream repositories.
-The exception is that when rustc changes are required to
-implement a new tool feature or test, that should happen in one collective rustc PR.
+The exception is that when rustc changes are required to implement a new tool feature or test,
+that should happen in one collective rustc PR.
 
 Similarly, if your rustc changes break the build of some subtree dependency,
 you should include fixes for those in the rustc PR as well.
@@ -42,13 +42,13 @@ you should include fixes for those in the rustc PR as well.
 * Using `git subtree`
     * `clippy` ([sync guide](https://doc.rust-lang.org/nightly/clippy/development/infrastructure/sync.html#performing-the-sync-from-rust-langrust-to-clippy))
     * `portable-simd` ([sync script](https://github.com/rust-lang/portable-simd/blob/master/subtree-sync.sh))
-    * `rustfmt`
     * `rustc_codegen_gcc` ([sync guide](https://github.com/rust-lang/rustc_codegen_gcc/blob/master/doc/subtree.md))
 * Using the [josh](#synchronizing-a-josh-subtree) tool
     * `miri`
     * `rust-analyzer`
     * `rustc_codegen_cranelift`
     * `rustc-dev-guide`
+    * `rustfmt`
     * `compiler-builtins`
     * `stdarch`
 
@@ -56,7 +56,7 @@ you should include fixes for those in the rustc PR as well.
 
 The [josh] tool is an alternative to git subtrees, which manages git history in a different way and scales better to larger repositories.
 Specific tooling is required to work with josh.
-We provide a helper [`rustc-josh-sync`][josh-sync] tool to help with the synchronization, described [below](#synchronizing-a-josh-subtree).
+We provide a helper tool, [`rustc-josh-sync`][josh-sync], to help with the synchronization, described [below](#synchronizing-a-josh-subtree).
 
 ### Synchronizing a Josh subtree
 
@@ -103,20 +103,20 @@ Periodically the changes made to subtree based dependencies need to be synchroni
 repository and the upstream tool repositories.
 
 Subtree synchronizations are typically handled by the respective tool maintainers.
-Other users
-are welcome to submit synchronization PRs, however, in order to do so you will need to modify
-your local git installation and follow a very precise set of instructions.
-These instructions are documented, along with several useful tips and tricks, in the
-[syncing subtree changes][clippy-sync-docs] section in Clippy's Contributing guide.
-The instructions are applicable for use with any subtree based tool, just be sure to
-use the correct corresponding subtree directory and remote repository.
+Other users are welcome to submit synchronization PRs.
+However, in order to do so,
+you will need to modify your local git installation and follow a very precise set of instructions.
+These instructions are documented, along with several useful tips and tricks,
+in the [syncing subtree changes][clippy-sync-docs] section in Clippy's Contributing guide.
+The instructions are applicable for use with any subtree-based tool;
+just be sure to use the correct corresponding subtree directory and remote repository.
 
 The synchronization process goes in two directions: `subtree push` and `subtree pull`.
 
 A `subtree push` takes all the changes that happened to the copy in this repo and creates commits
 on the remote repo that match the local changes.
-Every local commit that touched the subtree causes a commit on the remote repo, but
-is modified to move the files from the specified directory to the tool repo root.
+Every local commit that touched the subtree causes a commit on the remote repo,
+but is modified to move the files from the specified directory to the tool repo root.
 
 A `subtree pull` takes all changes since the last `subtree pull`
 from the tool repo and adds these commits to the rustc repo along with a merge commit that moves
@@ -142,8 +142,8 @@ that this is happening because you suddenly get thousands of commits that want t
 
 ### Creating a new subtree dependency
 
-If you want to create a new subtree dependency from an existing repository, call (from this
-repository's root directory!)
+If you want to create a new subtree dependency from an existing repository,
+call (from this repository's root directory!)
 
 ```
 git subtree add -P src/tools/clippy https://github.com/rust-lang/rust-clippy.git master
@@ -152,9 +152,9 @@ git subtree add -P src/tools/clippy https://github.com/rust-lang/rust-clippy.git
 This will create a new commit, which you may not rebase under any circumstances!
 Delete the commit and redo the operation if you need to rebase.
 
-Now you're done, the `src/tools/clippy` directory behaves as if Clippy were
-part of the rustc monorepo, so no one but you (or others that synchronize
-subtrees) actually needs to use `git subtree`.
+Now you're done;
+the `src/tools/clippy` directory behaves as if Clippy were part of the rustc monorepo,
+so no one but you (or others that synchronize subtrees) actually needs to use `git subtree`.
 
 ## External dependencies (submodules)
 
@@ -168,14 +168,14 @@ Usage of submodules is discussed more in the [Using Git chapter](git.md#git-subm
 Some of the submodules are allowed to be in a "broken" state where they
 either don't build or their tests don't pass, e.g. the documentation books
 like [The Rust Reference].
-Maintainers of these projects will be notified
-when the project is in a broken state, and they should fix them as soon as possible.
+Maintainers of these projects will be notified when the project is in a broken state,
+and they should fix them as soon as possible.
 The current status is tracked on the [toolstate website].
 More information may be found on the Forge [Toolstate chapter].
 In practice, it is very rare for documentation to have broken toolstate.
 
-Breakage is not allowed in the beta and stable channels, and must be addressed
-before the PR is merged.
+Breakage is not allowed in the beta and stable channels,
+and must be addressed before the PR is merged.
 They are also not allowed to be broken on `main` in the week leading up to the beta cut.
 
 [git submodules]: https://git-scm.com/book/en/v2/Git-Tools-Submodules

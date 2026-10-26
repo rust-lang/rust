@@ -8,7 +8,6 @@ use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::cast::{CastTy, mir_cast_kind};
-use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, Ty, UpvarArgs};
 use rustc_span::{DUMMY_SP, Span, Spanned, bug};
@@ -736,7 +735,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     // Helper to get a `-1` value of the appropriate type
     fn neg_1_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
-        let typing_env = ty::TypingEnv::fully_monomorphized();
+        let typing_env = self.typing_env();
         let size = self.tcx.layout_of(typing_env.as_query_input(ty)).unwrap().size;
         let literal = Const::from_bits(self.tcx, size.unsigned_int_max(), typing_env, ty);
 
@@ -746,7 +745,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     // Helper to get the minimum value of the appropriate type
     fn minval_literal(&mut self, span: Span, ty: Ty<'tcx>) -> Operand<'tcx> {
         assert!(ty.is_signed());
-        let typing_env = ty::TypingEnv::fully_monomorphized();
+        let typing_env = self.typing_env();
         let bits = self.tcx.layout_of(typing_env.as_query_input(ty)).unwrap().size.bits();
         let n = 1 << (bits - 1);
         let literal = Const::from_bits(self.tcx, n, typing_env, ty);

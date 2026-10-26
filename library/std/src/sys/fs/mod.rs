@@ -61,8 +61,8 @@ pub fn with_native_path<T>(path: &Path, f: &dyn Fn(&Path) -> io::Result<T>) -> i
 }
 
 pub use imp::{
-    Dir, DirBuilder, DirEntry, File, FileAttr, FilePermissions, FileTimes, FileType, OpenOptions,
-    ReadDir,
+    Dir, DirBuilder, DirEntry, ExtraHomeDirs, ExtraMediaDirs, File, FileAttr, FilePermissions,
+    FileTimes, FileType, OpenOptions, ReadDir,
 };
 
 pub fn read_dir(path: &Path) -> io::Result<ReadDir> {
@@ -76,6 +76,10 @@ pub fn remove_file(path: &Path) -> io::Result<()> {
 
 pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
     with_native_path(old, &|old| with_native_path(new, &|new| imp::rename(old, new)))
+}
+
+pub fn rename_noreplace(old: &Path, new: &Path) -> io::Result<()> {
+    with_native_path(old, &|old| with_native_path(new, &|new| imp::rename_noreplace(old, new)))
 }
 
 pub fn remove_dir(path: &Path) -> io::Result<()> {

@@ -11,7 +11,7 @@ use rustc_span::Spanned;
 use super::MANUAL_DANGLING_PTR;
 
 pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, from: &Expr<'_>, to: &Ty<'_>) {
-    if let TyKind::Ptr(ref ptr_ty, mutbl) = to.kind {
+    if let TyKind::Ptr(ptr_ty, mutbl) = to.kind {
         let init_expr = expr_or_init(cx, from);
         if is_expr_const_aligned(cx, init_expr, ptr_ty)
             && let Some(std_or_core) = std_or_core(cx)

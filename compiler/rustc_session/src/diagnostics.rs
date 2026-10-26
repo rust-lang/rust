@@ -341,6 +341,16 @@ pub(crate) struct SanitizerCfiRecoverRequiresCfi;
 pub(crate) struct SanitizerCfiDiagRequiresCfi;
 
 #[derive(Diagnostic)]
+#[diag("`-Zsanitizer-cfi-minimal-runtime` requires `-Zsanitizer=cfi`")]
+pub(crate) struct SanitizerCfiMinimalRuntimeRequiresCfi;
+
+#[derive(Diagnostic)]
+#[diag(
+    "`-Zsanitizer-cfi-minimal-runtime` requires `-Zsanitizer-cfi-recover` or `-Zsanitizer-cfi-diag`"
+)]
+pub(crate) struct SanitizerCfiMinimalRuntimeRequiresCfiRecoverOrDiag;
+
+#[derive(Diagnostic)]
 #[diag("`-Zsanitizer-kcfi-arity` requires `-Zsanitizer=kcfi`")]
 pub(crate) struct SanitizerKcfiArityRequiresKcfi;
 

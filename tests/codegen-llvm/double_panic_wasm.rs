@@ -21,7 +21,7 @@ impl Drop for PanicOnDrop {
 
 // CHECK-LABEL: @double_panic
 // CHECK: invoke void @may_panic()
-// CHECK: invoke void @{{.+}}drop_in_place{{.+}}
+// CHECK: invoke void @{{.+}}drop_glue{{.+}}
 // CHECK: unwind label %[[TERMINATE:.*]]
 //
 // CHECK: [[TERMINATE]]:

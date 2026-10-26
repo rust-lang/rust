@@ -30,10 +30,11 @@ struct LinkData {
 pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId) {
     let hunks = prepare_to_doc_link_resolution(&item.attrs.doc_strings);
     for (item_id, doc) in hunks {
-        if let Some(item_id) = item_id.or(item.def_id())
-            && !doc.is_empty()
-        {
-            check_redundant_explicit_link_for_did(cx, item, item_id, hir_id, &doc);
+        if let Some(item_id) = item_id.or(item.def_id()) {
+            if !doc.outer.is_empty() || !doc.inner.is_empty() {
+                let doc = format!("{}{}", doc.outer, doc.inner);
+                check_redundant_explicit_link_for_did(cx, item, item_id, hir_id, &doc);
+            }
         }
     }
 }

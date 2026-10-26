@@ -1,4 +1,4 @@
-// rustfmt-normalize_comments: true
+//@ rustfmt-normalize_comments: true
 // Match expressions.
 
 fn foo() {
@@ -240,7 +240,7 @@ fn issue383() {
 
 fn issue507() {
     match 1 {
-        1 => unsafe { std::intrinsics::abort() },
+        1 => unsafe { std::intrinsics::abort_immediate() },
         _ => (),
     }
 }

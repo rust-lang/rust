@@ -1,5 +1,7 @@
 use super::{SocketAddr, UnixStream, sockaddr_un};
-use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
+use crate::os::unix::io::{
+    AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd, unsafe_impl_fd_asrefs,
+};
 use crate::path::Path;
 use crate::sys::net::Socket;
 use crate::sys::{AsInner, FromInner, IntoInner, cvt};
@@ -119,13 +121,12 @@ impl UnixListener {
     ///
     #[cfg_attr(target_family = "unix", doc = "```no_run")]
     #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
-    /// use std::os::unix::net::{UnixListener};
+    /// use std::os::unix::net::{SocketAddr, UnixListener};
     ///
     /// fn main() -> std::io::Result<()> {
-    ///     let listener1 = UnixListener::bind("path/to/socket")?;
-    ///     let addr = listener1.local_addr()?;
+    ///     let addr = SocketAddr::from_pathname("path/to/socket")?;
     ///
-    ///     let listener2 = match UnixListener::bind_addr(&addr) {
+    ///     let listener = match UnixListener::bind_addr(&addr) {
     ///         Ok(sock) => sock,
     ///         Err(err) => {
     ///             println!("Couldn't bind: {err:?}");
@@ -200,7 +201,7 @@ impl UnixListener {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let listener = UnixListener::bind("/path/to/the/socket")?;
-    ///     let listener_copy = listener.try_clone().expect("try_clone failed");
+    ///     let listener_copy = listener.try_clone().expect("`UnixListener::try_clone` should not fail");
     ///     Ok(())
     /// }
     /// ```
@@ -219,7 +220,7 @@ impl UnixListener {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let listener = UnixListener::bind("/path/to/the/socket")?;
-    ///     let addr = listener.local_addr().expect("Couldn't get local address");
+    ///     let addr = listener.local_addr().expect("`UnixListener::local_addr` should not fail");
     ///     Ok(())
     /// }
     /// ```
@@ -244,7 +245,7 @@ impl UnixListener {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let listener = UnixListener::bind("/path/to/the/socket")?;
-    ///     listener.set_nonblocking(true).expect("Couldn't set non blocking");
+    ///     listener.set_nonblocking(true).expect("`UnixListener::set_nonblocking` should not fail");
     ///     Ok(())
     /// }
     /// ```
@@ -355,6 +356,11 @@ impl From<OwnedFd> for UnixListener {
         UnixListener(Socket::from_inner(FromInner::from_inner(fd)))
     }
 }
+
+// SAFETY: It's a tower of 1-field wrappers around OwnedFd.
+// No methods to close the socket, no methods with safety preconditions,
+// other than the fd being valid.
+unsafe_impl_fd_asrefs!(UnixListener);
 
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl From<UnixListener> for OwnedFd {

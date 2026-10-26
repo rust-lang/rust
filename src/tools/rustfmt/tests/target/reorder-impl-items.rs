@@ -1,4 +1,4 @@
-// rustfmt-reorder_impl_items: true
+//@ rustfmt-reorder_impl_items: true
 
 // The ordering of the following impl items should be idempotent.
 impl<'a> Command<'a> {

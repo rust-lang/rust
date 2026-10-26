@@ -837,6 +837,7 @@ fn eq_param(l: &Param, r: &Param) -> bool {
         && eq_pat(&l.pat, &r.pat)
         && eq_ty(&l.ty, &r.ty)
         && over(&l.attrs, &r.attrs, eq_attr)
+        && l.has_const_keyword == r.has_const_keyword
 }
 
 fn eq_closure_binder(l: &ClosureBinder, r: &ClosureBinder) -> bool {

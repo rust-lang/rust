@@ -863,6 +863,28 @@ const impl AsMut<str> for str {
     }
 }
 
+#[stable(feature = "never_type", since = "1.100.0")]
+#[expect(
+    clippy::explicit_auto_deref,
+    reason = "https://github.com/rust-lang/rust-clippy/issues/17713"
+)]
+impl<T: ?Sized> AsRef<T> for ! {
+    fn as_ref(&self) -> &T {
+        *self
+    }
+}
+
+#[stable(feature = "never_type", since = "1.100.0")]
+#[expect(
+    clippy::explicit_auto_deref,
+    reason = "https://github.com/rust-lang/rust-clippy/issues/17713"
+)]
+impl<T: ?Sized> AsMut<T> for ! {
+    fn as_mut(&mut self) -> &mut T {
+        *self
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // THE NO-ERROR ERROR TYPE
 ////////////////////////////////////////////////////////////////////////////////
@@ -886,7 +908,7 @@ const impl AsMut<str> for str {
 /// }
 /// ```
 ///
-/// Note: Since [`!`] (the "never" type) was stabilized in Rust CURRENT_RUSTC_VERSION, it is
+/// Note: Since [`!`] (the "never" type) was stabilized in Rust 1.100.0, it is
 /// preferred to use `!` directly unless targeting older Rust versions. `Infallible` may be
 /// deprecated in a future Rust version.
 #[stable(feature = "convert_infallible", since = "1.34.0")]

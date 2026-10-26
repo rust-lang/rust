@@ -1,6 +1,7 @@
 mod allow_attributes;
 mod allow_attributes_without_reason;
 mod blanket_clippy_restriction_lints;
+mod deprecated_attributes_without_fields;
 mod deprecated_cfg_attr;
 mod deprecated_semver;
 mod duplicated_attributes;
@@ -14,9 +15,9 @@ mod useless_attribute;
 mod utils;
 
 use clippy_config::Conf;
-use clippy_utils::check_clippy_attr;
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::msrvs::{self, Msrv, MsrvStack};
+use clippy_utils::{check_clippy_attr, is_from_proc_macro};
 use rustc_ast::{self as ast, AttrArgs, AttrKind, Attribute, MetaItemInner, MetaItemKind};
 use rustc_hir::{ImplItem, ImplItemKind, Item, ItemKind, TraitFn, TraitItem, TraitItemKind};
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext as _, impl_lint_pass};
@@ -83,7 +84,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for `warn`/`deny`/`forbid` attributes targeting the whole clippy::restriction category.
+    /// Checks for `warn`/`deny`/`forbid` attributes targeting the whole `clippy::restriction` category.
     ///
     /// ### Why is this bad?
     /// Restriction lints sometimes are in contrast with other lints or even go against idiomatic rust.
@@ -106,16 +107,88 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for attributes that deprecate items without a `note` field.
+    ///
+    /// ### Why restrict this?
+    /// This is typically used to provide an explanation about the deprecation
+    /// and preferred alternatives.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// #[deprecated]
+    /// pub fn foo() { /* ... */ }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// #[deprecated(note = "foo was rarely used. Users should instead use bar")]
+    /// pub fn foo() { /* ... */ }
+    /// ```
+    #[clippy::version = "1.100.0"]
+    pub DEPRECATED_ATTRIBUTES_WITHOUT_NOTE,
+    restriction,
+    "ensures that all `deprecated` attributes have a `note` field"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for attributes that deprecate items without a `since` field.
+    ///
+    /// ### Why is this bad?
+    /// It can be difficult for users of your crate to know when an item was
+    /// deprecated if it was not documented. Knowing when an item was deprecated
+    /// helps users determine how long they have to migrate and act accordingly.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// #[deprecated]
+    /// pub fn foo() { /* ... */ }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// #[deprecated(since = "5.2.0")]
+    /// pub fn foo() { /* ... */ }
+    /// ```
+    ///
+    /// ### Note
+    /// If you're using `git` for version control and tagging releases, you may
+    /// be able to find the correct value for the `since` field fairly easily.
+    ///
+    /// If the `deprecated` attribute missing the `since` field is in the file
+    /// `foo/bar/baz.rs` on line 42, then:
+    ///
+    /// ```bash
+    /// git blame -L 42 -- foo/bar/baz.rs
+    /// ```
+    ///
+    /// May help you find the commit that originally deprecated the item. From
+    /// there, if the commit that deprecated the item was commit
+    /// `d34dbe3fd34dbe3fd34dbe3fd34dbe3fd34dbe3f`, you can do:
+    ///
+    /// ```bash
+    /// git tag --contains d34dbe3fd34dbe3fd34dbe3fd34dbe3fd34dbe3f
+    /// ```
+    ///
+    /// To list the tags which contain that commit, the earliest of which
+    /// corresponds to a release would be the version the item was deprecated
+    /// in.
+    #[clippy::version = "1.100.0"]
+    pub DEPRECATED_ATTRIBUTES_WITHOUT_SINCE,
+    pedantic,
+    "ensures that all `deprecated` attributes have a `since` field"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks for `#[cfg_attr(rustfmt, rustfmt_skip)]` and suggests to replace it
     /// with `#[rustfmt::skip]`.
     ///
     /// ### Why is this bad?
-    /// Since tool_attributes ([rust-lang/rust#44690](https://github.com/rust-lang/rust/issues/44690))
+    /// Since `tool_attributes` ([rust-lang/rust#44690](https://github.com/rust-lang/rust/issues/44690))
     /// are stable now, they should be used instead of the old `cfg_attr(rustfmt)` attributes.
     ///
     /// ### Known problems
     /// This lint doesn't detect crate level inner attributes, because they get
-    /// processed before the PreExpansionPass lints get executed. See
+    /// processed before the pre-expansion pass lints get executed. See
     /// [#3123](https://github.com/rust-lang/rust-clippy/pull/3123#issuecomment-422321765)
     ///
     /// ### Example
@@ -432,22 +505,22 @@ declare_clippy_lint! {
     ///
     /// This lint permits lint attributes for lints emitted on the items themself.
     /// For `use` items these lints are:
-    /// * ambiguous_glob_reexports
-    /// * dead_code
-    /// * deprecated
-    /// * hidden_glob_reexports
-    /// * unreachable_pub
-    /// * unused
-    /// * unused_braces
-    /// * unused_import_braces
-    /// * clippy::disallowed_types
-    /// * clippy::enum_glob_use
-    /// * clippy::macro_use_imports
-    /// * clippy::module_name_repetitions
-    /// * clippy::redundant_pub_crate
-    /// * clippy::single_component_path_imports
-    /// * clippy::unsafe_removed_from_name
-    /// * clippy::wildcard_imports
+    /// * `ambiguous_glob_reexports`
+    /// * `dead_code`
+    /// * `deprecated`
+    /// * `hidden_glob_reexports`
+    /// * `unreachable_pub`
+    /// * `unused`
+    /// * `unused_braces`
+    /// * `unused_import_braces`
+    /// * `clippy::disallowed_types`
+    /// * `clippy::enum_glob_use`
+    /// * `clippy::macro_use_imports`
+    /// * `clippy::module_name_repetitions`
+    /// * `clippy::redundant_pub_crate`
+    /// * `clippy::single_component_path_imports`
+    /// * `clippy::unsafe_removed_from_name`
+    /// * `clippy::wildcard_imports`
     ///
     /// For `extern crate` items these lints are:
     /// * `unused_imports` on items with `#[macro_use]`
@@ -478,7 +551,12 @@ declare_clippy_lint! {
     "use of lint attributes on `extern crate` items"
 }
 
-impl_lint_pass!(Attributes => [INLINE_ALWAYS, REPR_PACKED_WITHOUT_ABI]);
+impl_lint_pass!(Attributes => [
+    DEPRECATED_ATTRIBUTES_WITHOUT_NOTE,
+    DEPRECATED_ATTRIBUTES_WITHOUT_SINCE,
+    INLINE_ALWAYS,
+    REPR_PACKED_WITHOUT_ABI,
+]);
 
 impl_lint_pass!(EarlyAttributes => [
     DEPRECATED_CFG_ATTR,
@@ -601,6 +679,13 @@ impl EarlyLintPass for PostExpansionEarlyAttributes {
                     deprecated_semver::check(cx, item.span(), lit);
                 }
             }
+        }
+
+        if attr.has_name(sym::deprecated)
+            && !attr.span.in_external_macro(cx.sess().source_map())
+            && !is_from_proc_macro(cx, attr)
+        {
+            deprecated_attributes_without_fields::check_fields(cx, attr.meta_item_list().as_deref(), attr);
         }
 
         if attr.has_name(sym::should_panic) {

@@ -1,5 +1,5 @@
 //@run-native
-#![feature(core_intrinsics, funnel_shifts)]
+#![feature(core_intrinsics)]
 use std::intrinsics::*;
 
 fn main() {

@@ -1,0 +1,14 @@
+warning: function cannot return without recursing
+  --> $DIR/recursive-ice-101862.rs:8:1
+   |
+LL | pub fn ice(x: impl AsRef<str>) -> impl IntoIterator<Item = ()> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
+LL |
+LL |     vec![].append(&mut ice(x.as_ref()));
+   |                        --------------- recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+   = note: `#[warn(unconditional_recursion)]` on by default
+
+warning: 1 warning emitted
+

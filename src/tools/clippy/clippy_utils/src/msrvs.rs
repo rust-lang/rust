@@ -1,4 +1,4 @@
-use crate::{is_in_const_context, sym};
+use crate::{is_in_const_context, span_of_clippy_attr, sym};
 use rustc_ast::Attribute;
 use rustc_ast::attr::AttributeExt;
 use rustc_attr_ir::{RustcVersion, StabilityLevel, StableSince};
@@ -25,6 +25,7 @@ macro_rules! msrv_aliases {
 
 // names may refer to stabilized feature flags or library items
 msrv_aliases! {
+    1,99,0 { BOX_INTO_NON_NULL }
     1,98,0 { MAP_OR_DEFAULT }
     1,97,0 { ISOLATE_LOWEST_ONE, BIT_WIDTH }
     1,94,0 { EULER_GAMMA, GOLDEN_RATIO, MUL_ADD_CONST }
@@ -34,7 +35,9 @@ msrv_aliases! {
     1,88,0 { LET_CHAINS, AS_CHUNKS, RAW_PTR_DEFAULT }
     1,87,0 { OS_STR_DISPLAY, INT_MIDPOINT, CONST_CHAR_IS_DIGIT, UNSIGNED_IS_MULTIPLE_OF, INTEGER_SIGN_CAST }
     1,86,0 { VEC_POP_IF }
-    1,85,0 { UINT_FLOAT_MIDPOINT, CONST_SIZE_OF_VAL, WAKER_NOOP, ABS_CONST, RADIANS_CONST, CONST_MEM_SWAP }
+    1,85,0 {
+        UINT_FLOAT_MIDPOINT, CONST_SIZE_OF_VAL, WAKER_NOOP, ABS_CONST, RADIANS_CONST, CONST_MEM_SWAP, CONST_PTR_SWAP,
+    }
     1,84,0 { CONST_OPTION_AS_SLICE, MANUAL_DANGLING_PTR }
     1,83,0 { CONST_EXTERN_FN, CONST_FLOAT_BITS_CONV, CONST_FLOAT_CLASSIFY, CONST_MUT_REFS, CONST_UNWRAP }
     1,82,0 { IS_NONE_OR, REPEAT_N, RAW_REF_OP, SPECIALIZED_TO_STRING_FOR_REFS }
@@ -48,7 +51,7 @@ msrv_aliases! {
     1,73,0 { DIV_CEIL }
     1,71,0 { TUPLE_ARRAY_CONVERSIONS, BUILD_HASHER_HASH_ONE }
     1,70,0 { OPTION_RESULT_IS_VARIANT_AND, BINARY_HEAP_RETAIN }
-    1,68,0 { PATH_MAIN_SEPARATOR_STR }
+    1,68,0 { PATH_MAIN_SEPARATOR_STR, PIN_MACRO }
     1,67,0 { ILOG2 }
     1,65,0 { LET_ELSE, POINTER_CAST_CONSTNESS }
     1,63,0 { CLONE_INTO, CONST_SLICE_FROM_REF }
@@ -91,6 +94,7 @@ msrv_aliases! {
     1,16,0 { STR_REPEAT, RESULT_UNWRAP_OR_DEFAULT }
     1,15,0 { MAYBE_BOUND_IN_WHERE }
     1,13,0 { QUESTION_MARK_OPERATOR }
+    1,6,0 { CORE_PTR_SWAP }
     1,3,0 { DURATION_FROM_MILLIS_SECS }
 }
 
@@ -272,18 +276,24 @@ pub fn check_attrs(sess: &Session, attrs: &[impl AttributeExt]) {
 
     if let Some(duplicate) = msrv_attrs.next_back() {
         sess.dcx()
-            .struct_span_err(duplicate.span(), "`clippy::msrv` is defined multiple times")
-            .with_span_note(msrv_attr.span(), "first definition found here")
+            .struct_span_err(
+                span_of_clippy_attr(duplicate),
+                "`clippy::msrv` is defined multiple times",
+            )
+            .with_span_note(span_of_clippy_attr(msrv_attr), "first definition found here")
             .emit();
     }
 
     let Some(msrv) = msrv_attr.value_str() else {
-        sess.dcx().span_err(msrv_attr.span(), "bad clippy attribute");
+        sess.dcx()
+            .span_err(span_of_clippy_attr(msrv_attr), "bad clippy attribute");
         return;
     };
 
     if parse_version(msrv).is_none() {
-        sess.dcx()
-            .span_err(msrv_attr.span(), format!("`{msrv}` is not a valid Rust version"));
+        sess.dcx().span_err(
+            span_of_clippy_attr(msrv_attr),
+            format!("`{msrv}` is not a valid Rust version"),
+        );
     }
 }

@@ -85,7 +85,7 @@ impl Dir {
         File::open(&self.path.join(path), opts)
     }
 
-    pub fn metadata(&self) -> io::Result<FileAttr> {
+    pub fn self_metadata(&self) -> io::Result<FileAttr> {
         self.path.metadata().map(|m| m.into_inner())
     }
 
@@ -108,6 +108,14 @@ impl Dir {
     pub fn remove_dir(&self, path: &Path) -> io::Result<()> {
         remove_dir(self.path.join(path))
     }
+
+    pub fn metadata(&self, path: &Path) -> io::Result<FileAttr> {
+        self.path.join(path).metadata().map(|m| m.into_inner())
+    }
+
+    pub fn symlink_metadata(&self, path: &Path) -> io::Result<FileAttr> {
+        self.path.join(path).symlink_metadata().map(|m| m.into_inner())
+    }
 }
 
 impl fmt::Debug for Dir {
@@ -115,3 +123,11 @@ impl fmt::Debug for Dir {
         f.debug_struct("Dir").field("path", &self.path).finish()
     }
 }
+
+#[derive(Debug, Clone, Default)]
+#[non_exhaustive]
+pub struct ExtraHomeDirs {}
+
+#[derive(Debug, Clone, Default)]
+#[non_exhaustive]
+pub struct ExtraMediaDirs {}

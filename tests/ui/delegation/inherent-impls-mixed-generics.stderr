@@ -13,6 +13,7 @@ LL |     reuse S::foo_self;
 note: method defined here
   --> $DIR/inherent-impls-mixed-generics.rs:8:8
    |
+LL | impl<'a, 'b, 'c, A, const C: usize> S<'static, A, usize, C> {
 LL |     fn foo_self<'d: 'd, 'e, T, const B: bool>(self) {}
    |        ^^^^^^^^                               ----
 help: provide the argument

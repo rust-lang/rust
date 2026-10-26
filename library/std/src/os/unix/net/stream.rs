@@ -40,7 +40,9 @@ use super::{UCred, peer_cred};
 use crate::fmt;
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::net::Shutdown;
-use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
+use crate::os::unix::io::{
+    AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd, unsafe_impl_fd_asrefs,
+};
 use crate::path::Path;
 use crate::sys::net::Socket;
 use crate::sys::{AsInner, FromInner, cvt};
@@ -199,7 +201,7 @@ impl UnixStream {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let socket = UnixStream::connect("/tmp/sock")?;
-    ///     let sock_copy = socket.try_clone().expect("Couldn't clone socket");
+    ///     let sock_copy = socket.try_clone().expect("`UnixStream::try_clone` should not fail");
     ///     Ok(())
     /// }
     /// ```
@@ -218,7 +220,7 @@ impl UnixStream {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let socket = UnixStream::connect("/tmp/sock")?;
-    ///     let addr = socket.local_addr().expect("Couldn't get local address");
+    ///     let addr = socket.local_addr().expect("`UnixStream::local_addr` should not fail");
     ///     Ok(())
     /// }
     /// ```
@@ -237,7 +239,7 @@ impl UnixStream {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let socket = UnixStream::connect("/tmp/sock")?;
-    ///     let addr = socket.peer_addr().expect("Couldn't get peer address");
+    ///     let addr = socket.peer_addr().expect("`UnixStream::peer_addr` should not fail");
     ///     Ok(())
     /// }
     /// ```
@@ -257,7 +259,7 @@ impl UnixStream {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let socket = UnixStream::connect("/tmp/sock")?;
-    ///     let peer_cred = socket.peer_cred().expect("Couldn't get peer credentials");
+    ///     let peer_cred = socket.peer_cred().expect("`UnixStream::peer_cred` should not fail");
     ///     Ok(())
     /// }
     /// ```
@@ -295,7 +297,7 @@ impl UnixStream {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let socket = UnixStream::connect("/tmp/sock")?;
-    ///     socket.set_read_timeout(Some(Duration::new(1, 0))).expect("Couldn't set read timeout");
+    ///     socket.set_read_timeout(Some(Duration::new(1, 0))).expect("`UnixStream::set_read_timeout` should not fail");
     ///     Ok(())
     /// }
     /// ```
@@ -340,7 +342,7 @@ impl UnixStream {
     /// fn main() -> std::io::Result<()> {
     ///     let socket = UnixStream::connect("/tmp/sock")?;
     ///     socket.set_write_timeout(Some(Duration::new(1, 0)))
-    ///         .expect("Couldn't set write timeout");
+    ///         .expect("`UnixStream::connect` should not fail");
     ///     Ok(())
     /// }
     /// ```
@@ -378,7 +380,7 @@ impl UnixStream {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let socket = UnixStream::connect("/tmp/sock")?;
-    ///     socket.set_read_timeout(Some(Duration::new(1, 0))).expect("Couldn't set read timeout");
+    ///     socket.set_read_timeout(Some(Duration::new(1, 0))).expect("`UnixStream::set_read_timeout` should not fail");
     ///     assert_eq!(socket.read_timeout()?, Some(Duration::new(1, 0)));
     ///     Ok(())
     /// }
@@ -400,7 +402,7 @@ impl UnixStream {
     /// fn main() -> std::io::Result<()> {
     ///     let socket = UnixStream::connect("/tmp/sock")?;
     ///     socket.set_write_timeout(Some(Duration::new(1, 0)))
-    ///         .expect("Couldn't set write timeout");
+    ///         .expect("`UnixStream::set_write_timeout` should not fail");
     ///     assert_eq!(socket.write_timeout()?, Some(Duration::new(1, 0)));
     ///     Ok(())
     /// }
@@ -420,7 +422,7 @@ impl UnixStream {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let socket = UnixStream::connect("/tmp/sock")?;
-    ///     socket.set_nonblocking(true).expect("Couldn't set nonblocking");
+    ///     socket.set_nonblocking(true).expect("`UnixStream::set_nonblocking` should not fail");
     ///     Ok(())
     /// }
     /// ```
@@ -493,7 +495,7 @@ impl UnixStream {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let socket = UnixStream::connect("/tmp/sock")?;
-    ///     socket.shutdown(Shutdown::Both).expect("shutdown function failed");
+    ///     socket.shutdown(Shutdown::Both).expect("`UnixStream::shutdown` should not fail");
     ///     Ok(())
     /// }
     /// ```
@@ -520,7 +522,7 @@ impl UnixStream {
     /// fn main() -> std::io::Result<()> {
     ///     let socket = UnixStream::connect("/tmp/sock")?;
     ///     let mut buf = [0; 10];
-    ///     let len = socket.peek(&mut buf).expect("peek failed");
+    ///     let len = socket.peek(&mut buf).expect("`UnixStream::peek` should not fail");
     ///     Ok(())
     /// }
     /// ```
@@ -744,6 +746,11 @@ impl AsFd for UnixStream {
         self.0.as_fd()
     }
 }
+
+// SAFETY: It's a tower of 1-field wrappers around OwnedFd.
+// No methods to close the socket, no methods with safety preconditions,
+// other than the fd being valid.
+unsafe_impl_fd_asrefs!(UnixStream);
 
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl From<UnixStream> for OwnedFd {

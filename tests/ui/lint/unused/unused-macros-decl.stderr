@@ -21,12 +21,23 @@ note: the lint level is defined here
    |
 LL |     #[deny(unused_macros)]
    |            ^^^^^^^^^^^^^
+help: consider annotating the enclosing module with `#[macro_use]`
+   |
+LL + #[macro_use]
+LL | mod bar {
+   |
 
 error: unused macro definition: `unused`
   --> $DIR/unused-macros-decl.rs:23:22
    |
 LL |     pub(crate) macro unused {
    |                      ^^^^^^
+   |
+help: consider annotating the enclosing module with `#[macro_use]`
+   |
+LL + #[macro_use]
+LL | mod boo {
+   |
 
 error: aborting due to 3 previous errors
 

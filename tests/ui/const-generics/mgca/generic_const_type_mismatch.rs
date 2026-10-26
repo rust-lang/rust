@@ -1,11 +1,11 @@
 //! Regression test for <https://github.com/rust-lang/rust/issues/150983>
-#![expect(incomplete_features)]
 #![feature(
     adt_const_params,
-    generic_const_items,
-    generic_const_parameter_types,
+    const_param_ty_trait,
+    gca_adts,
     gca_min_const_items,
-    const_param_ty_trait
+    generic_const_items,
+    generic_const_parameter_types
 )]
 
 use std::gca;

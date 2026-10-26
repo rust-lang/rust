@@ -195,16 +195,6 @@ LLVMRustVerifyFunction(LLVMValueRef Fn, LLVMRustVerifierFailureAction Action) {
   return LLVMVerifyFunction(Fn, fromRust(Action));
 }
 
-extern "C" LLVMValueRef LLVMRustGetOrInsertFunction(LLVMModuleRef M,
-                                                    const char *Name,
-                                                    size_t NameLen,
-                                                    LLVMTypeRef FunctionTy) {
-  return wrap(unwrap(M)
-                  ->getOrInsertFunction(StringRef(Name, NameLen),
-                                        unwrap<FunctionType>(FunctionTy))
-                  .getCallee());
-}
-
 // Get the global variable with the given name if it exists or create a new
 // external global.
 extern "C" LLVMValueRef
@@ -1012,11 +1002,6 @@ extern "C" void LLVMRustRemoveFnAttribute(LLVMValueRef Fn, const char *Name,
   }
 }
 
-extern "C" void LLVMRustGlobalAddMetadata(LLVMValueRef Global, unsigned Kind,
-                                          LLVMMetadataRef MD) {
-  unwrap<GlobalObject>(Global)->addMetadata(Kind, *unwrap<MDNode>(MD));
-}
-
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateCompileUnit(
     LLVMDIBuilderRef Builder, unsigned Lang, LLVMMetadataRef FileRef,
     const char *Producer, size_t ProducerLen, bool isOptimized,
@@ -1164,16 +1149,10 @@ LLVMRustDICreateVectorType(LLVMDIBuilderRef Builder, uint64_t Size,
                            uint32_t AlignInBits, LLVMMetadataRef Type,
                            LLVMMetadataRef Subscripts,
                            LLVMMetadataRef BitStride) {
-#if LLVM_VERSION_GE(22, 0)
   return wrap(unwrap(Builder)->createVectorType(
       Size, AlignInBits, unwrapDI<DIType>(Type),
       DINodeArray(unwrapDI<MDTuple>(Subscripts)),
       unwrapDI<Metadata>(BitStride)));
-#else
-  return wrap(unwrap(Builder)->createVectorType(
-      Size, AlignInBits, unwrapDI<DIType>(Type),
-      DINodeArray(unwrapDI<MDTuple>(Subscripts))));
-#endif
 }
 
 extern "C" LLVMMetadataRef
@@ -1421,6 +1400,12 @@ extern "C" LLVMValueRef LLVMRustBuildMemSet(LLVMBuilderRef B, LLVMValueRef Dst,
                                       MaybeAlign(DstAlign), IsVolatile));
 }
 
+#if LLVM_VERSION_LT(24, 0)
+extern "C" LLVMBuilderRef LLVMCreateBuilderForModule(LLVMModuleRef M) {
+  return LLVMCreateBuilderInContext(LLVMGetModuleContext(M));
+}
+#endif
+
 extern "C" void LLVMRustPositionBuilderPastAllocas(LLVMBuilderRef B,
                                                    LLVMValueRef Fn) {
   Function *F = unwrap<Function>(Fn);
@@ -1516,7 +1501,7 @@ extern "C" uint64_t LLVMRustModuleInstructionStats(LLVMModuleRef M) {
 
 // Transfers ownership of DiagnosticHandler unique_ptr to the caller.
 extern "C" DiagnosticHandler *
-LLVMRustContextGetDiagnosticHandler(LLVMContextRef C) {
+LLVMRustContextTakeDiagnosticHandler(LLVMContextRef C) {
   std::unique_ptr<DiagnosticHandler> DH = unwrap(C)->getDiagnosticHandler();
   return DH.release();
 }
@@ -1528,7 +1513,9 @@ extern "C" void LLVMRustContextSetDiagnosticHandler(LLVMContextRef C,
   unwrap(C)->setDiagnosticHandler(std::unique_ptr<DiagnosticHandler>(DH));
 }
 
-using LLVMDiagnosticHandlerTy = DiagnosticHandler::DiagnosticHandlerTy;
+// Must match `rustc_codegen_llvm::llvm::ffi::DiagnosticHandlerCallback`.
+typedef void (*LLVMRustDiagnosticHandlerCallback)(LLVMDiagnosticInfoRef,
+                                                  void *);
 
 // Configures a diagnostic handler that invokes provided callback when a
 // backend needs to emit a diagnostic.
@@ -1540,35 +1527,34 @@ using LLVMDiagnosticHandlerTy = DiagnosticHandler::DiagnosticHandlerTy;
 // If RemarkFilePath is not NULL, optimization remarks will be streamed directly
 // into this file, bypassing the diagnostics handler.
 extern "C" void LLVMRustContextConfigureDiagnosticHandler(
-    LLVMContextRef C, LLVMDiagnosticHandlerTy DiagnosticHandlerCallback,
-    void *DiagnosticHandlerContext, bool RemarkAllPasses,
+    LLVMContextRef C,
+    LLVMRustDiagnosticHandlerCallback DiagnosticHandlerCallback,
+    void *DiagnosticHandlerCallbackData, bool RemarkAllPasses,
     const char *const *RemarkPasses, size_t RemarkPassesLen,
     const char *RemarkFilePath, bool PGOAvailable) {
 
   class RustDiagnosticHandler final : public DiagnosticHandler {
   public:
     RustDiagnosticHandler(
-        LLVMDiagnosticHandlerTy DiagnosticHandlerCallback,
-        void *DiagnosticHandlerContext, bool RemarkAllPasses,
+        LLVMRustDiagnosticHandlerCallback DiagnosticHandlerCallback,
+        void *DiagnosticHandlerCallbackData, bool RemarkAllPasses,
         std::vector<std::string> RemarkPasses,
         std::unique_ptr<ToolOutputFile> RemarksFile,
         std::unique_ptr<llvm::remarks::RemarkStreamer> RemarkStreamer,
         std::unique_ptr<LLVMRemarkStreamer> LlvmRemarkStreamer)
         : DiagnosticHandlerCallback(DiagnosticHandlerCallback),
-          DiagnosticHandlerContext(DiagnosticHandlerContext),
+          DiagnosticHandlerCallbackData(DiagnosticHandlerCallbackData),
           RemarkAllPasses(RemarkAllPasses),
           RemarkPasses(std::move(RemarkPasses)),
           RemarksFile(std::move(RemarksFile)),
           RemarkStreamer(std::move(RemarkStreamer)),
           LlvmRemarkStreamer(std::move(LlvmRemarkStreamer)) {}
 
-#if LLVM_VERSION_GE(22, 0)
     ~RustDiagnosticHandler() {
       if (RemarkStreamer) {
         RemarkStreamer->releaseSerializer();
       }
     }
-#endif
 
     virtual bool handleDiagnostics(const DiagnosticInfo &DI) override {
       // If this diagnostic is one of the optimization remark kinds, we can
@@ -1589,7 +1575,7 @@ extern "C" void LLVMRustContextConfigureDiagnosticHandler(
         }
       }
       if (DiagnosticHandlerCallback) {
-        DiagnosticHandlerCallback(&DI, DiagnosticHandlerContext);
+        DiagnosticHandlerCallback(wrap(&DI), DiagnosticHandlerCallbackData);
         return true;
       }
       return false;
@@ -1623,8 +1609,8 @@ extern "C" void LLVMRustContextConfigureDiagnosticHandler(
       return false;
     }
 
-    LLVMDiagnosticHandlerTy DiagnosticHandlerCallback = nullptr;
-    void *DiagnosticHandlerContext = nullptr;
+    LLVMRustDiagnosticHandlerCallback DiagnosticHandlerCallback = nullptr;
+    void *DiagnosticHandlerCallbackData = nullptr;
 
     bool RemarkAllPasses = false;
     std::vector<std::string> RemarkPasses;
@@ -1664,14 +1650,8 @@ extern "C" void LLVMRustContextConfigureDiagnosticHandler(
     // Do not delete the file after we gather remarks
     RemarkFile->keep();
 
-#if LLVM_VERSION_GE(22, 0)
     auto RemarkSerializer = remarks::createRemarkSerializer(
         llvm::remarks::Format::YAML, RemarkFile->os());
-#else
-    auto RemarkSerializer = remarks::createRemarkSerializer(
-        llvm::remarks::Format::YAML, remarks::SerializerMode::Separate,
-        RemarkFile->os());
-#endif
     if (Error E = RemarkSerializer.takeError()) {
       std::string Error = std::string("Cannot create remark serializer: ") +
                           toString(std::move(E));
@@ -1683,7 +1663,7 @@ extern "C" void LLVMRustContextConfigureDiagnosticHandler(
   }
 
   unwrap(C)->setDiagnosticHandler(std::make_unique<RustDiagnosticHandler>(
-      DiagnosticHandlerCallback, DiagnosticHandlerContext, RemarkAllPasses,
+      DiagnosticHandlerCallback, DiagnosticHandlerCallbackData, RemarkAllPasses,
       Passes, std::move(RemarkFile), std::move(RemarkStreamer),
       std::move(LlvmRemarkStreamer)));
 }
@@ -1777,16 +1757,12 @@ extern "C" LLVMValueRef LLVMRustConstPtrAuth(LLVMValueRef Ptr, uint32_t Key,
       AddrDiversity ? dyn_cast<Constant>(unwrap<Value>(AddrDiversity))
                     : ConstantPointerNull::get(cast<PointerType>(C->getType()));
   assert(AddrDiv && "Failed to get Address Diversity");
-#if LLVM_VERSION_GE(22, 0)
   Constant *DeactivationSym =
       DeactivationSymbol ? dyn_cast<Constant>(unwrap<Value>(DeactivationSymbol))
                          : ConstantPointerNull::get(PTy);
   assert(DeactivationSym && "Failed to get Deactivation Symbol");
 
   return wrap(ConstantPtrAuth::get(C, KeyC, DiscC, AddrDiv, DeactivationSym));
-#else
-  return wrap(ConstantPtrAuth::get(C, KeyC, DiscC, AddrDiv));
-#endif
 }
 
 // Statically assert that the fixed metadata kind IDs declared in
@@ -1885,7 +1861,6 @@ private:
 
   std::vector<SanitizerSection> SanitizerSections;
 
-#if LLVM_VERSION_GE(22, 0)
   static bool matchSection(const Section &S, llvm::StringRef Name) {
     return S.matchName(Name);
   }
@@ -1894,24 +1869,9 @@ private:
     return S.getLastMatch(Prefix, Query, Category);
   }
   static unsigned getFileIndex(const Section &S) { return S.fileIndex(); }
-#else
-  static bool matchSection(const Section &S, llvm::StringRef Name) {
-    return S.SectionMatcher && S.SectionMatcher->match(Name) != 0;
-  }
-  unsigned getLastMatch(const Section &S, llvm::StringRef Prefix,
-                        llvm::StringRef Query, llvm::StringRef Category) const {
-    return llvm::SpecialCaseList::inSectionBlame(S.Entries, Prefix, Query,
-                                                 Category);
-  }
-  static unsigned getFileIndex(const Section &S) { return S.FileIdx; }
-#endif
 
   void createSanitizerSections() {
-#if LLVM_VERSION_GE(22, 0)
     const auto &SecList = sections();
-#else
-    const auto &SecList = Sections;
-#endif
     for (const auto &S : SecList) {
       uint32_t Mask = 0;
 

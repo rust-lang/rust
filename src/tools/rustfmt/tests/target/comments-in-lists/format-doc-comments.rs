@@ -1,4 +1,4 @@
-// rustfmt-format_code_in_doc_comments: true
+//@ rustfmt-format_code_in_doc_comments: true
 
 // https://github.com/rust-lang/rustfmt/issues/4420
 enum Minimal {

@@ -3,7 +3,7 @@ use rustc_span::Symbol;
 
 use super::{
     FloatBinOp, ShiftOp, bin_op_simd_float_all, bin_op_simd_float_first, convert_float_to_int,
-    packssdw, packsswb, packuswb, pmaddwd, psadbw, shift_simd_by_scalar,
+    packssdw, packsswb, packuswb, pavg, pmaddwd, pmulh, psadbw, shift_simd_by_scalar,
 };
 use crate::*;
 
@@ -32,6 +32,13 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Intrinsics suffixed with "epiX" or "epuX" operate with X-bit signed or unsigned
         // vectors.
         match unprefixed_name {
+            // Used to implement the _mm_avg_epu8 and _mm_avg_epu16 functions.
+            // Averages packed unsigned 8/16-bit integers in `left` and `right`.
+            "pavg.b" | "pavg.w" => {
+                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+
+                pavg(this, left, right, dest)?;
+            }
             // Used to implement the _mm_sad_epu8 function.
             "psad.bw" => {
                 let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
@@ -269,8 +276,12 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // intermediate 32-bit integers, and pack the results in `dest`.
             "pmadd.wd" => {
                 let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
-
                 pmaddwd(this, left, right, dest)?;
+            }
+            // Used to implement the _mm_mulhi_epi16 and _mm_mulhi_epu16 functions.
+            "pmulh.w" | "pmulhu.w" => {
+                let [left, right] = this.check_shim_sig_llvm_intrinsic(link_name, args)?;
+                pmulh(this, left, right, dest)?;
             }
             _ => return interp_ok(EmulateItemResult::NotSupported),
         }

@@ -1,12 +1,13 @@
-//@ pretty-compare-only
-//@ pretty-mode:hir
-//@ pp-exact:inline-attribute.pp
-
-#![allow(incomplete_features)]
+#![attr = LintCheck([LintCheck {lint_name: "incomplete_features",
+kind: Allow}])]
 #![attr = Feature([fn_delegation#0])]
 extern crate std;
 #[attr = PreludeImport]
 use ::std::prelude::rust_2015::*;
+//@ pretty-compare-only
+//@ pretty-mode:hir
+//@ pp-exact:inline-attribute.pp
+
 
 mod to_reuse {
     fn foo(x: usize) -> usize { x }
@@ -45,7 +46,8 @@ impl Trait for S {
         // Check that #[inline(hint)] is added when other attributes present in inner reuse
         #[attr = Cold]
         #[attr = MustUse]
-        #[attr = Deprecated {deprecation: Deprecation {since: Unspecified}}]
+        #[attr = Deprecated {deprecation: Deprecation {since: Unspecified},
+        is_inner: false}]
         #[attr = Inline(Hint)]
         fn foo1(arg0: _) -> _ { to_reuse::foo(self / 2) }
 
@@ -61,7 +63,8 @@ impl Trait for S {
         #[attr = Cold]
         #[attr = MustUse]
         #[attr = Inline(Never)]
-        #[attr = Deprecated {deprecation: Deprecation {since: Unspecified}}]
+        #[attr = Deprecated {deprecation: Deprecation {since: Unspecified},
+        is_inner: false}]
         fn foo4(arg0: _) -> _ { to_reuse::foo(self / 2) }
         Trait::foo(self)
     }
@@ -69,7 +72,8 @@ impl Trait for S {
     // Check that #[inline(hint)] is added when there are other attributes present in trait reuse
     #[attr = Cold]
     #[attr = MustUse]
-    #[attr = Deprecated {deprecation: Deprecation {since: Unspecified}}]
+    #[attr = Deprecated {deprecation: Deprecation {since: Unspecified},
+    is_inner: false}]
     #[attr = Inline(Hint)]
     fn foo1(self: _) -> _ { Trait::foo1(self.0) }
 
@@ -85,7 +89,8 @@ impl Trait for S {
     #[attr = Cold]
     #[attr = MustUse]
     #[attr = Inline(Never)]
-    #[attr = Deprecated {deprecation: Deprecation {since: Unspecified}}]
+    #[attr = Deprecated {deprecation: Deprecation {since: Unspecified},
+    is_inner: false}]
     fn foo4(self: _) -> _ { Trait::foo4(self.0) }
 }
 

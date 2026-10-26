@@ -22,7 +22,7 @@ cfg_select! {
         // aborting stub.
         #[lang = "eh_personality"]
         fn rust_eh_personality() {
-            core::intrinsics::abort()
+            core::intrinsics::abort_immediate()
         }
     }
     any(

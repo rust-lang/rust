@@ -1,9 +1,7 @@
 use std::sync::Arc;
 
 use rustc_attr_ir::lang_items::LangItem;
-use rustc_attr_ir::target::Target;
 use rustc_span::sym;
-use thin_vec::thin_vec;
 
 use crate::LoweringContext;
 
@@ -350,9 +348,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 Some(ret_block),
             ),
         ));
-
-        let attrs: rustc_ast::AttrVec = thin_vec![self.unreachable_code_attr(span)];
-        self.lower_attrs(contract_check.hir_id, &attrs, span, Target::Expression);
 
         let ret_block = self.block_all(span, arena_vec![self; ret_stmt], Some(contract_check));
         self.arena.alloc(self.expr_block(self.arena.alloc(ret_block)))

@@ -94,6 +94,11 @@ struct SharedOpts {
 
     #[clap(long, global = true)]
     database_path: Option<String>,
+
+    /// Comma-separated list of thread counts for the parallel frontend. Maps directly to the
+    /// `-Zthreads` rustc option. If unspecified, `rustc-perf` uses only 1.
+    #[clap(long, global = true, value_delimiter = ',')]
+    frontend_threads: Vec<usize>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, clap::ValueEnum)]
@@ -256,5 +261,9 @@ fn apply_shared_opts(cmd: &mut BootstrapCommand, opts: &SharedOpts) {
     if !opts.scenarios.is_empty() {
         cmd.arg("--scenarios")
             .arg(opts.scenarios.iter().map(|p| p.to_string()).collect::<Vec<_>>().join(","));
+    }
+    if !opts.frontend_threads.is_empty() {
+        cmd.arg("--frontend-threads")
+            .arg(opts.frontend_threads.iter().map(|p| p.to_string()).collect::<Vec<_>>().join(","));
     }
 }

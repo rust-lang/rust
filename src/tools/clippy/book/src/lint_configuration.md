@@ -530,6 +530,7 @@ Whether to also run the listed lints on private items.
 * [`missing_errors_doc`](https://rust-lang.github.io/rust-clippy/main/index.html#missing_errors_doc)
 * [`missing_panics_doc`](https://rust-lang.github.io/rust-clippy/main/index.html#missing_panics_doc)
 * [`missing_safety_doc`](https://rust-lang.github.io/rust-clippy/main/index.html#missing_safety_doc)
+* [`too_long_first_doc_paragraph`](https://rust-lang.github.io/rust-clippy/main/index.html#too_long_first_doc_paragraph)
 * [`unnecessary_safety_doc`](https://rust-lang.github.io/rust-clippy/main/index.html#unnecessary_safety_doc)
 
 
@@ -544,7 +545,7 @@ The maximum cognitive complexity a function can have
 
 
 ## `const-literal-digits-threshold`
-The minimum digits a const float literal must have to supress the `excessive_precicion` lint
+The minimum digits a const float literal must have to suppress the `excessive_precision` lint
 
 **Default Value:** `30`
 
@@ -640,7 +641,7 @@ default configuration of Clippy. By default, any configuration will replace the 
 * `doc-valid-idents = ["ClipPy"]` would replace the default list with `["ClipPy"]`.
 * `doc-valid-idents = ["ClipPy", ".."]` would append `ClipPy` to the default list.
 
-**Default Value:** `["KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "MHz", "GHz", "THz", "AccessKit", "CoAP", "CoreFoundation", "CoreGraphics", "CoreText", "DevOps", "Direct2D", "Direct3D", "DirectWrite", "DirectX", "ECMAScript", "GPLv2", "GPLv3", "GitHub", "GitLab", "IPv4", "IPv6", "InfiniBand", "RoCE", "ClojureScript", "CoffeeScript", "JavaScript", "PostScript", "PureScript", "TypeScript", "PowerPC", "PowerShell", "WebAssembly", "NaN", "NaNs", "OAuth", "GraphQL", "SQLite", "MySQL", "PostgreSQL", "MariaDB", "MongoDB", "OCaml", "OpenAL", "OpenDNS", "OpenGL", "OpenMP", "OpenSSH", "OpenSSL", "OpenStreetMap", "OpenTelemetry", "OpenType", "WebAuthn", "WebGL", "WebGL2", "WebGPU", "WebRTC", "WebSocket", "WebTransport", "WebP", "OpenExr", "YCbCr", "sRGB", "TensorFlow", "TrueType", "iOS", "macOS", "FreeBSD", "NetBSD", "OpenBSD", "NixOS", "TeX", "LaTeX", "BibTeX", "BibLaTeX", "MinGW", "CamelCase"]`
+**Default Value:** `["KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "MHz", "GHz", "THz", "AccessKit", "CoAP", "CoreFoundation", "CoreGraphics", "CoreText", "DevOps", "Direct2D", "Direct3D", "DirectWrite", "DirectX", "ECMAScript", "GPLv2", "GPLv3", "GitHub", "GitLab", "IPv4", "IPv6", "InfiniBand", "RoCE", "ClojureScript", "CoffeeScript", "JavaScript", "PostScript", "PureScript", "TypeScript", "PowerPC", "PowerShell", "WebAssembly", "NaN", "NaNs", "OAuth", "GraphQL", "SQLite", "MySQL", "PostgreSQL", "MariaDB", "MongoDB", "OCaml", "OpenAL", "OpenDNS", "OpenGL", "OpenMP", "OpenSSH", "OpenSSL", "OpenStreetMap", "OpenTelemetry", "OpenType", "WebAuthn", "WebGL", "WebGL2", "WebGPU", "WebRTC", "WebSocket", "WebTransport", "WebP", "OpenExr", "YCbCr", "sRGB", "TensorFlow", "TrueType", "iOS", "macOS", "FreeBSD", "NetBSD", "OpenBSD", "NixOS", "TeX", "LaTeX", "BibTeX", "BibLaTeX", "MinGW", "CamelCase", "x86_64", "CommonMark", "IntelliJ"]`
 
 ---
 **Affected lints:**
@@ -1006,12 +1007,14 @@ The minimum rust version that the project supports. Defaults to the `rust-versio
 * [`repeat_vec_with_capacity`](https://rust-lang.github.io/rust-clippy/main/index.html#repeat_vec_with_capacity)
 * [`same_item_push`](https://rust-lang.github.io/rust-clippy/main/index.html#same_item_push)
 * [`seek_from_current`](https://rust-lang.github.io/rust-clippy/main/index.html#seek_from_current)
+* [`swap_ptr_to_ref`](https://rust-lang.github.io/rust-clippy/main/index.html#swap_ptr_to_ref)
 * [`to_digit_is_some`](https://rust-lang.github.io/rust-clippy/main/index.html#to_digit_is_some)
 * [`transmute_ptr_to_ref`](https://rust-lang.github.io/rust-clippy/main/index.html#transmute_ptr_to_ref)
 * [`tuple_array_conversions`](https://rust-lang.github.io/rust-clippy/main/index.html#tuple_array_conversions)
 * [`type_repetition_in_bounds`](https://rust-lang.github.io/rust-clippy/main/index.html#type_repetition_in_bounds)
 * [`unchecked_time_subtraction`](https://rust-lang.github.io/rust-clippy/main/index.html#unchecked_time_subtraction)
 * [`uninlined_format_args`](https://rust-lang.github.io/rust-clippy/main/index.html#uninlined_format_args)
+* [`unnecessary_box_pin`](https://rust-lang.github.io/rust-clippy/main/index.html#unnecessary_box_pin)
 * [`unnecessary_lazy_evaluations`](https://rust-lang.github.io/rust-clippy/main/index.html#unnecessary_lazy_evaluations)
 * [`unnecessary_unwrap`](https://rust-lang.github.io/rust-clippy/main/index.html#unnecessary_unwrap)
 * [`unnested_or_patterns`](https://rust-lang.github.io/rust-clippy/main/index.html#unnested_or_patterns)

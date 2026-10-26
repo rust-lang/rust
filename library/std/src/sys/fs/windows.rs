@@ -11,6 +11,7 @@ use crate::os::windows::io::{AsHandle, BorrowedHandle};
 use crate::os::windows::prelude::*;
 use crate::path::{Path, PathBuf};
 use crate::sync::Arc;
+pub use crate::sys::fs::common::{ExtraHomeDirs, ExtraMediaDirs};
 use crate::sys::handle::Handle;
 use crate::sys::pal::api::{self, WinError, set_file_information_by_handle};
 use crate::sys::pal::{IoResult, fill_utf16_buf, to_u16s, truncate_utf16_at_nul};
@@ -111,6 +112,15 @@ impl fmt::Debug for c::FILETIME {
 
 #[derive(Debug)]
 pub struct DirBuilder;
+
+impl ReadDir {
+    pub fn dir(&self) -> io::Result<Dir> {
+        let mut options = OpenOptions::new();
+        options.read(true);
+        // FIXME: use race-free handle-based approach instead.
+        Dir::open(&self.root, &options)
+    }
+}
 
 impl fmt::Debug for ReadDir {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -707,7 +717,7 @@ impl File {
     fn readlink(&self) -> io::Result<PathBuf> {
         let mut space =
             Align8([MaybeUninit::<u8>::uninit(); c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE as usize]);
-        let (_bytes, buf) = self.reparse_point(&mut space)?;
+        let (bytes, buf) = self.reparse_point(&mut space)?;
         unsafe {
             let (path_buffer, subst_off, subst_len, relative) = match (*buf).ReparseTag {
                 c::IO_REPARSE_TAG_SYMLINK => {
@@ -737,6 +747,17 @@ impl File {
                     ));
                 }
             };
+            // Check that the reparse point offsets and length stay within the data that
+            // was actually returned, before the slice is built from them. This keeps
+            // malformed filesystem data from causing an out-of-bounds access.
+            let path_offset = path_buffer.addr() - buf.addr();
+            let end = path_offset + (subst_off as usize * 2) + (subst_len as usize * 2);
+            if end > bytes as usize {
+                return Err(io::const_error!(
+                    io::ErrorKind::Uncategorized,
+                    "Invalid reparse point data",
+                ));
+            }
             let subst_ptr = path_buffer.add(subst_off.into());
             let subst = slice::from_raw_parts_mut(subst_ptr, subst_len as usize);
             // Absolute paths start with an NT internal namespace prefix `\??\`
@@ -861,6 +882,7 @@ impl File {
     /// `restart` is set to `true`.
     ///
     /// The returned bool indicates if there are more entries or not.
+    /// You must only iterate the buffer if this returned `true`!
     /// It is an error if `self` is not a directory.
     ///
     /// # Symlinks and other reparse points
@@ -882,6 +904,8 @@ impl File {
                 buffer.capacity() as _,
             );
             if result == 0 {
+                // Apparently ERROR_NO_MORE_FILES also means that the buffer is empty / was left
+                // unchanged. FIXME: find docs that say this.
                 let err = api::get_last_error();
                 if err.code == c::ERROR_NO_MORE_FILES { Ok(false) } else { Err(err) }
             } else {
@@ -951,8 +975,8 @@ impl<'a> Iterator for DirBuffIter<'a> {
             // While this is guaranteed to be aligned in documentation for
             // https://docs.microsoft.com/en-us/windows/win32/api/winbase/ns-winbase-file_id_both_dir_info
             // it does not seem that reality is so kind, and assuming this
-            // caused crashes in some cases (https://github.com/rust-lang/rust/issues/104530)
-            // presumably, this can be blamed on buggy filesystem drivers, but who knows.
+            // caused crashes in some cases (https://github.com/rust-lang/rust/issues/104530).
+            // Presumably, this can be blamed on buggy filesystem drivers, but who knows.
             let next_entry = (&raw const (*info).NextEntryOffset).read_unaligned() as usize;
             let length = (&raw const (*info).FileNameLength).read_unaligned() as usize;
             let attrs = (&raw const (*info).FileAttributes).read_unaligned();
@@ -1302,8 +1326,8 @@ pub fn unlink(path: &WCStr) -> io::Result<()> {
     }
 }
 
-pub fn rename(old: &WCStr, new: &WCStr) -> io::Result<()> {
-    if unsafe { c::MoveFileExW(old.as_ptr(), new.as_ptr(), c::MOVEFILE_REPLACE_EXISTING) } == 0 {
+fn rename_inner(old: &WCStr, new: &WCStr, move_flags: u32, rename_flags: u32) -> io::Result<()> {
+    if unsafe { c::MoveFileExW(old.as_ptr(), new.as_ptr(), move_flags) } == 0 {
         let err = api::get_last_error();
         // if `MoveFileExW` fails with ERROR_ACCESS_DENIED then try to move
         // the file while ignoring the readonly attribute.
@@ -1335,10 +1359,8 @@ pub fn rename(old: &WCStr, new: &WCStr) -> io::Result<()> {
                     return Err(io::ErrorKind::OutOfMemory.into());
                 }
 
-                (&raw mut (*file_rename_info).Anonymous).write(c::FILE_RENAME_INFO_0 {
-                    Flags: c::FILE_RENAME_FLAG_REPLACE_IF_EXISTS
-                        | c::FILE_RENAME_FLAG_POSIX_SEMANTICS,
-                });
+                (&raw mut (*file_rename_info).Anonymous)
+                    .write(c::FILE_RENAME_INFO_0 { Flags: rename_flags });
 
                 (&raw mut (*file_rename_info).RootDirectory).write(ptr::null_mut());
                 // Don't include the NULL in the size
@@ -1371,6 +1393,21 @@ pub fn rename(old: &WCStr, new: &WCStr) -> io::Result<()> {
         }
     }
     Ok(())
+}
+
+pub fn rename(old: &WCStr, new: &WCStr) -> io::Result<()> {
+    rename_inner(
+        old,
+        new,
+        c::MOVEFILE_REPLACE_EXISTING,
+        c::FILE_RENAME_FLAG_REPLACE_IF_EXISTS | c::FILE_RENAME_FLAG_POSIX_SEMANTICS,
+    )
+}
+
+pub fn rename_noreplace(old: &WCStr, new: &WCStr) -> io::Result<()> {
+    // Without `MOVEFILE_REPLACE_EXISTING`, `MoveFileExW` fails if the destination
+    // exists.
+    rename_inner(old, new, 0, c::FILE_RENAME_FLAG_POSIX_SEMANTICS)
 }
 
 pub fn rmdir(p: &WCStr) -> io::Result<()> {
@@ -1454,7 +1491,9 @@ pub fn link(_original: &WCStr, _link: &WCStr) -> io::Result<()> {
 pub fn stat(path: &WCStr) -> io::Result<FileAttr> {
     match metadata(path, ReparsePoint::Follow) {
         Err(err) if err.raw_os_error() == Some(c::ERROR_CANT_ACCESS_FILE as i32) => {
-            if let Ok(attrs) = lstat(path) {
+            // Fallback to opening reparse points when following fails. Needed for UNIX domain
+            // sockets. See <https://github.com/rust-lang/rust/issues/109106>.
+            if let Ok(attrs) = metadata(path, ReparsePoint::Open) {
                 if !attrs.file_type().is_symlink() {
                     return Ok(attrs);
                 }

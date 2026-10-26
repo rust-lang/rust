@@ -1,4 +1,10 @@
-#![feature(gca_min_const_items, gca_macroless_args, transmutability)]
+#![feature(
+    gca_adts,
+    gca_macroless_args,
+    gca_min_const_items,
+    min_adt_const_params,
+    transmutability
+)]
 
 mod assert {
     use std::mem::{Assume, TransmuteFrom};

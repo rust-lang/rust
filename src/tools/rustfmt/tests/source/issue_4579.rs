@@ -1,4 +1,4 @@
-// rustfmt-hard_tabs: true
+//@ rustfmt-hard_tabs: true
 
 #[macro_export]
 macro_rules! main {

@@ -1,17 +1,24 @@
 error[E0324]: item `C` is an associated method, which doesn't match its trait `Trait`
   --> $DIR/bad-resolve.rs:23:5
    |
+LL | trait Trait {
 LL |     const C: u32 = 0;
    |     ----------------- item in trait
 ...
+LL | impl Trait for S {
+LL |
 LL |     reuse <F as Trait>::C;
    |     ^^^^^^^^^^^^^^^^^^^^^^ does not match trait
 
 error[E0324]: item `Type` is an associated method, which doesn't match its trait `Trait`
   --> $DIR/bad-resolve.rs:26:5
    |
+LL | trait Trait {
+LL |     const C: u32 = 0;
 LL |     type Type;
    |     ---------- item in trait
+...
+LL | impl Trait for S {
 ...
 LL |     reuse <F as Trait>::Type;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ does not match trait

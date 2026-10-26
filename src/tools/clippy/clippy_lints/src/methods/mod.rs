@@ -19,6 +19,7 @@ mod collapsible_str_replace;
 mod double_ended_iterator_last;
 mod drain_collect;
 mod err_expect;
+mod exit;
 mod expect_fun_call;
 mod extend_with_drain;
 mod filetype_is_file;
@@ -133,6 +134,7 @@ mod type_id_on_box;
 mod unbuffered_bytes;
 mod uninit_assumed_init;
 mod unit_hash;
+mod unnecessary_as_slice;
 mod unnecessary_fallible_conversions;
 mod unnecessary_filter_map;
 mod unnecessary_first_then_check;
@@ -546,7 +548,7 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// ### What it does
     ///
-    /// Checks for `Iterator::last` being called on a  `DoubleEndedIterator`, which can be replaced
+    /// Checks for `Iterator::last` being called on a `DoubleEndedIterator`, which can be replaced
     /// with `DoubleEndedIterator::next_back`.
     ///
     /// ### Why is this bad?
@@ -554,6 +556,12 @@ declare_clippy_lint! {
     /// `Iterator::last` is implemented by consuming the iterator, which is unnecessary if
     /// the iterator is a `DoubleEndedIterator`. Since Rust traits do not allow specialization,
     /// `Iterator::last` cannot be optimized for `DoubleEndedIterator`.
+    ///
+    /// ### Known issues
+    ///
+    /// The suggestion may change code behavior when an iterator adapter has side effects. For example,
+    /// a `move` closure passed to `filter` may mutate captured state. Replacing `last()` with `next_back()`
+    /// changes the order in which the closure is evaluated, which could change the final result.
     ///
     /// ### Example
     /// ```no_run
@@ -626,6 +634,54 @@ declare_clippy_lint! {
     pub ERR_EXPECT,
     style,
     r#"using `.err().expect("")` when `.expect_err("")` can be used"#
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Detects calls to the `exit()` function that are not in the `main` function. Calls to `exit()`
+    /// immediately terminate the program.
+    ///
+    /// ### Why restrict this?
+    /// `exit()` immediately terminates the program with no information other than an exit code.
+    /// This provides no means to troubleshoot a problem, and may be an unexpected side effect.
+    ///
+    /// Codebases may use this lint to require that all exits are performed either by panicking
+    /// (which produces a message, a code location, and optionally a backtrace)
+    /// or by calling `exit()` from `main()` (which is a single place to look).
+    ///
+    /// ### Good example
+    /// ```no_run
+    /// fn main() {
+    ///     std::process::exit(0);
+    /// }
+    /// ```
+    ///
+    /// ### Bad example
+    /// ```no_run
+    /// fn main() {
+    ///     other_function();
+    /// }
+    ///
+    /// fn other_function() {
+    ///     std::process::exit(0);
+    /// }
+    /// ```
+    ///
+    /// Use instead:
+    ///
+    /// ```ignore
+    /// // To provide a stacktrace and additional information
+    /// panic!("message");
+    ///
+    /// // or a main method with a return
+    /// fn main() -> Result<(), i32> {
+    ///     Ok(())
+    /// }
+    /// ```
+    #[clippy::version = "1.41.0"]
+    pub EXIT,
+    restriction,
+    "detects `std::process::exit` calls outside of `main`"
 }
 
 declare_clippy_lint! {
@@ -705,10 +761,12 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for occurrences where one vector gets extended instead of append
+    /// Checks for use of `extend()` and `drain()` methods to transfer items from one `Vec`,
+    /// `VecDeque`, or `BinaryHeap` to another.
     ///
     /// ### Why is this bad?
-    /// Using `append` instead of `extend` is more concise and faster
+    /// Using `append()` instead of `extend()` is more concise, and faster because the
+    /// `append()` method can take advantage of knowledge of the collection’s structure.
     ///
     /// ### Example
     /// ```no_run
@@ -728,7 +786,7 @@ declare_clippy_lint! {
     #[clippy::version = "1.55.0"]
     pub EXTEND_WITH_DRAIN,
     perf,
-    "using vec.append(&mut vec) to move the full range of a vector to another"
+    "use of `extend(other.drain())` to move the contents of a collection is inefficient"
 }
 
 declare_clippy_lint! {
@@ -999,7 +1057,7 @@ declare_clippy_lint! {
     /// `x.last()`.  Indexing into the array will panic on out-of-bounds
     /// accesses, while `x.get()` and `x.last()` will return `None`.
     ///
-    /// There is another lint (get_unwrap) that covers the case of using
+    /// There is another lint (`get_unwrap`) that covers the case of using
     /// `x.get(index).unwrap()` instead of `x[index]`.
     ///
     /// ### Example
@@ -2909,7 +2967,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of `_.as_ref().map(Deref::deref)` or its aliases (such as String::as_str).
+    /// Checks for usage of `_.as_ref().map(Deref::deref)` or its aliases (such as `String::as_str`).
     ///
     /// ### Why is this bad?
     /// Readability, this can be written more concisely as
@@ -3947,9 +4005,8 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for calls to [`splitn`]
-    /// (https://doc.rust-lang.org/std/primitive.str.html#method.splitn) and
-    /// related functions with either zero or one splits.
+    /// Checks for calls to [`splitn`](https://doc.rust-lang.org/std/primitive.str.html#method.splitn)
+    /// and related functions with either zero or one splits.
     ///
     /// ### Why is this bad?
     /// These calls don't actually split the value and are
@@ -4231,6 +4288,29 @@ declare_clippy_lint! {
     pub UNIT_HASH,
     correctness,
     "hashing a unit value, which does nothing"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Looks for unnecessary calls to `as_slice()` on `Vec`.
+    ///
+    /// ### Why is this bad?
+    /// Calling `as_slice()` on a `Vec` before calling a method on it may be unnecessary because `Vec`s auto-dereference as slices.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let v = vec![1, 2, 3];
+    /// let v_len = v.as_slice().len();
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let v = vec![1, 2, 3];
+    /// let v_len = v.len();
+    /// ```
+    #[clippy::version = "1.97.0"]
+    pub UNNECESSARY_AS_SLICE,
+    complexity,
+    "using `as_slice()` on a `Vec` when it is not necessary"
 }
 
 declare_clippy_lint! {
@@ -4546,7 +4626,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for unnecessary calls to `min()` or `max()` in the following cases
     /// - Either both side is constant
-    /// - One side is clearly larger than the other, like i32::MIN and an i32 variable
+    /// - One side is clearly larger than the other, like `i32::MIN` and an `i32` variable
     ///
     /// ### Why is this bad?
     ///
@@ -4875,7 +4955,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of File::read_to_end and File::read_to_string.
+    /// Checks for usage of ``File::read_to_end`` and `File::read_to_string`.
     ///
     /// ### Why restrict this?
     /// `fs::{read, read_to_string}` provide the same functionality when `buf` is empty with fewer imports and no intermediate values.
@@ -4948,7 +5028,7 @@ declare_clippy_lint! {
     /// Clippy allows `Pin<&Self>` and `Pin<&mut Self>` if `&self` and `&mut self` is required.
     ///
     /// Please find more info here:
-    /// https://rust-lang.github.io/api-guidelines/naming.html#ad-hoc-conversions-follow-as_-to_-into_-conventions-c-conv
+    /// <https://rust-lang.github.io/api-guidelines/naming.html#ad-hoc-conversions-follow-as_-to_-into_-conventions-c-conv>
     ///
     /// ### Why is this bad?
     /// Consistency breeds readability. If you follow the
@@ -5018,6 +5098,7 @@ impl_lint_pass!(Methods => [
     DOUBLE_ENDED_ITERATOR_LAST,
     DRAIN_COLLECT,
     ERR_EXPECT,
+    EXIT,
     EXPECT_FUN_CALL,
     EXPECT_USED,
     EXTEND_WITH_DRAIN,
@@ -5138,6 +5219,7 @@ impl_lint_pass!(Methods => [
     UNBUFFERED_BYTES,
     UNINIT_ASSUMED_INIT,
     UNIT_HASH,
+    UNNECESSARY_AS_SLICE,
     UNNECESSARY_FALLIBLE_CONVERSIONS,
     UNNECESSARY_FILTER_MAP,
     UNNECESSARY_FIND_MAP,
@@ -5230,6 +5312,11 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
     }
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
+        if let ExprKind::Call(func, _) = expr.kind {
+            // The functions from this block perform their own macro context checks
+            exit::check(cx, expr, func);
+        }
+
         if expr.span.from_expansion() {
             return;
         }
@@ -5429,6 +5516,7 @@ impl Methods {
                     }
                     sliced_string_as_bytes::check(cx, expr, recv);
                 },
+                (sym::as_slice | sym::as_mut_slice, []) => unnecessary_as_slice::check(cx, expr, recv, name),
                 (sym::as_mut | sym::as_ref, []) => useless_asref::check(cx, expr, name, recv),
                 (sym::as_ptr, []) => manual_c_str_literals::check_as_ptr(cx, expr, recv, self.msrv),
                 (sym::assume_init, []) => uninit_assumed_init::check(cx, expr, recv),
@@ -5812,9 +5900,9 @@ impl Methods {
                     no_effect_replace::check(cx, expr, arg1, arg2);
 
                     // Check for repeated `str::replace` calls to perform `collapsible_str_replace` lint
-                    if self.msrv.meets(cx, msrvs::PATTERN_TRAIT_CHAR_ARRAY)
-                        && name == sym::replace
+                    if name == sym::replace
                         && let Some((sym::replace, ..)) = method_call(recv)
+                        && self.msrv.meets(cx, msrvs::PATTERN_TRAIT_CHAR_ARRAY)
                     {
                         collapsible_str_replace::check(cx, expr, arg1, arg2);
                     }
@@ -5885,10 +5973,9 @@ impl Methods {
                 },
                 (sym::take, []) => needless_option_take::check(cx, expr, recv),
                 (sym::then, [arg]) => {
-                    if !self.msrv.meets(cx, msrvs::BOOL_THEN_SOME) {
-                        return;
+                    if self.msrv.meets(cx, msrvs::BOOL_THEN_SOME) {
+                        unnecessary_lazy_eval::check(cx, expr, recv, arg, "then_some", true);
                     }
-                    unnecessary_lazy_eval::check(cx, expr, recv, arg, "then_some", true);
                 },
                 (sym::try_into, []) if cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::TryInto) => {
                     unnecessary_fallible_conversions::check_method(cx, expr);

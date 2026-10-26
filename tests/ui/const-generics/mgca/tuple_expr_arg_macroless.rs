@@ -1,12 +1,12 @@
 //@ check-pass
 
 #![feature(
-    gca_min_const_items,
-    gca_macroless_args,
     adt_const_params,
+    gca_adts,
+    gca_macroless_args,
+    gca_min_const_items,
     unsized_const_params
 )]
-#![expect(incomplete_features)]
 
 trait Trait {
     #[rustc_always_gca]

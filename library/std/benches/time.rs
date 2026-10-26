@@ -1,10 +1,10 @@
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(all(target_family = "wasm", target_os = "unknown")))]
 use test::{Bencher, black_box};
 
 macro_rules! bench_instant_threaded {
     ($bench_name:ident, $thread_count:expr) => {
         #[bench]
-        #[cfg(not(target_arch = "wasm32"))]
+        #[cfg(not(all(target_family = "wasm", target_os = "unknown")))]
         fn $bench_name(b: &mut Bencher) -> std::thread::Result<()> {
             use std::sync::Arc;
             use std::sync::atomic::{AtomicBool, Ordering};

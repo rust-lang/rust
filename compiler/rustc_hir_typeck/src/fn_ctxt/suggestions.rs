@@ -18,7 +18,6 @@ use rustc_hir::{
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_hir_analysis::suggest_impl_trait;
 use rustc_middle::middle::stability::EvalResult;
-use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_types_for_suggestion};
 use rustc_middle::ty::{
     self, Article, Binder, IsSuggestable, Ty, TyCtxt, TypeVisitableExt, Unnormalized, Upcast,
@@ -81,9 +80,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let Some((fn_id, fn_decl)) = self.get_fn_decl(blk_id) {
             pointing_at_return_type =
                 self.suggest_missing_return_type(err, fn_decl, expected, found, fn_id);
-            self.suggest_missing_break_or_return_expr(
-                err, expr, fn_decl, expected, found, blk_id, fn_id,
-            );
         }
         pointing_at_return_type
     }
@@ -1021,13 +1017,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             hir::FnRetTy::Return(hir_ty) => {
                 if let hir::TyKind::OpaqueDef(op_ty, ..) = hir_ty.kind
                     && let [hir::GenericBound::Trait(trait_ref)] = op_ty.bounds
-                    && !trait_ref
-                        .trait_ref
-                        .path
-                        .segments
-                        .last()
-                        .and_then(|seg| seg.args)
-                        .is_some_and(|args| !args.constraints.is_empty())
+                    && matches!(op_ty.origin, hir::OpaqueTyOrigin::FnReturn { .. })
                 {
                     // Use the path to get the trait name string
                     let trait_name = trait_ref
@@ -1054,16 +1044,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                     let trait_def_id = trait_ref.trait_ref.path.res.def_id();
                     if self.tcx.is_dyn_compatible(trait_def_id) {
-                        err.subdiagnostic(SuggestBoxingForReturnImplTrait::ChangeReturnType {
-                            start_sp: hir_ty.span.with_hi(hir_ty.span.lo() + BytePos(4)),
-                            end_sp: hir_ty.span.shrink_to_hi(),
-                        });
-
                         let body = self.tcx.hir_body_owned_by(fn_id);
                         let mut visitor = ReturnsVisitor::default();
                         visitor.visit_body(&body);
 
-                        if !visitor.returns.is_empty() {
+                        // Suggest boxing the return type only if there are multiple non-unit return types
+                        if visitor.returns.len() > 1 {
+                            err.subdiagnostic(SuggestBoxingForReturnImplTrait::ChangeReturnType {
+                                start_sp: hir_ty.span.with_hi(hir_ty.span.lo() + BytePos(4)),
+                                end_sp: hir_ty.span.shrink_to_hi(),
+                            });
+
                             let starts: Vec<Span> = visitor
                                 .returns
                                 .iter()
@@ -1391,7 +1382,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ty::Asyncness::No => ty,
                 };
                 let ty = self.normalize(expr.span, Unnormalized::new_wip(ty));
-                self.may_coerce(found, ty)
+                let can_coerce_to_prior_ret = self.ret_coercion_span.get().is_none_or(|_| {
+                    self.ret_coercion.as_ref().is_some_and(|ret| {
+                        let ret_ty = ret.borrow().expected_ty();
+                        self.may_coerce(found, ret_ty)
+                    })
+                });
+                self.may_coerce(found, ty) && can_coerce_to_prior_ret
             }
             hir::FnRetTy::DefaultReturn(_) if in_closure => {
                 self.ret_coercion.as_ref().is_some_and(|ret| {
@@ -1467,7 +1464,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &hir::Expr<'_>,
     ) -> bool {
         let sp = self.tcx.sess.source_map().start_point(expr.span).with_parent(None);
-        if let Some(sp) = self.tcx.sess.psess.ambiguous_block_expr_parse.borrow().get(&sp) {
+        if let Some(sp) =
+            self.tcx.sess.psess.complete_stmt_exprs_before_bin_op_lookalike.borrow().get(&sp)
+        {
             // `{ 42 } &&x` (#61475) or `{ 42 } && if x { 1 } else { 0 }`
             err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
             true

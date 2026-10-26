@@ -102,7 +102,7 @@ where
     }
 
     if pivot >= len {
-        intrinsics::abort();
+        intrinsics::abort_immediate();
     }
 
     // SAFETY: We checked that `pivot` is in-bounds.
@@ -124,7 +124,7 @@ where
     let num_lt = (const { inst_partition::<T, F>() })(v_without_pivot, pivot, is_less);
 
     if num_lt >= len {
-        intrinsics::abort();
+        intrinsics::abort_immediate();
     }
 
     // SAFETY: We checked that `num_lt` is in-bounds.

@@ -1,4 +1,4 @@
-// rustfmt-single_line_let_else_max_width: 50
+//@ rustfmt-single_line_let_else_max_width: 50
 
 fn main() {
     let Some(a) = opt else {};

@@ -1511,6 +1511,7 @@ supported_targets! {
     ("thumbv7a-pc-windows-msvc", thumbv7a_pc_windows_msvc),
     ("thumbv7a-uwp-windows-msvc", thumbv7a_uwp_windows_msvc),
 
+    ("wasm32-none-component", wasm32_none_component),
     ("wasm32-unknown-emscripten", wasm32_unknown_emscripten),
     ("wasm32-unknown-unknown", wasm32_unknown_unknown),
     ("wasm32v1-none", wasm32v1_none),
@@ -1657,6 +1658,8 @@ supported_targets! {
 
     ("aarch64-unknown-teeos", aarch64_unknown_teeos),
 
+    ("aarch64-unknown-qtee", aarch64_unknown_qtee),
+
     ("mips64-openwrt-linux-musl", mips64_openwrt_linux_musl),
 
     ("aarch64-unknown-nto-qnx700", aarch64_unknown_nto_qnx700),
@@ -1702,6 +1705,9 @@ supported_targets! {
     ("i686-oe-linux-gnu", i686_oe_linux_gnu),
     ("riscv64-oe-linux-gnu", riscv64_oe_linux_gnu),
     ("x86_64-oe-linux-gnu", x86_64_oe_linux_gnu),
+
+    ("aarch64-unknown-hyperlight", aarch64_unknown_hyperlight),
+    ("x86_64-unknown-hyperlight", x86_64_unknown_hyperlight),
 }
 
 /// Cow-Vec-Str: Cow<'static, [Cow<'static, str>]>
@@ -1857,6 +1863,7 @@ crate::target_spec_enum! {
         Hermit = "hermit",
         Horizon = "horizon",
         Hurd = "hurd",
+        Hyperlight = "hyperlight",
         Illumos = "illumos",
         IOs = "ios",
         L4Re = "l4re",
@@ -1874,6 +1881,7 @@ crate::target_spec_enum! {
         Psp = "psp",
         Psx = "psx",
         Qnx = "qnx",
+        Qtee = "qtee",
         Qurt = "qurt",
         Redox = "redox",
         Rtems = "rtems",
@@ -2537,7 +2545,7 @@ pub struct TargetOptions {
     /// rustc and not forwarded to LLVM.
     pub rustc_abi: Option<RustcAbi>,
 
-    /// Whether or not RelaxElfRelocation flag will be passed to the linker
+    /// Whether or not X86RelaxRelocations flag will be passed to LLVM (x86 only).
     pub relax_elf_relocations: bool,
 
     /// Additional arguments to pass to LLVM, similar to the `-C llvm-args` codegen option.

@@ -133,7 +133,8 @@ The `pattern!` macro call expands to a function `my_pattern` that expects a
 syntax tree expression as its argument and returns an `Option` that indicates
 whether the pattern matched.
 
-> Note: The result type is explained in more detail in [a later
+> [!NOTE]
+> The result type is explained in more detail in [a later
 > section](#the-result-type). For now, it's enough to know that the result is
 > `Some` if the pattern matched and `None` otherwise.
 
@@ -482,7 +483,8 @@ differences:
 
 The code below shows a simplified version of the current PatternTree:
 
-> Note: The current implementation can be found
+> [!NOTE]
+> The current implementation can be found
 > [here](https://github.com/fkohlgrueber/pattern-matching/blob/dfb3bc9fbab69cec7c91e72564a63ebaa2ede638/pattern-match/src/pattern_tree.rs#L50-L96).
 
 
@@ -516,7 +518,8 @@ pub enum BlockType {
 
 The `Alt`, `Seq` and `Opt` structs look like these:
 
-> Note: The current implementation can be found
+> [!NOTE]
+> The current implementation can be found
 > [here](https://github.com/fkohlgrueber/pattern-matching/blob/dfb3bc9fbab69cec7c91e72564a63ebaa2ede638/pattern-match/src/matchers.rs#L35-L60).
 
 ```rust,ignore
@@ -562,7 +565,8 @@ the `Expr` enum is `Any<Lit>` and therefore doesn't support repetition (`*`). As
 another example, `Array( Lit(_)* )` is a valid pattern because the parameter of
 `Array` is of type `Seq<Expr>` which allows sequences and repetitions.
 
-> Note: names in the pattern syntax correspond to *PatternTree* enum
+> [!NOTE]
+> names in the pattern syntax correspond to *PatternTree* enum
 > **variants**. For example, the `Lit` in the pattern above refers to the `Lit`
 > variant of the `Expr` enum (`Expr::Lit`), not the `Lit` enum.
 

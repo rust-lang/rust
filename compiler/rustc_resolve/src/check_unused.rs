@@ -250,6 +250,13 @@ impl<'a, 'ra, 'tcx> AsMut<Resolver<'ra, 'tcx>> for UnusedImportCheckVisitor<'a, 
 }
 
 impl<'a, 'ra, 'tcx> Visitor<'a> for UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
+    // Don't walk into attributes because imports can appear
+    // inside (e.g #[doc = {use std::{io,fmt};}]). They have
+    // a different owner, so they will cause an ICE if we visit
+    // them. Note that this doc attribute is not valid and will
+    // be rejected during AST lowering.
+    fn visit_attribute(&mut self, _: &'a rustc_ast::Attribute) {}
+
     fn visit_item(&mut self, item: &'a ast::Item) {
         self.item_span = item.span_with_attributes();
         match &item.kind {

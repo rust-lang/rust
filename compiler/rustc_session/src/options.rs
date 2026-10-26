@@ -136,6 +136,21 @@ mod target_modifier_consistency_check {
         }
         true
     }
+    pub(super) fn sanitizer_cfi_minimal_runtime(
+        sess: &Session,
+        l: &TargetModifier,
+        r: Option<&TargetModifier>,
+    ) -> bool {
+        // For CFI, the helper flag -Zsanitizer-cfi-minimal-runtime should also be a target modifier
+        if sess.sanitizers().contains(SanitizerSet::CFI) {
+            if let Some(r) = r {
+                return l.extend().tech_value == r.extend().tech_value;
+            } else {
+                return false;
+            }
+        }
+        true
+    }
     pub(super) fn target_cpu(
         sess: &Session,
         l: &TargetModifier,
@@ -175,6 +190,11 @@ impl TargetModifier {
                 }
                 UnstableOptionsTargetModifiers::SanitizerCfiNormalizeIntegers => {
                     return target_modifier_consistency_check::sanitizer_cfi_normalize_integers(
+                        sess, self, other,
+                    );
+                }
+                UnstableOptionsTargetModifiers::SanitizerCfiMinimalRuntime => {
+                    return target_modifier_consistency_check::sanitizer_cfi_minimal_runtime(
                         sess, self, other,
                     );
                 }
@@ -857,7 +877,7 @@ mod desc {
     pub(crate) const parse_unpretty: &str = "`string` or `string=string`";
     pub(crate) const parse_treat_err_as_bug: &str = "either no value or a non-negative number";
     pub(crate) const parse_next_solver_config: &str =
-        "either `globally` (when used without an argument), `coherence` (default) or `no`";
+        "either `globally` (when used without an argument), or `coherence` (default)";
     pub(crate) const parse_lto: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), `thin`, `fat`, or omitted";
     pub(crate) const parse_linker_plugin_lto: &str =
@@ -1775,13 +1795,12 @@ pub mod parse {
     pub(crate) fn parse_next_solver_config(slot: &mut NextSolverConfig, v: Option<&str>) -> bool {
         if let Some(config) = v {
             *slot = match config {
-                "no" => NextSolverConfig { coherence: false, globally: false },
-                "coherence" => NextSolverConfig { coherence: true, globally: false },
-                "globally" => NextSolverConfig { coherence: true, globally: true },
+                "no" | "coherence" => NextSolverConfig::Coherence,
+                "globally" => NextSolverConfig::Globally,
                 _ => return false,
             };
         } else {
-            *slot = NextSolverConfig { coherence: true, globally: true };
+            *slot = NextSolverConfig::Globally;
         }
 
         true
@@ -2232,6 +2251,8 @@ options! {
         "version of DWARF debug information to emit (default: 2 or 4, depending on platform)"),
     embed_bitcode: bool = (true, parse_bool, [TRACKED],
         "emit bitcode in rlibs (default: yes)"),
+    embed_metadata: Option<bool> = (None, parse_opt_bool, [TRACKED],
+        "embed metadata in rlibs and dylibs (default: yes)"),
     extra_filename: String = (String::new(), parse_string, [UNTRACKED],
         "extra data to put in each output filename"),
     force_frame_pointers: FramePointer = (FramePointer::MayOmit, parse_frame_pointer, [TRACKED],
@@ -2382,6 +2403,8 @@ options! {
     assumptions_on_binders: bool = (false, parse_bool, [TRACKED],
         "allow deducing higher-ranked outlives assumptions from all binders (`for<'a>`); \
          implies `-Znext-solver=globally`"),
+    async_panic: bool = (true, parse_bool, [TRACKED],
+        "let async blocks and functions panic when polled after completion"),
     autodiff: Vec<crate::config::AutoDiff> = (Vec::new(), parse_autodiff, [TRACKED],
         "a list of autodiff flags to enable
         Mandatory setting:
@@ -2495,7 +2518,8 @@ options! {
         them only if an error has not been emitted"),
     ehcont_guard: bool = (false, parse_bool, [TRACKED],
         "generate Windows EHCont Guard tables"),
-    embed_metadata: bool = (true, parse_bool, [TRACKED],
+    // FIXME(kobzol): remove in 2027
+    embed_metadata: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "embed metadata in rlibs and dylibs (default: yes)"),
     embed_source: bool = (false, parse_bool, [TRACKED],
         "embed source text in DWARF debug sections (default: no)"),
@@ -2667,6 +2691,8 @@ options! {
     mir_include_spans: MirIncludeSpans = (MirIncludeSpans::default(), parse_mir_include_spans, [UNTRACKED],
         "include extra comments in mir pretty printing, like line numbers and statement indices, \
          details about types, etc. (boolean for all passes, 'nll' to enable in NLL MIR only, default: 'nll')"),
+    mir_move_elimination: bool = (false, parse_bool, [TRACKED],
+        "enable the experimental MIR semantics for the move elimination optimization (default: no)"),
     mir_opt_bisect_limit: Option<usize> = (None, parse_opt_number, [TRACKED],
         "limit the number of MIR optimization pass executions (global across all bodies). \
         Pass executions after this limit are skipped and reported. (default: no limit)"),
@@ -2802,7 +2828,7 @@ options! {
         \"C\", \"cdecl\", and \"stdcall\" fn.\
         It is UNSOUND to link together crates that use different values for this flag!"),
     relax_elf_relocations: Option<bool> = (None, parse_opt_bool, [TRACKED],
-        "whether ELF relocations can be relaxed"),
+        "whether ELF relocations can be relaxed (x86 only)"),
     remap_cwd_prefix: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED],
         "remap paths under the current working directory to this path prefix"),
     remark_dir: Option<PathBuf> = (None, parse_opt_pathbuf, [UNTRACKED],
@@ -2830,6 +2856,8 @@ written to standard error output)"),
         "enable CFI diagnostics (default: no)"),
     sanitizer_cfi_recover: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "enable CFI recovery (default: no)"),
+    sanitizer_cfi_minimal_runtime: Option<bool> = (None, parse_opt_bool, [TRACKED] { TARGET_MODIFIER: SanitizerCfiMinimalRuntime },
+        "enable minimal UBSan runtime for CFI (default: no)"),
     sanitizer_dataflow_abilist: Vec<String> = (Vec::new(), parse_comma_list, [TRACKED],
         "additional ABI list files that control how shadow parameters are passed (comma separated)"),
     sanitizer_kcfi_arity: Option<bool> = (None, parse_opt_bool, [TRACKED],
@@ -2938,9 +2966,6 @@ written to standard error output)"),
         "in diagnostics, use heuristics to shorten paths referring to items"),
     tune_cpu: Option<String> = (None, parse_opt_string, [TRACKED],
         "select processor to schedule for (`rustc --print target-cpus` for details)"),
-    #[rustc_lint_opt_deny_field_access("use `TyCtxt::use_typing_mode_post_typeck` instead of this field")]
-    typing_mode_post_typeck_until_borrowck: bool = (false, parse_bool, [TRACKED],
-        "enable `TypingMode::PostTypeckUntilBorrowck`, changing the way opaque types are handled during MIR borrowck"),
     #[rustc_lint_opt_deny_field_access("use `Session::ub_checks` instead of this field")]
     ub_checks: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "emit runtime checks for Undefined Behavior (default: -Cdebug-assertions)"),

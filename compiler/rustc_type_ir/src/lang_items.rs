@@ -46,6 +46,7 @@ pub enum SolverTraitLangItem {
     FnMut,
     FnOnce,
     FnPtrTrait,
+    Freeze,
     FusedIterator,
     Future,
     Iterator,

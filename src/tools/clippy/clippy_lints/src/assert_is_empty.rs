@@ -65,7 +65,7 @@ declare_clippy_lint! {
     /// assert_eq!(items, [] as [i32; 0]);
     /// assert_ne!(items, [] as [i32; 0]);
     /// ```
-    #[clippy::version = "1.98.0"]
+    #[clippy::version = "1.99.0"]
     pub ASSERT_IS_EMPTY,
     pedantic,
     "asserting on emptiness without showing the asserted value on failure"

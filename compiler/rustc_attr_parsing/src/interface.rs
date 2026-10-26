@@ -21,6 +21,7 @@ use crate::context::{
     FinalizeFn, FinalizeOutput, SharedContext,
 };
 use crate::diagnostics::ParsedDescription;
+use crate::generated::GeneratedAttrState;
 use crate::parser::{AllowExprMetavar, ArgParser, PathParser, RefPathParser};
 use crate::synthetic::SyntheticAttrState;
 use crate::{AttributeTemplate, ShouldEmit};
@@ -266,6 +267,7 @@ impl<'sess> AttributeParser<'sess> {
             attr_path,
             #[cfg(debug_assertions)]
             has_target_been_checked: false,
+            attr_id: None,
         };
         parse_fn(&mut cx, args)
     }
@@ -304,6 +306,7 @@ impl<'sess> AttributeParser<'sess> {
         self.sess().dcx()
     }
 
+    #[track_caller]
     pub(crate) fn emit_err(&self, diag: impl for<'x> Diagnostic<'x>) -> ErrorGuaranteed {
         self.should_emit.emit_err(self.sess.dcx().create_err(diag))
     }
@@ -323,6 +326,7 @@ impl<'sess> AttributeParser<'sess> {
         let mut attributes = Vec::new();
         let mut attr_paths: Vec<RefPathParser<'_>> = Vec::new();
         let mut synthetic_attr_state = SyntheticAttrState::default();
+        let mut generated_attr_state = GeneratedAttrState::default();
 
         let mut finalizers: Vec<FinalizeFn> = Vec::with_capacity(attrs.len());
 
@@ -332,20 +336,6 @@ impl<'sess> AttributeParser<'sess> {
                 if !filter(attr) {
                     continue;
                 }
-            }
-
-            fn is_doc_non_lit_expr(attr: &ast::Attribute) -> bool {
-                if !attr.has_name(sym::doc) {
-                    return false;
-                }
-                let ast::AttrKind::Normal(n) = &attr.kind else { return false };
-                let ast::AttrArgs::Eq { expr, .. } = &n.item.args else { return false };
-                !matches!(expr.kind, ast::ExprKind::Lit(_))
-            }
-
-            // FIXME accidentally allowed on Stable Rust
-            if target == Target::MacroCall && is_doc_non_lit_expr(attr) {
-                continue;
             }
 
             let attr_span = lower_span(attr.span);
@@ -360,6 +350,9 @@ impl<'sess> AttributeParser<'sess> {
                 }
                 ast::AttrKind::Synthetic(synthetic) => {
                     synthetic_attr_state.accept_synthetic_attr(attr_span, lower_span, synthetic);
+                }
+                ast::AttrKind::Generated(generated) => {
+                    generated_attr_state.accept_generated_attr(attr_span, generated)
                 }
                 ast::AttrKind::Normal(n) => {
                     attr_paths.push(PathParser(&n.item.path));
@@ -440,6 +433,7 @@ impl<'sess> AttributeParser<'sess> {
                             attr_path: attr_path.clone(),
                             #[cfg(debug_assertions)]
                             has_target_been_checked: false,
+                            attr_id: Some(HashIgnoredAttrId { attr_id: attr.id }),
                         };
 
                         (accept.accept_fn)(&mut cx, &args);
@@ -482,6 +476,7 @@ impl<'sess> AttributeParser<'sess> {
         }
 
         synthetic_attr_state.finalize_synthetic_attrs(&mut attributes);
+        generated_attr_state.finalize_generated_attrs(&mut attributes);
 
         // First, run all finalizers to produce the parsed attributes. Cross-attribute
         // checks that need to inspect the fully parsed attributes are deferred until all
@@ -510,23 +505,25 @@ impl<'sess> AttributeParser<'sess> {
 
         // Now that all attributes have been parsed, run the deferred checks. These can
         // inspect the fully parsed attributes via `FinalizeCheckContext::parsed_attrs`.
-        for (check, attr_span) in deferred_checks {
-            check(
-                &mut FinalizeCheckContext {
-                    shared: SharedContext {
-                        cx: self,
-                        target_span,
-                        target,
-                        emit_lint: &mut emit_lint,
-                        #[cfg(debug_assertions)]
-                        has_lint_been_emitted: AtomicBool::new(false),
+        if !matches!(self.should_emit, ShouldEmit::Nothing) {
+            for (check, attr_span) in deferred_checks {
+                check(
+                    &mut FinalizeCheckContext {
+                        shared: SharedContext {
+                            cx: self,
+                            target_span,
+                            target,
+                            emit_lint: &mut emit_lint,
+                            #[cfg(debug_assertions)]
+                            has_lint_been_emitted: AtomicBool::new(false),
+                        },
+                        all_attrs: &attr_paths,
+                        parsed_attrs: &attributes,
+                        target_item,
                     },
-                    all_attrs: &attr_paths,
-                    parsed_attrs: &attributes,
-                    target_item,
-                },
-                attr_span,
-            );
+                    attr_span,
+                );
+            }
         }
 
         if !matches!(self.should_emit, ShouldEmit::Nothing) && target == Target::WherePredicate {

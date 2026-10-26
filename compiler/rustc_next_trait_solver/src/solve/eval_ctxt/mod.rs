@@ -16,10 +16,11 @@ use rustc_type_ir::solve::{
     NoSolutionOrRerunNonErased, OpaqueTypesJank, QueryResultOrRerunNonErased, RerunCondition,
     RerunNonErased, RerunReason, RerunResultExt, SmallCopySet, TyOrConstInferVar,
 };
+use rustc_type_ir::transmute::Answer;
 use rustc_type_ir::{
-    self as ty, CanonicalVarValues, ClauseKind, Const, InferCtxtLike, Interner, MayBeErased,
-    OpaqueTypeKey, PredicateKind, PredicateProxy, Region, RegionVid, TypeFoldable,
-    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, max_universe,
+    self as ty, ClauseKind, Const, InferCtxtLike, Interner, MayBeErased, OpaqueTypeKey,
+    PredicateKind, PredicateProxy, Region, RegionVid, TypeFoldable, TypeSuperVisitable,
+    TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, max_universe,
 };
 use thin_vec::ThinVec;
 use tracing::{Level, debug, instrument, trace, warn};
@@ -63,6 +64,8 @@ enum CurrentGoalKind {
     /// These are currently the only goals whose impl where-clauses are considered to be
     /// productive steps.
     CoinductiveTrait,
+    /// A `ProjectionGoal`. These are temporarily special wrt to cycle handling.
+    Projection,
     // FIXME: Consider renaming `PredicateKind::NormalizesTo` to match with this
     /// Unlike other goals, `NormalizesTo` goals aren't independent goals but just implementation
     /// details for handling projections of associated terms. When we encounter a `Projection` goal
@@ -89,6 +92,7 @@ impl CurrentGoalKind {
                     CurrentGoalKind::Misc
                 }
             }
+            ty::PredicateKind::Clause(ty::ClauseKind::Projection(_)) => CurrentGoalKind::Projection,
             ty::PredicateKind::NormalizesTo(_) => {
                 CurrentGoalKind::ProjectionComputeAssocTermCandidate
             }
@@ -126,7 +130,7 @@ where
     /// What kind of goal we're currently computing, see the enum definition
     /// for more info.
     current_goal_kind: CurrentGoalKind,
-    pub(super) var_values: CanonicalVarValues<I>,
+    pub(super) var_values: I::GenericArgs,
 
     /// The highest universe index nameable by the caller.
     ///
@@ -428,46 +432,29 @@ where
     }
 
     /// Computes the `PathKind` for the step from the current goal to the
-    /// nested goal required due to `source`.
+    /// nested goal. See #136824 for a more detailed reasoning for this why we care about
+    /// the step from a goal to its nested goals.
     ///
-    /// See #136824 for a more detailed reasoning for this behavior. We
-    /// consider cycles to be coinductive if they 'step into' a where-clause
-    /// of a coinductive trait. We will likely extend this function in the future
-    /// and will need to clearly document it in the rustc-dev-guide before
-    /// stabilization.
-    pub(super) fn step_kind_for_source(&self, source: GoalSource) -> PathKind {
-        match source {
-            // We treat these goals as unknown for now. It is likely that most miscellaneous
-            // nested goals will be converted to an inductive variant in the future.
-            //
-            // Having unknown cycles is always the safer option, as changing that to either
-            // succeed or hard error is backwards compatible. If we incorrectly treat a cycle
-            // as inductive even though it should not be, it may be unsound during coherence and
-            // fixing it may cause inference breakage or introduce ambiguity.
-            GoalSource::Misc => PathKind::Unknown,
-            GoalSource::NormalizeGoal(path_kind) => path_kind,
-            GoalSource::ImplWhereBound => match self.current_goal_kind {
-                // We currently only consider a cycle coinductive if it steps
-                // into a where-clause of a coinductive trait.
-                CurrentGoalKind::CoinductiveTrait => PathKind::Coinductive,
-                // We probably want to make all traits coinductive in the future,
-                // so we treat cycles involving where-clauses of not-yet coinductive
-                // traits as ambiguous for now.
-                CurrentGoalKind::Misc | CurrentGoalKind::ProjectionComputeAssocTermCandidate => {
-                    PathKind::Unknown
-                }
-            },
-            // Relating types is always unproductive. If we were to map proof trees to
-            // corecursive functions as explained in #136824, relating types never
-            // introduces a constructor which could cause the recursion to be guarded.
-            //
-            // FIXME(-Znext-solver=coinductive): For now we treat all inductive cycles as
-            // `Unknown`. See the comment in `fn initial_provisional_result`.
-            GoalSource::TypeRelating => PathKind::Unknown,
-            // These goal sources are likely unproductive and can be changed to
-            // `PathKind::Inductive`. Keeping them as unknown until we're confident
-            // about this and have an example where it is necessary.
-            GoalSource::AliasBoundConstCondition | GoalSource::AliasWellFormed => PathKind::Unknown,
+    /// For now we're entirely ignoring the reason why the current goal depends on the
+    /// nested goal and instead only depend on the current goal itself. This closely
+    /// matches the old solver. This is something we'll likely improve as we go forward
+    /// afterwards.
+    // FIXME(-Znext-solver=coinductive): Nothing interesting going on here right now
+    // and we're ignoring the goal source. We should change this going forward.
+    pub(super) fn step_kind_to_nested(&self, _source: GoalSource) -> PathKind {
+        match self.current_goal_kind {
+            // We currently consider a cycle involving a trait goal for a coinductive
+            // trait as coinductive as long as it otherwise only includes normalization.
+            CurrentGoalKind::CoinductiveTrait => PathKind::Coinductive,
+            // We do need to treat cycles involving only coinductive trait goals
+            // and normalization as coinductive due to trait-system-refactor-initiative#10.
+            CurrentGoalKind::ProjectionComputeAssocTermCandidate | CurrentGoalKind::Projection => {
+                PathKind::Unknown
+            }
+            // We probably want to make all traits coinductive in the future,
+            // so we treat cycles involving where-clauses of not-yet coinductive
+            // traits as ambiguous for now.
+            CurrentGoalKind::Misc => PathKind::ForcedAmbiguity,
         }
     }
 
@@ -493,7 +480,7 @@ where
             max_input_universe: ty::UniverseIndex::ROOT,
             initial_opaque_types_storage_num_entries: Default::default(),
             var_kinds: Default::default(),
-            var_values: CanonicalVarValues::dummy(),
+            var_values: Default::default(),
             current_goal_kind: CurrentGoalKind::Misc,
             origin_span,
             tainted: Ok(()),
@@ -527,6 +514,7 @@ where
         ) -> Result<T, NoSolutionOrRerunNonErased>,
     ) -> (Result<T, NoSolution>, AccessedOpaques<I>) {
         let (ref delegate, input, var_values) = D::build_with_canonical(cx, &canonical_input);
+        let var_values = var_values.var_values;
         for (key, ty) in input.predefined_opaques_in_body.iter() {
             let prev = delegate.register_hidden_type_in_storage(key, ty, I::Span::dummy());
             // It may be possible that two entries in the opaque type storage end up
@@ -771,7 +759,7 @@ where
         let (goal, opaque_types) =
             self.delegate.deeply_resolve_via_unification_table((goal, opaque_types));
         let typing_mode = self.typing_mode();
-        let step_kind = self.step_kind_for_source(source);
+        let step_kind = self.step_kind_to_nested(source);
 
         let tracing_span = tracing::span!(
             Level::DEBUG,
@@ -786,7 +774,7 @@ where
             let skip_erased_attempt = match typing_mode {
                 TypingMode::Reflection | TypingMode::Coherence => true,
                 TypingMode::Typeck { .. }
-                | TypingMode::PostTypeckUntilBorrowck { .. }
+                | TypingMode::PostTypeckThroughBorrowck { .. }
                 | TypingMode::PostBorrowck { .. }
                 | TypingMode::Codegen
                 | TypingMode::PostAnalysis
@@ -1109,11 +1097,8 @@ where
         source: GoalSource,
         mut goal: Goal<I, I::Predicate>,
     ) -> Result<(), NoSolutionOrRerunNonErased> {
-        goal.predicate = self.normalize(
-            GoalSource::NormalizeGoal(self.step_kind_for_source(source)),
-            goal.param_env,
-            ty::Unnormalized::new_wip(goal.predicate),
-        )?;
+        goal.predicate =
+            self.normalize(goal.param_env, ty::Unnormalized::new_wip(goal.predicate))?;
         self.inspect.add_goal(self.delegate, self.max_input_universe, source, goal);
 
         if let Some(GoalEvaluation { goal, certainty, has_changed: _, stalled_on }) =
@@ -1339,10 +1324,12 @@ where
         let goals = self.delegate.relate(param_env, lhs, variance, rhs, self.origin_span)?;
         for &goal in goals.iter() {
             let source = match goal.predicate.kind().skip_binder() {
-                ty::PredicateKind::Subtype { .. }
-                | ty::PredicateKind::Clause(ty::ClauseKind::Projection(..)) => {
-                    GoalSource::TypeRelating
+                ty::PredicateKind::Clause(ty::ClauseKind::Projection(..)) => {
+                    GoalSource::Normalization
                 }
+                // FIXME(-Znext-solver=coinductive): subtyping goals should
+                // likely be unproductive
+                ty::PredicateKind::Subtype { .. } => GoalSource::Misc,
                 // FIXME(-Znext-solver=coinductive): should these WF goals also be unproductive?
                 ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => GoalSource::Misc,
                 p => unreachable!("unexpected nested goal in `relate`: {p:?}"),
@@ -1516,12 +1503,15 @@ where
         alias_const: ty::AliasConst<I>,
     ) -> Result<Option<Const<I>>, NoSolutionOrRerunNonErased> {
         if self.typing_mode().is_erased_not_coherence() {
-            match self.opaque_accesses.rerun_always(RerunReason::EvaluateConst)? {}
+            let resolved = self.deeply_resolve_ignoring_regions(alias_const);
+            // FIXME: get rid of this once GCE is removed
+            let is_gce = self.cx().features().generic_const_exprs();
+            if resolved.has_opaque_types() || is_gce {
+                match self.opaque_accesses.rerun_always(RerunReason::EvaluateConst)? {}
+            }
         }
 
-        self.delegate.evaluate_const(param_env, alias_const, |ty| {
-            self.normalize(GoalSource::Misc, param_env, ty)
-        })
+        self.delegate.evaluate_const(param_env, alias_const, |ty| self.normalize(param_env, ty))
     }
 
     pub(super) fn evaluate_const_and_instantiate_projection_term(
@@ -1576,7 +1566,7 @@ where
         src: I::Ty,
         dst: I::Ty,
         assume: Const<I>,
-    ) -> Result<Certainty, NoSolution> {
+    ) -> Result<Answer<Region<I>, I::Ty>, NoSolution> {
         self.delegate.is_transmutable(dst, src, assume)
     }
 
@@ -1719,7 +1709,7 @@ where
             r.retain(|(outlives, _)| !outlives.is_trivial() && unique.insert(*outlives));
         }
 
-        filter_irrelevant_region_constraints(self.delegate, &var_values, &mut external_constraints);
+        filter_irrelevant_region_constraints(self.delegate, var_values, &mut external_constraints);
 
         let canonical = canonicalize_response(
             self.delegate,
@@ -1803,7 +1793,6 @@ where
 
     pub(super) fn normalize<T: TypeFoldable<I>>(
         &mut self,
-        source: GoalSource,
         param_env: I::ParamEnv,
         value: ty::Unnormalized<I, T>,
     ) -> Result<T, NoSolutionOrRerunNonErased> {
@@ -1819,6 +1808,7 @@ where
             let infer_term = self.next_term_infer_of_alias_kind(alias_term);
             let pred = ty::ProjectionClause { projection_term: alias_term, term: infer_term };
             let goal = Goal::new(self.cx(), param_env, pred);
+            let source = GoalSource::Normalization;
             self.inspect.add_goal(self.delegate, self.max_input_universe, source, goal);
             let GoalEvaluation { goal, certainty, has_changed: _, stalled_on } =
                 self.evaluate_goal(source, goal, None)?;
@@ -1838,7 +1828,7 @@ where
 
 fn filter_irrelevant_region_constraints<D, I>(
     delegate: &D,
-    var_values: &CanonicalVarValues<I>,
+    var_values: I::GenericArgs,
     external_constraints: &mut ExternalConstraintsData<I>,
 ) where
     D: SolverDelegate<Interner = I>,
@@ -1973,7 +1963,7 @@ fn should_rerun_after_erased_canonicalization<I: Interner>(
             RerunCondition::OpaqueInStorage(defids),
             TypingMode::PostBorrowck { defined_opaque_types: opaques }
             | TypingMode::Typeck { defining_opaque_types_and_generators: opaques }
-            | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: opaques },
+            | TypingMode::PostTypeckThroughBorrowck { defining_opaque_types: opaques },
         ) => opaque_in_storage(opaques, defids),
         // =============================
         (RerunCondition::AnyOpaqueHasInferAsHidden, TypingMode::Typeck { .. }) => {
@@ -1985,7 +1975,7 @@ fn should_rerun_after_erased_canonicalization<I: Interner>(
             | TypingMode::PostAnalysis
             | TypingMode::Codegen
             | TypingMode::Reflection
-            | TypingMode::PostTypeckUntilBorrowck { .. },
+            | TypingMode::PostTypeckThroughBorrowck { .. },
         ) => RerunDecision::No,
         // =============================
         (
@@ -2007,7 +1997,7 @@ fn should_rerun_after_erased_canonicalization<I: Interner>(
         (
             RerunCondition::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(defids),
             TypingMode::PostBorrowck { defined_opaque_types: opaques }
-            | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: opaques },
+            | TypingMode::PostTypeckThroughBorrowck { defining_opaque_types: opaques },
         ) => opaque_in_storage(opaques, defids),
     }
 }

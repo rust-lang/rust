@@ -427,6 +427,10 @@ impl EarlySession {
     pub fn merge_functions(&self) -> MergeFunctions {
         self.opts.unstable_opts.merge_functions.unwrap_or(self.target.merge_functions)
     }
+
+    pub fn is_nightly_build(&self) -> bool {
+        self.opts.unstable_features.is_nightly_build()
+    }
 }
 
 /// Some info about the backend, returned by `CodegenBackend::init` and put into the `Session`.
@@ -749,6 +753,10 @@ impl Session {
         self.opts.unstable_opts.sanitizer_cfi_diag == Some(true)
     }
 
+    pub fn is_sanitizer_cfi_minimal_runtime_enabled(&self) -> bool {
+        self.opts.unstable_opts.sanitizer_cfi_minimal_runtime == Some(true)
+    }
+
     pub fn is_sanitizer_kcfi_arity_enabled(&self) -> bool {
         self.opts.unstable_opts.sanitizer_kcfi_arity == Some(true)
     }
@@ -953,6 +961,11 @@ impl Session {
                 _ => Ok(path),
             }
         }
+    }
+
+    /// Should metadata be embedded within .rlib and .dylib files?
+    pub fn embed_metadata(&self) -> bool {
+        self.opts.cg.embed_metadata.or(self.opts.unstable_opts.embed_metadata).unwrap_or(true)
     }
 }
 
@@ -1687,6 +1700,16 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         }
     }
 
+    // LLVM CFI minimal runtime requires CFI recovery or CFI diagnostics.
+    if sess.is_sanitizer_cfi_minimal_runtime_enabled() {
+        if !sess.is_sanitizer_cfi_enabled() {
+            sess.dcx().emit_err(diagnostics::SanitizerCfiMinimalRuntimeRequiresCfi);
+        } else if !(sess.is_sanitizer_cfi_recover_enabled() || sess.is_sanitizer_cfi_diag_enabled())
+        {
+            sess.dcx().emit_err(diagnostics::SanitizerCfiMinimalRuntimeRequiresCfiRecoverOrDiag);
+        }
+    }
+
     // LLVM CFI integer normalization requires CFI or KCFI.
     if sess.is_sanitizer_cfi_normalize_integers_enabled() {
         if !(sess.is_sanitizer_cfi_enabled() || sess.is_sanitizer_kcfi_enabled()) {
@@ -1849,6 +1872,45 @@ pub struct IncrCompSession {
     /// The directory to which cached data for the current session can be
     /// written to.
     pub new_session_directory: flock::LockedDir,
+    borrows: Arc<()>,
+}
+
+impl IncrCompSession {
+    pub fn new(
+        old_session_directory: Option<flock::LockedDir>,
+        new_session_directory: flock::LockedDir,
+    ) -> Self {
+        IncrCompSession { old_session_directory, new_session_directory, borrows: Arc::new(()) }
+    }
+
+    pub fn borrow(&self) -> BorrowedIncrCompSession {
+        BorrowedIncrCompSession {
+            old_session_directory: self.old_session_directory.as_deref().map(ToOwned::to_owned),
+            new_session_directory: (&*self.new_session_directory).to_owned(),
+            _borrows: Arc::clone(&self.borrows),
+        }
+    }
+}
+
+impl Drop for IncrCompSession {
+    fn drop(&mut self) {
+        // Check that there are no worker threads remaining that use the incr
+        // comp session before we unlock the old and new session dir. If there
+        // does exist a worker thread, there is not much we can do, but at
+        // least we will unconditionally complain rather than the worker thread
+        // sometimes crashing depending on what other rustc instances run.
+        assert!(
+            Arc::strong_count(&self.borrows) == 1,
+            "Incr comp session dropped while there are still references",
+        );
+    }
+}
+
+/// A runtime tracked borrow of the incr comp session. Can be sent to worker threads.
+pub struct BorrowedIncrCompSession {
+    pub old_session_directory: Option<PathBuf>,
+    pub new_session_directory: PathBuf,
+    _borrows: Arc<()>,
 }
 
 /// A wrapper around an [`DiagCtxt`] that is used for early error emissions.

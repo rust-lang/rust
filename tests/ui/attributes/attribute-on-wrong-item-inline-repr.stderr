@@ -3,6 +3,7 @@ error: the `inline` attribute cannot be used on statements
    |
 LL |     #[inline]
    |       ^^^^^^
+LL |     let _a = 4;
    |
    = help: the `inline` attribute can only be applied to functions
 
@@ -32,6 +33,7 @@ error: the `inline` attribute cannot be used on statements
    |
 LL |     #[inline(XYZ)]
    |       ^^^^^^
+LL |     let _b = 4;
    |
    = help: the `inline` attribute can only be applied to functions
 
@@ -89,6 +91,7 @@ error: the `inline` attribute cannot be used on expressions
    |
 LL |     #[inline(ABC)]
    |       ^^^^^^
+LL |     foo();
    |
    = help: the `inline` attribute can only be applied to functions
 

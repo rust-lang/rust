@@ -93,8 +93,8 @@ pub(crate) fn compile_codegen_unit(
             });
         // Instantiate monomorphizations without filling out definitions yet...
         let llvm_module = ModuleLlvm::new(tcx, cgu_name.as_str());
-        {
-            let mut cx = CodegenCx::new(tcx, cgu, &llvm_module, needs_bitcode);
+        llvm_module.with_module_refs(|module_refs| {
+            let mut cx = CodegenCx::new(tcx, cgu, module_refs, needs_bitcode);
 
             // Declare and store globals shared by all offload kernels
             //
@@ -213,7 +213,7 @@ pub(crate) fn compile_codegen_unit(
             if cx.sess().opts.debuginfo != DebugInfo::None {
                 cx.debuginfo_finalize();
             }
-        }
+        });
 
         ModuleCodegen::new_regular(cgu_name.to_string(), llvm_module)
     }
@@ -237,7 +237,6 @@ pub(crate) fn linkage_to_llvm(linkage: Linkage) -> llvm::Linkage {
         Linkage::WeakODR => llvm::Linkage::WeakODRLinkage,
         Linkage::Internal => llvm::Linkage::InternalLinkage,
         Linkage::ExternalWeak => llvm::Linkage::ExternalWeakLinkage,
-        Linkage::Common => llvm::Linkage::CommonLinkage,
     }
 }
 

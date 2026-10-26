@@ -1,6 +1,7 @@
 //@ check-pass
 // @ needs-rustc-debug-assertions
 //@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 
 #![feature(const_destruct, const_trait_impl)]

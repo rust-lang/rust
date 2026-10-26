@@ -21,8 +21,8 @@ use rustc_middle::ty;
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_resolve::rustdoc::pulldown_cmark::LinkType;
 use rustc_resolve::rustdoc::{
-    MalformedGenerics, has_primitive_or_keyword_or_attribute_docs, prepare_to_doc_link_resolution,
-    source_span_for_markdown_range, strip_generics_from_path,
+    DocStrings, MalformedGenerics, has_primitive_or_keyword_or_attribute_docs,
+    prepare_to_doc_link_resolution, source_span_for_markdown_range, strip_generics_from_path,
 };
 use rustc_span::def_id::ModId;
 use rustc_span::edit_distance::find_best_match_for_name;
@@ -1091,14 +1091,7 @@ impl LinkCollector<'_, '_> {
             return;
         }
 
-        let mut try_insert_links = |item_id, doc: &str| {
-            if should_skip_link_resolution(item_id) {
-                return;
-            }
-            let module_id = match tcx.def_kind(item_id) {
-                DefKind::Mod if item.inner_docs(tcx) => ModId::new_unchecked(item_id),
-                _ => find_nearest_parent_module(tcx, item_id).unwrap(),
-            };
+        let mut try_insert_links_inner = |item_id, module_id, doc: &str| {
             for md_link in preprocessed_markdown_links(&doc) {
                 let link = self.resolve_link(&doc, item, item_id, module_id, &md_link);
                 if let Some(link) = link {
@@ -1112,16 +1105,45 @@ impl LinkCollector<'_, '_> {
             }
         };
 
+        let mut try_insert_links = |item_id, docs: &DocStrings| {
+            if should_skip_link_resolution(item_id) {
+                return;
+            }
+            match tcx.def_kind(item_id) {
+                DefKind::Mod => {
+                    if !docs.outer.is_empty() {
+                        try_insert_links_inner(
+                            item_id,
+                            find_nearest_parent_module(tcx, item_id).unwrap(),
+                            &docs.outer,
+                        );
+                    }
+                    if !docs.inner.is_empty() {
+                        try_insert_links_inner(item_id, ModId::new_unchecked(item_id), &docs.inner);
+                    }
+                }
+                _ => {
+                    // It's the same handling for non-module items.
+                    let module_id = find_nearest_parent_module(tcx, item_id).unwrap();
+                    try_insert_links_inner(
+                        item_id,
+                        module_id,
+                        &format!("{}{}", docs.outer, docs.inner),
+                    );
+                }
+            }
+        };
+
         // We want to resolve in the lexical scope of the documentation.
         // In the presence of re-exports, this is not the same as the module of the item.
         // Rather than merging all documentation into one, resolve it one attribute at a time
         // so we know which module it came from.
         for (item_id, doc) in prepare_to_doc_link_resolution(&item.attrs.doc_strings) {
-            if !may_have_doc_links(&doc) {
+            if !may_have_doc_links(&doc.inner) && !may_have_doc_links(&doc.outer) {
                 continue;
             }
 
-            debug!("combined_docs={doc}");
+            debug!("combined_docs=outer: {} inner: {}", doc.outer, doc.inner);
             // NOTE: if there are links that start in one crate and end in another, this will not resolve them.
             // This is a degenerate case and it's not supported by rustdoc.
             let item_id = item_id.unwrap_or_else(|| item.item_id.expect_def_id());
@@ -1130,8 +1152,11 @@ impl LinkCollector<'_, '_> {
 
         // Also resolve links in the note text of `#[deprecated]`.
         for attr in &item.attrs.other_attrs {
-            let Attribute::Parsed(AttributeKind::Deprecated { span: depr_span, deprecation }) =
-                attr
+            let Attribute::Parsed(AttributeKind::Deprecated {
+                span: depr_span,
+                deprecation,
+                is_inner,
+            }) = attr
             else {
                 continue;
             };
@@ -1163,7 +1188,12 @@ impl LinkCollector<'_, '_> {
             } else {
                 item.item_id.expect_def_id()
             };
-            try_insert_links(item_id, note)
+            let attr = if *is_inner {
+                DocStrings { outer: String::new(), inner: note.to_owned() }
+            } else {
+                DocStrings { outer: note.to_owned(), inner: String::new() }
+            };
+            try_insert_links(item_id, &attr);
         }
     }
 
@@ -1229,7 +1259,7 @@ impl LinkCollector<'_, '_> {
 
     /// Returns `true` if a link could be generated from the given intra-doc information.
     ///
-    /// This is a very light version of `format::href_with_root_path` since we're only interested
+    /// This is a very light version of `format::href_with_jump_to_def_path_depth` since we're only interested
     /// about whether we can generate a link to an item or not.
     ///
     /// * If `original_did` is local, then we check if the item is reexported or public.

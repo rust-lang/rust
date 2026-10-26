@@ -4,8 +4,10 @@
 
 #[macro_use]
 extern crate macro_rules;
+extern crate proc_macros;
 
 use macro_rules::macro_with_panic;
+use proc_macros::external;
 
 fn main() {}
 
@@ -277,4 +279,34 @@ pub const fn assert_in_const_fn_fails() {
 pub const fn in_const_fn<const N: usize>(n: usize) {
     //~^ missing_panics_doc
     assert!(N > n);
+}
+
+pub mod doc_with_original_span {
+    use super::external;
+    external! {
+        #[doc = $("# Panics ")]
+        $(
+            pub fn foo() { panic!() }
+        )
+    }
+
+    external! {
+        #[doc = $("missing panics doc")]
+        $(
+            pub fn foo1() { panic!() }
+            //~^ missing_panics_doc
+        )
+    }
+
+    pub struct Bar;
+
+    impl Bar {
+        external! {
+            #[doc = $("missing panics doc")]
+            $(
+                pub fn foo() { panic!() }
+                //~^ missing_panics_doc
+            )
+        }
+    }
 }

@@ -25,7 +25,7 @@ use std::does_not_exist4;
 use std::does_not_exist5;
 //~^ ERROR: unresolved import `std::does_not_exist5`
 
-#[diagnostic::on_unknown(note = "foo {Self} {ItemContext} {Trait} {A}")]
+#[diagnostic::on_unknown(note = "foo {Self} {item_context} {Trait} {A}")]
 //~^ WARN: this format argument is not allowed in `#[diagnostic::on_unknown]`
 //~| WARN: this format argument is not allowed in `#[diagnostic::on_unknown]`
 //~| WARN: this format argument is not allowed in `#[diagnostic::on_unknown]`

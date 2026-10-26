@@ -4,6 +4,7 @@ use rustc_middle::traits::query::NoSolution;
 pub use rustc_middle::traits::query::type_op::Normalize;
 use rustc_middle::ty::{self, Lift, ParamEnvAnd, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
 
+use crate::infer::InferCtxt;
 use crate::infer::canonical::{CanonicalQueryInput, CanonicalQueryResponse};
 
 impl<'tcx, T> super::QueryTypeOp<'tcx> for Normalize<'tcx, T>
@@ -12,12 +13,9 @@ where
 {
     type QueryResponse = T;
 
-    fn try_fast_path(_tcx: TyCtxt<'tcx>, key: &ParamEnvAnd<'tcx, Self>) -> Option<T> {
-        if !key.value.value.skip_normalization().has_aliases() {
-            Some(key.value.value.skip_normalization())
-        } else {
-            None
-        }
+    fn try_fast_path(infcx: &InferCtxt<'tcx>, key: &ParamEnvAnd<'tcx, Self>) -> Option<T> {
+        let value = key.value.value.skip_normalization();
+        if !value.has_aliases() { Some(infcx.deeply_resolve_ignoring_regions(value)) } else { None }
     }
 
     fn perform_query(
@@ -29,7 +27,7 @@ where
 }
 
 pub trait Normalizable<'tcx>:
-    fmt::Debug + TypeFoldable<TyCtxt<'tcx>> + Lift<TyCtxt<'tcx>> + Copy
+    PartialEq + fmt::Debug + TypeFoldable<TyCtxt<'tcx>> + Lift<TyCtxt<'tcx>> + Copy
 {
     fn type_op_method(
         tcx: TyCtxt<'tcx>,

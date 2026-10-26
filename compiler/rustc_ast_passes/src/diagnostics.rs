@@ -50,6 +50,15 @@ pub(crate) struct NextSolverDisabledForGenericConstExprs {
 }
 
 #[derive(Diagnostic)]
+#[diag("`-Zhigher-ranked-assumptions` is not supported with the next-generation trait solver")]
+#[note("the feature flag will be superseded by `-Zassumptions-on-binders`")]
+#[note("`-Znext-solver=globally` is currently enabled by default for testing")]
+#[note("reverted the setting to `-Znext-solver=coherence` for this crate")]
+#[note("the currently stable trait solver will be used for this crate")]
+#[note("see issues #160895 <https://github.com/rust-lang/rust/issues/160895> for more information")]
+pub(crate) struct NextSolverDisabledForHigherRankedAssumptions;
+
+#[derive(Diagnostic)]
 #[diag("functions in {$in_impl ->
         [true] trait impls
         *[false] traits
@@ -217,6 +226,14 @@ pub(crate) struct EiiImplAttributeNotSupported<'a> {
 #[diag("`self` parameter is only allowed in associated functions")]
 #[note("associated functions are those in `impl` or `trait` definitions")]
 pub(crate) struct FnParamForbiddenSelf {
+    #[primary_span]
+    #[label("not semantically valid as function parameter")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("`const` parameter is only allowed in free/trait/impl functions")]
+pub(crate) struct InvalidConstParam {
     #[primary_span]
     #[label("not semantically valid as function parameter")]
     pub span: Span,
@@ -1315,4 +1332,12 @@ pub(crate) struct AbiCustomCannotBeCold {
 
     #[label("`extern \"custom\"` because of this")]
     pub abi_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("showing the spans of the {$kind}")]
+pub(crate) struct ShowSpan {
+    #[primary_span]
+    pub span: Span,
+    pub kind: &'static str,
 }

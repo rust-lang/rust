@@ -1,0 +1,749 @@
+//@ignore-target: windows # No libc socket on Windows
+//@compile-flags: -Zmiri-disable-isolation
+//@run-native
+
+#[path = "../../utils/libc.rs"]
+mod libc_utils;
+#[path = "../../utils/mod.rs"]
+mod utils;
+
+use std::io::ErrorKind;
+use std::time::{Duration, Instant};
+use std::{ptr, thread};
+
+use libc_utils::*;
+
+const TEST_BYTES: &[u8] = b"these are some test bytes!";
+
+fn main() {
+    test_bind_twice();
+    test_bind_connected();
+    test_bind_listening();
+    test_listen();
+    test_listen_connected();
+    test_listen_listening();
+
+    test_accept_connect();
+    test_connect_error();
+    test_connect_connected();
+    test_connect_listening();
+    test_send_peek_recv();
+    test_write_read();
+    test_readv();
+    test_writev();
+
+    test_getsockname_ipv4_connect();
+
+    test_getpeername_ipv4();
+    test_getpeername_ipv6();
+
+    test_shutdown();
+    test_shutdown_readable_after_write_close();
+    test_shutdown_writable_after_read_close();
+
+    test_sockopt_sndtimeo();
+    test_sockopt_rcvtimeo();
+    test_sockopt_reuseaddr();
+
+    test_unblock_after_socket_close();
+}
+
+/// Test that invoking `bind` on an already bound TCP socket
+/// returns EINVAL.
+fn test_bind_twice() {
+    let sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+    let addr = net::sock_addr_ipv4(net::IPV4_LOCALHOST, 0);
+    let err = unsafe {
+        errno_check(libc::bind(
+            sockfd,
+            (&addr as *const libc::sockaddr_in).cast::<libc::sockaddr>(),
+            size_of::<libc::sockaddr_in>() as libc::socklen_t,
+        ));
+        errno_result(libc::bind(
+            sockfd,
+            (&addr as *const libc::sockaddr_in).cast::<libc::sockaddr>(),
+            size_of::<libc::sockaddr_in>() as libc::socklen_t,
+        ))
+        .unwrap_err()
+    };
+    // Check that it is the right error.
+    assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
+}
+
+/// Test that invoking `bind` on an already connected client
+/// TCP socket returns EINVAL.
+fn test_bind_connected() {
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    net::connect_ipv4(client_sockfd, addr).unwrap();
+    net::accept_ipv4(server_sockfd).unwrap();
+
+    let addr = net::sock_addr_ipv4(net::IPV4_LOCALHOST, 0);
+    let err = unsafe {
+        errno_result(libc::bind(
+            client_sockfd,
+            (&addr as *const libc::sockaddr_in).cast::<libc::sockaddr>(),
+            size_of::<libc::sockaddr_in>() as libc::socklen_t,
+        ))
+        .unwrap_err()
+    };
+    // Check that it is the right error.
+    assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
+}
+
+/// Test that invoking `bind` on an already listening server
+/// TCP socket returns EINVAL.
+fn test_bind_listening() {
+    let server_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    unsafe {
+        errno_check(libc::listen(server_sockfd, 16));
+    }
+
+    let addr = net::sock_addr_ipv4(net::IPV4_LOCALHOST, 0);
+    let err = unsafe {
+        errno_result(libc::bind(
+            server_sockfd,
+            (&addr as *const libc::sockaddr_in).cast::<libc::sockaddr>(),
+            size_of::<libc::sockaddr_in>() as libc::socklen_t,
+        ))
+        .unwrap_err()
+    };
+    // Check that it is the right error.
+    assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
+}
+
+/// Test that a socket can start listening. This also tests
+/// whether sockets are bound implicitly after `listen` has been
+/// invoked on them.
+fn test_listen() {
+    let sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    unsafe { errno_check(libc::listen(sockfd, 16)) };
+
+    let (_, sock_addr) =
+        net::sockname_ipv4(|storage, len| unsafe { libc::getsockname(sockfd, storage, len) })
+            .unwrap();
+
+    // Libc representation of an unspecified IPv4 address with zero port.
+    let addr = net::sock_addr_ipv4([0, 0, 0, 0], 0);
+
+    // Ensure that the socket got implicitly bound to the unspecified
+    // local address with a non-zero port.
+    assert!(sock_addr.sin_port > 0);
+    assert_eq!(addr.sin_family, sock_addr.sin_family);
+    assert_eq!(addr.sin_addr.s_addr, sock_addr.sin_addr.s_addr);
+}
+
+/// Test that `listen` returns EINVAL for a client TCP socket which
+/// is already connected to a peer socket.
+fn test_listen_connected() {
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    net::connect_ipv4(client_sockfd, addr).unwrap();
+    net::accept_ipv4(server_sockfd).unwrap();
+
+    // Connected sockets cannot start listening, thus the operation should
+    // fail with EINVAL.
+    let err = unsafe { errno_result(libc::listen(client_sockfd, 16)).unwrap_err() };
+    // Check that it is the right error.
+    assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
+}
+
+/// Test that `listen` succeeds for a server TCP socket which is already
+/// listening.
+fn test_listen_listening() {
+    let (server_sockfd, _) = net::make_listener_ipv4().unwrap();
+
+    // Invoking `listen` multiple times should be allowed as it can be used to change
+    // the backlog value.
+    unsafe { errno_check(libc::listen(server_sockfd, 16)) };
+}
+
+/// Test accepting connections by running a server in a separate thread and connecting clients
+/// from the main thread.
+/// This function tests both
+/// - Connecting when the server is already accepting
+/// - Accepting when there is already an incoming connection
+fn test_accept_connect() {
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    // Spawn the server thread.
+    let server_thread = thread::spawn(move || {
+        let (peerfd, _) = net::accept_ipv4(server_sockfd).unwrap();
+
+        let flags = unsafe { errno_result(libc::fcntl(peerfd, libc::F_GETFL, 0)).unwrap() };
+
+        // Ensure that peer socket is blocking.
+        assert_eq!(flags & libc::O_NONBLOCK, 0);
+
+        // Yield back to the client thread to test whether calling `connect` first also
+        // works.
+        thread::sleep(Duration::from_millis(10));
+
+        net::accept_ipv4(server_sockfd).unwrap();
+    });
+
+    // Yield to server thread to ensure `accept` is called before we try
+    // to connect.
+    thread::sleep(Duration::from_millis(10));
+
+    // Test connecting to an already accepting server.
+    net::connect_ipv4(client_sockfd, addr).unwrap();
+
+    // Server thread should now be in its `sleep`.
+    // Test connecting when there is no actively ongoing `accept`.
+    // We need a new client socket since we cannot connect a socket multiple times.
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    net::connect_ipv4(client_sockfd, addr).unwrap();
+
+    server_thread.join().unwrap();
+}
+
+/// Test connecting to an address where nothing is listening and ensure the error matches what
+/// the standard library expects.
+fn test_connect_error() {
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    // Connecting to a zero port fails on all host platforms.
+    let addr = net::sock_addr_ipv4(net::IPV4_LOCALHOST, 0);
+
+    let err = net::connect_ipv4(client_sockfd, addr).unwrap_err();
+    // Ensure that we fail for the same reasons as the standard library expects.
+    assert!(matches!(
+        err.kind(),
+        ErrorKind::ConnectionRefused
+            | ErrorKind::InvalidInput
+            | ErrorKind::AddrInUse
+            | ErrorKind::AddrNotAvailable
+            | ErrorKind::NetworkUnreachable
+    ));
+}
+
+/// Test that invoking `connect` on an already connected client
+/// TCP socket returns EISCONN.
+fn test_connect_connected() {
+    let (server_sockfd1, addr1) = net::make_listener_ipv4().unwrap();
+    let (_, addr2) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    net::connect_ipv4(client_sockfd, addr1).unwrap();
+    net::accept_ipv4(server_sockfd1).unwrap();
+
+    let err = net::connect_ipv4(client_sockfd, addr2).unwrap_err();
+    // The standard library doesn't provide an error kind for EISCONN;
+    // we thus cannot assert the correct error kind.
+    assert_eq!(err.raw_os_error(), Some(libc::EISCONN));
+}
+
+/// Test that invoking `connect` on an already listening server
+/// TCP socket returns EOPNOTSUPP on non-Linux-like targets and
+/// EISCONN on Linux-like targets.
+fn test_connect_listening() {
+    let (_, addr1) = net::make_listener_ipv4().unwrap();
+    let (server_sockfd2, _) = net::make_listener_ipv4().unwrap();
+
+    let err = net::connect_ipv4(server_sockfd2, addr1).unwrap_err();
+
+    if cfg!(any(target_os = "linux", target_os = "android")) {
+        // Linux-like targets return EISCONN when attempting to invoke
+        // `connect` on an already listening socket.
+
+        // The standard library doesn't provide an error kind for EISCONN;
+        // we thus cannot assert the correct error kind.
+        assert_eq!(err.raw_os_error(), Some(libc::EISCONN));
+    } else {
+        // POSIX specifies EOPNOTSUPP when attempting to invoke
+        // `connect` on an already listening socket.
+        assert_eq!(err.raw_os_error(), Some(libc::EOPNOTSUPP));
+    }
+}
+
+/// Test sending bytes into a connected stream and then peeking and receiving
+/// them from the other end.
+/// We especially want to test that the peeking doesn't remove the bytes from
+/// the queue.
+fn test_send_peek_recv() {
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    // Spawn the server thread.
+    let server_thread = thread::spawn(move || {
+        let (peerfd, _) = net::accept_ipv4(server_sockfd).unwrap();
+
+        // Write the bytes into the stream.
+        unsafe {
+            libc_utils::write_all_generic(
+                TEST_BYTES.as_ptr().cast(),
+                TEST_BYTES.len(),
+                libc_utils::NoRetry,
+                |buf, count| libc::send(peerfd, buf, count, 0),
+            )
+            .unwrap()
+        };
+    });
+
+    net::connect_ipv4(client_sockfd, addr).unwrap();
+
+    let mut buffer = [0; TEST_BYTES.len()];
+    let bytes_read = unsafe {
+        errno_result(libc::recv(
+            client_sockfd,
+            buffer.as_mut_ptr().cast(),
+            buffer.len(),
+            libc::MSG_PEEK,
+        ))
+        .unwrap()
+    } as usize;
+
+    // We cannot have "peek all" since peeks don't remove the bytes from the buffer.
+    // Thus, we only check that the bytes we read are a prefix of the bytes we wrote.
+    assert_eq!(&buffer[..bytes_read], &TEST_BYTES[..bytes_read]);
+
+    // Since the bytes aren't removed from the queue by peeking, we should be
+    // able to read the same bytes again into a new buffer.
+
+    let mut buffer = [0; TEST_BYTES.len()];
+    unsafe {
+        libc_utils::read_exact_generic(
+            buffer.as_mut_ptr().cast(),
+            buffer.len(),
+            libc_utils::NoRetry,
+            |buf, count| libc::recv(client_sockfd, buf, count, 0),
+        )
+        .unwrap()
+    };
+    assert_eq!(&buffer, TEST_BYTES);
+
+    server_thread.join().unwrap();
+}
+
+/// Test writing bytes into a connected stream and then reading them
+/// from the other end.
+/// We want to test this because `write` and `read` should be the same as
+/// `send` and `recv` with zero flags.
+fn test_write_read() {
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    // Spawn the server thread.
+    let server_thread = thread::spawn(move || {
+        let (peerfd, _) = net::accept_ipv4(server_sockfd).unwrap();
+
+        // Write some bytes into the stream.
+        libc_utils::write_all(peerfd, TEST_BYTES).unwrap();
+    });
+
+    net::connect_ipv4(client_sockfd, addr).unwrap();
+
+    let mut buffer = [0; TEST_BYTES.len()];
+    libc_utils::read_exact(client_sockfd, &mut buffer).unwrap();
+    assert_eq!(&buffer, TEST_BYTES);
+
+    server_thread.join().unwrap();
+}
+
+/// Test vectored reads with multiple buffers on a connected socket.
+fn test_readv() {
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    net::connect_ipv4(client_sockfd, addr).unwrap();
+    let (peerfd, _) = net::accept_ipv4(server_sockfd).unwrap();
+
+    libc_utils::write_all(peerfd, TEST_BYTES).unwrap();
+
+    let mut buffer = [0u8; TEST_BYTES.len()];
+    let (buffer1, buffer2) = buffer.split_at_mut(2);
+
+    let iov = [
+        libc::iovec { iov_base: ptr::null_mut::<libc::c_void>(), iov_len: 0 as libc::size_t },
+        libc::iovec {
+            iov_base: buffer1.as_mut_ptr().cast::<libc::c_void>(),
+            iov_len: buffer1.len() as libc::size_t,
+        },
+        libc::iovec {
+            iov_base: buffer2.as_mut_ptr().cast::<libc::c_void>(),
+            iov_len: buffer2.len() as libc::size_t,
+        },
+    ];
+
+    let num = unsafe {
+        errno_result(libc::readv(client_sockfd, iov.as_ptr(), iov.len() as libc::c_int)).unwrap()
+    };
+    assert_eq!(num as usize, TEST_BYTES.len());
+    // The vectored read should read the entire buffer because we don't have
+    // short reads on sockets.
+    assert_eq!(&buffer, TEST_BYTES);
+}
+
+/// Test vectored writes with multiple buffers on a connected socket.
+fn test_writev() {
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    net::connect_ipv4(client_sockfd, addr).unwrap();
+    let (peerfd, _) = net::accept_ipv4(server_sockfd).unwrap();
+
+    let mut write_buffer = TEST_BYTES.to_owned();
+    let (buffer1, buffer2) = write_buffer.split_at_mut(3);
+
+    let iov = [
+        libc::iovec { iov_base: ptr::null_mut::<libc::c_void>(), iov_len: 0 as libc::size_t },
+        libc::iovec {
+            iov_base: buffer1.as_mut_ptr().cast::<libc::c_void>(),
+            iov_len: buffer1.len() as libc::size_t,
+        },
+        libc::iovec {
+            iov_base: buffer2.as_mut_ptr().cast::<libc::c_void>(),
+            iov_len: buffer2.len() as libc::size_t,
+        },
+    ];
+
+    let num = unsafe {
+        errno_result(libc::writev(client_sockfd, iov.as_ptr(), iov.len() as libc::c_int)).unwrap()
+    };
+    assert_eq!(num as usize, TEST_BYTES.len());
+
+    let mut buffer = [0u8; TEST_BYTES.len()];
+    libc_utils::read_exact(peerfd, &mut buffer).unwrap();
+    // The vectored write should write the entire buffer because we don't have
+    // short writes on sockets.
+    assert_eq!(&buffer, TEST_BYTES);
+}
+
+/// Test the `getsockname` syscall on a connected IPv4 socket.
+fn test_getsockname_ipv4_connect() {
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    net::connect_ipv4(client_sockfd, addr).unwrap();
+    net::accept_ipv4(server_sockfd).unwrap();
+
+    let (_, sock_addr) = net::sockname_ipv4(|storage, len| unsafe {
+        libc::getsockname(client_sockfd, storage, len)
+    })
+    .unwrap();
+
+    // We want to ensure that the local address is not the unspecified address.
+    // Because the bound address could be of any local interface, we cannot
+    // test for localhost.
+    let addr = net::sock_addr_ipv4([0, 0, 0, 0], 0);
+
+    assert_eq!(addr.sin_family, sock_addr.sin_family);
+    assert_ne!(addr.sin_addr.s_addr, sock_addr.sin_addr.s_addr);
+    assert!(sock_addr.sin_port > 0);
+}
+
+/// Test the `getpeername` syscall on an IPv4 socket.
+/// For a connected socket, the `getpeername` syscall should
+/// return the same address as the socket was connected to.
+fn test_getpeername_ipv4() {
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    net::connect_ipv4(client_sockfd, addr).unwrap();
+    net::accept_ipv4(server_sockfd).unwrap();
+
+    let (_, peer_addr) = net::sockname_ipv4(|storage, len| unsafe {
+        libc::getpeername(client_sockfd, storage, len)
+    })
+    .unwrap();
+
+    assert_eq!(addr.sin_family, peer_addr.sin_family);
+    assert_eq!(addr.sin_port, peer_addr.sin_port);
+    assert_eq!(addr.sin_addr.s_addr, peer_addr.sin_addr.s_addr);
+}
+
+/// Test the `getpeername` syscall on an IPv6 socket.
+/// For a connected socket, the `getpeername` syscall should
+/// return the same address as the socket was connected to.
+fn test_getpeername_ipv6() {
+    let (server_sockfd, addr) = net::make_listener_ipv6().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET6, libc::SOCK_STREAM, 0)).unwrap() };
+
+    net::connect_ipv6(client_sockfd, addr).unwrap();
+    net::accept_ipv6(server_sockfd).unwrap();
+
+    let (_, peer_addr) = net::sockname_ipv6(|storage, len| unsafe {
+        libc::getpeername(client_sockfd, storage, len)
+    })
+    .unwrap();
+
+    assert_eq!(addr.sin6_family, peer_addr.sin6_family);
+    assert_eq!(addr.sin6_port, peer_addr.sin6_port);
+    assert_eq!(addr.sin6_flowinfo, peer_addr.sin6_flowinfo);
+    assert_eq!(addr.sin6_scope_id, peer_addr.sin6_scope_id);
+    assert_eq!(addr.sin6_addr.s6_addr, peer_addr.sin6_addr.s6_addr);
+}
+
+/// Test shutting down TCP streams.
+fn test_shutdown() {
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    // Spawn the server thread.
+    let server_thread = thread::spawn(move || net::accept_ipv4(server_sockfd).unwrap());
+
+    let mut byte = [0u8];
+
+    net::connect_ipv4(client_sockfd, addr).unwrap();
+    let client_dup_sockfd = unsafe { libc::dup(client_sockfd) };
+
+    // Closing should prevent reads/writes.
+    unsafe {
+        libc::shutdown(client_sockfd, libc::SHUT_RDWR);
+        let err = errno_result(libc::write(client_sockfd, [0u8].as_ptr().cast(), 1)).unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::BrokenPipe);
+        let bytes_read =
+            errno_result(libc::read(client_sockfd, byte.as_mut_ptr().cast(), 1)).unwrap();
+        assert_eq!(bytes_read, 0);
+    }
+
+    // Closing should affect previously duplicated handles.
+    unsafe {
+        let err =
+            errno_result(libc::write(client_dup_sockfd, [0u8].as_ptr().cast(), 1)).unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::BrokenPipe);
+        let bytes_read =
+            errno_result(libc::read(client_dup_sockfd, byte.as_mut_ptr().cast(), 1)).unwrap();
+        assert_eq!(bytes_read, 0);
+    }
+
+    // Closing should affect newly duplicated handles.
+    unsafe {
+        let client_dup2_sockfd = libc::dup(client_sockfd);
+        let err =
+            errno_result(libc::write(client_dup2_sockfd, [0u8].as_ptr().cast(), 1)).unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::BrokenPipe);
+        let bytes_read =
+            errno_result(libc::read(client_dup2_sockfd, byte.as_mut_ptr().cast(), 1)).unwrap();
+        assert_eq!(bytes_read, 0);
+    }
+
+    server_thread.join().unwrap();
+}
+
+/// Test that a socket is still readable after the write end has
+/// been closed.
+fn test_shutdown_readable_after_write_close() {
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    // Spawn the server thread.
+    let server_thread = thread::spawn(move || {
+        let (peerfd, _) = net::accept_ipv4(server_sockfd).unwrap();
+        // Write a single byte which should be read later on.
+        unsafe { errno_result(libc::write(peerfd, [1u8].as_ptr().cast(), 1)).unwrap() };
+    });
+
+    net::connect_ipv4(client_sockfd, addr).unwrap();
+
+    unsafe {
+        // Close the write end.
+        libc::shutdown(client_sockfd, libc::SHUT_WR);
+        // Ensure that we're still readable.
+        let mut byte = [0u8];
+        errno_result(libc::read(client_sockfd, byte.as_mut_ptr().cast(), 1)).unwrap();
+        assert_eq!(&byte, &[1u8]);
+    }
+
+    server_thread.join().unwrap();
+}
+
+/// Test that a socket is still writable after the read end has
+/// been closed.
+fn test_shutdown_writable_after_read_close() {
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    // Spawn the server thread.
+    let server_thread = thread::spawn(move || net::accept_ipv4(server_sockfd).unwrap());
+
+    net::connect_ipv4(client_sockfd, addr).unwrap();
+
+    unsafe {
+        // Close the read end.
+        libc::shutdown(client_sockfd, libc::SHUT_RD);
+        // Ensure that we're still writable.
+        errno_result(libc::write(client_sockfd, [1u8].as_ptr().cast(), 1)).unwrap();
+    }
+
+    server_thread.join().unwrap();
+}
+
+/// Test setting and getting the SO_SNDTIMEO socket option.
+/// Also test that writes don't block indefinitely when we
+/// have a nonzero timeout.
+fn test_sockopt_sndtimeo() {
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    net::connect_ipv4(client_sockfd, addr).unwrap();
+    net::accept_ipv4(server_sockfd).unwrap();
+
+    let timeout =
+        net::getsockopt::<libc::timeval>(client_sockfd, libc::SOL_SOCKET, libc::SO_SNDTIMEO)
+            .unwrap();
+    // By default, no write timeout should be set.
+    assert_eq!(timeout.tv_sec, 0);
+    assert_eq!(timeout.tv_usec, 0);
+
+    // A 40 millisecond timeout.
+    let short_timeout = libc::timeval { tv_sec: 0, tv_usec: 40_000 };
+    net::setsockopt(client_sockfd, libc::SOL_SOCKET, libc::SO_SNDTIMEO, short_timeout).unwrap();
+
+    let timeout =
+        net::getsockopt::<libc::timeval>(client_sockfd, libc::SOL_SOCKET, libc::SO_SNDTIMEO)
+            .unwrap();
+    // We should now read the same value as we wrote above.
+    assert_eq!(timeout.tv_sec, short_timeout.tv_sec);
+    assert_eq!(timeout.tv_usec, short_timeout.tv_usec);
+
+    let buffer = [1u8; 32_000];
+    loop {
+        let before = Instant::now();
+        let result = unsafe {
+            errno_result(libc::write(client_sockfd, buffer.as_ptr().cast(), buffer.len()))
+        };
+        match result {
+            Ok(_) => { /* continue to fill up buffer */ }
+            // When we get an EAGAIN/EWOULDBLOCK when writing into a blocking socket, we know
+            // it's because of the write timeout exceeding because the write buffer
+            // is full.
+            Err(err) if err.kind() == ErrorKind::WouldBlock => {
+                // The last write should return an EAGAIN/EWOULDBLOCK after ~40ms instead
+                // of blocking indefinitely.
+                assert!(before.elapsed() >= Duration::from_millis(40));
+                break;
+            }
+            Err(err) => panic!("unexpected error whilst filling up buffer: {err}"),
+        }
+    }
+}
+
+/// Test setting and getting the SO_RCVTIMEO socket option.
+/// Also test that reads don't block indefinitely when we
+/// have a nonzero timeout.
+fn test_sockopt_rcvtimeo() {
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    net::connect_ipv4(client_sockfd, addr).unwrap();
+    net::accept_ipv4(server_sockfd).unwrap();
+
+    let timeout =
+        net::getsockopt::<libc::timeval>(client_sockfd, libc::SOL_SOCKET, libc::SO_RCVTIMEO)
+            .unwrap();
+    // By default, no read timeout should be set.
+    assert_eq!(timeout.tv_sec, 0);
+    assert_eq!(timeout.tv_usec, 0);
+
+    // A 40 millisecond timeout.
+    let short_timeout = libc::timeval { tv_sec: 0, tv_usec: 40_000 };
+    net::setsockopt(client_sockfd, libc::SOL_SOCKET, libc::SO_RCVTIMEO, short_timeout).unwrap();
+
+    let timeout =
+        net::getsockopt::<libc::timeval>(client_sockfd, libc::SOL_SOCKET, libc::SO_RCVTIMEO)
+            .unwrap();
+    // We should now read the same value as we wrote above.
+    assert_eq!(timeout.tv_sec, short_timeout.tv_sec);
+    assert_eq!(timeout.tv_usec, short_timeout.tv_usec);
+
+    let mut buffer = [0u8; 16];
+    // The read should return an EAGAIN/EWOULDBLOCK after ~10ms instead of blocking indefinitely.
+    let before = Instant::now();
+    let err = unsafe {
+        errno_result(libc::read(client_sockfd, buffer.as_mut_ptr().cast(), buffer.len()))
+            .unwrap_err()
+    };
+    assert_eq!(err.kind(), ErrorKind::WouldBlock);
+    // Ensure that we blocked for at least 40 milliseconds.
+    assert!(before.elapsed() >= Duration::from_millis(40))
+}
+
+/// Test setting and reading the SO_REUSEADDR socket option.
+fn test_sockopt_reuseaddr() {
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    net::connect_ipv4(client_sockfd, addr).unwrap();
+    let (_peerfd, _) = net::accept_ipv4(server_sockfd).unwrap();
+
+    net::setsockopt(client_sockfd, libc::SOL_SOCKET, libc::SO_REUSEADDR, true as libc::c_int)
+        .unwrap();
+    let reuseaddr =
+        net::getsockopt::<libc::c_int>(client_sockfd, libc::SOL_SOCKET, libc::SO_REUSEADDR)
+            .unwrap();
+    assert_ne!(reuseaddr, 0);
+
+    net::setsockopt(client_sockfd, libc::SOL_SOCKET, libc::SO_REUSEADDR, false as libc::c_int)
+        .unwrap();
+    let reuseaddr =
+        net::getsockopt::<libc::c_int>(client_sockfd, libc::SOL_SOCKET, libc::SO_REUSEADDR)
+            .unwrap();
+    assert_eq!(reuseaddr, 0);
+}
+
+/// Test that a thread which is blocked on a socket gets unblocked once
+/// the operation is finished, even when the socket file _descriptor_ gets
+/// closed in the mean time.
+fn test_unblock_after_socket_close() {
+    // MacOS behaves different (`read` errors with EBADF when the file description is closed)
+    // so we skip the test when we are run on a native macOS target.
+    if cfg!(not(miri)) && cfg!(target_os = "macos") {
+        return;
+    }
+
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    net::connect_ipv4(client_sockfd, addr).unwrap();
+    let (peerfd, _) = net::accept_ipv4(server_sockfd).unwrap();
+
+    // Spawn server thread.
+    let server_thread = thread::spawn(move || {
+        // Ensure main thread is blocked on reading from
+        // the client socket.
+        thread::sleep(Duration::from_millis(10));
+
+        unsafe { errno_check(libc::close(client_sockfd)) };
+
+        // Writing data into the peer socket should unblock
+        // the main thread.
+        libc_utils::write_all(peerfd, TEST_BYTES).unwrap();
+    });
+
+    let mut buffer = [0u8; TEST_BYTES.len()];
+    libc_utils::read_exact(client_sockfd, &mut buffer).unwrap();
+    assert_eq!(&buffer, TEST_BYTES);
+
+    server_thread.join().unwrap();
+}

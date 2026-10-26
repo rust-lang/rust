@@ -61,7 +61,6 @@ use rustc_hir::intravisit::Visitor;
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_macros::extension;
 use rustc_middle::traits::PatternOriginExpr;
-use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::error::{ExpectedFound, TypeError, TypeErrorToStringExt};
 use rustc_middle::ty::print::{PrintTraitRefExt as _, WrapBinderMode, with_forced_trimmed_paths};
 use rustc_middle::ty::{
@@ -1608,15 +1607,15 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     ValuePairs::TraitRefs(_) => (false, Mismatch::Fixed("trait")),
                     ValuePairs::Aliases(ExpectedFound { expected, .. }) => {
                         let def_id = match expected.kind {
-                            ty::AliasTermKind::ProjectionTy { def_id } => def_id.into(),
-                            ty::AliasTermKind::InherentTy { def_id } => def_id.into(),
-                            ty::AliasTermKind::OpaqueTy { def_id } => def_id.into(),
-                            ty::AliasTermKind::FreeTy { def_id } => def_id.into(),
-                            ty::AliasTermKind::AnonConst { def_id } => def_id.into(),
-                            ty::AliasTermKind::ProjectionConst { def_id } => def_id.into(),
-                            ty::AliasTermKind::FreeConst { def_id } => def_id.into(),
-                            ty::AliasTermKind::InherentConstSelf { def_id } => def_id.into(),
-                            ty::AliasTermKind::InherentConstImpl { def_id } => def_id.into(),
+                            ty::AliasTermKind::ProjectionTy { def_id }
+                            | ty::AliasTermKind::InherentTy { def_id }
+                            | ty::AliasTermKind::OpaqueTy { def_id }
+                            | ty::AliasTermKind::FreeTy { def_id }
+                            | ty::AliasTermKind::AnonConst { def_id }
+                            | ty::AliasTermKind::ProjectionConst { def_id }
+                            | ty::AliasTermKind::FreeConst { def_id }
+                            | ty::AliasTermKind::InherentConstSelf { def_id }
+                            | ty::AliasTermKind::InherentConstImpl { def_id } => def_id,
                         };
                         (false, Mismatch::Fixed(self.tcx.def_descr(def_id)))
                     }

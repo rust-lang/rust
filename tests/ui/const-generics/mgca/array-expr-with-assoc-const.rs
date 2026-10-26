@@ -1,6 +1,5 @@
 //@ run-pass
-#![expect(incomplete_features)]
-#![feature(gca_min_const_items, gca_macroless_args, adt_const_params)]
+#![feature(gca_adts, gca_min_const_items, gca_macroless_args, adt_const_params)]
 #![allow(dead_code)]
 
 fn takes_array<const A: [u32; 3]>() {}

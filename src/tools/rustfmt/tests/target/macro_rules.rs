@@ -1,4 +1,4 @@
-// rustfmt-format_macro_matchers: true
+//@ rustfmt-format_macro_matchers: true
 
 macro_rules! m {
     () => {};

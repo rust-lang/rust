@@ -136,6 +136,7 @@ impl<I: Interner, T> Binder<I, T> {
         self.as_ref().map_bound(f)
     }
 
+    #[inline]
     pub fn map_bound<F, U: TypeVisitable<I>>(self, f: F) -> Binder<I, U>
     where
         F: FnOnce(T) -> U,
@@ -146,6 +147,19 @@ impl<I: Interner, T> Binder<I, T> {
             let mut validator = ValidateBoundVars::new(bound_vars);
             let _ = value.visit_with(&mut validator);
         }
+        Binder { value, bound_vars }
+    }
+
+    /// There are some uses of `map_bound` which are incredibly hot and trivially
+    /// correct. Only use this if this significantly improves the performance of
+    /// builds with debug assertions.
+    #[inline]
+    pub fn map_bound_no_validate_bound_vars<F, U: TypeVisitable<I>>(self, f: F) -> Binder<I, U>
+    where
+        F: FnOnce(T) -> U,
+    {
+        let Binder { value, bound_vars } = self;
+        let value = f(value);
         Binder { value, bound_vars }
     }
 
@@ -241,20 +255,20 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
     }
 
     fn visit_ty(&mut self, t: I::Ty) -> Self::Result {
-        if t.outer_exclusive_binder() < self.binder_index
+        if t.outer_exclusive_binder() <= self.binder_index
             || !self.visited.insert((self.binder_index, t))
         {
-            return ControlFlow::Break(());
+            return ControlFlow::Continue(());
         }
         match t.kind() {
             ty::Bound(ty::BoundVarIndexKind::Bound(debruijn), bound_ty)
                 if debruijn == self.binder_index =>
             {
                 let idx = bound_ty.var().as_usize();
-                if self.bound_vars.len() <= idx {
+                let Some(bound_var) = self.bound_vars.get(idx) else {
                     panic!("Not enough bound vars: {:?} not found in {:?}", t, self.bound_vars);
-                }
-                bound_ty.assert_eq(self.bound_vars.get(idx).unwrap());
+                };
+                bound_ty.assert_eq(bound_var);
             }
             _ => {}
         };
@@ -263,18 +277,18 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
     }
 
     fn visit_const(&mut self, c: Const<I>) -> Self::Result {
-        if c.outer_exclusive_binder() < self.binder_index {
-            return ControlFlow::Break(());
+        if c.outer_exclusive_binder() <= self.binder_index {
+            return ControlFlow::Continue(());
         }
         match c.kind() {
             ty::ConstKind::Bound(debruijn, bound_const)
                 if debruijn == ty::BoundVarIndexKind::Bound(self.binder_index) =>
             {
                 let idx = bound_const.var().as_usize();
-                if self.bound_vars.len() <= idx {
+                let Some(bound_var) = self.bound_vars.get(idx) else {
                     panic!("Not enough bound vars: {:?} not found in {:?}", c, self.bound_vars);
-                }
-                bound_const.assert_eq(self.bound_vars.get(idx).unwrap());
+                };
+                bound_const.assert_eq(bound_var);
             }
             _ => {}
         };
@@ -286,10 +300,10 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
         match r.kind() {
             ty::ReBound(index, br) if index == ty::BoundVarIndexKind::Bound(self.binder_index) => {
                 let idx = br.var().as_usize();
-                if self.bound_vars.len() <= idx {
+                let Some(bound_var) = self.bound_vars.get(idx) else {
                     panic!("Not enough bound vars: {:?} not found in {:?}", r, self.bound_vars);
-                }
-                br.assert_eq(self.bound_vars.get(idx).unwrap());
+                };
+                br.assert_eq(bound_var);
             }
 
             _ => (),

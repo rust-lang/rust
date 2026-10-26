@@ -1,5 +1,4 @@
 use rustc_middle::mir::BinOp;
-use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::{mir, ty};
 use rustc_span::{Symbol, span_bug, sym};
 use tracing::trace;
@@ -127,7 +126,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             _ => return interp_ok(false),
         }
 
-        trace!("{:?}", self.dump_place(&dest.clone().into()));
+        trace!("{:?}", self.dump_place(&dest));
         self.return_to_block(ret)?;
         interp_ok(true)
     }

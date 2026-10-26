@@ -159,7 +159,12 @@ impl<'a> Parser<'a> {
             attrs.clone(), // FIXME: unwanted clone of attrs
             false,
             true,
-            FnParseMode { req_name: |_, _| true, context: FnContext::Free, req_body: true },
+            FnParseMode {
+                req_name: |_, _| true,
+                context: FnContext::Free,
+                req_body: true,
+                allow_const_params: true,
+            },
             force_collect,
             AllowConstBlockItems::No,
         )? {
@@ -1134,7 +1139,7 @@ impl<'a> Parser<'a> {
                                 {
                                     true
                                 } else if let Some(op) = self.check_assoc_op()
-                                    && op.node.can_continue_expr_unambiguously()
+                                    && super::expr::diagnostics::op_can_continue_stmt_expr_unambiguously(op.node)
                                 {
                                     true
                                 } else {

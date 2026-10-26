@@ -7,7 +7,6 @@
 //@[WRAP] compile-flags: -C overflow-checks=false
 
 #![feature(cfg_overflow_checks)]
-#![feature(funnel_shifts)]
 
 use std::hint::black_box as bb;
 use std::{assert_matches, fmt, panic};

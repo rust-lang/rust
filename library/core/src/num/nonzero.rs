@@ -1274,17 +1274,8 @@ macro_rules! nonzero_integer {
             ///
             /// # Safety
             ///
-            /// This results in undefined behavior when
-            #[doc = sign_dependent_expr!{
-                $signedness ?
-                if signed {
-                    concat!("`self * rhs > ", stringify!($Int), "::MAX`, ",
-                            "or `self * rhs < ", stringify!($Int), "::MIN`.")
-                }
-                if unsigned {
-                    concat!("`self * rhs > ", stringify!($Int), "::MAX`.")
-                }
-            }]
+            /// This results in undefined behavior when overflow occurs, i.e.
+            /// when [`checked_mul`] would return `None`.
             ///
             /// # Examples
             ///
@@ -1302,6 +1293,8 @@ macro_rules! nonzero_integer {
             /// # Some(())
             /// # }
             /// ```
+            ///
+            /// [`checked_mul`]: Self::checked_mul
             #[unstable(feature = "nonzero_ops", issue = "84186")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
@@ -1506,10 +1499,12 @@ macro_rules! nonzero_integer {
 
             #[inline]
             const fn from_ascii_bytes_radix_impl(src: &[u8], radix: u32) -> Result<Self, ParseIntError> {
+                // FIXME(const-hack): This should use `?` again, once it's `const`
                 let n = match <$Int>::from_ascii_bytes_radix_impl(src, radix) {
                     Ok(n) => n,
                     Err(err) => return Err(err),
                 };
+                // FIXME(const-hack): This should use `Option::ok_or` again, once it's `const`
                 if let Some(n) = Self::new(n) {
                     Ok(n)
                 } else {
@@ -1871,8 +1866,8 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         ///
         /// # Safety
         ///
-        /// This results in undefined behavior when
-        #[doc = concat!("`self + rhs > ", stringify!($Int), "::MAX`.")]
+        /// This results in undefined behavior when overflow occurs, i.e. when
+        /// [`checked_add`] would return `None`.
         ///
         /// # Examples
         ///
@@ -1890,6 +1885,8 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         /// # Some(())
         /// # }
         /// ```
+        ///
+        /// [`checked_add`]: Self::checked_add
         #[unstable(feature = "nonzero_ops", issue = "84186")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
@@ -2610,6 +2607,50 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         pub const fn cast_unsigned(self) -> NonZero<$Uint> {
             // SAFETY: `self.get()` can't be zero
             unsafe { NonZero::new_unchecked(self.get().cast_unsigned()) }
+        }
+
+        /// Clamps this number to a symmetric range centred around zero.
+        ///
+        /// The method clamps the number's magnitude (absolute value) to be at most `limit`.
+        ///
+        /// This is functionally equivalent to `self.clamp(-limit, limit)`, but is more
+        /// explicit about the intent.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(clamp_magnitude)]
+        /// # use std::num::NonZero;
+        /// #
+        #[doc = concat!("let limit = NonZero::<", stringify!($Uint), ">::new(100).unwrap();")]
+        ///
+        /// assert_eq!(
+        #[doc = concat!("    NonZero::<", stringify!($Int), ">::new(120).unwrap().clamp_magnitude(limit),")]
+        #[doc = concat!("    NonZero::<", stringify!($Int), ">::new(100).unwrap(),")]
+        /// );
+        ///
+        /// assert_eq!(
+        #[doc = concat!("    NonZero::<", stringify!($Int), ">::new(-120).unwrap().clamp_magnitude(limit),")]
+        #[doc = concat!("    NonZero::<", stringify!($Int), ">::new(-100).unwrap(),")]
+        /// );
+        ///
+        /// assert_eq!(
+        #[doc = concat!("    NonZero::<", stringify!($Int), ">::new(80).unwrap().clamp_magnitude(limit),")]
+        #[doc = concat!("    NonZero::<", stringify!($Int), ">::new(80).unwrap(),")]
+        /// );
+        ///
+        /// assert_eq!(
+        #[doc = concat!("    NonZero::<", stringify!($Int), ">::new(-80).unwrap().clamp_magnitude(limit),")]
+        #[doc = concat!("    NonZero::<", stringify!($Int), ">::new(-80).unwrap(),")]
+        /// );
+        /// ```
+        #[inline]
+        #[must_use = "method returns a new number and does not mutate the original value"]
+        #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+        #[unstable(feature = "clamp_magnitude", issue = "148519")]
+        pub const fn clamp_magnitude(self, limit: NonZero<$Uint>) -> Self {
+            // SAFETY: a non-zero value clamped to the magnitude of a non-zero value is still non-zero.
+            unsafe { Self::new_unchecked(self.get().clamp_magnitude(limit.get())) }
         }
 
     };

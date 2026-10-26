@@ -1,10 +1,10 @@
 //! Regression test for <https://github.com/rust-lang/rust/issues/152683>
-#![expect(incomplete_features)]
 #![feature(
     adt_const_params,
-    generic_const_parameter_types,
+    gca_adts,
+    gca_macroless_args,
     gca_min_const_items,
-    gca_macroless_args
+    generic_const_parameter_types
 )]
 fn foo<const N: usize, const A: [u8; N]>() {}
 

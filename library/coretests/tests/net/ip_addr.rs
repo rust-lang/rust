@@ -463,6 +463,7 @@ fn ipv4_properties() {
     check!("192.0.0.11");
     check!("192.0.0.255");
     check!("192.0.0.100");
+    check!("192.88.99.2");
     check!("240.0.0.0", reserved);
     check!("251.54.1.76", reserved);
     check!("254.255.255.255", reserved);
@@ -632,6 +633,7 @@ fn ipv6_properties() {
     );
 
     check!("100::", &[0x01, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], unicast_global);
+    check!("100:0:0:1::", &[1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0], unicast_global);
 
     check!("2001::", &[0x20, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], unicast_global);
 
@@ -644,6 +646,12 @@ fn ipv6_properties() {
     check!(
         "2001:1::2",
         &[0x20, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
+        global | unicast_global
+    );
+
+    check!(
+        "2001:1::3",
+        &[0x20, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3],
         global | unicast_global
     );
 

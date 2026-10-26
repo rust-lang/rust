@@ -1,9 +1,9 @@
 //! Regression test for <https://github.com/rust-lang/rust/issues/151625>
-#![expect(incomplete_features)]
 #![feature(
     adt_const_params,
-    gca_min_const_items,
+    gca_adts,
     gca_macroless_args,
+    gca_min_const_items,
     unsized_const_params
 )]
 fn foo<const X: (bool, i32)>() {}

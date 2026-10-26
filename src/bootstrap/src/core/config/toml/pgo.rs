@@ -28,5 +28,6 @@ define_config! {
         cargo: Option<PgoConfig> = "cargo",
         clippy: Option<PgoConfig> = "clippy",
         llvm: Option<PgoConfig> = "llvm",
+        cranelift: Option<PgoConfig> = "cranelift",
     }
 }

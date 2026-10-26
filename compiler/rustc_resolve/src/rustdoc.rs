@@ -9,9 +9,9 @@ use pulldown_cmark::{
 };
 use rustc_ast as ast;
 use rustc_ast::attr::AttributeExt;
-use rustc_ast::join_path_syms;
 use rustc_ast::token::DocFragmentKind;
 use rustc_ast::util::comments::beautify_doc_string;
+use rustc_ast::{AttrStyle, join_path_syms};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::unord::UnordSet;
 use rustc_middle::ty::TyCtxt;
@@ -48,6 +48,7 @@ pub struct DocFragment {
     /// Because we tamper with the spans context, this information cannot be correctly retrieved
     /// later on. So instead, we compute it and store it here.
     pub from_expansion: bool,
+    pub style: AttrStyle,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -206,17 +207,23 @@ pub fn attrs_to_doc_fragments<'a, A: AttributeExt + Clone + 'a>(
     let mut doc_fragments = Vec::with_capacity(size_hint);
     let mut other_attrs = ThinVec::<A>::with_capacity(if doc_only { 0 } else { size_hint });
     for (attr, item_id) in attrs {
-        if let Some((doc_str, fragment_kind)) = attr.doc_str_and_fragment_kind() {
+        if let Some((doc_str, fragment_kind, attr_span)) = attr.doc_str_and_fragment_kind() {
             let doc = beautify_doc_string(doc_str, fragment_kind.comment_kind());
-            let attr_span = attr.span();
             let (span, from_expansion) = match fragment_kind {
                 DocFragmentKind::Sugared(_) => (attr_span, attr_span.from_expansion()),
                 DocFragmentKind::Raw(value_span) => {
                     (value_span.with_ctxt(attr_span.ctxt()), value_span.from_expansion())
                 }
             };
-            let fragment =
-                DocFragment { span, doc, kind: fragment_kind, item_id, indent: 0, from_expansion };
+            let fragment = DocFragment {
+                span,
+                doc,
+                kind: fragment_kind,
+                item_id,
+                indent: 0,
+                from_expansion,
+                style: attr.doc_resolution_scope().unwrap(),
+            };
             doc_fragments.push(fragment);
         } else if !doc_only {
             other_attrs.push(attr.clone());
@@ -231,6 +238,14 @@ pub fn attrs_to_doc_fragments<'a, A: AttributeExt + Clone + 'a>(
     (doc_fragments, other_attrs)
 }
 
+/// Represents a doc comment, split in two parts, outer and inner attributes. It's needed for
+/// the intra-doc link resolution context.
+#[derive(Default)]
+pub struct DocStrings {
+    pub outer: String,
+    pub inner: String,
+}
+
 /// Return the doc-comments on this item, grouped by the module they came from.
 /// The module can be different if this is a re-export with added documentation.
 ///
@@ -238,11 +253,16 @@ pub fn attrs_to_doc_fragments<'a, A: AttributeExt + Clone + 'a>(
 /// early and late doc link resolution regardless of their position.
 pub fn prepare_to_doc_link_resolution(
     doc_fragments: &[DocFragment],
-) -> FxIndexMap<Option<DefId>, String> {
-    let mut res = FxIndexMap::default();
+) -> FxIndexMap<Option<DefId>, DocStrings> {
+    let mut res: FxIndexMap<Option<DefId>, DocStrings> = FxIndexMap::default();
     for fragment in doc_fragments {
-        let out_str = res.entry(fragment.item_id).or_default();
-        add_doc_fragment(out_str, fragment);
+        let out_strs = res.entry(fragment.item_id).or_default();
+        let out = if fragment.style == AttrStyle::Inner {
+            &mut out_strs.inner
+        } else {
+            &mut out_strs.outer
+        };
+        add_doc_fragment(out, fragment);
     }
     res
 }
@@ -351,19 +371,6 @@ pub fn strip_generics_from_path(path_str: &str) -> Result<Box<str>, MalformedGen
     }
 }
 
-/// Returns whether the first doc-comment is an inner attribute.
-///
-/// If there are no doc-comments, return true.
-/// FIXME(#78591): Support both inner and outer attributes on the same item.
-pub fn inner_docs(attrs: &[impl AttributeExt]) -> bool {
-    for attr in attrs {
-        if let Some(attr_style) = attr.doc_resolution_scope() {
-            return attr_style == ast::AttrStyle::Inner;
-        }
-    }
-    true
-}
-
 /// Has `#[rustc_doc_primitive]` or `#[doc(keyword)]` or `#[doc(attribute)]`.
 pub fn has_primitive_or_keyword_or_attribute_docs(attrs: &[impl AttributeExt]) -> bool {
     for attr in attrs {
@@ -413,7 +420,10 @@ pub(crate) fn attrs_to_preprocessed_links(attrs: &[ast::Attribute]) -> Vec<Box<s
     let (doc_fragments, other_attrs) =
         attrs_to_doc_fragments(attrs.iter().map(|attr| (attr, None)), false);
     let doc = prepare_to_doc_link_resolution(&doc_fragments).into_values().next();
-    let mut links = doc.as_deref().map(parse_links).unwrap_or_default();
+    let mut links = doc
+        .as_ref()
+        .map(|doc| parse_links(&format!("{}{}", doc.outer, doc.inner)))
+        .unwrap_or_default();
 
     for attr in other_attrs {
         if let Some(note) = attr.deprecation_note() {
@@ -592,7 +602,19 @@ pub fn source_span_for_markdown_range_inner(
         if pat.is_empty() {
             return None;
         }
+        let mut buffer = String::new();
+        let mut offset = 0;
         for (i, fragment) in fragments.iter().enumerate() {
+            // Ignore fragments outside of the specified range
+            buffer.clear();
+            add_doc_fragment(&mut buffer, fragment);
+            let frag_start = offset;
+            offset += buffer.len();
+            let frag_end = offset;
+            if !(frag_start <= md_range.start && md_range.end <= frag_end) {
+                continue;
+            }
+
             if let Ok(snippet) = map.span_to_snippet(fragment.span)
                 && let Some(match_start) = snippet.find(pat)
             {
@@ -611,6 +633,7 @@ pub fn source_span_for_markdown_range_inner(
                     return None;
                 }
             }
+            break; // only one fragment can contain the range
         }
         if let Some((i, match_start)) = match_data {
             let fragment = &fragments[i];

@@ -31,6 +31,10 @@ pub struct Job {
     pub doc_url: Option<String>,
     /// Whether the job is executed on AWS CodeBuild.
     pub codebuild: Option<bool>,
+    /// Which Python version (if any) is required. On Windows, this is typically required to run
+    /// LLDB.
+    #[serde(default)]
+    pub required_python_version: Option<String>,
 }
 
 impl Job {
@@ -167,6 +171,7 @@ fn validate_job_database(db: &JobDatabase) -> anyhow::Result<()> {
             free_disk,
             doc_url,
             codebuild,
+            required_python_version,
 
             // Carve-out configs allowed to be different.
             env: _,
@@ -179,6 +184,7 @@ fn validate_job_database(db: &JobDatabase) -> anyhow::Result<()> {
             && *free_disk == auto_job.free_disk
             && *doc_url == auto_job.doc_url
             && *codebuild == auto_job.codebuild
+            && *required_python_version == auto_job.required_python_version
         {
             Ok(())
         } else {
@@ -244,6 +250,8 @@ struct GithubActionsJob {
     doc_url: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     codebuild: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    required_python_version: Option<String>,
 }
 
 /// Replace GitHub context variables with environment variables in job configs.
@@ -375,6 +383,7 @@ fn calculate_jobs(
                 free_disk: job.free_disk,
                 doc_url: job.doc_url,
                 codebuild: job.codebuild,
+                required_python_version: job.required_python_version,
             }
         })
         .collect();

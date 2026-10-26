@@ -4,7 +4,7 @@ use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
 use crate::os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
 use crate::path::{Path, PathBuf};
 use crate::sys::fd::FileDesc;
-pub use crate::sys::fs::common::{Dir, exists};
+pub use crate::sys::fs::common::{Dir, ExtraHomeDirs, ExtraMediaDirs, exists};
 use crate::sys::time::SystemTime;
 use crate::sys::{
     AsInner, AsInnerMut, FromInner, IntoInner, io_slices, io_slices_mut, map_motor_error,
@@ -324,6 +324,10 @@ pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
     moto_rt::fs::rename(old, new).map_err(map_motor_error)
 }
 
+pub fn rename_noreplace(_old: &Path, _new: &Path) -> io::Result<()> {
+    unsupported()
+}
+
 pub fn rmdir(path: &Path) -> io::Result<()> {
     let path = path.to_str().ok_or(io::Error::from(io::ErrorKind::InvalidFilename))?;
     moto_rt::fs::rmdir(path).map_err(map_motor_error)
@@ -404,6 +408,14 @@ pub fn readdir(path: &Path) -> io::Result<ReadDir> {
         rt_fd: moto_rt::fs::opendir(path).map_err(map_motor_error)?,
         path: path.to_owned(),
     })
+}
+
+impl ReadDir {
+    pub fn dir(&self) -> io::Result<Dir> {
+        let mut options = OpenOptions::new();
+        options.read(true);
+        Dir::open(Path::new(&self.path), &options)
+    }
 }
 
 impl Iterator for ReadDir {

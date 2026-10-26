@@ -15,8 +15,8 @@ See [bootstrap/README.md][bootstrap-internals] to read about bootstrap internals
 - Stage 3: the same-result test
 
 Compiling `rustc` is done in stages.
-Here's a diagram, adapted from Jynn
-Nelson's [talk on bootstrapping][rustconf22-talk] at RustConf 2022,
+Here's a diagram,
+adapted from Jynn Nelson's [talk on bootstrapping][rustconf22-talk] at RustConf 2022,
 with detailed explanations below.
 
 The `A`, `B`, `C`, and `D` show the ordering of the stages of bootstrapping.
@@ -298,12 +298,12 @@ but `lib` will never be part of the search path.
 
 #### `-Z force-unstable-if-unmarked`
 
-Since `lib/rustlib/` is part of the search path we have to be careful about
-which crates are included in it.
-In particular, all crates except for the
-standard library are built with the flag `-Z force-unstable-if-unmarked`,
-which means that you have to use `#![feature(rustc_private)]` in order to load it (as
-opposed to the standard library, which is always available).
+Since `lib/rustlib/` is part of the search path,
+we have to be careful about which crates are included in it.
+In particular, all crates, except for the standard library,
+are built with the flag `-Z force-unstable-if-unmarked`,
+meaning that you have to use `#![feature(rustc_private)]` in order to load it
+(as opposed to the standard library, which is always available).
 
 The `-Z force-unstable-if-unmarked` flag has a variety of purposes to help
 enforce that the correct crates are marked as `unstable`.

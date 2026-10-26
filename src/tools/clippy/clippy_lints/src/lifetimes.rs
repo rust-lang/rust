@@ -323,7 +323,7 @@ fn could_use_elision<'tcx>(
         input_visitor.visit_generic_param(lt);
     }
 
-    if input_visitor.abort() || output_visitor.abort() {
+    if input_visitor.saw_unelided_trait_object_lifetime() || output_visitor.saw_unelided_trait_object_lifetime() {
         return None;
     }
 
@@ -482,7 +482,7 @@ impl<'a, 'tcx> RefVisitor<'a, 'tcx> {
             .collect::<Vec<_>>()
     }
 
-    fn abort(&self) -> bool {
+    fn saw_unelided_trait_object_lifetime(&self) -> bool {
         self.unelided_trait_object_lifetime
     }
 }
@@ -503,6 +503,7 @@ impl<'tcx> Visitor<'tcx> for RefVisitor<'_, 'tcx> {
             let mut sub_visitor = RefVisitor::new(self.cx);
             sub_visitor.visit_trait_ref(trait_ref);
             self.nested_elision_site_lts.append(&mut sub_visitor.all_lts());
+            self.unelided_trait_object_lifetime |= sub_visitor.unelided_trait_object_lifetime;
         } else {
             walk_poly_trait_ref(self, poly_tref);
         }
@@ -547,6 +548,9 @@ fn has_where_lifetimes<'tcx>(cx: &LateContext<'tcx>, generics: &'tcx Generics<'_
                 // now walk the bounds
                 for bound in pred.bounds {
                     walk_param_bound(&mut visitor, bound);
+                }
+                if visitor.saw_unelided_trait_object_lifetime() {
+                    return true;
                 }
                 // and check that all lifetimes are allowed
                 for lt in visitor.all_lts() {

@@ -8,7 +8,7 @@ use crate::{ErrorKind, Input, Session};
 
 /// Load the config, but hide expected parse errors
 fn read_config_hide_parse_errors(filename: &std::path::Path) -> crate::Config {
-    let mut config = read_config(&filename);
+    let mut config = read_config(&filename).expect("config should be valid");
     config.set().show_parse_errors(false);
     config
 }
@@ -74,5 +74,17 @@ fn crate_parsing_stashed_diag() {
 fn crate_parsing_stashed_diag2() {
     // See also https://github.com/rust-lang/rust/issues/121517
     let filename = "tests/parser/stashed-diag2.rs";
+    assert_parser_error(filename);
+}
+
+#[test]
+fn try_macro_cant_be_chain_child() {
+    let filename = "tests/parser/try_macro_cant_be_chain_child.rs";
+    assert_parser_error(filename);
+}
+
+#[test]
+fn try_macro_literal_cant_be_chain_child() {
+    let filename = "tests/parser/try_macro_literal_cant_be_chain_child.rs";
     assert_parser_error(filename);
 }

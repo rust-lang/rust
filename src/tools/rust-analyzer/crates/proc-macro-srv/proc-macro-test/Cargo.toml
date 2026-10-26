@@ -11,3 +11,6 @@ doctest = false
 
 [build-dependencies]
 cargo_metadata = "0.23.0"
+
+[lints]
+workspace = true

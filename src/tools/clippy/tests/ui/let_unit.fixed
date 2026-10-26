@@ -234,3 +234,81 @@ fn issue15789() {
 
     Foo { value: () };
 }
+
+mod issue15790 {
+    fn takes_str(_: &str) {}
+    fn takes_unit(_: ()) {}
+
+    fn foo() {
+        let value = {
+            #[cfg(test)]
+            {
+                "not a unit"
+            }
+        };
+
+        #[cfg(test)]
+        takes_str(value);
+        #[cfg(not(test))]
+        takes_unit(value);
+    }
+
+    fn cfg_on_let() {
+        // The type of `value` depends on the configuration, so this must not lint
+        #[cfg(test)]
+        let value = "not a unit";
+        #[cfg(not(test))]
+        let value = takes_unit(());
+    }
+
+    fn cfg_in_init() {
+        let value = {
+            #[cfg(test)]
+            {
+                "not a unit"
+            }
+        };
+
+        std::hint::black_box(value); // Not even necessary for the lint to trigger
+    }
+
+    #[cfg(not(test))]
+    mod under_cfg {
+        // A `cfg` on a parent is not a reason to skip the lint
+        fn foo() {
+            super::takes_unit(());
+            //~^ let_unit_value
+        }
+    }
+
+    fn cfg_attr_in_init() {
+        let value = {
+            #[cfg_attr(test, allow(unused))]
+            let _x = 1;
+        };
+
+        std::hint::black_box(value);
+    }
+
+    fn cfg_only_in_comment_or_string() {
+        // The text `#[cfg(test)]` is here, but no real attribute, so this should still lint
+        {
+            //~^ let_unit_value
+            // #[cfg(test)]
+            let _s = "#[cfg(test)]";
+        };
+
+        std::hint::black_box(());
+    }
+
+    fn cfg_attr_only_in_comment_or_string() {
+        // The text `#[cfg_attr(test, allow(unused))]` is here, but no real attribute, so this should still lint
+        {
+            //~^ let_unit_value
+            //#[cfg_attr(test, allow(unused))]
+            let _s = "#[cfg_attr(test, allow(unused))]";
+        };
+
+        std::hint::black_box(());
+    }
+}

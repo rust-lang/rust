@@ -5,7 +5,7 @@ use clippy_utils::{is_bool, is_from_proc_macro};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::{Body, EnumDef, FieldDef, Item, ItemKind, QPath, TyKind, UseKind, UseTree, Variant, VariantData};
 use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
-use rustc_span::symbol::Symbol;
+use rustc_span::symbol::{Ident, Symbol};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -199,6 +199,63 @@ impl ItemNameRepetitions {
 
     fn is_allowed_prefix(&self, prefix: &str) -> bool {
         self.allowed_prefixes.contains(prefix)
+    }
+
+    fn check_item_kind(&self, cx: &LateContext<'_>, item: &Item<'_>) -> Option<Ident> {
+        match item.kind {
+            ItemKind::Mod(ident, _) => {
+                if let [.., prev] = &*self.modules
+                    && prev.name == ident.name
+                    && prev.in_body_count == 0
+                    && (!self.allow_private_module_inception || prev.is_public)
+                    && !item.span.from_expansion()
+                    && !is_from_proc_macro(cx, item)
+                {
+                    span_lint(
+                        cx,
+                        MODULE_INCEPTION,
+                        item.span,
+                        "module has the same name as its containing module",
+                    );
+                }
+                Some(ident)
+            },
+
+            ItemKind::Enum(ident, _, def) => {
+                if !ident.span.in_external_macro(cx.tcx.sess.source_map()) {
+                    self.check_variants(cx, item, &def);
+                }
+                Some(ident)
+            },
+            ItemKind::Struct(ident, _, data) => {
+                if let VariantData::Struct { fields, .. } = data
+                    && !ident.span.in_external_macro(cx.tcx.sess.source_map())
+                {
+                    self.check_fields(cx, item, fields);
+                }
+                Some(ident)
+            },
+
+            ItemKind::Const(ident, ..)
+            | ItemKind::ExternCrate(_, ident)
+            | ItemKind::Fn { ident, .. }
+            | ItemKind::Macro(ident, ..)
+            | ItemKind::Static(_, ident, ..)
+            | ItemKind::Trait { ident, .. }
+            | ItemKind::TraitAlias(_, ident, ..)
+            | ItemKind::TyAlias(ident, ..)
+            | ItemKind::Union(ident, ..)
+            | ItemKind::Use(UseTree {
+                kind: UseKind::Single(ident),
+                ..
+            }) => Some(ident),
+
+            ItemKind::ForeignMod { .. }
+            | ItemKind::GlobalAsm { .. }
+            | ItemKind::Impl(_)
+            | ItemKind::Use(..)
+            | ItemKind::TestBinderConstraints { .. } => None,
+        }
     }
 }
 
@@ -408,6 +465,66 @@ impl ItemNameRepetitions {
             }
         }
     }
+
+    fn check_use_tree(&self, cx: &LateContext<'_>, item: &Item<'_>, tree: &UseTree<'_>) {
+        match tree.kind {
+            UseKind::Single(ident) => self.check_name_repetition(cx, item, ident),
+            UseKind::Nested { items, .. } => {
+                for (subtree, ..) in items {
+                    self.check_use_tree(cx, item, subtree);
+                }
+            },
+            UseKind::Glob => {},
+        }
+    }
+
+    fn check_name_repetition(&self, cx: &LateContext<'_>, item: &Item<'_>, ident: Ident) {
+        let item_name = ident.name.as_str();
+        let item_camel = to_camel_case(item_name);
+
+        if let [.., prev] = &*self.modules
+            && prev.is_public
+            && prev.in_body_count == 0
+            && !item.span.from_expansion()
+            && !matches!(item.kind, ItemKind::Macro(..))
+            && cx.tcx.visibility(item.owner_id).is_public()
+        {
+            if !self.allow_exact_repetitions && item_camel == prev.name_camel {
+                if !is_from_proc_macro(cx, item) {
+                    span_lint(
+                        cx,
+                        MODULE_NAME_REPETITIONS,
+                        ident.span,
+                        "item name is the same as its containing module's name",
+                    );
+                }
+            } else if item_camel.len() > prev.name_camel.len() {
+                if let Some(s) = item_camel.strip_prefix(&prev.name_camel)
+                    && let Some(c) = s.chars().next()
+                    && (c == '_' || c.is_uppercase() || c.is_numeric())
+                {
+                    if !is_from_proc_macro(cx, item) {
+                        span_lint(
+                            cx,
+                            MODULE_NAME_REPETITIONS,
+                            ident.span,
+                            "item name starts with its containing module's name",
+                        );
+                    }
+                } else if let Some(s) = item_camel.strip_suffix(&prev.name_camel)
+                    && !self.is_allowed_prefix(s)
+                    && !is_from_proc_macro(cx, item)
+                {
+                    span_lint(
+                        cx,
+                        MODULE_NAME_REPETITIONS,
+                        ident.span,
+                        "item name ends with its containing module's name",
+                    );
+                }
+            }
+        }
+    }
 }
 
 fn check_enum_start(cx: &LateContext<'_>, item_name: &str, variant: &Variant<'_>) {
@@ -488,111 +605,21 @@ impl LateLintPass<'_> for ItemNameRepetitions {
     }
 
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
-        let ident = match item.kind {
-            ItemKind::Mod(ident, _) => {
-                if let [.., prev] = &*self.modules
-                    && prev.name == ident.name
-                    && prev.in_body_count == 0
-                    && (!self.allow_private_module_inception || prev.is_public)
-                    && !item.span.from_expansion()
-                    && !is_from_proc_macro(cx, item)
-                {
-                    span_lint(
-                        cx,
-                        MODULE_INCEPTION,
-                        item.span,
-                        "module has the same name as its containing module",
-                    );
-                }
-                ident
-            },
+        if let ItemKind::Use(tree) = item.kind {
+            self.check_use_tree(cx, item, &tree);
+            return;
+        }
 
-            ItemKind::Enum(ident, _, def) => {
-                if !ident.span.in_external_macro(cx.tcx.sess.source_map()) {
-                    self.check_variants(cx, item, &def);
-                }
-                ident
-            },
-            ItemKind::Struct(ident, _, data) => {
-                if let VariantData::Struct { fields, .. } = data
-                    && !ident.span.in_external_macro(cx.tcx.sess.source_map())
-                {
-                    self.check_fields(cx, item, fields);
-                }
-                ident
-            },
-
-            ItemKind::Const(ident, ..)
-            | ItemKind::ExternCrate(_, ident)
-            | ItemKind::Fn { ident, .. }
-            | ItemKind::Macro(ident, ..)
-            | ItemKind::Static(_, ident, ..)
-            | ItemKind::Trait { ident, .. }
-            | ItemKind::TraitAlias(_, ident, ..)
-            | ItemKind::TyAlias(ident, ..)
-            | ItemKind::Union(ident, ..)
-            | ItemKind::Use(UseTree {
-                kind: UseKind::Single(ident),
-                ..
-            }) => ident,
-
-            ItemKind::ForeignMod { .. }
-            | ItemKind::GlobalAsm { .. }
-            | ItemKind::Impl(_)
-            | ItemKind::Use(..)
-            | ItemKind::TestBinderConstraints { .. } => return,
+        let Some(ident) = self.check_item_kind(cx, item) else {
+            return;
         };
 
-        let item_name = ident.name.as_str();
-        let item_camel = to_camel_case(item_name);
-
-        if let [.., prev] = &*self.modules
-            && prev.is_public
-            && prev.in_body_count == 0
-            && !item.span.from_expansion()
-            && !matches!(item.kind, ItemKind::Macro(..))
-            && cx.tcx.visibility(item.owner_id).is_public()
-        {
-            if !self.allow_exact_repetitions && item_camel == prev.name_camel {
-                if !is_from_proc_macro(cx, item) {
-                    span_lint(
-                        cx,
-                        MODULE_NAME_REPETITIONS,
-                        ident.span,
-                        "item name is the same as its containing module's name",
-                    );
-                }
-            } else if item_camel.len() > prev.name_camel.len() {
-                if let Some(s) = item_camel.strip_prefix(&prev.name_camel)
-                    && let Some(c) = s.chars().next()
-                    && (c == '_' || c.is_uppercase() || c.is_numeric())
-                {
-                    if !is_from_proc_macro(cx, item) {
-                        span_lint(
-                            cx,
-                            MODULE_NAME_REPETITIONS,
-                            ident.span,
-                            "item name starts with its containing module's name",
-                        );
-                    }
-                } else if let Some(s) = item_camel.strip_suffix(&prev.name_camel)
-                    && !self.is_allowed_prefix(s)
-                    && !is_from_proc_macro(cx, item)
-                {
-                    span_lint(
-                        cx,
-                        MODULE_NAME_REPETITIONS,
-                        ident.span,
-                        "item name ends with its containing module's name",
-                    );
-                }
-            }
-        }
+        self.check_name_repetition(cx, item, ident);
 
         if matches!(item.kind, ItemKind::Mod(..)) {
             self.modules.push(ModInfo {
                 name: ident.name,
-                name_camel: item_camel,
+                name_camel: to_camel_case(ident.name.as_str()),
                 is_public: cx.tcx.visibility(item.owner_id).is_public(),
                 in_body_count: 0,
             });

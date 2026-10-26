@@ -36,7 +36,6 @@
 #![feature(iter_next_chunk)]
 #![feature(maybe_uninit_uninit_array_transpose)]
 #![feature(ptr_alignment_type)]
-#![feature(ptr_cast_slice)]
 #![feature(rev_into_inner)]
 #![feature(sized_type_properties)]
 #![feature(slice_iter_mut_as_mut_slice)]
@@ -50,7 +49,6 @@
 #![feature(trusted_random_access)]
 #![feature(try_reserve_kind)]
 #![feature(try_trait_v2)]
-#![feature(unwrap_infallible)]
 #![feature(wtf8_internals)]
 // tidy-alphabetical-end
 //
@@ -60,7 +58,6 @@
 #![feature(const_trait_impl)]
 #![feature(dropck_eyepatch)]
 #![feature(min_specialization)]
-#![feature(optimize_attribute)]
 #![feature(prelude_import)]
 #![feature(rustc_attrs)]
 #![feature(staged_api)]

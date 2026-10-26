@@ -1,7 +1,6 @@
 //@ check-pass
 
-#![feature(gca_min_const_items, adt_const_params, unsized_const_params)]
-#![expect(incomplete_features)]
+#![feature(gca_adts, gca_min_const_items, adt_const_params, unsized_const_params)]
 
 use std::gca;
 

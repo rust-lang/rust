@@ -1284,7 +1284,7 @@ pub struct SplitAsciiWhitespace<'a> {
 }
 
 /// An iterator over the substrings of a string,
-/// terminated by a substring matching to a predicate function
+/// terminated by a substring matching to a predicate function.
 /// Unlike `Split`, it contains the matched part as a terminator
 /// of the subslice.
 ///
@@ -1587,6 +1587,18 @@ pub struct EscapeDebug<'a> {
 #[derive(Clone, Debug)]
 pub struct EscapeDefault<'a> {
     pub(super) inner: FlatMap<Chars<'a>, char_mod::EscapeDefault, CharEscapeDefault>,
+}
+
+impl<'a> EscapeDefault<'a> {
+    /// Disassembles the iterator into its internal state.
+    /// Used by alloc for an optimized to_string impl.
+    #[unstable(feature = "std_internals", issue = "none")]
+    pub fn into_parts(
+        self,
+    ) -> (Option<impl Iterator<Item = char>>, Option<Chars<'a>>, Option<impl Iterator<Item = char>>)
+    {
+        self.inner.into_parts()
+    }
 }
 
 /// The return type of [`str::escape_unicode`].

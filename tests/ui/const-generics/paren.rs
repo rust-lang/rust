@@ -19,7 +19,6 @@ fn f<const N: usize>() {
     let _: Thing<{ (_) }> = Thing::<5>; //~ ERROR in expressions, `_` can only be used on the left-hand side of an assignment
     let _: Thing<N> = Thing;
     let _: Thing<(N)> = Thing; //~ ERROR cannot find type `N` in this scope
-    //~| ERROR unresolved item provided when a constant was expected
     let _: Thing<{ N }> = Thing;
     let _: Thing<{ (N) }> = Thing; //~ ERROR generic parameters may not be used in const operations
     let _: Thing<{ { N } }> = Thing; //~ ERROR generic parameters may not be used in const operations

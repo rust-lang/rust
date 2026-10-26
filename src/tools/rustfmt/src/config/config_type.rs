@@ -244,6 +244,18 @@ macro_rules! create_config {
                 CliConfigWasSet(self)
             }
 
+            #[allow(unreachable_pub)]
+            pub fn was_option_set(&self, key: &str) -> bool {
+                match key {
+                    $(
+                        stringify!($i) => {
+                            ConfigWasSet(self).$i()
+                        }
+                    )+
+                    _ => false
+                }
+            }
+
             fn fill_from_parsed_config(mut self, parsed: PartialConfig, dir: &Path) -> Config {
             $(
                 if let Some(option_value) = parsed.$i {
@@ -435,14 +447,14 @@ macro_rules! create_config {
             /// arms within a declarative macro.
             #[allow(unreachable_pub)]
             pub fn reduce_max_width(&mut self, delta: usize) {
-                self.adjust_max_width(-(delta as isize));
+                self.adjust_max_width(-(delta.min(isize::MAX as usize) as isize));
             }
 
             /// Increases the maximum width of the configuration.
             ///
             /// This method is intended to be used when creating a forked
             /// configuration for a particular formatting context in which the
-            /// total available width needs to be reduced. This increases the
+            /// total available width needs to be increased. This increases the
             /// size of max_width, and all other properties affected by small
             /// heuristics, without treating those adjustments as overrides.
             ///
@@ -450,7 +462,7 @@ macro_rules! create_config {
             /// arms within a declarative macro.
             #[allow(unreachable_pub)]
             pub fn increase_max_width(&mut self, delta: usize) {
-                self.adjust_max_width(delta as isize);
+                self.adjust_max_width(delta.min(isize::MAX as usize) as isize);
             }
 
             /// Adjusts the maximum width of the configuration.
@@ -464,7 +476,9 @@ macro_rules! create_config {
             /// As an example use case, this method is used when formatting
             /// arms within a declarative macro.
             fn adjust_max_width(&mut self, delta: isize) {
-                let adjust = |value: usize| (value as isize + delta) as usize;
+                // NB: we need to either saturate or report an error (or some kind of testable
+                // warning). I picked to saturate here.
+                let adjust = |value: usize| value.saturating_add_signed(delta);
 
                 self.array_width.2 = adjust(self.array_width.2);
                 self.attr_fn_like_width.2 = adjust(self.attr_fn_like_width.2);

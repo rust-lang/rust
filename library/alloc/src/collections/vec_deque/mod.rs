@@ -1480,8 +1480,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
 
         // SAFETY:
         // * Any slice passed to `drop_in_place` is valid; the second case has
-        //   `len <= front.len()` and returning on `len > self.len()` ensures
-        //   `begin <= back.len()` in the first case
+        //   `len <= front.len()` and returning on `len >= self.len()` ensures
+        //   `begin < back.len()` in the first case
         // * The head of the VecDeque is moved before calling `drop_in_place`,
         //   so no value is dropped twice if `drop_in_place` panics
         unsafe {
@@ -1804,8 +1804,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(deque.len(), 1);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_stable(feature = "const_vec_deque_len", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_confusables("length", "size")]
-    pub fn len(&self) -> usize {
+    pub const fn len(&self) -> usize {
         self.len
     }
 
@@ -1822,7 +1823,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert!(!deque.is_empty());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn is_empty(&self) -> bool {
+    #[rustc_const_stable(feature = "const_vec_deque_len", since = "CURRENT_RUSTC_VERSION")]
+    pub const fn is_empty(&self) -> bool {
         self.len == 0
     }
 
@@ -3906,13 +3908,6 @@ __impl_slice_eq1! { [] VecDeque<T, A>, &mut [U], }
 __impl_slice_eq1! { [const N: usize] VecDeque<T, A>, [U; N], }
 __impl_slice_eq1! { [const N: usize] VecDeque<T, A>, &[U; N], }
 __impl_slice_eq1! { [const N: usize] VecDeque<T, A>, &mut [U; N], }
-
-__impl_slice_eq2! { #[stable(feature = "slice_partial_eq_vec_deque", since = "CURRENT_RUSTC_VERSION")], [] Vec<T, A>, VecDeque<U, A>, }
-__impl_slice_eq2! { #[stable(feature = "slice_partial_eq_vec_deque", since = "CURRENT_RUSTC_VERSION")], [] &[T], VecDeque<U, A>, }
-__impl_slice_eq2! { #[stable(feature = "slice_partial_eq_vec_deque", since = "CURRENT_RUSTC_VERSION")], [] &mut [T], VecDeque<U, A>, }
-__impl_slice_eq2! { #[stable(feature = "slice_partial_eq_vec_deque", since = "CURRENT_RUSTC_VERSION")], [const N: usize] [T; N], VecDeque<U, A>, }
-__impl_slice_eq2! { #[stable(feature = "slice_partial_eq_vec_deque", since = "CURRENT_RUSTC_VERSION")], [const N: usize] &[T; N], VecDeque<U, A>, }
-__impl_slice_eq2! { #[stable(feature = "slice_partial_eq_vec_deque", since = "CURRENT_RUSTC_VERSION")], [const N: usize] &mut [T; N], VecDeque<U, A>, }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: PartialOrd, A: Allocator> PartialOrd for VecDeque<T, A> {

@@ -811,7 +811,7 @@ impl f32 {
     /// conserved over arithmetic operations, the result of `is_sign_positive` on
     /// a NaN might produce an unexpected or non-portable result. See the [specification
     /// of NaN bit patterns](f32#nan-bit-patterns) for more info. Use `self.signum() == 1.0`
-    /// if you need fully portable behavior (will return NaN for all NaNs).
+    /// if you need fully portable behavior (evaluates to `false` for all NaNs).
     ///
     /// ```
     /// let f = 7.0_f32;
@@ -836,7 +836,7 @@ impl f32 {
     /// conserved over arithmetic operations, the result of `is_sign_negative` on
     /// a NaN might produce an unexpected or non-portable result. See the [specification
     /// of NaN bit patterns](f32#nan-bit-patterns) for more info. Use `self.signum() == -1.0`
-    /// if you need fully portable behavior (will return NaN for all NaNs).
+    /// if you need fully portable behavior (evaluates to `false` for all NaNs).
     ///
     /// ```
     /// let f = 7.0f32;
@@ -1699,11 +1699,11 @@ impl f32 {
     /// assert_eq!(2.0f32.clamp_magnitude(3.0), 2.0);
     /// assert_eq!((-2.0f32).clamp_magnitude(3.0), -2.0);
     /// ```
-    #[must_use = "this returns the clamped value and does not modify the original"]
-    #[unstable(feature = "clamp_magnitude", issue = "148519")]
     #[inline]
+    #[unstable(feature = "clamp_magnitude", issue = "148519")]
+    #[must_use = "method returns a new number and does not mutate the original value"]
     #[expect(clippy::neg_cmp_op_on_partial_ord, reason = "NaN is also invalid")]
-    pub fn clamp_magnitude(self, limit: f32) -> f32 {
+    pub const fn clamp_magnitude(self, limit: f32) -> f32 {
         assert!(limit >= 0.0, "limit must be non-negative and not NaN");
         let limit = limit.abs(); // Canonicalises -0.0 to 0.0
         self.clamp(-limit, limit)
@@ -1880,6 +1880,47 @@ impl f32 {
         intrinsics::frem_algebraic(self, rhs)
     }
 
+    /// Computes `(self * a) + b` with nondeterministic rounding.
+    ///
+    /// This is similar to [`mul_add`], but the intermediate result may be
+    /// rounded differently depending on the implementation. The operation is
+    /// either executed as a single fused multiply-add instruction, or as
+    /// separate multiply and add instructions.
+    ///
+    /// The choice of which one is used is unspecified and non-deterministic:
+    /// it may vary by target, optimization level, and surrounding code, and
+    /// even two invocations of this operation with the same inputs may
+    /// produce different results.
+    ///
+    /// # Precision
+    ///
+    /// The result of this operation is not guaranteed: it is either the result
+    /// of [`mul_add`] (one rounding of the infinite-precision result) or of
+    /// `self * a + b` (two roundings, with an intermediate rounding of the
+    /// product).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(float_mul_add_relaxed)]
+    ///
+    /// // When the fused and unfused operations round differently, either
+    /// // result may be returned:
+    /// // - 5.2154064e-10 is the fused result (one rounding)
+    /// // - 9.313226e-10 is the unfused result (two roundings)
+    /// let r = 0.1_f32.mul_add_relaxed(0.1_f32, -0.01_f32);
+    /// assert!(r == 5.2154064e-10 || r == 9.313226e-10);
+    /// ```
+    ///
+    /// [`mul_add`]: ../std/primitive.f32.html#method.mul_add
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[doc(alias = "fmuladd")]
+    #[unstable(feature = "float_mul_add_relaxed", issue = "151770")]
+    #[inline]
+    pub const fn mul_add_relaxed(self, a: f32, b: f32) -> f32 {
+        intrinsics::fmuladd(self, a, b)
+    }
+
     /// Returns `self` if the value is not NaN, otherwise returns `replacement`
     /// if `self` is NaN.
     ///
@@ -1940,7 +1981,7 @@ pub mod math {
     #[unstable(feature = "core_float_math", issue = "137578")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn floor(x: f32) -> f32 {
-        intrinsics::floorf32(x)
+        intrinsics::floor(x)
     }
 
     /// Experimental version of `ceil` in `core`. See [`f32::ceil`] for details.
@@ -1968,7 +2009,7 @@ pub mod math {
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "core_float_math", issue = "137578")]
     pub const fn ceil(x: f32) -> f32 {
-        intrinsics::ceilf32(x)
+        intrinsics::ceil(x)
     }
 
     /// Experimental version of `round` in `core`. See [`f32::round`] for details.
@@ -2001,7 +2042,7 @@ pub mod math {
     #[unstable(feature = "core_float_math", issue = "137578")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn round(x: f32) -> f32 {
-        intrinsics::roundf32(x)
+        intrinsics::round(x)
     }
 
     /// Experimental version of `round_ties_even` in `core`. See [`f32::round_ties_even`] for
@@ -2033,7 +2074,7 @@ pub mod math {
     #[unstable(feature = "core_float_math", issue = "137578")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn round_ties_even(x: f32) -> f32 {
-        intrinsics::round_ties_even_f32(x)
+        intrinsics::round_ties_even(x)
     }
 
     /// Experimental version of `trunc` in `core`. See [`f32::trunc`] for details.
@@ -2063,7 +2104,7 @@ pub mod math {
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "core_float_math", issue = "137578")]
     pub const fn trunc(x: f32) -> f32 {
-        intrinsics::truncf32(x)
+        intrinsics::trunc(x)
     }
 
     /// Experimental version of `fract` in `core`. See [`f32::fract`] for details.
@@ -2138,7 +2179,7 @@ pub mod math {
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "core_float_math", issue = "137578")]
     pub const fn mul_add(x: f32, y: f32, z: f32) -> f32 {
-        intrinsics::fmaf32(x, y, z)
+        intrinsics::fma(x, y, z)
     }
 
     /// Experimental version of `div_euclid` in `core`. See [`f32::div_euclid`] for details.
@@ -2229,7 +2270,7 @@ pub mod math {
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "core_float_math", issue = "137578")]
     pub fn powi(x: f32, n: i32) -> f32 {
-        intrinsics::powif32(x, n)
+        intrinsics::powi(x, n)
     }
 
     /// Experimental version of `sqrt` in `core`. See [`f32::sqrt`] for details.
@@ -2259,7 +2300,7 @@ pub mod math {
     #[unstable(feature = "core_float_math", issue = "137578")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn sqrt(x: f32) -> f32 {
-        intrinsics::sqrtf32(x)
+        intrinsics::sqrt(x)
     }
 
     /// Experimental version of `abs_sub` in `core`. See [`f32::abs_sub`] for details.

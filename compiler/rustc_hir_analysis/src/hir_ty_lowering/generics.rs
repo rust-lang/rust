@@ -68,9 +68,9 @@ fn generic_arg_mismatch_err(
         ) => match path.res {
             Res::Err => {
                 add_braces_suggestion(arg, &mut err);
-                return err
-                    .with_primary_message("unresolved item provided when a constant was expected")
-                    .emit_err();
+                err.primary_message("unresolved item provided when a constant was expected");
+                // A resolve error will already have been emitted pointing at this.
+                return err.delay_as_bug();
             }
             Res::Def(DefKind::TyParam, src_def_id) => {
                 if let Some(param_local_id) = param.def_id.as_local() {
@@ -451,8 +451,11 @@ pub(crate) fn check_generic_arg_count(
         .iter()
         .filter(|param| matches!(param.kind, ty::GenericParamDefKind::Type { synthetic: true, .. }))
         .count();
+    // arg position const params are supplied through call arguments, so they
+    // cannot be explicitly specified via turbofish.
+    let arg_const_param_count = gen_params.own_arg_pos_consts().count();
     let named_type_param_count = param_counts.types - has_self as usize - synth_type_param_count;
-    let named_const_param_count = param_counts.consts;
+    let named_const_param_count = param_counts.consts - arg_const_param_count;
     let infer_lifetimes =
         (gen_pos != GenericArgPosition::Type || seg.infer_args) && !gen_args.has_lifetime_args();
 
@@ -630,7 +633,7 @@ pub(crate) fn check_generic_arg_count(
         let expected_min = if seg.infer_args {
             0
         } else {
-            param_counts.consts + named_type_param_count
+            named_const_param_count + named_type_param_count
                 - default_counts.types
                 - default_counts.consts
         };

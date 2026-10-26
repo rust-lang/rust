@@ -72,7 +72,8 @@ cargo bless
 For example, this is necessary if you fix a typo in an error message of a lint,
 or if you modify a test file to add a test case.
 
-> _Note:_ This command may update more files than you intended. In that case
+> [!NOTE]
+> This command may update more files than you intended. In that case
 > only commit the files you wanted to update.
 
 [UI test]: https://rustc-dev-guide.rust-lang.org/tests/adding.html#ui-test-walkthrough
@@ -103,7 +104,7 @@ cargo dev dogfood
 
 More about [intellij] command usage and reasons.
 
-[intellij]: https://github.com/rust-lang/rust-clippy/blob/master/CONTRIBUTING.md#rustrover
+[intellij]: https://github.com/rust-lang/rust-clippy/blob/HEAD/CONTRIBUTING.md#rustrover
 
 ## lintcheck
 
@@ -115,7 +116,7 @@ are no false positives and that the suggestions are valid.
 
 Refer to the tools [README] for more details.
 
-[README]: https://github.com/rust-lang/rust-clippy/blob/master/lintcheck/README.md
+[README]: https://github.com/rust-lang/rust-clippy/blob/HEAD/lintcheck/README.md
 
 ## On PRs
 

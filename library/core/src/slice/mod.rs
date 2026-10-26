@@ -2523,7 +2523,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_split_once)]
     /// let s = [1, 2, 3, 2, 4];
     /// assert_eq!(s.split_once(|&x| x == 2), Some((
     ///     &[1][..],
@@ -2531,7 +2530,7 @@ impl<T> [T] {
     /// )));
     /// assert_eq!(s.split_once(|&x| x == 0), None);
     /// ```
-    #[unstable(feature = "slice_split_once", issue = "112811")]
+    #[stable(feature = "slice_split_once", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub fn split_once<F>(&self, pred: F) -> Option<(&[T], &[T])>
     where
@@ -2552,7 +2551,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_split_once)]
     /// let s = [1, 2, 3, 2, 4];
     /// assert_eq!(s.rsplit_once(|&x| x == 2), Some((
     ///     &[1, 2, 3][..],
@@ -2560,7 +2558,7 @@ impl<T> [T] {
     /// )));
     /// assert_eq!(s.rsplit_once(|&x| x == 0), None);
     /// ```
-    #[unstable(feature = "slice_split_once", issue = "112811")]
+    #[stable(feature = "slice_split_once", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub fn rsplit_once<F>(&self, pred: F) -> Option<(&[T], &[T])>
     where
@@ -2801,7 +2799,7 @@ impl<T> [T] {
     /// assert_eq!(b"hello".trim_prefix(prefix.as_bytes()), b"llo".as_ref());
     /// ```
     #[must_use = "returns the subslice without modifying the original"]
-    #[stable(feature = "trim_prefix_suffix", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "trim_prefix_suffix", since = "1.100.0")]
     pub fn trim_prefix<P: SlicePattern<Item = T> + ?Sized>(&self, prefix: &P) -> &[T]
     where
         T: PartialEq,
@@ -2839,7 +2837,7 @@ impl<T> [T] {
     /// assert_eq!(v.trim_suffix(&[50, 30]), &[10, 40, 30][..]);
     /// ```
     #[must_use = "returns the subslice without modifying the original"]
-    #[stable(feature = "trim_prefix_suffix", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "trim_prefix_suffix", since = "1.100.0")]
     pub fn trim_suffix<P: SlicePattern<Item = T> + ?Sized>(&self, suffix: &P) -> &[T]
     where
         T: PartialEq,
@@ -5662,7 +5660,7 @@ const impl<T> Default for &mut [T] {
     }
 }
 
-#[unstable(feature = "slice_pattern", reason = "stopgap trait for slice patterns", issue = "56345")]
+#[unstable(feature = "slice_pattern", issue = "none", reason = "stopgap trait for slice patterns")]
 /// Patterns in slices - currently, only used by `strip_prefix` and `strip_suffix`.  At a future
 /// point, we hope to generalise `core::str::Pattern` (which at the time of writing is limited to
 /// `str`) to slices, and then this trait will be replaced or abolished.

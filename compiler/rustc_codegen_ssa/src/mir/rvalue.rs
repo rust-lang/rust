@@ -5,7 +5,6 @@ use rustc_abi::{self as abi, BackendRepr, FIRST_VARIANT};
 use rustc_index::IndexVec;
 use rustc_middle::mir;
 use rustc_middle::ty::adjustment::PointerCoercion;
-use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Mutability, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
@@ -834,8 +833,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     Err(super::place::UninhabitedVariantError) => {
                         // Like codegen_set_discr we use a sound abort, but could
                         // potentially `unreachable` or just return the poison for
-                        // more optimizability, if that turns out to be helpful.
-                        bx.abort();
+                        // optimizability, if that turns out to be helpful.
+                        bx.abort_immediate();
                         let val = OperandValue::poison(bx, layout);
                         OperandRef { val, layout, move_annotation: None }
                     }

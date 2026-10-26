@@ -1,55 +1,53 @@
 #![allow(nonstandard_style)]
 #![allow(unsafe_op_in_unsafe_fn)]
-// miri has some special hacks here that make things unused.
-#![cfg_attr(miri, allow(unused))]
 
 #[cfg(test)]
 mod tests;
 
+// Import the file operations under consistent names.
+cfg_select! {
+    not(any(
+        all(target_os = "linux", not(target_env = "musl")),
+        target_os = "android",
+        target_os = "hurd",
+        target_os = "l4re",
+    )) => {
+        use libc::{
+            dirent as dirent64, fstat as fstat64, ftruncate as ftruncate64, lseek as lseek64,
+            lstat as lstat64, off_t as off64_t, open as open64, stat as stat64,
+        };
+    }
+    target_os = "android" => {
+        // Android's `stat`, `dirent`, and related functions are always 64-bit LFS compatible, and
+        // `open` already implies `O_LARGEFILE`, so all those don't need to follow Linux.
+        // However, we still need off64_t, ftruncate64, and lseek64.
+        use libc::{
+            dirent as dirent64, fstat as fstat64, ftruncate64, lseek64, lstat as lstat64, off64_t,
+            open as open64, stat as stat64,
+        };
+    }
+    target_os = "l4re" => {
+        use libc::{
+            dirent64, fstat as fstat64, ftruncate as ftruncate64, lseek as lseek64,
+            lstat as lstat64, off_t as off64_t, open as open64, stat as stat64,
+        };
+    }
+    _ => {
+        use libc::{dirent64, fstat64, ftruncate64, lseek64, lstat64, off64_t, open64, stat64};
+    }
+}
+
 #[cfg(all(target_os = "linux", target_env = "gnu"))]
 use libc::c_char;
-#[cfg(any(
-    all(target_os = "linux", not(target_env = "musl")),
-    target_os = "android",
-    target_os = "fuchsia",
-    target_os = "hurd",
-    target_os = "illumos",
-    target_vendor = "apple",
-))]
-use libc::dirfd;
-#[cfg(any(target_os = "fuchsia", target_os = "illumos", target_vendor = "apple"))]
-use libc::fstatat as fstatat64;
-#[cfg(any(all(target_os = "linux", not(target_env = "musl")), target_os = "hurd"))]
-use libc::fstatat64;
 use libc::{c_int, mode_t};
-#[cfg(target_os = "android")]
-use libc::{
-    dirent as dirent64, fstat as fstat64, fstatat as fstatat64, ftruncate64, lseek64,
-    lstat as lstat64, off64_t, open as open64, stat as stat64,
-};
-#[cfg(not(any(
-    all(target_os = "linux", not(target_env = "musl")),
-    target_os = "android",
-    target_os = "hurd",
-    target_os = "l4re",
-)))]
-use libc::{
-    dirent as dirent64, fstat as fstat64, ftruncate as ftruncate64, lseek as lseek64,
-    lstat as lstat64, off_t as off64_t, open as open64, stat as stat64,
-};
-#[cfg(target_os = "l4re")]
-use libc::{
-    dirent64, fstat as fstat64, ftruncate as ftruncate64, lseek as lseek64, lstat as lstat64,
-    off_t as off64_t, open as open64, stat as stat64,
-};
-#[cfg(any(all(target_os = "linux", not(target_env = "musl")), target_os = "hurd"))]
-use libc::{dirent64, fstat64, ftruncate64, lseek64, lstat64, off64_t, open64, stat64};
 
 use crate::ffi::{CStr, OsStr, OsString};
 use crate::fmt::{self, Write as _};
 use crate::fs::TryLockError;
 use crate::io::{self, BorrowedCursor, Error, IoSlice, IoSliceMut, SeekFrom};
 use crate::os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd};
+#[cfg(not(target_os = "wasi"))]
+pub use crate::os::unix::fs::dirs::{ExtraHomeDirs, ExtraMediaDirs};
 #[cfg(target_family = "unix")]
 use crate::os::unix::prelude::*;
 #[cfg(target_os = "wasi")]
@@ -58,9 +56,11 @@ use crate::path::{Path, PathBuf};
 use crate::sync::Arc;
 use crate::sys::fd::FileDesc;
 pub use crate::sys::fs::common::exists;
+#[cfg(target_os = "wasi")]
+pub use crate::sys::fs::common::{ExtraHomeDirs, ExtraMediaDirs};
 use crate::sys::helpers::run_path_with_cstr;
 use crate::sys::time::SystemTime;
-#[cfg(all(target_os = "linux", target_env = "gnu"))]
+#[cfg(any(target_os = "linux", target_os = "android"))]
 use crate::sys::weak::syscall;
 #[cfg(target_os = "android")]
 use crate::sys::weak::weak;
@@ -787,6 +787,39 @@ impl fmt::Debug for FilePermissions {
     }
 }
 
+impl ReadDir {
+    pub fn dir(&self) -> io::Result<Dir> {
+        let mut options = OpenOptions::new();
+        options.read(true);
+
+        cfg_select! {
+            // Some targets don't have `dirfd`. Open `Dir` based on path.
+            any(
+                target_os = "redox",
+                target_os = "espidf",
+                target_os = "horizon",
+                target_os = "vita",
+                target_os = "nto",
+                target_os = "qnx",
+                target_os = "vxworks",
+                target_os = "l4re",
+            ) => Dir::open(&self.inner.root, &options),
+            // Use `dirfd` where possible.
+            _ => {
+                let fd = unsafe { libc::dirfd(self.inner.dirp.0) };
+                // Make this FD into a directory handle. We don't actually drop it,
+                // so having an `OwnedFd` is fine.
+                let dir_handle =
+                    mem::ManuallyDrop::new(dir::Dir(unsafe { OwnedFd::from_raw_fd(fd) }));
+                // We don't want to expose `fd` or even the underlying file description
+                // as the directory stream has state attached to it. So we open a completely
+                // new file description based on this one.
+                dir_handle.open_dir(Path::new("."), &options)
+            }
+        }
+    }
+}
+
 impl fmt::Debug for ReadDir {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // This will only be called from std::fs::ReadDir, which will add a "ReadDir()" frame.
@@ -977,17 +1010,14 @@ impl Drop for DirStream {
     fn drop(&mut self) {
         // dirfd isn't supported everywhere
         #[cfg(not(any(
-            miri,
             target_os = "redox",
             target_os = "nto",
             target_os = "qnx",
             target_os = "vita",
-            target_os = "hurd",
             target_os = "espidf",
             target_os = "horizon",
             target_os = "vxworks",
             target_os = "rtems",
-            target_os = "nuttx",
         )))]
         {
             let fd = unsafe { libc::dirfd(self.0) };
@@ -1016,89 +1046,60 @@ impl DirEntry {
         self.file_name_os_str().to_os_string()
     }
 
-    #[cfg(all(
-        any(
-            all(target_os = "linux", not(target_env = "musl")),
-            target_os = "android",
-            target_os = "fuchsia",
-            target_os = "hurd",
-            target_os = "illumos",
-            target_vendor = "apple",
-        ),
-        not(miri) // no dirfd on Miri
-    ))]
     pub fn metadata(&self) -> io::Result<FileAttr> {
-        let fd = cvt(unsafe { dirfd(self.dir.dirp.0) })?;
-        let name = self.name.as_ptr();
+        cfg_select! {
+            // Use directory handle where possible
+            not(any(
+                target_os = "redox",
+                target_os = "nto",
+                target_os = "qnx",
+                target_os = "vita",
+                target_os = "espidf",
+                target_os = "horizon",
+                target_os = "vxworks",
+                target_os = "rtems",
+            )) => {
+                let fd = cvt(unsafe { libc::dirfd(self.dir.dirp.0) })?;
 
-        cfg_has_statx! {
-            if let Some(ret) = unsafe { try_statx(
-                fd,
-                name,
-                libc::AT_SYMLINK_NOFOLLOW | libc::AT_STATX_SYNC_AS_STAT,
-                libc::STATX_BASIC_STATS | libc::STATX_BTIME,
-            ) } {
-                return ret;
+                // Make this FD into a directory handle. We don't actually drop it,
+                // so having an `OwnedFd` is fine.
+                let dir_handle =
+                    mem::ManuallyDrop::new(dir::Dir(unsafe { OwnedFd::from_raw_fd(fd) }));
+
+                dir_handle.metadata_c(&self.name, /* symlink_nofollow */ true)
             }
-        }
 
-        let mut stat: stat64 = unsafe { mem::zeroed() };
-        cvt(unsafe { fstatat64(fd, name, &mut stat, libc::AT_SYMLINK_NOFOLLOW) })?;
-        Ok(FileAttr::from_stat64(stat))
+            // Fallback based on path
+            _ => run_path_with_cstr(&self.path(), &lstat),
+        }
     }
 
-    #[cfg(any(
-        not(any(
-            all(target_os = "linux", not(target_env = "musl")),
-            target_os = "android",
-            target_os = "fuchsia",
-            target_os = "hurd",
+    pub fn file_type(&self) -> io::Result<FileType> {
+        // Use `entry.d_type` if available.
+        #[cfg(not(any(
+            target_os = "solaris",
             target_os = "illumos",
-            target_vendor = "apple",
-        )),
-        miri // no dirfd on Miri
-    ))]
-    pub fn metadata(&self) -> io::Result<FileAttr> {
-        run_path_with_cstr(&self.path(), &lstat)
-    }
-
-    #[cfg(any(
-        target_os = "solaris",
-        target_os = "illumos",
-        target_os = "haiku",
-        target_os = "vxworks",
-        target_os = "aix",
-        target_os = "nto",
-        target_os = "qnx",
-        target_os = "vita",
-        target_os = "l4re",
-    ))]
-    pub fn file_type(&self) -> io::Result<FileType> {
-        self.metadata().map(|m| m.file_type())
-    }
-
-    #[cfg(not(any(
-        target_os = "solaris",
-        target_os = "illumos",
-        target_os = "haiku",
-        target_os = "vxworks",
-        target_os = "aix",
-        target_os = "nto",
-        target_os = "qnx",
-        target_os = "vita",
-        target_os = "l4re",
-    )))]
-    pub fn file_type(&self) -> io::Result<FileType> {
+            target_os = "haiku",
+            target_os = "vxworks",
+            target_os = "aix",
+            target_os = "nto",
+            target_os = "qnx",
+            target_os = "vita",
+            target_os = "l4re",
+        )))]
         match self.entry.d_type {
-            libc::DT_CHR => Ok(FileType { mode: libc::S_IFCHR }),
-            libc::DT_FIFO => Ok(FileType { mode: libc::S_IFIFO }),
-            libc::DT_LNK => Ok(FileType { mode: libc::S_IFLNK }),
-            libc::DT_REG => Ok(FileType { mode: libc::S_IFREG }),
-            libc::DT_SOCK => Ok(FileType { mode: libc::S_IFSOCK }),
-            libc::DT_DIR => Ok(FileType { mode: libc::S_IFDIR }),
-            libc::DT_BLK => Ok(FileType { mode: libc::S_IFBLK }),
-            _ => self.metadata().map(|m| m.file_type()),
+            libc::DT_CHR => return Ok(FileType { mode: libc::S_IFCHR }),
+            libc::DT_FIFO => return Ok(FileType { mode: libc::S_IFIFO }),
+            libc::DT_LNK => return Ok(FileType { mode: libc::S_IFLNK }),
+            libc::DT_REG => return Ok(FileType { mode: libc::S_IFREG }),
+            libc::DT_SOCK => return Ok(FileType { mode: libc::S_IFSOCK }),
+            libc::DT_DIR => return Ok(FileType { mode: libc::S_IFDIR }),
+            libc::DT_BLK => return Ok(FileType { mode: libc::S_IFBLK }),
+            _ => {}
         }
+
+        // Fall back to loading the metadata.
+        self.metadata().map(|m| m.file_type())
     }
 
     pub fn ino(&self) -> u64 {
@@ -1332,6 +1333,7 @@ impl File {
                 target_os = "cygwin",
                 target_os = "illumos",
                 target_os = "aix",
+                target_os = "haiku",
                 target_os = "android",
                 target_os = "redox",
                 target_vendor = "apple",
@@ -1355,6 +1357,7 @@ impl File {
                 target_os = "cygwin",
                 target_os = "illumos",
                 target_os = "aix",
+                target_os = "haiku",
                 target_os = "android",
                 target_os = "redox",
                 target_vendor = "apple",
@@ -1378,6 +1381,7 @@ impl File {
                 target_os = "cygwin",
                 target_os = "illumos",
                 target_os = "aix",
+                target_os = "haiku",
                 target_os = "android",
                 target_os = "redox",
                 target_vendor = "apple",
@@ -1413,6 +1417,7 @@ impl File {
                 target_os = "cygwin",
                 target_os = "illumos",
                 target_os = "aix",
+                target_os = "haiku",
                 target_os = "android",
                 target_os = "redox",
                 target_vendor = "apple",
@@ -1448,6 +1453,7 @@ impl File {
                 target_os = "cygwin",
                 target_os = "illumos",
                 target_os = "aix",
+                target_os = "haiku",
                 target_os = "android",
                 target_os = "redox",
                 target_vendor = "apple",
@@ -1885,6 +1891,59 @@ pub fn rename(old: &CStr, new: &CStr) -> io::Result<()> {
     cvt(unsafe { libc::rename(old.as_ptr(), new.as_ptr()) }).map(|_| ())
 }
 
+#[cfg(any(target_os = "linux", target_os = "android"))]
+pub fn rename_noreplace(old: &CStr, new: &CStr) -> io::Result<()> {
+    syscall!(
+        fn renameat2(
+            olddirfd: c_int,
+            oldpath: *const libc::c_char,
+            newdirfd: c_int,
+            newpath: *const libc::c_char,
+            flags: libc::c_uint,
+        ) -> c_int;
+    );
+
+    // `RENAME_NOREPLACE` is `c_uint` on linux and `c_int` on Android, so casting is needed here.
+    let flags = libc::RENAME_NOREPLACE as libc::c_uint;
+    let res = cvt(unsafe {
+        renameat2(libc::AT_FDCWD, old.as_ptr(), libc::AT_FDCWD, new.as_ptr(), flags)
+    });
+
+    match res {
+        Ok(_) => Ok(()),
+        Err(err) => match err.raw_os_error() {
+            // The kernel predates `renameat2`.
+            Some(libc::ENOSYS) => link_then_unlink(old, new),
+            // The filesystem does not support `RENAME_NOREPLACE`.
+            // `EINVAL` also covers misuse, so report it unchanged unless the fallback found `new`.
+            Some(libc::EINVAL) => match link_then_unlink(old, new) {
+                Err(fallback) if fallback.raw_os_error() != Some(libc::EEXIST) => Err(err),
+                res => res,
+            },
+            _ => Err(err),
+        },
+    }
+}
+
+#[cfg(target_vendor = "apple")]
+pub fn rename_noreplace(old: &CStr, new: &CStr) -> io::Result<()> {
+    let res = cvt(unsafe { libc::renamex_np(old.as_ptr(), new.as_ptr(), libc::RENAME_EXCL) });
+    match res {
+        Ok(_) => Ok(()),
+        Err(err) => match err.raw_os_error() {
+            // The filesystem does not support `RENAME_EXCL`.
+            // Unlike Linux, Darwin keeps `EINVAL` for misuse only.
+            Some(libc::ENOTSUP) => link_then_unlink(old, new),
+            _ => Err(err),
+        },
+    }
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "android", target_vendor = "apple")))]
+pub fn rename_noreplace(old: &CStr, new: &CStr) -> io::Result<()> {
+    link_then_unlink(old, new)
+}
+
 pub fn set_perm(p: &CStr, perm: FilePermissions) -> io::Result<()> {
     cvt_r(|| unsafe { libc::chmod(p.as_ptr(), perm.mode) }).map(|_| ())
 }
@@ -1896,22 +1955,11 @@ pub fn set_perm_nofollow(_p: &CStr, _perm: FilePermissions) -> io::Result<()> {
     Err(crate::io::ErrorKind::Unsupported.into())
 }
 
-#[cfg(target_os = "android")]
-pub fn set_perm_nofollow(_p: &CStr, _perm: FilePermissions) -> io::Result<()> {
-    // Currently Android seems to be having inconsistent behavior with fchmodat
-    // with `AT_SYMLINK_NOFOLLOW` or openat with `O_NOFOLLOW` + fchmod.
-    // See this issue here mentioning inconsistent behavior on fchmodat:
-    // https://github.com/android/ndk/issues/1258
-    // On the arm-android CI job, using fchmodat with `AT_SYMLINK_NOFOLLOW` +
-    // fallback behavior on a symlink sets the target file's permissions,
-    // which is incorrect behavior.
-    Err(crate::io::ErrorKind::Unsupported.into())
-}
-
-#[cfg(not(any(target_os = "android", target_os = "vxworks")))]
+#[cfg(not(target_os = "vxworks"))]
 pub fn set_perm_nofollow(p: &CStr, perm: FilePermissions) -> io::Result<()> {
+    /// Helper function for fallback open with `O_NOFOLLOW` + `fchmod` behavior. This will
+    /// successfully change the permissions of non-symlinks and fail when there's a symlink.
     #[inline]
-    /// Helper function for fallback open with `O_NOFOLLOW` + `fchmod` behavior
     fn open_and_set_permissions(p: &CStr, perm: FilePermissions) -> io::Result<()> {
         use crate::fs::{OpenOptions, Permissions};
 
@@ -1926,6 +1974,7 @@ pub fn set_perm_nofollow(p: &CStr, perm: FilePermissions) -> io::Result<()> {
             use crate::os::unix::fs::OpenOptionsExt;
             #[cfg(target_os = "wasi")]
             use crate::os::wasi::fs::OpenOptionsExt;
+
             options.custom_flags(libc::O_NOFOLLOW);
         }
 
@@ -1940,7 +1989,8 @@ pub fn set_perm_nofollow(p: &CStr, perm: FilePermissions) -> io::Result<()> {
     #[allow(unused)]
     let mut res: Result<(), core::io::Error> = Err(crate::io::ErrorKind::Unsupported.into());
 
-    // These platforms support `fchmodat`, so utilize this syscall over `open` + `fchmod`
+    // These platforms support `fchmodat`, so utilize this syscall over `open` + `fchmod`.
+    // We can *not* use this on Android due to <https://github.com/android/ndk/issues/1258>.
     #[cfg(any(
         target_os = "linux",
         target_os = "macos",
@@ -2092,6 +2142,11 @@ pub fn canonicalize(path: &CStr) -> io::Result<PathBuf> {
         libc::free(r as *mut _);
         buf
     })))
+}
+
+fn link_then_unlink(old: &CStr, new: &CStr) -> io::Result<()> {
+    link(old, new)?;
+    unlink(old)
 }
 
 fn open_from(from: &Path) -> io::Result<(crate::fs::File, crate::fs::Metadata)> {
@@ -2524,6 +2579,9 @@ mod remove_dir_impl {
         }
     }
 
+    /// `parent_fd` being `None` indicates that this is the root where we start.
+    /// In that case, `path` will only be deleted if it is a directory.
+    /// When it is `Some`, this will delete anything.
     fn remove_dir_all_recursive(parent_fd: Option<RawFd>, path: &CStr) -> io::Result<()> {
         // try opening as directory
         let fd = match openat_nofollow_dironly(parent_fd, path) {
@@ -2535,7 +2593,8 @@ mod remove_dir_impl {
                     Some(parent_fd) => {
                         cvt(unsafe { unlinkat(parent_fd, path.as_ptr(), 0) }).map(drop)
                     }
-                    // ...unless this was supposed to be the deletion root directory
+                    // ...unless this was supposed to be the deletion root directory. We don't want
+                    // to delete a file at the root, so we just forward the error.
                     None => Err(err),
                 };
             }
@@ -2594,6 +2653,9 @@ mod remove_dir_impl {
         // into symlinks.
         let attr = lstat(p)?;
         if attr.file_type().is_symlink() {
+            // This would error in `remove_dir_all_recursive` as it is not a directory.
+            // We promise to delete directory symlinks, so use `unlink` to do that. On Unix, we
+            // inadvertently also delete symlinks to files.
             super::unlink(p)
         } else {
             remove_dir_all_recursive(None, p)

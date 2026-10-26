@@ -28,7 +28,7 @@ macro_rules! define_stable_id_collections {
 }
 
 pub mod default {
-    use super::{FxBuildHasher, FxHashMap, FxHashSet};
+    use super::{FxBuildHasher, FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 
     // FIXME: These two functions will become unnecessary after
     // <https://github.com/rust-lang/rustc-hash/pull/63> lands and we start using the corresponding
@@ -39,5 +39,13 @@ pub mod default {
 
     pub const fn fx_hash_set<V>() -> FxHashSet<V> {
         FxHashSet::with_hasher(FxBuildHasher)
+    }
+
+    pub const fn fx_index_map<K, V>() -> FxIndexMap<K, V> {
+        FxIndexMap::with_hasher(FxBuildHasher)
+    }
+
+    pub const fn fx_index_set<V>() -> FxIndexSet<V> {
+        FxIndexSet::with_hasher(FxBuildHasher)
     }
 }

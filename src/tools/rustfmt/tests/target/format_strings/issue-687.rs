@@ -1,4 +1,4 @@
-// rustfmt-format_strings: true
+//@ rustfmt-format_strings: true
 
 fn foo() -> &'static str {
     let sql = "ATTACH DATABASE ':memory:' AS my_attached;

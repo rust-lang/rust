@@ -8,13 +8,13 @@
     ),
     feature(abort_unwind)
 )]
+#![feature(array_try_from_fn)]
 #![feature(rustc_private)]
 #![feature(dirfd)]
 #![feature(f16)]
 #![feature(float_gamma)]
 #![feature(float_erf)]
 #![feature(map_try_insert)]
-#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(try_blocks)]
 #![feature(io_error_more)]
 #![feature(io_error_inprogress)]
@@ -105,10 +105,10 @@ pub mod sym;
 pub use rustc_const_eval::interpret::*;
 // Resolve ambiguity.
 #[doc(no_inline)]
-pub use rustc_const_eval::interpret::{self, AllocMap, Provenance as _};
-pub use rustc_data_structures::either::Either;
-pub use rustc_log::tracing::{self, info, trace, warn};
-pub use rustc_span::{bug, span_bug};
+pub use rustc_const_eval::interpret::{self, Provenance as _};
+use rustc_data_structures::either::Either;
+use rustc_log::tracing::{self, info, trace, warn};
+use rustc_span::{bug, span_bug};
 
 #[cfg(all(feature = "native-lib", unix))]
 pub mod native_lib {
@@ -143,10 +143,12 @@ pub use crate::concurrency::data_race::{
 };
 pub use crate::concurrency::init_once::{EvalContextExt as _, InitOnceRef};
 pub use crate::concurrency::scheduler::EvalContextExt as _;
-pub use crate::concurrency::sync::{CondvarRef, EvalContextExt as _, MutexRef, RwLockRef};
+pub use crate::concurrency::sync::{
+    CondvarRef, EvalContextExt as _, MutexRef, RwLockRef, SemaphoreRef,
+};
 pub use crate::concurrency::thread::{
     BlockReason, DynUnblockCallback, EvalContextExt as _, StackEmptyCallback, ThreadId,
-    ThreadManager, TlsAllocAction, UnblockKind,
+    ThreadManager, UnblockKind,
 };
 pub use crate::concurrency::{GenmcConfig, GenmcCtx, run_genmc_mode};
 pub use crate::data_structures::dedup_range_map::DedupRangeMap;

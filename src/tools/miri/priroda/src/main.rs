@@ -1,6 +1,7 @@
 #![feature(rustc_private)]
 
 extern crate rustc_abi;
+extern crate rustc_data_structures;
 extern crate rustc_driver;
 extern crate rustc_hir;
 extern crate rustc_interface;
@@ -41,7 +42,7 @@ fn main() {
         args.push(find_sysroot());
     }
     // FIXME: handle the same `-Z` flags that Miri accepts.
-    rustc_driver::run_compiler(&args, &mut PrirodaCompilerCalls::new(frontend));
+    rustc_driver::compiler_entrypoint(&args, &mut PrirodaCompilerCalls::new(frontend));
 }
 
 /// Frontend selected by Priroda-specific CLI flags.

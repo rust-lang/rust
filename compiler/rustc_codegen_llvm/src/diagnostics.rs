@@ -73,7 +73,7 @@ pub(crate) struct RustOffloadComponentMissing {
 
 #[derive(Diagnostic)]
 #[diag(
-    "using the offload feature requires -Z offload=<Device or Host=/absolute/path/to/device.bin>"
+    "using the offload feature requires -Z offload=<Device or Host=/absolute/path/to/<crate>.bc>"
 )]
 pub(crate) struct OffloadWithoutEnable;
 
@@ -82,24 +82,20 @@ pub(crate) struct OffloadWithoutEnable;
 pub(crate) struct OffloadWithoutFatLTO;
 
 #[derive(Diagnostic)]
-#[diag("using the `-Z offload=Host=/absolute/path/to/device.bin` flag requires an absolute path")]
+#[diag("using the `-Z offload=Host=/absolute/path/to/<crate>.bc` flag requires an absolute path")]
 pub(crate) struct OffloadWithoutAbsPath;
 
 #[derive(Diagnostic)]
 #[diag(
-    "using the `-Z offload=Host=/absolute/path/to/device.bin` flag must point to a `device.bin` file"
+    "using the `-Z offload=Host=/absolute/path/to/<crate>.bc` flag must point to a .bc file produced by the device compilation (--emit=llvm-bc)"
 )]
 pub(crate) struct OffloadWrongFileName;
 
 #[derive(Diagnostic)]
 #[diag(
-    "the given path/file to `device.bin` does not exist. Did you forget to run the device compilation first?"
+    "the given path/file to `<crate>.bc` does not exist. Did you forget to run the device compilation first?"
 )]
 pub(crate) struct OffloadNonexistingPath;
-
-#[derive(Diagnostic)]
-#[diag("call to BundleImages failed, `device.bin` was not created")]
-pub(crate) struct OffloadBundleImagesFailed;
 
 #[derive(Diagnostic)]
 #[diag("call to WrapImages failed, device image was not wrapped into the host module")]

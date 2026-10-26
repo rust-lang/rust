@@ -8,6 +8,11 @@
 // provided by `compiler-builtins` on unsupported platforms.
 #[allow(dead_code)] // This list reflects what is available rather than what is consumed.
 unsafe extern "C" {
+    pub(crate) safe fn __powidf2(a: f64, b: i32) -> f64;
+    pub(crate) safe fn __powisf2(a: f32, b: i32) -> f32;
+    // PowerPC uses `kf` rather than `tf` for `f128`.
+    #[cfg_attr(any(target_arch = "powerpc", target_arch = "powerpc64"), link_name = "__powikf2")]
+    pub(crate) safe fn __powitf2(a: f128, b: i32) -> f128;
     pub(crate) safe fn cbrt(x: f64) -> f64;
     pub(crate) safe fn cbrtf(n: f32) -> f32;
     pub(crate) safe fn ceil(x: f64) -> f64;
@@ -74,6 +79,27 @@ unsafe extern "C" {
     pub(crate) safe fn truncf(x: f32) -> f32;
     pub(crate) safe fn truncf128(x: f128) -> f128;
     pub(crate) safe fn truncf16(x: f16) -> f16;
+}
+
+/// These symbols are always provided by compiler-builtins.
+pub(crate) mod complex {
+    use crate::num::Complex;
+
+    unsafe extern "C" {
+        pub(crate) safe fn __mulsc3(a: f32, b: f32, c: f32, d: f32) -> Complex<f32>;
+        pub(crate) safe fn __muldc3(a: f64, b: f64, c: f64, d: f64) -> Complex<f64>;
+
+        pub(crate) safe fn __divsc3(a: f32, b: f32, c: f32, d: f32) -> Complex<f32>;
+        pub(crate) safe fn __divdc3(a: f64, b: f64, c: f64, d: f64) -> Complex<f64>;
+    }
+
+    unsafe extern "Rust" {
+        pub(crate) safe fn __rust_mulhc3(a: f16, b: f16, c: f16, d: f16) -> Complex<f16>;
+        pub(crate) safe fn __rust_multc3(a: f128, b: f128, c: f128, d: f128) -> Complex<f128>;
+
+        pub(crate) safe fn __rust_divhc3(a: f16, b: f16, c: f16, d: f16) -> Complex<f16>;
+        pub(crate) safe fn __rust_divtc3(a: f128, b: f128, c: f128, d: f128) -> Complex<f128>;
+    }
 }
 
 /// These symbols will be available when `std` is available, and on many no-std platforms. However,

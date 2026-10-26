@@ -222,6 +222,7 @@ pub(crate) struct TestProps {
 }
 
 mod directives {
+    pub(crate) const ACT_AS_STABLE: &str = "act-as-stable";
     pub(crate) const ERROR_PATTERN: &str = "error-pattern";
     pub(crate) const REGEX_ERROR_PATTERN: &str = "regex-error-pattern";
     pub(crate) const COMPILE_FLAGS: &str = "compile-flags";
@@ -405,11 +406,10 @@ impl TestProps {
             }
         }
 
-        if let Some(edition) = self.edition.or(config.edition) {
-            // The edition is added at the start, since flags from //@compile-flags must be passed
-            // to rustc last.
-            self.compile_flags.insert(0, format!("--edition={edition}"));
-        }
+        let edition = self.edition.or(config.edition).unwrap_or(Edition::Year(2015));
+        // The edition is added at the start, since flags from //@compile-flags must be passed
+        // to rustc last.
+        self.compile_flags.insert(0, format!("--edition={edition}"));
     }
 
     fn update_pass_fail_mode(&mut self, ln: &DirectiveLine<'_>, config: &Config) {

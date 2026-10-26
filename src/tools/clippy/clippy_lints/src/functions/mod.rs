@@ -195,6 +195,30 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for `#[must_use]` attributes without a reason.
+    ///
+    /// ### Why restrict this?
+    /// A reason explains why the return value must be used. Without it,
+    /// users only see a generic "unused must-use value" message which is less helpful.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// #[must_use]
+    /// fn compute() -> i32 { 42 }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// #[must_use = "computation is expensive"]
+    /// fn compute() -> i32 { 42 }
+    /// ```
+    #[clippy::version = "1.99.0"]
+    pub MUST_USE_WITHOUT_REASON,
+    restriction,
+    "`#[must_use]` attribute without a reason"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks for public functions that dereference raw pointer
     /// arguments but are not marked `unsafe`.
     ///
@@ -486,6 +510,7 @@ impl_lint_pass!(Functions => [
     MISNAMED_GETTERS,
     MUST_USE_CANDIDATE,
     MUST_USE_UNIT,
+    MUST_USE_WITHOUT_REASON,
     NOT_UNSAFE_PTR_ARG_DEREF,
     REF_OPTION,
     RENAMED_FUNCTION_PARAMS,

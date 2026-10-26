@@ -312,7 +312,7 @@ pub use once::OnceCell;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[repr(transparent)]
 #[rustc_pub_transparent]
-pub struct Cell<T: ?Sized> {
+pub struct Cell<#[rustc_assert_variance(invariant)] T: ?Sized> {
     value: UnsafeCell<T>,
 }
 
@@ -849,7 +849,7 @@ impl<T: CloneFromCell> Cell<T> {
 /// See the [module-level documentation](self) for more.
 #[rustc_diagnostic_item = "RefCell"]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct RefCell<T: ?Sized> {
+pub struct RefCell<#[rustc_assert_variance(invariant)] T: ?Sized> {
     borrow: Cell<BorrowCounter>,
     // Stores the location of the earliest currently active borrow.
     // This gets updated whenever we go from having zero borrows
@@ -2308,7 +2308,7 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[repr(transparent)]
 #[rustc_pub_transparent]
-pub struct UnsafeCell<T: ?Sized> {
+pub struct UnsafeCell<#[rustc_assert_variance(invariant)] T: ?Sized> {
     value: T,
 }
 
@@ -2376,8 +2376,8 @@ impl<T> UnsafeCell<T> {
     /// assert_eq!(old, 5);
     /// ```
     #[inline]
-    #[stable(feature = "unsafe_cell_access", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "unsafe_cell_access", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "unsafe_cell_access", since = "1.100.0")]
+    #[rustc_const_stable(feature = "unsafe_cell_access", since = "1.100.0")]
     #[rustc_should_not_be_called_on_const_items]
     pub const unsafe fn replace(&self, value: T) -> T {
         // SAFETY: pointer comes from `&self` so naturally satisfies invariants.
@@ -2518,8 +2518,8 @@ impl<T: ?Sized> UnsafeCell<T> {
     /// assert_eq!(val, &5);
     /// ```
     #[inline]
-    #[stable(feature = "unsafe_cell_access", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "unsafe_cell_access", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "unsafe_cell_access", since = "1.100.0")]
+    #[rustc_const_stable(feature = "unsafe_cell_access", since = "1.100.0")]
     #[rustc_should_not_be_called_on_const_items]
     pub const unsafe fn as_ref_unchecked(&self) -> &T {
         // SAFETY: pointer comes from `&self` so naturally satisfies ptr-to-ref invariants.
@@ -2546,8 +2546,8 @@ impl<T: ?Sized> UnsafeCell<T> {
     /// assert_eq!(uc.into_inner(), 6);
     /// ```
     #[inline]
-    #[stable(feature = "unsafe_cell_access", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "unsafe_cell_access", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "unsafe_cell_access", since = "1.100.0")]
+    #[rustc_const_stable(feature = "unsafe_cell_access", since = "1.100.0")]
     #[allow(clippy::mut_from_ref)]
     #[rustc_should_not_be_called_on_const_items]
     pub const unsafe fn as_mut_unchecked(&self) -> &mut T {
@@ -2603,7 +2603,7 @@ impl<T: DispatchFromDyn<U>, U> DispatchFromDyn<UnsafeCell<U>> for UnsafeCell<T> 
 #[repr(transparent)]
 #[rustc_diagnostic_item = "SyncUnsafeCell"]
 #[rustc_pub_transparent]
-pub struct SyncUnsafeCell<T: ?Sized> {
+pub struct SyncUnsafeCell<#[rustc_assert_variance(invariant)] T: ?Sized> {
     value: UnsafeCell<T>,
 }
 

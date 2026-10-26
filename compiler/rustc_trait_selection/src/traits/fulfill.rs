@@ -11,7 +11,6 @@ use rustc_infer::traits::{
     TraitEngine, TraitErrors,
 };
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
-use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{
     self, Binder, Const, DelayedSet, GenericArgsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
@@ -176,12 +175,14 @@ where
             TypingMode::Typeck { defining_opaque_types_and_generators } => {
                 defining_opaque_types_and_generators
             }
-            TypingMode::Coherence
-            | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: _ }
+            TypingMode::PostTypeckThroughBorrowck { defining_opaque_types: _ }
             | TypingMode::PostBorrowck { defined_opaque_types: _ }
             | TypingMode::Reflection
             | TypingMode::PostAnalysis
             | TypingMode::Codegen => return Default::default(),
+            TypingMode::Coherence => {
+                unreachable!("old solver coherence")
+            }
         };
 
         if stalled_coroutines.is_empty() {
@@ -872,8 +873,9 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
         trait_obligation: PolyTraitObligation<'tcx>,
         stalled_on: &mut Vec<TyOrConstInferVar>,
     ) -> ProcessResult<PendingPredicateObligation<'tcx>, FulfillmentErrorCode<'tcx>> {
+        debug_assert!(!self.selcx.typing_mode().is_coherence(), "old solver coherence");
         let infcx = self.selcx.infcx;
-        if obligation.predicate.is_global() && !self.selcx.typing_mode().is_coherence() {
+        if obligation.predicate.is_global() {
             // no type variables present, can use evaluation for better caching.
             // FIXME: consider caching errors too.
             if infcx.predicate_must_hold_considering_regions(obligation) {
@@ -925,9 +927,11 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
         project_obligation: PolyProjectionObligation<'tcx>,
         stalled_on: &mut Vec<TyOrConstInferVar>,
     ) -> ProcessResult<PendingPredicateObligation<'tcx>, FulfillmentErrorCode<'tcx>> {
+        debug_assert!(!self.selcx.typing_mode().is_coherence(), "old solver coherence");
+
         let tcx = self.selcx.tcx();
         let infcx = self.selcx.infcx;
-        if obligation.predicate.is_global() && !self.selcx.typing_mode().is_coherence() {
+        if obligation.predicate.is_global() {
             // no type variables present, can use evaluation for better caching.
             // FIXME: consider caching errors too.
             if infcx.predicate_must_hold_considering_regions(obligation) {

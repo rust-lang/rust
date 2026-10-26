@@ -463,14 +463,14 @@ impl<'a> Parser<'a> {
     /// 2. tuple type
     /// 3. bare trait object type where the first trait bound is parenthesized
     fn parse_paren_start_ty(&mut self, lo: Span, allow_plus: AllowPlus) -> PResult<'a, TyKind> {
-        let mut trailing_plus = false;
-        let (ts, trailing) = self.parse_paren_comma_seq(|p| {
+        let mut inside_has_trailing_plus = false;
+        let (ts, trailing_comma) = self.parse_paren_comma_seq(|p| {
             let ty = p.parse_ty()?;
-            trailing_plus = p.prev_token == TokenKind::Plus;
+            inside_has_trailing_plus = p.prev_token == TokenKind::Plus;
             Ok(ty)
         })?;
 
-        if ts.len() == 1 && matches!(trailing, Trailing::No) {
+        if ts.len() == 1 && matches!(trailing_comma, Trailing::No) {
             let ty = ts.into_iter().next().unwrap();
 
             // Let's check if we actually have a bare trait object type where the first trait bound
@@ -478,11 +478,12 @@ impl<'a> Parser<'a> {
             // what's contained between the parentheses resembles a *BareTraitBound*.
             //
             // For context, looking at bounds in general (see *Bound*), only trait bounds are
-            // allowed to be wrapped in parentheses, not however lifetime and use bounds.
-            let maybe_bounds = allow_plus == AllowPlus::Yes && self.token.is_like_plus();
+            // allowed to be wrapped in parentheses, not however outlives and use bounds.
+            let outside_has_eligible_trailing_plus =
+                allow_plus == AllowPlus::Yes && self.token.is_like_plus();
             match ty.kind {
                 // `"(" TypePath ")" "+"`
-                TyKind::Path(None, path) if maybe_bounds => self
+                TyKind::Path(None, path) if outside_has_eligible_trailing_plus => self
                     .finish_parsing_bare_trait_object_ty(
                         ThinVec::new(),
                         path,
@@ -490,18 +491,18 @@ impl<'a> Parser<'a> {
                         true,
                         ast::Parens::Yes,
                     ),
-                // `"(" BareTraitBound\TypePath | UseBound ")" "+"`
+                // `"(" BareTraitBound\TypePath ")" "+"`
                 //
-                // * FIXME: As alluded to above, only trait bounds are meant to allow parens.
-                //   Arguably, it's an accident that we're permitting *UseBound*s and thus types
-                //   like `(use<>)+`. Might need a T-lang FCP to change this.
-                // * We're checking `!trailing_plus` to prevent us from accepting code like
-                //   `(T+)+` or `('a+)+`.
-                // * While we could be looking at `('a)+` which we don't want to accept, we
-                //   know that the `parse_ty` above has already emitted an error since the
-                //   lifetime isn't immediately followed by a `+`.
+                // We actually accept outlives bounds here, too, purely to reduce diagnostic output
+                // for ill-formed code like `('a)+`: We know for a fact that the `parse_ty` above
+                // has already emitted an error for the inner `'a` as it's not followed by `+`.
+                // This way we indirectly suppress unhelpful follow-up diagnostics like E0178
+                // ("bad `+` in type") and E0224 ("no trait bound in trait object type").
                 TyKind::TraitObject(mut bounds, TraitObjectSyntax::None)
-                    if maybe_bounds && bounds.len() == 1 && !trailing_plus =>
+                    if outside_has_eligible_trailing_plus
+                        && !inside_has_trailing_plus
+                        && let [ast::GenericBound::Trait(_) | ast::GenericBound::Outlives(_)] =
+                            bounds.as_slice() =>
                 {
                     self.eat_plus();
                     bounds.append(&mut self.parse_generic_bounds()?);
@@ -545,6 +546,17 @@ impl<'a> Parser<'a> {
         ))
     }
 
+    pub(super) fn parse_ref_ty_no_leading_ampersand(&mut self) -> (Mutability, Option<Box<Ty>>) {
+        let mutbl = self.parse_mutability();
+        match self.parse_ty_no_plus() {
+            Ok(ty) => (mutbl, Some(ty)),
+            Err(err) => {
+                err.cancel();
+                (mutbl, None)
+            }
+        }
+    }
+
     fn maybe_recover_ref_ty_no_leading_ampersand<'cx>(
         &mut self,
         lt: Lifetime,
@@ -555,9 +567,12 @@ impl<'a> Parser<'a> {
             return Err(err);
         }
         let snapshot = self.create_snapshot_for_diagnostic();
-        let mutbl = self.parse_mutability();
-        match self.parse_ty_no_plus() {
-            Ok(ty) => {
+        match self.parse_ref_ty_no_leading_ampersand() {
+            (_, None) => {
+                self.restore_snapshot(snapshot);
+                Err(err)
+            }
+            (mutbl, Some(ty)) => {
                 err.span_suggestion_verbose(
                     lo.shrink_to_lo(),
                     "you might have meant to write a reference type here",
@@ -566,11 +581,6 @@ impl<'a> Parser<'a> {
                 );
                 err.emit();
                 Ok(TyKind::Ref(Some(lt), ty, mutbl))
-            }
-            Err(diag) => {
-                diag.cancel();
-                self.restore_snapshot(snapshot);
-                Err(err)
             }
         }
     }
@@ -877,8 +887,10 @@ impl<'a> Parser<'a> {
             req_name: |_, _| false,
             context: FnContext::FunctionPtrType,
             req_body: false,
+            allow_const_params: false,
         };
         let decl = self.parse_fn_decl(&mode, AllowPlus::No, recover_return_sign)?;
+        let decl = Box::new(decl);
 
         let decl_span = span_start.to(self.prev_token.span);
         Ok(TyKind::FnPtr(Box::new(FnPtrTy {
@@ -1440,8 +1452,12 @@ impl<'a> Parser<'a> {
         self.bump();
         let args_lo = self.token.span;
         let snapshot = self.create_snapshot_for_diagnostic();
-        let mode =
-            FnParseMode { req_name: |_, _| false, context: FnContext::Free, req_body: false };
+        let mode = FnParseMode {
+            req_name: |_, _| false,
+            context: FnContext::Free,
+            req_body: false,
+            allow_const_params: false,
+        };
         match self.parse_fn_decl(&mode, AllowPlus::No, RecoverReturnSign::OnlyFatArrow) {
             Ok(decl) => {
                 self.dcx().emit_err(ExpectedFnPathFoundFnKeyword { fn_token_span });
@@ -1538,8 +1554,12 @@ impl<'a> Parser<'a> {
         };
         // Parse `(T, U) -> R`.
         let inputs_lo = self.token.span;
-        let mode =
-            FnParseMode { req_name: |_, _| false, context: FnContext::Free, req_body: false };
+        let mode = FnParseMode {
+            req_name: |_, _| false,
+            context: FnContext::Free,
+            req_body: false,
+            allow_const_params: false,
+        };
         let inputs = match self.parse_fn_params(&mode) {
             Ok(params) => params,
             Err(err) => {

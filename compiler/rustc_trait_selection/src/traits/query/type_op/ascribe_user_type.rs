@@ -9,6 +9,7 @@ use rustc_middle::ty::{
 use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument};
 
+use crate::infer::InferCtxt;
 use crate::infer::canonical::{CanonicalQueryInput, CanonicalQueryResponse};
 use crate::traits::ObligationCtxt;
 
@@ -16,7 +17,7 @@ impl<'tcx> super::QueryTypeOp<'tcx> for AscribeUserType<'tcx> {
     type QueryResponse = ();
 
     fn try_fast_path(
-        _tcx: TyCtxt<'tcx>,
+        _infcx: &InferCtxt<'tcx>,
         _key: &ParamEnvAnd<'tcx, Self>,
     ) -> Option<Self::QueryResponse> {
         None
@@ -109,7 +110,7 @@ fn relate_mir_and_user_args<'tcx>(
         let cause = ObligationCause::new(
             span,
             CRATE_DEF_ID,
-            ObligationCauseCode::AscribeUserTypeProvePredicate(clause_span),
+            ObligationCauseCode::AscribeUserTypeProvePredicate(clause_span, def_id),
         );
         let instantiated_clause = ocx.normalize(&cause, param_env, instantiated_clause);
 

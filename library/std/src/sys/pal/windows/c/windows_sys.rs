@@ -71,12 +71,14 @@ windows_link::link!("kernel32.dll" "system" fn InitOnceBeginInitialize(lpinitonc
 windows_link::link!("kernel32.dll" "system" fn InitOnceComplete(lpinitonce : LPINIT_ONCE, dwflags : u32, lpcontext : *const core::ffi::c_void) -> BOOL);
 windows_link::link!("kernel32.dll" "system" fn InitializeProcThreadAttributeList(lpattributelist : *mut _PROC_THREAD_ATTRIBUTE_LIST, dwattributecount : u32, dwflags : u32, lpsize : *mut usize) -> BOOL);
 windows_link::link!("kernel32.dll" "system" fn IsThreadAFiber() -> BOOL);
+windows_link::link!("kernel32.dll" "system" fn LoadLibraryExA(lplibfilename : PCSTR, hfile : HANDLE, dwflags : u32) -> HMODULE);
 windows_link::link!("kernel32.dll" "system" fn LocalFree(hmem : HLOCAL) -> HLOCAL);
 windows_link::link!("kernel32.dll" "system" fn LockFileEx(hfile : HANDLE, dwflags : u32, dwreserved : u32, nnumberofbytestolocklow : u32, nnumberofbytestolockhigh : u32, lpoverlapped : *mut OVERLAPPED) -> BOOL);
 windows_link::link!("kernel32.dll" "system" fn MoveFileExW(lpexistingfilename : PCWSTR, lpnewfilename : PCWSTR, dwflags : u32) -> BOOL);
 windows_link::link!("kernel32.dll" "system" fn MultiByteToWideChar(codepage : u32, dwflags : u32, lpmultibytestr : *const i8, cbmultibyte : i32, lpwidecharstr : PWSTR, cchwidechar : i32) -> i32);
 windows_link::link!("ntdll.dll" "system" fn NtCreateFile(filehandle : *mut HANDLE, desiredaccess : ACCESS_MASK, objectattributes : *const OBJECT_ATTRIBUTES, iostatusblock : *mut IO_STATUS_BLOCK, allocationsize : *const i64, fileattributes : u32, shareaccess : u32, createdisposition : u32, createoptions : u32, eabuffer : *const core::ffi::c_void, ealength : u32) -> NTSTATUS);
 windows_link::link!("ntdll.dll" "system" fn NtOpenFile(filehandle : *mut HANDLE, desiredaccess : ACCESS_MASK, objectattributes : *const OBJECT_ATTRIBUTES, iostatusblock : *mut IO_STATUS_BLOCK, shareaccess : u32, openoptions : u32) -> NTSTATUS);
+windows_link::link!("ntdll.dll" "system" fn NtQueryVolumeInformationFile(filehandle : HANDLE, iostatusblock : *mut IO_STATUS_BLOCK, fsinformation : *mut core::ffi::c_void, length : u32, fsinformationclass : FS_INFORMATION_CLASS) -> NTSTATUS);
 windows_link::link!("ntdll.dll" "system" fn NtReadFile(filehandle : HANDLE, event : HANDLE, apcroutine : PIO_APC_ROUTINE, apccontext : *const core::ffi::c_void, iostatusblock : *mut IO_STATUS_BLOCK, buffer : *mut core::ffi::c_void, length : u32, byteoffset : *const i64, key : *const u32) -> NTSTATUS);
 windows_link::link!("ntdll.dll" "system" fn NtSetInformationFile(filehandle : HANDLE, iostatusblock : *mut IO_STATUS_BLOCK, fileinformation : *const core::ffi::c_void, length : u32, fileinformationclass : FILE_INFORMATION_CLASS) -> NTSTATUS);
 windows_link::link!("ntdll.dll" "system" fn NtWriteFile(filehandle : HANDLE, event : HANDLE, apcroutine : PIO_APC_ROUTINE, apccontext : *const core::ffi::c_void, iostatusblock : *mut IO_STATUS_BLOCK, buffer : *const core::ffi::c_void, length : u32, byteoffset : *const i64, key : *const u32) -> NTSTATUS);
@@ -2433,6 +2435,8 @@ impl Default for EXCEPTION_RECORD {
 }
 pub const EXCEPTION_STACK_OVERFLOW: i32 = -1073741571;
 pub const EXTENDED_STARTUPINFO_PRESENT: i32 = 524288;
+pub const E_FAIL: HRESULT = 0x80004005_u32 as _;
+pub const E_INVALIDARG: HRESULT = 0x80070057_u32 as _;
 pub const E_NOTIMPL: HRESULT = 0x80004001_u32 as _;
 pub const ExceptionCollidedUnwind: EXCEPTION_DISPOSITION = 3;
 pub const ExceptionContinueExecution: EXCEPTION_DISPOSITION = 0;
@@ -2541,6 +2545,12 @@ pub const FILE_FLAG_RANDOM_ACCESS: i32 = 268435456;
 pub const FILE_FLAG_SEQUENTIAL_SCAN: i32 = 134217728;
 pub const FILE_FLAG_SESSION_AWARE: i32 = 8388608;
 pub const FILE_FLAG_WRITE_THROUGH: u32 = 2147483648;
+#[repr(C)]
+#[derive(Clone, Copy, Default)]
+pub struct FILE_FS_DEVICE_INFORMATION {
+    pub DeviceType: u32,
+    pub Characteristics: u32,
+}
 pub const FILE_GENERIC_EXECUTE: i32 = 1179808;
 pub const FILE_GENERIC_READ: i32 = 1179785;
 pub const FILE_GENERIC_WRITE: i32 = 1179926;
@@ -2675,7 +2685,6 @@ pub const FILE_SYNCHRONOUS_IO_NONALERT: i32 = 32;
 pub const FILE_TRAVERSE: i32 = 32;
 pub const FILE_TYPE_CHAR: i32 = 2;
 pub const FILE_TYPE_DISK: i32 = 1;
-pub const FILE_TYPE_PIPE: i32 = 3;
 pub const FILE_TYPE_REMOTE: i32 = 32768;
 pub const FILE_TYPE_UNKNOWN: i32 = 0;
 pub const FILE_WRITE_ATTRIBUTES: i32 = 256;
@@ -2715,6 +2724,7 @@ pub const FORMAT_MESSAGE_IGNORE_INSERTS: i32 = 512;
 pub const FRS_ERR_SYSVOL_POPULATE_TIMEOUT: i32 = 8014;
 pub const FSCTL_GET_REPARSE_POINT: i32 = 589992;
 pub const FSCTL_SET_REPARSE_POINT: i32 = 589988;
+pub type FS_INFORMATION_CLASS = i32;
 pub const FileAlignmentInfo: FILE_INFO_BY_HANDLE_CLASS = 17;
 pub const FileAllocationInfo: FILE_INFO_BY_HANDLE_CLASS = 5;
 pub const FileAttributeTagInfo: FILE_INFO_BY_HANDLE_CLASS = 9;
@@ -2724,6 +2734,7 @@ pub const FileCompressionInfo: FILE_INFO_BY_HANDLE_CLASS = 8;
 pub const FileDispositionInfo: FILE_INFO_BY_HANDLE_CLASS = 4;
 pub const FileDispositionInfoEx: FILE_INFO_BY_HANDLE_CLASS = 21;
 pub const FileEndOfFileInfo: FILE_INFO_BY_HANDLE_CLASS = 6;
+pub const FileFsDeviceInformation: FS_INFORMATION_CLASS = 4;
 pub const FileFullDirectoryInfo: FILE_INFO_BY_HANDLE_CLASS = 14;
 pub const FileFullDirectoryRestartInfo: FILE_INFO_BY_HANDLE_CLASS = 15;
 pub const FileIdBothDirectoryInfo: FILE_INFO_BY_HANDLE_CLASS = 10;
@@ -2907,7 +2918,9 @@ impl Default for IPV6_MREQ {
         unsafe { core::mem::zeroed() }
     }
 }
+pub const IPV6_MULTICAST_HOPS: i32 = 10;
 pub const IPV6_MULTICAST_LOOP: i32 = 11;
+pub const IPV6_UNICAST_HOPS: i32 = 4;
 pub const IPV6_V6ONLY: i32 = 27;
 pub const IP_ADD_MEMBERSHIP: i32 = 12;
 pub const IP_DROP_MEMBERSHIP: i32 = 13;
@@ -2925,7 +2938,11 @@ impl Default for IP_MREQ {
 pub const IP_MULTICAST_LOOP: i32 = 11;
 pub const IP_MULTICAST_TTL: i32 = 10;
 pub const IP_TTL: i32 = 4;
+pub const KF_FLAG_DONT_VERIFY: KNOWN_FOLDER_FLAG = 16384;
+pub type KNOWNFOLDERID = GUID;
+pub type KNOWN_FOLDER_FLAG = u32;
 pub type LINGER = linger;
+pub const LOAD_LIBRARY_SEARCH_SYSTEM32: i32 = 2048;
 pub const LOCKFILE_EXCLUSIVE_LOCK: i32 = 2;
 pub const LOCKFILE_FAIL_IMMEDIATELY: i32 = 1;
 pub type LPBYTE = *mut u8;
@@ -2970,7 +2987,6 @@ pub struct M128A {
 pub const MAXIMUM_REPARSE_DATA_BUFFER_SIZE: i32 = 16384;
 pub const MAX_PATH: i32 = 260;
 pub const MB_COMPOSITE: i32 = 2;
-pub const MB_ERR_INVALID_CHARS: i32 = 8;
 pub const MB_PRECOMPOSED: i32 = 1;
 pub const MB_USEGLYPHCHARS: i32 = 4;
 pub const MOVEFILE_COPY_ALLOWED: i32 = 2;
@@ -3295,6 +3311,7 @@ pub struct SYSTEM_INFO_0_0 {
     pub wProcessorArchitecture: u16,
     pub wReserved: u16,
 }
+pub const S_OK: HRESULT = 0x0_u32 as _;
 pub const TCP_NODELAY: i32 = 1;
 pub const TIMER_ALL_ACCESS: i32 = 2031619;
 pub const TIMER_MODIFY_STATE: i32 = 2;
@@ -3335,7 +3352,6 @@ pub const WAIT_FAILED: u32 = 4294967295;
 pub const WAIT_IO_COMPLETION: i32 = 192;
 pub const WAIT_OBJECT_0: i32 = 0;
 pub const WAIT_TIMEOUT: i32 = 258;
-pub const WC_ERR_INVALID_CHARS: i32 = 128;
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct WIN32_FIND_DATAW {

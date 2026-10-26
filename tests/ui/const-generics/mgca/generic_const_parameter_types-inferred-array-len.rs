@@ -1,6 +1,6 @@
 //@ check-pass
 
-#![feature(min_adt_const_params, gca_min_const_items, generic_const_parameter_types)]
+#![feature(min_adt_const_params, gca_adts, gca_min_const_items, generic_const_parameter_types)]
 
 use std::gca;
 

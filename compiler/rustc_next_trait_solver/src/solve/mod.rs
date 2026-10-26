@@ -22,8 +22,11 @@ mod trait_goals;
 
 use derive_where::derive_where;
 use rustc_type_ir::inherent::*;
+use rustc_type_ir::lang_items::SolverTraitLangItem;
 pub use rustc_type_ir::solve::*;
-use rustc_type_ir::{self as ty, Const, Interner, Region, TypeVisitableExt};
+use rustc_type_ir::transmute::Condition;
+use rustc_type_ir::{self as ty, Const, Interner, Region, TraitClause, TypeVisitableExt, Upcast};
+use thin_vec::{ThinVec, thin_vec};
 use tracing::instrument;
 
 pub use self::eval_ctxt::{
@@ -62,7 +65,7 @@ fn has_no_inference_or_external_constraints<I: Interner>(
         ref opaque_types,
         ref normalization_nested_goals,
     } = *response.value.external_constraints;
-    response.value.var_values.is_identity()
+    response.value.is_identity()
         && region_constraints.is_empty()
         && opaque_types.is_empty()
         && normalization_nested_goals.is_empty()
@@ -74,9 +77,37 @@ fn has_only_region_constraints<I: Interner>(response: ty::Canonical<I, Response<
         ref opaque_types,
         ref normalization_nested_goals,
     } = *response.value.external_constraints;
-    response.value.var_values.is_identity_modulo_regions()
+    response.value.is_identity_modulo_regions()
         && opaque_types.is_empty()
         && normalization_nested_goals.is_empty()
+}
+
+/// Whether two canonical responses are exactly equal except for their
+/// region constraints.
+fn equal_response_modulo_region_constraints<I: Interner>(
+    a: &CanonicalResponse<I>,
+    b: &CanonicalResponse<I>,
+) -> bool {
+    let CanonicalResponse {
+        max_universe: a_max_universe,
+        var_kinds: a_var_kinds,
+        value:
+            Response {
+                var_values: a_var_values,
+                certainty: a_certainty,
+                external_constraints: a_external_constraints,
+            },
+    } = a;
+
+    let ExternalConstraintsData { region_constraints: _, opaque_types, normalization_nested_goals } =
+        &**a_external_constraints;
+
+    a_max_universe == &b.max_universe
+        && a_var_kinds == &b.var_kinds
+        && a_var_values == &b.value.var_values
+        && a_certainty == &b.value.certainty
+        && opaque_types == &b.value.external_constraints.opaque_types
+        && normalization_nested_goals == &b.value.external_constraints.normalization_nested_goals
 }
 
 impl<'a, D, I> EvalCtxt<'a, D>
@@ -90,7 +121,7 @@ where
         goal: Goal<I, ty::OutlivesClause<I, I::Ty>>,
     ) -> QueryResultOrRerunNonErased<I> {
         let ty::OutlivesClause(ty, lt) = goal.predicate;
-        let ty = self.normalize(GoalSource::Misc, goal.param_env, ty::Unnormalized::new_wip(ty))?;
+        let ty = self.normalize(goal.param_env, ty::Unnormalized::new_wip(ty))?;
 
         // The normalized type can still contain non-rigid higher ranked aliases if their
         // normalization ends up with ambiguity. Or we have non-rigid aliases inside rigid ones.
@@ -258,14 +289,10 @@ where
 
         let ct_ty = match ct.kind() {
             ty::ConstKind::Infer(_) => {
-                return self
-                    .evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
-                    .map_err(Into::into);
+                return self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
             }
             ty::ConstKind::Error(_) => {
-                return self
-                    .evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                    .map_err(Into::into);
+                return self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
             }
             ty::ConstKind::Alias(ty::IsRigid::Yes, alias_const) => {
                 alias_const.type_of(self.cx()).skip_norm_wip()
@@ -287,7 +314,7 @@ where
         };
 
         self.eq(goal.param_env, ct_ty, ty)?;
-        self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes).map_err(Into::into)
+        self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
 }
 
@@ -318,13 +345,36 @@ where
             candidate.result.value.certainty == Certainty::Yes
                 && has_no_inference_or_external_constraints(candidate.result)
         });
-        if let Some((i, c)) = always_applicable {
-            return Some((c.result, MergeCandidateInfo::AlwaysApplicable(i)));
+
+        if let Some((i, candidate)) = always_applicable {
+            return Some((candidate.result, MergeCandidateInfo::AlwaysApplicable(i)));
         }
 
         let one: CanonicalResponse<I> = candidates[0].result;
-        if candidates[1..].iter().all(|candidate| candidate.result == one) {
-            return Some((one, MergeCandidateInfo::EqualResponse));
+
+        if candidates[1..]
+            .iter()
+            .all(|candidate| equal_response_modulo_region_constraints(&one, &candidate.result))
+        {
+            let region_constraints = &one.value.external_constraints.region_constraints;
+            if candidates[1..].iter().all(|candidate| {
+                &candidate.result.value.external_constraints.region_constraints
+                    == region_constraints
+            }) {
+                return Some((one, MergeCandidateInfo::EqualResponse));
+            }
+
+            // If candidates differ only in region constraints, their merged region
+            // constraints are an `Or` of their respective constraints. If one of them
+            // has no region constraints, the `Or` constraint evaluates to `true`.
+            //
+            // This is a special case of `-Zassumptions-on-binders` and should be
+            // replaced eventually.
+            if let Some(candidate) = candidates.iter().find(|candidate| {
+                candidate.result.value.external_constraints.region_constraints.is_empty()
+            }) {
+                return Some((candidate.result, MergeCandidateInfo::EqualResponse));
+            }
         }
 
         None
@@ -405,7 +455,7 @@ where
             );
             // We normalize the self type to be able to relate it with
             // types from candidates.
-            self.add_goal(GoalSource::TypeRelating, projection_goal)?;
+            self.add_goal(GoalSource::Normalization, projection_goal)?;
             self.try_evaluate_added_goals()?;
             Ok(self.deeply_resolve_ignoring_regions(normalized_term))
         } else {
@@ -439,4 +489,43 @@ pub struct GoalEvaluation<I: Interner> {
     /// If the [`Certainty`] was `Maybe`, then keep track of whether the goal has changed
     /// before rerunning it.
     pub stalled_on: Option<GoalStalledOn<I>>,
+}
+
+/// Flatten the `Condition` tree into a conjunction of predicates.
+#[instrument(level = "debug", skip(interner, predicate))]
+pub fn flatten_answer_tree<I: Interner>(
+    interner: I,
+    predicate: TraitClause<I>,
+    cond: Condition<Region<I>, I::Ty>,
+) -> ThinVec<I::Predicate> {
+    match cond {
+        // FIXME(bryangarza): Add separate `IfAny` case, instead of treating as `IfAll`
+        // Not possible until the trait solver supports disjunctions of obligations
+        Condition::IfAll(conds) | Condition::IfAny(conds) => conds
+            .into_iter()
+            .flat_map(|cond| flatten_answer_tree(interner, predicate, cond))
+            .collect(),
+        Condition::Immutable { ty } => {
+            let trait_ref = ty::TraitRef::new(
+                interner,
+                interner.require_trait_lang_item(SolverTraitLangItem::Freeze),
+                [I::GenericArg::from(ty)],
+            );
+            thin_vec![trait_ref.upcast(interner)]
+        }
+        Condition::Outlives { long, short } => {
+            let outlives = ty::OutlivesClause(long, short);
+            thin_vec![outlives.upcast(interner)]
+        }
+        Condition::Transmutable { src, dst } => {
+            let transmute_trait = predicate.def_id();
+            let assume = predicate.trait_ref.args.const_at(2);
+            let trait_ref = ty::TraitRef::new(
+                interner,
+                transmute_trait,
+                [I::GenericArg::from(dst), I::GenericArg::from(src), I::GenericArg::from(assume)],
+            );
+            thin_vec![trait_ref.upcast(interner)]
+        }
+    }
 }

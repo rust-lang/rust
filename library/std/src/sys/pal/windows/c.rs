@@ -20,6 +20,11 @@ pub type WCHAR = u16;
 
 pub const INVALID_HANDLE_VALUE: HANDLE = ::core::ptr::without_provenance_mut(-1i32 as _);
 
+#[cfg(not(target_vendor = "win7"))]
+pub const FILE_DEVICE_NAMED_PIPE: u32 = 0x00000011;
+#[cfg(not(target_vendor = "win7"))]
+pub const FILE_DEVICE_CONSOLE: u32 = 0x00000050;
+
 // https://learn.microsoft.com/en-us/cpp/c-runtime-library/exit-success-exit-failure?view=msvc-170
 pub const EXIT_SUCCESS: u32 = 0;
 pub const EXIT_FAILURE: u32 = 1;
@@ -144,15 +149,12 @@ pub const HANDLE_FLAG_INHERIT: u32 = cu(windows_sys::HANDLE_FLAG_INHERIT);
 pub const STACK_SIZE_PARAM_IS_A_RESERVATION: u32 =
     cu(windows_sys::STACK_SIZE_PARAM_IS_A_RESERVATION);
 
-// dwFlags -- WideCharToMultiByte
-pub const WC_ERR_INVALID_CHARS: u32 = cu(windows_sys::WC_ERR_INVALID_CHARS);
-
-// dwFlags -- MultiByteToWideChar
-pub const MB_ERR_INVALID_CHARS: u32 = cu(windows_sys::MB_ERR_INVALID_CHARS);
-
 // dwFlags -- CreateWaitableTimerExW
 pub const CREATE_WAITABLE_TIMER_HIGH_RESOLUTION: u32 =
     cu(windows_sys::CREATE_WAITABLE_TIMER_HIGH_RESOLUTION);
+
+// dwFlags --LoadLibraryExA
+pub const LOAD_LIBRARY_SEARCH_SYSTEM32: u32 = cu(windows_sys::LOAD_LIBRARY_SEARCH_SYSTEM32);
 
 // dwCreationDisposition -- CreateFile
 pub const CREATE_NEW: u32 = cu(windows_sys::CREATE_NEW);
@@ -185,9 +187,6 @@ pub const FILE_CURRENT: u32 = cu(windows_sys::FILE_CURRENT);
 pub const FSCTL_GET_REPARSE_POINT: u32 = cu(windows_sys::FSCTL_GET_REPARSE_POINT);
 pub const FSCTL_SET_REPARSE_POINT: u32 = cu(windows_sys::FSCTL_SET_REPARSE_POINT);
 
-// GetFileType return value (DWORD)
-pub const FILE_TYPE_PIPE: u32 = cu(windows_sys::FILE_TYPE_PIPE);
-
 // GetACP return value (UINT)
 pub const CP_UTF8: u32 = windows_sys::CP_UTF8.cast_unsigned();
 
@@ -196,6 +195,16 @@ pub const WAIT_OBJECT_0: u32 = windows_sys::WAIT_OBJECT_0.cast_unsigned();
 
 // LPPROGRESS_ROUTINE return value (DWORD)
 pub const PROGRESS_CONTINUE: u32 = cu(windows_sys::PROGRESS_CONTINUE);
+
+// KNOWNFOLDERIDs (GUID)
+pub const FOLDERID_Desktop: GUID = GUID::from_u128(0xb4bfcc3a_db2c_424c_b029_7fe99a87c641);
+pub const FOLDERID_Documents: GUID = GUID::from_u128(0xfdd39ad0_238f_46af_adb4_6c85480369c7);
+pub const FOLDERID_Downloads: GUID = GUID::from_u128(0x374de290_123f_4565_9164_39c4925e467b);
+pub const FOLDERID_LocalAppData: GUID = GUID::from_u128(0xf1b32785_6fba_4fcf_9d55_7b8e7f157091);
+pub const FOLDERID_Music: GUID = GUID::from_u128(0x4bd8d571_6d19_48d3_be97_422220080e43);
+pub const FOLDERID_Pictures: GUID = GUID::from_u128(0x33e28130_4e1e_4676_835a_98395c3bc3bb);
+pub const FOLDERID_RoamingAppData: GUID = GUID::from_u128(0x3eb685db_65f9_4cf6_a03a_e3ef65729f3d);
+pub const FOLDERID_Videos: GUID = GUID::from_u128(0x18989b1d_99b5_455b_841c_ab7c74e4ddfc);
 
 // Errors
 pub const ERROR_SUCCESS: u32 = cu(windows_sys::ERROR_SUCCESS);
@@ -278,6 +287,17 @@ pub const INIT_ONCE_STATIC_INIT: INIT_ONCE = INIT_ONCE { Ptr: ptr::null_mut() };
 // See: https://docs.microsoft.com/en-us/windows-hardware/drivers/kernel/using-ntstatus-values
 pub fn nt_success(status: NTSTATUS) -> bool {
     status >= 0
+}
+
+impl GUID {
+    pub const fn from_u128(uuid: u128) -> Self {
+        Self {
+            data1: (uuid >> 96) as u32,
+            data2: (uuid >> 80 & 0xffff) as u16,
+            data3: (uuid >> 64 & 0xffff) as u16,
+            data4: (uuid as u64).to_be_bytes(),
+        }
+    }
 }
 
 impl OBJECT_ATTRIBUTES {
@@ -449,6 +469,7 @@ cfg_select! {
     target_vendor = "uwp" => {
         windows_link::link_raw_dylib!("ntdll.dll" "system" fn NtCreateFile(filehandle : *mut HANDLE, desiredaccess : ACCESS_MASK, objectattributes : *const OBJECT_ATTRIBUTES, iostatusblock : *mut IO_STATUS_BLOCK, allocationsize : *const i64, fileattributes : u32, shareaccess : u32, createdisposition : u32, createoptions : u32, eabuffer : *const core::ffi::c_void, ealength : u32) -> NTSTATUS);
         windows_link::link_raw_dylib!("ntdll.dll" "system" fn NtOpenFile(filehandle : *mut HANDLE, desiredaccess : ACCESS_MASK, objectattributes : *const OBJECT_ATTRIBUTES, iostatusblock : *mut IO_STATUS_BLOCK, shareaccess : u32, openoptions : u32) -> NTSTATUS);
+        windows_link::link_raw_dylib!("ntdll.dll" "system" fn NtQueryVolumeInformationFile(filehandle : HANDLE, iostatusblock : *mut IO_STATUS_BLOCK, fsinformation : *mut core::ffi::c_void, length : u32, fsinformationclass : FS_INFORMATION_CLASS) -> NTSTATUS);
         windows_link::link_raw_dylib!("ntdll.dll" "system" fn NtReadFile(filehandle : HANDLE, event : HANDLE, apcroutine : PIO_APC_ROUTINE, apccontext : *const core::ffi::c_void, iostatusblock : *mut IO_STATUS_BLOCK, buffer : *mut core::ffi::c_void, length : u32, byteoffset : *const i64, key : *const u32) -> NTSTATUS);
         windows_link::link_raw_dylib!("ntdll.dll" "system" fn NtWriteFile(filehandle : HANDLE, event : HANDLE, apcroutine : PIO_APC_ROUTINE, apccontext : *const core::ffi::c_void, iostatusblock : *mut IO_STATUS_BLOCK, buffer : *const core::ffi::c_void, length : u32, byteoffset : *const i64, key : *const u32) -> NTSTATUS);
         windows_link::link_raw_dylib!("ntdll.dll" "system" fn RtlNtStatusToDosError(status : NTSTATUS) -> u32);
@@ -458,4 +479,25 @@ cfg_select! {
 
 unsafe extern "C" {
     pub fn atexit(cb: unsafe extern "C" fn()) -> c_int;
+}
+
+// Functions in DLLs that we want to lazily load
+compat_fn_with_fallback! {
+    // Avoid eagerly linking shell32.dll, which marks the loading application as graphical.
+    #[lazy]
+    pub static SHELL32: &CStr = c"shell32";
+
+    pub fn SHGetKnownFolderPath(rfid : *const KNOWNFOLDERID, dwflags : u32, htoken : HANDLE, ppszpath : *mut PWSTR) -> HRESULT {
+        unsafe { SetLastError(ERROR_CALL_NOT_IMPLEMENTED as u32); E_NOTIMPL }
+    }
+}
+
+compat_fn_with_fallback! {
+    // Only used with SHGetKnownFolderPath, so avoid eager load overhead.
+    #[lazy]
+    pub static OLE32: &CStr = c"ole32";
+
+    pub fn CoTaskMemFree(pv : *mut core::ffi::c_void) -> () {
+        // without OLE32 there's no COM alloc, so no-op COM free is fine
+    }
 }

@@ -409,7 +409,7 @@ pub(crate) struct SelfInConstGenericTy {
 
 #[derive(Diagnostic)]
 #[diag(
-    "{$is_gca ->
+    "{$is_gca_const_items ->
     [true] generic parameters in const blocks are not allowed; use a named `const` item instead
     *[false] generic parameters may not be used in const operations
 }"
@@ -423,7 +423,7 @@ pub(crate) struct ParamInNonTrivialAnonConst {
     pub(crate) param_kind: ParamKindInNonTrivialAnonConst,
     #[help("add `#![feature(generic_const_exprs)]` to allow generic const expressions")]
     pub(crate) help: bool,
-    pub(crate) is_gca: bool,
+    pub(crate) is_gca_const_items: bool,
     #[help(
         "consider factoring the expression into a `type const` item and use it as the const argument instead"
     )]
@@ -526,6 +526,20 @@ pub(crate) struct BindingInNeverPattern {
 }
 
 #[derive(Diagnostic)]
+#[diag("cannot use `{$ident}` in this move expression")]
+pub(crate) struct CannotUseInnerLocalInMoveExpr {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) ident: Ident,
+    #[label("`{$ident}` is defined here")]
+    pub(crate) binding_span: Span,
+    #[label("this expression is evaluated outside that scope")]
+    pub(crate) move_expr_span: Span,
+    #[label("`{$ident}` is defined within this scope")]
+    pub(crate) scope_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("duplicate definitions with name `{$name}`:", code = E0201)]
 pub(crate) struct TraitImplDuplicate {
     #[primary_span]
@@ -535,6 +549,10 @@ pub(crate) struct TraitImplDuplicate {
     pub(crate) old_span: Span,
     #[label("item in trait")]
     pub(crate) trait_item_span: Span,
+    #[context]
+    pub(crate) trait_span: Span,
+    #[context]
+    pub(crate) impl_span: Span,
     pub(crate) name: Ident,
 }
 
@@ -766,8 +784,11 @@ pub(crate) struct MaybeMissingMacroRulesName {
 }
 
 #[derive(Subdiagnostic)]
-#[help("have you added the `#[macro_use]` on the module/import?")]
-pub(crate) struct AddedMacroUse;
+#[help("you might be missing a `#[macro_use]` attribute on a `mod` module or `use` import")]
+pub(crate) struct AddedMacroUse {
+    #[primary_span]
+    pub(crate) span: MultiSpan,
+}
 
 #[derive(Subdiagnostic)]
 #[suggestion("consider adding a derive", code = "{suggestion}", applicability = "maybe-incorrect")]
@@ -1410,6 +1431,10 @@ pub(crate) struct TraitImplMismatch {
     pub(crate) trait_path: String,
     #[label("item in trait")]
     pub(crate) trait_item_span: Span,
+    #[context]
+    pub(crate) trait_span: Span,
+    #[context]
+    pub(crate) impl_span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -1464,6 +1489,14 @@ pub(crate) struct MacroIsPrivate {
 #[diag("unused macro definition: `{$name}`")]
 pub(crate) struct UnusedMacroDefinition {
     pub name: Symbol,
+    #[suggestion(
+        "consider annotating the enclosing module with `#[macro_use]`",
+        code = "#[macro_use]\n",
+        applicability = "machine-applicable"
+    )]
+    pub unannotated_mod: Option<Span>,
+    #[label("the macro is exported by its enclosing module")]
+    pub annotated_mod: Option<Span>,
 }
 
 #[derive(Diagnostic)]

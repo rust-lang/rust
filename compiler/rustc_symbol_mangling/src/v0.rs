@@ -14,7 +14,6 @@ use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
-use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::print::{Print, PrintError, Printer};
 use rustc_middle::ty::{
@@ -127,9 +126,18 @@ pub fn mangle_cgu<'tcx>(tcx: TyCtxt<'tcx>, krate: CrateNum, cgu_name: Either<u64
     std::mem::take(&mut p.out)
 }
 
+pub fn eh_personality_symbol<'tcx>(tcx: TyCtxt<'tcx>) -> String {
+    mangle_internal_symbol(tcx, "rust_eh_personality")
+}
+
 pub fn mangle_internal_symbol<'tcx>(tcx: TyCtxt<'tcx>, item_name: &str) -> String {
     match item_name {
-        // rust_eh_personality must not be renamed as LLVM hard-codes the name
+        // Some projects manually define rust_eh_personality as they use no_std on a target where
+        // libcore is compiled with panic=unwind and thus need rust_eh_personality to be present
+        // while it is only defined in libstd. These projects don't want to use unstable features
+        // and thus can't use a proper #[lang = "eh_personality"]
+        // FIXME mangle again once no_std on a target with std support doesn't need it or build-std
+        // is possible on stable for non-Cargo build systems.
         "rust_eh_personality" => return item_name.to_owned(),
         // Apple availability symbols need to not be mangled to be usable by
         // C/Objective-C code.

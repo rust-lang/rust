@@ -1,10 +1,10 @@
 #![feature(
     adt_const_params,
-    gca_min_const_items,
+    gca_adts,
     gca_macroless_args,
+    gca_min_const_items,
     unsized_const_params
 )]
-#![allow(incomplete_features)]
 
 use std::marker::ConstParamTy;
 

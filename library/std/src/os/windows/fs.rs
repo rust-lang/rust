@@ -11,6 +11,13 @@ use crate::sys::{AsInner, AsInnerMut, FromInner, IntoInner};
 use crate::time::SystemTime;
 use crate::{io, sys};
 
+mod dirs;
+
+#[unstable(feature = "fs_home_dirs", issue = "162082")]
+pub use dirs::HomeDirsExt;
+#[unstable(feature = "fs_media_dirs", issue = "162083")]
+pub use dirs::MediaDirsExt;
+
 /// Windows-specific extensions to [`fs::File`].
 #[stable(feature = "file_offset", since = "1.15.0")]
 pub trait FileExt {
@@ -62,9 +69,6 @@ pub trait FileExt {
     ///
     /// # Errors
     ///
-    /// If this function encounters an error of the kind
-    /// [`io::ErrorKind::Interrupted`] then the error is ignored and the operation
-    /// will continue.
     ///
     /// If this function encounters an "end of file" before completely filling
     /// the buffer, it returns an error of the kind [`io::ErrorKind::UnexpectedEof`].
@@ -106,7 +110,6 @@ pub trait FileExt {
                     buf = &mut buf[n..];
                     offset += n as u64;
                 }
-                Err(ref e) if e.is_interrupted() => {}
                 Err(e) => return Err(e),
             }
         }
@@ -150,6 +153,61 @@ pub trait FileExt {
     #[unstable(feature = "read_buf_at", issue = "140771")]
     fn seek_read_buf(&self, buf: BorrowedCursor<'_, u8>, offset: u64) -> io::Result<()> {
         io::default_read_buf(|b| self.seek_read(b, offset), buf)
+    }
+
+    /// Seeks to a given position and reads the exact number of bytes required to fill `buf`.
+    ///
+    /// This is equivalent to the [`seek_read_exact`](FileExt::seek_read_exact) method, except
+    /// that it is passed a [`BorrowedCursor`] rather than `&mut [u8]` to allow use with
+    /// uninitialized buffers. The new data will be appended to any existing contents of `buf`.
+    ///
+    /// Reading beyond the end of the file will always succeed without reading any bytes.
+    ///
+    /// # Examples
+    ///
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
+    /// #![feature(core_io_borrowed_buf)]
+    /// #![feature(seek_read_exact_seek_write_all)]
+    ///
+    /// use std::io;
+    /// use std::io::BorrowedBuf;
+    /// use std::fs::File;
+    /// use std::mem::MaybeUninit;
+    /// use std::os::windows::prelude::*;
+    ///
+    /// fn main() -> io::Result<()> {
+    ///     let mut file = File::open("pi.txt")?;
+    ///
+    ///     // Read some bytes starting from offset 2
+    ///     let mut buf: [MaybeUninit<u8>; 10] = [MaybeUninit::uninit(); 10];
+    ///     let mut buf = BorrowedBuf::from(buf.as_mut_slice());
+    ///     file.seek_read_buf_exact(buf.unfilled(), 2)?;
+    ///
+    ///     assert!(buf.filled().starts_with(b"1"));
+    ///
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "seek_read_exact_seek_write_all", issue = "162868")]
+    fn seek_read_buf_exact(
+        &self,
+        mut buf: BorrowedCursor<'_, u8>,
+        mut offset: u64,
+    ) -> io::Result<()> {
+        while buf.capacity() > 0 {
+            let prev_written = buf.written();
+            match self.seek_read_buf(buf.reborrow(), offset) {
+                Ok(()) => {}
+                Err(e) => return Err(e),
+            }
+            let n = buf.written() - prev_written;
+            offset += n as u64;
+            if n == 0 {
+                return Err(io::Error::READ_EXACT_EOF);
+            }
+        }
+        Ok(())
     }
 
     /// Seeks to a given position and writes a number of bytes.
@@ -201,8 +259,7 @@ pub trait FileExt {
     ///
     /// # Errors
     ///
-    /// This function will return the first error of
-    /// non-[`io::ErrorKind::Interrupted`] kind that [`seek_write`] returns.
+    /// This function will return the first error that [`seek_write`] returns.
     ///
     /// [`seek_write`]: FileExt::seek_write
     ///
@@ -235,7 +292,6 @@ pub trait FileExt {
                     buf = &buf[n..];
                     offset += n as u64
                 }
-                Err(ref e) if e.is_interrupted() => {}
                 Err(e) => return Err(e),
             }
         }
@@ -852,6 +908,7 @@ impl FileTimesExt for fs::FileTimes {
 /// the process as an administrator.
 ///
 /// [symlink-security]: https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/create-symbolic-links
+#[doc(alias = "CreateSymbolicLink", alias = "CreateSymbolicLinkW")]
 #[stable(feature = "symlink", since = "1.1.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "fs_symlink_file")]
 pub fn symlink_file<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Result<()> {
@@ -893,6 +950,7 @@ pub fn symlink_file<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io:
 /// the process as an administrator.
 ///
 /// [symlink-security]: https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/create-symbolic-links
+#[doc(alias = "CreateSymbolicLink", alias = "CreateSymbolicLinkW")]
 #[stable(feature = "symlink", since = "1.1.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "fs_symlink_dir")]
 pub fn symlink_dir<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Result<()> {

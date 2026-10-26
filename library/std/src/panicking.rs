@@ -706,7 +706,7 @@ pub(crate) fn panic_handler(info: &core::panic::PanicInfo<'_>) -> ! {
 #[rustc_do_not_const_check] // hooked by const-eval
 pub const fn begin_panic<M: Any + Send>(msg: M) -> ! {
     if cfg!(panic = "immediate-abort") {
-        intrinsics::abort()
+        intrinsics::abort_immediate()
     }
 
     struct Payload<A> {
@@ -887,5 +887,5 @@ fn rust_panic(msg: &mut dyn PanicPayload) -> ! {
 #[cfg_attr(not(test), rustc_std_internal_symbol)]
 #[cfg(panic = "immediate-abort")]
 fn rust_panic(_: &mut dyn PanicPayload) -> ! {
-    crate::intrinsics::abort();
+    crate::intrinsics::abort_immediate();
 }

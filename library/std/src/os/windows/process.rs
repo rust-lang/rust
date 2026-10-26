@@ -188,7 +188,7 @@ pub impl(self) trait CommandExt {
     /// <https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-showwindow>
     ///
     /// [1]: <https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/ns-processthreadsapi-startupinfow>
-    #[stable(feature = "windows_process_extensions_show_window", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "windows_process_extensions_show_window", since = "1.100.0")]
     fn show_window(&mut self, cmd_show: u16) -> &mut process::Command;
 
     /// Forces all arguments to be wrapped in quote (`"`) characters.
@@ -381,7 +381,10 @@ pub impl(self) trait CommandExt {
     /// see the [Remarks][1] section of the `CreateProcessW` documentation.
     ///
     /// [1]: https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-createprocessw#remarks
-    #[unstable(feature = "windows_process_extensions_inherit_handles", issue = "146407")]
+    #[stable(
+        feature = "windows_process_extensions_inherit_handles",
+        since = "CURRENT_RUSTC_VERSION"
+    )]
     fn inherit_handles(&mut self, inherit_handles: bool) -> &mut process::Command;
 }
 
@@ -451,23 +454,14 @@ impl CommandExt for process::Command {
     }
 }
 
-#[stable(
-    feature = "windows_process_extensions_main_thread_handle",
-    since = "CURRENT_RUSTC_VERSION"
-)]
+#[stable(feature = "windows_process_extensions_main_thread_handle", since = "1.100.0")]
 pub impl(self) trait ChildExt {
     /// Extracts the main thread raw handle, without taking ownership
-    #[stable(
-        feature = "windows_process_extensions_main_thread_handle",
-        since = "CURRENT_RUSTC_VERSION"
-    )]
+    #[stable(feature = "windows_process_extensions_main_thread_handle", since = "1.100.0")]
     fn main_thread_handle(&self) -> BorrowedHandle<'_>;
 }
 
-#[stable(
-    feature = "windows_process_extensions_main_thread_handle",
-    since = "CURRENT_RUSTC_VERSION"
-)]
+#[stable(feature = "windows_process_extensions_main_thread_handle", since = "1.100.0")]
 impl ChildExt for process::Child {
     fn main_thread_handle(&self) -> BorrowedHandle<'_> {
         self.handle.main_thread_handle()
@@ -475,7 +469,7 @@ impl ChildExt for process::Child {
 }
 
 /// Windows-specific extensions to [`process::ExitCode`].
-#[unstable(feature = "windows_process_exit_code_from", issue = "111688")]
+#[stable(feature = "windows_process_exit_code_from", since = "CURRENT_RUSTC_VERSION")]
 pub impl(self) trait ExitCodeExt {
     /// Creates a new `ExitCode` from the raw underlying `u32` return value of
     /// a process.
@@ -483,11 +477,11 @@ pub impl(self) trait ExitCodeExt {
     /// The exit code should not be 259, as this conflicts with the `STILL_ACTIVE`
     /// macro returned from the `GetExitCodeProcess` function to signal that the
     /// process has yet to run to completion.
-    #[unstable(feature = "windows_process_exit_code_from", issue = "111688")]
+    #[stable(feature = "windows_process_exit_code_from", since = "CURRENT_RUSTC_VERSION")]
     fn from_raw(raw: u32) -> Self;
 }
 
-#[unstable(feature = "windows_process_exit_code_from", issue = "111688")]
+#[stable(feature = "windows_process_exit_code_from", since = "CURRENT_RUSTC_VERSION")]
 impl ExitCodeExt for process::ExitCode {
     fn from_raw(raw: u32) -> Self {
         process::ExitCode::from_inner(From::from(raw))

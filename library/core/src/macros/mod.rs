@@ -802,7 +802,7 @@ macro_rules! unreachable {
 #[rustc_diagnostic_opaque]
 macro_rules! unimplemented {
     () => {
-        $crate::panicking::panic("not implemented")
+        $crate::panicking::unimplemented_default_msg()
     };
     ($($arg:tt)+) => {
         $crate::panic!("not implemented: {}", $crate::format_args!($($arg)+))
@@ -883,7 +883,7 @@ macro_rules! unimplemented {
 #[rustc_diagnostic_opaque]
 macro_rules! todo {
     () => {
-        $crate::panicking::panic("not yet implemented")
+        $crate::panicking::todo_default_msg()
     };
     ($($arg:tt)+) => {
         $crate::panic!("not yet implemented: {}", $crate::format_args!($($arg)+))
@@ -1784,7 +1784,7 @@ pub(crate) mod builtin {
     /// See [the reference] for more info.
     ///
     /// [the reference]: ../../../reference/attributes/derive.html
-    #[unstable(feature = "derive_const", issue = "118304")]
+    #[unstable(feature = "derive_const", issue = "143874")]
     #[rustc_builtin_macro]
     pub macro derive_const($item:item) {
         /* compiler built-in */
@@ -1910,7 +1910,7 @@ pub(crate) mod builtin {
     #[allow_internal_unstable(builtin_syntax)]
     #[unstable(
         feature = "type_ascription",
-        issue = "23416",
+        issue = "101728",
         reason = "placeholder syntax for type ascription"
     )]
     #[diagnostic::opaque]

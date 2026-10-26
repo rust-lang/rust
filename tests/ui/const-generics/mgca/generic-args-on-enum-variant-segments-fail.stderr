@@ -1,5 +1,5 @@
 error[E0109]: type arguments are not allowed on unit variant `Unit`
-  --> $DIR/generic-args-on-enum-variant-segments-fail.rs:14:49
+  --> $DIR/generic-args-on-enum-variant-segments-fail.rs:17:49
    |
 LL |     const _: Enum<()> = gca!(Enum::<()>::Unit::<()>);
    |                                          ----   ^^ type argument not allowed
@@ -14,7 +14,7 @@ LL +     const _: Enum<()> = gca!(Enum::<()>::Unit);
    |
 
 error[E0109]: type arguments are not allowed on tuple variant `Tuple`
-  --> $DIR/generic-args-on-enum-variant-segments-fail.rs:16:50
+  --> $DIR/generic-args-on-enum-variant-segments-fail.rs:19:50
    |
 LL |     const _: Enum<()> = gca!(Enum::<()>::Tuple::<()>());
    |                                          -----   ^^ type argument not allowed
@@ -29,7 +29,7 @@ LL +     const _: Enum<()> = gca!(Enum::<()>::Tuple());
    |
 
 error[E0109]: type arguments are not allowed on module `generic_args_on_enum_variant_segments_fail`
-  --> $DIR/generic-args-on-enum-variant-segments-fail.rs:18:37
+  --> $DIR/generic-args-on-enum-variant-segments-fail.rs:21:37
    |
 LL |     const _: Enum<()> = gca!(self::<i32>::Enum::<()>::Store);
    |                              ----   ^^^ type argument not allowed

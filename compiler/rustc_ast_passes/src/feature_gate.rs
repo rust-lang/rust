@@ -3,8 +3,9 @@ use rustc_ast::{self as ast, AttrVec, GenericBound, NodeId, PatKind, attr, token
 use rustc_attr_ir::{Attribute, AttributeKind};
 use rustc_attr_parsing::AttributeParser;
 use rustc_errors::msg;
-use rustc_feature::Features;
+use rustc_feature::{DependentFeature, Features};
 use rustc_session::Session;
+use rustc_session::config::NextSolverConfig;
 use rustc_session::diagnostics::{feature_err, feature_warn};
 use rustc_span::{Span, Spanned, sym};
 
@@ -410,6 +411,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     check_incompatible_features(sess, features);
     check_dependent_features(sess, features);
     warn_next_solver_and_gce(sess, features);
+    warn_next_solver_and_higher_ranked_assumptions(sess);
     check_features_requiring_new_solver(sess, features);
 
     let mut visitor = PostExpansionVisitor { sess, features };
@@ -443,6 +445,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     gate_all!(fn_delegation, "functions delegation is not yet fully implemented");
     gate_all!(forced_keywords, "forced keywords are experimental");
     gate_all!(frontmatter, "frontmatters are experimental");
+    gate_all!(function_arg_const_generics, "function arg const generics are experimental");
     gate_all!(gca_min_const_items, "unbraced const blocks as const args are experimental");
     gate_all!(gen_blocks, "gen blocks are experimental");
     gate_all!(generic_const_items, "generic const items are experimental");
@@ -652,37 +655,58 @@ fn check_incompatible_features(sess: &Session, features: &Features) {
 }
 
 fn check_dependent_features(sess: &Session, features: &Features) {
-    for &(parent, children) in
-        rustc_feature::DEPENDENT_FEATURES.iter().filter(|(parent, _)| features.enabled(*parent))
+    for &(parent, ref children) in
+        rustc_feature::DEPENDENT_FEATURES.iter().filter(|(parent, children)| {
+            features.enabled(*parent) && !check_enabled(features, children)
+        })
     {
-        if children.iter().any(|f| !features.enabled(*f)) {
-            let parent_span = features
-                .enabled_features_iter_stable_order()
-                .find_map(|(name, span)| (name == parent).then_some(span))
-                .unwrap();
-            // FIXME: should probably format this in fluent instead of here
-            let missing = children
+        let parent_span = features
+            .enabled_features_iter_stable_order()
+            .find_map(|(name, span)| (name == parent).then_some(span))
+            .unwrap();
+        // FIXME: should probably format this in fluent instead of here
+        let missing = format(features, &children);
+        sess.dcx().emit_err(diagnostics::MissingDependentFeatures { parent_span, parent, missing });
+    }
+
+    fn check_enabled(features: &Features, feature: &DependentFeature) -> bool {
+        match feature {
+            DependentFeature::And(children) => {
+                children.iter().all(|child| check_enabled(features, child))
+            }
+            DependentFeature::Or(children) => {
+                children.iter().any(|child| check_enabled(features, child))
+            }
+            DependentFeature::Leaf(symbol) => features.enabled(*symbol),
+        }
+    }
+
+    fn format(features: &Features, feature: &DependentFeature) -> String {
+        // FIXME: parentheses/precedence
+        match feature {
+            DependentFeature::And(children) => children
                 .iter()
-                .filter(|f| !features.enabled(**f))
-                .map(|s| format!("`{}`", s.as_str()))
-                .intersperse(String::from(", "))
-                .collect();
-            sess.dcx().emit_err(diagnostics::MissingDependentFeatures {
-                parent_span,
-                parent,
-                missing,
-            });
+                .filter(|child| !check_enabled(features, child))
+                .map(|child| format(features, child))
+                .intersperse(String::from(" and "))
+                .collect(),
+            DependentFeature::Or(children) => children
+                .iter()
+                .map(|child| format(features, child))
+                .intersperse(String::from(" or "))
+                .collect(),
+            DependentFeature::Leaf(symbol) => format!("`{}`", symbol.as_str()),
         }
     }
 }
 
 fn warn_next_solver_and_gce(sess: &Session, features: &Features) {
-    if !sess.opts.unstable_opts.next_solver.globally {
+    if sess.opts.unstable_opts.next_solver != NextSolverConfig::Globally {
         return;
     }
 
-    // Warn people who uses GCE and -Znext-solver=globally
-    // that their trait solver was downgraded to -Znext-solver=no
+    // Warn people who use GCE and -Znext-solver=globally
+    // that their trait solver was downgraded to -Znext-solver=coherence
     if let Some(gce_span) = features
         .enabled_lang_features()
         .iter()
@@ -694,8 +718,18 @@ fn warn_next_solver_and_gce(sess: &Session, features: &Features) {
     }
 }
 
+fn warn_next_solver_and_higher_ranked_assumptions(sess: &Session) {
+    // Warn people who use -Zhigher-ranked-assumptions and -Znext-solver=globally
+    // that their trait solver was downgraded to -Znext-solver=coherence
+    if sess.opts.unstable_opts.next_solver == NextSolverConfig::Globally
+        && sess.opts.unstable_opts.higher_ranked_assumptions
+    {
+        sess.dcx().emit_warn(diagnostics::NextSolverDisabledForHigherRankedAssumptions);
+    }
+}
+
 fn check_features_requiring_new_solver(sess: &Session, features: &Features) {
-    if sess.opts.unstable_opts.next_solver.globally {
+    if sess.opts.unstable_opts.next_solver == NextSolverConfig::Globally {
         return;
     }
 

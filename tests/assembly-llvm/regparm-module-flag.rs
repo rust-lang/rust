@@ -3,7 +3,8 @@
 //@ add-minicore
 //@ assembly-output: emit-asm
 //@ compile-flags: -O --target=i686-unknown-linux-gnu -Crelocation-model=static
-//@ revisions: REGPARM1 REGPARM2 REGPARM3
+//@ revisions: REGPARM0 REGPARM1 REGPARM2 REGPARM3
+//@[REGPARM0] compile-flags: -Zregparm=0
 //@[REGPARM1] compile-flags: -Zregparm=1
 //@[REGPARM2] compile-flags: -Zregparm=2
 //@[REGPARM3] compile-flags: -Zregparm=3
@@ -16,13 +17,12 @@
 extern crate minicore;
 use minicore::*;
 
-unsafe extern "C" {
-    fn memset(p: *mut c_void, val: i32, len: usize) -> *mut c_void;
-    fn non_builtin_memset(p: *mut c_void, val: i32, len: usize) -> *mut c_void;
-}
-
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn entrypoint(len: usize, ptr: *mut c_void, val: i32) -> *mut c_void {
+    unsafe extern "C" {
+        fn memset(p: *mut c_void, val: i32, len: usize) -> *mut c_void;
+    }
+
     // REGPARM1-LABEL: entrypoint
     // REGPARM1: movl %e{{.*}}, %ecx
     // REGPARM1: pushl
@@ -49,6 +49,10 @@ pub unsafe extern "C" fn non_builtin_entrypoint(
     ptr: *mut c_void,
     val: i32,
 ) -> *mut c_void {
+    unsafe extern "C" {
+        fn non_builtin_memset(p: *mut c_void, val: i32, len: usize) -> *mut c_void;
+    }
+
     // REGPARM1-LABEL: non_builtin_entrypoint
     // REGPARM1: movl %e{{.*}}, %ecx
     // REGPARM1: pushl
@@ -67,4 +71,64 @@ pub unsafe extern "C" fn non_builtin_entrypoint(
     // REGPARM3: movl %e{{.*}}, %ecx
     // REGPARM3: jmp non_builtin_memset
     unsafe { non_builtin_memset(ptr, val, len) }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn test_i32() -> i32 {
+    extern "C" {
+        fn test_i32_sink(_: i32, _: i32, _: i32) -> i32;
+    }
+
+    // REGPARM0-LABEL: test_i32
+    // REGPARM0: subl    $16, %esp
+    // REGPARM0: pushl   $3
+    // REGPARM0: pushl   $2
+    // REGPARM0: pushl   $1
+    // REGPARM0: calll   test_i32_sink
+    // REGPARM0: addl    $28, %esp
+    // REGPARM0: retl
+
+    // REGPARM1-LABEL: test_i32
+    // REGPARM1: subl    $20, %esp
+    // REGPARM1: movl    $1, %eax
+    // REGPARM1: pushl   $3
+    // REGPARM1: pushl   $2
+    // REGPARM1: calll   test_i32_sink
+    // REGPARM1: addl    $28, %esp
+    // REGPARM1: retl
+
+    // REGPARM2-LABEL: test_i32
+    // REGPARM2: subl    $12, %esp
+    // REGPARM2: movl    $1, %eax
+    // REGPARM2: movl    $2, %edx
+    // REGPARM2: movl    $3, (%esp)
+    // REGPARM2: calll   test_i32_sink
+    // REGPARM2: addl    $12, %esp
+    // REGPARM2: retl
+
+    // REGPARM3-LABEL: test_i32
+    // REGPARM3: movl    $1, %eax
+    // REGPARM3: movl    $2, %edx
+    // REGPARM3: movl    $3, %ecx
+    // REGPARM3: jmp     test_i32_sink
+    unsafe { test_i32_sink(1, 2, 3) }
+}
+
+// A c-variadic function does not use registers for argument passing,
+// even when not actually passing any c-variadic arguments.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn test_i32_variadic() -> i32 {
+    extern "C" {
+        fn test_i32_variadic_sink(_: i32, _: i32, _: i32, ...) -> i32;
+    }
+
+    // CHECK-LABEL: test_i32_variadic
+    // CHECK: subl    $16, %esp
+    // CHECK: pushl   $3
+    // CHECK: pushl   $2
+    // CHECK: pushl   $1
+    // CHECK: calll   test_i32_variadic_sink
+    // CHECK: addl    $28, %esp
+    // CHECK: retl
+    unsafe { test_i32_variadic_sink(1, 2, 3) }
 }

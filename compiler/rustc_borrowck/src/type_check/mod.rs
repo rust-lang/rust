@@ -24,7 +24,6 @@ use rustc_middle::mir::*;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::cast::CastTy;
-use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::{
     self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, GenericArgsRef, Ty, TyCtxt,
     TypeVisitableExt, UserArgs, UserTypeAnnotationIndex, fold_regions,
@@ -592,7 +591,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         }
 
         for (block, block_data) in body.basic_blocks.iter_enumerated() {
-            let mut location = Location { block, statement_index: 0 };
+            let mut location = block.start_location();
             for stmt in &block_data.statements {
                 self.visit_statement(stmt, location);
                 location.statement_index += 1;
@@ -1361,7 +1360,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         let cast_ty_from = CastTy::from_ty(ty_from);
                         let cast_ty_to = CastTy::from_ty(*ty);
                         match (cast_ty_from, cast_ty_to) {
-                            (Some(CastTy::Ptr(_) | CastTy::FnPtr), Some(CastTy::Int(_))) => (),
+                            (Some(CastTy::Ptr(_) | CastTy::FnPtr), Some(CastTy::Int)) => (),
                             _ => {
                                 span_mirbug!(
                                     self,
@@ -1379,7 +1378,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         let cast_ty_from = CastTy::from_ty(ty_from);
                         let cast_ty_to = CastTy::from_ty(*ty);
                         match (cast_ty_from, cast_ty_to) {
-                            (Some(CastTy::Int(_)), Some(CastTy::Ptr(_))) => (),
+                            (Some(CastTy::Int), Some(CastTy::Ptr(_))) => (),
                             _ => {
                                 span_mirbug!(
                                     self,
@@ -1396,7 +1395,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         let cast_ty_from = CastTy::from_ty(ty_from);
                         let cast_ty_to = CastTy::from_ty(*ty);
                         match (cast_ty_from, cast_ty_to) {
-                            (Some(CastTy::Int(_)), Some(CastTy::Int(_))) => (),
+                            (Some(from), Some(to)) if from.is_int_like() && to.is_int_like() => (),
                             _ => {
                                 span_mirbug!(
                                     self,
@@ -1413,7 +1412,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         let cast_ty_from = CastTy::from_ty(ty_from);
                         let cast_ty_to = CastTy::from_ty(*ty);
                         match (cast_ty_from, cast_ty_to) {
-                            (Some(CastTy::Int(_)), Some(CastTy::Float)) => (),
+                            (Some(CastTy::Int), Some(CastTy::Float)) => (),
                             _ => {
                                 span_mirbug!(
                                     self,
@@ -1430,7 +1429,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         let cast_ty_from = CastTy::from_ty(ty_from);
                         let cast_ty_to = CastTy::from_ty(*ty);
                         match (cast_ty_from, cast_ty_to) {
-                            (Some(CastTy::Float), Some(CastTy::Int(_))) => (),
+                            (Some(CastTy::Float), Some(CastTy::Int)) => (),
                             _ => {
                                 span_mirbug!(
                                     self,
@@ -1848,7 +1847,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
                 assert_eq!(tcx.trait_impl_of_assoc(def_id), None);
                 self.prove_clauses(
-                    args.terms().map(|t| ty::ClauseKind::WellFormed(t.into())),
+                    args.terms().map(|t| ty::ClauseKind::WellFormed(t)),
                     locations,
                     ConstraintCategory::Boring,
                 );
@@ -2082,7 +2081,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     fn check_iscleanup(&mut self, block_data: &BasicBlockData<'tcx>) {
         let is_cleanup = block_data.is_cleanup;
         match block_data.terminator().kind {
-            TerminatorKind::Goto { target } => {
+            TerminatorKind::Goto { target, .. } => {
                 self.assert_iscleanup(block_data, target, is_cleanup)
             }
             TerminatorKind::SwitchInt { ref targets, .. } => {

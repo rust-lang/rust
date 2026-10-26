@@ -10,7 +10,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{DelegationSelfTyPropagationKind, PathSegment};
 use rustc_middle::ty::{
     self, ConstKind, EarlyBinder, GenericArg, GenericArgKind, RegionKind, Ty, TyCtxt, TypeFoldable,
-    TypeFolder, TypeSuperFoldable, TypeVisitableExt,
+    TypeFolder, TypeSuperFoldable, TypeVisitableExt, Upcast,
 };
 use rustc_span::{ErrorGuaranteed, Span, kw};
 
@@ -23,46 +23,65 @@ struct ParamIndexRemapper<'tcx> {
     tcx: TyCtxt<'tcx>,
     remap_table: RemapTable,
     delegation_parent_consts: FxHashSet<ty::ParamConst>,
+    arg_kinds: Vec<ty::GenericArgKind<'tcx>>,
 }
 
-impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ParamIndexRemapper<'tcx> {
+impl<'tcx> ParamIndexRemapper<'tcx> {
+    fn try_remap(
+        &self,
+        source_index: u32,
+        expected_kind: ty::GenericArgKind<'tcx>,
+    ) -> Result<u32, ()> {
+        self.remap_table
+            .get(&source_index)
+            .copied()
+            .filter(|&idx| {
+                self.arg_kinds.get(idx as usize).is_some_and(|kind| {
+                    std::mem::discriminant(&expected_kind) == std::mem::discriminant(kind)
+                })
+            })
+            .ok_or(())
+    }
+}
+
+impl<'tcx> ty::FallibleTypeFolder<TyCtxt<'tcx>> for ParamIndexRemapper<'tcx> {
+    type Error = ();
+
     fn cx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
-    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+    fn try_fold_ty(&mut self, ty: Ty<'tcx>) -> Result<Ty<'tcx>, Self::Error> {
         if !ty.has_param() {
-            return ty;
+            return Ok(ty);
         }
 
-        if let ty::Param(param) = ty.kind()
-            && let Some(index) = self.remap_table.get(&param.index)
-        {
-            return Ty::new_param(self.tcx, *index, param.name);
+        if let ty::Param(param) = ty.kind() {
+            let index = self.try_remap(param.index, ty::GenericArgKind::Type(ty))?;
+            return Ok(Ty::new_param(self.tcx, index, param.name));
         }
-        ty.super_fold_with(self)
+
+        ty.try_super_fold_with(self)
     }
 
-    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        if let ty::ReEarlyParam(param) = r.kind()
-            && let Some(index) = self.remap_table.get(&param.index).copied()
-        {
-            return ty::Region::new_early_param(
+    fn try_fold_region(&mut self, r: ty::Region<'tcx>) -> Result<ty::Region<'tcx>, Self::Error> {
+        if let ty::ReEarlyParam(param) = r.kind() {
+            let index = self.try_remap(param.index, ty::GenericArgKind::Lifetime(r))?;
+            return Ok(ty::Region::new_early_param(
                 self.tcx,
                 ty::EarlyParamRegion { index, name: param.name },
-            );
+            ));
         }
-        r
+        Ok(r)
     }
 
-    fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
-        if let ty::ConstKind::Param(param) = ct.kind()
-            && let Some(idx) = self.remap_table.get(&param.index)
-        {
-            let param = ty::ParamConst::new(*idx, param.name);
-            return ty::Const::new_param(self.tcx, param);
+    fn try_fold_const(&mut self, ct: ty::Const<'tcx>) -> Result<ty::Const<'tcx>, Self::Error> {
+        if let ty::ConstKind::Param(param) = ct.kind() {
+            let idx = self.try_remap(param.index, ty::GenericArgKind::Const(ct))?;
+            let param = ty::ParamConst::new(idx, param.name);
+            return Ok(ty::Const::new_param(self.tcx, param));
         }
-        ct.super_fold_with(self)
+        ct.try_super_fold_with(self)
     }
 }
 
@@ -479,7 +498,7 @@ pub(crate) fn inherit_clauses_for_delegation_item<'tcx>(
             mut self,
             f: impl Fn(DefId) -> ty::GenericClauses<'tcx>,
             def_id: DefId,
-        ) -> Self {
+        ) -> Result<Self, ()> {
             let clauses = f(def_id);
             let args = self.args.as_slice();
 
@@ -521,8 +540,9 @@ pub(crate) fn inherit_clauses_for_delegation_item<'tcx>(
                 // it came from delegation parent, and if so we do not process its `ConstArgHasType`
                 // clause.
                 // (Issue #158675).
+                let new_clause = clause.0.try_fold_with(&mut self.folder)?;
                 if let ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, _)) =
-                    clause.0.as_predicate().fold_with(&mut self.folder).kind().skip_binder()
+                    new_clause.as_predicate().kind().skip_binder()
                 {
                     let unnorm_const = EarlyBinder::bind(self.tcx, ct).instantiate(self.tcx, args);
                     if let ty::ConstKind::Param(param) = unnorm_const.skip_norm_wip().kind()
@@ -532,7 +552,6 @@ pub(crate) fn inherit_clauses_for_delegation_item<'tcx>(
                     }
                 }
 
-                let new_clause = clause.0.fold_with(&mut self.folder);
                 self.clauses.push((
                     EarlyBinder::bind(self.tcx, new_clause)
                         .instantiate(self.tcx, args)
@@ -541,17 +560,17 @@ pub(crate) fn inherit_clauses_for_delegation_item<'tcx>(
                 ));
             }
 
-            self
+            Ok(self)
         }
 
         fn with_clauses(
             mut self,
             f: impl Fn(DefId) -> ty::GenericClauses<'tcx> + Copy,
             def_id: DefId,
-        ) -> Self {
+        ) -> Result<Self, ()> {
             let preds = f(def_id);
             if let Some(parent_def_id) = preds.parent {
-                self = self.with_own_clauses(f, parent_def_id);
+                self = self.with_own_clauses(f, parent_def_id)?;
             }
 
             self.with_own_clauses(f, def_id)
@@ -572,7 +591,7 @@ pub(crate) fn inherit_clauses_for_delegation_item<'tcx>(
     // `explicit_clauses_of` is used here to avoid copying `Self: Trait` clause.
     // Note: `clauses_of` query can also add inferred outlives clauses, but that
     // is not the case here as `sig_id` is either a trait or a function.
-    let clauses = match inh_kind {
+    let collector = match inh_kind {
         InheritanceKind::WithParent(false) => {
             collector.with_clauses(|def_id| tcx.explicit_clauses_of(def_id), sig_id)
         }
@@ -580,8 +599,39 @@ pub(crate) fn inherit_clauses_for_delegation_item<'tcx>(
             collector.with_clauses(|def_id| tcx.clauses_of(def_id), sig_id)
         }
         InheritanceKind::Own => collector.with_own_clauses(|def_id| tcx.clauses_of(def_id), sig_id),
-    }
-    .clauses;
+    };
+
+    let clauses = match collector {
+        Ok(collector) => collector.clauses,
+        Err(()) => {
+            tcx.dcx().emit_err(crate::diagnostics::DelegationInheritanceFailed {
+                span: tcx.def_span(def_id),
+                kind: "predicates",
+                callee_span: tcx.def_span(sig_id),
+            });
+
+            // Even on error, the delegated item's const parameters need their
+            // types in the parameter environment.
+            tcx.generics_of(def_id)
+                .own_params
+                .iter()
+                .filter_map(|param| {
+                    if !matches!(param.kind, ty::GenericParamDefKind::Const { .. }) {
+                        return None;
+                    }
+
+                    let ct =
+                        ty::Const::new_param(tcx, ty::ParamConst::new(param.index, param.name));
+                    let ct_ty = tcx.type_of(param.def_id).instantiate_identity().skip_norm_wip();
+
+                    Some((
+                        ty::ClauseKind::ConstArgHasType(ct, ct_ty).upcast(tcx),
+                        tcx.def_span(param.def_id),
+                    ))
+                })
+                .collect::<Vec<_>>()
+        }
+    };
 
     ty::GenericClauses { parent, clauses: tcx.arena.alloc_from_iter(clauses) }
 }
@@ -607,7 +657,8 @@ fn create_folder_and_args<'tcx>(
         })
         .collect();
 
-    (ParamIndexRemapper { tcx, remap_table, delegation_parent_consts }, args)
+    let arg_kinds = args.iter().map(|arg| arg.kind()).collect();
+    (ParamIndexRemapper { tcx, remap_table, delegation_parent_consts, arg_kinds }, args)
 }
 
 fn check_constraints<'tcx>(
@@ -633,6 +684,16 @@ fn check_constraints<'tcx>(
     ret
 }
 
+fn error_sig_for_delegation<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    sig_id: DefId,
+    err: ErrorGuaranteed,
+) -> &'tcx [Ty<'tcx>] {
+    let sig_len = tcx.fn_sig(sig_id).instantiate_identity().skip_binder().inputs().len() + 1;
+    let err_type = Ty::new_error(tcx, err);
+    tcx.arena.alloc_from_iter((0..sig_len).map(|_| err_type))
+}
+
 pub(crate) fn inherit_sig_for_delegation_item<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
@@ -640,14 +701,23 @@ pub(crate) fn inherit_sig_for_delegation_item<'tcx>(
     let sig_id = tcx.hir_opt_delegation_sig_id(def_id).expect("Delegation must have sig_id");
     let caller_sig = tcx.fn_sig(sig_id);
     if let Err(err) = check_constraints(tcx, def_id, sig_id) {
-        let sig_len = caller_sig.instantiate_identity().skip_binder().inputs().len() + 1;
-        let err_type = Ty::new_error(tcx, err);
-        return tcx.arena.alloc_from_iter((0..sig_len).map(|_| err_type));
+        return error_sig_for_delegation(tcx, sig_id, err);
     }
 
     let (parent_args, child_args) = tcx.delegation_user_specified_args(def_id);
     let (mut folder, args) = create_folder_and_args(tcx, def_id, sig_id, parent_args, child_args);
-    let caller_sig = EarlyBinder::bind(tcx, caller_sig.skip_binder().fold_with(&mut folder));
+    let folded_sig = match caller_sig.skip_binder().try_fold_with(&mut folder) {
+        Ok(sig) => sig,
+        Err(()) => {
+            let err = tcx.dcx().emit_err(crate::diagnostics::DelegationInheritanceFailed {
+                span: tcx.def_span(def_id),
+                kind: "signature",
+                callee_span: tcx.def_span(sig_id),
+            });
+            return error_sig_for_delegation(tcx, sig_id, err);
+        }
+    };
+    let caller_sig = EarlyBinder::bind(tcx, folded_sig);
 
     let sig = caller_sig.instantiate(tcx, args.as_slice()).skip_binder();
     let output = std::iter::once(sig.output());

@@ -1,11 +1,11 @@
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
-  --> $DIR/syntactic-type-mismatch.rs:9:11
+  --> $DIR/syntactic-type-mismatch.rs:8:11
    |
 LL | const T0: _ = gca!(());
    |           ^ not allowed in type signatures
 
 error: missing type for `const` item
-  --> $DIR/syntactic-type-mismatch.rs:12:9
+  --> $DIR/syntactic-type-mismatch.rs:11:9
    |
 LL | const T1 = gca!([0]);
    |         ^

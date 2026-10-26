@@ -8,7 +8,6 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![cfg_attr(bootstrap, feature(trim_prefix_suffix))]
 #![feature(arbitrary_self_types)]
 #![feature(const_default)]
 #![feature(const_trait_impl)]
@@ -263,7 +262,10 @@ enum ResolutionError<'ra> {
     /// Error E0416: identifier is bound more than once in the same pattern.
     IdentifierBoundMoreThanOnceInSamePattern(Ident),
     /// Error E0426: use of undeclared label.
-    UndeclaredLabel { name: Symbol, suggestion: Option<LabelSuggestion> },
+    UndeclaredLabel {
+        name: Symbol,
+        suggestion: Option<LabelSuggestion>,
+    },
     /// Error E0433: failed to resolve.
     FailedToResolve {
         segment: Symbol,
@@ -274,7 +276,9 @@ enum ResolutionError<'ra> {
         message: String,
     },
     /// Error E0434: can't capture dynamic environment in a fn item.
-    CannotCaptureDynamicEnvironmentInFnItem { suggest_closure: bool },
+    CannotCaptureDynamicEnvironmentInFnItem {
+        suggest_closure: bool,
+    },
     /// Error E0435: attempt to use a non-constant value in a constant.
     AttemptToUseNonConstantValueInConstant {
         ident: Ident,
@@ -297,25 +301,34 @@ enum ResolutionError<'ra> {
     // FIXME(generic_const_parameter_types): This should give custom output specifying it's only
     // problematic to use *forward declared* parameters when the feature is enabled.
     /// ERROR E0770: the type of const parameters must not depend on other generic parameters.
-    ParamInTyOfConstParam { name: Symbol },
+    ParamInTyOfConstParam {
+        name: Symbol,
+    },
     /// cannot use self in const param
     SelfInConstParam,
     /// generic parameters must not be used inside const evaluations.
     ///
     /// This error is only emitted when using `min_const_generics`.
     ParamInNonTrivialAnonConst {
-        is_gca: bool,
+        is_gca_const_items: bool,
         name: Symbol,
         param_kind: ParamKindInNonTrivialAnonConst,
     },
     /// generic parameters must not be used inside enum discriminants.
     ///
     /// This error is emitted even with `generic_const_exprs`.
-    ParamInEnumDiscriminant { name: Symbol, param_kind: ParamKindInEnumDiscriminant },
+    ParamInEnumDiscriminant {
+        name: Symbol,
+        param_kind: ParamKindInEnumDiscriminant,
+    },
     /// Error E0735: generic parameters with a default cannot use `Self`
     ForwardDeclaredSelf(ForwardGenericParamBanReason),
     /// Error E0767: use of unreachable label
-    UnreachableLabel { name: Symbol, definition_span: Span, suggestion: Option<LabelSuggestion> },
+    UnreachableLabel {
+        name: Symbol,
+        definition_span: Span,
+        suggestion: Option<LabelSuggestion>,
+    },
     /// Error E0323, E0324, E0325: mismatch between trait item and impl item.
     TraitImplMismatch {
         name: Ident,
@@ -323,15 +336,28 @@ enum ResolutionError<'ra> {
         trait_path: String,
         trait_item_span: Span,
         code: ErrCode,
+        trait_span: Span,
+        impl_span: Span,
     },
     /// Error E0201: multiple impl items for the same trait item.
-    TraitImplDuplicate { name: Ident, trait_item_span: Span, old_span: Span },
+    TraitImplDuplicate {
+        name: Ident,
+        trait_item_span: Span,
+        old_span: Span,
+        trait_span: Span,
+        impl_span: Span,
+    },
     /// Inline asm `sym` operand must refer to a `fn` or `static`.
     InvalidAsmSym,
     /// `self` used instead of `Self` in a generic parameter
     LowercaseSelf,
     /// A never pattern has a binding.
     BindingInNeverPattern,
+    CannotUseInnerLocalInMoveExpr {
+        move_expr_span: Span,
+        ident: Ident,
+        scope_span: Span,
+    },
 }
 
 #[derive(Debug)]
@@ -1417,11 +1443,11 @@ pub struct Resolver<'ra, 'tcx> {
     extern_module_map: RwLock<FxIndexMap<DefId, ExternModule<'ra>>>,
 
     /// Maps glob imports to the names of items actually imported.
-    glob_map: FxIndexMap<LocalDefId, FxIndexSet<Symbol>>,
+    glob_map: FxIndexMap<LocalDefId, FxIndexSet<Symbol>> = default::fx_index_map(),
     glob_error: Option<ErrorGuaranteed> = None,
     visibilities_for_hashing: Vec<(LocalDefId, Visibility)> = Vec::new(),
     used_imports: FxHashSet<NodeId> = default::fx_hash_set(),
-    maybe_unused_trait_imports: FxIndexSet<LocalDefId>,
+    maybe_unused_trait_imports: FxIndexSet<LocalDefId> = default::fx_index_set(),
 
     /// Privacy errors are delayed until the end in order to deduplicate them.
     privacy_errors: Vec<PrivacyError<'ra>> = Vec::new(),
@@ -1438,11 +1464,11 @@ pub struct Resolver<'ra, 'tcx> {
     builtin_type_decls: FxHashMap<Symbol, Decl<'ra>>,
     builtin_attr_decls: FxHashMap<Symbol, Decl<'ra>>,
     registered_attr_tool_decls: FxHashMap<IdentKey, Decl<'ra>>,
-    macro_names: FxHashSet<IdentKey> = default::fx_hash_set(),
+    macro_names: FxHashMap<IdentKey, LocalDefId> = default::fx_hash_map(),
     builtin_macros: FxHashMap<Symbol, SyntaxExtensionKind> = default::fx_hash_map(),
     registered_attr_tools: &'tcx RegisteredTools,
     registered_lint_tools: &'tcx RegisteredTools,
-    macro_use_prelude: FxIndexMap<Symbol, Decl<'ra>>,
+    macro_use_prelude: FxIndexMap<Symbol, Decl<'ra>> = default::fx_index_map(),
     /// Eagerly populated map of all local macro definitions.
     local_macro_map: FxHashMap<LocalDefId, &'ra Arc<SyntaxExtension>> = default::fx_hash_map(),
     /// Lazily populated cache of macro definitions loaded from external crates.
@@ -1452,9 +1478,10 @@ pub struct Resolver<'ra, 'tcx> {
     non_macro_attr: &'ra Arc<SyntaxExtension>,
     local_macro_def_scopes: FxHashMap<LocalDefId, LocalModule<'ra>> = default::fx_hash_map(),
     ast_transform_scopes: FxHashMap<LocalExpnId, LocalModule<'ra>> = default::fx_hash_map(),
-    unused_macros: FxIndexMap<LocalDefId, (NodeId, Ident)>,
+    unused_macros: FxIndexMap<LocalDefId, (NodeId, Ident, Option<DefId>)> = default::fx_index_map(),
+    macro_use_mods: FxIndexSet<NodeId> = default::fx_index_set(),
     /// A map from the macro to all its potentially unused arms and the `LocalDefId` of the macro itself.
-    unused_macro_rules: FxIndexMap<NodeId, (LocalDefId, DenseBitSet<usize>)>,
+    unused_macro_rules: FxIndexMap<NodeId, (LocalDefId, DenseBitSet<usize>)> = default::fx_index_map(),
     proc_macro_stubs: FxHashSet<LocalDefId> = default::fx_hash_set(),
     /// Traces collected during macro resolution and validated when it's complete.
     single_segment_macro_resolutions:
@@ -1521,25 +1548,25 @@ pub struct Resolver<'ra, 'tcx> {
     /// Generic args to suggest for required params (e.g. `<'_>`, `<_, _>`), if any.
     item_required_generic_args_suggestions: FxHashMap<LocalDefId, String> = default::fx_hash_map(),
     delegation_fn_sigs: LocalDefIdMap<DelegationFnSig> = Default::default(),
-    delegation_infos: FxIndexMap<LocalDefId, DelegationInfo>,
-    delegation_inherent_fn_map: FxIndexMap<LocalDefId, FxIndexMap<Ident, DelegationInherentFnKind>>,
+    delegation_infos: FxIndexMap<LocalDefId, DelegationInfo> = default::fx_index_map(),
+    delegation_inherent_fn_map: FxIndexMap<LocalDefId, FxIndexMap<Ident, DelegationInherentFnKind>> = default::fx_index_map(),
 
     main_def: Option<MainDefinition> = None,
-    trait_impls: FxIndexMap<DefId, Vec<LocalDefId>>,
+    trait_impls: FxIndexMap<DefId, Vec<LocalDefId>> = default::fx_index_map(),
     /// A list of proc macro LocalDefIds, written out in the order in which
     /// they are declared in the static array generated by proc_macro_harness.
     proc_macros: Vec<LocalDefId> = Vec::new(),
-    paths_matching_assoc_types: UnordSet<Span>,
-    confused_type_with_std_module: FxIndexMap<Span, Span>,
+    paths_matching_assoc_types: UnordSet<Span> = Default::default(),
+    confused_type_with_std_module: FxIndexMap<Span, Span> = default::fx_index_map(),
 
     /// Names of items that were stripped out via cfg with their corresponding cfg meta item.
     stripped_cfg_items: Vec<StrippedCfgItem<NodeId>> = Vec::new(),
 
-    effective_visibilities: EffectiveVisibilities,
-    macro_reachable_adts: FxIndexMap<LocalDefId, FxIndexSet<LocalDefId>>,
+    effective_visibilities: EffectiveVisibilities = Default::default(),
+    macro_reachable_adts: FxIndexMap<LocalDefId, FxIndexSet<LocalDefId>> = default::fx_index_map(),
 
-    doc_link_resolutions: FxIndexMap<LocalModId, DocLinkResMap>,
-    doc_link_traits_in_scope: FxIndexMap<LocalModId, Vec<DefId>>,
+    doc_link_resolutions: FxIndexMap<LocalModId, DocLinkResMap> = default::fx_index_map(),
+    doc_link_traits_in_scope: FxIndexMap<LocalModId, Vec<DefId>> = default::fx_index_map(),
     all_macro_rules: UnordSet<Symbol> = Default::default(),
 
     /// Invocation ids of all glob delegations.
@@ -1753,7 +1780,7 @@ impl<'tcx> Resolver<'_, 'tcx> {
                 .filter_map(|param| match param.kind {
                     ty::GenericParamDefKind::Lifetime => Some("'_"),
                     ty::GenericParamDefKind::Type { has_default, .. }
-                    | ty::GenericParamDefKind::Const { has_default } => {
+                    | ty::GenericParamDefKind::Const { has_default, arg_pos: _ } => {
                         if has_default {
                             None
                         } else {
@@ -1852,9 +1879,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             local_module_map,
             extern_module_map: Default::default(),
 
-            glob_map: Default::default(),
-            maybe_unused_trait_imports: Default::default(),
-
             arenas,
             dummy_decl: arenas.new_pub_def_decl(Res::Err, DUMMY_SP, LocalExpnId::ROOT),
             builtin_type_decls: PrimTy::ALL
@@ -1883,31 +1907,18 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 .collect(),
             registered_attr_tools,
             registered_lint_tools,
-            macro_use_prelude: Default::default(),
             extern_macro_map: Default::default(),
             dummy_ext_bang: arenas.alloc_macro(SyntaxExtension::dummy_bang(edition)),
             dummy_ext_derive: arenas.alloc_macro(SyntaxExtension::dummy_derive(edition)),
             non_macro_attr: arenas.alloc_macro(SyntaxExtension::non_macro_attr(edition)),
-            unused_macros: Default::default(),
-            unused_macro_rules: Default::default(),
             single_segment_macro_resolutions: Default::default(),
             multi_segment_macro_resolutions: Default::default(),
             lint_buffer: LintBuffer::default(),
             owners,
             current_owner: PerOwnerResolverData::new(DUMMY_NODE_ID, CRATE_DEF_ID),
             invocation_parents,
-            trait_impls: Default::default(),
-            confused_type_with_std_module: Default::default(),
-            paths_matching_assoc_types: Default::default(),
-            stripped_cfg_items: Default::default(),
-            effective_visibilities: Default::default(),
-            macro_reachable_adts: Default::default(),
-            doc_link_resolutions: Default::default(),
-            doc_link_traits_in_scope: Default::default(),
             current_crate_outer_attr_insert_span,
             disambiguators: Default::default(),
-            delegation_infos: Default::default(),
-            delegation_inherent_fn_map: Default::default(),
             features: tcx.features(),
             ..
         };

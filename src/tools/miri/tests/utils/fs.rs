@@ -1,15 +1,11 @@
-use std::ffi::OsString;
+use std::ffi::{CStr, OsString};
 use std::path::PathBuf;
-use std::{fs, io};
+use std::{env, fs, io};
 
-use super::miri_extern;
+use super::{into_c_string, miri_extern};
 
 pub fn host_to_target_path(path: OsString) -> PathBuf {
-    use std::ffi::{CStr, CString};
-
-    // Once into_encoded_bytes is stable we can use it here.
-    // (Unstable features would need feature flags in each test...)
-    let path = CString::new(path.into_string().unwrap()).unwrap();
+    let path = into_c_string(path);
     let mut out = Vec::with_capacity(1024);
 
     unsafe {
@@ -30,11 +26,18 @@ pub fn tmp() -> PathBuf {
     host_to_target_path(path)
 }
 
-/// Prepare: compute filename and make sure the file does not exist.
+/// Prepare: compute path and make sure the file does not exist.
 pub fn prepare(filename: &str) -> PathBuf {
+    assert!(filename.starts_with("miri"));
+
     let path = tmp().join(filename);
-    // Clean the paths for robustness.
+    // Clean the paths for robustness. Might have been a file or a directory before, who knows.
     fs::remove_file(&path).ok();
+    if cfg!(unix) {
+        // would not work on Windows
+        fs::remove_dir_all(&path).ok();
+    }
+    assert!(!path.exists());
     path
 }
 
@@ -45,10 +48,37 @@ pub fn prepare_with_content(filename: &str, content: &[u8]) -> PathBuf {
     path
 }
 
-/// Prepare directory: compute directory name and make sure it does not exist.
-pub fn prepare_dir(dirname: &str) -> PathBuf {
-    let path = tmp().join(&dirname);
-    // Clean the directory for robustness.
-    fs::remove_dir_all(&path).ok();
-    path
+/// Windows makes things difficult by refusing create symlinks per default. GHA is configured to
+/// allow them, but when people run the tests on their systems we'd prefer them to pass without
+/// special setup. So we try to detect whether symlinks are working. To make things extra fun, this
+/// can happen even if we *think* we are on Unix since the host could still be Windows.
+pub fn have_symlink_permission() -> bool {
+    use std::sync::LazyLock;
+
+    static HAVE_SYMLINK_PERMISSION: LazyLock<bool> = LazyLock::new(|| {
+        // Never skip any tests on CI.
+        if env::var_os("CI").is_some() {
+            return true;
+        }
+
+        #[cfg(unix)]
+        use std::os::unix::fs::symlink as symlink_file;
+        #[cfg(windows)]
+        use std::os::windows::fs::symlink_file;
+
+        let link = prepare("miri_have_symlink_permission_check_file");
+        if symlink_file(r"nonexisting_target", &link).is_ok() {
+            // Looking pretty good.
+            fs::remove_file(link).unwrap();
+            return true;
+        }
+        // Looking bad. But just to confirm, could we create a normal file?
+        if fs::write(&link, &[]).is_ok() {
+            // Normal file works, symlink did not -- looks like the Windows issue.
+            fs::remove_file(link).unwrap();
+            return false;
+        }
+        panic!("unable to create files in tempdir");
+    });
+    *HAVE_SYMLINK_PERMISSION
 }

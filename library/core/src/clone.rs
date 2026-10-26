@@ -686,8 +686,8 @@ unsafe impl CloneToUninit for crate::ffi::CStr {
     }
 }
 
-#[unstable(feature = "bstr", issue = "134915")]
-unsafe impl CloneToUninit for crate::bstr::ByteStr {
+#[unstable(feature = "byte_str", issue = "134915")]
+unsafe impl CloneToUninit for crate::byte_str::ByteStr {
     #[inline]
     #[cfg_attr(debug_assertions, track_caller)]
     unsafe fn clone_to_uninit(&self, dst: *mut u8) {
@@ -732,7 +732,7 @@ mod impls {
         bool char
     }
 
-    #[stable(feature = "never_type", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "never_type", since = "1.100.0")]
     #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
     const impl Clone for ! {
         #[inline]

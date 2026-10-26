@@ -119,6 +119,13 @@ impl Features {
             false
         }
     }
+
+    /// The generic_const_args family of features has a set of common behavior that can be enabled
+    /// by either `gca_min_const_items` or `gca_adts`. There is no actual `gca` base feature, but
+    /// this method acts as one.
+    pub fn gca(&self) -> bool {
+        self.gca_min_const_items() || self.gca_adts()
+    }
 }
 
 macro_rules! declare_features {
@@ -228,7 +235,7 @@ declare_features! (
     /// Allows checking whether or not the backend correctly supports unstable float types.
     (internal, cfg_target_has_reliable_f16_f128, "1.88.0", None),
     /// Allows checking whether or not the backend correctly supports the unstable `f16b` type.
-    (internal, cfg_target_has_reliable_f16b, "CURRENT_RUSTC_VERSION", None),
+    (internal, cfg_target_has_reliable_f16b, "1.100.0", None),
     /// Allows checking whether or not the target might have thread support.
     (internal, cfg_target_has_threads, "1.99.0", None),
     /// Allows identifying the `compiler_builtins` crate.
@@ -250,7 +257,7 @@ declare_features! (
     /// Allows `#[link(..., cfg(..))]`; perma-unstable per #37406
     (internal, link_cfg, "1.14.0", None),
     /// Allows using `#[link_name="__enzyme_*"]`.
-    (internal, link_enzyme_intrinsics, "CURRENT_RUSTC_VERSION", None),
+    (internal, link_enzyme_intrinsics, "1.100.0", None),
     /// Allows using `?Trait` trait bounds in more contexts.
     (internal, more_maybe_bounds, "1.82.0", None),
     /// Allow negative trait bounds. This is an internal-only feature for testing the trait solver!
@@ -263,10 +270,12 @@ declare_features! (
     (internal, profiler_runtime, "1.18.0", None),
     /// Allows using `rustc_*` attributes (RFC 572).
     (internal, rustc_attrs, "1.0.0", None),
+    /// Allows using internal rustdoc features like `doc(keyword)`.
+    (internal, rustdoc_internals, "1.58.0", None),
     /// Allows using the `#[stable]` and `#[unstable]` attributes.
     (internal, staged_api, "1.0.0", None),
     /// Perma-unstable, only used in the test suite for binders (`for<'a>`).
-    (internal, test_binder_constraints, "CURRENT_RUSTC_VERSION", None),
+    (internal, test_binder_constraints, "1.100.0", None),
     /// Perma-unstable, only used to test the `incomplete_features` lint.
     (incomplete, test_incomplete_feature, "1.96.0", None),
     /// Added for testing unstable lints; perma-unstable.
@@ -315,8 +324,6 @@ declare_features! (
     (internal, repr_simd, "1.4.0", Some(27731)),
     /// Allows using compiler's own crates.
     (unstable, rustc_private, "1.0.0", Some(27812)),
-    /// Allows using internal rustdoc features like `doc(keyword)`.
-    (internal, rustdoc_internals, "1.58.0", Some(90418)),
     /// Allows using the `rustdoc::missing_doc_code_examples` lint
     (unstable, rustdoc_missing_doc_code_examples, "1.31.0", Some(101730)),
     /// Introduces a hierarchy of `Sized` traits (RFC 3729).
@@ -523,7 +530,7 @@ declare_features! (
     /// Allow using 16-bit (half precision) floating point numbers.
     (unstable, f16, "1.78.0", Some(116909)),
     /// Allow using bfloat16 floating point numbers.
-    (unstable, f16b, "CURRENT_RUSTC_VERSION", Some(160630)),
+    (unstable, f16b, "1.100.0", Some(160630)),
     /// Allows the use of `#[ffi_const]` on foreign functions.
     (unstable, ffi_const, "1.45.0", Some(58328)),
     /// Allows the use of `#[ffi_pure]` on foreign functions.
@@ -539,22 +546,26 @@ declare_features! (
     /// Allows using `#[align(...)]` on function items
     (unstable, fn_align, "1.53.0", Some(82232)),
     /// Support delegating implementation of functions to other already implemented functions.
-    (incomplete, fn_delegation, "1.76.0", Some(118212)),
+    (unstable, fn_delegation, "1.76.0", Some(118212)),
     /// Traits for function pointers and items
-    (unstable, fn_static, "CURRENT_RUSTC_VERSION", Some(148768)),
+    (unstable, fn_static, "1.100.0", Some(148768)),
     /// Allows using forced keywords `k#fn`.
     (unstable, forced_keywords, "CURRENT_RUSTC_VERSION", Some(153839)),
     /// Allows impls for the Freeze trait.
     (internal, freeze_impls, "1.78.0", Some(121675)),
     /// Frontmatter `---` blocks for use by external tools.
     (unstable, frontmatter, "1.88.0", Some(136889)),
+    /// Allow function args to be const generics
+    (incomplete, function_arg_const_generics, "CURRENT_RUSTC_VERSION", Some(163261)),
+    /// Allows using ADTs in directly represented generic const args.
+    (incomplete, gca_adts, "CURRENT_RUSTC_VERSION", Some(163420)),
     /// Allows using generics in more complex const expressions, based on definitional equality.
     (incomplete, gca_const_items, "1.95.0", Some(151972)),
     /// Allows directly represented gca_const_items without the `gca!` macro.
     (incomplete, gca_macroless_args, "1.99.0", Some(159006)),
     /// Allows directly represented gca_const_items as the rhs of const items without the
     /// `gca!` macro.
-    (incomplete, gca_macroless_items, "CURRENT_RUSTC_VERSION", Some(162540)),
+    (incomplete, gca_macroless_items, "1.100.0", Some(162540)),
     /// Enables the generic const args MVP (paths to type const items and constructors
     /// for ADTs and primitives).
     (incomplete, gca_min_const_items, "1.84.0", Some(132980)),
@@ -632,6 +643,10 @@ declare_features! (
     (unstable, mips_target_feature, "1.27.0", Some(150253)),
     /// Allows qualified paths in struct expressions, struct patterns and tuple struct patterns.
     (unstable, more_qualified_paths, "1.54.0", Some(86935)),
+    /// The `movdir64b` target feature on x86.
+    (unstable, movdir64b_target_feature, "CURRENT_RUSTC_VERSION", Some(163741)),
+    /// The `movdiri` target feature on x86.
+    (unstable, movdiri_target_feature, "CURRENT_RUSTC_VERSION", Some(163741)),
     /// Allows `move(expr)` in closures.
     (incomplete, move_expr, "1.97.0", Some(155050)),
     /// The `movrs` target feature on x86.
@@ -651,7 +666,7 @@ declare_features! (
     /// Allows providing names to parameters of `impl Fn` etc
     (unstable, named_fn_trait_parameters, "1.99.0", Some(158499)),
     /// Allows specifying the as-needed link modifier
-    (unstable, native_link_modifiers_as_needed, "1.53.0", Some(81490)),
+    (unstable, native_link_modifiers_as_needed, "1.53.0", Some(99424)),
     /// Allow negative trait implementations.
     (unstable, negative_impls, "1.44.0", Some(68318)),
     /// Allows the `!` pattern.
@@ -670,8 +685,6 @@ declare_features! (
     (unstable, offset_of_enum, "1.75.0", Some(120141)),
     /// Allows using fields with slice type in offset_of!
     (unstable, offset_of_slice, "1.81.0", Some(126151)),
-    /// Allows using `#[optimize(X)]`.
-    (unstable, optimize_attribute, "1.34.0", Some(54882)),
     /// Allows specifying nop padding on functions for dynamic patching.
     (unstable, patchable_function_entry, "1.81.0", Some(123115)),
     /// Experimental features that make `Pin` more ergonomic.
@@ -712,7 +725,7 @@ declare_features! (
     /// Allows the use of the `sanitize` attribute.
     (unstable, sanitize, "1.91.0", Some(39699)),
     /// Allows the use of SIMD types in functions declared in `extern` blocks.
-    (unstable, simd_ffi, "1.0.0", Some(27731)),
+    (unstable, simd_ffi, "1.0.0", Some(63068)),
     /// Target features on sparc.
     (unstable, sparc_target_feature, "1.84.0", Some(132783)),
     /// Allows specialization of implementations (RFC 1210).
@@ -757,7 +770,7 @@ declare_features! (
     (incomplete, unsafe_fields, "1.85.0", Some(132922)),
     /// Allows const generic parameters to be defined with types that
     /// are not `Sized`, e.g. `fn foo<const N: [u8]>() {`.
-    (incomplete, unsized_const_params, "1.82.0", Some(95174)),
+    (incomplete, unsized_const_params, "1.82.0", Some(128028)),
     /// Allows unsized fn parameters.
     (internal, unsized_fn_params, "1.49.0", Some(48055)),
     /// Allows using the `#[used(linker)]` (or `#[used(compiler)]`) attribute.
@@ -859,10 +872,32 @@ pub const INCOMPATIBLE_FEATURES: &[(Symbol, Symbol)] = &[
     (sym::ref_pat_eat_one_layer_2024, sym::ref_pat_eat_one_layer_2024_structural),
 ];
 
+pub enum DependentFeature {
+    And(&'static [DependentFeature]),
+    Or(&'static [DependentFeature]),
+    Leaf(Symbol),
+}
+
 /// Some features require one or more other features to be enabled.
-pub const DEPENDENT_FEATURES: &[(Symbol, &[Symbol])] = &[
-    (sym::gca_const_items, &[sym::gca_min_const_items]),
-    (sym::gca_macroless_args, &[sym::gca_min_const_items]),
-    (sym::gca_macroless_items, &[sym::gca_min_const_items]),
-    (sym::unsized_const_params, &[sym::adt_const_params]),
+pub const DEPENDENT_FEATURES: &[(Symbol, DependentFeature)] = &[
+    // tidy-alphabetical-start
+    (
+        sym::function_arg_const_generics,
+        DependentFeature::Or(&[
+            DependentFeature::Leaf(sym::gca_min_const_items),
+            DependentFeature::Leaf(sym::gca_adts),
+        ]),
+    ),
+    (
+        sym::gca_adts,
+        DependentFeature::Or(&[
+            DependentFeature::Leaf(sym::min_adt_const_params),
+            DependentFeature::Leaf(sym::adt_const_params),
+        ]),
+    ),
+    (sym::gca_const_items, DependentFeature::Leaf(sym::gca_min_const_items)),
+    (sym::gca_macroless_args, DependentFeature::Leaf(sym::gca_min_const_items)),
+    (sym::gca_macroless_items, DependentFeature::Leaf(sym::gca_min_const_items)),
+    (sym::unsized_const_params, DependentFeature::Leaf(sym::adt_const_params)),
+    // tidy-alphabetical-end
 ];

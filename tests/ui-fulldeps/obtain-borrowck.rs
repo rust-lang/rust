@@ -50,7 +50,7 @@ fn main() -> ExitCode {
         rustc_args.push("-Zpolonius".to_owned());
         let mut callbacks = CompilerCalls::default();
         // Call the Rust compiler with our callbacks.
-        rustc_driver::run_compiler(&rustc_args, &mut callbacks);
+        rustc_driver::compiler_entrypoint(&rustc_args, &mut callbacks);
     })
 }
 

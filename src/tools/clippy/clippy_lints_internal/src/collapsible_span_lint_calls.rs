@@ -18,7 +18,7 @@ declare_tool_lint! {
     /// span), `help` or `note`.
     ///
     /// These usages of `span_lint_and_then` should be replaced with one of the
-    /// wrapper functions `span_lint_and_sugg`, span_lint_and_help`, or
+    /// wrapper functions `span_lint_and_sugg`, `span_lint_and_help`, or
     /// `span_lint_and_note`.
     ///
     /// ### Why is this bad?
@@ -83,7 +83,7 @@ impl<'tcx> LateLintPass<'tcx> for CollapsibleCalls {
             && internal_paths::SPAN_LINT_AND_THEN.matches_path(cx, func)
             && let ExprKind::Closure(&Closure { body, .. }) = call_f.kind
             && let body = cx.tcx.hir_body(body)
-            && let only_expr = peel_blocks_with_stmt(body.value)
+            && let only_expr = peel_blocks_with_stmt(&body.value)
             && let ExprKind::MethodCall(ps, recv, span_call_args, _) = &only_expr.kind
             && let ExprKind::Path(..) = recv.kind
         {

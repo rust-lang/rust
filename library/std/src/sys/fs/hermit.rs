@@ -11,7 +11,7 @@ use crate::os::hermit::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, Raw
 use crate::path::{Path, PathBuf};
 use crate::sync::Arc;
 use crate::sys::fd::FileDesc;
-pub use crate::sys::fs::common::{Dir, copy, exists};
+pub use crate::sys::fs::common::{Dir, ExtraHomeDirs, ExtraMediaDirs, copy, exists};
 use crate::sys::helpers::run_path_with_cstr;
 use crate::sys::io::DEFAULT_BUF_SIZE;
 use crate::sys::time::SystemTime;
@@ -218,6 +218,14 @@ impl FileType {
     }
     pub fn is_symlink(&self) -> bool {
         self.mode == DT_LNK
+    }
+}
+
+impl ReadDir {
+    pub fn dir(&self) -> io::Result<Dir> {
+        let mut options = OpenOptions::new();
+        options.read(true);
+        Dir::open(&self.inner.root, &options)
     }
 }
 
@@ -591,6 +599,10 @@ pub fn unlink(path: &Path) -> io::Result<()> {
 }
 
 pub fn rename(_old: &Path, _new: &Path) -> io::Result<()> {
+    unsupported()
+}
+
+pub fn rename_noreplace(_old: &Path, _new: &Path) -> io::Result<()> {
     unsupported()
 }
 

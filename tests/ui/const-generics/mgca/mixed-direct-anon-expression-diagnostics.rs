@@ -2,8 +2,7 @@
 //! things that must be an anon const, are currently less than ideal. This test merely asserts the
 //! current (bad) state of diagnostics, so we can track improvements over time.
 
-#![feature(gca_min_const_items, min_adt_const_params)]
-#![allow(incomplete_features)]
+#![feature(gca_adts, gca_min_const_items, min_adt_const_params)]
 
 use std::gca;
 

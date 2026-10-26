@@ -1,3 +1,5 @@
+//! Utilities for analyzing macro invocations and expansions.
+
 #![expect(clippy::similar_names)] // `expr` and `expn`
 
 use std::cell::Cell;
@@ -73,6 +75,7 @@ pub struct MacroCall {
 }
 
 impl MacroCall {
+    /// Returns true if this macro call is from the root expansion or a locally defined macro
     pub fn is_local(&self) -> bool {
         span_is_local(self.span)
     }
@@ -461,6 +464,24 @@ impl FormatArgsStorage {
         self.0.get()?.get(&format_args_expr.span.with_parent(None))
     }
 
+    /// Returns AST [`FormatArgs`] nodes if there are any nested inside `parent_format_args`.
+    pub fn get_nested(&self, parent_format_args: &FormatArgs) -> Vec<&FormatArgs> {
+        let mut nested = Vec::new();
+        let Some(format_args_map) = self.0.get() else {
+            return nested;
+        };
+
+        for arg in parent_format_args.arguments.all_args() {
+            if matches!(arg.expr.kind, rustc_ast::ExprKind::FormatArgs(_))
+                && let Some(format_args) = format_args_map.get(&arg.expr.span.with_parent(None))
+            {
+                nested.push(format_args);
+            }
+        }
+
+        nested
+    }
+
     /// Should only be called by `FormatArgsCollector`
     pub fn set(&self, format_args: FxHashMap<Span, FormatArgs>) {
         self.0
@@ -558,7 +579,9 @@ pub enum FormatParamUsage {
 
 /// A node with a `HirId` and a `Span`
 pub trait HirNode {
+    /// Returns this node's [`HirId`]
     fn hir_id(&self) -> HirId;
+    /// Returns this node's [`Span`]
     fn span(&self) -> Span;
 }
 

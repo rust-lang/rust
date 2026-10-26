@@ -594,7 +594,7 @@ impl f128 {
     /// conserved over arithmetic operations, the result of `is_sign_positive` on
     /// a NaN might produce an unexpected or non-portable result. See the [specification
     /// of NaN bit patterns](f32#nan-bit-patterns) for more info. Use `self.signum() == 1.0`
-    /// if you need fully portable behavior (will return NaN for all NaNs).
+    /// if you need fully portable behavior (evaluates to `false` for all NaNs).
     ///
     /// ```
     /// #![feature(f128)]
@@ -620,7 +620,7 @@ impl f128 {
     /// conserved over arithmetic operations, the result of `is_sign_negative` on
     /// a NaN might produce an unexpected or non-portable result. See the [specification
     /// of NaN bit patterns](f32#nan-bit-patterns) for more info. Use `self.signum() == -1.0`
-    /// if you need fully portable behavior (will return NaN for all NaNs).
+    /// if you need fully portable behavior (evaluates to `false` for all NaNs).
     ///
     /// ```
     /// #![feature(f128)]
@@ -1544,9 +1544,10 @@ impl f128 {
     /// ```
     #[inline]
     #[unstable(feature = "clamp_magnitude", issue = "148519")]
-    #[must_use = "this returns the clamped value and does not modify the original"]
+    #[rustc_const_unstable(feature = "clamp_magnitude", issue = "148519")]
+    #[must_use = "method returns a new number and does not mutate the original value"]
     #[expect(clippy::neg_cmp_op_on_partial_ord, reason = "NaN is also invalid")]
-    pub fn clamp_magnitude(self, limit: f128) -> f128 {
+    pub const fn clamp_magnitude(self, limit: f128) -> f128 {
         assert!(limit >= 0.0, "limit must be non-negative and not NaN");
         let limit = limit.abs(); // Canonicalises -0.0 to 0.0
         self.clamp(-limit, limit)
@@ -1799,7 +1800,7 @@ impl f128 {
     #[rustc_const_unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn floor(self) -> f128 {
-        intrinsics::floorf128(self)
+        intrinsics::floor(self)
     }
 
     /// Returns the smallest integer greater than or equal to `self`.
@@ -1826,7 +1827,7 @@ impl f128 {
     #[rustc_const_unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn ceil(self) -> f128 {
-        intrinsics::ceilf128(self)
+        intrinsics::ceil(self)
     }
 
     /// Returns the nearest integer to `self`. If a value is half-way between two
@@ -1859,7 +1860,7 @@ impl f128 {
     #[rustc_const_unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn round(self) -> f128 {
-        intrinsics::roundf128(self)
+        intrinsics::round(self)
     }
 
     /// Returns the nearest integer to a number. Rounds half-way cases to the number
@@ -1890,7 +1891,7 @@ impl f128 {
     #[rustc_const_unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn round_ties_even(self) -> f128 {
-        intrinsics::round_ties_even_f128(self)
+        intrinsics::round_ties_even(self)
     }
 
     /// Returns the integer part of `self`.
@@ -1920,7 +1921,7 @@ impl f128 {
     #[rustc_const_unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn trunc(self) -> f128 {
-        intrinsics::truncf128(self)
+        intrinsics::trunc(self)
     }
 
     /// Returns the fractional part of `self`.
@@ -1994,7 +1995,46 @@ impl f128 {
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn mul_add(self, a: f128, b: f128) -> f128 {
-        intrinsics::fmaf128(self, a, b)
+        intrinsics::fma(self, a, b)
+    }
+
+    /// Computes `(self * a) + b` with nondeterministic rounding.
+    ///
+    /// This is similar to [`mul_add`](Self::mul_add), but the intermediate
+    /// result may be rounded differently depending on the implementation.
+    /// The operation is either executed as a single fused multiply-add
+    /// instruction, or as separate multiply and add instructions.
+    ///
+    /// The choice of which one is used is unspecified and non-deterministic:
+    /// it may vary by target, optimization level, and surrounding code, and
+    /// even two invocations of this operation with the same inputs may
+    /// produce different results.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(f128)]
+    /// #![feature(float_mul_add_relaxed)]
+    /// # #[cfg(any(miri, target_has_reliable_f128_math))] { // Miri uses softfloats, always works
+    ///
+    /// // When the fused and unfused operations round differently, either
+    /// // result may be returned:
+    /// // - 7.824090399073145653039910391751267e-37 is the fused result (one rounding)
+    /// // - 1.5046327690525280101999827676444745e-36 is the unfused result (two roundings)
+    /// let r = 0.1_f128.mul_add_relaxed(0.1_f128, -0.01_f128);
+    /// assert!(
+    ///     r == 7.824090399073145653039910391751267e-37
+    ///         || r == 1.5046327690525280101999827676444745e-36
+    /// );
+    /// # }
+    /// ```
+    #[inline]
+    #[rustc_allow_incoherent_impl]
+    #[doc(alias = "fmuladd")]
+    #[unstable(feature = "float_mul_add_relaxed", issue = "151770")]
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    pub const fn mul_add_relaxed(self, a: f128, b: f128) -> f128 {
+        intrinsics::fmuladd(self, a, b)
     }
 
     /// Calculates Euclidean division, the matching method for `rem_euclid`.
@@ -2113,7 +2153,7 @@ impl f128 {
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn powi(self, n: i32) -> f128 {
-        intrinsics::powif128(self, n)
+        intrinsics::powi(self, n)
     }
 
     /// Returns the square root of a number.
@@ -2147,6 +2187,6 @@ impl f128 {
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn sqrt(self) -> f128 {
-        intrinsics::sqrtf128(self)
+        intrinsics::sqrt(self)
     }
 }

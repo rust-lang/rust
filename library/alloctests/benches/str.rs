@@ -1,5 +1,9 @@
 use test::{Bencher, black_box};
 
+#[allow(unused)] // this is a symlink to core benches, we don't use everything here
+#[path = "../../coretests/benches/str/corpora.rs"]
+pub(super) mod corpora;
+
 #[bench]
 fn char_iterator(b: &mut Bencher) {
     let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";

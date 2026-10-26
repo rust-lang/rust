@@ -496,7 +496,7 @@ fn construct_fn<'tcx>(
         );
     }
 
-    let typing_mode = if tcx.use_typing_mode_post_typeck_until_borrowck() {
+    let typing_mode = if tcx.use_typing_mode_post_typeck_through_borrowck() {
         TypingMode::borrowck(tcx, fn_def)
     } else {
         // FIXME(#132279): This should be able to reveal opaque
@@ -606,7 +606,7 @@ fn construct_const<'a, 'tcx>(
         _ => span_bug!(tcx.def_span(def), "can't build MIR for {:?}", def),
     };
 
-    let typing_mode = if tcx.use_typing_mode_post_typeck_until_borrowck() {
+    let typing_mode = if tcx.use_typing_mode_post_typeck_through_borrowck() {
         TypingMode::borrowck(tcx, def)
     } else {
         // FIXME(#132279): This should be able to reveal opaque
@@ -652,7 +652,15 @@ fn construct_error(tcx: TyCtxt<'_>, def_id: LocalDefId, guar: ErrorGuaranteed) -
             (sig.inputs().to_vec(), sig.output(), None)
         }
         DefKind::Closure => {
-            let closure_ty = tcx.type_of(def_id).instantiate_identity().skip_norm_wip();
+            let closure_ty = tcx.type_of(def_id).instantiate_identity().skip_normalization();
+            let closure_ty = if tcx.next_trait_solver_globally() {
+                // Like `construct_fn`, closure tys were already normalized during writeback and
+                // wrapping them in an `EarlyBinder` makes them non-rigid, so we just need to
+                // restore their rigidness again.
+                ty::set_aliases_to_rigid(tcx, closure_ty)
+            } else {
+                closure_ty
+            };
             match closure_ty.kind() {
                 ty::Closure(_, args) => {
                     let args = args.as_closure();

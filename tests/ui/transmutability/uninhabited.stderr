@@ -41,6 +41,10 @@ LL | |         }>
 error[E0080]: evaluation panicked: assertion failed: false
   --> $DIR/uninhabited.rs:41:9
    |
+LL | fn yawning_void_struct() {
+...
+LL |     const _: () = {
+...
 LL |         assert!(false);
    |         ^^^^^^^^^^^^^^ evaluation of `yawning_void_struct::_` failed here
 
@@ -67,6 +71,10 @@ LL | |         }>
 error[E0080]: evaluation panicked: assertion failed: false
   --> $DIR/uninhabited.rs:61:9
    |
+LL | fn yawning_void_enum() {
+...
+LL |     const _: () = {
+...
 LL |         assert!(false);
    |         ^^^^^^^^^^^^^^ evaluation of `yawning_void_enum::_` failed here
 
@@ -93,6 +101,10 @@ LL | |         }>
 error[E0080]: evaluation panicked: assertion failed: false
   --> $DIR/uninhabited.rs:83:9
    |
+LL | fn distant_void() {
+...
+LL |     const _: () = {
+...
 LL |         assert!(false);
    |         ^^^^^^^^^^^^^^ evaluation of `distant_void::_` failed here
 
