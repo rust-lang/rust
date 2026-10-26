@@ -23,6 +23,7 @@ extern crate minicore;
 use minicore::*;
 
 type ptr = *const i32;
+type nonnull = NonNull<i32>;
 
 extern "C" {
     fn extern_func();
@@ -58,23 +59,33 @@ pub unsafe fn sym_static() {
     asm!("la.got $r12, {}", sym extern_static);
 }
 
-macro_rules! check { ($func:ident, $ty:ty, $class:ident, $mov:literal) => {
-    #[no_mangle]
-    pub unsafe fn $func(x: $ty) -> $ty {
-        let y;
-        asm!(concat!($mov," {}, {}"), out($class) y, in($class) x);
-        y
-    }
-};}
+macro_rules! check {
+    ($func:ident, $ty:ty, $class:ident, $mov:literal) => {
+        check!($func, $ty:$ty, $class, $mov);
+    };
+    ($func:ident, $in_ty:ty:$out_ty:ty, $class:ident, $mov:literal) => {
+        #[no_mangle]
+        pub unsafe fn $func(x: $in_ty) -> $out_ty {
+            let y;
+            asm!(concat!($mov," {}, {}"), out($class) y, in($class) x);
+            y
+        }
+    };
+}
 
-macro_rules! check_reg { ($func:ident, $ty:ty, $reg:tt, $mov:literal) => {
-    #[no_mangle]
-    pub unsafe fn $func(x: $ty) -> $ty {
-        let y;
-        asm!(concat!($mov, " ", $reg, ", ", $reg), lateout($reg) y, in($reg) x);
-        y
-    }
-};}
+macro_rules! check_reg {
+    ($func:ident, $ty:ty, $reg:tt, $mov:literal) => {
+        check_reg!($func, $ty:$ty, $reg, $mov);
+    };
+    ($func:ident, $in_ty:ty:$out_ty:ty, $reg:tt, $mov:literal) => {
+        #[no_mangle]
+        pub unsafe fn $func(x: $in_ty) -> $out_ty {
+            let y;
+            asm!(concat!($mov, " ", $reg, ", ", $reg), lateout($reg) y, in($reg) x);
+            y
+        }
+    };
+}
 
 // CHECK-LABEL: reg_i8:
 // CHECK: #APP
@@ -125,6 +136,12 @@ check!(reg_f64, f64, reg, "move");
 // CHECK: move ${{[a-z0-9]+}}, ${{[a-z0-9]+}}
 // CHECK: #NO_APP
 check!(reg_ptr, ptr, reg, "move");
+
+// CHECK-LABEL: reg_nonnull:
+// CHECK: #APP
+// CHECK: move ${{[a-z0-9]+}}, ${{[a-z0-9]+}}
+// CHECK: #NO_APP
+check!(reg_nonnull, nonnull:ptr, reg, "move");
 
 // CHECK-LABEL: freg_f16:
 // CHECK: #APP
@@ -193,6 +210,12 @@ check_reg!(r4_f64, f64, "$r4", "move");
 // CHECK: move $a0, $a0
 // CHECK: #NO_APP
 check_reg!(r4_ptr, ptr, "$r4", "move");
+
+// CHECK-LABEL: r4_nonnull:
+// CHECK: #APP
+// CHECK: move $a0, $a0
+// CHECK: #NO_APP
+check_reg!(r4_nonnull, nonnull:ptr, "$r4", "move");
 
 // CHECK-LABEL: f0_f16:
 // CHECK: #APP

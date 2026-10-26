@@ -15,6 +15,7 @@ use minicore::simd::*;
 use minicore::*;
 
 type ptr = *const i32;
+type nonnull = NonNull<u8>;
 
 type i32x32 = Simd<i32, 32>; // 1024-bit HVX vector (128B mode)
 type i32x64 = Simd<i32, 64>; // 2048-bit HVX vector pair (128B mode)
@@ -26,8 +27,11 @@ extern "C" {
 
 macro_rules! check {
     ($func:ident $ty:ident $class:ident) => {
+        check!($func $ty:$ty $class);
+    };
+    ($func:ident $in_ty:ident:$out_ty:ident $class:ident) => {
         #[no_mangle]
-        pub unsafe fn $func(x: $ty) -> $ty {
+        pub unsafe fn $func(x: $in_ty) -> $out_ty {
             let y;
             asm!("{} = {}", out($class) y, in($class) x);
             y
@@ -37,8 +41,11 @@ macro_rules! check {
 
 macro_rules! check_reg {
     ($func:ident $ty:ident $reg:tt) => {
+        check_reg!($func $ty:$ty $reg);
+    };
+    ($func:ident $in_ty:ident:$out_ty:ident $reg:tt) => {
         #[no_mangle]
-        pub unsafe fn $func(x: $ty) -> $ty {
+        pub unsafe fn $func(x: $in_ty) -> $out_ty {
             let y;
             asm!(concat!($reg, " = ", $reg), lateout($reg) y, in($reg) x);
             y
@@ -89,6 +96,12 @@ pub unsafe fn packet() {
 // CHECK: InlineAsm End
 check!(reg_ptr ptr reg);
 
+// CHECK-LABEL: reg_nonnull:
+// CHECK: InlineAsm Start
+// CHECK: r{{[0-9]+}} = r{{[0-9]+}}
+// CHECK: InlineAsm End
+check!(reg_nonnull nonnull:ptr reg);
+
 // CHECK-LABEL: reg_f32:
 // CHECK: InlineAsm Start
 // CHECK: r{{[0-9]+}} = r{{[0-9]+}}
@@ -118,6 +131,12 @@ check!(reg_i16 i16 reg);
 // CHECK: r0 = r0
 // CHECK: InlineAsm End
 check_reg!(r0_ptr ptr "r0");
+
+// CHECK-LABEL: r0_nonnull:
+// CHECK: InlineAsm Start
+// CHECK: r0 = r0
+// CHECK: InlineAsm End
+check_reg!(r0_nonnull nonnull:ptr "r0");
 
 // CHECK-LABEL: r0_f32:
 // CHECK: InlineAsm Start

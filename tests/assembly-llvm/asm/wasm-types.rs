@@ -11,6 +11,7 @@ extern crate minicore;
 use minicore::*;
 
 type ptr = *mut u8;
+type nonnull = NonNull<u8>;
 
 extern "C" {
     fn extern_func();
@@ -41,8 +42,11 @@ pub unsafe fn sym_static() {
 
 macro_rules! check {
     ($func:ident $ty:ident $instr:literal) => {
+        check!($func $ty:$ty $instr);
+    };
+    ($func:ident $in_ty:ident:$out_ty:ident $instr:literal) => {
         #[no_mangle]
-        pub unsafe fn $func(x: $ty) -> $ty {
+        pub unsafe fn $func(x: $in_ty) -> $out_ty {
             let y;
             asm!(concat!("local.get {}\n", $instr, "\nlocal.set {}"), in(local) x, out(local) y);
             y
@@ -129,3 +133,11 @@ check!(f64_f64 f64 "f64.abs");
 // CHECK: local.set {{[0-9]}}
 // CHECK: #NO_APP
 check!(i32_ptr ptr "i32.eqz");
+
+// CHECK-LABEL: i32_nonnull
+// CHECK: #APP
+// CHECK: local.get {{[0-9]}}
+// CHECK: i32.eqz
+// CHECK: local.set {{[0-9]}}
+// CHECK: #NO_APP
+check!(i32_nonnull nonnull:ptr "i32.eqz");

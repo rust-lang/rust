@@ -19,6 +19,7 @@ use minicore::simd::*;
 use minicore::*;
 
 type ptr = *mut u8;
+type nonnull = NonNull<u8>;
 
 extern "C" {
     fn extern_func();
@@ -54,8 +55,11 @@ pub unsafe fn const_ptr() {
 
 macro_rules! check {
     ($func:ident $ty:ident $class:ident $mov:literal) => {
+        check!($func $ty:$ty $class $mov);
+    };
+    ($func:ident $in_ty:ident:$out_ty:ident $class:ident $mov:literal) => {
         #[no_mangle]
-        pub unsafe fn $func(x: $ty) -> $ty {
+        pub unsafe fn $func(x: $in_ty) -> $out_ty {
             let y;
             asm!(concat!($mov, " {}, {}"), lateout($class) y, in($class) x);
             y
@@ -65,8 +69,11 @@ macro_rules! check {
 
 macro_rules! check_reg {
     ($func:ident $ty:ident $reg:tt $mov:literal) => {
+        check_reg!($func $ty:$ty $reg $mov);
+    };
+    ($func:ident $in_ty:ident:$out_ty:ident $reg:tt $mov:literal) => {
         #[no_mangle]
-        pub unsafe fn $func(x: $ty) -> $ty {
+        pub unsafe fn $func(x: $in_ty) -> $out_ty {
             let y;
             asm!(concat!($mov, " ", $reg, ", ", $reg), lateout($reg) y, in($reg) x);
             y
@@ -123,6 +130,13 @@ check!(reg_f64 f64 reg "mov");
 // CHECK: #NO_APP
 check!(reg_ptr ptr reg "mov");
 
+// CHECK-LABEL: reg_nonnull:
+// CHECK: #APP
+// x86_64: mov r{{[a-z0-9]+}}, r{{[a-z0-9]+}}
+// i686: mov e{{[a-z0-9]+}}, e{{[a-z0-9]+}}
+// CHECK: #NO_APP
+check!(reg_nonnull nonnull:ptr reg "mov");
+
 // CHECK-LABEL: reg_abcd_i16:
 // CHECK: #APP
 // x86_64: mov r{{[a-z0-9]+}}, r{{[a-z0-9]+}}
@@ -172,6 +186,13 @@ check!(reg_abcd_f64 f64 reg_abcd "mov");
 // CHECK: #NO_APP
 check!(reg_abcd_ptr ptr reg_abcd "mov");
 
+// CHECK-LABEL: reg_abcd_nonnull:
+// CHECK: #APP
+// x86_64: mov r{{[a-z0-9]+}}, r{{[a-z0-9]+}}
+// i686: mov e{{[a-z0-9]+}}, e{{[a-z0-9]+}}
+// CHECK: #NO_APP
+check!(reg_abcd_nonnull nonnull:ptr reg_abcd "mov");
+
 // CHECK-LABEL: reg_byte:
 // CHECK: #APP
 // CHECK: mov {{[a-z0-9]+}}, {{[a-z0-9]+}}
@@ -219,6 +240,12 @@ check!(xmm_reg_f128 f128 xmm_reg "movaps");
 // CHECK: movaps xmm{{[0-9]+}}, xmm{{[0-9]+}}
 // CHECK: #NO_APP
 check!(xmm_reg_ptr ptr xmm_reg "movaps");
+
+// CHECK-LABEL: xmm_reg_nonnull:
+// CHECK: #APP
+// CHECK: movaps xmm{{[0-9]+}}, xmm{{[0-9]+}}
+// CHECK: #NO_APP
+check!(xmm_reg_nonnull nonnull:ptr xmm_reg "movaps");
 
 // CHECK-LABEL: xmm_reg_i8x16:
 // CHECK: #APP
@@ -303,6 +330,12 @@ check!(ymm_reg_f128 f128 ymm_reg "vmovaps");
 // CHECK: vmovaps ymm{{[0-9]+}}, ymm{{[0-9]+}}
 // CHECK: #NO_APP
 check!(ymm_reg_ptr ptr ymm_reg "vmovaps");
+
+// CHECK-LABEL: ymm_reg_nonnull:
+// CHECK: #APP
+// CHECK: vmovaps ymm{{[0-9]+}}, ymm{{[0-9]+}}
+// CHECK: #NO_APP
+check!(ymm_reg_nonnull nonnull:ptr ymm_reg "vmovaps");
 
 // CHECK-LABEL: ymm_reg_i8x16:
 // CHECK: #APP
@@ -429,6 +462,12 @@ check!(zmm_reg_f128 f128 zmm_reg "vmovaps");
 // CHECK: vmovaps zmm{{[0-9]+}}, zmm{{[0-9]+}}
 // CHECK: #NO_APP
 check!(zmm_reg_ptr ptr zmm_reg "vmovaps");
+
+// CHECK-LABEL: zmm_reg_nonnull:
+// CHECK: #APP
+// CHECK: vmovaps zmm{{[0-9]+}}, zmm{{[0-9]+}}
+// CHECK: #NO_APP
+check!(zmm_reg_nonnull nonnull:ptr zmm_reg "vmovaps");
 
 // CHECK-LABEL: zmm_reg_i8x16:
 // CHECK: #APP
@@ -586,6 +625,12 @@ check!(kreg_i64 i64 kreg "kmovq");
 // CHECK: #NO_APP
 check!(kreg_ptr ptr kreg "kmovq");
 
+// CHECK-LABEL: kreg_nonnull:
+// CHECK: #APP
+// CHECK: kmovq k{{[0-9]+}}, k{{[0-9]+}}
+// CHECK: #NO_APP
+check!(kreg_nonnull nonnull:ptr kreg "kmovq");
+
 // CHECK-LABEL: eax_i16:
 // CHECK: #APP
 // CHECK: mov eax, eax
@@ -629,6 +674,12 @@ check_reg!(eax_f64 f64 "eax" "mov");
 // CHECK: mov eax, eax
 // CHECK: #NO_APP
 check_reg!(eax_ptr ptr "eax" "mov");
+
+// CHECK-LABEL: eax_nonnull:
+// CHECK: #APP
+// CHECK: mov eax, eax
+// CHECK: #NO_APP
+check_reg!(eax_nonnull nonnull:ptr "eax" "mov");
 
 // i686-LABEL: ah_byte:
 // i686: #APP
@@ -678,6 +729,12 @@ check_reg!(xmm0_f128 f128 "xmm0" "movaps");
 // CHECK: movaps xmm0, xmm0
 // CHECK: #NO_APP
 check_reg!(xmm0_ptr ptr "xmm0" "movaps");
+
+// CHECK-LABEL: xmm0_nonnull:
+// CHECK: #APP
+// CHECK: movaps xmm0, xmm0
+// CHECK: #NO_APP
+check_reg!(xmm0_nonnull nonnull:ptr "xmm0" "movaps");
 
 // CHECK-LABEL: xmm0_i8x16:
 // CHECK: #APP
@@ -762,6 +819,12 @@ check_reg!(ymm0_f128 f128 "ymm0" "vmovaps");
 // CHECK: vmovaps ymm0, ymm0
 // CHECK: #NO_APP
 check_reg!(ymm0_ptr ptr "ymm0" "vmovaps");
+
+// CHECK-LABEL: ymm0_nonnull:
+// CHECK: #APP
+// CHECK: vmovaps ymm0, ymm0
+// CHECK: #NO_APP
+check_reg!(ymm0_nonnull nonnull:ptr "ymm0" "vmovaps");
 
 // CHECK-LABEL: ymm0_i8x16:
 // CHECK: #APP
@@ -888,6 +951,12 @@ check_reg!(zmm0_f128 f128 "zmm0" "vmovaps");
 // CHECK: vmovaps zmm0, zmm0
 // CHECK: #NO_APP
 check_reg!(zmm0_ptr ptr "zmm0" "vmovaps");
+
+// CHECK-LABEL: zmm0_nonnull:
+// CHECK: #APP
+// CHECK: vmovaps zmm0, zmm0
+// CHECK: #NO_APP
+check_reg!(zmm0_nonnull nonnull:ptr "zmm0" "vmovaps");
 
 // CHECK-LABEL: zmm0_i8x16:
 // CHECK: #APP
@@ -1044,3 +1113,9 @@ check_reg!(k1_i64 i64 "k1" "kmovq");
 // CHECK: kmovq k1, k1
 // CHECK: #NO_APP
 check_reg!(k1_ptr ptr "k1" "kmovq");
+
+// CHECK-LABEL: k1_nonnull:
+// CHECK: #APP
+// CHECK: kmovq k1, k1
+// CHECK: #NO_APP
+check_reg!(k1_nonnull nonnull:ptr "k1" "kmovq");
