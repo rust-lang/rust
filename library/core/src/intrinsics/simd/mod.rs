@@ -501,7 +501,16 @@ pub const unsafe fn simd_reduce_add_ordered<T, U>(x: T, y: U) -> U;
 /// `U` must be the element type of `T`.
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn simd_reduce_add_unordered<T, U>(x: T) -> U;
+pub const unsafe fn simd_reduce_add_unordered<T, U>(x: T) -> U;
+
+/// Adds elements within a vector, allowing optimizations based on algebraic rules.
+///
+/// `T` must be a vector of integers or floats.
+///
+/// `U` must be the element type of `T`.
+#[rustc_intrinsic]
+#[rustc_nounwind]
+pub const unsafe fn simd_reduce_add_algebraic<T, U>(x: T) -> U;
 
 /// Multiplies elements within a vector from left to right.
 ///
@@ -522,7 +531,16 @@ pub const unsafe fn simd_reduce_mul_ordered<T, U>(x: T, y: U) -> U;
 /// `U` must be the element type of `T`.
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn simd_reduce_mul_unordered<T, U>(x: T) -> U;
+pub const unsafe fn simd_reduce_mul_unordered<T, U>(x: T) -> U;
+
+/// Multiplies elements within a vector, allowing optimizations based on algebraic rules.
+///
+/// `T` must be a vector of integers or floats.
+///
+/// `U` must be the element type of `T`.
+#[rustc_intrinsic]
+#[rustc_nounwind]
+pub const unsafe fn simd_reduce_mul_algebraic<T, U>(x: T) -> U;
 
 /// Checks if all mask values are true.
 ///
@@ -845,3 +863,38 @@ pub unsafe fn simd_flog2<T>(a: T) -> T;
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub unsafe fn simd_flog<T>(a: T) -> T;
+
+/// Float addition that allows optimizations based on algebraic rules.
+///
+/// `T` must be a vector of floats.
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub const unsafe fn simd_add_algebraic<T>(a: T, b: T) -> T;
+
+/// Float subtraction that allows optimizations based on algebraic rules.
+///
+/// `T` must be a vector of floats.
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub const unsafe fn simd_sub_algebraic<T>(a: T, b: T) -> T;
+
+/// Float multiplication that allows optimizations based on algebraic rules.
+///
+/// `T` must be a vector of floats.
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub const unsafe fn simd_mul_algebraic<T>(a: T, b: T) -> T;
+
+/// Float division that allows optimizations based on algebraic rules.
+///
+/// `T` must be a vector of floats.
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub const unsafe fn simd_div_algebraic<T>(a: T, b: T) -> T;
+
+/// Float remainder that allows optimizations based on algebraic rules.
+///
+/// `T` must be a vector of floats.
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub const unsafe fn simd_rem_algebraic<T>(a: T, b: T) -> T;

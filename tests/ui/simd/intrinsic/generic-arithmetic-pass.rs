@@ -223,6 +223,20 @@ const fn arithmetic() {
 
         all_eq!(simd_cttz(x1), i32x4::from_array([0, 1, 0, 2]));
         all_eq!(simd_cttz(y1), U32::<4>::from_array([0, 1, 0, 2]));
+
+        assert_eq!(simd_reduce_add_ordered(x1, 0i32), 10i32);
+        assert_eq!(simd_reduce_add_ordered(y1, 0u32), 10u32);
+        assert_eq!(simd_reduce_add_ordered(z1, 0.0_f32), 10.0_f32);
+        assert_eq!(simd_reduce_mul_ordered(x1, 1i32), 24i32);
+        assert_eq!(simd_reduce_mul_ordered(y1, 1u32), 24u32);
+        assert_eq!(simd_reduce_mul_ordered(z1, 1.0_f32), 24.0_f32);
+
+        assert_eq!(simd_reduce_add_unordered(x1), 10i32);
+        assert_eq!(simd_reduce_add_unordered(y1), 10u32);
+        assert_eq!(simd_reduce_add_unordered(z1), 10.0_f32);
+        assert_eq!(simd_reduce_mul_unordered(x1), 24i32);
+        assert_eq!(simd_reduce_mul_unordered(y1), 24u32);
+        assert_eq!(simd_reduce_mul_unordered(z1), 24.0_f32);
     }
 }
 
