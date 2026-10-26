@@ -13,7 +13,7 @@ use stdx::format_to;
 use xshell::{Shell, cmd};
 
 use crate::{
-    codegen::{add_preamble, ensure_file_contents, reformat},
+    codegen::{add_preamble, clone_rust, ensure_file_contents, reformat},
     project_root,
     util::list_files,
 };
@@ -23,23 +23,7 @@ const DESTINATION: &str = "crates/ide-db/src/generated/lints.rs";
 /// This clones rustc repo, and so is not worth to keep up-to-date on a constant basis.
 pub(crate) fn generate(check: bool) {
     let sh = &Shell::new().unwrap();
-
-    let rust_repo = project_root().join("./target/rust");
-    if rust_repo.exists() {
-        cmd!(sh, "git -C {rust_repo} pull --rebase").run().unwrap();
-    } else {
-        cmd!(sh, "git clone --depth=1 https://github.com/rust-lang/rust {rust_repo}")
-            .run()
-            .unwrap();
-    }
-    // need submodules for Cargo to parse the workspace correctly
-    cmd!(
-        sh,
-        "git -C {rust_repo} submodule update --init --recursive --depth=1 --
-         compiler library src/tools src/doc/book"
-    )
-    .run()
-    .unwrap();
+    let rust_repo = clone_rust(sh);
 
     let mut contents = String::from(
         r"

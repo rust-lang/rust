@@ -109,7 +109,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        let inject_use_span = post_attr_lo.data().with_hi(post_attr_lo.lo());
+        let inject_use_span = post_attr_lo.with_hi(post_attr_lo.lo());
         let mod_spans = ModSpans { inner_span: lo.to(self.prev_token.span), inject_use_span };
         Ok((attrs, items, mod_spans))
     }
