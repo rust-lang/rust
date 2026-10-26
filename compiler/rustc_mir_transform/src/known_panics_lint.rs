@@ -215,6 +215,36 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         self.written_only_inside_own_block_locals.remove(&local);
     }
 
+    fn remove_own_block_consts(&mut self) {
+        // We remove all Locals which are restricted in propagation to their containing blocks and
+        // which were modified in the current block.
+        // Take it out of the ecx so we can get a mutable reference to the ecx for `remove_const`.
+        let mut written_only_inside_own_block_locals =
+            std::mem::take(&mut self.written_only_inside_own_block_locals);
+
+        // This loop can get very hot for some bodies: it check each local in each bb.
+        // To avoid this quadratic behaviour, we only clear the locals that were modified inside
+        // the current block.
+        // The order in which we remove consts does not matter.
+        #[allow(rustc::potential_query_instability)]
+        for local in written_only_inside_own_block_locals.drain() {
+            debug_assert_eq!(self.can_const_prop[local], ConstPropMode::OnlyInsideOwnBlock);
+            self.remove_const(local);
+        }
+        self.written_only_inside_own_block_locals = written_only_inside_own_block_locals;
+
+        if cfg!(debug_assertions) {
+            for (local, &mode) in self.can_const_prop.iter_enumerated() {
+                match mode {
+                    ConstPropMode::FullConstProp => {}
+                    ConstPropMode::NoPropagation | ConstPropMode::OnlyInsideOwnBlock => {
+                        self.ensure_not_propagated(local);
+                    }
+                }
+            }
+        }
+    }
+
     fn access_mut(&mut self, place: &Place<'_>) -> Option<&mut Value<'tcx>> {
         match self.can_const_prop[place.local] {
             ConstPropMode::NoPropagation => return None,
@@ -667,13 +697,29 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
 impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
     fn visit_body(&mut self, body: &Body<'tcx>) {
-        while let Some(bb) = self.worklist.pop() {
+        while let Some(mut bb) = self.worklist.pop() {
             if !self.visited_blocks.insert(bb) {
                 continue;
             }
 
-            let data = &body.basic_blocks[bb];
-            self.visit_basic_block_data(bb, data);
+            // Visit straight-line chains of blocks together, so locals that are only propagated
+            // inside their own block keep their values across e.g. an overflow `assert`.
+            loop {
+                let data = &body.basic_blocks[bb];
+                self.visit_basic_block_data(bb, data);
+
+                match data.terminator().kind {
+                    TerminatorKind::Goto { target, .. } | TerminatorKind::Assert { target, .. }
+                        if body.basic_blocks.predecessors()[target].len() == 1
+                            && self.visited_blocks.insert(target) =>
+                    {
+                        bb = target;
+                    }
+                    _ => break,
+                }
+            }
+
+            self.remove_own_block_consts();
         }
     }
 
@@ -817,38 +863,6 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
         }
 
         self.worklist.extend(terminator.successors());
-    }
-
-    fn visit_basic_block_data(&mut self, block: BasicBlock, data: &BasicBlockData<'tcx>) {
-        self.super_basic_block_data(block, data);
-
-        // We remove all Locals which are restricted in propagation to their containing blocks and
-        // which were modified in the current block.
-        // Take it out of the ecx so we can get a mutable reference to the ecx for `remove_const`.
-        let mut written_only_inside_own_block_locals =
-            std::mem::take(&mut self.written_only_inside_own_block_locals);
-
-        // This loop can get very hot for some bodies: it check each local in each bb.
-        // To avoid this quadratic behaviour, we only clear the locals that were modified inside
-        // the current block.
-        // The order in which we remove consts does not matter.
-        #[allow(rustc::potential_query_instability)]
-        for local in written_only_inside_own_block_locals.drain() {
-            debug_assert_eq!(self.can_const_prop[local], ConstPropMode::OnlyInsideOwnBlock);
-            self.remove_const(local);
-        }
-        self.written_only_inside_own_block_locals = written_only_inside_own_block_locals;
-
-        if cfg!(debug_assertions) {
-            for (local, &mode) in self.can_const_prop.iter_enumerated() {
-                match mode {
-                    ConstPropMode::FullConstProp => {}
-                    ConstPropMode::NoPropagation | ConstPropMode::OnlyInsideOwnBlock => {
-                        self.ensure_not_propagated(local);
-                    }
-                }
-            }
-        }
     }
 }
 
