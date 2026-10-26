@@ -65,7 +65,11 @@ fn parse_cfg(cx: &ExtCtxt<'_>, span: Span, tts: TokenStream) -> Result<CfgEntry,
         &meta,
         parse_cfg_entry,
         &CFG_TEMPLATE,
-    )?;
+    )
+    .map_err(|err| {
+        // We don't call the attribute parser with `ShouldEmit::NothingNoBug`, so this is safe to call
+        err.unwrap()
+    })?;
 
     let _ = parser.eat(exp!(Comma));
 

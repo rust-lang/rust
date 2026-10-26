@@ -2,8 +2,10 @@
 use std::fmt;
 use std::fmt::Debug;
 
-use rustc_macros::{Decodable, Encodable, PrintAttribute, StableHash};
-use rustc_span::{DesugaringKind, Span, Symbol, kw};
+use rustc_macros::{
+    Decodable, Decodable_NoContext, Encodable, Encodable_NoContext, PrintAttribute, StableHash,
+};
+use rustc_span::{DesugaringKind, ErrorGuaranteed, Span, Symbol, kw};
 use thin_vec::ThinVec;
 use tracing::debug;
 
@@ -479,5 +481,30 @@ impl FilterOptions {
             Name::Cause => self.cause == Some(value),
             Name::GenericArg(arg) => self.generic_args.contains(&(arg, value)),
         }
+    }
+}
+
+/// An `AttrErrorGuaranteed` is the same thing as a normal `ErrorGuaranteed`, except attribute parsers sometimes don't emit diagnostics.
+/// This will contain a `None` if and only if `ShouldEmit::NothingNoBug` is used.
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(StableHash, Encodable_NoContext, Decodable_NoContext, PrintAttribute)]
+pub struct AttrErrorGuaranteed(Option<ErrorGuaranteed>);
+
+impl AttrErrorGuaranteed {
+    /// Constructs a `AttrErrorGuaranteed` with a `None` inside, this should only be called in `ShouldEmit::emit_err`.
+    pub fn unchecked_attr_error_guaranteed() -> Self {
+        Self(None)
+    }
+
+    /// Retrieve the inner `ErrorGuaranteed`
+    /// This will panic if and only if `ShouldEmit::NothingNoBug` is used.
+    pub fn unwrap(self) -> ErrorGuaranteed {
+        self.0.unwrap()
+    }
+}
+
+impl From<ErrorGuaranteed> for AttrErrorGuaranteed {
+    fn from(value: ErrorGuaranteed) -> Self {
+        Self(Some(value))
     }
 }
