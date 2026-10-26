@@ -118,7 +118,7 @@ pub(crate) fn complete_postfix(
     postfix_snippet("call", "function(expr)", format!("${{1}}({receiver_text})"))
         .add_to(acc, ctx.db);
 
-    if let Some(expected_ty) = ctx.expected_type.as_ref()
+    if let Some(expected_ty) = ctx.expected.ty.as_ref()
         && let Some(adt) = expected_ty.as_adt()
     {
         let is_valid_new = expected_ty

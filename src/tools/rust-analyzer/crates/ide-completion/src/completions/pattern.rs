@@ -55,7 +55,8 @@ pub(crate) fn complete_pattern(
     if pattern_ctx.should_suggest_name {
         let mut name_generator = suggest_name::NameGenerator::default();
         if let Some(suggested) = ctx
-            .expected_type
+            .expected
+            .ty
             .as_ref()
             .map(|ty| ty.strip_references())
             .and_then(|ty| name_generator.for_type(&ty, ctx.db, ctx.edition))
@@ -68,7 +69,7 @@ pub(crate) fn complete_pattern(
     let single_variant_enum = |enum_: hir::Enum| enum_.num_variants(ctx.db) == 1;
 
     if let Some(hir::Adt::Enum(e)) =
-        ctx.expected_type.as_ref().and_then(|ty| ty.strip_references().as_adt())
+        ctx.expected.ty.as_ref().and_then(|ty| ty.strip_references().as_adt())
         && (refutable || single_variant_enum(e))
     {
         super::enum_variants_with_paths(

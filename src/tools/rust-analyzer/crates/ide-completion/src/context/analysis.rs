@@ -892,7 +892,7 @@ fn expected_type_and_name<'db>(
             == Some(node);
         is_direct_arg.then_some(()).and_then(|()| ty.as_callable(sema.db))
     });
-    ExpectedInfo { expected_type: ty.map(strip_refs), expected_name: name, expected_func }
+    ExpectedInfo { ty: ty.map(strip_refs), name, func: expected_func }
 }
 
 fn classify_lifetime(

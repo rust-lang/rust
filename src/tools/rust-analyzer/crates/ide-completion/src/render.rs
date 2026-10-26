@@ -177,7 +177,7 @@ pub(crate) fn render_field(
         );
 
         let expected_fn_type =
-            ctx.completion.expected_type.as_ref().is_some_and(|ty| ty.is_fn() || ty.is_closure());
+            ctx.completion.expected.ty.as_ref().is_some_and(|ty| ty.is_fn() || ty.is_closure());
 
         if !expected_fn_type
             && let Some(receiver) = &dot_access.receiver
@@ -684,7 +684,7 @@ fn compute_type_match(
     ctx: &CompletionContext<'_, '_>,
     completion_ty: &hir::Type<'_>,
 ) -> Option<CompletionRelevanceTypeMatch> {
-    let expected_type = ctx.expected_type.as_ref()?;
+    let expected_type = ctx.expected.ty.as_ref()?;
 
     // We don't ever consider unit type to be an exact type match, since
     // nearly always this is not meaningful to the user.
@@ -719,7 +719,7 @@ fn compute_has_local_inherent_impl(
 }
 
 fn compute_exact_name_match(ctx: &CompletionContext<'_, '_>, completion_name: &str) -> bool {
-    ctx.expected_name.as_ref().is_some_and(|name| {
+    ctx.expected.name.as_ref().is_some_and(|name| {
         let name = name.text().strip_prefix("r#").unwrap_or(name.text());
         let completion_name = completion_name.strip_prefix("r#").unwrap_or(completion_name);
         name.trim_matches('_') == completion_name.trim_matches('_')
@@ -733,7 +733,7 @@ fn compute_ref_match(
     if compute_type_match(ctx, completion_ty).is_some() || completion_ty.is_unit() {
         return None;
     }
-    let expected_type = ctx.expected_type.as_ref()?;
+    let expected_type = ctx.expected.ty.as_ref()?;
     let expected_without_ref = expected_type.as_reference();
     let completion_without_ref = completion_ty.as_reference();
 
