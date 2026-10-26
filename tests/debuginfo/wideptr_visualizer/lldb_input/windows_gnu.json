@@ -1,0 +1,427 @@
+{
+ "bless_metadata": {
+  "python_version": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+  "debugger_version": "lldb version 23.1.3 (https://github.com/llvm/llvm-project revision 0d261d1ca552c95a8f007e061c787ac7132fbcbc)\n  clang revision 0d261d1ca552c95a8f007e061c787ac7132fbcbc\n  llvm revision 0d261d1ca552c95a8f007e061c787ac7132fbcbc",
+  "feature_flags": "LLDBFeature.StaticFields|TypeRecognizers|Float128|GetParent|ProviderDecorator"
+ },
+ "breakpoints": [
+  {
+   "a": {
+    "type": "*mut main::A",
+    "pretty_print": "{x:1, y:2, data:({f1:3, f2:4, f3:5}, {f1:6, f2:7, f3:8}, {f1:9, f2:10, f3:11})}",
+    "synthetic": "lldb_lookup.WidePtrSyntheticProvider",
+    "summary": "lldb_lookup.StructSummaryProvider",
+    "children": [
+     {
+      "name": "x",
+      "type": "unsigned long long",
+      "value": 1
+     },
+     {
+      "name": "y",
+      "type": "unsigned short",
+      "value": 2
+     },
+     {
+      "name": "data",
+      "type": "main::Sized[]",
+      "children": {
+       "type": "main::Sized",
+       "vals": [
+        {
+         "children": [
+          {
+           "name": "f1",
+           "type": "unsigned short",
+           "value": 3
+          },
+          {
+           "name": "f2",
+           "type": "unsigned char",
+           "value": 4
+          },
+          {
+           "name": "f3",
+           "type": "unsigned char",
+           "value": 5
+          }
+         ]
+        },
+        {
+         "children": [
+          {
+           "name": "f1",
+           "type": "unsigned short",
+           "value": 6
+          },
+          {
+           "name": "f2",
+           "type": "unsigned char",
+           "value": 7
+          },
+          {
+           "name": "f3",
+           "type": "unsigned char",
+           "value": 8
+          }
+         ]
+        },
+        {
+         "children": [
+          {
+           "name": "f1",
+           "type": "unsigned short",
+           "value": 9
+          },
+          {
+           "name": "f2",
+           "type": "unsigned char",
+           "value": 10
+          },
+          {
+           "name": "f3",
+           "type": "unsigned char",
+           "value": 11
+          }
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "b": {
+    "type": "*mut main::B",
+    "pretty_print": "{x:1, y:2, data:{f1:3, f2:4, f3:(5, 6, 7, 8, 9, 10, 11, 12, 13)}}",
+    "synthetic": "lldb_lookup.WidePtrSyntheticProvider",
+    "summary": "lldb_lookup.StructSummaryProvider",
+    "children": [
+     {
+      "name": "x",
+      "type": "unsigned long long",
+      "value": 1
+     },
+     {
+      "name": "y",
+      "type": "unsigned short",
+      "value": 2
+     },
+     {
+      "name": "data",
+      "type": "main::Unsized",
+      "children": [
+       {
+        "name": "f1",
+        "type": "unsigned short",
+        "value": 3
+       },
+       {
+        "name": "f2",
+        "type": "unsigned char",
+        "value": 4
+       },
+       {
+        "name": "f3",
+        "type": "unsigned char[]",
+        "children": {
+         "type": "unsigned char",
+         "vals": [
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13
+         ]
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "a_ref": {
+    "type": "&mut main::A",
+    "pretty_print": "{x:1, y:2, data:({f1:3, f2:4, f3:5}, {f1:6, f2:7, f3:8}, {f1:9, f2:10, f3:11})}",
+    "synthetic": "lldb_lookup.WidePtrSyntheticProvider",
+    "summary": "lldb_lookup.StructSummaryProvider",
+    "children": [
+     {
+      "name": "x",
+      "type": "unsigned long long",
+      "value": 1
+     },
+     {
+      "name": "y",
+      "type": "unsigned short",
+      "value": 2
+     },
+     {
+      "name": "data",
+      "type": "main::Sized[]",
+      "children": {
+       "type": "main::Sized",
+       "vals": [
+        {
+         "children": [
+          {
+           "name": "f1",
+           "type": "unsigned short",
+           "value": 3
+          },
+          {
+           "name": "f2",
+           "type": "unsigned char",
+           "value": 4
+          },
+          {
+           "name": "f3",
+           "type": "unsigned char",
+           "value": 5
+          }
+         ]
+        },
+        {
+         "children": [
+          {
+           "name": "f1",
+           "type": "unsigned short",
+           "value": 6
+          },
+          {
+           "name": "f2",
+           "type": "unsigned char",
+           "value": 7
+          },
+          {
+           "name": "f3",
+           "type": "unsigned char",
+           "value": 8
+          }
+         ]
+        },
+        {
+         "children": [
+          {
+           "name": "f1",
+           "type": "unsigned short",
+           "value": 9
+          },
+          {
+           "name": "f2",
+           "type": "unsigned char",
+           "value": 10
+          },
+          {
+           "name": "f3",
+           "type": "unsigned char",
+           "value": 11
+          }
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "b_ref": {
+    "type": "&mut main::B",
+    "pretty_print": "{x:1, y:2, data:{f1:3, f2:4, f3:(5, 6, 7, 8, 9, 10, 11, 12, 13)}}",
+    "synthetic": "lldb_lookup.WidePtrSyntheticProvider",
+    "summary": "lldb_lookup.StructSummaryProvider",
+    "children": [
+     {
+      "name": "x",
+      "type": "unsigned long long",
+      "value": 1
+     },
+     {
+      "name": "y",
+      "type": "unsigned short",
+      "value": 2
+     },
+     {
+      "name": "data",
+      "type": "main::Unsized",
+      "children": [
+       {
+        "name": "f1",
+        "type": "unsigned short",
+        "value": 3
+       },
+       {
+        "name": "f2",
+        "type": "unsigned char",
+        "value": 4
+       },
+       {
+        "name": "f3",
+        "type": "unsigned char[]",
+        "children": {
+         "type": "unsigned char",
+         "vals": [
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13
+         ]
+        }
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
+ "types": {
+  "&mut main::A": {
+   "size": 16,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "data_ptr",
+     "type": "main::A *",
+     "offset": 0
+    },
+    {
+     "name": "length",
+     "type": "usize",
+     "offset": 8
+    }
+   ]
+  },
+  "&mut main::B": {
+   "size": 16,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "data_ptr",
+     "type": "main::B *",
+     "offset": 0
+    },
+    {
+     "name": "length",
+     "type": "usize",
+     "offset": 8
+    }
+   ]
+  },
+  "*mut main::A": {
+   "size": 16,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "data_ptr",
+     "type": "main::A *",
+     "offset": 0
+    },
+    {
+     "name": "length",
+     "type": "usize",
+     "offset": 8
+    }
+   ]
+  },
+  "*mut main::B": {
+   "size": 16,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "data_ptr",
+     "type": "main::B *",
+     "offset": 0
+    },
+    {
+     "name": "length",
+     "type": "usize",
+     "offset": 8
+    }
+   ]
+  },
+  "main::A *": {
+   "size": 8,
+   "type_class": 4096
+  },
+  "main::B *": {
+   "size": 8,
+   "type_class": 4096
+  },
+  "main::Sized": {
+   "size": 4,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "f1",
+     "type": "unsigned short",
+     "offset": 0
+    },
+    {
+     "name": "f2",
+     "type": "unsigned char",
+     "offset": 2
+    },
+    {
+     "name": "f3",
+     "type": "unsigned char",
+     "offset": 3
+    }
+   ]
+  },
+  "main::Sized[]": {
+   "size": 4,
+   "type_class": 1
+  },
+  "main::Unsized": {
+   "size": 4,
+   "type_class": 16384,
+   "fields": [
+    {
+     "name": "f1",
+     "type": "unsigned short",
+     "offset": 0
+    },
+    {
+     "name": "f2",
+     "type": "unsigned char",
+     "offset": 2
+    },
+    {
+     "name": "f3",
+     "type": "unsigned char[]",
+     "offset": 3
+    }
+   ]
+  },
+  "unsigned char": {
+   "size": 1,
+   "type_class": 4,
+   "basic_type": 4
+  },
+  "unsigned char[]": {
+   "size": 1,
+   "type_class": 1
+  },
+  "unsigned long long": {
+   "size": 8,
+   "type_class": 4,
+   "basic_type": 18
+  },
+  "unsigned short": {
+   "size": 2,
+   "type_class": 4,
+   "basic_type": 12
+  },
+  "usize": {
+   "size": 8,
+   "type_class": 32768,
+   "basic_type": 18
+  }
+ }
+}
