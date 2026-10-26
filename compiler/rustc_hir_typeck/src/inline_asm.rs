@@ -52,6 +52,16 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
         }
     }
 
+    fn maybe_to_pointee_ty(&self, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
+        Some(match *ty.kind() {
+            ty::RawPtr(pointee, _) => pointee,
+            ty::Adt(adt, args) if self.tcx().is_lang_item(adt.did(), LangItem::NonNull) => {
+                args.type_at(0)
+            }
+            _ => return None,
+        })
+    }
+
     // FIXME(compiler-errors): This could use `<$ty as Pointee>::Metadata == ()`
     fn is_thin_ptr_ty(&self, ty: Ty<'tcx>) -> bool {
         // Type still may have region variables, but `Sized` does not depend
@@ -91,7 +101,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
             ty::Float(FloatTy::F64) => Ok(InlineAsmType::F64),
             ty::Float(FloatTy::F128) => Ok(InlineAsmType::F128),
             ty::FnPtr(..) => Ok(asm_ty_isize),
-            ty::RawPtr(elem_ty, _) => {
+            _ if let Some(elem_ty) = self.maybe_to_pointee_ty(ty) => {
                 if self.is_thin_ptr_ty(elem_ty) {
                     Ok(asm_ty_isize)
                 } else {
@@ -245,15 +255,24 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
             bug!("inference variable in asm operand ty: {:?} {:?}", expr, ty);
         }
 
-        let asm_ty = match *ty.kind() {
+        let eff_ty = match *ty.kind() {
             // `!` is allowed for input but not for output (issue #87802)
             ty::Never if is_input => return None,
             _ if ty.references_error() => return None,
             ty::Adt(adt, args) if self.tcx().is_lang_item(adt.did(), LangItem::MaybeUninit) => {
-                let ty = args.type_at(0);
-                self.get_asm_ty(expr.span, ty)
+                args.type_at(0)
             }
-            _ => self.get_asm_ty(expr.span, ty),
+            _ => ty,
+        };
+
+        let asm_ty = match *eff_ty.kind() {
+            // `NonNull<T>` is allowed as input but not as output.
+            ty::Adt(adt, _)
+                if !is_input && self.tcx().is_lang_item(adt.did(), LangItem::NonNull) =>
+            {
+                Err(NonAsmTypeReason::Invalid(ty))
+            }
+            _ => self.get_asm_ty(expr.span, eff_ty),
         };
         let asm_ty = match asm_ty {
             Ok(asm_ty) => asm_ty,
