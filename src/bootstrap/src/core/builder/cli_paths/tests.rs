@@ -61,13 +61,14 @@ fn render_steps_for_cli_args(args_str: &str) -> String {
 fn snapshot_test_inner(name: &str, args_str: &str) {
     let name = Path::new("snapshots").join(format!("{name}.snap"));
     let steps = render_steps_for_cli_args(args_str);
-    let file = file!();
+    // Normalize Windows path separators
+    let file = file!().replace("\\", "/");
     let content = format!(
         r"---
 source: {file}
 expression: {args_str}
 ---
-{steps}"
+{steps}",
     );
     expect_test::expect_file![name].assert_eq(&content);
 }
