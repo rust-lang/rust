@@ -68,6 +68,8 @@ cfg_select! {
 
         impl Feature {
             #[doc(hidden)]
+            pub(crate) const ALL: &[Self] = &[];
+            #[doc(hidden)]
             pub(crate) fn from_str(_s: &str) -> Result<Feature, ()> {
                 Err(())
             }

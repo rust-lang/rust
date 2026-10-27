@@ -186,17 +186,17 @@ macro_rules! features {
                 $(#[$feature_comment])*
                 $feature,
             )*
-
-            // Do not add variants after last:
-            _last
         }
 
         #[cfg($cfg)]
         impl Feature {
+            pub(crate) const ALL: &[Feature] = &[
+                $(Feature::$feature,)*
+            ];
+
             pub(crate) fn to_str(self) -> &'static str {
                 match self {
                     $(Feature::$feature => $feature_lit,)*
-                    Feature::_last => unreachable!(),
                 }
             }
 
