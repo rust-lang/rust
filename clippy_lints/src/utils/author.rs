@@ -1,5 +1,5 @@
 use clippy_utils::res::MaybeQPath;
-use clippy_utils::{get_builtin_attr, higher, sym};
+use clippy_utils::{higher, sym};
 use itertools::Itertools as _;
 use rustc_ast::LitIntType;
 use rustc_ast::ast::{LitFloatType, LitKind};
@@ -874,6 +874,8 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
 }
 
 fn has_attr(cx: &LateContext<'_>, hir_id: HirId) -> bool {
-    let attrs = cx.tcx.hir_attrs(hir_id);
-    get_builtin_attr(attrs, sym::author).count() > 0
+    cx.tcx
+        .hir_tool_attrs(hir_id, &[sym::clippy, sym::author])
+        .next()
+        .is_some()
 }
