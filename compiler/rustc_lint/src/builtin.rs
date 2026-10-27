@@ -466,21 +466,21 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
                     return;
                 }
                 let def = cx.tcx.adt_def(item.owner_id);
-                (def, Ty::new_adt(cx.tcx, def, ty::List::empty()))
+                (def, Ty::new_adt(cx.tcx, def, ty::GenericArgs::empty()))
             }
             hir::ItemKind::Union(_, generics, _) => {
                 if !generics.params.is_empty() {
                     return;
                 }
                 let def = cx.tcx.adt_def(item.owner_id);
-                (def, Ty::new_adt(cx.tcx, def, ty::List::empty()))
+                (def, Ty::new_adt(cx.tcx, def, ty::GenericArgs::empty()))
             }
             hir::ItemKind::Enum(_, generics, _) => {
                 if !generics.params.is_empty() {
                     return;
                 }
                 let def = cx.tcx.adt_def(item.owner_id);
-                (def, Ty::new_adt(cx.tcx, def, ty::List::empty()))
+                (def, Ty::new_adt(cx.tcx, def, ty::GenericArgs::empty()))
             }
             _ => return,
         };
@@ -2394,7 +2394,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
             cx: &LateContext<'tcx>,
             ty: Ty<'tcx>,
             variant: &VariantDef,
-            args: ty::GenericArgsRef<'tcx>,
+            args: ty::GenericArgs<'tcx>,
             descr: &str,
             init: InitKind,
         ) -> Option<InitError> {
@@ -2493,7 +2493,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                             cx,
                             ty,
                             adt_def.non_enum_variant(),
-                            args,
+                            *args,
                             "struct field",
                             init,
                         );
@@ -2503,7 +2503,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                     let mut potential_variants = adt_def.variants().iter().filter_map(|variant| {
                         let definitely_inhabited = match variant
                             .inhabited_predicate(cx.tcx)
-                            .instantiate(cx.tcx, args)
+                            .instantiate(cx.tcx, *args)
                             .apply_any_module(cx.tcx, cx.typing_env())
                         {
                             // Entirely skip uninhabited variants.
@@ -2528,7 +2528,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                             cx,
                             ty,
                             first_variant.0,
-                            args,
+                            *args,
                             "field of the only potentially inhabited enum variant",
                             init,
                         );

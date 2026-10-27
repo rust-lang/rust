@@ -795,7 +795,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
 
 struct ImplTraitInTraitCollector<'a, 'tcx, E> {
     ocx: &'a ObligationCtxt<'a, 'tcx, E>,
-    types: FxIndexMap<DefId, (Ty<'tcx>, ty::GenericArgsRef<'tcx>)>,
+    types: FxIndexMap<DefId, (Ty<'tcx>, ty::GenericArgs<'tcx>)>,
     span: Span,
     param_env: ty::ParamEnv<'tcx>,
     impl_m_id: LocalDefId,
