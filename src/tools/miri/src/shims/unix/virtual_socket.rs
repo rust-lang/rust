@@ -9,6 +9,7 @@ use std::rc::Rc;
 
 use rustc_target::spec::Os;
 
+use super::fd::EvalContextExt as _;
 use crate::concurrency::VClock;
 use crate::shims::files::{
     EvalContextExt as _, FileDescription, FileDescriptionRef, WeakFileDescriptionRef,
@@ -637,8 +638,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         fd1.peer_fd.set(FileDescriptionRef::downgrade(&fd0)).unwrap();
 
         // Insert the file description to the fd table, generating the file descriptors.
-        let sv0 = fds.insert(fd0);
-        let sv1 = fds.insert(fd1);
+        let Some(sv0) = fds.insert(fd0) else {
+            return this.set_errno_and_return_neg1_i32(LibcError("EMFILE"));
+        };
+        let Some(sv1) = fds.insert(fd1) else {
+            this.close(sv0)?; // don't leak the first FD
+            return this.set_errno_and_return_neg1_i32(LibcError("EMFILE"));
+        };
 
         // Return socketpair file descriptors to the caller.
         let sv0 = Scalar::from_int(sv0, sv.layout.size);
@@ -711,8 +717,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         fd1.peer_fd.set(FileDescriptionRef::downgrade(&fd0)).unwrap();
 
         // Insert the file description to the fd table, generating the file descriptors.
-        let pipefd0 = fds.insert(fd0);
-        let pipefd1 = fds.insert(fd1);
+        let Some(pipefd0) = fds.insert(fd0) else {
+            return this.set_errno_and_return_neg1_i32(LibcError("EMFILE"));
+        };
+        let Some(pipefd1) = fds.insert(fd1) else {
+            this.close(pipefd0)?; // don't leak the first FD
+            return this.set_errno_and_return_neg1_i32(LibcError("EMFILE"));
+        };
 
         // Return file descriptors to the caller.
         let pipefd0 = Scalar::from_int(pipefd0, pipefd.layout.size);

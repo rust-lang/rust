@@ -310,7 +310,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let Some(fd) = ecx.machine.fds.get(old_fd_num) else {
                     ecx.invalid_handle("DuplicateHandle")?
                 };
-                Handle::File(ecx.machine.fds.insert(fd))
+                let Some(new_fd_num) = ecx.machine.fds.insert(fd) else {
+                    throw_unsup_format!("we ran out of FD numbers")
+                };
+                Handle::File(new_fd_num)
             }
             Handle::Thread(_) => {
                 throw_unsup_format!(

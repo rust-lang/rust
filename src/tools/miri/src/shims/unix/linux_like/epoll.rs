@@ -58,8 +58,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             );
         }
 
-        let fd =
-            this.machine.fds.insert_new(Epoll { watcher: Rc::new(ReadinessWatcher::default()) });
+        let Some(fd) =
+            this.machine.fds.insert_new(Epoll { watcher: Rc::new(ReadinessWatcher::default()) })
+        else {
+            return this.set_errno_and_return_neg1_i32(LibcError("EMFILE"));
+        };
         interp_ok(Scalar::from_i32(fd))
     }
 
