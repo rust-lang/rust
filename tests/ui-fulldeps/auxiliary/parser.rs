@@ -11,7 +11,7 @@ use rustc_ast::ast::{AttrKind, Attribute, DUMMY_NODE_ID, Expr};
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::node_id::NodeId;
 use rustc_ast::token;
-use rustc_ast::tokenstream::{DelimSpan, LazyAttrTokenStream, TokenStream, TokenTree};
+use rustc_ast::tokenstream::{DelimSpan, LazyTokenStream, TokenStream, TokenTree};
 use rustc_errors::Diag;
 use rustc_parse::parser::Recovery;
 use rustc_session::parse::ParseSess;
@@ -53,7 +53,7 @@ impl MutVisitor for Normalize {
         if let AttrKind::Normal(normal_attr) = &mut attr.kind {
             if let Some(tokens) = &mut normal_attr.tokens {
                 let stream = normalize_token_stream(&tokens.to_token_stream());
-                *tokens = LazyAttrTokenStream::new_direct(stream);
+                *tokens = LazyTokenStream::new_direct(stream);
             }
         }
         mut_visit::walk_attribute(self, attr);

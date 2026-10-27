@@ -20,7 +20,7 @@ use crate::token::{
     self, CommentKind, Delimiter, DocFragmentKind, InvisibleOrigin, MetaVarKind, Token,
 };
 use crate::tokenstream::{
-    DelimSpacing, DelimSpan, LazyAttrTokenStream, Spacing, TokenStream, TokenStreamIter, TokenTree,
+    DelimSpacing, DelimSpan, LazyTokenStream, Spacing, TokenStream, TokenStreamIter, TokenTree,
 };
 use crate::util::comments;
 use crate::util::literal::escape_string_symbol;
@@ -748,7 +748,7 @@ pub fn mk_doc_comment(
 pub fn mk_attr_from_item(
     g: &AttrIdGenerator,
     item: AttrItem,
-    tokens: Option<LazyAttrTokenStream>,
+    tokens: Option<LazyTokenStream>,
     style: AttrStyle,
     span: Span,
 ) -> Attribute {
@@ -760,7 +760,7 @@ pub fn mk_attr_from_item(
     }
 }
 
-fn mk_attr_tokens(style: AttrStyle, item_tokens: TokenStream, span: Span) -> LazyAttrTokenStream {
+fn mk_attr_tokens(style: AttrStyle, item_tokens: TokenStream, span: Span) -> LazyTokenStream {
     let mut tokens = match style {
         AttrStyle::Outer => {
             vec![TokenTree::Token(Token::new(token::Pound, span), Spacing::JointHidden)]
@@ -777,7 +777,7 @@ fn mk_attr_tokens(style: AttrStyle, item_tokens: TokenStream, span: Span) -> Laz
         item_tokens,
     ));
 
-    LazyAttrTokenStream::new_direct(TokenStream::new(tokens))
+    LazyTokenStream::new_direct(TokenStream::new(tokens))
 }
 
 // `span` is used for the `Attribute` and everything within it (except for any span within

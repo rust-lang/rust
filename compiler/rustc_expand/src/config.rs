@@ -4,7 +4,7 @@ use std::iter;
 
 use rustc_ast::attr::data_structures::CfgEntry;
 use rustc_ast::token::{Delimiter, Token, TokenKind};
-use rustc_ast::tokenstream::{LazyAttrTokenStream, Spacing, TokenStream, TokenTree, WithTokens};
+use rustc_ast::tokenstream::{LazyTokenStream, Spacing, TokenStream, TokenTree, WithTokens};
 use rustc_ast::{self as ast, AttrStyle, Attribute, HasAttrs, HasTokens, NodeId, SyntheticAttr};
 use rustc_attr_ir::target::Target;
 use rustc_attr_ir::{self as attrs, AttributeKind};
@@ -167,7 +167,7 @@ impl<'a> StripUnconfigured<'a> {
                     // the condition isn't satisfied.
                     self.in_cfg(&target.attrs)
                 });
-                *tokens = LazyAttrTokenStream::new_direct(stream);
+                *tokens = LazyTokenStream::new_direct(stream);
             }
         }
     }
@@ -299,7 +299,7 @@ impl<'a> StripUnconfigured<'a> {
         ));
 
         let attr_item_path_span = attr_item.node.path.span;
-        let attr_tokens = Some(LazyAttrTokenStream::new_direct(TokenStream::new(trees)));
+        let attr_tokens = Some(LazyTokenStream::new_direct(TokenStream::new(trees)));
         let attr = ast::attr::mk_attr_from_item(
             &self.sess.psess.attr_id_generator,
             attr_item.node,

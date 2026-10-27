@@ -95,7 +95,7 @@ impl TokenTree {
 #[derive(Clone, Debug)]
 pub struct WithTokens<T> {
     pub node: T,
-    pub tokens: Option<LazyAttrTokenStream>,
+    pub tokens: Option<LazyTokenStream>,
 }
 
 impl<T> WithTokens<T> {
@@ -111,11 +111,11 @@ impl<T> WithTokens<T> {
 /// A lazy version of [`TokenStream`], which defers creation of an actual `TokenStream` until it is
 /// needed.
 #[derive(Clone)]
-pub struct LazyAttrTokenStream(Arc<LazyAttrTokenStreamInner>);
+pub struct LazyTokenStream(Arc<LazyTokenStreamInner>);
 
-impl LazyAttrTokenStream {
-    pub fn new_direct(stream: TokenStream) -> LazyAttrTokenStream {
-        LazyAttrTokenStream(Arc::new(LazyAttrTokenStreamInner::Direct(stream)))
+impl LazyTokenStream {
+    pub fn new_direct(stream: TokenStream) -> LazyTokenStream {
+        LazyTokenStream(Arc::new(LazyTokenStreamInner::Direct(stream)))
     }
 
     pub fn new_pending(
@@ -124,8 +124,8 @@ impl LazyAttrTokenStream {
         num_calls: u32,
         break_last_token: u32,
         node_replacements: ThinVec<NodeReplacement>,
-    ) -> LazyAttrTokenStream {
-        LazyAttrTokenStream(Arc::new(LazyAttrTokenStreamInner::Pending {
+    ) -> LazyTokenStream {
+        LazyTokenStream(Arc::new(LazyTokenStreamInner::Pending {
             start_token,
             cursor_snapshot,
             num_calls,
@@ -147,27 +147,27 @@ impl LazyAttrTokenStream {
     }
 }
 
-impl fmt::Debug for LazyAttrTokenStream {
+impl fmt::Debug for LazyTokenStream {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "LazyAttrTokenStream({:?})", self.to_token_stream())
+        write!(f, "LazyTokenStream({:?})", self.to_token_stream())
     }
 }
 
-impl<S: SpanEncoder> Encodable<S> for LazyAttrTokenStream {
+impl<S: SpanEncoder> Encodable<S> for LazyTokenStream {
     fn encode(&self, _s: &mut S) {
-        panic!("Attempted to encode LazyAttrTokenStream");
+        panic!("Attempted to encode LazyTokenStream");
     }
 }
 
-impl<D: SpanDecoder> Decodable<D> for LazyAttrTokenStream {
+impl<D: SpanDecoder> Decodable<D> for LazyTokenStream {
     fn decode(_d: &mut D) -> Self {
-        panic!("Attempted to decode LazyAttrTokenStream");
+        panic!("Attempted to decode LazyTokenStream");
     }
 }
 
-impl StableHash for LazyAttrTokenStream {
+impl StableHash for LazyTokenStream {
     fn stable_hash<Hcx: StableHashCtxt>(&self, _hcx: &mut Hcx, _hasher: &mut StableHasher) {
-        panic!("Attempted to compute stable hash for LazyAttrTokenStream");
+        panic!("Attempted to compute stable hash for LazyTokenStream");
     }
 }
 
@@ -198,7 +198,7 @@ pub struct NodeRange(pub Range<u32>);
 ///
 /// Each replacement starts off in `ParserReplacement` form but is converted to
 /// `NodeReplacement` form when it is attached to a single AST node, via
-/// `LazyAttrTokenStreamImpl`.
+/// `LazyTokenStream`.
 pub type ParserReplacement = (ParserRange, Option<AttrsTarget>);
 
 /// See the comment on `ParserReplacement`.
@@ -221,7 +221,7 @@ impl NodeRange {
     }
 }
 
-enum LazyAttrTokenStreamInner {
+enum LazyTokenStreamInner {
     // The token stream has already been produced.
     Direct(TokenStream),
 
@@ -254,11 +254,11 @@ fn keep_all(_: &mut AttrsTarget) -> bool {
     true
 }
 
-impl LazyAttrTokenStreamInner {
+impl LazyTokenStreamInner {
     fn to_configured_token_stream(&self, configure: &mut ConfigureFn<'_>) -> TokenStream {
         match self {
-            LazyAttrTokenStreamInner::Direct(stream) => stream.clone(),
-            LazyAttrTokenStreamInner::Pending { .. } => {
+            LazyTokenStreamInner::Direct(stream) => stream.clone(),
+            LazyTokenStreamInner::Pending { .. } => {
                 let mut res = vec![];
                 self.append_token_trees_to(configure, &mut res);
                 TokenStream::new(res)
@@ -268,8 +268,8 @@ impl LazyAttrTokenStreamInner {
 
     fn append_token_trees_to(&self, configure: &mut ConfigureFn<'_>, res: &mut Vec<TokenTree>) {
         match self {
-            LazyAttrTokenStreamInner::Direct(stream) => res.extend(stream.iter().cloned()),
-            LazyAttrTokenStreamInner::Pending {
+            LazyTokenStreamInner::Direct(stream) => res.extend(stream.iter().cloned()),
+            LazyTokenStreamInner::Pending {
                 start_token,
                 cursor_snapshot,
                 num_calls,
@@ -353,7 +353,7 @@ impl LazyAttrTokenStreamInner {
 }
 
 /// A helper struct used when building a `TokenStream` from
-/// a `LazyAttrTokenStream`. Both delimiter and non-delimited tokens
+/// a `LazyTokenStream`. Both delimiter and non-delimited tokens
 /// are stored as `FlatToken::Token`. A vector of `FlatToken`s
 /// is then 'parsed' to build up a `TokenStream` with nested
 /// `TokenTree::Delimited` tokens.
@@ -463,7 +463,7 @@ fn append_flat_tokens_as_token_trees_to(
 //   tokens, e.g. "#[outer] fn f() { #![inner] blah() }"
 fn append_attrs_and_stream_as_token_trees_to(
     attrs: &[Attribute],
-    target_tokens: &LazyAttrTokenStream,
+    target_tokens: &LazyTokenStream,
     configure: &mut ConfigureFn<'_>,
     res: &mut Vec<TokenTree>,
 ) {
@@ -548,7 +548,7 @@ pub struct AttrsTarget {
     pub attrs: AttrVec,
     /// The underlying tokens for the attribute target that `attrs`
     /// are applied to
-    pub tokens: LazyAttrTokenStream,
+    pub tokens: LazyTokenStream,
 }
 
 /// Indicates whether a token can join with the following token to form a
@@ -1094,9 +1094,9 @@ mod size_asserts {
 
     use super::*;
     // tidy-alphabetical-start
-    static_assert_size!(LazyAttrTokenStream, 8);
-    static_assert_size!(LazyAttrTokenStreamInner, 88);
-    static_assert_size!(Option<LazyAttrTokenStream>, 8); // must be small, used in many AST nodes
+    static_assert_size!(LazyTokenStream, 8);
+    static_assert_size!(LazyTokenStreamInner, 88);
+    static_assert_size!(Option<LazyTokenStream>, 8); // must be small, used in many AST nodes
     static_assert_size!(TokenStream, 8);
     static_assert_size!(TokenTree, 32);
     // tidy-alphabetical-end

@@ -215,7 +215,7 @@ pub struct Parser<'a> {
     // token. For example, capturing the `Vec<u8>` in `Option<Vec<u8>>`
     // requires us to unglue the trailing `>>` token. The `break_last_token`
     // field is used to track these tokens. They get appended to the captured
-    // stream when we evaluate a `LazyAttrTokenStream`.
+    // stream when we evaluate a `LazyTokenStream`.
     //
     // This value is always 0, 1, or 2. It can only reach 2 when splitting
     // `>>=` or `<<=`.
