@@ -1,3 +1,4 @@
+/// Forward a literal to the relevant `__is_feature_detected` function.
 #[macro_export]
 #[allow_internal_unstable(stdarch_internal)]
 #[unstable(feature = "stdarch_internal", issue = "none")]
@@ -6,6 +7,7 @@ macro_rules! detect_feature {
         $crate::detect_feature!($feature, $feature_lit : $feature_lit)
     };
     ($feature:tt, $feature_lit:tt : $($target_feature_lit:tt),*) => {
+        // Emit `true` if enabled at compile time
         $(cfg!(target_feature = $target_feature_lit) ||)*
             $crate::detect::__is_feature_detected::$feature()
     };
@@ -14,6 +16,7 @@ macro_rules! detect_feature {
     };
 }
 
+/// Verify that all features are known by `cfg!`.
 #[allow(unused_macros, reason = "it's used in the features! macro below")]
 macro_rules! check_cfg_feature {
     ($feature:tt, $feature_lit:tt) => {
@@ -28,21 +31,34 @@ macro_rules! check_cfg_feature {
     };
 }
 
+/// Create the `is_*_feature_detected` macro for an architecture.
 // Make sure any additions to this macro are tested in
 // `tests/ui/std/is_arch_feature_detected.AARCH64.stderr`.
 #[allow(unused)]
 macro_rules! features {
     (
-      @TARGET: $target:ident;
-      @CFG: $cfg:meta;
-      @MACRO_NAME: $macro_name:ident;
-      @MACRO_ATTRS: $(#[$macro_attrs:meta])*
-      $(@BIND_FEATURE_NAME: $bind_feature:tt; $feature_impl:tt; $(#[$deprecate_attr:meta];)?)*
-      $(@NO_RUNTIME_DETECTION: $nort_feature:tt; )*
-      $(@FEATURE: #[$stability_attr:meta] $feature:ident: $feature_lit:tt;
-          $(without cfg check: $feature_cfg_check:tt;)?
-          $(implied by target_features: [$($target_feature_lit:tt),*];)?
-          $(#[$feature_comment:meta])*)*
+        // Target or target family name, for use in diagnostic messages
+        @TARGET: $target:ident;
+        // Cfg for which this macro should be allowed
+        @CFG: $cfg:meta;
+        // Name like `is_*_feature_detected`
+        @MACRO_NAME: $macro_name:ident;
+        // Docs and stability attributes
+        @MACRO_ATTRS: $(#[$macro_attrs:meta])*
+        // Synonyms, with possible deprecation
+        $(@BIND_FEATURE_NAME: $bind_feature:tt; $feature_impl:tt; $(#[$deprecate_attr:meta];)?)*
+        // Features that exist but can't be detected at runtime, so emit an error.
+        $(@NO_RUNTIME_DETECTION: $nort_feature:tt; )*
+        // List of features
+        $(@FEATURE: #[$stability_attr:meta] $feature:ident: $feature_lit:tt;
+            // Skip verifying that the feature is known by `cfg!`, which also skips emitting `true`
+            // if the feature is enabled at compile time.
+            $(without cfg check: $feature_cfg_check:tt;)?
+            // If this feature is always enabled by some other feature, we can avoid the cost of
+            // checking them separately by instead only checking the root features.
+            $(implied by target_features: [$($target_feature_lit:tt),*];)?
+            // Doc comment for the feature.
+            $(#[$feature_comment:meta])*)*
     ) => {
         // The current arch's version actually does the feature detection.
         #[macro_export]
@@ -51,11 +67,18 @@ macro_rules! features {
         #[cfg($cfg)]
         #[doc(cfg($cfg))]
         macro_rules! $macro_name {
+            // Emit all known features
             $(
                 ($feature_lit) => {
-                    $crate::detect_feature!($feature, $feature_lit $(, without cfg check: $feature_cfg_check)? $(: $($target_feature_lit),*)?)
+                    $crate::detect_feature!(
+                        $feature,
+                        $feature_lit
+                        $(, without cfg check: $feature_cfg_check)?
+                        $(: $($target_feature_lit),*)?
+                    )
                 };
             )*
+            // Emit all aliases, with a deprecation notice if applicable
             $(
                 ($bind_feature) => {
                     {
@@ -67,6 +90,7 @@ macro_rules! features {
                     }
                 };
             )*
+            // Emit an error for features that can't be detected at runtime
             $(
                 ($nort_feature) => {
                     compile_error!(
@@ -77,9 +101,11 @@ macro_rules! features {
                     )
                 };
             )*
+            // Allow a trailing comma
             ($t:tt,) => {
-                    $crate::$macro_name!($t)
+                $crate::$macro_name!($t)
             };
+            // Fallback, error for unknown target features
             ($t:tt) => {
                 compile_error!(
                     concat!("unknown ", stringify!($target), " target feature: ", $t)
@@ -93,6 +119,7 @@ macro_rules! features {
         #[cfg(not($cfg))]
         #[doc(cfg($cfg))]
         macro_rules! $macro_name {
+            // All known features get an error
             $(
                 ($feature_lit) => {
                     compile_error!(
@@ -104,9 +131,11 @@ macro_rules! features {
                     )
                 };
             )*
+            // Forward deprecated features
             $(
                 ($bind_feature) => { $crate::$macro_name!($feature_impl) };
             )*
+            // Emit an error for features that can't be detected at runtime
             $(
                 ($nort_feature) => {
                     compile_error!(
@@ -117,9 +146,11 @@ macro_rules! features {
                     )
                 };
             )*
+            // Allow a trailing comma
             ($t:tt,) => {
                     $crate::$macro_name!($t);
             };
+            // Fallback, error for unknown target features
             ($t:tt) => {
                 compile_error!(
                     concat!("unknown ", stringify!($target), " target feature: ", $t)
@@ -131,7 +162,12 @@ macro_rules! features {
         #[deny(unfulfilled_lint_expectations)]
         const _: () = {
             $(
-                check_cfg_feature!($feature, $feature_lit $(, without cfg check: $feature_cfg_check)? $(: $($target_feature_lit),*)?);
+                check_cfg_feature!(
+                    $feature,
+                    $feature_lit
+                    $(, without cfg check: $feature_cfg_check)?
+                    $(: $($target_feature_lit),*)?)
+                ;
             )*
         };
 
