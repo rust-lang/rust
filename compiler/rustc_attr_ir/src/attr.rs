@@ -6,7 +6,7 @@ use rustc_ast::{AttrStyle, DelimArgs, MetaItemLit, ast, join_path_idents};
 use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
 use rustc_macros::{Decodable, Encodable, StableHash};
-use rustc_span::{AttrId, DUMMY_SP, Ident, Span, Symbol, sym};
+use rustc_span::{AttrId, DUMMY_SP, Ident, Span, Symbol};
 use smallvec::SmallVec;
 use thin_vec::ThinVec;
 
@@ -72,7 +72,6 @@ pub struct AttrItem {
     // Not lowered to hir::Path because we have no NodeId to resolve to.
     pub path: AttrPath,
     pub args: AttrArgs,
-    pub id: HashIgnoredAttrId,
     /// Denotes if the attribute decorates the following construct (outer)
     /// or the construct this attribute is contained within (inner).
     pub style: AttrStyle,
@@ -110,16 +109,25 @@ pub enum Attribute {
     /// [`AttributeKind::Stability`] attribute. Most `Attribute` variants do have a [`Span`] field,
     /// though, mostly for the purpose of generating diagnostics later in the compilation process.
     Parsed(AttributeKind),
-    /// Represents non built-in attributes, which are not converted into a parsed form.
+
+    /// A tool attribute.
     ///
-    /// This is the case for custom tool attributes and derive helper attributes.
-    Unparsed(Box<AttrItem>),
+    /// Tool attributes, with the exception of diagnostic attributes, are not converted into a
+    /// parsed form.
+    Tool(Box<AttrItem>),
+
+    /// A derive helper attribute.
+    ///
+    /// Derive helper attributes serve no use beyond macro expansion, but they are useful to
+    /// consumers of `rustdoc-json`, so we keep them around. See
+    /// <https://github.com/rust-lang/rust/issues/157107> for context.
+    DeriveHelper(Box<AttrItem>),
 }
 
 impl Attribute {
     pub fn value_lit(&self) -> Option<&MetaItemLit> {
         match &self {
-            Attribute::Unparsed(n) => match n.as_ref() {
+            Attribute::Tool(n) | Attribute::DeriveHelper(n) => match n.as_ref() {
                 AttrItem { args: AttrArgs::Eq { eq_span: _, expr }, .. } => Some(expr),
                 _ => None,
             },
@@ -129,7 +137,9 @@ impl Attribute {
 
     pub fn is_prefix_attr_for_suggestions(&self) -> bool {
         match self {
-            Attribute::Unparsed(attr) => attr.span.desugaring_kind().is_none(),
+            Attribute::Tool(attr) | Attribute::DeriveHelper(attr) => {
+                attr.span.desugaring_kind().is_none()
+            }
             // Other parsed attributes that can appear on expressions originate from source and
             // should make suggestions treat the expression like a prefixed form.
             Attribute::Parsed(_) => true,
@@ -141,7 +151,7 @@ impl AttributeExt for Attribute {
     #[inline]
     fn meta_item_list(&self) -> Option<ThinVec<ast::MetaItemInner>> {
         match &self {
-            Attribute::Unparsed(n) => match n.as_ref() {
+            Attribute::Tool(n) | Attribute::DeriveHelper(n) => match n.as_ref() {
                 AttrItem { args: AttrArgs::Delimited(d), .. } => {
                     ast::MetaItemKind::list_from_tokens(d.tokens.clone())
                 }
@@ -165,21 +175,23 @@ impl AttributeExt for Attribute {
     #[inline]
     fn name(&self) -> Option<Symbol> {
         match &self {
-            Attribute::Unparsed(n) => {
+            Attribute::DeriveHelper(n) => {
                 if let [ident] = n.path.segments.as_ref() {
                     Some(*ident)
                 } else {
                     None
                 }
             }
-            _ => None,
+            Attribute::Parsed(..) => None,
+            // Tools are never single segment attributes
+            Attribute::Tool(..) => None,
         }
     }
 
     #[inline]
     fn path_matches(&self, name: &[Symbol]) -> bool {
         match &self {
-            Attribute::Unparsed(n) => n.path.segments.iter().eq(name),
+            Attribute::Tool(n) | Attribute::DeriveHelper(n) => n.path.segments.iter().eq(name),
             _ => false,
         }
     }
@@ -196,7 +208,7 @@ impl AttributeExt for Attribute {
     #[inline]
     fn is_word(&self) -> bool {
         match &self {
-            Attribute::Unparsed(n) => {
+            Attribute::Tool(n) | Attribute::DeriveHelper(n) => {
                 matches!(n.args, AttrArgs::Empty)
             }
             _ => false,
@@ -206,14 +218,16 @@ impl AttributeExt for Attribute {
     #[inline]
     fn symbol_path(&self) -> Option<SmallVec<[Symbol; 1]>> {
         match &self {
-            Attribute::Unparsed(n) => Some(n.path.segments.iter().copied().collect()),
+            Attribute::Tool(n) | Attribute::DeriveHelper(n) => {
+                Some(n.path.segments.iter().copied().collect())
+            }
             _ => None,
         }
     }
 
     fn path_span(&self) -> Option<Span> {
         match &self {
-            Attribute::Unparsed(attr) => Some(attr.path.span),
+            Attribute::Tool(attr) | Attribute::DeriveHelper(attr) => Some(attr.path.span),
             Attribute::Parsed(_) => None,
         }
     }
@@ -239,9 +253,6 @@ impl AttributeExt for Attribute {
     fn doc_resolution_scope(&self) -> Option<AttrStyle> {
         match self {
             Attribute::Parsed(AttributeKind::DocComment { style, .. }) => Some(*style),
-            Attribute::Unparsed(attr) if self.has_name(sym::doc) && self.value_str().is_some() => {
-                Some(attr.style)
-            }
             _ => None,
         }
     }
