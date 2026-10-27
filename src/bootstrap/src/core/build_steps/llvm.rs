@@ -2447,6 +2447,7 @@ impl CommandLineStep for Tpde {
         }
 
         cfg.build_target("tpde-plugin.so");
+        cfg.build();
 
         // When building TPDE as a shared library on linux, it can contain unexpected debuginfo:
         // some can come from the C++ standard library. Unless we're explicitly requesting TPDE to
