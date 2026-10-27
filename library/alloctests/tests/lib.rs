@@ -15,7 +15,6 @@
 #![feature(casefold)]
 
 #![feature(clone_from_ref)]
-#![feature(const_btree_len)]
 
 #![feature(const_cmp)]
 #![feature(const_heap)]
