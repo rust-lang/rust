@@ -1,5 +1,9 @@
 //@ compile-flags: -Zassumptions-on-binders -Znext-solver=globally
 //@ needs-rustc-debug-assertions
+//@ check-pass
+
+// FIXME(-Zassumptions-on-binders): this shouldn't compile, we're missing the
+// GATs wf check requiring a `where Self: 'x` clause on `Out`.
 
 // Regression test for #161067. A nested non-rigid alias must be normalized
 // before it reaches lexical region solving through `ty_known_to_outlive`.
@@ -8,7 +12,6 @@ struct D;
 
 trait Des {
     type Out<'x, T>;
-    //~^ ERROR missing required bound on `Out`
 
     fn des<'z>() -> Self::Out<'z, Self::Out<'z, D>>;
 }
