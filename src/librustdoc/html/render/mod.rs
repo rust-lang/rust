@@ -56,7 +56,6 @@ use rustc_attr_ir::{
     StableSince, find_attr,
 };
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
-use rustc_feature::EnabledLibFeature;
 use rustc_hir::Mutability;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdSet};
@@ -938,11 +937,11 @@ fn short_item_info(
 
     // Render unstable items. But don't render "rustc_private" crates (internal compiler crates).
     // Those crates are permanently unstable so it makes no sense to render "unstable" everywhere.
-    if let Some((StabilityLevel::Unstable { reason: _, issue, .. }, span, feature)) = item
+    if let Some((StabilityLevel::Unstable { reason: _, issue, .. }, feature)) = item
         .stability(cx.tcx())
         .as_ref()
         .filter(|stab| stab.feature != sym::rustc_private)
-        .map(|stab| (stab.level, stab.span, stab.feature))
+        .map(|stab| (stab.level, stab.feature))
     {
         let tracking = if let (Some(url), Some(issue)) = (&cx.shared.issue_tracker_base_url, issue)
         {
@@ -951,13 +950,7 @@ fn short_item_info(
             None
         };
 
-        // NOTE: normally, `rustc_expand` does this, but we don't do that by this point
-        let feat = cx.tcx().features();
-        if !feat.enabled_features().contains(&feature) {
-            feat.set_enabled_lib_feature(EnabledLibFeature { gate_name: feature, attr_sp: span });
-        }
-
-        if feat.internal(feature) {
+        if is_internal_lib_feature(feature) {
             extra_info.push(ShortItemInfo::Internal { feature: feature.to_string() });
         } else {
             extra_info.push(ShortItemInfo::Unstable { feature: feature.to_string(), tracking });
@@ -969,6 +962,11 @@ fn short_item_info(
     }
 
     extra_info
+}
+
+fn is_internal_lib_feature(feature: Symbol) -> bool {
+    let name = feature.as_str();
+    name == "core_intrinsics" || name.ends_with("_internal") || name.ends_with("_internals")
 }
 
 // Prints the polarity and path of an impl's trait, if it has one, e.g. `Send`, `!Sync`.
