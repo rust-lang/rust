@@ -494,7 +494,7 @@ pub const unsafe fn simd_saturating_sub<T>(lhs: T, rhs: T) -> T;
 pub const unsafe fn simd_reduce_add_ordered<T, U>(x: T, y: U) -> U;
 
 /// Adds elements within a vector in arbitrary order. May also be re-associated with
-/// unordered additions on the inputs/outputs.
+/// unordered/algebraic/fast additions on the inputs/outputs.
 ///
 /// `T` must be a vector of integers or floats.
 ///
@@ -524,7 +524,7 @@ pub const unsafe fn simd_reduce_add_algebraic<T, U>(x: T) -> U;
 pub const unsafe fn simd_reduce_mul_ordered<T, U>(x: T, y: U) -> U;
 
 /// Multiplies elements within a vector in arbitrary order. May also be re-associated with
-/// unordered additions on the inputs/outputs.
+/// unordered/algebraic/fast multiplications on the inputs/outputs.
 ///
 /// `T` must be a vector of integers or floats.
 ///
