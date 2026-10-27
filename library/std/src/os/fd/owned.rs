@@ -94,11 +94,7 @@ impl BorrowedFd<'_> {
     /// Converts a `BorrowedFd` into a reference to a file-like type.
     ///
     #[cfg_attr(all(unix, not(miri)), doc = "```")]
-    #[cfg_attr(
-        // FIXME: https://github.com/rust-lang/miri/issues/5453
-        any(not(unix), miri),
-        doc = "```ignore (needs unix; miri doesn't support metadata on stdio)"
-    )]
+    #[cfg_attr(not(unix), doc = "```ignore (needs unix)")]
     /// # #![feature(fd_view)]
     /// # use std::fs::File;
     /// # use std::io;
