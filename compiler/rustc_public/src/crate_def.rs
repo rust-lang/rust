@@ -77,11 +77,8 @@ pub trait CrateDef {
 
     /// Return registered tool attributes with the given attribute name.
     ///
-    /// FIXME(jdonszelmann): may panic on non-tool attributes. After more attribute work, non-tool
-    /// attributes will simply return an empty list.
-    ///
-    /// Single segmented name like `#[clippy]` is specified as `&["clippy".to_string()]`.
-    /// Multi-segmented name like `#[rustfmt::skip]` is specified as `&["rustfmt".to_string(), "skip".to_string()]`.
+    /// For example, `#![rustfmt::skip]` can be specified as
+    /// `&["rustfmt".to_string(), "skip".to_string()]`.
     fn tool_attrs(&self, attr: &[Symbol]) -> Vec<Attribute> {
         let def_id = self.def_id();
         with(|cx| cx.tool_attrs(def_id, attr))

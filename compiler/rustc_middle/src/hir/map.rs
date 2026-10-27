@@ -915,6 +915,23 @@ impl<'tcx> TyCtxt<'tcx> {
         self.hir_attr_map(id.owner).get(id.local_id)
     }
 
+    /// Gets all tool attributes named `name` associated with this hir ID.
+    pub fn hir_tool_attrs(
+        self,
+        id: HirId,
+        name: &[Symbol],
+    ) -> impl Iterator<Item = &'tcx rustc_attr_ir::AttrItem> {
+        self.hir_attrs(id).iter().filter_map(|attr| {
+            if let rustc_attr_ir::Attribute::Tool(t) = attr
+                && *t.path.segments == *name
+            {
+                Some(&**t)
+            } else {
+                None
+            }
+        })
+    }
+
     /// Gets the span of the definition of the specified HIR node.
     /// This is used by `tcx.def_span`.
     pub fn hir_span(self, hir_id: HirId) -> Span {
