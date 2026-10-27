@@ -162,7 +162,7 @@ pub fn perf(builder: &Builder<'_>, args: &PerfArgs, trailing_args: &[String]) {
 
     // We need to set the working directory to `src/tools/rustc-perf`, so that it can find the directory
     // with compile-time benchmarks.
-    cmd.current_dir(builder.src.join("src/tools/rustc-perf"));
+    cmd.current_dir(builder.src.join(builder.rustc_perf_path()));
 
     let db_path = args
         .cmd
