@@ -3374,6 +3374,14 @@ impl PpMode {
 }
 
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
+pub enum LlvmTpde {
+    /// Attempt to compile with TPDE-LLVM, but fall back to LLVM if unsupported LLVM IR is encountered
+    Try,
+    /// Attempt to compile with TPDE-LLVM, and bail if unsupported LLVM IR is encountered
+    Only,
+}
+
+#[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub enum WasiExecModel {
     Command,
     Reactor,
@@ -3423,7 +3431,7 @@ pub(crate) mod dep_tracking {
         AnnotateMoves, AutoDiff, BranchProtection, CFGuard, CFProtection, CodegenRetagOptions,
         CoverageOptions, CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FmtDebug,
         FunctionReturn, InliningThreshold, InstrumentCoverage, InstrumentMcount,
-        InstrumentMcountOpts, InstrumentXRay, LinkerPluginLto, LocationDetail, LtoCli,
+        InstrumentMcountOpts, InstrumentXRay, LinkerPluginLto, LlvmTpde, LocationDetail, LtoCli,
         MirStripDebugInfo, NextSolverConfig, Offload, OptLevel, OutFileName, OutputType,
         OutputTypes, PatchableFunctionEntry, PointerAuthOption, Polonius, ResolveDocLinks,
         SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion,
@@ -3496,6 +3504,7 @@ pub(crate) mod dep_tracking {
         InstrumentXRay,
         LanguageIdentifier,
         LinkerPluginLto,
+        LlvmTpde,
         LocationDetail,
         LtoCli,
         MergeFunctions,
