@@ -18,7 +18,7 @@ fn main() {
         // binding declaration order, and they're dropped in the arm's scope.
         match [o.log(6), o.log(5)] {
             // Partially move from the guard temporary to test drops both for temps and the binding.
-            [_x, _y] if let [_, _z, _] = [o.log(4), o.log(2), o.log(3)]
+            [_x, _y] if let [_, _z, _] = [o.log(3), o.log(2), o.log(4)]
                 && true => { let _a = o.log(1); }
             _ => unreachable!(),
         }
