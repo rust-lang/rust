@@ -161,6 +161,7 @@ case $HOST_TARGET in
   x86_64-unknown-linux-gnu)
     TEST_TIER=0 run_tests # Linux, x86_64 extended tests
     TEST_TIER=1 TEST_TARGET=x86_64-pc-windows-gnu run_tests # Windows on Linux
+    TEST_TIER=2 TEST_TARGET=x86_64-pc-solaris run_tests
     ;;
   i686-unknown-linux-gnu)
     TEST_TIER=0 run_tests # i686 extended tests
@@ -190,7 +191,6 @@ case $HOST_TARGET in
   aarch64-pc-windows-msvc)
     TEST_TIER=1 run_tests
     TEST_TIER=1 TEST_TARGET=s390x-unknown-linux-gnu run_tests # big-endian, Linux on Windows
-    TEST_TIER=2 TEST_TARGET=x86_64-pc-solaris run_tests
     ;;
   x86_64-unknown-freebsd)
     TEST_TIER=2 run_tests
