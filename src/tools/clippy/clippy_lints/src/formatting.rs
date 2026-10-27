@@ -290,7 +290,7 @@ fn check_array(cx: &EarlyContext<'_>, expr: &Expr) {
         for element in array {
             if let ExprKind::Binary(ref op, ref lhs, _) = element.kind
                 && has_unary_equivalent(op.node)
-                && lhs.span.eq_ctxt(op.span)
+                && lhs.span.ctxt() == op.span.ctxt()
                 && let space_span = lhs.span.between(op.span)
                 && let Some(space_snippet) = snippet_opt(cx, space_span)
                 && let lint_span = lhs.span.with_lo(lhs.span.hi())

@@ -2557,7 +2557,7 @@ impl Ident {
 impl PartialEq for Ident {
     #[inline]
     fn eq(&self, rhs: &Self) -> bool {
-        self.name == rhs.name && self.span.eq_ctxt(rhs.span)
+        self.name == rhs.name && self.span.ctxt() == rhs.span.ctxt()
     }
 }
 

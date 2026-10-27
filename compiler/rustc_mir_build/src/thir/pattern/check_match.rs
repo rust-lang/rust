@@ -1408,7 +1408,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
             };
             let only_body = &thir[only.body];
             let comma = if matches!(only_body.kind, ExprKind::Block { .. })
-                && only.span.eq_ctxt(only_body.span)
+                && only.span.ctxt() == only_body.span.ctxt()
                 && is_multiline
             {
                 ""
@@ -1423,10 +1423,10 @@ fn report_non_exhaustive_match<'p, 'tcx>(
         [.., prev, last] => {
             let prev = &thir[*prev];
             let last = &thir[*last];
-            if prev.span.eq_ctxt(last.span) {
+            if prev.span.ctxt() == last.span.ctxt() {
                 let last_body = &thir[last.body];
                 let comma = if matches!(last_body.kind, ExprKind::Block { .. })
-                    && last.span.eq_ctxt(last_body.span)
+                    && last.span.ctxt() == last_body.span.ctxt()
                 {
                     ""
                 } else {
