@@ -1,0 +1,62 @@
+error: generic parameters in const blocks are not allowed; use a named `const` item instead
+  --> $DIR/suggest-gca-macro-for-path.rs:19:28
+   |
+LL | fn baz<T: Trait>() -> [u8; T::N] {
+   |                            ^
+   |
+help: consider wrapping `T::N` in the `gca!` macro
+   |
+LL - fn baz<T: Trait>() -> [u8; T::N] {
+LL + fn baz<T: Trait>() -> [u8; gca!(T::N)] {
+   |
+
+error: generic parameters in const blocks are not allowed; use a named `const` item instead
+  --> $DIR/suggest-gca-macro-for-path.rs:24:27
+   |
+LL | fn qux<T: Trait>() -> S<{ T::N }> {
+   |                           ^
+   |
+help: consider wrapping `T::N` in the `gca!` macro
+   |
+LL - fn qux<T: Trait>() -> S<{ T::N }> {
+LL + fn qux<T: Trait>() -> S<gca!(T::N)> {
+   |
+
+error: generic parameters in const blocks are not allowed; use a named `const` item instead
+  --> $DIR/suggest-gca-macro-for-path.rs:31:40
+   |
+LL | fn quux<const N: usize>() -> [u8; ID::<N>] {
+   |                                        ^
+   |
+help: consider wrapping `ID::<N>` in the `gca!` macro
+   |
+LL - fn quux<const N: usize>() -> [u8; ID::<N>] {
+LL + fn quux<const N: usize>() -> [u8; gca!(ID::<N>)] {
+   |
+
+error: generic parameters in const blocks are not allowed; use a named `const` item instead
+  --> $DIR/suggest-gca-macro-for-path.rs:11:22
+   |
+LL |     fn foo() -> [u8; Self::N];
+   |                      ^^^^
+   |
+help: consider wrapping `Self::N` in the `gca!` macro
+   |
+LL -     fn foo() -> [u8; Self::N];
+LL +     fn foo() -> [u8; gca!(Self::N)];
+   |
+
+error: generic parameters in const blocks are not allowed; use a named `const` item instead
+  --> $DIR/suggest-gca-macro-for-path.rs:13:23
+   |
+LL |     fn bar() -> [u8; <Self as Trait>::N];
+   |                       ^^^^
+   |
+help: consider wrapping `<Self as Trait>::N` in the `gca!` macro
+   |
+LL -     fn bar() -> [u8; <Self as Trait>::N];
+LL +     fn bar() -> [u8; gca!(<Self as Trait>::N)];
+   |
+
+error: aborting due to 5 previous errors
+

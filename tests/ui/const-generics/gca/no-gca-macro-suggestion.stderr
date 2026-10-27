@@ -1,0 +1,55 @@
+error: generic parameters in const blocks are not allowed; use a named `const` item instead
+  --> $DIR/no-gca-macro-suggestion.rs:15:33
+   |
+LL | fn bar<T: Trait>() -> S<const { T::N }> {
+   |                                 ^
+   |
+   = help: consider factoring the expression into a `type const` item and use it as the const argument instead
+
+error: generic parameters in const blocks are not allowed; use a named `const` item instead
+  --> $DIR/no-gca-macro-suggestion.rs:20:49
+   |
+LL | const FOO<const N: usize>: usize = gca!(const { N });
+   |                                                 ^
+   |
+   = help: consider factoring the expression into a `type const` item and use it as the const argument instead
+
+error: generic parameters in const blocks are not allowed; use a named `const` item instead
+  --> $DIR/no-gca-macro-suggestion.rs:41:29
+   |
+LL | fn quux<T: Trait>() -> len!(T) {
+   |                             ^
+   |
+   = help: consider factoring the expression into a `type const` item and use it as the const argument instead
+
+error: generic `Self` types are currently not permitted in anonymous constants
+  --> $DIR/no-gca-macro-suggestion.rs:27:22
+   |
+LL |     fn baz() -> [u8; Self::M] {
+   |                      ^^^^
+   |
+note: not a concrete type
+  --> $DIR/no-gca-macro-suggestion.rs:25:9
+   |
+LL | impl<T> W<T> {
+   |         ^^^^
+   = help: consider factoring the expression into a `type const` item and use it as the const argument instead
+
+error: generic parameters in const blocks are not allowed; use a named `const` item instead
+  --> $DIR/no-gca-macro-suggestion.rs:31:26
+   |
+LL |     fn qux() -> [u8; W::<T>::M] {
+   |                          ^
+   |
+   = help: consider factoring the expression into a `type const` item and use it as the const argument instead
+
+error: generic parameters in const blocks are not allowed; use a named `const` item instead
+  --> $DIR/no-gca-macro-suggestion.rs:9:22
+   |
+LL |     fn foo() -> [u8; Self::N + 1];
+   |                      ^^^^
+   |
+   = help: consider factoring the expression into a `type const` item and use it as the const argument instead
+
+error: aborting due to 6 previous errors
+

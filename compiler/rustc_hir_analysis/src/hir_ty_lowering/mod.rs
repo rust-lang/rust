@@ -441,7 +441,14 @@ impl<'tcx> ForbidParamUsesFolder<'tcx> {
             }
         }
         if matches!(self.context, ForbidParamContext::ConstArgument) {
-            if self.tcx.features().gca_const_items() {
+            if let Some((span, path)) = self.gca_macro_suggestion() {
+                diag.span_suggestion_verbose(
+                    span,
+                    format!("consider wrapping `{path}` in the `gca!` macro"),
+                    format!("gca!({path})"),
+                    Applicability::MaybeIncorrect,
+                );
+            } else if self.tcx.features().gca_const_items() {
                 diag.help("consider factoring the expression into a `type const` item and use it as the const argument instead");
             } else if self.tcx.features().gca_min_const_items() {
                 diag.help("add `#![feature(gca_const_items)]` and extract the expression into a `type const` item");
@@ -453,6 +460,60 @@ impl<'tcx> ForbidParamUsesFolder<'tcx> {
             }
         }
         diag.emit_err()
+    }
+
+    // If the anon const is just a path, it can be written as `gca!(path)` instead.
+    fn gca_macro_suggestion(&self) -> Option<(Span, String)> {
+        if !self.tcx.features().gca_min_const_items() || !self.tcx.features().gca_const_items() {
+            return None;
+        }
+        let anon_const_def_id = self.tcx.typeck_root_def_id_local(self.anon_const_def_id);
+        let hir::Node::AnonConst(anon_const) = self.tcx.hir_node_by_def_id(anon_const_def_id)
+        else {
+            return None;
+        };
+        // Skip explicit `const { .. }` blocks, whose const arg span is wider than the body.
+        let hir::Node::ConstArg(const_arg) = self.tcx.parent_hir_node(anon_const.hir_id) else {
+            return None;
+        };
+        let body = self.tcx.hir_body(anon_const.body).value;
+        if const_arg.span != body.span {
+            return None;
+        }
+        let mut expr = body;
+        while let hir::ExprKind::Block(hir::Block { stmts: [], expr: Some(inner), .. }, None) =
+            expr.kind
+        {
+            expr = inner;
+        }
+        // `Ty::ASSOC` only works in `gca!` when `Ty` is a type parameter, as inherent
+        // associated consts would need `inherent_associated_types`.
+        match expr.kind {
+            hir::ExprKind::Path(hir::QPath::Resolved(
+                _,
+                hir::Path { res: Res::Def(DefKind::Const | DefKind::AssocConst, _), .. },
+            )) => {}
+            hir::ExprKind::Path(hir::QPath::TypeRelative(
+                hir::Ty {
+                    kind:
+                        hir::TyKind::Path(hir::QPath::Resolved(
+                            None,
+                            hir::Path {
+                                res: Res::Def(DefKind::TyParam, _) | Res::SelfTyParam { .. },
+                                ..
+                            },
+                        )),
+                    ..
+                },
+                _,
+            )) => {}
+            _ => return None,
+        }
+        if !body.span.can_be_used_for_suggestions() {
+            return None;
+        }
+        let path = self.tcx.sess.source_map().span_to_snippet(expr.span).ok()?;
+        Some((body.span, path))
     }
 }
 
