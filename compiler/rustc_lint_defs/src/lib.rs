@@ -769,7 +769,7 @@ macro_rules! declare_lint_pass {
 #[macro_export]
 macro_rules! fcw {
     (FutureReleaseError # $issue_number: literal) => {
-       $crate:: FutureIncompatibilityReason::FutureReleaseError($crate::ReleaseFcw { issue_number: $issue_number })
+       $crate::FutureIncompatibilityReason::FutureReleaseError($crate::ReleaseFcw { issue_number: $issue_number })
     };
     (FutureReleaseSemanticsChange # $issue_number: literal) => {
         $crate::FutureIncompatibilityReason::FutureReleaseSemanticsChange($crate::ReleaseFcw {
@@ -805,13 +805,8 @@ macro_rules! fcw {
             page_slug: $page_slug,
         })
     };
-    (@edition 2024) => {
-        rustc_span::edition::Edition::Edition2024
-    };
-    (@edition 2021) => {
-        rustc_span::edition::Edition::Edition2021
-    };
-    (@edition 2018) => {
-        rustc_span::edition::Edition::Edition2018
-    };
+    (@edition future) => { rustc_span::edition::Edition::EditionFuture };
+    (@edition 2024) => { rustc_span::edition::Edition::Edition2024 };
+    (@edition 2021) => { rustc_span::edition::Edition::Edition2021 };
+    (@edition 2018) => { rustc_span::edition::Edition::Edition2018 };
 }

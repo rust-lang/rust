@@ -362,6 +362,7 @@ attribute_parsers!(
         Single<WithoutArgs<SplatParser>>,
         Single<WithoutArgs<ThreadLocalParser>>,
         Single<WithoutArgs<TrackCallerParser>>,
+        Single<WithoutArgs<UncheckedTypeAliasParser>>,
         // tidy-alphabetical-end
     ];
 );
