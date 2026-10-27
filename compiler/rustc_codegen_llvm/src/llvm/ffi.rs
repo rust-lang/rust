@@ -26,8 +26,7 @@ use super::debuginfo::{
     DIArray, DIBuilder, DIDerivedType, DIDescriptor, DIFile, DIFlags, DILocation, DISPFlags,
     DIScope, DISubprogram, DITemplateTypeParameter, DIType, DebugEmissionKind, DebugNameTableKind,
 };
-use crate::llvm;
-use crate::llvm::MetadataKindId;
+use crate::llvm::{self, LLVMRustTpdeOptions, MetadataKindId};
 use crate::macros::TryFromU32;
 
 mod branded;
@@ -2472,6 +2471,7 @@ unsafe extern "C" {
         FileType: FileType,
         VerifyIR: bool,
         DisableSimplifyLibCalls: bool,
+        TpdeOptions: LLVMRustTpdeOptions,
     ) -> LLVMRustResult;
     pub(crate) fn LLVMRustOptimize<'ll>(
         M: Module<'ll>,
