@@ -199,7 +199,7 @@ pub(super) fn check<'tcx>(
         );
 
         let sugg = if let Some(parent_expr) = get_parent_expr(cx, expr) {
-            if parent_expr.span.eq_ctxt(expr.span) {
+            if parent_expr.span.ctxt() == expr.span.ctxt() {
                 match parent_expr.kind {
                     ExprKind::Binary(..) | ExprKind::Unary(..) | ExprKind::Cast(..) => binop.maybe_paren(),
                     ExprKind::MethodCall(_, receiver, _, _) if receiver.hir_id == expr.hir_id => binop.maybe_paren(),

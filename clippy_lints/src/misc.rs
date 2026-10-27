@@ -107,7 +107,7 @@ impl<'tcx> LateLintPass<'tcx> for LintPass {
             && let ExprKind::Binary(binop, a, b) = &expr.kind
             && matches!(binop.node, BinOpKind::And | BinOpKind::Or)
             && !stmt.span.from_expansion()
-            && expr.span.eq_ctxt(stmt.span)
+            && expr.span.ctxt() == stmt.span.ctxt()
         {
             span_lint_hir_and_then(
                 cx,
