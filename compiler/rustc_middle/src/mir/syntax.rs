@@ -1254,9 +1254,10 @@ pub enum ProjectionElem<V, T> {
     /// This is unused with `-Znext-solver`.
     OpaqueCast(T),
 
-    /// A transmute from an unsafe binder to the type that it wraps. This is a projection
-    /// of a place, so it doesn't necessarily constitute a move out of the binder.
-    UnwrapUnsafeBinder(T),
+    /// Transmute the type of the place. This is a projection of a place,
+    /// so it doesn't necessarily constitute a move out of the source type.
+    /// Used for unsafe binders, among other things.
+    Transmute(T),
 
     /// A symbolic dereference of a `Reborrow` type that does not contain any `&mut T` fields.
     ///

@@ -54,7 +54,7 @@ impl<'tcx> Iterator for Prefixes<'tcx> {
                             self.next = Some(cursor_base);
                             return Some(cursor);
                         }
-                        ProjectionElem::UnwrapUnsafeBinder(_) => {
+                        ProjectionElem::Transmute(_) => {
                             self.next = Some(cursor_base);
                             return Some(cursor);
                         }
