@@ -163,13 +163,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "_NSGetExecutablePath" => {
                 // FIXME: This does not have a direct test (#3179).
                 let [buf, bufsize] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(*_, *_) -> i32),
+                    shim_sig!(extern "C" fn(*_, *u32) -> i32),
                     (link_name, abi, args),
                 )?;
                 this.check_no_isolation("`_NSGetExecutablePath`")?;
 
                 let buf_ptr = this.read_pointer(buf)?;
-                let bufsize = this.deref_pointer_as(bufsize, this.machine.layouts.u32)?;
+                let bufsize = this.deref_pointer(bufsize)?;
 
                 let Some(path) = this.machine.current_exe.clone() else {
                     throw_unsup_format!(
@@ -359,28 +359,38 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 )?;
             }
             "os_unfair_lock_lock" => {
-                let [lock_op] = &this
-                    .check_shim_sig(shim_sig!(extern "C" fn(*_) -> ()), (link_name, abi, args))?;
+                let [lock_op] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*libc::os_unfair_lock_s) -> ()),
+                    (link_name, abi, args),
+                )?;
                 this.os_unfair_lock_lock(lock_op)?;
             }
             "os_unfair_lock_trylock" => {
-                let [lock_op] = &this
-                    .check_shim_sig(shim_sig!(extern "C" fn(*_) -> bool), (link_name, abi, args))?;
+                let [lock_op] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*libc::os_unfair_lock_s) -> bool),
+                    (link_name, abi, args),
+                )?;
                 this.os_unfair_lock_trylock(lock_op, dest)?;
             }
             "os_unfair_lock_unlock" => {
-                let [lock_op] = &this
-                    .check_shim_sig(shim_sig!(extern "C" fn(*_) -> ()), (link_name, abi, args))?;
+                let [lock_op] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*libc::os_unfair_lock_s) -> ()),
+                    (link_name, abi, args),
+                )?;
                 this.os_unfair_lock_unlock(lock_op)?;
             }
             "os_unfair_lock_assert_owner" => {
-                let [lock_op] = &this
-                    .check_shim_sig(shim_sig!(extern "C" fn(*_) -> ()), (link_name, abi, args))?;
+                let [lock_op] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*libc::os_unfair_lock_s) -> ()),
+                    (link_name, abi, args),
+                )?;
                 this.os_unfair_lock_assert_owner(lock_op)?;
             }
             "os_unfair_lock_assert_not_owner" => {
-                let [lock_op] = &this
-                    .check_shim_sig(shim_sig!(extern "C" fn(*_) -> ()), (link_name, abi, args))?;
+                let [lock_op] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(*libc::os_unfair_lock_s) -> ()),
+                    (link_name, abi, args),
+                )?;
                 this.os_unfair_lock_assert_not_owner(lock_op)?;
             }
             "dispatch_semaphore_create" => {
@@ -392,21 +402,21 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "dispatch_semaphore_wait" => {
                 let [sem, timeout] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(*_, u64) -> isize),
+                    shim_sig!(extern "C" fn(*u8, u64) -> isize),
                     (link_name, abi, args),
                 )?;
                 this.dispatch_semaphore_wait(sem, timeout, dest)?;
             }
             "dispatch_semaphore_signal" => {
                 let [sem] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(*_) -> isize),
+                    shim_sig!(extern "C" fn(*u8) -> isize),
                     (link_name, abi, args),
                 )?;
                 this.dispatch_semaphore_signal(sem, dest)?;
             }
             "dispatch_release" => {
                 let [sem] = &this
-                    .check_shim_sig(shim_sig!(extern "C" fn(*_) -> ()), (link_name, abi, args))?;
+                    .check_shim_sig(shim_sig!(extern "C" fn(*u8) -> ()), (link_name, abi, args))?;
                 this.dispatch_release(sem)?;
             }
             "dispatch_time" => {
