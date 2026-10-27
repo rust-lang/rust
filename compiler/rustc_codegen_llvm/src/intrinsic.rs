@@ -4,7 +4,7 @@ use std::{assert_matches, iter, ptr};
 
 use rustc_abi::{
     AddressSpace, Align, BackendRepr, CVariadicStatus, Float, HasDataLayout, NumScalableVectors,
-    Primitive, Size, WrappingRange,
+    Primitive, Size,
 };
 use rustc_attr_ir::find_attr;
 use rustc_codegen_ssa::RetagInfo;
@@ -943,35 +943,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         };
         let fn_ty = self.get_type_of_global(fn_ptr);
 
-        let mut llargs = vec![];
-
-        for arg in args {
-            match arg.val {
-                OperandValue::ZeroSized => {}
-                OperandValue::Immediate(a) => llargs.push(a),
-                OperandValue::Pair(a, b) => {
-                    llargs.push(a);
-                    llargs.push(b);
-                }
-                OperandValue::Ref(op_place_val) => {
-                    let mut llval = op_place_val.llval;
-                    // We can't use `PlaceRef::load` here because the argument
-                    // may have a type we don't treat as immediate, but the ABI
-                    // used for this call is passing it by-value. In that case,
-                    // the load would just produce `OperandValue::Ref` instead
-                    // of the `OperandValue::Immediate` we need for the call.
-                    llval = self.load(self.backend_type(arg.layout), llval, op_place_val.align);
-                    if let BackendRepr::Scalar(scalar) = arg.layout.backend_repr {
-                        if scalar.is_bool() {
-                            self.range_metadata(llval, WrappingRange { start: 0, end: 1 });
-                        }
-                        // We store bools as `i8` so we need to truncate to `i1`.
-                        llval = self.to_immediate_scalar(llval, scalar);
-                    }
-                    llargs.push(llval);
-                }
-            }
-        }
+        let mut llargs = args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>();
 
         debug!("call intrinsic {:?} with args ({:?})", instance, llargs);
 
