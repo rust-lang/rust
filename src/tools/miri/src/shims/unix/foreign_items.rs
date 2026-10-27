@@ -485,7 +485,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.dirfd(dirp, dest)?;
             }
             "lseek" => {
-                // FIXME: This does not have a direct test (#3179).
                 let [fd, offset, whence] = &this.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, libc::off_t, i32) -> libc::off_t),
                     (link_name, abi, args),
