@@ -26,9 +26,11 @@ fn main() {
     let _ = res;
     drop(res);
 
-    let d = NontrivialDrop;
+    let mut d = NontrivialDrop;
     let _ = d;
     _ = d;
+    let _ = *&d;
+    let _ = *&mut d;
     drop(d);
 
     let pair = (m.lock().unwrap(), NontrivialDrop);

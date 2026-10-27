@@ -187,6 +187,7 @@ fn is_local_or_static_place(expr: &hir::Expr<'_>) -> bool {
         hir::ExprKind::Field(base, _)
         | hir::ExprKind::Index(base, _, _)
         | hir::ExprKind::Unary(hir::UnOp::Deref, base)
+        | hir::ExprKind::AddrOf(_, _, base)
         | hir::ExprKind::Type(base, _) => is_local_or_static_place(base),
         _ => false,
     }
