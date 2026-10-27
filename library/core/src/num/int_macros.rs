@@ -2801,7 +2801,7 @@ macro_rules! int_impl {
         ///
         /// ```
         #[doc = concat!("assert_eq!(5", stringify!($SelfT), ".overflowing_mul(2), (10, false));")]
-        /// assert_eq!(1_000_000_000_i32.overflowing_mul(10), (1_410_065_408, true));
+        /// assert_eq!(1_000_000_000_i32.overflowing_mul(10), (1410065408, true));
         /// ```
         #[stable(feature = "wrapping", since = "1.7.0")]
         #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
@@ -2829,10 +2829,10 @@ macro_rules! int_impl {
         ///
         /// ```
         /// #![feature(signed_bigint_helpers)]
-        /// assert_eq!(5_i32.carrying_mul(-2, 0), (4_294_967_286, -1));
+        /// assert_eq!(5_i32.carrying_mul(-2, 0), (4294967286, -1));
         /// assert_eq!(5_i32.carrying_mul(-2, 10), (0, 0));
-        /// assert_eq!(1_000_000_000_i32.carrying_mul(-10, 0), (2_884_901_888, -3));
-        /// assert_eq!(1_000_000_000_i32.carrying_mul(-10, 10), (2_884_901_898, -3));
+        /// assert_eq!(1_000_000_000_i32.carrying_mul(-10, 0), (2884901888, -3));
+        /// assert_eq!(1_000_000_000_i32.carrying_mul(-10, 10), (2884901898, -3));
         #[doc = concat!("assert_eq!(",
             stringify!($SelfT), "::MAX.carrying_mul(", stringify!($SelfT), "::MAX, ", stringify!($SelfT), "::MAX), ",
             "(", stringify!($SelfT), "::MAX.unsigned_abs() + 1, ", stringify!($SelfT), "::MAX / 2));"
@@ -2865,10 +2865,10 @@ macro_rules! int_impl {
         ///
         /// ```
         /// #![feature(signed_bigint_helpers)]
-        /// assert_eq!(5_i32.carrying_mul_add(-2, 0, 0), (4_294_967_286, -1));
+        /// assert_eq!(5_i32.carrying_mul_add(-2, 0, 0), (4294967286, -1));
         /// assert_eq!(5_i32.carrying_mul_add(-2, 10, 10), (10, 0));
-        /// assert_eq!(1_000_000_000_i32.carrying_mul_add(-10, 0, 0), (2_884_901_888, -3));
-        /// assert_eq!(1_000_000_000_i32.carrying_mul_add(-10, 10, 10), (2_884_901_908, -3));
+        /// assert_eq!(1_000_000_000_i32.carrying_mul_add(-10, 0, 0), (2884901888, -3));
+        /// assert_eq!(1_000_000_000_i32.carrying_mul_add(-10, 10, 10), (2884901908, -3));
         #[doc = concat!("assert_eq!(",
             stringify!($SelfT), "::MAX.carrying_mul_add(", stringify!($SelfT), "::MAX, ", stringify!($SelfT), "::MAX, ", stringify!($SelfT), "::MAX), ",
             "(", stringify!($UnsignedT), "::MAX, ", stringify!($SelfT), "::MAX / 2));"

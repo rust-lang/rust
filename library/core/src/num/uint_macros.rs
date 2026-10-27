@@ -3222,7 +3222,7 @@ macro_rules! uint_impl {
         ///
         /// ```
         /// assert_eq!(5_u32.overflowing_mul(2), (10, false));
-        /// assert_eq!(1_000_000_000_u32.overflowing_mul(10), (1_410_065_408, true));
+        /// assert_eq!(1_000_000_000_u32.overflowing_mul(10), (1410065408, true));
         /// ```
         #[stable(feature = "wrapping", since = "1.7.0")]
         #[rustc_const_stable(feature = "const_wrapping_math", since = "1.32.0")]
@@ -3253,8 +3253,8 @@ macro_rules! uint_impl {
         /// ```
         /// assert_eq!(5_u32.carrying_mul(2, 0), (10, 0));
         /// assert_eq!(5_u32.carrying_mul(2, 10), (20, 0));
-        /// assert_eq!(1_000_000_000_u32.carrying_mul(10, 0), (1_410_065_408, 2));
-        /// assert_eq!(1_000_000_000_u32.carrying_mul(10, 10), (1_410_065_418, 2));
+        /// assert_eq!(1_000_000_000_u32.carrying_mul(10, 0), (1410065408, 2));
+        /// assert_eq!(1_000_000_000_u32.carrying_mul(10, 10), (1410065418, 2));
         #[doc = concat!("assert_eq!(",
             stringify!($SelfT), "::MAX.carrying_mul(", stringify!($SelfT), "::MAX, ", stringify!($SelfT), "::MAX), ",
             "(0, ", stringify!($SelfT), "::MAX));"
@@ -3341,8 +3341,8 @@ macro_rules! uint_impl {
         /// ```
         /// assert_eq!(5_u32.carrying_mul_add(2, 0, 0), (10, 0));
         /// assert_eq!(5_u32.carrying_mul_add(2, 10, 10), (30, 0));
-        /// assert_eq!(1_000_000_000_u32.carrying_mul_add(10, 0, 0), (1_410_065_408, 2));
-        /// assert_eq!(1_000_000_000_u32.carrying_mul_add(10, 10, 10), (1_410_065_428, 2));
+        /// assert_eq!(1_000_000_000_u32.carrying_mul_add(10, 0, 0), (1410065408, 2));
+        /// assert_eq!(1_000_000_000_u32.carrying_mul_add(10, 10, 10), (1410065428, 2));
         #[doc = concat!("assert_eq!(",
             stringify!($SelfT), "::MAX.carrying_mul_add(", stringify!($SelfT), "::MAX, ", stringify!($SelfT), "::MAX, ", stringify!($SelfT), "::MAX), ",
             "(", stringify!($SelfT), "::MAX, ", stringify!($SelfT), "::MAX));"
