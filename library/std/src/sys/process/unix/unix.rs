@@ -52,6 +52,40 @@ cfg_select! {
 ////////////////////////////////////////////////////////////////////////////////
 
 impl Command {
+    /// An internal helper function used by `Command::exec` and `Command::spawn` to return
+    /// a buffer populated with OS-specific shell path location, the file to exec, and arguments
+    /// to pass in. This buffer is used on certain platforms when `libc::execve` returns `ENOEXEC`,
+    /// indicating that we need to invoke the shell to interpret the file as a script. If a certain
+    /// platform does not invoke the shell on `ENOEXEC`, then this function will return `None`.
+    ///
+    /// Note that netbsd does not invoke the shell on `ENOEXEC` in `Command::spawn` since its
+    /// `posix_spawnp` implementation does not forward to `execvpe` (see #157144 for platform
+    /// dependent behavior).
+    fn get_shell_argv(&self, is_exec: bool) -> Option<Vec<*const libc::c_char>> {
+        if cfg!(any(
+            target_vendor = "apple",
+            target_os = "android",
+            target_os = "openbsd",
+            target_os = "freebsd",
+            target_os = "dragonfly",
+            all(target_os = "linux", not(target_env = "musl")),
+            target_os = "haiku"
+        )) || (cfg!(target_os = "netbsd") && is_exec)
+        {
+            let args = self.get_argv();
+            let mut shell_argv = Vec::with_capacity(2 + args.len());
+            shell_argv.push(libc::_PATH_BSHELL);
+            // This value is updated in Command::do_exec with the actual file to exec on.
+            shell_argv.push(crate::ptr::null());
+            // argv[0] contains the program name, but we are only interested in the
+            // arguments so skip it.
+            args.iter().skip(1).for_each(|arg| shell_argv.push(arg.as_ptr()));
+            Some(shell_argv)
+        } else {
+            None
+        }
+    }
+
     pub fn spawn(
         &mut self,
         default: Stdio,
@@ -94,29 +128,8 @@ impl Command {
         let paths = self.find_path_var(envp.as_ref());
         let max_path_len = self.compute_max_len(paths);
         let mut buf = Box::new_uninit_slice(max_path_len);
-        let args = self.get_argv();
         // Contains the shell path, the file to exec, the argument list, and nul ptr
-        let mut shell_argv = Vec::with_capacity(2 + args.len());
-
-        let call_shell = if cfg!(any(
-            target_vendor = "apple",
-            target_os = "android",
-            target_os = "openbsd",
-            target_os = "freebsd",
-            target_os = "dragonfly",
-            all(target_os = "linux", not(target_env = "musl")),
-            target_os = "haiku"
-        )) {
-            shell_argv.push(libc::_PATH_BSHELL);
-            // This value is updated in do_exec with the actual file to exec on.
-            shell_argv.push(crate::ptr::null());
-            // argv[0] contains the program name, but we are only interested in the
-            // arguments so skip it.
-            args.iter().skip(1).for_each(|arg| shell_argv.push(arg.as_ptr()));
-            true
-        } else {
-            false
-        };
+        let mut shell_argv = self.get_shell_argv(false);
 
         let pid = unsafe { self.do_fork()? };
 
@@ -129,7 +142,7 @@ impl Command {
                 self.send_pidfd(&output);
             }
             let Err(err) = unsafe {
-                self.do_exec(theirs, envp.as_ref(), paths, &mut buf, &mut shell_argv, call_shell)
+                self.do_exec(theirs, envp.as_ref(), paths, &mut buf, shell_argv.as_mut())
             };
             let errno = err.raw_os_error().unwrap_or(libc::EINVAL) as u32;
             let errno = errno.to_be_bytes();
@@ -272,37 +285,10 @@ impl Command {
                     let paths = self.find_path_var(envp.as_ref());
                     let max_path_len = self.compute_max_len(paths);
                     let mut buf = Box::new_uninit_slice(max_path_len);
-                    let args = self.get_argv();
-                    let mut shell_argv = Vec::with_capacity(2 + args.len());
+                    let mut shell_argv = self.get_shell_argv(true);
 
-                    let call_shell = if cfg!(any(
-                        target_vendor = "apple",
-                        target_os = "android",
-                        target_os = "openbsd",
-                        target_os = "netbsd",
-                        target_os = "freebsd",
-                        target_os = "dragonfly",
-                        all(target_os = "linux", not(target_env = "musl")),
-                        target_os = "haiku"
-                    )) {
-                        shell_argv.push(libc::_PATH_BSHELL);
-                        // This value is updated in do_exec with the actual file to exec on.
-                        shell_argv.push(crate::ptr::null());
-                        // argv[0] contains the program name, but we are only interested in the
-                        // arguments so skip it.
-                        args.iter().skip(1).for_each(|arg| shell_argv.push(arg.as_ptr()));
-                        true
-                    } else {
-                        false
-                    };
-                    let Err(e) = self.do_exec(
-                        theirs,
-                        envp.as_ref(),
-                        paths,
-                        &mut buf,
-                        &mut shell_argv,
-                        call_shell,
-                    );
+                    let Err(e) =
+                        self.do_exec(theirs, envp.as_ref(), paths, &mut buf, shell_argv.as_mut());
                     e
                 }
             }
@@ -348,7 +334,7 @@ impl Command {
     fn compute_max_len(&self, paths: Option<&[u8]>) -> usize {
         // Defer to default path from `_CS_PATH_` if PATH environment variable was
         // not found
-        let paths = paths.unwrap_or(self.get_default_path().as_encoded_bytes());
+        let paths = paths.unwrap_or(self.get_default_path().to_bytes());
         let longest_path_len = paths.split(|b| *b == b':').map(|path| path.len()).max();
 
         // Parsed path len from envp + file path len + 1 for separator byte + 1 for nul terminated byte
@@ -365,16 +351,17 @@ impl Command {
     unsafe fn last_execvpe_errno(
         &self,
         file: *const libc::c_char,
-        shell_argv: &mut Vec<*const libc::c_char>,
+        shell_argv: Option<&mut Vec<*const libc::c_char>>,
         envp_ptr: *const *const libc::c_char,
         got_perm_denied: &mut bool,
-        call_shell: bool,
     ) -> Result<(), io::Error> {
         let err = crate::sys::io::errno();
 
         // If execve returns `ENOEXEC`, the file is accessible but it is not an
         // executable file; invoke shell to interpret as a script
-        if err == libc::ENOEXEC && call_shell {
+        if err == libc::ENOEXEC
+            && let Some(shell_argv) = shell_argv
+        {
             shell_argv[1] = file;
             libc::execve(shell_argv[0], shell_argv.as_ptr(), envp_ptr);
         }
@@ -405,27 +392,20 @@ impl Command {
         maybe_envp: Option<&CStringArray>,
         paths: Option<&[u8]>,
         buf: &mut [crate::mem::MaybeUninit<u8>],
-        shell_argv: &mut Vec<*const libc::c_char>,
-        call_shell: bool,
+        mut shell_argv: Option<&mut Vec<*const libc::c_char>>,
     ) -> Result<!, io::Error> {
         let file = self.get_program_cstr();
         let file_as_bytes = file.to_bytes_with_nul();
         let argv = self.get_argv();
         let envp_ptr =
             maybe_envp.map(|envp| envp.as_ptr()).unwrap_or(unsafe { *sys::env::environ() });
-        let paths = paths.unwrap_or(self.get_default_path().as_encoded_bytes());
+        let paths = paths.unwrap_or(self.get_default_path().to_bytes());
         let mut got_perm_denied = false;
 
         // Path searching does not occur when our file contains a `/`
         if file_as_bytes.contains(&b'/') {
             libc::execve(file.as_ptr(), argv.as_ptr(), envp_ptr);
-            self.last_execvpe_errno(
-                file.as_ptr(),
-                shell_argv,
-                envp_ptr,
-                &mut got_perm_denied,
-                call_shell,
-            )?;
+            self.last_execvpe_errno(file.as_ptr(), shell_argv, envp_ptr, &mut got_perm_denied)?;
         } else {
             for path in paths.split(|b| *b == b':') {
                 let path_len = path.len();
@@ -451,10 +431,9 @@ impl Command {
                 libc::execve(buf.as_ptr().cast(), argv.as_ptr(), envp_ptr);
                 self.last_execvpe_errno(
                     buf.as_ptr().cast(),
-                    shell_argv,
+                    shell_argv.as_deref_mut(),
                     envp_ptr,
                     &mut got_perm_denied,
-                    call_shell,
                 )?;
             }
         }
@@ -506,8 +485,7 @@ impl Command {
         maybe_envp: Option<&CStringArray>,
         paths: Option<&[u8]>,
         buf: &mut [crate::mem::MaybeUninit<u8>],
-        shell_argv: &mut Vec<*const libc::c_char>,
-        call_shell: bool,
+        shell_argv: Option<&mut Vec<*const libc::c_char>>,
     ) -> Result<!, io::Error> {
         use crate::sys::{self, cvt_r};
 
@@ -613,7 +591,7 @@ impl Command {
             callback()?;
         }
 
-        self.execvpe(maybe_envp, paths, buf, shell_argv, call_shell)
+        self.execvpe(maybe_envp, paths, buf, shell_argv)
     }
 
     #[cfg(any(target_os = "tvos", target_os = "watchos"))]

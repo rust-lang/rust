@@ -83,6 +83,40 @@ cfg_select! {
     }
 }
 
+/// Retrieves the fallback path *specifically* used by each platform's `execvp`
+/// implementation.
+fn get_default_path() -> CString {
+    #[cfg(all(target_os = "linux", target_env = "gnu"))]
+    use crate::os::unix::ffi::OsStringExt;
+    #[cfg(all(target_os = "linux", target_env = "gnu"))]
+    use crate::sys::conf::confstr;
+
+    cfg_select! {
+        all(target_os = "linux", target_env = "gnu") => {
+            // SAFETY: `confstr` is guaranteed to give us a nul terminated OsString.
+            // If some other error occurred within `confstr`, we still obtain a nul terminated
+            // OsString via the `unwrap_or`.
+            unsafe {
+                CString::from_vec_with_nul_unchecked(
+                    confstr(libc::_CS_PATH, None).unwrap_or(OsString::from("\0")).into_vec(),
+                )
+            }
+        }
+        any(
+            all(target_os = "linux", not(target_env = "gnu")),
+            target_vendor = "apple",
+            target_os = "android",
+            target_os = "openbsd",
+            target_os = "freebsd",
+            target_os = "dragonfly",
+        ) => {
+            // SAFETY: libc::_PATH_DEFPATH is a nul-terminated char pointer
+            unsafe { CString::from(CStr::from_ptr(libc::_PATH_DEFPATH)) }
+        }
+        _ => CString::default(),
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Command
 ////////////////////////////////////////////////////////////////////////////////
@@ -91,7 +125,7 @@ pub struct Command {
     program: CString,
     args: CStringArray,
     env: CommandEnv,
-    default_path: OsString,
+    default_path: CString,
 
     program_kind: ProgramKind,
     cwd: Option<CString>,
@@ -164,18 +198,6 @@ impl ProgramKind {
 
 impl Command {
     pub fn new(program: &OsStr) -> Command {
-        #[cfg(any(
-            all(target_os = "linux", not(target_env = "gnu")),
-            target_vendor = "apple",
-            target_os = "android",
-            target_os = "openbsd",
-            target_os = "freebsd",
-            target_os = "dragonfly"
-        ))]
-        use crate::os::unix::ffi::OsStrExt;
-        #[cfg(all(target_os = "linux", target_env = "gnu"))]
-        use crate::sys::conf::confstr;
-
         let mut saw_nul = false;
         let program_kind = ProgramKind::new(program.as_ref());
         let program = os2c(program, &mut saw_nul);
@@ -186,29 +208,7 @@ impl Command {
             program,
             args,
             env: Default::default(),
-            default_path: cfg_select! {
-                all(target_os = "linux", target_env = "gnu") => {
-                    confstr(libc::_CS_PATH, None).unwrap_or(OsString::new())
-                }
-                any(
-                    all(target_os = "linux", not(target_env = "gnu")),
-                    target_vendor = "apple",
-                    target_os = "android",
-                    target_os = "openbsd",
-                    target_os = "freebsd",
-                    target_os = "dragonfly",
-                ) => {
-                    // SAFETY: libc::_PATH_DEFPATH is a nul-terminated char pointer
-                    unsafe {
-                        OsStr::from_bytes(crate::slice::from_raw_parts(
-                            libc::_PATH_DEFPATH.cast(),
-                            libc::strlen(libc::_PATH_DEFPATH),
-                        ))
-                        .into()
-                    }
-                }
-                _ => OsString::new(),
-            },
+            default_path: get_default_path(),
             program_kind,
             cwd: None,
             chroot: None,
@@ -308,7 +308,7 @@ impl Command {
         self.env.does_clear()
     }
 
-    pub fn get_default_path(&self) -> &OsStr {
+    pub fn get_default_path(&self) -> &CStr {
         &self.default_path
     }
 
