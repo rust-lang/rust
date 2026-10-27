@@ -13,15 +13,14 @@ compiler_builtins = { workspace = true, default-features = false, features = ["u
 # `xoshiro128**` is used for its quality, size, and speed at generating `u32` shift amounts.
 rand_xoshiro.workspace = true
 
-# To compare float builtins against
-rustc_apfloat.workspace = true
-
 # Really dev dependencies, but those can't be optional
 criterion = { workspace = true, optional = true }
 gungraun = { workspace = true, optional = true }
 
 [dev-dependencies]
 paste.workspace = true
+# To compare float builtins against
+rustc_apfloat.workspace = true
 
 [features]
 # Defaults should match the defaults in compiler-builtins since we have that
@@ -39,7 +38,7 @@ walltime = ["dep:criterion"]
 
 [lints.clippy]
 # This sometimes reads better
-needless-range-loop = "allow"
+needless_range_loop = "allow"
 
 [[bench]]
 name = "float_add"

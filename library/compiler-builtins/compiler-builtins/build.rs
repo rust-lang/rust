@@ -129,10 +129,8 @@ fn configure_check_cfg() {
 #[cfg(feature = "c")]
 mod c {
     use std::collections::{BTreeMap, HashSet};
-    use std::env;
-    use std::fs::{self, File};
-    use std::io::Write;
-    use std::path::{Path, PathBuf};
+    use std::path::PathBuf;
+    use std::{env, fs};
 
     use super::Config;
 
