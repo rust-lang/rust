@@ -1564,6 +1564,21 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let dest_bytes =
             dest_alloc.get_bytes_unchecked_for_overwrite_ptr(&tcx, dest_range).as_mut_ptr();
 
+        // Enforce `nonoverlapping`.
+        if src_alloc_id == dest_alloc_id {
+            if nonoverlapping {
+                // `Size` additions
+                if (src_offset <= dest_offset && src_offset + size > dest_offset)
+                    || (dest_offset <= src_offset && dest_offset + num_copies * size > src_offset)
+                {
+                    throw_ub_format!("`copy_nonoverlapping` called on overlapping ranges");
+                }
+            }
+        }
+        if num_copies > 1 {
+            assert!(nonoverlapping, "multi-copy only supported in non-overlapping mode");
+        }
+
         if init.no_bytes_init() {
             // Fast path: If all bytes are `uninit` then there is nothing to copy. The target range
             // is marked as uninitialized but we otherwise omit changing the byte representation which may
@@ -1573,6 +1588,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // operating system this can avoid physically allocating the page.
             dest_alloc.write_uninit(&tcx, dest_range);
             // `write_uninit` also resets the provenance, so we are done.
+            // IMPORTANT: there are no more UB checks below that we would skip here.
             return interp_ok(());
         }
 
@@ -1580,22 +1596,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // behind `src` and `dest`. Also, we use the overlapping-safe `ptr::copy` if `src` and
         // `dest` could possibly overlap.
         // The pointers above remain valid even if the `HashMap` table is moved around because they
-        // point into the `Vec` storing the bytes.
+        // point into the `Box` storing the bytes.
         unsafe {
-            if src_alloc_id == dest_alloc_id {
-                if nonoverlapping {
-                    // `Size` additions
-                    if (src_offset <= dest_offset && src_offset + size > dest_offset)
-                        || (dest_offset <= src_offset && dest_offset + size > src_offset)
-                    {
-                        throw_ub_format!("`copy_nonoverlapping` called on overlapping ranges");
-                    }
-                }
-            }
-            if num_copies > 1 {
-                assert!(nonoverlapping, "multi-copy only supported in non-overlapping mode");
-            }
-
             let size_in_bytes = size.bytes_usize();
             // For particularly large arrays (where this is perf-sensitive) it's common that
             // we're writing a single byte repeatedly. So, optimize that case to a memset.
@@ -1605,10 +1607,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let value = *src_bytes;
                 dest_bytes.write_bytes(value, (size * num_copies).bytes_usize());
             } else if src_alloc_id == dest_alloc_id {
+                // Copy within a single allocation, assume they may overlap.
                 let mut dest_ptr = dest_bytes;
                 for _ in 0..num_copies {
                     // Here we rely on `src` and `dest` being non-overlapping if there is more than
-                    // one copy.
+                    // one copy (otherwise, the 1st copy would clobber the src for the 2nd copy).
                     ptr::copy(src_bytes, dest_ptr, size_in_bytes);
                     dest_ptr = dest_ptr.add(size_in_bytes);
                 }
