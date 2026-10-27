@@ -7,8 +7,10 @@
 #![feature(slice_partition_dedup)]
 #![feature(strict_provenance_lints)]
 #![feature(test)]
+#![feature(wtf8_internals)]
 #![deny(implicit_provenance_casts)]
 
+extern crate alloc;
 extern crate test;
 
 mod binary_heap;
