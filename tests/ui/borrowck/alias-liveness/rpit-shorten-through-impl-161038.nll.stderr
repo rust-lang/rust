@@ -1,5 +1,5 @@
 error[E0597]: `*x` does not live long enough
-  --> $DIR/rpit-shorten-through-impl-161038.rs:63:27
+  --> $DIR/rpit-shorten-through-impl-161038.rs:61:27
    |
 LL |         let x: Box<Payload> = Box::new(Box::new(1));
    |             - binding `x` declared here
@@ -12,7 +12,7 @@ LL |     println!("{wrong}");
    |                ----- borrow later used here
 
 error[E0597]: `*x` does not live long enough
-  --> $DIR/rpit-shorten-through-impl-161038.rs:73:27
+  --> $DIR/rpit-shorten-through-impl-161038.rs:71:27
    |
 LL |         let x: Box<Payload> = Box::new(Box::new(1));
    |             - binding `x` declared here

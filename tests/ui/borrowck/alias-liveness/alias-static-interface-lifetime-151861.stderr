@@ -1,0 +1,45 @@
+error[E0597]: `s` does not live long enough
+  --> $DIR/alias-static-interface-lifetime-151861.rs:65:41
+   |
+LL |         let s = String::from("huh");
+   |             - binding `s` declared here
+LL |         a = <G as ItemBound>::construct(&s);
+   |                                         ^^ borrowed value does not live long enough
+LL |
+LL |     }
+   |     - `s` dropped here while still borrowed
+LL |     let _unrelated = String::from("UB!");
+LL |     let dangling: &str = a.produce();
+   |                          - borrow later used here
+
+error[E0597]: `s` does not live long enough
+  --> $DIR/alias-static-interface-lifetime-151861.rs:80:26
+   |
+LL |         let s = String::from("huh");
+   |             - binding `s` declared here
+LL |         a = G::construct(&s);
+   |                          ^^ borrowed value does not live long enough
+LL |
+LL |     }
+   |     - `s` dropped here while still borrowed
+LL |     let _unrelated = String::from("UB!");
+LL |     let dangling: &str = a.produce();
+   |                          - borrow later used here
+
+error[E0597]: `s` does not live long enough
+  --> $DIR/alias-static-interface-lifetime-151861.rs:98:26
+   |
+LL |         let s = String::from("huh");
+   |             - binding `s` declared here
+LL |         a = rpit_produce(&s);
+   |                          ^^ borrowed value does not live long enough
+LL |
+LL |     }
+   |     - `s` dropped here while still borrowed
+LL |     let _unrelated = String::from("UB!");
+LL |     let dangling: &str = a.produce();
+   |                          - borrow later used here
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

@@ -1,5 +1,5 @@
 error[E0597]: `s` does not live long enough
-  --> $DIR/closure-static-interface-lifetime-160979.rs:37:42
+  --> $DIR/closure-static-interface-lifetime-160979.rs:35:42
    |
 LL |     let s = String::from("");
    |         - binding `s` declared here
@@ -12,7 +12,7 @@ LL | }
    | - `s` dropped here while still borrowed
    |
 note: requirement that the value outlives `'static` introduced here
-  --> $DIR/closure-static-interface-lifetime-160979.rs:31:15
+  --> $DIR/closure-static-interface-lifetime-160979.rs:29:15
    |
 LL | fn leak_it<T: 'static>(val: T) -> &'static T {
    |               ^^^^^^^

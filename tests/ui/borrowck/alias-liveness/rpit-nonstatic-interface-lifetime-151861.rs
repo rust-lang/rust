@@ -1,6 +1,3 @@
-//@ known-bug: #151861
-//@ check-pass
-
 // Similar to other tests with lifetimes in the trait bounds of an `impl Trait`,
 // but this shows that the lifetime in the outlive bound does not need to
 // be `'static`, it can just be some unrelated lifetime. However, the lifetime
@@ -36,6 +33,7 @@ fn main() {
     {
         let s = String::from("hi");
         let p = make(&s, &b);
+        //~^ ERROR `s` does not live long enough
         out = p.produce();
     }
     // requires `&'r str: 'static`
