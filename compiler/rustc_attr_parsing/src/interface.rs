@@ -21,6 +21,7 @@ use crate::context::{
     FinalizeFn, FinalizeOutput, SharedContext,
 };
 use crate::diagnostics::ParsedDescription;
+use crate::generated::GeneratedAttrState;
 use crate::parser::{AllowExprMetavar, ArgParser, PathParser, RefPathParser};
 use crate::synthetic::SyntheticAttrState;
 use crate::{AttributeTemplate, ShouldEmit};
@@ -325,6 +326,7 @@ impl<'sess> AttributeParser<'sess> {
         let mut attributes = Vec::new();
         let mut attr_paths: Vec<RefPathParser<'_>> = Vec::new();
         let mut synthetic_attr_state = SyntheticAttrState::default();
+        let mut generated_attr_state = GeneratedAttrState::default();
 
         let mut finalizers: Vec<FinalizeFn> = Vec::with_capacity(attrs.len());
 
@@ -348,6 +350,9 @@ impl<'sess> AttributeParser<'sess> {
                 }
                 ast::AttrKind::Synthetic(synthetic) => {
                     synthetic_attr_state.accept_synthetic_attr(attr_span, lower_span, synthetic);
+                }
+                ast::AttrKind::Generated(generated) => {
+                    generated_attr_state.accept_generated_attr(attr_span, generated)
                 }
                 ast::AttrKind::Normal(n) => {
                     attr_paths.push(PathParser(&n.item.path));
@@ -471,6 +476,7 @@ impl<'sess> AttributeParser<'sess> {
         }
 
         synthetic_attr_state.finalize_synthetic_attrs(&mut attributes);
+        generated_attr_state.finalize_generated_attrs(&mut attributes);
 
         // First, run all finalizers to produce the parsed attributes. Cross-attribute
         // checks that need to inspect the fully parsed attributes are deferred until all

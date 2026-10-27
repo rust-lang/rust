@@ -1,3 +1,4 @@
+use std::sync::Mutex;
 use std::thread;
 
 fn main() {
@@ -31,4 +32,38 @@ fn main() {
 
     // Also check main thread name.
     assert_eq!(thread::current().name().unwrap(), "main");
+
+    // Thread name during TLS dtor.
+    during_dtor();
+}
+
+fn during_dtor() {
+    // Go through one round of TLS destruction first.
+    struct Defer;
+    impl Drop for Defer {
+        fn drop(&mut self) {
+            RETRIEVE.with(|_| {});
+        }
+    }
+
+    struct RetrieveName;
+    impl Drop for RetrieveName {
+        fn drop(&mut self) {
+            *NAME.lock().unwrap() = Some(thread::current().name().unwrap().to_owned());
+        }
+    }
+
+    static NAME: Mutex<Option<String>> = Mutex::new(None);
+
+    thread_local! {
+        static DEFER: Defer = const { Defer };
+        static RETRIEVE: RetrieveName = const { RetrieveName };
+    }
+
+    let t = thread::Builder::new().name("test".to_owned()).spawn(|| DEFER.with(|_| {})).unwrap();
+    t.join().unwrap();
+
+    let name = NAME.lock().unwrap();
+    let name = name.as_ref().unwrap();
+    assert_eq!(name, "test");
 }

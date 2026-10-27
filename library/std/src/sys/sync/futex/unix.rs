@@ -11,6 +11,18 @@ pub type SmallFutex = Atomic<SmallPrimitive>;
 /// Must be the underlying type of SmallFutex
 pub type SmallPrimitive = u32;
 
+#[cfg(any(target_os = "linux", target_os = "android"))]
+cfg_select! {
+    // riscv32 only exposes the `SYS_futex_time64` syscall,
+    // whereas other 32-bit targets also expose `SYS_futex`, which uses 32-bit time.
+    target_arch = "riscv32" => {
+        use libc::SYS_futex_time64 as SYS_futex;
+    }
+    _ => {
+        use libc::SYS_futex;
+    }
+}
+
 /// Waits for a `futex_wake` operation to wake us.
 ///
 /// Returns directly if the futex doesn't hold the expected value.
@@ -61,7 +73,7 @@ pub fn futex_wait(futex: &Atomic<u32>, expected: u32, timeout: Option<Duration>)
                     // Use FUTEX_WAIT_BITSET rather than FUTEX_WAIT to be able to give an
                     // absolute time rather than a relative time.
                     libc::syscall(
-                        libc::SYS_futex,
+                        SYS_futex,
                         futex as *const Atomic<u32> as *const u32,
                         libc::FUTEX_WAIT_BITSET | libc::FUTEX_PRIVATE_FLAG,
                         expected,
@@ -94,7 +106,7 @@ pub fn futex_wait(futex: &Atomic<u32>, expected: u32, timeout: Option<Duration>)
 pub fn futex_wake(futex: &Atomic<u32>) -> bool {
     let ptr = futex as *const Atomic<u32> as *const u32;
     let op = libc::FUTEX_WAKE | libc::FUTEX_PRIVATE_FLAG;
-    unsafe { libc::syscall(libc::SYS_futex, ptr, op, 1) > 0 }
+    unsafe { libc::syscall(SYS_futex, ptr, op, 1) > 0 }
 }
 
 /// Wakes up all threads that are waiting on `futex_wait` on this futex.
@@ -103,7 +115,7 @@ pub fn futex_wake_all(futex: &Atomic<u32>) {
     let ptr = futex as *const Atomic<u32> as *const u32;
     let op = libc::FUTEX_WAKE | libc::FUTEX_PRIVATE_FLAG;
     unsafe {
-        libc::syscall(libc::SYS_futex, ptr, op, i32::MAX);
+        libc::syscall(SYS_futex, ptr, op, i32::MAX);
     }
 }
 

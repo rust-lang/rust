@@ -77,6 +77,8 @@ error: the `inline` attribute cannot be used on modules
    |
 LL | #[inline]
    |   ^^^^^^
+LL |
+LL | mod inline {
    |
    = help: the `inline` attribute can only be applied to functions
 
@@ -117,6 +119,8 @@ error: the `no_link` attribute cannot be used on modules
    |
 LL | #[no_link]
    |   ^^^^^^^
+LL |
+LL | mod no_link {
    |
    = help: the `no_link` attribute can only be applied to extern crates
 
@@ -141,6 +145,8 @@ error: the `no_link` attribute cannot be used on structs
    |
 LL |     #[no_link]
    |       ^^^^^^^
+LL |
+LL |     struct S {
    |
    = help: the `no_link` attribute can only be applied to extern crates
 
@@ -165,6 +171,8 @@ error: the `export_name` attribute cannot be used on modules
    |
 LL | #[export_name = "2200"]
    |   ^^^^^^^^^^^
+LL |
+LL | mod export_name {
    |
    = help: the `export_name` attribute can be applied to functions and statics
 
@@ -213,6 +221,8 @@ error: the `repr(C)` attribute cannot be used on modules
    |
 LL | #[repr(C)]
    |   ^^^^^^^
+LL |
+LL | mod repr {
    |
    = help: the `repr(C)` attribute can only be applied to data types
 
@@ -253,6 +263,8 @@ error: the `repr(Rust)` attribute cannot be used on modules
    |
 LL | #[repr(Rust)]
    |   ^^^^^^^^^^
+LL |
+LL | mod repr_rust {
    |
    = help: the `repr(Rust)` attribute can only be applied to data types
 
@@ -337,6 +349,8 @@ warning: the `no_link` attribute cannot be used on match arms
    |
 LL |             #[no_link]
    |               ^^^^^^^
+...
+LL |             _ => ()
    |
    = help: the `no_link` attribute can only be applied to extern crates
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -346,6 +360,8 @@ warning: the `no_link` attribute cannot be used on struct fields
    |
 LL |         #[no_link]
    |           ^^^^^^^
+...
+LL |         field: ()
    |
    = help: the `no_link` attribute can only be applied to extern crates
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -355,6 +371,8 @@ warning: the `no_link` attribute cannot be used on macro defs
    |
 LL |     #[no_link]
    |       ^^^^^^^
+...
+LL |     macro_rules! m{() => {}}
    |
    = help: the `no_link` attribute can only be applied to extern crates
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!

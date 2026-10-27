@@ -3,6 +3,7 @@ error: the `optimize` attribute cannot be used on structs
    |
 LL | #[optimize(speed)]
    |   ^^^^^^^^
+LL | struct F;
    |
    = help: the `optimize` attribute can only be applied to functions
 
@@ -11,6 +12,7 @@ error: the `optimize` attribute cannot be used on expressions
    |
 LL |     #[optimize(speed)]
    |       ^^^^^^^^
+LL |     {
    |
    = help: the `optimize` attribute can only be applied to functions
 
@@ -19,6 +21,7 @@ error: the `optimize` attribute cannot be used on modules
    |
 LL | #[optimize(speed)]
    |   ^^^^^^^^
+LL | mod valid_module {}
    |
    = help: the `optimize` attribute can only be applied to functions
 
@@ -27,6 +30,7 @@ error: the `optimize` attribute cannot be used on inherent impl blocks
    |
 LL | #[optimize(speed)]
    |   ^^^^^^^^
+LL | impl F {}
    |
    = help: the `optimize` attribute can only be applied to functions
 
@@ -35,6 +39,7 @@ error: the `optimize` attribute cannot be used on required trait methods
    |
 LL |     #[optimize(speed)]
    |       ^^^^^^^^
+LL |     fn invalid();
    |
    = help: the `optimize` attribute can only be applied to functions with a body
 

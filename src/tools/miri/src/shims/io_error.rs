@@ -284,8 +284,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
     }
 
-    fn io_error_to_errnum(&mut self, err: impl Into<IoError>) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
+    fn io_error_to_errnum(&self, err: impl Into<IoError>) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_ref();
         interp_ok(match err.into() {
             HostError(err) => this.host_error_to_errnum(err)?,
             LibcError(name) => this.eval_libc(name),

@@ -98,9 +98,8 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     /// block, indexed by the cleanup block that is the funclet's head.
     terminate_blocks: IndexVec<mir::BasicBlock, Option<(Bx::BasicBlock, UnwindTerminateReason)>>,
 
-    /// A bool flag for each basic block indicating whether it is a cold block.
     /// A cold block is a block that is unlikely to be executed at runtime.
-    cold_blocks: IndexVec<mir::BasicBlock, bool>,
+    cold_blocks: DenseBitSet<mir::BasicBlock>,
 
     nop_landing_pads: DenseBitSet<mir::BasicBlock>,
 
@@ -668,11 +667,11 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 fn find_cold_blocks<'tcx>(
     tcx: TyCtxt<'tcx>,
     mir: &mir::Body<'tcx>,
-) -> IndexVec<mir::BasicBlock, bool> {
+) -> DenseBitSet<mir::BasicBlock> {
     let local_decls = &mir.local_decls;
 
-    let mut cold_blocks: IndexVec<mir::BasicBlock, bool> =
-        IndexVec::from_elem(false, &mir.basic_blocks);
+    let mut cold_blocks: DenseBitSet<mir::BasicBlock> =
+        DenseBitSet::new_empty(mir.basic_blocks.len());
 
     // Traverse all basic blocks from end of the function to the start.
     for (bb, bb_data) in traversal::postorder(mir) {
@@ -686,13 +685,13 @@ fn find_cold_blocks<'tcx>(
                     && let attrs = tcx.codegen_fn_attrs(def_id)
                     && attrs.flags.contains(CodegenFnAttrFlags::COLD) =>
             {
-                cold_blocks[bb] = true;
+                cold_blocks.insert(bb);
                 continue;
             }
 
             // If a BB ends with an `unreachable`, also mark it as cold.
             mir::TerminatorKind::Unreachable => {
-                cold_blocks[bb] = true;
+                cold_blocks.insert(bb);
                 continue;
             }
 
@@ -702,10 +701,10 @@ fn find_cold_blocks<'tcx>(
         // If all successors of a BB are cold and there's at least one of them, mark this BB as cold
         let mut succ = terminator.successors();
         if let Some(first) = succ.next()
-            && cold_blocks[first]
-            && succ.all(|s| cold_blocks[s])
+            && cold_blocks.contains(first)
+            && succ.all(|s| cold_blocks.contains(s))
         {
-            cold_blocks[bb] = true;
+            cold_blocks.insert(bb);
         }
     }
 

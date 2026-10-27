@@ -24,7 +24,9 @@ pub fn check_attr(psess: &ParseSess, attr: &Attribute) {
     use ast::SyntheticAttr::*;
     match &attr.kind {
         AttrKind::Normal(_) => {}
-        AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace(_)) | AttrKind::DocComment(..) => return,
+        AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace(_))
+        | AttrKind::DocComment(..)
+        | AttrKind::Generated(..) => return,
     }
 
     let builtin_attr_info = attr.name().and_then(|name| BUILTIN_ATTRIBUTE_SET.get(&name));

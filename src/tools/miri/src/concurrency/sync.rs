@@ -445,8 +445,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     /// Lock by setting the mutex owner and increasing the lock count.
-    fn mutex_lock(&mut self, mutex_ref: &MutexRef) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+    fn mutex_lock(&self, mutex_ref: &MutexRef) -> InterpResult<'tcx> {
+        let this = self.eval_context_ref();
         let thread = this.active_thread();
         let mut mutex = mutex_ref.0.borrow_mut();
         if let Some(current_owner) = mutex.owner {
@@ -541,8 +541,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     /// Read-lock the lock by adding the `reader` the list of threads that own
     /// this lock.
-    fn rwlock_reader_lock(&mut self, rwlock_ref: &RwLockRef) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+    fn rwlock_reader_lock(&self, rwlock_ref: &RwLockRef) -> InterpResult<'tcx> {
+        let this = self.eval_context_ref();
         let thread = this.active_thread();
         trace!("rwlock_reader_lock: now also held (one more time) by {:?}", thread);
         let mut rwlock = rwlock_ref.0.borrow_mut();
@@ -628,8 +628,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     /// Lock by setting the writer that owns the lock.
     #[inline]
-    fn rwlock_writer_lock(&mut self, rwlock_ref: &RwLockRef) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+    fn rwlock_writer_lock(&self, rwlock_ref: &RwLockRef) -> InterpResult<'tcx> {
+        let this = self.eval_context_ref();
         let thread = this.active_thread();
         trace!("rwlock_writer_lock: now held by {:?}", thread);
 

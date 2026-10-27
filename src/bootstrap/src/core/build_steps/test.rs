@@ -915,10 +915,11 @@ impl CommandLineStep for Priroda {
             Mode::ToolRustcPrivate,
             host,
             Kind::Test,
-            "src/tools/miri/priroda",
+            "src/tools/miri",
             SourceType::InTree,
-            &[],
+            &["priroda".into()],
         );
+        cargo.args(["--test", "priroda"]);
 
         cargo.add_rustc_lib_path(builder);
 
@@ -4154,9 +4155,6 @@ impl CommandLineStep for Bootstrap {
         let host = builder.config.host_target;
         let build_compiler = builder.compiler(0, host);
         let record_failed_tests = builder.ensure(SetupFailedTestsFile);
-
-        // Some tests require cargo submodule to be present.
-        builder.sess.require_submodule("src/tools/cargo", None);
 
         let mut cargo = tool::prepare_tool_cargo(
             builder,

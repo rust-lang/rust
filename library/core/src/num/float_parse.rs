@@ -112,10 +112,43 @@ pub struct ParseFloatError {
     pub(super) kind: FloatErrorKind,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) enum FloatErrorKind {
+/// An error kind which can be returned when parsing a float.
+///
+/// This error kind is used as the inner error type in [`ParseFloatError`] for the [`FromStr`] implementation
+/// for [`f32`] and [`f64`].
+///
+/// # Example
+///
+/// ```
+/// #![feature(extended_float_error_kind)]
+///
+/// use std::str::FromStr;
+///
+/// if let Err(e) = f64::from_str("a.12") {
+///     println!("Failed conversion to f64: {:?}", e.kind());
+/// }
+/// ```
+#[derive(Debug, Clone, PartialEq, Eq, Copy, Hash)]
+#[unstable(feature = "extended_float_error_kind", issue = "164793")]
+#[non_exhaustive]
+pub enum FloatErrorKind {
+    /// Cannot parse float from empty string.
+    #[unstable(feature = "extended_float_error_kind", issue = "164793")]
     Empty,
+    /// Invalid float literal.
+    #[unstable(feature = "extended_float_error_kind", issue = "164793")]
     Invalid,
+}
+
+impl ParseFloatError {
+    /// Outputs the detailed cause of parsing a float failing.
+    #[must_use]
+    #[inline]
+    #[rustc_const_unstable(feature = "extended_float_error_kind", issue = "164793")]
+    #[unstable(feature = "extended_float_error_kind", issue = "164793")]
+    pub const fn kind(&self) -> &FloatErrorKind {
+        &self.kind
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

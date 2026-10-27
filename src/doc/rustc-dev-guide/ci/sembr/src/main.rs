@@ -395,3 +395,10 @@ fn should_pass() {
     let original = "if you see `input isn't interesting! verify interesting-ness test`.";
     assert_eq!(original, comply(original));
 }
+
+#[test]
+#[ignore] // would be useful for appendix/background.md
+fn should_ignore_link_text() {
+    let original = "[foo, bar, baz]";
+    assert_eq!(original, reformat(original, 10));
+}

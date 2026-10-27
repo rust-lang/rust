@@ -570,6 +570,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
             }
             AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace(_)) => {}
             AttrKind::DocComment(..) => {}
+            AttrKind::Generated(..) => {}
         }
         visit::walk_attribute(self, attr);
         self.invocation_parent.in_attr = orig_in_attr;

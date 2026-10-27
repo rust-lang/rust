@@ -1,4 +1,3 @@
-use rustc_abi::CanonAbi;
 use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
 use rustc_target::callconv::FnAbi;
@@ -76,37 +75,48 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // epoll, eventfd
             "epoll_create1" => {
-                let [flag] = this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
+                let [flag] = &this
+                    .check_shim_sig(shim_sig!(extern "C" fn(i32) -> i32), (link_name, abi, args))?;
                 let result = this.epoll_create1(flag)?;
                 this.write_scalar(result, dest)?;
             }
             "epoll_ctl" => {
-                let [epfd, op, fd, event] =
-                    this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
+                let [epfd, op, fd, event] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, i32, i32, *libc::epoll_event) -> i32),
+                    (link_name, abi, args),
+                )?;
                 let result = this.epoll_ctl(epfd, op, fd, event)?;
                 this.write_scalar(result, dest)?;
             }
             "epoll_wait" => {
-                let [epfd, events, maxevents, timeout] =
-                    this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
+                let [epfd, events, maxevents, timeout] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(i32, *_, i32, i32) -> i32),
+                    (link_name, abi, args),
+                )?;
                 this.epoll_wait(epfd, events, maxevents, timeout, dest)?;
             }
             "eventfd" => {
-                let [val, flag] =
-                    this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
+                let [val, flag] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn(u32, i32) -> i32),
+                    (link_name, abi, args),
+                )?;
                 let result = this.eventfd(val, flag)?;
                 this.write_scalar(result, dest)?;
             }
 
             // Miscellaneous
             "__errno" => {
-                let [] = this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
+                let [] = &this
+                    .check_shim_sig(shim_sig!(extern "C" fn() -> *_), (link_name, abi, args))?;
                 let errno_place = this.last_error_place()?;
                 this.write_scalar(errno_place.to_ref(this).to_scalar(), dest)?;
             }
 
             "gettid" => {
-                let [] = this.check_shim_sig_deprecated(abi, CanonAbi::C, link_name, args)?;
+                let [] = &this.check_shim_sig(
+                    shim_sig!(extern "C" fn() -> libc::pid_t),
+                    (link_name, abi, args),
+                )?;
                 let result = this.unix_gettid(link_name.as_str())?;
                 this.write_scalar(result, dest)?;
             }

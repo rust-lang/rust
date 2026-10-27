@@ -490,7 +490,15 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         let tcx = self.cx.tcx;
 
         let def_id = item.owner_id.to_def_id();
-        let is_pub = tcx.visibility(def_id).is_public();
+        // Explanations: if the item is public, nothing more to check. If not, then we check if
+        // we're documenting private item. If we are, then we want all items, except if it's a
+        // `use`. In this case, we want to check if it's a reexport.
+        let is_pub = tcx.visibility(def_id).is_public()
+            || (self.cx.document_private()
+                && (!matches!(item.kind, hir::ItemKind::Use(..))
+                    || def_id.as_local().is_some_and(|def_id| {
+                        tcx.visibility(def_id).is_accessible_from(CRATE_DEF_ID, tcx)
+                    })));
 
         if is_pub {
             self.store_path(item.owner_id.to_def_id());
@@ -592,7 +600,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
 
             // If there was a private module in the current path then don't bother inlining
             // anything as it will probably be stripped anyway.
-            if is_pub && self.inside_public_path {
+            if is_pub && (self.inside_public_path || self.cx.document_private()) {
                 let please_inline = if let Some(res_did) = res.opt_def_id()
                     && matches!(tcx.def_kind(res_did), DefKind::Macro(MacroKinds::BANG))
                 {

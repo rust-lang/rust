@@ -18,7 +18,7 @@ use rustc_span::{BytePos, DUMMY_SP, FileName, Pos, Span, sym};
 use super::{DocTestVisitor, ScrapedDocTest};
 use crate::clean::cfg::Cfg;
 use crate::clean::{Attributes, CfgInfo};
-use crate::html::markdown::{self, CodeLineMapping, ErrorCodes, LangString, MdRelLine};
+use crate::html::markdown::{self, CodeBlockPosition, CodeLineMapping, ErrorCodes, LangString};
 
 struct RustCollector {
     source_map: Arc<SourceMap>,
@@ -46,11 +46,14 @@ impl DocTestVisitor for RustCollector {
         &mut self,
         test: String,
         config: LangString,
-        rel_line: MdRelLine,
+        position: CodeBlockPosition,
         code_mappings: Vec<CodeLineMapping>,
     ) {
         let base_line = self.get_base_line();
-        let line = base_line + rel_line.offset();
+        let line = match position {
+            CodeBlockPosition::Relative(rel_line) => base_line + rel_line.offset(),
+            CodeBlockPosition::Span(sp) => self.source_map.lookup_char_pos(sp.lo()).line,
+        };
         let count = Cell::new(base_line);
         let span = if line > base_line {
             match self.source_map.span_extend_while(self.position, |c| {

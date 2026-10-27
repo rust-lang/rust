@@ -639,7 +639,8 @@ impl<T, A: Allocator> LinkedList<T, A> {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn is_empty(&self) -> bool {
+    #[rustc_const_stable(feature = "const_linked_list_len", since = "CURRENT_RUSTC_VERSION")]
+    pub const fn is_empty(&self) -> bool {
         self.head.is_none()
     }
 
@@ -666,8 +667,9 @@ impl<T, A: Allocator> LinkedList<T, A> {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_stable(feature = "const_linked_list_len", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_confusables("length", "size")]
-    pub fn len(&self) -> usize {
+    pub const fn len(&self) -> usize {
         self.len
     }
 

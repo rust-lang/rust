@@ -72,6 +72,15 @@ pub enum Command {
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         flags: Vec<String>,
     },
+    /// Run the Priroda test suite.
+    TestPriroda {
+        /// Update stdout reference files.
+        #[arg(long)]
+        bless: bool,
+        /// Flags that are passed through to the test harness.
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        flags: Vec<String>,
+    },
     /// Run the Miri driver.
     ///
     /// Also respects MIRIFLAGS environment variable.
@@ -174,6 +183,10 @@ impl Command {
             | Self::Clippy { flags, .. }
             | Self::Run { flags, .. }
             | Self::Test { flags, .. } => {
+                flags.extend(remainder);
+                Ok(())
+            }
+            Self::TestPriroda { flags, .. } => {
                 flags.extend(remainder);
                 Ok(())
             }

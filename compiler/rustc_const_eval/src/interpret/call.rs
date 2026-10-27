@@ -242,13 +242,30 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let ty::Adt(caller_adt, caller_args) = caller_type.kind() else { return false };
         let ty::Adt(callee_adt, callee_args) = callee_type.kind() else { return false };
 
+        // We want to reject compatibility between structs with and without `#[cfi_encoding]` attr,
+        // see https://github.com/rust-lang/rust/pull/164739#discussion_r4360457828
+        #[derive(PartialEq, Eq)]
+        enum AbiNameClass {
+            CfiEncoded,
+            Normal,
+        }
+
+        let abi_name = |adt: AdtDef<'tcx>| {
+            find_attr!(
+                self.tcx,
+                adt.did(),
+                CfiEncoding { encoding } => (AbiNameClass::CfiEncoded, *encoding)
+            )
+            .unwrap_or_else(|| (AbiNameClass::Normal, self.tcx.item_name(adt.did())))
+        };
+
         if !(
             // They must both be structs.
             (caller_adt.is_struct() && callee_adt.is_struct())
             // They must have equal `repr`, and it must be `repr(C)`.
             && (caller_adt.repr().c() && caller_adt.repr().equal_up_to_seed(&callee_adt.repr()))
             // They must have the same name.
-            && self.tcx.item_name(caller_adt.did()) == self.tcx.item_name(callee_adt.did())
+            && abi_name(*caller_adt) == abi_name(*callee_adt)
         ) {
             return false;
         }

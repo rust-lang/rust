@@ -1,4 +1,4 @@
-// Copied from tests/pass/no-std.rs
+// Copied from tests/pass/miri_start_no_std.rs
 
 #![no_std]
 #![no_main]

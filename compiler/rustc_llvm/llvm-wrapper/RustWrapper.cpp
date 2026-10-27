@@ -1400,6 +1400,12 @@ extern "C" LLVMValueRef LLVMRustBuildMemSet(LLVMBuilderRef B, LLVMValueRef Dst,
                                       MaybeAlign(DstAlign), IsVolatile));
 }
 
+#if LLVM_VERSION_LT(24, 0)
+extern "C" LLVMBuilderRef LLVMCreateBuilderForModule(LLVMModuleRef M) {
+  return LLVMCreateBuilderInContext(LLVMGetModuleContext(M));
+}
+#endif
+
 extern "C" void LLVMRustPositionBuilderPastAllocas(LLVMBuilderRef B,
                                                    LLVMValueRef Fn) {
   Function *F = unwrap<Function>(Fn);

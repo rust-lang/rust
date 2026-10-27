@@ -17,6 +17,7 @@ error: the `naked` attribute cannot be used on foreign functions
    |
 LL |     #[unsafe(naked)]
    |              ^^^^^
+LL |     fn f();
    |
    = help: the `naked` attribute can only be applied to functions with a body
 
@@ -25,6 +26,8 @@ error: the `naked` attribute cannot be used on structs
    |
 LL | #[unsafe(naked)]
    |          ^^^^^
+LL | #[repr(C)]
+LL | struct S {
    |
    = help: the `naked` attribute can only be applied to functions
 
@@ -33,6 +36,7 @@ error: the `naked` attribute cannot be used on struct fields
    |
 LL |     #[unsafe(naked)]
    |              ^^^^^
+LL |     a: u32,
    |
    = help: the `naked` attribute can only be applied to functions
 
@@ -41,6 +45,7 @@ error: the `naked` attribute cannot be used on required trait methods
    |
 LL |     #[unsafe(naked)]
    |              ^^^^^
+LL |     extern "C" fn invoke(&self);
    |
    = help: the `naked` attribute can only be applied to functions with a body
 
@@ -49,6 +54,7 @@ error: the `naked` attribute cannot be used on closures
    |
 LL |     #[unsafe(naked)]
    |              ^^^^^
+LL |     || {};
    |
    = help: the `naked` attribute can be applied to functions and methods
 
