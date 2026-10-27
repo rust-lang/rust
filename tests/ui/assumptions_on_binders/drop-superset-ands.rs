@@ -5,8 +5,9 @@
 #![expect(incomplete_features)]
 
 
-// it's not easy to construct the tests which contain superset
-// since it must be the whole pipeline from `pull` to `canonicalize`
+// This test case not only tests superset filtering
+// but also exercises the full `pull` flow
+// (`pull_region_outlives_constraints_out_of_universe` method)
 // original constraints:
 // { c: b }, { c: b, c: static }, { c: static }, { c: b, e: b } ,
 // { c: static, e: b } ,{ c: b, e: static } , { c: static, e: static }
@@ -24,5 +25,23 @@ core::test_binder_constraints! {
         }
     }
 }
+// Compared to the previous one, this test case is simpler and more direct
+core::test_binder_constraints! {
+    impl<'a: 'b, 'b, 'c: 'a> {
+        forall<> {
+            or {
+                and { 'a: 'b, 'b: 'c },
+                and { 'c: 'a },
+                and { 'a: 'b },
+            }
+        } expect {
+            or {
+                and { 'c: 'a },
+                and { 'a: 'b },
+            }
+        }
+    }
+}
+
 
 fn main() {}
