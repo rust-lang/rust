@@ -44,6 +44,10 @@ fn main() {
     let Guards { guard: _, .. } = *guards;
     drop(guards);
 
+    let nested = (0, Guards { guard: m.lock().unwrap(), drop: NontrivialDrop });
+    let (_x, Guards { guard: _, .. }) = nested;
+    drop(nested);
+
     let mut v = vec![NontrivialDrop];
     let _ = v[0];
     let _ = &mut v;

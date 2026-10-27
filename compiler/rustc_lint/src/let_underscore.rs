@@ -110,14 +110,6 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
             return;
         }
 
-        // `let _ = place;` doesn't move out of the place, so nothing gets dropped.
-        if let Some(init) = local.init
-            && cx.typeck_results().expr_adjustments(init).is_empty()
-            && is_local_or_static_place(init)
-        {
-            return;
-        }
-
         let mut top_level = true;
 
         // We recursively walk through all patterns, so that we can catch cases where the lock is
@@ -130,6 +122,14 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
             top_level = false;
 
             if !matches!(pat.kind, hir::PatKind::Wild) {
+                return;
+            }
+
+            // `let _ = place;` doesn't move out of the place, so nothing gets dropped.
+            if let Some(init) = local.init
+                && cx.typeck_results().expr_adjustments(init).is_empty()
+                && is_local_or_static_place(init)
+            {
                 return;
             }
 

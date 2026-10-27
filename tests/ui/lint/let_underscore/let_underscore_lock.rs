@@ -23,6 +23,9 @@ fn main() {
 
     let _ = Box::new(Struct { a: data.lock() }).a; //~ERROR non-binding let on a synchronization lock
 
+    let foo = Struct { a: data.lock() };
+    let (_c, Struct { a: _ }) = (0, foo); //~ERROR non-binding let on a synchronization lock
+
     let _b;
     (_b, Struct { a: _ }) = (0, Struct { a: data.lock() }); //~ERROR non-binding let on a synchronization lock
 }
