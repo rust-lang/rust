@@ -1,3 +1,5 @@
+use std::ops::ControlFlow;
+
 use itertools::Itertools as _;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
@@ -71,8 +73,10 @@ pub(crate) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
         return;
     }
 
-    let mut collector = ImplTraitInTraitCollector { tcx, types: FxIndexSet::default() };
-    trait_m_sig.visit_with(&mut collector);
+    let mut collector = ImplTraitInTraitCollector { tcx, depth: 0, types: FxIndexSet::default() };
+    if trait_m_sig.visit_with(&mut collector).is_break() {
+        return;
+    }
 
     // Bound that we find on RPITITs in the trait signature.
     let mut trait_bounds = vec![];
@@ -264,28 +268,43 @@ pub(crate) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
 
 struct ImplTraitInTraitCollector<'tcx> {
     tcx: TyCtxt<'tcx>,
+    depth: usize,
     types: FxIndexSet<ty::ProjectionAliasTy<'tcx>>,
 }
 
+/// Once depth exceeds `tcx.recursion_limit()`, the visitor immediately breaks
+/// the entire traversal using `ControlFlow::Break(())`.
 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitCollector<'tcx> {
-    fn visit_ty(&mut self, ty: Ty<'tcx>) {
+    type Result = ControlFlow<()>;
+
+    fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
         if let ty::Alias(_, alias) = *ty.kind()
             && let Some(proj) = alias.try_to_projection()
             && self.tcx.is_impl_trait_in_trait(proj.kind)
         {
+            if !self.tcx.recursion_limit().value_within_limit(self.depth) {
+                self.tcx.dcx().span_delayed_bug(
+                    self.tcx.def_span(proj.kind),
+                    "recursion limit exceeded while collecting implied RPITIT bounds",
+                );
+                return ControlFlow::Break(());
+            }
             if self.types.insert(proj) {
+                self.depth += 1;
                 for (pred, _) in self
                     .tcx
                     .explicit_item_bounds(proj.kind)
                     .iter_instantiated_copied(self.tcx, proj.args)
                     .map(Unnormalized::skip_norm_wip)
                 {
-                    pred.visit_with(self);
+                    pred.visit_with(self)?;
                 }
+                self.depth -= 1;
             }
         } else {
-            ty.super_visit_with(self);
+            ty.super_visit_with(self)?;
         }
+        ControlFlow::Continue(())
     }
 }
 

@@ -284,7 +284,11 @@ fn rewrite_segment(
     if let Some(ref args) = segment.args {
         let generics_str = rewrite_generic_args(args, context, shape, mk_sp(*span_lo, span_hi))?;
         match **args {
-            ast::GenericArgs::AngleBracketed(ref data) if !data.args.is_empty() => {
+            // If we're in a macro ctx then we don't want to remove the `::` even if the args
+            // are empty since they could be required tokens.
+            ast::GenericArgs::AngleBracketed(ref data)
+                if (!data.args.is_empty() || context.inside_macro()) =>
+            {
                 // HACK: squeeze out the span between the identifier and the parameters.
                 // The hack is required so that we don't remove the separator inside macro calls.
                 // This does not work in the presence of comment, hoping that people are
@@ -544,7 +548,9 @@ fn rewrite_generic_args(
 ) -> RewriteResult {
     match gen_args {
         ast::GenericArgs::AngleBracketed(ref data) => {
-            if data.args.is_empty() {
+            if data.args.is_empty() && !context.inside_macro() {
+                // We can only safely remove the angle brackets if we're outside the context of a
+                // macro. If we're in a macro ctx then we don't want to remove necessary tokens.
                 Ok("".to_owned())
             } else {
                 let args = data

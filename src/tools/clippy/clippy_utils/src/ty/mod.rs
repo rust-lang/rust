@@ -21,7 +21,6 @@ use rustc_middle::mir::ConstValue;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::traits::EvaluationResult;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, DerefAdjustKind};
-use rustc_middle::ty::consts::ConstExt as _;
 use rustc_middle::ty::layout::{LayoutError, LayoutOf as _, TyAndLayout};
 use rustc_middle::ty::{
     self, AdtDef, AliasTy, AssocItem, AssocTag, Binder, BoundRegion, BoundVarIndexKind, FnSig, GenericArg,
@@ -233,7 +232,7 @@ pub fn has_iter_method(cx: &LateContext<'_>, probably_ref_ty: Ty<'_>) -> Option<
 ///
 /// See [Common tools for writing lints] for an example how to use this function and other options.
 ///
-/// [Common tools for writing lints]: https://github.com/rust-lang/rust-clippy/blob/master/book/src/development/common_tools_writing_lints.md#checking-if-a-type-implements-a-specific-trait
+/// [Common tools for writing lints]: https://github.com/rust-lang/rust-clippy/blob/HEAD/book/src/development/common_tools_writing_lints.md#checking-if-a-type-implements-a-specific-trait
 pub fn implements_trait<'tcx>(
     cx: &LateContext<'tcx>,
     ty: Ty<'tcx>,
@@ -623,7 +622,9 @@ fn is_uninit_value_valid_for_layout<'tcx>(cx: &LateContext<'tcx>, layout: TyAndL
 
 /// Fallback for polymorphic types where `layout_of` fails
 fn is_uninit_value_valid_for_ty_fallback<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
-    let typing_env = cx.typing_env().with_post_analysis_normalized(cx.tcx);
+    let ty::PseudoCanonicalInput { typing_env, value: ty } = cx
+        .typing_env()
+        .with_post_analysis_normalized_invalidating_rigid_aliases(cx.tcx, ty);
 
     match *ty.kind() {
         // The array length may be polymorphic, let's try the inner type.
@@ -794,7 +795,7 @@ pub fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'t
             cx.tcx
                 .item_self_bounds(def_id)
                 .iter_instantiated(cx.tcx, args)
-                .map(Unnormalized::skip_norm_wip),
+                .map(|clause| cx.tcx.normalize_erasing_regions(cx.typing_env(), clause)),
             cx.tcx.opt_parent(def_id),
         ),
         ty::FnPtr(sig_tys, hdr) => Some(ExprFnSig::Sig(sig_tys.with(hdr), None)),

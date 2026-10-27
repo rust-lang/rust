@@ -121,6 +121,41 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         self.struct_types.borrow_mut().insert(key, typ);
         typ
     }
+
+    /// A struct that holds `first` and `second` in two different eightbytes, so that GCC returns
+    /// them in two registers instead of packing them into one.
+    pub fn type_two_register_pair(&self, first: Type<'gcc>, second: Type<'gcc>) -> Type<'gcc> {
+        if let Some(typ) = self.two_register_pair_types.borrow().get(&(first, second)) {
+            return *typ;
+        }
+        let fields = [
+            self.context.new_field(None, first, "first"),
+            self.context.new_field(None, second.get_aligned(8), "second"),
+        ];
+        let typ = self.context.new_struct_type(None, "two_register_pair", &fields).as_type();
+        self.two_register_pair_types.borrow_mut().insert((first, second), typ);
+        self.two_register_pair_type_set.borrow_mut().insert(typ);
+        typ
+    }
+
+    pub fn is_two_register_pair_type(&self, typ: Type<'gcc>) -> bool {
+        self.two_register_pair_type_set.borrow().contains(&typ)
+    }
+
+    #[cfg_attr(feature = "master", expect(unused_mut))]
+    pub fn type_array(&self, ty: Type<'gcc>, mut len: u64) -> Type<'gcc> {
+        #[cfg(not(feature = "master"))]
+        if let Some(struct_type) = ty.is_struct()
+            && struct_type.get_field_count() == 0
+        {
+            // NOTE: since gccjit only supports i32 for the array size and libcore's tests uses a
+            // size of usize::MAX in test_binary_search, we workaround this by setting the size to
+            // zero for ZSTs.
+            len = 0;
+        }
+
+        new_array_type(self.context, None, ty, len)
+    }
 }
 
 /// An attribute that can be set on a GCC struct type.
@@ -267,6 +302,12 @@ impl<'gcc, 'tcx> BaseTypeCodegenMethods for CodegenCx<'gcc, 'tcx> {
         bug!("unsupported float width 128")
     }
 
+    fn type_ppcf128(&self) -> Type<'gcc> {
+        // FIXME(ppcf128): The GCC gcc_jit_types enum (which CType is based on) does not
+        // have __ibm128. It does have long double but it may not correspond to ppc f128.
+        bug!("unsupported ppcf128 type")
+    }
+
     fn type_func(&self, params: &[Type<'gcc>], return_type: Type<'gcc>) -> Type<'gcc> {
         self.context.new_function_pointer_type(None, return_type, params, false)
     }
@@ -384,21 +425,6 @@ impl<'gcc, 'tcx> BaseTypeCodegenMethods for CodegenCx<'gcc, 'tcx> {
 
     fn val_ty(&self, value: RValue<'gcc>) -> Type<'gcc> {
         value.get_type()
-    }
-
-    #[cfg_attr(feature = "master", expect(unused_mut))]
-    fn type_array(&self, ty: Type<'gcc>, mut len: u64) -> Type<'gcc> {
-        #[cfg(not(feature = "master"))]
-        if let Some(struct_type) = ty.is_struct()
-            && struct_type.get_field_count() == 0
-        {
-            // NOTE: since gccjit only supports i32 for the array size and libcore's tests uses a
-            // size of usize::MAX in test_binary_search, we workaround this by setting the size to
-            // zero for ZSTs.
-            len = 0;
-        }
-
-        new_array_type(self.context, None, ty, len)
     }
 }
 

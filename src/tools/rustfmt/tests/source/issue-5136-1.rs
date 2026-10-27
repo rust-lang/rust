@@ -4,4 +4,4 @@
 // in the --file-lines range.
 
 // This should prevent rustfmt from many any formatting changes at all:
-// rustfmt-file_lines: []
+//@ rustfmt-file_lines: []

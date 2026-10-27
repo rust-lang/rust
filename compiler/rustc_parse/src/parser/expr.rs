@@ -410,12 +410,6 @@ impl<'a> Parser<'a> {
                     pre_span,
                 ));
             }
-            token::Ident(..)
-                if this.token.is_keyword(kw::Move)
-                    && this.look_ahead(1, |t| *t == token::OpenParen) =>
-            {
-                make_it!(this, attrs, |this, _| this.parse_expr_move(lo))
-            }
             token::Ident(..) if this.may_recover() && this.is_mistaken_not_ident_negation() => {
                 make_it!(this, attrs, |this, _| this.recover_not_expr(lo))
             }
@@ -445,16 +439,6 @@ impl<'a> Parser<'a> {
         self.dcx().emit_err(crate::diagnostics::TildeAsUnaryOperator(lo));
 
         self.parse_expr_unary(lo, UnOp::Not)
-    }
-
-    fn parse_expr_move(&mut self, move_kw: Span) -> PResult<'a, (Span, ExprKind)> {
-        self.bump();
-        self.psess.gated_spans.gate(sym::move_expr, move_kw);
-        self.expect(exp!(OpenParen))?;
-        let expr = self.parse_expr()?;
-        self.expect(exp!(CloseParen))?;
-        let span = move_kw.to(self.prev_token.span);
-        Ok((span, ExprKind::Move(expr, move_kw)))
     }
 
     fn is_mistaken_not_ident_negation(&self) -> bool {
@@ -1335,6 +1319,10 @@ impl<'a> Parser<'a> {
                 this.parse_expr_builtin()
             } else if this.check_path() {
                 this.parse_expr_path_start()
+            } else if this.token.is_keyword(kw::Move)
+                && this.look_ahead(1, |t| *t == token::OpenParen)
+            {
+                this.parse_expr_move()
             } else if this.check_keyword(exp!(Move))
                 || this.check_keyword(exp!(Use))
                 || this.check_keyword(exp!(Static))
@@ -1445,7 +1433,7 @@ impl<'a> Parser<'a> {
             |p| p.parse_expr_res(restrictions.intersection(Restrictions::ALLOW_LET)),
         ) {
             Ok(x) => x,
-            Err(err) => {
+            Err(err) if self.may_recover() => {
                 return Ok(self.recover_seq_parse_error(
                     exp!(OpenParen),
                     exp!(CloseParen),
@@ -1453,6 +1441,7 @@ impl<'a> Parser<'a> {
                     err,
                 ));
             }
+            Err(err) => return Err(err),
         };
         let kind = if es.len() == 1 && matches!(trailing_comma, Trailing::No) {
             // `(e)` is parenthesized `e`.
@@ -2216,6 +2205,17 @@ impl<'a> Parser<'a> {
         Ok(self.mk_expr(blk.span, ExprKind::Block(blk, None)))
     }
 
+    fn parse_expr_move(&mut self) -> PResult<'a, Box<Expr>> {
+        let move_kw = self.token.span;
+        self.expect_keyword(exp!(Move))?;
+        self.expect(exp!(OpenParen))?;
+        let expr = self.parse_expr()?;
+        self.expect(exp!(CloseParen))?;
+        let span = move_kw.to(self.prev_token.span);
+        self.psess.gated_spans.gate(sym::move_expr, span);
+        Ok(self.mk_expr(span, ExprKind::Move(expr, move_kw)))
+    }
+
     /// Parses a closure expression (e.g., `move |args| expr`).
     fn parse_expr_closure(&mut self) -> PResult<'a, Box<Expr>> {
         let lo = self.token.span;
@@ -2370,7 +2370,7 @@ impl<'a> Parser<'a> {
             let move_kw_span = self.prev_token.span;
             // Check for `move async` and recover
             if self.check_keyword(exp!(Async)) {
-                let move_async_span = self.token.span.with_lo(self.prev_token.span.data().lo);
+                let move_async_span = self.token.span.with_lo(self.prev_token.span.lo());
                 Err(self.dcx().create_err(crate::diagnostics::AsyncMoveOrderIncorrect {
                     span: move_async_span,
                 }))
@@ -2382,7 +2382,7 @@ impl<'a> Parser<'a> {
             self.psess.gated_spans.gate(sym::ergonomic_clones, use_kw_span);
             // Check for `use async` and recover
             if self.check_keyword(exp!(Async)) {
-                let use_async_span = self.token.span.with_lo(self.prev_token.span.data().lo);
+                let use_async_span = self.token.span.with_lo(self.prev_token.span.lo());
                 Err(self.dcx().create_err(crate::diagnostics::AsyncUseOrderIncorrect {
                     span: use_async_span,
                 }))
@@ -2440,6 +2440,7 @@ impl<'a> Parser<'a> {
                     span: lo.to(this.prev_token.span),
                     id: DUMMY_NODE_ID,
                     is_placeholder: false,
+                    has_const_keyword: false,
                 },
                 Trailing::from(this.token == token::Comma),
                 UsePreAttrPos::No,
@@ -3894,8 +3895,6 @@ impl<'a> Parser<'a> {
         let attrs = self.parse_outer_attributes()?;
         self.recover_vcs_conflict_marker();
         self.collect_tokens(None, attrs, ForceCollect::No, |this, attrs| {
-            let lo = this.token.span;
-
             // Check if a colon exists one ahead. This means we're parsing a fieldname.
             let is_shorthand = !this.look_ahead(1, |t| t == &token::Colon || t == &token::Eq);
             // Proactively check whether parsing the field will be incorrect.
@@ -3914,22 +3913,25 @@ impl<'a> Parser<'a> {
                     token: pprust::token_to_string(&this.look_ahead(1, |t| *t)),
                 }));
             }
-            let (ident, expr) = if is_shorthand {
+            let (ident, expr, span) = if is_shorthand {
                 // Mimic `x: x` for the `x` field shorthand.
                 let ident = this.parse_ident_common(false)?;
                 let path = ast::Path::from_ident(ident);
-                (ident, this.mk_expr(ident.span, ExprKind::Path(None, path)))
+                (ident, this.mk_expr(ident.span, ExprKind::Path(None, path)), ident.span)
             } else {
                 let ident = this.parse_field_name()?;
+                let span = ident.span.to(this.token.span);
                 this.error_on_eq_field_init(ident);
                 this.bump(); // `:`
-                (ident, this.parse_expr()?)
+                let expr = this.parse_expr()?;
+                let span = span.to(expr.span);
+                (ident, expr, span)
             };
 
             Ok((
                 ast::ExprField {
                     ident,
-                    span: lo.to(expr.span),
+                    span,
                     expr,
                     is_shorthand,
                     attrs,

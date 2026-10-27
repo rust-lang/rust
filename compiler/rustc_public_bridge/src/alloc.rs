@@ -8,6 +8,7 @@ use rustc_abi::{Size, TyAndLayout};
 use rustc_middle::mir::interpret::{
     AllocId, AllocInit, AllocRange, Allocation, ConstAllocation, Pointer, Scalar, alloc_range,
 };
+use rustc_middle::ty::layout::HasTypingEnv;
 use rustc_middle::ty::{Ty, layout};
 
 use super::{CompilerCtxt, Tables};
@@ -18,8 +19,7 @@ pub fn create_ty_and_layout<'tcx, B: Bridge>(
     cx: &CompilerCtxt<'tcx, B>,
     ty: Ty<'tcx>,
 ) -> Result<TyAndLayout<'tcx, Ty<'tcx>>, &'tcx layout::LayoutError<'tcx>> {
-    use crate::context::TypingEnvHelpers;
-    cx.tcx.layout_of(cx.fully_monomorphized().as_query_input(ty))
+    cx.tcx.layout_of(cx.typing_env().as_query_input(ty))
 }
 
 pub fn try_new_scalar<'tcx, B: Bridge>(

@@ -7,6 +7,7 @@ LL |         Self::foo()
 note: method defined here
   --> $DIR/mismatch-args-crash-issue-130400.rs:2:8
    |
+LL | trait Bar {
 LL |     fn foo(&mut self) -> _ {
    |        ^^^ ---------
 help: provide the argument

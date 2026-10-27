@@ -2,7 +2,7 @@ use std::mem;
 
 use rustc_ast::visit::FnKind;
 use rustc_ast::*;
-use rustc_attr_ir::target::Target;
+use rustc_attr_ir::target::{AstTarget, Target};
 use rustc_attr_parsing::{AttributeParser, ShouldEmit};
 use rustc_expand::expand::AstFragment;
 use rustc_hir as hir;
@@ -183,7 +183,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                     &i.attrs,
                     i.span,
                     Target::MacroDef,
-                    None,
+                    AstTarget::from_ast_item(&i.kind),
                     std::convert::identity,
                     |_lint_id, _span, _kind| {
                         // FIXME(jdonszelmann): emit lints here properly
@@ -524,6 +524,9 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
             self.visit_macro_invoc(p.id);
             self.visit_invoc(p.id);
         } else {
+            if let Some(ident) = p.const_param_ident() {
+                self.create_def(p.id, Some(ident.name), DefKind::ConstParam, ident.span);
+            }
             self.with_impl_trait(ImplTraitContext::Universal, |this| visit::walk_param(this, p))
         }
     }
@@ -567,6 +570,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
             }
             AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace(_)) => {}
             AttrKind::DocComment(..) => {}
+            AttrKind::Generated(..) => {}
         }
         visit::walk_attribute(self, attr);
         self.invocation_parent.in_attr = orig_in_attr;

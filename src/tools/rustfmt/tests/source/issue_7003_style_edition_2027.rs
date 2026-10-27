@@ -1,4 +1,4 @@
-// rustfmt-style_edition: 2027
+//@ rustfmt-style_edition: 2027
 
 fn main() {
     _ = if let Some(term_node) = sema

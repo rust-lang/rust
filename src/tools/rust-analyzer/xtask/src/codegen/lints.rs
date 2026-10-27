@@ -13,7 +13,7 @@ use stdx::format_to;
 use xshell::{Shell, cmd};
 
 use crate::{
-    codegen::{add_preamble, ensure_file_contents, reformat},
+    codegen::{add_preamble, clone_rust, ensure_file_contents, reformat},
     project_root,
     util::list_files,
 };
@@ -23,23 +23,7 @@ const DESTINATION: &str = "crates/ide-db/src/generated/lints.rs";
 /// This clones rustc repo, and so is not worth to keep up-to-date on a constant basis.
 pub(crate) fn generate(check: bool) {
     let sh = &Shell::new().unwrap();
-
-    let rust_repo = project_root().join("./target/rust");
-    if rust_repo.exists() {
-        cmd!(sh, "git -C {rust_repo} pull --rebase").run().unwrap();
-    } else {
-        cmd!(sh, "git clone --depth=1 https://github.com/rust-lang/rust {rust_repo}")
-            .run()
-            .unwrap();
-    }
-    // need submodules for Cargo to parse the workspace correctly
-    cmd!(
-        sh,
-        "git -C {rust_repo} submodule update --init --recursive --depth=1 --
-         compiler library src/tools src/doc/book"
-    )
-    .run()
-    .unwrap();
+    let rust_repo = clone_rust(sh);
 
     let mut contents = String::from(
         r"
@@ -68,11 +52,12 @@ pub struct LintGroup {
     contents.push('\n');
 
     let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".to_owned());
+    let rustc = std::env::var("RUSTC").unwrap_or_else(|_| "rustc".to_owned());
     let unstable_book = project_root().join("./target/unstable-book-gen");
     cmd!(
         sh,
         "{cargo} run --manifest-path {rust_repo}/src/tools/unstable-book-gen/Cargo.toml --
-         {rust_repo}/library {rust_repo}/compiler {rust_repo}/src {unstable_book}"
+         {rust_repo}/library {rust_repo}/compiler {rust_repo}/src {rustc} {unstable_book}"
     )
     .run()
     .unwrap();

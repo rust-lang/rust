@@ -39,7 +39,12 @@
     maybe_uninit_as_bytes,
     movrs_target_feature,
     clflushopt_target_feature,
-    min_adt_const_params
+    min_adt_const_params,
+    num_internals
+)]
+#![cfg_attr(
+    any(target_arch = "powerpc", target_arch = "powerpc64"),
+    feature(powerpc_ppcf128)
 )]
 #![cfg_attr(
     test,
@@ -103,4 +108,4 @@ pub mod arch {
 }
 
 #[allow(unused_imports)]
-use core::{array, cmp, convert, ffi, fmt, hint, intrinsics, marker, mem, ops, ptr, sync};
+use core::{array, cmp, convert, ffi, fmt, hint, intrinsics, marker, mem, num, ops, ptr, sync};

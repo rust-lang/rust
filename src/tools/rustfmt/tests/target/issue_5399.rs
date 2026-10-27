@@ -1,4 +1,4 @@
-// rustfmt-max_width: 140
+//@ rustfmt-max_width: 140
 
 impl NotificationRepository {
     fn set_status_changed(

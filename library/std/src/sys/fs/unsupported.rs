@@ -29,6 +29,25 @@ pub struct FileType(!);
 #[derive(Debug)]
 pub struct DirBuilder {}
 
+// Dummy Drops so that `needs_drop::<std::fs::File>()` etc. is true independent of platform,
+// avoiding a portability hazard.
+// The types not listed here are pure data and don’t implement Drop even when real.
+impl Drop for File {
+    fn drop(&mut self) {
+        self.0
+    }
+}
+impl Drop for ReadDir {
+    fn drop(&mut self) {
+        self.0
+    }
+}
+impl Drop for DirEntry {
+    fn drop(&mut self) {
+        self.0
+    }
+}
+
 impl FileAttr {
     pub fn size(&self) -> u64 {
         self.0
@@ -134,6 +153,12 @@ impl Hash for FileType {
 
 impl fmt::Debug for FileType {
     fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0
+    }
+}
+
+impl ReadDir {
+    pub fn dir(&self) -> io::Result<Dir> {
         self.0
     }
 }
@@ -306,6 +331,10 @@ pub fn unlink(_p: &Path) -> io::Result<()> {
 }
 
 pub fn rename(_old: &Path, _new: &Path) -> io::Result<()> {
+    unsupported()
+}
+
+pub fn rename_noreplace(_old: &Path, _new: &Path) -> io::Result<()> {
     unsupported()
 }
 

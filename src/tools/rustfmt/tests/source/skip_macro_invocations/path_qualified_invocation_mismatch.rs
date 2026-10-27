@@ -1,4 +1,4 @@
-// rustfmt-skip_macro_invocations: ["items"]
+//@ rustfmt-skip_macro_invocations: ["items"]
 
 // Should not skip this invocation
 self::items!(

@@ -1,7 +1,7 @@
 //@ add-minicore
 //@ assembly-output: emit-asm
 //
-//@ compile-flags: -Copt-level=3 --target s390x-unknown-linux-gnu
+//@ compile-flags: -Copt-level=3 --target s390x-unknown-linux-gnu -Ctarget-cpu=z10
 //@ needs-llvm-components: systemz
 #![feature(no_core, lang_items, intrinsics, rustc_attrs)]
 #![no_core]

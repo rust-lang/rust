@@ -52,6 +52,8 @@ warning: the `link` attribute cannot be used on functions
    |
 LL | #[link]
    |   ^^^^
+...
+LL | fn main() {}
    |
    = help: the `link` attribute can only be applied to foreign modules
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -62,6 +64,8 @@ warning: the `link` attribute cannot be used on functions
    |
 LL | #[link = ""]
    |   ^^^^
+...
+LL | fn main() {}
    |
    = help: the `link` attribute can only be applied to foreign modules
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!

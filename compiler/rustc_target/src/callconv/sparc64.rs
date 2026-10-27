@@ -59,6 +59,7 @@ fn classify<'a, Ty, C>(
                             // Match LLVM by passing `f16` in integer registers.
                         }
                         Float::F16B => unreachable!("`f16b` unsupported on sparc64"),
+                        Float::PpcF128 => unreachable!("`ppcf128` unsupported on sparc64"),
                     }
                 } else {
                     /* pass unaligned floats in integer registers */
@@ -219,7 +220,7 @@ where
             continue;
         }
         if arg.is_ignore() {
-            if passes_zsts && arg.layout.is_zst() {
+            if passes_zsts && arg.layout.is_repr_c() {
                 arg.make_indirect_from_ignore();
                 double_word_count += 1;
             }

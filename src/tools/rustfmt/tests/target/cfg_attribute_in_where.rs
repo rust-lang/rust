@@ -1,4 +1,4 @@
-// rustfmt-inline_attribute_width: 40
+//@ rustfmt-inline_attribute_width: 40
 
 #![crate_type = "lib"]
 #![feature(cfg_attribute_in_where)]

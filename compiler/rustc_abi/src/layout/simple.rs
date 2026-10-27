@@ -25,6 +25,7 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
             size: Size::ZERO,
             max_repr_align: None,
             unadjusted_abi_align: dl.i8_align,
+            repr_c: false,
             randomization_seed: Hash64::new(0),
         }
     }
@@ -42,6 +43,7 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
             size: Size::ZERO,
             max_repr_align: None,
             unadjusted_abi_align: dl.i8_align,
+            repr_c: false,
             randomization_seed: Hash64::ZERO,
         }
     }
@@ -84,6 +86,7 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
             align,
             max_repr_align: None,
             unadjusted_abi_align: align.abi,
+            repr_c: false,
             randomization_seed: Hash64::new(randomization_seed),
         }
     }
@@ -117,6 +120,7 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
             size,
             max_repr_align: None,
             unadjusted_abi_align: align,
+            repr_c: false,
             randomization_seed: Hash64::new(combined_seed),
         }
     }
@@ -143,6 +147,7 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
             size: Size::ZERO,
             max_repr_align: None,
             unadjusted_abi_align: dl.i8_align,
+            repr_c: false,
             // Variant layouts never flow back into actual layout computations,
             // so dummy values are fine here.
             randomization_seed: Hash64::ZERO,
@@ -169,6 +174,7 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
             align: parent.align,
             max_repr_align: parent.max_repr_align,
             unadjusted_abi_align: parent.unadjusted_abi_align,
+            repr_c: parent.repr_c,
             // Variant layouts never flow back into actual layout computations,
             // so dummy values are fine here.
             randomization_seed: Hash64::ZERO,

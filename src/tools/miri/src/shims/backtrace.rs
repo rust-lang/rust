@@ -1,4 +1,4 @@
-use rustc_abi::{CanonAbi, FieldIdx, Size};
+use rustc_abi::{FieldIdx, Size};
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_span::{BytePos, Loc, Symbol, hygiene};
 use rustc_target::callconv::FnAbi;
@@ -15,8 +15,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let [flags] =
-            this.check_shim_sig(shim_sig!(extern "Rust" fn(u64) -> usize), (link_name, abi, args))?;
+        let [flags] = &this
+            .check_shim_sig(shim_sig!(extern "Rust" fn(u64) -> usize), (link_name, abi, args))?;
 
         let flags = this.read_scalar(flags)?.to_u64()?;
         if flags != 0 {
@@ -38,7 +38,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let ptr_ty = this.machine.layouts.unit_ptr_mut.ty;
         let ptr_layout = this.layout_of(ptr_ty)?;
 
-        let [flags, buf] = this
+        let [flags, buf] = &this
             .check_shim_sig(shim_sig!(extern "Rust" fn(u64, *()) -> ()), (link_name, abi, args))?;
 
         let flags = this.read_scalar(flags)?.to_u64()?;
@@ -84,10 +84,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     fn resolve_frame_pointer(
-        &mut self,
+        &self,
         ptr: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, (Instance<'tcx>, Loc, String, String)> {
-        let this = self.eval_context_mut();
+        let this = self.eval_context_ref();
 
         let ptr = this.read_pointer(ptr)?;
         // Take apart the pointer, we need its pieces. The offset encodes the span.
@@ -116,7 +116,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let [ptr, flags] = this.check_shim_sig_deprecated(abi, CanonAbi::Rust, link_name, args)?;
+
+        // FIXME: not nice to read the type from std but we don't have a good way to construct the
+        // type here and now. ADTs need a DefId.
+        let [ptr, flags] = &this.check_shim_sig(
+            shim_sig!(extern "Rust" fn(*_, u64) -> std::backtrace_rs::backtrace::miri::MiriFrame),
+            (link_name, abi, args),
+        )?;
 
         let flags = this.read_scalar(flags)?.to_u64()?;
 
@@ -125,16 +131,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Reconstruct the original function pointer,
         // which we pass to user code.
         let fn_ptr = this.fn_ptr(FnVal::Instance(fn_instance));
-
-        let num_fields = dest.layout.fields.count();
-
-        if !(4..=5).contains(&num_fields) {
-            // Always mention 5 fields, since the 4-field struct
-            // is deprecated and slated for removal.
-            throw_ub_format!(
-                "bad declaration of miri_resolve_frame - should return a struct with 5 fields"
-            );
-        }
 
         // `u32` is not enough to fit line/colno, which can be `usize`. It seems unlikely that a
         // file would have more than 2^32 lines or columns, but whatever, just default to 0.
@@ -175,12 +171,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Scalar::from_u32(colno),
             &this.project_field(dest, FieldIdx::from_u32(3))?,
         )?;
-
-        // Support a 4-field struct for now - this is deprecated
-        // and slated for removal.
-        if num_fields == 5 {
-            this.write_pointer(fn_ptr, &this.project_field(dest, FieldIdx::from_u32(4))?)?;
-        }
+        this.write_pointer(fn_ptr, &this.project_field(dest, FieldIdx::from_u32(4))?)?;
 
         interp_ok(())
     }
@@ -193,7 +184,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        let [ptr, flags, name_ptr, filename_ptr] = this.check_shim_sig(
+        let [ptr, flags, name_ptr, filename_ptr] = &this.check_shim_sig(
             shim_sig!(extern "Rust" fn(*(), u64, *(), *()) -> ()),
             (link_name, abi, args),
         )?;

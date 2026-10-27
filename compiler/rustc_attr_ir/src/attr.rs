@@ -2,7 +2,7 @@ use std::fmt;
 
 use rustc_ast::attr::AttributeExt;
 use rustc_ast::token::DocFragmentKind;
-use rustc_ast::{AttrStyle, DelimArgs, MetaItemInner, MetaItemLit, ast, join_path_idents};
+use rustc_ast::{AttrStyle, DelimArgs, MetaItemLit, ast, join_path_idents};
 use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHasher};
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
 use rustc_macros::{Decodable, Encodable, StableHash};
@@ -11,7 +11,8 @@ use smallvec::SmallVec;
 use thin_vec::ThinVec;
 
 use crate::AttributeKind;
-/// Arguments passed to an attribute macro.
+
+/// Arguments of a unparsed attribute.
 #[derive(Clone, Debug, StableHash, Encodable, Decodable)]
 pub enum AttrArgs {
     /// No arguments: `#[attr]`.
@@ -63,6 +64,9 @@ impl fmt::Display for AttrPath {
     }
 }
 
+/// A non built-in attribute.
+///
+/// This is either a tool attribute or a derive helper attribute.
 #[derive(Clone, Debug, StableHash, Encodable, Decodable)]
 pub struct AttrItem {
     // Not lowered to hir::Path because we have no NodeId to resolve to.
@@ -88,31 +92,31 @@ impl StableHash for HashIgnoredAttrId {
         /* we don't hash HashIgnoredAttrId, we ignore them */
     }
 }
-
-/// Many functions on this type have their documentation in the [`AttributeExt`] trait,
-/// since they defer their implementation directly to that trait.
+/// A high level representation of an attribute.
+///
+/// Not to be confused with [`ast::Attribute`], which represents the syntax-level form of
+/// an attribute.
+///
+/// [`ast::Attribute`]: rustc_ast::ast::Attribute
 #[derive(Clone, Debug, Encodable, Decodable, StableHash)]
 pub enum Attribute {
     /// A parsed built-in attribute.
     ///
-    /// Each attribute has a span connected to it. However, you must be somewhat careful using it.
-    /// That's because sometimes we merge multiple attributes together, like when an item has
-    /// multiple `repr` attributes. In this case the span might not be very useful.
+    /// Parsed attributes don't generally have a span associated with them. This is because
+    /// multiple syntax-level attributes can be represented into a single semantic attribute. For
+    /// example, an item can have multiple `repr` attributes on it, which will coalesce into a
+    /// single [`AttributeKind::Repr`], and the `stable`, `unstable`, and
+    /// `rustc_allowed_through_unstable_modules` all combine into a single
+    /// [`AttributeKind::Stability`] attribute. Most `Attribute` variants do have a [`Span`] field,
+    /// though, mostly for the purpose of generating diagnostics later in the compilation process.
     Parsed(AttributeKind),
-
-    /// An attribute that could not be parsed, out of a token-like representation.
-    /// This is the case for custom tool attributes.
+    /// Represents non built-in attributes, which are not converted into a parsed form.
+    ///
+    /// This is the case for custom tool attributes and derive helper attributes.
     Unparsed(Box<AttrItem>),
 }
 
 impl Attribute {
-    pub fn get_normal_item(&self) -> &AttrItem {
-        match &self {
-            Attribute::Unparsed(normal) => &normal,
-            _ => panic!("unexpected parsed attribute"),
-        }
-    }
-
     pub fn value_lit(&self) -> Option<&MetaItemLit> {
         match &self {
             Attribute::Unparsed(n) => match n.as_ref() {
@@ -120,13 +124,6 @@ impl Attribute {
                 _ => None,
             },
             _ => None,
-        }
-    }
-
-    pub fn is_parsed_attr(&self) -> bool {
-        match self {
-            Attribute::Parsed(_) => true,
-            Attribute::Unparsed(_) => false,
         }
     }
 
@@ -141,14 +138,6 @@ impl Attribute {
 }
 
 impl AttributeExt for Attribute {
-    #[inline]
-    fn id(&self) -> AttrId {
-        match &self {
-            Attribute::Unparsed(u) => u.id.attr_id,
-            _ => panic!(),
-        }
-    }
-
     #[inline]
     fn meta_item_list(&self) -> Option<ThinVec<ast::MetaItemInner>> {
         match &self {
@@ -205,18 +194,6 @@ impl AttributeExt for Attribute {
     }
 
     #[inline]
-    fn span(&self) -> Span {
-        match &self {
-            Attribute::Unparsed(u) => u.span,
-            // FIXME: should not be needed anymore when all attrs are parsed
-            Attribute::Parsed(AttributeKind::DocComment { span, .. }) => *span,
-            Attribute::Parsed(AttributeKind::Deprecated { span, .. }) => *span,
-            Attribute::Parsed(AttributeKind::CfgTrace(cfgs)) => cfgs[0].1,
-            a => panic!("can't get the span of an arbitrary parsed attribute: {a:?}"),
-        }
-    }
-
-    #[inline]
     fn is_word(&self) -> bool {
         match &self {
             Attribute::Unparsed(n) => {
@@ -249,15 +226,11 @@ impl AttributeExt for Attribute {
         }
     }
 
-    fn is_automatically_derived_attr(&self) -> bool {
-        matches!(self, Attribute::Parsed(AttributeKind::AutomaticallyDerived))
-    }
-
     #[inline]
-    fn doc_str_and_fragment_kind(&self) -> Option<(Symbol, DocFragmentKind)> {
+    fn doc_str_and_fragment_kind(&self) -> Option<(Symbol, DocFragmentKind, Span)> {
         match &self {
-            Attribute::Parsed(AttributeKind::DocComment { kind, comment, .. }) => {
-                Some((*comment, *kind))
+            Attribute::Parsed(AttributeKind::DocComment { kind, comment, span, .. }) => {
+                Some((*comment, *kind, *span))
             }
             _ => None,
         }
@@ -284,93 +257,11 @@ impl AttributeExt for Attribute {
         )
     }
 
-    fn is_doc_hidden(&self) -> bool {
-        matches!(self, Attribute::Parsed(AttributeKind::Doc(d)) if d.hidden.is_some())
-    }
-
     fn is_doc_keyword_or_attribute(&self) -> bool {
         matches!(self, Attribute::Parsed(AttributeKind::Doc(d)) if d.attribute.is_some() || d.keyword.is_some())
     }
 
     fn is_rustc_doc_primitive(&self) -> bool {
         matches!(self, Attribute::Parsed(AttributeKind::RustcDocPrimitive(..)))
-    }
-}
-
-// FIXME(fn_delegation): use function delegation instead of manually forwarding
-impl Attribute {
-    #[inline]
-    pub fn id(&self) -> AttrId {
-        AttributeExt::id(self)
-    }
-
-    #[inline]
-    pub fn name(&self) -> Option<Symbol> {
-        AttributeExt::name(self)
-    }
-
-    #[inline]
-    pub fn meta_item_list(&self) -> Option<ThinVec<MetaItemInner>> {
-        AttributeExt::meta_item_list(self)
-    }
-
-    #[inline]
-    pub fn value_str(&self) -> Option<Symbol> {
-        AttributeExt::value_str(self)
-    }
-
-    #[inline]
-    pub fn value_span(&self) -> Option<Span> {
-        AttributeExt::value_span(self)
-    }
-
-    #[inline]
-    pub fn path_matches(&self, name: &[Symbol]) -> bool {
-        AttributeExt::path_matches(self, name)
-    }
-
-    #[inline]
-    pub fn is_doc_comment(&self) -> Option<Span> {
-        AttributeExt::is_doc_comment(self)
-    }
-
-    #[inline]
-    pub fn has_name(&self, name: Symbol) -> bool {
-        AttributeExt::has_name(self, name)
-    }
-
-    #[inline]
-    pub fn has_any_name(&self, names: &[Symbol]) -> bool {
-        AttributeExt::has_any_name(self, names)
-    }
-
-    #[inline]
-    pub fn span(&self) -> Span {
-        AttributeExt::span(self)
-    }
-
-    #[inline]
-    pub fn is_word(&self) -> bool {
-        AttributeExt::is_word(self)
-    }
-
-    #[inline]
-    pub fn path(&self) -> SmallVec<[Symbol; 1]> {
-        AttributeExt::path(self)
-    }
-
-    #[inline]
-    pub fn doc_str(&self) -> Option<Symbol> {
-        AttributeExt::doc_str(self)
-    }
-
-    #[inline]
-    pub fn is_proc_macro_attr(&self) -> bool {
-        AttributeExt::is_proc_macro_attr(self)
-    }
-
-    #[inline]
-    pub fn doc_str_and_fragment_kind(&self) -> Option<(Symbol, DocFragmentKind)> {
-        AttributeExt::doc_str_and_fragment_kind(self)
     }
 }

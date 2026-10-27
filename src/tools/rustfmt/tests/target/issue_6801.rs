@@ -1,6 +1,6 @@
-// rustfmt-wrap_comments: true
-// rustfmt-comment_width: 80
-// rustfmt-max_width: 200
+//@ rustfmt-wrap_comments: true
+//@ rustfmt-comment_width: 80
+//@ rustfmt-max_width: 200
 
 fn foo() {
     // In this line, the next '.' is exactly at'comment_width'                 .

@@ -1,6 +1,8 @@
 error[E0080]: unable to turn pointer into integer
   --> $DIR/const_transmute_type_id.rs:7:27
    |
+LL | const _: () = {
+LL |     let id = TypeId::of::<u8>();
 LL |     let id: u8 = unsafe { (&raw const id).cast::<u8>().read() };
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `_` failed here
    |

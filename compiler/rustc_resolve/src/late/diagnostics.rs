@@ -558,9 +558,10 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             };
             let mut notes = Vec::new();
             if let Some(module_def_id) = module
-                && let Some(directive) = self.r.on_unknown_data(module_def_id)
+                && let Some((this, directive)) = self.r.on_unknown_data(module_def_id)
             {
-                let args = FormatArgs { unresolved: item_ident.to_string(), this: mod_str, .. };
+                let args =
+                    FormatArgs { unresolved: item_ident.to_string(), this: this.to_string(), .. };
                 let CustomDiagnostic {
                     message,
                     label,
@@ -666,11 +667,10 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         path: &[Segment],
         following_seg: Option<&Segment>,
         span: Span,
-        source: PathSource<'_, 'ast, 'ra>,
+        mut source: PathSource<'_, 'ast, 'ra>,
         res: Option<Res>,
         qself: Option<&QSelf>,
     ) -> (Diag<'tcx>, Vec<ImportSuggestion>) {
-        debug!(?res, ?source);
         let cross_namespace_res = res.filter(|res| !res.matches_ns(source.namespace()));
         let could_be_expr = res.is_some_and(|res| self.could_be_expr(res, span));
         let base_error = self.make_base_error(
@@ -684,6 +684,14 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         let code = source.error_code(res.is_some());
         let mut err = self.r.dcx().struct_span_err(base_error.span, base_error.msg.clone());
         err.code(code);
+
+        if self.diag_metadata.currently_processing_generic_args
+            && let PathSource::Type = source
+            && let [segment] = path
+            && !segment.has_generic_args
+        {
+            source = PathSource::TypeParam;
+        }
 
         if let Some(res) = cross_namespace_res {
             err.note(format!(
@@ -706,6 +714,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         self.suggest_at_operator_in_slice_pat_with_range(&mut err, path);
         self.suggest_range_struct_destructuring(&mut err, path, source);
         self.suggest_swapping_misplaced_self_ty_and_trait(&mut err, source, res, base_error.span);
+        self.detect_resolution_error_in_derive(&mut err, base_error.span);
 
         if let Some((span, label)) = base_error.span_label {
             err.span_label(span, label);
@@ -1759,6 +1768,170 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         }
     }
 
+    /// When encountering `Ty < Ty, Ty > call()` in function and method call arguments, suggest
+    /// using the turbofish and silence redundant resolve errors.
+    pub(in crate::late) fn detect_missing_turbofish(&mut self, arguments: &'ast [Box<Expr>]) {
+        if self.use_injections.is_empty() {
+            // Avoid doing unnecessary work, we would have had resolve errors by now if this mistake
+            // had happened.
+            return;
+        }
+        let mut iter = arguments.iter().peekable();
+        // Look through every call argument expression, when encountering `a < b`, try to find a
+        // closing `c > ::d()` that would make the whole thing be syntactically valid as a
+        // fully-qualified path `a::<b, c>::d()`.
+        while let Some(arg) = iter.next() {
+            // foo(left < right, bar, baz>::qux())
+            //     ^^^^   ^^^^^
+            let ExprKind::Binary(lt, left, right) = &arg.kind else { continue };
+            // foo(left < right, bar, baz>::qux())
+            //          ^
+            let ast::BinOpKind::Lt = lt.node else {
+                continue;
+            };
+            // foo(left < right, bar, baz>::qux())
+            //     ^^^^ is a path
+            let ExprKind::Path(_, lt_left) = &left.kind else { continue };
+            // foo(a::B < right, bar, baz>::qux())
+            //     ^  ^ lt_left_segments
+            let lt_left_segments: Vec<_> = lt_left.segments.iter().map(|seg| seg.into()).collect();
+            // `a::B` is a type-like.
+            let lt_res = if let PathResult::NonModule(res) =
+                self.resolve_path(&lt_left_segments, Some(TypeNS), None, PathSource::Expr(None))
+                && let Some(lt_res) = res.full_res()
+            {
+                lt_res
+            } else {
+                continue;
+            };
+
+            // Same thing we do for `left`, for `right`:
+            // foo(left < right, bar, baz>::qux())
+            //            ^^^^^ is a path
+            let ExprKind::Path(_, lt_right) = &right.kind else { continue };
+            let lt_right_segments: Vec<_> =
+                lt_right.segments.iter().map(|seg| seg.into()).collect();
+            if let PathResult::NonModule(res) =
+                self.resolve_path(&lt_right_segments, Some(TypeNS), None, PathSource::Expr(None))
+                && let Some(_res) = res.full_res()
+            {
+            } else {
+                continue;
+            }
+
+            // foo(left < right, bar,   baz>::qux())
+            //           next is ^^^ or ^^^^^^^^^^^
+            let Some(mut next) = iter.next() else {
+                break;
+            };
+            let mut other_path_spans = vec![];
+            loop {
+                match &next.kind {
+                    // foo(left < right, bar, baz>::qux())
+                    //                        ^^^^^^^^^
+                    ExprKind::Binary(gt, gt_left, gt_right)
+                        // foo(left < right, bar, baz>::qux())
+                        //                           ^
+                        if let ast::BinOpKind::Gt = gt.node
+                            // foo(left < right, bar, baz>::qux())
+                            //                        ^^^
+                            && let ExprKind::Path(_, gt_left) = &gt_left.kind
+                            // foo(left < right, bar, baz>::qux())
+                            //                            ^^^^^^^
+                            && let ExprKind::Call(call_expr, _) = &gt_right.kind
+                            && let ExprKind::Path(_, call_path) = &call_expr.kind
+                            && let gt_left_segments = gt_left
+                                .segments
+                                .iter()
+                                .map(|seg| seg.into())
+                                .collect::<Vec<_>>()
+                            && let PathResult::NonModule(res) = self.resolve_path(
+                                &gt_left_segments,
+                                Some(TypeNS),
+                                None,
+                                PathSource::Expr(None),
+                            )
+                            && let Some(_res) = res.full_res() =>
+                    {
+                        // We've encountered an expression where we have `Ty < Ty, Ty > call(...)`.
+                        // A binop between two types is non-sensical in (current?) Rust, and the
+                        // presence of two binops separated by a comma of less-than followed by
+                        // greater-than heavily implies a missing turbofish in an expression.
+                        let mut any = false;
+                        let spans: Vec<Span> = lt_left_segments
+                            .iter()
+                            .map(|s| s.ident.span)
+                            .chain(lt_right_segments.iter().map(|s| s.ident.span))
+                            .chain(gt_left_segments.iter().map(|s| s.ident.span))
+                            .chain(gt_left_segments.iter().map(|s| s.ident.span))
+                            .chain(call_path.segments.iter().map(|seg| seg.span()))
+                            .chain(other_path_spans.iter().cloned())
+                            .collect();
+                        for injection in self.use_injections.iter_mut() {
+                            // Silence all already constructed resolution errors that are contained
+                            // by the likely missing turbofish.
+                            if injection.path.iter().any(|s| spans.contains(&s.ident.span)) {
+                                any = true;
+                                injection.err.downgrade_to_delayed_bug();
+                            }
+                        }
+                        if any {
+                            let sp = MultiSpan::from(vec![lt.span, gt.span]);
+                            let mut err =
+                                self.r.tcx.dcx().struct_span_err(sp, "can't compare two types");
+                            err.span_label(
+                                gt.span,
+                                "these are parsed as \"less than\" and \"greater than\"",
+                            );
+                            let name = if let Some(def_id) = lt_res.opt_def_id()
+                                && let Some(name) = self.r.tcx.opt_item_name(def_id)
+                            {
+                                name.to_string()
+                            } else {
+                                lt_right_segments
+                                    .iter()
+                                    .map(|s| s.ident.name.to_string())
+                                    .collect::<Vec<String>>()
+                                    .join("::")
+                            };
+                            err.span_suggestion_verbose(
+                                lt.span.shrink_to_lo(),
+                                format!(
+                                    "you likely intended to write type `{name}` with type parameters, but \
+                                    type parameters in expression contexts require the use of the \
+                                    \"turbofish\" `::<>`",
+                                ),
+                                "::".to_string(),
+                                Applicability::MachineApplicable,
+                            );
+                            err.emit();
+                        }
+                    }
+
+                    // foo(left < right, bat, bar, baz>::qux())
+                    //                   ^^^
+                    ExprKind::Path(_, path) => {
+                        // foo(left < right, bat, bar,   baz>::qux())
+                        //                        ^^^ or ^^^^^^^^^^^
+                        if let Some(n) = iter.next() {
+                            next = n;
+                            other_path_spans.extend(path.segments.iter().map(|seg| seg.ident.span));
+                            // Only case where we don't break from the `loop` advancing the parsed
+                            // call arguments , we've encountered a path that is likely one of the
+                            // type parameters for the missing turbofish.
+                            continue;
+                        }
+                    }
+
+                    _ => {}
+                }
+                // This doesn't look like a turbofish, look for more missing turbofishes on the
+                // following arguments.
+                break;
+            }
+        }
+    }
+
     fn suggest_at_operator_in_slice_pat_with_range(&self, err: &mut Diag<'_>, path: &[Segment]) {
         let Some(pat) = self.diag_metadata.current_pat else { return };
         let (bound, side, range) = match &pat.kind {
@@ -1876,8 +2049,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         res: Option<Res>,
         span: Span,
     ) {
-        if let Some((trait_ref, self_ty)) =
-            self.diag_metadata.currently_processing_impl_trait.clone()
+        if let Some((trait_ref, self_ty)) = self.diag_metadata.currently_processing_impl_trait
             && let TyKind::Path(_, self_ty_path) = &self_ty.kind
             && let PathResult::Module(ModuleOrUniformRoot::Module(module)) =
                 self.resolve_path(&Segment::from_path(self_ty_path), Some(TypeNS), None, source)
@@ -1894,6 +2066,26 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     vec![(trait_ref.path.span, self_ty_str), (self_ty.span, trait_ref_str)],
                     Applicability::MaybeIncorrect,
                 );
+        }
+    }
+
+    /// If the name resolution error occurs in an ident that has no span context, but the enclosing
+    /// item is within a derive macro, point at the derive, as the error can either be because of an
+    /// invalid derive macro *or* a non-existing item that will already have been reported through
+    /// the annotated item.
+    fn detect_resolution_error_in_derive(&self, err: &mut Diag<'_>, span: Span) {
+        if let Some(item) = self.diag_metadata.current_item
+            && !item.span.eq_ctxt(span)
+            && item.span.in_derive_expansion()
+        {
+            // `item` comes from a `#[derive()]`, but the error `span` doesn't, which means that the
+            // derive is referencing a name coming from the annotated item. If the item exists, then
+            // the derive macro itself is buggy. If the item exists, then an error will have already
+            // been emitted while evaluating the annotated item itself, but we can't silence this
+            // one because one *can* write a derive macro referencing a non-existing item that is
+            // part of the expansion, *not* from the user's code. Because of that, at least for now,
+            // we just add context to the current error.
+            err.span_label(item.span, "in this derive macro");
         }
     }
 
@@ -2893,7 +3085,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         ident: Symbol,
         kind: &AssocItemKind,
     ) -> Option<Symbol> {
-        let (module, _) = self.current_trait_ref.as_ref()?;
+        let (module, _) = self.current_trait_ref?;
         if ident == kw::Underscore {
             // We do nothing for `_`.
             return None;
@@ -2901,7 +3093,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
 
         let targets = self
             .r
-            .resolutions(*module)
+            .resolutions(module)
             .iter()
             .filter_map(|(key, res)| {
                 res.borrow(self.r).best_decl().map(|binding| (key, binding.res()))
@@ -3673,6 +3865,9 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         ) {
             (Some(Item { kind: ItemKind::Fn(fn_), .. }), _, _) if fn_.ident.name == sym::main => {
                 // Ignore `fn main()` as we don't want to suggest `fn main<T>()`
+            }
+            (Some(Item { span, .. }), _, _) if span.in_derive_expansion() => {
+                return (None, None);
             }
             (
                 Some(Item {

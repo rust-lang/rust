@@ -5,17 +5,17 @@ UI tests are a particular [test suite](compiletest.md#test-suites) of compiletes
 ## Introduction
 
 The tests in [`tests/ui`] are a collection of general-purpose tests which
-primarily focus on validating the console output of the compiler, but can be
-used for many other purposes.
+primarily focus on validating the console output of the compiler,
+but can be used for many other purposes.
 For example, tests can also be configured to [run
 the resulting program](#controlling-passfail-expectations) to verify its behavior.
 
-For a survey of each subdirectory's purpose under `tests/ui`, consult the
-[README.md](https://github.com/rust-lang/rust/tree/HEAD/tests/ui/README.md).
+For a survey of each subdirectory's purpose under `tests/ui`,
+consult the [README.md](https://github.com/rust-lang/rust/tree/HEAD/tests/ui/README.md).
 This is useful if you write a new test, and are looking for a category to place it in.
 
-If you need to work with `#![no_std]` cross-compiling tests, consult the
-[`minicore` test auxiliary](./minicore.md) chapter.
+If you need to work with `#![no_std]` cross-compiling tests,
+consult the [`minicore` test auxiliary](./minicore.md) chapter.
 
 [`tests/ui`]: https://github.com/rust-lang/rust/blob/HEAD/tests/ui
 
@@ -36,8 +36,8 @@ Compiletest [directives](directives.md) in the form of special comments prefixed
 with `//@` control how the test is compiled and what the expected behavior is.
 
 Tests are expected to fail to compile, since most tests are testing compiler errors.
-You can change that behavior with a directive, see [Controlling
-pass/fail expectations](#controlling-passfail-expectations).
+You can change that behavior with a directive,
+see [Controlling pass/fail expectations](#controlling-passfail-expectations).
 
 By default, a test is built as an executable binary.
 If you need a different crate type, you can use the `#![crate_type]` attribute to set it as needed.
@@ -46,11 +46,11 @@ If you need a different crate type, you can use the `#![crate_type]` attribute t
 
 UI tests store the expected output from the compiler in `.stderr` and `.stdout`
 snapshots next to the test.
-You normally generate these files with the `--bless`
-CLI option, and then inspect them manually to verify they contain what you expect.
+You normally generate these files with the `--bless` CLI option,
+and then inspect them manually to verify they contain what you expect.
 
-The output is normalized to ignore unwanted differences, see the
-[Normalization](#normalization) section.
+The output is normalized to ignore unwanted differences,
+see the [Normalization](#normalization) section.
 If the file is missing, then compiletest expects the corresponding output to be empty.
 
 A common reason to use normalization, revisions, and most of the other following tools,
@@ -94,17 +94,18 @@ will check for output files:
   Consider using the `normalize-stderr` directive instead (see [Normalization](#normalization)).
 - `dont-check-compiler-stderr` — Ignores stderr from the compiler.
 - `dont-check-compiler-stdout` — Ignores stdout from the compiler.
-- `compare-output-by-lines` — Some tests have non-deterministic orders of output, so we need to compare by lines.
+- `compare-output-by-lines` — Some tests have non-deterministic orders of output,
+  so we need to compare by lines.
 
-UI tests run with `-Zdeduplicate-diagnostics=no` flag, which disables rustc's
-built-in diagnostic deduplication mechanism.
+UI tests run with `-Zdeduplicate-diagnostics=no` flag,
+which disables rustc's built-in diagnostic deduplication mechanism.
 This means you may see some duplicate messages in the output.
 This helps illuminate situations where duplicate diagnostics are being generated.
 
 ### Normalization
 
-The compiler output is normalized to eliminate output difference between
-platforms, mainly about filenames.
+The compiler output is normalized to eliminate output difference between platforms,
+mainly about filenames.
 
 Compiletest makes the following replacements on the compiler output:
 
@@ -135,8 +136,8 @@ more suitable for UI testing.
 
 For example, it will anonymize line numbers in the output (line numbers
 prefixing each source line are replaced with `LL`).
-In extremely rare situations, this mode can be disabled with the directive `//@
-compile-flags: -Z ui-testing=no`.
+In extremely rare situations,
+this mode can be disabled with the directive `//@ compile-flags: -Z ui-testing=no`.
 
 When using `-Z ui-testing=no`, the `--diagnostic-width` argument should also
 be set to avoid tests failing or passing depending on the width of the terminal
@@ -144,8 +145,8 @@ from which the UI test suite is being run.
 
 Note: The line and column numbers for `-->` lines pointing to the test are *not*
 normalized, and left as-is.
-This ensures that the compiler continues to point to
-the correct location, and keeps the stderr files readable.
+This ensures that the compiler continues to point to the correct location,
+and keeps the stderr files readable.
 Ideally all line/column information would be retained, but small changes to the source
 causes large diffs, and more frequent merge conflicts and test errors.
 
@@ -160,8 +161,8 @@ provide custom normalization rules using `normalize-*` directives, e.g.
 //@ normalize-stderr-64bit: "fn\(\) \(64 bits\)" -> "fn\(\) \($$PTR bits\)"
 ```
 
-This tells the test, on 32-bit platforms, whenever the compiler writes `fn() (32
-bits)` to stderr, it should be normalized to read `fn() ($PTR bits)` instead.
+This tells the test, on 32-bit platforms, whenever the compiler writes `fn() (32 bits)` to stderr,
+it should be normalized to read `fn() ($PTR bits)` instead.
 Similar for 64-bit.
 The replacement is performed by regexes using default regex flavor provided by `regex` crate.
 
@@ -192,10 +193,9 @@ fn main() {
 }
 ```
 
-Although UI tests have a `.stderr` file which contains the entire compiler
-output, UI tests require that errors are also annotated within the source.
-This redundancy helps avoid mistakes since the `.stderr` files are usually
-auto-generated.
+Although UI tests have a `.stderr` file which contains the entire compiler output,
+UI tests require that errors are also annotated within the source.
+This redundancy helps avoid mistakes since the `.stderr` files are usually auto-generated.
 It also helps to directly see where the error spans are expected
 to point to by looking at one file instead of having to compare the `.stderr` file with the source.
 Finally, they ensure that no additional unexpected errors are generated.
@@ -210,14 +210,15 @@ There are several ways to match the message with the line (see the examples belo
 
 * `~`: Associates the error level and message with the *current* line
 * `~^`: Associates the error level and message with the *previous* error annotation line.
-  Each caret (`^`) that you add adds a line to this, so `~^^^`
-  is three lines above the error annotation line.
+  Each caret (`^`) that you add adds a line to this,
+  so `~^^^` is three lines above the error annotation line.
 * `~|`: Associates the error level and message with the *same* line as the
-  *previous comment*. This is more convenient than using multiple carets when
+  *previous comment*.
+  This is more convenient than using multiple carets when
   there are multiple messages associated with the same line.
 * `~v`: Associates the error level and message with the *next* error annotation line.
-  Each symbol (`v`) that you add adds a line to this, so `~vvv`
-  is three lines below the error annotation line.
+  Each symbol (`v`) that you add adds a line to this,
+  so `~vvv` is three lines below the error annotation line.
 
 Example:
 
@@ -336,8 +337,8 @@ fn main() {
 }
 ```
 
-We want to ensure this shows "index out of bounds", but we cannot use the `ERROR`
-annotation since the runtime error doesn't have any span.
+We want to ensure this shows "index out of bounds",
+but we cannot use the `ERROR` annotation since the runtime error doesn't have any span.
 Then it's time to use the `error-pattern` directive:
 
 ```rust,ignore
@@ -353,15 +354,15 @@ fn main() {
 For strict testing of compile time output, try to use the line annotations `//~` as much as
 possible, including `//~?` annotations for diagnostics without spans.
 
-If the compile time output is target dependent or too verbose, use directive
-`//@ dont-require-annotations: <diagnostic-kind>` to make the line annotation checking
+If the compile time output is target dependent or too verbose,
+use directive `//@ dont-require-annotations: <diagnostic-kind>` to make the line annotation checking
 non-exhaustive.
 Some of the compiler messages can stay uncovered by annotations in this mode.
 
 For checking runtime output, `//@ check-run-results` may be preferable.
 
-Only use `error-pattern` if none of the above works, such as when finding a
-specific string pattern in a runtime panic output.
+Only use `error-pattern` if none of the above works,
+such as when finding a specific string pattern in a runtime panic output.
 
 Line annotations `//~` and `error-pattern` are compatible and can be used in the same test.
 
@@ -386,28 +387,28 @@ by the compiler instead of or in addition to structured json.
 
 Other kinds only need to be line-annotated if at least one annotation of that kind appears
 in the test file.
-For example, one `//~ NOTE` will also require all other `//~ NOTE`s in the file
-to be written out explicitly.
+For example,
+one `//~ NOTE` will also require all other `//~ NOTE`s in the file to be written out explicitly.
 
 Use directive `//@ dont-require-annotations` to opt out of exhaustive annotations.
 E.g. use `//@ dont-require-annotations: NOTE` to annotate notes selectively.
-Avoid using this directive for `ERROR`s and `WARN`ings, unless there's a serious reason, like
-target-dependent compiler output.
+Avoid using this directive for `ERROR`s and `WARN`ings, unless there's a serious reason,
+like target-dependent compiler output.
 
 Some diagnostics are never required to be line-annotated, regardless of their kind or directives.
 Examples are secondary lines of multiline diagnostics,
 or ubiquitous diagnostics like `aborting due to N previous errors`.
 
-UI tests use the `-A unused` flag by default to ignore all unused warnings, as
-unused warnings are usually not the focus of a test.
+UI tests use the `-A unused` flag by default to ignore all unused warnings,
+as unused warnings are usually not the focus of a test.
 However, simple code samples often have unused warnings.
-If the test is specifically testing an
-unused warning, just add the appropriate `#![warn(unused)]` attribute as needed.
+If the test is specifically testing an unused warning,
+just add the appropriate `#![warn(unused)]` attribute as needed.
 
 ### `cfg` revisions
 
-When using [revisions](compiletest.md#revisions), different messages can be
-conditionally checked based on the current revision.
+When using [revisions](compiletest.md#revisions),
+different messages can be conditionally checked based on the current revision.
 This is done by placing the revision cfg name in brackets like this:
 
 ```rust,ignore
@@ -429,10 +430,10 @@ fn main() {
 In this example, the second error message is only emitted in the `mir` revision.
 The `thir` revision only emits the first error.
 
-If the `cfg` causes the compiler to emit different output, then a test can have
-multiple `.stderr` files for the different outputs.
-In the example above, there
-would be a `.mir.stderr` and `.thir.stderr` file with the different outputs of
+If the `cfg` causes the compiler to emit different output,
+then a test can have multiple `.stderr` files for the different outputs.
+In the example above,
+there would be a `.mir.stderr` and `.thir.stderr` file with the different outputs of
 the different revisions.
 
 > Note: cfg revisions also work inside the source code with `#[cfg]` attributes.
@@ -443,8 +444,8 @@ the different revisions.
 
 By default, a UI test is expected to **generate a compile error** because most
 of the tests are checking for invalid input and error diagnostics.
-However, you can also make UI tests where compilation is expected to succeed, and you can
-even run the resulting program.
+However, you can also make UI tests where compilation is expected to succeed,
+and you can even run the resulting program.
 Just add one of the following [directives](directives.md):
 
 - Pass directives:
@@ -461,17 +462,17 @@ Just add one of the following [directives](directives.md):
     This will run `rustc` twice:
     - First time is to ensure that the compile succeeds without the codegen phase
     - Second time is to ensure that the full compile fails
-  - `//@ run-fail` — compilation should succeed, but running the resulting
-    binary should make it exit with a code in the range `1..=127` which
+  - `//@ run-fail` — compilation should succeed,
+    but running the resulting binary should make it exit with a code in the range `1..=127` which
     indicates regular failure.
     On targets without unwind support, crashes are also accepted.
-  - `//@ run-crash` — compilation should succeed, but running the resulting
-    binary should fail with a crash.
+  - `//@ run-crash` — compilation should succeed,
+    but running the resulting binary should fail with a crash.
     Crashing is defined as "not exiting with a code in the range `0..=127`".
     - Example on Linux: Termination by `SIGABRT` or `SIGSEGV`.
     - Example on Windows: Exiting with the code for `STATUS_ILLEGAL_INSTRUCTION` (`0xC000001D`).
-  - `//@ run-fail-or-crash` — compilation should succeed, but running the
-    resulting binary should either `run-fail` or `run-crash`.
+  - `//@ run-fail-or-crash` — compilation should succeed,
+    but running the resulting binary should either `run-fail` or `run-crash`.
     Useful if a test crashes on some targets but just fails on others.
 
 For `run-pass`, `run-fail`, `run-crash`, and `run-fail-or-crash` tests,
@@ -488,9 +489,8 @@ Tests with the `*-pass` directives can be overridden with the `--pass` command-l
 ```
 
 The `--pass` option only affects UI tests.
-Using `--pass check` can run the UI
-test suite much faster (roughly twice as fast on my system), though obviously
-not exercising as much.
+Using `--pass check` can run the UI test suite much faster (roughly twice as fast on my system),
+though obviously not exercising as much.
 
 The `no-pass-override` directive can be used to ignore the `--pass` CLI flag if the
 test won't work properly with that override.
@@ -510,8 +510,8 @@ Adding tests for known bugs is helpful for several reasons, including:
 This directive takes comma-separated issue numbers as arguments, or `"unknown"`:
 
 - `//@ known-bug: #123, #456` (when the issues are on rust-lang/rust)
-- `//@ known-bug: rust-lang/chalk#123456`
-  (allows arbitrary text before the `#`, which is useful when the issue is on another repo)
+- `//@ known-bug: rust-lang/chalk#123456` (allows arbitrary text before the `#`,
+  which is useful when the issue is on another repo)
 - `//@ known-bug: unknown`
   (when there is no known issue yet; preferably open one if it does not already exist)
 
@@ -521,11 +521,11 @@ The test should still include other normal directives and stdout/stderr files.
 
 ## Test organization
 
-When deciding where to place a test file, please try to find a subdirectory that
-best matches what you are trying to exercise.
+When deciding where to place a test file,
+please try to find a subdirectory that best matches what you are trying to exercise.
 Do your best to keep things organized.
-Admittedly, it can be difficult as some tests can overlap different
-categories, and the existing layout may not fit well.
+Admittedly, it can be difficult as some tests can overlap different categories,
+and the existing layout may not fit well.
 
 Name the test by a concise description of what the test is checking.
 Avoid including the issue number in the test name.
@@ -535,9 +535,9 @@ Ideally, the test should be added to a directory that helps identify what piece
 of code is being tested here (e.g.,
 `tests/ui/borrowck/reject-move-out-of-borrow-via-pat.rs`)
 
-When writing a new feature, you may want to **create a subdirectory to store
-your tests**. For example, if you are implementing RFC 1234 ("Widgets"), then it
-might make sense to put the tests in a directory like `tests/ui/rfc1234-widgets/`.
+When writing a new feature, you may want to **create a subdirectory to store your tests**.
+For example, if you are implementing RFC 1234 ("Widgets"),
+then it might make sense to put the tests in a directory like `tests/ui/rfc1234-widgets/`.
 
 In other cases, there may already be a suitable directory.
 
@@ -582,30 +582,29 @@ source file after the suggestion has been applied.
 Usually when creating a rustfix test you will generate the `.fixed` file
 automatically with the `x test --bless` option.
 
-The `run-rustfix` directive will cause *all* suggestions to be applied, even if
-they are not [`MachineApplicable`](../diagnostics.md#suggestions).
-If this is a problem, then you can add the `rustfix-only-machine-applicable` directive in
-addition to `run-rustfix`.
-This should be used if there is a mixture of
-different suggestion levels, and some of the non-machine-applicable ones do not apply cleanly.
-
+The `run-rustfix` directive will cause *all* suggestions to be applied,
+even if they are not [`MachineApplicable`](../diagnostics.md#suggestions).
+If this is a problem,
+then you can add the `rustfix-only-machine-applicable` directive in addition to `run-rustfix`.
+This should be used if there is a mixture of different suggestion levels,
+and some of the non-machine-applicable ones do not apply cleanly.
 
 ## Compare modes
 
 [Compare modes](compiletest.md#compare-modes) can be used to run all tests with
 different flags from what they are normally compiled with.
 In some cases, this might result in different output from the compiler.
-To support this, different
-output files can be saved which contain the output based on the compare mode.
+To support this,
+different output files can be saved which contain the output based on the compare mode.
 
 For example, when using the Polonius mode, a test `foo.rs` will first look for
 expected output in `foo.polonius.stderr`, falling back to the usual `foo.stderr` if not found.
 This is useful as different modes can sometimes result in different diagnostics and behavior.
-This can help track which tests have
-differences between the modes, and to visually inspect those diagnostic differences.
+This can help track which tests have differences between the modes,
+and to visually inspect those diagnostic differences.
 
-If in the rare case you encounter a test that has different behavior, you can
-run something like the following to generate the alternate stderr file:
+If in the rare case you encounter a test that has different behavior,
+you can run something like the following to generate the alternate stderr file:
 
 ```sh
 ./x test tests/ui --compare-mode=polonius --bless

@@ -300,11 +300,11 @@ pub fn spin_loop() {
                 all(target_feature = "v6", target_feature = "mclass"),
             )
         ) => {
-            // SAFETY: the `cfg` attr ensures that we only execute this on arm
+            // The `cfg` attr ensures that we only execute this on arm
             // targets with support for the this feature. On ARMv6 in Thumb
             // mode, T2 is required (see Arm DDI0406C Section A8.8.427),
             // otherwise ARMv6-M or ARMv6K is enough
-            unsafe { crate::arch::arm::__yield() }
+            crate::arch::arm::__yield()
         }
         target_arch = "loongarch32" => crate::arch::loongarch32::ibar::<0>(),
         target_arch = "loongarch64" => crate::arch::loongarch64::ibar::<0>(),
@@ -704,7 +704,7 @@ pub const fn likely(b: bool) -> bool {
 ///     // Use outside of a branch condition may still influence a nearby branch
 ///     let cond = unlikely(x != 0);
 ///     if cond {
-///         println!("this branch is likely to be taken");
+///         println!("this branch is unlikely to be taken");
 ///     }
 /// }
 /// ```

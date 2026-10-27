@@ -10,11 +10,12 @@
 #![feature(async_iterator)]
 #![feature(atomic_volatile)]
 #![feature(borrowed_buf_init)]
-#![feature(bstr)]
+#![feature(byte_str)]
 #![feature(casefold)]
 #![feature(cfg_overflow_checks)]
 #![feature(cfg_target_has_reliable_f16_f128)]
 #![feature(char_internals)]
+#![feature(char_is_xid)]
 #![feature(clamp_magnitude)]
 #![feature(clamp_to)]
 #![feature(clone_to_uninit)]
@@ -47,7 +48,6 @@
 #![feature(core_io_borrowed_buf)]
 #![feature(core_private_bignum)]
 #![feature(core_private_diy_float)]
-#![feature(debug_closure_helpers)]
 #![feature(dec2flt)]
 #![feature(duration_constants)]
 #![feature(duration_constructors)]
@@ -108,7 +108,6 @@
 #![feature(slice_internals)]
 #![feature(slice_partition_dedup)]
 #![feature(slice_shift)]
-#![feature(slice_split_once)]
 #![feature(sliceindex_wrappers)]
 #![feature(splat)]
 #![feature(split_array)]
@@ -180,7 +179,7 @@ mod asserting;
 mod async_iter;
 mod atomic;
 mod bool;
-mod bstr;
+mod byte_str;
 mod cell;
 mod char;
 mod clone;

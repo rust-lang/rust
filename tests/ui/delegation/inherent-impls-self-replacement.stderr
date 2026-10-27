@@ -12,6 +12,8 @@ LL |     reuse S::<(), 123>::by_box { self.get_s() }
 note: method defined here
   --> $DIR/inherent-impls-self-replacement.rs:14:8
    |
+LL | impl<'a, 'b, 'c, A, const C: usize> S<A, C> {
+...
 LL |     fn by_box<'d: 'd, 'e, T, const B: bool>(self: Box<Self>) {}
    |        ^^^^^^                               ----
 help: store this in the heap by calling `Box::new`
@@ -32,6 +34,8 @@ LL |     reuse S::<(), 123>::by_rc { self.get_s() }
 note: method defined here
   --> $DIR/inherent-impls-self-replacement.rs:15:8
    |
+LL | impl<'a, 'b, 'c, A, const C: usize> S<A, C> {
+...
 LL |     fn by_rc<'d: 'd, 'e, T, const B: bool>(self: Rc<Self>) {}
    |        ^^^^^                               ----
 help: call `Into::into` on this expression to convert `S<(), 123>` into `Rc<S<(), 123>>`
@@ -52,6 +56,8 @@ LL |     reuse S::<(), 123>::by_pin { self.get_s() }
 note: method defined here
   --> $DIR/inherent-impls-self-replacement.rs:16:8
    |
+LL | impl<'a, 'b, 'c, A, const C: usize> S<A, C> {
+...
 LL |     fn by_pin<'d: 'd, 'e, T, const B: bool>(self: Pin<Box<Self>>) {}
    |        ^^^^^^                               ----
 help: you need to pin and box this expression
@@ -109,6 +115,8 @@ note: `Trait` defines an item `get_s`, perhaps you need to implement it
    |
 LL | trait Trait: Sized {
    | ^^^^^^^^^^^^^^^^^^
+LL |     fn get_s(self) -> S<(), 123>;
+   |
 
 error[E0599]: no method named `get_s` found for struct `Rc<Self>` in the current scope
   --> $DIR/inherent-impls-self-replacement.rs:49:38
@@ -122,6 +130,8 @@ note: `Trait` defines an item `get_s`, perhaps you need to implement it
    |
 LL | trait Trait: Sized {
    | ^^^^^^^^^^^^^^^^^^
+LL |     fn get_s(self) -> S<(), 123>;
+   |
 
 error[E0599]: no method named `get_s` found for struct `Pin<Box<Self>>` in the current scope
   --> $DIR/inherent-impls-self-replacement.rs:51:39
@@ -135,6 +145,8 @@ note: `Trait` defines an item `get_s`, perhaps you need to implement it
    |
 LL | trait Trait: Sized {
    | ^^^^^^^^^^^^^^^^^^
+LL |     fn get_s(self) -> S<(), 123>;
+   |
 
 error[E0507]: cannot move out of `*self` which is behind a shared reference
   --> $DIR/inherent-impls-self-replacement.rs:24:34
@@ -147,6 +159,7 @@ LL |     reuse S::<(), 123>::by_ref { self.get_s() }
 note: `Trait::get_s` takes ownership of the receiver `self`, which moves `*self`
   --> $DIR/inherent-impls-self-replacement.rs:20:14
    |
+LL | trait Trait: Sized {
 LL |     fn get_s(self) -> S<(), 123>;
    |              ^^^^
 help: if `Self` implemented `Clone`, you could clone the value
@@ -169,6 +182,7 @@ LL |     reuse S::<(), 123>::by_mut_ref { self.get_s() }
 note: `Trait::get_s` takes ownership of the receiver `self`, which moves `*self`
   --> $DIR/inherent-impls-self-replacement.rs:20:14
    |
+LL | trait Trait: Sized {
 LL |     fn get_s(self) -> S<(), 123>;
    |              ^^^^
 help: if `Self` implemented `Clone`, you could clone the value

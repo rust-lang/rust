@@ -170,7 +170,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             let res = if self.use_lub {
                 at.lub(b, a)
             } else {
-                at.sup(DefineOpaqueTypes::Yes, b, a)
+                self.sup_raw(&self.cause, self.param_env, DefineOpaqueTypes::Yes, b, a)
                     .map(|InferOk { value: (), obligations }| InferOk { value: b, obligations })
             };
 
@@ -962,13 +962,15 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         };
         if a_def.did() == b_def.did() {
             // Reborrow is applicable here
-            self.unify_and(
+            let coerce = self.unify_and(
                 a,
                 b,
                 [],
                 Adjust::GenericReborrow(ty::Mutability::Mut),
                 ForceLeakCheck::No,
-            )
+            )?;
+            self.taint_if_reborrow_impls_are_invalid(ty::Mutability::Mut);
+            Ok(coerce)
         } else {
             // FIXME: CoerceShared check goes here, error for now
             Err(TypeError::Mismatch)
@@ -1003,6 +1005,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         ocx.register_obligation(obligation);
         let errs = ocx.evaluate_obligations_error_on_ambiguity();
         if errs.no_errors() {
+            self.taint_if_reborrow_impls_are_invalid(ty::Mutability::Not);
             Ok(InferOk {
                 value: (
                     vec![Adjustment {
@@ -1015,6 +1018,24 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             })
         } else {
             Err(TypeError::Mismatch)
+        }
+    }
+
+    /// Borrowck and const eval lower a generic reborrow by walking the fields of the source and
+    /// target types, trusting that coherence has validated the `Reborrow` and `CoerceShared` impls
+    /// that permit it. If coherence rejected any of those impls, that walk can hit shapes it does
+    /// not expect, so we taint the body to keep it away from them.
+    fn taint_if_reborrow_impls_are_invalid(&self, mutability: ty::Mutability) {
+        let lang_items = self.tcx.lang_items();
+        let trait_def_ids = match mutability {
+            ty::Mutability::Mut => [lang_items.reborrow(), None],
+            // A shared reborrow also reborrows any fields of the source that implement `Reborrow`.
+            ty::Mutability::Not => [lang_items.coerce_shared(), lang_items.reborrow()],
+        };
+        for trait_def_id in trait_def_ids.into_iter().flatten() {
+            if let Err(guar) = self.tcx.ensure_result().coherent_trait(trait_def_id) {
+                self.set_tainted_by_errors(guar);
+            }
         }
     }
 
@@ -2065,11 +2086,17 @@ impl<'tcx> CoerceMany<'tcx> {
             fcx.suggest_missing_return_type(&mut err, fn_decl, expected, found, fn_id);
         }
 
+        let is_return_position = fcx
+            .tcx
+            .hir_get_fn_id_for_return_block(block_or_return_id)
+            .is_some_and(|fn_id| fn_id == fcx.tcx.local_def_id_to_hir_id(fcx.body_def_id));
+
         // If this is due to a block, then maybe we forgot a `return`/`break`.
         if due_to_block
             && let Some(expr) = expression
             && let Some(parent_fn_decl) =
                 fcx.tcx.hir_fn_decl_by_hir_id(fcx.tcx.local_def_id_to_hir_id(fcx.body_def_id))
+            && !is_return_position
         {
             fcx.suggest_missing_break_or_return_expr(
                 &mut err,
@@ -2081,11 +2108,6 @@ impl<'tcx> CoerceMany<'tcx> {
                 fcx.body_def_id,
             );
         }
-
-        let is_return_position = fcx
-            .tcx
-            .hir_get_fn_id_for_return_block(block_or_return_id)
-            .is_some_and(|fn_id| fn_id == fcx.tcx.local_def_id_to_hir_id(fcx.body_def_id));
 
         if is_return_position
             && let Some(sp) = fcx.ret_coercion_span.get()

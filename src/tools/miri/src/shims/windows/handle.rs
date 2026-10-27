@@ -208,19 +208,19 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// If the handle is invalid, or references a non-existent item, execution is aborted.
     #[track_caller]
     fn read_handle(&self, handle: &OpTy<'tcx>, function_name: &str) -> InterpResult<'tcx, Handle> {
-        let this = self.eval_context_ref();
-        let handle = this.read_scalar(handle)?;
-        match Handle::try_from_scalar(handle, this)? {
+        let ecx = self.eval_context_ref();
+        let handle = ecx.read_scalar(handle)?;
+        match Handle::try_from_scalar(handle, ecx)? {
             Ok(handle) => interp_ok(handle),
             Err(HandleError::InvalidHandle) =>
                 throw_machine_stop!(TerminationInfo::Abort(format!(
                     "invalid handle {} passed to {function_name}",
-                    handle.to_target_isize(this)?,
+                    handle.to_target_isize(ecx)?,
                 ))),
             Err(HandleError::ThreadNotFound) =>
                 throw_machine_stop!(TerminationInfo::Abort(format!(
                     "invalid thread ID {} passed to {function_name}",
-                    handle.to_target_isize(this)?,
+                    handle.to_target_isize(ecx)?,
                 ))),
         }
     }
@@ -231,13 +231,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         )))
     }
 
-    fn GetStdHandle(&mut self, which: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
-        let which = this.read_scalar(which)?.to_i32()?;
+    fn GetStdHandle(&self, which: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
+        let ecx = self.eval_context_ref();
+        let which = ecx.read_scalar(which)?.to_i32()?;
 
-        let stdin = this.eval_windows("c", "STD_INPUT_HANDLE").to_i32()?;
-        let stdout = this.eval_windows("c", "STD_OUTPUT_HANDLE").to_i32()?;
-        let stderr = this.eval_windows("c", "STD_ERROR_HANDLE").to_i32()?;
+        let stdin = ecx.eval_windows("c", "STD_INPUT_HANDLE").to_i32()?;
+        let stdout = ecx.eval_windows("c", "STD_OUTPUT_HANDLE").to_i32()?;
+        let stderr = ecx.eval_windows("c", "STD_ERROR_HANDLE").to_i32()?;
 
         // These values don't mean anything on Windows, but Miri unconditionally sets them up to the
         // unix in/out/err descriptors. So we take advantage of that.
@@ -252,7 +252,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             throw_unsup_format!("Invalid argument to `GetStdHandle`: {which}")
         };
         let handle = Handle::File(fd_num);
-        interp_ok(handle.to_scalar(this))
+        interp_ok(handle.to_scalar(ecx))
     }
 
     fn DuplicateHandle(
@@ -266,18 +266,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         options: &OpTy<'tcx>,        // DWORD
     ) -> InterpResult<'tcx, Scalar> {
         // ^ Returns BOOL (i32 on Windows)
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let src_proc = this.read_handle(src_proc, "DuplicateHandle")?;
-        let src_handle = this.read_handle(src_handle, "DuplicateHandle")?;
-        let target_proc = this.read_handle(target_proc, "DuplicateHandle")?;
-        let target_handle_ptr = this.read_pointer(target_handle)?;
+        let src_proc = ecx.read_handle(src_proc, "DuplicateHandle")?;
+        let src_handle = ecx.read_handle(src_handle, "DuplicateHandle")?;
+        let target_proc = ecx.read_handle(target_proc, "DuplicateHandle")?;
+        let target_handle_ptr = ecx.read_pointer(target_handle)?;
         // Since we only support DUPLICATE_SAME_ACCESS, this value is ignored, but should be valid
-        let _ = this.read_scalar(desired_access)?.to_u32()?;
+        let _ = ecx.read_scalar(desired_access)?.to_u32()?;
         // We don't support the CreateProcess API, so inheritable or not means nothing.
         // If we ever add CreateProcess support, this will need to be implemented.
-        let _ = this.read_scalar(inherit)?;
-        let options = this.read_scalar(options)?;
+        let _ = ecx.read_scalar(inherit)?;
+        let options = ecx.read_scalar(options)?;
 
         if src_proc != Handle::Pseudo(PseudoHandle::CurrentProcess) {
             throw_unsup_format!(
@@ -291,7 +291,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             );
         }
 
-        if this.ptr_is_null(target_handle_ptr)? {
+        if ecx.ptr_is_null(target_handle_ptr)? {
             throw_machine_stop!(TerminationInfo::Abort(
                 "`DuplicateHandle` `lpTargetHandle` parameter must not be null, as otherwise the \
                 newly created handle is leaked"
@@ -299,7 +299,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             ));
         }
 
-        if options != this.eval_windows("c", "DUPLICATE_SAME_ACCESS") {
+        if options != ecx.eval_windows("c", "DUPLICATE_SAME_ACCESS") {
             throw_unsup_format!(
                 "`DuplicateHandle` `dwOptions` parameter is not `DUPLICATE_SAME_ACCESS`, which is unsupported"
             );
@@ -307,10 +307,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let new_handle = match src_handle {
             Handle::File(old_fd_num) => {
-                let Some(fd) = this.machine.fds.get(old_fd_num) else {
-                    this.invalid_handle("DuplicateHandle")?
+                let Some(fd) = ecx.machine.fds.get(old_fd_num) else {
+                    ecx.invalid_handle("DuplicateHandle")?
                 };
-                Handle::File(this.machine.fds.insert(fd))
+                Handle::File(ecx.machine.fds.insert(fd))
             }
             Handle::Thread(_) => {
                 throw_unsup_format!(
@@ -322,32 +322,32 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     "`DuplicateHandle` called on a pseudo handle, which is unsupported"
                 );
             }
-            Handle::Null | Handle::Invalid => this.invalid_handle("DuplicateHandle")?,
+            Handle::Null | Handle::Invalid => ecx.invalid_handle("DuplicateHandle")?,
         };
 
-        let target_place = this.deref_pointer_as(target_handle, this.machine.layouts.usize)?;
-        this.write_scalar(new_handle.to_scalar(this), &target_place)?;
+        let target_place = ecx.deref_pointer_as(target_handle, ecx.machine.layouts.usize)?;
+        ecx.write_scalar(new_handle.to_scalar(ecx), &target_place)?;
 
-        interp_ok(this.eval_windows("c", "TRUE"))
+        interp_ok(ecx.eval_windows("c", "TRUE"))
     }
 
     fn CloseHandle(&mut self, handle_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let handle = this.read_handle(handle_op, "CloseHandle")?;
+        let handle = ecx.read_handle(handle_op, "CloseHandle")?;
         let ret = match handle {
             Handle::Thread(thread) => {
-                this.detach_thread(thread, /*allow_terminated_joined*/ true)?;
-                this.eval_windows("c", "TRUE")
+                ecx.detach_thread(thread, /*allow_terminated_joined*/ true)?;
+                ecx.eval_windows("c", "TRUE")
             }
             Handle::File(fd_num) =>
-                if let Some(fd) = this.machine.fds.remove(fd_num) {
+                if let Some(fd) = ecx.machine.fds.remove(fd_num) {
                     drop(fd);
-                    this.eval_windows("c", "TRUE")
+                    ecx.eval_windows("c", "TRUE")
                 } else {
-                    this.invalid_handle("CloseHandle")?
+                    ecx.invalid_handle("CloseHandle")?
                 },
-            _ => this.invalid_handle("CloseHandle")?,
+            _ => ecx.invalid_handle("CloseHandle")?,
         };
 
         interp_ok(ret)

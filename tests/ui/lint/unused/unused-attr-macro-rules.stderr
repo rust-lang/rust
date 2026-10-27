@@ -3,6 +3,8 @@ error: the `macro_use` attribute cannot be used on macro defs
    |
 LL | #[macro_use]
    |   ^^^^^^^^^
+...
+LL | macro_rules! foo {
    |
    = help: the `macro_use` attribute can be applied to extern crates and modules
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -17,6 +19,8 @@ error: the `path` attribute cannot be used on macro defs
    |
 LL | #[path="foo"]
    |   ^^^^
+...
+LL | macro_rules! foo {
    |
    = help: the `path` attribute can only be applied to modules
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!

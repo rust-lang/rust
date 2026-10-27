@@ -1,4 +1,4 @@
-// rustfmt-hard_tabs: true
+//@ rustfmt-hard_tabs: true
 
 fn testing() {
 	let _ = some_long_name

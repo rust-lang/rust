@@ -74,7 +74,7 @@ pub mod rustdoc_warn {
 }
 
 mod clippy_ok {
-    //! See <https://rust-lang.github.io/rust-clippy/master/index.html>
+    //! See <https://rust-lang.github.io/rust-clippy/main/index.html>
 
     #[expect(clippy::almost_swapped)]
     fn foo() {
@@ -104,7 +104,7 @@ mod clippy_ok {
 }
 
 mod clippy_warn {
-    //! See <https://rust-lang.github.io/rust-clippy/master/index.html>
+    //! See <https://rust-lang.github.io/rust-clippy/main/index.html>
 
     #[expect(clippy::almost_swapped)]
     //~^ ERROR: this lint expectation is unfulfilled

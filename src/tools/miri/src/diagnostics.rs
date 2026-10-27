@@ -5,7 +5,7 @@ use std::sync::Mutex;
 use rustc_abi::{Align, Size};
 use rustc_data_structures::fx::{FxBuildHasher, FxHashSet};
 use rustc_errors::{Diag, Level};
-use rustc_span::{DUMMY_SP, Span, SpanData, Symbol};
+use rustc_span::{DUMMY_SP, Span, Symbol};
 
 use crate::borrow_tracker::stacked_borrows::diagnostics::TagHistory;
 use crate::borrow_tracker::tree_borrows::diagnostics as tree_diagnostics;
@@ -14,7 +14,7 @@ use crate::*;
 /// Details of premature program termination.
 pub enum TerminationInfo {
     Exit {
-        code: i32,
+        exit_code: i32,
         leak_check: bool,
     },
     Abort(String),
@@ -41,14 +41,14 @@ pub enum TerminationInfo {
     LocalDeadlock,
     MultipleSymbolDefinitions {
         link_name: Symbol,
-        first: SpanData,
+        first: Span,
         first_crate: Symbol,
-        second: SpanData,
+        second: Span,
         second_crate: Symbol,
     },
     SymbolShimClashing {
         link_name: Symbol,
-        span: SpanData,
+        span: Span,
     },
     DataRace {
         involves_non_atomic: bool,
@@ -64,14 +64,15 @@ pub enum TerminationInfo {
 pub struct RacingOp {
     pub action: String,
     pub thread_info: String,
-    pub span: SpanData,
+    pub span: Span,
 }
 
 impl fmt::Display for TerminationInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use TerminationInfo::*;
         match self {
-            Exit { code, .. } => write!(f, "the evaluated program completed with exit code {code}"),
+            Exit { exit_code, .. } =>
+                write!(f, "the evaluated program completed with exit code {exit_code}"),
             Abort(msg) => write!(f, "{msg}"),
             Interrupted => write!(f, "interpretation was interrupted"),
             UnsupportedInIsolation(msg) => write!(f, "{msg}"),
@@ -148,12 +149,6 @@ pub enum NonHaltingDiagnostic {
     },
     ExternTypeReborrow,
     GenmcCompareExchangeWeak,
-    GenmcCompareExchangeOrderingMismatch {
-        success_ordering: AtomicRwOrd,
-        upgraded_success_ordering: AtomicRwOrd,
-        failure_ordering: AtomicReadOrd,
-        effective_failure_ordering: AtomicReadOrd,
-    },
     FileInProcOpened,
     ConnectingSocketGetsockname,
     SocketAddressResolution {
@@ -251,7 +246,7 @@ pub fn report_result<'tcx>(
         let info = info.downcast_ref::<TerminationInfo>().expect("invalid MachineStop payload");
         use TerminationInfo::*;
         let title = match info {
-            &Exit { code, leak_check } => return Some((code, leak_check)),
+            &Exit { exit_code, leak_check } => return Some((exit_code, leak_check)),
             Abort(_) => Some("abnormal termination"),
             Interrupted => None,
             UnsupportedInIsolation(_) | Int2PtrWithStrictProvenance | UnsupportedForeignItem(_) =>
@@ -554,8 +549,8 @@ fn report_msg<'tcx>(
     diag_level: DiagLevel,
     title: String,
     span_msg: Vec<String>,
-    notes: Vec<(Option<SpanData>, String)>,
-    helps: Vec<(Option<SpanData>, String)>,
+    notes: Vec<(Option<Span>, String)>,
+    helps: Vec<(Option<Span>, String)>,
     stacktrace: &[FrameInfo<'tcx>],
     thread: Option<ThreadId>,
     machine: &MiriMachine<'tcx>,
@@ -581,16 +576,16 @@ fn report_msg<'tcx>(
     }
 
     // Show note and help messages.
-    for (span_data, note) in notes {
-        if let Some(span_data) = span_data {
-            err.span_note(span_data.span(), note);
+    for (span, note) in notes {
+        if let Some(span) = span {
+            err.span_note(span, note);
         } else {
             err.note(note);
         }
     }
-    for (span_data, help) in helps {
-        if let Some(span_data) = span_data {
-            err.span_help(span_data.span(), help);
+    for (span, help) in helps {
+        if let Some(span) = span {
+            err.span_help(span, help);
         } else {
             err.help(help);
         }
@@ -651,7 +646,7 @@ impl<'tcx> MiriMachine<'tcx> {
                 ("sharing memory with a native function".to_string(), DiagLevel::Warning),
             ExternTypeReborrow =>
                 ("reborrow of reference to `extern type`".to_string(), DiagLevel::Warning),
-            GenmcCompareExchangeWeak | GenmcCompareExchangeOrderingMismatch { .. } =>
+            GenmcCompareExchangeWeak =>
                 ("GenMC might miss possible behaviors of this code".to_string(), DiagLevel::Warning),
             CreatedPointerTag(..)
             | PoppedPointerTag(..)
@@ -697,22 +692,8 @@ impl<'tcx> MiriMachine<'tcx> {
             ExternTypeReborrow =>
                 format!("reborrow of a reference to `extern type` is not properly supported"),
             GenmcCompareExchangeWeak =>
-                "GenMC currently does not model spurious failures of `compare_exchange_weak`. Miri with GenMC might miss bugs related to spurious failures."
+                "GenMC does not model spurious failures of `compare_exchange_weak` by default. Miri with GenMC might miss bugs related to spurious failures."
                     .to_string(),
-            GenmcCompareExchangeOrderingMismatch {
-                success_ordering,
-                upgraded_success_ordering,
-                failure_ordering,
-                effective_failure_ordering,
-            } => {
-                let was_upgraded_msg = if success_ordering != upgraded_success_ordering {
-                    format!("Success ordering '{success_ordering:?}' was upgraded to '{upgraded_success_ordering:?}' to match failure ordering '{failure_ordering:?}'")
-                } else {
-                    assert_ne!(failure_ordering, effective_failure_ordering);
-                    format!("Due to success ordering '{success_ordering:?}', the failure ordering '{failure_ordering:?}' is treated like '{effective_failure_ordering:?}'")
-                };
-                format!("GenMC currently does not model the failure ordering for `compare_exchange`. {was_upgraded_msg}. Miri with GenMC might miss bugs related to this memory access.")
-            }
             FileInProcOpened => format!("files in `/proc` can bypass the Abstract Machine and might not work properly in Miri"),
             ConnectingSocketGetsockname => format!("connecting sockets return unspecified socket addresses on Windows hosts"),
             SocketAddressResolution { error } => format!("address resolution failed: {error}"),
@@ -821,6 +802,10 @@ impl<'tcx> MiriMachine<'tcx> {
                     ),
                 ]
             }
+            GenmcCompareExchangeWeak =>
+                vec![note!(
+                    "add `-Zmiri-genmc-weak-cas-spurious-failures` to MIRIFLAGS to explore spurious failures; all retry loops around `compare_exchange_weak` then need to be bounded"
+                )],
             _ => vec![],
         };
 

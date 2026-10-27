@@ -213,7 +213,7 @@ macro_rules! acquire {
 ///
 /// Sharing some immutable data between threads:
 ///
-/// ```
+/// ```ignore-wasm
 /// use std::sync::Arc;
 /// use std::thread;
 ///
@@ -232,7 +232,7 @@ macro_rules! acquire {
 ///
 /// [`AtomicUsize`]: core::sync::atomic::AtomicUsize "sync::atomic::AtomicUsize"
 ///
-/// ```
+/// ```ignore-wasm
 /// use std::sync::Arc;
 /// use std::sync::atomic::{AtomicUsize, Ordering};
 /// use std::thread;
@@ -263,7 +263,10 @@ macro_rules! acquire {
     note = "consider using `Arc::clone`"
 )]
 pub struct Arc<
-    T: ?Sized,
+    #[rustc_assert_variance(covariant)] T: ?Sized,
+    // FIXME: When stabilizing this parameter, the `AllocatorNightly`
+    // bound on the `From<Box>` impl *must* be weaked to `Allocator`,
+    // as `Box` is fundamental!
     #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")] A: Allocator = Global,
 > {
     ptr: NonNull<ArcInner<T>>,
@@ -1088,7 +1091,7 @@ impl<T, A: Allocator> Arc<T, A> {
     /// # Examples
     ///
     /// Minimal example demonstrating the guarantee that `Arc::into_inner` gives.
-    /// ```
+    /// ```ignore-wasm
     /// use std::sync::Arc;
     ///
     /// let x = Arc::new(3);
@@ -1111,7 +1114,7 @@ impl<T, A: Allocator> Arc<T, A> {
     /// ```
     ///
     /// A more practical example demonstrating the need for `Arc::into_inner`:
-    /// ```
+    /// ```ignore-wasm
     /// use std::sync::Arc;
     ///
     /// // Definition of a simple singly linked list using `Arc`:
@@ -2865,14 +2868,16 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     /// Returns `true` if there are no other `Arc` or [`Weak`] pointers to the same allocation;
     /// returns `false` otherwise.
     ///
-    /// If this function returns `true`, then is guaranteed to be safe to call [`get_mut_unchecked`]
-    /// on this `Arc`, so long as no clones occur in between.
+    /// If this function returns `true`, then it is guaranteed to be safe to call [`get_mut_unchecked`]
+    /// on this `Arc`, as long as no clones occur in between.
+    ///
+    /// The result can become stale if another thread can call `clone` or
+    /// `downgrade` through a shared reference. Make sure you have exclusive
+    /// access to the `Arc`.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(arc_is_unique)]
-    ///
     /// use std::sync::Arc;
     ///
     /// let x = Arc::new(3);
@@ -2892,11 +2897,9 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     /// This function will always return the same value as `Arc::get_mut(arc).is_some()`. However,
     /// unlike that operation it does not produce any mutable references to the underlying data,
     /// meaning no pointers to the data inside the `Arc` are invalidated by the call. Thus, the
-    /// following code is valid, even though it would be UB if it used `Arc::get_mut`:
+    /// following code is valid:
     ///
     /// ```
-    /// #![feature(arc_is_unique)]
-    ///
     /// use std::sync::Arc;
     ///
     /// let arc = Arc::new(5);
@@ -2904,6 +2907,12 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     /// assert!(Arc::is_unique(&arc));
     /// assert_eq!(unsafe { *pointer }, 5);
     /// ```
+    ///
+    /// The following changes would make the example unsound:
+    ///
+    /// - Using `Arc::get_mut` to create a mutable reference while also accessing the value
+    ///   through `pointer`.
+    /// - Dropping `arc` before dereferencing `pointer`, leaving it dangling.
     ///
     /// # Atomic orderings
     ///
@@ -2916,7 +2925,7 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     ///
     /// [`get_mut_unchecked`]: Self::get_mut_unchecked
     #[inline]
-    #[unstable(feature = "arc_is_unique", issue = "138938")]
+    #[stable(feature = "arc_is_unique", since = "CURRENT_RUSTC_VERSION")]
     pub fn is_unique(this: &Self) -> bool {
         // lock the weak pointer count if we appear to be the sole weak pointer
         // holder.

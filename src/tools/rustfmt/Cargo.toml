@@ -51,8 +51,9 @@ serde_json = "1.0"
 term = "1.1"
 thiserror = "1.0.40"
 toml = "1.1"
-tracing = { version = "0.1.37", default-features = false, features = ["std"] }
+tracing = { version = "0.1.37", default-features = false, features = ["std", "attributes"] }
 tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
+tracing-tree = "0.4.1"
 unicode-segmentation = "1.9"
 unicode-width = "0.1"
 unicode-properties = { version = "0.1", default-features = false, features = ["general-category"] }
@@ -61,6 +62,7 @@ rustfmt-config_proc_macro = { version = "0.3", path = "config_proc_macro" }
 semver = "1.0.21"
 
 [dev-dependencies]
+indoc = "2.0.8"
 tempfile = "3.23.0"
 insta = { version = "1.48.0", features = ["filters"] }
 

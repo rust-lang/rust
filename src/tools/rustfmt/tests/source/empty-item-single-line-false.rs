@@ -1,5 +1,5 @@
-// rustfmt-brace_style: AlwaysNextLine
-// rustfmt-empty_item_single_line: false
+//@ rustfmt-brace_style: AlwaysNextLine
+//@ rustfmt-empty_item_single_line: false
 
 fn function()
 {

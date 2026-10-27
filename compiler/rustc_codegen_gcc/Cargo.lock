@@ -56,18 +56,18 @@ dependencies = [
 
 [[package]]
 name = "gccjit"
-version = "7.0.0"
+version = "7.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dfdb84ba432f6679794790de652bfbed86201893a30c03dc669c2bfe7424f472"
+checksum = "27cd340f3c265988de3379689cbbd103c25b1f8a3d0cc73f91a49083e899d3e1"
 dependencies = [
  "gccjit_sys",
 ]
 
 [[package]]
 name = "gccjit_sys"
-version = "3.2.0"
+version = "4.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e081669728b490723537f9def7eb674b7c9acd8de0b92ad4f4abf5f5cc75ea4b"
+checksum = "da2d9d74572f004908f17ec1bd0af071e5db63a12c3335c9651a6125593951c6"
 dependencies = [
  "libc",
 ]
@@ -188,6 +188,7 @@ dependencies = [
  "boml",
  "gccjit",
  "lang_tester",
+ "libc",
  "object",
  "tempfile",
 ]

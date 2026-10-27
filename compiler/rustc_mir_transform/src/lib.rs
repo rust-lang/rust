@@ -37,6 +37,7 @@ use std::sync::LazyLock;
 
 use pass_manager::{self as pm, Lint, MirLint, MirPass, PassCtx, PassPolicy, WithMinOptLevel};
 
+mod canonicalization;
 mod check_pointers;
 mod cost_checker;
 mod cross_crate_inline;
@@ -164,6 +165,7 @@ declare_passes! {
     mod lower_slice_len : LowerSliceLenCalls;
     mod match_branches : MatchBranchSimplification;
     mod mentioned_items : MentionedItems;
+    mod move_elimination : MoveElimination;
     mod multiple_return_terminators : MultipleReturnTerminators;
     mod post_drop_elaboration : CheckLiveDrops;
     mod prettify : ReorderBasicBlocks, ReorderLocals;
@@ -483,6 +485,12 @@ fn mir_promoted(
         Some(MirPhase::Analysis(AnalysisPhase::Initial)),
     );
 
+    // Avoid over-capacity in the vectors of basic blocks, which can take up substantial memory.
+    // This costs a tiny bit of performance to save a lot of memory.
+    for bb in body.basic_blocks.as_mut_preserves_cfg() {
+        bb.statements.shrink_to_fit();
+    }
+
     lint_tail_expr_drop_order::run_lint(tcx, def, &body);
 
     let promoted = promote_pass.promoted_fragments.into_inner();
@@ -763,6 +771,7 @@ pub(crate) fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
             &dead_store_elimination::DeadStoreElimination::Final,
             &dest_prop::DestinationPropagation,
             &tail_copy_to_move::TailCopyToMove,
+            &move_elimination::MoveElimination,
             &simplify::SimplifyLocals::Final,
             &multiple_return_terminators::MultipleReturnTerminators,
             // Some cleanup necessary at least for LLVM and potentially other codegen backends.

@@ -1,0 +1,18 @@
+error: item does not constrain `X::{opaque#0}`
+  --> $DIR/overflowing-opaque-incorrectly-unconstrained.rs:16:12
+   |
+LL |     pub fn new() -> X {
+   |            ^^^
+   |
+   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
+note: this opaque type is supposed to be constrained
+  --> $DIR/overflowing-opaque-incorrectly-unconstrained.rs:10:10
+   |
+LL | type X = impl std::ops::Add<Output = X>;
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0275]: overflow evaluating the requirement `X == _`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0275`.

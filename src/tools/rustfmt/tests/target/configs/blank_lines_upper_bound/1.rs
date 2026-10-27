@@ -1,4 +1,4 @@
-// rustfmt-blank_lines_upper_bound: 1
+//@ rustfmt-blank_lines_upper_bound: 1
 
 fn do_stuff() {
     let i = 0;

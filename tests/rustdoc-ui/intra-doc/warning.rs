@@ -71,9 +71,10 @@ pub struct C;
 #[doc = "single line with \"escaping\" [error]"] //~ WARNING `error`
 pub struct D;
 
-/// Item docs. //~ WARNING `error`
+/// Item docs.
 #[doc="Hello there!"]
 /// [error]
+//~^ WARNING `error`
 pub struct E;
 
 ///

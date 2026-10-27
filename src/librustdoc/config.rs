@@ -129,8 +129,10 @@ pub(crate) struct Options {
     pub(crate) no_run: bool,
     /// What sources are being mapped.
     pub(crate) remap_path_prefix: Vec<(PathBuf, PathBuf)>,
+    pub(crate) remap_path_prefix_strs: Vec<String>,
     /// Which scope(s) to use with `--remap-path-prefix`
     pub(crate) remap_path_scope: RemapPathScopeComponents,
+    pub(crate) remap_path_scope_str: Option<String>,
 
     /// The path to a rustc-like binary to build tests with. If not set, we
     /// default to loading from `$sysroot/bin/rustc`.
@@ -450,7 +452,7 @@ impl Options {
         match (
             output_format_s.as_ref().map(|_| output_format),
             show_coverage,
-            nightly_options::is_unstable_enabled(matches),
+            nightly_options::unstable_options_enabled(matches),
         ) {
             (None | Some(OutputFormat::CoverageJson), true, _) => {}
             (_, true, _) => {
@@ -777,9 +779,7 @@ impl Options {
             }
         }
 
-        // We don't want rustdoc invocations to complain about the lack of `--edition`.
-        let has_input = false;
-        let edition = config::parse_crate_edition(early_dcx, matches, has_input);
+        let edition = config::parse_crate_edition(early_dcx, matches, true);
 
         let mut id_map = html::markdown::IdMap::new();
         let Some(external_html) = ExternalHtml::load(
@@ -859,6 +859,8 @@ impl Options {
         let unstable_opts_strs = matches.opt_strs("Z");
         let lib_strs = matches.opt_strs("L");
         let extern_strs = matches.opt_strs("extern");
+        let remap_path_prefix_strs = matches.opt_strs("remap-path-prefix");
+        let remap_path_scope_str = matches.opt_str("remap-path-scope");
         let test_runtool = matches.opt_str("test-runtool");
         let test_runtool_args = matches.opt_strs("test-runtool-arg");
         let document_private = matches.opt_present("document-private-items");
@@ -934,13 +936,15 @@ impl Options {
             no_run,
             test_builder_wrappers,
             remap_path_prefix,
+            remap_path_prefix_strs,
             remap_path_scope,
+            remap_path_scope_str,
             no_capture,
             crate_name,
             output_format,
             json_unused_externs,
             scrape_examples_options,
-            unstable_features,
+            unstable_features: unstable_features.clone(),
             doctest_build_args,
             target_modifiers: collected_options.target_modifiers,
         };

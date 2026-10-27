@@ -4,7 +4,6 @@ use ast::visit::Visitor;
 use hir::def::DefKind;
 use rustc_ast::{self as ast, AssocItemKind, Delegation, DelegationSource, Item, ItemKind, NodeId};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
-use rustc_data_structures::steal::Steal;
 use rustc_hir as hir;
 use rustc_middle::middle::resolve::{
     self as mid_res, AstOwner, DelegationInherentFnKind, TypeRelativeDelegationRes,
@@ -53,9 +52,10 @@ pub(crate) fn resolve_type_relative_delegations(
             // Also record resolutions for cases when signature is resolved but call path is not.
             mid_res::DelegationResolution::Partial
             | mid_res::DelegationResolution::PartialCall(_) => {
-                let Some(r_and_owner) = ast_index.get(def_id).map(Steal::borrow) else {
-                    unreachable!("ast index must contain delegations");
-                };
+                let r_and_owner = ast_index[def_id]
+                    .as_ref()
+                    .expect("ast index must contain delegations")
+                    .borrow();
 
                 let (r, owner) = &*r_and_owner;
 
@@ -484,16 +484,22 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
                 }
             }
 
+            // Heuristic: don't do wrapping if there is no target expression.
+            if delegation.body.is_some() {
+                let arguments_to_map = sig
+                    .inputs()
+                    .iter()
+                    .enumerate()
+                    .skip(1) // Already checked above.
+                    .filter_map(|(idx, &param)| SelfFinder::contains_self(param).then_some(idx));
+
+                mapping.arguments_to_map.extend(arguments_to_map);
+            }
+
+            // Even if there is no target expression an output should be mapped,
+            // this is the case for functions without receiver which return `Self`
+            // for example.
             mapping.map_return = SelfFinder::contains_self(sig.output());
-
-            let arguments_to_map = sig
-                .inputs()
-                .iter()
-                .enumerate()
-                .skip(1) // Already checked above.
-                .filter_map(|(idx, &param)| SelfFinder::contains_self(param).then_some(idx));
-
-            mapping.arguments_to_map.extend(arguments_to_map);
         }
 
         // We can't yet map more than one argument if there are definitions inside.
@@ -513,11 +519,6 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
         parent: LocalDefId,
         span: Span,
     ) -> bool {
-        // Heuristic: don't do wrapping if there is no target expression.
-        if delegation.body.is_none() {
-            return false;
-        }
-
         let tcx = self.tcx();
 
         // Apply wrapping for delegations inside

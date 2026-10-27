@@ -160,20 +160,6 @@ pub(crate) fn neg_f128(fx: &mut FunctionCx<'_, '_, '_>, value: Value) -> Value {
     fx.bcx.ins().bitcast(types::F128, MemFlagsData::new(), bits)
 }
 
-pub(crate) fn abs_f16(fx: &mut FunctionCx<'_, '_, '_>, value: Value) -> Value {
-    let bits = fx.bcx.ins().bitcast(types::I16, MemFlagsData::new(), value);
-    let bits = fx.bcx.ins().band_imm_u(bits, 0x7fff);
-    fx.bcx.ins().bitcast(types::F16, MemFlagsData::new(), bits)
-}
-
-pub(crate) fn abs_f128(fx: &mut FunctionCx<'_, '_, '_>, value: Value) -> Value {
-    let bits = fx.bcx.ins().bitcast(types::I128, MemFlagsData::new(), value);
-    let (low, high) = fx.bcx.ins().isplit(bits);
-    let high = fx.bcx.ins().band_imm_u(high, 0x7fff_ffff_ffff_ffff_u64 as i64);
-    let bits = fx.bcx.ins().iconcat(low, high);
-    fx.bcx.ins().bitcast(types::F128, MemFlagsData::new(), bits)
-}
-
 pub(crate) fn codegen_cast(
     fx: &mut FunctionCx<'_, '_, '_>,
     from: Value,

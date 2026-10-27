@@ -2,7 +2,6 @@ use std::mem;
 
 use rustc_index::IndexVec;
 use rustc_middle::mir::*;
-use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::{bug, span_bug};
 use smallvec::{SmallVec, smallvec};
@@ -449,7 +448,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
     fn gather_terminator(&mut self, term: &Terminator<'tcx>) {
         debug!("gather_terminator({:?}, {:?})", self.loc, term);
         match term.kind {
-            TerminatorKind::Goto { target: _ }
+            TerminatorKind::Goto { target: _, .. }
             | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. } => {}
             // In some sense returning moves the return place into the current

@@ -2,7 +2,7 @@
 
 features! {
     @TARGET: powerpc;
-    @CFG: target_arch = "powerpc";
+    @CFG: any(target_arch = "powerpc", target_arch = "powerpc64");
     @MACRO_NAME: is_powerpc_feature_detected;
     @MACRO_ATTRS:
     /// Check for the presence of a CPU feature at runtime.

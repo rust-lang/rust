@@ -112,13 +112,13 @@ where
 
     /// `&` only allow mutation if the borrowed place is `!Freeze`.
     ///
-    /// This assumes that it is UB to take the address of a struct field whose type is
-    /// `Freeze`, then use pointer arithmetic to derive a pointer to a *different* field of
-    /// that same struct whose type is `!Freeze`. If we decide that this is not UB, we will
-    /// have to check the type of the borrowed **local** instead of the borrowed **place**
-    /// below. See [rust-lang/unsafe-code-guidelines#134].
-    ///
-    /// [rust-lang/unsafe-code-guidelines#134]: https://github.com/rust-lang/unsafe-code-guidelines/issues/134
+    /// This assumes that const-eval will abort when one creates a shared reference to a struct
+    /// field whose type is `Freeze`, then uses pointer arithmetic to derive a pointer to a
+    /// *different* field of that same struct whose type is `!Freeze` and mutates that. It is not
+    /// enough for that to be UB (which we are pretty sure it is, and it would be a breaking change
+    /// to make it non-UB as we'd then have to make const checking more conservative here),
+    /// const-eval also has to reliably detect that UB to ensure we never invoke a destructor after
+    /// such a mutation occurs!
     fn shared_borrow_allows_mutation(&self, place: mir::Place<'tcx>) -> bool {
         !place.ty(self.ccx.body, self.ccx.tcx).ty.is_freeze(self.ccx.tcx, self.ccx.typing_env)
     }

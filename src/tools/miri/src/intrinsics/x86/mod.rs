@@ -843,6 +843,105 @@ fn test_high_bits_masked<'tcx>(
     interp_ok((direct, negated))
 }
 
+/// Average packed unsigned 8-bit or 16-bit integers in `left` and `right`,
+/// rounding up, and store the results in `dest`. Each element is computed
+/// as `(left + right + 1) >> 1` without intermediate overflow.
+///
+/// The elements are widened according to their own signedness, so the
+/// operands are expected to be vectors of unsigned integers.
+///
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_avg_epu8>
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_avg_epu16>
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_avg_epu8>
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_avg_epu16>
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_avg_epu8>
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_avg_epu16>
+fn pavg<'tcx>(
+    ecx: &mut crate::MiriInterpCx<'tcx>,
+    left: &OpTy<'tcx>,
+    right: &OpTy<'tcx>,
+    dest: &MPlaceTy<'tcx>,
+) -> InterpResult<'tcx, ()> {
+    let (left, left_len) = ecx.project_to_simd(left)?;
+    let (right, right_len) = ecx.project_to_simd(right)?;
+    let (dest, dest_len) = ecx.project_to_simd(dest)?;
+
+    assert_eq!(dest_len, left_len);
+    assert_eq!(dest_len, right_len);
+
+    for i in 0..dest_len {
+        let left = ecx.read_immediate(&ecx.project_index(&left, i)?)?;
+        let right = ecx.read_immediate(&ecx.project_index(&right, i)?)?;
+        let dest = ecx.project_index(&dest, i)?;
+
+        // Widen the operands to avoid overflow
+        let twice_wide = ecx.layout_of(ecx.get_twice_wide_int_ty(left.layout.ty))?;
+        let left = ecx.int_to_int_or_float(&left, twice_wide)?;
+        let right = ecx.int_to_int_or_float(&right, twice_wide)?;
+
+        // Calculate left + right + 1
+        let added = ecx.binary_op(mir::BinOp::Add, &left, &right)?;
+        let added = ecx.binary_op(mir::BinOp::Add, &added, &ImmTy::from_uint(1u32, twice_wide))?;
+
+        // Calculate (left + right + 1) / 2
+        let divided =
+            ecx.binary_op(mir::BinOp::Div, &added, &ImmTy::from_uint(2u32, twice_wide))?;
+
+        // Narrow back to the original type
+        let res = ecx.int_to_int_or_float(&divided, dest.layout)?;
+        ecx.write_immediate(*res, &dest)?;
+    }
+
+    interp_ok(())
+}
+
+/// Multiply packed 16-bit integers in `left` and `right`, producing intermediate 32-bit integers,
+/// and store the high 16 bits of the intermediate integers in `dest`.
+///
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mulhi_epi16>
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mulhi_epu16>
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mulhi_epi16>
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mulhi_epu16>
+fn pmulh<'tcx>(
+    ecx: &mut crate::MiriInterpCx<'tcx>,
+    left: &OpTy<'tcx>,
+    right: &OpTy<'tcx>,
+    dest: &MPlaceTy<'tcx>,
+) -> InterpResult<'tcx, ()> {
+    let (left, left_len) = ecx.project_to_simd(left)?;
+    let (right, right_len) = ecx.project_to_simd(right)?;
+    let (dest, dest_len) = ecx.project_to_simd(dest)?;
+
+    assert_eq!(dest_len, left_len);
+    assert_eq!(dest_len, right_len);
+
+    for i in 0..dest_len {
+        let left = ecx.read_immediate(&ecx.project_index(&left, i)?)?;
+        let right = ecx.read_immediate(&ecx.project_index(&right, i)?)?;
+        let dest = ecx.project_index(&dest, i)?;
+
+        // Widen the operands to avoid overflow
+        let twice_wide = ecx.layout_of(ecx.get_twice_wide_int_ty(left.layout.ty))?;
+        let left = ecx.int_to_int_or_float(&left, twice_wide)?;
+        let right = ecx.int_to_int_or_float(&right, twice_wide)?;
+
+        // Multiply
+        let multiplied = ecx.binary_op(mir::BinOp::Mul, &left, &right)?;
+        // Keep the high half
+        let high = ecx.binary_op(
+            mir::BinOp::Shr,
+            &multiplied,
+            &ImmTy::from_uint(dest.layout.size.bits(), twice_wide),
+        )?;
+
+        // Narrow back to the original type
+        let res = ecx.int_to_int_or_float(&high, dest.layout)?;
+        ecx.write_immediate(*res, &dest)?;
+    }
+
+    interp_ok(())
+}
+
 /// Compute the sum of absolute differences of quadruplets of unsigned
 /// 8-bit integers in `left` and `right`, and store the 16-bit results
 /// in `right`. Quadruplets are selected from `left` and `right` with

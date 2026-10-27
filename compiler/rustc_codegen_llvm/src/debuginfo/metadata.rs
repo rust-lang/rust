@@ -6,11 +6,11 @@ use std::{assert_matches, iter, ptr};
 
 use libc::{c_longlong, c_uint};
 use rustc_abi::{Align, Endian, Layout, NumScalableVectors, Size};
+use rustc_ast::{IntTy, UintTy};
 use rustc_codegen_ssa::debuginfo::type_names::{VTableNameKind, cpp_like_debuginfo};
 use rustc_codegen_ssa::traits::*;
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
-use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::layout::{
     HasTypingEnv, LayoutOf, TyAndLayout, WIDE_PTR_ADDR, WIDE_PTR_EXTRA,
 };
@@ -32,7 +32,7 @@ use super::CodegenUnitDebugContext;
 use super::namespace::mangled_name_of_instance;
 use super::type_names::{compute_debuginfo_type_name, compute_debuginfo_vtable_name};
 use super::utils::{DIB, debug_context, get_namespace_for_item, is_node_local_to_unit};
-use crate::common::{AsCCharPtr, CodegenCx};
+use crate::common::CodegenCx;
 use crate::debuginfo::metadata::type_map::build_type_with_children;
 use crate::debuginfo::utils::{WidePtrKind, create_DIArray, wide_pointer_kind};
 use crate::debuginfo::{DIBuilderExt, dwarf_const};
@@ -651,14 +651,14 @@ fn create_file<'ll>(
     unsafe {
         llvm::LLVMRustDIBuilderCreateFile(
             builder,
-            file_name.as_c_char_ptr(),
+            file_name.as_ptr(),
             file_name.len(),
-            directory.as_c_char_ptr(),
+            directory.as_ptr(),
             directory.len(),
             hash_kind,
-            hash_value.as_c_char_ptr(),
+            hash_value.as_ptr(),
             hash_value.len(),
-            source.map_or(ptr::null(), |x| x.as_c_char_ptr()),
+            source.map_or(ptr::null(), |x| x.as_ptr()),
             source.map_or(0, |x| x.len()),
         )
     }
@@ -795,9 +795,50 @@ fn build_basic_type_di_node<'ll, 'tcx>(
         _ => bug!("debuginfo::build_basic_type_di_node - `t` is invalid type"),
     };
 
-    let ty_di_node = create_basic_type(cx, name, cx.size_of(t), encoding);
+    // Around LLDB 21 or 22, LLDB started using prebuilt Clang type nodes for primitives rather than
+    // reading the full DWARF data. These nodes are based on the size and signedness of the
+    // primitive, and ignore pretty much all other fields. This causes 2 issues:
+    // 1. type names get normalized to C-style names which isn't ideal. The normalization occurs
+    // even in generic args.
+    // 2. if you have a generic type `S<T>`, and 2 instantiations are `S<u64>`
+    // and `S<usize>` (on a 64-bit target), the use of prebuilt nodes causes a name collision.
+    // Whichever instantiation is interacted with first will work fine, all others will break a
+    // bunch of stuff in the LLDB pipeline. To avoid this, we explicitly treat `usize` and `isize`
+    // as typedefs of their equivalent types. For more info see: llvm/llvm-project#196812
 
-    if !cpp_like_debuginfo {
+    let mut needs_typedef = cpp_like_debuginfo;
+
+    let ty_di_node = match t.kind() {
+        ty::Uint(UintTy::Usize) => {
+            needs_typedef = true;
+
+            let equivalent = match t.primitive_size(cx.tcx).bits() {
+                8 => cx.tcx.types.u8,
+                16 => cx.tcx.types.u16,
+                32 => cx.tcx.types.u32,
+                64 => cx.tcx.types.u64,
+                128 => cx.tcx.types.u128,
+                x => bug!("Unexpected signed int size {x}"),
+            };
+            type_di_node(cx, equivalent)
+        }
+        ty::Int(IntTy::Isize) => {
+            needs_typedef = true;
+
+            let equivalent = match t.primitive_size(cx.tcx).bits() {
+                8 => cx.tcx.types.i8,
+                16 => cx.tcx.types.i16,
+                32 => cx.tcx.types.i32,
+                64 => cx.tcx.types.i64,
+                128 => cx.tcx.types.i128,
+                x => bug!("Unexpected signed int size: {x}"),
+            };
+            type_di_node(cx, equivalent)
+        }
+        _ => create_basic_type(cx, name, cx.size_of(t), encoding),
+    };
+
+    if !needs_typedef {
         return DINodeCreationResult::new(ty_di_node, false);
     }
 
@@ -949,20 +990,21 @@ pub(crate) fn build_compile_unit_di_node<'ll, 'tcx>(
             llvm::ChecksumKind::None,
             None,
         );
+        let flags = c"";
 
         let unit_metadata = llvm::LLVMRustDIBuilderCreateCompileUnit(
             debug_context.builder.as_ref(),
             dwarf_const::DW_LANG_Rust,
             compile_unit_file,
-            producer.as_c_char_ptr(),
+            producer.as_ptr(),
             producer.len(),
             tcx.sess.opts.optimize != config::OptLevel::No,
-            c"".as_ptr(),
+            flags.as_ptr(),
             0,
             // NB: this doesn't actually have any perceptible effect, it seems. LLVM will instead
             // put the path supplied to `MCSplitDwarfFile` into the debug info of the final
             // output(s).
-            split_name.as_c_char_ptr(),
+            split_name.as_ptr(),
             split_name.len(),
             kind,
             0,

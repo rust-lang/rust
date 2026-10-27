@@ -11,6 +11,7 @@ use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::{DUMMY_SP, Span, sym};
 use smallvec::{SmallVec, smallvec};
 
+use crate::infer::InferCtxt;
 use crate::traits::query::NoSolution;
 use crate::traits::query::type_op::QueryTypeOp;
 use crate::traits::{ObligationCtxt, wf};
@@ -20,7 +21,7 @@ impl<'tcx> QueryTypeOp<'tcx> for ImpliedOutlivesBounds<'tcx> {
     type QueryResponse = Vec<OutlivesBound<'tcx>>;
 
     fn try_fast_path(
-        _tcx: TyCtxt<'tcx>,
+        _infcx: &InferCtxt<'tcx>,
         key: &ParamEnvAnd<'tcx, Self>,
     ) -> Option<Self::QueryResponse> {
         // Don't go into the query for things that can't possibly have lifetimes.
@@ -164,7 +165,7 @@ pub fn query_compute_implied_outlives_bounds<'tcx>(
     /* if cfg!(debug_assertions) {
         match ocx.infcx.typing_mode_raw() {
             TypingMode::Typeck { defining_opaque_types_and_generators: opaque_types }
-            | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: opaque_types }
+            | TypingMode::PostTypeckThroughBorrowck { defining_opaque_types: opaque_types }
             | TypingMode::PostBorrowck { defined_opaque_types: opaque_types } => {
                 assert!(opaque_types.is_empty())
             }

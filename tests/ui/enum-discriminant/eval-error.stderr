@@ -9,6 +9,8 @@ error: the `repr(packed)` attribute cannot be used on enums
    |
 LL | #[repr(u8, packed)]
    |   ^^^^^^^^^^^^^^^^
+LL |
+LL | enum Foo3 {
    |
    = help: the `repr(packed)` attribute can be applied to structs and unions
 
@@ -45,6 +47,8 @@ LL |     a: Box<str>,
 error[E0080]: the type `Foo` has an unknown layout
   --> $DIR/eval-error.rs:9:30
    |
+LL | enum Bar {
+LL |     Boo = {
 LL |         let _: Option<Foo> = None;
    |                              ^^^^ evaluation of `Bar::Boo::{constant#0}` failed here
 

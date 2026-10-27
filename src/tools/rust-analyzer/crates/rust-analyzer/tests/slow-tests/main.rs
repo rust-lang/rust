@@ -24,13 +24,16 @@ use std::{path::PathBuf, time::Instant};
 use ide_db::FxHashMap;
 use lsp_types::{
     CodeActionContext, CodeActionParams, CodeActionRequest, CompletionParams, CompletionRequest,
+    DidChangeTextDocumentNotification, DidChangeTextDocumentParams,
     DidOpenTextDocumentNotification, DidOpenTextDocumentParams, DocumentFormattingParams,
     DocumentFormattingRequest, DocumentRangeFormattingParams, DocumentRangeFormattingRequest,
     FileRename, FormattingOptions, HoverParams, HoverRequest, InlayHint, InlayHintParams,
     InlayHintRequest, InlayHintResolveRequest, Label, LanguageKind, PartialResultParams, Position,
-    Range, RenameFilesParams, TextDocumentItem, TextDocumentPositionParams, TypeDefinitionParams,
-    TypeDefinitionRequest, Uri, WillRenameFilesRequest, WorkDoneProgressParams,
-    WorkspaceSymbolRequest,
+    Range, RenameFilesParams, SemanticTokensDeltaParams, SemanticTokensDeltaRequest,
+    SemanticTokensParams, SemanticTokensRequest, TextDocumentContentChangeEvent,
+    TextDocumentContentChangeWholeDocument, TextDocumentItem, TextDocumentPositionParams,
+    TypeDefinitionParams, TypeDefinitionRequest, Uri, VersionedTextDocumentIdentifier,
+    WillRenameFilesRequest, WorkDoneProgressParams, WorkspaceSymbolRequest,
 };
 use rust_analyzer::lsp::ext::{OnEnterRequest, RunnablesParams, RunnablesRequest};
 use serde_json::json;
@@ -984,6 +987,70 @@ version = \"0.0.0\"
     );
 }
 
+#[test]
+fn semantic_tokens_delta_after_edit() {
+    if skip_slow_tests() {
+        return;
+    }
+
+    let server = Project::with_fixture(
+        r#"
+//- /Cargo.toml
+[package]
+name = "foo"
+version = "0.0.0"
+
+//- /src/lib.rs
+fn foo() {}
+"#,
+    )
+    .server()
+    .wait_until_workspace_is_loaded();
+
+    let doc = server.doc_id("src/lib.rs");
+    server.notification::<DidOpenTextDocumentNotification>(DidOpenTextDocumentParams {
+        text_document: TextDocumentItem {
+            uri: doc.uri.clone(),
+            language_id: LanguageKind::Rust,
+            version: 0,
+            text: "fn foo() {}\n".to_owned(),
+        },
+    });
+
+    let full = server.send_request::<SemanticTokensRequest>(SemanticTokensParams {
+        text_document: doc.clone(),
+        work_done_progress_params: WorkDoneProgressParams::default(),
+        partial_result_params: PartialResultParams::default(),
+    });
+    let previous_result_id = full["resultId"].as_str().unwrap().to_owned();
+
+    server.notification::<DidChangeTextDocumentNotification>(DidChangeTextDocumentParams {
+        text_document: VersionedTextDocumentIdentifier {
+            text_document_identifier: doc.clone(),
+            version: 1,
+        },
+        content_changes: vec![
+            TextDocumentContentChangeEvent::TextDocumentContentChangeWholeDocument(
+                TextDocumentContentChangeWholeDocument {
+                    text: "fn foo() {}\nfn bar() {}\n".to_owned(),
+                },
+            ),
+        ],
+    });
+    server.wait_for_semantic_tokens_refresh();
+
+    let res = server.send_request::<SemanticTokensDeltaRequest>(SemanticTokensDeltaParams {
+        text_document: doc,
+        previous_result_id,
+        work_done_progress_params: WorkDoneProgressParams::default(),
+        partial_result_params: PartialResultParams::default(),
+    });
+    assert!(
+        res.get("edits").is_some() && res.get("data").is_none(),
+        "expected a delta response, got {res}"
+    );
+}
+
 fn out_dirs_check_impl(root_contains_symlink: bool) {
     let mut server = Project::with_fixture(
         r###"
@@ -1254,6 +1321,7 @@ pub fn foo(_input: TokenStream) -> TokenStream {
         ```
 
         ```rust
+        impl Bar for Foo
         fn bar()
         ```"#]]
     .assert_eq(value);
@@ -1612,4 +1680,58 @@ fn test() {
     let arr = res.as_array().unwrap();
     assert_eq!(arr.len(), 1);
     expect![[r#"{"goal":"Goal { param_env: ParamEnv { clauses: [] }, predicate: Binder { value: TraitPredicate(usize: Trait, polarity:Positive), bound_vars: [] } }","result":"Err(NoSolution)","depth":0,"candidates":[]}"#]].assert_eq(&arr[0].to_string());
+}
+
+#[test]
+fn test_push_semantic_diagnostics() {
+    if skip_slow_tests() {
+        return;
+    }
+
+    let code = r#"
+fn main() {
+    let _: i32 = true;
+}
+"#;
+    let server = Project::with_fixture(&format!(
+        r#"
+//- /Cargo.toml
+[package]
+name = "foo"
+version = "0.0.0"
+
+//- /src/main.rs
+{code}"#
+    ))
+    .with_config(serde_json::json!({
+        "cargo": {
+            "buildScripts": {
+                "enable": true,
+            },
+        },
+        "procMacro": {
+            "enable": true,
+        },
+    }))
+    .server()
+    .wait_until_workspace_is_loaded();
+
+    server.notification::<DidOpenTextDocumentNotification>(DidOpenTextDocumentParams {
+        text_document: TextDocumentItem {
+            uri: server.doc_id("src/main.rs").uri,
+            language_id: LanguageKind::Rust,
+            version: 0,
+            text: code.to_owned(),
+        },
+    });
+
+    let diagnostics = server.wait_for_diagnostics();
+    assert!(
+        diagnostics.diagnostics.iter().any(|d| matches!(
+            &d.message,
+            lsp_types::Message::String(s) if s.contains("expected i32, found bool")
+        )),
+        "expected type mismatch diagnostic, got: {:?}",
+        diagnostics.diagnostics,
+    );
 }

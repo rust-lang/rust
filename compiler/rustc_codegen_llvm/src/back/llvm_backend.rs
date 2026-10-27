@@ -2,9 +2,12 @@
 //! and related traits for the LLVM codegen backend.
 
 use std::any::Any;
+use std::cell::OnceCell;
 use std::ffi::CStr;
+use std::marker::PhantomData;
 use std::mem::ManuallyDrop;
 use std::path::PathBuf;
+use std::ptr;
 
 use rustc_ast::expand::allocator::AllocatorMethod;
 use rustc_codegen_ssa::back::lto::ThinModule;
@@ -20,7 +23,9 @@ use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductMap};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{OptLevel, OutputFilenames, PrintKind, PrintRequest};
-use rustc_session::{CodegenBackendInit, EarlySession, IncrCompSession, Session};
+use rustc_session::{
+    BorrowedIncrCompSession, CodegenBackendInit, EarlySession, IncrCompSession, Session,
+};
 use rustc_span::{Symbol, sym};
 use rustc_target::spec::{RelocModel, TlsModel};
 
@@ -59,11 +64,10 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
         methods: &[AllocatorMethod],
     ) -> ModuleLlvm {
         let module_llvm = ModuleLlvm::new_metadata(tcx, module_name);
-        let cx =
-            SimpleCx::new(module_llvm.llmod(), &module_llvm.llcx, tcx.data_layout.pointer_size());
-        unsafe {
-            allocator::codegen(tcx, cx, module_name, methods);
-        }
+        module_llvm.with_module_refs(|ModuleRefs { llcx, llmod, .. }| {
+            let cx = SimpleCx::new(llmod, llcx, tcx.data_layout.pointer_size());
+            unsafe { allocator::codegen(tcx, cx, module_name, methods) };
+        });
         module_llvm
     }
     fn compile_codegen_unit(
@@ -120,6 +124,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     fn run_thin_lto(
         cgcx: &CodegenContext,
         prof: &SelfProfilerRef,
+        incr_comp_session: Option<&BorrowedIncrCompSession>,
         dcx: DiagCtxtHandle<'_>,
         exported_symbols_for_lto: &[String],
         each_linked_rlib_for_lto: &[PathBuf],
@@ -128,6 +133,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         back::lto::run_thin(
             cgcx,
             prof,
+            incr_comp_session,
             dcx,
             exported_symbols_for_lto,
             each_linked_rlib_for_lto,
@@ -141,7 +147,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         module: &mut ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
     ) {
-        back::write::optimize(cgcx, prof, shared_emitter, module, config)
+        back::write::optimize(cgcx, prof, shared_emitter, module, config);
     }
     fn optimize_and_codegen_thin(
         cgcx: &CodegenContext,
@@ -162,7 +168,9 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         back::write::codegen(cgcx, prof, shared_emitter, module, config)
     }
     fn serialize_module(module: Self::Module, is_thin: bool) -> Self::ModuleBuffer {
-        back::lto::ModuleBuffer::new(module.llmod(), is_thin)
+        module.with_module_refs(|ModuleRefs { llmod, .. }| {
+            back::lto::ModuleBuffer::new(llmod, is_thin)
+        })
     }
 }
 
@@ -217,21 +225,20 @@ impl CodegenBackend for LlvmCodegenBackend {
                 sym::integer_max,
                 sym::integer_min,
 
-                // Fallback via libm, but the LLVM intrinsic is used instead.
+                // Fallback via libm/compiler-builtins, but the LLVM intrinsic is used instead.
                 sym::sin,
                 sym::cos,
-                sym::powf16, sym::powf32, sym::powf64,
+                sym::powf,
+                sym::powi,
+                sym::sqrt,
                 sym::exp,
                 sym::exp2,
                 sym::log,
                 sym::log10,
                 sym::log2,
-
-                // Fallback via f32 or f64, but the LLVM intrinsic is used instead.
-                sym::floorf16, sym::ceilf16, sym::truncf16,
-                sym::round_ties_even_f16, sym::roundf16,
-                sym::sqrtf16, sym::powif16,
-                sym::fmaf16,
+                sym::floor, sym::ceil, sym::trunc,
+                sym::round, sym::round_ties_even,
+                sym::fma,
 
                 sym::copysignf16, sym::copysignf32, sym::copysignf64, sym::copysignf128,
             ];
@@ -377,21 +384,35 @@ impl CodegenBackend for LlvmCodegenBackend {
             });
         }
 
+        if sess.codegen_units().as_usize() == 1 && sess.opts.unstable_opts.time_llvm_passes {
+            let timings =
+                llvm::build_string(|s| unsafe { llvm::LLVMRustPrintPassTimings(s) }).unwrap();
+            print!("{timings}");
+        }
+
+        if sess.print_llvm_stats() {
+            let stats =
+                llvm::build_string(|s| unsafe { llvm::LLVMRustPrintStatistics(s) }).unwrap();
+            print!("{stats}");
+        }
+
+        if let Some(out_path) = sess.print_llvm_stats_json() {
+            let llvm_stats_json =
+                llvm::build_string(|s| unsafe { llvm::LLVMRustPrintStatisticsJSON(s) }).unwrap();
+
+            if !llvm_stats_json.is_empty() {
+                if let Err(e) = std::fs::write(&out_path, llvm_stats_json) {
+                    sess.dcx().err(format!("failed to write stats to {out_path}: {e}"));
+                }
+            } else {
+                sess.dcx().warn(format!(
+                    "requested to print LLVM statistics to JSON file {out_path}, but the codegen backend \
+                    did not provide any statistics",
+                ));
+            }
+        }
+
         (compiled_modules, work_products)
-    }
-
-    fn print_pass_timings(&self) {
-        let timings = llvm::build_string(|s| unsafe { llvm::LLVMRustPrintPassTimings(s) }).unwrap();
-        print!("{timings}");
-    }
-
-    fn print_statistics(&self) {
-        let stats = llvm::build_string(|s| unsafe { llvm::LLVMRustPrintStatistics(s) }).unwrap();
-        print!("{stats}");
-    }
-
-    fn print_statistics_json(&self) -> String {
-        llvm::build_string(|s| unsafe { llvm::LLVMRustPrintStatisticsJSON(s) }).unwrap()
     }
 
     fn link(
@@ -421,40 +442,58 @@ impl CodegenBackend for LlvmCodegenBackend {
 }
 
 pub struct ModuleLlvm {
-    pub(crate) llcx: &'static mut llvm::Context,
+    llcx_raw: ptr::NonNull<llvm::Context>,
     llmod_raw: *const llvm::Module,
 
     // This field is `ManuallyDrop` because it is important that the `TargetMachine`
     // is disposed prior to the `Context` being disposed otherwise UAFs can occur.
-    pub(crate) tm: ManuallyDrop<OwnedTargetMachine>,
+    tm: ManuallyDrop<OwnedTargetMachine>,
+
+    /// Saved ThinLTO buffer for embedding in the object file.
+    ///
+    /// This is currently a `OnceCell` to avoid aliasing problems when writing to it
+    /// from code that also wants to pass around a shared ref to `ModuleCodegen`.
+    pub(crate) thin_lto_buffer: OnceCell<Vec<u8>>,
 }
 
+// An LLVM context can only be used by one thread at a time. But we can move the entire context and
+// all objects inside it to another thread (needed for parallel codegen). This is sound because
+// `ModuleLlvm` owns the context and only allows borrowing LLVM objects tied to the context.
 unsafe impl Send for ModuleLlvm {}
-unsafe impl Sync for ModuleLlvm {}
+
+/// Shared helper to call [`llvm::LLVMContextCreate`] and then configure
+/// [`llvm::LLVMContextSetDiscardValueNames`].
+fn create_context_and_set_fewer_names(fewer_names: bool) -> ptr::NonNull<llvm::Context> {
+    unsafe {
+        let llcx_raw = llvm::LLVMContextCreate();
+        llvm::LLVMContextSetDiscardValueNames(llcx_raw.as_ref(), fewer_names.to_llvm_bool());
+        llcx_raw
+    }
+}
 
 impl ModuleLlvm {
     pub(crate) fn new(tcx: TyCtxt<'_>, mod_name: &str) -> Self {
         unsafe {
-            let llcx = llvm::LLVMContextCreate();
-            llvm::LLVMContextSetDiscardValueNames(llcx, tcx.sess.fewer_names().to_llvm_bool());
-            let llmod_raw = context::create_module(tcx, llcx, mod_name) as *const _;
+            let llcx_raw = create_context_and_set_fewer_names(tcx.sess.fewer_names());
+            let llmod_raw = context::create_module(tcx, llcx_raw.as_ref(), mod_name);
             ModuleLlvm {
                 llmod_raw,
-                llcx,
+                llcx_raw,
                 tm: ManuallyDrop::new(create_target_machine(tcx, mod_name)),
+                thin_lto_buffer: OnceCell::new(),
             }
         }
     }
 
     pub(crate) fn new_metadata(tcx: TyCtxt<'_>, mod_name: &str) -> Self {
         unsafe {
-            let llcx = llvm::LLVMContextCreate();
-            llvm::LLVMContextSetDiscardValueNames(llcx, tcx.sess.fewer_names().to_llvm_bool());
-            let llmod_raw = context::create_module(tcx, llcx, mod_name) as *const _;
+            let llcx_raw = create_context_and_set_fewer_names(tcx.sess.fewer_names());
+            let llmod_raw = context::create_module(tcx, llcx_raw.as_ref(), mod_name);
             ModuleLlvm {
                 llmod_raw,
-                llcx,
+                llcx_raw,
                 tm: ManuallyDrop::new(create_informational_target_machine(tcx.sess)),
+                thin_lto_buffer: OnceCell::new(),
             }
         }
     }
@@ -467,17 +506,34 @@ impl ModuleLlvm {
         dcx: DiagCtxtHandle<'_>,
     ) -> Self {
         unsafe {
-            let llcx = llvm::LLVMContextCreate();
-            llvm::LLVMContextSetDiscardValueNames(llcx, cgcx.fewer_names.to_llvm_bool());
-            let llmod_raw = back::lto::parse_module(llcx, name, buffer, dcx);
+            let llcx_raw = create_context_and_set_fewer_names(cgcx.fewer_names);
+            let llmod_raw = back::lto::parse_module(llcx_raw.as_ref(), name, buffer, dcx);
             let tm = tm_factory(dcx, TargetMachineFactoryConfig::new(cgcx, name.to_str().unwrap()));
 
-            ModuleLlvm { llmod_raw, llcx, tm: ManuallyDrop::new(tm) }
+            ModuleLlvm {
+                llmod_raw,
+                llcx_raw,
+                tm: ManuallyDrop::new(tm),
+                thin_lto_buffer: OnceCell::new(),
+            }
         }
     }
 
-    pub(crate) fn llmod(&self) -> &llvm::Module {
-        unsafe { &*self.llmod_raw }
+    /// Passes a [`ModuleRefs`] struct to a callback function, giving it scoped
+    /// access to the resources owned by this module.
+    ///
+    /// Passing the references to a callback ensures that they have coherent
+    /// `'ll` lifetimes, and that they can't escape the callback.
+    pub(crate) fn with_module_refs<R>(
+        &self,
+        inner_fn: impl for<'ll> FnOnce(ModuleRefs<'ll>) -> R,
+    ) -> R {
+        inner_fn(ModuleRefs {
+            llcx: unsafe { self.llcx_raw.as_ref() },
+            llmod: unsafe { &*self.llmod_raw },
+            tm: self.tm.raw(),
+            _ph: PhantomData,
+        })
     }
 }
 
@@ -485,7 +541,20 @@ impl Drop for ModuleLlvm {
     fn drop(&mut self) {
         unsafe {
             ManuallyDrop::drop(&mut self.tm);
-            llvm::LLVMContextDispose(&mut *(self.llcx as *mut _));
+            llvm::LLVMContextDispose(self.llcx_raw);
         }
     }
+}
+
+/// Bundle of references provided by [`ModuleLlvm::with_module_refs`].
+#[derive(Clone, Copy)]
+pub(crate) struct ModuleRefs<'ll> {
+    pub(crate) llcx: &'ll llvm::Context,
+    pub(crate) llmod: &'ll llvm::Module,
+    pub(crate) tm: &'ll llvm::TargetMachine,
+    /// Make sure `'ll` is invariant, even if no fields happen to require that.
+    ///
+    /// FIXME(Zalathar): Consider using `PhantomInvariantLifetime` when the API
+    /// for that is settled.
+    _ph: PhantomData<fn(&'ll ()) -> &'ll ()>,
 }

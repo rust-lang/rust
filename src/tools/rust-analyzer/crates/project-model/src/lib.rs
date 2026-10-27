@@ -65,11 +65,13 @@ use anyhow::{Context, bail, format_err};
 use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
 use rustc_hash::FxHashSet;
 
+use base_db::TargetKind;
+
 pub use crate::{
     build_dependencies::{ProcMacroDylibPath, WorkspaceBuildScripts},
     cargo_workspace::{
         CargoConfig, CargoFeatures, CargoMetadataConfig, CargoWorkspace, Package, PackageData,
-        PackageDependency, RustLibSource, Target, TargetData, TargetDirectoryConfig, TargetKind,
+        PackageDependency, RustLibSource, Target, TargetData, TargetDirectoryConfig,
     },
     manifest_path::ManifestPath,
     project_json::{ProjectJson, ProjectJsonData},

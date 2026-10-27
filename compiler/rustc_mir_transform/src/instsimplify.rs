@@ -6,7 +6,6 @@ use rustc_attr_ir::lang_items::LangItem;
 use rustc_index::IndexVec;
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::*;
-use rustc_middle::ty::consts::ConstExt;
 use rustc_middle::ty::layout::{IntegerExt, ValidityRequirement};
 use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, layout};
 use rustc_span::{Symbol, bug, sym};
@@ -256,7 +255,7 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
                 ),
             ))),
         ));
-        terminator.kind = TerminatorKind::Goto { target: *destination_block };
+        terminator.kind = TerminatorKind::goto(*destination_block);
     }
 
     /// Simplify `size_of_val` and `align_of_val` if we don't actually need
@@ -314,7 +313,7 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
                     Rvalue::Use(const_op, WithRetag::Yes),
                 ))),
             ));
-            terminator.kind = TerminatorKind::Goto { target: *destination_block };
+            terminator.kind = TerminatorKind::goto(*destination_block);
         }
     }
 
@@ -371,7 +370,7 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
                     Rvalue::BinaryOp(BinOp::Eq, Box::new((lhs_op, rhs_op))),
                 ))),
             ));
-            terminator.kind = TerminatorKind::Goto { target: *destination_block };
+            terminator.kind = TerminatorKind::goto(*destination_block);
         }
     }
 
@@ -421,7 +420,7 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
             }
             Some(false) => {
                 // If we know the assert does not panic, turn the call into a Goto
-                terminator.kind = TerminatorKind::Goto { target: target_block };
+                terminator.kind = TerminatorKind::goto(target_block);
             }
         }
     }
