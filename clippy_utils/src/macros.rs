@@ -304,7 +304,7 @@ impl<'a> PanicCall<'a> {
         };
         let result = match name {
             sym::panic | sym::begin_panic | sym::panic_str_2015 => {
-                if arg.span.eq_ctxt(expr.span) || arg.span.is_dummy() {
+                if arg.span.ctxt() == expr.span.ctxt() || arg.span.is_dummy() {
                     Self::DefaultMessage
                 } else {
                     Self::Str2015(arg)

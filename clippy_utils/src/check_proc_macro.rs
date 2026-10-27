@@ -161,7 +161,7 @@ fn expr_search_pat(tcx: TyCtxt<'_>, e: &Expr<'_>) -> (Pat, Pat) {
         // e.g. `return format!(..)` would be considered to be from a proc macro
         // if we build up a pattern for the macro expansion and compare it to the invocation `format!()`.
         // So instead we return an empty pattern such that `span_matches_pat` always returns true.
-        if !e.span.eq_ctxt(outer_span) {
+        if e.span.ctxt() != outer_span.ctxt() {
             return (Pat::Str(""), Pat::Str(""));
         }
 
