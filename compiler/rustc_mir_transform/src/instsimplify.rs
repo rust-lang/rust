@@ -7,8 +7,8 @@ use rustc_index::IndexVec;
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::{IntegerExt, ValidityRequirement};
-use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, layout};
-use rustc_span::{Symbol, bug, sym};
+use rustc_middle::ty::{self, GenericArgsRef, IntrinsicName, Ty, TyCtxt, layout};
+use rustc_span::{bug, sym};
 
 use crate::PassPolicy;
 use crate::simplify::simplify_duplicate_switch_targets;
@@ -281,9 +281,9 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
             && args.len() == 1
             && let Some((fn_def_id, generics)) = func.const_fn_def()
         {
-            let lang_item = if self.tcx.is_intrinsic(fn_def_id, sym::size_of_val) {
+            let lang_item = if self.tcx.is_rust_intrinsic(fn_def_id, sym::size_of_val) {
                 LangItem::SizeOf
-            } else if self.tcx.is_intrinsic(fn_def_id, sym::align_of_val) {
+            } else if self.tcx.is_rust_intrinsic(fn_def_id, sym::align_of_val) {
                 LangItem::AlignOf
             } else {
                 return;
@@ -333,7 +333,7 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
         } = &terminator.kind
             && args.len() == 2
             && let Some((fn_def_id, generics)) = func.const_fn_def()
-            && tcx.is_intrinsic(fn_def_id, sym::raw_eq)
+            && tcx.is_rust_intrinsic(fn_def_id, sym::raw_eq)
             && let generic_ty = generics.type_at(0)
             && let Ok(layout) = tcx.layout_of(self.typing_env.as_query_input(generic_ty))
             && let Ok(integer) = Integer::from_size(layout.size)
@@ -430,7 +430,7 @@ fn intrinsic_assert_panics<'tcx>(
     tcx: TyCtxt<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
     arg: ty::GenericArg<'tcx>,
-    intrinsic_name: Symbol,
+    intrinsic_name: IntrinsicName,
 ) -> Option<bool> {
     let requirement = ValidityRequirement::from_intrinsic(intrinsic_name)?;
     let ty = arg.expect_ty();
@@ -440,7 +440,7 @@ fn intrinsic_assert_panics<'tcx>(
 fn resolve_rust_intrinsic<'tcx>(
     tcx: TyCtxt<'tcx>,
     func_ty: Ty<'tcx>,
-) -> Option<(Symbol, GenericArgsRef<'tcx>)> {
+) -> Option<(IntrinsicName, GenericArgsRef<'tcx>)> {
     let ty::FnDef(def_id, args) = *func_ty.kind() else { return None };
     let intrinsic = tcx.intrinsic(def_id)?;
     Some((intrinsic.name, args.no_bound_vars().unwrap()))

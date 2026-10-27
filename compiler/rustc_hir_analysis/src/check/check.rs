@@ -24,8 +24,8 @@ use rustc_middle::ty::error::TypeErrorToStringExt;
 use rustc_middle::ty::layout::LayoutError;
 use rustc_middle::ty::util::Discr;
 use rustc_middle::ty::{
-    AdtDef, BottomUpFolder, GenericArgKind, RegionKind, TypeFoldable, TypeSuperVisitable,
-    TypeVisitable, TypeVisitableExt, Unnormalized, fold_regions,
+    AdtDef, BottomUpFolder, GenericArgKind, IntrinsicName, RegionKind, TypeFoldable,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, Unnormalized, fold_regions,
 };
 use rustc_span::sym;
 use rustc_target::spec::{AbiMap, AbiMapping};
@@ -835,12 +835,14 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             tcx.ensure_ok().clauses_of(def_id);
             tcx.ensure_ok().fn_sig(def_id);
             tcx.ensure_ok().codegen_fn_attrs(def_id);
-            if let Some(i) = tcx.intrinsic(def_id) {
+            if let Some(i) = tcx.intrinsic(def_id)
+                && let IntrinsicName::RustIntrinsic(name) = i.name
+            {
                 intrinsic::check_intrinsic_type(
                     tcx,
                     def_id,
                     tcx.def_ident_span(def_id).unwrap(),
-                    i.name,
+                    name,
                 )
             }
         }

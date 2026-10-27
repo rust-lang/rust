@@ -22,7 +22,7 @@ use rustc_middle::mir::interpret::{AllocId, Allocation, ErrorHandled, GlobalAllo
 use rustc_middle::mir::{self, BinOp};
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, LayoutOf};
 use rustc_middle::ty::offload_meta::OffloadMetadata;
-use rustc_middle::ty::{self, GenericArgsRef, Instance, SimdAlign, Ty, TyCtxt};
+use rustc_middle::ty::{self, GenericArgsRef, Instance, IntrinsicName, SimdAlign, Ty, TyCtxt};
 use rustc_session::diagnostics::feature_err;
 use rustc_span::{ErrorGuaranteed, Span, Symbol, bug, span_bug, sym};
 use rustc_structures::CrateType;
@@ -120,785 +120,13 @@ impl<'ll, 'tcx> Builder<'_, 'll, 'tcx> {
     }
 }
 
-impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
-    fn codegen_intrinsic_call(
+impl<'ll, 'tcx> Builder<'_, 'll, 'tcx> {
+    fn codegen_llvm_intrinsic_call_impl(
         &mut self,
         instance: ty::Instance<'tcx>,
+        intrinsic_name: &str,
         args: &[OperandRef<'tcx, &'ll Value>],
-        result_layout: ty::layout::TyAndLayout<'tcx>,
-        result_place: Option<PlaceValue<&'ll Value>>,
-        span: Span,
-    ) -> IntrinsicResult<'tcx, &'ll Value> {
-        let tcx = self.tcx;
-        let llvm_version = crate::llvm_util::get_version();
-
-        let name = tcx.item_name(instance.def_id());
-        let fn_args = instance.args;
-
-        let simple = call_simple_intrinsic(self, name, args);
-        let llval = match name {
-            _ if simple.is_some() => simple.unwrap(),
-            sym::minimum_number_nsz_f16
-            | sym::minimum_number_nsz_f32
-            | sym::minimum_number_nsz_f64
-            | sym::minimum_number_nsz_f128
-            | sym::maximum_number_nsz_f16
-            | sym::maximum_number_nsz_f32
-            | sym::maximum_number_nsz_f64
-            | sym::maximum_number_nsz_f128 => {
-                let intrinsic_name = if name.as_str().starts_with("min") {
-                    "llvm.minimumnum"
-                } else {
-                    "llvm.maximumnum"
-                };
-                let call = self.call_intrinsic(
-                    intrinsic_name,
-                    &[args[0].layout.immediate_llvm_type(self.cx)],
-                    &[args[0].immediate(), args[1].immediate()],
-                );
-                // `nsz` on minimumnum/maximumnum is special: its only effect is to make
-                // signed-zero ordering non-deterministic.
-                unsafe { llvm::LLVMRustSetNoSignedZeros(call) };
-                call
-            }
-            sym::ptr_mask => {
-                let ptr = args[0].immediate();
-                self.call_intrinsic(
-                    "llvm.ptrmask",
-                    &[self.val_ty(ptr), self.type_isize()],
-                    &[ptr, args[1].immediate()],
-                )
-            }
-            sym::autodiff => {
-                return codegen_autodiff(self, instance, args, result_layout, result_place);
-            }
-            sym::offload => {
-                if tcx.sess.opts.unstable_opts.offload.is_empty() {
-                    let _ = tcx.dcx().emit_err(OffloadWithoutEnable);
-                }
-
-                if tcx.sess.lto() != rustc_session::config::Lto::Fat {
-                    let _ = tcx.dcx().emit_err(OffloadWithoutFatLTO);
-                }
-
-                codegen_offload(self, tcx, instance, args);
-                // offload *has* a return type, but somehow works without mentioning the place
-                return IntrinsicResult::WroteIntoPlace;
-            }
-            sym::offload_get_num_devices => {
-                let (fn_decl, fn_ty) = declare_omp_get_num_devices(self.cx);
-
-                let llval =
-                    self.call(fn_ty, None, None, fn_decl, ReturnSlot::Direct, &[], None, None);
-
-                return IntrinsicResult::Operand(OperandValue::Immediate(llval));
-            }
-            sym::is_val_statically_known => {
-                if let OperandValue::Immediate(imm) = args[0].val {
-                    self.call_intrinsic(
-                        "llvm.is.constant",
-                        &[args[0].layout.immediate_llvm_type(self.cx)],
-                        &[imm],
-                    )
-                } else {
-                    self.const_bool(false)
-                }
-            }
-            sym::select_unpredictable => {
-                let cond = args[0].immediate();
-                assert_eq!(args[1].layout, args[2].layout);
-                let select = |bx: &mut Self, true_val, false_val| {
-                    let result = bx.select(cond, true_val, false_val);
-                    bx.set_unpredictable(&result);
-                    result
-                };
-                match (args[1].val, args[2].val) {
-                    (OperandValue::Ref(true_val), OperandValue::Ref(false_val)) => {
-                        assert!(true_val.llextra.is_none());
-                        assert!(false_val.llextra.is_none());
-                        assert_eq!(true_val.align, false_val.align);
-                        let ptr = select(self, true_val.llval, false_val.llval);
-                        let selected =
-                            OperandValue::Ref(PlaceValue::new_sized(ptr, true_val.align));
-                        let result = PlaceRef { val: result_place.unwrap(), layout: result_layout };
-                        selected.store(self, result);
-                        return IntrinsicResult::WroteIntoPlace;
-                    }
-                    (OperandValue::Immediate(_), OperandValue::Immediate(_))
-                    | (OperandValue::Pair(_, _), OperandValue::Pair(_, _)) => {
-                        let true_val = args[1].immediate_or_packed_pair(self);
-                        let false_val = args[2].immediate_or_packed_pair(self);
-                        select(self, true_val, false_val)
-                    }
-                    (OperandValue::ZeroSized, OperandValue::ZeroSized) => {
-                        return IntrinsicResult::Operand(OperandValue::ZeroSized);
-                    }
-                    _ => span_bug!(span, "Incompatible OperandValue for select_unpredictable"),
-                }
-            }
-            sym::catch_unwind => catch_unwind_intrinsic(
-                self,
-                args[0].immediate(),
-                args[1].immediate(),
-                args[2].immediate(),
-            ),
-            sym::breakpoint | sym::resumable_breakpoint => {
-                self.call_intrinsic("llvm.debugtrap", &[], &[])
-            }
-            sym::va_arg => {
-                let target = &self.cx.tcx.sess.target;
-                let stability = target.supports_c_variadic_definitions();
-                if let CVariadicStatus::Unstable { feature } = stability
-                    && !self.tcx.features().enabled(feature)
-                {
-                    let msg =
-                        format!("C-variadic function definitions on this target are unstable");
-                    feature_err(&*self.sess(), feature, span, msg).emit();
-                }
-
-                let BackendRepr::Scalar(scalar) = result_layout.backend_repr else {
-                    bug!("the va_arg intrinsic does not support non-scalar types")
-                };
-
-                // We reject types that would never be passed as varargs in C because
-                // they get promoted to a larger type, specifically integers smaller than
-                // c_int and float type smaller than c_double.
-                match scalar.primitive() {
-                    Primitive::Pointer(_) => {
-                        // Pointers are always OK.
-                    }
-                    Primitive::Int(..) => {
-                        let int_width = self.cx().size_of(result_layout.ty).bits();
-                        let target_c_int_width = self.cx().sess().target.options.c_int_width;
-                        if int_width < u64::from(target_c_int_width) {
-                            // Smaller integer types are automatically promototed and `va_arg`
-                            // should not be called on them.
-                            bug!(
-                                "va_arg got i{} but needs at least c_int (an i{})",
-                                int_width,
-                                target_c_int_width
-                            );
-                        }
-                    }
-                    Primitive::Float(Float::F16) => {
-                        bug!("the va_arg intrinsic does not support `f16`")
-                    }
-                    Primitive::Float(Float::F16B) => {
-                        bug!("the va_arg intrinsic does not support `f16b`")
-                    }
-                    Primitive::Float(Float::F32) => {
-                        // c_double is actually f32 on avr.
-                        if self.cx().sess().target.arch != Arch::Avr {
-                            bug!("the va_arg intrinsic does not support `f32` on this target")
-                        }
-                    }
-                    Primitive::Float(Float::F64) => {
-                        // 64-bit floats are always OK.
-                    }
-                    Primitive::Float(Float::F128) => {
-                        // Supported on some targets, especially where long double is IEEE f128.
-                    }
-                    Primitive::Float(Float::PpcF128) => {
-                        // Supported on powerpc and powerpc64 targets.
-                    }
-                }
-
-                emit_va_arg(self, args[0], result_layout)
-            }
-
-            sym::volatile_load | sym::unaligned_volatile_load => {
-                // Note that we cannot just load the `llvm_type` because we should never load non-scalars.
-                // Trying to do so blows up horribly in some cases -- for example loading a
-                // `MaybeUninint<&dyn Trait>` would load as `{ [i64x2] }` which gives assertions later
-                // (if we're lucky) from things not being pointers that ought to be.
-                let ptr = args[0].immediate();
-                let abi_align = result_layout.align.abi;
-                let ptr_align = if name == sym::volatile_load { abi_align } else { Align::ONE };
-                let need_black_box = llvm_version < (23, 0, 0);
-                if result_layout.is_zst() {
-                    return IntrinsicResult::Operand(OperandValue::ZeroSized);
-                } else if let BackendRepr::Scalar(scalar) = result_layout.backend_repr
-                    && !need_black_box
-                {
-                    let load = self.volatile_load(self.type_from_scalar(scalar), ptr, ptr_align);
-                    self.to_immediate_scalar(load, scalar)
-                } else {
-                    // One day Rust will probably want to define how we split up a volatile load
-                    // of something that's *not* just an ordinary scalar, but for now we can just
-                    // use an LLVM integer type of the correct width and let it split it however.
-                    let llty = self.type_ix(result_layout.size.bits());
-                    let temp = if let Some(result_place) = result_place {
-                        PlaceRef { val: result_place, layout: result_layout }
-                    } else {
-                        PlaceRef::alloca(self, result_layout)
-                    };
-                    let llval = self.volatile_load(llty, ptr, ptr_align);
-                    self.store(llval, temp.val.llval, abi_align);
-                    if need_black_box {
-                        // LLVM up until v22 considers volatile reads `willreturn` and hence can
-                        // move UB from further down up across this read. To prevent that, insert an
-                        // inline asm block that, as far as LLVM is concerned, might not terminate,
-                        // and hence should prevent such reordering.
-                        self.black_box(temp, span);
-                    }
-                    return if result_place.is_none() {
-                        IntrinsicResult::Operand(self.load_operand(temp).val)
-                    } else {
-                        IntrinsicResult::WroteIntoPlace
-                    };
-                }
-            }
-            sym::prefetch_read_data
-            | sym::prefetch_write_data
-            | sym::prefetch_read_instruction
-            | sym::prefetch_write_instruction => {
-                let (rw, cache_type) = match name {
-                    sym::prefetch_read_data => (0, 1),
-                    sym::prefetch_write_data => (1, 1),
-                    sym::prefetch_read_instruction => (0, 0),
-                    sym::prefetch_write_instruction => (1, 0),
-                    _ => bug!(),
-                };
-                let ptr = args[0].immediate();
-                let locality = fn_args.const_at(1).to_leaf().to_i32();
-                self.call_intrinsic(
-                    "llvm.prefetch.p0",
-                    &[self.val_ty(ptr)],
-                    &[
-                        ptr,
-                        self.const_i32(rw),
-                        self.const_i32(locality),
-                        self.const_i32(cache_type),
-                    ],
-                );
-                return IntrinsicResult::Operand(OperandValue::ZeroSized);
-            }
-            sym::carrying_mul_add => {
-                let (size, signed) = fn_args.type_at(0).int_size_and_signed(self.tcx);
-
-                let wide_llty = self.type_ix(size.bits() * 2);
-                let args = args.as_array().unwrap();
-                let [a, b, c, d] = args.map(|a| self.intcast(a.immediate(), wide_llty, signed));
-
-                let wide = if signed {
-                    let prod = self.unchecked_smul(a, b);
-                    let acc = self.unchecked_sadd(prod, c);
-                    self.unchecked_sadd(acc, d)
-                } else {
-                    let prod = self.unchecked_umul(a, b);
-                    let acc = self.unchecked_uadd(prod, c);
-                    self.unchecked_uadd(acc, d)
-                };
-
-                let narrow_llty = self.type_ix(size.bits());
-                let low = self.trunc(wide, narrow_llty);
-                let bits_const = self.const_uint(wide_llty, size.bits());
-                // No need for ashr when signed; LLVM changes it to lshr anyway.
-                let high = self.lshr(wide, bits_const);
-                // FIXME: could be `trunc nuw`, even for signed.
-                let high = self.trunc(high, narrow_llty);
-
-                let pair_llty = self.type_struct(&[narrow_llty, narrow_llty], false);
-                let pair = self.const_poison(pair_llty);
-                let pair = self.insert_value(pair, low, 0);
-                let pair = self.insert_value(pair, high, 1);
-                pair
-            }
-
-            sym::ctlz
-            | sym::ctlz_nonzero
-            | sym::cttz
-            | sym::cttz_nonzero
-            | sym::ctpop
-            | sym::bswap
-            | sym::bitreverse
-            | sym::carryless_mul
-            | sym::integer_max
-            | sym::integer_min
-            | sym::saturating_add
-            | sym::saturating_sub
-            | sym::unchecked_funnel_shl
-            | sym::unchecked_funnel_shr => {
-                let ty = args[0].layout.ty;
-                if !ty.is_integral() {
-                    let err = tcx.dcx().emit_err(InvalidMonomorphization::BasicIntegerType {
-                        span,
-                        name,
-                        ty,
-                    });
-                    return IntrinsicResult::Err(err);
-                }
-                let (size, signed) = ty.int_size_and_signed(self.tcx);
-                let width = size.bits();
-                let llty = self.type_ix(width);
-                match name {
-                    sym::ctlz | sym::ctlz_nonzero | sym::cttz | sym::cttz_nonzero => {
-                        let y =
-                            self.const_bool(name == sym::ctlz_nonzero || name == sym::cttz_nonzero);
-                        let llvm_name = if name == sym::ctlz || name == sym::ctlz_nonzero {
-                            "llvm.ctlz"
-                        } else {
-                            "llvm.cttz"
-                        };
-                        let ret =
-                            self.call_intrinsic(llvm_name, &[llty], &[args[0].immediate(), y]);
-                        self.intcast(ret, result_layout.llvm_type(self), false)
-                    }
-                    sym::ctpop => self.ctpop(args[0].immediate()),
-                    sym::bswap => {
-                        if width == 8 {
-                            args[0].immediate() // byte swap a u8/i8 is just a no-op
-                        } else {
-                            self.call_intrinsic("llvm.bswap", &[llty], &[args[0].immediate()])
-                        }
-                    }
-                    sym::bitreverse => {
-                        self.call_intrinsic("llvm.bitreverse", &[llty], &[args[0].immediate()])
-                    }
-                    sym::carryless_mul => {
-                        let lhs = args[0].immediate();
-                        let rhs = args[1].immediate();
-                        self.call_intrinsic("llvm.clmul", &[llty], &[lhs, rhs])
-                    }
-                    sym::integer_min | sym::integer_max => {
-                        let lhs = args[0].immediate();
-                        let rhs = args[1].immediate();
-                        let llvm_name = match (name, signed) {
-                            (sym::integer_max, false) => "llvm.umax",
-                            (sym::integer_max, true) => "llvm.smax",
-                            (sym::integer_min, false) => "llvm.umin",
-                            (sym::integer_min, true) => "llvm.smin",
-                            _ => bug!(),
-                        };
-                        self.call_intrinsic(llvm_name, &[llty], &[lhs, rhs])
-                    }
-                    sym::unchecked_funnel_shl | sym::unchecked_funnel_shr => {
-                        let is_left = name == sym::unchecked_funnel_shl;
-                        let lhs = args[0].immediate();
-                        let rhs = args[1].immediate();
-                        let raw_shift = args[2].immediate();
-                        let llvm_name = format!("llvm.fsh{}", if is_left { 'l' } else { 'r' });
-
-                        // llvm expects shift to be the same type as the values, but rust
-                        // always uses `u32`.
-                        let raw_shift = self.intcast(raw_shift, self.val_ty(lhs), false);
-
-                        self.call_intrinsic(llvm_name, &[llty], &[lhs, rhs, raw_shift])
-                    }
-                    sym::saturating_add | sym::saturating_sub => {
-                        let is_add = name == sym::saturating_add;
-                        let lhs = args[0].immediate();
-                        let rhs = args[1].immediate();
-                        let llvm_name = format!(
-                            "llvm.{}{}.sat",
-                            if signed { 's' } else { 'u' },
-                            if is_add { "add" } else { "sub" },
-                        );
-                        self.call_intrinsic(llvm_name, &[llty], &[lhs, rhs])
-                    }
-                    _ => bug!(),
-                }
-            }
-
-            sym::fabs
-            | sym::sqrt
-            | sym::powf
-            | sym::fma
-            | sym::fmuladd
-            | sym::floor
-            | sym::ceil
-            | sym::trunc
-            | sym::round
-            | sym::round_ties_even
-            | sym::exp
-            | sym::exp2
-            | sym::log
-            | sym::log10
-            | sym::log2
-            | sym::sin
-            | sym::cos
-            | sym::powi => {
-                let ty = args[0].layout.ty;
-                let ty::Float(f) = ty.kind() else {
-                    span_bug!(
-                        span,
-                        "the `{}` intrinsic requires a floating-point argument, got {:?}",
-                        name,
-                        ty
-                    );
-                };
-                let llty = self.type_float_from_ty(*f);
-                let llvm_name = match name {
-                    sym::fabs => "llvm.fabs",
-                    sym::sqrt => "llvm.sqrt",
-                    sym::powf => "llvm.pow",
-                    sym::fma => "llvm.fma",
-                    sym::fmuladd => "llvm.fmuladd",
-                    sym::floor => "llvm.floor",
-                    sym::ceil => "llvm.ceil",
-                    sym::trunc => "llvm.trunc",
-                    sym::round => "llvm.round",
-                    // We could use any of `rint`, `nearbyint`, or `roundeven`
-                    // for this -- they are all identical in semantics when
-                    // assuming the default FP environment.
-                    // `rint` is what we used for $forever.
-                    sym::round_ties_even => "llvm.rint",
-                    sym::exp => "llvm.exp",
-                    sym::exp2 => "llvm.exp2",
-                    sym::log => "llvm.log",
-                    sym::log10 => "llvm.log10",
-                    sym::log2 => "llvm.log2",
-                    sym::sin => "llvm.sin",
-                    sym::cos => "llvm.cos",
-                    sym::powi => "llvm.powi",
-
-                    _ => bug!(),
-                };
-
-                let params: &[&'ll Type] = match name {
-                    sym::powi => &[llty, self.type_i32()],
-                    _ => &[llty],
-                };
-
-                self.call_intrinsic(
-                    llvm_name,
-                    params,
-                    &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
-                )
-            }
-
-            sym::raw_eq => {
-                use BackendRepr::*;
-                let tp_ty = fn_args.type_at(0);
-                let layout = self.layout_of(tp_ty).layout;
-                let use_integer_compare = match layout.backend_repr() {
-                    Scalar(_) | ScalarPair { a: _, b: _, b_offset: _ } => true,
-                    SimdVector { .. } => false,
-                    SimdScalableVector { .. } => {
-                        let err = tcx.dcx().emit_err(InvalidMonomorphization::NonScalableType {
-                            span,
-                            name: sym::raw_eq,
-                            ty: tp_ty,
-                        });
-                        return IntrinsicResult::Err(err);
-                    }
-                    Memory { .. } => {
-                        // For rusty ABIs, small aggregates are actually passed
-                        // as `RegKind::Integer` (see `FnAbi::adjust_for_abi`),
-                        // so we re-use that same threshold here.
-                        layout.size() <= self.data_layout().pointer_size() * 2
-                    }
-                };
-
-                let a = args[0].immediate();
-                let b = args[1].immediate();
-                if layout.size().bytes() == 0 {
-                    self.const_bool(true)
-                } else if use_integer_compare {
-                    let integer_ty = self.type_ix(layout.size().bits());
-                    let a_val = self.load(integer_ty, a, layout.align().abi);
-                    let b_val = self.load(integer_ty, b, layout.align().abi);
-                    self.icmp(IntPredicate::IntEQ, a_val, b_val)
-                } else {
-                    let n = self.const_usize(layout.size().bytes());
-                    let cmp = self.call_intrinsic("memcmp", &[], &[a, b, n]);
-                    self.icmp(IntPredicate::IntEQ, cmp, self.const_int(self.type_int(), 0))
-                }
-            }
-
-            sym::compare_bytes => {
-                // Here we assume that the `memcmp` provided by the target is a NOP for size 0.
-                let cmp = self.call_intrinsic(
-                    "memcmp",
-                    &[],
-                    &[args[0].immediate(), args[1].immediate(), args[2].immediate()],
-                );
-                // Some targets have `memcmp` returning `i16`, but the intrinsic is always `i32`.
-                self.sext(cmp, self.type_ix(32))
-            }
-
-            sym::black_box => {
-                // This `unwrap` is justified by `intrinsic_call_expects_place_always` declaring
-                // this intrinsic as always needing a return place.
-                let result = PlaceRef { val: result_place.unwrap(), layout: result_layout };
-                args[0].val.store(self, result);
-                self.black_box(result, span);
-
-                // We have copied the value to `result` already.
-                return IntrinsicResult::WroteIntoPlace;
-            }
-
-            sym::gpu_launch_sized_workgroup_mem => {
-                // Generate an anonymous global per call, with these properties:
-                // 1. The global is in the address space for workgroup memory
-                // 2. It is an `external` global
-                // 3. It is correctly aligned for the pointee `T`
-                // All instances of extern addrspace(gpu_workgroup) globals are merged in the LLVM backend.
-                // The name is irrelevant.
-                // See https://docs.nvidia.com/cuda/cuda-c-programming-guide/#shared
-                let name = if llvm_version < (23, 0, 0) && tcx.sess.target.arch == Arch::Nvptx64 {
-                    // The auto-assigned name for extern shared globals in the nvptx backend does
-                    // not compile in ptxas. Workaround this issue by assigning a name.
-                    // Fixed in LLVM 23.
-                    "gpu_launch_sized_workgroup_mem"
-                } else {
-                    ""
-                };
-                let global = self.declare_global_in_addrspace(
-                    name,
-                    self.type_array(self.type_i8(), 0),
-                    AddressSpace::GPU_WORKGROUP,
-                );
-                let ty::RawPtr(inner_ty, _) = result_layout.ty.kind() else { unreachable!() };
-                // The alignment of the global is used to specify the *minimum* alignment that
-                // must be obeyed by the GPU runtime.
-                // When multiple of these global variables are used by a kernel, the maximum alignment is taken.
-                // See https://github.com/llvm/llvm-project/blob/a271d07488a85ce677674bbe8101b10efff58c95/llvm/lib/Target/AMDGPU/AMDGPULowerModuleLDSPass.cpp#L821
-                let alignment = self.align_of(*inner_ty).bytes() as u32;
-                unsafe {
-                    // FIXME Workaround the above issue by taking maximum alignment if the global existed
-                    if tcx.sess.target.arch == Arch::Nvptx64 {
-                        if alignment > llvm::LLVMGetAlignment(global) {
-                            llvm::LLVMSetAlignment(global, alignment);
-                        }
-                    } else {
-                        llvm::LLVMSetAlignment(global, alignment);
-                    }
-                }
-                self.cx().const_pointercast(global, self.type_ptr())
-            }
-
-            sym::amdgpu_dispatch_ptr => {
-                let val = self.call_intrinsic("llvm.amdgcn.dispatch.ptr", &[], &[]);
-                // Relying on `LLVMBuildPointerCast` to produce an addrspacecast
-                self.pointercast(val, self.type_ptr())
-            }
-
-            sym::sve_tuple_create2 => {
-                assert_matches!(
-                    self.layout_of(fn_args.type_at(0)).backend_repr,
-                    BackendRepr::SimdScalableVector {
-                        number_of_vectors: NumScalableVectors(1),
-                        ..
-                    }
-                );
-                let tuple_ty = self.layout_of(fn_args.type_at(1));
-                assert_matches!(
-                    tuple_ty.backend_repr,
-                    BackendRepr::SimdScalableVector {
-                        number_of_vectors: NumScalableVectors(2),
-                        ..
-                    }
-                );
-                let ret = self.const_poison(self.backend_type(tuple_ty));
-                let ret = self.insert_value(ret, args[0].immediate(), 0);
-                self.insert_value(ret, args[1].immediate(), 1)
-            }
-
-            sym::sve_tuple_create3 => {
-                assert_matches!(
-                    self.layout_of(fn_args.type_at(0)).backend_repr,
-                    BackendRepr::SimdScalableVector {
-                        number_of_vectors: NumScalableVectors(1),
-                        ..
-                    }
-                );
-                let tuple_ty = self.layout_of(fn_args.type_at(1));
-                assert_matches!(
-                    tuple_ty.backend_repr,
-                    BackendRepr::SimdScalableVector {
-                        number_of_vectors: NumScalableVectors(3),
-                        ..
-                    }
-                );
-                let ret = self.const_poison(self.backend_type(tuple_ty));
-                let ret = self.insert_value(ret, args[0].immediate(), 0);
-                let ret = self.insert_value(ret, args[1].immediate(), 1);
-                self.insert_value(ret, args[2].immediate(), 2)
-            }
-
-            sym::sve_tuple_create4 => {
-                assert_matches!(
-                    self.layout_of(fn_args.type_at(0)).backend_repr,
-                    BackendRepr::SimdScalableVector {
-                        number_of_vectors: NumScalableVectors(1),
-                        ..
-                    }
-                );
-                let tuple_ty = self.layout_of(fn_args.type_at(1));
-                assert_matches!(
-                    tuple_ty.backend_repr,
-                    BackendRepr::SimdScalableVector {
-                        number_of_vectors: NumScalableVectors(4),
-                        ..
-                    }
-                );
-                let ret = self.const_poison(self.backend_type(tuple_ty));
-                let ret = self.insert_value(ret, args[0].immediate(), 0);
-                let ret = self.insert_value(ret, args[1].immediate(), 1);
-                let ret = self.insert_value(ret, args[2].immediate(), 2);
-                self.insert_value(ret, args[3].immediate(), 3)
-            }
-
-            sym::sve_tuple_get => {
-                assert_matches!(
-                    self.layout_of(fn_args.type_at(0)).backend_repr,
-                    BackendRepr::SimdScalableVector {
-                        number_of_vectors: NumScalableVectors(2 | 3 | 4 | 5 | 6 | 7 | 8),
-                        ..
-                    }
-                );
-                assert_matches!(
-                    self.layout_of(fn_args.type_at(1)).backend_repr,
-                    BackendRepr::SimdScalableVector {
-                        number_of_vectors: NumScalableVectors(1),
-                        ..
-                    }
-                );
-                self.extract_value(
-                    args[0].immediate(),
-                    fn_args.const_at(2).to_leaf().to_i32() as u64,
-                )
-            }
-
-            sym::sve_tuple_set => {
-                assert_matches!(
-                    self.layout_of(fn_args.type_at(0)).backend_repr,
-                    BackendRepr::SimdScalableVector {
-                        number_of_vectors: NumScalableVectors(2 | 3 | 4 | 5 | 6 | 7 | 8),
-                        ..
-                    }
-                );
-                assert_matches!(
-                    self.layout_of(fn_args.type_at(1)).backend_repr,
-                    BackendRepr::SimdScalableVector {
-                        number_of_vectors: NumScalableVectors(1),
-                        ..
-                    }
-                );
-                self.insert_value(
-                    args[0].immediate(),
-                    args[1].immediate(),
-                    fn_args.const_at(2).to_leaf().to_i32() as u64,
-                )
-            }
-
-            _ if name.as_str().starts_with("simd_") => {
-                // Unpack non-power-of-2 #[repr(packed, simd)] arguments.
-                // This gives them the expected layout of a regular #[repr(simd)] vector.
-                let mut loaded_args = Vec::new();
-                for arg in args {
-                    loaded_args.push(
-                        // #[repr(packed, simd)] vectors are passed like arrays (as references,
-                        // with reduced alignment and no padding) rather than as immediates.
-                        // We can use a vector load to fix the layout and turn the argument
-                        // into an immediate.
-                        if arg.layout.ty.is_simd()
-                            && let OperandValue::Ref(place) = arg.val
-                        {
-                            let (size, elem_ty) = arg.layout.ty.simd_size_and_type(self.tcx());
-                            let elem_ll_ty = match elem_ty.kind() {
-                                ty::Float(f) => self.type_float_from_ty(*f),
-                                ty::Int(i) => self.type_int_from_ty(*i),
-                                ty::Uint(u) => self.type_uint_from_ty(*u),
-                                ty::RawPtr(_, _) => self.type_ptr(),
-                                _ => unreachable!(),
-                            };
-                            let loaded =
-                                self.load_from_place(self.type_vector(elem_ll_ty, size), place);
-                            OperandRef::from_immediate_or_packed_pair(self, loaded, arg.layout)
-                        } else {
-                            *arg
-                        },
-                    );
-                }
-
-                let llret_ty = if result_layout.ty.is_simd()
-                    && let BackendRepr::Memory { .. } = result_layout.backend_repr
-                {
-                    let (size, elem_ty) = result_layout.ty.simd_size_and_type(self.tcx());
-                    let elem_ll_ty = match elem_ty.kind() {
-                        ty::Float(f) => self.type_float_from_ty(*f),
-                        ty::Int(i) => self.type_int_from_ty(*i),
-                        ty::Uint(u) => self.type_uint_from_ty(*u),
-                        ty::RawPtr(_, _) => self.type_ptr(),
-                        _ => unreachable!(),
-                    };
-                    self.type_vector(elem_ll_ty, size)
-                } else {
-                    result_layout.llvm_type(self)
-                };
-
-                match generic_simd_intrinsic(
-                    self,
-                    name,
-                    fn_args,
-                    &loaded_args,
-                    result_layout.ty,
-                    llret_ty,
-                    span,
-                ) {
-                    Ok(llval) => llval,
-                    // If there was an error, just skip this invocation... we'll abort compilation
-                    // anyway, but we can keep codegen'ing to find more errors.
-                    Err(err) => return IntrinsicResult::Err(err),
-                }
-            }
-
-            sym::return_address => {
-                match self.sess().target.arch {
-                    // Expand this list as needed
-                    Arch::Wasm32 | Arch::Wasm64 => {
-                        let ty = self.type_ptr();
-                        self.const_null(ty)
-                    }
-                    _ => {
-                        let ty = self.type_ix(32);
-                        let val = self.const_int(ty, 0);
-
-                        let type_params: &[&'ll Type] =
-                            if llvm_version < (23, 0, 0) { &[] } else { &[self.type_ptr()] };
-
-                        self.call_intrinsic("llvm.returnaddress", type_params, &[val])
-                    }
-                }
-            }
-
-            sym::codeview_annotation => {
-                if self.sess().target.uses_pdb_debuginfo() {
-                    codegen_codeview_annotation(self, instance, span);
-                }
-                return IntrinsicResult::Operand(OperandValue::ZeroSized);
-            }
-
-            _ => {
-                debug!("unknown intrinsic '{}' -- falling back to default body", name);
-                // Call the fallback body instead of generating the intrinsic code
-                let fallback = ty::Instance::new_raw(instance.def_id(), instance.args);
-                return IntrinsicResult::Fallback(fallback);
-            }
-        };
-
-        if let BackendRepr::Memory { .. } = result_layout.backend_repr {
-            // We have an llvm immediate, but that's not what cg_ssa expects,
-            // so write it into the place (that always exists for memory)
-            if !result_layout.is_zst() {
-                self.store_to_place(llval, result_place.unwrap());
-            }
-            IntrinsicResult::WroteIntoPlace
-        } else {
-            IntrinsicResult::Operand(
-                OperandRef::from_immediate_or_packed_pair(self, llval, result_layout).val,
-            )
-        }
-    }
-
-    fn codegen_llvm_intrinsic_call(
-        &mut self,
-        instance: ty::Instance<'tcx>,
-        args: &[OperandRef<'tcx, Self::Value>],
-        _is_cleanup: bool,
-    ) -> Self::Value {
+    ) -> &'ll Value {
         let tcx = self.tcx();
 
         let fn_ty = instance.ty(tcx, self.typing_env());
@@ -929,12 +157,10 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         let fn_ptr = if let Some(&llfn) = self.intrinsic_instances.borrow().get(&instance) {
             llfn
         } else {
-            let sym = tcx.symbol_name(instance).name;
-
-            let llfn = if let Some(llfn) = self.get_declared_value(sym) {
+            let llfn = if let Some(llfn) = self.get_declared_value(intrinsic_name) {
                 llfn
             } else {
-                intrinsic_fn(self, sym, llreturn_ty, llargument_tys, instance)
+                intrinsic_fn(self, intrinsic_name, llreturn_ty, llargument_tys, instance)
             };
 
             self.intrinsic_instances.borrow_mut().insert(instance, llfn);
@@ -1006,6 +232,837 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         );
 
         autocast(self, llret, src_ty, dest_ty)
+    }
+}
+
+impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
+    fn codegen_intrinsic_call(
+        &mut self,
+        instance: ty::Instance<'tcx>,
+        args: &[OperandRef<'tcx, &'ll Value>],
+        result_layout: ty::layout::TyAndLayout<'tcx>,
+        result_place: Option<PlaceValue<&'ll Value>>,
+        span: Span,
+    ) -> IntrinsicResult<'tcx, &'ll Value> {
+        let tcx = self.tcx;
+        let llvm_version = crate::llvm_util::get_version();
+
+        let name = tcx.intrinsic(instance.def_id()).unwrap().name;
+        let fn_args = instance.args;
+
+        let llval = match name {
+            IntrinsicName::RustIntrinsic(name) => {
+                let simple = call_simple_intrinsic(self, name, args);
+                match name {
+                    _ if simple.is_some() => simple.unwrap(),
+                    sym::minimum_number_nsz_f16
+                    | sym::minimum_number_nsz_f32
+                    | sym::minimum_number_nsz_f64
+                    | sym::minimum_number_nsz_f128
+                    | sym::maximum_number_nsz_f16
+                    | sym::maximum_number_nsz_f32
+                    | sym::maximum_number_nsz_f64
+                    | sym::maximum_number_nsz_f128 => {
+                        let intrinsic_name = if name.as_str().starts_with("min") {
+                            "llvm.minimumnum"
+                        } else {
+                            "llvm.maximumnum"
+                        };
+                        let call = self.call_intrinsic(
+                            intrinsic_name,
+                            &[args[0].layout.immediate_llvm_type(self.cx)],
+                            &[args[0].immediate(), args[1].immediate()],
+                        );
+                        // `nsz` on minimumnum/maximumnum is special: its only effect is to make
+                        // signed-zero ordering non-deterministic.
+                        unsafe { llvm::LLVMRustSetNoSignedZeros(call) };
+                        call
+                    }
+                    sym::ptr_mask => {
+                        let ptr = args[0].immediate();
+                        self.call_intrinsic(
+                            "llvm.ptrmask",
+                            &[self.val_ty(ptr), self.type_isize()],
+                            &[ptr, args[1].immediate()],
+                        )
+                    }
+                    sym::autodiff => {
+                        return codegen_autodiff(self, instance, args, result_layout, result_place);
+                    }
+                    sym::offload => {
+                        if tcx.sess.opts.unstable_opts.offload.is_empty() {
+                            let _ = tcx.dcx().emit_err(OffloadWithoutEnable);
+                        }
+
+                        if tcx.sess.lto() != rustc_session::config::Lto::Fat {
+                            let _ = tcx.dcx().emit_err(OffloadWithoutFatLTO);
+                        }
+
+                        codegen_offload(self, tcx, instance, args);
+                        // offload *has* a return type, but somehow works without mentioning the place
+                        return IntrinsicResult::WroteIntoPlace;
+                    }
+                    sym::offload_get_num_devices => {
+                        let (fn_decl, fn_ty) = declare_omp_get_num_devices(self.cx);
+
+                        let llval = self.call(
+                            fn_ty,
+                            None,
+                            None,
+                            fn_decl,
+                            ReturnSlot::Direct,
+                            &[],
+                            None,
+                            None,
+                        );
+
+                        return IntrinsicResult::Operand(OperandValue::Immediate(llval));
+                    }
+                    sym::is_val_statically_known => {
+                        if let OperandValue::Immediate(imm) = args[0].val {
+                            self.call_intrinsic(
+                                "llvm.is.constant",
+                                &[args[0].layout.immediate_llvm_type(self.cx)],
+                                &[imm],
+                            )
+                        } else {
+                            self.const_bool(false)
+                        }
+                    }
+                    sym::select_unpredictable => {
+                        let cond = args[0].immediate();
+                        assert_eq!(args[1].layout, args[2].layout);
+                        let select = |bx: &mut Self, true_val, false_val| {
+                            let result = bx.select(cond, true_val, false_val);
+                            bx.set_unpredictable(&result);
+                            result
+                        };
+                        match (args[1].val, args[2].val) {
+                            (OperandValue::Ref(true_val), OperandValue::Ref(false_val)) => {
+                                assert!(true_val.llextra.is_none());
+                                assert!(false_val.llextra.is_none());
+                                assert_eq!(true_val.align, false_val.align);
+                                let ptr = select(self, true_val.llval, false_val.llval);
+                                let selected =
+                                    OperandValue::Ref(PlaceValue::new_sized(ptr, true_val.align));
+                                let result =
+                                    PlaceRef { val: result_place.unwrap(), layout: result_layout };
+                                selected.store(self, result);
+                                return IntrinsicResult::WroteIntoPlace;
+                            }
+                            (OperandValue::Immediate(_), OperandValue::Immediate(_))
+                            | (OperandValue::Pair(_, _), OperandValue::Pair(_, _)) => {
+                                let true_val = args[1].immediate_or_packed_pair(self);
+                                let false_val = args[2].immediate_or_packed_pair(self);
+                                select(self, true_val, false_val)
+                            }
+                            (OperandValue::ZeroSized, OperandValue::ZeroSized) => {
+                                return IntrinsicResult::Operand(OperandValue::ZeroSized);
+                            }
+                            _ => span_bug!(
+                                span,
+                                "Incompatible OperandValue for select_unpredictable"
+                            ),
+                        }
+                    }
+                    sym::catch_unwind => catch_unwind_intrinsic(
+                        self,
+                        args[0].immediate(),
+                        args[1].immediate(),
+                        args[2].immediate(),
+                    ),
+                    sym::breakpoint | sym::resumable_breakpoint => {
+                        self.call_intrinsic("llvm.debugtrap", &[], &[])
+                    }
+                    sym::va_arg => {
+                        let target = &self.cx.tcx.sess.target;
+                        let stability = target.supports_c_variadic_definitions();
+                        if let CVariadicStatus::Unstable { feature } = stability
+                            && !self.tcx.features().enabled(feature)
+                        {
+                            let msg = format!(
+                                "C-variadic function definitions on this target are unstable"
+                            );
+                            feature_err(&*self.sess(), feature, span, msg).emit();
+                        }
+
+                        let BackendRepr::Scalar(scalar) = result_layout.backend_repr else {
+                            bug!("the va_arg intrinsic does not support non-scalar types")
+                        };
+
+                        // We reject types that would never be passed as varargs in C because
+                        // they get promoted to a larger type, specifically integers smaller than
+                        // c_int and float type smaller than c_double.
+                        match scalar.primitive() {
+                            Primitive::Pointer(_) => {
+                                // Pointers are always OK.
+                            }
+                            Primitive::Int(..) => {
+                                let int_width = self.cx().size_of(result_layout.ty).bits();
+                                let target_c_int_width =
+                                    self.cx().sess().target.options.c_int_width;
+                                if int_width < u64::from(target_c_int_width) {
+                                    // Smaller integer types are automatically promototed and `va_arg`
+                                    // should not be called on them.
+                                    bug!(
+                                        "va_arg got i{} but needs at least c_int (an i{})",
+                                        int_width,
+                                        target_c_int_width
+                                    );
+                                }
+                            }
+                            Primitive::Float(Float::F16) => {
+                                bug!("the va_arg intrinsic does not support `f16`")
+                            }
+                            Primitive::Float(Float::F16B) => {
+                                bug!("the va_arg intrinsic does not support `f16b`")
+                            }
+                            Primitive::Float(Float::F32) => {
+                                // c_double is actually f32 on avr.
+                                if self.cx().sess().target.arch != Arch::Avr {
+                                    bug!(
+                                        "the va_arg intrinsic does not support `f32` on this target"
+                                    )
+                                }
+                            }
+                            Primitive::Float(Float::F64) => {
+                                // 64-bit floats are always OK.
+                            }
+                            Primitive::Float(Float::F128) => {
+                                // Supported on some targets, especially where long double is IEEE f128.
+                            }
+                            Primitive::Float(Float::PpcF128) => {
+                                // Supported on powerpc and powerpc64 targets.
+                            }
+                        }
+
+                        emit_va_arg(self, args[0], result_layout)
+                    }
+
+                    sym::volatile_load | sym::unaligned_volatile_load => {
+                        // Note that we cannot just load the `llvm_type` because we should never load non-scalars.
+                        // Trying to do so blows up horribly in some cases -- for example loading a
+                        // `MaybeUninint<&dyn Trait>` would load as `{ [i64x2] }` which gives assertions later
+                        // (if we're lucky) from things not being pointers that ought to be.
+                        let ptr = args[0].immediate();
+                        let abi_align = result_layout.align.abi;
+                        let ptr_align =
+                            if name == sym::volatile_load { abi_align } else { Align::ONE };
+                        let need_black_box = llvm_version < (23, 0, 0);
+                        if result_layout.is_zst() {
+                            return IntrinsicResult::Operand(OperandValue::ZeroSized);
+                        } else if let BackendRepr::Scalar(scalar) = result_layout.backend_repr
+                            && !need_black_box
+                        {
+                            let load =
+                                self.volatile_load(self.type_from_scalar(scalar), ptr, ptr_align);
+                            self.to_immediate_scalar(load, scalar)
+                        } else {
+                            // One day Rust will probably want to define how we split up a volatile load
+                            // of something that's *not* just an ordinary scalar, but for now we can just
+                            // use an LLVM integer type of the correct width and let it split it however.
+                            let llty = self.type_ix(result_layout.size.bits());
+                            let temp = if let Some(result_place) = result_place {
+                                PlaceRef { val: result_place, layout: result_layout }
+                            } else {
+                                PlaceRef::alloca(self, result_layout)
+                            };
+                            let llval = self.volatile_load(llty, ptr, ptr_align);
+                            self.store(llval, temp.val.llval, abi_align);
+                            if need_black_box {
+                                // LLVM up until v22 considers volatile reads `willreturn` and hence can
+                                // move UB from further down up across this read. To prevent that, insert an
+                                // inline asm block that, as far as LLVM is concerned, might not terminate,
+                                // and hence should prevent such reordering.
+                                self.black_box(temp, span);
+                            }
+                            return if result_place.is_none() {
+                                IntrinsicResult::Operand(self.load_operand(temp).val)
+                            } else {
+                                IntrinsicResult::WroteIntoPlace
+                            };
+                        }
+                    }
+                    sym::prefetch_read_data
+                    | sym::prefetch_write_data
+                    | sym::prefetch_read_instruction
+                    | sym::prefetch_write_instruction => {
+                        let (rw, cache_type) = match name {
+                            sym::prefetch_read_data => (0, 1),
+                            sym::prefetch_write_data => (1, 1),
+                            sym::prefetch_read_instruction => (0, 0),
+                            sym::prefetch_write_instruction => (1, 0),
+                            _ => bug!(),
+                        };
+                        let ptr = args[0].immediate();
+                        let locality = fn_args.const_at(1).to_leaf().to_i32();
+                        self.call_intrinsic(
+                            "llvm.prefetch.p0",
+                            &[self.val_ty(ptr)],
+                            &[
+                                ptr,
+                                self.const_i32(rw),
+                                self.const_i32(locality),
+                                self.const_i32(cache_type),
+                            ],
+                        );
+                        return IntrinsicResult::Operand(OperandValue::ZeroSized);
+                    }
+                    sym::carrying_mul_add => {
+                        let (size, signed) = fn_args.type_at(0).int_size_and_signed(self.tcx);
+
+                        let wide_llty = self.type_ix(size.bits() * 2);
+                        let args = args.as_array().unwrap();
+                        let [a, b, c, d] =
+                            args.map(|a| self.intcast(a.immediate(), wide_llty, signed));
+
+                        let wide = if signed {
+                            let prod = self.unchecked_smul(a, b);
+                            let acc = self.unchecked_sadd(prod, c);
+                            self.unchecked_sadd(acc, d)
+                        } else {
+                            let prod = self.unchecked_umul(a, b);
+                            let acc = self.unchecked_uadd(prod, c);
+                            self.unchecked_uadd(acc, d)
+                        };
+
+                        let narrow_llty = self.type_ix(size.bits());
+                        let low = self.trunc(wide, narrow_llty);
+                        let bits_const = self.const_uint(wide_llty, size.bits());
+                        // No need for ashr when signed; LLVM changes it to lshr anyway.
+                        let high = self.lshr(wide, bits_const);
+                        // FIXME: could be `trunc nuw`, even for signed.
+                        let high = self.trunc(high, narrow_llty);
+
+                        let pair_llty = self.type_struct(&[narrow_llty, narrow_llty], false);
+                        let pair = self.const_poison(pair_llty);
+                        let pair = self.insert_value(pair, low, 0);
+                        let pair = self.insert_value(pair, high, 1);
+                        pair
+                    }
+
+                    sym::ctlz
+                    | sym::ctlz_nonzero
+                    | sym::cttz
+                    | sym::cttz_nonzero
+                    | sym::ctpop
+                    | sym::bswap
+                    | sym::bitreverse
+                    | sym::carryless_mul
+                    | sym::integer_max
+                    | sym::integer_min
+                    | sym::saturating_add
+                    | sym::saturating_sub
+                    | sym::unchecked_funnel_shl
+                    | sym::unchecked_funnel_shr => {
+                        let ty = args[0].layout.ty;
+                        if !ty.is_integral() {
+                            let err =
+                                tcx.dcx().emit_err(InvalidMonomorphization::BasicIntegerType {
+                                    span,
+                                    name,
+                                    ty,
+                                });
+                            return IntrinsicResult::Err(err);
+                        }
+                        let (size, signed) = ty.int_size_and_signed(self.tcx);
+                        let width = size.bits();
+                        let llty = self.type_ix(width);
+                        match name {
+                            sym::ctlz | sym::ctlz_nonzero | sym::cttz | sym::cttz_nonzero => {
+                                let y = self.const_bool(
+                                    name == sym::ctlz_nonzero || name == sym::cttz_nonzero,
+                                );
+                                let llvm_name = if name == sym::ctlz || name == sym::ctlz_nonzero {
+                                    "llvm.ctlz"
+                                } else {
+                                    "llvm.cttz"
+                                };
+                                let ret = self.call_intrinsic(
+                                    llvm_name,
+                                    &[llty],
+                                    &[args[0].immediate(), y],
+                                );
+                                self.intcast(ret, result_layout.llvm_type(self), false)
+                            }
+                            sym::ctpop => self.ctpop(args[0].immediate()),
+                            sym::bswap => {
+                                if width == 8 {
+                                    args[0].immediate() // byte swap a u8/i8 is just a no-op
+                                } else {
+                                    self.call_intrinsic(
+                                        "llvm.bswap",
+                                        &[llty],
+                                        &[args[0].immediate()],
+                                    )
+                                }
+                            }
+                            sym::bitreverse => self.call_intrinsic(
+                                "llvm.bitreverse",
+                                &[llty],
+                                &[args[0].immediate()],
+                            ),
+                            sym::carryless_mul => {
+                                let lhs = args[0].immediate();
+                                let rhs = args[1].immediate();
+                                self.call_intrinsic("llvm.clmul", &[llty], &[lhs, rhs])
+                            }
+                            sym::integer_min | sym::integer_max => {
+                                let lhs = args[0].immediate();
+                                let rhs = args[1].immediate();
+                                let llvm_name = match (name, signed) {
+                                    (sym::integer_max, false) => "llvm.umax",
+                                    (sym::integer_max, true) => "llvm.smax",
+                                    (sym::integer_min, false) => "llvm.umin",
+                                    (sym::integer_min, true) => "llvm.smin",
+                                    _ => bug!(),
+                                };
+                                self.call_intrinsic(llvm_name, &[llty], &[lhs, rhs])
+                            }
+                            sym::unchecked_funnel_shl | sym::unchecked_funnel_shr => {
+                                let is_left = name == sym::unchecked_funnel_shl;
+                                let lhs = args[0].immediate();
+                                let rhs = args[1].immediate();
+                                let raw_shift = args[2].immediate();
+                                let llvm_name =
+                                    format!("llvm.fsh{}", if is_left { 'l' } else { 'r' });
+
+                                // llvm expects shift to be the same type as the values, but rust
+                                // always uses `u32`.
+                                let raw_shift = self.intcast(raw_shift, self.val_ty(lhs), false);
+
+                                self.call_intrinsic(llvm_name, &[llty], &[lhs, rhs, raw_shift])
+                            }
+                            sym::saturating_add | sym::saturating_sub => {
+                                let is_add = name == sym::saturating_add;
+                                let lhs = args[0].immediate();
+                                let rhs = args[1].immediate();
+                                let llvm_name = format!(
+                                    "llvm.{}{}.sat",
+                                    if signed { 's' } else { 'u' },
+                                    if is_add { "add" } else { "sub" },
+                                );
+                                self.call_intrinsic(llvm_name, &[llty], &[lhs, rhs])
+                            }
+                            _ => bug!(),
+                        }
+                    }
+
+                    sym::fabs
+                    | sym::sqrt
+                    | sym::powf
+                    | sym::fma
+                    | sym::fmuladd
+                    | sym::floor
+                    | sym::ceil
+                    | sym::trunc
+                    | sym::round
+                    | sym::round_ties_even
+                    | sym::exp
+                    | sym::exp2
+                    | sym::log
+                    | sym::log10
+                    | sym::log2
+                    | sym::sin
+                    | sym::cos
+                    | sym::powi => {
+                        let ty = args[0].layout.ty;
+                        let ty::Float(f) = ty.kind() else {
+                            span_bug!(
+                                span,
+                                "the `{}` intrinsic requires a floating-point argument, got {:?}",
+                                name,
+                                ty
+                            );
+                        };
+                        let llty = self.type_float_from_ty(*f);
+                        let llvm_name = match name {
+                            sym::fabs => "llvm.fabs",
+                            sym::sqrt => "llvm.sqrt",
+                            sym::powf => "llvm.pow",
+                            sym::fma => "llvm.fma",
+                            sym::fmuladd => "llvm.fmuladd",
+                            sym::floor => "llvm.floor",
+                            sym::ceil => "llvm.ceil",
+                            sym::trunc => "llvm.trunc",
+                            sym::round => "llvm.round",
+                            // We could use any of `rint`, `nearbyint`, or `roundeven`
+                            // for this -- they are all identical in semantics when
+                            // assuming the default FP environment.
+                            // `rint` is what we used for $forever.
+                            sym::round_ties_even => "llvm.rint",
+                            sym::exp => "llvm.exp",
+                            sym::exp2 => "llvm.exp2",
+                            sym::log => "llvm.log",
+                            sym::log10 => "llvm.log10",
+                            sym::log2 => "llvm.log2",
+                            sym::sin => "llvm.sin",
+                            sym::cos => "llvm.cos",
+                            sym::powi => "llvm.powi",
+
+                            _ => bug!(),
+                        };
+
+                        let params: &[&'ll Type] = match name {
+                            sym::powi => &[llty, self.type_i32()],
+                            _ => &[llty],
+                        };
+
+                        self.call_intrinsic(
+                            llvm_name,
+                            params,
+                            &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
+                        )
+                    }
+
+                    sym::raw_eq => {
+                        use BackendRepr::*;
+                        let tp_ty = fn_args.type_at(0);
+                        let layout = self.layout_of(tp_ty).layout;
+                        let use_integer_compare = match layout.backend_repr() {
+                            Scalar(_) | ScalarPair { a: _, b: _, b_offset: _ } => true,
+                            SimdVector { .. } => false,
+                            SimdScalableVector { .. } => {
+                                let err =
+                                    tcx.dcx().emit_err(InvalidMonomorphization::NonScalableType {
+                                        span,
+                                        name: sym::raw_eq,
+                                        ty: tp_ty,
+                                    });
+                                return IntrinsicResult::Err(err);
+                            }
+                            Memory { .. } => {
+                                // For rusty ABIs, small aggregates are actually passed
+                                // as `RegKind::Integer` (see `FnAbi::adjust_for_abi`),
+                                // so we re-use that same threshold here.
+                                layout.size() <= self.data_layout().pointer_size() * 2
+                            }
+                        };
+
+                        let a = args[0].immediate();
+                        let b = args[1].immediate();
+                        if layout.size().bytes() == 0 {
+                            self.const_bool(true)
+                        } else if use_integer_compare {
+                            let integer_ty = self.type_ix(layout.size().bits());
+                            let a_val = self.load(integer_ty, a, layout.align().abi);
+                            let b_val = self.load(integer_ty, b, layout.align().abi);
+                            self.icmp(IntPredicate::IntEQ, a_val, b_val)
+                        } else {
+                            let n = self.const_usize(layout.size().bytes());
+                            let cmp = self.call_intrinsic("memcmp", &[], &[a, b, n]);
+                            self.icmp(IntPredicate::IntEQ, cmp, self.const_int(self.type_int(), 0))
+                        }
+                    }
+
+                    sym::compare_bytes => {
+                        // Here we assume that the `memcmp` provided by the target is a NOP for size 0.
+                        let cmp = self.call_intrinsic(
+                            "memcmp",
+                            &[],
+                            &[args[0].immediate(), args[1].immediate(), args[2].immediate()],
+                        );
+                        // Some targets have `memcmp` returning `i16`, but the intrinsic is always `i32`.
+                        self.sext(cmp, self.type_ix(32))
+                    }
+
+                    sym::black_box => {
+                        // This `unwrap` is justified by `intrinsic_call_expects_place_always` declaring
+                        // this intrinsic as always needing a return place.
+                        let result = PlaceRef { val: result_place.unwrap(), layout: result_layout };
+                        args[0].val.store(self, result);
+                        self.black_box(result, span);
+
+                        // We have copied the value to `result` already.
+                        return IntrinsicResult::WroteIntoPlace;
+                    }
+
+                    sym::gpu_launch_sized_workgroup_mem => {
+                        // Generate an anonymous global per call, with these properties:
+                        // 1. The global is in the address space for workgroup memory
+                        // 2. It is an `external` global
+                        // 3. It is correctly aligned for the pointee `T`
+                        // All instances of extern addrspace(gpu_workgroup) globals are merged in the LLVM backend.
+                        // The name is irrelevant.
+                        // See https://docs.nvidia.com/cuda/cuda-c-programming-guide/#shared
+                        let name =
+                            if llvm_version < (23, 0, 0) && tcx.sess.target.arch == Arch::Nvptx64 {
+                                // The auto-assigned name for extern shared globals in the nvptx backend does
+                                // not compile in ptxas. Workaround this issue by assigning a name.
+                                // Fixed in LLVM 23.
+                                "gpu_launch_sized_workgroup_mem"
+                            } else {
+                                ""
+                            };
+                        let global = self.declare_global_in_addrspace(
+                            name,
+                            self.type_array(self.type_i8(), 0),
+                            AddressSpace::GPU_WORKGROUP,
+                        );
+                        let ty::RawPtr(inner_ty, _) = result_layout.ty.kind() else {
+                            unreachable!()
+                        };
+                        // The alignment of the global is used to specify the *minimum* alignment that
+                        // must be obeyed by the GPU runtime.
+                        // When multiple of these global variables are used by a kernel, the maximum alignment is taken.
+                        // See https://github.com/llvm/llvm-project/blob/a271d07488a85ce677674bbe8101b10efff58c95/llvm/lib/Target/AMDGPU/AMDGPULowerModuleLDSPass.cpp#L821
+                        let alignment = self.align_of(*inner_ty).bytes() as u32;
+                        unsafe {
+                            // FIXME Workaround the above issue by taking maximum alignment if the global existed
+                            if tcx.sess.target.arch == Arch::Nvptx64 {
+                                if alignment > llvm::LLVMGetAlignment(global) {
+                                    llvm::LLVMSetAlignment(global, alignment);
+                                }
+                            } else {
+                                llvm::LLVMSetAlignment(global, alignment);
+                            }
+                        }
+                        self.cx().const_pointercast(global, self.type_ptr())
+                    }
+
+                    sym::amdgpu_dispatch_ptr => {
+                        let val = self.call_intrinsic("llvm.amdgcn.dispatch.ptr", &[], &[]);
+                        // Relying on `LLVMBuildPointerCast` to produce an addrspacecast
+                        self.pointercast(val, self.type_ptr())
+                    }
+
+                    sym::sve_tuple_create2 => {
+                        assert_matches!(
+                            self.layout_of(fn_args.type_at(0)).backend_repr,
+                            BackendRepr::SimdScalableVector {
+                                number_of_vectors: NumScalableVectors(1),
+                                ..
+                            }
+                        );
+                        let tuple_ty = self.layout_of(fn_args.type_at(1));
+                        assert_matches!(
+                            tuple_ty.backend_repr,
+                            BackendRepr::SimdScalableVector {
+                                number_of_vectors: NumScalableVectors(2),
+                                ..
+                            }
+                        );
+                        let ret = self.const_poison(self.backend_type(tuple_ty));
+                        let ret = self.insert_value(ret, args[0].immediate(), 0);
+                        self.insert_value(ret, args[1].immediate(), 1)
+                    }
+
+                    sym::sve_tuple_create3 => {
+                        assert_matches!(
+                            self.layout_of(fn_args.type_at(0)).backend_repr,
+                            BackendRepr::SimdScalableVector {
+                                number_of_vectors: NumScalableVectors(1),
+                                ..
+                            }
+                        );
+                        let tuple_ty = self.layout_of(fn_args.type_at(1));
+                        assert_matches!(
+                            tuple_ty.backend_repr,
+                            BackendRepr::SimdScalableVector {
+                                number_of_vectors: NumScalableVectors(3),
+                                ..
+                            }
+                        );
+                        let ret = self.const_poison(self.backend_type(tuple_ty));
+                        let ret = self.insert_value(ret, args[0].immediate(), 0);
+                        let ret = self.insert_value(ret, args[1].immediate(), 1);
+                        self.insert_value(ret, args[2].immediate(), 2)
+                    }
+
+                    sym::sve_tuple_create4 => {
+                        assert_matches!(
+                            self.layout_of(fn_args.type_at(0)).backend_repr,
+                            BackendRepr::SimdScalableVector {
+                                number_of_vectors: NumScalableVectors(1),
+                                ..
+                            }
+                        );
+                        let tuple_ty = self.layout_of(fn_args.type_at(1));
+                        assert_matches!(
+                            tuple_ty.backend_repr,
+                            BackendRepr::SimdScalableVector {
+                                number_of_vectors: NumScalableVectors(4),
+                                ..
+                            }
+                        );
+                        let ret = self.const_poison(self.backend_type(tuple_ty));
+                        let ret = self.insert_value(ret, args[0].immediate(), 0);
+                        let ret = self.insert_value(ret, args[1].immediate(), 1);
+                        let ret = self.insert_value(ret, args[2].immediate(), 2);
+                        self.insert_value(ret, args[3].immediate(), 3)
+                    }
+
+                    sym::sve_tuple_get => {
+                        assert_matches!(
+                            self.layout_of(fn_args.type_at(0)).backend_repr,
+                            BackendRepr::SimdScalableVector {
+                                number_of_vectors: NumScalableVectors(2 | 3 | 4 | 5 | 6 | 7 | 8),
+                                ..
+                            }
+                        );
+                        assert_matches!(
+                            self.layout_of(fn_args.type_at(1)).backend_repr,
+                            BackendRepr::SimdScalableVector {
+                                number_of_vectors: NumScalableVectors(1),
+                                ..
+                            }
+                        );
+                        self.extract_value(
+                            args[0].immediate(),
+                            fn_args.const_at(2).to_leaf().to_i32() as u64,
+                        )
+                    }
+
+                    sym::sve_tuple_set => {
+                        assert_matches!(
+                            self.layout_of(fn_args.type_at(0)).backend_repr,
+                            BackendRepr::SimdScalableVector {
+                                number_of_vectors: NumScalableVectors(2 | 3 | 4 | 5 | 6 | 7 | 8),
+                                ..
+                            }
+                        );
+                        assert_matches!(
+                            self.layout_of(fn_args.type_at(1)).backend_repr,
+                            BackendRepr::SimdScalableVector {
+                                number_of_vectors: NumScalableVectors(1),
+                                ..
+                            }
+                        );
+                        self.insert_value(
+                            args[0].immediate(),
+                            args[1].immediate(),
+                            fn_args.const_at(2).to_leaf().to_i32() as u64,
+                        )
+                    }
+
+                    _ if name.as_str().starts_with("simd_") => {
+                        // Unpack non-power-of-2 #[repr(packed, simd)] arguments.
+                        // This gives them the expected layout of a regular #[repr(simd)] vector.
+                        let mut loaded_args = Vec::new();
+                        for arg in args {
+                            loaded_args.push(
+                                // #[repr(packed, simd)] vectors are passed like arrays (as references,
+                                // with reduced alignment and no padding) rather than as immediates.
+                                // We can use a vector load to fix the layout and turn the argument
+                                // into an immediate.
+                                if arg.layout.ty.is_simd()
+                                    && let OperandValue::Ref(place) = arg.val
+                                {
+                                    let (size, elem_ty) =
+                                        arg.layout.ty.simd_size_and_type(self.tcx());
+                                    let elem_ll_ty = match elem_ty.kind() {
+                                        ty::Float(f) => self.type_float_from_ty(*f),
+                                        ty::Int(i) => self.type_int_from_ty(*i),
+                                        ty::Uint(u) => self.type_uint_from_ty(*u),
+                                        ty::RawPtr(_, _) => self.type_ptr(),
+                                        _ => unreachable!(),
+                                    };
+                                    let loaded = self
+                                        .load_from_place(self.type_vector(elem_ll_ty, size), place);
+                                    OperandRef::from_immediate_or_packed_pair(
+                                        self, loaded, arg.layout,
+                                    )
+                                } else {
+                                    *arg
+                                },
+                            );
+                        }
+
+                        let llret_ty = if result_layout.ty.is_simd()
+                            && let BackendRepr::Memory { .. } = result_layout.backend_repr
+                        {
+                            let (size, elem_ty) = result_layout.ty.simd_size_and_type(self.tcx());
+                            let elem_ll_ty = match elem_ty.kind() {
+                                ty::Float(f) => self.type_float_from_ty(*f),
+                                ty::Int(i) => self.type_int_from_ty(*i),
+                                ty::Uint(u) => self.type_uint_from_ty(*u),
+                                ty::RawPtr(_, _) => self.type_ptr(),
+                                _ => unreachable!(),
+                            };
+                            self.type_vector(elem_ll_ty, size)
+                        } else {
+                            result_layout.llvm_type(self)
+                        };
+
+                        match generic_simd_intrinsic(
+                            self,
+                            name,
+                            fn_args,
+                            &loaded_args,
+                            result_layout.ty,
+                            llret_ty,
+                            span,
+                        ) {
+                            Ok(llval) => llval,
+                            // If there was an error, just skip this invocation... we'll abort compilation
+                            // anyway, but we can keep codegen'ing to find more errors.
+                            Err(err) => return IntrinsicResult::Err(err),
+                        }
+                    }
+
+                    sym::return_address => {
+                        match self.sess().target.arch {
+                            // Expand this list as needed
+                            Arch::Wasm32 | Arch::Wasm64 => {
+                                let ty = self.type_ptr();
+                                self.const_null(ty)
+                            }
+                            _ => {
+                                let ty = self.type_ix(32);
+                                let val = self.const_int(ty, 0);
+
+                                let type_params: &[&'ll Type] = if llvm_version < (23, 0, 0) {
+                                    &[]
+                                } else {
+                                    &[self.type_ptr()]
+                                };
+
+                                self.call_intrinsic("llvm.returnaddress", type_params, &[val])
+                            }
+                        }
+                    }
+
+                    sym::codeview_annotation => {
+                        if self.sess().target.uses_pdb_debuginfo() {
+                            codegen_codeview_annotation(self, instance, span);
+                        }
+                        return IntrinsicResult::Operand(OperandValue::ZeroSized);
+                    }
+
+                    _ => {
+                        debug!("unknown intrinsic '{}' -- falling back to default body", name);
+                        // Call the fallback body instead of generating the intrinsic code
+                        let fallback = ty::Instance::new_raw(instance.def_id(), instance.args);
+                        return IntrinsicResult::Fallback(fallback);
+                    }
+                }
+            }
+            IntrinsicName::BackendIntrinsic { llvm } => {
+                self.codegen_llvm_intrinsic_call_impl(instance, llvm.as_str(), args)
+            }
+        };
+
+        if let BackendRepr::Memory { .. } = result_layout.backend_repr {
+            // We have an llvm immediate, but that's not what cg_ssa expects,
+            // so write it into the place (that always exists for memory)
+            if !result_layout.is_zst() {
+                self.store_to_place(llval, result_place.unwrap());
+            }
+            IntrinsicResult::WroteIntoPlace
+        } else {
+            IntrinsicResult::Operand(
+                OperandRef::from_immediate_or_packed_pair(self, llval, result_layout).val,
+            )
+        }
+    }
+
+    fn codegen_llvm_intrinsic_call(
+        &mut self,
+        instance: ty::Instance<'tcx>,
+        args: &[OperandRef<'tcx, Self::Value>],
+        _is_cleanup: bool,
+    ) -> Self::Value {
+        self.codegen_llvm_intrinsic_call_impl(instance, self.tcx().symbol_name(instance).name, args)
     }
 
     fn abort_immediate(&mut self) {

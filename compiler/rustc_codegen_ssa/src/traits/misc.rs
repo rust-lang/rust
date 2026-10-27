@@ -1,9 +1,8 @@
 use std::cell::RefCell;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_middle::ty::{self, Instance, Ty};
+use rustc_middle::ty::{self, Instance, IntrinsicName, Ty};
 use rustc_session::{PointerAuthSchema, Session};
-use rustc_span::Symbol;
 
 use super::BackendTypes;
 
@@ -36,5 +35,5 @@ pub trait MiscCodegenMethods<'tcx>: BackendTypes {
     /// when emitting code for the intrinsic `name`.
     ///
     /// This is discouraged, but here for now to simplify migration to using OperandValues
-    fn intrinsic_call_expects_place_always(&self, name: Symbol) -> bool;
+    fn intrinsic_call_expects_place_always(&self, name: IntrinsicName) -> bool;
 }

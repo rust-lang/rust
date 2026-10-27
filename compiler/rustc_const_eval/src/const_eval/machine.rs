@@ -14,7 +14,7 @@ use rustc_middle::mir::AssertMessage;
 use rustc_middle::mir::interpret::ReportedErrorInfo;
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, TyAndLayout, ValidityRequirement};
-use rustc_middle::ty::{self, FieldInfo, ScalarInt, Ty, TyCtxt};
+use rustc_middle::ty::{self, FieldInfo, IntrinsicName, ScalarInt, Ty, TyCtxt};
 use rustc_middle::{mir, throw_machine_stop};
 use rustc_span::{Span, Symbol, bug, span_bug, sym};
 use rustc_target::callconv::FnAbi;
@@ -566,7 +566,10 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
             | sym::assert_zero_valid
             | sym::assert_mem_uninitialized_valid => {
                 let ty = instance.args.type_at(0);
-                let requirement = ValidityRequirement::from_intrinsic(intrinsic_name).unwrap();
+                let requirement = ValidityRequirement::from_intrinsic(
+                    IntrinsicName::RustIntrinsic(intrinsic_name),
+                )
+                .unwrap();
 
                 let should_panic = !ecx
                     .tcx

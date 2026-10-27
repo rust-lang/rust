@@ -1,7 +1,7 @@
 //! Lowers intrinsic calls
 
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, IntrinsicName, TyCtxt};
 use rustc_span::{bug, span_bug, sym};
 
 use crate::{PassPolicy, take_array};
@@ -17,14 +17,15 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
                 &mut terminator.kind
                 && let ty::FnDef(def_id, generic_args) = *func.ty(local_decls, tcx).kind()
                 && let Some(intrinsic) = tcx.intrinsic(def_id)
+                && let IntrinsicName::RustIntrinsic(name) = intrinsic.name
             {
                 let generic_args = generic_args.no_bound_vars().unwrap();
-                match intrinsic.name {
+                match name {
                     sym::unreachable => {
                         terminator.kind = TerminatorKind::Unreachable;
                     }
                     sym::ub_checks | sym::overflow_checks | sym::contract_checks => {
-                        let op = match intrinsic.name {
+                        let op = match name {
                             sym::ub_checks => RuntimeChecks::UbChecks,
                             sym::contract_checks => RuntimeChecks::ContractChecks,
                             sym::overflow_checks => RuntimeChecks::OverflowChecks,
@@ -103,9 +104,9 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
                     | sym::unchecked_shr => {
                         let target = target.unwrap();
                         let Ok([lhs, rhs]) = take_array(args) else {
-                            bug!("Wrong arguments for {} intrinsic", intrinsic.name);
+                            bug!("Wrong arguments for {} intrinsic", name);
                         };
-                        let bin_op = match intrinsic.name {
+                        let bin_op = match name {
                             sym::wrapping_add => BinOp::Add,
                             sym::wrapping_sub => BinOp::Sub,
                             sym::wrapping_mul => BinOp::Mul,
@@ -131,9 +132,9 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
                     sym::add_with_overflow | sym::sub_with_overflow | sym::mul_with_overflow => {
                         let target = target.unwrap();
                         let Ok([lhs, rhs]) = take_array(args) else {
-                            bug!("Wrong arguments for {} intrinsic", intrinsic.name);
+                            bug!("Wrong arguments for {} intrinsic", name);
                         };
-                        let bin_op = match intrinsic.name {
+                        let bin_op = match name {
                             sym::add_with_overflow => BinOp::AddWithOverflow,
                             sym::sub_with_overflow => BinOp::SubWithOverflow,
                             sym::mul_with_overflow => BinOp::MulWithOverflow,

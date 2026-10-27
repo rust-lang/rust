@@ -1125,11 +1125,28 @@ impl SingleAttributeParser for RustcDocPrimitiveParser {
 
 pub(crate) struct RustcIntrinsicParser;
 
-impl NoArgsAttributeParser for RustcIntrinsicParser {
+impl SingleAttributeParser for RustcIntrinsicParser {
     const PATH: &[Symbol] = &[sym::rustc_intrinsic];
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
+    const TEMPLATE: AttributeTemplate = template!(Word, List: &[r#"llvm = "...""#]);
     const STABILITY: AttributeStability = unstable!(intrinsics);
-    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcIntrinsic;
+
+    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
+        match args {
+            ArgParser::NoArgs => Some(AttributeKind::RustcIntrinsic { llvm: None }),
+            ArgParser::List(_) => {
+                let item = cx.expect_single_element_list(args, cx.attr_span)?;
+                let nv = cx.expect_name_value(item, item.span(), Some(sym::llvm))?;
+                let name = cx.expect_string_literal(nv.1)?;
+                Some(AttributeKind::RustcIntrinsic { llvm: Some(name) })
+            }
+            ArgParser::NameValue(_) => {
+                let span = cx.attr_span;
+                cx.adcx().expected_list_or_no_args(span);
+                None
+            }
+        }
+    }
 }
 
 pub(crate) struct RustcIntrinsicConstStableIndirectParser;

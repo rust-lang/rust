@@ -19,7 +19,7 @@ use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTypingEnv, LayoutError, LayoutOfHelpers,
     codegen_handle_fn_abi_err,
 };
-use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
+use rustc_middle::ty::{self, Instance, IntrinsicName, Ty, TyCtxt};
 use rustc_sanitizers::ignorelist::{SanitizerIgnoreList, typename_for_ignore_list};
 use rustc_session::config::{
     BranchProtection, CFGuard, CFProtection, DebugInfo, FunctionReturn, PAuthKey, PacRet,
@@ -1089,8 +1089,8 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         }
     }
 
-    fn intrinsic_call_expects_place_always(&self, name: Symbol) -> bool {
-        matches!(name, sym::black_box)
+    fn intrinsic_call_expects_place_always(&self, name: IntrinsicName) -> bool {
+        matches!(name, IntrinsicName::RustIntrinsic(sym::black_box))
     }
 }
 

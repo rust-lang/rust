@@ -25,8 +25,8 @@ use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::{
-    self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, GenericArgsRef, Ty, TyCtxt,
-    TypeVisitableExt, UserArgs, UserTypeAnnotationIndex, fold_regions,
+    self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, GenericArgsRef, IntrinsicName,
+    Ty, TyCtxt, TypeVisitableExt, UserArgs, UserTypeAnnotationIndex, fold_regions,
 };
 use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::points::DenseLocationMap;
@@ -2033,8 +2033,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             // Some of the SIMD intrinsics are special: they need a particular argument to be a
             // constant. (Eventually this should use const-generics, but those are not up for the
             // task yet: https://github.com/rust-lang/rust/issues/85229.)
-            if let Some(name @ (sym::simd_shuffle | sym::simd_insert | sym::simd_extract)) =
-                self.tcx().intrinsic(def_id).map(|i| i.name)
+            if let Some(IntrinsicName::RustIntrinsic(
+                name @ (sym::simd_shuffle | sym::simd_insert | sym::simd_extract),
+            )) = self.tcx().intrinsic(def_id).map(|i| i.name)
             {
                 let idx = match name {
                     sym::simd_shuffle => 2,

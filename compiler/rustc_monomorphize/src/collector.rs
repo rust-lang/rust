@@ -225,8 +225,8 @@ use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::adjustment::{CustomCoerceUnsized, PointerCoercion};
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{
-    self, GenericArgs, GenericParamDefKind, Instance, InstanceKind, ShimKind, Ty, TyCtxt,
-    TypeFoldable, TypeVisitable, TypeVisitableExt, TypeVisitor, Unnormalized, VtblEntry,
+    self, GenericArgs, GenericParamDefKind, Instance, InstanceKind, IntrinsicName, ShimKind, Ty,
+    TyCtxt, TypeFoldable, TypeVisitable, TypeVisitableExt, TypeVisitor, Unnormalized, VtblEntry,
 };
 use rustc_middle::util::Providers;
 use rustc_session::config::{DebugInfo, EntryFnType, Offload};
@@ -869,7 +869,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                 );
 
                 if let ty::FnDef(def_id, _) = *callee_ty.kind()
-                    && self.tcx.is_intrinsic(def_id, rustc_span::sym::offload)
+                    && self.tcx.is_rust_intrinsic(def_id, rustc_span::sym::offload)
                     && let Some(kernel) = args.first()
                 {
                     let kernel_ty = kernel.node.ty(self.body, self.tcx);
@@ -1004,6 +1004,11 @@ fn visit_instance_use<'tcx>(
         return;
     }
     if let Some(intrinsic) = tcx.intrinsic(instance.def_id()) {
+        let intrinsic_is_replaced = if let IntrinsicName::RustIntrinsic(name) = intrinsic.name {
+            tcx.sess.replaced_intrinsics.contains(&name)
+        } else {
+            false
+        };
         if let Some(_requirement) = ValidityRequirement::from_intrinsic(intrinsic.name) {
             // The intrinsics assert_inhabited, assert_zero_valid, and assert_mem_uninitialized_valid will
             // be lowered in codegen to nothing or a call to panic_nounwind. So if we encounter any
@@ -1015,8 +1020,7 @@ fn visit_instance_use<'tcx>(
                 output.push(create_fn_mono_item(tcx, panic_instance, source));
             }
         } else if !intrinsic.must_be_overridden
-            && (tcx.sess.opts.unstable_opts.force_intrinsic_fallback
-                || !tcx.sess.replaced_intrinsics.contains(&intrinsic.name))
+            && (tcx.sess.opts.unstable_opts.force_intrinsic_fallback || !intrinsic_is_replaced)
         {
             // Codegen the fallback body of intrinsics with fallback bodies.
             // We have to skip this otherwise as there's no body to codegen.

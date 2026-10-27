@@ -991,7 +991,7 @@ impl<'tcx> LateLintPass<'tcx> for MutableTransmutes {
         }
 
         fn def_id_is_transmute(cx: &LateContext<'_>, def_id: DefId) -> bool {
-            cx.tcx.is_intrinsic(def_id, sym::transmute)
+            cx.tcx.is_rust_intrinsic(def_id, sym::transmute)
         }
     }
 }

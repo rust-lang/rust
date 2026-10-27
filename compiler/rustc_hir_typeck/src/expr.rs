@@ -646,7 +646,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let ty::FnDef(did, args) = *ty.kind() {
             let fn_sig = ty.fn_sig(tcx);
 
-            if tcx.is_intrinsic(did, sym::transmute) {
+            if tcx.is_rust_intrinsic(did, sym::transmute) {
                 let Some(from) = fn_sig.inputs().skip_binder().get(0) else {
                     span_bug!(
                         tcx.def_span(did),
@@ -661,7 +661,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.deferred_transmute_checks.borrow_mut().push((*from, to, expr.hir_id));
             }
             if !tcx.sess.opts.unstable_opts.offload.is_empty()
-                && tcx.is_intrinsic(did, sym::offload)
+                && tcx.is_rust_intrinsic(did, sym::offload)
             {
                 let args = args.skip_binder();
                 let f = args.type_at(0);

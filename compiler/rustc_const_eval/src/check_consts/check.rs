@@ -16,7 +16,7 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::adjustment::PointerCoercion;
-use rustc_middle::ty::{self, Ty, TypeVisitableExt};
+use rustc_middle::ty::{self, IntrinsicName, Ty, TypeVisitableExt};
 use rustc_mir_dataflow::Analysis;
 use rustc_mir_dataflow::impls::{MaybeStorageLive, always_storage_live_locals};
 use rustc_span::{Span, Symbol, span_bug, sym};
@@ -831,11 +831,13 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     return;
                 }
 
-                // Intrinsics are language primitives, not regular calls, so treat them separately.
-                if let Some(intrinsic) = tcx.intrinsic(callee) {
+                // Non-backend intrinsics are language primitives, not regular calls, so treat them separately.
+                if let Some(intrinsic) = tcx.intrinsic(callee)
+                    && let IntrinsicName::RustIntrinsic(name) = intrinsic.name
+                {
                     if !tcx.is_const_fn(callee) {
                         // Non-const intrinsic.
-                        self.check_op(ops::IntrinsicNonConst { name: intrinsic.name });
+                        self.check_op(ops::IntrinsicNonConst { name });
                         // If we allowed this, we're in miri-unleashed mode, so we might
                         // as well skip the remaining checks.
                         return;
@@ -874,7 +876,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             }
 
                             self.check_op(ops::IntrinsicUnstable {
-                                name: intrinsic.name,
+                                name,
                                 feature,
                                 const_stable_indirect,
                             });
