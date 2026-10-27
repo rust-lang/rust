@@ -158,6 +158,7 @@ impl<'tcx> Analysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                 }
                 StatementKind::ConstEvalCounter
                 | StatementKind::Nop
+                | StatementKind::StorageAlloc(_)
                 | StatementKind::FakeRead(..)
                 | StatementKind::PlaceMention(..)
                 | StatementKind::Coverage(..)

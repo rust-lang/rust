@@ -30,6 +30,7 @@ pub(crate) fn categorize(context: PlaceContext) -> Option<DefUse> {
         // Storage live and storage dead aren't proper defines, but we can ignore
         // values that come before them.
         PlaceContext::NonUse(NonUseContext::StorageLive) |
+        PlaceContext::NonUse(NonUseContext::StorageAlloc) |
         PlaceContext::NonUse(NonUseContext::StorageDead) => Some(DefUse::Def),
 
         ///////////////////////////////////////////////////////////////////////////

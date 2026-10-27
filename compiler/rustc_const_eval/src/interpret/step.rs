@@ -109,6 +109,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.storage_dead(*local)?;
             }
 
+            StorageAlloc(_) => {}
+
             // No dynamic semantics attached to `FakeRead`; MIR
             // interpreter is solely intended for borrowck'ed code.
             FakeRead(..) => {}

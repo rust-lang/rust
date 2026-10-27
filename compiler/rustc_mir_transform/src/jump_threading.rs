@@ -393,7 +393,7 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
             StatementKind::SetDiscriminant { ref place, variant_index: _ } => {
                 Some((**place, Some(TrackElem::Discriminant)))
             }
-            StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
+            StatementKind::StorageLive(local) | StatementKind::StorageDead(local) | StatementKind::StorageAlloc(local) => {
                 Some((Place::from(local), None))
             }
             | StatementKind::Intrinsic(NonDivergingIntrinsic::Assume(..))

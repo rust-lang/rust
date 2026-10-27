@@ -361,7 +361,10 @@ pub enum StatementKind<'tcx> {
     /// This is permitted for both coroutines and ADTs. This does not necessarily write to the
     /// entire place; instead, it writes to the minimum set of bytes as required by the layout for
     /// the type.
-    SetDiscriminant { place: Box<Place<'tcx>>, variant_index: VariantIdx },
+    SetDiscriminant {
+        place: Box<Place<'tcx>>,
+        variant_index: VariantIdx,
+    },
 
     /// `StorageLive` and `StorageDead` statements mark the live range of a local.
     ///
@@ -385,6 +388,8 @@ pub enum StatementKind<'tcx> {
 
     /// See `StorageLive` above.
     StorageDead(Local),
+
+    StorageAlloc(Local),
 
     /// This statement exists to preserve a trace of a scrutinee matched against a wildcard binding.
     /// This is especially useful for `let _ = PLACE;` bindings that desugar to a single

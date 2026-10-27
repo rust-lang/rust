@@ -880,6 +880,7 @@ impl Debug for StatementKind<'_> {
             }
             StorageLive(ref place) => write!(fmt, "StorageLive({place:?})"),
             StorageDead(ref place) => write!(fmt, "StorageDead({place:?})"),
+            StorageAlloc(ref place) => write!(fmt, "StorageAlloc({place:?})"),
             SetDiscriminant { ref place, variant_index } => {
                 write!(fmt, "discriminant({place:?}) = {variant_index:?}")
             }

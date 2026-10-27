@@ -327,6 +327,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
             StatementKind::Assign(..)
             | StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
+            | StatementKind::StorageAlloc(_)
             | StatementKind::Intrinsic(_)
             | StatementKind::ConstEvalCounter
             | StatementKind::PlaceMention(..)
@@ -1586,6 +1587,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             }
             StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
+            | StatementKind::StorageAlloc(_)
             | StatementKind::Coverage(_)
             | StatementKind::ConstEvalCounter
             | StatementKind::PlaceMention(..)

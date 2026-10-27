@@ -203,6 +203,7 @@ impl<'tcx> Analysis<'tcx> for MaybeRequiresStorage {
             | StatementKind::Nop
             | StatementKind::Intrinsic(..)
             | StatementKind::BackwardIncompatibleDropHint { .. }
+            | StatementKind::StorageAlloc(..)
             | StatementKind::StorageLive(..) => {}
         }
     }
@@ -236,6 +237,7 @@ impl<'tcx> Analysis<'tcx> for MaybeRequiresStorage {
             | StatementKind::Nop
             | StatementKind::Intrinsic(..)
             | StatementKind::BackwardIncompatibleDropHint { .. }
+            | StatementKind::StorageAlloc(..)
             | StatementKind::StorageLive(..) => {}
         }
     }

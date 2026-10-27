@@ -84,6 +84,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     cg_indirect_place.storage_dead(bx);
                 }
             }
+            mir::StatementKind::StorageAlloc(_) => {}
             mir::StatementKind::Coverage(ref kind) => {
                 self.codegen_coverage(bx, kind, statement.source_info.scope);
             }

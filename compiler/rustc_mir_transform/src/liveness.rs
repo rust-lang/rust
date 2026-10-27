@@ -745,6 +745,7 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
                     }
                     StatementKind::StorageLive(_)
                     | StatementKind::StorageDead(_)
+                    | StatementKind::StorageAlloc(_)
                     | StatementKind::Coverage(_)
                     | StatementKind::Intrinsic(_)
                     | StatementKind::Nop
@@ -1562,6 +1563,7 @@ impl DefUse {
             PlaceContext::NonUse(
                 NonUseContext::StorageLive
                 | NonUseContext::StorageDead
+                | NonUseContext::StorageAlloc
                 | NonUseContext::AscribeUserTy(_)
                 | NonUseContext::BackwardIncompatibleDropHint
                 | NonUseContext::VarDebugInfo,

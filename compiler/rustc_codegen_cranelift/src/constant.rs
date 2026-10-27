@@ -574,6 +574,7 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
                         | StatementKind::SetDiscriminant { .. }
                         | StatementKind::StorageLive(_)
                         | StatementKind::StorageDead(_)
+                        | StatementKind::StorageAlloc(_)
                         | StatementKind::AscribeUserType(_, _)
                         | StatementKind::PlaceMention(..)
                         | StatementKind::Coverage(_)

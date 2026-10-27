@@ -125,9 +125,9 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
             StatementKind::AscribeUserType((place, _), _) | StatementKind::FakeRead((_, place)) => {
                 Some(place)
             }
-            StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
-                Some(local.into())
-            }
+            StatementKind::StorageLive(local)
+            | StatementKind::StorageDead(local)
+            | StatementKind::StorageAlloc(local) => Some(local.into()),
             StatementKind::Coverage(_)
             | StatementKind::Intrinsic(_)
             | StatementKind::Nop
