@@ -1,3 +1,10 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/163475>
+//!
+//! This test verifies that we suggest adding an explicit lifetime annotation to a
+//! closure argument when passing a borrowed value to an unannotated closure.
+
+//@ run-rustfix
+
 use std::collections::HashMap;
 
 fn original() {
