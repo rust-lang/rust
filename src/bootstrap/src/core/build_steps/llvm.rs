@@ -2436,6 +2436,7 @@ impl CommandLineStep for Tpde {
             .define("TPDE_ENABLE_COVERAGE", "OFF")
             .define("TPDE_BUILD_DOCS", "OFF")
             .define("TPDE_ENABLE_EH", "OFF")
+            .define("CMAKE_INSTALL_LIBDIR", "lib")
             .define("LLVM_DIR", llvm.cmake_dir());
 
         let mut ldflags = LdFlags::default();
@@ -2447,6 +2448,7 @@ impl CommandLineStep for Tpde {
         }
 
         cfg.build_target("tpde-plugin.so");
+        cfg.build();
 
         // When building TPDE as a shared library on linux, it can contain unexpected debuginfo:
         // some can come from the C++ standard library. Unless we're explicitly requesting TPDE to
