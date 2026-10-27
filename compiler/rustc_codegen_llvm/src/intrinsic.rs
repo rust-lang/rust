@@ -22,7 +22,7 @@ use rustc_middle::mir::interpret::{AllocId, Allocation, ErrorHandled, GlobalAllo
 use rustc_middle::mir::{self, BinOp};
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, LayoutOf};
 use rustc_middle::ty::offload_meta::OffloadMetadata;
-use rustc_middle::ty::{self, GenericArgs, Instance, SimdAlign, Ty, TyCtxt};
+use rustc_middle::ty::{self, GenericArgs, Instance, Intrinsic, SimdAlign, Ty, TyCtxt};
 use rustc_session::diagnostics::feature_err;
 use rustc_span::{ErrorGuaranteed, Span, Symbol, bug, span_bug, sym};
 use rustc_structures::CrateType;
@@ -120,23 +120,22 @@ impl<'ll, 'tcx> Builder<'_, 'll, 'tcx> {
     }
 }
 
-impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
-    fn codegen_intrinsic_call(
+impl<'ll, 'tcx> Builder<'_, 'll, 'tcx> {
+    fn codegen_rustc_intrinsic_call(
         &mut self,
         instance: ty::Instance<'tcx>,
         args: &[OperandRef<'tcx, &'ll Value>],
         result_layout: ty::layout::TyAndLayout<'tcx>,
         result_place: Option<PlaceValue<&'ll Value>>,
         span: Span,
+        name: Symbol,
     ) -> IntrinsicResult<'tcx, &'ll Value> {
         let tcx = self.tcx;
         let llvm_version = crate::llvm_util::get_version();
-
-        let name = tcx.item_name(instance.def_id());
         let fn_args = instance.args;
 
         let simple = call_simple_intrinsic(self, name, args);
-        let llval = match name {
+        let value = match name {
             _ if simple.is_some() => simple.unwrap(),
             sym::minimum_number_nsz_f16
             | sym::minimum_number_nsz_f32
@@ -879,6 +878,15 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             }
         };
 
+        self.llvm_value_to_intrinsicresult(value, result_layout, result_place)
+    }
+
+    fn llvm_value_to_intrinsicresult(
+        &mut self,
+        llval: &'ll Value,
+        result_layout: ty::layout::TyAndLayout<'tcx>,
+        result_place: Option<PlaceValue<&'ll Value>>,
+    ) -> IntrinsicResult<'tcx, &'ll Value> {
         if let BackendRepr::Memory { .. } = result_layout.backend_repr {
             // We have an llvm immediate, but that's not what cg_ssa expects,
             // so write it into the place (that always exists for memory)
@@ -893,12 +901,12 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         }
     }
 
-    fn codegen_llvm_intrinsic_call(
+    fn codegen_llvm_intrinsic_call_impl(
         &mut self,
         instance: ty::Instance<'tcx>,
-        args: &[OperandRef<'tcx, Self::Value>],
-        _is_cleanup: bool,
-    ) -> Self::Value {
+        intrinsic_name: &str,
+        args: &[OperandRef<'tcx, &'ll Value>],
+    ) -> &'ll Value {
         let tcx = self.tcx();
 
         let fn_ty = instance.ty(tcx, self.typing_env());
@@ -929,12 +937,10 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         let fn_ptr = if let Some(&llfn) = self.intrinsic_instances.borrow().get(&instance) {
             llfn
         } else {
-            let sym = tcx.symbol_name(instance).name;
-
-            let llfn = if let Some(llfn) = self.get_declared_value(sym) {
+            let llfn = if let Some(llfn) = self.get_declared_value(intrinsic_name) {
                 llfn
             } else {
-                intrinsic_fn(self, sym, llreturn_ty, llargument_tys, instance)
+                intrinsic_fn(self, intrinsic_name, llreturn_ty, llargument_tys, instance)
             };
 
             self.intrinsic_instances.borrow_mut().insert(instance, llfn);
@@ -978,6 +984,44 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         );
 
         autocast(self, llret, src_ty, dest_ty)
+    }
+}
+
+impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
+    fn codegen_intrinsic_call(
+        &mut self,
+        instance: ty::Instance<'tcx>,
+        args: &[OperandRef<'tcx, &'ll Value>],
+        result_layout: ty::layout::TyAndLayout<'tcx>,
+        result_place: Option<PlaceValue<&'ll Value>>,
+        span: Span,
+    ) -> IntrinsicResult<'tcx, &'ll Value> {
+        let tcx = self.tcx;
+        let name = tcx.intrinsic(instance.def_id()).unwrap().name;
+
+        match name {
+            Intrinsic::Rustc(name) => self.codegen_rustc_intrinsic_call(
+                instance,
+                args,
+                result_layout,
+                result_place,
+                span,
+                name,
+            ),
+            Intrinsic::Backend { llvm } => {
+                let value = self.codegen_llvm_intrinsic_call_impl(instance, llvm.as_str(), args);
+                self.llvm_value_to_intrinsicresult(value, result_layout, result_place)
+            }
+        }
+    }
+
+    fn codegen_llvm_intrinsic_call(
+        &mut self,
+        instance: ty::Instance<'tcx>,
+        args: &[OperandRef<'tcx, Self::Value>],
+        _is_cleanup: bool,
+    ) -> Self::Value {
+        self.codegen_llvm_intrinsic_call_impl(instance, self.tcx().symbol_name(instance).name, args)
     }
 
     fn abort_immediate(&mut self) {

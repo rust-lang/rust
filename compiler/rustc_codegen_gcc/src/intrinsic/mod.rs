@@ -23,7 +23,7 @@ use rustc_data_structures::fx::FxHashSet;
 #[cfg(feature = "master")]
 use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::layout::LayoutOf;
-use rustc_middle::ty::{self, Instance, Ty};
+use rustc_middle::ty::{self, Instance, Intrinsic, Ty};
 use rustc_session::config::OptLevel;
 use rustc_span::{Span, Symbol, bug, span_bug, sym};
 use rustc_target::callconv::{ArgAbi, PassMode};
@@ -148,7 +148,12 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
 
         let result = PlaceRef { val: result_place.unwrap(), layout: result_layout };
 
-        let name = tcx.item_name(instance.def_id());
+        let intrinsic = tcx.intrinsic(instance.def_id()).unwrap();
+        let Intrinsic::Rustc(name) = intrinsic.name else {
+            // Backend intrinsics use their fallback bodies for now.
+            let fallback = Instance::new_raw(instance.def_id(), instance.args);
+            return IntrinsicResult::Fallback(fallback);
+        };
         let name_str = name.as_str();
         let fn_args = instance.args;
 

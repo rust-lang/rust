@@ -218,7 +218,7 @@ pub enum ValidityRequirement {
 }
 
 impl ValidityRequirement {
-    pub fn from_intrinsic(intrinsic: Symbol) -> Option<Self> {
+    pub fn from_rustc_intrinsic(intrinsic: Symbol) -> Option<Self> {
         match intrinsic {
             sym::assert_inhabited => Some(Self::Inhabited),
             sym::assert_zero_valid => Some(Self::Zero),

@@ -1259,6 +1259,7 @@ symbols! {
         lint_reasons,
         literal,
         little, big,
+        llvm,
         load,
         loaded_from_disk,
         local,
