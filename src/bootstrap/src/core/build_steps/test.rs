@@ -3777,6 +3777,7 @@ impl CommandLineStep for CompilerBuiltins {
         let target = self.target;
         let record_failed_tests = builder.ensure(SetupFailedTestsFile);
 
+        builder.ensure(compile::Std::new(compiler, compiler.host));
         builder.ensure(compile::Std::new(compiler, target));
 
         const COMPILER_BUILTINS_ALLOW_FEATURES: &[&str] = &[
