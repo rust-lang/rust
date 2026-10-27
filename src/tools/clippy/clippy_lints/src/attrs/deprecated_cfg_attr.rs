@@ -4,9 +4,9 @@ use clippy_utils::msrvs::{self, MsrvStack};
 use clippy_utils::sym;
 use rustc_ast::AttrStyle;
 use rustc_errors::Applicability;
-use rustc_lint::EarlyContext;
+use rustc_lint::{EarlyContext, PreExpansion};
 
-pub(super) fn check(cx: &EarlyContext<'_>, attr: &Attribute, msrv: &MsrvStack) {
+pub(super) fn check(cx: &EarlyContext<'_, PreExpansion>, attr: &Attribute, msrv: &MsrvStack) {
     // check cfg_attr
     if attr.has_name(sym::cfg_attr)
         && let Some(items) = attr.meta_item_list()
@@ -49,7 +49,7 @@ pub(super) fn check(cx: &EarlyContext<'_>, attr: &Attribute, msrv: &MsrvStack) {
     }
 }
 
-pub(super) fn check_clippy(cx: &EarlyContext<'_>, attr: &Attribute) {
+pub(super) fn check_clippy(cx: &EarlyContext<'_, PreExpansion>, attr: &Attribute) {
     if attr.has_name(sym::cfg)
         && let Some(list) = attr.meta_item_list()
     {
@@ -59,7 +59,7 @@ pub(super) fn check_clippy(cx: &EarlyContext<'_>, attr: &Attribute) {
     }
 }
 
-fn check_deprecated_cfg_recursively(cx: &EarlyContext<'_>, attr: &rustc_ast::MetaItem) {
+fn check_deprecated_cfg_recursively(cx: &EarlyContext<'_, PreExpansion>, attr: &rustc_ast::MetaItem) {
     if let Some(ident) = attr.ident() {
         if matches!(ident.name, sym::any | sym::all | sym::not) {
             let Some(list) = attr.meta_item_list() else { return };
@@ -72,7 +72,7 @@ fn check_deprecated_cfg_recursively(cx: &EarlyContext<'_>, attr: &rustc_ast::Met
     }
 }
 
-fn check_cargo_clippy_attr(cx: &EarlyContext<'_>, item: &rustc_ast::MetaItem) {
+fn check_cargo_clippy_attr(cx: &EarlyContext<'_, PreExpansion>, item: &rustc_ast::MetaItem) {
     if item.has_name(sym::feature) && item.value_str() == Some(sym::cargo_clippy) {
         span_lint_and_sugg(
             cx,

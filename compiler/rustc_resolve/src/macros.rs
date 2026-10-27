@@ -9,7 +9,7 @@ use rustc_ast_pretty::pprust;
 use rustc_attr_ir::{Attribute, AttributeKind, CfgEntry, StabilityLevel, StrippedCfgItem};
 use rustc_attr_parsing::AttributeParser;
 use rustc_data_structures::sync::RwLock;
-use rustc_errors::{Applicability, StashKey};
+use rustc_errors::{Applicability, PreExpansionLint, StashKey};
 use rustc_expand::base::{
     Annotatable, DeriveResolution, Indeterminate, ResolverExpand, SyntaxExtension,
     SyntaxExtensionKind,
@@ -176,6 +176,10 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
 
     fn invocation_parent(&self, id: LocalExpnId) -> LocalDefId {
         self.invocation_parents[&id].parent_def
+    }
+
+    fn buffer_pre_expansion_lints(&mut self, lints: Vec<PreExpansionLint>) {
+        self.lint_buffer.pre_expansion.extend(lints);
     }
 
     fn mark_scope_with_compile_error(&mut self, id: NodeId) {

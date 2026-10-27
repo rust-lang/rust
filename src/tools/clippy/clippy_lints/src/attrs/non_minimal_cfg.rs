@@ -3,10 +3,10 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::SpanExt as _;
 use rustc_ast::{MetaItemInner, MetaItemKind};
 use rustc_errors::Applicability;
-use rustc_lint::EarlyContext;
+use rustc_lint::{EarlyContext, PreExpansion};
 use rustc_span::sym;
 
-pub(super) fn check(cx: &EarlyContext<'_>, attr: &Attribute) {
+pub(super) fn check(cx: &EarlyContext<'_, PreExpansion>, attr: &Attribute) {
     if attr.has_name(sym::cfg)
         && let Some(items) = attr.meta_item_list()
     {
@@ -14,7 +14,7 @@ pub(super) fn check(cx: &EarlyContext<'_>, attr: &Attribute) {
     }
 }
 
-fn check_nested_cfg(cx: &EarlyContext<'_>, items: &[MetaItemInner]) {
+fn check_nested_cfg(cx: &EarlyContext<'_, PreExpansion>, items: &[MetaItemInner]) {
     for item in items {
         if let MetaItemInner::MetaItem(meta) = item {
             if !meta.has_name(sym::any) && !meta.has_name(sym::all) {

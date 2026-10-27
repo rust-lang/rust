@@ -30,7 +30,7 @@ pub use anstyle::{
     Ansi256Color, AnsiColor, Color, EffectIter, Effects, Reset, RgbColor, Style as Anstyle,
 };
 pub use codes::*;
-pub use decorate_diag::{BufferedEarlyLint, DecorateDiagCompat, LintBuffer};
+pub use decorate_diag::{BufferedEarlyLint, DecorateDiagCompat, LintBuffer, PreExpansionLint};
 pub use diagnostic::{
     Diag, DiagDecorator, DiagInner, DiagLocation, DiagStyledString, Diagnostic, StringPart,
     Subdiag, Subdiagnostic,
