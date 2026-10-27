@@ -1,0 +1,8 @@
+error: expected one of `(`, `::`, `<`, or `>`, found `<eof>`
+  --> $DIR/ret-ty-recover-eof-2.rs:1:30
+   |
+LL | fn foo() -> impl Into<<() as Reexported
+   |                              ^^^^^^^^^^ expected one of `(`, `::`, `<`, or `>`
+
+error: aborting due to 1 previous error
+
