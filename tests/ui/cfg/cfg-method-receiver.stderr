@@ -1,4 +1,4 @@
-error: removing an expression is not supported in this position
+error: `cfg` is not supported in this position
   --> $DIR/cfg-method-receiver.rs:9:17
    |
 LL |     cbor_map! { #[cfg(test)] 4};
