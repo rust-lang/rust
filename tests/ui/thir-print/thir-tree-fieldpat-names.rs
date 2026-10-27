@@ -53,19 +53,19 @@ fn struct_leaf (s: Tri) {
 }
 
 fn variant (e: Var) {
-  let Var::TLike (x, _) = e else { panic!() };
-  let Var::TLike (_, y) = e else { panic!() };
-  let Var::TLike (_, _) = e else { panic!() };
+  let Var::TLike (x, _) = e else { unsafe { mypanic() }};
+  let Var::TLike (_, y) = e else { unsafe { mypanic() }};
+  let Var::TLike (_, _) = e else { unsafe { mypanic() }};
 
-  let Var::TLike (.., y) = e else { panic!() };
-  let Var::TLike (x, ..) = e else { panic!() };
+  let Var::TLike (.., y) = e else { unsafe { mypanic() }};
+  let Var::TLike (x, ..) = e else { unsafe { mypanic() }};
 
-  let Var::SLike { l, r: _ } = e else { panic!() };
-  let Var::SLike { l: _, r } = e else { panic!() };
-  let Var::SLike { l: _, r: _ } = e else { panic!() };
+  let Var::SLike { l, r: _ } = e else { unsafe { mypanic() }};
+  let Var::SLike { l: _, r } = e else { unsafe { mypanic() }};
+  let Var::SLike { l: _, r: _ } = e else { unsafe { mypanic() }};
 
-  let Var::SLike { r: y, .. } = e else { panic!() };
-  let Var::SLike { l: x, .. } = e else { panic!() };
+  let Var::SLike { r: y, .. } = e else { unsafe { mypanic() }};
+  let Var::SLike { l: x, .. } = e else { unsafe { mypanic() }};
 
   // refutable (different print path)
   if let Var::TLike (.., y) = e {}
@@ -74,3 +74,7 @@ fn variant (e: Var) {
 }
 
 fn main() {}
+
+unsafe extern "C" { // no std in stdout
+  fn mypanic() -> !;
+}
