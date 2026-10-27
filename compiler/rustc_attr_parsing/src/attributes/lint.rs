@@ -8,6 +8,7 @@ use thin_vec::ThinVec;
 
 use crate::attributes::{AcceptMapping, AttributeParser, AttributeStability};
 use crate::context::{AcceptContext, ExpectStringLiteral, FinalizeContext};
+use crate::diagnostics::BadAttributeLitHelp;
 use crate::parser::{ArgParser, MetaItemOrLitParser};
 use crate::target_checking::AllowedTargets;
 use crate::target_checking::Policy::{Allow, Warn};
@@ -36,9 +37,9 @@ impl LintParser {
                 let p = parsers.last()?.meta_item()?;
                 let nv = p.args().as_name_value()?;
                 if !p.path().word_is(sym::reason) {
-                    cx.emit_err(diagnostics::MalformedAttribute {
+                    cx.emit_err(diagnostics::ExpectedLint {
                         span: p.span(),
-                        kind: diagnostics::MalformedAttributeKind::BadAttributeArgument(p.span()),
+                        help: BadAttributeLitHelp::Other { kind: kind.sym() },
                     });
                 } else {
                     parsers = &parsers[..(parsers.len() - 1)];
@@ -90,11 +91,9 @@ impl LintParser {
                                 nv.expect_string_literal(cx);
                             }
                             ArgParser::NameValue(_) | ArgParser::List(_) => {
-                                cx.emit_err(diagnostics::MalformedAttribute {
+                                cx.emit_err(diagnostics::ExpectedLint {
                                     span: p.span(),
-                                    kind: diagnostics::MalformedAttributeKind::BadAttributeArgument(
-                                        item.span(),
-                                    ),
+                                    help: BadAttributeLitHelp::Other { kind: kind.sym() },
                                 });
                             }
                         }
