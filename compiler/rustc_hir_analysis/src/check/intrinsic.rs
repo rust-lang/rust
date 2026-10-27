@@ -152,6 +152,7 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::ptr_guaranteed_cmp
         | sym::ptr_mask
         | sym::ptr_metadata
+        | sym::resumable_breakpoint
         | sym::return_address
         | sym::rotate_left
         | sym::rotate_right
@@ -263,7 +264,7 @@ pub(crate) fn check_intrinsic_type(
         sym::abort_immediate => (0, 0, vec![], tcx.types.never),
         sym::amdgpu_dispatch_ptr => (0, 0, vec![], Ty::new_imm_ptr(tcx, tcx.types.unit)),
         sym::unreachable => (0, 0, vec![], tcx.types.never),
-        sym::breakpoint => (0, 0, vec![], tcx.types.unit),
+        sym::breakpoint | sym::resumable_breakpoint => (0, 0, vec![], tcx.types.unit),
         sym::codeview_annotation => (1, 0, vec![], tcx.types.unit),
         sym::size_of | sym::align_of | sym::variant_count => (1, 0, vec![], tcx.types.usize),
         sym::size_of_val | sym::align_of_val => {
