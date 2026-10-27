@@ -101,15 +101,8 @@ impl<'a> State<'a> {
     /// actual style of the attribute.
     fn print_attribute_as_style(&mut self, attr: &Attribute, style: ast::AttrStyle) {
         match &attr {
-            Attribute::Unparsed(unparsed) => {
-                self.maybe_print_comment(unparsed.span.lo());
-                match style {
-                    ast::AttrStyle::Inner => self.word("#!["),
-                    ast::AttrStyle::Outer => self.word("#["),
-                }
-                self.print_attr_item(&unparsed, unparsed.span);
-                self.word("]");
-                self.hardbreak()
+            Attribute::Tool(unparsed) | Attribute::DeriveHelper(unparsed) => {
+                self.print_attritem_as_style(unparsed, style)
             }
             Attribute::Parsed(AttributeKind::DocComment { kind, comment, .. }) => {
                 self.word(rustc_ast_pretty::pprust::state::doc_comment_to_string(
@@ -127,6 +120,17 @@ impl<'a> State<'a> {
                 self.hardbreak()
             }
         }
+    }
+
+    fn print_attritem_as_style(&mut self, attr: &AttrItem, style: ast::AttrStyle) {
+        self.maybe_print_comment(attr.span.lo());
+        match style {
+            ast::AttrStyle::Inner => self.word("#!["),
+            ast::AttrStyle::Outer => self.word("#["),
+        }
+        self.print_attr_item(&attr, attr.span);
+        self.word("]");
+        self.hardbreak()
     }
 
     fn print_attr_item(&mut self, item: &AttrItem, span: Span) {
@@ -313,6 +317,10 @@ where
 
 pub fn attribute_to_string(ann: &dyn PpAnn, attr: &Attribute) -> String {
     to_string(ann, |s| s.print_attribute_as_style(attr, ast::AttrStyle::Outer))
+}
+
+pub fn attritem_to_string(ann: &dyn PpAnn, attr: &AttrItem) -> String {
+    to_string(ann, |s| s.print_attritem_as_style(attr, ast::AttrStyle::Outer))
 }
 
 pub fn ty_to_string(ann: &dyn PpAnn, ty: &hir::Ty<'_>) -> String {
