@@ -3,8 +3,8 @@
 use libc::{c_char, c_uchar, c_uint};
 
 use super::MetadataKindId;
-use super::ffi::{AttributeKind, BasicBlock, Context, Metadata, Module, Type, Value};
-use crate::llvm::{Bool, Builder};
+use super::ffi::{AttributeKind, BasicBlock, Metadata, Module, Type, Value};
+use crate::llvm::{Bool, Builder, Context};
 
 // TypeTree types
 pub(crate) type CTypeTreeRef = *mut EnzymeTypeTree;
@@ -108,7 +108,8 @@ pub(crate) mod Enzyme_AD {
     type EnzymeSetCLStringFn = unsafe extern "C" fn(*mut c_void, *const c_char);
 
     type EnzymeNewTypeTreeFn = unsafe extern "C" fn() -> CTypeTreeRef;
-    type EnzymeNewTypeTreeCTFn = unsafe extern "C" fn(CConcreteType, &Context) -> CTypeTreeRef;
+    type EnzymeNewTypeTreeCTFn =
+        for<'ll> unsafe extern "C" fn(CConcreteType, Context<'ll>) -> CTypeTreeRef;
     type EnzymeNewTypeTreeTRFn = unsafe extern "C" fn(CTypeTreeRef) -> CTypeTreeRef;
     type EnzymeFreeTypeTreeFn = unsafe extern "C" fn(CTypeTreeRef);
     type EnzymeMergeTypeTreeFn = unsafe extern "C" fn(CTypeTreeRef, CTypeTreeRef) -> bool;
@@ -117,7 +118,7 @@ pub(crate) mod Enzyme_AD {
     type EnzymeTypeTreeShiftIndiciesEqFn =
         unsafe extern "C" fn(CTypeTreeRef, *const c_char, i64, i64, u64);
     type EnzymeTypeTreeInsertEqFn =
-        unsafe extern "C" fn(CTypeTreeRef, *const i64, usize, CConcreteType, &Context);
+        for<'ll> unsafe extern "C" fn(CTypeTreeRef, *const i64, usize, CConcreteType, Context<'ll>);
     type EnzymeTypeTreeToStringFn = unsafe extern "C" fn(CTypeTreeRef) -> *const c_char;
     type EnzymeTypeTreeToStringFreeFn = unsafe extern "C" fn(*const c_char);
 
@@ -236,10 +237,10 @@ pub(crate) mod Enzyme_AD {
             unsafe { (self.EnzymeNewTypeTree)() }
         }
 
-        pub(crate) fn new_type_tree_ct(
+        pub(crate) fn new_type_tree_ct<'ll>(
             &self,
             t: CConcreteType,
-            ctx: &Context,
+            ctx: Context<'ll>,
         ) -> *mut EnzymeTypeTree {
             unsafe { (self.EnzymeNewTypeTreeCT)(t, ctx) }
         }
@@ -283,13 +284,13 @@ pub(crate) mod Enzyme_AD {
             }
         }
 
-        pub(crate) fn tree_insert_eq(
+        pub(crate) fn tree_insert_eq<'ll>(
             &self,
             tree: CTypeTreeRef,
             indices: *const i64,
             len: usize,
             ct: CConcreteType,
-            ctx: &Context,
+            ctx: Context<'ll>,
         ) {
             unsafe { (self.EnzymeTypeTreeInsertEq)(tree, indices, len, ct, ctx) }
         }
@@ -476,7 +477,7 @@ impl TypeTree {
         TypeTree { inner }
     }
 
-    pub(crate) fn from_type(t: CConcreteType, ctx: &Context) -> TypeTree {
+    pub(crate) fn from_type<'ll>(t: CConcreteType, ctx: Context<'ll>) -> TypeTree {
         let wrapper = EnzymeWrapper::get_instance();
         let inner = wrapper.new_type_tree_ct(t, ctx);
         TypeTree { inner }
@@ -510,7 +511,7 @@ impl TypeTree {
         self
     }
 
-    pub(crate) fn insert(&mut self, indices: &[i64], ct: CConcreteType, ctx: &Context) {
+    pub(crate) fn insert<'ll>(&mut self, indices: &[i64], ct: CConcreteType, ctx: Context<'ll>) {
         let wrapper = EnzymeWrapper::get_instance();
         wrapper.tree_insert_eq(self.inner, indices.as_ptr(), indices.len(), ct, ctx);
     }
