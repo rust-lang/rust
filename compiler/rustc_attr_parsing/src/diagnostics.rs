@@ -2146,8 +2146,6 @@ pub(crate) struct MalformedAttribute {
 
 #[derive(Subdiagnostic)]
 pub(crate) enum MalformedAttributeKind {
-    #[label("bad attribute argument")]
-    BadAttributeArgument(#[primary_span] Span),
     #[label("reason in lint attribute must come last")]
     ReasonMustComeLast(#[primary_span] Span),
 }

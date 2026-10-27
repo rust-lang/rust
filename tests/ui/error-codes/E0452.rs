@@ -1,8 +1,8 @@
-#![allow(foo = "")] //~ ERROR E0452
-                    //~| ERROR E0452
-                    //~| ERROR E0452
-                    //~| ERROR E0452
-                    //~| ERROR E0452
-                    //~| ERROR E0452
+#![allow(foo = "")] //~ ERROR expected a lint
+                    //~| ERROR expected a lint
+                    //~| ERROR expected a lint
+                    //~| ERROR expected a lint
+                    //~| ERROR expected a lint
+                    //~| ERROR expected a lint
 fn main() {
 }
