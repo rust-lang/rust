@@ -5,31 +5,31 @@ use crate::arch::asm;
 
 unsafe extern "llvm-intrinsic" {
     #[link_name = "llvm.riscv.aes64es"]
-    fn _aes64es(rs1: i64, rs2: i64) -> i64;
+    fn _aes64es(rs1: u64, rs2: u64) -> u64;
 
     #[link_name = "llvm.riscv.aes64esm"]
-    fn _aes64esm(rs1: i64, rs2: i64) -> i64;
+    fn _aes64esm(rs1: u64, rs2: u64) -> u64;
 
     #[link_name = "llvm.riscv.aes64ds"]
-    fn _aes64ds(rs1: i64, rs2: i64) -> i64;
+    fn _aes64ds(rs1: u64, rs2: u64) -> u64;
 
     #[link_name = "llvm.riscv.aes64dsm"]
-    fn _aes64dsm(rs1: i64, rs2: i64) -> i64;
+    fn _aes64dsm(rs1: u64, rs2: u64) -> u64;
 
     #[link_name = "llvm.riscv.aes64im"]
-    fn _aes64im(rs1: i64) -> i64;
+    fn _aes64im(rs1: u64) -> u64;
 
     #[link_name = "llvm.riscv.sha512sig0"]
-    fn _sha512sig0(rs1: i64) -> i64;
+    fn _sha512sig0(rs1: u64) -> u64;
 
     #[link_name = "llvm.riscv.sha512sig1"]
-    fn _sha512sig1(rs1: i64) -> i64;
+    fn _sha512sig1(rs1: u64) -> u64;
 
     #[link_name = "llvm.riscv.sha512sum0"]
-    fn _sha512sum0(rs1: i64) -> i64;
+    fn _sha512sum0(rs1: u64) -> u64;
 
     #[link_name = "llvm.riscv.sha512sum1"]
-    fn _sha512sum1(rs1: i64) -> i64;
+    fn _sha512sum1(rs1: u64) -> u64;
 }
 
 /// AES final round encryption instruction for RV64.
@@ -49,7 +49,7 @@ unsafe extern "llvm-intrinsic" {
 #[inline]
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn aes64es(rs1: u64, rs2: u64) -> u64 {
-    unsafe { _aes64es(rs1 as i64, rs2 as i64) as u64 }
+    unsafe { _aes64es(rs1, rs2) }
 }
 
 /// AES middle round encryption instruction for RV64.
@@ -69,7 +69,7 @@ pub fn aes64es(rs1: u64, rs2: u64) -> u64 {
 #[inline]
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn aes64esm(rs1: u64, rs2: u64) -> u64 {
-    unsafe { _aes64esm(rs1 as i64, rs2 as i64) as u64 }
+    unsafe { _aes64esm(rs1, rs2) }
 }
 
 /// AES final round decryption instruction for RV64.
@@ -89,7 +89,7 @@ pub fn aes64esm(rs1: u64, rs2: u64) -> u64 {
 #[inline]
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn aes64ds(rs1: u64, rs2: u64) -> u64 {
-    unsafe { _aes64ds(rs1 as i64, rs2 as i64) as u64 }
+    unsafe { _aes64ds(rs1, rs2) }
 }
 
 /// AES middle round decryption instruction for RV64.
@@ -109,7 +109,7 @@ pub fn aes64ds(rs1: u64, rs2: u64) -> u64 {
 #[inline]
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn aes64dsm(rs1: u64, rs2: u64) -> u64 {
-    unsafe { _aes64dsm(rs1 as i64, rs2 as i64) as u64 }
+    unsafe { _aes64dsm(rs1, rs2) }
 }
 
 /// This instruction implements part of the KeySchedule operation for the AES Block cipher
@@ -200,7 +200,7 @@ pub fn aes64ks2(rs1: u64, rs2: u64) -> u64 {
 #[inline]
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn aes64im(rs1: u64) -> u64 {
-    unsafe { _aes64im(rs1 as i64) as u64 }
+    unsafe { _aes64im(rs1) }
 }
 
 /// Implements the Sigma0 transformation function as used in the SHA2-512 hash function \[49\]
@@ -220,7 +220,7 @@ pub fn aes64im(rs1: u64) -> u64 {
 #[inline]
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn sha512sig0(rs1: u64) -> u64 {
-    unsafe { _sha512sig0(rs1 as i64) as u64 }
+    unsafe { _sha512sig0(rs1) }
 }
 
 /// Implements the Sigma1 transformation function as used in the SHA2-512 hash function \[49\]
@@ -240,7 +240,7 @@ pub fn sha512sig0(rs1: u64) -> u64 {
 #[inline]
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn sha512sig1(rs1: u64) -> u64 {
-    unsafe { _sha512sig1(rs1 as i64) as u64 }
+    unsafe { _sha512sig1(rs1) }
 }
 
 /// Implements the Sum0 transformation function as used in the SHA2-512 hash function \[49\]
@@ -260,7 +260,7 @@ pub fn sha512sig1(rs1: u64) -> u64 {
 #[inline]
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn sha512sum0(rs1: u64) -> u64 {
-    unsafe { _sha512sum0(rs1 as i64) as u64 }
+    unsafe { _sha512sum0(rs1) }
 }
 
 /// Implements the Sum1 transformation function as used in the SHA2-512 hash function \[49\]
@@ -280,5 +280,5 @@ pub fn sha512sum0(rs1: u64) -> u64 {
 #[inline]
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn sha512sum1(rs1: u64) -> u64 {
-    unsafe { _sha512sum1(rs1 as i64) as u64 }
+    unsafe { _sha512sum1(rs1) }
 }
