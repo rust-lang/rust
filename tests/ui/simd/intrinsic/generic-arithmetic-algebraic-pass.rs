@@ -1,5 +1,4 @@
 //@ run-pass
-//@ ignore-backends: gcc
 //@ compile-flags: --cfg minisimd_const
 
 #![allow(non_camel_case_types)]
