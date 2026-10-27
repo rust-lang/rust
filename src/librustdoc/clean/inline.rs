@@ -3,7 +3,7 @@
 use std::iter::once;
 use std::sync::Arc;
 
-use rustc_attr_ir::{DocInline, find_attr};
+use rustc_attr_ir::{AttributeKind, DocInline, find_attr};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::thin_vec::{ThinVec, thin_vec};
 use rustc_hir::def::{DefKind, MacroKinds, Res};
@@ -76,7 +76,16 @@ pub(crate) fn try_inline(
     debug!("attrs={attrs:?}");
 
     let attrs_without_docs = attrs.map(|(attrs, def_id)| {
-        (attrs.iter().filter(|a| a.doc_str().is_none()).cloned().collect::<Vec<_>>(), def_id)
+        (
+            attrs
+                .iter()
+                .filter(|a| {
+                    !matches!(a, rustc_attr_ir::Attribute::Parsed(AttributeKind::DocComment { .. }))
+                })
+                .cloned()
+                .collect::<Vec<_>>(),
+            def_id,
+        )
     });
     let attrs_without_docs =
         attrs_without_docs.as_ref().map(|(attrs, def_id)| (&attrs[..], *def_id));
@@ -786,7 +795,7 @@ fn build_module_items(
             && find_attr!(
                 load_attrs(cx.tcx, reexport_def_id),
                 Doc(d)
-                if d.inline.first().is_some_and(|(inline, _)| *inline == DocInline::NoInline)
+                if d.inline.is_some_and(|(inline, _)| inline == DocInline::NoInline)
             )
         {
             // We don't inline foreign `use`.

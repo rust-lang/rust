@@ -399,8 +399,9 @@ impl<'a> AstValidator<'a> {
         self.check_decl_num_args(fn_decl);
         let c_variadic_span = self.check_decl_cvariadic_pos(fn_decl);
         self.check_decl_splatting(fn_decl, c_variadic_span, splat_semantic);
-        self.check_decl_attrs(fn_decl);
+        self.check_decl_attrs(&fn_decl.inputs);
         self.check_decl_self_param(&fn_decl.inputs, self_semantic);
+        self.check_decl_const_param(&fn_decl.inputs);
     }
 
     /// Emits fatal error if function declaration has more than `u16::MAX` arguments
@@ -517,10 +518,9 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn check_decl_attrs(&self, fn_decl: &FnDecl) {
+    fn check_decl_attrs(&self, fn_inputs: &[Param]) {
         use SyntheticAttr::*;
-        fn_decl
-            .inputs
+        fn_inputs
             .iter()
             .flat_map(|i| i.attrs.as_ref())
             .filter(|attr| match &attr.kind {
@@ -535,7 +535,9 @@ impl<'a> AstValidator<'a> {
                     ];
                     !attr.has_any_name(&arr) && rustc_attr_parsing::is_builtin_attr(&normal.item)
                 }
-                AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace(_)) => false,
+                AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace(_)) | AttrKind::Generated(..) => {
+                    false
+                }
                 AttrKind::DocComment(..) => true,
             })
             .for_each(|attr| {
@@ -551,6 +553,20 @@ impl<'a> AstValidator<'a> {
         if let (SelfSemantic::No, [param, ..]) = (self_semantic, fn_inputs) {
             if param.is_self() {
                 self.dcx().emit_err(diagnostics::FnParamForbiddenSelf { span: param.span });
+            }
+        }
+    }
+
+    fn check_decl_const_param(&self, fn_inputs: &[Param]) {
+        for param in fn_inputs {
+            if param.has_const_keyword && !param.is_const_param() {
+                let span = if matches!(param.pat.kind, PatKind::Missing) {
+                    param.span
+                } else {
+                    param.pat.span
+                };
+
+                self.dcx().emit_err(diagnostics::InvalidConstParam { span });
             }
         }
     }
@@ -2215,6 +2231,7 @@ impl Visitor<'_> for AstValidator<'_> {
     fn visit_path_segment(&mut self, seg: &PathSegment) -> Self::Result {
         if let Some(Parenthesized(args)) = &seg.args {
             self.check_decl_self_param(&args.inputs, SelfSemantic::No);
+            self.check_decl_attrs(&args.inputs);
             Self::check_decl_no_pat(&args.inputs, |span, _, _| {
                 self.dcx().emit_err(diagnostics::PatternParenthesizedArgList { span });
             });

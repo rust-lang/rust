@@ -30,7 +30,7 @@ pub fn syscall<'tcx>(
     let sys_gettid = ecx.eval_libc("SYS_gettid").to_target_usize(ecx)?;
     let sys_accept4 = ecx.eval_libc("SYS_accept4").to_target_usize(ecx)?;
 
-    match ecx.read_target_usize(op)? {
+    match ecx.read_target_usize(&op)? {
         // `libc::syscall(NR_GETRANDOM, buf.as_mut_ptr(), buf.len(), GRND_NONBLOCK)`
         // is called if a `HashMap` is created the regular way (e.g. HashMap<K, V>).
         num if num == sys_getrandom => {
@@ -42,12 +42,12 @@ pub fn syscall<'tcx>(
                 "syscall(SYS_getrandom, ...)",
             )?;
 
-            let ptr = ecx.read_pointer(ptr)?;
-            let len = ecx.read_target_usize(len)?;
+            let ptr = ecx.read_pointer(&ptr)?;
+            let len = ecx.read_target_usize(&len)?;
             // The only supported flags are GRND_RANDOM and GRND_NONBLOCK,
             // neither of which have any effect on our current PRNG.
             // See <https://github.com/rust-lang/rust/pull/79196> for a discussion of argument sizes.
-            let _flags = ecx.read_scalar(flags)?.to_i32()?;
+            let _flags = ecx.read_scalar(&flags)?.to_i32()?;
 
             ecx.gen_random(ptr, len)?;
             ecx.write_scalar(Scalar::from_target_usize(len, ecx), dest)?;
@@ -60,7 +60,7 @@ pub fn syscall<'tcx>(
             let ([initval, flags], _) =
                 ecx.check_varargs(shim_varargs![u32, i32], varargs, "syscall(SYS_evetfd2, ...)")?;
 
-            let result = ecx.eventfd(initval, flags)?;
+            let result = ecx.eventfd(&initval, &flags)?;
             ecx.write_int(result.to_i32()?, dest)?;
         }
         num if num == sys_gettid => {
@@ -74,7 +74,7 @@ pub fn syscall<'tcx>(
                 varargs,
                 "syscall(SYS_accept4, ...)",
             )?;
-            ecx.accept4(socket, address, address_len, Some(flags), dest)?;
+            ecx.accept4(&socket, &address, &address_len, Some(&flags), dest)?;
         }
         num => {
             throw_unsup_format!("syscall: unsupported syscall number {num}");

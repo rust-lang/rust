@@ -1,6 +1,7 @@
 error[E0080]: modifying a static's initial value from another static's initializer
   --> $DIR/mod-static-with-const-fn.rs:14:5
    |
+LL | static BAR: () = unsafe {
 LL |     *FOO.0.get() = 5;
    |     ^^^^^^^^^^^^^^^^ evaluation of `BAR` failed here
 

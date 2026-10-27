@@ -59,6 +59,7 @@ pub(super) fn dummy_arg(ident: Ident, guar: ErrorGuaranteed) -> Param {
         span: ident.span,
         ty: Box::new(ty),
         is_placeholder: false,
+        has_const_keyword: false,
     }
 }
 
@@ -126,18 +127,15 @@ pub enum AttemptLocalParseRecovery {
 }
 
 impl AttemptLocalParseRecovery {
-    pub(super) fn yes(&self) -> bool {
+    pub(super) fn yes(&self, p: &Parser<'_>) -> bool {
         match self {
-            AttemptLocalParseRecovery::Yes => true,
+            AttemptLocalParseRecovery::Yes => p.may_recover(),
             AttemptLocalParseRecovery::No => false,
         }
     }
 
-    pub(super) fn no(&self) -> bool {
-        match self {
-            AttemptLocalParseRecovery::Yes => false,
-            AttemptLocalParseRecovery::No => true,
-        }
+    pub(super) fn no(&self, p: &Parser<'_>) -> bool {
+        !self.yes(p)
     }
 }
 
@@ -1141,6 +1139,13 @@ impl<'a> Parser<'a> {
                 }
             }
         }
+    }
+
+    pub(super) fn recover_missing_turbofish_for_lifetimes(&self, lt_span: Span) {
+        self.dcx().emit_err(crate::diagnostics::MissingTurbofishForLifetime {
+            span: lt_span,
+            suggest_turbofish: lt_span.shrink_to_lo(),
+        });
     }
 
     /// When writing a turbofish with multiple type parameters missing the leading `::`, we will

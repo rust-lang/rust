@@ -587,5 +587,85 @@ note: unsafe function call occurs here
 LL |             not_very_safe();
    |             ^^^^^^^^^^^^^^^
 
-error: aborting due to 27 previous errors
+error: this `unsafe` block contains 2 unsafe operations, expected only one
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:558:9
+   |
+LL | /         unsafe {
+LL | |
+LL | |             target[unsafe_index()].e.f1 = *value;
+LL | |         };
+   | |_________^
+   |
+note: raw pointer dereference occurs here
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:560:43
+   |
+LL |             target[unsafe_index()].e.f1 = *value;
+   |                                           ^^^^^^
+note: unsafe function call occurs here
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:560:20
+   |
+LL |             target[unsafe_index()].e.f1 = *value;
+   |                    ^^^^^^^^^^^^^^
+
+error: this `unsafe` block contains 2 unsafe operations, expected only one
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:566:9
+   |
+LL | /         unsafe {
+LL | |
+LL | |             target.e.f1 += *value;
+LL | |         };
+   | |_________^
+   |
+note: raw pointer dereference occurs here
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:568:28
+   |
+LL |             target.e.f1 += *value;
+   |                            ^^^^^^
+note: union field access occurs here
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:568:13
+   |
+LL |             target.e.f1 += *value;
+   |             ^^^^^^^^^^^
+
+error: this `unsafe` block contains 2 unsafe operations, expected only one
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:574:9
+   |
+LL | /         unsafe {
+LL | |
+LL | |             target.e.f4[0] = *value;
+LL | |         };
+   | |_________^
+   |
+note: raw pointer dereference occurs here
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:576:30
+   |
+LL |             target.e.f4[0] = *value;
+   |                              ^^^^^^
+note: union field access occurs here
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:576:13
+   |
+LL |             target.e.f4[0] = *value;
+   |             ^^^^^^^^^^^
+
+error: this `unsafe` block contains 2 unsafe operations, expected only one
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:592:9
+   |
+LL | /         unsafe {
+LL | |
+LL | |             target.u.r.x = *value;
+LL | |         };
+   | |_________^
+   |
+note: raw pointer dereference occurs here
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:594:28
+   |
+LL |             target.u.r.x = *value;
+   |                            ^^^^^^
+note: union field access occurs here
+  --> tests/ui/multiple_unsafe_ops_per_block.rs:594:13
+   |
+LL |             target.u.r.x = *value;
+   |             ^^^^^^^^^^
+
+error: aborting due to 31 previous errors
 

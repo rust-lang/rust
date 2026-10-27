@@ -8,12 +8,11 @@
 #![feature(binary_heap_into_iter_sorted)]
 #![feature(binary_heap_pop_if)]
 #![feature(borrowed_buf_init)]
-#![feature(bstr)]
-#![feature(bstr_to_string)]
 #![feature(buf_read_has_data_left)]
+#![feature(byte_str)]
+#![feature(byte_str_to_string)]
 #![feature(can_vector)]
 #![feature(casefold)]
-#![feature(const_btree_len)]
 #![feature(const_cmp)]
 #![feature(const_heap)]
 #![feature(const_trait_impl)]
@@ -37,7 +36,6 @@
 #![feature(macro_metavar_expr_concat)]
 #![feature(map_try_insert)]
 #![feature(pattern)]
-#![feature(ptr_cast_slice)]
 #![feature(read_buf)]
 #![feature(seek_io_take_position)]
 #![feature(seek_stream_len)]
@@ -72,8 +70,8 @@ mod arc;
 mod autotraits;
 mod borrow;
 mod boxed;
-mod bstr;
 mod btree_set_hash;
+mod byte_str;
 mod c_str;
 mod c_str2;
 mod collections;

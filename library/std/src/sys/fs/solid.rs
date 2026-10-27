@@ -159,6 +159,14 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
     }
 }
 
+impl ReadDir {
+    pub fn dir(&self) -> io::Result<Dir> {
+        let mut options = OpenOptions::new();
+        options.read(true);
+        Dir::open(&self.inner.root, &options)
+    }
+}
+
 impl fmt::Debug for ReadDir {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // This will only be called from std::fs::ReadDir, which will add a "ReadDir()" frame.
@@ -528,6 +536,10 @@ pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
     })
     .map_err(|e| e.as_io_error())?;
     Ok(())
+}
+
+pub fn rename_noreplace(_old: &Path, _new: &Path) -> io::Result<()> {
+    unsupported()
 }
 
 pub fn set_perm(p: &Path, perm: FilePermissions) -> io::Result<()> {

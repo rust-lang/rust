@@ -11,12 +11,10 @@
 // does not remove it?
 //
 // FIXME(antoyo): for performance, check which optimizations the C++ frontend enables.
-// cSpell:disable
 // Fix these warnings:
 // /usr/bin/ld: warning: type of symbol `_RNvNvNvNtCs5JWOrf9uCus_5rayon11thread_pool19WORKER_THREAD_STATE7___getit5___KEY' changed from 1 to 6 in /tmp/ccKeUSiR.ltrans0.ltrans.o
 // /usr/bin/ld: warning: type of symbol `_RNvNvNvNvNtNtNtCsAj5i4SGTR7_3std4sync4mpmc5waker17current_thread_id5DUMMY7___getit5___KEY' changed from 1 to 6 in /tmp/ccKeUSiR.ltrans0.ltrans.o
 // /usr/bin/ld: warning: incremental linking of LTO and non-LTO objects; using -flinker-output=nolto-rel which will bypass whole program optimization
-// cSpell:enable
 use std::ffi::CString;
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
@@ -47,7 +45,11 @@ struct LtoData {
     tmp_path: TempDir,
 }
 
-fn prepare_lto(each_linked_rlib_for_lto: &[PathBuf], dcx: DiagCtxtHandle<'_>) -> LtoData {
+fn prepare_lto(
+    each_linked_rlib_for_lto: &[PathBuf],
+    dcx: DiagCtxtHandle<'_>,
+    is_like_aix: bool,
+) -> LtoData {
     let tmp_path = match tempdir() {
         Ok(tmp_path) => tmp_path,
         Err(error) => {
@@ -66,7 +68,7 @@ fn prepare_lto(each_linked_rlib_for_lto: &[PathBuf], dcx: DiagCtxtHandle<'_>) ->
         let archive_data = unsafe {
             Mmap::map(File::open(path).expect("couldn't open rlib")).expect("couldn't map rlib")
         };
-        let metadata_link = rmeta_link::read_from_data(&archive_data, path).unwrap();
+        let metadata_link = rmeta_link::read_from_data(&archive_data, path, is_like_aix).unwrap();
         let archive = ArchiveFile::parse(&*archive_data).expect("wanted an rlib");
         let obj_files = archive
             .members()
@@ -112,7 +114,7 @@ pub(crate) fn run_fat(
 ) -> CompiledModule {
     let dcx = DiagCtxt::new(Box::new(shared_emitter.clone()));
     let dcx = dcx.handle();
-    let lto_data = prepare_lto(each_linked_rlib_for_lto, dcx);
+    let lto_data = prepare_lto(each_linked_rlib_for_lto, dcx, cgcx.target_is_like_aix);
     /*let symbols_below_threshold =
     lto_data.symbols_below_threshold.iter().map(|c| c.as_ptr()).collect::<Vec<_>>();*/
     fat_lto(

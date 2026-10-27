@@ -1,6 +1,6 @@
-// rustfmt-format_code_in_doc_comments: true
-// rustfmt-use_small_heuristics: Max
-// rustfmt-doc_comment_code_block_small_heuristics: Default
+//@ rustfmt-format_code_in_doc_comments: true
+//@ rustfmt-use_small_heuristics: Max
+//@ rustfmt-doc_comment_code_block_small_heuristics: Default
 
 /// Start of a doc comment.
 ///

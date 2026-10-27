@@ -13,6 +13,7 @@ use hir_def::{
         PatId, RecordLitField, RecordSpread, Statement,
     },
     resolver::ValueNs,
+    upvars::UpvarsRef,
 };
 use macros::{TypeFoldable, TypeVisitable};
 use rustc_type_ir::inherent::{IntoKind, Ty as _};
@@ -29,7 +30,6 @@ use crate::{
     },
     method_resolution::CandidateId,
     next_solver::{ErrorGuaranteed, StoredTy, Ty, TyKind},
-    upvars::UpvarsRef,
     utils::EnumerateAndAdjustIterator,
 };
 

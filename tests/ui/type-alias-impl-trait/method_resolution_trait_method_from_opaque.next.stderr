@@ -4,7 +4,11 @@ error[E0282]: type annotations needed
 LL |         self.bar.next().unwrap();
    |                  ^^^^
    |
-   = note: cannot infer type of hidden type of opaque
+note: cannot infer type of hidden type of opaque
+  --> $DIR/method_resolution_trait_method_from_opaque.rs:18:13
+   |
+LL | type Tait = impl Iterator<Item = ()>;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^
 help: try using a fully qualified path to specify the expected types
    |
 LL -         self.bar.next().unwrap();

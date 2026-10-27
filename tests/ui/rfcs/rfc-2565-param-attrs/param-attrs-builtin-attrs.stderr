@@ -385,6 +385,8 @@ LL |         #[no_mangle] b: i32
 warning: the `must_use` attribute cannot be used on function params
   --> $DIR/param-attrs-builtin-attrs.rs:29:7
    |
+LL |     /// Bar
+LL |
 LL |     #[must_use]
    |       ^^^^^^^^
    |
@@ -395,6 +397,8 @@ LL |     #[must_use]
 warning: the `no_mangle` attribute cannot be used on function params
   --> $DIR/param-attrs-builtin-attrs.rs:35:7
    |
+LL |     /// Bar
+...
 LL |     #[no_mangle] b: i32,
    |       ^^^^^^^^^
    |
@@ -404,6 +408,8 @@ LL |     #[no_mangle] b: i32,
 warning: the `must_use` attribute cannot be used on function params
   --> $DIR/param-attrs-builtin-attrs.rs:48:7
    |
+LL |     /// Bar
+LL |
 LL |     #[must_use]
    |       ^^^^^^^^
    |
@@ -413,6 +419,8 @@ LL |     #[must_use]
 warning: the `no_mangle` attribute cannot be used on function params
   --> $DIR/param-attrs-builtin-attrs.rs:54:7
    |
+LL |     /// Bar
+...
 LL |     #[no_mangle] b: i32,
    |       ^^^^^^^^^
    |
@@ -422,6 +430,8 @@ LL |     #[no_mangle] b: i32,
 warning: the `must_use` attribute cannot be used on function params
   --> $DIR/param-attrs-builtin-attrs.rs:203:11
    |
+LL |         /// Bar
+LL |
 LL |         #[must_use]
    |           ^^^^^^^^
    |
@@ -431,6 +441,8 @@ LL |         #[must_use]
 warning: the `no_mangle` attribute cannot be used on function params
   --> $DIR/param-attrs-builtin-attrs.rs:209:11
    |
+LL |         /// Bar
+...
 LL |         #[no_mangle] b: i32
    |           ^^^^^^^^^
    |
@@ -440,6 +452,8 @@ LL |         #[no_mangle] b: i32
 warning: the `must_use` attribute cannot be used on function params
   --> $DIR/param-attrs-builtin-attrs.rs:139:11
    |
+LL |         /// Baz
+LL |
 LL |         #[must_use]
    |           ^^^^^^^^
    |
@@ -449,6 +463,8 @@ LL |         #[must_use]
 warning: the `no_mangle` attribute cannot be used on function params
   --> $DIR/param-attrs-builtin-attrs.rs:145:11
    |
+LL |         /// Baz
+...
 LL |         #[no_mangle] b: i32,
    |           ^^^^^^^^^
    |
@@ -458,6 +474,8 @@ LL |         #[no_mangle] b: i32,
 warning: the `must_use` attribute cannot be used on function params
   --> $DIR/param-attrs-builtin-attrs.rs:158:11
    |
+LL |         /// Baz
+LL |
 LL |         #[must_use]
    |           ^^^^^^^^
    |
@@ -467,6 +485,8 @@ LL |         #[must_use]
 warning: the `no_mangle` attribute cannot be used on function params
   --> $DIR/param-attrs-builtin-attrs.rs:164:11
    |
+LL |         /// Baz
+...
 LL |         #[no_mangle] b: i32,
    |           ^^^^^^^^^
    |
@@ -476,6 +496,8 @@ LL |         #[no_mangle] b: i32,
 warning: the `must_use` attribute cannot be used on function params
   --> $DIR/param-attrs-builtin-attrs.rs:72:11
    |
+LL |         /// Baz
+LL |
 LL |         #[must_use]
    |           ^^^^^^^^
    |
@@ -485,6 +507,8 @@ LL |         #[must_use]
 warning: the `no_mangle` attribute cannot be used on function params
   --> $DIR/param-attrs-builtin-attrs.rs:78:11
    |
+LL |         /// Baz
+...
 LL |         #[no_mangle] b: i32,
    |           ^^^^^^^^^
    |
@@ -494,6 +518,8 @@ LL |         #[no_mangle] b: i32,
 warning: the `must_use` attribute cannot be used on function params
   --> $DIR/param-attrs-builtin-attrs.rs:91:11
    |
+LL |         /// Baz
+LL |
 LL |         #[must_use]
    |           ^^^^^^^^
    |
@@ -503,6 +529,8 @@ LL |         #[must_use]
 warning: the `no_mangle` attribute cannot be used on function params
   --> $DIR/param-attrs-builtin-attrs.rs:97:11
    |
+LL |         /// Baz
+...
 LL |         #[no_mangle] b: i32,
    |           ^^^^^^^^^
    |
@@ -512,6 +540,8 @@ LL |         #[no_mangle] b: i32,
 warning: the `must_use` attribute cannot be used on function params
   --> $DIR/param-attrs-builtin-attrs.rs:116:11
    |
+LL |         /// Baz
+LL |
 LL |         #[must_use]
    |           ^^^^^^^^
    |
@@ -521,6 +551,8 @@ LL |         #[must_use]
 warning: the `no_mangle` attribute cannot be used on function params
   --> $DIR/param-attrs-builtin-attrs.rs:122:11
    |
+LL |         /// Baz
+...
 LL |         #[no_mangle] b: i32,
    |           ^^^^^^^^^
    |
@@ -530,6 +562,8 @@ LL |         #[no_mangle] b: i32,
 warning: the `must_use` attribute cannot be used on function params
   --> $DIR/param-attrs-builtin-attrs.rs:182:11
    |
+LL |         /// Baz
+LL |
 LL |         #[must_use]
    |           ^^^^^^^^
    |
@@ -539,6 +573,8 @@ LL |         #[must_use]
 warning: the `no_mangle` attribute cannot be used on function params
   --> $DIR/param-attrs-builtin-attrs.rs:188:11
    |
+LL |         /// Baz
+...
 LL |         #[no_mangle] b: i32,
    |           ^^^^^^^^^
    |
@@ -548,6 +584,8 @@ LL |         #[no_mangle] b: i32,
 warning: the `must_use` attribute cannot be used on function params
   --> $DIR/param-attrs-builtin-attrs.rs:9:11
    |
+LL |         /// Bar
+LL |
 LL |         #[must_use]
    |           ^^^^^^^^
    |
@@ -557,6 +595,8 @@ LL |         #[must_use]
 warning: the `no_mangle` attribute cannot be used on function params
   --> $DIR/param-attrs-builtin-attrs.rs:15:11
    |
+LL |         /// Bar
+...
 LL |         #[no_mangle] b: i32,
    |           ^^^^^^^^^
    |

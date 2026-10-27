@@ -1,12 +1,28 @@
+//! Utilities for analyzing and transforming strings.
+
 /// Dealing with string indices can be hard, this struct ensures that both the
 /// character and byte index are provided for correct indexing.
+///
+/// `char_index` and `byte_index` *are not guaranteed* to agree with each other.
+/// For ascii only text they are always equal, but multi byte characters
+/// make them diverge:
+///
+/// ```no_run
+/// # use clippy_utils::str_utils::{camel_case_until, StrIndex};
+/// // 'ö' is 1 character but 2 bytes in UTF-8, so the position after
+/// // "Abcöö" is character 5 but byte 7.
+/// assert_eq!(camel_case_until("Abc\u{f6}\u{f6}DD"), StrIndex::new(5, 7));
+/// ```
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct StrIndex {
+    /// The number of characters between the start of the `str` and this position
     pub char_index: usize,
+    /// The number of bytes between the start of the `str` and this position
     pub byte_index: usize,
 }
 
 impl StrIndex {
+    /// Creates a `StrIndex` from character and byte indices.
     pub fn new(char_index: usize, byte_index: usize) -> Self {
         Self { char_index, byte_index }
     }
@@ -167,13 +183,18 @@ pub fn camel_case_split(s: &str) -> Vec<&str> {
 
 /// Dealing with string comparison can be complicated, this struct ensures that both the
 /// character and byte count are provided for correct indexing.
+///
+/// `char_count` and `byte_count` *are not guaranteed* to agree with each other.
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct StrCount {
+    /// The number of characters in a string.
     pub char_count: usize,
+    /// The number of bytes in a string.
     pub byte_count: usize,
 }
 
 impl StrCount {
+    /// Creates a `StrCount` from character and byte counts.
     pub fn new(char_count: usize, byte_count: usize) -> Self {
         Self { char_count, byte_count }
     }

@@ -61,11 +61,11 @@ pub(crate) enum RegionNameHighlight {
     MatchedAdtAndSegment(Span),
     /// The anonymous region corresponds to a region where the type annotation is completely missing
     /// from the code, e.g. in a closure arguments `|x| { ... }`, where `x` is a reference.
-    CannotMatchHirTy(Span, Symbol),
+    CannotMatchHirTy(Span, Symbol, Option<Span>),
     /// The anonymous region corresponds to a region where the type annotation is completely missing
     /// from the code, and *even if* we print out the full name of the type, the region name won't
     /// be included. This currently occurs for opaque types like `impl Future`.
-    Occluded(Span, Symbol),
+    Occluded(Span, Symbol, Option<Span>),
 }
 
 impl RegionName {
@@ -98,8 +98,8 @@ impl RegionName {
             | RegionNameSource::AnonRegionFromOutput(ref highlight, _) => match *highlight {
                 RegionNameHighlight::MatchedHirTy(span)
                 | RegionNameHighlight::MatchedAdtAndSegment(span)
-                | RegionNameHighlight::CannotMatchHirTy(span, _)
-                | RegionNameHighlight::Occluded(span, _) => Some(span),
+                | RegionNameHighlight::CannotMatchHirTy(span, _, _)
+                | RegionNameHighlight::Occluded(span, _, _) => Some(span),
             },
         }
     }
@@ -120,8 +120,12 @@ impl RegionName {
             RegionNameSource::AnonRegionFromArgument(RegionNameHighlight::CannotMatchHirTy(
                 span,
                 type_name,
+                lt_span,
             )) => {
                 diag.span_label(*span, format!("has type `{type_name}`"));
+                if let Some(span) = lt_span {
+                    diag.span_label(*span, format!("lifetime `{self}` introduced here"));
+                }
             }
             RegionNameSource::AnonRegionFromArgument(RegionNameHighlight::MatchedHirTy(span))
             | RegionNameSource::AnonRegionFromOutput(RegionNameHighlight::MatchedHirTy(span), _)
@@ -143,14 +147,18 @@ impl RegionName {
             RegionNameSource::AnonRegionFromArgument(RegionNameHighlight::Occluded(
                 span,
                 type_name,
+                lt_span,
             )) => {
                 diag.span_label(
                     *span,
                     format!("lifetime `{self}` appears in the type `{type_name}`"),
                 );
+                if let Some(span) = lt_span {
+                    diag.span_label(*span, format!("lifetime `{self}` introduced here"));
+                }
             }
             RegionNameSource::AnonRegionFromOutput(
-                RegionNameHighlight::Occluded(span, type_name),
+                RegionNameHighlight::Occluded(span, type_name, lt_span),
                 mir_description,
             ) => {
                 diag.span_label(
@@ -159,6 +167,9 @@ impl RegionName {
                         "return type{mir_description} `{type_name}` contains a lifetime `{self}`"
                     ),
                 );
+                if let Some(span) = lt_span {
+                    diag.span_label(*span, format!("lifetime `{self}` introduced here"));
+                }
             }
             RegionNameSource::AnonRegionFromUpvar(span, upvar_name) => {
                 diag.span_label(
@@ -167,10 +178,13 @@ impl RegionName {
                 );
             }
             RegionNameSource::AnonRegionFromOutput(
-                RegionNameHighlight::CannotMatchHirTy(span, type_name),
+                RegionNameHighlight::CannotMatchHirTy(span, type_name, lt_span),
                 mir_description,
             ) => {
-                diag.span_label(*span, format!("return type{mir_description} is {type_name}"));
+                diag.span_label(*span, format!("return type{mir_description} is `{type_name}`"));
+                if let Some(span) = lt_span {
+                    diag.span_label(*span, format!("lifetime `{self}` introduced here"));
+                }
             }
             RegionNameSource::AnonRegionFromYieldTy(span, type_name) => {
                 diag.span_label(*span, format!("yield type is {type_name}"));
@@ -576,11 +590,18 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
             "highlight_if_we_cannot_match_hir_ty: type_name={:?} needle_fr={:?}",
             type_name, needle_fr
         );
+        let lt_span = if let Some(needle) = self.regioncx.to_error_region(needle_fr)
+            && let Some(def_id) = needle.opt_param_def_id(self.infcx.tcx, self.mir_def_id().into())
+        {
+            Some(self.infcx.tcx.def_span(def_id))
+        } else {
+            None
+        };
         if type_name.contains(&format!("'{counter}")) {
             // Only add a label if we can confirm that a region was labelled.
-            RegionNameHighlight::CannotMatchHirTy(span, Symbol::intern(&type_name))
+            RegionNameHighlight::CannotMatchHirTy(span, Symbol::intern(&type_name), lt_span)
         } else {
-            RegionNameHighlight::Occluded(span, Symbol::intern(&type_name))
+            RegionNameHighlight::Occluded(span, Symbol::intern(&type_name), lt_span)
         }
     }
 
@@ -1111,7 +1132,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
             Some(RegionName {
                 name: region_name,
                 source: RegionNameSource::AnonRegionFromArgument(
-                    RegionNameHighlight::CannotMatchHirTy(arg_span, arg_name?),
+                    RegionNameHighlight::CannotMatchHirTy(arg_span, arg_name?, None),
                 ),
             })
         } else {

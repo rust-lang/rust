@@ -843,9 +843,10 @@ impl LocalWaker {
 
     /// Creates a new `LocalWaker` from [`RawWaker`].
     ///
+    /// # Safety
+    ///
     /// The behavior of the returned `LocalWaker` is undefined if the contract defined
     /// in [`RawWaker`]'s and [`RawWakerVTable`]'s documentation is not upheld.
-    /// Therefore this method is unsafe.
     #[inline]
     #[must_use]
     #[unstable(feature = "local_waker", issue = "118959")]

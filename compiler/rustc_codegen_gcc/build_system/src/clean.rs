@@ -52,10 +52,7 @@ fn clean_all() -> Result<(), String> {
     for dir in dirs_to_remove {
         let _ = remove_dir_all(dir);
     }
-    let dirs_to_remove = ["regex", "rand", "simple-raytracer"];
-    for dir in dirs_to_remove {
-        let _ = remove_dir_all(Path::new(crate::BUILD_DIR).join(dir));
-    }
+    let _ = remove_dir_all(Path::new(crate::BUILD_DIR).join("simple-raytracer"));
 
     let files_to_remove =
         [build_sysroot.join("Cargo.lock"), "perf.data".into(), "perf.data.old".into()];

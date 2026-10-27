@@ -1,6 +1,12 @@
+//@ revisions: current next
+//[next]~? ERROR: overflow evaluating the requirement
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver=globally -Arecursion_depth_exceeding_limit
 //@ build-fail
 //@ compile-flags: -Copt-level=0
 //@ edition:2021
+//@ dont-check-compiler-stderr
+//@ forbid-output: internal compiler error
 // ignore-tidy-file-linelength
 
 use std::vec::Vec;
@@ -42,7 +48,7 @@ pub fn operator_packet<I: Iterator<Item = u64>>(version: u64, type_id: u64, itr:
         version: version,
         type_id: type_id,
         packets: decode_packets(&mut itr.take(0).peekable()),
-        //~^ ERROR: reached the recursion limit while instantiating
+        //[current]~^ ERROR: reached the recursion limit while instantiating
     };
 
     return Some(Packet::Operator(p));

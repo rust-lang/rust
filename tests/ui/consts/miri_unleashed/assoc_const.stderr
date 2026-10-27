@@ -1,6 +1,7 @@
 error[E0080]: calling non-const function `<NotConstDestruct as Drop>::drop`
   --> $DIR/assoc_const.rs:19:31
    |
+LL | trait Bar<T, U: Foo<T>> {
 LL |     const F: u32 = (U::X, 42).1;
    |                               ^ evaluation of `<NotConstDestruct as Bar<NotConstDestruct, NotConstDestruct>>::F` failed inside this call
    |

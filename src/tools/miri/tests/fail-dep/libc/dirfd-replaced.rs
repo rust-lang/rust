@@ -12,7 +12,7 @@ mod libc_utils;
 use libc_utils::{errno_check, errno_result};
 
 fn main() {
-    let path = utils::prepare_dir("miri_test_libc_dirfd_replaced");
+    let path = utils::prepare("miri_test_libc_dirfd_replaced");
     create_dir(&path).expect("create_dir failed");
     let cpath = utils::into_c_string(path);
     let dir: *mut libc::DIR = unsafe { libc::opendir(cpath.as_ptr()) };

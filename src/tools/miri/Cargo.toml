@@ -16,6 +16,13 @@ name = "miri"
 test = false    # we have no unit tests
 doctest = false # and no doc tests
 
+[[bin]]
+name = "priroda"
+path = "priroda/src/main.rs"
+test = false
+doctest = false
+required-features = ["priroda"]
+
 [dependencies]
 getrandom = { version = "0.4", features = ["std"] }
 rand = "0.10"
@@ -30,6 +37,9 @@ serde_json = { version = "1.0", optional = true }
 mio = { version = "1.1.1", features = ["os-poll", "net"] }
 socket2 = "0.6.5"
 
+# Only used by priroda binary.
+emmy_dap_types = { version = "0.2.0", optional = true }
+
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
 # native-lib dependencies
@@ -40,7 +50,7 @@ libffi-sys = { version = "=4.1.0", optional = true, default-features = false }
 libloading = { version = "0.9", optional = true }
 serde = { version = "1.0.219", features = ["derive"], optional = true }
 
-[target.'cfg(target_os = "linux")'.dependencies]
+[target.'cfg(all(target_os = "linux", target_env = "gnu", any(target_arch = "x86", target_arch = "x86_64")))'.dependencies]
 nix = { version = "0.31.0", features = ["mman", "ptrace", "signal"], optional = true }
 ipc-channel = { version = "0.22.0", optional = true }
 capstone = { version = "0.14", features = ["arch_x86", "full"], default-features = false, optional = true}
@@ -69,12 +79,19 @@ rustc_private = true
 name = "ui"
 harness = false
 
+[[test]]
+name = "priroda"
+path = "priroda/tests/ui.rs"
+harness = false
+required-features = ["priroda"]
+
 [features]
 default = ["stack-cache", "native-lib"]
 genmc = ["dep:genmc-sys"]
 stack-cache = []
 expensive-consistency-checks = ["stack-cache"]
 tracing = ["serde_json"]
+priroda = ["dep:emmy_dap_types"]
 native-lib = ["dep:libffi", "dep:libffi-sys", "dep:libloading", "dep:capstone", "dep:ipc-channel", "dep:nix", "dep:serde"]
 check_only = ["libffi?/check_only", "capstone?/check_only", "genmc-sys?/check_only"]
 

@@ -1,0 +1,30 @@
+error: functions in `extern` blocks cannot have `async` qualifier
+  --> $DIR/async-eii-declaration-ice-154533.rs:14:1
+   |
+LL | #[eii]
+   | ------ in this `extern` block
+LL | async fn hello_impl() {}
+   | ^^^^^ help: remove the `async` qualifier
+
+error[E0806]: function `hello_impl` has a type that is incompatible with the declaration of `#[hello_impl]`
+  --> $DIR/async-eii-declaration-ice-154533.rs:14:22
+   |
+LL | async fn hello_impl() {}
+   |                      ^ expected `()`, found future
+   |
+note: expected this because of this attribute
+  --> $DIR/async-eii-declaration-ice-154533.rs:13:1
+   |
+LL | #[eii]
+   | ^^^^^^
+note: type in declaration
+  --> $DIR/async-eii-declaration-ice-154533.rs:14:22
+   |
+LL | async fn hello_impl() {}
+   |                      ^
+   = note: expected signature `fn() -> ()`
+              found signature `fn() -> impl Future<Output = ()>`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0806`.

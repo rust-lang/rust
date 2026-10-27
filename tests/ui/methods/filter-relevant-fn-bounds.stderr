@@ -12,15 +12,19 @@ help: consider further restricting type parameter `F` with trait `Output`
 LL |         F: for<'a> FnOnce(<F as Output<'a>>::Type) + for<'a> Output<'a>,
    |                                                    ++++++++++++++++++++
 
-error[E0277]: expected an `FnOnce(<{closure@$DIR/filter-relevant-fn-bounds.rs:18:34: 18:41} as Output<'a>>::Type)` closure, found `{closure@$DIR/filter-relevant-fn-bounds.rs:18:34: 18:41}`
+error[E0277]: expected `FnOnce(<{closure@$DIR/filter-relevant-fn-bounds.rs:18:34: 18:41} as Output<'a>>::Type)` signature, found `{closure@$DIR/filter-relevant-fn-bounds.rs:18:34: 18:41}`
   --> $DIR/filter-relevant-fn-bounds.rs:18:34
    |
 LL |     wrapper.do_something_wrapper(|value| ());
-   |             -------------------- ^^^^^^^^^^ expected an `FnOnce(<{closure@$DIR/filter-relevant-fn-bounds.rs:18:34: 18:41} as Output<'a>>::Type)` closure, found `{closure@$DIR/filter-relevant-fn-bounds.rs:18:34: 18:41}`
+   |             -------------------- ^^^^^^^^^^ expected `FnOnce(<{closure@$DIR/filter-relevant-fn-bounds.rs:18:34: 18:41} as Output<'a>>::Type)` signature, found `{closure@$DIR/filter-relevant-fn-bounds.rs:18:34: 18:41}`
    |             |
    |             required by a bound introduced by this call
    |
-   = help: the trait `for<'a> Output<'a>` is not implemented for closure `{closure@$DIR/filter-relevant-fn-bounds.rs:18:34: 18:41}`
+help: the trait `for<'a> Output<'a>` is not implemented for closure `{closure@$DIR/filter-relevant-fn-bounds.rs:18:34: 18:41}`
+  --> $DIR/filter-relevant-fn-bounds.rs:18:34
+   |
+LL |     wrapper.do_something_wrapper(|value| ());
+   |                                  ^^^^^^^
 help: this trait has no implementations, consider adding one
   --> $DIR/filter-relevant-fn-bounds.rs:1:1
    |

@@ -1,0 +1,24 @@
+error[E0499]: cannot borrow `backend2` as mutable more than once at a time
+  --> $DIR/wrong-loop-explain-borrow-error-issue-164169.rs:17:15
+   |
+LL |         test2(&mut backend2)?;
+   |               ^^^^^^^^^^^^^
+   |               |
+   |               `backend2` was mutably borrowed here in the previous iteration of the loop
+   |               first borrow used here, in later iteration of loop
+
+error[E0499]: cannot borrow `*disks` as mutable more than once at a time
+  --> $DIR/wrong-loop-explain-borrow-error-issue-164169.rs:27:15
+   |
+LL | fn test3<'a, P, C>(disks: &'a mut [Option<(P, &'a mut Vec<u8>)>]) -> Result<C, String> {
+   |          -- lifetime `'a` defined here
+LL |     loop {
+LL |         test2(disks)?;
+   |         ------^^^^^-
+   |         |     |
+   |         |     `*disks` was mutably borrowed here in the previous iteration of the loop
+   |         argument requires that `*disks` is borrowed for `'a`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0499`.

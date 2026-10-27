@@ -313,6 +313,7 @@ where
         align,
         max_repr_align: None,
         unadjusted_abi_align: align.abi,
+        repr_c: false,
         randomization_seed: Default::default(),
     })
 }

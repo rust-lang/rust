@@ -1,4 +1,3 @@
-use rustc_ast::Safety;
 use rustc_expand::base::ExtCtxt;
 use rustc_span::{Span, sym};
 use thin_vec::thin_vec;
@@ -19,7 +18,6 @@ pub(crate) fn expand_deriving_ord(
     let trait_def = TraitDef {
         span,
         path: path_std!(cx, span, cmp::Ord),
-        skip_path_as_bound: false,
         needs_copy_as_bound_if_packed: true,
         additional_bounds: SmallVec::new(),
         supports_unions: false,
@@ -30,7 +28,7 @@ pub(crate) fn expand_deriving_ord(
             nonself_args: smallvec![(cx.ty_self_ref(span), sym::other)],
             has_other_selflike_arg: true,
             ret_ty: cx.ty_path(path_std!(cx, span, cmp::Ordering)),
-            attributes: thin_vec![cx.attr_word(sym::inline, span)],
+            attributes: thin_vec![cx.generated_attr(span, ast::GeneratedAttr::Inline)],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
             combine_substructure: combine_substructure(|cx, span, substr| cs_cmp(
                 cx,
@@ -40,8 +38,7 @@ pub(crate) fn expand_deriving_ord(
             )),
         }],
         is_const,
-        safety: Safety::Default,
-        document: true,
+        ..
     };
 
     trait_def.expand(cx, item, push)

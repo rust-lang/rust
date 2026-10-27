@@ -329,6 +329,8 @@ warning: the `macro_export` attribute cannot be used on modules
    |
 LL | #[macro_export]
    |   ^^^^^^^^^^^^
+...
+LL | mod macro_export {
    |
    = help: the `macro_export` attribute can only be applied to macro defs
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -419,6 +421,8 @@ warning: the `automatically_derived` attribute cannot be used on modules
    |
 LL | #[automatically_derived]
    |   ^^^^^^^^^^^^^^^^^^^^^
+...
+LL | mod automatically_derived {
    |
    = help: the `automatically_derived` attribute can only be applied to trait impl blocks
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -482,6 +486,8 @@ warning: the `no_mangle` attribute cannot be used on modules
    |
 LL | #[no_mangle]
    |   ^^^^^^^^^
+...
+LL | mod no_mangle {
    |
    = help: the `no_mangle` attribute can be applied to functions and statics
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -527,6 +533,8 @@ warning: the `should_panic` attribute cannot be used on modules
    |
 LL | #[should_panic]
    |   ^^^^^^^^^^^^
+...
+LL | mod should_panic {
    |
    = help: the `should_panic` attribute can only be applied to functions
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -572,6 +580,8 @@ warning: the `ignore` attribute cannot be used on modules
    |
 LL | #[ignore]
    |   ^^^^^^
+...
+LL | mod ignore {
    |
    = help: the `ignore` attribute can only be applied to functions
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -759,6 +769,8 @@ warning: the `cold` attribute cannot be used on modules
    |
 LL | #[cold]
    |   ^^^^
+...
+LL | mod cold {
    |
    = help: the `cold` attribute can only be applied to functions
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -804,6 +816,8 @@ warning: the `link_name` attribute cannot be used on modules
    |
 LL | #[link_name = "1900"]
    |   ^^^^^^^^^
+...
+LL | mod link_name {
    |
    = help: the `link_name` attribute can be applied to foreign functions and foreign statics
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -813,6 +827,8 @@ warning: the `link_name` attribute cannot be used on foreign modules
    |
 LL |     #[link_name = "1900"]
    |       ^^^^^^^^^
+...
+LL |     extern "C" { }
    |
    = help: the `link_name` attribute can be applied to foreign functions and foreign statics
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -867,6 +883,8 @@ warning: the `link_section` attribute cannot be used on modules
    |
 LL | #[link_section = ",1800"]
    |   ^^^^^^^^^^^^
+...
+LL | mod link_section {
    |
    = help: the `link_section` attribute can be applied to functions and statics
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -912,6 +930,8 @@ warning: the `link_section` attribute cannot be used on traits
    |
 LL |     #[link_section = ",1800"]
    |       ^^^^^^^^^^^^
+...
+LL |     trait Tr {
    |
    = help: the `link_section` attribute can be applied to functions and statics
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -921,6 +941,8 @@ warning: the `link` attribute cannot be used on modules
    |
 LL | #[link(name = "x")]
    |   ^^^^
+...
+LL | mod link {
    |
    = help: the `link` attribute can only be applied to foreign modules
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -983,6 +1005,8 @@ warning: the `must_use` attribute cannot be used on modules
    |
 LL | #[must_use]
    |   ^^^^^^^^
+...
+LL | mod must_use {
    |
    = help: the `must_use` attribute can be applied to data types, functions, and traits
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -1597,6 +1621,8 @@ warning: the `link_section` attribute cannot be used on required trait methods
    |
 LL |         #[link_section = ",1800"]
    |           ^^^^^^^^^^^^
+...
+LL |         fn inside_tr_no_default(&self);
    |
    = help: the `link_section` attribute can be applied to functions with a body and statics
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!

@@ -106,6 +106,9 @@
 //@ revisions: aarch64_unknown_teeos
 //@ [aarch64_unknown_teeos] compile-flags: --target aarch64-unknown-teeos
 //@ [aarch64_unknown_teeos] needs-llvm-components: aarch64
+//@ revisions: aarch64_unknown_qtee
+//@ [aarch64_unknown_qtee] compile-flags: --target aarch64-unknown-qtee
+//@ [aarch64_unknown_qtee] needs-llvm-components: aarch64
 //@ revisions: aarch64_unknown_nuttx
 //@ [aarch64_unknown_nuttx] compile-flags: --target aarch64-unknown-nuttx
 //@ [aarch64_unknown_nuttx] needs-llvm-components: aarch64
@@ -658,6 +661,9 @@
 //@ revisions: wasm32_unknown_unknown
 //@ [wasm32_unknown_unknown] compile-flags: --target wasm32-unknown-unknown
 //@ [wasm32_unknown_unknown] needs-llvm-components: webassembly
+//@ revisions: wasm32_none_component
+//@ [wasm32_none_component] compile-flags: --target wasm32-none-component
+//@ [wasm32_none_component] needs-llvm-components: webassembly
 //@ revisions: wasm32v1_none
 //@ [wasm32v1_none] compile-flags: --target wasm32v1-none
 //@ [wasm32v1_none] needs-llvm-components: webassembly

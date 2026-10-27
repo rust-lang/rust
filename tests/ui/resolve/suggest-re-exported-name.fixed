@@ -1,0 +1,16 @@
+//@ run-rustfix
+use std::fmt::Debug as OtherDebug;
+
+pub struct Debug;
+
+pub fn foo() -> impl OtherDebug { //~ ERROR: expected trait, found struct `Debug`
+    ""
+}
+
+pub fn bar() -> impl OtherDebug { //~ ERROR: expected trait, found struct `crate::Debug`
+    ""
+}
+
+pub fn baz<T: OtherDebug>() {} //~ ERROR: expected trait, found struct `Debug`
+
+fn main() {}

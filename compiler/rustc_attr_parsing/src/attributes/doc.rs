@@ -5,7 +5,7 @@ use rustc_attr_ir::{
     DocInline, HideOrShow,
 };
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, IndexEntry};
-use rustc_errors::Applicability;
+use rustc_errors::{Applicability, MultiSpan, msg};
 use rustc_feature::AttributeStability;
 use rustc_lint_defs::builtin::{INVALID_DOC_ATTRIBUTES, UNUSED_ATTRIBUTES};
 use rustc_span::{Span, Symbol, edition, sym};
@@ -14,18 +14,19 @@ use super::prelude::{ALL_TARGETS, AllowedTargets};
 use super::{AcceptMapping, AttributeParser, template};
 use crate::context::{AcceptContext, FinalizeContext};
 use crate::diagnostics::{
-    AttrCrateLevelOnly, DocAliasBadChar, DocAliasDuplicated, DocAliasEmpty, DocAliasMalformed,
-    DocAliasStartEnd, DocAttrNotCrateLevel, DocAttributeNotAttribute, DocAutoCfgExpectsHideOrShow,
+    DocAliasBadChar, DocAliasDuplicated, DocAliasEmpty, DocAliasMalformed, DocAliasStartEnd,
+    DocAttrNotCrateLevel, DocAttributeNotAttribute, DocAutoCfgExpectsHideOrShow,
     DocAutoCfgHideShowExpectsList, DocAutoCfgHideShowNoIdentBeforeValues,
     DocAutoCfgHideShowUnexpectedItem, DocAutoCfgHideShowUnexpectedItemAfterValues,
-    DocAutoCfgHideShowValuesMix, DocAutoCfgWrongLiteral, DocKeywordNotKeyword, DocTestLiteral,
-    DocTestTakesList, DocTestUnknown, DocUnknownAny, DocUnknownInclude, DocUnknownPasses,
-    DocUnknownPlugins, DocUnknownSpotlight, ExpectedNameValue, ExpectedNoArgs,
-    IllFormedAttributeInput, MalformedDoc, UnusedDuplicate,
+    DocAutoCfgHideShowValuesMix, DocAutoCfgWrongLiteral, DocInlineConflict, DocInlineOnlyUse,
+    DocKeywordNotKeyword, DocTestLiteral, DocTestTakesList, DocTestUnknown, DocUnknownAny,
+    DocUnknownInclude, DocUnknownPasses, DocUnknownPlugins, DocUnknownSpotlight, ExpectedNameValue,
+    ExpectedNoArgs, IllFormedAttributeInput, MalformedDoc, UnusedDuplicate,
 };
 use crate::parser::{
     ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItemParser, OwnedPathParser,
 };
+use crate::target_checking::Policy::Allow;
 
 fn check_keyword(cx: &mut AcceptContext<'_, '_>, keyword: Symbol, span: Span) -> bool {
     // FIXME: Once rustdoc can handle URL conflicts on case insensitive file systems, we
@@ -58,15 +59,6 @@ fn check_attr_not_crate_level(
 ) -> bool {
     if cx.shared.target == Target::Crate {
         cx.emit_err(DocAttrNotCrateLevel { span, attr_name });
-        return false;
-    }
-    true
-}
-
-/// Checks that an attribute is used at the crate level. Returns `true` if valid.
-fn check_attr_crate_level(cx: &mut AcceptContext<'_, '_>, span: Span) -> bool {
-    if cx.shared.target != Target::Crate {
-        cx.emit_lint(INVALID_DOC_ATTRIBUTES, AttrCrateLevelOnly, span);
         return false;
     }
     true
@@ -163,9 +155,10 @@ impl DocParser {
                     return;
                 }
 
-                if !check_attr_crate_level(cx, path.span()) {
-                    return;
-                }
+                cx.check_target(
+                    sym::no_crate_inject.as_str(),
+                    &AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]),
+                );
 
                 self.attribute.no_crate_inject = Some(path.span())
             }
@@ -263,7 +256,29 @@ impl DocParser {
             return;
         }
 
-        self.attribute.inline.push((inline, path.span()));
+        let span = path.span();
+        if let Some((previous_inline, previous_span)) = self.attribute.inline {
+            if previous_inline != inline {
+                let mut spans = MultiSpan::from_spans(vec![previous_span, span]);
+                spans.push_span_label(previous_span, msg!("this attribute..."));
+                spans.push_span_label(span, msg!("{\".\"}..conflicts with this attribute"));
+                cx.emit_err(DocInlineConflict { spans });
+            }
+        } else {
+            self.attribute.inline = Some((inline, span));
+        }
+
+        match cx.target {
+            Target::Use | Target::ExternCrate => {}
+            _ => {
+                let item_span = cx.target_span;
+                cx.emit_lint(
+                    INVALID_DOC_ATTRIBUTES,
+                    DocInlineOnlyUse { attr_span: span, item_span },
+                    span,
+                );
+            }
+        }
     }
 
     fn parse_cfg(&mut self, cx: &mut AcceptContext<'_, '_>, args: &ArgParser) {
@@ -530,9 +545,10 @@ impl DocParser {
                     return;
                 }
                 let span = path.span();
-                if !check_attr_crate_level(cx, span) {
-                    return;
-                }
+                cx.check_target(
+                    concat!("(", stringify!($ident), ")"),
+                    &AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]),
+                );
                 self.attribute.$ident = Some(span);
             }};
         }
@@ -548,9 +564,10 @@ impl DocParser {
                     return;
                 };
 
-                if !check_attr_crate_level(cx, path.span()) {
-                    return;
-                }
+                cx.check_target(
+                    s.as_str(),
+                    &AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]),
+                );
 
                 // FIXME: It's errorring when the attribute is passed multiple times on the command
                 // line.

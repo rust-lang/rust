@@ -63,6 +63,21 @@ pub fn get_builtin_attr<'a, A: AttributeExt + 'a>(attrs: &'a [A], name: Symbol) 
     })
 }
 
+/// Retrieves the span of a Clippy attribute, such as `#[clippy::format_args]`.
+///
+/// Panics if used on an attribute that isn't a tool attribute, so always check
+/// for that first with e.g. `path` or `path_matches`.
+pub fn span_of_clippy_attr(attr: &(impl AttributeExt + 'static)) -> Span {
+    let a: &dyn core::any::Any = attr;
+    if let Some(a) = a.downcast_ref::<rustc_ast::ast::Attribute>() {
+        a.span
+    } else if let Some(rustc_attr_ir::Attribute::Unparsed(u)) = a.downcast_ref::<rustc_attr_ir::Attribute>() {
+        u.span
+    } else {
+        panic!("attribute {attr:?} is not a clippy attribute")
+    }
+}
+
 /// If `attrs` contain exactly one instance of a built-in Clippy attribute called `name`,
 /// returns that attribute, and `None` otherwise
 pub fn get_unique_builtin_attr<'a, A: AttributeExt>(sess: &'a Session, attrs: &'a [A], name: Symbol) -> Option<&'a A> {
@@ -70,8 +85,8 @@ pub fn get_unique_builtin_attr<'a, A: AttributeExt>(sess: &'a Session, attrs: &'
     for attr in get_builtin_attr(attrs, name) {
         if let Some(duplicate) = unique_attr {
             sess.dcx()
-                .struct_span_err(attr.span(), format!("`{name}` is defined multiple times"))
-                .with_span_note(duplicate.span(), "first definition found here")
+                .struct_span_err(span_of_clippy_attr(attr), format!("`{name}` is defined multiple times"))
+                .with_span_note(span_of_clippy_attr(duplicate), "first definition found here")
                 .emit();
         } else {
             unique_attr = Some(attr);
@@ -87,8 +102,11 @@ pub fn is_proc_macro(attrs: &[impl AttributeExt]) -> bool {
 }
 
 /// Checks whether `attrs` contain `#[doc(hidden)]`
-pub fn is_doc_hidden(attrs: &[impl AttributeExt]) -> bool {
-    attrs.iter().any(AttributeExt::is_doc_hidden)
+pub fn is_doc_hidden(attrs: &[rustc_attr_ir::Attribute]) -> bool {
+    find_attr!(
+        attrs,
+        Doc(rustc_attr_ir::DocAttribute { hidden: Some(_), .. })
+    )
 }
 
 /// Checks whether the given ADT, or any of its fields/variants, are marked as `#[non_exhaustive]`
@@ -103,17 +121,16 @@ pub fn has_non_exhaustive_attr(tcx: TyCtxt<'_>, adt: AdtDef<'_>) -> bool {
             .any(|field_def| find_attr!(tcx, field_def.did, NonExhaustive(..)))
 }
 
-/// Checks whether the given span contains a `#[cfg(..)]` attribute
-pub fn span_contains_cfg(cx: &LateContext<'_>, s: Span) -> bool {
+fn span_contains_attr_idents(cx: &LateContext<'_>, s: Span, idents: &[&str]) -> bool {
     s.check_text(cx, |src| {
-        // PERF: A `#[cfg]` needs a literal `#`, so skip the lexer when the source has none.
+        // PERF: Attributes need a literal `#`, so skip the lexer when the source has none.
         if !src.contains('#') {
             return false;
         }
 
         let mut iter = tokenize_with_text(src);
 
-        // Search for the token sequence [`#`, `[`, `cfg`]
+        // Search for the token sequence [`#`, `[`, <ident>]
         while iter.any(|(t, ..)| matches!(t, TokenKind::Pound)) {
             let mut iter = iter.by_ref().skip_while(|(t, ..)| {
                 matches!(
@@ -122,13 +139,23 @@ pub fn span_contains_cfg(cx: &LateContext<'_>, s: Span) -> bool {
                 )
             });
             if matches!(iter.next(), Some((TokenKind::OpenBracket, ..)))
-                && matches!(iter.next(), Some((TokenKind::Ident, "cfg", _)))
+                && matches!(iter.next(), Some((TokenKind::Ident, name, _)) if idents.contains(&name))
             {
                 return true;
             }
         }
         false
     })
+}
+
+/// Checks whether the given span contains a `#[cfg(..)]` attribute
+pub fn span_contains_cfg(cx: &LateContext<'_>, s: Span) -> bool {
+    span_contains_attr_idents(cx, s, &["cfg"])
+}
+
+/// Checks whether the given span contains a `#[cfg(..)]` or `#[cfg_attr(..)]` attribute
+pub fn span_contains_cfg_or_cfg_attr(cx: &LateContext<'_>, s: Span) -> bool {
+    span_contains_attr_idents(cx, s, &["cfg", "cfg_attr"])
 }
 
 /// Currently used to keep track of the current value of `#[clippy::cognitive_complexity(N)]`
@@ -172,11 +199,11 @@ impl LimitStack {
 fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &[impl AttributeExt], name: Symbol, mut f: F) {
     for attr in get_builtin_attr(attrs, name) {
         let Some(value) = attr.value_str() else {
-            sess.dcx().span_err(attr.span(), "bad clippy attribute");
+            sess.dcx().span_err(span_of_clippy_attr(attr), "bad clippy attribute");
             continue;
         };
         let Ok(value) = u64::from_str(value.as_str()) else {
-            sess.dcx().span_err(attr.span(), "not a number");
+            sess.dcx().span_err(span_of_clippy_attr(attr), "not a number");
             continue;
         };
         f(value);

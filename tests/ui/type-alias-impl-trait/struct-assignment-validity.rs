@@ -1,5 +1,9 @@
+//@ revisions: old next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
+//@[next] check-pass
 //@ compile-flags: -Zvalidate-mir
-//@ check-pass
+//@[old] check-pass
 
 // Check that we don't cause cycle errors when validating pre-`RevealOpaques` MIR
 // that assigns opaques through normalized projections.

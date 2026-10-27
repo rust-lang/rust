@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::iter;
 
 use rustc_abi::{CanonAbi, ExternAbi};
@@ -11,7 +12,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, HirId};
 use rustc_hir_analysis::autoderef::Autoderef;
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes};
-use rustc_infer::traits::{Obligation, ObligationCause, ObligationCauseCode};
+use rustc_infer::traits::{Obligation, ObligationCause, ObligationCauseCode, WellFormedLoc};
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
 };
@@ -177,7 +178,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.register_wf_obligation(
             output.into(),
             call_expr.span,
-            ObligationCauseCode::WellFormed(None),
+            ObligationCauseCode::WellFormed(WellFormedLoc::HirId(call_expr.hir_id)),
         );
 
         output
@@ -666,11 +667,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         fn_id: SplatLoweringInfo<'tcx>,
         callee_generic_args: Option<GenericArgsRef<'tcx>>,
     ) {
+        let mut formal_inputs = Cow::Borrowed(fn_sig.inputs());
+        if let (SplatLoweringInfo::FnDef(def_id), Some(args)) = (fn_id, callee_generic_args) {
+            for (param, pos) in self.tcx.generics_of(def_id).own_arg_pos_consts() {
+                let ty = self.tcx.type_of(param.def_id).instantiate(self.tcx, args).skip_norm_wip();
+                let ty = self.normalize(call_expr.span, Unnormalized::new_wip(ty));
+                formal_inputs.to_mut().insert(pos as usize, ty);
+            }
+        }
+
         let do_check = || {
             self.check_argument_types(
                 call_expr.span,
                 call_expr,
-                fn_sig.inputs(),
+                &formal_inputs,
                 fn_sig.output(),
                 expected,
                 arg_exprs,
@@ -728,10 +738,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // now we have to unify it with signature input in order to resolve
                 // all inference variables. After that we update input signature for
                 // adjustments search for mapped arguments.
-                let cause = self.cause(call_expr.span, ObligationCauseCode::Misc);
+                let cause = self.cause(
+                    call_expr.span,
+                    ObligationCauseCode::WellFormed(WellFormedLoc::HirId(call_expr.hir_id)),
+                );
+                // FIXME: This needs to happen in a `probe` as the `sup`
+                // call can currently guide type inference.
                 if self
-                    .at(&cause, self.param_env)
-                    .sup(DefineOpaqueTypes::Yes, formal_input_tys[0], adjusted_arg_type)
+                    .sup_raw(
+                        &cause,
+                        self.param_env,
+                        DefineOpaqueTypes::Yes,
+                        formal_input_tys[0],
+                        adjusted_arg_type,
+                    )
                     .is_err()
                 {
                     return do_check();
@@ -1115,7 +1135,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             match const_context {
                 Some(hir::ConstContext::Const { .. } | hir::ConstContext::Static(_)) => {}
                 Some(hir::ConstContext::ConstFn) | None => {
-                    self.dcx().span_err(span, "comptime fns can only be called at compile time");
+                    self.dcx().emit_err(diagnostics::ComptimeFnCalledOutsideConstContext {
+                        span,
+                        const_block: diagnostics::WrapConstBlock {
+                            left: span.shrink_to_lo(),
+                            right: span.shrink_to_hi(),
+                        },
+                    });
                 }
             }
         }

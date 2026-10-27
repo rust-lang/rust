@@ -1,7 +1,7 @@
 use rustc_abi::ExternAbi;
 use rustc_ast::visit::AssocCtxt;
 use rustc_ast::*;
-use rustc_attr_ir::target::Target;
+use rustc_attr_ir::target::{AstTarget, Target};
 use rustc_attr_ir::{AttributeKind, EiiImplResolution, find_attr};
 use rustc_errors::{E0570, ErrorGuaranteed, struct_span_code_err};
 use rustc_hir::def::{DefKind, Res};
@@ -165,7 +165,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             &i.attrs,
             i.span,
             Target::from_ast_item(i),
-            Some(i),
+            AstTarget::from_ast_item(&i.kind),
             &extra_hir_attributes,
         );
 
@@ -614,8 +614,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
     pub(super) fn lower_foreign_item(&mut self, i: &ForeignItem) -> &'hir hir::ForeignItem<'hir> {
         let owner_id = self.curr_owner.owner_id();
         let hir_id: HirId = owner_id.into();
-        let attrs =
-            self.lower_attrs(hir_id, &i.attrs, i.span, Target::from_foreign_item_kind(&i.kind));
+        let attrs = self.lower_attrs(
+            hir_id,
+            &i.attrs,
+            i.span,
+            Target::from_foreign_item_kind(&i.kind),
+            AstTarget::from_foreign_item_kind(&i.kind),
+        );
         let (ident, kind) = match &i.kind {
             ForeignItemKind::Fn(Fn { sig, ident, generics, define_opaque, .. }) => {
                 let fdec = &sig.decl;
@@ -693,7 +698,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             self.dcx().span_fatal(v.span, "unnamed enum variants are not yet implemented");
         }
         let hir_id = self.lower_node_id(v.id);
-        self.lower_attrs(hir_id, &v.attrs, v.span, Target::Variant);
+        self.lower_attrs(hir_id, &v.attrs, v.span, Target::Variant, AstTarget::Variant(v));
         hir::Variant {
             hir_id,
             def_id: self.local_def_id(v.id),
@@ -780,7 +785,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let ty =
             self.lower_ty_alloc(&f.ty, ImplTraitContext::Disallowed(ImplTraitPosition::FieldTy));
         let hir_id = self.lower_node_id(f.id);
-        self.lower_attrs(hir_id, &f.attrs, f.span, Target::Field);
+        self.lower_attrs(hir_id, &f.attrs, f.span, Target::Field, AstTarget::Field(f));
         hir::FieldDef {
             span: self.lower_span(f.span),
             hir_id,
@@ -808,6 +813,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             &i.attrs,
             i.span,
             Target::from_assoc_item_kind(&i.kind, AssocCtxt::Trait),
+            AstTarget::from_assoc_item_kind(&i.kind),
         );
 
         let (ident, generics, kind, has_value) = match &i.kind {
@@ -1070,6 +1076,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             &i.attrs,
             i.span,
             Target::from_assoc_item_kind(&i.kind, AssocCtxt::Impl { of_trait: is_in_trait_impl }),
+            AstTarget::from_assoc_item_kind(&i.kind),
         );
 
         let (ident, (generics, kind)) = match &i.kind {
@@ -1238,7 +1245,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_param(&mut self, param: &Param) -> hir::Param<'hir> {
         let hir_id = self.lower_node_id(param.id);
-        self.lower_attrs(hir_id, &param.attrs, param.span, Target::Param);
+        self.lower_attrs(hir_id, &param.attrs, param.span, Target::Param, AstTarget::Param(param));
         hir::Param {
             hir_id,
             pat: self.lower_pat(&param.pat),
@@ -1254,8 +1261,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
         body: impl FnOnce(&mut Self) -> hir::Expr<'hir>,
     ) -> hir::BodyId {
         self.lower_body(|this| {
-            let params =
-                this.arena.alloc_from_iter(decl.inputs.iter().map(|x| this.lower_param(x)));
+            let params = this.arena.alloc_from_iter(
+                decl.inputs
+                    .iter()
+                    .filter(|param| !param.is_const_param())
+                    .map(|x| this.lower_param(x)),
+            );
 
             // Optionally lower the fn contract
             if let Some(contract) = contract {
@@ -1398,7 +1409,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // let-bound variables and temporaries created in the body
         // (and its tail expression!) before we drop the
         // parameters (c.f. rust-lang/rust#64512).
-        for (index, parameter) in decl.inputs.iter().enumerate() {
+        for (index, parameter) in
+            decl.inputs.iter().filter(|param| !param.is_const_param()).enumerate()
+        {
             let parameter = self.lower_param(parameter);
             let span = parameter.pat.span;
 
@@ -1771,6 +1784,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> (&'hir hir::Generics<'hir>, T) {
         assert!(self.curr_owner.impl_trait_defs.is_empty());
         assert!(self.curr_owner.impl_trait_bounds.is_empty());
+        assert!(self.curr_owner.const_defs.is_empty());
 
         let mut predicates: SmallVec<[hir::WherePredicate<'hir>; 4]> = SmallVec::new();
         // We need to make sure that generic params don't have multiple relaxed bounds for the same trait
@@ -1814,6 +1828,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let where_clause_span = self.lower_span(generics.where_clause.span);
         let span = self.lower_span(generics.span);
         let res = f(self);
+
+        let const_defs = std::mem::take(&mut self.curr_owner.const_defs);
+        params.extend(const_defs.into_iter());
 
         let impl_trait_defs = std::mem::take(&mut self.curr_owner.impl_trait_defs);
         params.extend(impl_trait_defs.into_iter());
@@ -1938,7 +1955,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> hir::WherePredicate<'hir> {
         let hir_id = self.lower_node_id(pred.id);
         let span = self.lower_span(pred.span);
-        self.lower_attrs(hir_id, &pred.attrs, span, Target::WherePredicate);
+        self.lower_attrs(
+            hir_id,
+            &pred.attrs,
+            span,
+            Target::WherePredicate,
+            AstTarget::WherePredicate(pred),
+        );
         let kind = self.arena.alloc(match &pred.kind {
             WherePredicateKind::BoundPredicate(WhereBoundPredicate {
                 bound_generic_params,
@@ -1998,15 +2021,22 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let exists = self.arena.alloc_from_iter(
             body.exists.iter().map(|exists| self.lower_test_binder_exists(exists)),
         );
+        let region_equalities = self.arena.alloc_from_iter(body.region_equalities.iter().map(
+            |TestBinderRegionEquality { lhs, rhs }| {
+                let lhs = self.lower_lifetime(lhs, LifetimeSource::Other, lhs.ident.into());
+                let rhs = self.lower_lifetime(rhs, LifetimeSource::Other, rhs.ident.into());
+                (lhs, rhs)
+            },
+        ));
         let constraints = self.lower_test_binder_constraints_as_and(&body.constraints);
         let mut dedup_map = Default::default();
         let predicates = self.arena.alloc_from_iter(
             body.predicates
                 .iter()
-                .flat_map(|w| &w.predicates)
                 .map(|predicate| self.lower_where_predicate(predicate, &[], &mut dedup_map)),
         );
-        hir::TestBinderBody { foralls, exists, constraints, predicates }
+        let span = self.lower_span(body.span);
+        hir::TestBinderBody { span, foralls, exists, region_equalities, constraints, predicates }
     }
 
     fn lower_test_binder_forall(
@@ -2083,6 +2113,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     items.iter().map(|item| self.lower_test_binder_constraint(item)),
                 ),
             },
+            TestBinderConstraint::Ambiguity { span } => {
+                hir::TestBinderConstraint::Ambiguity { span: self.lower_span(*span) }
+            }
             TestBinderConstraint::Lifetime { lhs, rhs } => {
                 let lhs = self.lower_lifetime(lhs, LifetimeSource::Other, lhs.ident.into());
                 let rhs = self.lower_lifetime(rhs, LifetimeSource::OutlivesBound, rhs.ident.into());
@@ -2122,7 +2155,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         );
 
         hir::TestBinderBoundTypeConstraint {
-            span: *span,
+            span: self.lower_span(*span),
             hir_id: self.lower_node_id(*node_id),
             params: generics.params,
             lhs,

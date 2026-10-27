@@ -126,18 +126,7 @@ impl Socket {
         Ok(())
     }
 
-    pub fn connect_timeout(&self, addr: &SocketAddr, timeout: Duration) -> io::Result<()> {
-        self.set_nonblocking(true)?;
-        let r = self.connect(addr);
-        self.set_nonblocking(false)?;
-
-        match r {
-            Ok(_) => return Ok(()),
-            // there's no ErrorKind for EINPROGRESS
-            Err(ref e) if e.raw_os_error() == Some(netc::EINPROGRESS) => {}
-            Err(e) => return Err(e),
-        }
-
+    pub fn poll_connected(&self, timeout: Duration) -> io::Result<()> {
         if timeout.as_secs() == 0 && timeout.subsec_nanos() == 0 {
             return Err(io::Error::ZERO_TIMEOUT);
         }

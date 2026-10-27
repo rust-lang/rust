@@ -6,7 +6,6 @@ use std::{debug_assert_matches, iter};
 use rustc_abi::{ExternAbi, FieldIdx};
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_attr_ir::{InlineAttr, OptimizeAttr};
-use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_index::Idx;
@@ -871,8 +870,7 @@ fn inline_call<'tcx, I: Inliner<'tcx>>(
         let data = BasicBlockData::new(
             Some(Terminator {
                 source_info: terminator.source_info,
-                kind: TerminatorKind::Goto { target: block },
-                loop_hint_attrs: ThinVec::new(),
+                kind: TerminatorKind::goto(block),
             }),
             caller_body[block].is_cleanup,
         );
@@ -999,8 +997,7 @@ fn inline_call<'tcx, I: Inliner<'tcx>>(
 
     caller_body[callsite.block].terminator = Some(Terminator {
         source_info: callsite.source_info,
-        kind: TerminatorKind::Goto { target: integrator.map_block(START_BLOCK) },
-        loop_hint_attrs: ThinVec::new(),
+        kind: TerminatorKind::goto(integrator.map_block(START_BLOCK)),
     });
 
     // Copy required constants from the callee_body into the caller_body. Although we are only
@@ -1285,7 +1282,7 @@ impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
 
         match terminator.kind {
             TerminatorKind::CoroutineDrop | TerminatorKind::Yield { .. } => bug!(),
-            TerminatorKind::Goto { ref mut target } => {
+            TerminatorKind::Goto { ref mut target, .. } => {
                 *target = self.map_block(*target);
             }
             TerminatorKind::SwitchInt { ref mut targets, .. } => {
@@ -1313,14 +1310,14 @@ impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
             }
             TerminatorKind::Return => {
                 terminator.kind = if let Some(tgt) = self.return_block {
-                    TerminatorKind::Goto { target: tgt }
+                    TerminatorKind::goto(tgt)
                 } else {
                     TerminatorKind::Unreachable
                 }
             }
             TerminatorKind::UnwindResume => {
                 terminator.kind = match self.cleanup_block {
-                    UnwindAction::Cleanup(tgt) => TerminatorKind::Goto { target: tgt },
+                    UnwindAction::Cleanup(tgt) => TerminatorKind::goto(tgt),
                     UnwindAction::Continue => TerminatorKind::UnwindResume,
                     UnwindAction::Unreachable => TerminatorKind::Unreachable,
                     UnwindAction::Terminate(reason) => TerminatorKind::UnwindTerminate(reason),

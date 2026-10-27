@@ -1,4 +1,4 @@
-// rustfmt-trailing_semicolon: false
+//@ rustfmt-trailing_semicolon: false
 
 fn foo() {}
 fn main() {

@@ -8,5 +8,4 @@ fn main() {
     Some([0]).map(|s| s[..]);
     //~^ ERROR the size for values of type `[{integer}]` cannot be known at compilation time
     //~| ERROR the size for values of type `[{integer}]` cannot be known at compilation time
-    //~| ERROR the size for values of type `[{integer}]` cannot be known at compilation time
 }

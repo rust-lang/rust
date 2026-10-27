@@ -28,7 +28,9 @@ use crate::{
     WorkspaceBuildScripts,
     build_dependencies::{BuildScriptOutput, ProcMacroDylibPath},
     cargo_config_file::CargoConfigFile,
-    cargo_workspace::{CargoMetadataConfig, DepKind, FetchMetadata, PackageData, RustLibSource},
+    cargo_workspace::{
+        CargoMetadataConfig, CargoMetadataKind, DepKind, FetchMetadata, PackageData, RustLibSource,
+    },
     env::{cargo_config_env, inject_cargo_env, inject_cargo_package_env, inject_rustc_tool_env},
     project_json::{Crate, CrateArrayIdx},
     sysroot::RustLibSrcWorkspace,
@@ -296,7 +298,7 @@ impl ProjectWorkspace {
                 config_path: config_path.clone(),
                 extra_env: extra_env.clone(),
                 toolchain_version: toolchain.clone(),
-                kind: "workspace",
+                kind: CargoMetadataKind::Workspace,
             },
             &sysroot,
             *no_deps,
@@ -357,7 +359,7 @@ impl ProjectWorkspace {
                             config_path: config_path.clone(),
                             extra_env: extra_env.clone(),
                             toolchain_version: toolchain.clone(),
-                            kind: "rustc-dev"
+                            kind: CargoMetadataKind::Rustc
                         },
                         &sysroot,
                         *no_deps,
@@ -602,7 +604,7 @@ impl ProjectWorkspace {
                 config_path: config.config_path.clone(),
                 extra_env: config.extra_env.clone(),
                 toolchain_version: toolchain.clone(),
-                kind: "detached-file",
+                kind: CargoMetadataKind::DetachedFile,
             },
             &sysroot,
             config.no_deps,
@@ -1214,7 +1216,7 @@ fn project_json_to_crate_graph(
                         CrateOrigin::Local { repo: None, name: None }
                     },
                     crate_attrs.clone(),
-                    *is_proc_macro,
+                    TargetKind::Lib { is_proc_macro: *is_proc_macro },
                     match proc_macro_cwd {
                         Some(path) => Arc::new(path.clone()),
                         None => project_root.clone(),
@@ -1521,7 +1523,7 @@ fn detached_file_to_crate_graph(
             name: display_name.map(|n| n.canonical_name().to_owned()),
         },
         Vec::new(),
-        false,
+        TargetKind::Lib { is_proc_macro: false },
         Arc::new(detached_file.parent().to_path_buf()),
         crate_ws_data,
     );
@@ -1702,7 +1704,7 @@ fn add_target_crate_root(
         env,
         origin,
         Vec::new(),
-        matches!(kind, TargetKind::Lib { is_proc_macro: true }),
+        kind,
         proc_macro_cwd,
         crate_ws_data,
     );
@@ -1886,7 +1888,7 @@ fn sysroot_to_crate_graph(
                         Env::default(),
                         CrateOrigin::Lang(LangCrateOrigin::from(&*stitched[krate].name)),
                         Vec::new(),
-                        false,
+                        TargetKind::Lib { is_proc_macro: false },
                         Arc::new(stitched[krate].root.parent().to_path_buf()),
                         crate_ws_data.clone(),
                     );
@@ -1999,6 +2001,6 @@ fn sysroot_metadata_config(
         // extra_args.
         extra_env: config.extra_env.clone(),
         toolchain_version,
-        kind: "sysroot",
+        kind: CargoMetadataKind::Sysroot,
     }
 }

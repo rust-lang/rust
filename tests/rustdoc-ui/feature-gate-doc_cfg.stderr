@@ -19,7 +19,7 @@ LL | #![doc(auto_cfg(false))]
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the `doc(cfg)` and `doc(auto_cfg)` attributes are experimental
-  --> $DIR/feature-gate-doc_cfg.rs:3:8
+  --> $DIR/feature-gate-doc_cfg.rs:5:8
    |
 LL | #![doc(auto_cfg(true))]
    |        ^^^^^^^^
@@ -29,7 +29,7 @@ LL | #![doc(auto_cfg(true))]
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the `doc(cfg)` and `doc(auto_cfg)` attributes are experimental
-  --> $DIR/feature-gate-doc_cfg.rs:4:8
+  --> $DIR/feature-gate-doc_cfg.rs:8:8
    |
 LL | #![doc(auto_cfg(hide(feature = "solecism")))]
    |        ^^^^^^^^
@@ -39,7 +39,7 @@ LL | #![doc(auto_cfg(hide(feature = "solecism")))]
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the `doc(cfg)` and `doc(auto_cfg)` attributes are experimental
-  --> $DIR/feature-gate-doc_cfg.rs:5:8
+  --> $DIR/feature-gate-doc_cfg.rs:11:8
    |
 LL | #![doc(auto_cfg(show(feature = "bla")))]
    |        ^^^^^^^^
@@ -49,7 +49,7 @@ LL | #![doc(auto_cfg(show(feature = "bla")))]
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the `doc(cfg)` and `doc(auto_cfg)` attributes are experimental
-  --> $DIR/feature-gate-doc_cfg.rs:6:8
+  --> $DIR/feature-gate-doc_cfg.rs:14:8
    |
 LL | #![doc(cfg(feature = "solecism"))]
    |        ^^^
@@ -58,6 +58,43 @@ LL | #![doc(cfg(feature = "solecism"))]
    = help: add `#![feature(doc_cfg)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: aborting due to 6 previous errors
+warning: only `hide` or `show` are allowed in `#[doc(auto_cfg(...))]`
+  --> $DIR/feature-gate-doc_cfg.rs:2:17
+   |
+LL | #![doc(auto_cfg(false))]
+   |                 ^^^^^
+   |
+   = note: `#[warn(invalid_doc_attributes)]` on by default
+
+warning: only `hide` or `show` are allowed in `#[doc(auto_cfg(...))]`
+  --> $DIR/feature-gate-doc_cfg.rs:5:17
+   |
+LL | #![doc(auto_cfg(true))]
+   |                 ^^^^
+
+warning: `#![doc(auto_cfg(hide(...)))]` only accepts identifiers or `values(...)`
+  --> $DIR/feature-gate-doc_cfg.rs:8:22
+   |
+LL | #![doc(auto_cfg(hide(feature = "solecism")))]
+   |                      ^^^^^^^^^^^^^^^^^^^^
+
+warning: `#![doc(auto_cfg(show(...)))]` only accepts identifiers or `values(...)`
+  --> $DIR/feature-gate-doc_cfg.rs:11:22
+   |
+LL | #![doc(auto_cfg(show(feature = "bla")))]
+   |                      ^^^^^^^^^^^^^^^
+
+warning: unexpected `cfg` condition name: `feature`
+  --> $DIR/feature-gate-doc_cfg.rs:14:12
+   |
+LL | #![doc(cfg(feature = "solecism"))]
+   |            ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: expected names are: `FALSE` and `test` and 34 more
+   = help: to expect this configuration use `--check-cfg=cfg(feature, values("solecism"))`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+error: aborting due to 6 previous errors; 5 warnings emitted
 
 For more information about this error, try `rustc --explain E0658`.

@@ -868,7 +868,7 @@ impl<'db> InferenceContext<'db> {
             expected,
         );
         if !(ty.is_numeric() || ty.is_char() || ty.references_error()) {
-            // FIXME: Emit an error.
+            self.push_diagnostic(InferenceDiagnostic::InvalidRangePatType { pat });
             return self.types.types.error;
         }
         ty
@@ -1120,7 +1120,7 @@ impl<'db> InferenceContext<'db> {
         let element_tys_iter = (0..max_len).map(|i| {
             self.table.next_ty_var(elements.get(i).copied().map(Span::PatId).unwrap_or(Span::Dummy))
         });
-        let element_tys = Tys::new_from_iter(interner, element_tys_iter);
+        let element_tys = Tys::new_from_iter(element_tys_iter);
         let pat_ty = Ty::new(interner, TyKind::Tuple(element_tys));
         if self.demand_eqtype(pat.into(), expected, pat_ty).is_err() {
             let expected = if let TyKind::Tuple(tys) =

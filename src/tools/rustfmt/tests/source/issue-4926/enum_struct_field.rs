@@ -1,6 +1,6 @@
-// rustfmt-struct_field_align_threshold: 30
-// rustfmt-enum_discrim_align_threshold: 30
-// rustfmt-imports_layout: HorizontalVertical
+//@ rustfmt-struct_field_align_threshold: 30
+//@ rustfmt-enum_discrim_align_threshold: 30
+//@ rustfmt-imports_layout: HorizontalVertical
 
 #[derive(Default)]
 struct InnerStructA { bbbbbbbbb: i32, cccccccc: i32 }

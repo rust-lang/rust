@@ -1,6 +1,5 @@
 #![feature(coverage_attribute, stmt_expr_attributes)]
 //@ edition: 2021
-//@ reference: attributes.coverage.nesting
 
 // Demonstrates the interaction between #[coverage(off)] and various kinds of
 // nested function.

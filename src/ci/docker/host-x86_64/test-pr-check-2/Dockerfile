@@ -21,7 +21,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   mingw-w64 \
   && rm -rf /var/lib/apt/lists/*
 
-RUN curl -L https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-34/wasi-sdk-34.0-x86_64-linux.tar.gz | \
+RUN curl -L https://ci-mirrors.rust-lang.org/rustc/wasi-sdk-34.0-x86_64-linux.tar.gz | \
   tar -xz
 ENV WASI_SDK_PATH=/wasi-sdk-34.0-x86_64-linux
 
@@ -34,9 +34,9 @@ ENV SCRIPT="python3 ../x.py check && \
         python3 ../x.py clippy ci --stage 2 && \
         python3 ../x.py test --stage 1 core alloc std test proc_macro && \
         # Elsewhere, we run all tests for the host. A number of codegen tests are sensitive to the target pointer
-        # width, for example because they mention a usize. wasm32-wasip1 in test-various, so using it here can't make
+        # width, for example because they mention a usize. wasm32-wasip3 in test-various, so using it here can't make
         # PR CI more strict than full CI.
-        python3 ../x.py test --stage 1 tests/codegen-llvm --target wasm32-wasip1 && \
+        python3 ../x.py test --stage 1 tests/codegen-llvm --target wasm32-wasip3 && \
         python3 ../x.py test --stage 1 src/tools/compiletest && \
         python3 ../x.py doc bootstrap --stage 1 && \
         # Build both public and internal documentation.

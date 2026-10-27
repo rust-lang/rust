@@ -3,6 +3,8 @@ error: the `repr()` attribute cannot be used on where predicates
    |
 LL | #[repr()]
    |   ^^^^^^
+...
+LL | (): Sized {
    |
    = help: the `repr()` attribute can only be applied to data types
 

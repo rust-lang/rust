@@ -1,3 +1,12 @@
+Version 1.99.1 (2026-10-15)
+===========================
+
+<a id="1.99.1"></a>
+
+* [library: fix missing symbol `wcslen` on UEFI and embedded targets](https://github.com/rust-lang/rust/issues/163614)
+* [rustc: fix miscompilation of FFI `bool` return values on x86_64](https://github.com/rust-lang/rust/issues/163911)
+* [rust-lld: add the rpath for `libLLVM` on macOS](https://github.com/rust-lang/rust/issues/163947)
+
 Version 1.99.0 (2026-10-01)
 ==========================
 
@@ -78,6 +87,7 @@ Stabilized APIs
 - [`FusedIterator for StepBy<I>`](https://doc.rust-lang.org/stable/std/iter/struct.StepBy.html#impl-FusedIterator-for-StepBy%3CI%3E)
 - [`std::fs::set_times`](https://doc.rust-lang.org/stable/std/fs/fn.set_times.html)
 - [`std::fs::set_times_nofollow`](https://doc.rust-lang.org/stable/std/fs/fn.set_times_nofollow.html)
+- [`<LocalKey<Cell<T>>>::update`](https://doc.rust-lang.org/stable/std/thread/struct.LocalKey.html#method.update)
 
 <a id="1.99.0-Cargo"></a>
 
@@ -207,6 +217,13 @@ Stabilized APIs
 - [`std::range::legacy`](https://doc.rust-lang.org/stable/std/range/legacy/index.html)
 - [`bool::ok_or`](https://doc.rust-lang.org/stable/std/primitive.bool.html#method.ok_or)
 - [`bool::ok_or_else`](https://doc.rust-lang.org/stable/std/primitive.bool.html#method.ok_or_else)
+- [`Option::map_or_default`](https://doc.rust-lang.org/stable/std/option/enum.Option.html#method.map_or_default)
+- [`Result::map_or_default`](https://doc.rust-lang.org/stable/std/result/enum.Result.html#method.map_or_default)
+- [`Box::as_ptr`](https://doc.rust-lang.org/stable/std/boxed/struct.Box.html#method.as_ptr)
+- [`Box::as_mut_ptr`](https://doc.rust-lang.org/stable/std/boxed/struct.Box.html#method.as_mut_ptr)
+- [`Path::is_empty`](https://doc.rust-lang.org/stable/std/path/struct.Path.html#method.is_empty)
+- [`PathBuf::into_string`](https://doc.rust-lang.org/stable/std/path/struct.PathBuf.html#method.into_string)
+- [`arch::{arm,aarch64}::vdot*`: NEON dot product intrinsics](https://github.com/rust-lang/rust/issues/117224)
 
 
 <a id="1.98.0-Compatibility-Notes"></a>
@@ -530,6 +547,7 @@ Stabilized APIs
 - [`Layout::repeat`](https://doc.rust-lang.org/stable/std/alloc/struct.Layout.html#method.repeat)
 - [`Layout::repeat_packed`](https://doc.rust-lang.org/stable/std/alloc/struct.Layout.html#method.repeat_packed)
 - [`Layout::extend_packed`](https://doc.rust-lang.org/stable/std/alloc/struct.Layout.html#method.extend_packed)
+- [`core::arch::aarch64::__jcvt`](https://doc.rust-lang.org/stable/core/arch/aarch64/fn.__jcvt.html)
 
 These previously stable APIs are now stable in const contexts:
 
@@ -1537,7 +1555,7 @@ for more information on Rust's tiered platform support.
 Libraries
 ---------
 - [Stabilize the anonymous pipe API](https://github.com/rust-lang/rust/issues/127154)
-- [Add support for unbounded left/right shift operations](https://github.com/rust-lang/rust/issues/129375) 
+- [Add support for unbounded left/right shift operations](https://github.com/rust-lang/rust/issues/129375)
 - [Print pointer metadata in `Debug` impl of raw pointers](https://github.com/rust-lang/rust/pull/135080)
 - [`Vec::with_capacity` guarantees it allocates with the amount requested, even if `Vec::capacity` returns a different number.](https://github.com/rust-lang/rust/pull/135933)
 - Most `std::arch` intrinsics which don't take pointer arguments can now be called from safe code if the caller has the appropriate target features already enabled (https://github.com/rust-lang/stdarch/pull/1714, https://github.com/rust-lang/stdarch/pull/1716, https://github.com/rust-lang/stdarch/pull/1717)
@@ -1611,7 +1629,7 @@ These previously stable APIs are now stable in const contexts:
 - [`char::is_digit`](https://doc.rust-lang.org/stable/std/primitive.char.html#method.is_digit)
 - [`char::is_whitespace`](https://doc.rust-lang.org/stable/std/primitive.char.html#method.is_whitespace)
 - [`<[[T; N]]>::as_flattened`](https://doc.rust-lang.org/stable/std/primitive.slice.html#method.as_flattened)
-- [`<[[T; N]]>::as_flattened_mut`](https://doc.rust-lang.org/stable/std/primitive.slice.html#method.as_flattened_mut) 
+- [`<[[T; N]]>::as_flattened_mut`](https://doc.rust-lang.org/stable/std/primitive.slice.html#method.as_flattened_mut)
 - [`String::into_bytes`](https://doc.rust-lang.org/stable/std/string/struct.String.html#method.into_bytes)
 - [`String::as_str`](https://doc.rust-lang.org/stable/std/string/struct.String.html#method.as_str)
 - [`String::capacity`](https://doc.rust-lang.org/stable/std/string/struct.String.html#method.capacity)

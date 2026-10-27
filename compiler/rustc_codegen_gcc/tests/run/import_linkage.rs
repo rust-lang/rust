@@ -10,7 +10,7 @@
 // the types are pointers: an `extern_weak` import of a symbol nobody defines reads as null instead
 // of failing the link.
 
-#![feature(linkage, no_core)]
+#![feature(linkage, no_core, rustc_private)]
 #![no_std]
 #![no_core]
 #![no_main]

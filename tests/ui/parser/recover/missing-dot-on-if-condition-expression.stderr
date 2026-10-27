@@ -97,5 +97,19 @@ help: you might have meant to write a field access
 LL |     for _ in x.a.b {}
    |               +
 
-error: aborting due to 9 previous errors
+error: expected `{`, found `0`
+  --> $DIR/missing-dot-on-if-condition-expression.rs:59:20
+   |
+LL |         (static a : () = $e:expr) => {
+   |                          ------- while parsing argument for this `expr` macro fragment
+...
+LL |         for _ in x 0 {}
+   |                    ^ expected `{`
+   |
+help: you might have meant to write a field access
+   |
+LL |         for _ in x.0 {}
+   |                   +
+
+error: aborting due to 10 previous errors
 

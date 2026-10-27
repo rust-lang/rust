@@ -15,7 +15,8 @@ where
     let outer_size = layout.layout.size();
 
     loop {
-        layout = layout.peel_transparent_wrappers(cx);
+        // We're only looking for scalar types that are non-ZST.
+        layout = layout.peel_transparent_wrappers_from_non_1zst(cx);
 
         return match layout.backend_repr {
             BackendRepr::Scalar(scalar) => match scalar.primitive() {
@@ -228,13 +229,12 @@ pub(crate) fn fill_inregs<'a, Ty, C>(
 
     for arg in fn_abi.args.iter_mut() {
         let attrs = match arg.mode {
-            PassMode::Ignore
-            | PassMode::Indirect { attrs: _, meta_attrs: None, address_space: _, mode: _ } => {
+            PassMode::Ignore | PassMode::Indirect { attrs: _, address_space: _, mode: _ } => {
                 continue;
             }
             PassMode::Direct(ref mut attrs) => attrs,
             PassMode::Pair(..)
-            | PassMode::Indirect { attrs: _, meta_attrs: Some(_), address_space: _, mode: _ }
+            | PassMode::IndirectUnsized { attrs: _, meta_attrs: _ }
             | PassMode::Cast { .. } => {
                 unreachable!("x86 shouldn't be passing arguments by {:?}", arg.mode)
             }

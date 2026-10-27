@@ -206,13 +206,11 @@ rustc_queries! {
         desc { "getting the resolver for lowering" }
     }
 
-    query index_ast(_: ()) -> &'tcx IndexSlice<LocalDefId, Steal<(
-        // There is only a single `ResolverAstLowering` for all owners.
-        // We want to drop it once the whole HIR has been lowered.
-        // We rely on reference counting to know when all definitions have been stolen.
-        Arc<ResolverAstLowering<'tcx>>,
-        AstOwner,
-    )>> {
+    // There is only a single `ResolverAstLowering` for all owners.
+    // We want to drop it once the whole HIR has been lowered.
+    // We rely on reference counting to know when all definitions have been stolen.
+    // None if the `LocalDefId` is not an owner.
+    query index_ast(_: ()) -> &'tcx IndexSlice<LocalDefId, Option<Steal<(Arc<ResolverAstLowering<'tcx>>, AstOwner)>>>  {
         eval_always
         no_hash
         desc { "getting the AST for lowering" }
@@ -310,7 +308,7 @@ rustc_queries! {
 
     /// Returns the *type* of the definition given by `DefId`.
     ///
-    /// For type aliases (whether eager or lazy) and associated types, this returns
+    /// For type aliases (whether unchecked or checked) and associated types, this returns
     /// the underlying aliased type (not the corresponding [alias type]).
     ///
     /// For opaque types, this returns and thus reveals the hidden type! If you
@@ -2723,6 +2721,7 @@ rustc_queries! {
     }
 
     query limits(key: ()) -> Limits {
+        feedable
         desc { "looking up limits" }
     }
 

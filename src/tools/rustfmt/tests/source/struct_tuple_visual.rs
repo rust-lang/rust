@@ -1,6 +1,6 @@
-// rustfmt-normalize_comments: true
-// rustfmt-wrap_comments: true
-// rustfmt-indent_style: Visual
+//@ rustfmt-normalize_comments: true
+//@ rustfmt-wrap_comments: true
+//@ rustfmt-indent_style: Visual
 fn foo() {
     Fooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo(f(), b());
 

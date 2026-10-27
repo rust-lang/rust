@@ -3,6 +3,8 @@ error: the `marker` attribute cannot be used on trait aliases
    |
 LL | #[marker]
    |   ^^^^^^
+LL |
+LL | trait Foo = Send;
    |
    = help: the `marker` attribute can only be applied to traits
 

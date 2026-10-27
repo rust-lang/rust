@@ -35,9 +35,9 @@ macro_rules! f {
     };
 }
 
-struct#0:MacroRules[BE8F, 0]@58..64#1920# MyTraitMap2#0:MacroCall[BE8F, 0]@31..42#ROOT2024# {#0:MacroRules[BE8F, 0]@72..73#1920#
-    map#0:MacroRules[BE8F, 0]@86..89#1920#:#0:MacroRules[BE8F, 0]@89..90#1920# #0:MacroRules[BE8F, 0]@89..90#1920#::#0:MacroRules[BE8F, 0]@91..93#1920#std#0:MacroRules[BE8F, 0]@93..96#1920#::#0:MacroRules[BE8F, 0]@96..98#1920#collections#0:MacroRules[BE8F, 0]@98..109#1920#::#0:MacroRules[BE8F, 0]@109..111#1920#HashSet#0:MacroRules[BE8F, 0]@111..118#1920#<#0:MacroRules[BE8F, 0]@118..119#1920#(#0:MacroRules[BE8F, 0]@119..120#1920#)#0:MacroRules[BE8F, 0]@120..121#1920#>#0:MacroRules[BE8F, 0]@121..122#1920#,#0:MacroRules[BE8F, 0]@122..123#1920#
-}#0:MacroRules[BE8F, 0]@132..133#1920#
+struct#0:MacroRules[BE8F, 0]@58..64#1922# MyTraitMap2#0:MacroCall[BE8F, 0]@31..42#ROOT2024# {#0:MacroRules[BE8F, 0]@72..73#1922#
+    map#0:MacroRules[BE8F, 0]@86..89#1922#:#0:MacroRules[BE8F, 0]@89..90#1922# #0:MacroRules[BE8F, 0]@89..90#1922#::#0:MacroRules[BE8F, 0]@91..93#1922#std#0:MacroRules[BE8F, 0]@93..96#1922#::#0:MacroRules[BE8F, 0]@96..98#1922#collections#0:MacroRules[BE8F, 0]@98..109#1922#::#0:MacroRules[BE8F, 0]@109..111#1922#HashSet#0:MacroRules[BE8F, 0]@111..118#1922#<#0:MacroRules[BE8F, 0]@118..119#1922#(#0:MacroRules[BE8F, 0]@119..120#1922#)#0:MacroRules[BE8F, 0]@120..121#1922#>#0:MacroRules[BE8F, 0]@121..122#1922#,#0:MacroRules[BE8F, 0]@122..123#1922#
+}#0:MacroRules[BE8F, 0]@132..133#1922#
 "#]],
     );
 }
@@ -197,7 +197,7 @@ macro_rules! mk_struct {
 #[macro_use]
 mod foo;
 
-struct#1:MacroRules[DB0C, 0]@59..65#1920# Foo#0:MacroCall[DB0C, 0]@32..35#ROOT2024#(#1:MacroRules[DB0C, 0]@70..71#1920#u32#0:MacroCall[DB0C, 0]@41..44#ROOT2024#)#1:MacroRules[DB0C, 0]@74..75#1920#;#1:MacroRules[DB0C, 0]@75..76#1920#
+struct#1:MacroRules[DB0C, 0]@59..65#1922# Foo#0:MacroCall[DB0C, 0]@32..35#ROOT2024#(#1:MacroRules[DB0C, 0]@70..71#1922#u32#0:MacroCall[DB0C, 0]@41..44#ROOT2024#)#1:MacroRules[DB0C, 0]@74..75#1922#;#1:MacroRules[DB0C, 0]@75..76#1922#
 "#]],
     );
 }
@@ -423,10 +423,10 @@ m! { foo, bar }
 macro_rules! m {
     ($($i:ident),*) => ( impl Bar { $(fn $i() {})* } );
 }
-impl#\1920# Bar#\1920# {#\1920#
-    fn#\1920# foo#\ROOT2024#(#\1920#)#\1920# {#\1920#}#\1920#
-    fn#\1920# bar#\ROOT2024#(#\1920#)#\1920# {#\1920#}#\1920#
-}#\1920#
+impl#\1922# Bar#\1922# {#\1922#
+    fn#\1922# foo#\ROOT2024#(#\1922#)#\1922# {#\1922#}#\1922#
+    fn#\1922# bar#\ROOT2024#(#\1922#)#\1922# {#\1922#}#\1922#
+}#\1922#
 "#]],
     );
 }
@@ -1737,9 +1737,6 @@ macro_rules! m {
     ($k:expr) => { fn f() { K::$k; } }
 }
 /* parse error: expected identifier, `self`, `super`, `crate`, or `Self` */
-/* parse error: expected SEMICOLON */
-/* parse error: expected SEMICOLON */
-/* parse error: expected expression, item or let statement */
 fn f() {
     K::(C("0"));
 }
@@ -1754,32 +1751,30 @@ fn f() {
 //     BLOCK_EXPR@5..19
 //       STMT_LIST@5..19
 //         L_CURLY@5..6 "{"
-//         EXPR_STMT@6..10
-//           PATH_EXPR@6..10
-//             PATH@6..10
-//               PATH@6..7
-//                 PATH_SEGMENT@6..7
-//                   NAME_REF@6..7
-//                     IDENT@6..7 "K"
-//               COLON2@7..9 "::"
-//               PATH_SEGMENT@9..10
-//                 ERROR@9..10
-//                   L_PAREN@9..10 "("
-//         EXPR_STMT@10..16
-//           CALL_EXPR@10..16
-//             PATH_EXPR@10..11
-//               PATH@10..11
-//                 PATH_SEGMENT@10..11
-//                   NAME_REF@10..11
-//                     IDENT@10..11 "C"
-//             ARG_LIST@11..16
-//               L_PAREN@11..12 "("
-//               LITERAL@12..15
-//                 STRING@12..15 "\"0\""
-//               R_PAREN@15..16 ")"
-//         ERROR@16..17
-//           R_PAREN@16..17 ")"
-//         SEMICOLON@17..18 ";"
+//         EXPR_STMT@6..18
+//           CALL_EXPR@6..17
+//             PATH_EXPR@6..9
+//               PATH@6..9
+//                 PATH@6..7
+//                   PATH_SEGMENT@6..7
+//                     NAME_REF@6..7
+//                       IDENT@6..7 "K"
+//                 COLON2@7..9 "::"
+//             ARG_LIST@9..17
+//               L_PAREN@9..10 "("
+//               CALL_EXPR@10..16
+//                 PATH_EXPR@10..11
+//                   PATH@10..11
+//                     PATH_SEGMENT@10..11
+//                       NAME_REF@10..11
+//                         IDENT@10..11 "C"
+//                 ARG_LIST@11..16
+//                   L_PAREN@11..12 "("
+//                   LITERAL@12..15
+//                     STRING@12..15 "\"0\""
+//                   R_PAREN@15..16 ")"
+//               R_PAREN@16..17 ")"
+//           SEMICOLON@17..18 ";"
 //         R_CURLY@18..19 "}"
 
 "#]],

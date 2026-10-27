@@ -10,7 +10,7 @@ use rustc_codegen_ssa::mir::place::PlaceValue;
 use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, BuilderMethods, ReturnSlot};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_middle::ty;
-use rustc_middle::ty::{PseudoCanonicalInput, Ty, TyCtxt, TypingEnv};
+use rustc_middle::ty::{Ty, TyCtxt, TypingEnv};
 use rustc_span::bug;
 use rustc_target::callconv::PassMode;
 use tracing::debug;
@@ -50,12 +50,8 @@ pub(crate) fn adjust_activity_to_abi<'tcx>(
             if let ty::Slice(element_ty) = tail_ty.kind() {
                 // Now we need to figure out the size of each slice element in memory to allow
                 // safety checks and usability improvements in the backend.
-                let pci = PseudoCanonicalInput {
-                    typing_env: TypingEnv::fully_monomorphized(),
-                    value: *element_ty,
-                };
 
-                let layout = tcx.layout_of(pci);
+                let layout = tcx.layout_of(typing_env.as_query_input(*element_ty));
                 let elem_size = match layout {
                     Ok(layout) => layout.size,
                     Err(_) => {
@@ -91,9 +87,7 @@ pub(crate) fn adjust_activity_to_abi<'tcx>(
             }
         }
 
-        let pci = PseudoCanonicalInput { typing_env: TypingEnv::fully_monomorphized(), value: *ty };
-
-        let layout = match tcx.layout_of(pci) {
+        let layout = match tcx.layout_of(typing_env.as_query_input(*ty)) {
             Ok(layout) => layout.layout,
             Err(_) => {
                 bug!("failed to compute layout for type {:?}", ty);

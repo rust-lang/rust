@@ -178,8 +178,7 @@ impl LocalizedConstraintGraph {
                         // Inter-block edges, from the block's terminator to each successor block's
                         // entry point.
                         for successor_block in body[location.block].terminator().successors() {
-                            let next_location =
-                                Location { block: successor_block, statement_index: 0 };
+                            let next_location = successor_block.start_location();
                             let next_point = location_map.point_from_location(next_location);
                             if liveness.is_live_at(next_point) {
                                 successor_found(LocalizedNode {

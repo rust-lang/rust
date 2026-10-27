@@ -20,7 +20,7 @@ impl<P> Trait<P> for () {
     const C<'a>: &'a str = "";
     //~^ ERROR constant `C` has 0 type parameters but its trait declaration has 1 type parameter
     const D<const N: u16>: u16 = N;
-    //~^ ERROR constant `D` has an incompatible generic parameter for trait `Trait`
+    //~^ ERROR associated constant `D` has an incompatible type for const generic parameter
     const E: &'static () = &();
     //~^ ERROR lifetime parameters or bounds on associated constant `E` do not match the trait declaration
 

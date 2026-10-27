@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_errors::DiagCtxtHandle;
 use rustc_middle::dep_graph::WorkProduct;
-use rustc_session::{Session, config};
+use rustc_session::{BorrowedIncrCompSession, Session, config};
 
 use crate::back::lto::ThinModule;
 use crate::back::write::{
@@ -14,7 +14,7 @@ use crate::back::write::{
 use crate::{CompiledModule, ModuleCodegen};
 
 pub trait WriteBackendMethods: Clone + 'static {
-    type Module: Send + Sync;
+    type Module: Send;
     type TargetMachine;
     type ModuleBuffer: ModuleBufferMethods;
     type ThinData: Send + Sync;
@@ -50,6 +50,7 @@ pub trait WriteBackendMethods: Clone + 'static {
     fn run_thin_lto(
         cgcx: &CodegenContext,
         prof: &SelfProfilerRef,
+        incr_comp_session: Option<&BorrowedIncrCompSession>,
         dcx: DiagCtxtHandle<'_>,
         exported_symbols_for_lto: &[String],
         each_linked_rlib_for_lto: &[PathBuf],

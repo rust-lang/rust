@@ -69,9 +69,6 @@ pub trait FileExt {
     ///
     /// # Errors
     ///
-    /// If this function encounters an error of the kind
-    /// [`io::ErrorKind::Interrupted`] then the error is ignored and the operation
-    /// will continue.
     ///
     /// If this function encounters an "end of file" before completely filling
     /// the buffer, it returns an error of the kind [`io::ErrorKind::UnexpectedEof`].
@@ -113,7 +110,6 @@ pub trait FileExt {
                     buf = &mut buf[n..];
                     offset += n as u64;
                 }
-                Err(ref e) if e.is_interrupted() => {}
                 Err(e) => return Err(e),
             }
         }
@@ -203,7 +199,6 @@ pub trait FileExt {
             let prev_written = buf.written();
             match self.seek_read_buf(buf.reborrow(), offset) {
                 Ok(()) => {}
-                Err(e) if e.is_interrupted() => {}
                 Err(e) => return Err(e),
             }
             let n = buf.written() - prev_written;
@@ -264,8 +259,7 @@ pub trait FileExt {
     ///
     /// # Errors
     ///
-    /// This function will return the first error of
-    /// non-[`io::ErrorKind::Interrupted`] kind that [`seek_write`] returns.
+    /// This function will return the first error that [`seek_write`] returns.
     ///
     /// [`seek_write`]: FileExt::seek_write
     ///
@@ -298,7 +292,6 @@ pub trait FileExt {
                     buf = &buf[n..];
                     offset += n as u64
                 }
-                Err(ref e) if e.is_interrupted() => {}
                 Err(e) => return Err(e),
             }
         }
@@ -915,6 +908,7 @@ impl FileTimesExt for fs::FileTimes {
 /// the process as an administrator.
 ///
 /// [symlink-security]: https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/create-symbolic-links
+#[doc(alias = "CreateSymbolicLink", alias = "CreateSymbolicLinkW")]
 #[stable(feature = "symlink", since = "1.1.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "fs_symlink_file")]
 pub fn symlink_file<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Result<()> {
@@ -956,6 +950,7 @@ pub fn symlink_file<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io:
 /// the process as an administrator.
 ///
 /// [symlink-security]: https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/create-symbolic-links
+#[doc(alias = "CreateSymbolicLink", alias = "CreateSymbolicLinkW")]
 #[stable(feature = "symlink", since = "1.1.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "fs_symlink_dir")]
 pub fn symlink_dir<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Result<()> {

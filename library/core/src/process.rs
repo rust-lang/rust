@@ -22,7 +22,7 @@
 ///
 /// `abort_immediate` lowers to a trap instruction on *most* architectures; on
 /// some architectures it simply lowers to call the unmangled `abort` function.
-/// The exact behavior is architecture and system dependent.
+/// The exact behavior is architecture- and system-dependent.
 ///
 /// On bare-metal (no OS) systems the trap instruction usually causes a
 /// *hardware* exception to be raised in a *synchronous* fashion; hardware
@@ -34,11 +34,71 @@
 /// corresponds to `SIGILL` or equivalent, *unless* this signal is handled.
 /// Other signals such as `SIGABRT`, `SIGTRAP`, `SIGSEGV`, and `SIGBUS` may be
 /// produced instead, depending on specifics. This is not an exhaustive list.
+///
+/// # Examples
+///
+/// ```no_run
+/// #![feature(abort_immediate)]
+///
+/// use core::process;
+///
+/// fn main() {
+///     println!("aborting");
+///
+///     process::abort_immediate();
+///
+///     // execution never gets here
+/// }
+/// ```
+///
+/// The `abort_immediate` function terminates the process, so the destructor
+/// will not get run on the example below:
+///
+/// ```no_run
+/// #![feature(abort_immediate)]
+///
+/// use core::process;
+///
+/// struct HasDrop;
+///
+/// impl Drop for HasDrop {
+///     fn drop(&mut self) {
+///         println!("This will never be printed!");
+///     }
+/// }
+///
+/// fn main() {
+///     let _x = HasDrop;
+///     process::abort_immediate();
+///     // the destructor implemented for HasDrop will never get run
+/// }
+/// ```
+///
 #[unstable(feature = "abort_immediate", issue = "154601")]
 #[rustc_const_unstable(feature = "abort_immediate", issue = "154601")]
 #[cold]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[doc(alias = "halt")]
+#[doc(alias = "trap")]
 pub const fn abort_immediate() -> ! {
     crate::intrinsics::abort_immediate()
+}
+
+/// Triggers a debugger breakpoint, pausing execution if possible.
+///
+/// This signals the environment to pause execution if a debugger is attached, and pass control to
+/// the debugger. Execution may then be aborted or continued by the user controlling the debugger.
+///
+/// If possible, this will produce an instruction sequence that allows a debugger to resume *after*
+/// the breakpoint, rather than resuming *at* the breakpoint; however, the exact behavior is
+/// target-specific and debugger-specific, and not guaranteed.
+///
+/// If no debugger is attached, this will typically abort the process but may also continue
+/// execution.
+// NOTE: this is meant to discuss alternatives to `arch::breakpoint`. We may or may not
+// actually want to stabilize both of them.
+#[unstable(feature = "breakpoint", issue = "133724")]
+#[inline(always)]
+pub fn resumable_breakpoint() {
+    crate::intrinsics::breakpoint();
 }

@@ -1,4 +1,4 @@
-// rustfmt-edition: 2024
+//@ rustfmt-edition: 2024
 
 fn build_sorted_static_get_entry_names(
     mut entries: Vec<(u8, &'static str)>,

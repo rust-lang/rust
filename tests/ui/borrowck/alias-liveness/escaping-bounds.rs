@@ -1,3 +1,6 @@
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
 //@ check-pass
 
 // Ensure that we don't ICE when an alias that has escaping bound vars is
@@ -16,7 +19,7 @@ fn foo<'a, 'b, T: Foo>(_: <T as Foo>::Assoc<'a, 'b>) {}
 
 fn test<'b, T: Foo>() {
     let y: MentionsLifetimeAndType<'_, for<'a> fn(<T as Foo>::Assoc<'a, 'b>)> =
-        MentionsLifetimeAndType(&(), foo);
+        MentionsLifetimeAndType(&(), foo::<T>);
 }
 
 fn main() {}
