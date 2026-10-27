@@ -3315,7 +3315,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let len = candidate_fields.len();
             // Don't suggest `.field` if the base expr is from a different
             // syntax context than the field.
-            if len > 0 && expr.span.eq_ctxt(field.span) {
+            if len > 0 && expr.span.ctxt() == field.span.ctxt() {
                 err.span_suggestions(
                     field.span.shrink_to_lo(),
                     format!(

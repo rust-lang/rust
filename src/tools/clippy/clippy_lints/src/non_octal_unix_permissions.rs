@@ -48,7 +48,7 @@ impl<'tcx> LateLintPass<'tcx> for NonOctalUnixPermissions {
                             | (Some(sym::FsPermissions), sym::set_mode)
                     )
                     && let ExprKind::Lit(_) = param.kind
-                    && param.span.eq_ctxt(expr.span)
+                    && param.span.ctxt() == expr.span.ctxt()
                     && param
                         .span
                         .check_text(cx, |src| !matches!(src.as_bytes(), [b'0', b'o' | b'b', ..]))
@@ -61,7 +61,7 @@ impl<'tcx> LateLintPass<'tcx> for NonOctalUnixPermissions {
                     && let Some(def_id) = cx.qpath_res(path, func.hir_id).opt_def_id()
                     && cx.tcx.is_diagnostic_item(sym::permissions_from_mode, def_id)
                     && let ExprKind::Lit(_) = param.kind
-                    && param.span.eq_ctxt(expr.span)
+                    && param.span.ctxt() == expr.span.ctxt()
                     && param
                         .span
                         .check_text(cx, |src| !matches!(src.as_bytes(), [b'0', b'o' | b'b', ..]))

@@ -53,7 +53,7 @@ impl LateLintPass<'_> for BoxDefault {
             && !expr.span.in_external_macro(cx.sess().source_map())
             // And the argument expression has the same context as the outer call expression
             // or that we are inside a `vec!` macro expansion
-            && (expr.span.eq_ctxt(arg.span) || is_local_vec_expn(cx, arg, expr))
+            && (expr.span.ctxt() == arg.span.ctxt() || is_local_vec_expn(cx, arg, expr))
             // And the argument is `Default::default()` or the type is specified
             && (is_plain_default(cx, arg_path) || (given_type(cx, expr) && is_default_equivalent(cx, arg)))
         {
@@ -85,7 +85,7 @@ fn is_plain_default(cx: &LateContext<'_>, arg_path: &Expr<'_>) -> bool {
 fn is_local_vec_expn(cx: &LateContext<'_>, expr: &Expr<'_>, ref_expr: &Expr<'_>) -> bool {
     macro_backtrace(expr.span)
         .next()
-        .is_some_and(|call| cx.tcx.is_diagnostic_item(sym::vec_macro, call.def_id) && call.span.eq_ctxt(ref_expr.span))
+        .is_some_and(|call| cx.tcx.is_diagnostic_item(sym::vec_macro, call.def_id) && call.span.ctxt() == ref_expr.span.ctxt())
 }
 
 #[derive(Default)]
