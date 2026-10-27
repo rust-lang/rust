@@ -184,7 +184,7 @@ pub(super) fn check<'tcx>(
         }
 
         if let Some(id) = cast_expr.res_local_id()
-            && !cx.tcx.hir_span(id).eq_ctxt(cast_expr.span)
+            && cx.tcx.hir_span(id).ctxt() != cast_expr.span.ctxt()
         {
             // Binding context is different than the identifiers context.
             // Weird macro wizardry could be involved here.

@@ -1032,7 +1032,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             };
             let hi = obj_ty.span;
 
-            if !lo.eq_ctxt(hi) {
+            if lo.ctxt() != hi.ctxt() {
                 return;
             }
 

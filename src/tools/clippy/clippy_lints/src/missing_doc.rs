@@ -142,7 +142,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
             | ItemKind::TestBinderConstraints { .. } => return,
 
             ItemKind::Mod(ident, ..) => {
-                if item.span.from_expansion() && item.span.eq_ctxt(ident.span) {
+                if item.span.from_expansion() && item.span.ctxt() == ident.span.ctxt() {
                     self.module_depth += 1;
                     self.require_visibility_at = cx.tcx.opt_local_parent(item.owner_id.def_id);
                     self.macro_module_depth = self.module_depth;

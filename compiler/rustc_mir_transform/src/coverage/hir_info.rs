@@ -70,7 +70,7 @@ pub(crate) fn extract_hir_info<'tcx>(
         let source_map = tcx.sess.source_map();
         let file_idx = |span: Span| source_map.lookup_source_file_idx(span.lo());
 
-        fn_sig_span.eq_ctxt(body_span)
+        fn_sig_span.ctxt() == body_span.ctxt()
             && fn_sig_span.hi() <= body_span.lo()
             && file_idx(fn_sig_span) == file_idx(body_span)
     });

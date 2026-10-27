@@ -4147,7 +4147,7 @@ fn show_candidates(
             if c.doc_visible {
                 if let [first, .., last] | [first @ last] = &path
                     && !first.ident.span.in_external_macro(tcx.sess.source_map())
-                    && first.ident.span.eq_ctxt(last.ident.span)
+                    && first.ident.span.ctxt() == last.ident.span.ctxt()
                     && c.path.segments.len() == 1
                 {
                     accessible_renames.push((
@@ -4483,7 +4483,7 @@ fn search_for_any_use_in_items(items: &[Box<ast::Item>]) -> Option<Span> {
         {
             let mut lo = item.span.lo();
             for attr in &item.attrs {
-                if attr.span.eq_ctxt(item.span) {
+                if attr.span.ctxt() == item.span.ctxt() {
                     lo = std::cmp::min(lo, attr.span.lo());
                 }
             }

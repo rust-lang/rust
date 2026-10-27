@@ -46,7 +46,7 @@ impl LateLintPass<'_> for DerefAddrOf {
             // NOTE(tesuji): `*&` forces rustc to const-promote the array to `.rodata` section.
             // See #12854 for details.
             && !matches!(addrof_target.kind, ExprKind::Array(_))
-            && deref_target.span.eq_ctxt(e.span)
+            && deref_target.span.ctxt() == e.span.ctxt()
             && !addrof_target.span.from_expansion()
         {
             let mut applicability = Applicability::MachineApplicable;
