@@ -21,7 +21,7 @@
 //!
 //! [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html
 
-pub use instantiate::CanonicalExt;
+pub use instantiate::{CanonicalExt, instantiate_value};
 use rustc_index::IndexVec;
 pub use rustc_middle::infer::canonical::*;
 use rustc_middle::ty::{self, GenericArg, Ty, TyCtxt, TypeFoldable};
