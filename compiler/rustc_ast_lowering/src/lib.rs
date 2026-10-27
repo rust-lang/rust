@@ -38,8 +38,8 @@
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
 
-use std::mem;
 use std::sync::{Arc, LazyLock};
+use std::{mem, thread};
 
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::node_id::NodeMap;
@@ -779,7 +779,12 @@ fn lower_to_hir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::MaybeOwner<'_> {
         }),
     };
 
-    tcx.sess.time("drop_ast", || mem::drop(node));
+    thread::Builder::new()
+        .name("drop AST".to_string())
+        .spawn(|| {
+            mem::drop(node);
+        })
+        .unwrap();
 
     item
 }
