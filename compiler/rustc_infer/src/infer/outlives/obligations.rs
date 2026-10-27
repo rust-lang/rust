@@ -67,7 +67,7 @@ use rustc_middle::ty::{
     self, GenericArgKind, GenericArgsRef, PolyTypeOutlivesClause, Region, RegionVid, Ty, TyCtxt,
     TypeVisitableExt, Upcast,
 };
-use rustc_span::{Span, bug};
+use rustc_span::bug;
 use rustc_type_ir::region_constraint::{self, LeafRegionConstraint};
 use smallvec::smallvec;
 use tracing::{debug, instrument};
@@ -268,20 +268,18 @@ impl<'tcx> InferCtxt<'tcx> {
         assert!(self.next_trait_solver());
         use LeafRegionConstraint::*;
 
-        let constraint = self.get_solver_region_constraint();
-        debug!(?constraint);
-        let constraint: (
-            region_constraint::RegionConstraint<TyCtxt<'tcx>, Span>,
-            Vec<LeafRegionConstraint<TyCtxt<'tcx>, Span>>,
-        ) = region_constraint::destructure_type_outlives_constraints_in_root(
-            self,
-            constraint,
-            &assumptions,
-        );
+        let solver_constraint = self.get_solver_region_constraint();
+        debug!(?solver_constraint);
+        let region_constraint::RootDestructuredConstraints { constraint, failing_leafs } =
+            region_constraint::destructure_type_outlives_constraints_in_root(
+                self,
+                solver_constraint,
+                &assumptions,
+            );
         debug!(?constraint);
 
-        if constraint.0.is_false() {
-            match &constraint.1.first() {
+        if constraint.is_false() {
+            match failing_leafs.first() {
                 Some(PlaceholderTyOutlives(_a, _b, span)) => {
                     self.dcx()
                         .struct_span_err(
@@ -305,9 +303,8 @@ impl<'tcx> InferCtxt<'tcx> {
         }
 
         // FIXME(-Zassumptions-on-binders): actually implement OR as an  OR
-        for c in constraint.0.and_constraint.0.into_iter().chain(
+        for c in constraint.and_constraint.0.into_iter().chain(
             constraint
-                .0
                 .or_constraint
                 .0
                 .into_iter()

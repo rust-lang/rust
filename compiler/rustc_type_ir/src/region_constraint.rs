@@ -835,6 +835,12 @@ fn pull_region_outlives_constraints_out_of_universe<
     RegionConstraint::new_from_or(Or::build_and(and_constraint, or_constraint))
 }
 
+#[derive_where(Debug; I: Interner, S)]
+pub struct RootDestructuredConstraints<I: Interner, S: Clone + std::fmt::Debug> {
+    pub constraint: RegionConstraint<I, S>,
+    pub failing_leafs: Vec<LeafRegionConstraint<I, S>>,
+}
+
 /// Converts type outlives constraints into region outlives constraints. This assumes the *complete* set of
 /// assumptions are known. This should not be called until the end of type checking.
 ///
@@ -848,10 +854,10 @@ pub fn destructure_type_outlives_constraints_in_root<
     infcx: &Infcx,
     constraint: RegionConstraint<I, S>,
     assumptions: &Assumptions<I>,
-) -> (RegionConstraint<I, S>, Vec<LeafRegionConstraint<I, S>>) {
+) -> RootDestructuredConstraints<I, S> {
     use LeafRegionConstraint::*;
 
-    let mut leaf_region_contents: Vec<LeafRegionConstraint<I, S>> = vec![];
+    let mut failing_leafs: Vec<LeafRegionConstraint<I, S>> = vec![];
     let mut destructure_and = |and: &And<I, S>| {
         debug!("rewriting and: {:?}", and);
         let mut destructured_constraints = Vec::new();
@@ -868,7 +874,7 @@ pub fn destructure_type_outlives_constraints_in_root<
                             },
                         ));
                     if contents.is_false() {
-                        leaf_region_contents.push(c.clone());
+                        failing_leafs.push(c.clone());
                     }
                     destructured_constraints.push(contents)
                 }
@@ -880,7 +886,7 @@ pub fn destructure_type_outlives_constraints_in_root<
                     )
                     .with_spans(span.clone());
                     if content.is_false() {
-                        leaf_region_contents.push(c.clone());
+                        failing_leafs.push(c.clone());
                     }
                     destructured_constraints.push(content);
                 }
@@ -901,10 +907,10 @@ pub fn destructure_type_outlives_constraints_in_root<
         .into_iter()
         .fold(Or::new_false(), |acc, c| Or::build_or(acc, destructure_and(&c)));
 
-    (
-        RegionConstraint::new_from_or(Or::build_and(and_constraint, or_constraint)),
-        leaf_region_contents,
-    )
+    RootDestructuredConstraints {
+        constraint: RegionConstraint::new_from_or(Or::build_and(and_constraint, or_constraint)),
+        failing_leafs,
+    }
 }
 
 /// Converts type outlives constraints into either region outlives constraints, or type outlives
