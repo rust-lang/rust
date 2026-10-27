@@ -667,8 +667,7 @@ pub struct PatExtra<'tcx> {
     /// pattern node was expanded from by `const_to_pat`.
     ///
     /// Match lowering uses this to compare the scrutinee against the original
-    /// constant as a whole via `PartialEq::eq`, rather than element by
-    /// element.
+    /// constant as a whole, rather than element by element.
     pub expanded_const_value: Option<ty::Value<'tcx>>,
 
     /// User-written types that must be preserved into MIR so that they can be

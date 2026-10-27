@@ -1,7 +1,7 @@
 //! Verify that matching against array/slice patterns expanded from constants
 //! produces correct results at runtime, complementing the MIR test in
 //! `tests/mir-opt/building/match/aggregate_array_eq.rs` which checks that
-//! a single aggregate `PartialEq::eq` call is emitted.
+//! a single aggregate `raw_eq` or `compare_bytes` call is emitted.
 //!
 //! Also verify that the variants which fall back to element-by-element
 //! comparison (hand-written patterns and const contexts) produce the same
@@ -47,8 +47,8 @@ fn try_from_matched(value: [u8; 4]) -> Result<MyEnum, ()> {
     }
 }
 
-// Const fn variants use element-by-element comparison because
-// `PartialEq::eq` is not available in const contexts.
+// Const fn variants use element-by-element comparison because the
+// intrinsics are not const-stable.
 const fn const_array_match(x: [u8; 4]) -> bool {
     matches!(x, EXPECTED)
 }

@@ -3,22 +3,21 @@
 
 // Verify that matching against an array/slice pattern of a bytewise-comparable
 // primitive type that was expanded from a constant (a named constant or a
-// byte-string literal) produces a single `PartialEq::eq` call rather than
-// element-by-element comparisons. The call must be marked as non-unwinding.
+// byte-string literal) produces a single call to the `raw_eq` or `compare_bytes`
+// intrinsic rather than element-by-element comparisons. The call must be marked
+// as non-unwinding.
 //
-// Hand-written array patterns must keep the element-by-element comparisons:
-// they only borrow the scrutinee for as long as `PartialEq::eq` would, but
-// user intent is respected before the MIR boundary.
+// Hand-written array patterns must keep the element-by-element comparisons.
 //
-// In const contexts, the aggregate comparison must NOT be used because
-// `PartialEq` is not const-stable.
+// In const contexts, the aggregate comparison must NOT be used because the
+// intrinsics are not const-stable.
 
 #![crate_type = "lib"]
 
 // EMIT_MIR aggregate_array_eq.array_match.built.after.mir
 pub fn array_match(x: [u8; 4]) -> bool {
     // CHECK-LABEL: fn array_match(
-    // CHECK: <[u8; 4] as PartialEq>::eq
+    // CHECK: raw_eq::<[u8; 4]>(
     // CHECK-SAME: unwind unreachable
     // CHECK-NOT: switchInt(copy _1[
     const EXPECTED: [u8; 4] = [1, 2, 3, 4];
@@ -28,20 +27,30 @@ pub fn array_match(x: [u8; 4]) -> bool {
 // EMIT_MIR aggregate_array_eq.handwritten_array_match.built.after.mir
 pub fn handwritten_array_match(x: [u8; 4]) -> bool {
     // CHECK-LABEL: fn handwritten_array_match(
-    // CHECK-NOT: PartialEq
+    // CHECK-NOT: raw_eq
     // CHECK: switchInt
     matches!(x, [1, 2, 3, 4])
+}
+
+// Constants shorter than `AGGREGATE_EQ_MIN_LEN` are compared element by element.
+// EMIT_MIR aggregate_array_eq.short_array_match.built.after.mir
+pub fn short_array_match(x: [u8; 3]) -> bool {
+    // CHECK-LABEL: fn short_array_match(
+    // CHECK-NOT: raw_eq
+    // CHECK: switchInt
+    const EXPECTED: [u8; 3] = [1, 2, 3];
+    matches!(x, EXPECTED)
 }
 
 #[derive(PartialEq, Eq)]
 pub struct Element(u8);
 
 // The aggregate comparison is limited to bytewise-comparable primitive element
-// types, whose `PartialEq` implementation is known not to panic.
+// types, whose bytes are equal if and only if their values are.
 // EMIT_MIR aggregate_array_eq.custom_element_array_match.built.after.mir
 pub fn custom_element_array_match(x: [Element; 4]) -> bool {
     // CHECK-LABEL: fn custom_element_array_match(
-    // CHECK-NOT: PartialEq
+    // CHECK-NOT: raw_eq
     // CHECK: switchInt
     const EXPECTED: [Element; 4] = [Element(1), Element(2), Element(3), Element(4)];
     matches!(x, EXPECTED)
@@ -50,7 +59,7 @@ pub fn custom_element_array_match(x: [Element; 4]) -> bool {
 // EMIT_MIR aggregate_array_eq.slice_match.built.after.mir
 pub fn slice_match(x: &[u8]) -> bool {
     // CHECK-LABEL: fn slice_match(
-    // CHECK: <[u8] as PartialEq>::eq
+    // CHECK: compare_bytes(
     // CHECK-SAME: unwind unreachable
     matches!(x, b"ABCD")
 }
@@ -66,7 +75,7 @@ pub enum MyEnum {
 // EMIT_MIR aggregate_array_eq.try_from_matched.built.after.mir
 pub fn try_from_matched(value: [u8; 4]) -> Result<MyEnum, ()> {
     // CHECK-LABEL: fn try_from_matched(
-    // CHECK: <[u8; 4] as PartialEq>::eq
+    // CHECK: raw_eq::<[u8; 4]>(
     // CHECK-NOT: switchInt(copy (*_2)[
     match &value {
         b"ABCD" => Ok(MyEnum::A),
@@ -77,12 +86,12 @@ pub fn try_from_matched(value: [u8; 4]) -> Result<MyEnum, ()> {
     }
 }
 
-// In a const fn, the aggregate comparison must not be used because
-// `PartialEq::eq` cannot be called during const evaluation.
+// In a const fn, the aggregate comparison must not be used because the
+// intrinsics are not const-stable.
 // EMIT_MIR aggregate_array_eq.const_array_match.built.after.mir
 pub const fn const_array_match(x: [u8; 4]) -> bool {
     // CHECK-LABEL: fn const_array_match(
-    // CHECK-NOT: PartialEq
+    // CHECK-NOT: raw_eq
     // CHECK: switchInt
     const EXPECTED: [u8; 4] = [1, 2, 3, 4];
     matches!(x, EXPECTED)
@@ -91,7 +100,7 @@ pub const fn const_array_match(x: [u8; 4]) -> bool {
 // EMIT_MIR aggregate_array_eq.const_try_from_matched.built.after.mir
 pub const fn const_try_from_matched(value: [u8; 4]) -> Result<MyEnum, ()> {
     // CHECK-LABEL: fn const_try_from_matched(
-    // CHECK-NOT: PartialEq
+    // CHECK-NOT: raw_eq
     // CHECK: switchInt
     match &value {
         b"ABCD" => Ok(MyEnum::A),
