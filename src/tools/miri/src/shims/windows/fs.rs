@@ -339,10 +339,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         ecx.check_no_isolation("`GetFileInformationByHandle`")?;
 
         let file = ecx.read_handle(file, "GetFileInformationByHandle")?;
-        let file_information = ecx.deref_pointer_as(
-            file_information,
-            ecx.windows_ty_layout("BY_HANDLE_FILE_INFORMATION"),
-        )?;
+        let file_information = ecx.deref_pointer(file_information)?;
 
         let Handle::File(fd_num) = file else { ecx.invalid_handle("GetFileInformationByHandle")? };
 
@@ -591,8 +588,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let count = ecx.read_scalar(n)?.to_u32()?;
         let byte_offset = ecx.read_target_usize(byte_offset)?; // is actually a pointer, but we only support null
         let key = ecx.read_pointer(key)?;
-        let io_status_block =
-            ecx.deref_pointer_as(io_status_block, ecx.windows_ty_layout("IO_STATUS_BLOCK"))?;
+        let io_status_block = ecx.deref_pointer(io_status_block)?;
 
         if event != Handle::Null {
             throw_unsup_format!(
@@ -697,8 +693,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let count = ecx.read_scalar(n)?.to_u32()?;
         let byte_offset = ecx.read_target_usize(byte_offset)?; // is actually a pointer, but we only support null
         let key = ecx.read_pointer(key)?;
-        let io_status_block =
-            ecx.deref_pointer_as(io_status_block, ecx.windows_ty_layout("IO_STATUS_BLOCK"))?;
+        let io_status_block = ecx.deref_pointer(io_status_block)?;
 
         if event != Handle::Null {
             throw_unsup_format!("`NtReadFile` `Event` parameter is non-null, which is unsupported");
@@ -815,7 +810,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 if !ecx.ptr_is_null(new_fp_ptr)? {
                     ecx.write_scalar(
                         Scalar::from_i64(n.try_into().unwrap()),
-                        &ecx.deref_pointer_as(new_fp, ecx.machine.layouts.i64)?,
+                        &ecx.deref_pointer(new_fp)?,
                     )?;
                 }
                 interp_ok(ecx.eval_windows("c", "TRUE"))
