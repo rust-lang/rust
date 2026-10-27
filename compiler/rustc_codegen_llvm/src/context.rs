@@ -48,7 +48,7 @@ use crate::{attributes, common, coverageinfo, debuginfo, llvm_util};
 /// moved around more freely.
 pub(crate) struct SCx<'ll> {
     pub llmod: &'ll llvm::Module,
-    pub llcx: &'ll llvm::Context,
+    pub llcx: llvm::Context<'ll>,
     pub isize_ty: &'ll Type,
 }
 
@@ -184,7 +184,7 @@ fn to_llvm_tls_model(tls_model: TlsModel) -> llvm::ThreadLocalMode {
 
 pub(crate) unsafe fn create_module<'ll>(
     tcx: TyCtxt<'_>,
-    llcx: &'ll llvm::Context,
+    llcx: llvm::Context<'ll>,
     mod_name: &str,
 ) -> *const llvm::Module {
     let mod_name_cstr = SmallCStr::new(mod_name);
@@ -194,7 +194,7 @@ pub(crate) unsafe fn create_module<'ll>(
     llmod_raw
 }
 
-fn init_module<'ll, 'tcx>(tcx: TyCtxt<'tcx>, llcx: &'ll llvm::Context, llmod: &'ll llvm::Module) {
+fn init_module<'ll, 'tcx>(tcx: TyCtxt<'tcx>, llcx: llvm::Context<'ll>, llmod: &'ll llvm::Module) {
     let sess = tcx.sess;
     let cx = SimpleCx::new(llmod, llcx, tcx.data_layout.pointer_size());
 
@@ -881,7 +881,7 @@ impl<'ll> SimpleCx<'ll> {
 impl<'ll> SimpleCx<'ll> {
     pub(crate) fn new(
         llmod: &'ll llvm::Module,
-        llcx: &'ll llvm::Context,
+        llcx: llvm::Context<'ll>,
         pointer_size: Size,
     ) -> Self {
         let isize_ty = llvm::LLVMIntTypeInContext(llcx, pointer_size.bits() as c_uint);

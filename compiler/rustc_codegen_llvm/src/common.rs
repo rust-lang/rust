@@ -469,12 +469,12 @@ pub(crate) fn val_ty(v: &Value) -> &Type {
     unsafe { llvm::LLVMTypeOf(v) }
 }
 
-pub(crate) fn bytes_in_context<'ll>(llcx: &'ll llvm::Context, bytes: &[u8]) -> &'ll Value {
+pub(crate) fn bytes_in_context<'ll>(llcx: llvm::Context<'ll>, bytes: &[u8]) -> &'ll Value {
     unsafe { llvm::LLVMConstStringInContext2(llcx, bytes.as_ptr(), bytes.len(), TRUE) }
 }
 
 pub(crate) fn null_terminate_bytes_in_context<'ll>(
-    llcx: &'ll llvm::Context,
+    llcx: llvm::Context<'ll>,
     bytes: &[u8],
 ) -> &'ll Value {
     unsafe { llvm::LLVMConstStringInContext2(llcx, bytes.as_ptr(), bytes.len(), FALSE) }
@@ -486,7 +486,7 @@ pub(crate) fn named_struct<'ll>(ty: &'ll Type, elts: &[&'ll Value]) -> &'ll Valu
 }
 
 fn struct_in_context<'ll>(
-    llcx: &'ll llvm::Context,
+    llcx: llvm::Context<'ll>,
     elts: &[&'ll Value],
     packed: bool,
 ) -> &'ll Value {
