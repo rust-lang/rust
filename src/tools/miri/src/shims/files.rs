@@ -618,6 +618,9 @@ impl FileDescription for DirHandle {
 /// Internal type of a file-descriptor - this is what [`FdTable`] expects
 pub type FdNum = i32;
 
+/// The maximum number of open FDs.
+pub const FD_LIMIT: FdNum = 524288; // default hard limit on Debian
+
 /// The file descriptor table
 #[derive(Debug)]
 pub struct FdTable {
@@ -640,11 +643,11 @@ impl FdTable {
         let mut fds = FdTable::new();
         fds.insert_new(Stdin::new());
         if mute_stdout_stderr {
-            assert_eq!(fds.insert_new(NullOutput::new()), 1);
-            assert_eq!(fds.insert_new(NullOutput::new()), 2);
+            assert_eq!(fds.insert_new(NullOutput::new()).unwrap(), 1);
+            assert_eq!(fds.insert_new(NullOutput::new()).unwrap(), 2);
         } else {
-            assert_eq!(fds.insert_new(Stdout::new()), 1);
-            assert_eq!(fds.insert_new(Stderr::new()), 2);
+            assert_eq!(fds.insert_new(Stdout::new()).unwrap(), 1);
+            assert_eq!(fds.insert_new(Stderr::new()).unwrap(), 2);
         }
         fds
     }
@@ -656,14 +659,18 @@ impl FdTable {
         file_handle
     }
 
+    pub fn fd_num_valid(fd_num: FdNum) -> bool {
+        (0..FD_LIMIT).contains(&fd_num)
+    }
+
     /// Insert a new file description to the FdTable.
-    pub fn insert_new(&mut self, fd: impl FileDescription) -> FdNum {
+    pub fn insert_new(&mut self, fd: impl FileDescription) -> Option<FdNum> {
         let fd_ref = self.new_ref(fd);
         self.insert(fd_ref)
     }
 
     /// Insert an alias to an existing file description to the FdTable.
-    pub fn insert(&mut self, fd_ref: DynFileDescriptionRef) -> FdNum {
+    pub fn insert(&mut self, fd_ref: DynFileDescriptionRef) -> Option<FdNum> {
         self.insert_with_min_num(fd_ref, 0)
     }
 
@@ -672,7 +679,7 @@ impl FdTable {
         &mut self,
         file_handle: DynFileDescriptionRef,
         min_fd_num: FdNum,
-    ) -> FdNum {
+    ) -> Option<FdNum> {
         let mut candidate = min_fd_num;
         for (&fd_num, _) in self.fds.range(min_fd_num..) {
             if fd_num == candidate {
@@ -686,8 +693,13 @@ impl FdTable {
         // If we exhaust the loop, the table is a solid block starting at `min_fd_num` until the
         // end, and `candidate` is now the first number after that block -- exactly what we need.
 
+        // Ensure the resulting FD number is valid.
+        if !Self::fd_num_valid(candidate) {
+            return None;
+        }
+
         self.fds.try_insert(candidate, file_handle).unwrap();
-        candidate
+        Some(candidate)
     }
 
     pub fn get(&self, fd_num: FdNum) -> Option<DynFileDescriptionRef> {

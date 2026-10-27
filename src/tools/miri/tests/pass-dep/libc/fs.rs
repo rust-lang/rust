@@ -643,6 +643,16 @@ fn test_dup() {
         let third_len = third_len as usize;
         assert_eq!(third_buf[..third_len], remaining_bytes[..third_len]);
 
+        // dup'ing to invalid FD numbers should fail.
+        let err = errno_result(libc::dup2(1, -1)).unwrap_err();
+        assert_eq!(err.raw_os_error().unwrap(), libc::EBADF);
+        let err = errno_result(libc::dup2(1, i32::MAX)).unwrap_err();
+        assert_eq!(err.raw_os_error().unwrap(), libc::EBADF);
+        let err = errno_result(libc::fcntl(1, libc::F_DUPFD, -1)).unwrap_err();
+        assert_eq!(err.raw_os_error().unwrap(), libc::EINVAL);
+        let err = errno_result(libc::fcntl(1, libc::F_DUPFD, i32::MAX)).unwrap_err();
+        assert_eq!(err.raw_os_error().unwrap(), libc::EINVAL);
+
         // Cleanup
         let err = errno_result(libc::close(99)).unwrap_err(); // new_fd2, already closed above!
         assert_eq!(err.raw_os_error().unwrap(), libc::EBADF);

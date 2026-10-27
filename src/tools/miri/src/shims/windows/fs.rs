@@ -300,11 +300,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         unreachable!()
                     }
 
-                    let fd_num = ecx.machine.fds.insert_new(DirHandle {
+                    let Some(fd_num) = ecx.machine.fds.insert_new(DirHandle {
                         dir,
                         #[cfg(bootstrap)]
                         fallback: file_name.canonicalize().unwrap(),
-                    });
+                    }) else {
+                        throw_unsup_format!("we ran out of FD numbers")
+                    };
                     interp_ok(Handle::File(fd_num))
                 }
                 Ok(Either::Left(file)) => {
@@ -313,11 +315,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         ecx.set_last_error(IoError::WindowsError("ERROR_ALREADY_EXISTS"))?;
                     }
 
-                    let fd_num = ecx.machine.fds.insert_new(FileHandle {
+                    let Some(fd_num) = ecx.machine.fds.insert_new(FileHandle {
                         file,
                         writable: desired_write,
                         readable: desired_read,
-                    });
+                    }) else {
+                        throw_unsup_format!("we ran out of FD numbers")
+                    };
                     interp_ok(Handle::File(fd_num))
                 }
             };

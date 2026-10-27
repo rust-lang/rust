@@ -173,14 +173,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let fds = &mut this.machine.fds;
 
-        let fd_value = fds.insert_new(EventFd {
+        let Some(fd_value) = fds.insert_new(EventFd {
             counter: Cell::new(val.into()),
             is_nonblock,
             clock: RefCell::new(VClock::default()),
             blocked_read_tid: RefCell::new(Vec::new()),
             blocked_write_tid: RefCell::new(Vec::new()),
             watched: ReadinessWatched::default(),
-        });
+        }) else {
+            return this.set_errno_and_return_neg1_i32(LibcError("EMFILE"));
+        };
 
         interp_ok(Scalar::from_i32(fd_value))
     }

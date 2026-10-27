@@ -1071,7 +1071,9 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Register the socket to the blocking I/O manager because
         // there is an associated host socket.
         this.machine.blocking_io.register(fd.clone());
-        let sockfd = this.machine.fds.insert(fd);
+        let Some(sockfd) = this.machine.fds.insert(fd) else {
+            return interp_ok(Err(LibcError("EMFILE")));
+        };
         interp_ok(Ok((sockfd, addr)))
     }
 

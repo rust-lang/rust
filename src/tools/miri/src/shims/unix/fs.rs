@@ -705,14 +705,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     return this.set_errno_and_return_neg1_i32(LibcError("EISDIR"));
                 }
 
-                let fd = this.machine.fds.insert_new(DirHandle {
+                let Some(fd) = this.machine.fds.insert_new(DirHandle {
                     dir,
                     #[cfg(bootstrap)]
                     fallback: match &dirfd {
                         Some(dirfd) => dirfd.fallback.join(&path).canonicalize().unwrap(),
                         None => path.canonicalize().unwrap(),
                     },
-                });
+                }) else {
+                    return this.set_errno_and_return_neg1_i32(LibcError("EMFILE"));
+                };
                 interp_ok(Scalar::from_i32(fd))
             }
             Ok(Either::Left(file)) => {
@@ -728,7 +730,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     panic!("we should not get a symlink here");
                 }
 
-                let fd = this.machine.fds.insert_new(FileHandle { file, writable, readable });
+                let Some(fd) = this.machine.fds.insert_new(FileHandle { file, writable, readable })
+                else {
+                    return this.set_errno_and_return_neg1_i32(LibcError("EMFILE"));
+                };
                 interp_ok(Scalar::from_i32(fd))
             }
         }
@@ -1371,7 +1376,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     fallback: name.canonicalize().unwrap(),
                 });
                 let dir_fd_id = dir.id();
-                let dir_fd_num = this.machine.fds.insert(dir);
+                let Some(dir_fd_num) = this.machine.fds.insert(dir) else {
+                    return this.set_errno_and_return_neg1_i32(LibcError("EMFILE"));
+                };
 
                 let stream = DirStream::new(read_dir, dir_fd_num, dir_fd_id);
                 let id = this.machine.dirs.insert_new(stream);
@@ -2134,11 +2141,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             let file = fopts.open(bytes_to_os_str(template_bytes)?);
             match file {
                 Ok(f) => {
-                    let fd = this.machine.fds.insert_new(FileHandle {
+                    let Some(fd) = this.machine.fds.insert_new(FileHandle {
                         file: f,
                         writable: true,
                         readable: true,
-                    });
+                    }) else {
+                        return this.set_errno_and_return_neg1_i32(LibcError("EMFILE"));
+                    };
                     return interp_ok(Scalar::from_i32(fd));
                 }
                 Err(e) =>

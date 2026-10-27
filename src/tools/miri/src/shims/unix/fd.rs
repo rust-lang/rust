@@ -8,11 +8,11 @@ use rand::RngExt;
 use rustc_abi::{Align, Size};
 use rustc_target::spec::Os;
 
-use crate::shims::FileDescriptionRef;
 use crate::shims::files::{DynFileDescriptionRef, FdNum, FileDescription};
 use crate::shims::sig::Varargs;
 use crate::shims::unix::socket::UnixSocketFileDescription;
 use crate::shims::unix::*;
+use crate::shims::{FdTable, FileDescriptionRef};
 use crate::*;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -141,7 +141,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let Some(fd) = this.machine.fds.get(old_fd_num) else {
             return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         };
-        interp_ok(Scalar::from_i32(this.machine.fds.insert(fd)))
+        let Some(new_fd) = this.machine.fds.insert(fd) else {
+            return this.set_errno_and_return_neg1_i32(LibcError("EMFILE"));
+        };
+        interp_ok(Scalar::from_i32(new_fd))
     }
 
     fn dup2(&mut self, old_fd_num: FdNum, new_fd_num: FdNum) -> InterpResult<'tcx, Scalar> {
@@ -150,6 +153,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let Some(fd) = this.machine.fds.get(old_fd_num) else {
             return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         };
+        if !FdTable::fd_num_valid(new_fd_num) {
+            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
+        }
         if new_fd_num != old_fd_num {
             if this.machine.fds.get(new_fd_num).is_some() {
                 // Close the FD currently holding this spot.
@@ -157,7 +163,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 assert!(ret.to_i32().unwrap() == 0);
             }
             // Insert new FD in this spot.
-            let actual_fd_num = this.machine.fds.insert_with_min_num(fd, new_fd_num);
+            let Some(actual_fd_num) = this.machine.fds.insert_with_min_num(fd, new_fd_num) else {
+                panic!("we validated new_fd_num above")
+            };
             assert_eq!(actual_fd_num, new_fd_num);
         }
         interp_ok(Scalar::from_i32(new_fd_num))
@@ -269,11 +277,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let ([start], _) = this.check_varargs(shim_varargs![i32], varargs, cmd_name)?;
                 let start = this.read_scalar(&start)?.to_i32()?;
 
-                if let Some(fd) = this.machine.fds.get(fd_num) {
-                    interp_ok(Scalar::from_i32(this.machine.fds.insert_with_min_num(fd, start)))
-                } else {
-                    this.set_errno_and_return_neg1_i32(LibcError("EBADF"))
+                let Some(fd) = this.machine.fds.get(fd_num) else {
+                    return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
+                };
+                if !FdTable::fd_num_valid(start) {
+                    return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
                 }
+                let Some(new_fd_num) = this.machine.fds.insert_with_min_num(fd, start) else {
+                    return this.set_errno_and_return_neg1_i32(LibcError("EMFILE"));
+                };
+                interp_ok(Scalar::from_i32(new_fd_num))
             }
             cmd if cmd == f_getfl => {
                 // Check if this is a valid open file descriptor.
