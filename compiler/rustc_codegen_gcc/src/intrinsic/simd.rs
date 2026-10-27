@@ -1277,6 +1277,11 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         simd_xor: Uint, Int => xor;
         simd_minimum_number_nsz: Float => vector_minimum_number_nsz;
         simd_maximum_number_nsz: Float => vector_maximum_number_nsz;
+        simd_add_algebraic: Float => fadd;
+        simd_sub_algebraic: Float => fsub;
+        simd_mul_algebraic: Float => fmul;
+        simd_div_algebraic: Float => fdiv;
+        simd_rem_algebraic: Float => frem;
     }
 
     macro_rules! arith_unary {
@@ -1445,6 +1450,20 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
     arith_red!(
         simd_reduce_mul_unordered: BinaryOp::Mult,
         vector_reduce_fmul_reassoc,
+        false,
+        mul,
+        1.0
+    );
+    arith_red!(
+        simd_reduce_add_algebraic: BinaryOp::Plus,
+        vector_reduce_fadd_algebraic,
+        false,
+        add,
+        0.0
+    );
+    arith_red!(
+        simd_reduce_mul_algebraic: BinaryOp::Mult,
+        vector_reduce_fmul_algebraic,
         false,
         mul,
         1.0
