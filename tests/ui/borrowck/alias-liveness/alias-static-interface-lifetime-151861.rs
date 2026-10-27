@@ -1,6 +1,3 @@
-//@ check-pass
-//@ known-bug: #151861
-
 // This test exhibits UB by creating a dangling reference from a type where the
 // lifetime on a trait bound isn't live. This happens because we don't currently
 // consider lifetimes in trait bounds on aliases to be live.
@@ -66,6 +63,7 @@ fn item_bound<G: for<'r> ItemBound<'r>>() {
     {
         let s = String::from("huh");
         a = <G as ItemBound>::construct(&s);
+        //~^ ERROR `s` does not live long enough
     }
     let _unrelated = String::from("UB!");
     let dangling: &str = a.produce();
@@ -80,6 +78,7 @@ where
     {
         let s = String::from("huh");
         a = G::construct(&s);
+        //~^ ERROR `s` does not live long enough
     }
     let _unrelated = String::from("UB!");
     let dangling: &str = a.produce();
@@ -97,6 +96,7 @@ fn rpit() {
     {
         let s = String::from("huh");
         a = rpit_produce(&s);
+        //~^ ERROR `s` does not live long enough
     }
     let _unrelated = String::from("UB!");
     let dangling: &str = a.produce();

@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::bit_set::DenseBitSet;
@@ -479,6 +479,7 @@ fn live_args_for_outlives_clause<'tcx>(
 pub struct FreeRegionsVisitor<'tcx, OP: FnMut(ty::Region<'tcx>)> {
     pub tcx: TyCtxt<'tcx>,
     pub param_env: ty::ParamEnv<'tcx>,
+    pub seen: FxHashSet<ty::AliasTy<'tcx>>,
     pub op: OP,
 }
 
@@ -511,9 +512,19 @@ where
             // either `'static` or a unique outlives region, and if one is
             // found, we just need to prove that that region is still live.
             // If one is not found, then we continue to walk through the alias.
-            ty::Alias(_, ty::AliasTy { kind, args, .. }) => {
+            ty::Alias(_, alias_ty @ ty::AliasTy { kind, args, .. }) => {
                 let tcx = self.tcx;
                 let param_env = self.param_env;
+
+                // We can sometimes encounter cyclic alias types (e.g.
+                // `type Residual: Residual<Self::Output, TryType = Self>` and
+                // `type TryType: Try<Output = O, Residual = Self>`).
+                // If we've already seen this alias, then we don't need to visit
+                // it again; this should be sound because the *other* args will
+                // still be visited.
+                if !self.seen.insert(alias_ty) {
+                    return;
+                }
 
                 // For aliases other than opaques, we have to consider two
                 // sources of information to identity potentially-live args:
@@ -545,6 +556,22 @@ where
                 for idx in capturable.iter() {
                     if variances.map(|variances| variances[idx as usize]) != Some(ty::Bivariant) {
                         args[idx as usize].visit_with(self);
+                    }
+                }
+
+                // This causes us to recurse into the args of alias bounds like
+                // `impl Captures<'a>` and `type Alias: Capture<a'>` and treat
+                // them as live.
+                for clause in tcx.item_bounds(def_id).instantiate(tcx, args).skip_norm_wip() {
+                    match clause.kind().skip_binder() {
+                        ty::ClauseKind::Trait(trait_clause) => {
+                            trait_clause.trait_ref.args[1..].visit_with(self);
+                        }
+                        ty::ClauseKind::Projection(proj_clause) => {
+                            proj_clause.projection_term.args[1..].visit_with(self);
+                            proj_clause.term.visit_with(self);
+                        }
+                        _ => {}
                     }
                 }
             }

@@ -3,8 +3,6 @@
 //@ revisions: nll polonius
 //@ [nll] compile-flags: -Zpolonius=off
 //@ [polonius] compile-flags: -Zpolonius=next
-//@ [polonius] check-pass
-//@ [polonius] known-bug: #161038
 
 // Two different variations of #161038: one with a trait with a method taking
 // a reference and one taking an impl Trait. Fundamentally, both exploit the
@@ -60,7 +58,7 @@ fn through_alias_param() {
     let wrong: &Payload;
     {
         let x: Box<Payload> = Box::new(Box::new(1));
-        let r: &Payload = &*x; //[nll]~ ERROR `*x` does not live long enough
+        let r: &Payload = &*x; //~ ERROR `*x` does not live long enough
         wrong = make_producer_alias(r).produce();
     }
     println!("{wrong}");
@@ -70,7 +68,7 @@ fn through_impl_header() {
     let wrong: &Payload;
     {
         let x: Box<Payload> = Box::new(Box::new(1));
-        let r: &Payload = &*x; //[nll]~ ERROR `*x` does not live long enough
+        let r: &Payload = &*x; //~ ERROR `*x` does not live long enough
         wrong = make_producer_ref(r).produce();
     }
     println!("{wrong}");
