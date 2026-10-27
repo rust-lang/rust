@@ -30,7 +30,7 @@ git -C linux checkout FETCH_HEAD
 # Install bindgen
 "${BUILD_DIR}"/stage0/bin/cargo install \
   --locked \
-  --version $(linux/scripts/min-tool-version.sh bindgen) \
+  --version 0.73.2 \
   --root ${BUILD_DIR}/bindgen \
   bindgen-cli
 
