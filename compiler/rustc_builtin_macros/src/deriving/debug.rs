@@ -39,7 +39,7 @@ pub(crate) fn expand_derive_debug(
             name: sym::fmt,
             generics: cx.empty_generics(span),
             explicit_self: true,
-            nonself_args: smallvec![(fmtr, sym::f)],
+            nonself_args: smallvec![(sym::f, fmtr)],
             has_other_selflike_arg: false,
             ret_ty: cx.ty_path(path_std!(cx, span, fmt::Result)),
             attributes: thin_vec![cx.generated_attr(span, ast::GeneratedAttr::Inline)],

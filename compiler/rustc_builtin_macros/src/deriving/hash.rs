@@ -38,7 +38,7 @@ pub(crate) fn expand_derive_hash(
             name: sym::hash,
             generics,
             explicit_self: true,
-            nonself_args: smallvec![(cx.ty_ref(span, arg, None, Mutability::Mut), sym::state)],
+            nonself_args: smallvec![(sym::state, cx.ty_ref(span, arg, None, Mutability::Mut))],
             has_other_selflike_arg: false,
             ret_ty: cx.ty_unit(span),
             attributes: thin_vec![cx.generated_attr(span, ast::GeneratedAttr::Inline)],

@@ -204,7 +204,7 @@ pub(crate) struct MethodDef<'a> {
     pub explicit_self: bool,
 
     /// Arguments other than the self argument.
-    pub nonself_args: SmallVec<[(Box<ast::Ty>, Symbol); 1]>,
+    pub nonself_args: SmallVec<[(Symbol, Box<ast::Ty>); 1]>,
 
     /// Whether this method has another arg of type `&self`.
     pub has_other_selflike_arg: bool,
@@ -690,12 +690,12 @@ impl<'a> MethodDef<'a> {
         let self_arg = self.explicit_self.then(|| {
             let infer_ty = cx.ty(span, ast::TyKind::ImplicitSelf);
             let ty = cx.ty_ref(span, infer_ty, None, ast::Mutability::Not);
-            (ty, kw::SelfLower)
+            (kw::SelfLower, ty)
         });
         let args = self_arg
             .into_iter()
             .chain(self.nonself_args.iter().cloned())
-            .map(|(ty, name)| cx.param(span, name, ty))
+            .map(|(name, ty)| cx.param(span, name, ty))
             .collect();
 
         let ret_type = if self.ret_ty.kind.is_unit() {
@@ -772,7 +772,7 @@ impl<'a> MethodDef<'a> {
     ) -> BlockOrExpr {
         let self_expr = cx.expr_self(span);
         let selflike_args = if self.has_other_selflike_arg {
-            &[self_expr, cx.expr_name(span, self.nonself_args[0].1)][..]
+            &[self_expr, cx.expr_name(span, self.nonself_args[0].0)][..]
         } else {
             &[self_expr]
         };
@@ -936,7 +936,7 @@ impl<'a> MethodDef<'a> {
 
         let self_expr = cx.expr_self(span);
         let match_arg = if self.has_other_selflike_arg {
-            cx.expr_tuple(span, thin_vec![self_expr, cx.expr_name(span, self.nonself_args[0].1)])
+            cx.expr_tuple(span, thin_vec![self_expr, cx.expr_name(span, self.nonself_args[0].0)])
         } else {
             self_expr
         };

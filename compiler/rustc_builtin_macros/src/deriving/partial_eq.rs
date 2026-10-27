@@ -39,7 +39,7 @@ pub(crate) fn expand_derive_partial_eq(
         name: sym::eq,
         generics: cx.empty_generics(span),
         explicit_self: true,
-        nonself_args: smallvec![(cx.ty_self_ref(span), sym::other)],
+        nonself_args: smallvec![(sym::other, cx.ty_self_ref(span))],
         has_other_selflike_arg: true,
         ret_ty: cx.ty_name(span, sym::bool),
         attributes: thin_vec![cx.generated_attr(span, ast::GeneratedAttr::Inline)],
