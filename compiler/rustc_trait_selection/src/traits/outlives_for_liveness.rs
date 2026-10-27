@@ -1,44 +1,16 @@
-use std::debug_assert_matches;
-
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::bit_set::DenseBitSet;
-use rustc_infer::infer::{SubregionOrigin, TypeOutlivesConstraint};
 use rustc_middle::ty::{
     self, Flags, ImplTraitInTraitData, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt, TypeVisitor,
 };
-use rustc_span::{DUMMY_SP, bug};
+use rustc_span::bug;
 
 use crate::infer::outlives::test_type_match;
 use crate::infer::region_constraints::VerifyIfEq;
-use crate::regions::{region_known_to_outlive, test_region_obligations};
-
-/// Given a known `param_env` and a set of well formed types, can we prove that
-/// `ty` outlives `region`.
-///
-/// Copied from `ty_known_to_outlive` without normalization for `ty` because we
-/// don't want trait solving in liveness queries.
-fn param_known_to_outlive<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    id: LocalDefId,
-    param_env: ty::ParamEnv<'tcx>,
-    wf_tys: &FxIndexSet<Ty<'tcx>>,
-    ty: Ty<'tcx>,
-    region: ty::Region<'tcx>,
-) -> bool {
-    debug_assert_matches!(ty.kind(), ty::Param(_));
-
-    test_region_obligations(tcx, id, param_env, wf_tys, |infcx| {
-        infcx.register_type_outlives_constraint_inner(TypeOutlivesConstraint {
-            sub_region: region,
-            sup_type: ty,
-            origin: SubregionOrigin::RelateParamBound(DUMMY_SP, ty, None),
-        });
-        Ok(())
-    })
-}
+use crate::regions::region_known_to_outlive;
 
 /// For a given alias type, this returns the set of indices into the identity generic args that
 /// are relevant for liveness, that can be inferred from outlives bounds on the
@@ -257,14 +229,12 @@ pub(crate) fn args_known_to_outlive_opaque_params<'tcx>(
                 ty::GenericArgKind::Const(_) => continue,
                 // Lifetimes should be captured
                 ty::GenericArgKind::Lifetime(_) => continue,
-                ty::GenericArgKind::Type(t) => param_known_to_outlive(
-                    tcx,
-                    def_id,
-                    parent_param_env,
-                    &wf_tys,
-                    t,
-                    *parent_outlived_region,
-                ),
+                // It would be *awesome* if we could be precise in the whether we treat type args as live or not. Turns
+                // out, this is very tricky because we can have an information (even non-locally!) about projections
+                // through a type arg that would mean that it can end up in an alias and enumerating that information is
+                // hard. See the numerous is examples in the `unrelated-bounds-liveness.rs` test for how this can go
+                // wrong and why we are pessimistic here.
+                ty::GenericArgKind::Type(_) => true,
             };
             if !type_outlives {
                 continue;
@@ -317,9 +287,12 @@ pub(crate) fn args_known_to_outlive_non_opaque_params<'tcx>(
                 ty::GenericArgKind::Lifetime(r) => {
                     region_known_to_outlive(tcx, def_id, param_env, &wf_tys, r, outlived_region)
                 }
-                ty::GenericArgKind::Type(t) => {
-                    param_known_to_outlive(tcx, def_id, param_env, &wf_tys, t, outlived_region)
-                }
+                // It would be *awesome* if we could be precise in the whether we treat type args as live or not. Turns
+                // out, this is very tricky because we can have an information (even non-locally!) about projections
+                // through a type arg that would mean that it can end up in an alias and enumerating that information is
+                // hard. See the numerous is examples in the `unrelated-bounds-liveness.rs` test for how this can go
+                // wrong and why we are pessimistic here.
+                ty::GenericArgKind::Type(_) => true,
                 ty::GenericArgKind::Const(_) => false,
             };
             if outlives {

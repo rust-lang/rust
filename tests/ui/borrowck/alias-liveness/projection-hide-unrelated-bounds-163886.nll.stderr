@@ -1,5 +1,5 @@
 error[E0597]: `x` does not live long enough
-  --> $DIR/projection-hide-unrelated-bounds-163886.rs:50:38
+  --> $DIR/projection-hide-unrelated-bounds-163886.rs:48:38
    |
 LL |     let x = [1, 2, 3];
    |         - binding `x` declared here

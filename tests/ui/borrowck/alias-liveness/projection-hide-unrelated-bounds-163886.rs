@@ -3,8 +3,6 @@
 //@ revisions: nll polonius
 //@ [nll] compile-flags: -Zpolonius=off
 //@ [polonius] compile-flags: -Zpolonius=next
-//@ [polonius] check-pass
-//@ [polonius] known-bug: #163886
 
 // Similar to `projection-hide-one-bound-153215.rs`, but with two unrelated
 // bounds. This used to properly error with Polonius Alpha, but has regressed
@@ -48,7 +46,7 @@ fn dangle_unrelated_bounds() -> &'static [i32; 3] {
     let long = Rc::new(RefCell::new(&[4, 5, 6] as &'static [i32; 3]));
     let x = [1, 2, 3];
     let short = Rc::new(RefCell::new(&x));
-    //[nll]~^ ERROR `x` does not live long enough
+    //~^ ERROR `x` does not live long enough
     hide_unrelated_bounds(long.clone()).swap(hide_unrelated_bounds(short));
     let res: &'static [i32; 3] = *long.borrow();
     res
