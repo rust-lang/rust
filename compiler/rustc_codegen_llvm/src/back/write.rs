@@ -326,8 +326,8 @@ struct DiagnosticHandlerCallbackData<'a> {
     shared_emitter: &'a SharedEmitter,
 }
 
-pub(crate) struct DiagnosticHandlers<'a> {
-    llcx: &'a llvm::Context,
+pub(crate) struct DiagnosticHandlers<'a, 'll> {
+    llcx: llvm::Context<'ll>,
     old_handler: Option<ptr::NonNull<llvm::DiagnosticHandler>>,
 
     /// Ownership of the box-allocated data that was installed (as a pointer)
@@ -337,11 +337,11 @@ pub(crate) struct DiagnosticHandlers<'a> {
     diagnostic_handler_callback_data: *mut DiagnosticHandlerCallbackData<'a>,
 }
 
-impl<'a> DiagnosticHandlers<'a> {
+impl<'a, 'll> DiagnosticHandlers<'a, 'll> {
     pub(crate) fn new(
         cgcx: &'a CodegenContext,
         shared_emitter: &'a SharedEmitter,
-        llcx: &'a llvm::Context,
+        llcx: llvm::Context<'ll>,
         module: &ModuleCodegen<ModuleLlvm>,
         stage: CodegenDiagnosticsStage,
     ) -> Self {
@@ -396,7 +396,7 @@ impl<'a> DiagnosticHandlers<'a> {
     }
 }
 
-impl<'a> Drop for DiagnosticHandlers<'a> {
+impl<'a, 'll> Drop for DiagnosticHandlers<'a, 'll> {
     fn drop(&mut self) {
         unsafe {
             llvm::LLVMRustContextSetDiagnosticHandler(self.llcx, self.old_handler);
@@ -654,7 +654,7 @@ pub(crate) unsafe fn llvm_optimize<'ll>(
         None
     };
 
-    fn handle_offload<'ll>(cx: &'ll SimpleCx<'_>, old_fn: &llvm::Value) {
+    fn handle_offload<'ll>(cx: &SimpleCx<'ll>, old_fn: &'ll llvm::Value) {
         let old_fn_ty = cx.get_type_of_global(old_fn);
         let old_param_types = cx.func_params_types(old_fn_ty);
         let old_param_count = old_param_types.len();
@@ -1205,10 +1205,10 @@ pub(crate) fn bitcode_section_name(cgcx: &CodegenContext) -> &'static CStr {
 }
 
 /// Embed the bitcode of an LLVM module for LTO in the LLVM module itself.
-fn embed_bitcode(
+fn embed_bitcode<'ll>(
     cgcx: &CodegenContext,
-    llcx: &llvm::Context,
-    llmod: &llvm::Module,
+    llcx: llvm::Context<'ll>,
+    llmod: &'ll llvm::Module,
     bitcode: &[u8],
 ) {
     // We're adding custom sections to the output object file, but we definitely
@@ -1291,7 +1291,11 @@ fn embed_bitcode(
 // when using MSVC linker. We do this only for data, as linker can fix up
 // code references on its own.
 // See #26591, #27438
-fn create_msvc_imps(cgcx: &CodegenContext, llcx: &llvm::Context, llmod: &llvm::Module) {
+fn create_msvc_imps<'ll>(
+    cgcx: &CodegenContext,
+    llcx: llvm::Context<'ll>,
+    llmod: &'ll llvm::Module,
+) {
     if !cgcx.msvc_imps_needed {
         return;
     }

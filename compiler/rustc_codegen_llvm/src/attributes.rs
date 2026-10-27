@@ -212,7 +212,10 @@ pub(crate) fn sanitize_attrs<'ll, 'tcx>(
 
 /// Tell LLVM to emit or not emit the information necessary to unwind the stack for the function.
 #[inline]
-pub(crate) fn uwtable_attr(llcx: &llvm::Context, use_sync_unwind: Option<bool>) -> &Attribute {
+pub(crate) fn uwtable_attr<'ll>(
+    llcx: llvm::Context<'ll>,
+    use_sync_unwind: Option<bool>,
+) -> &'ll Attribute {
     // NOTE: We should determine if we even need async unwind tables, as they
     // take have more overhead and if we can use sync unwind tables we
     // probably should.
@@ -488,7 +491,7 @@ pub(crate) fn default_optimisation_attrs<'ll>(
     attrs
 }
 
-fn create_alloc_family_attr(llcx: &llvm::Context) -> &llvm::Attribute {
+fn create_alloc_family_attr<'ll>(llcx: llvm::Context<'ll>) -> &'ll llvm::Attribute {
     llvm::CreateAttrStringValue(llcx, "alloc-family", "__rust_alloc")
 }
 
