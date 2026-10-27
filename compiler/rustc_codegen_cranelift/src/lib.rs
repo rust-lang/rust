@@ -155,8 +155,8 @@ impl CodegenBackend for CraneliftCodegenBackend {
 
         CodegenBackendInit {
             global_backend_features: vec![],
-            replaced_intrinsics: vec![],
-            fallback_intrinsics: vec![sym::type_id_eq],
+            replaced_rustc_intrinsics: vec![],
+            fallback_rustc_intrinsics: vec![sym::type_id_eq],
             thin_lto_supported: false,
         }
     }

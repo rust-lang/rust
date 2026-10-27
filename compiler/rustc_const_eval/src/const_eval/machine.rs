@@ -14,7 +14,7 @@ use rustc_middle::mir::AssertMessage;
 use rustc_middle::mir::interpret::ReportedErrorInfo;
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, TyAndLayout, ValidityRequirement};
-use rustc_middle::ty::{self, FieldInfo, ScalarInt, Ty, TyCtxt};
+use rustc_middle::ty::{self, FieldInfo, Intrinsic, ScalarInt, Ty, TyCtxt};
 use rustc_middle::{mir, throw_machine_stop};
 use rustc_span::{Span, Symbol, bug, span_bug, sym};
 use rustc_target::callconv::FnAbi;
@@ -486,21 +486,21 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
         if ecx.eval_intrinsic(instance, args, dest, target)? {
             return interp_ok(None);
         }
-        let intrinsic_name = ecx.tcx.item_name(instance.def_id());
+        let intrinsic_name = ecx.tcx.intrinsic(instance.def_id()).unwrap().name;
 
         // CTFE-specific intrinsics.
         match intrinsic_name {
-            sym::abort_immediate => {
+            Intrinsic::Rustc(sym::abort_immediate) => {
                 // Note that `abort_immediate` is also hooked separately in Miri.
                 throw_machine_stop!(ConstEvalErrKind::Abort);
             }
-            sym::ptr_guaranteed_cmp => {
+            Intrinsic::Rustc(sym::ptr_guaranteed_cmp) => {
                 let a = ecx.read_scalar(&args[0])?;
                 let b = ecx.read_scalar(&args[1])?;
                 let cmp = ecx.guaranteed_cmp(a, b)?;
                 ecx.write_scalar(Scalar::from_u8(cmp), dest)?;
             }
-            sym::const_allocate => {
+            Intrinsic::Rustc(sym::const_allocate) => {
                 let size = ecx.read_scalar(&args[0])?.to_target_usize(ecx)?;
                 let align = ecx.read_scalar(&args[1])?.to_target_usize(ecx)?;
 
@@ -519,7 +519,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 )?;
                 ecx.write_pointer(ptr, dest)?;
             }
-            sym::const_deallocate => {
+            Intrinsic::Rustc(sym::const_deallocate) => {
                 let ptr = ecx.read_pointer(&args[0])?;
                 let size = ecx.read_scalar(&args[1])?.to_target_usize(ecx)?;
                 let align = ecx.read_scalar(&args[2])?.to_target_usize(ecx)?;
@@ -549,7 +549,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 }
             }
 
-            sym::const_make_global => {
+            Intrinsic::Rustc(sym::const_make_global) => {
                 let ptr = ecx.read_pointer(&args[0])?;
                 ecx.make_const_heap_ptr_global(ptr)?;
                 ecx.write_pointer(ptr, dest)?;
@@ -559,14 +559,18 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
             // We're not doing any optimizations here, so there is no optimizer that could know the value.
             // (We know the value here in the machine of course, but this is the runtime of that code,
             // not the optimization stage.)
-            sym::is_val_statically_known => ecx.write_scalar(Scalar::from_bool(false), dest)?,
+            Intrinsic::Rustc(sym::is_val_statically_known) => {
+                ecx.write_scalar(Scalar::from_bool(false), dest)?
+            }
 
             // We handle these here since Miri does not want to have them.
-            sym::assert_inhabited
-            | sym::assert_zero_valid
-            | sym::assert_mem_uninitialized_valid => {
+            Intrinsic::Rustc(
+                name @ (sym::assert_inhabited
+                | sym::assert_zero_valid
+                | sym::assert_mem_uninitialized_valid),
+            ) => {
                 let ty = instance.args.type_at(0);
-                let requirement = ValidityRequirement::from_intrinsic(intrinsic_name).unwrap();
+                let requirement = ValidityRequirement::from_rustc_intrinsic(name).unwrap();
 
                 let should_panic = !ecx
                     .tcx
@@ -598,7 +602,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 }
             }
 
-            sym::type_id_vtable => {
+            Intrinsic::Rustc(sym::type_id_vtable) => {
                 let tp_ty = ecx.read_type_id(&args[0])?;
                 let result_ty = ecx.read_type_id(&args[1])?;
 
@@ -614,17 +618,17 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 }
             }
 
-            sym::type_id_type_of => {
+            Intrinsic::Rustc(sym::type_id_type_of) => {
                 let ty = ecx.read_type_id(&args[0])?;
                 ecx.write_type_info(ty, dest)?;
             }
 
-            sym::type_id_is_signed => {
+            Intrinsic::Rustc(sym::type_id_is_signed) => {
                 let ty = ecx.read_type_id(&args[0])?;
                 ecx.write_scalar(Scalar::from_bool(ty.is_signed()), dest)?;
             }
 
-            sym::type_id_points_mutably => {
+            Intrinsic::Rustc(sym::type_id_points_mutably) => {
                 let ty = ecx.read_type_id(&args[0])?;
                 let is_mutable = matches!(
                     ty.kind(),
@@ -633,7 +637,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 ecx.write_scalar(Scalar::from_bool(is_mutable), dest)?;
             }
 
-            sym::type_id_size_of => {
+            Intrinsic::Rustc(sym::type_id_size_of) => {
                 let ty = ecx.read_type_id(&args[0])?;
                 let layout = ecx.layout_of(ty)?;
                 let variant_index = if layout.is_sized() {
@@ -650,7 +654,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 ecx.write_discriminant(variant_index, dest)?;
             }
 
-            sym::type_id_element_ty => {
+            Intrinsic::Rustc(sym::type_id_element_ty) => {
                 let ty = ecx.read_type_id(&args[0])?;
                 let variant_index = if let ty::Array(ty, _) | ty::Slice(ty) = ty.kind() {
                     let (variant_idx, variant_place) =
@@ -664,7 +668,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 ecx.write_discriminant(variant_index, dest)?;
             }
 
-            sym::type_id_array_len => {
+            Intrinsic::Rustc(sym::type_id_array_len) => {
                 let ty = ecx.read_type_id(&args[0])?;
                 let len = if let ty::Array(_, len) = ty.kind() {
                     len.to_leaf().to_target_usize(ecx.tcx.tcx())
@@ -674,7 +678,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 ecx.write_scalar(Scalar::from_target_usize(len, ecx), dest)?;
             }
 
-            sym::type_id_fields => {
+            Intrinsic::Rustc(sym::type_id_fields) => {
                 let ty = ecx.read_type_id(&args[0])?;
                 let variant_idx = ecx.read_target_usize(&args[1])? as usize;
 
@@ -699,7 +703,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 ecx.write_scalar(Scalar::from_target_usize(fields_num as u64, ecx), dest)?;
             }
 
-            sym::type_id_field_representing_type => {
+            Intrinsic::Rustc(sym::type_id_field_representing_type) => {
                 let ty = ecx.read_type_id(&args[0])?;
                 let variant_idx = ecx.read_target_usize(&args[1])? as usize;
                 let field_idx = ecx.read_target_usize(&args[2])? as usize;
@@ -736,7 +740,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 );
                 ecx.write_type_id(frt, dest)?;
             }
-            sym::type_id_function_ptr => {
+            Intrinsic::Rustc(sym::type_id_function_ptr) => {
                 let ty = ecx.read_type_id(&args[0])?;
                 let variant_index = if let ty::FnPtr(sig, fn_header) = ty.kind() {
                     let (variant, variant_place) = ecx.project_downcast_named(dest, sym::Some)?;
@@ -749,7 +753,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 };
                 ecx.write_discriminant(variant_index, dest)?;
             }
-            sym::type_id_points_to => {
+            Intrinsic::Rustc(sym::type_id_points_to) => {
                 let ty = ecx.read_type_id(&args[0])?;
                 let variant_index = if let ty::RawPtr(pointee_ty, _) | ty::Ref(_, pointee_ty, _) =
                     ty.kind()
@@ -764,13 +768,13 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 ecx.write_discriminant(variant_index, dest)?;
             }
 
-            sym::type_id_variants => {
+            Intrinsic::Rustc(sym::type_id_variants) => {
                 let ty = ecx.read_type_id(&args[0])?;
                 let variants_num = ty.ty_adt_def().map(|def| def.variants().len()).unwrap_or(1);
                 ecx.write_scalar(Scalar::from_target_usize(variants_num as u64, ecx), dest)?;
             }
 
-            sym::type_id_variant_name => {
+            Intrinsic::Rustc(sym::type_id_variant_name) => {
                 let base = ecx.read_type_id(&args[0])?;
 
                 let field_name = if let ty::Adt(def, _) = base.kind() {
@@ -796,7 +800,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 )?;
             }
 
-            sym::type_id_variant_reflected_attrs => {
+            Intrinsic::Rustc(sym::type_id_variant_reflected_attrs) => {
                 let base = ecx.read_type_id(&args[0])?;
 
                 if let ty::Adt(def, _) = base.kind() {
@@ -818,7 +822,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 };
             }
 
-            sym::type_id_variant_non_exhaustive => {
+            Intrinsic::Rustc(sym::type_id_variant_non_exhaustive) => {
                 let base = ecx.read_type_id(&args[0])?;
 
                 let non_exhaustive = if let ty::Adt(def, _) = base.kind() {
@@ -837,7 +841,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 ecx.write_scalar(Scalar::from_bool(non_exhaustive), dest)?;
             }
 
-            sym::field_offset => {
+            Intrinsic::Rustc(sym::field_offset) => {
                 let frt_ty = instance.args.type_at(0);
                 ensure_monomorphic_enough(frt_ty)?;
 
@@ -858,7 +862,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 ecx.write_scalar(Scalar::from_target_usize(offset, ecx), dest)?;
             }
 
-            sym::field_representing_type_name => {
+            Intrinsic::Rustc(sym::field_representing_type_name) => {
                 let frt_ty = ecx.read_type_id(&args[0])?;
 
                 let field_name = if let ty::Adt(def, args) = frt_ty.kind()
@@ -879,7 +883,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 )?;
             }
 
-            sym::field_representing_type_offset => {
+            Intrinsic::Rustc(sym::field_representing_type_offset) => {
                 let frt_ty = ecx.read_type_id(&args[0])?;
 
                 let (ty, variant, field) = if let ty::Adt(def, args) = frt_ty.kind()
@@ -899,7 +903,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 ecx.write_scalar(Scalar::from_target_usize(offset, ecx), dest)?;
             }
 
-            sym::field_representing_type_actual_type_id => {
+            Intrinsic::Rustc(sym::field_representing_type_actual_type_id) => {
                 let frt_ty = ecx.read_type_id(&args[0])?;
 
                 let field_ty = if let ty::Adt(def, args) = frt_ty.kind()
@@ -913,7 +917,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 ecx.write_type_id(field_ty, dest)?;
             }
 
-            sym::type_id_reflected_attrs => {
+            Intrinsic::Rustc(sym::type_id_reflected_attrs) => {
                 let ty = ecx.read_type_id(&args[0])?;
                 let attrs = match ty.kind() {
                     ty::Adt(def, args)
@@ -939,12 +943,12 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 ecx.write_reflect_attributes(dest, attrs)?;
             }
 
-            sym::type_id_generics => {
+            Intrinsic::Rustc(sym::type_id_generics) => {
                 let ty = ecx.read_type_id(&args[0])?;
                 ecx.write_type_id_generics(dest, ty)?;
             }
 
-            sym::type_id_non_exhaustive => {
+            Intrinsic::Rustc(sym::type_id_non_exhaustive) => {
                 let ty = ecx.read_type_id(&args[0])?;
 
                 // FIXME(reflection): need a way to obtain non-exhaustiveness of a variant's fields.

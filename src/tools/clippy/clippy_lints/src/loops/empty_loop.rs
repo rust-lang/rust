@@ -11,7 +11,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, loop_block: &Block<'_
     if let Node::Item(parent_node) = cx.tcx.hir_node(parent_hir_id)
         && matches!(parent_node.kind, ItemKind::Fn { .. })
         && let attrs = cx.tcx.hir_attrs(parent_hir_id)
-        && find_attr!(attrs, RustcIntrinsic)
+        && find_attr!(attrs, RustcIntrinsic { .. })
     {
         // Intrinsic functions are expanded into an empty loop when lowering the AST
         // to simplify the job of later passes which might expect any function to have a body.

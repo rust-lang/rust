@@ -831,7 +831,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     return;
                 }
 
-                // Intrinsics are language primitives, not regular calls, so treat them separately.
+                // Non-backend intrinsics are language primitives, not regular calls, so treat them separately.
                 if let Some(intrinsic) = tcx.intrinsic(callee) {
                     if !tcx.is_const_fn(callee) {
                         // Non-const intrinsic.

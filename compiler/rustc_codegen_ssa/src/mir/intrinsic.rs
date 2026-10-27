@@ -1,6 +1,6 @@
 use rustc_abi::{Align, FieldIdx, WrappingRange};
 use rustc_middle::mir::SourceInfo;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, Intrinsic, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
 use rustc_span::{ErrorGuaranteed, bug, span_bug, sym};
 use rustc_target::spec::Arch;
@@ -75,13 +75,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         let span = source_info.span;
 
-        let name = bx.tcx().item_name(instance.def_id());
+        let name = bx.tcx().intrinsic(instance.def_id()).unwrap().name;
         let fn_args = instance.args;
 
         // If we're swapping something that's *not* an `OperandValue::Ref`,
         // then we can do it directly and avoid the alloca.
         // Otherwise, we'll let the fallback MIR body take care of it.
-        if let sym::typed_swap_nonoverlapping = name {
+        if let Intrinsic::Rustc(sym::typed_swap_nonoverlapping) = name {
             let pointee_ty = fn_args.type_at(0);
             let pointee_layout = bx.layout_of(pointee_ty);
             if pointee_layout.is_ssa_standalone()
@@ -120,23 +120,25 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         if args.is_empty() {
             match name {
-                sym::abort_immediate
-                | sym::unreachable
-                | sym::cold_path
-                | sym::gpu_launch_sized_workgroup_mem
-                | sym::breakpoint
-                | sym::codeview_annotation
-                | sym::amdgpu_dispatch_ptr
-                | sym::assert_zero_valid
-                | sym::assert_mem_uninitialized_valid
-                | sym::assert_inhabited
-                | sym::ub_checks
-                | sym::contract_checks
-                | sym::atomic_fence
-                | sym::atomic_singlethreadfence
-                | sym::caller_location
-                | sym::offload_get_num_devices
-                | sym::return_address => {}
+                Intrinsic::Rustc(
+                    sym::abort_immediate
+                    | sym::unreachable
+                    | sym::cold_path
+                    | sym::gpu_launch_sized_workgroup_mem
+                    | sym::breakpoint
+                    | sym::codeview_annotation
+                    | sym::amdgpu_dispatch_ptr
+                    | sym::assert_zero_valid
+                    | sym::assert_mem_uninitialized_valid
+                    | sym::assert_inhabited
+                    | sym::ub_checks
+                    | sym::contract_checks
+                    | sym::atomic_fence
+                    | sym::atomic_singlethreadfence
+                    | sym::caller_location
+                    | sym::offload_get_num_devices
+                    | sym::return_address,
+                ) => {}
                 _ => {
                     span_bug!(
                         span,
@@ -152,29 +154,29 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
 
         let op_val: OperandValue<_> = match name {
-            sym::abort_immediate => {
+            Intrinsic::Rustc(sym::abort_immediate) => {
                 bx.abort_immediate();
                 OperandValue::ZeroSized
             }
 
-            sym::caller_location => {
+            Intrinsic::Rustc(sym::caller_location) => {
                 let location = self.get_caller_location(bx, source_info);
                 location.val
             }
 
-            sym::size_of_val => {
+            Intrinsic::Rustc(sym::size_of_val) => {
                 let tp_ty = fn_args.type_at(0);
                 let (_, meta) = args[0].val.pointer_parts();
                 let (llsize, _) = size_of_val::size_and_align_of_dst(bx, tp_ty, meta, span);
                 OperandValue::Immediate(llsize)
             }
-            sym::align_of_val => {
+            Intrinsic::Rustc(sym::align_of_val) => {
                 let tp_ty = fn_args.type_at(0);
                 let (_, meta) = args[0].val.pointer_parts();
                 let (_, llalign) = size_of_val::size_and_align_of_dst(bx, tp_ty, meta, span);
                 OperandValue::Immediate(llalign)
             }
-            sym::vtable_size | sym::vtable_align => {
+            Intrinsic::Rustc(name @ (sym::vtable_size | sym::vtable_align)) => {
                 let vtable = args[0].immediate();
                 let idx = match name {
                     sym::vtable_size => ty::COMMON_VTABLE_ENTRIES_SIZE,
@@ -198,14 +200,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
                 OperandValue::Immediate(value)
             }
-            sym::arith_offset => {
+            Intrinsic::Rustc(sym::arith_offset) => {
                 let ty = fn_args.type_at(0);
                 let layout = bx.layout_of(ty);
                 let ptr = args[0].immediate();
                 let offset = args[1].immediate();
                 OperandValue::Immediate(bx.gep(layout.size, ptr, offset))
             }
-            sym::copy => {
+            Intrinsic::Rustc(sym::copy) => {
                 copy_intrinsic(
                     bx,
                     true,
@@ -217,7 +219,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 );
                 OperandValue::ZeroSized
             }
-            sym::write_bytes => {
+            Intrinsic::Rustc(sym::write_bytes) => {
                 memset_intrinsic(
                     bx,
                     false,
@@ -229,7 +231,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 OperandValue::ZeroSized
             }
 
-            sym::volatile_copy_nonoverlapping_memory => {
+            Intrinsic::Rustc(sym::volatile_copy_nonoverlapping_memory) => {
                 copy_intrinsic(
                     bx,
                     false,
@@ -241,7 +243,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 );
                 OperandValue::ZeroSized
             }
-            sym::volatile_copy_memory => {
+            Intrinsic::Rustc(sym::volatile_copy_memory) => {
                 copy_intrinsic(
                     bx,
                     true,
@@ -253,7 +255,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 );
                 OperandValue::ZeroSized
             }
-            sym::volatile_set_memory => {
+            Intrinsic::Rustc(sym::volatile_set_memory) => {
                 memset_intrinsic(
                     bx,
                     true,
@@ -264,18 +266,22 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 );
                 OperandValue::ZeroSized
             }
-            sym::volatile_store | sym::unaligned_volatile_store => {
+            Intrinsic::Rustc(sym::volatile_store | sym::unaligned_volatile_store) => {
                 let dst = args[0].deref(bx.cx());
-                let dst = if name == sym::volatile_store { dst } else { dst.unaligned() };
+                let dst = if name == Intrinsic::Rustc(sym::volatile_store) {
+                    dst
+                } else {
+                    dst.unaligned()
+                };
                 args[1].val.volatile_store(bx, dst);
                 OperandValue::ZeroSized
             }
-            sym::disjoint_bitor => {
+            Intrinsic::Rustc(sym::disjoint_bitor) => {
                 let a = args[0].immediate();
                 let b = args[1].immediate();
                 OperandValue::Immediate(bx.or_disjoint(a, b))
             }
-            sym::exact_div => {
+            Intrinsic::Rustc(sym::exact_div) => {
                 let ty = args[0].layout.ty;
                 match int_type_width_signed(ty, bx.tcx()) {
                     Some((_width, signed)) => OperandValue::Immediate(if signed {
@@ -292,33 +298,38 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                 }
             }
-            sym::fadd_fast | sym::fsub_fast | sym::fmul_fast | sym::fdiv_fast | sym::frem_fast => {
-                match float_type_width(args[0].layout.ty) {
-                    Some(_width) => OperandValue::Immediate(match name {
-                        sym::fadd_fast => bx.fadd_fast(args[0].immediate(), args[1].immediate()),
-                        sym::fsub_fast => bx.fsub_fast(args[0].immediate(), args[1].immediate()),
-                        sym::fmul_fast => bx.fmul_fast(args[0].immediate(), args[1].immediate()),
-                        sym::fdiv_fast => bx.fdiv_fast(args[0].immediate(), args[1].immediate()),
-                        sym::frem_fast => bx.frem_fast(args[0].immediate(), args[1].immediate()),
-                        _ => bug!(),
-                    }),
-                    None => {
-                        let err =
-                            bx.tcx().dcx().emit_err(InvalidMonomorphization::BasicFloatType {
-                                span,
-                                name,
-                                ty: args[0].layout.ty,
-                            });
-                        return IntrinsicResult::Err(err);
-                    }
+            Intrinsic::Rustc(
+                op @ (sym::fadd_fast
+                | sym::fsub_fast
+                | sym::fmul_fast
+                | sym::fdiv_fast
+                | sym::frem_fast),
+            ) => match float_type_width(args[0].layout.ty) {
+                Some(_width) => OperandValue::Immediate(match op {
+                    sym::fadd_fast => bx.fadd_fast(args[0].immediate(), args[1].immediate()),
+                    sym::fsub_fast => bx.fsub_fast(args[0].immediate(), args[1].immediate()),
+                    sym::fmul_fast => bx.fmul_fast(args[0].immediate(), args[1].immediate()),
+                    sym::fdiv_fast => bx.fdiv_fast(args[0].immediate(), args[1].immediate()),
+                    sym::frem_fast => bx.frem_fast(args[0].immediate(), args[1].immediate()),
+                    _ => bug!(),
+                }),
+                None => {
+                    let err = bx.tcx().dcx().emit_err(InvalidMonomorphization::BasicFloatType {
+                        span,
+                        name,
+                        ty: args[0].layout.ty,
+                    });
+                    return IntrinsicResult::Err(err);
                 }
-            }
-            sym::fadd_algebraic
-            | sym::fsub_algebraic
-            | sym::fmul_algebraic
-            | sym::fdiv_algebraic
-            | sym::frem_algebraic => match float_type_width(args[0].layout.ty) {
-                Some(_width) => OperandValue::Immediate(match name {
+            },
+            Intrinsic::Rustc(
+                op @ (sym::fadd_algebraic
+                | sym::fsub_algebraic
+                | sym::fmul_algebraic
+                | sym::fdiv_algebraic
+                | sym::frem_algebraic),
+            ) => match float_type_width(args[0].layout.ty) {
+                Some(_width) => OperandValue::Immediate(match op {
                     sym::fadd_algebraic => {
                         bx.fadd_algebraic(args[0].immediate(), args[1].immediate())
                     }
@@ -346,7 +357,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
             },
 
-            sym::float_to_int_unchecked => {
+            Intrinsic::Rustc(sym::float_to_int_unchecked) => {
                 if float_type_width(args[0].layout.ty).is_none() {
                     let err =
                         bx.tcx().dcx().emit_err(InvalidMonomorphization::FloatToIntUnchecked {
@@ -371,7 +382,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 })
             }
 
-            sym::atomic_load => {
+            Intrinsic::Rustc(sym::atomic_load) => {
                 let ty = fn_args.type_at(0);
                 if !(int_type_width_signed(ty, bx.tcx()).is_some() || ty.is_raw_ptr()) {
                     let err = invalid_monomorphization_int_or_ptr_type(ty);
@@ -389,7 +400,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     layout.size,
                 ))
             }
-            sym::atomic_store => {
+            Intrinsic::Rustc(sym::atomic_store) => {
                 let ty = fn_args.type_at(0);
                 if !(int_type_width_signed(ty, bx.tcx()).is_some() || ty.is_raw_ptr()) {
                     let err = invalid_monomorphization_int_or_ptr_type(ty);
@@ -410,7 +421,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 OperandValue::ZeroSized
             }
             // These are all AtomicRMW ops
-            sym::atomic_cxchg | sym::atomic_cxchgweak => {
+            Intrinsic::Rustc(sym::atomic_cxchg | sym::atomic_cxchgweak) => {
                 let ty = fn_args.type_at(0);
                 if !(int_type_width_signed(ty, bx.tcx()).is_some() || ty.is_raw_ptr()) {
                     let err = invalid_monomorphization_int_or_ptr_type(ty);
@@ -418,7 +429,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
                 let succ_ordering = fn_args.const_at(1).to_value();
                 let fail_ordering = fn_args.const_at(2).to_value();
-                let weak = name == sym::atomic_cxchgweak;
+                let weak = name == Intrinsic::Rustc(sym::atomic_cxchgweak);
                 let dst = args[0].immediate();
                 let cmp = args[1].immediate();
                 let src = args[2].immediate();
@@ -436,8 +447,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 builder.insert_imm(FieldIdx::from_u32(1), success);
                 builder.build(bx.cx()).val
             }
-            sym::atomic_max | sym::atomic_min => {
-                let atom_op = if name == sym::atomic_max {
+            Intrinsic::Rustc(sym::atomic_max | sym::atomic_min) => {
+                let atom_op = if name == Intrinsic::Rustc(sym::atomic_max) {
                     AtomicRmwBinOp::AtomicMax
                 } else {
                     AtomicRmwBinOp::AtomicMin
@@ -460,8 +471,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     return IntrinsicResult::Err(err);
                 }
             }
-            sym::atomic_umax | sym::atomic_umin => {
-                let atom_op = if name == sym::atomic_umax {
+            Intrinsic::Rustc(sym::atomic_umax | sym::atomic_umin) => {
+                let atom_op = if name == Intrinsic::Rustc(sym::atomic_umax) {
                     AtomicRmwBinOp::AtomicUMax
                 } else {
                     AtomicRmwBinOp::AtomicUMin
@@ -484,7 +495,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     return IntrinsicResult::Err(err);
                 }
             }
-            sym::atomic_xchg => {
+            Intrinsic::Rustc(sym::atomic_xchg) => {
                 let ty = fn_args.type_at(0);
                 let ordering = fn_args.const_at(1).to_value();
                 if int_type_width_signed(ty, bx.tcx()).is_some() || ty.is_raw_ptr() {
@@ -503,12 +514,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     return IntrinsicResult::Err(err);
                 }
             }
-            sym::atomic_xadd
-            | sym::atomic_xsub
-            | sym::atomic_and
-            | sym::atomic_nand
-            | sym::atomic_or
-            | sym::atomic_xor => {
+            Intrinsic::Rustc(
+                name @ (sym::atomic_xadd
+                | sym::atomic_xsub
+                | sym::atomic_and
+                | sym::atomic_nand
+                | sym::atomic_or
+                | sym::atomic_xor),
+            ) => {
                 let atom_op = match name {
                     sym::atomic_xadd => AtomicRmwBinOp::AtomicAdd,
                     sym::atomic_xsub => AtomicRmwBinOp::AtomicSub,
@@ -544,13 +557,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     return IntrinsicResult::Err(err);
                 }
             }
-            sym::atomic_fence => {
+            Intrinsic::Rustc(sym::atomic_fence) => {
                 let ordering = fn_args.const_at(0).to_value();
                 bx.atomic_fence(parse_atomic_ordering(ordering), SynchronizationScope::CrossThread);
                 OperandValue::ZeroSized
             }
 
-            sym::atomic_singlethreadfence => {
+            Intrinsic::Rustc(sym::atomic_singlethreadfence) => {
                 let ordering = fn_args.const_at(0).to_value();
                 bx.atomic_fence(
                     parse_atomic_ordering(ordering),
@@ -559,13 +572,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 OperandValue::ZeroSized
             }
 
-            sym::nontemporal_store => {
+            Intrinsic::Rustc(sym::nontemporal_store) => {
                 let dst = args[0].deref(bx.cx());
                 args[1].val.nontemporal_store(bx, dst);
                 OperandValue::ZeroSized
             }
 
-            sym::ptr_offset_from | sym::ptr_offset_from_unsigned => {
+            Intrinsic::Rustc(sym::ptr_offset_from | sym::ptr_offset_from_unsigned) => {
                 let ty = fn_args.type_at(0);
                 let pointee_size = bx.layout_of(ty).size;
 
@@ -574,7 +587,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let a = bx.ptrtoint(a, bx.type_isize());
                 let b = bx.ptrtoint(b, bx.type_isize());
                 let pointee_size = bx.const_usize(pointee_size.bytes());
-                OperandValue::Immediate(if name == sym::ptr_offset_from {
+                OperandValue::Immediate(if name == Intrinsic::Rustc(sym::ptr_offset_from) {
                     // This is the same sequence that Clang emits for pointer subtraction.
                     // It can be neither `nsw` nor `nuw` because the input is treated as
                     // unsigned but then the output is treated as signed, so neither works.
@@ -589,7 +602,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 })
             }
 
-            sym::cold_path => {
+            Intrinsic::Rustc(sym::cold_path) => {
                 // This is a no-op. The intrinsic is just a hint to the optimizer.
                 OperandValue::ZeroSized
             }

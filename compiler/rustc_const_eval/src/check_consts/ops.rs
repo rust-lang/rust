@@ -11,8 +11,8 @@ use rustc_infer::traits::{ImplSource, Obligation, ObligationCause};
 use rustc_middle::mir::CallSource;
 use rustc_middle::ty::print::{PrintTraitRefExt as _, with_no_trimmed_paths};
 use rustc_middle::ty::{
-    self, AssocContainer, Closure, FnDef, FnPtr, GenericArgKind, GenericArgs, Param, TraitRef, Ty,
-    suggest_constraining_type_param,
+    self, AssocContainer, Closure, FnDef, FnPtr, GenericArgKind, GenericArgs, Intrinsic, Param,
+    TraitRef, Ty, suggest_constraining_type_param,
 };
 use rustc_session::diagnostics::add_feature_diagnostics;
 use rustc_span::{BytePos, Pos, Span, Symbol, span_bug, sym};
@@ -491,7 +491,7 @@ impl<'tcx> NonConstOp<'tcx> for CallUnstable {
 /// A call to an intrinsic that is just not const-callable at all.
 #[derive(Debug)]
 pub(crate) struct IntrinsicNonConst {
-    pub name: Symbol,
+    pub name: Intrinsic,
 }
 
 impl<'tcx> NonConstOp<'tcx> for IntrinsicNonConst {
@@ -507,7 +507,7 @@ impl<'tcx> NonConstOp<'tcx> for IntrinsicNonConst {
 /// A call to an intrinsic that is just not const-callable at all.
 #[derive(Debug)]
 pub(crate) struct IntrinsicUnstable {
-    pub name: Symbol,
+    pub name: Intrinsic,
     pub feature: Symbol,
     pub const_stable_indirect: bool,
 }
