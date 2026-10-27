@@ -208,13 +208,16 @@ impl<'a> Parser<'a> {
         }
 
         let lo = self.token.span;
-        let mut segments = ThinVec::new();
-        let mod_sep_ctxt = self.token.span.ctxt();
-        if self.eat_path_sep() {
-            segments.push(PathSegment::path_root(lo.shrink_to_lo().with_ctxt(mod_sep_ctxt)));
-        }
-        self.parse_path_segments(&mut segments, style, ty_generics)?;
-        Ok(Path { segments, span: lo.to(self.prev_token.span) })
+        let (segments, span) = self.collect_span(|this| {
+            let mut segments = ThinVec::new();
+            let mod_sep_ctxt = this.token.span.ctxt();
+            if this.eat_path_sep() {
+                segments.push(PathSegment::path_root(lo.shrink_to_lo().with_ctxt(mod_sep_ctxt)));
+            }
+            this.parse_path_segments(&mut segments, style, ty_generics)?;
+            Ok(segments)
+        })?;
+        Ok(Path { segments, span: span.unwrap_or_else(|| lo.to(self.prev_token.span)) })
     }
 
     pub(super) fn parse_path_segments(

@@ -172,10 +172,11 @@ LL |     invoke_with_ident!{krate input TokenItem}
    |
    = note: this error originates in the macro `with_crate` which comes from the expansion of the macro `invoke_with_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct instead
-  --> $DIR/auxiliary/mixed-site-span.rs:60:34
+  --> $DIR/auxiliary/token-site-span.rs:20:39
    |
-LL |     quote!(use $krate::$ident as token_site_span::TokenItem as _;)
-   |                                  +++++++++++++++++++++++++++++
+LL -     ($m:ident $s:ident $i:ident) => { with_crate!{$m $s $i} };
+LL +     ($m:ident $s:ident $i:ident) => { token_site_span::TokenItem as _ };
+   |
 
 error[E0432]: unresolved import `$crate::TokenItem`
   --> $DIR/mixed-site-span.rs:90:5
@@ -187,10 +188,10 @@ LL |     with_crate!{krate input TokenItem}
    |
    = note: this error originates in the macro `with_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct instead
-  --> $DIR/auxiliary/mixed-site-span.rs:60:34
    |
-LL |     quote!(use $krate::$ident as token_site_span::TokenItem as _;)
-   |                                  +++++++++++++++++++++++++++++
+LL -     with_crate!{krate input TokenItem}
+LL +     token_site_span::TokenItem as _
+   |
 
 error[E0432]: unresolved import `$crate`
   --> $DIR/mixed-site-span.rs:91:5
