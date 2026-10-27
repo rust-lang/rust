@@ -475,7 +475,7 @@ fn declare_offload_fn<'ll>(
     )
 }
 
-pub(crate) fn scalar_width<'ll>(cx: &'ll SimpleCx<'_>, ty: &'ll Type) -> u64 {
+pub(crate) fn scalar_width<'ll>(cx: &SimpleCx<'ll>, ty: &'ll Type) -> u64 {
     match cx.type_kind(ty) {
         TypeKind::Half
         | TypeKind::Float
@@ -560,7 +560,7 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
 
     // Step 0)
     unsafe {
-        llvm::LLVMRustPositionBuilderPastAllocas(&builder.llbuilder, builder.llfn());
+        llvm::LLVMRustPositionBuilderPastAllocas(builder.llbuilder(), builder.llfn());
     }
 
     let ty = cx.type_array(cx.type_ptr(), num_args);
@@ -594,7 +594,7 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
 
     // Step 1)
     unsafe {
-        llvm::LLVMPositionBuilderAtEnd(&builder.llbuilder, bb);
+        llvm::LLVMPositionBuilderAtEnd(builder.llbuilder(), bb);
     }
 
     // Now we allocate once per function param, a copy to be passed to one of our maps.
@@ -612,11 +612,11 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
 
                 let bb = builder.llbb();
                 unsafe {
-                    llvm::LLVMRustPositionBuilderPastAllocas(builder.llbuilder, builder.llfn());
+                    llvm::LLVMRustPositionBuilderPastAllocas(builder.llbuilder(), builder.llfn());
                 }
                 let addr = builder.direct_alloca(cx.type_i64(), Align::EIGHT, "addr");
                 unsafe {
-                    llvm::LLVMPositionBuilderAtEnd(builder.llbuilder, bb);
+                    llvm::LLVMPositionBuilderAtEnd(builder.llbuilder(), bb);
                 }
 
                 let cast = builder.bitcast(v, cx.type_ix(num_bits));
