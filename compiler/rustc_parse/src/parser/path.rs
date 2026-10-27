@@ -208,13 +208,15 @@ impl<'a> Parser<'a> {
         }
 
         let lo = self.token.span;
+        let mut path_span = None;
         let mut segments = ThinVec::new();
         let mod_sep_ctxt = self.token.span.ctxt();
         if self.eat_path_sep() {
+            chain_span(&mut path_span, self.prev_token.span);
             segments.push(PathSegment::path_root(lo.shrink_to_lo().with_ctxt(mod_sep_ctxt)));
         }
-        self.parse_path_segments(&mut segments, style, ty_generics)?;
-        Ok(Path { segments, span: lo.to(self.prev_token.span) })
+        self.parse_path_segments_with_path_span(&mut segments, style, ty_generics, &mut path_span)?;
+        Ok(Path { segments, span: path_span.unwrap() })
     }
 
     pub(super) fn parse_path_segments(
@@ -223,8 +225,18 @@ impl<'a> Parser<'a> {
         style: PathStyle,
         ty_generics: Option<&Generics>,
     ) -> PResult<'a, ()> {
+        self.parse_path_segments_with_path_span(segments, style, ty_generics, &mut None)
+    }
+
+    fn parse_path_segments_with_path_span(
+        &mut self,
+        segments: &mut ThinVec<PathSegment>,
+        style: PathStyle,
+        ty_generics: Option<&Generics>,
+        path_span: &mut Option<Span>,
+    ) -> PResult<'a, ()> {
         loop {
-            let segment = self.parse_path_segment(style, ty_generics)?;
+            let segment = self.parse_path_segment_with_path_span(style, ty_generics, path_span)?;
             if style.has_generic_ambiguity() {
                 // In order to check for trailing angle brackets, we must have finished
                 // recursing (`parse_path_segment` can indirectly call this function),
@@ -263,6 +275,7 @@ impl<'a> Parser<'a> {
                         && self.look_ahead(1, |token| self.token.span.hi() == token.span.lo())
                     {
                         self.bump(); // bump past the colon
+                        chain_span(path_span, self.prev_token.span);
                         self.dcx().emit_err(PathSingleColon {
                             span: self.prev_token.span,
                             suggestion: self.prev_token.span.shrink_to_hi(),
@@ -273,6 +286,7 @@ impl<'a> Parser<'a> {
 
                 return Ok(());
             }
+            chain_span(path_span, self.prev_token.span); // `::`
         }
     }
 
@@ -293,7 +307,17 @@ impl<'a> Parser<'a> {
         style: PathStyle,
         ty_generics: Option<&Generics>,
     ) -> PResult<'a, PathSegment> {
+        self.parse_path_segment_with_path_span(style, ty_generics, &mut None)
+    }
+
+    fn parse_path_segment_with_path_span(
+        &mut self,
+        style: PathStyle,
+        ty_generics: Option<&Generics>,
+        path_span: &mut Option<Span>,
+    ) -> PResult<'a, PathSegment> {
         let ident = self.parse_path_segment_ident()?;
+        chain_span(path_span, self.prev_token.span);
         let is_args_start = |token: &Token| {
             matches!(token.kind, token::Lt | token::Shl | token::OpenParen | token::LArrow)
         };
@@ -330,7 +354,9 @@ impl<'a> Parser<'a> {
 
                 // Generic arguments are found - `<`, `(`, `::<` or `::(`.
                 // First, eat `::` if it exists.
-                let _ = self.eat_path_sep();
+                if self.eat_path_sep() {
+                    chain_span(path_span, self.prev_token.span);
+                }
 
                 let lo = self.token.span;
                 let args = if self.eat_lt() {
@@ -467,6 +493,14 @@ impl<'a> Parser<'a> {
                     let span = ident.span.to(self.prev_token.span);
                     ParenthesizedArgs { span, inputs, inputs_span, output }.into()
                 };
+
+                match &args {
+                    GenericArgs::Parenthesized(data) => {
+                        chain_span(path_span, data.inputs_span);
+                        chain_span(path_span, data.output.span());
+                    }
+                    _ => chain_span(path_span, args.span()),
+                }
 
                 PathSegment { ident, args: Some(args), id: ast::DUMMY_NODE_ID }
             } else {
@@ -1019,4 +1053,9 @@ impl<'a> Parser<'a> {
         }
         Err(())
     }
+}
+
+/// Chains `span` into `node_span`.
+fn chain_span(node_span: &mut Option<Span>, span: Span) {
+    *node_span = Some(node_span.map_or(span, |s| s.to(span)));
 }
