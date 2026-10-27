@@ -74,10 +74,10 @@ use crate::traits::solve::{
 use crate::ty::predicate::ExistentialPredicateStableCmpExt as _;
 use crate::ty::{
     self, AdtDef, AdtDefData, AdtKind, Binder, CanonicalizerState, Clause, ClausePolarity, Clauses,
-    Const, ConstKind, FnSigKind, GenericArg, GenericArgsUnsized, GenericParamDefKind, List,
-    ListWithCachedTypeInfo, ParamConst, Pattern, PatternKind, PolyExistentialPredicate, PolyFnSig,
-    Predicate, PredicateKind, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind,
-    TyVid, ValTree, ValTreeKind, Visibility,
+    Const, ConstKind, FnSigKind, GenericArg, GenericArgKind, GenericArgs, GenericArgsUnsized,
+    GenericParamDefKind, List, ListWithCachedTypeInfo, ParamConst, Pattern, PatternKind,
+    PolyExistentialPredicate, PolyFnSig, Predicate, PredicateKind, Region, RegionKind, ReprOptions,
+    TraitObjectVisitor, Ty, TyKind, TyVid, ValTree, ValTreeKind, Visibility,
 };
 
 impl<'tcx> rustc_type_ir::inherent::DefId<TyCtxt<'tcx>> for DefId {
@@ -716,8 +716,12 @@ pub struct GlobalCaches<'tcx> {
     pub highest_var_in_clauses_cache: Lock<FxHashMap<ty::Clauses<'tcx>, usize>>,
 
     /// Caches the instantiation of a canonical binder given a set of args.
-    pub clauses_cache:
-        Lock<FxHashMap<(ty::Clauses<'tcx>, &'tcx [ty::GenericArg<'tcx>]), ty::Clauses<'tcx>>>,
+    pub clauses_cache: Lock<
+        FxHashMap<
+            (ty::Clauses<'tcx>, Result<&'tcx [ty::GenericArg<'tcx>], Ty<'tcx>>),
+            ty::Clauses<'tcx>,
+        >,
+    >,
 }
 
 /// The central data structure of the compiler. It stores references
@@ -1810,7 +1814,31 @@ nop_list_lift! { patterns; Pattern<'a> => Pattern<'tcx> }
 nop_list_lift! { outlives; ty::ArgOutlivesClause<'a> => ty::ArgOutlivesClause<'tcx> }
 
 // This is the impl for `&'a GenericArgs<'a>`.
-nop_list_lift! { args; GenericArg<'a> => GenericArg<'tcx> }
+
+impl<'a, 'tcx> Lift<TyCtxt<'tcx>> for GenericArgs<'a> {
+    type Lifted = GenericArgs<'tcx>;
+    fn lift_to_interner(self, tcx: TyCtxt<'tcx>) -> Self::Lifted {
+        if self.is_empty() {
+            return GenericArgs::empty();
+        }
+
+        match self.as_tcx_slice_or_ty() {
+            Ok(slice) => {
+                assert!(tcx.interners.args.contains_pointer_to(&InternedInSet(slice)));
+                // SAFETY: we just checked that `self` is interned and therefore is valid for the
+                // entire lifetime of the `TyCtxt`.
+                unsafe { mem::transmute(self) }
+            }
+            // if self is a single ty, then it's interned in the types list.
+            Err(ty) => {
+                assert!(tcx.interners.type_.contains_pointer_to(&InternedInSet(&*ty.0.0)));
+                // SAFETY: we just checked that `self` is interned and therefore is valid for the
+                // entire lifetime of the `TyCtxt`.
+                unsafe { mem::transmute(self) }
+            }
+        }
+    }
+}
 
 macro_rules! sty_debug_print {
     ($fmt: expr, $ctxt: expr, $($variant: ident),*) => {{
@@ -2612,7 +2640,13 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn mk_args(self, args: &[GenericArg<'tcx>]) -> ty::GenericArgs<'tcx> {
-        ty::GenericArgs::from_args(self.mk_args_raw(args))
+        if let [e] = args
+            && let GenericArgKind::Type(ty) = e.kind()
+        {
+            ty::GenericArgs::from_ty(ty)
+        } else {
+            ty::GenericArgs::from_args(self.mk_args_raw(args))
+        }
     }
 
     pub fn mk_args_from_iter<I, T>(self, iter: I) -> T::Output

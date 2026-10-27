@@ -57,6 +57,7 @@
 #![feature(type_alias_impl_trait)]
 #![feature(variant_count)]
 #![feature(yeet_expr)]
+#![feature(trusted_len)]
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
 
