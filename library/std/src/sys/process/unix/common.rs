@@ -87,20 +87,11 @@ cfg_select! {
 /// implementation.
 fn get_default_path() -> CString {
     #[cfg(all(target_os = "linux", target_env = "gnu"))]
-    use crate::os::unix::ffi::OsStringExt;
-    #[cfg(all(target_os = "linux", target_env = "gnu"))]
     use crate::sys::conf::confstr;
 
     cfg_select! {
         all(target_os = "linux", target_env = "gnu") => {
-            // SAFETY: `confstr` is guaranteed to give us a nul terminated OsString.
-            // If some other error occurred within `confstr`, we still obtain a nul terminated
-            // OsString via the `unwrap_or`.
-            unsafe {
-                CString::from_vec_with_nul_unchecked(
-                    confstr(libc::_CS_PATH, None).unwrap_or(OsString::from("\0")).into_vec(),
-                )
-            }
+            confstr(libc::_CS_PATH, None).unwrap_or(CString::default())
         }
         any(
             all(target_os = "linux", not(target_env = "gnu")),

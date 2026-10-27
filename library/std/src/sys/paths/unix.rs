@@ -430,13 +430,13 @@ pub fn current_exe() -> io::Result<PathBuf> {
 
 #[cfg(target_vendor = "apple")]
 fn darwin_temp_dir() -> PathBuf {
-    crate::sys::pal::conf::confstr(libc::_CS_DARWIN_USER_TEMP_DIR, Some(64))
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| {
-            // It failed for whatever reason (there are several possible reasons),
-            // so return the global one.
-            PathBuf::from("/tmp")
-        })
+    let darwin_temp_dir = crate::sys::pal::conf::confstr(libc::_CS_DARWIN_USER_TEMP_DIR, Some(64));
+    match darwin_temp_dir {
+        Ok(temp_dir) => OsString::from_vec(temp_dir.into_bytes()).into(),
+        // It failed for whatever reason (there are several possible reasons),
+        // so return the global one.
+        Err(_) => PathBuf::from("/tmp"),
+    }
 }
 
 pub fn temp_dir() -> PathBuf {
