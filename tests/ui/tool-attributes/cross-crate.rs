@@ -6,5 +6,4 @@ extern crate use_tool;
 #[foo::bar] //~ ERROR cannot find module or crate `foo` in this scope
 #[allow(foo::baz)] //~ ERROR unknown tool name `foo`
                    //~| ERROR unknown tool name `foo`
-                   //~| ERROR unknown tool name `foo`
 fn main() {}
