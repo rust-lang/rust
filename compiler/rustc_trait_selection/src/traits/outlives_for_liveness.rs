@@ -94,6 +94,7 @@ pub(crate) fn live_args_for_alias_from_outlives_bounds<'tcx>(
     let args_known_to_outlive = tcx.args_known_to_outlive_alias_params(def_id);
     tracing::debug!(?args_known_to_outlive);
     let mut live_args = DenseBitSet::new_filled(self_identity_args.len());
+    let mut bound_args = DenseBitSet::new_empty(self_identity_args.len());
     for outlives_region in outlives_regions {
         let Some(outlives_params) = args_known_to_outlive
             .iter()
@@ -102,7 +103,10 @@ pub(crate) fn live_args_for_alias_from_outlives_bounds<'tcx>(
             continue;
         };
         live_args.intersect(&outlives_params.1);
+        bound_args.insert(outlives_params.0 as u32);
     }
+    // The outlives lifetimes themselves must always be considered live.
+    live_args.union(&bound_args);
     live_args
 }
 
