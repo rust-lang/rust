@@ -175,6 +175,7 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
 
     bb7: {
         StorageDead(_14);
+        StorageAlloc(_23);
         StorageDead(_17);
         goto -> bb10;
     }
@@ -186,6 +187,7 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     }
 
     bb9: {
+        StorageAlloc(_23);
         StorageDead(_19);
         goto -> bb10;
     }

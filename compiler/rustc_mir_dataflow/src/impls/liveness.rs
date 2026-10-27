@@ -1,5 +1,7 @@
 use rustc_index::bit_set::DenseBitSet;
-use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
+use rustc_middle::mir::visit::{
+    MutatingUseContext, NonMutatingUseContext, NonUseContext, PlaceContext, Visitor,
+};
 use rustc_middle::mir::{self, CallReturnPlaces, Local, Location, Place, StatementKind};
 
 use crate::{Analysis, Backward, GenKill};

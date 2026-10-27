@@ -35,9 +35,29 @@ impl<'tcx> Statement<'tcx> {
         let replaced_stmt = std::mem::replace(&mut self.kind, StatementKind::Nop);
         if !drop_debuginfo {
             let Some(debuginfo) = replaced_stmt.as_debuginfo() else {
-                bug!("debuginfo is not yet supported.")
+                bug!("{}'s debuginfo is not yet supported.", replaced_stmt.name());
             };
             self.debuginfos.push(debuginfo);
+        }
+    }
+
+    pub fn dead_assign(&mut self, debuginfo_locals: &DenseBitSet<Local>) {
+        let local = match &self.kind {
+            StatementKind::Assign((dest, _)) => dest.local,
+            StatementKind::SetDiscriminant { place, .. } => place.local,
+            other => {
+                bug!("{} is not a assignment like statement.", other.name());
+            }
+        };
+        if debuginfo_locals.contains(local) {
+            let replaced_stmt =
+                std::mem::replace(&mut self.kind, StatementKind::StorageAlloc(local));
+            let Some(debuginfo) = replaced_stmt.as_debuginfo() else {
+                bug!("{}'s debuginfo is not yet supported.", replaced_stmt.name());
+            };
+            self.debuginfos.push(debuginfo);
+        } else {
+            self.kind = StatementKind::StorageAlloc(local);
         }
     }
 

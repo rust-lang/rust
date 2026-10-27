@@ -21,6 +21,7 @@
 -         _3 = &(*_5);
 -         _2 = &raw const (*_3);
 -         // DBG: _1 = &(*_2);
+-         StorageAlloc(_1);
 -         _1 = &(*_2);
 -         StorageDead(_2);
 -         StorageDead(_3);

@@ -310,6 +310,7 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     }
 
     bb17: {
+        StorageAlloc(_35);
         StorageDead(_20);
         StorageDead(_35);
         StorageDead(_14);

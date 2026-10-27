@@ -37,6 +37,7 @@
 -         _7 = const 1_isize;
 -         // DBG: _4 = &_7;
 +         nop;
+          StorageAlloc(_4);
           StorageDead(_7);
 -         _1 = const ();
 +         nop;

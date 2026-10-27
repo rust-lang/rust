@@ -73,6 +73,7 @@ fn int_range(_1: usize, _2: usize) -> () {
     }
 
     bb2: {
+        StorageAlloc(_9);
         StorageDead(_6);
         StorageDead(_9);
         return;

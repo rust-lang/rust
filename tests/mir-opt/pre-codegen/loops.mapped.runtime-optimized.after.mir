@@ -70,6 +70,7 @@ fn mapped(_1: impl Iterator<Item = T>, _2: impl Fn(T) -> U) -> () {
     }
 
     bb4: {
+        StorageAlloc(_12);
         StorageDead(_8);
         StorageDead(_7);
         StorageDead(_6);

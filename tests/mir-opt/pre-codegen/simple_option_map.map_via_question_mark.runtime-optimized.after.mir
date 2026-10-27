@@ -37,6 +37,7 @@ fn map_via_question_mark(_1: Option<i32>) -> Option<i32> {
     }
 
     bb1: {
+        StorageAlloc(_7);
         StorageDead(_2);
         StorageLive(_3);
         StorageLive(_5);

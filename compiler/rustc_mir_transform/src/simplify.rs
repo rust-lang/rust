@@ -622,9 +622,9 @@ fn remove_unused_definitions_helper(used_locals: &mut UsedLocals, body: &mut Bod
             // Remove unnecessary StorageLive and StorageDead annotations.
             for statement in data.statements.iter_mut() {
                 let keep_statement = match &statement.kind {
-                    StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
-                        used_locals.is_used(*local)
-                    }
+                    StatementKind::StorageLive(local)
+                    | StatementKind::StorageDead(local)
+                    | StatementKind::StorageAlloc(local) => used_locals.is_used(*local),
                     StatementKind::Assign((place, _)) => used_locals.is_used(place.local),
                     StatementKind::SetDiscriminant { place, .. }
                     | StatementKind::BackwardIncompatibleDropHint { place, .. } => {
