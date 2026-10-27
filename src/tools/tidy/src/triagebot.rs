@@ -143,13 +143,18 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
             if let Some(trigger_files) = content.get("trigger_files").and_then(|v| v.as_array()) {
                 for file in trigger_files {
                     if let Some(file_str) = file.as_str() {
-                        let full_path = path.join(file_str);
+                        if file_str.contains(&['*', '{']) {
+                            // FIXME: we should validate that the glob has at least one match here,
+                            // but that would be require more work
+                        } else {
+                            let full_path = path.join(file_str);
 
-                        // Handle both file and directory paths
-                        if !full_path.exists() {
-                            check.error(format!(
-                                "triagebot.toml [autolabel.{label}] contains trigger_files path '{file_str}' which doesn't exist",
-                            ));
+                            // Handle both file and directory paths
+                            if !full_path.exists() {
+                                check.error(format!(
+                                    "triagebot.toml [autolabel.{label}] contains trigger_files path '{file_str}' which doesn't exist",
+                                ));
+                            }
                         }
                     }
                 }
