@@ -555,7 +555,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 .into(),
                             destination,
                             target: Some(success),
-                            unwind: UnwindAction::Unreachable,
+                            unwind: UnwindAction::Terminate(UnwindTerminateReason::Abi),
                             call_source: CallSource::Use,
                             fn_span: expr_span,
                         },
