@@ -1521,29 +1521,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 );
 
                 // Get the caller location inside the function/closure body, but outside the coroutine.
-                let (outer_pat, outer_pat_hir_id) = self.pat_ident(span, ident);
+                // This variable will be captured by the closure by value as a special case.
+                let (pat, pat_hir_id) = self.pat_ident(span, ident);
                 let outer_expr = self.expr_call_lang_item_fn(span, LangItem::CallerLocation, &[]);
-                let outer_let_stmt = self.stmt_let_pat(
-                    None,
-                    span,
-                    Some(outer_expr),
-                    outer_pat,
-                    hir::LocalSource::AsyncFn,
-                );
+                let let_stmt =
+                    self.stmt_let_pat(None, span, Some(outer_expr), pat, hir::LocalSource::AsyncFn);
 
-                // Capture the stored caller location in the coroutine.
-                let (inner_pat, _inner_pat_hir_id) = self.pat_ident(span, ident);
-                let inner_expr = self.expr_ident(span, ident, outer_pat_hir_id);
-                let inner_let_stmt = self.stmt_let_pat(
-                    None,
-                    span,
-                    Some(inner_expr),
-                    inner_pat,
-                    hir::LocalSource::AsyncFn,
-                );
-                statements.push(inner_let_stmt);
-
-                (outer_let_stmt, outer_pat_hir_id)
+                (let_stmt, pat_hir_id)
             })
             .unzip();
 
