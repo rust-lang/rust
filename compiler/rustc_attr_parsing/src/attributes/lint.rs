@@ -40,6 +40,7 @@ impl LintParser {
                     cx.emit_err(diagnostics::ExpectedLint {
                         span: p.span(),
                         help: BadAttributeLitHelp::Other { kind: kind.sym() },
+                        kind: kind.sym(),
                     });
                 } else {
                     parsers = &parsers[..(parsers.len() - 1)];
@@ -94,6 +95,7 @@ impl LintParser {
                                 cx.emit_err(diagnostics::ExpectedLint {
                                     span: p.span(),
                                     help: BadAttributeLitHelp::Other { kind: kind.sym() },
+                                    kind: kind.sym(),
                                 });
                             }
                         }
@@ -109,6 +111,7 @@ impl LintParser {
                             } else {
                                 diagnostics::BadAttributeLitHelp::Other { kind: kind.sym() }
                             },
+                            kind: kind.sym(),
                         });
                     }
                 }

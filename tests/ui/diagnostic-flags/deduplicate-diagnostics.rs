@@ -7,7 +7,7 @@
                       //[duplicate]~| ERROR cannot find derive macro `Unresolved` in this scope
 struct S;
 
-#[deny("literal")] //~ ERROR expected a lint
-                   //[duplicate]~| ERROR expected a lint
-                   //[duplicate]~| ERROR expected a lint
+#[deny("literal")] //~ ERROR malformed
+                   //[duplicate]~| ERROR malformed
+                   //[duplicate]~| ERROR malformed
 fn main() {}

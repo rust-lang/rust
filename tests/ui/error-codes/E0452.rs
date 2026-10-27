@@ -1,8 +1,8 @@
-#![allow(foo = "")] //~ ERROR expected a lint
-                    //~| ERROR expected a lint
-                    //~| ERROR expected a lint
-                    //~| ERROR expected a lint
-                    //~| ERROR expected a lint
-                    //~| ERROR expected a lint
+#![allow(foo = "")] //~ ERROR malformed
+                    //~| ERROR malformed
+                    //~| ERROR malformed
+                    //~| ERROR malformed
+                    //~| ERROR malformed
+                    //~| ERROR malformed
 fn main() {
 }

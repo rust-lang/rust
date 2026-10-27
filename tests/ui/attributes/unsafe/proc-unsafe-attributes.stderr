@@ -25,7 +25,7 @@ help: escape `unsafe` to use it as an identifier
 LL | #[unsafe(allow(r#unsafe(dead_code)))]
    |                ++
 
-error: expected a lint
+error: malformed `allow` attribute input
   --> $DIR/proc-unsafe-attributes.rs:29:16
    |
 LL | #[unsafe(allow(unsafe(dead_code)))]
@@ -87,7 +87,7 @@ help: escape `unsafe` to use it as an identifier
 LL | #[unsafe(allow(r#unsafe(dead_code)))]
    |                ++
 
-error: expected a lint
+error: malformed `allow` attribute input
   --> $DIR/proc-unsafe-attributes.rs:29:16
    |
 LL | #[unsafe(allow(unsafe(dead_code)))]
@@ -179,7 +179,7 @@ help: escape `unsafe` to use it as an identifier
 LL | #[unsafe(allow(r#unsafe(dead_code)))]
    |                ++
 
-error: expected a lint
+error: malformed `allow` attribute input
   --> $DIR/proc-unsafe-attributes.rs:29:16
    |
 LL | #[unsafe(allow(unsafe(dead_code)))]

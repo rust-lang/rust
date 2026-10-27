@@ -2151,11 +2151,12 @@ pub(crate) enum MalformedAttributeKind {
 }
 
 #[derive(Diagnostic)]
-#[diag("expected a lint")]
+#[diag("malformed `{$kind}` attribute input")]
 pub(crate) struct ExpectedLint {
     #[primary_span]
     #[label("not the name of a lint")]
     pub span: Span,
+    pub kind: Symbol,
     #[subdiagnostic]
     pub help: BadAttributeLitHelp,
 }
