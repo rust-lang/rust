@@ -1912,6 +1912,7 @@ symbols! {
         rustdoc,
         rustdoc_internals,
         rustdoc_missing_doc_code_examples,
+        rustdoc_skip_body,
         rustfmt,
         rvalue_static_promotion,
         rvector,

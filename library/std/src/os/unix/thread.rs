@@ -4,6 +4,7 @@
 
 #![stable(feature = "thread_extensions", since = "1.9.0")]
 
+use crate::macros::rustdoc_skip_body;
 #[allow(deprecated)]
 use crate::os::unix::raw::pthread_t;
 use crate::sys::{AsInner, IntoInner};
@@ -35,11 +36,13 @@ impl<T> JoinHandleExt for JoinHandle<T> {
     // is an integer but libc::pthread_t is a pointer. Exposed provenance is the
     // safe choice here, but `as` also works when it's int2int or ptr2ptr.
     #[allow(implicit_provenance_casts)]
+    #[rustdoc_skip_body]
     fn as_pthread_t(&self) -> RawPthread {
         self.as_inner().id() as RawPthread
     }
 
     #[allow(implicit_provenance_casts)] // see above for why
+    #[rustdoc_skip_body]
     fn into_pthread_t(self) -> RawPthread {
         self.into_inner().into_id() as RawPthread
     }
