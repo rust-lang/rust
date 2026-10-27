@@ -1,10 +1,7 @@
-//@ check-pass
 //@ known-bug: #163886
 //@ edition: 2024
 
-// This test shows that aliases can end up in the hidden type of an impl Trait,
-// and that we currently don't properly consider generics live that *should* be.
-// This affects both NLL and Polonius Alpha.
+// This test shows that aliases can end up in the hidden type of an impl Trait.
 
 #![forbid(unsafe_code)]
 
@@ -72,6 +69,7 @@ mod item_bounds {
     }
 }
 
+// Still unsound.
 mod lifetime_arg {
     use super::{Debug, show};
 
