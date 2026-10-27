@@ -1,4 +1,3 @@
-//@ check-pass
 //@ compile-flags: -Zassumptions-on-binders -Znext-solver=globally
 
 #![feature(test_binder_constraints, non_lifetime_binders)]
@@ -53,6 +52,7 @@ trait Trait {
 core::test_binder_constraints! {
     impl<T: Trait> {
         forall<'a> {
+        //~^ ERROR: unable to satisfy constraints because it cannot be proven
             for<> T::Assoc: 'a
         } expect {
             or {
@@ -71,6 +71,7 @@ core::test_binder_constraints! {
 core::test_binder_constraints! {
     impl<T: Trait> {
         forall<'a> {
+        //~^ ERROR: unable to satisfy constraints because it cannot be proven
             predicates T::Assoc: 'a
         } expect {
             or {

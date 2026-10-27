@@ -266,15 +266,41 @@ impl<'tcx> InferCtxt<'tcx> {
     ) {
         assert!(self.tcx.assumptions_on_binders());
         assert!(self.next_trait_solver());
+        use LeafRegionConstraint::*;
 
-        let constraint = self.get_solver_region_constraint();
+        let solver_constraint = self.get_solver_region_constraint();
+        debug!(?solver_constraint);
+        let region_constraint::RootDestructuredConstraints { constraint, failing_leafs } =
+            region_constraint::destructure_type_outlives_constraints_in_root(
+                self,
+                solver_constraint,
+                &assumptions,
+            );
         debug!(?constraint);
-        let constraint = region_constraint::destructure_type_outlives_constraints_in_root(
-            self,
-            constraint,
-            &assumptions,
-        );
-        debug!(?constraint);
+
+        if constraint.is_false() {
+            match failing_leafs.first() {
+                Some(PlaceholderTyOutlives(_a, _b, span)) => {
+                    self.dcx()
+                        .struct_span_err(
+                            *span,
+                            "unable to satisfy constraints because it cannot be proven",
+                        )
+                        .emit();
+                }
+                Some(AliasTyOutlivesViaEnv(_, span)) => {
+                    self.dcx()
+                        .struct_span_err(
+                            *span,
+                            "unable to satisfy constraints because it cannot be proven",
+                        )
+                        .emit();
+                }
+                _ => {
+                    unreachable!()
+                }
+            }
+        }
 
         // FIXME(-Zassumptions-on-binders): actually implement OR as an  OR
         for c in constraint.and_constraint.0.into_iter().chain(
@@ -284,8 +310,6 @@ impl<'tcx> InferCtxt<'tcx> {
                 .into_iter()
                 .flat_map(|and_constraint| and_constraint.0.into_iter()),
         ) {
-            use LeafRegionConstraint::*;
-
             match c {
                 Ambiguity(span) => {
                     self.dcx()
