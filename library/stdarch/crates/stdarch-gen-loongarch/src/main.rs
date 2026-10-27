@@ -1639,7 +1639,8 @@ pub fn main() -> Result<(), String> {
             .join("src")
             .join("loongarch64")
             .join(ext_name);
-        gen_bind(Path::new(&in_file), &in_file_name, ext_name, &out_path).map_err(|e| e.to_string())?;
+        gen_bind(Path::new(&in_file), &in_file_name, ext_name, &out_path)
+            .map_err(|e| e.to_string())?;
     }
     Ok(())
 }
