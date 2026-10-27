@@ -1022,7 +1022,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .sess
                 .source_map()
                 .is_multiline(call_expr.span.with_lo(callee_expr.span.hi()))
-                && call_expr.span.eq_ctxt(callee_expr.span);
+                && call_expr.span.ctxt() == callee_expr.span.ctxt();
             if call_is_multiline {
                 err.span_suggestion(
                     callee_expr.span.shrink_to_hi(),
