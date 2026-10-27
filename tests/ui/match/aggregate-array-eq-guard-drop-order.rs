@@ -1,4 +1,4 @@
-//! The aggregate `PartialEq::eq` comparison emitted for constant array/slice
+//! The aggregate `raw_eq`/`compare_bytes` comparison emitted for constant array/slice
 //! patterns must be marked as non-unwinding. If it could unwind, this program
 //! would fail borrow-checking in edition 2021: the unwind path from the guard
 //! would require the scrutinee temporary, which borrows `referent`, to be

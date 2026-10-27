@@ -16,37 +16,40 @@ use crate::builder::matches::{
 /// rather than as a single aggregate.
 ///
 /// For a single short constant, the aggregate comparison is no slower once
-/// optimised, but each aggregate test is a separate call that only tells
+/// optimised, but each aggregate test is a separate comparison that only tells
 /// whether that one constant matched. A match with many short constant arms,
 /// such as every combination of `[bool; 3]`, would turn its decision tree into
-/// a chain of such calls, which is markedly slower, especially in debug builds.
+/// a chain of such comparisons, which is markedly slower, especially in debug
+/// builds.
 const AGGREGATE_EQ_MIN_LEN: usize = 4;
 
 /// Whether arrays and slices with this element type may be compared as an aggregate.
 ///
-/// We rely on `PartialEq::eq` agreeing with structural equality and on it not
-/// panicking, so we restrict ourselves to the primitives that
-/// `core::cmp::BytewiseEq` is implemented for. For those, the comparison of the
-/// whole aggregate is done by the `compare_bytes` and `raw_eq` intrinsics. The
-/// impls in `core` that call them note that they must not panic.
+/// The aggregate is compared with the `raw_eq` and `compare_bytes` intrinsics,
+/// which only agree with structural equality when there is no padding and equal
+/// values have equal bytes, so we restrict ourselves to the primitives that
+/// `core::cmp::BytewiseEq` is implemented for.
 fn is_bytewise_comparable(element_ty: Ty<'_>) -> bool {
     matches!(element_ty.kind(), ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_))
 }
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
-    /// Check if we can use aggregate `PartialEq::eq` comparisons for constant array/slice patterns.
-    /// This is not possible in const contexts, because `PartialEq` is not const-stable yet.
-    // FIXME(const_cmp): remove this restriction once `const_cmp` stabilises.
+    /// Check if we can use aggregate comparisons for constant array/slice patterns.
+    /// This is not possible in const contexts, because the `raw_eq` and
+    /// `compare_bytes` intrinsics are not const-stable yet, nor in `#![no_core]`
+    /// crates that do not define them as lang items.
+    // FIXME(const_cmp): remove the const context restriction once `const_cmp` stabilises.
     fn can_use_aggregate_eq(&self) -> bool {
         let in_const_context = self.tcx.is_const_fn(self.def_id.to_def_id())
             || !self.tcx.hir_body_owner_kind(self.def_id).is_fn_or_closure();
-        !in_const_context
+        let lang_items = self.tcx.lang_items();
+        !in_const_context && lang_items.raw_eq().is_some() && lang_items.compare_bytes().is_some()
     }
 
     /// If the given array or slice pattern node was expanded from a constant
     /// by `const_to_pat` and an aggregate comparison is both possible and
     /// worthwhile, returns the original constant value, so that the scrutinee
-    /// can be compared against it as a whole via `PartialEq::eq`.
+    /// can be compared against it as a whole.
     ///
     /// Note that this deliberately does not apply to hand-written array or
     /// slice patterns, which only ever match element by element.
@@ -396,8 +399,8 @@ impl<'tcx> InterPat<'tcx> {
                 let mut subpats = vec![];
                 let testable_case = if let Some(array_len) = array_len {
                     // If this pattern was expanded from a constant, compare
-                    // the whole array against that constant at once via
-                    // `PartialEq::eq` rather than element by element.
+                    // the whole array against that constant at once rather
+                    // than element by element.
                     if let Some(aggregate_value) = cx.aggregate_const_value(pattern, prefix.len()) {
                         debug_assert!(slice.is_none() && suffix.is_empty());
                         Some(TestableCase::Constant {
@@ -438,10 +441,9 @@ impl<'tcx> InterPat<'tcx> {
             }
             PatKind::Slice { ref prefix, ref slice, ref suffix } => {
                 // If this pattern was expanded from a constant, compare the
-                // whole slice against that constant at once via
-                // `PartialEq::eq`, rather than element by element. That
-                // comparison takes the length into account, so no separate
-                // length test is needed.
+                // whole slice against that constant at once rather than
+                // element by element. That comparison takes the length into
+                // account, so no separate length test is needed.
                 if let Some(aggregate_value) = cx.aggregate_const_value(pattern, prefix.len()) {
                     debug_assert!(slice.is_none() && suffix.is_empty());
                     let testable_case = TestableCase::Constant {

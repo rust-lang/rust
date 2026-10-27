@@ -11,7 +11,7 @@ fn array_match(_1: [u8; 4]) -> bool {
     bb0: {
         PlaceMention(_1);
         _2 = &_1;
-        _3 = <[u8; 4] as PartialEq>::eq(copy _2, const &*b"\x01\x02\x03\x04") -> [return: bb4, unwind unreachable];
+        _3 = raw_eq::<[u8; 4]>(copy _2, const &*b"\x01\x02\x03\x04") -> [return: bb4, unwind unreachable];
     }
 
     bb1: {

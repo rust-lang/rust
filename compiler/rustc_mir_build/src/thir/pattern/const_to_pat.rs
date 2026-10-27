@@ -485,8 +485,7 @@ impl<'tcx> ConstToPat<'tcx> {
         if matches!(ty.kind(), ty::Array(..) | ty::Slice(_)) {
             // Record the original constant value on array and slice nodes, so
             // that match lowering can compare the scrutinee against the whole
-            // constant at once via `PartialEq::eq`, rather than element by
-            // element.
+            // constant at once, rather than element by element.
             pat.extra.get_or_insert_default().expanded_const_value = Some(value);
         }
         pat
