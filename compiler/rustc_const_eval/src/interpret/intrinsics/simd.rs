@@ -386,16 +386,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 }
                 self.write_immediate(*res, &dest)?;
             }
-            sym::simd_reduce_add_unordered
-            | sym::simd_reduce_mul_unordered
-            | sym::simd_reduce_add_algebraic
-            | sym::simd_reduce_mul_algebraic => {
+            sym::simd_reduce_add_algebraic | sym::simd_reduce_mul_algebraic => {
                 use mir::BinOp;
-
-                let algebraic = matches!(
-                    intrinsic_name,
-                    sym::simd_reduce_add_algebraic | sym::simd_reduce_mul_algebraic
-                );
 
                 let (op, op_len) = self.project_to_simd(&args[0])?;
 
@@ -409,12 +401,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     )
                 };
                 let (init, mir_op) = match intrinsic_name {
-                    sym::simd_reduce_add_unordered | sym::simd_reduce_add_algebraic => {
-                        (scalar(-0.0)?, BinOp::Add)
-                    }
-                    sym::simd_reduce_mul_unordered | sym::simd_reduce_mul_algebraic => {
-                        (scalar(1.0)?, BinOp::Mul)
-                    }
+                    sym::simd_reduce_add_algebraic => (scalar(-0.0)?, BinOp::Add),
+                    sym::simd_reduce_mul_algebraic => (scalar(1.0)?, BinOp::Mul),
                     _ => unreachable!(),
                 };
 
@@ -422,7 +410,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 for i in M::nondet_index_iterator(self, op_len) {
                     let op = self.read_immediate(&self.project_index(&op, i)?)?;
                     res = self.binary_op(mir_op, &res, &op)?;
-                    if algebraic && dest.layout.ty.is_floating_point() {
+                    if dest.layout.ty.is_floating_point() {
                         res = M::apply_float_nondet(self, res)?;
                     }
                 }
