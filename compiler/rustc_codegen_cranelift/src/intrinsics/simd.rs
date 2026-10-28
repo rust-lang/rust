@@ -456,8 +456,8 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                         (ty::Float(_), sym::simd_div | sym::simd_div_algebraic) => {
                             fx.bcx.ins().fdiv(x_lane, y_lane)
                         }
-                        (ty::Float(FloatTy::F16), sym::simd_rem | sym::simd_rem_algebraic) => fx
-                            .lib_call(
+                        (ty::Float(FloatTy::F16), sym::simd_rem | sym::simd_rem_algebraic) => {
+                            let ret = fx.lib_call(
                                 "fmodf",
                                 vec![AbiParam::new(types::F32), AbiParam::new(types::F32)],
                                 vec![AbiParam::new(types::F32)],
@@ -466,21 +466,27 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                                 // fx.bcx.ins().fpromote(types::F32, lhs),
                                 // fx.bcx.ins().fpromote(types::F32, rhs),
                                 &[x_lane, y_lane],
-                            )[0],
-                        (ty::Float(FloatTy::F32), sym::simd_rem | sym::simd_rem_algebraic) => fx
-                            .lib_call(
+                            );
+                            ret[0]
+                        }
+                        (ty::Float(FloatTy::F32), sym::simd_rem | sym::simd_rem_algebraic) => {
+                            let ret = fx.lib_call(
                                 "fmodf",
                                 vec![AbiParam::new(types::F32), AbiParam::new(types::F32)],
                                 vec![AbiParam::new(types::F32)],
                                 &[x_lane, y_lane],
-                            )[0],
-                        (ty::Float(FloatTy::F64), sym::simd_rem | sym::simd_rem_algebraic) => fx
-                            .lib_call(
+                            );
+                            ret[0]
+                        }
+                        (ty::Float(FloatTy::F64), sym::simd_rem | sym::simd_rem_algebraic) => {
+                            let ret = fx.lib_call(
                                 "fmod",
                                 vec![AbiParam::new(types::F64), AbiParam::new(types::F64)],
                                 vec![AbiParam::new(types::F64)],
                                 &[x_lane, y_lane],
-                            )[0],
+                            );
+                            ret[0]
+                        }
 
                         (ty::Uint(_), sym::simd_shl) => fx.bcx.ins().ishl(x_lane, y_lane),
                         (ty::Uint(_), sym::simd_shr) => fx.bcx.ins().ushr(x_lane, y_lane),
