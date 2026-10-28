@@ -292,9 +292,8 @@ fn rewrite_closure_fn_decl(
     };
     let coro = coroutine_marker.map_or_default(format_coro);
     let capture_str = match capture {
-        ast::CaptureBy::Value { .. } => "move ",
-        ast::CaptureBy::Use { .. } => "use ",
         ast::CaptureBy::Ref => "",
+        ast::CaptureBy::Value { .. } => "move ",
     };
     // 4 = "|| {".len(), which is overconservative when the closure consists of
     // a single expression.

@@ -784,9 +784,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 origin = updated.1;
 
                 let (place, capture_kind) = match capture_clause {
-                    hir::CaptureBy::Value { .. } => adjust_for_move_closure(place, capture_kind),
-                    hir::CaptureBy::Use { .. } => adjust_for_use_closure(place, capture_kind),
                     hir::CaptureBy::Ref => adjust_for_non_move_closure(place, capture_kind),
+                    hir::CaptureBy::Value { .. } => adjust_for_move_closure(place, capture_kind),
                 };
 
                 // This restriction needs to be applied after we have handled adjustments for `move`
@@ -1352,8 +1351,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ty = self.deeply_resolve_ignoring_regions(self.node_ty(var_hir_id));
 
         let ty = match closure_clause {
-            hir::CaptureBy::Value { .. } => ty, // For move closure the capture kind should be by value
-            hir::CaptureBy::Ref | hir::CaptureBy::Use { .. } => {
+            hir::CaptureBy::Ref => {
                 // For non move closure the capture kind is the max capture kind of all captures
                 // according to the ordering ImmBorrow < UniqueImmBorrow < MutBorrow < ByValue
                 let mut max_capture_info = root_var_min_capture_list.first().unwrap().info;
@@ -1368,6 +1366,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.tcx.lifetimes.re_erased,
                 )
             }
+            hir::CaptureBy::Value { .. } => ty, // For move closure the capture kind should be by value
         };
 
         let mut obligations_should_hold = Vec::new();
@@ -1470,6 +1469,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             debug!("no path starting from it is used");
 
             match closure_clause {
+                hir::CaptureBy::Ref => {}
                 // Only migrate if closure is a move closure
                 hir::CaptureBy::Value { .. } => {
                     let mut diagnostics_info = FxIndexSet::default();
@@ -1480,7 +1480,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .insert(UpvarMigrationInfo::CapturingNothing { use_span: upvar.span });
                     return Some(diagnostics_info);
                 }
-                hir::CaptureBy::Ref | hir::CaptureBy::Use { .. } => {}
             }
 
             return None;
@@ -1904,10 +1903,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             hir::CaptureBy::Value { .. } if !place.deref_tys().any(Ty::is_ref) => {
                 ty::UpvarCapture::ByValue
             }
-            hir::CaptureBy::Use { .. } if !place.deref_tys().any(Ty::is_ref) => {
-                ty::UpvarCapture::ByUse
-            }
-            hir::CaptureBy::Value { .. } | hir::CaptureBy::Use { .. } | hir::CaptureBy::Ref => {
+            hir::CaptureBy::Ref | hir::CaptureBy::Value { .. } => {
                 ty::UpvarCapture::ByRef(BorrowKind::Immutable)
             }
         }
@@ -2416,21 +2412,6 @@ fn adjust_for_move_closure(
     }
 
     (place, ty::UpvarCapture::ByValue)
-}
-
-/// Truncate deref of any reference.
-#[instrument(ret, level = "debug")]
-fn adjust_for_use_closure(
-    mut place: Place<'_>,
-    mut kind: ty::UpvarCapture,
-) -> (Place<'_>, ty::UpvarCapture) {
-    let first_deref = place.projections.iter().position(|proj| proj.kind == ProjectionKind::Deref);
-
-    if let Some(idx) = first_deref {
-        truncate_place_to_len_and_update_capture_kind(&mut place, &mut kind, idx);
-    }
-
-    (place, ty::UpvarCapture::ByUse)
 }
 
 /// Adjust closure capture just that if taking ownership of data, only move data
