@@ -5995,7 +5995,7 @@ pub unsafe fn __msa_ldi_b<const IMM_S10: i32>() -> v16i8 {
 ///
 #[inline]
 #[target_feature(enable = "msa")]
-#[cfg_attr(test, assert_instr(ldi.h, IMM_S10 = -1))]
+#[cfg_attr(test, assert_instr(ldi.h, IMM_S10 = 0b01_00001111))]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_ldi_h<const IMM_S10: i32>() -> v8i16 {
     static_assert_simm_bits!(IMM_S10, 10);
@@ -6010,7 +6010,7 @@ pub unsafe fn __msa_ldi_h<const IMM_S10: i32>() -> v8i16 {
 ///
 #[inline]
 #[target_feature(enable = "msa")]
-#[cfg_attr(test, assert_instr(ldi.w, IMM_S10 = -1))]
+#[cfg_attr(test, assert_instr(ldi.w, IMM_S10 = 0b01_00001111))]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_ldi_w<const IMM_S10: i32>() -> v4i32 {
     static_assert_simm_bits!(IMM_S10, 10);
@@ -6025,7 +6025,7 @@ pub unsafe fn __msa_ldi_w<const IMM_S10: i32>() -> v4i32 {
 ///
 #[inline]
 #[target_feature(enable = "msa")]
-#[cfg_attr(test, assert_instr(ldi.d, IMM_S10 = -1))]
+#[cfg_attr(test, assert_instr(ldi.d, IMM_S10 = 0b01_00001111))]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_ldi_d<const IMM_S10: i32>() -> v2i64 {
     static_assert_simm_bits!(IMM_S10, 10);
