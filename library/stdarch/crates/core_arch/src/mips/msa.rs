@@ -1933,7 +1933,7 @@ pub unsafe fn __msa_bclr_d(a: v2u64, b: v2u64) -> v2u64 {
 ///
 #[inline]
 #[target_feature(enable = "msa")]
-#[cfg_attr(test, assert_instr(bclri.b, IMM3 = 0b111))]
+#[cfg_attr(test, assert_instr(andi.b, IMM3 = 0b111))]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_bclri_b<const IMM3: i32>(a: v16u8) -> v16u8 {
     static_assert_uimm_bits!(IMM3, 3);
