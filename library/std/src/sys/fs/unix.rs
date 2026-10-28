@@ -820,6 +820,7 @@ impl ReadDir {
                 target_os = "vita",
                 target_os = "nto",
                 target_os = "qnx",
+                target_os = "qurt",
                 target_os = "vxworks",
                 target_os = "rtems",
                 target_os = "l4re",
