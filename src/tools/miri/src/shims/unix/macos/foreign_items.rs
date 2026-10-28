@@ -402,21 +402,21 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "dispatch_semaphore_wait" => {
                 let [sem, timeout] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(*u8, u64) -> isize),
+                    shim_sig!(extern "C" fn(*_, u64) -> isize),
                     (link_name, abi, args),
                 )?;
                 this.dispatch_semaphore_wait(sem, timeout, dest)?;
             }
             "dispatch_semaphore_signal" => {
                 let [sem] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(*u8) -> isize),
+                    shim_sig!(extern "C" fn(*_) -> isize),
                     (link_name, abi, args),
                 )?;
                 this.dispatch_semaphore_signal(sem, dest)?;
             }
             "dispatch_release" => {
                 let [sem] = &this
-                    .check_shim_sig(shim_sig!(extern "C" fn(*u8) -> ()), (link_name, abi, args))?;
+                    .check_shim_sig(shim_sig!(extern "C" fn(*_) -> ()), (link_name, abi, args))?;
                 this.dispatch_release(sem)?;
             }
             "dispatch_time" => {

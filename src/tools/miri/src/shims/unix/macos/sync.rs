@@ -152,7 +152,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         'tcx: 'a,
     {
         let this = self.eval_context_mut();
-        let sem = this.deref_pointer(sem_ptr)?;
+        let sem = this.deref_pointer_as(sem_ptr, this.machine.layouts.u8)?;
         this.get_immovable_sync_with_static_init(
             &sem,
             SEM_INIT_OFFSET,
