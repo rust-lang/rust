@@ -2264,7 +2264,7 @@ pub unsafe fn __msa_bmnzi_b<const IMM8: i32>(a: v16u8, b: v16u8) -> v16u8 {
 ///
 #[inline]
 #[target_feature(enable = "msa")]
-#[cfg_attr(test, assert_instr(bmz.v))]
+#[cfg_attr(test, assert_instr(bmnz.v))]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_bmz_v(a: v16u8, b: v16u8, c: v16u8) -> v16u8 {
     msa_bmz_v(a, mem::transmute(b), c)
@@ -2278,7 +2278,7 @@ pub unsafe fn __msa_bmz_v(a: v16u8, b: v16u8, c: v16u8) -> v16u8 {
 ///
 #[inline]
 #[target_feature(enable = "msa")]
-#[cfg_attr(test, assert_instr(bmzi.b, IMM8 = 0x5a))]
+#[cfg_attr(test, assert_instr(bmnzi.b, IMM8 = 0b1011_1111))]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_bmzi_b<const IMM8: i32>(a: v16u8, b: v16u8) -> v16u8 {
     static_assert_uimm_bits!(IMM8, 8);
@@ -2475,7 +2475,7 @@ pub unsafe fn __msa_bnz_v(a: v16u8) -> i32 {
 ///
 #[inline]
 #[target_feature(enable = "msa")]
-#[cfg_attr(test, assert_instr(bsel.v))]
+#[cfg_attr(test, assert_instr(bmnz.v))]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_bsel_v(a: v16u8, b: v16u8, c: v16u8) -> v16u8 {
     msa_bsel_v(a, mem::transmute(b), c)
