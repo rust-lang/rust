@@ -35,7 +35,7 @@
     {
       matchManagers: ["custom.regex"],
       // Twice per month
-      schedule: "* * 1,15 * 1",
+      schedule: "* * 1,15 * *",
       commitMessage: "bench: Update pinned toolchain to {{{newVersion}}}",
     },
   ],
