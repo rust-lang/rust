@@ -44,7 +44,7 @@ jobs:
       run: |
         rustup toolchain install nightly --component rust-docs
         rustup override set nightly
-        curl https://raw.githubusercontent.com/rust-lang/rust/master/src/tools/linkchecker/linkcheck.sh -o linkcheck.sh
+        curl https://raw.githubusercontent.com/rust-lang/rust/main/src/tools/linkchecker/linkcheck.sh -o linkcheck.sh
         sh linkcheck.sh clippy --path ./book
 
     - name: Build mdbook

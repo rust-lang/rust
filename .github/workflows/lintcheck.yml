@@ -32,8 +32,8 @@ jobs:
         # Unsetting this would make so that any malicious package could get our Github Token
         persist-credentials: false
 
-    # HEAD is the generated merge commit `refs/pull/N/merge` between the PR and `master`, `HEAD^`
-    # being the commit from `master` that is the base of the merge
+    # HEAD is the generated merge commit `refs/pull/N/merge` between the PR and `main`, `HEAD^`
+    # being the commit from `main` that is the base of the merge
     - name: Checkout base
       run: git checkout HEAD^
 

@@ -33,11 +33,11 @@ If you've already cloned Clippy in the past, update it to the latest version:
 git remote add upstream https://github.com/rust-lang/rust-clippy
 # upstream has to be the remote of the rust-lang/rust-clippy repo
 git fetch upstream
-# make sure that you are on the master branch
-git checkout master
-# rebase your master branch on the upstream master
-git rebase upstream/master
-# push to the master branch of your fork
+# make sure that you are on the main branch
+git checkout main
+# rebase your main branch on the upstream main
+git rebase upstream/main
+# push to the main branch of your fork
 git push
 ```
 
