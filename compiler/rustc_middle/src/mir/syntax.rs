@@ -1257,8 +1257,8 @@ pub enum ProjectionElem<V, T> {
     /// Transmute the type of the place. This is a projection of a place,
     /// so it doesn't necessarily constitute a move out of the source type.
     /// Used for unsafe binders, among other things.
-    /// Both the source and destination must be `Sized` for the MIR to be valid,
-    /// and they must be the same size for the operation to be DB.
+    /// Both the source and destination must be `Sized` for the MIR to be valid.
+    /// If the source and destination types do not have the same size, the operation is UB.
     Transmute(T),
 
     /// A symbolic dereference of a `Reborrow` type that does not contain any `&mut T` fields.
