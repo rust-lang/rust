@@ -29,7 +29,7 @@ pub(crate) fn expand_cfg(
         Ok(cfg) => {
             let matches_cfg = attr::eval_config_entry(cx.sess, &cfg).as_bool();
 
-            MacEager::expr(cx.expr_bool(sp, matches_cfg))
+            MacEager::expr(Box::from(cx.expr_bool(sp, matches_cfg)))
         }
         Err(guar) => DummyResult::any(sp, guar),
     })

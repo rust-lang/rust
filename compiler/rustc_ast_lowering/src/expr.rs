@@ -208,7 +208,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.expr(whole_span, hir::ExprKind::Block(block, None))
     }
 
-    fn lower_exprs(&mut self, exprs: &[Box<Expr>]) -> &'hir [hir::Expr<'hir>] {
+    fn lower_exprs(&mut self, exprs: &[Expr]) -> &'hir [hir::Expr<'hir>] {
         self.arena.alloc_from_iter(exprs.iter().map(|x| self.lower_expr_mut(x)))
     }
 
@@ -606,7 +606,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_legacy_const_generics(
         &mut self,
         mut f: Expr,
-        args: ThinVec<Box<Expr>>,
+        args: ThinVec<Expr>,
         legacy_args_idx: &[usize],
     ) -> hir::ExprKind<'hir> {
         let ExprKind::Path(None, path) = &mut f.kind else {
@@ -657,7 +657,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             tokens: None,
                         })
                     } else {
-                        arg
+                        Box::new(arg)
                     };
 
                 let anon_const = AnonConst { id: node_id, value: const_value };
@@ -1469,7 +1469,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     /// Each sub-assignment is recorded in `assignments`.
     fn destructure_sequence(
         &mut self,
-        elements: &[Box<Expr>],
+        elements: &[Expr],
         ctx: &str,
         eq_sign_span: Span,
         assignments: &mut Vec<hir::Stmt<'hir>>,

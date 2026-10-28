@@ -635,7 +635,7 @@ impl server::Server for Rustc<'_, '_> {
         let expr = self
             .ecx
             .expander()
-            .fully_expand_fragment(crate::expand::AstFragment::Expr(expr))
+            .fully_expand_fragment(crate::expand::AstFragment::Expr(Box::new(expr)))
             .make_expr();
 
         // NOTE: For now, limit `expand_expr` to exclusively expand to literals.
