@@ -1055,6 +1055,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ast::LitKind::Int(i, ast::LitIntType::Unsuffixed) => {
                 let opt_ty = expected.to_option(self).and_then(|ty| match ty.kind() {
                     ty::Int(_) | ty::Uint(_) => Some(ty),
+                    // If we have an expected type that is an `IntVar`, we can just reuse the
+                    // `IntVar` rather than creating a new one and then later unifying them.
+                    // (But we don't want to do this for `ExpectCastableToType`.)
+                    ty::Infer(ty::IntVar(_)) if matches!(expected, ExpectHasType(_)) => Some(ty),
                     // These exist to direct casts like `0x61 as char` to use
                     // the right integer type to cast from, instead of falling back to
                     // i32 due to no further constraints.
@@ -1082,6 +1086,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ast::LitKind::Float(_, ast::LitFloatType::Unsuffixed) => {
                 let opt_ty = expected.to_option(self).and_then(|ty| match ty.kind() {
                     ty::Float(_) => Some(ty),
+                    // See the comment on the `ty::Infer(ty::IntVar(_))` case above.
+                    ty::Infer(ty::FloatVar(_)) if matches!(expected, ExpectHasType(_)) => Some(ty),
                     _ => None,
                 });
                 opt_ty.unwrap_or_else(|| self.next_float_var(lit.span, Some(lint_id)))
