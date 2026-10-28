@@ -71,6 +71,9 @@ pub use crate::intrinsics::transmute;
 #[unstable(feature = "type_info", issue = "146922")]
 pub mod type_info;
 
+#[unstable(feature = "comptime_ops_fs", issue = "165159")]
+pub mod comptime;
+
 /// Takes ownership and "forgets" about the value **without running its destructor**.
 ///
 /// Any resources the value manages, such as heap memory or a file handle, will linger
