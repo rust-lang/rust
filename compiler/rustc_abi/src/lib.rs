@@ -318,8 +318,6 @@ pub struct PointerSpec {
 #[derive(Debug, PartialEq, Eq)]
 pub struct TargetDataLayout {
     pub endian: Endian,
-    pub i1_align: Align,
-    pub i8_align: Align,
     pub i16_align: Align,
     pub i32_align: Align,
     pub i64_align: Align,
@@ -358,8 +356,6 @@ impl Default for TargetDataLayout {
         let align = |bits| Align::from_bits(bits).unwrap();
         TargetDataLayout {
             endian: Endian::Big,
-            i1_align: align(8),
-            i8_align: align(8),
             i16_align: align(16),
             i32_align: align(32),
             i64_align: align(32),
@@ -619,8 +615,8 @@ impl TargetDataLayout {
                     };
                     let a = parse_align_seq(a, s, bits)?;
                     match bits {
-                        1 => dl.i1_align = a,
-                        8 => dl.i8_align = a,
+                        // i1 and i8 always have an alignment of 1 byte - this has already been
+                        // checked by `parse_align_seq` above.
                         16 => dl.i16_align = a,
                         32 => dl.i32_align = a,
                         64 => dl.i64_align = a,
@@ -1328,7 +1324,7 @@ impl Integer {
         let dl = cx.data_layout();
 
         match self {
-            I8 => dl.i8_align,
+            I8 => Align::ONE,
             I16 => dl.i16_align,
             I32 => dl.i32_align,
             I64 => dl.i64_align,
