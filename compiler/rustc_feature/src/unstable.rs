@@ -509,7 +509,7 @@ declare_features! (
     (unstable, doc_masked, "1.21.0", Some(44027)),
     /// Allows features to allow target_feature to better interact with traits.
     (incomplete, effective_target_features, "1.91.0", Some(143352)),
-    /// Allows the .use postfix syntax `x.use` and use closures `use |x| { ... }`
+    /// Allows the .use postfix syntax `x.use`
     (incomplete, ergonomic_clones, "1.87.0", Some(132290)),
     /// ermsb target feature on x86.
     (unstable, ermsb_target_feature, "1.49.0", Some(150249)),
