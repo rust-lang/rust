@@ -23,7 +23,8 @@ if [ "${DIST_TRY_BUILD:-0}" == "0" ]; then
     CC=/rustroot/bin/cc CXX=/rustroot/bin/c++ \
         python3 ../x.py dist \
         gcc-dev \
-        gcc
+        gcc || { \
+        cat build/$HOSTS/gcc/$HOSTS/build/x86_64-pc-linux-gnu/libgcc/config.log; exit 1; }
 
     gcc_path="./build/$HOSTS/gcc/$HOSTS/install/bin/gcc"
     if echo 'int x __attribute__((used, retain));' | \
