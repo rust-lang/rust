@@ -101,7 +101,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Sockets and pipes
             "__xnet_socketpair" => {
                 let [domain, type_, protocol, sv] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(i32, i32, i32, *_) -> i32),
+                    shim_sig!(extern "C" fn(i32, i32, i32, *i32) -> i32),
                     (link_name, abi, args),
                 )?;
                 let result = this.socketpair(domain, type_, protocol, sv)?;
