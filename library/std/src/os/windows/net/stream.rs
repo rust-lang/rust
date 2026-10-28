@@ -35,7 +35,9 @@ use crate::{fmt, io};
 ///     Ok(())
 /// }
 /// ```
+#[stable(feature = "windows_unix_domain_sockets", since = "CURRENT_RUSTC_VERSION")]
 pub struct UnixStream(pub(super) Socket);
+#[stable(feature = "windows_unix_domain_sockets", since = "CURRENT_RUSTC_VERSION")]
 impl fmt::Debug for UnixStream {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut builder = fmt.debug_struct("UnixStream");
@@ -66,6 +68,7 @@ impl UnixStream {
     ///     }
     /// };
     /// ```
+    #[stable(feature = "windows_unix_domain_sockets", since = "CURRENT_RUSTC_VERSION")]
     pub fn connect<P: AsRef<Path>>(path: P) -> io::Result<UnixStream> {
         let socket_addr = SocketAddr::from_pathname(path)?;
         Self::connect_addr(&socket_addr)
@@ -95,6 +98,7 @@ impl UnixStream {
     ///     Ok(())
     /// }
     /// ````
+    #[stable(feature = "windows_unix_domain_sockets", since = "CURRENT_RUSTC_VERSION")]
     pub fn connect_addr(socket_addr: &SocketAddr) -> io::Result<UnixStream> {
         startup();
         let inner = Socket::new(AF_UNIX as _, SOCK_STREAM)?;
@@ -122,6 +126,7 @@ impl UnixStream {
     ///     Ok(())
     /// }
     /// ```
+    #[stable(feature = "windows_unix_domain_sockets", since = "CURRENT_RUSTC_VERSION")]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
         SocketAddr::new(|addr, len| unsafe { getsockname(self.0.as_raw(), addr, len) })
     }
@@ -140,6 +145,7 @@ impl UnixStream {
     ///     Ok(())
     /// }
     /// ```
+    #[stable(feature = "windows_unix_domain_sockets", since = "CURRENT_RUSTC_VERSION")]
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
         SocketAddr::new(|addr, len| unsafe { getpeername(self.0.as_raw(), addr, len) })
     }
@@ -160,6 +166,7 @@ impl UnixStream {
     ///     Ok(())
     /// }
     /// ```
+    #[stable(feature = "windows_unix_domain_sockets", since = "CURRENT_RUSTC_VERSION")]
     pub fn read_timeout(&self) -> io::Result<Option<Duration>> {
         self.0.timeout(SO_RCVTIMEO)
     }
@@ -178,6 +185,7 @@ impl UnixStream {
     ///     Ok(())
     /// }
     /// ```
+    #[stable(feature = "windows_unix_domain_sockets", since = "CURRENT_RUSTC_VERSION")]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         self.0.set_nonblocking(nonblocking)
     }
@@ -221,6 +229,7 @@ impl UnixStream {
     ///     Ok(())
     /// }
     /// ```
+    #[stable(feature = "windows_unix_domain_sockets", since = "CURRENT_RUSTC_VERSION")]
     pub fn set_read_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
         self.0.set_timeout(dur, SO_RCVTIMEO)
     }
@@ -265,6 +274,7 @@ impl UnixStream {
     ///     Ok(())
     /// }
     /// ```
+    #[stable(feature = "windows_unix_domain_sockets", since = "CURRENT_RUSTC_VERSION")]
     pub fn set_write_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
         self.0.set_timeout(dur, SO_SNDTIMEO)
     }
@@ -288,6 +298,7 @@ impl UnixStream {
     ///     Ok(())
     /// }
     /// ```
+    #[stable(feature = "windows_unix_domain_sockets", since = "CURRENT_RUSTC_VERSION")]
     pub fn shutdown(&self, how: Shutdown) -> io::Result<()> {
         self.0.shutdown(how)
     }
@@ -308,6 +319,7 @@ impl UnixStream {
     ///     Ok(())
     /// }
     /// ```
+    #[stable(feature = "windows_unix_domain_sockets", since = "CURRENT_RUSTC_VERSION")]
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
         self.0.take_error()
     }
@@ -331,6 +343,7 @@ impl UnixStream {
     ///     Ok(())
     /// }
     /// ```
+    #[stable(feature = "windows_unix_domain_sockets", since = "CURRENT_RUSTC_VERSION")]
     pub fn try_clone(&self) -> io::Result<UnixStream> {
         self.0.duplicate().map(UnixStream)
     }
@@ -352,23 +365,27 @@ impl UnixStream {
     ///     Ok(())
     /// }
     /// ```
+    #[stable(feature = "windows_unix_domain_sockets", since = "CURRENT_RUSTC_VERSION")]
     pub fn write_timeout(&self) -> io::Result<Option<Duration>> {
         self.0.timeout(SO_SNDTIMEO)
     }
 }
 
+#[stable(feature = "windows_unix_domain_sockets", since = "CURRENT_RUSTC_VERSION")]
 impl io::Read for UnixStream {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         io::Read::read(&mut &*self, buf)
     }
 }
 
+#[stable(feature = "windows_unix_domain_sockets", since = "CURRENT_RUSTC_VERSION")]
 impl<'a> io::Read for &'a UnixStream {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.0.read(buf)
     }
 }
 
+#[stable(feature = "windows_unix_domain_sockets", since = "CURRENT_RUSTC_VERSION")]
 impl io::Write for UnixStream {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         io::Write::write(&mut &*self, buf)
@@ -378,6 +395,7 @@ impl io::Write for UnixStream {
         io::Write::flush(&mut &*self)
     }
 }
+#[stable(feature = "windows_unix_domain_sockets", since = "CURRENT_RUSTC_VERSION")]
 impl<'a> io::Write for &'a UnixStream {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.write_vectored(&[io::IoSlice::new(buf)])
@@ -395,6 +413,7 @@ impl<'a> io::Write for &'a UnixStream {
     }
 }
 
+#[stable(feature = "windows_unix_domain_sockets", since = "CURRENT_RUSTC_VERSION")]
 impl AsSocket for UnixStream {
     #[inline]
     fn as_socket(&self) -> BorrowedSocket<'_> {
@@ -402,6 +421,7 @@ impl AsSocket for UnixStream {
     }
 }
 
+#[stable(feature = "windows_unix_domain_sockets", since = "CURRENT_RUSTC_VERSION")]
 impl AsRawSocket for UnixStream {
     #[inline]
     fn as_raw_socket(&self) -> RawSocket {
@@ -409,6 +429,7 @@ impl AsRawSocket for UnixStream {
     }
 }
 
+#[stable(feature = "windows_unix_domain_sockets", since = "CURRENT_RUSTC_VERSION")]
 impl FromRawSocket for UnixStream {
     #[inline]
     unsafe fn from_raw_socket(sock: RawSocket) -> Self {
@@ -416,6 +437,7 @@ impl FromRawSocket for UnixStream {
     }
 }
 
+#[stable(feature = "windows_unix_domain_sockets", since = "CURRENT_RUSTC_VERSION")]
 impl IntoRawSocket for UnixStream {
     fn into_raw_socket(self) -> RawSocket {
         self.0.into_raw_socket()

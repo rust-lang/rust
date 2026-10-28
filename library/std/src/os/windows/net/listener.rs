@@ -44,8 +44,10 @@ use crate::{fmt, io};
 ///     Ok(())
 /// }
 /// ```
+#[stable(feature = "windows_unix_domain_sockets", since = "CURRENT_RUSTC_VERSION")]
 pub struct UnixListener(Socket);
 
+#[stable(feature = "windows_unix_domain_sockets", since = "CURRENT_RUSTC_VERSION")]
 impl fmt::Debug for UnixListener {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut builder = fmt.debug_struct("UnixListener");
@@ -73,6 +75,7 @@ impl UnixListener {
     ///     }
     /// };
     /// ```
+    #[stable(feature = "windows_unix_domain_sockets", since = "CURRENT_RUSTC_VERSION")]
     pub fn bind<P: AsRef<Path>>(path: P) -> io::Result<UnixListener> {
         let socket_addr = SocketAddr::from_pathname(path)?;
         Self::bind_addr(&socket_addr)
@@ -102,6 +105,7 @@ impl UnixListener {
     ///     Ok(())
     /// }
     /// ```
+    #[stable(feature = "windows_unix_domain_sockets", since = "CURRENT_RUSTC_VERSION")]
     pub fn bind_addr(socket_addr: &SocketAddr) -> io::Result<UnixListener> {
         startup();
         let inner = Socket::new(AF_UNIX as _, SOCK_STREAM)?;
@@ -136,6 +140,7 @@ impl UnixListener {
     ///     Ok(())
     /// }
     /// ```
+    #[stable(feature = "windows_unix_domain_sockets", since = "CURRENT_RUSTC_VERSION")]
     pub fn accept(&self) -> io::Result<(UnixStream, SocketAddr)> {
         let mut storage = SOCKADDR_UN::default();
         let mut len = size_of::<SOCKADDR_UN>() as _;
@@ -158,6 +163,7 @@ impl UnixListener {
     ///     Ok(())
     /// }
     /// ```
+    #[stable(feature = "windows_unix_domain_sockets", since = "CURRENT_RUSTC_VERSION")]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
         SocketAddr::new(|addr, len| unsafe { getsockname(self.0.as_raw(), addr, len) })
     }
@@ -180,6 +186,7 @@ impl UnixListener {
     ///     Ok(())
     /// }
     /// ```
+    #[stable(feature = "windows_unix_domain_sockets", since = "CURRENT_RUSTC_VERSION")]
     pub fn try_clone(&self) -> io::Result<UnixListener> {
         self.0.duplicate().map(UnixListener)
     }
@@ -204,6 +211,7 @@ impl UnixListener {
     ///     Ok(())
     /// }
     /// ```
+    #[stable(feature = "windows_unix_domain_sockets", since = "CURRENT_RUSTC_VERSION")]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         self.0.set_nonblocking(nonblocking)
     }
@@ -225,6 +233,7 @@ impl UnixListener {
     ///     Ok(())
     /// }
     /// ```
+    #[stable(feature = "windows_unix_domain_sockets", since = "CURRENT_RUSTC_VERSION")]
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
         self.0.take_error()
     }
@@ -261,6 +270,7 @@ impl UnixListener {
     ///     Ok(())
     /// }
     /// ```
+    #[stable(feature = "windows_unix_domain_sockets", since = "CURRENT_RUSTC_VERSION")]
     pub fn incoming(&self) -> Incoming<'_> {
         Incoming { listener: self }
     }
@@ -297,10 +307,12 @@ impl UnixListener {
 ///     Ok(())
 /// }
 /// ```
+#[stable(feature = "windows_unix_domain_sockets", since = "CURRENT_RUSTC_VERSION")]
 pub struct Incoming<'a> {
     listener: &'a UnixListener,
 }
 
+#[stable(feature = "windows_unix_domain_sockets", since = "CURRENT_RUSTC_VERSION")]
 impl<'a> Iterator for Incoming<'a> {
     type Item = io::Result<UnixStream>;
 
@@ -313,6 +325,7 @@ impl<'a> Iterator for Incoming<'a> {
     }
 }
 
+#[stable(feature = "windows_unix_domain_sockets", since = "CURRENT_RUSTC_VERSION")]
 impl AsRawSocket for UnixListener {
     #[inline]
     fn as_raw_socket(&self) -> RawSocket {
@@ -320,6 +333,7 @@ impl AsRawSocket for UnixListener {
     }
 }
 
+#[stable(feature = "windows_unix_domain_sockets", since = "CURRENT_RUSTC_VERSION")]
 impl FromRawSocket for UnixListener {
     #[inline]
     unsafe fn from_raw_socket(sock: RawSocket) -> Self {
@@ -327,6 +341,7 @@ impl FromRawSocket for UnixListener {
     }
 }
 
+#[stable(feature = "windows_unix_domain_sockets", since = "CURRENT_RUSTC_VERSION")]
 impl IntoRawSocket for UnixListener {
     #[inline]
     fn into_raw_socket(self) -> RawSocket {
@@ -334,6 +349,7 @@ impl IntoRawSocket for UnixListener {
     }
 }
 
+#[stable(feature = "windows_unix_domain_sockets", since = "CURRENT_RUSTC_VERSION")]
 impl<'a> IntoIterator for &'a UnixListener {
     type Item = io::Result<UnixStream>;
     type IntoIter = Incoming<'a>;
