@@ -136,7 +136,7 @@ impl<'tcx> LateLintPass<'tcx> for LegacyNumericConstants {
             && let Some(def_id) = cx.qpath_res(qpath, func.hir_id).opt_def_id()
             && is_integer_method(cx, def_id)
             && let Some(mod_name) = ty.span.get_text(cx)
-            && ty.span.eq_ctxt(last_segment.ident.span)
+            && ty.span.ctxt() == last_segment.ident.span.ctxt()
         {
             let name = last_segment.ident.name.as_str()[..=2].to_ascii_uppercase();
             (format!("{mod_name}::{name}"), "usage of a legacy numeric method")

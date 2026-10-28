@@ -236,20 +236,14 @@ fn check_invalid_clippy_version_attribute(cx: &LateContext<'_>, item: &'_ Item<'
 /// This function extracts the version value of a `clippy::version` attribute if the given value has
 /// one
 pub(super) fn extract_clippy_version_value(cx: &LateContext<'_>, item: &'_ Item<'_>) -> Option<Symbol> {
-    let attrs = cx.tcx.hir_attrs(item.hir_id());
-    attrs.iter().find_map(|attr| {
-        if let rustc_attr_ir::Attribute::Unparsed(attr_kind) = &attr
-            // Identify attribute
-            && let [tool_name, attr_name] = &attr_kind.path.segments[..]
-            && tool_name == &sym::clippy
-            && attr_name == &sym::version
-            && let Some(version) = attr.value_str()
-        {
-            Some(version)
-        } else {
-            None
-        }
-    })
+    let first = cx
+        .tcx
+        .hir_tool_attrs(item.hir_id(), &[sym::clippy, sym::version])
+        .next()?;
+    let AttrArgs::Eq { expr, .. } = attr.args else {
+        return None;
+    };
+    expr.value_as_str();
 }
 
 struct LintCollector<'a, 'tcx> {

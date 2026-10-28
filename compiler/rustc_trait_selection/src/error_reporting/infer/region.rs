@@ -7,7 +7,7 @@ use rustc_errors::{
 use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::{self as hir, ParamName};
+use rustc_hir::{self as hir, GenericParamKind, ParamName};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_bound_vars as rbv;
 use rustc_middle::traits::ObligationCauseCode;
@@ -772,9 +772,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
         }
 
+        let msg = "consider adding an explicit lifetime bound";
         'suggestion: {
-            let msg = "consider adding an explicit lifetime bound";
-
             if (bound_kind, sub).has_infer_regions()
                 || (bound_kind, sub).has_placeholders()
                 || !bound_kind.is_suggestable(self.tcx, false)
@@ -894,15 +893,18 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         if sub.kind() == ty::ReStatic
             && let Some(node) = self.tcx.hir_get_if_local(generic_param_scope.into())
             && let hir::Node::Item(hir::Item {
-                kind: hir::ItemKind::Fn { sig, body, has_body: true, .. },
+                kind: hir::ItemKind::Fn { sig, body, generics, has_body: true, .. },
                 ..
             })
             | hir::Node::TraitItem(hir::TraitItem {
                 kind: hir::TraitItemKind::Fn(sig, hir::TraitFn::Provided(body)),
+                generics,
                 ..
             })
             | hir::Node::ImplItem(hir::ImplItem {
-                kind: hir::ImplItemKind::Fn(sig, body), ..
+                kind: hir::ImplItemKind::Fn(sig, body),
+                generics,
+                ..
             }) = node
             && let hir::Node::Expr(expr) = self.tcx.hir_node(body.hir_id)
             && let hir::ExprKind::Block(block, _) = expr.kind
@@ -925,6 +927,27 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 ty.span,
                 format!("this `dyn Trait` has an implicit `'static` lifetime bound"),
             );
+            let lt_name = "'a";
+            if generics
+                .params
+                .iter()
+                .filter(|p| matches!(p.kind, GenericParamKind::Lifetime { .. }))
+                .count()
+                == 0
+            {
+                let (span, suggestion) = if let Some(span) = generics.span_for_lifetime_suggestion()
+                {
+                    (span, format!("{lt_name}, "))
+                } else {
+                    (generics.span, format!("<{lt_name}>"))
+                };
+
+                err.multipart_suggestion(
+                    msg,
+                    vec![(span, suggestion), (ty.span.shrink_to_hi(), format!(" + {lt_name}"))],
+                    Applicability::MaybeIncorrect,
+                );
+            }
         }
 
         err
@@ -1024,7 +1047,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn report_inference_failure(&self, var_origin: RegionVariableOrigin<'tcx>) -> Diag<'_> {
         let br_string = |br: ty::BoundRegionKind<'tcx>| {
             let mut s = match br {
-                ty::BoundRegionKind::Named(def_id) => self.tcx.item_name(def_id).to_string(),
+                ty::BoundRegionKind::Named(def_id) => format!("`{}`", self.tcx.item_name(def_id)),
                 _ => String::new(),
             };
             if !s.is_empty() {

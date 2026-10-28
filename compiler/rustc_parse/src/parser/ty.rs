@@ -237,17 +237,8 @@ impl<'a> Parser<'a> {
         recover_return_sign: RecoverReturnSign,
     ) -> PResult<'a, FnRetTy> {
         let lo = self.prev_token.span;
-        Ok(if self.eat(exp!(RArrow)) {
-            // FIXME(Centril): Can we unconditionally `allow_plus`?
-            let ty = self.parse_ty_common(
-                allow_plus,
-                AllowCVariadic::No,
-                recover_qpath,
-                recover_return_sign,
-                None,
-                RecoverQuestionMark::Yes,
-            )?;
-            FnRetTy::Ty(ty)
+        let ate_arrow = if self.eat(exp!(RArrow)) {
+            true
         } else if recover_return_sign.can_recover(&self.token.kind) {
             // Don't `eat` to prevent `=>` from being added as an expected token which isn't
             // actually expected and could only confuse users
@@ -256,15 +247,42 @@ impl<'a> Parser<'a> {
                 span: self.prev_token.span,
                 suggestion: lo.between(self.token.span),
             });
-            let ty = self.parse_ty_common(
-                allow_plus,
-                AllowCVariadic::No,
-                recover_qpath,
-                recover_return_sign,
-                None,
-                RecoverQuestionMark::Yes,
-            )?;
-            FnRetTy::Ty(ty)
+            true
+        } else {
+            false
+        };
+
+        Ok(if ate_arrow {
+            FnRetTy::Ty(
+                // FIXME(Centril): Can we unconditionally `allow_plus`?
+                match self.parse_ty_common(
+                    allow_plus,
+                    AllowCVariadic::No,
+                    recover_qpath,
+                    recover_return_sign,
+                    None,
+                    RecoverQuestionMark::Yes,
+                ) {
+                    Ok(ty) => ty,
+                    Err(e) if self.may_recover() => {
+                        while !matches!(
+                            self.token.kind,
+                            TokenKind::OpenBrace
+                                | TokenKind::CloseBrace
+                                | TokenKind::Semi
+                                | TokenKind::Eof
+                        ) {
+                            self.bump();
+                        }
+                        // only emit the recovered type if the end of the type actually was found
+                        if self.token.kind == TokenKind::Eof {
+                            return Err(e);
+                        }
+                        self.mk_ty(self.prev_token.span, TyKind::Err(e.emit_err()))
+                    }
+                    Err(e) => return Err(e),
+                },
+            )
         } else {
             FnRetTy::Default(self.prev_token.span.shrink_to_hi())
         })

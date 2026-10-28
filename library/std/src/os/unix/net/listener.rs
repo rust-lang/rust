@@ -1,4 +1,5 @@
 use super::{SocketAddr, UnixStream, sockaddr_un};
+use crate::macros::rustdoc_skip_body;
 use crate::os::unix::io::{
     AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd, unsafe_impl_fd_asrefs,
 };
@@ -225,6 +226,7 @@ impl UnixListener {
     /// }
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
+    #[rustdoc_skip_body]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
         SocketAddr::new(|addr, len| unsafe { libc::getsockname(self.as_raw_fd(), addr, len) })
     }
@@ -320,6 +322,7 @@ impl UnixListener {
 #[stable(feature = "unix_socket", since = "1.10.0")]
 impl AsRawFd for UnixListener {
     #[inline]
+    #[rustdoc_skip_body]
     fn as_raw_fd(&self) -> RawFd {
         self.0.as_inner().as_raw_fd()
     }
@@ -328,6 +331,7 @@ impl AsRawFd for UnixListener {
 #[stable(feature = "unix_socket", since = "1.10.0")]
 impl FromRawFd for UnixListener {
     #[inline]
+    #[rustdoc_skip_body]
     unsafe fn from_raw_fd(fd: RawFd) -> UnixListener {
         UnixListener(Socket::from_inner(FromInner::from_inner(OwnedFd::from_raw_fd(fd))))
     }
@@ -336,6 +340,7 @@ impl FromRawFd for UnixListener {
 #[stable(feature = "unix_socket", since = "1.10.0")]
 impl IntoRawFd for UnixListener {
     #[inline]
+    #[rustdoc_skip_body]
     fn into_raw_fd(self) -> RawFd {
         self.0.into_inner().into_inner().into_raw_fd()
     }
@@ -344,6 +349,7 @@ impl IntoRawFd for UnixListener {
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl AsFd for UnixListener {
     #[inline]
+    #[rustdoc_skip_body]
     fn as_fd(&self) -> BorrowedFd<'_> {
         self.0.as_inner().as_fd()
     }
@@ -352,6 +358,7 @@ impl AsFd for UnixListener {
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl From<OwnedFd> for UnixListener {
     #[inline]
+    #[rustdoc_skip_body]
     fn from(fd: OwnedFd) -> UnixListener {
         UnixListener(Socket::from_inner(FromInner::from_inner(fd)))
     }
@@ -366,6 +373,7 @@ unsafe_impl_fd_asrefs!(UnixListener);
 impl From<UnixListener> for OwnedFd {
     /// Takes ownership of a [`UnixListener`]'s socket file descriptor.
     #[inline]
+    #[rustdoc_skip_body]
     fn from(listener: UnixListener) -> OwnedFd {
         listener.0.into_inner().into_inner()
     }

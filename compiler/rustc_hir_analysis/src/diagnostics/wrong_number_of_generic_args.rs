@@ -993,7 +993,9 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                     gen_arg_spans[self.num_expected_type_or_const_args() - 1]
                 };
             let span_hi_redundant_type_or_const_args = gen_arg_spans[gen_arg_spans.len() - 1];
-            if !span_lo_redundant_type_or_const_args.eq_ctxt(span_hi_redundant_type_or_const_args) {
+            if span_lo_redundant_type_or_const_args.ctxt()
+                != span_hi_redundant_type_or_const_args.ctxt()
+            {
                 return;
             }
             let span_redundant_type_or_const_args = span_lo_redundant_type_or_const_args

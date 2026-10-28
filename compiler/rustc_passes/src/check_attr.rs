@@ -136,7 +136,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(attr_kind) => {
                     self.check_one_parsed_attribute(hir_id, span, target, item, attr_kind);
                 }
-                Attribute::Unparsed(u) => {
+                Attribute::Tool(u) | Attribute::DeriveHelper(u) => {
                     match &*u.path.segments {
                         [name, rest @ ..] => {
                             if BUILTIN_ATTRIBUTE_SET.contains(name) {

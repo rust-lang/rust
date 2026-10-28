@@ -1,4 +1,4 @@
-error[E0803]: cannot infer an appropriate lifetime for lifetime parameter 's in generic type due to conflicting requirements
+error[E0803]: cannot infer an appropriate lifetime for lifetime parameter `'s` in generic type due to conflicting requirements
   --> $DIR/impl-implied-bounds-compatibility-unnormalized.rs:11:5
    |
 LL |     fn get<'s>(s: &'s str, _: <&'static &'s () as Project>::Ty) -> &'static str {

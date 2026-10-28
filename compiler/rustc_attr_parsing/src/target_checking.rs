@@ -144,7 +144,7 @@ impl<'sess> AttributeParser<'sess> {
             // exactly but is as close as we can get.
             cx.inner_span
         };
-        let target_span = if span.eq_ctxt(cx.target_span) && cx.target != Target::Crate {
+        let target_span = if span.ctxt() == cx.target_span.ctxt() && cx.target != Target::Crate {
             cx.target_span.shrink_to_lo()
         } else {
             span
@@ -368,7 +368,7 @@ impl<'sess> AttributeParser<'sess> {
                     Attribute::Parsed(AttributeKind::Doc(attr)) => Some(attr.first_span),
                     // Checked during attribute parsing target checking
                     Attribute::Parsed(_) => None,
-                    Attribute::Unparsed(attr) => Some(attr.span),
+                    Attribute::Tool(attr) | Attribute::DeriveHelper(attr) => Some(attr.span),
                 }
             })
             .collect::<Vec<_>>();

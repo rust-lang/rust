@@ -214,7 +214,7 @@ fn emit_lint<'tcx>(
 pub(super) fn check_map(cx: &LateContext<'_>, expr: &Expr<'_>, msrv: Msrv) {
     if let Some(parent_expr) = get_parent_expr(cx, expr)
         && let ExprKind::Binary(op, left, right) = parent_expr.kind
-        && op.span.eq_ctxt(expr.span)
+        && op.span.ctxt() == expr.span.ctxt()
         && let Ok(op) = Op::try_from(op.node)
     {
         // Check `left` and `right` expression in any order

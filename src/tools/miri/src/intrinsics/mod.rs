@@ -9,7 +9,6 @@ mod x86;
 #[rustfmt::skip] // prevent `use` reordering
 use rand::RngExt;
 use rustc_abi::{Endian, Size};
-use rustc_attr_ir::Attribute;
 use rustc_middle::{mir, ty};
 use rustc_span::sym;
 use rustc_target::spec::Arch;
@@ -60,10 +59,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             if this.tcx.intrinsic(instance.def_id()).unwrap().must_be_overridden {
                 throw_unsup_format!("unimplemented intrinsic: `{intrinsic_name}`")
             }
-            #[expect(deprecated, reason = "not actually deprecated for unparsed tool attributes")]
-            let intrinsic_fallback_is_spec = this.tcx.get_all_attrs(instance.def_id()).iter().any(|a| {
-                matches!(a, Attribute::Unparsed(u) if *u.path.segments == [sym::miri, sym::intrinsic_fallback_is_spec])
-            });
+            let intrinsic_fallback_is_spec = this
+                .tcx
+                .tool_attrs(
+                    instance.def_id(),
+                    &[sym::miri, sym::intrinsic_fallback_is_spec],
+                )
+                .next()
+                .is_some();
             if !intrinsic_fallback_is_spec {
                 throw_unsup_format!(
                     "Miri can only use intrinsic fallback bodies that exactly reflect the specification: they fully check for UB and are as non-deterministic as possible. After verifying that `{intrinsic_name}` does so, add the `#[miri::intrinsic_fallback_is_spec]` attribute to it; also ping @rust-lang/miri when you do that"
