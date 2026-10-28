@@ -40,7 +40,7 @@ use thin_vec::{ThinVec, thin_vec};
 use crate::attr::data_structures::CfgEntry;
 pub use crate::format::*;
 use crate::token::{self, CommentKind, Delimiter};
-use crate::tokenstream::{DelimSpan, LazyAttrTokenStream, TokenStream, TokenTree};
+use crate::tokenstream::{DelimSpan, LazyTokenStream, TokenStream, TokenTree};
 use crate::util::parser::{ExprPrecedence, Fixity};
 use crate::visit::{AssocCtxt, BoundKind, LifetimeCtxt};
 
@@ -1221,7 +1221,7 @@ impl Stmt {
     /// a trailing semicolon.
     ///
     /// This only modifies the parsed AST struct, not the attached
-    /// `LazyAttrTokenStream`. The parser is responsible for calling
+    /// `LazyTokenStream`. The parser is responsible for calling
     /// `ToAttrTokenStream::add_trailing_semi` when there is actually
     /// a semicolon in the tokenstream.
     pub fn add_trailing_semicolon(mut self) -> Self {
@@ -1281,7 +1281,7 @@ pub struct MacCallStmt {
     pub mac: Box<MacCall>,
     pub style: MacStmtStyle,
     pub attrs: AttrVec,
-    pub tokens: Option<LazyAttrTokenStream>,
+    pub tokens: Option<LazyTokenStream>,
 }
 
 #[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, Walkable)]
@@ -1308,7 +1308,7 @@ pub struct Local {
     pub span: Span,
     pub colon_sp: Option<Span>,
     pub attrs: AttrVec,
-    pub tokens: Option<LazyAttrTokenStream>,
+    pub tokens: Option<LazyTokenStream>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
@@ -1409,7 +1409,7 @@ pub struct Expr {
     pub kind: ExprKind,
     pub span: Span,
     pub attrs: AttrVec,
-    pub tokens: Option<LazyAttrTokenStream>,
+    pub tokens: Option<LazyTokenStream>,
 }
 
 impl Expr {
@@ -3605,7 +3605,7 @@ impl GeneratedAttr {
         }
     }
 
-    pub fn token_trees(&self) -> Vec<TokenTree> {
+    pub fn append_token_trees_to(&self, _res: &mut Vec<TokenTree>) {
         unimplemented!(
             "generated attribute `{}` cannot re-enter the parser at this time",
             self.descr()
@@ -3618,7 +3618,7 @@ pub struct NormalAttr {
     pub item: AttrItem,
     // Tokens for the full attribute, e.g. `#[foo]`, `#![bar]`. (Compare this with
     // `ParseNtResult::Meta`; `expand_cfg_attr_item` is where the two cases interact.)
-    pub tokens: Option<LazyAttrTokenStream>,
+    pub tokens: Option<LazyTokenStream>,
 }
 
 impl NormalAttr {
@@ -3889,7 +3889,7 @@ pub struct Item<K = ItemKind> {
     ///
     /// Note that the tokens here do not include the outer attributes, but will
     /// include inner attributes.
-    pub tokens: Option<LazyAttrTokenStream>,
+    pub tokens: Option<LazyTokenStream>,
 }
 
 impl Item {
