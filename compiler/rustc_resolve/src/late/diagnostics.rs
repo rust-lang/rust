@@ -2646,7 +2646,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                                 &expression,
                                 applicability,
                             ) {
-                                err.span_suggestion(
+                                err.span_suggestion_verbose(
                                     span,
                                     format!("use struct {descr} syntax instead"),
                                     expression,
