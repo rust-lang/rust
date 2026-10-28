@@ -62,6 +62,9 @@ fn main() {
     test_fallocate::<libc::off64_t>(libc::fallocate64);
     #[cfg(target_os = "linux")]
     test_sync_file_range();
+    test_fsync(libc::fsync);
+    #[cfg(not(target_os = "macos"))]
+    test_fsync(libc::fdatasync);
     test_opendir_closedir();
     test_readdir();
     test_dirfd();
@@ -1072,6 +1075,19 @@ fn test_sync_file_range() {
     drop(file);
 
     fs::remove_file(&path).unwrap();
+}
+
+fn test_fsync(fsync: unsafe extern "C" fn(fd: libc::c_int) -> libc::c_int) {
+    let path = utils::prepare_with_content("miri-pass-libc-fsync.txt", b"hello");
+    let c_path = utils::into_c_string(&path);
+    let fd = errno_result(unsafe { libc::open(c_path.as_ptr(), libc::O_RDONLY) }).unwrap();
+
+    // Test calling fsync or fdatasync on the file.
+    errno_check(unsafe { fsync(fd) });
+
+    // invalid fd
+    let err = errno_result(unsafe { fsync(-1) }).unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::EBADF);
 }
 
 fn test_fstat() {
