@@ -432,7 +432,7 @@ fn layout_of_uncached<'tcx>(
         }
 
         // The never type.
-        ty::Never => tcx.mk_layout(LayoutData::never_type(cx)),
+        ty::Never => tcx.mk_layout(LayoutData::never_type()),
 
         // Potentially-wide pointers.
         ty::Ref(_, pointee, _) | ty::RawPtr(pointee, _) => {
@@ -543,7 +543,7 @@ fn layout_of_uncached<'tcx>(
         // Odd unit types.
         ty::FnDef(..) | ty::Dynamic(_, _) | ty::Foreign(..) => {
             let sized = matches!(ty.kind(), ty::FnDef(..));
-            tcx.mk_layout(LayoutData::unit(cx, sized))
+            tcx.mk_layout(LayoutData::unit(sized))
         }
 
         ty::Coroutine(def_id, args) => {
