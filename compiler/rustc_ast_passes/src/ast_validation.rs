@@ -2235,9 +2235,17 @@ impl Visitor<'_> for AstValidator<'_> {
             Self::check_decl_no_pat(&args.inputs, |span, _, _| {
                 self.dcx().emit_err(diagnostics::PatternParenthesizedArgList { span });
             });
-            for arg in &args.inputs {
+
+            let mut args = args.inputs.iter().peekable();
+            while let Some(arg) = args.next() {
                 if matches!(arg.ty.kind, TyKind::CVarArgs) {
-                    self.dcx().emit_err(diagnostics::PathFoundCVariadicParams { span: arg.span });
+                    let sugg_span = arg
+                        .span
+                        .until(args.peek().map(|a| a.span).unwrap_or(arg.span.shrink_to_hi()));
+                    self.dcx().emit_err(diagnostics::PathFoundCVariadicParams {
+                        span: arg.ty.span,
+                        sugg_span,
+                    });
                 }
             }
         }

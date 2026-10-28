@@ -2,7 +2,7 @@ error: C-variadic parameters aren't allowed in parenthesized argument lists
   --> $DIR/fn-trait-use-named-params-issue-140169.rs:7:22
    |
 LL | fn f5(_: impl Fn(u8, ...)) {}
-   |                      ^^^ help: remove the `...`
+   |                      ^^^ help: remove the C-variadics
 
 error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
   --> $DIR/fn-trait-use-named-params-issue-140169.rs:11:18
