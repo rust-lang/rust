@@ -5,7 +5,6 @@
 #![stable(feature = "core_array", since = "1.35.0")]
 
 use crate::borrow::{Borrow, BorrowMut};
-use crate::clone::TrivialClone;
 use crate::cmp::Ordering;
 use crate::error::Error;
 use crate::hash::{self, Hash};
@@ -456,44 +455,36 @@ impl<T: Copy, const N: usize> Copy for [T; N] {}
 impl<T: Clone, const N: usize> Clone for [T; N] {
     #[inline]
     fn clone(&self) -> Self {
-        SpecArrayClone::clone(self)
+        let func = const {
+            if crate::marker::is_definitely_copy::<Self>() {
+                #[inline]
+                fn copy<T>(array: &T) -> T {
+                    // SAFETY: Only called for `Copy` implementors
+                    unsafe { ptr::read(array) }
+                }
+                copy
+            } else {
+                #[inline]
+                fn clone<T: Clone, const N: usize>(array: &[T; N]) -> [T; N] {
+                    let mut ptr: *const T = array.as_ptr();
+                    // SAFETY: Unless a panic occurs, from_fn will call the closure N times,
+                    // so our pointer arithmetic will be in bounds for the N-element array.
+                    // This works even for ZSTs, since in that case, add() is a no-op.
+                    from_fn(move |_| unsafe {
+                        let old = ptr;
+                        ptr = ptr.add(1);
+                        (&*old).clone()
+                    })
+                }
+                clone::<T, N>
+            }
+        };
+        func(self)
     }
 
     #[inline]
     fn clone_from(&mut self, other: &Self) {
         self.clone_from_slice(other);
-    }
-}
-
-#[doc(hidden)]
-#[unstable(feature = "trivial_clone", issue = "none")]
-unsafe impl<T: TrivialClone, const N: usize> TrivialClone for [T; N] {}
-
-trait SpecArrayClone: Clone {
-    fn clone<const N: usize>(array: &[Self; N]) -> [Self; N];
-}
-
-impl<T: Clone> SpecArrayClone for T {
-    #[inline]
-    default fn clone<const N: usize>(array: &[T; N]) -> [T; N] {
-        let mut ptr: *const T = array.as_ptr();
-        // SAFETY: Unless a panic occurs, from_fn will call the closure N times,
-        // so our pointer arithmetic will be in bounds for the N-element array.
-        // This works even for ZSTs, since in that case, add() is a no-op.
-        from_fn(move |_| unsafe {
-            let old = ptr;
-            ptr = ptr.add(1);
-            (&*old).clone()
-        })
-    }
-}
-
-impl<T: TrivialClone> SpecArrayClone for T {
-    #[inline]
-    fn clone<const N: usize>(array: &[T; N]) -> [T; N] {
-        // SAFETY: `TrivialClone` implies that this is equivalent to calling
-        // `Clone` on every element.
-        unsafe { ptr::read(array) }
     }
 }
 
