@@ -5,7 +5,7 @@ use gccjit::{BinaryOp, RValue, ToRValue, Type};
 use gccjit::{ComparisonOp, UnaryOp};
 use rustc_abi::{Align, Size};
 use rustc_codegen_ssa::base::compare_simd_types;
-use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
+use rustc_codegen_ssa::common::IntPredicate;
 #[cfg(feature = "master")]
 use rustc_codegen_ssa::diagnostics::ExpectedPointerMutability;
 use rustc_codegen_ssa::diagnostics::InvalidMonomorphization;
@@ -191,7 +191,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             }
         );
         require!(
-            bx.type_kind(bx.element_type(llret_ty)) == TypeKind::Integer,
+            bx.vector_element_type(llret_ty).is_some_and(|elem| bx.int_width(elem).is_some()),
             InvalidMonomorphization::ReturnIntegerType { span, name, ret_ty, out_ty }
         );
 
@@ -246,7 +246,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
 
     if matches!(name, sym::simd_bswap | sym::simd_bitreverse | sym::simd_ctpop) {
         require!(
-            bx.type_kind(bx.element_type(llret_ty)) == TypeKind::Integer,
+            bx.vector_element_type(llret_ty).is_some_and(|elem| bx.int_width(elem).is_some()),
             InvalidMonomorphization::UnsupportedOperation { span, name, in_ty, in_elem }
         );
     }
@@ -279,7 +279,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
 
     let simd_ctpop = |bx: &mut Builder<'a, 'gcc, 'tcx>, vector: RValue<'gcc>| -> RValue<'gcc> {
         let mut vector_elements = vec![];
-        let elem_ty = bx.element_type(llret_ty);
+        let elem_ty = bx.vector_element_type(llret_ty).expect("SIMD return type was not a vector");
         for i in 0..in_len {
             let index = bx.context.new_rvalue_from_long(bx.ulong_type, i as i64);
             let element = bx.extract_element(vector, index).to_rvalue();

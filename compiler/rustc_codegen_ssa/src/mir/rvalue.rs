@@ -1,4 +1,5 @@
 use std::assert_matches;
+use std::cmp::Ordering;
 
 use itertools::Itertools as _;
 use rustc_abi::{self as abi, BackendRepr, FIRST_VARIANT};
@@ -14,7 +15,7 @@ use tracing::{debug, instrument};
 use super::FunctionCx;
 use super::operand::{OperandRef, OperandRefBuilder, OperandValue};
 use super::place::{PlaceRef, PlaceValue, codegen_tag_value};
-use crate::common::{IntPredicate, TypeKind};
+use crate::common::IntPredicate;
 use crate::traits::*;
 use crate::{MemFlags, base};
 
@@ -464,17 +465,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         imm = match (from_scalar.primitive(), to_scalar.primitive()) {
             (Int(_, is_signed), Int(..)) => bx.intcast(imm, to_backend_ty, is_signed),
-            (Float(_), Float(_)) => {
-                let srcsz = bx.cx().float_width(from_backend_ty);
-                let dstsz = bx.cx().float_width(to_backend_ty);
-                if dstsz > srcsz {
-                    bx.fpext(imm, to_backend_ty)
-                } else if srcsz > dstsz {
-                    bx.fptrunc(imm, to_backend_ty)
-                } else {
-                    imm
-                }
-            }
+            (Float(src), Float(dst)) => match dst.size().cmp(&src.size()) {
+                Ordering::Greater => bx.fpext(imm, to_backend_ty),
+                Ordering::Less => bx.fptrunc(imm, to_backend_ty),
+                Ordering::Equal => imm,
+            },
             (Int(_, is_signed), Float(_)) => {
                 if is_signed {
                     bx.sitofp(imm, to_backend_ty)
@@ -1093,9 +1088,8 @@ pub(super) fn transmute_scalar<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 ) -> Bx::Value {
     assert_eq!(from_scalar.size(bx.cx()), to_scalar.size(bx.cx()));
     let imm_ty = bx.cx().val_ty(imm);
-    assert_ne!(
-        bx.cx().type_kind(imm_ty),
-        TypeKind::Vector,
+    assert!(
+        bx.cx().vector_element_type(imm_ty).is_none(),
         "Vector type {imm_ty:?} not allowed in transmute_scalar {from_scalar:?} -> {to_scalar:?}"
     );
 
