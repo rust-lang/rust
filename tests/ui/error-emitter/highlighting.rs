@@ -21,4 +21,4 @@ fn main() {
     query(wrapped_fn);
 }
 
-//~? RAW [35mfor<'a> [0m
+//~? RAW [96mfor<'a> [0m
