@@ -1,0 +1,22 @@
+error[E0382]: use of moved value: `cl`
+  --> $DIR/byuse-byval-fail.rs:18:5
+   |
+LL |     cl();
+   |     ---- `cl` moved due to this call
+LL |     cl()
+   |     ^^ value used here after move
+   |
+note: closure cannot be invoked more than once because it moves the variable `x` out of its environment
+  --> $DIR/byuse-byval-fail.rs:14:9
+   |
+LL |         x
+   |         ^
+note: this value implements `FnOnce`, which causes it to be moved when called
+  --> $DIR/byuse-byval-fail.rs:17:5
+   |
+LL |     cl();
+   |     ^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.
