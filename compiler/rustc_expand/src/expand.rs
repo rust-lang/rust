@@ -141,7 +141,7 @@ macro_rules! ast_fragments {
                 match self {
                     AstFragment::OptExpr(opt_expr) => {
                         if let Some(expr) = opt_expr.take() {
-                            *opt_expr = vis.filter_map_expr(*expr).map(Box::new)
+                            *opt_expr = Box::try_map(expr, |expr| vis.filter_map_expr(expr))
                         }
                     }
                     AstFragment::MethodReceiverExpr(expr) => vis.visit_method_receiver_expr(expr),
