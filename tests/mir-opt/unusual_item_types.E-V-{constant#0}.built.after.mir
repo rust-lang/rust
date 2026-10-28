@@ -4,7 +4,7 @@ E::V::{constant#0}: isize = {
     let mut _0: isize;
 
     bb0: {
-        _0 = const 5_isize;
+        _0 = BitOr(const 5_isize, const 0_isize);
         return;
     }
 }

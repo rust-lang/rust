@@ -7,7 +7,8 @@ struct A;
 
 // EMIT_MIR unusual_item_types.{impl#0}-ASSOCIATED_CONSTANT.built.after.mir
 impl A {
-    const ASSOCIATED_CONSTANT: i32 = 2;
+    // The `|` makes it not a `trivial_const`, so it gets MIR built for it.
+    const ASSOCIATED_CONSTANT: i32 = 2 | 0;
 }
 
 // See #59021
@@ -19,7 +20,8 @@ enum Test {
 
 // EMIT_MIR unusual_item_types.E-V-{constant#0}.built.after.mir
 enum E {
-    V = 5,
+    // The `|` makes it not a `trivial_const`, so it gets MIR built for it.
+    V = 5 | 0,
 }
 
 // EMIT_MIR core.ptr-drop_glue.Vec_i32_.AddMovesForPackedDrops.before.mir

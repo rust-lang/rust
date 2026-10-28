@@ -62,12 +62,6 @@ const C6: () = {
     impl S {}
     fn _f() {}
 };
-const C7: u32 = {
-    let _: usize;
-    0
-};
-const C8: u8 = unsafe { 0 };
-const C9: usize = 'a: { 0 };
 
 // Non-`const` cases
 enum E { V1 = 5, V2 = 6 }   // 5 and 6 are the trivial consts
@@ -83,7 +77,6 @@ struct S;
 impl S {
     const K1: usize = 1;
     const K2: usize = Self::K1;
-    const K3: Self = Self;
 }
 const D6: usize = S::K1;
 const D7: usize = { ({ S::K2 }) as usize };
@@ -125,10 +118,21 @@ const H4: u32 = {
     let _ = 3;                  // non-item statement
     0
 };
+const H5: u32 = {
+    let _: usize;               // non-item statement
+    0
+};
+const H6: u8 = unsafe { 0 };    // unsafe
+const H7: usize = 'a: { 0 };    // targeted_by_break
 
 // Inline const
 fn inline_const() -> usize {
     const { 0 }
+}
+
+// Paths
+impl S {
+    const K3: Self = Self;      // constructor, not const
 }
 
 // TAIT

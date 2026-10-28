@@ -56,12 +56,6 @@ fn _f() -> () {
     }
 }
 
-const C7: u32 = const 0_u32;
-
-const C8: u8 = const 0_u8;
-
-const C9: usize = const 0_usize;
-
 const E::V1::{constant#0}: isize = const 5_isize;
 
 const E::V2::{constant#0}: isize = const 6_isize;
@@ -89,11 +83,9 @@ const D4: f32 = const 3.14159274f32;
 
 const D5: char = const '\u{10ffff}';
 
-const <impl at $DIR/trivial-consts.rs:83:1: 83:7>::K1: usize = const 1_usize;
+const <impl at $DIR/trivial-consts.rs:77:1: 77:7>::K1: usize = const 1_usize;
 
-const <impl at $DIR/trivial-consts.rs:83:1: 83:7>::K2: usize = const 1_usize;
-
-const <impl at $DIR/trivial-consts.rs:83:1: 83:7>::K3: S = const S;
+const <impl at $DIR/trivial-consts.rs:77:1: 77:7>::K2: usize = const 1_usize;
 
 const D6: usize = const 1_usize;
 
@@ -398,6 +390,35 @@ const H4: u32 = {
     }
 }
 
+const H5: u32 = {
+    let mut _0: u32;
+    scope 1 {
+    }
+
+    bb0: {
+        _0 = const 0_u32;
+        return;
+    }
+}
+
+const H6: u8 = {
+    let mut _0: u8;
+
+    bb0: {
+        _0 = const 0_u8;
+        return;
+    }
+}
+
+const H7: usize = {
+    let mut _0: usize;
+
+    bb0: {
+        _0 = const 0_usize;
+        return;
+    }
+}
+
 fn inline_const() -> usize {
     let mut _0: usize;
 
@@ -412,6 +433,15 @@ inline_const::{constant#0}: usize = {
 
     bb0: {
         _0 = const 0_usize;
+        return;
+    }
+}
+
+const <impl at $DIR/trivial-consts.rs:134:1: 134:7>::K3: S = {
+    let mut _0: S;
+
+    bb0: {
+        _0 = const S;
         return;
     }
 }
@@ -434,9 +464,9 @@ const Tr::B: usize = {
     }
 }
 
-const <impl at $DIR/trivial-consts.rs:144:1: 144:14>::A: usize = const 0_usize;
+const <impl at $DIR/trivial-consts.rs:148:1: 148:14>::A: usize = const 0_usize;
 
-const <impl at $DIR/trivial-consts.rs:148:1: 148:17>::C: usize = {
+const <impl at $DIR/trivial-consts.rs:152:1: 152:17>::C: usize = {
     let mut _0: usize;
 
     bb0: {
@@ -445,7 +475,7 @@ const <impl at $DIR/trivial-consts.rs:148:1: 148:17>::C: usize = {
     }
 }
 
-const <impl at $DIR/trivial-consts.rs:151:1: 151:13>::K: usize = const 0_usize;
+const <impl at $DIR/trivial-consts.rs:155:1: 155:13>::K: usize = const 0_usize;
 
 const J1: usize = {
     let mut _0: usize;
