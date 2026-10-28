@@ -87,9 +87,9 @@ impl<'cx, 'a> Context<'cx, 'a> {
         stmts.push(initial_imports);
         stmts.extend(capture_decls.into_iter().map(|c| c.decl));
         stmts.extend(local_bind_decls);
-        stmts.push(
-            cx.stmt_expr(cx.expr(span, ExprKind::If(Box::new(cond_expr_with_unlikely), assert_then, None))),
-        );
+        stmts.push(cx.stmt_expr(
+            cx.expr(span, ExprKind::If(Box::new(cond_expr_with_unlikely), assert_then, None)),
+        ));
         cx.expr_block(cx.block(span, stmts))
     }
 
@@ -354,12 +354,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
     ///    (&Wrapper(__local_bindN)).try_capture(&mut __captureN);
     ///    __local_bindN
     /// }
-    fn manage_try_capture(
-        &mut self,
-        capture: Ident,
-        curr_capture_idx: usize,
-        expr: &mut Expr,
-    ) {
+    fn manage_try_capture(&mut self, capture: Ident, curr_capture_idx: usize, expr: &mut Expr) {
         let local_bind_string = format!("__local_bind{curr_capture_idx}");
         let local_bind = Symbol::intern(&local_bind_string);
         self.local_bind_decls.push(self.cx.stmt_let(

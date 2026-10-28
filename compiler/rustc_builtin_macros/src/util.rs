@@ -245,7 +245,8 @@ pub(crate) fn get_exprs_from_tts(
 
         // Perform eager expansion on the expression.
         // We want to be able to handle e.g., `concat!("foo", "bar")`.
-        let expr = cx.expander().fully_expand_fragment(AstFragment::Expr(Box::new(expr))).make_expr();
+        let expr =
+            cx.expander().fully_expand_fragment(AstFragment::Expr(Box::new(expr))).make_expr();
 
         es.push(expr);
         if p.eat(exp!(Comma)) {

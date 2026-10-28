@@ -1125,7 +1125,9 @@ pub fn parse_ast_fragment<'a>(
             AstFragment::Stmts(stmts)
         }
         AstFragmentKind::Expr => AstFragment::Expr(Box::new(this.parse_expr()?)),
-        AstFragmentKind::MethodReceiverExpr => AstFragment::MethodReceiverExpr(Box::new(this.parse_expr()?)),
+        AstFragmentKind::MethodReceiverExpr => {
+            AstFragment::MethodReceiverExpr(Box::new(this.parse_expr()?))
+        }
         AstFragmentKind::OptExpr => {
             if this.token != token::Eof {
                 AstFragment::OptExpr(Some(Box::new(this.parse_expr()?)))

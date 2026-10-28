@@ -537,7 +537,8 @@ mod llvm_enzyme {
                 decl_span: span,
             })),
         );
-        let primal_fn_ptr = ecx.expr(span, ast::ExprKind::Cast(Box::from(primal_path_expr), fn_ptr_ty));
+        let primal_fn_ptr =
+            ecx.expr(span, ast::ExprKind::Cast(Box::from(primal_path_expr), fn_ptr_ty));
 
         let diff_path_expr = gen_turbofish_expr(ecx, diff, generics, span, is_impl);
 

@@ -736,11 +736,7 @@ impl<'a> Parser<'a> {
         res
     }
 
-    pub(super) fn parse_dot_suffix_expr(
-        &mut self,
-        lo: Span,
-        base: Expr,
-    ) -> PResult<'a, Expr> {
+    pub(super) fn parse_dot_suffix_expr(&mut self, lo: Span, base: Expr) -> PResult<'a, Expr> {
         // At this point we've consumed something like `expr.` and `self.token` holds the token
         // after the dot.
         match self.token.uninterpolate().kind {
@@ -1041,7 +1037,10 @@ impl<'a> Parser<'a> {
                 suffix,
             });
         }
-        self.mk_expr(lo.to(ident_span), ExprKind::Field(Box::new(base), Ident::new(field, ident_span)))
+        self.mk_expr(
+            lo.to(ident_span),
+            ExprKind::Field(Box::new(base), Ident::new(field, ident_span)),
+        )
     }
 
     /// Parse a function call expression, `expr(...)`.
@@ -1200,9 +1199,10 @@ impl<'a> Parser<'a> {
         if self.eat_keyword(exp!(Yield)) {
             let yield_span = self.prev_token.span;
             self.psess.gated_spans.gate(sym::yield_expr, yield_span);
-            return Ok(
-                self.mk_expr(lo.to(yield_span), ExprKind::Yield(YieldKind::Postfix(Box::new(self_arg))))
-            );
+            return Ok(self.mk_expr(
+                lo.to(yield_span),
+                ExprKind::Yield(YieldKind::Postfix(Box::new(self_arg))),
+            ));
         }
 
         let fn_span_lo = self.token.span;
@@ -1795,7 +1795,8 @@ impl<'a> Parser<'a> {
         } else {
             None
         };
-        let expr = self.mk_expr(lo.to(self.prev_token.span), ExprKind::Break(label, kind.map(Box::new)));
+        let expr =
+            self.mk_expr(lo.to(self.prev_token.span), ExprKind::Break(label, kind.map(Box::new)));
         self.maybe_recover_from_bad_qpath(expr)
     }
 
@@ -2476,7 +2477,10 @@ impl<'a> Parser<'a> {
                             ),
                         let_else_sub: None,
                     });
-                    std::mem::replace(right.as_mut(), this.mk_expr_err(binop_span.shrink_to_hi(), guar))
+                    std::mem::replace(
+                        right.as_mut(),
+                        this.mk_expr_err(binop_span.shrink_to_hi(), guar),
+                    )
                 }
                 ExprKind::Block(_, None) => {
                     let guar =
@@ -2573,7 +2577,10 @@ impl<'a> Parser<'a> {
             block
         };
         let els = if self.eat_keyword(exp!(Else)) { Some(self.parse_expr_else()?) } else { None };
-        Ok(self.mk_expr(lo.to(self.prev_token.span), ExprKind::If(Box::new(cond), thn, els.map(Box::new))))
+        Ok(self.mk_expr(
+            lo.to(self.prev_token.span),
+            ExprKind::If(Box::new(cond), thn, els.map(Box::new)),
+        ))
     }
 
     /// Parses the condition of a `if` or `while` expression.
@@ -2582,10 +2589,7 @@ impl<'a> Parser<'a> {
     /// i.e. the same span we use to later decide whether the drop behaviour should be that of
     /// edition `..=2021` or that of `2024..`.
     // Public to use it for custom `if` expressions in rustfmt forks like https://github.com/tucant/rustfmt
-    pub fn parse_expr_cond(
-        &mut self,
-        let_chains_policy: LetChainsPolicy,
-    ) -> PResult<'a, Expr> {
+    pub fn parse_expr_cond(&mut self, let_chains_policy: LetChainsPolicy) -> PResult<'a, Expr> {
         let mut cond =
             self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL | Restrictions::ALLOW_LET)?;
 
@@ -3046,7 +3050,11 @@ impl<'a> Parser<'a> {
         }
         let hi = self.token.span;
         self.bump();
-        Ok(self.mk_expr_with_attrs(lo.to(hi), ExprKind::Match(Box::new(scrutinee), arms, match_kind), attrs))
+        Ok(self.mk_expr_with_attrs(
+            lo.to(hi),
+            ExprKind::Match(Box::new(scrutinee), arms, match_kind),
+            attrs,
+        ))
     }
 
     /// Attempt to recover from match arm body with statements and no surrounding braces.
@@ -3414,10 +3422,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_match_guard_condition(
-        &mut self,
-        force_collect: ForceCollect,
-    ) -> PResult<'a, Expr> {
+    fn parse_match_guard_condition(&mut self, force_collect: ForceCollect) -> PResult<'a, Expr> {
         let attrs = self.parse_outer_attributes()?;
         let expr = self.collect_tokens(
             None,
@@ -3993,7 +3998,8 @@ impl<'a> Parser<'a> {
 
     fn mk_await_expr(&mut self, self_arg: Expr, lo: Span) -> Expr {
         let span = lo.to(self.prev_token.span);
-        let await_expr = self.mk_expr(span, ExprKind::Await(Box::new(self_arg), self.prev_token.span));
+        let await_expr =
+            self.mk_expr(span, ExprKind::Await(Box::new(self_arg), self.prev_token.span));
         self.recover_from_await_method_call();
         await_expr
     }
@@ -4005,12 +4011,7 @@ impl<'a> Parser<'a> {
         use_expr
     }
 
-    pub(crate) fn mk_expr_with_attrs(
-        &self,
-        span: Span,
-        kind: ExprKind,
-        attrs: AttrVec,
-    ) -> Expr {
+    pub(crate) fn mk_expr_with_attrs(&self, span: Span, kind: ExprKind, attrs: AttrVec) -> Expr {
         Expr { kind, span, attrs, id: DUMMY_NODE_ID, tokens: None }
     }
 

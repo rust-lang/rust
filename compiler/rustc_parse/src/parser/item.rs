@@ -1767,8 +1767,15 @@ impl<'a> Parser<'a> {
 
         self.expect_semi()?;
 
-        let item =
-            StaticItem { ident, ty, safety, mutability, expr:expr.map(Box::new), define_opaque: None, eii_impl: None };
+        let item = StaticItem {
+            ident,
+            ty,
+            safety,
+            mutability,
+            expr: expr.map(Box::new),
+            define_opaque: None,
+            eii_impl: None,
+        };
         Ok(ItemKind::Static(Box::new(item)))
     }
 

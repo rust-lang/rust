@@ -236,7 +236,11 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn stmt_expr(&self, expr: ast::Expr) -> ast::Stmt {
-        ast::Stmt { id: ast::DUMMY_NODE_ID, span: expr.span, kind: ast::StmtKind::Expr(Box::new(expr)) }
+        ast::Stmt {
+            id: ast::DUMMY_NODE_ID,
+            span: expr.span,
+            kind: ast::StmtKind::Expr(Box::new(expr)),
+        }
     }
 
     pub fn stmt_let(&self, sp: Span, mutbl: bool, name: Symbol, ex: ast::Expr) -> ast::Stmt {
@@ -309,13 +313,7 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn expr(&self, span: Span, kind: ast::ExprKind) -> ast::Expr {
-        ast::Expr {
-            id: ast::DUMMY_NODE_ID,
-            kind,
-            span,
-            attrs: AttrVec::new(),
-            tokens: None,
-        }
+        ast::Expr { id: ast::DUMMY_NODE_ID, kind, span, attrs: AttrVec::new(), tokens: None }
     }
 
     pub fn expr_path(&self, path: Path) -> ast::Expr {
@@ -343,7 +341,10 @@ impl<'a> ExtCtxt<'a> {
         lhs: ast::Expr,
         rhs: ast::Expr,
     ) -> ast::Expr {
-        self.expr(sp, ast::ExprKind::Binary(Spanned { node: op, span: sp }, Box::new(lhs), Box::new(rhs)))
+        self.expr(
+            sp,
+            ast::ExprKind::Binary(Spanned { node: op, span: sp }, Box::new(lhs), Box::new(rhs)),
+        )
     }
 
     pub fn expr_deref(&self, sp: Span, e: ast::Expr) -> ast::Expr {
@@ -351,7 +352,10 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn expr_addr_of(&self, sp: Span, e: ast::Expr) -> ast::Expr {
-        self.expr(sp, ast::ExprKind::AddrOf(ast::BorrowKind::Ref, ast::Mutability::Not, Box::new(e)))
+        self.expr(
+            sp,
+            ast::ExprKind::AddrOf(ast::BorrowKind::Ref, ast::Mutability::Not, Box::new(e)),
+        )
     }
 
     pub fn expr_paren(&self, sp: Span, e: ast::Expr) -> ast::Expr {
@@ -377,28 +381,13 @@ impl<'a> ExtCtxt<'a> {
         )
     }
 
-    pub fn expr_call(
-        &self,
-        span: Span,
-        expr: ast::Expr,
-        args: ThinVec<ast::Expr>,
-    ) -> ast::Expr {
+    pub fn expr_call(&self, span: Span, expr: ast::Expr, args: ThinVec<ast::Expr>) -> ast::Expr {
         self.expr(span, ast::ExprKind::Call(Box::new(expr), args))
     }
-    pub fn expr_call_ident(
-        &self,
-        span: Span,
-        id: Ident,
-        args: ThinVec<ast::Expr>,
-    ) -> ast::Expr {
+    pub fn expr_call_ident(&self, span: Span, id: Ident, args: ThinVec<ast::Expr>) -> ast::Expr {
         self.expr(span, ast::ExprKind::Call(Box::new(self.expr_ident(span, id)), args))
     }
-    pub fn expr_call_global(
-        &self,
-        sp: Span,
-        fn_path: Path,
-        args: ThinVec<ast::Expr>,
-    ) -> ast::Expr {
+    pub fn expr_call_global(&self, sp: Span, fn_path: Path, args: ThinVec<ast::Expr>) -> ast::Expr {
         let pathexpr = self.expr_path(fn_path);
         self.expr_call(sp, pathexpr, args)
     }
@@ -559,12 +548,7 @@ impl<'a> ExtCtxt<'a> {
         }
     }
 
-    pub fn expr_match(
-        &self,
-        span: Span,
-        arg: ast::Expr,
-        arms: ThinVec<ast::Arm>,
-    ) -> Expr {
+    pub fn expr_match(&self, span: Span, arg: ast::Expr, arms: ThinVec<ast::Arm>) -> Expr {
         self.expr(span, ast::ExprKind::Match(Box::new(arg), arms, MatchKind::Prefix))
     }
 

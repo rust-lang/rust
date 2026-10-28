@@ -85,13 +85,7 @@ struct Assert {
 }
 
 // if !{ ... } { ... } else { ... }
-fn expr_if_not(
-    cx: &ExtCtxt<'_>,
-    span: Span,
-    cond: Expr,
-    then: Expr,
-    els: Option<Expr>,
-) -> Expr {
+fn expr_if_not(cx: &ExtCtxt<'_>, span: Span, cond: Expr, then: Expr, els: Option<Expr>) -> Expr {
     cx.expr_if(span, cx.expr(span, ExprKind::Unary(UnOp::Not, Box::new(cond))), then, els)
 }
 

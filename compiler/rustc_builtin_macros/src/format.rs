@@ -1155,9 +1155,9 @@ fn expand_format_args_impl<'cx>(
                 return ExpandResult::Retry(());
             };
             match mac {
-                Ok(format_args) => {
-                    MacEager::expr(Box::new(ecx.expr(sp, ExprKind::FormatArgs(Box::new(format_args)))))
-                }
+                Ok(format_args) => MacEager::expr(Box::new(
+                    ecx.expr(sp, ExprKind::FormatArgs(Box::new(format_args))),
+                )),
                 Err(guar) => MacEager::expr(Box::new(DummyResult::raw_expr(sp, Some(guar)))),
             }
         }

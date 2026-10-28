@@ -1723,10 +1723,7 @@ impl<'a> Parser<'a> {
 
     /// Consumes alternative await syntaxes like `await!(<expr>)`, `await <expr>`,
     /// `await? <expr>`, `await(<expr>)`, and `await { <expr> }`.
-    pub(super) fn recover_incorrect_await_syntax(
-        &mut self,
-        await_sp: Span,
-    ) -> PResult<'a, Expr> {
+    pub(super) fn recover_incorrect_await_syntax(&mut self, await_sp: Span) -> PResult<'a, Expr> {
         let (hi, expr_span, is_question) = if self.token == token::Bang {
             // Handle `await!(<expr>)`.
             self.recover_await_macro()?
@@ -2483,7 +2480,10 @@ impl<'a> Parser<'a> {
                     );
                     let guar = err.emit_err();
                     let value = self.mk_expr_err(start.to(expr.span), guar);
-                    return Ok(GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value: Box::new(value) }));
+                    return Ok(GenericArg::Const(AnonConst {
+                        id: ast::DUMMY_NODE_ID,
+                        value: Box::new(value),
+                    }));
                 } else if snapshot.token == token::Colon
                     && expr.span.lo() == snapshot.token.span.hi()
                     && matches!(expr.kind, ExprKind::Path(..))

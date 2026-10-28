@@ -127,7 +127,12 @@ fn parse_asm_operand<'a>(
         if p.eat(exp!(FatArrow)) {
             let out_expr =
                 if p.eat_keyword(exp!(Underscore)) { None } else { Some(p.parse_expr()?) };
-            ast::InlineAsmOperand::SplitInOut { reg, in_expr: Box::new(expr), out_expr: out_expr.map(Box::new), late: false }
+            ast::InlineAsmOperand::SplitInOut {
+                reg,
+                in_expr: Box::new(expr),
+                out_expr: out_expr.map(Box::new),
+                late: false,
+            }
         } else {
             ast::InlineAsmOperand::InOut { reg, expr: Box::new(expr), late: false }
         }
@@ -141,7 +146,12 @@ fn parse_asm_operand<'a>(
         if p.eat(exp!(FatArrow)) {
             let out_expr =
                 if p.eat_keyword(exp!(Underscore)) { None } else { Some(p.parse_expr()?) };
-            ast::InlineAsmOperand::SplitInOut { reg, in_expr: Box::new(expr), out_expr: out_expr.map(Box::new), late: true }
+            ast::InlineAsmOperand::SplitInOut {
+                reg,
+                in_expr: Box::new(expr),
+                out_expr: out_expr.map(Box::new),
+                late: true,
+            }
         } else {
             ast::InlineAsmOperand::InOut { reg, expr: Box::new(expr), late: true }
         }

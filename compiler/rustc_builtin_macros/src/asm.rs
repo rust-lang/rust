@@ -588,7 +588,9 @@ pub(super) fn expand_asm<'cx>(
                 return ExpandResult::Retry(());
             };
             let expr = match mac {
-                Ok(inline_asm) => Box::new(ecx.expr(sp, ast::ExprKind::InlineAsm(Box::new(inline_asm)))),
+                Ok(inline_asm) => {
+                    Box::new(ecx.expr(sp, ast::ExprKind::InlineAsm(Box::new(inline_asm))))
+                }
                 Err(guar) => Box::from(DummyResult::raw_expr(sp, Some(guar))),
             };
             MacEager::expr(expr)
@@ -612,7 +614,9 @@ pub(super) fn expand_naked_asm<'cx>(
                 return ExpandResult::Retry(());
             };
             let expr = match mac {
-                Ok(inline_asm) => Box::new(ecx.expr(sp, ast::ExprKind::InlineAsm(Box::new(inline_asm)))),
+                Ok(inline_asm) => {
+                    Box::new(ecx.expr(sp, ast::ExprKind::InlineAsm(Box::new(inline_asm))))
+                }
                 Err(guar) => Box::from(DummyResult::raw_expr(sp, Some(guar))),
             };
             MacEager::expr(expr)

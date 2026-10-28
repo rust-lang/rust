@@ -165,9 +165,9 @@ impl<'a> Parser<'a> {
             }
             NonterminalKind::Literal => {
                 // The `:literal` matcher does not support attributes.
-                Ok(ParseNtResult::Literal(
-                    Box::new(self.collect_tokens_no_attrs(|this| this.parse_literal_maybe_minus())?),
-                ))
+                Ok(ParseNtResult::Literal(Box::new(
+                    self.collect_tokens_no_attrs(|this| this.parse_literal_maybe_minus())?,
+                )))
             }
             NonterminalKind::Ty => Ok(ParseNtResult::Ty(self.collect_tokens_no_attrs(|this| {
                 this.parse_ty_no_question_mark_recover().map(|ty| WithTokens::new(ty))
