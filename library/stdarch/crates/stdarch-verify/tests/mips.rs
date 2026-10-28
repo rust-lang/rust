@@ -286,6 +286,22 @@ fn verify_all_signatures() {
     assert!(all_valid);
 }
 
+// Intrinsics for which LLVM does not emit the exact instruction that you'd
+// expect based on the intrinsic name, but something equivalent.
+static LLVM_SELECTS_SOMETHING_EQUIVALENT: &[(&str, &str)] = &[
+    ("__msa_bclri_b", "andi.b"),
+    ("__msa_bmz_v", "bmnz.v"),
+    ("__msa_bmzi_b", "bmnzi.b"),
+    ("__msa_bsel_v", "bmnz.v"),
+    ("__msa_copy_u_d", "copy_s.d"),
+    ("__msa_ld_b", "ld.d"),
+    ("__msa_ld_h", "ld.d"),
+    ("__msa_ld_w", "ld.d"),
+    ("__msa_st_b", "st.d"),
+    ("__msa_st_h", "st.d"),
+    ("__msa_st_w", "st.d"),
+];
+
 fn matches(rust: &Function, mips: &MsaIntrinsic) -> Result<(), String> {
     macro_rules! bail {
         ($($t:tt)*) => (return Err(format!($($t)*)))
@@ -358,7 +374,9 @@ fn matches(rust: &Function, mips: &MsaIntrinsic) -> Result<(), String> {
         // Normalize slightly to get rid of assembler differences
         let actual = rust.instrs[0].replace('.', "_");
         let expected = mips.instruction.replace('.', "_");
-        if actual != expected {
+        if actual != expected
+            && !LLVM_SELECTS_SOMETHING_EQUIVALENT.contains(&(rust.name, rust.instrs[0]))
+        {
             bail!(
                 "wrong instruction: \"{}\" != \"{}\"",
                 rust.instrs[0],
