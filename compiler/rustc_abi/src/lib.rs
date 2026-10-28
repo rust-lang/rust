@@ -2468,8 +2468,9 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
             && self.backend_repr.eq_up_to_validity(&other.backend_repr)
             && self.backend_repr.is_bool() == other.backend_repr.is_bool()
             && self.align.abi == other.align.abi
-            && self.max_repr_align == other.max_repr_align
-            && self.unadjusted_abi_align == other.unadjusted_abi_align
+        // max_repr_align, unadjusted_abi_align, repr_c are not read directly by codegen
+        // backends. They are only used to compute `PassMode`. So we can ignore them here, any
+        // differences they may cause are picked up by the `PassMode` check.
     }
 }
 
