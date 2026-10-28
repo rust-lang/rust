@@ -35,6 +35,7 @@
 #![feature(const_destruct)]
 #![feature(const_drop_in_place)]
 #![feature(const_eval_select)]
+#![feature(const_heap)]
 #![feature(const_index)]
 #![feature(const_iter)]
 #![feature(const_nonzero_strict_ops)]

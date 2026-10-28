@@ -236,10 +236,12 @@ pub fn type_id_name(_type_id: crate::any::TypeId) -> &'static str;
 #[rustc_intrinsic]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_comptime]
-pub fn type_id_variant_getter(_type_id: crate::any::TypeId) -> fn(*const ()) -> VariantId;
+pub fn type_id_variant_getter(_type_id: crate::any::TypeId) -> unsafe fn(*const ()) -> VariantId;
 
-/// Returns a lookup table for converting between VariantId and Discriminant. This
-/// is use internally by variant getter. **Please do not use this.**
+/// **Please do not use this intrinsic directly.**
+///
+/// This returns a lookup table for converting between VariantId and Discriminant. This is use
+/// internally by [`variant_getter`](core::any::TypeId::variant_getter).
 ///
 /// The user-friendly way to get the `VariantId` of an enum at runtime is using
 /// the function pointer returned by [`core::any::TypeId::variant_getter`].

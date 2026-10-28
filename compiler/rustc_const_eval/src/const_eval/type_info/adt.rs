@@ -15,26 +15,25 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
         place: &impl Writeable<'tcx, CtfeProvenance>,
         ty: Ty<'tcx>,
     ) -> InterpResult<'tcx, ()> {
-        // a discriminant is an int of some size (up to 128bits or 127... ?) // TODO(yara) figure out
         let cast_to = ty.discriminant_ty(*self.tcx);
         let discriminant_size = cast_to.primitive_size(*self.tcx);
 
-        let ty::Adt(def, _) = ty.kind() else {
-            span_bug!(self.cur_span(), "expected enum type, got {ty}");
+        let num_variants = if let ty::Adt(def, _) = ty.kind()
+            && def.is_enum()
+        {
+            def.variants().len() as u64
+        } else {
+            0
         };
-        self.allocate_fill_and_write_slice_ptr(
-            place,
-            def.variants().len() as u64,
-            |this, i, place| {
-                let discriminant = ty
-                    .discriminant_for_variant(*this.tcx, VariantIdx::from_usize(i as usize))
-                    .expect("i is in range")
-                    .val;
-                let discriminant = ScalarInt::try_from_uint(discriminant, discriminant_size)
-                    .expect("127 bits should be enough discriminant"); // TODO(yara): test this
-                this.write_scalar(discriminant, &place)
-            },
-        )
+        self.allocate_fill_and_write_slice_ptr(place, num_variants, |this, i, place| {
+            let discriminant = ty
+                .discriminant_for_variant(*this.tcx, VariantIdx::from_usize(i as usize))
+                .expect("i is in range")
+                .val;
+            let discriminant = ScalarInt::try_from_uint(discriminant, discriminant_size)
+                .expect("discriminant ty fits the current value");
+            this.write_scalar(discriminant, &place)
+        })
     }
 
     // FIXME(type_info): No semver considerations for now

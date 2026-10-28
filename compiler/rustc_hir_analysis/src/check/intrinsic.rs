@@ -319,7 +319,7 @@ pub(crate) fn check_intrinsic_type(
             let variant_id =
                 tcx.type_of(tcx.lang_items().variant_id().unwrap()).no_bound_vars().unwrap();
             let unit_ptr = Ty::new_ptr(tcx, tcx.types.unit, ty::Mutability::Not);
-            let fn_ty = ty::Binder::dummy(tcx.mk_fn_sig_safe_rust_abi([unit_ptr], variant_id));
+            let fn_ty = ty::Binder::dummy(tcx.mk_fn_sig_unsafe_rust_abi([unit_ptr], variant_id));
             (0, 0, vec![type_id_ty()], Ty::new_fn_ptr(tcx, fn_ty))
         }
         sym::type_id_variant_lookup_table => {

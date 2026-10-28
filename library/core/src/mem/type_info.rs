@@ -20,22 +20,34 @@ pub struct Type {
 /// This function is not called directly instead a pointer to a monomorphized
 /// instance of it is returned by [`TypeId::variant_getter`].
 ///
+/// # Errors
+/// It's an ICE to call this with anything not an enum. This is guarded for
+/// by [`TypeId::variant_getter`].
+///
 /// # Safety
 ///
 /// See [`TypeId::variant_getter`] on how to safely use this function.
 #[lang = "variant_getter"]
-unsafe fn variant_getter<T: 'static>(val: *const ()) -> VariantId {
-    // SAFETY up to the caller to uphold, documented in `TypeId::variant_getter`.
+unsafe fn variant_getter<T>(val: *const ()) -> VariantId
+where
+    <T as DiscriminantKind>::Discriminant: 'static,
+{
+    // SAFETY: up to the caller to uphold, documented in `TypeId::variant_getter`.
     let v: &T = unsafe { &*val.cast::<T>() };
     let discriminant = core::mem::discriminant(v);
     let lookup_table: &'static [<T as DiscriminantKind>::Discriminant] =
         const { intrinsics::reflection::type_id_variant_lookup_table::<T>() };
 
+    if lookup_table.is_empty() {
+        // for types other then enums the table will be empty
+        return VariantId { base: const { of::<T>() }, variant: 0 };
+    }
+
     let variant = lookup_table
         .iter()
         .position(|d| Discriminant(*d) == discriminant)
         .expect("table contains all possible discriminants");
-    VariantId { base: const { TypeId::of::<T>() }, variant }
+    VariantId { base: const { of::<T>() }, variant }
 }
 
 /// Info of a trait implementation, you can retrieve the vtable with [Self::get_vtable]
@@ -708,6 +720,9 @@ impl TypeId {
     /// When called on a `TypeId` representing some enum `T` this returns a function pointer
     /// which can be used to get the `VariantId` of an instance of `T` at runtime.
     ///
+    /// When given a `TypeId` for something which does not represent an enum the returned
+    /// function can still be called. It will then return the same as `TypeId::variant(0)`.
+    ///
     /// # Safety
     ///
     /// While calling this function is completely safe the returned function pointer
@@ -719,39 +734,49 @@ impl TypeId {
     /// # Examples
     ///
     /// ```
-    /// #![feature(type_info)]
-    /// # use std::any::TypeId;
+    /// # #![feature(const_trait_impl)]
+    /// # #![feature(const_heap)]
+    /// # #![feature(type_info)]
+    /// use std::any::TypeId;
     /// enum Kitty {
     ///     Sleepy,
     ///     Playful,
     ///     Cuddly,
     /// }
-    ///
+
     /// let names = const {
     ///     let type_id = TypeId::of::<Kitty>();
     ///     let mut names = Vec::new();
-    ///
+
     ///     while names.len() < type_id.variants() {
-    ///         let variant = type_id.variant(names.len());
-    ///         names.push(variant.name());
+    ///         let variant_id = type_id.variant(names.len());
+    ///         names.push((variant_id, variant_id.name()));
     ///     }
-    ///     names
+    ///     names.const_make_global()
     /// };
     /// let variant_getter = const { TypeId::of::<Kitty>().variant_getter() };
-    ///
+
     /// let kitty = Kitty::Playful;
-    /// // Normally when using this API you no longer have the Type but only
-    /// // a type erased pointer.
-    /// let type_erased_kitty = (*&kitty) as *const ();
-    ///
-    /// let variant_idx = variant_getter(type_erased_kitty);
-    /// println!("kitty is: {}", names[variant_idx].to_lower());
+    /// // Normally when using the getter you are manually offsetting pointers and you have no type.
+    /// // We'll pretend here for brevity.
+    /// let kitty_ptr = &kitty as *const Kitty;
+    /// let kitty_ptr = kitty_ptr.cast::<()>();
+
+    /// let variant_id = variant_getter(kitty_ptr);
+    /// let kitty_is_feeling = names
+    ///     .iter()
+    ///     .find(|(id, _)| *id == variant_id)
+    ///     .map(|(_, variant_name)| *variant_name)
+    ///     .expect("We have a list of steps for each VariantId")
+    ///     .to_lowercase();
+
+    /// assert_eq!(kitty_is_feeling, "playful");
     /// ```
     ///
     #[unstable(feature = "type_info", issue = "146922")]
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
     #[rustc_comptime]
-    pub fn variant_getter(self) -> fn(*const ()) -> VariantId {
+    pub fn variant_getter(self) -> unsafe fn(*const ()) -> VariantId {
         intrinsics::reflection::type_id_variant_getter(self)
     }
 }
