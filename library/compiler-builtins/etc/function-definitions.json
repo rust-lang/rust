@@ -245,6 +245,12 @@
         ],
         "type": "f32"
     },
+    "exp2m1f16": {
+        "sources": [
+            "libm/src/math/exp2m1f16.rs"
+        ],
+        "type": "f16"
+    },
     "expf": {
         "sources": [
             "libm/src/math/expf.rs"
