@@ -15,10 +15,10 @@ impl Drop for Foo {
 
 fn main() {
     let a = (Foo(0), Foo(1));
-    let f = use || {
+    let f = || {
         //~^ HELP: add a dummy
         //~| WARNING: drop order
-        let x = a.0;
+        let x = a.0.use;
         println!("{:?}", x);
     };
     f();

@@ -1,6 +1,6 @@
 //! Regression test for #157141.
 //!
-//! A non-`move`, non-`use` closure that only `.use`s an upvar should capture it
+//! A non-`move` closure that only `.use`s an upvar should capture it
 //! by immutable borrow, not by `use` (which would clone the value into the
 //! closure at construction time). The `.use` expression in the body is then the
 //! only thing that clones, once per evaluation.
@@ -55,15 +55,4 @@ fn main() {
         closure();
     });
     assert_eq!(n, 2, "`move ||` closure should clone once per call");
-
-    // `use ||` closure: the capture clause clones `x` into the closure once, at
-    // construction. Calling it afterwards moves the captured value out.
-    let x = Thing;
-    let n = clones_during(|| {
-        let closure = use || {
-            let _y = &x;
-        };
-        closure();
-    });
-    assert_eq!(n, 1, "`use ||` closure clones once at construction");
 }
