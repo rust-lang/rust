@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         gcc-mips64el-linux-gnuabi64 libc6-dev-mips64el-cross \
         qemu-system-mips64el
 
+# Use Loongson-3A4000, a CPU with MSA support. Qemu does not define a max CPU for MIPS.
 ENV CARGO_TARGET_MIPS64EL_UNKNOWN_LINUX_GNUABI64_LINKER=mips64el-linux-gnuabi64-gcc \
-    CARGO_TARGET_MIPS64EL_UNKNOWN_LINUX_GNUABI64_RUNNER="qemu-mips64el -L /usr/mips64el-linux-gnuabi64" \
+    CARGO_TARGET_MIPS64EL_UNKNOWN_LINUX_GNUABI64_RUNNER="qemu-mips64el -cpu Loongson-3A4000 -L /usr/mips64el-linux-gnuabi64" \
     OBJDUMP=mips64el-linux-gnuabi64-objdump
