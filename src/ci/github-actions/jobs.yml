@@ -643,16 +643,9 @@ auto:
       # NOTE: keep in sync with `src/ci/docker/scripts/stage_2_test_set2.sh`,
       # union `src/tools/cargo` specifically.
       SCRIPT: >-
-        ./x.py --stage 2 test
+        ./x.py --stage 2 test src
         --host=aarch64-apple-darwin
         --target=aarch64-apple-darwin
-        --skip tests
-        --skip library
-        --skip tidyselftest
-        && ./x.py --stage 2 test
-        --host=aarch64-apple-darwin
-        --target=aarch64-apple-darwin
-        src/tools/cargo
       RUST_CONFIGURE_ARGS: >-
         --enable-sanitizers
         --enable-profiler
