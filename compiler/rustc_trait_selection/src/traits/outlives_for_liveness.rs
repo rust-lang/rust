@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::bit_set::DenseBitSet;
@@ -7,6 +7,7 @@ use rustc_middle::ty::{
     TypeVisitableExt, TypeVisitor,
 };
 use rustc_span::bug;
+use smallvec::SmallVec;
 
 use crate::infer::outlives::test_type_match;
 use crate::infer::region_constraints::VerifyIfEq;
@@ -479,7 +480,7 @@ fn live_args_for_outlives_clause<'tcx>(
 pub struct FreeRegionsVisitor<'tcx, OP: FnMut(ty::Region<'tcx>)> {
     pub tcx: TyCtxt<'tcx>,
     pub param_env: ty::ParamEnv<'tcx>,
-    pub seen: FxHashSet<ty::AliasTy<'tcx>>,
+    pub seen: SmallVec<[DefId; 4]>,
     pub op: OP,
 }
 
@@ -512,19 +513,27 @@ where
             // either `'static` or a unique outlives region, and if one is
             // found, we just need to prove that that region is still live.
             // If one is not found, then we continue to walk through the alias.
-            ty::Alias(_, alias_ty @ ty::AliasTy { kind, args, .. }) => {
+            ty::Alias(_, ty::AliasTy { kind, args, .. }) => {
                 let tcx = self.tcx;
                 let param_env = self.param_env;
+                let def_id = match kind {
+                    ty::AliasTyKind::Projection { def_id }
+                    | ty::AliasTyKind::Inherent { def_id }
+                    | ty::AliasTyKind::Opaque { def_id }
+                    | ty::AliasTyKind::Free { def_id } => def_id,
+                };
 
-                // We can sometimes encounter cyclic alias types (e.g.
-                // `type Residual: Residual<Self::Output, TryType = Self>` and
-                // `type TryType: Try<Output = O, Residual = Self>`).
-                // If we've already seen this alias, then we don't need to visit
-                // it again; this should be sound because the *other* args will
-                // still be visited.
-                if !self.seen.insert(alias_ty) {
-                    return;
+                // We can sometimes encounter cyclic alias types (see the `alias-liveness/cycles.rs` test).
+                // If we've already seen this alias, then we just pessimistically mark all free regions as
+                // live. We could actually be more precise here: for example, we could only mark the args
+                // that are *different* as live, but this is the conservative approach.
+                for &outer_def_id in self.seen.iter() {
+                    if outer_def_id == def_id {
+                        tcx.for_each_free_region(&args, |outer_r| (self.op)(outer_r));
+                        return;
+                    }
                 }
+                self.seen.push(def_id);
 
                 // For aliases other than opaques, we have to consider two
                 // sources of information to identity potentially-live args:
@@ -534,12 +543,6 @@ where
                 // Each source of information *restricts* the set of potentially-live
                 // args independently: only the args that can be live for *every*
                 // source of information can be actually live, so we take the intersection.
-                let def_id = match kind {
-                    ty::AliasTyKind::Projection { def_id }
-                    | ty::AliasTyKind::Inherent { def_id }
-                    | ty::AliasTyKind::Opaque { def_id }
-                    | ty::AliasTyKind::Free { def_id } => def_id,
-                };
                 let mut capturable = tcx.live_args_for_alias_from_outlives_bounds(kind).clone();
 
                 for clause in param_env.caller_bounds() {
@@ -574,6 +577,8 @@ where
                         _ => {}
                     }
                 }
+
+                self.seen.pop();
             }
 
             _ => ty.super_visit_with(self),
