@@ -11,7 +11,7 @@ use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE};
 use rustc_infer::infer::canonical::query_response::make_query_region_constraints;
 use rustc_infer::infer::canonical::{
     Canonical, CanonicalExt as _, CanonicalQueryInput, CanonicalVarKind, CanonicalVarValues,
-    QueryRegionConstraint,
+    Canonicalized, QueryRegionConstraint, instantiate_value,
 };
 use rustc_infer::infer::{InferCtxt, RegionVariableOrigin, SubregionOrigin, TyCtxtInferExt};
 use rustc_infer::traits::solve::{
@@ -404,6 +404,13 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
             }
         }
         constraints
+    }
+
+    fn instantiate_value<V>(&self, value: Canonicalized<V>, values: CanonicalVarValues<'tcx>) -> V
+    where
+        V: TypeFoldable<TyCtxt<'tcx>>,
+    {
+        instantiate_value(self.tcx, &values, value.into_uninstantiated())
     }
 
     fn instantiate_canonical<V>(
