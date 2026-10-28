@@ -1,7 +1,10 @@
 // Test for <https://github.com/rust-lang/rust/issues/135316>.
 //
-//@ run-pass
-//@ check-run-results
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
+//@[current] run-pass
+//@[current] check-run-results
 
 trait Supertrait<T> {
     fn _print_numbers(&self, mem: &[usize; 100]) {
@@ -20,5 +23,5 @@ impl<T, U> Trait<T, U> for () {}
 fn main() {
     (&() as &'static dyn for<'a> Trait<&'static (), &'a ()>
         as &'static dyn Trait<&'static (), &'static ()>)
-        .say_hello(&0);
+        .say_hello(&0); //[next]~ ERROR: type annotations needed
 }
