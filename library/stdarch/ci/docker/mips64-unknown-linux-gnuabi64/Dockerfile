@@ -1,4 +1,7 @@
-FROM ubuntu:25.04 # gcc-mips64-linux-gnuabi64 not available in 25.10
+FROM ubuntu:25.10
+
+# gcc-mips64-linux-gnuabi64 not available by default in 25.10
+RUN echo "deb http://archive.ubuntu.com/ubuntu noble main universe" >> /etc/apt/sources.list.d/noble-copies.list
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         gcc libc6-dev qemu-user ca-certificates \
