@@ -2053,7 +2053,7 @@ pub unsafe fn __msa_binsl_d(a: v2u64, b: v2u64, c: v2u64) -> v2u64 {
 ///
 #[inline]
 #[target_feature(enable = "msa")]
-#[cfg_attr(test, assert_instr(binsli.b, IMM3 = 0b111))]
+#[cfg_attr(test, assert_instr(binsli.b, IMM3 = 0b101))]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_binsli_b<const IMM3: i32>(a: v16u8, b: v16u8) -> v16u8 {
     static_assert_uimm_bits!(IMM3, 3);
@@ -2068,7 +2068,7 @@ pub unsafe fn __msa_binsli_b<const IMM3: i32>(a: v16u8, b: v16u8) -> v16u8 {
 ///
 #[inline]
 #[target_feature(enable = "msa")]
-#[cfg_attr(test, assert_instr(binsli.h, IMM4 = 0b1111))]
+#[cfg_attr(test, assert_instr(binsli.h, IMM4 = 0b1011))]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_binsli_h<const IMM4: i32>(a: v8u16, b: v8u16) -> v8u16 {
     static_assert_uimm_bits!(IMM4, 4);
@@ -2083,7 +2083,7 @@ pub unsafe fn __msa_binsli_h<const IMM4: i32>(a: v8u16, b: v8u16) -> v8u16 {
 ///
 #[inline]
 #[target_feature(enable = "msa")]
-#[cfg_attr(test, assert_instr(binsli.w, IMM5 = 0b11111))]
+#[cfg_attr(test, assert_instr(binsli.w, IMM5 = 0b10111))]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_binsli_w<const IMM5: i32>(a: v4u32, b: v4u32) -> v4u32 {
     static_assert_uimm_bits!(IMM5, 5);
@@ -2098,7 +2098,7 @@ pub unsafe fn __msa_binsli_w<const IMM5: i32>(a: v4u32, b: v4u32) -> v4u32 {
 ///
 #[inline]
 #[target_feature(enable = "msa")]
-#[cfg_attr(test, assert_instr(binsli.d, IMM6 = 0b111111))]
+#[cfg_attr(test, assert_instr(binsli.d, IMM6 = 0b101111))]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_binsli_d<const IMM6: i32>(a: v2u64, b: v2u64) -> v2u64 {
     static_assert_uimm_bits!(IMM6, 6);
@@ -2173,7 +2173,7 @@ pub unsafe fn __msa_binsr_d(a: v2u64, b: v2u64, c: v2u64) -> v2u64 {
 ///
 #[inline]
 #[target_feature(enable = "msa")]
-#[cfg_attr(test, assert_instr(binsri.b, IMM3 = 0b111))]
+#[cfg_attr(test, assert_instr(binsri.b, IMM3 = 0b101))]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_binsri_b<const IMM3: i32>(a: v16u8, b: v16u8) -> v16u8 {
     static_assert_uimm_bits!(IMM3, 3);
@@ -2188,7 +2188,7 @@ pub unsafe fn __msa_binsri_b<const IMM3: i32>(a: v16u8, b: v16u8) -> v16u8 {
 ///
 #[inline]
 #[target_feature(enable = "msa")]
-#[cfg_attr(test, assert_instr(binsri.h, IMM4 = 0b1111))]
+#[cfg_attr(test, assert_instr(binsri.h, IMM4 = 0b1011))]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_binsri_h<const IMM4: i32>(a: v8u16, b: v8u16) -> v8u16 {
     static_assert_uimm_bits!(IMM4, 4);
@@ -2203,7 +2203,7 @@ pub unsafe fn __msa_binsri_h<const IMM4: i32>(a: v8u16, b: v8u16) -> v8u16 {
 ///
 #[inline]
 #[target_feature(enable = "msa")]
-#[cfg_attr(test, assert_instr(binsri.w, IMM5 = 0b11111))]
+#[cfg_attr(test, assert_instr(binsri.w, IMM5 = 0b10111))]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_binsri_w<const IMM5: i32>(a: v4u32, b: v4u32) -> v4u32 {
     static_assert_uimm_bits!(IMM5, 5);
@@ -2218,7 +2218,7 @@ pub unsafe fn __msa_binsri_w<const IMM5: i32>(a: v4u32, b: v4u32) -> v4u32 {
 ///
 #[inline]
 #[target_feature(enable = "msa")]
-#[cfg_attr(test, assert_instr(binsri.d, IMM6 = 0b111111))]
+#[cfg_attr(test, assert_instr(binsri.d, IMM6 = 0b101111))]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_binsri_d<const IMM6: i32>(a: v2u64, b: v2u64) -> v2u64 {
     static_assert_uimm_bits!(IMM6, 6);
