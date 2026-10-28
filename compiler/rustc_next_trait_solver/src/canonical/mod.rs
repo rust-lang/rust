@@ -18,8 +18,8 @@ use rustc_type_ir::relate::{
     self, Relate, RelateResult, TypeRelation, VarianceDiagInfo, relate_args_invariantly,
 };
 use rustc_type_ir::{
-    self as ty, Canonical, CanonicalVarKind, CanonicalVarValues, Const, InferCtxtLike, Interner,
-    Region, TypeFoldable, TypingMode, TypingModeEqWrapper,
+    self as ty, Canonical, CanonicalVarKind, CanonicalVarValues, Canonicalized, Const,
+    InferCtxtLike, Interner, Region, TypeFoldable, TypingMode, TypingModeEqWrapper,
 };
 use thin_vec::ThinVec;
 use tracing::instrument;
@@ -27,7 +27,8 @@ use tracing::instrument;
 use crate::delegate::SolverDelegate;
 use crate::solve::{
     CanonicalResponse, Certainty, ExternalConstraintsData, ExternalRegionConstraints, Goal,
-    NestedNormalizationGoals, QueryInput, Response, VisibleForLeakCheck, inspect,
+    IsIdentity, NestedNormalizationGoals, QueryInput, Response, VisibleForLeakCheck,
+    has_no_inference_or_external_constraints, inspect,
 };
 
 pub mod canonicalizer;
@@ -93,7 +94,7 @@ where
 /// After calling a canonical query, we apply the constraints returned
 /// by the query using this function.
 ///
-/// This happens in three steps:
+/// If a quick early-return check fails, this happens in three steps:
 /// - we instantiate the bound variables of the query response
 /// - we unify the `var_values` of the response with the `original_values`
 /// - we apply the `external_constraints` returned by the query, returning
@@ -102,19 +103,39 @@ pub(super) fn instantiate_and_apply_query_response<D, I>(
     delegate: &D,
     original_values: &[I::GenericArg],
     response: CanonicalResponse<I>,
+    canonical_goal_var_kinds: I::CanonicalVarKinds,
     span: I::Span,
 ) -> (NestedNormalizationGoals<I>, Certainty)
 where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
+    let certainty = response.value.certainty;
+
+    // If the response is an identity, and there are no external constraints, and the response var
+    // kinds match the canonical goal var kinds, this function is a no-op and we can return early.
+    if has_no_inference_or_external_constraints(response)
+        && response.var_kinds == canonical_goal_var_kinds
+    {
+        return (NestedNormalizationGoals::empty(), certainty);
+    }
+
     let instantiation =
         compute_query_response_instantiation_values(delegate, &original_values, &response, span);
 
-    let Response { var_values, external_constraints, certainty } =
-        delegate.instantiate_canonical(response, instantiation);
-
-    unify_query_var_values(delegate, &original_values, var_values, span);
+    // We could call `instantiate_canonical` on `response`, but it's more efficient to instantiate
+    // the fields within `response` separately. That way we can instantiate and unify `var_values`
+    // in a single step, rather than instantiating first (which creates an intermediate list) and
+    // then unifying afterwards.
+    let external_constraints =
+        delegate.instantiate_value(response.project(|r| r.external_constraints), instantiation);
+    instantiate_and_unify_query_var_values(
+        delegate,
+        &original_values,
+        response.project(|r| r.var_values),
+        instantiation,
+        span,
+    );
 
     let ExternalConstraintsData { region_constraints, opaque_types, normalization_nested_goals } =
         &*external_constraints;
@@ -474,7 +495,8 @@ where
     }
 }
 
-/// Unify the `original_values` with the `var_values` returned by the canonical query..
+/// Instantiate `var_values` as returned by the canonical query and also unify it with
+/// `original_values`.
 ///
 /// This assumes that this unification will always succeed. This is the case when
 /// applying a query response right away. However, calling a canonical query, doing any
@@ -487,10 +509,11 @@ where
 /// from the solver we assume that the solver correctly handled aliases and therefore
 /// always relate them structurally here.
 #[instrument(level = "trace", skip(delegate))]
-fn unify_query_var_values<D, I>(
+fn instantiate_and_unify_query_var_values<D, I>(
     delegate: &D,
     original_values: &[I::GenericArg],
-    var_values: I::GenericArgs,
+    var_values: Canonicalized<I::GenericArgs>,
+    instantiation: CanonicalVarValues<I>,
     span: I::Span,
 ) where
     D: SolverDelegate<Interner = I>,
@@ -499,12 +522,48 @@ fn unify_query_var_values<D, I>(
     assert_eq!(original_values.len(), var_values.len());
 
     for (&orig, response) in iter::zip(original_values, var_values.iter()) {
+        let response = instantiate_generic_arg(delegate, response, instantiation);
         if orig == response {
             continue;
         }
 
         let mut must_eq = ResponseRelating::new(&**delegate, span);
         must_eq.relate(orig, response).unwrap();
+    }
+}
+
+fn instantiate_generic_arg<D, I>(
+    delegate: &D,
+    arg: Canonicalized<I::GenericArg>,
+    instantiation: CanonicalVarValues<I>,
+) -> I::GenericArg
+where
+    D: SolverDelegate<Interner = I>,
+    I: Interner,
+{
+    // Canonical bound vars are very common here. `CanonicalInstantiator::fold_{ty,region,const}`'s
+    // handling of them is simple, and we replicate that handling here to avoid the cost of the
+    // surrounding machinery.
+    fn canonical_bound_var<I: Interner>(arg: Canonicalized<I::GenericArg>) -> Option<ty::BoundVar> {
+        match arg.into_uninstantiated().kind() {
+            ty::GenericArgKind::Type(t) => match t.kind() {
+                ty::Bound(ty::BoundVarIndexKind::Canonical, bt) => Some(bt.var()),
+                _ => None,
+            },
+            ty::GenericArgKind::Lifetime(r) => match r.kind() {
+                ty::ReBound(ty::BoundVarIndexKind::Canonical, br) => Some(br.var()),
+                _ => None,
+            },
+            ty::GenericArgKind::Const(c) => match c.kind() {
+                ty::ConstKind::Bound(ty::BoundVarIndexKind::Canonical, bc) => Some(bc.var()),
+                _ => None,
+            },
+        }
+    }
+
+    match canonical_bound_var::<I>(arg) {
+        Some(var) => instantiation[var],
+        None => delegate.instantiate_value(arg, instantiation),
     }
 }
 
@@ -586,7 +645,7 @@ pub fn instantiate_canonical_state<D, I, T>(
 where
     D: SolverDelegate<Interner = I>,
     I: Interner,
-    T: TypeFoldable<I>,
+    T: TypeFoldable<I> + Copy,
 {
     // In case any fresh inference variables have been created between `state`
     // and the previous instantiation, extend `orig_values` for it.
@@ -608,9 +667,17 @@ where
         prev_universe,
     );
 
-    let inspect::State { var_values, data } = delegate.instantiate_canonical(state, instantiation);
+    // We instantiate the fields within `state` separately. See the corresponding code in
+    // `instantiate_and_apply_query_response` for an explanation why.
+    let data = delegate.instantiate_value(state.project(|r| r.data), instantiation);
+    instantiate_and_unify_query_var_values(
+        delegate,
+        orig_values,
+        state.project(|r| r.var_values),
+        instantiation,
+        span,
+    );
 
-    unify_query_var_values(delegate, orig_values, var_values, span);
     data
 }
 
@@ -644,11 +711,12 @@ pub fn response_no_constraints_raw<I: Interner>(
         max_universe,
         var_kinds,
         value: Response {
+            certainty,
             var_values,
+            var_values_is_identity: IsIdentity::Yes,
             // FIXME: maybe we should store the "no response" version in cx, like
             // we do for cx.types and stuff.
             external_constraints: cx.mk_external_constraints(ExternalConstraintsData::new(cx)),
-            certainty,
         },
     }
 }
