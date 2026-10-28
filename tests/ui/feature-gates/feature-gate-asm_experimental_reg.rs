@@ -51,6 +51,8 @@ unsafe fn predicate(p: svbool_t) {
 unsafe fn modifier(x: f64) -> f64 {
     let y: f64;
     unsafe { asm!("mov {1:z}.d, {0:z}.d", in(vreg) x, out(vreg) y) };
+    //[aarch64]~^ ERROR invalid asm template modifier `z` for this register class
+    //[aarch64]~| ERROR invalid asm template modifier `z` for this register class
     y
 }
 
