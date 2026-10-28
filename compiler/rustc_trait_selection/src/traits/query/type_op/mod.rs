@@ -2,9 +2,11 @@ use std::fmt;
 
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::LocalDefId;
+use rustc_infer::infer::canonical::Certainty;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::{ParamEnvAnd, TyCtxt, TypeFoldable};
 use rustc_span::Span;
+use tracing::debug;
 
 use crate::infer::canonical::{
     CanonicalQueryInput, CanonicalQueryResponse, OriginalQueryValues, QueryRegionConstraints,
@@ -118,7 +120,7 @@ where
                 let canonical_self = infcx.canonicalize_query(self, &mut canonical_var_values);
                 let canonical_result = Q::perform_query(infcx.tcx, canonical_self)?;
 
-                let InferOk { value, obligations } = infcx
+                let InferOk { value: (value, certainty), obligations } = infcx
                     .instantiate_nll_query_response_and_region_obligations(
                         &ObligationCause::dummy_with_span(span),
                         old_param_env,
@@ -126,6 +128,16 @@ where
                         canonical_result,
                         &mut region_constraints,
                     )?;
+
+                if infcx.next_trait_solver() {
+                    match certainty {
+                        Certainty::Proven => {}
+                        Certainty::Ambiguous => {
+                            debug!("TypeOp resulted in unexpected ambiguity: {self:?}");
+                            return Err(NoSolution);
+                        }
+                    }
+                }
 
                 error_info = Some(canonical_self);
                 ocx.register_obligations(obligations);

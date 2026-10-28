@@ -59,7 +59,7 @@ fn implied_outlives_bounds<'a, 'tcx>(
 
     let mut constraints = QueryRegionConstraints::default();
     let span = infcx.tcx.def_span(body_def_id);
-    let Ok(InferOk { value: mut bounds, obligations }) = infcx
+    let Ok(InferOk { value: (mut bounds, certainty), obligations }) = infcx
         .instantiate_nll_query_response_and_region_obligations(
             &ObligationCause::dummy_with_span(span),
             param_env,
@@ -71,6 +71,9 @@ fn implied_outlives_bounds<'a, 'tcx>(
         return vec![];
     };
     assert_eq!(obligations.len(), 0);
+
+    // FIXME: We're silently ignoring the certainty here, this feels off.
+    let _ = certainty;
 
     // Because of #109628, we may have unexpected placeholders. Ignore them!
     // FIXME(#109628): panic in this case once the issue is fixed.
