@@ -13105,14 +13105,15 @@ mod tests {
 
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_fmadd_w() {
-        #[rustfmt::skip]
         let a = f32x4::new(1.0, 2.0, 3.0, 4.0);
-        #[rustfmt::skip]
         let b = f32x4::new(5.0, 6.0, 7.0, 8.0);
-        #[rustfmt::skip]
         let c = f32x4::new(9.0, 10.0, 11.0, 12.0);
-        #[rustfmt::skip]
-        let r = f32x4::new(46.0, 62.0, 80.0, 100.0);
+        let r = f32x4::new(
+            1.0 * 5.0 + 9.0,
+            2.0 * 6.0 + 10.0,
+            3.0 * 7.0 + 11.0,
+            4.0 * 8.0 + 12.0,
+        );
 
         assert_eq!(
             r,
@@ -13126,14 +13127,10 @@ mod tests {
 
     #[simd_test(enable = "msa")]
     unsafe fn test_msa_fmadd_d() {
-        #[rustfmt::skip]
         let a = f64x2::new(1.0, 2.0);
-        #[rustfmt::skip]
         let b = f64x2::new(3.0, 4.0);
-        #[rustfmt::skip]
         let c = f64x2::new(5.0, 6.0);
-        #[rustfmt::skip]
-        let r = f64x2::new(16.0, 26.0);
+        let r = f64x2::new(1.0 * 3.0 + 5.0, 2.0 * 4.0 + 6.0);
 
         assert_eq!(
             r,
