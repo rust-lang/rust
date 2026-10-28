@@ -348,7 +348,7 @@ fn emit_powerpc_va_arg<'ll, 'tcx>(
         bx.inbounds_ptradd(va_list_addr, bx.const_usize(1)) // fpr
     };
 
-    let mut num_regs = bx.load(bx.type_i8(), num_regs_addr, dl.i8_align);
+    let mut num_regs = bx.load(bx.type_i8(), num_regs_addr, Align::ONE);
 
     // "Align" the register count when the type is passed as `i64`.
     if layout.size.bytes() == 8 && !is_passed_in_fprs {
@@ -387,7 +387,7 @@ fn emit_powerpc_va_arg<'ll, 'tcx>(
 
         // Increase the used-register count.
         let new_num_regs = bx.add(num_regs, bx.cx.const_u8(reg_incr));
-        bx.store(new_num_regs, num_regs_addr, dl.i8_align);
+        bx.store(new_num_regs, num_regs_addr, Align::ONE);
 
         bx.br(end);
 
@@ -397,7 +397,7 @@ fn emit_powerpc_va_arg<'ll, 'tcx>(
     let mem_addr = {
         bx.switch_to_block(in_mem);
 
-        bx.store(bx.const_u8(max_regs), num_regs_addr, dl.i8_align);
+        bx.store(bx.const_u8(max_regs), num_regs_addr, Align::ONE);
 
         // Everything in the overflow area is rounded up to a size of at least 4.
         let overflow_area_align = Align::FOUR;

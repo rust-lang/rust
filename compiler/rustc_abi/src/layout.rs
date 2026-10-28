@@ -365,7 +365,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             Some(present_first) => present_first,
             // Uninhabited because it has no variants, or only absent ones.
             None if is_enum => {
-                return Ok(LayoutData::never_type(&self.cx));
+                return Ok(LayoutData::never_type());
             }
             // If it's a struct, still compute a layout so that we can still compute the
             // field offsets.
@@ -405,7 +405,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
     {
         let dl = self.cx.data_layout();
-        let mut align = if repr.pack.is_some() { dl.i8_align } else { dl.aggregate_align };
+        let mut align = if repr.pack.is_some() { Align::ONE } else { dl.aggregate_align };
         let mut max_repr_align = repr.align;
 
         // If all the non-ZST fields have the same repr and union repr optimizations aren't
@@ -1101,7 +1101,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
     {
         let dl = self.cx.data_layout();
         let pack = repr.pack;
-        let mut align = if pack.is_some() { dl.i8_align } else { dl.aggregate_align };
+        let mut align = if pack.is_some() { Align::ONE } else { dl.aggregate_align };
         let mut max_repr_align = repr.align;
         let mut in_memory_order: IndexVec<u32, FieldIdx> = fields.indices().collect();
         let optimize_field_order = !repr.inhibit_struct_field_reordering();

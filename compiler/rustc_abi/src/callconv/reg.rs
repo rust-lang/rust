@@ -74,8 +74,7 @@ impl Reg {
         let dl = cx.data_layout();
         match self.kind {
             RegKind::Integer => match self.size.bits() {
-                1 => dl.i1_align,
-                2..=8 => dl.i8_align,
+                1..=8 => Align::ONE,
                 9..=16 => dl.i16_align,
                 17..=32 => dl.i32_align,
                 33..=64 => dl.i64_align,

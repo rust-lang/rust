@@ -831,7 +831,7 @@ where
                     ty::Adt(def, _) => def.variant(variant_index).fields.len(),
                     _ => bug!("`ty_and_layout_for_variant` on unexpected type {}", this.ty),
                 };
-                tcx.mk_layout(LayoutData::uninhabited_variant(cx, variant_index, fields))
+                tcx.mk_layout(LayoutData::uninhabited_variant(variant_index, fields))
             }
 
             Variants::Multiple { .. } => {
