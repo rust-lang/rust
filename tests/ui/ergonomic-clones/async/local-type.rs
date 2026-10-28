@@ -5,6 +5,6 @@
 #![allow(incomplete_features)]
 
 fn main() {
-    let _ = async use |x: x| x; //~ ERROR cannot find type `x` in this scope
-    let _ = async use |x: bool| -> x { x }; //~ ERROR cannot find type `x` in this scope
+    let _ = async |x: x| x.use; //~ ERROR cannot find type `x` in this scope
+    let _ = async |x: bool| -> x { x.use }; //~ ERROR cannot find type `x` in this scope
 }

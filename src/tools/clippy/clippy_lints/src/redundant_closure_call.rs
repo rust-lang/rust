@@ -131,12 +131,11 @@ fn find_innermost_closure<'tcx>(
 }
 
 /// Returns the capture keyword for a closure. One of:
-/// `move`, `use`, or nothing for capture by reference.
+/// `move`, or nothing for capture by reference.
 fn capture_keyword(capture_clause: CaptureBy) -> &'static str {
     match capture_clause {
-        CaptureBy::Value { .. } => "move ",
-        CaptureBy::Use { .. } => "use ",
         CaptureBy::Ref => "",
+        CaptureBy::Value { .. } => "move ",
     }
 }
 

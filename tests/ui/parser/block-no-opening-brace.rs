@@ -30,7 +30,7 @@ fn in_try() {
 fn in_async() {
     async
         let x = 0;
-    //~^ ERROR expected one of `move`, `use`, `{`, `|`, or `||`, found keyword `let`
+    //~^ ERROR expected one of `move`, `{`, `|`, or `||`, found keyword `let`
 }
 
 // FIXME(#78168)

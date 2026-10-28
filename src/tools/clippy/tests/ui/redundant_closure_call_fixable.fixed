@@ -127,25 +127,6 @@ mod issue11707 {
     }
 }
 
-mod issue16232 {
-    use core::future::Future;
-
-    fn spawn_on(fut: impl Future<Output = ()>) {}
-
-    fn closure_async_use_block() {
-        let name = String::from("world");
-        #[rustfmt::skip]
-        spawn_on(async use { drop(format!("hello, {name:?}")) });
-        //~^ redundant_closure_call
-    }
-
-    fn async_use_closure() {
-        let name = String::from("world");
-        spawn_on(async use { drop(format!("hello, {name}")) });
-        //~^ redundant_closure_call
-    }
-}
-
 fn avoid_double_parens() {
     std::convert::identity(13_i32 + 36_i32).leading_zeros();
     //~^ redundant_closure_call

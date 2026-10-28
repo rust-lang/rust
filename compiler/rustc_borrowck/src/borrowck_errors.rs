@@ -403,9 +403,8 @@ impl<'diag, 'tcx> crate::MirBorrowckCtxt<'_, 'diag, 'tcx> {
                 .hir_node_by_def_id(self.body.source.def_id().expect_local())
                 .expect_closure();
             let span = match capture_clause {
-                rustc_hir::CaptureBy::Value { move_kw } => move_kw.shrink_to_lo(),
-                rustc_hir::CaptureBy::Use { use_kw } => use_kw.shrink_to_lo(),
-                rustc_hir::CaptureBy::Ref => fn_decl_span.shrink_to_lo(),
+                hir::CaptureBy::Ref => fn_decl_span.shrink_to_lo(),
+                hir::CaptureBy::Value { move_kw } => move_kw.shrink_to_lo(),
             };
             diag.span_suggestion_verbose(
                 span,

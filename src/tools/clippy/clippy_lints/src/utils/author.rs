@@ -579,9 +579,8 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 ..
             }) => {
                 let capture_clause = match capture_clause {
-                    CaptureBy::Value { .. } => "Value { .. }",
-                    CaptureBy::Use { .. } => "Use { .. }",
                     CaptureBy::Ref => "Ref",
+                    CaptureBy::Value { .. } => "Value { .. }",
                 };
 
                 let closure_kind = match kind {
