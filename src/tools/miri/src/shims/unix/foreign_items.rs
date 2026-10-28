@@ -644,7 +644,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "bind" => {
                 let [socket, address, address_len] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(i32, *_, libc::socklen_t) -> i32),
+                    shim_sig!(extern "C" fn(i32, *libc::sockaddr, libc::socklen_t) -> i32),
                     (link_name, abi, args),
                 )?;
                 let result = this.bind(socket, address, address_len)?;
@@ -674,7 +674,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "connect" => {
                 let [socket, address, address_len] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(i32, *_, libc::socklen_t) -> i32),
+                    shim_sig!(extern "C" fn(i32, *libc::sockaddr, libc::socklen_t) -> i32),
                     (link_name, abi, args),
                 )?;
                 this.connect(socket, address, address_len, dest)?;
@@ -736,7 +736,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "getaddrinfo" => {
                 let [node, service, hints, res] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(*_, *_, *_, *_) -> i32),
+                    shim_sig!(extern "C" fn(*_, *_, *_, **_) -> i32),
                     (link_name, abi, args),
                 )?;
                 let result = this.getaddrinfo(node, service, hints, res)?;
