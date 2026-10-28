@@ -3408,7 +3408,7 @@ pub unsafe fn __msa_copy_u_w<const IMM2: i32>(a: v4i32) -> u32 {
 ///
 #[inline]
 #[target_feature(enable = "msa")]
-#[cfg_attr(test, assert_instr(copy_u.d, IMM1 = 0b1))]
+#[cfg_attr(test, assert_instr(copy_s.d, IMM1 = 0b1))]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_copy_u_d<const IMM1: i32>(a: v2i64) -> u64 {
     static_assert_uimm_bits!(IMM1, 1);
