@@ -1,4 +1,4 @@
-#![unstable(feature = "windows_unix_domain_sockets", issue = "150487")]
+#![stable(feature = "windows_unix_domain_sockets", since = "CURRENT_RUSTC_VERSION")]
 
 use crate::macros::rustdoc_skip_body;
 use crate::os::windows::io::{AsRawSocket, FromRawSocket, IntoRawSocket, RawSocket};
@@ -20,7 +20,6 @@ use crate::{fmt, io};
 ///
 #[cfg_attr(windows, doc = "```no_run")]
 #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
-/// #![feature(windows_unix_domain_sockets)]
 /// use std::thread;
 /// use std::os::windows::net::{UnixStream, UnixListener};
 ///
@@ -66,7 +65,6 @@ impl UnixListener {
     ///
     #[cfg_attr(windows, doc = "```no_run")]
     #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
-    /// #![feature(windows_unix_domain_sockets)]
     /// use std::os::windows::net::UnixListener;
     ///
     /// let listener = match UnixListener::bind("/path/to/the/socket") {
@@ -90,7 +88,6 @@ impl UnixListener {
     ///
     #[cfg_attr(windows, doc = "```no_run")]
     #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
-    /// #![feature(windows_unix_domain_sockets)]
     /// use std::os::windows::net::{UnixListener};
     ///
     /// fn main() -> std::io::Result<()> {
@@ -129,7 +126,6 @@ impl UnixListener {
     ///
     #[cfg_attr(windows, doc = "```no_run")]
     #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
-    /// #![feature(windows_unix_domain_sockets)]
     /// use std::os::windows::net::UnixListener;
     ///
     /// fn main() -> std::io::Result<()> {
@@ -156,7 +152,6 @@ impl UnixListener {
     ///
     #[cfg_attr(windows, doc = "```no_run")]
     #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
-    /// #![feature(windows_unix_domain_sockets)]
     /// use std::os::windows::net::UnixListener;
     ///
     /// fn main() -> std::io::Result<()> {
@@ -180,7 +175,6 @@ impl UnixListener {
     ///
     #[cfg_attr(windows, doc = "```no_run")]
     #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
-    /// #![feature(windows_unix_domain_sockets)]
     /// use std::os::windows::net::UnixListener;
     ///
     /// fn main() -> std::io::Result<()> {
@@ -205,7 +199,6 @@ impl UnixListener {
     ///
     #[cfg_attr(windows, doc = "```no_run")]
     #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
-    /// #![feature(windows_unix_domain_sockets)]
     /// use std::os::windows::net::UnixListener;
     ///
     /// fn main() -> std::io::Result<()> {
@@ -224,7 +217,6 @@ impl UnixListener {
     ///
     #[cfg_attr(windows, doc = "```no_run")]
     #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
-    /// #![feature(windows_unix_domain_sockets)]
     /// use std::os::windows::net::UnixListener;
     ///
     /// fn main() -> std::io::Result<()> {
@@ -249,7 +241,6 @@ impl UnixListener {
     ///
     #[cfg_attr(windows, doc = "```no_run")]
     #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
-    /// #![feature(windows_unix_domain_sockets)]
     /// use std::thread;
     /// use std::os::windows::net::{UnixStream, UnixListener};
     ///
@@ -286,7 +277,6 @@ impl UnixListener {
 ///
 #[cfg_attr(windows, doc = "```no_run")]
 #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
-/// #![feature(windows_unix_domain_sockets)]
 /// use std::thread;
 /// use std::os::windows::net::{UnixStream, UnixListener};
 ///

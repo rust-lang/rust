@@ -1,4 +1,4 @@
-#![unstable(feature = "windows_unix_domain_sockets", issue = "150487")]
+#![stable(feature = "windows_unix_domain_sockets", since = "CURRENT_RUSTC_VERSION")]
 use crate::byte_str::ByteStr;
 use crate::ffi::OsStr;
 use crate::macros::rustdoc_skip_body;
@@ -82,7 +82,6 @@ impl SocketAddr {
     ///
     #[cfg_attr(windows, doc = "```no_run")]
     #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
-    /// #![feature(windows_unix_domain_sockets)]
     /// use std::os::windows::net::UnixListener;
     /// use std::path::Path;
     ///
@@ -108,7 +107,6 @@ impl SocketAddr {
     ///
     #[cfg_attr(windows, doc = "```no_run")]
     #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
-    /// #![feature(windows_unix_domain_sockets)]
     /// use std::os::windows::net::SocketAddr;
     /// use std::path::Path;
     ///
@@ -123,7 +121,6 @@ impl SocketAddr {
     ///
     #[cfg_attr(windows, doc = "```no_run")]
     #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
-    /// #![feature(windows_unix_domain_sockets)]
     /// use std::os::windows::net::SocketAddr;
     ///
     /// assert!(SocketAddr::from_pathname("/path/with/\0/bytes").is_err());
@@ -160,7 +157,6 @@ impl SocketAddr {
     ///
     #[cfg_attr(windows, doc = "```no_run")]
     #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
-    /// #![feature(windows_unix_domain_sockets)]
     /// use std::os::windows::net::UnixListener;
     ///
     /// fn main() -> std::io::Result<()> {
