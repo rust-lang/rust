@@ -1662,14 +1662,6 @@ impl<'v> RootCollector<'_, 'v> {
                 // Otherwise the value is only collected when explicitly mentioned in other items.
                 if self.strategy == MonoItemCollectionStrategy::Eager {
                     let def_id = id.owner_id.to_def_id();
-                    // Type Consts don't have bodies to evaluate
-                    // nor do they make sense as a static.
-                    if self.tcx.const_of_item(def_id).is_some() {
-                        // FIXME(mgca): Is this actually what we want? We may want to
-                        // normalize to a ValTree then convert to a const allocation and
-                        // collect that?
-                        return;
-                    }
                     if self.tcx.generics_of(id.owner_id).own_requires_monomorphization() {
                         return;
                     }

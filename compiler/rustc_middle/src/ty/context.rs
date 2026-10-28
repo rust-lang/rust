@@ -1081,7 +1081,12 @@ impl<'tcx> TyCtxt<'tcx> {
     // Whether the body owner is synthetic, which in this case means it does not correspond to
     // meaningful HIR. This is currently used to skip over MIR borrowck.
     pub fn is_synthetic_mir(self, def_id: impl Into<DefId>) -> bool {
-        matches!(self.def_kind(def_id.into()), DefKind::SyntheticCoroutineBody)
+        let def_id = def_id.into();
+        match self.def_kind(def_id) {
+            DefKind::SyntheticCoroutineBody => true,
+            DefKind::Const | DefKind::AssocConst => self.const_of_item(def_id).is_some(),
+            _ => false,
+        }
     }
 
     /// Returns `true` if the node pointed to by `def_id` is a general coroutine that implements `Coroutine`.
