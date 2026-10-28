@@ -95,7 +95,7 @@ impl TokenTree {
 #[derive(Clone, Debug)]
 pub struct WithTokens<T> {
     pub node: T,
-    pub tokens: Option<LazyAttrTokenStream>,
+    pub tokens: Option<LazyTokenStream>,
 }
 
 impl<T> WithTokens<T> {
@@ -108,14 +108,14 @@ impl<T> WithTokens<T> {
     }
 }
 
-/// A lazy version of [`AttrTokenStream`], which defers creation of an actual
-/// `AttrTokenStream` until it is needed.
+/// A lazy version of [`TokenStream`], which defers creation of an actual `TokenStream` until it is
+/// needed.
 #[derive(Clone)]
-pub struct LazyAttrTokenStream(Arc<LazyAttrTokenStreamInner>);
+pub struct LazyTokenStream(Arc<LazyTokenStreamInner>);
 
-impl LazyAttrTokenStream {
-    pub fn new_direct(stream: AttrTokenStream) -> LazyAttrTokenStream {
-        LazyAttrTokenStream(Arc::new(LazyAttrTokenStreamInner::Direct(stream)))
+impl LazyTokenStream {
+    pub fn new_direct(stream: TokenStream) -> LazyTokenStream {
+        LazyTokenStream(Arc::new(LazyTokenStreamInner::Direct(stream)))
     }
 
     pub fn new_pending(
@@ -124,8 +124,8 @@ impl LazyAttrTokenStream {
         num_calls: u32,
         break_last_token: u32,
         node_replacements: ThinVec<NodeReplacement>,
-    ) -> LazyAttrTokenStream {
-        LazyAttrTokenStream(Arc::new(LazyAttrTokenStreamInner::Pending {
+    ) -> LazyTokenStream {
+        LazyTokenStream(Arc::new(LazyTokenStreamInner::Pending {
             start_token,
             cursor_snapshot,
             num_calls,
@@ -134,32 +134,40 @@ impl LazyAttrTokenStream {
         }))
     }
 
-    pub fn to_attr_token_stream(&self) -> AttrTokenStream {
-        self.0.to_attr_token_stream()
+    pub fn to_token_stream(&self) -> TokenStream {
+        self.0.to_configured_token_stream(&mut keep_all)
+    }
+
+    pub fn to_configured_token_stream(&self, configure: &mut ConfigureFn<'_>) -> TokenStream {
+        self.0.to_configured_token_stream(configure)
+    }
+
+    pub fn append_token_trees_to(&self, res: &mut Vec<TokenTree>) {
+        self.0.append_token_trees_to(&mut keep_all, res);
     }
 }
 
-impl fmt::Debug for LazyAttrTokenStream {
+impl fmt::Debug for LazyTokenStream {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "LazyAttrTokenStream({:?})", self.to_attr_token_stream())
+        write!(f, "LazyTokenStream({:?})", self.to_token_stream())
     }
 }
 
-impl<S: SpanEncoder> Encodable<S> for LazyAttrTokenStream {
+impl<S: SpanEncoder> Encodable<S> for LazyTokenStream {
     fn encode(&self, _s: &mut S) {
-        panic!("Attempted to encode LazyAttrTokenStream");
+        panic!("Attempted to encode LazyTokenStream");
     }
 }
 
-impl<D: SpanDecoder> Decodable<D> for LazyAttrTokenStream {
+impl<D: SpanDecoder> Decodable<D> for LazyTokenStream {
     fn decode(_d: &mut D) -> Self {
-        panic!("Attempted to decode LazyAttrTokenStream");
+        panic!("Attempted to decode LazyTokenStream");
     }
 }
 
-impl StableHash for LazyAttrTokenStream {
+impl StableHash for LazyTokenStream {
     fn stable_hash<Hcx: StableHashCtxt>(&self, _hcx: &mut Hcx, _hasher: &mut StableHasher) {
-        panic!("Attempted to compute stable hash for LazyAttrTokenStream");
+        panic!("Attempted to compute stable hash for LazyTokenStream");
     }
 }
 
@@ -180,8 +188,7 @@ pub struct NodeRange(pub Range<u32>);
 /// 1. Replacement. During the parsing of an AST node that may have a
 ///    `#[derive]` attribute, when we parse a nested AST node that has `#[cfg]`
 ///    or `#[cfg_attr]`, we replace the entire inner AST node with
-///    `FlatToken::AttrsTarget`. This lets us perform eager cfg-expansion on an
-///    `AttrTokenStream`.
+///    `FlatToken::AttrsTarget`. This lets us perform eager cfg-expansion.
 ///
 /// 2. Deletion. We delete inner attributes from all collected token streams,
 ///    and instead track them through the `attrs` field on the AST node. This
@@ -191,7 +198,7 @@ pub struct NodeRange(pub Range<u32>);
 ///
 /// Each replacement starts off in `ParserReplacement` form but is converted to
 /// `NodeReplacement` form when it is attached to a single AST node, via
-/// `LazyAttrTokenStreamImpl`.
+/// `LazyTokenStream`.
 pub type ParserReplacement = (ParserRange, Option<AttrsTarget>);
 
 /// See the comment on `ParserReplacement`.
@@ -214,9 +221,9 @@ impl NodeRange {
     }
 }
 
-enum LazyAttrTokenStreamInner {
+enum LazyTokenStreamInner {
     // The token stream has already been produced.
-    Direct(AttrTokenStream),
+    Direct(TokenStream),
 
     // From a value of this type we can reconstruct the `TokenStream` seen by
     // the `f` callback passed to a call to `Parser::collect_tokens`, by
@@ -238,11 +245,31 @@ enum LazyAttrTokenStreamInner {
     },
 }
 
-impl LazyAttrTokenStreamInner {
-    fn to_attr_token_stream(&self) -> AttrTokenStream {
+/// Fn type used to do (or not do) `cfg` expansion. It can modify attributes. The return value
+/// indicates if the target should be retained. Any children of discarded targets are skipped.
+type ConfigureFn<'a> = dyn FnMut(&mut AttrsTarget) -> bool + 'a;
+
+/// A `ConfigureFn` that keeps the target, i.e. the node and its tokens.
+fn keep_all(_: &mut AttrsTarget) -> bool {
+    true
+}
+
+impl LazyTokenStreamInner {
+    fn to_configured_token_stream(&self, configure: &mut ConfigureFn<'_>) -> TokenStream {
         match self {
-            LazyAttrTokenStreamInner::Direct(stream) => stream.clone(),
-            LazyAttrTokenStreamInner::Pending {
+            LazyTokenStreamInner::Direct(stream) => stream.clone(),
+            LazyTokenStreamInner::Pending { .. } => {
+                let mut res = vec![];
+                self.append_token_trees_to(configure, &mut res);
+                TokenStream::new(res)
+            }
+        }
+    }
+
+    fn append_token_trees_to(&self, configure: &mut ConfigureFn<'_>, res: &mut Vec<TokenTree>) {
+        match self {
+            LazyTokenStreamInner::Direct(stream) => res.extend(stream.iter().cloned()),
+            LazyTokenStreamInner::Pending {
                 start_token,
                 cursor_snapshot,
                 num_calls,
@@ -258,9 +285,8 @@ impl LazyAttrTokenStreamInner {
                 let tokens = iter::once(FlatToken::Token(*start_token))
                     .chain(iter::repeat_with(|| FlatToken::Token(cursor_snapshot.next_and_bump())))
                     .take(*num_calls as usize);
-
                 if node_replacements.is_empty() {
-                    make_attr_token_stream(tokens, *break_last_token)
+                    append_flat_tokens_as_token_trees_to(tokens, *break_last_token, configure, res);
                 } else {
                     let mut tokens: Vec<_> = tokens.collect();
                     let mut node_replacements = node_replacements.to_vec();
@@ -314,55 +340,54 @@ impl LazyAttrTokenStreamInner {
                             ),
                         );
                     }
-                    make_attr_token_stream(tokens.into_iter(), *break_last_token)
+                    append_flat_tokens_as_token_trees_to(
+                        tokens.into_iter(),
+                        *break_last_token,
+                        configure,
+                        res,
+                    );
                 }
             }
         }
     }
 }
 
-/// A helper struct used when building an `AttrTokenStream` from
-/// a `LazyAttrTokenStream`. Both delimiter and non-delimited tokens
+/// A helper struct used when building a `TokenStream` from
+/// a `LazyTokenStream`. Both delimiter and non-delimited tokens
 /// are stored as `FlatToken::Token`. A vector of `FlatToken`s
-/// is then 'parsed' to build up an `AttrTokenStream` with nested
-/// `AttrTokenTree::Delimited` tokens.
+/// is then 'parsed' to build up a `TokenStream` with nested
+/// `TokenTree::Delimited` tokens.
 #[derive(Debug, Clone)]
 enum FlatToken {
-    /// A token - this holds both delimiter (e.g. '{' and '}')
-    /// and non-delimiter tokens
+    /// A token. Holds both delimiter (e.g. '{' and '}') and non-delimiter tokens.
     Token((Token, Spacing)),
-    /// Holds the `AttrsTarget` for an AST node. The `AttrsTarget` is inserted
-    /// directly into the constructed `AttrTokenStream` as an
-    /// `AttrTokenTree::AttrsTarget`.
+    /// Holds the `AttrsTarget` for an AST node. The `AttrsTarget` is expanded directly into the
+    /// constructed `TokenStream`.
     AttrsTarget(AttrsTarget),
-    /// A special 'empty' token that is ignored during the conversion
-    /// to an `AttrTokenStream`. This is used to simplify the
-    /// handling of replace ranges.
+    /// A special 'empty' token that is ignored during the conversion to a `TokenStream`. This is
+    /// used to simplify the handling of replace ranges.
     Empty,
 }
 
-/// An `AttrTokenStream` is similar to a `TokenStream`, but with extra
-/// information about the tokens for attribute targets. This is used
-/// during expansion to perform early cfg-expansion, and to process attributes
-/// during proc-macro invocations.
-#[derive(Clone, Debug, Default, Encodable, Decodable)]
-pub struct AttrTokenStream(pub Arc<Vec<AttrTokenTree>>);
-
-/// Converts a flattened iterator of tokens (including open and close delimiter tokens) into an
-/// `AttrTokenStream`, creating an `AttrTokenTree::Delimited` for each matching pair of open and
-/// close delims.
-fn make_attr_token_stream(
+/// Converts a flattened iterator of tokens (including open and close delimiter tokens) into a
+/// sequence of `TokenTree` (appended to `res`), creating a `TokenTree::Delimited` for each
+/// matching pair of open and close delims. Any `FlatToken::AttrsTarget` element will only be
+/// appended if `configure` succeeds, and `configure` can also modify any such element.
+fn append_flat_tokens_as_token_trees_to(
     iter: impl Iterator<Item = FlatToken>,
     break_last_token: u32,
-) -> AttrTokenStream {
+    configure: &mut ConfigureFn<'_>,
+    res: &mut Vec<TokenTree>,
+) {
     #[derive(Debug)]
     struct FrameData {
         // This is `None` for the first frame, `Some` for all others.
         open_delim_sp: Option<(Delimiter, Span, Spacing)>,
-        inner: Vec<AttrTokenTree>,
+        inner: Vec<TokenTree>,
     }
+
     // The stack always has at least one element. Storing it separately makes for shorter code.
-    let mut stack_top = FrameData { open_delim_sp: None, inner: vec![] };
+    let mut stack_top = FrameData { open_delim_sp: None, inner: mem::take(res) };
     let mut stack_rest = vec![];
     for flat_token in iter {
         match flat_token {
@@ -374,10 +399,11 @@ fn make_attr_token_stream(
                     ));
                 } else if let Some(delim) = kind.close_delim() {
                     // If there's no matching opening delimiter, the token stream is malformed,
-                    // likely due to a improper delimiter positions in the source code.
-                    // It's not delimiter mismatch, and lexer can not detect it, so we just ignore it here.
+                    // likely due to an improper delimiter position in the source code. It's not
+                    // delimiter mismatch, and lexer can not detect it, so we just ignore it here.
                     let Some(frame) = stack_rest.pop() else {
-                        return AttrTokenStream::new(stack_top.inner);
+                        *res = stack_top.inner;
+                        return;
                     };
                     let frame_data = mem::replace(&mut stack_top, frame);
                     let (open_delim, open_sp, open_spacing) = frame_data.open_delim_sp.unwrap();
@@ -387,15 +413,22 @@ fn make_attr_token_stream(
                     );
                     let dspan = DelimSpan::from_pair(open_sp, span);
                     let dspacing = DelimSpacing::new(open_spacing, spacing);
-                    let stream = AttrTokenStream::new(frame_data.inner);
-                    let delimited = AttrTokenTree::Delimited(dspan, dspacing, delim, stream);
+                    let stream = TokenStream::new(frame_data.inner);
+                    let delimited = TokenTree::Delimited(dspan, dspacing, delim, stream);
                     stack_top.inner.push(delimited);
                 } else {
-                    stack_top.inner.push(AttrTokenTree::Token(token, spacing))
+                    stack_top.inner.push(TokenTree::Token(token, spacing))
                 }
             }
-            FlatToken::AttrsTarget(target) => {
-                stack_top.inner.push(AttrTokenTree::AttrsTarget(target))
+            FlatToken::AttrsTarget(mut target) => {
+                if configure(&mut target) {
+                    append_attrs_and_stream_as_token_trees_to(
+                        &target.attrs,
+                        &target.tokens,
+                        configure,
+                        &mut stack_top.inner,
+                    );
+                }
             }
             FlatToken::Empty => {}
         }
@@ -403,7 +436,7 @@ fn make_attr_token_stream(
 
     if break_last_token > 0 {
         let last_token = stack_top.inner.pop().unwrap();
-        if let AttrTokenTree::Token(last_token, spacing) = last_token {
+        if let TokenTree::Token(last_token, spacing) = last_token {
             let (unglued, _) = last_token.kind.break_two_token_op(break_last_token).unwrap();
 
             // Tokens are always ASCII chars, so we can use byte arithmetic here.
@@ -411,65 +444,13 @@ fn make_attr_token_stream(
             first_span =
                 first_span.with_hi(first_span.lo() + rustc_span::BytePos(break_last_token));
 
-            stack_top.inner.push(AttrTokenTree::Token(Token::new(unglued, first_span), spacing));
+            stack_top.inner.push(TokenTree::Token(Token::new(unglued, first_span), spacing));
         } else {
             panic!("Unexpected last token {last_token:?}")
         }
     }
-    AttrTokenStream::new(stack_top.inner)
-}
 
-/// A shared empty attr token stream, used to avoid an unnecessary `Arc` allocation for every empty
-/// token stream.
-static EMPTY_ATTR_TOKEN_STREAM: LazyLock<AttrTokenStream> =
-    LazyLock::new(|| AttrTokenStream(Arc::new(Vec::new())));
-
-/// Like `TokenTree`, but for `AttrTokenStream`.
-#[derive(Clone, Debug, Encodable, Decodable)]
-pub enum AttrTokenTree {
-    Token(Token, Spacing),
-    Delimited(DelimSpan, DelimSpacing, Delimiter, AttrTokenStream),
-    /// Stores the attributes for an attribute target,
-    /// along with the tokens for that attribute target.
-    /// See `AttrsTarget` for more information
-    AttrsTarget(AttrsTarget),
-}
-
-impl AttrTokenStream {
-    pub fn new(tts: Vec<AttrTokenTree>) -> AttrTokenStream {
-        if tts.is_empty() {
-            EMPTY_ATTR_TOKEN_STREAM.clone()
-        } else {
-            AttrTokenStream(Arc::new(tts))
-        }
-    }
-
-    /// Converts this `AttrTokenStream` to a plain `Vec<TokenTree>`. During
-    /// conversion, any `AttrTokenTree::AttrsTarget` gets "flattened" back to a
-    /// `TokenStream`, as described in the comment on
-    /// `attrs_and_tokens_to_token_trees`.
-    pub fn to_token_trees(&self) -> Vec<TokenTree> {
-        let mut res = Vec::with_capacity(self.0.len());
-        for tree in self.0.iter() {
-            match tree {
-                AttrTokenTree::Token(inner, spacing) => {
-                    res.push(TokenTree::Token(inner.clone(), *spacing));
-                }
-                AttrTokenTree::Delimited(span, spacing, delim, stream) => {
-                    res.push(TokenTree::Delimited(
-                        *span,
-                        *spacing,
-                        *delim,
-                        TokenStream::new(stream.to_token_trees()),
-                    ))
-                }
-                AttrTokenTree::AttrsTarget(target) => {
-                    attrs_and_tokens_to_token_trees(&target.attrs, &target.tokens, &mut res);
-                }
-            }
-        }
-        res
-    }
+    *res = stack_top.inner;
 }
 
 // Converts multiple attributes and the tokens for a target AST node into token trees, and appends
@@ -480,9 +461,10 @@ impl AttrTokenStream {
 // - Simple if only outer attribute are present, e.g. "#[outer1] #[outer2] fn f() { blah(); }"
 // - Trickier if inner attributes are present, because they must be moved within the AST node's
 //   tokens, e.g. "#[outer] fn f() { #![inner] blah() }"
-fn attrs_and_tokens_to_token_trees(
+fn append_attrs_and_stream_as_token_trees_to(
     attrs: &[Attribute],
-    target_tokens: &LazyAttrTokenStream,
+    target_tokens: &LazyTokenStream,
+    configure: &mut ConfigureFn<'_>,
     res: &mut Vec<TokenTree>,
 ) {
     let idx = attrs.partition_point(|attr| matches!(attr.style, crate::AttrStyle::Outer));
@@ -490,11 +472,11 @@ fn attrs_and_tokens_to_token_trees(
 
     // Add outer attribute tokens.
     for attr in outer_attrs {
-        res.extend(attr.token_trees());
+        attr.append_token_trees_to(res);
     }
 
     // Add target AST node tokens.
-    res.extend(target_tokens.to_attr_token_stream().to_token_trees());
+    target_tokens.0.append_token_trees_to(configure, res);
 
     // Insert inner attribute tokens.
     if !inner_attrs.is_empty() {
@@ -521,7 +503,7 @@ fn attrs_and_tokens_to_token_trees(
                 // Found it: the rightmost, outermost braced group.
                 let mut tts = vec![];
                 for inner_attr in inner_attrs {
-                    tts.extend(inner_attr.token_trees());
+                    inner_attr.append_token_trees_to(&mut tts);
                 }
                 tts.extend(stream.0.iter().cloned());
                 let stream = TokenStream::new(tts);
@@ -558,15 +540,15 @@ fn attrs_and_tokens_to_token_trees(
 /// and a `tokens` field storing the (unparsed) tokens `struct Foo {}`
 ///
 /// The `cfg`/`cfg_attr` processing occurs in
-/// `StripUnconfigured::configure_tokens`.
-#[derive(Clone, Debug, Encodable, Decodable)]
+/// `StripUnconfigured::try_configure_tokens`.
+#[derive(Clone, Debug)]
 pub struct AttrsTarget {
     /// Attributes, both outer and inner.
     /// These are stored in the original order that they were parsed in.
     pub attrs: AttrVec,
     /// The underlying tokens for the attribute target that `attrs`
     /// are applied to
-    pub tokens: LazyAttrTokenStream,
+    pub tokens: LazyTokenStream,
 }
 
 /// Indicates whether a token can join with the following token to form a
@@ -670,7 +652,7 @@ impl TokenStream {
     pub fn from_ast(node: &(impl HasTokens + fmt::Debug)) -> TokenStream {
         let tokens = node.tokens().unwrap_or_else(|| panic!("missing tokens for node: {:?}", node));
         let mut tts = vec![];
-        attrs_and_tokens_to_token_trees(node.attrs(), tokens, &mut tts);
+        append_attrs_and_stream_as_token_trees_to(node.attrs(), tokens, &mut keep_all, &mut tts);
         TokenStream::new(tts)
     }
 
@@ -1112,11 +1094,9 @@ mod size_asserts {
 
     use super::*;
     // tidy-alphabetical-start
-    static_assert_size!(AttrTokenStream, 8);
-    static_assert_size!(AttrTokenTree, 32);
-    static_assert_size!(LazyAttrTokenStream, 8);
-    static_assert_size!(LazyAttrTokenStreamInner, 88);
-    static_assert_size!(Option<LazyAttrTokenStream>, 8); // must be small, used in many AST nodes
+    static_assert_size!(LazyTokenStream, 8);
+    static_assert_size!(LazyTokenStreamInner, 88);
+    static_assert_size!(Option<LazyTokenStream>, 8); // must be small, used in many AST nodes
     static_assert_size!(TokenStream, 8);
     static_assert_size!(TokenTree, 32);
     // tidy-alphabetical-end
