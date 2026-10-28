@@ -201,6 +201,16 @@ const impl<T, E, F: [const] From<E>> FromResidual<Result<!, E>> for Result<T, F>
     }
 }
 
+#[diagnostic::do_not_recommend]
+#[unstable(feature = "try_trait_v2_yeet", issue = "96374")]
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+const impl<T, E, F: [const] From<E>> FromResidual<super::Yeet<E>> for Result<T, F> {
+    #[inline]
+    fn from_residual(super::Yeet(e): super::Yeet<E>) -> Self {
+        Err(From::from(e))
+    }
+}
+
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
 const impl<T, E> Residual<T> for Result<!, E> {
     type TryType = Result<T, E>;
@@ -270,6 +280,16 @@ const impl<T> FromResidual<Option<!>> for Option<T> {
         match residual {
             None => None,
         }
+    }
+}
+
+#[diagnostic::do_not_recommend]
+#[unstable(feature = "try_trait_v2_yeet", issue = "96374")]
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+const impl<T> FromResidual<super::Yeet<()>> for Option<T> {
+    #[inline]
+    fn from_residual(super::Yeet(()): super::Yeet<()>) -> Self {
+        None
     }
 }
 
