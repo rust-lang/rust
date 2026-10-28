@@ -14,8 +14,8 @@ mkdir binutils-build
 mkdir "$BINUTILS_ROOT_PATH"
 cd binutils-build
 
-hide_output ../binutils-$BINUTILS/configure --prefix="$BINUTILS_ROOT_PATH" --disable-werror
-hide_output make -j$(nproc)
+../binutils-$BINUTILS/configure --prefix="$BINUTILS_ROOT_PATH" --disable-werror
+make -j$(nproc)
 hide_output make install
 
 cd ..
