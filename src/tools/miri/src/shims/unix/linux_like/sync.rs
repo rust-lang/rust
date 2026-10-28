@@ -74,7 +74,7 @@ pub fn futex<'tcx>(
                 return ecx.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
             }
 
-            let timeout = ecx.deref_pointer_as(&timeout, ecx.libc_ty_layout("timespec"))?;
+            let timeout = ecx.deref_pointer(&timeout)?;
             let deadline = if ecx.ptr_is_null(timeout.ptr())? {
                 None
             } else {

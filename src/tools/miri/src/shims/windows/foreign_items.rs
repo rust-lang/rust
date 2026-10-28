@@ -205,7 +205,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "GetUserProfileDirectoryW" => {
                 // FIXME: This does not have a direct test (#3179).
                 let [token, buf, size] = &ecx.check_shim_sig(
-                    shim_sig!(extern "system" fn(winapi::HANDLE, *_, *_) -> winapi::BOOL),
+                    shim_sig!(extern "system" fn(winapi::HANDLE, *_, *u32) -> winapi::BOOL),
                     (link_name, abi, args),
                 )?;
                 let result = ecx.GetUserProfileDirectoryW(token, buf, size)?;
@@ -847,7 +847,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             *_,
                             *_,
                             u32,
-                            *_,
+                            *u32,
                         ) -> winapi::HANDLE
                     ),
                     (link_name, abi, args),
@@ -1058,7 +1058,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                                 winapi::HANDLE,
                                 winapi::HANDLE,
                                 winapi::HANDLE,
-                                *_,
+                                *winapi::HANDLE,
                                 u32,
                                 winapi::BOOL,
                                 u32,

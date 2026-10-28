@@ -328,7 +328,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Handle::Null | Handle::Invalid => ecx.invalid_handle("DuplicateHandle")?,
         };
 
-        let target_place = ecx.deref_pointer_as(target_handle, ecx.machine.layouts.usize)?;
+        let target_place = ecx.deref_pointer(target_handle)?;
         ecx.write_scalar(new_handle.to_scalar(ecx), &target_place)?;
 
         interp_ok(ecx.eval_windows("c", "TRUE"))
