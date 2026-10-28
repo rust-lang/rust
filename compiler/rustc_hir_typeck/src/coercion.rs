@@ -1998,7 +1998,7 @@ impl<'tcx> CoerceMany<'tcx> {
         });
 
         let (starts, ends) =
-            arm_spans.map(|span| (span.shrink_to_lo(), span.shrink_to_hi())).unzip();
+            arm_spans.map(|span| (span.shrink_to_lo(), span.shrink_to_hi())).collect();
         err.subdiagnostic(SuggestBoxingForReturnImplTrait::BoxReturnExpr { starts, ends });
     }
 

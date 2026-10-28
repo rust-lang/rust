@@ -61,7 +61,7 @@ impl Drop for AssertLinear {
 
 impl Round {
     fn finish(&mut self) {
-        let (mut xs, mut ys): (Vec<_>, Vec<_>) = self.samples.iter().copied().unzip();
+        let (mut xs, mut ys): (Vec<_>, Vec<_>) = self.samples.iter().copied().collect();
         normalize(&mut xs);
         normalize(&mut ys);
         let xy = xs.iter().copied().zip(ys.iter().copied());

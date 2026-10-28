@@ -495,7 +495,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                             late_arg_as_bound_arg(param),
                         )
                     })
-                    .unzip();
+                    .collect();
 
             deny_non_region_late_bound(self.tcx, &mut bound_vars, "closures");
 
@@ -728,7 +728,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                             late_arg_as_bound_arg(param),
                         )
                     })
-                    .unzip();
+                    .collect();
 
                 deny_non_region_late_bound(self.tcx, &mut bound_vars, "function pointer types");
 
@@ -757,7 +757,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                                 late_arg_as_bound_arg(param),
                             )
                         })
-                        .unzip();
+                        .collect();
 
                 deny_non_region_late_bound(self.tcx, &mut bound_vars, "function pointer types");
 
@@ -1009,7 +1009,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                                 late_arg_as_bound_arg(param),
                             )
                         })
-                        .unzip();
+                        .collect();
 
                 self.record_late_bound_vars(hir_id, binders);
 
@@ -1099,7 +1099,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     late_arg_as_bound_arg(param),
                 )
             })
-            .unzip();
+            .collect();
         self.record_late_bound_vars(forall.hir_id, binders);
         let scope = Scope::Binder {
             hir_id: forall.hir_id,
@@ -1132,7 +1132,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     late_arg_as_bound_arg(param),
                 )
             })
-            .unzip();
+            .collect();
         self.record_late_bound_vars(exists.hir_id, binders);
         let scope = Scope::Binder {
             hir_id: exists.hir_id,
@@ -1163,7 +1163,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     late_arg_as_bound_arg(param),
                 )
             })
-            .unzip();
+            .collect();
         self.record_late_bound_vars(bound_type.hir_id, binders);
         let scope = Scope::Binder {
             hir_id: bound_type.hir_id,

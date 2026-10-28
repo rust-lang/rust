@@ -272,7 +272,7 @@ impl Registry {
                 let stealer = worker.stealer();
                 (worker, stealer)
             })
-            .unzip();
+            .collect();
 
         let (broadcasts, broadcast_stealers): (Vec<_>, Vec<_>) = (0..n_threads)
             .map(|_| {
@@ -280,7 +280,7 @@ impl Registry {
                 let stealer = worker.stealer();
                 (worker, stealer)
             })
-            .unzip();
+            .collect();
 
         let registry = Arc::new(Registry {
             thread_infos: stealers.into_iter().map(ThreadInfo::new).collect(),

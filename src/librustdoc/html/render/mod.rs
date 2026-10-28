@@ -2904,7 +2904,7 @@ fn render_call_locations<W: fmt::Write>(
 
                 (byte_range, (line_range, line_url, line_title))
             })
-            .unzip();
+            .collect();
 
         let (_, init_url, init_title) = &line_ranges[0];
         let needs_expansion = line_max - line_min > NUM_VISIBLE_LINES;
