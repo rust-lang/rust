@@ -261,24 +261,45 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         if class == asm::InlineAsmRegClass::Err {
                             continue;
                         }
-                        let valid_modifiers = class.valid_modifiers(asm_arch.unwrap());
+                        let valid_modifiers =
+                            class.valid_modifiers(asm_arch.unwrap(), allow_experimental_reg);
                         if !valid_modifiers.contains(&modifier) {
-                            let sub = if valid_modifiers.is_empty() {
-                                InvalidAsmTemplateModifierRegClassSub::DoesNotSupportModifier {
-                                    class_name: class.name(),
-                                }
+                            // First check if the requested modifier is missing from the valid
+                            // values because experimental registers are disabled.
+                            let unstable_modifiers = class.valid_modifiers(asm_arch.unwrap(), true);
+                            if !allow_experimental_reg && unstable_modifiers.contains(&modifier) {
+                                self.tcx.sess.create_feature_err(
+                                    InvalidAsmTemplateModifierRegClass {
+                                        placeholder_span,
+                                        op_span: op_sp,
+                                        modifier: modifier.to_string(),
+                                        sub: InvalidAsmTemplateModifierRegClassSub::ModifierIsGated {
+                                            class_name: class.name(),
+                                            feature: sym::asm_experimental_reg,
+                                            stable_modifiers: valid_modifiers.to_vec().into(),
+                                            all_modifiers: unstable_modifiers.to_vec().into(),
+                                        },
+                                    },
+                                    sym::asm_experimental_reg,
+                                ).emit();
                             } else {
-                                InvalidAsmTemplateModifierRegClassSub::SupportModifier {
-                                    class_name: class.name(),
-                                    modifiers: valid_modifiers.to_vec().into(),
-                                }
-                            };
-                            self.dcx().emit_err(InvalidAsmTemplateModifierRegClass {
-                                placeholder_span,
-                                op_span: op_sp,
-                                modifier: modifier.to_string(),
-                                sub,
-                            });
+                                let sub = if valid_modifiers.is_empty() {
+                                    InvalidAsmTemplateModifierRegClassSub::DoesNotSupportModifier {
+                                        class_name: class.name(),
+                                    }
+                                } else {
+                                    InvalidAsmTemplateModifierRegClassSub::SupportModifier {
+                                        class_name: class.name(),
+                                        modifiers: valid_modifiers.to_vec().into(),
+                                    }
+                                };
+                                self.dcx().emit_err(InvalidAsmTemplateModifierRegClass {
+                                    placeholder_span,
+                                    op_span: op_sp,
+                                    modifier: modifier.to_string(),
+                                    sub,
+                                });
+                            }
                         }
                     }
                     hir::InlineAsmOperand::Const { .. } => {

@@ -266,6 +266,18 @@ pub(crate) enum InvalidAsmTemplateModifierRegClassSub {
     SupportModifier { class_name: Symbol, modifiers: DiagSymbolList<char> },
     #[note("the `{$class_name}` register class does not support template modifiers")]
     DoesNotSupportModifier { class_name: Symbol },
+
+    /// Enabling a feature is needed to use the requested modifier.
+    #[note(
+        "the `{$class_name}` register class only supports the following template modifiers on stable: {$stable_modifiers}"
+    )]
+    #[note("enabling the `{$feature}` feature will allow using: {$all_modifiers}")]
+    ModifierIsGated {
+        class_name: Symbol,
+        feature: Symbol,
+        stable_modifiers: DiagSymbolList<char>,
+        all_modifiers: DiagSymbolList<char>,
+    },
 }
 
 #[derive(Diagnostic)]
