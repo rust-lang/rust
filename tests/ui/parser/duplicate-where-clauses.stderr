@@ -82,5 +82,20 @@ LL - enum F where (): Sized, where (): Sized {}
 LL + enum F where (): Sized, (): Sized {}
    |
 
-error: aborting due to 6 previous errors
+error: cannot define duplicate `where` clauses on an item
+  --> $DIR/duplicate-where-clauses.rs:24:7
+   |
+LL | where (): Sized // OK
+   |       - previous `where` clause starts here
+LL | where (): Sized;
+   |       ^
+   |
+help: consider joining the two `where` clauses into one
+   |
+LL - where (): Sized // OK
+LL - where (): Sized;
+LL + where (): Sized, (): Sized;
+   |
+
+error: aborting due to 7 previous errors
 

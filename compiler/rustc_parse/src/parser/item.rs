@@ -17,6 +17,7 @@ use thin_vec::{ThinVec, thin_vec};
 use tracing::debug;
 
 use super::diagnostics::ConsumeClosingDelim;
+use super::generics::RecoverDupeWhereClause;
 use super::{
     AllowConstBlockItems, AttrWrapper, ExpTokenPair, FnContext, FnParseMode, FollowedByType,
     ForceCollect, IsDotDotDot, Parser, PathStyle, Recovered, Trailing, UsePreAttrPos,
@@ -745,7 +746,7 @@ impl<'a> Parser<'a> {
             None
         };
 
-        generics.where_clause = self.parse_where_clause()?;
+        generics.where_clause = self.parse_where_clause(RecoverDupeWhereClause::Yes)?;
 
         let impl_items = if is_reuse {
             Default::default()
@@ -1173,7 +1174,7 @@ impl<'a> Parser<'a> {
             }
 
             let bounds = self.parse_generic_bounds()?;
-            generics.where_clause = self.parse_where_clause()?;
+            generics.where_clause = self.parse_where_clause(RecoverDupeWhereClause::Yes)?;
             self.expect_semi()?;
 
             let whole_span = lo.to(self.prev_token.span);
@@ -1193,7 +1194,7 @@ impl<'a> Parser<'a> {
             Ok(ItemKind::TraitAlias(Box::new(TraitAlias { constness, ident, generics, bounds })))
         } else {
             // It's a normal trait.
-            generics.where_clause = self.parse_where_clause()?;
+            generics.where_clause = self.parse_where_clause(RecoverDupeWhereClause::Yes)?;
             let items = self.parse_item_list(attrs, |p| p.parse_trait_item(ForceCollect::No))?;
             Ok(ItemKind::Trait(Box::new(Trait {
                 impl_restriction,
@@ -1286,14 +1287,16 @@ impl<'a> Parser<'a> {
         let ident = self.parse_ident()?;
         let mut generics = self.parse_generics()?;
 
-        // Parse optional colon and param bounds.
         let bounds =
             if self.eat(exp!(Colon)) { self.parse_generic_bounds()? } else { ThinVec::new() };
-        generics.where_clause = self.parse_where_clause()?;
+
+        // As a consequence of type aliases being allowed to have two where clauses &
+        // an optional body, we *must not* artificially reject duplicate where clauses!
+        generics.where_clause = self.parse_where_clause(RecoverDupeWhereClause::No)?;
 
         let ty = if self.eat(exp!(Eq)) { Some(self.parse_ty()?) } else { None };
 
-        let after_where_clause = self.parse_where_clause()?;
+        let after_where_clause = self.parse_where_clause(RecoverDupeWhereClause::Yes)?;
 
         self.expect_semi()?;
 
@@ -1777,12 +1780,15 @@ impl<'a> Parser<'a> {
 
         // Proactively parse a where-clause to be able to provide a good error message in case we
         // encounter the item body following it.
-        let before_where_clause =
-            if self.may_recover() { self.parse_where_clause()? } else { WhereClause::default() };
+        let before_where_clause = if self.may_recover() {
+            self.parse_where_clause(RecoverDupeWhereClause::Yes)?
+        } else {
+            WhereClause::default()
+        };
 
         let body = if self.eat(exp!(Eq)) { Some(self.parse_expr()?) } else { None };
 
-        let after_where_clause = self.parse_where_clause()?;
+        let after_where_clause = self.parse_where_clause(RecoverDupeWhereClause::Yes)?;
 
         // Provide a nice error message if the user placed a where-clause before the item body.
         // Users may be tempted to write such code if they are still used to the deprecated
@@ -1897,7 +1903,7 @@ impl<'a> Parser<'a> {
         let prev_span = self.prev_token.span;
         let ident = self.parse_ident()?;
         let mut generics = self.parse_generics()?;
-        generics.where_clause = self.parse_where_clause()?;
+        generics.where_clause = self.parse_where_clause(RecoverDupeWhereClause::Yes)?;
 
         // Possibly recover `enum Foo;` instead of `enum Foo {}`
         let (variants, _) = if self.token == TokenKind::Semi {
@@ -2090,7 +2096,7 @@ impl<'a> Parser<'a> {
         // Tuple-style struct definition with optional where-clause.
         } else if self.token == token::OpenParen {
             let body = VariantData::Tuple(self.parse_tuple_struct_body()?, DUMMY_NODE_ID);
-            generics.where_clause = self.parse_where_clause()?;
+            generics.where_clause = self.parse_where_clause(RecoverDupeWhereClause::Yes)?;
             self.expect_semi()?;
             body
         } else {
@@ -2108,7 +2114,7 @@ impl<'a> Parser<'a> {
         let mut generics = self.parse_generics()?;
 
         let vdata = if self.token.is_keyword(kw::Where) {
-            generics.where_clause = self.parse_where_clause()?;
+            generics.where_clause = self.parse_where_clause(RecoverDupeWhereClause::Yes)?;
             let (fields, recovered) = self.parse_record_struct_body(
                 "union",
                 ident.span,
@@ -2707,7 +2713,7 @@ impl<'a> Parser<'a> {
     pub fn parse_test_binder_constraints(&mut self) -> PResult<'a, Box<TestBinderConstraints>> {
         self.expect_keyword(exp!(Impl))?;
         let mut generics = self.parse_generics()?;
-        generics.where_clause = self.parse_where_clause()?;
+        generics.where_clause = self.parse_where_clause(RecoverDupeWhereClause::Yes)?;
         let body = self.parse_test_binder_body()?;
         Ok(Box::new(TestBinderConstraints { generics, body: Box::new(body) }))
     }
@@ -2720,12 +2726,9 @@ impl<'a> Parser<'a> {
                 Some((Ident { name: sym::predicates, .. }, IdentKind::Normal)) => {
                     let span = this.token.span;
                     this.bump();
-                    items.extend(
-                        this.parse_where_clause_predicates(None, span)?
-                            .0
-                            .into_iter()
-                            .map(TestBinderItem::Predicate),
-                    );
+                    let (preds, _) =
+                        this.parse_where_clause_predicates(None, span, RecoverDupeWhereClause::No)?;
+                    items.extend(preds.into_iter().map(TestBinderItem::Predicate));
                 }
                 Some((Ident { name: sym::forall, .. }, IdentKind::Normal)) => {
                     items.push(TestBinderItem::Forall(this.parse_test_binder_forall()?));
@@ -2759,7 +2762,7 @@ impl<'a> Parser<'a> {
         self.bump();
 
         let mut generics = self.parse_generics()?;
-        generics.where_clause = self.parse_where_clause()?;
+        generics.where_clause = self.parse_where_clause(RecoverDupeWhereClause::Yes)?;
 
         let body = self.parse_test_binder_body()?;
 

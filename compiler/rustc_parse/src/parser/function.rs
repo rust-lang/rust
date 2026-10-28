@@ -12,6 +12,7 @@ use thin_vec::ThinVec;
 use tracing::debug;
 
 use super::diagnostics::dummy_arg;
+use super::generics::RecoverDupeWhereClause;
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{
     ExpKeywordPair, FollowedByType, ForceCollect, Parser, Recovered, Trailing, UsePreAttrPos,
@@ -152,7 +153,7 @@ impl<'a> Parser<'a> {
 
         let contract = self.parse_contract()?;
 
-        generics.where_clause = self.parse_where_clause()?; // `where T: Ord`
+        generics.where_clause = self.parse_where_clause(RecoverDupeWhereClause::Yes)?; // `where T: Ord`
 
         // `fn_params_end` is needed only when it's followed by a where clause.
         let fn_params_end =

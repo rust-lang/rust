@@ -1,19 +1,19 @@
 warning: where clause not allowed here
-  --> $DIR/where-clause-placement-assoc-type-in-trait.rs:9:16
+  --> $DIR/where-clause-placement-assoc-type-in-trait.rs:14:17
    |
-LL |     type Assoc where u32: Copy = ();
-   |                ^^^^^^^^^^^^^^^
+LL |     type Assoc1 where u32: Copy = ();
+   |                 ^^^^^^^^^^^^^^^
    |
    = note: see issue #89122 <https://github.com/rust-lang/rust/issues/89122> for more information
    = note: `#[warn(deprecated_where_clause_location)]` on by default
 help: move it to the end of the type declaration
    |
-LL -     type Assoc where u32: Copy = ();
-LL +     type Assoc = () where u32: Copy;
+LL -     type Assoc1 where u32: Copy = ();
+LL +     type Assoc1 = () where u32: Copy;
    |
 
 warning: where clause not allowed here
-  --> $DIR/where-clause-placement-assoc-type-in-trait.rs:12:17
+  --> $DIR/where-clause-placement-assoc-type-in-trait.rs:17:17
    |
 LL |     type Assoc2 where u32: Copy = () where i32: Copy;
    |                 ^^^^^^^^^^^^^^^
