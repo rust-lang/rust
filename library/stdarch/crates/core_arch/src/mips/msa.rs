@@ -2248,7 +2248,7 @@ pub unsafe fn __msa_bmnz_v(a: v16u8, b: v16u8, c: v16u8) -> v16u8 {
 ///
 #[inline]
 #[target_feature(enable = "msa")]
-#[cfg_attr(test, assert_instr(bmnzi.b, IMM8 = 0b11111111))]
+#[cfg_attr(test, assert_instr(bmnzi.b, IMM8 = 0b1011_1111))]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_bmnzi_b<const IMM8: i32>(a: v16u8, b: v16u8) -> v16u8 {
     static_assert_uimm_bits!(IMM8, 8);
@@ -2278,7 +2278,7 @@ pub unsafe fn __msa_bmz_v(a: v16u8, b: v16u8, c: v16u8) -> v16u8 {
 ///
 #[inline]
 #[target_feature(enable = "msa")]
-#[cfg_attr(test, assert_instr(bmzi.b, IMM8 = 0b11111111))]
+#[cfg_attr(test, assert_instr(bmzi.b, IMM8 = 0x5a))]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_bmzi_b<const IMM8: i32>(a: v16u8, b: v16u8) -> v16u8 {
     static_assert_uimm_bits!(IMM8, 8);
@@ -7253,7 +7253,7 @@ pub unsafe fn __msa_nor_v(a: v16u8, b: v16u8) -> v16u8 {
 ///
 #[inline]
 #[target_feature(enable = "msa")]
-#[cfg_attr(test, assert_instr(nori.b, IMM8 = 0b11111111))]
+#[cfg_attr(test, assert_instr(nori.b, IMM8 = 0b1011_1111))]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_nori_b<const IMM8: i32>(a: v16u8) -> v16u8 {
     static_assert_uimm_bits!(IMM8, 8);
@@ -7284,7 +7284,7 @@ pub unsafe fn __msa_or_v(a: v16u8, b: v16u8) -> v16u8 {
 ///
 #[inline]
 #[target_feature(enable = "msa")]
-#[cfg_attr(test, assert_instr(ori.b, IMM8 = 0b11111111))]
+#[cfg_attr(test, assert_instr(ori.b, IMM8 = 0b1011_1111))]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_ori_b<const IMM8: i32>(a: v16u8) -> v16u8 {
     static_assert_uimm_bits!(IMM8, 8);
@@ -7740,7 +7740,7 @@ pub unsafe fn __msa_sldi_b<const IMM4: i32>(a: v16i8, b: v16i8) -> v16i8 {
 ///
 #[inline]
 #[target_feature(enable = "msa")]
-#[cfg_attr(test, assert_instr(sldi.h, IMM3 = 0b111))]
+#[cfg_attr(test, assert_instr(sldi.h, IMM3 = 0b101))]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
 pub unsafe fn __msa_sldi_h<const IMM3: i32>(a: v8i16, b: v8i16) -> v8i16 {
     static_assert_uimm_bits!(IMM3, 3);
