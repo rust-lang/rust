@@ -1,0 +1,618 @@
+error: First Pass analysis includes:
+  --> $DIR/mixed-captures.rs:29:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let _f = foo.use;
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Capturing foo[] -> ByUse
+  --> $DIR/mixed-captures.rs:32:18
+   |
+LL |         let _f = foo.use;
+   |                  ^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/mixed-captures.rs:29:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let _f = foo.use;
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture foo[] -> ByUse
+  --> $DIR/mixed-captures.rs:32:18
+   |
+LL |         let _f = foo.use;
+   |                  ^^^
+
+error: First Pass analysis includes:
+  --> $DIR/mixed-captures.rs:38:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let _f = foo.use;
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Capturing foo[] -> ByUse
+  --> $DIR/mixed-captures.rs:41:18
+   |
+LL |         let _f = foo.use;
+   |                  ^^^
+note: Capturing foo[] -> ByValue
+  --> $DIR/mixed-captures.rs:43:18
+   |
+LL |         let _f = foo;
+   |                  ^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/mixed-captures.rs:38:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let _f = foo.use;
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture foo[] -> ByValue
+  --> $DIR/mixed-captures.rs:43:18
+   |
+LL |         let _f = foo;
+   |                  ^^^
+
+error: First Pass analysis includes:
+  --> $DIR/mixed-captures.rs:49:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let _f = foo.use;
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Capturing foo[] -> ByUse
+  --> $DIR/mixed-captures.rs:52:18
+   |
+LL |         let _f = foo.use;
+   |                  ^^^
+note: Capturing foo[] -> Immutable
+  --> $DIR/mixed-captures.rs:54:19
+   |
+LL |         let _f = &foo;
+   |                   ^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/mixed-captures.rs:49:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let _f = foo.use;
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture foo[] -> Immutable
+  --> $DIR/mixed-captures.rs:54:19
+   |
+LL |         let _f = &foo;
+   |                   ^^^
+
+error: First Pass analysis includes:
+  --> $DIR/mixed-captures.rs:60:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let _f = (&foo).use;
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Capturing foo[] -> Immutable
+  --> $DIR/mixed-captures.rs:63:20
+   |
+LL |         let _f = (&foo).use;
+   |                    ^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/mixed-captures.rs:60:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let _f = (&foo).use;
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture foo[] -> Immutable
+  --> $DIR/mixed-captures.rs:63:20
+   |
+LL |         let _f = (&foo).use;
+   |                    ^^^
+
+error: First Pass analysis includes:
+  --> $DIR/mixed-captures.rs:71:5
+   |
+LL | /     || {
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Capturing tup[(0, 0)] -> ByUse
+  --> $DIR/mixed-captures.rs:76:18
+   |
+LL |         let _f = tup.0.use;
+   |                  ^^^^^
+note: Capturing tup[(1, 0)] -> ByUse
+  --> $DIR/mixed-captures.rs:80:18
+   |
+LL |         let _b = tup.1.use;
+   |                  ^^^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/mixed-captures.rs:71:5
+   |
+LL | /     || {
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture tup[(0, 0)] -> ByUse
+  --> $DIR/mixed-captures.rs:76:18
+   |
+LL |         let _f = tup.0.use;
+   |                  ^^^^^
+note: Min Capture tup[(1, 0)] -> ByUse
+  --> $DIR/mixed-captures.rs:80:18
+   |
+LL |         let _b = tup.1.use;
+   |                  ^^^^^
+
+error: First Pass analysis includes:
+  --> $DIR/mixed-captures.rs:86:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let _f = tup.0.use;
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Capturing tup[(0, 0)] -> ByUse
+  --> $DIR/mixed-captures.rs:89:18
+   |
+LL |         let _f = tup.0.use;
+   |                  ^^^^^
+note: Capturing tup[] -> ByValue
+  --> $DIR/mixed-captures.rs:91:18
+   |
+LL |         let _t = tup;
+   |                  ^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/mixed-captures.rs:86:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let _f = tup.0.use;
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture tup[] -> ByValue
+  --> $DIR/mixed-captures.rs:91:18
+   |
+LL |         let _t = tup;
+   |                  ^^^
+
+error: First Pass analysis includes:
+  --> $DIR/mixed-captures.rs:97:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let _f = tup.0.use;
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Capturing tup[(0, 0)] -> ByUse
+  --> $DIR/mixed-captures.rs:100:18
+   |
+LL |         let _f = tup.0.use;
+   |                  ^^^^^
+note: Capturing tup[] -> Immutable
+  --> $DIR/mixed-captures.rs:102:19
+   |
+LL |         let _t = &tup;
+   |                   ^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/mixed-captures.rs:97:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let _f = tup.0.use;
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture tup[] -> Immutable
+  --> $DIR/mixed-captures.rs:102:19
+   |
+LL |         let _t = &tup;
+   |                   ^^^
+
+error: First Pass analysis includes:
+  --> $DIR/mixed-captures.rs:110:5
+   |
+LL | /     || {
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Capturing tup2[(0, 0)] -> ByUse
+  --> $DIR/mixed-captures.rs:115:18
+   |
+LL |         let _f = tup2.0.use;
+   |                  ^^^^^^
+note: Capturing tup2[(1, 0)] -> ByValue
+  --> $DIR/mixed-captures.rs:118:18
+   |
+LL |         let _s = tup2.1;
+   |                  ^^^^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/mixed-captures.rs:110:5
+   |
+LL | /     || {
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture tup2[(0, 0)] -> ByUse
+  --> $DIR/mixed-captures.rs:115:18
+   |
+LL |         let _f = tup2.0.use;
+   |                  ^^^^^^
+note: Min Capture tup2[(1, 0)] -> ByValue
+  --> $DIR/mixed-captures.rs:118:18
+   |
+LL |         let _s = tup2.1;
+   |                  ^^^^^^
+
+error: First Pass analysis includes:
+  --> $DIR/mixed-captures.rs:125:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let _f = tup2.0.use;
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Capturing tup2[(0, 0)] -> ByUse
+  --> $DIR/mixed-captures.rs:128:18
+   |
+LL |         let _f = tup2.0.use;
+   |                  ^^^^^^
+note: Capturing tup2[] -> ByValue
+  --> $DIR/mixed-captures.rs:130:18
+   |
+LL |         let _t = tup2;
+   |                  ^^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/mixed-captures.rs:125:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let _f = tup2.0.use;
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture tup2[] -> ByValue
+  --> $DIR/mixed-captures.rs:130:18
+   |
+LL |         let _t = tup2;
+   |                  ^^^^
+
+error: First Pass analysis includes:
+  --> $DIR/mixed-captures.rs:136:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let _f = tup2.0.use;
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Capturing tup2[(0, 0)] -> ByUse
+  --> $DIR/mixed-captures.rs:139:18
+   |
+LL |         let _f = tup2.0.use;
+   |                  ^^^^^^
+note: Capturing tup2[] -> Immutable
+  --> $DIR/mixed-captures.rs:141:19
+   |
+LL |         let _t = &tup2;
+   |                   ^^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/mixed-captures.rs:136:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let _f = tup2.0.use;
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture tup2[] -> Immutable
+  --> $DIR/mixed-captures.rs:141:19
+   |
+LL |         let _t = &tup2;
+   |                   ^^^^
+
+error: First Pass analysis includes:
+  --> $DIR/mixed-captures.rs:149:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let _b = bar.use;
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Capturing bar[] -> ByUse
+  --> $DIR/mixed-captures.rs:152:18
+   |
+LL |         let _b = bar.use;
+   |                  ^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/mixed-captures.rs:149:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let _b = bar.use;
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture bar[] -> ByUse
+  --> $DIR/mixed-captures.rs:152:18
+   |
+LL |         let _b = bar.use;
+   |                  ^^^
+
+error: First Pass analysis includes:
+  --> $DIR/mixed-captures.rs:158:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let _s = &bar.0;
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Capturing bar[(0, 0)] -> Immutable
+  --> $DIR/mixed-captures.rs:161:19
+   |
+LL |         let _s = &bar.0;
+   |                   ^^^^^
+note: Capturing bar[] -> ByUse
+  --> $DIR/mixed-captures.rs:164:18
+   |
+LL |         let _b = bar.use;
+   |                  ^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/mixed-captures.rs:158:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let _s = &bar.0;
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture bar[] -> Immutable
+  --> $DIR/mixed-captures.rs:161:19
+   |
+LL |         let _s = &bar.0;
+   |                   ^^^^^ bar[] captured as Immutable here
+...
+LL |         let _b = bar.use;
+   |                  ^^^ bar[] used here
+
+error: First Pass analysis includes:
+  --> $DIR/mixed-captures.rs:173:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let _f = baz.0.use;
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Capturing baz[(0, 0)] -> ByUse
+  --> $DIR/mixed-captures.rs:176:18
+   |
+LL |         let _f = baz.0.use;
+   |                  ^^^^^
+note: Capturing baz[] -> ByUse
+  --> $DIR/mixed-captures.rs:179:18
+   |
+LL |         let _b = baz.use;
+   |                  ^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/mixed-captures.rs:173:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let _f = baz.0.use;
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture baz[] -> Immutable
+  --> $DIR/mixed-captures.rs:176:18
+   |
+LL |         let _f = baz.0.use;
+   |                  ^^^^^ baz[] captured as Immutable here
+...
+LL |         let _b = baz.use;
+   |                  ^^^ baz[] used here
+
+error: First Pass analysis includes:
+  --> $DIR/mixed-captures.rs:186:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let _f = baz.use.0.use;
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Capturing baz[] -> ByUse
+  --> $DIR/mixed-captures.rs:189:18
+   |
+LL |         let _f = baz.use.0.use;
+   |                  ^^^
+note: Capturing baz[] -> ByUse
+  --> $DIR/mixed-captures.rs:192:18
+   |
+LL |         let _b = baz.use;
+   |                  ^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/mixed-captures.rs:186:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let _f = baz.use.0.use;
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture baz[] -> ByUse
+  --> $DIR/mixed-captures.rs:189:18
+   |
+LL |         let _f = baz.use.0.use;
+   |                  ^^^
+
+error: First Pass analysis includes:
+  --> $DIR/mixed-captures.rs:197:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let _f = baz.0;
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Capturing baz[(0, 0)] -> ByValue
+  --> $DIR/mixed-captures.rs:200:18
+   |
+LL |         let _f = baz.0;
+   |                  ^^^^^
+note: Capturing baz[] -> ByUse
+  --> $DIR/mixed-captures.rs:203:18
+   |
+LL |         let _b = baz.use;
+   |                  ^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/mixed-captures.rs:197:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let _f = baz.0;
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture baz[] -> ByValue
+  --> $DIR/mixed-captures.rs:200:18
+   |
+LL |         let _f = baz.0;
+   |                  ^^^^^ baz[] captured as ByValue here
+...
+LL |         let _b = baz.use;
+   |                  ^^^ baz[] used here
+
+error: First Pass analysis includes:
+  --> $DIR/mixed-captures.rs:210:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let _f = baz.0.use;
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Capturing baz[(0, 0)] -> ByUse
+  --> $DIR/mixed-captures.rs:213:18
+   |
+LL |         let _f = baz.0.use;
+   |                  ^^^^^
+note: Capturing baz[] -> ByValue
+  --> $DIR/mixed-captures.rs:215:18
+   |
+LL |         let _b = baz;
+   |                  ^^^
+
+error: Min Capture analysis includes:
+  --> $DIR/mixed-captures.rs:210:5
+   |
+LL | /     || {
+LL | |
+LL | |
+LL | |         let _f = baz.0.use;
+...  |
+LL | |     };
+   | |_____^
+   |
+note: Min Capture baz[] -> ByValue
+  --> $DIR/mixed-captures.rs:215:18
+   |
+LL |         let _b = baz;
+   |                  ^^^
+
+error: aborting due to 32 previous errors
+
