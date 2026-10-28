@@ -229,14 +229,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "readv" => {
                 let [fd, iov, iovcnt] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(i32, *_, i32) -> isize),
+                    shim_sig!(extern "C" fn(i32, *libc::iovec, i32) -> isize),
                     (link_name, abi, args),
                 )?;
                 this.readv(fd, iov, iovcnt, None, dest)?;
             }
             "writev" => {
                 let [fd, iov, iovcnt] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(i32, *_, i32) -> isize),
+                    shim_sig!(extern "C" fn(i32, *libc::iovec, i32) -> isize),
                     (link_name, abi, args),
                 )?;
                 this.writev(fd, iov, iovcnt, None, dest)?;
@@ -266,14 +266,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "preadv" => {
                 let [fd, iov, iovcnt, offset] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(i32, *_, i32, libc::off_t) -> isize),
+                    shim_sig!(extern "C" fn(i32, *libc::iovec, i32, libc::off_t) -> isize),
                     (link_name, abi, args),
                 )?;
                 this.readv(fd, iov, iovcnt, Some(offset), dest)?;
             }
             "pwritev" => {
                 let [fd, iov, iovcnt, offset] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(i32, *_, i32, libc::off_t) -> isize),
+                    shim_sig!(extern "C" fn(i32, *libc::iovec, i32, libc::off_t) -> isize),
                     (link_name, abi, args),
                 )?;
                 this.writev(fd, iov, iovcnt, Some(offset), dest)?;
@@ -520,7 +520,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "futimens" => {
                 let [fd, times] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(i32, *_) -> i32),
+                    shim_sig!(extern "C" fn(i32, *libc::timespec) -> i32),
                     (link_name, abi, args),
                 )?;
                 let result = this.futimens(fd, times)?;
@@ -528,7 +528,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "utimensat" => {
                 let [dirfd, path, times, flags] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(i32, *_, *_, i32) -> i32),
+                    shim_sig!(extern "C" fn(i32, *_, *libc::timespec, i32) -> i32),
                     (link_name, abi, args),
                 )?;
                 let result = this.utimensat(dirfd, path, times, flags)?;
@@ -595,7 +595,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Poll
             "poll" => {
                 let [fds, nfds, timeout] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(*_, libc::nfds_t, i32) -> i32),
+                    shim_sig!(extern "C" fn(*libc::pollfd, libc::nfds_t, i32) -> i32),
                     (link_name, abi, args),
                 )?;
                 this.poll(fds, nfds, timeout, dest)?;

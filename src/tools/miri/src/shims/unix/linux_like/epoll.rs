@@ -242,20 +242,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let epfd_value = this.read_scalar(epfd)?.to_i32()?;
-        let events = this.read_immediate(events_op)?;
+        let events = this.deref_pointer(events_op)?;
         let maxevents = this.read_scalar(maxevents)?.to_i32()?;
         let timeout = this.read_scalar(timeout)?.to_i32()?;
 
         if epfd_value <= 0 || maxevents <= 0 {
             return this.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
         }
-
-        // This needs to come after the maxevents value check, or else maxevents.try_into().unwrap()
-        // will fail.
-        let event = this.deref_pointer_as(
-            &events,
-            this.libc_array_ty_layout("epoll_event", maxevents.try_into().unwrap()),
-        )?;
+        let maxevents = u32::try_from(maxevents).unwrap();
 
         let Some(epfd) = this.machine.fds.get(epfd_value) else {
             return this.set_errno_and_return_neg1(LibcError("EBADF"), dest);
@@ -266,7 +260,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         if timeout == 0 || epfd.watcher.ready_count() != 0 {
             // If the timeout is 0 or there is a ready event, we can return immediately.
-            this.return_ready_list(&epfd, dest, &event)?;
+            this.return_ready_list(&epfd, dest, &events, maxevents)?;
         } else {
             // Blocking, with a relative timeout.
             let deadline = match timeout {
@@ -296,12 +290,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     @capture<'tcx> {
                         epfd: FileDescriptionRef<Epoll>,
                         dest: MPlaceTy<'tcx>,
-                        event: MPlaceTy<'tcx>,
+                        events: MPlaceTy<'tcx>,
+                        maxevents: u32,
                     }
                     |this, unblock: UnblockKind| {
                         match unblock {
                             UnblockKind::Ready => {
-                                let events = this.return_ready_list(&epfd, &dest, &event)?;
+                                let events = this.return_ready_list(&epfd, &dest, &events, maxevents)?;
                                 assert!(events > 0, "we got woken up with no events to deliver");
                                 interp_ok(())
                             },
@@ -372,24 +367,24 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
     }
 
-    /// Stores the ready list of the `epfd` epoll instance into `events` (which must be an array),
+    /// Stores the ready list of the `epfd` epoll instance into `events`,
     /// and the number of returned events into `dest`.
     fn return_ready_list(
         &mut self,
         epfd: &FileDescriptionRef<Epoll>,
         dest: &MPlaceTy<'tcx>,
         events: &MPlaceTy<'tcx>,
+        maxevents: u32,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
         let mut num_of_events = 0i32;
-        let mut array_iter = this.project_array_fields(events)?;
-        let max_events_num: usize = events.len(this)?.try_into().unwrap();
 
         // We get up to the first `max_events_num` ready events from the
         // watcher and fill them into the slots of the array.
-        for interest in epfd.watcher.get_ready_interests(max_events_num, this)? {
-            let (_idx, slot) = array_iter.next(this)?.expect("Array should have slot for interest");
+        let readiness_interests = epfd.watcher.get_ready_interests(maxevents.to_usize(), this)?;
+        for (idx, interest) in readiness_interests.into_iter().enumerate() {
+            let slot = this.project_c_array_field(events, idx.to_u64())?;
             // Deliver event to caller.
             this.write_int_fields_named(
                 &[

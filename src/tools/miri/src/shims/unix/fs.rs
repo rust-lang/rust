@@ -296,17 +296,16 @@ trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// `None` means a `timespec` is invalid and the caller should report `EINVAL`.
     fn parse_utimens_times(
         &self,
-        times_ptr: Pointer,
+        times: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, Option<(TimeUpdate, TimeUpdate)>> {
         let this = self.eval_context_ref();
 
-        if this.ptr_is_null(times_ptr)? {
+        if this.ptr_is_null(times.ptr())? {
             let now = TimeUpdate::Set(SystemTime::now());
             interp_ok(Some((now, now)))
         } else {
-            let timespec = this.libc_ty_layout("timespec");
-            let access_place = this.ptr_to_mplace(times_ptr, timespec);
-            let modified_place = access_place.offset(timespec.size, timespec, this)?;
+            let access_place = this.project_c_array_field(times, 0)?;
+            let modified_place = this.project_c_array_field(times, 1)?;
             let Some(access) = this.parse_utimens_timespec(&access_place)? else {
                 return interp_ok(None);
             };
@@ -1781,7 +1780,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let fd_num = this.read_scalar(fd_op)?.to_i32()?;
-        let times_ptr = this.read_pointer(times_op)?;
+        let times = this.deref_pointer(times_op)?;
 
         let Some(fd) = this.machine.fds.get(fd_num) else {
             return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
@@ -1791,7 +1790,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         })?;
         assert!(this.machine.communicate(), "isolation should have prevented even opening a file");
 
-        let Some((access, modified)) = this.parse_utimens_times(times_ptr)? else {
+        let Some((access, modified)) = this.parse_utimens_times(&times)? else {
             return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
         };
         let result = file.file.set_times(host_file_times_from_updates(access, modified));
@@ -1811,7 +1810,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let dirfd = this.read_scalar(dirfd_op)?.to_i32()?;
         let path_ptr = this.read_pointer(path_op)?;
-        let times_ptr = this.read_pointer(times_op)?;
+        let times = this.deref_pointer(times_op)?;
         let flags = this.read_scalar(flags_op)?.to_i32()?;
 
         if this.ptr_is_null(path_ptr)? {
@@ -1845,7 +1844,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             throw_unsup_format!("`utimensat` with a path relative to a `dirfd` is not supported");
         }
 
-        let Some((access, modified)) = this.parse_utimens_times(times_ptr)? else {
+        let Some((access, modified)) = this.parse_utimens_times(&times)? else {
             return this.set_errno_and_return_neg1_i32(LibcError("EINVAL"));
         };
         if matches!((access, modified), (TimeUpdate::Omit, TimeUpdate::Omit)) {

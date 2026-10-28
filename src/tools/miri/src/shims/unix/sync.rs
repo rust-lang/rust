@@ -34,8 +34,11 @@ const PTHREAD_INIT: u8 = 1;
 // We store the `kind` bit-inverted so that 0 is not a valid representation.
 
 #[inline]
-fn mutexattr_kind_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, u64> {
-    interp_ok(match &ecx.tcx.sess.target.os {
+fn mutexattr_kind_field<'tcx>(
+    ecx: &MiriInterpCx<'tcx>,
+    attr_ptr: &OpTy<'tcx>,
+) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
+    let offset = match &ecx.tcx.sess.target.os {
         Os::Linux
         | Os::Illumos
         | Os::Solaris
@@ -44,21 +47,17 @@ fn mutexattr_kind_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, u
         | Os::Android
         | Os::NetBsd => 0,
         os => throw_unsup_format!("`pthread_mutexattr` is not supported on {os}"),
-    })
+    };
+    let attr = ecx.deref_pointer(attr_ptr)?;
+    attr.offset(Size::from_bytes(offset), ecx.machine.layouts.i32, ecx)
 }
 
 fn mutexattr_get_kind<'tcx>(
     ecx: &MiriInterpCx<'tcx>,
     attr_ptr: &OpTy<'tcx>,
 ) -> InterpResult<'tcx, i32> {
-    let kind = ecx
-        .deref_pointer_and_read(
-            attr_ptr,
-            mutexattr_kind_offset(ecx)?,
-            ecx.libc_ty_layout("pthread_mutexattr_t"),
-            ecx.machine.layouts.i32,
-        )?
-        .to_i32()?;
+    let kind_field = mutexattr_kind_field(ecx, attr_ptr)?;
+    let kind = ecx.read_scalar(&kind_field)?.to_i32()?;
     if kind == 0 {
         throw_ub_format!("this `pthread_mutexattr_t` is not initialized");
     }
@@ -73,13 +72,8 @@ fn mutexattr_set_kind<'tcx>(
 ) -> InterpResult<'tcx, ()> {
     let kind = !kind; // we store the kind bit-inverted
     assert!(kind != 0); // 0 indicates "uninitialized"
-    ecx.deref_pointer_and_write(
-        attr_ptr,
-        mutexattr_kind_offset(ecx)?,
-        Scalar::from_i32(kind),
-        ecx.libc_ty_layout("pthread_mutexattr_t"),
-        ecx.machine.layouts.i32,
-    )
+    let kind_field = mutexattr_kind_field(ecx, attr_ptr)?;
+    ecx.write_int(kind, &kind_field)
 }
 
 /// To differentiate "the mutex kind has not been changed" from
@@ -345,26 +339,25 @@ where
 // We store the `clock` bit-inverted so that 0 is not a valid representation.
 
 #[inline]
-fn condattr_clock_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, u64> {
-    interp_ok(match &ecx.tcx.sess.target.os {
+fn condattr_clock_field<'tcx>(
+    ecx: &MiriInterpCx<'tcx>,
+    attr_ptr: &OpTy<'tcx>,
+) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
+    let offset = match &ecx.tcx.sess.target.os {
         Os::Linux | Os::Illumos | Os::Solaris | Os::FreeBsd | Os::Android => 0,
         // macOS does not have a clock attribute.
         os => throw_unsup_format!("`pthread_condattr` clock field is not supported on {os}"),
-    })
+    };
+    let attr = ecx.deref_pointer(attr_ptr)?;
+    attr.offset(Size::from_bytes(offset), ecx.machine.layouts.i32, ecx)
 }
 
 fn condattr_get_clock_id<'tcx>(
     ecx: &MiriInterpCx<'tcx>,
     attr_ptr: &OpTy<'tcx>,
 ) -> InterpResult<'tcx, i32> {
-    let clock_id = ecx
-        .deref_pointer_and_read(
-            attr_ptr,
-            condattr_clock_offset(ecx)?,
-            ecx.libc_ty_layout("pthread_condattr_t"),
-            ecx.machine.layouts.i32,
-        )?
-        .to_i32()?;
+    let clock_field = condattr_clock_field(ecx, attr_ptr)?;
+    let clock_id = ecx.read_scalar(&clock_field)?.to_i32()?;
     if clock_id == 0 {
         throw_ub_format!("this `pthread_condattr_t` is not initialized");
     }
@@ -379,13 +372,8 @@ fn condattr_set_clock_id<'tcx>(
 ) -> InterpResult<'tcx, ()> {
     let clock_id = !clock_id; // we store the clock_id bit-inverted
     assert!(clock_id != 0); // 0 indicates "uninitialized"
-    ecx.deref_pointer_and_write(
-        attr_ptr,
-        condattr_clock_offset(ecx)?,
-        Scalar::from_i32(clock_id),
-        ecx.libc_ty_layout("pthread_condattr_t"),
-        ecx.machine.layouts.i32,
-    )
+    let clock_field = condattr_clock_field(ecx, attr_ptr)?;
+    ecx.write_int(clock_id, &clock_field)
 }
 
 // # pthread_cond_t
