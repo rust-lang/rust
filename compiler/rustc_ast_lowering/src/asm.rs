@@ -261,7 +261,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         if class == asm::InlineAsmRegClass::Err {
                             continue;
                         }
-                        let valid_modifiers = class.valid_modifiers(asm_arch.unwrap());
+                        let valid_modifiers =
+                            class.valid_modifiers(asm_arch.unwrap(), allow_experimental_reg);
                         if !valid_modifiers.contains(&modifier) {
                             let sub = if valid_modifiers.is_empty() {
                                 InvalidAsmTemplateModifierRegClassSub::DoesNotSupportModifier {
