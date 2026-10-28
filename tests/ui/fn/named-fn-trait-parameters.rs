@@ -47,6 +47,9 @@ fn semantics<F>(
     restricted_pat6: impl Fn(&true: ()),
     //~^ ERROR patterns aren't allowed in parenthesized argument lists
 
+    variadics: impl Fn(...),
+    //~^ ERROR C-variadic parameters aren't allowed in parenthesized argument lists
+
     duplicate_names: impl Fn(x: usize, x: usize),
 ) { }
 
@@ -77,6 +80,8 @@ fn syntax<F>(
     restricted_pat4: impl Fn(false: ()),
     restricted_pat5: impl Fn(&_: ()),
     restricted_pat6: impl Fn(&true: ()),
+
+    variadics: impl Fn(...),
 ) { }
 
 struct Thing { a: bool, b: bool }

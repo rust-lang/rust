@@ -2235,6 +2235,11 @@ impl Visitor<'_> for AstValidator<'_> {
             Self::check_decl_no_pat(&args.inputs, |span, _, _| {
                 self.dcx().emit_err(diagnostics::PatternParenthesizedArgList { span });
             });
+            for arg in &args.inputs {
+                if matches!(arg.ty.kind, TyKind::CVarArgs) {
+                    self.dcx().emit_err(diagnostics::PathFoundCVariadicParams { span: arg.span });
+                }
+            }
         }
         visit::walk_path_segment(self, seg);
     }
