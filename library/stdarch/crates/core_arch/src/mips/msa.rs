@@ -7855,11 +7855,11 @@ pub unsafe fn __msa_sll_d(a: v2i64, b: v2i64) -> v2i64 {
 ///
 #[inline]
 #[target_feature(enable = "msa")]
-#[cfg_attr(test, assert_instr(slli.b, IMM4 = 0b1111))]
+#[cfg_attr(test, assert_instr(slli.b, IMM3 = 0b111))]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
-pub unsafe fn __msa_slli_b<const IMM4: i32>(a: v16i8) -> v16i8 {
-    static_assert_uimm_bits!(IMM4, 4);
-    msa_slli_b(a, IMM4)
+pub unsafe fn __msa_slli_b<const IMM3: i32>(a: v16i8) -> v16i8 {
+    static_assert_uimm_bits!(IMM3, 3);
+    msa_slli_b(a, IMM3)
 }
 
 /// Immediate Shift Left
@@ -7870,11 +7870,11 @@ pub unsafe fn __msa_slli_b<const IMM4: i32>(a: v16i8) -> v16i8 {
 ///
 #[inline]
 #[target_feature(enable = "msa")]
-#[cfg_attr(test, assert_instr(slli.h, IMM3 = 0b111))]
+#[cfg_attr(test, assert_instr(slli.h, IMM4 = 0b1111))]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
-pub unsafe fn __msa_slli_h<const IMM3: i32>(a: v8i16) -> v8i16 {
-    static_assert_uimm_bits!(IMM3, 3);
-    msa_slli_h(a, IMM3)
+pub unsafe fn __msa_slli_h<const IMM4: i32>(a: v8i16) -> v8i16 {
+    static_assert_uimm_bits!(IMM4, 4);
+    msa_slli_h(a, IMM4)
 }
 
 /// Immediate Shift Left
@@ -7885,11 +7885,11 @@ pub unsafe fn __msa_slli_h<const IMM3: i32>(a: v8i16) -> v8i16 {
 ///
 #[inline]
 #[target_feature(enable = "msa")]
-#[cfg_attr(test, assert_instr(slli.w, IMM2 = 0b11))]
+#[cfg_attr(test, assert_instr(slli.w, IMM5 = 0b1_1111))]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
-pub unsafe fn __msa_slli_w<const IMM2: i32>(a: v4i32) -> v4i32 {
-    static_assert_uimm_bits!(IMM2, 2);
-    msa_slli_w(a, IMM2)
+pub unsafe fn __msa_slli_w<const IMM5: i32>(a: v4i32) -> v4i32 {
+    static_assert_uimm_bits!(IMM5, 5);
+    msa_slli_w(a, IMM5)
 }
 
 /// Immediate Shift Left
@@ -7900,11 +7900,11 @@ pub unsafe fn __msa_slli_w<const IMM2: i32>(a: v4i32) -> v4i32 {
 ///
 #[inline]
 #[target_feature(enable = "msa")]
-#[cfg_attr(test, assert_instr(slli.d, IMM1 = 0b1))]
+#[cfg_attr(test, assert_instr(slli.d, IMM6 = 0b11_1111))]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
-pub unsafe fn __msa_slli_d<const IMM1: i32>(a: v2i64) -> v2i64 {
-    static_assert_uimm_bits!(IMM1, 1);
-    msa_slli_d(a, IMM1)
+pub unsafe fn __msa_slli_d<const IMM6: i32>(a: v2i64) -> v2i64 {
+    static_assert_uimm_bits!(IMM6, 6);
+    msa_slli_d(a, IMM6)
 }
 
 /// GPR Element Splat
@@ -8339,11 +8339,11 @@ pub unsafe fn __msa_srl_d(a: v2i64, b: v2i64) -> v2i64 {
 ///
 #[inline]
 #[target_feature(enable = "msa")]
-#[cfg_attr(test, assert_instr(srli.b, IMM4 = 0b1111))]
+#[cfg_attr(test, assert_instr(srli.b, IMM3 = 0b111))]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
-pub unsafe fn __msa_srli_b<const IMM4: i32>(a: v16i8) -> v16i8 {
-    static_assert_uimm_bits!(IMM4, 4);
-    msa_srli_b(a, IMM4)
+pub unsafe fn __msa_srli_b<const IMM3: i32>(a: v16i8) -> v16i8 {
+    static_assert_uimm_bits!(IMM3, 3);
+    msa_srli_b(a, IMM3)
 }
 
 /// Immediate Shift Right Logical
@@ -8354,11 +8354,11 @@ pub unsafe fn __msa_srli_b<const IMM4: i32>(a: v16i8) -> v16i8 {
 ///
 #[inline]
 #[target_feature(enable = "msa")]
-#[cfg_attr(test, assert_instr(srli.h, IMM3 = 0b111))]
+#[cfg_attr(test, assert_instr(srli.h, IMM4 = 0b1111))]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
-pub unsafe fn __msa_srli_h<const IMM3: i32>(a: v8i16) -> v8i16 {
-    static_assert_uimm_bits!(IMM3, 3);
-    msa_srli_h(a, IMM3)
+pub unsafe fn __msa_srli_h<const IMM4: i32>(a: v8i16) -> v8i16 {
+    static_assert_uimm_bits!(IMM4, 4);
+    msa_srli_h(a, IMM4)
 }
 
 /// Immediate Shift Right Logical
@@ -8369,11 +8369,11 @@ pub unsafe fn __msa_srli_h<const IMM3: i32>(a: v8i16) -> v8i16 {
 ///
 #[inline]
 #[target_feature(enable = "msa")]
-#[cfg_attr(test, assert_instr(srli.w, IMM2 = 0b11))]
+#[cfg_attr(test, assert_instr(srli.w, IMM5 = 0b1_1111))]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
-pub unsafe fn __msa_srli_w<const IMM2: i32>(a: v4i32) -> v4i32 {
-    static_assert_uimm_bits!(IMM2, 2);
-    msa_srli_w(a, IMM2)
+pub unsafe fn __msa_srli_w<const IMM5: i32>(a: v4i32) -> v4i32 {
+    static_assert_uimm_bits!(IMM5, 5);
+    msa_srli_w(a, IMM5)
 }
 
 /// Immediate Shift Right Logical
@@ -8384,11 +8384,11 @@ pub unsafe fn __msa_srli_w<const IMM2: i32>(a: v4i32) -> v4i32 {
 ///
 #[inline]
 #[target_feature(enable = "msa")]
-#[cfg_attr(test, assert_instr(srli.d, IMM1 = 0b1))]
+#[cfg_attr(test, assert_instr(srli.d, IMM6 = 0b11_1111))]
 #[unstable(feature = "stdarch_mips", issue = "111198")]
-pub unsafe fn __msa_srli_d<const IMM1: i32>(a: v2i64) -> v2i64 {
-    static_assert_uimm_bits!(IMM1, 1);
-    msa_srli_d(a, IMM1)
+pub unsafe fn __msa_srli_d<const IMM6: i32>(a: v2i64) -> v2i64 {
+    static_assert_uimm_bits!(IMM6, 6);
+    msa_srli_d(a, IMM6)
 }
 
 /// Vector Shift Right Logical Rounded
