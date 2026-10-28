@@ -501,7 +501,7 @@ pub const unsafe fn simd_reduce_add_ordered<T, U>(x: T, y: U) -> U;
 /// `U` must be the element type of `T`.
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub const unsafe fn simd_reduce_add_unordered<T, U>(x: T) -> U;
+pub unsafe fn simd_reduce_add_unordered<T, U>(x: T) -> U;
 
 /// Adds elements within a vector, allowing optimizations based on algebraic rules.
 ///
@@ -531,7 +531,7 @@ pub const unsafe fn simd_reduce_mul_ordered<T, U>(x: T, y: U) -> U;
 /// `U` must be the element type of `T`.
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub const unsafe fn simd_reduce_mul_unordered<T, U>(x: T) -> U;
+pub unsafe fn simd_reduce_mul_unordered<T, U>(x: T) -> U;
 
 /// Multiplies elements within a vector, allowing optimizations based on algebraic rules.
 ///
