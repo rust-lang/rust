@@ -482,8 +482,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let fd = this.read_scalar(fd)?.to_i32()?;
-        let iov_ptr = this.read_pointer(iov)?;
-        let iovcnt: u64 = this.read_scalar(iovcnt)?.to_i32()?.try_into().unwrap();
+        let iov = this.deref_pointer(iov)?;
+        let iovcnt = this.read_scalar(iovcnt)?.to_i32()?;
+
         // `readv` is the same as `preadv` without an offset.
         let offset = if let Some(offset) = offset {
             if matches!(this.tcx.sess.target.os, Os::Solaris) {
@@ -496,27 +497,28 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             None
         };
 
+        let Ok(iovcnt) = u64::try_from(iovcnt) else {
+            return this.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
+        };
+
         // Check that the FD exists.
         let Some(fd) = this.machine.fds.get(fd) else {
             return this.set_errno_and_return_neg1(LibcError("EBADF"), dest);
         };
 
-        let iovec_layout = this.libc_array_ty_layout("iovec", iovcnt);
-        let iov_ptr_mplace = this.ptr_to_mplace(iov_ptr, iovec_layout);
-
         // Read list of buffers from `iov`.
         let mut buffers = Vec::new();
 
-        let mut array = this.project_array_fields(&iov_ptr_mplace)?;
-        while let Some((_idx, iovec)) = array.next(this)? {
-            let iov_len_field = this.project_field_named(&iovec, "iov_len")?;
+        for idx in 0..iovcnt {
+            let iov_elem = this.project_c_array_field(&iov, idx)?;
+            let iov_len_field = this.project_field_named(&iov_elem, "iov_len")?;
             let iov_len: u64 = this
                 .read_scalar(&iov_len_field)?
                 .to_int(iov_len_field.layout.size)?
                 .try_into()
                 .unwrap();
 
-            let iov_base_field = this.project_field_named(&iovec, "iov_base")?;
+            let iov_base_field = this.project_field_named(&iov_elem, "iov_base")?;
             let iov_base_ptr = this.read_pointer(&iov_base_field)?;
 
             buffers.push((iov_base_ptr, iov_len));
@@ -605,8 +607,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let fd = this.read_scalar(fd)?.to_i32()?;
-        let iov_ptr = this.read_pointer(iov)?;
-        let iovcnt: u64 = this.read_scalar(iovcnt)?.to_i32()?.try_into().unwrap();
+        let iov = this.deref_pointer(iov)?;
+        let iovcnt = this.read_scalar(iovcnt)?.to_i32()?;
         // `writev` is the same as `pwritev` without an offset.
         let offset = if let Some(offset) = offset {
             if matches!(this.tcx.sess.target.os, Os::Solaris) {
@@ -619,27 +621,28 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             None
         };
 
+        let Ok(iovcnt) = u64::try_from(iovcnt) else {
+            return this.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
+        };
+
         // Check that the FD exists.
         let Some(fd) = this.machine.fds.get(fd) else {
             return this.set_errno_and_return_neg1(LibcError("EBADF"), dest);
         };
 
-        let iovec_layout = this.libc_array_ty_layout("iovec", iovcnt);
-        let iov_ptr_mplace = this.ptr_to_mplace(iov_ptr, iovec_layout);
-
         // Read list of buffers from `iov`.
         let mut buffers = Vec::new();
 
-        let mut array = this.project_array_fields(&iov_ptr_mplace)?;
-        while let Some((_idx, iovec)) = array.next(this)? {
-            let iov_len_field = this.project_field_named(&iovec, "iov_len")?;
+        for idx in 0..iovcnt {
+            let iov_elem = this.project_c_array_field(&iov, idx)?;
+            let iov_len_field = this.project_field_named(&iov_elem, "iov_len")?;
             let iov_len: u64 = this
                 .read_scalar(&iov_len_field)?
                 .to_int(iov_len_field.layout.size)?
                 .try_into()
                 .unwrap();
 
-            let iov_base_field = this.project_field_named(&iovec, "iov_base")?;
+            let iov_base_field = this.project_field_named(&iov_elem, "iov_base")?;
             let iov_base_ptr = this.read_pointer(&iov_base_field)?;
 
             buffers.push((iov_base_ptr, iov_len));

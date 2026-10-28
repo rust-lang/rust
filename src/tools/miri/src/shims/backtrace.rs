@@ -69,10 +69,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             1 =>
                 for (i, ptr) in ptrs.into_iter().enumerate() {
-                    let offset = buf_place.layout.size.checked_mul(i.to_u64(), this).unwrap();
-
-                    let op_place = buf_place.offset(offset, buf_place.layout, this)?;
-
+                    let op_place = this.project_c_array_field(&buf_place, i.to_u64())?;
                     this.write_pointer(ptr, &op_place)?;
                 },
             _ => throw_unsup_format!("unknown `miri_get_backtrace` flags {}", flags),

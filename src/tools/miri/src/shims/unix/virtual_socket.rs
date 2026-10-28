@@ -650,7 +650,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let sv0 = Scalar::from_int(sv0, sv.layout.size);
         let sv1 = Scalar::from_int(sv1, sv.layout.size);
         this.write_scalar(sv0, &sv)?;
-        this.write_scalar(sv1, &sv.offset(sv.layout.size, sv.layout, this)?)?;
+        this.write_scalar(sv1, &this.project_c_array_field(&sv, 1)?)?;
 
         interp_ok(Scalar::from_i32(0))
     }
@@ -729,7 +729,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let pipefd0 = Scalar::from_int(pipefd0, pipefd.layout.size);
         let pipefd1 = Scalar::from_int(pipefd1, pipefd.layout.size);
         this.write_scalar(pipefd0, &pipefd)?;
-        this.write_scalar(pipefd1, &pipefd.offset(pipefd.layout.size, pipefd.layout, this)?)?;
+        this.write_scalar(pipefd1, &this.project_c_array_field(&pipefd, 1)?)?;
 
         interp_ok(Scalar::from_i32(0))
     }

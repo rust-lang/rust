@@ -87,7 +87,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             "epoll_wait" => {
                 let [epfd, events, maxevents, timeout] = &this.check_shim_sig(
-                    shim_sig!(extern "C" fn(i32, *_, i32, i32) -> i32),
+                    shim_sig!(extern "C" fn(i32, *libc::epoll_event, i32, i32) -> i32),
                     (link_name, abi, args),
                 )?;
                 this.epoll_wait(epfd, events, maxevents, timeout, dest)?;
