@@ -420,6 +420,12 @@ impl<'tcx> QueryKey for (ty::Instance<'tcx>, CollectionMode) {
     }
 }
 
+impl<'tcx> QueryKey for (CrateNum, &'tcx str) {
+    fn default_span(&self, _tcx: TyCtxt<'_>) -> Span {
+        DUMMY_SP
+    }
+}
+
 /// Gets a `DefId` associated with a type
 ///
 /// Visited set is needed to avoid full iteration over

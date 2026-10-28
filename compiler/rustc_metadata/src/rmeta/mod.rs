@@ -722,6 +722,9 @@ define_tables! {
     associated_types_for_impl_traits_in_trait_or_impl: Table<LazyValue<DefIdMap<Vec<DefId>>>>,
     args_known_to_outlive_alias_params: Table<LazyValue<Vec<(usize, DenseBitSet<u32>)>>>,
     mut_restriction: Table<LazyValue<ty::RestrictionKind>>,
+
+    comptime_used_files: Table<LazyValue<Box<[u8]>>>,
+
 }
 
 #[derive(TyEncodable, TyDecodable)]

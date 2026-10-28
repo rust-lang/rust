@@ -621,6 +621,9 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
                     .map(|c| *c),
             )
         },
+        experimental_comptime_fetch_file: |tcx, (crate, filename): (CrateNum, &str)| {
+            panic!()
+        },
         ..providers.queries
     };
     provide_extern(&mut providers.extern_queries);

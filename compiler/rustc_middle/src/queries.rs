@@ -2852,6 +2852,14 @@ rustc_queries! {
         desc { "calculating all fake doc items" }
     }
 
+    /// Query data from non-local crates
+    query experimental_comptime_fetch_file(key: (CrateNum, &'tcx str)) -> Option<&'tcx Box<[u8]>> {
+        desc { "fetch file {} from crate {}", key.1, key.0 }
+        eval_always
+        no_hash
+        separate_provide_extern
+    }
+
     //-----------------------------------------------------------------------------
     // "Non-queries" are special dep kinds that are not queries.
     //-----------------------------------------------------------------------------
