@@ -439,6 +439,13 @@ impl<'tcx> GenericArgs<'tcx> {
         Self::from_args(List::empty())
     }
 
+    /// Exposes the underlying pointer. Relying on this for equality won't always be supported.
+    /// Be careful.
+    #[deprecated = "do not call this"]
+    pub fn as_ptr(&self) -> *const () {
+        std::ptr::from_ref(self.0).cast()
+    }
+
     #[inline]
     pub fn iter(self) -> <Self as IntoIterator>::IntoIter {
         self.into_iter()

@@ -15,7 +15,7 @@ use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_infer::traits::{Obligation, ObligationCause};
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
-use rustc_middle::ty::{self, Binder, ClauseKind, ExistentialPredicate, List, PredicateKind, Ty};
+use rustc_middle::ty::{self, Binder, ClauseKind, ExistentialPredicate, GenericArgs, PredicateKind, Ty};
 use rustc_span::Span;
 use rustc_span::symbol::Symbol;
 use rustc_trait_selection::infer::InferCtxtExt as _;
@@ -177,7 +177,7 @@ impl<'tcx> DerefTy<'tcx> {
             Self::Path => Ty::new_adt(
                 cx.tcx,
                 cx.tcx.adt_def(cx.tcx.get_diagnostic_item(sym::Path).unwrap()),
-                List::empty(),
+                GenericArgs::empty(),
             ),
             Self::Slice(_, ty) => Ty::new_slice(cx.tcx, ty),
         }
