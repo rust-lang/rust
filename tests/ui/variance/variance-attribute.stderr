@@ -1,38 +1,38 @@
 error: [T: +]
   --> $DIR/variance-attribute.rs:5:1
    |
-LL | struct Cov<#[rustc_force_variance(covariant)] T: ?Sized>;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | struct Cov<#[unsafe(rustc_force_variance(covariant))] T: ?Sized>;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: [T: -]
   --> $DIR/variance-attribute.rs:8:1
    |
-LL | struct Contra<#[rustc_force_variance(contravariant)] T: ?Sized>;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | struct Contra<#[unsafe(rustc_force_variance(contravariant))] T: ?Sized>;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: [T: o]
   --> $DIR/variance-attribute.rs:11:1
    |
-LL | struct Inv<#[rustc_force_variance(invariant)] T: ?Sized>;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | struct Inv<#[unsafe(rustc_force_variance(invariant))] T: ?Sized>;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: ['a: +]
   --> $DIR/variance-attribute.rs:14:1
    |
-LL | struct CovLifetime<#[rustc_force_variance(covariant)] 'a>;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | struct CovLifetime<#[unsafe(rustc_force_variance(covariant))] 'a>;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: ['a: -]
   --> $DIR/variance-attribute.rs:17:1
    |
-LL | struct ContraLifetime<#[rustc_force_variance(contravariant)] 'a>;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | struct ContraLifetime<#[unsafe(rustc_force_variance(contravariant))] 'a>;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: ['a: o]
   --> $DIR/variance-attribute.rs:20:1
    |
-LL | struct InvLifetime<#[rustc_force_variance(invariant)] 'a>;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | struct InvLifetime<#[unsafe(rustc_force_variance(invariant))] 'a>;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: [T: +, U: -, V: o]
   --> $DIR/variance-attribute.rs:25:1
@@ -43,30 +43,30 @@ LL | struct Local<T: ?Sized, U: ?Sized, V: ?Sized>(Cov<T>, Contra<U>, Inv<V>);
 error: [T: +]
   --> $DIR/variance-attribute.rs:30:1
    |
-LL | struct Override<#[rustc_force_variance(covariant)] T: ?Sized>(Inv<T>);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | struct Override<#[unsafe(rustc_force_variance(covariant))] T: ?Sized>(Inv<T>);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: ['a: -, T: +, U: +]
   --> $DIR/variance-attribute.rs:35:1
    |
 LL | / struct Mixed<
-LL | |     #[rustc_force_variance(contravariant)] 'a,
+LL | |     #[unsafe(rustc_force_variance(contravariant))] 'a,
 LL | |     T,
-LL | |     #[rustc_force_variance(covariant)] U,
+LL | |     #[unsafe(rustc_force_variance(covariant))] U,
 LL | | >(&'a T, Inv<U>);
    | |_^
 
 error: [T: *, U: +]
   --> $DIR/variance-attribute.rs:45:1
    |
-LL | struct Bivariant<#[rustc_force_variance(bivariant)] T, U: Iterator<Item = T>>(Inv<T>, U);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | struct Bivariant<#[unsafe(rustc_force_variance(bivariant))] T, U: Iterator<Item = T>>(Inv<T>, U);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: ['a: *, U: +]
   --> $DIR/variance-attribute.rs:49:1
    |
-LL | struct BivariantLifetime<#[rustc_force_variance(bivariant)] 'a, U: Iterator<Item = &'a ()>>(
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | struct BivariantLifetime<#[unsafe(rustc_force_variance(bivariant))] 'a, U: Iterator<Item = &'a ()>>(
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 11 previous errors
 

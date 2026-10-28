@@ -15,7 +15,7 @@ use crate::ptr::{self, NonNull};
 //
 // As such, `CovariantUnsafeCell` is wrapping `UnsafeCell` instead. The attribute hardcodes its
 // variance to be **co**variant in `T`, even though it is wrapping `UnsafeCell` which is **in**variant in `T`.
-pub struct CovariantUnsafeCell<#[rustc_force_variance(covariant)] T: ?Sized>(UnsafeCell<T>);
+pub struct CovariantUnsafeCell<#[unsafe(rustc_force_variance(covariant))] T: ?Sized>(UnsafeCell<T>);
 
 #[unstable(feature = "covariant_unsafe_cell", issue = "159735")]
 impl<T: ?Sized> !Sync for CovariantUnsafeCell<T> {}

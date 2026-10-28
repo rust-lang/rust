@@ -120,7 +120,7 @@ phantom_lifetime! {
     /// * `size_of::<PhantomCovariantLifetime<'a>>() == 0`
     /// * `align_of::<PhantomCovariantLifetime<'a>>() == 1`
     #[rustc_phantom_marker]
-    pub struct PhantomCovariantLifetime<#[rustc_force_variance(covariant)] 'a>;
+    pub struct PhantomCovariantLifetime<#[unsafe(rustc_force_variance(covariant))] 'a>;
     /// Zero-sized type used to mark a lifetime as contravariant.
     ///
     /// Contravariant lifetimes must live at most as long as declared. See [the reference][1] for
@@ -136,7 +136,7 @@ phantom_lifetime! {
     /// * `size_of::<PhantomContravariantLifetime<'a>>() == 0`
     /// * `align_of::<PhantomContravariantLifetime<'a>>() == 1`
     #[rustc_phantom_marker]
-    pub struct PhantomContravariantLifetime<#[rustc_force_variance(contravariant)] 'a>;
+    pub struct PhantomContravariantLifetime<#[unsafe(rustc_force_variance(contravariant))] 'a>;
     /// Zero-sized type used to mark a lifetime as invariant.
     ///
     /// Invariant lifetimes must be live for the exact length declared, neither shorter nor longer.
@@ -150,7 +150,7 @@ phantom_lifetime! {
     /// * `size_of::<PhantomInvariantLifetime<'a>>() == 0`
     /// * `align_of::<PhantomInvariantLifetime<'a>>() == 1`
     #[rustc_phantom_marker]
-    pub struct PhantomInvariantLifetime<#[rustc_force_variance(invariant)] 'a>;
+    pub struct PhantomInvariantLifetime<#[unsafe(rustc_force_variance(invariant))] 'a>;
 }
 
 phantom_type! {
@@ -170,7 +170,7 @@ phantom_type! {
     /// * `size_of::<PhantomCovariant<T>>() == 0`
     /// * `align_of::<PhantomCovariant<T>>() == 1`
     #[rustc_phantom_marker]
-    pub struct PhantomCovariant<#[rustc_force_variance(covariant)] T>;
+    pub struct PhantomCovariant<#[unsafe(rustc_force_variance(covariant))] T>;
     /// Zero-sized type used to mark a type parameter as contravariant.
     ///
     /// Types passed as arguments to a function are contravariant. If the type is _also_ part of the
@@ -187,7 +187,7 @@ phantom_type! {
     /// * `size_of::<PhantomContravariant<T>>() == 0`
     /// * `align_of::<PhantomContravariant<T>>() == 1`
     #[rustc_phantom_marker]
-    pub struct PhantomContravariant<#[rustc_force_variance(contravariant)] T>;
+    pub struct PhantomContravariant<#[unsafe(rustc_force_variance(contravariant))] T>;
     /// Zero-sized type used to mark a type parameter as invariant.
     ///
     /// Types that are both passed as an argument _and_ used as part of the return value from a
@@ -201,5 +201,5 @@ phantom_type! {
     /// * `size_of::<PhantomInvariant<T>>() == 0`
     /// * `align_of::<PhantomInvariant<T>>() == 1`
     #[rustc_phantom_marker]
-    pub struct PhantomInvariant<#[rustc_force_variance(invariant)] T>;
+    pub struct PhantomInvariant<#[unsafe(rustc_force_variance(invariant))] T>;
 }

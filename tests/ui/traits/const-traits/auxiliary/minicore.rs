@@ -426,7 +426,7 @@ impl<T: PointeeSized> RefCell<T> {
 
 #[lang = "unsafe_cell"]
 #[repr(transparent)]
-struct UnsafeCell<#[rustc_force_variance(invariant)] T: PointeeSized> {
+struct UnsafeCell<#[unsafe(rustc_force_variance(invariant))] T: PointeeSized> {
     value: T,
 }
 

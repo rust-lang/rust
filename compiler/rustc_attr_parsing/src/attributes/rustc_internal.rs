@@ -13,11 +13,11 @@ use rustc_span::Symbol;
 
 use super::prelude::*;
 use super::util::parse_single_integer;
-use crate::diagnostics;
 use crate::diagnostics::{
     AttributeRequiresOpt, CguFieldsMissing, RustcScalableVectorCountOutOfRange,
     UnknownExternLangItem, UnknownLangItem,
 };
+use crate::{AttributeSafety, diagnostics};
 
 pub(crate) struct RustcMainParser;
 
@@ -1191,6 +1191,10 @@ pub(crate) struct RustcForceVarianceParser;
 
 impl SingleAttributeParser for RustcForceVarianceParser {
     const PATH: &[Symbol] = &[sym::rustc_force_variance];
+    const SAFETY: AttributeSafety = AttributeSafety::Unsafe {
+        note: "overriding inferred variance can be unsound",
+        unsafe_since: None,
+    };
     const ALLOWED_TARGETS: AllowedTargets<'_> =
         AllowedTargets::AllowList(&[Allow(Target::TypeParam), Allow(Target::LifetimeParam)]);
     const TEMPLATE: AttributeTemplate =
