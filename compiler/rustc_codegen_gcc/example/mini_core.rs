@@ -489,7 +489,7 @@ pub use Option::*;
 
 #[lang = "phantom_data"]
 #[rustc_phantom_marker]
-pub struct PhantomData<#[rustc_force_variance(covariant)] T: PointeeSized>;
+pub struct PhantomData<#[unsafe(rustc_force_variance(covariant))] T: PointeeSized>;
 
 #[lang = "fn_once"]
 #[rustc_paren_sugar]

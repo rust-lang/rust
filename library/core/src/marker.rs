@@ -809,7 +809,7 @@ impl<T: PointeeSized> !Sync for *mut T {}
 #[lang = "phantom_data"]
 #[rustc_phantom_marker]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct PhantomData<#[rustc_force_variance(covariant)] T: PointeeSized>;
+pub struct PhantomData<#[unsafe(rustc_force_variance(covariant))] T: PointeeSized>;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: PointeeSized> Hash for PhantomData<T> {
