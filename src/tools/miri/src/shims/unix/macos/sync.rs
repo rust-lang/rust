@@ -115,7 +115,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
         assert!(this.tcx.data_layout.endian == Endian::Little);
 
-        let lock = this.deref_pointer_as(lock_ptr, this.libc_ty_layout("os_unfair_lock_s"))?;
+        let lock = this.deref_pointer(lock_ptr)?;
         this.get_immovable_sync_with_static_init(
             &lock,
             Size::ZERO, // offset for init tracking
@@ -420,7 +420,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // If the lock is not locked by anyone now, it went quiet.
         // Reset to zero so that it can be moved and initialized again for the next phase.
         if mutex_ref.owner().is_none() {
-            let lock_place = this.deref_pointer_as(lock_op, this.machine.layouts.u32)?;
+            let lock_place =
+                this.project_field(&this.deref_pointer(lock_op)?, FieldIdx::from_u32(0))?;
             this.write_scalar_atomic(Scalar::from_u32(0), &lock_place, AtomicWriteOrd::Relaxed)?;
         }
 
@@ -469,7 +470,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // If the lock is not locked by anyone now, it went quiet.
         // Reset to zero so that it can be moved and initialized again for the next phase.
         if mutex_ref.owner().is_none() {
-            let lock_place = this.deref_pointer_as(lock_op, this.machine.layouts.u32)?;
+            let lock_place =
+                this.project_field(&this.deref_pointer(lock_op)?, FieldIdx::from_u32(0))?;
             this.write_scalar_atomic(Scalar::from_u32(0), &lock_place, AtomicWriteOrd::Relaxed)?;
         }
 
