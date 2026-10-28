@@ -130,7 +130,6 @@ pub fn aes64dsm(rs1: u64, rs2: u64) -> u64 {
 ///
 /// The `RNUM` parameter is expected to be a constant value inside the range of `0..=10`.
 #[target_feature(enable = "zkne_or_zknd")]
-#[rustc_legacy_const_generics(1)]
 #[inline]
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub fn aes64ks1i<const RNUM: u8>(rs1: u64) -> u64 {
