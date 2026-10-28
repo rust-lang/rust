@@ -75,26 +75,26 @@ fn show_substructure(
         _ => cx.dcx().span_bug(span, "unexpected substructure in `derive(Debug)`"),
     };
 
-    let name = cx.expr_str(span, ident.name);
+    let expr_name = || cx.expr_str(span, ident.name);
     let fmt = cx.expr_name(span, sym::f);
 
     // Fieldless enums have been special-cased earlier
     if fmt_detail == FmtDebug::Shallow {
         let fn_path_write_str = cx.std_path(span, &[sym::fmt, sym::Formatter, sym::write_str]);
-        let expr = cx.expr_call_global(span, fn_path_write_str, thin_vec![fmt, name]);
+        let expr = cx.expr_call_global(span, fn_path_write_str, thin_vec![fmt, expr_name()]);
         return BlockOrExpr::new_expr(expr);
     }
 
     // Struct and tuples are similar enough that we use the same code for both,
     // with some extra pieces for structs due to the field names.
-    let (is_struct, args_per_field) = match vdata {
+    let is_struct = match vdata {
         ast::VariantData::Unit(..) => {
             // Special fast path for unit variants.
             assert!(fields.is_empty());
-            (false, 0)
+            false
         }
-        ast::VariantData::Tuple(..) => (false, 1),
-        ast::VariantData::Struct { .. } => (true, 2),
+        ast::VariantData::Tuple(..) => false,
+        ast::VariantData::Struct { .. } => true,
     };
 
     // The number of fields that can be handled without an array.
@@ -114,7 +114,7 @@ fn show_substructure(
     if fields.is_empty() {
         // Special case for no fields.
         let fn_path_write_str = cx.std_path(span, &[sym::fmt, sym::Formatter, sym::write_str]);
-        let expr = cx.expr_call_global(span, fn_path_write_str, thin_vec![fmt, name]);
+        let expr = cx.expr_call_global(span, fn_path_write_str, thin_vec![fmt, expr_name()]);
         BlockOrExpr::new_expr(expr)
     } else if fields.len() <= CUTOFF {
         // Few enough fields that we can use a specific-length method.
@@ -125,14 +125,25 @@ fn show_substructure(
         };
         let fn_path_debug = cx.std_path(span, &[sym::fmt, sym::Formatter, Symbol::intern(&debug)]);
 
-        let mut args = ThinVec::with_capacity(2 + fields.len() * args_per_field);
-        args.extend([fmt, name]);
-        for (i, field) in fields.into_iter().enumerate() {
-            if is_struct {
-                let name = cx.expr_str(field.span, field.name.unwrap().name);
-                args.push(name);
+        let mut args = ThinVec::with_capacity(2 + fields.len());
+        args.extend([fmt]);
+
+        if is_struct {
+            let mut names = String::new();
+            names.push_str(ident.name.as_str());
+
+            for field in fields.iter() {
+                names.push(' ');
+                names.push_str(field.name.unwrap().name.as_str());
             }
 
+            let name_expr = cx.expr_str(span, Symbol::intern(&names));
+            args.push(name_expr);
+        } else {
+            args.push(expr_name());
+        };
+
+        for (i, field) in fields.into_iter().enumerate() {
             let field = expr_for_field(field, i);
             args.push(field);
         }
@@ -140,29 +151,28 @@ fn show_substructure(
         BlockOrExpr::new_expr(expr)
     } else {
         // Enough fields that we must use the any-length method.
-        let mut name_exprs = ThinVec::with_capacity(fields.len());
+        let mut names = String::new();
+        if is_struct {
+            names.push_str(ident.name.as_str());
+        }
         let mut value_exprs = ThinVec::with_capacity(fields.len());
 
         for (i, field) in fields.into_iter().enumerate() {
             if is_struct {
-                name_exprs.push(cx.expr_str(field.span, field.name.unwrap().name));
+                names.push(' ');
+                names.push_str(field.name.unwrap().name.as_str());
             }
 
             let field = expr_for_field(field, i);
             value_exprs.push(field);
         }
 
-        // `let names: &'static _ = &["field1", "field2"];`
+        // `let names: &'static _ = "StructName field1 field2"`
         let names_let = is_struct.then(|| {
             let lt_static = Some(cx.lifetime_static(span));
             let ty_static_ref = cx.ty_ref(span, cx.ty_infer(span), lt_static, ast::Mutability::Not);
-            cx.stmt_let_ty(
-                span,
-                false,
-                sym::names,
-                Some(ty_static_ref),
-                cx.expr_array_ref(span, name_exprs),
-            )
+            let names_expr = cx.expr_str(span, Symbol::intern(&names));
+            cx.stmt_let_ty(span, false, sym::names, Some(ty_static_ref), names_expr)
         });
 
         // `let values: &[&dyn Debug] = &[&&self.field1, &&self.field2];`
@@ -186,7 +196,7 @@ fn show_substructure(
             cx.expr_array_ref(span, value_exprs),
         );
 
-        // `fmt::Formatter::debug_struct_fields_finish(fmt, name, names, values)` or
+        // `fmt::Formatter::debug_struct_fields_finish(fmt, names, values)` or
         // `fmt::Formatter::debug_tuple_fields_finish(fmt, name, values)`
         let sym_debug = if is_struct {
             sym::debug_struct_fields_finish
@@ -195,20 +205,20 @@ fn show_substructure(
         };
         let fn_path_debug_internal = cx.std_path(span, &[sym::fmt, sym::Formatter, sym_debug]);
 
-        let mut args = ThinVec::with_capacity(4);
-        args.push(fmt);
-        args.push(name);
-        if is_struct {
-            args.push(cx.expr_name(span, sym::names));
-        }
-        args.push(cx.expr_name(span, sym::values));
+        let args = thin_vec![
+            fmt,
+            if is_struct { cx.expr_name(span, sym::names) } else { expr_name() },
+            cx.expr_name(span, sym::values)
+        ];
+
         let expr = cx.expr_call_global(span, fn_path_debug_internal, args);
 
-        let mut stmts = ThinVec::with_capacity(2);
-        if is_struct {
-            stmts.push(names_let.unwrap());
-        }
-        stmts.push(values_let);
+        let stmts = if is_struct {
+            thin_vec![names_let.unwrap(), values_let]
+        } else {
+            thin_vec![values_let]
+        };
+
         BlockOrExpr::new_mixed(stmts, Some(expr))
     }
 }
