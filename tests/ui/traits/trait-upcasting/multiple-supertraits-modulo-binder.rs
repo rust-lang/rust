@@ -3,8 +3,8 @@
 //@ revisions: current next
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
-//@[current] run-pass
-//@[current] check-run-results
+//@ run-pass
+//@ check-run-results
 
 trait Supertrait<T> {
     fn _print_numbers(&self, mem: &[usize; 100]) {
@@ -21,7 +21,12 @@ trait Trait<T, U>: Supertrait<T> + Supertrait<U> {
 impl<T, U> Trait<T, U> for () {}
 
 fn main() {
-    (&() as &'static dyn for<'a> Trait<&'static (), &'a ()>
-        as &'static dyn Trait<&'static (), &'static ()>)
-        .say_hello(&0); //[next]~ ERROR: type annotations needed
+    // We can't have `dyn Trait<&'static (), &'static ()>` directly here
+    // as that results in an ambiguity error in MIR borrowck.
+    fn generic<T: 'static>() {
+        (&() as &'static dyn for<'a> Trait<T, &'a ()> as &'static dyn Trait<T, &'static ()>)
+            .say_hello(&0);
+    }
+
+    generic::<&'static ()>();
 }
