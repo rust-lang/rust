@@ -483,6 +483,31 @@ pub enum TrySendError<T> {
     Disconnected(#[stable(feature = "rust1", since = "1.0.0")] T),
 }
 
+impl<T> TrySendError<T> {
+    /// Consumes the error and returns the inner value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(try_send_error_into_inner)]
+    ///
+    /// use std::sync::mpsc::sync_channel;
+    ///
+    /// let (tx, rx) = sync_channel(0);
+    /// if let Err(err) = tx.try_send("message") {
+    ///     let msg: &'static str = err.into_inner();
+    ///     assert_eq!(msg, "message");
+    /// }
+    /// ```
+    #[inline]
+    #[unstable(feature = "try_send_error_into_inner", issue = "165102")]
+    pub fn into_inner(self) -> T {
+        match self {
+            TrySendError::Full(inner) | TrySendError::Disconnected(inner) => inner,
+        }
+    }
+}
+
 /// Creates a new asynchronous channel, returning the sender/receiver halves.
 ///
 /// All data sent on the [`Sender`] will become available on the [`Receiver`] in
