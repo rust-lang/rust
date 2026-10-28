@@ -3,8 +3,8 @@
     .fg { fill: #AAAAAA }
     .bg { fill: #000000 }
     .fg-bright-blue { fill: #5555FF }
+    .fg-bright-cyan { fill: #55FFFF }
     .fg-bright-red { fill: #FF5555 }
-    .fg-magenta { fill: #AA00AA }
     .container {
       padding: 0 10px;
       line-height: 18px;
@@ -44,9 +44,9 @@
 </tspan>
     <tspan x="10px" y="226px"><tspan>   </tspan><tspan class="fg-bright-blue bold">│</tspan>
 </tspan>
-    <tspan x="10px" y="244px"><tspan>   </tspan><tspan class="fg-bright-blue bold">├ </tspan><tspan class="bold">note</tspan><tspan>: expected opaque type `</tspan><tspan class="fg-magenta bold">impl Foo</tspan><tspan>` (</tspan><tspan class="fg-magenta bold">`u32`</tspan><tspan>)</tspan>
+    <tspan x="10px" y="244px"><tspan>   </tspan><tspan class="fg-bright-blue bold">├ </tspan><tspan class="bold">note</tspan><tspan>: expected opaque type `</tspan><tspan class="fg-bright-cyan bold">impl Foo</tspan><tspan>` (</tspan><tspan class="fg-bright-cyan bold">`u32`</tspan><tspan>)</tspan>
 </tspan>
-    <tspan x="10px" y="262px"><tspan>   </tspan><tspan class="fg-bright-blue bold">│</tspan><tspan>          found opaque type `</tspan><tspan class="fg-magenta bold">impl Foo</tspan><tspan>` (</tspan><tspan class="fg-magenta bold">`i32`</tspan><tspan>)</tspan>
+    <tspan x="10px" y="262px"><tspan>   </tspan><tspan class="fg-bright-blue bold">│</tspan><tspan>          found opaque type `</tspan><tspan class="fg-bright-cyan bold">impl Foo</tspan><tspan>` (</tspan><tspan class="fg-bright-cyan bold">`i32`</tspan><tspan>)</tspan>
 </tspan>
     <tspan x="10px" y="280px"><tspan>   </tspan><tspan class="fg-bright-blue bold">╰ </tspan><tspan class="bold">note</tspan><tspan>: distinct uses of `impl Trait` result in different opaque types</tspan>
 </tspan>
@@ -76,9 +76,9 @@
 </tspan>
     <tspan x="10px" y="514px"><tspan>   </tspan><tspan class="fg-bright-blue bold">│</tspan>
 </tspan>
-    <tspan x="10px" y="532px"><tspan>   </tspan><tspan class="fg-bright-blue bold">├ </tspan><tspan class="bold">note</tspan><tspan>: expected opaque type `</tspan><tspan class="fg-magenta bold">impl Foo</tspan><tspan>` (</tspan><tspan class="fg-magenta bold">`i32`</tspan><tspan>)</tspan>
+    <tspan x="10px" y="532px"><tspan>   </tspan><tspan class="fg-bright-blue bold">├ </tspan><tspan class="bold">note</tspan><tspan>: expected opaque type `</tspan><tspan class="fg-bright-cyan bold">impl Foo</tspan><tspan>` (</tspan><tspan class="fg-bright-cyan bold">`i32`</tspan><tspan>)</tspan>
 </tspan>
-    <tspan x="10px" y="550px"><tspan>   </tspan><tspan class="fg-bright-blue bold">│</tspan><tspan>          found opaque type `</tspan><tspan class="fg-magenta bold">impl Foo</tspan><tspan>` (</tspan><tspan class="fg-magenta bold">`u32`</tspan><tspan>)</tspan>
+    <tspan x="10px" y="550px"><tspan>   </tspan><tspan class="fg-bright-blue bold">│</tspan><tspan>          found opaque type `</tspan><tspan class="fg-bright-cyan bold">impl Foo</tspan><tspan>` (</tspan><tspan class="fg-bright-cyan bold">`u32`</tspan><tspan>)</tspan>
 </tspan>
     <tspan x="10px" y="568px"><tspan>   </tspan><tspan class="fg-bright-blue bold">╰ </tspan><tspan class="bold">note</tspan><tspan>: distinct uses of `impl Trait` result in different opaque types</tspan>
 </tspan>
