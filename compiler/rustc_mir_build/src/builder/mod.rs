@@ -1186,7 +1186,7 @@ mod block;
 mod cfg;
 mod coverageinfo;
 mod custom;
-mod expr;
+pub mod expr; // njn: temp pub
 mod matches;
 mod misc;
 mod scope;

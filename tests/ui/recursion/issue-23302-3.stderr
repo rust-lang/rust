@@ -4,13 +4,11 @@ error[E0391]: cycle detected when checking if `A` is a trivial const
 LL | const A: i32 = B;
    | ^^^^^^^^^^^^
    |
-   = note: ...which requires building MIR for `A`...
 note: ...which requires checking if `B` is a trivial const...
   --> $DIR/issue-23302-3.rs:3:1
    |
 LL | const B: i32 = A;
    | ^^^^^^^^^^^^
-   = note: ...which requires building MIR for `B`...
    = note: ...which again requires checking if `A` is a trivial const, completing the cycle
    = note: cycle used when simplifying constant for the type system `A`
    = note: for more information, see <https://rustc-dev-guide.rust-lang.org/overview.html#queries> and <https://rustc-dev-guide.rust-lang.org/query.html>

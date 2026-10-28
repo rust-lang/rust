@@ -8,12 +8,14 @@
 // The `builder` module used to be named `build`, but that was causing GitHub's
 // "Go to file" feature to silently ignore all files in the module, probably
 // because it assumes that "build" is a build-output directory. See #134365.
-mod builder;
+pub mod builder; // njn: temp pub
 mod check_tail_calls;
 mod check_unsafety;
 mod diagnostics;
 pub mod thir;
 
+// njn: temp
+pub use builder::expr::as_constant::lit_to_mir_constant;
 use rustc_middle::util::Providers;
 
 pub fn provide(providers: &mut Providers) {
