@@ -397,38 +397,36 @@ fn mir_built(tcx: TyCtxt<'_>, def: LocalDefId) -> &Steal<Body<'_>> {
     // This is the one place that is allowed to call `build_mir_inner_impl`.
     let mut body = tcx.build_mir_inner_impl(def);
 
+    pass_manager::dump_mir_for_phase_change(tcx, &body);
+
+    // Skip all the passes below for trivial consts.
+    //
     // Identifying trivial consts based on their mir_built is easy, but a little wasteful.
     // Trying to push this logic earlier in the compiler and never even produce the Body would
     // probably improve compile time.
-    if trivial_const::trivial_const(tcx, def, || &body).is_some() {
-        // Skip all the passes below for trivial consts.
-        let body = tcx.alloc_steal_mir(body);
-        pass_manager::dump_mir_for_phase_change(tcx, &body.borrow());
-        return body;
+    if trivial_const::trivial_const(tcx, def, || &body).is_none() {
+        pm::run_passes(
+            tcx,
+            &mut body,
+            &[
+                // This used to be part of MIR building,
+                // now done separately to separate concerns.
+                &lint_and_remove_uninhabited::LintAndRemoveUninhabited,
+                // MIR-level lints.
+                &Lint(check_inline::CheckForceInline),
+                &Lint(check_call_recursion::CheckCallRecursion),
+                &Lint(check_packed_ref::CheckPackedRef),
+                &Lint(check_const_item_mutation::CheckConstItemMutation),
+                &Lint(check_mut_restriction::CheckMutRestriction),
+                &Lint(function_item_references::FunctionItemReferences),
+                // What we need to do constant evaluation.
+                &simplify::SimplifyCfg::Initial,
+                &Lint(sanity_check::SanityCheck),
+            ],
+            None,
+        );
     }
 
-    pass_manager::dump_mir_for_phase_change(tcx, &body);
-
-    pm::run_passes(
-        tcx,
-        &mut body,
-        &[
-            // This used to be part of MIR building,
-            // now done separately to separate concerns.
-            &lint_and_remove_uninhabited::LintAndRemoveUninhabited,
-            // MIR-level lints.
-            &Lint(check_inline::CheckForceInline),
-            &Lint(check_call_recursion::CheckCallRecursion),
-            &Lint(check_packed_ref::CheckPackedRef),
-            &Lint(check_const_item_mutation::CheckConstItemMutation),
-            &Lint(check_mut_restriction::CheckMutRestriction),
-            &Lint(function_item_references::FunctionItemReferences),
-            // What we need to do constant evaluation.
-            &simplify::SimplifyCfg::Initial,
-            &Lint(sanity_check::SanityCheck),
-        ],
-        None,
-    );
     tcx.alloc_steal_mir(body)
 }
 
