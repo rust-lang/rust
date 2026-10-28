@@ -1,0 +1,38 @@
+error: where clauses are not allowed after the type for type aliases
+  --> $DIR/where-clause-placement-type-alias.rs:10:34
+   |
+LL | #[cfg(fail)] type Trailing0 = () where u32: Copy;
+   |                                  ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
+   = help: add `#![feature(checked_type_aliases)]` to the crate attributes to enable
+
+error: where clauses are not allowed after the type for type aliases
+  --> $DIR/where-clause-placement-type-alias.rs:12:34
+   |
+LL | #[cfg(fail)] type Trailing1 = () where;
+   |                                  ^^^^^
+   |
+   = note: see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
+   = help: add `#![feature(checked_type_aliases)]` to the crate attributes to enable
+
+error: where clauses are not allowed after the type for type aliases
+  --> $DIR/where-clause-placement-type-alias.rs:17:42
+   |
+LL | #[cfg(fail)] type Both0 where (): = bool where !: Sized;
+   |                                          ^^^^^^^^^^^^^^
+   |
+   = note: see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
+   = help: add `#![feature(checked_type_aliases)]` to the crate attributes to enable
+
+error: where clauses are not allowed after the type for type aliases
+  --> $DIR/where-clause-placement-type-alias.rs:19:38
+   |
+LL | #[cfg(fail)] type Both1 where = bool where;
+   |                                      ^^^^^
+   |
+   = note: see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
+   = help: add `#![feature(checked_type_aliases)]` to the crate attributes to enable
+
+error: aborting due to 4 previous errors
+
