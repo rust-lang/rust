@@ -508,10 +508,16 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
                     }
                 }
 
-                let MirBorrowckImpliedOutlivesBounds {
-                    outlives_bounds,
-                    normalized_inputs_and_output,
-                } = value;
+                let (
+                    MirBorrowckImpliedOutlivesBounds {
+                        outlives_bounds,
+                        normalized_inputs_and_output,
+                    },
+                    certainty,
+                ) = value;
+
+                // FIXME(-Znext-solver): We're ignoring the certainty here, this feels off.
+                let _ = certainty;
 
                 // Because of #109628, we may have unexpected placeholders. Ignore them!
                 // FIXME(#109628): panic in this case once the issue is fixed.
