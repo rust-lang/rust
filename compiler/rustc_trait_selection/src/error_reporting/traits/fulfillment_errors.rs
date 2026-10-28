@@ -3141,6 +3141,49 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             | ObligationCauseCode::VariableType(hir_id)
             | ObligationCauseCode::WhereClauseInExpr(_, _, hir_id, _)
             | ObligationCauseCode::SizedCallReturnType(hir_id) => *hir_id,
+            ObligationCauseCode::WellFormed(WellFormedLoc::Ty(local_def_id)) => {
+                if let hir::def::DefKind::AssocTy | hir::def::DefKind::AssocConst =
+                    self.tcx.def_kind(*local_def_id)
+                    && let ty::Alias(_, alias) = self
+                        .tcx
+                        .type_of(*local_def_id)
+                        .instantiate_identity()
+                        .skip_norm_wip()
+                        .kind()
+                    && let Some(def_id) = alias.kind.try_to_projection()
+                    && let hir::def::DefKind::AssocTy = self.tcx.def_kind(def_id)
+                    && let assoc_parent = self.tcx.parent((*local_def_id).into())
+                    && let hir::def::DefKind::Impl { of_trait: true } =
+                        self.tcx.def_kind(assoc_parent)
+                    && Some(self.tcx.parent(def_id)) == self.tcx.impl_opt_trait_id(assoc_parent)
+                {
+                    // We have
+                    //
+                    // struct AssertCopy<T: Copy>(T);
+                    //
+                    // trait Foo {
+                    //     type Assoc;
+                    //     type X;
+                    //     const C: Self::Assoc;
+                    // }
+                    //
+                    // impl Foo for bool {
+                    //     type Assoc = AssertCopy<String>;
+                    //                  ^^^^^^^^^^^^^^^^^^ WF-check of this will have failed
+                    //     type X = Self::Assoc;
+                    //              ^^^^^^^^^^^ this is the current obligation it is redundant to
+                    //                          complain about it
+                    //     const C: Self::Assoc = panic!();
+                    //              ^^^^^^^^^^^   ^^^^^^^^ these are the current obligation it is redundant to
+                    //                                     complain about them
+                    // }
+                    //
+                    // We will have already emitted a wf-error for the assoc type, do not also
+                    // emit wf-error merely because we are referencing it.
+                    err.downgrade_to_delayed_bug();
+                }
+                return;
+            }
             ObligationCauseCode::WellFormed(WellFormedLoc::Param { function, param_idx }) => {
                 if let hir::def::DefKind::AssocFn = self.tcx.def_kind(*function) {
                     let sig = self.tcx.fn_sig(*function).instantiate_identity().skip_norm_wip();

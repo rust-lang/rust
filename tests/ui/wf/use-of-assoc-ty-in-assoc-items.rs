@@ -9,10 +9,9 @@ trait Foo {
 
 impl Foo for bool {
     type Assoc = AssertCopy<String>; //~ ERROR: E0277
-    type Other = Self::Assoc; //~ ERROR: E0277
-    const X: Self::Other = panic!(); //~ ERROR: E0277
-    //~^ ERROR: E0277
-    fn my_method() -> Self::Assoc {
+    type Other = Self::Assoc; // ok
+    const X: Self::Other = panic!(); // ok
+    fn my_method() -> Self::Assoc { // ok
         panic!();
     }
 }
