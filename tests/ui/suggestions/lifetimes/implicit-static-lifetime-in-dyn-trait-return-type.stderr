@@ -30,6 +30,10 @@ help: consider adding an explicit lifetime bound
    |
 LL | fn bb<R: 'static>(r: R) -> Box<dyn Foo> {
    |        +++++++++
+help: consider adding an explicit lifetime bound
+   |
+LL | fn bb<'a, R>(r: R) -> Box<dyn Foo + 'a> {
+   |       +++                         ++++
 
 error[E0310]: the parameter type `T` may not live long enough
   --> $DIR/implicit-static-lifetime-in-dyn-trait-return-type.rs:27:9
@@ -46,6 +50,10 @@ help: consider adding an explicit lifetime bound
    |
 LL | impl<T: 'static> Qux<T> {
    |       +++++++++
+help: consider adding an explicit lifetime bound
+   |
+LL |     fn baz<'a>(self) -> Box<dyn Baz + 'a> {
+   |           ++++                      ++++
 
 error: aborting due to 3 previous errors
 

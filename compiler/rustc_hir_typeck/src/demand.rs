@@ -118,7 +118,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         };
 
-        if !found_expr.span.eq_ctxt(expected_expr.span) {
+        if found_expr.span.ctxt() != expected_expr.span.ctxt() {
             return;
         }
 

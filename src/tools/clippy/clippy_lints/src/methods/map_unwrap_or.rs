@@ -74,7 +74,7 @@ pub(super) fn check<'tcx>(
         }
     }
 
-    if !unwrap_arg.span.eq_ctxt(map_span) {
+    if unwrap_arg.span.ctxt() != map_span.ctxt() {
         return;
     }
 

@@ -10,6 +10,13 @@ use rustc_structures::Limit;
 pub(crate) struct CfgAttrNoAttributes;
 
 #[derive(Diagnostic)]
+#[diag("`cfg` is not supported in this position")]
+pub(crate) struct CfgNotSupportedInPosition {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(
     "attempted to repeat an expression containing no syntax variables matched as repeating at this depth"
 )]
@@ -218,14 +225,6 @@ pub(crate) struct IncompleteParse<'a> {
         applicability = "maybe-incorrect"
     )]
     pub add_semicolon: Option<Span>,
-}
-
-#[derive(Diagnostic)]
-#[diag("removing {$descr} is not supported in this position")]
-pub(crate) struct RemoveNodeNotSupported {
-    #[primary_span]
-    pub span: Span,
-    pub descr: &'static str,
 }
 
 #[derive(Diagnostic)]

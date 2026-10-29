@@ -37,9 +37,9 @@ use smallvec::SmallVec;
 use crate::base::*;
 use crate::config::StripUnconfigured;
 use crate::diagnostics::{
-    EmptyDelegationMac, GlobDelegationOutsideImpls, GlobDelegationTraitlessQpath, IncompleteParse,
-    RecursionLimitReached, RemoveExprNotSupported, RemoveNodeNotSupported, UnsupportedKeyValue,
-    WrongFragmentKind,
+    CfgNotSupportedInPosition, EmptyDelegationMac, GlobDelegationOutsideImpls,
+    GlobDelegationTraitlessQpath, IncompleteParse, RecursionLimitReached, RemoveExprNotSupported,
+    UnsupportedKeyValue, WrongFragmentKind,
 };
 use crate::mbe::diagnostics::annotate_err_with_kind;
 use crate::module::{
@@ -1235,9 +1235,6 @@ trait InvocationCollectorNode: HasAttrs + HasNodeId + Sized + DeclaredIdents {
     const KIND: AstFragmentKind;
     fn to_annotatable(self) -> Annotatable;
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy;
-    fn descr() -> &'static str {
-        unreachable!()
-    }
     fn walk_flat_map(self, _collector: &mut InvocationCollector<'_, '_>) -> Self::OutputTy {
         unreachable!()
     }
@@ -1274,11 +1271,11 @@ trait InvocationCollectorNode: HasAttrs + HasNodeId + Sized + DeclaredIdents {
     }
     fn expand_cfg_false(
         &mut self,
-        collector: &mut InvocationCollector<'_, '_>,
+        _collector: &mut InvocationCollector<'_, '_>,
         _pos: usize,
-        span: Span,
+        _span: Span,
     ) {
-        collector.cx.dcx().emit_err(RemoveNodeNotSupported { span, descr: Self::descr() });
+        unreachable!("only crate nodes support this operation");
     }
 
     fn as_target(&self) -> Target;
@@ -1949,9 +1946,6 @@ impl InvocationCollectorNode for ast::Expr {
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_expr()
     }
-    fn descr() -> &'static str {
-        "an expression"
-    }
     fn walk(&mut self, collector: &mut InvocationCollector<'_, '_>) {
         walk_expr(collector, self)
     }
@@ -2008,9 +2002,6 @@ struct MethodReceiverTag;
 impl InvocationCollectorNode for AstNodeWrapper<ast::Expr, MethodReceiverTag> {
     type OutputTy = AstNodeWrapper<Box<ast::Expr>, MethodReceiverTag>;
     const KIND: AstFragmentKind = AstFragmentKind::MethodReceiverExpr;
-    fn descr() -> &'static str {
-        "an expression"
-    }
     fn to_annotatable(self) -> Annotatable {
         Annotatable::Expr(Box::new(self.wrapped))
     }
@@ -2453,11 +2444,18 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                 Some((attr, pos, derives)) => match attr.name() {
                     Some(sym::cfg) => {
                         let span = attr.span;
-                        if self.expand_cfg_true(node, attr, pos).as_bool() {
-                            continue;
-                        }
 
-                        node.expand_cfg_false(self, pos, span);
+                        match Node::KIND {
+                            AstFragmentKind::Expr | AstFragmentKind::MethodReceiverExpr => {
+                                self.cx.dcx().emit_err(CfgNotSupportedInPosition { span });
+                            }
+                            AstFragmentKind::Crate => {
+                                if !self.expand_cfg_true(node, attr, pos).as_bool() {
+                                    node.expand_cfg_false(self, pos, span);
+                                }
+                            }
+                            _ => unreachable!(),
+                        }
                         continue;
                     }
                     Some(sym::cfg_attr) => {

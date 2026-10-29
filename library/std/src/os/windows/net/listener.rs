@@ -1,4 +1,6 @@
 #![unstable(feature = "windows_unix_domain_sockets", issue = "150487")]
+
+use crate::macros::rustdoc_skip_body;
 use crate::os::windows::io::{AsRawSocket, FromRawSocket, IntoRawSocket, RawSocket};
 use crate::os::windows::net::{SocketAddr, UnixStream};
 use crate::path::Path;
@@ -163,6 +165,7 @@ impl UnixListener {
     ///     Ok(())
     /// }
     /// ```
+    #[rustdoc_skip_body]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
         SocketAddr::new(|addr, len| unsafe { getsockname(self.0.as_raw(), addr, len) })
     }
@@ -325,6 +328,7 @@ impl<'a> Iterator for Incoming<'a> {
 
 impl AsRawSocket for UnixListener {
     #[inline]
+    #[rustdoc_skip_body]
     fn as_raw_socket(&self) -> RawSocket {
         self.0.as_raw_socket()
     }
@@ -332,6 +336,7 @@ impl AsRawSocket for UnixListener {
 
 impl FromRawSocket for UnixListener {
     #[inline]
+    #[rustdoc_skip_body]
     unsafe fn from_raw_socket(sock: RawSocket) -> Self {
         UnixListener(unsafe { Socket::from_raw_socket(sock) })
     }
@@ -339,6 +344,7 @@ impl FromRawSocket for UnixListener {
 
 impl IntoRawSocket for UnixListener {
     #[inline]
+    #[rustdoc_skip_body]
     fn into_raw_socket(self) -> RawSocket {
         self.0.into_raw_socket()
     }

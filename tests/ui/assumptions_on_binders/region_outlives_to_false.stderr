@@ -1,0 +1,8 @@
+error: unable to satisfy constraints because it cannot be proven
+  --> $DIR/region_outlives_to_false.rs:5:20
+   |
+LL | const FAIL<'a, T>: &'a T = todo!();
+   |                    ^^^^^
+
+error: aborting due to 1 previous error
+

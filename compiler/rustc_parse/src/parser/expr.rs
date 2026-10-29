@@ -3749,7 +3749,9 @@ impl<'a> Parser<'a> {
                         // make sure the block is at the end by eating a `;`,
                         // we shouldn't report such diagnostic for `let a = foo{return 43;}+bar;`
                         // also skip the suggestion if the span cross macro boundaries
-                        if might_be_stmt && snapshot.eat(exp!(Semi)) && pth.span.eq_ctxt(open_span)
+                        if might_be_stmt
+                            && snapshot.eat(exp!(Semi))
+                            && pth.span.ctxt() == open_span.ctxt()
                         {
                             let span = pth.span.between(open_span);
                             e.subdiagnostic(crate::diagnostics::MissingElseInLet { span });

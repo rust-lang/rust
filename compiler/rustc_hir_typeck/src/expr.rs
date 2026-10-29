@@ -45,10 +45,11 @@ use crate::callee::SplatLoweringInfo;
 use crate::coercion::CoerceMany;
 use crate::diagnostics::{
     AddressOfTemporaryTaken, BaseExpressionDoubleDot, BaseExpressionDoubleDotAddExpr,
-    BaseExpressionDoubleDotRemove, CantDereference, ExprParenthesesNeeded,
-    FieldMultiplySpecifiedInInitializer, FunctionalRecordUpdateOnNonStruct, HelpUseLatestEdition,
-    NakedAsmOutsideNakedFn, NoFieldOnVariant, ReturnLikeStatementKind, ReturnStmtOutsideOfFnBody,
-    StructExprNonExhaustive, TypeMismatchFruTypo, YieldExprOutsideOfCoroutine,
+    BaseExpressionDoubleDotRemove, CantDereference, DelegationInvalidAdtForReturnWrapping,
+    ExprParenthesesNeeded, FieldMultiplySpecifiedInInitializer, FunctionalRecordUpdateOnNonStruct,
+    HelpUseLatestEdition, NakedAsmOutsideNakedFn, NoFieldOnVariant, ReturnLikeStatementKind,
+    ReturnStmtOutsideOfFnBody, StructExprNonExhaustive, TypeMismatchFruTypo,
+    YieldExprOutsideOfCoroutine,
 };
 use crate::op::contains_let_in_chain;
 use crate::{
@@ -1945,13 +1946,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let [v_field] = &variant.fields[..] {
                     Ok(get_field_ident(v_field))
                 } else {
-                    Err(tcx.dcx().span_delayed_bug(
-                        field.ident.span,
-                        format!(
-                            "can not infer the delegation `Self` mapping field for {:?}",
-                            self.body_def_id
-                        ),
-                    ))
+                    Err(tcx.dcx().emit_err(DelegationInvalidAdtForReturnWrapping {
+                        span: tcx.def_span(self.body_def_id),
+                        adt_name: tcx.def_path_str(adt.did()),
+                    }))
                 }
             } else {
                 Ok(tcx.adjust_ident(field.ident, variant.def_id))
@@ -3315,7 +3313,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let len = candidate_fields.len();
             // Don't suggest `.field` if the base expr is from a different
             // syntax context than the field.
-            if len > 0 && expr.span.eq_ctxt(field.span) {
+            if len > 0 && expr.span.ctxt() == field.span.ctxt() {
                 err.span_suggestions(
                     field.span.shrink_to_lo(),
                     format!(

@@ -289,26 +289,14 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
 
     /// Return registered tool attributes with the given attribute name.
     ///
-    /// FIXME(jdonszelmann): may panic on non-tool attributes. After more attribute work, non-tool
-    /// attributes will simply return an empty list.
-    ///
-    /// Single segmented name like `#[clippy]` is specified as `&["clippy".to_string()]`.
-    /// Multi-segmented name like `#[rustfmt::skip]` is specified as `&["rustfmt".to_string(), "skip".to_string()]`.
+    /// For example, `#[rustfmt::skip]` can be specified as
+    /// `&["rustfmt".to_string(), "skip".to_string()]`.
     pub fn tool_attrs(&self, def_id: DefId, attr: &[String]) -> Vec<(String, Span)> {
         let attr_name: Vec<_> = attr.iter().map(|seg| Symbol::intern(&seg)).collect();
-        #[allow(deprecated)]
         self.tcx
-            .get_all_attrs(def_id)
-            .into_iter()
-            .filter_map(|attribute| {
-                if let Attribute::Unparsed(u) = attribute
-                    && u.path.segments.iter().eq(&attr_name)
-                {
-                    let attr_str = rustc_hir_pretty::attribute_to_string(self, attribute);
-                    Some((attr_str, u.span))
-                } else {
-                    None
-                }
+            .tool_attrs(def_id, &attr_name)
+            .map(|attribute| {
+                (rustc_hir_pretty::attritem_to_string(self, attribute), attribute.span)
             })
             .collect()
     }
@@ -322,7 +310,7 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
         };
         attrs_iter
             .filter_map(|attribute| {
-                if let Attribute::Unparsed(u) = attribute {
+                if let Attribute::Tool(u) = attribute {
                     let attr_str = rustc_hir_pretty::attribute_to_string(self, attribute);
                     Some((attr_str, u.span))
                 } else {

@@ -12,6 +12,7 @@ use super::platform::fs::MetadataExt as _;
 use crate::ffi::OsStr;
 use crate::fs::{self, OpenOptions, Permissions};
 use crate::io::BorrowedCursor;
+use crate::macros::rustdoc_skip_body;
 use crate::os::unix::io::{AsFd, AsRawFd};
 use crate::path::Path;
 use crate::sys::{AsInner, AsInnerMut, FromInner};
@@ -372,12 +373,14 @@ impl FileExt for fs::File {
     fn read_buf_at(&self, buf: BorrowedCursor<'_, u8>, offset: u64) -> io::Result<()> {
         self.as_inner().read_buf_at(buf, offset)
     }
+    #[rustdoc_skip_body]
     fn read_vectored_at(&self, bufs: &mut [io::IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
         self.as_inner().read_vectored_at(bufs, offset)
     }
     fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
         self.as_inner().write_at(buf, offset)
     }
+    #[rustdoc_skip_body]
     fn write_vectored_at(&self, bufs: &[io::IoSlice<'_>], offset: u64) -> io::Result<usize> {
         self.as_inner().write_vectored_at(bufs, offset)
     }
@@ -476,6 +479,7 @@ pub trait PermissionsExt {
 
 #[stable(feature = "fs_ext", since = "1.1.0")]
 impl PermissionsExt for Permissions {
+    #[rustdoc_skip_body]
     fn mode(&self) -> u32 {
         self.as_inner().mode()
     }
@@ -545,11 +549,13 @@ pub trait OpenOptionsExt {
 
 #[stable(feature = "fs_ext", since = "1.1.0")]
 impl OpenOptionsExt for OpenOptions {
+    #[rustdoc_skip_body]
     fn mode(&mut self, mode: u32) -> &mut OpenOptions {
         self.as_inner_mut().mode(mode);
         self
     }
 
+    #[rustdoc_skip_body]
     fn custom_flags(&mut self, flags: i32) -> &mut OpenOptions {
         self.as_inner_mut().custom_flags(flags);
         self
@@ -1006,15 +1012,19 @@ pub trait FileTypeExt {
 
 #[stable(feature = "file_type_ext", since = "1.5.0")]
 impl FileTypeExt for fs::FileType {
+    #[rustdoc_skip_body]
     fn is_block_device(&self) -> bool {
         self.as_inner().is(libc::S_IFBLK)
     }
+    #[rustdoc_skip_body]
     fn is_char_device(&self) -> bool {
         self.as_inner().is(libc::S_IFCHR)
     }
+    #[rustdoc_skip_body]
     fn is_fifo(&self) -> bool {
         self.as_inner().is(libc::S_IFIFO)
     }
+    #[rustdoc_skip_body]
     fn is_socket(&self) -> bool {
         self.as_inner().is(libc::S_IFSOCK)
     }
@@ -1048,6 +1058,7 @@ pub trait DirEntryExt {
 
 #[stable(feature = "dir_entry_ext", since = "1.1.0")]
 impl DirEntryExt for fs::DirEntry {
+    #[rustdoc_skip_body]
     fn ino(&self) -> u64 {
         self.as_inner().ino()
     }
@@ -1082,6 +1093,7 @@ pub impl(self) trait DirEntryExt2 {
 
 #[unstable(feature = "dir_entry_ext2", issue = "85573")]
 impl DirEntryExt2 for fs::DirEntry {
+    #[rustdoc_skip_body]
     fn file_name_ref(&self) -> &OsStr {
         self.as_inner().file_name_os_str()
     }
@@ -1130,6 +1142,7 @@ pub trait DirBuilderExt {
 
 #[stable(feature = "dir_builder", since = "1.6.0")]
 impl DirBuilderExt for fs::DirBuilder {
+    #[rustdoc_skip_body]
     fn mode(&mut self, mode: u32) -> &mut fs::DirBuilder {
         self.as_inner_mut().set_mode(mode);
         self
@@ -1164,6 +1177,7 @@ impl DirBuilderExt for fs::DirBuilder {
 /// }
 /// ```
 #[stable(feature = "unix_chown", since = "1.73.0")]
+#[rustdoc_skip_body]
 pub fn chown<P: AsRef<Path>>(dir: P, uid: Option<u32>, gid: Option<u32>) -> io::Result<()> {
     sys::fs::chown(dir.as_ref(), uid.unwrap_or(u32::MAX), gid.unwrap_or(u32::MAX))
 }
@@ -1185,6 +1199,7 @@ pub fn chown<P: AsRef<Path>>(dir: P, uid: Option<u32>, gid: Option<u32>) -> io::
 /// }
 /// ```
 #[stable(feature = "unix_chown", since = "1.73.0")]
+#[rustdoc_skip_body]
 pub fn fchown<F: AsFd>(fd: F, uid: Option<u32>, gid: Option<u32>) -> io::Result<()> {
     sys::fs::fchown(fd.as_fd().as_raw_fd(), uid.unwrap_or(u32::MAX), gid.unwrap_or(u32::MAX))
 }
@@ -1206,6 +1221,7 @@ pub fn fchown<F: AsFd>(fd: F, uid: Option<u32>, gid: Option<u32>) -> io::Result<
 /// }
 /// ```
 #[stable(feature = "unix_chown", since = "1.73.0")]
+#[rustdoc_skip_body]
 pub fn lchown<P: AsRef<Path>>(dir: P, uid: Option<u32>, gid: Option<u32>) -> io::Result<()> {
     sys::fs::lchown(dir.as_ref(), uid.unwrap_or(u32::MAX), gid.unwrap_or(u32::MAX))
 }
@@ -1232,6 +1248,7 @@ pub fn lchown<P: AsRef<Path>>(dir: P, uid: Option<u32>, gid: Option<u32>) -> io:
 /// ```
 #[stable(feature = "unix_chroot", since = "1.56.0")]
 #[cfg(not(target_os = "fuchsia"))]
+#[rustdoc_skip_body]
 pub fn chroot<P: AsRef<Path>>(dir: P) -> io::Result<()> {
     sys::fs::chroot(dir.as_ref())
 }
@@ -1269,6 +1286,7 @@ pub fn chroot<P: AsRef<Path>>(dir: P) -> io::Result<()> {
 /// # }
 /// ```
 #[unstable(feature = "unix_mkfifo", issue = "139324")]
+#[rustdoc_skip_body]
 pub fn mkfifo<P: AsRef<Path>>(path: P, permissions: Permissions) -> io::Result<()> {
     sys::fs::mkfifo(path.as_ref(), permissions.mode())
 }

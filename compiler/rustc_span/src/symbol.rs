@@ -1913,6 +1913,7 @@ symbols! {
         rustdoc,
         rustdoc_internals,
         rustdoc_missing_doc_code_examples,
+        rustdoc_skip_body,
         rustfmt,
         rvalue_static_promotion,
         rvector,
@@ -2554,7 +2555,7 @@ impl Ident {
 impl PartialEq for Ident {
     #[inline]
     fn eq(&self, rhs: &Self) -> bool {
-        self.name == rhs.name && self.span.eq_ctxt(rhs.span)
+        self.name == rhs.name && self.span.ctxt() == rhs.span.ctxt()
     }
 }
 

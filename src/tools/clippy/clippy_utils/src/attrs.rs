@@ -3,8 +3,9 @@
 use crate::source::SpanExt as _;
 use crate::{sym, tokenize_with_text};
 use rustc_ast::attr::AttributeExt;
-use rustc_attr_ir::find_attr;
+use rustc_attr_ir::{AttrArgs, find_attr};
 use rustc_errors::Applicability;
+use rustc_hir::def_id::DefId;
 use rustc_lexer::TokenKind;
 use rustc_lint::LateContext;
 use rustc_middle::ty::{AdtDef, TyCtxt};
@@ -19,7 +20,7 @@ pub fn check_clippy_attr<A: AttributeExt>(sess: &Session, attr: &A) {
     {
         let path_span = attr
             .path_span()
-            .expect("Clippy attributes are unparsed and have a span");
+            .expect("Clippy attributes are tool attributes, so they have a span");
 
         match *segment2 {
             sym::cyclomatic_complexity => {
@@ -47,22 +48,6 @@ pub fn check_clippy_attr<A: AttributeExt>(sess: &Session, attr: &A) {
     }
 }
 
-/// Given `attrs`, extract all the instances of a built-in Clippy attribute called `name`
-pub fn get_builtin_attr<'a, A: AttributeExt + 'a>(attrs: &'a [A], name: Symbol) -> impl Iterator<Item = &'a A> {
-    attrs.iter().filter(move |attr| {
-        if let [clippy, segment2] = &*attr.path()
-            && *clippy == sym::clippy
-        {
-            if *segment2 == sym::cyclomatic_complexity {
-                return false;
-            }
-            *segment2 == name
-        } else {
-            false
-        }
-    })
-}
-
 /// Retrieves the span of a Clippy attribute, such as `#[clippy::format_args]`.
 ///
 /// Panics if used on an attribute that isn't a tool attribute, so always check
@@ -71,28 +56,30 @@ pub fn span_of_clippy_attr(attr: &(impl AttributeExt + 'static)) -> Span {
     let a: &dyn core::any::Any = attr;
     if let Some(a) = a.downcast_ref::<rustc_ast::ast::Attribute>() {
         a.span
-    } else if let Some(rustc_attr_ir::Attribute::Unparsed(u)) = a.downcast_ref::<rustc_attr_ir::Attribute>() {
+    } else if let Some(rustc_attr_ir::Attribute::Tool(u)) = a.downcast_ref::<rustc_attr_ir::Attribute>() {
         u.span
     } else {
         panic!("attribute {attr:?} is not a clippy attribute")
     }
 }
 
-/// If `attrs` contain exactly one instance of a built-in Clippy attribute called `name`,
-/// returns that attribute, and `None` otherwise
-pub fn get_unique_builtin_attr<'a, A: AttributeExt>(sess: &'a Session, attrs: &'a [A], name: Symbol) -> Option<&'a A> {
-    let mut unique_attr: Option<&A> = None;
-    for attr in get_builtin_attr(attrs, name) {
-        if let Some(duplicate) = unique_attr {
-            sess.dcx()
-                .struct_span_err(span_of_clippy_attr(attr), format!("`{name}` is defined multiple times"))
-                .with_span_note(span_of_clippy_attr(duplicate), "first definition found here")
-                .emit();
-        } else {
-            unique_attr = Some(attr);
-        }
+/// Returns the first occurrence of `#[clippy::<name>]`.
+///
+/// Additionally, raises an error for duplicates of this attribute.
+pub fn get_clippy_attr(tcx: TyCtxt<'_>, did: impl Into<DefId>, name: Symbol) -> Option<&rustc_attr_ir::AttrItem> {
+    let attr_name = [sym::clippy, name];
+    let mut attrs = tcx.tool_attrs(did, &attr_name);
+    let first = attrs.next()?;
+
+    //FIXME(mejrs): this should really be checked during validation
+    for attr in attrs {
+        tcx.dcx()
+            .struct_span_err(attr.span, format!("`{name}` is defined multiple times"))
+            .with_span_note(first.span, "first definition found here")
+            .emit();
     }
-    unique_attr
+
+    Some(first)
 }
 
 /// Checks whether `attrs` contain any of `proc_macro`, `proc_macro_derive` or
@@ -183,11 +170,11 @@ impl LimitStack {
     pub fn limit(&self) -> u64 {
         self.stack.last().copied().unwrap_or(self.default)
     }
-    pub fn push_attrs(&mut self, sess: &Session, attrs: &[impl AttributeExt], name: Symbol) {
+    pub fn push_attrs(&mut self, sess: &Session, attrs: &[rustc_attr_ir::Attribute], name: Symbol) {
         let stack = &mut self.stack;
         parse_attrs(sess, attrs, name, |val| stack.push(val));
     }
-    pub fn pop_attrs(&mut self, sess: &Session, attrs: &[impl AttributeExt], name: Symbol) {
+    pub fn pop_attrs(&mut self, sess: &Session, attrs: &[rustc_attr_ir::Attribute], name: Symbol) {
         let stack = &mut self.stack;
         parse_attrs(sess, attrs, name, |val| {
             let popped = stack.pop();
@@ -196,14 +183,27 @@ impl LimitStack {
     }
 }
 
-fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &[impl AttributeExt], name: Symbol, mut f: F) {
-    for attr in get_builtin_attr(attrs, name) {
-        let Some(value) = attr.value_str() else {
-            sess.dcx().span_err(span_of_clippy_attr(attr), "bad clippy attribute");
+fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &[rustc_attr_ir::Attribute], name: Symbol, mut f: F) {
+    let attrs = attrs.iter().filter_map(move |attr| {
+        if let rustc_attr_ir::Attribute::Tool(t) = attr
+            && *t.path.segments == [sym::clippy, name]
+        {
+            Some(&**t)
+        } else {
+            None
+        }
+    });
+    for attr in attrs {
+        let AttrArgs::Eq { expr, .. } = attr.args else {
+            sess.dcx().span_err(attr.span, "bad clippy attribute");
+            continue;
+        };
+        let Some(value) = expr.value_as_str() else {
+            sess.dcx().span_err(attr.span, "not a number");
             continue;
         };
         let Ok(value) = u64::from_str(value.as_str()) else {
-            sess.dcx().span_err(span_of_clippy_attr(attr), "not a number");
+            sess.dcx().span_err(attr.span, "not a number");
             continue;
         };
         f(value);

@@ -913,7 +913,7 @@ impl Span {
     /// [`find_ancestor_inside`]: Self::find_ancestor_inside
     /// [`find_ancestor_inside_same_ctxt`]: Self::find_ancestor_inside_same_ctxt
     pub fn find_ancestor_in_same_ctxt(mut self, other: Span) -> Option<Span> {
-        while !self.eq_ctxt(other) {
+        while self.ctxt() != other.ctxt() {
             self = self.parent_callsite()?;
         }
         Some(self)
@@ -932,7 +932,7 @@ impl Span {
     /// [`find_ancestor_inside`]: Self::find_ancestor_inside
     /// [`find_ancestor_in_same_ctxt`]: Self::find_ancestor_in_same_ctxt
     pub fn find_ancestor_inside_same_ctxt(mut self, outer: Span) -> Option<Span> {
-        while !outer.contains(self) || !self.eq_ctxt(outer) {
+        while !outer.contains(self) || self.ctxt() != outer.ctxt() {
             self = self.parent_callsite()?;
         }
         Some(self)

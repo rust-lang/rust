@@ -1330,7 +1330,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                                 .gen_args
                                 .as_ref()
                                 .map_or(constraint.ident.span, |args| args.span());
-                            if bound_end_span.eq_ctxt(constraint.span) {
+                            if bound_end_span.ctxt() == constraint.span.ctxt() {
                                 Some(self.tcx.sess.source_map().next_point(bound_end_span))
                             } else {
                                 None

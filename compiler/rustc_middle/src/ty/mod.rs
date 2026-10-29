@@ -1906,6 +1906,24 @@ impl<'tcx> TyCtxt<'tcx> {
         body
     }
 
+    /// Gets all tool attributes named `name`.
+    pub fn tool_attrs(
+        self,
+        did: impl Into<DefId>,
+        name: &[Symbol],
+    ) -> impl Iterator<Item = &'tcx rustc_attr_ir::AttrItem> {
+        #[expect(deprecated)]
+        self.get_all_attrs(did).iter().filter_map(|attr| {
+            if let rustc_attr_ir::Attribute::Tool(t) = attr
+                && *t.path.segments == *name
+            {
+                Some(&**t)
+            } else {
+                None
+            }
+        })
+    }
+
     /// Gets all attributes.
     ///
     /// <div class="warning">
@@ -1915,7 +1933,7 @@ impl<'tcx> TyCtxt<'tcx> {
     ///
     /// </div>
     ///
-    #[deprecated = "Though there are valid usecases for this method, especially when your attribute is not a parsed attribute, usually you want to use `rustc_attr_ir::find_attr!` instead."]
+    #[deprecated = "Though there are valid usecases for this method, usually you want to use `rustc_attr_ir::find_attr!` or `tool_attrs` instead."]
     pub fn get_all_attrs(self, did: impl Into<DefId>) -> &'tcx [rustc_attr_ir::Attribute] {
         let did: DefId = did.into();
         if let Some(did) = did.as_local() {
