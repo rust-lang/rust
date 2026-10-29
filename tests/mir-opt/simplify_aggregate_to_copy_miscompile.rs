@@ -46,7 +46,7 @@ fn set_discriminant(v: &mut Value) -> Value {
             Call(v_ = get(v), ReturnTo(ret), UnwindUnreachable())
         }
         ret = {
-            let col: i32 = Field(Variant(*v_, 0), 0);
+            let col: i32 = Field(Variant(*v_, 0, true), 0);
             SetDiscriminant(*v, 1);
             RET = Value::V0(col);
             Return()

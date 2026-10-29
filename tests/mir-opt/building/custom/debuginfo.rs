@@ -9,7 +9,7 @@ fn pointee(opt: &mut Option<i32>) {
     // CHECK-LABEL: fn pointee(
     // CHECK: debug foo => (((*_1) as variant#1).0: i32);
     mir! {
-        debug foo => Field::<i32>(Variant(*opt, 1), 0);
+        debug foo => Field::<i32>(Variant(*opt, 1, false), 0);
         {
             Return()
         }
@@ -54,7 +54,7 @@ fn variant(opt: Option<i32>) {
     // CHECK-LABEL: fn variant(
     // CHECK: debug inner => ((_1 as variant#1).0: i32);
     mir! {
-        debug inner => Field::<i32>(Variant(opt, 1), 0);
+        debug inner => Field::<i32>(Variant(opt, 1, false), 0);
         {
             Return()
         }
@@ -68,8 +68,8 @@ fn variant_deref(opt: Option<&i32>) {
     // CHECK: debug pointer => ((_1 as variant#1).0: &i32);
     // CHECK: debug deref => (*((_1 as variant#1).0: &i32));
     mir! {
-        debug pointer => Field::<&i32>(Variant(opt, 1), 0);
-        debug deref => *Field::<&i32>(Variant(opt, 1), 0);
+        debug pointer => Field::<&i32>(Variant(opt, 1, false), 0);
+        debug deref => *Field::<&i32>(Variant(opt, 1, false), 0);
         {
             Return()
         }

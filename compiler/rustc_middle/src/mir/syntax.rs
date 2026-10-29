@@ -1245,8 +1245,14 @@ pub enum ProjectionElem<V, T> {
     ///
     /// The included Symbol is the name of the variant, used for printing MIR.
     ///
-    /// This operation itself is never UB, all it does is change the type of the place.
-    Downcast(Option<Symbol>, VariantIdx),
+    /// This operation itself is not UB even if `assume_variant` is true.
+    /// All it does is change the type of the place.
+    /// `assume_variant` only tells us the active variant is `variant_index`.
+    Downcast {
+        name: Option<Symbol>,
+        variant_index: VariantIdx,
+        assume_variant: bool,
+    },
 
     /// Like an explicit cast from an opaque type to a concrete type, but without
     /// requiring an intermediate variable.

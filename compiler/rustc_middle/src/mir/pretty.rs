@@ -1361,7 +1361,7 @@ fn pre_fmt_projection(projection: &[PlaceElem<'_>], fmt: &mut Formatter<'_>) -> 
     for &elem in projection.iter().rev() {
         match elem {
             ProjectionElem::OpaqueCast(_)
-            | ProjectionElem::Downcast(_, _)
+            | ProjectionElem::Downcast { .. }
             | ProjectionElem::Field(_, _) => {
                 write!(fmt, "(")?;
             }
@@ -1389,11 +1389,17 @@ fn post_fmt_projection(projection: &[PlaceElem<'_>], fmt: &mut Formatter<'_>) ->
             ProjectionElem::OpaqueCast(ty) => {
                 write!(fmt, " as {ty})")?;
             }
-            ProjectionElem::Downcast(Some(name), _index) => {
+            ProjectionElem::Downcast { name: Some(name), assume_variant: false, .. } => {
                 write!(fmt, " as {name})")?;
             }
-            ProjectionElem::Downcast(None, index) => {
-                write!(fmt, " as variant#{index:?})")?;
+            ProjectionElem::Downcast { name: Some(name), assume_variant: true, .. } => {
+                write!(fmt, " is {name})")?;
+            }
+            ProjectionElem::Downcast { name: None, variant_index, assume_variant: false } => {
+                write!(fmt, " as variant#{variant_index:?})")?;
+            }
+            ProjectionElem::Downcast { name: None, variant_index, assume_variant: true } => {
+                write!(fmt, " is variant#{variant_index:?})")?;
             }
             ProjectionElem::Deref | ProjectionElem::PhantomDeref => {
                 write!(fmt, ")")?;

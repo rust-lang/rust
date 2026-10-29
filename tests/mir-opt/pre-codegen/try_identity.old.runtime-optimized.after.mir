@@ -20,7 +20,7 @@ fn old(_1: Result<T, E>) -> Result<T, E> {
 
     bb1: {
         StorageLive(_3);
-        _3 = copy ((_1 as Ok).0: T);
+        _3 = copy ((_1 is Ok).0: T);
         StorageDead(_3);
         _0 = copy _1;
         goto -> bb3;
@@ -28,7 +28,7 @@ fn old(_1: Result<T, E>) -> Result<T, E> {
 
     bb2: {
         StorageLive(_4);
-        _4 = copy ((_1 as Err).0: E);
+        _4 = copy ((_1 is Err).0: E);
         _0 = copy _1;
         StorageDead(_4);
         goto -> bb3;

@@ -1,0 +1,12 @@
+- // MIR for `unknown_variant` before GVN
++ // MIR for `unknown_variant` after GVN
+  
+  fn unknown_variant(_1: Variant1) -> Variant1 {
+      let mut _0: Variant1;
+  
+      bb0: {
+          _0 = Variant1::V1(copy ((_1 as variant#0).0: u32));
+          return;
+      }
+  }
+  

@@ -1,0 +1,43 @@
+- // MIR for `nested` before AssumeVariant
++ // MIR for `nested` after AssumeVariant
+  
+  fn nested(_1: Option<Option<u8>>) -> u8 {
+      debug x => _1;
+      let mut _0: u8;
+      let mut _2: isize;
+      let mut _3: isize;
+      let _4: u8;
+      scope 1 {
+          debug v => _4;
+      }
+  
+      bb0: {
+          _3 = discriminant(_1);
+          switchInt(move _3) -> [1: bb2, otherwise: bb1];
+      }
+  
+      bb1: {
+          _0 = const 0_u8;
+          goto -> bb4;
+      }
+  
+      bb2: {
+-         _2 = discriminant(((_1 as Some).0: std::option::Option<u8>));
++         _2 = discriminant(((_1 is Some).0: std::option::Option<u8>));
+          switchInt(move _2) -> [1: bb3, otherwise: bb1];
+      }
+  
+      bb3: {
+          StorageLive(_4);
+-         _4 = copy ((((_1 as Some).0: std::option::Option<u8>) as Some).0: u8);
++         _4 = copy ((((_1 is Some).0: std::option::Option<u8>) is Some).0: u8);
+          _0 = copy _4;
+          StorageDead(_4);
+          goto -> bb4;
+      }
+  
+      bb4: {
+          return;
+      }
+  }
+  

@@ -102,7 +102,7 @@
 //! fn unwrap_unchecked<T>(opt: Option<T>) -> T {
 //!     mir! {
 //!         {
-//!             RET = Move(Field(Variant(opt, 1), 0));
+//!             RET = Move(Field(Variant(opt, 1, false), 0));
 //!             Return()
 //!         }
 //!     }
@@ -276,7 +276,7 @@
 //!         debug plain_local => arg;
 //!         // Debuginfo for a source variable `projection` that can be computed by dereferencing
 //!         // a field of `arg`.
-//!         debug projection => *Field::<&i32>(Variant(arg, 1), 0);
+//!         debug projection => *Field::<&i32>(Variant(arg, 1, false), 0);
 //!         // Debuginfo for a source variable `constant` that always holds the value `5`.
 //!         debug constant => 5_usize;
 //!         {
@@ -426,7 +426,7 @@ define!(
     ///
     /// There is no proper way to do a place projection to a variant in Rust, and so these two
     /// functions are a workaround. You can access a field of a variant via `Field(Variant(place,
-    /// var_idx), field_idx)`, where `var_idx` and `field_idx` are appropriate literals. Some
+    /// var_idx, assume_variant), field_idx)`, where `var_idx` and `field_idx` are appropriate literals. Some
     /// caveats:
     ///
     ///  - The return type of `Variant` is always `()`. Don't worry about that, the correct MIR will
@@ -450,7 +450,7 @@ define!(
     /// fn unwrap_deref(opt: Option<&i32>) -> i32 {
     ///     mir! {
     ///         {
-    ///             RET = *Field::<&i32>(Variant(opt, 1), 0);
+    ///             RET = *Field::<&i32>(Variant(opt, 1, false), 0);
     ///             Return()
     ///         }
     ///     }
@@ -460,7 +460,7 @@ define!(
     /// fn set(opt: &mut Option<i32>) {
     ///     mir! {
     ///         {
-    ///             place!(Field(Variant(*opt, 1), 0)) = 5;
+    ///             place!(Field(Variant(*opt, 1, false), 0)) = 5;
     ///             Return()
     ///         }
     ///     }
@@ -473,7 +473,7 @@ define!(
     /// Adds a variant projection with the given index to the place.
     ///
     /// See [`Field`] for documentation.
-    fn Variant<T>(place: T, index: u32) -> ()
+    fn Variant<T>(place: T, index: u32, assume: bool) -> ()
 );
 define!(
     "mir_cast_transmute",

@@ -303,7 +303,7 @@ where
             | ProjectionElem::OpaqueCast(_)
             | ProjectionElem::ConstantIndex { .. }
             | ProjectionElem::Subslice { .. }
-            | ProjectionElem::Downcast(_, _)
+            | ProjectionElem::Downcast { .. }
             | ProjectionElem::Index(_)
             | ProjectionElem::UnwrapUnsafeBinder(_) => {}
         }

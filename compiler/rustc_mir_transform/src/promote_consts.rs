@@ -300,7 +300,7 @@ impl<'tcx> Validator<'_, 'tcx> {
             // Never recurse.
             ProjectionElem::PhantomDeref
             | ProjectionElem::OpaqueCast(..)
-            | ProjectionElem::Downcast(..) => {
+            | ProjectionElem::Downcast { .. } => {
                 return Err(Unpromotable);
             }
 

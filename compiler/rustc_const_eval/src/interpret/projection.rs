@@ -416,7 +416,7 @@ where
             }
             UnwrapUnsafeBinder(target) => base.transmute(self.layout_of(target)?, self)?,
             Field(field, _) => self.project_field(base, field)?,
-            Downcast(_, variant) => self.project_downcast(base, variant)?,
+            Downcast { variant_index, .. } => self.project_downcast(base, variant_index)?,
             Deref => self.deref_pointer(base)?.into(),
             Index(local) => {
                 let layout = self.layout_of(self.tcx.types.usize)?;

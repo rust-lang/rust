@@ -278,7 +278,7 @@
 +     }
 + 
 +     bb12: {
-+         _35 = move ((_36 as Some).0: ());
++         _35 = move ((_36 is Some).0: ());
 +         StorageDead(_44);
 +         StorageDead(_36);
 +         _18 = Poll::<()>::Ready(move _35);

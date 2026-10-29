@@ -27,7 +27,7 @@ pub(super) fn canonicalize_binary_operands<'tcx, 'body>(
             ProjectionElem::Index(_) => 2,
             ProjectionElem::ConstantIndex { .. } => 3,
             ProjectionElem::Subslice { .. } => 4,
-            ProjectionElem::Downcast(..) => 5,
+            ProjectionElem::Downcast { .. } => 5,
             ProjectionElem::OpaqueCast(_) => 6,
             ProjectionElem::UnwrapUnsafeBinder(_) => 7,
             ProjectionElem::PhantomDeref => 8,
@@ -72,9 +72,10 @@ pub(super) fn canonicalize_binary_operands<'tcx, 'body>(
                     ProjectionElem::Subslice { from: r0, to: r1, from_end: r2 },
                 ) => needs_swap(&(l0, l1, l2), &(r0, r1, r2)),
 
-                (ProjectionElem::Downcast(l0, l1), ProjectionElem::Downcast(r0, r1)) => {
-                    needs_swap(&(l0, l1), &(r0, r1))
-                }
+                (
+                    ProjectionElem::Downcast { name: l0, variant_index: l1, assume_variant: l2 },
+                    ProjectionElem::Downcast { name: r0, variant_index: r1, assume_variant: r2 },
+                ) => needs_swap(&(l0, l1, l2), &(r0, r1, r2)),
 
                 _ => needs_swap(&projection_rank(&lhs_proj), &projection_rank(&rhs_proj)),
             } {

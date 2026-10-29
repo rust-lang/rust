@@ -1,5 +1,5 @@
 //@ test-mir-pass: GVN
-//@ compile-flags: -Cpanic=abort
+//@ compile-flags: -Cpanic=abort -Zmir-enable-passes=+AssumeVariant
 
 #![feature(core_intrinsics, custom_mir)]
 #![allow(internal_features)]
@@ -202,10 +202,10 @@ fn enum_identical_variant(v: &Enum1) -> Enum1 {
 fn enum_different_variant(v: &Enum1) -> Enum1 {
     // CHECK-LABEL: fn enum_different_variant(
     // CHECK-NOT: = AllCopy { {{.*}} };
-    // CHECK: [[V1:_.*]] = copy (((*_1) as [[VARIANT1:.*]]).0: AllCopy);
+    // CHECK: [[V1:_.*]] = copy (((*_1) is [[VARIANT1:.*]]).0: AllCopy);
     // CHECK: _0 = Enum1::[[VARIANT2:.*]](copy [[V1]]);
     // CHECK-NOT: = AllCopy { {{.*}} };
-    // CHECK: [[V2:_.*]] = copy (((*_1) as [[VARIANT2]]).0: AllCopy);
+    // CHECK: [[V2:_.*]] = copy (((*_1) is [[VARIANT2]]).0: AllCopy);
     // CHECK: _0 = Enum1::[[VARIANT1]](copy [[V2]]);
     match v {
         Enum1::A(v) => {
@@ -231,6 +231,7 @@ enum AlwaysSome<T> {
 
 // Ensure that we do not access this local after `StorageDead`.
 // EMIT_MIR gvn_copy_aggregate.remove_storage_dead.GVN.diff
+// EMIT_MIR gvn_copy_aggregate.remove_storage_dead.AssumeVariant.diff
 fn remove_storage_dead<T>(f: fn() -> AlwaysSome<T>) -> AlwaysSome<T> {
     // CHECK-LABEL: fn remove_storage_dead(
     // CHECK: [[V1:_.*]] = copy _1() -> [return: [[BB1:bb.*]],
@@ -298,4 +299,35 @@ pub fn deref_nonssa_2() -> Single {
     let c = (*b).0;
     a = Single(1);
     Single(c)
+}
+
+pub enum Variant1 {
+    V1(u32),
+    V2(u32),
+}
+
+// EMIT_MIR gvn_copy_aggregate.unknown_variant.GVN.diff
+#[custom_mir(dialect = "runtime")]
+pub fn unknown_variant(v: Variant1) -> Variant1 {
+    // CHECK-LABEL: fn unknown_variant(
+    // CHECK: _0 = Variant1::V1(copy ((_1 as variant#0).0: u32));
+    mir! {
+        {
+            RET = Variant1::V1(Field(Variant(v, 0, false), 0));
+            Return()
+        }
+    }
+}
+
+// EMIT_MIR gvn_copy_aggregate.known_variant.GVN.diff
+#[custom_mir(dialect = "runtime")]
+pub fn known_variant(v: Variant1) -> Variant1 {
+    // CHECK-LABEL: fn known_variant(
+    // CHECK: _0 = copy _1;
+    mir! {
+        {
+            RET = Variant1::V1(Field(Variant(v, 0, true), 0));
+            Return()
+        }
+    }
 }

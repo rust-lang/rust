@@ -60,10 +60,10 @@
       }
   
       bb3: {
--         _2 = move ((_3 as Some).0: i32);
+-         _2 = move ((_3 is Some).0: i32);
 -         StorageDead(_8);
 -         StorageDead(_3);
-+         _2 = copy ((_3 as Some).0: i32);
++         _2 = copy ((_3 is Some).0: i32);
 +         nop;
 +         nop;
           StorageLive(_4);
@@ -82,7 +82,7 @@
       }
   
       bb5: {
--         _4 = move ((_5 as Some).0: i32);
+-         _4 = move ((_5 is Some).0: i32);
 +         _4 = copy _2;
           StorageDead(_9);
           StorageDead(_5);

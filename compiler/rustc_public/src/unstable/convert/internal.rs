@@ -734,9 +734,11 @@ impl RustcInternal for ProjectionElem {
             ProjectionElem::Subslice { from, to, from_end } => {
                 rustc_middle::mir::PlaceElem::Subslice { from: *from, to: *to, from_end: *from_end }
             }
-            ProjectionElem::Downcast(idx) => {
-                rustc_middle::mir::PlaceElem::Downcast(None, idx.internal(tables, tcx))
-            }
+            ProjectionElem::Downcast(idx) => rustc_middle::mir::PlaceElem::Downcast {
+                name: None,
+                variant_index: idx.internal(tables, tcx),
+                assume_variant: false,
+            },
             ProjectionElem::OpaqueCast(ty) => {
                 rustc_middle::mir::PlaceElem::OpaqueCast(ty.internal(tables, tcx))
             }

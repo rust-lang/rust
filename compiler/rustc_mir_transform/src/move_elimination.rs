@@ -513,7 +513,11 @@ impl<'tcx> Visitor<'tcx> for PlaceUnification<'_, 'tcx> {
                             if def.is_enum() {
                                 place.project_deeper(
                                     &[
-                                        PlaceElem::Downcast(None, var_idx),
+                                        PlaceElem::Downcast {
+                                            name: None,
+                                            variant_index: var_idx,
+                                            assume_variant: false,
+                                        },
                                         PlaceElem::Field(field_idx, field_ty),
                                     ],
                                     tcx,
@@ -855,7 +859,11 @@ impl<'tcx> MutVisitor<'tcx> for AliasFixup<'_, 'tcx> {
                             if def.is_enum() {
                                 place.project_deeper(
                                     &[
-                                        PlaceElem::Downcast(None, var_idx),
+                                        PlaceElem::Downcast {
+                                            name: None,
+                                            variant_index: var_idx,
+                                            assume_variant: false,
+                                        },
                                         PlaceElem::Field(field_idx, field_ty),
                                     ],
                                     tcx,

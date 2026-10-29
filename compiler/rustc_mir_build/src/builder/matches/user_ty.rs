@@ -136,7 +136,11 @@ impl<'a> ProjectedUserTypesNode<'a> {
                 }
                 ProjectedUserTypesOp::Variant { name, variant, field } => {
                     for p in &mut projections {
-                        p.projs.push(ProjectionElem::Downcast(Some(name), variant));
+                        p.projs.push(ProjectionElem::Downcast {
+                            name: Some(name),
+                            variant_index: variant,
+                            assume_variant: false,
+                        });
                         p.projs.push(ProjectionElem::Field(field, ()));
                     }
                 }

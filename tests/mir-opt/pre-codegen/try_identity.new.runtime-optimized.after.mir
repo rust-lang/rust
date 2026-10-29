@@ -30,7 +30,7 @@ fn new(_1: Result<T, E>) -> Result<T, E> {
 
     bb1: {
         StorageLive(_3);
-        _3 = move ((_1 as Ok).0: T);
+        _3 = move ((_1 is Ok).0: T);
         _4 = ControlFlow::<E, T>::Continue(copy _3);
         StorageDead(_3);
         _5 = move ((_4 as Continue).0: T);
@@ -41,7 +41,7 @@ fn new(_1: Result<T, E>) -> Result<T, E> {
 
     bb2: {
         StorageLive(_6);
-        _6 = move ((_1 as Err).0: E);
+        _6 = move ((_1 is Err).0: E);
         _4 = ControlFlow::<E, T>::Break(copy _6);
         StorageDead(_6);
         StorageLive(_7);
