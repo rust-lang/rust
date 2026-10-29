@@ -234,7 +234,9 @@ fn main() {
 
 For a macro use in statement position, use parentheses or square brackets as
 delimiters, and terminate it with a semicolon. Do not put spaces around the
-name, `!`, the delimiters, or the `;`.
+name, `!`, the delimiters, or the `;`. This does not apply to macros for which
+this guide defines other formatting, such as
+[`cfg_select!`](expressions.md#cfg_select).
 
 ```rust
 // A comment.
