@@ -23,7 +23,8 @@ use rustc_metadata::fs::copy_to_stdout;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductMap};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{
-    self, Lto, OptLevel, OutFileName, OutputFilenames, OutputType, Passes, SwitchWithOptPath,
+    self, Lto, OptLevel, OptimizationObjective, OutFileName, OutputFilenames, OutputType, Passes,
+    SwitchWithOptPath,
 };
 use rustc_session::{BorrowedIncrCompSession, IncrCompSession, Session};
 use rustc_span::source_map::SourceMap;
@@ -230,8 +231,7 @@ impl ModuleConfig {
             // Copy what clang does by turning on loop vectorization at O2 and
             // slp vectorization at O3.
             vectorize_loop: !sess.opts.cg.no_vectorize_loops
-                && (sess.opts.optimize == config::OptLevel::More
-                    || sess.opts.optimize == config::OptLevel::Aggressive),
+                && sess.optimization_objective() == OptimizationObjective::Speed,
             vectorize_slp: !sess.opts.cg.no_vectorize_slp
                 && sess.opts.optimize == config::OptLevel::Aggressive,
 
@@ -246,13 +246,10 @@ impl ModuleConfig {
             // O2 and O3) since it can be useful for reducing code size.
             merge_functions: match sess.merge_functions() {
                 MergeFunctions::Disabled => false,
-                MergeFunctions::Trampolines | MergeFunctions::Aliases => {
-                    use config::OptLevel::*;
-                    match sess.opts.optimize {
-                        Aggressive | More | SizeMin | Size => true,
-                        Less | No => false,
-                    }
-                }
+                MergeFunctions::Trampolines | MergeFunctions::Aliases => matches!(
+                    sess.optimization_objective(),
+                    OptimizationObjective::Speed | OptimizationObjective::Size
+                ),
             },
 
             emit_lifetime_markers: sess.emit_lifetime_markers(),
