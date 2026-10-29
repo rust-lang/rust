@@ -56,3 +56,5 @@ fn main() {
         asm!("{}", in(reg) u);
     }
 }
+
+//@ reference: asm.register-operands.allowed-types

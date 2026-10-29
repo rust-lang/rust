@@ -26,3 +26,5 @@ fn goto_fallthough() {
 fn main() {
     goto_fallthough();
 }
+
+//@ reference: asm.operand-type.supported-operands-label
