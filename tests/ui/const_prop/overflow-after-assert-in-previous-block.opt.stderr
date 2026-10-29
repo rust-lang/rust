@@ -1,0 +1,28 @@
+error: this arithmetic operation will overflow
+  --> $DIR/overflow-after-assert-in-previous-block.rs:9:5
+   |
+LL |     0xff + c
+   |     ^^^^^^^^ attempt to compute `u8::MAX + 5_u8`, which would overflow
+   |
+   = note: `#[deny(arithmetic_overflow)]` on by default
+
+error: this arithmetic operation will overflow
+  --> $DIR/overflow-after-assert-in-previous-block.rs:15:5
+   |
+LL |     0xff + c
+   |     ^^^^^^^^ attempt to compute `u8::MAX + 20_u8`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/overflow-after-assert-in-previous-block.rs:21:5
+   |
+LL |     0xff + c
+   |     ^^^^^^^^ attempt to compute `u8::MAX + 5_u8`, which would overflow
+
+error: this arithmetic operation will overflow
+  --> $DIR/overflow-after-assert-in-previous-block.rs:29:5
+   |
+LL |     0xff + c
+   |     ^^^^^^^^ attempt to compute `u8::MAX + 100_u8`, which would overflow
+
+error: aborting due to 4 previous errors
+
