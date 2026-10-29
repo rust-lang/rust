@@ -5,7 +5,7 @@
 
 #[derive(Clone)]
 #[expect(redundant_lifetimes)]
-pub struct W<'a> //~ ERROR unnecessary lifetime parameter `'a`
+pub struct W<'a>
 where
     'a: 'static,
 {

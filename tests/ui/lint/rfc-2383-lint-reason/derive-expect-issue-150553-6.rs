@@ -4,13 +4,15 @@
 // One written attribute is one expectation, fulfilled by the item or its derived
 // code, and reported exactly once when genuinely unfulfilled.
 
+//@ check-pass
+
 #![deny(redundant_lifetimes)]
 
 use std::fmt::Debug;
 
 #[derive(Debug)]
 #[expect(redundant_lifetimes)]
-pub struct CfgField<'a, T: Debug> //~ ERROR unnecessary lifetime parameter `'a`
+pub struct CfgField<'a, T: Debug>
 where
     'a: 'static,
 {
@@ -21,7 +23,7 @@ where
 
 #[derive(Debug)]
 #[cfg_attr(all(), expect(redundant_lifetimes))]
-pub struct CfgAttrExpect<'a, T: Debug> //~ ERROR unnecessary lifetime parameter `'a`
+pub struct CfgAttrExpect<'a, T: Debug>
 where
     'a: 'static,
 {
