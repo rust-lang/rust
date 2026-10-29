@@ -688,17 +688,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         self.eval_context_ref().tcx.sess.target.families.iter().any(|f| f == "unix")
     }
 
-    /// Dereference a pointer operand to a place using `layout` instead of the pointer's declared type
-    fn deref_pointer_as(
-        &self,
-        op: &impl Projectable<'tcx, Provenance>,
-        layout: TyAndLayout<'tcx>,
-    ) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
-        let this = self.eval_context_ref();
-        let ptr = this.read_pointer(op)?;
-        interp_ok(this.ptr_to_mplace(ptr, layout))
-    }
-
     /// Read bytes from a byte slice.
     fn read_byte_slice<'a>(&'a self, slice: &ImmTy<'tcx>) -> InterpResult<'tcx, &'a [u8]>
     where
