@@ -65,7 +65,7 @@ pub unsafe extern "C" fn runtime_entry(
     let result = unsafe { main(argc as isize, argv) };
 
     unsafe {
-        crate::sys::thread_local::destructors::run();
+        crate::sys::thread_local::native::destructors::run();
     }
     crate::rt::thread_cleanup();
 
