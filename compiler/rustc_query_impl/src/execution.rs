@@ -1,3 +1,7 @@
+use std::hash::Hash;
+use std::mem::ManuallyDrop;
+use std::num::NonZero;
+use std::ops::ControlFlow;
 use std::sync::Arc;
 
 use parking_lot::{Condvar, Mutex};
@@ -7,12 +11,10 @@ use rustc_errors::FatalError;
 use rustc_middle::dep_graph::{
     DepGraphData, DepNode, DepNodeIndex, DepNodeKey, SerializedDepNodeIndex,
 };
-use rustc_middle::query::job::{
-    ActiveJobGuard, QueryExecutionKind, current_query_job, next_job_id,
-};
+use rustc_middle::query::job::try_get_cached;
 use rustc_middle::query::{
     ActiveKeyStatus, QueryCache, QueryCycle, QueryJob, QueryJobId, QueryLatch, QueryMode,
-    QueryVTable, QueryWaiter,
+    QueryState, QueryVTable, QueryWaiter,
 };
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::tls::{self, ImplicitCtxt};
@@ -63,6 +65,98 @@ fn handle_cycle<'tcx, C: QueryCache>(
         handle_cycle_error::default(error)
     } else {
         (query.handle_cycle_error_fn)(tcx, key, cycle, error)
+    }
+}
+
+/// Signals to waiters that the query is complete.
+///
+/// This does nothing for single threaded rustc, as there are no concurrent jobs which could be
+/// waiting on us.
+#[inline]
+fn signal_complete(job: QueryJob<'_>) {
+    if let Some(latch) = job.latch {
+        // Set the latch and resume all waiters on it.
+        let mut waiters_guard = latch.waiters.lock();
+        let waiters = waiters_guard.take().unwrap(); // mark the latch as complete
+        let registry = rustc_thread_pool::Registry::current();
+        for waiter in waiters {
+            rustc_thread_pool::mark_unblocked(&registry);
+            waiter.condvar.notify_one();
+        }
+    }
+}
+
+/// Guard object representing the responsibility to execute a query job and
+/// mark it as completed.
+///
+/// This will poison the relevant query key if it is dropped without calling
+/// [`Self::complete`].
+struct ActiveJobGuard<'tcx, K>
+where
+    K: Eq + Hash + Copy,
+{
+    state: &'tcx QueryState<'tcx, K>,
+    key: K,
+    key_hash: u64,
+}
+
+impl<'tcx, K> ActiveJobGuard<'tcx, K>
+where
+    K: Eq + Hash + Copy,
+{
+    /// Completes the query by updating the query cache with the `result`,
+    /// signals the waiter, and forgets the guard so it won't poison the query.
+    fn complete<C>(self, cache: &C, value: C::Value, dep_node_index: DepNodeIndex)
+    where
+        C: QueryCache<Key = K>,
+    {
+        // Mark as complete before we remove the job from the active state
+        // so no other thread can re-execute this query.
+        cache.complete(self.key, value, dep_node_index);
+
+        let mut this = ManuallyDrop::new(self);
+
+        // Drop everything without poisoning the query.
+        this.drop_and_maybe_poison(/* poison */ false);
+    }
+
+    fn drop_and_maybe_poison(&mut self, poison: bool) {
+        let status = {
+            let mut shard = self.state.active.lock_shard_by_hash(self.key_hash);
+            match shard.find_entry(self.key_hash, equivalent_key(self.key)) {
+                Err(_) => {
+                    // Note: we must not panic while holding the lock, because unwinding also looks
+                    // at this map, which can result in a double panic. So drop it first.
+                    drop(shard);
+                    panic!();
+                }
+                Ok(occupied) => {
+                    let ((key, status), vacant) = occupied.remove();
+                    if poison {
+                        vacant.insert((key, ActiveKeyStatus::Poisoned));
+                    }
+                    status
+                }
+            }
+        };
+
+        // Also signal the completion of the job, so waiters will continue execution.
+        match status {
+            ActiveKeyStatus::Started(job) => signal_complete(job),
+            ActiveKeyStatus::Poisoned => panic!(),
+        }
+    }
+}
+
+impl<'tcx, K> Drop for ActiveJobGuard<'tcx, K>
+where
+    K: Eq + Hash + Copy,
+{
+    #[inline(never)]
+    #[cold]
+    fn drop(&mut self) {
+        // Poison the query so jobs waiting on it panic.
+        self.drop_and_maybe_poison(/* poison */ true);
     }
 }
 
@@ -169,6 +263,19 @@ fn wait_for_query<'tcx, C: QueryCache>(
     }
 }
 
+#[inline]
+fn next_job_id<'tcx>(tcx: TyCtxt<'tcx>) -> QueryJobId {
+    QueryJobId(
+        NonZero::new(tcx.query_system.jobs.fetch_add(1, std::sync::atomic::Ordering::Relaxed))
+            .unwrap(),
+    )
+}
+
+#[inline]
+fn current_query_job() -> Option<QueryJobId> {
+    tls::with_context(|icx| icx.query)
+}
+
 /// Shared main part of both [`execute_query_incr_inner`] and [`execute_query_non_incr_inner`].
 #[inline(never)]
 fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
@@ -178,6 +285,160 @@ fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
     key: C::Key,
     dep_node: Option<DepNode>, // `None` for non-incremental, `Some` for incremental
 ) -> (C::Value, Option<DepNodeIndex>) {
+    try_execute_query_internal(DefaultExecution::<_, INCR> {
+        info: SharedQueryExecutionInformation { query, tcx, span, key },
+        dep_node,
+    })
+    .expect("can't return None for `DefaultExecution`")
+}
+
+trait QueryExecution<'tcx, C: QueryCache> {
+    fn info(&self) -> SharedQueryExecutionInformation<'tcx, C>;
+
+    fn try_get_cached(&self) -> ControlFlow<C::Value>;
+    fn calculate_value(&self, id: QueryJobId) -> (C::Value, DepNodeIndex);
+
+    fn check_consistency(&self, _: C::Value) {}
+}
+
+#[derive(Copy)]
+struct SharedQueryExecutionInformation<'tcx, C: QueryCache> {
+    query: &'tcx QueryVTable<'tcx, C>,
+    tcx: TyCtxt<'tcx>,
+    span: Span,
+    key: C::Key,
+}
+
+impl<C: QueryCache> Clone for SharedQueryExecutionInformation<'_, C> {
+    fn clone(&self) -> Self {
+        Self {
+            query: self.query,
+            tcx: self.tcx.clone(),
+            span: self.span.clone(),
+            key: self.key.clone(),
+        }
+    }
+}
+
+struct DefaultExecution<'tcx, C: QueryCache, const INCR: bool> {
+    info: SharedQueryExecutionInformation<'tcx, C>,
+    dep_node: Option<DepNode>,
+}
+
+impl<'tcx, C: QueryCache, const INCR: bool> QueryExecution<'tcx, C>
+    for DefaultExecution<'tcx, C, INCR>
+{
+    #[inline(always)]
+    fn try_get_cached(&self) -> ControlFlow<C::Value> {
+        ControlFlow::Continue(())
+    }
+
+    #[inline(always)]
+    fn info(&self) -> SharedQueryExecutionInformation<'tcx, C> {
+        self.info.clone()
+    }
+
+    #[inline]
+    fn calculate_value(&self, id: QueryJobId) -> (C::Value, DepNodeIndex) {
+        // Delegate to another function to actually execute the query job.
+
+        let SharedQueryExecutionInformation { query, key, tcx, .. } = self.info();
+        let (value, dep_node_index) = if INCR {
+            execute_job_incr(query, tcx, key, self.dep_node.unwrap(), id)
+        } else {
+            execute_job_non_incr(query, tcx, key, id)
+        };
+
+        if query.feedable {
+            check_feedable_consistency(tcx, query, key, &value);
+        }
+
+        (value, dep_node_index)
+    }
+}
+
+struct FeedingExecution<'tcx, C: QueryCache> {
+    info: SharedQueryExecutionInformation<'tcx, C>,
+    value: C::Value,
+}
+
+impl<'tcx, C: QueryCache> QueryExecution<'tcx, C> for FeedingExecution<'tcx, C> {
+    #[inline]
+    fn try_get_cached(&self) -> ControlFlow<C::Value> {
+        if let Some(cached) = try_get_cached(self.info.tcx, &self.info.query.cache, self.info.key) {
+            ControlFlow::Break(cached)
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+
+    fn check_consistency(&self, cached: C::Value) {
+        let SharedQueryExecutionInformation { query, key, tcx, .. } = self.info();
+        let value = self.value;
+        let format_value = query.format_value;
+
+        // The query already has a cached value for this key.
+        // That's OK if both values are the same, i.e. they have the same hash,
+        // so now we check their hashes.
+        if let Some(hash_value_fn) = query.hash_value_fn {
+            let (old_hash, value_hash) = tcx.with_stable_hashing_context(|ref mut hcx| {
+                (hash_value_fn(hcx, &cached), hash_value_fn(hcx, &value))
+            });
+
+            if old_hash != value_hash {
+                // We have an inconsistency. This can happen if one of the two
+                // results is tainted by errors. In this case, delay a bug to
+                // ensure compilation is doomed, and keep the `old` value.
+                tcx.dcx().delayed_bug(format!(
+                    "Trying to feed an already recorded value for query {query:?} key={key:?}:\n\
+                        old value: {cached}\nnew value: {value}",
+                    cached = format_value(&cached),
+                    value = format_value(&value),
+                ));
+            }
+        } else {
+            // The query is `no_hash`, so we have no way to perform a sanity check.
+            // If feeding the same value multiple times needs to be supported,
+            // the query should not be marked `no_hash`.
+            bug!(
+                "Trying to feed an already recorded value for query {query:?} key={key:?}:\n\
+                    old value: {cached}\nnew value: {value}",
+                cached = format_value(&cached),
+                value = format_value(&value),
+            )
+        }
+    }
+
+    #[inline(always)]
+    fn info(&self) -> SharedQueryExecutionInformation<'tcx, C> {
+        self.info.clone()
+    }
+
+    // There is no cached value for this key, so feed the query by
+    // adding the provided value to the cache.
+    #[inline]
+    fn calculate_value(&self, _: QueryJobId) -> (C::Value, DepNodeIndex) {
+        let SharedQueryExecutionInformation { query, key, tcx, .. } = self.info();
+
+        let dep_node = DepNode::construct(tcx, query.dep_kind, &key);
+        let dep_node_index = tcx.dep_graph.with_feed_task(
+            dep_node,
+            tcx,
+            &self.value,
+            query.hash_value_fn,
+            query.format_value,
+        );
+
+        (self.value, dep_node_index)
+    }
+}
+
+#[inline(always)]
+fn try_execute_query_internal<'tcx, C: QueryCache + 'tcx>(
+    dto: impl QueryExecution<'tcx, C>,
+) -> Option<(C::Value, Option<DepNodeIndex>)> {
+    let SharedQueryExecutionInformation { query, key, tcx, span } = dto.info();
+
     let key_hash = sharded::make_hash(&key);
     let mut state_lock = query.state.active.lock_shard_by_hash(key_hash);
 
@@ -190,7 +451,7 @@ fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
     if tcx.sess.opts.jobs.frontend.is_some() {
         if let Some((value, index)) = query.cache.lookup(&key) {
             tcx.prof.query_cache_hit(index.into());
-            return (value, Some(index));
+            return Some((value, Some(index)));
         }
     }
 
@@ -198,11 +459,18 @@ fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
 
     match state_lock.entry(key_hash, equivalent_key(key), |(k, _)| sharded::make_hash(k)) {
         Entry::Vacant(entry) => {
+            if let ControlFlow::Break(cached) = dto.try_get_cached() {
+                drop(state_lock);
+                dto.check_consistency(cached);
+
+                return None;
+            }
+
             // Nothing has computed or is computing the query, so we start a new job and insert it
             // in the state map.
             let id = next_job_id(tcx);
             let job = QueryJob::new(id, span, current_job_id);
-            entry.insert((key, ActiveKeyStatus::Started(QueryExecutionKind::Default(job))));
+            entry.insert((key, ActiveKeyStatus::Started(job)));
 
             // Drop the lock before we start executing the query.
             drop(state_lock);
@@ -212,47 +480,39 @@ fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
             let job_guard = ActiveJobGuard { state: &query.state, key, key_hash };
 
             // Delegate to another function to actually execute the query job.
-            let (value, dep_node_index) = if INCR {
-                execute_job_incr(query, tcx, key, dep_node.unwrap(), id)
-            } else {
-                execute_job_non_incr(query, tcx, key, id)
-            };
-
-            if query.feedable {
-                check_feedable_consistency(tcx, query, key, &value);
-            }
+            let (value, dep_node_index) = dto.calculate_value(id);
 
             // Tell the guard to insert `value` in the cache and remove the status entry from
             // `query.state`.
             job_guard.complete(&query.cache, value, dep_node_index);
 
-            (value, Some(dep_node_index))
+            Some((value, Some(dep_node_index)))
         }
         Entry::Occupied(mut entry) => {
             match &mut entry.get_mut().1 {
-                ActiveKeyStatus::Started(exec_kind) => match exec_kind {
-                    QueryExecutionKind::Default(job) => {
-                        if sync::is_dyn_thread_safe() {
-                            // Get the latch out
-                            let latch = job.latch.get_or_insert_with(QueryLatch::new).clone();
-                            drop(state_lock);
+                ActiveKeyStatus::Started(job) => {
+                    if sync::is_dyn_thread_safe() {
+                        // Get the latch out
+                        let latch = job.latch.get_or_insert_with(QueryLatch::new).clone();
+                        drop(state_lock);
 
-                            // Only call `wait_for_query` if we're using a Rayon thread pool
-                            // as it will attempt to mark the worker thread as blocked.
-                            wait_for_query(query, tcx, span, key, key_hash, latch, current_job_id)
-                        } else {
-                            let id = job.id;
-                            drop(state_lock);
+                        // Only call `wait_for_query` if we're using a Rayon thread pool
+                        // as it will attempt to mark the worker thread as blocked.
+                        let value =
+                            wait_for_query(query, tcx, span, key, key_hash, latch, current_job_id);
 
-                            // If we are single-threaded we know that we have cycle error,
-                            // so we just return the error.
-                            find_and_handle_cycle(query, tcx, key, id, span)
-                        }
+                        dto.check_consistency(value.0);
+
+                        Some(value)
+                    } else {
+                        let id = job.id;
+                        drop(state_lock);
+
+                        // If we are single-threaded we know that we have cycle error,
+                        // so we just return the error.
+                        Some(find_and_handle_cycle(query, tcx, key, id, span))
                     }
-                    QueryExecutionKind::Feeding { .. } => {
-                        bug!("trying to execute query while it is feeding")
-                    }
-                },
+                }
                 ActiveKeyStatus::Poisoned => FatalError.raise(),
             }
         }
@@ -584,4 +844,16 @@ pub(crate) fn force_query_dep_node<'tcx, C: QueryCache>(
     // We did manage to recover a key and force the node, though it's up to
     // the caller to check whether the node ended up marked red or green.
     true
+}
+
+pub(crate) fn feed_query<'tcx, C: QueryCache>(
+    query: &'tcx QueryVTable<'tcx, C>,
+    tcx: TyCtxt<'tcx>,
+    key: C::Key,
+    value: C::Value,
+) {
+    try_execute_query_internal(FeedingExecution {
+        info: SharedQueryExecutionInformation { query, tcx, span: DUMMY_SP, key },
+        value,
+    });
 }

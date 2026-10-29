@@ -100,6 +100,21 @@ macro_rules! define_queries {
                     }
                 }
 
+                pub(crate) mod feed_query {
+                    use super::*;
+                    use rustc_middle::queries::$name::{Key, Value};
+
+                    #[inline(never)]
+                    pub(crate) fn __rust_end_short_backtrace<'tcx>(
+                        tcx: TyCtxt<'tcx>,
+                        key: Key<'tcx>,
+                        value: Erased<Value<'tcx>>,
+                    ) {
+                        let query = &tcx.query_system.query_vtables.$name;
+                        crate::execution::feed_query(query, tcx, key, value);
+                    }
+                }
+
                 /// Defines an `invoke_provider` function that calls the query's provider,
                 /// to be used as a function pointer in the query's vtable.
                 ///
@@ -201,6 +216,11 @@ macro_rules! define_queries {
                         } else {
                             crate::query_vtables::$name::execute_query_non_incr::__rust_end_short_backtrace
                         },
+
+                        #[cfg($feedable)]
+                        feed_query_fn: Some(crate::query_vtables::$name::feed_query::__rust_end_short_backtrace),
+                        #[cfg(not($feedable))]
+                        feed_query_fn: None,
                     }
                 }
 

@@ -7,7 +7,6 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::hash_table::HashTable;
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_middle::queries::TaggedQueryKey;
-use rustc_middle::query::job::QueryExecutionKind;
 use rustc_middle::query::{
     ActiveKeyStatus, QueryCache, QueryCycle, QueryJob, QueryJobId, QueryKey, QueryLatch,
     QueryStackFrame, QueryVTable, QueryWaiter,
@@ -98,18 +97,11 @@ fn collect_active_query_jobs_inner<'tcx, C>(
 {
     let mut collect_shard_jobs = |shard: &HashTable<(C::Key, ActiveKeyStatus<'tcx>)>| {
         for (key, status) in shard.iter() {
-            if let ActiveKeyStatus::Started(exec_kind) = status {
-                let job = match exec_kind.clone() {
-                    QueryExecutionKind::Default(job) => job,
-                    QueryExecutionKind::Feeding { id, parent } => {
-                        QueryJob { id, parent, span: DUMMY_SP, latch: None }
-                    }
-                };
-
+            if let ActiveKeyStatus::Started(job) = status {
                 // It's fine to call `create_tagged_key` with the shard locked,
                 // because it's just a `TaggedQueryKey` variant constructor.
                 let tagged_key = (query.create_tagged_key)(*key);
-                job_map.insert(job.id, QueryJobInfo { tagged_key, job });
+                job_map.insert(job.id, QueryJobInfo { tagged_key, job: job.clone() });
             }
         }
     };

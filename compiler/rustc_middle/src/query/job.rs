@@ -1,6 +1,5 @@
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::mem::ManuallyDrop;
 use std::num::NonZero;
 use std::sync::Arc;
 
@@ -9,10 +8,9 @@ use rustc_data_structures::hash_table::HashTable;
 use rustc_data_structures::sharded::Sharded;
 use rustc_span::Span;
 
-use crate::dep_graph::DepNodeIndex;
 use crate::queries::TaggedQueryKey;
 use crate::query::QueryCache;
-use crate::ty::{TyCtxt, tls};
+use crate::ty::TyCtxt;
 
 /// A value uniquely identifying an active query job.
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
@@ -41,12 +39,6 @@ impl<'tcx> QueryJob<'tcx> {
     }
 }
 
-#[derive(Clone)]
-pub enum QueryExecutionKind<'tcx> {
-    Default(QueryJob<'tcx>),
-    Feeding { id: QueryJobId, parent: Option<QueryJobId> },
-}
-
 /// For a particular query and key, tracks the status of a query evaluation
 /// that has started, but has not yet finished successfully.
 ///
@@ -56,7 +48,7 @@ pub enum ActiveKeyStatus<'tcx> {
     /// Some thread is already evaluating the query for this key.
     ///
     /// The enclosed [`QueryJob`] can be used to wait for it to finish.
-    Started(QueryExecutionKind<'tcx>),
+    Started(QueryJob<'tcx>),
 
     /// The query panicked. Queries trying to wait on this will raise a fatal error which will
     /// silently panic.
@@ -122,110 +114,22 @@ impl<'tcx> QueryLatch<'tcx> {
     }
 }
 
-/// Guard object representing the responsibility to execute a query job and
-/// mark it as completed.
+/// Checks whether there is already a value for this key in the in-memory
+/// query cache, returning that value if present.
 ///
-/// This will poison the relevant query key if it is dropped without calling
-/// [`Self::complete`].
-pub struct ActiveJobGuard<'tcx, K>
-where
-    K: Eq + Hash + Copy,
-{
-    pub state: &'tcx QueryState<'tcx, K>,
-    pub key: K,
-    pub key_hash: u64,
-}
-
-impl<'tcx, K> ActiveJobGuard<'tcx, K>
-where
-    K: Eq + Hash + Copy,
-{
-    /// Completes the query by updating the query cache with the `result`,
-    /// signals the waiter, and forgets the guard so it won't poison the query.
-    pub fn complete<C>(self, cache: &C, value: C::Value, dep_node_index: DepNodeIndex)
-    where
-        C: QueryCache<Key = K>,
-    {
-        // Mark as complete before we remove the job from the active state
-        // so no other thread can re-execute this query.
-        cache.complete(self.key, value, dep_node_index);
-
-        let mut this = ManuallyDrop::new(self);
-
-        // Drop everything without poisoning the query.
-        this.drop_and_maybe_poison(/* poison */ false);
-    }
-
-    fn drop_and_maybe_poison(&mut self, poison: bool) {
-        let status = {
-            let mut shard = self.state.active.lock_shard_by_hash(self.key_hash);
-            match shard.find_entry(self.key_hash, |x| x.0 == self.key) {
-                Err(_) => {
-                    // Note: we must not panic while holding the lock, because unwinding also looks
-                    // at this map, which can result in a double panic. So drop it first.
-                    drop(shard);
-                    panic!();
-                }
-                Ok(occupied) => {
-                    let ((key, status), vacant) = occupied.remove();
-                    if poison {
-                        vacant.insert((key, ActiveKeyStatus::Poisoned));
-                    }
-                    status
-                }
-            }
-        };
-
-        // Also signal the completion of the job, so waiters will continue execution.
-        match status {
-            ActiveKeyStatus::Started(exec_kind) => match exec_kind {
-                QueryExecutionKind::Default(job) => signal_complete(job),
-                QueryExecutionKind::Feeding { .. } => {}
-            },
-            ActiveKeyStatus::Poisoned => panic!(),
+/// (Also performs some associated bookkeeping, if a value was found.)
+#[inline(always)]
+pub fn try_get_cached<'tcx, C: QueryCache>(
+    tcx: TyCtxt<'tcx>,
+    cache: &C,
+    key: C::Key,
+) -> Option<C::Value> {
+    match cache.lookup(&key) {
+        Some((value, index)) => {
+            tcx.prof.query_cache_hit(index.into());
+            tcx.dep_graph.read_index(index);
+            Some(value)
         }
+        None => None,
     }
-}
-
-impl<'tcx, K> Drop for ActiveJobGuard<'tcx, K>
-where
-    K: Eq + Hash + Copy,
-{
-    #[inline(never)]
-    #[cold]
-    fn drop(&mut self) {
-        // Poison the query so jobs waiting on it panic.
-        self.drop_and_maybe_poison(/* poison */ true);
-    }
-}
-
-/// Signals to waiters that the query is complete.
-///
-/// This does nothing for single threaded rustc, as there are no concurrent jobs which could be
-/// waiting on us.
-#[inline]
-fn signal_complete(job: QueryJob<'_>) {
-    if let Some(latch) = job.latch {
-        // Set the latch and resume all waiters on it.
-        let mut waiters_guard = latch.waiters.lock();
-        let waiters = waiters_guard.take().unwrap(); // mark the latch as complete
-        let registry = rustc_thread_pool::Registry::current();
-        for waiter in waiters {
-            rustc_thread_pool::mark_unblocked(&registry);
-            waiter.condvar.notify_one();
-        }
-    }
-}
-
-#[inline]
-pub fn next_job_id<'tcx>(tcx: TyCtxt<'tcx>) -> QueryJobId {
-    QueryJobId(
-        NonZero::new(tcx.query_system.jobs.fetch_add(1, std::sync::atomic::Ordering::Relaxed))
-            .unwrap(),
-    )
-}
-
-#[inline]
-pub fn current_query_job() -> Option<QueryJobId> {
-    tls::with_context(|icx| icx.query)
 }
