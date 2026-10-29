@@ -54,3 +54,16 @@ ignore = [
     "F403", # undefined-local-with-import-star
     "F405", # undefined-local-with-import-star-usage
 ]
+
+[lint.per-file-ignores]
+"tests/run-make/btf-debuginfo/print_btf.py" = [
+    "B023", # function-uses-loop-variable
+    "EXE001", # shebang-not-executable
+    "F821", # undefined-name
+]
+# Hack: CI runs from a subdirectory under the main checkout
+"../tests/run-make/btf-debuginfo/print_btf.py" = [
+    "B023", # function-uses-loop-variable
+    "EXE001", # shebang-not-executable
+    "F821", # undefined-name
+]
