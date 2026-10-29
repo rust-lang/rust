@@ -19,17 +19,14 @@ use super::work_product::SerializedWorkProduct;
 use crate::diagnostics;
 use crate::persist::file_format::{OpenFile, OpenFileError};
 
-#[derive(Debug)]
-/// Represents the result of an attempt to load incremental compilation data.
-enum LoadResult {
-    /// Loading was successful.
-    Ok { prev_graph: Arc<SerializedDepGraph>, prev_work_products: WorkProductMap },
-    /// A file was produced by an incompatible compiler version, didn't exist or for some
-    /// other reason couldn't be used.
-    Error,
-}
-
-fn load_dep_graph(sess: &Session, incr_comp_session: &IncrCompSession) -> LoadResult {
+/// Load the old dep graph and work product index.
+///
+/// Returns Err(()) if a file was produced by an incompatible compiler version, didn't
+/// exist or for some other reason couldn't be used.
+fn load_dep_graph(
+    sess: &Session,
+    incr_comp_session: &IncrCompSession,
+) -> Result<(Arc<SerializedDepGraph>, WorkProductMap), ()> {
     assert!(sess.opts.incremental.is_some());
 
     let _timer = sess.prof.generic_activity("incr_comp_prepare_load_dep_graph");
@@ -37,14 +34,14 @@ fn load_dep_graph(sess: &Session, incr_comp_session: &IncrCompSession) -> LoadRe
     // Calling `sess.incr_comp_session_dir()` will panic if `sess.opts.incremental.is_none()`.
     // Fortunately, we just checked that this isn't the case.
     let Some(path) = old_dep_graph_path(incr_comp_session) else {
-        return LoadResult::Error;
+        return Err(());
     };
     let expected_hash = sess.opts.dep_tracking_hash(false);
 
     let mut prev_work_products = UnordMap::default();
 
     let Some(work_products_path) = old_work_products_path(incr_comp_session) else {
-        return LoadResult::Error;
+        return Err(());
     };
 
     if let Ok(OpenFile { mmap, start_pos }) =
@@ -53,7 +50,7 @@ fn load_dep_graph(sess: &Session, incr_comp_session: &IncrCompSession) -> LoadRe
         // Decode the list of work_products
         let Ok(mut work_product_decoder) = MemDecoder::new(&mmap[..], start_pos) else {
             sess.dcx().emit_warn(diagnostics::CorruptFile { path: &work_products_path });
-            return LoadResult::Error;
+            return Err(());
         };
         let work_products: Vec<SerializedWorkProduct> =
             Decodable::decode(&mut work_product_decoder);
@@ -72,7 +69,7 @@ fn load_dep_graph(sess: &Session, incr_comp_session: &IncrCompSession) -> LoadRe
                 prev_work_products.insert(swp.id, swp.work_product);
             } else {
                 debug!("reconcile_work_products: some file for {:?} does not exist", swp);
-                return LoadResult::Error;
+                return Err(());
             }
         }
     }
@@ -80,15 +77,15 @@ fn load_dep_graph(sess: &Session, incr_comp_session: &IncrCompSession) -> LoadRe
     let _prof_timer = sess.prof.generic_activity("incr_comp_load_dep_graph");
 
     match file_format::open_incremental_file(sess, &path) {
-        Err(OpenFileError::NotFoundOrHeaderMismatch) => LoadResult::Error,
+        Err(OpenFileError::NotFoundOrHeaderMismatch) => Err(()),
         Err(OpenFileError::IoError { err }) => {
             sess.dcx().emit_warn(diagnostics::LoadDepGraph { path, err });
-            LoadResult::Error
+            Err(())
         }
         Ok(OpenFile { mmap, start_pos }) => {
             let Ok(mut decoder) = MemDecoder::new(&mmap, start_pos) else {
                 sess.dcx().emit_warn(diagnostics::CorruptFile { path: &path });
-                return LoadResult::Error;
+                return Err(());
             };
             let prev_commandline_args_hash = Hash64::decode(&mut decoder);
 
@@ -103,12 +100,12 @@ fn load_dep_graph(sess: &Session, incr_comp_session: &IncrCompSession) -> LoadRe
                 debug!("load_dep_graph_new: differing commandline arg hashes");
 
                 // No need to do any further work
-                return LoadResult::Error;
+                return Err(());
             }
 
             let prev_graph = SerializedDepGraph::decode(&mut decoder, &sess.prof);
 
-            LoadResult::Ok { prev_graph, prev_work_products }
+            Ok((prev_graph, prev_work_products))
         }
     }
 }
@@ -139,15 +136,9 @@ pub fn load_query_result_cache(sess: &Session, incr_comp_session: &IncrCompSessi
 
 /// Emits a fatal error if the assertion in `-Zassert-incr-state` doesn't match
 /// the outcome of trying to load previous-session state.
-fn maybe_assert_incr_state(sess: &Session, load_result: &LoadResult) {
+fn maybe_assert_incr_state(sess: &Session, loaded: bool) {
     // Return immediately if there's nothing to assert.
     let Some(assertion) = sess.opts.unstable_opts.assert_incr_state else { return };
-
-    // Match exhaustively to make sure we don't miss any cases.
-    let loaded = match load_result {
-        LoadResult::Ok { .. } => true,
-        LoadResult::Error => false,
-    };
 
     match assertion {
         IncrementalStateAssertion::Loaded => {
@@ -192,14 +183,14 @@ pub fn setup_dep_graph(
     });
 
     // Emit a fatal error if `-Zassert-incr-state` is present and unsatisfied.
-    maybe_assert_incr_state(sess, &load_result);
+    maybe_assert_incr_state(sess, load_result.is_ok());
 
     let (prev_graph, prev_work_products) = match load_result {
-        LoadResult::Error => {
+        Ok((prev_graph, prev_work_products)) => (prev_graph, prev_work_products),
+        Err(()) => {
             invalidate_old_session_dir(sess, &mut incr_comp_session);
             Default::default()
         }
-        LoadResult::Ok { prev_graph, prev_work_products } => (prev_graph, prev_work_products),
     };
 
     // Stream the dep-graph to an alternate file, to avoid overwriting anything in case of errors.
