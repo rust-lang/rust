@@ -19,6 +19,12 @@ pub struct UnionWrapper {
     value: U,
 }
 
+#[repr(u8)]
+pub enum E {
+    A = 1,
+    B = 2,
+}
+
 #[custom_mir(dialect = "runtime")]
 pub fn unchanged_scalar_is_hoisted(q: u64, x: u64) -> u64 {
     // CHECK-LABEL: fn unchanged_scalar_is_hoisted(
@@ -167,6 +173,26 @@ pub fn written_argument_is_not_hoisted(q: u64, x: u64) -> u64 {
         parent = { match q { 1 => one, 2 => two, _ => fallback, } }
         one = { match x { 1 => ret1, _ => fallback, } }
         two = { match x { 2 => ret2, _ => fallback, } }
+        ret1 = { RET = 100; Return() }
+        ret2 = { RET = 200; Return() }
+        fallback = { RET = 999; Return() }
+    }
+}
+
+#[custom_mir(dialect = "runtime")]
+pub fn discriminant_is_not_hoisted(q: u8, x: E) -> u64 {
+    // CHECK-LABEL: fn discriminant_is_not_hoisted(
+    // CHECK: bb0: {
+    // CHECK-NEXT: switchInt(copy _1)
+    // CHECK: [[DISCR:_.*]] = discriminant(_2);
+    // CHECK-NEXT: switchInt(move [[DISCR]])
+    // CHECK: [[DISCR]] = discriminant(_2);
+    // CHECK-NEXT: switchInt(move [[DISCR]])
+    mir! {
+        let discr: u8;
+        { match q { 1 => one, 2 => two, _ => fallback, } }
+        one = { discr = Discriminant(x); match Move(discr) { 1 => ret1, _ => fallback, } }
+        two = { discr = Discriminant(x); match Move(discr) { 2 => ret2, _ => fallback, } }
         ret1 = { RET = 100; Return() }
         ret2 = { RET = 200; Return() }
         fallback = { RET = 999; Return() }

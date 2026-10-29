@@ -7,6 +7,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use tracing::trace;
 
 use super::simplify::simplify_cfg;
+use super::ssa::SsaLocals;
 use crate::PassPolicy;
 use crate::patch::MirPatch;
 
@@ -317,7 +318,7 @@ fn evaluate_candidate<'tcx>(
     if !otherwise_is_empty_unreachable
         && (need_hoist_discriminant
             || !unchanged_arguments
-                .get_or_insert_with(|| UnchangedArguments::new(body))
+                .get_or_insert_with(|| UnchangedArguments::new(tcx, body))
                 .can_hoist(body, child_place))
     {
         return None;
@@ -384,15 +385,17 @@ fn verify_candidate_branch<'tcx>(
 struct UnchangedArguments(DenseBitSet<Local>);
 
 impl UnchangedArguments {
-    fn new(body: &Body<'_>) -> Self {
+    fn new<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> Self {
+        let ssa = SsaLocals::new(tcx, body, body.typing_env(tcx));
         let mut arguments = DenseBitSet::new_empty(body.local_decls.len());
         for arg in body.args_iter() {
-            arguments.insert(arg);
+            if ssa.is_ssa(arg) && !ssa.borrowed_locals().contains(arg) {
+                arguments.insert(arg);
+            }
         }
+        // SSA does not track storage lifetimes or invalidate moved places.
         VisitPlacesWith(|place: Place<'_>, context: PlaceContext| {
-            if context.is_mutating_use()
-                || context.may_observe_address()
-                || matches!(context, PlaceContext::NonMutatingUse(NonMutatingUseContext::Move))
+            if matches!(context, PlaceContext::NonMutatingUse(NonMutatingUseContext::Move))
                 || context.is_storage_marker()
             {
                 arguments.remove(place.local);
