@@ -75,7 +75,7 @@ impl LintParser {
                                 };
 
                                 let lint_name_normalized = if let Some((_lint_ids, new_lint_name)) =
-                                    Self::check_lint_name(lint_name, tool, p.span(), cx)
+                                    LintParser::check_lint_name(lint_name, tool, p.span(), cx)
                                 {
                                     new_lint_name
                                 } else {
@@ -84,7 +84,7 @@ impl LintParser {
                                 };
 
                                 self.lints.push(LintCheck {
-                                    tool,
+                                    tool: tool.map(|tool| tool.name),
                                     lint_name_normalized,
                                     lint_span: p.span(),
                                     kind,

@@ -780,7 +780,7 @@ where
                         reason,
                         lint_span,
                         is_unfulfilled_lint_expectations,
-                        tool.map(|i| i.name),
+                        tool,
                     ),
                 );
             }
