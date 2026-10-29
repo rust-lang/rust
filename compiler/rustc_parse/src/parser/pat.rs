@@ -28,8 +28,8 @@ use crate::diagnostics::{
     UnexpectedLifetimeInPattern, UnexpectedParenInRangePat, UnexpectedParenInRangePatSugg,
     UnexpectedVertVertBeforeFunctionParam, UnexpectedVertVertInPattern, WrapInParens,
 };
+use crate::exp;
 use crate::parser::expr::{DestructuredFloat, could_be_unclosed_char_literal};
-use crate::{exp, maybe_recover_from_interpolated_ty_qpath};
 
 #[derive(PartialEq, Copy, Clone)]
 pub enum Expected {
@@ -724,7 +724,9 @@ impl<'a> Parser<'a> {
         expected: Option<Expected>,
         syntax_loc: Option<PatternLocation>,
     ) -> PResult<'a, Pat> {
-        maybe_recover_from_interpolated_ty_qpath!(self, true);
+        if let Some(pat) = self.maybe_recover_from_bad_interpolated_ty_qpath() {
+            return pat;
+        }
 
         if let Some(pat) = self.eat_metavar_pat() {
             return Ok(pat);

@@ -2,5 +2,5 @@
 
 fn main(... : ...)
 //~^ ERROR unexpected `...`
-//~| ERROR unexpected `...`
+//~| ERROR C-variadic type `...` is not allowed in this context
 //~| ERROR expected one of `->`, `where`, or `{`, found `<eof>`
