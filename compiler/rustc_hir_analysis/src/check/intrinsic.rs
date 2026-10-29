@@ -6,7 +6,7 @@ use rustc_hir as hir;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{self, Const, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::{Span, Symbol, kw, sym};
 
 use crate::check::check_function_signature;
 use crate::diagnostics::{UnrecognizedIntrinsicFunction, WrongNumberOfGenericArgumentsToIntrinsic};
@@ -66,6 +66,7 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         // safe extern fns are otherwise unprecedented.
 
         // tidy-alphabetical-start
+        | kw::OffsetOf
         | sym::abort_immediate
         | sym::add_with_overflow
         | sym::aggregate_raw_ptr
@@ -141,7 +142,6 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::needs_drop
         | sym::offload
         | sym::offload_get_num_devices
-        | sym::offset_of
         | sym::overflow_checks
         | sym::powf
         | sym::powi
@@ -271,7 +271,7 @@ pub(crate) fn check_intrinsic_type(
             (1, 0, vec![Ty::new_imm_ptr(tcx, param(0))], tcx.types.usize)
         }
         sym::type_id_size_of => (0, 0, vec![type_id_ty()], Ty::new_option(tcx, tcx.types.usize)),
-        sym::offset_of => (1, 0, vec![tcx.types.u32, tcx.types.u32], tcx.types.usize),
+        kw::OffsetOf => (1, 0, vec![tcx.types.u32, tcx.types.u32], tcx.types.usize),
         sym::field_offset => (1, 0, vec![], tcx.types.usize),
         sym::rustc_peek => (1, 0, vec![param(0)], param(0)),
         sym::caller_location => (0, 0, vec![], tcx.caller_location_ty()),
