@@ -1295,7 +1295,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             // In practice unless there are more than one field with the same type, we'll be
             // suggesting a single field at a type, because we don't aggregate multiple borrow
             // checker errors involving the functional record update syntax into a single one.
-            let field_ty = field.ty(self.infcx.tcx, args).skip_norm_wip();
+            let field_ty = field.ty(self.infcx.tcx, *args).skip_norm_wip();
             let ident = field.ident(self.infcx.tcx);
             if field_ty == ty && fields.iter().all(|field| field.ident.name != ident.name) {
                 // Suggest adding field and cloning it.
@@ -1371,7 +1371,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             && let Some(local_did) = def.did().as_local()
             && def.variants().iter().all(|variant| {
                 variant.fields.iter().all(|field| {
-                    self.implements_clone(field.ty(self.infcx.tcx, args).skip_norm_wip())
+                    self.implements_clone(field.ty(self.infcx.tcx, *args).skip_norm_wip())
                 })
             })
         {

@@ -223,7 +223,7 @@ fn predicate_references_self<'tcx>(
     match predicate.kind().skip_binder() {
         ty::ClauseKind::Trait(ref data) => {
             // In the case of a trait predicate, we can skip the "self" type.
-            data.trait_ref.args[1..]
+            data.trait_ref.args.as_slice()[1..]
                 .iter()
                 .any(|&arg| {
                     contains_illegal_self_type_reference(
@@ -251,7 +251,7 @@ fn predicate_references_self<'tcx>(
             //
             // This is ALT2 in issue #56288, see that for discussion of the
             // possible alternatives.
-            data.projection_term.args[1..]
+            data.projection_term.args.as_slice()[1..]
                 .iter()
                 .any(|&arg| {
                     contains_illegal_self_type_reference(

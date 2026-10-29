@@ -22,7 +22,7 @@ use rustc_hir::definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathD
 use rustc_hir::{CoroutineDesugaring, CoroutineKind, CoroutineSource, Mutability};
 use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
 use rustc_middle::ty::{
-    self, ExistentialProjection, GenericArgKind, GenericArgsRef, Ty, TyCtxt, Unnormalized,
+    self, ExistentialProjection, GenericArgKind, GenericArgs, Ty, TyCtxt, Unnormalized,
 };
 use rustc_span::bug;
 use smallvec::SmallVec;
@@ -647,7 +647,7 @@ fn push_unqualified_item_name(
     };
 }
 
-pub fn push_generic_args<'tcx>(tcx: TyCtxt<'tcx>, args: GenericArgsRef<'tcx>, output: &mut String) {
+pub fn push_generic_args<'tcx>(tcx: TyCtxt<'tcx>, args: GenericArgs<'tcx>, output: &mut String) {
     let _prof = tcx.prof.generic_activity("compute_debuginfo_type_name");
     let mut visited = FxHashSet::default();
     push_generic_args_internal(tcx, args, output, &mut visited);
@@ -655,7 +655,7 @@ pub fn push_generic_args<'tcx>(tcx: TyCtxt<'tcx>, args: GenericArgsRef<'tcx>, ou
 
 fn push_generic_args_internal<'tcx>(
     tcx: TyCtxt<'tcx>,
-    args: GenericArgsRef<'tcx>,
+    args: GenericArgs<'tcx>,
     output: &mut String,
     visited: &mut FxHashSet<Ty<'tcx>>,
 ) -> bool {
@@ -749,7 +749,7 @@ fn push_debuginfo_const_name<'tcx>(tcx: TyCtxt<'tcx>, ct: ty::Const<'tcx>, outpu
 fn push_closure_or_coroutine_name<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
-    args: GenericArgsRef<'tcx>,
+    args: GenericArgs<'tcx>,
     qualified: bool,
     output: &mut String,
     visited: &mut FxHashSet<Ty<'tcx>>,

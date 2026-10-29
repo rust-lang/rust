@@ -2368,9 +2368,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
                     let traits = self.cmp_traits(
                         obligation_trait_ref.def_id(),
-                        &obligation_trait_ref.trait_ref.args[1..],
+                        &obligation_trait_ref.trait_ref.args.as_slice()[1..],
                         impl_trait_ref.def_id,
-                        &impl_trait_ref.args[1..],
+                        &impl_trait_ref.args.as_slice()[1..],
                     );
                     let traits_content = (traits.0.content(), traits.1.content());
                     let types = self.cmp(obligation_trait_ref.self_ty(), impl_trait_ref.self_ty());
@@ -3246,7 +3246,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 return true;
             }
             if let ty::Adt(def, args) = self_ty.kind()
-                && let [arg] = &args[..]
+                && let [arg] = &args.as_slice()
                 && let ty::GenericArgKind::Type(ty) = arg.kind()
                 && let ty::Adt(inner_def, _) = ty.kind()
                 && inner_def == def

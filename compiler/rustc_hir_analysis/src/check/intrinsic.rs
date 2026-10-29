@@ -301,7 +301,7 @@ pub(crate) fn check_intrinsic_type(
         sym::type_id_function_ptr => {
             let fn_ptr = tcx.require_lang_item(LangItem::FnPtr, span);
             let fn_ptr_adt_ref = tcx.adt_def(fn_ptr);
-            let fn_ptr_ty = Ty::new_adt(tcx, fn_ptr_adt_ref, ty::List::empty());
+            let fn_ptr_ty = Ty::new_adt(tcx, fn_ptr_adt_ref, ty::GenericArgs::empty());
 
             let option = tcx.require_lang_item(LangItem::Option, span);
             let option_adt_ref = tcx.adt_def(option);

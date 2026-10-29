@@ -76,7 +76,7 @@ struct CanonicalInstantiator<'tcx> {
     tcx: TyCtxt<'tcx>,
 
     // The values that the bound vars are are being instantiated with.
-    var_values: ty::GenericArgsRef<'tcx>,
+    var_values: ty::GenericArgs<'tcx>,
 
     // Because we use `ty::BoundVarIndexKind::Canonical`, we can cache
     // based only on the entire ty, not worrying about a `DebruijnIndex`
@@ -149,7 +149,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for CanonicalInstantiator<'tcx> {
             .lock()
             .entry(c)
             .or_insert_with(|| highest_var_in_clauses(c));
-        let c_args = &self.var_values[..=index];
+        let c_args = &self.var_values.as_tcx_slice()[..=index];
 
         if let Some(c) = self.tcx.caches.clauses_cache.lock().get(&(c, c_args)) {
             c

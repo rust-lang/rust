@@ -49,7 +49,7 @@ impl LargeConstArrays {
         match ty.kind() {
             ty::Adt(adt_def, args) => adt_def
                 .all_fields()
-                .any(|f| self.check_impl(cx, f.ty(cx.tcx, args).skip_norm_wip())),
+                .any(|f| self.check_impl(cx, f.ty(cx.tcx, *args).skip_norm_wip())),
             ty::Array(element_type, cst) => {
                 let normalized = cx
                     .tcx

@@ -34,8 +34,8 @@ use rustc_lint::{LateContext, LateLintPass, LintContext as _, impl_lint_pass};
 use rustc_middle::mir::{ConstValue, UnevaluatedConst};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, DerefAdjustKind};
 use rustc_middle::ty::{
-    self, EarlyBinder, GenericArgs, GenericArgsRef, Instance, Ty, TyCtxt, TypeFolder, TypeSuperFoldable as _,
-    TypeckResults, TypingEnv, Unnormalized,
+    self, EarlyBinder, GenericArgs, Instance, Ty, TyCtxt, TypeFolder, TypeSuperFoldable as _, TypeckResults, TypingEnv,
+    Unnormalized,
 };
 use rustc_span::DUMMY_SP;
 use std::collections::hash_map::Entry;
@@ -378,7 +378,7 @@ impl<'tcx> NonCopyConst<'tcx> {
         tcx: TyCtxt<'tcx>,
         typing_env: TypingEnv<'tcx>,
         typeck: &'tcx TypeckResults<'tcx>,
-        gen_args: GenericArgsRef<'tcx>,
+        gen_args: GenericArgs<'tcx>,
         e: &'tcx Expr<'tcx>,
     ) -> bool {
         // Make sure to instantiate all types coming from `typeck` with `gen_args`.
@@ -572,7 +572,7 @@ impl<'tcx> NonCopyConst<'tcx> {
         typeck: &'tcx TypeckResults<'tcx>,
         mut src_expr: &'tcx Expr<'tcx>,
         mut init_typeck: &'tcx TypeckResults<'tcx>,
-        mut init_args: GenericArgsRef<'tcx>,
+        mut init_args: GenericArgs<'tcx>,
         mut init_expr: &'tcx Expr<'tcx>,
     ) -> Option<BorrowSource<'tcx>> {
         // Make sure to instantiate all types coming from `init_typeck` with `init_args`.
@@ -945,7 +945,7 @@ fn get_const_hir_value<'tcx>(
     tcx: TyCtxt<'tcx>,
     typing_env: TypingEnv<'tcx>,
     did: DefId,
-    args: GenericArgsRef<'tcx>,
+    args: GenericArgs<'tcx>,
 ) -> Option<(&'tcx TypeckResults<'tcx>, &'tcx Expr<'tcx>)> {
     let did = did.as_local()?;
     let (did, ct_rhs) = match tcx.hir_node(tcx.local_def_id_to_hir_id(did)) {

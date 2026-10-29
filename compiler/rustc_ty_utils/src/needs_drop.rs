@@ -5,7 +5,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::DefId;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::util::{AlwaysRequiresDrop, needs_drop_components};
-use rustc_middle::ty::{self, EarlyBinder, GenericArgsRef, Ty, TyCtxt, Unnormalized};
+use rustc_middle::ty::{self, EarlyBinder, GenericArgs, Ty, TyCtxt, Unnormalized};
 use rustc_span::bug;
 use rustc_structures::Limit;
 use tracing::{debug, instrument};
@@ -167,7 +167,7 @@ impl<'tcx, F> NeedsDropTypes<'tcx, F> {
 
 impl<'tcx, F, I> Iterator for NeedsDropTypes<'tcx, F>
 where
-    F: Fn(ty::AdtDef<'tcx>, GenericArgsRef<'tcx>) -> NeedsDropResult<I>,
+    F: Fn(ty::AdtDef<'tcx>, GenericArgs<'tcx>) -> NeedsDropResult<I>,
     I: Iterator<Item = Ty<'tcx>>,
 {
     type Item = NeedsDropResult<Ty<'tcx>>;
@@ -385,7 +385,7 @@ fn drop_tys_helper<'tcx>(
         })
     }
 
-    let adt_components = move |adt_def: ty::AdtDef<'tcx>, args: GenericArgsRef<'tcx>| {
+    let adt_components = move |adt_def: ty::AdtDef<'tcx>, args: GenericArgs<'tcx>| {
         if adt_def.is_manually_drop() {
             debug!("drop_tys_helper: `{:?}` is manually drop", adt_def);
             Ok(Vec::new())

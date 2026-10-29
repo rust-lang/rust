@@ -408,19 +408,21 @@ fn create_generic_args<'tcx>(
     tcx: TyCtxt<'tcx>,
     sig_id: DefId,
     def_id: LocalDefId,
-    mut parent_args: &[ty::GenericArg<'tcx>],
-    mut child_args: &[ty::GenericArg<'tcx>],
-) -> (Vec<ty::GenericArg<'tcx>>, &'tcx [ty::GenericArg<'tcx>]) {
+    mut parent_args: ty::GenericArgs<'tcx>,
+    mut child_args: ty::GenericArgs<'tcx>,
+) -> (Vec<ty::GenericArg<'tcx>>, ty::GenericArgs<'tcx>) {
     let delegation_generics = tcx.generics_of(def_id);
     let delegation_args = ty::GenericArgs::identity_for_item(tcx, def_id);
 
     let real_args_count = delegation_args.len() - delegation_generics.own_synthetic_params_count();
-    let synth_args = &delegation_args[real_args_count..];
+    let synth_args = &delegation_args.as_slice()[real_args_count..];
 
-    let mut delegation_parent_args =
-        &delegation_args[delegation_generics.has_self as usize..delegation_generics.parent_count];
+    let mut delegation_parent_args = tcx.mk_args(
+        &delegation_args.as_slice()
+            [delegation_generics.has_self as usize..delegation_generics.parent_count],
+    );
 
-    let delegation_args = &delegation_args[delegation_generics.parent_count..];
+    let delegation_args = &delegation_args.as_slice()[delegation_generics.parent_count..];
 
     let kinds @ (_, parent_kind) = fn_kinds(tcx, def_id, sig_id);
     if matches!(kinds, (FnKind::AssocTraitImpl, FnKind::AssocTrait)) {
@@ -432,10 +434,11 @@ fn create_generic_args<'tcx>(
         parent_args =
             tcx.impl_trait_header(parent).trait_ref.instantiate_identity().skip_norm_wip().args;
 
-        child_args =
-            &delegation_args[delegation_args.len() - delegation_generics.own_params.len()..];
+        child_args = tcx.mk_args(
+            &delegation_args[delegation_args.len() - delegation_generics.own_params.len()..],
+        );
 
-        delegation_parent_args = &[];
+        delegation_parent_args = ty::GenericArgs::empty();
     }
 
     let self_type = get_delegation_self_ty(tcx, def_id).map(ty::GenericArg::from);
@@ -445,7 +448,7 @@ fn create_generic_args<'tcx>(
             FnKind::AssocInherentImpl => parent_args,
             // Remove `Self` from parent args (it is always at the `0th` index) as it is
             // added manually.
-            FnKind::AssocTrait => &parent_args[1..],
+            FnKind::AssocTrait => tcx.mk_args(&parent_args.as_slice()[1..]),
             _ => unreachable!("if parent args are non-empty then the parent must exist"),
         }
     }
@@ -467,14 +470,14 @@ fn create_generic_args<'tcx>(
     let after_lifetimes_self = after_lifetimes_self.as_ref().into_iter();
 
     let args = zero_self
-        .chain(delegation_parent_args)
+        .copied()
+        .chain(delegation_parent_args.iter())
         .chain(parent_args.iter().filter(|a| a.as_region().is_some()))
         .chain(child_args.iter().filter(|a| a.as_region().is_some()))
-        .chain(after_lifetimes_self)
+        .chain(after_lifetimes_self.copied())
         .chain(parent_args.iter().filter(|a| a.as_region().is_none()))
         .chain(child_args.iter().filter(|a| a.as_region().is_none()))
-        .chain(synth_args)
-        .copied()
+        .chain(synth_args.iter().copied())
         .collect::<Vec<_>>();
 
     (args, delegation_parent_args)
@@ -640,8 +643,8 @@ fn create_folder_and_args<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
     sig_id: DefId,
-    parent_args: &'tcx [ty::GenericArg<'tcx>],
-    child_args: &'tcx [ty::GenericArg<'tcx>],
+    parent_args: ty::GenericArgs<'tcx>,
+    child_args: ty::GenericArgs<'tcx>,
 ) -> (ParamIndexRemapper<'tcx>, Vec<ty::GenericArg<'tcx>>) {
     let (args, delegation_parent_args) =
         create_generic_args(tcx, sig_id, def_id, parent_args, child_args);
@@ -737,7 +740,7 @@ fn adjust_sig_in_inherent_impl_cases<'tcx>(
     tcx: TyCtxt<'tcx>,
     sig_id: DefId,
     def_id: LocalDefId,
-    parent_args: &[ty::GenericArg<'tcx>],
+    parent_args: ty::GenericArgs<'tcx>,
     sig: &mut [Ty<'tcx>],
 ) {
     if !tcx.is_method(sig_id) {
@@ -754,7 +757,7 @@ fn adjust_sig_in_inherent_impl_cases<'tcx>(
     };
 
     for i in 0..sig.len() {
-        let to_replace = Ty::new_adt(tcx, *def, tcx.mk_args(parent_args));
+        let to_replace = Ty::new_adt(tcx, *def, parent_args);
         let replacement = match def_kind {
             FnKind::Free => unreachable!(),
 
@@ -789,7 +792,7 @@ fn adjust_sig_in_inherent_impl_cases<'tcx>(
 pub(crate) fn delegation_user_specified_args<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
-) -> (&'tcx [ty::GenericArg<'tcx>], &'tcx [ty::GenericArg<'tcx>]) {
+) -> (ty::GenericArgs<'tcx>, ty::GenericArgs<'tcx>) {
     let info = tcx.hir_delegation_info(def_id);
 
     let get_segment = |hir_id| -> Option<(&'tcx PathSegment<'tcx>, DefId)> {
@@ -812,10 +815,12 @@ pub(crate) fn delegation_user_specified_args<'tcx>(
             let self_ty = (tcx.def_kind(def_id) == DefKind::Trait)
                 .then(|| Ty::new_param(tcx, 0, kw::SelfUpper));
 
-            lowerer
-                .lower_generic_args_of_path(segment.ident.span, def_id, &[], segment, self_ty)
-                .0
-                .as_slice()
+            tcx.mk_args(
+                lowerer
+                    .lower_generic_args_of_path(segment.ident.span, def_id, &[], segment, self_ty)
+                    .0
+                    .as_slice(),
+            )
         });
 
     let child_args = info.child_seg_id_for_sig.and_then(get_segment).map(|(segment, def_id)| {
@@ -824,19 +829,25 @@ pub(crate) fn delegation_user_specified_args<'tcx>(
 
         let parent_args =
             if matches!(tcx.def_kind(parent), DefKind::Impl { of_trait: false } | DefKind::Trait) {
-                ty::GenericArgs::identity_for_item(tcx, parent).as_slice()
+                ty::GenericArgs::identity_for_item(tcx, parent)
             } else if let Some(parent_args) = parent_args {
                 parent_args
             } else {
-                &[]
+                ty::GenericArgs::empty()
             };
 
         let args = lowerer
-            .lower_generic_args_of_path(segment.ident.span, def_id, parent_args, segment, None)
+            .lower_generic_args_of_path(
+                segment.ident.span,
+                def_id,
+                parent_args.as_slice(),
+                segment,
+                None,
+            )
             .0;
 
         let synth_params_count = tcx.generics_of(def_id).own_synthetic_params_count();
-        &args[parent_args.len()..args.len() - synth_params_count]
+        tcx.mk_args(&args.as_slice()[parent_args.len()..args.len() - synth_params_count])
     });
 
     (parent_args.unwrap_or_default(), child_args.unwrap_or_default())

@@ -296,10 +296,10 @@ impl<'a, 'tcx> GatherBorrows<'a, 'tcx> {
         kind: mir::BorrowKind,
         location: Location,
         target_adt: ty::AdtDef<'tcx>,
-        target_args: &'tcx ty::List<ty::GenericArg<'tcx>>,
+        target_args: ty::GenericArgs<'tcx>,
         target_place: mir::Place<'tcx>,
         source_adt: ty::AdtDef<'tcx>,
-        source_args: &'tcx ty::List<ty::GenericArg<'tcx>>,
+        source_args: ty::GenericArgs<'tcx>,
         source_place: mir::Place<'tcx>,
     ) {
         let mut did_reborrow = false;
@@ -384,10 +384,10 @@ impl<'a, 'tcx> GatherBorrows<'a, 'tcx> {
                         kind,
                         location,
                         *target_field_adt,
-                        target_field_args,
+                        *target_field_args,
                         target_field_place,
                         *source_field_adt,
-                        source_field_args,
+                        *source_field_args,
                         source_field_place,
                     );
                 }

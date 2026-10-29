@@ -10,7 +10,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{Expr, ExprKind, HirId};
 use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_lint_defs::{declare_lint_pass, declare_tool_lint};
-use rustc_middle::ty::{self, ClausePolarity, GenericArgsRef};
+use rustc_middle::ty::{self, ClausePolarity, GenericArgs};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::{DUMMY_SP, Span, sym};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
@@ -126,7 +126,7 @@ impl<'tcx> LateLintPass<'tcx> for QueryStability {
 fn has_unstable_into_iter_predicate<'tcx>(
     cx: &LateContext<'tcx>,
     callee_def_id: DefId,
-    generic_args: GenericArgsRef<'tcx>,
+    generic_args: GenericArgs<'tcx>,
 ) -> bool {
     let Some(into_iterator_def_id) = cx.tcx.get_diagnostic_item(sym::IntoIterator) else {
         return false;
@@ -173,7 +173,7 @@ fn has_unstable_into_iter_predicate<'tcx>(
 fn get_callee_span_generic_args_and_args<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx Expr<'tcx>,
-) -> Option<(DefId, Span, GenericArgsRef<'tcx>, Option<&'tcx Expr<'tcx>>, &'tcx [Expr<'tcx>])> {
+) -> Option<(DefId, Span, GenericArgs<'tcx>, Option<&'tcx Expr<'tcx>>, &'tcx [Expr<'tcx>])> {
     if let ExprKind::Call(callee, args) = expr.kind
         && let callee_ty = cx.typeck_results().expr_ty(callee)
         && let ty::FnDef(callee_def_id, generic_args) = callee_ty.kind()

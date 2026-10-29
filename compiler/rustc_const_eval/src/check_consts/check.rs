@@ -339,7 +339,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
     fn revalidate_conditional_constness(
         &mut self,
         callee: DefId,
-        callee_args: ty::GenericArgsRef<'tcx>,
+        callee_args: ty::GenericArgs<'tcx>,
         call_span: Span,
     ) -> Option<ConstConditionsHold> {
         let tcx = self.tcx;

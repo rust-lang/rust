@@ -141,7 +141,7 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
         skip_all,
         fields(goal = ?self.goal.goal, steps = ?self.steps)
     )]
-    pub fn instantiate_impl_args(&self, span: Span) -> ty::GenericArgsRef<'tcx> {
+    pub fn instantiate_impl_args(&self, span: Span) -> ty::GenericArgs<'tcx> {
         let infcx = self.goal.infcx;
         let mut orig_values = self.goal.orig_values.clone();
 

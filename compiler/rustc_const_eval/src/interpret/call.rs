@@ -176,7 +176,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         let all_fields_1zst = |variant: &VariantDef| -> InterpResult<'tcx, _> {
             for field in &variant.fields {
-                let ty = field.ty(*self.tcx, args).skip_norm_wip();
+                let ty = field.ty(*self.tcx, *args).skip_norm_wip();
                 let layout = self.layout_of(ty)?;
                 if !layout.is_1zst() {
                     return interp_ok(false);
@@ -202,7 +202,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             return interp_ok(layout);
         }
         let inner =
-            relevant_variant.fields[FieldIdx::from_u32(0)].ty(*self.tcx, args).skip_norm_wip();
+            relevant_variant.fields[FieldIdx::from_u32(0)].ty(*self.tcx, *args).skip_norm_wip();
         let inner = self.layout_of(inner)?;
 
         // Check if the inner type is one of the NPO-guaranteed ones.
@@ -283,8 +283,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let normalized_field_ty = |field: &FieldDef, args| {
                     self.tcx.normalize_erasing_regions(self.typing_env, field.ty(*self.tcx, args))
                 };
-                let caller_ty = normalized_field_ty(caller_field, caller_args);
-                let callee_ty = normalized_field_ty(callee_field, callee_args);
+                let caller_ty = normalized_field_ty(caller_field, *caller_args);
+                let callee_ty = normalized_field_ty(callee_field, *callee_args);
                 self.identical_c_types(caller_ty, callee_ty)
             })
     }

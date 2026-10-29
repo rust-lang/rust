@@ -1225,7 +1225,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
 
         err.span_label(closure_span, "in this closure");
         let closure_arg_has_fn_trait_bound =
-            |callee_def_id, input_index, generic_args: ty::GenericArgsRef<'tcx>| {
+            |callee_def_id, input_index, generic_args: ty::GenericArgs<'tcx>| {
                 let sig = tcx.fn_sig(callee_def_id).instantiate(tcx, generic_args).skip_binder();
                 let Some(input_ty): Option<Ty<'tcx>> = sig.inputs().get(input_index).copied()
                 else {
@@ -1247,40 +1247,39 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
 
         // If the HIR node is a function or method call, get the DefId
         // of the callee function or method, the span, and argument info for the call expr.
-        let get_call_details =
-            || -> Option<(DefId, Span, usize, usize, ty::GenericArgsRef<'tcx>)> {
-                let hir::Node::Expr(hir::Expr { hir_id, kind, .. }) = node else {
-                    return None;
-                };
-
-                let typeck_results = tcx.typeck(def_id);
-
-                match kind {
-                    hir::ExprKind::Call(expr, args) => {
-                        if let Some(ty::FnDef(def_id, generic_args)) =
-                            typeck_results.node_type_opt(expr.hir_id).as_ref().map(|ty| ty.kind())
-                        {
-                            let arg_pos = args.iter().position(|arg| arg.hir_id == closure_id)?;
-                            Some((
-                                *def_id,
-                                expr.span,
-                                arg_pos,
-                                arg_pos,
-                                generic_args.no_bound_vars().unwrap(),
-                            ))
-                        } else {
-                            None
-                        }
-                    }
-                    hir::ExprKind::MethodCall(_, _, args, span) => {
-                        let arg_pos = args.iter().position(|arg| arg.hir_id == closure_id)?;
-                        let def_id = typeck_results.type_dependent_def_id(*hir_id)?;
-                        let generic_args = typeck_results.node_args_opt(*hir_id)?;
-                        Some((def_id, *span, arg_pos, arg_pos + 1, generic_args))
-                    }
-                    _ => None,
-                }
+        let get_call_details = || -> Option<(DefId, Span, usize, usize, ty::GenericArgs<'tcx>)> {
+            let hir::Node::Expr(hir::Expr { hir_id, kind, .. }) = node else {
+                return None;
             };
+
+            let typeck_results = tcx.typeck(def_id);
+
+            match kind {
+                hir::ExprKind::Call(expr, args) => {
+                    if let Some(ty::FnDef(def_id, generic_args)) =
+                        typeck_results.node_type_opt(expr.hir_id).as_ref().map(|ty| ty.kind())
+                    {
+                        let arg_pos = args.iter().position(|arg| arg.hir_id == closure_id)?;
+                        Some((
+                            *def_id,
+                            expr.span,
+                            arg_pos,
+                            arg_pos,
+                            generic_args.no_bound_vars().unwrap(),
+                        ))
+                    } else {
+                        None
+                    }
+                }
+                hir::ExprKind::MethodCall(_, _, args, span) => {
+                    let arg_pos = args.iter().position(|arg| arg.hir_id == closure_id)?;
+                    let def_id = typeck_results.type_dependent_def_id(*hir_id)?;
+                    let generic_args = typeck_results.node_args_opt(*hir_id)?;
+                    Some((def_id, *span, arg_pos, arg_pos + 1, generic_args))
+                }
+                _ => None,
+            }
+        };
 
         // If we can detect the expression to be a function or method call where the closure was
         // an argument, we point at the function or method definition argument...

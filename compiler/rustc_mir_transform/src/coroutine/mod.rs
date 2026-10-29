@@ -70,7 +70,7 @@ use rustc_index::{Idx, IndexVec, indexvec};
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{
-    self, CoroutineArgs, CoroutineArgsExt, GenericArgsRef, InstanceKind, ShimKind, Ty, TyCtxt,
+    self, CoroutineArgs, CoroutineArgsExt, GenericArgs, InstanceKind, ShimKind, Ty, TyCtxt,
 };
 use rustc_mir_dataflow::impls::always_storage_live_locals;
 use rustc_span::def_id::DefId;
@@ -541,7 +541,7 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
 fn make_aggregate_adt<'tcx>(
     def_id: DefId,
     variant_idx: VariantIdx,
-    args: GenericArgsRef<'tcx>,
+    args: GenericArgs<'tcx>,
     operands: IndexVec<FieldIdx, Operand<'tcx>>,
 ) -> Rvalue<'tcx> {
     Rvalue::Aggregate(Box::new(AggregateKind::Adt(def_id, variant_idx, args, None, None)), operands)

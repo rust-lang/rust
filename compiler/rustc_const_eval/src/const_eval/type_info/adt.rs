@@ -36,7 +36,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
     pub(super) fn write_generics(
         &mut self,
         place: &impl Writeable<'tcx, CtfeProvenance>,
-        generics: &'tcx GenericArgs<'tcx>,
+        generics: GenericArgs<'tcx>,
     ) -> InterpResult<'tcx> {
         self.allocate_fill_and_write_slice_ptr(place, generics.len() as u64, |this, i, place| {
             match generics[i as usize].kind() {

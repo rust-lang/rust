@@ -264,7 +264,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
     fn pretty_print_value_path(
         &mut self,
         def_id: DefId,
-        args: &'tcx [GenericArg<'tcx>],
+        args: ty::GenericArgs<'tcx>,
     ) -> Result<(), PrintError> {
         self.print_def_path(def_id, args)
     }
@@ -531,7 +531,9 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                         // in cases where the `extern crate foo` has non-trivial
                         // parents, e.g. it's nested in `impl foo::Trait for Bar`
                         // (see also issues #55779 and #87932).
-                        with_no_visible_paths!(self.print_def_path(def_id, &[])?);
+                        with_no_visible_paths!(
+                            self.print_def_path(def_id, ty::GenericArgs::empty())?
+                        );
 
                         return Ok(true);
                     }
@@ -725,7 +727,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
     fn pretty_print_closure_inner(
         &mut self,
         did: DefId,
-        args: ty::GenericArgsRef<'tcx>,
+        args: ty::GenericArgs<'tcx>,
     ) -> Result<(), PrintError> {
         if self.should_truncate() {
             write!(self, "@...")
@@ -866,7 +868,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     write!(self, ")")?;
                 }
             }
-            ty::Foreign(def_id) => self.print_def_path(def_id, &[])?,
+            ty::Foreign(def_id) => self.print_def_path(def_id, ty::GenericArgs::empty())?,
             ty::Alias(
                 _,
                 ref data @ ty::AliasTy {
@@ -916,7 +918,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     }
                     _ => {
                         if with_reduced_queries() {
-                            self.print_def_path(def_id, &[])?;
+                            self.print_def_path(def_id, ty::GenericArgs::empty())?;
                             return Ok(());
                         } else {
                             return self.pretty_print_opaque_impl_type(def_id, args);
@@ -1041,7 +1043,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
     fn pretty_print_opaque_impl_type(
         &mut self,
         def_id: DefId,
-        args: ty::GenericArgsRef<'tcx>,
+        args: ty::GenericArgs<'tcx>,
     ) -> Result<(), PrintError> {
         let tcx = self.tcx();
 
@@ -1183,7 +1185,8 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 trait_pred.trait_ref.print_only_trait_name().print(p)?;
 
                 let generics = tcx.generics_of(trait_pred.def_id());
-                let own_args = generics.own_args_no_defaults(tcx, trait_pred.trait_ref.args);
+                let own_args =
+                    generics.own_args_no_defaults(tcx, trait_pred.trait_ref.args.as_slice());
 
                 if !own_args.is_empty() || !assoc_items.is_empty() {
                     let mut first = true;
@@ -1322,14 +1325,14 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     &def_key.disambiguated_data,
                 )
             },
-            &alias_term.args[1..],
+            self.tcx().mk_args(&alias_term.args.as_slice()[1..]),
         )
     }
 
     fn pretty_print_rpitit(
         &mut self,
         def_id: DefId,
-        args: ty::GenericArgsRef<'tcx>,
+        args: ty::GenericArgs<'tcx>,
     ) -> Result<(), PrintError> {
         let fn_args = if self.tcx().features().return_type_notation()
             && let Some(ty::ImplTraitInTraitData::Trait { fn_def_id, .. }) =
@@ -1346,7 +1349,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 .all(|param| matches!(param.kind, ty::GenericParamDefKind::Lifetime))
         {
             let num_args = generics.count();
-            Some((fn_def_id, &args[..num_args]))
+            Some((fn_def_id, self.tcx().mk_args(&args.as_slice()[..num_args])))
         } else {
             None
         };
@@ -1387,7 +1390,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
 
         if let Some(bound_principal) = predicates.principal() {
             self.wrap_binder(&bound_principal, WrapBinderMode::ForAll, |principal, p| {
-                p.print_def_path(principal.def_id, &[])?;
+                p.print_def_path(principal.def_id, ty::GenericArgs::empty())?;
 
                 let mut resugared = false;
 
@@ -1418,7 +1421,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     let args = p
                         .tcx()
                         .generics_of(principal_with_self.def_id)
-                        .own_args_no_defaults(p.tcx(), principal_with_self.args);
+                        .own_args_no_defaults(p.tcx(), principal_with_self.args.as_slice());
 
                     let bound_principal_with_self = bound_principal
                         .with_self_ty(p.tcx(), p.tcx().types.trait_object_dummy_self);
@@ -1495,7 +1498,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             }
             first = false;
 
-            self.print_def_path(def_id, &[])?;
+            self.print_def_path(def_id, ty::GenericArgs::empty())?;
         }
 
         Ok(())
@@ -1689,7 +1692,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 write!(self, "(")?;
                 self.pretty_print_const(fn_def, print_ty)?;
                 write!(self, ")(")?;
-                self.comma_sep(fn_args)?;
+                self.comma_sep(fn_args.into_iter())?;
                 write!(self, ")")?;
             }
             ty::ExprKind::Cast(kind) => {
@@ -2192,14 +2195,14 @@ impl<'t> TyCtxt<'t> {
     /// suitable for user output.
     pub fn def_path_str(self, def_id: impl IntoQueryKey<DefId>) -> String {
         let def_id = def_id.into_query_key();
-        self.def_path_str_with_args(def_id, &[])
+        self.def_path_str_with_args(def_id, ty::GenericArgs::empty())
     }
 
     /// For this one we determine the appropriate namespace for the `def_id`.
     pub fn def_path_str_with_args(
         self,
         def_id: impl IntoQueryKey<DefId>,
-        args: &'t [GenericArg<'t>],
+        args: ty::GenericArgs<'t>,
     ) -> String {
         let def_id = def_id.into_query_key();
         let ns = guess_def_namespace(self, def_id);
@@ -2212,7 +2215,7 @@ impl<'t> TyCtxt<'t> {
     pub fn value_path_str_with_args(
         self,
         def_id: impl IntoQueryKey<DefId>,
-        args: &'t [GenericArg<'t>],
+        args: ty::GenericArgs<'t>,
     ) -> String {
         let def_id = def_id.into_query_key();
         let ns = Namespace::ValueNS;
@@ -2250,7 +2253,7 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
     fn print_def_path(
         &mut self,
         def_id: DefId,
-        args: &'tcx [GenericArg<'tcx>],
+        args: ty::GenericArgs<'tcx>,
     ) -> Result<(), PrintError> {
         if args.is_empty() {
             match self.try_print_trimmed_def_path(def_id)? {
@@ -2281,7 +2284,7 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
                 let parent_def_id = DefId { index: key.parent.unwrap(), ..def_id };
                 let span = self.tcx.def_span(def_id);
 
-                self.print_def_path(parent_def_id, &[])?;
+                self.print_def_path(parent_def_id, ty::GenericArgs::empty())?;
 
                 // HACK(eddyb) copy of `print_path_with_simple` to avoid
                 // constructing a `DisambiguatedDefPathData`.
@@ -2495,7 +2498,7 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
     fn print_path_with_generic_args(
         &mut self,
         print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
-        args: &[GenericArg<'tcx>],
+        args: ty::GenericArgs<'tcx>,
     ) -> Result<(), PrintError> {
         print_prefix(self)?;
 
@@ -2503,7 +2506,7 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
             if self.in_value {
                 write!(self, "::")?;
             }
-            self.generic_delimiters(|p| p.comma_sep(args.iter().copied()))
+            self.generic_delimiters(|p| p.comma_sep(args.iter()))
         } else {
             Ok(())
         }
@@ -2526,7 +2529,7 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
     fn pretty_print_value_path(
         &mut self,
         def_id: DefId,
-        args: &'tcx [GenericArg<'tcx>],
+        args: ty::GenericArgs<'tcx>,
     ) -> Result<(), PrintError> {
         let was_in_value = std::mem::replace(&mut self.in_value, true);
         self.print_def_path(def_id, args)?;
@@ -3274,7 +3277,7 @@ define_print! {
             ty::PredicateKind::Coerce(predicate) => predicate.print(p)?,
             ty::PredicateKind::DynCompatible(trait_def_id) => {
                 write!(p, "the trait `")?;
-                p.print_def_path(trait_def_id, &[])?;
+                p.print_def_path(trait_def_id, ty::GenericArgs::empty())?;
                 write!(p, "` is dyn-compatible")?;
             }
             ty::PredicateKind::ConstEquate(c1, c2) => {
@@ -3293,7 +3296,7 @@ define_print! {
         match *self {
             ty::ExistentialPredicate::Trait(x) => x.print(p)?,
             ty::ExistentialPredicate::Projection(x) => x.print(p)?,
-            ty::ExistentialPredicate::AutoTrait(def_id) => p.print_def_path(def_id, &[])?,
+            ty::ExistentialPredicate::AutoTrait(def_id) => p.print_def_path(def_id, ty::GenericArgs::empty())?,
         }
     }
 
@@ -3308,8 +3311,8 @@ define_print! {
         let name = p.tcx().associated_item(self.def_id).name();
         // The args don't contain the self ty (as it has been erased) but the corresp.
         // generics do as the trait always has a self ty param. We need to offset.
-        let args = &self.args[p.tcx().generics_of(self.def_id).parent_count - 1..];
-        p.print_path_with_generic_args(|p| write!(p, "{name}"), args)?;
+        let args = &self.args.as_slice()[p.tcx().generics_of(self.def_id).parent_count - 1..];
+        p.print_path_with_generic_args(|p| write!(p, "{name}"), p.tcx().mk_args(args))?;
         write!(p, " = ")?;
         self.term.print(p)?;
     }
@@ -3386,7 +3389,7 @@ define_print_and_forward_display! {
     }
 
     TraitRefPrintOnlyTraitName<'tcx> {
-        p.print_def_path(self.0.def_id, &[])?;
+        p.print_def_path(self.0.def_id, ty::GenericArgs::empty())?;
     }
 
     TraitClausePrintModifiersAndPath<'tcx> {
@@ -3448,7 +3451,7 @@ define_print_and_forward_display! {
                     write!(p, " at <impl ")?;
                     let key = p.tcx().def_key(impl_def_id);
                     let parent_def_id = DefId { index: key.parent.unwrap(), ..impl_def_id };
-                    p.print_def_path(parent_def_id, &[])?;
+                    p.print_def_path(parent_def_id, ty::GenericArgs::empty())?;
                     write!(p, "::<{}> for ", key.disambiguated_data.as_sym(false))?;
                     self_ty.print(p)?;
                     write!(p, ">")?;
