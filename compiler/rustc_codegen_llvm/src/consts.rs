@@ -700,7 +700,7 @@ impl<'ll> CodegenCx<'ll, '_> {
         let g = self.define_global(&sym, llty).unwrap_or_else(|| {
             bug!("symbol `{}` is already defined", sym);
         });
-        set_global_alignment(self, g, self.tcx.data_layout.i8_align);
+        set_global_alignment(self, g, Align::ONE);
         llvm::set_initializer(g, llval);
         llvm::set_linkage(g, llvm::Linkage::PrivateLinkage);
         llvm::set_section(g, c"__TEXT,__cstring,cstring_literals");
@@ -816,7 +816,7 @@ impl<'ll> CodegenCx<'ll, '_> {
         let methname_g = self.define_global(&methname_sym, methname_llty).unwrap_or_else(|| {
             bug!("symbol `{}` is already defined", methname_sym);
         });
-        set_global_alignment(self, methname_g, self.tcx.data_layout.i8_align);
+        set_global_alignment(self, methname_g, Align::ONE);
         llvm::set_initializer(methname_g, methname_llval);
         llvm::set_linkage(methname_g, llvm::Linkage::PrivateLinkage);
         llvm::set_section(
