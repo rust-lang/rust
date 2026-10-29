@@ -366,6 +366,8 @@ pub enum ObligationCauseCode<'tcx> {
     /// Opaque return type of this function
     OpaqueReturnType(Option<(Ty<'tcx>, HirId)>),
 
+    ReturnType,
+
     /// Block implicit return
     BlockTailExpression(HirId, hir::MatchSource),
 
