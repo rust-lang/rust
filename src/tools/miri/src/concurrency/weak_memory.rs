@@ -501,8 +501,8 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         atomic: AtomicRwOrd,
         init: Scalar,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
-        let (alloc_id, base_offset, ..) = this.ptr_get_alloc_id(place.ptr(), 0)?;
+        let ecx = self.eval_context_mut();
+        let (alloc_id, base_offset, ..) = ecx.ptr_get_alloc_id(place.ptr(), 0)?;
         if let (
             crate::AllocExtra {
                 data_race: AllocDataRaceHandler::Vclocks(data_race_clocks, Some(alloc_buffers)),
@@ -511,7 +511,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             crate::MiriMachine {
                 data_race: GlobalDataRaceHandler::Vclocks(global), threads, ..
             },
-        ) = this.get_alloc_extra_mut(alloc_id)?
+        ) = ecx.get_alloc_extra_mut(alloc_id)?
             && global.race_detecting()
         {
             if atomic == AtomicRwOrd::SeqCst {
@@ -547,19 +547,19 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         latest_in_mo: Scalar,
         validate: impl FnOnce(Option<&VClock>) -> InterpResult<'tcx>,
     ) -> InterpResult<'tcx, Option<Scalar>> {
-        let this = self.eval_context_ref();
+        let ecx = self.eval_context_ref();
         'fallback: {
-            if let Some(global) = this.machine.data_race.as_vclocks_ref()
+            if let Some(global) = ecx.machine.data_race.as_vclocks_ref()
                 && global.race_detecting()
             {
-                let (alloc_id, base_offset, ..) = this.ptr_get_alloc_id(place.ptr(), 0)?;
+                let (alloc_id, base_offset, ..) = ecx.ptr_get_alloc_id(place.ptr(), 0)?;
                 if let Some(alloc_buffers) =
-                    this.get_alloc_extra(alloc_id)?.data_race.as_weak_memory_ref()
+                    ecx.get_alloc_extra(alloc_id)?.data_race.as_weak_memory_ref()
                 {
                     if atomic == AtomicReadOrd::SeqCst {
-                        global.sc_read(&this.machine.threads);
+                        global.sc_read(&ecx.machine.threads);
                     }
-                    let mut rng = this.machine.rng.borrow_mut();
+                    let mut rng = ecx.machine.rng.borrow_mut();
                     let Some(buffer) = alloc_buffers
                         .get_store_buffer(alloc_range(base_offset, place.layout.size))?
                     else {
@@ -568,13 +568,13 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     };
                     let (loaded, recency) = buffer.buffered_read(
                         global,
-                        &this.machine.threads,
+                        &ecx.machine.threads,
                         atomic == AtomicReadOrd::SeqCst,
                         &mut *rng,
                         validate,
                     )?;
                     if global.track_outdated_loads && recency == LoadRecency::Outdated {
-                        this.emit_diagnostic(NonHaltingDiagnostic::WeakMemoryOutdatedLoad {
+                        ecx.emit_diagnostic(NonHaltingDiagnostic::WeakMemoryOutdatedLoad {
                             ptr: place.ptr(),
                         });
                     }
@@ -605,8 +605,8 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         atomic: AtomicWriteOrd,
         init: Option<Scalar>,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
-        let (alloc_id, base_offset, ..) = this.ptr_get_alloc_id(dest.ptr(), 0)?;
+        let ecx = self.eval_context_mut();
+        let (alloc_id, base_offset, ..) = ecx.ptr_get_alloc_id(dest.ptr(), 0)?;
         if let (
             crate::AllocExtra {
                 data_race: AllocDataRaceHandler::Vclocks(data_race_clocks, Some(alloc_buffers)),
@@ -615,7 +615,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             crate::MiriMachine {
                 data_race: GlobalDataRaceHandler::Vclocks(global), threads, ..
             },
-        ) = this.get_alloc_extra_mut(alloc_id)?
+        ) = ecx.get_alloc_extra_mut(alloc_id)?
             && global.race_detecting()
         {
             if atomic == AtomicWriteOrd::SeqCst {
@@ -648,16 +648,16 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         place: &MPlaceTy<'tcx>,
         atomic: AtomicReadOrd,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_ref();
+        let ecx = self.eval_context_ref();
 
-        if let Some(global) = this.machine.data_race.as_vclocks_ref() {
+        if let Some(global) = ecx.machine.data_race.as_vclocks_ref() {
             if atomic == AtomicReadOrd::SeqCst {
-                global.sc_read(&this.machine.threads);
+                global.sc_read(&ecx.machine.threads);
             }
             let size = place.layout.size;
-            let (alloc_id, base_offset, ..) = this.ptr_get_alloc_id(place.ptr(), 0)?;
+            let (alloc_id, base_offset, ..) = ecx.ptr_get_alloc_id(place.ptr(), 0)?;
             if let Some(alloc_buffers) =
-                this.get_alloc_extra(alloc_id)?.data_race.as_weak_memory_ref()
+                ecx.get_alloc_extra(alloc_id)?.data_race.as_weak_memory_ref()
             {
                 let Some(buffer) =
                     alloc_buffers.get_store_buffer(alloc_range(base_offset, size))?
@@ -667,7 +667,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 };
                 buffer.read_from_last_store(
                     global,
-                    &this.machine.threads,
+                    &ecx.machine.threads,
                     atomic == AtomicReadOrd::SeqCst,
                 );
             }

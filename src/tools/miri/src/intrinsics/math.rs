@@ -8,12 +8,12 @@ use super::check_intrinsic_arg_count;
 use crate::*;
 
 fn sqrt<'tcx, F: Float + FloatConvert<F> + Into<Scalar>>(
-    this: &mut MiriInterpCx<'tcx>,
+    ecx: &mut MiriInterpCx<'tcx>,
     args: &[OpTy<'tcx>],
     dest: &PlaceTy<'tcx>,
 ) -> InterpResult<'tcx> {
     let [f] = check_intrinsic_arg_count(args)?;
-    math::sqrt_op::<F>(this, f, dest)
+    math::sqrt_op::<F>(ecx, f, dest)
 }
 
 /// Determine which float operation on which type this is.
@@ -39,7 +39,7 @@ fn is_host_unary_float_op(
 }
 
 fn pow_intrinsic<'tcx, S: Semantics>(
-    this: &mut MiriInterpCx<'tcx>,
+    ecx: &mut MiriInterpCx<'tcx>,
     args: &[OpTy<'tcx>],
     dest: &PlaceTy<'tcx>,
 ) -> InterpResult<'tcx, ()>
@@ -47,23 +47,23 @@ where
     IeeeFloat<S>: HostFloatOperation + IeeeExt + Float + Into<Scalar>,
 {
     let [f1, f2] = check_intrinsic_arg_count(args)?;
-    let f1: IeeeFloat<S> = this.read_scalar(f1)?.to_float()?;
-    let f2: IeeeFloat<S> = this.read_scalar(f2)?.to_float()?;
+    let f1: IeeeFloat<S> = ecx.read_scalar(f1)?.to_float()?;
+    let f2: IeeeFloat<S> = ecx.read_scalar(f2)?.to_float()?;
 
-    let res = math::fixed_float_value(this, "pow", &[f1, f2]).unwrap_or_else(|| {
+    let res = math::fixed_float_value(ecx, "pow", &[f1, f2]).unwrap_or_else(|| {
         // Using host floats (but it's fine, this operation does not have guaranteed precision).
         let res = f1.host_powf(f2);
 
         // Apply a relative error of 4ULP to introduce some non-determinism
         // simulating imprecise implementations and optimizations.
-        math::apply_random_float_error_ulp(this, res, 4)
+        math::apply_random_float_error_ulp(ecx, res, 4)
     });
-    let res = this.adjust_nan(res, &[f1, f2]);
-    this.write_scalar(res, dest)?;
+    let res = ecx.adjust_nan(res, &[f1, f2]);
+    ecx.write_scalar(res, dest)?;
     interp_ok(())
 }
 fn powi_intrinsic<'tcx, S: Semantics>(
-    this: &mut MiriInterpCx<'tcx>,
+    ecx: &mut MiriInterpCx<'tcx>,
     args: &[OpTy<'tcx>],
     dest: &PlaceTy<'tcx>,
 ) -> InterpResult<'tcx, ()>
@@ -71,19 +71,19 @@ where
     IeeeFloat<S>: HostFloatOperation + IeeeExt + Float + Into<Scalar>,
 {
     let [f, i] = check_intrinsic_arg_count(args)?;
-    let f: IeeeFloat<S> = this.read_scalar(f)?.to_float()?;
-    let i = this.read_scalar(i)?.to_i32()?;
+    let f: IeeeFloat<S> = ecx.read_scalar(f)?.to_float()?;
+    let i = ecx.read_scalar(i)?.to_i32()?;
 
-    let res = math::fixed_powi_value(this, f, i).unwrap_or_else(|| {
+    let res = math::fixed_powi_value(ecx, f, i).unwrap_or_else(|| {
         // Using host floats (but it's fine, this operation does not have guaranteed precision).
         let res = f.host_powi(i);
 
         // Apply a relative error of 4ULP to introduce some non-determinism
         // simulating imprecise implementations and optimizations.
-        math::apply_random_float_error_ulp(this, res, 4)
+        math::apply_random_float_error_ulp(ecx, res, 4)
     });
-    let res = this.adjust_nan(res, &[f]);
-    this.write_scalar(res, dest)?;
+    let res = ecx.adjust_nan(res, &[f]);
+    ecx.write_scalar(res, dest)?;
     interp_ok(())
 }
 

@@ -21,25 +21,20 @@ enum GlobalCtorStatePriv<'tcx> {
 }
 
 impl<'tcx> GlobalCtorState<'tcx> {
-    pub fn on_stack_empty(
-        &mut self,
-        this: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx, Poll<()>> {
+    pub fn on_stack_empty(&mut self, ecx: &mut MiriInterpCx<'tcx>) -> InterpResult<'tcx, Poll<()>> {
         use GlobalCtorStatePriv::*;
         let new_state = 'new_state: {
             match &mut self.0 {
                 Init => {
-                    let this = this.eval_context_mut();
-
                     // Lookup constructors from the relevant magic link section.
-                    let ctors = match this.tcx.sess.target.binary_format {
+                    let ctors = match ecx.tcx.sess.target.binary_format {
                         // Read the CRT library section on Windows.
                         BinaryFormat::Coff =>
-                            this.lookup_link_section(|section| section == ".CRT$XCU")?,
+                            ecx.lookup_link_section(|section| section == ".CRT$XCU")?,
 
                         // Read the `__mod_init_func` section on macOS.
                         BinaryFormat::MachO =>
-                            this.lookup_link_section(|section| {
+                            ecx.lookup_link_section(|section| {
                                 let mut parts = section.splitn(3, ',');
                                 let (segment_name, section_name, section_type) =
                                     (parts.next(), parts.next(), parts.next());
@@ -59,7 +54,7 @@ impl<'tcx> GlobalCtorState<'tcx> {
                         // which supports the same linker directive.
                         // FIXME: Add support for `.init_array.N` and `.ctors`?
                         BinaryFormat::Elf | BinaryFormat::Wasm =>
-                            this.lookup_link_section(|section| section == ".init_array")?,
+                            ecx.lookup_link_section(|section| section == ".init_array")?,
 
                         // Other platforms have no global ctor support.
                         _ => break 'new_state Done,
@@ -69,13 +64,11 @@ impl<'tcx> GlobalCtorState<'tcx> {
                 }
                 Ctors(ctors) => {
                     if let Some((ctor, span)) = ctors.pop() {
-                        let this = this.eval_context_mut();
-
-                        let ctor = ctor.to_scalar().to_pointer(this);
-                        let thread_callback = this.get_ptr_fn(ctor)?.as_instance()?;
+                        let ctor = ctor.to_scalar().to_pointer(ecx);
+                        let thread_callback = ecx.get_ptr_fn(ctor)?.as_instance()?;
 
                         // The signature of this function is `unsafe extern "C" fn()`.
-                        this.call_thread_root_function(
+                        ecx.call_thread_root_function(
                             thread_callback,
                             ExternAbi::C { unwind: false },
                             &[],

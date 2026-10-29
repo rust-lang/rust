@@ -143,14 +143,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ///
     /// <https://linux.die.net/man/2/eventfd>
     fn eventfd(&mut self, val: &OpTy<'tcx>, flags: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let val = this.read_scalar(val)?.to_u32()?;
-        let mut flags = this.read_scalar(flags)?.to_i32()?;
+        let val = ecx.read_scalar(val)?.to_u32()?;
+        let mut flags = ecx.read_scalar(flags)?.to_i32()?;
 
-        let efd_cloexec = this.eval_libc_i32("EFD_CLOEXEC");
-        let efd_nonblock = this.eval_libc_i32("EFD_NONBLOCK");
-        let efd_semaphore = this.eval_libc_i32("EFD_SEMAPHORE");
+        let efd_cloexec = ecx.eval_libc_i32("EFD_CLOEXEC");
+        let efd_nonblock = ecx.eval_libc_i32("EFD_NONBLOCK");
+        let efd_semaphore = ecx.eval_libc_i32("EFD_SEMAPHORE");
 
         if flags & efd_semaphore == efd_semaphore {
             throw_unsup_format!("eventfd: EFD_SEMAPHORE is unsupported");
@@ -171,7 +171,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             throw_unsup_format!("eventfd: encountered unknown unsupported flags {:#x}", flags);
         }
 
-        let fds = &mut this.machine.fds;
+        let fds = &mut ecx.machine.fds;
 
         let Some(fd_value) = fds.insert_new(EventFd {
             counter: Cell::new(val.into()),
@@ -181,7 +181,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             blocked_write_tid: RefCell::new(Vec::new()),
             watched: ReadinessWatched::default(),
         }) else {
-            return this.set_errno_and_return_neg1_i32(LibcError("EMFILE"));
+            return ecx.set_errno_and_return_neg1_i32(LibcError("EMFILE"));
         };
 
         interp_ok(Scalar::from_i32(fd_value))
