@@ -1490,8 +1490,9 @@ impl<T, A: Allocator> Vec<T, A> {
 
     /// Shrinks the capacity of the vector as much as possible.
     ///
-    /// The behavior of this method depends on the allocator, which may either shrink the vector
-    /// in-place or reallocate. The resulting vector might still have some excess capacity, just as
+    /// When `vec.len() == vec.capacity()` the allocation is unchanged. Otherwise, the behavior of
+    /// this method depends on the allocator, which may either shrink the vector in-place or
+    /// reallocate. The resulting vector might still have some excess capacity, just as
     /// is the case for [`with_capacity`]. See [`Allocator::shrink`] for more details.
     ///
     /// [`with_capacity`]: Vec::with_capacity
@@ -1610,12 +1611,10 @@ impl<T, A: Allocator> Vec<T, A> {
         }
     }
 
-    /// Converts the vector into [`Box<[T]>`][owned slice].
+    /// Converts the vector into a boxed slice.
     ///
-    /// Before doing the conversion, this method discards excess capacity like [`shrink_to_fit`].
-    ///
-    /// [owned slice]: Box
-    /// [`shrink_to_fit`]: Vec::shrink_to_fit
+    /// This conversion is in-place if `vec.len() == vec.capacity()`. Otherwise excess capacity
+    /// is discarded by reallocating before doing the conversion.
     ///
     /// # Examples
     ///
@@ -4647,10 +4646,8 @@ impl<T, A: Allocator> From<Box<[T], A>> for Vec<T, A> {
 impl<T, A: Allocator> From<Vec<T, A>> for Box<[T], A> {
     /// Converts a vector into a boxed slice.
     ///
-    /// Before doing the conversion, this method discards excess capacity like [`Vec::shrink_to_fit`].
-    ///
-    /// [owned slice]: Box
-    /// [`Vec::shrink_to_fit`]: Vec::shrink_to_fit
+    /// This conversion is in-place if `vec.len() == vec.capacity()`. Otherwise, excess capacity
+    /// is discarded by reallocating before doing the conversion.
     ///
     /// # Examples
     ///
