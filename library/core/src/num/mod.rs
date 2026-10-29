@@ -46,6 +46,7 @@ mod uint_macros; // import uint_impl!
 mod bfloat;
 mod complex;
 mod error;
+pub(crate) mod float_macros;
 #[cfg(not(no_fp_fmt_parse))]
 mod float_parse;
 mod nonzero;
