@@ -1437,6 +1437,17 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Clone the enclosing [`TokenTree::Delimited`].
+    ///
+    /// Panics if outside delimiters.
+    ///
+    /// Temporary method, only to be used by the declarative macro parser.
+    //
+    // FIXME(@bal-e): Remove once macro parsing stops using it, or improve it.
+    pub fn clone_enclosing_delim(&self) -> TokenTree {
+        self.token_cursor.clone_enclosing_delim()
+    }
+
     pub fn parse_tokens(&mut self) -> TokenStream {
         let mut result = Vec::new();
         loop {
