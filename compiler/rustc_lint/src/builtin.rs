@@ -2345,7 +2345,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
             match &expr.kind {
                 Lit(lit) => {
                     if let Int(i, _) = lit.node {
-                        i == 0
+                        i.as_u128() == 0
                     } else {
                         false
                     }
@@ -2673,7 +2673,7 @@ impl<'tcx> LateLintPass<'tcx> for DerefNullPtr {
             match &expr.kind {
                 hir::ExprKind::Lit(lit) => {
                     if let LitKind::Int(a, _) = lit.node {
-                        return a == 0;
+                        return a.as_u128() == 0;
                     }
                 }
                 _ => {}

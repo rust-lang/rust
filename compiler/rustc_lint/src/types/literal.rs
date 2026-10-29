@@ -336,7 +336,7 @@ fn lint_uint_literal<'tcx>(
     let lit_val: u128 = match lit.node {
         // _v is u8, within range by definition
         ast::LitKind::Byte(_v) => return,
-        ast::LitKind::Int(v, _) => v.get(),
+        ast::LitKind::Int(v, _) => v.as_u128(),
         _ => bug!(),
     };
 
@@ -422,7 +422,7 @@ pub(crate) fn lint_literal<'tcx>(
         ty::Int(t) => {
             match lit.node {
                 ast::LitKind::Int(v, ast::LitIntType::Signed(_) | ast::LitIntType::Unsuffixed) => {
-                    lint_int_literal(cx, hir_id, span, lit, t, v.get(), surrounding_negation)
+                    lint_int_literal(cx, hir_id, span, lit, t, v.as_u128(), surrounding_negation)
                 }
                 _ => bug!(),
             };

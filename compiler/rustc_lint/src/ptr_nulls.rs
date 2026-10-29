@@ -124,7 +124,7 @@ fn is_null_ptr<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<Spa
     } else if let ExprKind::Lit(spanned) = expr.kind
         && let LitKind::Int(v, _) = spanned.node
     {
-        (v == 0).then_some(expr.span)
+        (v.as_u128() == 0).then_some(expr.span)
     } else {
         None
     }
@@ -233,7 +233,7 @@ impl<'tcx> LateLintPass<'tcx> for PtrNullChecks {
                     ExprKind::Cast(cast_expr, _)
                         if let ExprKind::Lit(spanned) = cast_expr.kind
                             && let LitKind::Int(v, _) = spanned.node
-                            && v == 0 =>
+                            && v.as_u128() == 0 =>
                     {
                         cx.emit_span_lint(USELESS_PTR_NULL_CHECKS, expr.span, diag)
                     }
