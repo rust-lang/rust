@@ -1,10 +1,6 @@
-//@ check-pass
-//@ known-bug: #163886
 //@ edition: 2024
 
-// This test shows that aliases can end up in the hidden type of an impl Trait,
-// and that we currently don't properly consider generics live that *should* be.
-// This affects both NLL and Polonius Alpha.
+// This test shows that aliases can end up in the hidden type of an impl Trait.
 
 #![forbid(unsafe_code)]
 
@@ -37,6 +33,7 @@ fn base() {
     {
         let v: Vec<u8> = vec![42];
         escaped = make(&v[0]);
+        //~^ ERROR `v` does not live long enough
     }
     let reused: Vec<u8> = vec![7];
     show(escaped, &reused);
@@ -66,12 +63,14 @@ mod item_bounds {
         {
             let v: Vec<u8> = vec![42];
             escaped = make(&v[0]);
+            //~^ ERROR `v` does not live long enough
         }
         let reused: Vec<u8> = vec![7];
         show(escaped, &reused);
     }
 }
 
+// Still unsound.
 mod lifetime_arg {
     use super::{Debug, show};
 
@@ -126,6 +125,7 @@ mod lifetime_arg {
         {
             let v: Vec<u8> = vec![42];
             escaped = trait_arg::make((), &v[0]);
+            //~^ ERROR `v` does not live long enough
         }
         let reused: Vec<u8> = vec![7];
         show(escaped, &reused);
@@ -136,6 +136,7 @@ mod lifetime_arg {
         {
             let v: Vec<u8> = vec![42];
             escaped = gat_arg::make((), &v[0]);
+            //~^ ERROR `v` does not live long enough
         }
         let reused: Vec<u8> = vec![7];
         show(escaped, &reused);
@@ -164,6 +165,7 @@ mod nested {
         {
             let v: Vec<u8> = vec![42];
             escaped = outer(&v[0]);
+            //~^ ERROR `v` does not live long enough
         }
         let reused: Vec<u8> = vec![7];
         show(escaped, &reused);
@@ -193,6 +195,7 @@ mod rpitit {
         {
             let v: Vec<u8> = vec![42];
             escaped = <() as Make>::make(&v[0]);
+            //~^ ERROR `v` does not live long enough
         }
         let reused: Vec<u8> = vec![7];
         show(escaped, &reused);
@@ -214,6 +217,100 @@ mod three_bounds {
         {
             let v: Vec<u8> = vec![42];
             escaped = make(&v[0]);
+            //~^ ERROR `v` does not live long enough
+        }
+        let reused: Vec<u8> = vec![7];
+        show(escaped, &reused);
+    }
+}
+
+// If we have a 'static bound for an associated type, in theory that should be
+// enough that the associated type can be used within an `impl Trait` without
+// the self type needing to be live. In practice, this precision is tricky,
+// because to do this correctly, we would essentially need to ask "is there any
+// projection from a given type parameter that can end up in the hidden type of
+// an opaque type?", which is *hard*.
+mod static_associated_type {
+    use super::{Debug, show};
+
+    trait Tr {
+        type Assoc: Debug;
+        fn get(self) -> Self::Assoc;
+    }
+    impl<'q> Tr for &'q u8 {
+        type Assoc = &'static str;
+        fn get(self) -> &'static str {
+            "hi"
+        }
+    }
+
+    fn make<'a, 'b, T: Tr>(t: T) -> impl Debug + 'a + 'b
+    where
+        T::Assoc: 'static,
+    {
+        t.get()
+    }
+
+    pub fn run() {
+        let escaped;
+        {
+            let v: Vec<u8> = vec![42];
+            escaped = make(&v[0]);
+            //~^ ERROR `v` does not live long enough
+        }
+        let reused: Vec<u8> = vec![7];
+        show(escaped, &reused);
+    }
+}
+
+// If the self type has only *some* lifetimes can can be in the associated type,
+// then in theory we don't need to keep the other lifetimes live.
+// In practice, this precision is tricky,
+mod one_lifetime {
+    use super::{Debug, Tr, make, show};
+
+    impl<'q, 'r> Tr for (&'q u8, &'r u8) {
+        type Assoc = &'q u8;
+        fn get(self) -> &'q u8 {
+            self.0
+        }
+    }
+
+    pub fn run() {
+        let keep: Vec<u8> = vec![1];
+        let escaped;
+        {
+            let v: Vec<u8> = vec![42];
+            escaped = make((&keep[0], &v[0]));
+            //~^ ERROR `v` does not live long enough
+        }
+        let reused: Vec<u8> = vec![7];
+        show(escaped, &reused);
+    }
+
+}
+
+// The function signature for the RPIT can in theory be used to provide implied
+// bounds as to the lifetimes that can be contained within an associated type.
+mod implied_bounds {
+    use std::marker::PhantomData;
+
+    use super::{Debug, Tr, show};
+
+    fn make<'a, 'b, T: Tr>(
+        t: T,
+        _s: PhantomData<&'a Option<T::Assoc>>,
+        _u: PhantomData<&'b Option<T::Assoc>>,
+    ) -> impl Debug + 'a + 'b {
+        t.get()
+    }
+
+    pub fn run() {
+        let escaped;
+        {
+            let v: Vec<u8> = vec![42];
+            escaped = make(&v[0], PhantomData, PhantomData);
+            //~^ ERROR `v` does not live long enough
         }
         let reused: Vec<u8> = vec![7];
         show(escaped, &reused);
@@ -228,4 +325,7 @@ fn main() {
     nested::run();
     rpitit::run();
     three_bounds::run();
+    static_associated_type::run();
+    one_lifetime::run();
+    implied_bounds::run();
 }

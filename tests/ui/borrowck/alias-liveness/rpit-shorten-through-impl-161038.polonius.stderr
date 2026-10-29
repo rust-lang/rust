@@ -1,0 +1,29 @@
+error[E0597]: `*x` does not live long enough
+  --> $DIR/rpit-shorten-through-impl-161038.rs:61:27
+   |
+LL |         let x: Box<Payload> = Box::new(Box::new(1));
+   |             - binding `x` declared here
+LL |         let r: &Payload = &*x;
+   |                           ^^^ borrowed value does not live long enough
+LL |         wrong = make_producer_alias(r).produce();
+LL |     }
+   |     - `*x` dropped here while still borrowed
+LL |     println!("{wrong}");
+   |                ----- borrow later used here
+
+error[E0597]: `*x` does not live long enough
+  --> $DIR/rpit-shorten-through-impl-161038.rs:71:27
+   |
+LL |         let x: Box<Payload> = Box::new(Box::new(1));
+   |             - binding `x` declared here
+LL |         let r: &Payload = &*x;
+   |                           ^^^ borrowed value does not live long enough
+LL |         wrong = make_producer_ref(r).produce();
+LL |     }
+   |     - `*x` dropped here while still borrowed
+LL |     println!("{wrong}");
+   |                ----- borrow later used here
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

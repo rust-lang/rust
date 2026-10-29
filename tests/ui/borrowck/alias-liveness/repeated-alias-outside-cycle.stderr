@@ -1,0 +1,39 @@
+error[E0505]: cannot move out of `s` because it is borrowed
+  --> $DIR/repeated-alias-outside-cycle.rs:16:10
+   |
+LL |     let s = String::from("hi");
+   |         - binding `s` declared here
+LL |     let pair = (mk::<T>(o), mk::<T>(&s));
+   |                                     -- borrow of `s` occurs here
+LL |     drop(s);
+   |          ^ move out of `s` occurs here
+LL |
+LL |     drop(pair);
+   |          ---- borrow later used here
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let pair = (mk::<T>(o), mk::<T>(&s.clone()));
+   |                                       ++++++++
+
+error[E0505]: cannot move out of `s` because it is borrowed
+  --> $DIR/repeated-alias-outside-cycle.rs:24:10
+   |
+LL |     let s = String::from("hi");
+   |         - binding `s` declared here
+LL |     let pair = (mk::<T>(&s), mk::<T>(o));
+   |                         -- borrow of `s` occurs here
+LL |     drop(s);
+   |          ^ move out of `s` occurs here
+LL |
+LL |     drop(pair);
+   |          ---- borrow later used here
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let pair = (mk::<T>(&s.clone()), mk::<T>(o));
+   |                           ++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0505`.
