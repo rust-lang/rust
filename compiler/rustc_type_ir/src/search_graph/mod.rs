@@ -21,6 +21,7 @@ use std::marker::PhantomData;
 use std::ops::Sub;
 
 use derive_where::derive_where;
+use rustc_index::IndexVec;
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, StableHash};
 use rustc_type_ir::data_structures::HashMap;
@@ -627,6 +628,9 @@ pub struct SearchGraph<D: Delegate<Cx = X>, X: Cx = <D as Delegate>::Cx> {
     /// global cache and track them locally instead. A provisional cache entry
     /// is only valid until the result of one of its cycle heads changes.
     provisional_cache: HashMap<X::Input, Vec<ProvisionalCacheEntry<X>>>,
+    /// For each stack depth, stores the inputs that have at least one provisional
+    /// cache entry whose highest head is that depth.
+    provisional_input_by_highest_head: IndexVec<StackDepth, Vec<X::Input>>,
 
     _marker: PhantomData<D>,
 }
@@ -652,6 +656,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             root_depth: AvailableDepth(root_depth),
             stack: Default::default(),
             provisional_cache: Default::default(),
+            provisional_input_by_highest_head: IndexVec::new(),
             _marker: PhantomData,
         }
     }
@@ -917,11 +922,13 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
                 nested_goals: _,
                 result,
             } = evaluation_result;
-            let path_from_head = Self::cycle_path_kind(
-                &self.stack,
-                step_kind_from_parent,
-                heads.highest_cycle_head_index(),
-            );
+            let highest_head_index = heads.highest_cycle_head_index();
+            self.provisional_input_by_highest_head
+                .ensure_contains_elem(highest_head_index, Vec::new)
+                .push(input);
+
+            let path_from_head =
+                Self::cycle_path_kind(&self.stack, step_kind_from_parent, highest_head_index);
             let provisional_cache_entry =
                 ProvisionalCacheEntry { encountered_overflow, heads, path_from_head, result };
             debug!(?provisional_cache_entry);
@@ -958,16 +965,24 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
     /// don't depend on its value.
     fn clear_dependent_provisional_results_for_rerun(&mut self) {
         let rerun_index = self.stack.next_index();
-        // Each cached entry is filtered independently based on whether it depends on
-        // `rerun_index`, so bucket traversal order does not matter.
-        #[allow(rustc::potential_query_instability)]
-        self.provisional_cache.retain(|_, entries| {
+        let Some(inputs) = self.provisional_input_by_highest_head.get(rerun_index) else {
+            return;
+        };
+
+        for input in inputs {
+            let Some(entries) = self.provisional_cache.get_mut(input) else {
+                continue;
+            };
+
             entries.retain(|entry| {
                 let (head_index, head) = entry.heads.highest_cycle_head();
                 head_index != rerun_index || head.usages.is_empty()
             });
-            !entries.is_empty()
-        });
+
+            if entries.is_empty() {
+                self.provisional_cache.remove(input);
+            }
+        }
     }
 }
 
@@ -1016,10 +1031,15 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
         rebase_reason: RebaseReason<X>,
     ) {
         let popped_head_index = self.stack.next_index();
-        // Rebasing decisions depend only on each provisional entry and the current stack state,
-        // so traversing the cache in hash order cannot change the final cache contents.
-        #[allow(rustc::potential_query_instability)]
-        self.provisional_cache.retain(|&input, entries| {
+        let cycle_path_kinds = self.stack.cycle_path_kinds(stack_entry.step_kind_from_parent);
+        let Some(list) = self.provisional_input_by_highest_head.get_mut(popped_head_index) else {
+            return;
+        };
+        let inputs = std::mem::take(list);
+        for input in inputs {
+            let Some(entries) = self.provisional_cache.get_mut(&input) else {
+                continue;
+            };
             entries.retain_mut(|entry| {
                 let ProvisionalCacheEntry {
                     encountered_overflow: _,
@@ -1059,11 +1079,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
                     let ep = popped_head.paths_to_head;
                     for (head_index, head) in stack_entry.heads.iter() {
                         let ph = head.paths_to_head;
-                        let hp = Self::cycle_path_kind(
-                            &self.stack,
-                            stack_entry.step_kind_from_parent,
-                            head_index,
-                        );
+                        let hp = cycle_path_kinds[head_index];
                         // We first validate that all cycles while computing `p` would stay
                         // the same if we were to recompute it as a nested goal of `e`.
                         let he = hp.extend(*path_from_head);
@@ -1114,21 +1130,21 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
                 let Some(new_highest_head_index) = heads.opt_highest_cycle_head_index() else {
                     return false;
                 };
-
+                self.provisional_input_by_highest_head
+                    .ensure_contains_elem(new_highest_head_index, Vec::new)
+                    .push(input);
                 // We now care about the path from the next highest cycle head to the
                 // provisional cache entry.
-                *path_from_head = path_from_head.extend(Self::cycle_path_kind(
-                    &self.stack,
-                    stack_entry.step_kind_from_parent,
-                    new_highest_head_index,
-                ));
+                *path_from_head = path_from_head.extend(cycle_path_kinds[new_highest_head_index]);
 
                 trace!(?input, ?entry, "rebased provisional cache entry");
 
                 true
             });
-            !entries.is_empty()
-        });
+            if entries.is_empty() {
+                self.provisional_cache.remove(&input);
+            }
+        }
     }
 
     fn lookup_provisional_cache(
@@ -1205,6 +1221,12 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
             return false;
         }
 
+        if self.provisional_cache.is_empty() {
+            return true;
+        }
+
+        let mut cycle_path_kinds = None;
+
         // The global cache entry is also invalid if there's a provisional cache entry
         // would apply for any of its nested goals.
         // Any matching provisional entry rejects the candidate,
@@ -1237,8 +1259,9 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
                 // We check if any of the paths taken while computing the global goal
                 // would end up with an applicable provisional cache entry.
                 let head_index = heads.highest_cycle_head_index();
-                let head_to_curr =
-                    Self::cycle_path_kind(&self.stack, step_kind_from_parent, head_index);
+                let head_to_curr = cycle_path_kinds
+                    .get_or_insert_with(|| self.stack.cycle_path_kinds(step_kind_from_parent))
+                    [head_index];
                 let full_paths = path_from_global_entry.extend_with(head_to_curr);
                 if full_paths.contains(head_to_provisional.into()) {
                     debug!(
