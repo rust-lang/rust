@@ -1,0 +1,18 @@
+error[E0700]: hidden type for `impl Sized` captures lifetime that does not appear in bounds
+  --> $DIR/e0700-overlapping-opaque-return-span.rs:9:5
+   |
+LL | fn overlapping_opaque_return_span(x: &i32) -> impl Sized + use<> {
+   |                                      ----     ------------------ opaque type defined here
+   |                                      |
+   |                                      hidden type `&i32` captures the anonymous lifetime defined here
+LL |     x
+   |     ^
+   |
+help: add `'_` to the `use<...>` bound to explicitly capture it
+   |
+LL | fn overlapping_opaque_return_span(x: &i32) -> impl Sized + use<'_> {
+   |                                                                ++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0700`.
