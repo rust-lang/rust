@@ -19,6 +19,11 @@ runners:
     os: macos-15 # macOS 15 Arm64
     <<: *base-job
 
+  - &job-macos-26
+    os: macos-26 # macOS 26 Arm64
+    free_disk: true # See https://github.com/rust-lang/infra-team/issues/307
+    <<: *base-job
+
   - &job-windows
     os: windows-2025
     <<: *base-job
