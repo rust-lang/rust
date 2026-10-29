@@ -1,3 +1,12 @@
+error[E0658]: use of unstable library feature `comptime`: `comptime` has open design concerns
+ --> $DIR/rustc_comptime.rs:6:3
+  |
+6 | #[comptime]
+  |   ^^^^^^^^
+  |
+  = note: see issue #146922 <https://github.com/rust-lang/rust/issues/146922> for more information
+  = help: add `#![feature(comptime)]` to the crate attributes to enable
+
 error: comptime functions can only be called at compile time
   --> $DIR/rustc_comptime.rs:10:5
    |
@@ -20,5 +29,6 @@ help: wrap the call in a const block to force compile time evaluation
 18 |     const { comptime() };
    |     +++++++            +
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
+For more information about this error, try `rustc --explain E0658`.

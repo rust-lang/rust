@@ -2,7 +2,7 @@
 
 use rustc_abi::ExternAbi;
 use rustc_errors::codes::*;
-use rustc_errors::{Applicability, Diag, Subdiagnostic};
+use rustc_errors::{Diag, Subdiagnostic};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Ident, Span, Symbol};
 
@@ -28,15 +28,6 @@ pub(crate) enum VisibilityNotPermittedNote {
     #[note("place qualifiers on individual foreign items instead")]
     IndividualForeignItems,
 }
-#[derive(Diagnostic)]
-#[diag("redundant `const` fn marker in const impl")]
-pub(crate) struct ImplFnConst {
-    #[primary_span]
-    #[suggestion("remove the `const`", code = "", applicability = "machine-applicable")]
-    pub span: Span,
-    #[label("this declares all associated functions implicitly const")]
-    pub parent_constness: Span,
-}
 
 #[derive(Diagnostic)]
 #[diag("`feature(generic_const_exprs)` is not supported with the next-generation trait solver")]
@@ -57,46 +48,6 @@ pub(crate) struct NextSolverDisabledForGenericConstExprs {
 #[note("the currently stable trait solver will be used for this crate")]
 #[note("see issues #160895 <https://github.com/rust-lang/rust/issues/160895> for more information")]
 pub(crate) struct NextSolverDisabledForHigherRankedAssumptions;
-
-#[derive(Diagnostic)]
-#[diag("functions in {$in_impl ->
-        [true] trait impls
-        *[false] traits
-    } cannot be declared const", code = E0379)]
-pub(crate) struct TraitFnConst {
-    #[primary_span]
-    #[label(
-        "functions in {$in_impl ->
-            [true] trait impls
-            *[false] traits
-        } cannot be const"
-    )]
-    pub span: Span,
-    pub in_impl: bool,
-    #[label("this declares all associated functions implicitly const")]
-    pub const_context_label: Option<Span>,
-    #[suggestion(
-        "remove the `const`{$requires_multiple_changes ->
-            [true] {\" ...\"}
-            *[false] {\"\"}
-        }",
-        code = ""
-    )]
-    pub remove_const_sugg: (Span, Applicability),
-    pub requires_multiple_changes: bool,
-    #[suggestion(
-        "... and declare the impl to be const instead",
-        code = "const ",
-        applicability = "maybe-incorrect"
-    )]
-    pub make_impl_const_sugg: Option<Span>,
-    #[suggestion(
-        "... and declare the trait to be const instead",
-        code = "const ",
-        applicability = "maybe-incorrect"
-    )]
-    pub make_trait_const_sugg: Option<Span>,
-}
 
 #[derive(Diagnostic)]
 #[diag(

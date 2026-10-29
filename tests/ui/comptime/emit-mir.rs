@@ -1,8 +1,8 @@
 //@ check-pass
 //@ compile-flags: --emit=mir
-#![feature(rustc_attrs)]
+#![feature(comptime)]
 
-#[rustc_comptime]
+#[comptime]
 fn comptime_fn() {}
 
 fn main() {}

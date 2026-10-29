@@ -18,7 +18,7 @@ error: cannot use `const` closures outside of const contexts
   --> $DIR/const-closure-in-non-const-trait-impl-method.rs:13:9
    |
 LL |         const move || {}
-   |         ^^^^^^^^^^^^^
+   |         ^^^^^
 
 error: aborting due to 2 previous errors
 
