@@ -1,0 +1,36 @@
+error[E0599]: no method named `show` found for struct `W<impl Sized>` in the current scope
+  --> $DIR/reveal-hidden-via-match-at-binding-wrapped-wonly.rs:24:24
+   |
+LL | struct W<T>(T);
+   | ----------- method `show` not found for this struct
+...
+LL |         x @ W(()) => x.show(),
+   |                        ^^^^ method not found in `W<impl Sized>`
+   |
+   = note: the method was found for
+           - `W<()>`
+
+error[E0391]: cycle detected when computing type of opaque `test::{opaque#0}`
+  --> $DIR/reveal-hidden-via-match-at-binding-wrapped-wonly.rs:21:21
+   |
+LL | fn test(n: bool) -> impl Sized {
+   |                     ^^^^^^^^^^
+   |
+note: ...which requires type-checking `test`...
+  --> $DIR/reveal-hidden-via-match-at-binding-wrapped-wonly.rs:24:22
+   |
+LL |         x @ W(()) => x.show(),
+   |                      ^
+   = note: ...which requires evaluating trait selection obligation `W<test::{opaque#0}>: core::marker::Unpin`...
+   = note: ...which again requires computing type of opaque `test::{opaque#0}`, completing the cycle
+note: cycle used when computing type of `test::{opaque#0}`
+  --> $DIR/reveal-hidden-via-match-at-binding-wrapped-wonly.rs:21:21
+   |
+LL | fn test(n: bool) -> impl Sized {
+   |                     ^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0391, E0599.
+For more information about an error, try `rustc --explain E0391`.
