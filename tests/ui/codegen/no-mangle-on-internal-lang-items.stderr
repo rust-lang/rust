@@ -1,10 +1,10 @@
-error: `#[no_mangle]` cannot be used on internal language items
+error: `#[no_mangle]` and `#[export_name]` cannot be used on internal language items
   --> $DIR/no-mangle-on-internal-lang-items.rs:7:1
    |
 LL | #[unsafe(no_mangle)]
    | ^^^^^^^^^^^^^^^^^^^^
-LL | fn internal_lang_function () {
-   | ---------------------------- should be the internal language item
+LL | fn internal_lang_function() {}
+   | --------------------------- should be the internal language item
    |
    = note: Rustc requires this item to have a specific mangled name.
 
