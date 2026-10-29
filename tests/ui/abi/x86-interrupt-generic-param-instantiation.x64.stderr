@@ -1,0 +1,77 @@
+error: invalid signature for `extern "x86-interrupt"` function
+  --> $DIR/x86-interrupt-generic-param-instantiation.rs:29:41
+   |
+LL | extern "x86-interrupt" fn handler<F>(_: F) {}
+   |                                         ^
+   |
+   = note: invalid x86-interrupt parameter type: `()`
+   = note: functions with the "x86-interrupt" ABI must not use zero-sized types in their signature
+
+note: the above error was encountered while instantiating `fn handler::<()>`
+  --> $DIR/x86-interrupt-generic-param-instantiation.rs:50:63
+   |
+LL |     let test_zst_frame_fails: extern "x86-interrupt" fn(()) = handler::<()>;
+   |                                                               ^^^^^^^^^^^^^
+
+error: invalid signature for `extern "x86-interrupt"` function
+  --> $DIR/x86-interrupt-generic-param-instantiation.rs:36:53
+   |
+LL | extern "x86-interrupt" fn handler_ec<F, E>(_: F, _: E) {}
+   |                                                     ^
+   |
+   = note: invalid x86-interrupt parameter type: `()`
+   = note: functions with the "x86-interrupt" ABI must not use zero-sized types in their signature
+
+note: the above error was encountered while instantiating `fn handler_ec::<Frame, ()>`
+  --> $DIR/x86-interrupt-generic-param-instantiation.rs:52:69
+   |
+LL |     let test_zst_code_fails: extern "x86-interrupt" fn(Frame, ()) = handler_ec::<Frame, ()>;
+   |                                                                     ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: invalid signature for `extern "x86-interrupt"` function
+  --> $DIR/x86-interrupt-generic-param-instantiation.rs:29:41
+   |
+LL | extern "x86-interrupt" fn handler<F>(_: F) {}
+   |                                         ^
+   |
+   = note: invalid x86-interrupt frame parameter type: `bool`
+   = note: functions with the "x86-interrupt" ABI must have a non-pointer frame parameter that is valid for any bit pattern
+
+note: the above error was encountered while instantiating `fn handler::<bool>`
+  --> $DIR/x86-interrupt-generic-param-instantiation.rs:54:67
+   |
+LL |     let test_niche_frame_fails: extern "x86-interrupt" fn(bool) = handler::<bool>;
+   |                                                                   ^^^^^^^^^^^^^^^
+
+error: invalid signature for `extern "x86-interrupt"` function
+  --> $DIR/x86-interrupt-generic-param-instantiation.rs:36:53
+   |
+LL | extern "x86-interrupt" fn handler_ec<F, E>(_: F, _: E) {}
+   |                                                     ^
+   |
+   = note: invalid x86-interrupt error code parameter type: `bool`
+   = note: functions with the "x86-interrupt" ABI must have a machine-word sized integer error code parameter that is valid for any bit pattern
+
+note: the above error was encountered while instantiating `fn handler_ec::<Frame, bool>`
+  --> $DIR/x86-interrupt-generic-param-instantiation.rs:56:73
+   |
+LL |     let test_niche_code_fails: extern "x86-interrupt" fn(Frame, bool) = handler_ec::<Frame, bool>;
+   |                                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: invalid signature for `extern "x86-interrupt"` function
+  --> $DIR/x86-interrupt-generic-param-instantiation.rs:36:53
+   |
+LL | extern "x86-interrupt" fn handler_ec<F, E>(_: F, _: E) {}
+   |                                                     ^
+   |
+   = note: invalid x86-interrupt error code parameter type: `u8`
+   = note: functions with the "x86-interrupt" ABI must have a machine-word sized integer error code parameter that is valid for any bit pattern
+
+note: the above error was encountered while instantiating `fn handler_ec::<Frame, u8>`
+  --> $DIR/x86-interrupt-generic-param-instantiation.rs:58:73
+   |
+LL |     let test_invalid_code_fails: extern "x86-interrupt" fn(Frame, u8) = handler_ec::<Frame, u8>;
+   |                                                                         ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+
