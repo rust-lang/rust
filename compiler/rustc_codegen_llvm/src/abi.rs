@@ -597,17 +597,15 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                             && let elem_size = cx.layout_of(element_ty).size
                             && elem_size != rustc_abi::Size::ZERO
                         {
-                            // Ideally the layout calculations would have set the range,
-                            // but that's complicated due to cycles, so in the mean time
-                            // we calculate and apply it here.
-                            debug_assert!(scalar_b.is_always_valid(cx));
+                            // Ideally the layout calculations would have set the correct range,
+                            // but that's only approximated to get niches due to cycles,
+                            // so in the mean time we calculate it accurately and apply it here.
                             let isize_max = int.signed_max() as u64;
+                            let end = u128::from(isize_max / elem_size.bytes());
+                            debug_assert!(end <= scalar_b.valid_range(cx).end);
                             rustc_abi::Scalar::Initialized {
                                 value: primitive_b,
-                                valid_range: rustc_abi::WrappingRange {
-                                    start: 0,
-                                    end: u128::from(isize_max / elem_size.bytes()),
-                                },
+                                valid_range: rustc_abi::WrappingRange { start: 0, end },
                             }
                         } else {
                             scalar_b

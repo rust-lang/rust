@@ -6,6 +6,11 @@
 #![feature(pointer_is_aligned_to)]
 #![feature(rustc_attrs)]
 
+
+//! Tests type sizes, niches and field orderings.
+//! Many asserts in this file are desirable optimizations, but not guaranteed or optimal.
+
+
 use std::mem::size_of;
 use std::num::NonZero;
 use std::ptr;
@@ -237,6 +242,12 @@ struct VecDummy {
     len: usize,
 }
 
+
+struct DynTail {
+    a: usize,
+    b: [u8]
+}
+
 pub fn main() {
     assert_eq!(size_of::<u8>(), 1 as usize);
     assert_eq!(size_of::<u32>(), 4 as usize);
@@ -321,6 +332,13 @@ pub fn main() {
     assert_eq!(size_of::<EnumManyVariant<Option<NicheU16>>>(), 4);
     assert_eq!(size_of::<EnumManyVariant<Option2<NicheU16,u8>>>(), 6);
     assert_eq!(size_of::<EnumManyVariant<Option<(NicheU16,u8)>>>(), 6);
+
+    assert_eq!(size_of::<Option<&[()]>>>(), size_of::<&[()]>());
+    assert!(size_of::<Option<Option<&[()]>>>() > size_of::<&[()]>(),
+        "only null pointer niche available");
+    assert_eq!(size_of::<Option<Option<&'static str>>>(), size_of::<&'static str>(),
+        "length niches available");
+    assert_eq!(size_of::<Option<Option<&'static DynTail>>>(), size_of::<&'static DynTail>());
 
 
     let v = Reorder4 {a: 0, b: 0, ary: [0; 4]};
