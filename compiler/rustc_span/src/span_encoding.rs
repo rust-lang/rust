@@ -75,6 +75,10 @@ use crate::{BytePos, SPAN_TRACK, SpanData};
 ///   interner table, which we achieve by using `SpanDataNoCtxt`, which
 ///   minimizes the number of unique values that need to be interned.
 ///
+/// - The interned format is typically used for < 1% of all spans in
+///   incremental builds and < 0.1% of all spans in non-incremental builds.
+///   The difference is because only incremental builds use the parent field.
+///
 /// - The use of `repr(packed(4))` means `Span` has an alignment of 4 bytes,
 ///   which keeps many types that contain spans (e.g. AST nodes) smaller.
 ///   `repr(packed(1))` isn't worth it; it only shrinks a few types and
@@ -330,8 +334,13 @@ impl Interned {
 
     #[inline]
     fn data(self) -> SpanData {
-        let SpanDataNoCtxt { lo, hi, parent } =
-            with_span_interner(|interner| interner.spans[self.index as usize]);
+        #[cold]
+        #[inline(never)]
+        fn interned(index: u32) -> SpanDataNoCtxt {
+            with_span_interner(|interner| interner.spans[index as usize])
+        }
+
+        let SpanDataNoCtxt { lo, hi, parent } = interned(self.index);
         SpanData { lo, hi, ctxt: SyntaxContext::from_u32(self.ctxt), parent }
     }
 
@@ -474,10 +483,7 @@ impl Span {
             InlineCtxt(span) => span.lo == 0 && span.len == 0,
             InlineParent(span) => span.lo == 0 && span.len == 0,
             InlinePair(span) => span.lo == 0 && span.len == 0,
-            Interned(span) => {
-                let data = with_span_interner(|interner| interner.spans[span.index as usize]);
-                data.lo == BytePos(0) && data.hi == BytePos(0)
-            },
+            Interned(span) => span.data().is_dummy(),
         }
     }
 
@@ -555,9 +561,7 @@ impl Span {
             InlineCtxt(_span) => None,
             InlineParent(span) => to_parent(span.parent),
             InlinePair(span) => to_parent(span.parent),
-            Interned(span) => {
-                with_span_interner(|interner| interner.spans[span.index as usize].parent)
-            },
+            Interned(span) => span.data().parent,
         }
     }
 
