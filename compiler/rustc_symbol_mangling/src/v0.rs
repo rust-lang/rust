@@ -171,7 +171,7 @@ pub fn mangle_internal_symbol<'tcx>(tcx: TyCtxt<'tcx>, item_name: &str) -> Strin
     p.path_append_ns(
         |p| {
             p.push("C");
-            p.push_disambiguator({
+            p.push_disambiguator_fixed_len({
                 let mut hasher = StableHasher::new();
                 // Incorporate the rustc version to ensure #[rustc_std_internal_symbol] functions
                 // get a different symbol name depending on the rustc version.
@@ -180,8 +180,7 @@ pub fn mangle_internal_symbol<'tcx>(tcx: TyCtxt<'tcx>, item_name: &str) -> Strin
                 // abi incompatibility with the standard library.
                 hasher.write(tcx.sess.cfg_version.as_bytes());
 
-                let hash: Hash64 = hasher.finish();
-                hash.as_u64()
+                hasher.finish()
             });
             p.push_ident("__rustc");
             Ok(())
@@ -269,6 +268,21 @@ impl<'tcx> V0SymbolMangler<'tcx> {
 
     fn push_disambiguator(&mut self, dis: u64) {
         self.push_opt_integer_62("s", dis);
+    }
+
+    /// Use instead of push_disambiguator when the disambiguator is a hash. The value of the hash
+    /// will be converted to a fixed-length base 62 integer, which ensures that the length of
+    /// mangled names is not occasionally shorter due to the hash value. This fixed-length encoding
+    /// prevents binary sizes from fluctuating between builds of the compiler.
+    fn push_disambiguator_fixed_len(&mut self, dis: Hash64) {
+        let x = dis.as_u64();
+        if let Some(x) = x.checked_sub(1) {
+            self.push("s");
+            if let Some(x) = x.checked_sub(1) {
+                self.out.push_str(&x.to_base_fixed_len(62));
+            }
+            self.out.push('_');
+        }
     }
 
     fn push_ident(&mut self, ident: &str) {
@@ -933,7 +947,7 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
         self.push("C");
         if !self.is_exportable {
             let stable_crate_id = self.tcx.stable_crate_id(cnum);
-            self.push_disambiguator(stable_crate_id.as_u64());
+            self.push_disambiguator_fixed_len(stable_crate_id.as_hash());
         }
         let name = self.tcx.crate_name(cnum);
         self.push_ident(name.as_str());
