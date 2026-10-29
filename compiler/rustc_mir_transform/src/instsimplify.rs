@@ -7,7 +7,7 @@ use rustc_index::IndexVec;
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::{IntegerExt, ValidityRequirement};
-use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, layout};
+use rustc_middle::ty::{self, GenericArgs, Ty, TyCtxt, layout};
 use rustc_span::{Symbol, bug, sym};
 
 use crate::PassPolicy;
@@ -303,7 +303,7 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
             let const_op = Operand::unevaluated_constant(
                 self.tcx,
                 const_def_id,
-                &[ty.into()],
+                self.tcx.mk_args(&[ty.into()]),
                 source_info.span,
             );
             statements.push(Statement::new(
@@ -407,7 +407,7 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
             return;
         };
         // The intrinsics we are interested in have one generic parameter
-        let [arg, ..] = args[..] else { return };
+        let [arg, ..] = *args.as_slice() else { return };
 
         let known_is_valid =
             intrinsic_assert_panics(self.tcx, self.typing_env, arg, intrinsic_name);
@@ -440,7 +440,7 @@ fn intrinsic_assert_panics<'tcx>(
 fn resolve_rust_intrinsic<'tcx>(
     tcx: TyCtxt<'tcx>,
     func_ty: Ty<'tcx>,
-) -> Option<(Symbol, GenericArgsRef<'tcx>)> {
+) -> Option<(Symbol, GenericArgs<'tcx>)> {
     let ty::FnDef(def_id, args) = *func_ty.kind() else { return None };
     let intrinsic = tcx.intrinsic(def_id)?;
     Some((intrinsic.name, args.no_bound_vars().unwrap()))

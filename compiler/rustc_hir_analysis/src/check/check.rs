@@ -263,7 +263,7 @@ fn check_opaque_for_cycles<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
 ) -> Result<(), ErrorGuaranteed> {
-    let args = GenericArgs::identity_for_item(tcx, def_id);
+    let args = ty::GenericArgs::identity_for_item(tcx, def_id);
 
     // First, try to look at any opaque expansion cycles, considering coroutine fields
     // (even though these aren't necessarily true errors).
@@ -321,7 +321,7 @@ fn check_opaque_meets_bounds<'tcx>(
     let args = match origin {
         hir::OpaqueTyOrigin::FnReturn { parent, .. }
         | hir::OpaqueTyOrigin::AsyncFn { parent, .. }
-        | hir::OpaqueTyOrigin::TyAlias { parent, .. } => GenericArgs::identity_for_item(
+        | hir::OpaqueTyOrigin::TyAlias { parent, .. } => ty::GenericArgs::identity_for_item(
             tcx, parent,
         )
         .extend_to(tcx, def_id.to_def_id(), |param, _| {
@@ -732,7 +732,7 @@ fn check_opaque_precise_captures<'tcx>(tcx: TyCtxt<'tcx>, opaque_def_id: LocalDe
 fn is_enum_of_nonnullable_ptr<'tcx>(
     tcx: TyCtxt<'tcx>,
     adt_def: AdtDef<'tcx>,
-    args: GenericArgsRef<'tcx>,
+    args: ty::GenericArgs<'tcx>,
 ) -> bool {
     if adt_def.repr().inhibit_enum_layout_opt() {
         return false;
@@ -873,7 +873,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             for &assoc_item in assoc_items.in_definition_order() {
                 match assoc_item.kind {
                     ty::AssocKind::Type { .. } if assoc_item.defaultness(tcx).has_value() => {
-                        let trait_args = GenericArgs::identity_for_item(tcx, def_id);
+                        let trait_args = ty::GenericArgs::identity_for_item(tcx, def_id);
                         let _: Result<_, rustc_errors::ErrorGuaranteed> = check_type_bounds(
                             tcx,
                             assoc_item,
@@ -1491,7 +1491,7 @@ fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
         }
 
         let array_field = &fields[FieldIdx::ZERO];
-        let array_ty = array_field.ty(tcx, args).skip_norm_wip();
+        let array_ty = array_field.ty(tcx, *args).skip_norm_wip();
         let ty::Array(element_ty, len_const) = array_ty.kind() else {
             struct_span_code_err!(
                 tcx.dcx(),
@@ -1598,7 +1598,7 @@ fn check_scalable_vector(tcx: TyCtxt<'_>, span: Span, def_id: LocalDefId, scalab
 
     match scalable {
         ScalableElt::ElementCount(..) => {
-            let element_ty = &fields[FieldIdx::ZERO].ty(tcx, args).skip_norm_wip();
+            let element_ty = &fields[FieldIdx::ZERO].ty(tcx, *args).skip_norm_wip();
 
             // Check that `element_ty` only uses types valid in the lanes of a scalable vector
             // register: scalar types which directly match a "machine" type - integers, floats and
@@ -1620,7 +1620,7 @@ fn check_scalable_vector(tcx: TyCtxt<'_>, span: Span, def_id: LocalDefId, scalab
         ScalableElt::Container => {
             let mut prev_field_ty = None;
             for field in fields.iter() {
-                let element_ty = field.ty(tcx, args).skip_norm_wip();
+                let element_ty = field.ty(tcx, *args).skip_norm_wip();
                 if let ty::Adt(def, _) = element_ty.kind()
                     && def.repr().scalable()
                 {
@@ -1761,7 +1761,7 @@ fn check_packed_inner(
 
             stack.push(def_id);
             for field in &def.non_enum_variant().fields {
-                if let ty::Adt(def, _) = field.ty(tcx, args).skip_norm_wip().kind()
+                if let ty::Adt(def, _) = field.ty(tcx, *args).skip_norm_wip().kind()
                     && !stack.contains(&def.did())
                     && let Some(mut defs) = check_packed_inner(tcx, def.did(), stack)
                 {
@@ -1850,7 +1850,7 @@ fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) {
                     return ControlFlow::Break(NonTrivialReason::ReprC { ty });
                 }
                 def.all_fields()
-                    .map(|field| field.ty(tcx, args).skip_norm_wip())
+                    .map(|field| field.ty(tcx, *args).skip_norm_wip())
                     .try_for_each(|t| is_trivial(tcx, typing_env, t))
             }
             _ => ControlFlow::Continue(()),
@@ -1861,7 +1861,8 @@ fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) {
         .fields
         .iter()
         .filter_map(|field| {
-            let ty = field.ty(tcx, GenericArgs::identity_for_item(tcx, field.did)).skip_norm_wip();
+            let ty =
+                field.ty(tcx, ty::GenericArgs::identity_for_item(tcx, field.did)).skip_norm_wip();
             let layout = tcx.layout_of(typing_env.as_query_input(ty));
             // We are currently checking the type this field came from, so it must be local
             let span = tcx.hir_span_if_local(field.did).unwrap();
