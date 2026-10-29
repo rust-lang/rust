@@ -1217,32 +1217,15 @@ enum class LLVMRustDiagnosticLevel {
   Remark,
 };
 
-extern "C" void LLVMRustUnpackInlineAsmDiagnostic(
-    LLVMDiagnosticInfoRef DI, LLVMRustDiagnosticLevel *LevelOut,
-    uint64_t *CookieOut, const Twine **MessageOut) {
+extern "C" void LLVMRustUnpackInlineAsmDiagnostic(LLVMDiagnosticInfoRef DI,
+                                                  uint64_t *CookieOut,
+                                                  const Twine **MessageOut) {
   // Undefined to call this not on an inline assembly diagnostic!
   llvm::DiagnosticInfoInlineAsm *IA =
       static_cast<llvm::DiagnosticInfoInlineAsm *>(unwrap(DI));
 
   *CookieOut = IA->getLocCookie();
   *MessageOut = &IA->getMsgStr();
-
-  switch (IA->getSeverity()) {
-  case DS_Error:
-    *LevelOut = LLVMRustDiagnosticLevel::Error;
-    break;
-  case DS_Warning:
-    *LevelOut = LLVMRustDiagnosticLevel::Warning;
-    break;
-  case DS_Note:
-    *LevelOut = LLVMRustDiagnosticLevel::Note;
-    break;
-  case DS_Remark:
-    *LevelOut = LLVMRustDiagnosticLevel::Remark;
-    break;
-  default:
-    report_fatal_error("Invalid LLVMRustDiagnosticLevel value!");
-  }
 }
 
 extern "C" void LLVMRustWriteDiagnosticInfoToString(LLVMDiagnosticInfoRef DI,
@@ -1324,29 +1307,11 @@ extern "C" const SMDiagnostic *LLVMRustGetSMDiagnostic(LLVMDiagnosticInfoRef DI,
 
 extern "C" bool
 LLVMRustUnpackSMDiagnostic(const SMDiagnostic *DRef, RustStringRef MessageOut,
-                           RustStringRef BufferOut,
-                           LLVMRustDiagnosticLevel *LevelOut, unsigned *LocOut,
+                           RustStringRef BufferOut, unsigned *LocOut,
                            unsigned *RangesOut, size_t *NumRanges) {
   const SMDiagnostic &D = *DRef;
   auto MessageOS = RawRustStringOstream(MessageOut);
   MessageOS << D.getMessage();
-
-  switch (D.getKind()) {
-  case SourceMgr::DK_Error:
-    *LevelOut = LLVMRustDiagnosticLevel::Error;
-    break;
-  case SourceMgr::DK_Warning:
-    *LevelOut = LLVMRustDiagnosticLevel::Warning;
-    break;
-  case SourceMgr::DK_Note:
-    *LevelOut = LLVMRustDiagnosticLevel::Note;
-    break;
-  case SourceMgr::DK_Remark:
-    *LevelOut = LLVMRustDiagnosticLevel::Remark;
-    break;
-  default:
-    report_fatal_error("Invalid LLVMRustDiagnosticLevel value!");
-  }
 
   if (D.getLoc() == SMLoc())
     return false;
