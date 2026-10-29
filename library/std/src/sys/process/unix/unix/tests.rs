@@ -1,3 +1,5 @@
+#![cfg(not(skip_missing_miri_shims))] // disable tests Miri does not support
+
 use crate::os::unix::process::{CommandExt, ExitStatusExt};
 use crate::panic::catch_unwind;
 use crate::process::Command;

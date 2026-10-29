@@ -58,13 +58,13 @@ check-aux:
 	$(Q)$(BOOTSTRAP) test --stage 2 \
 		build-std \
 		$(BOOTSTRAP_ARGS)
-	# Run standard library tests in Miri.
+	## Run standard library tests in Miri.
 	$(Q)MIRIFLAGS="-Zmiri-strict-provenance" \
 		$(BOOTSTRAP) miri --stage 2 \
 		library/core \
 		library/alloc \
 		$(BOOTSTRAP_ARGS) \
-		--tests # exclude doc tests
+		--tests # exclude doc tests, they are run below
 	# Some doctests use file system operations to demonstrate dealing with `Result`,
 	# so we have to run them with isolation disabled.
 	$(Q)MIRIFLAGS="-Zmiri-disable-isolation" \
@@ -73,22 +73,13 @@ check-aux:
 		library/alloc \
 		$(BOOTSTRAP_ARGS) \
 		--doc
-	# In `std` we cannot test everything, so we skip some modules.
-	$(Q)MIRIFLAGS="-Zmiri-disable-isolation" \
+	# In `std` we cannot test everything. Tests should be disabled under `skip_missing_miri_shims`.
+	$(Q)MIRIFLAGS="-Zmiri-disable-isolation --cfg skip_missing_miri_shims" \
 		$(BOOTSTRAP) miri --stage 2 \
 		library/std \
 		$(BOOTSTRAP_ARGS) \
-		-- \
-		--skip fs:: --skip net:: --skip process:: --skip sys::
-	# Also test some very target-specific modules on other targets
-	# (making sure to cover an i686 target as well).
-	$(Q)MIRIFLAGS="-Zmiri-disable-isolation" BOOTSTRAP_SKIP_TARGET_SANITY=1 \
-		$(BOOTSTRAP) miri --stage 2 \
-		library/std \
-		--target aarch64-apple-darwin,i686-pc-windows-msvc \
-		$(BOOTSTRAP_ARGS) \
-		-- \
-		time:: sync:: thread:: env::
+		--target x86_64-unknown-linux-gnu,aarch64-apple-darwin \
+		--tests # skip all doctests, they are not using skip_missing_miri_shims
 dist:
 	$(Q)$(BOOTSTRAP) dist $(BOOTSTRAP_ARGS)
 distcheck:

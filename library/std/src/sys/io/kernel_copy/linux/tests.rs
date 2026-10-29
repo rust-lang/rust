@@ -1,3 +1,5 @@
+#![cfg(not(skip_missing_miri_shims))] // disable tests Miri does not support
+
 use crate::fs::OpenOptions;
 use crate::io;
 use crate::io::{BufRead, Read, Result, Seek, SeekFrom, Write};

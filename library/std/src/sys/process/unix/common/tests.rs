@@ -1,3 +1,5 @@
+#![cfg(not(skip_missing_miri_shims))] // disable tests Miri does not support
+
 use super::*;
 use crate::ffi::OsStr;
 use crate::sys::{cvt, cvt_nz};
