@@ -833,22 +833,26 @@ pub(crate) struct CannotBeReexportedCratePublic {
 
 #[derive(Diagnostic)]
 #[diag("`{$ident}` is private, and cannot be re-exported", code = E0365)]
-#[note("consider declaring type or module `{$ident}` with `pub`")]
 pub(crate) struct CannotBeReexportedPrivateNS {
     #[primary_span]
     #[label("re-export of private `{$ident}`")]
     pub(crate) span: Span,
     pub(crate) ident: Ident,
+    #[note("consider declaring {$descr} `{$ident}` with `pub`")]
+    pub(crate) parent: Span,
+    pub(crate) descr: &'static str,
 }
 
 #[derive(Diagnostic)]
 #[diag("`{$ident}` is only public within the crate, and cannot be re-exported outside", code = E0365)]
-#[note("consider declaring type or module `{$ident}` with `pub`")]
 pub(crate) struct CannotBeReexportedCratePublicNS {
     #[primary_span]
     #[label("re-export of crate public `{$ident}`")]
     pub(crate) span: Span,
     pub(crate) ident: Ident,
+    #[note("consider declaring {$descr} `{$ident}` with `pub`")]
+    pub(crate) parent: Span,
+    pub(crate) descr: &'static str,
 }
 
 #[derive(Diagnostic)]
@@ -883,11 +887,12 @@ pub(crate) struct ConsiderMarkingAsPubCrate {
 }
 
 #[derive(Subdiagnostic)]
-#[note("consider marking `{$ident}` as `pub` in the imported module")]
+#[note("consider marking `{$ident}` as `pub` in the imported {$descr}")]
 pub(crate) struct ConsiderMarkingAsPub {
     #[primary_span]
-    pub(crate) span: Span,
+    pub(crate) span: MultiSpan,
     pub(crate) ident: Ident,
+    pub(crate) descr: &'static str,
 }
 
 #[derive(Diagnostic)]

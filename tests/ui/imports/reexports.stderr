@@ -5,10 +5,11 @@ LL |         pub use super::foo;
    |                 ^^^^^^^^^^
    |
 note: consider marking `foo` as `pub` in the imported module
-  --> $DIR/reexports.rs:8:17
+  --> $DIR/reexports.rs:4:5
    |
-LL |         pub use super::foo;
-   |                 ^^^^^^^^^^
+LL | mod a {
+LL |     fn foo() {}
+   |     ^^^^^^^^^^^
 
 error[E0603]: module import `foo` is private
   --> $DIR/reexports.rs:36:22
