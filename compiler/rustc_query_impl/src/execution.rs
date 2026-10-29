@@ -301,7 +301,6 @@ trait QueryExecution<'tcx, C: QueryCache> {
     fn check_consistency(&self, _: C::Value) {}
 }
 
-#[derive(Copy)]
 struct SharedQueryExecutionInformation<'tcx, C: QueryCache> {
     query: &'tcx QueryVTable<'tcx, C>,
     tcx: TyCtxt<'tcx>,
@@ -310,15 +309,13 @@ struct SharedQueryExecutionInformation<'tcx, C: QueryCache> {
 }
 
 impl<C: QueryCache> Clone for SharedQueryExecutionInformation<'_, C> {
+    #[inline(always)]
     fn clone(&self) -> Self {
-        Self {
-            query: self.query,
-            tcx: self.tcx.clone(),
-            span: self.span.clone(),
-            key: self.key.clone(),
-        }
+        Self { query: self.query, tcx: self.tcx, span: self.span, key: self.key }
     }
 }
+
+impl<C: QueryCache> Copy for SharedQueryExecutionInformation<'_, C> {}
 
 struct DefaultExecution<'tcx, C: QueryCache, const INCR: bool> {
     info: SharedQueryExecutionInformation<'tcx, C>,
@@ -335,7 +332,7 @@ impl<'tcx, C: QueryCache, const INCR: bool> QueryExecution<'tcx, C>
 
     #[inline(always)]
     fn info(&self) -> SharedQueryExecutionInformation<'tcx, C> {
-        self.info.clone()
+        self.info
     }
 
     #[inline]
@@ -411,7 +408,7 @@ impl<'tcx, C: QueryCache> QueryExecution<'tcx, C> for FeedingExecution<'tcx, C> 
 
     #[inline(always)]
     fn info(&self) -> SharedQueryExecutionInformation<'tcx, C> {
-        self.info.clone()
+        self.info
     }
 
     // There is no cached value for this key, so feed the query by
