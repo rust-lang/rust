@@ -610,6 +610,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             &[path_str],
             item_segment.ident,
             assoc_tag,
+            Applicability::MachineApplicable,
         )
     }
 
@@ -723,6 +724,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 &traits,
                 ident,
                 assoc_tag,
+                Applicability::MaybeIncorrect,
             )
         }
     }
@@ -734,6 +736,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         traits: &[String],
         ident: Ident,
         assoc_tag: ty::AssocTag,
+        applicability: Applicability,
     ) -> ErrorGuaranteed {
         let kind_str = assoc_tag_str(assoc_tag);
         let mut err =
@@ -832,7 +835,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         sugg_sp,
                         "use fully-qualified syntax",
                         suggestions,
-                        Applicability::MachineApplicable,
+                        applicability,
                         SuggestionStyle::ShowAlways,
                     );
                 }

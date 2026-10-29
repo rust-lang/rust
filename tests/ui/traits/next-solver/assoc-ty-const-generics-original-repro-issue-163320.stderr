@@ -1,0 +1,15 @@
+error[E0223]: ambiguous associated type
+  --> $DIR/assoc-ty-const-generics-original-repro-issue-163320.rs:25:5
+   |
+LL |     <Self::Bits as HasStorage>::Storage::Bits: Sized,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: if there were a trait named `Example` with associated type `Bits` implemented for `<<Zeros<N> as TryFromBits>::Bits as HasStorage>::Storage`, you could use the fully-qualified path
+   |
+LL -     <Self::Bits as HasStorage>::Storage::Bits: Sized,
+LL +     <<<Zeros<N> as TryFromBits>::Bits as HasStorage>::Storage as Example>::Bits: Sized,
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0223`.
