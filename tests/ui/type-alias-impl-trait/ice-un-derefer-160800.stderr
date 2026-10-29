@@ -1,0 +1,15 @@
+error: item does not constrain `Foo::{opaque#0}`
+  --> $DIR/ice-un-derefer-160800.rs:8:7
+   |
+LL | const VALUE: Foo = todo!();
+   |       ^^^^^
+   |
+   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
+note: this opaque type is supposed to be constrained
+  --> $DIR/ice-un-derefer-160800.rs:5:12
+   |
+LL | type Foo = impl Send;
+   |            ^^^^^^^^^
+
+error: aborting due to 1 previous error
+
