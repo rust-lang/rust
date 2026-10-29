@@ -256,20 +256,9 @@ where
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
             }
 
-            ty::ConstKind::Alias(ty::IsRigid::No, alias_const) => {
-                // We never return `NoSolution` here as `evaluate_const` emits an
-                // error itself when failing to evaluate, so emitting an additional fulfillment
-                // error in that case is unnecessary noise. This may change in the future once
-                // evaluation failures are allowed to impact selection, e.g. generic const
-                // expressions in impl headers or `where`-clauses.
-
-                // FIXME(generic_const_exprs): Implement handling for generic
-                // const expressions here.
-                if let Some(_normalized) = self.evaluate_const(param_env, alias_const)? {
-                    self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                } else {
-                    self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
-                }
+            ty::ConstKind::Alias(ty::IsRigid::No, _) => {
+                self.normalize(param_env, ty::Unnormalized::new(ct))?;
+                self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             }
 
             // We can freely ICE here as:
