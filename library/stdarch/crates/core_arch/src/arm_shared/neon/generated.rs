@@ -3753,6 +3753,594 @@ pub fn vand_u64(a: uint64x1_t, b: uint64x1_t) -> uint64x1_t {
 pub fn vandq_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
     unsafe { simd_and(a, b) }
 }
+#[doc = "BFloat16 floating-point dot product (vector)"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vbfdot_f32)"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdot.bf16"))]
+#[cfg_attr(
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        not(target_env = "msvc")
+    ),
+    assert_instr(bfdot)
+)]
+pub fn vbfdot_f32(a: float32x2_t, b: bfloat16x4_t, c: bfloat16x4_t) -> float32x2_t {
+    unsafe extern "llvm-intrinsic" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.bfdot.v2f32.v4bf16"
+        )]
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.bfdot.v2f32.v4bf16")]
+        fn _vbfdot_f32(a: float32x2_t, b: bfloat16x4_t, c: bfloat16x4_t) -> float32x2_t;
+    }
+    unsafe { _vbfdot_f32(a, b, c) }
+}
+#[doc = "BFloat16 floating-point dot product (vector)"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vbfdotq_f32)"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdot.bf16"))]
+#[cfg_attr(
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        not(target_env = "msvc")
+    ),
+    assert_instr(bfdot)
+)]
+pub fn vbfdotq_f32(a: float32x4_t, b: bfloat16x8_t, c: bfloat16x8_t) -> float32x4_t {
+    unsafe extern "llvm-intrinsic" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.bfdot.v4f32.v8bf16"
+        )]
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.bfdot.v4f32.v8bf16")]
+        fn _vbfdotq_f32(a: float32x4_t, b: bfloat16x8_t, c: bfloat16x8_t) -> float32x4_t;
+    }
+    unsafe { _vbfdotq_f32(a, b, c) }
+}
+#[doc = "BFloat16 floating-point dot product (vector, by element)"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vbfdot_lane_f32)"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdot.bf16", LANE = 0))]
+#[cfg_attr(
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        not(target_env = "msvc")
+    ),
+    assert_instr(bfdot, LANE = 0)
+)]
+pub fn vbfdot_lane_f32<const LANE: i32>(
+    a: float32x2_t,
+    b: bfloat16x4_t,
+    c: bfloat16x4_t,
+) -> float32x2_t {
+    static_assert_uimm_bits!(LANE, 1);
+    let pairs: bfloat16x4_t = c;
+    unsafe {
+        let duped: bfloat16x4_t = transmute(vdup_lane_u32::<LANE>(transmute(pairs)));
+        vbfdot_f32(a, b, duped)
+    }
+}
+#[doc = "BFloat16 floating-point dot product (vector, by element)"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vbfdotq_lane_f32)"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdot.bf16", LANE = 0))]
+#[cfg_attr(
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        not(target_env = "msvc")
+    ),
+    assert_instr(bfdot, LANE = 0)
+)]
+pub fn vbfdotq_lane_f32<const LANE: i32>(
+    a: float32x4_t,
+    b: bfloat16x8_t,
+    c: bfloat16x4_t,
+) -> float32x4_t {
+    static_assert_uimm_bits!(LANE, 1);
+    let pairs: bfloat16x4_t = c;
+    unsafe {
+        let duped: bfloat16x8_t = transmute(vdupq_lane_u32::<LANE>(transmute(pairs)));
+        vbfdotq_f32(a, b, duped)
+    }
+}
+#[doc = "BFloat16 floating-point dot product (vector, by element)"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vbfdot_laneq_f32)"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdot.bf16", LANE = 0))]
+#[cfg_attr(
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        not(target_env = "msvc")
+    ),
+    assert_instr(bfdot, LANE = 0)
+)]
+pub fn vbfdot_laneq_f32<const LANE: i32>(
+    a: float32x2_t,
+    b: bfloat16x4_t,
+    c: bfloat16x8_t,
+) -> float32x2_t {
+    static_assert_uimm_bits!(LANE, 2);
+    let pairs: bfloat16x8_t = c;
+    unsafe {
+        let duped: bfloat16x4_t = transmute(vdup_laneq_u32::<LANE>(transmute(pairs)));
+        vbfdot_f32(a, b, duped)
+    }
+}
+#[doc = "BFloat16 floating-point dot product (vector, by element)"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vbfdotq_laneq_f32)"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vdot.bf16", LANE = 0))]
+#[cfg_attr(
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        not(target_env = "msvc")
+    ),
+    assert_instr(bfdot, LANE = 0)
+)]
+pub fn vbfdotq_laneq_f32<const LANE: i32>(
+    a: float32x4_t,
+    b: bfloat16x8_t,
+    c: bfloat16x8_t,
+) -> float32x4_t {
+    static_assert_uimm_bits!(LANE, 2);
+    let pairs: bfloat16x8_t = c;
+    unsafe {
+        let duped: bfloat16x8_t = transmute(vdupq_laneq_u32::<LANE>(transmute(pairs)));
+        vbfdotq_f32(a, b, duped)
+    }
+}
+#[doc = "BFloat16 floating-point widening multiply-add long (vector)"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vbfmlalbq_f32)"]
+#[inline]
+#[cfg(target_endian = "little")]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vfmab.bf16"))]
+#[cfg_attr(
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        not(target_env = "msvc")
+    ),
+    assert_instr(bfmlalb)
+)]
+pub fn vbfmlalbq_f32(a: float32x4_t, b: bfloat16x8_t, c: bfloat16x8_t) -> float32x4_t {
+    unsafe extern "llvm-intrinsic" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.bfmlalb"
+        )]
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.bfmlalb")]
+        fn _vbfmlalbq_f32(a: float32x4_t, b: bfloat16x8_t, c: bfloat16x8_t) -> float32x4_t;
+    }
+    unsafe { _vbfmlalbq_f32(a, b, c) }
+}
+#[doc = "BFloat16 floating-point widening multiply-add long (vector)"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vbfmlalbq_f32)"]
+#[inline]
+#[cfg(target_endian = "big")]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vfmab.bf16"))]
+#[cfg_attr(
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        not(target_env = "msvc")
+    ),
+    assert_instr(bfmlalb)
+)]
+pub fn vbfmlalbq_f32(a: float32x4_t, b: bfloat16x8_t, c: bfloat16x8_t) -> float32x4_t {
+    unsafe extern "llvm-intrinsic" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.bfmlalb"
+        )]
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.bfmlalb")]
+        fn _vbfmlalbq_f32(a: float32x4_t, b: bfloat16x8_t, c: bfloat16x8_t) -> float32x4_t;
+    }
+    unsafe {
+        let a: float32x4_t = simd_shuffle!(a, a, [3, 2, 1, 0]);
+        let b: bfloat16x8_t = simd_shuffle!(b, b, [7, 6, 5, 4, 3, 2, 1, 0]);
+        let c: bfloat16x8_t = simd_shuffle!(c, c, [7, 6, 5, 4, 3, 2, 1, 0]);
+        let ret_val: float32x4_t = _vbfmlalbq_f32(a, b, c);
+        simd_shuffle!(ret_val, ret_val, [3, 2, 1, 0])
+    }
+}
+#[doc = "BFloat16 floating-point widening multiply-add long (vector)"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vbfmlalbq_lane_f32)"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vfmab.bf16", LANE = 0))]
+#[cfg_attr(
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        not(target_env = "msvc")
+    ),
+    assert_instr(bfmlalb, LANE = 0)
+)]
+pub fn vbfmlalbq_lane_f32<const LANE: i32>(
+    a: float32x4_t,
+    b: bfloat16x8_t,
+    c: bfloat16x4_t,
+) -> float32x4_t {
+    static_assert_uimm_bits!(LANE, 2);
+    unsafe {
+        let duped: bfloat16x8_t = transmute(vdupq_lane_u16::<LANE>(transmute(c)));
+        vbfmlalbq_f32(a, b, duped)
+    }
+}
+#[doc = "BFloat16 floating-point widening multiply-add long (vector)"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vbfmlalbq_laneq_f32)"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vfmab.bf16", LANE = 0))]
+#[cfg_attr(
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        not(target_env = "msvc")
+    ),
+    assert_instr(bfmlalb, LANE = 0)
+)]
+pub fn vbfmlalbq_laneq_f32<const LANE: i32>(
+    a: float32x4_t,
+    b: bfloat16x8_t,
+    c: bfloat16x8_t,
+) -> float32x4_t {
+    static_assert_uimm_bits!(LANE, 3);
+    unsafe {
+        let duped: bfloat16x8_t = transmute(vdupq_laneq_u16::<LANE>(transmute(c)));
+        vbfmlalbq_f32(a, b, duped)
+    }
+}
+#[doc = "BFloat16 floating-point widening multiply-add long (vector)"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vbfmlaltq_f32)"]
+#[inline]
+#[cfg(target_endian = "little")]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vfmat.bf16"))]
+#[cfg_attr(
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        not(target_env = "msvc")
+    ),
+    assert_instr(bfmlalt)
+)]
+pub fn vbfmlaltq_f32(a: float32x4_t, b: bfloat16x8_t, c: bfloat16x8_t) -> float32x4_t {
+    unsafe extern "llvm-intrinsic" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.bfmlalt"
+        )]
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.bfmlalt")]
+        fn _vbfmlaltq_f32(a: float32x4_t, b: bfloat16x8_t, c: bfloat16x8_t) -> float32x4_t;
+    }
+    unsafe { _vbfmlaltq_f32(a, b, c) }
+}
+#[doc = "BFloat16 floating-point widening multiply-add long (vector)"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vbfmlaltq_f32)"]
+#[inline]
+#[cfg(target_endian = "big")]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vfmat.bf16"))]
+#[cfg_attr(
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        not(target_env = "msvc")
+    ),
+    assert_instr(bfmlalt)
+)]
+pub fn vbfmlaltq_f32(a: float32x4_t, b: bfloat16x8_t, c: bfloat16x8_t) -> float32x4_t {
+    unsafe extern "llvm-intrinsic" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.bfmlalt"
+        )]
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.bfmlalt")]
+        fn _vbfmlaltq_f32(a: float32x4_t, b: bfloat16x8_t, c: bfloat16x8_t) -> float32x4_t;
+    }
+    unsafe {
+        let a: float32x4_t = simd_shuffle!(a, a, [3, 2, 1, 0]);
+        let b: bfloat16x8_t = simd_shuffle!(b, b, [7, 6, 5, 4, 3, 2, 1, 0]);
+        let c: bfloat16x8_t = simd_shuffle!(c, c, [7, 6, 5, 4, 3, 2, 1, 0]);
+        let ret_val: float32x4_t = _vbfmlaltq_f32(a, b, c);
+        simd_shuffle!(ret_val, ret_val, [3, 2, 1, 0])
+    }
+}
+#[doc = "BFloat16 floating-point widening multiply-add long (vector)"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vbfmlaltq_lane_f32)"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vfmat.bf16", LANE = 0))]
+#[cfg_attr(
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        not(target_env = "msvc")
+    ),
+    assert_instr(bfmlalt, LANE = 0)
+)]
+pub fn vbfmlaltq_lane_f32<const LANE: i32>(
+    a: float32x4_t,
+    b: bfloat16x8_t,
+    c: bfloat16x4_t,
+) -> float32x4_t {
+    static_assert_uimm_bits!(LANE, 2);
+    unsafe {
+        let duped: bfloat16x8_t = transmute(vdupq_lane_u16::<LANE>(transmute(c)));
+        vbfmlaltq_f32(a, b, duped)
+    }
+}
+#[doc = "BFloat16 floating-point widening multiply-add long (vector)"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vbfmlaltq_laneq_f32)"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vfmat.bf16", LANE = 0))]
+#[cfg_attr(
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        not(target_env = "msvc")
+    ),
+    assert_instr(bfmlalt, LANE = 0)
+)]
+pub fn vbfmlaltq_laneq_f32<const LANE: i32>(
+    a: float32x4_t,
+    b: bfloat16x8_t,
+    c: bfloat16x8_t,
+) -> float32x4_t {
+    static_assert_uimm_bits!(LANE, 3);
+    unsafe {
+        let duped: bfloat16x8_t = transmute(vdupq_laneq_u16::<LANE>(transmute(c)));
+        vbfmlaltq_f32(a, b, duped)
+    }
+}
+#[doc = "BFloat16 floating-point matrix multiply-accumulate into 2x2 matrix"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vbfmmlaq_f32)"]
+#[inline]
+#[cfg(target_endian = "little")]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmmla.bf16"))]
+#[cfg_attr(
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        not(target_env = "msvc")
+    ),
+    assert_instr(bfmmla)
+)]
+pub fn vbfmmlaq_f32(a: float32x4_t, b: bfloat16x8_t, c: bfloat16x8_t) -> float32x4_t {
+    unsafe extern "llvm-intrinsic" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.bfmmla"
+        )]
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.bfmmla")]
+        fn _vbfmmlaq_f32(a: float32x4_t, b: bfloat16x8_t, c: bfloat16x8_t) -> float32x4_t;
+    }
+    unsafe { _vbfmmlaq_f32(a, b, c) }
+}
+#[doc = "BFloat16 floating-point matrix multiply-accumulate into 2x2 matrix"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vbfmmlaq_f32)"]
+#[inline]
+#[cfg(target_endian = "big")]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmmla.bf16"))]
+#[cfg_attr(
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        not(target_env = "msvc")
+    ),
+    assert_instr(bfmmla)
+)]
+pub fn vbfmmlaq_f32(a: float32x4_t, b: bfloat16x8_t, c: bfloat16x8_t) -> float32x4_t {
+    unsafe extern "llvm-intrinsic" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.bfmmla"
+        )]
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.bfmmla")]
+        fn _vbfmmlaq_f32(a: float32x4_t, b: bfloat16x8_t, c: bfloat16x8_t) -> float32x4_t;
+    }
+    unsafe {
+        let a: float32x4_t = simd_shuffle!(a, a, [3, 2, 1, 0]);
+        let b: bfloat16x8_t = simd_shuffle!(b, b, [7, 6, 5, 4, 3, 2, 1, 0]);
+        let c: bfloat16x8_t = simd_shuffle!(c, c, [7, 6, 5, 4, 3, 2, 1, 0]);
+        let ret_val: float32x4_t = _vbfmmlaq_f32(a, b, c);
+        simd_shuffle!(ret_val, ret_val, [3, 2, 1, 0])
+    }
+}
 #[doc = "Vector bitwise bit clear."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vbic_s16)"]
 #[inline]
@@ -7758,6 +8346,59 @@ pub fn vcntq_p8(a: poly8x16_t) -> poly8x16_t {
     unsafe { transmute(vcntq_s8(transmute(a))) }
 }
 #[doc = "Join two smaller vectors into a single larger vector"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcombine_bf16)"]
+#[inline]
+#[cfg(target_endian = "little")]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub fn vcombine_bf16(a: bfloat16x4_t, b: bfloat16x4_t) -> bfloat16x8_t {
+    unsafe { simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7]) }
+}
+#[doc = "Join two smaller vectors into a single larger vector"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcombine_bf16)"]
+#[inline]
+#[cfg(target_endian = "big")]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub fn vcombine_bf16(a: bfloat16x4_t, b: bfloat16x4_t) -> bfloat16x8_t {
+    unsafe {
+        let a: bfloat16x4_t = simd_shuffle!(a, a, [3, 2, 1, 0]);
+        let b: bfloat16x4_t = simd_shuffle!(b, b, [3, 2, 1, 0]);
+        let ret_val: bfloat16x8_t = simd_shuffle!(a, b, [0, 1, 2, 3, 4, 5, 6, 7]);
+        simd_shuffle!(ret_val, ret_val, [7, 6, 5, 4, 3, 2, 1, 0])
+    }
+}
+#[doc = "Join two smaller vectors into a single larger vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcombine_f16)"]
 #[inline]
 #[cfg(target_endian = "little")]
@@ -8304,6 +8945,31 @@ pub fn vcombine_p64(a: poly64x1_t, b: poly64x1_t) -> poly64x2_t {
     }
 }
 #[doc = "Insert vector element from another vector element"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcreate_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vcreate_bf16(a: u64) -> bfloat16x4_t {
+    transmute(a)
+}
+#[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcreate_f16)"]
 #[inline]
 #[target_feature(enable = "neon")]
@@ -8578,6 +9244,48 @@ pub fn vcreate_p16(a: u64) -> poly16x4_t {
 pub fn vcreate_p64(a: u64) -> poly64x1_t {
     unsafe { transmute(a) }
 }
+#[doc = "Floating-point convert from single-precision to BFloat16 format (vector)"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvt_bf16_f32)"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg(target_arch = "arm")]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcvt.bf16.f32"))]
+pub fn vcvt_bf16_f32(a: float32x4_t) -> bfloat16x4_t {
+    unsafe extern "llvm-intrinsic" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vcvtfp2bf.v4bf16")]
+        fn _vcvt_bf16_f32(a: float32x4_t) -> bfloat16x4_t;
+    }
+    unsafe { _vcvt_bf16_f32(a) }
+}
+#[doc = "Floating-point convert from single-precision to BFloat16 format (vector)"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvt_bf16_f32)"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg(not(target_arch = "arm"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(bfcvtn)
+)]
+pub fn vcvt_bf16_f32(a: float32x4_t) -> bfloat16x4_t {
+    unsafe { vget_low_bf16(vcvtq_low_bf16_f32(a)) }
+}
 #[doc = "Floating-point convert to lower precision narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvt_f16_f32)"]
 #[inline]
@@ -8688,6 +9396,32 @@ pub fn vcvt_f16_u16(a: uint16x4_t) -> float16x4_t {
 #[cfg(not(target_arch = "arm64ec"))]
 pub fn vcvtq_f16_u16(a: uint16x8_t) -> float16x8_t {
     unsafe { simd_cast(a) }
+}
+#[doc = "Shift Left Long (by element size)"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvt_f32_bf16)"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vshll.i16"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(shll)
+)]
+pub fn vcvt_f32_bf16(a: bfloat16x4_t) -> float32x4_t {
+    unsafe {
+        let half: uint16x4_t = transmute(a);
+        vreinterpretq_f32_u32(vshll_n_u16::<16>(half))
+    }
 }
 #[doc = "Floating-point convert to higher precision long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvt_f32_f16)"]
@@ -9584,6 +10318,371 @@ pub fn vcvtq_u32_f32(a: float32x4_t) -> uint32x4_t {
     }
     unsafe { _vcvtq_u32_f32(a) }
 }
+#[doc = "Shift Left (immediate)"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtah_f32_bf16)"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub fn vcvtah_f32_bf16(a: bfloat16_t) -> f32 {
+    f32::from_bits((a.to_bits() as u32) << 16)
+}
+#[doc = "Floating-point convert from single-precision to BFloat16 format (scalar)"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvth_bf16_f32)"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcvtb.bf16.f32"))]
+#[cfg_attr(
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        not(target_env = "msvc")
+    ),
+    assert_instr(bfcvt)
+)]
+pub fn vcvth_bf16_f32(a: f32) -> bfloat16_t {
+    unsafe extern "llvm-intrinsic" {
+        #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vcvtbfp2bf")]
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.bfcvt"
+        )]
+        fn _vcvth_bf16_f32(a: f32) -> bfloat16_t;
+    }
+    unsafe { _vcvth_bf16_f32(a) }
+}
+#[doc = "Floating-point convert from single-precision to BFloat16 format (vector)"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtq_high_bf16_f32)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(target_endian = "little")]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg(not(target_arch = "arm"))]
+#[cfg_attr(
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        target_endian = "little"
+    ),
+    assert_instr(bfcvtn2)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
+    assert_instr(bfcvtn)
+)]
+pub unsafe fn vcvtq_high_bf16_f32(_inactive: bfloat16x8_t, a: float32x4_t) -> bfloat16x8_t {
+    unsafe extern "llvm-intrinsic" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.bfcvtn2"
+        )]
+        fn _vcvtq_high_bf16_f32(_inactive: bfloat16x8_t, a: float32x4_t) -> bfloat16x8_t;
+    }
+    _vcvtq_high_bf16_f32(_inactive, a)
+}
+#[doc = "Floating-point convert from single-precision to BFloat16 format (vector)"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtq_high_bf16_f32)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(target_endian = "big")]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg(not(target_arch = "arm"))]
+#[cfg_attr(
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        target_endian = "little"
+    ),
+    assert_instr(bfcvtn2)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
+    assert_instr(bfcvtn)
+)]
+pub unsafe fn vcvtq_high_bf16_f32(_inactive: bfloat16x8_t, a: float32x4_t) -> bfloat16x8_t {
+    unsafe extern "llvm-intrinsic" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.bfcvtn2"
+        )]
+        fn _vcvtq_high_bf16_f32(_inactive: bfloat16x8_t, a: float32x4_t) -> bfloat16x8_t;
+    }
+    let _inactive: bfloat16x8_t = simd_shuffle!(_inactive, _inactive, [7, 6, 5, 4, 3, 2, 1, 0]);
+    let a: float32x4_t = simd_shuffle!(a, a, [3, 2, 1, 0]);
+    let ret_val: bfloat16x8_t = _vcvtq_high_bf16_f32(_inactive, a);
+    simd_shuffle!(ret_val, ret_val, [7, 6, 5, 4, 3, 2, 1, 0])
+}
+#[doc = "Floating-point convert from single-precision to BFloat16 format (vector)"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtq_high_bf16_f32)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg(target_arch = "arm")]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcvt.bf16.f32"))]
+pub unsafe fn vcvtq_high_bf16_f32(_inactive: bfloat16x8_t, a: float32x4_t) -> bfloat16x8_t {
+    let b: bfloat16x4_t = simd_shuffle!(_inactive, _inactive, [0, 1, 2, 3]);
+    let a: int32x4_t = transmute(a);
+    let a: int16x8_t = transmute(a);
+    let a: float32x4_t = transmute(a);
+    let a: bfloat16x4_t = vcvt_bf16_f32(a);
+    let vec: bfloat16x4_t = simd_shuffle!(a, a, [0, 1, 2, 3]);
+    simd_shuffle!(vec, b, [0, 1, 2, 3, 4, 5, 6, 7])
+}
+#[doc = "Shift Left Long (by element size)"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtq_high_f32_bf16)"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vshll.i16"))]
+#[cfg_attr(
+    all(
+        test,
+        any(target_arch = "aarch64", target_arch = "arm64ec"),
+        target_endian = "little"
+    ),
+    assert_instr(shll2)
+)]
+#[cfg_attr(
+    all(test, target_arch = "aarch64", target_endian = "big"),
+    assert_instr(shll)
+)]
+pub fn vcvtq_high_f32_bf16(a: bfloat16x8_t) -> float32x4_t {
+    unsafe {
+        let half: uint16x4_t = vget_high_u16(transmute(a));
+        vreinterpretq_f32_u32(vshll_n_u16::<16>(half))
+    }
+}
+#[doc = "Floating-point convert from single-precision to BFloat16 format (vector)"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtq_low_bf16_f32)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(target_endian = "little")]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg(target_arch = "arm")]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcvt.bf16.f32"))]
+pub unsafe fn vcvtq_low_bf16_f32(a: float32x4_t) -> bfloat16x8_t {
+    let a: int32x4_t = transmute(a);
+    let a: int8x16_t = transmute(a);
+    let a: float32x4_t = transmute(a);
+    let vec: bfloat16x4_t = vcvt_bf16_f32(a);
+    let z: bfloat16x4_t = bfloat16x4_t([
+        bfloat16_t::from_bits(0x0),
+        bfloat16_t::from_bits(0x0),
+        bfloat16_t::from_bits(0x0),
+        bfloat16_t::from_bits(0x0),
+    ]);
+    simd_shuffle!(z, vec, [0, 1, 2, 3, 4, 5, 6, 7])
+}
+#[doc = "Floating-point convert from single-precision to BFloat16 format (vector)"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtq_low_bf16_f32)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(target_endian = "big")]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg(target_arch = "arm")]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vcvt.bf16.f32"))]
+pub unsafe fn vcvtq_low_bf16_f32(a: float32x4_t) -> bfloat16x8_t {
+    let a: float32x4_t = simd_shuffle!(a, a, [3, 2, 1, 0]);
+    let a: int32x4_t = transmute(a);
+    let a: int8x16_t = transmute(a);
+    let a: float32x4_t = transmute(a);
+    let vec: bfloat16x4_t = vcvt_bf16_f32(a);
+    let z: bfloat16x4_t = bfloat16x4_t([
+        bfloat16_t::from_bits(0x0),
+        bfloat16_t::from_bits(0x0),
+        bfloat16_t::from_bits(0x0),
+        bfloat16_t::from_bits(0x0),
+    ]);
+    let ret_val: bfloat16x8_t = simd_shuffle!(z, vec, [0, 1, 2, 3, 4, 5, 6, 7]);
+    simd_shuffle!(ret_val, ret_val, [7, 6, 5, 4, 3, 2, 1, 0])
+}
+#[doc = "Floating-point convert from single-precision to BFloat16 format (vector)"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtq_low_bf16_f32)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(target_endian = "little")]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg(not(target_arch = "arm"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(bfcvtn)
+)]
+pub unsafe fn vcvtq_low_bf16_f32(a: float32x4_t) -> bfloat16x8_t {
+    unsafe extern "llvm-intrinsic" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.bfcvtn"
+        )]
+        fn _vcvtq_low_bf16_f32(a: float32x4_t) -> bfloat16x8_t;
+    }
+    _vcvtq_low_bf16_f32(a)
+}
+#[doc = "Floating-point convert from single-precision to BFloat16 format (vector)"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtq_low_bf16_f32)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(target_endian = "big")]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg(not(target_arch = "arm"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(bfcvtn)
+)]
+pub unsafe fn vcvtq_low_bf16_f32(a: float32x4_t) -> bfloat16x8_t {
+    unsafe extern "llvm-intrinsic" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.bfcvtn"
+        )]
+        fn _vcvtq_low_bf16_f32(a: float32x4_t) -> bfloat16x8_t;
+    }
+    let a: float32x4_t = simd_shuffle!(a, a, [3, 2, 1, 0]);
+    let ret_val: bfloat16x8_t = _vcvtq_low_bf16_f32(a);
+    simd_shuffle!(ret_val, ret_val, [7, 6, 5, 4, 3, 2, 1, 0])
+}
+#[doc = "Shift Left Long (by element size)"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtq_low_f32_bf16)"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vshll.i16"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(shll)
+)]
+pub fn vcvtq_low_f32_bf16(a: bfloat16x8_t) -> float32x4_t {
+    unsafe {
+        let half: uint16x4_t = vget_low_u16(transmute(a));
+        vreinterpretq_f32_u32(vshll_n_u16::<16>(half))
+    }
+}
 #[doc = "Dot product arithmetic (indexed)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdot_lane_s32)"]
 #[inline]
@@ -10051,6 +11150,34 @@ pub fn vdotq_u32(a: uint32x4_t, b: uint8x16_t, c: uint8x16_t) -> uint32x4_t {
         let ret_val: uint32x4_t = _vdotq_u32(a, b, c);
         simd_shuffle!(ret_val, ret_val, [3, 2, 1, 0])
     }
+}
+#[doc = "Duplicate vector element to vector or scalar"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_lane_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop, LANE = 2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop, LANE = 2)
+)]
+pub unsafe fn vdup_lane_bf16<const LANE: i32>(a: bfloat16x4_t) -> bfloat16x4_t {
+    static_assert_uimm_bits!(LANE, 2);
+    let c: uint16x4_t = vreinterpret_u16_bf16(a);
+    let duped: uint16x4_t = vdup_lane_u16::<LANE>(c);
+    vreinterpret_bf16_u16(duped)
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_lane_f16)"]
@@ -11157,6 +12284,118 @@ pub fn vdup_lane_s64<const N: i32>(a: int64x1_t) -> int64x1_t {
 pub fn vdup_lane_u64<const N: i32>(a: uint64x1_t) -> uint64x1_t {
     static_assert!(N == 0);
     a
+}
+#[doc = "Duplicate vector element to vector or scalar"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_laneq_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(target_endian = "little")]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop, LANE = 2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop, LANE = 2)
+)]
+pub unsafe fn vdup_laneq_bf16<const LANE: i32>(a: bfloat16x8_t) -> bfloat16x4_t {
+    static_assert_uimm_bits!(LANE, 3);
+    simd_shuffle!(a, a, [LANE as u32; 4])
+}
+#[doc = "Duplicate vector element to vector or scalar"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_laneq_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(target_endian = "big")]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop, LANE = 2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop, LANE = 2)
+)]
+pub unsafe fn vdup_laneq_bf16<const LANE: i32>(a: bfloat16x8_t) -> bfloat16x4_t {
+    static_assert_uimm_bits!(LANE, 3);
+    let a: bfloat16x8_t = simd_shuffle!(a, a, [7, 6, 5, 4, 3, 2, 1, 0]);
+    let ret_val: bfloat16x4_t = simd_shuffle!(a, a, [LANE as u32; 4]);
+    simd_shuffle!(ret_val, ret_val, [3, 2, 1, 0])
+}
+#[doc = "Duplicate vector element to vector or scalar"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_laneq_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(target_endian = "little")]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop, LANE = 2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop, LANE = 2)
+)]
+pub unsafe fn vdupq_laneq_bf16<const LANE: i32>(a: bfloat16x8_t) -> bfloat16x8_t {
+    static_assert_uimm_bits!(LANE, 3);
+    simd_shuffle!(a, a, [LANE as u32; 8])
+}
+#[doc = "Duplicate vector element to vector or scalar"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_laneq_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(target_endian = "big")]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop, LANE = 2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop, LANE = 2)
+)]
+pub unsafe fn vdupq_laneq_bf16<const LANE: i32>(a: bfloat16x8_t) -> bfloat16x8_t {
+    static_assert_uimm_bits!(LANE, 3);
+    let a: bfloat16x8_t = simd_shuffle!(a, a, [7, 6, 5, 4, 3, 2, 1, 0]);
+    let ret_val: bfloat16x8_t = simd_shuffle!(a, a, [LANE as u32; 8]);
+    simd_shuffle!(ret_val, ret_val, [7, 6, 5, 4, 3, 2, 1, 0])
 }
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_laneq_f16)"]
@@ -12270,6 +13509,31 @@ pub fn vdup_laneq_u64<const N: i32>(a: uint64x2_t) -> uint64x1_t {
     static_assert_uimm_bits!(N, 1);
     unsafe { transmute(vgetq_lane_u64::<N>(a)) }
 }
+#[doc = "Duplicate vector element to vector or scalar"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_n_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vdup_n_bf16(a: bfloat16_t) -> bfloat16x4_t {
+    vreinterpret_bf16_u16(vdup_n_u16(a.to_bits()))
+}
 #[doc = "Create a new vector with all lanes set to a value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdup_n_f16)"]
 #[inline]
@@ -12806,6 +14070,86 @@ fn vdup_n_f32_vfp4(value: f32) -> float32x2_t {
 fn vdupq_n_f32_vfp4(value: f32) -> float32x4_t {
     float32x4_t::splat(value)
 }
+#[doc = "Duplicate vector element to vector or scalar"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vduph_lane_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop, LANE = 2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop, LANE = 2)
+)]
+pub unsafe fn vduph_lane_bf16<const LANE: i32>(a: bfloat16x4_t) -> bfloat16_t {
+    static_assert_uimm_bits!(LANE, 2);
+    vget_lane_bf16::<LANE>(a)
+}
+#[doc = "Duplicate vector element to vector or scalar"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vduph_laneq_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop, LANE = 2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop, LANE = 2)
+)]
+pub unsafe fn vduph_laneq_bf16<const LANE: i32>(a: bfloat16x8_t) -> bfloat16_t {
+    static_assert_uimm_bits!(LANE, 3);
+    vgetq_lane_bf16::<LANE>(a)
+}
+#[doc = "Duplicate vector element to vector or scalar"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_lane_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop, LANE = 2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop, LANE = 2)
+)]
+pub unsafe fn vdupq_lane_bf16<const LANE: i32>(a: bfloat16x4_t) -> bfloat16x8_t {
+    static_assert_uimm_bits!(LANE, 2);
+    let c: uint16x4_t = vreinterpret_u16_bf16(a);
+    let duped: uint16x8_t = vdupq_lane_u16::<LANE>(c);
+    vreinterpretq_bf16_u16(duped)
+}
 #[doc = "Set all vector lanes to the same value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_lane_s64)"]
 #[inline]
@@ -13011,6 +14355,31 @@ pub fn vdupq_laneq_u64<const N: i32>(a: uint64x2_t) -> uint64x2_t {
         let ret_val: uint64x2_t = simd_shuffle!(a, a, [N as u32, N as u32]);
         simd_shuffle!(ret_val, ret_val, [1, 0])
     }
+}
+#[doc = "Duplicate vector element to vector or scalar"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vdupq_n_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vdupq_n_bf16(a: bfloat16_t) -> bfloat16x8_t {
+    vreinterpretq_bf16_u16(vdupq_n_u16(a.to_bits()))
 }
 #[doc = "Vector bitwise exclusive or (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/veor_s8)"]
@@ -15191,6 +16560,60 @@ pub fn vfms_n_f32(a: float32x2_t, b: float32x2_t, c: f32) -> float32x2_t {
 pub fn vfmsq_n_f32(a: float32x4_t, b: float32x4_t, c: f32) -> float32x4_t {
     vfmsq_f32(a, b, vdupq_n_f32_vfp4(c))
 }
+#[doc = "Duplicate vector element to vector or scalar"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vget_high_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(target_endian = "little")]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vget_high_bf16(a: bfloat16x8_t) -> bfloat16x4_t {
+    simd_shuffle!(a, a, [4, 5, 6, 7])
+}
+#[doc = "Duplicate vector element to vector or scalar"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vget_high_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(target_endian = "big")]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vget_high_bf16(a: bfloat16x8_t) -> bfloat16x4_t {
+    let a: bfloat16x8_t = simd_shuffle!(a, a, [7, 6, 5, 4, 3, 2, 1, 0]);
+    let ret_val: bfloat16x4_t = simd_shuffle!(a, a, [4, 5, 6, 7]);
+    simd_shuffle!(ret_val, ret_val, [3, 2, 1, 0])
+}
 #[doc = "Duplicate vector element to vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vget_high_f16)"]
 #[inline]
@@ -15998,6 +17421,61 @@ pub fn vget_high_u64(a: uint64x2_t) -> uint64x1_t {
         let a: uint64x2_t = simd_shuffle!(a, a, [1, 0]);
         uint64x1_t([simd_extract!(a, 1)])
     }
+}
+#[doc = "Duplicate vector element to vector or scalar"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vget_lane_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(target_endian = "little")]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop, LANE = 2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop, LANE = 2)
+)]
+pub unsafe fn vget_lane_bf16<const LANE: i32>(a: bfloat16x4_t) -> bfloat16_t {
+    static_assert_uimm_bits!(LANE, 2);
+    simd_extract!(a, LANE as u32)
+}
+#[doc = "Duplicate vector element to vector or scalar"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vget_lane_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(target_endian = "big")]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop, LANE = 2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop, LANE = 2)
+)]
+pub unsafe fn vget_lane_bf16<const LANE: i32>(a: bfloat16x4_t) -> bfloat16_t {
+    static_assert_uimm_bits!(LANE, 2);
+    let a: bfloat16x4_t = simd_shuffle!(a, a, [3, 2, 1, 0]);
+    simd_extract!(a, LANE as u32)
 }
 #[doc = "Duplicate vector element to scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vget_lane_f16)"]
@@ -17045,6 +18523,31 @@ pub fn vget_lane_u64<const IMM5: i32>(v: uint64x1_t) -> u64 {
     unsafe { simd_extract!(v, 0) }
 }
 #[doc = "Duplicate vector element to vector or scalar"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vget_low_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vget_low_bf16(a: bfloat16x8_t) -> bfloat16x4_t {
+    transmute(vget_low_u64(transmute(a)))
+}
+#[doc = "Duplicate vector element to vector or scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vget_low_f32)"]
 #[inline]
 #[cfg(target_endian = "little")]
@@ -17523,6 +19026,61 @@ pub fn vget_low_u64(a: uint64x2_t) -> uint64x1_t {
         let a: uint64x2_t = simd_shuffle!(a, a, [1, 0]);
         uint64x1_t([simd_extract!(a, 0)])
     }
+}
+#[doc = "Duplicate vector element to vector or scalar"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vgetq_lane_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(target_endian = "little")]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop, LANE = 2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop, LANE = 2)
+)]
+pub unsafe fn vgetq_lane_bf16<const LANE: i32>(a: bfloat16x8_t) -> bfloat16_t {
+    static_assert_uimm_bits!(LANE, 3);
+    simd_extract!(a, LANE as u32)
+}
+#[doc = "Duplicate vector element to vector or scalar"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vgetq_lane_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(target_endian = "big")]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop, LANE = 2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop, LANE = 2)
+)]
+pub unsafe fn vgetq_lane_bf16<const LANE: i32>(a: bfloat16x8_t) -> bfloat16_t {
+    static_assert_uimm_bits!(LANE, 3);
+    let a: bfloat16x8_t = simd_shuffle!(a, a, [7, 6, 5, 4, 3, 2, 1, 0]);
+    simd_extract!(a, LANE as u32)
 }
 #[doc = "Halving add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vhadd_s8)"]
@@ -18219,6 +19777,436 @@ pub fn vhsubq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
         fn _vhsubq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t;
     }
     unsafe { _vhsubq_u32(a, b) }
+}
+#[doc = "Load multiple single-element structures to one, two, three, or four registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vld1_bf16(ptr: *const bfloat16_t) -> bfloat16x4_t {
+    crate::ptr::read_unaligned(ptr.cast())
+}
+#[doc = "Load multiple single-element structures to one, two, three, or four registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vld1q_bf16(ptr: *const bfloat16_t) -> bfloat16x8_t {
+    crate::ptr::read_unaligned(ptr.cast())
+}
+#[doc = "Load multiple single-element structures to one, two, three, or four registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_bf16_x2)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg(target_arch = "arm")]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1)
+)]
+pub unsafe fn vld1_bf16_x2(ptr: *const bfloat16_t) -> bfloat16x4x2_t {
+    transmute(vld1_u16_x2(ptr.cast()))
+}
+#[doc = "Load multiple single-element structures to one, two, three, or four registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_bf16_x3)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg(target_arch = "arm")]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1)
+)]
+pub unsafe fn vld1_bf16_x3(ptr: *const bfloat16_t) -> bfloat16x4x3_t {
+    transmute(vld1_u16_x3(ptr.cast()))
+}
+#[doc = "Load multiple single-element structures to one, two, three, or four registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_bf16_x4)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg(target_arch = "arm")]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1)
+)]
+pub unsafe fn vld1_bf16_x4(ptr: *const bfloat16_t) -> bfloat16x4x4_t {
+    transmute(vld1_u16_x4(ptr.cast()))
+}
+#[doc = "Load multiple single-element structures to one, two, three, or four registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_bf16_x2)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg(target_arch = "arm")]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1)
+)]
+pub unsafe fn vld1q_bf16_x2(ptr: *const bfloat16_t) -> bfloat16x8x2_t {
+    transmute(vld1q_u16_x2(ptr.cast()))
+}
+#[doc = "Load multiple single-element structures to one, two, three, or four registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_bf16_x3)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg(target_arch = "arm")]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1)
+)]
+pub unsafe fn vld1q_bf16_x3(ptr: *const bfloat16_t) -> bfloat16x8x3_t {
+    transmute(vld1q_u16_x3(ptr.cast()))
+}
+#[doc = "Load multiple single-element structures to one, two, three, or four registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_bf16_x4)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg(target_arch = "arm")]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1)
+)]
+pub unsafe fn vld1q_bf16_x4(ptr: *const bfloat16_t) -> bfloat16x8x4_t {
+    transmute(vld1q_u16_x4(ptr.cast()))
+}
+#[doc = "Load multiple single-element structures to one, two, three, or four registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_bf16_x2)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg(not(target_arch = "arm"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1)
+)]
+pub unsafe fn vld1_bf16_x2(ptr: *const bfloat16_t) -> bfloat16x4x2_t {
+    unsafe extern "llvm-intrinsic" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.ld1x2.v4bf16.p0"
+        )]
+        fn _vld1_bf16_x2(ptr: *const bfloat16_t) -> bfloat16x4x2_t;
+    }
+    _vld1_bf16_x2(ptr)
+}
+#[doc = "Load multiple single-element structures to one, two, three, or four registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_bf16_x3)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg(not(target_arch = "arm"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1)
+)]
+pub unsafe fn vld1_bf16_x3(ptr: *const bfloat16_t) -> bfloat16x4x3_t {
+    unsafe extern "llvm-intrinsic" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.ld1x3.v4bf16.p0"
+        )]
+        fn _vld1_bf16_x3(ptr: *const bfloat16_t) -> bfloat16x4x3_t;
+    }
+    _vld1_bf16_x3(ptr)
+}
+#[doc = "Load multiple single-element structures to one, two, three, or four registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_bf16_x4)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg(not(target_arch = "arm"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1)
+)]
+pub unsafe fn vld1_bf16_x4(ptr: *const bfloat16_t) -> bfloat16x4x4_t {
+    unsafe extern "llvm-intrinsic" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.ld1x4.v4bf16.p0"
+        )]
+        fn _vld1_bf16_x4(ptr: *const bfloat16_t) -> bfloat16x4x4_t;
+    }
+    _vld1_bf16_x4(ptr)
+}
+#[doc = "Load multiple single-element structures to one, two, three, or four registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_bf16_x2)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg(not(target_arch = "arm"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1)
+)]
+pub unsafe fn vld1q_bf16_x2(ptr: *const bfloat16_t) -> bfloat16x8x2_t {
+    unsafe extern "llvm-intrinsic" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.ld1x2.v8bf16.p0"
+        )]
+        fn _vld1q_bf16_x2(ptr: *const bfloat16_t) -> bfloat16x8x2_t;
+    }
+    _vld1q_bf16_x2(ptr)
+}
+#[doc = "Load multiple single-element structures to one, two, three, or four registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_bf16_x3)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg(not(target_arch = "arm"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1)
+)]
+pub unsafe fn vld1q_bf16_x3(ptr: *const bfloat16_t) -> bfloat16x8x3_t {
+    unsafe extern "llvm-intrinsic" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.ld1x3.v8bf16.p0"
+        )]
+        fn _vld1q_bf16_x3(ptr: *const bfloat16_t) -> bfloat16x8x3_t;
+    }
+    _vld1q_bf16_x3(ptr)
+}
+#[doc = "Load multiple single-element structures to one, two, three, or four registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_bf16_x4)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg(not(target_arch = "arm"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld1.8"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld1)
+)]
+pub unsafe fn vld1q_bf16_x4(ptr: *const bfloat16_t) -> bfloat16x8x4_t {
+    unsafe extern "llvm-intrinsic" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.ld1x4.v8bf16.p0"
+        )]
+        fn _vld1q_bf16_x4(ptr: *const bfloat16_t) -> bfloat16x8x4_t;
+    }
+    _vld1q_bf16_x4(ptr)
+}
+#[doc = "Load one single-element structure and Replicate to all lanes (of one register)"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_dup_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vld1_dup_bf16(ptr: *const bfloat16_t) -> bfloat16x4_t {
+    transmute(vld1_dup_u16(ptr.cast()))
+}
+#[doc = "Load one single-element structure and Replicate to all lanes (of one register)"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_dup_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vld1q_dup_bf16(ptr: *const bfloat16_t) -> bfloat16x8_t {
+    transmute(vld1q_dup_u16(ptr.cast()))
 }
 #[doc = "Load one single-element structure and replicate to all lanes of one register"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_dup_f16)"]
@@ -19288,6 +21276,62 @@ pub unsafe fn vld1q_f32_x3(a: *const f32) -> float32x4x3_t {
 )]
 pub unsafe fn vld1q_f32_x4(a: *const f32) -> float32x4x4_t {
     crate::ptr::read_unaligned(a.cast())
+}
+#[doc = "Load one single-element structure to one lane of one register"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_lane_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop, LANE = 2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop, LANE = 2)
+)]
+pub unsafe fn vld1_lane_bf16<const LANE: i32>(
+    ptr: *const bfloat16_t,
+    src: bfloat16x4_t,
+) -> bfloat16x4_t {
+    transmute(vld1_lane_u16::<LANE>(ptr.cast(), transmute(src)))
+}
+#[doc = "Load one single-element structure to one lane of one register"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1q_lane_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop, LANE = 2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop, LANE = 2)
+)]
+pub unsafe fn vld1q_lane_bf16<const LANE: i32>(
+    ptr: *const bfloat16_t,
+    src: bfloat16x8_t,
+) -> bfloat16x8_t {
+    transmute(vld1q_lane_u16::<LANE>(ptr.cast(), transmute(src)))
 }
 #[doc = "Load one single-element structure to one lane of one register"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_lane_f16)"]
@@ -21751,6 +23795,486 @@ pub unsafe fn vld1q_dup_p64(ptr: *const p64) -> poly64x2_t {
     let x = vld1q_lane_p64::<0>(ptr, transmute(u64x2::splat(0)));
     simd_shuffle!(x, x, [0, 0])
 }
+#[doc = "Load multiple 2-element structures to two registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg(target_arch = "arm")]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld2.16"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld2)
+)]
+pub unsafe fn vld2_bf16(ptr: *const bfloat16_t) -> bfloat16x4x2_t {
+    transmute(vld2_u16(ptr.cast()))
+}
+#[doc = "Load multiple 2-element structures to two registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg(target_arch = "arm")]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld2.16"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld2)
+)]
+pub unsafe fn vld2q_bf16(ptr: *const bfloat16_t) -> bfloat16x8x2_t {
+    transmute(vld2q_u16(ptr.cast()))
+}
+#[doc = "Load multiple 2-element structures to two registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg(target_arch = "arm")]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld3.16"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld3)
+)]
+pub unsafe fn vld3_bf16(ptr: *const bfloat16_t) -> bfloat16x4x3_t {
+    transmute(vld3_u16(ptr.cast()))
+}
+#[doc = "Load multiple 2-element structures to two registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg(target_arch = "arm")]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld3.16"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld3)
+)]
+pub unsafe fn vld3q_bf16(ptr: *const bfloat16_t) -> bfloat16x8x3_t {
+    transmute(vld3q_u16(ptr.cast()))
+}
+#[doc = "Load multiple 2-element structures to two registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg(target_arch = "arm")]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld4.16"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld4)
+)]
+pub unsafe fn vld4_bf16(ptr: *const bfloat16_t) -> bfloat16x4x4_t {
+    transmute(vld4_u16(ptr.cast()))
+}
+#[doc = "Load multiple 2-element structures to two registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg(target_arch = "arm")]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld4.16"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld4)
+)]
+pub unsafe fn vld4q_bf16(ptr: *const bfloat16_t) -> bfloat16x8x4_t {
+    transmute(vld4q_u16(ptr.cast()))
+}
+#[doc = "Load multiple 2-element structures to two registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg(not(target_arch = "arm"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld2.16"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld2)
+)]
+pub unsafe fn vld2_bf16(ptr: *const bfloat16_t) -> bfloat16x4x2_t {
+    unsafe extern "llvm-intrinsic" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.ld2.v4bf16.p0"
+        )]
+        fn _vld2_bf16(ptr: *const bfloat16_t) -> bfloat16x4x2_t;
+    }
+    _vld2_bf16(ptr)
+}
+#[doc = "Load multiple 2-element structures to two registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg(not(target_arch = "arm"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld2.16"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld2)
+)]
+pub unsafe fn vld2q_bf16(ptr: *const bfloat16_t) -> bfloat16x8x2_t {
+    unsafe extern "llvm-intrinsic" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.ld2.v8bf16.p0"
+        )]
+        fn _vld2q_bf16(ptr: *const bfloat16_t) -> bfloat16x8x2_t;
+    }
+    _vld2q_bf16(ptr)
+}
+#[doc = "Load multiple 2-element structures to two registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg(not(target_arch = "arm"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld3.16"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld3)
+)]
+pub unsafe fn vld3_bf16(ptr: *const bfloat16_t) -> bfloat16x4x3_t {
+    unsafe extern "llvm-intrinsic" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.ld3.v4bf16.p0"
+        )]
+        fn _vld3_bf16(ptr: *const bfloat16_t) -> bfloat16x4x3_t;
+    }
+    _vld3_bf16(ptr)
+}
+#[doc = "Load multiple 2-element structures to two registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg(not(target_arch = "arm"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld3.16"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld3)
+)]
+pub unsafe fn vld3q_bf16(ptr: *const bfloat16_t) -> bfloat16x8x3_t {
+    unsafe extern "llvm-intrinsic" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.ld3.v8bf16.p0"
+        )]
+        fn _vld3q_bf16(ptr: *const bfloat16_t) -> bfloat16x8x3_t;
+    }
+    _vld3q_bf16(ptr)
+}
+#[doc = "Load multiple 2-element structures to two registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg(not(target_arch = "arm"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld4.16"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld4)
+)]
+pub unsafe fn vld4_bf16(ptr: *const bfloat16_t) -> bfloat16x4x4_t {
+    unsafe extern "llvm-intrinsic" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.ld4.v4bf16.p0"
+        )]
+        fn _vld4_bf16(ptr: *const bfloat16_t) -> bfloat16x4x4_t;
+    }
+    _vld4_bf16(ptr)
+}
+#[doc = "Load multiple 2-element structures to two registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg(not(target_arch = "arm"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld4.16"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld4)
+)]
+pub unsafe fn vld4q_bf16(ptr: *const bfloat16_t) -> bfloat16x8x4_t {
+    unsafe extern "llvm-intrinsic" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.ld4.v8bf16.p0"
+        )]
+        fn _vld4q_bf16(ptr: *const bfloat16_t) -> bfloat16x8x4_t;
+    }
+    _vld4q_bf16(ptr)
+}
+#[doc = "Load single 2-element structure and Replicate to all lanes of two registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_dup_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld2.16"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld2)
+)]
+pub unsafe fn vld2_dup_bf16(ptr: *const bfloat16_t) -> bfloat16x4x2_t {
+    transmute(vld2_dup_u16(ptr.cast()))
+}
+#[doc = "Load single 2-element structure and Replicate to all lanes of two registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_dup_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld2.16"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld2)
+)]
+pub unsafe fn vld2q_dup_bf16(ptr: *const bfloat16_t) -> bfloat16x8x2_t {
+    transmute(vld2q_dup_u16(ptr.cast()))
+}
+#[doc = "Load single 2-element structure and Replicate to all lanes of two registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_dup_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld3.16"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld3)
+)]
+pub unsafe fn vld3_dup_bf16(ptr: *const bfloat16_t) -> bfloat16x4x3_t {
+    transmute(vld3_dup_u16(ptr.cast()))
+}
+#[doc = "Load single 2-element structure and Replicate to all lanes of two registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_dup_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld3.16"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld3)
+)]
+pub unsafe fn vld3q_dup_bf16(ptr: *const bfloat16_t) -> bfloat16x8x3_t {
+    transmute(vld3q_dup_u16(ptr.cast()))
+}
+#[doc = "Load single 2-element structure and Replicate to all lanes of two registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_dup_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld4.16"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld4)
+)]
+pub unsafe fn vld4_dup_bf16(ptr: *const bfloat16_t) -> bfloat16x4x4_t {
+    transmute(vld4_dup_u16(ptr.cast()))
+}
+#[doc = "Load single 2-element structure and Replicate to all lanes of two registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_dup_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld4.16"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld4)
+)]
+pub unsafe fn vld4q_dup_bf16(ptr: *const bfloat16_t) -> bfloat16x8x4_t {
+    transmute(vld4q_dup_u16(ptr.cast()))
+}
 #[doc = "Load single 2-element structure and replicate to all lanes of two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_dup_f16)"]
 #[doc = "## Safety"]
@@ -22793,6 +25317,62 @@ pub unsafe fn vld2q_s32(a: *const i32) -> int32x4x2_t {
         fn _vld2q_s32(ptr: *const int32x4_t) -> int32x4x2_t;
     }
     _vld2q_s32(a as _)
+}
+#[doc = "Load single 2-element structure and Replicate to all lanes of two registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_lane_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld2.16", LANE = 2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld2, LANE = 2)
+)]
+pub unsafe fn vld2_lane_bf16<const LANE: i32>(
+    ptr: *const bfloat16_t,
+    src: bfloat16x4x2_t,
+) -> bfloat16x4x2_t {
+    transmute(vld2_lane_u16::<LANE>(ptr.cast(), transmute(src)))
+}
+#[doc = "Load single 2-element structure and Replicate to all lanes of two registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2q_lane_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld2.16", LANE = 2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld2, LANE = 2)
+)]
+pub unsafe fn vld2q_lane_bf16<const LANE: i32>(
+    ptr: *const bfloat16_t,
+    src: bfloat16x8x2_t,
+) -> bfloat16x8x2_t {
+    transmute(vld2q_lane_u16::<LANE>(ptr.cast(), transmute(src)))
 }
 #[doc = "Load multiple 2-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld2_lane_f16)"]
@@ -24698,6 +27278,62 @@ pub unsafe fn vld3q_s32(a: *const i32) -> int32x4x3_t {
         fn _vld3q_s32(ptr: *const i8, size: i32) -> int32x4x3_t;
     }
     _vld3q_s32(a as *const i8, 4)
+}
+#[doc = "Load single 3-element structure to one lane of three registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_lane_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld3.16", LANE = 2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld3, LANE = 2)
+)]
+pub unsafe fn vld3_lane_bf16<const LANE: i32>(
+    ptr: *const bfloat16_t,
+    src: bfloat16x4x3_t,
+) -> bfloat16x4x3_t {
+    transmute(vld3_lane_u16::<LANE>(ptr.cast(), transmute(src)))
+}
+#[doc = "Load single 3-element structure to one lane of three registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3q_lane_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld3.16", LANE = 2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld3, LANE = 2)
+)]
+pub unsafe fn vld3q_lane_bf16<const LANE: i32>(
+    ptr: *const bfloat16_t,
+    src: bfloat16x8x3_t,
+) -> bfloat16x8x3_t {
+    transmute(vld3q_lane_u16::<LANE>(ptr.cast(), transmute(src)))
 }
 #[doc = "Load multiple 3-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld3_lane_f16)"]
@@ -26649,6 +29285,62 @@ pub unsafe fn vld4q_s32(a: *const i32) -> int32x4x4_t {
         fn _vld4q_s32(ptr: *const i8, size: i32) -> int32x4x4_t;
     }
     _vld4q_s32(a as *const i8, 4)
+}
+#[doc = "Load single 4-element structure and Replicate to all lanes of four registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_lane_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld4.16", LANE = 2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld4, LANE = 2)
+)]
+pub unsafe fn vld4_lane_bf16<const LANE: i32>(
+    ptr: *const bfloat16_t,
+    src: bfloat16x4x4_t,
+) -> bfloat16x4x4_t {
+    transmute(vld4_lane_u16::<LANE>(ptr.cast(), transmute(src)))
+}
+#[doc = "Load single 4-element structure and Replicate to all lanes of four registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4q_lane_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vld4.16", LANE = 2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ld4, LANE = 2)
+)]
+pub unsafe fn vld4q_lane_bf16<const LANE: i32>(
+    ptr: *const bfloat16_t,
+    src: bfloat16x8x4_t,
+) -> bfloat16x8x4_t {
+    transmute(vld4q_lane_u16::<LANE>(ptr.cast(), transmute(src)))
 }
 #[doc = "Load multiple 4-element structures to two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld4_lane_f16)"]
@@ -42264,6 +44956,656 @@ pub fn vrecpsq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     unsafe { _vrecpsq_f32(a, b) }
 }
 #[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_bf16_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpret_bf16_f16(a: float16x4_t) -> bfloat16x4_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_bf16_f32)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpret_bf16_f32(a: float32x2_t) -> bfloat16x4_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_bf16_p16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpret_bf16_p16(a: poly16x4_t) -> bfloat16x4_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_bf16_p64)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpret_bf16_p64(a: poly64x1_t) -> bfloat16x4_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_bf16_p8)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpret_bf16_p8(a: poly8x8_t) -> bfloat16x4_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_bf16_s16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpret_bf16_s16(a: int16x4_t) -> bfloat16x4_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_bf16_s32)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpret_bf16_s32(a: int32x2_t) -> bfloat16x4_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_bf16_s64)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpret_bf16_s64(a: int64x1_t) -> bfloat16x4_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_bf16_s8)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpret_bf16_s8(a: int8x8_t) -> bfloat16x4_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_bf16_u16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpret_bf16_u16(a: uint16x4_t) -> bfloat16x4_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_bf16_u32)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpret_bf16_u32(a: uint32x2_t) -> bfloat16x4_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_bf16_u64)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpret_bf16_u64(a: uint64x1_t) -> bfloat16x4_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_bf16_u8)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpret_bf16_u8(a: uint8x8_t) -> bfloat16x4_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f16_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpret_f16_bf16(a: bfloat16x4_t) -> float16x4_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f32_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpret_f32_bf16(a: bfloat16x4_t) -> float32x2_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p16_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpret_p16_bf16(a: bfloat16x4_t) -> poly16x4_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p64_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpret_p64_bf16(a: bfloat16x4_t) -> poly64x1_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_p8_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpret_p8_bf16(a: bfloat16x4_t) -> poly8x8_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s16_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpret_s16_bf16(a: bfloat16x4_t) -> int16x4_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s32_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpret_s32_bf16(a: bfloat16x4_t) -> int32x2_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s64_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpret_s64_bf16(a: bfloat16x4_t) -> int64x1_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_s8_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpret_s8_bf16(a: bfloat16x4_t) -> int8x8_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u16_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpret_u16_bf16(a: bfloat16x4_t) -> uint16x4_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u32_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpret_u32_bf16(a: bfloat16x4_t) -> uint32x2_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u64_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpret_u64_bf16(a: bfloat16x4_t) -> uint64x1_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_u8_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpret_u8_bf16(a: bfloat16x4_t) -> uint8x8_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpret_f32_f16)"]
 #[inline]
 #[target_feature(enable = "neon")]
@@ -44070,6 +47412,706 @@ pub fn vreinterpretq_s16_p16(a: poly16x8_t) -> int16x8_t {
 )]
 pub fn vreinterpretq_u16_p16(a: poly16x8_t) -> uint16x8_t {
     unsafe { transmute(a) }
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_bf16_f16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpretq_bf16_f16(a: float16x8_t) -> bfloat16x8_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_bf16_f32)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpretq_bf16_f32(a: float32x4_t) -> bfloat16x8_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_bf16_p128)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpretq_bf16_p128(a: p128) -> bfloat16x8_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_bf16_p16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpretq_bf16_p16(a: poly16x8_t) -> bfloat16x8_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_bf16_p64)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpretq_bf16_p64(a: poly64x2_t) -> bfloat16x8_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_bf16_p8)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpretq_bf16_p8(a: poly8x16_t) -> bfloat16x8_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_bf16_s16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpretq_bf16_s16(a: int16x8_t) -> bfloat16x8_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_bf16_s32)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpretq_bf16_s32(a: int32x4_t) -> bfloat16x8_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_bf16_s64)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpretq_bf16_s64(a: int64x2_t) -> bfloat16x8_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_bf16_s8)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpretq_bf16_s8(a: int8x16_t) -> bfloat16x8_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_bf16_u16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpretq_bf16_u16(a: uint16x8_t) -> bfloat16x8_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_bf16_u32)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpretq_bf16_u32(a: uint32x4_t) -> bfloat16x8_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_bf16_u64)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpretq_bf16_u64(a: uint64x2_t) -> bfloat16x8_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_bf16_u8)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpretq_bf16_u8(a: uint8x16_t) -> bfloat16x8_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f16_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpretq_f16_bf16(a: bfloat16x8_t) -> float16x8_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f32_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpretq_f32_bf16(a: bfloat16x8_t) -> float32x4_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p128_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpretq_p128_bf16(a: bfloat16x8_t) -> p128 {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p16_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpretq_p16_bf16(a: bfloat16x8_t) -> poly16x8_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p64_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpretq_p64_bf16(a: bfloat16x8_t) -> poly64x2_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_p8_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpretq_p8_bf16(a: bfloat16x8_t) -> poly8x16_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s16_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpretq_s16_bf16(a: bfloat16x8_t) -> int16x8_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s32_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpretq_s32_bf16(a: bfloat16x8_t) -> int32x4_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s64_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpretq_s64_bf16(a: bfloat16x8_t) -> int64x2_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_s8_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpretq_s8_bf16(a: bfloat16x8_t) -> int8x16_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u16_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpretq_u16_bf16(a: bfloat16x8_t) -> uint16x8_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u32_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpretq_u32_bf16(a: bfloat16x8_t) -> uint32x4_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u64_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpretq_u64_bf16(a: bfloat16x8_t) -> uint64x2_t {
+    transmute(a)
+}
+#[doc = "Vector reinterpret cast operation"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_u8_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop)
+)]
+pub unsafe fn vreinterpretq_u8_bf16(a: bfloat16x8_t) -> uint8x16_t {
+    transmute(a)
 }
 #[doc = "Vector reinterpret cast operation"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vreinterpretq_f16_p128)"]
@@ -53322,6 +57364,118 @@ pub fn vrsubhn_u64(a: uint64x2_t, b: uint64x2_t) -> uint32x2_t {
     unsafe { transmute(vrsubhn_s64(transmute(a), transmute(b))) }
 }
 #[doc = "Insert vector element from another vector element"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vset_lane_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(target_endian = "little")]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop, LANE = 2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop, LANE = 2)
+)]
+pub unsafe fn vset_lane_bf16<const LANE: i32>(a: bfloat16_t, v: bfloat16x4_t) -> bfloat16x4_t {
+    static_assert_uimm_bits!(LANE, 2);
+    simd_insert!(v, LANE as u32, a)
+}
+#[doc = "Insert vector element from another vector element"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vset_lane_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(target_endian = "big")]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop, LANE = 2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop, LANE = 2)
+)]
+pub unsafe fn vset_lane_bf16<const LANE: i32>(a: bfloat16_t, v: bfloat16x4_t) -> bfloat16x4_t {
+    static_assert_uimm_bits!(LANE, 2);
+    let v: bfloat16x4_t = simd_shuffle!(v, v, [3, 2, 1, 0]);
+    let ret_val: bfloat16x4_t = simd_insert!(v, LANE as u32, a);
+    simd_shuffle!(ret_val, ret_val, [3, 2, 1, 0])
+}
+#[doc = "Insert vector element from another vector element"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsetq_lane_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(target_endian = "little")]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop, LANE = 2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop, LANE = 2)
+)]
+pub unsafe fn vsetq_lane_bf16<const LANE: i32>(a: bfloat16_t, v: bfloat16x8_t) -> bfloat16x8_t {
+    static_assert_uimm_bits!(LANE, 3);
+    simd_insert!(v, LANE as u32, a)
+}
+#[doc = "Insert vector element from another vector element"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsetq_lane_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(target_endian = "big")]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop, LANE = 2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop, LANE = 2)
+)]
+pub unsafe fn vsetq_lane_bf16<const LANE: i32>(a: bfloat16_t, v: bfloat16x8_t) -> bfloat16x8_t {
+    static_assert_uimm_bits!(LANE, 3);
+    let v: bfloat16x8_t = simd_shuffle!(v, v, [7, 6, 5, 4, 3, 2, 1, 0]);
+    let ret_val: bfloat16x8_t = simd_insert!(v, LANE as u32, a);
+    simd_shuffle!(ret_val, ret_val, [7, 6, 5, 4, 3, 2, 1, 0])
+}
+#[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vset_lane_f16)"]
 #[inline]
 #[cfg(target_endian = "little")]
@@ -57733,6 +61887,206 @@ pub fn vsriq_n_p16<const N: i32>(a: poly16x8_t, b: poly16x8_t) -> poly16x8_t {
     static_assert!(1 <= N && N <= 16);
     unsafe { transmute(vshiftrins_v8i16::<N>(transmute(a), transmute(b))) }
 }
+#[doc = "Store multiple single-element structures from one, two, three, or four registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.8"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(str)
+)]
+pub unsafe fn vst1_bf16(ptr: *mut bfloat16_t, val: bfloat16x4_t) {
+    crate::ptr::write_unaligned(ptr.cast(), val)
+}
+#[doc = "Store multiple single-element structures from one, two, three, or four registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.8"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(str)
+)]
+pub unsafe fn vst1q_bf16(ptr: *mut bfloat16_t, val: bfloat16x8_t) {
+    crate::ptr::write_unaligned(ptr.cast(), val)
+}
+#[doc = "Load single 2-element structure and Replicate to all lanes of two registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_bf16_x2)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.16"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(st1)
+)]
+pub unsafe fn vst1_bf16_x2(ptr: *mut bfloat16_t, val: bfloat16x4x2_t) {
+    vst1_u16_x2(ptr.cast(), transmute(val))
+}
+#[doc = "Load single 2-element structure and Replicate to all lanes of two registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_bf16_x3)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.16"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(st1)
+)]
+pub unsafe fn vst1_bf16_x3(ptr: *mut bfloat16_t, val: bfloat16x4x3_t) {
+    vst1_u16_x3(ptr.cast(), transmute(val))
+}
+#[doc = "Load single 2-element structure and Replicate to all lanes of two registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_bf16_x4)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.16"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(st1)
+)]
+pub unsafe fn vst1_bf16_x4(ptr: *mut bfloat16_t, val: bfloat16x4x4_t) {
+    vst1_u16_x4(ptr.cast(), transmute(val))
+}
+#[doc = "Load single 2-element structure and Replicate to all lanes of two registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_bf16_x2)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.16"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(st1)
+)]
+pub unsafe fn vst1q_bf16_x2(ptr: *mut bfloat16_t, val: bfloat16x8x2_t) {
+    vst1q_u16_x2(ptr.cast(), transmute(val))
+}
+#[doc = "Load single 2-element structure and Replicate to all lanes of two registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_bf16_x3)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.16"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(st1)
+)]
+pub unsafe fn vst1q_bf16_x3(ptr: *mut bfloat16_t, val: bfloat16x8x3_t) {
+    vst1q_u16_x3(ptr.cast(), transmute(val))
+}
+#[doc = "Load single 2-element structure and Replicate to all lanes of two registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_bf16_x4)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst1.16"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(st1)
+)]
+pub unsafe fn vst1q_bf16_x4(ptr: *mut bfloat16_t, val: bfloat16x8x4_t) {
+    vst1q_u16_x4(ptr.cast(), transmute(val))
+}
 #[doc = "Store multiple single-element structures from one, two, three, or four registers."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_f16)"]
 #[doc = "## Safety"]
@@ -58560,6 +62914,56 @@ pub unsafe fn vst1q_f32_x4(a: *mut f32, b: float32x4x4_t) {
         );
     }
     _vst1q_f32_x4(b.0, b.1, b.2, b.3, a)
+}
+#[doc = "Store a single-element structure from one lane of one register"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_lane_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop, LANE = 2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop, LANE = 2)
+)]
+pub unsafe fn vst1_lane_bf16<const LANE: i32>(a: *mut bfloat16_t, v: bfloat16x4_t) {
+    vst1_lane_u16::<LANE>(a.cast(), transmute(v))
+}
+#[doc = "Store a single-element structure from one lane of one register"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1q_lane_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop, LANE = 2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop, LANE = 2)
+)]
+pub unsafe fn vst1q_lane_bf16<const LANE: i32>(a: *mut bfloat16_t, v: bfloat16x8_t) {
+    vst1q_lane_u16::<LANE>(a.cast(), transmute(v))
 }
 #[doc = "Store multiple single-element structures from one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst1_lane_f16)"]
@@ -61184,6 +65588,56 @@ pub unsafe fn vst1q_lane_p64<const LANE: i32>(a: *mut p64, b: poly64x2_t) {
     crate::ptr::write_unaligned(a, simd_extract!(b, LANE as u32))
 }
 #[doc = "Store multiple 2-element structures from two registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop, LANE = 0))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop, LANE = 0)
+)]
+pub unsafe fn vst2_bf16(a: *mut bfloat16_t, b: bfloat16x4x2_t) {
+    vst2_u16(a.cast(), transmute(b))
+}
+#[doc = "Store multiple 2-element structures from two registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop, LANE = 0))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop, LANE = 0)
+)]
+pub unsafe fn vst2q_bf16(a: *mut bfloat16_t, b: bfloat16x8x2_t) {
+    vst2q_u16(a.cast(), transmute(b))
+}
+#[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_f16)"]
 #[doc = "## Safety"]
 #[doc = "  * Neon intrinsic unsafe"]
@@ -61486,6 +65940,56 @@ pub unsafe fn vst2q_s32(a: *mut i32, b: int32x4x2_t) {
         fn _vst2q_s32(ptr: *mut i8, a: int32x4_t, b: int32x4_t, size: i32);
     }
     _vst2q_s32(a as _, b.0, b.1, 4)
+}
+#[doc = "Store single 2-element structure from one lane of two registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_lane_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst2.16", LANE = 2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(st2, LANE = 2)
+)]
+pub unsafe fn vst2_lane_bf16<const LANE: i32>(a: *mut bfloat16_t, v: bfloat16x4x2_t) {
+    vst2_lane_u16::<LANE>(a.cast(), transmute(v))
+}
+#[doc = "Store single 2-element structure from one lane of two registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2q_lane_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst2.16", LANE = 2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(st2, LANE = 2)
+)]
+pub unsafe fn vst2q_lane_bf16<const LANE: i32>(a: *mut bfloat16_t, v: bfloat16x8x2_t) {
+    vst2q_lane_u16::<LANE>(a.cast(), transmute(v))
 }
 #[doc = "Store multiple 2-element structures from two registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst2_lane_f16)"]
@@ -62349,6 +66853,56 @@ pub unsafe fn vst2q_p16(a: *mut p16, b: poly16x8x2_t) {
     vst2q_s16(transmute(a), transmute(b))
 }
 #[doc = "Store multiple 3-element structures from three registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop, LANE = 0))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop, LANE = 0)
+)]
+pub unsafe fn vst3_bf16(a: *mut bfloat16_t, b: bfloat16x4x3_t) {
+    vst3_u16(a.cast(), transmute(b))
+}
+#[doc = "Store multiple 3-element structures from three registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop, LANE = 0))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop, LANE = 0)
+)]
+pub unsafe fn vst3q_bf16(a: *mut bfloat16_t, b: bfloat16x8x3_t) {
+    vst3q_u16(a.cast(), transmute(b))
+}
+#[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_f16)"]
 #[doc = "## Safety"]
 #[doc = "  * Neon intrinsic unsafe"]
@@ -62619,6 +67173,56 @@ pub unsafe fn vst3_s32(a: *mut i32, b: int32x2x3_t) {
 #[cfg_attr(test, assert_instr(st3))]
 pub unsafe fn vst3q_s32(a: *mut i32, b: int32x4x3_t) {
     crate::core_arch::macros::interleaving_store!(i32, 4, 3, a, b)
+}
+#[doc = "Store single 3-element structure from one lane of three registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_lane_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst3.16", LANE = 2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(st3, LANE = 2)
+)]
+pub unsafe fn vst3_lane_bf16<const LANE: i32>(a: *mut bfloat16_t, v: bfloat16x4x3_t) {
+    vst3_lane_u16::<LANE>(a.cast(), transmute(v))
+}
+#[doc = "Store single 3-element structure from one lane of three registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3q_lane_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst3.16", LANE = 2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(st3, LANE = 2)
+)]
+pub unsafe fn vst3q_lane_bf16<const LANE: i32>(a: *mut bfloat16_t, v: bfloat16x8x3_t) {
+    vst3q_lane_u16::<LANE>(a.cast(), transmute(v))
 }
 #[doc = "Store multiple 3-element structures from three registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst3_lane_f16)"]
@@ -63538,6 +68142,56 @@ pub unsafe fn vst3q_p16(a: *mut p16, b: poly16x8x3_t) {
     vst3q_s16(transmute(a), transmute(b))
 }
 #[doc = "Store multiple 4-element structures from four registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop, LANE = 0))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop, LANE = 0)
+)]
+pub unsafe fn vst4_bf16(a: *mut bfloat16_t, b: bfloat16x4x4_t) {
+    vst4_u16(a.cast(), transmute(b))
+}
+#[doc = "Store multiple 4-element structures from four registers"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop, LANE = 0))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(nop, LANE = 0)
+)]
+pub unsafe fn vst4q_bf16(a: *mut bfloat16_t, b: bfloat16x8x4_t) {
+    vst4q_u16(a.cast(), transmute(b))
+}
+#[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_f16)"]
 #[doc = "## Safety"]
 #[doc = "  * Neon intrinsic unsafe"]
@@ -63903,6 +68557,56 @@ pub unsafe fn vst4_s32(a: *mut i32, b: int32x2x4_t) {
 #[cfg_attr(test, assert_instr(st4))]
 pub unsafe fn vst4q_s32(a: *mut i32, b: int32x4x4_t) {
     crate::core_arch::macros::interleaving_store!(i32, 4, 4, a, b)
+}
+#[doc = "Store single 4-element structure from one lane of four registerss"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_lane_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst4.16", LANE = 2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(st4, LANE = 2)
+)]
+pub unsafe fn vst4_lane_bf16<const LANE: i32>(a: *mut bfloat16_t, v: bfloat16x4x4_t) {
+    vst4_lane_u16::<LANE>(a.cast(), transmute(v))
+}
+#[doc = "Store single 4-element structure from one lane of four registerss"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4q_lane_bf16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon intrinsic unsafe"]
+#[inline]
+#[cfg(any(target_has_reliable_f16b, doc))]
+#[doc(cfg(target_has_reliable_f16b))]
+#[target_feature(enable = "neon,bf16")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_bf16", issue = "164986")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vst4.16", LANE = 2))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(st4, LANE = 2)
+)]
+pub unsafe fn vst4q_lane_bf16<const LANE: i32>(a: *mut bfloat16_t, v: bfloat16x8x4_t) {
+    vst4q_lane_u16::<LANE>(a.cast(), transmute(v))
 }
 #[doc = "Store multiple 4-element structures from four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vst4_lane_f16)"]

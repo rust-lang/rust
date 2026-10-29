@@ -55,6 +55,10 @@ not-arm: &not-arm
 neon-target-aarch64-arm64ec: &neon-target-aarch64-arm64ec
   FnCall: [all, [test, {FnCall: [any, ['target_arch = "aarch64"', 'target_arch = "arm64ec"']]}]]
 
+# MSVC's dumpbin prints raw opcodes for these BF16 instructions.
+neon-target-aarch64-arm64ec-no-msvc: &neon-target-aarch64-arm64ec-no-msvc
+  FnCall: [all, [test, {FnCall: [any, ['target_arch = "aarch64"', 'target_arch = "arm64ec"']]}, {FnCall: [not, ['target_env = "msvc"']]}]]
+
 neon-target-aarch64-le: &neon-target-aarch64-le
   FnCall: [all, [test, 'target_arch = "aarch64"', 'target_endian = "little"', {FnCall: [not, [windows]]}]]
 
@@ -99,6 +103,10 @@ neon-i8mm: &neon-i8mm
 neon-fp16: &neon-fp16
   FnCall: [target_feature, ['enable = "neon,fp16"']]
 
+# #[target_feature(enable = "neon,bf16")]
+neon-bf16: &neon-bf16
+  FnCall: [target_feature, ['enable = "neon,bf16"']]
+
 # #[cfg_attr[target_arch = "arm", target_feature(enable = "neon,fp16")]
 arm-fp16: &arm-fp16
   FnCall: [cfg_attr, ['target_arch = "arm"', {FnCall: [target_feature, ['enable = "fp16"']]}]]
@@ -127,6 +135,18 @@ neon-unstable-f16: &neon-unstable-f16
 # all(target_endian = "little")
 all-neon-target-aarch64-arm64ec-little-endian: &all-neon-target-aarch64-arm64ec-little-endian
   FnCall: [all, [test, {FnCall: [any, ['target_arch = "aarch64"', 'target_arch = "arm64ec"']]}, 'target_endian = "little"']]
+
+# #[cfg_attr(not(target_arch = "arm"), unstable(feature = "stdarch_neon_bf16", issue = "164986"))]
+neon-unstable-bf16: &neon-unstable-bf16
+  FnCall: [cfg_attr, [*not-arm, {FnCall: [unstable, ['feature = "stdarch_neon_bf16"', 'issue = "164986"']]}]]
+
+# #[cfg(any(target_has_reliable_f16b, doc))]
+cfg-reliable-bf16: &cfg-reliable-bf16
+  FnCall: [cfg, [{ FnCall: [any, [target_has_reliable_f16b, doc]]}]]
+
+# #[doc(cfg(target_has_reliable_f16b))]
+doc-cfg-reliable-bf16: &doc-cfg-reliable-bf16
+  FnCall: [doc, [{ FnCall: [cfg, [target_has_reliable_f16b]]}]]
 
 intrinsics:
   - name: "vand{neon_type.no}"
@@ -15338,3 +15358,1349 @@ intrinsics:
       - ['vrev64q_f32', 'float32x4_t', 'vrev64.32', 'rev64', '[1, 0, 3, 2]']
     compose:
       - FnCall: ['simd_shuffle!', [a, a, '{type[4]}']]
+
+##### bf16 intrinsics
+  - name: "vbfdot{neon_type[0].no}"
+    doc: "BFloat16 floating-point dot product (vector)"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {neon_type[2]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vdot.bf16"']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec-no-msvc, {FnCall: [assert_instr, [bfdot]]}]]
+    safety: safe
+    types:
+      - [float32x2_t, bfloat16x4_t, bfloat16x4_t]
+      - [float32x4_t, bfloat16x8_t, bfloat16x8_t]
+    compose:
+      - LLVMLink:
+          name: "bfdot.{neon_type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.bfdot.{neon_type[0]}.{neon_type[1]}"
+              arch: aarch64,arm64ec
+            - link: "llvm.arm.neon.bfdot.{neon_type[0]}.{neon_type[1]}"
+              arch: arm
+
+  - name: "vbfdot{neon_type[0].lane_nox}"
+    doc: "BFloat16 floating-point dot product (vector, by element)"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {neon_type[2]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vdot.bf16"', 'LANE = 0']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec-no-msvc, {FnCall: [assert_instr, [bfdot, 'LANE = 0']]}]]
+    safety: safe
+    static_defs: ['const LANE: i32']
+    types:
+      - [float32x2_t, bfloat16x4_t, bfloat16x4_t, 'vdup_lane_u32']
+      - [float32x4_t, bfloat16x8_t, bfloat16x4_t, 'vdupq_lane_u32']
+    compose:
+      - FnCall: [static_assert_uimm_bits!, [LANE, '1']]
+      - Let: [pairs, "{neon_type[2]}", "c"]
+      - Let: [duped, '{neon_type[1]}', FnCall: [transmute, [FnCall: ['{type[3]}::<LANE>', [FnCall: [transmute, [pairs]]]]]]]
+      - FnCall: ['vbfdot{neon_type[0].no}', [a, b, duped]]
+
+  - name: "vbfdot{neon_type[0].laneq_nox}"
+    doc: "BFloat16 floating-point dot product (vector, by element)"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {neon_type[2]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vdot.bf16"', 'LANE = 0']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec-no-msvc, {FnCall: [assert_instr, [bfdot, 'LANE = 0']]}]]
+    safety: safe
+    static_defs: ['const LANE: i32']
+    types:
+      - [float32x4_t, bfloat16x8_t, bfloat16x8_t, 'vdupq_laneq_u32']
+      - [float32x2_t, bfloat16x4_t, bfloat16x8_t, 'vdup_laneq_u32']
+    compose:
+      - FnCall: [static_assert_uimm_bits!, [LANE, '2']]
+      - Let: [pairs, "{neon_type[2]}", "c"]
+      - Let: [duped, '{neon_type[1]}', FnCall: [transmute, [FnCall: ['{type[3]}::<LANE>', [FnCall: [transmute, [pairs]]]]]]]
+      - FnCall: ['vbfdot{neon_type[0].no}', [a, b, duped]]
+
+  - name: "vbfmlalbq_f32"
+    big_endian_inverse: true
+    doc: "BFloat16 floating-point widening multiply-add long (vector)"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {neon_type[2]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vfmab.bf16"']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec-no-msvc, {FnCall: [assert_instr, [bfmlalb]]}]]
+    safety: safe
+    types:
+      - [float32x4_t, bfloat16x8_t, bfloat16x8_t]
+    compose:
+      - LLVMLink:
+          name: "vbfmlalbq_f32"
+          links:
+            - link: "llvm.aarch64.neon.bfmlalb"
+              arch: aarch64,arm64ec
+            - link: "llvm.arm.neon.bfmlalb"
+              arch: arm
+
+# "vbfmlalbq_lane_f32" ARM
+  - name: "vbfmlalbq_lane_f32"
+    doc: "BFloat16 floating-point widening multiply-add long (vector)"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {neon_type[2]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vfmab.bf16"', 'LANE = 0']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec-no-msvc, {FnCall: [assert_instr, [bfmlalb, 'LANE = 0']]}]]
+    safety: safe
+    static_defs: ['const LANE: i32']
+    types:
+      - [float32x4_t, bfloat16x8_t, bfloat16x4_t]
+    compose:
+      - FnCall: [static_assert_uimm_bits!, [LANE, '2']]
+      - Let: [duped, bfloat16x8_t, FnCall: [transmute, [FnCall: ['vdupq_lane_u16::<LANE>', [FnCall: [transmute, [c]]]]]]]
+      - FnCall: [vbfmlalbq_f32, [a, b, duped]]
+
+  - name: "vbfmlalbq_laneq_f32"
+    doc: "BFloat16 floating-point widening multiply-add long (vector)"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {neon_type[2]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vfmab.bf16"', 'LANE = 0']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec-no-msvc, {FnCall: [assert_instr, [bfmlalb, 'LANE = 0']]}]]
+    safety: safe
+    static_defs: ['const LANE: i32']
+    types:
+      - [float32x4_t, bfloat16x8_t, bfloat16x8_t]
+    compose:
+      - FnCall: [static_assert_uimm_bits!, [LANE, '3']]
+      - Let: [duped, bfloat16x8_t, FnCall: [transmute, [FnCall: ['vdupq_laneq_u16::<LANE>', [FnCall: [transmute, [c]]]]]]]
+      - FnCall: [vbfmlalbq_f32, [a, b, duped]]
+
+  - name: "vbfmlaltq_f32"
+    big_endian_inverse: true
+    doc: "BFloat16 floating-point widening multiply-add long (vector)"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {neon_type[2]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vfmat.bf16"']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec-no-msvc, {FnCall: [assert_instr, [bfmlalt]]}]]
+    safety: safe
+    types:
+      - [float32x4_t, bfloat16x8_t, bfloat16x8_t]
+    compose:
+      - LLVMLink:
+          name: "vbfmlalbq_f32"
+          links:
+            - link: "llvm.aarch64.neon.bfmlalt"
+              arch: aarch64,arm64ec
+            - link: "llvm.arm.neon.bfmlalt"
+              arch: arm
+
+# "vbfmlalbq_lane_f32" ARM
+  - name: "vbfmlaltq_lane_f32"
+    doc: "BFloat16 floating-point widening multiply-add long (vector)"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {neon_type[2]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vfmat.bf16"', 'LANE = 0']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec-no-msvc, {FnCall: [assert_instr, [bfmlalt, 'LANE = 0']]}]]
+    safety: safe
+    static_defs: ['const LANE: i32']
+    types:
+      - [float32x4_t, bfloat16x8_t, bfloat16x4_t]
+    compose:
+      - FnCall: [static_assert_uimm_bits!, [LANE, '2']]
+      - Let: [duped, bfloat16x8_t, FnCall: [transmute, [FnCall: ['vdupq_lane_u16::<LANE>', [FnCall: [transmute, [c]]]]]]]
+      - FnCall: [vbfmlaltq_f32, [a, b, duped]]
+
+  - name: "vbfmlaltq_laneq_f32"
+    doc: "BFloat16 floating-point widening multiply-add long (vector)"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {neon_type[2]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vfmat.bf16"', 'LANE = 0']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec-no-msvc, {FnCall: [assert_instr, [bfmlalt, 'LANE = 0']]}]]
+    safety: safe
+    static_defs: ['const LANE: i32']
+    types:
+      - [float32x4_t, bfloat16x8_t, bfloat16x8_t]
+    compose:
+      - FnCall: [static_assert_uimm_bits!, [LANE, '3']]
+      - Let: [duped, bfloat16x8_t, FnCall: [transmute, [FnCall: ['vdupq_laneq_u16::<LANE>', [FnCall: [transmute, [c]]]]]]]
+      - FnCall: [vbfmlaltq_f32, [a, b, duped]]
+
+  - name: "vbfmmlaq_f32"
+    big_endian_inverse: true
+    doc: "BFloat16 floating-point matrix multiply-accumulate into 2x2 matrix"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {neon_type[2]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vmmla.bf16"']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec-no-msvc, {FnCall: [assert_instr, [bfmmla]]}]]
+    safety: safe
+    types:
+      - [float32x4_t, bfloat16x8_t, bfloat16x8_t]
+    compose:
+      - LLVMLink:
+          name: "bfmmla.{neon_type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.bfmmla"
+              arch: aarch64,arm64ec
+            - link: "llvm.arm.neon.bfmmla"
+              arch: arm
+
+  - name: "vcombine_bf16"
+    doc: Join two smaller vectors into a single larger vector
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [nop]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [nop]]}]]
+    safety: safe
+    big_endian_inverse: true
+    types:
+      - [bfloat16x4_t, bfloat16x8_t]
+    compose:
+      - FnCall: [simd_shuffle!, [a, b, '[0, 1, 2, 3, 4, 5, 6, 7]']]
+
+  - name: "vcreate_bf16"
+    doc: Insert vector element from another vector element
+    arguments: ["a: {type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [nop]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [nop]]}]]
+    safety:
+      unsafe: [neon]
+    types:
+      - ['u64', 'bfloat16x4_t']
+    compose:
+      - FnCall: [transmute, [a]]
+
+  - name: "vcvt_bf16_f32"
+    doc: "Floating-point convert from single-precision to BFloat16 format (vector)"
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - *target-is-arm
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vcvt.bf16.f32"']]}]]
+    safety: safe
+    types:
+      - [float32x4_t, bfloat16x4_t]
+    compose:
+      - LLVMLink:
+          name: "vcvt_bf16_f32"
+          links:
+            - link: "llvm.arm.neon.vcvtfp2bf.v4bf16"
+              arch: arm
+
+  - name: "vcvt_bf16_f32"
+    doc: "Floating-point convert from single-precision to BFloat16 format (vector)"
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-unstable-bf16
+      - *target-not-arm
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [bfcvtn]]}]]
+    safety: safe
+    types:
+      - [float32x4_t, bfloat16x4_t]
+    compose:
+      - FnCall: [vget_low_bf16, [FnCall: [vcvtq_low_bf16_f32, [a], [], true]], [], true]
+
+  - name: "vcvt_f32_bf16"
+    doc: "Shift Left Long (by element size)"
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vshll.i16"']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [shll]]}]]
+    safety: safe
+    types:
+      - [bfloat16x4_t, float32x4_t]
+    compose:
+      - Let: [half, uint16x4_t, FnCall: [transmute, [a]]]
+      - FnCall: [vreinterpretq_f32_u32, [FnCall: ['vshll_n_u16::<16>', [half]]]]
+
+  - name: "vcvtah_f32_bf16"
+    doc: "Shift Left (immediate)"
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [nop]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [nop]]}]]
+    safety: safe
+    types:
+      - ['bfloat16_t', float32_t]
+    compose:
+      - FnCall: [f32::from_bits, ['(a.to_bits() as u32) << 16']]
+
+  - name: "vcvth_bf16_f32"
+    doc: "Floating-point convert from single-precision to BFloat16 format (scalar)"
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vcvtb.bf16.f32"']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec-no-msvc, {FnCall: [assert_instr, [bfcvt]]}]]
+    safety: safe
+    types:
+      - [float32_t, bfloat16_t]
+    compose:
+      - LLVMLink:
+          name: "vcvth_bf16_f32"
+          links:
+            - link: "llvm.arm.neon.vcvtbfp2bf"
+              arch: arm
+            - link: "llvm.aarch64.neon.bfcvt"
+              arch: aarch64,arm64ec
+
+  - name: "vcvtq_low_bf16_f32"
+    big_endian_inverse: true
+    doc: "Floating-point convert from single-precision to BFloat16 format (vector)"
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - *target-is-arm
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vcvt.bf16.f32"']]}]]
+    safety:
+      unsafe: [neon]
+    types:
+      - [float32x4_t, bfloat16x8_t]
+    compose:
+      - Let: [a, int32x4_t, FnCall: [transmute, [a]]]
+      - Let: [a, int8x16_t, FnCall: [transmute, [a]]]
+      - Let: [a, float32x4_t, FnCall: [transmute, [a]]]
+      - Let: [vec, bfloat16x4_t, FnCall: [vcvt_bf16_f32, [a]]]
+      - Let: [z, bfloat16x4_t, 'bfloat16x4_t([bfloat16_t::from_bits(0x0), bfloat16_t::from_bits(0x0), bfloat16_t::from_bits(0x0), bfloat16_t::from_bits(0x0)])']
+      - FnCall: [simd_shuffle!, [z, vec, '[0, 1, 2, 3, 4, 5, 6, 7]']]
+
+  - name: "vcvtq_low_bf16_f32"
+    big_endian_inverse: true
+    doc: "Floating-point convert from single-precision to BFloat16 format (vector)"
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - *target-not-arm
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [bfcvtn]]}]]
+    safety:
+      unsafe: [neon]
+    types:
+      - [float32x4_t, bfloat16x8_t]
+    compose:
+      - LLVMLink:
+          name: "vcvtq_low_bf16_f32"
+          links:
+            - link: "llvm.aarch64.neon.bfcvtn"
+              arch: aarch64,arm64ec
+
+  - name: "vcvtq_high_f32_bf16"
+    doc: "Shift Left Long (by element size)"
+    arguments: ["a: {type[1]}"]
+    return_type: "{type[0]}"
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vshll.i16"']]}]]
+      - FnCall: [cfg_attr, [*all-neon-target-aarch64-arm64ec-little-endian, {FnCall: [assert_instr, [shll2]]}]]
+      # Reversing big-endian lanes lets LLVM use the low-half instruction.
+      - FnCall: [cfg_attr, [*neon-target-aarch64-be, {FnCall: [assert_instr, [shll]]}]]
+    safety: safe
+    types:
+      - [float32x4_t, bfloat16x8_t]
+    compose:
+      - Let: [half, uint16x4_t, FnCall: [vget_high_u16, [FnCall: [transmute, [a]]]]]
+      - FnCall: [vreinterpretq_f32_u32, [FnCall: ['vshll_n_u16::<16>', [half]]]]
+
+  - name: "vcvtq_high_bf16_f32"
+    big_endian_inverse: true
+    doc: "Floating-point convert from single-precision to BFloat16 format (vector)"
+    arguments: ["_inactive: {neon_type[0]}", "a: {neon_type[1]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - *target-not-arm
+      - FnCall: [cfg_attr, [*all-neon-target-aarch64-arm64ec-little-endian, {FnCall: [assert_instr, [bfcvtn2]]}]]
+      # Reversing big-endian lanes lets LLVM use the low-half instruction.
+      - FnCall: [cfg_attr, [*neon-target-aarch64-be, {FnCall: [assert_instr, [bfcvtn]]}]]
+    safety:
+      unsafe: [neon]
+    types:
+      - [bfloat16x8_t, float32x4_t]
+    compose:
+      - LLVMLink:
+          name: "vcvtq_high_bf16_f32"
+          links:
+            - link: "llvm.aarch64.neon.bfcvtn2"
+              arch: aarch64,arm64ec
+
+  # T
+  - name: "vcvtq_high_bf16_f32"
+    doc: "Floating-point convert from single-precision to BFloat16 format (vector)"
+    arguments: ["_inactive: {neon_type[0]}", "a: {neon_type[1]}"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - *target-is-arm
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vcvt.bf16.f32"']]}]]
+    safety:
+      unsafe: [neon]
+    types:
+      - [bfloat16x8_t, float32x4_t]
+    compose:
+      - Let: [b, bfloat16x4_t, FnCall: [simd_shuffle!, [_inactive, _inactive, '[0, 1, 2, 3]']]]
+      - Let: [a, int32x4_t, FnCall: [transmute, [a]]]
+      - Let: [a, int16x8_t, FnCall: [transmute, [a]]]
+      - Let: [a, float32x4_t, FnCall: [transmute, [a]]]
+      - Let: [a, bfloat16x4_t, FnCall: [vcvt_bf16_f32, [a]]]
+      - Let: [vec, bfloat16x4_t, FnCall: [simd_shuffle!, [a, a, '[0, 1, 2, 3]']]]
+      - FnCall: [simd_shuffle!, [vec, b, '[0, 1, 2, 3, 4, 5, 6, 7]']]
+
+  - name: "vcvtq_low_f32_bf16"
+    doc: "Shift Left Long (by element size)"
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vshll.i16"']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [shll]]}]]
+    safety: safe
+    types:
+      - [bfloat16x8_t, float32x4_t]
+    compose:
+      - Let: [half, uint16x4_t, FnCall: [vget_low_u16, [FnCall: [transmute, [a]]]]]
+      - FnCall: [vreinterpretq_f32_u32, [FnCall: ['vshll_n_u16::<16>', [half]]]]
+
+  - name: "vdup_lane_bf16"
+    doc: "Duplicate vector element to vector or scalar"
+    arguments: ["a: bfloat16x4_t"]
+    return_type: "{neon_type[0]}"
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [nop, 'LANE = 2']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [nop, 'LANE = 2']]}]]
+    safety:
+      unsafe: [neon]
+    static_defs: ['const LANE: i32']
+    types:
+      - [bfloat16x4_t, bfloat16x4_t]
+    compose:
+      - FnCall: [static_assert_uimm_bits!, [LANE, 2]]
+      - Let: [c, uint16x4_t, FnCall: [vreinterpret_u16_bf16, [a]]]
+      - Let: [duped, uint16x4_t, FnCall: ['vdup_lane_u16::<LANE>', [c]]]
+      - FnCall: [vreinterpret_bf16_u16, [duped]]
+
+  - name: "vdupq_lane_bf16"
+    doc: "Duplicate vector element to vector or scalar"
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [nop, 'LANE = 2']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [nop, 'LANE = 2']]}]]
+    safety:
+      unsafe: [neon]
+    static_defs: ['const LANE: i32']
+    types:
+      - [bfloat16x4_t, bfloat16x8_t]
+    compose:
+      # cast to u16s, duplicate the lane using a u16 intrinsic and then cast back
+      - FnCall: [static_assert_uimm_bits!, [LANE, 2]]
+      - Let: [c, uint16x4_t, FnCall: [vreinterpret_u16_bf16, [a]]]
+      - Let: [duped, uint16x8_t, FnCall: ['vdupq_lane_u16::<LANE>', [c]]]
+      - FnCall: [vreinterpretq_bf16_u16, [duped]]
+
+  - name: "vdup_n_bf16"
+    doc: "Duplicate vector element to vector or scalar"
+    arguments: ["a: {type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [nop]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [nop]]}]]
+    safety:
+      unsafe: [neon]
+    types:
+      - [bfloat16_t, bfloat16x4_t]
+    compose:
+      - FnCall: [vreinterpret_bf16_u16, [FnCall: [vdup_n_u16, [MethodCall: [a, to_bits, []]]]]]
+
+  - name: "vdupq_n_bf16"
+    doc: "Duplicate vector element to vector or scalar"
+    arguments: ["a: {type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [nop]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [nop]]}]]
+    safety:
+      unsafe: [neon]
+    types:
+      - [bfloat16_t, bfloat16x8_t]
+    compose:
+      - FnCall: [vreinterpretq_bf16_u16, [FnCall: [vdupq_n_u16, [MethodCall: [a, to_bits, []]]]]]
+
+  - name: "vget_lane_bf16"
+    big_endian_inverse: true
+    doc: "Duplicate vector element to vector or scalar"
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [nop, 'LANE = 2']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [nop, 'LANE = 2']]}]]
+    safety:
+      unsafe: [neon]
+    static_defs: ['const LANE: i32']
+    types:
+      - [bfloat16x4_t, bfloat16_t]
+    compose:
+      - FnCall: [static_assert_uimm_bits!, [LANE, '2']]
+      - FnCall: [simd_extract!, [a, 'LANE as u32']]
+
+  - name: "vgetq_lane_bf16"
+    big_endian_inverse: true
+    doc: "Duplicate vector element to vector or scalar"
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{type[1]}"
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [nop, 'LANE = 2']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [nop, 'LANE = 2']]}]]
+    safety:
+      unsafe: [neon]
+    static_defs: ['const LANE: i32']
+    types:
+      - [bfloat16x8_t, bfloat16_t]
+    compose:
+      - FnCall: [static_assert_uimm_bits!, [LANE, '3']]
+      - FnCall: [simd_extract!, [a, 'LANE as u32']]
+
+  - name: "vduph_lane_bf16"
+    doc: "Duplicate vector element to vector or scalar"
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{type[1]}"
+    static_defs: ['const LANE: i32']
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [nop, 'LANE = 2']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [nop, 'LANE = 2']]}]]
+    safety:
+      unsafe: [neon]
+    types:
+      - [bfloat16x4_t, bfloat16_t]
+    compose:
+      - FnCall: [static_assert_uimm_bits!, [LANE, 2]]
+      - FnCall: ['vget_lane_bf16::<LANE>', [a]]
+
+  - name: "vduph_laneq_bf16"
+    doc: "Duplicate vector element to vector or scalar"
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{type[1]}"
+    static_defs: ['const LANE: i32']
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [nop, 'LANE = 2']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [nop, 'LANE = 2']]}]]
+    safety:
+      unsafe: [neon]
+    types:
+      - [bfloat16x8_t, bfloat16_t]
+    compose:
+      - FnCall: [static_assert_uimm_bits!, [LANE, '3']]
+      - FnCall: ['vgetq_lane_bf16::<LANE>', [a]]
+
+  - name: "vdup{neon_type[1].laneq_nox}"
+    big_endian_inverse: true
+    doc: "Duplicate vector element to vector or scalar"
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    static_defs: ['const LANE: i32']
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [nop, 'LANE = 2']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [nop, 'LANE = 2']]}]]
+    safety:
+      unsafe: [neon]
+    types:
+      - [bfloat16x8_t, bfloat16x4_t]
+      - [bfloat16x8_t, bfloat16x8_t]
+    compose:
+      - FnCall: ["static_assert_uimm_bits!", [LANE, '3']] 
+      - FnCall: ["simd_shuffle!", [a, a, '[LANE as u32; {neon_type[1].lane}]']]
+
+  - name: "vget_high_bf16"
+    big_endian_inverse: true
+    doc: "Duplicate vector element to vector or scalar"
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [nop]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [nop]]}]]
+    safety:
+      unsafe: [neon]
+    types:
+      - [bfloat16x8_t, bfloat16x4_t]
+    compose:
+      - FnCall: [simd_shuffle!, [a, a, "[4, 5, 6, 7]"]]
+
+  - name: "vget_low_bf16"
+    doc: "Duplicate vector element to vector or scalar"
+    arguments: ["a: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [nop]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [nop]]}]]
+    safety:
+      unsafe: [neon]
+    types:
+      - [bfloat16x8_t, bfloat16x4_t]
+    compose:
+      - FnCall: [transmute, [FnCall: [vget_low_u64, [FnCall: [transmute, [a]]]]]]
+
+  - name: "vld1{neon_type[1].no}"
+    doc: "Load multiple single-element structures to one, two, three, or four registers"
+    arguments: ["ptr: *const {type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [nop]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [nop]]}]]
+    safety:
+      unsafe: [neon]
+    types:
+      - [bfloat16_t, bfloat16x4_t]
+      - [bfloat16_t, bfloat16x8_t]
+    compose:
+      - FnCall: ['crate::ptr::read_unaligned', [MethodCall: [ptr, cast, []]]]
+
+  - name: "{type[0]}"
+    doc: "Load multiple single-element structures to one, two, three, or four registers"
+    arguments: ["ptr: *const {type[1]}"]
+    return_type: "{neon_type[2]}"
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *target-is-arm
+      - *neon-cfg-arm-unstable
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vld1.8"']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ld1]]}]]
+    safety:
+      unsafe: [neon]
+    types:
+      - ['vld1_bf16_x2',  bfloat16_t, bfloat16x4x2_t, "ld1x2.v4bf16.p0", 'vld1_u16_x2']
+      - ['vld1q_bf16_x2', bfloat16_t, bfloat16x8x2_t, "ld1x2.v8bf16.p0", 'vld1q_u16_x2']
+      - ['vld1_bf16_x3',  bfloat16_t, bfloat16x4x3_t, "ld1x3.v4bf16.p0", 'vld1_u16_x3']
+      - ['vld1q_bf16_x3', bfloat16_t, bfloat16x8x3_t, "ld1x3.v8bf16.p0", 'vld1q_u16_x3']
+      - ['vld1_bf16_x4',  bfloat16_t, bfloat16x4x4_t, "ld1x4.v4bf16.p0", 'vld1_u16_x4']
+      - ['vld1q_bf16_x4', bfloat16_t, bfloat16x8x4_t, "ld1x4.v8bf16.p0", 'vld1q_u16_x4']
+    compose:
+      - FnCall: [transmute, [FnCall: ['{type[4]}', [MethodCall: [ptr, cast, []]]]]]
+
+  - name: "{type[0]}"
+    doc: "Load multiple single-element structures to one, two, three, or four registers"
+    arguments: ["ptr: *const {type[1]}"]
+    return_type: "{neon_type[2]}"
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *target-not-arm
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vld1.8"']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ld1]]}]]
+    safety:
+      unsafe: [neon]
+    types:
+      - ['vld1_bf16_x2',  bfloat16_t, bfloat16x4x2_t, "ld1x2.v4bf16.p0", 'vld1_u16_x2']
+      - ['vld1q_bf16_x2', bfloat16_t, bfloat16x8x2_t, "ld1x2.v8bf16.p0", 'vld1q_u16_x2']
+      - ['vld1_bf16_x3',  bfloat16_t, bfloat16x4x3_t, "ld1x3.v4bf16.p0", 'vld1_u16_x3']
+      - ['vld1q_bf16_x3', bfloat16_t, bfloat16x8x3_t, "ld1x3.v8bf16.p0", 'vld1q_u16_x3']
+      - ['vld1_bf16_x4',  bfloat16_t, bfloat16x4x4_t, "ld1x4.v4bf16.p0", 'vld1_u16_x4']
+      - ['vld1q_bf16_x4', bfloat16_t, bfloat16x8x4_t, "ld1x4.v8bf16.p0", 'vld1q_u16_x4']
+    compose:
+      - LLVMLink:
+          name: "{type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.{type[3]}"
+              arch: aarch64,arm64ec
+
+  - name: "{type[0]}"
+    doc: "Load one single-element structure and Replicate to all lanes (of one register)"
+    arguments: ["ptr: *const {type[1]}"]
+    return_type: "{neon_type[2]}"
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [nop]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [nop]]}]]
+    safety:
+      unsafe: [neon]
+    types:
+      - ['vld1_dup_bf16', bfloat16_t, bfloat16x4_t, 'f16bx4::splat', 'vld1_dup_u16']
+      - ['vld1q_dup_bf16', bfloat16_t, bfloat16x8_t, 'f16bx8::splat', 'vld1q_dup_u16']
+    compose:
+      - FnCall: [transmute, [FnCall: ['{type[4]}', [MethodCall: [ptr, cast, []]]]]]
+
+  - name: "{type[0]}"
+    doc: "Load one single-element structure to one lane of one register"
+    arguments: ["ptr: *const {type[1]}", "src: {neon_type[2]}"]
+    return_type: "{neon_type[2]}"
+    static_defs: ['const LANE: i32']
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [nop, 'LANE = 2']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [nop, 'LANE = 2']]}]]
+    safety:
+      unsafe: [neon]
+    types:
+      - ['vld1_lane_bf16', bfloat16_t, bfloat16x4_t, '2', 'vld1_lane_u16']
+      - ['vld1q_lane_bf16', bfloat16_t, bfloat16x8_t, '3', 'vld1q_lane_u16']
+    compose:
+      - FnCall: [transmute, [FnCall: ['{type[4]}::<LANE>', [MethodCall: [ptr, cast, []], FnCall: [transmute, [src]]]]]]
+
+  - name: "{type[0]}"
+    doc: "Load multiple 2-element structures to two registers"
+    arguments: ["ptr: *const {type[1]}"]
+    return_type: "{neon_type[2]}"
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *target-is-arm
+      - *neon-cfg-arm-unstable
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"v{type[4]}.16"']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, ['{type[4]}']]}]]
+    safety:
+      unsafe: [neon]
+    types:
+      - ['vld2_bf16',  bfloat16_t, bfloat16x4x2_t, "ld2.v4bf16.p0", 'ld2', 'vld2_u16']
+      - ['vld2q_bf16', bfloat16_t, bfloat16x8x2_t, "ld2.v8bf16.p0", 'ld2', 'vld2q_u16']
+      - ['vld3_bf16',  bfloat16_t, bfloat16x4x3_t, "ld3.v4bf16.p0", 'ld3', 'vld3_u16']
+      - ['vld3q_bf16', bfloat16_t, bfloat16x8x3_t, "ld3.v8bf16.p0", 'ld3', 'vld3q_u16']
+      - ['vld4_bf16',  bfloat16_t, bfloat16x4x4_t, "ld4.v4bf16.p0", 'ld4', 'vld4_u16']
+      - ['vld4q_bf16', bfloat16_t, bfloat16x8x4_t, "ld4.v8bf16.p0", 'ld4', 'vld4q_u16']
+    compose:
+      - FnCall: [transmute, [FnCall: ['{type[5]}', [MethodCall: [ptr, cast, []]]]]]
+
+  - name: "{type[0]}"
+    doc: "Load multiple 2-element structures to two registers"
+    arguments: ["ptr: *const {type[1]}"]
+    return_type: "{neon_type[2]}"
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *target-not-arm
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"v{type[4]}.16"']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, ['{type[4]}']]}]]
+    safety:
+      unsafe: [neon]
+    types:
+      - ['vld2_bf16',  bfloat16_t, bfloat16x4x2_t, "ld2.v4bf16.p0", 'ld2', 'vld2_u16']
+      - ['vld2q_bf16', bfloat16_t, bfloat16x8x2_t, "ld2.v8bf16.p0", 'ld2', 'vld2q_u16']
+      - ['vld3_bf16',  bfloat16_t, bfloat16x4x3_t, "ld3.v4bf16.p0", 'ld3', 'vld3_u16']
+      - ['vld3q_bf16', bfloat16_t, bfloat16x8x3_t, "ld3.v8bf16.p0", 'ld3', 'vld3q_u16']
+      - ['vld4_bf16',  bfloat16_t, bfloat16x4x4_t, "ld4.v4bf16.p0", 'ld4', 'vld4_u16']
+      - ['vld4q_bf16', bfloat16_t, bfloat16x8x4_t, "ld4.v8bf16.p0", 'ld4', 'vld4q_u16']
+    compose:
+      - LLVMLink:
+          name: "{type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.{type[3]}"
+              arch: aarch64,arm64ec
+
+  - name: "{type[0]}"
+    doc: "Load single 2-element structure and Replicate to all lanes of two registers"
+    arguments: ["ptr: *const {type[1]}"]
+    return_type: "{neon_type[2]}"
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"v{type[4]}.16"']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, ['{type[4]}']]}]]
+    safety:
+      unsafe: [neon]
+    types:
+      - ['vld2_dup_bf16',  bfloat16_t, bfloat16x4x2_t, "ld2r.v4bf16.p0",   'ld2', 'vld2_dup_u16']
+      - ['vld2q_dup_bf16', bfloat16_t, bfloat16x8x2_t, "ld2dup.v8bf16.p0", 'ld2', 'vld2q_dup_u16']
+      - ['vld3_dup_bf16',  bfloat16_t, bfloat16x4x3_t, "ld3r.v4bf16.p0",   'ld3', 'vld3_dup_u16']
+      - ['vld3q_dup_bf16', bfloat16_t, bfloat16x8x3_t, "ld3dup.v8bf16.p0", 'ld3', 'vld3q_dup_u16']
+      - ['vld4_dup_bf16',  bfloat16_t, bfloat16x4x4_t, "ld4r.v4bf16.p0",   'ld4', 'vld4_dup_u16']
+      - ['vld4q_dup_bf16', bfloat16_t, bfloat16x8x4_t, "ld4dup.v8bf16.p0", 'ld4', 'vld4q_dup_u16']
+    compose:
+      - FnCall: [transmute, [FnCall: ['{type[5]}', [MethodCall: [ptr, cast, []]]]]]
+
+  - name: "{type[0]}"
+    doc: "Load single 2-element structure and Replicate to all lanes of two registers"
+    arguments: ["ptr: *const {type[1]}", "src: {neon_type[2]}"]
+    return_type: "{neon_type[2]}"
+    static_defs: ['const LANE: i32']
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"v{type[4]}.16"', 'LANE = 2']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, ['{type[4]}', 'LANE = 2']]}]]
+    safety:
+      unsafe: [neon]
+    types:
+      - ['vld2_lane_bf16',  bfloat16_t, bfloat16x4x2_t, "ld2lane.v4bf16.p0", 'ld2', '2', 'vld2_lane_u16']
+      - ['vld2q_lane_bf16', bfloat16_t, bfloat16x8x2_t, "ld2lane.v8bf16.p0", 'ld2', '3', 'vld2q_lane_u16']
+    compose:
+      - FnCall: [transmute, [FnCall: ['{type[6]}::<LANE>', [MethodCall: [ptr, cast, []], FnCall: [transmute, [src]]]]]]
+
+  - name: "{type[0]}"
+    doc: "Load single 3-element structure to one lane of three registers"
+    arguments: ["ptr: *const {type[1]}", "src: {neon_type[2]}"]
+    return_type: "{neon_type[2]}"
+    static_defs: ['const LANE: i32']
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"v{type[4]}.16"', 'LANE = 2']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, ['{type[4]}', 'LANE = 2']]}]]
+    safety:
+      unsafe: [neon]
+    types:
+      - ['vld3_lane_bf16',  bfloat16_t, bfloat16x4x3_t, "ld3lane.v4bf16.p0", 'ld3', '2', 'vld3_lane_u16']
+      - ['vld3q_lane_bf16', bfloat16_t, bfloat16x8x3_t, "ld3lane.v8bf16.p0", 'ld3', '3', 'vld3q_lane_u16']
+    compose:
+      - FnCall: [transmute, [FnCall: ['{type[6]}::<LANE>', [MethodCall: [ptr, cast, []], FnCall: [transmute, [src]]]]]]
+
+  - name: "{type[0]}"
+    doc: "Load single 4-element structure and Replicate to all lanes of four registers"
+    arguments: ["ptr: *const {type[1]}", "src: {neon_type[2]}"]
+    return_type: "{neon_type[2]}"
+    static_defs: ['const LANE: i32']
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"v{type[4]}.16"', 'LANE = 2']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, ['{type[4]}', 'LANE = 2']]}]]
+    safety:
+      unsafe: [neon]
+    types:
+      - ['vld4_lane_bf16',  bfloat16_t, bfloat16x4x4_t, "ld4lane.v4bf16.p0", 'ld4', '2', 'vld4_lane_u16']
+      - ['vld4q_lane_bf16', bfloat16_t, bfloat16x8x4_t, "ld4lane.v8bf16.p0", 'ld4', '3', 'vld4q_lane_u16']
+    compose:
+      - FnCall: [transmute, [FnCall: ['{type[6]}::<LANE>', [MethodCall: [ptr, cast, []], FnCall: [transmute, [src]]]]]]
+
+  - name: "{type[0]}"
+    doc: "Insert vector element from another vector element"
+    arguments: ["a: {type[1]}", "v: {neon_type[2]}"]
+    return_type: "{neon_type[2]}"
+    big_endian_inverse: true
+    static_defs: ['const LANE: i32']
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['nop', 'LANE = 2']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, ['nop', 'LANE = 2']]}]]
+    safety:
+      unsafe: [neon]
+    types:
+      - ['vset_lane_bf16',  bfloat16_t, bfloat16x4_t, '2']
+      - ['vsetq_lane_bf16', bfloat16_t, bfloat16x8_t, '3']
+    compose:
+      - FnCall: [static_assert_uimm_bits!, [LANE, '{type[3]}']]
+      - FnCall: ['simd_insert!', [v, 'LANE as u32', a]]
+
+  - name: "{type[0]}"
+    doc: "Store multiple single-element structures from one, two, three, or four registers"
+    arguments: ["ptr: *mut {type[1]}", "val: {neon_type[2]}"]
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vst1.8"']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [str]]}]]
+    safety:
+      unsafe: [neon]
+    types:
+      - ['vst1_bf16',  bfloat16_t, bfloat16x4_t, '2', 'vst1_u16']
+      - ['vst1q_bf16', bfloat16_t, bfloat16x8_t, '3', 'vst1q_u16']
+    compose:
+      - FnCall: ['crate::ptr::write_unaligned', [MethodCall: [ptr, cast, []], val]]
+
+  - name: "{type[0]}"
+    doc: "Load single 2-element structure and Replicate to all lanes of two registers"
+    arguments: ["ptr: *mut {type[1]}", "val: {neon_type[2]}"]
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"v{type[4]}.16"']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, ['{type[4]}']]}]]
+    safety:
+      unsafe: [neon]
+    types:
+      - ['vst1_bf16_x2',  bfloat16_t, bfloat16x4x2_t, "st1x2.p0.v4bf16", 'st1', 'vst1_u16_x2']
+      - ['vst1q_bf16_x2', bfloat16_t, bfloat16x8x2_t, "st1x2.p0.v8bf16", 'st1', 'vst1q_u16_x2']
+      - ['vst1_bf16_x3',  bfloat16_t, bfloat16x4x3_t, "st1x3.p0.v4bf16", 'st1', 'vst1_u16_x3']
+      - ['vst1q_bf16_x3', bfloat16_t, bfloat16x8x3_t, "st1x3.p0.v8bf16", 'st1', 'vst1q_u16_x3']
+      - ['vst1_bf16_x4',  bfloat16_t, bfloat16x4x4_t, "st1x4.p0.v4bf16", 'st1', 'vst1_u16_x4']
+      - ['vst1q_bf16_x4', bfloat16_t, bfloat16x8x4_t, "st1x4.p0.v8bf16", 'st1', 'vst1q_u16_x4']
+    compose:
+      - FnCall: ['{type[5]}', [MethodCall: [ptr, cast, []], FnCall: [transmute, [val]]]]
+
+  - name: "{type[0]}"
+    doc: "Store a single-element structure from one lane of one register"
+    arguments: ["a: *mut {type[1]}", "v: {neon_type[2]}"]
+    static_defs: ['const LANE: i32']
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['nop', 'LANE = 2']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, ['nop', 'LANE = 2']]}]]
+    safety:
+      unsafe: [neon]
+    types:
+      - ['vst1_lane_bf16',  bfloat16_t, bfloat16x4_t, '2', 'vst1_lane_u16']
+      - ['vst1q_lane_bf16', bfloat16_t, bfloat16x8_t, '3', 'vst1q_lane_u16']
+    compose:
+      - FnCall: ['{type[4]}::<LANE>', [MethodCall: [a, cast, []], FnCall: [transmute, [v]]]]
+
+  - name: "{type[0]}"
+    doc: "Store multiple 2-element structures from two registers"
+    arguments: ["a: *mut {type[1]}", "b: {neon_type[2]}"]
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['nop', 'LANE = 0']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, ['nop', 'LANE = 0']]}]]
+    safety:
+      unsafe: [neon]
+    types:
+      - ['vst2_bf16',  bfloat16_t, bfloat16x4x2_t, '4', 'vst2_u16']
+      - ['vst2q_bf16', bfloat16_t, bfloat16x8x2_t, '8', 'vst2q_u16']
+    compose:
+      - FnCall: ['{type[4]}', [MethodCall: [a, cast, []], FnCall: [transmute, [b]]]]
+
+  - name: "{type[0]}"
+    doc: "Store single 2-element structure from one lane of two registers"
+    arguments: ["a: *mut {type[1]}", "v: {neon_type[2]}"]
+    static_defs: ['const LANE: i32']
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vst2.16"', 'LANE = 2']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, ['st2', 'LANE = 2']]}]]
+    safety:
+      unsafe: [neon]
+    types:
+      - ['vst2_lane_bf16',  bfloat16_t, bfloat16x4x2_t, 'st2lane.v4bf16', '2', 'vst2_lane_u16']
+      - ['vst2q_lane_bf16', bfloat16_t, bfloat16x8x2_t, 'st2lane.v8bf16', '3', 'vst2q_lane_u16']
+    compose:
+      - FnCall: ['{type[5]}::<LANE>', [MethodCall: [a, cast, []], FnCall: [transmute, [v]]]]
+
+  - name: "{type[0]}"
+    doc: "Store multiple 3-element structures from three registers"
+    arguments: ["a: *mut {type[1]}", "b: {neon_type[2]}"]
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['nop', 'LANE = 0']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, ['nop', 'LANE = 0']]}]]
+    safety:
+      unsafe: [neon]
+    types:
+      - ['vst3_bf16',  bfloat16_t, bfloat16x4x3_t, '4', 'vst3_u16']
+      - ['vst3q_bf16', bfloat16_t, bfloat16x8x3_t, '8', 'vst3q_u16']
+    compose:
+      - FnCall: ['{type[4]}', [MethodCall: [a, cast, []], FnCall: [transmute, [b]]]]
+
+  - name: "{type[0]}"
+    doc: "Store single 3-element structure from one lane of three registers"
+    arguments: ["a: *mut {type[1]}", "v: {neon_type[2]}"]
+    static_defs: ['const LANE: i32']
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vst3.16"', 'LANE = 2']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, ['st3', 'LANE = 2']]}]]
+    safety:
+      unsafe: [neon]
+    types:
+      - ['vst3_lane_bf16',  bfloat16_t, bfloat16x4x3_t, 'st3lane.v4bf16', '2', 'vst3_lane_u16']
+      - ['vst3q_lane_bf16', bfloat16_t, bfloat16x8x3_t, 'st3lane.v8bf16', '3', 'vst3q_lane_u16']
+    compose:
+      - FnCall: ['{type[5]}::<LANE>', [MethodCall: [a, cast, []], FnCall: [transmute, [v]]]]
+
+  - name: "{type[0]}"
+    doc: "Store multiple 4-element structures from four registers"
+    arguments: ["a: *mut {type[1]}", "b: {neon_type[2]}"]
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['nop', 'LANE = 0']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, ['nop', 'LANE = 0']]}]]
+    safety:
+      unsafe: [neon]
+    types:
+      - ['vst4_bf16',  bfloat16_t, bfloat16x4x4_t, '4', 'vst4_u16']
+      - ['vst4q_bf16', bfloat16_t, bfloat16x8x4_t, '8', 'vst4q_u16']
+    compose:
+      - FnCall: ['{type[4]}', [MethodCall: [a, cast, []], FnCall: [transmute, [b]]]]
+
+  - name: "{type[0]}"
+    doc: "Store single 4-element structure from one lane of four registerss"
+    arguments: ["a: *mut {type[1]}", "v: {neon_type[2]}"]
+    static_defs: ['const LANE: i32']
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vst4.16"', 'LANE = 2']]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, ['st4', 'LANE = 2']]}]]
+    safety:
+      unsafe: [neon]
+    types:
+      - ['vst4_lane_bf16',  bfloat16_t, bfloat16x4x4_t, 'st4lane.v4bf16', '2', 'vst4_lane_u16']
+      - ['vst4q_lane_bf16', bfloat16_t, bfloat16x8x4_t, 'st4lane.v8bf16', '3', 'vst4q_lane_u16']
+    compose:
+      - FnCall: ['{type[5]}::<LANE>', [MethodCall: [a, cast, []], FnCall: [transmute, [v]]]]
+
+  - name: "vreinterpret{type[0]}"
+    doc: "Vector reinterpret cast operation"
+    arguments: ["a: {type[1]}"]
+    return_type: "{type[2]}"
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [nop]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [nop]]}]]
+    safety:
+      unsafe: [neon]
+    types:
+      - ["_bf16_f16", "float16x4_t", "bfloat16x4_t"]
+      - ["_bf16_f32", "float32x2_t", "bfloat16x4_t"]
+      - ["_bf16_p16", "poly16x4_t",  "bfloat16x4_t"]
+      - ["_bf16_p64", "poly64x1_t",  "bfloat16x4_t"]
+      - ["_bf16_p8",  "poly8x8_t",   "bfloat16x4_t"]
+      - ["_bf16_s16", "int16x4_t",   "bfloat16x4_t"]
+      - ["_bf16_s32", "int32x2_t",   "bfloat16x4_t"]
+      - ["_bf16_s64", "int64x1_t",   "bfloat16x4_t"]
+      - ["_bf16_s8",  "int8x8_t",    "bfloat16x4_t"]
+      - ["_bf16_u16", "uint16x4_t",  "bfloat16x4_t"]
+      - ["_bf16_u32", "uint32x2_t",  "bfloat16x4_t"]
+      - ["_bf16_u64", "uint64x1_t",  "bfloat16x4_t"]
+      - ["_bf16_u8",  "uint8x8_t",   "bfloat16x4_t"]
+      - ["_f16_bf16", "bfloat16x4_t",  "float16x4_t"]
+      - ["_f32_bf16", "bfloat16x4_t", "float32x2_t"] 
+      - ["_p8_bf16",  "bfloat16x4_t", "poly8x8_t"] 
+      - ["_p16_bf16", "bfloat16x4_t", "poly16x4_t"] 
+      - ["_p64_bf16", "bfloat16x4_t", "poly64x1_t"] 
+      - ["_s8_bf16",  "bfloat16x4_t", "int8x8_t"] 
+      - ["_s16_bf16", "bfloat16x4_t", "int16x4_t"] 
+      - ["_s32_bf16", "bfloat16x4_t", "int32x2_t"] 
+      - ["_s64_bf16", "bfloat16x4_t", "int64x1_t"] 
+      - ["_u8_bf16",  "bfloat16x4_t", "uint8x8_t"] 
+      - ["_u16_bf16", "bfloat16x4_t", "uint16x4_t"] 
+      - ["_u32_bf16", "bfloat16x4_t", "uint32x2_t"] 
+      - ["_u64_bf16", "bfloat16x4_t", "uint64x1_t"] 
+    compose:
+      - FnCall: [transmute, [a]]
+
+  - name: "vreinterpretq{type[0]}"
+    doc: "Vector reinterpret cast operation"
+    arguments: ["a: {type[1]}"]
+    return_type: "{type[2]}"
+    attr:
+      - *cfg-reliable-bf16
+      - *doc-cfg-reliable-bf16
+      - *neon-bf16
+      - *neon-v8
+      - *neon-unstable-bf16
+      - *neon-cfg-arm-unstable
+      - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [nop]]}]]
+      - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [nop]]}]]
+    safety:
+      unsafe: [neon]
+    types:
+      - ["_bf16_f16", "float16x8_t", "bfloat16x8_t"]
+      - ["_bf16_f32", "float32x4_t", "bfloat16x8_t"]
+      - ["_bf16_p128", "p128", "bfloat16x8_t"]
+      - ["_bf16_p16", "poly16x8_t",  "bfloat16x8_t"]
+      - ["_bf16_p64", "poly64x2_t",  "bfloat16x8_t"]
+      - ["_bf16_p8",  "poly8x16_t",   "bfloat16x8_t"]
+      - ["_bf16_s16", "int16x8_t",   "bfloat16x8_t"]
+      - ["_bf16_s32", "int32x4_t",   "bfloat16x8_t"]
+      - ["_bf16_s64", "int64x2_t",   "bfloat16x8_t"]
+      - ["_bf16_s8",  "int8x16_t",    "bfloat16x8_t"]
+      - ["_bf16_u16", "uint16x8_t",  "bfloat16x8_t"]
+      - ["_bf16_u32", "uint32x4_t",  "bfloat16x8_t"]
+      - ["_bf16_u64", "uint64x2_t",  "bfloat16x8_t"]
+      - ["_bf16_u8",  "uint8x16_t",   "bfloat16x8_t"]
+      - ["_f16_bf16", "bfloat16x8_t",  "float16x8_t"]
+      - ["_f32_bf16", "bfloat16x8_t", "float32x4_t"] 
+      - ["_p128_bf16", "bfloat16x8_t", "p128"]
+      - ["_p16_bf16", "bfloat16x8_t", "poly16x8_t"] 
+      - ["_p64_bf16", "bfloat16x8_t", "poly64x2_t"]
+      - ["_p8_bf16",  "bfloat16x8_t", "poly8x16_t"] 
+      - ["_s16_bf16", "bfloat16x8_t", "int16x8_t"] 
+      - ["_s32_bf16", "bfloat16x8_t", "int32x4_t"] 
+      - ["_s64_bf16", "bfloat16x8_t", "int64x2_t"] 
+      - ["_s8_bf16",  "bfloat16x8_t", "int8x16_t"] 
+      - ["_u16_bf16", "bfloat16x8_t", "uint16x8_t"] 
+      - ["_u32_bf16", "bfloat16x8_t", "uint32x4_t"] 
+      - ["_u64_bf16", "bfloat16x8_t", "uint64x2_t"] 
+      - ["_u8_bf16",  "bfloat16x8_t", "uint8x16_t"] 
+    compose:
+      - FnCall: [transmute, [a]]
