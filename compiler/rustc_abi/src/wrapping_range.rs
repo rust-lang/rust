@@ -84,23 +84,21 @@ impl WrappingRange {
         }
     }
 
-    /// Returns `self` with replaced `start`
-    #[inline(always)]
-    pub(crate) fn with_start(mut self, start: u128) -> Self {
-        self.start = start;
-        self
-    }
-
-    /// Returns `self` with replaced `end`
-    #[inline(always)]
-    pub(crate) fn with_end(mut self, end: u128) -> Self {
-        self.end = end;
-        self
-    }
-
     /// The wrapping distance from `self.start` to `self.end`.
+    ///
+    /// This is one less than the number of values contained in the range.
     fn width(&self, size: Size) -> u128 {
         size.truncate(u128::wrapping_sub(self.end, self.start))
+    }
+
+    /// The count of possible values of this `size` *not* contained in the range.
+    ///
+    /// Primarily useful as part of layout calculations to determine the number
+    /// of additional tags that could be stored in an existing field.
+    ///
+    /// Because a `WrappingRange` is never empty, this is strictly less than 2ⁿ.
+    pub(crate) fn count_unused(&self, size: Size) -> u128 {
+        size.unsigned_int_max() - self.width(size)
     }
 
     /// Returns `true` if `size` completely fills the range.
