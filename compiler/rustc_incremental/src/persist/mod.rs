@@ -3,7 +3,6 @@
 //! various HIR nodes.
 
 mod clean;
-mod data;
 mod file_format;
 mod fs;
 mod load;
