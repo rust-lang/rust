@@ -1,7 +1,9 @@
 use rustc_ast::mut_visit::*;
 use rustc_ast::token::Delimiter;
 use rustc_ast::visit::AssocCtxt;
-use rustc_ast::{self as ast};
+use rustc_ast::{
+    Path, UseTree, {self as ast},
+};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_span::{DUMMY_SP, Ident};
 use smallvec::{SmallVec, smallvec};
@@ -199,6 +201,17 @@ pub(crate) fn placeholder(
                     bounds: Default::default(),
                 }),
                 is_placeholder: true,
+            }])
+        }
+        AstFragmentKind::AnnotatableUseTree => {
+            AstFragment::AnnotatableUseTree(smallvec![ast::AnnotatableUseTree {
+                attrs: Default::default(),
+                id,
+                inner: UseTree {
+                    prefix: Path::from_ident(ident),
+                    kind: rustc_ast::UseTreeKind::Simple(None)
+                },
+                is_placeholder: true
             }])
         }
     }
@@ -417,6 +430,17 @@ impl MutVisitor for PlaceholderExpander {
             *krate = self.remove(krate.id).make_crate();
         } else {
             walk_crate(self, krate)
+        }
+    }
+
+    fn flat_map_annotatable_use_tree(
+        &mut self,
+        annotatable_use_tree: rustc_ast::AnnotatableUseTree,
+    ) -> SmallVec<[rustc_ast::AnnotatableUseTree; 1]> {
+        if annotatable_use_tree.is_placeholder {
+            self.remove(annotatable_use_tree.id).make_annotatable_use_tree()
+        } else {
+            walk_flat_map_annotatable_use_tree(self, annotatable_use_tree)
         }
     }
 }

@@ -455,8 +455,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_use_item(&mut self) -> PResult<'a, ItemKind> {
-        let use_token_span = self.prev_token.span;
-        let tree = self.parse_use_tree(use_token_span, None)?;
+        let tree = self.parse_use_tree()?;
         if let Err(mut e) = self.expect_semi() {
             match tree.kind {
                 UseTreeKind::Glob(_) => {
@@ -1343,11 +1342,7 @@ impl<'a> Parser<'a> {
     ///            PATH `::` `{` USE_TREE_LIST `}` |
     ///            PATH [`as` IDENT]
     /// ```
-    fn parse_use_tree<'b>(
-        &mut self,
-        use_token_span: Span,
-        use_path: Option<&'b UsePathList<'b>>,
-    ) -> PResult<'a, UseTree> {
+    fn parse_use_tree(&mut self) -> PResult<'a, UseTree> {
         let lo = self.token.span;
 
         let mut prefix = ast::Path { segments: ThinVec::new(), span: lo.shrink_to_lo() };
@@ -1361,14 +1356,13 @@ impl<'a> Parser<'a> {
                         .push(PathSegment::path_root(lo.shrink_to_lo().with_ctxt(mod_sep_ctxt)));
                 }
 
-                self.parse_use_tree_glob_or_nested(use_token_span, use_path)?
+                self.parse_use_tree_glob_or_nested()?
             } else {
                 // `use path::*;` or `use path::{...};` or `use path;` or `use path as bar;`
                 prefix = self.parse_path(PathStyle::Mod)?;
 
                 if self.eat_path_sep() {
-                    let use_path = UsePathList { elements: &prefix.segments, prev: use_path };
-                    self.parse_use_tree_glob_or_nested(use_token_span, Some(&use_path))?
+                    self.parse_use_tree_glob_or_nested()?
                 } else {
                     // Recover from using a colon as path separator.
                     while self.eat_noexpect(&token::Colon) {
@@ -1388,18 +1382,26 @@ impl<'a> Parser<'a> {
         Ok(UseTree { prefix, kind })
     }
 
+    fn parse_annotatable_use_tree(&mut self) -> PResult<'a, AnnotatableUseTree> {
+        let attrs = self.parse_outer_attributes()?;
+        self.collect_tokens(None, attrs, ForceCollect::No, |p, attrs| {
+            let inner = p.parse_use_tree()?;
+            Ok((
+                AnnotatableUseTree { attrs, inner, id: DUMMY_NODE_ID, is_placeholder: false },
+                Trailing::No,
+                UsePreAttrPos::No,
+            ))
+        })
+    }
+
     /// Parses `*` or `{...}`.
-    fn parse_use_tree_glob_or_nested<'b>(
-        &mut self,
-        use_token_span: Span,
-        use_path: Option<&'b UsePathList<'b>>,
-    ) -> PResult<'a, UseTreeKind> {
+    fn parse_use_tree_glob_or_nested(&mut self) -> PResult<'a, UseTreeKind> {
         Ok(if self.eat(exp!(Star)) {
             UseTreeKind::Glob(self.prev_token.span)
         } else {
             let lo = self.token.span;
             UseTreeKind::Nested {
-                items: self.parse_use_tree_list(use_token_span, use_path)?,
+                items: self.parse_use_tree_list()?,
                 span: lo.to(self.prev_token.span),
             }
         })
@@ -1410,83 +1412,13 @@ impl<'a> Parser<'a> {
     /// ```text
     /// USE_TREE_LIST = ∅ | (USE_TREE `,`)* USE_TREE [`,`]
     /// ```
-    fn parse_use_tree_list<'b>(
-        &mut self,
-        use_token_span: Span,
-        prefix: Option<&'b UsePathList<'b>>,
-    ) -> PResult<'a, ThinVec<UseTreeAndId>> {
+    fn parse_use_tree_list(&mut self) -> PResult<'a, ThinVec<AnnotatableUseTree>> {
         self.parse_delim_comma_seq(exp!(OpenBrace), exp!(CloseBrace), |p| {
             p.recover_vcs_conflict_marker();
-
-            let mut attr_span = None;
-            let attrs = p.parse_outer_attributes()?;
-            if !attrs.is_empty() {
-                let raw_attrs = attrs.take_for_recovery(&p.psess);
-                attr_span =
-                    Some(raw_attrs.first().unwrap().span.to(raw_attrs.last().unwrap().span));
-            }
-
-            let use_tree = p.parse_use_tree(use_token_span, prefix)?;
-
-            if let Some(attr_span) = attr_span {
-                p.emit_error_attr_in_use_tree(use_token_span, prefix, use_tree.span(), attr_span);
-            }
-
-            Ok(UseTreeAndId { inner: use_tree, id: DUMMY_NODE_ID })
+            let use_tree = p.parse_annotatable_use_tree()?;
+            Ok(use_tree)
         })
         .map(|(r, _)| r)
-    }
-
-    fn emit_error_attr_in_use_tree(
-        &self,
-        use_token_span: Span,
-        mut prefix: Option<&UsePathList<'_>>,
-        use_tree_span: Span,
-        attr_span: Span,
-    ) {
-        let Ok(attr) = self.psess.source_map().span_to_snippet(attr_span) else { return };
-
-        let prefix: Vec<_> = {
-            let mut tmp = Vec::new();
-            while let Some(prefix_) = prefix {
-                tmp.push(prefix_.elements);
-                prefix = prefix_.prev;
-            }
-            tmp.reverse();
-            tmp.into_iter().flatten().collect()
-        };
-
-        let prefix: String = prefix
-            .iter()
-            .map(|seg| if seg.ident.name == kw::PathRoot { "" } else { seg.ident.as_str() })
-            .intersperse("::")
-            .collect();
-
-        let mut comma_reached = false;
-        let Ok(tree_span) = self.psess.source_map().span_extend_while(use_tree_span, |c| {
-            if comma_reached {
-                return false;
-            }
-            comma_reached = c == ',';
-            c.is_whitespace() || comma_reached
-        }) else {
-            return;
-        };
-
-        let Ok(use_tree) = self.psess.source_map().span_to_snippet(use_tree_span) else { return };
-
-        // FIXME: duplicate the attributes that are at the root of the initial use-item.
-        let code = format!("{attr}\nuse {prefix}::{use_tree};\n");
-
-        self.dcx().emit_err(crate::diagnostics::AttrInUseTree {
-            attr_span,
-            sub: Some(crate::diagnostics::AttrInUseTreeSugg {
-                use_lo: use_token_span.shrink_to_lo(),
-                attr_span,
-                tree_span,
-                code,
-            }),
-        });
     }
 
     fn parse_rename(&mut self) -> PResult<'a, Option<Ident>> {
@@ -3024,9 +2956,4 @@ impl<'a> Parser<'a> {
 enum IsMacroRulesItem {
     Yes { has_bang: bool },
     No,
-}
-
-struct UsePathList<'a> {
-    elements: &'a [ast::PathSegment],
-    prev: Option<&'a Self>,
 }

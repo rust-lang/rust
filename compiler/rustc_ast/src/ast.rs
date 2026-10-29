@@ -3351,7 +3351,7 @@ pub enum UseTreeKind {
     /// use foo::{bar, baz};
     ///          ^^^^^^^^^^
     /// ```
-    Nested { items: ThinVec<UseTreeAndId>, span: Span },
+    Nested { items: ThinVec<AnnotatableUseTree>, span: Span },
     /// `use prefix::*`
     Glob(Span),
 }
@@ -3400,9 +3400,11 @@ impl UseTree {
 
 /// Used in nested `use` trees.
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
-pub struct UseTreeAndId {
+pub struct AnnotatableUseTree {
+    pub attrs: AttrVec,
     pub inner: UseTree,
     pub id: NodeId,
+    pub is_placeholder: bool,
 }
 
 /// Distinguishes between `Attribute`s that decorate items and Attributes that

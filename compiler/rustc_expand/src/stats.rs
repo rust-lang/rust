@@ -58,7 +58,8 @@ fn fragment_to_string(fragment: &AstFragment) -> String {
         | AstFragment::Params(_)
         | AstFragment::FieldDefs(_)
         | AstFragment::Variants(_)
-        | AstFragment::WherePredicates(_) => unreachable!(),
+        | AstFragment::WherePredicates(_)
+        | AstFragment::AnnotatableUseTree(_) => unreachable!(),
     }
 }
 

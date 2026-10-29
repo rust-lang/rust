@@ -55,6 +55,7 @@ pub enum Annotatable {
     Variant(ast::Variant),
     WherePredicate(ast::WherePredicate),
     Crate(ast::Crate),
+    AnnotatableUseTree(ast::AnnotatableUseTree),
 }
 
 impl Annotatable {
@@ -74,6 +75,7 @@ impl Annotatable {
             Annotatable::Variant(v) => v.span,
             Annotatable::WherePredicate(wp) => wp.span,
             Annotatable::Crate(c) => c.spans.inner_span,
+            Annotatable::AnnotatableUseTree(c) => c.inner.span(),
         }
     }
 
@@ -93,6 +95,7 @@ impl Annotatable {
             Annotatable::Variant(v) => v.visit_attrs(f),
             Annotatable::WherePredicate(wp) => wp.visit_attrs(f),
             Annotatable::Crate(c) => c.visit_attrs(f),
+            Annotatable::AnnotatableUseTree(c) => c.visit_attrs(f),
         }
     }
 
@@ -112,6 +115,7 @@ impl Annotatable {
             Annotatable::Variant(v) => visitor.visit_variant(v),
             Annotatable::WherePredicate(wp) => visitor.visit_where_predicate(wp),
             Annotatable::Crate(c) => visitor.visit_crate(c),
+            Annotatable::AnnotatableUseTree(c) => visitor.visit_annotatable_use_tree(c),
         }
     }
 
@@ -134,7 +138,8 @@ impl Annotatable {
             | Annotatable::FieldDef(..)
             | Annotatable::Variant(..)
             | Annotatable::WherePredicate(..)
-            | Annotatable::Crate(..) => panic!("unexpected annotatable"),
+            | Annotatable::Crate(..)
+            | Annotatable::AnnotatableUseTree(..) => panic!("unexpected annotatable"),
         }
     }
 
@@ -240,6 +245,13 @@ impl Annotatable {
         match self {
             Annotatable::Crate(krate) => krate,
             _ => panic!("expected krate"),
+        }
+    }
+
+    pub fn expect_annotatable_use_tree(self) -> ast::AnnotatableUseTree {
+        match self {
+            Annotatable::AnnotatableUseTree(tree) => tree,
+            _ => panic!("expected annotatable use tree"),
         }
     }
 }
@@ -498,6 +510,12 @@ pub trait MacResult {
     fn make_crate(self: Box<Self>) -> Option<ast::Crate> {
         // Fn-like macros cannot produce a crate.
         unreachable!()
+    }
+
+    fn make_annotatable_use_tree(
+        self: Box<Self>,
+    ) -> Option<SmallVec<[ast::AnnotatableUseTree; 1]>> {
+        None
     }
 }
 

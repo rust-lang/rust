@@ -611,4 +611,21 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
             }
         }
     }
+    fn visit_use_tree(&mut self, node: &'a UseTree) -> Self::Result {
+        match node.kind {
+            UseTreeKind::Nested { ref items, .. } => {
+                for usetree in items.iter() {
+                    self.visit_annotatable_use_tree(usetree);
+                }
+            }
+            _ => {}
+        }
+    }
+    fn visit_annotatable_use_tree(&mut self, node: &'a AnnotatableUseTree) -> Self::Result {
+        if node.is_placeholder {
+            self.visit_macro_invoc(node.id);
+            self.visit_invoc(node.id);
+        }
+        self.visit_use_tree(&node.inner)
+    }
 }
