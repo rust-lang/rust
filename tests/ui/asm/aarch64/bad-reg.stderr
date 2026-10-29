@@ -30,7 +30,7 @@ LL |         asm!("{:r}", in(vreg) foo);
    |               |
    |               template modifier
    |
-   = note: the `vreg` register class supports the following template modifiers: `b`, `h`, `s`, `d`, `q`, `v`, and `z`
+   = note: the `vreg` register class supports the following template modifiers: `b`, `h`, `s`, `d`, `q`, and `v`
 
 error: invalid asm template modifier `r` for this register class
   --> $DIR/bad-reg.rs:26:15
@@ -40,7 +40,7 @@ LL |         asm!("{:r}", in(vreg_low16) foo);
    |               |
    |               template modifier
    |
-   = note: the `vreg_low16` register class supports the following template modifiers: `b`, `h`, `s`, `d`, `q`, `v`, and `z`
+   = note: the `vreg_low16` register class supports the following template modifiers: `b`, `h`, `s`, `d`, `q`, and `v`
 
 error: asm template modifiers are not allowed for `const` arguments
   --> $DIR/bad-reg.rs:28:15
