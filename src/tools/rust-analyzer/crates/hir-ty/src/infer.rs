@@ -101,9 +101,10 @@ use crate::{
     },
     method_resolution::CandidateId,
     next_solver::{
-        AliasTy, Const, ConstKind, DbInterner, ErrorGuaranteed, GenericArgs, Region, StoredFnSig,
-        StoredGenericArg, StoredGenericArgs, StoredTy, StoredTys, Term, Ty, TyKind, Tys,
+        AliasTy, Const, ConstKind, DbInterner, GenericArgs, Region, StoredFnSig, StoredGenericArg,
+        StoredGenericArgs, StoredTy, StoredTys, Term, Ty, TyKind, Tys,
         abi::Safety,
+        default_types,
         infer::{InferCtxt, ObligationInspector, traits::ObligationCause},
     },
     solver_errors::SolverDiagnostic,
@@ -184,14 +185,11 @@ pub fn infer_query_with_inspect<'db>(
 }
 
 fn infer_cycle_result<'db>(
-    db: &'db dyn HirDatabase,
+    _: &'db dyn HirDatabase,
     _: salsa::Id,
     _: DefWithBodyId,
 ) -> InferenceResult<'db> {
-    InferenceResult {
-        has_errors: true,
-        ..InferenceResult::new(Ty::new_error(DbInterner::new_no_crate(db), ErrorGuaranteed))
-    }
+    InferenceResult { has_errors: true, ..InferenceResult::new() }
 }
 
 /// Infer types for an anonymous const expression.
@@ -227,14 +225,11 @@ fn infer_anon_const_query<'db>(
 }
 
 fn infer_anon_const_cycle_result<'db>(
-    db: &'db dyn HirDatabase,
+    _: &'db dyn HirDatabase,
     _: salsa::Id,
     _: AnonConstId<'db>,
 ) -> InferenceResult<'db> {
-    InferenceResult {
-        has_errors: true,
-        ..InferenceResult::new(Ty::new_error(DbInterner::new_no_crate(db), ErrorGuaranteed))
-    }
+    InferenceResult { has_errors: true, ..InferenceResult::new() }
 }
 
 fn infer_finalize<'db>(mut ctx: InferenceContext<'db>) -> InferenceResult<'db> {
@@ -786,10 +781,6 @@ pub struct InferenceResult<'db> {
     // FIXME: Remove this, change it to be in `InferenceContext`:
     nodes_with_type_mismatches: Option<Box<FxHashSet<ExprOrPatIdPacked>>>,
 
-    /// Interned `Error` type to return references to.
-    // FIXME: Remove this.
-    error_ty: StoredTy,
-
     pub expr_adjustments: FxHashMap<ExprId, Box<[Adjustment]>>,
     /// Stores the types which were implicitly dereferenced in pattern binding modes.
     pub pat_adjustments: FxHashMap<PatId, Vec<PatAdjustment>>,
@@ -1121,7 +1112,7 @@ impl<'db> InferenceResult<'db> {
 }
 
 impl<'db> InferenceResult<'db> {
-    fn new(error_ty: Ty<'_>) -> Self {
+    fn new() -> Self {
         Self {
             method_resolutions: Default::default(),
             field_resolutions: Default::default(),
@@ -1137,7 +1128,6 @@ impl<'db> InferenceResult<'db> {
             type_of_opaque: Default::default(),
             skipped_ref_pats: Default::default(),
             has_errors: Default::default(),
-            error_ty: error_ty.store(),
             pat_adjustments: Default::default(),
             binding_modes: Default::default(),
             expr_adjustments: Default::default(),
@@ -1291,19 +1281,19 @@ impl<'db> InferenceResult<'db> {
     }
 
     pub fn expr_ty<'a>(&self, id: ExprId) -> Ty<'a> {
-        self.type_of_expr.get(id).map_or(self.error_ty.as_ref(), |it| it.as_ref())
+        self.type_of_expr.get(id).map_or(default_types().types.error, |it| it.as_ref())
     }
 
     pub fn pat_ty<'a>(&self, id: PatId) -> Ty<'a> {
-        self.type_of_pat.get(id).map_or(self.error_ty.as_ref(), |it| it.as_ref())
+        self.type_of_pat.get(id).map_or(default_types().types.error, |it| it.as_ref())
     }
 
     pub fn expr_or_pat_ty<'a>(&self, id: ExprOrPatId) -> Ty<'a> {
-        self.type_of_expr_or_pat(id).unwrap_or(self.error_ty.as_ref())
+        self.type_of_expr_or_pat(id).unwrap_or(default_types().types.error)
     }
 
     pub fn binding_ty<'a>(&self, id: BindingId) -> Ty<'a> {
-        self.type_of_binding.get(id).map_or(self.error_ty.as_ref(), |it| it.as_ref())
+        self.type_of_binding.get(id).map_or(default_types().types.error, |it| it.as_ref())
     }
 
     /// This does not deduplicate, which means you'll get the types once per capture.
@@ -1443,7 +1433,7 @@ impl<'db> InferenceContext<'db> {
         let table = unify::InferenceTable::new(db, trait_env, resolver.krate(), owner);
         let types = crate::next_solver::default_types();
         InferenceContext {
-            result: InferenceResult::new(types.types.error),
+            result: InferenceResult::new(),
             return_ty: types.types.error, // set in collect_* calls
             types,
             target_features: OnceCell::new(),
@@ -1490,7 +1480,6 @@ impl<'db> InferenceContext<'db> {
             type_of_opaque,
             has_errors: _,
             diagnostics: _,
-            error_ty: _,
             expr_adjustments,
             pat_adjustments,
             binding_modes,
@@ -1658,7 +1647,6 @@ impl<'db> InferenceContext<'db> {
             skipped_ref_pats,
             closures_data,
             has_errors,
-            error_ty: _,
             pat_adjustments,
             binding_modes: _,
             expr_adjustments,
