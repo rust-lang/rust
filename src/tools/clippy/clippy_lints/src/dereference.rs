@@ -800,7 +800,7 @@ fn is_in_method_chain<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) -> bool
     }
 
     if let Some(parent) = get_parent_expr(cx, e)
-        && parent.span.eq_ctxt(e.span)
+        && parent.span.ctxt() == e.span.ctxt()
     {
         match parent.kind {
             ExprKind::Call(child, _) | ExprKind::MethodCall(_, child, _, _) | ExprKind::Index(child, _, _)

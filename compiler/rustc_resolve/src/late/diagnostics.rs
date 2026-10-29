@@ -1024,7 +1024,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         base_error: &BaseError,
     ) -> (bool, FxHashSet<String>, Vec<ImportSuggestion>) {
         let span = match following_seg {
-            Some(_) if path[0].ident.span.eq_ctxt(path[path.len() - 1].ident.span) => {
+            Some(_) if path[0].ident.span.ctxt() == path[path.len() - 1].ident.span.ctxt() => {
                 // The path `span` that comes in includes any following segments, which we don't
                 // want to replace in the suggestions.
                 path[0].ident.span.to(path[path.len() - 1].ident.span)
@@ -1263,7 +1263,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             for (ident, &res) in &rib.bindings {
                 if let Res::Local(_) = res
                     && path.len() == 1
-                    && ident.span.eq_ctxt(path[0].ident.span)
+                    && ident.span.ctxt() == path[0].ident.span.ctxt()
                     && ident.name == path[0].ident.name
                 {
                     err.span_help(
@@ -1568,7 +1568,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             for (binding_ident, _) in &rib.bindings {
                 // Case 1: the identifier is defined in the same scope as the macro is called
                 if binding_ident.name == ident.name
-                    && !binding_ident.span.eq_ctxt(span)
+                    && binding_ident.span.ctxt() != span.ctxt()
                     && !binding_ident.span.from_expansion()
                     && binding_ident.span.lo() < callsite_span.lo()
                 {
@@ -1582,7 +1582,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 // Case 2: the identifier is defined in a macro call in the same scope
                 if binding_ident.name == ident.name
                     && binding_ident.span.from_expansion()
-                    && binding_ident.span.source_callsite().eq_ctxt(callsite_span)
+                    && binding_ident.span.source_callsite().ctxt() == callsite_span.ctxt()
                     && binding_ident.span.source_callsite().lo() < callsite_span.lo()
                 {
                     err.span_help(
@@ -1943,7 +1943,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             && let [segment] = &range_path.segments[..]
             && let [s] = path
             && segment.ident == s.ident
-            && segment.ident.span.eq_ctxt(range.span)
+            && segment.ident.span.ctxt() == range.span.ctxt()
         {
             // We've encountered `[first, rest..]` (#88404) or `[first, ..rest]` (#120591)
             // where the user might have meant `[first, rest @ ..]`.
@@ -2075,7 +2075,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     /// the annotated item.
     fn detect_resolution_error_in_derive(&self, err: &mut Diag<'_>, span: Span) {
         if let Some(item) = self.diag_metadata.current_item
-            && !item.span.eq_ctxt(span)
+            && item.span.ctxt() != span.ctxt()
             && item.span.in_derive_expansion()
         {
             // `item` comes from a `#[derive()]`, but the error `span` doesn't, which means that the
@@ -2167,7 +2167,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 && let ast::GenericBound::Trait(tref) = bound
                 && tref.modifiers == ast::TraitBoundModifiers::NONE
                 && tref.span == span
-                && param.ident.span.eq_ctxt(span)
+                && param.ident.span.ctxt() == span.ctxt()
             {
                 Some(param.ident.span)
             } else {
@@ -2450,7 +2450,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 _ => return false,
             };
 
-            if lhs_span.eq_ctxt(rhs_span) {
+            if lhs_span.ctxt() == rhs_span.ctxt() {
                 err.span_suggestion_verbose(
                     lhs_span.between(rhs_span),
                     MESSAGE,
@@ -3956,7 +3956,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         let names = rib
             .bindings
             .iter()
-            .filter(|(id, _)| id.span.eq_ctxt(label.span))
+            .filter(|(id, _)| id.span.ctxt() == label.span.ctxt())
             .map(|(id, _)| id.name)
             .collect::<Vec<Symbol>>();
 

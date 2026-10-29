@@ -480,7 +480,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeIr {
                 NON_GLOB_IMPORT_OF_TYPE_IR_INHERENT,
                 tree.prefix.span,
                 NonGlobImportTypeIrInherent {
-                    suggestion: lo.eq_ctxt(hi).then(|| lo.to(hi)),
+                    suggestion: (lo.ctxt() == hi.ctxt()).then(|| lo.to(hi)),
                     snippet,
                 },
             );

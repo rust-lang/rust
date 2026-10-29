@@ -2476,7 +2476,7 @@ fn prefetch_mir(tcx: TyCtxt<'_>) {
     }
 
     let reachable_set = tcx.reachable_set(());
-    par_for_each_in(tcx.mir_keys(()), |&&def_id| {
+    par_for_each_in(tcx.mir_keys(()).as_slice(), |&def_id| {
         if tcx.is_trivial_const(def_id) {
             return;
         }

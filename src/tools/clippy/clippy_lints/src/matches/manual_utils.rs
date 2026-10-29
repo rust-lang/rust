@@ -113,7 +113,7 @@ where
     // it's being passed by value.
     let scrutinee = peel_hir_expr_refs(scrutinee).0;
     let (scrutinee_str, _) = snippet_with_context(cx, scrutinee.span, expr_ctxt, "..", &mut app);
-    let scrutinee_str = if scrutinee.span.eq_ctxt(expr.span) && cx.precedence(scrutinee) < ExprPrecedence::Unambiguous {
+    let scrutinee_str = if scrutinee.span.ctxt() == expr.span.ctxt() && cx.precedence(scrutinee) < ExprPrecedence::Unambiguous {
         format!("({scrutinee_str})")
     } else {
         scrutinee_str.into()
@@ -129,7 +129,7 @@ where
     let body_str = if let PatKind::Binding(annotation, id, some_binding, None) = some_pat.kind {
         if !some_expr.needs_unsafe_block
             && let Some(func) = can_pass_as_func(cx, id, some_expr.expr)
-            && func.span.eq_ctxt(some_expr.expr.span)
+            && func.span.ctxt() == some_expr.expr.span.ctxt()
         {
             snippet_with_applicability(cx, func.span, "..", &mut app).into_owned()
         } else {

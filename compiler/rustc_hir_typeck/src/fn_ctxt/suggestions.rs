@@ -489,7 +489,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             // Suggest removing any stray borrows (unless there's macro shenanigans involved).
             let inner_expr = expr.peel_borrows();
-            if !inner_expr.span.eq_ctxt(expr.span) {
+            if inner_expr.span.ctxt() != expr.span.ctxt() {
                 return false;
             }
             let borrow_removal_span = if inner_expr.hir_id == expr.hir_id {
@@ -2302,7 +2302,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // If the field is from an external crate it must not be `doc(hidden)`.
             && (field.did.is_local() || !self.tcx.is_doc_hidden(field.did))
             // If the field is hygienic it must come from the same syntax context.
-            && self.tcx.def_ident_span(field.did).unwrap().normalize_to_macros_2_0().eq_ctxt(span)
+            && self.tcx.def_ident_span(field.did).unwrap().normalize_to_macros_2_0().ctxt() == span.ctxt()
     }
 
     pub(crate) fn suggest_missing_unwrap_expect(
@@ -2771,7 +2771,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let mut expr = expr;
                 while let hir::ExprKind::Block(block, _) = &expr.kind
                     && let Some(expr_) = &block.expr
-                    && expr_.span.eq_ctxt(expr.span)
+                    && expr_.span.ctxt() == expr.span.ctxt()
                 {
                     expr = expr_
                 }

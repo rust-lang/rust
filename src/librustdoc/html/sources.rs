@@ -74,24 +74,19 @@ impl LocalSourcesCollector<'_, '_> {
             return;
         }
 
-        let href = RefCell::new(PathBuf::new());
+        let components = RefCell::new(Vec::new());
         clean_path(
             self.src_root,
             &p,
             |component| {
-                href.borrow_mut().push(component);
+                components.borrow_mut().push(component.to_string_lossy().into_owned());
             },
             || {
-                href.borrow_mut().pop();
+                components.borrow_mut().pop();
             },
         );
 
-        let mut href = href.into_inner().to_string_lossy().into_owned();
-        if let Some(c) = href.as_bytes().last()
-            && *c != b'/'
-        {
-            href.push('/');
-        }
+        let mut href: String = components.into_inner().iter().map(|c| format!("{c}/")).collect();
         let mut src_fname = p.file_name().expect("source has no filename").to_os_string();
         src_fname.push(".html");
         href.push_str(&src_fname.to_string_lossy());

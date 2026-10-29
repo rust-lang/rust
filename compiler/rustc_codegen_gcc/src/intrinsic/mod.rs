@@ -5,7 +5,7 @@ mod simd;
 use std::iter;
 
 use gccjit::{CType, ComparisonOp, Function, FunctionType, RValue, ToRValue, Type, UnaryOp};
-use rustc_abi::{Align, BackendRepr, HasDataLayout, WrappingRange};
+use rustc_abi::{Align, BackendRepr, HasDataLayout};
 use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::common::IntPredicate;
 use rustc_codegen_ssa::diagnostics::InvalidMonomorphization;
@@ -593,35 +593,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
         let fn_ptr = func.get_address(None);
         let fn_ty = fn_ptr.get_type();
 
-        let mut call_args = vec![];
-
-        for arg in args {
-            match arg.val {
-                OperandValue::ZeroSized => {}
-                OperandValue::Immediate(_) => call_args.push(arg.immediate()),
-                OperandValue::Pair(a, b) => {
-                    call_args.push(a);
-                    call_args.push(b);
-                }
-                OperandValue::Ref(op_place_val) => {
-                    let mut llval = op_place_val.llval;
-                    // We can't use `PlaceRef::load` here because the argument
-                    // may have a type we don't treat as immediate, but the ABI
-                    // used for this call is passing it by-value. In that case,
-                    // the load would just produce `OperandValue::Ref` instead
-                    // of the `OperandValue::Immediate` we need for the call.
-                    llval = self.load(self.backend_type(arg.layout), llval, op_place_val.align);
-                    if let BackendRepr::Scalar(scalar) = arg.layout.backend_repr {
-                        if scalar.is_bool() {
-                            self.range_metadata(llval, WrappingRange { start: 0, end: 1 });
-                        }
-                        // We store bools as `i8` so we need to truncate to `i1`.
-                        llval = self.to_immediate_scalar(llval, scalar);
-                    }
-                    call_args.push(llval);
-                }
-            }
-        }
+        let call_args = args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>();
 
         // FIXME directly use the llvm intrinsic adjustment functions here
         let llret =

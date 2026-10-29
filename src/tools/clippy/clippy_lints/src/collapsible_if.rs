@@ -170,7 +170,7 @@ impl CollapsibleIf {
         if let Some(inner) = expr_block(then)
             && let ExprKind::If(check_inner, _, None) = &inner.kind
             && self.eligible_condition(cx, check_inner)
-            && expr.span.eq_ctxt(inner.span)
+            && expr.span.ctxt() == inner.span.ctxt()
             && self.check_significant_tokens_and_expect_attrs(cx, then, inner, sym::collapsible_if)
             && let then_closing_bracket = {
                 let end = then.span.shrink_to_hi();

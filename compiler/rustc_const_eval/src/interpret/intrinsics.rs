@@ -989,8 +989,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// Copy `count*size_of::<T>()` many bytes from `*src` to `*dst`.
     pub(crate) fn copy_intrinsic(
         &mut self,
-        src: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>,
-        dst: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>,
+        src: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>, // pointer to source memory
+        dst: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>, // pointer to destination memory
         count: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>,
         nonoverlapping: bool,
     ) -> InterpResult<'tcx> {
@@ -1050,7 +1050,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
     pub fn write_bytes_intrinsic(
         &mut self,
-        dst: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>,
+        dst: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>, // pointer to destination memory
         byte: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>,
         count: &OpTy<'tcx, <M as Machine<'tcx>>::Provenance>,
         name: &'static str,
@@ -1066,6 +1066,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let len = self
             .compute_size_in_bytes(layout.size, count)
             .ok_or_else(|| err_ub_format!("overflow computing total size of `{name}`"))?;
+
+        // Check alignment as well. We set the attribute in LLVM.
+        self.check_ptr_align(dst, layout.align.abi)?;
 
         let bytes = std::iter::repeat_n(byte, len.bytes_usize());
         self.write_bytes_ptr(dst, bytes)

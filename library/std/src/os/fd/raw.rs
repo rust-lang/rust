@@ -13,6 +13,7 @@ use crate::alloc::Allocator;
 #[cfg(not(target_os = "trusty"))]
 use crate::fs;
 use crate::io;
+use crate::macros::rustdoc_skip_body;
 #[cfg(target_os = "hermit")]
 use crate::os::hermit::io::OwnedFd;
 #[cfg(all(not(target_os = "hermit"), not(target_os = "motor")))]
@@ -172,6 +173,7 @@ impl FromRawFd for RawFd {
 #[cfg(not(target_os = "trusty"))]
 impl AsRawFd for fs::File {
     #[inline]
+    #[rustdoc_skip_body]
     fn as_raw_fd(&self) -> RawFd {
         self.as_inner().as_raw_fd()
     }
@@ -180,6 +182,7 @@ impl AsRawFd for fs::File {
 #[cfg(not(target_os = "trusty"))]
 impl FromRawFd for fs::File {
     #[inline]
+    #[rustdoc_skip_body]
     unsafe fn from_raw_fd(fd: RawFd) -> fs::File {
         unsafe { fs::File::from(OwnedFd::from_raw_fd(fd)) }
     }
@@ -188,6 +191,7 @@ impl FromRawFd for fs::File {
 #[cfg(not(target_os = "trusty"))]
 impl IntoRawFd for fs::File {
     #[inline]
+    #[rustdoc_skip_body]
     fn into_raw_fd(self) -> RawFd {
         self.into_inner().into_inner().into_raw_fd()
     }
@@ -293,6 +297,7 @@ impl<T: AsRawFd, A: Allocator> AsRawFd for Box<T, A> {
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
 #[cfg(not(target_os = "trusty"))]
 impl AsRawFd for io::PipeReader {
+    #[rustdoc_skip_body]
     fn as_raw_fd(&self) -> RawFd {
         self.0.as_raw_fd()
     }
@@ -301,6 +306,7 @@ impl AsRawFd for io::PipeReader {
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
 #[cfg(not(target_os = "trusty"))]
 impl FromRawFd for io::PipeReader {
+    #[rustdoc_skip_body]
     unsafe fn from_raw_fd(raw_fd: RawFd) -> Self {
         Self::from_inner(unsafe { FromRawFd::from_raw_fd(raw_fd) })
     }
@@ -309,6 +315,7 @@ impl FromRawFd for io::PipeReader {
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
 #[cfg(not(target_os = "trusty"))]
 impl IntoRawFd for io::PipeReader {
+    #[rustdoc_skip_body]
     fn into_raw_fd(self) -> RawFd {
         self.0.into_raw_fd()
     }
@@ -317,6 +324,7 @@ impl IntoRawFd for io::PipeReader {
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
 #[cfg(not(target_os = "trusty"))]
 impl AsRawFd for io::PipeWriter {
+    #[rustdoc_skip_body]
     fn as_raw_fd(&self) -> RawFd {
         self.0.as_raw_fd()
     }
@@ -325,6 +333,7 @@ impl AsRawFd for io::PipeWriter {
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
 #[cfg(not(target_os = "trusty"))]
 impl FromRawFd for io::PipeWriter {
+    #[rustdoc_skip_body]
     unsafe fn from_raw_fd(raw_fd: RawFd) -> Self {
         Self::from_inner(unsafe { FromRawFd::from_raw_fd(raw_fd) })
     }
@@ -333,6 +342,7 @@ impl FromRawFd for io::PipeWriter {
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
 #[cfg(not(target_os = "trusty"))]
 impl IntoRawFd for io::PipeWriter {
+    #[rustdoc_skip_body]
     fn into_raw_fd(self) -> RawFd {
         self.0.into_raw_fd()
     }

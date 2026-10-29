@@ -518,13 +518,6 @@ impl Span {
         SyntaxContext::from_u32(ctxt32)
     }
 
-    // With the pre-#163857 span representation this method was more complex and required. Now it's
-    // trivial but it hasn't been removed simply to avoid churn.
-    #[inline]
-    pub fn eq_ctxt(self, other: Span) -> bool {
-        self.ctxt() == other.ctxt()
-    }
-
     #[inline]
     pub fn with_parent(self, parent: Option<LocalDefId>) -> Span {
         let data = match_span_kind! {
