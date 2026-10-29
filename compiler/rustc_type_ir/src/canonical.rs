@@ -317,7 +317,7 @@ pub struct CanonicalParamEnvCacheEntry<I: Interner> {
     pub param_env: I::ParamEnv,
     pub variables: ThinVec<I::GenericArg>,
     pub variable_lookup_table: HashMap<I::GenericArg, usize>,
-    pub var_kinds: Vec<CanonicalVarKind<I>>,
+    pub var_kinds: I::CanonicalVarKinds,
 }
 
 /// State used and modified by a canonicalizer during canonicalization. To avoid many allocations,
