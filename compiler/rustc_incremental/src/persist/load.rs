@@ -15,9 +15,9 @@ use rustc_session::{Session, StableCrateId};
 use rustc_span::Symbol;
 use tracing::{debug, warn};
 
-use super::data::*;
 use super::file_format;
 use super::fs::*;
+use super::work_product::SerializedWorkProduct;
 use crate::diagnostics;
 use crate::persist::file_format::{OpenFile, OpenFileError};
 

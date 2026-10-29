@@ -9,8 +9,8 @@ use rustc_serialize::opaque::FileEncoder;
 use rustc_session::Session;
 use tracing::debug;
 
-use super::data::*;
 use super::fs::*;
+use super::work_product::SerializedWorkProduct;
 use super::{clean, file_format};
 use crate::assert_dep_graph::assert_dep_graph;
 use crate::diagnostics;
