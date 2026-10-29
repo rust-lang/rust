@@ -151,9 +151,7 @@ LL | fn main() -> Result<(), Error> {
    |              ----------------- expected `dependency::Error` because of this
 ...
 LL |     Err(Error2)?;
-   |     -----------^ the trait `From<Error2>` is not implemented for `dependency::Error`
-   |     |
-   |     this can't be annotated with `?` because it has type `Result<_, Error2>`
+   |                ^ the trait `From<Error2>` is not implemented for `dependency::Error`
    |
    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
 help: the trait `From<Error2>` is not implemented for `dependency::Error`
@@ -165,6 +163,7 @@ LL | impl From<()> for Error {
    = help: for that trait implementation, expected `()`, found `Error2`
    = note: there are multiple different versions of crate `dependency` in the dependency graph
    = help: you can use `cargo tree` to explore your dependency tree
+   = note: required for `Result<(), dependency::Error>` to implement `ops::try_trait_old::FromResidual<Result<!, Error2>>`
 
 error[E0277]: `?` couldn't convert the error to `dependency::OtherError`
   --> replaced
@@ -172,9 +171,7 @@ error[E0277]: `?` couldn't convert the error to `dependency::OtherError`
 LL | fn foo() -> Result<(), OtherError> {
    |             ---------------------- expected `dependency::OtherError` because of this
 LL |     Err(Error2)?;
-   |     -----------^ the trait `From<Error2>` is not implemented for `dependency::OtherError`
-   |     |
-   |     this can't be annotated with `?` because it has type `Result<_, Error2>`
+   |                ^ the trait `From<Error2>` is not implemented for `dependency::OtherError`
    |
    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
 help: `dependency::OtherError` implements trait `From<T>`
@@ -187,6 +184,7 @@ LL | impl From<i32> for OtherError {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `From<i32>`
    = note: there are multiple different versions of crate `dependency` in the dependency graph
    = help: you can use `cargo tree` to explore your dependency tree
+   = note: required for `Result<(), dependency::OtherError>` to implement `ops::try_trait_old::FromResidual<Result<!, Error2>>`
 
 error: aborting due to 8 previous errors
 
