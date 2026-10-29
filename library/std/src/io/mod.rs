@@ -324,6 +324,8 @@ pub(crate) use alloc_crate::io::{
 };
 #[stable(feature = "iovec", since = "1.36.0")]
 pub use alloc_crate::io::{IoSlice, IoSliceMut};
+#[allow(unused_imports, reason = "only used by certain platforms")]
+pub(crate) use io_slice::{limit_slices, limit_slices_mut};
 
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
 pub use self::pipe::{PipeReader, PipeWriter, pipe};
@@ -342,6 +344,7 @@ pub(crate) use self::stdio::{attempt_print_to_stderr, cleanup};
 pub use self::stdio::{set_output_capture, try_set_output_capture};
 
 mod error;
+pub(crate) mod io_slice;
 mod pipe;
 pub mod prelude;
 mod stdio;
