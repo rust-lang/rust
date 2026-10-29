@@ -1,8 +1,5 @@
 //@check-pass
-#![feature(rustdoc_internals)]
 
-#[doc(rust_logo)]
-//~^ WARN this attribute can only be applied at the crate level
 #[doc(html_favicon_url = "example.org")]
 //~^ WARN this attribute can only be applied at the crate level
 #[doc(html_logo_url = "example.org")]
