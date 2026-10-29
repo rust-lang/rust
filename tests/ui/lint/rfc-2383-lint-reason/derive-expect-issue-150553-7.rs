@@ -4,6 +4,8 @@
 // no matter what macro produced the derived item. A genuinely unfulfilled
 // expectation is still reported exactly once.
 
+//@ check-pass
+
 #![feature(decl_macro)]
 #![deny(redundant_lifetimes)]
 
@@ -12,7 +14,7 @@ use std::fmt::Debug;
 macro fulfilled() {
     #[derive(Debug)]
     #[expect(redundant_lifetimes)]
-    pub struct RefWrapper<'a, T> //~ ERROR unnecessary lifetime parameter `'a`
+    pub struct RefWrapper<'a, T>
     where
         'a: 'static,
         T: Debug,
@@ -30,7 +32,7 @@ macro passthrough($i:item) {
 passthrough! {
     #[derive(Debug)]
     #[expect(redundant_lifetimes)]
-    pub struct RefWrapperPassthrough<'a, T> //~ ERROR unnecessary lifetime parameter `'a`
+    pub struct RefWrapperPassthrough<'a, T>
     where
         'a: 'static,
         T: Debug,
