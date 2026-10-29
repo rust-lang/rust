@@ -27,7 +27,7 @@
    LL|       |}
    LL|       |
    LL|       |// Expand via an attribute proc-macro.
-   LL|       |#[cfg_attr(attr, try_in_macro_helper::attr)]
+   LL|      1|#[cfg_attr(attr, try_in_macro_helper::attr)]
    LL|       |const _: () = ();
    LL|       |
    LL|       |// Expand via a regular bang-style proc-macro.
