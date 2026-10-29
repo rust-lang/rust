@@ -184,7 +184,7 @@ LL |     #[link_section = "__TEXT,__text"]
 ...
 LL |     unreachable!();
    |
-   = help: the `link_section` attribute can be applied to functions and statics
+   = help: the `link_section` attribute can be applied to foreign statics, functions, and statics
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: attributes on a macro invocation apply to the invocation itself and are not forwarded to its expansion
 
