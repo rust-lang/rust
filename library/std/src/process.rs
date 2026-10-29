@@ -2631,12 +2631,21 @@ pub fn exit(code: i32) -> ! {
 /// ```
 ///
 /// [panic hook]: crate::panic::set_hook
+// FIXME(core_abort): once stable, move this to `core` and reexport.
 #[stable(feature = "process_abort", since = "1.17.0")]
 #[cold]
 #[cfg_attr(not(test), rustc_diagnostic_item = "process_abort")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub fn abort() -> ! {
-    crate::sys::abort_internal();
+    #[unsafe(no_mangle)]
+    #[cfg(not(any(all(windows, target_env = "gnu"), target_os = "cygwin")))]
+    fn __rust_abort_internal() -> ! {
+        crate::sys::abort_internal();
+    }
+    #[cfg(any(all(windows, target_env = "gnu"), target_os = "cygwin"))]
+    let _ = crate::sys::abort_internal();
+
+    core::process::abort();
 }
 
 #[doc(inline)]
