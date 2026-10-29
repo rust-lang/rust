@@ -28,7 +28,7 @@ pub const RUSTC_PGO_CRATES: &[&str] = &[
     "ctfe-stress-5",
     "cargo-0.87.1",
     "token-stream-stress",
-    "match-stress",
+    "enum-stress",
     "tuple-stress",
     "diesel-2.2.10",
     "bitmaps-3.2.1",
