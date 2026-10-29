@@ -3,6 +3,284 @@ use std::cell::{Cell, RefCell};
 use std::iter::TrustedLen;
 use std::sync::{Arc, UniqueArc, Weak};
 
+struct ArcNDrop<'a>(&'a Cell<usize>);
+
+impl Drop for ArcNDrop<'_> {
+    fn drop(&mut self) {
+        self.0.set(self.0.get() + 1);
+    }
+}
+
+#[test]
+fn n_new() {
+    for n in [1, 2, 17] {
+        let mut iter = Arc::new_n([1, 2, 3], n);
+        assert_eq!(iter.len(), n);
+        assert_eq!(iter.size_hint(), (n, Some(n)));
+        let first = iter.next().unwrap();
+        assert_eq!(Arc::strong_count(&first), n);
+        for remaining in (0..n - 1).rev() {
+            let next = iter.next().unwrap();
+            assert!(Arc::ptr_eq(&first, &next));
+            assert_eq!(*next, [1, 2, 3]);
+            assert_eq!(iter.len(), remaining);
+            assert_eq!(Arc::strong_count(&first), remaining + 2);
+        }
+        assert!(iter.next().is_none());
+        assert!(iter.next().is_none());
+        assert_eq!(Arc::strong_count(&first), 1);
+    }
+}
+
+#[test]
+fn n_try_new() {
+    let mut iter = Arc::try_new_n(String::from("value"), 3).unwrap();
+    let first = iter.next().unwrap();
+    assert_eq!(Arc::strong_count(&first), 3);
+    let rest: Vec<_> = iter.collect();
+    assert_eq!(rest.len(), 2);
+    assert!(rest.iter().all(|arc| Arc::ptr_eq(&first, arc)));
+    drop(rest);
+    assert_eq!(Arc::strong_count(&first), 1);
+}
+
+#[test]
+fn n_new_zero() {
+    let drops = Cell::new(0);
+    let mut iter = Arc::new_n(ArcNDrop(&drops), 0);
+    assert_eq!(drops.get(), 1);
+    assert_eq!(iter.len(), 0);
+    assert!(iter.next().is_none());
+    drop(iter);
+    assert_eq!(drops.get(), 1);
+
+    let mut iter = Arc::try_new_n(ArcNDrop(&drops), 0).unwrap();
+    assert_eq!(drops.get(), 2);
+    assert_eq!(iter.len(), 0);
+    assert!(iter.next().is_none());
+    drop(iter);
+    assert_eq!(drops.get(), 2);
+}
+
+#[test]
+fn n_new_drop_unconsumed() {
+    let drops = Cell::new(0);
+    drop(Arc::new_n(ArcNDrop(&drops), 8));
+    assert_eq!(drops.get(), 1);
+    drop(Arc::try_new_n(ArcNDrop(&drops), 8).unwrap());
+    assert_eq!(drops.get(), 2);
+}
+
+#[test]
+fn n_new_drop_partial() {
+    let drops = Cell::new(0);
+    let mut iter = Arc::new_n(ArcNDrop(&drops), 8);
+    let first = iter.next().unwrap();
+    let weak = Arc::downgrade(&first);
+    drop(iter);
+    assert_eq!(Arc::strong_count(&first), 1);
+    assert_eq!(drops.get(), 0);
+    drop(first);
+    assert_eq!(drops.get(), 1);
+    assert!(weak.upgrade().is_none());
+}
+
+#[test]
+fn n_new_iterator_keeps_allocation_alive() {
+    let drops = Cell::new(0);
+    let mut iter = Arc::new_n(ArcNDrop(&drops), 8);
+    let first = iter.next().unwrap();
+    let weak = Arc::downgrade(&first);
+    drop(first);
+    assert_eq!(drops.get(), 0);
+    assert_eq!(weak.strong_count(), 7);
+    drop(iter);
+    assert_eq!(drops.get(), 1);
+    assert!(weak.upgrade().is_none());
+}
+
+#[test]
+fn n_clone() {
+    let original = Arc::new([1, 2, 3]);
+    let mut iter = Arc::clone_n(&original, 3);
+    assert_eq!(Arc::strong_count(&original), 4);
+    assert_eq!(iter.len(), 3);
+    let first = iter.next().unwrap();
+    assert_eq!(Arc::strong_count(&original), 4);
+    assert!(Arc::ptr_eq(&original, &first));
+    drop(iter);
+    assert_eq!(Arc::strong_count(&original), 2);
+    drop(first);
+    assert_eq!(Arc::strong_count(&original), 1);
+}
+
+#[test]
+fn n_clone_outlives_source() {
+    let drops = Cell::new(0);
+    let original = Arc::new(ArcNDrop(&drops));
+    let mut iter = Arc::clone_n(&original, 2);
+    drop(original);
+    let first = iter.next().unwrap();
+    assert_eq!(Arc::strong_count(&first), 2);
+    drop(iter);
+    assert_eq!(drops.get(), 0);
+    drop(first);
+    assert_eq!(drops.get(), 1);
+}
+
+#[test]
+fn n_clone_zero() {
+    let original = Arc::new(1);
+    let mut iter = Arc::clone_n(&original, 0);
+    assert_eq!(Arc::strong_count(&original), 1);
+    assert_eq!(iter.size_hint(), (0, Some(0)));
+    assert!(iter.next().is_none());
+    assert!(iter.next().is_none());
+    drop(iter);
+    assert_eq!(Arc::strong_count(&original), 1);
+}
+
+#[test]
+fn n_clone_unsized() {
+    let original: Arc<[i32]> = Arc::from([1, 2, 3]);
+    let clones: Vec<_> = Arc::clone_n(&original, 4).collect();
+    assert_eq!(Arc::strong_count(&original), 5);
+    assert!(clones.iter().all(|arc| Arc::ptr_eq(&original, arc)));
+    drop(clones);
+
+    let original: Arc<dyn Any> = Arc::new(42);
+    let clone = Arc::clone_n(&original, 1).next().unwrap();
+    assert!(Arc::ptr_eq(&original, &clone));
+    assert_eq!(clone.downcast_ref::<i32>(), Some(&42));
+}
+
+#[test]
+fn n_iter_send_sync_fused() {
+    fn check<I: Send + Sync + std::iter::FusedIterator>(_: &I) {}
+    let iter = Arc::new_n(42, 4);
+    check(&iter);
+    let iter = std::thread::spawn(move || iter).join().unwrap();
+    assert_eq!(iter.count(), 4);
+    let original = Arc::new(42);
+    let iter = Arc::clone_n(&original, 4);
+    check(&iter);
+    let clones = std::thread::spawn(move || iter.collect::<Vec<_>>()).join().unwrap();
+    assert_eq!(Arc::strong_count(&original), 5);
+    drop(clones);
+}
+
+#[test]
+fn n_iter_adapters() {
+    let original = Arc::new(42);
+    let last = Arc::clone_n(&original, 8).nth(7).unwrap();
+    assert_eq!(Arc::strong_count(&original), 2);
+    drop(last);
+    let first: Vec<_> = Arc::clone_n(&original, 8).take(2).collect();
+    assert_eq!(Arc::strong_count(&original), 3);
+    drop(first);
+    assert_eq!(Arc::clone_n(&original, 8).count(), 8);
+    assert_eq!(Arc::strong_count(&original), 1);
+}
+
+#[test]
+fn n_clone_batch_boundaries() {
+    let max_batch = 1usize << (usize::BITS / 2);
+    let original = Arc::new(42);
+    for n in [max_batch - 1, max_batch, max_batch + 1] {
+        let mut iter = Arc::clone_n(&original, n);
+        assert_eq!(iter.len(), n);
+        assert_eq!(Arc::strong_count(&original), n + 1);
+        let first = iter.next().unwrap();
+        assert!(Arc::ptr_eq(&original, &first));
+        assert_eq!(Arc::strong_count(&original), n + 1);
+        drop(iter);
+        assert_eq!(Arc::strong_count(&original), 2);
+        drop(first);
+        assert_eq!(Arc::strong_count(&original), 1);
+    }
+}
+
+#[test]
+fn n_clone_concurrent_batches() {
+    let n = 1usize << (usize::BITS / 2);
+    let original = Arc::new(42);
+    let barrier = std::sync::Barrier::new(8);
+    std::thread::scope(|scope| {
+        for _ in 0..8 {
+            scope.spawn(|| {
+                let iter = Arc::clone_n(&original, n);
+                barrier.wait();
+                assert_eq!(Arc::strong_count(&original), 8 * n + 1);
+                barrier.wait();
+                drop(iter);
+            });
+        }
+    });
+    assert_eq!(Arc::strong_count(&original), 1);
+}
+
+#[test]
+#[cfg(panic = "unwind")]
+fn n_new_overflow() {
+    let drops = Cell::new(0);
+    assert!(
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            Arc::new_n(ArcNDrop(&drops), isize::MAX as usize + 1)
+        }))
+        .is_err()
+    );
+    assert_eq!(drops.get(), 1);
+    assert!(
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            Arc::try_new_n(ArcNDrop(&drops), usize::MAX)
+        }))
+        .is_err()
+    );
+    assert_eq!(drops.get(), 2);
+}
+
+#[test]
+#[cfg(panic = "unwind")]
+fn n_clone_overflow() {
+    let slow_batch = (1usize << (usize::BITS / 2)) + 1;
+    let original = Arc::new(());
+    let reserved = Arc::clone_n(&original, isize::MAX as usize - 1);
+    assert_eq!(Arc::strong_count(&original), isize::MAX as usize);
+    assert!(std::panic::catch_unwind(|| Arc::clone_n(&original, slow_batch)).is_err());
+    assert!(std::panic::catch_unwind(|| Arc::clone_n(&original, usize::MAX)).is_err());
+    assert_eq!(Arc::strong_count(&original), isize::MAX as usize);
+    drop(Arc::clone_n(&original, 0));
+    drop(reserved);
+    assert_eq!(Arc::strong_count(&original), 1);
+}
+
+#[test]
+#[cfg(panic = "unwind")]
+fn n_clone_concurrent_overflow() {
+    let slow_batch = (1usize << (usize::BITS / 2)) + 1;
+    let original = Arc::new(());
+    let reserved = Arc::clone_n(&original, isize::MAX as usize - slow_batch - 1);
+    let barrier = std::sync::Barrier::new(8);
+    let successes = std::sync::atomic::AtomicUsize::new(0);
+    std::thread::scope(|scope| {
+        for _ in 0..8 {
+            scope.spawn(|| {
+                barrier.wait();
+                let result = std::panic::catch_unwind(|| Arc::clone_n(&original, slow_batch));
+                if result.is_ok() {
+                    successes.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                }
+                barrier.wait();
+                drop(result);
+            });
+        }
+    });
+    assert_eq!(successes.load(std::sync::atomic::Ordering::Relaxed), 1);
+    assert_eq!(Arc::strong_count(&original), isize::MAX as usize - slow_batch);
+    drop(reserved);
+    assert_eq!(Arc::strong_count(&original), 1);
+}
+
 #[test]
 fn uninhabited() {
     enum Void {}

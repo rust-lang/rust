@@ -13,11 +13,14 @@
 // (so `#[ignore]` would not be enough). See <https://github.com/rust-lang/miri/issues/2104>.
 #![cfg(not(all(miri, windows)))]
 #![feature(alloc_error_hook)]
+#![feature(allocator_ext)]
 
 use std::alloc::{GlobalAlloc, Layout, System, set_alloc_error_hook};
+use std::cell::Cell;
 use std::ffi::CString;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 
 // Once armed, the first allocation of 8 bytes or more fails and disarms, so the
 // reallocation inside `clone_into`'s grow path fails while the runtime's own
@@ -25,6 +28,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 struct OneShotFailingAlloc;
 
 static ARMED: AtomicBool = AtomicBool::new(false);
+static ALLOC_TEST_LOCK: Mutex<()> = Mutex::new(());
 
 unsafe impl GlobalAlloc for OneShotFailingAlloc {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
@@ -54,6 +58,7 @@ static ALLOC: OneShotFailingAlloc = OneShotFailingAlloc;
 #[test]
 #[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn clone_into_alloc_failure_leaves_target_valid() {
+    let _guard = ALLOC_TEST_LOCK.lock().unwrap();
     set_alloc_error_hook(|_| panic!("alloc error"));
 
     let src = CString::new("a fairly long value").unwrap();
@@ -71,4 +76,31 @@ fn clone_into_alloc_failure_leaves_target_valid() {
     // Either way `target` must still end in its nul terminator. Before the fix the Miri
     // unwind left it empty (also caught as a bad write in `CString`'s destructor).
     assert_eq!(target.as_bytes_with_nul().last(), Some(&0));
+}
+
+#[test]
+fn arc_n_try_new_allocation_failure() {
+    let _guard = ALLOC_TEST_LOCK.lock().unwrap();
+
+    struct CountDrop<'a>(&'a Cell<usize>);
+
+    impl Drop for CountDrop<'_> {
+        fn drop(&mut self) {
+            self.0.set(self.0.get() + 1);
+        }
+    }
+
+    let drops = Cell::new(0);
+    ARMED.store(true, Ordering::SeqCst);
+    let empty = Arc::try_new_n(CountDrop(&drops), 0);
+    let was_armed = ARMED.swap(false, Ordering::SeqCst);
+    assert!(was_armed);
+    drop(empty.unwrap());
+    assert_eq!(drops.get(), 1);
+
+    ARMED.store(true, Ordering::SeqCst);
+    let result = Arc::try_new_n(CountDrop(&drops), 2);
+    ARMED.store(false, Ordering::SeqCst);
+    assert!(result.is_err());
+    assert_eq!(drops.get(), 2);
 }
