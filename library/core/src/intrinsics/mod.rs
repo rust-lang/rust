@@ -1944,7 +1944,8 @@ pub const fn three_way_compare<T: Copy>(lhs: T, rhss: T) -> crate::cmp::Ordering
 /// Requires that `(a & b) == 0`, or equivalently that `(a | b) == (a + b)`.
 ///
 /// Otherwise it's immediate UB.
-#[rustc_const_unstable(feature = "disjoint_bitor", issue = "135758")]
+#[rustc_intrinsic_const_stable_indirect]
+#[rustc_allow_const_fn_unstable(const_trait_impl, core_intrinsics_fallbacks)]
 #[rustc_nounwind]
 #[rustc_intrinsic]
 #[track_caller]
