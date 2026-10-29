@@ -230,6 +230,76 @@ const _: () = ();
 /// [the `crate_name` attribute]: ../reference/crates-and-source-files.html#the-crate_name-attribute
 const _: () = ();
 
+#[doc(attribute = "crate_type")]
+//
+/// Specifies the type of a crate.
+///
+/// Written as an inner attribute at the top of the crate root, `crate_type` is used
+/// to specify the type of a crate.
+///
+/// ```
+/// #![crate_type = "lib"]
+/// ```
+///
+/// The specified crate type must be a known crate type (for the list of valid crate types, see [Linkage]),
+/// otherwise `rustc` reports an error. Note that even when the `crate_type` attribute is ignored (for example
+/// when `--crate-type` flags are used), an unknown crate type still causes this error:
+///
+/// ```text
+/// error: invalid `crate_type` value
+///  --> typo.rs:1:17
+///   |
+/// 1 | #![crate_type = "dyllib"]
+///   |                 ^^^^^^^^ help: did you mean: `"dylib"`
+///   |
+///   = note: `#[deny(unknown_crate_types)]` on by default
+/// ```
+///
+/// In one session of compilation, the compiler can generate multiple artifacts through the use of
+/// either command line flags or the `crate_type` attribute. Note that the output artifacts are stackable in
+/// the sense that if multiple are specified, then the compiler will produce each form of output without
+/// having to recompile.
+///
+/// If one or more `--crate-type` command line flags are specified, all `crate_type` attributes will be
+/// ignored in favor of only building the artifacts specified by command line.
+///
+/// For example, if a crate has the following `crate_type` attributes:
+///
+/// ```
+/// #![crate_type = "staticlib"]
+/// #![crate_type = "dylib"]
+/// ```
+///
+/// Then the compiler will build both a static library and a dynamic library. And if the compiler
+/// is invoked with `--crate-type=rlib`, then the `crate_type` attributes will be ignored,
+/// and only the `rlib` will be built.
+///
+/// If the flag `--test` is passed, the `crate_type` attributes will be ignored, and the crate will be built
+/// as a test harness.
+///
+/// For `[lib]`/`[[bin]]` targets Cargo passes `--crate-type` derived from the target (`[lib] crate-type`, `[[bin]]`);
+/// test/bench targets are compiled with `--test`. In all these cases the attribute is ignored.
+///
+/// Note that the `bin` type and `proc-macro` type cannot be combined with any other crate type,
+/// otherwise `rustc` reports an error (unless the `crate_type` attribute is ignored):
+///
+/// ```text
+/// error: cannot mix `bin` crate type with others
+/// ```
+///
+/// ```text
+/// error: cannot mix `proc-macro` crate type with others
+/// ```
+///
+/// In general, crate type `bin` and crate type `lib` should be sufficient for all compilation needs, and
+/// the other options are just available if more fine-grained control is desired over the output format of
+/// a crate.
+///
+/// For more information, see the Reference on [Linkage].
+///
+/// [Linkage]: ../reference/linkage.html
+const _: () = ();
+
 #[doc(attribute = "deny")]
 //
 /// Emits an error, preventing the compilation from finishing, when a lint check has failed.
