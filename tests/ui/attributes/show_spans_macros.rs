@@ -15,7 +15,6 @@ mod foo {
     pub const BAR: u8 = 1;
 }
 
-// FIXME(#126763): the span should be `$a::$b` in the macro body.
 macro_rules! path {
     ($a:tt, $b:tt) => {
         let _ = $a::$b;

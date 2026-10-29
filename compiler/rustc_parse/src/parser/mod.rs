@@ -244,13 +244,15 @@ pub struct Parser<'a> {
     in_fn_body: bool = false,
     /// Whether we have detected a missing semicolon in function body.
     pub fn_body_missing_semi_guar: Option<ErrorGuaranteed> = None,
+    /// Chained-span of what the innermost `collect_span` has consumed so far.
+    cur_span_frame: Option<Span> = None,
 }
 
 // This type is used a lot, e.g. it's cloned when matching many declarative macro rules with
 // nonterminals. Make sure it doesn't unintentionally get bigger. We only check a few arches
 // though, because `TokenTypeSet(u128)` alignment varies on others, changing the total size.
 #[cfg(all(target_pointer_width = "64", any(target_arch = "aarch64", target_arch = "x86_64")))]
-rustc_data_structures::static_assert_size!(Parser<'_>, 288);
+rustc_data_structures::static_assert_size!(Parser<'_>, 304);
 
 /// Stores span information about a closure.
 #[derive(Clone, Debug)]
@@ -1123,6 +1125,9 @@ impl<'a> Parser<'a> {
         self.prev_token = mem::replace(&mut self.token, next_token);
         self.token_spacing = next_spacing;
 
+        let sp = self.prev_token.span;
+        self.cur_span_frame = Some(self.cur_span_frame.map_or(sp, |s| s.to(sp)));
+
         // Diagnostics.
         self.expected_token_types.clear();
     }
@@ -1146,6 +1151,23 @@ impl<'a> Parser<'a> {
             token::OpenInvisible(origin) | token::CloseInvisible(origin) if origin.skip()
         ));
         self.inlined_bump_with(next)
+    }
+
+    /// Runs `f`, returning the span of all it consumed.
+    /// Unlike `lo.to(self.prev_token.span)`, every token is chained,
+    /// so `Span::to` can handle mixed macro contexts.
+    fn collect_span<T>(
+        &mut self,
+        f: impl FnOnce(&mut Self) -> PResult<'a, T>,
+    ) -> PResult<'a, (T, Option<Span>)> {
+        let parent = self.cur_span_frame.take();
+        let res = f(self);
+        let child = self.cur_span_frame;
+        self.cur_span_frame = match (parent, child) {
+            (Some(p), Some(c)) => Some(p.to(c)),
+            (p, c) => p.or(c),
+        };
+        res.map(|t| (t, child))
     }
 
     /// Look-ahead `dist` tokens of `self.token` and get access to that token there.
