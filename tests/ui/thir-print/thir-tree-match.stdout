@@ -100,21 +100,25 @@ body:
                                                                                         args: []
                                                                                         variant_index: 0
                                                                                         subpatterns: [
-                                                                                            Pat {
-                                                                                                ty: Bar
-                                                                                                span: $DIR/thir-tree-match.rs:17:21: 17:31 (#0)
-                                                                                                kind: PatKind {
-                                                                                                    Variant {
-                                                                                                        adt_def: 
-                                                                                                            AdtDef {
-                                                                                                                did: DefId(0:3 ~ thir_tree_match[fcf8]::Bar)
-                                                                                                                variants: [VariantDef { def_id: DefId(0:4 ~ thir_tree_match[fcf8]::Bar::First), ctor: Some((Const, DefId(0:5 ~ thir_tree_match[fcf8]::Bar::First::{constructor#0}))), name: "First", discr: Relative(0), fields: [], tainted: None, flags:  }, VariantDef { def_id: DefId(0:6 ~ thir_tree_match[fcf8]::Bar::Second), ctor: Some((Const, DefId(0:7 ~ thir_tree_match[fcf8]::Bar::Second::{constructor#0}))), name: "Second", discr: Relative(1), fields: [], tainted: None, flags:  }, VariantDef { def_id: DefId(0:8 ~ thir_tree_match[fcf8]::Bar::Third), ctor: Some((Const, DefId(0:9 ~ thir_tree_match[fcf8]::Bar::Third::{constructor#0}))), name: "Third", discr: Relative(2), fields: [], tainted: None, flags:  }]
-                                                                                                                flags: IS_ENUM
-                                                                                                                repr: ReprOptions { int: None, align: None, pack: None, flags: , scalable: None, field_shuffle_seed: 7908585036048874241 }
-                                                                                                            }
-                                                                                                        args: []
-                                                                                                        variant_index: 0
-                                                                                                        subpatterns: []
+                                                                                            FieldPat {
+                                                                                                field: 0
+                                                                                                pattern:
+                                                                                                Pat {
+                                                                                                    ty: Bar
+                                                                                                    span: $DIR/thir-tree-match.rs:17:21: 17:31 (#0)
+                                                                                                    kind: PatKind {
+                                                                                                        Variant {
+                                                                                                            adt_def: 
+                                                                                                                AdtDef {
+                                                                                                                    did: DefId(0:3 ~ thir_tree_match[fcf8]::Bar)
+                                                                                                                    variants: [VariantDef { def_id: DefId(0:4 ~ thir_tree_match[fcf8]::Bar::First), ctor: Some((Const, DefId(0:5 ~ thir_tree_match[fcf8]::Bar::First::{constructor#0}))), name: "First", discr: Relative(0), fields: [], tainted: None, flags:  }, VariantDef { def_id: DefId(0:6 ~ thir_tree_match[fcf8]::Bar::Second), ctor: Some((Const, DefId(0:7 ~ thir_tree_match[fcf8]::Bar::Second::{constructor#0}))), name: "Second", discr: Relative(1), fields: [], tainted: None, flags:  }, VariantDef { def_id: DefId(0:8 ~ thir_tree_match[fcf8]::Bar::Third), ctor: Some((Const, DefId(0:9 ~ thir_tree_match[fcf8]::Bar::Third::{constructor#0}))), name: "Third", discr: Relative(2), fields: [], tainted: None, flags:  }]
+                                                                                                                    flags: IS_ENUM
+                                                                                                                    repr: ReprOptions { int: None, align: None, pack: None, flags: , scalable: None, field_shuffle_seed: 7908585036048874241 }
+                                                                                                                }
+                                                                                                            args: []
+                                                                                                            variant_index: 0
+                                                                                                            subpatterns: []
+                                                                                                        }
                                                                                                     }
                                                                                                 }
                                                                                             }
@@ -164,11 +168,15 @@ body:
                                                                                         args: []
                                                                                         variant_index: 0
                                                                                         subpatterns: [
-                                                                                            Pat {
-                                                                                                ty: Bar
-                                                                                                span: $DIR/thir-tree-match.rs:18:21: 18:22 (#0)
-                                                                                                kind: PatKind {
-                                                                                                    Wild
+                                                                                            FieldPat {
+                                                                                                field: 0
+                                                                                                pattern:
+                                                                                                Pat {
+                                                                                                    ty: Bar
+                                                                                                    span: $DIR/thir-tree-match.rs:18:21: 18:22 (#0)
+                                                                                                    kind: PatKind {
+                                                                                                        Wild
+                                                                                                    }
                                                                                                 }
                                                                                             }
                                                                                         ]
