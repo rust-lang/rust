@@ -6,8 +6,9 @@ use std::path::Path;
 
 use rustc_data_structures::unord::UnordMap;
 use rustc_fs_util::link_or_copy;
-use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
-use rustc_session::{IncrCompSession, Session};
+use rustc_macros::{Decodable, Encodable};
+use rustc_middle::dep_graph::{IncrCompSession, WorkProduct, WorkProductId};
+use rustc_session::Session;
 use tracing::debug;
 
 use crate::diagnostics;
@@ -19,10 +20,10 @@ use crate::persist::fs::*;
 /// Panics when incr comp is disabled.
 pub fn copy_cgu_workproduct_to_incr_comp_cache_dir(
     sess: &Session,
-    incr_comp_session: &IncrCompSession,
+    incr_comp_session: &mut IncrCompSession,
     cgu_name: &str,
     files: &[(&'static str, &Path)],
-) -> (WorkProductId, WorkProduct) {
+) {
     debug!(?cgu_name, ?files);
     assert!(sess.opts.incremental.is_some());
 
@@ -30,7 +31,7 @@ pub fn copy_cgu_workproduct_to_incr_comp_cache_dir(
     for (ext, path) in files {
         let file_name = format!("{cgu_name}.{ext}");
         let path_in_incr_dir = in_incr_comp_dir_sess(incr_comp_session, &file_name);
-        match link_or_copy(path, &path_in_incr_dir) {
+        match link_or_copy(path, &path_in_incr_dir, false /* allow_overwrite */) {
             Ok(_) => {
                 let _ = saved_files.insert(ext.to_string(), file_name);
             }
@@ -47,5 +48,14 @@ pub fn copy_cgu_workproduct_to_incr_comp_cache_dir(
     let work_product = WorkProduct { cgu_name: cgu_name.to_string(), saved_files };
     debug!(?work_product);
     let work_product_id = WorkProductId::from_cgu_name(cgu_name);
-    (work_product_id, work_product)
+    incr_comp_session.new_work_products.insert(work_product_id, work_product);
+}
+
+#[derive(Debug, Encodable, Decodable)]
+pub(crate) struct SerializedWorkProduct {
+    /// node that produced the work-product
+    pub id: WorkProductId,
+
+    /// work-product data itself
+    pub work_product: WorkProduct,
 }

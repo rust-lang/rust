@@ -871,7 +871,8 @@ pub fn codegen_crate<
             }
             CguReuse::PreLto => {
                 submit_pre_lto_module_to_llvm(
-                    tcx,
+                    tcx.sess,
+                    tcx.incr_comp_session.unwrap(),
                     &ongoing_codegen.coordinator,
                     CachedModuleCodegen {
                         name: cgu.name().to_string(),
