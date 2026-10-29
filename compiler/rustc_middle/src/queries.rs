@@ -2189,6 +2189,12 @@ rustc_queries! {
         desc { "identifying live args for alias `{:?}`", kind }
     }
 
+    query captured_args_for_opaque(def_id: DefId) -> &'tcx rustc_index::bit_set::DenseBitSet<u32> {
+        arena_cache
+        desc { "computing the captured args of opaque `{}`", tcx.def_path_str(def_id) }
+        separate_provide_extern
+    }
+
     /// For each region param of an alias, the indices of the identity args that are known to
     /// outlive it given only the alias's declared where-clauses. Used for liveness:
     /// these are the only args whose regions the underlying type of the alias
