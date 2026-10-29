@@ -55,6 +55,7 @@ fn variant_discriminants<'tcx>(
     tcx: TyCtxt<'tcx>,
 ) -> FxHashSet<u128> {
     match &layout.variants {
+        Variants::Opaque => unreachable!(),
         Variants::Empty => {
             // Uninhabited, no valid discriminant.
             FxHashSet::default()

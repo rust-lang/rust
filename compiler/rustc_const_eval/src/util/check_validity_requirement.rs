@@ -150,7 +150,7 @@ fn check_validity_requirement_lax<'tcx>(
 
     // If we have not found an error yet, we need to recursively descend into fields.
     match &this.fields {
-        FieldsShape::Primitive | FieldsShape::Union { .. } => {}
+        FieldsShape::Opaque | FieldsShape::Primitive | FieldsShape::Union { .. } => {}
         FieldsShape::Array { .. } => {
             // Arrays never have scalar layout in LLVM, so if the array is not actually
             // accessed, there is no LLVM UB -- therefore we can skip this.
@@ -166,6 +166,7 @@ fn check_validity_requirement_lax<'tcx>(
     }
 
     match &this.variants {
+        Variants::Opaque => {}
         Variants::Empty => return Ok(false),
         Variants::Single { .. } => {
             // All fields of this single variant have already been checked above, there is nothing

@@ -155,6 +155,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                         | ty::Never
                         | ty::Alias(..)
                         | ty::Param(_)
+                        | ty::Erased(..)
                         | ty::Bound(..)
                         | ty::Placeholder(_)
                         | ty::Infer(..)
@@ -252,6 +253,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
             | ty::Tuple(..)
             | ty::Alias(..)
             | ty::Param(..)
+            | ty::Erased(..)
             | ty::Bound(..)
             | ty::Placeholder(..)
             | ty::Infer(..)
