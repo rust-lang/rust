@@ -2,7 +2,6 @@
 //!
 //! This macro expands to a `#[test]` function which tests the local machine
 //! for the appropriate cfg before calling the inner test function.
-#![deny(rust_2018_idioms)]
 
 use proc_macro2::{Ident, Span, TokenStream, TokenTree};
 use quote::{ToTokens, quote, quote_spanned};

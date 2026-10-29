@@ -107,6 +107,7 @@ pub fn assert_instr(
                     let generic_ty_value = syn::TypePath {
                         qself: qself.clone(),
                         path: path.clone(),
+                        attrs: Vec::new(),
                     };
 
                     // Replace any function arguments that use generic parameters with the
