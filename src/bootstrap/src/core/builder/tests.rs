@@ -1738,6 +1738,7 @@ mod snapshot {
             [build] rustc 1 <host> -> rustc 2 <host>
             [test] crate-bootstrap <host> src/tools/coverage-dump
             [test] crate-bootstrap <host> src/tools/jsondoclint
+            [test] crate-bootstrap <host> src/tools/opt-dist
             [test] crate-bootstrap <host> src/tools/replace-version-placeholder
             [test] crate-bootstrap <host> tidyselftest
             [build] rustc 0 <host> -> UnstableBookGen 1 <host>
@@ -1936,6 +1937,7 @@ mod snapshot {
             [test] rustc 1 <host> -> CrateLibrustc 2 <host>
             [test] crate-bootstrap <host> src/tools/coverage-dump
             [test] crate-bootstrap <host> src/tools/jsondoclint
+            [test] crate-bootstrap <host> src/tools/opt-dist
             [test] crate-bootstrap <host> src/tools/replace-version-placeholder
             [test] crate-bootstrap <host> tidyselftest
             [build] rustc 0 <host> -> UnstableBookGen 1 <host>
