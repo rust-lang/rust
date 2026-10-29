@@ -50,6 +50,10 @@ fn main() {
     let (_x, Guards { guard: _, .. }) = nested;
     drop(nested);
 
+    let &_ = &m.lock().unwrap();
+    let &_ = &(m.lock().unwrap(), NontrivialDrop).0;
+    let &(_, _) = &(m.lock(), NontrivialDrop);
+
     let mut v = vec![NontrivialDrop];
     let _ = v[0];
     let _ = &mut v;
