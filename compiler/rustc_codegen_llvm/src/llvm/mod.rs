@@ -376,6 +376,7 @@ impl Intrinsic {
 
 /// Safe wrapper for `LLVMSetValueName2` from a byte slice
 pub(crate) fn set_value_name(value: &Value, name: &[u8]) {
+    assert!(!name.contains(&0));
     unsafe { LLVMSetValueName2(value, name.as_ptr(), name.len()) };
 }
 

@@ -146,7 +146,8 @@ impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
     // easily jump to the beginning of the function to place our allocas there. We trust the user
     // to manually do that. FIXME(offload): improve the genericCx and add more llvm wrappers to
     // handle this.
-    pub(crate) fn direct_alloca(&mut self, ty: &'ll Type, align: Align, name: &str) -> &'ll Value {
+    pub(crate) fn direct_alloca(&mut self, size: Size, align: Align, name: &str) -> &'ll Value {
+        let ty = self.cx.type_array(self.cx.type_i8(), size.bytes());
         let val = unsafe {
             let alloca = llvm::LLVMBuildAlloca(self.llbuilder(), ty, UNNAMED);
             llvm::LLVMSetAlignment(alloca, align.bytes() as c_uint);
@@ -154,29 +155,9 @@ impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
             llvm::LLVMBuildPointerCast(self.llbuilder(), alloca, self.cx.type_ptr(), UNNAMED)
         };
         if name != "" {
-            let name = std::ffi::CString::new(name).unwrap();
             llvm::set_value_name(val, &name.as_bytes());
         }
         val
-    }
-
-    pub(crate) fn inbounds_gep(
-        &mut self,
-        ty: &'ll Type,
-        ptr: &'ll Value,
-        indices: &[&'ll Value],
-    ) -> &'ll Value {
-        unsafe {
-            llvm::LLVMBuildGEPWithNoWrapFlags(
-                self.llbuilder(),
-                ty,
-                ptr,
-                indices.as_ptr(),
-                indices.len() as c_uint,
-                UNNAMED,
-                GEPNoWrapFlags::InBounds,
-            )
-        }
     }
 
     pub(crate) fn store(&mut self, val: &'ll Value, ptr: &'ll Value, align: Align) -> &'ll Value {
@@ -674,13 +655,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     fn alloca(&mut self, size: Size, align: Align) -> &'ll Value {
         let mut bx = Builder::with_cx(self.cx);
         bx.position_at_start(unsafe { llvm::LLVMGetFirstBasicBlock(self.llfn()) });
-        let ty = self.cx().type_array(self.cx().type_i8(), size.bytes());
-        unsafe {
-            let alloca = llvm::LLVMBuildAlloca(bx.llbuilder(), ty, UNNAMED);
-            llvm::LLVMSetAlignment(alloca, align.bytes() as c_uint);
-            // Cast to default addrspace if necessary
-            llvm::LLVMBuildPointerCast(bx.llbuilder(), alloca, self.cx().type_ptr(), UNNAMED)
-        }
+        bx.direct_alloca(size, align, "")
     }
 
     fn alloca_with_ty(&mut self, layout: TyAndLayout<'tcx>) -> Self::Value {
