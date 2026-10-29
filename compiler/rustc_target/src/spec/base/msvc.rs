@@ -5,7 +5,7 @@ use crate::spec::{BinaryFormat, DebuginfoKind, LinkerFlavor, Lld, SplitDebuginfo
 pub(crate) fn opts() -> TargetOptions {
     // Suppress the verbose logo and authorship debugging output, which would needlessly
     // clog any log files.
-    let pre_link_args = TargetOptions::link_args(LinkerFlavor::Msvc(Lld::No), &["/NOLOGO"]);
+    let pre_link_args = TargetOptions::link_args(LinkerFlavor::Msvc(Lld::No), &["/nologo"]);
 
     TargetOptions {
         linker_flavor: LinkerFlavor::Msvc(Lld::No),
