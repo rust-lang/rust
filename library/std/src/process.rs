@@ -2516,14 +2516,15 @@ impl Child {
 /// }
 /// ```
 ///
-/// In its current implementation, this function will execute exit handlers registered with `atexit`
-/// as well as other platform-specific exit handlers (e.g. `fini` sections of ELF shared objects).
-/// This means that Rust requires that all exit handlers are safe to execute at any time. In
-/// particular, if an exit handler cleans up some state that might be concurrently accessed by other
-/// threads, it is required that the exit handler performs suitable synchronization with those
-/// threads. (The alternative to this requirement would be to not run exit handlers at all, which is
-/// considered undesirable. Note that returning from `main` also calls `exit`, so making `exit` an
-/// unsafe operation is not an option.)
+/// In its current implementation, this function will *not* execute exit handlers
+/// registered with `atexit` as well as other platform-specific exit handlers
+/// (e.g. `fini` sections of ELF shared objects). Note however that this behavior
+/// is subject to change. Previous Rust versions did in fact run exit handler,
+/// but this was disabled for soundness reasons. Nevertheless, it is prudent to
+/// ensure that all exit handlers are safe to execute at any time. In particular,
+/// if an exit handler cleans up some state that might be concurrently accessed
+/// by other threads it should perform suitable synchronization with those
+/// threads.
 ///
 /// ## Platform-specific behavior
 ///
@@ -2542,30 +2543,21 @@ impl Child {
 ///
 /// ### Safe interop with C code
 ///
-/// On Unix, this function is currently implemented using the `exit` C function [`exit`][C-exit]. As
-/// of C23, the C standard does not permit multiple threads to call `exit` concurrently. Rust
-/// mitigates this with a lock, but if C code calls `exit`, that can still cause undefined behavior.
-/// Note that returning from `main` is equivalent to calling `exit`.
+/// On Unix, this function is currently implemented using the [`_exit`] function.
+/// Previous Rust version called the [`exit`][C-exit] C function, but this
+/// resulted in multiple soundness issues as `exit` is
+/// [not guaranteed to be thread-safe][issue-126600] and – depending on how they
+/// are implemented – runs the destructors of thread-local variables, leading to
+/// [double-free issues][issue-164243]. C's [`exit`][C-exit] function may only
+/// soundly be called if both of these conditions are fulfilled:
+/// - no other thread is currently exiting, be that through returning from `main`
+///   or by calling `exit`.
+/// - no thread-local variables are currently being referenced.
 ///
-/// Therefore, it is undefined behavior to have two concurrent threads perform the following
-/// without synchronization:
-/// - One thread calls Rust's `exit` function or returns from Rust's `main` function
-/// - Another thread calls the C function `exit` or `quick_exit`, or returns from C's `main` function
-///
-/// Note that if a binary contains multiple copies of the Rust runtime (e.g., when combining
-/// multiple `cdylib` or `staticlib`), they each have their own separate lock, so from the
-/// perspective of code running in one of the Rust runtimes, the "outside" Rust code is basically C
-/// code, and concurrent `exit` again causes undefined behavior.
-///
-/// Individual C implementations might provide more guarantees than the standard and permit concurrent
-/// calls to `exit`; consult the documentation of your C implementation for details.
-///
-/// For some of the on-going discussion to make `exit` thread-safe in C, see:
-/// - [Rust issue #126600](https://github.com/rust-lang/rust/issues/126600)
-/// - [Austin Group Bugzilla (for POSIX)](https://austingroupbugs.net/view.php?id=1845)
-/// - [GNU C library Bugzilla](https://sourceware.org/bugzilla/show_bug.cgi?id=31997)
-///
+/// [`_exit`]: https://pubs.opengroup.org/onlinepubs/9799919799/functions/_Exit.html
 /// [C-exit]: https://en.cppreference.com/w/c/program/exit
+/// [issue-126600]: https://github.com/rust-lang/rust/issues/126600
+/// [issue-164243]: https://github.com/rust-lang/rust/issues/164243
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "process_exit")]
 pub fn exit(code: i32) -> ! {
