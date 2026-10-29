@@ -1,0 +1,15 @@
+error[E0277]: the trait bound `String: UseCloned` is not satisfied
+  --> $DIR/not-clone.rs:6:13
+   |
+LL |     let _ = s.use;
+   |             ^ the nightly-only, unstable trait `UseCloned` is not implemented for `String`
+   |
+note: `.use` expressions require the receiver to implement the `UseCloned` trait
+  --> $DIR/not-clone.rs:6:15
+   |
+LL |     let _ = s.use;
+   |               ^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

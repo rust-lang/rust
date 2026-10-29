@@ -10,7 +10,6 @@ use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty};
 use rustc_span::{DUMMY_SP, Spanned, span_bug, sym};
-use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::{debug, instrument};
 
 use crate::builder::expr::category::{Category, RvalueFunc};
@@ -531,7 +530,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         Rvalue::Use(Operand::Copy(place), WithRetag::Yes),
                     );
                     block.unit()
-                } else if this.infcx.type_is_use_cloned_modulo_regions(this.param_env, ty) {
+                } else {
                     // Convert `expr.use` to a call like `Clone::clone(&expr)`
                     let success = this.cfg.start_new_block();
                     let clone_trait = this.tcx.require_lang_item(LangItem::Clone, span);
@@ -561,14 +560,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         },
                     );
                     success.unit()
-                } else {
-                    this.cfg.push_assign(
-                        block,
-                        source_info,
-                        destination,
-                        Rvalue::Use(Operand::Move(place), WithRetag::Yes),
-                    );
-                    block.unit()
                 }
             }
             ExprKind::ValueExpr { source } => this.expr_into_dest(destination, block, source),

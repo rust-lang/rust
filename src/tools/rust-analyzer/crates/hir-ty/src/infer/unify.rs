@@ -188,10 +188,6 @@ impl<'db> InferenceTable<'db> {
         self.infer_ctxt.type_is_sized_modulo_regions(self.param_env, ty)
     }
 
-    pub(crate) fn type_is_use_cloned_modulo_regions(&self, ty: Ty<'db>) -> bool {
-        self.infer_ctxt.type_is_use_cloned_modulo_regions(self.param_env, ty)
-    }
-
     pub(crate) fn type_var_is_sized(&self, self_ty: TyVid) -> bool {
         let Some(sized_did) = self.interner().lang_items().Sized else {
             return true;
