@@ -64,7 +64,7 @@ unsafe impl GlobalAlloc for Alloc {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         #[cfg(unix)]
         if PTHREAD_ACTIVE.load(Ordering::Relaxed) {
-            PTHREAD_SUCCEEDED_ALLOC.swap(true, Ordering::Relaxed);
+            PTHREAD_SUCCEEDED_ALLOC.store(true, Ordering::Relaxed);
         }
 
         let ret = unsafe { System.alloc(layout) };
@@ -75,7 +75,7 @@ unsafe impl GlobalAlloc for Alloc {
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
         #[cfg(unix)]
         if PTHREAD_ACTIVE.load(Ordering::Relaxed) {
-            PTHREAD_SUCCEEDED_DEALLOC.swap(true, Ordering::Relaxed);
+            PTHREAD_SUCCEEDED_DEALLOC.store(true, Ordering::Relaxed);
         }
 
         unsafe {
@@ -114,7 +114,9 @@ fn run_pthread() {
         libc::pthread_join(t, ptr::null_mut());
     }
 
-    // testing if pthread is allocing and deallocing with the global allocator.
+    // test if `start` allocates and deallocates with the global_allocator
+    // test is needed to know if non-Rust spawned threads can use the global allocator
+    // when a `#[global_allocator]` is set.
     assert!(PTHREAD_SUCCEEDED_ALLOC.load(Ordering::Relaxed));
     assert!(PTHREAD_SUCCEEDED_DEALLOC.load(Ordering::Relaxed));
 }

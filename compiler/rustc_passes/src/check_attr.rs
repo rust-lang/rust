@@ -191,9 +191,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::ProcMacroDerive { .. } => {
                 self.check_proc_macro(hir_id, target, ProcMacroKind::Derive)
             }
-            AttributeKind::RustcAllowConstFnUnstable(_, first_span) => {
-                self.check_rustc_allow_const_fn_unstable(hir_id, *first_span, span, target)
-            }
             AttributeKind::MayDangle(attr_span) => self.check_may_dangle(hir_id, *attr_span),
             AttributeKind::Doc(attr) => self.check_doc_attrs(attr, hir_id, target),
             AttributeKind::EiiImpl(eii_impl) => self.check_eii_impl(eii_impl),
@@ -300,6 +297,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcAllocator => (),
             AttributeKind::RustcAllocatorZeroed => (),
             AttributeKind::RustcAllocatorZeroedVariant { .. } => (),
+            AttributeKind::RustcAllowConstFnUnstable(..) => (),
             AttributeKind::RustcAllowIncoherentImpl(..) => (),
             AttributeKind::RustcAllowLifetimeDependentSpecialization => (),
             AttributeKind::RustcAsPtr => (),
@@ -383,7 +381,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcShowSpans(_) => (),
             AttributeKind::RustcSimdMonomorphizeLaneLimit(..) => (),
             AttributeKind::RustcSkipDuringMethodDispatch { .. } => (),
-
             AttributeKind::RustcSpecializationTrait => (),
             AttributeKind::RustcStdInternalSymbol => (),
             AttributeKind::RustcStrictCoherence(..) => (),
@@ -399,6 +396,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::ThreadLocal => (),
             AttributeKind::TrackCaller(_) => (),
             AttributeKind::TypeLengthLimit { .. } => (),
+            AttributeKind::UncheckedTypeAlias => (),
             AttributeKind::Unroll(..) => (),
             AttributeKind::UnstableFeatureBound(..) => (),
             AttributeKind::UnstableRemoved(..) => (),
@@ -1096,27 +1094,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 hint_spans.collect::<Vec<Span>>(),
                 diagnostics::ReprConflictingLint,
             );
-        }
-    }
-
-    /// Outputs an error for `#[allow_internal_unstable]` which can only be applied to macros.
-    /// (Allows proc_macro functions)
-    fn check_rustc_allow_const_fn_unstable(
-        &self,
-        hir_id: HirId,
-        attr_span: Span,
-        span: Span,
-        target: Target,
-    ) {
-        match target {
-            Target::Fn | Target::Method(_) => {
-                if !self.tcx.is_const_fn(hir_id.expect_owner().to_def_id()) {
-                    self.tcx
-                        .dcx()
-                        .emit_err(diagnostics::RustcAllowConstFnUnstable { attr_span, span });
-                }
-            }
-            _ => {}
         }
     }
 

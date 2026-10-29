@@ -5,11 +5,12 @@
 use gccjit::{
     BinaryOp, CType, ComparisonOp, FunctionType, Location, RValue, ToRValue, Type, UnaryOp,
 };
-use rustc_abi::{CanonAbi, Endian, ExternAbi};
-use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
+use rustc_abi::{CanonAbi, Endian, ExternAbi, Float};
+use rustc_codegen_ssa::common::IntPredicate;
 use rustc_codegen_ssa::traits::{BackendTypes, BaseTypeCodegenMethods, BuilderMethods, OverflowOp};
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::HasTypingEnv as _;
+use rustc_span::bug;
 use rustc_target::callconv::{ArgAbi, ArgAttributes, FnAbi, PassMode};
 use rustc_type_ir::{Interner, TyKind};
 
@@ -977,15 +978,17 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         }
 
         debug_assert!(value_type.dyncast_array().is_some());
-        let name_suffix = match self.type_kind(dest_typ) {
-            TypeKind::Half if dest_typ.is_compatible_with(self.type_f16()) => {
+        let name_suffix = match self.float_type(dest_typ) {
+            Some(Float::F16) => {
                 let value = self.int_to_float_cast(signed, value, self.float_type);
                 return self.context.new_cast(None, value, dest_typ);
             }
-            TypeKind::Float => "tisf",
-            TypeKind::Double => "tidf",
-            TypeKind::FP128 => "titf",
-            kind => panic!("cannot cast a non-native integer to type {:?}", kind),
+            Some(Float::F32) => "tisf",
+            Some(Float::F64) => "tidf",
+            Some(Float::F128) => "titf",
+            None | Some(Float::F16B | Float::PpcF128) => {
+                panic!("cannot cast a non-native integer to type {dest_typ:?}")
+            }
         };
         let sign = if signed { "" } else { "un" };
         let func_name = format!("__float{}{}", sign, name_suffix);
@@ -1025,16 +1028,18 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         }
 
         debug_assert!(dest_typ.dyncast_array().is_some());
-        let (dest_type, param_type) = match self.type_kind(value_type) {
-            TypeKind::Half => (Some(self.float_type), self.float_type),
+        let (dest_type, param_type) = match self.float_type(value_type) {
+            Some(Float::F16) => (Some(self.float_type), self.float_type),
             _ => (None, value_type),
         };
-        let name_suffix = match self.type_kind(value_type) {
+        let name_suffix = match self.float_type(value_type) {
             // Since we will cast Half to a float, we use sfti for both.
-            TypeKind::Half | TypeKind::Float => "sfti",
-            TypeKind::Double => "dfti",
-            TypeKind::FP128 => "tfti",
-            kind => panic!("cannot cast a {:?} to non-native integer", kind),
+            Some(Float::F16 | Float::F32) => "sfti",
+            Some(Float::F64) => "dfti",
+            Some(Float::F128) => "tfti",
+            None | Some(Float::F16B | Float::PpcF128) => {
+                bug!("cannot cast a {value_type:?} to non-native integer")
+            }
         };
         let sign = if signed { "" } else { "uns" };
         let func_name = format!("__fix{}{}", sign, name_suffix);
