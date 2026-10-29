@@ -3,7 +3,7 @@ use std::mem;
 
 use rustc_ast::token::Token;
 use rustc_ast::tokenstream::{
-    AttrsTarget, LazyAttrTokenStream, NodeRange, ParserRange, Spacing, TokenCursor,
+    AttrsTarget, LazyTokenStream, NodeRange, ParserRange, Spacing, TokenCursor,
 };
 use rustc_ast::{self as ast, AttrKind, AttrVec, Attribute, HasTokens};
 use rustc_data_structures::fx::FxHashSet;
@@ -101,7 +101,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses code with `f`. If appropriate, it records the tokens (in
-    /// `LazyAttrTokenStream` form) that were parsed in the result, accessible
+    /// `LazyTokenStream` form) that were parsed in the result, accessible
     /// via the `HasTokens` trait.
     ///
     /// Why is this done? Various macro cases require an AST node's tokens.
@@ -287,7 +287,7 @@ impl<'a> Parser<'a> {
             // breaking a `>>=` token twice into `>` + `>` + `=`), then extend the range of
             // captured tokens to include it, because the parser was not actually bumped past it.
             // (Even if we broke twice, it was still just one token originally, hence the `1`.)
-            // When the `LazyAttrTokenStream` gets converted into an `AttrTokenStream`, we will
+            // When the `LazyTokenStream` gets converted into a `TokenStream`, we will
             // rebreak that final token once or twice.
             + if self.break_last_token == 0 { 0 } else { 1 };
 
@@ -318,8 +318,7 @@ impl<'a> Parser<'a> {
         } else {
             // Grab any replace ranges that occur *inside* the current AST node. Convert them
             // from `ParserRange` form to `NodeRange` form. We will perform the actual
-            // replacement only when we convert the `LazyAttrTokenStream` to an
-            // `AttrTokenStream`.
+            // replacement only when we convert the `LazyTokenStream` to a `TokenStream`.
             self.capture_state.parser_replacements
                 [parser_replacements_start..parser_replacements_end]
                 .iter()
@@ -353,7 +352,7 @@ impl<'a> Parser<'a> {
         //     - `attrs`: includes the outer and the inner attr.
         //     - `tokens`: lazy tokens for `g` (with its inner attr deleted).
 
-        let tokens = LazyAttrTokenStream::new_pending(
+        let tokens = LazyTokenStream::new_pending(
             collect_pos.start_token,
             collect_pos.cursor_snapshot,
             num_calls,

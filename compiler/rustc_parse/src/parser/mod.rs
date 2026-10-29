@@ -215,7 +215,7 @@ pub struct Parser<'a> {
     // token. For example, capturing the `Vec<u8>` in `Option<Vec<u8>>`
     // requires us to unglue the trailing `>>` token. The `break_last_token`
     // field is used to track these tokens. They get appended to the captured
-    // stream when we evaluate a `LazyAttrTokenStream`.
+    // stream when we evaluate a `LazyTokenStream`.
     //
     // This value is always 0, 1, or 2. It can only reach 2 when splitting
     // `>>=` or `<<=`.
@@ -260,14 +260,12 @@ struct ClosureSpans {
     body: Span,
 }
 
-/// Controls how we capture tokens. Capturing can be expensive,
-/// so we try to avoid performing capturing in cases where
-/// we will never need an `AttrTokenStream`.
+/// Controls how we capture tokens. Capturing can be expensive, so we avoid it when possible.
 #[derive(Copy, Clone, Debug)]
 enum Capturing {
     /// We aren't performing any capturing - this is the default mode.
     No,
-    /// We are capturing tokens
+    /// We are capturing tokens.
     Yes,
 }
 

@@ -1,6 +1,5 @@
 use std::hash::{BuildHasher, Hash, Hasher};
 use std::marker::PhantomData;
-use std::mem;
 use std::num::NonZero;
 
 use rustc_index::bit_set::{self, DenseBitSet};
@@ -533,10 +532,20 @@ where
 {
     #[inline]
     fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        mem::discriminant(self).stable_hash(hcx, hasher);
+        #[derive(StableHash)]
+        enum Tag {
+            Ok,
+            Err,
+        }
         match *self {
-            Ok(ref x) => x.stable_hash(hcx, hasher),
-            Err(ref x) => x.stable_hash(hcx, hasher),
+            Ok(ref x) => {
+                Tag::Ok.stable_hash(hcx, hasher);
+                x.stable_hash(hcx, hasher);
+            }
+            Err(ref x) => {
+                Tag::Err.stable_hash(hcx, hasher);
+                x.stable_hash(hcx, hasher);
+            }
         }
     }
 }
@@ -551,12 +560,19 @@ where
     }
 }
 
-impl<T> StableHash for ::std::mem::Discriminant<T> {
-    #[inline]
-    fn stable_hash<Hcx: StableHashCtxt>(&self, _: &mut Hcx, hasher: &mut StableHasher) {
-        ::std::hash::Hash::hash(self, hasher);
-    }
-}
+/// There is no way to stable-hash a `Discriminant` without leaking unstable
+/// details of how the host compiler chooses and hashes discriminants.
+///
+/// That would be bad, because stable hashes must be consistent between
+/// the stage1 compiler (built with the bootstrap compiler/stdlib)
+/// and the stage2 compiler (built with the in-tree compiler/stdlib).
+///
+/// See <https://github.com/rust-lang/rust/issues/164734> for more context.
+///
+/// If you need to manually stable-hash a discriminant, instead derive `StableHash`
+/// on a dedicated "tag" enum, and then hash the appropriate tag for each variant.
+/// For an example, see the impl of `StableHash for Result`.
+impl<T> !StableHash for std::mem::Discriminant<T> {}
 
 impl<T> StableHash for ::std::range::RangeInclusive<T>
 where
