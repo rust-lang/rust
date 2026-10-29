@@ -8,6 +8,7 @@ use tracing::instrument;
 
 use crate::interpret::InterpCx;
 
+pub(crate) mod comptime_fs;
 mod dummy_machine;
 mod dyn_trait;
 mod error;

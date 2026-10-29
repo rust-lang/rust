@@ -771,6 +771,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let denied_partial_mitigations = stat!("denied-partial-mitigations", || self
             .encode_enabled_denied_partial_mitigations());
 
+        let comptime_files = tcx.caches.experimental_comptime_files.borrow();
+        let comptime_files =
+            comptime_files.iter().map(|(k, v)| ((*k).clone(), v.to_vec())).collect::<Vec<_>>();
+
+        // Should I somehow sort by filename here in case this does *anything* with the parallel frontend stuff or something?
+        let comptime_files = self.lazy_array(comptime_files);
+
         let root = stat!("crate-root", || {
             let attrs = tcx.hir_krate_attrs();
             self.lazy(CrateRoot {
@@ -829,6 +836,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 expn_hashes,
                 def_path_hash_map,
                 specialization_enabled_in: tcx.specialization_enabled_in(LOCAL_CRATE),
+                comptime_files,
             })
         });
 

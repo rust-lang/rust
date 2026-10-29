@@ -2853,10 +2853,8 @@ rustc_queries! {
     }
 
     /// Query data from non-local crates
-    query experimental_comptime_fetch_file(key: (CrateNum, &'tcx str)) -> Option<&'tcx Box<[u8]>> {
+    query experimental_comptime_fetch_file(key: (CrateNum, &'tcx String)) -> Option<&'tcx [u8]> {
         desc { "fetch file {} from crate {}", key.1, key.0 }
-        eval_always
-        no_hash
         separate_provide_extern
     }
 

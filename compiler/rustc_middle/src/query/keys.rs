@@ -420,7 +420,14 @@ impl<'tcx> QueryKey for (ty::Instance<'tcx>, CollectionMode) {
     }
 }
 
-impl<'tcx> QueryKey for (CrateNum, &'tcx str) {
+impl<'tcx> QueryKey for (CrateNum, &'tcx String) {
+    type LocalQueryKey = &'tcx String;
+
+    #[inline(always)]
+    fn as_local_key(&self) -> Option<Self::LocalQueryKey> {
+        (self.0 == LOCAL_CRATE).then(|| self.1)
+    }
+
     fn default_span(&self, _tcx: TyCtxt<'_>) -> Span {
         DUMMY_SP
     }
