@@ -1,0 +1,26 @@
+error[E0308]: mismatched types
+  --> $DIR/unsize.rs:12:5
+   |
+LL | fn slice(b: Box<unsafe<'a> MD<[&'a u8; 2]>>) -> Box<unsafe<'a> MD<[&'a u8]>> {
+   |                                                 ---------------------------- expected `Box<unsafe<'a> ManuallyDrop<[&'a u8]>>` because of return type
+LL |     b
+   |     ^ expected `Box<unsafe<'a> ManuallyDrop<[&u8]>>`, found `Box<unsafe<'a> ManuallyDrop<[&u8; 2]>>`
+   |
+   = note: expected struct `Box<unsafe<'a> ManuallyDrop<[&'a u8]>>`
+              found struct `Box<unsafe<'a> ManuallyDrop<[&'a u8; 2]>>`
+
+error[E0308]: mismatched types
+  --> $DIR/unsize.rs:16:5
+   |
+LL | fn dyn_(b: Box<unsafe<'a> MD<&'a u8>>) -> Box<unsafe<'a> MD<dyn Debug + 'a>> {
+   |                                           ---------------------------------- expected `Box<unsafe<'a> ManuallyDrop<(dyn Debug + 'a)>>` because of return type
+LL |     b
+   |     ^ expected `Box<unsafe<'a> ManuallyDrop<dyn Debug>>`, found `Box<unsafe<'a> ManuallyDrop<&u8>>`
+   |
+   = note: expected struct `Box<unsafe<'a> ManuallyDrop<(dyn Debug + 'a)>>`
+              found struct `Box<unsafe<'a> ManuallyDrop<&'a u8>>`
+   = help: `&u8` implements `Debug` so you could box the found value and coerce it to the trait object `Box<dyn Debug>`, you will have to change the expected type as well
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

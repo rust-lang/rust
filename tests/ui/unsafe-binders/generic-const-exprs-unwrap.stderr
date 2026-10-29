@@ -1,0 +1,16 @@
+warning: `feature(generic_const_exprs)` is not supported with the next-generation trait solver
+  --> $DIR/generic-const-exprs-unwrap.rs:12:28
+   |
+LL | #![feature(unsafe_binders, generic_const_exprs)]
+   |                            ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-Znext-solver=globally` is currently enabled by default for testing
+   = note: reverted the setting to `-Znext-solver=coherence` for this crate
+   = note: the currently stable trait solver will be used for this crate
+   = 
+thread 'rustc' ($TID) panicked at compiler/rustc_ty_utils/src/consts.rs:LL:CC:
+not implemented: FIXME(unsafe_binders)
+error: the compiler unexpectedly panicked. This is a bug
+
+warning: 1 warning emitted
+

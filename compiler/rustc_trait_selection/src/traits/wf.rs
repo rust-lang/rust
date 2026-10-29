@@ -11,12 +11,13 @@ use rustc_infer::traits::{
     ObligationCauseCode, PredicateObligation, PredicateObligations, WellFormedLoc,
 };
 use rustc_middle::ty::{
-    self, DelayedSet, GenericArgsRef, PredicateProxy, Term, TermKind, Ty, TyCtxt,
-    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+    self, BoundVarIndexKind, DelayedSet, GenericArgsRef, PredicateProxy, Term, TermKind, Ty,
+    TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, fold_regions,
 };
 use rustc_session::diagnostics::feature_err;
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::{Span, bug, sym};
+use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
 
 use crate::infer::InferCtxt;
@@ -735,6 +736,83 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
             }
         }
     }
+
+    fn nested_unsafe_binder_obligations(&mut self, outer: ty::Binder<'tcx, Ty<'tcx>>) {
+        struct Collector<'wf, 'a, 'tcx> {
+            enclosing: SmallVec<[&'tcx ty::List<ty::BoundVariableKind<'tcx>>; 4]>,
+            wf: &'wf mut WfPredicates<'a, 'tcx>,
+        }
+
+        impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for Collector<'_, '_, 'tcx> {
+            fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(&mut self, t: &ty::Binder<'tcx, T>) {
+                self.enclosing.push(t.bound_vars());
+                t.super_visit_with(self);
+                self.enclosing.pop();
+            }
+
+            fn visit_ty(&mut self, ty: Ty<'tcx>) {
+                if let ty::UnsafeBinder(inner) = *ty.kind() {
+                    if !inner.has_escaping_bound_vars() {
+                        return;
+                    }
+
+                    let num_outer_binders =
+                        self.enclosing.iter().map(|b| b.iter()).flatten().count();
+                    let inner_bound_vars = inner.bound_vars();
+
+                    let ty =
+                        fold_regions(self.wf.infcx.tcx, inner.skip_binder(), |r, curr_db| match r
+                            .kind()
+                        {
+                            ty::ReBound(BoundVarIndexKind::Bound(db), br) if db == curr_db => {
+                                let bound_region = ty::BoundRegion {
+                                    kind: br.kind,
+                                    var: ty::BoundVar::from_u32(
+                                        br.var.as_u32() + num_outer_binders as u32,
+                                    ),
+                                };
+                                ty::Region::new_bound(self.wf.infcx.tcx, db, bound_region)
+                            }
+                            ty::ReBound(BoundVarIndexKind::Bound(db), br)
+                                if db == (curr_db + 1) =>
+                            {
+                                ty::Region::new_bound(self.wf.infcx.tcx, curr_db, br)
+                            }
+                            _ => r,
+                        });
+
+                    let bound_vars = self.wf.infcx.tcx.mk_bound_variable_kinds_from_iter(
+                        self.enclosing
+                            .iter()
+                            .map(|b| b.iter())
+                            .flatten()
+                            .chain(inner_bound_vars.iter()),
+                    );
+                    let ty = ty::Binder::bind_with_vars(ty, bound_vars);
+
+                    self.wf.out.push(traits::Obligation::new(
+                        self.wf.infcx.tcx,
+                        self.wf.cause(ObligationCauseCode::Misc),
+                        self.wf.param_env,
+                        ty.map_bound(|ty| {
+                            ty::TraitRef::new(
+                                self.wf.infcx.tcx,
+                                self.wf.infcx.tcx.require_lang_item(
+                                    LangItem::BikeshedGuaranteedNoDrop,
+                                    self.wf.span,
+                                ),
+                                [ty],
+                            )
+                        }),
+                    ));
+                }
+                ty.super_visit_with(self)
+            }
+        }
+
+        let mut collector = Collector { enclosing: smallvec![], wf: self };
+        outer.visit_with(&mut collector);
+    }
 }
 
 impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
@@ -959,6 +1037,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                             )
                         }),
                     ));
+                    self.nested_unsafe_binder_obligations(ty.into());
                 }
 
                 // We recurse into the binder below.

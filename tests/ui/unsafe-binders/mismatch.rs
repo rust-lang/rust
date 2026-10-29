@@ -1,3 +1,4 @@
+//@ compile-flags: -Znext-solver
 #![feature(unsafe_binders)]
 
 use std::unsafe_binder::{wrap_binder, unwrap_binder};

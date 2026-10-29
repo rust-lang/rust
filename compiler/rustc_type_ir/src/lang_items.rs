@@ -20,6 +20,7 @@ pub enum SolverProjectionLangItem {
 pub enum SolverAdtLangItem {
     // tidy-alphabetical-start
     DynMetadata,
+    ManuallyDrop,
     Option,
     OwnedBox,
     Poll,

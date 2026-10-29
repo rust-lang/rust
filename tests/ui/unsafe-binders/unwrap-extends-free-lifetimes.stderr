@@ -1,0 +1,20 @@
+error: lifetime may not live long enough
+  --> $DIR/unwrap-extends-free-lifetimes.rs:11:14
+   |
+LL | fn launder_empty<'x>(r: &'x String) -> &'static String {
+   |                  -- lifetime `'x` defined here
+LL |     let b: unsafe<> &'x String = unsafe { wrap_binder!(r) };
+LL |     unsafe { unwrap_binder!(b) }
+   |              ^^^^^^^^^^^^^^^^^ returning this value requires that `'x` must outlive `'static`
+
+error: lifetime may not live long enough
+  --> $DIR/unwrap-extends-free-lifetimes.rs:16:14
+   |
+LL | fn launder_free<'x>(r: &'x String) -> &'static String {
+   |                 -- lifetime `'x` defined here
+LL |     let b: unsafe<'a> (&'a u8, &'x String) = unsafe { wrap_binder!((&0, r)) };
+LL |     unsafe { unwrap_binder!(b).1 }
+   |              ^^^^^^^^^^^^^^^^^^^ returning this value requires that `'x` must outlive `'static`
+
+error: aborting due to 2 previous errors
+
