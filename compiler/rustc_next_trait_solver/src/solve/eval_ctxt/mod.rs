@@ -47,6 +47,7 @@ use crate::solve::{
     MaybeCause, NestedNormalizationGoals, NoSolution, QueryInput, QueryResult, Response,
     SucceededInErased, VisibleForLeakCheck, inspect,
 };
+use crate::vec_extractor::Extractor;
 
 pub mod fast_path;
 mod probe;
@@ -1058,7 +1059,11 @@ where
         // This mem::take seems super inefficient, given that we push to it again later.
         // Despite that, replacing it has no effect on performance. We tried.
         // (https://github.com/rust-lang/rust/pull/158126)
-        for (source, goal, stalled_on) in mem::take(&mut self.nested_goals) {
+
+        let mut nested_goals = mem::take(&mut self.nested_goals);
+        let mut ex = Extractor::new(&mut nested_goals);
+
+        while let Some(((source, goal, stalled_on), hole)) = ex.entry().map(|e| e.take()) {
             // We never handle `NormalizesTo` as a nested goal
             debug_assert!(!matches!(
                 goal.predicate.kind().skip_binder(),
@@ -1066,7 +1071,16 @@ where
             ));
 
             let GoalEvaluation { goal, certainty, has_changed, stalled_on } =
-                self.evaluate_goal(source, goal, stalled_on)?;
+                match self.evaluate_goal(source, goal, stalled_on) {
+                    Ok(it) => it,
+                    Err(err) => {
+                        ex.drop_rest();
+                        drop(ex);
+                        self.nested_goals = nested_goals;
+                        return Err(err);
+                    }
+                };
+
             if has_changed == HasChanged::Yes {
                 unchanged_certainty = None;
             }
@@ -1074,11 +1088,14 @@ where
             match certainty {
                 Certainty::Yes => {}
                 Certainty::Maybe { .. } => {
-                    self.nested_goals.push((source, goal, stalled_on));
+                    hole.fill((source, goal, stalled_on));
                     unchanged_certainty = unchanged_certainty.map(|c| c.and(certainty));
                 }
             }
         }
+
+        drop(ex);
+        self.nested_goals = nested_goals;
 
         Ok(unchanged_certainty)
     }
