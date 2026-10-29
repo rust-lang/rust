@@ -1077,15 +1077,25 @@ impl String {
     ///
     /// assert_eq!("foo", s.as_str());
     /// ```
+    ///
+    /// # Safety
+    ///
+    /// As an exception to the [general rule](String#utf-8), this function does not assume
+    /// that the input `String` contains valid UTF-8, and is guaranteed to not cause
+    /// immediate undefined behavior if called on a `String` containing invalid UTF-8.
     #[inline]
     #[must_use]
     #[stable(feature = "string_as_str", since = "1.7.0")]
     #[rustc_diagnostic_item = "string_as_str"]
     #[rustc_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
     pub const fn as_str(&self) -> &str {
-        // SAFETY: String contents are stipulated to be valid UTF-8, invalid contents are an error
-        // at construction.
-        unsafe { str::from_utf8_unchecked(self.vec.as_slice()) }
+        // Note: cannot use `str::from_utf8_unchecked` as that may not allow invalid UTF-8.
+        let bytes = self.vec.as_slice();
+        // SAFETY: the pointer dereference is safe because that pointer
+        // comes from a reference which is guaranteed to be valid for reads.
+        // If the input bytes are not valid UTF-8, then the returned `&str` will
+        // have invalid UTF-8, which is unsafe but not immediate UB. See the "# Safety" section above.
+        unsafe { &*(bytes as *const [u8] as *const str) }
     }
 
     /// Converts a `String` into a mutable string slice.
@@ -1100,15 +1110,25 @@ impl String {
     ///
     /// assert_eq!("FOOBAR", s_mut_str);
     /// ```
+    ///
+    /// # Safety
+    ///
+    /// As an exception to the [general rule](String#utf-8), this function does not assume
+    /// that the input `String` contains valid UTF-8, and is guaranteed to not cause
+    /// immediate undefined behavior if called on a `String` containing invalid UTF-8.
     #[inline]
     #[must_use]
     #[stable(feature = "string_as_str", since = "1.7.0")]
     #[rustc_diagnostic_item = "string_as_mut_str"]
     #[rustc_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
     pub const fn as_mut_str(&mut self) -> &mut str {
-        // SAFETY: String contents are stipulated to be valid UTF-8, invalid contents are an error
-        // at construction.
-        unsafe { str::from_utf8_unchecked_mut(self.vec.as_mut_slice()) }
+        // Note: cannot use `str::from_utf8_unchecked_mut` as that may not allow invalid UTF-8.
+        let bytes = self.vec.as_mut_slice();
+        // SAFETY: the pointer dereference is safe because that pointer
+        // comes from a reference which is guaranteed to be valid for reads and writes.
+        // If the input bytes are not valid UTF-8, then the returned `&str` will
+        // have invalid UTF-8, which is unsafe but not immediate UB. See the "# Safety" section above.
+        unsafe { &mut *(bytes as *mut [u8] as *mut str) }
     }
 
     /// Appends a given string slice onto the end of this `String`.
@@ -2966,13 +2986,8 @@ impl ops::Deref for String {
     /// immediate undefined behavior if called on a `String` containing invalid UTF-8.
     #[inline]
     fn deref(&self) -> &str {
-        // Note: cannot use `String::as_str` as that may not allow invalid UTF-8.
-        let bytes = self.vec.as_slice();
-        // SAFETY: the pointer dereference is safe because that pointer
-        // comes from a reference which is guaranteed to be valid for reads.
-        // If the input bytes are not valid UTF-8, then the returned `&str` will
-        // have invalid UTF-8, which is unsafe but not immediate UB. See the "# Safety" section above.
-        unsafe { &*(bytes as *const [u8] as *const str) }
+        // SAFETY: `String::as_str` has the same guarantee that invalid UTF-8 is not immediate UB
+        String::as_str(self)
     }
 }
 
@@ -2990,13 +3005,8 @@ impl ops::DerefMut for String {
     /// immediate undefined behavior if called on a `String` containing invalid UTF-8.
     #[inline]
     fn deref_mut(&mut self) -> &mut str {
-        // Note: cannot use `String::as_mut_str` as that may not allow invalid UTF-8.
-        let bytes = self.vec.as_mut_slice();
-        // SAFETY: the pointer dereference is safe because that pointer
-        // comes from a reference which is guaranteed to be valid for reads and writes.
-        // If the input bytes are not valid UTF-8, then the returned `&str` will
-        // have invalid UTF-8, which is unsafe but not immediate UB. See the "# Safety" section above.
-        unsafe { &mut *(bytes as *mut [u8] as *mut str) }
+        // SAFETY: `String::as_mut_str` has the same guarantee that invalid UTF-8 is not immediate UB
+        String::as_mut_str(self)
     }
 }
 
