@@ -182,9 +182,36 @@ impl<I: Interner> FlagComputation<I> {
 
     #[allow(rustc::usage_of_ty_tykind)]
     pub fn for_kind(kind: &ty::TyKind<I>) -> FlagComputation<I> {
-        let mut result = FlagComputation::new();
-        result.add_kind(kind);
-        result
+        match *kind {
+            ty::Bool
+            | ty::Char
+            | ty::Int(_)
+            | ty::Float(_)
+            | ty::Uint(_)
+            | ty::Never
+            | ty::Str
+            | ty::Foreign(..) => Self::new(),
+            ty::Error(_) => Self::for_flags(TypeFlags::HAS_NON_REGION_ERROR),
+            ty::Param(_) => Self::for_flags(TypeFlags::HAS_TY_PARAM),
+            ty::Placeholder(..) => Self::for_flags(TypeFlags::HAS_TY_PLACEHOLDER),
+            ty::Closure(_, args)
+            | ty::CoroutineClosure(_, args)
+            | ty::CoroutineWitness(_, args)
+            | ty::Adt(_, args) => Self::for_args(args),
+            ty::Coroutine(_, args) => Self::for_coroutine(args),
+            ty::Bound(index, _) => Self::for_bound(index),
+            ty::Infer(infer) => Self::for_infer(infer),
+            ty::Alias(is_rigid, alias) => Self::for_alias(is_rigid, alias),
+            ty::Dynamic(obj, region) => Self::for_dynamic(obj, region),
+            ty::Array(ty, len) => Self::for_array(ty, len),
+            ty::Pat(ty, pat) => Self::for_pat(ty, pat),
+            ty::Slice(ty) | ty::RawPtr(ty, _) => Self::for_ty(ty),
+            ty::Ref(region, ty, _) => Self::for_ref(region, ty),
+            ty::Tuple(types) => Self::for_tys(types),
+            ty::FnDef(_, args) => Self::for_fn_def(args),
+            ty::FnPtr(sig_tys, _) => Self::for_fn_ptr(sig_tys),
+            ty::UnsafeBinder(bound_ty) => Self::for_unsafe_binder(bound_ty),
+        }
     }
 
     pub fn for_predicate(binder: ty::Binder<I, ty::PredicateKind<I>>) -> FlagComputation<I> {
@@ -250,129 +277,118 @@ impl<I: Interner> FlagComputation<I> {
         } // otherwise, this binder captures nothing
     }
 
-    #[allow(rustc::usage_of_ty_tykind)]
-    fn add_kind(&mut self, kind: &ty::TyKind<I>) {
-        match *kind {
-            ty::Bool
-            | ty::Char
-            | ty::Int(_)
-            | ty::Float(_)
-            | ty::Uint(_)
-            | ty::Never
-            | ty::Str
-            | ty::Foreign(..) => {}
+    /// Flags for a type with no nested types, constants, regions, or binders.
+    pub fn for_flags(flags: TypeFlags) -> Self {
+        Self { flags, ..Self::new() }
+    }
 
-            ty::Error(_) => self.add_flags(TypeFlags::HAS_NON_REGION_ERROR),
+    pub fn for_args(args: I::GenericArgs) -> Self {
+        let mut result = Self::new();
+        result.add_args(args.as_slice());
+        result
+    }
 
-            ty::Param(_) => {
-                self.add_flags(TypeFlags::HAS_TY_PARAM);
-            }
+    pub fn for_coroutine(args: I::GenericArgs) -> Self {
+        let mut result = Self::for_args(args);
+        result.add_flags(TypeFlags::HAS_TY_CORO);
+        result
+    }
 
-            ty::Closure(_, args)
-            | ty::CoroutineClosure(_, args)
-            | ty::CoroutineWitness(_, args) => {
-                self.add_args(args.as_slice());
-            }
-
-            ty::Coroutine(_, args) => {
-                self.add_flags(TypeFlags::HAS_TY_CORO);
-                self.add_args(args.as_slice());
-            }
-
-            ty::Bound(ty::BoundVarIndexKind::Canonical, _) => {
-                self.add_flags(TypeFlags::HAS_TY_BOUND);
-                self.add_flags(TypeFlags::HAS_CANONICAL_BOUND);
-            }
-
-            ty::Bound(ty::BoundVarIndexKind::Bound(debruijn), _) => {
-                self.add_bound_var(debruijn);
-                self.add_flags(TypeFlags::HAS_TY_BOUND);
-            }
-
-            ty::Placeholder(..) => {
-                self.add_flags(TypeFlags::HAS_TY_PLACEHOLDER);
-            }
-
-            ty::Infer(infer) => match infer {
-                ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) => {
-                    self.add_flags(TypeFlags::HAS_TY_FRESH)
-                }
-
-                ty::TyVar(_) | ty::IntVar(_) | ty::FloatVar(_) => {
-                    self.add_flags(TypeFlags::HAS_TY_INFER)
-                }
-            },
-
-            ty::Adt(_, args) => {
-                self.add_args(args.as_slice());
-            }
-
-            ty::Alias(is_rigid, alias) => {
-                self.add_is_rigid(is_rigid);
-                self.add_flags(match alias.kind {
-                    ty::Projection { .. } => TypeFlags::HAS_TY_PROJECTION,
-                    ty::Free { .. } => TypeFlags::HAS_TY_FREE_ALIAS,
-                    ty::Opaque { .. } => TypeFlags::HAS_TY_OPAQUE,
-                    ty::Inherent { .. } => TypeFlags::HAS_TY_INHERENT,
-                });
-                self.add_alias_ty(alias);
-            }
-
-            ty::Dynamic(obj, r) => {
-                for predicate in obj.iter() {
-                    self.bound_computation(predicate, |computation, predicate| match predicate {
-                        ty::ExistentialPredicate::Trait(tr) => {
-                            computation.add_args(tr.args.as_slice())
-                        }
-                        ty::ExistentialPredicate::Projection(p) => {
-                            computation.add_existential_projection(&p);
-                        }
-                        ty::ExistentialPredicate::AutoTrait(_) => {}
-                    });
-                }
-
-                self.add_region(r);
-            }
-
-            ty::Array(tt, len) => {
-                self.add_ty(tt);
-                self.add_const(len);
-            }
-
-            ty::Pat(ty, pat) => {
-                self.add_ty(ty);
-                self.add_ty_pat(pat);
-            }
-
-            ty::Slice(tt) => self.add_ty(tt),
-
-            ty::RawPtr(ty, _) => {
-                self.add_ty(ty);
-            }
-
-            ty::Ref(r, ty, _) => {
-                self.add_region(r);
-                self.add_ty(ty);
-            }
-
-            ty::Tuple(types) => {
-                self.add_tys(types);
-            }
-
-            ty::FnDef(_, args) => {
-                self.add_binder_args(args);
-            }
-
-            ty::FnPtr(sig_tys, _) => self.bound_computation(sig_tys, |computation, sig_tys| {
-                computation.add_tys(sig_tys.inputs_and_output);
-            }),
-
-            ty::UnsafeBinder(bound_ty) => {
-                self.bound_computation(bound_ty.into(), |computation, ty| {
-                    computation.add_ty(ty);
-                })
-            }
+    pub fn for_bound(index: ty::BoundVarIndexKind) -> Self {
+        let mut result = Self::for_flags(TypeFlags::HAS_TY_BOUND);
+        match index {
+            ty::BoundVarIndexKind::Canonical => result.add_flags(TypeFlags::HAS_CANONICAL_BOUND),
+            ty::BoundVarIndexKind::Bound(debruijn) => result.add_bound_var(debruijn),
         }
+        result
+    }
+
+    pub fn for_infer(infer: ty::InferTy) -> Self {
+        Self::for_flags(match infer {
+            ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) => TypeFlags::HAS_TY_FRESH,
+            ty::TyVar(_) | ty::IntVar(_) | ty::FloatVar(_) => TypeFlags::HAS_TY_INFER,
+        })
+    }
+
+    pub fn for_alias(is_rigid: ty::IsRigid, alias: ty::AliasTy<I>) -> Self {
+        let mut result = Self::new();
+        result.add_is_rigid(is_rigid);
+        result.add_flags(match alias.kind {
+            ty::Projection { .. } => TypeFlags::HAS_TY_PROJECTION,
+            ty::Free { .. } => TypeFlags::HAS_TY_FREE_ALIAS,
+            ty::Opaque { .. } => TypeFlags::HAS_TY_OPAQUE,
+            ty::Inherent { .. } => TypeFlags::HAS_TY_INHERENT,
+        });
+        result.add_alias_ty(alias);
+        result
+    }
+
+    pub fn for_dynamic(obj: I::BoundExistentialPredicates, region: Region<I>) -> Self {
+        let mut result = Self::new();
+        for predicate in obj.iter() {
+            result.bound_computation(predicate, |computation, predicate| match predicate {
+                ty::ExistentialPredicate::Trait(tr) => computation.add_args(tr.args.as_slice()),
+                ty::ExistentialPredicate::Projection(p) => {
+                    computation.add_existential_projection(&p)
+                }
+                ty::ExistentialPredicate::AutoTrait(_) => {}
+            });
+        }
+        result.add_region(region);
+        result
+    }
+
+    pub fn for_array(ty: I::Ty, len: Const<I>) -> Self {
+        let mut result = Self::for_ty(ty);
+        result.add_const(len);
+        result
+    }
+
+    pub fn for_pat(ty: I::Ty, pat: I::Pat) -> Self {
+        let mut result = Self::for_ty(ty);
+        result.add_ty_pat(pat);
+        result
+    }
+
+    pub fn for_ty(ty: I::Ty) -> Self {
+        let mut result = Self::new();
+        result.add_ty(ty);
+        result
+    }
+
+    pub fn for_ref(region: Region<I>, ty: I::Ty) -> Self {
+        let mut result = Self::new();
+        result.add_region(region);
+        result.add_ty(ty);
+        result
+    }
+
+    pub fn for_tys(types: I::Tys) -> Self {
+        let mut result = Self::new();
+        result.add_tys(types);
+        result
+    }
+
+    pub fn for_fn_def(args: ty::Binder<I, I::GenericArgs>) -> Self {
+        let mut result = Self::new();
+        result.add_binder_args(args);
+        result
+    }
+
+    pub fn for_fn_ptr(sig_tys: ty::Binder<I, ty::FnSigTys<I>>) -> Self {
+        let mut result = Self::new();
+        result.bound_computation(sig_tys, |computation, sig_tys| {
+            computation.add_tys(sig_tys.inputs_and_output);
+        });
+        result
+    }
+
+    pub fn for_unsafe_binder(bound_ty: ty::UnsafeBinderInner<I>) -> Self {
+        let mut result = Self::new();
+        result.bound_computation(bound_ty.into(), |computation, ty| {
+            computation.add_ty(ty);
+        });
+        result
     }
 
     fn add_ty_pat(&mut self, pat: <I as Interner>::Pat) {
