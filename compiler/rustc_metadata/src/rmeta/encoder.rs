@@ -1206,6 +1206,17 @@ fn should_encode_mir(
     }
 }
 
+fn should_encode_tail_call_shim_source(
+    tcx: TyCtxt<'_>,
+    reachable_set: &LocalDefIdSet,
+    def_id: LocalDefId,
+) -> bool {
+    tcx.sess.use_tail_call_fallback()
+        && reachable_set.contains(&def_id)
+        && tcx.def_kind(def_id).is_fn_like()
+        && tcx.contains_tail_call(def_id.to_def_id())
+}
+
 fn should_encode_variances<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, def_kind: DefKind) -> bool {
     match def_kind {
         DefKind::Struct
@@ -2015,6 +2026,19 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 }
             }
         }
+
+        // Store the source body that is used to generate a TailCall shim so that downstream
+        // crates can create the shim.
+        if tcx.sess.opts.output_types.should_codegen() && tcx.sess.use_tail_call_fallback() {
+            for &def_id in tcx.mir_keys(()) {
+                if should_encode_tail_call_shim_source(tcx, reachable_set, def_id) {
+                    self.table_writer().contains_tail_call(def_id, true);
+                    if let Some(body) = tcx.tail_call_shim_source(def_id.to_def_id()) {
+                        self.table_writer().tail_call_shim_source(def_id, body);
+                    }
+                }
+            }
+        }
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -2490,6 +2514,9 @@ fn prefetch_mir(tcx: TyCtxt<'_>) {
         }
         if encode_opt || encode_const {
             tcx.ensure_done().promoted_mir(def_id);
+        }
+        if should_encode_tail_call_shim_source(tcx, reachable_set, def_id) {
+            tcx.ensure_done().tail_call_shim_source(def_id.to_def_id());
         }
     })
 }

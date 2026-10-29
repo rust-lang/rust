@@ -247,6 +247,7 @@ provide! { tcx, def_id, other, cdata,
     thir_abstract_const => { table }
     optimized_mir => { table }
     mir_for_ctfe => { table }
+    tail_call_shim_source => { table }
     trivial_const => { table }
     closure_saved_names_of_captured_variables => { table }
     mir_coroutine_witnesses => { table }
@@ -331,6 +332,7 @@ provide! { tcx, def_id, other, cdata,
     attrs_for_def => { tcx.arena.alloc_from_iter(cdata.get_item_attrs(tcx, def_id.index)) }
     is_mir_available => { cdata.is_item_mir_available(def_id.index) }
     cross_crate_inlinable => { table_direct }
+    contains_tail_call => { table_direct }
 
     dylib_dependency_formats => { cdata.get_dylib_dependency_formats(tcx) }
     is_private_dep => { cdata.private_dep }

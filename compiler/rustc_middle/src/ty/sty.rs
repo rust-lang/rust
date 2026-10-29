@@ -923,6 +923,14 @@ impl<'tcx> Ty<'tcx> {
         Ty::new_generic_adt(tcx, def_id, ty)
     }
 
+    /// Creates a `TailNext<Args, Ret>` [`Ty`], the type used for the continuation shim that tail
+    /// calls desugar to when the target does not support tail calls.
+    #[inline]
+    pub fn new_tail_next(tcx: TyCtxt<'tcx>, args_tuple: Ty<'tcx>, ret: Ty<'tcx>) -> Ty<'tcx> {
+        let def_id = tcx.require_lang_item(LangItem::TailNext, DUMMY_SP);
+        Ty::new_adt(tcx, tcx.adt_def(def_id), tcx.mk_args(&[args_tuple.into(), ret.into()]))
+    }
+
     /// Creates a `&mut Context<'_>` [`Ty`] with erased lifetimes.
     pub fn new_task_context(tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         let context_did = tcx.require_lang_item(LangItem::Context, DUMMY_SP);

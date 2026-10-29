@@ -58,6 +58,7 @@ pub(super) fn mangle<'tcx>(
         ty::InstanceKind::Shim(ty::ShimKind::Reify(_, Some(ReifyReason::Vtable))) => {
             Some("reify_vtable")
         }
+        ty::InstanceKind::Shim(ty::ShimKind::TailCall(..)) => Some("tail_call"),
 
         // FIXME(async_closures): This shouldn't be needed when we fix
         // `Instance::ty`/`Instance::def_id`.
