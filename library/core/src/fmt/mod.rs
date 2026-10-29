@@ -2497,10 +2497,7 @@ impl<'a> Formatter<'a> {
     #[doc(hidden)]
     #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
     pub fn debug_struct_field1_finish<'b>(&'b mut self, names: &str, value1: &dyn Debug) -> Result {
-        let mut names = names.split(' ');
-        let mut builder = builders::debug_struct_new(self, names.next().unwrap());
-        builder.field(names.next().unwrap(), value1);
-        builder.finish()
+        self.debug_struct_fields_finish(names, &[value1])
     }
 
     /// Shrinks `derive(Debug)` code, for faster compilation and smaller
@@ -2514,11 +2511,7 @@ impl<'a> Formatter<'a> {
         value1: &dyn Debug,
         value2: &dyn Debug,
     ) -> Result {
-        let mut names = names.split(' ');
-        let mut builder = builders::debug_struct_new(self, names.next().unwrap());
-        builder.field(names.next().unwrap(), value1);
-        builder.field(names.next().unwrap(), value2);
-        builder.finish()
+        self.debug_struct_fields_finish(names, &[value1, value2])
     }
 
     /// Shrinks `derive(Debug)` code, for faster compilation and smaller
@@ -2533,12 +2526,7 @@ impl<'a> Formatter<'a> {
         value2: &dyn Debug,
         value3: &dyn Debug,
     ) -> Result {
-        let mut names = names.split(' ');
-        let mut builder = builders::debug_struct_new(self, names.next().unwrap());
-        builder.field(names.next().unwrap(), value1);
-        builder.field(names.next().unwrap(), value2);
-        builder.field(names.next().unwrap(), value3);
-        builder.finish()
+        self.debug_struct_fields_finish(names, &[value1, value2, value3])
     }
 
     /// Shrinks `derive(Debug)` code, for faster compilation and smaller
@@ -2554,13 +2542,7 @@ impl<'a> Formatter<'a> {
         value3: &dyn Debug,
         value4: &dyn Debug,
     ) -> Result {
-        let mut names = names.split(' ');
-        let mut builder = builders::debug_struct_new(self, names.next().unwrap());
-        builder.field(names.next().unwrap(), value1);
-        builder.field(names.next().unwrap(), value2);
-        builder.field(names.next().unwrap(), value3);
-        builder.field(names.next().unwrap(), value4);
-        builder.finish()
+        self.debug_struct_fields_finish(names, &[value1, value2, value3, value4])
     }
 
     /// Shrinks `derive(Debug)` code, for faster compilation and smaller
@@ -2577,14 +2559,7 @@ impl<'a> Formatter<'a> {
         value4: &dyn Debug,
         value5: &dyn Debug,
     ) -> Result {
-        let mut names = names.split(' ');
-        let mut builder = builders::debug_struct_new(self, names.next().unwrap());
-        builder.field(names.next().unwrap(), value1);
-        builder.field(names.next().unwrap(), value2);
-        builder.field(names.next().unwrap(), value3);
-        builder.field(names.next().unwrap(), value4);
-        builder.field(names.next().unwrap(), value5);
-        builder.finish()
+        self.debug_struct_fields_finish(names, &[value1, value2, value3, value4, value5])
     }
 
     /// Shrinks `derive(Debug)` code, for faster compilation and smaller binaries.
