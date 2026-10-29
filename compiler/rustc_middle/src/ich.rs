@@ -1,5 +1,3 @@
-use std::hash::Hash;
-
 use rustc_crate_store::Untracked;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hash::{
@@ -113,7 +111,7 @@ impl<'a> StableHashCtxt for StableHashState<'a> {
         span.parent.stable_hash(self, hasher);
 
         if span.is_dummy() {
-            Hash::hash(&TAG_INVALID_SPAN, hasher);
+            TAG_INVALID_SPAN.stable_hash(self, hasher);
             return;
         }
 
@@ -126,7 +124,7 @@ impl<'a> StableHashCtxt for StableHashState<'a> {
             // This span is enclosed in a definition: only hash the relative position. This catches
             // a subset of the cases from the `file.contains(parent.lo)`. But we can do this check
             // cheaply without the expensive `span_data_to_lines_and_cols` query.
-            Hash::hash(&TAG_RELATIVE_SPAN, hasher);
+            TAG_RELATIVE_SPAN.stable_hash(self, hasher);
             (span.lo - parent.lo).to_u32().stable_hash(self, hasher);
             (span.hi - parent.lo).to_u32().stable_hash(self, hasher);
             return;
@@ -137,23 +135,24 @@ impl<'a> StableHashCtxt for StableHashState<'a> {
         let Some((file, line_lo, col_lo, line_hi, col_hi)) =
             self.source_map().span_data_to_lines_and_cols(&span)
         else {
-            Hash::hash(&TAG_INVALID_SPAN, hasher);
+            TAG_INVALID_SPAN.stable_hash(self, hasher);
             return;
         };
+        let file_stable_id = file.stable_id;
 
         if let Some(parent) = parent
             && file.contains(parent.lo)
         {
             // This span is relative to another span in the same file,
             // only hash the relative position.
-            Hash::hash(&TAG_RELATIVE_SPAN, hasher);
-            Hash::hash(&(span.lo.0.wrapping_sub(parent.lo.0)), hasher);
-            Hash::hash(&(span.hi.0.wrapping_sub(parent.lo.0)), hasher);
+            TAG_RELATIVE_SPAN.stable_hash(self, hasher);
+            span.lo.0.wrapping_sub(parent.lo.0).stable_hash(self, hasher);
+            span.hi.0.wrapping_sub(parent.lo.0).stable_hash(self, hasher);
             return;
         }
 
-        Hash::hash(&TAG_VALID_SPAN, hasher);
-        Hash::hash(&file.stable_id, hasher);
+        TAG_VALID_SPAN.stable_hash(self, hasher);
+        file_stable_id.stable_hash(self, hasher);
 
         // Hash both the length and the end location (line/column) of a span. If we hash only the
         // length, for example, then two otherwise equal spans with different end locations will
@@ -165,8 +164,8 @@ impl<'a> StableHashCtxt for StableHashState<'a> {
 
         let col_line = pack_span_location(line_lo, col_lo, line_hi, col_hi);
         let len = (span.hi - span.lo).0;
-        Hash::hash(&col_line, hasher);
-        Hash::hash(&len, hasher);
+        col_line.stable_hash(self, hasher);
+        len.stable_hash(self, hasher);
     }
 
     #[inline]
