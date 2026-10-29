@@ -120,7 +120,7 @@ process-wrap = { version = "9.1.0", features = ["std"] }
 pulldown-cmark-to-cmark = "10.0.4"
 pulldown-cmark = { version = "0.9.6", default-features = false }
 rayon = "1.10.0"
-rowan = "0.17.0"
+rowan = "0.18.0-alpha.2"
 # Ideally we'd not enable the macros feature but unfortunately the `tracked` attribute does not work
 # on impls without it
 salsa = { version = "0.28.5", default-features = false, features = [
