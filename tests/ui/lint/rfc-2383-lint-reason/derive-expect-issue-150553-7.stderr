@@ -1,0 +1,34 @@
+warning: const parameter `n` should have an upper case name
+  --> $DIR/derive-expect-issue-150553-7.rs:14:30
+   |
+LL | macro fulfilled() {
+...
+LL |     pub struct Wrapper<const n: usize> {
+   |                              ^ help: convert the identifier to upper case: `N`
+...
+LL | fulfilled!();
+   | ------------ in this macro invocation
+   |
+   = note: `#[warn(non_upper_case_globals)]` (part of `#[warn(nonstandard_style)]`) on by default
+
+warning: const parameter `n` should have an upper case name
+  --> $DIR/derive-expect-issue-150553-7.rs:29:41
+   |
+LL |     pub struct WrapperPassthrough<const n: usize> {
+   |                                         ^ help: convert the identifier to upper case: `N`
+
+warning: this lint expectation is unfulfilled
+  --> $DIR/derive-expect-issue-150553-7.rs:37:14
+   |
+LL | macro unfulfilled() {
+LL |     #[derive(Debug)]
+LL |     #[expect(unexpected_cfgs)]
+   |              ^^^^^^^^^^^^^^^
+...
+LL | unfulfilled!();
+   | -------------- in this macro invocation
+   |
+   = note: `#[warn(unfulfilled_lint_expectations)]` on by default
+
+warning: 3 warnings emitted
+
