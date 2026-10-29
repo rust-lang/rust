@@ -266,6 +266,16 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
             return MergingSucc::False;
         }
 
+        let is_cleanup = fx.mir[self.bb].is_cleanup;
+        let is_cold = fx.cold_blocks.contains(self.bb);
+        let apply_callsite_attrs = |bx: &mut Bx, call_llval| {
+            if is_cleanup {
+                bx.apply_attrs_to_cleanup_callsite(call_llval);
+            } else if is_cold {
+                bx.apply_attrs_to_cold_callsite(call_llval);
+            }
+        };
+
         if let Some(unwind_block) = unwind_block {
             let ret_llbb = if let Some((_, target)) = destination {
                 self.llbb_with_cleanup(fx, target)
@@ -284,9 +294,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
                 self.funclet(fx),
                 instance,
             );
-            if fx.mir[self.bb].is_cleanup {
-                bx.apply_attrs_to_cleanup_callsite(invokeret);
-            }
+            apply_callsite_attrs(bx, invokeret);
 
             if let Some((ret_dest, target)) = destination {
                 bx.switch_to_block(fx.llbb(target));
@@ -314,9 +322,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
                 self.funclet(fx),
                 instance,
             );
-            if fx.mir[self.bb].is_cleanup {
-                bx.apply_attrs_to_cleanup_callsite(llret);
-            }
+            apply_callsite_attrs(bx, llret);
 
             if let Some((ret_dest, target)) = destination {
                 for &(tmp, size) in lifetime_ends_after_call {
