@@ -700,6 +700,15 @@ pub(crate) struct PatternParenthesizedArgList {
 }
 
 #[derive(Diagnostic)]
+#[diag("C-variadic parameters aren't allowed in parenthesized argument lists")]
+pub(crate) struct PathFoundCVariadicParams {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion("remove the C-variadics", applicability = "machine-applicable", code = "")]
+    pub sugg_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("only a single explicit lifetime bound is permitted", code = E0226)]
 pub(crate) struct TraitObjectBound {
     #[primary_span]
