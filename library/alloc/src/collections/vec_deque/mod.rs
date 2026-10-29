@@ -150,9 +150,9 @@ impl<T> Drop for Dropper<'_, T> {
 unsafe impl<#[may_dangle] T, A: Allocator> Drop for VecDeque<T, A> {
     fn drop(&mut self) {
         let (front, back) = self.as_mut_slices();
+        let _back_dropper = Dropper(back);
         // ignore-tidy-undocumented-unsafe
         unsafe {
-            let _back_dropper = Dropper(back);
             // use drop for [T]
             ptr::drop_in_place(front);
         }
@@ -309,9 +309,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
             self.capacity(),
         );
 
+        let ptr = self.ptr();
         // ignore-tidy-undocumented-unsafe
         unsafe {
-            let ptr = self.ptr();
             let src_ptr = ptr.add(wrapped_src.as_index());
             let dst_ptr = ptr.add(wrapped_dst.as_index());
 
@@ -633,10 +633,12 @@ impl<T, A: Allocator> VecDeque<T, A> {
         written: &mut usize,
     ) {
         // ignore-tidy-undocumented-unsafe
-        iter.enumerate().for_each(|(i, element)| unsafe {
-            self.buffer_write(dst.add(i), element);
+        iter.enumerate().for_each(|(i, element)|
+            unsafe {
+                self.buffer_write(dst.add(i), element);
+            }
             *written += 1;
-        });
+        );
     }
 
     /// Writes all values from `iter` to `dst`, wrapping
