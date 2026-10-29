@@ -177,12 +177,28 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                     goal_stalled_on_args_or_nonempty_opaques(thin_vec![TyOrConstInferVar::Ty(vid)])
                 } else if trait_pred.polarity() == ty::ClausePolarity::Positive {
                     match self.0.tcx.as_lang_item(trait_pred.def_id()) {
-                        Some(LangItem::Sized) | Some(LangItem::MetaSized) => {
-                            let predicate = self.deeply_resolve_ignoring_regions(goal.predicate);
-                            if sizedness_fast_path(self.tcx, predicate, goal.param_env) {
+                        Some(lang_item @ (LangItem::Sized | LangItem::MetaSized)) => {
+                            let sizedness = if lang_item == LangItem::Sized {
+                                ty::SizedTraitKind::Sized
+                            } else {
+                                ty::SizedTraitKind::MetaSized
+                            };
+
+                            // Trivial sizedness does not depend on nested inference variables.
+                            // Keep the fallback for error tainting and nontrivial goals.
+                            if goal.predicate.has_non_region_infer()
+                                && !goal.predicate.references_error()
+                                && self_ty.has_trivial_sizedness(self.tcx, sizedness)
+                            {
                                 Outcome::TriviallyHolds
                             } else {
-                                Outcome::NoFastPath
+                                let predicate =
+                                    self.deeply_resolve_ignoring_regions(goal.predicate);
+                                if sizedness_fast_path(self.tcx, predicate, goal.param_env) {
+                                    Outcome::TriviallyHolds
+                                } else {
+                                    Outcome::NoFastPath
+                                }
                             }
                         }
                         Some(LangItem::Copy | LangItem::Clone) => {
