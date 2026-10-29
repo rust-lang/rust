@@ -3104,7 +3104,7 @@ fn clean_impl<'tcx>(
 
     // If this impl block is a positive implementation of the Deref trait, then we
     // need to try inlining the target's inherent impl blocks as well.
-    if trait_.as_ref().is_some_and(|t| tcx.lang_items().deref_trait() == Some(t.def_id()))
+    if trait_.as_ref().is_some_and(|t| t.is_deref_trait(tcx))
         && tcx.impl_polarity(def_id) != ty::ImplPolarity::Negative
     {
         build_deref_target_impls(cx, &items, &mut ret);
