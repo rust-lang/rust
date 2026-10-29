@@ -386,16 +386,28 @@ pub(crate) struct MatchArmWithNoBody {
 pub(crate) struct NeverPatternWithBody {
     #[primary_span]
     #[label("this will never be executed")]
-    #[suggestion("remove this expression", code = "", applicability = "maybe-incorrect")]
     pub span: Span,
+    #[suggestion(
+        "remove the match arm body, leaving only the pattern",
+        code = "",
+        applicability = "maybe-incorrect",
+        style = "verbose"
+    )]
+    pub remove_span: Span,
 }
 
 #[derive(Diagnostic)]
 #[diag("a guard on a never pattern will never be run")]
 pub(crate) struct NeverPatternWithGuard {
     #[primary_span]
-    #[suggestion("remove this guard", code = "", applicability = "maybe-incorrect")]
     pub span: Span,
+    #[suggestion(
+        "remove the guard, leaving only the pattern",
+        code = "",
+        applicability = "maybe-incorrect",
+        style = "verbose"
+    )]
+    pub remove_span: Span,
 }
 
 #[derive(Diagnostic)]
