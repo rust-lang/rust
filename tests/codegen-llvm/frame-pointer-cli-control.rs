@@ -2,6 +2,7 @@
 //@ compile-flags: --crate-type=rlib -Copt-level=0
 //@ revisions: force-on aarch64-apple aarch64-apple-on aarch64-apple-off
 //@ [force-on] compile-flags: -Cforce-frame-pointers=on
+//@ [force-on] ignore-s390x
 //@ [aarch64-apple] needs-llvm-components: aarch64
 //@ [aarch64-apple] compile-flags: --target=aarch64-apple-darwin
 //@ [aarch64-apple-on] needs-llvm-components: aarch64
@@ -39,6 +40,9 @@ Specific cases where platforms or tools rely on frame pointers for sound or corr
 - openbsd: <https://github.com/rust-lang/rust/issues/43575>
 - i686-msvc <https://github.com/rust-lang/backtrace-rs/pull/584#issuecomment-1966177530>
 - i686-mingw: <https://github.com/rust-lang/rust/commit/3f1d3948d6d434b34dd47f132c126a6cb6b8a4ab>
+
+S390x is a special case because on this platform framepointers cannot be use for unwinding.
+On s390x `-Cforce-frame-pointers=on' will emit a 'backchain' attribute which is tested elsewhere.
 */
 #![feature(no_core, lang_items)]
 #![no_core]
