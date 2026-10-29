@@ -12,9 +12,8 @@ use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_ast::{IntTy, UintTy};
 use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, read_target_uint, write_target_uint};
 use rustc_middle::mir::{self, BinOp, ConstValue, NonDivergingIntrinsic};
-use rustc_middle::ty;
 use rustc_middle::ty::layout::TyAndLayout;
-use rustc_middle::ty::{FloatTy, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, FloatTy, ScalarInt, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::{Symbol, bug, span_bug, sym};
 use tracing::trace;
 
@@ -376,6 +375,17 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let r = self.read_immediate(&args[1])?;
                 self.exact_div(&l, &r, dest)?;
             }
+            sym::unchecked_funnel_shl | sym::unchecked_funnel_shr => {
+                let shift_left = intrinsic_name == sym::unchecked_funnel_shl;
+
+                let l = self.read_immediate(&args[0])?;
+                let r = self.read_immediate(&args[1])?;
+                let shift = self.read_immediate(&args[2])?;
+
+                let result = self.funnel_shift(&l, &r, &shift, shift_left)?;
+                self.write_scalar(result, dest)?;
+            }
+
             sym::copy => {
                 self.copy_intrinsic(&args[0], &args[1], &args[2], /*nonoverlapping*/ false)?;
             }
@@ -967,6 +977,50 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         } else {
             val
         })
+    }
+
+    pub fn funnel_shift(
+        &self,
+        left: &ImmTy<'tcx, M::Provenance>,
+        right: &ImmTy<'tcx, M::Provenance>,
+        shift_bits: &ImmTy<'tcx, M::Provenance>,
+        shift_left: bool,
+    ) -> InterpResult<'tcx, Scalar<M::Provenance>> {
+        let size = left.layout.size;
+        let left = left.to_scalar().to_bits(size)?;
+        let right = right.to_scalar().to_bits(size)?;
+        let shift_bits = shift_bits.to_scalar().to_bits(shift_bits.layout.size)?; // can have different size
+
+        if shift_bits >= size.bits().into() {
+            throw_ub_format!(
+                "overflowing shift by {shift_bits} in {} funnel shift",
+                if shift_left { "left" } else { "right" }
+            );
+        }
+        let inv_shift_bits = u32::try_from(u128::from(size.bits()) - shift_bits).unwrap();
+
+        // A funnel shift left by S can be implemented as `(x << S) | y.unbounded_shr(SIZE - S)`.
+        // The `unbounded_shr` is needed because otherwise if `S = 0`, it would be `x | y`
+        // when it should be `x`.
+        //
+        // This selects the least-significant `SIZE - S` bits of `x`, followed by the `S` most
+        // significant bits of `y`. As `left` and `right` both occupy the lower `SIZE` bits,
+        // we can treat the lower `SIZE` bits as an integer of the right width and use
+        // the same implementation, but on a zero-extended `x` and `y`. This works because
+        // `x << S` just pushes the `SIZE-S` MSBs out, and `y >> (SIZE - S)` shifts in
+        // zeros, as it is zero-extended. To the lower `SIZE` bits, this looks just like a
+        // funnel shift left.
+        //
+        // Note that the `unbounded_sh{l,r}`s are needed only in case we are using this on
+        // `u128xN` and `inv_shift_bits == 128`.
+        let result_bits = if shift_left {
+            (left << shift_bits) | right.unbounded_shr(inv_shift_bits)
+        } else {
+            left.unbounded_shl(inv_shift_bits) | (right >> shift_bits)
+        };
+
+        let (result, _overflow) = ScalarInt::truncate_from_uint(result_bits, size);
+        interp_ok(result.into())
     }
 
     /// Offsets a pointer by some multiple of its type, returning an error if the pointer leaves its
