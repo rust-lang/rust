@@ -103,6 +103,7 @@ pub(crate) fn compute_closure_requirements_modulo_opaques<'tcx>(
         location_map,
         body,
         None,
+        |_| {},
     );
 
     closure_region_requirements
@@ -127,7 +128,7 @@ pub(crate) fn compute_regions<'tcx>(
     let polonius_output = root_cx.consumer.as_ref().map_or(false, |c| c.polonius_output())
         || infcx.tcx.sess.opts.unstable_opts.polonius.is_legacy_enabled();
 
-    let mut lowered_constraints = compute_sccs_applying_placeholder_outlives_constraints(
+    let lowered_constraints = compute_sccs_applying_placeholder_outlives_constraints(
         constraints,
         &universal_region_relations,
         infcx,
@@ -144,23 +145,6 @@ pub(crate) fn compute_regions<'tcx>(
         &universal_region_relations,
         &lowered_constraints,
     );
-
-    // If requested for `-Zpolonius=next`, compute loan liveness information.
-    // This is done prior to `RegionInferenceContext::new`, because we may add
-    // additional liveness constraints.
-    if let Some(polonius_context) = polonius_context.as_mut() {
-        let _timer = infcx.tcx.prof.generic_activity("borrowck_polonius_loan_liveness");
-        polonius_context.compute_loan_liveness(
-            infcx,
-            &mut lowered_constraints.liveness_constraints,
-            lowered_constraints.outlives_constraints.outlives().iter().copied(),
-            &universal_region_relations.universal_regions,
-            body,
-            move_data,
-            &location_map,
-            borrow_set,
-        );
-    }
 
     // If requested: dump NLL facts, and run legacy polonius analysis.
     let polonius_output = polonius_facts.as_ref().and_then(|polonius_facts| {
@@ -188,9 +172,34 @@ pub(crate) fn compute_regions<'tcx>(
         infcx,
         lowered_constraints,
         universal_region_relations,
-        location_map,
+        Rc::clone(&location_map),
         body,
         polonius_output.clone(),
+        |region_cx| {
+            // If requested for `-Zpolonius=next`, compute loan liveness information.
+            // This is done at the end of `solve`; it's okay because liveness above
+            // is *pessimistic*: any region outliving a universal region is also
+            // considered live for the entire function. Any deferred regions *are*
+            // regions that fit this category.
+            if let Some(polonius_context) = polonius_context.as_mut() {
+                polonius_context.compute_loan_liveness(
+                    infcx,
+                    &mut region_cx.inner.liveness_constraints,
+                    region_cx
+                        .inner
+                        .constraints
+                        .outlives()
+                        .iter()
+                        .copied()
+                        .chain(region_cx.type_test_constraints.iter().copied()),
+                    &region_cx.inner.universal_region_relations.universal_regions,
+                    body,
+                    move_data,
+                    &location_map,
+                    borrow_set,
+                );
+            }
+        },
     );
 
     NllOutput {
