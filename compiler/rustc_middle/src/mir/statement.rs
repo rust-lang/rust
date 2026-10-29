@@ -250,9 +250,7 @@ impl<'tcx> PlaceTy<'tcx> {
             ProjectionElem::OpaqueCast(ty) => PlaceTy::from_ty(handle_opaque_cast_and_subtype(ty)),
 
             // FIXME(unsafe_binders): Rename `handle_opaque_cast_and_subtype` to be more general.
-            ProjectionElem::UnwrapUnsafeBinder(ty) => {
-                PlaceTy::from_ty(handle_opaque_cast_and_subtype(ty))
-            }
+            ProjectionElem::Transmute(ty) => PlaceTy::from_ty(handle_opaque_cast_and_subtype(ty)),
         }
     }
 }
@@ -270,7 +268,7 @@ impl<V, T> ProjectionElem<V, T> {
             | Self::ConstantIndex { .. }
             | Self::Subslice { .. }
             | Self::Downcast(_, _)
-            | Self::UnwrapUnsafeBinder(..) => false,
+            | Self::Transmute(..) => false,
         }
     }
 
@@ -284,7 +282,7 @@ impl<V, T> ProjectionElem<V, T> {
             | Self::ConstantIndex { .. }
             | Self::Subslice { .. }
             | Self::Downcast(_, _)
-            | Self::UnwrapUnsafeBinder(..)
+            | Self::Transmute(..)
             | Self::PhantomDeref => true,
         }
     }
@@ -313,7 +311,7 @@ impl<V, T> ProjectionElem<V, T> {
             | Self::PhantomDeref => false,
 
             // FIXME(unsafe_binders): Figure this out.
-            Self::UnwrapUnsafeBinder(..) => false,
+            Self::Transmute(..) => false,
         }
     }
 
@@ -342,7 +340,7 @@ impl<V, T> ProjectionElem<V, T> {
                 ProjectionElem::Subslice { from, to, from_end }
             }
             ProjectionElem::OpaqueCast(ty) => ProjectionElem::OpaqueCast(t(ty)),
-            ProjectionElem::UnwrapUnsafeBinder(ty) => ProjectionElem::UnwrapUnsafeBinder(t(ty)),
+            ProjectionElem::Transmute(ty) => ProjectionElem::Transmute(t(ty)),
             ProjectionElem::Index(val) => ProjectionElem::Index(v(val)?),
         })
     }
@@ -574,7 +572,7 @@ impl<'tcx> PlaceRef<'tcx> {
             | ProjectionElem::Subslice { .. }
             | ProjectionElem::Downcast(_, _)
             | ProjectionElem::OpaqueCast(_)
-            | ProjectionElem::UnwrapUnsafeBinder(_) => None,
+            | ProjectionElem::Transmute(_) => None,
         }))
     }
 
