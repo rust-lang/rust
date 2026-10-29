@@ -141,7 +141,7 @@ impl<'tcx> TyCtxt<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        self.instantiate_bound_regions(value, |_| self.lifetimes.re_erased).0
+        self.instantiate_bound_regions_uncached(value, |_| self.lifetimes.re_erased)
     }
 
     /// Anonymize all bound variables in `value`, this is mostly used to improve caching.
