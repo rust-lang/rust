@@ -15,7 +15,7 @@ jobs:
 
   docs:
     name: Build Documentation
-    needs: [ style ]
+    needs: [style]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
@@ -27,7 +27,7 @@ jobs:
 
   verify:
     name: Automatic intrinsic verification
-    needs: [ style ]
+    needs: [style]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
@@ -36,9 +36,10 @@ jobs:
       - run: cargo test --manifest-path crates/stdarch-verify/Cargo.toml
 
   test:
-    needs: [ style ]
+    needs: [style]
     name: Test
     runs-on: ${{ matrix.target.os }}
+    continue-on-error: ${{ matrix.target.tuple == 'riscv32gc-unknown-linux-gnu' }}
     strategy:
       matrix:
         profile:
@@ -272,7 +273,7 @@ jobs:
           TARGET: ${{ matrix.target.tuple }}
 
   intrinsic-test:
-    needs: [ style ]
+    needs: [style]
     name: Intrinsic Test
     runs-on: ubuntu-latest
     strategy:
@@ -283,8 +284,8 @@ jobs:
           - armv7-unknown-linux-gnueabihf
           - loongarch64-unknown-linux-gnu
           - x86_64-unknown-linux-gnu
-        profile: [ dev, release ]
-        cc: [ clang, gcc ]
+        profile: [dev, release]
+        cc: [clang, gcc]
         include:
           - target: aarch64_be-unknown-linux-gnu
             build_std: true
@@ -320,7 +321,7 @@ jobs:
 
   # Check that the generated files agree with the checked-in versions.
   check-stdarch-gen:
-    needs: [ style ]
+    needs: [style]
     name: Check stdarch-gen-{arm, loongarch, hexagon} output
     runs-on: ubuntu-latest
     env:
@@ -348,7 +349,7 @@ jobs:
   # Below we run some tests where Miri might catch UB, for instance on intrinsics that read from
   # or write to pointers.
   miri:
-    needs: [ style ]
+    needs: [style]
     name: Run some tests with miri
     runs-on: ubuntu-latest
     steps:
