@@ -9,6 +9,7 @@
 extern crate core;
 use core::ffi::*;
 use std::marker::PhantomData;
+use std::mem::MaybeUninit;
 
 struct Foo(i32);
 
@@ -42,6 +43,8 @@ pub struct Type4Helper<T>(*mut T);
 
 pub fn foo1(_: Type1) {}
 // CHECK: define{{.*}}4foo1{{.*}}!type ![[TYPE1:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
+pub fn foo1_union(_: MaybeUninit<Type1>) {}
+// CHECK: define{{.*}}10foo1_union{{.*}}!type ![[TYPE1:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 pub fn foo2(_: Type1, _: Type1) {}
 // CHECK: define{{.*}}4foo2{{.*}}!type ![[TYPE2:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 pub fn foo3(_: Type1, _: Type1, _: Type1) {}
