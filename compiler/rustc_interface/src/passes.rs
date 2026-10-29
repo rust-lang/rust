@@ -1086,18 +1086,23 @@ impl<'a, 'tcx> Diagnostic<'a> for DiagCallback<'tcx> {
 }
 
 pub fn emit_delayed_lints(tcx: TyCtxt<'_>) {
-    for owner_id in tcx.hir_crate_items(()).owners() {
-        if let Some(delayed_lints) = tcx.opt_ast_lowering_delayed_lints(owner_id) {
-            for lint in delayed_lints.steal() {
-                tcx.emit_node_span_lint(
-                    lint.lint_id.lint,
-                    lint.id,
-                    lint.span.clone(),
-                    DiagCallback { callback: lint.callback, tcx },
-                );
+    tcx.hir_crate_items(())
+        .par_owners(|id| {
+            if let Some(delayed_lints) = tcx.opt_ast_lowering_delayed_lints(id) {
+                for lint in delayed_lints.steal() {
+                    tcx.emit_node_span_lint(
+                        lint.lint_id.lint,
+                        lint.id,
+                        lint.span.clone(),
+                        DiagCallback { callback: lint.callback, tcx },
+                    );
+                }
             }
-        }
-    }
+
+            Ok(())
+        })
+        .ok()
+        .expect("must be Ok");
 }
 
 /// Runs all analyses that we guarantee to run, even if errors were reported in earlier analyses.
