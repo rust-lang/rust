@@ -295,6 +295,7 @@ impl Command {
 /// Represents the result of an executed process.
 /// The various `assert_` helper methods should preferably be used for
 /// checking the contents of stdout/stderr.
+#[derive(Debug)]
 pub struct CompletedProcess {
     output: Output,
 }
