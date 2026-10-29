@@ -3277,6 +3277,12 @@ impl str {
     /// This method is redundant when used directly on `&str`, but
     /// it helps dereferencing other string-like types to string slices,
     /// for example references to `Box<str>` or `Arc<str>`.
+    ///
+    /// # Safety
+    ///
+    /// As an exception to the [general rule](prim@str#invariant), this function does not assume
+    /// that the input `str` contains valid UTF-8, and is guaranteed to not cause
+    /// immediate undefined behavior if called on a `str` containing invalid UTF-8.
     #[inline]
     #[unstable(feature = "str_as_str", issue = "130366")]
     pub const fn as_str(&self) -> &str {
