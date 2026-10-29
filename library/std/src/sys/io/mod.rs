@@ -4,7 +4,7 @@ mod error;
 
 mod is_terminal {
     cfg_select! {
-        any(target_family = "unix", target_os = "wasi") => {
+        any(target_family = "unix", target_os = "wasi", target_os = "qurt") => {
             mod isatty;
             pub use isatty::*;
         }
@@ -43,11 +43,11 @@ pub use error::errno_location;
         not(any(
             target_os = "espidf",
             target_os = "lynxos178",
-            target_os = "qurt",
             target_os = "rtems",
             target_os = "vxworks",
         ))
     ),
+    target_os = "qurt",
     target_os = "wasi",
 ))]
 pub use error::set_errno;
