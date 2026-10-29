@@ -35,8 +35,9 @@
 +         _5 = const usize::MAX;
           StorageLive(_6);
           StorageLive(_7);
-          _7 = &(*_1);
-          _6 = core::slice::<impl [T]>::len(move _7) -> [return: bb1, unwind continue];
+          _7 = copy _1;
+-         _6 = core::slice::<impl [T]>::len(move _7) -> [return: bb1, unwind continue];
++         _6 = core::slice::<impl [T]>::len(copy _1) -> [return: bb1, unwind continue];
       }
   
       bb1: {
