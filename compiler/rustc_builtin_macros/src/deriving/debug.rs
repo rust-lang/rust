@@ -118,11 +118,7 @@ fn show_substructure(
         BlockOrExpr::new_expr(expr)
     } else if fields.len() <= CUTOFF {
         // Few enough fields that we can use a specific-length method.
-        let debug = if is_struct {
-            format!("debug_struct_field{}_finish", fields.len())
-        } else {
-            format!("debug_tuple_field{}_finish", fields.len())
-        };
+        let debug = format!("debug_struct_field{}_finish", fields.len());
         let fn_path_debug = cx.std_path(span, &[sym::fmt, sym::Formatter, Symbol::intern(&debug)]);
 
         let mut args = ThinVec::with_capacity(2 + fields.len());
@@ -196,13 +192,8 @@ fn show_substructure(
             cx.expr_array_ref(span, value_exprs),
         );
 
-        // `fmt::Formatter::debug_struct_fields_finish(fmt, names, values)` or
-        // `fmt::Formatter::debug_tuple_fields_finish(fmt, name, values)`
-        let sym_debug = if is_struct {
-            sym::debug_struct_fields_finish
-        } else {
-            sym::debug_tuple_fields_finish
-        };
+        // `fmt::Formatter::debug_struct_fields_finish(fmt, names, values)`
+        let sym_debug = sym::debug_struct_fields_finish;
         let fn_path_debug_internal = cx.std_path(span, &[sym::fmt, sym::Formatter, sym_debug]);
 
         let args = thin_vec![

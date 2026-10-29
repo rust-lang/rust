@@ -2572,13 +2572,22 @@ impl<'a> Formatter<'a> {
         names: &str,
         values: &[&dyn Debug],
     ) -> Result {
-        let mut names = names.split(' ');
-        let mut builder = builders::debug_struct_new(self, names.next().unwrap());
-        for value in values.into_iter() {
-            let name = names.next().unwrap();
-            builder.field(name, value);
+        let is_tuple = !names.contains(' ');
+        if is_tuple {
+            let mut builder = builders::debug_tuple_new(self, names);
+            for value in values {
+                builder.field(value);
+            }
+            builder.finish()
+        } else {
+            let mut names = names.split(' ');
+            let mut builder = builders::debug_struct_new(self, names.next().unwrap());
+            for value in values.into_iter() {
+                let name = names.next().unwrap();
+                builder.field(name, value);
+            }
+            builder.finish()
         }
-        builder.finish()
     }
 
     /// Shrinks `derive(Debug)` code, for faster compilation and smaller binaries.
@@ -2623,113 +2632,6 @@ impl<'a> Formatter<'a> {
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn debug_tuple<'b>(&'b mut self, name: &str) -> DebugTuple<'b, 'a> {
         builders::debug_tuple_new(self, name)
-    }
-
-    /// Shrinks `derive(Debug)` code, for faster compilation and smaller
-    /// binaries. `debug_tuple_fields_finish` is more general, but this is faster
-    /// for 1 field.
-    #[doc(hidden)]
-    #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
-    pub fn debug_tuple_field1_finish<'b>(&'b mut self, name: &str, value1: &dyn Debug) -> Result {
-        let mut builder = builders::debug_tuple_new(self, name);
-        builder.field(value1);
-        builder.finish()
-    }
-
-    /// Shrinks `derive(Debug)` code, for faster compilation and smaller
-    /// binaries. `debug_tuple_fields_finish` is more general, but this is faster
-    /// for 2 fields.
-    #[doc(hidden)]
-    #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
-    pub fn debug_tuple_field2_finish<'b>(
-        &'b mut self,
-        name: &str,
-        value1: &dyn Debug,
-        value2: &dyn Debug,
-    ) -> Result {
-        let mut builder = builders::debug_tuple_new(self, name);
-        builder.field(value1);
-        builder.field(value2);
-        builder.finish()
-    }
-
-    /// Shrinks `derive(Debug)` code, for faster compilation and smaller
-    /// binaries. `debug_tuple_fields_finish` is more general, but this is faster
-    /// for 3 fields.
-    #[doc(hidden)]
-    #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
-    pub fn debug_tuple_field3_finish<'b>(
-        &'b mut self,
-        name: &str,
-        value1: &dyn Debug,
-        value2: &dyn Debug,
-        value3: &dyn Debug,
-    ) -> Result {
-        let mut builder = builders::debug_tuple_new(self, name);
-        builder.field(value1);
-        builder.field(value2);
-        builder.field(value3);
-        builder.finish()
-    }
-
-    /// Shrinks `derive(Debug)` code, for faster compilation and smaller
-    /// binaries. `debug_tuple_fields_finish` is more general, but this is faster
-    /// for 4 fields.
-    #[doc(hidden)]
-    #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
-    pub fn debug_tuple_field4_finish<'b>(
-        &'b mut self,
-        name: &str,
-        value1: &dyn Debug,
-        value2: &dyn Debug,
-        value3: &dyn Debug,
-        value4: &dyn Debug,
-    ) -> Result {
-        let mut builder = builders::debug_tuple_new(self, name);
-        builder.field(value1);
-        builder.field(value2);
-        builder.field(value3);
-        builder.field(value4);
-        builder.finish()
-    }
-
-    /// Shrinks `derive(Debug)` code, for faster compilation and smaller
-    /// binaries. `debug_tuple_fields_finish` is more general, but this is faster
-    /// for 5 fields.
-    #[doc(hidden)]
-    #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
-    pub fn debug_tuple_field5_finish<'b>(
-        &'b mut self,
-        name: &str,
-        value1: &dyn Debug,
-        value2: &dyn Debug,
-        value3: &dyn Debug,
-        value4: &dyn Debug,
-        value5: &dyn Debug,
-    ) -> Result {
-        let mut builder = builders::debug_tuple_new(self, name);
-        builder.field(value1);
-        builder.field(value2);
-        builder.field(value3);
-        builder.field(value4);
-        builder.field(value5);
-        builder.finish()
-    }
-
-    /// Shrinks `derive(Debug)` code, for faster compilation and smaller
-    /// binaries. For the cases not covered by `debug_tuple_field[12345]_finish`.
-    #[doc(hidden)]
-    #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
-    pub fn debug_tuple_fields_finish<'b>(
-        &'b mut self,
-        name: &str,
-        values: &[&dyn Debug],
-    ) -> Result {
-        let mut builder = builders::debug_tuple_new(self, name);
-        for value in values {
-            builder.field(value);
-        }
-        builder.finish()
     }
 
     /// Creates a `DebugList` builder designed to assist with creation of

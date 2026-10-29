@@ -803,7 +803,6 @@ symbols! {
         debug_assertions,
         debug_c_like_enum_write_str,
         debug_struct_fields_finish,
-        debug_tuple_fields_finish,
         debugger_visualizer,
         decl_macro,
         declare_lint_pass,
