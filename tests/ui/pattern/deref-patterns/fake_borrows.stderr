@@ -20,8 +20,30 @@ LL |         _ if { v[0] = true; false } => {}
    |                |
    |                mutable borrow occurs here
 
+error[E0506]: cannot assign to `*w` because it is borrowed
+  --> $DIR/fake_borrows.rs:29:25
+   |
+LL |         &mut [[x]] if { *w = vec![]; true } || return => {}
+   |              -----      ^^ `*w` is assigned to here but it was already borrowed
+   |              | |
+   |              | borrow later used here
+   |              `*w` is borrowed here
+   |
+   = note: borrow occurs due to deref coercion to `[Vec<bool>]`
+note: deref defined here
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+
+error[E0510]: cannot assign `w` in match guard
+  --> $DIR/fake_borrows.rs:31:25
+   |
+LL |     match w {
+   |           - value is immutable in match guard
+...
+LL |         &mut [[x]] if { w = empty; true } || return => {}
+   |                         ^^^^^^^^^ cannot assign
+
 error[E0510]: cannot assign `*b` in match guard
-  --> $DIR/fake_borrows.rs:25:16
+  --> $DIR/fake_borrows.rs:40:16
    |
 LL |     match b {
    |           - value is immutable in match guard
@@ -30,7 +52,7 @@ LL |         _ if { *b = true; false } => {}
    |                ^^^^^^^^^ cannot assign
 
 error[E0510]: cannot assign `*b` in match guard
-  --> $DIR/fake_borrows.rs:32:16
+  --> $DIR/fake_borrows.rs:47:16
    |
 LL |     match b {
    |           - value is immutable in match guard
@@ -38,7 +60,25 @@ LL |         true => {}
 LL |         _ if { *b = true; false } => {}
    |                ^^^^^^^^^ cannot assign
 
-error: aborting due to 4 previous errors
+error[E0506]: cannot assign to `***p` because it is borrowed
+  --> $DIR/fake_borrows.rs:58:37
+   |
+LL |         &mut deref!(deref!(x)) if { ***p = true; true } || return => {}
+   |                            -        ^^^^^^^^^^^                 - borrow later used here
+   |                            |        |
+   |                            |        `***p` is assigned to here but it was already borrowed
+   |                            `***p` is borrowed here
 
-Some errors have detailed explanations: E0502, E0510.
+error[E0510]: cannot assign `p` in match guard
+  --> $DIR/fake_borrows.rs:60:37
+   |
+LL |     match p {
+   |           - value is immutable in match guard
+...
+LL |         &mut deref!(deref!(x)) if { p = t; true } || return => {}
+   |                                     ^^^^^ cannot assign
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0502, E0506, E0510.
 For more information about an error, try `rustc --explain E0502`.

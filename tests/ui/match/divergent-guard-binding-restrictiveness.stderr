@@ -1,0 +1,58 @@
+error[E0510]: cannot assign `x` in match guard
+  --> $DIR/divergent-guard-binding-restrictiveness.rs:10:23
+   |
+LL |     match x {
+   |           - value is immutable in match guard
+...
+LL |         Some(&b) if { x = None; false } || return => {}
+   |                       ^^^^^^^^ cannot assign
+
+error[E0510]: cannot assign `x` in match guard
+  --> $DIR/divergent-guard-binding-restrictiveness.rs:12:33
+   |
+LL |     match x {
+   |           - value is immutable in match guard
+...
+LL |         Some(&b) if false || ({ x = None; false } || return) => {}
+   |                                 ^^^^^^^^ cannot assign
+
+error[E0506]: cannot assign to `x` because it is borrowed
+  --> $DIR/divergent-guard-binding-restrictiveness.rs:17:22
+   |
+LL |         Some(b) if { x = None; false } || return => {}
+   |              -       ^^^^^^^^                  - borrow later used here
+   |              |       |
+   |              |       `x` is assigned to here but it was already borrowed
+   |              `x` is borrowed here
+
+error[E0506]: cannot assign to `x` because it is borrowed
+  --> $DIR/divergent-guard-binding-restrictiveness.rs:19:32
+   |
+LL |         Some(b) if false || ({ x = None; false } || return) => {}
+   |              -                 ^^^^^^^^                   - borrow later used here
+   |              |                 |
+   |              |                 `x` is assigned to here but it was already borrowed
+   |              `x` is borrowed here
+
+error[E0506]: cannot assign to `x` because it is borrowed
+  --> $DIR/divergent-guard-binding-restrictiveness.rs:24:26
+   |
+LL |         Some(ref b) if { x = None; false } || return => { b; }
+   |              -----       ^^^^^^^^                         - borrow later used here
+   |              |           |
+   |              |           `x` is assigned to here but it was already borrowed
+   |              `x` is borrowed here
+
+error[E0506]: cannot assign to `x` because it is borrowed
+  --> $DIR/divergent-guard-binding-restrictiveness.rs:26:36
+   |
+LL |         Some(ref b) if false || ({ x = None; false } || return) => { b; }
+   |              -----                 ^^^^^^^^                          - borrow later used here
+   |              |                     |
+   |              |                     `x` is assigned to here but it was already borrowed
+   |              `x` is borrowed here
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0506, E0510.
+For more information about an error, try `rustc --explain E0506`.
