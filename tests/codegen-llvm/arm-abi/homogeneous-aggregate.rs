@@ -11,7 +11,7 @@
 // Test that homogeneous aggregates are passed and returned with the correct ABI on 32-bit arm.
 
 #![feature(no_core, lang_items)]
-#![feature(arm_target_feature)]
+#![feature(arm_target_feature, f16, f128)]
 #![crate_type = "lib"]
 #![no_core]
 
@@ -180,6 +180,20 @@ pub struct Floats5 {
 // watchos: define void @test_floats_5(ptr align 4 %a)
 #[unsafe(no_mangle)]
 pub extern "C" fn test_floats_5(a: Floats5) {
+    hint::black_box(a);
+}
+
+// Only f32 and f64 qualify as an HFA base.
+
+// linux:   define void @test_f16([2 x i32] %0)
+#[unsafe(no_mangle)]
+pub extern "C" fn test_f16(a: [f16; 3]) {
+    hint::black_box(a);
+}
+
+// linux:   define void @test_f128([2 x i64] %0)
+#[unsafe(no_mangle)]
+pub extern "C" fn test_f128(a: [f128; 1]) {
     hint::black_box(a);
 }
 
