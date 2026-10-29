@@ -20,10 +20,9 @@ mod simd;
 use cranelift_codegen::ir::{
     AtomicRmwOp, BlockArg, ExceptionTableData, ExceptionTableItem, ExceptionTag,
 };
-use rustc_middle::ty;
-use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::layout::{HasTypingEnv as _, ValidityRequirement};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
+use rustc_middle::ty::{self, GenericArgsRef, IntrinsicName};
 use rustc_span::{Spanned, Symbol, sym};
 use rustc_target::spec::PanicStrategy;
 
@@ -652,7 +651,8 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
             let ty = generic_args.type_at(0);
 
-            let requirement = ValidityRequirement::from_intrinsic(intrinsic);
+            let requirement =
+                ValidityRequirement::from_intrinsic(IntrinsicName::RustIntrinsic(intrinsic));
 
             if let Some(requirement) = requirement {
                 let do_panic = !fx

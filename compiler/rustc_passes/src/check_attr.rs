@@ -347,7 +347,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcIfThisChanged(..) => (),
             AttributeKind::RustcInheritOverflowChecks => (),
             AttributeKind::RustcInsignificantDtor => (),
-            AttributeKind::RustcIntrinsic => (),
+            AttributeKind::RustcIntrinsic { .. } => (),
             AttributeKind::RustcIntrinsicConstStableIndirect => (),
             AttributeKind::RustcLegacyConstGenerics { .. } => (),
             AttributeKind::RustcLintOptDenyFieldAccess { .. } => (),

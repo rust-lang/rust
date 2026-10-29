@@ -1,6 +1,6 @@
 use rustc_attr_ir::{RustcMirKind, find_attr};
 use rustc_middle::mir::{self, Body, Local, Location};
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, IntrinsicName, Ty, TyCtxt};
 use rustc_span::{Span, sym};
 use tracing::{debug, info};
 
@@ -164,7 +164,7 @@ impl PeekCall {
         {
             let fn_args = fn_args.no_bound_vars().unwrap();
 
-            if tcx.intrinsic(def_id)?.name != sym::rustc_peek {
+            if tcx.intrinsic(def_id)?.name != IntrinsicName::RustIntrinsic(sym::rustc_peek) {
                 return None;
             }
 

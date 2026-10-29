@@ -1317,8 +1317,10 @@ pub enum AttributeKind {
     /// Represents `#[rustc_insignificant_dtor]`
     RustcInsignificantDtor,
 
-    /// Represents `#[rustc_intrinsic]`
-    RustcIntrinsic,
+    /// Represents `#[rustc_intrinsic]` / `#[rustc_intrinsic(llvm = "...")]`
+    RustcIntrinsic {
+        llvm: Option<Symbol>,
+    },
 
     /// Represents `#[rustc_intrinsic_const_stable_indirect]`
     RustcIntrinsicConstStableIndirect,

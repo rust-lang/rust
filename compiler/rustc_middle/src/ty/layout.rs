@@ -12,7 +12,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_macros::{StableHash, TyDecodable, TyEncodable, extension};
 use rustc_session::config::OptLevel;
-use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Spanned, Symbol, bug, span_bug, sym};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Spanned, bug, span_bug, sym};
 use rustc_structures::Limit;
 use rustc_target::callconv::FnAbi;
 use rustc_target::spec::{HasTargetSpec, HasX86AbiOpt, Target, X86Abi};
@@ -22,7 +22,9 @@ use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::query::TyCtxtAt;
 use crate::traits::ObligationCause;
 use crate::ty::normalize_erasing_regions::NormalizationError;
-use crate::ty::{self, CoroutineArgsExt, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
+use crate::ty::{
+    self, CoroutineArgsExt, IntrinsicName, Ty, TyCtxt, TypeVisitableExt, Unnormalized,
+};
 
 #[extension(pub trait IntegerExt)]
 impl abi::Integer {
@@ -218,11 +220,13 @@ pub enum ValidityRequirement {
 }
 
 impl ValidityRequirement {
-    pub fn from_intrinsic(intrinsic: Symbol) -> Option<Self> {
+    pub fn from_intrinsic(intrinsic: IntrinsicName) -> Option<Self> {
         match intrinsic {
-            sym::assert_inhabited => Some(Self::Inhabited),
-            sym::assert_zero_valid => Some(Self::Zero),
-            sym::assert_mem_uninitialized_valid => Some(Self::UninitMitigated0x01Fill),
+            IntrinsicName::RustIntrinsic(sym::assert_inhabited) => Some(Self::Inhabited),
+            IntrinsicName::RustIntrinsic(sym::assert_zero_valid) => Some(Self::Zero),
+            IntrinsicName::RustIntrinsic(sym::assert_mem_uninitialized_valid) => {
+                Some(Self::UninitMitigated0x01Fill)
+            }
             _ => None,
         }
     }

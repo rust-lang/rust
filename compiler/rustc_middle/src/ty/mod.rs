@@ -24,7 +24,7 @@ pub use adt::*;
 pub use assoc::*;
 pub use generic_args::{GenericArgKind, TermKind, *};
 pub use generics::*;
-pub use intrinsic::IntrinsicDef;
+pub use intrinsic::{IntrinsicDef, IntrinsicName};
 use rustc_abi::{
     Align, FieldIdx, Integer, IntegerType, ReprFlags, ReprOptions, ScalableElt, Size, VariantIdx,
 };

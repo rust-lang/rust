@@ -18,9 +18,9 @@ use rustc_middle::ty::print::{
 use rustc_middle::ty::util::Discr;
 use rustc_middle::ty::{
     AdtDef, AdtKind, AssocItem, Binder, ClosureKind, CoroutineArgsExt, EarlyBinder,
-    ExistentialTraitRef, FnSig, GenericArgsRef, Instance, InstanceKind, IntrinsicDef, List,
-    PolyFnSig, ScalarInt, TraitDef, TraitRef, Ty, TyCtxt, TyKind, TypeVisitableExt, UintTy,
-    ValTree, VariantDef, VtblEntry,
+    ExistentialTraitRef, FnSig, GenericArgsRef, Instance, InstanceKind, IntrinsicDef,
+    IntrinsicName, List, PolyFnSig, ScalarInt, TraitDef, TraitRef, Ty, TyCtxt, TyKind,
+    TypeVisitableExt, UintTy, ValTree, VariantDef, VtblEntry,
 };
 use rustc_middle::{mir, ty};
 use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
@@ -404,7 +404,11 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
 
     /// Retrieve the plain function name of an intrinsic.
     pub fn intrinsic_name(&self, def_id: DefId) -> String {
-        self.tcx.intrinsic(def_id).unwrap().name.to_string()
+        match self.tcx.intrinsic(def_id).unwrap().name {
+            IntrinsicName::RustIntrinsic(s) => s,
+            IntrinsicName::BackendIntrinsic { llvm } => llvm,
+        }
+        .to_string()
     }
 
     /// Retrieve the closure signature for the given generic arguments.

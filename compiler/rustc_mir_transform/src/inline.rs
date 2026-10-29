@@ -14,7 +14,8 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{
-    self, Instance, InstanceKind, ShimKind, Ty, TyCtxt, TypeFlags, TypeVisitableExt, Unnormalized,
+    self, Instance, InstanceKind, IntrinsicName, ShimKind, Ty, TyCtxt, TypeFlags, TypeVisitableExt,
+    Unnormalized,
 };
 use rustc_session::config::{DebugInfo, OptLevel};
 use rustc_span::{Spanned, bug};
@@ -561,8 +562,17 @@ fn resolve_callsite<'tcx, I: Inliner<'tcx>>(
                 if intrinsic.must_be_overridden {
                     return None; // intrinsic without fallback body
                 }
-                if !tcx.sess.fallback_intrinsics.contains(&intrinsic.name) {
-                    return None; // intrinsic that the backend may want to overwrite
+                match intrinsic.name {
+                    // intrinsics that the backend may want to overwrite
+                    IntrinsicName::RustIntrinsic(name)
+                        if !tcx.sess.fallback_intrinsics.contains(&name) =>
+                    {
+                        return None;
+                    }
+                    IntrinsicName::BackendIntrinsic { .. } => {
+                        return None;
+                    }
+                    _ => {}
                 }
                 // The callee is the fallback body.
                 debug!("callsite is fallback body: {def_id:?}");

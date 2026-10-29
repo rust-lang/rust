@@ -8,7 +8,7 @@ use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
-use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty};
+use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, IntrinsicName, Ty};
 use rustc_span::{DUMMY_SP, Spanned, span_bug, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::{debug, instrument};
@@ -407,7 +407,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::Call { ty, fun, ref args, .. }
                 if let ty::FnDef(def_id, generic_args) = *ty.kind()
                     && let Some(intrinsic) = this.tcx.intrinsic(def_id)
-                    && matches!(intrinsic.name, sym::write_via_move | sym::write_box_via_move) =>
+                    && matches!(
+                        intrinsic.name,
+                        IntrinsicName::RustIntrinsic(sym::write_via_move | sym::write_box_via_move)
+                    ) =>
             {
                 let generic_args = generic_args.no_bound_vars().unwrap();
                 // We still have to evaluate the callee expression as normal (but we don't care
@@ -415,7 +418,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let _fun = unpack!(block = this.as_local_operand(block, fun));
 
                 match intrinsic.name {
-                    sym::write_via_move => {
+                    IntrinsicName::RustIntrinsic(sym::write_via_move) => {
                         // `write_via_move(ptr, val)` becomes `*ptr = val` but without any dropping.
 
                         // The destination must have unit type (so we don't actually have to store anything
@@ -433,7 +436,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         let ptr_deref = ptr.project_deeper(&[ProjectionElem::Deref], this.tcx);
                         this.expr_into_dest(ptr_deref, block, val)
                     }
-                    sym::write_box_via_move => {
+                    IntrinsicName::RustIntrinsic(sym::write_box_via_move) => {
                         // The signature is:
                         // `fn write_box_via_move<T>(b: Box<MaybeUninit<T>>, val: T) -> Box<MaybeUninit<T>>`.
                         // `write_box_via_move(b, val)` becomes

@@ -122,7 +122,7 @@ impl<'tcx> LateLintPass<'tcx> for CheckTransmutes {
         let Res::Def(DefKind::Fn, def_id) = cx.qpath_res(&qpath, callee.hir_id) else {
             return;
         };
-        if !cx.tcx.is_intrinsic(def_id, sym::transmute) {
+        if !cx.tcx.is_rust_intrinsic(def_id, sym::transmute) {
             return;
         };
         let body_owner_def_id = cx.tcx.hir_enclosing_body_owner(expr.hir_id);
