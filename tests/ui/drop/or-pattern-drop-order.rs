@@ -115,9 +115,9 @@ fn main() {
     assert_drop_order(1..=6, |o| {
         // The `LogDrop`s that aren't moved into bindings are dropped last.
         match [
-            [LogDrop(o, 6), LogDrop(o, 4)],
+            [LogDrop(o, 5), LogDrop(o, 4)],
             [LogDrop(o, 3), LogDrop(o, 2)],
-            [LogDrop(o, 1), LogDrop(o, 5)],
+            [LogDrop(o, 1), LogDrop(o, 6)],
         ] {
             [
                 [_ | _, w | w] | [w | w, _ | _],
