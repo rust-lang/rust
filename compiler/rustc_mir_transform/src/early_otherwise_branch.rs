@@ -1,10 +1,13 @@
 use std::fmt::Debug;
 
+use rustc_index::bit_set::DenseBitSet;
+use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, VisitPlacesWith, Visitor};
 use rustc_middle::mir::*;
-use rustc_middle::ty::{Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use tracing::trace;
 
 use super::simplify::simplify_cfg;
+use super::ssa::SsaLocals;
 use crate::PassPolicy;
 use crate::patch::MirPatch;
 
@@ -102,11 +105,16 @@ impl<'tcx> crate::MirPass<'tcx> for EarlyOtherwiseBranch {
         trace!("running EarlyOtherwiseBranch on {:?}", body.source);
 
         let mut should_cleanup = false;
+        // The transform only writes fresh temporaries, so argument facts survive CFG changes.
+        let mut unchanged_arguments = None;
 
         // Also consider newly generated bbs in the same pass
         for parent in body.basic_blocks.indices() {
             let bbs = &*body.basic_blocks;
-            let Some(opt_data) = evaluate_candidate(tcx, body, parent) else { continue };
+            let Some(opt_data) = evaluate_candidate(tcx, body, parent, &mut unchanged_arguments)
+            else {
+                continue;
+            };
 
             trace!("SUCCESS: found optimization possibility to apply: {opt_data:?}");
 
@@ -212,6 +220,7 @@ fn evaluate_candidate<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
     parent: BasicBlock,
+    unchanged_arguments: &mut Option<UnchangedArguments>,
 ) -> Option<OptimizationData<'tcx>> {
     let bbs = &body.basic_blocks;
     // NB: If this BB is a cleanup, we may need to figure out what else needs to be handled.
@@ -300,10 +309,19 @@ fn evaluate_candidate<'tcx>(
             child_place,
             destination,
             need_hoist_discriminant,
-            otherwise_is_empty_unreachable,
         ) {
             return None;
         }
+    }
+    // A stable address does not imply that the child place is initialized on the otherwise path.
+    // Keep discriminant hoisting restricted to exhaustive switches (#95162).
+    if !otherwise_is_empty_unreachable
+        && (need_hoist_discriminant
+            || !unchanged_arguments
+                .get_or_insert_with(|| UnchangedArguments::new(tcx, body))
+                .can_hoist(body, child_place))
+    {
+        return None;
     }
     Some(OptimizationData {
         destination,
@@ -320,67 +338,11 @@ fn verify_candidate_branch<'tcx>(
     place: Place<'tcx>,
     destination: BasicBlock,
     need_hoist_discriminant: bool,
-    otherwise_is_empty_unreachable: bool,
 ) -> bool {
     // In order for the optimization to be correct, the terminator must be a `SwitchInt`.
     let TerminatorKind::SwitchInt { discr: switch_op, targets } = &branch.terminator().kind else {
         return false;
     };
-    if !otherwise_is_empty_unreachable {
-        // Someone could write code like this:
-        // ```rust
-        // let Q = val;
-        // if discriminant(P) == otherwise {
-        //     let ptr = &mut Q as *mut _ as *mut u8;
-        //     // It may be difficult for us to effectively determine whether values are valid.
-        //     // Invalid values can come from all sorts of corners.
-        //     unsafe { *ptr = 10; }
-        // }
-        //
-        // match P {
-        //    A => match Q {
-        //        A => {
-        //            // code
-        //        }
-        //        _ => {
-        //            // don't use Q
-        //        }
-        //    }
-        //    _ => {
-        //        // don't use Q
-        //    }
-        // };
-        // ```
-        //
-        // Hoisting the `discriminant(Q)` out of the `A` arm causes us to compute the discriminant of an
-        // invalid value, which is UB.
-        // In order to fix this, **we would either need to show that the discriminant computation of
-        // `place` is computed in all branches**.
-        // For <https://github.com/rust-lang/rust/issues/95162>, we adopt a conservative approach and
-        // consider only the `otherwise` branch has no statements and an unreachable terminator.
-        if need_hoist_discriminant {
-            return false;
-        }
-        // For <https://github.com/rust-lang/rust/issues/159591>:
-        // ```
-        // bb0: {
-        //     switchInt(copy _1) -> [1: bb1, 2: bb2, otherwise: bb5];
-        // }
-        // bb1: {
-        //     switchInt(copy (*_2)) -> [1: bb3, otherwise: bb5];
-        // }
-        // bb2: {
-        //     switchInt(copy (*_2)) -> [2: bb4, otherwise: bb5];
-        // }
-        // ```
-        // We cannot hoist the dereference of `_2` to `bb0`,
-        // because execution can reach `bb5` without dereferencing `_2`.
-        if let Some(place) = switch_op.place()
-            && !place.is_stable_offset()
-        {
-            return false;
-        }
-    }
     if need_hoist_discriminant {
         // If we need hoist discriminant, the branch must have exactly one statement.
         let [statement] = branch.statements.as_slice() else {
@@ -418,4 +380,52 @@ fn verify_candidate_branch<'tcx>(
         return false;
     };
     target_value == value
+}
+
+struct UnchangedArguments(DenseBitSet<Local>);
+
+impl UnchangedArguments {
+    fn new<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> Self {
+        let ssa = SsaLocals::new(tcx, body, body.typing_env(tcx));
+        let mut arguments = DenseBitSet::new_empty(body.local_decls.len());
+        for arg in body.args_iter() {
+            if ssa.is_ssa(arg) && !ssa.borrowed_locals().contains(arg) {
+                arguments.insert(arg);
+            }
+        }
+        // SSA does not track storage lifetimes or invalidate moved places.
+        VisitPlacesWith(|place: Place<'_>, context: PlaceContext| {
+            if matches!(context, PlaceContext::NonMutatingUse(NonMutatingUseContext::Move))
+                || context.is_storage_marker()
+            {
+                arguments.remove(place.local);
+            }
+        })
+        .visit_body(body);
+        Self(arguments)
+    }
+
+    fn can_hoist<'tcx>(&self, body: &Body<'tcx>, place: Place<'tcx>) -> bool {
+        // New temporaries added by this pass are outside the cached bitset.
+        if !self.0.contains_loose(place.local) {
+            return false;
+        }
+        let mut ty = body.local_decls[place.local].ty;
+        for elem in place.projection.iter() {
+            let ProjectionElem::Field(_, field_ty) = elem else {
+                return false;
+            };
+            // A valid union or enum need not have initialized bytes in every field.
+            let fields_are_valid = match ty.kind() {
+                ty::Tuple(_) => true,
+                ty::Adt(def, _) => def.is_struct(),
+                _ => false,
+            };
+            if !fields_are_valid {
+                return false;
+            }
+            ty = field_ty;
+        }
+        true
+    }
 }
