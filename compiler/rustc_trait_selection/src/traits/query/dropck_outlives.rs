@@ -342,10 +342,15 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
             // redundant; there is no storage for the resume type, so if it is actually stored
             // in the interior, we'll already detect the need for a drop by checking the interior.
             //
-            // FIXME(@lcnr): Why do we erase regions in the env here? Seems odd
+            // FIXME(@lcnr): We erase regions in the `param_env` here because old solver
+            // canonicalization replaces free regions with existential variables. With the new
+            // solver these are replaced with placeholders instead, at which point this becomes
+            // unnecessary.
             let typing_env = tcx.erase_and_anonymize_regions(typing_env);
             let needs_drop = tcx.mir_coroutine_witnesses(def_id).is_some_and(|witness| {
-                witness.field_tys.iter().any(|field| field.ty.needs_drop(tcx, typing_env))
+                witness.field_tys.iter().any(|field| {
+                    field.ty.instantiate(tcx, args.args).skip_norm_wip().needs_drop(tcx, typing_env)
+                })
             });
             if needs_drop {
                 // Pushing types directly to `constraints.outlives` is equivalent

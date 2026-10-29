@@ -6,7 +6,7 @@ use rustc_codegen_ssa::debuginfo::{tag_base_type, wants_c_like_enum_debuginfo};
 use rustc_codegen_ssa::traits::MiscCodegenMethods;
 use rustc_hir::def::CtorKind;
 use rustc_index::IndexSlice;
-use rustc_middle::mir::CoroutineLayout;
+use rustc_middle::mir::QueriedCoroutineLayout;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, AdtDef, CoroutineArgs, CoroutineArgsExt, Ty, VariantDef};
 use rustc_span::{Span, Symbol, bug};
@@ -292,7 +292,7 @@ fn build_coroutine_variant_struct_type_di_node<'ll, 'tcx>(
     variant_index: VariantIdx,
     coroutine_type_and_layout: TyAndLayout<'tcx>,
     coroutine_type_di_node: &'ll DIType,
-    coroutine_layout: &CoroutineLayout<'tcx>,
+    coroutine_layout: QueriedCoroutineLayout<'tcx>,
     common_upvar_names: &IndexSlice<FieldIdx, Symbol>,
 ) -> &'ll DIType {
     let variant_name = CoroutineArgs::variant_name(variant_index);
@@ -325,10 +325,10 @@ fn build_coroutine_variant_struct_type_di_node<'ll, 'tcx>(
             // Fields that just belong to this variant/state
             let state_specific_fields: SmallVec<_> = (0..variant_layout.fields.count())
                 .map(|field_index| {
-                    let coroutine_saved_local = coroutine_layout.variant_fields[variant_index]
+                    let coroutine_saved_local = coroutine_layout.variant_fields()[variant_index]
                         [FieldIdx::from_usize(field_index)];
                     let field_name_maybe =
-                        coroutine_layout.field_tys[coroutine_saved_local].debuginfo_name;
+                        coroutine_layout.field_tys()[coroutine_saved_local].debuginfo_name;
                     let field_name = field_name_maybe
                         .as_ref()
                         .map(|s| Cow::from(s.as_str()))
