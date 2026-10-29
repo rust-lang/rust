@@ -12,7 +12,7 @@ LL |         fn trait_method(&self) {
    = help: items from traits can only be used if the trait is in scope
 help: trait `Trait` which provides `trait_method` is implemented but not in scope; perhaps you want to import it
    |
-LL + use reexported_trait_56175::Trait;
+LL + use reexported_trait::Trait;
    |
 help: there is a method `trait_method_b` with a similar name
    |
@@ -33,7 +33,7 @@ LL |         fn trait_method_b(&self) {
    = help: items from traits can only be used if the trait is in scope
 help: trait `TraitB` which provides `trait_method_b` is implemented but not in scope; perhaps you want to import it
    |
-LL + use reexported_trait_56175::TraitBRename;
+LL + use reexported_trait::TraitBRename;
    |
 help: there is a method `trait_method` with a similar name
    |
