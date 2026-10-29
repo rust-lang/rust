@@ -26,6 +26,7 @@ use crate::diagnostics::{
 use crate::parser::{ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItemParser};
 use crate::{EmitAttribute, diagnostics};
 
+pub(crate) mod c_buffer_length;
 pub(crate) mod do_not_recommend;
 pub(crate) mod on_const;
 pub(crate) mod on_move;
@@ -44,7 +45,8 @@ impl<'sess> crate::AttributeParser<'sess> {
         const DIAGNOSTIC_ATTRIBUTES: [(
             Symbol,         /* name */
             Option<Symbol>, /* feature gate */
-        ); 8] = [
+        ); 9] = [
+            (sym::c_buffer_length, Some(sym::diagnostic_c_buffer_length)),
             (sym::on_unimplemented, None),
             (sym::do_not_recommend, None),
             (sym::on_move, Some(sym::diagnostic_on_move)),
