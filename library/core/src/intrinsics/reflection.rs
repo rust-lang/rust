@@ -160,11 +160,33 @@ pub fn type_id_generics(_id: crate::any::TypeId) -> &'static [crate::mem::type_i
 #[rustc_intrinsic]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_comptime]
-pub fn type_id_field_representing_type(
+pub fn type_id_field_representing(
     _id: crate::any::TypeId,
     _variant_index: usize,
     _field_index: usize,
 ) -> crate::any::TypeId;
+
+/// Gets the actual field `TypeId` of the [`FieldRepresentingType`]'s `TypeId`.
+///
+/// The more user-friendly version of this intrinsic is [`core::mem::type_info::FieldId::type_id`].
+///
+/// [`FieldRepresentingType`]: crate::field::FieldRepresentingType
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_comptime]
+pub fn type_id_field_representing_outer_type_id(
+    _frt_type_id: crate::any::TypeId,
+) -> crate::any::TypeId;
+
+/// Gets the name of the field represented by the [`FieldRepresentingType`]'s `TypeId`.
+///
+/// The more user-friendly version of this intrinsic is [`core::mem::type_info::FieldId::name`].
+///
+/// [`FieldRepresentingType`]: crate::field::FieldRepresentingType
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_comptime]
+pub fn type_id_field_representing_field_offset(_frt_type_id: crate::any::TypeId) -> usize;
 
 /// Given a `TypeId` that represents a pointer this returns the `TypeId` which that pointer
 /// points to. When called on anything else this returns None.
@@ -192,3 +214,12 @@ pub fn type_id_points_mutably(_id: crate::any::TypeId) -> bool;
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_comptime]
 pub fn type_id_function_ptr(_type_id: crate::any::TypeId) -> Option<crate::mem::type_info::FnPtr>;
+
+/// Returns a non empty string when given a `TypeId` which represents a named
+/// item such as struct, enum or trait. Otherwise returns an empty string.
+///
+/// The more user-friendly version of this intrinsic is [`core::any::TypeId::name`].
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_comptime]
+pub fn type_id_name(_type_id: crate::any::TypeId) -> &'static str;
