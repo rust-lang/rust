@@ -93,6 +93,20 @@ LL |         unsafe {}
 LL |     unsafe_in_macro!()
    |     ------------------ in this macro invocation
 
+error: usage of an `extern` block
+  --> $DIR/lint-unsafe-code.rs:158:1
+   |
+LL | / extern "C" {
+LL | |     #[unsafe(ffi_pure)]
+LL | |
+LL | |     fn ffi_pure();
+...  |
+LL | |     fn ffi_const();
+LL | | }
+   | |_^
+   |
+   = note: this is unsafe in all editions, even though `unsafe` only became required in the 2024 edition
+
 error: usage of the unsafe `no_mangle` attribute
   --> $DIR/lint-unsafe-code.rs:38:3
    |
@@ -305,5 +319,5 @@ LL |     #[unsafe(ffi_const)]
    |
    = note: `#[ffi_const]` functions shall have no effects except for its return value, which can only depend on the values of the function parameters, and is not affected by changes to the observable state of the program.
 
-error: aborting due to 38 previous errors
+error: aborting due to 39 previous errors
 

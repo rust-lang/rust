@@ -257,6 +257,9 @@ pub(crate) enum BuiltinUnsafe {
     UnsafeBlock,
     #[diag("usage of an `unsafe extern` block")]
     UnsafeExternBlock,
+    #[diag("usage of an `extern` block")]
+    #[note(r#"this is unsafe in all editions, even though `unsafe` only became required in the 2024 edition"#)]
+    BareExternBlock,
     #[diag("declaration of an `unsafe` trait")]
     UnsafeTrait,
     #[diag("implementation of an `unsafe` trait")]
