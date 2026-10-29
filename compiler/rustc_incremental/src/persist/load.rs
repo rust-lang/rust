@@ -2,7 +2,6 @@
 
 use std::sync::Arc;
 
-use rustc_data_structures::unord::UnordMap;
 use rustc_hashes::Hash64;
 use rustc_middle::dep_graph::{DepGraph, IncrCompSession, SerializedDepGraph, WorkProductMap};
 use rustc_middle::query::on_disk_cache::OnDiskCache;
@@ -38,41 +37,7 @@ fn load_dep_graph(
     };
     let expected_hash = sess.opts.dep_tracking_hash(false);
 
-    let mut prev_work_products = UnordMap::default();
-
-    let Some(work_products_path) = old_work_products_path(incr_comp_session) else {
-        return Err(());
-    };
-
-    if let Ok(OpenFile { mmap, start_pos }) =
-        file_format::open_incremental_file(sess, &work_products_path)
-    {
-        // Decode the list of work_products
-        let Ok(mut work_product_decoder) = MemDecoder::new(&mmap[..], start_pos) else {
-            sess.dcx().emit_warn(diagnostics::CorruptFile { path: &work_products_path });
-            return Err(());
-        };
-        let work_products: Vec<SerializedWorkProduct> =
-            Decodable::decode(&mut work_product_decoder);
-
-        for swp in work_products {
-            let all_files_exist = swp.work_product.saved_files.items().all(|(_, path)| {
-                let exists = in_old_incr_comp_dir_sess(incr_comp_session, path).unwrap().exists();
-                if !exists && sess.opts.unstable_opts.incremental_info {
-                    eprintln!("incremental: could not find file for work product: {path}",);
-                }
-                exists
-            });
-
-            if all_files_exist {
-                debug!("reconcile_work_products: all files for {:?} exist", swp);
-                prev_work_products.insert(swp.id, swp.work_product);
-            } else {
-                debug!("reconcile_work_products: some file for {:?} does not exist", swp);
-                return Err(());
-            }
-        }
-    }
+    let prev_work_products = load_work_product_index(sess, incr_comp_session)?;
 
     let _prof_timer = sess.prof.generic_activity("incr_comp_load_dep_graph");
 
@@ -108,6 +73,49 @@ fn load_dep_graph(
             Ok((prev_graph, prev_work_products))
         }
     }
+}
+
+fn load_work_product_index(
+    sess: &Session,
+    incr_comp_session: &IncrCompSession,
+) -> Result<WorkProductMap, ()> {
+    let mut prev_work_products = WorkProductMap::default();
+
+    let Some(work_products_path) = old_work_products_path(incr_comp_session) else {
+        return Err(());
+    };
+
+    if let Ok(OpenFile { mmap, start_pos }) =
+        file_format::open_incremental_file(sess, &work_products_path)
+    {
+        // Decode the list of work_products
+        let Ok(mut work_product_decoder) = MemDecoder::new(&mmap[..], start_pos) else {
+            sess.dcx().emit_warn(diagnostics::CorruptFile { path: &work_products_path });
+            return Err(());
+        };
+        let work_products: Vec<SerializedWorkProduct> =
+            Decodable::decode(&mut work_product_decoder);
+
+        for swp in work_products {
+            let all_files_exist = swp.work_product.saved_files.items().all(|(_, path)| {
+                let exists = in_old_incr_comp_dir_sess(incr_comp_session, path).unwrap().exists();
+                if !exists && sess.opts.unstable_opts.incremental_info {
+                    eprintln!("incremental: could not find file for work product: {path}",);
+                }
+                exists
+            });
+
+            if all_files_exist {
+                debug!("reconcile_work_products: all files for {:?} exist", swp);
+                prev_work_products.insert(swp.id, swp.work_product);
+            } else {
+                debug!("reconcile_work_products: some file for {:?} does not exist", swp);
+                return Err(());
+            }
+        }
+    }
+
+    Ok(prev_work_products)
 }
 
 /// Attempts to load the query result cache from disk
