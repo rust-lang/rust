@@ -1,4 +1,4 @@
-error: Undefined Behavior: overflowing shift by 100 in `simd_funnel_shl` in lane 0
+error: Undefined Behavior: overflowing shift by 100_i32 in `simd_funnel_shl` in lane 0
   --> tests/fail/intrinsics/simd-funnel_shl-too-far.rs:LL:CC
    |
 LL |         simd_funnel_shl(x, x, y);
