@@ -460,15 +460,15 @@ pub(crate) fn sqrt<F: Float>(x: F) -> F {
 }
 
 pub fn sqrt_op<'tcx, F: Float + FloatConvert<F> + Into<Scalar>>(
-    this: &mut MiriInterpCx<'tcx>,
+    ecx: &mut MiriInterpCx<'tcx>,
     f: &OpTy<'tcx>,
     dest: &PlaceTy<'tcx>,
 ) -> InterpResult<'tcx> {
-    let f: F = this.read_scalar(f)?.to_float()?;
+    let f: F = ecx.read_scalar(f)?.to_float()?;
     // Sqrt is specified to be fully precise.
     let res = math::sqrt(f);
-    let res = this.adjust_nan(res, &[f]);
-    this.write_scalar(res, dest)
+    let res = ecx.adjust_nan(res, &[f]);
+    ecx.write_scalar(res, dest)
 }
 
 pub trait HostFloatOperation {
@@ -533,7 +533,7 @@ pub enum HostUnaryFloatOp {
 }
 
 pub fn host_unary_float_op<'tcx, S: Semantics>(
-    this: &mut MiriInterpCx<'tcx>,
+    ecx: &mut MiriInterpCx<'tcx>,
     f: &OpTy<'tcx>,
     op: HostUnaryFloatOp,
     dest: &PlaceTy<'tcx>,
@@ -543,7 +543,7 @@ where
 {
     use HostFloatOperation;
 
-    let f: IeeeFloat<S> = this.read_scalar(f)?.to_float()?;
+    let f: IeeeFloat<S> = ecx.read_scalar(f)?.to_float()?;
 
     // The fixed-value and clamping functions need the name as a string.
     let name = match op {
@@ -555,7 +555,7 @@ where
         HostUnaryFloatOp::Log10 => "log10",
         HostUnaryFloatOp::Log2 => "log2",
     };
-    let res = math::fixed_float_value(this, name, &[f]).unwrap_or_else(|| {
+    let res = math::fixed_float_value(ecx, name, &[f]).unwrap_or_else(|| {
         // Using host floats (but it's fine, these operations do not have
         // guaranteed precision).
         let res = match op {
@@ -570,15 +570,15 @@ where
 
         // Apply a relative error of 4ULP to introduce some non-determinism
         // simulating imprecise implementations and optimizations.
-        let res = math::apply_random_float_error_ulp(this, res, 4);
+        let res = math::apply_random_float_error_ulp(ecx, res, 4);
 
         // Clamp the result to the guaranteed range of this function according to the C standard,
         // if any.
         math::clamp_float_value(name, res)
     });
 
-    let res = this.adjust_nan(res, &[f]);
-    this.write_scalar(res, dest)?;
+    let res = ecx.adjust_nan(res, &[f]);
+    ecx.write_scalar(res, dest)?;
     interp_ok(())
 }
 

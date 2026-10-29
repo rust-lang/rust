@@ -241,11 +241,11 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Extract the value from the result of reading an operand from the machine
     /// and convert it to a `OwnedArg`.
     fn op_to_ffi_arg(&self, v: &OpTy<'tcx>, tracing: bool) -> InterpResult<'tcx, OwnedArg> {
-        let this = self.eval_context_ref();
+        let ecx = self.eval_context_ref();
 
         // This should go first so that we emit unsupported before doing a bunch
         // of extra work for types that aren't supported yet.
-        let ty = this
+        let ty = ecx
             .ty_to_ffitype(v.layout)
             .map_err(|ty| err_unsup_format!("unsupported argument type for native call: {ty}"))?;
 
@@ -254,10 +254,10 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             static DEDUP: AtomicBool = AtomicBool::new(false);
             if !DEDUP.swap(true, std::sync::atomic::Ordering::Relaxed) {
                 // Newly set, so first time we get here.
-                this.emit_diagnostic(NonHaltingDiagnostic::NativeCallSharedMem { tracing });
+                ecx.emit_diagnostic(NonHaltingDiagnostic::NativeCallSharedMem { tracing });
             }
 
-            this.expose_provenance(prov)?;
+            ecx.expose_provenance(prov)?;
             interp_ok(())
         };
 
@@ -274,14 +274,13 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 if sz == 0 {
                     throw_unsup_format!("attempting to pass a ZST over FFI");
                 }
-                let (id, ofs, _) = this.ptr_get_alloc_id(mplace.ptr(), sz.try_into().unwrap())?;
+                let (id, ofs, _) = ecx.ptr_get_alloc_id(mplace.ptr(), sz.try_into().unwrap())?;
                 let ofs = ofs.bytes_usize();
                 let range = ofs..ofs.strict_add(sz);
                 // Expose all provenances in the allocation within the byte range of the struct, if
                 // any. These pointers are being directly passed to native code by-value.
-                let alloc = this.get_alloc_raw(id)?;
-                for (_prov_range, prov) in alloc.provenance().get_range(range.clone().into(), this)
-                {
+                let alloc = ecx.get_alloc_raw(id)?;
+                for (_prov_range, prov) in alloc.provenance().get_range(range.clone().into(), ecx) {
                     expose(prov)?;
                 }
                 // Read the bytes that make up this argument. We cannot use the normal getter as
@@ -293,13 +292,13 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let mut bytes: Box<[u8]> = vec![0; imm.layout.size.bytes_usize()].into();
 
                 // A little helper to write scalars to our byte array.
-                let mut write_scalar = |this: &MiriInterpCx<'tcx>, sc: Scalar, pos: usize| {
+                let mut write_scalar = |ecx: &MiriInterpCx<'tcx>, sc: Scalar, pos: usize| {
                     // If a scalar is a pointer, then expose its provenance.
                     if let interpret::Scalar::Ptr(p, _) = sc {
                         expose(p.provenance)?;
                     }
                     write_target_uint(
-                        this.data_layout().endian,
+                        ecx.data_layout().endian,
                         &mut bytes[pos..][..sc.size().bytes_usize()],
                         sc.to_scalar_int()?.to_bits_unchecked(),
                     )
@@ -309,7 +308,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 // Write the scalar into the `bytes` buffer.
                 match *imm {
-                    Immediate::Scalar(sc) => write_scalar(this, sc, 0)?,
+                    Immediate::Scalar(sc) => write_scalar(ecx, sc, 0)?,
                     Immediate::ScalarPair(sc_first, sc_second) => {
                         // The first scalar has an offset of zero; compute the offset of the 2nd.
                         let ofs_second = {
@@ -317,7 +316,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                                 imm.layout.backend_repr
                             else {
                                 span_bug!(
-                                    this.cur_span(),
+                                    ecx.cur_span(),
                                     "op_to_ffi_arg: invalid scalar pair layout: {:#?}",
                                     imm.layout
                                 )
@@ -325,8 +324,8 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             b_offset.bytes_usize()
                         };
 
-                        write_scalar(this, sc_first, 0)?;
-                        write_scalar(this, sc_second, ofs_second)?;
+                        write_scalar(ecx, sc_first, 0)?;
+                        write_scalar(ecx, sc_second, ofs_second)?;
                     }
                     Immediate::Uninit => {
                         // Nothing to write.
@@ -441,22 +440,22 @@ struct LibffiClosureData<'tcx> {
 /// Calling this function leaks the data passed into the libffi closure as
 /// these need to be available until the execution terminates as the native
 /// code side could store a function pointer and only call it at a later point.
-pub fn build_libffi_closure<'tcx, 'this>(
-    this: &'this MiriInterpCx<'tcx>,
+pub fn build_libffi_closure<'tcx>(
+    ecx: &MiriInterpCx<'tcx>,
     fn_sig: rustc_middle::ty::FnSig<'tcx>,
 ) -> InterpResult<'tcx, unsafe extern "C" fn()> {
     // Compute argument and return types in libffi representation.
     let closure_builder = try {
         let mut closure_builder = libffi::middle::Builder::new();
         for &input in fn_sig.inputs().iter() {
-            let layout = this.layout_of(input).map_err(|_| input)?;
-            let ty = this.ty_to_ffitype(layout)?;
+            let layout = ecx.layout_of(input).map_err(|_| input)?;
+            let ty = ecx.ty_to_ffitype(layout)?;
             closure_builder = closure_builder.arg(ty);
         }
         let res_type = fn_sig.output();
         let res_type = {
-            let layout = this.layout_of(res_type).map_err(|_| res_type)?;
-            this.ty_to_ffitype(layout)?
+            let layout = ecx.layout_of(res_type).map_err(|_| res_type)?;
+            ecx.ty_to_ffitype(layout)?
         };
         closure_builder.res(res_type)
     };
@@ -470,7 +469,7 @@ pub fn build_libffi_closure<'tcx, 'this>(
 
     // Build the actual closure.
     let data = LibffiClosureData {
-        ecx_interchange: this.machine.native_lib_ecx_interchange,
+        ecx_interchange: ecx.machine.native_lib_ecx_interchange,
         unsupported,
         marker: PhantomData,
     };

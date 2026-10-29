@@ -2159,7 +2159,7 @@ pub type DynMachineCallback<'tcx, T> = Box<dyn MachineCallback<'tcx, T> + 'tcx>;
 ///         var1: Ty1,
 ///         var2: Ty2<'tcx>,
 ///     }
-///     |this, arg: ArgTy| {
+///     |ecx, arg: ArgTy| {
 ///         // Implement the callback here.
 ///         todo!()
 ///     }
@@ -2171,7 +2171,7 @@ pub type DynMachineCallback<'tcx, T> = Box<dyn MachineCallback<'tcx, T> + 'tcx>;
 macro_rules! callback {
     (@capture<$tcx:lifetime $(,)? $($lft:lifetime),*>
         { $($name:ident: $type:ty),* $(,)? }
-     |$this:ident, $arg:ident: $arg_ty:ty| $body:expr $(,)?) => {{
+     |$ecx:ident, $arg:ident: $arg_ty:ty| $body:expr $(,)?) => {{
         struct Callback<$tcx, $($lft),*> {
             $($name: $type,)*
             _phantom: std::marker::PhantomData<&$tcx ()>,
@@ -2188,7 +2188,7 @@ macro_rules! callback {
         impl<$tcx, $($lft),*> MachineCallback<$tcx, $arg_ty> for Callback<$tcx, $($lft),*> {
             fn call(
                 self: Box<Self>,
-                $this: &mut MiriInterpCx<$tcx>,
+                $ecx: &mut MiriInterpCx<$tcx>,
                 $arg: $arg_ty
             ) -> InterpResult<$tcx> {
                 #[allow(unused_variables)]

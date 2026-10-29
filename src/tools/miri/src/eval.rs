@@ -247,17 +247,14 @@ impl<'tcx> ProgramExitHandler<'tcx> {
             exit_type,
         }
     }
-    pub fn on_stack_empty(
-        &mut self,
-        this: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx, Poll<()>> {
+    pub fn on_stack_empty(&mut self, ecx: &mut MiriInterpCx<'tcx>) -> InterpResult<'tcx, Poll<()>> {
         use ProgramExitState::*;
         match &mut self.state {
             TlsDtors(state) =>
-                match state.on_stack_empty(this)? {
+                match state.on_stack_empty(ecx)? {
                     Poll::Pending => {} // just keep going
                     Poll::Ready(()) => {
-                        if this.machine.data_race.as_genmc_ref().is_some() {
+                        if ecx.machine.data_race.as_genmc_ref().is_some() {
                             // In GenMC mode, we don't yield at the end of the main thread. Instead,
                             // the `GenmcCtx` will ensure that unfinished threads get a chance to
                             // run at this point.
@@ -274,21 +271,21 @@ impl<'tcx> ProgramExitHandler<'tcx> {
                     None => self.state = Done,
                     Some(new_remaining) => {
                         *remaining = new_remaining;
-                        this.yield_active_thread();
+                        ecx.yield_active_thread();
                     }
                 },
             Done => {
                 // Terminate this thread in the scheduler.
-                this.terminate_active_thread(/* for_exit */ true)?;
+                ecx.terminate_active_thread(/* for_exit */ true)?;
 
                 // We cannot come back.
                 self.state = Unreachable;
 
                 // In GenMC mode, we do not immediately stop execution on exit.
-                if let Some(genmc_ctx) = this.machine.data_race.as_genmc_ref() {
+                if let Some(genmc_ctx) = ecx.machine.data_race.as_genmc_ref() {
                     // If there's no error, execution will continue (on another thread).
                     genmc_ctx.handle_exit(
-                        this.machine.threads.active_thread(),
+                        ecx.machine.threads.active_thread(),
                         self.exit_code,
                         self.exit_type,
                     )?;
@@ -325,15 +322,15 @@ enum MainThreadState<'tcx> {
 impl<'tcx> MainThreadState<'tcx> {
     fn on_main_stack_empty(
         &mut self,
-        this: &mut MiriInterpCx<'tcx>,
+        ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, Poll<()>> {
         use MainThreadState::*;
         match self {
             GlobalCtors { ctor_state, entry_id, entry_type, argc, argv } => {
-                match ctor_state.on_stack_empty(this)? {
+                match ctor_state.on_stack_empty(ecx)? {
                     Poll::Pending => {} // just keep going
                     Poll::Ready(()) => {
-                        call_main(this, *entry_id, *entry_type, argc.clone(), argv.clone())?;
+                        call_main(ecx, *entry_id, *entry_type, argc.clone(), argv.clone())?;
                         *self = Running;
                     }
                 }
@@ -342,8 +339,8 @@ impl<'tcx> MainThreadState<'tcx> {
                 // Main code is done, the program is exiting.
 
                 // Figure out exit code.
-                let ret_place = this.machine.main_fn_ret_place.clone().unwrap();
-                let exit_code = this.read_target_isize(&ret_place)?;
+                let ret_place = ecx.machine.main_fn_ret_place.clone().unwrap();
+                let exit_code = ecx.read_target_isize(&ret_place)?;
                 // Rust uses `isize` but the underlying type of an exit code is `i32`.
                 let Ok(exit_code) = i32::try_from(exit_code) else {
                     throw_ub_format!(
@@ -354,7 +351,7 @@ impl<'tcx> MainThreadState<'tcx> {
             }
             Exiting(state) => {
                 // This is a sink state, we stay here forever.
-                return state.on_stack_empty(this);
+                return state.on_stack_empty(ecx);
             }
         }
         interp_ok(Poll::Pending)

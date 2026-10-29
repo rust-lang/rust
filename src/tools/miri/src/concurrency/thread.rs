@@ -630,9 +630,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         def_id: DefId,
     ) -> InterpResult<'tcx, StrictPointer> {
-        let this = self.eval_context_mut();
-        let tcx = this.tcx;
-        if let Some(old_alloc) = this.machine.threads.get_thread_local_alloc_id(def_id) {
+        let ecx = self.eval_context_mut();
+        let tcx = ecx.tcx;
+        if let Some(old_alloc) = ecx.machine.threads.get_thread_local_alloc_id(def_id) {
             // We already have a thread-specific allocation id for this
             // thread-local static.
             interp_ok(old_alloc)
@@ -643,11 +643,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             if tcx.is_foreign_item(def_id) {
                 throw_unsup_format!("foreign thread-local statics are not supported");
             }
-            let params = this.machine.get_default_alloc_params();
-            let alloc = this.ctfe_query(|tcx| tcx.eval_static_initializer(def_id))?;
+            let params = ecx.machine.get_default_alloc_params();
+            let alloc = ecx.ctfe_query(|tcx| tcx.eval_static_initializer(def_id))?;
             // We make a full copy of this allocation.
             let mut alloc = alloc.inner().adjust_from_tcx(
-                &this.tcx,
+                &ecx.tcx,
                 |bytes, align| {
                     interp_ok(MiriAllocBytes::from_bytes(
                         std::borrow::Cow::Borrowed(bytes),
@@ -655,13 +655,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         params,
                     ))
                 },
-                |ptr| this.global_root_pointer(ptr),
+                |ptr| ecx.global_root_pointer(ptr),
             )?;
             // This allocation will be deallocated when the thread dies, so it is not in read-only memory.
             alloc.mutability = Mutability::Mut;
             // Create a fresh allocation with this content.
-            let ptr = this.insert_allocation(alloc, MiriMemoryKind::Tls.into())?;
-            this.machine.threads.set_thread_local_alloc(def_id, ptr);
+            let ptr = ecx.insert_allocation(alloc, MiriMemoryKind::Tls.into())?;
+            ecx.machine.threads.set_thread_local_alloc(def_id, ptr);
             interp_ok(ptr)
         }
     }
@@ -676,21 +676,21 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         func_arg: ImmTy<'tcx>,
         ret_layout: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, ThreadId> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
         // Create the new thread
-        let current_span = this.machine.current_user_relevant_span();
-        let new_thread_id = this.machine.threads.create_thread({
+        let current_span = ecx.machine.current_user_relevant_span();
+        let new_thread_id = ecx.machine.threads.create_thread({
             let mut state = tls::TlsDtorsState::new_for_thread_finish();
             Box::new(move |m| state.on_stack_empty(m))
         });
-        match &mut this.machine.data_race {
+        match &mut ecx.machine.data_race {
             GlobalDataRaceHandler::None => {}
             GlobalDataRaceHandler::Vclocks(data_race) =>
-                data_race.thread_created(&this.machine.threads, new_thread_id, current_span),
+                data_race.thread_created(&ecx.machine.threads, new_thread_id, current_span),
             GlobalDataRaceHandler::Genmc(genmc_ctx) =>
                 genmc_ctx.handle_thread_create(
-                    &this.machine.threads,
+                    &ecx.machine.threads,
                     start_routine,
                     &func_arg,
                     new_thread_id,
@@ -699,7 +699,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Write the current thread-id, switch to the next thread later
         // to treat this write operation as occurring on the current thread.
         if let Some(thread_info_place) = thread {
-            this.write_scalar(
+            ecx.write_scalar(
                 Scalar::from_uint(new_thread_id.to_u32(), thread_info_place.layout.size),
                 &thread_info_place,
             )?;
@@ -707,25 +707,25 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Finally switch to new thread so that we can push the first stackframe.
         // After this all accesses will be treated as occurring in the new thread.
-        let old_thread_id = this.machine.threads.set_active_thread(new_thread_id);
+        let old_thread_id = ecx.machine.threads.set_active_thread(new_thread_id);
 
         // The child inherits its parent's cpu affinity.
         // Skips this if `machine.thread_cpu_affinity` is not initialized.
-        if let Some(thread_cpu_affinity) = &mut this.machine.thread_cpu_affinity
+        if let Some(thread_cpu_affinity) = &mut ecx.machine.thread_cpu_affinity
             && let Some(cpuset) = thread_cpu_affinity.get(&old_thread_id).cloned()
         {
             thread_cpu_affinity.insert(new_thread_id, cpuset);
         }
 
         // Perform the function pointer load in the new thread frame.
-        let instance = this.get_ptr_fn(start_routine)?.as_instance()?;
+        let instance = ecx.get_ptr_fn(start_routine)?.as_instance()?;
 
         // Note: the returned value is currently ignored (see the FIXME in
         // pthread_join in shims/unix/thread.rs) because the Rust standard library does not use
         // it.
-        let ret_place = this.allocate(ret_layout, MiriMemoryKind::Machine.into())?;
+        let ret_place = ecx.allocate(ret_layout, MiriMemoryKind::Machine.into())?;
 
-        this.call_thread_root_function(
+        ecx.call_thread_root_function(
             instance,
             start_abi,
             &[func_arg],
@@ -734,7 +734,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         )?;
 
         // Restore the old active thread frame.
-        this.machine.threads.set_active_thread(old_thread_id);
+        ecx.machine.threads.set_active_thread(old_thread_id);
 
         interp_ok(new_thread_id)
     }
@@ -743,8 +743,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// The memory of the old stack is leaked.
     /// Used to implement `exit`.
     fn replace_active_thread_stack(&mut self, on_stack_empty: StackEmptyCallback<'tcx>) {
-        let this = self.eval_context_mut();
-        let thread = this.active_thread_mut();
+        let ecx = self.eval_context_mut();
+        let thread = ecx.active_thread_mut();
         let span = thread.current_user_relevant_span();
 
         thread.stack.clear();
@@ -759,10 +759,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ///
     /// This is called by the eval loop when a thread's on_stack_empty returns `Ready`.
     fn terminate_active_thread(&mut self, for_exit: bool) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
         // Mark thread as terminated.
-        let thread = this.active_thread_mut();
+        let thread = ecx.active_thread_mut();
         thread.state = ThreadState::Terminated;
         assert!(
             for_exit || thread.stack.is_empty(),
@@ -770,10 +770,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         );
 
         // Deallocate TLS.
-        let gone_thread = this.active_thread();
+        let gone_thread = ecx.active_thread();
         {
             let mut free_tls_statics = Vec::new();
-            this.machine.threads.thread_local_allocs.retain(|&(_def_id, thread), &mut ptr| {
+            ecx.machine.threads.thread_local_allocs.retain(|&(_def_id, thread), &mut ptr| {
                 if thread != gone_thread {
                     // A different thread, keep this static around.
                     return true;
@@ -789,35 +789,35 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     // Leak the thread-local statics rather than freeing them.
                     if let Some(alloc) = ptr.provenance.get_alloc_id() {
                         trace!("Thread-local static leaked and stored as static root: {:?}", alloc);
-                        this.machine.static_roots.push(alloc);
+                        ecx.machine.static_roots.push(alloc);
                     }
                 } else {
-                    this.deallocate_ptr(ptr.into(), None, MiriMemoryKind::Tls.into())?;
+                    ecx.deallocate_ptr(ptr.into(), None, MiriMemoryKind::Tls.into())?;
                 }
             }
         }
 
-        match &mut this.machine.data_race {
+        match &mut ecx.machine.data_race {
             GlobalDataRaceHandler::None => {}
             GlobalDataRaceHandler::Vclocks(data_race) =>
-                data_race.thread_terminated(&this.machine.threads),
+                data_race.thread_terminated(&ecx.machine.threads),
             GlobalDataRaceHandler::Genmc(genmc_ctx) => {
                 // Inform GenMC that the thread finished.
                 // This needs to happen once all accesses to the thread are done, including freeing any TLS statics.
-                genmc_ctx.handle_thread_finish(&this.machine.threads)
+                genmc_ctx.handle_thread_finish(&ecx.machine.threads)
             }
         }
 
         // Unblock joining threads.
         let unblock_reason = BlockReason::Join(gone_thread);
-        let threads = &this.machine.threads.threads;
+        let threads = &ecx.machine.threads.threads;
         let joining_threads = threads
             .iter_enumerated()
             .filter(|(_, thread)| thread.state.is_blocked_on(unblock_reason))
             .map(|(id, _)| id)
             .collect::<Vec<_>>();
         for thread in joining_threads {
-            this.unblock_thread(thread, unblock_reason)?;
+            ecx.unblock_thread(thread, unblock_reason)?;
         }
 
         interp_ok(())
@@ -832,22 +832,22 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         deadline: Option<Deadline>,
         callback: DynUnblockCallback<'tcx>,
     ) {
-        let this = self.eval_context_mut();
-        if deadline.is_some() && this.machine.data_race.as_genmc_ref().is_some() {
+        let ecx = self.eval_context_mut();
+        if deadline.is_some() && ecx.machine.data_race.as_genmc_ref().is_some() {
             panic!("Unimplemented: Timeouts not yet supported in GenMC mode.");
         }
-        if matches!(deadline, Some(Deadline::RealTime(_))) && !this.machine.communicate() {
+        if matches!(deadline, Some(Deadline::RealTime(_))) && !ecx.machine.communicate() {
             panic!("cannot have `RealTime` timeout with isolation");
         }
-        this.machine.threads.block_thread(reason, deadline, callback);
+        ecx.machine.threads.block_thread(reason, deadline, callback);
     }
 
     /// Put the blocked thread into the enabled state.
     /// Sanity-checks that the thread previously was blocked for the right reason.
     fn unblock_thread(&mut self, thread: ThreadId, reason: BlockReason) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
         let old_state =
-            mem::replace(&mut this.machine.threads.threads[thread].state, ThreadState::Enabled);
+            mem::replace(&mut ecx.machine.threads.threads[thread].state, ThreadState::Enabled);
         let callback = match old_state {
             ThreadState::Blocked { reason: actual_reason, callback, .. } => {
                 assert_eq!(
@@ -859,9 +859,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             _ => panic!("unblock_thread: thread was not blocked"),
         };
         // The callback must be executed in the previously blocked thread.
-        let old_thread = this.machine.threads.set_active_thread(thread);
-        callback.call(this, UnblockKind::Ready)?;
-        this.machine.threads.set_active_thread(old_thread);
+        let old_thread = ecx.machine.threads.set_active_thread(thread);
+        callback.call(ecx, UnblockKind::Ready)?;
+        ecx.machine.threads.set_active_thread(old_thread);
         interp_ok(())
     }
 
@@ -870,18 +870,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// This method returns the minimum duration until the next thread deadline.
     /// If all ready threads have no deadline set, [`None`] is returned.
     fn unblock_expired_deadlines(&mut self) -> InterpResult<'tcx, Option<Duration>> {
-        let this = self.eval_context_mut();
-        let communicate = this.machine.communicate();
+        let ecx = self.eval_context_mut();
+        let communicate = ecx.machine.communicate();
 
         let mut min_wait_time = Option::<Duration>::None;
         let mut callbacks = Vec::new();
 
-        for (id, thread) in this.machine.threads.threads.iter_enumerated_mut() {
+        for (id, thread) in ecx.machine.threads.threads.iter_enumerated_mut() {
             match &thread.state {
                 ThreadState::Blocked { deadline: Some(deadline), .. } => {
                     let wait_time = match deadline {
                         Deadline::Monotonic(instant) =>
-                            instant.duration_since(this.machine.monotonic_clock.now()),
+                            instant.duration_since(ecx.machine.monotonic_clock.now()),
                         Deadline::RealTime(time) => {
                             assert!(communicate, "cannot have `RealTime` timeout with isolation");
                             time.duration_since(SystemTime::now()).unwrap_or(Duration::ZERO)
@@ -913,9 +913,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             //    thread.
             // 2. Make the scheduler the only place that can change the active
             //    thread.
-            let old_thread = this.machine.threads.set_active_thread(thread);
-            callback.call(this, UnblockKind::TimedOut)?;
-            this.machine.threads.set_active_thread(old_thread);
+            let old_thread = ecx.machine.threads.set_active_thread(thread);
+            callback.call(ecx, UnblockKind::TimedOut)?;
+            ecx.machine.threads.set_active_thread(old_thread);
         }
 
         interp_ok(min_wait_time)
@@ -927,8 +927,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         thread_id: ThreadId,
         allow_terminated_joined: bool,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
-        this.machine.threads.detach_thread(thread_id, allow_terminated_joined)
+        let ecx = self.eval_context_mut();
+        ecx.machine.threads.detach_thread(thread_id, allow_terminated_joined)
     }
 
     /// Mark that the active thread tries to join the thread with `joined_thread_id`.
@@ -940,28 +940,28 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         success_retval: Scalar,
         return_dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
-        let thread_mgr = &mut this.machine.threads;
+        let ecx = self.eval_context_mut();
+        let thread_mgr = &mut ecx.machine.threads;
         if thread_mgr.threads[joined_thread_id].join_status == ThreadJoinStatus::Detached {
             // On Windows this corresponds to joining on a closed handle.
             throw_ub_format!("trying to join a detached thread");
         }
 
         fn after_join<'tcx>(
-            this: &mut InterpCx<'tcx, MiriMachine<'tcx>>,
+            ecx: &mut MiriInterpCx<'tcx>,
             joined_thread_id: ThreadId,
             success_retval: Scalar,
             return_dest: &MPlaceTy<'tcx>,
         ) -> InterpResult<'tcx> {
-            let threads = &this.machine.threads;
-            match &mut this.machine.data_race {
+            let threads = &ecx.machine.threads;
+            match &mut ecx.machine.data_race {
                 GlobalDataRaceHandler::None => {}
                 GlobalDataRaceHandler::Vclocks(data_race) =>
                     data_race.thread_joined(threads, joined_thread_id),
                 GlobalDataRaceHandler::Genmc(genmc_ctx) =>
                     genmc_ctx.handle_thread_join(threads.active_thread, joined_thread_id)?,
             }
-            this.write_scalar(success_retval, return_dest)?;
+            ecx.write_scalar(success_retval, return_dest)?;
             interp_ok(())
         }
 
@@ -973,7 +973,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 "{:?} blocked on {:?} when trying to join",
                 thread_mgr.active_thread, joined_thread_id
             );
-            if let Some(genmc_ctx) = this.machine.data_race.as_genmc_ref() {
+            if let Some(genmc_ctx) = ecx.machine.data_race.as_genmc_ref() {
                 genmc_ctx.handle_thread_join(thread_mgr.active_thread, joined_thread_id)?;
             }
 
@@ -997,7 +997,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             );
         } else {
             // The thread has already terminated - establish happens-before and write the return value.
-            after_join(this, joined_thread_id, success_retval, return_dest)?;
+            after_join(ecx, joined_thread_id, success_retval, return_dest)?;
         }
         interp_ok(())
     }
@@ -1012,13 +1012,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         success_retval: Scalar,
         return_dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
-        let threads = &this.machine.threads.threads;
+        let ecx = self.eval_context_mut();
+        let threads = &ecx.machine.threads.threads;
         if threads[joined_thread_id].join_status == ThreadJoinStatus::Joined {
             throw_ub_format!("trying to join an already joined thread");
         }
 
-        if joined_thread_id == this.machine.threads.active_thread {
+        if joined_thread_id == ecx.machine.threads.active_thread {
             throw_ub_format!("trying to join itself");
         }
 
@@ -1030,57 +1030,57 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "this thread already has threads waiting for its termination"
         );
 
-        this.join_thread(joined_thread_id, success_retval, return_dest)
+        ecx.join_thread(joined_thread_id, success_retval, return_dest)
     }
 
     #[inline]
     fn active_thread(&self) -> ThreadId {
-        let this = self.eval_context_ref();
-        this.machine.threads.active_thread()
+        let ecx = self.eval_context_ref();
+        ecx.machine.threads.active_thread()
     }
 
     #[inline]
     fn active_thread_mut(&mut self) -> &mut Thread<'tcx> {
-        let this = self.eval_context_mut();
-        this.machine.threads.active_thread_mut()
+        let ecx = self.eval_context_mut();
+        ecx.machine.threads.active_thread_mut()
     }
 
     #[inline]
     fn active_thread_ref(&self) -> &Thread<'tcx> {
-        let this = self.eval_context_ref();
-        this.machine.threads.active_thread_ref()
+        let ecx = self.eval_context_ref();
+        ecx.machine.threads.active_thread_ref()
     }
 
     #[inline]
     fn get_total_thread_count(&self) -> usize {
-        let this = self.eval_context_ref();
-        this.machine.threads.get_total_thread_count()
+        let ecx = self.eval_context_ref();
+        ecx.machine.threads.get_total_thread_count()
     }
 
     #[inline]
     fn have_all_terminated(&self) -> bool {
-        let this = self.eval_context_ref();
-        this.machine.threads.have_all_terminated()
+        let ecx = self.eval_context_ref();
+        ecx.machine.threads.have_all_terminated()
     }
 
     #[inline]
     fn enable_thread(&mut self, thread_id: ThreadId) {
-        let this = self.eval_context_mut();
-        this.machine.threads.enable_thread(thread_id);
+        let ecx = self.eval_context_mut();
+        ecx.machine.threads.enable_thread(thread_id);
     }
 
     #[inline]
     fn active_thread_stack<'a>(&'a self) -> &'a [Frame<'tcx, Provenance, FrameExtra<'tcx>>] {
-        let this = self.eval_context_ref();
-        this.machine.threads.active_thread_stack()
+        let ecx = self.eval_context_ref();
+        ecx.machine.threads.active_thread_stack()
     }
 
     #[inline]
     fn active_thread_stack_mut<'a>(
         &'a mut self,
     ) -> &'a mut Vec<Frame<'tcx, Provenance, FrameExtra<'tcx>>> {
-        let this = self.eval_context_mut();
-        this.machine.threads.active_thread_stack_mut()
+        let ecx = self.eval_context_mut();
+        ecx.machine.threads.active_thread_stack_mut()
     }
 
     /// Set the name of the current thread. The buffer must not include the null terminator.
@@ -1107,11 +1107,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     #[inline]
     fn maybe_preempt_active_thread(&mut self) {
-        let this = self.eval_context_mut();
-        if !this.machine.threads.fixed_scheduling
-            && this.machine.rng.get_mut().random_bool(this.machine.preemption_rate)
+        let ecx = self.eval_context_mut();
+        if !ecx.machine.threads.fixed_scheduling
+            && ecx.machine.rng.get_mut().random_bool(ecx.machine.preemption_rate)
         {
-            this.yield_active_thread();
+            ecx.yield_active_thread();
         }
     }
 }

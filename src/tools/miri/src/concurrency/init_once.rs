@@ -77,18 +77,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         init_once_ref: InitOnceRef,
         callback: DynUnblockCallback<'tcx>,
     ) {
-        let this = self.eval_context_mut();
-        let thread = this.active_thread();
+        let ecx = self.eval_context_mut();
+        let thread = ecx.active_thread();
         let mut init_once = init_once_ref.0.borrow_mut();
         assert_ne!(init_once.status, InitOnceStatus::Complete, "queueing on complete init once");
 
         init_once.waiters.push_back(thread);
-        this.block_thread(BlockReason::InitOnce, None, callback);
+        ecx.block_thread(BlockReason::InitOnce, None, callback);
     }
 
     #[inline]
     fn init_once_complete(&mut self, init_once_ref: &InitOnceRef) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
         let mut init_once = init_once_ref.0.borrow_mut();
         assert_eq!(
@@ -100,14 +100,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         init_once.status = InitOnceStatus::Complete;
 
         // Each complete happens-before the end of the wait
-        this.release_clock(|clock| init_once.clock.clone_from(clock))?;
+        ecx.release_clock(|clock| init_once.clock.clone_from(clock))?;
 
         // Wake up everyone.
         // need to take the queue to avoid having `this` be borrowed multiple times
         let waiters = std::mem::take(&mut init_once.waiters);
         drop(init_once);
         for waiter in waiters {
-            this.unblock_thread(waiter, BlockReason::InitOnce)?;
+            ecx.unblock_thread(waiter, BlockReason::InitOnce)?;
         }
 
         interp_ok(())
@@ -115,7 +115,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     #[inline]
     fn init_once_fail(&mut self, init_once_ref: &InitOnceRef) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
         let mut init_once = init_once_ref.0.borrow_mut();
         assert_eq!(
             init_once.status,
@@ -126,12 +126,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         init_once.status = InitOnceStatus::Uninitialized;
 
         // Each complete happens-before the end of the wait
-        this.release_clock(|clock| init_once.clock.clone_from(clock))?;
+        ecx.release_clock(|clock| init_once.clock.clone_from(clock))?;
 
         // Wake up one waiting thread, so they can go ahead and try to init this.
         if let Some(waiter) = init_once.waiters.pop_front() {
             drop(init_once);
-            this.unblock_thread(waiter, BlockReason::InitOnce)?;
+            ecx.unblock_thread(waiter, BlockReason::InitOnce)?;
         }
 
         interp_ok(())
@@ -141,7 +141,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Must only be called after checking that it is complete.
     #[inline]
     fn init_once_observe_completed(&self, init_once_ref: &InitOnceRef) -> InterpResult<'tcx> {
-        let this = self.eval_context_ref();
+        let ecx = self.eval_context_ref();
         let init_once = init_once_ref.0.borrow();
 
         assert_eq!(
@@ -150,6 +150,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "observing the completion of incomplete init once"
         );
 
-        this.acquire_clock(&init_once.clock)
+        ecx.acquire_clock(&init_once.clock)
     }
 }

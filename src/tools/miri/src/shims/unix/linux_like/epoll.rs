@@ -44,11 +44,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ///
     /// <https://linux.die.net/man/2/epoll_create1>
     fn epoll_create1(&mut self, flags: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let flags = this.read_scalar(flags)?.to_i32()?;
+        let flags = ecx.read_scalar(flags)?.to_i32()?;
 
-        let epoll_cloexec = this.eval_libc_i32("EPOLL_CLOEXEC");
+        let epoll_cloexec = ecx.eval_libc_i32("EPOLL_CLOEXEC");
 
         // Miri does not support exec, so EPOLL_CLOEXEC flag has no effect.
         if flags != epoll_cloexec && flags != 0 {
@@ -59,9 +59,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
 
         let Some(fd) =
-            this.machine.fds.insert_new(Epoll { watcher: Rc::new(ReadinessWatcher::default()) })
+            ecx.machine.fds.insert_new(Epoll { watcher: Rc::new(ReadinessWatcher::default()) })
         else {
-            return this.set_errno_and_return_neg1_i32(LibcError("EMFILE"));
+            return ecx.set_errno_and_return_neg1_i32(LibcError("EMFILE"));
         };
         interp_ok(Scalar::from_i32(fd))
     }
@@ -86,38 +86,38 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         fd: &OpTy<'tcx>,
         event: &OpTy<'tcx>,
     ) -> InterpResult<'tcx, Scalar> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let epfd_value = this.read_scalar(epfd)?.to_i32()?;
-        let op = this.read_scalar(op)?.to_i32()?;
-        let fd = this.read_scalar(fd)?.to_i32()?;
-        let event = this.deref_pointer(event)?;
+        let epfd_value = ecx.read_scalar(epfd)?.to_i32()?;
+        let op = ecx.read_scalar(op)?.to_i32()?;
+        let fd = ecx.read_scalar(fd)?.to_i32()?;
+        let event = ecx.deref_pointer(event)?;
 
-        let epoll_ctl_add = this.eval_libc_i32("EPOLL_CTL_ADD");
-        let epoll_ctl_mod = this.eval_libc_i32("EPOLL_CTL_MOD");
-        let epoll_ctl_del = this.eval_libc_i32("EPOLL_CTL_DEL");
-        let epollin = this.eval_libc_u32("EPOLLIN");
-        let epollout = this.eval_libc_u32("EPOLLOUT");
-        let epollrdhup = this.eval_libc_u32("EPOLLRDHUP");
-        let epollet = this.eval_libc_u32("EPOLLET");
-        let epollhup = this.eval_libc_u32("EPOLLHUP");
-        let epollerr = this.eval_libc_u32("EPOLLERR");
+        let epoll_ctl_add = ecx.eval_libc_i32("EPOLL_CTL_ADD");
+        let epoll_ctl_mod = ecx.eval_libc_i32("EPOLL_CTL_MOD");
+        let epoll_ctl_del = ecx.eval_libc_i32("EPOLL_CTL_DEL");
+        let epollin = ecx.eval_libc_u32("EPOLLIN");
+        let epollout = ecx.eval_libc_u32("EPOLLOUT");
+        let epollrdhup = ecx.eval_libc_u32("EPOLLRDHUP");
+        let epollet = ecx.eval_libc_u32("EPOLLET");
+        let epollhup = ecx.eval_libc_u32("EPOLLHUP");
+        let epollerr = ecx.eval_libc_u32("EPOLLERR");
 
         // Throw EFAULT if epfd and fd have the same value.
         if epfd_value == fd {
-            return this.set_errno_and_return_neg1_i32(LibcError("EFAULT"));
+            return ecx.set_errno_and_return_neg1_i32(LibcError("EFAULT"));
         }
 
         // Check if epfd is a valid epoll file descriptor.
-        let Some(epfd) = this.machine.fds.get(epfd_value) else {
-            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
+        let Some(epfd) = ecx.machine.fds.get(epfd_value) else {
+            return ecx.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         };
         let epfd = epfd
             .downcast::<Epoll>()
             .ok_or_else(|| err_unsup_format!("non-epoll FD passed to `epoll_ctl`"))?;
 
-        let Some(fd_ref) = this.machine.fds.get(fd) else {
-            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
+        let Some(fd_ref) = ecx.machine.fds.get(fd) else {
+            return ecx.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         };
         let id = fd_ref.id();
         let interest_key = (id, fd);
@@ -125,8 +125,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if op == epoll_ctl_add || op == epoll_ctl_mod {
             // Read event bitmask and data from epoll_event passed by caller.
             let mut relevant_bitflag =
-                this.read_scalar(&this.project_field(&event, FieldIdx::ZERO)?)?.to_u32()?;
-            let data = this.read_scalar(&this.project_field(&event, FieldIdx::ONE)?)?.to_u64()?;
+                ecx.read_scalar(&ecx.project_field(&event, FieldIdx::ZERO)?)?.to_u32()?;
+            let data = ecx.read_scalar(&ecx.project_field(&event, FieldIdx::ONE)?)?.to_u64()?;
 
             let is_edge_triggered = if relevant_bitflag & epollet == epollet {
                 relevant_bitflag &= !epollet;
@@ -165,32 +165,32 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 );
             }
 
-            let relevant = this.epoll_bitflag_to_readiness(relevant_bitflag);
+            let relevant = ecx.epoll_bitflag_to_readiness(relevant_bitflag);
 
             if op == epoll_ctl_add {
                 // Add a new interest to the watcher.
                 let result =
-                    epfd.watcher.add_interest(fd, relevant, is_edge_triggered, data, this)?;
+                    epfd.watcher.add_interest(fd, relevant, is_edge_triggered, data, ecx)?;
                 if result.is_err() {
                     // We already had an interest in this.
-                    return this.set_errno_and_return_neg1_i32(LibcError("EEXIST"));
+                    return ecx.set_errno_and_return_neg1_i32(LibcError("EEXIST"));
                 }
             } else {
                 // Modify the existing interest.
-                let result = epfd.watcher.update_interest(interest_key, this, |interest| {
+                let result = epfd.watcher.update_interest(interest_key, ecx, |interest| {
                     interest.is_edge_triggered = is_edge_triggered;
                     interest.relevant = relevant;
                     interest.data = data;
                 })?;
                 if result.is_none() {
                     // There is no interest registered for the specified key.
-                    return this.set_errno_and_return_neg1_i32(LibcError("ENOENT"));
+                    return ecx.set_errno_and_return_neg1_i32(LibcError("ENOENT"));
                 }
             }
         } else if op == epoll_ctl_del {
             if epfd.watcher.remove_interest(interest_key).is_none() {
                 // We did not have interest in this.
-                return this.set_errno_and_return_neg1_i32(LibcError("ENOENT"));
+                return ecx.set_errno_and_return_neg1_i32(LibcError("ENOENT"));
             };
         } else {
             throw_unsup_format!("unsupported epoll_ctl operation: {op}");
@@ -239,34 +239,34 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         timeout: &OpTy<'tcx>,
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let epfd_value = this.read_scalar(epfd)?.to_i32()?;
-        let events = this.deref_pointer(events_op)?;
-        let maxevents = this.read_scalar(maxevents)?.to_i32()?;
-        let timeout = this.read_scalar(timeout)?.to_i32()?;
+        let epfd_value = ecx.read_scalar(epfd)?.to_i32()?;
+        let events = ecx.deref_pointer(events_op)?;
+        let maxevents = ecx.read_scalar(maxevents)?.to_i32()?;
+        let timeout = ecx.read_scalar(timeout)?.to_i32()?;
 
         if epfd_value <= 0 || maxevents <= 0 {
-            return this.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
+            return ecx.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
         }
         let maxevents = u32::try_from(maxevents).unwrap();
 
-        let Some(epfd) = this.machine.fds.get(epfd_value) else {
-            return this.set_errno_and_return_neg1(LibcError("EBADF"), dest);
+        let Some(epfd) = ecx.machine.fds.get(epfd_value) else {
+            return ecx.set_errno_and_return_neg1(LibcError("EBADF"), dest);
         };
         let Some(epfd) = epfd.downcast::<Epoll>() else {
-            return this.set_errno_and_return_neg1(LibcError("EBADF"), dest);
+            return ecx.set_errno_and_return_neg1(LibcError("EBADF"), dest);
         };
 
         if timeout == 0 || epfd.watcher.ready_count() != 0 {
             // If the timeout is 0 or there is a ready event, we can return immediately.
-            this.return_ready_list(&epfd, dest, &events, maxevents)?;
+            ecx.return_ready_list(&epfd, dest, &events, maxevents)?;
         } else {
             // Blocking, with a relative timeout.
             let deadline = match timeout {
                 0.. => {
                     let duration = Duration::from_millis(timeout.try_into().unwrap());
-                    Some(this.machine.monotonic_clock.now().add_lossy(duration).into())
+                    Some(ecx.machine.monotonic_clock.now().add_lossy(duration).into())
                 }
                 -1 => None,
                 ..-1 => {
@@ -277,13 +277,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             };
 
             // Record this thread as blocked.
-            epfd.watcher.add_blocked_thread(this.active_thread());
+            epfd.watcher.add_blocked_thread(ecx.active_thread());
             // And block it.
             let dest = dest.clone();
             // We keep a strong ref to the underlying `ReadinessWatcher` to make sure it sticks around.
             // This means there'll be a leak if we never wake up, but that anyway would imply
             // a thread is permanently blocked so this is fine.
-            this.block_thread(
+            ecx.block_thread(
                 BlockReason::Readiness,
                 deadline,
                 callback!(
@@ -320,13 +320,13 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Convert a [`Readiness`] instance into the corresponding epoll
     /// readiness bitflag.
     fn readiness_to_epoll_bitflag(&self, readiness: &Readiness) -> u32 {
-        let this = self.eval_context_ref();
+        let ecx = self.eval_context_ref();
 
-        let epollin = this.eval_libc_u32("EPOLLIN");
-        let epollout = this.eval_libc_u32("EPOLLOUT");
-        let epollrdhup = this.eval_libc_u32("EPOLLRDHUP");
-        let epollhup = this.eval_libc_u32("EPOLLHUP");
-        let epollerr = this.eval_libc_u32("EPOLLERR");
+        let epollin = ecx.eval_libc_u32("EPOLLIN");
+        let epollout = ecx.eval_libc_u32("EPOLLOUT");
+        let epollrdhup = ecx.eval_libc_u32("EPOLLRDHUP");
+        let epollhup = ecx.eval_libc_u32("EPOLLHUP");
+        let epollerr = ecx.eval_libc_u32("EPOLLERR");
 
         let mut bitflag = 0;
         if readiness.readable {
@@ -350,13 +350,13 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Convert an epoll readiness bitflag into the corresponding
     /// [`Readiness`] instance.
     fn epoll_bitflag_to_readiness(&self, bitflag: u32) -> Readiness {
-        let this = self.eval_context_ref();
+        let ecx = self.eval_context_ref();
 
-        let epollin = this.eval_libc_u32("EPOLLIN");
-        let epollout = this.eval_libc_u32("EPOLLOUT");
-        let epollrdhup = this.eval_libc_u32("EPOLLRDHUP");
-        let epollhup = this.eval_libc_u32("EPOLLHUP");
-        let epollerr = this.eval_libc_u32("EPOLLERR");
+        let epollin = ecx.eval_libc_u32("EPOLLIN");
+        let epollout = ecx.eval_libc_u32("EPOLLOUT");
+        let epollrdhup = ecx.eval_libc_u32("EPOLLRDHUP");
+        let epollhup = ecx.eval_libc_u32("EPOLLHUP");
+        let epollerr = ecx.eval_libc_u32("EPOLLERR");
 
         Readiness {
             readable: bitflag & epollin == epollin,
@@ -376,26 +376,26 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         events: &MPlaceTy<'tcx>,
         maxevents: u32,
     ) -> InterpResult<'tcx, i32> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
         let mut num_of_events = 0i32;
 
         // We get up to the first `max_events_num` ready events from the
         // watcher and fill them into the slots of the array.
-        let readiness_interests = epfd.watcher.get_ready_interests(maxevents.to_usize(), this)?;
+        let readiness_interests = epfd.watcher.get_ready_interests(maxevents.to_usize(), ecx)?;
         for (idx, interest) in readiness_interests.into_iter().enumerate() {
-            let slot = this.project_c_array_field(events, idx.to_u64())?;
+            let slot = ecx.project_c_array_field(events, idx.to_u64())?;
             // Deliver event to caller.
-            this.write_int_fields_named(
+            ecx.write_int_fields_named(
                 &[
-                    ("events", this.readiness_to_epoll_bitflag(interest.active()).into()),
+                    ("events", ecx.readiness_to_epoll_bitflag(interest.active()).into()),
                     ("u64", interest.data.into()),
                 ],
                 &slot,
             )?;
             num_of_events = num_of_events.strict_add(1);
         }
-        this.write_int(num_of_events, dest)?;
+        ecx.write_int(num_of_events, dest)?;
         interp_ok(num_of_events)
     }
 }
