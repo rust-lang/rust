@@ -4,7 +4,7 @@
     <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/rust-lang/www.rust-lang.org/master/static/images/rust-social-wide-light.svg">
     <img alt="The Rust Programming Language: A language empowering everyone to build reliable and efficient software"
          src="https://raw.githubusercontent.com/rust-lang/www.rust-lang.org/master/static/images/rust-social-wide-light.svg"
-         width="50%">
+         width="60%">
   </picture>
 
 [Website][Rust] | [Getting started] | [Learn] | [Documentation] | [Contributing]
@@ -63,7 +63,7 @@ licenses.
 See [LICENSE-APACHE](LICENSE-APACHE), [LICENSE-MIT](LICENSE-MIT), and
 [COPYRIGHT](COPYRIGHT) for details.
 
-## Trademark
+## Trademarks
 
 [The Rust Foundation][rust-foundation] owns and protects the Rust and Cargo
 trademarks and logos (the "Rust Trademarks").
