@@ -2876,8 +2876,11 @@ pub(crate) struct Interner(Lock<InternerInner>);
 struct InternerInner {
     arena: DroplessArena,
     indices: HashTable<(&'static [u8], u32)>,
+    big_indices: HashTable<(u64, &'static [u8], u32)>,
     byte_strs: Vec<&'static [u8]>,
 }
+
+const MAX_HASH_TABLE: usize = 196;
 
 impl Interner {
     // These arguments are `&str`, but because of the sharing, we are
@@ -2902,6 +2905,9 @@ impl Interner {
         let mut byte_strs: Vec<&'static [u8]> = Vec::with_capacity(size_hint);
 
         for v in values {
+            // we don't support those strings in the prefill function
+            assert!(v.len() <= MAX_HASH_TABLE);
+
             match indices.entry(hasher.hash_one(&v), |&(s, _)| s == v, |&(s, _)| hasher.hash_one(s))
             {
                 Entry::Occupied(v) => conflicting_values.push(v.get().0),
@@ -2919,7 +2925,12 @@ impl Interner {
             )
         }
 
-        Interner(Lock::new(InternerInner { arena: Default::default(), indices, byte_strs }))
+        Interner(Lock::new(InternerInner {
+            arena: Default::default(),
+            indices,
+            big_indices: Default::default(),
+            byte_strs,
+        }))
     }
 
     fn intern_str(&self, str: &str) -> Symbol {
@@ -2932,6 +2943,15 @@ impl Interner {
 
     #[inline]
     fn intern_inner(&self, byte_str: &[u8]) -> u32 {
+        if byte_str.len() <= MAX_HASH_TABLE {
+            self.intern_inner_small(byte_str)
+        } else {
+            self.intern_inner_big(byte_str)
+        }
+    }
+
+    #[inline]
+    fn intern_inner_small(&self, byte_str: &[u8]) -> u32 {
         let hasher = FxBuildHasher::default();
         let hash_of_byte_str = hasher.hash_one(byte_str);
 
@@ -2950,6 +2970,34 @@ impl Interner {
                     let byte_str: &'static [u8] = unsafe { &*(byte_str as *const [u8]) };
                     let idx = inner.byte_strs.len() as u32;
                     view.insert((byte_str, idx));
+                    inner.byte_strs.push(byte_str);
+                    idx
+                }
+            }
+        })
+    }
+
+    #[cold]
+    #[inline(never)]
+    fn intern_inner_big(&self, byte_str: &[u8]) -> u32 {
+        let hasher = FxBuildHasher::default();
+        let hash_of_byte_str = hasher.hash_one(byte_str);
+
+        self.0.with_lock(|inner| {
+            match inner.big_indices.entry(
+                hash_of_byte_str,
+                |&(_, s, _)| s == byte_str,
+                |&(hash, _, _)| hash,
+            ) {
+                Entry::Occupied(v) => v.get().2,
+                Entry::Vacant(view) => {
+                    let byte_str: &[u8] = inner.arena.alloc_slice(byte_str);
+
+                    // SAFETY: we can extend the arena allocation to `'static` because we
+                    // only access these while the arena is still alive.
+                    let byte_str: &'static [u8] = unsafe { &*(byte_str as *const [u8]) };
+                    let idx = inner.byte_strs.len() as u32;
+                    view.insert((hash_of_byte_str, byte_str, idx));
                     inner.byte_strs.push(byte_str);
                     idx
                 }
