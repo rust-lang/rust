@@ -202,6 +202,11 @@ impl StableCrateId {
     }
 
     #[inline]
+    pub fn as_hash(self) -> Hash64 {
+        self.0
+    }
+
+    #[inline]
     pub fn as_u64(self) -> u64 {
         self.0.as_u64()
     }
