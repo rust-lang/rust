@@ -4237,12 +4237,17 @@ pub struct TestBinderConstraints {
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct TestBinderBody {
     pub span: Span,
-    pub foralls: ThinVec<TestBinderForall>,
-    pub exists: ThinVec<TestBinderExists>,
-    pub region_equalities: Vec<TestBinderRegionEquality>,
-    pub constraints: Vec<TestBinderConstraint>,
+    pub items: Vec<TestBinderItem>,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
+pub enum TestBinderItem {
+    Forall(TestBinderForall),
+    Exists(TestBinderExists),
+    RegionEquality(TestBinderRegionEquality),
+    Constraint(TestBinderConstraint),
     /// These are not where clauses, but rather predicates within the body to be proven
-    pub predicates: Vec<WherePredicate>,
+    Predicate(WherePredicate),
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]

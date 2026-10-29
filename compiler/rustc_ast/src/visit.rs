@@ -363,6 +363,7 @@ macro_rules! for_each_ast_visit_hook {
             visit_test_binder_constraints(TestBinderConstraints) => walk_test_binder_constraints;
             visit_test_binder_exists(TestBinderExists) => walk_test_binder_exists;
             visit_test_binder_forall(TestBinderForall) => walk_test_binder_forall;
+            visit_test_binder_item(TestBinderItem) => walk_test_binder_item;
             visit_trait_ref(TraitRef) => walk_trait_ref;
             visit_ty(Ty) => walk_ty;
             visit_ty_pat(TyPat) => walk_ty_pat;

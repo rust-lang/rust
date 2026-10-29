@@ -2015,28 +2015,39 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_test_binder_body(&mut self, body: &TestBinderBody) -> hir::TestBinderBody<'hir> {
-        let foralls = self.arena.alloc_from_iter(
-            body.foralls.iter().map(|forall| self.lower_test_binder_forall(forall)),
-        );
-        let exists = self.arena.alloc_from_iter(
-            body.exists.iter().map(|exists| self.lower_test_binder_exists(exists)),
-        );
-        let region_equalities = self.arena.alloc_from_iter(body.region_equalities.iter().map(
-            |TestBinderRegionEquality { lhs, rhs }| {
-                let lhs = self.lower_lifetime(lhs, LifetimeSource::Other, lhs.ident.into());
-                let rhs = self.lower_lifetime(rhs, LifetimeSource::Other, rhs.ident.into());
-                (lhs, rhs)
-            },
-        ));
-        let constraints = self.lower_test_binder_constraints_as_and(&body.constraints);
+        let mut items: Vec<hir::TestBinderItem<'_>> = vec![];
         let mut dedup_map = Default::default();
-        let predicates = self.arena.alloc_from_iter(
-            body.predicates
-                .iter()
-                .map(|predicate| self.lower_where_predicate(predicate, &[], &mut dedup_map)),
-        );
+        for item in &body.items {
+            match item {
+                TestBinderItem::Forall(forall) => {
+                    items.push(hir::TestBinderItem::Forall(self.lower_test_binder_forall(forall)));
+                }
+                TestBinderItem::Exists(exist) => {
+                    items.push(hir::TestBinderItem::Exists(self.lower_test_binder_exists(exist)));
+                }
+                TestBinderItem::Predicate(predicate) => {
+                    items.push(hir::TestBinderItem::Predicate(self.lower_where_predicate(
+                        predicate,
+                        &[],
+                        &mut dedup_map,
+                    )));
+                }
+                TestBinderItem::Constraint(constraint) => {
+                    items.push(hir::TestBinderItem::Constraint(
+                        self.lower_test_binder_constraint(constraint),
+                    ));
+                }
+                TestBinderItem::RegionEquality(region_equality) => {
+                    let TestBinderRegionEquality { lhs, rhs } = region_equality;
+                    let lhs = self.lower_lifetime(lhs, LifetimeSource::Other, lhs.ident.into());
+                    let rhs = self.lower_lifetime(rhs, LifetimeSource::Other, rhs.ident.into());
+                    items.push(hir::TestBinderItem::RegionEquality { lhs, rhs });
+                }
+            }
+        }
         let span = self.lower_span(body.span);
-        hir::TestBinderBody { span, foralls, exists, region_equalities, constraints, predicates }
+        let items = self.arena.alloc_from_iter(items);
+        hir::TestBinderBody { items, span }
     }
 
     fn lower_test_binder_forall(
