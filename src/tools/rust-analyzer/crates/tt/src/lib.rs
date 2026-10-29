@@ -47,25 +47,23 @@ pub struct Lit {
 pub enum IdentKind {
     Normal = 0,
     Raw = 1,
+    ForcedKeyword = 2,
 }
+
 impl IdentKind {
-    pub fn yes(self) -> bool {
-        matches!(self, IdentKind::Raw)
-    }
-    pub fn no(&self) -> bool {
-        matches!(self, IdentKind::Normal)
-    }
     pub fn as_str(self) -> &'static str {
         match self {
             IdentKind::Normal => "",
             IdentKind::Raw => "r#",
+            IdentKind::ForcedKeyword => "k#",
         }
     }
+
     pub fn split_from_symbol(sym: &str) -> (Self, &str) {
-        if let Some(sym) = sym.strip_prefix("r#") {
-            (IdentKind::Raw, sym)
-        } else {
-            (IdentKind::Normal, sym)
+        match sym.as_bytes() {
+            [b'r', b'#', ..] => (IdentKind::Raw, &sym["r#".len()..]),
+            [b'k', b'#', ..] => (IdentKind::ForcedKeyword, &sym["k#".len()..]),
+            _ => (IdentKind::Normal, sym),
         }
     }
 }
@@ -564,7 +562,6 @@ pub struct Ident {
 
 impl Ident {
     pub fn new(text: &str, span: Span) -> Self {
-        // let raw_stripped = IdentKind::split_from_symbol(text.as_ref());
         let (kind, text) = IdentKind::split_from_symbol(text);
         Ident { sym: Symbol::intern(text), span, kind }
     }

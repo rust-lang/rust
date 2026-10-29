@@ -947,10 +947,13 @@ impl TtTreeSink<'_> {
                 break match self.cursor.token_tree() {
                     Some(tt::TokenTree::Leaf(leaf)) => match leaf {
                         tt::Leaf::Ident(ident) => {
-                            if ident.kind.yes() {
-                                self.buf.push_str("r#");
-                                self.text_pos += TextSize::of("r#");
-                            }
+                            let prefix = match ident.kind {
+                                tt::IdentKind::Normal => "",
+                                tt::IdentKind::Raw => "r#",
+                                tt::IdentKind::ForcedKeyword => "k#",
+                            };
+                            self.buf.push_str(prefix);
+                            self.text_pos += TextSize::of(prefix);
                             let text = ident.sym.as_str();
                             self.buf += text;
                             self.text_pos += TextSize::of(text);

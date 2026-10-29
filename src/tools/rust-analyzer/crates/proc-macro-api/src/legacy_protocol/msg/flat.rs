@@ -43,6 +43,7 @@ use intern::Symbol;
 use rustc_hash::FxHashMap;
 use serde_derive::{Deserialize, Serialize};
 use span::{EditionedFileId, ErasedFileAstId, Span, SpanAnchor, SyntaxContext, TextRange};
+use tt::IdentKind;
 
 use crate::{
     legacy_protocol::SpanId,
@@ -558,14 +559,19 @@ impl<'a, T: SpanTransformer<Span = span::Span>> Writer<'a, '_, T, tt::iter::TtIt
                     tt::Leaf::Ident(ident) => {
                         let idx = self.ident.len() as u32;
                         let id = self.token_id_of(ident.span);
+                        // FIXME(ChayimFriedman2): We don't handle forced keywords here yet, to be done after https://github.com/rust-lang/rust-analyzer/pull/23152.
                         let text = if self.version >= EXTENDED_LEAF_DATA {
                             self.intern_owned(ident.sym.as_str().to_owned())
-                        } else if ident.kind.yes() {
+                        } else if ident.kind == IdentKind::Raw {
                             self.intern_owned(format!("r#{}", ident.sym.as_str(),))
                         } else {
                             self.intern_owned(ident.sym.as_str().to_owned())
                         };
-                        self.ident.push(IdentRepr { id, text, is_raw: ident.kind.yes() });
+                        self.ident.push(IdentRepr {
+                            id,
+                            text,
+                            is_raw: ident.kind == IdentKind::Raw,
+                        });
                         (idx << 2) | 0b11
                     }
                 },
@@ -936,7 +942,7 @@ impl<T: SpanTransformer> Reader<'_, T> {
                         0b11 => {
                             let repr = &self.ident[idx];
                             let text = self.text[repr.text as usize].as_str();
-                            let (is_raw, text) = if self.version >= EXTENDED_LEAF_DATA {
+                            let (kind, text) = if self.version >= EXTENDED_LEAF_DATA {
                                 (
                                     if repr.is_raw {
                                         tt::IdentKind::Raw
@@ -951,9 +957,12 @@ impl<T: SpanTransformer> Reader<'_, T> {
                             proc_macro_srv::TokenTree::Ident(proc_macro_srv::Ident {
                                 sym: Symbol::intern(text),
                                 span: read_span(repr.id),
-                                kind: match is_raw {
+                                kind: match kind {
                                     tt::IdentKind::Raw => proc_macro_srv::IdentKind::Raw,
                                     tt::IdentKind::Normal => proc_macro_srv::IdentKind::Normal,
+                                    tt::IdentKind::ForcedKeyword => {
+                                        proc_macro_srv::IdentKind::ForcedKeyword
+                                    }
                                 },
                             })
                         }

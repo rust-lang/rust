@@ -257,6 +257,7 @@ impl<'a> Converter<'a> {
                 rustc_lexer::TokenKind::ForcedKeywordIdent if token_text == "k#_" => UNDERSCORE,
                 rustc_lexer::TokenKind::ForcedKeywordIdent => {
                     SyntaxKind::from_any_keyword(&token_text["k#".len()..]).unwrap_or_else(|| {
+                        // FIXME: This is not correct, see https://rust-lang.zulipchat.com/#narrow/channel/185405-t-compiler.2Frust-analyzer/topic/Mismatch.20versus.20rustc.20parsing.20in.20foundation/with/632168944.
                         errors.push("invalid forced keyword".into());
                         ERROR
                     })

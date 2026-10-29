@@ -64,15 +64,23 @@ pub fn to_parser_input(
                         match ident.sym.as_str() {
                             "_" => res.push(T![_], edition),
                             i if i.starts_with('\'') => res.push(LIFETIME_IDENT, edition),
-                            _ if ident.kind.yes() => res.push(IDENT, edition),
-                            text => match SyntaxKind::from_keyword(text, edition) {
-                                Some(kind) => res.push(kind, edition),
-                                None => {
-                                    let contextual_keyword =
-                                        SyntaxKind::from_contextual_keyword(text, edition)
-                                            .unwrap_or(SyntaxKind::IDENT);
-                                    res.push_ident(contextual_keyword, edition);
+                            text => match ident.kind {
+                                tt::IdentKind::Normal => {
+                                    match SyntaxKind::from_keyword(text, edition) {
+                                        Some(kind) => res.push(kind, edition),
+                                        None => {
+                                            let contextual_keyword =
+                                                SyntaxKind::from_contextual_keyword(text, edition)
+                                                    .unwrap_or(SyntaxKind::IDENT);
+                                            res.push_ident(contextual_keyword, edition);
+                                        }
+                                    }
                                 }
+                                tt::IdentKind::Raw => res.push(IDENT, edition),
+                                tt::IdentKind::ForcedKeyword => res.push(
+                                    SyntaxKind::from_any_keyword(text).unwrap_or(ERROR),
+                                    edition,
+                                ),
                             },
                         }
                     }
