@@ -18,7 +18,7 @@ use rustc_parse::parser::{AllowConstBlockItems, ForceCollect};
 use rustc_parse::{new_parser_from_file, unwrap_or_emit_fatal, utf8_error};
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::SourceMap;
-use rustc_span::{ByteSymbol, Pos, Span, Symbol};
+use rustc_span::{ByteSymbol, FileName, Pos, Span, Symbol};
 use smallvec::SmallVec;
 
 use crate::diagnostics;
@@ -216,15 +216,19 @@ pub(crate) fn expand_include_str(
         Err(guar) => return ExpandResult::Ready(DummyResult::any(sp, guar)),
     };
     ExpandResult::Ready(match load_binary_file(cx, path.as_str().as_ref(), sp, path_span) {
-        Ok((bytes, bsp)) => match std::str::from_utf8(&bytes) {
+        Ok((bytes, resolved_path)) => match std::str::from_utf8(&bytes) {
             Ok(src) => {
+                let sm = cx.source_map();
+                let filename = sm.path_mapping().to_real_filename(sm.working_dir(), &resolved_path);
+                let file = sm.new_source_file(FileName::Real(filename), src.to_owned());
+                let bsp = Span::with_root_ctxt(file.start_pos, file.end_position());
                 let interned_src = Symbol::intern(src);
                 // MacEager converts the expr into a pat if need be.
                 MacEager::expr(cx.expr_str(cx.with_def_site_ctxt(bsp), interned_src))
             }
             Err(utf8err) => {
                 let mut err = cx.dcx().struct_span_err(sp, format!("`{path}` wasn't a utf-8 file"));
-                utf8_error(cx.source_map(), path.as_str(), None, &mut err, utf8err, &bytes[..]);
+                utf8_error(cx.source_map(), path.as_str(), Some(sp), &mut err, utf8err, &bytes[..]);
                 DummyResult::any(sp, err.emit_err())
             }
         },
@@ -250,7 +254,7 @@ pub(crate) fn expand_include_bytes(
         Err(guar) => return ExpandResult::Ready(DummyResult::any(sp, guar)),
     };
     ExpandResult::Ready(match load_binary_file(cx, path.as_str().as_ref(), sp, path_span) {
-        Ok((bytes, _bsp)) => {
+        Ok((bytes, _)) => {
             // Don't care about getting the span for the raw bytes,
             // because the console can't really show them anyway.
             let expr = cx.expr(sp, ast::ExprKind::IncludedBytes(ByteSymbol::intern(&bytes)));
@@ -266,7 +270,7 @@ fn load_binary_file(
     original_path: &Path,
     macro_span: Span,
     path_span: Span,
-) -> Result<(Arc<[u8]>, Span), Box<dyn MacResult>> {
+) -> Result<(Arc<[u8]>, PathBuf), Box<dyn MacResult>> {
     let resolved_path = match cx.sess.resolve_path(original_path, macro_span) {
         Ok(path) => path,
         Err(err) => {
@@ -274,14 +278,14 @@ fn load_binary_file(
             return Err(DummyResult::any(macro_span, guar));
         }
     };
-    match cx.source_map().load_binary_file(&resolved_path) {
+    match cx.source_map().read_binary_file(&resolved_path) {
         Ok(data) => {
             cx.sess
                 .file_depinfo
                 .borrow_mut()
                 .insert(Symbol::intern(&resolved_path.to_string_lossy()));
 
-            Ok(data)
+            Ok((data, resolved_path))
         }
         Err(io_err) => {
             let mut err = cx.dcx().struct_span_err(
