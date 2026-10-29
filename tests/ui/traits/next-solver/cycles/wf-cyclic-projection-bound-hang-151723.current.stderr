@@ -1,0 +1,89 @@
+error[E0275]: overflow evaluating the requirement `NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<_>>>>>>>: Sized`
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`wf_cyclic_projection_bound_hang_151723`)
+note: required for `NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<Self>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>` to implement `Noop`
+  --> $DIR/wf-cyclic-projection-bound-hang-151723.rs:25:9
+   |
+LL | impl<T> Noop for NoopNewtype<T> {}
+   |      -  ^^^^     ^^^^^^^^^^^^^^
+   |      |
+   |      unsatisfied trait bound implicitly introduced here
+   = note: 126 redundant requirements hidden
+   = note: required for `Self` to implement `Noop`
+
+error[E0119]: conflicting implementations of trait `Noop` for type `NoopNewtype<_>`
+  --> $DIR/wf-cyclic-projection-bound-hang-151723.rs:25:1
+   |
+LL | / impl<T: ?Sized> Noop for T
+LL | |
+LL | | where
+LL | |     <NoopNewtype<T> as Noop>::Assoc: Noop,
+   | |__________________________________________- first implementation here
+...
+LL |   impl<T> Noop for NoopNewtype<T> {}
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `NoopNewtype<_>`
+
+error[E0275]: overflow evaluating the requirement `NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<_>>>>>>>: Sized`
+  --> $DIR/wf-cyclic-projection-bound-hang-151723.rs:16:1
+   |
+LL | / impl<T: ?Sized> Noop for T
+LL | |
+LL | | where
+LL | |     <NoopNewtype<T> as Noop>::Assoc: Noop,
+   | |__________________________________________^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`wf_cyclic_projection_bound_hang_151723`)
+note: required for `NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<T>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>` to implement `Noop`
+  --> $DIR/wf-cyclic-projection-bound-hang-151723.rs:25:9
+   |
+LL | impl<T> Noop for NoopNewtype<T> {}
+   |      -  ^^^^     ^^^^^^^^^^^^^^
+   |      |
+   |      unsatisfied trait bound implicitly introduced here
+   = note: 126 redundant requirements hidden
+   = note: required for `NoopNewtype<T>` to implement `Noop`
+
+error[E0275]: overflow evaluating the requirement `NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<_>>>>>>>: Sized`
+  --> $DIR/wf-cyclic-projection-bound-hang-151723.rs:28:38
+   |
+LL | struct NoopNewtype<T: ?Sized + Noop>(T::Assoc);
+   |                                      ^^^^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`wf_cyclic_projection_bound_hang_151723`)
+note: required for `NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<T>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>` to implement `Noop`
+  --> $DIR/wf-cyclic-projection-bound-hang-151723.rs:25:9
+   |
+LL | impl<T> Noop for NoopNewtype<T> {}
+   |      -  ^^^^     ^^^^^^^^^^^^^^
+   |      |
+   |      unsatisfied trait bound implicitly introduced here
+   = note: 126 redundant requirements hidden
+   = note: required for `T` to implement `Noop`
+
+error[E0275]: overflow evaluating the requirement `NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<_>>>>>>>: Sized`
+  --> $DIR/wf-cyclic-projection-bound-hang-151723.rs:31:24
+   |
+LL | fn coerce_newtype() -> NoopNewtype<str> {
+   |                        ^^^^^^^^^^^^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`wf_cyclic_projection_bound_hang_151723`)
+note: required for `NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<NoopNewtype<str>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>` to implement `Noop`
+  --> $DIR/wf-cyclic-projection-bound-hang-151723.rs:25:9
+   |
+LL | impl<T> Noop for NoopNewtype<T> {}
+   |      -  ^^^^     ^^^^^^^^^^^^^^
+   |      |
+   |      unsatisfied trait bound implicitly introduced here
+   = note: 125 redundant requirements hidden
+   = note: required for `str` to implement `Noop`
+note: required because it appears within the type `NoopNewtype<str>`
+  --> $DIR/wf-cyclic-projection-bound-hang-151723.rs:28:8
+   |
+LL | struct NoopNewtype<T: ?Sized + Noop>(T::Assoc);
+   |        ^^^^^^^^^^^
+   = note: the return type of a function must have a statically known size
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0119, E0275.
+For more information about an error, try `rustc --explain E0119`.
