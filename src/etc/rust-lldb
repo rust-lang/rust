@@ -32,11 +32,11 @@ fi
 
 script_import="command script import \"$RUSTC_SYSROOT/lib/rustlib/etc/lldb_lookup.py\""
 
-# Unstable (nightly-only) trim-paths feature, activated only if
-#  - RUST_LLDB_TRIM_PATHS=unstable is set
-#  - and if the python file is present (only shipped on nightly)
+# Load Cargo trim-paths unremap files beside each loaded binary.
+#
+# Set RUST_LLDB_TRIM_PATHS=0 to disable this feature.
 LLDB_TRIM_PATHS="$RUSTC_SYSROOT/lib/rustlib/etc/lldb_trim_paths.py"
-if [ "${RUST_LLDB_TRIM_PATHS:-}" = "unstable" ] && [ -f "$LLDB_TRIM_PATHS" ]; then
+if [ "${RUST_LLDB_TRIM_PATHS:-}" != "0" ] && [ -f "$LLDB_TRIM_PATHS" ]; then
     set -- --one-line-before-file "command script import \"$LLDB_TRIM_PATHS\"" "$@"
 fi
 
