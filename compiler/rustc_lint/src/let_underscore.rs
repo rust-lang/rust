@@ -128,7 +128,8 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
             // `let _ = place;` doesn't move out of the place, so nothing gets dropped.
             if let Some(init) = local.init
                 && cx.typeck_results().expr_adjustments(init).is_empty()
-                && (is_local_or_static_place(init) || borrows_extended_temporary(cx, init, local.pat))
+                && (is_local_or_static_place(init)
+                    || borrows_extended_temporary(cx, init, local.pat))
             {
                 return;
             }
