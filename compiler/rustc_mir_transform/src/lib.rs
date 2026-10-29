@@ -133,6 +133,7 @@ declare_passes! {
     mod check_null : CheckNull;
     mod check_packed_ref : CheckPackedRef;
     mod check_mut_restriction : CheckMutRestriction;
+    mod cold_block_outliner : ColdBlockOutliner;
     // This pass is public to allow external drivers to perform MIR cleanup
     pub mod cleanup_post_borrowck : CleanupPostBorrowck;
 
@@ -160,6 +161,7 @@ declare_passes! {
     mod instsimplify : InstSimplify { BeforeInline, AfterSimplifyCfg };
     mod jump_threading : JumpThreading;
     mod known_panics_lint : KnownPanicsLint;
+    mod known_variant_drops : KnownVariantDrops;
     mod lint_and_remove_uninhabited : LintAndRemoveUninhabited;
     mod lower_intrinsics : LowerIntrinsics;
     mod lower_slice_len : LowerSliceLenCalls;
@@ -759,6 +761,7 @@ pub(crate) fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
             &dataflow_const_prop::DataflowConstProp,
             &single_use_consts::SingleUseConsts,
             &o1(simplify_branches::SimplifyConstCondition::AfterConstProp),
+            &known_variant_drops::KnownVariantDrops,
             &jump_threading::JumpThreading,
             &early_otherwise_branch::EarlyOtherwiseBranch,
             &simplify_comparison_integral::SimplifyComparisonIntegral,
@@ -771,6 +774,7 @@ pub(crate) fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
             &dead_store_elimination::DeadStoreElimination::Final,
             &dest_prop::DestinationPropagation,
             &tail_copy_to_move::TailCopyToMove,
+            &cold_block_outliner::ColdBlockOutliner,
             &move_elimination::MoveElimination,
             &simplify::SimplifyLocals::Final,
             &multiple_return_terminators::MultipleReturnTerminators,

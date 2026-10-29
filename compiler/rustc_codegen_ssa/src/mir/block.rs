@@ -266,6 +266,26 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
             return MergingSucc::False;
         }
 
+        let is_cleanup = fx.mir[self.bb].is_cleanup;
+        let is_cold = fx.cold_blocks[self.bb];
+        let apply_callsite_attrs = |bx: &mut Bx, call_llval| {
+            if is_cleanup {
+                bx.apply_attrs_to_cleanup_callsite(call_llval);
+            } else if is_cold && super::should_mark_cold_callsites(bx.tcx()) {
+                let tcx = bx.tcx();
+                let noinline = instance.is_some_and(|inst| {
+                    matches!(inst.def, ty::InstanceKind::Shim(ty::ShimKind::DropGlue(..)))
+                        || (super::should_outline_cold_calls(tcx)
+                            && (tcx
+                                .codegen_instance_attrs(inst.def)
+                                .flags
+                                .contains(super::CodegenFnAttrFlags::COLD)
+                                || super::is_try_from_residual(tcx, inst.def_id())))
+                });
+                bx.apply_attrs_to_cold_callsite(call_llval, noinline);
+            }
+        };
+
         if let Some(unwind_block) = unwind_block {
             let ret_llbb = if let Some((_, target)) = destination {
                 self.llbb_with_cleanup(fx, target)
@@ -284,9 +304,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
                 self.funclet(fx),
                 instance,
             );
-            if fx.mir[self.bb].is_cleanup {
-                bx.apply_attrs_to_cleanup_callsite(invokeret);
-            }
+            apply_callsite_attrs(bx, invokeret);
 
             if let Some((ret_dest, target)) = destination {
                 bx.switch_to_block(fx.llbb(target));
@@ -314,9 +332,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
                 self.funclet(fx),
                 instance,
             );
-            if fx.mir[self.bb].is_cleanup {
-                bx.apply_attrs_to_cleanup_callsite(llret);
-            }
+            apply_callsite_attrs(bx, llret);
 
             if let Some((ret_dest, target)) = destination {
                 for &(tmp, size) in lifetime_ends_after_call {
