@@ -192,3 +192,10 @@ pub fn type_id_points_mutably(_id: crate::any::TypeId) -> bool;
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_comptime]
 pub fn type_id_function_ptr(_type_id: crate::any::TypeId) -> Option<crate::mem::type_info::FnPtr>;
+
+/// Given a given environment variable name, return its value if defined in the compiler's
+/// environment.
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_comptime]
+pub fn type_id_env_var(_env_name: &str) -> Option<&'static [u8]>;
