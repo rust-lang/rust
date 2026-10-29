@@ -27,69 +27,65 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
             let mut _31: (usize, &T);
             scope 19 {
                 let _29: usize;
-                scope 24 {
+                scope 22 {
                 }
             }
             scope 20 {
-                scope 21 {
-                    scope 27 (inlined <Option<(usize, &T)> as FromResidual<Option<!>>>::from_residual) {
-                        let mut _21: isize;
-                        let mut _23: bool;
-                    }
+                scope 25 (inlined <Option<(usize, &T)> as FromResidual<Option<!>>>::from_residual) {
+                    let mut _21: isize;
+                    let mut _23: bool;
                 }
             }
-            scope 22 {
-                scope 23 {
-                }
+            scope 21 {
             }
-            scope 25 (inlined <Option<&T> as Try>::branch) {
+            scope 23 (inlined <Option<&T> as Try>::branch) {
                 let _28: &T;
-                scope 26 {
+                scope 24 {
                 }
             }
-            scope 28 (inlined <std::slice::Iter<'_, T> as Iterator>::next) {
+            scope 26 (inlined <std::slice::Iter<'_, T> as Iterator>::next) {
                 let mut _8: std::ptr::NonNull<T>;
                 let _13: std::ptr::NonNull<T>;
                 let _15: std::ptr::NonNull<T>;
                 let mut _18: bool;
                 let mut _24: usize;
                 let _26: &T;
-                scope 29 {
+                scope 27 {
                     let _14: *const T;
-                    scope 30 {
+                    scope 28 {
                         let _20: usize;
-                        scope 31 {
-                            scope 34 (inlined #[track_caller] core::num::<impl usize>::unchecked_sub) {
-                                scope 35 (inlined core::ub_checks::check_language_ub) {
-                                    scope 36 (inlined core::ub_checks::check_language_ub::runtime) {
+                        scope 29 {
+                            scope 32 (inlined #[track_caller] core::num::<impl usize>::unchecked_sub) {
+                                scope 33 (inlined core::ub_checks::check_language_ub) {
+                                    scope 34 (inlined core::ub_checks::check_language_ub::runtime) {
                                     }
                                 }
                             }
-                            scope 37 (inlined std::ptr::without_provenance_mut::<T>) {
+                            scope 35 (inlined std::ptr::without_provenance_mut::<T>) {
                             }
                         }
-                        scope 32 (inlined std::ptr::const_ptr::<impl *const T>::addr) {
-                            scope 33 (inlined std::ptr::const_ptr::<impl *const T>::cast::<()>) {
+                        scope 30 (inlined std::ptr::const_ptr::<impl *const T>::addr) {
+                            scope 31 (inlined std::ptr::const_ptr::<impl *const T>::cast::<()>) {
                             }
                         }
-                        scope 38 (inlined <NonNull<T> as PartialEq>::eq) {
+                        scope 36 (inlined <NonNull<T> as PartialEq>::eq) {
                             let mut _16: *mut T;
                             let mut _17: *mut T;
-                            scope 39 (inlined NonNull::<T>::as_ptr) {
+                            scope 37 (inlined NonNull::<T>::as_ptr) {
                             }
+                            scope 38 (inlined NonNull::<T>::as_ptr) {
+                            }
+                        }
+                        scope 39 (inlined NonNull::<T>::add) {
+                            let mut _19: *mut T;
                             scope 40 (inlined NonNull::<T>::as_ptr) {
                             }
                         }
-                        scope 41 (inlined NonNull::<T>::add) {
-                            let mut _19: *mut T;
+                        scope 41 (inlined NonNull::<T>::as_ref::<'_>) {
+                            let _25: *const T;
                             scope 42 (inlined NonNull::<T>::as_ptr) {
                             }
-                        }
-                        scope 43 (inlined NonNull::<T>::as_ref::<'_>) {
-                            let _25: *const T;
-                            scope 44 (inlined NonNull::<T>::as_ptr) {
-                            }
-                            scope 45 (inlined std::ptr::mut_ptr::<impl *mut T>::cast_const) {
+                            scope 43 (inlined std::ptr::mut_ptr::<impl *mut T>::cast_const) {
                             }
                         }
                     }
