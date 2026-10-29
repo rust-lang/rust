@@ -346,8 +346,7 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
             result,
             required_depth,
         } = root;
-        // If there's a normalizes-to goal, AND the evaluation result with the result of
-        // constraining the normalizes-to RHS and computing the nested goals.
+
         let result = result.map(|ok| ok.value.certainty);
 
         InspectGoal {
