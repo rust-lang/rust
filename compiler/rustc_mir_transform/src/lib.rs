@@ -25,7 +25,7 @@ use rustc_middle::mir::{
     SourceInfo, Statement, StatementKind, TerminatorKind, WithRetag,
 };
 use rustc_middle::query;
-use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt, TypingEnv};
 use rustc_middle::util::Providers;
 use rustc_span::{DUMMY_SP, Spanned, bug, span_bug, sym};
 use tracing::debug;
@@ -236,7 +236,7 @@ pub fn provide(providers: &mut Providers) {
         promoted_mir,
         deduced_param_attrs: deduce_param_attrs::deduced_param_attrs,
         coroutine_by_move_body_def_id: coroutine::coroutine_by_move_body_def_id,
-        trivial_const: trivial_const::trivial_const_provider,
+        trivial_const: trivial_const::trivial_const,
         ..providers.queries
     };
 }
@@ -362,6 +362,24 @@ fn mir_keys(tcx: TyCtxt<'_>, (): ()) -> FxIndexSet<LocalDefId> {
 }
 
 fn mir_const_qualif(tcx: TyCtxt<'_>, def: LocalDefId) -> ConstQualifs {
+    // Avoid the `mir_built` call for trivial consts.
+    if let Some((_val, ty)) = tcx.trivial_const(def) {
+        let has_mut_interior = !ty.is_trivially_freeze();
+        let needs_drop =
+            ty.needs_drop(tcx, TypingEnv::post_typeck_through_borrowck_for_mir_build(tcx, def));
+
+        // These will only fail if the set of things accepted by `trivial_const` expands.
+        assert!(!has_mut_interior);
+        assert!(!needs_drop);
+
+        return ConstQualifs {
+            has_mut_interior,
+            needs_drop,
+            needs_non_const_drop: needs_drop,
+            tainted_by_errors: None,
+        };
+    }
+
     // N.B., this `borrow()` is guaranteed to be valid (i.e., the value
     // cannot yet be stolen), because `mir_promoted()`, which steals
     // from `mir_built()`, forces this query to execute before
@@ -397,38 +415,32 @@ fn mir_built(tcx: TyCtxt<'_>, def: LocalDefId) -> &Steal<Body<'_>> {
     // This is the one place that is allowed to call `build_mir_inner_impl`.
     let mut body = tcx.build_mir_inner_impl(def);
 
-    // Identifying trivial consts based on their mir_built is easy, but a little wasteful.
-    // Trying to push this logic earlier in the compiler and never even produce the Body would
-    // probably improve compile time.
-    if trivial_const::trivial_const(tcx, def, || &body).is_some() {
-        // Skip all the passes below for trivial consts.
-        let body = tcx.alloc_steal_mir(body);
-        pass_manager::dump_mir_for_phase_change(tcx, &body.borrow());
-        return body;
-    }
-
     pass_manager::dump_mir_for_phase_change(tcx, &body);
 
-    pm::run_passes(
-        tcx,
-        &mut body,
-        &[
-            // This used to be part of MIR building,
-            // now done separately to separate concerns.
-            &lint_and_remove_uninhabited::LintAndRemoveUninhabited,
-            // MIR-level lints.
-            &Lint(check_inline::CheckForceInline),
-            &Lint(check_call_recursion::CheckCallRecursion),
-            &Lint(check_packed_ref::CheckPackedRef),
-            &Lint(check_const_item_mutation::CheckConstItemMutation),
-            &Lint(check_mut_restriction::CheckMutRestriction),
-            &Lint(function_item_references::FunctionItemReferences),
-            // What we need to do constant evaluation.
-            &simplify::SimplifyCfg::Initial,
-            &Lint(sanity_check::SanityCheck),
-        ],
-        None,
-    );
+    // Skip all the passes below for trivial consts.
+    if tcx.trivial_const(def).is_none() {
+        pm::run_passes(
+            tcx,
+            &mut body,
+            &[
+                // This used to be part of MIR building,
+                // now done separately to separate concerns.
+                &lint_and_remove_uninhabited::LintAndRemoveUninhabited,
+                // MIR-level lints.
+                &Lint(check_inline::CheckForceInline),
+                &Lint(check_call_recursion::CheckCallRecursion),
+                &Lint(check_packed_ref::CheckPackedRef),
+                &Lint(check_const_item_mutation::CheckConstItemMutation),
+                &Lint(check_mut_restriction::CheckMutRestriction),
+                &Lint(function_item_references::FunctionItemReferences),
+                // What we need to do constant evaluation.
+                &simplify::SimplifyCfg::Initial,
+                &Lint(sanity_check::SanityCheck),
+            ],
+            None,
+        );
+    }
+
     tcx.alloc_steal_mir(body)
 }
 
@@ -463,9 +475,6 @@ fn mir_promoted(
     if tcx.needs_coroutine_by_move_body_def_id(def.to_def_id()) {
         tcx.ensure_done().coroutine_by_move_body_def_id(def);
     }
-
-    // the `trivial_const` query uses mir_built, so make sure it is run.
-    tcx.ensure_done().trivial_const(def);
 
     let mut body = tcx.mir_built(def).steal();
     if let Some(error_reported) = const_qualifs.tainted_by_errors {
