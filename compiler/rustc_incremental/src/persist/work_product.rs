@@ -6,6 +6,7 @@ use std::path::Path;
 
 use rustc_data_structures::unord::UnordMap;
 use rustc_fs_util::link_or_copy;
+use rustc_macros::{Decodable, Encodable};
 use rustc_middle::dep_graph::{IncrCompSession, WorkProduct, WorkProductId};
 use rustc_session::Session;
 use tracing::debug;
@@ -48,4 +49,13 @@ pub fn copy_cgu_workproduct_to_incr_comp_cache_dir(
     debug!(?work_product);
     let work_product_id = WorkProductId::from_cgu_name(cgu_name);
     incr_comp_session.new_work_products.insert(work_product_id, work_product);
+}
+
+#[derive(Debug, Encodable, Decodable)]
+pub(crate) struct SerializedWorkProduct {
+    /// node that produced the work-product
+    pub id: WorkProductId,
+
+    /// work-product data itself
+    pub work_product: WorkProduct,
 }
