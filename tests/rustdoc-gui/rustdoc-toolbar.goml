@@ -9,7 +9,7 @@ store-value: (heading_selector, ".main-heading")
 store-value: (heading_selector_title, |heading_selector| + " > h1")
 store-value: (heading_selector_sub, |heading_selector| + " .sub-heading")
 
-store-size: ("rustdoc-toolbar", {"height": toolbar_height})
+store-size: ("rustdoc-toolbar", {"height": toolbar_height, "width": toolbar_width})
 store-position: ("rustdoc-toolbar", {"x": toolbar_x, "y": toolbar_y})
 store-size: (|heading_selector_title|, {"height": heading_title_height})
 store-size: (|heading_selector_sub|, {"height": heading_sub_height})
@@ -23,6 +23,12 @@ store-size: (|heading_selector_title|, {"height": new_heading_title_height})
 
 // The heading should now be taller.
 assert: |new_heading_title_height| > |heading_title_height|
-// However the toolbar size and position shouldn't have changed.
+// However the toolbar size and y position shouldn't have changed. The width (and therefore the `x`
+// position) should reduce.
 assert-size: ("rustdoc-toolbar", {"height": |toolbar_height|})
-assert-position: ("rustdoc-toolbar", {"x": |toolbar_x|, "y": |toolbar_y|})
+store-size: ("rustdoc-toolbar", {"width": new_toolbar_width})
+assert: |new_toolbar_width| < |toolbar_width|
+assert-position: ("rustdoc-toolbar", {
+    "x": |toolbar_x| + (|toolbar_width| - |new_toolbar_width|),
+    "y": |toolbar_y|,
+})
