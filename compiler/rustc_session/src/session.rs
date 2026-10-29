@@ -17,7 +17,8 @@ use rustc_errors::emitter::{DynEmitter, HumanReadableErrorType, OutputTheme, std
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::timings::TimingSectionHandler;
 use rustc_errors::{
-    Diag, DiagCtxt, DiagCtxtHandle, DiagMessage, Diagnostic, ErrorGuaranteed, PResult, TerminalUrl,
+    Diag, DiagCtxt, DiagCtxtHandle, DiagMessage, Diagnostic, ErrorGuaranteed, MultiSpan, PResult,
+    TerminalUrl,
 };
 use rustc_feature::UnstableFeatures;
 use rustc_macros::StableHash;
@@ -114,6 +115,8 @@ pub enum PointerAuthAddressDiscriminator {
     /// they must use a synthetic value of `1`.
     Synthetic(u64),
 }
+
+const ASYNC_AWAIT_LIMIT: usize = 5;
 
 pub struct PointerAuthSchema {
     pub is_address_discriminated: PointerAuthAddressDiscriminator,
@@ -642,11 +645,39 @@ impl Session {
         guar
     }
 
+    fn check_edition_2015(&self) -> Option<ErrorGuaranteed> {
+        self.psess.async_fn_in_2015.with_lock(|spans| {
+            if spans.len() > ASYNC_AWAIT_LIMIT {
+                let mut spans: Vec<_> = spans.iter().cloned().collect();
+                let len = spans.len();
+                spans.truncate(ASYNC_AWAIT_LIMIT);
+                let spans: MultiSpan = spans.into();
+                let mut err = self.dcx().struct_span_err(spans, "`async`/`await` is not permitted in Rust 2015 edition");
+                if len > ASYNC_AWAIT_LIMIT {
+                    err.note(format!("...and {} other places", len - ASYNC_AWAIT_LIMIT));
+                }
+                err.help("to use `async`/`await`, switch to Rust 2018 or later by passing `--edition 2024` to `rustc`");
+                err.note("for more on editions, read <https://doc.rust-lang.org/edition-guide>");
+                Some(err.emit_err())
+            } else {
+                None
+            }
+        })
+    }
+
     /// Invoked all the way at the end to finish off diagnostics printing.
     pub fn finish_diagnostics(&self) -> Option<ErrorGuaranteed> {
         let mut guar = None;
         guar = guar.or(self.check_miri_unleashed_features());
-        guar = guar.or(self.dcx().emit_stashed_diagnostics());
+        let async_fn_in_2015 = self.psess.async_fn_in_2015.borrow();
+        let spans = if async_fn_in_2015.len() <= ASYNC_AWAIT_LIMIT {
+            &FxIndexSet::default()
+        } else {
+            &async_fn_in_2015
+        };
+        guar = guar.or(self.dcx().emit_stashed_diagnostics(spans));
+        drop(async_fn_in_2015);
+        guar = guar.or(self.check_edition_2015());
         self.dcx().print_error_count();
         if self.opts.json_future_incompat {
             self.dcx().emit_future_breakage_report();

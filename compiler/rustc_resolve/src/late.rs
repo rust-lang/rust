@@ -4839,7 +4839,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         let Finalize { node_id, path_span, .. } = finalize;
         let report_errors = |this: &mut Self, res: Option<Res>| {
             if this.should_report_errs() {
-                let (mut err, candidates) = this.smart_resolve_report_errors(
+                let (mut err, candidates, is_async) = this.smart_resolve_report_errors(
                     path,
                     None,
                     path_span,
@@ -4895,6 +4895,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     suggestion,
                     path: path.into(),
                     is_call: source.is_call(),
+                    is_async,
                 };
 
                 this.use_injections.push(ue);
@@ -4918,7 +4919,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     _ => return Some(parent_err),
                 };
 
-                let (mut err, candidates) = this.smart_resolve_report_errors(
+                let (mut err, candidates, is_async) = this.smart_resolve_report_errors(
                     prefix_path,
                     following_seg,
                     path_span,
@@ -4981,7 +4982,17 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 let node_id = this.parent_scope.module.nearest_parent_mod_node_id();
 
                 if this.should_report_errs() {
-                    if candidates.is_empty() {
+                    if is_async && let [segment] = &path {
+                        err.stash(segment.ident.span, rustc_errors::StashKey::Edition2015);
+                        this.r
+                            .tcx
+                            .sess
+                            .early_sess
+                            .psess
+                            .async_fn_in_2015
+                            .borrow_mut()
+                            .insert(segment.ident.span);
+                    } else if candidates.is_empty() {
                         if path.len() == 2
                             && let [segment] = prefix_path
                         {
@@ -5008,6 +5019,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                             suggestion: None,
                             path: prefix_path.into(),
                             is_call: source.is_call(),
+                            is_async,
                         });
                     }
                 } else {

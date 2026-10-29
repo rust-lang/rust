@@ -1107,6 +1107,7 @@ struct UseError<'a> {
     path: Vec<Segment>,
     /// Whether the expected source is a call
     is_call: bool,
+    is_async: bool,
 }
 
 #[derive(Debug)]
