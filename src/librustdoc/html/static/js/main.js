@@ -1293,6 +1293,7 @@ function preLoadCss(cssUrl) {
                 base.TOOLTIP_FORCE_VISIBLE = true;
             }
         }
+        setupScrollObserver();
     });
 
     const mainElem = document.getElementById(MAIN_ID);
@@ -2249,4 +2250,73 @@ function preLoadCss(cssUrl) {
         elem.addEventListener("mouseover", addCopyButton);
         elem.addEventListener("click", showHideCodeExampleButtons);
     });
+
+    /* Setting the "sticky offset" to prevent the heading to hide the target below it. */
+    function setupScrollObserver() {
+        function topbarHeight() {
+            if (window.innerWidth > 700) {
+                return 0;
+            }
+            return parseInt(
+                window.getComputedStyle(document.documentElement)
+                    .getPropertyValue('--topbar-height'),
+                10,
+            );
+        }
+
+        if (window.scrollObserver) {
+            window.scrollObserver.disconnect();
+        }
+
+        window.scrollObserver = new IntersectionObserver(entries => {
+            for (const entry of entries) {
+                // The ratio drops below 1 in two cases: stuck at the top, or partly
+                // below the bottom of the viewport. Checking `top` tells them apart.
+                let top = topbarHeight();
+                if (entry.intersectionRatio < 1 && entry.boundingClientRect.top < (top + 1)) {
+                    if (!entry.target.classList.contains("sticky")) {
+                        entry.target.classList.add("sticky");
+                        document.documentElement.style.setProperty(
+                            "--sticky-offset", `${entry.boundingClientRect.height + top}px`);
+                        const details = entry.target.parentElement;
+                        // We store the callback into `details` to be reused when we want to remove
+                        // the event listener.
+                        details.toggleCallback = () => {
+                            if (!details.open) {
+                                // When we scroll the docs, we're actually scrolling the `html`
+                                // element, so we need to take the current scroll position...
+                                const currentScroll = document.documentElement.scrollTop;
+                                // ... and then we add the current "sticky" heading scroll position
+                                // which is negative so jump back to where it's located.
+                                document.documentElement.scrollTo({
+                                    top: details.getBoundingClientRect().top + currentScroll - top,
+                                });
+                            }
+                        };
+                        details.addEventListener("toggle", details.toggleCallback);
+                    }
+                } else if (entry.target.classList.contains("sticky")) {
+                    entry.target.classList.remove("sticky");
+                    const details = entry.target.parentElement;
+                    details.removeEventListener("toggle", details.toggleCallback);
+                }
+            }
+        }, {
+            rootMargin: `-${topbarHeight() + 1}px 0px 0px 0px`,
+            threshold: [1],
+        });
+
+        onEachLazy(
+            document.querySelectorAll(
+                "h2.section-header + div > details.implementors-toggle > summary"
+            ),
+            elem => window.scrollObserver.observe(elem),
+        );
+        onEachLazy(
+            document.querySelectorAll("details.toggle.big-toggle > summary"),
+            elem => window.scrollObserver.observe(elem),
+        );
+    }
+
+    setupScrollObserver();
 }());
