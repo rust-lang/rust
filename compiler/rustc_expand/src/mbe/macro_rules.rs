@@ -1586,7 +1586,7 @@ fn check_matcher_core<'tt>(
                     // the macro when compiling another crate that is using the
                     // macro. (See #86567.)
                     if is_defined_in_current_crate(node_id)
-                        && matches!(kind, NonterminalKind::Pat(PatParam { inferred: true }))
+                        && matches!(kind, NonterminalKind::Pat(Pat2018))
                         && matches!(
                             next_token,
                             TokenTree::Token(token) if *token == token::Or
@@ -1596,7 +1596,7 @@ fn check_matcher_core<'tt>(
                         let suggestion = quoted_tt_to_string(&TokenTree::MetaVarDecl {
                             span,
                             name,
-                            kind: NonterminalKind::Pat(PatParam { inferred: false }),
+                            kind: NonterminalKind::Pat(PatParam),
                         });
                         sess.psess.buffer_lint(
                             RUST_2021_INCOMPATIBLE_OR_PATTERNS,
@@ -1632,11 +1632,13 @@ fn check_matcher_core<'tt>(
                             if kind == NonterminalKind::Pat(PatWithOr)
                                 && sess.psess.edition.at_least_rust_2021()
                                 && next_token.is_token(&token::Or)
+                                || matches!(kind, NonterminalKind::Pat(PatWithOr | Pat2018))
+                                    && next_token.is_token(&token::Colon)
                             {
                                 let suggestion = quoted_tt_to_string(&TokenTree::MetaVarDecl {
                                     span,
                                     name,
-                                    kind: NonterminalKind::Pat(PatParam { inferred: false }),
+                                    kind: NonterminalKind::Pat(PatParam),
                                 });
                                 err.span_suggestion(
                                     span,
@@ -1759,11 +1761,26 @@ fn is_in_follow(tok: &mbe::TokenTree, kind: NonterminalKind) -> IsInFollow {
                     _ => IsInFollow::No(TOKENS),
                 }
             }
-            NonterminalKind::Pat(PatParam { .. }) => {
+            NonterminalKind::Pat(Pat2018) => {
                 const TOKENS: &[&str] = &["`=>`", "`,`", "`=`", "`|`", "`if`", "`if let`", "`in`"];
                 match tok {
                     TokenTree::Token(token) => match token.kind {
                         FatArrow | Comma | Eq | Or => IsInFollow::Yes,
+                        Ident(kw::If | kw::In, IdentKind::Normal | IdentKind::ForcedKeyword) => {
+                            IsInFollow::Yes
+                        }
+                        _ => IsInFollow::No(TOKENS),
+                    },
+                    TokenTree::MetaVarDecl { kind: NonterminalKind::Guard, .. } => IsInFollow::Yes,
+                    _ => IsInFollow::No(TOKENS),
+                }
+            }
+            NonterminalKind::Pat(PatParam) => {
+                const TOKENS: &[&str] =
+                    &["`=>`", "`,`", "`=`", "`|`", "`:`", "`if`", "`if let`", "`in`"];
+                match tok {
+                    TokenTree::Token(token) => match token.kind {
+                        FatArrow | Comma | Eq | Or | Colon => IsInFollow::Yes,
                         Ident(kw::If | kw::In, IdentKind::Normal | IdentKind::ForcedKeyword) => {
                             IsInFollow::Yes
                         }
