@@ -5,14 +5,15 @@
 
 use std::clone::UseCloned;
 use std::future::Future;
+use std::sync::Arc;
 
 fn ergonomic_clone_closure_no_captures() -> i32 {
     let cl = || 1.use;
     cl()
 }
 
-fn ergonomic_clone_closure_move() -> String {
-    let s = String::from("hi");
+fn ergonomic_clone_closure_move() -> Arc<String> {
+    let s = Arc::new(String::from("hi"));
 
     let cl = || s.use;
     cl()

@@ -1,5 +1,5 @@
 warning: changes to closure capture in Rust 2021 will affect drop order
-  --> $DIR/rfc2229-migration.rs:18:13
+  --> $DIR/rfc2229-migration.rs:22:13
    |
 LL |     let f = || {
    |             ^^
