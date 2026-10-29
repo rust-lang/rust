@@ -14,7 +14,7 @@ use rustc_middle::mir::AssertMessage;
 use rustc_middle::mir::interpret::ReportedErrorInfo;
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, TyAndLayout, ValidityRequirement};
-use rustc_middle::ty::{self, FieldInfo, ScalarInt, Ty, TyCtxt};
+use rustc_middle::ty::{self, FieldInfo, Instance, ScalarInt, Ty, TyCtxt};
 use rustc_middle::{mir, throw_machine_stop};
 use rustc_span::{Span, Symbol, bug, span_bug, sym};
 use rustc_target::callconv::FnAbi;
@@ -22,8 +22,9 @@ use tracing::debug;
 
 use super::error::*;
 use crate::diagnostics::{LongRunning, LongRunningWarn};
+use crate::interpret::Immediate::ScalarPair;
 use crate::interpret::{
-    self, AllocId, AllocInit, AllocRange, ConstAllocation, CtfeProvenance, FnArg, Frame,
+    self, AllocId, AllocInit, AllocRange, ConstAllocation, CtfeProvenance, FnArg, FnVal, Frame,
     GlobalAlloc, ImmTy, Immediate, InterpCx, InterpResult, OpTy, PlaceTy, Pointer, RangeSet,
     RetagMode, Scalar, compile_time_machine, ensure_monomorphic_enough, err_inval, interp_ok,
     throw_exhaust, throw_inval, throw_ub, throw_ub_format, throw_unsup, throw_unsup_format,
@@ -699,7 +700,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 ecx.write_scalar(Scalar::from_target_usize(fields_num as u64, ecx), dest)?;
             }
 
-            sym::type_id_field_representing_type => {
+            sym::type_id_field_representing => {
                 let ty = ecx.read_type_id(&args[0])?;
                 let variant_idx = ecx.read_target_usize(&args[1])? as usize;
                 let field_idx = ecx.read_target_usize(&args[2])? as usize;
@@ -770,6 +771,32 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 ecx.write_scalar(Scalar::from_target_usize(variants_num as u64, ecx), dest)?;
             }
 
+            sym::type_id_variant_getter => {
+                let ty = ecx.read_type_id(&args[0])?;
+                let getter_def_id =
+                    ecx.tcx().require_lang_item(LangItem::VariantGetter, rustc_span::DUMMY_SP);
+                let generic_arg = ecx.tcx().mk_args(&[ty.into()]);
+                let instance = Instance::expect_resolve(
+                    ecx.tcx(),
+                    ecx.typing_env(),
+                    getter_def_id,
+                    generic_arg,
+                    rustc_span::DUMMY_SP,
+                );
+                let fn_ptr = ecx.fn_ptr(FnVal::Instance(instance));
+                ecx.write_pointer(fn_ptr, dest)?;
+            }
+
+            sym::type_id_variant_lookup_table => {
+                let ty = instance
+                    .args
+                    .first()
+                    .expect("has one generic")
+                    .as_type()
+                    .expect("the generic arg is a Ty");
+                ecx.write_slice_of_discriminant(dest, ty)?;
+            }
+
             sym::type_id_variant_name => {
                 let base = ecx.read_type_id(&args[0])?;
 
@@ -791,6 +818,20 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                     Immediate::ScalarPair(
                         Scalar::from_pointer(ptr, ecx),
                         Scalar::from_target_usize(field_name.as_str().len() as u64, ecx),
+                    ),
+                    dest,
+                )?;
+            }
+
+            sym::type_id_name => {
+                let ty = ecx.read_type_id(&args[0])?;
+                ensure_monomorphic_enough(ty)?;
+                let name = crate::util::type_name(ecx.tcx(), ty);
+                let ptr = ecx.allocate_bytes_dedup(name.as_str().as_bytes())?;
+                ecx.write_immediate(
+                    ScalarPair(
+                        Scalar::from_pointer(ptr, ecx),
+                        Scalar::from_target_usize(name.as_str().len() as u64, ecx),
                     ),
                     dest,
                 )?;
@@ -836,28 +877,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 ecx.write_scalar(Scalar::from_target_usize(offset, ecx), dest)?;
             }
 
-            sym::field_representing_type_name => {
-                let frt_ty = ecx.read_type_id(&args[0])?;
-
-                let field_name = if let ty::Adt(def, args) = frt_ty.kind()
-                    && let Some(FieldInfo { name, .. }) =
-                        def.field_representing_type_info(ecx.tcx.tcx, args)
-                {
-                    name
-                } else {
-                    span_bug!(ecx.cur_span(), "expected field representing type, got {frt_ty}")
-                };
-                let ptr = ecx.allocate_bytes_dedup(field_name.as_str().as_bytes())?;
-                ecx.write_immediate(
-                    Immediate::ScalarPair(
-                        Scalar::from_pointer(ptr, ecx),
-                        Scalar::from_target_usize(field_name.as_str().len() as u64, ecx),
-                    ),
-                    dest,
-                )?;
-            }
-
-            sym::field_representing_type_offset => {
+            sym::type_id_field_representing_field_offset => {
                 let frt_ty = ecx.read_type_id(&args[0])?;
 
                 let (ty, variant, field) = if let ty::Adt(def, args) = frt_ty.kind()
@@ -877,7 +897,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 ecx.write_scalar(Scalar::from_target_usize(offset, ecx), dest)?;
             }
 
-            sym::field_representing_type_actual_type_id => {
+            sym::type_id_field_representing_outer_type_id => {
                 let frt_ty = ecx.read_type_id(&args[0])?;
 
                 let field_ty = if let ty::Adt(def, args) = frt_ty.kind()

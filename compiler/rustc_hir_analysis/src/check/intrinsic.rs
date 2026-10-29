@@ -104,9 +104,6 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::fadd_algebraic
         | sym::fdiv_algebraic
         | sym::field_offset
-        | sym::field_representing_type_actual_type_id
-        | sym::field_representing_type_name
-        | sym::field_representing_type_offset
         | sym::floor
         | sym::fma
         | sym::fmul_algebraic
@@ -173,16 +170,21 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::type_id_array_len
         | sym::type_id_element_ty
         | sym::type_id_eq
-        | sym::type_id_field_representing_type
+        | sym::type_id_field_representing
+        | sym::type_id_field_representing_field_offset
+        | sym::type_id_field_representing_outer_type_id
         | sym::type_id_fields
         | sym::type_id_function_ptr
         | sym::type_id_generics
         | sym::type_id_is_signed
+        | sym::type_id_name
         | sym::type_id_non_exhaustive
         | sym::type_id_points_mutably
         | sym::type_id_points_to
         | sym::type_id_size_of
         | sym::type_id_type_of
+        | sym::type_id_variant_getter
+        | sym::type_id_variant_lookup_table
         | sym::type_id_variant_name
         | sym::type_id_variant_non_exhaustive
         | sym::type_id_variants
@@ -294,7 +296,7 @@ pub(crate) fn check_intrinsic_type(
         sym::type_id_array_len => (0, 0, vec![type_id_ty()], tcx.types.usize),
         sym::type_id_element_ty => (0, 0, vec![type_id_ty()], Ty::new_option(tcx, type_id_ty())),
         sym::type_id_eq => (0, 0, vec![type_id_ty(), type_id_ty()], tcx.types.bool),
-        sym::type_id_field_representing_type => {
+        sym::type_id_field_representing => {
             (0, 0, vec![type_id_ty(), tcx.types.usize, tcx.types.usize], type_id_ty())
         }
         sym::type_id_fields => (0, 0, vec![type_id_ty(), tcx.types.usize], tcx.types.usize),
@@ -313,6 +315,27 @@ pub(crate) fn check_intrinsic_type(
         sym::type_id_points_mutably => (0, 0, vec![type_id_ty()], tcx.types.bool),
         sym::type_id_points_to => (0, 0, vec![type_id_ty()], Ty::new_option(tcx, type_id_ty())),
         sym::type_id_variants => (0, 0, vec![type_id_ty()], tcx.types.usize),
+        sym::type_id_variant_getter => {
+            let variant_id =
+                tcx.type_of(tcx.lang_items().variant_id().unwrap()).no_bound_vars().unwrap();
+            let unit_ptr = Ty::new_ptr(tcx, tcx.types.unit, ty::Mutability::Not);
+            let fn_ty = ty::Binder::dummy(tcx.mk_fn_sig_unsafe_rust_abi([unit_ptr], variant_id));
+            (0, 0, vec![type_id_ty()], Ty::new_fn_ptr(tcx, fn_ty))
+        }
+        sym::type_id_variant_lookup_table => {
+            let assoc_items = tcx
+                .associated_item_def_ids(tcx.require_lang_item(LangItem::DiscriminantKind, span));
+            let discriminant_def_id = assoc_items[0];
+            let discriminant_ty = Ty::new_projection_from_args(
+                tcx,
+                ty::IsRigid::No,
+                discriminant_def_id,
+                tcx.mk_args(&[param(0).into()]),
+            );
+            let slice = Ty::new_slice(tcx, discriminant_ty);
+            let slice = Ty::new_imm_ref(tcx, tcx.lifetimes.re_static, slice);
+            (1, 0, vec![], slice)
+        }
         sym::type_id_variant_name => {
             (0, 0, vec![type_id_ty(), tcx.types.usize], Ty::new_static_str(tcx))
         }
@@ -339,9 +362,9 @@ pub(crate) fn check_intrinsic_type(
             vec![type_id_ty()],
             tcx.type_of(tcx.lang_items().type_struct().unwrap()).no_bound_vars().unwrap(),
         ),
-        sym::field_representing_type_actual_type_id => (0, 0, vec![type_id_ty()], type_id_ty()),
-        sym::field_representing_type_name => (0, 0, vec![type_id_ty()], Ty::new_static_str(tcx)),
-        sym::field_representing_type_offset => (0, 0, vec![type_id_ty()], tcx.types.usize),
+        sym::type_id_field_representing_outer_type_id => (0, 0, vec![type_id_ty()], type_id_ty()),
+        sym::type_id_field_representing_field_offset => (0, 0, vec![type_id_ty()], tcx.types.usize),
+        sym::type_id_name => (0, 0, vec![type_id_ty()], Ty::new_static_str(tcx)),
         sym::type_id_non_exhaustive => (0, 0, vec![type_id_ty()], tcx.types.bool),
         sym::type_id_generics => (
             0,

@@ -2,7 +2,8 @@
 //! runtime or const-eval processable way.
 
 use crate::any::TypeId;
-use crate::marker::PointeeSized;
+use crate::marker::{DiscriminantKind, PointeeSized};
+use crate::mem::Discriminant;
 use crate::ptr::DynMetadata;
 use crate::{fmt, intrinsics};
 
@@ -14,6 +15,39 @@ use crate::{fmt, intrinsics};
 pub struct Type {
     /// Per-type information
     pub kind: TypeKind,
+}
+
+/// This function is not called directly instead a pointer to a monomorphized
+/// instance of it is returned by [`TypeId::variant_getter`].
+///
+/// # Errors
+/// It's an ICE to call this with anything not an enum. This is guarded for
+/// by [`TypeId::variant_getter`].
+///
+/// # Safety
+///
+/// See [`TypeId::variant_getter`] on how to safely use this function.
+#[lang = "variant_getter"]
+unsafe fn variant_getter<T>(val: *const ()) -> VariantId
+where
+    <T as DiscriminantKind>::Discriminant: 'static,
+{
+    // SAFETY: up to the caller to uphold, documented in `TypeId::variant_getter`.
+    let v: &T = unsafe { &*val.cast::<T>() };
+    let discriminant = core::mem::discriminant(v);
+    let lookup_table: &'static [<T as DiscriminantKind>::Discriminant] =
+        const { intrinsics::reflection::type_id_variant_lookup_table::<T>() };
+
+    if lookup_table.is_empty() {
+        // for types other then enums the table will be empty
+        return VariantId { base: const { of::<T>() }, variant: 0 };
+    }
+
+    let variant = lookup_table
+        .iter()
+        .position(|d| Discriminant(*d) == discriminant)
+        .expect("table contains all possible discriminants");
+    VariantId { base: const { of::<T>() }, variant }
 }
 
 /// Info of a trait implementation, you can retrieve the vtable with [Self::get_vtable]
@@ -107,6 +141,7 @@ pub enum TypeKind {
     /// FIXME(#146922): add all the common types
     /// non exhaustive list:
     /// - Never
+    /// - Type (type alias)
     Other,
 }
 
@@ -551,7 +586,7 @@ impl TypeId {
     #[rustc_comptime]
     pub fn field(self, variant_index: usize, field_index: usize) -> FieldId {
         FieldId {
-            frt_type_id: intrinsics::reflection::type_id_field_representing_type(
+            frt_type_id: intrinsics::reflection::type_id_field_representing(
                 self,
                 variant_index,
                 field_index,
@@ -656,12 +691,101 @@ impl TypeId {
     pub fn function_ptr(self) -> Option<FnPtr> {
         intrinsics::reflection::type_id_function_ptr(self)
     }
+
+    /// Returns a non empty string when given a `TypeId` which represents a named item such
+    /// as struct, enum or trait. Otherwise returns an empty string.
+    /// ```
+    /// #![feature(type_info)]
+    /// # use std::any::TypeId;
+    ///
+    /// struct Kitty;
+    /// enum Color {}
+    /// trait Cute {}
+    ///
+    /// assert_eq!(const { TypeId::of::<Kitty>().name() },"Kitty");
+    /// assert_eq!(const { TypeId::of::<Vec<Kitty>>().name() },"Vec");
+    /// assert_eq!(const { TypeId::of::<Color>().name() }, "Color");
+    /// assert_eq!(const { TypeId::of::<dyn Cute>().name() }, "Cute");
+    ///
+    /// assert_eq!(const { TypeId::of::<()>().name() }, "");
+    /// assert_eq!(const { TypeId::of::<fn(u8)>().name() }, "");
+    /// ```
+    #[unstable(feature = "type_info", issue = "146922")]
+    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    #[rustc_comptime]
+    pub fn name(self) -> &'static str {
+        intrinsics::reflection::type_id_name(self)
+    }
+
+    /// When called on a `TypeId` representing some enum `T` this returns a function pointer
+    /// which can be used to get the `VariantId` of an instance of `T` at runtime.
+    ///
+    /// When given a `TypeId` for something which does not represent an enum the returned
+    /// function can still be called. It will then return the same as `TypeId::variant(0)`.
+    ///
+    /// # Safety
+    ///
+    /// While calling this function is completely safe the returned function pointer
+    /// must only be provided a pointer which may be converted to a reference to `T`.
+    /// See [pointer-to-reference-conversion](https://doc.rust-lang.org/stable/std/ptr/index.html#pointer-to-reference-conversion) for the requirements.
+    ///
+    /// Providing the returned function with anything else is undefined behavior.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(const_trait_impl)]
+    /// # #![feature(const_heap)]
+    /// # #![feature(type_info)]
+    /// use std::any::TypeId;
+    /// enum Kitty {
+    ///     Sleepy,
+    ///     Playful,
+    ///     Cuddly,
+    /// }
+
+    /// let names = const {
+    ///     let type_id = TypeId::of::<Kitty>();
+    ///     let mut names = Vec::new();
+
+    ///     while names.len() < type_id.variants() {
+    ///         let variant_id = type_id.variant(names.len());
+    ///         names.push((variant_id, variant_id.name()));
+    ///     }
+    ///     names.const_make_global()
+    /// };
+    /// let variant_getter = const { TypeId::of::<Kitty>().variant_getter() };
+
+    /// let kitty = Kitty::Playful;
+    /// // Normally when using the getter you are manually offsetting pointers and you have no type.
+    /// // We'll pretend here for brevity.
+    /// let kitty_ptr = &kitty as *const Kitty;
+    /// let kitty_ptr = kitty_ptr.cast::<()>();
+
+    /// let variant_id = variant_getter(kitty_ptr);
+    /// let kitty_is_feeling = names
+    ///     .iter()
+    ///     .find(|(id, _)| *id == variant_id)
+    ///     .map(|(_, variant_name)| *variant_name)
+    ///     .expect("We have a list of steps for each VariantId")
+    ///     .to_lowercase();
+
+    /// assert_eq!(kitty_is_feeling, "playful");
+    /// ```
+    ///
+    #[unstable(feature = "type_info", issue = "146922")]
+    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    #[rustc_comptime]
+    pub fn variant_getter(self) -> unsafe fn(*const ()) -> VariantId {
+        intrinsics::reflection::type_id_variant_getter(self)
+    }
 }
 
 /// Variant representing type ID. Representing a variant of an enum.
 #[derive(Copy, PartialOrd, Ord, Hash)]
 #[derive_const(Clone, PartialEq, Eq)]
 #[unstable(feature = "type_info", issue = "146922")]
+#[lang = "VariantId"]
 pub struct VariantId {
     base: TypeId,
     variant: usize,
@@ -742,7 +866,7 @@ impl FieldId {
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
     #[rustc_comptime]
     pub fn type_id(self) -> TypeId {
-        intrinsics::field_representing_type_actual_type_id(self.frt_type_id)
+        intrinsics::reflection::type_id_field_representing_outer_type_id(self.frt_type_id)
     }
 
     /// Returns the name of the field.
@@ -764,7 +888,7 @@ impl FieldId {
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
     #[rustc_comptime]
     pub fn name(self) -> &'static str {
-        intrinsics::field_representing_type_name(self.frt_type_id)
+        intrinsics::reflection::type_id_name(self.frt_type_id)
     }
     /// Returns the offset of the field wrt to its containing type.
     ///
@@ -786,6 +910,6 @@ impl FieldId {
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
     #[rustc_comptime]
     pub fn offset(self) -> usize {
-        intrinsics::field_representing_type_offset(self.frt_type_id)
+        intrinsics::reflection::type_id_field_representing_field_offset(self.frt_type_id)
     }
 }
