@@ -12,7 +12,6 @@ macro fulfilled() {
     #[derive(Debug)]
     #[expect(non_upper_case_globals)]
     pub struct Wrapper<const n: usize> {
-        //~^ WARN const parameter `n` should have an upper case name
         pub field: [u8; n],
     }
 }
@@ -27,7 +26,6 @@ passthrough! {
     #[derive(Debug)]
     #[expect(non_upper_case_globals)]
     pub struct WrapperPassthrough<const n: usize> {
-        //~^ WARN const parameter `n` should have an upper case name
         pub field: [u8; n],
     }
 }

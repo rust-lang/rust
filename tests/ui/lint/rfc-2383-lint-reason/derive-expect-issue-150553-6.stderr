@@ -1,24 +1,10 @@
-warning: const parameter `n` should have an upper case name
-  --> $DIR/derive-expect-issue-150553-6.rs:11:27
-   |
-LL | pub struct CfgField<const n: usize> {
-   |                           ^ help: convert the identifier to upper case: `N`
-   |
-   = note: `#[warn(non_upper_case_globals)]` (part of `#[warn(nonstandard_style)]`) on by default
-
-warning: const parameter `n` should have an upper case name
-  --> $DIR/derive-expect-issue-150553-6.rs:20:32
-   |
-LL | pub struct CfgAttrExpect<const n: usize> {
-   |                                ^ help: convert the identifier to upper case: `N`
-
 warning: this lint expectation is unfulfilled
-  --> $DIR/derive-expect-issue-150553-6.rs:28:10
+  --> $DIR/derive-expect-issue-150553-6.rs:26:10
    |
 LL | #[expect(unexpected_cfgs)]
    |          ^^^^^^^^^^^^^^^
    |
    = note: `#[warn(unfulfilled_lint_expectations)]` on by default
 
-warning: 3 warnings emitted
+warning: 1 warning emitted
 

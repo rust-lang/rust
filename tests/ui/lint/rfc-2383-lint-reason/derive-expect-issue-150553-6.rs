@@ -9,7 +9,6 @@
 #[derive(Debug)]
 #[expect(non_upper_case_globals)]
 pub struct CfgField<const n: usize> {
-    //~^ WARN const parameter `n` should have an upper case name
     pub field: [u8; n],
     #[cfg(false)]
     pub gone: u8,
@@ -18,7 +17,6 @@ pub struct CfgField<const n: usize> {
 #[derive(Debug)]
 #[cfg_attr(all(), expect(non_upper_case_globals))]
 pub struct CfgAttrExpect<const n: usize> {
-    //~^ WARN const parameter `n` should have an upper case name
     pub field: [u8; n],
     #[cfg(false)]
     pub gone: u8,
