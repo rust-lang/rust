@@ -12,7 +12,7 @@ use rustc_abi::{Align, HasDataLayout, Size, TargetDataLayout, WrappingRange};
 use rustc_apfloat::{Float, Round, Status, ieee};
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::common::{
-    AtomicRmwBinOp, IntPredicate, RealPredicate, SynchronizationScope, TypeKind,
+    AtomicRmwBinOp, IntPredicate, RealPredicate, SynchronizationScope,
 };
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::PlaceRef;
@@ -839,8 +839,8 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         }
 
         #[cfg(feature = "master")]
-        match self.cx.type_kind(a_type) {
-            TypeKind::Half => {
+        match self.cx.float_type(a_type) {
+            Some(abi::Float::F16) => {
                 let fmodf = self.context.get_builtin_function("fmodf");
                 let f32_type = self.type_f32();
                 let a = self.context.new_cast(self.location, a, f32_type);
@@ -848,15 +848,15 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
                 let result = self.context.new_call(self.location, fmodf, &[a, b]);
                 return self.context.new_cast(self.location, result, a_type);
             }
-            TypeKind::Float => {
+            Some(abi::Float::F32) => {
                 let fmodf = self.context.get_builtin_function("fmodf");
                 return self.context.new_call(self.location, fmodf, &[a, b]);
             }
-            TypeKind::Double => {
+            Some(abi::Float::F64) => {
                 let fmod = self.context.get_builtin_function("fmod");
                 return self.context.new_call(self.location, fmod, &[a, b]);
             }
-            TypeKind::FP128 => {
+            Some(abi::Float::F128) => {
                 // FIXME(antoyo): use get_simple_function_f128_2args.
                 let f128_type = self.type_f128();
                 let fmodf128 = self.context.new_function(
@@ -872,7 +872,10 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
                 );
                 return self.context.new_call(self.location, fmodf128, &[a, b]);
             }
-            _ => (),
+            Some(float @ (abi::Float::F16B | abi::Float::PpcF128)) => {
+                bug!("frem unsupported on {float:?}")
+            }
+            None => (),
         }
 
         if let Some(vector_type) = a_type_unqualified.dyncast_vector() {
@@ -1598,7 +1601,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         self.context.new_array_access(self.location, array, idx).to_rvalue()
     }
 
-    fn vector_splat(&mut self, _num_elts: usize, _elt: RValue<'gcc>) -> RValue<'gcc> {
+    fn vector_splat(&mut self, _num_elts: u64, _elt: RValue<'gcc>) -> RValue<'gcc> {
         unimplemented!();
     }
 
@@ -1956,9 +1959,12 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         dest_ty: Type<'gcc>,
     ) -> RValue<'gcc> {
         let src_ty = self.cx.val_ty(val);
-        let (float_ty, int_ty) = if self.cx.type_kind(src_ty) == TypeKind::Vector {
-            assert_eq!(self.cx.vector_length(src_ty), self.cx.vector_length(dest_ty));
-            (self.cx.element_type(src_ty), self.cx.element_type(dest_ty))
+        let (float_ty, int_ty) = if let Some((src_elem, src_len)) =
+            self.cx.vector_element_type_and_length(src_ty)
+            && let Some((dest_elem, dest_len)) = self.cx.vector_element_type_and_length(dest_ty)
+        {
+            assert_eq!(src_len, dest_len);
+            (src_elem, dest_elem)
         } else {
             (src_ty, dest_ty)
         };
@@ -1968,8 +1974,8 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         // Now that LLVM always relies on its own, the code has been moved to GCC, but the comments are
         // still LLVM-specific. This should be updated, and use better GCC specifics if possible.
 
-        let int_width = self.cx.int_width(int_ty);
-        let float_width = self.cx.float_width(float_ty);
+        let int_width = self.cx.int_width(int_ty).expect("dest must be an integer");
+        let float_type = self.cx.float_type(float_ty).expect("src must be a float");
         // LLVM's fpto[su]i returns undef when the input val is infinite, NaN, or does not fit into the
         // destination integer type after rounding towards zero. This `undef` value can cause UB in
         // safe code (see issue #10184), so we implement a saturating conversion on top of it:
@@ -2042,21 +2048,25 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         // QED.
 
         let float_bits_to_llval = |bx: &mut Self, bits| {
-            let bits_llval = match float_width {
-                16 => bx.cx().const_u16(bits as u16),
-                32 => bx.cx().const_u32(bits as u32),
-                64 => bx.cx().const_u64(bits as u64),
-                128 => bx.cx().const_u128(bits),
-                n => bug!("unsupported float width {}", n),
+            let bits_llval = match float_type {
+                abi::Float::F16 => bx.cx().const_u16(bits as u16),
+                abi::Float::F32 => bx.cx().const_u32(bits as u32),
+                abi::Float::F64 => bx.cx().const_u64(bits as u64),
+                abi::Float::F128 => bx.cx().const_u128(bits),
+                abi::Float::F16B | abi::Float::PpcF128 => {
+                    bug!("unsupported float width {float_type:?}")
+                }
             };
             bx.bitcast(bits_llval, float_ty)
         };
-        let (f_min, f_max) = match float_width {
-            16 => compute_clamp_bounds_half(signed, int_width),
-            32 => compute_clamp_bounds::<ieee::Single>(signed, int_width),
-            64 => compute_clamp_bounds::<ieee::Double>(signed, int_width),
-            128 => compute_clamp_bounds::<ieee::Quad>(signed, int_width),
-            n => bug!("unsupported float width {}", n),
+        let (f_min, f_max) = match float_type {
+            abi::Float::F16 => compute_clamp_bounds_half(signed, int_width),
+            abi::Float::F32 => compute_clamp_bounds::<ieee::Single>(signed, int_width),
+            abi::Float::F64 => compute_clamp_bounds::<ieee::Double>(signed, int_width),
+            abi::Float::F128 => compute_clamp_bounds::<ieee::Quad>(signed, int_width),
+            abi::Float::F16B | abi::Float::PpcF128 => {
+                bug!("unsupported float width {float_type:?}")
+            }
         };
         let f_min = float_bits_to_llval(self, f_min);
         let f_max = float_bits_to_llval(self, f_max);
@@ -2068,8 +2078,8 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         // into each lane of the vector.  The algorithm stays the same, we are just using the
         // same constant across all lanes.
         let maybe_splat = |bx: &mut Self, val| {
-            if bx.cx().type_kind(dest_ty) == TypeKind::Vector {
-                bx.vector_splat(bx.vector_length(dest_ty), val)
+            if let Some(len) = bx.cx().vector_length(dest_ty) {
+                bx.vector_splat(len, val)
             } else {
                 val
             }
