@@ -33,6 +33,8 @@ use rustc_transmute::TransmuteTypeEnv;
 use thin_vec::{ThinVec, thin_vec};
 
 use super::inspect::InferCtxtProofTreeExt;
+use crate::error_reporting::InferCtxtErrorExt;
+use crate::error_reporting::traits::OverflowCause;
 use crate::solve::inspect::{self, InspectConfig, ProofTreeVisitor};
 use crate::traits::{EvaluateConstErr, ObligationCause, sizedness_fast_path, specialization_graph};
 
@@ -568,6 +570,15 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                 ));
                 diag.note("this lint is attached to the whole crate and can't be disabled on a per-function basis");
             }),
+        )
+    }
+
+    fn report_normalization_overflow(&self, alias: ty::AliasTerm<'tcx>) -> ! {
+        self.err_ctxt().report_overflow_error(
+            OverflowCause::DeeplyNormalize(alias),
+            DUMMY_SP,
+            true,
+            |_| {},
         )
     }
 }
