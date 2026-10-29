@@ -424,12 +424,10 @@ pub(crate) struct ParamInNonTrivialAnonConst {
     #[help("add `#![feature(generic_const_exprs)]` to allow generic const expressions")]
     pub(crate) help: bool,
     pub(crate) is_gca_const_items: bool,
-    #[help(
-        "consider factoring the expression into a `type const` item and use it as the const argument instead"
-    )]
+    #[help("consider wrapping the expression in the `gca!` macro")]
     pub(crate) help_gca: bool,
     #[help(
-        "alternatively, you can use `#![feature(gca_const_items)]` and extract the expression into a `type const` item"
+        "alternatively, you can use `#![feature(gca_const_items)]` and wrap the expression in the `gca!` macro"
     )]
     pub(crate) help_suggest_gca: bool,
 }
