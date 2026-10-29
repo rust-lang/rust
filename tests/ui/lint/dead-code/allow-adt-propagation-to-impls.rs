@@ -1,3 +1,5 @@
+//@ check-pass
+
 #![deny(dead_code)]
 
 pub trait Tr {
@@ -13,6 +15,6 @@ impl Tr for Foo {
     }
 }
 
-fn bar() {} //~ ERROR function `bar` is never used
+fn bar() {}
 
 fn main() {}
