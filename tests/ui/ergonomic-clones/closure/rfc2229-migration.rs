@@ -5,13 +5,17 @@
 #![warn(rust_2021_compatibility)]
 #![allow(incomplete_features)]
 
-#[derive(Debug)]
+use std::clone::UseCloned;
+
+#[derive(Debug, Clone)]
 struct Foo(i32);
 impl Drop for Foo {
     fn drop(&mut self) {
         println!("{:?} dropped", self.0);
     }
 }
+
+impl UseCloned for Foo {}
 
 fn main() {
     let a = (Foo(0), Foo(1));
