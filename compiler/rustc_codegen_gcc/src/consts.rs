@@ -8,6 +8,7 @@ use rustc_attr_ir::Linkage;
 use rustc_codegen_ssa::traits::{
     BaseTypeCodegenMethods, ConstCodegenMethods, StaticCodegenMethods,
 };
+use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_log::tracing::trace;
@@ -60,7 +61,12 @@ fn set_global_alignment<'gcc, 'tcx>(
 }
 
 impl<'gcc, 'tcx> StaticCodegenMethods for CodegenCx<'gcc, 'tcx> {
-    fn static_addr_of(&self, alloc: ConstAllocation<'_>, kind: Option<&str>) -> RValue<'gcc> {
+    fn static_addr_of(
+        &self,
+        alloc: ConstAllocation<'_>,
+        kind: Option<&str>,
+        _ptrauth_discriminators: Option<&FxHashMap<Size, u64>>,
+    ) -> RValue<'gcc> {
         let cv = const_alloc_to_gcc(self, alloc);
         let align = alloc.inner().align;
 
