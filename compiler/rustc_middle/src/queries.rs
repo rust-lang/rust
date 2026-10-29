@@ -117,7 +117,7 @@ use crate::ty::layout::ValidityRequirement;
 use crate::ty::print::PrintTraitRefExt;
 use crate::ty::util::AlwaysRequiresDrop;
 use crate::ty::{
-    self, CrateInherentImpls, GenericArg, GenericArgsRef, LitToConstInput, PseudoCanonicalInput,
+    self, CrateInherentImpls, GenericArg, GenericArgs, LitToConstInput, PseudoCanonicalInput,
     RequiredDepth, SizedTraitKind, Ty, TyCtxt, TyCtxtFeed,
 };
 use crate::{mir, thir};
@@ -1325,7 +1325,7 @@ rustc_queries! {
     }
 
     /// Obtain all the calls into other local functions
-    query mir_inliner_callees(key: ty::InstanceKind<'tcx>) -> &'tcx [(DefId, GenericArgsRef<'tcx>)] {
+    query mir_inliner_callees(key: ty::InstanceKind<'tcx>) -> &'tcx [(DefId, GenericArgs<'tcx>)] {
         desc {
             "computing all local function calls in `{}`",
             tcx.def_path_str(key.def_id()),
@@ -1966,7 +1966,7 @@ rustc_queries! {
     /// crate. Instead use the narrower `upstream_monomorphizations_for`,
     /// `upstream_drop_glue_for`, `upstream_async_drop_glue_for`, or,
     /// even better, `Instance::upstream_monomorphization()`.
-    query upstream_monomorphizations(_: ()) -> &'tcx DefIdMap<UnordMap<GenericArgsRef<'tcx>, CrateNum>> {
+    query upstream_monomorphizations(_: ()) -> &'tcx DefIdMap<UnordMap<GenericArgs<'tcx>, CrateNum>> {
         arena_cache
         desc { "collecting available upstream monomorphizations" }
     }
@@ -1979,7 +1979,7 @@ rustc_queries! {
     /// You likely want to call `Instance::upstream_monomorphization()`
     /// instead of invoking this query directly.
     query upstream_monomorphizations_for(def_id: DefId)
-        -> Option<&'tcx UnordMap<GenericArgsRef<'tcx>, CrateNum>>
+        -> Option<&'tcx UnordMap<GenericArgs<'tcx>, CrateNum>>
     {
         desc {
             "collecting available upstream monomorphizations for `{}`",
@@ -2003,7 +2003,7 @@ rustc_queries! {
     /// NOTE: This query could easily be extended to also support other
     ///       common functions that have are large set of monomorphizations
     ///       (like `Clone::clone` for example).
-    query upstream_drop_glue_for(args: GenericArgsRef<'tcx>) -> Option<CrateNum> {
+    query upstream_drop_glue_for(args: GenericArgs<'tcx>) -> Option<CrateNum> {
         desc { "available upstream drop-glue for `{:?}`", args }
     }
 
@@ -2023,7 +2023,7 @@ rustc_queries! {
     /// NOTE: This query could easily be extended to also support other
     ///       common functions that have are large set of monomorphizations
     ///       (like `Clone::clone` for example).
-    query upstream_async_drop_glue_for(args: GenericArgsRef<'tcx>) -> Option<CrateNum> {
+    query upstream_async_drop_glue_for(args: GenericArgs<'tcx>) -> Option<CrateNum> {
         desc { "available upstream async-drop-glue for `{:?}`", args }
     }
 
@@ -2110,7 +2110,7 @@ rustc_queries! {
         desc { "inheriting delegation signature" }
     }
 
-    query delegation_user_specified_args(def_id: LocalDefId) -> (&'tcx [GenericArg<'tcx>], &'tcx [GenericArg<'tcx>]) {
+    query delegation_user_specified_args(def_id: LocalDefId) -> (ty::GenericArgs<'tcx>, ty::GenericArgs<'tcx>) {
         desc { "getting delegation user-specified args" }
     }
 
@@ -2225,7 +2225,7 @@ rustc_queries! {
     }
 
     /// Do not call this query directly: invoke `Ty::is_opsem_inhabited` instead.
-    query is_opsem_inhabited_adt_cached(env: ty::PseudoCanonicalInput<'tcx, (ty::AdtDef<'tcx>, ty::GenericArgsRef<'tcx>)>) -> bool {
+    query is_opsem_inhabited_adt_cached(env: ty::PseudoCanonicalInput<'tcx, (ty::AdtDef<'tcx>, ty::GenericArgs<'tcx>)>) -> bool {
         desc { "computing whether `{:?}` is inhabited on the opsem level", env.value }
     }
 
@@ -2647,7 +2647,7 @@ rustc_queries! {
         desc { "normalizing `{:?}`", goal.canonical.value.value.value.skip_normalization() }
     }
 
-    query instantiate_and_check_impossible_clauses(key: (DefId, GenericArgsRef<'tcx>)) -> bool {
+    query instantiate_and_check_impossible_clauses(key: (DefId, GenericArgs<'tcx>)) -> bool {
         desc {
             "checking impossible instantiated clauses: `{}`",
             tcx.def_path_str(key.0)
@@ -2702,16 +2702,16 @@ rustc_queries! {
     }
 
     /// Attempt to resolve the given `DefId` to an `Instance`, for the
-    /// given generics args (`GenericArgsRef`), returning one of:
+    /// given generics args (`GenericArgs`), returning one of:
     ///  * `Ok(Some(instance))` on success
-    ///  * `Ok(None)` when the `GenericArgsRef` are still too generic,
+    ///  * `Ok(None)` when the `GenericArgs` are still too generic,
     ///    and therefore don't allow finding the final `Instance`
     ///  * `Err(ErrorGuaranteed)` when the `Instance` resolution process
     ///    couldn't complete due to errors elsewhere - this is distinct
     ///    from `Ok(None)` to avoid misleading diagnostics when an error
     ///    has already been/will be emitted, for the original cause.
     query resolve_instance_raw(
-        key: ty::PseudoCanonicalInput<'tcx, (DefId, GenericArgsRef<'tcx>)>
+        key: ty::PseudoCanonicalInput<'tcx, (DefId, GenericArgs<'tcx>)>
     ) -> Result<Option<ty::Instance<'tcx>>, ErrorGuaranteed> {
         desc { "resolving instance `{}`", ty::Instance::new_raw(key.value.0, key.value.1) }
     }

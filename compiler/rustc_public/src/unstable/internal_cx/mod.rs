@@ -12,7 +12,7 @@ impl<'tcx, T: InternalCx<'tcx>> ExistentialProjectionHelpers<'tcx> for T {
     fn new_from_args(
         &self,
         def_id: rustc_span::def_id::DefId,
-        args: ty::GenericArgsRef<'tcx>,
+        args: ty::GenericArgs<'tcx>,
         term: ty::Term<'tcx>,
     ) -> ty::ExistentialProjection<'tcx> {
         ty::ExistentialProjection::new_from_args(self.tcx(), def_id, args, term)
@@ -23,7 +23,7 @@ impl<'tcx, T: InternalCx<'tcx>> ExistentialTraitRefHelpers<'tcx> for T {
     fn new_from_args(
         &self,
         trait_def_id: rustc_span::def_id::DefId,
-        args: ty::GenericArgsRef<'tcx>,
+        args: ty::GenericArgs<'tcx>,
     ) -> ty::ExistentialTraitRef<'tcx> {
         ty::ExistentialTraitRef::new_from_args(self.tcx(), trait_def_id, args)
     }
@@ -33,7 +33,7 @@ impl<'tcx, T: InternalCx<'tcx>> TraitRefHelpers<'tcx> for T {
     fn new_from_args(
         &self,
         trait_def_id: rustc_span::def_id::DefId,
-        args: ty::GenericArgsRef<'tcx>,
+        args: ty::GenericArgs<'tcx>,
     ) -> ty::TraitRef<'tcx> {
         ty::TraitRef::new_from_args(self.tcx(), trait_def_id, args)
     }
@@ -51,7 +51,7 @@ impl<'tcx> InternalCx<'tcx> for TyCtxt<'tcx> {
     fn mk_args_from_iter<I, T>(self, iter: I) -> T::Output
     where
         I: Iterator<Item = T>,
-        T: ty::CollectAndApply<ty::GenericArg<'tcx>, ty::GenericArgsRef<'tcx>>,
+        T: ty::CollectAndApply<ty::GenericArg<'tcx>, ty::GenericArgs<'tcx>>,
     {
         TyCtxt::mk_args_from_iter(self, iter)
     }

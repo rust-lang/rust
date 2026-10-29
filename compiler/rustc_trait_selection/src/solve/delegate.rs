@@ -437,7 +437,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
     fn add_item_bounds_for_hidden_type(
         &self,
         def_id: DefId,
-        args: ty::GenericArgsRef<'tcx>,
+        args: ty::GenericArgs<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         hidden_ty: Ty<'tcx>,
         goals: &mut Vec<Goal<'tcx, ty::Predicate<'tcx>>>,

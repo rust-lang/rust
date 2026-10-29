@@ -488,7 +488,7 @@ fn push_const_arg_has_type_obligation<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     term: Term<'tcx>,
     def_id: DefId,
-    args: ty::GenericArgsRef<'tcx>,
+    args: ty::GenericArgs<'tcx>,
 ) {
     if let Some(ct) = term.as_const() {
         let expected_ty = tcx.type_of(def_id).instantiate(tcx, args).skip_norm_wip();
@@ -607,7 +607,7 @@ pub fn compute_inherent_assoc_term_args<'a, 'b, 'tcx>(
     cause: ObligationCause<'tcx>,
     depth: usize,
     obligations: &mut PredicateObligations<'tcx>,
-) -> ty::GenericArgsRef<'tcx> {
+) -> ty::GenericArgs<'tcx> {
     let tcx = selcx.tcx();
 
     let alias_def_id = match alias_term.kind {
@@ -1636,7 +1636,7 @@ fn confirm_builtin_candidate<'cx, 'tcx>(
         let ty::Adt(def, args) = self_ty.kind() else {
             bug!("only field representing types can implement `Field`")
         };
-        let Some(FieldInfo { base, ty, .. }) = def.field_representing_type_info(tcx, args) else {
+        let Some(FieldInfo { base, ty, .. }) = def.field_representing_type_info(tcx, *args) else {
             bug!("only field representing types can implement `Field`")
         };
         if tcx.is_lang_item(item_def_id, LangItem::FieldBase) {
@@ -1958,7 +1958,7 @@ fn confirm_async_fn_kind_helper_candidate<'cx, 'tcx>(
         tupled_inputs_ty,
         tupled_upvars_ty,
         coroutine_captures_by_ref_ty,
-    ] = **obligation.predicate.args
+    ] = *obligation.predicate.args.as_slice()
     else {
         bug!();
     };

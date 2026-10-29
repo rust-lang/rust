@@ -153,7 +153,7 @@ fn remap_gat_vars_and_recurse_into_nested_projections<'tcx>(
             {
                 // We have found the GAT in question...
                 // Return the vars, since we may need to remap them.
-                break &alias_ty.args[item_trait_ref.args.len()..];
+                break tcx.mk_args(&alias_ty.args.as_slice()[item_trait_ref.args.len()..]);
             } else {
                 // Only collect *self* type bounds if the filter is for self.
                 match filter {
