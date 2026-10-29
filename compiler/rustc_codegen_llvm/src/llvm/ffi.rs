@@ -1838,7 +1838,7 @@ unsafe extern "C" {
 
     pub(crate) fn LLVMDIBuilderCreatePointerType<'ll>(
         Builder: &DIBuilder<'ll>,
-        PointeeTy: &'ll Metadata,
+        PointeeTy: Option<&'ll Metadata>, // None for `void *`
         SizeInBits: u64,
         AlignInBits: u32,
         AddressSpace: c_uint, // (optional DWARF address space; default is 0)
@@ -2313,6 +2313,19 @@ unsafe extern "C" {
         SPFlags: DISPFlags,
         TParam: &'a DIArray,
     ) -> &'a DISubprogram;
+
+    /// LLVM-C's `LLVMDIBuilderCreateGlobalVariableExpression` cannot create a
+    /// non-defining (`isDefinition: false`) global variable.
+    pub(crate) fn LLVMRustDIBuilderCreateExternGlobalVariableExpression<'ll>(
+        Builder: &DIBuilder<'ll>,
+        Scope: Option<&'ll Metadata>,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
+        NameLen: size_t,
+        File: &'ll Metadata,
+        LineNo: c_uint,
+        Ty: Option<&'ll Metadata>, // None for a typeless variable
+        AlignInBits: u32,
+    ) -> &'ll Metadata;
 
     /// As of LLVM 22 there is no corresponding LLVM-C function.
     pub(crate) fn LLVMRustDIBuilderCreateVariantMemberType<'a>(
