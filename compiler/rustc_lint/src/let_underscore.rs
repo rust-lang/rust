@@ -1,5 +1,6 @@
 use rustc_errors::MultiSpan;
 use rustc_hir as hir;
+use rustc_hir::def::{DefKind, Res};
 use rustc_lint_defs::{declare_lint, declare_lint_pass};
 use rustc_middle::ty;
 use rustc_span::{Symbol, sym};
@@ -124,6 +125,15 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                 return;
             }
 
+            // `let _ = place;` doesn't move out of the place, so nothing gets dropped.
+            if let Some(init) = local.init
+                && cx.typeck_results().expr_adjustments(init).is_empty()
+                && (is_local_or_static_place(init)
+                    || borrows_extended_temporary(cx, init, local.pat))
+            {
+                return;
+            }
+
             let ty = cx.typeck_results().pat_ty(pat);
 
             // If the type has a trivial Drop implementation, then it doesn't
@@ -167,4 +177,71 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
             }
         });
     }
+}
+
+/// Whether `expr` is a place based on a local or a static, so no temporary is involved.
+// FIXME: this doesn't look through calls, so `let _ = *identity(&x);` still lints even though
+// nothing is dropped. Telling that apart from `*identity(&temp())` needs more than the HIR.
+fn is_local_or_static_place(expr: &hir::Expr<'_>) -> bool {
+    match expr.kind {
+        hir::ExprKind::Path(hir::QPath::Resolved(_, path)) => {
+            matches!(path.res, Res::Local(_) | Res::Def(DefKind::Static { .. }, _))
+        }
+        hir::ExprKind::Field(base, _)
+        | hir::ExprKind::Index(base, _, _)
+        | hir::ExprKind::Unary(hir::UnOp::Deref, base)
+        | hir::ExprKind::AddrOf(_, _, base)
+        | hir::ExprKind::Type(base, _) => is_local_or_static_place(base),
+        _ => false,
+    }
+}
+
+/// Whether `expr` borrows a temporary whose lifetime is extended past the `let`, like
+/// `let &_ = &m.lock().unwrap();`, and `pat` doesn't look behind any other reference.
+fn borrows_extended_temporary(
+    cx: &LateContext<'_>,
+    expr: &hir::Expr<'_>,
+    pat: &hir::Pat<'_>,
+) -> bool {
+    let Some(body) = cx.enclosing_body else { return false };
+    let mut root = expr;
+    let mut borrows = 0;
+    loop {
+        if !cx.typeck_results().expr_adjustments(root).is_empty() {
+            return false;
+        }
+        match root.kind {
+            hir::ExprKind::AddrOf(_, _, base) => {
+                borrows += 1;
+                root = base;
+            }
+            hir::ExprKind::Field(base, _) => root = base,
+            // Only temporaries get their lifetime extended, places and paths don't.
+            hir::ExprKind::Unary(hir::UnOp::Deref, _)
+            | hir::ExprKind::Index(..)
+            | hir::ExprKind::Type(..)
+            | hir::ExprKind::Path(_) => return false,
+            _ => break,
+        }
+    }
+
+    // Each deref in the pattern has to go through one of the borrows above, otherwise it could
+    // reach a temporary that isn't extended, like in `let &&_ = &identity(&m.lock());`.
+    let mut derefs = 0;
+    let mut deref_pat = false;
+    pat.walk_always(|p| {
+        derefs += cx.typeck_results().pat_adjustments().get(p.hir_id).map_or(0, |a| a.len());
+        match p.kind {
+            hir::PatKind::Ref(..) => derefs += 1,
+            hir::PatKind::Deref(_) => deref_pat = true,
+            _ => {}
+        }
+    });
+    if deref_pat || derefs > borrows {
+        return false;
+    }
+
+    let scope_tree = cx.tcx.region_scope_tree(cx.tcx.hir_body_owner_def_id(body));
+    scope_tree.temporary_scope(root.hir_id.local_id).temp_lifetime
+        != scope_tree.temporary_scope(expr.hir_id.local_id).temp_lifetime
 }
