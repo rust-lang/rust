@@ -627,6 +627,9 @@ impl fmt::Display for Display<'_> {
                         Format::LongPlain => return write!(fmt, "crate feature `{feat}`"),
                         Format::ShortHtml => return write!(fmt, "<code>{feat}</code>"),
                     },
+                    (sym::version, Some(rust_version)) => {
+                        return write!(fmt, "Rust version at least {}", rust_version);
+                    }
                     _ => "",
                 };
                 if !human_readable.is_empty() {
@@ -641,9 +644,11 @@ impl fmt::Display for Display<'_> {
                 }
             }
 
-            CfgEntry::Version(..) => {
-                // FIXME: Should we handle it?
-                Ok(())
+            CfgEntry::Version(Some(rust_version), _) => {
+                return write!(fmt, "Rust version at least {}", rust_version);
+            }
+            CfgEntry::Version(None, _) => {
+                return write!(fmt, "unknown future Rust version");
             }
         }
     }
