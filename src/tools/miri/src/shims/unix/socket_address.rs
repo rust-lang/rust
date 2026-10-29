@@ -20,7 +20,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let node_ptr = this.read_pointer(node)?;
         let service_ptr = this.read_pointer(service)?;
         let hints_ptr = this.read_pointer(hints)?;
-        let res_mplace = this.deref_pointer_as(res, this.machine.layouts.void_ptr_mut)?;
+        let res_mplace = this.deref_pointer(res)?;
 
         if node_ptr == Pointer::null() {
             // We cannot get an address without the `node` part because
@@ -141,12 +141,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             this.read_scalar(address_len)?.to_int(socklen_layout.size)?.try_into().unwrap();
 
         // Initially, treat address as generic sockaddr just to extract the family field.
-        let sockaddr_layout = this.libc_ty_layout("sockaddr");
-        if address_len < sockaddr_layout.size.bytes() {
+        let address = this.deref_pointer(address)?;
+        if address_len < address.layout.size.bytes() {
             // Address length should be at least as big as the generic sockaddr
             return interp_ok(Err(LibcError("EINVAL")));
         }
-        let address = this.deref_pointer_as(address, sockaddr_layout)?;
 
         let family_field = this.project_field_named(&address, "sa_family")?;
         let family_layout = this.libc_ty_layout("sa_family_t");
