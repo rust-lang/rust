@@ -28,7 +28,7 @@ fn quickack() {
 
 #[test]
 #[cfg(target_os = "linux")]
-fn deferaccept() {
+fn defer_accept() {
     use crate::net::tests::LOCALHOST_IP4;
     use crate::net::{TcpListener, TcpStream};
     use crate::os::net::linux_ext::tcp::TcpStreamExt;
@@ -44,13 +44,13 @@ fn deferaccept() {
     }
 
     let one = Duration::from_secs(1u64);
-    let zero = Duration::from_secs(0u64);
+    let zero = Duration::ZERO;
 
     let listener = t!(TcpListener::bind(LOCALHOST_IP4));
     let addr = t!(listener.local_addr());
     let stream = t!(TcpStream::connect(&("localhost", addr.port())));
-    stream.set_deferaccept(one).expect("set_deferaccept failed");
-    assert_eq!(stream.deferaccept().unwrap(), one);
-    stream.set_deferaccept(zero).expect("set_deferaccept failed");
-    assert_eq!(stream.deferaccept().unwrap(), zero);
+    stream.set_defer_accept(one).expect("set_defer_accept failed");
+    assert_eq!(stream.defer_accept().unwrap(), Some(one));
+    stream.set_defer_accept(zero).expect("set_defer_accept failed");
+    assert_eq!(stream.defer_accept().unwrap(), None);
 }
