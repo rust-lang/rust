@@ -189,7 +189,7 @@ pub use alloc_crate::sync::UniqueArc;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::sync::{Arc, Weak};
 
-#[unstable(feature = "mpmc_channel", issue = "126840")]
+#[stable(feature = "mpmc_channel", since = "CURRENT_RUSTC_VERSION")]
 pub mod mpmc;
 pub mod mpsc;
 #[unstable(feature = "oneshot_channel", issue = "143674")]
