@@ -66,20 +66,20 @@ enum CurrentGoalKind {
     CoinductiveTrait,
     /// A `ProjectionGoal`. These are temporarily special wrt to cycle handling.
     Projection,
-    // FIXME: Consider renaming `PredicateKind::NormalizesTo` to match with this
-    /// Unlike other goals, `NormalizesTo` goals aren't independent goals but just implementation
-    /// details for handling projections of associated terms. When we encounter a `Projection` goal
-    /// whose `projection_term` is an associated term, we create a `NormalizesTo` goal whose
-    /// expected term is fully unconstrained and evaluate it.
+    /// Unlike other goals, `SelectAssocCandidate` goals aren't independent goals but just
+    /// implementation details for handling projections of associated terms. When we encounter a
+    /// `Projection` goal whose `projection_term` is an associated term, we create a
+    /// `SelectAssocCandidate` goal whose expected term is fully unconstrained and evaluate it.
     ///
-    /// This would weaken inference however, as the nested goals of normalizes-to never get the
-    /// inference constraints from the actual expected term. We just gather candidates from the
-    /// normalizes-to goal and return any ambiguous nested goals of it to the caller (`Projection
-    /// goal`). The caller handle and evaluate them as if they were its own nested goals.
+    /// This would weaken inference however, as the nested goals of select-assoc-candidate never
+    /// get the inference constraints from the actual expected term. We just gather candidates from
+    /// the select-assoc-candidate goal and return any ambiguous nested goals of it to the caller
+    /// (`Projection goal`). The caller handle and evaluate them as if they were its own nested
+    /// goals.
     ///
-    /// Because of this, evaluating a normalizes-to goal is computing candidates for projection of
-    /// an associated term and it never leaks out of the solver.
-    ProjectionComputeAssocTermCandidate,
+    /// Because of this, evaluating a select-assoc-candidate goal is computing candidates for
+    /// projection of an associated term and it never leaks out of the solver.
+    SelectAssocCandidate,
 }
 
 impl CurrentGoalKind {
@@ -93,9 +93,7 @@ impl CurrentGoalKind {
                 }
             }
             ty::PredicateKind::Clause(ty::ClauseKind::Projection(_)) => CurrentGoalKind::Projection,
-            ty::PredicateKind::NormalizesTo(_) => {
-                CurrentGoalKind::ProjectionComputeAssocTermCandidate
-            }
+            ty::PredicateKind::SelectAssocCandidate(_) => CurrentGoalKind::SelectAssocCandidate,
             _ => CurrentGoalKind::Misc,
         }
     }
@@ -448,7 +446,7 @@ where
             CurrentGoalKind::CoinductiveTrait => PathKind::Coinductive,
             // We do need to treat cycles involving only coinductive trait goals
             // and normalization as coinductive due to trait-system-refactor-initiative#10.
-            CurrentGoalKind::ProjectionComputeAssocTermCandidate | CurrentGoalKind::Projection => {
+            CurrentGoalKind::SelectAssocCandidate | CurrentGoalKind::Projection => {
                 PathKind::Unknown
             }
             // We probably want to make all traits coinductive in the future,
@@ -638,12 +636,12 @@ where
     ) -> (Result<CanonicalResponse<I>, NoSolution>, AccessedOpaques<I>) {
         let increase_depth_for_nested =
             match canonical_goal.canonical.value.goal.predicate.kind().skip_binder() {
-                // We don't lower the available depth for the `NormalizesTo` goal, as evaluating
-                // it is an extra step only exists in the new solver that behaves like a function
-                // call rather than an independent nested goal evaluation. So, decreasing the
-                // available depth may end up regressions which hit the recursion limits for crates
-                // compiled well with the old solver.
-                ty::PredicateKind::NormalizesTo(_) => LowerAvailableDepth::No,
+                // We don't lower the available depth for the `SelectAssocCandidate` goal, as
+                // evaluating it is an extra step only exists in the new solver that behaves like a
+                // function call rather than an independent nested goal evaluation. So, decreasing
+                // the available depth may end up regressions which hit the recursion limits for
+                // crates compiled well with the old solver.
+                ty::PredicateKind::SelectAssocCandidate(_) => LowerAvailableDepth::No,
                 // We also don't lower depth for witness and rigid opaque when proving auto traits.
                 // This is to mitigate the overflow FCW warnings in deeply nested async calls.
                 // See #159228.
@@ -651,7 +649,7 @@ where
                 // We're eventually going to remove the witness type so it's okay to ignore the
                 // depth.
                 // For rigid opaques, revealing hidden types can be viewed as normalization so it's
-                // consistent with the `NormalizesTo` reasoning above.
+                // consistent with the `SelectAssocCandidate` reasoning above.
                 ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) => {
                     if self.cx().trait_is_auto(pred.trait_ref.def_id) {
                         match pred.self_ty().kind() {
@@ -740,10 +738,10 @@ where
     }
 
     /// Recursively evaluates `goal`, returning the nested goals in case
-    /// the nested goal is a `NormalizesTo` goal.
+    /// the nested goal is a `SelectAssocCandidate` goal.
     ///
     /// As all other goal kinds do not return any nested goals and
-    /// `NormalizesTo` is only used by `Projection`, all other callsites
+    /// `SelectAssocCandidate` is only used by `Projection`, all other callsites
     /// should use [`EvalCtxt::evaluate_goal`] which discards that empty
     /// storage.
     pub(super) fn evaluate_goal_raw(
@@ -1016,8 +1014,8 @@ where
                 ty::PredicateKind::ConstEquate(_, _) => {
                     panic!("ConstEquate should not be emitted when `-Znext-solver` is active")
                 }
-                ty::PredicateKind::NormalizesTo(predicate) => {
-                    ecx.compute_normalizes_to_goal(Goal { param_env, predicate })?
+                ty::PredicateKind::SelectAssocCandidate(predicate) => {
+                    ecx.compute_select_assoc_candidate_goal(Goal { param_env, predicate })?
                 }
                 ty::PredicateKind::Ambiguous => {
                     ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)?
@@ -1059,10 +1057,10 @@ where
         // Despite that, replacing it has no effect on performance. We tried.
         // (https://github.com/rust-lang/rust/pull/158126)
         for (source, goal, stalled_on) in mem::take(&mut self.nested_goals) {
-            // We never handle `NormalizesTo` as a nested goal
+            // We never handle `SelectAssocCandidate` as a nested goal
             debug_assert!(!matches!(
                 goal.predicate.kind().skip_binder(),
-                PredicateKind::NormalizesTo(_)
+                PredicateKind::SelectAssocCandidate(_)
             ));
 
             let GoalEvaluation { goal, certainty, has_changed, stalled_on } =
@@ -1172,7 +1170,10 @@ where
     /// This is the case if the `term` does not occur in any other part of the predicate
     /// and is able to name all other placeholder and inference variables.
     #[instrument(level = "trace", skip(self), ret)]
-    pub(super) fn term_is_fully_unconstrained(&self, goal: Goal<I, ty::NormalizesTo<I>>) -> bool {
+    pub(super) fn term_is_fully_unconstrained(
+        &self,
+        goal: Goal<I, ty::SelectAssocCandidate<I>>,
+    ) -> bool {
         let universe_of_term = match goal.predicate.term.kind() {
             ty::TermKind::Ty(ty) => {
                 if let ty::Infer(ty::TyVar(vid)) = ty.kind() {
@@ -1653,10 +1654,10 @@ where
                 // inference variable. This means that we dropped information which could
                 // have been important. We handle this by instead returning the nested goals
                 // to the caller, where they are then handled. We only do so if we do not
-                // need to recompute the `NormalizesTo` goal afterwards to avoid repeatedly
+                // need to recompute the `SelectAssocCandidate` goal afterwards to avoid repeatedly
                 // uplifting its nested goals. This is the case if the `shallow_certainty` is
                 // `Certainty::Yes`.
-                (CurrentGoalKind::ProjectionComputeAssocTermCandidate, Certainty::Yes) => {
+                (CurrentGoalKind::SelectAssocCandidate, Certainty::Yes) => {
                     let goals = std::mem::take(&mut self.nested_goals);
                     // As we return all ambiguous nested goals, we can ignore the certainty
                     // returned by `self.try_evaluate_added_goals()`.

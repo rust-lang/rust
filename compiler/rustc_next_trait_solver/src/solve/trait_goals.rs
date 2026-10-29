@@ -1521,7 +1521,7 @@ where
 
 /// How we've proven this trait goal.
 ///
-/// This is used by `NormalizesTo` goals to only normalize
+/// This is used by `SelectAssocCandidate` goals to only normalize
 /// by using the same 'kind of candidate' we've used to prove
 /// its corresponding trait goal. Most notably, we do not
 /// normalize by using an impl if the trait goal has been

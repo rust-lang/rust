@@ -627,17 +627,17 @@ impl<I: Interner> fmt::Debug for ProjectionClause<I> {
     feature = "nightly",
     derive(Decodable_NoContext, Encodable_NoContext, StableHash_NoContext)
 )]
-pub struct NormalizesTo<I: Interner, K = ty::AliasTermKind<I>> {
+pub struct SelectAssocCandidate<I: Interner, K = ty::AliasTermKind<I>> {
     pub alias: Alias<I, K>,
     pub term: I::Term,
 }
 
-impl<I: Interner> NormalizesTo<I> {
+impl<I: Interner> SelectAssocCandidate<I> {
     pub fn self_ty(self) -> I::Ty {
         self.alias.self_ty()
     }
 
-    pub fn with_replaced_self_ty(self, interner: I, self_ty: I::Ty) -> NormalizesTo<I> {
+    pub fn with_replaced_self_ty(self, interner: I, self_ty: I::Ty) -> SelectAssocCandidate<I> {
         Self { alias: self.alias.with_replaced_self_ty(interner, self_ty), ..self }
     }
 
@@ -646,15 +646,15 @@ impl<I: Interner> NormalizesTo<I> {
     }
 }
 
-impl<I: Interner, K> fmt::Debug for NormalizesTo<I, K>
+impl<I: Interner, K> fmt::Debug for SelectAssocCandidate<I, K>
 where
-    // `TypeVisitable_Generic` derived on `NormalizesTo` creates a field-level
+    // `TypeVisitable_Generic` derived on `SelectAssocCandidate` creates a field-level
     // `Alias<I, K>: TypeVisitable<I>` bound. Since `TypeVisitable<I>: fmt::Debug`,
     // that proves `Alias<I, K>: fmt::Debug`, but not `K: fmt::Debug`.
     Alias<I, K>: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "NormalizesTo({:?}, {:?})", self.alias, self.term)
+        write!(f, "SelectAssocCandidate({:?}, {:?})", self.alias, self.term)
     }
 }
 

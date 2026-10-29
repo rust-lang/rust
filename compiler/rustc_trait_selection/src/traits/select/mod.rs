@@ -887,8 +887,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                 }
             }
-            ty::PredicateKind::NormalizesTo(..) => {
-                bug!("NormalizesTo is only used by the new solver")
+            ty::PredicateKind::SelectAssocCandidate(..) => {
+                bug!("SelectAssocCandidate is only used by the new solver")
             }
             ty::PredicateKind::Ambiguous => Ok(EvaluatedToAmbig),
             ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, ty)) => {

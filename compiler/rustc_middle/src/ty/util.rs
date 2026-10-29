@@ -1049,7 +1049,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for OpaqueTypeExpander<'tcx> {
                 projection_term: projection_clause.projection_term.fold_with(self),
                 // Don't fold the term on the RHS of the projection predicate.
                 // This is because for default trait methods with RPITITs, we
-                // install a `NormalizesTo(Projection(RPITIT) -> Opaque(RPITIT))`
+                // install a `SelectAssocCandidate(Projection(RPITIT) -> Opaque(RPITIT))`
                 // predicate, which would trivially cause a cycle when we do
                 // anything that requires `TypingEnv::with_post_analysis_normalized`.
                 term: projection_clause.term,

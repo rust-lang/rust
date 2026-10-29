@@ -58,7 +58,7 @@ pub trait Interner:
     + IrPrint<ty::ExistentialTraitRef<Self>>
     + IrPrint<ty::ExistentialProjection<Self>>
     + IrPrint<ty::ProjectionClause<Self>>
-    + IrPrint<ty::NormalizesTo<Self>>
+    + IrPrint<ty::SelectAssocCandidate<Self>>
     + IrPrint<ty::SubtypePredicate<Self>>
     + IrPrint<ty::CoercePredicate<Self>>
     + IrPrint<ty::FnSig<Self>>

@@ -7,15 +7,17 @@
 //! ErasedNotCoherence
 //!
 //! `consider_builtin_pointee_candidate` looks at StructTailHasAnonConst, realizes it's an ADT,
-//! fetches the struct tail (which is `S<{ 2 + 2 }>`), and calls `instantiate_normalizes_to_term`
-//! with the result of `<Struct<{ 2 + 2 }> as Pointee>::Metadata`
+//! fetches the struct tail (which is `S<{ 2 + 2 }>`), and calls
+//! `instantiate_select_assoc_candidate_term` with the result of
+//! `<Struct<{ 2 + 2 }> as Pointee>::Metadata`
 //!
-//! `instantiate_normalizes_to_term` `.eq()`s `<Struct<{ 2 + 2 }> as Pointee>::Metadata` and `?0`
+//! `instantiate_select_assoc_candidate_term` `.eq()`s `<Struct<{ 2 + 2 }> as Pointee>::Metadata`
+//! and `?0`
 //!
 //! this eagerly normalizes, which normalizes the anon const, which fails due to ErasedNotCoherence
 //!
-//! this causes the `.eq()` in `instantiate_normalizes_to_term` to fail, which used to have an
-//! unwrap, which ICEd
+//! this causes the `.eq()` in `instantiate_select_assoc_candidate_term` to fail, which used to
+//! have an unwrap, which ICEd
 
 #![feature(ptr_metadata)]
 

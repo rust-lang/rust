@@ -4,7 +4,7 @@
 // Previously we check stalled coroutine obligations after borrowck pass.
 // And we wrongly assume that these obligations hold in borrowck which leads to
 // silent normalization failures.
-// In the next solver, we register opaques types via `NormalizesTo` goals.
+// In the next solver, we register opaques types via `SelectAssocCandidate` goals.
 // So these failures also cause those opaques types not registered in storage.
 //
 // Regression test for #151322 and #151323.

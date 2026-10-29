@@ -197,7 +197,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
             ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, _)) => Some(ct.into()),
             ty::PredicateKind::Subtype(data) => Some(data.a.into()),
-            ty::PredicateKind::NormalizesTo(data) if data.term.is_infer() => Some(data.term),
+            ty::PredicateKind::SelectAssocCandidate(data) if data.term.is_infer() => {
+                Some(data.term)
+            }
             _ => None,
         }
     }
@@ -654,7 +656,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     true,
                 ),
 
-            ty::PredicateKind::NormalizesTo(ty::NormalizesTo { alias, term })
+            ty::PredicateKind::SelectAssocCandidate(ty::SelectAssocCandidate { alias, term })
                 if term.is_infer() =>
             {
                 if let Some(e) = self.tainted_by_errors() {

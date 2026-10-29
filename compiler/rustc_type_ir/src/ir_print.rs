@@ -4,8 +4,8 @@ use std::fmt;
 use crate::{AliasConst, ClosureKind};
 use crate::{
     AliasTerm, AliasTy, Binder, CoercePredicate, Const, ExistentialProjection, ExistentialTraitRef,
-    FnSig, HostEffectClause, Interner, NormalizesTo, OutlivesClause, PatternKind, Placeholder,
-    ProjectionClause, Region, SubtypePredicate, TraitClause, TraitRef,
+    FnSig, HostEffectClause, Interner, OutlivesClause, PatternKind, Placeholder, ProjectionClause,
+    Region, SelectAssocCandidate, SubtypePredicate, TraitClause, TraitRef,
 };
 
 pub trait IrPrint<T> {
@@ -43,7 +43,7 @@ define_display_via_print!(
     ExistentialTraitRef,
     ExistentialProjection,
     ProjectionClause,
-    NormalizesTo,
+    SelectAssocCandidate,
     SubtypePredicate,
     CoercePredicate,
     HostEffectClause,

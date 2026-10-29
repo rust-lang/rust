@@ -84,12 +84,12 @@ pub use self::pattern::{Pattern, PatternKind};
 pub use self::predicate::{
     AliasTerm, AliasTermKind, ArgOutlivesClause, Clause, ClauseKind, CoercePredicate,
     ExistentialPredicate, ExistentialPredicateStableCmpExt, ExistentialProjection,
-    ExistentialTraitRef, HostEffectClause, NormalizesTo, OutlivesClause, PolyCoercePredicate,
+    ExistentialTraitRef, HostEffectClause, OutlivesClause, PolyCoercePredicate,
     PolyExistentialPredicate, PolyExistentialProjection, PolyExistentialTraitRef,
     PolyProjectionClause, PolyRegionOutlivesClause, PolySubtypePredicate, PolyTraitClause,
     PolyTraitRef, PolyTypeOutlivesClause, Predicate, PredicateKind, ProjectionClause,
-    RegionConstraint, RegionEqPredicate, RegionOutlivesClause, SubtypePredicate, TraitClause,
-    TraitRef, TypeOutlivesClause,
+    RegionConstraint, RegionEqPredicate, RegionOutlivesClause, SelectAssocCandidate,
+    SubtypePredicate, TraitClause, TraitRef, TypeOutlivesClause,
 };
 pub use self::region::{
     EarlyParamRegion, LateParamRegion, LateParamRegionKind, Region, RegionKind, RegionVid,

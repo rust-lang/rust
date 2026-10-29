@@ -426,7 +426,7 @@ pub trait Predicate<I: Interner<Predicate = Self>>:
     + UpcastFrom<I, ty::ClauseKind<I>>
     + UpcastFrom<I, ty::Binder<I, ty::ClauseKind<I>>>
     + UpcastFrom<I, I::Clause>
-    + UpcastFrom<I, ty::NormalizesTo<I>>
+    + UpcastFrom<I, ty::SelectAssocCandidate<I>>
     + UpcastFrom<I, ty::TraitRef<I>>
     + UpcastFrom<I, ty::Binder<I, ty::TraitRef<I>>>
     + UpcastFrom<I, ty::TraitClause<I>>
@@ -453,7 +453,7 @@ pub trait Predicate<I: Interner<Predicate = Self>>:
             | PredicateKind::Coerce(_)
             | PredicateKind::Clause(ClauseKind::ConstEvaluatable(_))
             | PredicateKind::ConstEquate(_, _)
-            | PredicateKind::NormalizesTo(..)
+            | PredicateKind::SelectAssocCandidate(..)
             | PredicateKind::Ambiguous => true,
         }
     }

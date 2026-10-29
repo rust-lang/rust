@@ -263,7 +263,7 @@ impl CandidateHeadUsages {
 /// Whether evaluating a given goal should be done with a lower available depth from
 /// its parent goal.
 ///
-/// Normally, it should be `Yes`, but among rustc's predicate goals, `normalizes-to`
+/// Normally, it should be `Yes`, but among rustc's predicate goals, `select-assoc-candidate`
 /// goals are exceptions. They act like functions that used for normalizing associated
 /// terms while evaluating projection goals with fully unconstrained expected term.
 /// We don't want to lower the available depths for those function-like goals, otherwise

@@ -8,8 +8,8 @@ use rustc_type_ir::solve::{
     RerunNonErased, RerunReason, RerunResultExt,
 };
 use rustc_type_ir::{
-    self as ty, Const, FieldInfo, Interner, NormalizesTo, PredicateKind, Region, Unnormalized,
-    Upcast as _,
+    self as ty, Const, FieldInfo, Interner, PredicateKind, Region, SelectAssocCandidate,
+    Unnormalized, Upcast as _,
 };
 use tracing::instrument;
 
@@ -28,9 +28,9 @@ where
     I: Interner,
 {
     #[instrument(level = "trace", skip(self), ret)]
-    pub(super) fn compute_normalizes_to_goal(
+    pub(super) fn compute_select_assoc_candidate_goal(
         &mut self,
-        goal: Goal<I, NormalizesTo<I>>,
+        goal: Goal<I, SelectAssocCandidate<I>>,
     ) -> QueryResultOrRerunNonErased<I> {
         debug_assert!(self.term_is_fully_unconstrained(goal));
         debug_assert_matches!(
@@ -83,7 +83,7 @@ where
             },
             |ecx| {
                 ecx.probe(|&result| ProbeKind::RigidAlias { result }).enter(|this| {
-                    this.instantiate_normalizes_to_as_rigid(goal)?;
+                    this.instantiate_select_assoc_candidate_as_rigid(goal)?;
                     this.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                 })
             },
@@ -134,9 +134,9 @@ where
     /// fires a `span_bug!`. Registering the obligation here ensures the type
     /// mismatch is reported during normalization itself, tainting the MIR
     /// before validation runs.
-    fn instantiate_normalizes_to_term(
+    fn instantiate_select_assoc_candidate_term(
         &mut self,
-        goal: Goal<I, NormalizesTo<I>>,
+        goal: Goal<I, SelectAssocCandidate<I>>,
         value: I::Term,
     ) -> Result<(), NoSolutionOrRerunNonErased> {
         self.push_const_arg_has_type_goal(goal.param_env, goal.predicate.alias, value)?;
@@ -147,9 +147,9 @@ where
         Ok(())
     }
 
-    fn instantiate_normalizes_to_as_rigid(
+    fn instantiate_select_assoc_candidate_as_rigid(
         &mut self,
-        goal: Goal<I, NormalizesTo<I>>,
+        goal: Goal<I, SelectAssocCandidate<I>>,
     ) -> Result<(), NoSolutionOrRerunNonErased> {
         self.eq(
             goal.param_env,
@@ -159,7 +159,7 @@ where
     }
 }
 
-impl<D, I> assembly::GoalKind<D> for NormalizesTo<I>
+impl<D, I> assembly::GoalKind<D> for SelectAssocCandidate<I>
 where
     D: SolverDelegate<Interner = I>,
     I: Interner,
@@ -215,7 +215,7 @@ where
         let assumption_projection_pred = ecx.instantiate_binder_with_infer(projection_pred);
         ecx.eq(goal.param_env, goal.predicate.alias, assumption_projection_pred.projection_term)?;
 
-        ecx.instantiate_normalizes_to_term(goal, assumption_projection_pred.term)?;
+        ecx.instantiate_select_assoc_candidate_term(goal, assumption_projection_pred.term)?;
 
         // Add GAT where clauses from the trait's definition
         // FIXME: We don't need these, since these are the type's own WF obligations.
@@ -254,7 +254,7 @@ where
 
     fn consider_impl_candidate(
         ecx: &mut EvalCtxt<'_, D>,
-        goal: Goal<I, NormalizesTo<I>>,
+        goal: Goal<I, SelectAssocCandidate<I>>,
         goal_trait_ref: ty::TraitRef<I>,
         impl_def_id: I::ImplId,
         then: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResultOrRerunNonErased<I>,
@@ -319,7 +319,7 @@ where
                     ty::AliasTermKind::ProjectionConst { .. } => Const::new_error(cx, guar).into(),
                     kind => panic!("expected projection, found {kind:?}"),
                 };
-                ecx.instantiate_normalizes_to_term(goal, error_term)?;
+                ecx.instantiate_select_assoc_candidate_term(goal, error_term)?;
                 ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             };
 
@@ -355,7 +355,7 @@ where
                             | ty::TypingMode::PostAnalysis
                             | ty::TypingMode::Reflection
                             | ty::TypingMode::Codegen => {
-                                ecx.instantiate_normalizes_to_as_rigid(goal)?;
+                                ecx.instantiate_select_assoc_candidate_as_rigid(goal)?;
                                 return ecx.evaluate_added_goals_and_make_canonical_response(
                                     Certainty::Yes,
                                 );
@@ -391,7 +391,7 @@ where
                         ecx.add_goal(GoalSource::Misc, goal.with(cx, PredicateKind::Ambiguous))?;
                         return then(ecx);
                     } else {
-                        ecx.instantiate_normalizes_to_as_rigid(goal)?;
+                        ecx.instantiate_select_assoc_candidate_as_rigid(goal)?;
                         return then(ecx);
                     }
                 } else {
@@ -469,7 +469,7 @@ where
                 kind => panic!("expected projection, found {kind:?}"),
             };
 
-            ecx.instantiate_normalizes_to_term(goal, term)?;
+            ecx.instantiate_select_assoc_candidate_term(goal, term)?;
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }
@@ -489,7 +489,7 @@ where
         };
 
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
-            ecx.instantiate_normalizes_to_term(goal, error_term)?;
+            ecx.instantiate_select_assoc_candidate_term(goal, error_term)?;
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }
@@ -698,7 +698,7 @@ where
         );
 
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
-            ecx.instantiate_normalizes_to_term(goal, upvars_ty.into())?;
+            ecx.instantiate_select_assoc_candidate_term(goal, upvars_ty.into())?;
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }
@@ -765,7 +765,7 @@ where
                             [I::GenericArg::from(goal.predicate.self_ty())],
                         );
                         ecx.add_goal(GoalSource::Misc, goal.with(cx, sized_predicate))?;
-                        ecx.instantiate_normalizes_to_term(goal, Ty::new_unit(cx).into())?;
+                        ecx.instantiate_select_assoc_candidate_term(goal, Ty::new_unit(cx).into())?;
                         ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                     })
                     .map_err_to_rerun()?;
@@ -774,7 +774,7 @@ where
                 // as rigid.
                 return alias_bound_result.or_else(|NoSolution| {
                     ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|this| {
-                        this.instantiate_normalizes_to_as_rigid(goal)?;
+                        this.instantiate_select_assoc_candidate_as_rigid(goal)?;
                         this.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                     })
                 });
@@ -812,7 +812,7 @@ where
         };
 
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
-            ecx.instantiate_normalizes_to_term(goal, metadata_ty.into())?;
+            ecx.instantiate_select_assoc_candidate_term(goal, metadata_ty.into())?;
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }
@@ -919,7 +919,7 @@ where
             );
             let yield_ty = args.as_coroutine().yield_ty();
             ecx.eq(goal.param_env, wrapped_expected_ty, yield_ty)?;
-            ecx.instantiate_normalizes_to_term(goal, expected_ty.into())?;
+            ecx.instantiate_select_assoc_candidate_term(goal, expected_ty.into())?;
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }
@@ -1018,7 +1018,7 @@ where
             // this impl candidate anyways. It's still a bit scuffed.
             ty::Alias(ty::IsRigid::Yes, _) | ty::Param(_) | ty::Placeholder(..) => {
                 return ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
-                    ecx.instantiate_normalizes_to_as_rigid(goal)?;
+                    ecx.instantiate_select_assoc_candidate_as_rigid(goal)?;
                     ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                 });
             }
@@ -1032,7 +1032,7 @@ where
         };
 
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
-            ecx.instantiate_normalizes_to_term(goal, discriminant_ty.into())?;
+            ecx.instantiate_select_assoc_candidate_term(goal, discriminant_ty.into())?;
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }
@@ -1077,7 +1077,7 @@ where
             _ => panic!("unexpected associated type {:?} in `Field`", goal.predicate),
         };
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
-            ecx.instantiate_normalizes_to_term(goal, ty.into())?;
+            ecx.instantiate_select_assoc_candidate_term(goal, ty.into())?;
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }
@@ -1097,7 +1097,7 @@ where
 {
     fn translate_args(
         &mut self,
-        goal: Goal<I, ty::NormalizesTo<I>>,
+        goal: Goal<I, ty::SelectAssocCandidate<I>>,
         impl_def_id: I::ImplId,
         impl_args: I::GenericArgs,
         impl_trait_ref: rustc_type_ir::TraitRef<I>,

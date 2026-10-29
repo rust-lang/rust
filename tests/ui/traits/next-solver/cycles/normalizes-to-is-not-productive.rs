@@ -1,7 +1,7 @@
 //@ ignore-compare-mode-next-solver (explicit)
 //@ compile-flags: -Znext-solver
 
-// A test for the cycle handling when stepping into where-clauses of `NormalizesTo`.
+// A test for the cycle handling when stepping into where-clauses of `SelectAssocCandidate`.
 // Whether stepping into where-clauses is productive depends on how they are used.
 //
 // In this concrete test, the cycle must not be productive.

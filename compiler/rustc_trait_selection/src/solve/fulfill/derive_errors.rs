@@ -74,7 +74,7 @@ pub(super) fn fulfillment_error_for_no_solution<'tcx>(
         | ty::PredicateKind::Ambiguous => {
             FulfillmentErrorCode::Select(SelectionError::Unimplemented)
         }
-        ty::PredicateKind::ConstEquate(..) | ty::PredicateKind::NormalizesTo(..) => {
+        ty::PredicateKind::ConstEquate(..) | ty::PredicateKind::SelectAssocCandidate(..) => {
             bug!("unexpected goal: {obligation:?}")
         }
     };
@@ -308,7 +308,7 @@ impl<'tcx> BestObligation<'tcx> {
     /// higher-ranked trait goal holds or not. This is because the process of
     /// instantiating and then re-canonicalizing the binder of the projection goal
     /// forces us to be unable to see that the leak check failed in the nested
-    /// `NormalizesTo` goal, so we don't fall back to the rigid projection check
+    /// `SelectAssocCandidate` goal, so we don't fall back to the rigid projection check
     /// that should catch when a projection goal fails due to an unsatisfied trait
     /// goal.
     fn detect_trait_error_in_higher_ranked_projection(
@@ -338,7 +338,7 @@ impl<'tcx> BestObligation<'tcx> {
         }
     }
 
-    /// It is likely that `NormalizesTo` failed without any applicable candidates
+    /// It is likely that `SelectAssocCandidate` failed without any applicable candidates
     /// because the alias is not well-formed.
     ///
     /// As we only enter `RigidAlias` candidates if the trait bound of the associated type
@@ -458,7 +458,7 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
         }
 
         // FIXME: Also, what about considering >1 layer up the stack? May be necessary
-        // for normalizes-to.
+        // for select-assoc-candidate.
         let child_mode = match pred.kind().skip_binder() {
             ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred)) => {
                 ChildMode::Trait(pred.kind().rebind(trait_pred))

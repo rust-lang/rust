@@ -100,9 +100,9 @@ pub enum PredicateKind<I: Interner> {
     /// be normalized in the current environment - this constrains `term` to be equal to
     /// the alias itself.
     ///
-    /// It is likely more useful to think of this as a function `normalizes_to(alias)`,
+    /// It is likely more useful to think of this as a function `select_assoc_candidate(alias)`,
     /// whose return value is written into `term`.
-    NormalizesTo(ty::NormalizesTo<I>),
+    SelectAssocCandidate(ty::SelectAssocCandidate<I>),
 }
 
 impl<I: Interner> Eq for PredicateKind<I> {}
@@ -138,7 +138,7 @@ impl<I: Interner> fmt::Debug for PredicateKind<I> {
             }
             PredicateKind::ConstEquate(c1, c2) => write!(f, "ConstEquate({c1:?}, {c2:?})"),
             PredicateKind::Ambiguous => write!(f, "Ambiguous"),
-            PredicateKind::NormalizesTo(p) => p.fmt(f),
+            PredicateKind::SelectAssocCandidate(p) => p.fmt(f),
         }
     }
 }

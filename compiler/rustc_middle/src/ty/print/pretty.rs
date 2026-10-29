@@ -3285,7 +3285,7 @@ define_print! {
                 write!(p, "`")?;
             }
             ty::PredicateKind::Ambiguous => write!(p, "ambiguous")?,
-            ty::PredicateKind::NormalizesTo(data) => data.print(p)?,
+            ty::PredicateKind::SelectAssocCandidate(data) => data.print(p)?,
         }
     }
 
@@ -3335,9 +3335,9 @@ define_print! {
         self.b.print(p)?;
     }
 
-    ty::NormalizesTo<'tcx> {
+    ty::SelectAssocCandidate<'tcx> {
         self.alias.print(p)?;
-        write!(p, " normalizes-to ")?;
+        write!(p, " select-assoc-candidate ")?;
         p.reset_type_limit();
         self.term.print(p)?;
     }

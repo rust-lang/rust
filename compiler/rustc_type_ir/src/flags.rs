@@ -436,7 +436,7 @@ impl<I: Interner> FlagComputation<I> {
                 self.add_const(expected);
                 self.add_const(found);
             }
-            ty::PredicateKind::NormalizesTo(ty::NormalizesTo { alias, term }) => {
+            ty::PredicateKind::SelectAssocCandidate(ty::SelectAssocCandidate { alias, term }) => {
                 self.add_alias_term(alias);
                 self.add_term(term);
             }

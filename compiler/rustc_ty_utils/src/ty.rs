@@ -203,7 +203,7 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
 }
 
 /// Walk through a function type, gathering all RPITITs and installing a
-/// `NormalizesTo(Projection(RPITIT) -> Opaque(RPITIT))` predicate into the
+/// `SelectAssocCandidate(Projection(RPITIT) -> Opaque(RPITIT))` predicate into the
 /// predicates list. This allows us to observe that an RPITIT projects to
 /// its corresponding opaque within the body of a default-body trait method.
 struct ImplTraitInTraitFinder<'a, 'tcx> {

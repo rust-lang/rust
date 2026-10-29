@@ -78,7 +78,7 @@ where
     /// Consider a clause specifically for a `dyn Trait` self type. This requires
     /// additionally checking all of the supertraits and object bounds to hold,
     /// since they're not implied by the well-formedness of the object type.
-    /// `NormalizesTo` overrides this to not check the supertraits for backwards
+    /// `SelectAssocCandidate` overrides this to not check the supertraits for backwards
     /// compatibility with the old solver. cc trait-system-refactor-initiative#245.
     fn probe_and_consider_object_bound_candidate(
         ecx: &mut EvalCtxt<'_, D>,
@@ -1256,7 +1256,7 @@ where
     }
 
     /// Assemble and merge candidates for goals which are related to an underlying trait
-    /// goal. Right now, this is normalizes-to and host effect goals.
+    /// goal. Right now, this is select-assoc-candidate and host effect goals.
     ///
     /// We sadly can't simply take all possible candidates for normalization goals
     /// and check whether they result in the same constraints. We want to make sure

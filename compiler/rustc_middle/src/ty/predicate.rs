@@ -19,7 +19,7 @@ pub type TraitClause<'tcx> = ir::TraitClause<TyCtxt<'tcx>>;
 pub type HostEffectClause<'tcx> = ir::HostEffectClause<TyCtxt<'tcx>>;
 pub type ClauseKind<'tcx> = ir::ClauseKind<TyCtxt<'tcx>>;
 pub type PredicateKind<'tcx> = ir::PredicateKind<TyCtxt<'tcx>>;
-pub type NormalizesTo<'tcx> = ir::NormalizesTo<TyCtxt<'tcx>>;
+pub type SelectAssocCandidate<'tcx> = ir::SelectAssocCandidate<TyCtxt<'tcx>>;
 pub type CoercePredicate<'tcx> = ir::CoercePredicate<TyCtxt<'tcx>>;
 pub type SubtypePredicate<'tcx> = ir::SubtypePredicate<TyCtxt<'tcx>>;
 pub type OutlivesClause<'tcx, T> = ir::OutlivesClause<TyCtxt<'tcx>, T>;
@@ -605,9 +605,9 @@ impl<'tcx> UpcastFrom<TyCtxt<'tcx>, ty::Binder<'tcx, ty::HostEffectClause<'tcx>>
     }
 }
 
-impl<'tcx> UpcastFrom<TyCtxt<'tcx>, NormalizesTo<'tcx>> for Predicate<'tcx> {
-    fn upcast_from(from: NormalizesTo<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
-        PredicateKind::NormalizesTo(from).upcast(tcx)
+impl<'tcx> UpcastFrom<TyCtxt<'tcx>, SelectAssocCandidate<'tcx>> for Predicate<'tcx> {
+    fn upcast_from(from: SelectAssocCandidate<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
+        PredicateKind::SelectAssocCandidate(from).upcast(tcx)
     }
 }
 

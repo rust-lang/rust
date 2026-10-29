@@ -14,14 +14,14 @@
 // We prove `Projection(<W<?0> as Unconstrained>::Assoc, ())`. This normalizes
 // `<W<?0> as Unconstrained>::Assoc` to `?1` and eagerly computes the nested
 // goals `[Projection(<?0 as Unconstrained>::Assoc, ?1), Trait(?1: NoImpl)]`.
-// These goals are both ambiguous. `NormalizesTo` then returns `?1` as the
+// These goals are both ambiguous. `SelectAssocCandidate` then returns `?1` as the
 // normalized-to type. It discards the nested goals, forcing the certainty of
 // the normalization to `Maybe`. Unifying `?1` with `()` succeeds¹. However,
 // this is never propagated to the `?1: NoImpl` goal, as it only exists inside
-// of the `NormalizesTo` goal. The normalized-to term always starts out as
+// of the `SelectAssocCandidate` goal. The normalized-to term always starts out as
 // unconstrained.
 //
-// We fix this regression by returning the nested goals of `NormalizesTo` goals
+// We fix this regression by returning the nested goals of `SelectAssocCandidate` goals
 // to the `AliasRelate`. This results in us checking `(): NoImpl`, same as the
 // old solver.
 

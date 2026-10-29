@@ -756,7 +756,7 @@ impl<'tcx> Stable<'tcx> for ty::PredicateKind<'tcx> {
                 crate::ty::PredicateKind::ConstEquate(a.stable(tables, cx), b.stable(tables, cx))
             }
             PredicateKind::Ambiguous => crate::ty::PredicateKind::Ambiguous,
-            PredicateKind::NormalizesTo(_pred) => unimplemented!(),
+            PredicateKind::SelectAssocCandidate(_pred) => unimplemented!(),
         }
     }
 }

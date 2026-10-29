@@ -45,29 +45,29 @@ where
     ) -> QueryResultOrRerunNonErased<I> {
         let ty::ProjectionClause { projection_term: alias, term } = goal.predicate;
         let unconstrained_term = self.next_term_infer_of_alias_kind(alias);
-        let normalizes_to =
-            goal.with(self.cx(), ty::NormalizesTo { alias, term: unconstrained_term });
+        let select_assoc_candidate =
+            goal.with(self.cx(), ty::SelectAssocCandidate { alias, term: unconstrained_term });
 
         // We don't want candidate selection when normalizing associated terms to be impacted by
         // the expected term. Normalization should behave like a function of just the alias being
-        // normalized. Because of this, we use an internal `NormalizesTo` goal for which the
-        // expected term is always fully unconstrained and then equate that to the actual expected
-        // term afterwards.
+        // normalized. Because of this, we use an internal `SelectAssocCandidate` goal for which
+        // the expected term is always fully unconstrained and then equate that to the actual
+        // expected term afterwards.
         //
         // But this results in weaker type inference if there's a nested where-clause when
         // normalizing which we can actually make progress on based on the expected term. To avoid
-        // this, we return ambiguous nested goals for `NormalizesTo` to this context and register
-        // them as if they were this `Projection` goal's own nested goals. (See #122687)
+        // this, we return ambiguous nested goals for `SelectAssocCandidate` to this context and
+        // register them as if they were this `Projection` goal's own nested goals. (See #122687)
         //
         // After registering those goals, we equate the original expected term to the normalization
         // result. Although equating them can add inference constraint to the alias term, we don't
-        // reevaluate this special `NormalizesTo` goal. But that's fine because as those inference
-        // constraints should cause the caller to reevaluate the current `Projection `goal, which
-        // will then also reevaluate the `NormalizesTo` goal.
+        // reevaluate this special `SelectAssocCandidate` goal. But that's fine because as those
+        // inference constraints should cause the caller to reevaluate the current `Projection
+        // `goal, which will then also reevaluate the `SelectAssocCandidate` goal.
         let (
             NestedNormalizationGoals(nested_goals),
             GoalEvaluation { goal: _, certainty, stalled_on: _, has_changed: _ },
-        ) = self.evaluate_goal_raw(GoalSource::Normalization, normalizes_to)?;
+        ) = self.evaluate_goal_raw(GoalSource::Normalization, select_assoc_candidate)?;
 
         trace!(?nested_goals);
 
