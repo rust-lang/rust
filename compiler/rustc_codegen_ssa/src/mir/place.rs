@@ -6,14 +6,13 @@ use rustc_abi::{
 use rustc_middle::mir;
 use rustc_middle::mir::PlaceTy;
 use rustc_middle::mir::interpret::Scalar;
+use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
-use rustc_middle::ty::{self, Ty};
-use rustc_span::{DUMMY_SP, bug};
+use rustc_span::bug;
 use tracing::{debug, instrument};
 
 use super::operand::OperandValue;
 use super::{FunctionCx, LocalRef};
-use crate::common::IntPredicate;
 use crate::size_of_val;
 use crate::traits::*;
 
@@ -181,79 +180,29 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         let offset = self.layout.fields.offset(ix);
         let effective_field_align = self.val.align.restrict_for_offset(offset);
 
-        // `simple` is called when we don't need to adjust the offset to
-        // the dynamic alignment of the field.
-        let mut simple = || {
-            let llval = if offset.bytes() == 0 {
-                self.val.llval
-            } else {
-                bx.inbounds_ptradd(self.val.llval, bx.const_usize(offset.bytes()))
-            };
-            let val = PlaceValue {
-                llval,
-                llextra: if bx.cx().tcx().type_has_metadata(field.ty, bx.cx().typing_env()) {
-                    self.val.llextra
-                } else {
-                    None
-                },
-                align: effective_field_align,
-            };
-            val.with_type(field)
+        let tcx = bx.cx().tcx();
+        let typing_env = bx.cx().typing_env();
+
+        let llval = if let Some(dyn_offset) =
+            size_of_val::dst_field_offset(bx, self.layout, field, offset, self.val.llextra)
+        {
+            debug!("struct_field_ptr: DST field offset: {:?}", dyn_offset);
+            bx.inbounds_ptradd(self.val.llval, dyn_offset)
+        } else if offset.bytes() == 0 {
+            self.val.llval
+        } else {
+            bx.inbounds_ptradd(self.val.llval, bx.const_usize(offset.bytes()))
         };
 
-        // Simple cases, which don't need DST adjustment:
-        //   * known alignment - sized types, `[T]`, `str`
-        //   * offset 0 -- rounding up to alignment cannot change the offset
-        // Note that looking at `field.align` is incorrect since that is not necessarily equal
-        // to the dynamic alignment of the type.
-        match field.ty.kind() {
-            _ if field.is_sized() => return simple(),
-            ty::Slice(..) | ty::Str => return simple(),
-            _ if offset.bytes() == 0 => return simple(),
-            _ => {}
-        }
-
-        // We need to get the pointer manually now.
-        // We do this by casting to a `*i8`, then offsetting it by the appropriate amount.
-        // We do this instead of, say, simply adjusting the pointer from the result of a GEP
-        // because the field may have an arbitrary alignment in the LLVM representation.
-        //
-        // To demonstrate:
-        //
-        //     struct Foo<T: ?Sized> {
-        //         x: u16,
-        //         y: T
-        //     }
-        //
-        // The type `Foo<Foo<Trait>>` is represented in LLVM as `{ u16, { u16, u8 }}`, meaning that
-        // the `y` field has 16-bit alignment.
-
-        let meta = self.val.llextra;
-
-        let unaligned_offset = bx.cx().const_usize(offset.bytes());
-
-        // Get the alignment of the field. No span is available here to blame a layout error on.
-        let (_, mut unsized_align) =
-            size_of_val::size_and_align_of_dst(bx, field.ty, meta, DUMMY_SP);
-
-        // For packed types, we need to cap alignment.
-        if let ty::Adt(def, _) = self.layout.ty.kind()
-            && let Some(packed) = def.repr().pack
-        {
-            let packed = bx.const_usize(packed.bytes());
-            let cmp = bx.icmp(IntPredicate::IntULT, unsized_align, packed);
-            unsized_align = bx.select(cmp, unsized_align, packed)
-        }
-
-        // Bump the unaligned offset up to the appropriate alignment
-        let offset = round_up_const_value_to_alignment(bx, unaligned_offset, unsized_align);
-
-        debug!("struct_field_ptr: DST field offset: {:?}", offset);
-
-        // Adjust pointer.
-        let ptr = bx.inbounds_ptradd(self.val.llval, offset);
-        let val =
-            PlaceValue { llval: ptr, llextra: self.val.llextra, align: effective_field_align };
+        let val = PlaceValue {
+            llval,
+            llextra: if tcx.type_has_metadata(field.ty, typing_env) {
+                self.val.llextra
+            } else {
+                None
+            },
+            align: effective_field_align,
+        };
         val.with_type(field)
     }
 
@@ -426,48 +375,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let place_ty = place_ref.ty(self.mir, tcx);
         self.monomorphize(place_ty.ty)
     }
-}
-
-fn round_up_const_value_to_alignment<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
-    bx: &mut Bx,
-    value: Bx::Value,
-    align: Bx::Value,
-) -> Bx::Value {
-    // In pseudo code:
-    //
-    //     if value & (align - 1) == 0 {
-    //         value
-    //     } else {
-    //         (value & !(align - 1)) + align
-    //     }
-    //
-    // Usually this is written without branches as
-    //
-    //     (value + align - 1) & !(align - 1)
-    //
-    // But this formula cannot take advantage of constant `value`. E.g. if `value` is known
-    // at compile time to be `1`, this expression should be optimized to `align`. However,
-    // optimization only holds if `align` is a power of two. Since the optimizer doesn't know
-    // that `align` is a power of two, it cannot perform this optimization.
-    //
-    // Instead we use
-    //
-    //     value + (-value & (align - 1))
-    //
-    // Since `align` is used only once, the expression can be optimized. For `value = 0`
-    // its optimized to `0` even in debug mode.
-    //
-    // NB: The previous version of this code used
-    //
-    //     (value + align - 1) & -align
-    //
-    // Even though `-align == !(align - 1)`, LLVM failed to optimize this even for
-    // `value = 0`. Bug report: https://bugs.llvm.org/show_bug.cgi?id=48559
-    let one = bx.const_usize(1);
-    let align_minus_1 = bx.sub(align, one);
-    let neg_value = bx.neg(value);
-    let offset = bx.and(neg_value, align_minus_1);
-    bx.add(value, offset)
 }
 
 /// Calculates the value that needs to be stored to mark the discriminant.

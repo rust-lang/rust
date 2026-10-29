@@ -292,7 +292,7 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
             let ty = if generic_ty.is_sized(self.tcx, self.typing_env) {
                 generic_ty
             } else if let LangItem::AlignOf = lang_item
-                && let ty::Slice(elem_ty) = *generic_ty.kind()
+                && let Some(elem_ty) = self.statically_known_unsized_align_ty(generic_ty)
             {
                 elem_ty
             } else {
@@ -315,6 +315,36 @@ impl<'tcx> InstSimplifyContext<'_, 'tcx> {
             ));
             terminator.kind = TerminatorKind::goto(*destination_block);
         }
+    }
+
+    /// If `ty` is an unsized type whose alignment is guaranteed to equal that of a known
+    /// `Sized` type `U` (without computing layouts or risking recursive-type cycles), returns
+    /// `Some(U)`.
+    fn statically_known_unsized_align_ty(&self, mut ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
+        for _ in 0..8 {
+            match *ty.kind() {
+                ty::Slice(elem_ty) => return Some(elem_ty),
+                ty::Str => return Some(self.tcx.types.u8),
+                ty::Tuple(tys) if let [elem_ty] = &tys[..] => {
+                    ty = *elem_ty;
+                }
+                ty::Adt(def, args) if def.is_struct() => {
+                    let repr = def.repr();
+                    if repr.align.is_some() || repr.pack.is_some() {
+                        return None;
+                    }
+                    let [field] = &def.non_enum_variant().fields.raw[..] else {
+                        return None;
+                    };
+                    ty = field.ty(self.tcx, args).skip_normalization();
+                }
+                ty::Pat(inner, _) => {
+                    ty = inner;
+                }
+                _ => return None,
+            }
+        }
+        None
     }
 
     /// Simplify `raw_eq` intrinsic calls to `Eq` when the type has the size of a primitive.

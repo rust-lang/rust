@@ -18,41 +18,14 @@ fn codegen_field<'tcx>(
     let field_offset = layout.fields.offset(field.index());
     let field_layout = layout.field(&*fx, field.index());
 
-    let simple = |fx: &mut FunctionCx<'_, '_, '_>| {
-        (base.offset_i64(fx, i64::try_from(field_offset.bytes()).unwrap()), field_layout)
+    let ptr = if let Some(dyn_offset) =
+        crate::unsize::dst_field_offset(fx, layout, field_layout, field_offset, extra)
+    {
+        base.offset_value(fx, dyn_offset)
+    } else {
+        base.offset_i64(fx, i64::try_from(field_offset.bytes()).unwrap())
     };
-
-    if field_layout.is_sized() {
-        return simple(fx);
-    }
-    match field_layout.ty.kind() {
-        ty::Slice(..) | ty::Str => simple(fx),
-        _ => {
-            let unaligned_offset = field_offset.bytes();
-
-            // Get the alignment of the field
-            let (_, mut unsized_align) = crate::unsize::size_and_align_of(fx, field_layout, extra);
-
-            // For packed types, we need to cap alignment.
-            if let ty::Adt(def, _) = layout.ty.kind() {
-                if let Some(packed) = def.repr().pack {
-                    let packed = fx.bcx.ins().iconst(fx.pointer_type, packed.bytes() as i64);
-                    let cmp = fx.bcx.ins().icmp(IntCC::UnsignedLessThan, unsized_align, packed);
-                    unsized_align = fx.bcx.ins().select(cmp, unsized_align, packed);
-                }
-            }
-
-            // Bump the unaligned offset up to the appropriate alignment
-            let one = fx.bcx.ins().iconst(fx.pointer_type, 1);
-            let align_sub_1 = fx.bcx.ins().isub(unsized_align, one);
-            let and_lhs = fx.bcx.ins().iadd_imm_u(align_sub_1, unaligned_offset as i64);
-            let zero = fx.bcx.ins().iconst(fx.pointer_type, 0);
-            let and_rhs = fx.bcx.ins().isub(zero, unsized_align);
-            let offset = fx.bcx.ins().band(and_lhs, and_rhs);
-
-            (base.offset_value(fx, offset), field_layout)
-        }
-    }
+    (ptr, field_layout)
 }
 
 /// A read-only value
