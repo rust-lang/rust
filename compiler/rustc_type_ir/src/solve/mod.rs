@@ -15,14 +15,14 @@ use tracing::debug;
 
 use crate::inherent::*;
 use crate::lang_items::SolverTraitLangItem;
+use crate::predicates::Predicate;
 use crate::region_constraint::RegionConstraint;
 use crate::{
     self as ty, Canonical, CantBeErased, Const, ConstVid, FloatVid, GenericArgKind, InferConst,
     IntVid, Interner, TermKind, TyVid, TypingMode, Upcast,
 };
 
-pub type CanonicalInputData<I> =
-    ty::CanonicalQueryInput<I, QueryInput<I, <I as Interner>::Predicate>>;
+pub type CanonicalInputData<I> = ty::CanonicalQueryInput<I, QueryInput<I, Predicate<I>>>;
 pub type CanonicalResponse<I> = Canonical<I, Response<I>>;
 /// The result of evaluating a canonical query.
 ///
@@ -751,7 +751,7 @@ impl VisibleForLeakCheck {
 #[derive_where(Clone, Hash, PartialEq, Debug, Default; I: Interner)]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
-pub struct NestedNormalizationGoals<I: Interner>(pub Vec<(GoalSource, Goal<I, I::Predicate>)>);
+pub struct NestedNormalizationGoals<I: Interner>(pub Vec<(GoalSource, Goal<I, Predicate<I>>)>);
 
 impl<I: Interner> Eq for NestedNormalizationGoals<I> {}
 

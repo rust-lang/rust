@@ -6,6 +6,7 @@ use crate::data_structures::HashSet;
 use crate::inherent::*;
 use crate::lang_items::SolverTraitLangItem;
 use crate::outlives::{Component, push_outlives_components};
+use crate::predicates::Predicate;
 use crate::{self as ty, Interner, Region, Unnormalized, Upcast as _};
 
 /// "Elaboration" is the process of identifying all the predicates that
@@ -35,7 +36,7 @@ enum ElaborateSized {
 
 /// Describes how to elaborate an obligation into a sub-obligation.
 pub trait Elaboratable<I: Interner> {
-    fn predicate(&self) -> I::Predicate;
+    fn predicate(&self) -> Predicate<I>;
 
     // Makes a new `Self` but with a different clause that comes from elaboration.
     fn child(&self, clause: I::Clause) -> Self;
@@ -51,6 +52,26 @@ pub trait Elaboratable<I: Interner> {
     ) -> Self;
 }
 
+impl<I: Interner> Elaboratable<I> for Predicate<I> {
+    fn predicate(&self) -> Self {
+        *self
+    }
+
+    fn child(&self, clause: I::Clause) -> Self {
+        clause.as_predicate()
+    }
+
+    fn child_with_derived_cause(
+        &self,
+        clause: I::Clause,
+        _span: I::Span,
+        _parent_trait_pred: ty::Binder<I, ty::TraitClause<I>>,
+        _index: usize,
+    ) -> Self {
+        clause.as_predicate()
+    }
+}
+
 pub struct ClauseWithSupertraitSpan<I: Interner> {
     pub clause: I::Clause,
     // Span of the supertrait predicate that lead to this clause.
@@ -64,7 +85,7 @@ impl<I: Interner> ClauseWithSupertraitSpan<I> {
 }
 
 impl<I: Interner> Elaboratable<I> for ClauseWithSupertraitSpan<I> {
-    fn predicate(&self) -> <I as Interner>::Predicate {
+    fn predicate(&self) -> Predicate<I> {
         self.clause.as_predicate()
     }
 

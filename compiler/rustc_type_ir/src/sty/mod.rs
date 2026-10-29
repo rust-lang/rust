@@ -1,5 +1,6 @@
 pub use consts::*;
 mod consts;
+pub mod predicates;
 
 use std::fmt;
 
