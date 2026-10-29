@@ -86,12 +86,6 @@ impl Linker {
 
         let _timer = sess.timer("link");
 
-        if let Some(incr_comp_session) = &incr_comp_session {
-            sess.time("serialize_work_products", || {
-                rustc_incremental::save_work_product_index(sess, incr_comp_session, &self.dep_graph)
-            });
-        }
-
         let prof = sess.prof.clone();
         prof.generic_activity("drop_dep_graph").run(move || drop(self.dep_graph));
 

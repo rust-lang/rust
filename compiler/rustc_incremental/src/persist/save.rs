@@ -1,7 +1,7 @@
 use std::fs;
 
 use rustc_data_structures::sync::par_join;
-use rustc_middle::dep_graph::{DepGraph, IncrCompSession, WorkProductMap};
+use rustc_middle::dep_graph::{IncrCompSession, WorkProductMap};
 use rustc_middle::query::on_disk_cache;
 use rustc_middle::ty::TyCtxt;
 use rustc_serialize::Encodable as RustcEncodable;
@@ -89,18 +89,8 @@ pub(crate) fn save_dep_graph(tcx: TyCtxt<'_>) {
 }
 
 /// Saves the work product index.
-pub fn save_work_product_index(
-    sess: &Session,
-    incr_comp_session: &IncrCompSession,
-    dep_graph: &DepGraph,
-) {
-    // This is going to be deleted in finalize_session_directory, so let's not create it
-    if sess.dcx().has_errors().is_some() {
-        return;
-    }
-
+pub(super) fn save_work_product_index(sess: &Session, incr_comp_session: &IncrCompSession) {
     debug!("save_work_product_index()");
-    dep_graph.assert_ignored();
     let path = work_products_path(incr_comp_session);
     file_format::save_in(sess, path, "work product index", |mut e| {
         encode_work_product_index(&incr_comp_session.new_work_products, &mut e);
