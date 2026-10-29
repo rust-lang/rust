@@ -402,6 +402,7 @@ trigger_files = [
     "library/alloc",
     "library/compiler-builtins",
     "library/core",
+    "library/hashbrown",
     "library/panic_abort",
     "library/panic_unwind",
     "library/std",
@@ -1217,6 +1218,15 @@ making this change to \
 instead.
 """
 cc = ["@calebzulawski", "@programmerjake"]
+
+[mentions."library/hashbrown"]
+message = """
+`hashbrown` is developed in its own repository. If possible, consider \
+making this change to \
+[rust-lang/hashbrown](https://github.com/rust-lang/hashbrown) \
+instead.
+"""
+cc = ["@Amanieu", "@clarfonthey"]
 
 [mentions."library/core/src/unicode/unicode_data.rs"]
 message = """
