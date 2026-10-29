@@ -26,7 +26,7 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{
-    self, PredicateKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor, Upcast,
+    self, PredicateKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitableExt, TypeVisitor, Upcast,
     suggest_constraining_type_params,
 };
 use rustc_mir_dataflow::move_paths::{Init, InitKind, InitLocation, MoveOutIndex, MovePathIndex};
@@ -49,6 +49,7 @@ use crate::borrow_set::{BorrowData, TwoPhaseActivation};
 use crate::consumers::OutlivesConstraint;
 use crate::diagnostics::conflict_errors::StorageDeadOrDrop::LocalStorageDead;
 use crate::diagnostics::{CapturedMessageOpt, call_kind, find_all_local_uses};
+use crate::session_diagnostics::SuggestClosureAnnotation;
 use crate::{InitializationRequiringAction, MirBorrowckCtxt, WriteKind, borrowck_errors};
 
 #[derive(Debug)]
@@ -3318,8 +3319,115 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                 }
             }
         }
+        self.suggest_closure_annotation(borrow, &mut err);
 
         err
+    }
+
+    /// Suggests annotating an unannotated or wildcard closure parameter with an explicit
+    /// reference type (e.g. `: &_` or `: &mut _`) when a borrow fails because the parameter
+    /// inferred a free region tied to the enclosing scope rather than a higher-ranked
+    /// (late-bound) lifetime.
+    ///
+    /// Attaches [`SuggestClosureAnnotation`] to `err` if `borrow` is passed into a local
+    /// closure call within the same basic block.
+    fn suggest_closure_annotation(&self, borrow: &BorrowData<'tcx>, err: &mut Diag<'diag>) {
+        let tcx = self.infcx.tcx;
+
+        let location = borrow.reserve_location;
+        let block_data = &self.body[location.block];
+        let Some(Statement { kind: StatementKind::Assign((place, _)), .. }) =
+            block_data.statements.get(location.statement_index)
+        else {
+            return;
+        };
+        let Some(mut target) = place.as_local() else { return };
+
+        // Closure calls lower through the "rust-call" ABI with arguments packed into a tuple.
+        // We find which element received the borrow so we can index the closure's HIR parameter.
+        let mut tuple_index = None;
+
+        for stmt in &block_data.statements[location.statement_index + 1..] {
+            let StatementKind::Assign((place, rvalue)) = &stmt.kind else { continue };
+            let Some(assigned_to) = place.as_local() else { continue };
+
+            let is_target = |p: Place<'tcx>| p.local_or_deref_local() == Some(target);
+            let matched = match rvalue {
+                Rvalue::Use(operand, _) | Rvalue::Cast(_, operand, _) => {
+                    operand.place().is_some_and(is_target)
+                }
+                Rvalue::Ref(_, _, p) | Rvalue::CopyForDeref(p) => is_target(*p),
+                Rvalue::Aggregate(kind, operands) if **kind == AggregateKind::Tuple => {
+                    tuple_index = operands.iter().position(|op| op.place().is_some_and(is_target));
+                    tuple_index.is_some()
+                }
+                _ => false,
+            };
+
+            if matched {
+                target = assigned_to;
+                if tuple_index.is_some() {
+                    break;
+                }
+            }
+        }
+
+        let Some(idx) = tuple_index else { return };
+
+        let Some(Terminator { kind: TerminatorKind::Call { args, .. }, .. }) =
+            &block_data.terminator
+        else {
+            return;
+        };
+
+        // In the "rust-call" convention: args[0] is the closure environment, args[1] is the argument tuple.
+        let [self_arg, tuple_arg] = &**args else { return };
+        if !tuple_arg.node.place().is_some_and(|p| p.local_or_deref_local() == Some(target)) {
+            return;
+        }
+
+        let self_ty = self_arg.node.ty(self.body, tcx).peel_refs();
+        let ty::Closure(def_id, args) = *self_ty.kind() else { return };
+        let Some(local_def_id) = def_id.as_local() else { return };
+
+        // Parameters that already have higher-ranked lifetimes cannot be resolved by annotating an elided lifetime.
+        let sig = args.as_closure().sig();
+        let tupled_inputs = sig.skip_binder().inputs()[0];
+        let ty::Tuple(elements) = tupled_inputs.kind() else { return };
+        let Some(&param_ty) = elements.get(idx) else { return };
+        if param_ty.has_escaping_bound_vars() {
+            return;
+        }
+
+        let hir::Node::Expr(hir::Expr {
+            kind: hir::ExprKind::Closure(hir::Closure { body, fn_decl, .. }),
+            ..
+        }) = tcx.hir_node_by_def_id(local_def_id)
+        else {
+            return;
+        };
+
+        let body = tcx.hir_body(*body);
+
+        let Some(param) = body.params.get(idx) else { return };
+        let Some(hir_ty) = fn_decl.inputs.get(idx) else { return };
+
+        // Avoid diagnostics on macro-generated definitions where span replacements would be malformed.
+        if param.pat.span.from_expansion() || hir_ty.span.from_expansion() {
+            return;
+        }
+
+        // Suggest `: &_` for unannotated bindings (`|x|`), or replace inferred types (`|x: _|`).
+        let is_mut = matches!(borrow.kind, BorrowKind::Mut { .. });
+        let (span, replacement) = if param.ty_span == param.pat.span {
+            (param.pat.span.shrink_to_hi(), if is_mut { ": &mut _" } else { ": &_" })
+        } else if let hir::TyKind::Infer(()) = hir_ty.kind {
+            (hir_ty.span, if is_mut { "&mut _" } else { "&_" })
+        } else {
+            return;
+        };
+
+        err.subdiagnostic(SuggestClosureAnnotation { span, replacement });
     }
 
     fn report_borrow_conflicts_with_destructor(
@@ -3559,6 +3667,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                 args_span,
             }
         });
+        self.suggest_closure_annotation(borrow, &mut err);
 
         err
     }

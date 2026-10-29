@@ -1,0 +1,78 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/163475>
+//!
+//! This test verifies that we suggest adding an explicit lifetime annotation to a
+//! closure argument when passing a borrowed value to an unannotated closure.
+
+//@ run-rustfix
+
+use std::collections::HashMap;
+
+fn original() {
+    let map = HashMap::<usize, usize>::new();
+    let f = |v: &_| map[v];
+    for a in 0..1 {
+        f(&a); //~ ERROR `a` does not live long enough
+    }
+}
+
+fn mutable_borrow() {
+    let mut map = HashMap::<usize, usize>::new();
+    let mut f = |v: &mut _| {
+        map.get_mut(v);
+    };
+    for mut a in 0..1 {
+        f(&mut a); //~ ERROR `a` does not live long enough
+    }
+}
+
+fn second_parameter() {
+    let map = HashMap::<usize, usize>::new();
+    let f = |x, y: &_| map[y] + x;
+    for a in 0..1 {
+        f(0, &a); //~ ERROR `a` does not live long enough
+    }
+}
+
+fn mixed_annotations() {
+    let map = HashMap::<usize, usize>::new();
+    let f = |x: &str, y: &_| map[y] + x.len();
+    for a in 0..1 {
+        f("", &a); //~ ERROR `a` does not live long enough
+    }
+}
+
+fn temporary_borrow() {
+    let map = HashMap::<String, usize>::new();
+    let f = |v: &_| map.get(v).copied().unwrap_or(0);
+    for _ in 0..1 {
+        f(&String::new()); //~ ERROR temporary value dropped while borrowed
+    }
+}
+
+fn false_positive_annotated() {
+    let map = HashMap::<usize, usize>::new();
+    let f = |v: &usize| map[v];
+    for a in 0..1 {
+        f(&a);
+    }
+}
+
+fn foo(v: &usize) -> usize {
+    *v
+}
+
+fn false_positive_normal_fn() {
+    for a in 0..1 {
+        foo(&a);
+    }
+}
+
+fn main() {
+    original();
+    mutable_borrow();
+    second_parameter();
+    mixed_annotations();
+    temporary_borrow();
+    false_positive_annotated();
+    false_positive_normal_fn();
+}
