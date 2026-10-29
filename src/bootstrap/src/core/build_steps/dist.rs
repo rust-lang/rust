@@ -259,7 +259,11 @@ fn make_win_dist(plat_root: &Path, target: TargetSelection, builder: &Builder<'_
     // Libraries necessary to link the windows-gnu toolchains.
     // System libraries will be preferred if they are available (see #67429).
     let target_libs = [
-        //MinGW libs
+        // mingw-64 objects; some other targets ship them as a part of std, but with mingw-w64
+        // objects must match libs version, which is not guaranteed if they are packaged separately
+        "crt2.o",
+        "dllcrt2.o",
+        // mingw-w64 libs
         "libgcc.a",
         "libgcc_eh.a",
         "libgcc_s.a",
@@ -349,7 +353,11 @@ fn make_win_llvm_dist(plat_root: &Path, target: TargetSelection, builder: &Build
     // Libraries necessary to link the windows-gnullvm toolchains.
     // System libraries will be preferred if they are available (see #67429).
     let target_libs = [
-        // MinGW libs
+        // mingw-64 objects; some other targets ship them as a part of std, but with mingw-w64
+        // objects must match libs version, which is not guaranteed if they are packaged separately
+        "crt2.o",
+        "dllcrt2.o",
+        // mingw-64 libs
         "libunwind.a",
         "libmingw32.a",
         "libmingwex.a",
