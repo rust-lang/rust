@@ -4,11 +4,11 @@ use clippy_utils::source::SpanExt as _;
 use itertools::Itertools as _;
 use rustc_ast::AttrStyle;
 use rustc_errors::Applicability;
-use rustc_lint::{EarlyContext, Level};
+use rustc_lint::{EarlyContext, Level, PreExpansion};
 use rustc_span::sym;
 
 pub(super) fn check(
-    cx: &EarlyContext<'_>,
+    cx: &EarlyContext<'_, PreExpansion>,
     cfg_attr: &rustc_ast::MetaItem,
     behind_cfg_attr: &rustc_ast::MetaItem,
     attr: &Attribute,

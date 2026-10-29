@@ -3,6 +3,4 @@
                        //~| ERROR malformed lint attribute
                        //~| ERROR malformed lint attribute
                        //~| ERROR malformed lint attribute
-                       //~| ERROR malformed lint attribute
-                       //~| ERROR malformed lint attribute
 fn main() { }

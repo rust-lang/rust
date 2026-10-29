@@ -43,10 +43,10 @@ impl<'sm> HasSourceMap<'sm> for TyCtxt<'sm> {
         self.sess.source_map()
     }
 }
-impl<'sm> HasSourceMap<'sm> for &'sm EarlyContext<'_> {
+impl<'sm, M: rustc_lint::EarlyLintMode> HasSourceMap<'sm> for &'sm EarlyContext<'_, M> {
     #[inline]
     fn source_map(self) -> &'sm SourceMap {
-        ::rustc_lint::LintContext::sess(self).source_map()
+        rustc_lint::LintContext::sess(self).source_map()
     }
 }
 impl<'sm> HasSourceMap<'sm> for &LateContext<'sm> {

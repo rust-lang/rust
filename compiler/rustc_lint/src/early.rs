@@ -4,11 +4,17 @@
 //! resolution, just before AST lowering. These lints are for purely
 //! syntactical lints.
 
+use std::cell::Cell;
+
 use rustc_ast::visit::{self as ast_visit, Visitor, walk_list};
-use rustc_ast::{self as ast, AttrVec, HasAttrs};
-use rustc_errors::{BufferedEarlyLint, LintBuffer};
+use rustc_ast::{self as ast, AttrId, AttrVec, HasAttrs};
+use rustc_data_structures::fx::FxHashMap;
+use rustc_errors::{
+    BufferedEarlyLint, Diag, DiagCtxtHandle, DiagInner, Diagnostic, Level, LintBuffer, MultiSpan,
+    PreExpansionLint,
+};
 use rustc_feature::Features;
-use rustc_lint_defs::LintPass;
+use rustc_lint_defs::{Lint, LintPass};
 use rustc_middle::ty::RegisteredTools;
 use rustc_session::Session;
 use rustc_span::{Ident, Span};
@@ -16,9 +22,139 @@ use tracing::debug;
 
 use crate::DiagAndSess;
 use crate::context::{EarlyContext, EarlyLintPassFactory, LintContext, LintStore};
+use crate::levels::BuilderPush;
 use crate::passes::{EarlyLintPass, EarlyLintPassObject};
 
 pub(super) mod diagnostics;
+
+pub trait EarlyLintMode: Sized + 'static {
+    type Scope;
+
+    fn enter(
+        cx: &mut EarlyContext<'_, Self>,
+        attrs: &[ast::Attribute],
+        is_crate_node: bool,
+    ) -> Self::Scope;
+
+    fn exit(
+        cx: &mut EarlyContext<'_, Self>,
+        attrs: &[ast::Attribute],
+        is_crate_node: bool,
+        scope: Self::Scope,
+    );
+
+    fn opt_span_lint(
+        cx: &EarlyContext<'_, Self>,
+        lint: &'static Lint,
+        span: Option<MultiSpan>,
+        decorator: impl for<'a> Diagnostic<'a>,
+    );
+}
+
+#[derive(Default)]
+pub struct PreExpansion {
+    attrs: Vec<AttrId>,
+    lints: Cell<Vec<PreExpansionLint>>,
+}
+
+impl EarlyLintMode for PreExpansion {
+    type Scope = usize;
+
+    fn enter(cx: &mut EarlyContext<'_, Self>, attrs: &[ast::Attribute], _: bool) -> usize {
+        let len = cx.mode.attrs.len();
+        cx.mode.attrs.extend(attrs.iter().map(|attr| attr.id));
+        len
+    }
+
+    fn exit(cx: &mut EarlyContext<'_, Self>, _: &[ast::Attribute], _: bool, len: usize) {
+        cx.mode.attrs.truncate(len);
+    }
+
+    fn opt_span_lint(
+        cx: &EarlyContext<'_, Self>,
+        lint: &'static Lint,
+        span: Option<MultiSpan>,
+        decorator: impl for<'a> Diagnostic<'a>,
+    ) {
+        let diag = decorator.into_diag(cx.sess().dcx(), Level::Warning(None)).into_inner();
+        let mut lints = cx.mode.lints.take();
+        lints.push(PreExpansionLint { lint, span, diag, attrs: cx.mode.attrs.clone() });
+        cx.mode.lints.set(lints);
+    }
+}
+
+#[derive(Default)]
+pub struct PostExpansion {
+    lints: Vec<Option<PreExpansionLint>>,
+    by_attr: FxHashMap<AttrId, Vec<usize>>,
+}
+
+impl PostExpansion {
+    fn new(lints: Vec<PreExpansionLint>) -> Self {
+        let mut by_attr: FxHashMap<AttrId, Vec<usize>> = Default::default();
+        for (i, lint) in lints.iter().enumerate() {
+            for &attr in &lint.attrs {
+                by_attr.entry(attr).or_default().push(i);
+            }
+        }
+        PostExpansion { lints: lints.into_iter().map(Some).collect(), by_attr }
+    }
+}
+
+impl EarlyLintMode for PostExpansion {
+    type Scope = BuilderPush;
+
+    fn enter(
+        cx: &mut EarlyContext<'_, Self>,
+        attrs: &[ast::Attribute],
+        is_crate_node: bool,
+    ) -> BuilderPush {
+        cx.builder.push(attrs, is_crate_node)
+    }
+
+    fn exit(
+        cx: &mut EarlyContext<'_, Self>,
+        attrs: &[ast::Attribute],
+        is_crate_node: bool,
+        push: BuilderPush,
+    ) {
+        let PostExpansion { lints, by_attr } = &mut cx.mode;
+        if !by_attr.is_empty() || (is_crate_node && !lints.is_empty()) {
+            let mut to_emit = Vec::new();
+            if is_crate_node {
+                to_emit.extend(lints.drain(..).flatten());
+                by_attr.clear();
+            } else {
+                for attr in attrs {
+                    if let Some(idxs) = by_attr.remove(&attr.id) {
+                        to_emit.extend(idxs.into_iter().filter_map(|i| lints[i].take()));
+                    }
+                }
+            }
+            for PreExpansionLint { lint, span, diag, attrs: _ } in to_emit {
+                cx.builder.opt_span_lint(lint, span, PreExpansionDiag(diag));
+            }
+        }
+        cx.builder.pop(push);
+    }
+
+    fn opt_span_lint(
+        cx: &EarlyContext<'_, Self>,
+        lint: &'static Lint,
+        span: Option<MultiSpan>,
+        decorator: impl for<'a> Diagnostic<'a>,
+    ) {
+        cx.builder.opt_span_lint(lint, span, decorator)
+    }
+}
+
+struct PreExpansionDiag(DiagInner);
+
+impl<'a> Diagnostic<'a> for PreExpansionDiag {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
+        Diag::from_inner_with_level(dcx, self.0, level)
+    }
+}
 
 macro_rules! lint_callback { ($cx:expr, $f:ident, $($args:expr),*) => ({
     $cx.pass.$f(&$cx.context, $($args),*);
@@ -26,12 +162,12 @@ macro_rules! lint_callback { ($cx:expr, $f:ident, $($args:expr),*) => ({
 
 /// Implements the AST traversal for early lint passes. `T` provides the
 /// `check_*` methods.
-struct EarlyContextAndPass<'ecx, T: EarlyLintPass> {
-    context: EarlyContext<'ecx>,
+struct EarlyContextAndPass<'ecx, T: EarlyLintPass<M>, M: EarlyLintMode> {
+    context: EarlyContext<'ecx, M>,
     pass: T,
 }
 
-impl<'ecx, T: EarlyLintPass> EarlyContextAndPass<'ecx, T> {
+impl<'ecx, T: EarlyLintPass<M>, M: EarlyLintMode> EarlyContextAndPass<'ecx, T, M> {
     fn check_id(&mut self, id: ast::NodeId) {
         for early_lint in self.context.buffered.take(id) {
             let BufferedEarlyLint { span, node_id: _, lint_id, diagnostic } = early_lint;
@@ -52,18 +188,20 @@ impl<'ecx, T: EarlyLintPass> EarlyContextAndPass<'ecx, T> {
     {
         let is_crate_node = id == ast::CRATE_NODE_ID;
         debug!(?id);
-        let push = self.context.builder.push(attrs, is_crate_node);
+        let scope = M::enter(&mut self.context, attrs, is_crate_node);
 
         debug!("early context: enter_attrs({:?})", attrs);
         lint_callback!(self, check_attributes, attrs);
         f(self);
         debug!("early context: exit_attrs({:?})", attrs);
         lint_callback!(self, check_attributes_post, attrs);
-        self.context.builder.pop(push);
+        M::exit(&mut self.context, attrs, is_crate_node, scope);
     }
 }
 
-impl<'ast, 'ecx, T: EarlyLintPass> ast_visit::Visitor<'ast> for EarlyContextAndPass<'ecx, T> {
+impl<'ast, 'ecx, T: EarlyLintPass<M>, M: EarlyLintMode> ast_visit::Visitor<'ast>
+    for EarlyContextAndPass<'ecx, T, M>
+{
     fn visit_id(&mut self, id: rustc_ast::NodeId) {
         self.check_id(id);
     }
@@ -245,12 +383,12 @@ impl<'ast, 'ecx, T: EarlyLintPass> ast_visit::Visitor<'ast> for EarlyContextAndP
 // `check_foo` method in `$methods` within this pass simply calls `check_foo`
 // once per `$pass`. Compare with `declare_combined_early_lint_pass`, which is
 // similar, but combines lint passes at compile time.
-struct RuntimeCombinedEarlyLintPass {
-    passes: Vec<EarlyLintPassObject>,
+struct RuntimeCombinedEarlyLintPass<M: EarlyLintMode> {
+    passes: Vec<EarlyLintPassObject<M>>,
 }
 
 #[allow(rustc::lint_pass_impl_without_macro)]
-impl LintPass for RuntimeCombinedEarlyLintPass {
+impl<M: EarlyLintMode> LintPass for RuntimeCombinedEarlyLintPass<M> {
     fn name(&self) -> &'static str {
         panic!()
     }
@@ -261,8 +399,8 @@ impl LintPass for RuntimeCombinedEarlyLintPass {
 
 macro_rules! impl_early_lint_pass {
     ([], [$($(#[$attr:meta])* fn $f:ident($($param:ident: $arg:ty),*);)*]) => (
-        impl EarlyLintPass for RuntimeCombinedEarlyLintPass {
-            $(fn $f(&mut self, context: &EarlyContext<'_>, $($param: $arg),*) {
+        impl<M: EarlyLintMode> EarlyLintPass<M> for RuntimeCombinedEarlyLintPass<M> {
+            $(fn $f(&mut self, context: &EarlyContext<'_, M>, $($param: $arg),*) {
                 for pass in self.passes.iter_mut() {
                     pass.$f(context, $($param),*);
                 }
@@ -293,7 +431,10 @@ impl<'a> EarlyCheckNode<'a> {
             EarlyCheckNode::LoadedMod(_id, attrs, _items) => attrs,
         }
     }
-    fn check<'ecx, T: EarlyLintPass>(&self, cx: &mut EarlyContextAndPass<'ecx, T>) {
+    fn check<'ecx, T: EarlyLintPass<M>, M: EarlyLintMode>(
+        &self,
+        cx: &mut EarlyContextAndPass<'ecx, T, M>,
+    ) {
         match self {
             EarlyCheckNode::CrateRoot(crate_, _attrs) => {
                 lint_callback!(cx, check_crate, crate_);
@@ -308,38 +449,58 @@ impl<'a> EarlyCheckNode<'a> {
     }
 }
 
-pub fn check_ast_node<'a>(
+pub fn check_ast_node_pre_expansion<'a>(
     sess: &Session,
     features: &Features,
-    pre_expansion: bool,
     lint_store: &LintStore,
     registered_lint_tools: &RegisteredTools,
-    lint_buffer: Option<LintBuffer>,
     check_node: EarlyCheckNode<'a>,
-) {
+) -> Vec<PreExpansionLint> {
     let context = EarlyContext::new(
         sess,
         features,
-        !pre_expansion,
+        false,
         lint_store,
         registered_lint_tools,
-        lint_buffer.unwrap_or_default(),
+        LintBuffer::default(),
+        PreExpansion::default(),
     );
+    let builtin_lints = crate::BuiltinCombinedPreExpansionLintPass::new();
+    let passes = &lint_store.pre_expansion_lint_passes;
+    let context = run_passes(check_node, context, builtin_lints, passes);
+    check_buffered_lints_emitted(sess, context.buffered);
+    context.mode.lints.into_inner()
+}
 
-    let context = if pre_expansion {
-        let builtin_lints = crate::BuiltinCombinedPreExpansionLintPass::new();
-        let passes = &lint_store.pre_expansion_lint_passes;
-        run_passes(check_node, context, builtin_lints, passes)
-    } else {
-        let builtin_lints = crate::BuiltinCombinedEarlyLintPass::new();
-        let passes = &lint_store.early_lint_passes;
-        run_passes(check_node, context, builtin_lints, passes)
-    };
+pub fn check_ast_node<'a>(
+    sess: &Session,
+    features: &Features,
+    lint_store: &LintStore,
+    registered_lint_tools: &RegisteredTools,
+    mut lint_buffer: LintBuffer,
+    check_node: EarlyCheckNode<'a>,
+) {
+    let pre_expansion_lints = std::mem::take(&mut lint_buffer.pre_expansion);
+    let context = EarlyContext::new(
+        sess,
+        features,
+        true,
+        lint_store,
+        registered_lint_tools,
+        lint_buffer,
+        PostExpansion::new(pre_expansion_lints),
+    );
+    let builtin_lints = crate::BuiltinCombinedEarlyLintPass::new();
+    let passes = &lint_store.early_lint_passes;
+    let context = run_passes(check_node, context, builtin_lints, passes);
+    check_buffered_lints_emitted(sess, context.buffered);
+}
 
+fn check_buffered_lints_emitted(sess: &Session, buffered: LintBuffer) {
     // All of the buffered lints should have been emitted at this point.
     // If not, that means that we somehow buffered a lint for a node id
     // that was not lint-checked (perhaps it doesn't exist?). This is a bug.
-    for (id, lints) in context.buffered.map {
+    for (id, lints) in buffered.early {
         if !lints.is_empty() {
             assert!(
                 sess.dcx().has_errors().is_some(),
@@ -351,12 +512,12 @@ pub fn check_ast_node<'a>(
     }
 }
 
-fn run_passes<'a, 'ecx, T: EarlyLintPass + 'static>(
+fn run_passes<'a, 'ecx, T: EarlyLintPass<M> + 'static, M: EarlyLintMode>(
     check_node: EarlyCheckNode<'a>,
-    context: EarlyContext<'ecx>,
+    context: EarlyContext<'ecx, M>,
     builtin_lints: T,
-    passes: &[EarlyLintPassFactory],
-) -> EarlyContext<'ecx> {
+    passes: &[EarlyLintPassFactory<M>],
+) -> EarlyContext<'ecx, M> {
     // Note: `passes` is often empty. In that case, it's faster to run
     // `builtin_lints` directly rather than bundling it up into the
     // `RuntimeCombinedEarlyLintPass`.
@@ -370,11 +531,11 @@ fn run_passes<'a, 'ecx, T: EarlyLintPass + 'static>(
     }
 }
 
-fn run_pass<'a, 'ecx, T: EarlyLintPass>(
+fn run_pass<'a, 'ecx, T: EarlyLintPass<M>, M: EarlyLintMode>(
     check_node: EarlyCheckNode<'a>,
-    context: EarlyContext<'ecx>,
+    context: EarlyContext<'ecx, M>,
     pass: T,
-) -> EarlyContext<'ecx> {
+) -> EarlyContext<'ecx, M> {
     let mut cx = EarlyContextAndPass { context, pass };
     cx.with_lint_attrs(check_node.id(), check_node.attrs(), |cx| check_node.check(cx));
     cx.context

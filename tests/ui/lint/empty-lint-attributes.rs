@@ -5,19 +5,15 @@
 
 #![allow()]
 //~^ WARN unused attribute
-//~| WARN unused attribute
 #![warn(reason = "observationalism")]
 //~^ WARN unused attribute
-//~| WARN unused attribute
 
 #[forbid()]
 //~^ WARN unused attribute
-//~| WARN unused attribute
 fn devoir() {}
 
 #[deny(reason = "ultion")]
 //~^ WARN unused attribute
-//~| WARN unused attribute
 fn waldgrave() {}
 
 fn main() {}

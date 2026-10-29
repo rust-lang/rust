@@ -377,7 +377,7 @@ pub struct LintLevelsBuilder<'s, P> {
     registered_lint_tools: &'s RegisteredTools,
 }
 
-pub(crate) struct BuilderPush {
+pub struct BuilderPush {
     prev: LintStackIndex,
 }
 

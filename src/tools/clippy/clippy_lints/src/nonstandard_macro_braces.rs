@@ -6,7 +6,7 @@ use rustc_ast::token::{Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
-use rustc_lint::{EarlyContext, EarlyLintPass, impl_lint_pass};
+use rustc_lint::{EarlyContext, EarlyLintMode, EarlyLintPass, impl_lint_pass};
 use rustc_span::Span;
 
 use crate::rustc_lint::LintContext as _;
@@ -51,8 +51,8 @@ impl MacroBraces {
     }
 }
 
-impl EarlyLintPass for MacroBraces {
-    fn check_mac(&mut self, cx: &EarlyContext<'_>, mac: &ast::MacCall) {
+impl<M: EarlyLintMode> EarlyLintPass<M> for MacroBraces {
+    fn check_mac(&mut self, cx: &EarlyContext<'_, M>, mac: &ast::MacCall) {
         if let Some(last_segment) = mac.path.segments.last()
             && let name = last_segment.ident.as_str()
             && let Some(&braces) = self.macro_braces.0.get(name)
@@ -74,7 +74,7 @@ impl EarlyLintPass for MacroBraces {
     }
 
     // See issue #9913
-    fn check_stmt(&mut self, _: &EarlyContext<'_>, stmt: &ast::Stmt) {
+    fn check_stmt(&mut self, _: &EarlyContext<'_, M>, stmt: &ast::Stmt) {
         if let ast::StmtKind::MacCall(mac_callstmt) = &stmt.kind
             && let ast::MacCallStmt {
                 style: ast::MacStmtStyle::Braces,
@@ -85,8 +85,8 @@ impl EarlyLintPass for MacroBraces {
         }
     }
 
-    fn check_mac_def(&mut self, cx: &EarlyContext<'_>, mac: &ast::MacroDef) {
-        fn check_ts(cx: &EarlyContext<'_>, ts: &TokenStream, macro_braces: &FxHashMap<String, (char, char)>) {
+    fn check_mac_def(&mut self, cx: &EarlyContext<'_, M>, mac: &ast::MacroDef) {
+        fn check_ts<M: EarlyLintMode>(cx: &EarlyContext<'_, M>, ts: &TokenStream, macro_braces: &FxHashMap<String, (char, char)>) {
             for (i, current_token) in ts.iter().enumerate() {
                 if let TokenTree::Delimited(_, _, _, token_stream) = current_token {
                     // Peel extra braces and parenthesis in macros!
@@ -137,7 +137,7 @@ impl EarlyLintPass for MacroBraces {
     }
 }
 
-fn emit_help(cx: &EarlyContext<'_>, snip: &str, (open, close): (char, char), span: Span, add_semi: bool) {
+fn emit_help<M: EarlyLintMode>(cx: &EarlyContext<'_, M>, snip: &str, (open, close): (char, char), span: Span, add_semi: bool) {
     let semi = if add_semi { ";" } else { "" };
     if let Some((macro_name, macro_args_str)) = snip.split_once('!') {
         let mut macro_args = macro_args_str.trim().to_string();

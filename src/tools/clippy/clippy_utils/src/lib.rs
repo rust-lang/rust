@@ -133,12 +133,15 @@ pub const VEC_METHODS_SHADOWING_SLICE_METHODS: [Symbol; 3] = [sym::as_ptr, sym::
 #[macro_export]
 macro_rules! extract_msrv_attr {
     () => {
-        fn check_attributes(&mut self, cx: &rustc_lint::EarlyContext<'_>, attrs: &[rustc_ast::ast::Attribute]) {
+        $crate::extract_msrv_attr!(rustc_lint::PostExpansion);
+    };
+    ($mode:ty) => {
+        fn check_attributes(&mut self, cx: &rustc_lint::EarlyContext<'_, $mode>, attrs: &[rustc_ast::ast::Attribute]) {
             let sess = rustc_lint::LintContext::sess(cx);
             self.msrv.check_attributes(attrs);
         }
 
-        fn check_attributes_post(&mut self, cx: &rustc_lint::EarlyContext<'_>, attrs: &[rustc_ast::ast::Attribute]) {
+        fn check_attributes_post(&mut self, cx: &rustc_lint::EarlyContext<'_, $mode>, attrs: &[rustc_ast::ast::Attribute]) {
             let sess = rustc_lint::LintContext::sess(cx);
             self.msrv.check_attributes_post(attrs);
         }

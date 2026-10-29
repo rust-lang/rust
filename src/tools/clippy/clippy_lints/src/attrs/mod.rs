@@ -20,7 +20,9 @@ use clippy_utils::msrvs::{self, Msrv, MsrvStack};
 use clippy_utils::{check_clippy_attr, is_from_proc_macro};
 use rustc_ast::{self as ast, AttrArgs, AttrKind, Attribute, MetaItemInner, MetaItemKind};
 use rustc_hir::{ImplItem, ImplItemKind, Item, ItemKind, TraitFn, TraitItem, TraitItemKind};
-use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext as _, impl_lint_pass};
+use rustc_lint::{
+    EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext as _, PreExpansion, impl_lint_pass,
+};
 use rustc_span::sym;
 use utils::is_lint_level;
 
@@ -629,14 +631,14 @@ impl EarlyAttributes {
     }
 }
 
-impl EarlyLintPass for EarlyAttributes {
-    fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &Attribute) {
+impl EarlyLintPass<PreExpansion> for EarlyAttributes {
+    fn check_attribute(&mut self, cx: &EarlyContext<'_, PreExpansion>, attr: &Attribute) {
         deprecated_cfg_attr::check(cx, attr, &self.msrv);
         deprecated_cfg_attr::check_clippy(cx, attr);
         non_minimal_cfg::check(cx, attr);
     }
 
-    extract_msrv_attr!();
+    extract_msrv_attr!(PreExpansion);
 }
 
 pub struct PostExpansionEarlyAttributes {

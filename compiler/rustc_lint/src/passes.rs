@@ -1,6 +1,7 @@
 use rustc_lint_defs::LintPass;
 
 use crate::context::{EarlyContext, LateContext};
+use crate::early::{EarlyLintMode, PostExpansion};
 
 #[macro_export]
 macro_rules! late_lint_methods {
@@ -173,8 +174,8 @@ macro_rules! early_lint_methods {
 
 macro_rules! declare_early_lint_pass {
     ([], [$(fn $name:ident($($param:ident: $arg:ty),*);)*]) => (
-        pub trait EarlyLintPass: LintPass {
-            $(#[inline(always)] fn $name(&mut self, _: &EarlyContext<'_>, $(_: $arg),*) {})*
+        pub trait EarlyLintPass<M: EarlyLintMode = PostExpansion>: LintPass {
+            $(#[inline(always)] fn $name(&mut self, _: &EarlyContext<'_, M>, $(_: $arg),*) {})*
         }
     )
 }
@@ -192,8 +193,8 @@ macro_rules! expand_combined_early_lint_pass_method {
 
 #[macro_export]
 macro_rules! expand_combined_early_lint_pass_methods {
-    ($passes:tt, [$(fn $name:ident($($param:ident: $arg:ty),*);)*]) => (
-        $(fn $name(&mut self, context: &$crate::EarlyContext<'_>, $($param: $arg),*) {
+    ($passes:tt, $mode:ty, [$(fn $name:ident($($param:ident: $arg:ty),*);)*]) => (
+        $(fn $name(&mut self, context: &$crate::EarlyContext<'_, $mode>, $($param: $arg),*) {
             $crate::expand_combined_early_lint_pass_method!($passes, self, $name, (context, $($param),*));
         })*
     )
@@ -207,6 +208,12 @@ macro_rules! expand_combined_early_lint_pass_methods {
 #[macro_export]
 macro_rules! declare_combined_early_lint_pass {
     ([$v:vis $name:ident, [$($pass:ident: $constructor:expr,)*]], $methods:tt) => (
+        $crate::declare_combined_early_lint_pass!(
+            [$v $name<$crate::PostExpansion>, [$($pass: $constructor,)*]],
+            $methods
+        );
+    );
+    ([$v:vis $name:ident<$mode:ty>, [$($pass:ident: $constructor:expr,)*]], $methods:tt) => (
         #[allow(non_snake_case)]
         $v struct $name {
             $($pass: $pass,)*
@@ -226,8 +233,8 @@ macro_rules! declare_combined_early_lint_pass {
             }
         }
 
-        impl $crate::EarlyLintPass for $name {
-            $crate::expand_combined_early_lint_pass_methods!([$($pass),*], $methods);
+        impl $crate::EarlyLintPass<$mode> for $name {
+            $crate::expand_combined_early_lint_pass_methods!([$($pass),*], $mode, $methods);
         }
 
         #[allow(rustc::lint_pass_impl_without_macro)]
@@ -243,5 +250,5 @@ macro_rules! declare_combined_early_lint_pass {
 }
 
 /// A lint pass boxed up as a trait object.
-pub(crate) type EarlyLintPassObject = Box<dyn EarlyLintPass>;
+pub(crate) type EarlyLintPassObject<M = PostExpansion> = Box<dyn EarlyLintPass<M>>;
 pub(crate) type LateLintPassObject<'tcx> = Box<dyn LateLintPass<'tcx> + 'tcx>;

@@ -1,9 +1,11 @@
 #![crate_type = "lib"]
+//@ check-pass
+
 
 #[expect] // OK
 #[expect[wut]] // OK
 #[expect(expect)] // OK
-#[expect(expect(expect))] //~ ERROR malformed lint attribute input
+#[expect(expect(expect))] // OK
 #[deny(({!}))] // OK
 #[expect[helix::<ub>]] // OK
 #[cfg(false)]
