@@ -6,7 +6,7 @@ source shared.sh
 
 # We have to build our own binutils for the GCC build, because the default CentOS 7 binutils are
 # too old, and they do not support `SHF_GNU_RETAIN`.
-BINUTILS="2.47"
+BINUTILS="2.38"
 BINUTILS_ROOT_PATH="$(pwd)/binutils-install"
 BINUTILS_PATH="$BINUTILS_ROOT_PATH/bin"
 curl https://ci-mirrors.rust-lang.org/rustc/gcc/binutils-$BINUTILS.tar.xz | xzcat | tar xf -
@@ -14,9 +14,9 @@ mkdir binutils-build
 mkdir "$BINUTILS_ROOT_PATH"
 cd binutils-build
 
-hide_output ../binutils-$BINUTILS/configure --prefix="$BINUTILS_ROOT_PATH" --disable-werror
-hide_output make -j$(nproc)
-hide_output make install
+../binutils-$BINUTILS/configure --prefix="$BINUTILS_ROOT_PATH" --disable-werror MAKEINFO=true
+make -j$(nproc) MAKEINFO=true
+hide_output make install MAKEINFO=true
 
 cd ..
 rm -rf binutils-build binutils-$BINUTILS
