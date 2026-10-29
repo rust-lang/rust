@@ -1,0 +1,29 @@
+error[E0391]: cycle detected when computing normalized predicates of `<impl at $DIR/rpitit-rtn-self-bound-cycle-issue-151307.rs:9:1: 9:18>::foo`
+  --> $DIR/rpitit-rtn-self-bound-cycle-issue-151307.rs:10:5
+   |
+LL | /     fn foo() -> impl Copy
+LL | |
+LL | |     where
+LL | |         Self::foo(..): Copy,
+   | |____________________________^
+   |
+note: ...which requires computing type of `<impl at $DIR/rpitit-rtn-self-bound-cycle-issue-151307.rs:9:1: 9:18>::foo::{anon_assoc#0}`...
+  --> $DIR/rpitit-rtn-self-bound-cycle-issue-151307.rs:10:17
+   |
+LL |     fn foo() -> impl Copy
+   |                 ^^^^^^^^^
+note: ...which requires comparing an impl and trait method signature, inferring any hidden `impl Trait` types in the process...
+  --> $DIR/rpitit-rtn-self-bound-cycle-issue-151307.rs:10:5
+   |
+LL | /     fn foo() -> impl Copy
+LL | |
+LL | |     where
+LL | |         Self::foo(..): Copy,
+   | |____________________________^
+   = note: ...which again requires computing normalized predicates of `<impl at $DIR/rpitit-rtn-self-bound-cycle-issue-151307.rs:9:1: 9:18>::foo`, completing the cycle
+   = note: cycle used when checking assoc item `<impl at $DIR/rpitit-rtn-self-bound-cycle-issue-151307.rs:9:1: 9:18>::foo` is compatible with trait definition
+   = note: for more information, see <https://rustc-dev-guide.rust-lang.org/overview.html#queries> and <https://rustc-dev-guide.rust-lang.org/query.html>
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0391`.
