@@ -29,6 +29,9 @@
 #include "llvm/Plugins/PassPlugin.h"
 #include "llvm/Support/CBindingWrapping.h"
 #include "llvm/Support/FileSystem.h"
+#if LLVM_VERSION_GE(24, 0)
+#include "llvm/Support/LibraryOptionsContext.h"
+#endif
 #include "llvm/Support/Program.h"
 #include "llvm/Support/TimeProfiler.h"
 #include "llvm/Support/VirtualFileSystem.h"
@@ -347,6 +350,10 @@ extern "C" const char *LLVMRustGetHostCPUName(size_t *OutLen) {
   return Name.data();
 }
 
+#if LLVM_VERSION_GE(24, 0)
+static cl::LibraryOptionsContext OptionsContext;
+#endif
+
 extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     const char *TripleStr, const char *CPU, const char *Feature,
     const char *ABIStr, LLVMRustCodeModel RustCM, LLVMRustRelocModel RustReloc,
@@ -372,6 +379,9 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   }
 
   TargetOptions Options = codegen::InitTargetOptionsFromCodeGenFlags(Trip);
+#if LLVM_VERSION_GE(24, 0)
+  Options.MCOptions.LibraryOptions = &OptionsContext;
+#endif
 
 #if LLVM_VERSION_LT(24, 0)
   Options.FloatABIType = FloatABIType;
@@ -440,6 +450,14 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   return wrap(TM);
 }
 
+extern "C" LLVMContextRef LLVMRustContextCreate() {
+  LLVMContextRef Ctx = LLVMContextCreate();
+#if LLVM_VERSION_GE(24, 0)
+  unwrap(Ctx)->getLibraryOptions().assign(OptionsContext);
+#endif
+  return Ctx;
+}
+
 extern "C" void LLVMRustSetLLVMOptions(int Argc, char **Argv) {
   // Initializing the command-line options more than once is not allowed. So,
   // check if they've already been initialized. (This could happen if we're
@@ -449,7 +467,11 @@ extern "C" void LLVMRustSetLLVMOptions(int Argc, char **Argv) {
   if (Initialized)
     return;
   Initialized = true;
+#if LLVM_VERSION_LT(24, 0)
   cl::ParseCommandLineOptions(Argc, Argv);
+#else
+  cl::parseCommandLineOptions(OptionsContext, ArrayRef(Argv, Argc));
+#endif
 }
 
 enum class LLVMRustFileType {
