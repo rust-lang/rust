@@ -1,4 +1,8 @@
 // tidy-alphabetical-start
+#![allow(
+    unused_features,
+    reason = "FIXME: try_trait_v2 shows unused if only needed for desugaring"
+)]
 #![feature(const_type_name)]
 #![feature(cow_is_borrowed)]
 #![feature(deref_patterns)]
@@ -6,6 +10,7 @@
 #![feature(iterator_try_collect)]
 #![feature(option_into_flat_iter)]
 #![feature(try_blocks)]
+#![feature(try_trait_v2)]
 #![feature(yeet_expr)]
 // tidy-alphabetical-end
 

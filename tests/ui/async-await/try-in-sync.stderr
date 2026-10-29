@@ -1,18 +1,20 @@
-error[E0277]: the `?` operator can only be applied to values that implement `Try`
+error[E0277]: the trait bound `impl Future<Output = Result<(), ()>>: ops::try_trait_old::Try` is not satisfied
+  --> $DIR/try-in-sync.rs:6:5
+   |
+LL |     foo()?;
+   |     ^^^^^-
+   |     |
+   |     the trait `ops::try_trait_old::Try` is not implemented for `impl Future<Output = Result<(), ()>>`
+   |     required by a bound introduced by this call
+
+error[E0277]: the `?` operator can only be applied to values that implement `ops::try_trait_old::Try`
   --> $DIR/try-in-sync.rs:6:5
    |
 LL |     foo()?;
    |     ^^^^^^ the `?` operator cannot be applied to type `impl Future<Output = Result<(), ()>>`
    |
-   = help: the nightly-only, unstable trait `Try` is not implemented for `impl Future<Output = Result<(), ()>>`
-note: this implements `Future` and its output type supports `?`, but the future cannot be awaited in a synchronous function
-  --> $DIR/try-in-sync.rs:6:10
-   |
-LL | fn main() -> Result<(), ()> {
-   | --------------------------- this is not `async`
-LL |     foo()?;
-   |          ^
+   = help: the trait `ops::try_trait_old::Try` is not implemented for `impl Future<Output = Result<(), ()>>`
 
-error: aborting due to 1 previous error
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

@@ -1,12 +1,13 @@
-error[E0277]: the `?` operator can only be applied to values that implement `Try`
+error[E0277]: the trait bound `impl Future<Output = ()>: ops::try_trait_old::Try` is not satisfied
   --> $DIR/issue-84841.rs:9:5
    |
 LL |     test()?;
-   |     ^^^^^^^ the `?` operator cannot be applied to type `impl Future<Output = ()>`
-   |
-   = help: the nightly-only, unstable trait `Try` is not implemented for `impl Future<Output = ()>`
+   |     ^^^^^^-
+   |     |
+   |     the trait `ops::try_trait_old::Try` is not implemented for `impl Future<Output = ()>`
+   |     required by a bound introduced by this call
 
-error[E0277]: the `?` operator can only be used in an async function that returns `Result` or `Option` (or another type that implements `FromResidual`)
+error[E0277]: the `?` operator can only be used in an async function that returns `Result` or `Option` (or another type that implements `ops::try_trait_old::FromResidual`)
   --> $DIR/issue-84841.rs:9:11
    |
 LL |   async fn foo() {
@@ -17,7 +18,17 @@ LL | |     test()?;
 ...  |
 LL | | }
    | |_- this function should return `Result` or `Option` to accept `?`
+   |
+   = help: the trait `ops::try_trait_old::FromResidual<_>` is not implemented for `()`
 
-error: aborting due to 2 previous errors
+error[E0277]: the `?` operator can only be applied to values that implement `ops::try_trait_old::Try`
+  --> $DIR/issue-84841.rs:9:5
+   |
+LL |     test()?;
+   |     ^^^^^^^ the `?` operator cannot be applied to type `impl Future<Output = ()>`
+   |
+   = help: the trait `ops::try_trait_old::Try` is not implemented for `impl Future<Output = ()>`
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

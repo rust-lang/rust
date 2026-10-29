@@ -111,7 +111,8 @@ fn nested_within_if_expr() {
 
     fn _check_try_binds_tighter() -> Result<(), ()> {
         if let 0 = 0? {}
-        //[e2021,e2024]~^ ERROR the `?` operator can only be applied to values that implement `Try`
+        //[e2021,e2024]~^ ERROR the `?` operator can only be applied to values that implement `ops::try_trait_old::Try`
+        //[e2021,e2024]~| ERROR the trait bound `{integer}: ops::try_trait_old::Try` is not satisfied [E0277]
         Ok(())
     }
     if (let 0 = 0)? {}
@@ -202,7 +203,8 @@ fn nested_within_while_expr() {
 
     fn _check_try_binds_tighter() -> Result<(), ()> {
         while let 0 = 0? {}
-        //[e2021,e2024]~^ ERROR the `?` operator can only be applied to values that implement `Try`
+        //[e2021,e2024]~^ ERROR the `?` operator can only be applied to values that implement `ops::try_trait_old::Try`
+        //[e2021,e2024]~| ERROR the trait bound `{integer}: ops::try_trait_old::Try` is not satisfied [E0277]
         Ok(())
     }
     while (let 0 = 0)? {}
@@ -306,7 +308,8 @@ fn outside_if_and_while_expr() {
 
     fn _check_try_binds_tighter() -> Result<(), ()> {
         let 0 = 0?;
-        //[e2021,e2024]~^ ERROR the `?` operator can only be applied to values that implement `Try`
+        //[e2021,e2024]~^ ERROR the `?` operator can only be applied to values that implement `ops::try_trait_old::Try`
+        //[e2021,e2024]~| ERROR the trait bound `{integer}: ops::try_trait_old::Try` is not satisfied [E0277]
         Ok(())
     }
     (let 0 = 0)?;

@@ -1,6 +1,6 @@
 use crate::iter::{FusedIterator, TrustedLen};
 use crate::num::NonZero;
-use crate::ops::{NeverShortCircuit, Try};
+use crate::ops::{NeverShortCircuit, Try, qmark};
 use crate::ub_checks;
 
 /// Like a `Range<usize>`, but with a safety invariant that `start <= end`.
@@ -167,7 +167,7 @@ impl Iterator for IndexRange {
         while self.start != self.end {
             // SAFETY: We just checked that the range is non-empty
             let i = unsafe { self.next_unchecked() };
-            accum = f(accum, i)?;
+            accum = qmark!(f(accum, i));
         }
         try { accum }
     }
@@ -209,7 +209,7 @@ impl DoubleEndedIterator for IndexRange {
         while self.start != self.end {
             // SAFETY: We just checked that the range is non-empty
             let i = unsafe { self.next_back_unchecked() };
-            accum = f(accum, i)?;
+            accum = qmark!(f(accum, i));
         }
         try { accum }
     }

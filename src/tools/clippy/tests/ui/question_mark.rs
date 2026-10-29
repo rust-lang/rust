@@ -378,7 +378,6 @@ fn pattern() -> Result<(), PatternedError> {
 }
 
 fn expect_expr(a: Option<usize>) -> Option<usize> {
-    #[expect(clippy::needless_question_mark)]
     Some(a?)
 }
 

@@ -4,7 +4,8 @@ use core::future::Future;
 use core::pin::Pin;
 use core::task::{Context, Poll};
 
-struct T; //~ HELP the nightly-only, unstable trait `Try` is not implemented for `T`
+struct T; //~ HELP the trait `ops::try_trait_old::Try` is not implemented for `T`
+//~| HELP the trait `ops::try_trait_old::Try` is not implemented for `T`
 
 struct Tuple(i32);
 
@@ -39,11 +40,12 @@ async fn foo() -> Result<(), ()> {
 }
 
 async fn bar() -> Result<(), ()> {
-    foo()?; //~ ERROR the `?` operator can only be applied to values that implement `Try`
-    //~^ NOTE the `?` operator cannot be applied to type `impl Future<Output = Result<(), ()>>`
-    //~| HELP the nightly-only, unstable trait `Try` is not implemented for `impl Future<Output = Result<(), ()>>`
-    //~| HELP consider `await`ing on the `Future`
-    //~| NOTE in this expansion of desugaring of operator `?`
+    foo()?; //~ ERROR the trait bound `impl Future<Output = Result<(), ()>>: ops::try_trait_old::Try` is not satisfied [E0277]
+    //~^ ERROR the `?` operator can only be applied to values that implement `ops::try_trait_old::Try` [E0277]
+    //~| NOTE the `?` operator cannot be applied to type `impl Future<Output = Result<(), ()>>`
+    //~| HELP the trait `ops::try_trait_old::Try` is not implemented for `impl Future<Output = Result<(), ()>>`
+    //~| NOTE the trait `ops::try_trait_old::Try` is not implemented for `impl Future<Output = Result<(), ()>>`
+    //~| NOTE required by a bound introduced by this call
     //~| NOTE in this expansion of desugaring of operator `?`
     //~| NOTE in this expansion of desugaring of operator `?`
     Ok(())
@@ -59,11 +61,12 @@ async fn tuple() -> Tuple {
 
 async fn baz() -> Result<(), ()> {
     let t = T;
-    t?; //~ ERROR the `?` operator can only be applied to values that implement `Try`
-    //~^ NOTE the `?` operator cannot be applied to type `T`
-    //~| HELP consider `await`ing on the `Future`
+    t?; //~ ERROR the trait bound `T: ops::try_trait_old::Try` is not satisfied [E0277]
+    //~^ ERROR the `?` operator can only be applied to values that implement `ops::try_trait_old::Try` [E0277]
+    //~| NOTE unsatisfied trait bound
+    //~| NOTE required by a bound introduced by this call
     //~| NOTE in this expansion of desugaring of operator `?`
-    //~| NOTE in this expansion of desugaring of operator `?`
+    //~| NOTE the `?` operator cannot be applied to type `T`
 
 
     let _: i32 = tuple().0; //~ ERROR no field `0`

@@ -150,6 +150,7 @@ mod index;
 mod index_range;
 mod range;
 mod try_trait;
+mod try_trait_old;
 mod unsize;
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -198,6 +199,7 @@ pub use self::try_trait::Yeet;
 pub(crate) use self::try_trait::{ChangeOutputType, NeverShortCircuit};
 #[unstable(feature = "try_trait_v2", issue = "84277", old_name = "try_trait")]
 pub use self::try_trait::{FromResidual, Try};
+pub(crate) use self::try_trait_old::qmark;
 #[unstable(feature = "coerce_unsized", issue = "18598")]
 pub use self::unsize::CoerceUnsized;
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]

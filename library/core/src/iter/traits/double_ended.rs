@@ -1,7 +1,7 @@
 use crate::array;
 use crate::marker::Destruct;
 use crate::num::NonZero;
-use crate::ops::{ControlFlow, Try};
+use crate::ops::{ControlFlow, Try, qmark};
 
 /// An iterator able to yield elements from both ends.
 ///
@@ -325,7 +325,7 @@ pub const trait DoubleEndedIterator: [const] Iterator {
     {
         let mut accum = init;
         while let Some(x) = self.next_back() {
-            accum = f(accum, x)?;
+            accum = qmark!(f(accum, x));
         }
         try { accum }
     }
@@ -533,7 +533,7 @@ impl<I: DoubleEndedIterator + ?Sized> DoubleEndedIteratorRefSpec for &mut I {
     {
         let mut accum = init;
         while let Some(x) = self.next_back() {
-            accum = f(accum, x)?;
+            accum = qmark!(f(accum, x));
         }
         try { accum }
     }

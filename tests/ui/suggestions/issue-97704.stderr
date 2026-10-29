@@ -1,14 +1,11 @@
-error[E0277]: the `?` operator can only be applied to values that implement `Try`
-  --> $DIR/issue-97704.rs:9:5
+error[E0277]: the trait bound `impl Future<Output = Result<(), i32>>: ops::try_trait_old::Try` is not satisfied
+  --> $DIR/issue-97704.rs:8:5
    |
 LL |     func(async { Ok::<_, i32>(()) })?;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the `?` operator cannot be applied to type `impl Future<Output = Result<(), i32>>`
-   |
-   = help: the nightly-only, unstable trait `Try` is not implemented for `impl Future<Output = Result<(), i32>>`
-help: consider `await`ing on the `Future`
-   |
-LL |     func(async { Ok::<_, i32>(()) }).await?;
-   |                                     ++++++
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
+   |     |
+   |     the trait `ops::try_trait_old::Try` is not implemented for `impl Future<Output = Result<(), i32>>`
+   |     required by a bound introduced by this call
 
 error: aborting due to 1 previous error
 

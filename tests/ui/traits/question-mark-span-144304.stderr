@@ -4,9 +4,7 @@ error[E0277]: `?` couldn't convert the error to `i32`
 LL | fn f() -> Result<(), i32> {
    |           --------------- expected `i32` because of this
 LL |     Err("str").map_err(|e| e)?;
-   |     ----------               ^ the trait `From<&str>` is not implemented for `i32`
-   |     |
-   |     this has type `Result<_, &str>`
+   |                              ^ the trait `From<&str>` is not implemented for `i32`
    |
    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
    = help: `i32` implements trait `From<T>`:
@@ -15,6 +13,7 @@ LL |     Err("str").map_err(|e| e)?;
              From<i8>
              From<u16>
              From<u8>
+   = note: required for `Result<(), i32>` to implement `ops::try_trait_old::FromResidual<Result<!, &str>>`
 
 error[E0277]: `?` couldn't convert the error to `i32`
   --> $DIR/question-mark-span-144304.rs:4:42
@@ -23,10 +22,7 @@ LL | fn f() -> Result<(), i32> {
    |           --------------- expected `i32` because of this
 LL |     Err("str").map_err(|e| e)?;
 LL |     Err("str").map_err(|e| e.to_string())?;
-   |     ---------- --------------------------^ the trait `From<String>` is not implemented for `i32`
-   |     |          |
-   |     |          this can't be annotated with `?` because it has type `Result<_, String>`
-   |     this has type `Result<_, &str>`
+   |                                          ^ the trait `From<String>` is not implemented for `i32`
    |
    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
    = help: `i32` implements trait `From<T>`:
@@ -35,6 +31,7 @@ LL |     Err("str").map_err(|e| e.to_string())?;
              From<i8>
              From<u16>
              From<u8>
+   = note: required for `Result<(), i32>` to implement `ops::try_trait_old::FromResidual<Result<!, String>>`
 
 error: aborting due to 2 previous errors
 

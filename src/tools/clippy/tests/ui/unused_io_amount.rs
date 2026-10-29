@@ -7,10 +7,8 @@ use std::io::{self, Read};
 
 fn question_mark<T: io::Read + io::Write>(s: &mut T) -> io::Result<()> {
     s.write(b"test")?;
-    //~^ unused_io_amount
     let mut buf = [0u8; 4];
     s.read(&mut buf)?;
-    //~^ unused_io_amount
     Ok(())
 }
 
@@ -24,9 +22,7 @@ fn unwrap<T: io::Read + io::Write>(s: &mut T) {
 
 fn vectored<T: io::Read + io::Write>(s: &mut T) -> io::Result<()> {
     s.read_vectored(&mut [io::IoSliceMut::new(&mut [])])?;
-    //~^ unused_io_amount
     s.write_vectored(&[io::IoSlice::new(&[])])?;
-    //~^ unused_io_amount
     Ok(())
 }
 
@@ -34,7 +30,6 @@ fn ok(file: &str) -> Option<()> {
     let mut reader = std::fs::File::open(file).ok()?;
     let mut result = [0u8; 0];
     reader.read(&mut result).ok()?;
-    //~^ unused_io_amount
     Some(())
 }
 
@@ -44,7 +39,6 @@ fn or_else(file: &str) -> io::Result<()> {
     let mut reader = std::fs::File::open(file)?;
     let mut result = [0u8; 0];
     reader.read(&mut result).or_else(|err| Err(err))?;
-    //~^ unused_io_amount
     Ok(())
 }
 
@@ -57,7 +51,6 @@ fn or(file: &str) -> Result<(), Error> {
     let mut reader = std::fs::File::open(file).unwrap();
     let mut result = [0u8; 0];
     reader.read(&mut result).or(Err(Error::Kind))?;
-    //~^ unused_io_amount
     Ok(())
 }
 
@@ -108,7 +101,6 @@ fn bad_async_write_closure<W: AsyncWrite + Unpin + 'static>(w: W) -> impl future
     let mut w = w;
     async move {
         w.write(b"hello world").await?;
-        //~^ unused_io_amount
         Ok(())
     }
 }
@@ -117,7 +109,6 @@ async fn async_read_nested_or<R: AsyncRead + Unpin>(r: &mut R, do_it: bool) -> R
     let mut buf = [0u8; 1];
     if do_it {
         r.read(&mut buf[..]).await.or(Err(Error::Kind))?;
-        //~^ unused_io_amount
     }
     Ok(buf)
 }
