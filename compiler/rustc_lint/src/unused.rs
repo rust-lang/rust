@@ -791,6 +791,56 @@ impl UnusedParens {
         pat_span.ctxt() != parent_span.ctxt()
     }
 
+    /// Records the `TypeNoBounds` restriction on the return type of every parenthesized
+    /// trait bound in `bounds`.
+    ///
+    /// Such a return type must keep its parentheses if it carries more than one bound, or
+    /// if its bound is followed by another bound in `bounds`, since a trailing `+` would
+    /// then be ambiguous. Associated item constraints nest another bounds list and are
+    /// handled recursively.
+    fn register_no_bounds_positions(&mut self, bounds: &ast::GenericBounds) {
+        for (i, bound) in bounds.iter().enumerate() {
+            let ast::GenericBound::Trait(poly_trait_ref) = bound else { continue };
+            let path = &poly_trait_ref.trait_ref.path;
+
+            for segment in &path.segments {
+                if let Some(args) = segment.args.as_ref()
+                    && let ast::GenericArgs::AngleBracketed(args) = &**args
+                {
+                    for arg in &args.args {
+                        if let ast::AngleBracketedArg::Constraint(constraint) = arg
+                            && let ast::AssocItemConstraintKind::Bound { bounds } = &constraint.kind
+                        {
+                            self.register_no_bounds_positions(bounds);
+                        }
+                    }
+                }
+            }
+
+            if let Some(segment) = path.segments.last()
+                && let Some(args) = segment.args.as_ref()
+                && let ast::GenericArgs::Parenthesized(paren_args) = &**args
+                && let ast::FnRetTy::Ty(ret_ty) = &paren_args.output
+            {
+                let constraint = if i == bounds.len() - 1 {
+                    NoBoundsException::OneBound
+                } else {
+                    NoBoundsException::None
+                };
+                self.in_no_bounds_pos.insert(ret_ty.id, constraint);
+            }
+        }
+    }
+
+    /// The constraint a nested type inherits from the position its parent occupies: a
+    /// stricter `None` is kept, otherwise the nested type is at most `OneBound`.
+    fn inherited_constraint(&self, id: ast::NodeId) -> NoBoundsException {
+        match self.in_no_bounds_pos.get(&id) {
+            Some(NoBoundsException::None) => NoBoundsException::None,
+            _ => NoBoundsException::OneBound,
+        }
+    }
+
     fn cast_followed_by_lt(&self, expr: &ast::Expr) -> Option<ast::NodeId> {
         if let ExprKind::Binary(op, lhs, _rhs) = &expr.kind
             && (op.node == ast::BinOpKind::Lt || op.node == ast::BinOpKind::Shl)
@@ -1002,16 +1052,14 @@ impl EarlyLintPass for UnusedParens {
             }
             ast::TyKind::Ref(_, inner_ty, _) | ast::TyKind::Ptr(inner_ty, _) => {
                 // If this type itself appears in no-bounds position, we propagate its
-                // potentially tighter constraint or risk a false posive (issue 143653).
-                let own_constraint = self.in_no_bounds_pos.get(&ty.id);
-                let constraint = match own_constraint {
-                    Some(NoBoundsException::None) => NoBoundsException::None,
-                    Some(NoBoundsException::OneBound) => NoBoundsException::OneBound,
-                    None => NoBoundsException::OneBound,
-                };
+                // potentially tighter constraint or risk a false positive (issue 143653).
+                let constraint = self.inherited_constraint(ty.id);
                 self.in_no_bounds_pos.insert(inner_ty.id, constraint);
             }
             ast::TyKind::TraitObject(bounds, _) | ast::TyKind::ImplTrait(_, bounds) => {
+                // The return type of a parenthesized-argument bound is a `TypeNoBounds`.
+                self.register_no_bounds_positions(bounds);
+
                 for i in 0..bounds.len() {
                     let is_last = i == bounds.len() - 1;
 
@@ -1020,18 +1068,8 @@ impl EarlyLintPass for UnusedParens {
                             &*poly_trait_ref.trait_ref.path.segments
                             && let Some(args) = segment.args.as_ref()
                             && let ast::GenericArgs::Parenthesized(paren_args) = &**args
-                            && let ast::FnRetTy::Ty(ret_ty) = &paren_args.output
                         {
-                            self.in_no_bounds_pos.insert(
-                                ret_ty.id,
-                                if is_last {
-                                    NoBoundsException::OneBound
-                                } else {
-                                    NoBoundsException::None
-                                },
-                            );
-
-                            true
+                            matches!(paren_args.output, ast::FnRetTy::Ty(..))
                         } else {
                             false
                         };
@@ -1082,11 +1120,36 @@ impl EarlyLintPass for UnusedParens {
                     }
                 }
             }
+            ast::TyKind::FnPtr(fn_ptr) => {
+                // A function pointer's return type is a `TypeNoBounds` too.
+                if let ast::FnRetTy::Ty(ret_ty) = &fn_ptr.decl.output {
+                    let constraint = self.inherited_constraint(ty.id);
+                    self.in_no_bounds_pos.insert(ret_ty.id, constraint);
+                }
+            }
+            ast::TyKind::Path(_, path) => {
+                // A `dyn`-less parenthesized trait path also has a `TypeNoBounds` return type.
+                if let Some(segment) = path.segments.last()
+                    && let Some(args) = segment.args.as_ref()
+                    && let ast::GenericArgs::Parenthesized(paren_args) = &**args
+                    && let ast::FnRetTy::Ty(ret_ty) = &paren_args.output
+                {
+                    let constraint = self.inherited_constraint(ty.id);
+                    self.in_no_bounds_pos.insert(ret_ty.id, constraint);
+                }
+            }
             _ => {}
         }
     }
 
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
+        match &item.kind {
+            ast::ItemKind::Trait(trait_) => self.register_no_bounds_positions(&trait_.bounds),
+            ast::ItemKind::TraitAlias(trait_alias) => {
+                self.register_no_bounds_positions(&trait_alias.bounds)
+            }
+            _ => {}
+        }
         <Self as UnusedDelimLint>::check_item(self, cx, item)
     }
 
@@ -1094,17 +1157,31 @@ impl EarlyLintPass for UnusedParens {
         self.in_no_bounds_pos.clear();
     }
 
+    fn check_trait_item(&mut self, _: &EarlyContext<'_>, item: &ast::AssocItem) {
+        if let ast::AssocItemKind::Type(ty_alias) = &item.kind {
+            self.register_no_bounds_positions(&ty_alias.bounds);
+        }
+    }
+
+    fn check_generic_param(&mut self, _: &EarlyContext<'_>, param: &ast::GenericParam) {
+        self.register_no_bounds_positions(&param.bounds);
+    }
+
     fn check_where_predicate(&mut self, _: &EarlyContext<'_>, pred: &ast::WherePredicate) {
         use rustc_ast::{WhereBoundPredicate, WherePredicateKind};
         if let WherePredicateKind::BoundPredicate(WhereBoundPredicate {
             bounded_ty,
             bound_generic_params,
+            bounds,
             ..
         }) = &pred.kind
-            && let ast::TyKind::Paren(_) = &bounded_ty.kind
-            && bound_generic_params.is_empty()
         {
-            self.with_self_ty_parens = true;
+            if let ast::TyKind::Paren(_) = &bounded_ty.kind
+                && bound_generic_params.is_empty()
+            {
+                self.with_self_ty_parens = true;
+            }
+            self.register_no_bounds_positions(bounds);
         }
     }
 
