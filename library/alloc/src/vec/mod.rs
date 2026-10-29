@@ -109,7 +109,7 @@ use core::mem::{self, Assume, ManuallyDrop, MaybeUninit, SizedTypeProperties, Tr
 use core::ops::{self, Index, IndexMut, Range, RangeBounds};
 use core::ptr::{self, NonNull};
 use core::slice::{self, SliceIndex};
-use core::{cmp, fmt, hint, intrinsics, ub_checks};
+use core::{cmp, fmt, intrinsics, ub_checks};
 
 #[stable(feature = "extract_if", since = "1.87.0")]
 pub use self::extract_if::ExtractIf;
@@ -117,6 +117,7 @@ use crate::alloc::{Allocator, AllocatorNightly, Global};
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
 use crate::collections::TryReserveError;
+use crate::collections::retain::retain_raw;
 use crate::raw_vec::RawVec;
 
 mod extract_if;
@@ -2423,7 +2424,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert_eq!(vec, [2, 3, 4]);
     /// ```
     #[stable(feature = "vec_retain_mut", since = "1.61.0")]
-    pub fn retain_mut<F>(&mut self, mut f: F)
+    pub fn retain_mut<F>(&mut self, f: F)
     where
         F: FnMut(&mut T) -> bool,
     {
@@ -2450,87 +2451,11 @@ impl<T, A: Allocator> Vec<T, A> {
             }
         }
 
-        // Vec: [Kept, Kept, Hole, Hole, Hole, Hole, Unchecked, Unchecked]
-        //      |            ^- write                ^- read             |
-        //      |<-              original_len                          ->|
-        // Kept: Elements which predicate returns true on.
-        // Hole: Moved or dropped element slot.
-        // Unchecked: Unchecked valid elements.
-        //
-        // This drop guard will be invoked when predicate or `drop` of element panicked.
-        // It shifts unchecked elements to cover holes and `set_len` to the correct length.
-        // In cases when predicate and `drop` never panick, it will be optimized out.
-        struct PanicGuard<'a, T, A: Allocator> {
-            v: &'a mut Vec<T, A>,
-            read: usize,
-            write: usize,
-            original_len: usize,
-        }
-
-        impl<T, A: Allocator> Drop for PanicGuard<'_, T, A> {
-            #[cold]
-            fn drop(&mut self) {
-                let remaining = self.original_len - self.read;
-                // SAFETY: Trailing unchecked items must be valid since we never touch them.
-                unsafe {
-                    ptr::copy(
-                        self.v.as_ptr().add(self.read),
-                        self.v.as_mut_ptr().add(self.write),
-                        remaining,
-                    );
-                }
-                // SAFETY: After filling holes, all items are in contiguous memory.
-                unsafe {
-                    self.v.set_len(self.write + remaining);
-                }
-            }
-        }
-
-        let mut read = 0;
-        loop {
-            // SAFETY: read < original_len
-            let cur = unsafe { self.get_unchecked_mut(read) };
-            if hint::unlikely(!f(cur)) {
-                break;
-            }
-            read += 1;
-            if read == original_len {
-                // All elements are kept, return early.
-                return;
-            }
-        }
-
-        // Critical section starts here and at least one element is going to be removed.
-        // Advance `g.read` early to avoid double drop if `drop_in_place` panicked.
-        let mut g = PanicGuard { v: self, read: read + 1, write: read, original_len };
-        // SAFETY: previous `read` is always less than original_len.
-        unsafe { ptr::drop_in_place(&mut *g.v.as_mut_ptr().add(read)) };
-
-        while g.read < g.original_len {
-            // SAFETY: `read` is always less than original_len.
-            let cur = unsafe { &mut *g.v.as_mut_ptr().add(g.read) };
-            if !f(cur) {
-                // Advance `read` early to avoid double drop if `drop_in_place` panicked.
-                g.read += 1;
-                // SAFETY: We never touch this element again after dropped.
-                unsafe { ptr::drop_in_place(cur) };
-            } else {
-                // SAFETY: `read` > `write`, so the slots don't overlap.
-                // We use copy for move, and never touch the source element again.
-                unsafe {
-                    let hole = g.v.as_mut_ptr().add(g.write);
-                    ptr::copy_nonoverlapping(cur, hole, 1);
-                }
-                g.write += 1;
-                g.read += 1;
-            }
-        }
-
-        // We are leaving the critical section and no panic happened,
-        // Commit the length change and forget the guard.
-        // SAFETY: `write` is always less than or equal to original_len.
-        unsafe { g.v.set_len(g.write) };
-        mem::forget(g);
+        let buf = self.as_mut_ptr();
+        let front_len = self.len();
+        // SAFETY: `buf[..len]` is initialized. `front_len == self.len`,
+        // so `back` won't be accessed.
+        unsafe { retain_raw(buf, front_len, buf, &mut self.len, f) }
     }
 
     /// Removes all but the first of consecutive elements in the vector that resolve to the same
