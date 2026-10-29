@@ -29,6 +29,7 @@ use tracing::{instrument, span};
 use crate::core::backend::CodegenBackendKind;
 use crate::core::build_steps::llvm::{LLVM_INVALIDATION_PATHS, LlvmKind, LlvmOutput};
 use crate::core::build_steps::test::failed_tests::collect_previously_failed_tests;
+use crate::core::build_steps::tool::DEFAULT_RUSTC_PERF_PATH;
 use crate::core::config::flags::{Color, Flags, Subcommand, Warnings};
 use crate::core::config::target_selection::TargetSelectionList;
 use crate::core::config::toml::TomlConfig;
@@ -124,6 +125,7 @@ pub(crate) struct Config {
     pub android_ndk: Option<PathBuf>,
     pub optimized_compiler_builtins: CompilerBuiltins,
     pub record_failed_tests_path: PathBuf,
+    pub rustc_perf_path: Option<PathBuf>,
 
     pub stdout_is_tty: bool,
     pub stderr_is_tty: bool,
@@ -555,6 +557,7 @@ impl Config {
             compiletest_allow_stage0: build_compiletest_allow_stage0,
             sde: build_sde,
             allocator: build_allocator,
+            rustc_perf_path: build_rustc_perf_path,
         } = toml_build.unwrap_or_default();
 
         let Install {
@@ -1592,6 +1595,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             rustc_debug_assertions: rust_rustc_debug_assertions.unwrap_or(rust_debug == Some(true)),
             rustc_default_linker: rust_default_linker,
             rustc_error_format: flags_rustc_error_format,
+            rustc_perf_path: build_rustc_perf_path,
             rustdoc_pgo: pgo_rustdoc,
             rustfmt_info,
             sanitizers: build_sanitizers.unwrap_or(false),
@@ -1735,6 +1739,13 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             // Try to make it relative to the prefix.
             libdir.strip_prefix(self.prefix.as_ref()?).ok()
         }
+    }
+
+    pub(crate) fn rustc_perf_path(&self) -> String {
+        self.rustc_perf_path
+            .as_ref()
+            .map(|i| i.to_str().expect("path can't be turned into a string").to_string())
+            .unwrap_or(DEFAULT_RUSTC_PERF_PATH.to_string())
     }
 
     /// Directory where the extracted `rustc-dev` component is stored.
