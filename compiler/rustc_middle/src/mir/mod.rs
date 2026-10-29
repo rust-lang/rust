@@ -40,7 +40,6 @@ pub mod basic_blocks;
 mod consts;
 pub mod coverage;
 mod generic_graph;
-pub mod generic_graphviz;
 pub mod graphviz;
 pub mod interpret;
 pub mod pretty;
