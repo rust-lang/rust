@@ -1,0 +1,116 @@
+warning: unnecessary parentheses around `if` condition
+  --> $DIR/unused-delims-with-comments-164722.rs:11:8
+   |
+LL |     if (
+   |        ^
+LL |         true // yay!
+LL |     ) {}
+   |     ^
+   |
+note: the lint level is defined here
+  --> $DIR/unused-delims-with-comments-164722.rs:4:9
+   |
+LL | #![warn(unused_parens, unused_braces)]
+   |         ^^^^^^^^^^^^^
+help: remove these parentheses
+   |
+LL ~     if true // yay!
+LL ~      {}
+   |
+
+warning: unnecessary parentheses around `if` condition
+  --> $DIR/unused-delims-with-comments-164722.rs:15:8
+   |
+LL |     if (/* a */ true) {}
+   |        ^            ^
+   |
+help: remove these parentheses
+   |
+LL -     if (/* a */ true) {}
+LL +     if /* a */ true {}
+   |
+
+warning: unnecessary parentheses around `while` condition
+  --> $DIR/unused-delims-with-comments-164722.rs:18:11
+   |
+LL |     while (false /* b */) {}
+   |           ^             ^
+   |
+help: remove these parentheses
+   |
+LL -     while (false /* b */) {}
+LL +     while false /* b */ {}
+   |
+
+warning: unnecessary parentheses around `if` condition
+  --> $DIR/unused-delims-with-comments-164722.rs:22:8
+   |
+LL |     if (
+   |        ^
+LL |         true
+LL |     ) {}
+   |     ^
+   |
+help: remove these parentheses
+   |
+LL -     if (
+LL -         true
+LL -     ) {}
+LL +     if true {}
+   |
+
+warning: unnecessary parentheses around assigned value
+  --> $DIR/unused-delims-with-comments-164722.rs:26:13
+   |
+LL |     let _ = ( 1 );
+   |             ^^ ^^
+   |
+help: remove these parentheses
+   |
+LL -     let _ = ( 1 );
+LL +     let _ = 1;
+   |
+
+warning: unnecessary parentheses around type
+  --> $DIR/unused-delims-with-comments-164722.rs:29:12
+   |
+LL |     let _: (/* c */ u8) = 1;
+   |            ^          ^
+   |
+help: remove these parentheses
+   |
+LL -     let _: (/* c */ u8) = 1;
+LL +     let _: /* c */ u8 = 1;
+   |
+
+warning: unnecessary parentheses around pattern
+  --> $DIR/unused-delims-with-comments-164722.rs:32:9
+   |
+LL |     let (/* d */ _x) = 1;
+   |         ^          ^
+   |
+help: remove these parentheses
+   |
+LL -     let (/* d */ _x) = 1;
+LL +     let /* d */ _x = 1;
+   |
+
+warning: unnecessary braces around const expression
+  --> $DIR/unused-delims-with-comments-164722.rs:35:11
+   |
+LL |     foo::<{ /* e */ 7 }>();
+   |           ^          ^^
+   |
+note: the lint level is defined here
+  --> $DIR/unused-delims-with-comments-164722.rs:4:24
+   |
+LL | #![warn(unused_parens, unused_braces)]
+   |                        ^^^^^^^^^^^^^
+help: remove these braces
+   |
+LL -     foo::<{ /* e */ 7 }>();
+LL +     foo::< /* e */ 7>();
+   |
+
+warning: 8 warnings emitted
+
