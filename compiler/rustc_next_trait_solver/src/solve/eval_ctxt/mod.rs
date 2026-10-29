@@ -1507,7 +1507,16 @@ where
             let resolved = self.deeply_resolve_ignoring_regions(alias_const);
             // FIXME: get rid of this once GCE is removed
             let is_gce = self.cx().features().generic_const_exprs();
-            if resolved.has_opaque_types() || is_gce {
+            // A dependency may use GCE even if the current crate does not.
+            if resolved.has_opaque_types()
+                || is_gce
+                || matches!(
+                    alias_const.kind,
+                    ty::AliasConstKind::Anon { def_id }
+                        if !def_id.is_local()
+                            && self.cx().anon_const_kind(def_id.into()) == ty::AnonConstKind::GCE
+                )
+            {
                 match self.opaque_accesses.rerun_always(RerunReason::EvaluateConst)? {}
             }
         }
