@@ -245,6 +245,9 @@ struct Args {
     /// Whether std was built with debug assertions.
     #[arg(long)]
     with_std_debug_assertions: bool,
+    /// Whether std was built with overflow checks.
+    #[arg(long)]
+    with_std_overflow_checks: bool,
     /// Whether std was built with remapping.
     #[arg(long)]
     with_std_remap_debuginfo: bool,
@@ -522,6 +525,7 @@ pub(crate) fn parse_config(args: Vec<String>) -> Config {
 
         with_rustc_debug_assertions: args.with_rustc_debug_assertions,
         with_std_debug_assertions: args.with_std_debug_assertions,
+        with_std_overflow_checks: args.with_std_overflow_checks,
         with_std_remap_debuginfo: args.with_std_remap_debuginfo,
         // tidy-alphabetical-end
     }

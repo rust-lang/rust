@@ -1,6 +1,7 @@
 //@ compile-flags: -O -Zmerge-functions=disabled
 //@ needs-deterministic-layouts
 //@ ignore-std-debug-assertions (causes different value naming)
+//@ ignore-std-overflow-checks (affects inlining)
 #![crate_type = "lib"]
 
 //! Check that a temporary intermediate allocations can eliminated and replaced
