@@ -1,0 +1,36 @@
+- // MIR for `storage_live_elided_on_join_fork` before MoveElimination
++ // MIR for `storage_live_elided_on_join_fork` after MoveElimination
+  
+  fn storage_live_elided_on_join_fork(_1: bool) -> () {
+      debug x => _2;
+      let mut _0: ();
+      let mut _2: u32;
+      let mut _3: u32;
+  
+      bb0: {
+          switchInt(copy _1) -> [1: bb1, otherwise: bb2];
+      }
+  
+      bb1: {
++         StorageLive(_2);
+          _2 = const 1_u32;
+          goto -> bb2;
+      }
+  
+      bb2: {
+          switchInt(copy _1) -> [1: bb3, otherwise: bb4];
+      }
+  
+      bb3: {
++         StorageLive(_3);
+          _3 = opaque::<u32>(move _2) -> [return: bb4, unwind unreachable];
+      }
+  
+      bb4: {
++         StorageDead(_2);
++         StorageDead(_2);
++         StorageDead(_3);
+          return;
+      }
+  }
+  
