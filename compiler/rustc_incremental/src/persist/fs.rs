@@ -281,6 +281,10 @@ pub fn finalize_session_directory(
 ) {
     assert!(sess.dcx().has_errors_or_delayed_bugs().is_none());
 
+    sess.time("serialize_work_products", || {
+        crate::persist::save::save_work_product_index(sess, &incr_comp_session)
+    });
+
     let _timer = sess.timer("incr_comp_finalize_session_directory");
 
     let incr_comp_session_dir = &*incr_comp_session.new_session_directory;
