@@ -45,7 +45,7 @@ use crate::back::write::{
     submit_codegened_module_to_llvm, submit_post_lto_module_to_llvm, submit_pre_lto_module_to_llvm,
 };
 use crate::common::{self, IntPredicate, RealPredicate};
-use crate::meth::load_vtable;
+use crate::meth::VirtualIndex;
 use crate::mir::operand::OperandValue;
 use crate::mir::place::PlaceRef;
 use crate::traits::*;
@@ -202,10 +202,8 @@ fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
             let vptr_entry_idx = cx.tcx().supertrait_vtable_slot((source, target));
 
-            if let Some(entry_idx) = vptr_entry_idx {
-                let ptr_size = bx.data_layout().pointer_size();
-                let vtable_byte_offset = u64::try_from(entry_idx).unwrap() * ptr_size.bytes();
-                load_vtable(bx, old_info, bx.type_ptr(), vtable_byte_offset, source, true)
+            if let Some(entry_idx) = vptr_entry_idx.map(VirtualIndex::from_index) {
+                entry_idx.get_data_ptr(bx, old_info, true)
             } else {
                 old_info
             }

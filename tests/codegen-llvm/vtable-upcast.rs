@@ -63,7 +63,7 @@ pub fn upcast_diamond_to_b(x: &dyn Diamond) -> &dyn B {
 
     // CHECK: start:
     // CHECK-NEXT: [[UPCAST_SLOT_PTR:%.+]] = getelementptr inbounds i8, ptr [[VTABLE_PTR]]
-    // CHECK-NEXT: [[UPCAST_VTABLE_PTR:%.+]] = load ptr, ptr [[UPCAST_SLOT_PTR]]
+    // CHECK-NEXT: [[UPCAST_VTABLE_PTR:%.+]] = load ptr, ptr [[UPCAST_SLOT_PTR]],{{.*}} !nonnull
     // CHECK-NEXT: [[FAT_PTR_1:%.+]] = insertvalue { ptr, ptr } poison, ptr [[DATA_PTR]], 0
     // CHECK-NEXT: [[FAT_PTR_2:%.+]] = insertvalue { ptr, ptr } [[FAT_PTR_1]], ptr [[UPCAST_VTABLE_PTR]], 1
     // CHECK-NEXT: ret { ptr, ptr } [[FAT_PTR_2]]
