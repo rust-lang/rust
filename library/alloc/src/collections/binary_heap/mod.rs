@@ -979,6 +979,8 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
 
     /// Moves all the elements of `other` into `self`, leaving `other` empty.
     ///
+    /// For performance, `self` and `other` may be swapped before appending.
+    ///
     /// # Examples
     ///
     /// Basic usage:
