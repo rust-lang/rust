@@ -73,7 +73,7 @@ pub(crate) struct RustOffloadComponentMissing {
 
 #[derive(Diagnostic)]
 #[diag(
-    "using the offload feature requires -Z offload=<Device or Host=/absolute/path/to/<crate>.bc>"
+    "using the offload feature requires -Z offload=<Device or Host=/absolute/path/to/<crate>.ptx or <crate>.elf>"
 )]
 pub(crate) struct OffloadWithoutEnable;
 
@@ -82,18 +82,20 @@ pub(crate) struct OffloadWithoutEnable;
 pub(crate) struct OffloadWithoutFatLTO;
 
 #[derive(Diagnostic)]
-#[diag("using the `-Z offload=Host=/absolute/path/to/<crate>.bc` flag requires an absolute path")]
+#[diag(
+    "using the `-Z offload=Host=/absolute/path/to/<crate>.ptx` or `<crate>.elf` flag requires an absolute path"
+)]
 pub(crate) struct OffloadWithoutAbsPath;
 
 #[derive(Diagnostic)]
 #[diag(
-    "using the `-Z offload=Host=/absolute/path/to/<crate>.bc` flag must point to a .bc file produced by the device compilation (--emit=llvm-bc)"
+    "using the `-Z offload=Host=/absolute/path/to/<crate>.ptx` or `<crate>.elf` flag must point to a .ptx or .elf file produced by the device compilation"
 )]
 pub(crate) struct OffloadWrongFileName;
 
 #[derive(Diagnostic)]
 #[diag(
-    "the given path/file to `<crate>.bc` does not exist. Did you forget to run the device compilation first?"
+    "the given path/file to `<crate>.ptx` or `<crate>.elf` does not exist. Did you forget to run the device compilation first?"
 )]
 pub(crate) struct OffloadNonexistingPath;
 
