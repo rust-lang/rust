@@ -628,7 +628,9 @@ pub struct SearchGraph<D: Delegate<Cx = X>, X: Cx = <D as Delegate>::Cx> {
     /// global cache and track them locally instead. A provisional cache entry
     /// is only valid until the result of one of its cycle heads changes.
     provisional_cache: HashMap<X::Input, Vec<ProvisionalCacheEntry<X>>>,
-    highest_head: IndexVec<StackDepth, Vec<X::Input>>,
+    /// For each stack depth, stores the inputs that have at least one provisional
+    /// cache entry whose highest head is that depth.
+    provisional_input_by_highest_head: IndexVec<StackDepth, Vec<X::Input>>,
 
     _marker: PhantomData<D>,
 }
@@ -654,7 +656,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             root_depth: AvailableDepth(root_depth),
             stack: Default::default(),
             provisional_cache: Default::default(),
-            highest_head: IndexVec::new(),
+            provisional_input_by_highest_head: IndexVec::new(),
             _marker: PhantomData,
         }
     }
@@ -920,11 +922,13 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
                 nested_goals: _,
                 result,
             } = evaluation_result;
-            let highest_index = heads.highest_cycle_head_index();
-            self.highest_head.ensure_contains_elem(highest_index, Vec::new).push(input);
+            let highest_head_index = heads.highest_cycle_head_index();
+            self.provisional_input_by_highest_head
+                .ensure_contains_elem(highest_head_index, Vec::new)
+                .push(input);
 
             let path_from_head =
-                Self::cycle_path_kind(&self.stack, step_kind_from_parent, highest_index);
+                Self::cycle_path_kind(&self.stack, step_kind_from_parent, highest_head_index);
             let provisional_cache_entry =
                 ProvisionalCacheEntry { encountered_overflow, heads, path_from_head, result };
             debug!(?provisional_cache_entry);
@@ -961,18 +965,21 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
     /// don't depend on its value.
     fn clear_dependent_provisional_results_for_rerun(&mut self) {
         let rerun_index = self.stack.next_index();
-        let Some(inputs) = self.highest_head.get(rerun_index) else { return };
+        let Some(inputs) = self.provisional_input_by_highest_head.get(rerun_index) else {
+            return;
+        };
+
         for input in inputs {
-            let entries = self.provisional_cache.get_mut(input);
-            let mut is_empty = false;
-            if let Some(entries) = entries {
-                entries.retain(|entry| {
-                    let (head_index, head) = entry.heads.highest_cycle_head();
-                    head_index != rerun_index || head.usages.is_empty()
-                });
-                is_empty = entries.is_empty();
-            }
-            if is_empty {
+            let Some(entries) = self.provisional_cache.get_mut(input) else {
+                continue;
+            };
+
+            entries.retain(|entry| {
+                let (head_index, head) = entry.heads.highest_cycle_head();
+                head_index != rerun_index || head.usages.is_empty()
+            });
+
+            if entries.is_empty() {
                 self.provisional_cache.remove(input);
             }
         }
@@ -1024,12 +1031,12 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
         rebase_reason: RebaseReason<X>,
     ) {
         let popped_head_index = self.stack.next_index();
-        let path_kinds_to_top = self.stack.path_kind_to_top(stack_entry.step_kind_from_parent);
-        let Some(list) = self.highest_head.get_mut(popped_head_index) else {
+        let cycle_path_kinds = self.stack.cycle_path_kinds(stack_entry.step_kind_from_parent);
+        let Some(list) = self.provisional_input_by_highest_head.get_mut(popped_head_index) else {
             return;
         };
-        let list = std::mem::take(list);
-        for input in list {
+        let inputs = std::mem::take(list);
+        for input in inputs {
             let Some(entries) = self.provisional_cache.get_mut(&input) else {
                 continue;
             };
@@ -1072,7 +1079,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
                     let ep = popped_head.paths_to_head;
                     for (head_index, head) in stack_entry.heads.iter() {
                         let ph = head.paths_to_head;
-                        let hp = path_kinds_to_top[head_index];
+                        let hp = cycle_path_kinds[head_index];
                         // We first validate that all cycles while computing `p` would stay
                         // the same if we were to recompute it as a nested goal of `e`.
                         let he = hp.extend(*path_from_head);
@@ -1123,12 +1130,12 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
                 let Some(new_highest_head_index) = heads.opt_highest_cycle_head_index() else {
                     return false;
                 };
-                self.highest_head
+                self.provisional_input_by_highest_head
                     .ensure_contains_elem(new_highest_head_index, Vec::new)
                     .push(input);
                 // We now care about the path from the next highest cycle head to the
                 // provisional cache entry.
-                *path_from_head = path_from_head.extend(path_kinds_to_top[new_highest_head_index]);
+                *path_from_head = path_from_head.extend(cycle_path_kinds[new_highest_head_index]);
 
                 trace!(?input, ?entry, "rebased provisional cache entry");
 
@@ -1218,7 +1225,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
             return true;
         }
 
-        let mut path_kinds_to_top = None;
+        let mut cycle_path_kinds = None;
 
         // The global cache entry is also invalid if there's a provisional cache entry
         // would apply for any of its nested goals.
@@ -1252,8 +1259,8 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
                 // We check if any of the paths taken while computing the global goal
                 // would end up with an applicable provisional cache entry.
                 let head_index = heads.highest_cycle_head_index();
-                let head_to_curr = path_kinds_to_top
-                    .get_or_insert_with(|| self.stack.path_kind_to_top(step_kind_from_parent))
+                let head_to_curr = cycle_path_kinds
+                    .get_or_insert_with(|| self.stack.cycle_path_kinds(step_kind_from_parent))
                     [head_index];
                 let full_paths = path_from_global_entry.extend_with(head_to_curr);
                 if full_paths.contains(head_to_provisional.into()) {

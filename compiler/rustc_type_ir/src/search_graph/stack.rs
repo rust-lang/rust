@@ -116,7 +116,10 @@ impl<X: Cx> Stack<X> {
         self.entries.raw[head.index() + 1..].iter().map(|entry| entry.step_kind_from_parent)
     }
 
-    pub(super) fn path_kind_to_top(&self, path_kind: PathKind) -> IndexVec<StackDepth, PathKind> {
+    /// Precomputes the `PathKind` at each stack depth, up to the top of the stack.
+    /// Each value is computed by extending the initial `path_kind` with the
+    /// step kinds encountered along the path from that depth to the top.
+    pub(super) fn cycle_path_kinds(&self, path_kind: PathKind) -> IndexVec<StackDepth, PathKind> {
         let mut path_kinds_to_top = IndexVec::from_elem(path_kind, &self.entries);
         let mut acc = path_kind;
         for (idx, entry) in self.entries.iter_enumerated().rev() {
