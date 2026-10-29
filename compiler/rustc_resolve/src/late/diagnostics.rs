@@ -1252,8 +1252,25 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 &path_str,
                 &base_error.fallback_label,
             ) {
-                // We do this to avoid losing a secondary span when we override the main error span.
-                self.r.add_typo_suggestion(err, typo_sugg, ident_span, None);
+                if let Some(sugg) = &typo_sugg
+                    && let Res::Local(_) = sugg.res
+                {
+                    if let PathSource::Expr(Some(expr)) = source
+                        && let ExprKind::Call(..) = expr.kind
+                    {
+                        // Do not suggest typo changes for calling a local. This would only be valid
+                        // for closures, but during resolve we can't check the bindings type. This
+                        // avoids cases like the one in #66067.
+                    } else if path.len() == 1 {
+                        // Only paths with a single segment would realistically be a typo of a
+                        // local binding.
+                        // We add a suggestion to avoid losing a secondary span when we override
+                        // the main error span.
+                        self.r.add_typo_suggestion(err, typo_sugg, ident_span, None);
+                    }
+                } else {
+                    self.r.add_typo_suggestion(err, typo_sugg, ident_span, None);
+                }
                 return (true, suggested_candidates, candidates);
             }
         }
@@ -2646,7 +2663,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                                 &expression,
                                 applicability,
                             ) {
-                                err.span_suggestion(
+                                err.span_suggestion_verbose(
                                     span,
                                     format!("use struct {descr} syntax instead"),
                                     expression,
