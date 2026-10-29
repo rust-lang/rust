@@ -771,7 +771,7 @@ fn lint_item_shadowing_supertrait_item<'tcx>(tcx: TyCtxt<'tcx>, trait_item_def_i
                 .map(|item| {
                     (tcx.item_name(item.trait_container(tcx).unwrap()), tcx.def_span(item.def_id))
                 })
-                .unzip();
+                .collect();
             diagnostics::SupertraitItemShadowee::Several {
                 traits: traits.into(),
                 spans: spans.into(),

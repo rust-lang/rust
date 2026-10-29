@@ -339,7 +339,7 @@ impl SwitchTargets {
         targets: impl Iterator<Item = (u128, BasicBlockId)>,
         otherwise: BasicBlockId,
     ) -> Self {
-        let (values, mut targets): (SmallVec<_>, SmallVec<_>) = targets.unzip();
+        let (values, mut targets): (SmallVec<_>, SmallVec<_>) = targets.collect();
         targets.push(otherwise);
         Self { values, targets }
     }

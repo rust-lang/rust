@@ -514,7 +514,7 @@ fn test_partition() {
 fn test_zip_unzip() {
     let z1 = vec![(1, 4), (2, 5), (3, 6)];
 
-    let (left, right): (Vec<_>, Vec<_>) = z1.iter().cloned().unzip();
+    let (left, right): (Vec<_>, Vec<_>) = z1.iter().cloned().collect();
 
     assert_eq!((1, 4), (left[0], right[0]));
     assert_eq!((2, 5), (left[1], right[1]));
