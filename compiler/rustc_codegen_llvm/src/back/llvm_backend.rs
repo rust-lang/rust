@@ -240,7 +240,7 @@ impl CodegenBackend for LlvmCodegenBackend {
                 sym::round, sym::round_ties_even,
                 sym::fma,
 
-                sym::copysignf16, sym::copysignf32, sym::copysignf64, sym::copysignf128,
+                sym::copysign,
             ];
 
             will_not_use_fallback

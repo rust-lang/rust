@@ -297,9 +297,6 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             target.expect("target for simd intrinsic"),
             source_info.span,
         );
-    } else if codegen_float_intrinsic_call(fx, intrinsic, args, destination) {
-        let ret_block = fx.get_block(target.expect("target for float intrinsic"));
-        fx.bcx.ins().jump(ret_block, &[]);
     } else {
         codegen_regular_intrinsic_call(
             fx,
@@ -315,71 +312,13 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
     Ok(())
 }
 
-fn codegen_float_intrinsic_call<'tcx>(
-    fx: &mut FunctionCx<'_, '_, 'tcx>,
-    intrinsic: Symbol,
-    args: &[Spanned<mir::Operand<'tcx>>],
-    ret: CPlace<'tcx>,
-) -> bool {
-    let (name, arg_count, ty, clif_ty) = match intrinsic {
-        sym::copysignf16 => return false, // has a fallback
-        sym::copysignf32 => ("copysignf", 2, fx.tcx.types.f32, types::F32),
-        sym::copysignf64 => ("copysign", 2, fx.tcx.types.f64, types::F64),
-        sym::copysignf128 => return false, // has a fallback
-
-        _ => return false,
-    };
-
-    if args.len() != arg_count {
-        bug!("wrong number of args for intrinsic {:?}", intrinsic);
-    }
-
-    let (a, b, c);
-    let args = match args {
-        [x] => {
-            a = [codegen_operand(fx, &x.node).load_scalar(fx)];
-            &a as &[_]
-        }
-        [x, y] => {
-            b = [
-                codegen_operand(fx, &x.node).load_scalar(fx),
-                codegen_operand(fx, &y.node).load_scalar(fx),
-            ];
-            &b
-        }
-        [x, y, z] => {
-            c = [
-                codegen_operand(fx, &x.node).load_scalar(fx),
-                codegen_operand(fx, &y.node).load_scalar(fx),
-                codegen_operand(fx, &z.node).load_scalar(fx),
-            ];
-            &c
-        }
-        _ => unreachable!(),
-    };
-
-    let layout = fx.layout_of(ty);
-    // FIXME(bytecodealliance/wasmtime#8312): Use native Cranelift operations
-    // for `f16` and `f128` once the lowerings have been implemented in Cranelift.
-    let val = match intrinsic {
-        sym::copysignf32 | sym::copysignf64 => fx.bcx.ins().fcopysign(args[0], args[1]),
-
-        _ => {
-            let input_tys: Vec<_> = args.iter().map(|_| AbiParam::new(clif_ty)).collect();
-            fx.lib_call(name, input_tys, vec![AbiParam::new(clif_ty)], args)[0]
-        }
-    };
-
-    let res = CValue::by_val(val, layout);
-    ret.write_cvalue(fx, res);
-
-    true
-}
-
-/// Used to distinguish fallbacks of float intrinsics. For some we have a codegen fallback,
-/// while for others we fallback to an external libcall.
-enum IntrinsicFallback {
-    Fallback(&'static str),
+/// How a float intrinsic is lowered: either directly to Cranelift instructions, or to a call to an
+/// external (libm/compiler-builtins) function. This is unrelated to the Rust fallback bodies of
+/// intrinsics.
+// FIXME: the `Libcall` cases could probably all use the Rust fallback bodies instead, which would
+// allow removing this enum.
+enum FloatIntrinsicLowering {
+    Libcall(&'static str),
     Codegen(Value),
 }
 
@@ -1099,8 +1038,8 @@ fn codegen_regular_intrinsic_call<'tcx>(
                     layout.ty
                 );
             };
+            use FloatIntrinsicLowering::*;
             use FloatTy::*;
-            use IntrinsicFallback::*;
             let x = arg1.load_scalar(fx);
             let y = arg2.load_scalar(fx);
             let z = arg3.load_scalar(fx);
@@ -1109,7 +1048,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
                 // sofware emulation, use cranelift intrinsic analogous to llvm.fmuladd.*.
                 (sym::fma | sym::fmuladd, F32 | F64) => Codegen(fx.bcx.ins().fma(x, y, z)),
 
-                (sym::fma, F128) => Fallback("fmaf128"),
+                (sym::fma, F128) => Libcall("fmaf128"),
 
                 (sym::fmuladd, F128) | (_, F16) => {
                     // We use the intrinsic fallback bodies for the rest
@@ -1120,7 +1059,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             };
             let val = match res {
                 Codegen(val) => val,
-                Fallback(name) => {
+                Libcall(name) => {
                     let ty = fx.clif_type(layout.ty).unwrap();
                     let arg = AbiParam::new(ty);
                     fx.lib_call(name, vec![arg, arg, arg], vec![arg], &[x, y, z])[0]
@@ -1141,14 +1080,14 @@ fn codegen_regular_intrinsic_call<'tcx>(
                     layout.ty
                 );
             };
+            use FloatIntrinsicLowering::*;
             use FloatTy::*;
-            use IntrinsicFallback::*;
             let x = arg1.load_scalar(fx);
             let y = arg2.load_scalar(fx);
             let res = match (intrinsic, float_ty) {
-                (sym::powf, F32) => Fallback("powf"),
-                (sym::powf, F64) => Fallback("pow"),
-                (sym::powf, F128) => Fallback("powf128"),
+                (sym::powf, F32) => Libcall("powf"),
+                (sym::powf, F64) => Libcall("pow"),
+                (sym::powf, F128) => Libcall("powf128"),
 
                 (_, F16) => {
                     // We use the intrinsic fallback bodies for the rest
@@ -1159,10 +1098,69 @@ fn codegen_regular_intrinsic_call<'tcx>(
             };
             let val = match res {
                 Codegen(_) => span_bug!(source_info.span, "`powf` is always lowered to a libcall"),
-                Fallback(name) => {
+                Libcall(name) => {
                     let ty = fx.clif_type(layout.ty).unwrap();
                     let arg = AbiParam::new(ty);
                     fx.lib_call(name, vec![arg, arg], vec![arg], &[x, y])[0]
+                }
+            };
+            let val = CValue::by_val(val, layout);
+            ret.write_cvalue(fx, val);
+        }
+
+        sym::copysign
+        | sym::minimum
+        | sym::maximum
+        | sym::minimum_number_nsz
+        | sym::maximum_number_nsz => {
+            intrinsic_args!(fx, args => (arg1, arg2); intrinsic);
+            let layout = arg1.layout();
+            let ty::Float(float_ty) = layout.ty.kind() else {
+                span_bug!(
+                    source_info.span,
+                    "expected a float type for {:?} intrinsic, but got: {:?}",
+                    intrinsic,
+                    layout.ty
+                );
+            };
+            use FloatIntrinsicLowering::*;
+            use FloatTy::*;
+            let x = arg1.load_scalar(fx);
+            let y = arg2.load_scalar(fx);
+            let res = match (intrinsic, float_ty) {
+                (sym::copysign, F32 | F64) => Codegen(fx.bcx.ins().fcopysign(x, y)),
+
+                (sym::minimum, F32 | F64) => Codegen(fx.bcx.ins().fmin(x, y)),
+                (sym::maximum, F32 | F64) => Codegen(fx.bcx.ins().fmax(x, y)),
+                // FIXME(bytecodealliance/wasmtime#8312): Use `fmin`/`fmax` directly for `f16` and
+                // `f128` once the lowerings have been implemented in Cranelift.
+                (sym::minimum, F128) => Codegen(codegen_f16_f128::fmin_f128(fx, x, y)),
+                (sym::maximum, F128) => Codegen(codegen_f16_f128::fmax_f128(fx, x, y)),
+                (sym::minimum, F16) => {
+                    Codegen(codegen_f16_f128::maybe_with_f16_to_f32_pair(fx, x, y, |fx, x, y| {
+                        fx.bcx.ins().fmin(x, y)
+                    }))
+                }
+                (sym::maximum, F16) => {
+                    Codegen(codegen_f16_f128::maybe_with_f16_to_f32_pair(fx, x, y, |fx, x, y| {
+                        fx.bcx.ins().fmax(x, y)
+                    }))
+                }
+
+                (sym::minimum_number_nsz, _) => Codegen(crate::num::codegen_float_min(fx, x, y)),
+                (sym::maximum_number_nsz, _) => Codegen(crate::num::codegen_float_max(fx, x, y)),
+
+                (sym::copysign, F128) | (_, F16) => {
+                    // We use the intrinsic fallback bodies for the rest
+                    return Err(Instance::new_raw(instance.def_id(), instance.args));
+                }
+
+                _ => unreachable!(),
+            };
+            let val = match res {
+                Codegen(val) => val,
+                Libcall(_) => {
+                    span_bug!(source_info.span, "no libcall lowering for {:?}", intrinsic)
                 }
             };
             let val = CValue::by_val(val, layout);
@@ -1193,58 +1191,58 @@ fn codegen_regular_intrinsic_call<'tcx>(
                     layout.ty
                 );
             };
+            use FloatIntrinsicLowering::*;
             use FloatTy::*;
-            use IntrinsicFallback::*;
             let x = arg.load_scalar(fx);
             let res = match (intrinsic, float_ty) {
                 (sym::fabs, F32 | F64) => Codegen(fx.bcx.ins().fabs(x)),
 
                 (sym::sqrt, F32 | F64) => Codegen(fx.bcx.ins().sqrt(x)),
-                (sym::sqrt, F128) => Fallback("sqrtf128"),
+                (sym::sqrt, F128) => Libcall("sqrtf128"),
 
                 (sym::floor, F32 | F64) => Codegen(fx.bcx.ins().floor(x)),
-                (sym::floor, F128) => Fallback("floorf128"),
+                (sym::floor, F128) => Libcall("floorf128"),
 
                 (sym::ceil, F32 | F64) => Codegen(fx.bcx.ins().ceil(x)),
-                (sym::ceil, F128) => Fallback("ceilf128"),
+                (sym::ceil, F128) => Libcall("ceilf128"),
 
                 (sym::trunc, F32 | F64) => Codegen(fx.bcx.ins().trunc(x)),
-                (sym::trunc, F128) => Fallback("truncf128"),
+                (sym::trunc, F128) => Libcall("truncf128"),
 
                 (sym::round_ties_even, F32 | F64) => Codegen(fx.bcx.ins().nearest(x)),
-                (sym::round_ties_even, F128) => Fallback("rintf128"),
+                (sym::round_ties_even, F128) => Libcall("rintf128"),
 
-                (sym::round, F32) => Fallback("roundf"),
-                (sym::round, F64) => Fallback("round"),
-                (sym::round, F128) => Fallback("roundf128"),
+                (sym::round, F32) => Libcall("roundf"),
+                (sym::round, F64) => Libcall("round"),
+                (sym::round, F128) => Libcall("roundf128"),
 
-                (sym::exp, F32) => Fallback("expf"),
-                (sym::exp, F64) => Fallback("exp"),
-                (sym::exp, F128) => Fallback("expf128"),
+                (sym::exp, F32) => Libcall("expf"),
+                (sym::exp, F64) => Libcall("exp"),
+                (sym::exp, F128) => Libcall("expf128"),
 
-                (sym::exp2, F32) => Fallback("exp2f"),
-                (sym::exp2, F64) => Fallback("exp2"),
-                (sym::exp2, F128) => Fallback("exp2f128"),
+                (sym::exp2, F32) => Libcall("exp2f"),
+                (sym::exp2, F64) => Libcall("exp2"),
+                (sym::exp2, F128) => Libcall("exp2f128"),
 
-                (sym::log, F32) => Fallback("logf"),
-                (sym::log, F64) => Fallback("log"),
-                (sym::log, F128) => Fallback("logf128"),
+                (sym::log, F32) => Libcall("logf"),
+                (sym::log, F64) => Libcall("log"),
+                (sym::log, F128) => Libcall("logf128"),
 
-                (sym::log2, F32) => Fallback("log2f"),
-                (sym::log2, F64) => Fallback("log2"),
-                (sym::log2, F128) => Fallback("log2f128"),
+                (sym::log2, F32) => Libcall("log2f"),
+                (sym::log2, F64) => Libcall("log2"),
+                (sym::log2, F128) => Libcall("log2f128"),
 
-                (sym::log10, F32) => Fallback("log10f"),
-                (sym::log10, F64) => Fallback("log10"),
-                (sym::log10, F128) => Fallback("log10f128"),
+                (sym::log10, F32) => Libcall("log10f"),
+                (sym::log10, F64) => Libcall("log10"),
+                (sym::log10, F128) => Libcall("log10f128"),
 
-                (sym::sin, F32) => Fallback("sinf"),
-                (sym::sin, F64) => Fallback("sin"),
-                (sym::sin, F128) => Fallback("sinf128"),
+                (sym::sin, F32) => Libcall("sinf"),
+                (sym::sin, F64) => Libcall("sin"),
+                (sym::sin, F128) => Libcall("sinf128"),
 
-                (sym::cos, F32) => Fallback("cosf"),
-                (sym::cos, F64) => Fallback("cos"),
-                (sym::cos, F128) => Fallback("cosf128"),
+                (sym::cos, F32) => Libcall("cosf"),
+                (sym::cos, F64) => Libcall("cos"),
+                (sym::cos, F128) => Libcall("cosf128"),
 
                 (sym::fabs, F128) | (_, F16) => {
                     // FIXME(bytecodealliance/wasmtime#8312): Use the native operations once
@@ -1257,166 +1255,12 @@ fn codegen_regular_intrinsic_call<'tcx>(
             };
             let val = match res {
                 Codegen(val) => val,
-                Fallback(name) => {
+                Libcall(name) => {
                     let ty = fx.clif_type(layout.ty).unwrap();
                     fx.lib_call(name, vec![AbiParam::new(ty)], vec![AbiParam::new(ty)], &[x])[0]
                 }
             };
             let val = CValue::by_val(val, layout);
-            ret.write_cvalue(fx, val);
-        }
-
-        sym::minimumf16 => {
-            intrinsic_args!(fx, args => (a, b); intrinsic);
-            let a = a.load_scalar(fx);
-            let b = b.load_scalar(fx);
-
-            let val = codegen_f16_f128::maybe_with_f16_to_f32_pair(fx, a, b, |fx, a, b| {
-                fx.bcx.ins().fmin(a, b)
-            });
-            let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f16));
-            ret.write_cvalue(fx, val);
-        }
-        sym::minimumf32 => {
-            intrinsic_args!(fx, args => (a, b); intrinsic);
-            let a = a.load_scalar(fx);
-            let b = b.load_scalar(fx);
-
-            let val = fx.bcx.ins().fmin(a, b);
-            let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f32));
-            ret.write_cvalue(fx, val);
-        }
-        sym::minimumf64 => {
-            intrinsic_args!(fx, args => (a, b); intrinsic);
-            let a = a.load_scalar(fx);
-            let b = b.load_scalar(fx);
-
-            let val = fx.bcx.ins().fmin(a, b);
-            let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f64));
-            ret.write_cvalue(fx, val);
-        }
-        sym::minimumf128 => {
-            intrinsic_args!(fx, args => (a, b); intrinsic);
-            let a = a.load_scalar(fx);
-            let b = b.load_scalar(fx);
-
-            // FIXME(bytecodealliance/wasmtime#8312): Use `fmin` once  Cranelift
-            // backend lowerings are implemented.
-            let val = codegen_f16_f128::fmin_f128(fx, a, b);
-            let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f128));
-            ret.write_cvalue(fx, val);
-        }
-        sym::maximumf16 => {
-            intrinsic_args!(fx, args => (a, b); intrinsic);
-            let a = a.load_scalar(fx);
-            let b = b.load_scalar(fx);
-
-            let val = codegen_f16_f128::maybe_with_f16_to_f32_pair(fx, a, b, |fx, a, b| {
-                fx.bcx.ins().fmax(a, b)
-            });
-            let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f16));
-            ret.write_cvalue(fx, val);
-        }
-        sym::maximumf32 => {
-            intrinsic_args!(fx, args => (a, b); intrinsic);
-            let a = a.load_scalar(fx);
-            let b = b.load_scalar(fx);
-
-            let val = fx.bcx.ins().fmax(a, b);
-            let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f32));
-            ret.write_cvalue(fx, val);
-        }
-        sym::maximumf64 => {
-            intrinsic_args!(fx, args => (a, b); intrinsic);
-            let a = a.load_scalar(fx);
-            let b = b.load_scalar(fx);
-
-            let val = fx.bcx.ins().fmax(a, b);
-            let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f64));
-            ret.write_cvalue(fx, val);
-        }
-        sym::maximumf128 => {
-            intrinsic_args!(fx, args => (a, b); intrinsic);
-            let a = a.load_scalar(fx);
-            let b = b.load_scalar(fx);
-
-            // FIXME(bytecodealliance/wasmtime#8312): Use `fmax` once  Cranelift
-            // backend lowerings are implemented.
-            let val = codegen_f16_f128::fmax_f128(fx, a, b);
-            let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f128));
-            ret.write_cvalue(fx, val);
-        }
-
-        sym::minimum_number_nsz_f16 => {
-            intrinsic_args!(fx, args => (a, b); intrinsic);
-            let a = a.load_scalar(fx);
-            let b = b.load_scalar(fx);
-
-            let val = crate::num::codegen_float_min(fx, a, b);
-            let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f16));
-            ret.write_cvalue(fx, val);
-        }
-        sym::minimum_number_nsz_f32 => {
-            intrinsic_args!(fx, args => (a, b); intrinsic);
-            let a = a.load_scalar(fx);
-            let b = b.load_scalar(fx);
-
-            let val = crate::num::codegen_float_min(fx, a, b);
-            let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f32));
-            ret.write_cvalue(fx, val);
-        }
-        sym::minimum_number_nsz_f64 => {
-            intrinsic_args!(fx, args => (a, b); intrinsic);
-            let a = a.load_scalar(fx);
-            let b = b.load_scalar(fx);
-
-            let val = crate::num::codegen_float_min(fx, a, b);
-            let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f64));
-            ret.write_cvalue(fx, val);
-        }
-        sym::minimum_number_nsz_f128 => {
-            intrinsic_args!(fx, args => (a, b); intrinsic);
-            let a = a.load_scalar(fx);
-            let b = b.load_scalar(fx);
-
-            let val = crate::num::codegen_float_min(fx, a, b);
-            let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f128));
-            ret.write_cvalue(fx, val);
-        }
-        sym::maximum_number_nsz_f16 => {
-            intrinsic_args!(fx, args => (a, b); intrinsic);
-            let a = a.load_scalar(fx);
-            let b = b.load_scalar(fx);
-
-            let val = crate::num::codegen_float_max(fx, a, b);
-            let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f16));
-            ret.write_cvalue(fx, val);
-        }
-        sym::maximum_number_nsz_f32 => {
-            intrinsic_args!(fx, args => (a, b); intrinsic);
-            let a = a.load_scalar(fx);
-            let b = b.load_scalar(fx);
-
-            let val = crate::num::codegen_float_max(fx, a, b);
-            let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f32));
-            ret.write_cvalue(fx, val);
-        }
-        sym::maximum_number_nsz_f64 => {
-            intrinsic_args!(fx, args => (a, b); intrinsic);
-            let a = a.load_scalar(fx);
-            let b = b.load_scalar(fx);
-
-            let val = crate::num::codegen_float_max(fx, a, b);
-            let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f64));
-            ret.write_cvalue(fx, val);
-        }
-        sym::maximum_number_nsz_f128 => {
-            intrinsic_args!(fx, args => (a, b); intrinsic);
-            let a = a.load_scalar(fx);
-            let b = b.load_scalar(fx);
-
-            let val = crate::num::codegen_float_max(fx, a, b);
-            let val = CValue::by_val(val, fx.layout_of(fx.tcx.types.f128));
             ret.write_cvalue(fx, val);
         }
 
