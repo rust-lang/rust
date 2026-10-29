@@ -569,6 +569,13 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         })
                         .unwrap_or_default();
 
+                    self.cx.current_expansion.is_trailing_mac &= match &fragment {
+                        AstFragment::Expr(expr) | AstFragment::OptExpr(Some(expr)) => {
+                            matches!(expr.kind, ExprKind::MacCall(..))
+                        }
+                        _ => false,
+                    };
+
                     let (expanded_fragment, collected_invocations) =
                         self.collect_invocations(fragment, &derive_placeholders);
                     // We choose to expand any derive invocations associated with this macro
