@@ -119,6 +119,19 @@ pub fn type_id_variants(_id: crate::any::TypeId) -> usize;
 #[rustc_comptime]
 pub fn type_id_variant_name(_base: crate::any::TypeId, _variant_index: usize) -> &'static str;
 
+/// Gets the raw documentation attributes of the variant represented by the base `TypeId` and variant_idx.
+///
+/// The more user-friendly version of this intrinsic is [`core::mem::type_info::VariantId::docs`].
+///
+/// [`TypeId`]: crate::any::TypeId
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_comptime]
+pub fn type_id_variant_docs(
+    _base: crate::any::TypeId,
+    _variant_index: usize,
+) -> &'static [&'static str];
+
 /// Returns true when the variant represented by the base `TypeId` and variant_idx is non
 /// exhaustive.
 ///
@@ -192,3 +205,11 @@ pub fn type_id_points_mutably(_id: crate::any::TypeId) -> bool;
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_comptime]
 pub fn type_id_function_ptr(_type_id: crate::any::TypeId) -> Option<crate::mem::type_info::FnPtr>;
+
+/// Returns the raw documentation attributes given a `TypeId` which represents a structure, enumeration, union or `FieldId`.
+///
+/// The more user-friendly version of this intrinsic is [`core::any::TypeId::docs`].
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_comptime]
+pub fn type_id_docs(_type_id: crate::any::TypeId) -> &'static [&'static str];
