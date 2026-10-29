@@ -1060,7 +1060,7 @@ rustc_queries! {
     /// **Do not call this query** directly, use [`Self::inferred_outlives_of`] instead.
     ///
     /// </div>
-    query inferred_outlives_crate(_: ()) -> &'tcx ty::CrateClausesMap<'tcx> {
+    query inferred_outlives_crate(_: ()) -> &'tcx ty::CrateInferredOutlivesClausesMap<'tcx> {
         arena_cache
         desc { "computing the inferred outlives-clauses for items in this crate" }
     }
