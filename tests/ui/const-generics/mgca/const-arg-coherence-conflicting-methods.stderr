@@ -11,8 +11,8 @@ LL | pub struct A<const M: usize> {}
    |            ^ --------------
 help: add missing generic argument
    |
-LL | impl A<M> {
-   |       +++
+LL | impl<const M: usize> A<M> {
+   |     ++++++++++++++++  +++
 
 error[E0592]: duplicate definitions with name `fun1`
   --> $DIR/const-arg-coherence-conflicting-methods.rs:11:5

@@ -1,20 +1,20 @@
 error[E0275]: overflow evaluating the requirement `X2 == _`
-  --> $DIR/infinite-type-alias-mutual-recursion.rs:12:1
+  --> $DIR/infinite-type-alias-mutual-recursion.rs:12:11
    |
 LL | type X1 = X2;
-   | ^^^^^^^
+   |           ^^
 
 error[E0275]: overflow evaluating the requirement `X3 == _`
-  --> $DIR/infinite-type-alias-mutual-recursion.rs:16:1
+  --> $DIR/infinite-type-alias-mutual-recursion.rs:16:11
    |
 LL | type X2 = X3;
-   | ^^^^^^^
+   |           ^^
 
 error[E0275]: overflow evaluating the requirement `X1 == _`
-  --> $DIR/infinite-type-alias-mutual-recursion.rs:19:1
+  --> $DIR/infinite-type-alias-mutual-recursion.rs:19:11
    |
 LL | type X3 = X1;
-   | ^^^^^^^
+   |           ^^
 
 error: aborting due to 3 previous errors
 

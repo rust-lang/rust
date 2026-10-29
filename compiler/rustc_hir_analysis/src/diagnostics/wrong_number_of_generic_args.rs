@@ -2,8 +2,10 @@ use GenericArgsInfo::*;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, Diagnostic, MultiSpan, pluralize};
 use rustc_hir as hir;
-use rustc_middle::ty::{self as ty, AssocItem, AssocItems, TyCtxt};
+use rustc_hir::def::DefKind;
+use rustc_middle::ty::{self as ty, AssocItem, AssocItems, Ty, TyCtxt};
 use rustc_span::def_id::{DefId, LocalDefId};
+use rustc_span::{Symbol, kw};
 use tracing::debug;
 
 /// Handles the `wrong number of type / lifetime / ... arguments` family of error messages.
@@ -442,6 +444,17 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         &self,
         num_params_to_take: usize,
     ) -> String {
+        self.get_type_or_const_arg_names(num_params_to_take)
+            .map(|(n, _)| n.to_string())
+            .intersperse(", ".to_string())
+            .collect()
+    }
+
+    // Lists type or constant names from the provided parameter names
+    fn get_type_or_const_arg_names(
+        &self,
+        num_params_to_take: usize,
+    ) -> impl Iterator<Item = (Symbol, Option<Ty<'tcx>>)> {
         let is_in_a_method_call = self
             .tcx
             .hir_parent_iter(self.path_segment.hir_id)
@@ -458,7 +471,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             });
 
         let fn_sig = self.tcx.hir_get_if_local(self.def_id).and_then(hir::Node::fn_sig);
-        let is_used_in_input = |def_id| {
+        let is_used_in_input = move |def_id| {
             fn_sig.is_some_and(|fn_sig| {
                 fn_sig.decl.inputs.iter().any(|ty| match ty.kind {
                     hir::TyKind::Path(hir::QPath::Resolved(
@@ -474,18 +487,21 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             .iter()
             .skip(self.params_offset + self.num_provided_type_or_const_args())
             .take(num_params_to_take)
-            .map(|param| match param.kind {
+            .map(move |param| match param.kind {
                 // If it's in method call (turbofish), it might be inferred from the expression (e.g. `.collect::<Vec<_>>()`)
                 // If it is being inferred from the item's inputs, no need to set it.
                 ty::GenericParamDefKind::Type { .. }
                     if is_in_a_method_call || is_used_in_input(param.def_id) =>
                 {
-                    "_"
+                    (kw::Underscore, None)
                 }
-                _ => param.name.as_str(),
+                // FIXME: tcx.type_of(param.def_id) for consts
+                ty::GenericParamDefKind::Const { .. } => (
+                    param.name,
+                    Some(self.tcx.type_of(param.def_id).instantiate_identity().skip_norm_wip()),
+                ),
+                _ => (param.name, None),
             })
-            .intersperse(", ")
-            .collect()
     }
 
     fn get_unbound_associated_item(&self) -> Vec<&AssocItem> {
@@ -715,22 +731,39 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
 
         let suggested_args =
             self.get_type_or_const_args_suggestions_from_param_names(num_missing_args);
+        let arg_names: Vec<_> = self.get_type_or_const_arg_names(num_missing_args).collect();
         debug!("suggested_args: {:?}", suggested_args);
+        let mut impl_sugg = None;
+        if let DefKind::Impl { .. } = self.tcx.def_kind(self.cx_def_id) {
+            let mut impl_args = vec![];
+            let i = self.tcx.hir_node_by_def_id(self.cx_def_id).expect_item().expect_impl();
+            for (arg, const_ty) in arg_names {
+                if i.generics.get_named(arg).is_none() {
+                    impl_args.push(match const_ty {
+                        Some(ty) => format!("const {arg}: {ty}"),
+                        None => arg.to_string(),
+                    })
+                }
+            }
+            if !impl_args.is_empty() {
+                impl_sugg = Some(match i.generics.span_for_lifetime_suggestion() {
+                    Some(span) => (span, format!("{}, ", impl_args.join(", "))),
+                    None => (i.generics.span, format!("<{}>", impl_args.join(", "))),
+                });
+            }
+        }
 
         match self.angle_brackets {
             AngleBrackets::Missing | AngleBrackets::Implied => {
                 let span = self.path_segment.ident.span;
 
                 // insert a suggestion of the form "Y<T, U>"
-                let sugg = format!("<{suggested_args}>");
-                debug!("sugg: {:?}", sugg);
-
-                err.span_suggestion_verbose(
-                    span.shrink_to_hi(),
-                    msg,
-                    sugg,
-                    Applicability::HasPlaceholders,
-                );
+                let mut sugg = vec![(span.shrink_to_hi(), format!("<{suggested_args}>"))];
+                if let Some(impl_sugg) = impl_sugg {
+                    sugg.insert(0, impl_sugg);
+                }
+                debug!(?sugg);
+                err.multipart_suggestion(msg, sugg, Applicability::HasPlaceholders);
             }
             AngleBrackets::Available => {
                 let gen_args_span = self.gen_args.span().unwrap();
@@ -755,10 +788,14 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                 let sugg_suffix =
                     if is_first && !self.gen_args.constraints.is_empty() { ", " } else { "" };
 
-                let sugg = format!("{sugg_prefix}{suggested_args}{sugg_suffix}");
-                debug!("sugg: {:?}", sugg);
-
-                err.span_suggestion_verbose(sugg_span, msg, sugg, Applicability::HasPlaceholders);
+                let mut sugg =
+                    vec![(sugg_span, format!("{sugg_prefix}{suggested_args}{sugg_suffix}"))];
+                if let Some(impl_sugg) = impl_sugg {
+                    sugg.insert(0, impl_sugg);
+                }
+                debug!(?sugg);
+                err.multipart_suggestion(msg, sugg, Applicability::HasPlaceholders);
+                // err.note(format!("{:?}", self.cx_def_id));
             }
         }
     }

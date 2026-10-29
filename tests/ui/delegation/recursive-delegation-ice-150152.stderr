@@ -65,8 +65,8 @@ LL |     struct S< S >;
    |            ^  -
 help: add missing generic argument
    |
-LL |     impl Item for S<S<S>> {
-   |                      +++
+LL |     impl<S> Item for S<S<S>> {
+   |         +++             +++
 
 error: aborting due to 6 previous errors
 

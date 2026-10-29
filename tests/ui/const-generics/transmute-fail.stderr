@@ -2,13 +2,18 @@ error: the constant `W` is not of type `usize`
   --> $DIR/transmute-fail.rs:16:42
    |
 LL | fn bar<const W: bool, const H: usize>(v: [[u32; H]; W]) -> [[u32; W]; H] {
-   |                                          ^^^^^^^^^^^^^ expected `usize`, found `bool`
+   |        -------------                     ^^^^^^^^^^^^^ expected `usize`, found `bool`
+   |        |
+   |        found this const parameter
    |
    = note: the length of array `[[u32; H]; W]` must be type `usize`
 
 error: the constant `W` is not of type `usize`
   --> $DIR/transmute-fail.rs:19:9
    |
+LL | fn bar<const W: bool, const H: usize>(v: [[u32; H]; W]) -> [[u32; W]; H] {
+   |        ------------- found this const parameter
+...
 LL |         std::mem::transmute(v)
    |         ^^^^^^^^^^^^^^^^^^^ expected `usize`, found `bool`
    |

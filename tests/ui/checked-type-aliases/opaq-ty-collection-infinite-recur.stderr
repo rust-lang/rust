@@ -1,8 +1,8 @@
 error[E0275]: overflow normalizing the type alias `Recur`
-  --> $DIR/opaq-ty-collection-infinite-recur.rs:16:20
+  --> $DIR/opaq-ty-collection-infinite-recur.rs:16:33
    |
 LL | struct Hold([(); { type Recur = Recur; 0 }]);
-   |                    ^^^^^^^^^^
+   |                                 ^^^^^
    |
    = note: in case this is a recursive type alias, consider using a struct, enum, or union instead
 

@@ -1,0 +1,151 @@
+error[E0425]: cannot find const `AHA` in this scope
+  --> $DIR/impl-block-missing-const-generics.rs:12:14
+   |
+LL |     struct Foo<const AHA: usize>{}
+   |                ---------------- corresponding const parameter on the type defined here
+LL |
+LL |     impl Foo<AHA> {}
+   |              ^^^ not found in this scope
+   |
+help: you might have meant to introduce a const parameter `AHA` on the impl
+   |
+LL |     impl<const AHA: usize> Foo<AHA> {}
+   |         ++++++++++++++++++
+
+error[E0425]: cannot find value `AHA` in this scope
+  --> $DIR/impl-block-missing-const-generics.rs:24:16
+   |
+LL |     impl Foo<{ AHA }> {}
+   |                ^^^ not found in this scope
+   |
+help: you might be missing a const parameter
+   |
+LL |     impl<const AHA: /* Type */> Foo<{ AHA }> {}
+   |         +++++++++++++++++++++++
+
+error[E0425]: cannot find type `AHA` in this scope
+  --> $DIR/impl-block-missing-const-generics.rs:51:12
+   |
+LL |     impl T<AHA> for Foo {}
+   |            ^^^ not found in this scope
+   |
+help: you might be missing a type parameter
+   |
+LL |     impl<AHA> T<AHA> for Foo {}
+   |         +++++
+
+error[E0425]: cannot find value `AHA` in this scope
+  --> $DIR/impl-block-missing-const-generics.rs:65:14
+   |
+LL |     impl T<{ AHA }> for Foo {}
+   |              ^^^ not found in this scope
+   |
+help: you might be missing a const parameter
+   |
+LL |     impl<const AHA: /* Type */> T<{ AHA }> for Foo {}
+   |         +++++++++++++++++++++++
+
+error[E0107]: missing generics for struct `a::Foo`
+  --> $DIR/impl-block-missing-const-generics.rs:6:10
+   |
+LL |     impl Foo {}
+   |          ^^^ expected 1 generic argument
+   |
+note: struct defined here, with 1 generic parameter: `AHA`
+  --> $DIR/impl-block-missing-const-generics.rs:4:12
+   |
+LL |     struct Foo<const AHA: usize>{}
+   |            ^^^ ----------------
+help: add missing generic argument
+   |
+LL |     impl<const AHA: usize> Foo<AHA> {}
+   |         ++++++++++++++++++    +++++
+
+error[E0747]: type provided when a constant was expected
+  --> $DIR/impl-block-missing-const-generics.rs:18:19
+   |
+LL |     impl<AHA> Foo<AHA> {}
+   |                   ^^^
+   |
+help: consider changing this type parameter to a const parameter
+   |
+LL -     impl<AHA> Foo<AHA> {}
+LL +     impl<const AHA: usize> Foo<AHA> {}
+   |
+
+error: the constant `AHA` is not of type `usize`
+  --> $DIR/impl-block-missing-const-generics.rs:30:26
+   |
+LL |     impl<const AHA: u32> Foo<AHA> {}
+   |          --------------  ^^^^^^^^ expected `usize`, found `u32`
+   |          |
+   |          found this const parameter
+   |
+note: required by a const generic parameter in `e::Foo`
+  --> $DIR/impl-block-missing-const-generics.rs:28:16
+   |
+LL |     struct Foo<const AHA: usize>{}
+   |                ^^^^^^^^^^^^^^^^ required by this const generic parameter in `Foo`
+
+error[E0107]: missing generics for struct `f::Foo`
+  --> $DIR/impl-block-missing-const-generics.rs:37:16
+   |
+LL |     impl T for Foo {}
+   |                ^^^ expected 1 generic argument
+   |
+note: struct defined here, with 1 generic parameter: `AHA`
+  --> $DIR/impl-block-missing-const-generics.rs:34:12
+   |
+LL |     struct Foo<const AHA: usize>{}
+   |            ^^^ ----------------
+help: add missing generic argument
+   |
+LL |     impl<const AHA: usize> T for Foo<AHA> {}
+   |         ++++++++++++++++++          +++++
+
+error[E0107]: missing generics for trait `g::T`
+  --> $DIR/impl-block-missing-const-generics.rs:44:10
+   |
+LL |     impl T for Foo {}
+   |          ^ expected 1 generic argument
+   |
+note: trait defined here, with 1 generic parameter: `AHA`
+  --> $DIR/impl-block-missing-const-generics.rs:42:11
+   |
+LL |     trait T<const AHA: usize> {}
+   |           ^ ----------------
+help: add missing generic argument
+   |
+LL |     impl<const AHA: usize> T<AHA> for Foo {}
+   |         ++++++++++++++++++  +++++
+
+error[E0747]: type provided when a constant was expected
+  --> $DIR/impl-block-missing-const-generics.rs:58:17
+   |
+LL |     impl<AHA> T<AHA> for Foo {}
+   |                 ^^^
+   |
+help: consider changing this type parameter to a const parameter
+   |
+LL -     impl<AHA> T<AHA> for Foo {}
+LL +     impl<const AHA: usize> T<AHA> for Foo {}
+   |
+
+error: the constant `AHA` is not of type `usize`
+  --> $DIR/impl-block-missing-const-generics.rs:72:26
+   |
+LL |     impl<const AHA: u32> T<AHA> for Foo {}
+   |          --------------  ^^^^^^ expected `usize`, found `u32`
+   |          |
+   |          found this const parameter
+   |
+note: required by a const generic parameter in `k::T`
+  --> $DIR/impl-block-missing-const-generics.rs:70:13
+   |
+LL |     trait T<const AHA: usize> {}
+   |             ^^^^^^^^^^^^^^^^ required by this const generic parameter in `T`
+
+error: aborting due to 11 previous errors
+
+Some errors have detailed explanations: E0107, E0425, E0747.
+For more information about an error, try `rustc --explain E0107`.

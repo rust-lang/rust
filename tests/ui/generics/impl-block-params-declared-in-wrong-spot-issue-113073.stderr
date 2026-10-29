@@ -84,8 +84,8 @@ LL | trait Bar<T, K> {}
    |       ^^^ -  -
 help: add missing generic argument
    |
-LL | impl<T> Bar<T, K, K: Default> for u8 {}
-   |              +++
+LL | impl<K, T> Bar<T, K, K: Default> for u8 {}
+   |      ++         +++
 
 error[E0229]: associated item constraints are not allowed here
   --> $DIR/impl-block-params-declared-in-wrong-spot-issue-113073.rs:27:16
