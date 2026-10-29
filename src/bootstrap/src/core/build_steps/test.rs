@@ -3746,6 +3746,108 @@ impl CommandLineStep for Crate {
     }
 }
 
+/// Test compiler-builtins via its testcrate.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct CompilerBuiltins {
+    compiler: Compiler,
+    target: TargetSelection,
+}
+
+impl CommandLineStep for CompilerBuiltins {
+    type Output = ();
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        true
+    }
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("compiler-builtins")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        let builder = run.builder;
+        let host = run.build_triple();
+        let compiler = builder.compiler(builder.top_stage, host);
+
+        builder.ensure(CompilerBuiltins { compiler, target: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        let compiler = self.compiler;
+        let target = self.target;
+        let record_failed_tests = builder.ensure(SetupFailedTestsFile);
+
+        builder.ensure(compile::Std::new(compiler, compiler.host));
+        builder.ensure(compile::Std::new(compiler, target));
+
+        const COMPILER_BUILTINS_ALLOW_FEATURES: &[&str] = &[
+            // tidy-alphabetical-start
+            "abi_custom",
+            "asm_experimental_arch",
+            "cfg_target_has_atomic",
+            "compiler_builtins",
+            "compiler_builtins_lib",
+            "complex_numbers",
+            "core_intrinsics",
+            "decl_macro",
+            "f16",
+            "f128",
+            "lang_items",
+            "linkage",
+            "macro_metavar_expr_concat",
+            "repr_simd",
+            "rustc_attrs",
+            "rustc_private",
+            "wasm_numeric_instr",
+            // tidy-alphabetical-end
+        ];
+
+        let make_cargo = |f: fn(&mut builder::Cargo) -> &mut builder::Cargo| {
+            let mut cargo = builder::Cargo::new(
+                builder,
+                compiler,
+                Mode::ToolStd,
+                SourceType::InTree,
+                target,
+                Kind::Test,
+            );
+            // We have to run from the root directory to make offline builds work.
+            // We have to use the combined vendored dependencies
+            // from the `default_paths_to_vendor` function, rather than only the vendored
+            // dependencies of the standard library, which do not contain compiler-builtins
+            // dependencies.
+            cargo.arg("--manifest-path");
+            cargo.arg(builder.src.join("library").join("compiler-builtins").join("Cargo.toml"));
+            cargo.allow_features(&COMPILER_BUILTINS_ALLOW_FEATURES.join(","));
+            f(&mut cargo);
+            cargo
+        };
+
+        // Most tests are in the builtins-test crate.
+        let crates = ["compiler_builtins".to_string(), "builtins-test".to_string()];
+        let cargo = make_cargo(|c| c);
+        run_cargo_test(
+            cargo,
+            &[],
+            &crates,
+            "compiler-builtins",
+            target,
+            builder,
+            record_failed_tests.clone(),
+        );
+        let cargo = make_cargo(|c| c.arg("--features=c"));
+        run_cargo_test(
+            cargo,
+            &[],
+            &crates,
+            "compiler-builtins --features c",
+            target,
+            builder,
+            record_failed_tests,
+        );
+    }
+}
+
 /// Run cargo tests for the rustdoc crate.
 /// Rustdoc is special in various ways, which is why this step is different from `Crate`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
