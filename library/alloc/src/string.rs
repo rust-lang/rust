@@ -117,8 +117,12 @@ use crate::vec::{self, Vec};
 ///
 /// # UTF-8
 ///
-/// `String`s are always valid UTF-8. If you need a non-UTF-8 string, consider
-/// [`OsString`]. It is similar, but without the UTF-8 constraint. Because UTF-8
+/// Rust libraries may assume that `String`s are always valid UTF-8, [just like `str`s](prim@str#invariant).
+/// Some functions explicitly allow invalid UTF-8, and will not immediately cause undefined
+/// behavior if called on a `String` containing invalid UTF-8. Such functions explicitly
+/// specify this in their documentation.
+///
+/// If you need a non-UTF-8 string, consider [`OsString`]. It is similar, but without the UTF-8 constraint. Because UTF-8
 /// is a variable width encoding, `String`s are typically smaller than an array of
 /// the same `char`s:
 ///
@@ -1021,8 +1025,8 @@ impl String {
     ///
     /// This function is unsafe because it does not check that the bytes passed
     /// to it are valid UTF-8. If this constraint is violated, it may cause
-    /// memory unsafety issues with future users of the `String`, as the rest of
-    /// the standard library assumes that `String`s are valid UTF-8.
+    /// memory unsafety issues with future users of the `String`, as Rust code may
+    /// [assume that `String`s are valid UTF-8](String#utf-8).
     ///
     /// # Examples
     ///
@@ -1073,15 +1077,25 @@ impl String {
     ///
     /// assert_eq!("foo", s.as_str());
     /// ```
+    ///
+    /// # Safety
+    ///
+    /// As an exception to the [general rule](String#utf-8), this function does not assume
+    /// that the input `String` contains valid UTF-8, and is guaranteed to not cause
+    /// immediate undefined behavior if called on a `String` containing invalid UTF-8.
     #[inline]
     #[must_use]
     #[stable(feature = "string_as_str", since = "1.7.0")]
     #[rustc_diagnostic_item = "string_as_str"]
     #[rustc_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
     pub const fn as_str(&self) -> &str {
-        // SAFETY: String contents are stipulated to be valid UTF-8, invalid contents are an error
-        // at construction.
-        unsafe { str::from_utf8_unchecked(self.vec.as_slice()) }
+        // Note: cannot use `str::from_utf8_unchecked` as that may not allow invalid UTF-8.
+        let bytes = self.vec.as_slice();
+        // SAFETY: the pointer dereference is safe because that pointer
+        // comes from a reference which is guaranteed to be valid for reads.
+        // If the input bytes are not valid UTF-8, then the returned `&str` will
+        // have invalid UTF-8, which is unsafe but not immediate UB. See the "# Safety" section above.
+        unsafe { &*(bytes as *const [u8] as *const str) }
     }
 
     /// Converts a `String` into a mutable string slice.
@@ -1096,15 +1110,25 @@ impl String {
     ///
     /// assert_eq!("FOOBAR", s_mut_str);
     /// ```
+    ///
+    /// # Safety
+    ///
+    /// As an exception to the [general rule](String#utf-8), this function does not assume
+    /// that the input `String` contains valid UTF-8, and is guaranteed to not cause
+    /// immediate undefined behavior if called on a `String` containing invalid UTF-8.
     #[inline]
     #[must_use]
     #[stable(feature = "string_as_str", since = "1.7.0")]
     #[rustc_diagnostic_item = "string_as_mut_str"]
     #[rustc_const_stable(feature = "const_vec_string_slice", since = "1.87.0")]
     pub const fn as_mut_str(&mut self) -> &mut str {
-        // SAFETY: String contents are stipulated to be valid UTF-8, invalid contents are an error
-        // at construction.
-        unsafe { str::from_utf8_unchecked_mut(self.vec.as_mut_slice()) }
+        // Note: cannot use `str::from_utf8_unchecked_mut` as that may not allow invalid UTF-8.
+        let bytes = self.vec.as_mut_slice();
+        // SAFETY: the pointer dereference is safe because that pointer
+        // comes from a reference which is guaranteed to be valid for reads and writes.
+        // If the input bytes are not valid UTF-8, then the returned `&str` will
+        // have invalid UTF-8, which is unsafe but not immediate UB. See the "# Safety" section above.
+        unsafe { &mut *(bytes as *mut [u8] as *mut str) }
     }
 
     /// Appends a given string slice onto the end of this `String`.
@@ -1474,6 +1498,12 @@ impl String {
     /// The inverse of this method is [`from_utf8`].
     ///
     /// [`from_utf8`]: String::from_utf8
+    ///
+    /// # Safety
+    ///
+    /// As an exception to the [general rule](String#utf-8), this function does not assume
+    /// that the input `String` contains valid UTF-8, and is guaranteed to not cause
+    /// immediate undefined behavior if called on a `String` containing invalid UTF-8.
     ///
     /// # Examples
     ///
@@ -1870,8 +1900,11 @@ impl String {
     /// This function is unsafe because the returned `&mut Vec` allows writing
     /// bytes which are not valid UTF-8. If this constraint is violated, using
     /// the original `String` after dropping the `&mut Vec` may violate memory
-    /// safety, as the rest of the standard library assumes that `String`s are
-    /// valid UTF-8.
+    /// safety, as Rust code may [assume that `String`s are valid UTF-8](String#utf-8).
+    ///
+    /// As an exception to the [general rule](String#utf-8), this function does not assume
+    /// that the input `String` contains valid UTF-8, and is guaranteed to not cause
+    /// immediate undefined behavior if called on a `String` containing invalid UTF-8.
     ///
     /// # Examples
     ///
@@ -2944,9 +2977,17 @@ where
 impl ops::Deref for String {
     type Target = str;
 
+    /// Converts a `&String` into a string slice.
+    ///
+    /// # Safety
+    ///
+    /// As an exception to the [general rule](String#utf-8), this function does not assume
+    /// that the input `String` contains valid UTF-8, and is guaranteed to not cause
+    /// immediate undefined behavior if called on a `String` containing invalid UTF-8.
     #[inline]
     fn deref(&self) -> &str {
-        self.as_str()
+        // SAFETY: `String::as_str` has the same guarantee that invalid UTF-8 is not immediate UB
+        String::as_str(self)
     }
 }
 
@@ -2955,9 +2996,17 @@ unsafe impl ops::DerefPure for String {}
 
 #[stable(feature = "derefmut_for_string", since = "1.3.0")]
 impl ops::DerefMut for String {
+    /// Converts a `&mut String` into a mutable string slice.
+    ///
+    /// # Safety
+    ///
+    /// As an exception to the [general rule](String#utf-8), this function does not assume
+    /// that the input `String` contains valid UTF-8, and is guaranteed to not cause
+    /// immediate undefined behavior if called on a `String` containing invalid UTF-8.
     #[inline]
     fn deref_mut(&mut self) -> &mut str {
-        self.as_mut_str()
+        // SAFETY: `String::as_mut_str` has the same guarantee that invalid UTF-8 is not immediate UB
+        String::as_mut_str(self)
     }
 }
 
