@@ -1,0 +1,96 @@
+error[E0381]: used binding `x` isn't initialized
+  --> $DIR/placemention-deref.rs:9:13
+   |
+LL |     let x: &'static String;
+   |         - binding declared here but left uninitialized
+LL |     let _ = *x;
+   |             ^^ `x` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |     let x: &'static String = &Default::default();
+   |                            +++++++++++++++++++++
+
+error[E0381]: used binding `x` isn't initialized
+  --> $DIR/placemention-deref.rs:13:22
+   |
+LL |     let x: &Thing;
+   |         - binding declared here but left uninitialized
+LL |     let Thing::Wut = *x;
+   |                      ^^ `x` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |     let x: &Thing = &/* value */;
+   |                   ++++++++++++++
+
+error[E0382]: use of moved value: `x`
+  --> $DIR/placemention-deref.rs:18:9
+   |
+LL |     let x = Box::new(1);
+   |         - move occurs because `x` has type `Box<i32>`, which does not implement the `Copy` trait
+LL |     drop(x);
+   |          - value moved here
+LL |     _ = *x;
+   |         ^^ value used here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     drop(x.clone());
+   |           ++++++++
+
+error[E0381]: used binding `x` isn't initialized
+  --> $DIR/placemention-deref.rs:22:9
+   |
+LL |     let x: A;
+   |         - binding declared here but left uninitialized
+LL |     _ = x.0.0.0.0.0;
+   |         ^^^^^^^^^^^ `x.0.0.0.0` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |     let x: A = /* value */;
+   |              +++++++++++++
+
+error[E0381]: used binding `x` isn't initialized
+  --> $DIR/placemention-deref.rs:26:13
+   |
+LL |     let x: A;
+   |         - binding declared here but left uninitialized
+LL |     let _ = x.0.0;
+   |             ^^^^^ `x.0` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |     let x: A = /* value */;
+   |              +++++++++++++
+
+error[E0382]: use of moved value: `x`
+  --> $DIR/placemention-deref.rs:31:9
+   |
+LL |     let x = Box::new(Box::new(Box::new(Box::new(Box::new(Box::new(1))))));
+   |         - move occurs because `x` has type `Box<Box<Box<Box<Box<Box<i32>>>>>>`, which does not implement the `Copy` trait
+LL |     drop(x);
+   |          - value moved here
+LL |     _ = ******x;
+   |         ^^^^^^^ value used here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     drop(x.clone());
+   |           ++++++++
+
+error[E0382]: use of moved value: `**x`
+  --> $DIR/placemention-deref.rs:36:9
+   |
+LL |     drop(**x);
+   |          --- value moved here
+LL |     _ = ***x;
+   |         ^^^^ value used here after move
+   |
+   = note: move occurs because `**x` has type `Box<i32>`, which does not implement the `Copy` trait
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0381, E0382.
+For more information about an error, try `rustc --explain E0381`.
