@@ -898,6 +898,7 @@ fn ttl() {
 #[test]
 #[cfg_attr(target_env = "sgx", ignore)]
 #[cfg(any(target_family = "unix", target_os = "windows"))]
+#[cfg(not(skip_missing_miri_shims))] // disable tests Miri does not support
 fn hop_limit() {
     let hlim = 100;
 
@@ -979,6 +980,7 @@ fn connect_timeout_valid() {
 // macOS with `EINVAL`; `write_all` should now transfer it via short sends.
 #[test]
 #[cfg(all(target_pointer_width = "64", unix))]
+#[cfg(not(skip_missing_miri_shims))] // disable tests Miri does not support
 fn write_buffer_larger_than_c_int_max() {
     const LEN: usize = crate::ffi::c_int::MAX as usize + 1;
 

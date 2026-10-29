@@ -1,3 +1,5 @@
+#![cfg(not(skip_missing_miri_shims))] // disable tests Miri does not support
+
 use crate::io::ErrorKind;
 use crate::net::tests::{LOCALHOST_IP4, LOCALHOST_IP6, compare_ignore_zoneid};
 use crate::net::*;
