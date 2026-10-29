@@ -35,7 +35,10 @@ impl SyntaxMapping {
                 let upmap_parent =
                     self.upmap_child(&token.parent().unwrap(), input_ancestor, output_ancestor)?;
 
-                let element = upmap_parent.children_with_tokens().nth(token.index()).unwrap();
+                let element = upmap_parent
+                    .children_with_tokens()
+                    .nth(token.index().expect("the parser emits trivia as standalone tokens"))
+                    .unwrap();
                 debug_assert!(
                     element.as_token().is_some_and(|it| it.kind() == token.kind()),
                     "token upmapping mapped to the wrong node ({token:?} -> {element:?})"

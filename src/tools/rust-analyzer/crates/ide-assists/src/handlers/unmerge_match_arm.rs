@@ -65,18 +65,17 @@ pub(crate) fn unmerge_match_arm(acc: &mut Assists, ctx: &AssistContext<'_, '_>) 
                 make.or_pat(pats_after, or_pat.leading_pipe().is_some()).into()
             };
             let new_match_arm = make.match_arm(new_pat, match_arm.guard(), match_arm_body);
-            let mut pipe_index = pipe_token.index();
+            let mut pipe_index =
+                pipe_token.index().expect("the parser emits trivia as standalone tokens");
             if pipe_token
                 .prev_sibling_or_token()
                 .is_some_and(|it| it.kind() == SyntaxKind::WHITESPACE)
             {
                 pipe_index -= 1;
             }
-            for child in or_pat
-                .syntax()
-                .children_with_tokens()
-                .skip_while(|child| child.index() < pipe_index)
-            {
+            for child in or_pat.syntax().children_with_tokens().skip_while(|child| {
+                child.index().expect("the parser emits trivia as standalone tokens") < pipe_index
+            }) {
                 editor.delete(child.syntax_element());
             }
 
