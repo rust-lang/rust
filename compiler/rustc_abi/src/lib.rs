@@ -1473,6 +1473,15 @@ impl Float {
             PpcF128 => "ppcf128",
         }
     }
+
+    pub fn is_ieee(self) -> bool {
+        use Float::*;
+
+        match self {
+            F16 | F32 | F64 | F128 => true,
+            F16B | PpcF128 => false,
+        }
+    }
 }
 
 /// Numeric primitives.

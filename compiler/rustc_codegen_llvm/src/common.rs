@@ -6,7 +6,6 @@ use libc::c_uint;
 use rustc_abi::Primitive::Pointer;
 use rustc_abi::{self as abi, ExternAbi, HasDataLayout as _};
 use rustc_ast::Mutability;
-use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::traits::*;
 use rustc_crate_store::DllImport;
 use rustc_data_structures::stable_hash::{StableHash, StableHasher};
@@ -23,7 +22,7 @@ use crate::consts::{IsInitOrFini, IsStatic, const_alloc_to_llvm};
 pub(crate) use crate::context::CodegenCx;
 use crate::context::{GenericCx, SCx};
 use crate::llvm::{
-    self, BasicBlock, ConstantInt, FALSE, TRUE, ToLlvmBool, Type, Value, const_ptr_auth,
+    self, BasicBlock, ConstantInt, FALSE, TRUE, ToLlvmBool, Type, TypeKind, Value, const_ptr_auth,
 };
 
 pub(crate) fn maybe_sign_fn_ptr<'ll, 'tcx>(
