@@ -4,11 +4,8 @@
 //! for the appropriate cfg before calling the inner test function.
 #![deny(rust_2018_idioms)]
 
-#[macro_use]
-extern crate quote;
-
 use proc_macro2::{Ident, Span, TokenStream, TokenTree};
-use quote::ToTokens;
+use quote::{ToTokens, quote, quote_spanned};
 use std::env;
 
 #[proc_macro_attribute]
