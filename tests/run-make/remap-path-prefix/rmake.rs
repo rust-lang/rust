@@ -52,11 +52,9 @@ fn main() {
 
     out_object.arg("--remap-path-scope=object");
     out_macro.arg("--remap-path-scope=macro");
-    out_doc.arg("--remap-path-scope=documentation").arg("-Zunstable-options");
+    out_doc.arg("--remap-path-scope=documentation");
     out_diagobj.arg("--remap-path-scope=diagnostics,object");
-    out_diagdocobj
-        .arg("--remap-path-scope=diagnostics,documentation,object")
-        .arg("-Zunstable-options");
+    out_diagdocobj.arg("--remap-path-scope=diagnostics,documentation,object");
     if is_darwin() {
         out_object.arg("-Csplit-debuginfo=off");
         out_macro.arg("-Csplit-debuginfo=off");

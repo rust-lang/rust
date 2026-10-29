@@ -801,19 +801,6 @@ pass `--doctest-build-arg ARG` for each argument `ARG`.
 
 This flag enables the generation of toggles to expand macros in the HTML source code pages.
 
-## `--remap-path-scope`: Scopes to which the source remapping should be done
-
-This flag is the equivalent flag from `rustc` `--remap-path-scope`.
-
-Defines which scopes of paths should be remapped by --remap-path-prefix.
-
-### `documentation` scope
-
-`rustdoc` (and by extension `rustc`) have a special `documentation` remapping scope, it
-permits remapping source paths that ends up in the generated documentation.
-
-It can specified with `--remap-path-scope=documentation`.
-
 ## `#[doc(cfg)]` and `#[doc(auto_cfg)]`
 
 This feature aims at providing rustdoc users the possibility to add visual markers to the rendered documentation to know under which conditions an item is available (currently possible through the following unstable feature: `doc_cfg`).
