@@ -137,7 +137,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for TransformTy<'tcx> {
             ty::Adt(..) if t.is_c_void(self.tcx) => self.tcx.types.unit,
 
             ty::Adt(adt_def, args) => {
-                if adt_def.repr().transparent() && adt_def.is_struct() && !self.parents.contains(&t)
+                if adt_def.repr().transparent() && !adt_def.is_enum() && !self.parents.contains(&t)
                 {
                     // Don't transform repr(transparent) types with an user-defined CFI encoding to
                     // preserve the user-defined CFI encoding.
