@@ -205,10 +205,6 @@ enum Slenum {
 //~^ ERROR malformed
 static mut TLS: u8 = 42;
 
-#[no_link()]
-//~^ ERROR malformed
-//~| ERROR use of deprecated `no_link` attribute
-//~| WARN this was previously accepted by the compiler
 #[macro_use = 1]
 //~^ ERROR malformed
 extern crate wloop;

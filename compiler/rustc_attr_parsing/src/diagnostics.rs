@@ -2186,7 +2186,3 @@ pub(crate) struct Unused {
     #[subdiagnostic]
     pub note: UnusedNote,
 }
-
-#[derive(Diagnostic)]
-#[diag("use of deprecated `no_link` attribute")]
-pub(crate) struct NoLinkAttrUsed;
