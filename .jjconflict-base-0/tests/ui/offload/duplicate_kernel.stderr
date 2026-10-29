@@ -1,0 +1,8 @@
+error: symbol `_RNvC19collision_kernels_a6kernel` is already defined
+  --> $DIR/duplicate_kernel.rs:16:1
+   |
+LL | fn kernel(_x: f32) {}
+   | ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

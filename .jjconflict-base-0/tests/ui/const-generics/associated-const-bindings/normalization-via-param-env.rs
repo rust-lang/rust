@@ -1,0 +1,18 @@
+//@ check-pass
+#![feature(gca_min_const_items, gca_macroless_args)]
+#![allow(incomplete_features)]
+
+// Regression test for normalizing const projections
+// with associated const equality bounds.
+
+trait Trait {
+    #[rustc_always_gca]
+    const C: usize;
+}
+
+fn f<T: Trait<C = 1>>() {
+    // This must normalize <T as Trait>::C to 1
+    let _: [(); T::C] = [()];
+}
+
+fn main() {}

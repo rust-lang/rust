@@ -1,0 +1,32 @@
+error: expected non-macro attribute, found attribute macro `test`
+  --> $DIR/attr-macros-positional-rejection.rs:11:7
+   |
+LL |     #[test]
+   |       ^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `test`
+  --> $DIR/attr-macros-positional-rejection.rs:17:7
+   |
+LL |     #[test]
+   |       ^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `test`
+  --> $DIR/attr-macros-positional-rejection.rs:32:15
+   |
+LL |             #[test] bar
+   |               ^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `test`
+  --> $DIR/attr-macros-positional-rejection.rs:39:11
+   |
+LL |         #[test]
+   |           ^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `test`
+  --> $DIR/attr-macros-positional-rejection.rs:45:11
+   |
+LL |         #[test]
+   |           ^^^^ not a non-macro attribute
+
+error: aborting due to 5 previous errors
+

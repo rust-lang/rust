@@ -1,0 +1,39 @@
+error[E0515]: cannot return reference to temporary value
+  --> $DIR/darwin-objc-bad-ref.rs:12:5
+   |
+LL |     &objc::class!("NSObject")
+   |     ^------------------------
+   |     ||
+   |     |temporary value created here
+   |     returns a reference to data owned by the current function
+
+error[E0515]: cannot return reference to temporary value
+  --> $DIR/darwin-objc-bad-ref.rs:17:5
+   |
+LL |     &objc::class!("NSObject")
+   |     ^------------------------
+   |     ||
+   |     |temporary value created here
+   |     returns a reference to data owned by the current function
+
+error[E0515]: cannot return reference to temporary value
+  --> $DIR/darwin-objc-bad-ref.rs:22:5
+   |
+LL |     &objc::selector!("alloc")
+   |     ^------------------------
+   |     ||
+   |     |temporary value created here
+   |     returns a reference to data owned by the current function
+
+error[E0515]: cannot return reference to temporary value
+  --> $DIR/darwin-objc-bad-ref.rs:27:5
+   |
+LL |     &objc::selector!("alloc")
+   |     ^------------------------
+   |     ||
+   |     |temporary value created here
+   |     returns a reference to data owned by the current function
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0515`.

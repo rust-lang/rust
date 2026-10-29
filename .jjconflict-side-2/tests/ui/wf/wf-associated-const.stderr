@@ -1,0 +1,38 @@
+error: lifetime may not live long enough
+  --> $DIR/wf-associated-const.rs:27:5
+   |
+LL | fn evil<'a, 'b>(b: &'b u32) -> &'a u32 {
+   |         --  -- lifetime `'b` defined here
+   |         |
+   |         lifetime `'a` defined here
+LL |     <()>::EVIL(b)
+   |     ^^^^^^^^^^^^^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+
+error: lifetime may not live long enough
+  --> $DIR/wf-associated-const.rs:32:5
+   |
+LL | fn indirect_evil<'a, 'b>(b: &'b u32) -> &'a u32 {
+   |                  --  -- lifetime `'b` defined here
+   |                  |
+   |                  lifetime `'a` defined here
+LL |     <IndirectEvil>::EVIL(b)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+
+error: lifetime may not live long enough
+  --> $DIR/wf-associated-const.rs:37:5
+   |
+LL | fn inherent_evil<'a, 'b>(b: &'b u32) -> &'a u32 {
+   |                  --  -- lifetime `'b` defined here
+   |                  |
+   |                  lifetime `'a` defined here
+LL |     <Evil>::INHERENT_EVIL(b)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+
+error: aborting due to 3 previous errors
+

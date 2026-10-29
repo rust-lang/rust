@@ -1,0 +1,52 @@
+error: item in documentation is missing backticks
+  --> tests/ui/doc/issue_12795.rs:3:20
+   |
+LL | //! A comment with a_b(x) and a_c in it and (a_b((c)) ) too and (maybe a_b((c)))
+   |                    ^^^^^^
+   |
+   = note: `-D clippy::doc-markdown` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::doc_markdown)]`
+help: try
+   |
+LL - //! A comment with a_b(x) and a_c in it and (a_b((c)) ) too and (maybe a_b((c)))
+LL + //! A comment with `a_b(x)` and a_c in it and (a_b((c)) ) too and (maybe a_b((c)))
+   |
+
+error: item in documentation is missing backticks
+  --> tests/ui/doc/issue_12795.rs:3:31
+   |
+LL | //! A comment with a_b(x) and a_c in it and (a_b((c)) ) too and (maybe a_b((c)))
+   |                               ^^^
+   |
+help: try
+   |
+LL - //! A comment with a_b(x) and a_c in it and (a_b((c)) ) too and (maybe a_b((c)))
+LL + //! A comment with a_b(x) and `a_c` in it and (a_b((c)) ) too and (maybe a_b((c)))
+   |
+
+error: item in documentation is missing backticks
+  --> tests/ui/doc/issue_12795.rs:3:46
+   |
+LL | //! A comment with a_b(x) and a_c in it and (a_b((c)) ) too and (maybe a_b((c)))
+   |                                              ^^^^^^^^
+   |
+help: try
+   |
+LL - //! A comment with a_b(x) and a_c in it and (a_b((c)) ) too and (maybe a_b((c)))
+LL + //! A comment with a_b(x) and a_c in it and (`a_b((c))` ) too and (maybe a_b((c)))
+   |
+
+error: item in documentation is missing backticks
+  --> tests/ui/doc/issue_12795.rs:3:72
+   |
+LL | //! A comment with a_b(x) and a_c in it and (a_b((c)) ) too and (maybe a_b((c)))
+   |                                                                        ^^^^^^^^
+   |
+help: try
+   |
+LL - //! A comment with a_b(x) and a_c in it and (a_b((c)) ) too and (maybe a_b((c)))
+LL + //! A comment with a_b(x) and a_c in it and (a_b((c)) ) too and (maybe `a_b((c))`)
+   |
+
+error: aborting due to 4 previous errors
+

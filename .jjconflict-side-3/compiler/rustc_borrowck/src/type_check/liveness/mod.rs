@@ -1,0 +1,293 @@
+use itertools::{Either, Itertools};
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
+use rustc_index::interval::IntervalSet;
+use rustc_middle::mir::visit::{TyContext, Visitor};
+use rustc_middle::mir::{Body, Local, Location, SourceInfo};
+use rustc_middle::ty::relate::Relate;
+use rustc_middle::ty::{GenericArgsRef, Region, RegionVid, Ty, TyCtxt, TypeVisitable};
+use rustc_mir_dataflow::move_paths::MoveData;
+use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex};
+use rustc_span::span_bug;
+use rustc_trait_selection::traits::outlives_for_liveness::FreeRegionsVisitor;
+use tracing::debug;
+
+use super::TypeChecker;
+use crate::BorrowckInferCtxt;
+use crate::constraints::OutlivesConstraintSet;
+use crate::polonius::{PoloniusContext, record_live_region_variance};
+use crate::region_infer::values::LivenessValues;
+use crate::universal_regions::UniversalRegions;
+
+mod local_use_map;
+mod trace;
+
+pub(crate) use local_use_map::LocalUseMap;
+pub(crate) use trace::LivenessComputation;
+
+/// Combines liveness analysis with initialization analysis to
+/// determine which variables are live at which points, both due to
+/// ordinary uses and drops. Returns a set of (ty, location) pairs
+/// that indicate which types must be live at which point in the CFG.
+/// This vector is consumed by `constraint_generation`.
+///
+/// N.B., this computation requires normalization; therefore, it must be
+/// performed before
+pub(super) fn generate<'tcx>(
+    typeck: &mut TypeChecker<'_, 'tcx>,
+    location_map: &DenseLocationMap,
+    move_data: &MoveData<'tcx>,
+) {
+    debug!("liveness::generate");
+    let _timer = typeck.tcx().prof.generic_activity("borrowck_liveness");
+
+    // Universal regions are live at every point.
+    for region in typeck.universal_regions.universal_regions_iter() {
+        typeck.constraints.liveness_constraints.add_all_points(region);
+    }
+
+    let free_regions = regions_that_outlive_free_regions(
+        typeck.infcx.num_region_vars(),
+        &typeck.universal_regions,
+        &typeck.constraints.outlives_constraints,
+    );
+
+    let (relevant_live_locals, boring_locals) =
+        compute_relevant_live_locals(typeck.tcx(), &free_regions, typeck.body);
+
+    // Under Polonius Alpha, a larger set of locals are considered relevant: specifically,
+    // locals containing regions *outliving* universal regions are relevant and only
+    // locals containing solely universal regions are considered boring.
+    //
+    // However, we don't actually need liveness information for *all* these locals,
+    // only when actually computing loans. So, we can defer computing the liveness
+    // until we try to propagate the loan, which is gated on `LocalizedConstraintGraph`
+    // traversal.
+    //
+    // Potentially in theory, we could defer computing liveness for *all* locals,
+    // but that's a much bigger refactor (many things rely on liveness of
+    // NLL-relevant locals). So, we only defer NLL-boring/Polonius-relevant locals
+    // for now.
+    // FIXME: this NLL optimization idea, to reduce work to relevant locals only, still makes sense
+    // for polonius, and should be investigated to improve liveness performance.
+    let deferred_locals = if typeck.polonius_context.is_none() || typeck.borrow_set.len() == 0 {
+        // If we aren't going to be using the additional liveness information,
+        // don't even bother computing the larger relevant set.
+        // Similarly, since this liveness information is ultimately used for *loan*
+        // liveness, we don't need to compute it when there are no loans.
+        FxIndexSet::default()
+    } else {
+        // As described above, we can defer computing liveness for the regions that are
+        // NLL-boring-and-polonius-relevant. Let's find these.
+        //
+        // Note that this is basically a simplified version of `compute_relevant_live_locals`
+        // avoiding the allocations that are unnecessary in our more limited use-case.
+        let tcx = typeck.tcx();
+        let universal_regions = typeck.universal_regions;
+        let boring_nll_locals: FxHashSet<_> = boring_locals.iter().copied().collect();
+        let deferred_polonius_locals = typeck
+            .body
+            .local_decls
+            .iter_enumerated()
+            .filter_map(|(local, decl)| {
+                // The polonius-relevant locals are the ones whose types do not only contain
+                // universal regions.
+                if boring_nll_locals.contains(&local)
+                    && !tcx.all_free_regions_meet(&decl.ty, |r| {
+                        universal_regions.is_universal_region(r.as_var())
+                    })
+                {
+                    Some(local)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        typeck.polonius_context.as_mut().unwrap().boring_nll_locals = boring_nll_locals;
+        deferred_polonius_locals
+    };
+
+    trace::trace(
+        typeck,
+        location_map,
+        move_data,
+        &relevant_live_locals,
+        &boring_locals,
+        &deferred_locals,
+    );
+
+    // Mark regions that should be live where they appear within rvalues or within a call: like
+    // args, regions, and types.
+    record_regular_live_regions(
+        typeck.tcx(),
+        &mut typeck.constraints.liveness_constraints,
+        &typeck.universal_regions,
+        &mut typeck.polonius_context,
+        typeck.body,
+    );
+}
+
+// The purpose of `compute_relevant_live_locals` is to define the subset of `Local`
+// variables for which we need to do a liveness computation. We only need
+// to compute whether a variable `X` is live if that variable contains
+// some region `R` in its type where `R` is not known to outlive a free
+// region (i.e., where `R` may be valid for just a subset of the fn body).
+fn compute_relevant_live_locals<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    free_regions: &FxHashSet<RegionVid>,
+    body: &Body<'tcx>,
+) -> (Vec<Local>, Vec<Local>) {
+    let (boring_locals, relevant_live_locals): (Vec<_>, Vec<_>) =
+        body.local_decls.iter_enumerated().partition_map(|(local, local_decl)| {
+            if tcx.all_free_regions_meet(&local_decl.ty, |r| free_regions.contains(&r.as_var())) {
+                Either::Left(local)
+            } else {
+                Either::Right(local)
+            }
+        });
+
+    debug!("{} total variables", body.local_decls.len());
+    debug!("{} variables need liveness", relevant_live_locals.len());
+    debug!("{} regions outlive free regions", free_regions.len());
+
+    (relevant_live_locals, boring_locals)
+}
+
+/// Computes all regions that are (currently) known to outlive free
+/// regions. For these regions, we do not need to compute
+/// liveness, since the outlives constraints will ensure that they
+/// are live over the whole fn body anyhow.
+fn regions_that_outlive_free_regions<'tcx>(
+    num_region_vars: usize,
+    universal_regions: &UniversalRegions<'tcx>,
+    constraint_set: &OutlivesConstraintSet<'tcx>,
+) -> FxHashSet<RegionVid> {
+    // Build a graph of the outlives constraints thus far. This is
+    // a reverse graph, so for each constraint `R1: R2` we have an
+    // edge `R2 -> R1`. Therefore, if we find all regions
+    // reachable from each free region, we will have all the
+    // regions that are forced to outlive some free region.
+    let rev_constraint_graph = constraint_set.reverse_graph(num_region_vars);
+    let fr_static = universal_regions.fr_static;
+    let rev_region_graph = rev_constraint_graph.region_graph(constraint_set, fr_static);
+
+    // Stack for the depth-first search. Start out with all the free regions.
+    let mut stack: Vec<_> = universal_regions.universal_regions_iter().collect();
+
+    // Set of all free regions, plus anything that outlives them. Initially
+    // just contains the free regions.
+    let mut outlives_free_region: FxHashSet<_> = stack.iter().cloned().collect();
+
+    // Do the DFS -- for each thing in the stack, find all things
+    // that outlive it and add them to the set. If they are not,
+    // push them onto the stack for later.
+    while let Some(sub_region) = stack.pop() {
+        stack.extend(
+            rev_region_graph
+                .outgoing_regions(sub_region)
+                .filter(|&r| outlives_free_region.insert(r)),
+        );
+    }
+
+    // Return the final set of things we visited.
+    outlives_free_region
+}
+
+/// Some variables are "regular live" at `location` -- i.e., they may be used later. This means that
+/// all regions appearing in their type must be live at `location`.
+fn record_regular_live_regions<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    liveness_constraints: &mut LivenessValues,
+    universal_regions: &UniversalRegions<'tcx>,
+    polonius_context: &mut Option<PoloniusContext<'tcx>>,
+    body: &Body<'tcx>,
+) {
+    let mut visitor =
+        LiveVariablesVisitor { tcx, liveness_constraints, universal_regions, polonius_context };
+    for (bb, data) in body.basic_blocks.iter_enumerated() {
+        visitor.visit_basic_block_data(bb, data);
+    }
+}
+
+/// Visitor looking for regions that should be live within rvalues or calls.
+struct LiveVariablesVisitor<'a, 'tcx> {
+    tcx: TyCtxt<'tcx>,
+    liveness_constraints: &'a mut LivenessValues,
+    universal_regions: &'a UniversalRegions<'tcx>,
+    polonius_context: &'a mut Option<PoloniusContext<'tcx>>,
+}
+
+impl<'a, 'tcx> Visitor<'tcx> for LiveVariablesVisitor<'a, 'tcx> {
+    /// We sometimes have `args` within an rvalue, or within a
+    /// call. Make them live at the location where they appear.
+    fn visit_args(&mut self, args: &GenericArgsRef<'tcx>, location: Location) {
+        self.record_regions_live_at(*args, location);
+        self.super_args(args);
+    }
+
+    /// We sometimes have `region`s within an rvalue, or within a
+    /// call. Make them live at the location where they appear.
+    fn visit_region(&mut self, region: Region<'tcx>, location: Location) {
+        self.record_regions_live_at(region, location);
+        self.super_region(region);
+    }
+
+    /// We sometimes have `ty`s within an rvalue, or within a
+    /// call. Make them live at the location where they appear.
+    fn visit_ty(&mut self, ty: Ty<'tcx>, ty_context: TyContext) {
+        match ty_context {
+            TyContext::ReturnTy(SourceInfo { span, .. })
+            | TyContext::YieldTy(SourceInfo { span, .. })
+            | TyContext::ResumeTy(SourceInfo { span, .. })
+            | TyContext::UserTy(span)
+            | TyContext::LocalDecl { source_info: SourceInfo { span, .. }, .. } => {
+                span_bug!(span, "should not be visiting outside of the CFG: {:?}", ty_context);
+            }
+            TyContext::Location(location) => {
+                self.record_regions_live_at(ty, location);
+            }
+        }
+
+        self.super_ty(ty);
+    }
+}
+
+impl<'a, 'tcx> LiveVariablesVisitor<'a, 'tcx> {
+    /// Some variable is "regular live" at `location` -- i.e., it may be used later. This means that
+    /// all regions appearing in the type of `value` must be live at `location`.
+    fn record_regions_live_at<T>(&mut self, value: T, location: Location)
+    where
+        T: TypeVisitable<TyCtxt<'tcx>> + Relate<TyCtxt<'tcx>>,
+    {
+        debug!("record_regions_live_at(value={:?}, location={:?})", value, location);
+        self.tcx.for_each_free_region(&value, |live_region| {
+            let live_region_vid = live_region.as_var();
+            self.liveness_constraints.add_location(live_region_vid, location);
+        });
+
+        // When using `-Zpolonius=next`, we record the variance of each live region.
+        if let Some(polonius_context) = self.polonius_context {
+            record_live_region_variance(
+                self.tcx,
+                &mut polonius_context.live_region_variances,
+                self.universal_regions,
+                value,
+            );
+        }
+    }
+}
+
+pub(crate) fn make_all_regions_live<'tcx>(
+    infcx: &BorrowckInferCtxt<'tcx>,
+    universal_regions: &UniversalRegions<'tcx>,
+    liveness: &mut LivenessValues,
+    value: impl TypeVisitable<TyCtxt<'tcx>>,
+    live_at: &IntervalSet<PointIndex>,
+) {
+    debug!("make_all_regions_live(value={value:?})");
+    value.visit_with(&mut FreeRegionsVisitor {
+        tcx: infcx.tcx,
+        param_env: infcx.param_env,
+        op: |r| liveness.add_points(universal_regions.to_region_vid(r), live_at),
+    });
+}

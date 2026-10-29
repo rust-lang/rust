@@ -1,0 +1,42 @@
+error[E0469]: imported macro not found
+  --> $DIR/issue-80074.rs:8:13
+   |
+LL | #[macro_use(m)]
+   |             ^
+
+error: cannot find macro `bar` in this scope
+  --> $DIR/issue-80074.rs:16:5
+   |
+LL |     bar!();
+   |     ^^^
+
+error: cannot find macro `m` in this scope
+  --> $DIR/issue-80074.rs:18:5
+   |
+LL |     m!();
+   |     ^
+
+error: macro `foo` is private
+  --> $DIR/issue-80074.rs:13:5
+   |
+LL |     foo!();
+   |     ^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #120192 <https://github.com/rust-lang/rust/issues/120192>
+   = note: `#[deny(private_macro_use)]` on by default
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0469`.
+Future incompatibility report: Future breakage diagnostic:
+error: macro `foo` is private
+  --> $DIR/issue-80074.rs:13:5
+   |
+LL |     foo!();
+   |     ^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #120192 <https://github.com/rust-lang/rust/issues/120192>
+   = note: `#[deny(private_macro_use)]` on by default
+

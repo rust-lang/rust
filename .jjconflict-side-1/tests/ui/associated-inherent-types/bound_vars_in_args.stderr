@@ -1,0 +1,20 @@
+error[E0034]: multiple applicable items in scope
+  --> $DIR/bound_vars_in_args.rs:19:20
+   |
+LL |     for<T> Foo<T>::IAT: Sized;
+   |                    ^^^ multiple `IAT` found
+   |
+note: candidate #1 is defined in an impl for the type `Foo<[u8]>`
+  --> $DIR/bound_vars_in_args.rs:10:5
+   |
+LL |     type IAT = u8;
+   |     ^^^^^^^^
+note: candidate #2 is defined in an impl for the type `Foo<T>`
+  --> $DIR/bound_vars_in_args.rs:14:5
+   |
+LL |     type IAT = u8;
+   |     ^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0034`.

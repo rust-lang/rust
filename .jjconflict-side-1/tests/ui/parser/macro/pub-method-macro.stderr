@@ -1,0 +1,15 @@
+error: can't qualify macro invocation with `pub`
+  --> $DIR/pub-method-macro.rs:17:9
+   |
+LL |         pub defn!(f);
+   |         ^^^
+   |
+   = help: try adjusting the macro to put `pub` inside the invocation
+help: remove the visibility
+   |
+LL -         pub defn!(f);
+LL +          defn!(f);
+   |
+
+error: aborting due to 1 previous error
+

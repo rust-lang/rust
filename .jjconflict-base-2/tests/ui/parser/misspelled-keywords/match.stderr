@@ -1,0 +1,14 @@
+error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `a`
+  --> $DIR/match.rs:3:12
+   |
+LL |     matche a {}
+   |            ^ expected one of 8 possible tokens
+   |
+help: there is a keyword `match` with a similar name
+   |
+LL -     matche a {}
+LL +     match a {}
+   |
+
+error: aborting due to 1 previous error
+

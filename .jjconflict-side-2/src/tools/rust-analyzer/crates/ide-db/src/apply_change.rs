@@ -1,0 +1,164 @@
+//! Applies changes to the IDE state transactionally.
+
+use std::time::{Duration, Instant};
+
+use profile::Bytes;
+use salsa::Database as _;
+
+use crate::{ChangeWithProcMacros, RootDatabase};
+
+impl RootDatabase {
+    pub fn apply_change(&mut self, change: ChangeWithProcMacros) -> Duration {
+        let _p = tracing::info_span!("RootDatabase::apply_change").entered();
+        let now = Instant::now();
+        self.trigger_cancellation();
+        let elapsed = now.elapsed();
+        tracing::trace!("apply_change {:?}", change);
+        change.apply(self);
+        elapsed
+    }
+
+    // Feature: Memory Usage
+    //
+    // Clears rust-analyzer's internal database and prints memory usage statistics.
+    //
+    // | Editor  | Action Name |
+    // |---------|-------------|
+    // | VS Code | **rust-analyzer: Memory Usage (Clears Database)**
+
+    // ![Memory Usage](https://user-images.githubusercontent.com/48062697/113065592-08559f00-91b1-11eb-8c96-64b88068ec02.gif)
+    pub fn per_query_memory_usage(&mut self) -> Vec<(String, Bytes, usize)> {
+        let mut acc: Vec<(String, Bytes, usize)> = vec![];
+
+        // fn collect_query_count<'q, Q>(table: &QueryTable<'q, Q>) -> usize
+        // where
+        //     QueryTable<'q, Q>: DebugQueryTable,
+        //     Q: Query,
+        //     <Q as Query>::Storage: 'q,
+        // {
+        //     struct EntryCounter(usize);
+        //     impl<K, V> FromIterator<TableEntry<K, V>> for EntryCounter {
+        //         fn from_iter<T>(iter: T) -> EntryCounter
+        //         where
+        //             T: IntoIterator<Item = TableEntry<K, V>>,
+        //         {
+        //             EntryCounter(iter.into_iter().count())
+        //         }
+        //     }
+        //     table.entries::<EntryCounter>().0
+        // }
+
+        macro_rules! purge_each_query {
+            ($($q:path)*) => {$(
+                let before = memory_usage().allocated;
+                let table = $q.in_db(self);
+                let count = collect_query_count(&table);
+                table.purge();
+                let after = memory_usage().allocated;
+                let q: $q = Default::default();
+                let name = format!("{:?}", q);
+                acc.push((name, before - after, count));
+            )*}
+        }
+        purge_each_query![
+            // // SymbolsDatabase
+            // crate::symbol_index::ModuleSymbolsQuery
+            // crate::symbol_index::LibrarySymbolsQuery
+            // crate::symbol_index::LocalRootsQuery
+            // crate::symbol_index::LibraryRootsQuery
+            // // HirDatabase
+            // hir::db::AdtDatumQuery
+            // hir::db::AdtVarianceQuery
+            // hir::db::AssociatedTyDataQuery
+            // hir::db::AssociatedTyValueQuery
+            // hir::db::BorrowckQuery
+            // hir::db::CallableItemSignatureQuery
+            // hir::db::ConstEvalDiscriminantQuery
+            // hir::db::ConstEvalQuery
+            // hir::db::ConstEvalStaticQuery
+            // hir::db::ConstParamTyQuery
+            // hir::db::DynCompatibilityOfTraitQuery
+            // hir::db::FieldTypesQuery
+            // hir::db::FnDefDatumQuery
+            // hir::db::FnDefVarianceQuery
+            // hir::db::GenericDefaultsQuery
+            // hir::db::GenericPredicatesForParamQuery
+            // hir::db::GenericPredicatesQuery
+            // hir::db::GenericPredicatesWithoutParentQuery
+            // hir::db::ImplDatumQuery
+            // hir::db::ImplSelfTyQuery
+            // hir::db::ImplTraitQuery
+            // hir::db::IncoherentInherentImplCratesQuery
+            // hir::db::InferQuery
+            // hir::db::InherentImplsInBlockQuery
+            // hir::db::InherentImplsInCrateQuery
+            // hir::db::InternCallableDefQuery
+            // hir::db::InternClosureQuery
+            // hir::db::InternCoroutineQuery
+            // hir::db::InternImplTraitIdQuery
+            // hir::db::InternLifetimeParamIdQuery
+            // hir::db::InternTypeOrConstParamIdQuery
+            // hir::db::LayoutOfAdtQuery
+            // hir::db::LayoutOfTyQuery
+            // hir::db::LookupImplMethodQuery
+            // hir::db::MirBodyForClosureQuery
+            // hir::db::MirBodyQuery
+            // hir::db::MonomorphizedMirBodyForClosureQuery
+            // hir::db::MonomorphizedMirBodyQuery
+            // hir::db::ProgramClausesForChalkEnvQuery
+            // hir::db::ReturnTypeImplTraitsQuery
+            // hir::db::TargetDataLayoutQuery
+            // hir::db::TraitDatumQuery
+            // hir::db::TraitEnvironmentQuery
+            // hir::db::TraitImplsInBlockQuery
+            // hir::db::TraitImplsInCrateQuery
+            // hir::db::TraitImplsInDepsQuery
+            // hir::db::TraitSolveQuery
+            // hir::db::TyQuery
+            // hir::db::TypeAliasImplTraitsQuery
+            // hir::db::ValueTyQuery
+
+            // // InternDatabase
+            // hir::db::InternFunctionQuery
+            // hir::db::InternStructQuery
+            // hir::db::InternUnionQuery
+            // hir::db::InternEnumQuery
+            // hir::db::InternConstQuery
+            // hir::db::InternStaticQuery
+            // hir::db::InternTraitQuery
+            // hir::db::InternTraitAliasQuery
+            // hir::db::InternTypeAliasQuery
+            // hir::db::InternImplQuery
+            // hir::db::InternExternBlockQuery
+            // hir::db::InternBlockQuery
+            // hir::db::InternMacro2Query
+            // hir::db::InternProcMacroQuery
+            // hir::db::InternMacroRulesQuery
+
+            // // LineIndexDatabase
+            // crate::LineIndexQuery
+
+            // // SourceDatabase
+            // base_db::ParseQuery
+            // base_db::ParseErrorsQuery
+            // base_db::AllCratesQuery
+            // base_db::InternUniqueCrateDataQuery
+            // base_db::InternUniqueCrateDataLookupQuery
+            // base_db::CrateDataQuery
+            // base_db::ExtraCrateDataQuery
+            // base_db::CrateCfgQuery
+            // base_db::CrateEnvQuery
+            // base_db::CrateWorkspaceDataQuery
+
+            // // SourceDatabaseExt
+            // base_db::FileTextQuery
+            // base_db::CompressedFileTextQuery
+            // base_db::FileSourceRootQuery
+            // base_db::SourceRootQuery
+            // base_db::SourceRootCratesQuery
+        ];
+
+        acc.sort_by_key(|it| std::cmp::Reverse(it.1));
+        acc
+    }
+}

@@ -1,0 +1,16 @@
+error[E0599]: no associated function or constant named `new_undirected` found for struct `type_default_applied_in_cross_crate_method_lookup::Graph<i32, i32>` in the current scope
+  --> $DIR/type-default-applied-in-cross-crate-method-lookup.rs:8:33
+   |
+LL |     let ug = Graph::<i32, i32>::new_undirected();
+   |                                 ^^^^^^^^^^^^^^ associated function or constant not found in `type_default_applied_in_cross_crate_method_lookup::Graph<i32, i32>`
+   |
+note: if you're trying to build a new `type_default_applied_in_cross_crate_method_lookup::Graph<i32, i32>`, consider using `type_default_applied_in_cross_crate_method_lookup::Graph::<N, E>::new` which returns `type_default_applied_in_cross_crate_method_lookup::Graph<_, _>`
+  --> $DIR/auxiliary/type-default-applied-in-cross-crate-method-lookup.rs:15:5
+   |
+LL |     pub fn new() -> Self {
+   |     ^^^^^^^^^^^^^^^^^^^^
+   = note: the associated function or constant was found for `type_default_applied_in_cross_crate_method_lookup::Graph<N, E, Undirected>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

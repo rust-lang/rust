@@ -1,0 +1,13 @@
+warning: method `add_points` is never used
+  --> $DIR/issue-3563-3.rs:115:8
+   |
+LL | trait Canvas {
+   |       ------ method in this trait
+...
+LL |     fn add_points(&mut self, shapes: &[Point]) {
+   |        ^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: 1 warning emitted
+

@@ -1,0 +1,10 @@
+error: `Bar` is forbidden as the type of a const generic parameter
+  --> $DIR/const_generic_type.rs:8:24
+   |
+LL | async fn test<const N: Bar>() {
+   |                        ^^^
+   |
+   = note: the only supported types are integers, `bool`, and `char`
+
+error: aborting due to 1 previous error
+

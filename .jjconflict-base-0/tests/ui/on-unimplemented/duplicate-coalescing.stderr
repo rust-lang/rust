@@ -1,0 +1,86 @@
+warning: `message` is ignored due to previous definition of `message`
+  --> $DIR/duplicate-coalescing.rs:22:5
+   |
+LL |     message = "fallback message",
+   |     ---------------------------- `message` is first declared here
+...
+LL |     message = "ignored fallback message",
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `message` is later redundantly declared here
+   |
+   = note: `#[warn(malformed_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
+
+error[E0277]: i32 filter message
+  --> $DIR/duplicate-coalescing.rs:48:13
+   |
+LL |     let _: <i32 as Coalesced>::Output;
+   |             ^^^ later filter label
+   |
+   = help: the trait `Coalesced` is not implemented for `i32`
+   = note: first filter note
+   = note: second filter note
+   = note: first root note
+   = note: second root note
+help: this trait has no implementations, consider adding one
+  --> $DIR/duplicate-coalescing.rs:28:1
+   |
+LL | trait Coalesced {
+   | ^^^^^^^^^^^^^^^
+
+error[E0277]: fallback message
+  --> $DIR/duplicate-coalescing.rs:56:13
+   |
+LL |     let _: <u32 as Coalesced>::Output;
+   |             ^^^ later filter label
+   |
+   = help: the trait `Coalesced` is not implemented for `u32`
+   = note: second filter note
+   = note: first root note
+   = note: second root note
+help: this trait has no implementations, consider adding one
+  --> $DIR/duplicate-coalescing.rs:28:1
+   |
+LL | trait Coalesced {
+   | ^^^^^^^^^^^^^^^
+
+error[E0277]: stable message
+  --> $DIR/duplicate-coalescing.rs:63:13
+   |
+LL |     let _: <() as StableFirst>::Output;
+   |             ^^ internal label
+   |
+   = help: the trait `StableFirst` is not implemented for `()`
+help: this trait has no implementations, consider adding one
+  --> $DIR/duplicate-coalescing.rs:34:1
+   |
+LL | trait StableFirst {
+   | ^^^^^^^^^^^^^^^^^
+
+error[E0277]: internal filter message
+  --> $DIR/duplicate-coalescing.rs:67:13
+   |
+LL |     let _: <i32 as InternalFirst>::Output;
+   |             ^^^ stable label
+   |
+   = help: the trait `InternalFirst` is not implemented for `i32`
+help: this trait has no implementations, consider adding one
+  --> $DIR/duplicate-coalescing.rs:43:1
+   |
+LL | trait InternalFirst {
+   | ^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: internal message
+  --> $DIR/duplicate-coalescing.rs:71:13
+   |
+LL |     let _: <() as InternalFirst>::Output;
+   |             ^^ stable label
+   |
+   = help: the trait `InternalFirst` is not implemented for `()`
+help: this trait has no implementations, consider adding one
+  --> $DIR/duplicate-coalescing.rs:43:1
+   |
+LL | trait InternalFirst {
+   | ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0277`.

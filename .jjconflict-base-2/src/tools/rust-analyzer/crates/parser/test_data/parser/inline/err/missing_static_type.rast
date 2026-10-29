@@ -1,0 +1,14 @@
+SOURCE_FILE
+  STATIC
+    STATIC_KW "static"
+    WHITESPACE " "
+    NAME
+      IDENT "C"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    LITERAL
+      INT_NUMBER "0"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+error 8: missing type for `static`

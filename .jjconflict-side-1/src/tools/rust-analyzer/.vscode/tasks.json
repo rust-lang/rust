@@ -1,0 +1,67 @@
+// See https://go.microsoft.com/fwlink/?LinkId=733558
+// for the documentation about the tasks.json format
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Build Extension in Background",
+      "group": "build",
+      "type": "npm",
+      "script": "watch",
+      "path": "editors/code/",
+      "problemMatcher": {
+        "base": "$tsc-watch",
+        "fileLocation": ["relative", "${workspaceFolder}/editors/code/"]
+      },
+      "isBackground": true,
+    },
+    {
+      "label": "Build Extension",
+      "group": "build",
+      "type": "npm",
+      "script": "build",
+      "path": "editors/code/",
+      "problemMatcher": {
+        "base": "$tsc",
+        "fileLocation": ["relative", "${workspaceFolder}/editors/code/"]
+      },
+    },
+    {
+      "label": "Build Server",
+      "group": "build",
+      "type": "shell",
+      "command": "cargo build --package rust-analyzer",
+      "problemMatcher": "$rustc"
+    },
+    {
+      "label": "Build Server (Release)",
+      "group": "build",
+      "type": "shell",
+      "command": "cargo build --release --package rust-analyzer",
+      "problemMatcher": "$rustc"
+    },
+    {
+      "label": "Pretest",
+      "group": "build",
+      "isBackground": false,
+      "type": "npm",
+      "script": "pretest",
+      "path": "editors/code/",
+      "problemMatcher": {
+        "base": "$tsc",
+        "fileLocation": ["relative", "${workspaceFolder}/editors/code/"]
+      }
+    },
+
+    {
+      "label": "Build Server and Extension",
+      "dependsOn": ["Build Server", "Build Extension"],
+      "problemMatcher": "$rustc"
+    },
+    {
+      "label": "Build Server (Release) and Extension",
+      "dependsOn": ["Build Server (Release)", "Build Extension"],
+      "problemMatcher": "$rustc"
+    }
+  ]
+}

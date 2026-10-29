@@ -1,0 +1,163 @@
+error: unknown attribute `compile-fail`
+  --> $DIR/check-attr-test.rs:8:1
+   |
+LL | / /// foo
+LL | | ///
+LL | | /// ```compile-fail,compilefail,comPile_fail
+LL | | /// boo
+LL | | /// ```
+   | |_______^
+   |
+   = help: use `compile_fail` to invert the results of this test, so that it passes if it cannot be compiled and fails if it can
+   = help: this code block may be skipped during testing, because unknown attributes are treated as markers for code samples written in other programming languages, unless it is also explicitly marked as `rust`
+note: the lint level is defined here
+  --> $DIR/check-attr-test.rs:3:9
+   |
+LL | #![deny(rustdoc::invalid_codeblock_attributes)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: unknown attribute `compilefail`
+  --> $DIR/check-attr-test.rs:8:1
+   |
+LL | / /// foo
+LL | | ///
+LL | | /// ```compile-fail,compilefail,comPile_fail
+LL | | /// boo
+LL | | /// ```
+   | |_______^
+   |
+   = help: use `compile_fail` to invert the results of this test, so that it passes if it cannot be compiled and fails if it can
+   = help: this code block may be skipped during testing, because unknown attributes are treated as markers for code samples written in other programming languages, unless it is also explicitly marked as `rust`
+
+error: unknown attribute `comPile_fail`
+  --> $DIR/check-attr-test.rs:8:1
+   |
+LL | / /// foo
+LL | | ///
+LL | | /// ```compile-fail,compilefail,comPile_fail
+LL | | /// boo
+LL | | /// ```
+   | |_______^
+   |
+   = help: use `compile_fail` to invert the results of this test, so that it passes if it cannot be compiled and fails if it can
+   = help: this code block may be skipped during testing, because unknown attributes are treated as markers for code samples written in other programming languages, unless it is also explicitly marked as `rust`
+
+error: unknown attribute `should-panic`
+  --> $DIR/check-attr-test.rs:18:1
+   |
+LL | / /// bar
+LL | | ///
+LL | | /// ```should-panic,shouldpanic,shOuld_panic
+LL | | /// boo
+LL | | /// ```
+   | |_______^
+   |
+   = help: use `should_panic` to invert the results of this test, so that if passes if it panics and fails if it does not
+   = help: this code block may be skipped during testing, because unknown attributes are treated as markers for code samples written in other programming languages, unless it is also explicitly marked as `rust`
+
+error: unknown attribute `shouldpanic`
+  --> $DIR/check-attr-test.rs:18:1
+   |
+LL | / /// bar
+LL | | ///
+LL | | /// ```should-panic,shouldpanic,shOuld_panic
+LL | | /// boo
+LL | | /// ```
+   | |_______^
+   |
+   = help: use `should_panic` to invert the results of this test, so that if passes if it panics and fails if it does not
+   = help: this code block may be skipped during testing, because unknown attributes are treated as markers for code samples written in other programming languages, unless it is also explicitly marked as `rust`
+
+error: unknown attribute `shOuld_panic`
+  --> $DIR/check-attr-test.rs:18:1
+   |
+LL | / /// bar
+LL | | ///
+LL | | /// ```should-panic,shouldpanic,shOuld_panic
+LL | | /// boo
+LL | | /// ```
+   | |_______^
+   |
+   = help: use `should_panic` to invert the results of this test, so that if passes if it panics and fails if it does not
+   = help: this code block may be skipped during testing, because unknown attributes are treated as markers for code samples written in other programming languages, unless it is also explicitly marked as `rust`
+
+error: unknown attribute `no-run`
+  --> $DIR/check-attr-test.rs:28:1
+   |
+LL | / /// foobar
+LL | | ///
+LL | | /// ```no-run,norun,nO_run
+LL | | /// boo
+LL | | /// ```
+   | |_______^
+   |
+   = help: use `no_run` to compile, but not run, the code sample during testing
+   = help: this code block may be skipped during testing, because unknown attributes are treated as markers for code samples written in other programming languages, unless it is also explicitly marked as `rust`
+
+error: unknown attribute `norun`
+  --> $DIR/check-attr-test.rs:28:1
+   |
+LL | / /// foobar
+LL | | ///
+LL | | /// ```no-run,norun,nO_run
+LL | | /// boo
+LL | | /// ```
+   | |_______^
+   |
+   = help: use `no_run` to compile, but not run, the code sample during testing
+   = help: this code block may be skipped during testing, because unknown attributes are treated as markers for code samples written in other programming languages, unless it is also explicitly marked as `rust`
+
+error: unknown attribute `nO_run`
+  --> $DIR/check-attr-test.rs:28:1
+   |
+LL | / /// foobar
+LL | | ///
+LL | | /// ```no-run,norun,nO_run
+LL | | /// boo
+LL | | /// ```
+   | |_______^
+   |
+   = help: use `no_run` to compile, but not run, the code sample during testing
+   = help: this code block may be skipped during testing, because unknown attributes are treated as markers for code samples written in other programming languages, unless it is also explicitly marked as `rust`
+
+error: unknown attribute `test-harness`
+  --> $DIR/check-attr-test.rs:38:1
+   |
+LL | / /// b
+LL | | ///
+LL | | /// ```test-harness,testharness,tesT_harness
+LL | | /// boo
+LL | | /// ```
+   | |_______^
+   |
+   = help: use `test_harness` to run functions marked `#[test]` instead of a potentially-implicit `main` function
+   = help: this code block may be skipped during testing, because unknown attributes are treated as markers for code samples written in other programming languages, unless it is also explicitly marked as `rust`
+
+error: unknown attribute `testharness`
+  --> $DIR/check-attr-test.rs:38:1
+   |
+LL | / /// b
+LL | | ///
+LL | | /// ```test-harness,testharness,tesT_harness
+LL | | /// boo
+LL | | /// ```
+   | |_______^
+   |
+   = help: use `test_harness` to run functions marked `#[test]` instead of a potentially-implicit `main` function
+   = help: this code block may be skipped during testing, because unknown attributes are treated as markers for code samples written in other programming languages, unless it is also explicitly marked as `rust`
+
+error: unknown attribute `tesT_harness`
+  --> $DIR/check-attr-test.rs:38:1
+   |
+LL | / /// b
+LL | | ///
+LL | | /// ```test-harness,testharness,tesT_harness
+LL | | /// boo
+LL | | /// ```
+   | |_______^
+   |
+   = help: use `test_harness` to run functions marked `#[test]` instead of a potentially-implicit `main` function
+   = help: this code block may be skipped during testing, because unknown attributes are treated as markers for code samples written in other programming languages, unless it is also explicitly marked as `rust`
+
+error: aborting due to 12 previous errors
+

@@ -1,0 +1,14 @@
+error: only functions, statics, and consts can define opaque types
+  --> $DIR/define-via-extern.rs:6:5
+   |
+LL |     #[define_opaque(Hi)] fn foo();
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: only functions, statics, and consts can define opaque types
+  --> $DIR/define-via-extern.rs:9:5
+   |
+LL |     #[define_opaque(Hi)] static HI: Hi;
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

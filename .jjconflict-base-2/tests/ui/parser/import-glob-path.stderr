@@ -1,0 +1,10 @@
+error: expected `;`, found `::`
+  --> $DIR/import-glob-path.rs:1:11
+   |
+LL | use foo::*::bar
+   |           ^^ expected `;`
+   |
+   = note: the wildcard token must be last on the path
+
+error: aborting due to 1 previous error
+

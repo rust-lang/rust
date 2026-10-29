@@ -1,0 +1,10 @@
+warning: trait `Foo` is never used
+  --> $DIR/method-recursive-blanket-impl.rs:13:7
+   |
+LL | trait Foo<A> {
+   |       ^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: 1 warning emitted
+

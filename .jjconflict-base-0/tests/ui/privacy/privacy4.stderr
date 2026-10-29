@@ -1,0 +1,15 @@
+error[E0603]: module `glob` is private
+  --> $DIR/privacy4.rs:23:14
+   |
+LL |     use bar::glob::gpriv;
+   |              ^^^^ private module
+   |
+note: the module `glob` is defined here
+  --> $DIR/privacy4.rs:15:5
+   |
+LL |     mod glob {
+   |     ^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0603`.

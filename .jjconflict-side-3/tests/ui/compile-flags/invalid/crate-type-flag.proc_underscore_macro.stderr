@@ -1,0 +1,2 @@
+error: unknown crate type: `proc_macro`, expected one of: `lib`, `rlib`, `staticlib`, `dylib`, `cdylib`, `bin`, `proc-macro`
+

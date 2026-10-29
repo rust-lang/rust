@@ -1,0 +1,9 @@
+error[E0224]: at least one trait is required for an object type
+  --> $DIR/ice-bare-dyn-106213.rs:5:17
+   |
+LL | fn use_avx() -> dyn  {
+   |                 ^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0224`.

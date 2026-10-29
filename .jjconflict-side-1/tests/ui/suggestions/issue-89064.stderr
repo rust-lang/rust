@@ -1,0 +1,78 @@
+error[E0107]: associated function takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/issue-89064.rs:17:16
+   |
+LL |     let _ = A::foo::<S>();
+   |                ^^^ expected 0 generic arguments
+   |
+note: associated function defined here, with 0 generic parameters
+  --> $DIR/issue-89064.rs:4:8
+   |
+LL |     fn foo() {}
+   |        ^^^
+help: consider moving this generic argument to the `A` trait, which takes up to 1 argument
+   |
+LL -     let _ = A::foo::<S>();
+LL +     let _ = A::<S>::foo();
+   |
+help: remove the unnecessary generics
+   |
+LL -     let _ = A::foo::<S>();
+LL +     let _ = A::foo();
+   |
+
+error[E0107]: associated function takes 0 generic arguments but 2 generic arguments were supplied
+  --> $DIR/issue-89064.rs:22:16
+   |
+LL |     let _ = B::bar::<S, S>();
+   |                ^^^ expected 0 generic arguments
+   |
+note: associated function defined here, with 0 generic parameters
+  --> $DIR/issue-89064.rs:8:8
+   |
+LL |     fn bar() {}
+   |        ^^^
+help: consider moving these generic arguments to the `B` trait, which takes up to 2 arguments
+   |
+LL -     let _ = B::bar::<S, S>();
+LL +     let _ = B::<S, S>::bar();
+   |
+help: remove the unnecessary generics
+   |
+LL -     let _ = B::bar::<S, S>();
+LL +     let _ = B::bar();
+   |
+
+error[E0107]: associated function takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/issue-89064.rs:27:21
+   |
+LL |     let _ = A::<S>::foo::<S>();
+   |                     ^^^----- help: remove the unnecessary generics
+   |                     |
+   |                     expected 0 generic arguments
+   |
+note: associated function defined here, with 0 generic parameters
+  --> $DIR/issue-89064.rs:4:8
+   |
+LL |     fn foo() {}
+   |        ^^^
+
+error[E0107]: method takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/issue-89064.rs:31:16
+   |
+LL |     let _ = 42.into::<Option<_>>();
+   |                ^^^^ expected 0 generic arguments
+   |
+help: consider moving this generic argument to the `Into` trait, which takes up to 1 argument
+   |
+LL -     let _ = 42.into::<Option<_>>();
+LL +     let _ = Into::<Option<_>>::into(42);
+   |
+help: remove the unnecessary generics
+   |
+LL -     let _ = 42.into::<Option<_>>();
+LL +     let _ = 42.into();
+   |
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0107`.

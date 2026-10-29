@@ -1,0 +1,31 @@
+error: coroutine cannot be sent between threads safely
+  --> $DIR/drop-yield-twice.rs:7:5
+   |
+LL | /     assert_send(#[coroutine] || {
+LL | |         let guard = Foo(42);
+LL | |         yield;
+LL | |         drop(guard);
+LL | |         yield;
+LL | |     })
+   | |______^ coroutine is not `Send`
+   |
+help: within `{coroutine@$DIR/drop-yield-twice.rs:7:30: 7:32}`, the trait `Send` is not implemented for `Foo`
+  --> $DIR/drop-yield-twice.rs:3:1
+   |
+LL | struct Foo(i32);
+   | ^^^^^^^^^^
+note: coroutine is not `Send` as this value is used across a yield
+  --> $DIR/drop-yield-twice.rs:9:9
+   |
+LL |         let guard = Foo(42);
+   |             ----- has type `Foo` which is not `Send`
+LL |         yield;
+   |         ^^^^^ yield occurs here, with `guard` maybe used later
+note: required by a bound in `assert_send`
+  --> $DIR/drop-yield-twice.rs:15:19
+   |
+LL | fn assert_send<T: Send>(_: T) {}
+   |                   ^^^^ required by this bound in `assert_send`
+
+error: aborting due to 1 previous error
+

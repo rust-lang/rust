@@ -1,0 +1,24 @@
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/struct-pattern-on-non-struct-resolve-error.rs:9:9
+   |
+LL |         x
+   |         ^ not found in this scope
+
+error[E0071]: expected struct, variant or union type, found inferred type
+  --> $DIR/struct-pattern-on-non-struct-resolve-error.rs:5:12
+   |
+LL |     if let <Vec<()> as Iterator>::Item { .. } = 1 {
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a struct
+
+error[E0277]: `Vec<()>` is not an iterator
+  --> $DIR/struct-pattern-on-non-struct-resolve-error.rs:5:12
+   |
+LL |     if let <Vec<()> as Iterator>::Item { .. } = 1 {
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Vec<()>` is not an iterator
+   |
+   = help: the trait `Iterator` is not implemented for `Vec<()>`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0071, E0277, E0425.
+For more information about an error, try `rustc --explain E0071`.

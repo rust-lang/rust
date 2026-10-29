@@ -1,0 +1,40 @@
+error[E0505]: cannot move out of `a` because it is borrowed
+  --> $DIR/borrowck-bad-nested-calls-move.rs:25:9
+   |
+LL |     let mut a: Box<_> = Box::new(1);
+   |         ----- binding `a` declared here
+...
+LL |     add(
+   |     --- borrow later used by call
+LL |         &*a,
+   |         --- borrow of `*a` occurs here
+LL |         a);
+   |         ^ move out of `a` occurs here
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL -         &*a,
+LL +         &a.clone(),
+   |
+
+error[E0505]: cannot move out of `a` because it is borrowed
+  --> $DIR/borrowck-bad-nested-calls-move.rs:32:9
+   |
+LL |     let mut a: Box<_> = Box::new(1);
+   |         ----- binding `a` declared here
+LL |     add(
+   |     --- borrow later used by call
+LL |         &*a,
+   |         --- borrow of `*a` occurs here
+LL |         a);
+   |         ^ move out of `a` occurs here
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL -         &*a,
+LL +         &a.clone(),
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0505`.

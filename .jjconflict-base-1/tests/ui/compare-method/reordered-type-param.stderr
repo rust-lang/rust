@@ -1,0 +1,27 @@
+error[E0053]: method `b` has an incompatible type for trait
+  --> $DIR/reordered-type-param.rs:16:30
+   |
+LL |   fn b<F:Clone,G>(&self, _x: G) -> G { panic!() }
+   |        -       -             ^ expected type parameter `F`, found type parameter `G`
+   |        |       |
+   |        |       found type parameter
+   |        expected type parameter
+   |
+note: type in trait
+  --> $DIR/reordered-type-param.rs:7:29
+   |
+LL |   fn b<C:Clone,D>(&self, x: C) -> C;
+   |                             ^
+   = note: expected signature `fn(&E, F) -> F`
+              found signature `fn(&E, G) -> G`
+   = note: a type parameter was expected, but a different one was found; you might be missing a type parameter or trait bound
+   = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
+help: change the parameter type to match the trait
+   |
+LL -   fn b<F:Clone,G>(&self, _x: G) -> G { panic!() }
+LL +   fn b<F:Clone,G>(&self, _x: F) -> G { panic!() }
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0053`.

@@ -1,0 +1,16 @@
+error[E0311]: the parameter type `T` may not live long enough
+  --> $DIR/E0311.rs:6:5
+   |
+LL | fn no_restriction<T>(x: &()) -> &() {
+   |                         --- the parameter type `T` must be valid for the anonymous lifetime defined here...
+LL |     with_restriction::<T>(x)
+   |     ^^^^^^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | fn no_restriction<'a, T: 'a>(x: &'a ()) -> &'a () {
+   |                   +++  ++++      ++         ++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0311`.

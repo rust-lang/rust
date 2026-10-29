@@ -1,0 +1,130 @@
+error[E0308]: mismatched types
+  --> $DIR/assignment-in-if.rs:15:8
+   |
+LL |     if x = x {
+   |        ^^^^^ expected `bool`, found `()`
+   |
+help: you might have meant to compare for equality
+   |
+LL |     if x == x {
+   |           +
+
+error[E0308]: mismatched types
+  --> $DIR/assignment-in-if.rs:20:8
+   |
+LL |     if (x = x) {
+   |        ^^^^^^^ expected `bool`, found `()`
+   |
+help: you might have meant to compare for equality
+   |
+LL |     if (x == x) {
+   |            +
+
+error[E0308]: mismatched types
+  --> $DIR/assignment-in-if.rs:25:8
+   |
+LL |     if y = (Foo { foo: x }) {
+   |        ^^^^^^^^^^^^^^^^^^^^ expected `bool`, found `()`
+   |
+help: you might have meant to compare for equality
+   |
+LL |     if y == (Foo { foo: x }) {
+   |           +
+
+error[E0308]: mismatched types
+  --> $DIR/assignment-in-if.rs:30:8
+   |
+LL |     if 3 = x {
+   |        ^^^^^ expected `bool`, found `()`
+   |
+help: you might have meant to compare for equality
+   |
+LL |     if 3 == x {
+   |           +
+
+error[E0308]: mismatched types
+  --> $DIR/assignment-in-if.rs:36:13
+   |
+LL |             x = 4
+   |             ^^^^^ expected `bool`, found `()`
+   |
+help: you might have meant to compare for equality
+   |
+LL |             x == 4
+   |                +
+
+error[E0308]: mismatched types
+  --> $DIR/assignment-in-if.rs:38:13
+   |
+LL |             x = 5
+   |             ^^^^^ expected `bool`, found `()`
+   |
+help: you might have meant to compare for equality
+   |
+LL |             x == 5
+   |                +
+
+error[E0308]: mismatched types
+  --> $DIR/assignment-in-if.rs:44:18
+   |
+LL |     if x == x && x = x && x == x {
+   |        ------    ^ expected `bool`, found `usize`
+   |        |
+   |        expected because this is `bool`
+
+error[E0308]: mismatched types
+  --> $DIR/assignment-in-if.rs:44:22
+   |
+LL |     if x == x && x = x && x == x {
+   |                      ^ expected `bool`, found `usize`
+
+error[E0308]: mismatched types
+  --> $DIR/assignment-in-if.rs:44:8
+   |
+LL |     if x == x && x = x && x == x {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `bool`, found `()`
+   |
+help: you might have meant to compare for equality
+   |
+LL |     if x == x && x == x && x == x {
+   |                     +
+
+error[E0308]: mismatched types
+  --> $DIR/assignment-in-if.rs:51:28
+   |
+LL |     if x == x && x == x && x = x {
+   |        ----------------    ^ expected `bool`, found `usize`
+   |        |
+   |        expected because this is `bool`
+
+error[E0308]: mismatched types
+  --> $DIR/assignment-in-if.rs:51:8
+   |
+LL |     if x == x && x == x && x = x {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `bool`, found `()`
+   |
+help: you might have meant to compare for equality
+   |
+LL |     if x == x && x == x && x == x {
+   |                               +
+
+error[E0308]: mismatched types
+  --> $DIR/assignment-in-if.rs:57:12
+   |
+LL |     if x = 1 && x == 1 {
+   |            ^ expected `bool`, found integer
+
+error[E0308]: mismatched types
+  --> $DIR/assignment-in-if.rs:57:8
+   |
+LL |     if x = 1 && x == 1 {
+   |        ^^^^^^^^^^^^^^^ expected `bool`, found `()`
+   |
+help: you might have meant to compare for equality
+   |
+LL |     if x == 1 && x == 1 {
+   |           +
+
+error: aborting due to 13 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

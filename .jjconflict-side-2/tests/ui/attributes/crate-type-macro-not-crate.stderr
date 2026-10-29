@@ -1,0 +1,17 @@
+error: unexpected end of macro invocation
+  --> $DIR/crate-type-macro-not-crate.rs:8:16
+   |
+LL | macro_rules! foo {
+   | ---------------- when calling this macro
+...
+LL | #[crate_type = foo!()]
+   |                ^^^^^^ missing tokens in macro arguments
+   |
+note: while trying to match meta-variable `$x:expr`
+  --> $DIR/crate-type-macro-not-crate.rs:5:6
+   |
+LL |     ($x:expr) => {"rlib"}
+   |      ^^^^^^^
+
+error: aborting due to 1 previous error
+

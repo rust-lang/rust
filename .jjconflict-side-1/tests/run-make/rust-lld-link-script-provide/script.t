@@ -1,0 +1,1 @@
+PROVIDE(foo = bar);

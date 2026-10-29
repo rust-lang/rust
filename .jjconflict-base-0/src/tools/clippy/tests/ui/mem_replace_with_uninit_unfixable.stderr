@@ -1,0 +1,12 @@
+error: replacing with `mem::zeroed()`
+  --> tests/ui/mem_replace_with_uninit_unfixable.rs:16:23
+   |
+LL |         let taken_v = mem::replace(&mut v, mem::zeroed());
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using a default value or the `take_mut` crate instead
+   = note: `-D clippy::mem-replace-with-uninit` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::mem_replace_with_uninit)]`
+
+error: aborting due to 1 previous error
+

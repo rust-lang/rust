@@ -1,0 +1,13 @@
+error: unconstrained generic constant
+  --> $DIR/issue-84659.rs:9:15
+   |
+LL |     type Baz: Bar<{ Self::N }>;
+   |               ^^^^^^^^^^^^^^^^
+   |
+help: try adding a `where` bound
+   |
+LL |     type Baz: Bar<{ Self::N }> where [(); { Self::N }]:;
+   |                                ++++++++++++++++++++++++
+
+error: aborting due to 1 previous error
+

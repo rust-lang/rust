@@ -1,0 +1,10 @@
+macro_rules! foo {
+    () => {
+        "bar.rs"
+    };
+}
+
+#[path = "file"] //~ ERROR: malformed `path` attribute
+mod abc {}
+
+fn main() {}

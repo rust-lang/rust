@@ -1,0 +1,11 @@
+error[E0608]: cannot index into a value of type `()`
+  --> $DIR/coercion-check-for-indexing-expression-issue-40861.rs:4:7
+   |
+LL |     ()[f(&[1.0])];
+   |       ^^^^^^^^^^^
+   |
+   = help: tuples are indexed with a dot and a literal index: `tuple.0`, `tuple.1`, etc.
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0608`.

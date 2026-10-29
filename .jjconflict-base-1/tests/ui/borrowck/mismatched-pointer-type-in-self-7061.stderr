@@ -1,0 +1,14 @@
+error[E0308]: mismatched types
+  --> $DIR/mismatched-pointer-type-in-self-7061.rs:7:46
+   |
+LL |     fn foo(&'a mut self) -> Box<BarStruct> { self }
+   |                             --------------   ^^^^ expected `Box<BarStruct>`, found `&mut BarStruct`
+   |                             |
+   |                             expected `Box<BarStruct>` because of return type
+   |
+   = note:         expected struct `Box<BarStruct>`
+           found mutable reference `&'a mut BarStruct`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

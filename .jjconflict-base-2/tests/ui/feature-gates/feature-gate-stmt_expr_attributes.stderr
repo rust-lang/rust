@@ -1,0 +1,35 @@
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/feature-gate-stmt_expr_attributes.rs:1:16
+   |
+LL | const X: i32 = #[allow(dead_code)] 8;
+   |                ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/feature-gate-stmt_expr_attributes.rs:5:5
+   |
+LL |     /// foo
+   |     ^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = help: `///` is used for outer documentation comments; for a plain comment, use `//`
+
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/feature-gate-stmt_expr_attributes.rs:10:5
+   |
+LL |     //! foo
+   |     ^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = help: `//!` is used for inner documentation comments; for a plain comment, use `//` by removing the `!` or inserting a space in between them: `// !`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

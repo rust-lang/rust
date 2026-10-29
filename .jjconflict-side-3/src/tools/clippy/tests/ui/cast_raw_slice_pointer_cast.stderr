@@ -1,0 +1,83 @@
+error: casting the result of `from_raw_parts` to *const [u8]
+  --> tests/ui/cast_raw_slice_pointer_cast.rs:9:35
+   |
+LL |     let _: *const [u8] = unsafe { std::slice::from_raw_parts(ptr, 1) as *const [u8] };
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `std::ptr::slice_from_raw_parts(ptr, 1)`
+   |
+   = note: `-D clippy::cast-slice-from-raw-parts` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::cast_slice_from_raw_parts)]`
+
+error: casting the result of `from_raw_parts_mut` to *mut [u8]
+  --> tests/ui/cast_raw_slice_pointer_cast.rs:11:35
+   |
+LL |     let _: *const [u8] = unsafe { std::slice::from_raw_parts_mut(mptr, 1) as *mut [u8] };
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `std::ptr::slice_from_raw_parts_mut(mptr, 1)`
+
+error: casting the result of `from_raw_parts` to *const [u8]
+  --> tests/ui/cast_raw_slice_pointer_cast.rs:13:26
+   |
+LL |     let _: *const [u8] = unsafe { std::slice::from_raw_parts(ptr, 1) } as *const [u8];
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `std::ptr::slice_from_raw_parts(ptr, 1)`
+
+error: casting the result of `from_raw_parts` to *const [u8]
+  --> tests/ui/cast_raw_slice_pointer_cast.rs:17:30
+   |
+LL |         let _: *const [u8] = unsafe { slice::from_raw_parts(ptr, 1) } as *const [u8];
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `std::ptr::slice_from_raw_parts(ptr, 1)`
+
+error: casting the result of `from_raw_parts` to *const [u8]
+  --> tests/ui/cast_raw_slice_pointer_cast.rs:20:30
+   |
+LL |         let _: *const [u8] = unsafe { one::from_raw_parts(ptr, 1) } as *const [u8];
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `std::ptr::slice_from_raw_parts(ptr, 1)`
+
+error: casting the result of `from_raw_parts` to *const [u8]
+  --> tests/ui/cast_raw_slice_pointer_cast.rs:25:30
+   |
+LL |         let _: *const [u8] = unsafe { slice::from_raw_parts(ptr, 1) } as *const [u8];
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `std::ptr::slice_from_raw_parts(ptr, 1)`
+
+error: casting the result of `from_raw_parts` to *const [u8]
+  --> tests/ui/cast_raw_slice_pointer_cast.rs:28:30
+   |
+LL |         let _: *const [u8] = unsafe { one::from_raw_parts(ptr, 1) } as *const [u8];
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `std::ptr::slice_from_raw_parts(ptr, 1)`
+
+error: implicitly casting the result of `from_raw_parts` to `*const [u8]`
+  --> tests/ui/cast_raw_slice_pointer_cast.rs:34:39
+   |
+LL |         let _: *const [u8] = unsafe { std::slice::from_raw_parts(ptr, 1) };
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace_with: `std::ptr::slice_from_raw_parts(ptr, 1)`
+
+error: implicitly casting the result of `from_raw_parts_mut` to `*mut [u8]`
+  --> tests/ui/cast_raw_slice_pointer_cast.rs:36:37
+   |
+LL |         let _: *mut [u8] = unsafe { std::slice::from_raw_parts_mut(mptr, 1) };
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace_with: `std::ptr::slice_from_raw_parts_mut(mptr, 1)`
+
+error: implicitly casting the result of `from_raw_parts` to `*const [u8]`
+  --> tests/ui/cast_raw_slice_pointer_cast.rs:38:40
+   |
+LL |         require_raw_slice_ptr(unsafe { std::slice::from_raw_parts(ptr, 1) });
+   |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace_with: `std::ptr::slice_from_raw_parts(ptr, 1)`
+
+error: implicitly casting the result of `from_raw_parts` to `*const [u8]`
+  --> tests/ui/cast_raw_slice_pointer_cast.rs:46:39
+   |
+LL |         let _: *const [u8] = unsafe { std::slice::from_raw_parts(PTR, 1) };
+   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace_with: `std::ptr::slice_from_raw_parts(PTR, 1)`
+
+error: implicitly casting the result of `from_raw_parts_mut` to `*mut [u8]`
+  --> tests/ui/cast_raw_slice_pointer_cast.rs:48:37
+   |
+LL |         let _: *mut [u8] = unsafe { std::slice::from_raw_parts_mut(MPTR, 1) };
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace_with: `std::ptr::slice_from_raw_parts_mut(MPTR, 1)`
+
+error: implicitly casting the result of `from_raw_parts` to `*const [u8]`
+  --> tests/ui/cast_raw_slice_pointer_cast.rs:50:40
+   |
+LL |         require_raw_slice_ptr(unsafe { std::slice::from_raw_parts(PTR, 1) });
+   |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace_with: `std::ptr::slice_from_raw_parts(PTR, 1)`
+
+error: aborting due to 13 previous errors
+

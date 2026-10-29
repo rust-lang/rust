@@ -1,0 +1,13 @@
+error: lifetime parameters or bounds of `other` do not match the declaration
+  --> $DIR/subtype_1.rs:18:9
+   |
+LL |     safe fn bar<'a, 'b>(x: &'b u64) -> &'a u64;
+   |                -------- lifetimes in impl do not match this signature
+...
+LL | #[foo]
+   | ------ required because of this attribute
+LL | fn other<'a, 'b>(x: &'b u64) -> &'b u64 {
+   |         ^^^^^^^^ lifetimes do not match
+
+error: aborting due to 1 previous error
+

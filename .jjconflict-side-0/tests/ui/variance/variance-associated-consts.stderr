@@ -1,0 +1,19 @@
+error: unconstrained generic constant
+  --> $DIR/variance-associated-consts.rs:14:12
+   |
+LL |     field: [u8; <T as Trait>::Const]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try adding a `where` bound
+   |
+LL | struct Foo<T: Trait> where [(); <T as Trait>::Const]: {
+   |                      ++++++++++++++++++++++++++++++++
+
+error: [T: o]
+  --> $DIR/variance-associated-consts.rs:13:1
+   |
+LL | struct Foo<T: Trait> {
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

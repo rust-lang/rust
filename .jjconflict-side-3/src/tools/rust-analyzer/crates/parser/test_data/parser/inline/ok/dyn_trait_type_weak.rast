@@ -1,0 +1,186 @@
+SOURCE_FILE
+  TYPE_ALIAS
+    COMMENT "// 2015"
+    WHITESPACE "\n"
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "DynPlain"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    DYN_TRAIT_TYPE
+      DYN_KW "dyn"
+      WHITESPACE " "
+      TYPE_BOUND_LIST
+        TYPE_BOUND
+          PATH_TYPE
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "Path"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "DynRef"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    REF_TYPE
+      AMP "&"
+      DYN_TRAIT_TYPE
+        DYN_KW "dyn"
+        WHITESPACE " "
+        TYPE_BOUND_LIST
+          TYPE_BOUND
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "Path"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "DynLt"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    DYN_TRAIT_TYPE
+      DYN_KW "dyn"
+      WHITESPACE " "
+      TYPE_BOUND_LIST
+        TYPE_BOUND
+          LIFETIME
+            LIFETIME_IDENT "'a"
+        WHITESPACE " "
+        PLUS "+"
+        WHITESPACE " "
+        TYPE_BOUND
+          PATH_TYPE
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "Path"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "DynQuestion"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    DYN_TRAIT_TYPE
+      DYN_KW "dyn"
+      WHITESPACE " "
+      TYPE_BOUND_LIST
+        TYPE_BOUND
+          QUESTION "?"
+          PATH_TYPE
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "Path"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "DynFor"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    DYN_TRAIT_TYPE
+      DYN_KW "dyn"
+      WHITESPACE " "
+      TYPE_BOUND_LIST
+        TYPE_BOUND
+          FOR_BINDER
+            FOR_KW "for"
+            GENERIC_PARAM_LIST
+              L_ANGLE "<"
+              LIFETIME_PARAM
+                LIFETIME
+                  LIFETIME_IDENT "'a"
+              R_ANGLE ">"
+          WHITESPACE " "
+          PATH_TYPE
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "Path"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "DynParen"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    DYN_TRAIT_TYPE
+      DYN_KW "dyn"
+      TYPE_BOUND_LIST
+        TYPE_BOUND
+          L_PAREN "("
+          PATH_TYPE
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "Path"
+          R_PAREN ")"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "Path"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    PATH_TYPE
+      PATH
+        PATH
+          PATH_SEGMENT
+            NAME_REF
+              IDENT "dyn"
+        COLON2 "::"
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "Path"
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  TYPE_ALIAS
+    TYPE_KW "type"
+    WHITESPACE " "
+    NAME
+      IDENT "Generic"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    PATH_TYPE
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "dyn"
+          GENERIC_ARG_LIST
+            L_ANGLE "<"
+            TYPE_ARG
+              PATH_TYPE
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "Path"
+            R_ANGLE ">"
+    SEMICOLON ";"
+  WHITESPACE "\n"

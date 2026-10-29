@@ -1,0 +1,79 @@
+#![warn(clippy::mismatched_bit_width_type)]
+
+use core::num::{self, NonZero, NonZeroI32, NonZeroU32};
+
+fn main() {
+    // left and right ewpression have different calling types
+    // unsigned
+    let w: u8 = 5;
+    let _ = w.bit_width(); //~ mismatched_bit_width_type
+    let _ = w.bit_width(); //~ mismatched_bit_width_type
+    let w: u16 = 5;
+    let _ = w.bit_width(); //~ mismatched_bit_width_type
+    let _ = w.bit_width(); //~ mismatched_bit_width_type
+    let w: u32 = 5;
+    let _ = w.bit_width(); //~ mismatched_bit_width_type
+    let _ = w.bit_width(); //~ mismatched_bit_width_type
+    let w: u64 = 5;
+    let _ = w.bit_width(); //~ mismatched_bit_width_type
+    let _ = w.bit_width(); //~ mismatched_bit_width_type
+    let w: usize = 5;
+    let _ = w.bit_width(); //~ mismatched_bit_width_type
+    let _ = w.bit_width(); //~ mismatched_bit_width_type
+
+    // signed
+    let x: i8 = -5;
+    let _ = x.cast_unsigned().bit_width(); //~ mismatched_bit_width_type
+    let _ = x.cast_unsigned().bit_width(); //~ mismatched_bit_width_type
+    let x: i16 = -5;
+    let _ = x.cast_unsigned().bit_width(); //~ mismatched_bit_width_type
+    let _ = x.cast_unsigned().bit_width(); //~ mismatched_bit_width_type
+    let x: i32 = -5;
+    let _ = x.cast_unsigned().bit_width(); //~ mismatched_bit_width_type
+    let _ = x.cast_unsigned().bit_width(); //~ mismatched_bit_width_type
+    let x: i64 = -5;
+    let _ = x.cast_unsigned().bit_width(); //~ mismatched_bit_width_type
+    let _ = x.cast_unsigned().bit_width(); //~ mismatched_bit_width_type
+    let x: isize = -5;
+    let _ = x.cast_unsigned().bit_width(); //~ mismatched_bit_width_type
+    let _ = x.cast_unsigned().bit_width(); //~ mismatched_bit_width_type
+
+    // `NonZero::<T>::BITS - x.leading_zeros()`
+    // unsigned
+    let y = NonZero::<u8>::new(5).unwrap();
+    let _ = y.bit_width().get(); //~ mismatched_bit_width_type
+    let _ = y.bit_width().get(); //~ mismatched_bit_width_type
+    let y = NonZero::<u16>::new(5).unwrap();
+    let _ = y.bit_width().get(); //~ mismatched_bit_width_type
+    let _ = y.bit_width().get(); //~ mismatched_bit_width_type
+    let y = NonZero::<u32>::new(5).unwrap();
+    let _ = y.bit_width().get(); //~ mismatched_bit_width_type
+    let _ = y.bit_width().get(); //~ mismatched_bit_width_type
+    let y = NonZero::<u64>::new(5).unwrap();
+    let _ = y.bit_width().get(); //~ mismatched_bit_width_type
+    let _ = y.bit_width().get(); //~ mismatched_bit_width_type
+    let y = NonZero::<usize>::new(5).unwrap();
+    let _ = y.bit_width().get(); //~ mismatched_bit_width_type
+    let _ = y.bit_width().get(); //~ mismatched_bit_width_type
+
+    // signed
+    let z = NonZero::<i8>::new(-5).unwrap();
+    let _ = z.cast_unsigned().bit_width().get(); //~ mismatched_bit_width_type
+    let _ = z.cast_unsigned().bit_width().get(); //~ mismatched_bit_width_type
+    let z = NonZero::<i16>::new(-5).unwrap();
+    let _ = z.cast_unsigned().bit_width().get(); //~ mismatched_bit_width_type
+    let _ = z.cast_unsigned().bit_width().get(); //~ mismatched_bit_width_type
+    let z = NonZero::<i32>::new(-5).unwrap();
+    let _ = z.cast_unsigned().bit_width().get(); //~ mismatched_bit_width_type
+    let _ = z.cast_unsigned().bit_width().get(); //~ mismatched_bit_width_type
+    let z = NonZero::<i64>::new(-5).unwrap();
+    let _ = z.cast_unsigned().bit_width().get(); //~ mismatched_bit_width_type
+    let _ = z.cast_unsigned().bit_width().get(); //~ mismatched_bit_width_type
+    let z = NonZero::<isize>::new(-5).unwrap();
+    let _ = z.cast_unsigned().bit_width().get(); //~ mismatched_bit_width_type
+    let _ = z.cast_unsigned().bit_width().get(); //~ mismatched_bit_width_type
+
+    // negative case.
+    // left expression is a literal
+    let z: u32 = 1_000_000 - x.leading_zeros();
+}

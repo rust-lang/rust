@@ -1,0 +1,19 @@
+error[E0057]: this function takes 2 arguments but 1 argument was supplied
+  --> $DIR/issue-99482.rs:3:14
+   |
+LL |     let _f = f(main);
+   |              ^ ---- argument #1 of type `()` is missing
+   |
+note: closure defined here
+  --> $DIR/issue-99482.rs:2:13
+   |
+LL |     let f = |_: (), f: fn()| f;
+   |             ^^^^^^^^^^^^^^^^
+help: provide the argument
+   |
+LL |     let _f = f((), main);
+   |                +++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0057`.

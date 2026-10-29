@@ -1,0 +1,22 @@
+warning: taking a mutable reference to a `const` item
+  --> $DIR/thir-constparam-temp.rs:16:5
+   |
+LL |     YIKES.mut_self()
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: the mutable reference will refer to this temporary, not the original `const` item
+note: mutable reference created due to call to this method
+  --> $DIR/thir-constparam-temp.rs:12:5
+   |
+LL |     fn mut_self(&mut self) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+note: `const` item defined here
+  --> $DIR/thir-constparam-temp.rs:15:8
+   |
+LL | fn foo<const YIKES: Yikes>() {
+   |        ^^^^^^^^^^^^^^^^^^
+   = note: `#[warn(const_item_mutation)]` on by default
+
+warning: 1 warning emitted
+

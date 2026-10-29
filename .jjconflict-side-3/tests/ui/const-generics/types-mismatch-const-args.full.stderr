@@ -1,0 +1,34 @@
+error[E0308]: mismatched types
+  --> $DIR/types-mismatch-const-args.rs:14:41
+   |
+LL |     let _: A<'a, u32, {2u32}, {3u32}> = A::<'a, u32, {2u32 + 2u32}, {3u32}> { data: PhantomData };
+   |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `2`, found `4`
+   |
+   = note: expected constant `2`
+              found constant `4`
+
+error[E0308]: mismatched types
+  --> $DIR/types-mismatch-const-args.rs:16:41
+   |
+LL |     let _: A<'a, u16, {2u32}, {3u32}> = A::<'b, u32, {2u32}, {3u32}> { data: PhantomData };
+   |            --------------------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `A<'_, u16, 2, 3>`, found `A<'_, u32, 2, 3>`
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `A<'a, u16, _, _>`
+              found struct `A<'b, u32, _, _>`
+
+error[E0308]: mismatched types
+  --> $DIR/types-mismatch-const-args.rs:18:41
+   |
+LL |     let _: A<'a, u16, {4u32}, {3u32}> = A::<'b, u32, {2u32}, {3u32}> { data: PhantomData };
+   |            --------------------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `A<'_, u16, 4, 3>`, found `A<'_, u32, 2, 3>`
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `A<'a, u16, 4, _>`
+              found struct `A<'b, u32, 2, _>`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

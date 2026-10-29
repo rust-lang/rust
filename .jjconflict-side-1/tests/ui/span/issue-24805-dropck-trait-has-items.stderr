@@ -1,0 +1,51 @@
+error[E0597]: `d1` does not live long enough
+  --> $DIR/issue-24805-dropck-trait-has-items.rs:37:26
+   |
+LL |     let (_d, d1);
+   |              -- binding `d1` declared here
+LL |     d1 = D_HasSelfMethod(1);
+LL |     _d = D_HasSelfMethod(&d1);
+   |                          ^^^ borrowed value does not live long enough
+LL | }
+   | -
+   | |
+   | `d1` dropped here while still borrowed
+   | borrow might be used here, when `_d` is dropped and runs the `Drop` code for type `D_HasSelfMethod`
+   |
+   = note: values in a scope are dropped in the opposite order they are defined
+
+error[E0597]: `d1` does not live long enough
+  --> $DIR/issue-24805-dropck-trait-has-items.rs:43:33
+   |
+LL |     let (_d, d1);
+   |              -- binding `d1` declared here
+LL |     d1 = D_HasMethodWithSelfArg(1);
+LL |     _d = D_HasMethodWithSelfArg(&d1);
+   |                                 ^^^ borrowed value does not live long enough
+LL | }
+   | -
+   | |
+   | `d1` dropped here while still borrowed
+   | borrow might be used here, when `_d` is dropped and runs the `Drop` code for type `D_HasMethodWithSelfArg`
+   |
+   = note: values in a scope are dropped in the opposite order they are defined
+
+error[E0597]: `d1` does not live long enough
+  --> $DIR/issue-24805-dropck-trait-has-items.rs:49:20
+   |
+LL |     let (_d, d1);
+   |              -- binding `d1` declared here
+LL |     d1 = D_HasType(1);
+LL |     _d = D_HasType(&d1);
+   |                    ^^^ borrowed value does not live long enough
+LL | }
+   | -
+   | |
+   | `d1` dropped here while still borrowed
+   | borrow might be used here, when `_d` is dropped and runs the `Drop` code for type `D_HasType`
+   |
+   = note: values in a scope are dropped in the opposite order they are defined
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0597`.
