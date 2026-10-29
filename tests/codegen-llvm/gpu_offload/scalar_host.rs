@@ -12,7 +12,7 @@
 
 // CHECK: define{{( dso_local)?}} void @main()
 // CHECK-NOT: define
-// CHECK: %addr = alloca i64, align 8
+// CHECK: %addr = alloca [8 x i8], align 8
 // CHECK: store float 4.200000e+01, ptr [[TMP:%[^,]+]], align 4
 // CHECK: [[VAL:%[0-9]+]] = load i32, ptr [[TMP]], align 4
 // CHECK: [[VAL_I64:%[0-9]+]] = zext i32 [[VAL]] to i64
