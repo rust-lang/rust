@@ -846,6 +846,18 @@ LL - #[allow_internal_unsafe = 1]
 LL + #[allow_internal_unsafe]
    |
 
+error: private items are not exportable
+  --> $DIR/malformed-attrs.rs:117:1
+   |
+LL | fn test() {
+   | ^^^^^^^^^
+   |
+note: is only usable at visibility `pub(crate)`
+  --> $DIR/malformed-attrs.rs:117:1
+   |
+LL | fn test() {
+   | ^^^^^^^^^
+
 error: attribute should be applied to `const fn`
   --> $DIR/malformed-attrs.rs:30:1
    |

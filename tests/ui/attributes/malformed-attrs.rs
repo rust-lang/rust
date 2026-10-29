@@ -113,7 +113,7 @@
 //~^ ERROR malformed
 #[patchable_function_entry]
 //~^ ERROR malformed
-fn test() {
+fn test() { //~ ERROR private items are not exportable
     #[coroutine = 63] || {}
     //~^ ERROR malformed `coroutine` attribute input
     //~| ERROR mismatched types [E0308]
