@@ -28,23 +28,29 @@ use crate::passes::collect_intra_doc_links::UrlFragment;
 impl JsonRenderer<'_> {
     pub(super) fn convert_item(&self, item: &clean::Item) -> Option<Item> {
         let deprecation = item.deprecation(self.tcx);
-        let links = self
-            .cache
-            .intra_doc_links
-            .get(&item.item_id)
+        let docs = item
+            .doc_values()
             .into_iter()
-            .flatten()
-            .map(|clean::ItemLink { link, page_id, fragment, .. }| {
-                let id = match fragment {
-                    Some(UrlFragment::Item(frag_id)) => *frag_id,
-                    // FIXME: Pass the `UserWritten` segment to JSON consumer.
-                    Some(UrlFragment::UserWritten(_)) | None => *page_id,
-                };
+            .map(|(opt_def_id, text)| {
+                let links = self
+                    .cache
+                    .intra_doc_links
+                    .get(&opt_def_id.map_or(item.item_id, ItemId::DefId))
+                    .into_iter()
+                    .flatten()
+                    .map(|clean::ItemLink { link, page_id, fragment, .. }| {
+                        let id = match fragment {
+                            Some(UrlFragment::Item(frag_id)) => *frag_id,
+                            // FIXME: Pass the `UserWritten` segment to JSON consumer.
+                            Some(UrlFragment::UserWritten(_)) | None => *page_id,
+                        };
 
-                (String::from(&**link), self.id_from_item_default(id.into()))
+                        (String::from(&**link), self.id_from_item_default(id.into()))
+                    })
+                    .collect();
+                Doc { links, text }
             })
-            .collect();
-        let docs = item.opt_doc_value();
+            .collect::<Vec<_>>();
         let attrs = item
             .attrs
             .other_attrs
@@ -111,7 +117,6 @@ impl JsonRenderer<'_> {
             attrs,
             deprecation: deprecation.into_json(self),
             inner,
-            links,
         })
     }
 

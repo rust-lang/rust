@@ -24,10 +24,10 @@ impl Parametrized<i32> {
     pub type Proj = String;
 }
 
-//@ set param_bool = '$.index[?(@.docs=="param_bool")].id'
-//@ set param_i32 = '$.index[?(@.docs=="param_i32")].id'
-//@ set param_bool_proj = '$.index[?(@.docs=="param_bool_proj")].id'
-//@ set param_i32_proj = '$.index[?(@.docs=="param_i32_proj")].id'
+//@ set param_bool = '$.index[?(@.docs[0].text=="param_bool")].id'
+//@ set param_i32 = '$.index[?(@.docs[0].text=="param_i32")].id'
+//@ set param_bool_proj = '$.index[?(@.docs[0].text=="param_bool_proj")].id'
+//@ set param_i32_proj = '$.index[?(@.docs[0].text=="param_i32_proj")].id'
 
-//@ is '$.index[?(@.docs=="param_bool")].inner.impl.items[*]' $param_bool_proj
-//@ is '$.index[?(@.docs=="param_i32")].inner.impl.items[*]' $param_i32_proj
+//@ is '$.index[?(@.docs[0].text=="param_bool")].inner.impl.items[*]' $param_bool_proj
+//@ is '$.index[?(@.docs[0].text=="param_i32")].inner.impl.items[*]' $param_i32_proj

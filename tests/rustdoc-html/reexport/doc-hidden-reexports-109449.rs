@@ -134,7 +134,11 @@ pub mod doc_hidden_reexport {
     //@ count - '//dt' 1
     //@ has - '//a[@class="struct"]' 'Reexport'
     // Check that the `#[doc(hidden)]` re-export's attributes are not taken into account.
-    //@ has - '//dd' 'Visible. Original.'
+    //@ has - '//dd' 'Visible.'
+
+    //@ has 'foo/doc_hidden_reexport/struct.Reexport.html'
+    //@ has - '//div[@class="docblock"]/p' 'Visible.'
+    //@ has - '//div[@class="docblock"]/p' 'Original.'
     /// Visible.
     pub use self::Bar3 as Reexport;
     /// Hidden.

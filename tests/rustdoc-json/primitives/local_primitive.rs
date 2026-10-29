@@ -24,4 +24,4 @@ const _: () = ();
 //@ set local_i32 = "$.index[?(@.name=='i32')].id"
 
 //@ has "$.index[?(@.name=='local_primitive')]"
-//@ is "$.index[?(@.name=='local_primitive')].links['prim@i32']" $local_i32
+//@ is "$.index[?(@.name=='local_primitive')].docs[0].links['prim@i32']" $local_i32
