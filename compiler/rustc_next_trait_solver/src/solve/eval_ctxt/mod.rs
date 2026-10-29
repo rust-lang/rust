@@ -3,7 +3,7 @@ use std::ops::ControlFlow;
 
 #[cfg(feature = "nightly")]
 use rustc_macros::StableHash;
-use rustc_type_ir::data_structures::HashSet;
+use rustc_type_ir::data_structures::{HashMap, HashSet};
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::region_constraint::RegionConstraint;
 use rustc_type_ir::relate::Relate;
@@ -1711,6 +1711,72 @@ where
         }
 
         filter_irrelevant_region_constraints(self.delegate, var_values, &mut external_constraints);
+
+        // skip duplicate type outlives constraints with the same region requirements
+        // leave constraints we can't compare unchanged
+        if let ExternalRegionConstraints::Old(constraints) =
+            &mut external_constraints.region_constraints
+            && constraints.len() >= 10_000
+        {
+            let before = constraints.len();
+
+            let mut component_cache: HashMap<I::Ty, Option<Vec<usize>>> = Default::default();
+
+            // use numeric IDs so region sets can be sorted and compared
+            let mut region_ids: HashMap<Region<I>, usize> = Default::default();
+
+            let mut signatures = HashSet::default();
+            let mut kept = Vec::with_capacity(before);
+
+            for (constraint, vis) in std::mem::take(constraints) {
+                if let ty::RegionConstraint::Outlives(ty::OutlivesClause(lhs, rhs)) = constraint
+                    && let ty::GenericArgKind::Type(t) = lhs.kind()
+                    && matches!(vis, crate::solve::VisibleForLeakCheck::Unreachable)
+                    && matches!(rhs.kind(), ty::RePlaceholder(_))
+                    && !t.has_infer()
+                    && !t.has_escaping_bound_vars()
+                {
+                    let signature = component_cache.entry(t).or_insert_with(|| {
+                        let mut components = Default::default();
+                        rustc_type_ir::outlives::push_outlives_components(
+                            self.cx(),
+                            t,
+                            &mut components,
+                        );
+
+                        let mut ids = Vec::new();
+
+                        for component in components {
+                            match component {
+                                rustc_type_ir::outlives::Component::Region(reg) => {
+                                    let next_id = region_ids.len();
+                                    let id = *region_ids.entry(reg).or_insert(next_id);
+                                    ids.push(id);
+                                }
+                                _ => return None,
+                            }
+                        }
+
+                        ids.sort_unstable();
+                        ids.dedup();
+
+                        (!ids.is_empty()).then_some(ids)
+                    });
+
+                    if let Some(signature) = signature {
+                        // these constraints are ignored by leak checking
+                        // only one needs to be kept
+                        if !signatures.insert((rhs, signature.clone())) {
+                            continue;
+                        }
+                    }
+                }
+
+                kept.push((constraint, vis));
+            }
+
+            *constraints = kept;
+        }
 
         let mut canonical = canonicalize_response(
             self.delegate,
