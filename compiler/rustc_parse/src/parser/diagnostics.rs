@@ -928,7 +928,7 @@ impl<'a> Parser<'a> {
         token: token::Token,
         lo: Span,
         decl_hi: Span,
-    ) -> PResult<'a, Box<Expr>> {
+    ) -> PResult<'a, Expr> {
         err.span_label(lo.to(decl_hi), "while parsing the body of this closure");
         let guar = match before.kind {
             token::OpenBrace if token.kind != token::OpenBrace => {
@@ -1153,7 +1153,7 @@ impl<'a> Parser<'a> {
     pub(super) fn check_mistyped_turbofish_with_multiple_type_params(
         &mut self,
         mut e: Diag<'a>,
-        expr: &mut Box<Expr>,
+        expr: &mut Expr,
     ) -> PResult<'a, ErrorGuaranteed> {
         if let ExprKind::Binary(binop, _, _) = &expr.kind
             && let ast::BinOpKind::Lt = binop.node
@@ -1338,7 +1338,7 @@ impl<'a> Parser<'a> {
         &mut self,
         inner_op: &Expr,
         outer_op: &Spanned<AssocOp>,
-    ) -> PResult<'a, Option<Box<Expr>>> {
+    ) -> PResult<'a, Option<Expr>> {
         debug_assert!(
             outer_op.node.is_comparison(),
             "check_no_chained_comparison: {:?} is not comparison",
@@ -1723,10 +1723,7 @@ impl<'a> Parser<'a> {
 
     /// Consumes alternative await syntaxes like `await!(<expr>)`, `await <expr>`,
     /// `await? <expr>`, `await(<expr>)`, and `await { <expr> }`.
-    pub(super) fn recover_incorrect_await_syntax(
-        &mut self,
-        await_sp: Span,
-    ) -> PResult<'a, Box<Expr>> {
+    pub(super) fn recover_incorrect_await_syntax(&mut self, await_sp: Span) -> PResult<'a, Expr> {
         let (hi, expr_span, is_question) = if self.token == token::Bang {
             // Handle `await!(<expr>)`.
             self.recover_await_macro()?
@@ -1817,7 +1814,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(super) fn try_macro_suggestion(&mut self) -> PResult<'a, Box<Expr>> {
+    pub(super) fn try_macro_suggestion(&mut self) -> PResult<'a, Expr> {
         let is_try = self.token.is_keyword(kw::Try);
         let is_questionmark = self.look_ahead(1, |t| t == &token::Bang); //check for !
         let is_open = self.look_ahead(2, |t| t == &token::OpenParen); //check for (
@@ -1897,7 +1894,7 @@ impl<'a> Parser<'a> {
         close: ExpTokenPair,
         lo: Span,
         err: Diag<'a>,
-    ) -> Box<Expr> {
+    ) -> Expr {
         let guar = err.emit_err();
         // Recover from parse error, callers expect the closing delim to be consumed.
         self.consume_block(open, close, ConsumeClosingDelim::Yes);
@@ -2402,7 +2399,7 @@ impl<'a> Parser<'a> {
             self.dcx().emit_err(UnexpectedConstParamDeclaration { span: param.span(), sugg });
 
         let value = self.mk_expr_err(param.span(), guar);
-        Some(GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value }))
+        Some(GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value: Box::new(value) }))
     }
 
     pub(super) fn recover_const_param_declaration(
@@ -2483,7 +2480,10 @@ impl<'a> Parser<'a> {
                     );
                     let guar = err.emit_err();
                     let value = self.mk_expr_err(start.to(expr.span), guar);
-                    return Ok(GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value }));
+                    return Ok(GenericArg::Const(AnonConst {
+                        id: ast::DUMMY_NODE_ID,
+                        value: Box::new(value),
+                    }));
                 } else if snapshot.token == token::Colon
                     && expr.span.lo() == snapshot.token.span.hi()
                     && matches!(expr.kind, ExprKind::Path(..))
@@ -2523,7 +2523,7 @@ impl<'a> Parser<'a> {
     pub(crate) fn recover_unbraced_const_arg_that_can_begin_ty(
         &mut self,
         mut snapshot: SnapshotParser<'a>,
-    ) -> Option<Box<ast::Expr>> {
+    ) -> Option<ast::Expr> {
         match (|| snapshot.parse_expr_res(Restrictions::CONST_EXPR))() {
             // Since we don't know the exact reason why we failed to parse the type or the
             // expression, employ a simple heuristic to weed out some pathological cases.
@@ -2549,7 +2549,7 @@ impl<'a> Parser<'a> {
         );
         let guar = err.emit_err();
         let value = self.mk_expr_err(span, guar);
-        GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value })
+        GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value: Box::new(value) })
     }
 
     /// Some special error handling for the "top-level" patterns in a match arm,

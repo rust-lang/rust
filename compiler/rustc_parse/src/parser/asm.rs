@@ -108,15 +108,15 @@ fn parse_asm_operand<'a>(
             return Err(err);
         }
         let expr = p.parse_expr()?;
-        ast::InlineAsmOperand::In { reg, expr }
+        ast::InlineAsmOperand::In { reg, expr: Box::new(expr) }
     } else if eat_operand_keyword(p, exp!(Out), asm_macro)? {
         let reg = parse_reg(p)?;
         let expr = if p.eat_keyword(exp!(Underscore)) { None } else { Some(p.parse_expr()?) };
-        ast::InlineAsmOperand::Out { reg, expr, late: false }
+        ast::InlineAsmOperand::Out { reg, expr: expr.map(Box::new), late: false }
     } else if eat_operand_keyword(p, exp!(Lateout), asm_macro)? {
         let reg = parse_reg(p)?;
         let expr = if p.eat_keyword(exp!(Underscore)) { None } else { Some(p.parse_expr()?) };
-        ast::InlineAsmOperand::Out { reg, expr, late: true }
+        ast::InlineAsmOperand::Out { reg, expr: expr.map(Box::new), late: true }
     } else if eat_operand_keyword(p, exp!(Inout), asm_macro)? {
         let reg = parse_reg(p)?;
         if p.eat_keyword(exp!(Underscore)) {
@@ -127,9 +127,14 @@ fn parse_asm_operand<'a>(
         if p.eat(exp!(FatArrow)) {
             let out_expr =
                 if p.eat_keyword(exp!(Underscore)) { None } else { Some(p.parse_expr()?) };
-            ast::InlineAsmOperand::SplitInOut { reg, in_expr: expr, out_expr, late: false }
+            ast::InlineAsmOperand::SplitInOut {
+                reg,
+                in_expr: Box::new(expr),
+                out_expr: out_expr.map(Box::new),
+                late: false,
+            }
         } else {
-            ast::InlineAsmOperand::InOut { reg, expr, late: false }
+            ast::InlineAsmOperand::InOut { reg, expr: Box::new(expr), late: false }
         }
     } else if eat_operand_keyword(p, exp!(Inlateout), asm_macro)? {
         let reg = parse_reg(p)?;
@@ -141,9 +146,14 @@ fn parse_asm_operand<'a>(
         if p.eat(exp!(FatArrow)) {
             let out_expr =
                 if p.eat_keyword(exp!(Underscore)) { None } else { Some(p.parse_expr()?) };
-            ast::InlineAsmOperand::SplitInOut { reg, in_expr: expr, out_expr, late: true }
+            ast::InlineAsmOperand::SplitInOut {
+                reg,
+                in_expr: Box::new(expr),
+                out_expr: out_expr.map(Box::new),
+                late: true,
+            }
         } else {
-            ast::InlineAsmOperand::InOut { reg, expr, late: true }
+            ast::InlineAsmOperand::InOut { reg, expr: Box::new(expr), late: true }
         }
     } else if eat_operand_keyword(p, exp!(Label), asm_macro)? {
         let block = p.parse_block()?;
@@ -183,7 +193,7 @@ pub fn parse_asm_args<'a>(
     let first_template = p.parse_expr()?;
     args.push(AsmArg {
         span: first_template.span,
-        kind: AsmArgKind::Template(first_template),
+        kind: AsmArgKind::Template(Box::new(first_template)),
         attributes,
     });
 
@@ -275,7 +285,7 @@ pub fn parse_asm_args<'a>(
 
             args.push(AsmArg {
                 span: template.span,
-                kind: AsmArgKind::Template(template),
+                kind: AsmArgKind::Template(Box::new(template)),
                 attributes,
             });
         } else {

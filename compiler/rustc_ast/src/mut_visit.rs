@@ -265,7 +265,7 @@ macro_rules! generate_flat_map_visitor_fns {
 
 generate_flat_map_visitor_fns! {
     // tidy-alphabetical-start
-    filter_map_expr, Box<Expr>; // the odd one out; it works because `Option` impls `IntoIterator`
+    filter_map_expr, Expr;
     flat_map_arm, Arm;
     flat_map_assoc_item, Box<AssocItem>, ctxt: AssocCtxt;
     flat_map_expr_field, ExprField;
@@ -317,7 +317,7 @@ generate_walk_flat_map_fns! {
     // tidy-alphabetical-end
 }
 
-pub fn walk_filter_map_expr<T: MutVisitor>(vis: &mut T, mut e: Box<Expr>) -> Option<Box<Expr>> {
+pub fn walk_filter_map_expr<T: MutVisitor>(vis: &mut T, mut e: Expr) -> Option<Expr> {
     vis.visit_expr(&mut e);
     Some(e)
 }
@@ -352,8 +352,14 @@ pub fn walk_flat_map_stmt_kind<T: MutVisitor>(
             local
         })],
         StmtKind::Item(item) => vis.flat_map_item(item).into_iter().map(StmtKind::Item).collect(),
-        StmtKind::Expr(expr) => vis.filter_map_expr(expr).into_iter().map(StmtKind::Expr).collect(),
-        StmtKind::Semi(expr) => vis.filter_map_expr(expr).into_iter().map(StmtKind::Semi).collect(),
+        StmtKind::Expr(expr) => Box::try_map(expr, |expr| vis.filter_map_expr(expr))
+            .into_iter()
+            .map(StmtKind::Expr)
+            .collect(),
+        StmtKind::Semi(expr) => Box::try_map(expr, |expr| vis.filter_map_expr(expr))
+            .into_iter()
+            .map(StmtKind::Semi)
+            .collect(),
         StmtKind::Empty => smallvec![StmtKind::Empty],
         StmtKind::MacCall(mut mac) => {
             let MacCallStmt { mac: mac_, style: _, attrs, tokens: _ } = mac.deref_mut();

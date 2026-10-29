@@ -154,7 +154,7 @@ pub(crate) fn check_zero_tts(cx: &ExtCtxt<'_>, span: Span, tts: TokenStream, nam
 }
 
 /// Parse an expression. On error, emit it, advancing to `Eof`, and return `Err`.
-pub(crate) fn parse_expr(p: &mut parser::Parser<'_>) -> Result<Box<ast::Expr>, ErrorGuaranteed> {
+pub(crate) fn parse_expr(p: &mut parser::Parser<'_>) -> Result<ast::Expr, ErrorGuaranteed> {
     let guar = match p.parse_expr() {
         Ok(expr) => return Ok(expr),
         Err(err) => err.emit_err(),
@@ -220,7 +220,7 @@ pub(crate) fn get_single_expr_from_tts(
     if p.token != token::Eof {
         cx.dcx().emit_err(diagnostics::OnlyOneArgument { span, name });
     }
-    ExpandResult::Ready(Ok(ret))
+    ExpandResult::Ready(Ok(Box::new(ret)))
 }
 
 /// Extracts comma-separated expressions from `tts`.
@@ -245,7 +245,8 @@ pub(crate) fn get_exprs_from_tts(
 
         // Perform eager expansion on the expression.
         // We want to be able to handle e.g., `concat!("foo", "bar")`.
-        let expr = cx.expander().fully_expand_fragment(AstFragment::Expr(expr)).make_expr();
+        let expr =
+            cx.expander().fully_expand_fragment(AstFragment::Expr(Box::new(expr))).make_expr();
 
         es.push(expr);
         if p.eat(exp!(Comma)) {

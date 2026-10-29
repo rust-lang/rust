@@ -331,7 +331,7 @@ impl<'a> Parser<'a> {
                 ident,
                 generics,
                 ty,
-                body,
+                body: body.map(Box::new),
                 define_opaque: None,
             }))
         } else if let Some(kind) = self.is_reuse_item() {
@@ -1767,8 +1767,15 @@ impl<'a> Parser<'a> {
 
         self.expect_semi()?;
 
-        let item =
-            StaticItem { ident, ty, safety, mutability, expr, define_opaque: None, eii_impl: None };
+        let item = StaticItem {
+            ident,
+            ty,
+            safety,
+            mutability,
+            expr: expr.map(Box::new),
+            define_opaque: None,
+            eii_impl: None,
+        };
         Ok(ItemKind::Static(Box::new(item)))
     }
 
@@ -1783,7 +1790,7 @@ impl<'a> Parser<'a> {
     fn parse_const_item(
         &mut self,
         const_span: Span,
-    ) -> PResult<'a, (Ident, Generics, Box<Ty>, Option<Box<Expr>>)> {
+    ) -> PResult<'a, (Ident, Generics, Box<Ty>, Option<Expr>)> {
         let ident = self.parse_ident_or_underscore()?;
 
         let mut generics = self.parse_generics()?;
@@ -2998,9 +3005,9 @@ impl<'a> Parser<'a> {
     /// Returns a corrected expression if recovery is successful.
     fn try_recover_const_missing_semi(
         &mut self,
-        rhs: &Option<Box<Expr>>,
+        rhs: &Option<Expr>,
         const_span: Span,
-    ) -> Option<Box<Expr>> {
+    ) -> Option<Expr> {
         if self.token == TokenKind::Semi {
             return None;
         }

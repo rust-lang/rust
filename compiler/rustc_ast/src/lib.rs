@@ -10,6 +10,7 @@
 #![feature(deref_patterns)]
 #![feature(iter_order_by)]
 #![feature(macro_metavar_expr)]
+#![feature(smart_pointer_try_map)]
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
 

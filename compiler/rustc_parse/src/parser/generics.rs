@@ -365,7 +365,7 @@ impl<'a> Parser<'a> {
 
             let precond = match decls_and_precond.stmts.pop() {
                 Some(precond) => match precond.kind {
-                    rustc_ast::StmtKind::Expr(expr) => expr,
+                    rustc_ast::StmtKind::Expr(expr) => *expr,
                     // Insert dummy node that will be rejected by typechecker to
                     // avoid reinventing an error
                     _ => self.mk_unit_expr(decls_and_precond.span),
@@ -374,7 +374,7 @@ impl<'a> Parser<'a> {
             };
             let precond = self.mk_closure_expr(precond.span, precond);
             let decls = decls_and_precond.stmts;
-            (decls, Some(precond))
+            (decls, Some(Box::new(precond)))
         } else {
             (Default::default(), None)
         })
@@ -384,7 +384,7 @@ impl<'a> Parser<'a> {
         Ok(if self.eat_keyword_noexpect(exp!(ContractEnsures).kw) {
             self.psess.gated_spans.gate(sym::contracts_internals, self.prev_token.span);
             let postcond = self.parse_expr()?;
-            Some(postcond)
+            Some(Box::new(postcond))
         } else {
             None
         })
