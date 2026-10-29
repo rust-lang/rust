@@ -83,6 +83,31 @@ cfg_select! {
     }
 }
 
+/// Retrieves the fallback path *specifically* used by each platform's `execvp`
+/// implementation.
+fn get_default_path() -> CString {
+    #[cfg(all(target_os = "linux", target_env = "gnu"))]
+    use crate::sys::conf::confstr;
+
+    cfg_select! {
+        all(target_os = "linux", target_env = "gnu") => {
+            confstr(libc::_CS_PATH, None).unwrap_or(CString::default())
+        }
+        any(
+            all(target_os = "linux", not(target_env = "gnu")),
+            target_vendor = "apple",
+            target_os = "android",
+            target_os = "openbsd",
+            target_os = "freebsd",
+            target_os = "dragonfly",
+        ) => {
+            // SAFETY: libc::_PATH_DEFPATH is a nul-terminated char pointer
+            unsafe { CString::from(CStr::from_ptr(libc::_PATH_DEFPATH)) }
+        }
+        _ => CString::default(),
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Command
 ////////////////////////////////////////////////////////////////////////////////
@@ -91,6 +116,7 @@ pub struct Command {
     program: CString,
     args: CStringArray,
     env: CommandEnv,
+    default_path: CString,
 
     program_kind: ProgramKind,
     cwd: Option<CString>,
@@ -168,10 +194,12 @@ impl Command {
         let program = os2c(program, &mut saw_nul);
         let mut args = CStringArray::with_capacity(1);
         args.push(program.clone());
+
         Command {
             program,
             args,
             env: Default::default(),
+            default_path: get_default_path(),
             program_kind,
             cwd: None,
             chroot: None,
@@ -269,6 +297,10 @@ impl Command {
 
     pub fn get_env_clear(&self) -> bool {
         self.env.does_clear()
+    }
+
+    pub fn get_default_path(&self) -> &CStr {
+        &self.default_path
     }
 
     pub fn get_resolved_envs(&self) -> CommandResolvedEnvs {
