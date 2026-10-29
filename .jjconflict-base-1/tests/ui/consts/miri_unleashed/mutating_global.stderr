@@ -1,0 +1,9 @@
+error[E0080]: modifying a static's initial value from another static's initializer
+  --> $DIR/mutating_global.rs:9:9
+   |
+LL |         GLOBAL = 99
+   |         ^^^^^^^^^^^ evaluation of `MUTATING_GLOBAL` failed here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

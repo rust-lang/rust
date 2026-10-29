@@ -1,0 +1,41 @@
+error: item does not constrain `StateWidget::{opaque#0}`
+  --> $DIR/failed-to-normalize-ice-99945.rs:26:8
+   |
+LL |     fn make_state(&self) -> Self::State {}
+   |        ^^^^^^^^^^
+   |
+   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
+note: this opaque type is supposed to be constrained
+  --> $DIR/failed-to-normalize-ice-99945.rs:20:24
+   |
+LL | type StateWidget<'a> = impl Widget<&'a ()>;
+   |                        ^^^^^^^^^^^^^^^^^^^
+
+error: item does not constrain `StateWidget::{opaque#0}`
+  --> $DIR/failed-to-normalize-ice-99945.rs:31:4
+   |
+LL | fn new_stateful_widget<F: for<'a> Fn(&'a ()) -> StateWidget<'a>>(build: F) -> impl Widget<()> {
+   |    ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
+note: this opaque type is supposed to be constrained
+  --> $DIR/failed-to-normalize-ice-99945.rs:20:24
+   |
+LL | type StateWidget<'a> = impl Widget<&'a ()>;
+   |                        ^^^^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/failed-to-normalize-ice-99945.rs:37:29
+   |
+LL | type StateWidget<'a> = impl Widget<&'a ()>;
+   |                        ------------------- the expected opaque type
+...
+LL |     new_stateful_widget(|_| ()).make_state();
+   |                             ^^ expected opaque type, found `()`
+   |
+   = note: expected opaque type `StateWidget<'_>`
+                found unit type `()`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

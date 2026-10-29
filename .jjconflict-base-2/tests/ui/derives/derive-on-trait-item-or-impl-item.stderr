@@ -1,0 +1,21 @@
+error[E0774]: `derive` may only be applied to `struct`s, `enum`s and `union`s
+  --> $DIR/derive-on-trait-item-or-impl-item.rs:2:5
+   |
+LL |     #[derive(Clone)]
+   |     ^^^^^^^^^^^^^^^^ not applicable here
+LL |
+LL |     type Bar;
+   |     --------- not a `struct`, `enum` or `union`
+
+error[E0774]: `derive` may only be applied to `struct`s, `enum`s and `union`s
+  --> $DIR/derive-on-trait-item-or-impl-item.rs:10:5
+   |
+LL |     #[derive(Clone)]
+   |     ^^^^^^^^^^^^^^^^ not applicable here
+LL |
+LL |     fn bar(&self) {}
+   |     ---------------- not a `struct`, `enum` or `union`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0774`.

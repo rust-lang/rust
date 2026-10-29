@@ -1,0 +1,11 @@
+error: literal out of range for `u16`
+  --> $DIR/issue-63364.rs:6:14
+   |
+LL |     for n in 100_000.. {
+   |              ^^^^^^^
+   |
+   = note: the literal `100_000` does not fit into the type `u16` whose range is `0..=65535`
+   = note: `#[deny(overflowing_literals)]` on by default
+
+error: aborting due to 1 previous error
+

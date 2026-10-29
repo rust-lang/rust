@@ -1,0 +1,73 @@
+error: expected `{`, found keyword `let`
+  --> $DIR/block-no-opening-brace.rs:9:9
+   |
+LL |     loop
+   |     ---- while parsing this `loop` expression
+LL |         let x = 0;
+   |         ^^^ expected `{`
+   |
+help: you might have meant to write this as part of a block
+   |
+LL |         { let x = 0; }
+   |         +            +
+
+error: expected `{`, found keyword `let`
+  --> $DIR/block-no-opening-brace.rs:15:9
+   |
+LL |     while true
+   |     ----- ---- this `while` condition successfully parsed
+   |     |
+   |     while parsing the body of this `while` expression
+LL |         let x = 0;
+   |         ^^^ expected `{`
+   |
+help: you might have meant to write this as part of a block
+   |
+LL |         { let x = 0; }
+   |         +            +
+
+error: expected `{`, found keyword `let`
+  --> $DIR/block-no-opening-brace.rs:20:9
+   |
+LL |         let x = 0;
+   |         ^^^ expected `{`
+   |
+help: you might have meant to write this as part of a block
+   |
+LL |         { let x = 0; }
+   |         +            +
+
+error: expected expression, found reserved keyword `try`
+  --> $DIR/block-no-opening-brace.rs:26:5
+   |
+LL |     try
+   |     ^^^ expected expression
+
+error: expected one of `move`, `use`, `{`, `|`, or `||`, found keyword `let`
+  --> $DIR/block-no-opening-brace.rs:32:9
+   |
+LL |     async
+   |          - expected one of `move`, `use`, `{`, `|`, or `||`
+LL |         let x = 0;
+   |         ^^^ unexpected token
+
+error: expected expression, found keyword `const`
+  --> $DIR/block-no-opening-brace.rs:38:13
+   |
+LL |     let x = const 2;
+   |             ^^^^^ expected expression
+
+error: expected identifier, found keyword `const`
+  --> $DIR/block-no-opening-brace.rs:45:9
+   |
+LL |         const 2 => {}
+   |         ^^^^^ expected identifier, found keyword
+
+error: expected one of `=>`, `if`, or `|`, found `2`
+  --> $DIR/block-no-opening-brace.rs:45:15
+   |
+LL |         const 2 => {}
+   |               ^ expected one of `=>`, `if`, or `|`
+
+error: aborting due to 8 previous errors
+

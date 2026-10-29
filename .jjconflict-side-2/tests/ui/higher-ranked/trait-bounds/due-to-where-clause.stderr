@@ -1,0 +1,11 @@
+error: implementation of `Foo` is not general enough
+  --> $DIR/due-to-where-clause.rs:2:5
+   |
+LL |     test::<FooS>(&mut 42);
+   |     ^^^^^^^^^^^^^^^^^^^^^ implementation of `Foo` is not general enough
+   |
+   = note: `FooS<'_>` must implement `Foo<'0>`, for any lifetime `'0`...
+   = note: ...but `FooS<'_>` actually implements `Foo<'1>`, for some specific lifetime `'1`
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,11 @@
+error: `crate` references the macro call's crate
+  --> tests/ui/crate_in_macro_def.rs:18:28
+   |
+LL |             println!("{}", crate::unhygienic::MESSAGE);
+   |                            ^^^^^ help: to reference the macro definition's crate, use: `$crate`
+   |
+   = note: `-D clippy::crate-in-macro-def` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::crate_in_macro_def)]`
+
+error: aborting due to 1 previous error
+

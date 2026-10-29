@@ -1,0 +1,14 @@
+error: at least one trait must be specified
+  --> $DIR/generic_not_used.rs:5:33
+   |
+LL | type WrongGeneric<T: 'static> = impl 'static;
+   |                                 ^^^^^^^^^^^^
+
+error: type parameter `V` is part of concrete type but not used in parameter list for the `impl Trait` type alias
+  --> $DIR/generic_not_used.rs:9:57
+   |
+LL | fn wrong_generic<U: 'static, V: 'static>(_: U, v: V) -> WrongGeneric<U> {
+   |                                                         ^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

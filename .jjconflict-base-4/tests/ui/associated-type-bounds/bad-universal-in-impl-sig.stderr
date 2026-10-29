@@ -1,0 +1,8 @@
+error: associated type bounds are not allowed in `dyn` types
+  --> $DIR/bad-universal-in-impl-sig.rs:8:16
+   |
+LL | impl dyn Trait<Item: Trait2> {}
+   |                ^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

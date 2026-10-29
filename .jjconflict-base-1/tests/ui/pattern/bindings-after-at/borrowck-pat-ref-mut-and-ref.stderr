@@ -1,0 +1,449 @@
+error: cannot borrow value as immutable because it is also borrowed as mutable
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:8:9
+   |
+LL |         ref mut z @ &mut Some(ref a) => {
+   |         ^^^^^^^^^             ----- value is borrowed by `a` here
+   |         |
+   |         value is mutably borrowed by `z` here
+
+error: cannot borrow value as mutable more than once at a time
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:33:9
+   |
+LL |     let ref mut a @ (ref b @ ref mut c) = u(); // sub-in-sub
+   |         ^^^^^^^^^    -----   --------- value is mutably borrowed by `c` here
+   |         |            |
+   |         |            value is borrowed by `b` here
+   |         value is mutably borrowed by `a` here
+
+error: cannot borrow value as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:33:22
+   |
+LL |     let ref mut a @ (ref b @ ref mut c) = u(); // sub-in-sub
+   |                      ^^^^^   --------- value is mutably borrowed by `c` here
+   |                      |
+   |                      value is borrowed by `b` here
+
+error: cannot borrow value as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:37:9
+   |
+LL |     let ref a @ ref mut b = U;
+   |         ^^^^^   --------- value is mutably borrowed by `b` here
+   |         |
+   |         value is borrowed by `a` here
+
+error: cannot borrow value as immutable because it is also borrowed as mutable
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:39:9
+   |
+LL |     let ref mut a @ ref b = U;
+   |         ^^^^^^^^^   ----- value is borrowed by `b` here
+   |         |
+   |         value is mutably borrowed by `a` here
+
+error: cannot borrow value as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:41:9
+   |
+LL |     let ref a @ (ref mut b, ref mut c) = (U, U);
+   |         ^^^^^    ---------  --------- value is mutably borrowed by `c` here
+   |         |        |
+   |         |        value is mutably borrowed by `b` here
+   |         value is borrowed by `a` here
+
+error: cannot borrow value as immutable because it is also borrowed as mutable
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:43:9
+   |
+LL |     let ref mut a @ (ref b, ref c) = (U, U);
+   |         ^^^^^^^^^    -----  ----- value is borrowed by `c` here
+   |         |            |
+   |         |            value is borrowed by `b` here
+   |         value is mutably borrowed by `a` here
+
+error: cannot borrow value as immutable because it is also borrowed as mutable
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:46:9
+   |
+LL |     let ref mut a @ ref b = u();
+   |         ^^^^^^^^^   ----- value is borrowed by `b` here
+   |         |
+   |         value is mutably borrowed by `a` here
+
+error: cannot borrow value as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:51:9
+   |
+LL |     let ref a @ ref mut b = u();
+   |         ^^^^^   --------- value is mutably borrowed by `b` here
+   |         |
+   |         value is borrowed by `a` here
+
+error: cannot borrow value as immutable because it is also borrowed as mutable
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:57:9
+   |
+LL |     let ref mut a @ ref b = U;
+   |         ^^^^^^^^^   ----- value is borrowed by `b` here
+   |         |
+   |         value is mutably borrowed by `a` here
+
+error: cannot borrow value as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:61:9
+   |
+LL |     let ref a @ ref mut b = U;
+   |         ^^^^^   --------- value is mutably borrowed by `b` here
+   |         |
+   |         value is borrowed by `a` here
+
+error: cannot borrow value as immutable because it is also borrowed as mutable
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:67:9
+   |
+LL |         ref mut a @ Ok(ref b) | ref mut a @ Err(ref b) => {
+   |         ^^^^^^^^^      ----- value is borrowed by `b` here
+   |         |
+   |         value is mutably borrowed by `a` here
+
+error: cannot borrow value as immutable because it is also borrowed as mutable
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:67:33
+   |
+LL |         ref mut a @ Ok(ref b) | ref mut a @ Err(ref b) => {
+   |                                 ^^^^^^^^^       ----- value is borrowed by `b` here
+   |                                 |
+   |                                 value is mutably borrowed by `a` here
+
+error: cannot borrow value as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:76:9
+   |
+LL |         ref a @ Ok(ref mut b) | ref a @ Err(ref mut b) => {
+   |         ^^^^^      --------- value is mutably borrowed by `b` here
+   |         |
+   |         value is borrowed by `a` here
+
+error: cannot borrow value as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:76:33
+   |
+LL |         ref a @ Ok(ref mut b) | ref a @ Err(ref mut b) => {
+   |                                 ^^^^^       --------- value is mutably borrowed by `b` here
+   |                                 |
+   |                                 value is borrowed by `a` here
+
+error: cannot borrow value as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:87:9
+   |
+LL |         ref a @ Ok(ref mut b) | ref a @ Err(ref mut b) if { *b = U; false } => {}
+   |         ^^^^^      --------- value is mutably borrowed by `b` here
+   |         |
+   |         value is borrowed by `a` here
+
+error: cannot borrow value as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:87:33
+   |
+LL |         ref a @ Ok(ref mut b) | ref a @ Err(ref mut b) if { *b = U; false } => {}
+   |                                 ^^^^^       --------- value is mutably borrowed by `b` here
+   |                                 |
+   |                                 value is borrowed by `a` here
+
+error: cannot borrow value as immutable because it is also borrowed as mutable
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:96:9
+   |
+LL |         ref mut a @ Ok(ref b) | ref mut a @ Err(ref b) if { *a = Err(U); false } => {}
+   |         ^^^^^^^^^      ----- value is borrowed by `b` here
+   |         |
+   |         value is mutably borrowed by `a` here
+
+error: cannot borrow value as immutable because it is also borrowed as mutable
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:96:33
+   |
+LL |         ref mut a @ Ok(ref b) | ref mut a @ Err(ref b) if { *a = Err(U); false } => {}
+   |                                 ^^^^^^^^^       ----- value is borrowed by `b` here
+   |                                 |
+   |                                 value is mutably borrowed by `a` here
+
+error: cannot borrow value as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:103:9
+   |
+LL |         ref a @ Ok(ref mut b) | ref a @ Err(ref mut b) if { drop(b); false } => {}
+   |         ^^^^^      --------- value is mutably borrowed by `b` here
+   |         |
+   |         value is borrowed by `a` here
+
+error: cannot borrow value as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:103:33
+   |
+LL |         ref a @ Ok(ref mut b) | ref a @ Err(ref mut b) if { drop(b); false } => {}
+   |                                 ^^^^^       --------- value is mutably borrowed by `b` here
+   |                                 |
+   |                                 value is borrowed by `a` here
+
+error: cannot borrow value as immutable because it is also borrowed as mutable
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:113:9
+   |
+LL |         ref mut a @ Ok(ref b) | ref mut a @ Err(ref b) if { drop(a); false } => {}
+   |         ^^^^^^^^^      ----- value is borrowed by `b` here
+   |         |
+   |         value is mutably borrowed by `a` here
+
+error: cannot borrow value as immutable because it is also borrowed as mutable
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:113:33
+   |
+LL |         ref mut a @ Ok(ref b) | ref mut a @ Err(ref b) if { drop(a); false } => {}
+   |                                 ^^^^^^^^^       ----- value is borrowed by `b` here
+   |                                 |
+   |                                 value is mutably borrowed by `a` here
+
+error: cannot borrow value as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:121:9
+   |
+LL |     let ref a @ (ref mut b, ref mut c) = (U, U);
+   |         ^^^^^    ---------  --------- value is mutably borrowed by `c` here
+   |         |        |
+   |         |        value is mutably borrowed by `b` here
+   |         value is borrowed by `a` here
+
+error: cannot borrow value as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:127:9
+   |
+LL |     let ref a @ (ref mut b, ref mut c) = (U, U);
+   |         ^^^^^    ---------  --------- value is mutably borrowed by `c` here
+   |         |        |
+   |         |        value is mutably borrowed by `b` here
+   |         value is borrowed by `a` here
+
+error: cannot borrow value as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:133:9
+   |
+LL |     let ref a @ (ref mut b, ref mut c) = (U, U);
+   |         ^^^^^    ---------  --------- value is mutably borrowed by `c` here
+   |         |        |
+   |         |        value is mutably borrowed by `b` here
+   |         value is borrowed by `a` here
+
+error: cannot borrow value as immutable because it is also borrowed as mutable
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:138:9
+   |
+LL |     let ref mut a @ (ref b, ref c) = (U, U);
+   |         ^^^^^^^^^    -----  ----- value is borrowed by `c` here
+   |         |            |
+   |         |            value is borrowed by `b` here
+   |         value is mutably borrowed by `a` here
+
+error[E0502]: cannot borrow value as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:8:9
+   |
+LL |         ref mut z @ &mut Some(ref a) => {
+   |         ^^^^^^^^^             ----- immutable borrow occurs here
+   |         |
+   |         mutable borrow occurs here
+...
+LL |             println!("{}", *a);
+   |                            -- immutable borrow later used here
+
+error[E0502]: cannot borrow value as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:46:9
+   |
+LL |     let ref mut a @ ref b = u();
+   |         ^^^^^^^^^   ----- immutable borrow occurs here
+   |         |
+   |         mutable borrow occurs here
+...
+LL |     drop(b);
+   |          - immutable borrow later used here
+
+error[E0502]: cannot borrow value as immutable because it is also borrowed as mutable
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:51:9
+   |
+LL |     let ref a @ ref mut b = u();
+   |         ^^^^^   --------- mutable borrow occurs here
+   |         |
+   |         immutable borrow occurs here
+...
+LL |     *b = u();
+   |     -------- mutable borrow later used here
+
+error[E0502]: cannot borrow value as immutable because it is also borrowed as mutable
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:76:9
+   |
+LL |         ref a @ Ok(ref mut b) | ref a @ Err(ref mut b) => {
+   |         ^^^^^      --------- mutable borrow occurs here
+   |         |
+   |         immutable borrow occurs here
+...
+LL |             *b = U;
+   |             ------ mutable borrow later used here
+
+error[E0502]: cannot borrow value as immutable because it is also borrowed as mutable
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:76:33
+   |
+LL |         ref a @ Ok(ref mut b) | ref a @ Err(ref mut b) => {
+   |                                 ^^^^^       --------- mutable borrow occurs here
+   |                                 |
+   |                                 immutable borrow occurs here
+...
+LL |             *b = U;
+   |             ------ mutable borrow later used here
+
+error[E0502]: cannot borrow value as immutable because it is also borrowed as mutable
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:87:9
+   |
+LL |         ref a @ Ok(ref mut b) | ref a @ Err(ref mut b) if { *b = U; false } => {}
+   |         ^^^^^      --------- mutable borrow occurs here     ------ mutable borrow later used here
+   |         |
+   |         immutable borrow occurs here
+
+error[E0502]: cannot borrow value as immutable because it is also borrowed as mutable
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:87:33
+   |
+LL |         ref a @ Ok(ref mut b) | ref a @ Err(ref mut b) if { *b = U; false } => {}
+   |                                 ^^^^^       ---------       ------ mutable borrow later used here
+   |                                 |           |
+   |                                 |           mutable borrow occurs here
+   |                                 immutable borrow occurs here
+
+error[E0594]: cannot assign to `*b`, as it is immutable for the pattern guard
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:87:61
+   |
+LL |         ref a @ Ok(ref mut b) | ref a @ Err(ref mut b) if { *b = U; false } => {}
+   |                                                             ^^^^^^ cannot assign
+   |
+   = note: variables bound in patterns are immutable until the end of the pattern guard
+
+error[E0594]: cannot assign to `*a`, as it is immutable for the pattern guard
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:96:61
+   |
+LL |         ref mut a @ Ok(ref b) | ref mut a @ Err(ref b) if { *a = Err(U); false } => {}
+   |                                                             ^^^^^^^^^^^ cannot assign
+   |
+   = note: variables bound in patterns are immutable until the end of the pattern guard
+
+error[E0502]: cannot borrow value as immutable because it is also borrowed as mutable
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:103:9
+   |
+LL |         ref a @ Ok(ref mut b) | ref a @ Err(ref mut b) if { drop(b); false } => {}
+   |         ^^^^^      --------- mutable borrow occurs here          - mutable borrow later used here
+   |         |
+   |         immutable borrow occurs here
+
+error[E0502]: cannot borrow value as immutable because it is also borrowed as mutable
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:103:33
+   |
+LL |         ref a @ Ok(ref mut b) | ref a @ Err(ref mut b) if { drop(b); false } => {}
+   |                                 ^^^^^       ---------            - mutable borrow later used here
+   |                                 |           |
+   |                                 |           mutable borrow occurs here
+   |                                 immutable borrow occurs here
+
+error[E0507]: cannot move out of `b` in pattern guard
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:103:66
+   |
+LL |         ref a @ Ok(ref mut b) | ref a @ Err(ref mut b) if { drop(b); false } => {}
+   |                                                                  ^ move occurs because `b` has type `&mut U`, which does not implement the `Copy` trait
+   |
+   = note: variables bound in patterns cannot be moved from until after the end of the pattern guard
+
+error[E0507]: cannot move out of `b` in pattern guard
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:103:66
+   |
+LL |         ref a @ Ok(ref mut b) | ref a @ Err(ref mut b) if { drop(b); false } => {}
+   |                                                                  ^ move occurs because `b` has type `&mut U`, which does not implement the `Copy` trait
+   |
+   = note: variables bound in patterns cannot be moved from until after the end of the pattern guard
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0507]: cannot move out of `a` in pattern guard
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:113:66
+   |
+LL |         ref mut a @ Ok(ref b) | ref mut a @ Err(ref b) if { drop(a); false } => {}
+   |                                                                  ^ move occurs because `a` has type `&mut Result<U, U>`, which does not implement the `Copy` trait
+   |
+   = note: variables bound in patterns cannot be moved from until after the end of the pattern guard
+
+error[E0507]: cannot move out of `a` in pattern guard
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:113:66
+   |
+LL |         ref mut a @ Ok(ref b) | ref mut a @ Err(ref b) if { drop(a); false } => {}
+   |                                                                  ^ move occurs because `a` has type `&mut Result<U, U>`, which does not implement the `Copy` trait
+   |
+   = note: variables bound in patterns cannot be moved from until after the end of the pattern guard
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0502]: cannot borrow value as immutable because it is also borrowed as mutable
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:121:9
+   |
+LL |     let ref a @ (ref mut b, ref mut c) = (U, U);
+   |         ^^^^^    --------- mutable borrow occurs here
+   |         |
+   |         immutable borrow occurs here
+...
+LL |     *b = U;
+   |     ------ mutable borrow later used here
+
+error[E0502]: cannot borrow value as immutable because it is also borrowed as mutable
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:127:9
+   |
+LL |     let ref a @ (ref mut b, ref mut c) = (U, U);
+   |         ^^^^^    --------- mutable borrow occurs here
+   |         |
+   |         immutable borrow occurs here
+...
+LL |     *b = U;
+   |     ------ mutable borrow later used here
+
+error[E0502]: cannot borrow value as immutable because it is also borrowed as mutable
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:133:9
+   |
+LL |     let ref a @ (ref mut b, ref mut c) = (U, U);
+   |         ^^^^^    --------- mutable borrow occurs here
+   |         |
+   |         immutable borrow occurs here
+LL |
+LL |     *b = U;
+   |     ------ mutable borrow later used here
+
+error: cannot borrow value as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:22:11
+   |
+LL |     fn f1(ref a @ ref mut b: U) {}
+   |           ^^^^^   --------- value is mutably borrowed by `b` here
+   |           |
+   |           value is borrowed by `a` here
+
+error: cannot borrow value as immutable because it is also borrowed as mutable
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:24:11
+   |
+LL |     fn f2(ref mut a @ ref b: U) {}
+   |           ^^^^^^^^^   ----- value is borrowed by `b` here
+   |           |
+   |           value is mutably borrowed by `a` here
+
+error: cannot borrow value as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:26:11
+   |
+LL |     fn f3(ref a @ [ref b, ref mut mid @ .., ref c]: [U; 4]) {}
+   |           ^^^^^           ----------- value is mutably borrowed by `mid` here
+   |           |
+   |           value is borrowed by `a` here
+
+error: cannot borrow value as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:28:22
+   |
+LL |     fn f4_also_moved(ref a @ ref mut b @ c: U) {}
+   |                      ^^^^^   ---------   - value is moved into `c` here
+   |                      |       |
+   |                      |       value is mutably borrowed by `b` here
+   |                      value is borrowed by `a` here
+
+error: cannot move out of value because it is borrowed
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:28:30
+   |
+LL |     fn f4_also_moved(ref a @ ref mut b @ c: U) {}
+   |                              ^^^^^^^^^   - value is moved into `c` here
+   |                              |
+   |                              value is mutably borrowed by `b` here
+
+error[E0382]: borrow of moved value
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:28:30
+   |
+LL |     fn f4_also_moved(ref a @ ref mut b @ c: U) {}
+   |                      -----   ^^^^^^^^^   - value moved here
+   |                      |       |
+   |                      |       value borrowed here after move
+   |                      move occurs because value has type `U`, which does not implement the `Copy` trait
+
+error: aborting due to 51 previous errors
+
+Some errors have detailed explanations: E0382, E0502, E0507, E0594.
+For more information about an error, try `rustc --explain E0382`.

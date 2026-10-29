@@ -1,0 +1,11 @@
+error[E0369]: binary operation `==` cannot be applied to type `[X; 1]`
+  --> $DIR/rhs-ty-hint-134162.rs:16:17
+   |
+LL |     let _ = [X] == [panic!(); 2];
+   |             --- ^^ ------------- [_; 2]
+   |             |
+   |             [X; 1]
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0369`.

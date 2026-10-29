@@ -1,0 +1,17 @@
+error[E0277]: the size for values of type `dyn Any` cannot be known at compilation time
+  --> $DIR/align.rs:23:9
+   |
+LL |     let x = *mk();
+   |         ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `dyn Any`
+   = note: all local variables must have a statically known size
+help: references are always `Sized`, even if they point to unsized data; consider not dereferencing the expression
+   |
+LL -     let x = *mk();
+LL +     let x = mk();
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

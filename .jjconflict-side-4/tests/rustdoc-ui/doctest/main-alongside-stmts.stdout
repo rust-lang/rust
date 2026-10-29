@@ -1,0 +1,7 @@
+
+running 2 tests
+test $DIR/main-alongside-stmts.rs - (line 18) ... ok
+test $DIR/main-alongside-stmts.rs - (line 27) ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+

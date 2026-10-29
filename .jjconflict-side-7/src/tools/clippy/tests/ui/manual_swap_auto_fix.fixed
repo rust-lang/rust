@@ -1,0 +1,68 @@
+#![warn(clippy::manual_swap)]
+#![no_main]
+
+fn swap1() {
+    let mut v = [3, 2, 1, 0];
+    let index = v[0];
+    v.swap(0, index);
+}
+
+fn swap2() {
+    let mut v = [3, 2, 1, 0];
+    let tmp = v[0];
+    v.swap(0, 1);
+    // check not found in this scope.
+    let _ = tmp;
+}
+
+fn swap3() {
+    let mut v = [3, 2];
+    let i1 = 0;
+    let i2 = 1;
+    v.swap(i1, i2);
+}
+
+fn swap4() {
+    let mut v = [3, 2, 1];
+    let i1 = 0;
+    let i2 = 1;
+    v.swap(i1, i2 + 1);
+}
+
+fn swap5() {
+    let mut v = [0, 1, 2, 3];
+    let i1 = 0;
+    let i2 = 1;
+    v.swap(i1, i2 + 1);
+}
+
+fn swap6() {
+    let mut v = [0, 1, 2, 3];
+    let index = v[0];
+    v.swap(0, index + 1);
+}
+
+fn swap7() {
+    let mut v = [0, 1, 2, 3];
+    let i1 = 0;
+    let i2 = 6;
+    v.swap(i1 * 3, i2 / 2);
+}
+
+fn swap8() {
+    let mut v = [1, 2, 3, 4];
+    let i1 = 1;
+    let i2 = 1;
+    v.swap(i1 + i2, i2);
+}
+
+fn issue_14931() {
+    let mut v = [1, 2, 3, 4];
+
+    let mut i1 = 0;
+    for i2 in 0..4 {
+        v.swap(i1, i2);
+
+        i1 += 2;
+    }
+}

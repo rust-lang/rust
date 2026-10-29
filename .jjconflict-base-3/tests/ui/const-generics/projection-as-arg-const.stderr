@@ -1,0 +1,10 @@
+error: `<i32 as Identity>::Identity` is forbidden as the type of a const generic parameter
+  --> $DIR/projection-as-arg-const.rs:13:21
+   |
+LL | pub fn foo<const X: <i32 as Identity>::Identity>() {
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the only supported types are integers, `bool`, and `char`
+
+error: aborting due to 1 previous error
+

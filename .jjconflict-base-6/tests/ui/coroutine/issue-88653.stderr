@@ -1,0 +1,24 @@
+error[E0631]: type mismatch in coroutine arguments
+  --> $DIR/issue-88653.rs:8:22
+   |
+LL |   fn foo(bar: bool) -> impl Coroutine<(bool,)> {
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^ expected due to this
+...
+LL |       |bar| {
+   |       -----
+   |       |
+   |  _____found signature defined here
+   | |
+LL | |
+LL | |
+LL | |         if bar {
+...  |
+LL | |     }
+   | |_____- return type was inferred to be `{coroutine@$DIR/issue-88653.rs:15:5: 15:10}` here
+   |
+   = note: expected coroutine signature `fn((bool,)) -> _`
+              found coroutine signature `fn(bool) -> _`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0631`.

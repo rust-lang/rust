@@ -1,0 +1,14 @@
+error: contract annotations is only supported in functions with bodies
+  --> $DIR/contract-annotation-limitations.rs:18:5
+   |
+LL |     #[core::contracts::ensures(|ret| ret.is_none_or(Stars::is_valid))]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: contract annotations is only supported in functions with bodies
+  --> $DIR/contract-annotation-limitations.rs:22:5
+   |
+LL |     #[core::contracts::ensures(|ret| ret.is_none_or(Stars::is_valid))]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

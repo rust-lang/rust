@@ -1,0 +1,21 @@
+// Test that `try!` macros are rewritten.
+
+//@ edition: 2015
+//@ run-rustfix
+//@ check-pass
+//@ reference: ident.raw.allowed
+//@ reference: lex.keywords.reserved.edition2018
+
+#![warn(rust_2018_compatibility)]
+#![allow(dead_code)]
+#![allow(deprecated)]
+
+fn foo() -> Result<usize, ()> {
+    let x: Result<usize, ()> = Ok(22);
+    try!(x);
+    //~^ WARNING `try` is a keyword in the 2018 edition
+    //~| WARNING this is accepted in the current edition
+    Ok(44)
+}
+
+fn main() {}

@@ -1,0 +1,28 @@
+error: manual implementation of a no-op waker
+  --> tests/ui/manual_noop_waker.rs:6:6
+   |
+LL | impl Wake for PartialWaker {
+   |      ^^^^
+   |
+   = help: use `std::task::Waker::noop()` instead
+   = note: `-D clippy::manual-noop-waker` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_noop_waker)]`
+
+error: manual implementation of a no-op waker
+  --> tests/ui/manual_noop_waker.rs:12:6
+   |
+LL | impl Wake for MyWakerPartial {
+   |      ^^^^
+   |
+   = help: use `std::task::Waker::noop()` instead
+
+error: manual implementation of a no-op waker
+  --> tests/ui/manual_noop_waker.rs:60:10
+   |
+LL |     impl Wake for CustomWaker {
+   |          ^^^^
+   |
+   = help: use `std::task::Waker::noop()` instead
+
+error: aborting due to 3 previous errors
+

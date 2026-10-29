@@ -1,0 +1,60 @@
+error[E0378]: the trait `DispatchFromDyn` may only be implemented for structs containing the field being coerced, ZST fields with 1 byte alignment that don't mention type/const generics, and nothing else
+  --> $DIR/dispatch-from-dyn-invalid-impls.rs:19:1
+   |
+LL | / impl<T, U> DispatchFromDyn<WrapperWithExtraField<U>> for WrapperWithExtraField<T>
+LL | |
+LL | | where
+LL | |     T: DispatchFromDyn<U>
+   | |_________________________^
+   |
+   = note: extra field `1` of type `i32` is not allowed
+
+error[E0375]: implementing `DispatchFromDyn` does not allow multiple fields to be coerced
+  --> $DIR/dispatch-from-dyn-invalid-impls.rs:32:1
+   |
+LL | / impl<T: ?Sized, U: ?Sized> DispatchFromDyn<MultiplePointers<U>> for MultiplePointers<T>
+LL | |
+LL | | where
+LL | |     T: Unsize<U>
+   | |________________^
+   |
+note: the trait `DispatchFromDyn` may only be implemented when a single field is being coerced
+  --> $DIR/dispatch-from-dyn-invalid-impls.rs:28:5
+   |
+LL |     ptr1: *const T,
+   |     ^^^^^^^^^^^^^^
+LL |     ptr2: *const T,
+   |     ^^^^^^^^^^^^^^
+
+error[E0374]: implementing `DispatchFromDyn` requires a field to be coerced
+  --> $DIR/dispatch-from-dyn-invalid-impls.rs:44:1
+   |
+LL | impl<T: ?Sized, U: ?Sized> DispatchFromDyn<NothingToCoerce<T>> for NothingToCoerce<U> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected a single field to be coerced, none found
+
+error[E0378]: structs implementing `DispatchFromDyn` may not have `#[repr(packed)]` or `#[repr(C)]`
+  --> $DIR/dispatch-from-dyn-invalid-impls.rs:51:1
+   |
+LL | / impl<T: ?Sized, U: ?Sized> DispatchFromDyn<HasReprC<U>> for HasReprC<T>
+LL | |
+LL | | where
+LL | |     T: Unsize<U>
+   | |________________^
+
+error[E0378]: the trait `DispatchFromDyn` may only be implemented for structs containing the field being coerced, ZST fields with 1 byte alignment that don't mention type/const generics, and nothing else
+  --> $DIR/dispatch-from-dyn-invalid-impls.rs:64:1
+   |
+LL | / impl<T: ?Sized, U: ?Sized> DispatchFromDyn<OverAligned<U>> for OverAligned<T>
+LL | |
+LL | | where
+LL | |     T: Unsize<U>
+   | |________________^
+   |
+   = note: extra field `1` of type `OverAlignedZst` is not allowed
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0374, E0375, E0378.
+For more information about an error, try `rustc --explain E0374`.

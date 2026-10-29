@@ -1,0 +1,29 @@
+error[E0277]: the size for values of type `T` cannot be known at compilation time
+  --> $DIR/unsized-enum.rs:6:36
+   |
+LL | fn foo2<T: ?Sized>() { not_sized::<Foo<T>>() }
+   |         -                          ^^^^^^ doesn't have a size known at compile-time
+   |         |
+   |         this type parameter needs to be `Sized`
+   |
+note: required by an implicit `Sized` bound in `Foo`
+  --> $DIR/unsized-enum.rs:4:10
+   |
+LL | enum Foo<U> { FooSome(U), FooNone }
+   |          ^ required by the implicit `Sized` requirement on this type parameter in `Foo`
+help: you could relax the implicit `Sized` bound on `U` if it were used through indirection like `&U` or `Box<U>`
+  --> $DIR/unsized-enum.rs:4:10
+   |
+LL | enum Foo<U> { FooSome(U), FooNone }
+   |          ^            - ...if indirection were used here: `Box<U>`
+   |          |
+   |          this could be changed to `U: ?Sized`...
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL - fn foo2<T: ?Sized>() { not_sized::<Foo<T>>() }
+LL + fn foo2<T>() { not_sized::<Foo<T>>() }
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

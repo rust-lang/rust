@@ -1,0 +1,59 @@
+error[E0277]: the size for values of type `Self` cannot be known at compilation time
+  --> $DIR/issue-20005.rs:10:49
+   |
+LL |     ) -> <Dst as From<Self>>::Result where Dst: From<Self> {
+   |                                                 ^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+note: required by an implicit `Sized` bound in `From`
+  --> $DIR/issue-20005.rs:1:12
+   |
+LL | trait From<Src> {
+   |            ^^^ required by the implicit `Sized` requirement on this type parameter in `From`
+help: consider further restricting `Self`
+   |
+LL |     ) -> <Dst as From<Self>>::Result where Dst: From<Self>, Self: Sized {
+   |                                                           +++++++++++++
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | trait From<Src: ?Sized> {
+   |               ++++++++
+
+error[E0277]: the size for values of type `Self` cannot be known at compilation time
+  --> $DIR/issue-20005.rs:9:9
+   |
+LL |         self
+   |         ^^^^ doesn't have a size known at compile-time
+   |
+   = help: unsized fn params are gated as an unstable feature
+help: consider further restricting `Self`
+   |
+LL |     ) -> <Dst as From<Self>>::Result where Dst: From<Self>, Self: Sized {
+   |                                                           +++++++++++++
+help: function arguments must have a statically known size, borrowed types always have a known size
+   |
+LL |         &self
+   |         +
+
+error[E0277]: the size for values of type `Self` cannot be known at compilation time
+  --> $DIR/issue-20005.rs:11:9
+   |
+LL |         From::from(self)
+   |         ^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+note: required by an implicit `Sized` bound in `From`
+  --> $DIR/issue-20005.rs:1:12
+   |
+LL | trait From<Src> {
+   |            ^^^ required by the implicit `Sized` requirement on this type parameter in `From`
+help: consider further restricting `Self`
+   |
+LL |     ) -> <Dst as From<Self>>::Result where Dst: From<Self>, Self: Sized {
+   |                                                           +++++++++++++
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL | trait From<Src: ?Sized> {
+   |               ++++++++
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

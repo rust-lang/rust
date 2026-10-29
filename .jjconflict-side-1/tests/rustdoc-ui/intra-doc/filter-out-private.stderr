@@ -1,0 +1,22 @@
+error: `Thing` is both a function and a struct
+  --> $DIR/filter-out-private.rs:11:21
+   |
+LL | /// Do stuff with [`Thing`].
+   |                     ^^^^^ ambiguous link
+   |
+note: the lint level is defined here
+  --> $DIR/filter-out-private.rs:3:9
+   |
+LL | #![deny(rustdoc::broken_intra_doc_links)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: to link to the function, add parentheses
+   |
+LL | /// Do stuff with [`Thing()`].
+   |                          ++
+help: to link to the struct, prefix with `struct@`
+   |
+LL | /// Do stuff with [`struct@Thing`].
+   |                     +++++++
+
+error: aborting due to 1 previous error
+

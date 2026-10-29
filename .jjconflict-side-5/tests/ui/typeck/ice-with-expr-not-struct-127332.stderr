@@ -1,0 +1,9 @@
+error[E0436]: functional record update syntax requires a struct
+  --> $DIR/ice-with-expr-not-struct-127332.rs:12:26
+   |
+LL |         Foo::A { x: 6, ..orig };
+   |                          ^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0436`.

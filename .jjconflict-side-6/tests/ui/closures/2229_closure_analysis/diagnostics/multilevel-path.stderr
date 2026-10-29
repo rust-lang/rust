@@ -1,0 +1,17 @@
+error[E0499]: cannot borrow `w.p.x` as mutable more than once at a time
+  --> $DIR/multilevel-path.rs:23:14
+   |
+LL |     let mut c = || {
+   |                 -- first mutable borrow occurs here
+LL |         w.p.x += 20;
+   |         ----- first borrow occurs due to use of `w.p.x` in closure
+...
+LL |     let py = &mut w.p.x;
+   |              ^^^^^^^^^^ second mutable borrow occurs here
+LL |
+LL |     c();
+   |     - first borrow later used here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0499`.

@@ -1,0 +1,9 @@
+thread 'main' ($TID) panicked at 'd was called', $DIR/panic-short-backtrace-windows-x86_64.rs:48:5
+stack backtrace:
+   0: std::panicking::begin_panic
+   1: d
+   2: c
+   3: b
+   4: a
+   5: some Rust fn
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.

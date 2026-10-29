@@ -1,0 +1,29 @@
+error: transmute from a `f32` to a pointer
+  --> tests/ui/transmute_32bit.rs:6:31
+   |
+LL |         let _: *const usize = std::mem::transmute(6.0f32);
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::wrong-transmute` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::wrong_transmute)]`
+
+error: transmute from a `f32` to a pointer
+  --> tests/ui/transmute_32bit.rs:8:29
+   |
+LL |         let _: *mut usize = std::mem::transmute(6.0f32);
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: transmute from a `char` to a pointer
+  --> tests/ui/transmute_32bit.rs:10:31
+   |
+LL |         let _: *const usize = std::mem::transmute('x');
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: transmute from a `char` to a pointer
+  --> tests/ui/transmute_32bit.rs:12:29
+   |
+LL |         let _: *mut usize = std::mem::transmute('x');
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

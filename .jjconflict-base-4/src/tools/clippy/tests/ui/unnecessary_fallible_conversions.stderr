@@ -1,0 +1,134 @@
+error: use of a fallible conversion when an infallible one could be used
+  --> tests/ui/unnecessary_fallible_conversions.rs:6:23
+   |
+LL |     let _: i64 = 0i32.try_into().unwrap();
+   |                       ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: converting `i32` to `i64` cannot fail
+   = note: `-D clippy::unnecessary-fallible-conversions` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_fallible_conversions)]`
+help: use
+   |
+LL -     let _: i64 = 0i32.try_into().unwrap();
+LL +     let _: i64 = 0i32.into();
+   |
+
+error: use of a fallible conversion when an infallible one could be used
+  --> tests/ui/unnecessary_fallible_conversions.rs:9:23
+   |
+LL |     let _: i64 = 0i32.try_into().expect("can't happen");
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: converting `i32` to `i64` cannot fail
+help: use
+   |
+LL -     let _: i64 = 0i32.try_into().expect("can't happen");
+LL +     let _: i64 = 0i32.into();
+   |
+
+error: use of a fallible conversion when an infallible one could be used
+  --> tests/ui/unnecessary_fallible_conversions.rs:14:13
+   |
+LL |     let _ = i64::try_from(0i32).unwrap();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: converting `i32` to `i64` cannot fail
+help: use
+   |
+LL -     let _ = i64::try_from(0i32).unwrap();
+LL +     let _ = i64::from(0i32);
+   |
+
+error: use of a fallible conversion when an infallible one could be used
+  --> tests/ui/unnecessary_fallible_conversions.rs:17:13
+   |
+LL |     let _ = i64::try_from(0i32).expect("can't happen");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: converting `i32` to `i64` cannot fail
+help: use
+   |
+LL -     let _ = i64::try_from(0i32).expect("can't happen");
+LL +     let _ = i64::from(0i32);
+   |
+
+error: use of a fallible conversion when an infallible one could be used
+  --> tests/ui/unnecessary_fallible_conversions.rs:22:18
+   |
+LL |     let _: i64 = i32::try_into(0).unwrap();
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: converting `i32` to `i64` cannot fail
+help: use
+   |
+LL -     let _: i64 = i32::try_into(0).unwrap();
+LL +     let _: i64 = i32::into(0);
+   |
+
+error: use of a fallible conversion when an infallible one could be used
+  --> tests/ui/unnecessary_fallible_conversions.rs:25:18
+   |
+LL |     let _: i64 = i32::try_into(0i32).expect("can't happen");
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: converting `i32` to `i64` cannot fail
+help: use
+   |
+LL -     let _: i64 = i32::try_into(0i32).expect("can't happen");
+LL +     let _: i64 = i32::into(0i32);
+   |
+
+error: use of a fallible conversion when an infallible one could be used
+  --> tests/ui/unnecessary_fallible_conversions.rs:30:13
+   |
+LL |     let _ = <i64 as TryFrom<i32>>::try_from(0).unwrap();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: converting `i32` to `i64` cannot fail
+help: use
+   |
+LL -     let _ = <i64 as TryFrom<i32>>::try_from(0).unwrap();
+LL +     let _ = <i64 as From<i32>>::from(0);
+   |
+
+error: use of a fallible conversion when an infallible one could be used
+  --> tests/ui/unnecessary_fallible_conversions.rs:33:13
+   |
+LL |     let _ = <i64 as TryFrom<i32>>::try_from(0).expect("can't happen");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: converting `i32` to `i64` cannot fail
+help: use
+   |
+LL -     let _ = <i64 as TryFrom<i32>>::try_from(0).expect("can't happen");
+LL +     let _ = <i64 as From<i32>>::from(0);
+   |
+
+error: use of a fallible conversion when an infallible one could be used
+  --> tests/ui/unnecessary_fallible_conversions.rs:38:18
+   |
+LL |     let _: i64 = <i32 as TryInto<_>>::try_into(0).unwrap();
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: converting `i32` to `i64` cannot fail
+help: use
+   |
+LL -     let _: i64 = <i32 as TryInto<_>>::try_into(0).unwrap();
+LL +     let _: i64 = <i32 as Into<_>>::into(0);
+   |
+
+error: use of a fallible conversion when an infallible one could be used
+  --> tests/ui/unnecessary_fallible_conversions.rs:41:18
+   |
+LL |     let _: i64 = <i32 as TryInto<_>>::try_into(0).expect("can't happen");
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: converting `i32` to `i64` cannot fail
+help: use
+   |
+LL -     let _: i64 = <i32 as TryInto<_>>::try_into(0).expect("can't happen");
+LL +     let _: i64 = <i32 as Into<_>>::into(0);
+   |
+
+error: aborting due to 10 previous errors
+

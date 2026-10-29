@@ -1,0 +1,15 @@
+warning: unnecessary lifetime parameter `'a`
+  --> $DIR/regions-free-region-outlives-static-outlives-free-region.rs:13:9
+   |
+LL | fn test<'a,'b>(x: &'a i32) -> &'b i32
+   |         ^^
+   |
+   = note: you can use the `'static` lifetime directly, in place of `'a`
+note: the lint level is defined here
+  --> $DIR/regions-free-region-outlives-static-outlives-free-region.rs:11:9
+   |
+LL | #![warn(redundant_lifetimes)]
+   |         ^^^^^^^^^^^^^^^^^^^
+
+warning: 1 warning emitted
+

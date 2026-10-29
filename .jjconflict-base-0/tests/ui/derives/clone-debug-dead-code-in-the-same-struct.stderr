@@ -1,0 +1,24 @@
+error: fields `field1`, `field2`, `field3`, and `field4` are never read
+  --> $DIR/clone-debug-dead-code-in-the-same-struct.rs:6:5
+   |
+LL | pub struct Whatever {
+   |            -------- fields in this struct
+LL |     pub field0: (),
+LL |     field1: (),
+   |     ^^^^^^
+LL |     field2: (),
+   |     ^^^^^^
+LL |     field3: (),
+   |     ^^^^^^
+LL |     field4: (),
+   |     ^^^^^^
+   |
+   = note: `Whatever` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+note: the lint level is defined here
+  --> $DIR/clone-debug-dead-code-in-the-same-struct.rs:1:11
+   |
+LL | #![forbid(dead_code)]
+   |           ^^^^^^^^^
+
+error: aborting due to 1 previous error
+

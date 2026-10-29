@@ -1,0 +1,32 @@
+error: most attributes are not supported in `where` clauses
+  --> $DIR/where-doc.rs:6:1
+   |
+LL | #[doc(alias = ":(")]
+   | ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/where-doc.rs:11:1
+   |
+LL | #[doc(hidden)]
+   | ^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/where-doc.rs:15:1
+   |
+LL | #[doc = ""]
+   | ^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: `#[doc(alias = "...")]` isn't allowed on where predicate
+  --> $DIR/where-doc.rs:6:15
+   |
+LL | #[doc(alias = ":(")]
+   |               ^^^^
+
+error: aborting due to 4 previous errors
+

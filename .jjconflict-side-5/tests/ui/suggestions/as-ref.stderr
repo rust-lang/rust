@@ -1,0 +1,204 @@
+error[E0308]: mismatched types
+  --> $DIR/as-ref.rs:7:29
+   |
+LL |     opt.map(|arg| takes_ref(arg));
+   |                   --------- ^^^ expected `&Foo`, found `Foo`
+   |                   |
+   |                   arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/as-ref.rs:3:4
+   |
+LL | fn takes_ref(_: &Foo) {}
+   |    ^^^^^^^^^ -------
+help: consider using `as_ref` instead
+   |
+LL |     opt.as_ref().map(|arg| takes_ref(arg));
+   |         +++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/as-ref.rs:8:39
+   |
+LL |     opt.and_then(|arg| Some(takes_ref(arg)));
+   |                             --------- ^^^ expected `&Foo`, found `Foo`
+   |                             |
+   |                             arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/as-ref.rs:3:4
+   |
+LL | fn takes_ref(_: &Foo) {}
+   |    ^^^^^^^^^ -------
+help: consider using `as_ref` instead
+   |
+LL |     opt.as_ref().and_then(|arg| Some(takes_ref(arg)));
+   |         +++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/as-ref.rs:10:29
+   |
+LL |     opt.map(|arg| takes_ref(arg));
+   |                   --------- ^^^ expected `&Foo`, found `Foo`
+   |                   |
+   |                   arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/as-ref.rs:3:4
+   |
+LL | fn takes_ref(_: &Foo) {}
+   |    ^^^^^^^^^ -------
+help: consider using `as_ref` instead
+   |
+LL |     opt.as_ref().map(|arg| takes_ref(arg));
+   |         +++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/as-ref.rs:11:37
+   |
+LL |     opt.and_then(|arg| Ok(takes_ref(arg)));
+   |                           --------- ^^^ expected `&Foo`, found `Foo`
+   |                           |
+   |                           arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/as-ref.rs:3:4
+   |
+LL | fn takes_ref(_: &Foo) {}
+   |    ^^^^^^^^^ -------
+help: consider using `as_ref` instead
+   |
+LL |     opt.as_ref().and_then(|arg| Ok(takes_ref(arg)));
+   |         +++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/as-ref.rs:13:29
+   |
+LL |     let y: Option<&usize> = x;
+   |            --------------   ^ expected `Option<&usize>`, found `&Option<usize>`
+   |            |
+   |            expected due to this
+   |
+   = note:   expected enum `Option<&_>`
+           found reference `&Option<_>`
+help: try using `.as_ref()` to convert `&Option<usize>` to `Option<&usize>`
+   |
+LL |     let y: Option<&usize> = x.as_ref();
+   |                              +++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/as-ref.rs:15:37
+   |
+LL |     let y: Result<&usize, &usize> = x;
+   |            ----------------------   ^ expected `Result<&usize, &usize>`, found `&Result<usize, usize>`
+   |            |
+   |            expected due to this
+   |
+   = note:   expected enum `Result<&_, &_>`
+           found reference `&Result<_, _>`
+help: try using `.as_ref()` to convert `&Result<usize, usize>` to `Result<&usize, &usize>`
+   |
+LL |     let y: Result<&usize, &usize> = x.as_ref();
+   |                                      +++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/as-ref.rs:19:36
+   |
+LL |     let y: Result<&usize, usize> = x;
+   |            ---------------------   ^ expected `Result<&usize, usize>`, found `&Result<usize, usize>`
+   |            |
+   |            expected due to this
+   |
+   = note:   expected enum `Result<&_, _>`
+           found reference `&Result<_, _>`
+
+error[E0308]: mismatched types
+  --> $DIR/as-ref.rs:22:42
+   |
+LL |     multiple_ref_opt.map(|arg| takes_ref(arg));
+   |                                --------- ^^^ expected `&Foo`, found `Foo`
+   |                                |
+   |                                arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/as-ref.rs:3:4
+   |
+LL | fn takes_ref(_: &Foo) {}
+   |    ^^^^^^^^^ -------
+help: consider using `as_ref` instead
+   |
+LL |     multiple_ref_opt.as_ref().map(|arg| takes_ref(arg));
+   |                      +++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/as-ref.rs:23:52
+   |
+LL |     multiple_ref_opt.and_then(|arg| Some(takes_ref(arg)));
+   |                                          --------- ^^^ expected `&Foo`, found `Foo`
+   |                                          |
+   |                                          arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/as-ref.rs:3:4
+   |
+LL | fn takes_ref(_: &Foo) {}
+   |    ^^^^^^^^^ -------
+help: consider using `as_ref` instead
+   |
+LL |     multiple_ref_opt.as_ref().and_then(|arg| Some(takes_ref(arg)));
+   |                      +++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/as-ref.rs:25:45
+   |
+LL |     multiple_ref_result.map(|arg| takes_ref(arg));
+   |                                   --------- ^^^ expected `&Foo`, found `Foo`
+   |                                   |
+   |                                   arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/as-ref.rs:3:4
+   |
+LL | fn takes_ref(_: &Foo) {}
+   |    ^^^^^^^^^ -------
+help: consider using `as_ref` instead
+   |
+LL |     multiple_ref_result.as_ref().map(|arg| takes_ref(arg));
+   |                         +++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/as-ref.rs:26:53
+   |
+LL |     multiple_ref_result.and_then(|arg| Ok(takes_ref(arg)));
+   |                                           --------- ^^^ expected `&Foo`, found `Foo`
+   |                                           |
+   |                                           arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/as-ref.rs:3:4
+   |
+LL | fn takes_ref(_: &Foo) {}
+   |    ^^^^^^^^^ -------
+help: consider using `as_ref` instead
+   |
+LL |     multiple_ref_result.as_ref().and_then(|arg| Ok(takes_ref(arg)));
+   |                         +++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/as-ref.rs:28:32
+   |
+LL |     let _: Result<&usize, _> = &Ok(42);
+   |            -----------------   ^^^^^^^ expected `Result<&usize, _>`, found `&Result<{integer}, _>`
+   |            |
+   |            expected due to this
+   |
+   = note:   expected enum `Result<&usize, _>`
+           found reference `&Result<{integer}, _>`
+help: try using `.as_ref()` to convert `&Result<{integer}, _>` to `Result<&usize, _>`
+   |
+LL -     let _: Result<&usize, _> = &Ok(42);
+LL +     let _: Result<&usize, _> = Ok(42).as_ref();
+   |
+
+error: aborting due to 12 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

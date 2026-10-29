@@ -1,0 +1,29 @@
+error[E0392]: type parameter `T` is never used
+  --> $DIR/generic-enum-errors.rs:3:11
+   |
+LL | enum Quux<T> {
+   |           ^ unused type parameter
+   |
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `T` to be a const parameter, use `const T: /* Type */` instead
+
+error[E0107]: missing generics for enum `Quux`
+  --> $DIR/generic-enum-errors.rs:8:11
+   |
+LL | fn foo(c: Quux) {
+   |           ^^^^ expected 1 generic argument
+   |
+note: enum defined here, with 1 generic parameter: `T`
+  --> $DIR/generic-enum-errors.rs:3:6
+   |
+LL | enum Quux<T> {
+   |      ^^^^ -
+help: add missing generic argument
+   |
+LL | fn foo(c: Quux<T>) {
+   |               +++
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0107, E0392.
+For more information about an error, try `rustc --explain E0107`.

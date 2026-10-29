@@ -1,0 +1,8 @@
+
+running 3 tests
+test $DIR/process-termination.rs - check_process_termination (line 16) ... ok
+test $DIR/process-termination.rs - check_process_termination (line 22) ... ok
+test $DIR/process-termination.rs - check_process_termination (line 9) ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+

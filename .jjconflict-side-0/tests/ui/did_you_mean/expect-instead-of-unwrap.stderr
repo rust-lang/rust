@@ -1,0 +1,31 @@
+error[E0061]: this method takes 0 arguments but 1 argument was supplied
+  --> $DIR/expect-instead-of-unwrap.rs:2:12
+   |
+LL |     Ok(42).unwrap("wow");
+   |            ^^^^^^ ----- unexpected argument of type `&'static str`
+   |
+note: method defined here
+  --> $SRC_DIR/core/src/result.rs:LL:COL
+help: did you mean to use `expect`?
+   |
+LL -     Ok(42).unwrap("wow");
+LL +     Ok(42).expect("wow");
+   |
+
+error[E0061]: this method takes 0 arguments but 1 argument was supplied
+  --> $DIR/expect-instead-of-unwrap.rs:4:14
+   |
+LL |     Some(42).unwrap("wow");
+   |              ^^^^^^ ----- unexpected argument of type `&'static str`
+   |
+note: method defined here
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+help: did you mean to use `expect`?
+   |
+LL -     Some(42).unwrap("wow");
+LL +     Some(42).expect("wow");
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0061`.

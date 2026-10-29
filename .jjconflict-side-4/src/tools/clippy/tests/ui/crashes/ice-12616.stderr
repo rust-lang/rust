@@ -1,0 +1,11 @@
+error: `as` casting between raw pointers without changing their constness
+  --> tests/ui/crashes/ice-12616.rs:6:5
+   |
+LL |     s() as *const ();
+   |     ^^^^^^^^^^^^^^^^ help: try `pointer::cast`, a safer alternative: `s().cast::<()>()`
+   |
+   = note: `-D clippy::ptr-as-ptr` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::ptr_as_ptr)]`
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,13 @@
+- // MIR for `optimize_true` before GVN
++ // MIR for `optimize_true` after GVN
+  
+  fn optimize_true() -> bool {
+      let mut _0: bool;
+  
+      bb0: {
+-         _0 = Eq(const optimize_true::<T>::{constant#0}, const optimize_true::<T>::{constant#1});
++         _0 = const true;
+          return;
+      }
+  }
+  

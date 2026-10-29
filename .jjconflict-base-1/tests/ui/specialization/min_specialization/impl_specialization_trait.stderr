@@ -1,0 +1,10 @@
+error: implementing `rustc_specialization_trait` traits is unstable
+  --> $DIR/impl_specialization_trait.rs:11:1
+   |
+LL | impl specialization_trait::SpecTrait for A {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(min_specialization)]` to the crate attributes to enable
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,31 @@
+#![allow(clippy::let_unit_value)]
+#![feature(rustc_private)]
+
+extern crate rustc_span;
+
+use clippy_utils::sym;
+use rustc_span::{Symbol, kw};
+
+fn main() {
+    let _ = sym::f32;
+    //~^ interning_literals
+
+    // Correct suggestion when symbol isn't stringified constant name
+    let _ = sym::proc_dash_macro;
+    //~^ interning_literals
+
+    // Interning a keyword
+    let _ = kw::SelfLower;
+    //~^ interning_literals
+
+    // Defined in clippy_utils
+    let _ = sym::msrv;
+    //~^ interning_literals
+    let _ = sym::Cargo_toml;
+    //~^ interning_literals
+
+    // Using a different `intern` function
+    let _ = intern("f32");
+}
+
+fn intern(_: &str) {}

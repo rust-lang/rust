@@ -1,0 +1,20 @@
+error: removing an expression is not supported in this position
+  --> $DIR/cfg-non-opt-expr.rs:5:13
+   |
+LL |     let _ = #[cfg(false)] ();
+   |             ^^^^^^^^^^^^^
+
+error: removing an expression is not supported in this position
+  --> $DIR/cfg-non-opt-expr.rs:7:21
+   |
+LL |     let _ = 1 + 2 + #[cfg(false)] 3;
+   |                     ^^^^^^^^^^^^^
+
+error: removing an expression is not supported in this position
+  --> $DIR/cfg-non-opt-expr.rs:9:23
+   |
+LL |     let _ = [1, 2, 3][#[cfg(false)] 1];
+   |                       ^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

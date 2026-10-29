@@ -1,0 +1,13 @@
+error: lifetime may not live long enough
+  --> $DIR/regions-infer-paramd-indirect.rs:22:9
+   |
+LL | impl<'a> SetF<'a> for C<'a> {
+   |      -- lifetime `'a` defined here
+...
+LL |     fn set_f_bad(&mut self, b: Box<B>) {
+   |                             - has type `Box<Box<&'1 isize>>`
+LL |         self.f = b;
+   |         ^^^^^^ assignment requires that `'1` must outlive `'a`
+
+error: aborting due to 1 previous error
+

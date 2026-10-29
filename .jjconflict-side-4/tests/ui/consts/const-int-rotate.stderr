@@ -1,0 +1,25 @@
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/const-int-rotate.rs:2:28
+   |
+LL |     let x: &'static i32 = &(5_i32.rotate_left(3));
+   |            ------------    ^^^^^^^^^^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+...
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/const-int-rotate.rs:4:28
+   |
+LL |     let y: &'static i32 = &(5_i32.rotate_right(3));
+   |            ------------    ^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+LL |
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0716`.

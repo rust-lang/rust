@@ -1,0 +1,12 @@
+error[E0624]: method `f` is private
+  --> $DIR/private-method-inherited.rs:13:7
+   |
+LL |         fn f(self) {}
+   |         ---------- private method defined here
+...
+LL |     x.f();
+   |       ^ private method
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0624`.

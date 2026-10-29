@@ -1,0 +1,8 @@
+error: expected one of `=>`, `@`, `if`, or `|`, found `<`
+  --> $DIR/pat-lt-bracket-1.rs:3:7
+   |
+LL |     x < 7 => (),
+   |       ^ expected one of `=>`, `@`, `if`, or `|`
+
+error: aborting due to 1 previous error
+

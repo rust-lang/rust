@@ -1,0 +1,40 @@
+// A template for the rustc_driver and rustc Windows resource files.
+// This file is processed by the build script to produce rustc.rc and rustc_driver.rc
+// with the appropriate version information filled in.
+
+// All the strings are in UTF-8
+#pragma code_page(65001)
+
+#define RUSTC_FILEDESCRIPTION_STR "@RUSTC_FILEDESCRIPTION_STR@"
+#define RUSTC_FILETYPE @RUSTC_FILETYPE@
+#define RUSTC_FILEVERSION_QUAD @RUSTC_FILEVERSION_QUAD@
+#define RUSTC_FILEVERSION_STR "@RUSTC_FILEVERSION_STR@"
+
+#define RUSTC_PRODUCTNAME_STR "@RUSTC_PRODUCTNAME_STR@"
+#define RUSTC_PRODUCTVERSION_QUAD @RUSTC_PRODUCTVERSION_QUAD@
+#define RUSTC_PRODUCTVERSION_STR "@RUSTC_PRODUCTVERSION_STR@"
+
+
+1 VERSIONINFO
+FILEVERSION RUSTC_FILEVERSION_QUAD
+PRODUCTVERSION RUSTC_PRODUCTVERSION_QUAD
+FILEOS  0x00040004
+FILETYPE RUSTC_FILETYPE
+FILESUBTYPE 0
+FILEFLAGSMASK 0x3f
+FILEFLAGS 0x0
+{
+    BLOCK "StringFileInfo"
+    {
+        BLOCK "000004b0"
+        {
+            VALUE "FileDescription", RUSTC_FILEDESCRIPTION_STR
+            VALUE "FileVersion", RUSTC_FILEVERSION_STR
+            VALUE "ProductVersion", RUSTC_PRODUCTVERSION_STR
+            VALUE "ProductName", RUSTC_PRODUCTNAME_STR
+        }
+    }
+    BLOCK "VarFileInfo" {
+        VALUE "Translation", 0x0, 0x04b0
+    }
+}

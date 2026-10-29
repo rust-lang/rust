@@ -1,0 +1,44 @@
+error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `:`
+  --> $DIR/type-ascription-precedence.rs:27:7
+   |
+LL |     &S: &S;
+   |       ^ expected one of 8 possible tokens
+
+error: expected identifier, found `:`
+  --> $DIR/type-ascription-precedence.rs:33:8
+   |
+LL |     *(S: Z);
+   |        ^ expected identifier
+
+error: expected identifier, found `:`
+  --> $DIR/type-ascription-precedence.rs:37:8
+   |
+LL |     -(S: Z);
+   |        ^ expected identifier
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `:`
+  --> $DIR/type-ascription-precedence.rs:41:12
+   |
+LL |     (S + Z): Z;
+   |            ^ expected one of `.`, `;`, `?`, `}`, or an operator
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `:`
+  --> $DIR/type-ascription-precedence.rs:45:12
+   |
+LL |     (S * Z): Z;
+   |            ^ expected one of `.`, `;`, `?`, `}`, or an operator
+
+error: expected identifier, found `:`
+  --> $DIR/type-ascription-precedence.rs:49:11
+   |
+LL |     S .. S: S;
+   |           ^ expected identifier
+
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `:`
+  --> $DIR/type-ascription-precedence.rs:53:13
+   |
+LL |     (S .. S): S;
+   |             ^ expected one of `.`, `;`, `?`, `}`, or an operator
+
+error: aborting due to 7 previous errors
+

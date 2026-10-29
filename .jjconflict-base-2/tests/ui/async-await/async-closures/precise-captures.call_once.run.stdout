@@ -1,0 +1,29 @@
+after call
+after await
+fixed
+uncaptured
+
+after call
+after await
+fixed
+uncaptured
+
+after call
+fixed
+after await
+uncaptured
+
+after call
+after await
+fixed
+untouched
+
+after call
+drop first
+after await
+uncaptured
+
+after call
+drop first
+after await
+uncaptured

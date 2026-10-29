@@ -1,0 +1,50 @@
+error[E0572]: return statement outside of function body
+  --> $DIR/issue-86188-return-not-in-fn-body.rs:9:10
+   |
+LL |       [(); return || {
+   |  __________^
+LL | |
+LL | |         let tx;
+LL | |     }]
+   | |_____^
+
+error[E0572]: return statement outside of function body
+  --> $DIR/issue-86188-return-not-in-fn-body.rs:20:14
+   |
+LL | /     fn bar() {
+LL | |
+LL | |         [(); return];
+   | |              ^^^^^^ the return is part of this body...
+...  |
+LL | |     }
+   | |_____- ...not the enclosing function body
+
+error[E0572]: return statement outside of function body
+  --> $DIR/issue-86188-return-not-in-fn-body.rs:28:14
+   |
+LL | /     fn foo() {
+LL | |
+LL | |         [(); return];
+   | |              ^^^^^^ the return is part of this body...
+...  |
+LL | |     }
+   | |_____- ...not the enclosing function body
+
+error[E0572]: return statement outside of function body
+  --> $DIR/issue-86188-return-not-in-fn-body.rs:36:10
+   |
+LL | /  fn main() {
+LL | |
+LL | |      [(); return || {
+   | | __________^
+LL | ||
+LL | ||
+LL | ||         let tx;
+LL | ||     }];
+   | ||_____^ the return is part of this body...
+LL | |  }
+   | |__- ...not the enclosing function body
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0572`.

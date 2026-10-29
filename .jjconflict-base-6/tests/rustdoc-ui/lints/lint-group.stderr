@@ -1,0 +1,54 @@
+error: missing code example in this documentation
+  --> $DIR/lint-group.rs:19:1
+   |
+LL | /// wait, this doesn't have a doctest?
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-group.rs:9:9
+   |
+LL | #![deny(rustdoc::missing_doc_code_examples)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: documentation test in private item
+  --> $DIR/lint-group.rs:22:1
+   |
+LL | / /// wait, this *does* have a doctest?
+LL | | ///
+LL | | /// ```
+LL | | /// println!("sup");
+LL | | /// ```
+   | |_______^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-group.rs:10:9
+   |
+LL | #![deny(rustdoc::all)]
+   |         ^^^^^^^^^^^^
+   = note: `#[deny(rustdoc::private_doc_tests)]` implied by `#[deny(rustdoc::all)]`
+
+error: missing code example in this documentation
+  --> $DIR/lint-group.rs:29:1
+   |
+LL | /// <unknown>
+   | ^^^^^^^^^^^^^
+
+error: unresolved link to `error`
+  --> $DIR/lint-group.rs:12:29
+   |
+LL | /// what up, let's make an [error]
+   |                             ^^^^^ no item named `error` in scope
+   |
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+   = note: `#[deny(rustdoc::broken_intra_doc_links)]` implied by `#[deny(rustdoc::all)]`
+
+error: unclosed HTML tag `unknown`
+  --> $DIR/lint-group.rs:29:5
+   |
+LL | /// <unknown>
+   |     ^^^^^^^^^
+   |
+   = note: `#[deny(rustdoc::invalid_html_tags)]` implied by `#[deny(rustdoc::all)]`
+
+error: aborting due to 5 previous errors
+

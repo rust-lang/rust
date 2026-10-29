@@ -1,0 +1,23 @@
+error[E0792]: expected generic lifetime parameter, found `'_`
+  --> $DIR/param_mismatch2.rs:14:5
+   |
+LL | type Opaque<'a> = impl Sized + 'a;
+   |             -- this generic parameter must be used with a generic lifetime parameter
+...
+LL |     (id, id)
+   |     ^^^^^^^^
+
+error[E0792]: expected generic lifetime parameter, found `'_`
+  --> $DIR/param_mismatch2.rs:14:5
+   |
+LL | type Opaque<'a> = impl Sized + 'a;
+   |             -- this generic parameter must be used with a generic lifetime parameter
+...
+LL |     (id, id)
+   |     ^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0792`.

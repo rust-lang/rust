@@ -1,0 +1,13 @@
+error: expected one of `(`, `.`, `::`, `;`, `?`, `else`, or an operator, found `:`
+  --> $DIR/type-ascription-instead-of-path-2.rs:3:44
+   |
+LL |     let _ = vec![Ok(2)].into_iter().collect:<Result<Vec<_>,_>>()?;
+   |                                            ^ expected one of 7 possible tokens
+   |
+help: maybe write a path separator here
+   |
+LL |     let _ = vec![Ok(2)].into_iter().collect::<Result<Vec<_>,_>>()?;
+   |                                             +
+
+error: aborting due to 1 previous error
+

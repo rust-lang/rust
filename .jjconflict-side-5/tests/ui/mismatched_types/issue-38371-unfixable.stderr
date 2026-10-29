@@ -1,0 +1,21 @@
+error[E0529]: expected an array or slice, found `u32`
+  --> $DIR/issue-38371-unfixable.rs:1:9
+   |
+LL | fn ugh(&[bar]: &u32) {}
+   |         ^^^^^ pattern cannot match with input type `u32`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-38371-unfixable.rs:3:8
+   |
+LL | fn bgh(&&bar: u32) {}
+   |        ^^^^^  --- expected due to this
+   |        |
+   |        expected `u32`, found `&_`
+   |
+   = note:   expected type `u32`
+           found reference `&_`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0308, E0529.
+For more information about an error, try `rustc --explain E0308`.

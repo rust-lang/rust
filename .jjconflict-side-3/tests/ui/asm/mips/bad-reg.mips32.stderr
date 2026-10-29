@@ -1,0 +1,14 @@
+error: register class `wreg` requires the `msa` target feature
+  --> $DIR/bad-reg.rs:22:22
+   |
+LL |         asm!("# {}", in(wreg) 0.0);
+   |                      ^^^^^^^^^^^^
+
+error: register class `wreg` requires the `msa` target feature
+  --> $DIR/bad-reg.rs:24:18
+   |
+LL |         asm!("", in("$w10") 0.0);
+   |                  ^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

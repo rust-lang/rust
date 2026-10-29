@@ -1,0 +1,21 @@
+error[E0308]: `match` arms have incompatible types
+  --> $DIR/dont-highlight-diverging-arms.rs:11:18
+   |
+LL | /         match m {
+LL | |             1 => break 'out Some(1u16),
+LL | |             2 => Some(2u16),
+   | |                  ---------- this is found to be of type `Option<u16>`
+LL | |             3 => break 'out Some(3u16),
+...  |
+LL | |             _ => {}
+   | |                  ^^ expected `Option<u16>`, found `()`
+LL | |
+LL | |         }
+   | |_________- `match` arms have incompatible types
+   |
+   = note:   expected enum `Option<u16>`
+           found unit type `()`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

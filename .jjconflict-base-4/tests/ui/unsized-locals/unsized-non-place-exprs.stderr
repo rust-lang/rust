@@ -1,0 +1,81 @@
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/unsized-non-place-exprs.rs:20:19
+   |
+LL |     udrop::<[u8]>(if true { *foo() } else { *foo() });
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u8]`
+note: unsized values must be place expressions and cannot be put in temporaries
+  --> $DIR/unsized-non-place-exprs.rs:20:19
+   |
+LL |     udrop::<[u8]>(if true { *foo() } else { *foo() });
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/unsized-non-place-exprs.rs:21:19
+   |
+LL |     udrop::<[u8]>({ *foo() });
+   |                   ^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u8]`
+note: unsized values must be place expressions and cannot be put in temporaries
+  --> $DIR/unsized-non-place-exprs.rs:21:19
+   |
+LL |     udrop::<[u8]>({ *foo() });
+   |                   ^^^^^^^^^^
+
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/unsized-non-place-exprs.rs:22:11
+   |
+LL |     udrop(match foo() { x => *x });
+   |           ^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u8]`
+note: unsized values must be place expressions and cannot be put in temporaries
+  --> $DIR/unsized-non-place-exprs.rs:22:11
+   |
+LL |     udrop(match foo() { x => *x });
+   |           ^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/unsized-non-place-exprs.rs:23:19
+   |
+LL |     udrop::<[u8]>({ loop { break *foo(); } });
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u8]`
+note: unsized values must be place expressions and cannot be put in temporaries
+  --> $DIR/unsized-non-place-exprs.rs:23:19
+   |
+LL |     udrop::<[u8]>({ loop { break *foo(); } });
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/unsized-non-place-exprs.rs:25:5
+   |
+LL |     { *foo() };
+   |     ^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u8]`
+note: unsized values must be place expressions and cannot be put in temporaries
+  --> $DIR/unsized-non-place-exprs.rs:25:5
+   |
+LL |     { *foo() };
+   |     ^^^^^^^^^^
+
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/unsized-non-place-exprs.rs:26:5
+   |
+LL |     { loop { break *foo(); } };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u8]`
+note: unsized values must be place expressions and cannot be put in temporaries
+  --> $DIR/unsized-non-place-exprs.rs:26:5
+   |
+LL |     { loop { break *foo(); } };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

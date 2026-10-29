@@ -1,0 +1,15 @@
+error[E0080]: index out of bounds: the length is 3 but the index is 4
+  --> $DIR/const-array-oob.rs:5:19
+   |
+LL | const BLUB: [u32; FOO[4]] = [5, 6];
+   |                   ^^^^^^ evaluation of `BLUB::{constant#0}` failed here
+
+error[E0080]: index out of bounds: the length is 3 but the index is 5
+  --> $DIR/const-array-oob.rs:2:20
+   |
+LL | const BAR: usize = FOO[5];
+   |                    ^^^^^^ evaluation of `BAR` failed here
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

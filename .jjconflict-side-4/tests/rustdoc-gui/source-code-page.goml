@@ -1,0 +1,181 @@
+// Checks that the interactions with the source code pages are working as expected.
+include: "utils.goml"
+go-to: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html"
+show-text: true
+// Check that we can click on the line number.
+click: "//a[@data-nosnippet and text()='4']" // This is the anchor for line 4.
+// Ensure that the page URL was updated.
+assert-document-property: ({"URL": "lib.rs.html#4"}, ENDS_WITH)
+assert-attribute: ("//*[@id='4']", {"class": "line-highlighted"})
+// Ensure that the default style, with the right border, isn't used.
+assert-css: ("//*[@id='4']", {"border-right-width": "0px"})
+reload:
+assert-attribute: ("//*[@id='4']", {"class": "line-highlighted"})
+assert-css: ("//*[@id='4']", {"border-right-width": "0px"})
+// We now check that the good anchors are highlighted
+go-to: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html#4-6"
+assert-attribute-false: ("//a[@data-nosnippet and text()='3']", {"class": "line-highlighted"})
+assert-attribute: ("//a[@data-nosnippet and text()='4']", {"class": "line-highlighted"})
+assert-attribute: ("//a[@data-nosnippet and text()='5']", {"class": "line-highlighted"})
+assert-attribute: ("//a[@data-nosnippet and text()='6']", {"class": "line-highlighted"})
+assert-attribute-false: ("//a[@data-nosnippet and text()='7']", {"class": "line-highlighted"})
+
+define-function: (
+    "check-colors",
+    [theme, color, background_color, highlight_color, highlight_background_color],
+    block {
+        call-function: ("switch-theme", {"theme": |theme|})
+        assert-css: (
+            "a[data-nosnippet]:not(.line-highlighted)",
+            {"color": |color|, "background-color": |background_color|},
+            ALL,
+        )
+        assert-css: (
+            "a[data-nosnippet].line-highlighted",
+            {"color": |highlight_color|, "background-color": |highlight_background_color|},
+            ALL,
+        )
+    },
+)
+
+call-function: ("check-colors", {
+    "theme": "ayu",
+    "color": "#5c6773",
+    "background_color": "transparent",
+    "highlight_color": "#708090",
+    "highlight_background_color": "rgba(255, 236, 164, 0.06)",
+})
+call-function: ("check-colors", {
+    "theme": "dark",
+    "color": "#3b91e2",
+    "background_color": "transparent",
+    "highlight_color": "#3b91e2",
+    "highlight_background_color": "#0a042f",
+})
+call-function: ("check-colors", {
+    "theme": "light",
+    "color": "#c67e2d",
+    "background_color": "transparent",
+    "highlight_color": "#c67e2d",
+    "highlight_background_color": "#fdffd3",
+})
+
+// This is to ensure that the content is correctly align with the line numbers.
+compare-elements-position-near: ("//*[@id='1']", ".rust > code > span", {"y": 2})
+// Check the `href` property so that users can treat anchors as links.
+assert-property: ("//a[@data-nosnippet and text()='1']", {
+    "href": |DOC_PATH| + "/src/test_docs/lib.rs.html#1"
+}, ENDS_WITH)
+assert-property: ("//a[@data-nosnippet and text()='2']", {
+    "href": |DOC_PATH| + "/src/test_docs/lib.rs.html#2"
+}, ENDS_WITH)
+assert-property: ("//a[@data-nosnippet and text()='3']", {
+    "href": |DOC_PATH| + "/src/test_docs/lib.rs.html#3"
+}, ENDS_WITH)
+assert-property: ("//a[@data-nosnippet and text()='4']", {
+    "href": |DOC_PATH| + "/src/test_docs/lib.rs.html#4"
+}, ENDS_WITH)
+assert-property: ("//a[@data-nosnippet and text()='5']", {
+    "href": |DOC_PATH| + "/src/test_docs/lib.rs.html#5"
+}, ENDS_WITH)
+assert-property: ("//a[@data-nosnippet and text()='6']", {
+    "href": |DOC_PATH| + "/src/test_docs/lib.rs.html#6"
+}, ENDS_WITH)
+
+// Assert that the line numbers text is aligned to the right.
+assert-css: ("a[data-nosnippet]", {"text-align": "right"}, ALL)
+
+// Now let's check that clicking on something else than the line number doesn't
+// do anything (and certainly not add a `#NaN` to the URL!).
+go-to: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html"
+// We use this assert-position to know where we will click.
+assert-position: ("//*[@id='1']", {"x": 81, "y": 141})
+// We click on the left of the "1" anchor but still in the "src-line-number" `<pre>`.
+click: (135, 77)
+assert-document-property: ({"URL": "/lib.rs.html"}, ENDS_WITH)
+
+// Checking the source code sidebar.
+
+// First we "open" it.
+click: "#sidebar-button"
+assert: ".src-sidebar-expanded"
+
+// We check that the first entry of the sidebar is collapsed
+assert-property: ("#src-sidebar details:first-of-type", {"open": "false"})
+assert-text: ("#src-sidebar details:first-of-type > summary", "extend_css")
+// We now click on it.
+click: "#src-sidebar details:first-of-type > summary"
+assert-property: ("#src-sidebar details:first-of-type", {"open": "true"})
+
+// And now we collapse it again.
+click: "#src-sidebar details:first-of-type > summary"
+assert-property: ("#src-sidebar details:first-of-type", {"open": "false"})
+
+// And open it again, since it'll be the reference we use to check positions.
+click: "#src-sidebar details:first-of-type > summary"
+assert-property: ("#src-sidebar details:first-of-type", {"open": "true"})
+
+// Check the sidebar directory entries have a marker and spacing (desktop).
+store-property: (
+    "#src-sidebar > details:first-of-type.dir-entry[open] > .files > a",
+    {"offsetHeight": link_height},
+)
+define-function: (
+    "check-sidebar-dir-entry",
+    [x, y],
+    block {
+        assert: "details:first-of-type.dir-entry[open] > summary::marker"
+        assert-css: ("#src-sidebar > details:first-of-type.dir-entry", {"padding-left": "4px"})
+        // This check ensures that the summary is only one line.
+        assert-property: (
+            "#src-sidebar > details:first-of-type.dir-entry[open] > summary",
+            {"offsetHeight": |link_height|}
+        )
+        assert-position: (
+            "#src-sidebar > details:first-of-type.dir-entry[open] > summary",
+            {"x": |x|, "y": |y|}
+        )
+        assert-property: (
+            "#src-sidebar > details:first-of-type.dir-entry[open] > .files > a",
+            {"offsetHeight": |link_height|}
+        )
+        assert-position: (
+            "#src-sidebar > details:first-of-type.dir-entry[open] > .files > a",
+            // left margin
+            {"x": |x| + 27, "y": |y| + |link_height|}
+        )
+    }
+)
+store-property: (".src-sidebar-title", {
+    "offsetHeight": source_sidebar_title_height,
+    "offsetTop": source_sidebar_title_y,
+})
+call-function: ("check-sidebar-dir-entry", {
+    "x": 0,
+    // margin = 7px
+    "y": |source_sidebar_title_y| + |source_sidebar_title_height| + 7,
+})
+
+// Check the sidebar directory entries have a marker and spacing (tablet).
+set-window-size: (700, 700)
+store-property: (".src-sidebar-title", {
+    "offsetHeight": source_sidebar_title_height,
+    "offsetTop": source_sidebar_title_y,
+})
+call-function: ("check-sidebar-dir-entry", {
+    "x": 0,
+    // margin = 7px
+    "y": |source_sidebar_title_y| + |source_sidebar_title_height| + 7,
+})
+
+// Check the sidebar directory entries have a marker and spacing (phone).
+set-window-size: (450, 700)
+store-property: (".src-sidebar-title", {
+    "offsetHeight": source_sidebar_title_height,
+    "offsetTop": source_sidebar_title_y,
+})
+call-function: ("check-sidebar-dir-entry", {
+    "x": 0,
+    // margin = 7px
+    "y": |source_sidebar_title_y| + |source_sidebar_title_height| + 7,
+})

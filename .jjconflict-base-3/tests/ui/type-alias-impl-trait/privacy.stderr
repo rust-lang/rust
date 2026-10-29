@@ -1,0 +1,15 @@
+warning: type alias `Foo` is more private than the item `foo`
+  --> $DIR/privacy.rs:7:1
+   |
+LL | pub fn foo() -> Foo {
+   | ^^^^^^^^^^^^^^^^^^^ function `foo` is reachable at visibility `pub`
+   |
+note: but type alias `Foo` is only usable at visibility `pub(crate)`
+  --> $DIR/privacy.rs:5:1
+   |
+LL | type Foo = (impl Sized, u8);
+   | ^^^^^^^^
+   = note: `#[warn(private_interfaces)]` on by default
+
+warning: 1 warning emitted
+

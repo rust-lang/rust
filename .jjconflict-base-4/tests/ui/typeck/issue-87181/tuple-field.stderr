@@ -1,0 +1,14 @@
+error[E0609]: no field `0` on type `fn(char, u16) -> Foo {Foo}`
+  --> $DIR/tuple-field.rs:12:15
+   |
+LL |     thing.bar.0;
+   |               ^ unknown field
+   |
+help: use parentheses to construct this tuple struct
+   |
+LL |     (thing.bar)(/* char */, /* u16 */).0;
+   |     +         ++++++++++++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0609`.

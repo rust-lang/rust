@@ -1,0 +1,42 @@
+error[E0107]: enum takes 2 generic arguments but 1 generic argument was supplied
+  --> $DIR/issue-75883.rs:6:21
+   |
+LL |     pub fn run() -> Result<_> {
+   |                     ^^^^^^ - supplied 1 generic argument
+   |                     |
+   |                     expected 2 generic arguments
+   |
+help: add missing generic argument
+   |
+LL |     pub fn run() -> Result<_, E> {
+   |                             +++
+
+error[E0107]: enum takes 2 generic arguments but 1 generic argument was supplied
+  --> $DIR/issue-75883.rs:15:35
+   |
+LL |     pub fn interact(&mut self) -> Result<_> {
+   |                                   ^^^^^^ - supplied 1 generic argument
+   |                                   |
+   |                                   expected 2 generic arguments
+   |
+help: add missing generic argument
+   |
+LL |     pub fn interact(&mut self) -> Result<_, E> {
+   |                                           +++
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/issue-75883.rs:15:42
+   |
+LL |     pub fn interact(&mut self) -> Result<_> {
+   |                                          ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/issue-75883.rs:6:28
+   |
+LL |     pub fn run() -> Result<_> {
+   |                            ^ not allowed in type signatures
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0107, E0121.
+For more information about an error, try `rustc --explain E0107`.

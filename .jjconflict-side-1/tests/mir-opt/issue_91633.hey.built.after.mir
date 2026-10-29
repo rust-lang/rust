@@ -1,0 +1,38 @@
+// MIR for `hey` after built
+
+fn hey(_1: &[T]) -> () {
+    debug it => _1;
+    let mut _0: ();
+    let mut _2: &<[T] as std::ops::Index<usize>>::Output;
+    let _3: &<[T] as std::ops::Index<usize>>::Output;
+    let mut _4: &[T];
+    scope 1 {
+    }
+
+    bb0: {
+        StorageLive(_2);
+        StorageLive(_3);
+        StorageLive(_4);
+        _4 = &(*_1);
+        _3 = <[T] as Index<usize>>::index(move _4, const 0_usize) -> [return: bb1, unwind: bb3];
+    }
+
+    bb1: {
+        StorageDead(_4);
+        _2 = &(*_3);
+        PlaceMention(_2);
+        StorageDead(_2);
+        _0 = const ();
+        StorageDead(_3);
+        return;
+    }
+
+    bb2: {
+        FakeRead(ForMatchedPlace(None), _2);
+        unreachable;
+    }
+
+    bb3 (cleanup): {
+        resume;
+    }
+}

@@ -1,0 +1,34 @@
+   LL|       |#![allow(unused_assignments)]
+   LL|       |//@ failure-status: 1
+   LL|       |
+   LL|       |struct Firework {
+   LL|       |    strength: i32,
+   LL|       |}
+   LL|       |
+   LL|       |impl Drop for Firework {
+   LL|      2|    fn drop(&mut self) {
+   LL|      2|        println!("BOOM times {}!!!", self.strength);
+   LL|      2|    }
+   LL|       |}
+   LL|       |
+   LL|      1|fn main() -> Result<(), u8> {
+   LL|      1|    let _firecracker = Firework { strength: 1 };
+   LL|       |
+   LL|      1|    let _tnt = Firework { strength: 100 };
+   LL|       |
+   LL|      1|    if true {
+   LL|      1|        println!("Exiting with error...");
+   LL|      1|        return Err(1);
+   LL|      0|    }
+   LL|       |
+   LL|      0|    let _ = Firework { strength: 1000 };
+   LL|       |
+   LL|      0|    Ok(())
+   LL|      1|}
+   LL|       |
+   LL|       |// Expected program output:
+   LL|       |//   Exiting with error...
+   LL|       |//   BOOM times 100!!!
+   LL|       |//   BOOM times 1!!!
+   LL|       |//   Error: 1
+

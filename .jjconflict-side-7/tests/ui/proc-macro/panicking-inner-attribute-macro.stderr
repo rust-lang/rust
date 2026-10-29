@@ -1,0 +1,10 @@
+error: custom attribute panicked
+  --> $DIR/panicking-inner-attribute-macro.rs:7:1
+   |
+LL | #![panicking_attribute::tester]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: message: explicit panic
+
+error: aborting due to 1 previous error
+

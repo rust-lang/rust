@@ -1,0 +1,15 @@
+error[E0321]: cross-crate traits with a default impl, like `Unpin`, can only be implemented for a struct/enum type, not `<Foo as Identity>::Assoc`
+  --> $DIR/impl-unpin.rs:68:5
+   |
+LL |     impl Unpin for <Foo as Identity>::Assoc {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't implement cross-crate trait with a default impl for non-struct/enum type
+
+error[E0321]: cross-crate traits with a default impl, like `Unpin`, can only be implemented for a struct/enum type, not `<Bar as Identity>::Assoc`
+  --> $DIR/impl-unpin.rs:70:5
+   |
+LL |     impl Unpin for <Bar as Identity>::Assoc {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't implement cross-crate trait with a default impl for non-struct/enum type
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0321`.

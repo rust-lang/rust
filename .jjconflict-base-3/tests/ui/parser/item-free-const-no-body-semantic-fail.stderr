@@ -1,0 +1,29 @@
+error: free constant item without body
+  --> $DIR/item-free-const-no-body-semantic-fail.rs:5:1
+   |
+LL | const A: u8;
+   | ^^^^^^^^^^^-
+   |            |
+   |            help: provide a definition for the constant: `= <expr>;`
+
+error: free constant item without body
+  --> $DIR/item-free-const-no-body-semantic-fail.rs:6:1
+   |
+LL | const B;
+   | ^^^^^^^-
+   |        |
+   |        help: provide a definition for the constant: `= <expr>;`
+
+error: missing type for `const` item
+  --> $DIR/item-free-const-no-body-semantic-fail.rs:6:8
+   |
+LL | const B;
+   |        ^
+   |
+help: provide a type for the item
+   |
+LL | const B: <type>;
+   |        ++++++++
+
+error: aborting due to 3 previous errors
+

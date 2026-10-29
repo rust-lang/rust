@@ -1,0 +1,14 @@
+error: unused variable: `renamed`
+  --> $DIR/unused_variables-issue-82488.rs:9:32
+   |
+LL | fn process_point(Point { x, y: renamed }: Point) {
+   |                                ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_renamed`
+   |
+note: the lint level is defined here
+  --> $DIR/unused_variables-issue-82488.rs:2:9
+   |
+LL | #![deny(unused_variables)]
+   |         ^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

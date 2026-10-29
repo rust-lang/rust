@@ -1,0 +1,67 @@
+//@ edition:2021
+//@ needs-asm-support
+//@ ignore-nvptx64
+//@ ignore-spirv
+//@ reference: asm.operand-type.supported-operands.const
+
+#![feature(asm_const_ptr)]
+
+use std::arch::{asm, global_asm};
+
+// Const operands must be integers and must be constants.
+
+global_asm!("{}", const 0);
+global_asm!("{}", const 0i32);
+global_asm!("{}", const 0i128);
+global_asm!("{}", const 0f32);
+//~^ ERROR invalid type for `const` operand
+global_asm!("{}", const 0 as *mut u8);
+
+fn test1() {
+    unsafe {
+        // Const operands must be integers or thin pointers
+
+        asm!("{}", const 0);
+        asm!("{}", const 0i32);
+        asm!("{}", const 0i128);
+        asm!("{}", const 0f32);
+        //~^ ERROR invalid type for `const` operand
+        asm!("{}", const 0 as *mut u8);
+        asm!("{}", const &0);
+        asm!("{}", const b"Foo".as_slice());
+        //~^ ERROR invalid type for `const` operand
+        asm!("{}", const "Foo");
+        //~^ ERROR invalid type for `const` operand
+        asm!("{}", const c"Foo");
+        //~^ ERROR invalid type for `const` operand
+
+        asm!("{}", const test1 as fn());
+        asm!("{}", const test1);
+        asm!("{}", const (|| {}) as fn());
+        asm!("{}", const || {});
+    }
+}
+
+fn test2() {
+    unsafe {
+        // Constants must be... constant
+
+        let x = 0;
+        const fn const_foo(x: i32) -> i32 {
+            x
+        }
+        const fn const_bar<T>(x: T) -> T {
+            x
+        }
+        asm!("{}", const x);
+        //~^ ERROR attempt to use a non-constant value in a constant
+        asm!("{}", const const_foo(0));
+        asm!("{}", const const_foo(x));
+        //~^ ERROR attempt to use a non-constant value in a constant
+        asm!("{}", const const_bar(0));
+        asm!("{}", const const_bar(x));
+        //~^ ERROR attempt to use a non-constant value in a constant
+    }
+}
+
+fn main() {}

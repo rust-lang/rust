@@ -1,0 +1,87 @@
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/unsized-return-suggest-ref-issue-152064.rs:7:16
+   |
+LL |     for s in o.map(|s| s[3..8]) {}
+   |                ^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+note: required by an implicit `Sized` bound in `Option::<T>::map`
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/unsized-return-suggest-ref-issue-152064.rs:7:14
+   |
+LL |     for s in o.map(|s| s[3..8]) {}
+   |              ^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+note: required by an implicit `Sized` bound in `Option`
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+help: consider borrowing the value
+   |
+LL |     for s in o.map(|s| &s[3..8]) {}
+   |                        +
+
+error[E0277]: `Option<str>` is not an iterator
+  --> $DIR/unsized-return-suggest-ref-issue-152064.rs:7:14
+   |
+LL |     for s in o.map(|s| s[3..8]) {}
+   |              ^^^^^^^^^^^^^^^^^^ `Option<str>` is not an iterator
+   |
+   = help: the trait `IntoIterator` is not implemented for `Option<str>`
+help: the following other types implement trait `IntoIterator`
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+   |
+   = note: `Option<T>`
+  ::: $SRC_DIR/core/src/option.rs:LL:COL
+   |
+   = note: `&Option<T>`
+  ::: $SRC_DIR/core/src/option.rs:LL:COL
+   |
+   = note: `&mut Option<T>`
+
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/unsized-return-suggest-ref-issue-152064.rs:14:18
+   |
+LL |     for s in arr.map(|s| s[3..8]) {}
+   |                  ^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u8]`
+note: required by an implicit `Sized` bound in `Option::<T>::map`
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/unsized-return-suggest-ref-issue-152064.rs:14:14
+   |
+LL |     for s in arr.map(|s| s[3..8]) {}
+   |              ^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u8]`
+note: required by an implicit `Sized` bound in `Option`
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+help: consider borrowing the value
+   |
+LL |     for s in arr.map(|s| &s[3..8]) {}
+   |                          +
+
+error[E0277]: `Option<[u8]>` is not an iterator
+  --> $DIR/unsized-return-suggest-ref-issue-152064.rs:14:14
+   |
+LL |     for s in arr.map(|s| s[3..8]) {}
+   |              ^^^^^^^^^^^^^^^^^^^^ `Option<[u8]>` is not an iterator
+   |
+   = help: the trait `IntoIterator` is not implemented for `Option<[u8]>`
+help: the following other types implement trait `IntoIterator`
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+   |
+   = note: `Option<T>`
+  ::: $SRC_DIR/core/src/option.rs:LL:COL
+   |
+   = note: `&Option<T>`
+  ::: $SRC_DIR/core/src/option.rs:LL:COL
+   |
+   = note: `&mut Option<T>`
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

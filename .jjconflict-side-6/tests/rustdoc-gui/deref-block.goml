@@ -1,0 +1,34 @@
+// This test ensures that several clickable items actually have the pointer cursor.
+go-to: "file://" + |DOC_PATH| + "/lib2/struct.Derefer.html"
+
+assert-text: (".big-toggle summary", "Methods from Deref<Target = str>§")
+// We ensure it doesn't go over `§`.
+assert-css: (".big-toggle summary::before", {
+    "left": "-34px",
+    "top": "9px",
+})
+// It should NOT have the same X or Y position as the other toggles.
+compare-elements-position-false: (
+    ".big-toggle summary::before",
+    ".method-toggle summary::before",
+    ["x", "y"],
+)
+
+// We now check that if we're in mobile mode, it gets back to its original X position.
+set-window-size: (600, 600)
+assert-css: (".big-toggle summary::before", {
+    "left": "-11px",
+    "top": "9px",
+})
+// It should have a slightly different X position as the other toggles.
+store-position: (".big-toggle summary::before", {"x": big_toggle})
+store-position: (".method-toggle summary::before", {"x": small_toggle})
+assert: |big_toggle| < |small_toggle|
+// Margin is 0.5em so around 8 px.
+assert: |small_toggle| - |big_toggle| < 10
+// But still shouldn't have the same Y position.
+compare-elements-position-false: (
+    ".big-toggle summary::before",
+    ".method-toggle summary::before",
+    ["y"],
+)

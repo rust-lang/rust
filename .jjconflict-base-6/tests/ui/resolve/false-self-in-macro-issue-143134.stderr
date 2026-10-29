@@ -1,0 +1,9 @@
+error[E0424]: expected unit struct, unit variant or constant, found local variable `self`
+  --> $DIR/false-self-in-macro-issue-143134.rs:6:13
+   |
+LL |         let self = ();
+   |             ^^^^ `self` value is a keyword and may not be bound to variables or shadowed
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0424`.

@@ -1,0 +1,356 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          TUPLE_PAT
+            L_PAREN "("
+            IDENT_PAT
+              MUT_KW "mut"
+              WHITESPACE " "
+              NAME
+                IDENT "a"
+            COMMA ","
+            WHITESPACE " "
+            IDENT_PAT
+              MUT_KW "mut"
+              WHITESPACE " "
+              NAME
+                IDENT "b"
+            R_PAREN ")"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          TUPLE_EXPR
+            L_PAREN "("
+            LITERAL
+              INT_NUMBER "0"
+            COMMA ","
+            WHITESPACE " "
+            LITERAL
+              INT_NUMBER "1"
+            R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          BIN_EXPR
+            TUPLE_EXPR
+              L_PAREN "("
+              PATH_EXPR
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "b"
+              COMMA ","
+              WHITESPACE " "
+              PATH_EXPR
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "a"
+              COMMA ","
+              WHITESPACE " "
+              RANGE_EXPR
+                DOT2 ".."
+              R_PAREN ")"
+            WHITESPACE " "
+            EQ "="
+            WHITESPACE " "
+            TUPLE_EXPR
+              L_PAREN "("
+              PATH_EXPR
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "a"
+              COMMA ","
+              WHITESPACE " "
+              PATH_EXPR
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "b"
+              R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          BIN_EXPR
+            PAREN_EXPR
+              L_PAREN "("
+              UNDERSCORE_EXPR
+                UNDERSCORE "_"
+              R_PAREN ")"
+            WHITESPACE " "
+            EQ "="
+            WHITESPACE " "
+            RANGE_EXPR
+              DOT2 ".."
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        STRUCT
+          STRUCT_KW "struct"
+          WHITESPACE " "
+          NAME
+            IDENT "S"
+          WHITESPACE " "
+          RECORD_FIELD_LIST
+            L_CURLY "{"
+            WHITESPACE " "
+            RECORD_FIELD
+              NAME
+                IDENT "a"
+              COLON ":"
+              WHITESPACE " "
+              PATH_TYPE
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "i32"
+            WHITESPACE " "
+            R_CURLY "}"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          BIN_EXPR
+            RECORD_EXPR
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "S"
+              WHITESPACE " "
+              RECORD_EXPR_FIELD_LIST
+                L_CURLY "{"
+                WHITESPACE " "
+                DOT2 ".."
+                WHITESPACE " "
+                R_CURLY "}"
+            WHITESPACE " "
+            EQ "="
+            WHITESPACE " "
+            RECORD_EXPR
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "S"
+              WHITESPACE " "
+              RECORD_EXPR_FIELD_LIST
+                L_CURLY "{"
+                WHITESPACE " "
+                DOT2 ".."
+                CALL_EXPR
+                  PATH_EXPR
+                    PATH
+                      PATH
+                        PATH_SEGMENT
+                          NAME_REF
+                            IDENT "S"
+                      COLON2 "::"
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "default"
+                  ARG_LIST
+                    L_PAREN "("
+                    R_PAREN ")"
+                WHITESPACE " "
+                R_CURLY "}"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          BIN_EXPR
+            CALL_EXPR
+              PATH_EXPR
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "Some"
+              ARG_LIST
+                L_PAREN "("
+                RANGE_EXPR
+                  DOT2 ".."
+                R_PAREN ")"
+            WHITESPACE " "
+            EQ "="
+            WHITESPACE " "
+            CALL_EXPR
+              PATH_EXPR
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "Some"
+              ARG_LIST
+                L_PAREN "("
+                LITERAL
+                  INT_NUMBER "0"
+                R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          BIN_EXPR
+            CALL_EXPR
+              PATH_EXPR
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "Ok"
+              ARG_LIST
+                L_PAREN "("
+                UNDERSCORE_EXPR
+                  UNDERSCORE "_"
+                R_PAREN ")"
+            WHITESPACE " "
+            EQ "="
+            WHITESPACE " "
+            LITERAL
+              INT_NUMBER "0"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          TUPLE_PAT
+            L_PAREN "("
+            IDENT_PAT
+              NAME
+                IDENT "a"
+            COMMA ","
+            WHITESPACE " "
+            IDENT_PAT
+              NAME
+                IDENT "b"
+            R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          BIN_EXPR
+            ARRAY_EXPR
+              L_BRACK "["
+              PATH_EXPR
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "a"
+              COMMA ","
+              WHITESPACE " "
+              RANGE_EXPR
+                DOT2 ".."
+              COMMA ","
+              WHITESPACE " "
+              PATH_EXPR
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "b"
+              R_BRACK "]"
+            WHITESPACE " "
+            EQ "="
+            WHITESPACE " "
+            ARRAY_EXPR
+              L_BRACK "["
+              LITERAL
+                INT_NUMBER "1"
+              COMMA ","
+              WHITESPACE " "
+              RANGE_EXPR
+                DOT2 ".."
+              COMMA ","
+              WHITESPACE " "
+              LITERAL
+                INT_NUMBER "2"
+              R_BRACK "]"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          BIN_EXPR
+            TUPLE_EXPR
+              L_PAREN "("
+              UNDERSCORE_EXPR
+                UNDERSCORE "_"
+              COMMA ","
+              WHITESPACE " "
+              UNDERSCORE_EXPR
+                UNDERSCORE "_"
+              R_PAREN ")"
+            WHITESPACE " "
+            EQ "="
+            WHITESPACE " "
+            TUPLE_EXPR
+              L_PAREN "("
+              PATH_EXPR
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "a"
+              COMMA ","
+              WHITESPACE " "
+              PATH_EXPR
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "b"
+              R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          BIN_EXPR
+            PAREN_EXPR
+              L_PAREN "("
+              UNDERSCORE_EXPR
+                UNDERSCORE "_"
+              R_PAREN ")"
+            WHITESPACE " "
+            EQ "="
+            WHITESPACE " "
+            TUPLE_EXPR
+              L_PAREN "("
+              PATH_EXPR
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "a"
+              COMMA ","
+              WHITESPACE " "
+              PATH_EXPR
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "b"
+              R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          BIN_EXPR
+            UNDERSCORE_EXPR
+              UNDERSCORE "_"
+            WHITESPACE " "
+            EQ "="
+            WHITESPACE " "
+            TUPLE_EXPR
+              L_PAREN "("
+              PATH_EXPR
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "a"
+              COMMA ","
+              WHITESPACE " "
+              PATH_EXPR
+                PATH
+                  PATH_SEGMENT
+                    NAME_REF
+                      IDENT "b"
+              R_PAREN ")"
+          SEMICOLON ";"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"

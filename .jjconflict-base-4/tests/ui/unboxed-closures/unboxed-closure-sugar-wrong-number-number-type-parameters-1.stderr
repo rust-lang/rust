@@ -1,0 +1,9 @@
+error[E0220]: associated type `Output` not found for `One`
+  --> $DIR/unboxed-closure-sugar-wrong-number-number-type-parameters-1.rs:5:16
+   |
+LL | fn foo(_: &dyn One())
+   |                ^^^^^ associated type `Output` not found
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0220`.

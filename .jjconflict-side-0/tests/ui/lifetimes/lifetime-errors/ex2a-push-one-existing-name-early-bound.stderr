@@ -1,0 +1,14 @@
+error[E0621]: explicit lifetime required in the type of `y`
+  --> $DIR/ex2a-push-one-existing-name-early-bound.rs:8:5
+   |
+LL |     x.push(y);
+   |     ^^^^^^^^^ lifetime `'a` required
+   |
+help: add explicit lifetime `'a` to the type of `y`
+   |
+LL | fn baz<'a, 'b, T>(x: &mut Vec<&'a T>, y: &'a T)
+   |                                           ++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0621`.

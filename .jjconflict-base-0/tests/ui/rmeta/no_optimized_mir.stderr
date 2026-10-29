@@ -1,0 +1,10 @@
+error: missing optimized MIR for `missing_optimized_mir` in the crate `rmeta_meta`
+   |
+note: missing optimized MIR for this item (was the crate `rmeta_meta` compiled with `--emit=metadata`?)
+  --> $DIR/auxiliary/rmeta-meta.rs:10:1
+   |
+LL | pub fn missing_optimized_mir() {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,15 @@
+error[E0275]: overflow evaluating the requirement `for<'b> T: Proj<'b>`
+  --> $DIR/find-param-recursion-issue-152716.rs:15:1
+   |
+LL | / fn foo<T>()
+LL | |
+LL | | where
+LL | |     T: for<'a> Proj<'a, Assoc = for<'b> fn(<T as Proj<'b>>::Assoc)>,
+LL | |     (): Trait<<T as Proj<'static>>::Assoc>
+   | |__________________________________________^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`find_param_recursion_issue_152716`)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0275`.

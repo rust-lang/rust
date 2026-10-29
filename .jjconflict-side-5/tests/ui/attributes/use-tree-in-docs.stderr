@@ -1,0 +1,8 @@
+error: attribute value must be a literal
+  --> $DIR/use-tree-in-docs.rs:3:9
+   |
+LL | #[doc = assert !(b)]
+   |         ^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

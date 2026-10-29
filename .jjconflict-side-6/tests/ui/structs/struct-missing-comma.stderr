@@ -1,0 +1,8 @@
+error: expected `,`, or `}`, found keyword `pub`
+  --> $DIR/struct-missing-comma.rs:5:17
+   |
+LL |     pub foo: u32
+   |                 ^ help: try adding a comma: `,`
+
+error: aborting due to 1 previous error
+

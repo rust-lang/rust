@@ -1,0 +1,17 @@
+error[E0599]: no method named `foo` found for type parameter `T` in the current scope
+  --> $DIR/issue-65284-suggest-generic-trait-bound.rs:8:7
+   |
+LL | fn do_stuff<T : Bar>(t : T) {
+   |             - method `foo` not found for this type parameter
+LL |     t.foo()
+   |       ^^^ method not found in `T`
+   |
+   = help: items from traits can only be used if the type parameter is bounded by the trait
+help: the following trait defines an item `foo`, perhaps you need to restrict type parameter `T` with it:
+   |
+LL | fn do_stuff<T : Bar + Foo>(t : T) {
+   |                     +++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

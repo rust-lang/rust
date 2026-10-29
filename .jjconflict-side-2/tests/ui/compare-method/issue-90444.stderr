@@ -1,0 +1,31 @@
+error[E0053]: method `from` has an incompatible type for trait
+  --> $DIR/issue-90444.rs:3:16
+   |
+LL |     fn from(_: fn((), (), &mut ())) -> Self {
+   |                ^^^^^^^^^^^^^^^^^^^ types differ in mutability
+   |
+   = note: expected signature `fn(for<'a> fn((), (), &'a ())) -> A`
+              found signature `fn(for<'a> fn((), (), &'a mut ())) -> A`
+help: change the parameter type to match the trait
+   |
+LL -     fn from(_: fn((), (), &mut ())) -> Self {
+LL +     fn from(_: for<'a> fn((), (), &'a ())) -> Self {
+   |
+
+error[E0053]: method `from` has an incompatible type for trait
+  --> $DIR/issue-90444.rs:11:16
+   |
+LL |     fn from(_: fn((), (), u64)) -> Self {
+   |                ^^^^^^^^^^^^^^^ expected `u32`, found `u64`
+   |
+   = note: expected signature `fn(fn((), (), u32)) -> B`
+              found signature `fn(fn((), (), u64)) -> B`
+help: change the parameter type to match the trait
+   |
+LL -     fn from(_: fn((), (), u64)) -> Self {
+LL +     fn from(_: fn((), (), u32)) -> Self {
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0053`.

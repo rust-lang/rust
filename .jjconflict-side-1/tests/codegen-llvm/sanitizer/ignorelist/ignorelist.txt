@@ -1,0 +1,14 @@
+[address]
+fun:*test_address*
+
+[memory]
+fun:*test_memory*
+
+[thread]
+fun:*test_thread*
+
+[hwaddress]
+fun:*test_hwaddress*
+
+[all]
+fun:*test_all*

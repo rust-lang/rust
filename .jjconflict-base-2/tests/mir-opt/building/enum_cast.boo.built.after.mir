@@ -1,0 +1,17 @@
+// MIR for `boo` after built
+
+fn boo(_1: Boo) -> usize {
+    debug boo => _1;
+    let mut _0: usize;
+    let _2: Boo;
+    let mut _3: u8;
+
+    bb0: {
+        StorageLive(_2);
+        _2 = move _1;
+        _3 = discriminant(_2);
+        _0 = move _3 as usize (IntToInt);
+        StorageDead(_2);
+        return;
+    }
+}

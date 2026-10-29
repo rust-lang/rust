@@ -1,0 +1,35 @@
+error: `self` parameter is only allowed in associated functions
+  --> $DIR/recursive-type-with-transmutability-issue-120759.rs:11:44
+   |
+LL |     pub fn is_maybe_transmutable<Src, Dst>(&self, cpu: &mut CPU)
+   |                                            ^^^^^ not semantically valid as function parameter
+   |
+   = note: associated functions are those in `impl` or `trait` definitions
+
+error[E0432]: unresolved import `std::mem::BikeshedIntrinsicFrom`
+  --> $DIR/recursive-type-with-transmutability-issue-120759.rs:7:28
+   |
+LL |     use std::mem::{Assume, BikeshedIntrinsicFrom};
+   |                            ^^^^^^^^^^^^^^^^^^^^^ no `BikeshedIntrinsicFrom` in `mem`
+
+error[E0425]: cannot find type `CPU` in this scope
+  --> $DIR/recursive-type-with-transmutability-issue-120759.rs:11:61
+   |
+LL |     pub fn is_maybe_transmutable<Src, Dst>(&self, cpu: &mut CPU)
+   |                                                             ^^^ not found in this scope
+
+error[E0072]: recursive type `ExplicitlyPadded` has infinite size
+  --> $DIR/recursive-type-with-transmutability-issue-120759.rs:22:5
+   |
+LL |     struct ExplicitlyPadded(ExplicitlyPadded);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ ---------------- recursive without indirection
+   |
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
+   |
+LL |     struct ExplicitlyPadded(Box<ExplicitlyPadded>);
+   |                             ++++                +
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0072, E0425, E0432.
+For more information about an error, try `rustc --explain E0072`.

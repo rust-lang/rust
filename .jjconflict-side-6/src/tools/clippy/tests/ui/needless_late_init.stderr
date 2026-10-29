@@ -1,0 +1,486 @@
+error: unneeded late initialization
+  --> tests/ui/needless_late_init.rs:19:5
+   |
+LL |     let a;
+   |     ^^^^^^ created here
+LL |
+LL |     a = "zero";
+   |     ^^^^^^^^^^ initialised here
+   |
+   = note: `-D clippy::needless-late-init` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_late_init)]`
+help: move the declaration `a` here
+   |
+LL ~     
+LL |
+LL ~     let a = "zero";
+   |
+
+error: unneeded late initialization
+  --> tests/ui/needless_late_init.rs:23:5
+   |
+LL |     let b;
+   |     ^^^^^^ created here
+...
+LL |     b = 1;
+   |     ^^^^^ initialised here
+   |
+help: move the declaration `b` here
+   |
+LL ~     
+LL |
+LL |     let c;
+LL |
+LL ~     let b = 1;
+   |
+
+error: unneeded late initialization
+  --> tests/ui/needless_late_init.rs:25:5
+   |
+LL |     let c;
+   |     ^^^^^^ created here
+...
+LL |     c = 2;
+   |     ^^^^^ initialised here
+   |
+help: move the declaration `c` here
+   |
+LL ~     
+LL |
+LL |     b = 1;
+LL ~     let c = 2;
+   |
+
+error: unneeded late initialization
+  --> tests/ui/needless_late_init.rs:30:5
+   |
+LL |     let d: usize;
+   |     ^^^^^^^^^^^^^ created here
+LL |
+LL |     d = 1;
+   |     ^^^^^ initialised here
+   |
+help: move the declaration `d` here
+   |
+LL ~     
+LL |
+LL ~     let d: usize = 1;
+   |
+
+error: unneeded late initialization
+  --> tests/ui/needless_late_init.rs:34:5
+   |
+LL |     let e;
+   |     ^^^^^^ created here
+LL |
+LL |     e = format!("{}", d);
+   |     ^^^^^^^^^^^^^^^^^^^^ initialised here
+   |
+help: move the declaration `e` here
+   |
+LL ~     
+LL |
+LL ~     let e = format!("{}", d);
+   |
+
+error: unneeded late initialization
+  --> tests/ui/needless_late_init.rs:40:5
+   |
+LL |     let a;
+   |     ^^^^^^
+   |
+help: move the declaration `a` here and remove the assignments from the `match` arms
+   |
+LL ~     
+LL |
+LL |     let n = 1;
+LL ~     let a = match n {
+LL ~         1 => "one",
+LL |         _ => {
+LL ~             "two"
+LL |         },
+LL ~     };
+   |
+
+error: unneeded late initialization
+  --> tests/ui/needless_late_init.rs:50:5
+   |
+LL |     let b;
+   |     ^^^^^^
+   |
+help: move the declaration `b` here and remove the assignments from the branches
+   |
+LL ~     
+LL |
+LL ~     let b = if n == 3 {
+LL ~         "four"
+LL |     } else {
+LL ~         "five"
+LL ~     };
+   |
+
+error: unneeded late initialization
+  --> tests/ui/needless_late_init.rs:58:5
+   |
+LL |     let d;
+   |     ^^^^^^
+   |
+help: move the declaration `d` here and remove the assignments from the branches
+   |
+LL ~     
+LL |
+LL ~     let d = if true {
+LL |         let temp = 5;
+LL ~         temp
+LL |     } else {
+LL ~         15
+LL ~     };
+   |
+
+error: unneeded late initialization
+  --> tests/ui/needless_late_init.rs:67:5
+   |
+LL |     let e;
+   |     ^^^^^^
+   |
+help: move the declaration `e` here and remove the assignments from the branches
+   |
+LL ~     
+LL |
+LL ~     let e = if true {
+LL ~         format!("{} {}", a, b)
+LL |     } else {
+LL ~         format!("{}", n)
+LL ~     };
+   |
+
+error: unneeded late initialization
+  --> tests/ui/needless_late_init.rs:75:5
+   |
+LL |     let f;
+   |     ^^^^^^
+   |
+help: move the declaration `f` here and remove the assignments from the `match` arms
+   |
+LL ~     
+LL |
+LL ~     let f = match 1 {
+LL ~         1 => "three",
+   |
+
+error: unneeded late initialization
+  --> tests/ui/needless_late_init.rs:82:5
+   |
+LL |     let g: usize;
+   |     ^^^^^^^^^^^^^
+   |
+help: move the declaration `g` here and remove the assignments from the branches
+   |
+LL ~     
+LL |
+LL ~     let g: usize = if true {
+LL ~         5
+LL |     } else {
+LL |         panic!();
+LL ~     };
+   |
+
+error: unneeded late initialization
+  --> tests/ui/needless_late_init.rs:91:5
+   |
+LL |     let x;
+   |     ^^^^^^ created here
+...
+LL |     x = 1;
+   |     ^^^^^ initialised here
+   |
+help: move the declaration `x` here
+   |
+LL ~     
+LL |
+LL |     let y = SignificantDrop;
+LL ~     let x = 1;
+   |
+
+error: unneeded late initialization
+  --> tests/ui/needless_late_init.rs:96:5
+   |
+LL |     let x;
+   |     ^^^^^^ created here
+...
+LL |     x = SignificantDrop;
+   |     ^^^^^^^^^^^^^^^^^^^ initialised here
+   |
+help: move the declaration `x` here
+   |
+LL ~     
+LL |
+LL |     let y = 1;
+LL ~     let x = SignificantDrop;
+   |
+
+error: unneeded late initialization
+  --> tests/ui/needless_late_init.rs:101:5
+   |
+LL |     let x;
+   |     ^^^^^^ created here
+...
+LL |     x = SignificantDrop;
+   |     ^^^^^^^^^^^^^^^^^^^ initialised here
+   |
+help: move the declaration `x` here
+   |
+LL ~     
+LL |
+...
+LL |     let y = Box::new(4);
+LL ~     let x = SignificantDrop;
+   |
+
+error: unneeded late initialization
+  --> tests/ui/needless_late_init.rs:121:5
+   |
+LL |     let a;
+   |     ^^^^^^
+   |
+help: move the declaration `a` here and remove the assignments from the `match` arms
+   |
+LL ~     
+LL |
+LL |     let n = 1;
+LL ~     let a = match n {
+LL ~         1 => f().await,
+LL |         _ => {
+LL ~             "two"
+LL |         },
+LL ~     };
+   |
+
+error: unneeded late initialization
+  --> tests/ui/needless_late_init.rs:139:5
+   |
+LL |     let a;
+   |     ^^^^^^
+   |
+help: move the declaration `a` here and remove the assignments from the `match` arms
+   |
+LL ~     
+LL |
+LL |     let n = 1;
+LL ~     let a = match n {
+LL ~         1 => f(),
+LL |         _ => {
+LL ~             "two"
+LL |         },
+LL ~     };
+   |
+
+error: unneeded late initialization
+  --> tests/ui/needless_late_init.rs:193:5
+   |
+LL |     let x;
+   |     ^^^^^^
+   |
+help: move the declaration `x` here and remove the assignments from the branches
+   |
+LL ~     
+LL |
+LL ~     let x = if true {
+LL |         let mut y = 5;
+LL |         y = 6;
+LL ~         y
+LL |     } else {
+LL ~         2
+LL ~     };
+   |
+
+error: unneeded late initialization
+  --> tests/ui/needless_late_init.rs:184:5
+   |
+LL | /     if true {
+LL | |
+LL | |         x = 1;
+LL | |         y = 2;
+...  |
+LL | |         y = 4;
+LL | |     }
+   | |_____^
+   |
+help: move the declarations here and remove the assignments from the branches
+   |
+LL ~     
+LL ~     
+LL ~     let (x, y) = if true {
+LL |
+LL ~         (1, 2)
+LL |     } else {
+LL ~         (3, 4)
+LL ~     };
+   |
+
+error: unneeded late initialization
+  --> tests/ui/needless_late_init.rs:293:5
+   |
+LL |     let r;
+   |     ^^^^^^ created here
+LL |
+LL |     (r = 5);
+   |     ^^^^^^^ initialised here
+   |
+help: move the declaration `r` here
+   |
+LL ~     
+LL |
+LL ~     let r = 5;
+   |
+
+error: unneeded late initialization
+  --> tests/ui/needless_late_init.rs:299:5
+   |
+LL |     let z;
+   |     ^^^^^^
+   |
+help: move the declaration `z` here and remove the assignments from the branches
+   |
+LL ~     
+LL |
+LL ~     let z = if true {
+LL ~         1
+LL |     } else {
+LL ~         2
+LL ~     };
+   |
+
+error: unneeded late initialization
+  --> tests/ui/needless_late_init.rs:449:5
+   |
+LL |     let c;
+   |     ^^^^^^
+   |
+help: move the declaration `c` here and remove the assignments from the branches
+   |
+LL ~     
+LL |
+LL ~     let c = if true {
+LL |         a = 1;
+LL |         b = a + 1;
+LL ~         b + 1
+LL |     } else {
+LL |         a = 4;
+LL |         b = a + 2;
+LL ~         b + 2
+LL ~     };
+   |
+
+error: unneeded late initialization
+  --> tests/ui/needless_late_init.rs:312:5
+   |
+LL | /     if true {
+LL | |
+LL | |         a = 1;
+LL | |         b = 2;
+...  |
+LL | |         b = 4;
+LL | |     }
+   | |_____^
+   |
+help: move the declarations here and remove the assignments from the branches
+   |
+LL ~     
+LL ~     
+LL ~     let (a, b) = if true {
+LL |
+LL ~         (1, 2)
+LL |     } else {
+LL ~         (3, 4)
+LL ~     };
+   |
+
+error: unneeded late initialization
+  --> tests/ui/needless_late_init.rs:355:5
+   |
+LL | /     match 1 {
+LL | |
+LL | |         1 => {
+LL | |             a = 1;
+...  |
+LL | |         },
+LL | |     }
+   | |_____^
+   |
+help: move the declarations here and remove the assignments from the `match` arms
+   |
+LL ~     
+LL ~     
+LL ~     
+LL ~     let (a, b, c) = match 1 {
+LL |
+LL |         1 => {
+LL ~             (1, 2, 3)
+LL |         },
+LL |         _ if false => {
+LL ~             (4, 5, 6)
+LL |         },
+LL |         _ => {
+LL ~             (7, 8, 9)
+LL |         },
+LL ~     };
+   |
+
+error: unneeded late initialization
+  --> tests/ui/needless_late_init.rs:378:5
+   |
+LL | /     if true {
+LL | |
+LL | |         a = 1;
+LL | |         b = 2;
+...  |
+LL | |         c = 9;
+LL | |     }
+   | |_____^
+   |
+help: move the declarations here and remove the assignments from the branches
+   |
+LL ~     
+LL ~     
+LL ~     
+LL ~     let (a, b, c) = if true {
+LL |
+LL ~         (1, 2, 3)
+LL |     } else if false {
+LL ~         (4, 5, 6)
+LL |     } else {
+LL ~         (7, 8, 9)
+LL ~     };
+   |
+
+error: unneeded late initialization
+  --> tests/ui/needless_late_init.rs:464:5
+   |
+LL | /     if true {
+LL | |
+LL | |         a = 1;
+LL | |         b = a + 1;
+...  |
+LL | |         d = 2;
+LL | |     }
+   | |_____^
+   |
+help: move the declarations here and remove the assignments from the branches
+   |
+LL ~     
+LL ~     
+LL ~     let (c, d) = if true {
+LL |
+LL |         a = 1;
+LL |         b = a + 1;
+LL ~         (b + 1, 1)
+LL |     } else {
+LL |         a = 4;
+LL |         b = a + 2;
+LL ~         (b + 2, 2)
+LL ~     };
+   |
+
+error: aborting due to 25 previous errors
+

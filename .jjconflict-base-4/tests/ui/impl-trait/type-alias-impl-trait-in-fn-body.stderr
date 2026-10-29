@@ -1,0 +1,15 @@
+error: item does not constrain `Existential::{opaque#0}`
+  --> $DIR/type-alias-impl-trait-in-fn-body.rs:8:4
+   |
+LL | fn main() {
+   |    ^^^^
+   |
+   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
+note: this opaque type is supposed to be constrained
+  --> $DIR/type-alias-impl-trait-in-fn-body.rs:10:24
+   |
+LL |     type Existential = impl Debug;
+   |                        ^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

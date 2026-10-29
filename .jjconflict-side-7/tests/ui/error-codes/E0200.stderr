@@ -1,0 +1,15 @@
+error[E0200]: the trait `Bar` requires an `unsafe impl` declaration
+  --> $DIR/E0200.rs:5:1
+   |
+LL | impl Bar for Foo { }
+   | ^^^^^^^^^^^^^^^^
+   |
+   = note: the trait `Bar` enforces invariants that the compiler can't check. Review the trait documentation and make sure this implementation upholds those invariants before adding the `unsafe` keyword
+help: add `unsafe` to this trait implementation
+   |
+LL | unsafe impl Bar for Foo { }
+   | ++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0200`.

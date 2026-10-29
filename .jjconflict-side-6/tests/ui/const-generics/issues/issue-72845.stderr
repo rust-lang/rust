@@ -1,0 +1,12 @@
+error[E0119]: conflicting implementations of trait `Foo`
+  --> $DIR/issue-72845.rs:44:1
+   |
+LL | impl<T: Spec1> Foo for T {
+   | ------------------------ first implementation here
+...
+LL | impl<T: Spec2> Foo for T {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0119`.

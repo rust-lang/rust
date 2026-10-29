@@ -1,0 +1,19 @@
+error[E0061]: this function takes 1 argument but 0 arguments were supplied
+  --> $DIR/issue-58451.rs:12:9
+   |
+LL |     f(&[f()]);
+   |         ^-- argument #1 is missing
+   |
+note: function defined here
+  --> $DIR/issue-58451.rs:5:4
+   |
+LL | fn f<I>(i: I)
+   |    ^    ----
+help: provide the argument
+   |
+LL |     f(&[f(/* i */)]);
+   |           +++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0061`.

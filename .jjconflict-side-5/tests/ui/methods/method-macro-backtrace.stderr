@@ -1,0 +1,11 @@
+error[E0592]: duplicate definitions with name `bar`
+  --> $DIR/method-macro-backtrace.rs:22:5
+   |
+LL |     fn bar(&self) { }
+   |     ------------- other definition for `bar`
+LL |     fn bar(&self) { }
+   |     ^^^^^^^^^^^^^ duplicate definitions for `bar`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0592`.

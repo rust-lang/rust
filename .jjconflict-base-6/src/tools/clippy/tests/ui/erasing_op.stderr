@@ -1,0 +1,35 @@
+error: this operation will always return zero. This is likely not the intended outcome
+  --> tests/ui/erasing_op.rs:35:5
+   |
+LL |     x * 0;
+   |     ^^^^^
+   |
+   = note: `-D clippy::erasing-op` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::erasing_op)]`
+
+error: this operation will always return zero. This is likely not the intended outcome
+  --> tests/ui/erasing_op.rs:38:5
+   |
+LL |     0 & x;
+   |     ^^^^^
+
+error: this operation will always return zero. This is likely not the intended outcome
+  --> tests/ui/erasing_op.rs:41:5
+   |
+LL |     0 / x;
+   |     ^^^^^
+
+error: this operation will always return zero. This is likely not the intended outcome
+  --> tests/ui/erasing_op.rs:45:5
+   |
+LL |     0 * Vec1 { x: 5 };
+   |     ^^^^^^^^^^^^^^^^^
+
+error: this operation will always return zero. This is likely not the intended outcome
+  --> tests/ui/erasing_op.rs:48:5
+   |
+LL |     Vec1 { x: 5 } * 0;
+   |     ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+

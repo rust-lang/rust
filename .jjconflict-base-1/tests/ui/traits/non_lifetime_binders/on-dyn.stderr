@@ -1,0 +1,8 @@
+error: late-bound type parameter not allowed on trait object types
+  --> $DIR/on-dyn.rs:7:30
+   |
+LL | fn foo() -> &'static dyn for<T> Test<T> {
+   |                              ^
+
+error: aborting due to 1 previous error
+

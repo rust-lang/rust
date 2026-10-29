@@ -1,0 +1,20 @@
+error: this call to `map()` won't have an effect on the call to `count()`
+  --> tests/ui/suspicious_map.rs:5:13
+   |
+LL |     let _ = (0..3).map(|x| x + 2).count();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: make sure you did not confuse `map` with `filter`, `for_each` or `inspect`
+   = note: `-D clippy::suspicious-map` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::suspicious_map)]`
+
+error: this call to `map()` won't have an effect on the call to `count()`
+  --> tests/ui/suspicious_map.rs:9:13
+   |
+LL |     let _ = (0..3).map(f).count();
+   |             ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: make sure you did not confuse `map` with `filter`, `for_each` or `inspect`
+
+error: aborting due to 2 previous errors
+

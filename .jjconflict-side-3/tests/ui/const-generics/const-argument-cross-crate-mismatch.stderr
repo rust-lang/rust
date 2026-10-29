@@ -1,0 +1,31 @@
+error[E0308]: mismatched types
+  --> $DIR/const-argument-cross-crate-mismatch.rs:6:67
+   |
+LL |     let _ = const_generic_lib::function(const_generic_lib::Struct([0u8, 1u8]));
+   |                                         ------------------------- ^^^^^^^^^^ expected an array with a size of 3, found one with a size of 2
+   |                                         |
+   |                                         arguments to this struct are incorrect
+   |
+note: tuple struct defined here
+  --> $DIR/auxiliary/const_generic_lib.rs:1:12
+   |
+LL | pub struct Struct<const N: usize>(pub [u8; N]);
+   |            ^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/const-argument-cross-crate-mismatch.rs:8:65
+   |
+LL |     let _: const_generic_lib::Alias = const_generic_lib::Struct([0u8, 1u8, 2u8]);
+   |                                       ------------------------- ^^^^^^^^^^^^^^^ expected an array with a size of 2, found one with a size of 3
+   |                                       |
+   |                                       arguments to this struct are incorrect
+   |
+note: tuple struct defined here
+  --> $DIR/auxiliary/const_generic_lib.rs:1:12
+   |
+LL | pub struct Struct<const N: usize>(pub [u8; N]);
+   |            ^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

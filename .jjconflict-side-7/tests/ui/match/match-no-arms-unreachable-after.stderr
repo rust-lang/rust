@@ -1,0 +1,16 @@
+error: unreachable statement
+  --> $DIR/match-no-arms-unreachable-after.rs:8:5
+   |
+LL |     match v { }
+   |     ----------- any code following this expression is unreachable
+LL |     let x = 2;
+   |     ^^^^^^^^^^ unreachable statement
+   |
+note: the lint level is defined here
+  --> $DIR/match-no-arms-unreachable-after.rs:2:9
+   |
+LL | #![deny(unreachable_code)]
+   |         ^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

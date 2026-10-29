@@ -1,0 +1,22 @@
+error[E0382]: use of moved value: `tick`
+  --> $DIR/unboxed-closures-infer-fnonce-call-twice.rs:10:5
+   |
+LL |     tick();
+   |     ------ `tick` moved due to this call
+LL |     tick();
+   |     ^^^^ value used here after move
+   |
+note: closure cannot be invoked more than once because it moves the variable `counter` out of its environment
+  --> $DIR/unboxed-closures-infer-fnonce-call-twice.rs:8:29
+   |
+LL |     let tick = || mem::drop(counter);
+   |                             ^^^^^^^
+note: this value implements `FnOnce`, which causes it to be moved when called
+  --> $DIR/unboxed-closures-infer-fnonce-call-twice.rs:9:5
+   |
+LL |     tick();
+   |     ^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.

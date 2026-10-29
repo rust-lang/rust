@@ -1,0 +1,18 @@
+error: expected identifier or string literal
+  --> $DIR/empty-input.rs:6:14
+   |
+LL |     () => { ${concat()} }
+   |              ^^^^^^^^^^
+
+error: expected expression, found `$`
+  --> $DIR/empty-input.rs:6:13
+   |
+LL | macro_rules! empty {
+LL |     () => { ${concat()} }
+   |             ^ expected expression
+...
+LL |     let x = empty!();
+   |             -------- in this macro invocation
+
+error: aborting due to 2 previous errors
+

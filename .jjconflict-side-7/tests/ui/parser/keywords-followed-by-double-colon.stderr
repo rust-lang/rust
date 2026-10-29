@@ -1,0 +1,14 @@
+error: expected identifier, found `::`
+  --> $DIR/keywords-followed-by-double-colon.rs:2:11
+   |
+LL |     struct::foo();
+   |           ^^ expected identifier
+
+error: expected expression, found keyword `mut`
+  --> $DIR/keywords-followed-by-double-colon.rs:6:5
+   |
+LL |     mut::baz();
+   |     ^^^ expected expression
+
+error: aborting due to 2 previous errors
+

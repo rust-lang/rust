@@ -1,0 +1,127 @@
+//! The compiler code necessary to implement the `#[derive]` extensions.
+
+use std::iter::once;
+
+use rustc_ast as ast;
+use rustc_ast::{GenericArg, MetaItem};
+use rustc_expand::base::{Annotatable, ExpandResult, ExtCtxt, MultiItemModifier};
+use rustc_span::{Ident, Span, Symbol, kw, sym};
+use thin_vec::{ThinVec, thin_vec};
+
+macro pathvec($($rest:ident)::+) {{
+    &[ $( sym::$rest ),+ ]
+}}
+
+macro path_std($cx: expr, $span: expr, $($x:tt)*) {
+    new_path($cx, $span, pathvec!( $($x)* ), vec![] )
+}
+
+pub(crate) mod clone;
+pub(crate) mod coerce_pointee;
+pub(crate) mod const_param_ty;
+pub(crate) mod copy;
+pub(crate) mod debug;
+pub(crate) mod default;
+pub(crate) mod eq;
+pub(crate) mod from;
+pub(crate) mod hash;
+pub(crate) mod ord;
+pub(crate) mod partial_eq;
+pub(crate) mod partial_ord;
+pub(crate) mod reborrow;
+
+pub(crate) mod generic;
+
+pub(crate) type BuiltinDeriveFn =
+    fn(&ExtCtxt<'_>, Span, &ast::Item, &mut dyn FnMut(Box<ast::Item>), bool);
+
+pub(crate) struct BuiltinDerive(pub(crate) BuiltinDeriveFn);
+
+impl MultiItemModifier for BuiltinDerive {
+    fn expand(
+        &self,
+        ecx: &mut ExtCtxt<'_>,
+        span: Span,
+        _: &MetaItem,
+        item: Annotatable,
+        is_derive_const: bool,
+    ) -> ExpandResult<Vec<Annotatable>, Annotatable> {
+        // FIXME: Built-in derives often forget to give spans contexts,
+        // so we are doing it here in a centralized way.
+        let span = ecx.with_def_site_ctxt(span);
+        let mut items = Vec::new();
+        match item {
+            Annotatable::Stmt(stmt) => {
+                if let ast::StmtKind::Item(item) = stmt.kind {
+                    (self.0)(
+                        ecx,
+                        span,
+                        &item,
+                        &mut |a| items.push(Annotatable::Stmt(Box::new(ecx.stmt_item(span, a)))),
+                        is_derive_const,
+                    );
+                } else {
+                    unreachable!("should have already errored on non-item statement")
+                }
+            }
+            Annotatable::Item(item) => (self.0)(
+                ecx,
+                span,
+                &item,
+                &mut |a| items.push(Annotatable::Item(a)),
+                is_derive_const,
+            ),
+            _ => unreachable!(),
+        }
+        ExpandResult::Ready(items)
+    }
+}
+
+/// Constructs an expression that calls an intrinsic
+fn call_intrinsic(
+    cx: &ExtCtxt<'_>,
+    span: Span,
+    intrinsic: Symbol,
+    args: ThinVec<Box<ast::Expr>>,
+) -> Box<ast::Expr> {
+    let span = cx.with_def_site_ctxt(span);
+    let path = cx.std_path(&[sym::intrinsics, intrinsic]);
+    cx.expr_call_global(span, path, args)
+}
+
+/// Constructs an expression that calls the `discriminant_value` intrinsic.
+fn call_discriminant_value(cx: &ExtCtxt<'_>, span: Span, arg: Symbol) -> Box<ast::Expr> {
+    call_intrinsic(cx, span, sym::discriminant_value, thin_vec![cx.expr_ident_sym(span, arg)])
+}
+
+/// Constructs an expression that calls the `unreachable` intrinsic.
+fn call_unreachable(cx: &ExtCtxt<'_>, span: Span) -> Box<ast::Expr> {
+    let call = call_intrinsic(cx, span, sym::unreachable, ThinVec::new());
+    cx.expr_block(Box::new(ast::Block {
+        stmts: thin_vec![cx.stmt_expr(call)],
+        id: ast::DUMMY_NODE_ID,
+        rules: ast::BlockCheckMode::Unsafe(ast::CompilerGenerated),
+        span,
+    }))
+}
+
+fn assert_ty_bounds(
+    cx: &ExtCtxt<'_>,
+    stmts: &mut ThinVec<ast::Stmt>,
+    ty: Box<ast::Ty>,
+    span: Span,
+    assert_path: &[Symbol],
+) {
+    // Generate statement `let _: assert_path<ty>;`.
+    let span = cx.with_def_site_ctxt(span);
+    let assert_path = cx.path_all(span, true, cx.std_path(assert_path), vec![GenericArg::Type(ty)]);
+    stmts.push(cx.stmt_let_type_only(span, cx.ty_path(assert_path)));
+}
+
+fn new_path(cx: &ExtCtxt<'_>, span: Span, path: &[Symbol], params: Vec<Box<ast::Ty>>) -> ast::Path {
+    let idents = path.iter().map(|s| Ident::new(*s, span));
+    let params = params.into_iter().map(GenericArg::Type).collect();
+
+    let idents = once(Ident::new(kw::DollarCrate, span)).chain(idents).collect();
+    cx.path_all(span, false, idents, params)
+}

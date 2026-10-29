@@ -1,0 +1,8 @@
+error: expected a string or an array of strings
+  --> $DIR/tests/ui-toml/arbitrary_source_item_ordering/bad_conf_4/clippy.toml:1:41
+   |
+LL | module-items-ordered-within-groupings = true
+   |                                         ^^^^
+
+error: aborting due to 1 previous error
+

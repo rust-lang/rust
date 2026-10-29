@@ -1,0 +1,8 @@
+error: failed to resolve delegation callee
+  --> $DIR/delegation-inherent-impl-issue-162774.rs:14:17
+   |
+LL |     reuse Self::foo::<> as bar { self }
+   |                 ^^^
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,10 @@
+error: unconstrained opaque type
+  --> $DIR/drop-analysis-on-unconstrained-tait.rs:5:24
+   |
+LL | pub type OpaqueBlock = impl Trait;
+   |                        ^^^^^^^^^^
+   |
+   = note: `OpaqueBlock` must be used in combination with a concrete type within the same crate
+
+error: aborting due to 1 previous error
+

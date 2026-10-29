@@ -1,0 +1,153 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          MATCH_EXPR
+            MATCH_KW "match"
+            WHITESPACE " "
+            TUPLE_EXPR
+              L_PAREN "("
+              R_PAREN ")"
+            WHITESPACE " "
+            MATCH_ARM_LIST
+              L_CURLY "{"
+              WHITESPACE "\n        "
+              MATCH_ARM
+                WILDCARD_PAT
+                  UNDERSCORE "_"
+                WHITESPACE " "
+                FAT_ARROW "=>"
+                WHITESPACE " "
+                TUPLE_EXPR
+                  L_PAREN "("
+                  R_PAREN ")"
+                COMMA ","
+              WHITESPACE "\n        "
+              MATCH_ARM
+                WILDCARD_PAT
+                  UNDERSCORE "_"
+                WHITESPACE " "
+                MATCH_GUARD
+                  IF_KW "if"
+                  WHITESPACE " "
+                  BIN_EXPR
+                    PATH_EXPR
+                      PATH
+                        PATH_SEGMENT
+                          NAME_REF
+                            IDENT "Test"
+                    WHITESPACE " "
+                    R_ANGLE ">"
+                    WHITESPACE " "
+                    RECORD_EXPR
+                      PATH
+                        PATH_SEGMENT
+                          NAME_REF
+                            IDENT "Test"
+                      RECORD_EXPR_FIELD_LIST
+                        L_CURLY "{"
+                        RECORD_EXPR_FIELD
+                          NAME_REF
+                            IDENT "field"
+                          COLON ":"
+                          WHITESPACE " "
+                          LITERAL
+                            INT_NUMBER "0"
+                        R_CURLY "}"
+                WHITESPACE " "
+                FAT_ARROW "=>"
+                WHITESPACE " "
+                TUPLE_EXPR
+                  L_PAREN "("
+                  R_PAREN ")"
+                COMMA ","
+              WHITESPACE "\n        "
+              MATCH_ARM
+                OR_PAT
+                  IDENT_PAT
+                    NAME
+                      IDENT "X"
+                  WHITESPACE " "
+                  PIPE "|"
+                  WHITESPACE " "
+                  IDENT_PAT
+                    NAME
+                      IDENT "Y"
+                WHITESPACE " "
+                MATCH_GUARD
+                  IF_KW "if"
+                  WHITESPACE " "
+                  PATH_EXPR
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "Z"
+                WHITESPACE " "
+                FAT_ARROW "=>"
+                WHITESPACE " "
+                TUPLE_EXPR
+                  L_PAREN "("
+                  R_PAREN ")"
+                COMMA ","
+              WHITESPACE "\n        "
+              MATCH_ARM
+                OR_PAT
+                  PIPE "|"
+                  WHITESPACE " "
+                  IDENT_PAT
+                    NAME
+                      IDENT "X"
+                  WHITESPACE " "
+                  PIPE "|"
+                  WHITESPACE " "
+                  IDENT_PAT
+                    NAME
+                      IDENT "Y"
+                WHITESPACE " "
+                MATCH_GUARD
+                  IF_KW "if"
+                  WHITESPACE " "
+                  PATH_EXPR
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "Z"
+                WHITESPACE " "
+                FAT_ARROW "=>"
+                WHITESPACE " "
+                TUPLE_EXPR
+                  L_PAREN "("
+                  R_PAREN ")"
+                COMMA ","
+              WHITESPACE "\n        "
+              MATCH_ARM
+                OR_PAT
+                  PIPE "|"
+                  WHITESPACE " "
+                  IDENT_PAT
+                    NAME
+                      IDENT "X"
+                WHITESPACE " "
+                FAT_ARROW "=>"
+                WHITESPACE " "
+                TUPLE_EXPR
+                  L_PAREN "("
+                  R_PAREN ")"
+                COMMA ","
+              WHITESPACE "\n    "
+              R_CURLY "}"
+          SEMICOLON ";"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"

@@ -1,0 +1,70 @@
+error[E0277]: the trait bound `Self: trait_to_trait::Trait<'a, X, Y, T, N>` is not satisfied
+  --> $DIR/infer-defaults.rs:52:40
+   |
+LL |         reuse Trait::<'a, X, Y, _, _>::foo;
+   |                                        ^^^ the trait `trait_to_trait::Trait<'a, X, Y, T, N>` is not implemented for `Self`
+   |
+help: consider further restricting `Self`
+   |
+LL |         reuse Trait::<'a, X, Y, _, _>::foo Self: trait_to_trait::Trait<'a, X, Y, T, N>;
+   |                                            +++++++++++++++++++++++++++++++++++++++++++
+
+error[E0107]: method takes 0 generic arguments but 3 generic arguments were supplied
+  --> $DIR/infer-defaults.rs:87:14
+   |
+LL |         W(S).foo::<1, 2, 3>(((), (), ()), &[1, 2]);
+   |              ^^^----------- help: remove the unnecessary generics
+   |              |
+   |              expected 0 generic arguments
+   |
+note: method defined here, with 0 generic parameters
+  --> $DIR/infer-defaults.rs:70:12
+   |
+LL |         fn foo(&self, t: (T, T, T), slice: &[usize; N]) {}
+   |            ^^^
+
+error[E0308]: mismatched types
+  --> $DIR/infer-defaults.rs:90:32
+   |
+LL |         W(S).bar(((), (), ()), &[1]);
+   |              ---               ^^^^ expected an array with a size of 2, found one with a size of 1
+   |              |
+   |              arguments to this method are incorrect
+   |
+note: method defined here
+  --> $DIR/infer-defaults.rs:71:12
+   |
+LL |         fn bar(&self, t: (T, T, T), slice: &[usize; N]) {}
+   |            ^^^                      ------------------
+
+error[E0107]: method takes 0 generic arguments but 2 generic arguments were supplied
+  --> $DIR/infer-defaults.rs:92:14
+   |
+LL |         W(S).bar::<((), ()), 0>(((), (), ()), &[1, 2]);
+   |              ^^^--------------- help: remove the unnecessary generics
+   |              |
+   |              expected 0 generic arguments
+   |
+note: method defined here, with 0 generic parameters
+  --> $DIR/infer-defaults.rs:71:12
+   |
+LL |         fn bar(&self, t: (T, T, T), slice: &[usize; N]) {}
+   |            ^^^
+
+error[E0277]: the trait bound `T: inherent_impl_to_trait::Trait<'static, (), (), T, N>` is not satisfied
+  --> $DIR/infer-defaults.rs:111:60
+   |
+LL |         reuse Trait::<'static, (), (), _, _>::foo as bar { self.0 }
+   |                                               ---          ^^^^^^ the trait `inherent_impl_to_trait::Trait<'static, (), (), T, N>` is not implemented for `T`
+   |                                               |
+   |                                               required by a bound introduced by this call
+   |
+help: consider restricting type parameter `T` with trait `Trait`
+   |
+LL |         reuse Trait::<'static, (), (), _, _>::foo inherent_impl_to_trait::Trait<'static, (), (), T, N> as bar { self.0 }
+   |                                                   ++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0107, E0277, E0308.
+For more information about an error, try `rustc --explain E0107`.

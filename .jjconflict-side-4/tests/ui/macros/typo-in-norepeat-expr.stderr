@@ -1,0 +1,19 @@
+error: cannot find macro parameter `$arg` in this scope
+  --> $DIR/typo-in-norepeat-expr.rs:4:10
+   |
+LL | macro_rules! m {
+LL |     (begin $ard:ident end) => {
+LL |         [$arg]
+   |          ^^^^ not found in this scope
+...
+LL |     let _ = m![begin x end];
+   |             --------------- in this macro invocation
+   |
+help: there is a macro metavariable with a similar name
+   |
+LL -         [$arg]
+LL +         [$ard]
+   |
+
+error: aborting due to 1 previous error
+

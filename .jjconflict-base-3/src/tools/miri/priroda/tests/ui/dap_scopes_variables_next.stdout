@@ -1,0 +1,31 @@
+Content-Length: {CONTENT_LENGTH}
+
+{"seq":1,"type":"response","request_seq":1,"success":true,"command":"initialize","body":{"supportsConfigurationDoneRequest":true,"supportsSingleThreadExecutionRequests":true},"error":null}Content-Length: {CONTENT_LENGTH}
+
+{"seq":2,"type":"event","event":"initialized"}Content-Length: {CONTENT_LENGTH}
+
+{"seq":3,"type":"response","request_seq":2,"success":true,"command":"launch","error":null}Content-Length: {CONTENT_LENGTH}
+
+{"seq":4,"type":"response","request_seq":3,"success":true,"command":"configurationDone","error":null}Content-Length: {CONTENT_LENGTH}
+
+{"seq":5,"type":"event","event":"stopped","body":{"reason":"entry","description":null,"threadId":1,"preserveFocusHint":null,"text":null,"allThreadsStopped":true,"hitBreakpointIds":null}}Content-Length: {CONTENT_LENGTH}
+
+{"seq":6,"type":"response","request_seq":4,"success":true,"command":"stackTrace","body":{"stackFrames":[{"id":1,"name":"main","source":{"name":"dap_scopes_variables_next.rs","path":"{MANIFEST_DIR}/tests/ui/dap_scopes_variables_next.rs","sourceReference":0},"line":4,"column":9}],"totalFrames":1},"error":null}Content-Length: {CONTENT_LENGTH}
+
+{"seq":7,"type":"response","request_seq":5,"success":true,"command":"scopes","body":{"scopes":[{"name":"Locals","presentationHint":"locals","variablesReference":1,"indexedVariables":0,"expensive":false,"source":{"name":"dap_scopes_variables_next.rs","path":"{MANIFEST_DIR}/tests/ui/dap_scopes_variables_next.rs","sourceReference":0},"line":4,"column":9}]},"error":null}Content-Length: {CONTENT_LENGTH}
+
+{"seq":8,"type":"response","request_seq":6,"success":true,"command":"variables","body":{"variables":[{"name":"_0","value":"<uninit>","type":"()","variablesReference":0},{"name":"x","value":"<dead>","type":"i32","variablesReference":0},{"name":"y","value":"<dead>","type":"bool","variablesReference":0},{"name":"_3","value":"<dead>","type":"(i32, bool)","variablesReference":0},{"name":"_4","value":"<dead>","type":"i32","variablesReference":0},{"name":"_5","value":"<dead>","type":"bool","variablesReference":0}]},"error":null}Content-Length: {CONTENT_LENGTH}
+
+{"seq":9,"type":"response","request_seq":7,"success":true,"command":"next","error":null}Content-Length: {CONTENT_LENGTH}
+
+{"seq":10,"type":"event","event":"stopped","body":{"reason":"step","description":null,"threadId":1,"preserveFocusHint":null,"text":null,"allThreadsStopped":true,"hitBreakpointIds":null}}Content-Length: {CONTENT_LENGTH}
+
+{"seq":11,"type":"response","request_seq":8,"success":true,"command":"stackTrace","body":{"stackFrames":[{"id":1,"name":"main","source":{"name":"dap_scopes_variables_next.rs","path":"{MANIFEST_DIR}/tests/ui/dap_scopes_variables_next.rs","sourceReference":0},"line":5,"column":9}],"totalFrames":1},"error":null}Content-Length: {CONTENT_LENGTH}
+
+{"seq":12,"type":"response","request_seq":9,"success":true,"command":"scopes","body":{"scopes":[{"name":"Locals","presentationHint":"locals","variablesReference":1,"indexedVariables":0,"expensive":false,"source":{"name":"dap_scopes_variables_next.rs","path":"{MANIFEST_DIR}/tests/ui/dap_scopes_variables_next.rs","sourceReference":0},"line":5,"column":9}]},"error":null}Content-Length: {CONTENT_LENGTH}
+
+{"seq":13,"type":"response","request_seq":10,"success":true,"command":"variables","body":{"variables":[{"name":"_0","value":"<uninit>","type":"()","variablesReference":0},{"name":"x","value":"1_i32","type":"i32","variablesReference":0},{"name":"y","value":"<dead>","type":"bool","variablesReference":0},{"name":"_3","value":"<dead>","type":"(i32, bool)","variablesReference":0},{"name":"_4","value":"<dead>","type":"i32","variablesReference":0},{"name":"_5","value":"<dead>","type":"bool","variablesReference":0}]},"error":null}Content-Length: {CONTENT_LENGTH}
+
+{"seq":14,"type":"response","request_seq":11,"success":true,"command":"disconnect","error":null}Content-Length: {CONTENT_LENGTH}
+
+{"seq":15,"type":"event","event":"terminated","body":null}

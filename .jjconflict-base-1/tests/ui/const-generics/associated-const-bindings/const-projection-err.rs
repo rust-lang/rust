@@ -1,0 +1,16 @@
+#![feature(gca_min_const_items)]
+#![allow(incomplete_features)]
+
+trait TraitWAssocConst {
+    #[rustc_always_gca]
+    const A: usize;
+}
+
+fn foo<T: TraitWAssocConst<A = 1>>() {}
+
+fn bar<T: TraitWAssocConst<A = 0>>() {
+    foo::<T>();
+    //~^ ERROR type mismatch resolving `<T as TraitWAssocConst>::A == 1`
+}
+
+fn main() {}

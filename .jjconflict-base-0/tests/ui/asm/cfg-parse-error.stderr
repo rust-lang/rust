@@ -1,0 +1,39 @@
+error: expected one of `#`, `clobber_abi`, `const`, `in`, `inlateout`, `inout`, `label`, `lateout`, `options`, `out`, or `sym`, found `""`
+  --> $DIR/cfg-parse-error.rs:16:13
+   |
+LL |             a = out(reg) x,
+   |                            - expected one of 11 possible tokens
+LL |             "",
+   |             ^^ unexpected token
+
+error: expected one of `#`, `clobber_abi`, `const`, `in`, `inlateout`, `inout`, `label`, `lateout`, `options`, `out`, or `sym`, found `""`
+  --> $DIR/cfg-parse-error.rs:26:13
+   |
+LL |             },
+   |               - expected one of 11 possible tokens
+LL |             "",
+   |             ^^ unexpected token
+
+error: expected token: `,`
+  --> $DIR/cfg-parse-error.rs:41:26
+   |
+LL |             a = out(reg) x,
+   |                          ^ expected `,`
+
+error: this attribute is not supported on assembly
+  --> $DIR/cfg-parse-error.rs:47:13
+   |
+LL |             #[rustfmt::skip]
+   |             ^^^^^^^^^^^^^^^^
+
+error: an inner attribute is not permitted in this context
+  --> $DIR/cfg-parse-error.rs:53:13
+   |
+LL |             #![rustfmt::skip]
+   |             ^^^^^^^^^^^^^^^^^
+   |
+   = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files
+   = note: outer attributes, like `#[test]`, annotate the item following them
+
+error: aborting due to 5 previous errors
+

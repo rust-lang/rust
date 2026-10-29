@@ -1,0 +1,25 @@
+error: unknown start of token: \u{ff5d}
+  --> $DIR/let-else-fullwidth-brace.rs:4:15
+   |
+LL |     let x = {1｝ else { return; };
+   |               ^^
+   |
+help: Unicode character '｝' (Fullwidth Right Curly Bracket) looks like '}' (Right Curly Brace), but it is not
+   |
+LL -     let x = {1｝ else { return; };
+LL +     let x = {1} else { return; };
+   |
+
+error: right curly brace `}` before `else` in a `let...else` statement not allowed
+  --> $DIR/let-else-fullwidth-brace.rs:4:15
+   |
+LL |     let x = {1｝ else { return; };
+   |               ^^
+   |
+help: wrap the expression in parentheses
+   |
+LL |     let x = ({1｝) else { return; };
+   |             +    +
+
+error: aborting due to 2 previous errors
+

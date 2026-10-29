@@ -1,0 +1,90 @@
+error: Rust has no postfix increment operator
+  --> $DIR/increment-autofix-2.rs:13:6
+   |
+LL |     i++;
+   |      ^^ not a valid postfix operator
+   |
+help: use `+= 1` instead
+   |
+LL -     i++;
+LL +     i += 1;
+   |
+
+error: Rust has no postfix increment operator
+  --> $DIR/increment-autofix-2.rs:19:12
+   |
+LL |     while i++ < 5 {
+   |     -----  ^^ not a valid postfix operator
+   |     |
+   |     while parsing the condition of this `while` expression
+   |
+help: use `+= 1` instead
+   |
+LL -     while i++ < 5 {
+LL +     while { let tmp = i; i += 1; tmp } < 5 {
+   |
+
+error: Rust has no postfix increment operator
+  --> $DIR/increment-autofix-2.rs:27:8
+   |
+LL |     tmp++;
+   |        ^^ not a valid postfix operator
+   |
+help: use `+= 1` instead
+   |
+LL -     tmp++;
+LL +     tmp += 1;
+   |
+
+error: Rust has no postfix increment operator
+  --> $DIR/increment-autofix-2.rs:33:14
+   |
+LL |     while tmp++ < 5 {
+   |     -----    ^^ not a valid postfix operator
+   |     |
+   |     while parsing the condition of this `while` expression
+   |
+help: use `+= 1` instead
+   |
+LL -     while tmp++ < 5 {
+LL +     while { let tmp_ = tmp; tmp += 1; tmp_ } < 5 {
+   |
+
+error: Rust has no postfix increment operator
+  --> $DIR/increment-autofix-2.rs:41:16
+   |
+LL |     foo.bar.qux++;
+   |                ^^ not a valid postfix operator
+   |
+help: use `+= 1` instead
+   |
+LL -     foo.bar.qux++;
+LL +     foo.bar.qux += 1;
+   |
+
+error: Rust has no postfix increment operator
+  --> $DIR/increment-autofix-2.rs:51:10
+   |
+LL |     s.tmp++;
+   |          ^^ not a valid postfix operator
+   |
+help: use `+= 1` instead
+   |
+LL -     s.tmp++;
+LL +     s.tmp += 1;
+   |
+
+error: Rust has no prefix increment operator
+  --> $DIR/increment-autofix-2.rs:58:5
+   |
+LL |     ++foo.bar.qux;
+   |     ^^ not a valid prefix operator
+   |
+help: use `+= 1` instead
+   |
+LL -     ++foo.bar.qux;
+LL +     foo.bar.qux += 1;
+   |
+
+error: aborting due to 7 previous errors
+
