@@ -75,6 +75,8 @@ const DAYS_PER_WEEK: u64 = 7;
 /// program output may appear in contexts that cannot rely on full Unicode
 /// compatibility, you may wish to format `Duration` objects yourself or use a
 /// crate to do so.
+///
+/// Alternatively, you can display the value as seconds via [`Duration::display_seconds`].
 #[stable(feature = "duration", since = "1.3.0")]
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 #[rustc_diagnostic_item = "Duration"]
@@ -1333,6 +1335,56 @@ impl Duration {
     pub const fn div_duration_ceil(self, rhs: Duration) -> u128 {
         self.as_nanos().div_ceil(rhs.as_nanos())
     }
+
+    /// Displays `Duration` in seconds, even if it only contains the nanosecond part.
+    ///
+    /// Unlike [`Duration::as_secs_f32`] or [`Duration::as_secs_f64`], which convert
+    /// to floating-point numbers and may lose precision, this method displays a precise
+    /// value. If the formatting precision `{:.N}` is explicitly specified:
+    ///
+    /// - `N` < 9: it rounds the subsecond part with tie resolution to even.
+    /// - `N` = 9: it displays the precise 9-digit subsecond part.
+    /// - `N` > 9: it appends trailing zeros to the subsecond part.
+    ///
+    /// # Examples
+    /// ```
+    /// #![feature(duration_display_seconds)]
+    /// use std::time::Duration;
+    ///
+    /// // Display a duration longer than a second as seconds.
+    /// assert_eq!(Duration::new(2, 0).display_seconds().to_string(), "2s");
+    /// // Display a duration shorter than a second as seconds.
+    /// assert_eq!(Duration::new(0, 2).display_seconds().to_string(), "0.000000002s");
+    ///
+    /// // `display_seconds` displays a precise value.
+    /// assert_eq!(
+    ///     format!("{}", Duration::new(1_000_000_000_000, 1).display_seconds()),
+    ///     "1000000000000.000000001s",
+    /// );
+    /// // If formatting precision (< 9) is explicitly specified, it rounds
+    /// // the subsecond part with tie resolution to even.
+    /// assert_eq!(
+    ///     format!("{:.0}", Duration::new(1_000_000_000_000, 1).display_seconds()),
+    ///     "1000000000000s",
+    /// );
+    /// // If formatting precision (> 9) is explicitly specified, it appends
+    /// // trailing zeros to the subsecond part.
+    /// assert_eq!(
+    ///     format!("{:.10}", Duration::new(1_000_000_000_000, 1).display_seconds()),
+    ///     "1000000000000.0000000010s",
+    /// );
+    /// // In contrast, `as_secs_f64` converts it to a floating-point number
+    /// // and may introduce floating-point computation errors.
+    /// assert_eq!(
+    ///     format!("{}", Duration::new(1_000_000_000_000, 1).as_secs_f64()),
+    ///     "1000000000000",
+    /// );
+    /// ```
+    #[unstable(feature = "duration_display_seconds", issue = "165108")]
+    #[inline]
+    pub const fn display_seconds(&self) -> DisplaySeconds {
+        DisplaySeconds(*self)
+    }
 }
 
 #[stable(feature = "duration", since = "1.3.0")]
@@ -1469,184 +1521,183 @@ impl<'a> Sum<&'a Duration> for Duration {
     }
 }
 
+/// Formats a floating point number in decimal notation.
+///
+/// The number is given as the `integer_part` and a fractional part.
+/// The value of the fractional part is `fractional_part / divisor`. So
+/// `integer_part` = 3, `fractional_part` = 12 and `divisor` = 100
+/// represents the number `3.012`. Trailing zeros are omitted.
+///
+/// `divisor` must not be above 100_000_000. It also should be a power
+/// of 10, everything else doesn't make sense. `fractional_part` has
+/// to be less than `10 * divisor`!
+///
+/// A prefix and postfix may be added. The whole thing is padded
+/// to the formatter's `width`, if specified.
+fn fmt_decimal(
+    f: &mut fmt::Formatter<'_>,
+    integer_part: u64,
+    mut fractional_part: u32,
+    mut divisor: u32,
+    prefix: &str,
+    postfix: &str,
+) -> fmt::Result {
+    // Encode the fractional part into a temporary buffer. The buffer
+    // only need to hold 9 elements, because `fractional_part` has to
+    // be smaller than 10^9. The buffer is prefilled with '0' digits
+    // to simplify the code below.
+    let mut buf = [b'0'; 9];
+
+    // The next digit is written at this position
+    let mut pos = 0;
+
+    // We keep writing digits into the buffer while there are non-zero
+    // digits left and we haven't written enough digits yet.
+    while fractional_part > 0 && pos < f.precision().unwrap_or(9) {
+        // Write new digit into the buffer
+        buf[pos] = b'0' + (fractional_part / divisor) as u8;
+
+        fractional_part %= divisor;
+        divisor /= 10;
+        pos += 1;
+    }
+
+    // If a precision < 9 was specified, there may be some non-zero
+    // digits left that weren't written into the buffer. In that case we
+    // need to perform rounding to match the semantics of printing
+    // normal floating point numbers. However, we only need to do work
+    // when rounding up. This happens if the first digit of the
+    // remaining ones is >= 5. When the first digit is exactly 5, rounding
+    // follows IEEE-754 round-ties-to-even semantics: we only round up
+    // if the last written digit is odd.
+    let integer_part = if fractional_part > 0 && fractional_part >= divisor * 5 {
+        // For ties (fractional_part == divisor * 5), only round up if last digit is odd
+        let is_tie = fractional_part == divisor * 5;
+        let last_digit_is_odd = if pos > 0 {
+            (buf[pos - 1] - b'0') % 2 == 1
+        } else {
+            // No fractional digits - check the integer part
+            (integer_part % 2) == 1
+        };
+
+        if is_tie && !last_digit_is_odd {
+            Some(integer_part)
+        } else {
+            // Round up the number contained in the buffer. We go through
+            // the buffer backwards and keep track of the carry.
+            let mut rev_pos = pos;
+            let mut carry = true;
+            while carry && rev_pos > 0 {
+                rev_pos -= 1;
+
+                // If the digit in the buffer is not '9', we just need to
+                // increment it and can stop then (since we don't have a
+                // carry anymore). Otherwise, we set it to '0' (overflow)
+                // and continue.
+                if buf[rev_pos] < b'9' {
+                    buf[rev_pos] += 1;
+                    carry = false;
+                } else {
+                    buf[rev_pos] = b'0';
+                }
+            }
+
+            // If we still have the carry bit set, that means that we set
+            // the whole buffer to '0's and need to increment the integer
+            // part.
+            if carry {
+                // If `integer_part == u64::MAX` and precision < 9, any
+                // carry of the overflow during rounding of the
+                // `fractional_part` into the `integer_part` will cause the
+                // `integer_part` itself to overflow. Avoid this by using an
+                // `Option<u64>`, with `None` representing `u64::MAX + 1`.
+                integer_part.checked_add(1)
+            } else {
+                Some(integer_part)
+            }
+        }
+    } else {
+        Some(integer_part)
+    };
+
+    // Determine the end of the buffer: if precision is set, we just
+    // use as many digits from the buffer (capped to 9). If it isn't
+    // set, we only use all digits up to the last non-zero one.
+    let end = f.precision().map(|p| crate::cmp::min(p, 9)).unwrap_or(pos);
+
+    // This closure emits the formatted duration without emitting any
+    // padding (padding is calculated below).
+    let emit_without_padding = |f: &mut fmt::Formatter<'_>| {
+        if let Some(integer_part) = integer_part {
+            write!(f, "{}{}", prefix, integer_part)?;
+        } else {
+            // u64::MAX + 1 == 18446744073709551616
+            write!(f, "{}18446744073709551616", prefix)?;
+        }
+
+        // Write the decimal point and the fractional part (if any).
+        if end > 0 {
+            // SAFETY: We are only writing ASCII digits into the buffer and
+            // it was initialized with '0's, so it contains valid UTF8.
+            let s = unsafe { crate::str::from_utf8_unchecked(&buf[..end]) };
+
+            // If the user request a precision > 9, we pad '0's at the end.
+            let w = f.precision().unwrap_or(pos);
+            write!(f, ".{:0<width$}", s, width = w)?;
+        }
+
+        write!(f, "{}", postfix)
+    };
+
+    match f.width() {
+        None => {
+            // No `width` specified. There's no need to calculate the
+            // length of the output in this case, just emit it.
+            emit_without_padding(f)
+        }
+        Some(requested_w) => {
+            // A `width` was specified. Calculate the actual width of
+            // the output in order to calculate the required padding.
+            // It consists of 4 parts:
+            // 1. The prefix: is either "+" or "", so we can just use len().
+            // 2. The postfix: can be "µs" so we have to count UTF8 characters.
+            let mut actual_w = prefix.len() + postfix.chars().count();
+            // 3. The integer part:
+            if let Some(integer_part) = integer_part {
+                if let Some(log) = integer_part.checked_ilog10() {
+                    // integer_part is > 0, so has length log10(x)+1
+                    actual_w += 1 + log as usize;
+                } else {
+                    // integer_part is 0, so has length 1.
+                    actual_w += 1;
+                }
+            } else {
+                // integer_part is u64::MAX + 1, so has length 20
+                actual_w += 20;
+            }
+            // 4. The fractional part (if any):
+            if end > 0 {
+                let frac_part_w = f.precision().unwrap_or(pos);
+                actual_w += 1 + frac_part_w;
+            }
+
+            if requested_w <= actual_w {
+                // Output is already longer than `width`, so don't pad.
+                emit_without_padding(f)
+            } else {
+                // We need to add padding. Use the `Formatter::padding` helper function.
+                let default_align = fmt::Alignment::Left;
+                let post_padding = f.padding((requested_w - actual_w) as u16, default_align)?;
+                emit_without_padding(f)?;
+                post_padding.write(f)
+            }
+        }
+    }
+}
+
 #[stable(feature = "duration_debug_impl", since = "1.27.0")]
 impl fmt::Debug for Duration {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        /// Formats a floating point number in decimal notation.
-        ///
-        /// The number is given as the `integer_part` and a fractional part.
-        /// The value of the fractional part is `fractional_part / divisor`. So
-        /// `integer_part` = 3, `fractional_part` = 12 and `divisor` = 100
-        /// represents the number `3.012`. Trailing zeros are omitted.
-        ///
-        /// `divisor` must not be above 100_000_000. It also should be a power
-        /// of 10, everything else doesn't make sense. `fractional_part` has
-        /// to be less than `10 * divisor`!
-        ///
-        /// A prefix and postfix may be added. The whole thing is padded
-        /// to the formatter's `width`, if specified.
-        fn fmt_decimal(
-            f: &mut fmt::Formatter<'_>,
-            integer_part: u64,
-            mut fractional_part: u32,
-            mut divisor: u32,
-            prefix: &str,
-            postfix: &str,
-        ) -> fmt::Result {
-            // Encode the fractional part into a temporary buffer. The buffer
-            // only need to hold 9 elements, because `fractional_part` has to
-            // be smaller than 10^9. The buffer is prefilled with '0' digits
-            // to simplify the code below.
-            let mut buf = [b'0'; 9];
-
-            // The next digit is written at this position
-            let mut pos = 0;
-
-            // We keep writing digits into the buffer while there are non-zero
-            // digits left and we haven't written enough digits yet.
-            while fractional_part > 0 && pos < f.precision().unwrap_or(9) {
-                // Write new digit into the buffer
-                buf[pos] = b'0' + (fractional_part / divisor) as u8;
-
-                fractional_part %= divisor;
-                divisor /= 10;
-                pos += 1;
-            }
-
-            // If a precision < 9 was specified, there may be some non-zero
-            // digits left that weren't written into the buffer. In that case we
-            // need to perform rounding to match the semantics of printing
-            // normal floating point numbers. However, we only need to do work
-            // when rounding up. This happens if the first digit of the
-            // remaining ones is >= 5. When the first digit is exactly 5, rounding
-            // follows IEEE-754 round-ties-to-even semantics: we only round up
-            // if the last written digit is odd.
-            let integer_part = if fractional_part > 0 && fractional_part >= divisor * 5 {
-                // For ties (fractional_part == divisor * 5), only round up if last digit is odd
-                let is_tie = fractional_part == divisor * 5;
-                let last_digit_is_odd = if pos > 0 {
-                    (buf[pos - 1] - b'0') % 2 == 1
-                } else {
-                    // No fractional digits - check the integer part
-                    (integer_part % 2) == 1
-                };
-
-                if is_tie && !last_digit_is_odd {
-                    Some(integer_part)
-                } else {
-                    // Round up the number contained in the buffer. We go through
-                    // the buffer backwards and keep track of the carry.
-                    let mut rev_pos = pos;
-                    let mut carry = true;
-                    while carry && rev_pos > 0 {
-                        rev_pos -= 1;
-
-                        // If the digit in the buffer is not '9', we just need to
-                        // increment it and can stop then (since we don't have a
-                        // carry anymore). Otherwise, we set it to '0' (overflow)
-                        // and continue.
-                        if buf[rev_pos] < b'9' {
-                            buf[rev_pos] += 1;
-                            carry = false;
-                        } else {
-                            buf[rev_pos] = b'0';
-                        }
-                    }
-
-                    // If we still have the carry bit set, that means that we set
-                    // the whole buffer to '0's and need to increment the integer
-                    // part.
-                    if carry {
-                        // If `integer_part == u64::MAX` and precision < 9, any
-                        // carry of the overflow during rounding of the
-                        // `fractional_part` into the `integer_part` will cause the
-                        // `integer_part` itself to overflow. Avoid this by using an
-                        // `Option<u64>`, with `None` representing `u64::MAX + 1`.
-                        integer_part.checked_add(1)
-                    } else {
-                        Some(integer_part)
-                    }
-                }
-            } else {
-                Some(integer_part)
-            };
-
-            // Determine the end of the buffer: if precision is set, we just
-            // use as many digits from the buffer (capped to 9). If it isn't
-            // set, we only use all digits up to the last non-zero one.
-            let end = f.precision().map(|p| crate::cmp::min(p, 9)).unwrap_or(pos);
-
-            // This closure emits the formatted duration without emitting any
-            // padding (padding is calculated below).
-            let emit_without_padding = |f: &mut fmt::Formatter<'_>| {
-                if let Some(integer_part) = integer_part {
-                    write!(f, "{}{}", prefix, integer_part)?;
-                } else {
-                    // u64::MAX + 1 == 18446744073709551616
-                    write!(f, "{}18446744073709551616", prefix)?;
-                }
-
-                // Write the decimal point and the fractional part (if any).
-                if end > 0 {
-                    // SAFETY: We are only writing ASCII digits into the buffer and
-                    // it was initialized with '0's, so it contains valid UTF8.
-                    let s = unsafe { crate::str::from_utf8_unchecked(&buf[..end]) };
-
-                    // If the user request a precision > 9, we pad '0's at the end.
-                    let w = f.precision().unwrap_or(pos);
-                    write!(f, ".{:0<width$}", s, width = w)?;
-                }
-
-                write!(f, "{}", postfix)
-            };
-
-            match f.width() {
-                None => {
-                    // No `width` specified. There's no need to calculate the
-                    // length of the output in this case, just emit it.
-                    emit_without_padding(f)
-                }
-                Some(requested_w) => {
-                    // A `width` was specified. Calculate the actual width of
-                    // the output in order to calculate the required padding.
-                    // It consists of 4 parts:
-                    // 1. The prefix: is either "+" or "", so we can just use len().
-                    // 2. The postfix: can be "µs" so we have to count UTF8 characters.
-                    let mut actual_w = prefix.len() + postfix.chars().count();
-                    // 3. The integer part:
-                    if let Some(integer_part) = integer_part {
-                        if let Some(log) = integer_part.checked_ilog10() {
-                            // integer_part is > 0, so has length log10(x)+1
-                            actual_w += 1 + log as usize;
-                        } else {
-                            // integer_part is 0, so has length 1.
-                            actual_w += 1;
-                        }
-                    } else {
-                        // integer_part is u64::MAX + 1, so has length 20
-                        actual_w += 20;
-                    }
-                    // 4. The fractional part (if any):
-                    if end > 0 {
-                        let frac_part_w = f.precision().unwrap_or(pos);
-                        actual_w += 1 + frac_part_w;
-                    }
-
-                    if requested_w <= actual_w {
-                        // Output is already longer than `width`, so don't pad.
-                        emit_without_padding(f)
-                    } else {
-                        // We need to add padding. Use the `Formatter::padding` helper function.
-                        let default_align = fmt::Alignment::Left;
-                        let post_padding =
-                            f.padding((requested_w - actual_w) as u16, default_align)?;
-                        emit_without_padding(f)?;
-                        post_padding.write(f)
-                    }
-                }
-            }
-        }
-
         // Print leading '+' sign if requested
         let prefix = if f.sign_plus() { "+" } else { "" };
 
@@ -1673,6 +1724,38 @@ impl fmt::Debug for Duration {
         } else {
             fmt_decimal(f, self.nanos.as_inner() as u64, 0, 1, prefix, "ns")
         }
+    }
+}
+
+/// Displays `Duration` in seconds, even if it only contains the nanosecond part.
+///
+/// This struct is created by [`Duration::display_seconds`].
+///
+/// # Examples
+/// ```
+/// #![feature(duration_display_seconds)]
+/// use std::time::Duration;
+///
+/// assert_eq!(Duration::new(2, 0).display_seconds().to_string(), "2s");
+/// assert_eq!(Duration::new(0, 2).display_seconds().to_string(), "0.000000002s");
+/// ```
+#[unstable(feature = "duration_display_seconds", issue = "165108")]
+pub struct DisplaySeconds(Duration);
+
+#[unstable(feature = "duration_display_seconds", issue = "165108")]
+impl fmt::Debug for DisplaySeconds {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self, f)
+    }
+}
+
+#[unstable(feature = "duration_display_seconds", issue = "165108")]
+impl fmt::Display for DisplaySeconds {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Print leading '+' sign if requested
+        let prefix = if f.sign_plus() { "+" } else { "" };
+
+        fmt_decimal(f, self.0.secs, self.0.nanos.as_inner(), NANOS_PER_SEC / 10, prefix, "s")
     }
 }
 
