@@ -446,10 +446,10 @@ impl<T> Arc<T> {
     }
 
     /// Constructs an iterator yielding `n` `Arc<T>` without doing any reference counting
-    /// adjustements.
+    /// adjustments.
     ///
-    /// This is more efficient than doing `[Self::new]` followed by `[Self::clone]` n times and
-    /// even slightly cheaper than `[Self::new]` + `[Self::clone_n]` as it sets the counter
+    /// This is more efficient than doing `[Self::new]` followed by `[Self::clone]` `n - 1` times
+    /// and even slightly cheaper than `[Self::new]` + `[Self::clone_n]` as it sets the counter
     /// non-atomically.
     ///
     /// # Panics
@@ -5444,6 +5444,7 @@ impl<T: ?Sized> iter::DoubleEndedIterator for ArcIter<T> {
     }
 }
 
+// SAFETY: We only deal in `usize` and the len is always perfect.
 #[unstable(feature = "arc_n", issue = "none")]
 impl<T: ?Sized> iter::FusedIterator for ArcIter<T> {}
 
