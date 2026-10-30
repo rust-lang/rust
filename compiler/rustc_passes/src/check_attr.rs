@@ -1362,54 +1362,39 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     fn check_lint_check(&self, hir_id: HirId, lints: &[LintCheck]) {
-        for lint in lints {
-            let LintCheck {
-                tool: None,
-                lint_name,
-                lint_span,
-                kind: _,
-                reason: _,
-                attr_id: _,
-                attr_span: _,
-            } = *lint
-            else {
-                continue;
-            };
+        for LintCheck { lint_name, lint_span, .. } in lints {
+            if lint_name.is(sym::dead_code_pub_in_binary) {
+                if !self.tcx.crate_types().contains(&CrateType::Executable) {
+                    self.tcx.emit_node_span_lint(
+                        UNUSED_ATTRIBUTES,
+                        hir_id,
+                        *lint_span,
+                        diagnostics::Unused {
+                            attr_span: *lint_span,
+                            note: diagnostics::UnusedNote::NoEffectDeadCodePubInBinary,
+                        },
+                    );
+                }
+            }
 
-            match lint_name {
-                sym::dead_code_pub_in_binary => {
-                    if !self.tcx.crate_types().contains(&CrateType::Executable) {
-                        self.tcx.emit_node_span_lint(
-                            UNUSED_ATTRIBUTES,
-                            hir_id,
-                            lint_span,
-                            diagnostics::Unused {
-                                attr_span: lint_span,
-                                note: diagnostics::UnusedNote::NoEffectDeadCodePubInBinary,
-                            },
-                        );
-                    }
+            if lint_name.is(sym::linker_messages) | lint_name.is(sym::linker_info) {
+                if hir_id == CRATE_HIR_ID
+                    && self
+                        .tcx
+                        .crate_types()
+                        .iter()
+                        .all(|kind| matches!(kind, CrateType::Rlib | CrateType::StaticLib))
+                {
+                    self.tcx.emit_node_span_lint(
+                        UNUSED_ATTRIBUTES,
+                        hir_id,
+                        *lint_span,
+                        diagnostics::Unused {
+                            attr_span: *lint_span,
+                            note: diagnostics::UnusedNote::LinkerMessagesBinaryCrateOnly,
+                        },
+                    );
                 }
-                sym::linker_messages | sym::linker_info => {
-                    if hir_id == CRATE_HIR_ID
-                        && self
-                            .tcx
-                            .crate_types()
-                            .iter()
-                            .all(|kind| matches!(kind, CrateType::Rlib | CrateType::StaticLib))
-                    {
-                        self.tcx.emit_node_span_lint(
-                            UNUSED_ATTRIBUTES,
-                            hir_id,
-                            lint_span,
-                            diagnostics::Unused {
-                                attr_span: lint_span,
-                                note: diagnostics::UnusedNote::LinkerMessagesBinaryCrateOnly,
-                            },
-                        );
-                    }
-                }
-                _ => {}
             }
         }
     }
