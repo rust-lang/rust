@@ -1,5 +1,5 @@
 error[E0222]: ambiguous associated type `Assoc` in bounds of `Trait`
-  --> $DIR/impl-trait-in-param.rs:9:17
+  --> $DIR/impl-trait-in-param.rs:10:17
    |
 LL | trait Super<T> {
 LL |     type Assoc;
@@ -11,11 +11,11 @@ LL |     type Assoc;
 LL | fn foo<T: Trait<Assoc = u32>>() {}
    |                 ^^^^^^^^^^^ ambiguous associated type `Assoc`
    |
-   = help: consider introducing a new type parameter `T` and adding `where` constraints:
-               where
-                   T: Trait,
-                   T: Super<i32>::Assoc = u32,
-                   T: Super<u32>::Assoc = u32
+help: consider being explicit about the bounds
+   |
+LL - fn foo<T: Trait<Assoc = u32>>() {}
+LL + fn foo<T: Trait<> + Super<i32, Assoc = u32> + Super<u32, Assoc = u32>>() {}
+   |
 
 error: aborting due to 1 previous error
 

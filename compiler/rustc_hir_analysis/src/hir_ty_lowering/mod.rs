@@ -1178,6 +1178,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 dup_constraints.as_mut(),
                 constraint.span,
                 predicate_filter,
+                span,
             );
             // Okay to ignore `Err` because of `ErrorGuaranteed` (see above).
         }
@@ -1275,6 +1276,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             assoc_ident,
             span,
             None,
+            span,
         )
     }
 
@@ -1360,6 +1362,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         assoc_ident: Ident,
         span: Span,
         constraint: Option<&hir::AssocItemConstraint<'_>>,
+        outer_span: Span,
     ) -> Result<ty::PolyTraitRef<'tcx>, ErrorGuaranteed>
     where
         I: Iterator<Item = ty::PolyTraitRef<'tcx>>,
@@ -1394,6 +1397,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 assoc_ident,
                 span,
                 constraint,
+                outer_span,
             ));
         }
 
@@ -1662,6 +1666,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     segment.ident,
                     span,
                     None,
+                    span,
                 )?
             }
             (
