@@ -986,6 +986,7 @@ macro_rules! int_impl {
         #[unstable(feature = "unchecked_div_rem", issue = "136716")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
+        #[inline(always)]
         #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_div(self, rhs: Self) -> Self {
             assert_unsafe_precondition!(
@@ -1260,6 +1261,7 @@ macro_rules! int_impl {
         #[unstable(feature = "unchecked_div_rem", issue = "136716")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
+        #[inline(always)]
         #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_rem(self, rhs: Self) -> Self {
             assert_unsafe_precondition!(
