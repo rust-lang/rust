@@ -331,6 +331,9 @@ pub(crate) struct CrateRoot {
     symbol_mangling_version: SymbolManglingVersion,
 
     specialization_enabled_in: bool,
+
+    // LazyTable maybe??
+    comptime_files: LazyArray<(String, Vec<u8>)>,
 }
 
 /// A separate struct for extra metadata that must be encoded *after*
@@ -652,6 +655,7 @@ define_tables! {
     safety: Table<hir::Safety>,
     defaultness: Table<hir::Defaultness>,
     impl_is_fully_generic_for_reflection: Table<bool>,
+
 
 - optional:
     opt_rpitit_info: Table<LazyValue<ty::ImplTraitInTraitData>>,

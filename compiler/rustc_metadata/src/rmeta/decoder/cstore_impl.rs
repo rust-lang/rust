@@ -624,6 +624,16 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
         ..providers.queries
     };
     provide_extern(&mut providers.extern_queries);
+
+    providers.extern_queries.experimental_comptime_fetch_file = |tcx, (cnum, key)| {
+        let cstore = CStore::from_tcx(tcx);
+        let crate_data = cstore.get_crate_data(cnum);
+        crate_data
+            .root
+            .decode_comptime_files(&crate_data.blob)
+            .find(|(path, _)| key == path)
+            .map(|(_, data)| &*tcx.arena.alloc_slice(data.as_ref()))
+    };
 }
 
 impl CStore {

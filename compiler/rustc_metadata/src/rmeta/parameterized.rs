@@ -70,6 +70,7 @@ macro_rules! trivially_parameterized_over_tcx {
 
 trivially_parameterized_over_tcx! {
     bool,
+    u8,
     u32,
     u64,
     usize,
