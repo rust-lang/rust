@@ -58,6 +58,12 @@ impl<A: ToJson> ToJson for [A] {
     }
 }
 
+impl<T: ToJson, U: ToJson> ToJson for (T, U) {
+    fn to_json(&self) -> Json {
+        Json::Array(vec![self.0.to_json(), self.1.to_json()])
+    }
+}
+
 impl<A: ToJson> ToJson for Vec<A> {
     fn to_json(&self) -> Json {
         Json::Array(self.iter().map(|elt| elt.to_json()).collect())
