@@ -981,7 +981,7 @@ where
         &self,
         canonical_goal: I::CanonicalInput,
         maybe_info: MaybeInfo,
-        stalled_vars: ThinVec<I::GenericArg>,
+        stalled_vars: Vec<I::GenericArg>,
         previously_succeeded_in_erased: SucceededInErased<I>,
     ) -> GoalStalledOn<I> {
         // Remove the canonicalized universal vars, since we only care about stalled existentials.

@@ -21,7 +21,6 @@ use rustc_type_ir::{
     self as ty, Canonical, CanonicalVarKind, CanonicalVarValues, Canonicalized, Const,
     InferCtxtLike, Interner, Region, TypeFoldable, TypingMode, TypingModeEqWrapper,
 };
-use thin_vec::ThinVec;
 use tracing::instrument;
 
 use crate::delegate::SolverDelegate;
@@ -58,7 +57,7 @@ pub(super) fn canonicalize_goal<D, I>(
     goal: Goal<I, I::Predicate>,
     opaque_types: &[(ty::OpaqueTypeKey<I>, I::Ty)],
     typing_mode: TypingMode<I>,
-) -> (ThinVec<I::GenericArg>, I::CanonicalInput)
+) -> (Vec<I::GenericArg>, I::CanonicalInput)
 where
     D: SolverDelegate<Interner = I>,
     I: Interner,
@@ -223,51 +222,63 @@ where
     let var_values = response.value.var_values();
     assert_eq!(original_values.len(), var_values.len());
 
-    // If the query did not make progress with constraining inference variables,
-    // we would normally create a new inference variables for bound existential variables
-    // only then unify this new inference variable with the inference variable from
-    // the input.
-    //
-    // We therefore instantiate the existential variable in the canonical response with the
-    // inference variable of the input right away, which is more performant.
-    let mut opt_values = IndexVec::from_elem_n(None, response.var_kinds.len());
-    for (original_value, result_value) in iter::zip(original_values, var_values.iter()) {
-        match result_value.kind() {
-            ty::GenericArgKind::Type(t) => {
-                // We disable the instantiation guess for inference variables
-                // and only use it for placeholders. We need to handle the
-                // `sub_root` of type inference variables which would make this
-                // more involved. They are also a lot rarer than region variables.
-                if let ty::Bound(index_kind, b) = t.kind()
-                    && !matches!(
-                        response.var_kinds.get(b.var().as_usize()).unwrap(),
-                        CanonicalVarKind::Ty { .. }
-                    )
-                {
-                    assert!(matches!(index_kind, ty::BoundVarIndexKind::Canonical));
-                    opt_values[b.var()] = Some(*original_value);
+    // `opt_values` below is expensive to build and rarely needed. Do a quick scan to see if it's
+    // needed. (This duplicates the test in the `instantiate` closure below.)
+    let has_root_existentials = response
+        .var_kinds
+        .iter()
+        .any(|kind| kind.universe() == ty::UniverseIndex::ROOT && kind.is_existential());
+
+    // Build it only if necessary.
+    let opt_values = has_root_existentials.then(|| {
+        // If the query did not make progress with constraining inference variables,
+        // we would normally create a new inference variables for bound existential variables
+        // only then unify this new inference variable with the inference variable from
+        // the input.
+        //
+        // We therefore instantiate the existential variable in the canonical response with the
+        // inference variable of the input right away, which is more performant.
+        let mut opt_values = IndexVec::from_elem_n(None, response.var_kinds.len());
+        for (original_value, result_value) in iter::zip(original_values, var_values.iter()) {
+            match result_value.kind() {
+                ty::GenericArgKind::Type(t) => {
+                    // We disable the instantiation guess for inference variables
+                    // and only use it for placeholders. We need to handle the
+                    // `sub_root` of type inference variables which would make this
+                    // more involved. They are also a lot rarer than region variables.
+                    if let ty::Bound(index_kind, b) = t.kind()
+                        && !matches!(
+                            response.var_kinds.get(b.var().as_usize()).unwrap(),
+                            CanonicalVarKind::Ty { .. }
+                        )
+                    {
+                        assert!(matches!(index_kind, ty::BoundVarIndexKind::Canonical));
+                        opt_values[b.var()] = Some(*original_value);
+                    }
                 }
-            }
-            ty::GenericArgKind::Lifetime(r) => {
-                if let ty::ReBound(index_kind, br) = r.kind() {
-                    assert!(matches!(index_kind, ty::BoundVarIndexKind::Canonical));
-                    opt_values[br.var()] = Some(*original_value);
+                ty::GenericArgKind::Lifetime(r) => {
+                    if let ty::ReBound(index_kind, br) = r.kind() {
+                        assert!(matches!(index_kind, ty::BoundVarIndexKind::Canonical));
+                        opt_values[br.var()] = Some(*original_value);
+                    }
                 }
-            }
-            ty::GenericArgKind::Const(c) => {
-                if let ty::ConstKind::Bound(index_kind, bc) = c.kind() {
-                    assert!(matches!(index_kind, ty::BoundVarIndexKind::Canonical));
-                    opt_values[bc.var()] = Some(*original_value);
+                ty::GenericArgKind::Const(c) => {
+                    if let ty::ConstKind::Bound(index_kind, bc) = c.kind() {
+                        assert!(matches!(index_kind, ty::BoundVarIndexKind::Canonical));
+                        opt_values[bc.var()] = Some(*original_value);
+                    }
                 }
             }
         }
-    }
-    CanonicalVarValues::instantiate(delegate.cx(), response.var_kinds, |var_values, kind| {
+        opt_values
+    });
+
+    CanonicalVarValues::instantiate(delegate.cx(), response.var_kinds, |prev_var_values, kind| {
         if kind.universe() != ty::UniverseIndex::ROOT {
             // A variable from inside a binder of the query. While ideally these shouldn't
             // exist at all (see the FIXME at the start of this method), we have to deal with
             // them for now.
-            delegate.instantiate_canonical_var(kind, span, &var_values, |idx| {
+            delegate.instantiate_canonical_var(kind, span, &prev_var_values, |idx| {
                 prev_universe + idx.index()
             })
         } else if kind.is_existential() {
@@ -278,10 +289,12 @@ where
             // more placeholders then they should be able to. However the inference variables have
             // to "come from somewhere", so by equating them with the original values of the caller
             // later on, we pull them down into their correct universe again.
-            if let Some(v) = opt_values[ty::BoundVar::from_usize(var_values.len())] {
+            if let Some(v) =
+                opt_values.as_ref().unwrap()[ty::BoundVar::from_usize(prev_var_values.len())]
+            {
                 v
             } else {
-                delegate.instantiate_canonical_var(kind, span, &var_values, |_| prev_universe)
+                delegate.instantiate_canonical_var(kind, span, &prev_var_values, |_| prev_universe)
             }
         } else {
             // For placeholders which were already part of the input, we simply map this
@@ -639,7 +652,7 @@ pub fn instantiate_canonical_state<D, I, T>(
     delegate: &D,
     span: I::Span,
     prev_universe: ty::UniverseIndex,
-    orig_values: &mut ThinVec<I::GenericArg>,
+    orig_values: &mut Vec<I::GenericArg>,
     state: inspect::CanonicalState<I, T>,
 ) -> T
 where
