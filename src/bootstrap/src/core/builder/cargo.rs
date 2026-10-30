@@ -1319,7 +1319,12 @@ impl Builder<'_> {
             cargo.env("CARGO_LOG", "cargo::core::compiler::fingerprint=info");
         }
 
-        cargo.env("RUSTC_VERBOSE", self.verbosity.to_string());
+        let verbosity = self.verbosity.to_string();
+        cargo.env("RUSTC_VERBOSE", &verbosity);
+
+        // These crates emit additional information about how they are configured
+        cargo.env("LIBC_BUILD_VERBOSE", &verbosity);
+        cargo.env("LIBM_BUILD_VERBOSE", &verbosity);
 
         let mut lint_flags = Vec::new();
 
