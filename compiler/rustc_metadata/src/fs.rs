@@ -35,10 +35,7 @@ pub fn emit_wrapper_file(sess: &Session, data: &[u8], tmpdir: &Path, name: &str)
     out_filename
 }
 
-pub fn encode_and_write_metadata(
-    tcx: TyCtxt<'_>,
-    force_metadata_file: bool,
-) -> Result<EncodedMetadata, ErrorGuaranteed> {
+pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> Result<EncodedMetadata, ErrorGuaranteed> {
     let out_filename = filename_for_metadata(tcx.sess, tcx.output_filenames(()));
     // To avoid races with another rustc process scanning the output directory,
     // we need to write the file somewhere else and atomically move it to its
@@ -82,8 +79,9 @@ pub fn encode_and_write_metadata(
     // If the user requests metadata as output, rename `metadata_filename`
     // to the expected output `out_filename`. The match above should ensure
     // this file always exists.
-    let need_metadata_file =
-        tcx.sess.opts.output_types.contains_key(&OutputType::Metadata) || force_metadata_file;
+    let need_metadata_file = tcx.sess.opts.output_types.iter().any(|(out, _)| {
+        matches!(out, OutputType::Metadata | OutputType::FullAnalysis | OutputType::Validation)
+    });
     let (metadata_filename, metadata_tmpdir) = if need_metadata_file {
         let filename = match out_filename {
             OutFileName::Real(ref path) => {
