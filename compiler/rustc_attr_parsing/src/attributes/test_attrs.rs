@@ -10,7 +10,7 @@ impl SingleAttributeParser for IgnoreParser {
     const PATH: &[Symbol] = &[sym::ignore];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::Warn;
     const ALLOWED_TARGETS: AllowedTargets<'_> =
-        AllowedTargets::AllowListWarnRest(&[Allow(Target::Fn), Error(Target::WherePredicate)]);
+        AllowedTargets::AllowListWarnRest(&[Allow(Target::Fn), Error(Target::WherePredicate),Error(Target::Param),]);
     const TEMPLATE: AttributeTemplate = template!(
         Word, NameValueStr: "reason",
         "https://doc.rust-lang.org/reference/attributes/testing.html#the-ignore-attribute"
@@ -52,7 +52,7 @@ impl SingleAttributeParser for ShouldPanicParser {
     const PATH: &[Symbol] = &[sym::should_panic];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
     const ALLOWED_TARGETS: AllowedTargets<'_> =
-        AllowedTargets::AllowListWarnRest(&[Allow(Target::Fn), Error(Target::WherePredicate)]);
+        AllowedTargets::AllowListWarnRest(&[Allow(Target::Fn), Error(Target::WherePredicate),Error(Target::Param),]);
     const TEMPLATE: AttributeTemplate = template!(
         Word, List: &[r#"expected = "reason""#], NameValueStr: "reason",
         "https://doc.rust-lang.org/reference/attributes/testing.html#the-should_panic-attribute"
