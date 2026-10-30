@@ -12,15 +12,10 @@ use rustc_middle::queries::{ExternProviders, Providers};
 use rustc_middle::query::QuerySystem;
 use rustc_middle::query::on_disk_cache::OnDiskCache;
 
-pub use crate::job::{
-    CollectActiveJobsKind, QueryJobMap, break_query_cycle, collect_active_query_jobs,
-    print_query_stack,
-};
+pub use crate::job::collect_active_query_jobs;
 
 mod dep_kind_vtables;
-mod diagnostics;
 mod execution;
-mod handle_cycle_error;
 mod incremental;
 mod job;
 mod query_vtables;
@@ -53,4 +48,5 @@ pub fn provide(providers: &mut rustc_middle::util::Providers) {
         self_profile::alloc_self_profile_query_strings;
     providers.hooks.verify_query_key_hashes = incremental::verify_query_key_hashes;
     providers.hooks.encode_query_values = incremental::encode_query_values;
+    providers.hooks.collect_active_query_jobs = collect_active_query_jobs;
 }

@@ -3,12 +3,21 @@
 
 use std::ops::Deref;
 
+use rustc_data_structures::hash_table::Entry;
+use rustc_data_structures::{sharded, sync};
+use rustc_errors::FatalError;
 use rustc_hir::def_id::LocalDefId;
-use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, bug};
 
+use crate::dep_graph::DepNode;
 use crate::query::erase::{self, Erasable, Erased};
 use crate::query::job::try_get_cached;
-use crate::query::{IntoQueryKey, QueryCache, QueryMode, QueryVTable};
+use crate::query::q_impl::execution::{
+    ActiveJobGuard, check_feedable_consistency, current_query_job, next_job_id, wait_for_query,
+};
+use crate::query::{
+    ActiveKeyStatus, IntoQueryKey, QueryCache, QueryJob, QueryLatch, QueryMode, QueryVTable,
+};
 use crate::ty::{self, TyCtxt};
 
 #[derive(Copy, Clone)]
@@ -187,5 +196,67 @@ where
                 None => Ok(()),
             }
         }
+    }
+}
+
+pub(crate) fn feed_query<'tcx, C: QueryCache>(
+    query: &'tcx QueryVTable<'tcx, C>,
+    tcx: TyCtxt<'tcx>,
+    key: C::Key,
+    value: C::Value,
+) {
+    let key_hash = sharded::make_hash(&key);
+    let current_job_id = current_query_job();
+
+    let mut state_lock = query.state.active.lock_shard_by_hash(key_hash);
+    match state_lock.entry(key_hash, |kv| kv.0 == key, |(k, _)| sharded::make_hash(k)) {
+        Entry::Vacant(entry) => {
+            match try_get_cached(tcx, &query.cache, key) {
+                Some(existing) => {
+                    drop(state_lock);
+                    check_feedable_consistency(tcx, query, key, &value, &existing);
+                }
+                None => {
+                    let id = next_job_id(tcx);
+                    let job = QueryJob::new(id, DUMMY_SP, current_job_id);
+
+                    entry.insert((key, ActiveKeyStatus::Started(job)));
+
+                    drop(state_lock);
+
+                    let job_guard = ActiveJobGuard { state: &query.state, key, key_hash };
+
+                    // There is no cached value for this key, so feed the query by
+                    // adding the provided value to the cache.
+                    let dep_node = DepNode::construct(tcx, query.dep_kind, &key);
+                    let dep_node_index = tcx.dep_graph.with_feed_task(
+                        dep_node,
+                        tcx,
+                        &value,
+                        query.hash_value_fn,
+                        query.format_value,
+                    );
+
+                    job_guard.complete(&query.cache, value, dep_node_index);
+                }
+            }
+        }
+        Entry::Occupied(mut entry) => match &mut entry.get_mut().1 {
+            ActiveKeyStatus::Started(job) => {
+                if sync::is_dyn_thread_safe() {
+                    let latch = job.latch.get_or_insert_with(QueryLatch::new).clone();
+                    drop(state_lock);
+
+                    let (existing, _) =
+                        wait_for_query(query, tcx, DUMMY_SP, key, key_hash, latch, current_job_id);
+
+                    check_feedable_consistency(tcx, query, key, &value, &existing);
+                } else {
+                    drop(state_lock);
+                    bug!("can't feed query while it is executing");
+                }
+            }
+            ActiveKeyStatus::Poisoned => FatalError.raise(),
+        },
     }
 }

@@ -18,5 +18,6 @@ pub mod job;
 mod keys;
 pub(crate) mod modifiers;
 pub mod on_disk_cache;
+pub mod q_impl;
 pub(crate) mod query_api;
 mod system;

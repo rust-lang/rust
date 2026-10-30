@@ -353,7 +353,7 @@ macro_rules! define_query_api {
                     let query = &self.tcx.query_system.query_vtables.$name;
                     let key = self.key().into_query_key();
                     let value = $name::provided_to_erased(self.tcx, value);
-                    (query.feed_query_fn.expect("must be set for feedable query"))(self.tcx, key, value);
+                    $crate::query::calls::feed_query(query, self.tcx, key, value);
                 }
             }
         )*

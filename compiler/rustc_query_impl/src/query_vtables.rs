@@ -165,7 +165,7 @@ macro_rules! define_queries {
                             use rustc_middle::queries::$name::{ProvidedValue, provided_to_erased};
 
                             let loaded_value: ProvidedValue<'tcx> =
-                                $crate::incremental::try_load_from_disk(tcx, prev_index)?;
+                                rustc_middle::query::q_impl::incremental::try_load_from_disk(tcx, prev_index)?;
 
                             // Arena-alloc the value if appropriate, and erase it.
                             Some(provided_to_erased(tcx, loaded_value))
@@ -177,11 +177,11 @@ macro_rules! define_queries {
                         handle_cycle_error_fn: |tcx, key, cycle, err| {
                             use rustc_middle::query::erase::erase_val;
 
-                            erase_val($crate::handle_cycle_error::$name(tcx, key, cycle, err))
+                            erase_val(rustc_middle::query::q_impl::handle_cycle_error::$name(tcx, key, cycle, err))
                         },
                         #[cfg(not($handle_cycle_error))]
                         handle_cycle_error_fn: |_tcx, _key, _cycle, err| {
-                            $crate::handle_cycle_error::default(err)
+                            rustc_middle::query::q_impl::handle_cycle_error::default(err)
                         },
 
                         #[cfg($no_hash)]
@@ -201,14 +201,6 @@ macro_rules! define_queries {
                         } else {
                             crate::query_vtables::$name::execute_query_non_incr::__rust_end_short_backtrace
                         },
-
-                        #[cfg($feedable)]
-                        feed_query_fn: Some(|tcx, key, value| {
-                            let query = &tcx.query_system.query_vtables.$name;
-                            crate::execution::feed_query(query, tcx, key, value);
-                        }),
-                        #[cfg(not($feedable))]
-                        feed_query_fn: None,
                     }
                 }
 

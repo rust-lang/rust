@@ -81,8 +81,6 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
     /// [^1]: [`TyCtxt`], [`crate::query::TyCtxtAt`], [`crate::query::TyCtxtEnsureOk`],
     /// [`crate::query::TyCtxtEnsureDone`]
     pub execute_query_fn: fn(TyCtxt<'tcx>, Span, C::Key, QueryMode) -> Option<C::Value>,
-
-    pub feed_query_fn: Option<fn(TyCtxt<'tcx>, C::Key, C::Value) -> ()>,
 }
 
 impl<'tcx, C: QueryCache> QueryVTable<'tcx, C> {
