@@ -439,6 +439,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         assoc_ident: Ident,
         span: Span,
         constraint: Option<&hir::AssocItemConstraint<'_>>,
+        outer_span: Span,
     ) -> ErrorGuaranteed {
         let tcx = self.tcx();
 
@@ -465,6 +466,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // predicates!).
         // FIXME: Turn this into a structured, translatable & more actionable suggestion.
         let mut where_bounds = vec![];
+        let mut suggestions = vec![];
         for &bound in matching_candidates {
             let bound_id = bound.def_id();
             let assoc_item = tcx.associated_items(bound_id).find_by_ident_and_kind(
@@ -531,11 +533,17 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             if term.references_error() {
                                 continue;
                             }
-                            // FIXME(#97583): This isn't syntactically well-formed!
-                            where_bounds.push(format!(
-                                "        T: {trait}::{assoc_ident} = {term}",
-                                trait = bound.print_only_trait_path(),
-                            ));
+                            // FIXME: come up with a better way to generate the snippet.
+                            let tr = bound.print_only_trait_path().to_string();
+                            let sugg = if tr.ends_with(">") {
+                                format!("{}, {assoc_ident} = {term}>", &tr[..tr.len() - 1])
+                            } else {
+                                format!("{tr}<{assoc_ident} = {term}>")
+                            };
+                            where_bounds.push(format!("        T: {sugg}"));
+                            if let ty::Param(_) = bound.self_ty().skip_binder().kind() {
+                                suggestions.push((outer_span.shrink_to_hi(), format!(" + {sugg}")));
+                            }
                         }
                         // FIXME: Provide a suggestion.
                         hir::AssocItemConstraintKind::Bound { bounds: _ } => {}
@@ -555,12 +563,28 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 ));
             }
         }
-        if !where_bounds.is_empty() {
-            err.help(format!(
-                "consider introducing a new type parameter `T` and adding `where` constraints:\
-                     \n    where\n        T: {qself_str},\n{}",
-                where_bounds.join(",\n"),
-            ));
+        if !suggestions.is_empty() {
+            suggestions.push((span, String::new()));
+            err.multipart_suggestion(
+                "consider being explicit about the bounds",
+                suggestions,
+                Applicability::MaybeIncorrect,
+            );
+        } else if !where_bounds.is_empty() {
+            if tcx.def_span(self.item_def_id()).overlaps(span) {
+                // ^ HACK: if the trait comes from a function argument like in
+                // `fn foo(_: &dyn Trait<Assoc = X>) {}`, then the `span` will be pointing at the
+                // argument, so suggesting `fn foo<T>(_: T) where T: Trait, T: Super<Assoc = X>`...
+                // would be appropriate, but if we encounter something like
+                // `_: &dyn Trait<Assoc = X>`, then the spans don't overlap and would not be
+                // reasonable to suggest adding a new type parameter to the enclosing function.
+                // FIXME(#97583): Turn this into a structured suggestion.
+                err.help(format!(
+                    "consider introducing a new type parameter `T` and adding `where` constraints:\
+                    \n    where\n        T: {qself_str},\n{}",
+                    where_bounds.join(",\n"),
+                ));
+            }
         }
         err.emit_err()
     }

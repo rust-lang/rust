@@ -1,3 +1,4 @@
+//@ run-rustfix
 // Issue #97583.
 #![allow(unused)]
 
