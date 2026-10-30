@@ -911,10 +911,6 @@ pub trait AttributeExt: Debug + 'static {
     /// a doc comment) will return `false`.
     fn is_doc_comment(&self) -> Option<Span>;
 
-    fn path(&self) -> SmallVec<[Symbol; 1]> {
-        self.symbol_path().unwrap_or(smallvec![sym::doc])
-    }
-
     fn path_span(&self) -> Option<Span>;
 
     /// Returns None for doc comments
@@ -1000,7 +996,16 @@ impl Attribute {
     }
 
     pub fn path(&self) -> SmallVec<[Symbol; 1]> {
-        AttributeExt::path(self)
+        use SyntheticAttr::*;
+        match &self.kind {
+            AttrKind::Normal(normal) => {
+                normal.item.path.segments.iter().map(|i| i.ident.name).collect()
+            }
+            AttrKind::Synthetic(CfgTrace(_)) => smallvec![sym::cfg],
+            AttrKind::Synthetic(CfgAttrTrace(_)) => smallvec![sym::cfg_attr],
+            AttrKind::DocComment(_, _) => smallvec![sym::doc],
+            AttrKind::Generated(generated) => generated.symbol_path(),
+        }
     }
 
     pub fn doc_str(&self) -> Option<Symbol> {
