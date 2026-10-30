@@ -1,6 +1,8 @@
 error[E0191]: the value of the associated constant `K` in `Trait` must be specified
   --> $DIR/dyn-compat-unspecified-assoc-consts.rs:20:18
    |
+LL | trait Trait {
+LL |     #[rustc_always_gca]
 LL |     const K: usize;
    |     -------------- `K` defined here
 ...
@@ -15,6 +17,8 @@ LL | struct Store(dyn Trait<K = /* CONST */>);
 error[E0191]: the value of the associated constant `K` in `Trait` must be specified
   --> $DIR/dyn-compat-unspecified-assoc-consts.rs:24:21
    |
+LL | trait Trait {
+LL |     #[rustc_always_gca]
 LL |     const K: usize;
    |     -------------- `K` defined here
 ...
@@ -29,6 +33,8 @@ LL | type DynTrait = dyn Trait<K = /* CONST */>;
 error[E0191]: the value of the associated constant `K` in `Trait` must be specified
   --> $DIR/dyn-compat-unspecified-assoc-consts.rs:15:16
    |
+LL | trait Trait {
+LL |     #[rustc_always_gca]
 LL |     const K: usize;
    |     -------------- `K` defined here
 ...

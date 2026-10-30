@@ -1,9 +1,11 @@
 error[E0221]: ambiguous associated function `f` in bounds of `T`
   --> $DIR/path-ambiguous-late-bound-vars.rs:27:5
    |
+LL | trait A {
 LL |     fn f() -> impl Sized;
    |     --------------------- ambiguous `f` from `A`
 ...
+LL | trait B {
 LL |     fn f<'b>() -> impl Sized;
    |     ------------------------- ambiguous `f` from `B`
 ...

@@ -4,6 +4,13 @@ error[E0191]: the value of the associated types `Item` and `IntoIter` in `IntoIt
 LL |     inner: <IntoIterator<Item: IntoIterator<Item: >>::IntoIterator as Item>::Core,
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+  ::: $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+   |
+   = note: `Item` defined here
+  ::: $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+   |
+   = note: `IntoIter` defined here
 help: specify the associated types
    |
 LL |     inner: <IntoIterator<Item: IntoIterator<Item: >, Item = /* Type */, IntoIter = /* Type */>::IntoIterator as Item>::Core,
