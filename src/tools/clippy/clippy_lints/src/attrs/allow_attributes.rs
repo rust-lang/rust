@@ -1,7 +1,6 @@
 use super::ALLOW_ATTRIBUTES;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_from_proc_macro;
-use rustc_ast::attr::AttributeExt as _;
 use rustc_ast::{AttrStyle, Attribute};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, LintContext as _};

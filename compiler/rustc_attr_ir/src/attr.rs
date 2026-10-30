@@ -192,13 +192,6 @@ impl AttributeExt for Attribute {
         }
     }
 
-    fn path_span(&self) -> Option<Span> {
-        match &self {
-            Attribute::Tool(attr) | Attribute::DeriveHelper(attr) => Some(attr.path.span),
-            Attribute::Parsed(_) => None,
-        }
-    }
-
     #[inline]
     fn doc_str_and_fragment_kind(&self) -> Option<(Symbol, DocFragmentKind, Span)> {
         match &self {

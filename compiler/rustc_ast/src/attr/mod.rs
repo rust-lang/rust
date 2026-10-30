@@ -114,15 +114,6 @@ impl AttributeExt for Attribute {
         }
     }
 
-    fn path_span(&self) -> Option<Span> {
-        match &self.kind {
-            AttrKind::Normal(attr) => Some(attr.item.path.span),
-            AttrKind::Synthetic(..) => unreachable!(),
-            AttrKind::DocComment(_, _) => None,
-            AttrKind::Generated(generated) => generated.path_span(),
-        }
-    }
-
     fn path_matches(&self, name: &[Symbol]) -> bool {
         match &self.kind {
             AttrKind::Normal(normal) => {
@@ -315,6 +306,15 @@ impl Attribute {
         match &self.kind {
             AttrKind::Normal(normal) => normal.item.meta_item_list(),
             AttrKind::Synthetic(..) | AttrKind::DocComment(..) | AttrKind::Generated(..) => None,
+        }
+    }
+
+    pub fn path_span(&self) -> Option<Span> {
+        match &self.kind {
+            AttrKind::Normal(attr) => Some(attr.item.path.span),
+            AttrKind::Synthetic(..) => unreachable!(),
+            AttrKind::DocComment(_, _) => None,
+            AttrKind::Generated(generated) => generated.path_span(),
         }
     }
 }
@@ -902,8 +902,6 @@ pub trait AttributeExt: Debug + 'static {
     ///
     /// Matches one segment of the path to each element in `name`
     fn path_matches(&self, name: &[Symbol]) -> bool;
-
-    fn path_span(&self) -> Option<Span>;
 
     /// Returns None for doc comments
     fn symbol_path(&self) -> Option<SmallVec<[Symbol; 1]>>;
