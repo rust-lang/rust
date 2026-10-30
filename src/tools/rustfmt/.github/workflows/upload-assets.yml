@@ -6,9 +6,13 @@ on:
     types: [created]
   workflow_dispatch:
 
+permissions: {}
+
 jobs:
   build-release:
     name: build-release
+    permissions:
+      contents: write # Required by `gh release upload`
     strategy:
       matrix:
         build: [linux-x86_64, macos-x86_64, windows-x86_64-gnu, windows-x86_64-msvc]
@@ -32,13 +36,18 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
         # Run build
       - name: install rustup
+        shell: bash
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > rustup-init.sh
           sh rustup-init.sh -y --default-toolchain none
-          rustup target add ${{ matrix.target }}
+          rustup target add ${MATRIX_TARGET}
+        env:
+          MATRIX_TARGET: ${{ matrix.target }}
 
       - name: Add mingw64 to path for x86_64-gnu
         run: echo "C:\msys64\mingw64\bin" >> $GITHUB_PATH
@@ -51,12 +60,12 @@ jobs:
       - name: Build archive
         shell: bash
         run: |
-          staging="rustfmt_${{ matrix.build }}_${{ github.event.release.tag_name }}"
+          staging="rustfmt_${MATRIX_BUILD}_${GITHUB_EVENT_RELEASE_TAG_NAME}"
           mkdir -p "$staging"
 
           cp {README.md,Configurations.md,CHANGELOG.md,LICENSE-MIT,LICENSE-APACHE} "$staging/"
 
-          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+          if [ "${MATRIX_OS}" = "windows-latest" ]; then
             cp target/release/{rustfmt.exe,cargo-fmt.exe,rustfmt-format-diff.exe,git-rustfmt.exe} "$staging/"
             7z a "$staging.zip" "$staging"
             echo "ASSET=$staging.zip" >> $GITHUB_ENV
@@ -65,9 +74,15 @@ jobs:
             tar czf "$staging.tar.gz" "$staging"
             echo "ASSET=$staging.tar.gz" >> $GITHUB_ENV
           fi
+        env:
+          MATRIX_OS: ${{ matrix.os }}
+          MATRIX_BUILD: ${{ matrix.build }}
+          GITHUB_EVENT_RELEASE_TAG_NAME: ${{ github.event.release.tag_name }}
 
       - name: Upload Release Asset
+        shell: bash
         if: github.event_name == 'release'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "${{ github.event.release.tag_name }}" "${{ env.ASSET }}"
+          GITHUB_EVENT_RELEASE_TAG_NAME: ${{ github.event.release.tag_name }}
+        run: gh release upload "${GITHUB_EVENT_RELEASE_TAG_NAME}" "${ASSET}"
