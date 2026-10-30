@@ -2572,6 +2572,9 @@ impl<'a> Formatter<'a> {
         names: &str,
         values: &[&dyn Debug],
     ) -> Result {
+        // the macro generates either "Point x y" for a struct like `Point { x: u32, y: u32, }`
+        // or just "Point" for a tuple struct like `Point(u32, u32)`. If there are no field names
+        // (and therefore no space separator), we assume we format a tuple struct.
         let is_tuple = !names.contains(' ');
         if is_tuple {
             let mut builder = builders::debug_tuple_new(self, names);
