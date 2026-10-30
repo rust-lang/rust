@@ -80,17 +80,6 @@ impl Attribute {
 }
 
 impl AttributeExt for Attribute {
-    fn value_span(&self) -> Option<Span> {
-        match &self.kind {
-            AttrKind::Normal(normal) => match &normal.item.args {
-                AttrArgs::Eq { expr, .. } => Some(expr.span),
-                _ => None,
-            },
-            AttrKind::Synthetic(..) | AttrKind::DocComment(..) => None,
-            AttrKind::Generated(generated) => generated.value_span(),
-        }
-    }
-
     /// For a single-segment attribute, returns its name; otherwise, returns `None`.
     fn name(&self) -> Option<Symbol> {
         use SyntheticAttr::*;
@@ -872,9 +861,6 @@ pub trait AttributeExt: Debug + 'static {
     /// Gets the value literal, as string, when using `#[attr = value]`
     fn value_str(&self) -> Option<Symbol>;
 
-    /// Gets the span of the value literal, as string, when using `#[attr = value]`
-    fn value_span(&self) -> Option<Span>;
-
     /// Checks whether the path of this attribute matches the name.
     ///
     /// Matches one segment of the path to each element in `name`
@@ -915,8 +901,16 @@ impl Attribute {
         AttributeExt::value_str(self)
     }
 
+    /// Gets the span of the value literal, as string, when using `#[attr = value]`
     pub fn value_span(&self) -> Option<Span> {
-        AttributeExt::value_span(self)
+        match &self.kind {
+            AttrKind::Normal(normal) => match &normal.item.args {
+                AttrArgs::Eq { expr, .. } => Some(expr.span),
+                _ => None,
+            },
+            AttrKind::Synthetic(..) | AttrKind::DocComment(..) => None,
+            AttrKind::Generated(generated) => generated.value_span(),
+        }
     }
 
     pub fn path_matches(&self, name: &[Symbol]) -> bool {
