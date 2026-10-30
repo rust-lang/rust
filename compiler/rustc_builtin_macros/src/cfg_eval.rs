@@ -126,7 +126,7 @@ impl CfgEval<'_> {
                 Annotatable::Stmt(_) => {
                     let stmt =
                         parser.parse_stmt_without_recovery(false, ForceCollect::Yes, false)?;
-                    self.flat_map_stmt(stmt).pop().map(|stmt| Annotatable::Stmt(Box::new(stmt)))
+                    self.flat_map_stmt(stmt).pop().map(Annotatable::Stmt)
                 }
                 Annotatable::Expr(_) => {
                     let mut expr = parser.parse_expr_force_collect()?;

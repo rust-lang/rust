@@ -449,7 +449,7 @@ mod llvm_enzyme {
             Annotatable::Stmt(_) => {
                 let mut d_fn = ecx.item(span, d_attrs, ItemKind::Fn(d_fn));
                 d_fn.vis = vis;
-                Annotatable::Stmt(Box::new(ecx.stmt_item(span, d_fn)))
+                Annotatable::Stmt(ecx.stmt_item(span, d_fn))
             }
             _ => {
                 unreachable!("item kind checked previously")
