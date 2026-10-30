@@ -7,7 +7,7 @@ use std::mem::{drop, replace};
 
 struct S(i32);
 
-#[rustc_mir(rustc_peek_maybe_uninit,stop_after_dataflow)]
+#[rustc_mir(rustc_peek_maybe_uninit, stop_after_dataflow)]
 fn foo(test: bool, x: &mut S, y: S, mut z: S) -> S {
     let ret;
     // `ret` starts off uninitialized
@@ -37,8 +37,8 @@ fn foo(test: bool, x: &mut S, y: S, mut z: S) -> S {
 
     ::std::mem::drop(x);
 
-    // `x` is *definitely* uninitialized here
-    rustc_peek(&x);
+    // `x` is still initialized here!
+    rustc_peek(&x); //~ ERROR rustc_peek: bit not set
 
     // `ret` is now definitely initialized (via `if` above).
     rustc_peek(&ret); //~ ERROR rustc_peek: bit not set

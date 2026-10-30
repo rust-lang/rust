@@ -5,20 +5,19 @@
       let mut _0: Single;
       let mut _1: Single;
       let mut _3: &Single;
-      let _4: &Single;
-      let mut _7: Single;
-      let mut _8: u8;
+      let mut _6: Single;
+      let mut _7: u8;
       scope 1 {
           debug a => _1;
           let _2: SingleRef<'_>;
           scope 2 {
               debug r => _2;
-              let _5: &Single;
+              let _4: &Single;
               scope 3 {
-                  debug b => _5;
-                  let _6: u8;
+                  debug b => _4;
+                  let _5: u8;
                   scope 4 {
-                      debug c => _6;
+                      debug c => _5;
                   }
               }
           }
@@ -31,33 +30,30 @@
           StorageLive(_2);
 -         StorageLive(_3);
 +         nop;
-          StorageLive(_4);
-          _4 = &_1;
-          _3 = &(*_4);
+          _3 = &_1;
 -         _2 = SingleRef::<'_>(move _3);
 -         StorageDead(_3);
 +         _2 = SingleRef::<'_>(copy _3);
 +         nop;
-          StorageDead(_4);
+          StorageLive(_4);
+-         _4 = copy (_2.0: &Single);
++         _4 = copy _3;
           StorageLive(_5);
--         _5 = copy (_2.0: &Single);
-+         _5 = copy _3;
+-         _5 = copy ((*_4).0: u8);
++         _5 = copy ((*_3).0: u8);
           StorageLive(_6);
--         _6 = copy ((*_5).0: u8);
-+         _6 = copy ((*_3).0: u8);
-          StorageLive(_7);
--         _7 = Single(const 1_u8);
--         _1 = move _7;
-+         _7 = const Single(1_u8);
+-         _6 = Single(const 1_u8);
+-         _1 = move _6;
++         _6 = const Single(1_u8);
 +         _1 = const Single(1_u8);
-          StorageDead(_7);
-          StorageLive(_8);
-          _8 = copy _6;
--         _0 = Single(move _8);
-+         _0 = Single(copy _6);
-          StorageDead(_8);
           StorageDead(_6);
+          StorageLive(_7);
+          _7 = copy _5;
+-         _0 = Single(move _7);
++         _0 = Single(copy _5);
+          StorageDead(_7);
           StorageDead(_5);
+          StorageDead(_4);
           StorageDead(_2);
           StorageDead(_1);
           return;

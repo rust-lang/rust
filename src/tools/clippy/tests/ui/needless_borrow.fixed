@@ -75,8 +75,8 @@ fn main() {
     //~^ needless_borrow
 
     let y = match 0 {
-        // Don't lint. Removing the borrow would move 'x'
-        0 => &mut x,
+        0 => x,
+        //~^ needless_borrow
         _ => &mut *x,
     };
     let y: &mut i32 = match 0 {

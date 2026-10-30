@@ -86,6 +86,12 @@ LL |     let y: &mut i32 = &mut &mut x;
    |                       ^^^^^^^^^^^ help: change this to: `x`
 
 error: this expression creates a reference which is immediately dereferenced by the compiler
+  --> tests/ui/needless_borrow.rs:78:14
+   |
+LL |         0 => &mut x,
+   |              ^^^^^^ help: change this to: `x`
+
+error: this expression creates a reference which is immediately dereferenced by the compiler
   --> tests/ui/needless_borrow.rs:84:14
    |
 LL |         0 => &mut x,
@@ -97,7 +103,7 @@ error: this expression creates a reference which is immediately dereferenced by 
 LL |         0 => &mut x,
    |              ^^^^^^ help: change this to: `x`
 
-error: this expression borrows a value the compiler would automatically borrow
+error: this expression creates a reference which is immediately dereferenced by the compiler
   --> tests/ui/needless_borrow.rs:104:13
    |
 LL |     let _ = (&x).0;
@@ -169,5 +175,5 @@ error: this expression creates a reference which is immediately dereferenced by 
 LL |     let _ = (&slice).len();
    |             ^^^^^^^^ help: change this to: `slice`
 
-error: aborting due to 28 previous errors
+error: aborting due to 29 previous errors
 

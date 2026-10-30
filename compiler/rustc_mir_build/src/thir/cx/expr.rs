@@ -15,7 +15,8 @@ use rustc_middle::middle::region;
 use rustc_middle::mir::{self, AssignOp, BinOp, BorrowKind, UnOp};
 use rustc_middle::thir::*;
 use rustc_middle::ty::adjustment::{
-    Adjust, Adjustment, AutoBorrow, AutoBorrowMutability, DerefAdjustKind, PointerCoercion,
+    Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, DerefAdjustKind,
+    PointerCoercion,
 };
 use rustc_middle::ty::{
     self, AdtKind, GenericArgs, InlineConstArgs, InlineConstArgsParts, ScalarInt, SplattedDef, Ty,
@@ -249,10 +250,25 @@ impl<'tcx> ThirBuildCx<'tcx> {
                     deref.span,
                 )
             }
-            Adjust::Borrow(AutoBorrow::Ref(m)) => ExprKind::Borrow {
-                borrow_kind: m.to_borrow_kind(),
-                arg: self.thir.exprs.push(expr),
-            },
+            Adjust::Borrow(AutoBorrow::Ref(m)) => {
+                // Don't emit no-op &T -> &T reborrows
+                if let AutoBorrowMutability::Not | AutoBorrowMutability::Mut { allow_two_phase_borrow: AllowTwoPhase::No } = m
+                    && let ExprKind::Deref { arg: derefed_expr } = expr.kind
+                    && let Some(target_mutbl) =
+                        self.thir.exprs[derefed_expr].ty.ref_mutability()
+                    && ty::Mutability::from(m) == target_mutbl
+                    // FIXME: removing these reborrows may prevent closure upvars from resolving
+                    && !self.tcx.is_closure_like(self.body_owner)
+                {
+                    assert_eq!(self.thir.exprs.last_index(), Some(derefed_expr));
+                    return self.thir.exprs.pop().unwrap();
+                } else {
+                    ExprKind::Borrow {
+                        borrow_kind: m.to_borrow_kind(),
+                        arg: self.thir.exprs.push(expr),
+                    }
+                }
+            }
             Adjust::Borrow(AutoBorrow::RawPtr(mutability)) => {
                 ExprKind::RawBorrow { mutability, arg: self.thir.exprs.push(expr) }
             }
@@ -287,13 +303,14 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 debug!(?kind);
                 kind
             }
-            Adjust::GenericReborrow(mutability) => {
+            Adjust::GenericReborrow(ty::Mutability::Not) => {
                 let expr = self.thir.exprs.push(expr);
-                let kind =
-                    ExprKind::Reborrow { source: expr, mutability, target: adjustment.target };
+                let kind = ExprKind::CoerceShared { source: expr, target: adjustment.target };
 
                 kind
             }
+            // These get inserted in MIR building `consume_by_copy_reborrow_or_move`
+            Adjust::GenericReborrow(ty::Mutability::Mut) => return expr,
         };
 
         Expr { temp_scope_id, ty: adjustment.target, span, kind }

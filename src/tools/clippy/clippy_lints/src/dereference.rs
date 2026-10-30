@@ -18,7 +18,7 @@ use rustc_hir::{
     Node, OwnerId, Pat, PatKind, Path, QPath, TyKind, UnOp,
 };
 use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
-use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
+use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability, DerefAdjustKind};
 use rustc_middle::ty::{self, AssocTag, Ty, TyCtxt, TypeVisitableExt as _, TypeckResults, Unnormalized};
 use rustc_span::{Span, Symbol, SyntaxContext};
 use std::borrow::Cow;
@@ -350,6 +350,13 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                                 None => break None,
                             }
                         };
+                        if use_site
+                            .adjustments
+                            .last()
+                            .is_some_and(|adj| matches!(adj.kind, Adjust::Deref(DerefAdjustKind::Builtin)))
+                        {
+                            deref_count += 1;
+                        }
 
                         let use_node = use_site.use_node(cx);
                         let stability = use_node.defined_ty(cx).map_or(TyCoercionStability::None, |ty| {
@@ -1041,14 +1048,13 @@ impl<'tcx> Dereferencing<'tcx> {
                 [
                     Adjustment {
                         kind: Adjust::Deref(_),
-                        ..
+                        target
                     },
-                    Adjustment {
-                        kind: Adjust::Deref(_),
-                        ..
-                    },
-                    ..
-                ]
+                    rest @ ..
+                ] if match rest.first() {
+                    Some(adj) => matches!(adj.kind,Adjust::Deref(_)),
+                    None => target.ref_mutability() == Some(Mutability::Not),
+                }
             )
         {
             match get_parent_expr(cx, e) {
