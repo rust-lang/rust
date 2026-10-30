@@ -911,13 +911,6 @@ pub trait AttributeExt: Debug + 'static {
     /// a doc comment) will return `false`.
     fn is_doc_comment(&self) -> Option<Span>;
 
-    /// Returns true if the attribute's first *and only* path segment is equal to the passed-in
-    /// symbol.
-    #[inline]
-    fn has_name(&self, name: Symbol) -> bool {
-        self.name().map(|x| x == name).unwrap_or(false)
-    }
-
     fn path(&self) -> SmallVec<[Symbol; 1]> {
         self.symbol_path().unwrap_or(smallvec![sym::doc])
     }
@@ -982,9 +975,11 @@ impl Attribute {
         AttributeExt::is_doc_comment(self).is_some()
     }
 
+    /// Returns true if the attribute's first *and only* path segment is equal to the passed-in
+    /// symbol.
     #[inline]
     pub fn has_name(&self, name: Symbol) -> bool {
-        AttributeExt::has_name(self, name)
+        self.name().map(|x| x == name).unwrap_or(false)
     }
 
     /// Returns true if the attribute's first *and only* path segment is any of the passed-in
