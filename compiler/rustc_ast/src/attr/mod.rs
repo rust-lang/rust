@@ -140,20 +140,6 @@ impl AttributeExt for Attribute {
         }
     }
 
-    /// Returns a list of meta items if the attribute is delimited with parenthesis:
-    ///
-    /// ```text
-    /// #[attr(a, b = "c")] // Returns `Some()`.
-    /// #[attr = ""] // Returns `None`.
-    /// #[attr] // Returns `None`.
-    /// ```
-    fn meta_item_list(&self) -> Option<ThinVec<MetaItemInner>> {
-        match &self.kind {
-            AttrKind::Normal(normal) => normal.item.meta_item_list(),
-            AttrKind::Synthetic(..) | AttrKind::DocComment(..) | AttrKind::Generated(..) => None,
-        }
-    }
-
     /// Returns the string value in:
     ///
     /// ```text
@@ -216,9 +202,9 @@ impl AttributeExt for Attribute {
 
     fn is_doc_keyword_or_attribute(&self) -> bool {
         match &self.kind {
-            AttrKind::Normal(_) => {
+            AttrKind::Normal(attr) => {
                 if self.has_name(sym::doc)
-                    && let Some(items) = self.meta_item_list()
+                    && let Some(items) = attr.item.meta_item_list()
                 {
                     for item in items {
                         if item.has_name(sym::keyword) || item.has_name(sym::attribute) {
@@ -315,6 +301,20 @@ impl Attribute {
                 None
             }
             _ => None,
+        }
+    }
+
+    /// Returns a list of meta items if the attribute is delimited with parenthesis:
+    ///
+    /// ```text
+    /// #[attr(a, b = "c")] // Returns `Some()`.
+    /// #[attr = ""] // Returns `None`.
+    /// #[attr] // Returns `None`.
+    /// ```
+    pub fn meta_item_list(&self) -> Option<ThinVec<MetaItemInner>> {
+        match &self.kind {
+            AttrKind::Normal(normal) => normal.item.meta_item_list(),
+            AttrKind::Synthetic(..) | AttrKind::DocComment(..) | AttrKind::Generated(..) => None,
         }
     }
 }
@@ -892,9 +892,6 @@ pub trait AttributeExt: Debug + 'static {
     /// return the name of the attribute; otherwise, returns `None`.
     fn name(&self) -> Option<Symbol>;
 
-    /// Get the meta item list, `#[attr(meta item list)]`
-    fn meta_item_list(&self) -> Option<ThinVec<MetaItemInner>>;
-
     /// Gets the value literal, as string, when using `#[attr = value]`
     fn value_str(&self) -> Option<Symbol>;
 
@@ -943,10 +940,6 @@ pub trait AttributeExt: Debug + 'static {
 impl Attribute {
     pub fn name(&self) -> Option<Symbol> {
         AttributeExt::name(self)
-    }
-
-    pub fn meta_item_list(&self) -> Option<ThinVec<MetaItemInner>> {
-        AttributeExt::meta_item_list(self)
     }
 
     pub fn value_str(&self) -> Option<Symbol> {
