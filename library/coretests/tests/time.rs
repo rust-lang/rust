@@ -489,6 +489,100 @@ fn debug_formatting_round_to_even() {
 }
 
 #[test]
+fn display_seconds_precision_zero() {
+    assert_eq!(format!("{:.0?}", Duration::new(0, 0).display_seconds()), "0s");
+    assert_eq!(format!("{:.0?}", Duration::new(0, 123).display_seconds()), "0s");
+
+    assert_eq!(format!("{:.0?}", Duration::new(0, 000_000_001).display_seconds()), "0s");
+    assert_eq!(format!("{:.0?}", Duration::new(0, 499_999_999).display_seconds()), "0s");
+    assert_eq!(format!("{:.0?}", Duration::new(0, 500_000_000).display_seconds()), "0s");
+    assert_eq!(format!("{:.0?}", Duration::new(0, 999_999_999).display_seconds()), "1s");
+
+    assert_eq!(format!("{:.0?}", Duration::new(1, 000_000_001).display_seconds()), "1s");
+    assert_eq!(format!("{:.0?}", Duration::new(1, 499_999_999).display_seconds()), "1s");
+    assert_eq!(format!("{:.0?}", Duration::new(1, 500_000_000).display_seconds()), "2s");
+    assert_eq!(format!("{:.0?}", Duration::new(1, 999_999_999).display_seconds()), "2s");
+}
+
+#[test]
+fn display_seconds_precision_two() {
+    assert_eq!(format!("{:.2?}", Duration::new(0, 0).display_seconds()), "0.00s");
+    assert_eq!(format!("{:.2?}", Duration::new(0, 123).display_seconds()), "0.00s");
+
+    assert_eq!(format!("{:.2?}", Duration::new(0, 000_000_000).display_seconds()), "0.00s");
+    assert_eq!(format!("{:.2?}", Duration::new(0, 001_000_000).display_seconds()), "0.00s");
+    assert_eq!(format!("{:.2?}", Duration::new(0, 100_000_000).display_seconds()), "0.10s");
+    assert_eq!(format!("{:.2?}", Duration::new(0, 104_990_000).display_seconds()), "0.10s");
+    assert_eq!(format!("{:.2?}", Duration::new(0, 999_999_999).display_seconds()), "1.00s");
+
+    assert_eq!(format!("{:.2?}", Duration::new(1, 000_000_000).display_seconds()), "1.00s");
+    assert_eq!(format!("{:.2?}", Duration::new(4, 001_000_000).display_seconds()), "4.00s");
+    assert_eq!(format!("{:.2?}", Duration::new(2, 100_000_000).display_seconds()), "2.10s");
+    assert_eq!(format!("{:.2?}", Duration::new(2, 104_990_000).display_seconds()), "2.10s");
+    assert_eq!(format!("{:.2?}", Duration::new(8, 999_999_999).display_seconds()), "9.00s");
+}
+
+#[test]
+fn display_seconds_padding() {
+    assert_eq!("0s       ", format!("{:<9?}", Duration::new(0, 0).display_seconds()));
+    assert_eq!("       0s", format!("{:>9?}", Duration::new(0, 0).display_seconds()));
+    assert_eq!("   0s    ", format!("{:^9?}", Duration::new(0, 0).display_seconds()));
+    assert_eq!("0s       ", format!("{:<9.0?}", Duration::new(0, 123).display_seconds()));
+    assert_eq!("       0s", format!("{:>9.0?}", Duration::new(0, 123).display_seconds()));
+    assert_eq!("   0s    ", format!("{:^9.0?}", Duration::new(0, 123).display_seconds()));
+    assert_eq!("0.0071s  ", format!("{:<9?}", Duration::new(0, 7_100_000).display_seconds()));
+    assert_eq!("  0.0071s", format!("{:>9?}", Duration::new(0, 7_100_000).display_seconds()));
+    assert_eq!(" 0.0071s ", format!("{:^9?}", Duration::new(0, 7_100_000).display_seconds()));
+    assert_eq!("123.0s   ", format!("{:<9.1?}", Duration::new(123, 0).display_seconds()));
+    assert_eq!("   123.0s", format!("{:>9.1?}", Duration::new(123, 0).display_seconds()));
+    assert_eq!(" 123.0s  ", format!("{:^9.1?}", Duration::new(123, 0).display_seconds()));
+    assert_eq!("0.999123456s", format!("{:<9?}", Duration::new(0, 999_123_456).display_seconds()));
+    assert_eq!("0.999123456s", format!("{:>9?}", Duration::new(0, 999_123_456).display_seconds()));
+    assert_eq!("0.999123456s", format!("{:^9?}", Duration::new(0, 999_123_456).display_seconds()));
+    assert_eq!("5s       ", format!("{:<9?}", Duration::new(5, 0).display_seconds()));
+    assert_eq!("       5s", format!("{:>9?}", Duration::new(5, 0).display_seconds()));
+    assert_eq!("   5s    ", format!("{:^9?}", Duration::new(5, 0).display_seconds()));
+    assert_eq!("5.000000000000s", format!("{:<9.12?}", Duration::new(5, 0).display_seconds()));
+    assert_eq!("5.000000000000s", format!("{:>9.12?}", Duration::new(5, 0).display_seconds()));
+    assert_eq!("5.000000000000s", format!("{:^9.12?}", Duration::new(5, 0).display_seconds()));
+
+    // default alignment is left:
+    assert_eq!("5s       ", format!("{:9?}", Duration::new(5, 0).display_seconds()));
+}
+
+#[test]
+fn display_seconds_precision_high() {
+    assert_eq!(format!("{:.5?}", Duration::new(0, 236_788_000).display_seconds()), "0.23679s");
+    assert_eq!(format!("{:.9?}", Duration::new(0, 000_000_000).display_seconds()), "0.000000000s");
+    assert_eq!(format!("{:.9?}", Duration::new(1, 000_000_000).display_seconds()), "1.000000000s");
+    assert_eq!(
+        format!("{:.10?}", Duration::new(4, 001_000_000).display_seconds()),
+        "4.0010000000s"
+    );
+    assert_eq!(
+        format!("{:.20?}", Duration::new(4, 001_000_000).display_seconds()),
+        "4.00100000000000000000s"
+    );
+    assert_eq!(
+        format!("{:.10?}", Duration::new(0, 001_000_000).display_seconds()),
+        "0.0010000000s"
+    );
+    assert_eq!(
+        format!("{:.20?}", Duration::new(0, 001_000_000).display_seconds()),
+        "0.00100000000000000000s"
+    );
+}
+
+#[test]
+fn display_seconds_round_to_even() {
+    assert_eq!(format!("{:.0?}", Duration::new(1, 500_000_000).display_seconds()), "2s");
+    assert_eq!(format!("{:.0?}", Duration::new(2, 500_000_000).display_seconds()), "2s");
+    assert_eq!(format!("{:.3?}", Duration::new(0, 1_500_000).display_seconds()), "0.002s");
+    assert_eq!(format!("{:.3?}", Duration::new(0, 2_500_000).display_seconds()), "0.002s");
+    assert_eq!(format!("{:.2?}", Duration::new(2, 105_000_000).display_seconds()), "2.10s");
+}
+
+#[test]
 fn duration_const() {
     // test that the methods of `Duration` are usable in a const context
 
