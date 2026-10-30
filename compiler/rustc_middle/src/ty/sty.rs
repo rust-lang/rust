@@ -363,7 +363,7 @@ impl ParamConst {
 impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn new_infer(tcx: TyCtxt<'tcx>, infer: ty::InferTy) -> Ty<'tcx> {
-        tcx.interners.intern_infer(infer)
+        tcx.interners.types.intern_infer(infer)
     }
 
     #[inline]
@@ -373,7 +373,7 @@ impl<'tcx> Ty<'tcx> {
             .infer_ty_vars
             .get(v.as_usize())
             .copied()
-            .unwrap_or_else(|| tcx.interners.intern_infer(TyVar(v)))
+            .unwrap_or_else(|| tcx.interners.types.intern_infer(TyVar(v)))
     }
 
     #[inline]
@@ -418,7 +418,7 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn new_param(tcx: TyCtxt<'tcx>, index: u32, name: Symbol) -> Ty<'tcx> {
-        tcx.interners.intern_param(ParamTy { index, name })
+        tcx.interners.types.intern_param(ParamTy { index, name })
     }
 
     #[inline]
@@ -434,7 +434,7 @@ impl<'tcx> Ty<'tcx> {
         {
             ty
         } else {
-            tcx.interners.intern_bound(ty::BoundVarIndexKind::Bound(index), bound_ty)
+            tcx.interners.types.intern_bound(ty::BoundVarIndexKind::Bound(index), bound_ty)
         }
     }
 
@@ -444,7 +444,7 @@ impl<'tcx> Ty<'tcx> {
         if let Some(ty) = tcx.types.bound_canonical_anons.get(var.as_usize()).copied() {
             ty
         } else {
-            tcx.interners.intern_bound(
+            tcx.interners.types.intern_bound(
                 ty::BoundVarIndexKind::Canonical,
                 ty::BoundTy { var, kind: ty::BoundTyKind::Anon },
             )
@@ -460,7 +460,7 @@ impl<'tcx> Ty<'tcx> {
         {
             ty
         } else {
-            tcx.interners.intern_placeholder(placeholder)
+            tcx.interners.types.intern_placeholder(placeholder)
         }
     }
 
@@ -470,12 +470,12 @@ impl<'tcx> Ty<'tcx> {
         is_rigid: ty::IsRigid,
         alias_ty: ty::AliasTy<'tcx>,
     ) -> Ty<'tcx> {
-        tcx.interners.intern_alias(is_rigid, alias_ty)
+        tcx.interners.types.intern_alias(is_rigid, alias_ty)
     }
 
     #[inline]
     pub fn new_pat(tcx: TyCtxt<'tcx>, base: Ty<'tcx>, pat: ty::Pattern<'tcx>) -> Ty<'tcx> {
-        tcx.interners.intern_pat(base, pat)
+        tcx.interners.types.intern_pat(base, pat)
     }
 
     #[inline]
@@ -520,7 +520,7 @@ impl<'tcx> Ty<'tcx> {
 
     /// Constructs a `TyKind::Error` type with current `ErrorGuaranteed`
     pub fn new_error(tcx: TyCtxt<'tcx>, guar: ErrorGuaranteed) -> Ty<'tcx> {
-        tcx.interners.intern_error(guar)
+        tcx.interners.types.intern_error(guar)
     }
 
     /// Constructs a `TyKind::Error` type and registers a `span_delayed_bug` to ensure it gets used.
@@ -538,7 +538,7 @@ impl<'tcx> Ty<'tcx> {
         msg: impl Into<Cow<'static, str>>,
     ) -> Ty<'tcx> {
         let reported = tcx.dcx().span_delayed_bug(span, msg);
-        tcx.interners.intern_error(reported)
+        tcx.interners.types.intern_error(reported)
     }
 
     #[inline]
@@ -585,7 +585,7 @@ impl<'tcx> Ty<'tcx> {
         ty: Ty<'tcx>,
         mutbl: ty::Mutability,
     ) -> Ty<'tcx> {
-        tcx.interners.intern_ref(r, ty, mutbl)
+        tcx.interners.types.intern_ref(r, ty, mutbl)
     }
 
     #[inline]
@@ -610,7 +610,7 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn new_ptr(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, mutbl: ty::Mutability) -> Ty<'tcx> {
-        tcx.interners.intern_raw_ptr(ty, mutbl)
+        tcx.interners.types.intern_raw_ptr(ty, mutbl)
     }
 
     #[inline]
@@ -661,17 +661,17 @@ impl<'tcx> Ty<'tcx> {
                 }
             }
         }
-        tcx.interners.intern_adt(def, args)
+        tcx.interners.types.intern_adt(def, args)
     }
 
     #[inline]
     pub fn new_foreign(tcx: TyCtxt<'tcx>, def_id: DefId) -> Ty<'tcx> {
-        tcx.interners.intern_foreign(def_id)
+        tcx.interners.types.intern_foreign(def_id)
     }
 
     #[inline]
     pub fn new_array(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, n: u64) -> Ty<'tcx> {
-        tcx.interners.intern_array(ty, ty::Const::from_target_usize(tcx, n))
+        tcx.interners.types.intern_array(ty, ty::Const::from_target_usize(tcx, n))
     }
 
     #[inline]
@@ -680,12 +680,12 @@ impl<'tcx> Ty<'tcx> {
         ty: Ty<'tcx>,
         ct: ty::Const<'tcx>,
     ) -> Ty<'tcx> {
-        tcx.interners.intern_array(ty, ct)
+        tcx.interners.types.intern_array(ty, ct)
     }
 
     #[inline]
     pub fn new_slice(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-        tcx.interners.intern_slice(ty)
+        tcx.interners.types.intern_slice(ty)
     }
 
     #[inline]
@@ -693,7 +693,7 @@ impl<'tcx> Ty<'tcx> {
         if ts.is_empty() {
             tcx.types.unit
         } else {
-            tcx.interners.intern_tuple(tcx.mk_type_list(ts))
+            tcx.interners.types.intern_tuple(tcx.mk_type_list(ts))
         }
     }
 
@@ -717,18 +717,18 @@ impl<'tcx> Ty<'tcx> {
             DefKind::AssocFn | DefKind::Fn | DefKind::Ctor(_, CtorKind::Fn)
         );
         let args = args.map_bound(|args| tcx.check_and_mk_args(def_id, args));
-        tcx.interners.intern_fn_def(def_id, args)
+        tcx.interners.types.intern_fn_def(def_id, args)
     }
 
     #[inline]
     pub fn new_fn_ptr(tcx: TyCtxt<'tcx>, fty: PolyFnSig<'tcx>) -> Ty<'tcx> {
         let (sig_tys, hdr) = fty.split();
-        tcx.interners.intern_fn_ptr(sig_tys, hdr)
+        tcx.interners.types.intern_fn_ptr(sig_tys, hdr)
     }
 
     #[inline]
     pub fn new_unsafe_binder(tcx: TyCtxt<'tcx>, b: Binder<'tcx, Ty<'tcx>>) -> Ty<'tcx> {
-        tcx.interners.intern_unsafe_binder(b.into())
+        tcx.interners.types.intern_unsafe_binder(b.into())
     }
 
     #[inline]
@@ -764,7 +764,7 @@ impl<'tcx> Ty<'tcx> {
                 but it has {projection_count}"
             );
         }
-        tcx.interners.intern_dynamic(obj, reg)
+        tcx.interners.types.intern_dynamic(obj, reg)
     }
 
     #[inline]
@@ -802,7 +802,7 @@ impl<'tcx> Ty<'tcx> {
         closure_args: GenericArgsRef<'tcx>,
     ) -> Ty<'tcx> {
         tcx.debug_assert_args_compatible(def_id, closure_args);
-        tcx.interners.intern_closure(def_id, closure_args)
+        tcx.interners.types.intern_closure(def_id, closure_args)
     }
 
     #[inline]
@@ -812,7 +812,7 @@ impl<'tcx> Ty<'tcx> {
         closure_args: GenericArgsRef<'tcx>,
     ) -> Ty<'tcx> {
         tcx.debug_assert_args_compatible(def_id, closure_args);
-        tcx.interners.intern_coroutine_closure(def_id, closure_args)
+        tcx.interners.types.intern_coroutine_closure(def_id, closure_args)
     }
 
     #[inline]
@@ -822,7 +822,7 @@ impl<'tcx> Ty<'tcx> {
         coroutine_args: GenericArgsRef<'tcx>,
     ) -> Ty<'tcx> {
         tcx.debug_assert_args_compatible(def_id, coroutine_args);
-        tcx.interners.intern_coroutine(def_id, coroutine_args)
+        tcx.interners.types.intern_coroutine(def_id, coroutine_args)
     }
 
     #[inline]
@@ -834,7 +834,7 @@ impl<'tcx> Ty<'tcx> {
         if cfg!(debug_assertions) {
             tcx.debug_assert_args_compatible(tcx.typeck_root_def_id(def_id), args);
         }
-        tcx.interners.intern_coroutine_witness(def_id, args)
+        tcx.interners.types.intern_coroutine_witness(def_id, args)
     }
 
     pub fn new_coroutine_witness_for_coroutine(

@@ -26,7 +26,17 @@
 #![allow(rustc::usage_of_type_ir_inherent)]
 #![allow(rustc::usage_of_type_ir_traits)]
 #![cfg_attr(feature = "nightly", allow(internal_features))]
-#![cfg_attr(feature = "nightly", feature(associated_type_defaults, rustc_attrs, negative_impls))]
+#![cfg_attr(
+    feature = "nightly",
+    feature(
+        associated_type_defaults,
+        rustc_attrs,
+        negative_impls,
+        const_param_ty_unchecked,
+        const_cmp,
+        derive_const
+    )
+)]
 // NOTE: the outer `cfg_attr` is only there so that r-a doesn't see the nightly-only `bootstrap`
 // in the inner `cfg_attr`. When the latter is removed, the former can be removed as well.
 #![cfg_attr(
