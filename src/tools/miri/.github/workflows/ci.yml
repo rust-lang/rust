@@ -94,8 +94,8 @@ jobs:
         run: |
           sudo apt install gcc-${GCC_CROSS}
           echo "Setting environment variables:"
-          echo "CC_${{ matrix.host_target }}=${GCC_CROSS}-gcc" | tee -a $GITHUB_ENV
-          TARGET_UPPERCASE=$(echo ${{ matrix.host_target }} | tr '[:lower:]-' '[:upper:]_')
+          echo "CC_${HOST_TARGET}=${GCC_CROSS}-gcc" | tee -a $GITHUB_ENV
+          TARGET_UPPERCASE=$(echo ${HOST_TARGET} | tr '[:lower:]-' '[:upper:]_')
           echo "CARGO_TARGET_${TARGET_UPPERCASE}_LINKER=${GCC_CROSS}-gcc" | tee -a $GITHUB_ENV
           echo "CARGO_HOST_${TARGET_UPPERCASE}_LINKER=${GCC_CROSS}-gcc" | tee -a $GITHUB_ENV
           echo "MIRI_TESTS_CROSS_COMPILED=1" | tee -a $GITHUB_ENV
