@@ -59,7 +59,7 @@ use rustc_session::output::invalid_output_for_target;
 use rustc_session::{EarlyDiagCtxt, Session, config};
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::{DUMMY_SP, FileName};
-use rustc_structures::CrateType;
+use rustc_structures::{CrateType, LintName};
 use rustc_target::json::ToJson;
 use rustc_target::spec::{Target, TargetTuple};
 use tracing::trace;
@@ -990,11 +990,9 @@ Available lint options:
         lints
     }
 
-    fn sort_lint_groups(
-        lints: Vec<(&'static str, Vec<LintId>, bool)>,
-    ) -> Vec<(&'static str, Vec<LintId>)> {
+    fn sort_lint_groups(lints: Vec<(LintName, Vec<LintId>, bool)>) -> Vec<(LintName, Vec<LintId>)> {
         let mut lints: Vec<_> = lints.into_iter().map(|(x, y, _)| (x, y)).collect();
-        lints.sort_by_key(|l| l.0);
+        lints.sort_by(|left, right| Ord::cmp(&left.0, &right.0));
         lints
     }
 
@@ -1041,7 +1039,7 @@ Available lint options:
         loaded_groups
             .iter()
             .chain(&builtin_groups)
-            .map(|&(s, _)| s.chars().count())
+            .map(|(s, _)| s.name.as_str().chars().count())
             .max()
             .unwrap_or(0),
     );
@@ -1054,7 +1052,7 @@ Available lint options:
 
     safe_println!("Lint groups provided by rustc:\n");
 
-    let print_lint_groups = |lints: Vec<(&'static str, Vec<LintId>)>, all_warnings| {
+    let print_lint_groups = |lints: Vec<(LintName, Vec<LintId>)>, all_warnings| {
         safe_println!("    {}  sub-lints", padded("name"));
         safe_println!("    {}  ---------", padded("----"));
 
@@ -1063,7 +1061,7 @@ Available lint options:
         }
 
         for (name, to) in lints {
-            let name = name.to_lowercase().replace('_', "-");
+            let name = name.to_string().to_lowercase().replace('_', "-");
             let desc = to
                 .into_iter()
                 .map(|x| x.to_string().replace('_', "-"))

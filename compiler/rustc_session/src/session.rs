@@ -25,7 +25,7 @@ pub use rustc_span::def_id::StableCrateId;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
 use rustc_span::{RealFileName, Span, Symbol};
-use rustc_structures::{CrateType, Limit};
+use rustc_structures::{CrateType, Limit, LintName};
 use rustc_target::asm::InlineAsmArch;
 use rustc_target::spec::{
     Arch, CfgAbi, CodeModel, DebuginfoKind, MergeFunctions, Os, PanicStrategy, RelocModel,
@@ -596,7 +596,7 @@ impl CodegenUnits {
 }
 
 pub struct LintGroup {
-    pub name: &'static str,
+    pub name: LintName,
     pub lints: Vec<LintId>,
     pub is_externally_loaded: bool,
 }

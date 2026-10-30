@@ -70,7 +70,7 @@ pub(crate) fn rustc_version(cfg_version: &'static str) -> String {
 /// Metadata encoding version.
 /// N.B., increment this if you change the format of metadata such that
 /// the rustc version can't be found to compare with `rustc_version()`.
-const METADATA_VERSION: u8 = 11;
+const METADATA_VERSION: u8 = 12;
 
 /// Metadata header which includes `METADATA_VERSION`.
 ///
@@ -157,8 +157,9 @@ impl<T> LazyArray<T> {
 struct LazyTable<IdxEncode, IdxDecode, T> {
     position: NonZero<usize>,
     /// The encoded size of the elements of a table is selected at runtime to drop
-    /// trailing zeroes. This is the number of bytes used for each table element.
-    width: usize,
+    /// trailing zeroes. The low bit selects sparse encoding; the remaining bits
+    /// store the number of bytes used for each table element.
+    width_and_sparse: usize,
     /// How many elements are in the table.
     len: usize,
     _marker: PhantomData<fn(IdxEncode, IdxDecode) -> T>,
@@ -167,10 +168,10 @@ struct LazyTable<IdxEncode, IdxDecode, T> {
 impl<Ie, Id, T> LazyTable<Ie, Id, T> {
     fn from_position_and_encoded_size(
         position: NonZero<usize>,
-        width: usize,
+        width_and_sparse: usize,
         len: usize,
     ) -> LazyTable<Ie, Id, T> {
-        LazyTable { position, width, len, _marker: PhantomData }
+        LazyTable { position, width_and_sparse, len, _marker: PhantomData }
     }
 }
 

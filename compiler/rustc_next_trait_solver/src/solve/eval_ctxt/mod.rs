@@ -18,9 +18,10 @@ use rustc_type_ir::solve::{
 };
 use rustc_type_ir::transmute::Answer;
 use rustc_type_ir::{
-    self as ty, ClauseKind, Const, InferCtxtLike, Interner, MayBeErased, OpaqueTypeKey,
-    PredicateKind, PredicateProxy, Region, RegionVid, TypeFoldable, TypeSuperVisitable,
-    TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, max_universe,
+    self as ty, CanonicalQueryInput, ClauseKind, Const, InferCtxtLike, Interner, MayBeErased,
+    OpaqueTypeKey, PredicateKind, PredicateProxy, Region, RegionVid, TypeFoldable,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
+    TypingModeEqWrapper, max_universe,
 };
 use thin_vec::ThinVec;
 use tracing::{Level, debug, instrument, trace, warn};
@@ -583,6 +584,62 @@ where
         )
     }
 
+    /// Whether two canonical responses are exactly equal except for their
+    /// region constraints.
+    pub(super) fn responses_equal_modulo_region_constraints(
+        &self,
+        a: &CanonicalResponse<I>,
+        b: &CanonicalResponse<I>,
+    ) -> bool {
+        if a == b {
+            return true;
+        }
+
+        // We currently only ever use this function if `a` doesn't have region constraints.
+        // This means we only recanonicalize `b`. Could change this if necessary.
+        debug_assert!(a.value.external_constraints.region_constraints.is_empty());
+
+        // This is quite ugly. We instantiate the response as if it were a query input
+        // and then recanonicalize it without its region constraints.
+        //
+        // We can't simply compare all other fields of the response here as there can
+        // be some inference variables and placeholders created inside of a query which
+        // are only mentioned in the region constraints. This then changes the indices
+        // of things canonicalized later.
+        let cx: I = self.cx();
+        let input: CanonicalQueryInput<I, Response<I>> = CanonicalQueryInput {
+            canonical: b.clone(),
+            typing_mode: TypingModeEqWrapper(self.typing_mode()),
+        };
+        let (ref delegate, instantiated_response, _) = D::build_with_canonical(cx, &input);
+        let Response { certainty, var_values, var_values_is_identity, external_constraints } =
+            instantiated_response;
+        let ExternalConstraintsData {
+            region_constraints: _,
+            opaque_types,
+            normalization_nested_goals,
+        } = &*external_constraints;
+        let b_no_regions = canonicalize_response(
+            delegate,
+            ty::UniverseIndex::ROOT,
+            Response {
+                certainty,
+                var_values,
+                var_values_is_identity,
+                external_constraints: self.cx().mk_external_constraints(ExternalConstraintsData {
+                    region_constraints: match cx.assumptions_on_binders() {
+                        true => ExternalRegionConstraints::NextGen(RegionConstraint::new_true()),
+                        false => ExternalRegionConstraints::Old(vec![]),
+                    },
+                    opaque_types: opaque_types.clone(),
+                    normalization_nested_goals: normalization_nested_goals.clone(),
+                }),
+            },
+        );
+
+        a == &b_no_regions
+    }
+
     pub(super) fn ignore_candidate_head_usages(&mut self, usages: CandidateHeadUsages) {
         self.search_graph.ignore_candidate_head_usages(usages);
     }
@@ -924,7 +981,7 @@ where
         &self,
         canonical_goal: I::CanonicalInput,
         maybe_info: MaybeInfo,
-        stalled_vars: ThinVec<I::GenericArg>,
+        stalled_vars: Vec<I::GenericArg>,
         previously_succeeded_in_erased: SucceededInErased<I>,
     ) -> GoalStalledOn<I> {
         // Remove the canonicalized universal vars, since we only care about stalled existentials.

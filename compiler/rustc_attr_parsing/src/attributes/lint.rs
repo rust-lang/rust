@@ -1,9 +1,9 @@
-use rustc_ast::join_path_syms;
 use rustc_attr_ir::AttributeKind;
 use rustc_attr_ir::lint::{LintCheck, LintCheckKind};
 use rustc_attr_ir::target::{AssocCtxt, MethodKind, Target};
 use rustc_lint_defs::builtin::UNUSED_ATTRIBUTES;
-use rustc_span::{Symbol, sym};
+use rustc_span::sym;
+use rustc_structures::LintName;
 use thin_vec::ThinVec;
 
 use crate::attributes::{AcceptMapping, AttributeParser, AttributeStability};
@@ -52,33 +52,21 @@ impl LintParser {
                 match item {
                     MetaItemOrLitParser::MetaItemParser(p) => {
                         match p.args() {
-                            ArgParser::NoArgs => {
-                                let (tool, lint_name) = match &*p.path().0.segments {
-                                    [] => unreachable!(),
-                                    [lint_name] => (None, lint_name.ident.name),
-                                    [tool, lint_name] => (Some(tool.ident), lint_name.ident.name),
-                                    // Not reachable for any builtin lints,
-                                    // but reachable using `register_tool`.
-                                    [tool, multi_segment_lint_name @ ..] => (
-                                        Some(tool.ident),
-                                        Symbol::intern(&join_path_syms(
-                                            multi_segment_lint_name
-                                                .iter()
-                                                .map(|seg| seg.ident.name),
-                                        )),
-                                    ),
-                                };
-
-                                self.lints.push(LintCheck {
-                                    tool,
-                                    lint_name,
-                                    lint_span: p.span(),
-                                    kind,
-                                    attr_id,
-                                    reason,
-                                    attr_span,
-                                })
-                            }
+                            ArgParser::NoArgs => self.lints.push(LintCheck {
+                                lint_name: LintName::new(
+                                    p.path().0.segments.iter().map(|s| s.ident.name),
+                                ),
+                                kind,
+                                attr_id,
+                                reason,
+                                attr_span,
+                                lint_span: p.span(),
+                                tool_span: if let [tool, _, ..] = &*p.path().0.segments {
+                                    Some(tool.span())
+                                } else {
+                                    None
+                                },
+                            }),
                             // We've found a `reason = "reason"` but we're not the last element.
                             ArgParser::NameValue(nv) if p.path().word_is(sym::reason) => {
                                 cx.emit_err(diagnostics::MalformedAttribute {

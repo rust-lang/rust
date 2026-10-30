@@ -1,4 +1,5 @@
-#![attr = LintCheck([LintCheck {lint_name: "unused", kind: Allow}])]
+#![attr = LintCheck([LintCheck {lint_name: LintName { tool: None, name: "unused" },
+kind: Allow}])]
 extern crate std;
 #[attr = PreludeImport]
 use ::std::prelude::rust_2015::*;
