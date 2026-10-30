@@ -443,6 +443,17 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ) -> ErrorGuaranteed {
         let tcx = self.tcx();
 
+        let generics = tcx.hir_get_generics(self.item_def_id());
+        let param_name = if let Some(generics) = tcx.hir_get_generics(self.item_def_id()) {
+            "TUV"
+                .chars()
+                .map(|c| c.to_string())
+                .chain((0..).map(|i| format!("P{i}")))
+                .find(|s| !generics.params.iter().any(|param| param.name.ident().as_str() == s))
+                .expect("we definitely can find at least one param name to generate")
+        } else {
+            "T".to_string()
+        };
         let assoc_kind_str = assoc_tag_str(assoc_tag);
         let qself_str = qself.to_string(tcx);
         let mut err = self.dcx().create_err(crate::diagnostics::AmbiguousAssocItem {
@@ -540,7 +551,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             } else {
                                 format!("{tr}<{assoc_ident} = {term}>")
                             };
-                            where_bounds.push(format!("        T: {sugg}"));
+                            where_bounds.push(format!("        {param_name}: {sugg}"));
                             if let ty::Param(_) = bound.self_ty().skip_binder().kind() {
                                 suggestions.push((outer_span.shrink_to_hi(), format!(" + {sugg}")));
                             }
@@ -579,11 +590,38 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 // `_: &dyn Trait<Assoc = X>`, then the spans don't overlap and would not be
                 // reasonable to suggest adding a new type parameter to the enclosing function.
                 // FIXME(#97583): Turn this into a structured suggestion.
-                err.help(format!(
-                    "consider introducing a new type parameter `T` and adding `where` constraints:\
-                    \n    where\n        T: {qself_str},\n{}",
-                    where_bounds.join(",\n"),
-                ));
+                let msg = format!(
+                    "consider introducing a new type parameter `{param_name}` and adding `where` constraints"
+                );
+                if let Some(generics) = generics {
+                    // help: consider introducing a new type parameter `U` and adding `where` constraints
+                    //    |
+                    // LL ~ fn foo<T>(_: U, _: T) where
+                    // LL +         U: Trait,
+                    // LL +         U: Super<i32, Assoc = u32>,
+                    // LL ~         U: Super<u32, Assoc = u32>
+                    //    |
+                    err.multipart_suggestion(
+                        msg,
+                        vec![
+                            (outer_span, param_name.clone()),
+                            (
+                                generics.tail_span_for_predicate_suggestion(),
+                                format!(
+                                    "{}\n        {param_name}: {qself_str},\n{}\n",
+                                    generics.add_where_or_trailing_comma(),
+                                    where_bounds.join(",\n"),
+                                ),
+                            ),
+                        ],
+                        Applicability::MaybeIncorrect,
+                    );
+                } else {
+                    err.help(format!(
+                        "{msg}:\n    where\n        {param_name}: {qself_str},\n{}",
+                        where_bounds.join(",\n"),
+                    ));
+                }
             }
         }
         err.emit_err()

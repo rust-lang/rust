@@ -1,5 +1,5 @@
 error[E0222]: ambiguous associated type `Assoc` in bounds of `Trait`
-  --> $DIR/dyn-trait-in-param-or-body.rs:7:21
+  --> $DIR/dyn-trait-in-param-or-body.rs:7:24
    |
 LL | trait Super<T> {
 LL |     type Assoc;
@@ -8,17 +8,19 @@ LL |     type Assoc;
    |     ambiguous `Assoc` from `Super<i32>`
    |     ambiguous `Assoc` from `Super<u32>`
 ...
-LL | fn foo(_: dyn Trait<Assoc = u32>) {}
-   |                     ^^^^^^^^^^^ ambiguous associated type `Assoc`
+LL | fn foo<T>(_: dyn Trait<Assoc = u32>, _: T) {}
+   |                        ^^^^^^^^^^^ ambiguous associated type `Assoc`
    |
-   = help: consider introducing a new type parameter `T` and adding `where` constraints:
-               where
-                   T: Trait,
-                   T: Super<i32, Assoc = u32>,
-                   T: Super<u32, Assoc = u32>
+help: consider introducing a new type parameter `U` and adding `where` constraints
+   |
+LL ~ fn foo<T>(_: U, _: T) where
+LL +         U: Trait,
+LL +         U: Super<i32, Assoc = u32>,
+LL +         U: Super<u32, Assoc = u32>
+   |
 
 error[E0191]: the value of the associated types `Assoc` in `Super<i32>`, `Assoc` in `Super<u32>` must be specified
-  --> $DIR/dyn-trait-in-param-or-body.rs:7:15
+  --> $DIR/dyn-trait-in-param-or-body.rs:7:18
    |
 LL | trait Super<T> {
 LL |     type Assoc;
@@ -27,8 +29,8 @@ LL |     type Assoc;
    |     `Super::Assoc` defined here
    |     `Super::Assoc` defined here
 ...
-LL | fn foo(_: dyn Trait<Assoc = u32>) {}
-   |               ^^^^^^^^^^^^^^^^^^ associated types `Assoc` (from trait `Super<i32>`), `Assoc` (from trait `Super<u32>`) must be specified
+LL | fn foo<T>(_: dyn Trait<Assoc = u32>, _: T) {}
+   |                  ^^^^^^^^^^^^^^^^^^ associated types `Assoc` (from trait `Super<i32>`), `Assoc` (from trait `Super<u32>`) must be specified
    |
    = help: consider introducing a new type parameter, adding `where` constraints using the fully-qualified path to the associated types
 
