@@ -2572,11 +2572,8 @@ impl<'a> Formatter<'a> {
         names: &str,
         values: &[&dyn Debug],
     ) -> Result {
-        let mut names = names
-            .as_bytes()
-            .split(|&c| c == b' ')
-            .map(|b| unsafe { str::from_utf8_unchecked(b) })
-            .peekable();
+        let mut names =
+            names.as_bytes().split(|&c| c == b' ').map(|b| str::from_utf8(b).unwrap()).peekable();
 
         let struct_name = names.next().unwrap();
 
