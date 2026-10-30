@@ -1,6 +1,8 @@
 error[E0222]: ambiguous associated constant `K` in bounds of `Trait0`
   --> $DIR/ambiguity.rs:15:25
    |
+LL | trait Parent0<T> {
+LL |     #[rustc_always_gca]
 LL |     const K: ();
    |     -----------
    |     |
@@ -19,9 +21,13 @@ LL | fn take0(_: impl Trait0<K = const {}>) {}
 error[E0222]: ambiguous associated constant `C` in bounds of `Trait1`
   --> $DIR/ambiguity.rs:28:25
    |
+LL | trait Parent1 {
+LL |     #[rustc_always_gca]
 LL |     const C: i32;
    |     ------------ ambiguous `C` from `Parent1`
-...
+LL | }
+LL | trait Parent2 {
+LL |     #[rustc_always_gca]
 LL |     const C: &'static str;
    |     --------------------- ambiguous `C` from `Parent2`
 ...

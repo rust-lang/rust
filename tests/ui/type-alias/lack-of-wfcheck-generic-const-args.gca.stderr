@@ -4,6 +4,7 @@ error[E0191]: the value of the associated constant `N` in `HasAssocConst` must b
 LL | type DynIncompat1 = dyn HasAssocConst;
    |                         ^^^^^^^^^^^^^
 ...
+LL | trait HasAssocConst {
 LL |     const N: usize;
    |     -------------- `N` defined here
    |

@@ -7,6 +7,7 @@ LL | type Foo = dyn Trait<F=i32>;
 error[E0191]: the value of the associated type `Bar` in `Trait` must be specified
   --> $DIR/E0220.rs:5:16
    |
+LL | trait Trait {
 LL |     type Bar;
    |     -------- `Bar` defined here
 ...

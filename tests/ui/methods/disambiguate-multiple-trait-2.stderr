@@ -53,9 +53,11 @@ LL +     let _ = <T as B>::CONST;
 error[E0221]: ambiguous associated type `Type` in bounds of `T`
   --> $DIR/disambiguate-multiple-trait-2.rs:23:12
    |
+LL | trait A {
 LL |     type Type;
    |     --------- ambiguous `Type` from `A`
 ...
+LL | trait B {
 LL |     type Type;
    |     --------- ambiguous `Type` from `B`
 ...

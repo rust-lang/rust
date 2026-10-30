@@ -1,6 +1,7 @@
 error[E0191]: the value of the associated type `Output` in `Add` must be specified
   --> $DIR/cast-as-dyn-trait-wo-assoc-type-issue-21950.rs:27:25
    |
+LL | trait Add<Rhs=Self> {
 LL |     type Output;
    |     ----------- `Output` defined here
 ...
@@ -15,6 +16,7 @@ LL |     let x = &10 as &dyn Add<Output = /* Type */>;
 error[E0191]: the value of the associated type `Assoc` in `Meow` must be specified
   --> $DIR/cast-as-dyn-trait-wo-assoc-type-issue-21950.rs:32:17
    |
+LL | trait Meow {
 LL |     type Assoc;
    |     ---------- `Assoc` defined here
 ...

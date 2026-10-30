@@ -13,6 +13,7 @@ LL | trait F<'a>: for<F> E<'a> + for<'e> E<'e> {}
 error[E0221]: ambiguous associated type `As` in bounds of `F`
   --> $DIR/expected-region-found-kind.rs:14:14
    |
+LL | trait E<'e> {
 LL |     type As;
    |     -------
    |     |

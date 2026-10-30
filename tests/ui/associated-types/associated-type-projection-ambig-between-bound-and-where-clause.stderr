@@ -1,9 +1,11 @@
 error[E0221]: ambiguous associated type `Color` in bounds of `C`
   --> $DIR/associated-type-projection-ambig-between-bound-and-where-clause.rs:16:24
    |
+LL | pub trait Vehicle {
 LL |     type Color;
    |     ---------- ambiguous `Color` from `Vehicle`
 ...
+LL | pub trait Box {
 LL |     type Color;
    |     ---------- ambiguous `Color` from `Box`
 ...
@@ -24,9 +26,11 @@ LL + fn a<C:Vehicle+Box>(_: <C as Vehicle>::Color) {
 error[E0221]: ambiguous associated type `Color` in bounds of `C`
   --> $DIR/associated-type-projection-ambig-between-bound-and-where-clause.rs:20:12
    |
+LL | pub trait Vehicle {
 LL |     type Color;
    |     ---------- ambiguous `Color` from `Vehicle`
 ...
+LL | pub trait Box {
 LL |     type Color;
    |     ---------- ambiguous `Color` from `Box`
 ...
@@ -47,9 +51,11 @@ LL + fn b<C>(_: <C as Vehicle>::Color) where C : Vehicle+Box {
 error[E0221]: ambiguous associated type `Color` in bounds of `C`
   --> $DIR/associated-type-projection-ambig-between-bound-and-where-clause.rs:24:12
    |
+LL | pub trait Vehicle {
 LL |     type Color;
    |     ---------- ambiguous `Color` from `Vehicle`
 ...
+LL | pub trait Box {
 LL |     type Color;
    |     ---------- ambiguous `Color` from `Box`
 ...
@@ -70,9 +76,11 @@ LL + fn c<C>(_: <C as Vehicle>::Color) where C : Vehicle, C : Box {
 error[E0221]: ambiguous associated type `Color` in bounds of `X`
   --> $DIR/associated-type-projection-ambig-between-bound-and-where-clause.rs:35:20
    |
+LL | pub trait Vehicle {
 LL |     type Color;
    |     ---------- ambiguous `Color` from `Vehicle`
 ...
+LL | pub trait Box {
 LL |     type Color;
    |     ---------- ambiguous `Color` from `Box`
 ...
@@ -93,9 +101,11 @@ LL +     fn e(&self, _: <X as Vehicle>::Color) where X : Box;
 error[E0221]: ambiguous associated type `Color` in bounds of `X`
   --> $DIR/associated-type-projection-ambig-between-bound-and-where-clause.rs:38:20
    |
+LL | pub trait Vehicle {
 LL |     type Color;
    |     ---------- ambiguous `Color` from `Vehicle`
 ...
+LL | pub trait Box {
 LL |     type Color;
    |     ---------- ambiguous `Color` from `Box`
 ...
@@ -116,9 +126,11 @@ LL +     fn f(&self, _: <X as Vehicle>::Color) where X : Box { }
 error[E0221]: ambiguous associated type `Color` in bounds of `X`
   --> $DIR/associated-type-projection-ambig-between-bound-and-where-clause.rs:30:20
    |
+LL | pub trait Vehicle {
 LL |     type Color;
    |     ---------- ambiguous `Color` from `Vehicle`
 ...
+LL | pub trait Box {
 LL |     type Color;
    |     ---------- ambiguous `Color` from `Box`
 ...

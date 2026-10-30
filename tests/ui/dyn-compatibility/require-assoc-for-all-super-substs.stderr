@@ -1,6 +1,7 @@
 error[E0191]: the value of the associated type `Assoc` in `Sup<u32>` must be specified
   --> $DIR/require-assoc-for-all-super-substs.rs:13:17
    |
+LL | trait Sup<T> {
 LL |     type Assoc: Default;
    |     ------------------- `Assoc` defined here
 ...
