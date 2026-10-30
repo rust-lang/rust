@@ -44,7 +44,7 @@ pub enum Annotatable {
     Item(Box<ast::Item>),
     AssocItem(Box<ast::AssocItem>, AssocCtxt),
     ForeignItem(Box<ast::ForeignItem>),
-    Stmt(Box<ast::Stmt>),
+    Stmt(ast::Stmt),
     Expr(Box<ast::Expr>),
     Arm(ast::Arm),
     ExprField(ast::ExprField),
@@ -168,7 +168,7 @@ impl Annotatable {
 
     pub fn expect_stmt(self) -> ast::Stmt {
         match self {
-            Annotatable::Stmt(stmt) => *stmt,
+            Annotatable::Stmt(stmt) => stmt,
             _ => panic!("expected statement"),
         }
     }

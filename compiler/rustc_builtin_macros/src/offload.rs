@@ -118,9 +118,7 @@ pub(crate) fn expand_kernel(
 
         match &item {
             Annotatable::Item(_) => Annotatable::Item(device_item_ecx),
-            Annotatable::Stmt(_) => {
-                Annotatable::Stmt(Box::new(ecx.stmt_item(span, device_item_ecx)))
-            }
+            Annotatable::Stmt(_) => Annotatable::Stmt(ecx.stmt_item(span, device_item_ecx)),
             _ => {
                 unreachable!("item kind checked previously")
             }
@@ -180,7 +178,7 @@ pub(crate) fn expand_kernel(
 
         match &item {
             Annotatable::Item(_) => Annotatable::Item(host_item_ecx),
-            Annotatable::Stmt(_) => Annotatable::Stmt(Box::new(ecx.stmt_item(span, host_item_ecx))),
+            Annotatable::Stmt(_) => Annotatable::Stmt(ecx.stmt_item(span, host_item_ecx)),
             _ => {
                 unreachable!("item kind checked previously")
             }

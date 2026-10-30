@@ -55,7 +55,7 @@ impl MultiItemModifier for BuiltinDerive {
                         ecx,
                         span,
                         &item,
-                        &mut |a| items.push(Annotatable::Stmt(Box::new(ecx.stmt_item(span, a)))),
+                        &mut |a| items.push(Annotatable::Stmt(ecx.stmt_item(span, a))),
                         is_derive_const,
                     );
                 } else {

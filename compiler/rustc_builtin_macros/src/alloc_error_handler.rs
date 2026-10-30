@@ -42,7 +42,7 @@ pub(crate) fn expand(
     // Generate anonymous constant serving as container for the allocator methods.
     let const_item = ecx.item_const_underscore(span, ecx.block(span, stmts));
     let const_item = if is_stmt {
-        Annotatable::Stmt(Box::new(ecx.stmt_item(span, const_item)))
+        Annotatable::Stmt(ecx.stmt_item(span, const_item))
     } else {
         Annotatable::Item(const_item)
     };
