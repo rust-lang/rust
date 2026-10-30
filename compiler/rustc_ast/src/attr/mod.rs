@@ -202,18 +202,6 @@ impl AttributeExt for Attribute {
         }
     }
 
-    /// Returns the documentation if this is a doc comment or a sugared doc comment.
-    /// * `///doc` returns `Some("doc")`.
-    /// * `#[doc = "doc"]` returns `Some("doc")`.
-    /// * `#[doc(...)]` returns `None`.
-    fn doc_str(&self) -> Option<Symbol> {
-        match &self.kind {
-            AttrKind::DocComment(.., data) => Some(*data),
-            AttrKind::Normal(normal) if normal.item.path == sym::doc => normal.item.value_str(),
-            _ => None,
-        }
-    }
-
     fn doc_resolution_scope(&self) -> Option<AttrStyle> {
         match &self.kind {
             AttrKind::DocComment(..) => Some(self.style),
@@ -923,12 +911,6 @@ pub trait AttributeExt: Debug + 'static {
     /// Returns None for doc comments
     fn symbol_path(&self) -> Option<SmallVec<[Symbol; 1]>>;
 
-    /// Returns the documentation if this is a doc comment or a sugared doc comment.
-    /// * `///doc` returns `Some("doc")`.
-    /// * `#[doc = "doc"]` returns `Some("doc")`.
-    /// * `#[doc(...)]` returns `None`.
-    fn doc_str(&self) -> Option<Symbol>;
-
     /// Returns whether this attribute is any of the proc macro attributes.
     /// i.e. `proc_macro`, `proc_macro_attribute` or `proc_macro_derive`.
     fn is_proc_macro_attr(&self) -> bool;
@@ -1027,8 +1009,16 @@ impl Attribute {
         }
     }
 
+    /// Returns the documentation if this is a doc comment or a sugared doc comment.
+    /// * `///doc` returns `Some("doc")`.
+    /// * `#[doc = "doc"]` returns `Some("doc")`.
+    /// * `#[doc(...)]` returns `None`.
     pub fn doc_str(&self) -> Option<Symbol> {
-        AttributeExt::doc_str(self)
+        match &self.kind {
+            AttrKind::DocComment(.., data) => Some(*data),
+            AttrKind::Normal(normal) if normal.item.path == sym::doc => normal.item.value_str(),
+            _ => None,
+        }
     }
 
     pub fn is_proc_macro_attr(&self) -> bool {
