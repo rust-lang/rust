@@ -6,7 +6,6 @@ use std::ops::Deref;
 use rustc_hir::def_id::LocalDefId;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 
-use crate::dep_graph::DepNodeKey;
 use crate::query::erase::{self, Erasable, Erased};
 use crate::query::job::try_get_cached;
 use crate::query::{IntoQueryKey, QueryCache, QueryMode, QueryVTable};
@@ -189,19 +188,4 @@ where
             }
         }
     }
-}
-
-/// "Feeds" a feedable query by adding a given key/value pair to its in-memory cache.
-/// Called by macro-generated methods of [`rustc_middle::ty::TyCtxtFeed`].
-#[inline]
-pub(crate) fn query_feed<'tcx, C>(
-    tcx: TyCtxt<'tcx>,
-    query: &'tcx QueryVTable<'tcx, C>,
-    key: C::Key,
-    value: C::Value,
-) where
-    C: QueryCache,
-    C::Key: DepNodeKey<'tcx>,
-{
-    (query.feed_query_fn.expect("feedable query must have this"))(tcx, key, value);
 }

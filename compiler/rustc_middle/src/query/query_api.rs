@@ -350,12 +350,10 @@ macro_rules! define_query_api {
                 $(#[$attr])*
                 #[inline(always)]
                 pub fn $name(self, value: $name::ProvidedValue<'tcx>) {
-                    $crate::query::calls::query_feed(
-                        self.tcx,
-                        &self.tcx.query_system.query_vtables.$name,
-                        self.key().into_query_key(),
-                        $name::provided_to_erased(self.tcx, value),
-                    );
+                    let query = &self.tcx.query_system.query_vtables.$name;
+                    let key = self.key().into_query_key();
+                    let value = $name::provided_to_erased(self.tcx, value);
+                    (query.feed_query_fn.expect("must be set for feedable query"))(self.tcx, key, value);
                 }
             }
         )*
