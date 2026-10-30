@@ -19,9 +19,10 @@ pub(crate) fn opts(endian: Endian) -> TargetOptions {
         merge_functions: MergeFunctions::Disabled,
         obj_is_bitcode: true,
         singlethread: true,
-        // When targeting the `v3` cpu in llvm, 32-bit atomics are also supported.
-        // But making this value change based on the target cpu can be mostly confusing
-        // and would require a bit of a refactor.
+        // CPU v4 provides `load-acq-store-rel` BPF subtarget that is needed
+        // for the 64-bit atomic load/store. It is required to build entire
+        // core library to BPF.
+        cpu: "v4".into(),
         min_atomic_width: Some(64),
         max_atomic_width: Some(64),
         ..Default::default()
