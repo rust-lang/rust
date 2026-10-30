@@ -48,6 +48,14 @@ error[E0191]: the value of the associated types `Output` in `Div<Rhs>`, `Output`
 LL | type Bal<Rhs> = dyn X<Rhs>;
    |                     ^^^^^^ associated types `Output` (from trait `Div<Rhs>`), `Output` (from trait `Mul<Rhs>`) must be specified
    |
+  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
+  ::: $SRC_DIR/core/src/ops/arith.rs:LL:COL
+   |
+   = note: `Mul::Output` defined here
+  ::: $SRC_DIR/core/src/ops/arith.rs:LL:COL
+   |
+   = note: `Div::Output` defined here
+   |
    = help: consider introducing a new type parameter, adding `where` constraints using the fully-qualified path to the associated types
 
 error: aborting due to 5 previous errors

@@ -1,6 +1,7 @@
 error[E0191]: the value of the associated type `X` in `Super` must be specified
   --> $DIR/associated-type-shadowed-from-supertrait.rs:12:27
    |
+LL | pub trait Super {
 LL |     type X;
    |     ------ `Super::X` defined here, consider renaming it
 ...

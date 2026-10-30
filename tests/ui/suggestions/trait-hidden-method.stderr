@@ -4,6 +4,10 @@ error[E0191]: the value of the associated type `Item` in `Iterator` must be spec
 LL |     Box::new(1..=10) as Box<dyn Iterator>
    |                                 ^^^^^^^^
    |
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+  ::: $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+   |
+   = note: `Item` defined here
 help: specify the associated type
    |
 LL |     Box::new(1..=10) as Box<dyn Iterator<Item = /* Type */>>

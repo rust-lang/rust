@@ -473,13 +473,16 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 assoc_tag,
                 bound_id,
             );
-            let bound_span = assoc_item.and_then(|item| tcx.hir_span_if_local(item.def_id));
+            let bound_span = assoc_item.map(|item| {
+                (tcx.def_span(item.def_id), tcx.def_span(tcx.parent(item.def_id)).shrink_to_lo())
+            });
 
-            if let Some(bound_span) = bound_span {
+            if let Some((bound_span, parent_span)) = bound_span {
                 err.span_label(
                     bound_span,
                     format!("ambiguous `{assoc_ident}` from `{}`", bound.print_trait_sugared(),),
                 );
+                err.span_context(parent_span);
                 if let Some(constraint) = constraint {
                     match constraint.kind {
                         hir::AssocItemConstraintKind::Equality { term } => {
@@ -1250,9 +1253,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
             let rename_message = if is_shadowed { ", consider renaming it" } else { "" };
 
-            if let Some(sp) = tcx.hir_span_if_local(item.def_id) {
-                err.span_label(sp, format!("`{prefix}{name}` defined here{rename_message}"));
-            }
+            err.span_label(
+                tcx.def_span(item.def_id),
+                format!("`{prefix}{name}` defined here{rename_message}"),
+            );
+            err.span_context(tcx.def_span(tcx.parent(item.def_id)));
         }
         if potential_assoc_items.len() == missing_assoc_items.len() {
             // When the amount of missing associated types equals the number of
