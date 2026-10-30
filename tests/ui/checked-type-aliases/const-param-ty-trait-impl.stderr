@@ -1,0 +1,8 @@
+error: the trait `ConstParamTy` may not be implemented for this type
+  --> $DIR/const-param-ty-trait-impl.rs:15:24
+   |
+LL | impl ConstParamTy_ for ConstParamTyLocalAlias { }
+   |                        ^^^^^^^^^^^^^^^^^^^^^^ type is not a structure or enumeration
+
+error: aborting due to 1 previous error
+
