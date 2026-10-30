@@ -223,8 +223,12 @@ fn place_components_conflict<'tcx>(
                     debug!("borrow_conflicts_with_place: shallow access behind ptr");
                     return false;
                 }
-                (ProjectionElem::Deref, ty::Ref(_, _, hir::Mutability::Not), _) => {
-                    // Shouldn't be tracked
+                (ProjectionElem::Deref, ty::Ref(_, _, hir::Mutability::Not), _)
+                    if !(base.projection.is_empty()
+                        && body.local_decls[borrow_local].is_ref_to_thread_local()) =>
+                {
+                    // The only shared borrows we track are from temporaries created as references
+                    // to thread-local statics. See `crate::place_ext::PlaceExt::ignore_borrow`.
                     bug!("Tracking borrow behind shared reference.");
                 }
                 (ProjectionElem::Deref, ty::Ref(_, _, hir::Mutability::Mut), AccessDepth::Drop) => {
