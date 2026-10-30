@@ -475,6 +475,8 @@ impl<'a> TraitDef<'a> {
         where_clause.span = generics.where_clause.span;
         let ctxt = self.span.ctxt();
 
+        let mut ty_param_names = Vec::with_capacity(generics.params.len());
+        let mut self_params = Vec::with_capacity(generics.params.len());
         // Create the generic parameters
         let params: ThinVec<_> = generics
             .params
@@ -512,6 +514,7 @@ impl<'a> TraitDef<'a> {
                         )
                         .collect();
 
+                    ty_param_names.push(param.ident.name);
                     cx.typaram(param.ident, bounds, None)
                 }
                 GenericParamKind::Const { ty, span, .. } => {
@@ -531,6 +534,11 @@ impl<'a> TraitDef<'a> {
                 // Remove all attributes, because there might be helper attributes
                 // from other macros that will not be valid in the expanded implementation.
                 param.attrs.clear();
+                self_params.push(generic_param_to_arg(
+                    cx,
+                    &param,
+                    param.ident.span.with_ctxt(ctxt),
+                ));
                 param
             })
             .collect();
@@ -545,12 +553,6 @@ impl<'a> TraitDef<'a> {
                 is_placeholder: false,
             }
         }));
-
-        let ty_param_names: Vec<Symbol> = params
-            .iter()
-            .filter(|param| matches!(param.kind, ast::GenericParamKind::Type { .. }))
-            .map(|ty_param| ty_param.ident.name)
-            .collect();
 
         if !ty_param_names.is_empty() {
             for field in fields {
@@ -606,12 +608,6 @@ impl<'a> TraitDef<'a> {
 
         // Create the reference to the trait.
         let trait_ref = cx.trait_ref(self.path);
-
-        let self_params: Vec<_> = generics
-            .params
-            .iter()
-            .map(|param| generic_param_to_arg(cx, param, param.ident.span.with_ctxt(ctxt)))
-            .collect();
 
         // Create the type of `self`.
         let path = cx.path_all(ident.span.with_ctxt(ctxt), &[*ident], self_params);
