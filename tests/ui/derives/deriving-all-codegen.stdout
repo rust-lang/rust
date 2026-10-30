@@ -263,7 +263,7 @@ impl ::core::marker::Copy for TupleSingleField { }
 impl ::core::fmt::Debug for TupleSingleField {
     #[inline]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-        ::core::fmt::Formatter::debug_tuple_field1_finish(f,
+        ::core::fmt::Formatter::debug_struct_field1_finish(f,
             "TupleSingleField", &&self.0)
     }
 }
@@ -670,7 +670,7 @@ struct Unsized([u32]);
 impl ::core::fmt::Debug for Unsized {
     #[inline]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-        ::core::fmt::Formatter::debug_tuple_field1_finish(f, "Unsized",
+        ::core::fmt::Formatter::debug_struct_field1_finish(f, "Unsized",
             &&self.0)
     }
 }
@@ -869,7 +869,7 @@ impl<T: ::core::fmt::Debug + ::core::marker::Copy + Trait,
     {
     #[inline]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-        ::core::fmt::Formatter::debug_tuple_field3_finish(f, "PackedGeneric",
+        ::core::fmt::Formatter::debug_struct_field3_finish(f, "PackedGeneric",
             &{ self.0 }, &{ self.1 }, &&{ self.2 })
     }
 }
@@ -1301,7 +1301,7 @@ impl ::core::fmt::Debug for Mixed {
             Self::P => ::core::fmt::Formatter::write_str(f, "P"),
             Self::Q => ::core::fmt::Formatter::write_str(f, "Q"),
             Self::R(__self_0) =>
-                ::core::fmt::Formatter::debug_tuple_field1_finish(f, "R",
+                ::core::fmt::Formatter::debug_struct_field1_finish(f, "R",
                     &__self_0),
             Self::S { d1: __self_0, d2: __self_1 } =>
                 ::core::fmt::Formatter::debug_struct_field2_finish(f,
@@ -1479,13 +1479,13 @@ impl ::core::fmt::Debug for Fielded {
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         match self {
             Self::X(__self_0) =>
-                ::core::fmt::Formatter::debug_tuple_field1_finish(f, "X",
+                ::core::fmt::Formatter::debug_struct_field1_finish(f, "X",
                     &__self_0),
             Self::Y(__self_0) =>
-                ::core::fmt::Formatter::debug_tuple_field1_finish(f, "Y",
+                ::core::fmt::Formatter::debug_struct_field1_finish(f, "Y",
                     &__self_0),
             Self::Z(__self_0) =>
-                ::core::fmt::Formatter::debug_tuple_field1_finish(f, "Z",
+                ::core::fmt::Formatter::debug_struct_field1_finish(f, "Z",
                     &__self_0),
         }
     }
@@ -1585,10 +1585,10 @@ impl<T: ::core::fmt::Debug, U: ::core::fmt::Debug> ::core::fmt::Debug for
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         match self {
             Self::One(__self_0) =>
-                ::core::fmt::Formatter::debug_tuple_field1_finish(f, "One",
+                ::core::fmt::Formatter::debug_struct_field1_finish(f, "One",
                     &__self_0),
             Self::Two(__self_0) =>
-                ::core::fmt::Formatter::debug_tuple_field1_finish(f, "Two",
+                ::core::fmt::Formatter::debug_struct_field1_finish(f, "Two",
                     &__self_0),
         }
     }
