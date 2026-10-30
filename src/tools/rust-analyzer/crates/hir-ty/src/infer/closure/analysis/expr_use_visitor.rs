@@ -451,23 +451,6 @@ impl<'a, 'db, D: Delegate<'db>> ExprUseVisitor<'a, 'db, D> {
         }
     }
 
-    #[instrument(skip(self), level = "debug")]
-    pub(crate) fn consume_clone_or_copy(&mut self, place_with_id: PlaceWithOrigin) {
-        // `x.use` will do one of the following
-        // * if it implements `Copy`, it will be a copy
-        // * if it implements `UseCloned`, it will be a call to `clone`
-        // * otherwise, it is a move
-        //
-        // we do a conservative approximation of this, treating it as a move unless we know that it implements copy or `UseCloned`
-        if self.cx.table.type_is_copy_modulo_regions(place_with_id.place.ty()) {
-            self.delegate.copy(place_with_id, self.cx);
-        } else if self.cx.table.type_is_use_cloned_modulo_regions(place_with_id.place.ty()) {
-            self.delegate.use_cloned(place_with_id, self.cx);
-        } else {
-            self.delegate.consume(place_with_id, self.cx);
-        }
-    }
-
     fn consume_exprs(&mut self, exprs: &[ExprId]) -> Result {
         for &expr in exprs {
             self.consume_expr(expr)?;
@@ -1121,7 +1104,7 @@ impl<'a, 'db, D: Delegate<'db>> ExprUseVisitor<'a, 'db, D> {
                             self.consume_or_copy(place_with_id);
                         }
                         UpvarCapture::ByUse => {
-                            self.consume_clone_or_copy(place_with_id);
+                            self.delegate.use_cloned(place_with_id, self.cx);
                         }
                         UpvarCapture::ByRef(upvar_borrow) => {
                             self.delegate.borrow(place_with_id, upvar_borrow, self.cx);

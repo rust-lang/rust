@@ -852,7 +852,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_capture_clause(&mut self, capture_clause: CaptureBy) -> CaptureBy {
         match capture_clause {
             CaptureBy::Ref => CaptureBy::Ref,
-            CaptureBy::Use { use_kw } => CaptureBy::Use { use_kw: self.lower_span(use_kw) },
             CaptureBy::Value { move_kw } => CaptureBy::Value { move_kw: self.lower_span(move_kw) },
         }
     }

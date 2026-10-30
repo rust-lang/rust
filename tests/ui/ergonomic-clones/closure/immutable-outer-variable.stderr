@@ -1,14 +1,33 @@
-error[E0594]: cannot assign to `y`, as it is not declared as mutable
-  --> $DIR/immutable-outer-variable.rs:14:25
+error[E0373]: closure may outlive the current function, but it borrows `y`, which is owned by the current function
+  --> $DIR/immutable-outer-variable.rs:14:18
    |
-LL |     foo(Box::new(use || y = !y) as Box<_>);
-   |                         ^^^^^^ cannot assign
+LL |     foo(Box::new(|| y = !y.use) as Box<_>);
+   |                  ^^ - `y` is borrowed here
+   |                  |
+   |                  may outlive borrowed value `y`
+   |
+note: function requires argument type to outlive `'static`
+  --> $DIR/immutable-outer-variable.rs:14:5
+   |
+LL |     foo(Box::new(|| y = !y.use) as Box<_>);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: to force the closure to take ownership of `y` (and any other referenced variables), use the `move` keyword
+   |
+LL |     foo(Box::new(move || y = !y.use) as Box<_>);
+   |                  ++++
+
+error[E0594]: cannot assign to `y`, as it is not declared as mutable
+  --> $DIR/immutable-outer-variable.rs:14:21
+   |
+LL |     foo(Box::new(|| y = !y.use) as Box<_>);
+   |                     ^^^^^^^^^^ cannot assign
    |
 help: consider changing this to be mutable
    |
 LL |     let mut y = true;
    |         +++
 
-error: aborting due to 1 previous error
+error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0594`.
+Some errors have detailed explanations: E0373, E0594.
+For more information about an error, try `rustc --explain E0373`.

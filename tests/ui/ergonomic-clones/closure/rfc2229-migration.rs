@@ -5,7 +5,9 @@
 #![warn(rust_2021_compatibility)]
 #![allow(incomplete_features)]
 
-#[derive(Debug)]
+use std::clone::UseCloned;
+
+#[derive(Debug, Clone)]
 struct Foo(i32);
 impl Drop for Foo {
     fn drop(&mut self) {
@@ -13,12 +15,14 @@ impl Drop for Foo {
     }
 }
 
+impl UseCloned for Foo {}
+
 fn main() {
     let a = (Foo(0), Foo(1));
-    let f = use || {
+    let f = || {
         //~^ HELP: add a dummy
         //~| WARNING: drop order
-        let x = a.0;
+        let x = a.0.use;
         println!("{:?}", x);
     };
     f();

@@ -8,6 +8,6 @@ fn main() {
 enum Foo { Bar }
 fn foo(x: impl Iterator<Item = Foo>) {
     for <Foo>::Bar in x {}
-    //~^ ERROR expected one of `move`, `static`, `use`, `|`
+    //~^ ERROR expected one of `move`, `static`, `|`
     //~^^ ERROR `for<...>` binders for closures are experimental
 }

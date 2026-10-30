@@ -1,10 +1,10 @@
 warning: changes to closure capture in Rust 2021 will affect drop order
-  --> $DIR/rfc2229-migration.rs:18:13
+  --> $DIR/rfc2229-migration.rs:22:13
    |
-LL |     let f = use || {
-   |             ^^^^^^
+LL |     let f = || {
+   |             ^^
 ...
-LL |         let x = a.0;
+LL |         let x = a.0.use;
    |                 --- in Rust 2018, this closure captures all of `a`, but in Rust 2021, it will only capture `a.0`
 ...
 LL | }
@@ -19,7 +19,7 @@ LL | #![warn(rust_2021_compatibility)]
    = note: `#[warn(rust_2021_incompatible_closure_captures)]` implied by `#[warn(rust_2021_compatibility)]`
 help: add a dummy let to cause `a` to be fully captured
    |
-LL ~     let f = use || {
+LL ~     let f = || {
 LL +         let _ = &a;
    |
 

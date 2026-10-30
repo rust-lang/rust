@@ -2377,18 +2377,6 @@ impl<'a> Parser<'a> {
             } else {
                 Ok(CaptureBy::Value { move_kw: move_kw_span })
             }
-        } else if self.eat_keyword(exp!(Use)) {
-            let use_kw_span = self.prev_token.span;
-            self.psess.gated_spans.gate(sym::ergonomic_clones, use_kw_span);
-            // Check for `use async` and recover
-            if self.check_keyword(exp!(Async)) {
-                let use_async_span = self.token.span.with_lo(self.prev_token.span.lo());
-                Err(self.dcx().create_err(crate::diagnostics::AsyncUseOrderIncorrect {
-                    span: use_async_span,
-                }))
-            } else {
-                Ok(CaptureBy::Use { use_kw: use_kw_span })
-            }
         } else {
             Ok(CaptureBy::Ref)
         }
