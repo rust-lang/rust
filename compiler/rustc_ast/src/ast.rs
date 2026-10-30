@@ -3523,14 +3523,14 @@ impl GeneratedAttr {
         }
     }
 
-    pub fn is_doc_comment(&self) -> Option<Span> {
+    pub fn is_doc_comment(&self) -> bool {
         match self {
-            GeneratedAttr::AutomaticallyDerived => None,
-            GeneratedAttr::RustcConstUnstableDerived => None,
-            GeneratedAttr::Inline => None,
-            GeneratedAttr::DocHidden => None,
-            GeneratedAttr::CoverageOff => None,
-            GeneratedAttr::RustcTestMarker(_) => None,
+            GeneratedAttr::AutomaticallyDerived => false,
+            GeneratedAttr::RustcConstUnstableDerived => false,
+            GeneratedAttr::Inline => false,
+            GeneratedAttr::DocHidden => false,
+            GeneratedAttr::CoverageOff => false,
+            GeneratedAttr::RustcTestMarker(_) => false,
         }
     }
 
