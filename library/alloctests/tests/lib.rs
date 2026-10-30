@@ -4,6 +4,7 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 #![feature(alloc_io)]
 #![feature(allocator_ext)]
+#![feature(arc_n)]
 #![feature(binary_heap_drain_sorted)]
 #![feature(binary_heap_into_iter_sorted)]
 #![feature(binary_heap_pop_if)]
