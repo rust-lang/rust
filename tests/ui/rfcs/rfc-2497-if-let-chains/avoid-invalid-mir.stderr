@@ -2,7 +2,9 @@ error: expected expression, found `let` statement
   --> $DIR/avoid-invalid-mir.rs:5:6
    |
 LL |     !let y = 42;
-   |      ^^^
+   |     -^^^
+   |     |
+   |     expected an expression after this
    |
    = note: only supported directly in conditions of `if` and `while` expressions
 
