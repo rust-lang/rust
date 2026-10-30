@@ -56,6 +56,9 @@ pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
     // FIXME: Uplift the leak check into this crate.
     fn leak_check(&self, max_input_universe: ty::UniverseIndex) -> Result<(), NoSolution>;
 
+    /// FIXME: Only used in `evaluate_const` on `EvalCtxt` to delegate evaluation of GCE consts and
+    /// should be removed once GCE is gone.
+    ///
     /// Evaluate a const, normalizing the type of the resulting value with `normalize_ty`.
     /// Returns `Ok(None)` if the const is too generic, and `Err(_)` only if `normalize_ty`
     /// failed.
@@ -78,6 +81,14 @@ pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
     fn make_deduplicated_region_constraints(
         &self,
     ) -> Vec<(ty::RegionConstraint<Self::Interner>, VisibleForLeakCheck)>;
+
+    fn instantiate_value<V>(
+        &self,
+        value: ty::Canonicalized<V>,
+        values: ty::CanonicalVarValues<Self::Interner>,
+    ) -> V
+    where
+        V: TypeFoldable<Self::Interner>;
 
     fn instantiate_canonical<V>(
         &self,

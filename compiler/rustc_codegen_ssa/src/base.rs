@@ -44,7 +44,7 @@ use crate::back::write::{
     ComputedLtoType, ModuleConfig, OngoingCodegen, compute_per_cgu_lto_type, start_async_codegen,
     submit_codegened_module_to_llvm, submit_post_lto_module_to_llvm, submit_pre_lto_module_to_llvm,
 };
-use crate::common::{self, IntPredicate, RealPredicate, TypeKind};
+use crate::common::{self, IntPredicate, RealPredicate};
 use crate::meth::load_vtable;
 use crate::mir::operand::OperandValue;
 use crate::mir::place::PlaceRef;
@@ -345,14 +345,14 @@ pub(crate) fn build_shift_expr_rhs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         rhs = bx.and(rhs, mask);
     }
 
-    if bx.cx().type_kind(rhs_llty) == TypeKind::Vector {
-        rhs_llty = bx.cx().element_type(rhs_llty)
+    if let Some(element) = bx.cx().vector_element_type(rhs_llty) {
+        rhs_llty = element;
     }
-    if bx.cx().type_kind(lhs_llty) == TypeKind::Vector {
-        lhs_llty = bx.cx().element_type(lhs_llty)
+    if let Some(element) = bx.cx().vector_element_type(lhs_llty) {
+        lhs_llty = element;
     }
-    let rhs_sz = bx.cx().int_width(rhs_llty);
-    let lhs_sz = bx.cx().int_width(lhs_llty);
+    let rhs_sz = bx.cx().int_width(rhs_llty).expect("rhs is not an integer");
+    let lhs_sz = bx.cx().int_width(lhs_llty).expect("lhs is not an integer");
     if lhs_sz < rhs_sz {
         if is_unchecked { bx.unchecked_utrunc(rhs, lhs_llty) } else { bx.trunc(rhs, lhs_llty) }
     } else if lhs_sz > rhs_sz {

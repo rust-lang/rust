@@ -1119,6 +1119,10 @@ impl<'tcx> rustc_type_ir::inherent::TypingEnv<TyCtxt<'tcx>> for TypingEnv<'tcx> 
             .unwrap_or_else(|e| panic!("could not compute layout for {ty:?}: {e:?}"))
             .size
     }
+
+    fn post_analysis(tcx: TyCtxt<'tcx>, def_id: DefId) -> TypingEnv<'tcx> {
+        Self::post_analysis(tcx, def_id)
+    }
 }
 
 impl<'tcx> TypingEnv<'tcx> {

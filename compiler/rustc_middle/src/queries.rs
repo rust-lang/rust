@@ -1608,7 +1608,7 @@ rustc_queries! {
         desc { "finding all vtable entries for trait `{}`", tcx.def_path_str(key.def_id) }
     }
 
-    query first_method_vtable_slot(key: ty::TraitRef<'tcx>) -> usize {
+    query first_method_vtable_slot(key: ty::TraitRef<'tcx>) -> Option<usize> {
         desc { "finding the slot within the vtable of `{}` for the implementation of `{}`", key.self_ty(), key.print_only_trait_name() }
     }
 

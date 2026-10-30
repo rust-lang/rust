@@ -12,7 +12,6 @@ use rustc_codegen_ssa::back::write::{
     TargetMachineFactoryConfig, TargetMachineFactoryFn,
 };
 use rustc_codegen_ssa::base::wants_wasm_eh;
-use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{CompiledModule, ModuleCodegen, ModuleKind};
 use rustc_data_structures::profiling::SelfProfilerRef;
@@ -40,7 +39,7 @@ use crate::diagnostics::{
     UnsupportedCompression, WithLlvmError, WriteBytecode,
 };
 use crate::llvm::diagnostic::OptimizationDiagnosticKind::*;
-use crate::llvm::{self, DiagnosticInfo};
+use crate::llvm::{self, DiagnosticInfo, TypeKind};
 use crate::type_::llvm_type_ptr;
 use crate::{LlvmCodegenBackend, ModuleLlvm, attributes, base, common, llvm_util};
 

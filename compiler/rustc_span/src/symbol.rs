@@ -1295,6 +1295,7 @@ symbols! {
         manually_drop,
         map,
         map_err,
+        marked_unchecked_type_aliases,
         marker,
         marker_trait_attr,
         masked,
@@ -1908,6 +1909,7 @@ symbols! {
         rustc_test_marker,
         rustc_then_this_would_need,
         rustc_trivial_field_reads,
+        rustc_unchecked_type_alias,
         // FIXME(#159429): temporary rename to avoid `#[unroll]` nameres ambiguity
         rustc_unroll,
         rustdoc,

@@ -6,7 +6,6 @@ use rustc_target::callconv::{ArgAbi, CastTarget, FnAbi};
 
 use super::BackendTypes;
 use super::misc::MiscCodegenMethods;
-use crate::common::TypeKind;
 use crate::mir::place::PlaceRef;
 
 pub trait BaseTypeCodegenMethods: BackendTypes {
@@ -25,18 +24,27 @@ pub trait BaseTypeCodegenMethods: BackendTypes {
     fn type_ppcf128(&self) -> Self::Type;
 
     fn type_func(&self, args: &[Self::Type], ret: Self::Type) -> Self::FunctionSignature;
-    fn type_kind(&self, ty: Self::Type) -> TypeKind;
     fn type_ptr(&self) -> Self::Type;
     fn type_ptr_ext(&self, address_space: AddressSpace) -> Self::Type;
-    fn element_type(&self, ty: Self::Type) -> Self::Type;
 
-    /// Returns the number of elements in `self` if it is an LLVM vector type.
-    fn vector_length(&self, ty: Self::Type) -> usize;
+    /// Returns the element type of `ty` if it is a vector type, otherwise returns `None`.
+    fn vector_element_type(&self, ty: Self::Type) -> Option<Self::Type> {
+        self.vector_element_type_and_length(ty).map(|(elem, _)| elem)
+    }
+    /// Returns the number of elements in `ty` if it is a vector type, otherwise returns `None`.
+    fn vector_length(&self, ty: Self::Type) -> Option<u64> {
+        self.vector_element_type_and_length(ty).map(|(_, len)| len)
+    }
+    /// Returns the tuple (element_type, length) of `ty` if it is a vector type, otherwise returns
+    /// `None`.
+    fn vector_element_type_and_length(&self, ty: Self::Type) -> Option<(Self::Type, u64)>;
 
-    fn float_width(&self, ty: Self::Type) -> usize;
+    /// Retrieves the scalar float type of `ty`. Returns `None` is `ty` is not a float.
+    fn float_type(&self, ty: Self::Type) -> Option<Float>;
 
-    /// Retrieves the bit width of the integer type `self`.
-    fn int_width(&self, ty: Self::Type) -> u64;
+    /// Retrieves the bit width of the scalar integer type `ty`. Returns `None` is `ty` is not an
+    /// integer.
+    fn int_width(&self, ty: Self::Type) -> Option<u64>;
 
     fn val_ty(&self, v: Self::Value) -> Self::Type;
 }

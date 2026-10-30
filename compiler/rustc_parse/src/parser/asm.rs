@@ -55,11 +55,11 @@ impl ast::HasAttrs for AsmAttrVec {
 }
 
 impl ast::HasTokens for AsmAttrVec {
-    fn tokens(&self) -> Option<&rustc_ast::tokenstream::LazyAttrTokenStream> {
+    fn tokens(&self) -> Option<&rustc_ast::tokenstream::LazyTokenStream> {
         None
     }
 
-    fn tokens_mut(&mut self) -> Option<&mut Option<rustc_ast::tokenstream::LazyAttrTokenStream>> {
+    fn tokens_mut(&mut self) -> Option<&mut Option<rustc_ast::tokenstream::LazyTokenStream>> {
         None
     }
 }

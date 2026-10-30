@@ -1,0 +1,31 @@
+- // MIR for `same_unit` before MatchBranchSimplification
++ // MIR for `same_unit` after MatchBranchSimplification
+  
+  fn same_unit(_1: bool) -> () {
+      debug condition => _1;
+      let mut _0: ();
+      let mut _2: bool;
+  
+      bb0: {
+          StorageLive(_2);
+          _2 = copy _1;
+-         switchInt(move _2) -> [0: bb2, otherwise: bb1];
+-     }
+- 
+-     bb1: {
+-         _0 = const ();
+-         goto -> bb3;
+-     }
+- 
+-     bb2: {
+-         _0 = const ();
+-         goto -> bb3;
+-     }
+- 
+-     bb3: {
++         _0 = no_retag const ();
+          StorageDead(_2);
+          return;
+      }
+  }
+  

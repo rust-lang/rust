@@ -477,6 +477,18 @@ help: must be of the form
 LL | #[patchable_function_entry(prefix_nops = m, entry_nops = n, section = "section")]
    |                           ++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+error: attribute should be applied to `const fn`
+  --> $DIR/malformed-attrs.rs:30:1
+   |
+LL |   #[rustc_allow_const_fn_unstable]
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | / fn test() {
+LL | |     #[coroutine = 63] || {}
+...  |
+LL | | }
+   | |_- not a `const fn`
+
 error[E0565]: malformed `coroutine` attribute input
   --> $DIR/malformed-attrs.rs:117:7
    |
@@ -845,18 +857,6 @@ help: must be of the form
 LL - #[allow_internal_unsafe = 1]
 LL + #[allow_internal_unsafe]
    |
-
-error: attribute should be applied to `const fn`
-  --> $DIR/malformed-attrs.rs:30:1
-   |
-LL |   #[rustc_allow_const_fn_unstable]
-   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-...
-LL | / fn test() {
-LL | |     #[coroutine = 63] || {}
-...  |
-LL | | }
-   | |_- not a `const fn`
 
 error: valid forms for the attribute are `doc = "doc comment"`, `doc(alias)`, `doc(auto_cfg)`, `doc(cfg)`, `doc(hidden)`, `doc(html_favicon_url)`, `doc(html_logo_url)`, `doc(html_no_source)`, `doc(html_playground_url)`, `doc(html_root_url)`, `doc(inline)`, `doc(issue_tracker_base_url)`, `doc(masked)`, `doc(no_inline)`, `doc(notable_trait)`, and `doc(test)`
   --> $DIR/malformed-attrs.rs:40:3

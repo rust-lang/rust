@@ -121,6 +121,15 @@ pub(crate) struct UnsafeAttrOutsideUnsafeLint {
 }
 
 #[derive(Diagnostic)]
+#[diag("attribute should be applied to `const fn`")]
+pub(crate) struct RustcAllowConstFnUnstable {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label("not a `const fn`")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(
     "{$num_suggestions ->
         [1] attribute must be of the form {$suggestions}

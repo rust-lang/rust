@@ -16,15 +16,20 @@
 -         _1 = copy _2;
 +         _1 = const false;
           StorageDead(_2);
--         switchInt(copy _1) -> [0: bb2, otherwise: bb1];
-+         switchInt(const false) -> [0: bb2, otherwise: bb1];
+-         switchInt(copy _1) -> [0: bb1, otherwise: bb2];
++         switchInt(const false) -> [0: bb1, otherwise: bb2];
       }
   
       bb1: {
-          _0 = noop() -> [return: bb2, unwind continue];
+          _0 = const ();
+          goto -> bb3;
       }
   
       bb2: {
+          _0 = noop() -> [return: bb3, unwind continue];
+      }
+  
+      bb3: {
           StorageDead(_1);
           return;
       }

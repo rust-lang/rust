@@ -233,6 +233,10 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     // - https://github.com/rust-lang/rust/issues/157081
     sym::instrument_fn,
 
+    // The attribute is part of feature `checked_type_aliases`. Its name is but a placeholder.
+    // FIXME(#134963): Temporarily prefixed with `rustc_` to prevent potential name resolution ambiguities.
+    sym::rustc_unchecked_type_alias,
+
     // ==========================================================================
     // Internal attributes: Stability, deprecation, and unsafe:
     // ==========================================================================

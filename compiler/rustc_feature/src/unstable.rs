@@ -630,6 +630,9 @@ declare_features! (
     (unstable, macro_metavar_expr, "1.61.0", Some(83527)),
     /// Provides a way to concatenate identifiers using metavariable expressions.
     (unstable, macro_metavar_expr_concat, "1.81.0", Some(124225)),
+    /// Allows explicitly marking type aliases as unchecked / opting type aliases
+    /// out of being checked even if `checked_type_aliases` is enabled or they're a TAIT.
+    (unstable, marked_unchecked_type_aliases, "CURRENT_RUSTC_VERSION", Some(112792)),
     /// Allows `#[marker]` on certain traits allowing overlapping implementations.
     (unstable, marker_trait_attr, "1.30.0", Some(29864)),
     /// Allows additional const parameter types, such as [u8; 10] or user defined types.

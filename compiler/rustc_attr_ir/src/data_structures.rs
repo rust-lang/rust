@@ -1514,6 +1514,10 @@ pub enum AttributeKind {
         limit: Limit,
     },
 
+    /// Represents `#[rustc_unchecked_type_alias]`
+    // FIXME(#134963): Temporarily prefixed with `rustc_` to prevent potential name resolution ambiguities.
+    UncheckedTypeAlias,
+
     /// Represents `#[rustc_unroll]`
     // FIXME(#159429): temporarily renamed from `#[unroll]` to mitigate nameres ambiguity
     Unroll(UnrollAttr),
