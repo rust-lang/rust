@@ -231,30 +231,27 @@ pub(crate) enum FieldlessVariantsStrategy {
 }
 
 /// Summary of the relevant parts of a struct/enum field.
-pub(crate) struct FieldInfo {
+pub(crate) struct FieldInfo<'a> {
     pub span: Span,
-    /// None for tuple structs/normal enum variants, Some for normal
-    /// structs/struct enum variants.
-    pub name: Option<Ident>,
     /// The expression corresponding to this field of `self`
     /// (specifically, a reference to it).
     pub self_expr: Box<Expr>,
     /// The expression corresponding to a reference to this field in
     /// the other selflike argument.
     pub other_selflike_expr: Option<Box<Expr>>,
-    pub maybe_scalar: bool,
+    pub def: &'a ast::FieldDef,
 }
 
 /// A summary of the possible sets of fields.
 /// If the trait supports unions, they are treated like structs here.
 pub(crate) enum Substructure<'a> {
     /// A non-static method where `Self` is a struct.
-    Struct(&'a ast::VariantData, Vec<FieldInfo>),
+    Struct(&'a ast::VariantData, Vec<FieldInfo<'a>>),
 
     /// Matching variants of the enum: ast::Variant,
     /// fields: the field name is only non-`None` in the case of a struct
     /// variant.
-    EnumMatching(&'a ast::Variant, Vec<FieldInfo>),
+    EnumMatching(&'a ast::Variant, Vec<FieldInfo<'a>>),
 
     /// The discriminant of an enum. The field is the expression to combine the
     /// discriminant expression with; it will be `None` if no match is necessary.
@@ -801,13 +798,7 @@ impl<'a> MethodDef<'a> {
                 let other_selflike_expr = self
                     .has_other_selflike_arg
                     .then(|| expr_for_selflike_arg(cx.expr_name(span, self.nonself_args[0].0)));
-                FieldInfo {
-                    span: field_span,
-                    name: struct_field.ident,
-                    self_expr,
-                    other_selflike_expr,
-                    maybe_scalar: struct_field.ty.peel_refs().kind.maybe_scalar(),
-                }
+                FieldInfo { span: field_span, self_expr, other_selflike_expr, def: struct_field }
             })
             .collect();
         self.call_substructure_method(cx, span, Struct(struct_def, selflike_fields))
@@ -959,13 +950,7 @@ impl<'a> MethodDef<'a> {
                         let self_expr = expr_for_field("__self");
                         let other_selflike_expr =
                             self.has_other_selflike_arg.then(|| expr_for_field("__arg1"));
-                        FieldInfo {
-                            span,
-                            name: struct_field.ident,
-                            self_expr,
-                            other_selflike_expr,
-                            maybe_scalar: struct_field.ty.peel_refs().kind.maybe_scalar(),
-                        }
+                        FieldInfo { span, self_expr, other_selflike_expr, def: struct_field }
                     })
                     .collect();
                 // For the BodyK, we need to delegate to our caller,

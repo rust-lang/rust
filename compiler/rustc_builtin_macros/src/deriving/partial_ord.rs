@@ -208,7 +208,7 @@ pub(crate) fn cmp_body(
 
     match substructure {
         EnumMatching(.., all_fields) | Struct(_, all_fields) => {
-            let op = |old, field: FieldInfo| {
+            let op = |old, field: FieldInfo<'_>| {
                 // The basic case: a field expression for one or more selflike args. E.g.
                 // for `Ord::cmp` this is something like `Ord::cmp(&self.x, &other.x)`.
                 let other_expr =

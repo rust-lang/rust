@@ -169,7 +169,7 @@ fn clone_body(
     substr: Substructure<'_>,
     type_ident: Ident,
 ) -> BlockOrExpr {
-    let subcall = |field: FieldInfo| {
+    let subcall = |field: FieldInfo<'_>| {
         let args = thin_vec![field.self_expr];
         cx.expr_call_global(
             field.span,
@@ -201,7 +201,7 @@ fn clone_body(
         VariantData::Struct { .. } => {
             let fields = all_fields
                 .into_iter()
-                .map(|field| cx.field_imm(field.span, field.name.unwrap(), subcall(field)))
+                .map(|field| cx.field_imm(field.span, field.def.ident.unwrap(), subcall(field)))
                 .collect::<ThinVec<_>>();
 
             cx.expr_struct(trait_span, ctor_path, fields)
