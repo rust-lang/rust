@@ -864,9 +864,8 @@ impl<'a> MethodDef<'a> {
         // core::intrinsics::unreachable() }` while being safe and stable.
         if variants.is_empty() {
             let match_arg = cx.expr_deref(span, cx.expr_self(span));
-            let match_arms = ThinVec::new();
-            let expr = cx.expr_match(span, match_arg, match_arms);
-            return BlockOrExpr(ThinVec::new(), Some(expr));
+            let expr = cx.expr_match(span, match_arg, ThinVec::new());
+            return BlockOrExpr::new_expr(expr);
         }
 
         // There are some special cases involving fieldless enums where no
@@ -905,19 +904,19 @@ impl<'a> MethodDef<'a> {
             .map(|variant| {
                 // A single arm has form (&VariantK, &VariantK) => BodyK
                 // (see "Final wrinkle" note below for why.)
-                let sp = variant.span.with_ctxt(span.ctxt());
+                let variant_span = variant.span.with_ctxt(span.ctxt());
                 let pat_for_field = |prefix| {
                     let pieces_iter =
                         variant.data.fields().iter().enumerate().map(|(i, struct_field)| {
-                            let ident = Symbol::intern(&format!("{prefix}_{i}"));
+                            let name = Symbol::intern(&format!("{prefix}_{i}"));
                             (
                                 struct_field.ident,
-                                cx.pat_name(struct_field.span.with_ctxt(span.ctxt()), ident),
+                                cx.pat_name(struct_field.span.with_ctxt(span.ctxt()), name),
                             )
                         });
 
                     let struct_path =
-                        cx.path(sp, &[Ident::new(kw::SelfUpper, span), variant.ident]);
+                        cx.path(variant_span, &[Ident::new(kw::SelfUpper, span), variant.ident]);
 
                     match variant.data {
                         VariantData::Struct { .. } => {
@@ -928,7 +927,7 @@ impl<'a> MethodDef<'a> {
                                     is_shorthand: false,
                                     attrs: ast::AttrVec::new(),
                                     id: ast::DUMMY_NODE_ID,
-                                    span: pat.span.with_ctxt(span.ctxt()),
+                                    span: pat.span,
                                     pat: Box::new(pat),
                                     is_placeholder: false,
                                 })
@@ -1036,7 +1035,7 @@ impl<'a> MethodDef<'a> {
             // Combine a discriminant check with the match.
             self.call_substructure_method(cx, span, EnumDiscr(Some(match_expr)))
         } else {
-            BlockOrExpr(ThinVec::new(), Some(match_expr))
+            BlockOrExpr::new_expr(match_expr)
         }
     }
 }
