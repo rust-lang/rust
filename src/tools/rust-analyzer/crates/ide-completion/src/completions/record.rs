@@ -183,6 +183,30 @@ fn baz() {
     }
 
     #[test]
+    fn literal_variant_not_trigger_unreachable_path() {
+        check_no_kw(
+            r#"
+mod foo {
+    mod bar {
+        pub enum FooDesc { Variant { bar: bool } }
+        pub fn create_foo(foo_desc: &FooDesc) -> () { () }
+    }
+    pub use bar::create_foo;
+}
+
+fn baz() {
+    let foo = foo::create_foo(&$0);
+}
+            "#,
+            expect![[r#"
+                fn baz() fn()
+                md foo::
+                bt u32    u32
+            "#]],
+        );
+    }
+
+    #[test]
     fn literal_struct_completion_edit() {
         check_edit(
             "FooDesc{}",
