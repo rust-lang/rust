@@ -691,6 +691,10 @@ pub struct MiriMachine<'tcx> {
 
     /// Whether Miri artificially introduces short reads/writes on file descriptors.
     pub short_fd_operations: bool,
+
+    /// Whether `exit` has been called (or, equivalently, `main` has returned).
+    /// It is UB to call `exit` again.
+    pub exit_called: bool,
 }
 
 impl<'tcx> MiriMachine<'tcx> {
@@ -863,6 +867,7 @@ impl<'tcx> MiriMachine<'tcx> {
             float_nondet: config.float_nondet,
             float_rounding_error: config.float_rounding_error,
             short_fd_operations: config.short_fd_operations,
+            exit_called: false,
         }
     }
 
@@ -1090,6 +1095,7 @@ impl VisitProvenance for MiriMachine<'_> {
             float_nondet: _,
             float_rounding_error: _,
             short_fd_operations: _,
+            exit_called: _,
         } = self;
 
         threads.visit_provenance(visit);
