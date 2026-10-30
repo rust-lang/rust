@@ -63,6 +63,7 @@ impl SingleAttributeParser for DeprecatedParser {
         Allow(Target::Impl { of_trait: false }),
         Allow(Target::Crate),
         Error(Target::WherePredicate),
+        Error(Target::Param),
     ]);
     const TEMPLATE: AttributeTemplate = template!(
         Word,

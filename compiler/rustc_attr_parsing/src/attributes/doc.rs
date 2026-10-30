@@ -10,7 +10,7 @@ use rustc_feature::AttributeStability;
 use rustc_lint_defs::builtin::{INVALID_DOC_ATTRIBUTES, UNUSED_ATTRIBUTES};
 use rustc_span::{Span, Symbol, edition, sym};
 
-use super::prelude::{ALL_TARGETS, AllowedTargets};
+use super::prelude::{AllowedTargets, Error, ALL_TARGETS};
 use super::{AcceptMapping, AttributeParser, template};
 use crate::context::{AcceptContext, FinalizeContext};
 use crate::diagnostics::{
@@ -157,7 +157,7 @@ impl DocParser {
 
                 cx.check_target(
                     sym::no_crate_inject.as_str(),
-                    &AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]),
+                    &AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate),Error(Target::Param)]),
                 );
 
                 self.attribute.no_crate_inject = Some(path.span())
@@ -547,7 +547,7 @@ impl DocParser {
                 let span = path.span();
                 cx.check_target(
                     concat!("(", stringify!($ident), ")"),
-                    &AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]),
+                    &AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate),Error(Target::Param)]),
                 );
                 self.attribute.$ident = Some(span);
             }};
@@ -566,7 +566,7 @@ impl DocParser {
 
                 cx.check_target(
                     s.as_str(),
-                    &AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]),
+                    &AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate),Error(Target::Param)]),
                 );
 
                 // FIXME: It's errorring when the attribute is passed multiple times on the command
