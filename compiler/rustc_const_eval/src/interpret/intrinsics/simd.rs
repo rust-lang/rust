@@ -3,7 +3,7 @@ use rustc_abi::{BackendRepr, Endian};
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_apfloat::{Float, Round};
 use rustc_middle::mir::interpret::{InterpErrorKind, Pointer, UndefinedBehaviorInfo};
-use rustc_middle::ty::{FloatTy, ScalarInt, SimdAlign};
+use rustc_middle::ty::{FloatTy, SimdAlign};
 use rustc_middle::{err_ub_format, mir, throw_unsup_format, ty};
 use rustc_span::{Symbol, bug, span_bug, sym};
 use tracing::trace;
@@ -758,54 +758,30 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 }
             }
             sym::simd_funnel_shl | sym::simd_funnel_shr => {
-                let (left, _) = self.project_to_simd(&args[0])?;
-                let (right, _) = self.project_to_simd(&args[1])?;
-                let (shift, _) = self.project_to_simd(&args[2])?;
-                let (dest, _) = self.project_to_simd(&dest)?;
+                let shift_left = intrinsic_name == sym::simd_funnel_shl;
 
-                let (len, elem_ty) = args[0].layout.ty.simd_size_and_type(*self.tcx);
-                let (elem_size, _signed) = elem_ty.int_size_and_signed(*self.tcx);
-                let elem_size_bits = u128::from(elem_size.bits());
+                let (left, left_len) = self.project_to_simd(&args[0])?;
+                let (right, right_len) = self.project_to_simd(&args[1])?;
+                let (shift, shift_len) = self.project_to_simd(&args[2])?;
+                let (dest, dest_len) = self.project_to_simd(&dest)?;
 
-                let is_left = intrinsic_name == sym::simd_funnel_shl;
+                assert_eq!(dest_len, left_len);
+                assert_eq!(dest_len, right_len);
+                assert_eq!(dest_len, shift_len);
 
-                for i in 0..len {
-                    let left =
-                        self.read_scalar(&self.project_index(&left, i)?)?.to_bits(elem_size)?;
-                    let right =
-                        self.read_scalar(&self.project_index(&right, i)?)?.to_bits(elem_size)?;
-                    let shift_bits =
-                        self.read_scalar(&self.project_index(&shift, i)?)?.to_bits(elem_size)?;
-
-                    if shift_bits >= elem_size_bits {
-                        throw_ub_format!(
-                            "overflowing shift by {shift_bits} in `{intrinsic_name}` in lane {i}"
-                        );
-                    }
-                    let inv_shift_bits = u32::try_from(elem_size_bits - shift_bits).unwrap();
-
-                    // A funnel shift left by S can be implemented as `(x << S) | y.unbounded_shr(SIZE - S)`.
-                    // The `unbounded_shr` is needed because otherwise if `S = 0`, it would be `x | y`
-                    // when it should be `x`.
-                    //
-                    // This selects the least-significant `SIZE - S` bits of `x`, followed by the `S` most
-                    // significant bits of `y`. As `left` and `right` both occupy the lower `SIZE` bits,
-                    // we can treat the lower `SIZE` bits as an integer of the right width and use
-                    // the same implementation, but on a zero-extended `x` and `y`. This works because
-                    // `x << S` just pushes the `SIZE-S` MSBs out, and `y >> (SIZE - S)` shifts in
-                    // zeros, as it is zero-extended. To the lower `SIZE` bits, this looks just like a
-                    // funnel shift left.
-                    //
-                    // Note that the `unbounded_sh{l,r}`s are needed only in case we are using this on
-                    // `u128xN` and `inv_shift_bits == 128`.
-                    let result_bits = if is_left {
-                        (left << shift_bits) | right.unbounded_shr(inv_shift_bits)
-                    } else {
-                        left.unbounded_shl(inv_shift_bits) | (right >> shift_bits)
-                    };
-                    let (result, _overflow) = ScalarInt::truncate_from_uint(result_bits, elem_size);
-
+                for i in 0..dest_len {
+                    let left = self.read_immediate(&self.project_index(&left, i)?)?;
+                    let right = self.read_immediate(&self.project_index(&right, i)?)?;
+                    let shift_bits = self.read_immediate(&self.project_index(&shift, i)?)?;
                     let dest = self.project_index(&dest, i)?;
+
+                    let result = self.funnel_shift(&left, &right, &shift_bits, shift_left)
+                        .map_err_kind(|_err| {
+                            err_ub_format!(
+                                "overflowing shift by {shift_bits} in `{intrinsic_name}` in lane {i}"
+                            )
+                        })?;
+
                     self.write_scalar(result, &dest)?;
                 }
             }
