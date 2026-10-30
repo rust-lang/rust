@@ -1,18 +1,19 @@
 // regression test for https://github.com/rust-lang/rust/issues/149187
 #![deny(invalid_doc_attributes)]
+//~^ NOTE
 
 #![doc(html_favicon_url)]
 //~^ ERROR
-//~| WARN
+//~| NOTE expected this to be of the form
 #![doc(html_logo_url)]
 //~^ ERROR
-//~| WARN
+//~| NOTE expected this to be of the form
 #![doc(html_playground_url)]
 //~^ ERROR
-//~| WARN
+//~| NOTE expected this to be of the form
 #![doc(issue_tracker_base_url)]
 //~^ ERROR
-//~| WARN
+//~| NOTE expected this to be of the form
 #![doc(html_favicon_url = 1)]
 //~^ ERROR
 //~| WARN

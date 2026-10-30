@@ -20,8 +20,8 @@ use crate::diagnostics::{
     DocAutoCfgHideShowUnexpectedItem, DocAutoCfgHideShowUnexpectedItemAfterValues,
     DocAutoCfgHideShowValuesMix, DocAutoCfgWrongLiteral, DocInlineConflict, DocInlineOnlyUse,
     DocKeywordNotKeyword, DocTestLiteral, DocTestTakesList, DocTestUnknown, DocUnknownAny,
-    DocUnknownInclude, DocUnknownPasses, DocUnknownPlugins, DocUnknownSpotlight, ExpectedNameValue,
-    ExpectedNoArgs, IllFormedAttributeInput, MalformedDoc, UnusedDuplicate,
+    DocUnknownInclude, DocUnknownPasses, DocUnknownPlugins, DocUnknownSpotlight, ExpectedNoArgs,
+    IllFormedAttributeInput, MalformedDoc, UnusedDuplicate,
 };
 use crate::parser::{
     ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItemParser, OwnedPathParser,
@@ -64,11 +64,6 @@ fn check_attr_not_crate_level(
     true
 }
 
-// FIXME: To be removed once merged and replace with `cx.expected_name_value(span, _name)`.
-fn expected_name_value(cx: &mut AcceptContext<'_, '_>, span: Span, _name: Option<Symbol>) {
-    cx.emit_lint(INVALID_DOC_ATTRIBUTES, ExpectedNameValue, span);
-}
-
 // FIXME: remove this method once merged and use `cx.expected_no_args(span)` instead.
 fn expected_no_args(cx: &mut AcceptContext<'_, '_>, span: Span) {
     cx.emit_lint(INVALID_DOC_ATTRIBUTES, ExpectedNoArgs, span);
@@ -92,7 +87,7 @@ fn parse_keyword_and_attribute(
     attr_name: Symbol,
 ) {
     let Some(nv) = args.as_name_value() else {
-        expected_name_value(cx, args.span().unwrap_or(path.span()), path.word_sym());
+        cx.adcx().expected_name_value(args.span().unwrap_or(path.span()), path.word_sym());
         return;
     };
 
@@ -555,7 +550,8 @@ impl DocParser {
         macro_rules! string_arg_and_crate_level {
             ($ident: ident) => {{
                 let Some(nv) = args.as_name_value() else {
-                    expected_name_value(cx, args.span().unwrap_or(path.span()), path.word_sym());
+                    cx.adcx()
+                        .expected_name_value(args.span().unwrap_or(path.span()), path.word_sym());
                     return;
                 };
 
@@ -733,7 +729,7 @@ impl DocParser {
                             self.parse_single_doc_attr_item(cx, mip);
                         }
                         MetaItemOrLitParser::Lit(lit) => {
-                            expected_name_value(cx, lit.span, None);
+                            cx.adcx().expected_name_value(lit.span, None);
                         }
                     }
                 }

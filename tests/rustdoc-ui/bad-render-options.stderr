@@ -1,8 +1,40 @@
-error: expected this to be of the form `... = "..."`
-  --> $DIR/bad-render-options.rs:4:8
+error[E0539]: malformed `doc` attribute input
+  --> $DIR/bad-render-options.rs:5:4
    |
 LL | #![doc(html_favicon_url)]
-   |        ^^^^^^^^^^^^^^^^
+   |    ^^^^----------------^
+   |        |
+   |        expected this to be of the form `html_favicon_url = "..."`
+
+error[E0539]: malformed `doc` attribute input
+  --> $DIR/bad-render-options.rs:8:4
+   |
+LL | #![doc(html_logo_url)]
+   |    ^^^^-------------^
+   |        |
+   |        expected this to be of the form `html_logo_url = "..."`
+
+error[E0539]: malformed `doc` attribute input
+  --> $DIR/bad-render-options.rs:11:4
+   |
+LL | #![doc(html_playground_url)]
+   |    ^^^^-------------------^
+   |        |
+   |        expected this to be of the form `html_playground_url = "..."`
+
+error[E0539]: malformed `doc` attribute input
+  --> $DIR/bad-render-options.rs:14:4
+   |
+LL | #![doc(issue_tracker_base_url)]
+   |    ^^^^----------------------^
+   |        |
+   |        expected this to be of the form `issue_tracker_base_url = "..."`
+
+error: malformed `doc` attribute input
+  --> $DIR/bad-render-options.rs:17:27
+   |
+LL | #![doc(html_favicon_url = 1)]
+   |                           ^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 note: the lint level is defined here
@@ -11,40 +43,8 @@ note: the lint level is defined here
 LL | #![deny(invalid_doc_attributes)]
    |         ^^^^^^^^^^^^^^^^^^^^^^
 
-error: expected this to be of the form `... = "..."`
-  --> $DIR/bad-render-options.rs:7:8
-   |
-LL | #![doc(html_logo_url)]
-   |        ^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-
-error: expected this to be of the form `... = "..."`
-  --> $DIR/bad-render-options.rs:10:8
-   |
-LL | #![doc(html_playground_url)]
-   |        ^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-
-error: expected this to be of the form `... = "..."`
-  --> $DIR/bad-render-options.rs:13:8
-   |
-LL | #![doc(issue_tracker_base_url)]
-   |        ^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-
 error: malformed `doc` attribute input
-  --> $DIR/bad-render-options.rs:16:27
-   |
-LL | #![doc(html_favicon_url = 1)]
-   |                           ^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-
-error: malformed `doc` attribute input
-  --> $DIR/bad-render-options.rs:19:24
+  --> $DIR/bad-render-options.rs:20:24
    |
 LL | #![doc(html_logo_url = 2)]
    |                        ^
@@ -52,7 +52,7 @@ LL | #![doc(html_logo_url = 2)]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: malformed `doc` attribute input
-  --> $DIR/bad-render-options.rs:22:30
+  --> $DIR/bad-render-options.rs:23:30
    |
 LL | #![doc(html_playground_url = 3)]
    |                              ^
@@ -60,7 +60,7 @@ LL | #![doc(html_playground_url = 3)]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: malformed `doc` attribute input
-  --> $DIR/bad-render-options.rs:25:33
+  --> $DIR/bad-render-options.rs:26:33
    |
 LL | #![doc(issue_tracker_base_url = 4)]
    |                                 ^
@@ -68,7 +68,7 @@ LL | #![doc(issue_tracker_base_url = 4)]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: didn't expect any arguments here
-  --> $DIR/bad-render-options.rs:28:23
+  --> $DIR/bad-render-options.rs:29:23
    |
 LL | #![doc(html_no_source = "asdf")]
    |                       ^^^^^^^^
@@ -77,3 +77,4 @@ LL | #![doc(html_no_source = "asdf")]
 
 error: aborting due to 9 previous errors
 
+For more information about this error, try `rustc --explain E0539`.
