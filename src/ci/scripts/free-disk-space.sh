@@ -12,7 +12,7 @@ case "${RUNNER_OS:-}" in
         exec "${script_dir}/free-disk-space-mac.sh"
         ;;
     *)
-        echo "::error:: freeing disk space not supported for : '${RUNNER_OS:-unset}'"
+        echo "::error:: freeing disk space not supported for: '${RUNNER_OS:-unset}'"
         exit 1
         ;;
 esac
