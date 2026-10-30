@@ -3877,11 +3877,24 @@ fn find_first_duplicate<T: PartialEq>(v: &[T], chunk_size: usize) -> Option<usiz
 // Internal methods and functions
 ////////////////////////////////////////////////////////////////////////////////
 
+// This function is no longer used internally (`from_elem_global` is used instead).
+// It is only kept so as not to break a few crates who mistakenly used it at a
+// time when we didn't have the ability to gate internal methods used by public macros.
 #[doc(hidden)]
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_diagnostic_item = "vec_from_elem"]
+// NOTE: the real deprecation version is the same as the stabilization version.
+// I.e. it should never have been used even in version 1.0.
+#[deprecated(since = "CURRENT_RUSTC_VERSION", note = "use the `vec!` macro instead")]
 pub fn from_elem<T: Clone>(elem: T, n: usize) -> Vec<T> {
+    vec![elem; n]
+}
+
+#[doc(hidden)]
+#[cfg(not(no_global_oom_handling))]
+#[unstable(feature = "liballoc_internals", issue = "none")]
+#[rustc_diagnostic_item = "vec_from_elem"]
+pub fn from_elem_global<T: Clone>(elem: T, n: usize) -> Vec<T> {
     <T as SpecFromElem>::from_elem(elem, n, Global)
 }
 
