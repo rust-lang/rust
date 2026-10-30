@@ -63,7 +63,7 @@ jobs:
         run: |
           set -x
           lscpu
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
       - name: install multiarch
         if: ${{ matrix.multiarch != '' }}
         run: |
@@ -115,7 +115,7 @@ jobs:
       HOST_TARGET: x86_64-unknown-freebsd
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
       - uses: vmactions/freebsd-vm@v1
         with:
             # Use FreeBSD 15.x
@@ -134,7 +134,7 @@ jobs:
     name: style checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
       - uses: ./.github/workflows/setup
 
       - name: rustfmt
@@ -150,7 +150,7 @@ jobs:
     name: bootstrap build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
       # Deliberately skipping `./.github/workflows/setup` as we do our own setup
       - name: Add cache for cargo
         id: cache
@@ -188,7 +188,7 @@ jobs:
     name: priroda
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
       - uses: ./.github/workflows/setup
       - name: clippy Priroda
         run: CARGO_EXTRA_FLAGS=--locked ./miri clippy --features priroda -- -D warnings
@@ -199,7 +199,7 @@ jobs:
     name: coverage report
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
       - uses: ./.github/workflows/setup
       - name: coverage
         run: ./miri test --coverage
@@ -234,7 +234,7 @@ jobs:
         pull-requests: write
     if: ${{ github.event_name == 'schedule' }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           fetch-depth: 256 # get a bit more of the history
       - name: install josh-sync
