@@ -390,6 +390,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         duplicates: Option<&mut FxIndexMap<DefId, Span>>,
         path_span: Span,
         predicate_filter: PredicateFilter,
+        span: Span,
     ) -> Result<(), ErrorGuaranteed> {
         let tcx = self.tcx();
 
@@ -430,6 +431,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 constraint.ident,
                 path_span,
                 Some(constraint),
+                span,
             )?
         };
 
