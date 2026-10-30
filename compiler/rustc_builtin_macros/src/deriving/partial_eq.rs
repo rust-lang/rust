@@ -109,7 +109,7 @@ pub(crate) fn expand_derive_partial_eq(
 fn partial_eq_body(cx: &ExtCtxt<'_>, span: Span, substructure: Substructure<'_>) -> BlockOrExpr {
     BlockOrExpr::new_expr(match substructure {
         EnumMatching(.., fields) | Struct(.., fields) => {
-            let combine = move |acc, field: &FieldInfo| {
+            let combine = move |acc, field: &FieldInfo<'_>| {
                 let rhs = field
                     .other_selflike_expr
                     .as_ref()
@@ -130,12 +130,13 @@ fn partial_eq_body(cx: &ExtCtxt<'_>, span: Span, substructure: Substructure<'_>)
                 }
             };
 
+            let maybe_scalar = |field: &FieldInfo<'_>| field.def.ty.peel_refs().kind.maybe_scalar();
             // First compare scalar fields, then compound fields, combining all
             // with logical AND.
             fields
                 .iter()
-                .filter(|field| field.maybe_scalar)
-                .chain(fields.iter().filter(|field| !field.maybe_scalar))
+                .filter(|field| maybe_scalar(field))
+                .chain(fields.iter().filter(|field| !maybe_scalar(field)))
                 .fold(None, combine)
                 // If there are no fields, treat as always equal.
                 .unwrap_or_else(|| cx.expr_bool(span, true))

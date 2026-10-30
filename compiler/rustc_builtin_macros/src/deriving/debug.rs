@@ -104,7 +104,7 @@ fn debug_body(
     const CUTOFF: usize = 5;
 
     let len = fields.len();
-    let expr_for_field = |field: FieldInfo, index: usize| -> Box<ast::Expr> {
+    let expr_for_field = |field: FieldInfo<'_>, index: usize| -> Box<ast::Expr> {
         if index < len - 1 {
             field.self_expr
         } else {
@@ -133,7 +133,7 @@ fn debug_body(
 
             for field in fields.iter() {
                 names.push(' ');
-                names.push_str(field.name.unwrap().as_str());
+                names.push_str(field.def.ident.unwrap().as_str());
             }
 
             let name_expr = cx.expr_str(span, Symbol::intern(&names));
@@ -159,7 +159,7 @@ fn debug_body(
         for (i, field) in fields.into_iter().enumerate() {
             if is_struct {
                 names.push(' ');
-                names.push_str(field.name.unwrap().name.as_str());
+                names.push_str(field.def.ident.unwrap().name.as_str());
             }
 
             let field = expr_for_field(field, i);
