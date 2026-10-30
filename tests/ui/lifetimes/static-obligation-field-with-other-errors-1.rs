@@ -1,5 +1,6 @@
-//@ known-bug: #165052
-
+// Regression test for #165052
+// This used to ICE
+//@ check-fail
 struct S<'a> {
     //~^ ERROR lifetime parameter `'a` is never used
     n: &'static u8, // changing 'static to 'a makes it compile

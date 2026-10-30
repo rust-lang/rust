@@ -1,4 +1,6 @@
-//@ known-bug: #165052
+// Regression test for #165052
+// This used to ICE
+//@ check-fail
 
 struct S<'a> {
     m: &'a dyn std::fmt::Debug,
