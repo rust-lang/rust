@@ -83,6 +83,7 @@ mod bool_to_int_with_if;
 mod booleans;
 mod borrow_deref_ref;
 mod box_default;
+mod bufreader_stdin;
 mod byte_char_slices;
 mod cargo;
 mod casts;
@@ -107,12 +108,10 @@ mod definition_in_module_root;
 mod dereference;
 mod derivable_impls;
 mod derive;
-mod disallowed_fields;
+mod disallowed_items;
 mod disallowed_macros;
-mod disallowed_methods;
 mod disallowed_names;
 mod disallowed_script_idents;
-mod disallowed_types;
 mod doc;
 mod double_parens;
 mod drop_forget_ref;
@@ -154,6 +153,7 @@ mod if_let_mutex;
 mod if_not_else;
 mod if_then_some_else_none;
 mod ifs;
+mod ifs_as_logical_ops;
 mod ignored_unit_patterns;
 mod impl_hash_with_borrow_str_and_bytes;
 mod implicit_hasher;
@@ -714,17 +714,16 @@ rustc_lint::late_lint_methods!(
         SemicolonIfNothingReturned: semicolon_if_nothing_returned::SemicolonIfNothingReturned = semicolon_if_nothing_returned::SemicolonIfNothingReturned,
         AsyncYieldsAsync: async_yields_async::AsyncYieldsAsync = async_yields_async::AsyncYieldsAsync,
         DisallowedMacros: disallowed_macros::DisallowedMacros = disallowed_macros::DisallowedMacros::new(tcx, conf, attrs.clone()),
-        DisallowedMethods: disallowed_methods::DisallowedMethods = disallowed_methods::DisallowedMethods::new(tcx, conf),
+        DisallowedMethods: disallowed_items::DisallowedItems = disallowed_items::DisallowedItems::new(tcx, conf),
         EmptyDrop: empty_drop::EmptyDrop = empty_drop::EmptyDrop,
         StrToString: strings::StrToString = strings::StrToString,
         ZeroSizedMapValues: zero_sized_map_values::ZeroSizedMapValues = zero_sized_map_values::ZeroSizedMapValues,
         VecInitThenPush: vec_init_then_push::VecInitThenPush = <vec_init_then_push::VecInitThenPush>::default(),
         RedundantSlicing: redundant_slicing::RedundantSlicing = redundant_slicing::RedundantSlicing,
-        FromStrRadix10: from_str_radix_10::FromStrRadix10 = from_str_radix_10::FromStrRadix10,
+        FromStrRadix10: from_str_radix_10::FromStrRadix10 = from_str_radix_10::FromStrRadix10::new(conf),
         IfThenSomeElseNone: if_then_some_else_none::IfThenSomeElseNone = if_then_some_else_none::IfThenSomeElseNone::new(conf),
         BoolAssertComparison: bool_assert_comparison::BoolAssertComparison = bool_assert_comparison::BoolAssertComparison,
         UnusedAsync: unused_async::UnusedAsync = <unused_async::UnusedAsync>::default(),
-        DisallowedTypes: disallowed_types::DisallowedTypes = disallowed_types::DisallowedTypes::new(tcx, conf),
         ImportRename: missing_enforced_import_rename::ImportRename = missing_enforced_import_rename::ImportRename::new(tcx, conf),
         StrlenOnCStrings: strlen_on_c_strings::StrlenOnCStrings = strlen_on_c_strings::StrlenOnCStrings::new(conf),
         SelfNamedConstructors: self_named_constructors::SelfNamedConstructors = self_named_constructors::SelfNamedConstructors,
@@ -853,7 +852,6 @@ rustc_lint::late_lint_methods!(
         ToplevelRefArg: toplevel_ref_arg::ToplevelRefArg = toplevel_ref_arg::ToplevelRefArg,
         VolatileComposites: volatile_composites::VolatileComposites = volatile_composites::VolatileComposites,
         ReplaceBox: replace_box::ReplaceBox = <replace_box::ReplaceBox>::default(),
-        DisallowedFields: disallowed_fields::DisallowedFields = disallowed_fields::DisallowedFields::new(tcx, conf),
         ManualIlog2: manual_ilog2::ManualIlog2 = manual_ilog2::ManualIlog2::new(conf),
         SameLengthAndCapacity: same_length_and_capacity::SameLengthAndCapacity = same_length_and_capacity::SameLengthAndCapacity,
         DurationSuboptimalUnits: duration_suboptimal_units::DurationSuboptimalUnits = duration_suboptimal_units::DurationSuboptimalUnits::new(tcx, conf),
@@ -872,6 +870,8 @@ rustc_lint::late_lint_methods!(
         NonnullUncheckedOnBoxPtr: nonnull_unchecked_on_box_ptr::NonnullUncheckedOnBoxPtr = nonnull_unchecked_on_box_ptr::NonnullUncheckedOnBoxPtr::new(conf),
         NeedlessNonzeroGet: needless_nonzero_get::NeedlessNonzeroGet = needless_nonzero_get::NeedlessNonzeroGet::new(conf),
         UnnecessaryBoxPin: unnecessary_box_pin::UnnecessaryBoxPin = unnecessary_box_pin::UnnecessaryBoxPin::new(conf),
+        BufreaderStdin: bufreader_stdin::BufreaderStdin = bufreader_stdin::BufreaderStdin::new(),
+        IfsAsLogicalOps: ifs_as_logical_ops::IfsAsLogicalOps = ifs_as_logical_ops::IfsAsLogicalOps,
         // add late passes here, used by `cargo dev new_lint`
     ]]
 );

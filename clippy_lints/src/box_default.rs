@@ -83,9 +83,9 @@ fn is_plain_default(cx: &LateContext<'_>, arg_path: &Expr<'_>) -> bool {
 }
 
 fn is_local_vec_expn(cx: &LateContext<'_>, expr: &Expr<'_>, ref_expr: &Expr<'_>) -> bool {
-    macro_backtrace(expr.span)
-        .next()
-        .is_some_and(|call| cx.tcx.is_diagnostic_item(sym::vec_macro, call.def_id) && call.span.ctxt() == ref_expr.span.ctxt())
+    macro_backtrace(expr.span).next().is_some_and(|call| {
+        cx.tcx.is_diagnostic_item(sym::vec_macro, call.def_id) && call.span.ctxt() == ref_expr.span.ctxt()
+    })
 }
 
 #[derive(Default)]

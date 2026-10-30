@@ -783,5 +783,53 @@ LL -     let _x = false.then(|| f1 + f2);
 LL +     let _x = false.then_some(f1 + f2);
    |
 
-error: aborting due to 65 previous errors
+error: unnecessary closure used to substitute value for `Option::None`
+  --> tests/ui/unnecessary_lazy_eval.rs:342:13
+   |
+LL |     let _ = opt.map_or_else(|| 42, |_| 42);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `map_or` instead
+   |
+LL -     let _ = opt.map_or_else(|| 42, |_| 42);
+LL +     let _ = opt.map_or(42, |_| 42);
+   |
+
+error: unnecessary closure used to substitute value for `Option::None`
+  --> tests/ui/unnecessary_lazy_eval.rs:344:13
+   |
+LL |     let _ = opt_ref.map_or_else(|| 42, |_| 42);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `map_or` instead
+   |
+LL -     let _ = opt_ref.map_or_else(|| 42, |_| 42);
+LL +     let _ = opt_ref.map_or(42, |_| 42);
+   |
+
+error: unnecessary closure used to substitute value for `Result::Err`
+  --> tests/ui/unnecessary_lazy_eval.rs:348:13
+   |
+LL |     let _ = res.map_or_else(|_| 42, |_| 42);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `map_or` instead
+   |
+LL -     let _ = res.map_or_else(|_| 42, |_| 42);
+LL +     let _ = res.map_or(42, |_| 42);
+   |
+
+error: unnecessary closure used to substitute value for `Result::Err`
+  --> tests/ui/unnecessary_lazy_eval.rs:350:13
+   |
+LL |     let _ = res_ref.map_or_else(|_| 42, |_| 42);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `map_or` instead
+   |
+LL -     let _ = res_ref.map_or_else(|_| 42, |_| 42);
+LL +     let _ = res_ref.map_or(42, |_| 42);
+   |
+
+error: aborting due to 69 previous errors
 

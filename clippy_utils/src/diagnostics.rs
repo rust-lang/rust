@@ -21,7 +21,7 @@ fn docs_link(diag: &mut Diag<'_>, lint: &'static Lint) {
         && let Some(lint) = lint.name_lower().strip_prefix("clippy::")
     {
         diag.help(format!(
-            "for further information visit https://rust-lang.github.io/rust-clippy/{}/index.html#{lint}",
+            "for further information visit https://clippy.rust-lang.org/{}/index.html#{lint}",
             match option_env!("CFG_RELEASE_CHANNEL") {
                 // Clippy version is 0.1.xx
                 //
