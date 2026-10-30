@@ -9,7 +9,7 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::{
-    self, CrateVariancesMap, GenericArgsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
+    self, CrateVariancesMap, GenericArgs, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
     Unnormalized,
 };
 use rustc_span::span_bug;
@@ -114,7 +114,7 @@ fn variance_of_opaque(
 
     impl<'tcx> OpaqueTypeLifetimeCollector<'tcx> {
         #[instrument(level = "trace", skip(self), ret)]
-        fn visit_opaque(&mut self, def_id: DefId, args: GenericArgsRef<'tcx>) {
+        fn visit_opaque(&mut self, def_id: DefId, args: GenericArgs<'tcx>) {
             if def_id != self.root_def_id && self.tcx.is_descendant_of(def_id, self.root_def_id) {
                 let child_variances = self.tcx.variances_of(def_id);
                 for (a, v) in args.iter().zip_eq(child_variances) {
@@ -140,7 +140,7 @@ fn variance_of_opaque(
         fn visit_ty(&mut self, t: Ty<'tcx>) {
             match t.kind() {
                 ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => {
-                    self.visit_opaque(*def_id, args);
+                    self.visit_opaque(*def_id, *args);
                 }
                 _ => t.super_visit_with(self),
             }
@@ -202,7 +202,7 @@ fn variance_of_opaque(
                 trait_ref: ty::TraitRef { def_id: _, args, .. },
                 constness: _,
             }) => {
-                for arg in &args[1..] {
+                for arg in &args.as_slice()[1..] {
                     arg.visit_with(&mut collector);
                 }
             }
@@ -210,7 +210,7 @@ fn variance_of_opaque(
                 projection_term: ty::AliasTerm { args, .. },
                 term,
             }) => {
-                for arg in &args[1..] {
+                for arg in &args.as_slice()[1..] {
                     arg.visit_with(&mut collector);
                 }
                 term.visit_with(&mut collector);

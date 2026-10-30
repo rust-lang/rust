@@ -97,7 +97,7 @@ pub(crate) fn check_liveness<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Den
 
         let (capture_kind, args) = match self_ty.kind() {
             ty::Closure(_, args) => {
-                (CaptureKind::Closure(args.as_closure().kind()), ty::UpvarArgs::Closure(args))
+                (CaptureKind::Closure(args.as_closure().kind()), ty::UpvarArgs::Closure(*args))
             }
             &ty::Coroutine(_, args) => (CaptureKind::Coroutine, ty::UpvarArgs::Coroutine(args)),
             &ty::CoroutineClosure(_, args) => {
