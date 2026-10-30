@@ -2572,19 +2572,26 @@ impl<'a> Formatter<'a> {
         names: &str,
         values: &[&dyn Debug],
     ) -> Result {
+        let mut names = names
+            .as_bytes()
+            .split(|&c| c == b' ')
+            .map(|b| unsafe { str::from_utf8_unchecked(b) })
+            .peekable();
+
+        let struct_name = names.next().unwrap();
+
         // the macro generates either "Point x y" for a struct like `Point { x: u32, y: u32, }`
         // or just "Point" for a tuple struct like `Point(u32, u32)`. If there are no field names
         // (and therefore no space separator), we assume we format a tuple struct.
-        let is_tuple = !names.contains(' ');
+        let is_tuple = names.peek().is_none();
         if is_tuple {
-            let mut builder = builders::debug_tuple_new(self, names);
+            let mut builder = builders::debug_tuple_new(self, struct_name);
             for value in values {
                 builder.field(value);
             }
             builder.finish()
         } else {
-            let mut names = names.split(' ');
-            let mut builder = builders::debug_struct_new(self, names.next().unwrap());
+            let mut builder = builders::debug_struct_new(self, struct_name);
             for value in values.into_iter() {
                 let name = names.next().unwrap();
                 builder.field(name, value);
