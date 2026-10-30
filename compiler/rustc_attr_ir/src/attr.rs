@@ -203,15 +203,4 @@ impl AttributeExt for Attribute {
             _ => None,
         }
     }
-
-    fn is_proc_macro_attr(&self) -> bool {
-        matches!(
-            self,
-            Attribute::Parsed(
-                AttributeKind::ProcMacro
-                    | AttributeKind::ProcMacroAttribute
-                    | AttributeKind::ProcMacroDerive { .. }
-            )
-        )
-    }
 }
