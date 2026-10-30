@@ -1,4 +1,5 @@
 #![no_std]
+#![recursion_limit = "256"] // Necessary for force inline of sign_lpad in miri
 #![unstable(feature = "panic_unwind", issue = "32837")]
 #![feature(core_intrinsics)]
 #![feature(lang_items)]
