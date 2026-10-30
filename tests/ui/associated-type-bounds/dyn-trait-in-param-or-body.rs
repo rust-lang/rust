@@ -4,7 +4,7 @@ trait Super<T> {
 }
 trait Trait: Super<u32> + Super<i32> {}
 
-fn foo(_: dyn Trait<Assoc = u32>) {}
+fn foo<T>(_: dyn Trait<Assoc = u32>, _: T) {}
 //~^ ERROR: ambiguous associated type
 //~| ERROR: the value of the associated types
 

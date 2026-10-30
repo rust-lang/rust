@@ -431,7 +431,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 constraint.ident,
                 path_span,
                 Some(constraint),
-                span,
+                // Span for `dyn Trait<Assoc = ...>` including `dyn`.
+                tcx.hir_span(tcx.parent_hir_id(hir_ref_id)),
             )?
         };
 
