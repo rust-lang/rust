@@ -1323,6 +1323,9 @@ fn should_encode_type(tcx: TyCtxt<'_>, def_id: LocalDefId, def_kind: DefKind) ->
             }
         }
         DefKind::TyParam => {
+            if tcx.is_impl_rpitit_param(def_id) {
+                return false;
+            }
             let hir::Node::GenericParam(param) = tcx.hir_node_by_def_id(def_id) else { bug!() };
             let hir::GenericParamKind::Type { default, .. } = param.kind else { bug!() };
             default.is_some()
@@ -1525,7 +1528,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 let def_span = tcx.def_span(local_id);
                 self.table_writer().def_span(local_id, def_span);
             }
-            if should_encode_attrs(def_kind) {
+            if should_encode_attrs(def_kind) && !tcx.is_impl_rpitit_param(local_id) {
                 self.encode_attrs(local_id);
             }
             if should_encode_expn_that_defined(def_kind) {
@@ -1543,7 +1546,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 let vis = tcx.local_visibility(local_id).map_id(|mod_id| mod_id.to_local_def_id());
                 self.table_writer().visibility(local_id, vis);
             }
-            if should_encode_stability(def_kind) {
+            if should_encode_stability(def_kind) && !tcx.is_impl_rpitit_param(local_id) {
                 self.encode_stability(local_id);
                 self.encode_const_stability(local_id);
                 self.encode_default_body_stability(local_id);
@@ -1556,7 +1559,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             if should_encode_fn_sig(def_kind) {
                 self.table_writer().fn_sig(local_id, tcx.fn_sig(def_id));
             }
-            if should_encode_generics(def_kind) {
+            if should_encode_generics(def_kind) && !tcx.is_impl_rpitit_param(local_id) {
                 let g = tcx.generics_of(def_id);
                 self.table_writer().generics_of(local_id, g);
                 self.table_writer().explicit_clauses_of(local_id, tcx.explicit_clauses_of(def_id));
