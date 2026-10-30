@@ -83,7 +83,7 @@ jobs:
       - name: install qemu
         if: ${{ matrix.qemu }}
         run: sudo apt install qemu-user qemu-user-binfmt
-      - uses: ./.github/workflows/setup
+      - uses: $/.github/workflows/setup
         with:
           toolchain_flags: "--host ${{ matrix.host_target }}"
 
@@ -141,7 +141,7 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
-      - uses: ./.github/workflows/setup
+      - uses: $/.github/workflows/setup
 
       - name: rustfmt
         run: ./miri fmt --check
@@ -199,7 +199,7 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
-      - uses: ./.github/workflows/setup
+      - uses: $/.github/workflows/setup
       - name: clippy Priroda
         run: CARGO_EXTRA_FLAGS=--locked ./miri clippy --features priroda -- -D warnings
       - name: test Priroda
@@ -212,7 +212,7 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           persist-credentials: false
-      - uses: ./.github/workflows/setup
+      - uses: $/.github/workflows/setup
       - name: coverage
         run: ./miri test --coverage
 
