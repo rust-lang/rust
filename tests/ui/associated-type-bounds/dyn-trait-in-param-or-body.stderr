@@ -57,8 +57,6 @@ LL |     type Assoc;
 ...
 LL |     let _: dyn Trait<Assoc = u32>;
    |                ^^^^^^^^^^^^^^^^^^ associated types `Assoc` (from trait `Super<i32>`), `Assoc` (from trait `Super<u32>`) must be specified
-   |
-   = help: consider introducing a new type parameter, adding `where` constraints using the fully-qualified path to the associated types
 
 error: aborting due to 4 previous errors
 
