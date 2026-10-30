@@ -382,6 +382,7 @@ impl<'a> CrateLocator<'a> {
         {
             return Ok(library);
         }
+
         self.find_library_crate(crate_rejections, "", &mut seen_paths)
     }
 
@@ -392,6 +393,8 @@ impl<'a> CrateLocator<'a> {
         seen_paths: &mut FxHashSet<PathBuf>,
     ) -> Result<Option<Library>, CrateError> {
         let rmeta_prefix = &format!("lib{}{}", self.crate_name, extra_prefix);
+        let validation_prefix = &format!("validation{}{}", self.crate_name, extra_prefix);
+        let analysis_prefix = &format!("analysis{}{}", self.crate_name, extra_prefix);
         let rlib_prefix = rmeta_prefix;
         let dylib_prefix =
             &format!("{}{}{}", self.target.dll_prefix, self.crate_name, extra_prefix);
@@ -434,6 +437,8 @@ impl<'a> CrateLocator<'a> {
         for (prefix, suffix, kind) in [
             (rlib_prefix.as_str(), rlib_suffix, CrateFlavor::Rlib),
             (rmeta_prefix.as_str(), rmeta_suffix, CrateFlavor::Rmeta),
+            (validation_prefix.as_str(), rmeta_suffix, CrateFlavor::Rmeta),
+            (analysis_prefix.as_str(), rmeta_suffix, CrateFlavor::Rmeta),
             (dylib_prefix, dylib_suffix, CrateFlavor::Dylib),
             (interface_prefix, interface_suffix, CrateFlavor::SDylib),
         ] {
@@ -769,7 +774,10 @@ impl<'a> CrateLocator<'a> {
             let Some(file) = loc_orig.file_name().and_then(|s| s.to_str()) else {
                 return Err(CrateError::ExternLocationNotFile(self.crate_name, loc_orig.clone()));
             };
-            if file.starts_with("lib") {
+            if file.starts_with("lib")
+                || file.starts_with("validation")
+                || file.starts_with("analysis")
+            {
                 if file.ends_with(".rlib") {
                     rlibs.insert(loc_canon.clone());
                     continue;
