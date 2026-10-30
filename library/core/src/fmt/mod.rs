@@ -2604,7 +2604,9 @@ impl<'a> Formatter<'a> {
         names: &str,
         start_index: usize,
     ) -> Result {
-        self.write_str(split_str_by_space(&names[start_index..]).next().unwrap())
+        // we use `get().unwrap()` instead of indexing to avoid binary size
+        // bloat from the error path (`slice_error_fail_rt`)
+        self.write_str(split_str_by_space(names.get(start_index..).unwrap()).next().unwrap())
     }
 
     /// Creates a `DebugTuple` builder designed to assist with creation of
