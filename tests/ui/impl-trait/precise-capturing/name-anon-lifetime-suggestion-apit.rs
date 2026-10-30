@@ -1,4 +1,5 @@
 //@ edition: 2021
+//@ run-rustfix
 
 #![allow(dead_code)]
 

@@ -1,0 +1,31 @@
+//@ edition: 2021
+//@ run-rustfix
+
+#![allow(dead_code)]
+
+fn no_generics<'a, 'b, T: Sized>(x: &'a (), y: &'b (), _z: T) -> impl Sized + use<'a, 'b, T> {
+    (x, y)
+    //~^ ERROR hidden type for `impl Sized` captures lifetime that does not appear in bounds
+}
+
+fn with_type_param<'a, 'b, U, T: Sized>(x: &'a (), y: &'b (), _z: T, _u: U) -> impl Sized + use<'a, 'b, U, T> {
+    (x, y)
+    //~^ ERROR hidden type for `impl Sized` captures lifetime that does not appear in bounds
+}
+
+fn with_lifetime_param<'b, 'c, 'a, T: Sized>(x: &'a (), y: &'b (), z: &'c (), _w: T) -> impl Sized + use<'a, 'b, 'c, T> {
+    (x, y, z)
+    //~^ ERROR hidden type for `impl Sized` captures lifetime that does not appear in bounds
+}
+
+fn two_apits<'a, 'b, T: Sized, U: Copy>(x: &'a (), y: &'b (), _a: T, _b: U) -> impl Sized + use<'a, 'b, T, U> {
+    (x, y)
+    //~^ ERROR hidden type for `impl Sized` captures lifetime that does not appear in bounds
+}
+
+fn one_anon<T: Sized>(x: &(), _z: T) -> impl Sized + use<'_, T> {
+    x
+    //~^ ERROR hidden type for `impl Sized` captures lifetime that does not appear in bounds
+}
+
+fn main() {}
