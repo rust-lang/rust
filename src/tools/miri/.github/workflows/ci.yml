@@ -240,10 +240,8 @@ jobs:
     name: automatic pull from rustc
     runs-on: ubuntu-latest
     permissions:
-        # The cronjob needs to be able to push to the repo...
-        contents: write
-        # ... and create a PR.
-        pull-requests: write
+        contents: write # The cronjob needs to be able to push to the repo...
+        pull-requests: write # ... and create a PR.
     if: ${{ github.event_name == 'schedule' }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
