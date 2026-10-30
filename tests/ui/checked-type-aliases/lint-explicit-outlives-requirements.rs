@@ -1,0 +1,14 @@
+// Test that lint `explicit_outlives_requirements` can also trigger on CTAs.
+
+//@ check-pass
+//@ run-rustfix
+
+#![feature(checked_type_aliases)]
+#![warn(explicit_outlives_requirements)]
+#![allow(dead_code)]
+
+type A0<'a, T: 'a> = &'a T; //~ WARN [explicit_outlives_requirements]
+
+type A1<'a, T> = &'a T where T: 'a; //~ WARN [explicit_outlives_requirements]
+
+fn main() {}

@@ -40,7 +40,7 @@ mod everything_inside {
         ('b: 'a) => {
             struct Foo<'a, 'b>(&'a &'b ());
             //~^ ERROR: outlives requirements can be inferred
-            struct Bar<'a, 'b>(&'a &'b ()) ;
+            struct Bar<'a, 'b>(&'a &'b ());
             //~^ ERROR: outlives requirements can be inferred
             struct Baz<'a, 'b>(&'a &'b ()) where (): Sized, ;
             //~^ ERROR: outlives requirements can be inferred
@@ -54,7 +54,7 @@ mod inner_lifetime_outside_colon_inside {
         ($b:lifetime: 'a) => {
             struct Foo<'a, $b>(&'a &$b ());
             //~^ ERROR: outlives requirements can be inferred
-            struct Bar<'a, $b>(&'a &$b ()) ;
+            struct Bar<'a, $b>(&'a &$b ());
             //~^ ERROR: outlives requirements can be inferred
             struct Baz<'a, $b>(&'a &$b ()) where (): Sized, ;
             //~^ ERROR: outlives requirements can be inferred
@@ -114,7 +114,7 @@ mod everything_outside_with_tt_outer {
             // FIXME: replacement span is corrupted due to a collision in metavar span table.
             // struct Foo<$a, $b $colon $a>(&$a &$b ());
             // ^ ERROR: outlives requirements can be inferred
-            struct Bar<$a, $b>(&$a &$b ()) ;
+            struct Bar<$a, $b>(&$a &$b ());
             //~^ ERROR: outlives requirements can be inferred
             struct Baz<$a, $b>(&$a &$b ()) where (): Sized, ;
             //~^ ERROR: outlives requirements can be inferred
@@ -129,7 +129,7 @@ mod everything_outside_with_tt_both {
             // FIXME: replacement span is corrupted due to a collision in metavar span table.
             // struct Foo<$a, $b $colon $a>(&$a &$b ());
             // ^ ERROR: outlives requirements can be inferred
-            struct Bar<$a, $b>(&$a &$b ()) ;
+            struct Bar<$a, $b>(&$a &$b ());
             //~^ ERROR: outlives requirements can be inferred
             struct Baz<$a, $b>(&$a &$b ()) where (): Sized, ;
             //~^ ERROR: outlives requirements can be inferred

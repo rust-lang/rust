@@ -271,12 +271,12 @@ error: outlives requirements can be inferred
   --> $DIR/edition-lint-infer-outlives-multispan.rs:130:46
    |
 LL |     struct TeeOutlivesAyYooWhereBee<'a, 'b, T: 'a, U>(&'a T, &'b U) where U: 'b;
-   |                                              ^^^^                   ^^^^^^^^^^^
+   |                                              ^^^^                  ^^^^^^^^^^^^
    |
 help: remove these bounds
    |
 LL -     struct TeeOutlivesAyYooWhereBee<'a, 'b, T: 'a, U>(&'a T, &'b U) where U: 'b;
-LL +     struct TeeOutlivesAyYooWhereBee<'a, 'b, T, U>(&'a T, &'b U) ;
+LL +     struct TeeOutlivesAyYooWhereBee<'a, 'b, T, U>(&'a T, &'b U);
    |
 
 error: outlives requirements can be inferred
@@ -831,12 +831,12 @@ LL |     m!(T0 T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12 T13 T14 T15);
    |     --------------------------------------------------------- in this macro invocation
 
 error: outlives requirements can be inferred
-  --> $DIR/edition-lint-infer-outlives-multispan.rs:374:64
+  --> $DIR/edition-lint-infer-outlives-multispan.rs:374:63
    |
 LL |     macro_rules! m {
 ...
 LL |             struct FullWhere<'a, $($name,)+>(&'a ($($name,)+)) where $($name: 'a,)+;
-   |                                                                ^^^^^^^^^^^^^^^^^^ help: remove these bounds
+   |                                                               ^^^^^^^^^^^^^^^^^^^ help: remove these bounds
 ...
 LL |     m!(T0 T1 T2 T3 T4 T5 T6 T7 T8 T9 T10 T11 T12 T13 T14 T15);
    |     --------------------------------------------------------- in this macro invocation
