@@ -6,7 +6,7 @@
 use std::ops::Deref;
 
 extern crate proc_macros;
-use proc_macros::with_span;
+use proc_macros::{external, with_span};
 
 struct Deep(Option<usize>);
 
@@ -329,4 +329,36 @@ fn panicky_arithmetic_ops(x: usize, y: isize) {
 
 fn issue14578() {
     let _: Box<dyn std::future::Future<Output = i32>> = Box::new(true.then(async || 42).unwrap());
+}
+
+fn issue15829() {
+    let opt = Some(42);
+    let opt_ref = &opt;
+
+    let res: Result<usize, usize> = Err(5);
+    let res_ref = &res;
+
+    // Should lint - Option
+    let _ = opt.map_or(42, |_| 42);
+    //~^ unnecessary_lazy_evaluations
+    let _ = opt_ref.map_or(42, |_| 42);
+    //~^ unnecessary_lazy_evaluations
+
+    // Should lint - Result
+    let _ = res.map_or(42, |_| 42);
+    //~^ unnecessary_lazy_evaluations
+    let _ = res_ref.map_or(42, |_| 42);
+    //~^ unnecessary_lazy_evaluations
+
+    // Should not lint
+    // closure uses its parameter
+    let _ = res.map_or_else(|err| err, |x| x + 1);
+    // closure contains function call
+    let _ = opt.map_or_else(|| some_call(), |x| x + 1);
+    // default closure is proc macro
+    let _ = opt.map_or_else(external! {|| $42}, |_| 42);
+    // default closure body is proc macro
+    let _ = opt.map_or_else(|| external!(42), |_| 42);
+    // map closure is proc macro
+    let _ = opt.map_or_else(|| 42, external! { |_| $42 });
 }

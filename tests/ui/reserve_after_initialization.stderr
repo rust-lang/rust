@@ -1,5 +1,5 @@
 error: call to `reserve` immediately after creation
-  --> tests/ui/reserve_after_initialization.rs:10:5
+  --> tests/ui/reserve_after_initialization.rs:11:5
    |
 LL | /     let mut v1: Vec<usize> = vec![];
 LL | |
@@ -10,7 +10,7 @@ LL | |     v1.reserve(10);
    = help: to override `-D warnings` add `#[allow(clippy::reserve_after_initialization)]`
 
 error: call to `reserve` immediately after creation
-  --> tests/ui/reserve_after_initialization.rs:18:5
+  --> tests/ui/reserve_after_initialization.rs:19:5
    |
 LL | /     let mut v2: Vec<usize> = vec![];
 LL | |
@@ -18,7 +18,7 @@ LL | |     v2.reserve(capacity);
    | |_________________________^ help: consider using `Vec::with_capacity(/* Space hint */)`: `let mut v2: Vec<usize> = Vec::with_capacity(capacity);`
 
 error: call to `reserve` immediately after creation
-  --> tests/ui/reserve_after_initialization.rs:37:5
+  --> tests/ui/reserve_after_initialization.rs:38:5
    |
 LL | /     v5 = Vec::new();
 LL | |

@@ -1,0 +1,22 @@
+error: wrapping already buffered `Stdin` into a `BufReader`
+  --> tests/ui/bufreader_stdin.rs:7:18
+   |
+LL |     let reader = BufReader::new(a);
+   |                  ^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::bufreader-stdin` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::bufreader_stdin)]`
+help: instead of wrapping `Stdin` in `BufReader`, use the `lock` method directly
+   |
+LL -     let reader = BufReader::new(a);
+LL +     let reader = a.lock();
+   |
+
+error: wrapping already buffered `StdinLock` into a `BufReader`
+  --> tests/ui/bufreader_stdin.rs:11:18
+   |
+LL |     let reader = BufReader::new(b);
+   |                  ^^^^^^^^^^^^^^^^^ help: instead of wrapping `StdinLock` in `BufReader`, use it directly: `b`
+
+error: aborting due to 2 previous errors
+

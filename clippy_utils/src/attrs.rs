@@ -90,10 +90,7 @@ pub fn is_proc_macro(attrs: &[impl AttributeExt]) -> bool {
 
 /// Checks whether `attrs` contain `#[doc(hidden)]`
 pub fn is_doc_hidden(attrs: &[rustc_attr_ir::Attribute]) -> bool {
-    find_attr!(
-        attrs,
-        Doc(rustc_attr_ir::DocAttribute { hidden: Some(_), .. })
-    )
+    find_attr!(attrs, Doc(rustc_attr_ir::DocAttribute { hidden: Some(_), .. }))
 }
 
 /// Checks whether the given ADT, or any of its fields/variants, are marked as `#[non_exhaustive]`

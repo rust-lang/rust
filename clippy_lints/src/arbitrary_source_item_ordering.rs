@@ -695,7 +695,7 @@ fn get_trait_item_order(cx: &LateContext<'_>, trait_impl: &rustc_hir::Impl<'_>) 
             cx.tcx
                 .associated_items(def_id)
                 .in_definition_order()
-                .map(rustc_middle::ty::AssocItem::name)
+                .filter_map(rustc_middle::ty::AssocItem::opt_name)
                 .collect()
         })
 }
