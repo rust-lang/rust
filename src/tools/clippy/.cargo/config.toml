@@ -5,6 +5,7 @@ uibless = "bless --test compile-test"
 dev = "run --package clippy-dev --bin clippy-dev --manifest-path clippy_dev/Cargo.toml --"
 lintcheck = "run --package lintcheck --bin lintcheck --manifest-path lintcheck/Cargo.toml  -- "
 collect-metadata = "test --test compile-test --config env.COLLECT_METADATA='1'"
+remark = "dev remark"
 
 [build]
 # -Zbinary-dep-depinfo allows us to track which rlib files to use for compiling UI tests

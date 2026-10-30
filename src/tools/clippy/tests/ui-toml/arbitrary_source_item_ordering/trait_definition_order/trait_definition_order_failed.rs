@@ -102,4 +102,37 @@ impl SkipConstTrait for WrongInBothOrder4 {
     fn method() {}
 }
 
+// Tests return position impl trait in trait (RPITIT) failed by invalid trait definition order (e.g.
+// Not in alphabetical order); its own ordering check is not what this test is about.
+#[allow(clippy::arbitrary_source_item_ordering)]
+trait Rpitit {
+    async fn a();
+    fn c() -> impl Sized;
+    fn b();
+}
+
+struct NotInTraitOrder;
+
+impl Rpitit for NotInTraitOrder {
+    async fn a() {}
+    fn b() {}
+    fn c() -> impl Sized {}
+    //~^ arbitrary_source_item_ordering
+}
+
+trait Rpitit2 {
+    async fn a();
+    fn b();
+    fn c() -> impl Sized;
+}
+
+struct WrongInBothOrder5;
+
+impl Rpitit2 for WrongInBothOrder5 {
+    async fn a() {}
+    fn c() -> impl Sized {}
+    fn b() {}
+    //~^ arbitrary_source_item_ordering
+}
+
 fn main() {}

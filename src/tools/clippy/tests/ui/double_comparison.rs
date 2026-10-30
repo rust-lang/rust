@@ -50,3 +50,9 @@ fn main() {
         // do something
     }
 }
+
+#[allow(clippy::neg_cmp_op_on_partial_ord)]
+fn issue17900(left: f32, right: f32) -> bool {
+    !(left < right || left == right)
+    //~^ double_comparisons
+}

@@ -31,15 +31,11 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```no_run
-    /// fn main() {
-    ///     if let Some(0) | Some(2) = Some(0) {}
-    /// }
+    /// if let Some(0) | Some(2) = Some(0) {}
     /// ```
     /// Use instead:
     /// ```no_run
-    /// fn main() {
-    ///     if let Some(0 | 2) = Some(0) {}
-    /// }
+    /// if let Some(0 | 2) = Some(0) {}
     /// ```
     #[clippy::version = "1.46.0"]
     pub UNNESTED_OR_PATTERNS,

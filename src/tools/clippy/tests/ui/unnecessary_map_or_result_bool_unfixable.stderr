@@ -1,5 +1,5 @@
 error: this `map_or` can be simplified
-  --> tests/ui/unnecessary_map_or_result_bool_unfixable.rs:8:20
+  --> tests/ui/unnecessary_map_or_result_bool_unfixable.rs:9:20
    |
 LL |     let _ = result.map_or(false, |_| true);
    |                    ^^^^^^-----------------
@@ -12,7 +12,7 @@ LL |     let _ = result.map_or(false, |_| true);
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_map_or)]`
 
 error: this `map_or_else` can be simplified
-  --> tests/ui/unnecessary_map_or_result_bool_unfixable.rs:12:20
+  --> tests/ui/unnecessary_map_or_result_bool_unfixable.rs:13:20
    |
 LL |     let _ = result.map_or_else(|_| true, |_| false);
    |                    ^^^^^^^^^^^---------------------

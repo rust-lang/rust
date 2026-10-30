@@ -1,4 +1,5 @@
 #![feature(rustc_private)]
+#![feature(default_field_values)]
 #![expect(
     clippy::missing_clippy_version_attribute, // None of these lints need a version.
     clippy::symbol_as_str

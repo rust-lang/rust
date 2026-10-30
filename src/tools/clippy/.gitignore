@@ -51,3 +51,5 @@ helper.txt
 
 # Remove jujutsu directory from search tools
 .jj
+
+node_modules/

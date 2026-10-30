@@ -79,3 +79,22 @@ fn deny_allow_attributes() -> Option<u8> {
 #[repr(transparent)]
 #[derive(proc_macro_derive::AllowLintSameSpan)] // This macro generates tokens with the same span as the whole struct and repr
 struct IgnoreDerived;
+
+mod issue17562 {
+    macro_rules! allow_inside {
+        () => {
+            #[allow(dead_code)]
+            fn inside_macro() {}
+        };
+    }
+    allow_inside!();
+
+    macro_rules! forward {
+        ($($tt:tt)*) => { $($tt)*};
+    }
+    forward! {
+        #[allow(dead_code)]
+        //~^ allow_attributes
+        fn at_call_site() {}
+    }
+}

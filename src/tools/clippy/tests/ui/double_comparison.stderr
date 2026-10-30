@@ -73,5 +73,11 @@ error: this binary expression can be simplified
 LL |     if x >= y && x != y {
    |        ^^^^^^^^^^^^^^^^ help: try: `x > y`
 
-error: aborting due to 12 previous errors
+error: this binary expression can be simplified
+  --> tests/ui/double_comparison.rs:56:6
+   |
+LL |     !(left < right || left == right)
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(left <= right)`
+
+error: aborting due to 13 previous errors
 

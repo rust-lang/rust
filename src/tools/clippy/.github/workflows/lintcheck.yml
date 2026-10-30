@@ -8,6 +8,8 @@ on:
       - 'tests/**'
       - '*.md'
 
+permissions: {}
+
 env:
   RUST_BACKTRACE: 1
   CARGO_INCREMENTAL: 0
@@ -24,14 +26,14 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
         fetch-depth: 2
         # Unsetting this would make so that any malicious package could get our Github Token
         persist-credentials: false
 
-    # HEAD is the generated merge commit `refs/pull/N/merge` between the PR and `master`, `HEAD^`
-    # being the commit from `master` that is the base of the merge
+    # HEAD is the generated merge commit `refs/pull/N/merge` between the PR and `main`, `HEAD^`
+    # being the commit from `main` that is the base of the merge
     - name: Checkout base
       run: git checkout HEAD^
 
@@ -40,11 +42,13 @@ jobs:
     - name: Checkout current lintcheck
       run: |
         rm -rf lintcheck
-        git checkout ${{ github.sha }} -- lintcheck
+        git checkout "${GITHUB_SHA}" -- lintcheck
+      env:
+        GITHUB_SHA: ${{ github.sha }}
 
     - name: Cache lintcheck bin
       id: cache-lintcheck-bin
-      uses: actions/cache@v5
+      uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
       with:
         path: target/debug/lintcheck
         key: lintcheck-bin-${{ hashfiles('lintcheck/**') }}
@@ -55,11 +59,13 @@ jobs:
 
     - name: Create cache key
       id: key
-      run: echo "key=lintcheck-base-${{ hashfiles('lintcheck/**') }}-$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      run: echo "key=lintcheck-base-${LINTCHECK_FILES_HASH}-$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      env:
+        LINTCHECK_FILES_HASH: ${{ hashfiles('lintcheck/**') }}
 
     - name: Cache results JSON
       id: cache-json
-      uses: actions/cache@v5
+      uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
       with:
         path: lintcheck-logs/ci_crates_logs.json
         key: ${{ steps.key.outputs.key }}
@@ -69,7 +75,7 @@ jobs:
       run: env CLIPPY_CONF_DIR="$PWD/lintcheck/ci-config" ./target/debug/lintcheck --format json --all-lints --crates-toml ./lintcheck/ci_crates.toml
 
     - name: Upload base JSON
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
       with:
         name: base
         path: lintcheck-logs/ci_crates_logs.json
@@ -80,14 +86,14 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
         # Unsetting this would make so that any malicious package could get our Github Token
         persist-credentials: false
 
     - name: Cache lintcheck bin
       id: cache-lintcheck-bin
-      uses: actions/cache@v5
+      uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
       with:
         path: target/debug/lintcheck
         key: lintcheck-bin-${{ hashfiles('lintcheck/**') }}
@@ -100,7 +106,7 @@ jobs:
       run: env CLIPPY_CONF_DIR="$PWD/lintcheck/ci-config" ./target/debug/lintcheck --format json --all-lints --crates-toml ./lintcheck/ci_crates.toml
 
     - name: Upload head JSON
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
       with:
         name: head
         path: lintcheck-logs/ci_crates_logs.json
@@ -113,23 +119,25 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
         # Unsetting this would make so that any malicious package could get our Github Token
         persist-credentials: false
 
     - name: Restore lintcheck bin
-      uses: actions/cache/restore@v5
+      uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
       with:
         path: target/debug/lintcheck
         key: lintcheck-bin-${{ hashfiles('lintcheck/**') }}
         fail-on-cache-miss: true
 
     - name: Download JSON
-      uses: actions/download-artifact@v8
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
 
     - name: Store PR number
-      run: echo ${{ github.event.pull_request.number }} > pr.txt
+      run: echo "${GITHUB_PR_NUMBER}" > pr.txt
+      env:
+        GITHUB_PR_NUMBER: ${{ github.event.pull_request.number }}
 
     - name: Diff results
       # GH's summery has a maximum size of 1MiB:
@@ -140,13 +148,13 @@ jobs:
         ./target/debug/lintcheck diff {base,head}/ci_crates_logs.json --write-summary summary.json > full_diff.md
 
     - name: Upload full diff
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
       with:
         name: full_diff
         path: full_diff.md
 
     - name: Upload summary
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
       with:
         name: summary
         path: |

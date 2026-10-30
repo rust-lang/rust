@@ -17,15 +17,11 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```no_run
-    /// fn main() {
-    ///     println!("Hello world")
-    /// }
+    /// println!("Hello world")
     /// ```
     /// Use instead:
     /// ```no_run
-    /// fn main() {
-    ///     println!("Hello world");
-    /// }
+    /// println!("Hello world");
     /// ```
     #[clippy::version = "1.52.0"]
     pub SEMICOLON_IF_NOTHING_RETURNED,

@@ -1,0 +1,162 @@
+#![warn(clippy::new_instead_of_clear)]
+#![expect(clippy::vec_init_then_push)]
+#![allow(clippy::zero_repeat_side_effects)]
+use std::collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap, HashSet, LinkedList, VecDeque};
+
+fn use_vec(_: &Vec<i32>) {}
+fn use_map(_: &HashMap<i32, i32>) {}
+fn use_set(_: &HashSet<i32>) {}
+fn use_deque(_: &VecDeque<i32>) {}
+fn use_btree_map(_: &BTreeMap<i32, i32>) {}
+fn use_btree_set(_: &BTreeSet<i32>) {}
+fn use_heap(_: &BinaryHeap<i32>) {}
+fn use_list(_: &LinkedList<i32>) {}
+fn use_string(_: &String) {}
+
+fn main() {
+    let mut v = Vec::new();
+    v.push(1);
+    use_vec(&v);
+    v.clear();
+    //~^ new_instead_of_clear
+
+    let mut map: HashMap<i32, i32> = HashMap::new();
+    map.insert(1, 2);
+    use_map(&map);
+    map.clear();
+    //~^ new_instead_of_clear
+
+    let mut set: HashSet<i32> = HashSet::new();
+    set.insert(1);
+    use_set(&set);
+    set.clear();
+    //~^ new_instead_of_clear
+
+    let mut deque: VecDeque<i32> = VecDeque::new();
+    deque.push_back(1);
+    use_deque(&deque);
+    deque.clear();
+    //~^ new_instead_of_clear
+
+    let mut heap: BinaryHeap<i32> = BinaryHeap::new();
+    heap.push(1);
+    use_heap(&heap);
+    heap.clear();
+    //~^ new_instead_of_clear
+
+    let mut s = String::new();
+    s.push('a');
+    use_string(&s);
+    s.clear();
+    //~^ new_instead_of_clear
+
+    // node-based collections: still linted, but without the "retains memory" note
+    let mut btree_map: BTreeMap<i32, i32> = BTreeMap::new();
+    btree_map.insert(1, 2);
+    use_btree_map(&btree_map);
+    btree_map.clear();
+    //~^ new_instead_of_clear
+
+    let mut btree_set: BTreeSet<i32> = BTreeSet::new();
+    btree_set.insert(1);
+    use_btree_set(&btree_set);
+    btree_set.clear();
+    //~^ new_instead_of_clear
+
+    let mut list: LinkedList<i32> = LinkedList::new();
+    list.push_back(1);
+    use_list(&list);
+    list.clear();
+    //~^ new_instead_of_clear
+
+    let mut v2 = Vec::new();
+    v2.push(1);
+    use_vec(&v2);
+    v2.clear();
+    //~^ new_instead_of_clear
+
+    // `vec![init; 0]` is also empty; `0` has no side effect, so no extra note
+    let mut v3 = Vec::new();
+    v3.push(1);
+    use_vec(&v3);
+    v3.clear();
+    //~^ new_instead_of_clear
+
+    // here the discarded initializer has a side effect that would no longer run
+    let mut v4 = Vec::new();
+    v4.push(1);
+    use_vec(&v4);
+    v4.clear();
+    //~^ new_instead_of_clear
+}
+
+fn deref_through_reference() {
+    let mut v = Vec::new();
+    v.push(1);
+    use_vec(&v);
+    let r = &mut v;
+    r.clear();
+    //~^ new_instead_of_clear
+}
+
+fn block_expr() {
+    let mut v = Vec::new();
+    v.push(1);
+    use_vec(&v);
+    let _ = {
+        v.clear();
+        //~^ new_instead_of_clear
+        42
+    };
+}
+
+fn no_lint() {
+    // turbofish changes type inference, replacing with .clear() would be wrong
+    let mut v: Vec<i32> = Vec::new();
+    v.push(1);
+    use_vec(&v);
+    v = Vec::<i32>::new();
+
+    // first assignment to an uninitialized binding, .clear() won't compile
+    let mut u: Vec<u8>;
+    u = Vec::new();
+    u.push(1u8);
+
+    // smart-pointer deref: `Box` could have a `clear` with different semantics
+    let mut boxed = Box::new(Vec::new());
+    boxed.push(1);
+    use_vec(&boxed);
+    *boxed = Vec::new();
+
+    // inside a macro expansion
+    macro_rules! reset {
+        ($x:ident) => {
+            $x = Vec::new()
+        };
+    }
+    let mut w = Vec::new();
+    w.push(1);
+    use_vec(&w);
+    reset!(w);
+
+    // the turbofish pins the element type: `.clear()` would make the `push` below
+    // infer `i32` and overflow
+    let mut n = Vec::new();
+    n.push(2147483647);
+    *n.last_mut().unwrap() += 10;
+    println!("{n:?}");
+    n = Vec::<u64>::new();
+
+    // a type alias can hide the type arguments just like a turbofish
+    type VU64 = Vec<u64>;
+    let mut a = Vec::new();
+    a.push(2147483647);
+    *a.last_mut().unwrap() += 10;
+    println!("{a:?}");
+    a = VU64::new();
+
+    // uninitialized binding with no type annotation, `.clear()` won't compile
+    let mut e;
+    e = Vec::new();
+    e.push(1u8);
+}

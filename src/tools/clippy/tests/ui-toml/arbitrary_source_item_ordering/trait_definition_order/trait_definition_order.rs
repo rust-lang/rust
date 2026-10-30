@@ -91,4 +91,19 @@ impl ConstTrait2 for SkipImpl {
     fn method() {}
 }
 
+// Tests return position impl trait in trait (RPITIT).
+trait Rpitit {
+    async fn a();
+    fn b();
+    fn c() -> impl Sized;
+}
+
+struct FullImpl4;
+
+impl Rpitit for FullImpl4 {
+    async fn a() {}
+    fn b() {}
+    fn c() -> impl Sized {}
+}
+
 fn main() {}

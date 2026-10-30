@@ -1,5 +1,6 @@
 //@no-rustfix: `is_ok` and `is_err` can change significant drop order
 #![warn(clippy::unnecessary_map_or)]
+#![allow(clippy::unnecessary_lazy_evaluations)]
 
 fn main() {
     let mutex = std::sync::Mutex::new(());

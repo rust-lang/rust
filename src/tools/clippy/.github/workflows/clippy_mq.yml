@@ -3,6 +3,8 @@ name: Clippy Test (merge queue)
 on:
   merge_group:
 
+permissions: {}
+
 env:
   RUST_BACKTRACE: 1
   CARGO_TARGET_DIR: '${{ github.workspace }}/target'
@@ -34,7 +36,7 @@ jobs:
     steps:
     # Setup
     - name: Checkout
-      uses: actions/checkout@v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
         persist-credentials: false
 
@@ -47,9 +49,11 @@ jobs:
 
     - name: Install toolchain
       run: |
-        rustup set default-host ${{ matrix.host }}
+        rustup set default-host "${MATRIX_HOST}"
         # Use a way compatible with Rustup pre-1.28.0 and Rustup 1.28.0
         rustup show active-toolchain || rustup toolchain install
+      env:
+        MATRIX_HOST: ${{ matrix.host }}
 
     # Run
     - name: Build
@@ -94,7 +98,7 @@ jobs:
     steps:
      # Setup
     - name: Checkout
-      uses: actions/checkout@v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
         persist-credentials: false
 
@@ -112,7 +116,7 @@ jobs:
     steps:
     # Setup
     - name: Checkout
-      uses: actions/checkout@v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
         persist-credentials: false
 
@@ -135,7 +139,7 @@ jobs:
         find $DIR ! -executable -o -type d ! -path $DIR | xargs rm -rf
 
     - name: Upload Binaries
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
       with:
         name: binaries
         path: target/debug
@@ -167,7 +171,7 @@ jobs:
     steps:
     # Setup
     - name: Checkout
-      uses: actions/checkout@v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
         persist-credentials: false
 
@@ -178,7 +182,7 @@ jobs:
 
     # Download
     - name: Download target dir
-      uses: actions/download-artifact@v8
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
       with:
         name: binaries
         path: target/debug
@@ -204,7 +208,7 @@ jobs:
     steps:
     # Setup
     - name: Checkout
-      uses: actions/checkout@v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
         # Unsetting this would make so that any malicious package could get our Github Token
         persist-credentials: false
@@ -261,6 +265,8 @@ jobs:
       - name: Conclusion
         run: |
           # Print the dependent jobs to see them in the CI log
-          jq -C <<< '${{ toJson(needs) }}'
+          jq -C <<< "${NEEDS_JSON}"
           # Check if all jobs that we depend on (in the needs array) were successful.
-          jq --exit-status 'all(.result == "success")' <<< '${{ toJson(needs) }}'
+          jq --exit-status 'all(.result == "success")' <<< "${NEEDS_JSON}"
+        env:
+          NEEDS_JSON: ${{ toJson(needs) }}

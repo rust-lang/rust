@@ -1,0 +1,115 @@
+error: assigning a new empty collection
+  --> tests/ui/new_instead_of_clear.rs:20:5
+   |
+LL |     v = Vec::new();
+   |     ^^^^^^^^^^^^^^ help: consider using `.clear()` instead: `v.clear()`
+   |
+   = note: `.clear()` retains the allocated memory for reuse
+   = note: `-D clippy::new-instead-of-clear` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::new_instead_of_clear)]`
+
+error: assigning a new empty collection
+  --> tests/ui/new_instead_of_clear.rs:26:5
+   |
+LL |     map = HashMap::new();
+   |     ^^^^^^^^^^^^^^^^^^^^ help: consider using `.clear()` instead: `map.clear()`
+   |
+   = note: `.clear()` retains the allocated memory for reuse
+
+error: assigning a new empty collection
+  --> tests/ui/new_instead_of_clear.rs:32:5
+   |
+LL |     set = HashSet::new();
+   |     ^^^^^^^^^^^^^^^^^^^^ help: consider using `.clear()` instead: `set.clear()`
+   |
+   = note: `.clear()` retains the allocated memory for reuse
+
+error: assigning a new empty collection
+  --> tests/ui/new_instead_of_clear.rs:38:5
+   |
+LL |     deque = VecDeque::new();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.clear()` instead: `deque.clear()`
+   |
+   = note: `.clear()` retains the allocated memory for reuse
+
+error: assigning a new empty collection
+  --> tests/ui/new_instead_of_clear.rs:44:5
+   |
+LL |     heap = BinaryHeap::new();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.clear()` instead: `heap.clear()`
+   |
+   = note: `.clear()` retains the allocated memory for reuse
+
+error: assigning a new empty collection
+  --> tests/ui/new_instead_of_clear.rs:50:5
+   |
+LL |     s = String::new();
+   |     ^^^^^^^^^^^^^^^^^ help: consider using `.clear()` instead: `s.clear()`
+   |
+   = note: `.clear()` retains the allocated memory for reuse
+
+error: assigning a new empty collection
+  --> tests/ui/new_instead_of_clear.rs:57:5
+   |
+LL |     btree_map = BTreeMap::new();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.clear()` instead: `btree_map.clear()`
+
+error: assigning a new empty collection
+  --> tests/ui/new_instead_of_clear.rs:63:5
+   |
+LL |     btree_set = BTreeSet::new();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.clear()` instead: `btree_set.clear()`
+
+error: assigning a new empty collection
+  --> tests/ui/new_instead_of_clear.rs:69:5
+   |
+LL |     list = LinkedList::new();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.clear()` instead: `list.clear()`
+
+error: assigning a new empty collection
+  --> tests/ui/new_instead_of_clear.rs:75:5
+   |
+LL |     v2 = vec![];
+   |     ^^^^^^^^^^^ help: consider using `.clear()` instead: `v2.clear()`
+   |
+   = note: `.clear()` retains the allocated memory for reuse
+
+error: assigning a new empty collection
+  --> tests/ui/new_instead_of_clear.rs:82:5
+   |
+LL |     v3 = vec![0; 0];
+   |     ^^^^^^^^^^^^^^^ help: consider using `.clear()` instead: `v3.clear()`
+   |
+   = note: `.clear()` retains the allocated memory for reuse
+
+error: assigning a new empty collection
+  --> tests/ui/new_instead_of_clear.rs:89:5
+   |
+LL |     v4 = vec![std::hint::black_box(0); 0];
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.clear()` instead: `v4.clear()`
+   |
+   = note: `.clear()` retains the allocated memory for reuse
+note: side effects of this expression will no longer be executed
+  --> tests/ui/new_instead_of_clear.rs:89:15
+   |
+LL |     v4 = vec![std::hint::black_box(0); 0];
+   |               ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: assigning a new empty collection
+  --> tests/ui/new_instead_of_clear.rs:98:5
+   |
+LL |     *r = Vec::new();
+   |     ^^^^^^^^^^^^^^^ help: consider using `.clear()` instead: `r.clear()`
+   |
+   = note: `.clear()` retains the allocated memory for reuse
+
+error: assigning a new empty collection
+  --> tests/ui/new_instead_of_clear.rs:107:9
+   |
+LL |         v = Vec::new();
+   |         ^^^^^^^^^^^^^^ help: consider using `.clear()` instead: `v.clear()`
+   |
+   = note: `.clear()` retains the allocated memory for reuse
+
+error: aborting due to 14 previous errors
+

@@ -1,5 +1,6 @@
 //@aux-build:proc_macros.rs
 #![warn(clippy::unnecessary_map_or)]
+#![allow(clippy::unnecessary_lazy_evaluations)]
 
 #[macro_use]
 extern crate proc_macros;
