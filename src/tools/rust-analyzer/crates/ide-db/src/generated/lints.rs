@@ -4953,6 +4953,22 @@ This feature has no tracking issue, and is therefore likely internal to the comp
         deny_since: None,
     },
     Lint {
+        label: "char_is_xid",
+        description: r##"# `char_is_xid`
+
+
+
+The tracking issue for this feature is: [#164841]
+
+[#164841]: https://github.com/rust-lang/rust/issues/164841
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "char_to_u32",
         description: r##"# `char_to_u32`
 
@@ -5483,22 +5499,6 @@ The tracking issue for this feature is: [#151531]
         deny_since: None,
     },
     Lint {
-        label: "const_btree_len",
-        description: r##"# `const_btree_len`
-
-
-
-The tracking issue for this feature is: [#71835]
-
-[#71835]: https://github.com/rust-lang/rust/issues/71835
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
         label: "const_c_variadic",
         description: r##"# `const_c_variadic`
 
@@ -5520,9 +5520,9 @@ The tracking issue for this feature is: [#151787]
 
 
 
-The tracking issue for this feature is: [#85532]
+The tracking issue for this feature is: [#152015]
 
-[#85532]: https://github.com/rust-lang/rust/issues/85532
+[#152015]: https://github.com/rust-lang/rust/issues/152015
 
 ------------------------
 "##,
@@ -7310,9 +7310,9 @@ The tracking issue for this feature is: [#123430]
 
 
 
-The tracking issue for this feature is: [#118304]
+The tracking issue for this feature is: [#143874]
 
-[#118304]: https://github.com/rust-lang/rust/issues/118304
+[#143874]: https://github.com/rust-lang/rust/issues/143874
 
 ------------------------
 "##,
@@ -10101,9 +10101,9 @@ This feature has no tracking issue, and is therefore likely internal to the comp
 
 
 
-The tracking issue for this feature is: [#135513]
+The tracking issue for this feature is: [#131513]
 
-[#135513]: https://github.com/rust-lang/rust/issues/135513
+[#131513]: https://github.com/rust-lang/rust/issues/131513
 
 ------------------------
 "##,
@@ -10147,12 +10147,9 @@ The tracking issue for this feature is: [#129967]
         label: "half_open_range_patterns_in_slices",
         description: r##"# `half_open_range_patterns_in_slices`
 
-The tracking issue for this feature is: [#67264]
-It is a future part of the `exclusive_range_pattern` feature,
-tracked at [#37854].
+The tracking issue for this feature is: [#67264].
 
 [#67264]: https://github.com/rust-lang/rust/issues/67264
-[#37854]: https://github.com/rust-lang/rust/issues/37854
 -----
 
 This feature allow using top-level half-open range patterns in slices.
@@ -12378,9 +12375,9 @@ The tracking issue for this feature is: [#158499]
         label: "native_link_modifiers_as_needed",
         description: r##"# `native_link_modifiers_as_needed`
 
-The tracking issue for this feature is: [#81490]
+The tracking issue for this feature is: [#99424]
 
-[#81490]: https://github.com/rust-lang/rust/issues/81490
+[#99424]: https://github.com/rust-lang/rust/issues/99424
 
 ------------------------
 
@@ -13909,7 +13906,9 @@ The tracking issue for this feature is: [#105376]
         label: "profiler_runtime",
         description: r##"# `profiler_runtime`
 
-The tracking issue for this feature is: [#42524](https://github.com/rust-lang/rust/issues/42524).
+Used to identify crates that contain the profiler runtime.
+
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
 
 ------------------------
 "##,
@@ -13986,22 +13985,6 @@ The tracking issue for this feature is: [#75402]
 The tracking issue for this feature is: [#144514]
 
 [#144514]: https://github.com/rust-lang/rust/issues/144514
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
-        label: "ptr_cast_slice",
-        description: r##"# `ptr_cast_slice`
-
-
-
-The tracking issue for this feature is: [#149103]
-
-[#149103]: https://github.com/rust-lang/rust/issues/149103
 
 ------------------------
 "##,
@@ -14768,9 +14751,7 @@ For custom-built toolchains or environments not using rustup, different configur
 
 Allows using internal rustdoc features like `doc(keyword)`.
 
-The tracking issue for this feature is: [#90418]
-
-[#90418]: https://github.com/rust-lang/rust/issues/90418
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
 
 ------------------------
 "##,
@@ -15056,9 +15037,9 @@ The tracking issue for this feature is: [#151989]
 
 Allows the use of SIMD types in functions declared in `extern` blocks.
 
-The tracking issue for this feature is: [#27731]
+The tracking issue for this feature is: [#63068]
 
-[#27731]: https://github.com/rust-lang/rust/issues/27731
+[#63068]: https://github.com/rust-lang/rust/issues/63068
 
 ------------------------
 "##,
@@ -15102,9 +15083,7 @@ This feature has no tracking issue, and is therefore likely internal to the comp
 
 
 
-The tracking issue for this feature is: [#27747]
-
-[#27747]: https://github.com/rust-lang/rust/issues/27747
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
 
 ------------------------
 "##,
@@ -15118,9 +15097,7 @@ The tracking issue for this feature is: [#27747]
 
 
 
-The tracking issue for this feature is: [#27747]
-
-[#27747]: https://github.com/rust-lang/rust/issues/27747
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
 
 ------------------------
 "##,
@@ -15226,9 +15203,7 @@ The tracking issue for this feature is: [#54279]
 
 
 
-The tracking issue for this feature is: [#56345]
-
-[#56345]: https://github.com/rust-lang/rust/issues/56345
+This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
 
 ------------------------
 "##,
@@ -15277,22 +15252,6 @@ The tracking issue for this feature is: [#76393]
 The tracking issue for this feature is: [#151772]
 
 [#151772]: https://github.com/rust-lang/rust/issues/151772
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
-        label: "slice_split_once",
-        description: r##"# `slice_split_once`
-
-
-
-The tracking issue for this feature is: [#112811]
-
-[#112811]: https://github.com/rust-lang/rust/issues/112811
 
 ------------------------
 "##,
@@ -17239,9 +17198,9 @@ Note that the user cannot use `#[define_opaque(Alias)]` to reify the opaque type
 
 
 
-The tracking issue for this feature is: [#23416]
+The tracking issue for this feature is: [#101728]
 
-[#23416]: https://github.com/rust-lang/rust/issues/23416
+[#101728]: https://github.com/rust-lang/rust/issues/101728
 
 ------------------------
 "##,
@@ -17815,9 +17774,9 @@ The tracking issue for this feature is: [#147750]
 
 
 
-The tracking issue for this feature is: [#123947]
+The tracking issue for this feature is: [#133253]
 
-[#123947]: https://github.com/rust-lang/rust/issues/123947
+[#133253]: https://github.com/rust-lang/rust/issues/133253
 
 ------------------------
 "##,
@@ -18180,22 +18139,6 @@ The tracking issue for this feature is: [#152956]
         deny_since: None,
     },
     Lint {
-        label: "windows_process_exit_code_from",
-        description: r##"# `windows_process_exit_code_from`
-
-
-
-The tracking issue for this feature is: [#111688]
-
-[#111688]: https://github.com/rust-lang/rust/issues/111688
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
         label: "windows_process_extensions_async_pipes",
         description: r##"# `windows_process_extensions_async_pipes`
 
@@ -18236,22 +18179,6 @@ The tracking issue for this feature is: [#158852]
 The tracking issue for this feature is: [#82227]
 
 [#82227]: https://github.com/rust-lang/rust/issues/82227
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
-        label: "windows_process_extensions_inherit_handles",
-        description: r##"# `windows_process_extensions_inherit_handles`
-
-
-
-The tracking issue for this feature is: [#146407]
-
-[#146407]: https://github.com/rust-lang/rust/issues/146407
 
 ------------------------
 "##,
