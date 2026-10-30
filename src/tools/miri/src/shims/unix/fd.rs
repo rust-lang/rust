@@ -77,20 +77,6 @@ pub trait UnixFileDescription: FileDescription {
         throw_unsup_format!("fcntl: {} is not supported for F_SETFL", self.name());
     }
 
-    /// Modifies device parameters.
-    /// `op` is the device-dependent operation code. It's either a `c_long` or `c_int`, depending on
-    /// the target and whether it uses glibc or musl.
-    /// `arg` is the optional third argument which exists depending on the operation code. It's either
-    /// an integer or a pointer.
-    fn ioctl<'tcx>(
-        &self,
-        _op: Scalar,
-        _args: Varargs<'tcx, '_>,
-        _ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx, i32> {
-        throw_unsup_format!("cannot use ioctl on {}", self.name());
-    }
-
     /// Returns this file description as a Unix socket, if it represents one.
     fn as_socket(
         self: FileDescriptionRef<Self>,
@@ -222,15 +208,52 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Handle common opcodes.
         let fioclex = this.eval_libc("FIOCLEX");
         let fionclex = this.eval_libc("FIONCLEX");
+        let fionbio = this.eval_libc("FIONBIO");
+
         if op == fioclex || op == fionclex {
             // Since we don't support `exec`, those are NOPs.
-            return interp_ok(Scalar::from_i32(0));
-        }
+            interp_ok(Scalar::from_i32(0))
+        } else if op == fionbio {
+            // On these OSes, the Rust standard library uses the ioctl for changing the blocking mode
+            // of certain file descriptors, so we trust that it is reasonable and controls the same
+            // internal flag as fcntl.
+            if !matches!(this.tcx.sess.target.os, Os::Linux | Os::Android | Os::MacOs | Os::FreeBsd)
+            {
+                // FIONBIO cannot be used to change the blocking mode of some file descriptors on solarish targets:
+                // <https://github.com/rust-lang/rust/commit/dda5c97675b4f5b1f6fdab64606c8a1f21021b0a>
+                // Since there might be more targets which do weird things with this option, we use
+                // an allowlist instead of just denying solarish targets.
+                throw_unsup_format!(
+                    "ioctl: setting FIONBIO is unsupported on {} on target {}",
+                    fd.name(),
+                    this.tcx.sess.target.os
+                );
+            }
 
-        // Since some ioctl operations use the return value as an output parameter, we cannot strictly use the convention of
-        // zero indicating success and -1 indicating an error.
-        let return_value = fd.as_unix().ioctl(op, varargs, this)?;
-        interp_ok(Scalar::from_i32(return_value))
+            let ([value_ptr], _) = this.check_varargs(shim_varargs![*i32], varargs, "ioctl")?;
+            let value = this.deref_pointer(&value_ptr)?;
+            let non_block = this.read_scalar(&value)?.to_i32()? != 0;
+
+            let o_nonblock = this.eval_libc_i32("O_NONBLOCK");
+
+            // We change the blocking mode of the file description using `set_flags`.
+            // For this we first fetch the current flags using `get_flags` and then
+            // we add or subtract O_NONBLOCK to them.
+
+            let unix_fd = fd.as_unix();
+            let mut flags = unix_fd.get_flags(this)?.to_i32()?;
+            if non_block {
+                // Add O_NONBLOCK to the existing flags.
+                flags |= o_nonblock
+            } else {
+                // Remove O_NONBLOCK from the existing flags.
+                flags &= !o_nonblock
+            }
+            unix_fd.set_flags(flags & !this.setfl_ignored_flags(), this)?;
+            interp_ok(Scalar::from_i32(0))
+        } else {
+            throw_unsup_format!("ioctl: unsupported operation {op:#x} on {}", fd.name())
+        }
     }
 
     fn fcntl(
@@ -306,19 +329,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.check_varargs(shim_varargs![i32], varargs, "fcntl(fd, F_SETFL, ...)")?;
                 let flag = this.read_scalar(&flag)?.to_i32()?;
 
-                // Ignore flags that never get stored by SETFL.
-                // "File access mode (O_RDONLY, O_WRONLY, O_RDWR) and file
-                // creation flags (i.e., O_CREAT, O_EXCL, O_NOCTTY, O_TRUNC)
-                // in arg are ignored."
-                let ignored_flags = this.eval_libc_i32("O_RDONLY")
-                    | this.eval_libc_i32("O_WRONLY")
-                    | this.eval_libc_i32("O_RDWR")
-                    | this.eval_libc_i32("O_CREAT")
-                    | this.eval_libc_i32("O_EXCL")
-                    | this.eval_libc_i32("O_NOCTTY")
-                    | this.eval_libc_i32("O_TRUNC");
-
-                fd.as_unix().set_flags(flag & !ignored_flags, this)
+                fd.as_unix().set_flags(flag & !this.setfl_ignored_flags(), this)
             }
             cmd if this.tcx.sess.target.os == Os::MacOs
                 && cmd == this.eval_libc_i32("F_FULLFSYNC") =>
@@ -804,5 +815,22 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
         };
         interp_ok(())
+    }
+
+    /// Flags that never get stored by SETFL.
+    fn setfl_ignored_flags(&self) -> i32 {
+        let this = self.eval_context_ref();
+
+        // The F_SETFL man page specifies that the "[...] File access mode
+        // (O_RDONLY, O_WRONLY, O_RDWR) and file creation flags (i.e., O_CREAT,
+        // O_EXCL, O_NOCTTY, O_TRUNC) in arg are ignored."
+
+        this.eval_libc_i32("O_RDONLY")
+            | this.eval_libc_i32("O_WRONLY")
+            | this.eval_libc_i32("O_RDWR")
+            | this.eval_libc_i32("O_CREAT")
+            | this.eval_libc_i32("O_EXCL")
+            | this.eval_libc_i32("O_NOCTTY")
+            | this.eval_libc_i32("O_TRUNC")
     }
 }

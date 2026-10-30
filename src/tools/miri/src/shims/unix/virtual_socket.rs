@@ -15,7 +15,6 @@ use crate::shims::files::{
     EvalContextExt as _, FileDescription, FileDescriptionRef, WeakFileDescriptionRef,
 };
 use crate::shims::readiness::DelayedReadinessUpdates;
-use crate::shims::sig::Varargs;
 use crate::shims::unix::UnixFileDescription;
 use crate::shims::unix::socket::UnixSocketFileDescription;
 use crate::*;
@@ -255,49 +254,6 @@ impl UnixFileDescription for VirtualSocket {
         }
 
         interp_ok(Scalar::from_i32(0))
-    }
-
-    fn ioctl<'tcx>(
-        &self,
-        op: Scalar,
-        args: Varargs<'tcx, '_>,
-        ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx, i32> {
-        match self.fd_type {
-            VirtualSocketType::Socketpair => { /* fall-through to below */ }
-            VirtualSocketType::PipeRead | VirtualSocketType::PipeWrite => {
-                // The standard library only uses ioctl for changing the blocking mode
-                // of Unix sockets. Thus, since using ioctl isn't the preferred way of
-                // changing the blocking mode, we don't support it on pipes.
-                throw_unsup_format!("cannot use ioctl on pipe");
-            }
-        }
-
-        let fionbio = ecx.eval_libc("FIONBIO");
-
-        if op == fionbio {
-            // On these OSes, Rust uses the ioctl, so we trust that it is reasonable and controls
-            // the same internal flag as fcntl.
-            if !matches!(ecx.tcx.sess.target.os, Os::Linux | Os::Android | Os::MacOs | Os::FreeBsd)
-            {
-                // FIONBIO cannot be used to change the blocking mode of a socket on solarish targets:
-                // <https://github.com/rust-lang/rust/commit/dda5c97675b4f5b1f6fdab64606c8a1f21021b0a>
-                // Since there might be more targets which do weird things with this option, we use
-                // an allowlist instead of just denying solarish targets.
-                throw_unsup_format!(
-                    "ioctl: setting FIONBIO on sockets is unsupported on target {}",
-                    ecx.tcx.sess.target.os
-                );
-            }
-
-            let ([value_ptr], _) = ecx.check_varargs(shim_varargs![*i32], args, "ioctl")?;
-            let value = ecx.deref_pointer(&value_ptr)?;
-            let non_block = ecx.read_scalar(&value)?.to_i32()? != 0;
-            self.is_nonblock.set(non_block);
-            return interp_ok(0);
-        }
-
-        throw_unsup_format!("ioctl: unsupported operation {op:#x} on socket");
     }
 
     fn as_socket(
