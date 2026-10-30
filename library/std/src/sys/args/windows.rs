@@ -307,10 +307,12 @@ pub(crate) fn make_bat_command_line(
     cmd.push(b'"' as u16);
     // Windows file names cannot contain a `"` character or end with `\\`.
     // If the script name does then return an error.
-    if script.contains(&(b'"' as u16)) || script.last() == Some(&(b'\\' as u16)) {
+    // Also we disallow `^` and `%` to prevent escaping or environment variable substitution.
+    const INVALID: &[u16] = &[b'"' as u16, b'^' as u16, b'%' as u16];
+    if script.iter().any(|c| INVALID.contains(c)) || script.last() == Some(&(b'\\' as u16)) {
         return Err(io::const_error!(
             io::ErrorKind::InvalidInput,
-            "Windows file names may not contain `\"` or end with `\\`"
+            "`Command` rejects batch scripts that contain contain `\"`, `^` or `%` or end with `\\`"
         ));
     }
     cmd.extend_from_slice(script.strip_suffix(&[0]).unwrap_or(script));
