@@ -23,7 +23,6 @@ extern crate rustc_log;
 extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
-#[cfg(feature = "jit")]
 extern crate rustc_structures;
 extern crate rustc_symbol_mangling;
 extern crate rustc_target;
@@ -44,8 +43,11 @@ use rustc_data_structures::unord::UnordSet;
 use rustc_log::tracing::info;
 use rustc_middle::dep_graph::WorkProductMap;
 use rustc_session::config::{NATIVE_CPU, OutputFilenames};
-use rustc_session::{CodegenBackendInit, EarlySession, IncrCompSession, Session};
+use rustc_session::{
+    CodegenBackendInit, EarlySession, IncrCompSession, Session, SupportedBackendFeatures,
+};
 use rustc_span::{Symbol, sym};
+use rustc_structures::SanitizerSet;
 use rustc_target::spec::{Arch, CfgAbi, Env, Os};
 
 pub use crate::config::*;
@@ -129,20 +131,6 @@ impl CodegenBackend for CraneliftCodegenBackend {
     }
 
     fn init(&mut self, sess: &EarlySession) -> CodegenBackendInit {
-        use rustc_session::config::{InstrumentCoverage, LtoCli};
-
-        match (sess.target.requires_lto, sess.early_lto()) {
-            (true, _) | (false, LtoCli::Yes | LtoCli::Fat | LtoCli::NoParam | LtoCli::Thin) => {
-                sess.dcx().fatal("LTO is not supported by rustc_codegen_cranelift")
-            }
-            (false, LtoCli::Unspecified | LtoCli::No) => {}
-        }
-
-        if sess.opts.cg.instrument_coverage() != InstrumentCoverage::No {
-            sess.dcx()
-                .fatal("`-Cinstrument-coverage` is LLVM specific and not supported by Cranelift");
-        }
-
         // Set `config` if not already set.
         let config = self.config.get_or_insert_with(|| {
             BackendConfig::from_opts(&sess.opts.cg.llvm_args)
@@ -157,7 +145,12 @@ impl CodegenBackend for CraneliftCodegenBackend {
             global_backend_features: vec![],
             replaced_intrinsics: vec![],
             fallback_intrinsics: vec![sym::type_id_eq],
-            thin_lto_supported: false,
+            supported_backend_features: SupportedBackendFeatures {
+                thin_lto: false,
+                fat_lto: false,
+                instrument_coverage: false,
+                sanitizers: SanitizerSet::empty(),
+            },
         }
     }
 

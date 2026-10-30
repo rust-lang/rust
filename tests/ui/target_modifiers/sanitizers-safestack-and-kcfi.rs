@@ -1,5 +1,6 @@
 //@ needs-sanitizer-kcfi
 //@ needs-sanitizer-safestack
+//@ ignore-backends: gcc
 
 //@ aux-build:safestack-and-kcfi.rs
 //@ compile-flags: -Cpanic=abort

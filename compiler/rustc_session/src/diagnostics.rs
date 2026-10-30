@@ -672,6 +672,12 @@ pub(crate) struct IncompatibleLinkerFlavor {
 }
 
 #[derive(Diagnostic)]
+#[diag("required feature `{$feat}` not supported by codegen backend")]
+pub(crate) struct FeatureNotSupportedByBackend {
+    pub(crate) feat: &'static str,
+}
+
+#[derive(Diagnostic)]
 #[diag("`-Zfunction-return` (except `keep`) is only supported on x86 and x86_64")]
 pub(crate) struct FunctionReturnRequiresX86OrX8664;
 

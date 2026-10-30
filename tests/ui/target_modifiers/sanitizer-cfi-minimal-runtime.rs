@@ -3,6 +3,7 @@
 //@ needs-sanitizer-cfi
 //@ aux-build:cfi-minimal-runtime.rs
 //@ compile-flags: -Ctarget-feature=-crt-static
+//@ ignore-backends: gcc
 
 //@ revisions: ok wrong_flag wrong_sanitizer
 //@[ok] compile-flags: -Clto -Zsanitizer=cfi -Zsanitizer-cfi-recover -Zsanitizer-cfi-minimal-runtime
