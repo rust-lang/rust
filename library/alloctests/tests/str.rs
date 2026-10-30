@@ -2578,3 +2578,147 @@ fn ceil_char_boundary() {
         check_many(s, [idx], ret);
     }
 }
+#[test]
+fn utf8_validation_flow_differential() {
+    fn reference(v: &[u8]) -> Result<(), (usize, Option<usize>)> {
+        let mut at = 0;
+        while at < v.len() {
+            let first = v[at];
+            let width = match first {
+                0..=0x7f => 1,
+                0xc2..=0xdf => 2,
+                0xe0..=0xef => 3,
+                0xf0..=0xf4 => 4,
+                _ => return Err((at, Some(1))),
+            };
+            for offset in 1..width {
+                let Some(&byte) = v.get(at + offset) else {
+                    return Err((at, None));
+                };
+                let range = match (first, offset) {
+                    (0xe0, 1) => 0xa0..=0xbf,
+                    (0xed, 1) => 0x80..=0x9f,
+                    (0xf0, 1) => 0x90..=0xbf,
+                    (0xf4, 1) => 0x80..=0x8f,
+                    _ => 0x80..=0xbf,
+                };
+                if !range.contains(&byte) {
+                    return Err((at, Some(offset)));
+                }
+            }
+            at += width;
+        }
+        Ok(())
+    }
+
+    fn check(v: &[u8]) {
+        let expected = reference(v);
+        let actual =
+            std::str::from_utf8(v).map(|_| ()).map_err(|e| (e.valid_up_to(), e.error_len()));
+        assert_eq!(actual, expected, "{v:02x?}");
+        let mut writable = v.to_vec();
+        let actual_mut = std::str::from_utf8_mut(&mut writable)
+            .map(|_| ())
+            .map_err(|e| (e.valid_up_to(), e.error_len()));
+        assert_eq!(actual_mut, expected, "{v:02x?}");
+    }
+
+    for len in 0..=145 {
+        for pattern in ["a", "é", "中", "😀", "aé中😀"] {
+            let mut v: Vec<u8> = pattern.as_bytes().iter().copied().cycle().take(len).collect();
+            check(&v);
+            for at in 0..len {
+                let old = v[at];
+                for byte in 0..=255 {
+                    v[at] = byte;
+                    check(&v);
+                }
+                v[at] = old;
+            }
+        }
+    }
+    for at in 0..=67 {
+        let mut v = vec![b'a'; 96];
+        for pair in 0u32..=65535 {
+            v[at] = pair as u8;
+            v[at + 1] = (pair >> 8) as u8;
+            check(&v);
+        }
+    }
+    let mut state = 0x4f12_9dc6_8a73_5be1u64;
+    for prefix in [0, 1, 7, 8, 15, 16, 31, 32, 63, 64, 65, 127] {
+        for pattern in ["é", "中", "😀", "aé中😀"] {
+            for len in [255, 256, 257, 511, 512, 513, 4095, 4096] {
+                let mut v = vec![b'a'; prefix];
+                v.extend(pattern.as_bytes().iter().copied().cycle().take(len - prefix));
+                check(&v);
+                for at in [0, 1, 2, 3, 15, 16, 17, 31, 32, 33, 63, 64, 65, 127, 128, 129, len - 1] {
+                    let old = v[at];
+                    for byte in
+                        [0, 0x7f, 0x80, 0xbf, 0xc0, 0xc2, 0xe0, 0xed, 0xf0, 0xf4, 0xf5, 0xff]
+                    {
+                        v[at] = byte;
+                        check(&v);
+                    }
+                    v[at] = old;
+                }
+            }
+        }
+    }
+    for len in 0..=256 {
+        let mut v = vec![0; len];
+        for _ in 0..256 {
+            for byte in &mut v {
+                state ^= state << 13;
+                state ^= state >> 7;
+                state ^= state << 17;
+                *byte = state as u8;
+            }
+            check(&v);
+        }
+    }
+}
+
+#[test]
+fn utf8_validation_ascii_after_multibyte() {
+    for at in 32..=192 {
+        let mut prefix = "é".repeat(at / 2).into_bytes();
+        prefix.resize(at, b'a');
+        for character in ["é", "中", "😀"] {
+            let mut valid = prefix.clone();
+            valid.extend_from_slice(character.as_bytes());
+            valid.extend_from_slice(&[b'a'; 128]);
+            assert!(std::str::from_utf8(&valid).is_ok());
+            assert!(std::str::from_utf8_mut(&mut valid).is_ok());
+
+            for count in 1..character.len() {
+                let mut invalid = prefix.clone();
+                invalid.extend_from_slice(&character.as_bytes()[..count]);
+                invalid.extend_from_slice(&[b'a'; 128]);
+                let error = std::str::from_utf8(&invalid).unwrap_err();
+                assert_eq!((error.valid_up_to(), error.error_len()), (at, Some(count)));
+                let error = std::str::from_utf8_mut(&mut invalid).unwrap_err();
+                assert_eq!((error.valid_up_to(), error.error_len()), (at, Some(count)));
+            }
+        }
+    }
+}
+
+#[test]
+fn utf8_validation_flow_const() {
+    const VALID: Result<&str, std::str::Utf8Error> = std::str::from_utf8("aé中😀".as_bytes());
+    const INVALID: Result<&str, std::str::Utf8Error> = std::str::from_utf8(b"a\xff");
+    const MUT_VALID: bool = {
+        let mut bytes = *b"abc";
+        matches!(std::str::from_utf8_mut(&mut bytes), Ok(_))
+    };
+    const MUT_INVALID: bool = {
+        let mut bytes = *b"a\xff";
+        matches!(std::str::from_utf8_mut(&mut bytes), Err(_))
+    };
+    assert_eq!(VALID.unwrap(), "aé中😀");
+    assert_eq!(INVALID.unwrap_err().valid_up_to(), 1);
+    assert_eq!(INVALID.unwrap_err().error_len(), Some(1));
+    assert!(MUT_VALID);
+    assert!(MUT_INVALID);
+}
