@@ -2583,7 +2583,7 @@ impl<'a> Formatter<'a> {
             }
             builder.finish()
         } else {
-            let mut names = names.split(' ');
+            let mut names = split_str_by_space(names);
             let mut builder = builders::debug_struct_new(self, names.next().unwrap());
             for value in values.into_iter() {
                 let name = names.next().unwrap();
@@ -2603,7 +2603,7 @@ impl<'a> Formatter<'a> {
         names: &str,
         start_index: usize,
     ) -> Result {
-        self.write_str(names[start_index..].split(' ').next().unwrap())
+        self.write_str(split_str_by_space(&names[start_index..]).next().unwrap())
     }
 
     /// Creates a `DebugTuple` builder designed to assist with creation of
@@ -2755,6 +2755,15 @@ impl<'a> Formatter<'a> {
     pub const fn options(&self) -> FormattingOptions {
         self.options
     }
+}
+
+/// Like `.split(' ')`, but doesn't bloat binary size
+fn split_str_by_space(s: &str) -> impl Iterator<Item = &str> {
+    s.as_bytes()
+        .split(|&b| b == b' ')
+        // SAFETY:
+        // splitting a valid UTF-8 string on an ASCII byte results in valid UTF-8 substrings
+        .map(|bytes| unsafe { str::from_utf8_unchecked(bytes) })
 }
 
 #[stable(since = "1.2.0", feature = "formatter_write")]
