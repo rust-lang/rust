@@ -1,6 +1,6 @@
 // We're testing loongarch64-specific intrinsics
 //@only-target: loongarch64
-#![feature(link_llvm_intrinsics, stdarch_loongarch)]
+#![feature(link_llvm_intrinsics)]
 
 use std::arch::loongarch64::*;
 
