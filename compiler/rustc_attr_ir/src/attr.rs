@@ -152,11 +152,6 @@ impl AttributeExt for Attribute {
         self.value_lit().and_then(|x| x.value_as_str())
     }
 
-    #[inline]
-    fn value_span(&self) -> Option<Span> {
-        self.value_lit().map(|i| i.span)
-    }
-
     /// For a single-segment attribute, returns its name; otherwise, returns `None`.
     #[inline]
     fn name(&self) -> Option<Symbol> {
