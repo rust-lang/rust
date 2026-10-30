@@ -292,10 +292,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Save the captures that must be upgraded to by-value after inferring
         // the closure kind from the operations in the body.
-        let explicit_captures = match self.tcx.hir_node(closure_hir_id).expect_expr().kind {
-            hir::ExprKind::Closure(closure) => closure.explicit_captures,
-            _ => bug!("expected closure expr for {:?}", closure_hir_id),
-        };
+        let (explicit_captures, captured_caller_location) =
+            match self.tcx.hir_node(closure_hir_id).expect_expr().kind {
+                hir::ExprKind::Closure(closure) => {
+                    (closure.explicit_captures, closure.captured_caller_location)
+                }
+                _ => bug!("expected closure expr for {:?}", closure_hir_id),
+            };
 
         // There are several curious situations with coroutine-closures where
         // analysis is too aggressive with borrows when the coroutine-closure is
@@ -401,8 +404,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // regardless of how the closure body uses it. Apply that requirement
         // after closure-kind inference so capturing a value does not by itself
         // make the closure `FnOnce`.
-        for capture in explicit_captures {
-            let place = closure_fcx.place_for_root_variable(closure_def_id, capture.var_hir_id);
+        // We also capture the location from the desugaring of `#[track_caller] async fn`
+        for capture in
+            explicit_captures.iter().map(|x| x.var_hir_id).chain(captured_caller_location)
+        {
+            let place = closure_fcx.place_for_root_variable(closure_def_id, capture);
             capture_information.push((
                 place,
                 ty::CaptureInfo {

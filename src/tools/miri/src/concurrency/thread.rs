@@ -6,6 +6,7 @@ use std::time::{Duration, SystemTime};
 
 use rand::RngExt;
 use rustc_abi::ExternAbi;
+use rustc_const_eval::interpret::CallerLocation;
 use rustc_data_structures::either::Either;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
@@ -340,6 +341,7 @@ impl VisitProvenance for Frame<'_, Provenance, FrameExtra<'_>> {
         let locals = self.locals();
         let Frame {
             extra,
+            track_caller_arg,
             // There are some private fields we cannot access; they contain no tags.
             ..
         } = self;
@@ -359,6 +361,10 @@ impl VisitProvenance for Frame<'_, Provenance, FrameExtra<'_>> {
                     imm.visit_provenance(visit);
                 }
             }
+        }
+
+        if let Some(CallerLocation::Memory(ptr)) = track_caller_arg {
+            ptr.visit_provenance(visit);
         }
 
         extra.visit_provenance(visit);

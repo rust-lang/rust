@@ -100,7 +100,7 @@ pub struct Frame<'tcx, Prov: Provenance = CtfeProvenance, Extra = ()> {
 
     /// The implicit caller location argument that is passed by this function's caller, if any.
     /// This is `Some` if and only if `instance.def.requires_caller_location` returns `true`.
-    pub(super) track_caller_arg: Option<Span>,
+    pub track_caller_arg: Option<CallerLocation<Prov>>,
 
     /// The span of the `tracing` crate is stored here.
     /// When the guard is dropped, the span is exited. This gives us
@@ -116,6 +116,18 @@ pub struct Frame<'tcx, Prov: Provenance = CtfeProvenance, Extra = ()> {
     ///
     /// Needs to be public because ConstProp does unspeakable things to it.
     pub(super) loc: Either<mir::Location, Span>,
+}
+
+/// Information necessary to figure out the caller_location
+#[derive(Clone)]
+pub enum CallerLocation<Prov: Provenance> {
+    /// Simple case: This span was created when we called a `#[track_caller]` frame
+    /// (other than an async fn) from a normal frame. We know the span from just inspecting
+    /// the stack at the point of this call.
+    Direct(Span),
+    /// Points to a `std::panic::Location`. This is used for `#[track_caller] async fn`,
+    /// which captures a `&std::panic::Location` in the coroutine.
+    Memory(Pointer<Option<Prov>>),
 }
 
 /// Where and how to continue when returning/unwinding from the current function.

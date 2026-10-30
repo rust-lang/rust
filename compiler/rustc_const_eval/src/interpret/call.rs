@@ -495,7 +495,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
             _ => {}
         }
-        let caller_location = with_caller_location.then(|| self.caller_location());
+        let caller_location =
+            if with_caller_location { Some(self.caller_location()?) } else { None };
 
         // The first order of business is to figure out the callee signature.
         // We leave the list of extra c-variadic args empty because the callee cannot know about
