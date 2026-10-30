@@ -262,6 +262,7 @@ impl IntoDiagArg for Level {
 pub enum InExternalMacro {
     DontReport,
     Report,
+    ReportAndSuggest,
 }
 
 /// Specification of a single lint.

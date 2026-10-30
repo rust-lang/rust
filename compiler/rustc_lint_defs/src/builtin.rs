@@ -2657,6 +2657,7 @@ declare_lint! {
         explain_reason: false
     },
     @edition Edition2024 => Warn,
+    @in_external_macro = ReportAndSuggest,
 }
 
 declare_lint! {
