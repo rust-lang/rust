@@ -727,7 +727,6 @@ where
             return;
         };
 
-        // FIXME: consider performing these checks in attribute parsing instead
         for (lint_index, lint_check) in lint_checks.into_iter().enumerate() {
             let LintCheck {
                 tool,
@@ -776,12 +775,7 @@ where
                 };
                 self.provider.push_expectation(
                     expect_id,
-                    LintExpectation::new(
-                        reason,
-                        lint_span,
-                        is_unfulfilled_lint_expectations,
-                        tool,
-                    ),
+                    LintExpectation::new(reason, lint_span, is_unfulfilled_lint_expectations, tool),
                 );
             }
         }

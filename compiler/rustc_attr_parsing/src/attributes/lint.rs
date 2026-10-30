@@ -4,7 +4,7 @@ use rustc_attr_ir::lint::{LintCheck, LintCheckKind};
 use rustc_attr_ir::target::{AssocCtxt, MethodKind, Target};
 use rustc_lint_defs::builtin::{RENAMED_AND_REMOVED_LINTS, UNKNOWN_LINTS, UNUSED_ATTRIBUTES};
 use rustc_lint_defs::{CheckLintNameResult, LintId};
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, sym};
+use rustc_span::{Ident, Span, Symbol, sym};
 use thin_vec::ThinVec;
 
 use crate::attributes::{AcceptMapping, AttributeParser, AttributeStability};
@@ -151,7 +151,12 @@ impl LintParser {
         lint_span: Span,
         cx: &mut AcceptContext<'_, 'a>,
     ) -> Option<(&'a [LintId], Symbol)> {
-        let lint_result = cx.sess.lint_store.as_ref().unwrap().check_lint_name(
+        // FIXME For historic reasons these checks are not executed on macro calls
+        if cx.target == Target::MacroCall {
+            return None;
+        }
+
+        let lint_result = cx.sess.lint_store.as_ref().unwrap().check_attribute_lint_name(
             lint_name.as_str(),
             tool.map(|tool| tool.name),
             cx.lint_tools.unwrap(),
@@ -160,9 +165,9 @@ impl LintParser {
         // FIXME(164898) Lint attributes are parsed twice, once on the AST and once on the HIR
         // Both times emit diagnostics, for historic reasons
         // We only want to emit these lints once, on the HIR.
-        // On the AST `target_span` will be `DUMMY_SP`, which we use to detect which instance we are.
+        // On the AST the parse filter will be `Some` (since we're only parsing lint attributes then)
         // #164898 will fix this, after that PR this check can be removed
-        let should_lint = cx.target_span != DUMMY_SP;
+        let should_lint = cx.parse_filter.is_none();
 
         let (ids, name) = match lint_result {
             CheckLintNameResult::Ok(ids) => (ids, lint_name),
@@ -238,7 +243,7 @@ impl LintParser {
                     .lint_store
                     .as_ref()
                     .unwrap()
-                    .check_lint_name(replace, None, cx.lint_tools.unwrap())
+                    .check_attribute_lint_name(replace, None, cx.lint_tools.unwrap())
                 else {
                     panic!("renamed lint does not exist: {replace}");
                 };

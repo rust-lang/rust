@@ -92,13 +92,13 @@ impl DynLintStore for LintStore {
         }))
     }
 
-    fn check_lint_name(
+    fn check_attribute_lint_name(
         &self,
         lint_name: &str,
         tool_name: Option<Symbol>,
-        registered_tools: &RegisteredTools,
+        lint_tools: &RegisteredTools,
     ) -> CheckLintNameResult<'_> {
-        self.check_lint_name(lint_name, tool_name, registered_tools)
+        self.check_lint_name(lint_name, tool_name, lint_tools)
     }
 }
 
@@ -321,7 +321,7 @@ impl LintStore {
 
     /// Checks the name of a lint for its existence, and whether it was
     /// renamed or removed. Generates a `Diag` containing a
-    /// warning for renamed and removed lints. This is over both lint
+    /// warning for renamed and removed lints. aThis is over both lint
     /// names from attributes and those passed on the command line. Since
     /// it emits non-fatal warnings and there are *two* lint passes that
     /// inspect attributes, this is only run from the late pass to avoid

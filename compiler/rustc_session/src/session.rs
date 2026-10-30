@@ -84,11 +84,11 @@ pub trait DynLintStore: Any + DynSync + DynSend {
     /// Provides a way to access lint groups without depending on `rustc_lint`
     fn lint_groups_iter(&self) -> Box<dyn Iterator<Item = LintGroup> + '_>;
 
-    fn check_lint_name(
+    fn check_attribute_lint_name(
         &self,
         lint_name: &str,
         tool_name: Option<Symbol>,
-        registered_tools: &RegisteredTools,
+        lint_tools: &RegisteredTools,
     ) -> CheckLintNameResult<'_>;
 }
 
