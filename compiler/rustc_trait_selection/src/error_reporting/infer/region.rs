@@ -1528,9 +1528,46 @@ fn suggest_precise_capturing<'tcx>(
             return;
         }
 
+        let mut next_fresh_param = || {
+            ['T', 'U', 'V', 'W', 'X', 'Y', 'A', 'B', 'C']
+                .into_iter()
+                .map(sym::character)
+                .chain((0..).map(|i| Symbol::intern(&format!("T{i}"))))
+                .find(|s| captured_non_lifetimes.insert(*s))
+                .unwrap()
+        };
+
+        let mut new_params = String::new();
+        let mut suggs = vec![];
+        let mut apit_spans = vec![];
+
+        for (i, (span, name)) in synthetics.into_iter().enumerate() {
+            apit_spans.push(span);
+
+            let fresh_param = next_fresh_param();
+
+            // Suggest renaming.
+            suggs.push((span, fresh_param.to_string()));
+
+            // Super jank. Turn `impl Trait` into `T: Trait`.
+            //
+            // This currently involves stripping the `impl` from the name of
+            // the parameter, since APITs are always named after how they are
+            // rendered in the AST. This sucks! But to recreate the bound list
+            // from the APIT itself would be miserable, so we're stuck with
+            // this for now!
+            if i > 0 {
+                new_params += ", ";
+            }
+            let name_as_bounds = name.as_str().trim_start_matches("impl").trim_start();
+            new_params += fresh_param.as_str();
+            new_params += ": ";
+            new_params += name_as_bounds;
+        }
+
         // `'_` in a capture list only resolves when the signature has a single anonymous
         // lifetime, so when there are several the suggestion has to name them first.
-        if synthetics.is_empty()
+        if apit_spans.is_empty()
             && let Some(suggs) = name_anon_lifetimes_suggestion(
                 tcx,
                 generic_param_scope,
@@ -1547,7 +1584,7 @@ fn suggest_precise_capturing<'tcx>(
 
         captured_lifetimes.insert(new_lifetime);
 
-        if synthetics.is_empty() {
+        if apit_spans.is_empty() {
             let concatenated_bounds = captured_lifetimes
                 .into_iter()
                 .chain(captured_non_lifetimes)
@@ -1561,43 +1598,6 @@ fn suggest_precise_capturing<'tcx>(
                 concatenated_bounds,
             });
         } else {
-            let mut next_fresh_param = || {
-                ['T', 'U', 'V', 'W', 'X', 'Y', 'A', 'B', 'C']
-                    .into_iter()
-                    .map(sym::character)
-                    .chain((0..).map(|i| Symbol::intern(&format!("T{i}"))))
-                    .find(|s| captured_non_lifetimes.insert(*s))
-                    .unwrap()
-            };
-
-            let mut new_params = String::new();
-            let mut suggs = vec![];
-            let mut apit_spans = vec![];
-
-            for (i, (span, name)) in synthetics.into_iter().enumerate() {
-                apit_spans.push(span);
-
-                let fresh_param = next_fresh_param();
-
-                // Suggest renaming.
-                suggs.push((span, fresh_param.to_string()));
-
-                // Super jank. Turn `impl Trait` into `T: Trait`.
-                //
-                // This currently involves stripping the `impl` from the name of
-                // the parameter, since APITs are always named after how they are
-                // rendered in the AST. This sucks! But to recreate the bound list
-                // from the APIT itself would be miserable, so we're stuck with
-                // this for now!
-                if i > 0 {
-                    new_params += ", ";
-                }
-                let name_as_bounds = name.as_str().trim_start_matches("impl").trim_start();
-                new_params += fresh_param.as_str();
-                new_params += ": ";
-                new_params += name_as_bounds;
-            }
-
             let Some(generics) = tcx.hir_get_generics(fn_def_id) else {
                 // This shouldn't happen, but don't ICE.
                 return;
