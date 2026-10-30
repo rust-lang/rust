@@ -557,14 +557,16 @@ fn link_rlib<'a>(
     // wrapper file before any `add_file` calls. This lets the rmeta-link member be
     // placed immediately after metadata in the archive, so consumers can find
     // it without iterating every archive member.
-    let rust_object_files: Vec<String> = compiled_modules
-        .modules
-        .iter()
-        .filter_map(|m| m.object.as_ref())
-        .chain(compiled_modules.modules.iter().filter_map(|m| m.global_asm_object.as_ref()))
-        .map(|obj| obj.file_name().unwrap().to_str().unwrap().to_string())
-        .collect();
-
+    // Use stable archive member names rather than invocation-specific temporary filenames.
+    let rust_object_files: Vec<String> =
+        compiled_modules
+            .modules
+            .iter()
+            .filter_map(|m| m.object.as_ref().map(|_| format!("{}.rcgu.o", m.name)))
+            .chain(compiled_modules.modules.iter().filter_map(|m| {
+                m.global_asm_object.as_ref().map(|_| format!("{}.rcgu.asm.o", m.name))
+            }))
+            .collect();
     let native_lib_filenames: Vec<Option<Symbol>> = crate_info
         .used_libraries
         .iter()
@@ -612,11 +614,15 @@ fn link_rlib<'a>(
 
     for m in &compiled_modules.modules {
         if let Some(obj) = m.object.as_ref() {
-            ab.add_file(obj, ArchiveEntryKind::RustObj);
+            ab.add_file_with_name(obj, &format!("{}.rcgu.o", m.name), ArchiveEntryKind::RustObj);
         }
 
         if let Some(obj) = m.global_asm_object.as_ref() {
-            ab.add_file(obj, ArchiveEntryKind::RustObj);
+            ab.add_file_with_name(
+                obj,
+                &format!("{}.rcgu.asm.o", m.name),
+                ArchiveEntryKind::RustObj,
+            );
         }
 
         if let Some(dwarf_obj) = m.dwarf_object.as_ref() {
