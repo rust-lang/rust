@@ -117,7 +117,7 @@ where
         force_from_dep_node_fn: (can_recover && !is_no_force).then_some(
             |tcx, dep_node, _prev_index| {
                 let query = Q::query_vtable(tcx);
-                crate::execution::force_query_dep_node(tcx, query, dep_node)
+                rustc_middle::query::q_impl::execution::force_query_dep_node(tcx, query, dep_node)
             },
         ),
         promote_from_disk_fn: (can_recover && is_cache_on_disk).then_some(

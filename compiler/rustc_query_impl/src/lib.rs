@@ -1,9 +1,7 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![feature(core_intrinsics)]
 #![feature(min_specialization)]
 #![feature(rustc_attrs)]
-#![feature(try_blocks)]
 // tidy-alphabetical-end
 
 use rustc_data_structures::sync::{AtomicU64, Lock};
@@ -15,7 +13,6 @@ use rustc_middle::query::on_disk_cache::OnDiskCache;
 pub use crate::job::collect_active_query_jobs;
 
 mod dep_kind_vtables;
-mod execution;
 mod incremental;
 mod job;
 mod query_vtables;
@@ -26,13 +23,12 @@ pub fn query_system<'tcx>(
     local_providers: Providers,
     extern_providers: ExternProviders,
     on_disk_cache: Option<OnDiskCache>,
-    incremental: bool,
     track_present: bool,
 ) -> QuerySystem<'tcx> {
     QuerySystem {
         arenas: Default::default(),
         dep_kind_vtables: dep_kind_vtables::make_dep_kind_vtables(arena),
-        query_vtables: query_vtables::make_query_vtables(incremental, track_present),
+        query_vtables: query_vtables::make_query_vtables(track_present),
         side_effects: Default::default(),
         used_features: Default::default(),
         on_disk_cache,

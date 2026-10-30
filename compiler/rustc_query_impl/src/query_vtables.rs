@@ -1,8 +1,7 @@
 use rustc_middle::queries::TaggedQueryKey;
 use rustc_middle::query::erase::{self, Erased};
-use rustc_middle::query::{QueryCache, QueryKey, QueryMode, QueryVTable};
+use rustc_middle::query::{QueryCache, QueryKey, QueryVTable};
 use rustc_middle::ty::TyCtxt;
-use rustc_span::Span;
 
 /// Trait that knows how to look up the [`QueryVTable`] for a particular query.
 ///
@@ -55,51 +54,6 @@ macro_rules! define_queries {
                 // Trying to inline these wrapper functions into their generic
                 // "inner" helpers tends to break `tests/run-make/short-ice`.
 
-                pub(crate) mod execute_query_incr {
-                    use super::*;
-                    use rustc_middle::queries::$name::{Key, Value};
-
-                    // Adding `__rust_end_short_backtrace` marker to backtraces so that we emit the frames
-                    // when `RUST_BACKTRACE=1`, add a new mod with `$name` here is to allow duplicate naming
-                    #[inline(never)]
-                    pub(crate) fn __rust_end_short_backtrace<'tcx>(
-                        tcx: TyCtxt<'tcx>,
-                        span: Span,
-                        key: Key<'tcx>,
-                        mode: QueryMode,
-                    ) -> Option<Erased<Value<'tcx>>> {
-                        #[cfg(debug_assertions)]
-                        let _guard = tracing::span!(tracing::Level::TRACE, stringify!($name), ?key).entered();
-                        crate::execution::execute_query_incr_inner(
-                            &tcx.query_system.query_vtables.$name,
-                            tcx,
-                            span,
-                            key,
-                            mode
-                        )
-                    }
-                }
-
-                pub(crate) mod execute_query_non_incr {
-                    use super::*;
-                    use rustc_middle::queries::$name::{Key, Value};
-
-                    #[inline(never)]
-                    pub(crate) fn __rust_end_short_backtrace<'tcx>(
-                        tcx: TyCtxt<'tcx>,
-                        span: Span,
-                        key: Key<'tcx>,
-                        __mode: QueryMode,
-                    ) -> Option<Erased<Value<'tcx>>> {
-                        Some(crate::execution::execute_query_non_incr_inner(
-                            &tcx.query_system.query_vtables.$name,
-                            tcx,
-                            span,
-                            key,
-                        ))
-                    }
-                }
-
                 /// Defines an `invoke_provider` function that calls the query's provider,
                 /// to be used as a function pointer in the query's vtable.
                 ///
@@ -139,7 +93,7 @@ macro_rules! define_queries {
                     }
                 }
 
-                pub(crate) fn make_query_vtable<'tcx>(incremental: bool, track_present: bool)
+                pub(crate) fn make_query_vtable<'tcx>(track_present: bool)
                     -> QueryVTable<'tcx, rustc_middle::queries::$name::Cache<'tcx>>
                 {
                     use rustc_middle::queries::$name::Value;
@@ -196,11 +150,6 @@ macro_rules! define_queries {
                             format!("{:?}", erase::restore_val(*erased_value))
                         },
                         create_tagged_key: TaggedQueryKey::$name,
-                        execute_query_fn: if incremental {
-                            crate::query_vtables::$name::execute_query_incr::__rust_end_short_backtrace
-                        } else {
-                            crate::query_vtables::$name::execute_query_non_incr::__rust_end_short_backtrace
-                        },
                     }
                 }
 
@@ -218,12 +167,12 @@ macro_rules! define_queries {
             }
         )*
 
-        pub(crate) fn make_query_vtables<'tcx>(incremental: bool, track_present: bool)
+        pub(crate) fn make_query_vtables<'tcx>(track_present: bool)
             -> rustc_middle::queries::QueryVTables<'tcx>
         {
             rustc_middle::queries::QueryVTables {
                 $(
-                    $name: crate::query_vtables::$name::make_query_vtable(incremental, track_present),
+                    $name: crate::query_vtables::$name::make_query_vtable(track_present),
                 )*
             }
         }
