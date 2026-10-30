@@ -6,9 +6,7 @@
 
 use std::simd::{f32x4, i16x8, i64x2};
 
-#[repr(C, packed)]
 pub struct Bar(u32, i64x2, i64x2, i64x2, i64x2, i64x2, i64x2);
-// CHECK: %Bar = type <{ i32, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64> }>
 
 #[repr(simd)]
 pub struct Tile([i8; 1024]);
@@ -21,21 +19,27 @@ pub unsafe fn struct_autocast(key_metadata: u32, key: i64x2) -> Bar {
         fn foo(key_metadata: u32, key: i64x2) -> Bar;
     }
 
-    // CHECK: [[A:%[0-9]+]] = call { i32, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64> } @llvm.x86.encodekey128(i32 {{.*}}, <2 x i64> {{.*}})
-    // CHECK: [[B:%[0-9]+]] = extractvalue { i32, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64> } [[A]], 0
-    // CHECK: [[C:%[0-9]+]] = insertvalue %Bar poison, i32 [[B]], 0
-    // CHECK: [[D:%[0-9]+]] = extractvalue { i32, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64> } [[A]], 1
-    // CHECK: [[E:%[0-9]+]] = insertvalue %Bar [[C]], <2 x i64> [[D]], 1
-    // CHECK: [[F:%[0-9]+]] = extractvalue { i32, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64> } [[A]], 2
-    // CHECK: [[G:%[0-9]+]] = insertvalue %Bar [[E]], <2 x i64> [[F]], 2
-    // CHECK: [[H:%[0-9]+]] = extractvalue { i32, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64> } [[A]], 3
-    // CHECK: [[I:%[0-9]+]] = insertvalue %Bar [[G]], <2 x i64> [[H]], 3
-    // CHECK: [[J:%[0-9]+]] = extractvalue { i32, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64> } [[A]], 4
-    // CHECK: [[K:%[0-9]+]] = insertvalue %Bar [[I]], <2 x i64> [[J]], 4
-    // CHECK: [[L:%[0-9]+]] = extractvalue { i32, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64> } [[A]], 5
-    // CHECK: [[M:%[0-9]+]] = insertvalue %Bar [[K]], <2 x i64> [[L]], 5
-    // CHECK: [[N:%[0-9]+]] = extractvalue { i32, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64> } [[A]], 6
-    // CHECK:                 insertvalue %Bar [[M]], <2 x i64> [[N]], 6
+    // CHECK: %0 = call { i32, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64> } @llvm.x86.encodekey128(i32 %key_metadata, <2 x i64> %key)
+    // CHECK-NEXT: %1 = extractvalue { i32, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64> } %0, 0
+    // CHECK-NEXT: %2 = extractvalue { i32, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64> } %0, 1
+    // CHECK-NEXT: %3 = extractvalue { i32, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64> } %0, 2
+    // CHECK-NEXT: %4 = extractvalue { i32, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64> } %0, 3
+    // CHECK-NEXT: %5 = extractvalue { i32, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64> } %0, 4
+    // CHECK-NEXT: %6 = extractvalue { i32, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64> } %0, 5
+    // CHECK-NEXT: %7 = extractvalue { i32, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64>, <2 x i64> } %0, 6
+    // CHECK-NEXT: %8 = getelementptr inbounds i8, ptr %_0, i64 96
+    // CHECK-NEXT: store i32 %1, ptr %8, align 16
+    // CHECK-NEXT: store <2 x i64> %2, ptr %_0, align 16
+    // CHECK-NEXT: %9 = getelementptr inbounds i8, ptr %_0, i64 16
+    // CHECK-NEXT: store <2 x i64> %3, ptr %9, align 16
+    // CHECK-NEXT: %10 = getelementptr inbounds i8, ptr %_0, i64 32
+    // CHECK-NEXT: store <2 x i64> %4, ptr %10, align 16
+    // CHECK-NEXT: %11 = getelementptr inbounds i8, ptr %_0, i64 48
+    // CHECK-NEXT: store <2 x i64> %5, ptr %11, align 16
+    // CHECK-NEXT: %12 = getelementptr inbounds i8, ptr %_0, i64 64
+    // CHECK-NEXT: store <2 x i64> %6, ptr %12, align 16
+    // CHECK-NEXT: %13 = getelementptr inbounds i8, ptr %_0, i64 80
+    // CHECK-NEXT: store <2 x i64> %7, ptr %13, align 16
     foo(key_metadata, key)
 }
 
@@ -47,15 +51,17 @@ pub unsafe fn struct_with_i1_vector_autocast(a: i64x2, b: i64x2) -> (u8, u8) {
         fn foo(a: i64x2, b: i64x2) -> (u8, u8);
     }
 
-    // CHECK: [[A:%[0-9]+]] = call { <2 x i1>, <2 x i1> } @llvm.x86.avx512.vp2intersect.q.128(<2 x i64> {{.*}}, <2 x i64> {{.*}})
-    // CHECK: [[B:%[0-9]+]] = extractvalue { <2 x i1>, <2 x i1> } [[A]], 0
-    // CHECK: [[C:%[0-9]+]] = shufflevector <2 x i1> [[B]], <2 x i1> zeroinitializer, <8 x i32> <i32 0, i32 1, i32 2, i32 2, i32 2, i32 2, i32 2, i32 2>
-    // CHECK: [[D:%[0-9]+]] = bitcast <8 x i1> [[C]] to i8
-    // CHECK: [[E:%[0-9]+]] = insertvalue { i8, i8 } poison, i8 [[D]], 0
-    // CHECK: [[F:%[0-9]+]] = extractvalue { <2 x i1>, <2 x i1> } [[A]], 1
-    // CHECK: [[G:%[0-9]+]] = shufflevector <2 x i1> [[F]], <2 x i1> zeroinitializer, <8 x i32> <i32 0, i32 1, i32 2, i32 2, i32 2, i32 2, i32 2, i32 2>
-    // CHECK: [[H:%[0-9]+]] = bitcast <8 x i1> [[G]] to i8
-    // CHECK:                 insertvalue { i8, i8 } [[E]], i8 [[H]], 1
+    // CHECK: %0 = call { <2 x i1>, <2 x i1> } @llvm.x86.avx512.vp2intersect.q.128(<2 x i64> %a, <2 x i64> %b)
+    // CHECK-NEXT: %1 = extractvalue { <2 x i1>, <2 x i1> } %0, 0
+    // CHECK-NEXT: %2 = shufflevector <2 x i1> %1, <2 x i1> zeroinitializer, <8 x i32> <i32 0, i32 1, i32 2, i32 2, i32 2, i32 2, i32 2, i32 2>
+    // CHECK-NEXT: %3 = bitcast <8 x i1> %2 to i8
+    // CHECK-NEXT: %4 = extractvalue { <2 x i1>, <2 x i1> } %0, 1
+    // CHECK-NEXT: %5 = shufflevector <2 x i1> %4, <2 x i1> zeroinitializer, <8 x i32> <i32 0, i32 1, i32 2, i32 2, i32 2, i32 2, i32 2, i32 2>
+    // CHECK-NEXT: %6 = bitcast <8 x i1> %5 to i8
+    // CHECK-NEXT: %7 = insertvalue { i8, i8 } poison, i8 %3, 0
+    // CHECK-NEXT: %8 = insertvalue { i8, i8 } %7, i8 %6, 1
+    // CHECK-NEXT: %_0.0 = extractvalue { i8, i8 } %8, 0
+    // CHECK-NEXT: %_0.1 = extractvalue { i8, i8 } %8, 1
     foo(a, b)
 }
 

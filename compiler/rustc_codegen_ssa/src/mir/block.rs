@@ -2,7 +2,8 @@ use std::cmp;
 use std::ops::Range;
 
 use rustc_abi::{
-    Align, ArmCall, CanonAbi, ExternAbi, FieldsShape, HasDataLayout, Size, VariantIdx, Variants,
+    Align, ArmCall, BackendRepr, CanonAbi, ExternAbi, FieldsShape, HasDataLayout, Size, VariantIdx,
+    Variants,
 };
 use rustc_ast as ast;
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
@@ -1166,38 +1167,42 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let result_layout =
                 self.cx.layout_of(self.monomorphized_place_ty(destination.as_ref()));
 
-            let return_dest = if result_layout.is_zst() {
-                ReturnDest::Nothing
-            } else if let Some(index) = destination.as_local() {
-                match self.locals[index] {
-                    LocalRef::Place(dest) => ReturnDest::Store(dest),
-                    LocalRef::UnsizedPlace(_) => bug!("return type must be sized"),
-                    LocalRef::PendingOperand => {
-                        // Handle temporary places, specifically `Operand` ones, as
-                        // they don't have `alloca`s.
-                        ReturnDest::DirectOperand(index)
-                    }
-                    LocalRef::Operand(_) => bug!("place local already assigned to"),
+            let return_mode = if result_layout.is_zst() {
+                PassMode::Ignore
+            } else if let BackendRepr::ScalarPair { .. } = result_layout.backend_repr {
+                PassMode::Pair(ArgAttributes::new(), ArgAttributes::new())
+            } else if result_layout.is_aggregate() {
+                PassMode::Indirect {
+                    attrs: ArgAttributes::new(),
+                    address_space: None,
+                    mode: IndirectMode::Pointer,
                 }
             } else {
-                ReturnDest::Store(self.codegen_place(bx, destination.as_ref()))
+                PassMode::Direct(ArgAttributes::new())
             };
+            let return_abi = ArgAbi { layout: result_layout, mode: return_mode };
+            let (return_dest, memory_return_place) =
+                self.make_return_place(bx, destination, &return_abi);
+            assert_eq!(
+                memory_return_place.is_some(),
+                !result_layout.is_zst()
+                    && matches!(result_layout.backend_repr, BackendRepr::Memory { sized: true })
+            );
 
             let args =
                 args.into_iter().map(|arg| self.codegen_operand(bx, &arg.node)).collect::<Vec<_>>();
 
             self.set_debug_loc(bx, source_info);
 
-            let llret =
-                bx.codegen_llvm_intrinsic_call(instance, &args, self.mir[helper.bb].is_cleanup);
+            let llret = bx.codegen_llvm_intrinsic_call(
+                instance,
+                &args,
+                memory_return_place,
+                self.mir[helper.bb].is_cleanup,
+            );
 
             if let Some(target) = target {
-                self.store_return(
-                    bx,
-                    return_dest,
-                    &ArgAbi { layout: result_layout, mode: PassMode::Direct(ArgAttributes::new()) },
-                    llret,
-                );
+                self.store_return(bx, return_dest, &return_abi, llret);
                 return helper.funclet_br(self, bx, target, mergeable_succ, &[]);
             } else {
                 bx.unreachable();
@@ -2424,9 +2429,25 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         dest: mir::Place<'tcx>,
         fn_ret: &ArgAbi<'tcx, Ty<'tcx>>,
     ) -> (ReturnDest<'tcx, Bx::Value>, ReturnSlot<Bx::Value>) {
+        let (dest, place) = self.make_return_place(bx, dest, fn_ret);
+        (
+            dest,
+            match place {
+                None => ReturnSlot::Direct,
+                Some(place) => ReturnSlot::Indirect(place.llval),
+            },
+        )
+    }
+
+    fn make_return_place(
+        &mut self,
+        bx: &mut Bx,
+        dest: mir::Place<'tcx>,
+        fn_ret: &ArgAbi<'tcx, Ty<'tcx>>,
+    ) -> (ReturnDest<'tcx, Bx::Value>, Option<PlaceValue<Bx::Value>>) {
         // If the return is ignored, we can just return a do-nothing `ReturnDest`.
         if fn_ret.is_ignore() {
-            return (ReturnDest::Nothing, ReturnSlot::Direct);
+            return (ReturnDest::Nothing, None);
         }
         let dest = if let Some(index) = dest.as_local() {
             match self.locals[index] {
@@ -2440,12 +2461,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // but the calling convention has an indirect return.
                         let tmp = PlaceRef::alloca(bx, fn_ret.layout);
                         tmp.storage_live(bx);
-                        (
-                            ReturnDest::IndirectOperand(tmp, index),
-                            ReturnSlot::Indirect(tmp.val.llval),
-                        )
+                        (ReturnDest::IndirectOperand(tmp, index), Some(tmp.val))
                     } else {
-                        (ReturnDest::DirectOperand(index), ReturnSlot::Direct)
+                        (ReturnDest::DirectOperand(index), None)
                     };
                 }
                 LocalRef::Operand(_) => {
@@ -2465,13 +2483,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // to create a temporary.
                 span_bug!(self.mir.span, "can't directly store to unaligned value");
             }
-            (ReturnDest::Nothing, ReturnSlot::Indirect(dest.val.llval))
+            (ReturnDest::Nothing, Some(dest.val))
         } else {
-            (ReturnDest::Store(dest), ReturnSlot::Direct)
+            (ReturnDest::Store(dest), None)
         }
     }
 
-    // Stores the return value of a function call into it's final location.
+    /// Stores the return value of a function call into it's final location.
     fn store_return(
         &mut self,
         bx: &mut Bx,
@@ -2572,4 +2590,63 @@ pub fn store_cast<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     } else {
         bx.store(value, ptr, align);
     };
+}
+
+pub fn intrinsic_return_struct_non_zst_fields<'tcx, Cx: CodegenMethods<'tcx>>(
+    cx: &Cx,
+    ret_layout: TyAndLayout<'tcx>,
+) -> Vec<(Cx::Type, Size)> {
+    let ret_layout = ret_layout.peel_transparent_wrappers_from_non_1zst(cx);
+    match ret_layout.ty.kind() {
+        ty::Adt(adt_def, _) if adt_def.is_struct() => {}
+        ty::Tuple(_) => {}
+        _ => bug!("invalid intrinsic return type: {ret_layout:?}"),
+    }
+    let fields = (0..ret_layout.fields.count())
+        .filter_map(|i| {
+            let field = ret_layout.field(cx, i);
+            assert!(
+                field.is_zst() || !field.is_aggregate(),
+                "invalid intrinsic return field: {field:?}"
+            );
+            (!field.is_zst())
+                .then(|| (cx.immediate_backend_type(field), ret_layout.fields.offset(i)))
+        })
+        .collect::<Vec<_>>();
+    assert!(fields.len() >= 2, "invalid intrinsic return type: {ret_layout:?}");
+    fields
+}
+
+pub fn store_intrinsic_return_struct<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+    bx: &mut Bx,
+    ret_layout: TyAndLayout<'tcx>,
+    memory_return_place: Option<PlaceValue<Bx::Value>>,
+    fields: Vec<(Size, Bx::Value)>,
+) -> Bx::Value {
+    match ret_layout.backend_repr {
+        BackendRepr::ScalarPair { a: _, b: _, b_offset } => {
+            assert!(memory_return_place.is_none());
+            let a_index = if fields[0].0 == b_offset { 1 } else { 0 };
+            let b_index = if fields[1].0 == b_offset { 1 } else { 0 };
+            assert_ne!(a_index, b_index);
+            let mut pair = bx.cx().const_poison(bx.immediate_backend_type(ret_layout));
+            pair = bx.insert_value(pair, fields[a_index].1, 0);
+            bx.insert_value(pair, fields[b_index].1, 1)
+        }
+        BackendRepr::Memory { sized: true } => {
+            let dest =
+                memory_return_place.expect("BackendRepr::Memory return with no return place");
+            for (offset, value) in fields.into_iter() {
+                let pointer = if offset.bytes() != 0 {
+                    bx.inbounds_ptradd(dest.llval, bx.const_usize(offset.bytes()))
+                } else {
+                    dest.llval
+                };
+                bx.store(value, pointer, dest.align.restrict_for_offset(offset));
+            }
+            // Return value is ignored as result was stored in `memory_return_place`
+            dest.llval
+        }
+        _ => bug!("unexpected aggregate return layout: {ret_layout:?}"),
+    }
 }
