@@ -1,4 +1,4 @@
-//! Test for <https://github.com/rust-lang/rust/issues/157755>. 
+//! Test for <https://github.com/rust-lang/rust/issues/157755>.
 //! for built-in traits
 
 //@ check-pass
