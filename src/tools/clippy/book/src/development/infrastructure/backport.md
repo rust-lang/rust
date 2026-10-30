@@ -31,12 +31,12 @@ some explanation and are quite subjective. Good judgement is required.
    already synced to the Rust repo, the fix doesn't need to be backported, as it
    will hit stable together with the commit that introduced the problem. If the
    fix PR is not synced yet, the fix PR either needs to be "backported" to the
-   Rust `master` branch or to `beta` in the next backport cycle.
+   Rust `main` branch or to `beta` in the next backport cycle.
 
-3. **Make sure that the fix is on `master` before porting to `beta`**
+3. **Make sure that the fix is on `main` before porting to `beta`**
 
-   The fix must already be synced to the Rust `master` branch. Otherwise, the
-   next `beta` will be missing this fix again. If it is not yet in `master` it
+   The fix must already be synced to the Rust `main` branch. Otherwise, the
+   next `beta` will be missing this fix again. If it is not yet in `main` it
    should probably not be backported. If the backport is really important, do an
    out-of-cycle sync first. However, the out-of-cycle sync should be small,
    because the changes in that sync will get right into `beta`, without being
@@ -55,7 +55,7 @@ remote in the Rust repository.
 After that, fetch the remote with
 
 ```bash
-git fetch clippy-upstream master
+git fetch clippy-upstream main
 ```
 
 Then, switch to the `beta` branch:
@@ -86,7 +86,7 @@ Do this for all PRs that should be backported.
 ## Open PR in the Rust repository
 
 Next, open the PR for the backport. Make sure, the PR is opened towards the
-`beta` branch and not the `master` branch. The PR description should look like
+`beta` branch and not the `main` branch. The PR description should look like
 this:
 
 ```

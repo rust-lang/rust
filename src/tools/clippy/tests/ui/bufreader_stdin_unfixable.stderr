@@ -1,0 +1,11 @@
+error: wrapping already buffered `Stdin` into a `BufReader`
+  --> tests/ui/bufreader_stdin_unfixable.rs:12:18
+   |
+LL |     let reader = BufReader::new(stdin_macro!());
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::bufreader-stdin` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::bufreader_stdin)]`
+
+error: aborting due to 1 previous error
+

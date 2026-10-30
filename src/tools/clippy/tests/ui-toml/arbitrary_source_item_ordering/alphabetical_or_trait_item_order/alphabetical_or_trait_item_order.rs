@@ -77,6 +77,21 @@ impl WithDefault2 for FullImpl {
     fn c() {}
 }
 
+// Tests return position impl trait in trait (RPITIT).
+trait Rpitit {
+    async fn a();
+    fn b();
+    fn c() -> impl Sized;
+}
+
+struct FullImpl2;
+
+impl Rpitit for FullImpl2 {
+    async fn a() {}
+    fn b() {}
+    fn c() -> impl Sized {}
+}
+
 // Tests `const` in trait.
 trait ConstTrait {
     const A: bool;
