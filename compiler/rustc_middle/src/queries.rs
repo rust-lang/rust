@@ -1490,6 +1490,7 @@ rustc_queries! {
     query ty_span(def_id: LocalDefId) -> Span {
         desc { "looking up span for `{}`'s type", tcx.def_path_str(def_id) }
         cache_on_disk
+        feedable
     }
 
     query lookup_stability(def_id: DefId) -> Option<rustc_attr_ir::Stability> {

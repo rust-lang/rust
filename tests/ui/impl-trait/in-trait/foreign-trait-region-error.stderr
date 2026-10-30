@@ -1,0 +1,40 @@
+error[E0477]: the type `Bar<'ws>` does not fulfill the required lifetime
+  --> $DIR/auxiliary/region-error-trait.rs:5:13
+   |
+LL |     fn f(_: Self::A<'_>) -> impl Sized;
+   |             ^^^^^^^^^^^
+   |
+note: type must outlive the anonymous lifetime as defined here as required by this binding
+  --> $DIR/foreign-trait-region-error.rs:22:29
+   |
+LL |     fn f(_: Self::A<'_>) -> impl Sized {}
+   |                             ^^^^^^^^^^
+
+error[E0477]: the type `Bar<'ws>` does not fulfill the required lifetime
+  --> $DIR/foreign-trait-region-error.rs:22:13
+   |
+LL |     fn f(_: Self::A<'_>) -> impl Sized {}
+   |             ^^^^^^^^^^^
+   |
+note: type must outlive the anonymous lifetime as defined here as required by this binding
+  --> $DIR/foreign-trait-region-error.rs:22:21
+   |
+LL |     fn f(_: Self::A<'_>) -> impl Sized {}
+   |                     ^^
+
+error[E0477]: the type `Bar<'ws>` does not fulfill the required lifetime
+  --> $DIR/foreign-trait-region-error.rs:22:13
+   |
+LL |     fn f(_: Self::A<'_>) -> impl Sized {}
+   |             ^^^^^^^^^^^
+   |
+note: type must outlive the anonymous lifetime as defined here as required by this binding
+  --> $DIR/foreign-trait-region-error.rs:22:21
+   |
+LL |     fn f(_: Self::A<'_>) -> impl Sized {}
+   |                     ^^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0477`.
