@@ -475,6 +475,8 @@ impl<T> Arc<T> {
     ///     let [producer, consumer] = std::array::from_fn(|_| state.next().unwrap());
     ///     (Producer(producer), Consumer(consumer))
     /// }
+    /// # let (Producer(producer), Consumer(consumer)) = oneshot();
+    /// # assert!(Arc::ptr_eq(&producer, &consumer));
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[inline]
