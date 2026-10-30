@@ -22,8 +22,8 @@ use rustc_middle::middle::stability;
 use rustc_middle::ty::elaborate::supertrait_def_ids;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams, simplify_type};
 use rustc_middle::ty::{
-    self, AssocContainer, AssocItem, GenericArgs, GenericArgsRef, GenericParamDefKind, ParamEnvAnd,
-    Ty, TyCtxt, TypeVisitableExt, Unnormalized, Upcast,
+    self, AssocContainer, AssocItem, GenericArgs, GenericParamDefKind, ParamEnvAnd, Ty, TyCtxt,
+    TypeVisitableExt, Unnormalized, Upcast,
 };
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::edit_distance::{
@@ -2592,7 +2592,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         &self,
         item: ty::AssocItem,
         impl_ty: Ty<'tcx>,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
     ) -> (Ty<'tcx>, Option<Ty<'tcx>>) {
         if item.is_fn() && self.mode == Mode::MethodCall {
             let sig = self.xform_method_sig(item.def_id, args);
@@ -2603,7 +2603,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn xform_method_sig(&self, method: DefId, args: GenericArgsRef<'tcx>) -> ty::FnSig<'tcx> {
+    fn xform_method_sig(&self, method: DefId, args: GenericArgs<'tcx>) -> ty::FnSig<'tcx> {
         let fn_sig = self.tcx.fn_sig(method);
         debug!(?fn_sig);
 

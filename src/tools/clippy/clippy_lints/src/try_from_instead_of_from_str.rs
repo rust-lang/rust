@@ -173,7 +173,7 @@ impl<'tcx> LateLintPass<'tcx> for TryFromInsteadOfFromStr {
             && let trait_ref = cx.tcx.impl_trait_ref(impl_def_id)
             && let instantiated_trait_ref = trait_ref.instantiate_identity().skip_normalization()
             // We check if the "from" item is a non-mutable `&str`.
-            && let [_, from_arg] = &**instantiated_trait_ref.args
+            && let [_, from_arg] = instantiated_trait_ref.args.as_slice()
             && let Some(from_ty) = from_arg.as_type()
             && from_ty.is_imm_ref_str()
             // We check that the trait is `TryFrom`.

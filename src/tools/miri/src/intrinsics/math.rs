@@ -19,7 +19,7 @@ fn sqrt<'tcx, F: Float + FloatConvert<F> + Into<Scalar>>(
 /// Determine which float operation on which type this is.
 fn is_host_unary_float_op(
     intrinsic_name: &str,
-    generic_args: ty::GenericArgsRef<'_>,
+    generic_args: ty::GenericArgs<'_>,
 ) -> Option<(FloatTy, HostUnaryFloatOp)> {
     let host_float_op = match intrinsic_name {
         "sin" => HostUnaryFloatOp::Sin,
@@ -92,7 +92,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn emulate_math_intrinsic(
         &mut self,
         intrinsic_name: &str,
-        generic_args: ty::GenericArgsRef<'tcx>,
+        generic_args: ty::GenericArgs<'tcx>,
         args: &[OpTy<'tcx>],
         dest: &PlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {

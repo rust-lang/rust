@@ -154,7 +154,7 @@ struct PropagatedBorrowCheckResults<'tcx> {
     used_mut_upvars: SmallVec<[FieldIdx; 8]>,
 }
 
-type DeferredClosureRequirements<'tcx> = Vec<(LocalDefId, ty::GenericArgsRef<'tcx>, Locations)>;
+type DeferredClosureRequirements<'tcx> = Vec<(LocalDefId, ty::GenericArgs<'tcx>, Locations)>;
 
 /// After we borrow check a closure, we are left with various
 /// requirements that we have inferred between the free regions that

@@ -1824,7 +1824,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             })
                             .collect();
 
-                        let after_field_ty = field.ty(self.tcx, args).skip_norm_wip();
+                        let after_field_ty = field.ty(self.tcx, *args).skip_norm_wip();
                         self.has_significant_drop_outside_of_captures(
                             closure_def_id,
                             closure_span,

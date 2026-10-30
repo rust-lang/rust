@@ -1028,7 +1028,7 @@ pub(super) fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
     // return;
     debug!("build_ctor: variant_index={:?}", variant_index);
 
-    let kind = AggregateKind::Adt(adt_def.did(), variant_index, args, None, None);
+    let kind = AggregateKind::Adt(adt_def.did(), variant_index, *args, None, None);
     let variant = adt_def.variant(variant_index);
     let statement = Statement::new(
         source_info,

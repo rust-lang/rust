@@ -622,7 +622,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         finished_map
     }
 
-    fn is_param_no_infer(&self, args: GenericArgsRef<'tcx>) -> bool {
+    fn is_param_no_infer(&self, args: GenericArgs<'tcx>) -> bool {
         self.is_of_param(args.type_at(0)) && !args.terms().any(|t| t.has_infer_types())
     }
 
