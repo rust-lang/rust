@@ -17,6 +17,7 @@ runners:
 
   - &job-macos-15
     os: macos-15 # macOS 15 Arm64
+    free_disk: true
     <<: *base-job
 
   - &job-macos-26
