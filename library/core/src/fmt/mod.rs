@@ -2497,7 +2497,7 @@ impl<'a> Formatter<'a> {
     #[doc(hidden)]
     #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
     pub fn debug_struct_field1_finish<'b>(&'b mut self, names: &str, value1: &dyn Debug) -> Result {
-        let mut names = names.split(' ');
+        let mut names = split_str_by_space(names);
         let mut builder = builders::debug_struct_new(self, names.next().unwrap());
         builder.field(names.next().unwrap(), value1);
         builder.finish()
@@ -2514,7 +2514,7 @@ impl<'a> Formatter<'a> {
         value1: &dyn Debug,
         value2: &dyn Debug,
     ) -> Result {
-        let mut names = names.split(' ');
+        let mut names = split_str_by_space(names);
         let mut builder = builders::debug_struct_new(self, names.next().unwrap());
         builder.field(names.next().unwrap(), value1);
         builder.field(names.next().unwrap(), value2);
@@ -2533,7 +2533,7 @@ impl<'a> Formatter<'a> {
         value2: &dyn Debug,
         value3: &dyn Debug,
     ) -> Result {
-        let mut names = names.split(' ');
+        let mut names = split_str_by_space(names);
         let mut builder = builders::debug_struct_new(self, names.next().unwrap());
         builder.field(names.next().unwrap(), value1);
         builder.field(names.next().unwrap(), value2);
@@ -2554,7 +2554,7 @@ impl<'a> Formatter<'a> {
         value3: &dyn Debug,
         value4: &dyn Debug,
     ) -> Result {
-        let mut names = names.split(' ');
+        let mut names = split_str_by_space(names);
         let mut builder = builders::debug_struct_new(self, names.next().unwrap());
         builder.field(names.next().unwrap(), value1);
         builder.field(names.next().unwrap(), value2);
@@ -2577,7 +2577,7 @@ impl<'a> Formatter<'a> {
         value4: &dyn Debug,
         value5: &dyn Debug,
     ) -> Result {
-        let mut names = names.split(' ');
+        let mut names = split_str_by_space(names);
         let mut builder = builders::debug_struct_new(self, names.next().unwrap());
         builder.field(names.next().unwrap(), value1);
         builder.field(names.next().unwrap(), value2);
@@ -2597,7 +2597,7 @@ impl<'a> Formatter<'a> {
         names: &str,
         values: &[&dyn Debug],
     ) -> Result {
-        let mut names = names.split(' ');
+        let mut names = split_str_by_space(names);
         let mut builder = builders::debug_struct_new(self, names.next().unwrap());
         for value in values.into_iter() {
             let name = names.next().unwrap();
@@ -2875,6 +2875,15 @@ impl<'a> Formatter<'a> {
     pub const fn options(&self) -> FormattingOptions {
         self.options
     }
+}
+
+/// Like `.split(' ')`, but doesn't bloat binary size
+fn split_str_by_space(s: &str) -> impl Iterator<Item = &str> {
+    s.as_bytes()
+        .split(|&b| b == b' ')
+        // SAFETY:
+        // splitting a valid UTF-8 string on an ASCII byte results in valid UTF-8 substrings
+        .map(|bytes| unsafe { str::from_utf8_unchecked(bytes) })
 }
 
 #[stable(since = "1.2.0", feature = "formatter_write")]
