@@ -113,12 +113,11 @@ impl<'sess> AttributeParser<'sess> {
 
         // For crate-level attributes we emit a specific set of lints to warn
         // people about accidentally not using them on the crate.
-        if let &AllowedTargets::AllowList(&[Allow(Target::Crate)]) = allowed_targets {
-            Self::check_crate_level(cx, false);
-            return;
-        }
-        if let &AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]) = allowed_targets {
-            Self::check_crate_level(cx, true);
+        if let AllowedTargets::AllowList(policies) | AllowedTargets::AllowListWarnRest(policies) = allowed_targets
+            // If only crate is `Allow`
+            && policies.iter().filter(|p| matches!(p, Allow(_))).all(|p| *p == Allow(Target::Crate))
+        {
+            Self::check_crate_level(cx, allowed_targets);
             return;
         }
 
@@ -220,10 +219,15 @@ impl<'sess> AttributeParser<'sess> {
         }
     }
 
-    pub(crate) fn check_crate_level(cx: &mut AcceptContext<'_, 'sess>, warn: bool) {
-        if cx.target == Target::Crate {
-            return;
-        }
+    pub(crate) fn check_crate_level(
+        cx: &mut AcceptContext<'_, 'sess>,
+        allowed_targets: &AllowedTargets<'_>,
+    ) {
+        let warn = match allowed_targets.is_allowed(cx.target) {
+            AllowedResult::Allowed => return,
+            AllowedResult::Warn => true,
+            AllowedResult::Error => false,
+        };
 
         let name = cx.attr_path.to_string();
         let is_used_as_inner = cx.attr_style == AttrStyle::Inner;
