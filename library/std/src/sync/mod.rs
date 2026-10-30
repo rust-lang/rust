@@ -184,6 +184,8 @@ pub use core::sync::SyncView;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::sync::atomic;
 
+#[unstable(feature = "arc_n", issue = "none")]
+pub use alloc_crate::sync::ArcIter;
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
 pub use alloc_crate::sync::UniqueArc;
 #[stable(feature = "rust1", since = "1.0.0")]

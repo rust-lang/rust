@@ -8,6 +8,8 @@
 //! loads and stores of pointers. This may be detected at compile time using
 //! `#[cfg(target_has_atomic = "ptr")]`.
 
+#[unstable(feature = "arc_n", issue = "none")]
+pub use crate::rcs::arc::ArcIter;
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
 pub use crate::rcs::arc::UniqueArc;
 #[stable(feature = "rust1", since = "1.0.0")]
