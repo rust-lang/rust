@@ -1,7 +1,7 @@
 //! Ways to create a `str` from bytes slice.
 
 use super::Utf8Error;
-use super::validations::run_utf8_validation;
+use super::validations::validate_utf8;
 use crate::{mem, ptr};
 
 /// Converts a slice of bytes to a string slice.
@@ -88,7 +88,7 @@ use crate::{mem, ptr};
 #[rustc_diagnostic_item = "str_from_utf8"]
 pub const fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
     // FIXME(const-hack): This should use `?` again, once it's `const`
-    match run_utf8_validation(v) {
+    match validate_utf8(v) {
         Ok(_) => {
             // SAFETY: validation succeeded.
             Ok(unsafe { from_utf8_unchecked(v) })
@@ -134,7 +134,7 @@ pub const fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
 #[rustc_diagnostic_item = "str_from_utf8_mut"]
 pub const fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
     // FIXME(const-hack): This should use `?` again, once it's `const`
-    match run_utf8_validation(v) {
+    match validate_utf8(v) {
         Ok(_) => {
             // SAFETY: validation succeeded.
             Ok(unsafe { from_utf8_unchecked_mut(v) })

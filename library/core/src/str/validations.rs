@@ -3,6 +3,9 @@
 use super::Utf8Error;
 use crate::intrinsics::const_eval_select;
 
+#[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
+mod neon;
+
 /// Returns the initial codepoint accumulator for the first byte.
 /// The first byte is special, only want bottom 5 bits for width 2, 4 bits
 /// for width 3, and 3 bits for width 4.
@@ -119,12 +122,58 @@ const fn contains_nonascii(x: usize) -> bool {
     (x & NONASCII_MASK) != 0
 }
 
-/// Walks through `v` checking that it's a valid UTF-8 sequence,
-/// returning `Ok(())` in that case, or, if it is invalid, `Err(err)`.
+/// Checks UTF-8 in `v[start..]`. Error offsets are relative to `v`.
+/// `start` must be at most `v.len()`, and `v[..start]` must already be valid UTF-8.
+const fn validate_utf8_scalar_from(v: &[u8], start: usize) -> Result<(), Utf8Error> {
+    match scan_utf8_scalar::<false>(v, start) {
+        Ok(_) => Ok(()),
+        Err(error) => Err(error),
+    }
+}
+
 #[inline(always)]
-#[rustc_allow_const_fn_unstable(const_eval_select)] // fallback impl has same behavior
-pub(super) const fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
-    let mut index = 0;
+#[rustc_allow_const_fn_unstable(const_eval_select)]
+pub(super) const fn validate_utf8(v: &[u8]) -> Result<(), Utf8Error> {
+    #[inline(always)]
+    const fn compiletime(v: &[u8]) -> Result<(), Utf8Error> {
+        validate_utf8_scalar_from(v, 0)
+    }
+
+    #[inline(always)]
+    fn runtime(v: &[u8]) -> Result<(), Utf8Error> {
+        #[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
+        {
+            let Utf8Scan::Prefix(start) = scan_utf8_scalar::<true>(v, 0)? else {
+                return Ok(());
+            };
+
+            if v.len() - start >= neon::MIN_LEN {
+                neon::validate(v, start)
+            } else {
+                validate_utf8_scalar_from(v, start)
+            }
+        }
+        #[cfg(not(all(target_arch = "aarch64", target_feature = "neon")))]
+        {
+            validate_utf8_scalar_from(v, 0)
+        }
+    }
+
+    const_eval_select((v,), compiletime, runtime)
+}
+
+enum Utf8Scan {
+    Complete,
+    #[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
+    Prefix(usize),
+}
+
+#[inline(always)]
+#[rustc_allow_const_fn_unstable(const_eval_select)]
+const fn scan_utf8_scalar<const PREFIX: bool>(
+    v: &[u8],
+    mut index: usize,
+) -> Result<Utf8Scan, Utf8Error> {
     let len = v.len();
 
     const USIZE_BYTES: usize = size_of::<usize>();
@@ -215,6 +264,10 @@ pub(super) const fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
                 _ => err!(Some(1)),
             }
             index += 1;
+            #[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
+            if PREFIX {
+                return Ok(Utf8Scan::Prefix(index));
+            }
         } else {
             // Ascii case, try to skip forward quickly.
             // When the pointer is aligned, read 2 words of data per iteration
@@ -247,7 +300,7 @@ pub(super) const fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
         }
     }
 
-    Ok(())
+    Ok(Utf8Scan::Complete)
 }
 
 // https://tools.ietf.org/html/rfc3629
