@@ -8,7 +8,6 @@ use rustc_error_messages::{DiagArgValue, IntoDiagArg};
 use rustc_macros::{Decodable, Encodable, StableHash};
 use rustc_span::{AttrId, DUMMY_SP, Ident, Span, Symbol};
 use smallvec::SmallVec;
-use thin_vec::ThinVec;
 
 use crate::AttributeKind;
 
@@ -148,19 +147,6 @@ impl Attribute {
 }
 
 impl AttributeExt for Attribute {
-    #[inline]
-    fn meta_item_list(&self) -> Option<ThinVec<ast::MetaItemInner>> {
-        match &self {
-            Attribute::Tool(n) | Attribute::DeriveHelper(n) => match n.as_ref() {
-                AttrItem { args: AttrArgs::Delimited(d), .. } => {
-                    ast::MetaItemKind::list_from_tokens(d.tokens.clone())
-                }
-                _ => None,
-            },
-            _ => None,
-        }
-    }
-
     #[inline]
     fn value_str(&self) -> Option<Symbol> {
         self.value_lit().and_then(|x| x.value_as_str())
