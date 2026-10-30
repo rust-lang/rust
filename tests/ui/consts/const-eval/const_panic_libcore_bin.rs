@@ -1,7 +1,10 @@
 #![crate_type = "bin"]
 #![feature(lang_items)]
+#![feature(panic_unwind)]
 #![no_main]
 #![no_std]
+
+extern crate unwind;
 
 use core::panic::PanicInfo;
 
@@ -13,9 +16,6 @@ const Y: () = unreachable!();
 
 const X: () = unimplemented!();
 //~^ ERROR evaluation panicked
-
-#[lang = "eh_personality"]
-fn eh() {}
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
