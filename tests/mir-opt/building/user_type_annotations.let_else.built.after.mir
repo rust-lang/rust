@@ -12,8 +12,7 @@ fn let_else() -> () {
     let _4: &char as UserTypeProjection { base: UserType(0), projs: [Field(2, ())] };
     let mut _5: (u32, u64, &char);
     let mut _6: &char;
-    let _7: &char;
-    let _8: char;
+    let _7: char;
     scope 1 {
         debug x => _2;
         debug y => _3;
@@ -24,10 +23,8 @@ fn let_else() -> () {
         StorageLive(_5);
         StorageLive(_6);
         StorageLive(_7);
-        StorageLive(_8);
-        _8 = const 'u';
-        _7 = &_8;
-        _6 = &(*_7);
+        _7 = const 'u';
+        _6 = &_7;
         _5 = (const 7_u32, const 12_u64, move _6);
         StorageDead(_6);
         PlaceMention(_5);
@@ -54,20 +51,18 @@ fn let_else() -> () {
         _3 = copy (_5.1: u64);
         StorageLive(_4);
         _4 = copy (_5.2: &char);
-        StorageDead(_7);
         StorageDead(_5);
         _0 = const ();
         StorageDead(_4);
         StorageDead(_3);
         StorageDead(_2);
-        StorageDead(_8);
+        StorageDead(_7);
         return;
     }
 
     bb5: {
-        StorageDead(_7);
         StorageDead(_5);
-        StorageDead(_8);
+        StorageDead(_7);
         goto -> bb1;
     }
 

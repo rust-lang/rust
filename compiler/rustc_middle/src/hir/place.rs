@@ -126,7 +126,6 @@ impl<'tcx> Place<'tcx> {
     /// Returns the type of this `Place` immediately before `projection_index`th projection
     /// is applied.
     pub fn ty_before_projection(&self, projection_index: usize) -> Ty<'tcx> {
-        assert!(projection_index < self.projections.len());
         if projection_index == 0 { self.base_ty } else { self.projections[projection_index - 1].ty }
     }
 }

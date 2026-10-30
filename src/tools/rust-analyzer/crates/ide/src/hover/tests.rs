@@ -286,10 +286,10 @@ fn main() {
             impl Fn(i32) -> i32
             ```
             ---
-            size = 8, align = 8, niches = 1
+            size = 4, align = 4
 
             ## Captures
-            * `x` by immutable borrow
+            * `x` by move
         "#]],
     );
 
@@ -3398,7 +3398,7 @@ fn main() {
             ```
 
             ## Captures
-            * `x` by immutable borrow
+            * `x` by move
         "#]],
     );
 }

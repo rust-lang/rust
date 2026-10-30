@@ -19,14 +19,14 @@ enum AdjustKind {
 impl AdjustKind {
     fn borrow(mutbl: AutoBorrowMutability) -> Self {
         match mutbl {
-            AutoBorrowMutability::Not => Self::Borrow,
+            AutoBorrowMutability::Not { .. } => Self::Borrow,
             AutoBorrowMutability::Mut { .. } => Self::BorrowMut,
         }
     }
 
     fn reborrow(mutbl: AutoBorrowMutability) -> Self {
         match mutbl {
-            AutoBorrowMutability::Not => Self::Reborrow,
+            AutoBorrowMutability::Not { .. } => Self::Reborrow,
             AutoBorrowMutability::Mut { .. } => Self::ReborrowMut,
         }
     }
@@ -70,7 +70,7 @@ pub(super) fn check(cx: &LateContext<'_>, self_arg: &Expr<'_>, call_expr: &Expr<
                 target,
             },
         ] => {
-            if self_ty == target && matches!(mutbl, AutoBorrowMutability::Not) {
+            if self_ty == target && matches!(mutbl, AutoBorrowMutability::Not { .. }) {
                 AdjustKind::None
             } else {
                 AdjustKind::reborrow(mutbl)

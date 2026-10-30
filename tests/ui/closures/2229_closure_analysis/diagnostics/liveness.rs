@@ -72,9 +72,11 @@ pub fn nested() {
         })();
         (move || {
             e.x = Some("e1"); //~  WARN value captured by `e.x` is never read
+                              //~| WARN value captured by `e.x` is never read
                               //~| WARN value assigned to `e.x` is never read
             e.x = Some("e2"); //~  WARN value assigned to `e.x` is never read
             b = Some("e1"); //~  WARN value captured by `b` is never read
+                            //~|  WARN value captured by `b` is never read
                             //~| WARN value assigned to `b` is never read
             b = Some("e2"); //~  WARN value assigned to `b` is never read
         })();

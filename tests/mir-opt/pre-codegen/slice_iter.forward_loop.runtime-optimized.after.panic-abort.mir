@@ -22,7 +22,7 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
             let _14: std::ptr::NonNull<T>;
             let mut _17: bool;
             let mut _20: usize;
-            let _22: &T;
+            let mut _22: &T;
             scope 17 {
                 let _13: *const T;
                 scope 18 {

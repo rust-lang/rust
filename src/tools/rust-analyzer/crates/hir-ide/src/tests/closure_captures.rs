@@ -289,7 +289,22 @@ fn main() {
     let closure = || { let b = a.a; };
 }
 "#,
-        expect!["92..111;50..51;105..108 ByRef(Immutable) a.a &'<erased> i32"],
+        expect!["92..111;50..51;105..108 ByCopy a.a i32"],
+    );
+}
+
+#[test]
+fn bycopy() {
+    check_closure_captures(
+        r#"
+//- minicore:copy, fn
+fn main() {
+    let y: i32 = 5;
+    let closure = |x: i32| {
+        x + y
+    };
+"#,
+        expect!["50..80;20..21;73..74 ByCopy y i32"],
     );
 }
 
@@ -415,7 +430,7 @@ fn main() {
     let mut closure = || { let (b | b) = a; };
 }
 "#,
-        expect!["57..80;20..25;76..77 ByRef(Immutable) a &'<erased> bool"],
+        expect!["57..80;20..25;76..77 ByCopy a bool"],
     );
 }
 
@@ -559,7 +574,7 @@ fn main() {
     };
 }
 "#,
-        expect!["220..257;174..175;245..250 ByRef(Immutable) c.b.x &'<erased> i32"],
+        expect!["220..257;174..175;245..250 ByCopy c.b.x i32"],
     );
 }
 
@@ -578,8 +593,8 @@ fn f() {
 }
 "#,
         expect![[r#"
-            44..113;17..18;92..93 ByRef(Immutable) a &'<erased> i32
-            73..106;17..18;92..93 ByRef(Immutable) a &'<erased> i32"#]],
+            44..113;17..18;92..93 ByCopy a i32
+            73..106;17..18;92..93 ByCopy a i32"#]],
     );
 }
 
@@ -597,7 +612,7 @@ fn f() {
     };
 }
 "#,
-        expect!["77..110;46..47;96..97 ByRef(Immutable) b &'<erased> i32"],
+        expect!["77..110;46..47;96..97 ByCopy b i32"],
     );
 }
 
