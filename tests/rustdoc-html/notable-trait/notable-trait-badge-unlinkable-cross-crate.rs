@@ -12,6 +12,7 @@ use notable_dep::Spaceship;
 // The badge is present...
 //@ has - '//div[@class="notable-trait-badge-container"]/a' 'Spaceship'
 // ...but unlinked: no badge carries an `href`.
-//@ count - '//div[@class="notable-trait-badge-container"]/a[@href]' 0
+//@ count - '//div[@class="notable-trait-badge-container"]/a[@href]' 1
+//@ has - '//div[@class="notable-trait-badge-container"]/a[@href="#"]' 'ⓘ'
 pub struct Rocket;
 impl Spaceship for Rocket {}
