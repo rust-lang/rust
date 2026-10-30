@@ -3534,14 +3534,14 @@ impl GeneratedAttr {
         }
     }
 
-    pub fn name(&self) -> Option<Symbol> {
+    pub fn name(&self) -> Symbol {
         match self {
-            GeneratedAttr::AutomaticallyDerived => Some(sym::automatically_derived),
-            GeneratedAttr::RustcConstUnstableDerived => Some(sym::rustc_const_unstable),
-            GeneratedAttr::Inline => Some(sym::inline),
-            GeneratedAttr::DocHidden => Some(sym::doc),
-            GeneratedAttr::CoverageOff => Some(sym::coverage),
-            GeneratedAttr::RustcTestMarker(_) => Some(sym::rustc_test_marker),
+            GeneratedAttr::AutomaticallyDerived => sym::automatically_derived,
+            GeneratedAttr::RustcConstUnstableDerived => sym::rustc_const_unstable,
+            GeneratedAttr::Inline => sym::inline,
+            GeneratedAttr::DocHidden => sym::doc,
+            GeneratedAttr::CoverageOff => sym::coverage,
+            GeneratedAttr::RustcTestMarker(_) => sym::rustc_test_marker,
         }
     }
 
@@ -3558,8 +3558,8 @@ impl GeneratedAttr {
         path == name
     }
 
-    pub fn symbol_path(&self) -> Option<SmallVec<[Symbol; 1]>> {
-        self.name().map(|n| smallvec![n])
+    pub fn symbol_path(&self) -> SmallVec<[Symbol; 1]> {
+        smallvec![self.name()]
     }
 
     pub fn path_span(&self) -> Option<Span> {
