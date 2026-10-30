@@ -67,10 +67,13 @@ impl<'tcx> InferCtxt<'tcx> {
             .chain((1..=canonical.max_universe.as_u32()).map(|_| self.create_next_universe()))
             .collect();
 
-        let var_values =
-            CanonicalVarValues::instantiate(self.tcx, &canonical.var_kinds, |var_values, info| {
-                self.instantiate_canonical_var(span, info, &var_values, |ui| universes[ui])
-            });
+        let var_values = CanonicalVarValues::instantiate(
+            self.tcx,
+            &canonical.var_kinds,
+            |prev_var_values, info| {
+                self.instantiate_canonical_var(span, info, &prev_var_values, |ui| universes[ui])
+            },
+        );
         let result = canonical.instantiate(self.tcx, &var_values);
         (result, var_values)
     }
@@ -87,7 +90,7 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
         span: Span,
         kind: CanonicalVarKind<'tcx>,
-        previous_var_values: &[GenericArg<'tcx>],
+        prev_var_values: &[GenericArg<'tcx>],
         universe_map: impl Fn(ty::UniverseIndex) -> ty::UniverseIndex,
     ) -> GenericArg<'tcx> {
         match kind {
@@ -95,7 +98,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 let vid = self.next_ty_vid_in_universe(span, universe_map(ui));
                 // If this inference variable is related to an earlier variable
                 // via subtyping, we need to add that info to the inference context.
-                if let Some(prev) = previous_var_values.get(sub_root.as_usize()) {
+                if let Some(prev) = prev_var_values.get(sub_root.as_usize()) {
                     if let &ty::Infer(ty::TyVar(sub_root)) = prev.expect_ty().kind() {
                         self.sub_unify_ty_vids_raw(vid, sub_root);
                     } else {

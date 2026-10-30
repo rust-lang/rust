@@ -22,6 +22,16 @@ impl<K, V> Default for DelayedMap<K, V> {
 }
 
 impl<K: Hash + Eq, V> DelayedMap<K, V> {
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.cache.len()
+    }
+
+    #[inline]
+    pub fn capacity(&self) -> usize {
+        self.cache.capacity()
+    }
+
     #[inline(always)]
     pub fn insert(&mut self, key: K, value: V) -> bool {
         if self.count >= CACHE_CUTOFF {
