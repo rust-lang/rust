@@ -642,7 +642,7 @@ pub fn make_query_region_constraints<'tcx>(
             }
 
             ConstraintKind::VarEqVar | ConstraintKind::VarEqReg | ConstraintKind::RegEqReg => {
-                let constraint = ty::RegionEqPredicate(c.sup, c.sub).into();
+                let constraint = ty::RegionEqPredicate(c.sub, c.sup).into();
                 QueryRegionConstraint {
                     constraint,
                     category: origin.to_constraint_category(),
