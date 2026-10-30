@@ -730,16 +730,9 @@ where
             return;
         };
 
-        // FIXME: consider performing these checks in attribute parsing instead
         for (lint_index, lint_check) in lint_checks.into_iter().enumerate() {
-            let LintCheck {
-                lint_name_normalized,
-                lint_span,
-                kind,
-                reason,
-                attr_id,
-                attr_span: _,
-            } = lint_check;
+            let LintCheck { lint_name_normalized, lint_span, kind, reason, attr_id, attr_span: _ } =
+                lint_check;
 
             let level = match kind {
                 LintCheckKind::Allow => Level::Allow,

@@ -47,7 +47,7 @@ pub struct AttributeParser<'sess> {
     /// *Only* parse attributes that passes this filter.
     ///
     /// Used in cases where we want the lowering infrastructure for parse just limited attributes.
-    parse_filter: Option<&'sess dyn Fn(&ast::Attribute) -> bool>,
+    pub(crate) parse_filter: Option<&'sess dyn Fn(&ast::Attribute) -> bool>,
 }
 
 impl<'sess> AttributeParser<'sess> {
