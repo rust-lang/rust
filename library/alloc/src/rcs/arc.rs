@@ -44,65 +44,6 @@ use crate::vec::Vec;
 /// See comment in `Arc::clone`.
 const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 
-#[unstable(feature = "arc_n", issue = "none")]
-struct ArcIter<T: ?Sized> {
-    arc: Option<Arc<T>>,
-    remaining: usize,
-}
-
-impl<T: ?Sized> Iterator for ArcIter<T> {
-    type Item = Arc<T>;
-
-    #[inline]
-    fn next(&mut self) -> Option<Self::Item> {
-        let Some(arc) = self.arc.as_ref() else {
-            hint::cold_path();
-            debug_assert!(
-                self.remaining == 0,
-                "If we don't have an Arc in the iterator we can't have any remaining references unaccounted for"
-            );
-            return None;
-        };
-        debug_assert!(
-            self.remaining >= 1,
-            "We have to have at least 1 reference if we have an Arc in the iterator"
-        );
-        self.remaining -= 1;
-        if hint::unlikely(self.remaining == 0) {
-            debug_assert!(self.arc.is_some(), "We already checked Arc is_some above");
-            self.arc.take()
-        } else {
-            // This reference count has already been accounted for so we can cheaply construct the Arc wrapper.
-            // SAFETY: We still have > 1 clones already accounted for so we can just construct the Arc clone.
-            Some(unsafe { Arc::from_inner(arc.ptr) })
-        }
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        (self.remaining, Some(self.remaining))
-    }
-}
-
-impl<T: ?Sized> ExactSizeIterator for ArcIter<T> {}
-
-impl<T: ?Sized> iter::FusedIterator for ArcIter<T> {}
-
-impl<T: ?Sized> Drop for ArcIter<T> {
-    fn drop(&mut self) {
-        if hint::unlikely(self.remaining > 1) {
-            // We drop remaining - 1 because the implicit drop of self.arc at the end of this method will drop the final
-            // reference we initialized with and call the deallocator if needed. If we're at 0
-            self.arc.as_ref().unwrap().inner().strong.fetch_sub(self.remaining - 1, Release);
-        } else {
-            debug_assert!(
-                (self.remaining == 0 && self.arc.is_none())
-                    || (self.remaining == 1 && self.arc.is_some())
-            );
-        }
-    }
-}
-
 #[cold]
 #[cfg_attr(not(panic = "immediate-abort"), inline(never))]
 #[cfg_attr(panic = "immediate-abort", inline)]
@@ -504,9 +445,10 @@ impl<T> Arc<T> {
         unsafe { Self::from_inner(Box::into_non_null(x)) }
     }
 
-    /// Constructs an iterator yielding `n` `Arc<T>` without doing any reference counting adjustements. This is more
-    /// efficient than doing `[Self::new]` followed by `[Self::clone]` n times and even cheaper than `[Self::new]`
-    /// + `[Self::cone_n]`.
+    /// Constructs an iterator yielding `n` `Arc<T>` without doing any reference counting adjustements.
+    /// 
+    /// This is more efficient than doing `[Self::new]` followed by `[Self::clone]` n times and even slightly cheaper
+    /// than `[Self::new]` + `[Self::clone_n]` as it sets the counter non-atomically.
     ///
     /// # Panics
     ///
@@ -534,12 +476,13 @@ impl<T> Arc<T> {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[unstable(feature = "arc_n", issue = "none")]
-    pub fn new_n(data: T, n: usize) -> impl ExactSizeIterator<Item = Self> + iter::FusedIterator {
-        if hint::unlikely(n > MAX_REFCOUNT) {
+    pub fn new_n(data: T, n: usize) -> ArcIter<T> {
+        if n > MAX_REFCOUNT {
             panic_arc_overflow();
         }
-        if hint::unlikely(n == 0) {
-            return ArcIter { arc: None, remaining: 0 };
+        if n == 0 {
+            hint::cold_path();
+            return ArcIter::default();
         }
         let inner = Box::new(ArcInner {
             strong: atomic::AtomicUsize::new(n),
@@ -717,53 +660,6 @@ impl<T> Arc<T> {
         })?;
         // SAFETY: Pointer is valid.
         unsafe { Ok(Self::from_inner(Box::into_non_null(x))) }
-    }
-
-    /// Constructs an iterator yielding `n` `Arc<T>` without doing any reference counting adjustements, returning an
-    /// error if allocation fails. This is more efficient than doing `[Self::new]` followed by `[Self::clone]` n times
-    /// and even cheaper than `[Self::new]` + `[Self::cone_n]`.
-    ///
-    /// An error is also returned if an `n` that's too large is provided.
-    ///
-    /// # Examples
-    ///
-    /// This example shows how you might optimize the construction of the shared state for a multi-threaded oneshot
-    /// channel:
-    ///
-    /// ```
-    /// use std::sync::Arc;
-    ///
-    /// struct OneShotState;
-    ///
-    /// struct Producer(Arc<OneShotState>);
-    /// struct Consumer(Arc<OneShotState>);
-    ///
-    /// fn oneshot() -> Result<(Producer, Consumer), std::alloc::AllocError> {
-    ///     let mut state = Arc::try_new_n(OneShotState, 2)?;
-    ///     let [producer, consumer] = std::array::from_fn(|_| state.next().unwrap());
-    ///     Ok((Producer(producer), Consumer(consumer)))
-    /// }
-    /// ```
-    #[inline]
-    #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
-    pub fn try_new_n(
-        data: T,
-        n: usize,
-    ) -> Result<impl ExactSizeIterator<Item = Self> + iter::FusedIterator, AllocError> {
-        if n > MAX_REFCOUNT {
-            return Err(AllocError);
-        }
-        if n == 0 {
-            return Ok(ArcIter { arc: None, remaining: 0 });
-        }
-        let inner = Box::try_new(ArcInner {
-            strong: atomic::AtomicUsize::new(n),
-            weak: atomic::AtomicUsize::new(1),
-            data,
-        })?;
-        // SAFETY: Pointer is valid.
-        let arc = unsafe { Self::from_inner(Box::into_non_null(inner)) };
-        Ok(ArcIter { arc: Some(arc), remaining: n })
     }
 
     /// Constructs a new `Arc` with uninitialized contents, returning an error
@@ -1810,7 +1706,7 @@ impl<T: ?Sized> Arc<T> {
     pub fn clone_n(
         this: &Self,
         n: usize,
-    ) -> impl ExactSizeIterator<Item = Self> + iter::FusedIterator + use<T> {
+    ) -> ArcIter<T> {
         // The maximum increment `n` allowed in a single `clone_n(n)` call.
         // Capped at 2^32 on 64-bit, or `1 << (usize::BITS / 2)` on smaller targets.
         // - 64-bit: 2^32 (4,294,967,296) -> leaves room for 2^31 concurrent max-n calls
@@ -1824,10 +1720,11 @@ impl<T: ?Sized> Arc<T> {
         // system.
         const MAX_CLONE_N: usize = if usize::BITS > 16 { 1usize << (usize::BITS / 2) } else { 0 };
 
-        if hint::unlikely(n == 0) {
-            return ArcIter { arc: None, remaining: 0 };
+        if n == 0 {
+            hint::cold_path();
+            return ArcIter::default();
         }
-        if hint::unlikely(n > MAX_REFCOUNT) {
+        if n > MAX_REFCOUNT {
             panic_arc_overflow();
         }
         if hint::likely(n <= MAX_CLONE_N) {
@@ -5428,3 +5325,110 @@ impl<T: ?Sized + Allocator, A: Allocator> AllocatorNightly for Arc<T, A> {}
 
 #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
 unsafe impl<T: Allocator + ?Sized, A: AllocatorClone> AllocatorClone for Arc<T, A> {}
+
+
+/// This is an iterator returned by the bulk new/clone APIs that owns N references of the Arc and hands them out during
+/// iteration.
+///
+/// Upon drop any remaining references are released.
+#[unstable(feature = "arc_n", issue = "none")]
+#[derive(Default)]
+pub struct ArcIter<T: ?Sized> {
+    /// This is the last reference that's handed out (when remaining == 1). It's also the reference that when dropped
+    /// triggers the final release of the underlying memory if it was the last reference.
+    arc: Option<Arc<T>>,
+    /// The reference counter representing how many references were allocated in bulk (i.e. the atomic counter) has at
+    /// least this many.
+    remaining: usize,
+}
+
+impl<T: ?Sized> Iterator for ArcIter<T> {
+    type Item = Arc<T>;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        let Some(arc) = self.arc.as_ref() else {
+            hint::cold_path();
+            debug_assert!(
+                self.remaining == 0,
+                "If we don't have an Arc in the iterator we can't have any remaining references unaccounted for"
+            );
+            return None;
+        };
+        debug_assert!(
+            self.remaining >= 1,
+            "We have to have at least 1 reference if we have an Arc in the iterator"
+        );
+        self.remaining -= 1;
+        if self.remaining == 0 {
+            hint::cold_path();
+            debug_assert!(self.arc.is_some(), "We already checked Arc is_some above");
+            self.arc.take()
+        } else {
+            // This reference count has already been accounted for so we can cheaply construct the Arc wrapper.
+            // SAFETY: We still have > 1 clones already accounted for so we can just construct the Arc clone.
+            Some(unsafe { Arc::from_inner(arc.ptr) })
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.remaining, Some(self.remaining))
+    }
+
+    #[inline]
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        if n >= self.remaining {
+            // Similar logic as in drop except we need to explicitly drop self.arc.
+            if self.remaining > 1 {
+                self.arc.as_ref().unwrap().inner().strong.fetch_sub(self.remaining - 1, Release);
+            }
+            self.remaining = 0;
+            drop(self.arc.take());
+            return None;
+        }
+        if n > 0 {
+            // Bulk-release the `n` skipped references in a single atomic operation.
+            // SAFETY: `n < self.remaining`, so at least 1 reference remains in `self.arc`.
+            self.arc.as_ref().unwrap().inner().strong.fetch_sub(n, Release);
+            self.remaining -= n;
+        }
+        self.next()
+    }
+}
+
+impl<T: ?Sized> ExactSizeIterator for ArcIter<T> {}
+
+impl<T: ?Sized> iter::DoubleEndedIterator for ArcIter<T> {
+    #[inline]
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.next()
+    }
+
+    #[inline]
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
+        self.nth(n)
+    }
+}
+
+impl<T: ?Sized> iter::FusedIterator for ArcIter<T> {}
+
+unsafe impl<T: ?Sized> iter::TrustedLen for ArcIter<T> {}
+
+impl<T: ?Sized> Drop for ArcIter<T> {
+    fn drop(&mut self) {
+        if self.remaining > 1 {
+            hint::cold_path();
+            // We drop all the remaining "non-owned" references from the counter, that's why it's -1. The last in
+            // "remaining" is stored in self.arc which results in it's own decrement and finally dropping the underlying
+            // memory. Technically this results in 2 atomic decrements instead of 1 but it's a small unlikely penalty
+            // as the expectation is that all values are consumed from the iterator.
+            self.arc.as_ref().unwrap().inner().strong.fetch_sub(self.remaining - 1, Release);
+        } else {
+            debug_assert!(
+                (self.remaining == 0 && self.arc.is_none())
+                    || (self.remaining == 1 && self.arc.is_some())
+            );
+        }
+    }
+}
