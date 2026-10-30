@@ -3,8 +3,7 @@ use std::hash::{Hash, Hasher};
 use std::{fmt, ptr};
 
 use libc::c_uint;
-use rustc_abi::{AddressSpace, Align, Integer, Reg, Size};
-use rustc_codegen_ssa::common::TypeKind;
+use rustc_abi::{AddressSpace, Align, Float, Integer, Reg, Size};
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_middle::ty::layout::TyAndLayout;
@@ -15,7 +14,7 @@ use rustc_target::callconv::{CastTarget, FnAbi};
 use crate::abi::{FnAbiLlvmExt, LlvmType};
 use crate::common;
 use crate::context::{CodegenCx, GenericCx, SCx};
-use crate::llvm::{self, FALSE, TRUE, ToGeneric, ToLlvmBool, Type, Value};
+use crate::llvm::{self, FALSE, TRUE, ToLlvmBool, Type, TypeKind, Value};
 use crate::type_of::LayoutLlvmExt;
 
 impl PartialEq for Type {
@@ -187,6 +186,12 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
     pub(crate) fn type_array(&self, ty: &'ll Type, len: u64) -> &'ll Type {
         unsafe { llvm::LLVMArrayType2(ty, len) }
     }
+
+    /// Prefer more specific methods (e.g. `int_width`, `float_type`, `vector_element_type`) when
+    /// possible.
+    pub(crate) fn type_kind(&self, ty: &'ll Type) -> TypeKind {
+        llvm::LLVMGetTypeKind(ty).to_rust()
+    }
 }
 
 impl<'ll, CX: Borrow<SCx<'ll>>> BaseTypeCodegenMethods for GenericCx<'ll, CX> {
@@ -242,10 +247,6 @@ impl<'ll, CX: Borrow<SCx<'ll>>> BaseTypeCodegenMethods for GenericCx<'ll, CX> {
         unsafe { llvm::LLVMFunctionType(ret, args.as_ptr(), args.len() as c_uint, FALSE) }
     }
 
-    fn type_kind(&self, ty: &'ll Type) -> TypeKind {
-        llvm::LLVMGetTypeKind(ty).to_rust().to_generic()
-    }
-
     fn type_ptr(&self) -> &'ll Type {
         llvm_type_ptr(self.llcx())
     }
@@ -254,31 +255,33 @@ impl<'ll, CX: Borrow<SCx<'ll>>> BaseTypeCodegenMethods for GenericCx<'ll, CX> {
         llvm_type_ptr_in_address_space(self.llcx(), address_space)
     }
 
-    fn element_type(&self, ty: &'ll Type) -> &'ll Type {
+    fn vector_element_type_and_length(&self, ty: Self::Type) -> Option<(Self::Type, u64)> {
         match self.type_kind(ty) {
-            TypeKind::Array | TypeKind::Vector => unsafe { llvm::LLVMGetElementType(ty) },
-            TypeKind::Pointer => bug!("element_type is not supported for opaque pointers"),
-            other => bug!("element_type called on unsupported type {other:?}"),
+            TypeKind::Vector => {
+                Some(unsafe { (llvm::LLVMGetElementType(ty), llvm::LLVMGetVectorSize(ty).into()) })
+            }
+            _ => None,
         }
     }
 
-    fn vector_length(&self, ty: &'ll Type) -> usize {
-        unsafe { llvm::LLVMGetVectorSize(ty) as usize }
-    }
-
-    fn float_width(&self, ty: &'ll Type) -> usize {
+    fn float_type(&self, ty: &'ll Type) -> Option<Float> {
         match self.type_kind(ty) {
-            TypeKind::Half => 16,
-            TypeKind::Float => 32,
-            TypeKind::Double => 64,
-            TypeKind::X86_FP80 => 80,
-            TypeKind::FP128 | TypeKind::PPC_FP128 => 128,
-            other => bug!("llvm_float_width called on a non-float type {other:?}"),
+            TypeKind::BFloat => Some(Float::F16B),
+            TypeKind::Half => Some(Float::F16),
+            TypeKind::Float => Some(Float::F32),
+            TypeKind::Double => Some(Float::F64),
+            TypeKind::FP128 => Some(Float::F128),
+            TypeKind::X86_FP80 => bug!("x87_f80 is not supported yet"),
+            TypeKind::PPC_FP128 => Some(Float::PpcF128),
+            _ => None,
         }
     }
 
-    fn int_width(&self, ty: &'ll Type) -> u64 {
-        unsafe { llvm::LLVMGetIntTypeWidth(ty) as u64 }
+    fn int_width(&self, ty: &'ll Type) -> Option<u64> {
+        match self.type_kind(ty) {
+            TypeKind::Integer => Some(unsafe { llvm::LLVMGetIntTypeWidth(ty).into() }),
+            _ => None,
+        }
     }
 
     fn val_ty(&self, v: &'ll Value) -> &'ll Type {

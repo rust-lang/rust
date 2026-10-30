@@ -160,6 +160,26 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         // See trait-system-refactor-initiative#234.
     }
 
+    fn erase_and_anonymize_regions<T: TypeFoldable<Self>>(self, value: T) -> T {
+        self.erase_and_anonymize_regions(value)
+    }
+
+    fn const_eval_resolve_for_typeck(
+        self,
+        typing_env: Self::TypingEnv,
+        ct: ty::AliasConst<'tcx>,
+        span: Self::Span,
+    ) -> ty::ConstEvalResult<Self> {
+        use crate::mir::interpret::ErrorHandled;
+
+        match self.const_eval_resolve_for_typeck(typing_env, ct, span) {
+            Ok(Ok(vt)) => Ok(vt),
+            Ok(Err(ty)) => Err(ty::ConstEvalErr::NonValtreeable(ty)),
+            Err(ErrorHandled::Reported(e, _)) => Err(ty::ConstEvalErr::Reported(e.into())),
+            Err(ErrorHandled::TooGeneric(_)) => Err(ty::ConstEvalErr::TooGeneric),
+        }
+    }
+
     fn expand_abstract_consts<T: TypeFoldable<TyCtxt<'tcx>>>(self, t: T) -> T {
         self.expand_abstract_consts(t)
     }
@@ -209,6 +229,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
             | ty::AliasConstKind::Free { def_id } => self.const_of_item(def_id),
             ty::AliasConstKind::Anon { .. } => None,
         }
+    }
+
+    fn anon_const_kind(self, def_id: DefId) -> ty::AnonConstKind {
+        self.anon_const_kind(def_id)
     }
 
     fn def_span(self, def_id: DefId) -> Span {

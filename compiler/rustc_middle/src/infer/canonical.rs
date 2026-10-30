@@ -34,6 +34,7 @@ use crate::ty::{self, GenericArg, GenericArgsRef, List, Ty, TyCtxt, TypeFlags, T
 
 pub type CanonicalQueryInput<'tcx, V> = ir::CanonicalQueryInput<TyCtxt<'tcx>, V>;
 pub type Canonical<'tcx, V> = ir::Canonical<TyCtxt<'tcx>, V>;
+pub type Canonicalized<V> = ir::Canonicalized<V>;
 pub type CanonicalVarKind<'tcx> = ir::CanonicalVarKind<TyCtxt<'tcx>>;
 pub type CanonicalVarValues<'tcx> = ir::CanonicalVarValues<TyCtxt<'tcx>>;
 pub type CanonicalVarKinds<'tcx> = &'tcx List<CanonicalVarKind<'tcx>>;

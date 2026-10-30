@@ -389,7 +389,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         if self.layout_compat(caller_abi.layout, callee_abi.layout)? {
             // Ensure that our checks imply actual ABI compatibility for this concrete call.
             // (This can fail e.g. if `#[rustc_nonnull_optimization_guaranteed]` is used incorrectly.)
-            assert!(caller_abi.eq_abi(callee_abi));
+            assert!(
+                caller_abi.eq_abi(callee_abi),
+                "these types were deemed ABI-compatible but do not actually have compatible `FnAbi`:\ncaller: {caller_abi:#?}\ncallee: {callee_abi:#?}"
+            );
             interp_ok(true)
         } else {
             trace!(

@@ -4,7 +4,6 @@ use bitflags::Flags;
 use llvm::Linkage::*;
 use rustc_abi::Align;
 use rustc_codegen_ssa::MemFlags;
-use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, BuilderMethods, ReturnSlot};
 use rustc_middle::ty::offload_meta::{MappingFlags, OffloadMetadata, OffloadSize};
@@ -15,7 +14,7 @@ use crate::builder::Builder;
 use crate::common::CodegenCx;
 use crate::context::SimpleCx;
 use crate::llvm::AttributePlace::Function;
-use crate::llvm::{self, Linkage, Type, Value};
+use crate::llvm::{self, Linkage, Type, TypeKind, Value};
 
 // LLVM kernel-independent globals required for offloading
 pub(crate) struct OffloadGlobals<'ll> {
@@ -476,15 +475,14 @@ fn declare_offload_fn<'ll>(
 }
 
 pub(crate) fn scalar_width<'ll>(cx: &SimpleCx<'ll>, ty: &'ll Type) -> u64 {
-    match cx.type_kind(ty) {
-        TypeKind::Half
-        | TypeKind::Float
-        | TypeKind::Double
-        | TypeKind::X86_FP80
-        | TypeKind::FP128
-        | TypeKind::PPC_FP128 => cx.float_width(ty) as u64,
-        TypeKind::Integer => cx.int_width(ty),
-        other => bug!("scalar_width was called on a non scalar type {other:?}"),
+    if let Some(float) = cx.float_type(ty) {
+        float.size().bits()
+    } else if let Some(width) = cx.int_width(ty) {
+        width
+    } else if cx.type_kind(ty) == TypeKind::Pointer {
+        bug!("scalar_width doesn't support pointer type {ty:?}")
+    } else {
+        bug!("scalar_width was called on a non scalar type {ty:?}")
     }
 }
 

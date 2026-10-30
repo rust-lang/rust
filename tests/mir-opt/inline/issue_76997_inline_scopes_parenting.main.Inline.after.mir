@@ -28,6 +28,7 @@ fn main() -> () {
         _3 = (move _4,);
         StorageLive(_5);
         _5 = move (_3.0: ());
+        _0 = const ();
         StorageDead(_5);
         StorageDead(_4);
         StorageDead(_3);

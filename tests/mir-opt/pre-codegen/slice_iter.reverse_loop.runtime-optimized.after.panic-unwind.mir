@@ -311,6 +311,7 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
 
     bb17: {
         StorageDead(_20);
+        _0 = const ();
         StorageDead(_35);
         StorageDead(_14);
         drop(_2) -> [return: bb18, unwind continue];

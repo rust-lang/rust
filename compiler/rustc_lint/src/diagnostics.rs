@@ -1,6 +1,7 @@
 // ignore-tidy-file-filelength
 use std::num::NonZero;
 
+use rustc_attr_ir::find_attr;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::codes::*;
 use rustc_errors::formatting::DiagMessageAddArg;
@@ -9,7 +10,7 @@ use rustc_errors::{
     Subdiagnostic, SuggestionStyle, msg,
 };
 use rustc_hir as hir;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::inhabitedness::InhabitedPredicate;
@@ -384,33 +385,47 @@ pub(crate) struct MacroExprFragment2024 {
     pub suggestion: Span,
 }
 
-pub(crate) struct BuiltinTypeAliasBounds<'hir> {
+pub(crate) struct BuiltinTypeAliasBounds<'tcx> {
     pub in_where_clause: bool,
     pub label: Span,
-    pub enable_feat_help: bool,
     pub suggestions: Vec<(Span, String)>,
-    pub preds: &'hir [hir::WherePredicate<'hir>],
-    pub ty: Option<&'hir hir::Ty<'hir>>,
+
+    pub def_id: LocalDefId,
+    pub preds: &'tcx [hir::WherePredicate<'tcx>],
+    pub ty: Option<&'tcx hir::Ty<'tcx>>,
+    pub tcx: TyCtxt<'tcx>,
 }
 
 impl<'a> Diagnostic<'a> for BuiltinTypeAliasBounds<'_> {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a> {
-        let mut diag = Diag::new(dcx, level, if self.in_where_clause {
-            msg!("where clauses on type aliases are not enforced")
+        // We perform various checks (i.e., query calls & the walk) in here instead of in
+        // `<TypeAliasBounds as LateLintPass>` to avoid doing throwaway work in case the lint
+        // ends up getting suppressed.
+
+        let is_marked = find_attr!(self.tcx, self.def_id, UncheckedTypeAlias);
+
+        let kind = if is_marked { "unchecked " } else { "" };
+        let msg = if self.in_where_clause {
+            format!("where clauses on {kind}type aliases are not enforced")
         } else {
-            msg!("bounds on generic parameters in type aliases are not enforced")
-        })
-            .with_span_label(self.label, msg!("will not be checked at usage sites of the type alias"))
-            .with_note(msg!(
+            format!("bounds on generic parameters in {kind}type aliases are not enforced")
+        };
+
+        let mut diag = Diag::new(dcx, level, msg).with_span_label(
+            self.label,
+            msg!("will not be checked at usage sites of the type alias"),
+        );
+
+        if !is_marked {
+            diag.note(msg!(
                 "this is a known limitation of the type checker that may be lifted in a future edition.
                 see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information"
             ));
-        if self.enable_feat_help {
-            diag.help(msg!("add `#![feature(checked_type_aliases)]` to the crate attributes to enable the desired semantics"));
+            if self.tcx.sess.is_nightly_build() {
+                diag.help(msg!("add `#![feature(checked_type_aliases)]` to the crate attributes to enable the desired semantics"));
+            }
         }
 
-        // We perform the walk in here instead of in `<TypeAliasBounds as LateLintPass>` to
-        // avoid doing throwaway work in case the lint ends up getting suppressed.
         let mut collector = ShorthandAssocTyCollector { qselves: Vec::new() };
         if let Some(ty) = self.ty {
             collector.visit_ty_unambig(ty);
@@ -3251,3 +3266,15 @@ pub(crate) enum RawBorrowViaReferenceSuggestion<'a> {
     "or, if `GenericTypeVisitable` is derived, check whether all fields implement `GenericTypeVisitable`"
 )]
 pub(crate) struct MissingGenericTypeVisitableDeriveDiag;
+
+#[derive(Diagnostic)]
+#[diag("unchecked type alias lacks attribute `#[rustc_unchecked_type_alias]`")]
+pub(crate) struct UnmarkedUncheckedTypeAlias {
+    #[suggestion(
+        "annotate the type alias with `#[rustc_unchecked_type_alias]`",
+        code = "{padding}#[rustc_unchecked_type_alias]\n",
+        applicability = "machine-applicable"
+    )]
+    pub sugg: Span,
+    pub padding: String,
+}

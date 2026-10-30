@@ -21,7 +21,6 @@ LL |         #[rustc_splat] a1: u32,
    = note: see issue #153629 <https://github.com/rust-lang/rust/issues/153629> for more information
    = help: add `#![feature(splat)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-   = note: the `rustc_splat` attribute is experimental
 
 error[E0658]: the `rustc_splat` attribute is an experimental feature
   --> $DIR/attrs-on-params.rs:14:11
@@ -32,7 +31,6 @@ LL |         #[rustc_splat(invalid)] a4: u32,
    = note: see issue #153629 <https://github.com/rust-lang/rust/issues/153629> for more information
    = help: add `#![feature(splat)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-   = note: the `rustc_splat` attribute is experimental
 
 error[E0565]: malformed `rustc_splat` attribute input
   --> $DIR/attrs-on-params.rs:14:11
@@ -57,7 +55,6 @@ LL |     #[rustc_splat] a1: u32,
    = note: see issue #153629 <https://github.com/rust-lang/rust/issues/153629> for more information
    = help: add `#![feature(splat)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-   = note: the `rustc_splat` attribute is experimental
 
 error[E0658]: the `rustc_splat` attribute is an experimental feature
   --> $DIR/attrs-on-params.rs:27:11
@@ -68,7 +65,6 @@ LL |         #[rustc_splat] a1: u32,
    = note: see issue #153629 <https://github.com/rust-lang/rust/issues/153629> for more information
    = help: add `#![feature(splat)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-   = note: the `rustc_splat` attribute is experimental
 
 error: aborting due to 7 previous errors
 

@@ -1,10 +1,11 @@
 use std::fmt::{self, Write};
-use std::mem::{self, discriminant};
+use std::mem;
 
 use rustc_data_structures::stable_hash::{StableHash, StableHasher};
 use rustc_hashes::Hash64;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
+use rustc_macros::StableHash;
 use rustc_middle::ty::print::{PrettyPrinter, Print, PrintError, Printer};
 use rustc_middle::ty::{
     self, GenericArg, GenericArgKind, Instance, ReifyReason, Ty, TyCtxt, TypeVisitableExt,
@@ -170,7 +171,22 @@ fn get_symbol_hash<'tcx>(
             // We want to avoid accidental collision between different types of instances.
             // Especially, `VTableShim`s and `ReifyShim`s may overlap with their original
             // instances without this.
-            discriminant(&instance.def).stable_hash(hcx, &mut hasher);
+            #[derive(StableHash)]
+            enum Tag {
+                Item,
+                Intrinsic,
+                LlvmIntrinsic,
+                Virtual,
+                Shim,
+            }
+            match instance.def {
+                ty::InstanceKind::Item(_) => Tag::Item,
+                ty::InstanceKind::Intrinsic(_) => Tag::Intrinsic,
+                ty::InstanceKind::LlvmIntrinsic(_) => Tag::LlvmIntrinsic,
+                ty::InstanceKind::Virtual(_, _) => Tag::Virtual,
+                ty::InstanceKind::Shim(_) => Tag::Shim,
+            }
+            .stable_hash(hcx, &mut hasher);
         });
 
         // 64 bits should be enough to avoid collisions.

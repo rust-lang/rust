@@ -127,15 +127,6 @@ pub(crate) struct DebugVisualizerUnreadable<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag("attribute should be applied to `const fn`")]
-pub(crate) struct RustcAllowConstFnUnstable {
-    #[primary_span]
-    pub attr_span: Span,
-    #[label("not a `const fn`")]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("attribute cannot be applied to a `async`, `gen` or `async gen` function")]
 pub(crate) struct RustcForceInlineCoro {
     #[primary_span]

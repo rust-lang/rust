@@ -1,12 +1,9 @@
-#[cfg(feature = "master")]
-use std::convert::TryInto;
 use std::mem::discriminant;
 
 #[cfg(feature = "master")]
 use gccjit::{CType, TypeAttribute};
 use gccjit::{RValue, Struct, Type};
-use rustc_abi::{AddressSpace, Align, Integer, Size};
-use rustc_codegen_ssa::common::TypeKind;
+use rustc_abi::{AddressSpace, Align, Float, Integer, Size};
 use rustc_codegen_ssa::traits::{
     BaseTypeCodegenMethods, DerivedTypeCodegenMethods, TypeMembershipCodegenMethods,
 };
@@ -14,7 +11,6 @@ use rustc_middle::ty;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_span::bug;
 
-use crate::common::TypeReflection;
 use crate::context::{CodegenCx, new_array_type};
 use crate::type_of::LayoutGccExt;
 
@@ -312,66 +308,6 @@ impl<'gcc, 'tcx> BaseTypeCodegenMethods for CodegenCx<'gcc, 'tcx> {
         self.context.new_function_pointer_type(None, return_type, params, false)
     }
 
-    #[cfg(feature = "master")]
-    fn type_kind(&self, typ: Type<'gcc>) -> TypeKind {
-        if self.is_int_type_or_bool(typ) {
-            TypeKind::Integer
-        } else if typ.get_pointee().is_some() {
-            TypeKind::Pointer
-        } else if typ.is_vector() {
-            TypeKind::Vector
-        } else if typ.dyncast_array().is_some() {
-            TypeKind::Array
-        } else if typ.is_struct().is_some() {
-            TypeKind::Struct
-        } else if typ.dyncast_function_ptr_type().is_some() {
-            TypeKind::Function
-        } else if typ.is_compatible_with(self.float_type) {
-            TypeKind::Float
-        } else if typ.is_compatible_with(self.double_type) {
-            TypeKind::Double
-        } else if typ.is_floating_point() {
-            match typ.get_size() {
-                2 => TypeKind::Half,
-                4 => TypeKind::Float,
-                8 => TypeKind::Double,
-                16 => TypeKind::FP128,
-                size => unreachable!("Floating-point type of size {}", size),
-            }
-        } else if typ == self.type_void() {
-            TypeKind::Void
-        } else {
-            // FIXME(antoyo): support other types.
-            unimplemented!();
-        }
-    }
-
-    #[cfg(not(feature = "master"))]
-    fn type_kind(&self, typ: Type<'gcc>) -> TypeKind {
-        if self.is_int_type_or_bool(typ) {
-            TypeKind::Integer
-        } else if typ.is_compatible_with(self.float_type) {
-            TypeKind::Float
-        } else if typ.is_compatible_with(self.double_type) {
-            TypeKind::Double
-        } else if typ.is_vector() {
-            TypeKind::Vector
-        } else if typ.get_pointee().is_some() {
-            TypeKind::Pointer
-        } else if typ.dyncast_array().is_some() {
-            TypeKind::Array
-        } else if typ.is_struct().is_some() {
-            TypeKind::Struct
-        } else if typ.dyncast_function_ptr_type().is_some() {
-            TypeKind::Function
-        } else if typ == self.type_void() {
-            TypeKind::Void
-        } else {
-            // FIXME(antoyo): support other types.
-            unimplemented!();
-        }
-    }
-
     fn type_ptr(&self) -> Type<'gcc> {
         self.type_ptr_to(self.type_void())
     }
@@ -380,47 +316,42 @@ impl<'gcc, 'tcx> BaseTypeCodegenMethods for CodegenCx<'gcc, 'tcx> {
         self.type_ptr_to_ext(self.type_void(), address_space)
     }
 
-    fn element_type(&self, ty: Type<'gcc>) -> Type<'gcc> {
-        if let Some(typ) = ty.dyncast_array() {
-            typ
-        } else if let Some(vector_type) = ty.dyncast_vector() {
-            vector_type.get_element_type()
-        } else if let Some(typ) = ty.get_pointee() {
-            typ
-        } else {
-            unreachable!()
-        }
-    }
-
-    fn vector_length(&self, _ty: Type<'gcc>) -> usize {
-        unimplemented!();
+    fn vector_element_type_and_length(&self, ty: Type<'gcc>) -> Option<(Type<'gcc>, u64)> {
+        ty.dyncast_vector()
+            .map(|vector_type| (vector_type.get_element_type(), vector_type.get_num_units() as u64))
     }
 
     #[cfg(feature = "master")]
-    fn float_width(&self, typ: Type<'gcc>) -> usize {
+    fn float_type(&self, typ: Type<'gcc>) -> Option<Float> {
         if typ.is_floating_point() {
-            (typ.get_size() * u8::BITS).try_into().unwrap()
+            match typ.get_size() {
+                2 => Some(Float::F16),
+                4 => Some(Float::F32),
+                8 => Some(Float::F64),
+                16 => Some(Float::F128),
+                _ => panic!("Cannot get width of float type {typ:?}"),
+            }
         } else {
-            panic!("Cannot get width of float type {:?}", typ);
+            None
         }
     }
 
     #[cfg(not(feature = "master"))]
-    fn float_width(&self, typ: Type<'gcc>) -> usize {
+    fn float_type(&self, typ: Type<'gcc>) -> Option<Float> {
         let f32 = self.context.new_type::<f32>();
         let f64 = self.context.new_type::<f64>();
         if typ.is_compatible_with(f32) {
-            32
+            Some(Float::F32)
         } else if typ.is_compatible_with(f64) {
-            64
+            Some(Float::F64)
         } else {
-            panic!("Cannot get width of float type {:?}", typ);
+            None
         }
         // FIXME(antoyo): support other sizes.
     }
 
-    fn int_width(&self, typ: Type<'gcc>) -> u64 {
-        self.gcc_int_width(typ)
+    fn int_width(&self, typ: Type<'gcc>) -> Option<u64> {
+        if self.is_int_type_or_bool(typ) { Some(self.gcc_int_width(typ)) } else { None }
     }
 
     fn val_ty(&self, value: RValue<'gcc>) -> Type<'gcc> {

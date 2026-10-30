@@ -1473,6 +1473,15 @@ impl Float {
             PpcF128 => "ppcf128",
         }
     }
+
+    pub fn is_ieee(self) -> bool {
+        use Float::*;
+
+        match self {
+            F16 | F32 | F64 | F128 => true,
+            F16B | PpcF128 => false,
+        }
+    }
 }
 
 /// Numeric primitives.
@@ -2460,16 +2469,34 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
     /// aggregates are passed via `PassMode::Indirect`, `PassMode::IndirectUnsized` or
     /// `PassMode::Cast`; more strict checks would otherwise be required.
     pub fn eq_abi(&self, other: &Self) -> bool {
+        let LayoutData {
+            size,
+            align,
+            backend_repr,
+            // We assume aggregates are passed via `Cast` or `Indirect*` so their details either
+            // do not matter or they are checked by `PassMode::eq_abi`.
+            fields: _,
+            variants: _,
+            // Inhabitedness and niches are not ABI-relevant.
+            largest_niche: _,
+            uninhabited: _,
+            // max_repr_align, unadjusted_abi_align, repr_c are not read directly by codegen
+            // backends. They are only used to compute `PassMode`. So we can ignore them here, any
+            // differences they may cause are picked up by the `PassMode` check.
+            max_repr_align: _,
+            unadjusted_abi_align: _,
+            repr_c: _,
+            // The seed does not affect the ABI.
+            randomization_seed: _,
+        } = self;
         // The one thing that we are not capturing here is that for unsized types, the metadata must
         // also have the same ABI, and moreover that the same metadata leads to the same size. The
         // 2nd point is quite hard to check though.
-        self.size == other.size
-            && self.is_sized() == other.is_sized()
-            && self.backend_repr.eq_up_to_validity(&other.backend_repr)
-            && self.backend_repr.is_bool() == other.backend_repr.is_bool()
-            && self.align.abi == other.align.abi
-            && self.max_repr_align == other.max_repr_align
-            && self.unadjusted_abi_align == other.unadjusted_abi_align
+        *size == other.size
+            && *align == other.align
+            && backend_repr.eq_up_to_validity(&other.backend_repr)
+            // `is_bool` checks validity and is ABI-relevant, so we need to consider it.
+            && backend_repr.is_bool() == other.backend_repr.is_bool()
     }
 }
 

@@ -318,6 +318,13 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     return reborrow_coerce;
                 }
             }
+            ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Infer(ty::IntVar(_) | ty::FloatVar(_)) => {
+                // For now, do nothing. If coercions are ever added for ints/floats then the arms
+                // handling these types in `check_expr_lit` will need re-evaluation.
+            }
             _ => {}
         }
 
@@ -348,6 +355,14 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 } else {
                     self.unify(a, b, ForceLeakCheck::No)
                 }
+            }
+            ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Infer(ty::IntVar(_) | ty::FloatVar(_)) => {
+                // For now, just use unification rules. If coercions are ever added for ints/floats
+                // then the arms handling these types in `check_expr_lit` will need re-evaluation.
+                self.unify(a, b, ForceLeakCheck::No)
             }
             _ => {
                 // Otherwise, just use unification rules.

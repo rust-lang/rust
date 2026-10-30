@@ -1272,7 +1272,7 @@ impl TypeAliasBounds {
 }
 
 impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
-    fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
+    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &hir::Item<'tcx>) {
         let hir::ItemKind::TyAlias(_, generics, hir_ty) = item.kind else { return };
 
         // There must not be a where clause.
@@ -1316,7 +1316,6 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
         }
 
         let mut ty = Some(hir_ty);
-        let enable_feat_help = cx.tcx.sess.is_nightly_build();
 
         if let [.., label_sp] = *where_spans {
             cx.emit_span_lint(
@@ -1325,10 +1324,11 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
                 BuiltinTypeAliasBounds {
                     in_where_clause: true,
                     label: label_sp,
-                    enable_feat_help,
                     suggestions: vec![(generics.where_clause_span, String::new())],
+                    def_id: item.owner_id.def_id,
                     preds: generics.predicates,
                     ty: ty.take(),
+                    tcx: cx.tcx,
                 },
             );
         }
@@ -1339,10 +1339,11 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
                 BuiltinTypeAliasBounds {
                     in_where_clause: false,
                     label: label_sp,
-                    enable_feat_help,
                     suggestions: inline_sugg,
+                    def_id: item.owner_id.def_id,
                     preds: generics.predicates,
                     ty,
+                    tcx: cx.tcx,
                 },
             );
         }

@@ -43,9 +43,9 @@ use crate::solve::search_graph::SearchGraph;
 use crate::solve::ty::may_use_unstable_feature;
 use crate::solve::{
     CanonicalResponse, Certainty, ExternalConstraintsData, FIXPOINT_STEP_LIMIT, Goal,
-    GoalEvaluation, GoalSource, GoalStalledOn, GoalStalledOnOpaques, HasChanged, MaybeCause,
-    NestedNormalizationGoals, NoSolution, QueryInput, QueryResult, Response, SucceededInErased,
-    VisibleForLeakCheck, inspect,
+    GoalEvaluation, GoalSource, GoalStalledOn, GoalStalledOnOpaques, HasChanged, IsIdentity,
+    MaybeCause, NestedNormalizationGoals, NoSolution, QueryInput, QueryResult, Response,
+    SucceededInErased, VisibleForLeakCheck, inspect,
 };
 
 pub mod fast_path;
@@ -883,6 +883,7 @@ where
             self.delegate,
             &orig_values,
             response,
+            canonical_goal.canonical.var_kinds,
             self.origin_span,
         );
 
@@ -1494,47 +1495,132 @@ where
         Ok(())
     }
 
-    // Try to evaluate a const and normalize the type of the resulting value, or return `None` if
-    // the const is too generic. This doesn't mean the const isn't evaluatable, though, and should
-    // be treated as an ambiguity rather than no-solution.
+    // Try to evaluate a const and normalize the type of the resulting value and make a response.
     pub(super) fn evaluate_const(
-        &mut self,
-        param_env: I::ParamEnv,
-        alias_const: ty::AliasConst<I>,
-    ) -> Result<Option<Const<I>>, NoSolutionOrRerunNonErased> {
-        if self.typing_mode().is_erased_not_coherence() {
-            let resolved = self.deeply_resolve_ignoring_regions(alias_const);
-            // FIXME: get rid of this once GCE is removed
-            let is_gce = self.cx().features().generic_const_exprs();
-            if resolved.has_opaque_types() || is_gce {
-                match self.opaque_accesses.rerun_always(RerunReason::EvaluateConst)? {}
-            }
-        }
-
-        self.delegate.evaluate_const(param_env, alias_const, |ty| self.normalize(param_env, ty))
-    }
-
-    pub(super) fn evaluate_const_and_instantiate_projection_term(
         &mut self,
         param_env: I::ParamEnv,
         projection_term: ty::AliasTerm<I>,
         expected_term: I::Term,
         alias_const: ty::AliasConst<I>,
     ) -> QueryResultOrRerunNonErased<I> {
-        match self.evaluate_const(param_env, alias_const)? {
+        let alias_const = self.deeply_resolve_ignoring_regions(alias_const);
+        let cx = self.cx();
+
+        // FIXME: get rid of this once GCE is removed
+        let is_gce = cx.features().generic_const_exprs();
+
+        if self.typing_mode().is_erased_not_coherence()
+            && (alias_const.has_opaque_types() || is_gce)
+        {
+            match self.opaque_accesses.rerun_always(RerunReason::EvaluateConst)? {}
+        }
+
+        let evaluated_const = if is_gce {
+            self.delegate
+                .evaluate_const(param_env, alias_const, |ty| self.normalize(param_env, ty))?
+        } else {
+            // Postpone evaluation of constants that depend on generic parameters or
+            // inference variables.
+            //
+            // We use `TypingMode::PostAnalysis` here which is not *technically* correct
+            // to be revealing opaque types here as borrowcheck has not run yet. However,
+            // CTFE itself uses `TypingMode::PostAnalysis` unconditionally even during
+            // typeck and not doing so has a lot of (undesirable) fallout (#101478, #119821).
+            // As a result we always use a revealed env when resolving the instance to evaluate.
+            //
+            // FIXME: `const_eval_resolve_for_typeck` should probably just modify the env itself
+            // instead of having this logic here
+            let evaluation_input = match alias_const.kind {
+                // Generic params are allowed in `AnonConstKind::RepeatExprCount` for backcompat
+                // reasons as long as evaluation doesn't rely on them to succeed.
+                ty::AliasConstKind::Anon { def_id }
+                    if matches!(
+                        cx.anon_const_kind(def_id.into()),
+                        ty::AnonConstKind::RepeatExprCount
+                    ) =>
+                {
+                    if alias_const.has_non_region_infer() {
+                        // Diagnostics will sometimes replace the identity args of anon consts in
+                        // array repeat expr counts with inference variables so we have to handle this
+                        // even though it is not something we should ever actually encounter.
+                        //
+                        // Array repeat expr counts are allowed to syntactically use generic parameters
+                        // but must not actually depend on them in order to evalaute successfully. This means
+                        // that it is actually fine to evalaute them in their own environment rather than with
+                        // the actually provided generic arguments.
+                        cx.delay_bug("AnonConst with infer args but no error reported");
+                    }
+
+                    // The generic args of repeat expr counts under `min_const_generics` are not supposed to
+                    // affect evaluation of the constant as this would make it a "truly" generic const arg.
+                    // To prevent this we discard all the generic arguments and evalaute with identity args
+                    // and in its own environment instead of the current environment we are normalizing in.
+                    let args = GenericArgs::identity_for_item(cx, def_id.into());
+                    let typing_env = TypingEnv::post_analysis(cx, def_id.into());
+
+                    Ok((typing_env, args))
+                }
+                _ => {
+                    // We are only dealing with "truly" generic/uninferred constants here:
+                    // - GCEConsts have been handled separately
+                    // - Repeat expr count back compat consts have also been handled separately
+                    // So we are free to simply defer evaluation here.
+                    //
+                    // FIXME: This assumes that `args` are normalized which is not necessarily true
+                    //
+                    // Const patterns are converted to type system constants before being
+                    // evaluated. However, we don't care about them here as pattern evaluation
+                    // logic does not go through type system normalization. If it did this would
+                    // be a backwards compatibility problem as we do not enforce "syntactic" non-
+                    // usage of generic parameters like we do here.
+                    if alias_const.args.has_non_region_param()
+                        || alias_const.args.has_non_region_placeholders()
+                        || alias_const.args.has_non_region_infer()
+                    {
+                        Err(ty::ConstEvalErr::TooGeneric)
+                    } else {
+                        // Since there is no generic parameter, we can just drop the environment
+                        // to prevent query cycle.
+                        let typing_env = TypingEnv::fully_monomorphized();
+                        let args = alias_const.args;
+
+                        Ok((typing_env, args))
+                    }
+                }
+            };
+
+            // FIXME: `def_span` will point at the definition of this const; ideally, we'd point at
+            // where it gets used as a const generic.
+            let span = alias_const.kind.def_span(cx);
+
+            let evaluated = evaluation_input.and_then(|(typing_env, args)| {
+                let alias_const = ty::AliasConst::new(cx, alias_const.kind, args);
+                let erased_alias_const = cx.erase_and_anonymize_regions(alias_const);
+                cx.const_eval_resolve_for_typeck(typing_env, erased_alias_const, span)
+            });
+
+            match evaluated {
+                Ok(val) => {
+                    let ty = self.normalize(param_env, alias_const.type_of(cx))?;
+                    Some(Const::new(cx, ty::ConstKind::Value(ValueConst::new(ty, val))))
+                }
+
+                Err(ty::ConstEvalErr::Reported(e)) => Some(Const::new_error(cx, e)),
+                Err(ty::ConstEvalErr::TooGeneric) => None,
+                Err(ty::ConstEvalErr::NonValtreeable(_)) => {
+                    cx.delay_bug("Type system constant with non valtree'able type evaluated but no error emitted");
+                    None
+                }
+            }
+        };
+
+        match evaluated_const {
             Some(evaluated) => {
                 self.eq(param_env, expected_term, evaluated.into())?;
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             }
-            None if self.cx().features().gca_const_items() => {
-                // HACK(khyperia): calling `deeply_resolve_ignoring_regions` here shouldn't be necessary,
-                // `try_evaluate_const` calls `deeply_resolve_ignoring_regions` already. However, we want
-                // to check `has_non_region_infer` against the type with vars resolved (i.e. check
-                // if there are vars we failed to resolve), so we need to call it again here.
-                // Perhaps we could split EvaluateConstErr::HasGenericsOrInfers into HasGenerics and
-                // HasInfers or something, make evaluate_const return that, and make this branch be
-                // based on that, rather than checking `has_non_region_infer`.
-                if self.deeply_resolve_ignoring_regions(alias_const).has_non_region_infer() {
+            None if cx.features().gca_const_items() => {
+                if alias_const.has_non_region_infer() {
                     self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
                 } else {
                     // Evaluation failed because the const was too generic or was an invalid type
@@ -1548,7 +1634,7 @@ where
                     // original DefId on the trait itself.
                     self.eq(
                         param_env,
-                        projection_term.to_term(self.cx(), ty::IsRigid::Yes),
+                        projection_term.to_term(cx, ty::IsRigid::Yes),
                         expected_term,
                     )?;
                     self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
@@ -1711,15 +1797,17 @@ where
 
         filter_irrelevant_region_constraints(self.delegate, var_values, &mut external_constraints);
 
-        let canonical = canonicalize_response(
+        let mut canonical = canonicalize_response(
             self.delegate,
             self.max_input_universe,
             Response {
-                var_values,
                 certainty,
+                var_values,
+                var_values_is_identity: IsIdentity::No, // updated below, after canonicalization
                 external_constraints: self.cx().mk_external_constraints(external_constraints),
             },
         );
+        canonical.value.update_var_values_is_identity();
 
         Ok(canonical)
     }
@@ -2062,6 +2150,7 @@ pub(super) fn evaluate_root_goal_for_proof_tree<D: SolverDelegate<Interner = I>,
         delegate,
         &proof_tree.orig_values,
         response,
+        canonical_goal.canonical.var_kinds,
         origin_span,
     );
 

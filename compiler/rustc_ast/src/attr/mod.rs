@@ -20,8 +20,7 @@ use crate::token::{
     self, CommentKind, Delimiter, DocFragmentKind, InvisibleOrigin, MetaVarKind, Token,
 };
 use crate::tokenstream::{
-    AttrTokenStream, AttrTokenTree, DelimSpacing, DelimSpan, LazyAttrTokenStream, Spacing,
-    TokenStream, TokenStreamIter, TokenTree,
+    DelimSpacing, DelimSpan, LazyTokenStream, Spacing, TokenStream, TokenStreamIter, TokenTree,
 };
 use crate::util::comments;
 use crate::util::literal::escape_string_symbol;
@@ -306,21 +305,20 @@ impl Attribute {
         }
     }
 
-    pub fn token_trees(&self) -> Vec<TokenTree> {
+    pub fn append_token_trees_to(&self, res: &mut Vec<TokenTree>) {
         match &self.kind {
             AttrKind::Normal(normal) => normal
                 .tokens
                 .as_ref()
                 .unwrap_or_else(|| panic!("attribute is missing tokens: {self:?}"))
-                .to_attr_token_stream()
-                .to_token_trees(),
+                .append_token_trees_to(res),
             // Empty tokens here ensures synthetic attributes are invisible to proc macros.
-            AttrKind::Synthetic(..) => vec![],
-            AttrKind::Generated(generated) => generated.token_trees(),
-            AttrKind::DocComment(comment_kind, data) => vec![TokenTree::token_alone(
+            AttrKind::Synthetic(..) => {}
+            AttrKind::Generated(generated) => generated.append_token_trees_to(res),
+            AttrKind::DocComment(comment_kind, data) => res.push(TokenTree::token_alone(
                 token::DocComment(*comment_kind, self.style, *data),
                 self.span,
-            )],
+            )),
         }
     }
 
@@ -539,7 +537,7 @@ impl MetaItem {
                 unreachable!()
             }
             Some(TokenTree::Token(Token { kind, .. }, _)) if kind.is_delim() => {
-                panic!("Should be `AttrTokenTree::Delimited`, not delim tokens: {:?}", tt);
+                panic!("Should be `TokenTree::Delimited`, not delim tokens: {:?}", tt);
             }
             _ => return None,
         };
@@ -750,7 +748,7 @@ pub fn mk_doc_comment(
 pub fn mk_attr_from_item(
     g: &AttrIdGenerator,
     item: AttrItem,
-    tokens: Option<LazyAttrTokenStream>,
+    tokens: Option<LazyTokenStream>,
     style: AttrStyle,
     span: Span,
 ) -> Attribute {
@@ -762,28 +760,24 @@ pub fn mk_attr_from_item(
     }
 }
 
-fn mk_attr_tokens(
-    style: AttrStyle,
-    item_tokens: AttrTokenStream,
-    span: Span,
-) -> LazyAttrTokenStream {
+fn mk_attr_tokens(style: AttrStyle, item_tokens: TokenStream, span: Span) -> LazyTokenStream {
     let mut tokens = match style {
         AttrStyle::Outer => {
-            vec![AttrTokenTree::Token(Token::new(token::Pound, span), Spacing::JointHidden)]
+            vec![TokenTree::Token(Token::new(token::Pound, span), Spacing::JointHidden)]
         }
         AttrStyle::Inner => vec![
-            AttrTokenTree::Token(Token::new(token::Pound, span), Spacing::Joint),
-            AttrTokenTree::Token(Token::new(token::Bang, span), Spacing::JointHidden),
+            TokenTree::Token(Token::new(token::Pound, span), Spacing::Joint),
+            TokenTree::Token(Token::new(token::Bang, span), Spacing::JointHidden),
         ],
     };
-    tokens.push(AttrTokenTree::Delimited(
+    tokens.push(TokenTree::Delimited(
         DelimSpan::from_single(span),
         DelimSpacing::new(Spacing::JointHidden, Spacing::Alone),
         Delimiter::Bracket,
         item_tokens,
     ));
 
-    LazyAttrTokenStream::new_direct(AttrTokenStream::new(tokens))
+    LazyTokenStream::new_direct(TokenStream::new(tokens))
 }
 
 // `span` is used for the `Attribute` and everything within it (except for any span within
@@ -794,7 +788,7 @@ pub fn mk_attr_word(g: &AttrIdGenerator, style: AttrStyle, name: Symbol, span: S
 
     let tokens = Some(mk_attr_tokens(
         style,
-        AttrTokenStream::new(vec![AttrTokenTree::Token(
+        TokenStream::new(vec![TokenTree::Token(
             Token::from_ast_ident(Ident::new(name, span)),
             Spacing::Alone,
         )]),
@@ -833,13 +827,13 @@ pub fn mk_attr_nested_word(
 
     let tokens = Some(mk_attr_tokens(
         style,
-        AttrTokenStream::new(vec![
-            AttrTokenTree::Token(Token::from_ast_ident(Ident::new(outer, span)), Spacing::Alone),
-            AttrTokenTree::Delimited(
+        TokenStream::new(vec![
+            TokenTree::Token(Token::from_ast_ident(Ident::new(outer, span)), Spacing::Alone),
+            TokenTree::Delimited(
                 DelimSpan::from_single(span),
                 DelimSpacing::new(Spacing::JointHidden, Spacing::Alone),
                 Delimiter::Parenthesis,
-                AttrTokenStream::new(vec![AttrTokenTree::Token(
+                TokenStream::new(vec![TokenTree::Token(
                     Token::from_ast_ident(Ident::new(inner, span)),
                     Spacing::Alone,
                 )]),
@@ -879,10 +873,10 @@ pub fn mk_attr_name_value_str(
 
     let tokens = Some(mk_attr_tokens(
         style,
-        AttrTokenStream::new(vec![
-            AttrTokenTree::Token(Token::from_ast_ident(Ident::new(name, span)), Spacing::Alone),
-            AttrTokenTree::Token(Token::new(token::Eq, span), Spacing::Alone),
-            AttrTokenTree::Token(
+        TokenStream::new(vec![
+            TokenTree::Token(Token::from_ast_ident(Ident::new(name, span)), Spacing::Alone),
+            TokenTree::Token(Token::new(token::Eq, span), Spacing::Alone),
+            TokenTree::Token(
                 Token::new(token::TokenKind::lit(lit.kind, lit.symbol, lit.suffix), span),
                 Spacing::Alone,
             ),
