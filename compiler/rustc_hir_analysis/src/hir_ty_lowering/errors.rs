@@ -1335,7 +1335,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         //        bindings were provided).
         let where_msg = "consider introducing a new type parameter, adding `where` constraints \
                          using the fully-qualified path to the associated types";
-        if !where_constraints.is_empty() && suggestions.is_empty() {
+        if !where_constraints.is_empty()
+            && suggestions.is_empty()
+            && !(tcx.def_kind(self.item_def_id()) == DefKind::Fn
+                && !tcx.def_span(self.item_def_id()).overlaps(principal_span))
+        {
             // If there are duplicates associated type names and a single trait bound do not
             // use structured suggestion, it means that there are multiple supertraits with
             // the same associated type name.
