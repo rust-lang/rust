@@ -87,19 +87,7 @@ impl AttributeExt for Attribute {
             AttrKind::Normal(normal) => normal.item.name(),
             AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace(_)) => None,
             AttrKind::DocComment(..) => None,
-            AttrKind::Generated(generated) => generated.name(),
-        }
-    }
-
-    fn symbol_path(&self) -> Option<SmallVec<[Symbol; 1]>> {
-        use SyntheticAttr::*;
-        match &self.kind {
-            AttrKind::Normal(normal) => {
-                Some(normal.item.path.segments.iter().map(|i| i.ident.name).collect())
-            }
-            AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace(_)) => None,
-            AttrKind::DocComment(_, _) => None,
-            AttrKind::Generated(generated) => generated.symbol_path(),
+            AttrKind::Generated(generated) => Some(generated.name()),
         }
     }
 
@@ -857,9 +845,6 @@ pub trait AttributeExt: Debug + 'static {
     ///
     /// Matches one segment of the path to each element in `name`
     fn path_matches(&self, name: &[Symbol]) -> bool;
-
-    /// Returns None for doc comments
-    fn symbol_path(&self) -> Option<SmallVec<[Symbol; 1]>>;
 
     /// Returns the documentation and its kind if this is a doc comment or a sugared doc comment.
     /// * `///doc` returns `Some(("doc", CommentKind::Line))`.

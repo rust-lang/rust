@@ -7,7 +7,6 @@ use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHashe
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
 use rustc_macros::{Decodable, Encodable, StableHash};
 use rustc_span::{AttrId, DUMMY_SP, Ident, Span, Symbol};
-use smallvec::SmallVec;
 
 use crate::AttributeKind;
 
@@ -174,16 +173,6 @@ impl AttributeExt for Attribute {
         match &self {
             Attribute::Tool(n) | Attribute::DeriveHelper(n) => n.path.segments.iter().eq(name),
             _ => false,
-        }
-    }
-
-    #[inline]
-    fn symbol_path(&self) -> Option<SmallVec<[Symbol; 1]>> {
-        match &self {
-            Attribute::Tool(n) | Attribute::DeriveHelper(n) => {
-                Some(n.path.segments.iter().copied().collect())
-            }
-            _ => None,
         }
     }
 
