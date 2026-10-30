@@ -27,10 +27,8 @@ pub(crate) fn render_variant_lit(
     path: Option<hir::ModPath>,
 ) -> Option<Builder> {
     let _p = tracing::info_span!("render_variant_lit").entered();
-    let db = ctx.db();
 
-    let name = local_name.unwrap_or_else(|| variant.name(db));
-    render(ctx, path_ctx, Variant::EnumVariant(variant), name, path)
+    render(ctx, path_ctx, Variant::EnumVariant(variant), local_name, path)
 }
 
 pub(crate) fn render_struct_literal(
@@ -41,17 +39,15 @@ pub(crate) fn render_struct_literal(
     local_name: Option<hir::Name>,
 ) -> Option<Builder> {
     let _p = tracing::info_span!("render_struct_literal").entered();
-    let db = ctx.db();
 
-    let name = local_name.unwrap_or_else(|| strukt.name(db));
-    render(ctx, path_ctx, Variant::Struct(strukt), name, path)
+    render(ctx, path_ctx, Variant::Struct(strukt), local_name, path)
 }
 
 fn render(
     ctx @ RenderContext { completion, .. }: RenderContext<'_, '_>,
     path_ctx: &PathCompletionCtx<'_>,
     thing: Variant,
-    name: hir::Name,
+    name: Option<hir::Name>,
     path: Option<hir::ModPath>,
 ) -> Option<Builder> {
     let db = completion.db;
@@ -69,9 +65,10 @@ fn render(
                 hir::PathKind::Plain,
                 path.segments().iter().skip(path.segments().len().saturating_sub(2)).cloned(),
             );
-            (path, short, true)
+            let qualified = path.len() > 1;
+            (path, short, qualified)
         }
-        None => (name.clone().into(), name.into(), false),
+        None => (name.clone()?.into(), name?.into(), false),
     };
     let (qualified_name, escaped_qualified_name) = (
         qualified_name.display_verbatim(ctx.db()).to_string(),

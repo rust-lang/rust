@@ -151,10 +151,36 @@ fn complete_fields(
 mod tests {
     use ide_db::SnippetCap;
 
+    use expect_test::expect;
+
     use crate::{
         CompletionConfig,
-        tests::{TEST_CONFIG, check_edit, check_edit_with_config},
+        tests::{TEST_CONFIG, check_edit, check_edit_with_config, check_no_kw},
     };
+
+    #[test]
+    fn literal_struct_not_trigger_unreachable_path() {
+        check_no_kw(
+            r#"
+mod foo {
+    mod bar {
+        pub struct FooDesc { pub bar: bool }
+        pub fn create_foo(foo_desc: &FooDesc) -> () { () }
+    }
+    pub use bar::create_foo;
+}
+
+fn baz() {
+    let foo = foo::create_foo(&$0);
+}
+            "#,
+            expect![[r#"
+                fn baz() fn()
+                md foo::
+                bt u32    u32
+            "#]],
+        );
+    }
 
     #[test]
     fn literal_struct_completion_edit() {

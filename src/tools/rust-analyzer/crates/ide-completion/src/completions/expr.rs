@@ -252,14 +252,11 @@ pub(crate) fn complete_expr_path<'db>(
 
                 match adt {
                     hir::Adt::Struct(strukt) => {
-                        let path = ctx
-                            .module
-                            .find_path(
-                                ctx.db,
-                                hir::ModuleDef::from(strukt),
-                                ctx.config.find_path_config(ctx.is_nightly),
-                            )
-                            .filter(|it| it.len() > 1);
+                        let path = ctx.module.find_path(
+                            ctx.db,
+                            hir::ModuleDef::from(strukt),
+                            ctx.config.find_path_config(ctx.is_nightly),
+                        );
 
                         acc.add_struct_literal(ctx, path_ctx, strukt, path, None);
 

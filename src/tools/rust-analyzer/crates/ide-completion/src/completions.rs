@@ -273,7 +273,7 @@ impl Completions {
     ) {
         e.variants(ctx.db)
             .into_iter()
-            .for_each(|variant| self.add_enum_variant(ctx, path_ctx, variant, None));
+            .for_each(|variant| self.add_enum_variant(ctx, path_ctx, variant));
     }
 
     pub(crate) fn add_module(
@@ -447,11 +447,11 @@ impl Completions {
         ctx: &CompletionContext<'_, '_>,
         path_ctx: &PathCompletionCtx<'_>,
         variant: hir::EnumVariant,
-        local_name: Option<hir::Name>,
     ) {
         if !ctx.check_stability_and_hidden(variant) {
             return;
         }
+        let local_name = Some(variant.name(ctx.db));
         if let PathCompletionCtx { kind: PathKind::Pat { pat_ctx }, .. } = path_ctx {
             cov_mark::hit!(enum_variant_pattern_path);
             self.add_variant_pat(ctx, pat_ctx, Some(path_ctx), variant, local_name);
