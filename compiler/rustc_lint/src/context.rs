@@ -19,8 +19,8 @@ use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 use rustc_hir::{Pat, PatKind};
 use rustc_lint_defs::{
-    FutureIncompatibleInfo, Lint, LintExpectationId, LintId, StableLintExpectationId,
-    UnstableLintExpectationId,
+    CheckLintNameResult, FutureIncompatibleInfo, Lint, LintExpectationId, LintId,
+    StableLintExpectationId, UnstableLintExpectationId,
 };
 use rustc_middle::lint::{LevelSpec, StableLevelSpec, UnstableLevelSpec};
 use rustc_middle::middle::privacy::EffectiveVisibilities;
@@ -91,6 +91,15 @@ impl DynLintStore for LintStore {
             rustc_session::LintGroup { name, lints, is_externally_loaded }
         }))
     }
+
+    fn check_attribute_lint_name(
+        &self,
+        lint_name: &str,
+        tool_name: Option<Symbol>,
+        lint_tools: &RegisteredTools,
+    ) -> CheckLintNameResult<'_> {
+        self.check_lint_name(lint_name, tool_name, lint_tools)
+    }
 }
 
 /// The target of the `by_name` map, which accounts for renaming/deprecation.
@@ -123,29 +132,6 @@ struct LintGroup {
     lint_ids: Vec<LintId>,
     is_externally_loaded: bool,
     depr: Option<LintAlias>,
-}
-
-#[derive(Debug)]
-pub enum CheckLintNameResult<'a> {
-    Ok(&'a [LintId]),
-    /// Lint doesn't exist. Potentially contains a suggestion for a correct lint name.
-    NoLint(Option<(Symbol, bool)>),
-    /// The lint refers to a tool that has not been registered.
-    NoTool,
-    /// The lint has been renamed to a new name.
-    Renamed(String),
-    /// The lint has been removed due to the given reason.
-    Removed(String),
-
-    /// The lint is from a tool. The `LintId` will be returned as if it were a
-    /// rustc lint. The `Option<String>` indicates if the lint has been
-    /// renamed.
-    Tool(&'a [LintId], Option<String>),
-
-    /// The lint is from a tool. Either the lint does not exist in the tool or
-    /// the code was not compiled with the tool and therefore the lint was
-    /// never added to the `LintStore`.
-    MissingTool,
 }
 
 impl LintStore {
@@ -335,7 +321,7 @@ impl LintStore {
 
     /// Checks the name of a lint for its existence, and whether it was
     /// renamed or removed. Generates a `Diag` containing a
-    /// warning for renamed and removed lints. This is over both lint
+    /// warning for renamed and removed lints. aThis is over both lint
     /// names from attributes and those passed on the command line. Since
     /// it emits non-fatal warnings and there are *two* lint passes that
     /// inspect attributes, this is only run from the late pass to avoid
