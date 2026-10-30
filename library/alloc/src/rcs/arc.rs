@@ -462,6 +462,7 @@ impl<T> Arc<T> {
     /// multi-threaded oneshot channel:
     ///
     /// ```
+    /// #![feature(arc_n)]
     /// use std::sync::Arc;
     ///
     /// struct OneShotState;
