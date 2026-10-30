@@ -172,7 +172,7 @@ pub struct FlagComputation<I> {
 }
 
 impl<I: Interner> FlagComputation<I> {
-    fn new() -> FlagComputation<I> {
+    const fn new() -> FlagComputation<I> {
         FlagComputation {
             flags: TypeFlags::empty(),
             outer_exclusive_binder: ty::INNERMOST,
@@ -211,6 +211,100 @@ impl<I: Interner> FlagComputation<I> {
             ty::FnDef(_, args) => Self::for_fn_def(args),
             ty::FnPtr(sig_tys, _) => Self::for_fn_ptr(sig_tys),
             ty::UnsafeBinder(bound_ty) => Self::for_unsafe_binder(bound_ty),
+        }
+    }
+
+    #[allow(rustc::usage_of_ty_tykind)]
+    pub fn for_kind_generic<const K: ty::TyKindMarker>(kind: &ty::TyKind<I>) -> FlagComputation<I> {
+        macro_rules! with_kind {
+            ($pat:pat => $body:expr) => {
+                match *kind {
+                    $pat => $body,
+                    _ => unreachable!("TyKindMarker does not match TyKind"),
+                }
+            };
+        }
+
+        match K {
+            ty::TyKindMarker::Bool
+            | ty::TyKindMarker::Char
+            | ty::TyKindMarker::Int
+            | ty::TyKindMarker::Float
+            | ty::TyKindMarker::Uint
+            | ty::TyKindMarker::Never
+            | ty::TyKindMarker::Str
+            | ty::TyKindMarker::Foreign => Self::new(),
+            ty::TyKindMarker::Error => Self::for_flags(TypeFlags::HAS_NON_REGION_ERROR),
+            ty::TyKindMarker::Param => Self::for_flags(TypeFlags::HAS_TY_PARAM),
+            ty::TyKindMarker::Placeholder => Self::for_flags(TypeFlags::HAS_TY_PLACEHOLDER),
+
+            ty::TyKindMarker::Closure
+            | ty::TyKindMarker::CoroutineClosure
+            | ty::TyKindMarker::CoroutineWitness => {
+                with_kind!(ty::Closure(_, args)
+                    | ty::CoroutineClosure(_, args)
+                    | ty::CoroutineWitness(_, args) => Self::for_args(args))
+            }
+
+            ty::TyKindMarker::Adt => {
+                with_kind!(ty::Adt(_, args) => Self::for_args(args))
+            }
+
+            ty::TyKindMarker::Coroutine => {
+                with_kind!(ty::Coroutine(_, args) => Self::for_coroutine(args))
+            }
+
+            ty::TyKindMarker::Bound => {
+                with_kind!(ty::Bound(index, _) => Self::for_bound(index))
+            }
+
+            ty::TyKindMarker::Infer => {
+                with_kind!(ty::Infer(infer) => Self::for_infer(infer))
+            }
+
+            ty::TyKindMarker::Alias => {
+                with_kind!(ty::Alias(is_rigid, alias) => Self::for_alias(is_rigid, alias))
+            }
+
+            ty::TyKindMarker::Dynamic => {
+                with_kind!(ty::Dynamic(obj, region) => Self::for_dynamic(obj, region))
+            }
+
+            ty::TyKindMarker::Array => {
+                with_kind!(ty::Array(ty, len) => Self::for_array(ty, len))
+            }
+
+            ty::TyKindMarker::Pat => {
+                with_kind!(ty::Pat(ty, pat) => Self::for_pat(ty, pat))
+            }
+
+            ty::TyKindMarker::Slice => {
+                with_kind!(ty::Slice(ty) => Self::for_ty(ty))
+            }
+
+            ty::TyKindMarker::RawPtr => {
+                with_kind!(ty::RawPtr(ty, _) => Self::for_ty(ty))
+            }
+
+            ty::TyKindMarker::Ref => {
+                with_kind!(ty::Ref(region, ty, _) => Self::for_ref(region, ty))
+            }
+
+            ty::TyKindMarker::Tuple => {
+                with_kind!(ty::Tuple(types) => Self::for_tys(types))
+            }
+
+            ty::TyKindMarker::FnDef => {
+                with_kind!(ty::FnDef(_, args) => Self::for_fn_def(args))
+            }
+
+            ty::TyKindMarker::FnPtr => {
+                with_kind!(ty::FnPtr(sig_tys, _) => Self::for_fn_ptr(sig_tys))
+            }
+
+            ty::TyKindMarker::UnsafeBinder => {
+                with_kind!(ty::UnsafeBinder(bound_ty) => Self::for_unsafe_binder(bound_ty))
+            }
         }
     }
 

@@ -11,7 +11,7 @@ use rustc_data_structures::stable_hash::{StableHash, StableHashCtxt, StableHashe
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, StableHash, StableHash_NoContext};
 use rustc_type_ir::data_structures::{NoError, UnifyKey, UnifyValue};
 use rustc_type_ir_macros::{
-    GenericTypeVisitable, Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic,
+    GenMarker, GenericTypeVisitable, Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic,
 };
 
 use self::TyKind::*;
@@ -149,7 +149,7 @@ impl IsRigid {
 /// converted to this representation using `<dyn HirTyLowerer>::lower_ty`.
 #[cfg_attr(feature = "nightly", rustc_diagnostic_item = "IrTyKind")]
 #[derive_where(Clone, Copy, Hash, PartialEq; I: Interner)]
-#[derive(GenericTypeVisitable)]
+#[derive(GenericTypeVisitable, GenMarker)]
 #[cfg_attr(
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, StableHash_NoContext)
