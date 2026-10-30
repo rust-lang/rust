@@ -151,15 +151,6 @@ impl AttributeExt for Attribute {
         }
     }
 
-    fn is_word(&self) -> bool {
-        match &self.kind {
-            AttrKind::Normal(normal) => matches!(normal.item.args, AttrArgs::Empty),
-            AttrKind::Synthetic(..) => unreachable!(),
-            AttrKind::DocComment(..) => false,
-            AttrKind::Generated(generated) => generated.is_word(),
-        }
-    }
-
     /// Returns a list of meta items if the attribute is delimited with parenthesis:
     ///
     /// ```text
@@ -956,8 +947,6 @@ pub trait AttributeExt: Debug + 'static {
     fn has_any_name(&self, names: &[Symbol]) -> bool {
         names.iter().any(|&name| self.has_name(name))
     }
-    /// Returns whether the attribute is a path, without any arguments.
-    fn is_word(&self) -> bool;
 
     fn path(&self) -> SmallVec<[Symbol; 1]> {
         self.symbol_path().unwrap_or(smallvec![sym::doc])
@@ -1039,8 +1028,14 @@ impl Attribute {
         AttributeExt::has_any_name(self, names)
     }
 
+    /// Returns whether the attribute is a path, without any arguments.
     pub fn is_word(&self) -> bool {
-        AttributeExt::is_word(self)
+        match &self.kind {
+            AttrKind::Normal(normal) => matches!(normal.item.args, AttrArgs::Empty),
+            AttrKind::Synthetic(..) => unreachable!(),
+            AttrKind::DocComment(..) => false,
+            AttrKind::Generated(generated) => generated.is_word(),
+        }
     }
 
     pub fn path(&self) -> SmallVec<[Symbol; 1]> {
