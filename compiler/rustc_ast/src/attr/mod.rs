@@ -202,14 +202,6 @@ impl AttributeExt for Attribute {
     fn is_rustc_doc_primitive(&self) -> bool {
         self.has_name(sym::rustc_doc_primitive)
     }
-
-    /// Returns whether this attribute is any of the proc macro attributes.
-    /// i.e. `proc_macro`, `proc_macro_attribute` or `proc_macro_derive`.
-    fn is_proc_macro_attr(&self) -> bool {
-        [sym::proc_macro, sym::proc_macro_attribute, sym::proc_macro_derive]
-            .iter()
-            .any(|kind| self.has_name(*kind))
-    }
 }
 
 impl Attribute {
@@ -892,10 +884,6 @@ pub trait AttributeExt: Debug + 'static {
     /// Returns None for doc comments
     fn symbol_path(&self) -> Option<SmallVec<[Symbol; 1]>>;
 
-    /// Returns whether this attribute is any of the proc macro attributes.
-    /// i.e. `proc_macro`, `proc_macro_attribute` or `proc_macro_derive`.
-    fn is_proc_macro_attr(&self) -> bool;
-
     /// Returns the documentation and its kind if this is a doc comment or a sugared doc comment.
     /// * `///doc` returns `Some(("doc", CommentKind::Line))`.
     /// * `/** doc */` returns `Some(("doc", CommentKind::Block))`.
@@ -1006,8 +994,12 @@ impl Attribute {
         }
     }
 
+    /// Returns whether this attribute is any of the proc macro attributes.
+    /// i.e. `proc_macro`, `proc_macro_attribute` or `proc_macro_derive`.
     pub fn is_proc_macro_attr(&self) -> bool {
-        AttributeExt::is_proc_macro_attr(self)
+        [sym::proc_macro, sym::proc_macro_attribute, sym::proc_macro_derive]
+            .iter()
+            .any(|kind| self.has_name(*kind))
     }
 
     pub fn doc_str_and_fragment_kind(&self) -> Option<(Symbol, DocFragmentKind, Span)> {
