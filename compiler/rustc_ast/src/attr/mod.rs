@@ -91,17 +91,6 @@ impl AttributeExt for Attribute {
         }
     }
 
-    /// Returns `true` if it is a sugared doc comment (`///` or `//!` for example).
-    /// So `#[doc = "doc"]` (which is a doc comment) and `#[doc(...)]` (which is not
-    /// a doc comment) will return `false`.
-    fn is_doc_comment(&self) -> Option<Span> {
-        match &self.kind {
-            AttrKind::Normal(..) | AttrKind::Synthetic(..) => None,
-            AttrKind::DocComment(..) => Some(self.span),
-            AttrKind::Generated(generated) => generated.is_doc_comment(),
-        }
-    }
-
     /// For a single-segment attribute, returns its name; otherwise, returns `None`.
     fn name(&self) -> Option<Symbol> {
         use SyntheticAttr::*;
@@ -929,11 +918,6 @@ pub trait AttributeExt: Debug + 'static {
     /// Matches one segment of the path to each element in `name`
     fn path_matches(&self, name: &[Symbol]) -> bool;
 
-    /// Returns `true` if it is a sugared doc comment (`///` or `//!` for example).
-    /// So `#[doc = "doc"]` (which is a doc comment) and `#[doc(...)]` (which is not
-    /// a doc comment) will return `false`.
-    fn is_doc_comment(&self) -> Option<Span>;
-
     fn path_span(&self) -> Option<Span>;
 
     /// Returns None for doc comments
@@ -995,9 +979,15 @@ impl Attribute {
         AttributeExt::path_matches(self, name)
     }
 
-    // on ast attributes we return a bool since that's what most code already expects
+    /// Returns `true` if it is a sugared doc comment (`///` or `//!` for example).
+    /// So `#[doc = "doc"]` (which is a doc comment) and `#[doc(...)]` (which is not
+    /// a doc comment) will return `false`.
     pub fn is_doc_comment(&self) -> bool {
-        AttributeExt::is_doc_comment(self).is_some()
+        match &self.kind {
+            AttrKind::Normal(..) | AttrKind::Synthetic(..) => false,
+            AttrKind::DocComment(..) => true,
+            AttrKind::Generated(generated) => generated.is_doc_comment(),
+        }
     }
 
     /// Returns true if the attribute's first *and only* path segment is equal to the passed-in

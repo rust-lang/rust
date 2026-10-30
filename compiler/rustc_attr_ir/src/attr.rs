@@ -197,15 +197,6 @@ impl AttributeExt for Attribute {
     }
 
     #[inline]
-    fn is_doc_comment(&self) -> Option<Span> {
-        if let Attribute::Parsed(AttributeKind::DocComment { span, .. }) = self {
-            Some(*span)
-        } else {
-            None
-        }
-    }
-
-    #[inline]
     fn symbol_path(&self) -> Option<SmallVec<[Symbol; 1]>> {
         match &self {
             Attribute::Tool(n) | Attribute::DeriveHelper(n) => {
