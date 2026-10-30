@@ -1,4 +1,4 @@
-// TODO use expand_free_alias_tys in coherence::builtin ??
+// FIXME use expand_free_alias_tys in coherence::builtin ??
 
 #![feature(checked_type_aliases, const_param_ty_trait)]
 #![allow(incomplete_features)]
