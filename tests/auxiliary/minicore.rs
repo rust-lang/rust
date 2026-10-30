@@ -22,6 +22,7 @@
     no_core,
     intrinsics,
     lang_items,
+    adt_const_params,
     auto_traits,
     freeze_impls,
     negative_impls,
@@ -380,6 +381,35 @@ trait Drop {
 #[rustc_nounwind]
 #[rustc_intrinsic]
 pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
+
+/// Mirrors `core::intrinsics::AtomicOrdering`: a const parameter type for the
+/// ordering of atomic intrinsics. The discriminants must match `core`'s.
+pub enum AtomicOrdering {
+    Relaxed = 0,
+    Release = 1,
+    Acquire = 2,
+    AcqRel = 3,
+    SeqCst = 4,
+}
+
+impl ConstParamTy_ for AtomicOrdering {}
+
+pub mod atomic {
+    use super::{AtomicOrdering, Copy};
+
+    #[rustc_nounwind]
+    #[rustc_intrinsic]
+    pub const unsafe fn atomic_load<T: Copy, const ORD: AtomicOrdering, const VOLATILE: bool>(
+        src: *const T,
+    ) -> T;
+
+    #[rustc_nounwind]
+    #[rustc_intrinsic]
+    pub const unsafe fn atomic_store<T: Copy, const ORD: AtomicOrdering, const VOLATILE: bool>(
+        dst: *mut T,
+        val: T,
+    );
+}
 
 pub mod mem {
     #[rustc_nounwind]
