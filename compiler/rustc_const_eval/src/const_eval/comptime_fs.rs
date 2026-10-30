@@ -6,12 +6,12 @@ pub fn experimental_comptime_fetch_file_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: &'tcx String,
 ) -> Option<&'tcx [u8]> {
-    let mut files = tcx.caches.experimental_comptime_files.lock();
-    if let Some(value) = files.get(&key) {
-        Some(*value)
-    } else {
+    // Very simple implementation where we whitelist paths directly. We don't even attempt
+    // to canonilize for now.
+    if tcx.sess.opts.unstable_opts.experimental_comptime_files.contains(key) {
         let file = std::fs::read(key).ok()?;
-        files.insert(&key, tcx.arena.alloc_slice(&file));
-        files.get(&key).map(|d| *d)
+        Some(&*tcx.arena.alloc_slice(&file))
+    } else {
+        None
     }
 }

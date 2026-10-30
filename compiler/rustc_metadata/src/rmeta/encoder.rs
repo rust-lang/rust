@@ -771,9 +771,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let denied_partial_mitigations = stat!("denied-partial-mitigations", || self
             .encode_enabled_denied_partial_mitigations());
 
-        let comptime_files = tcx.caches.experimental_comptime_files.borrow();
-        let comptime_files =
-            comptime_files.iter().map(|(k, v)| ((*k).clone(), v.to_vec())).collect::<Vec<_>>();
+        let mut comptime_files = Vec::new();
+        for file in &tcx.sess.opts.unstable_opts.experimental_comptime_files {
+            if let Some(file_data) = tcx.experimental_comptime_fetch_file((LOCAL_CRATE, file)) {
+                comptime_files.push((file.clone(), file_data.to_vec()));
+            }
+        }
 
         // Should I somehow sort by filename here in case this does *anything* with the parallel frontend stuff or something?
         let comptime_files = self.lazy_array(comptime_files);
