@@ -941,13 +941,6 @@ pub trait AttributeExt: Debug + 'static {
         self.name().map(|x| x == name).unwrap_or(false)
     }
 
-    /// Returns true if the attribute's first *and only* path segment is any of the passed-in
-    /// symbols.
-    #[inline]
-    fn has_any_name(&self, names: &[Symbol]) -> bool {
-        names.iter().any(|&name| self.has_name(name))
-    }
-
     fn path(&self) -> SmallVec<[Symbol; 1]> {
         self.symbol_path().unwrap_or(smallvec![sym::doc])
     }
@@ -1023,9 +1016,11 @@ impl Attribute {
         AttributeExt::has_name(self, name)
     }
 
+    /// Returns true if the attribute's first *and only* path segment is any of the passed-in
+    /// symbols.
     #[inline]
     pub fn has_any_name(&self, names: &[Symbol]) -> bool {
-        AttributeExt::has_any_name(self, names)
+        names.iter().any(|&name| self.has_name(name))
     }
 
     /// Returns whether the attribute is a path, without any arguments.
