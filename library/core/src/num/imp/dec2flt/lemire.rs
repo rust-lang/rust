@@ -68,7 +68,21 @@ pub fn compute_float<F: Float>(q: i64, mut w: u64) -> BiasedFp {
             return fp_zero;
         }
         // Have a subnormal value.
-        mantissa >>= -power2 + 1;
+        let shift = upperbit + 64 - F::SIG_BITS as i32 - 3;
+        let subnormal_shift = -power2 + 1;
+        mantissa >>= subnormal_shift;
+        // Subnormal halfway cases can occur for smaller exponents than normal ones,
+        // since the number being rounded has fewer significant bits. An exact tie
+        // needs `w` to be divisible by `5^-q`, so `-q` is at most 27 here. If we
+        // fall exactly halfway and the truncated mantissa is even, round down.
+        if lo <= 1
+            && q >= -27
+            && mantissa & 0b11 == 0b01
+            && shift + subnormal_shift < 64
+            && (mantissa << (shift + subnormal_shift)) == hi
+        {
+            mantissa &= !1_u64;
+        }
         mantissa += mantissa & 1;
         mantissa >>= 1;
         power2 = (mantissa >= (1_u64 << F::SIG_BITS)) as i32;

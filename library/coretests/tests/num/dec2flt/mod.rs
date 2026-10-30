@@ -59,6 +59,29 @@ fn large() {
 }
 
 #[test]
+#[cfg(target_has_reliable_f16)]
+fn f16_subnormal_ties_round_to_even() {
+    let ties = [
+        "0.0000000298023223876953125",
+        "0.0000001490116119384765625",
+        "0.0000002682209014892578125",
+        "0.0000003874301910400390625",
+        "0.0000005066394805908203125",
+        "0.0000006258487701416015625",
+        "0.0000007450580596923828125",
+        "0.0000008642673492431640625",
+        "0.0000009834766387939453125",
+    ];
+    for (i, s) in ties.iter().enumerate() {
+        let want = 2 * i as u16;
+        for text in [s.to_string(), format!("{s}000000")] {
+            let got = text.parse::<f16>().unwrap().to_bits();
+            assert_eq!(got, want, "wrong rounding for {text}");
+        }
+    }
+}
+
+#[test]
 fn subnormals() {
     test_literal!(5e-324);
     test_literal!(91e-324);
