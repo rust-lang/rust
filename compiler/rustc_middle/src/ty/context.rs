@@ -65,9 +65,7 @@ use crate::middle::resolve_bound_vars;
 use crate::mir::interpret::{self, Allocation, ConstAllocation};
 use crate::mir::{Body, Local, Place, PlaceElem, ProjectionKind, Promoted};
 use crate::query::q_impl::QueryExecutionMethods;
-use crate::query::{
-    IntoQueryKey, LocalCrate, Providers, QuerySystem, TyCtxtAt,
-};
+use crate::query::{IntoQueryKey, LocalCrate, Providers, QuerySystem, TyCtxtAt};
 use crate::thir::Thir;
 use crate::traits;
 use crate::traits::solve::{

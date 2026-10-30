@@ -140,10 +140,7 @@ where
 {
     match try_get_cached(tcx, &query.cache, key) {
         Some(value) => value,
-        None => tcx
-            .qs_methods
-            .execute_query(query, tcx, span, key, QueryMode::Get)
-            .unwrap(),
+        None => tcx.qs_methods.execute_query(query, tcx, span, key, QueryMode::Get).unwrap(),
     }
 }
 
@@ -159,13 +156,7 @@ pub(crate) fn query_ensure_ok<'tcx, C>(
     match try_get_cached(tcx, &query.cache, key) {
         Some(_value) => {}
         None => {
-            tcx.qs_methods.execute_query(
-                query,
-                tcx,
-                DUMMY_SP,
-                key,
-                QueryMode::EnsureOk,
-            );
+            tcx.qs_methods.execute_query(query, tcx, DUMMY_SP, key, QueryMode::EnsureOk);
         }
     }
 }
@@ -192,13 +183,7 @@ where
     match try_get_cached(tcx, &query.cache, key) {
         Some(value) => convert(value),
         None => {
-            match tcx.qs_methods.execute_query(
-                query,
-                tcx,
-                DUMMY_SP,
-                key,
-                QueryMode::EnsureOk,
-            ) {
+            match tcx.qs_methods.execute_query(query, tcx, DUMMY_SP, key, QueryMode::EnsureOk) {
                 // We executed the query. Convert the successful result.
                 Some(res) => convert(res),
 
