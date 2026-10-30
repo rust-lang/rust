@@ -1,5 +1,5 @@
 error[E0277]: the size for values of type `str` cannot be known at compilation time
-  --> $DIR/def-site-predicates-wf.rs:7:15
+  --> $DIR/def-site-predicates-wf.rs:9:15
    |
 LL |     Vec<str>: Sized;
    |               ^^^^^ doesn't have a size known at compile-time
@@ -8,6 +8,26 @@ LL |     Vec<str>: Sized;
 note: required by an implicit `Sized` bound in `Vec`
   --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
 
-error: aborting due to 1 previous error
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/def-site-predicates-wf.rs:21:19
+   |
+LL |         Vec<str>: Sized;
+   |                   ^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+note: required by an implicit `Sized` bound in `Vec`
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/def-site-predicates-wf.rs:14:19
+   |
+LL |         Vec<str>: Sized;
+   |                   ^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+note: required by an implicit `Sized` bound in `Vec`
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0277`.
