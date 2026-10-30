@@ -1862,7 +1862,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
             for (i, subpat) in subpats.iter().enumerate_and_adjust(variant.fields.len(), ddpos) {
                 let field = &variant.fields[FieldIdx::from_usize(i)];
-                let field_ty = self.field_ty(subpat.span, field, args);
+                let field_ty = self.field_ty(subpat.span, field, *args);
                 self.check_pat(subpat, field_ty, pat_info);
 
                 self.tcx.check_stability(
@@ -1956,7 +1956,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // the tuple struct pattern. Otherwise the args could get out of range on e.g.,
             // `let P() = U;` where `P != U` with `struct Box<T>(T);`.
             (ty::Adt(_, args), [field], Ok(())) => {
-                let field_ty = self.field_ty(pat_span, field, args);
+                let field_ty = self.field_ty(pat_span, field, *args);
                 match field_ty.kind() {
                     ty::Tuple(fields) => fields.len() == subpats.len(),
                     _ => false,
@@ -2129,7 +2129,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .map(|(i, f)| {
                             self.write_field_index(field.hir_id, *i);
                             self.tcx.check_stability(f.did, Some(field.hir_id), span, None);
-                            self.field_ty(span, f, args)
+                            self.field_ty(span, f, *args)
                         })
                         .unwrap_or_else(|| {
                             inexistent_fields.push(field);
@@ -2159,7 +2159,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 &mut unmentioned_fields,
                 pat,
                 variant,
-                args,
+                *args,
             ))
         } else {
             None
@@ -2315,7 +2315,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         unmentioned_fields: &mut Vec<(&'tcx ty::FieldDef, Ident)>,
         pat: &'tcx Pat<'tcx>,
         variant: &ty::VariantDef,
-        args: ty::GenericArgsRef<'tcx>,
+        args: ty::GenericArgs<'tcx>,
     ) -> Diag<'a> {
         let tcx = self.tcx;
         let (field_names, t, plural) = match inexistent_fields {

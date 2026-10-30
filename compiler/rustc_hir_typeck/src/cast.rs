@@ -562,7 +562,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                             .must_apply_modulo_regions()
                         {
                             let to_ty = if let ty::Adt(def, args) = self.cast_ty.kind() {
-                                fcx.tcx.value_path_str_with_args(def.did(), args)
+                                fcx.tcx.value_path_str_with_args(def.did(), *args)
                             } else {
                                 self.cast_ty.to_string()
                             };

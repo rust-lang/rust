@@ -27,7 +27,7 @@ use rustc_errors::SuggestionStyle::{CompletelyHidden, ShowCode};
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext as _, impl_lint_pass};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, DerefAdjustKind};
-use rustc_middle::ty::{self, GenericArg, List, TraitRef, Ty, TyCtxt, Unnormalized, Upcast as _};
+use rustc_middle::ty::{self, GenericArg, TraitRef, Ty, TyCtxt, Unnormalized, Upcast as _};
 use rustc_span::edition::Edition::Edition2021;
 use rustc_span::{BytePos, Pos as _, Span, Symbol};
 use rustc_trait_selection::infer::TyCtxtInferExt as _;
@@ -885,7 +885,7 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
                 };
                 let pointer_debug = derived_debug
                     && adt.all_fields().any(|f| {
-                        self.has_pointer_debug(tcx.normalize_erasing_regions(typing_env, f.ty(tcx, args)), depth)
+                        self.has_pointer_debug(tcx.normalize_erasing_regions(typing_env, f.ty(tcx, *args)), depth)
                     });
                 self.has_pointer_format.insert(ty, pointer_debug);
                 pointer_debug
@@ -900,7 +900,7 @@ fn make_ty_msrv_map(tcx: TyCtxt<'_>) -> FxHashMap<Ty<'_>, Option<RustcVersion>> 
         .into_iter()
         .filter_map(|(name, feature)| {
             tcx.get_diagnostic_item(name).map(|def_id| {
-                let ty = Ty::new_adt(tcx, tcx.adt_def(def_id), List::empty());
+                let ty = Ty::new_adt(tcx, tcx.adt_def(def_id), ty::GenericArgs::empty());
                 (ty, feature)
             })
         })

@@ -64,7 +64,7 @@ use rustc_data_structures::undo_log::UndoLogs;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::outlives::{Component, push_outlives_components};
 use rustc_middle::ty::{
-    self, GenericArgKind, GenericArgsRef, PolyTypeOutlivesClause, Region, RegionVid, Ty, TyCtxt,
+    self, GenericArgKind, GenericArgs, PolyTypeOutlivesClause, Region, RegionVid, Ty, TyCtxt,
     TypeVisitableExt, Upcast,
 };
 use rustc_span::bug;
@@ -695,7 +695,7 @@ where
     #[instrument(level = "debug", skip(self))]
     fn args_must_outlive(
         &mut self,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
         origin: infer::SubregionOrigin<'tcx>,
         region: ty::Region<'tcx>,
         opt_variances: Option<&[ty::Variance]>,

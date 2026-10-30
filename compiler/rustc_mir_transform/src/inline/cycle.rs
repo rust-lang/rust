@@ -2,7 +2,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::unord::UnordSet;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::mir::TerminatorKind;
-use rustc_middle::ty::{self, GenericArgsRef, InstanceKind, ShimKind, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, GenericArgs, InstanceKind, ShimKind, TyCtxt, TypeVisitableExt};
 use rustc_span::sym;
 use rustc_structures::Limit;
 use tracing::{instrument, trace};
@@ -192,7 +192,7 @@ pub(crate) fn mir_callgraph_cyclic<'tcx>(
 pub(crate) fn mir_inliner_callees<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: ty::InstanceKind<'tcx>,
-) -> &'tcx [(DefId, GenericArgsRef<'tcx>)] {
+) -> &'tcx [(DefId, GenericArgs<'tcx>)] {
     let steal;
     let guard;
     let body = match (instance, instance.def_id().as_local()) {
