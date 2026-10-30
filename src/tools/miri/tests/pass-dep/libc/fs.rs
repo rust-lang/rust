@@ -1859,6 +1859,26 @@ fn test_readv() {
     // The vectored read should read at least one byte.
     assert!(bytes_read > 0);
     assert_eq!(&buffer[0..bytes_read], &file_contents[0..bytes_read]);
+
+    // A negative `iovcnt` is invalid.
+    let err = errno_result(unsafe { libc::readv(fd, iov.as_ptr(), -1) }).unwrap_err();
+    assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
+
+    // The total length of the buffers must fit in `ssize_t`.
+    let mut buffer = [0u8; 4];
+    let iov = [
+        libc::iovec {
+            iov_base: buffer.as_mut_ptr().cast::<libc::c_void>(),
+            iov_len: buffer.len() as libc::size_t,
+        },
+        libc::iovec {
+            iov_base: buffer.as_mut_ptr().cast::<libc::c_void>(),
+            iov_len: libc::size_t::MAX,
+        },
+    ];
+    let err = errno_result(unsafe { libc::readv(fd, iov.as_ptr(), iov.len() as libc::c_int) })
+        .unwrap_err();
+    assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
 }
 
 /// Test that vectored reads without any buffers return zero.
@@ -1978,6 +1998,31 @@ fn test_writev() {
     };
     // The vectored write should write at least one byte.
     assert!(bytes_written > 0);
+
+    // A negative `iovcnt` is invalid.
+    let err = errno_result(unsafe { libc::writev(fd, iov.as_ptr(), -1) }).unwrap_err();
+    assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
+
+    // The total length of the buffers must fit in `ssize_t`.
+    let invalid_iov = [
+        libc::iovec {
+            iov_base: buffer1.as_mut_ptr().cast::<libc::c_void>(),
+            iov_len: buffer1.len() as libc::size_t,
+        },
+        libc::iovec {
+            iov_base: buffer1.as_mut_ptr().cast::<libc::c_void>(),
+            iov_len: libc::size_t::MAX,
+        },
+    ];
+    let err = errno_result(unsafe {
+        libc::writev(fd, invalid_iov.as_ptr(), invalid_iov.len() as libc::c_int)
+    })
+    .unwrap_err();
+    assert_eq!(err.raw_os_error(), Some(libc::EINVAL));
+
+    // The failed writes must not have written anything.
+    let pos = errno_result(unsafe { libc::lseek(fd, 0, libc::SEEK_CUR) }).unwrap();
+    assert_eq!(pos as usize, bytes_written);
 
     // Open the FD again in readonly mode and with an unadvanced pointer.
     let fd = errno_result(unsafe { libc::open(cpath.as_ptr(), libc::O_RDONLY) }).unwrap();
