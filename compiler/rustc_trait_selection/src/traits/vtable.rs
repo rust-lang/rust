@@ -363,9 +363,13 @@ pub(crate) fn first_method_vtable_slot<'tcx>(
     let index = prepare_vtable_segments(tcx, source_principal, vtable_segment_callback);
 
     if index.is_none() {
-        // FIXME(lsunsi): investigate if tainting the errors where they happened can ensure we
-        // don't reach this site at all, or allows us to assert the error happened in the none case.
-        tcx.dcx().span_delayed_bug(DUMMY_SP, "first method vtable slot = none");
+        // This can happen if the trait hierarchy is malformed (e.g., due to
+        // missing generics on a supertrait bound). There should already be an error
+        // emitted for this, so we just delay the ICE.
+        tcx.dcx().delayed_bug(format!(
+            "could not find the supertrait vtable slot for `{}` -> `{}`",
+            source, target_principal
+        ));
     }
 
     index
