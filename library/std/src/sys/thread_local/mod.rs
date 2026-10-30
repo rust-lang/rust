@@ -101,6 +101,10 @@ pub(crate) mod guard {
             mod apple;
             pub(crate) use apple::enable;
         }
+        all(target_thread_local, target_os = "aix") => {
+            mod aix;
+            pub(crate) use aix::enable;
+        }
         target_os = "windows" => {
             mod windows;
             pub(crate) use windows::enable;
