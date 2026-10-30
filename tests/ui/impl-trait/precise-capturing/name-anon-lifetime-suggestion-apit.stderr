@@ -1,0 +1,108 @@
+error[E0700]: hidden type for `impl Sized` captures lifetime that does not appear in bounds
+  --> $DIR/name-anon-lifetime-suggestion-apit.rs:6:5
+   |
+LL | fn no_generics(x: &(), y: &(), _z: impl Sized) -> impl Sized {
+   |                   ---                             ---------- opaque type defined here
+   |                   |
+   |                   hidden type `(&(), &())` captures the anonymous lifetime defined here
+LL |     (x, y)
+   |     ^^^^^^
+   |
+note: you could use a `use<...>` bound to explicitly capture `'_`, but argument-position `impl Trait`s are not nameable
+  --> $DIR/name-anon-lifetime-suggestion-apit.rs:5:36
+   |
+LL | fn no_generics(x: &(), y: &(), _z: impl Sized) -> impl Sized {
+   |                                    ^^^^^^^^^^
+help: add a `use<...>` bound to explicitly capture `'_` after turning all argument-position `impl Trait` into type parameters, noting that this possibly affects the API of this crate
+   |
+LL - fn no_generics(x: &(), y: &(), _z: impl Sized) -> impl Sized {
+LL + fn no_generics<T: Sized>(x: &(), y: &(), _z: T) -> impl Sized + use<'_, T> {
+   |
+
+error[E0700]: hidden type for `impl Sized` captures lifetime that does not appear in bounds
+  --> $DIR/name-anon-lifetime-suggestion-apit.rs:11:5
+   |
+LL | fn with_type_param<U>(x: &(), y: &(), _z: impl Sized, _u: U) -> impl Sized {
+   |                          ---                                    ---------- opaque type defined here
+   |                          |
+   |                          hidden type `(&(), &())` captures the anonymous lifetime defined here
+LL |     (x, y)
+   |     ^^^^^^
+   |
+note: you could use a `use<...>` bound to explicitly capture `'_`, but argument-position `impl Trait`s are not nameable
+  --> $DIR/name-anon-lifetime-suggestion-apit.rs:10:43
+   |
+LL | fn with_type_param<U>(x: &(), y: &(), _z: impl Sized, _u: U) -> impl Sized {
+   |                                           ^^^^^^^^^^
+help: add a `use<...>` bound to explicitly capture `'_` after turning all argument-position `impl Trait` into type parameters, noting that this possibly affects the API of this crate
+   |
+LL - fn with_type_param<U>(x: &(), y: &(), _z: impl Sized, _u: U) -> impl Sized {
+LL + fn with_type_param<U, T: Sized>(x: &(), y: &(), _z: T, _u: U) -> impl Sized + use<'_, U, T> {
+   |
+
+error[E0700]: hidden type for `impl Sized` captures lifetime that does not appear in bounds
+  --> $DIR/name-anon-lifetime-suggestion-apit.rs:16:5
+   |
+LL | fn with_lifetime_param<'a>(x: &'a (), y: &(), z: &(), _w: impl Sized) -> impl Sized {
+   |                        --                                                ---------- opaque type defined here
+   |                        |
+   |                        hidden type `(&'a (), &(), &())` captures the lifetime `'a` as defined here
+LL |     (x, y, z)
+   |     ^^^^^^^^^
+   |
+note: you could use a `use<...>` bound to explicitly capture `'a`, but argument-position `impl Trait`s are not nameable
+  --> $DIR/name-anon-lifetime-suggestion-apit.rs:15:59
+   |
+LL | fn with_lifetime_param<'a>(x: &'a (), y: &(), z: &(), _w: impl Sized) -> impl Sized {
+   |                                                           ^^^^^^^^^^
+help: add a `use<...>` bound to explicitly capture `'a` after turning all argument-position `impl Trait` into type parameters, noting that this possibly affects the API of this crate
+   |
+LL - fn with_lifetime_param<'a>(x: &'a (), y: &(), z: &(), _w: impl Sized) -> impl Sized {
+LL + fn with_lifetime_param<'a, T: Sized>(x: &'a (), y: &(), z: &(), _w: T) -> impl Sized + use<'a, T> {
+   |
+
+error[E0700]: hidden type for `impl Sized` captures lifetime that does not appear in bounds
+  --> $DIR/name-anon-lifetime-suggestion-apit.rs:21:5
+   |
+LL | fn two_apits(x: &(), y: &(), _a: impl Sized, _b: impl Copy) -> impl Sized {
+   |                 ---                                            ---------- opaque type defined here
+   |                 |
+   |                 hidden type `(&(), &())` captures the anonymous lifetime defined here
+LL |     (x, y)
+   |     ^^^^^^
+   |
+note: you could use a `use<...>` bound to explicitly capture `'_`, but argument-position `impl Trait`s are not nameable
+  --> $DIR/name-anon-lifetime-suggestion-apit.rs:20:34
+   |
+LL | fn two_apits(x: &(), y: &(), _a: impl Sized, _b: impl Copy) -> impl Sized {
+   |                                  ^^^^^^^^^^      ^^^^^^^^^
+help: add a `use<...>` bound to explicitly capture `'_` after turning all argument-position `impl Trait` into type parameters, noting that this possibly affects the API of this crate
+   |
+LL - fn two_apits(x: &(), y: &(), _a: impl Sized, _b: impl Copy) -> impl Sized {
+LL + fn two_apits<T: Sized, U: Copy>(x: &(), y: &(), _a: T, _b: U) -> impl Sized + use<'_, T, U> {
+   |
+
+error[E0700]: hidden type for `impl Sized` captures lifetime that does not appear in bounds
+  --> $DIR/name-anon-lifetime-suggestion-apit.rs:26:5
+   |
+LL | fn one_anon(x: &(), _z: impl Sized) -> impl Sized {
+   |                ---                     ---------- opaque type defined here
+   |                |
+   |                hidden type `&()` captures the anonymous lifetime defined here
+LL |     x
+   |     ^
+   |
+note: you could use a `use<...>` bound to explicitly capture `'_`, but argument-position `impl Trait`s are not nameable
+  --> $DIR/name-anon-lifetime-suggestion-apit.rs:25:25
+   |
+LL | fn one_anon(x: &(), _z: impl Sized) -> impl Sized {
+   |                         ^^^^^^^^^^
+help: add a `use<...>` bound to explicitly capture `'_` after turning all argument-position `impl Trait` into type parameters, noting that this possibly affects the API of this crate
+   |
+LL - fn one_anon(x: &(), _z: impl Sized) -> impl Sized {
+LL + fn one_anon<T: Sized>(x: &(), _z: T) -> impl Sized + use<'_, T> {
+   |
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0700`.
