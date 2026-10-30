@@ -445,10 +445,12 @@ impl<T> Arc<T> {
         unsafe { Self::from_inner(Box::into_non_null(x)) }
     }
 
-    /// Constructs an iterator yielding `n` `Arc<T>` without doing any reference counting adjustements.
+    /// Constructs an iterator yielding `n` `Arc<T>` without doing any reference counting
+    /// adjustements.
     ///
-    /// This is more efficient than doing `[Self::new]` followed by `[Self::clone]` n times and even slightly cheaper
-    /// than `[Self::new]` + `[Self::clone_n]` as it sets the counter non-atomically.
+    /// This is more efficient than doing `[Self::new]` followed by `[Self::clone]` n times and
+    /// even slightly cheaper than `[Self::new]` + `[Self::clone_n]` as it sets the counter
+    /// non-atomically.
     ///
     /// # Panics
     ///
@@ -456,8 +458,8 @@ impl<T> Arc<T> {
     ///
     /// # Examples
     ///
-    /// This example shows how you might optimize the construction of the shared state for a multi-threaded oneshot
-    /// channel:
+    /// This example shows how you might optimize the construction of the shared state for a
+    /// multi-threaded oneshot channel:
     ///
     /// ```
     /// use std::sync::Arc;
@@ -1684,22 +1686,26 @@ impl<T, A: Allocator> Arc<[mem::MaybeUninit<T>], A> {
 }
 
 impl<T: ?Sized> Arc<T> {
-    /// Generates `n` clones of the Arc returned as an iterator. This amortizes the cost of the strong reference
-    /// count increment needed to obtain multiple clones simultaneously of an Arc. This is similar to `[Arc::new_n]` but
-    /// slightly more expensive because it needs to do some overflow checks as well as there being potential CPU
+    /// Generates `n` clones of the Arc efficiently, returned as an iterator.
+    ///
+    /// This amortizes the cost of the strong reference count increment needed to obtain multiple
+    /// clones simultaneously of an Arc. This is similar to `[Arc::new_n]` but slightly more
+    /// expensive because it needs to do some overflow checks as well as there being potential CPU
     /// coherence contention on the counter when in a multi-core scenario.
     ///
-    /// Performance of this method is "optimal" when `n` is smaller than `2^(usize bit width / 2)`. In those cases it's
-    /// a simple single atomic addition on the strong reference count. When `n` is larger than that limit, a relaxed CAS
-    /// loop is done so that we can maintain the invariant that concurrent updates will panic rather than ever observe
-    /// an overflow. 8-bit and 16-bit systems always use the CAS loop because that's as efficient as an atomic
+    /// Performance of this method is "optimal" when `n` is smaller than `2^(usize bit width / 2)`.
+    /// In those cases it's a simple single atomic relaxed addition on the strong reference count.
+    /// When `n` is larger than that limit, a relaxed CAS loop is done so that we can maintain the
+    /// invariant that concurrent updates will panic rather than ever observe an overflow.
+    /// 8-bit and 16-bit systems always use the CAS loop because that's as efficient as an atomic
     /// fetch_add on those types of CPUs.
     ///
     /// # Panics
     ///
-    /// If n > isize::MAX or concurrent updates of the strong reference count would result in the strong reference
-    /// counter overflowing (same as [Arc::clone]). If n is "small" and takes the "optimized" path, the program will
-    /// abort immediately if we observe after the add a potential exceeding of isize::MAX.
+    /// If n > isize::MAX or concurrent updates of the strong reference count would result in the
+    /// strong reference counter overflowing (same as [Arc::clone]). If n is "small" and takes the
+    /// "optimized" path, the program will abort immediately if we observe after the add a potential
+    /// exceeding of isize::MAX.
     #[inline]
     #[unstable(feature = "arc_n", issue = "none")]
     pub fn clone_n(this: &Self, n: usize) -> ArcIter<T> {
@@ -5321,17 +5327,18 @@ impl<T: ?Sized + Allocator, A: Allocator> AllocatorNightly for Arc<T, A> {}
 #[unstable(feature = "allocator_ext", issue = "163177", implied_by = "allocator_api")]
 unsafe impl<T: Allocator + ?Sized, A: AllocatorClone> AllocatorClone for Arc<T, A> {}
 
-/// This is an iterator returned by the bulk new/clone APIs that owns N references of the Arc and hands them out during
-/// iteration.
+/// This is an iterator returned by the bulk new/clone APIs that owns N references of the Arc and
+/// hands them out during iteration.
 ///
 /// Upon drop any remaining references are released.
 #[unstable(feature = "arc_n", issue = "none")]
 pub struct ArcIter<T: ?Sized> {
-    /// This is the last reference that's handed out (when remaining == 1). It's also the reference that when dropped
-    /// triggers the final release of the underlying memory if it was the last reference.
+    /// This is the last reference that's handed out (when remaining == 1). It's also the reference
+    /// that when dropped triggers the final release of the underlying memory if it was the last
+    /// reference.
     arc: Option<Arc<T>>,
-    /// The reference counter representing how many references were allocated in bulk (i.e. the atomic counter) has at
-    /// least this many.
+    /// The reference counter representing how many references were allocated in bulk (i.e. the
+    /// atomic counter) has at least this many.
     remaining: usize,
 }
 
@@ -5380,7 +5387,7 @@ impl<T: ?Sized> Iterator for ArcIter<T> {
         let Some(arc) = self.arc.as_ref() else {
             debug_assert!(
                 self.remaining == 0,
-                "If we don't have an Arc in the iterator we can't have any remaining references unaccounted for"
+                "Can't have any remaining references unaccounted for here"
             );
             return None;
         };
@@ -5393,8 +5400,10 @@ impl<T: ?Sized> Iterator for ArcIter<T> {
             debug_assert!(self.arc.is_some(), "We already checked Arc is_some above");
             self.arc.take()
         } else {
-            // This reference count has already been accounted for so we can cheaply construct the Arc wrapper.
-            // SAFETY: We still have > 1 clones already accounted for so we can just construct the Arc clone.
+            // This reference count has already been accounted for so we can cheaply construct the
+            // Arc wrapper.
+            // SAFETY: We still have > 1 clones already accounted for so we can just construct the
+            // Arc clone.
             Some(unsafe { Arc::from_inner(arc.ptr) })
         }
     }
@@ -5445,10 +5454,11 @@ unsafe impl<T: ?Sized> iter::TrustedLen for ArcIter<T> {}
 impl<T: ?Sized> Drop for ArcIter<T> {
     fn drop(&mut self) {
         if self.remaining > 1 {
-            // We drop all the remaining "non-owned" references from the counter, that's why it's -1. The last in
-            // "remaining" is stored in self.arc which results in it's own decrement and finally dropping the underlying
-            // memory. Technically this results in 2 atomic decrements instead of 1 but it's a small unlikely penalty
-            // as the expectation is that all values are consumed from the iterator.
+            // We drop all the remaining "non-owned" references from the counter, that's why it's -1.
+            // The last in "remaining" is stored in self.arc which results in it's own decrement and
+            // finally dropping the underlying memory. Technically this results in 2 atomic
+            // decrements instead of 1 but it's a small unlikely penalty as the expectation is that
+            // all values are consumed from the iterator.
             self.arc.as_ref().unwrap().inner().strong.fetch_sub(self.remaining - 1, Release);
         } else {
             debug_assert!(
