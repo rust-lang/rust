@@ -10,12 +10,19 @@ use rustc_feature::AttributeStability;
 use rustc_lint_defs::builtin::{INVALID_DOC_ATTRIBUTES, UNUSED_ATTRIBUTES};
 use rustc_span::{Span, Symbol, edition, sym};
 
-use super::prelude::{AllowedTargets, Error, ALL_TARGETS};
+use super::prelude::{ALL_TARGETS, AllowedTargets};
 use super::{AcceptMapping, AttributeParser, template};
 use crate::context::{AcceptContext, FinalizeContext};
 use crate::diagnostics::{
     DocAliasBadChar, DocAliasDuplicated, DocAliasEmpty, DocAliasMalformed, DocAliasStartEnd,
-    DocAttrNotCrateLevel, DocAttrNotParameters, DocAttributeNotAttribute, DocAutoCfgExpectsHideOrShow, DocAutoCfgHideShowExpectsList, DocAutoCfgHideShowNoIdentBeforeValues, DocAutoCfgHideShowUnexpectedItem, DocAutoCfgHideShowUnexpectedItemAfterValues, DocAutoCfgHideShowValuesMix, DocAutoCfgWrongLiteral, DocInlineConflict, DocInlineOnlyUse, DocKeywordNotKeyword, DocTestLiteral, DocTestTakesList, DocTestUnknown, DocUnknownAny, DocUnknownInclude, DocUnknownPasses, DocUnknownPlugins, DocUnknownSpotlight, ExpectedNameValue, ExpectedNoArgs, IllFormedAttributeInput, MalformedDoc, UnusedDuplicate,
+    DocAttrNotCrateLevel, DocAttrNotParameters, DocAttributeNotAttribute,
+    DocAutoCfgExpectsHideOrShow, DocAutoCfgHideShowExpectsList,
+    DocAutoCfgHideShowNoIdentBeforeValues, DocAutoCfgHideShowUnexpectedItem,
+    DocAutoCfgHideShowUnexpectedItemAfterValues, DocAutoCfgHideShowValuesMix,
+    DocAutoCfgWrongLiteral, DocInlineConflict, DocInlineOnlyUse, DocKeywordNotKeyword,
+    DocTestLiteral, DocTestTakesList, DocTestUnknown, DocUnknownAny, DocUnknownInclude,
+    DocUnknownPasses, DocUnknownPlugins, DocUnknownSpotlight, ExpectedNameValue, ExpectedNoArgs,
+    IllFormedAttributeInput, MalformedDoc, UnusedDuplicate,
 };
 use crate::parser::{
     ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItemParser, OwnedPathParser,
@@ -151,7 +158,10 @@ impl DocParser {
 
                 cx.check_target(
                     sym::no_crate_inject.as_str(),
-                    &AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate),AllowSilent(Target::Param)]),
+                    &AllowedTargets::AllowListWarnRest(&[
+                        Allow(Target::Crate),
+                        AllowSilent(Target::Param),
+                    ]),
                 );
 
                 self.attribute.no_crate_inject = Some(path.span())

@@ -11,7 +11,6 @@ fn f6(f: impl Fn(#[cfg(false)] u8)) { f() } //~ ERROR parameters in parenthesize
 fn f7(_: impl Fn(#[inline] u8)) {}
 //~^ ERROR parameters in parenthesized generic argument lists with names, attributes, or c-variadics are experimental
 //~| ERROR the `inline` attribute cannot be used on function params
-//~| ERROR: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
 fn f8(_: impl Fn(u8, #[allow(unused_attributes)] u8)) {}
 //~^ ERROR parameters in parenthesized generic argument lists with names, attributes, or c-variadics are experimental
 

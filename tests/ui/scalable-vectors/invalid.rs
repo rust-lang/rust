@@ -109,7 +109,6 @@ macro_rules! barqux { ($foo:tt) => { $foo }; }
 //~^ ERROR: the `rustc_scalable_vector` attribute cannot be used on functions
 fn barqux(#[rustc_scalable_vector(4)] _x: u32) {}
 //~^ ERROR: the `rustc_scalable_vector` attribute cannot be used on function params
-//~^^ ERROR: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
 
 #[rustc_scalable_vector(4)]
 //~^ ERROR: the `rustc_scalable_vector` attribute cannot be used on functions

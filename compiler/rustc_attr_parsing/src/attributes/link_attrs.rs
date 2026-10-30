@@ -75,7 +75,7 @@ impl CombineAttributeParser for LinkParser {
             r#"name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated""#,
         ], "https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute");
     const ALLOWED_TARGETS: AllowedTargets<'_> =
-        AllowedTargets::AllowListWarnRest(&[Allow(Target::ForeignMod),Error(Target::Param),]);
+        AllowedTargets::AllowListWarnRest(&[Allow(Target::ForeignMod), Error(Target::Param)]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
 
     fn extend(
