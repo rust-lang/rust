@@ -200,6 +200,12 @@ pub struct Flags {
     /// on each code change might be too much for some computers.
     #[arg(global = true, long)]
     pub skip_std_check_if_no_download_rustc: bool,
+
+    /// Copy the sources in a specific subdirectory in the `build` directory and compile everything
+    /// from there. Allow keeping multiple revisions of `rustc` around without having to constantly
+    /// checkout to another version. Intended primarily for benchmarking.
+    #[arg(global = true, long)]
+    pub snapshot_sources: Option<String>,
 }
 
 impl Flags {
