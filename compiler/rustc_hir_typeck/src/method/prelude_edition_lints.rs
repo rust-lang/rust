@@ -1,11 +1,11 @@
 use std::fmt::Write;
 
+use hir::HirId;
 use hir::def_id::DefId;
-use hir::{HirId, ItemKind};
 use rustc_ast::join_path_idents;
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, Level};
-use rustc_hir as hir;
+use rustc_hir::{self as hir, Node};
 use rustc_lint::{ARRAY_INTO_ITER, BOXED_SLICE_INTO_ITER};
 use rustc_lint_defs::builtin::{RUST_2021_PRELUDE_COLLISIONS, RUST_2024_PRELUDE_COLLISIONS};
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -436,12 +436,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let import_items: Vec<_> = applicable_trait
             .import_ids
             .iter()
-            .map(|&import_id| self.tcx.hir_expect_item(import_id))
+            .map(|&import_id| match self.tcx.hir_node_by_def_id(import_id) {
+                Node::NestedUseTree(tree) => *tree,
+                Node::Item(it) => it.expect_use(),
+                node => span_bug!(span, "expected use tree, found {node:#?}"),
+            })
             .collect();
 
         // Find an identifier with which this trait was imported (note that `_` doesn't count).
         for item in import_items.iter() {
-            match item.expect_use().kind {
+            match item.kind {
                 hir::UseKind::Single(ident) => {
                     if ident.name != kw::Underscore {
                         return Some(format!("{}", ident.name));
@@ -454,14 +458,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // All that is left is `_`! We need to use the full path. It doesn't matter which one we
         // pick, so just take the first one.
-        match import_items[0].kind {
-            ItemKind::Use(tree) => {
-                Some(join_path_idents(tree.prefix.segments.iter().map(|seg| seg.ident)))
-            }
-            _ => {
-                span_bug!(span, "unexpected item kind, expected a use: {:?}", import_items[0].kind);
-            }
-        }
+        Some(join_path_idents(import_items[0].prefix.segments.iter().map(|seg| seg.ident)))
     }
 
     /// Creates a string version of the `expr` that includes explicit adjustments.
