@@ -485,12 +485,12 @@ fn parse_generic_type_visitable_bound(
 
 /// Generate a marker enum for an enum... For example;
 ///
-/// ```ignore
+/// ```ignore (purely an example)
 /// enum MyEnum<I: Interner> {
 ///    Foo,
 ///    Bar(u32),
 ///    Baz(SomeStruct),
-///    Exotic(I::ExtenDefinedStruct)
+///    Exotic(I::ExternDefinedStruct)
 /// }
 /// ```
 ///
@@ -500,7 +500,7 @@ fn parse_generic_type_visitable_bound(
 ///
 /// We get;
 ///
-/// ```ignore
+/// ```ignore (purely an example building upon the above example to show what would be generated)
 /// #[repr(u32)]
 /// #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 /// enum MyEnumMarker {
