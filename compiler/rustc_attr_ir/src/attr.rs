@@ -206,16 +206,6 @@ impl AttributeExt for Attribute {
     }
 
     #[inline]
-    fn is_word(&self) -> bool {
-        match &self {
-            Attribute::Tool(n) | Attribute::DeriveHelper(n) => {
-                matches!(n.args, AttrArgs::Empty)
-            }
-            _ => false,
-        }
-    }
-
-    #[inline]
     fn symbol_path(&self) -> Option<SmallVec<[Symbol; 1]>> {
         match &self {
             Attribute::Tool(n) | Attribute::DeriveHelper(n) => {
