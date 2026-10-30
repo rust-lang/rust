@@ -419,24 +419,30 @@ impl<'a> TraitDef<'a> {
             Some(Attribute::Parsed(AttributeKind::Repr { reprs, .. })) if reprs.iter().any(|(x, _)| matches!(x, ReprPacked(..)))
         );
 
-        let mut newitem = match &item.kind {
+        let fields: Box<dyn Iterator<Item = &ast::FieldDef>>;
+        let methods;
+        let (ident, generics) = match &item.kind {
             ast::ItemKind::Union(..) if !self.supports_unions => {
                 cx.dcx().emit_err(diagnostics::DeriveUnion { span });
                 return;
             }
             ast::ItemKind::Struct(ident, generics, struct_def)
             | ast::ItemKind::Union(ident, generics, struct_def) => {
-                let fields = struct_def.fields().iter();
-                let methods = self.methods.iter().filter_map(|method_def| {
-                    let body = if from_scratch || method_def.is_static() {
-                        method_def.call_substructure_method(cx, span, StaticStruct(struct_def))
-                    } else {
-                        method_def.expand_struct_method_body(cx, span, struct_def, is_packed)
-                    };
+                fields = Box::new(struct_def.fields().iter());
+                methods = self
+                    .methods
+                    .into_iter()
+                    .filter_map(|method_def| {
+                        let body = if from_scratch || method_def.is_static() {
+                            method_def.call_substructure_method(cx, span, StaticStruct(struct_def))
+                        } else {
+                            method_def.expand_struct_method_body(cx, span, struct_def, is_packed)
+                        };
 
-                    method_def.create_method(cx, span, body)
-                });
-                self.create_derived_impl(cx, *ident, generics, fields, methods, is_packed)
+                        method_def.create_method(cx, span, body)
+                    })
+                    .collect();
+                (ident, generics)
             }
             ast::ItemKind::Enum(ident, generics, enum_def) => {
                 // We can skip generating the impl here, because `repr(packed)`
@@ -446,49 +452,25 @@ impl<'a> TraitDef<'a> {
                 if is_packed {
                     return;
                 }
-                let fields = enum_def.variants.iter().flat_map(|variant| variant.data.fields());
-                let methods = self.methods.iter().filter_map(|method_def| {
-                    let body = if from_scratch || method_def.is_static() {
-                        method_def.call_substructure_method(cx, span, StaticEnum(enum_def))
-                    } else {
-                        method_def.expand_enum_method_body(cx, span, enum_def)
-                    };
+                fields =
+                    Box::new(enum_def.variants.iter().flat_map(|variant| variant.data.fields()));
+                methods = self
+                    .methods
+                    .into_iter()
+                    .filter_map(|method_def| {
+                        let body = if from_scratch || method_def.is_static() {
+                            method_def.call_substructure_method(cx, span, StaticEnum(enum_def))
+                        } else {
+                            method_def.expand_enum_method_body(cx, span, enum_def)
+                        };
 
-                    method_def.create_method(cx, span, body)
-                });
-                self.create_derived_impl(cx, *ident, generics, fields, methods, is_packed)
+                        method_def.create_method(cx, span, body)
+                    })
+                    .collect();
+                (ident, generics)
             }
             _ => unreachable!(),
         };
-        // Keep the lint attributes of the previous item to control how the
-        // generated implementations are linted
-        newitem.attrs.extend(
-            item.attrs
-                .iter()
-                .filter(|a| {
-                    a.has_any_name(&[
-                        sym::allow,
-                        sym::warn,
-                        sym::deny,
-                        sym::forbid,
-                        sym::stable,
-                        sym::unstable,
-                    ])
-                })
-                .cloned(),
-        );
-        push(newitem);
-    }
-
-    fn create_derived_impl(
-        &self,
-        cx: &ExtCtxt<'_>,
-        type_ident: Ident,
-        generics: &Generics,
-        fields: impl Iterator<Item = &'a ast::FieldDef>,
-        methods: impl Iterator<Item = Box<ast::AssocItem>>,
-        is_packed: bool,
-    ) -> Box<ast::Item> {
         let mut where_clause = ast::WhereClause::default();
         where_clause.span = generics.where_clause.span;
         let ctxt = self.span.ctxt();
@@ -623,7 +605,7 @@ impl<'a> TraitDef<'a> {
         let trait_generics = Generics { params, where_clause, span: generics.span.with_ctxt(ctxt) };
 
         // Create the reference to the trait.
-        let trait_ref = cx.trait_ref(self.path.clone());
+        let trait_ref = cx.trait_ref(self.path);
 
         let self_params: Vec<_> = generics
             .params
@@ -632,7 +614,7 @@ impl<'a> TraitDef<'a> {
             .collect();
 
         // Create the type of `self`.
-        let path = cx.path_all(type_ident.span.with_ctxt(ctxt), &[type_ident], self_params);
+        let path = cx.path_all(ident.span.with_ctxt(ctxt), &[*ident], self_params);
         let self_type = cx.ty_path(path);
 
         let mut attrs =
@@ -649,7 +631,7 @@ impl<'a> TraitDef<'a> {
             attrs.push(cx.generated_attr(self.span, ast::GeneratedAttr::DocHidden));
         }
 
-        cx.item_trait_impl(
+        let mut newitem = cx.item_trait_impl(
             self.span,
             attrs,
             trait_generics,
@@ -657,8 +639,26 @@ impl<'a> TraitDef<'a> {
             self.is_const,
             trait_ref,
             self_type,
-            methods.collect(),
-        )
+            methods,
+        );
+        // Keep the lint attributes of the previous item to control how the
+        // generated implementations are linted
+        newitem.attrs.extend(
+            item.attrs
+                .iter()
+                .filter(|a| {
+                    a.has_any_name(&[
+                        sym::allow,
+                        sym::warn,
+                        sym::deny,
+                        sym::forbid,
+                        sym::stable,
+                        sym::unstable,
+                    ])
+                })
+                .cloned(),
+        );
+        push(newitem);
     }
 }
 
@@ -677,7 +677,7 @@ impl<'a> MethodDef<'a> {
     }
 
     fn create_method(
-        &self,
+        self,
         cx: &ExtCtxt<'_>,
         span: Span,
         body: BlockOrExpr,
@@ -694,14 +694,14 @@ impl<'a> MethodDef<'a> {
         });
         let args = self_arg
             .into_iter()
-            .chain(self.nonself_args.iter().cloned())
+            .chain(self.nonself_args)
             .map(|(name, ty)| cx.param(span, name, ty))
             .collect();
 
         let ret_type = if self.ret_ty.kind.is_unit() {
             ast::FnRetTy::Default(span)
         } else {
-            ast::FnRetTy::Ty(self.ret_ty.clone())
+            ast::FnRetTy::Ty(self.ret_ty)
         };
 
         let method_ident = Ident::new(self.name, span);
@@ -715,13 +715,13 @@ impl<'a> MethodDef<'a> {
         // Create the method.
         Some(Box::new(ast::AssocItem {
             id: ast::DUMMY_NODE_ID,
-            attrs: self.attributes.clone(),
+            attrs: self.attributes,
             span,
             vis: ast::Visibility { span: trait_lo_sp, kind: ast::VisibilityKind::Inherited },
             kind: ast::AssocItemKind::Fn(cx.item_fn(
                 sig,
                 method_ident,
-                self.generics.clone(),
+                self.generics,
                 Some(body_block),
             )),
             tokens: None,
