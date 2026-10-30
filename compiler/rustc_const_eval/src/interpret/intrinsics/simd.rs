@@ -258,9 +258,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                                     kind => kind
                                 }
                             })?;
-                            if matches!(which, Op::AlgebraicOp(_))
-                                && val.layout.ty.is_floating_point()
-                            {
+                            if matches!(which, Op::AlgebraicOp(_)) {
+                                assert!(val.layout.ty.is_floating_point());
                                 val = M::apply_float_nondet(self, val)?;
                             }
                             if matches!(
@@ -391,18 +390,20 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                 let (op, op_len) = self.project_to_simd(&args[0])?;
 
-                let scalar = |f: f64| {
+                let scalar = |f: Double| {
                     self.float_to_float_or_int(
                         &ImmTy::from_scalar(
-                            Scalar::from_f64(Double::from_bits(f.to_bits().into())),
+                            Scalar::from_f64(f),
                             self.layout_of(self.tcx.types.f64)?,
                         ),
                         dest.layout,
                     )
                 };
                 let (init, mir_op) = match intrinsic_name {
-                    sym::simd_reduce_add_algebraic => (scalar(-0.0)?, BinOp::Add),
-                    sym::simd_reduce_mul_algebraic => (scalar(1.0)?, BinOp::Mul),
+                    sym::simd_reduce_add_algebraic => (scalar(-Double::ZERO)?, BinOp::Add),
+                    sym::simd_reduce_mul_algebraic => {
+                        (scalar(Double::from_u128(1).value)?, BinOp::Mul)
+                    }
                     _ => unreachable!(),
                 };
 
