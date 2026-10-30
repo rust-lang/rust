@@ -14,7 +14,7 @@ use rustc_span::{Span, Symbol};
 use std::str::FromStr as _;
 
 /// Validates a single clippy attribute and emits errors for unknown or deprecated ones.
-pub fn check_clippy_attr<A: AttributeExt>(sess: &Session, attr: &A) {
+pub fn check_clippy_attr(sess: &Session, attr: &rustc_ast::ast::Attribute) {
     if let [clippy, segment2] = &*attr.path()
         && *clippy == sym::clippy
     {
