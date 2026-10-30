@@ -243,6 +243,14 @@ impl Asyncness {
     pub fn is_async(self) -> bool {
         matches!(self, Asyncness::Yes)
     }
+
+    /// Returns "Async" if [`Self::Yes`], otherwise returns an empty string slice.
+    pub fn as_prefix_str(&self) -> &'static str {
+        match self {
+            Asyncness::Yes => "Async",
+            Asyncness::No => "",
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Copy, Hash, Encodable, BlobDecodable, StableHash)]
