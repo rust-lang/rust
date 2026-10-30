@@ -47,8 +47,10 @@ runs:
             echo "Building against latest rustc git version"
             git ls-remote https://github.com/rust-lang/rust/ HEAD | cut -f 1 > rust-version
           fi
-          ./miri toolchain ${{ inputs.toolchain_flags }}
+          ./miri toolchain ${INPUTS_TOOLCHAIN_FLAGS}
         shell: bash
+        env:
+          INPUTS_TOOLCHAIN_FLAGS: ${{ inputs.toolchain_flags }}
 
       - name: Show Rust version (miri toolchain)
         run: |
