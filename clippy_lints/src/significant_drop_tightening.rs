@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::res::MaybeResPath as _;
 use clippy_utils::source::{indent_of, snippet};
-use clippy_utils::{expr_or_init, get_builtin_attr, peel_hir_expr_unary, sym};
+use clippy_utils::{expr_or_init, get_clippy_attr, peel_hir_expr_unary, sym};
 use rustc_ast::BindingMode;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::Applicability;
@@ -73,7 +73,7 @@ impl<'tcx> LateLintPass<'tcx> for SignificantDropTightening<'tcx> {
         _: hir::def_id::LocalDefId,
     ) {
         self.apas.clear();
-        let initial_dummy_stmt = dummy_stmt_expr(&body.value);
+        let initial_dummy_stmt = dummy_stmt_expr(body.value);
         let mut ap = AuxParams::new(&mut self.apas, &initial_dummy_stmt);
         StmtsChecker::new(&mut ap, cx, &mut self.type_cache).visit_body(body);
         for apa in ap.apas.values() {
@@ -167,15 +167,10 @@ impl<'cx, 'others, 'tcx> AttrChecker<'cx, 'others, 'tcx> {
     }
 
     fn has_sig_drop_attr_uncached(&mut self, ty: Ty<'tcx>, depth: usize) -> bool {
-        if let Some(adt) = ty.ty_adt_def() {
-            let mut iter = get_builtin_attr(
-                #[allow(deprecated)]
-                self.cx.tcx.get_all_attrs(adt.did()),
-                sym::has_significant_drop,
-            );
-            if iter.next().is_some() {
-                return true;
-            }
+        if let Some(adt) = ty.ty_adt_def()
+            && get_clippy_attr(self.cx.tcx, adt.did(), sym::has_significant_drop).is_some()
+        {
+            return true;
         }
         match ty.kind() {
             rustc_middle::ty::Adt(a, b) => {

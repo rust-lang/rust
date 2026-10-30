@@ -131,7 +131,7 @@ pub(super) fn check_map_or_else<'tcx>(
         ..
     }) = def_arg.kind
         && let body = cx.tcx.hir_body(body)
-        && let body_expr = &body.value
+        && let body_expr = body.value
         && !usage::BindingUsageFinder::are_params_used(cx, body)
         && eager_or_lazy::switch_to_eager_eval(cx, body_expr)
         && !is_from_proc_macro(cx, expr)

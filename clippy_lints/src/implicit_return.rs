@@ -228,13 +228,13 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitReturn {
         _: LocalDefId,
     ) {
         if (!matches!(kind, FnKind::Closure) && matches!(decl.output, FnRetTy::DefaultReturn(_)))
-            || !span.eq_ctxt(body.value.span)
+            || span.ctxt() != body.value.span.ctxt()
             || span.in_external_macro(cx.sess().source_map())
         {
             return;
         }
 
-        let res_ty = cx.typeck_results().expr_ty(&body.value);
+        let res_ty = cx.typeck_results().expr_ty(body.value);
         if res_ty.is_unit() || res_ty.is_never() {
             return;
         }
@@ -244,10 +244,10 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitReturn {
                 Some(e) => e,
                 None => return,
             }
-        } else if let Some(expr) = get_async_closure_expr(cx.tcx, &body.value) {
+        } else if let Some(expr) = get_async_closure_expr(cx.tcx, body.value) {
             expr
         } else {
-            &body.value
+            body.value
         };
 
         if is_from_proc_macro(cx, expr) {

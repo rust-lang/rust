@@ -1,5 +1,5 @@
 use clippy_utils::res::MaybeQPath;
-use clippy_utils::{get_builtin_attr, higher, sym};
+use clippy_utils::{higher, sym};
 use itertools::Itertools as _;
 use rustc_ast::LitIntType;
 use rustc_ast::ast::{LitFloatType, LitKind};
@@ -140,7 +140,7 @@ fn check_item(cx: &LateContext<'_>, hir_id: HirId) {
             cx,
             hir_id,
             |v| {
-                v.expr(&v.bind("expr", &body.value));
+                v.expr(&v.bind("expr", body.value));
             },
             Some(body),
         );
@@ -727,7 +727,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
     }
 
     fn body(&self, body_id: &Binding<hir::BodyId>) {
-        let expr = &self.cx.tcx.hir_body(body_id.value).value;
+        let expr = self.cx.tcx.hir_body(body_id.value).value;
         bind!(self, expr);
         chain!(self, "{expr} = &cx.tcx.hir_body({body_id}).value");
         self.expr(expr);
@@ -874,6 +874,8 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
 }
 
 fn has_attr(cx: &LateContext<'_>, hir_id: HirId) -> bool {
-    let attrs = cx.tcx.hir_attrs(hir_id);
-    get_builtin_attr(attrs, sym::author).count() > 0
+    cx.tcx
+        .hir_tool_attrs(hir_id, &[sym::clippy, sym::author])
+        .next()
+        .is_some()
 }

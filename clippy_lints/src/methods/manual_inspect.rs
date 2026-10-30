@@ -48,7 +48,7 @@ pub(crate) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>, name:
         let can_lint = for_each_expr_without_closures(block.stmts, |e| {
             if let ExprKind::Closure(c) = e.kind {
                 // Nested closures don't need to treat returns specially.
-                let _: Option<!> = for_each_expr(cx.tcx, &cx.tcx.hir_body(c.body).value, |e| {
+                let _: Option<!> = for_each_expr(cx.tcx, cx.tcx.hir_body(c.body).value, |e| {
                     if e.res_local_id() == Some(arg_id) {
                         let (kind, same_ctxt) = check_use(cx, ctxt, e);
                         match (kind, same_ctxt && e.span.ctxt() == ctxt) {
@@ -164,7 +164,7 @@ pub(crate) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>, name:
             // This case could be handled, but a fair bit of care would need to be taken.
             && (!requires_deref || arg_ty.is_freeze(cx.tcx, cx.typing_env()))
             // `inspect` only provides shared access to the closure argument.
-            && !is_potentially_mutated(arg_id, &body.value, cx)
+            && !is_potentially_mutated(arg_id, body.value, cx)
         {
             if requires_deref {
                 edits.push((param.span.shrink_to_lo(), "&".into()));

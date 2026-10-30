@@ -149,7 +149,7 @@ impl<'hir> MapFunc<'hir> {
     fn sugg(self, cx: &LateContext<'hir>, invert: bool, app: &mut Applicability) -> String {
         match self {
             Self::Closure(closure) => {
-                let body = Sugg::hir_with_applicability(cx, &cx.tcx.hir_body(closure.body).value, "..", app);
+                let body = Sugg::hir_with_applicability(cx, cx.tcx.hir_body(closure.body).value, "..", app);
                 format!(
                     "{} {}",
                     snippet_with_applicability(cx, closure.fn_decl_span, "|..|", app),
@@ -214,7 +214,7 @@ fn emit_lint<'tcx>(
 pub(super) fn check_map(cx: &LateContext<'_>, expr: &Expr<'_>, msrv: Msrv) {
     if let Some(parent_expr) = get_parent_expr(cx, expr)
         && let ExprKind::Binary(op, left, right) = parent_expr.kind
-        && op.span.eq_ctxt(expr.span)
+        && op.span.ctxt() == expr.span.ctxt()
         && let Ok(op) = Op::try_from(op.node)
     {
         // Check `left` and `right` expression in any order

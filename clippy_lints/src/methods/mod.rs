@@ -651,8 +651,10 @@ declare_clippy_lint! {
     ///
     /// ### Good example
     /// ```no_run
+    /// use std::process;
+    ///
     /// fn main() {
-    ///     std::process::exit(0);
+    ///     process::exit(0);
     /// }
     /// ```
     ///
@@ -3431,15 +3433,11 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```no_run
-    /// fn main() {
-    ///     let x = String::from("hello world").repeat(1);
-    /// }
+    /// let x = String::from("hello world").repeat(1);
     /// ```
     /// Use instead:
     /// ```no_run
-    /// fn main() {
-    ///     let x = String::from("hello world").clone();
-    /// }
+    /// let x = String::from("hello world").clone();
     /// ```
     #[clippy::version = "1.47.0"]
     pub REPEAT_ONCE,
@@ -5494,7 +5492,7 @@ impl Methods {
                                 && let body = cx.tcx.hir_body(arg.body)
                                 && let [param] = body.params =>
                         {
-                            string_lit_chars_any::check(cx, expr, recv, param, peel_blocks(&body.value), self.msrv);
+                            string_lit_chars_any::check(cx, expr, recv, param, peel_blocks(body.value), self.msrv);
                         },
                         Some((sym::map, _, [map_arg], _, map_call_span)) => {
                             map_all_any_identity::check(cx, expr, recv, map_call_span, map_arg, call_span, arg, "any");

@@ -161,7 +161,7 @@ fn expr_search_pat(tcx: TyCtxt<'_>, e: &Expr<'_>) -> (Pat, Pat) {
         // e.g. `return format!(..)` would be considered to be from a proc macro
         // if we build up a pattern for the macro expansion and compare it to the invocation `format!()`.
         // So instead we return an empty pattern such that `span_matches_pat` always returns true.
-        if !e.span.eq_ctxt(outer_span) {
+        if e.span.ctxt() != outer_span.ctxt() {
             return (Pat::Str(""), Pat::Str(""));
         }
 
@@ -206,7 +206,7 @@ fn expr_search_pat(tcx: TyCtxt<'_>, e: &Expr<'_>) -> (Pat, Pat) {
             },
             ExprKind::Closure(&Closure { body, .. }) => (
                 Pat::Str(""),
-                expr_search_pat_inner(tcx, &tcx.hir_body(body).value, outer_span).1,
+                expr_search_pat_inner(tcx, tcx.hir_body(body).value, outer_span).1,
             ),
             ExprKind::Block(
                 Block {
@@ -342,7 +342,7 @@ fn fn_kind_pat(tcx: TyCtxt<'_>, kind: &FnKind<'_>, body: &Body<'_>, hir_id: HirI
     let (mut start_pat, end_pat) = match kind {
         FnKind::ItemFn(.., header) => (fn_header_search_pat(*header), Pat::Str("")),
         FnKind::Method(.., sig) => (fn_header_search_pat(sig.header), Pat::Str("")),
-        FnKind::Closure => return (Pat::Str(""), expr_search_pat(tcx, &body.value).1),
+        FnKind::Closure => return (Pat::Str(""), expr_search_pat(tcx, body.value).1),
     };
     match tcx.hir_node(hir_id) {
         Node::Item(Item { vis_span, .. })
@@ -370,7 +370,7 @@ fn attr_search_pat(attr: &Attribute) -> (Pat, Pat) {
                 (Pat::Str("#"), Pat::Str("]"))
             }
         },
-        AttrKind::Synthetic(..) => unreachable!(),
+        AttrKind::Synthetic(..) | AttrKind::Generated(..) => unreachable!(),
         AttrKind::DocComment(_kind @ CommentKind::Line, ..) => {
             if attr.style == AttrStyle::Outer {
                 (Pat::Str("///"), Pat::Str(""))

@@ -350,10 +350,11 @@ impl ItemNameRepetitions {
     fn check_struct_common_affix(&self, cx: &LateContext<'_>, item: &Item<'_>, fields: &[FieldDef<'_>]) {
         // if the SyntaxContext of the identifiers of the fields and struct differ dont lint them.
         // this prevents linting in macros in which the location of the field identifier names differ
-        if !fields
-            .iter()
-            .all(|field| item.kind.ident().is_some_and(|i| i.span.eq_ctxt(field.ident.span)))
-        {
+        if !fields.iter().all(|field| {
+            item.kind
+                .ident()
+                .is_some_and(|i| i.span.ctxt() == field.ident.span.ctxt())
+        }) {
             return;
         }
 
@@ -429,7 +430,7 @@ impl ItemNameRepetitions {
                 continue;
             }
 
-            if !field.ident.span.eq_ctxt(ident.span) {
+            if field.ident.span.ctxt() != ident.span.ctxt() {
                 // consider linting only if the field identifier has the same SyntaxContext as the item(struct)
                 continue;
             }

@@ -425,26 +425,26 @@ impl HirEqInterExpr<'_, '_, '_> {
             let Some(rstmt_span) = walk_span_to_context(right.span, rspan.ctxt) else {
                 return false;
             };
-            let lstmt_span = lstmt_span.data();
-            let rstmt_span = rstmt_span.data();
+            let (lstmt_span_lo, lstmt_span_hi) = lstmt_span.lo_hi();
+            let (rstmt_span_lo, rstmt_span_hi) = rstmt_span.lo_hi();
 
-            if lstmt_span.lo < lstart && rstmt_span.lo < rstart {
+            if lstmt_span_lo < lstart && rstmt_span_lo < rstart {
                 // Can happen when macros expand to multiple statements, or rearrange statements.
                 // Nothing in between the statements to check in this case.
                 continue;
             }
-            if lstmt_span.lo < lstart || rstmt_span.lo < rstart {
+            if lstmt_span_lo < lstart || rstmt_span_lo < rstart {
                 // Only one of the blocks had a weird macro.
                 return false;
             }
-            if !eq_span_tokens(self.inner.cx, lstart..lstmt_span.lo, rstart..rstmt_span.lo, |t| {
+            if !eq_span_tokens(self.inner.cx, lstart..lstmt_span_lo, rstart..rstmt_span_lo, |t| {
                 !matches!(t, Whitespace | Semi)
             }) {
                 return false;
             }
 
-            lstart = lstmt_span.hi;
-            rstart = rstmt_span.hi;
+            lstart = lstmt_span_hi;
+            rstart = rstmt_span_hi;
         }
 
         let (lend, rend) = match (left.expr, right.expr) {
@@ -493,8 +493,8 @@ impl HirEqInterExpr<'_, '_, '_> {
             self.inner.cx.tcx.typeck_body(right),
         ));
         let res = self.eq_expr(
-            &self.inner.cx.tcx.hir_body(left).value,
-            &self.inner.cx.tcx.hir_body(right).value,
+            self.inner.cx.tcx.hir_body(left).value,
+            self.inner.cx.tcx.hir_body(right).value,
         );
         self.inner.maybe_typeck_results = old_maybe_typeck_results;
         res
@@ -1247,7 +1247,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             }) => {
                 mem::discriminant(capture_clause).hash(&mut self.s);
                 // closures inherit TypeckResults
-                self.hash_expr(&self.cx.tcx.hir_body(*body).value);
+                self.hash_expr(self.cx.tcx.hir_body(*body).value);
             },
             ExprKind::ConstBlock(l_id) => {
                 self.hash_body(l_id.body);
@@ -1670,7 +1670,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
     pub fn hash_body(&mut self, body_id: BodyId) {
         // swap out TypeckResults when hashing a body
         let old_maybe_typeck_results = self.maybe_typeck_results.replace(self.cx.tcx.typeck_body(body_id));
-        self.hash_expr(&self.cx.tcx.hir_body(body_id).value);
+        self.hash_expr(self.cx.tcx.hir_body(body_id).value);
         self.maybe_typeck_results = old_maybe_typeck_results;
     }
 
@@ -1806,7 +1806,7 @@ pub fn has_ambiguous_literal_in_expr(cx: &LateContext<'_>, expr: &Expr<'_>) -> b
 
         ExprKind::Closure(Closure { body, .. }) => {
             let body = cx.tcx.hir_body(*body);
-            let closure_expr = crate::peel_blocks(&body.value);
+            let closure_expr = crate::peel_blocks(body.value);
             has_ambiguous_literal_in_expr(cx, closure_expr)
         },
 
