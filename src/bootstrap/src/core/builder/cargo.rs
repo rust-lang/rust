@@ -1490,6 +1490,8 @@ impl Builder<'_> {
             rustflags.arg("-Zinline-mir-preserve-debug");
 
             rustflags.arg("-Zmir_strip_debuginfo=locals-in-tiny-functions");
+
+            rustflags.arg("--cfg=libc_unstable_time64");
         }
 
         // take target-specific extra rustflags if any otherwise take `rust.rustflags`
