@@ -19,6 +19,37 @@ pub(super) const unsafe fn ptr_rotate<T>(left: usize, mid: *mut T, right: usize)
     if (left == 0) || (right == 0) {
         return;
     }
+
+    // For huge slices, GCD has poor locality because it jumps by large element-sized
+    // strides and carries a large temporary. Since rotation only permutes raw storage,
+    // a large element whose size/alignment permits it can instead be viewed as multiple
+    // `MaybeUninit<usize>` words. This makes dispatch choose the contiguous swap algorithm,
+    // which has much better cache/TLB locality.
+    if !cfg!(feature = "optimize_for_size")
+        && size_of::<T>() > size_of::<[usize; 4]>()
+        && size_of::<T>() % size_of::<usize>() == 0
+        && align_of::<T>() >= align_of::<usize>()
+    {
+        let ratio = size_of::<T>() / size_of::<usize>();
+
+        // SAFETY: this covers exactly the same bytes as `[mid-left, mid+right)` because
+        // `ratio * size_of::<usize>() == size_of::<T>()`. The check above guarantees
+        // `mid` is aligned for `usize`, and preserving the total byte length introduces
+        // no new overflow.
+        unsafe { ptr_rotate_dispatch(left * ratio, mid as *mut MaybeUninit<usize>, right * ratio) }
+    } else {
+        // SAFETY: guaranteed by the caller
+        unsafe { ptr_rotate_dispatch(left, mid, right) }
+    }
+}
+
+/// Chooses between the three rotation algorithms. See the algorithm docs below.
+///
+/// # Safety
+///
+/// The specified range must be valid for reading and writing.
+#[inline]
+const unsafe fn ptr_rotate_dispatch<T>(left: usize, mid: *mut T, right: usize) {
     // `T` is not a zero-sized type, so it's okay to divide by its size.
     if !cfg!(feature = "optimize_for_size")
         // FIXME(const-hack): Use cmp::min when available in const
@@ -266,6 +297,18 @@ const unsafe fn ptr_rotate_swap<T>(mut left: usize, mut mid: *mut T, mut right: 
             }
         }
         if (right == 0) || (left == 0) {
+            return;
+        }
+
+        // Switch to the buffered algorithm once the smaller side fits in the stack
+        // buffer. The swap algorithm is efficient for reducing large blocks, but its
+        // tail can degenerate into many small swaps when one side becomes tiny.
+        if !cfg!(feature = "optimize_for_size")
+            && const_min(left, right) <= size_of::<BufType>() / size_of::<T>()
+        {
+            // SAFETY: the remaining range `[mid-left, mid+right)` is a subrange of the
+            // original input, so it is valid for reading and writing.
+            unsafe { ptr_rotate_memmove(left, mid, right) };
             return;
         }
     }
