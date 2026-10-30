@@ -22,6 +22,7 @@
     no_core,
     intrinsics,
     lang_items,
+    adt_const_params,
     auto_traits,
     freeze_impls,
     negative_impls,
@@ -381,6 +382,33 @@ trait Drop {
 #[rustc_intrinsic]
 pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
 
+pub enum AtomicOrdering {
+    Relaxed = 0,
+    Release = 1,
+    Acquire = 2,
+    AcqRel = 3,
+    SeqCst = 4,
+}
+
+impl ConstParamTy_ for AtomicOrdering {}
+
+pub mod atomic {
+    use super::{AtomicOrdering, Copy};
+
+    #[rustc_nounwind]
+    #[rustc_intrinsic]
+    pub const unsafe fn atomic_load<T: Copy, const ORD: AtomicOrdering, const VOLATILE: bool>(
+        src: *const T,
+    ) -> T;
+
+    #[rustc_nounwind]
+    #[rustc_intrinsic]
+    pub const unsafe fn atomic_store<T: Copy, const ORD: AtomicOrdering, const VOLATILE: bool>(
+        dst: *mut T,
+        val: T,
+    );
+}
+
 pub mod mem {
     #[rustc_nounwind]
     #[rustc_intrinsic]
@@ -489,6 +517,21 @@ impl Copy for Ordering {}
 #[lang = "const_param_ty"]
 #[diagnostic::on_unimplemented(message = "`{Self}` can't be used as a const parameter type")]
 pub trait ConstParamTy_ {}
+
+impl ConstParamTy_ for usize {}
+impl ConstParamTy_ for u8 {}
+impl ConstParamTy_ for u16 {}
+impl ConstParamTy_ for u32 {}
+impl ConstParamTy_ for u64 {}
+impl ConstParamTy_ for u128 {}
+impl ConstParamTy_ for isize {}
+impl ConstParamTy_ for i8 {}
+impl ConstParamTy_ for i16 {}
+impl ConstParamTy_ for i32 {}
+impl ConstParamTy_ for i64 {}
+impl ConstParamTy_ for i128 {}
+impl ConstParamTy_ for bool {}
+impl ConstParamTy_ for char {}
 
 pub enum SimdAlign {
     // These values must match the compiler's `SimdAlign` defined in
