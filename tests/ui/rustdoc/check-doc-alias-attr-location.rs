@@ -21,6 +21,7 @@ impl Foo for Bar {
     type X = i32;
     fn foo(#[doc(alias = "qux")] _x: u32) -> Self::X {
         //~^ ERROR
+        //~| ERROR
         #[doc(alias = "stmt")]
         //~^ ERROR
         let x = 0;
