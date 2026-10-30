@@ -72,10 +72,10 @@ use crate::traits::solve::{
 use crate::ty::predicate::ExistentialPredicateStableCmpExt as _;
 use crate::ty::{
     self, AdtDef, AdtDefData, AdtKind, Binder, CanonicalizerState, Clause, ClausePolarity, Clauses,
-    Const, ConstKind, FnSigKind, GenericArg, GenericArgsUnsized, GenericParamDefKind, List,
-    ListWithCachedTypeInfo, ParamConst, Pattern, PatternKind, PolyExistentialPredicate, PolyFnSig,
-    Predicate, PredicateKind, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind,
-    TyVid, ValTree, ValTreeKind, Visibility,
+    Const, ConstKind, FnSigKind, GenericArg, GenericArgs, GenericArgsUnsized, GenericParamDefKind,
+    List, ListWithCachedTypeInfo, ParamConst, Pattern, PatternKind, PolyExistentialPredicate,
+    PolyFnSig, Predicate, PredicateKind, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty,
+    TyKind, TyVid, ValTree, ValTreeKind, Visibility,
 };
 
 impl<'tcx> rustc_type_ir::inherent::DefId<TyCtxt<'tcx>> for DefId {
@@ -141,7 +141,7 @@ pub struct CtxtInterners<'tcx> {
 
     pub(super) types: TyKindInterners<'tcx>,
     const_lists: InternedSet<'tcx, List<ty::Const<'tcx>>>,
-    args: InternedSet<'tcx, GenericArgs<'tcx>>,
+    args: InternedSet<'tcx, GenericArgsUnsized<'tcx>>,
     type_lists: InternedSet<'tcx, List<Ty<'tcx>>>,
     canonical_var_kinds: InternedSet<'tcx, List<CanonicalVarKind<'tcx>>>,
     region: InternedSet<'tcx, RegionKind<'tcx>>,
@@ -202,31 +202,6 @@ pub(super) struct TyKindInterners<'tcx> {
     placeholder: InternedSet<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>,
     infer: InternedSet<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>,
     error: InternedSet<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>,
-    const_lists: InternedSet<'tcx, List<ty::Const<'tcx>>>,
-    args: InternedSet<'tcx, GenericArgsUnsized<'tcx>>,
-    type_lists: InternedSet<'tcx, List<Ty<'tcx>>>,
-    canonical_var_kinds: InternedSet<'tcx, List<CanonicalVarKind<'tcx>>>,
-    region: InternedSet<'tcx, RegionKind<'tcx>>,
-    poly_existential_predicates: InternedSet<'tcx, List<PolyExistentialPredicate<'tcx>>>,
-    predicate: InternedSet<'tcx, WithCachedTypeInfo<ty::Binder<'tcx, PredicateKind<'tcx>>>>,
-    clauses: InternedSet<'tcx, ListWithCachedTypeInfo<Clause<'tcx>>>,
-    projs: InternedSet<'tcx, List<ProjectionKind>>,
-    place_elems: InternedSet<'tcx, List<PlaceElem<'tcx>>>,
-    const_: InternedSet<'tcx, WithCachedTypeInfo<ty::ConstKind<'tcx>>>,
-    pat: InternedSet<'tcx, PatternKind<'tcx>>,
-    const_allocation: InternedSet<'tcx, Allocation>,
-    bound_variable_kinds: InternedSet<'tcx, List<ty::BoundVariableKind<'tcx>>>,
-    layout: InternedSet<'tcx, LayoutData<FieldIdx, VariantIdx>>,
-    adt_def: InternedSet<'tcx, AdtDefData>,
-    external_constraints: InternedSet<'tcx, ExternalConstraintsData<TyCtxt<'tcx>>>,
-    predefined_opaques_in_body: InternedSet<'tcx, List<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)>>,
-    fields: InternedSet<'tcx, List<FieldIdx>>,
-    local_def_ids: InternedSet<'tcx, List<LocalDefId>>,
-    captures: InternedSet<'tcx, List<&'tcx ty::CapturedPlace<'tcx>>>,
-    valtree: InternedSet<'tcx, ty::ValTreeKind<TyCtxt<'tcx>>>,
-    patterns: InternedSet<'tcx, List<ty::Pattern<'tcx>>>,
-    outlives: InternedSet<'tcx, List<ty::ArgOutlivesClause<'tcx>>>,
-    canonical_inputs: InternedSet<'tcx, CanonicalInputData<TyCtxt<'tcx>>>,
 }
 
 // Keep allocation and cached type information identical across the variant-specific
@@ -369,7 +344,7 @@ impl<'tcx> TyKindInterners<'tcx> {
         intern_int(int: ty::IntTy) => int: Int(int);
         intern_uint(uint: ty::UintTy) => uint: Uint(uint);
         intern_float(float: ty::FloatTy) => float: Float(float);
-        intern_adt(def: AdtDef<'tcx>, args: GenericArgsRef<'tcx>) => adt:
+        intern_adt(def: AdtDef<'tcx>, args: GenericArgs<'tcx>) => adt:
             Adt(def, args);
         intern_foreign(def_id: DefId) => foreign: Foreign(def_id);
         intern_str() => str_: Str;
@@ -382,7 +357,7 @@ impl<'tcx> TyKindInterners<'tcx> {
             RawPtr(pointee, mutability);
         intern_ref(region: Region<'tcx>, pointee: Ty<'tcx>, mutability: hir::Mutability) => ref_:
             Ref(region, pointee, mutability);
-        intern_fn_def(def_id: DefId, args: Binder<'tcx, GenericArgsRef<'tcx>>) => fn_def:
+        intern_fn_def(def_id: DefId, args: Binder<'tcx, GenericArgs<'tcx>>) => fn_def:
             FnDef(def_id, args);
         intern_fn_ptr(sig_tys: Binder<'tcx, ty::FnSigTys<TyCtxt<'tcx>>>, header: ty::FnHeader<TyCtxt<'tcx>>) => fn_ptr:
             FnPtr(sig_tys, header);
@@ -390,13 +365,13 @@ impl<'tcx> TyKindInterners<'tcx> {
             UnsafeBinder(bound_ty);
         intern_dynamic(predicates: &'tcx List<PolyExistentialPredicate<'tcx>>, region: Region<'tcx>) => dynamic:
             Dynamic(predicates, region);
-        intern_closure(def_id: DefId, args: GenericArgsRef<'tcx>) => closure:
+        intern_closure(def_id: DefId, args: GenericArgs<'tcx>) => closure:
             Closure(def_id, args);
-        intern_coroutine_closure(def_id: DefId, args: GenericArgsRef<'tcx>) => coroutine_closure:
+        intern_coroutine_closure(def_id: DefId, args: GenericArgs<'tcx>) => coroutine_closure:
             CoroutineClosure(def_id, args);
-        intern_coroutine(def_id: DefId, args: GenericArgsRef<'tcx>) => coroutine:
+        intern_coroutine(def_id: DefId, args: GenericArgs<'tcx>) => coroutine:
             Coroutine(def_id, args);
-        intern_coroutine_witness(def_id: DefId, args: GenericArgsRef<'tcx>) => coroutine_witness:
+        intern_coroutine_witness(def_id: DefId, args: GenericArgs<'tcx>) => coroutine_witness:
             CoroutineWitness(def_id, args);
         intern_never() => never: Never;
         intern_tuple(types: &'tcx List<Ty<'tcx>>) => tuple: Tuple(types);

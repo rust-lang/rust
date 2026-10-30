@@ -214,6 +214,7 @@ impl<I: Interner> FlagComputation<I> {
         }
     }
 
+    #[cfg(feature = "nightly")]
     #[allow(rustc::usage_of_ty_tykind)]
     pub fn for_kind_generic<const K: ty::TyKindMarker>(kind: &ty::TyKind<I>) -> FlagComputation<I> {
         macro_rules! with_kind {
