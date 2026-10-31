@@ -4,7 +4,7 @@ use std::iter;
 
 use rustc_data_structures::undo_log::UndoLogs;
 use rustc_middle::traits::query::OutlivesBound;
-use rustc_middle::ty;
+use rustc_middle::ty::{self, TyCtxt};
 use tracing::instrument;
 
 use self::env::OutlivesEnvironment;
@@ -124,7 +124,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
     pub fn take_solver_region_constraints(
         &self,
-    ) -> Option<Box<rustc_type_ir::region_constraint::RegionConstraint<ty::TyCtxt<'tcx>>>> {
+    ) -> Option<Box<rustc_type_ir::region_constraint::RegionConstraint<TyCtxt<'tcx>>>> {
         assert!(!self.in_snapshot(), "cannot take solver region constraints in a snapshot");
         if !self.tcx.assumptions_on_binders() {
             return None;
