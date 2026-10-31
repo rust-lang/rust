@@ -7,7 +7,7 @@ use std::io::{self, ErrorKind, Read, Seek, SeekFrom, Write};
 use std::path::{self, Path};
 use std::time::SystemTime;
 
-use rustc_abi::{FieldIdx, Size};
+use rustc_abi::Size;
 use rustc_data_structures::either::Either;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_target::spec::Os;
@@ -289,7 +289,7 @@ trait EvalContextExtPrivate<'tcx>: crate::MiriInterpCxExt<'tcx> {
         assert!(this.machine.communicate(), "isolation should have prevented reaching this");
 
         // `tv_nsec` and the `UTIME_*` constants are `c_long`, i.e. the target's `isize`.
-        let nsec_place = this.project_field(tp, FieldIdx::ONE)?;
+        let nsec_place = this.project_field_named(tp, "tv_nsec")?;
         let nsec = this.read_scalar(&nsec_place)?.to_target_isize(this)?;
 
         if nsec == this.eval_libc("UTIME_OMIT").to_target_isize(this)? {
