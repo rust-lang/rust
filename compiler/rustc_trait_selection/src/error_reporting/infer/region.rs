@@ -1045,15 +1045,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     }
 
     fn report_inference_failure(&self, var_origin: RegionVariableOrigin<'tcx>) -> Diag<'_> {
-        let br_string = |br: ty::BoundRegionKind<'tcx>| {
-            let mut s = match br {
-                ty::BoundRegionKind::Named(def_id) => format!("`{}`", self.tcx.item_name(def_id)),
-                _ => String::new(),
-            };
-            if !s.is_empty() {
-                s.push(' ');
-            }
-            s
+        let br_string = |br: ty::BoundRegionKind<'tcx>| match br {
+            ty::BoundRegionKind::Named(def_id) => format!("`{}` ", self.tcx.item_name(def_id)),
+            _ => String::new(),
         };
         let var_description = match var_origin {
             RegionVariableOrigin::Misc(_) => String::new(),

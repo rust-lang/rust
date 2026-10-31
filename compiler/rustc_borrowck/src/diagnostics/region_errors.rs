@@ -1109,6 +1109,12 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
 
             let mut v = ty::TraitObjectVisitor(vec![]);
             v.visit_ty_unambig(f.ty);
+
+            if v.0.is_empty() {
+                // No trait object found in this return
+                continue;
+            }
+
             let mut span: MultiSpan = v.0.iter().map(|x| x.span).collect::<Vec<_>>().into();
             // Display the item and variant lines.
             for def_span in def_spans {

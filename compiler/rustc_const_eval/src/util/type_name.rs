@@ -4,7 +4,7 @@ use rustc_data_structures::intern::Interned;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::DisambiguatedDefPathData;
 use rustc_middle::ty::print::{PrettyPrinter, PrintError, Printer};
-use rustc_middle::ty::{self, GenericArg, Ty, TyCtxt};
+use rustc_middle::ty::{self, FieldInfo, GenericArg, Ty, TyCtxt};
 use rustc_span::bug;
 
 struct TypeNamePrinter<'tcx> {
@@ -213,8 +213,40 @@ impl Write for TypeNamePrinter<'_> {
     }
 }
 
-pub fn type_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> String {
+pub fn type_name_and_path<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> String {
     let mut p = TypeNamePrinter { tcx, path: String::new() };
     p.print_type(ty).unwrap();
     p.path
+}
+
+pub fn type_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> String {
+    let mut s = String::new();
+
+    try {
+        match *ty.kind() {
+            ty::Adt(def, args)
+                if let Some(FieldInfo { name, .. }) =
+                    def.field_representing_type_info(tcx, args) =>
+            {
+                write!(s, "{name}")?
+            }
+            ty::Adt(def, _) => write!(s, "{}", tcx.item_name(def.did()))?,
+            ty::Dynamic(data, _) => {
+                let trait_def_id = data
+                    .iter()
+                    .map(|b| b.skip_binder())
+                    .find_map(|pred| match pred {
+                        ty::ExistentialPredicate::Trait(tr) => Some(tr.def_id),
+                        ty::ExistentialPredicate::AutoTrait(def_id) => Some(def_id),
+                        _ => None,
+                    })
+                    .expect("There should be a principal trait");
+                write!(s, "{}", tcx.item_name(trait_def_id))?;
+            }
+            _ => (),
+        }
+    }
+    .unwrap();
+
+    s
 }

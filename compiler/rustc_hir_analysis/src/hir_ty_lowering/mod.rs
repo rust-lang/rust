@@ -442,14 +442,14 @@ impl<'tcx> ForbidParamUsesFolder<'tcx> {
         }
         if matches!(self.context, ForbidParamContext::ConstArgument) {
             if self.tcx.features().gca_const_items() {
-                diag.help("consider factoring the expression into a `type const` item and use it as the const argument instead");
+                diag.help("consider wrapping the expression in the `gca!` macro");
             } else if self.tcx.features().gca_min_const_items() {
-                diag.help("add `#![feature(gca_const_items)]` and extract the expression into a `type const` item");
+                diag.help("add `#![feature(gca_const_items)]` and wrap the expression in the `gca!` macro");
             } else if self.tcx.sess.is_nightly_build() {
                 diag.help(
                     "add `#![feature(generic_const_exprs)]` to allow generic const expressions",
                 );
-                diag.help("alternatively, you can use `#![feature(gca_const_items)]` and extract the expression into a `type const` item");
+                diag.help("alternatively, you can use `#![feature(gca_const_items)]` and wrap the expression in the `gca!` macro");
             }
         }
         diag.emit_err()

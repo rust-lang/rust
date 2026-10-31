@@ -1,0 +1,36 @@
+error[E0277]: the trait bound `(<T as Tr>::Out, <T as Tr>::Out): Tr` is not satisfied
+  --> $DIR/normalize-ice-in-is-opsem-inhabited.rs:9:26
+   |
+LL | struct S<T: Tr>(&'static S<(T::Out, T::Out)>, std::marker::PhantomData<T>);
+   |                          ^^^^^^^^^^^^^^^^^^^ the trait `Tr` is not implemented for `(<T as Tr>::Out, <T as Tr>::Out)`
+   |
+help: the trait `Tr` is implemented for fn pointer `fn(X)`
+  --> $DIR/normalize-ice-in-is-opsem-inhabited.rs:5:1
+   |
+LL | impl<X> Tr for fn(X) {
+   | ^^^^^^^^^^^^^^^^^^^^
+note: required by a bound in `S`
+  --> $DIR/normalize-ice-in-is-opsem-inhabited.rs:9:13
+   |
+LL | struct S<T: Tr>(&'static S<(T::Out, T::Out)>, std::marker::PhantomData<T>);
+   |             ^^ required by this bound in `S`
+
+error[E0277]: the trait bound `T: Tr` is not satisfied
+  --> $DIR/normalize-ice-in-is-opsem-inhabited.rs:15:23
+   |
+LL | struct A2<T>(&'static S2<T>);
+   |                       ^^^^^ the trait `Tr` is not implemented for `T`
+   |
+note: required by a bound in `S2`
+  --> $DIR/normalize-ice-in-is-opsem-inhabited.rs:14:14
+   |
+LL | struct S2<T: Tr>(&'static (), std::marker::PhantomData<<T as Tr>::Out>);
+   |              ^^ required by this bound in `S2`
+help: consider restricting type parameter `T` with trait `Tr`
+   |
+LL | struct A2<T: Tr>(&'static S2<T>);
+   |            ++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

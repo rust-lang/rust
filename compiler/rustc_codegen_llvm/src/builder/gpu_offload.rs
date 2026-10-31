@@ -625,7 +625,7 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
             other => bug!("offload does not support {other:?}"),
         };
 
-        let gep = builder.inbounds_gep(cx.type_f32(), gep_base, &[i32_0]);
+        let gep = builder.typed_inbounds_gep(cx.type_f32(), gep_base, &[i32_0]);
 
         vals.push(base_val);
         geps.push(gep);
@@ -633,13 +633,13 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
 
     for i in 0..num_args {
         let idx = cx.get_const_i32(i);
-        let gep1 = builder.inbounds_gep(ty, a1, &[i32_0, idx]);
+        let gep1 = builder.typed_inbounds_gep(ty, a1, &[i32_0, idx]);
         builder.store(vals[i as usize], gep1, Align::EIGHT);
-        let gep2 = builder.inbounds_gep(ty, a2, &[i32_0, idx]);
+        let gep2 = builder.typed_inbounds_gep(ty, a2, &[i32_0, idx]);
         builder.store(geps[i as usize], gep2, Align::EIGHT);
 
         if !matches!(metadata[i as usize].payload_size, OffloadSize::Static(_)) {
-            let gep3 = builder.inbounds_gep(ty2, a4, &[i32_0, idx]);
+            let gep3 = builder.typed_inbounds_gep(ty2, a4, &[i32_0, idx]);
             let size_val = get_runtime_size(builder, args, i as usize, &metadata[i as usize]);
             builder.store(size_val, gep3, Align::EIGHT);
         }
@@ -659,9 +659,10 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
         let cx = builder.cx;
         let i32_0 = cx.get_const_i32(0);
 
-        let gep1 = builder.inbounds_gep(ty, a1, &[i32_0, i32_0]);
-        let gep2 = builder.inbounds_gep(ty, a2, &[i32_0, i32_0]);
-        let gep3 = if is_dynamic { builder.inbounds_gep(ty2, a4, &[i32_0, i32_0]) } else { a4 };
+        let gep1 = builder.typed_inbounds_gep(ty, a1, &[i32_0, i32_0]);
+        let gep2 = builder.typed_inbounds_gep(ty, a2, &[i32_0, i32_0]);
+        let gep3 =
+            if is_dynamic { builder.typed_inbounds_gep(ty2, a4, &[i32_0, i32_0]) } else { a4 };
         [gep1, gep2, gep3]
     }
 
@@ -708,7 +709,8 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
     // Step 3)
     // Here we fill the KernelArgsTy, see the documentation above
     for (i, value) in values.iter().enumerate() {
-        let ptr = builder.inbounds_gep(tgt_kernel_decl, a5, &[i32_0, cx.get_const_i32(i as u64)]);
+        let ptr =
+            builder.typed_inbounds_gep(tgt_kernel_decl, a5, &[i32_0, cx.get_const_i32(i as u64)]);
         let name = std::ffi::CString::new(value.1).unwrap();
         llvm::set_value_name(ptr, &name.as_bytes());
 

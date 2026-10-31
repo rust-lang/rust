@@ -380,16 +380,6 @@ def SizeSummaryProvider(valobj: SBValue, _dict: LLDBOpaque) -> str:
     return "size=" + str(valobj.GetNumChildren())
 
 
-def vec_to_string(vec: SBValue) -> str:
-    length = vec.GetNumChildren()
-    chars = [vec.GetChildAtIndex(i).GetValueAsUnsigned() for i in range(length)]
-    return (
-        bytes(chars).decode(errors="replace")
-        if PY3
-        else "".join(chr(char) for char in chars)
-    )
-
-
 def read_string(
     process: SBProcess, address: int, length: int, error: Optional[SBError] = None
 ) -> str:
@@ -399,12 +389,31 @@ def read_string(
     If any error or exception occurs, a placeholder byte array of the form "<error: [reason]>" will
     be returned instead."""
 
+    truncated = 0
+    # LLDB can sometimes read garbage values for the length of strings due to niche optimization +
+    # one of several bugs regarding how LLDB handles discriminant values from DWARF debug info. This
+    # can result in attempted reads in sizes upwards of several thousand petabytes. To help prevent
+    # the debugger from hard-crashing or eating all the OS's RAM, we defer to LLDB's setting
+    max_len = (
+        process.GetTarget()
+        .GetDebugger()
+        .GetSetting("target.max-string-summary-length")
+        .GetIntegerValue(fail_value=1024)  # fall-back to LLDB default
+    )
+    if length > max_len:
+        truncated = length - max_len
+        length = max_len
+
     if error is None:
         error = SBError()
     try:
         data = process.ReadMemory(address, length, error)
         if error.Success():
-            return '"' + data.decode("utf-8", "replace") + '"'
+            output = f"\"{data.decode('utf-8', 'replace')}\""
+            if truncated > 0:
+                output += f" <summary truncated by {truncated} bytes>"
+
+            return output
         else:
             return f"<error: {error.GetCString()}>"
     except Exception as e:

@@ -1,0 +1,47 @@
+error[E0119]: conflicting implementations of trait `Noop` for type `NoopNewtype<_>`
+  --> $DIR/wf-cyclic-projection-bound-hang-151723.rs:25:1
+   |
+LL | / impl<T: ?Sized> Noop for T
+LL | |
+LL | | where
+LL | |     <NoopNewtype<T> as Noop>::Assoc: Noop,
+   | |__________________________________________- first implementation here
+...
+LL |   impl<T> Noop for NoopNewtype<T> {}
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `NoopNewtype<_>`
+
+error[E0275]: overflow evaluating the requirement `<NoopNewtype<T> as Noop>::Assoc == _`
+  --> $DIR/wf-cyclic-projection-bound-hang-151723.rs:16:1
+   |
+LL | / impl<T: ?Sized> Noop for T
+LL | |
+LL | | where
+LL | |     <NoopNewtype<T> as Noop>::Assoc: Noop,
+   | |__________________________________________^
+
+error[E0275]: overflow evaluating the requirement `NoopNewtype<str>: Sized`
+  --> $DIR/wf-cyclic-projection-bound-hang-151723.rs:31:24
+   |
+LL | fn coerce_newtype() -> NoopNewtype<str> {
+   |                        ^^^^^^^^^^^^^^^^
+   |
+   = note: the return type of a function must have a statically known size
+
+error[E0275]: overflow evaluating whether `NoopNewtype<str>` is well-formed
+  --> $DIR/wf-cyclic-projection-bound-hang-151723.rs:31:24
+   |
+LL | fn coerce_newtype() -> NoopNewtype<str> {
+   |                        ^^^^^^^^^^^^^^^^
+
+error[E0275]: overflow evaluating the requirement `<NoopNewtype<T> as Noop>::Assoc == _`
+  --> $DIR/wf-cyclic-projection-bound-hang-151723.rs:21:5
+   |
+LL |     type Assoc = T;
+   |     ^^^^^^^^^^
+
+error[E0275]: overflow evaluating the requirement `<str as Noop>::Assoc == _`
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0119, E0275.
+For more information about an error, try `rustc --explain E0119`.

@@ -3398,7 +3398,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         }
         let offsets = args[1].immediate();
 
-        return Ok(bx.gep(bx.backend_type(layout), ptrs, &[offsets]));
+        return Ok(bx.gep(layout.size, ptrs, offsets));
     }
 
     if name == sym::simd_saturating_add || name == sym::simd_saturating_sub {

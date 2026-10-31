@@ -1,0 +1,22 @@
+error[E0425]: cannot find type `Undefined` in this scope
+  --> $DIR/hang-on-error-type-in-where-clause-issue-152169.rs:12:28
+   |
+LL | impl<T> Trait for T where (Undefined, T): Trait {}
+   |                            ^^^^^^^^^ not found in this scope
+
+error[E0119]: conflicting implementations of trait `Trait` for type `(_, _)`
+  --> $DIR/hang-on-error-type-in-where-clause-issue-152169.rs:15:1
+   |
+LL | impl<T> Trait for T where (Undefined, T): Trait {}
+   | ----------------------------------------------- first implementation here
+...
+LL | impl<T, W: Trait> Trait for (T, W) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(_, _)`
+   |
+   = note: overflow evaluating the requirement `({type error}, (_, _)): Trait`
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`hang_on_error_type_in_where_clause_issue_152169`)
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0119, E0425.
+For more information about an error, try `rustc --explain E0119`.
