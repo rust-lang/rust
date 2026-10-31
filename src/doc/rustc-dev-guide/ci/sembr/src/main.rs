@@ -121,11 +121,10 @@ fn comply(content: &str) -> String {
             line.find(|ch: char| !ch.is_whitespace()).unwrap()
         };
         let mut newly_split_lines = line.split_inclusive(&*REGEX_SPLIT);
-        let first = newly_split_lines.next().unwrap().trim_end().to_owned();
+        let mut new_lines = Vec::new();
+        new_lines.push(newly_split_lines.next().unwrap().trim_end().to_owned());
         let mut remaining: Vec<_> =
             newly_split_lines.map(|portion| format!("{:indent$}{}", "", portion.trim())).collect();
-        let mut new_lines = Vec::new();
-        new_lines.push(first);
         new_lines.append(&mut remaining);
         new_content.splice(new_n..=new_n, new_lines.clone());
         new_n += new_lines.len() - 1;
