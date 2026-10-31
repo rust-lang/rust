@@ -220,7 +220,7 @@ pub(crate) fn SetFunctionCallConv(fn_: &Value, cc: CallConv) {
 // value's name as the comdat value to make sure that it is in a 1-to-1 relationship to the
 // function.
 // For more details on COMDAT sections see e.g., https://www.airs.com/blog/archives/52
-pub(crate) fn SetUniqueComdat(llmod: &Module, val: &Value) {
+pub(crate) fn SetUniqueComdat<'ll>(llmod: Module<'ll>, val: &'ll Value) {
     let name_buf = get_value_name(val);
     let name =
         CString::from_vec_with_nul(name_buf).or_else(|buf| CString::new(buf.into_bytes())).unwrap();
@@ -257,7 +257,7 @@ pub(crate) fn set_section(llglobal: &Value, section_name: &CStr) {
     }
 }
 
-pub(crate) fn add_global<'a>(llmod: &'a Module, ty: &'a Type, name_cstr: &CStr) -> &'a Value {
+pub(crate) fn add_global<'ll>(llmod: Module<'ll>, ty: &'ll Type, name_cstr: &CStr) -> &'ll Value {
     unsafe { LLVMAddGlobal(llmod, ty, name_cstr.as_ptr()) }
 }
 
@@ -309,7 +309,7 @@ pub(crate) fn set_externally_initialized(llglobal: &Value, is_ext_init: bool) {
 ///
 /// Inserts the comdat into `llmod` if it does not exist.
 /// It is an error to call this if the target does not support comdat.
-pub(crate) fn set_comdat(llmod: &Module, llglobal: &Value, name: &CStr) {
+pub(crate) fn set_comdat<'ll>(llmod: Module<'ll>, llglobal: &'ll Value, name: &CStr) {
     unsafe {
         let comdat = LLVMGetOrInsertComdat(llmod, name.as_ptr());
         LLVMSetComdat(llglobal, comdat);
@@ -365,7 +365,7 @@ impl Intrinsic {
 
     pub(crate) fn get_declaration<'ll>(
         self,
-        llmod: &'ll Module,
+        llmod: Module<'ll>,
         type_params: &[&'ll Type],
     ) -> &'ll Value {
         unsafe {
@@ -440,8 +440,8 @@ impl Drop for OperandBundleBox<'_> {
     }
 }
 
-pub(crate) fn add_module_flag_u32(
-    module: &Module,
+pub(crate) fn add_module_flag_u32<'ll>(
+    module: Module<'ll>,
     merge_behavior: ModuleFlagMergeBehavior,
     key: &str,
     value: u32,
@@ -451,8 +451,8 @@ pub(crate) fn add_module_flag_u32(
     }
 }
 
-pub(crate) fn add_module_flag_str(
-    module: &Module,
+pub(crate) fn add_module_flag_str<'ll>(
+    module: Module<'ll>,
     merge_behavior: ModuleFlagMergeBehavior,
     key: &str,
     value: &str,
@@ -484,7 +484,7 @@ pub(crate) fn set_dso_local<'ll>(v: &'ll Value) {
 /// Safe wrapper for `LLVMRustAppendModuleInlineAsm`, which delegates to
 /// `Module::appendModuleInlineAsm`.
 pub(crate) fn append_module_inline_asm<'ll>(
-    llmod: &'ll Module,
+    llmod: Module<'ll>,
     asm: &[u8],
     target_features: &str,
     target_cpu: &str,
@@ -504,7 +504,7 @@ pub(crate) fn append_module_inline_asm<'ll>(
 
 /// Safe wrapper for `LLVMAddAlias2`
 pub(crate) fn add_alias<'ll>(
-    module: &'ll Module,
+    module: Module<'ll>,
     ty: &Type,
     address_space: AddressSpace,
     aliasee: &Value,

@@ -50,11 +50,11 @@ impl<'ll> Iterator for ValueIter<'ll> {
     }
 }
 
-pub(crate) fn iter_globals(llmod: &llvm::Module) -> ValueIter<'_> {
+pub(crate) fn iter_globals<'ll>(llmod: llvm::Module<'ll>) -> ValueIter<'ll> {
     unsafe { ValueIter { cur: llvm::LLVMGetFirstGlobal(llmod), step: llvm::LLVMGetNextGlobal } }
 }
 
-pub(crate) fn iter_global_aliases(llmod: &llvm::Module) -> ValueIter<'_> {
+pub(crate) fn iter_global_aliases<'ll>(llmod: llvm::Module<'ll>) -> ValueIter<'ll> {
     unsafe {
         ValueIter { cur: llvm::LLVMGetFirstGlobalAlias(llmod), step: llvm::LLVMGetNextGlobalAlias }
     }

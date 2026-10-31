@@ -695,7 +695,7 @@ pub struct ModuleBuffer {
 }
 
 impl ModuleBuffer {
-    pub(crate) fn new(m: &llvm::Module, is_thin: bool) -> ModuleBuffer {
+    pub(crate) fn new<'ll>(m: llvm::Module<'ll>, is_thin: bool) -> ModuleBuffer {
         unsafe {
             let buffer = llvm::LLVMRustModuleSerialize(m, is_thin);
             ModuleBuffer { data: Buffer(buffer) }
@@ -859,7 +859,7 @@ pub(crate) fn parse_module<'ll>(
     name: &CStr,
     data: &[u8],
     dcx: DiagCtxtHandle<'_>,
-) -> &'ll llvm::Module {
+) -> llvm::Module<'ll> {
     unsafe {
         llvm::LLVMRustParseBitcodeForLTO(llcx, data.as_ptr(), data.len(), name.as_ptr())
             .unwrap_or_else(|| write::llvm_err(dcx, LlvmError::ParseBitcode))
