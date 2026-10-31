@@ -813,7 +813,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             &i.attrs,
             i.span,
             Target::from_assoc_item_kind(&i.kind, AssocCtxt::Trait),
-            AstTarget::from_assoc_item_kind(&i.kind),
+            AstTarget::from_assoc_item_kind(&i.kind, AssocCtxt::Trait),
         );
 
         let (ident, generics, kind, has_value) = match &i.kind {
@@ -1076,7 +1076,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
             &i.attrs,
             i.span,
             Target::from_assoc_item_kind(&i.kind, AssocCtxt::Impl { of_trait: is_in_trait_impl }),
-            AstTarget::from_assoc_item_kind(&i.kind),
+            AstTarget::from_assoc_item_kind(
+                &i.kind,
+                AssocCtxt::Impl { of_trait: is_in_trait_impl },
+            ),
         );
 
         let (ident, (generics, kind)) = match &i.kind {
