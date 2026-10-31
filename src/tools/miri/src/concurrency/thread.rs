@@ -93,6 +93,8 @@ pub enum BlockReason {
     VirtualSocket,
     /// Blocked on an IO operation.
     IO,
+    /// Thread is paused indefinitely.
+    Pause,
     /// Blocked for any reason related to GenMC, such as `assume` statements (GenMC mode only).
     /// Will be implicitly unblocked when GenMC schedules this thread again.
     Genmc,

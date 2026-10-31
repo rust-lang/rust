@@ -205,6 +205,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let result = this.sysconf(val)?;
                 this.write_scalar(result, dest)?;
             }
+
             // File descriptors
             "read" => {
                 let [fd, buf, count] = &this.check_shim_sig(
@@ -630,8 +631,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let result = this.pipe2(pipefd, Some(flags))?;
                 this.write_scalar(result, dest)?;
             }
-
-            // Network sockets
             "socket" => {
                 let [domain, type_, protocol] = &this.check_shim_sig(
                     shim_sig!(extern "C" fn(i32, i32, i32) -> i32),
@@ -1365,6 +1364,20 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 )?;
                 // For now, just pretend we always have this fixed UID.
                 this.write_int(UID, dest)?;
+            }
+            "pause" => {
+                let [] = &this
+                    .check_shim_sig(shim_sig!(extern "C" fn() -> i32), (link_name, abi, args))?;
+                // This blocks the current thread until a signal gets delivered. We don't support
+                // signals, so we block forever.
+                this.block_thread(
+                    BlockReason::Pause,
+                    None,
+                    callback!(@capture<'tcx> {}
+                    |_this, _unblock: UnblockKind| {
+                        panic!("should never unblock")
+                    }),
+                );
             }
 
             // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
