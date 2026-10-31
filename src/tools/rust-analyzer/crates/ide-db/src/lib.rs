@@ -2,6 +2,8 @@
 //!
 //! It is mainly a `HirDatabase` for semantic analysis, plus a `SymbolsDatabase`, for fuzzy search.
 
+#![allow(unsafe_op_in_unsafe_fn)]
+
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 
 #[cfg(feature = "in-rust-tree")]
