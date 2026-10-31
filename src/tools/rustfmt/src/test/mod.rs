@@ -3,11 +3,10 @@ use std::collections::HashMap;
 use std::env;
 use std::fs;
 use std::io::{self, BufRead, BufReader, Read, Write};
-use std::iter::Peekable;
 use std::mem;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::str::{Chars, FromStr};
+use std::str::FromStr;
 use std::thread;
 
 use crate::config::{Color, Config, EmitMode, FileName, NewlineStyle};
@@ -397,10 +396,9 @@ fn assert_output(source: &Path, expected_filename: &Path) {
         .read_to_string(&mut expected_text)
         .expect("Failed reading target");
 
-    let compare = make_diff(&expected_text, &output, DIFF_CONTEXT_SIZE);
-    if !compare.is_empty() {
+    if let Some(diff) = Diff::from_output(&expected_text, &output) {
         let mut failures = HashMap::new();
-        failures.insert(source.to_owned(), compare);
+        failures.insert(source.to_owned(), diff);
         print_mismatches_default_message(failures);
         panic!("Text does not match expected output");
     }
@@ -444,10 +442,9 @@ fn assert_stdin_output(
         .expect("Failed reading target");
 
     let output = String::from_utf8(buf).unwrap();
-    let compare = make_diff(&expected_text, &output, DIFF_CONTEXT_SIZE);
-    if !compare.is_empty() {
+    if let Some(diff) = Diff::from_output(&expected_text, &output) {
         let mut failures = HashMap::new();
-        failures.insert(source.to_owned(), compare);
+        failures.insert(source.to_owned(), diff);
         print_mismatches_default_message(failures);
         panic!("Text does not match expected output");
     }
@@ -852,7 +849,7 @@ fn check_files(files: Vec<PathBuf>, opt_config: &Option<PathBuf>) -> (Vec<Format
             }
             Ok(report) => reports.push(report),
             Err(err) => {
-                if let IdempotentCheckError::Mismatch(msg) = err {
+                if let IdempotentCheckError::Mismatches(msg) = err {
                     print_mismatches_default_message(msg);
                 }
                 fails += 1;
@@ -865,11 +862,24 @@ fn check_files(files: Vec<PathBuf>, opt_config: &Option<PathBuf>) -> (Vec<Format
     (reports, count, fails)
 }
 
-fn print_mismatches_default_message(result: HashMap<PathBuf, Vec<Mismatch>>) {
-    for (file_name, diff) in result {
-        let mismatch_msg_formatter =
-            |line_num| format!("\nMismatch at {}:{}:", file_name.display(), line_num);
-        print_diff(diff, &mismatch_msg_formatter, &Default::default());
+fn print_mismatches_default_message(result: HashMap<PathBuf, Diff>) {
+    for (file_name, mismatch) in result {
+        match mismatch {
+            Diff::Mismatches(diff) => {
+                let mismatch_msg_formatter =
+                    |line_num| format!("\nMismatch at {}:{}:", file_name.display(), line_num);
+                print_diff(diff, &mismatch_msg_formatter, &Default::default());
+            }
+            Diff::LineEndings() => {
+                let color = Config::default().color();
+                let mut writer = OutputWriter::new(color);
+                let msg = format!(
+                    "{}: line endings mismatch (maybe missing carriage returns?)",
+                    file_name.display()
+                );
+                writer.writeln(&msg, Some(term::color::RED));
+            }
+        }
     }
 
     if let Some(mut t) = term::stdout() {
@@ -961,8 +971,27 @@ fn format_file<P: Into<PathBuf>>(filepath: P, config: Config) -> (bool, SourceFi
     (parsing_errors, source_file, result)
 }
 
+enum Diff {
+    Mismatches(Vec<Mismatch>),
+    LineEndings(),
+}
+
+impl Diff {
+    fn from_output(expected: &str, got: &str) -> Option<Self> {
+        if expected == got {
+            return None;
+        }
+        let mismatches = make_diff(expected, got, DIFF_CONTEXT_SIZE);
+        if mismatches.is_empty() {
+            Some(Self::LineEndings())
+        } else {
+            Some(Self::Mismatches(mismatches))
+        }
+    }
+}
+
 enum IdempotentCheckError {
-    Mismatch(HashMap<PathBuf, Vec<Mismatch>>),
+    Mismatches(HashMap<PathBuf, Diff>),
     Parse,
 }
 
@@ -1115,17 +1144,11 @@ fn handle_result(
         let read_error = format!("failed reading target {target:?}");
         f.read_to_string(&mut text).expect(&read_error);
 
-        // Ignore LF and CRLF difference for Windows.
-        if !string_eq_ignore_newline_repr(&fmt_text, &text) {
+        if let Some(diff) = Diff::from_output(&text, &fmt_text) {
             if std::env::var_os("RUSTC_BLESS").is_some_and(|v| v != "0") {
                 std::fs::write(target, fmt_text).unwrap();
                 continue;
             }
-            let diff = make_diff(&text, &fmt_text, DIFF_CONTEXT_SIZE);
-            assert!(
-                !diff.is_empty(),
-                "Empty diff? Maybe due to a missing a newline at the end of a file?"
-            );
             failures.insert(file_name, diff);
         }
     }
@@ -1133,7 +1156,7 @@ fn handle_result(
     if failures.is_empty() {
         Ok(())
     } else {
-        Err(IdempotentCheckError::Mismatch(failures))
+        Err(IdempotentCheckError::Mismatches(failures))
     }
 }
 
@@ -1187,45 +1210,6 @@ fn rustfmt_diff_no_diff_test() {
     init_log();
     let diff = make_diff("a\nb\nc\nd", "a\nb\nc\nd", 3);
     assert_eq!(diff, vec![]);
-}
-
-// Compare strings without distinguishing between CRLF and LF
-fn string_eq_ignore_newline_repr(left: &str, right: &str) -> bool {
-    let left = CharsIgnoreNewlineRepr(left.chars().peekable());
-    let right = CharsIgnoreNewlineRepr(right.chars().peekable());
-    left.eq(right)
-}
-
-struct CharsIgnoreNewlineRepr<'a>(Peekable<Chars<'a>>);
-
-impl<'a> Iterator for CharsIgnoreNewlineRepr<'a> {
-    type Item = char;
-
-    fn next(&mut self) -> Option<char> {
-        self.0.next().map(|c| {
-            if c == '\r' {
-                if *self.0.peek().unwrap_or(&'\0') == '\n' {
-                    self.0.next();
-                    '\n'
-                } else {
-                    '\r'
-                }
-            } else {
-                c
-            }
-        })
-    }
-}
-
-#[test]
-fn string_eq_ignore_newline_repr_test() {
-    init_log();
-    assert!(string_eq_ignore_newline_repr("", ""));
-    assert!(!string_eq_ignore_newline_repr("", "abc"));
-    assert!(!string_eq_ignore_newline_repr("abc", ""));
-    assert!(string_eq_ignore_newline_repr("a\nb\nc\rd", "a\nb\r\nc\rd"));
-    assert!(string_eq_ignore_newline_repr("a\r\n\r\n\r\nb", "a\n\n\nb"));
-    assert!(!string_eq_ignore_newline_repr("a\r\nbcd", "a\nbcdefghijk"));
 }
 
 struct TempFile {
