@@ -62,4 +62,9 @@ where
 {
     let _: <(T,) as Project>::Out = ();
 }
+fn normalize_with_later_implied_bound<T: Trait>(
+    _: <(T,) as Project>::Out,
+    _: &'static T::Assoc,
+) {
+}
 fn main() {}
