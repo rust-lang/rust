@@ -275,17 +275,23 @@ pub enum TyKind<I: Interner> {
     /// `CoroutineArgs`.
     Coroutine(I::CoroutineId, I::GenericArgs),
 
-    /// A type representing the types stored inside a coroutine.
+    /// A type representing the types of coroutine's MIR local variables
+    /// that live across suspend points.
     ///
-    /// This should only appear as part of the `CoroutineArgs`.
+    /// The coroutine witness type is not a data type and won't be stored in memory at runtime.
+    /// It's used in trait solving.
+    ///
+    /// It doesn't consider coroutine upvar types.
     ///
     /// Unlike upvars, the witness can reference lifetimes from
     /// inside of the coroutine itself. To deal with them in
     /// the type of the coroutine, we convert them to higher ranked
     /// lifetimes bound by the witness itself.
     ///
-    /// This contains the `DefId` and the `GenericArgsRef` of the coroutine.
+    /// This contains the `DefId` and the generic args of the coroutine
+    /// (but with lifetimes erased, in `new_coroutine_witness_for_coroutine`).
     /// The actual witness types are computed on MIR by the `mir_coroutine_witnesses` query.
+    /// In auto trait solving, its constituent types come from `coroutine_hidden_types` query.
     ///
     /// Looking at the following example, the witness for this coroutine
     /// may end up as something like `for<'a> [Vec<i32>, &'a Vec<i32>]`:
