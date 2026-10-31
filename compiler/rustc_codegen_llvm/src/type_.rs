@@ -168,14 +168,15 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
         unsafe { llvm::LLVMInt1TypeInContext(self.llcx()) }
     }
 
-    pub(crate) fn type_struct(&self, els: &[&'ll Type], packed: bool) -> &'ll Type {
+    pub(crate) fn type_struct(&self, els: &[&'ll Type]) -> &'ll Type {
         unsafe {
-            llvm::LLVMStructTypeInContext(
-                self.llcx(),
-                els.as_ptr(),
-                els.len() as c_uint,
-                packed.to_llvm_bool(),
-            )
+            llvm::LLVMStructTypeInContext(self.llcx(), els.as_ptr(), els.len() as c_uint, FALSE)
+        }
+    }
+
+    pub(crate) fn type_packed_struct(&self, els: &[&'ll Type]) -> &'ll Type {
+        unsafe {
+            llvm::LLVMStructTypeInContext(self.llcx(), els.as_ptr(), els.len() as c_uint, TRUE)
         }
     }
 

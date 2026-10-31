@@ -217,7 +217,7 @@ impl LlvmType for CastTarget {
         let prefix_args = self.prefix.iter().map(|reg| reg.llvm_type(cx));
         let rest_args = (0..rest_count).map(|_| rest_ll_unit);
         let args: Vec<_> = prefix_args.chain(rest_args).collect();
-        cx.type_struct(&args, false)
+        cx.type_struct(&args)
     }
 }
 
