@@ -28,14 +28,6 @@ fn component<'a, T: Trait + 'a>() {
 fn implied<'a, T: Trait>(_: &'a T::Assoc) {
     outlives::<'a, T::Assoc>();
 }
-trait Object {
-    fn method(&self) {}
-}
-impl<T> Object for T {}
-fn body_bound<T: Trait>(value: T::Assoc) {
-    let object: &dyn Object = &value;
-    object.method();
-}
 trait Higher<'a> {
     type Assoc: 'static;
 }
