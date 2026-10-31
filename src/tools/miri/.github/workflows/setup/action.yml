@@ -20,7 +20,7 @@ runs:
       # over time).
       - name: Add cache for cargo
         id: cache
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
         with:
           path: |
             # Taken from <https://doc.rust-lang.org/nightly/cargo/guide/cargo-home.html#caching-the-cargo-home-in-ci>.
@@ -43,12 +43,15 @@ runs:
 
       - name: Install "master" toolchain
         run: |
-          if [[ ${{ github.event_name }} == 'schedule' ]]; then
+          if [[ "${GH_EVENT_NAME}" == 'schedule' ]]; then
             echo "Building against latest rustc git version"
             git ls-remote https://github.com/rust-lang/rust/ HEAD | cut -f 1 > rust-version
           fi
-          ./miri toolchain ${{ inputs.toolchain_flags }}
+          ./miri toolchain ${INPUTS_TOOLCHAIN_FLAGS}
         shell: bash
+        env:
+          INPUTS_TOOLCHAIN_FLAGS: ${{ inputs.toolchain_flags }}
+          GH_EVENT_NAME: ${{ github.event_name }}
 
       - name: Show Rust version (miri toolchain)
         run: |

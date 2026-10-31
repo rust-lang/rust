@@ -63,7 +63,9 @@ jobs:
         run: |
           set -x
           lscpu
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
       - name: install multiarch
         if: ${{ matrix.multiarch != '' }}
         run: |
@@ -71,17 +73,19 @@ jobs:
           # s390x, ppc64el, riscv64 need Ubuntu Ports to be in the mirror list
           #sudo bash -c "echo 'https://ports.ubuntu.com/	priority:0' >> /etc/apt/apt-mirrors.txt"
           # Add architecture
-          sudo dpkg --add-architecture ${{ matrix.multiarch }}
+          sudo dpkg --add-architecture ${MULTIARCH}
           # Ubuntu Ports often has outdated mirrors so try a few times to get the apt repo
           for TRY in $(seq 3); do
             { sudo apt update -o APT::Update::Error-Mode=any && break; } || sleep 60
           done
           # Install needed packages
-          sudo apt install $(echo "libatomic1: zlib1g-dev:" | sed 's/:/:${{ matrix.multiarch }}/g')
+          sudo apt install $(echo "libatomic1: zlib1g-dev:" | sed "s/:/:${MULTIARCH}/g")
+        env:
+          MULTIARCH: ${{ matrix.multiarch }}
       - name: install qemu
         if: ${{ matrix.qemu }}
         run: sudo apt install qemu-user qemu-user-binfmt
-      - uses: ./.github/workflows/setup
+      - uses: $/.github/workflows/setup
         with:
           toolchain_flags: "--host ${{ matrix.host_target }}"
 
@@ -90,13 +94,15 @@ jobs:
       - name: install gcc-cross
         if: ${{ matrix.gcc_cross != '' }}
         run: |
-          sudo apt install gcc-${{ matrix.gcc_cross }}
+          sudo apt install gcc-${GCC_CROSS}
           echo "Setting environment variables:"
-          echo "CC_${{ matrix.host_target }}=${{ matrix.gcc_cross }}-gcc" | tee -a $GITHUB_ENV
-          TARGET_UPPERCASE=$(echo ${{ matrix.host_target }} | tr '[:lower:]-' '[:upper:]_')
-          echo "CARGO_TARGET_${TARGET_UPPERCASE}_LINKER=${{ matrix.gcc_cross }}-gcc" | tee -a $GITHUB_ENV
-          echo "CARGO_HOST_${TARGET_UPPERCASE}_LINKER=${{ matrix.gcc_cross }}-gcc" | tee -a $GITHUB_ENV
+          echo "CC_${HOST_TARGET}=${GCC_CROSS}-gcc" | tee -a $GITHUB_ENV
+          TARGET_UPPERCASE=$(echo ${HOST_TARGET} | tr '[:lower:]-' '[:upper:]_')
+          echo "CARGO_TARGET_${TARGET_UPPERCASE}_LINKER=${GCC_CROSS}-gcc" | tee -a $GITHUB_ENV
+          echo "CARGO_HOST_${TARGET_UPPERCASE}_LINKER=${GCC_CROSS}-gcc" | tee -a $GITHUB_ENV
           echo "MIRI_TESTS_CROSS_COMPILED=1" | tee -a $GITHUB_ENV
+        env:
+          GCC_CROSS: ${{ matrix.gcc_cross }}
 
       # The main test job! We don't run this in qemu as that is quite slow,
       # so those targets only get the clippy check below.
@@ -115,8 +121,10 @@ jobs:
       HOST_TARGET: x86_64-unknown-freebsd
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: vmactions/freebsd-vm@v1
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: vmactions/freebsd-vm@c46abacb49f09938ca4e1702d15d836285d694cc # v1.5.9
         with:
             # Use FreeBSD 15.x
             release: "15"
@@ -134,8 +142,10 @@ jobs:
     name: style checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: ./.github/workflows/setup
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: $/.github/workflows/setup
 
       - name: rustfmt
         run: ./miri fmt --check
@@ -150,11 +160,13 @@ jobs:
     name: bootstrap build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
       # Deliberately skipping `./.github/workflows/setup` as we do our own setup
       - name: Add cache for cargo
         id: cache
-        uses: actions/cache@v5
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
         with:
           path: |
             # Taken from <https://doc.rust-lang.org/nightly/cargo/guide/cargo-home.html#caching-the-cargo-home-in-ci>.
@@ -188,8 +200,10 @@ jobs:
     name: priroda
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: ./.github/workflows/setup
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: $/.github/workflows/setup
       - name: clippy Priroda
         run: CARGO_EXTRA_FLAGS=--locked ./miri clippy --features priroda -- -D warnings
       - name: test Priroda
@@ -199,8 +213,10 @@ jobs:
     name: coverage report
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: ./.github/workflows/setup
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: $/.github/workflows/setup
       - name: coverage
         run: ./miri test --coverage
 
@@ -220,23 +236,21 @@ jobs:
       - name: Conclusion
         run: |
             # Print the dependent jobs to see them in the CI log
-            jq -C <<< '${{ toJson(needs) }}'
+            jq -C <<< "${JSON_NEEDS}"
             # Check if all jobs that we depend on (in the needs array) were successful.
-            jq --exit-status 'all(.result == "success")' <<< '${{ toJson(needs) }}'
+            jq --exit-status 'all(.result == "success")' <<< "${JSON_NEEDS}"
+        env:
+          JSON_NEEDS: ${{ toJson(needs) }}
 
   cron-rustc-pull:
     name: automatic pull from rustc
     runs-on: ubuntu-latest
-    permissions:
-        # The cronjob needs to be able to push to the repo...
-        contents: write
-        # ... and create a PR.
-        pull-requests: write
     if: ${{ github.event_name == 'schedule' }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           fetch-depth: 256 # get a bit more of the history
+          persist-credentials: false
       - name: install josh-sync
         run: cargo +stable install --locked --git https://github.com/rust-lang/josh-sync
       - name: setup bot git name and email
@@ -248,9 +262,11 @@ jobs:
       - name: Install rustup-toolchain-install-master
         run: cargo install --locked -f rustup-toolchain-install-master
       # Create a token for the next step so it can create a PR that actually runs CI.
-      - uses: actions/create-github-app-token@v3
+      - uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         id: app-token
         with:
+          permission-contents: write # The cronjob needs to be able to push to the repo...
+          permission-pull-requests: write # ... and create a PR.
           app-id: ${{ vars.APP_CLIENT_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
       - name: pull changes from rustc and create PR
