@@ -540,7 +540,7 @@ impl AnnotateSnippetEmitter {
             ColorChoice::Never => Renderer::plain(),
         }
         .term_width(width)
-        .anonymized_line_numbers(self.ui_testing)
+        .anonymized_snippet_line_numbers(self.ui_testing)
         .decor_style(decor_style)
         .short_message(self.short_message)
     }
