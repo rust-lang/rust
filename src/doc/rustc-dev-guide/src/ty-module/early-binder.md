@@ -29,8 +29,7 @@ To go back to our example,
 when type checking `main`,
 the return type of `foo` would be represented as `EarlyBinder(T/#0)`.
 Then, because we called the function with `i32, u128` for the generic arguments,
-we would call `EarlyBinder::instantiate` on the return type with `[i32,
-u128]` for the args.
+we would call `EarlyBinder::instantiate` on the return type with `[i32, u128]` for the args.
 This would result in an instantiated return type of `i32` that we can use as the type of the local `c`.
 
 Here are some more examples:
@@ -62,9 +61,9 @@ fn bar(foo: Foo<u32, f32>) {
 }
 ```
 
-In the compiler, the `instantiate` call for this is done in [`FieldDef::ty`] ([src][field_def_ty_src]), and at some point during type checking `bar`, we will wind up calling `FieldDef::ty(x,
-&[u32,
-f32])` in order to obtain the type of `foo.x`.
+In the compiler, the `instantiate` call for this is done in [`FieldDef::ty`] ([src][field_def_ty_src]),
+and at some point during type checking `bar`,
+we will wind up calling `FieldDef::ty(x, &[u32, f32])` in order to obtain the type of `foo.x`.
 
 **Note on indices:** It is a bug if the index of a `Param` does not match what the `EarlyBinder` binds.
 For example,
