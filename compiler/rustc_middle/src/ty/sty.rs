@@ -1223,6 +1223,11 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
+    pub fn is_phantom_marker(self) -> bool {
+        if let Adt(def, _) = self.kind() { def.is_phantom_marker() } else { false }
+    }
+
+    #[inline]
     pub fn is_unsafe_cell(self) -> bool {
         if let Adt(def, _) = self.kind() { def.is_unsafe_cell() } else { false }
     }

@@ -14,7 +14,7 @@ use rustc_attr_ir::lint::LintCheck;
 use rustc_attr_ir::target::{AssocCtxt, MethodKind, Target};
 use rustc_attr_ir::{
     Attribute, AttributeKind, DocAttribute, EiiDecl, EiiImpl, EiiImplResolution, InlineAttr,
-    OptimizeAttr, ReprAttr, RustcAssertVarianceKind, find_attr,
+    OptimizeAttr, ReprAttr, RustcVarianceKind, find_attr,
 };
 use rustc_attr_parsing::AttributeParser;
 use rustc_data_structures::thin_vec::ThinVec;
@@ -341,6 +341,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcEffectiveVisibility => (),
             AttributeKind::RustcEiiForeignItem => (),
             AttributeKind::RustcEvaluateWhereClauses => (),
+            AttributeKind::RustcForceVariance(..) => (),
             AttributeKind::RustcHasIncoherentInherentImpls => (),
             AttributeKind::RustcIfThisChanged(..) => (),
             AttributeKind::RustcInheritOverflowChecks => (),
@@ -371,6 +372,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcParenSugar => (),
             AttributeKind::RustcPassByValue => (),
             AttributeKind::RustcPassIndirectlyInNonRusticAbis(..) => (),
+            AttributeKind::RustcPhantomMarker => (),
             AttributeKind::RustcPreserveUbChecks => (),
             AttributeKind::RustcProcMacroDecls => (),
             AttributeKind::RustcPubTransparent(..) => (),
@@ -1304,7 +1306,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         attr_span: Span,
         hir_id: HirId,
         target: Target,
-        kind: RustcAssertVarianceKind,
+        kind: RustcVarianceKind,
     ) {
         // If the target is invalid the parser has already emitted an error
         if !matches!(target, Target::TypeParam | Target::LifetimeParam | Target::ConstParam) {
@@ -1326,16 +1328,16 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             .expect("generic parameter should have variance");
 
         match (kind, variance) {
-            (RustcAssertVarianceKind::Covariant, Variance::Covariant) => {}
-            (RustcAssertVarianceKind::Invariant, Variance::Invariant) => {}
-            (RustcAssertVarianceKind::Contravariant, Variance::Contravariant) => {}
-            (RustcAssertVarianceKind::Bivariant, Variance::Bivariant) => {}
+            (RustcVarianceKind::Covariant, Variance::Covariant) => {}
+            (RustcVarianceKind::Invariant, Variance::Invariant) => {}
+            (RustcVarianceKind::Contravariant, Variance::Contravariant) => {}
+            (RustcVarianceKind::Bivariant, Variance::Bivariant) => {}
             (asserted, actual) => {
                 let expected_variance = match asserted {
-                    RustcAssertVarianceKind::Covariant => sym::covariant,
-                    RustcAssertVarianceKind::Invariant => sym::invariant,
-                    RustcAssertVarianceKind::Contravariant => sym::contravariant,
-                    RustcAssertVarianceKind::Bivariant => sym::bivariant,
+                    RustcVarianceKind::Covariant => sym::covariant,
+                    RustcVarianceKind::Invariant => sym::invariant,
+                    RustcVarianceKind::Contravariant => sym::contravariant,
+                    RustcVarianceKind::Bivariant => sym::bivariant,
                 };
 
                 let actual_variance = match actual {

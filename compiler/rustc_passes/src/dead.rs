@@ -1137,7 +1137,7 @@ impl<'tcx> DeadVisitor<'tcx> {
             return ShouldWarnAboutField::No;
         }
         let field_type = self.tcx.type_of(field.did).instantiate_identity().skip_norm_wip();
-        if field_type.is_phantom_data() {
+        if field_type.is_phantom_marker() {
             return ShouldWarnAboutField::No;
         }
         let is_positional = field.name.as_str().starts_with(|c: char| c.is_ascii_digit());

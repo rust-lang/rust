@@ -2199,3 +2199,10 @@ pub(crate) struct Unused {
 #[derive(Diagnostic)]
 #[diag("use of deprecated `no_link` attribute")]
 pub(crate) struct NoLinkAttrUsed;
+
+#[derive(Diagnostic)]
+#[diag("`rustc_phantom_marker` can only be used on a unit struct")]
+pub(crate) struct InvalidPhantomMarkerTarget {
+    #[primary_span]
+    pub attr_span: Span,
+}

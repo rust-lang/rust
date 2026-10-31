@@ -797,7 +797,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 if let Some(inner_ty) = ty.boxed_ty() {
                     return self.visit_indirection(state, ty, inner_ty, IndirectionKind::Box);
                 }
-                if def.is_phantom_data() {
+                if def.is_phantom_marker() {
                     return FfiPhantom(ty);
                 }
                 match def.adt_kind() {
