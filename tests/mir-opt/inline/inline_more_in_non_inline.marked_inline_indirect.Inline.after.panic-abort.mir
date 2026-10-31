@@ -18,6 +18,7 @@ fn marked_inline_indirect(_1: i32) -> () {
     }
 
     bb1: {
+        _2 = const ();
         StorageDead(_4);
         StorageDead(_3);
         StorageDead(_2);
