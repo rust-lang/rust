@@ -536,7 +536,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 |this, unblock: UnblockKind| {
                     match unblock {
                         UnblockKind::Ready => this.write_null(&dest),
-                        UnblockKind::TimedOut => this.write_int(1, &dest),
+                        UnblockKind::TimedOut => this.write_int(/* KERN_OPERATION_TIMED_OUT */ 49, &dest),
                     }
                 }
             ),
