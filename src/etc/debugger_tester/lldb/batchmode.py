@@ -75,7 +75,7 @@ def execute_command(command_interpreter: lldb.SBCommandInterpreter, command: str
     command_interpreter.HandleCommand(command, res)
 
     if res.Succeeded():
-        if res.HasResult():
+        if res.HasResult() or res.GetOutputSize() != 0:
             print(normalize_whitespace(res.GetOutput() or ""), end="\n")
 
         # If the command introduced any breakpoints, make sure to register
@@ -194,6 +194,8 @@ def quit_with_error(debugger: lldb.SBDebugger):
     debugger.GetErrorFile().Flush()
     sys.stdout.flush()
     sys.stderr.flush()
+    lldb.debugger.GetOutputFile().Flush()
+    lldb.debugger.GetErrorFile().Flush()
 
     # When using a debugger created from the python script (e.g. `lldb.SBDebugger.Create()`), this
     # doesn't actually work, but it doesn't hurt to try =)
@@ -212,6 +214,9 @@ def quit_with_error(debugger: lldb.SBDebugger):
 
 
 def main():
+    # We need to make sure the debugger running this script doesn't run in async mode.
+    # This helps prevent a number of issues (e.g. file handles not being flushed).
+    lldb.debugger.SetAsync(False)
     target_path = get_env_arg("DEBUGGER_TESTER_TARGET_PATH")
     script_path = get_env_arg("DEBUGGER_TESTER_SCRIPT_PATH")
 
@@ -359,5 +364,8 @@ the test data by overwriting the data in {path} with the following:")
                         sys.version, debugger.GetVersionString(), str(FEATURE_FLAGS)
                     )
                 )
+
+            lldb.debugger.GetOutputFile().Flush()
+            lldb.debugger.GetErrorFile().Flush()
     finally:
         script_file.close()
