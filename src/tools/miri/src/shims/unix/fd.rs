@@ -517,25 +517,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1(LibcError("EBADF"), dest);
         };
 
-        // Read list of buffers from `iov`.
-        let mut buffers = Vec::new();
-
-        for idx in 0..iovcnt {
-            let iov_elem = this.project_c_array_field(&iov, idx)?;
-            let iov_len_field = this.project_field_named(&iov_elem, "iov_len")?;
-            let iov_len: u64 = this
-                .read_scalar(&iov_len_field)?
-                .to_int(iov_len_field.layout.size)?
-                .try_into()
-                .unwrap();
-
-            let iov_base_field = this.project_field_named(&iov_elem, "iov_base")?;
-            let iov_base_ptr = this.read_pointer(&iov_base_field)?;
-
-            buffers.push((iov_base_ptr, iov_len));
-        }
-
-        let total_bytes = buffers.iter().map(|(_, len)| len).sum::<u64>();
+        let Some((buffers, total_bytes)) = this.read_iovec_array(&iov, iovcnt)? else {
+            return this.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
+        };
 
         // Allocate a temporary buffer which has the combined size of all buffers provided in `iov`.
         let tmp_ptr: Pointer = this
@@ -641,25 +625,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_errno_and_return_neg1(LibcError("EBADF"), dest);
         };
 
-        // Read list of buffers from `iov`.
-        let mut buffers = Vec::new();
-
-        for idx in 0..iovcnt {
-            let iov_elem = this.project_c_array_field(&iov, idx)?;
-            let iov_len_field = this.project_field_named(&iov_elem, "iov_len")?;
-            let iov_len: u64 = this
-                .read_scalar(&iov_len_field)?
-                .to_int(iov_len_field.layout.size)?
-                .try_into()
-                .unwrap();
-
-            let iov_base_field = this.project_field_named(&iov_elem, "iov_base")?;
-            let iov_base_ptr = this.read_pointer(&iov_base_field)?;
-
-            buffers.push((iov_base_ptr, iov_len));
-        }
-
-        let total_bytes = buffers.iter().map(|(_, len)| len).sum::<u64>();
+        let Some((buffers, total_bytes)) = this.read_iovec_array(&iov, iovcnt)? else {
+            return this.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
+        };
 
         // Allocate a temporary buffer which has the combined size of all buffers provided in `iov`.
         let tmp_ptr: Pointer = this
@@ -832,5 +800,47 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             | this.eval_libc_i32("O_EXCL")
             | this.eval_libc_i32("O_NOCTTY")
             | this.eval_libc_i32("O_TRUNC")
+    }
+
+    /// Read the first `iovcnt` entries of the `iovec` array `iov`.
+    /// Returns the `(iov_base, iov_len)` pair of every entry together with the sum of all
+    /// `iov_len` values, after checking that every buffer is valid memory.
+    /// If that sum does not fit in the target's `ssize_t`, [`None`] is returned instead, and
+    /// the caller should fail with `EINVAL`.
+    fn read_iovec_array(
+        &mut self,
+        iov: &MPlaceTy<'tcx>,
+        iovcnt: u64,
+    ) -> InterpResult<'tcx, Option<(Vec<(Pointer, u64)>, u64)>> {
+        let ecx = self.eval_context_mut();
+        let ssize_max = u64::try_from(ecx.target_isize_max()).unwrap();
+
+        let mut buffers = Vec::new();
+        let mut total_bytes: u64 = 0;
+        for idx in 0..iovcnt {
+            let iov_elem = ecx.project_c_array_field(iov, idx)?;
+            let iov_len_field = ecx.project_field_named(&iov_elem, "iov_len")?;
+            let iov_len = ecx.read_target_usize(&iov_len_field)?;
+            let iov_base_field = ecx.project_field_named(&iov_elem, "iov_base")?;
+            let iov_base_ptr = ecx.read_pointer(&iov_base_field)?;
+
+            // POSIX functions taking an `iovec` array, such as `readv` and `writev`, "shall fail"
+            // with EINVAL if "the sum of the iov_len values in the iov array overflowed an
+            // ssize_t". This also covers a single `iov_len` that is larger than `SSIZE_MAX`.
+            match total_bytes.checked_add(iov_len) {
+                Some(sum) if sum <= ssize_max => total_bytes = sum,
+                _ => return interp_ok(None),
+            }
+            buffers.push((iov_base_ptr, iov_len));
+        }
+
+        // Check that all buffers are valid memory, like `read` and `write` do. This also means
+        // that every `iov_len` is bounded by the size of a real allocation, so callers do not
+        // have to deal with arbitrarily large lengths.
+        for &(ptr, len) in &buffers {
+            ecx.check_ptr_access(ptr, Size::from_bytes(len), CheckInAllocMsg::MemoryAccess)?;
+        }
+
+        interp_ok(Some((buffers, total_bytes)))
     }
 }
