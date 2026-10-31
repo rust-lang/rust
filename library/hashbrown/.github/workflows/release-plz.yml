@@ -5,6 +5,8 @@ on:
     branches:
       - main
 
+permissions: {}
+
 jobs:
 
   # Release unpublished packages.
@@ -14,17 +16,18 @@ jobs:
     if: ${{ github.repository_owner == 'rust-lang' }}
     environment: publish
     permissions:
-      contents: write
-      id-token: write
+      contents: write # Required by `release-plz/action` to push tags and create releases.
+      id-token: write # Required by `release-plz/action` to obtain an OIDC token.
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          persist-credentials: false
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        run: rustup install stable && rustup default stable
       - name: Run release-plz
-        uses: release-plz/action@v0.5
+        uses: release-plz/action@f67a7e724bdad4a0f6875f186060a0ca2770d76c # v0.5.147
         with:
           command: release
         env:
@@ -36,20 +39,21 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.repository_owner == 'rust-lang' }}
     permissions:
-      contents: write
-      pull-requests: write
+      contents: write # Required by `release-plz/action` to push to the pull request branch.
+      pull-requests: write # Required by `release-plz/action` to create and update pull requests.
     concurrency:
       group: release-plz-${{ github.ref }}
       cancel-in-progress: false
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
+          persist-credentials: false
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        run: rustup install stable && rustup default stable
       - name: Run release-plz
-        uses: release-plz/action@v0.5
+        uses: release-plz/action@f67a7e724bdad4a0f6875f186060a0ca2770d76c # v0.5.147
         with:
           command: release-pr
         env:

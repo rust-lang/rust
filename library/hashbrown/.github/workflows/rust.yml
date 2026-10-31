@@ -4,11 +4,15 @@ on:
   pull_request:
   merge_group:
 
+permissions: {}
+
 jobs:
   miri:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@a37ce9120846195fa4ece8f58b268e6043cb2f26 # v3.7.0
+      with:
+        persist-credentials: false
     - env:
         TARGET: x86_64-unknown-linux-gnu
       run: ci/miri.sh
@@ -16,7 +20,9 @@ jobs:
   rustfmt_clippy:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@a37ce9120846195fa4ece8f58b268e6043cb2f26 # v3.7.0
+      with:
+        persist-credentials: false
     - name: Install taplo
       run: curl -fsSL https://github.com/tamasfe/taplo/releases/latest/download/taplo-linux-x86_64.gz | gzip -d - | install -m 755 /dev/stdin /usr/local/bin/taplo
     - env:
@@ -36,10 +42,13 @@ jobs:
     runs-on: ${{ matrix.os }}
     needs: basics
     steps:
-    - uses: actions/checkout@v3
-    - uses: dtolnay/rust-toolchain@master
+    - uses: actions/checkout@a37ce9120846195fa4ece8f58b268e6043cb2f26 # v3.7.0
       with:
-        toolchain: ${{ matrix.channel }}
+        persist-credentials: false
+    - run: rustup install ${TOOLCHAIN} && rustup default ${TOOLCHAIN}
+      shell: bash
+      env:
+        TOOLCHAIN: ${{ matrix.channel }}
     - env:
         TARGET: ${{ matrix.target }}
         CHANNEL: ${{ matrix.channel }}
@@ -85,7 +94,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: basics
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@a37ce9120846195fa4ece8f58b268e6043cb2f26 # v3.7.0
+      with:
+        persist-credentials: false
     - run: cargo install cargo-msrv
     - run: cargo msrv --workspace verify
 
@@ -93,8 +104,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: basics
     steps:
-    - uses: actions/checkout@v3
-    - uses: dtolnay/rust-toolchain@nightly
+    - uses: actions/checkout@a37ce9120846195fa4ece8f58b268e6043cb2f26 # v3.7.0
+      with:
+        persist-credentials: false
+    - run: rustup install nightly && rustup default nightly
     - run: |
         RUSTFLAGS="-Zforce-unstable-if-unmarked" cargo +nightly build --features rustc-dep-of-std
 
@@ -108,6 +121,8 @@ jobs:
       - name: Conclusion
         run: |
           # Print the dependent jobs to see them in the CI log
-          jq -C <<< '${{ toJson(needs) }}'
+          jq -C <<< "${JSON_NEEDS}"
           # Check if all jobs that we depend on (in the needs array) were successful.
-          jq --exit-status 'all(.result == "success")' <<< '${{ toJson(needs) }}'
+          jq --exit-status 'all(.result == "success")' <<< "${JSON_NEEDS}"
+        env:
+          JSON_NEEDS: ${{ toJson(needs) }}
