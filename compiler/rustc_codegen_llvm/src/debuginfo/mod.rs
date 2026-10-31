@@ -61,7 +61,7 @@ pub(crate) struct CodegenUnitDebugContext<'ll, 'tcx> {
 }
 
 impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
-    pub(crate) fn new(llmod: &'ll llvm::Module, sess: &Session) -> Self {
+    pub(crate) fn new(llmod: llvm::Module<'ll>, sess: &Session) -> Self {
         debug!("CodegenUnitDebugContext::new");
 
         match sess.target.debuginfo_kind {

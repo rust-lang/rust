@@ -54,7 +54,7 @@ fn write_output_file<'ll>(
     dcx: DiagCtxtHandle<'_>,
     target: &'ll llvm::TargetMachine,
     no_builtins: bool,
-    m: &'ll llvm::Module,
+    m: llvm::Module<'ll>,
     output: &Path,
     dwo_output: Option<&Path>,
     file_type: llvm::FileType,
@@ -1207,7 +1207,7 @@ pub(crate) fn bitcode_section_name(cgcx: &CodegenContext) -> &'static CStr {
 fn embed_bitcode<'ll>(
     cgcx: &CodegenContext,
     llcx: llvm::Context<'ll>,
-    llmod: &'ll llvm::Module,
+    llmod: llvm::Module<'ll>,
     bitcode: &[u8],
 ) {
     // We're adding custom sections to the output object file, but we definitely
@@ -1293,7 +1293,7 @@ fn embed_bitcode<'ll>(
 fn create_msvc_imps<'ll>(
     cgcx: &CodegenContext,
     llcx: llvm::Context<'ll>,
-    llmod: &'ll llvm::Module,
+    llmod: llvm::Module<'ll>,
 ) {
     if !cgcx.msvc_imps_needed {
         return;
@@ -1359,7 +1359,11 @@ fn record_artifact_size(
     }
 }
 
-fn record_llvm_cgu_instructions_stats(prof: &SelfProfilerRef, name: &str, llmod: &llvm::Module) {
+fn record_llvm_cgu_instructions_stats<'ll>(
+    prof: &SelfProfilerRef,
+    name: &str,
+    llmod: llvm::Module<'ll>,
+) {
     if !prof.enabled() {
         return;
     }
