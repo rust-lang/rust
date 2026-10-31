@@ -16,7 +16,7 @@ impl<'tcx> crate::MirLint<'tcx> for FunctionItemReferences {
         body.basic_blocks
             .iter()
             .filter_map(|bb| bb.terminator.as_ref())
-            .for_each(|t| checker.visit_terminator(t));
+            .for_each(|t| checker.check_terminator(t));
     }
 }
 
@@ -29,7 +29,7 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
     /// Emits a lint for function reference arguments bound by `fmt::Pointer` or passed to
     /// `transmute`. This only handles arguments in calls outside macro expansions to avoid double
     /// counting function references formatted as pointers by macros.
-    fn visit_terminator(&mut self, terminator: &Terminator<'tcx>) {
+    fn check_terminator(&mut self, terminator: &Terminator<'tcx>) {
         if let TerminatorKind::Call {
             func,
             args,
