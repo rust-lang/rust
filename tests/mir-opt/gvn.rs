@@ -643,7 +643,7 @@ fn indirect_static() {
     mir! {
         {
             let ptr = Static(A);
-            let out = Field::<u8>(Variant(*ptr, 1), 0);
+            let out = Field::<u8>(Variant(*ptr, 1, true), 0);
             Return()
         }
     }

@@ -58,7 +58,7 @@
       }
   
       bb3: {
--         _1 = move ((_2 as Some).0: std::alloc::Layout);
+-         _1 = move ((_2 is Some).0: std::alloc::Layout);
 +         _1 = const Layout {{ size: Indirect { alloc_id: ALLOC0, offset: Size(8 bytes) }: usize, align: std::mem::Alignment {{ _inner_repr_trick: Scalar(0x0000000000000000): mem::alignment::AlignmentEnum }} }};
           StorageDead(_8);
           StorageDead(_2);
@@ -85,7 +85,7 @@
       }
   
       bb6: {
-          _5 = move ((_6 as Ok).0: std::ptr::NonNull<[u8]>);
+          _5 = move ((_6 is Ok).0: std::ptr::NonNull<[u8]>);
           StorageDead(_10);
           StorageDead(_6);
           _4 = copy _5 as *mut [u8] (Transmute);

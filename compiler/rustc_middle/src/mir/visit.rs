@@ -1182,7 +1182,7 @@ macro_rules! visit_place_fns {
                 | PlaceElem::PhantomDeref
                 | PlaceElem::ConstantIndex { .. }
                 | PlaceElem::Subslice { .. }
-                | PlaceElem::Downcast(..) => None,
+                | PlaceElem::Downcast { .. } => None,
             }
         }
     };
@@ -1267,7 +1267,7 @@ macro_rules! visit_place_fns {
                 | ProjectionElem::PhantomDeref
                 | ProjectionElem::Subslice { from: _, to: _, from_end: _ }
                 | ProjectionElem::ConstantIndex { offset: _, min_length: _, from_end: _ }
-                | ProjectionElem::Downcast(_, _) => {}
+                | ProjectionElem::Downcast { .. } => {}
             }
         }
     };

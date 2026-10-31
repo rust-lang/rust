@@ -137,13 +137,13 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
 
     bb8: {
         StorageLive(_18);
-        _18 = copy (((_16 as Some).0: (usize, &T)).0: usize);
+        _18 = copy (((_16 is Some).0: (usize, &T)).0: usize);
         StorageLive(_19);
-        _19 = copy (((_16 as Some).0: (usize, &T)).1: &T);
+        _19 = copy (((_16 is Some).0: (usize, &T)).1: &T);
         StorageLive(_20);
         _20 = &_2;
         StorageLive(_21);
-        _21 = copy ((_16 as Some).0: (usize, &T));
+        _21 = copy ((_16 is Some).0: (usize, &T));
         _22 = <impl Fn(usize, &T) as Fn<(usize, &T)>>::call(move _20, move _21) -> [return: bb9, unwind: bb11];
     }
 

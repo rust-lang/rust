@@ -18,7 +18,7 @@ fn overlapping(_1: Adt) {
         {
             _2 = &mut _1;
             _4 = &(*_2);
-            _3 = Field(Variant((*_4), 1), 0);
+            _3 = Field(Variant((*_4), 1, true), 0);
             (*_2) = Adt::Some(_3);
             Return()
         }
@@ -41,7 +41,7 @@ fn stable_projection(_1: (Adt,)) {
         {
             _2 = &_1.0;
             _4 = &(*_2);
-            _3 = Field(Variant((*_4), 1), 0);
+            _3 = Field(Variant((*_4), 1, true), 0);
             _5.0 = Adt::Some(_3);
             Return()
         }
@@ -53,12 +53,12 @@ fn stable_projection(_1: (Adt,)) {
 #[custom_mir(dialect = "runtime")]
 fn fields(_1: (Adt, Adt)) {
     // CHECK-LABEL: fn fields(
-    // CHECK: _2 = copy (((_1.0: Adt) as variant#1).0: u32);
+    // CHECK: _2 = copy (((_1.0: Adt) is variant#1).0: u32);
     // CHECK-NEXT: (_1.1: Adt) = Adt::Some(copy _2);
     mir! {
         let _2: u32;
         {
-            _2 = Field(Variant(_1.0, 1), 0);
+            _2 = Field(Variant(_1.0, 1, true), 0);
             _1.1 = Adt::Some(_2);
             Return()
         }
@@ -73,9 +73,9 @@ fn copy_overlapping() {
         let _2;
         let _3;
         {
-            place!(Field(Variant(_1, 1), 0)) = 0u32;
+            place!(Field(Variant(_1, 1, true), 0)) = 0u32;
             _3 = &_1;
-            _2 = Field(Variant(*_3, 1), 0);
+            _2 = Field(Variant(*_3, 1, true), 0);
             _1 = Adt::Some(_2);
             Return()
         }

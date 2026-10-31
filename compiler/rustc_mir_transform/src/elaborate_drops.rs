@@ -234,7 +234,7 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for ElaborateDropsCtxt<'a, 'tcx> {
 
     fn downcast_subpath(&self, path: Self::Path, variant: VariantIdx) -> Option<Self::Path> {
         rustc_mir_dataflow::move_path_children_matching(self.move_data(), path, |e| match e {
-            ProjectionElem::Downcast(_, idx) => idx == variant,
+            ProjectionElem::Downcast { variant_index: idx, .. } => idx == variant,
             _ => false,
         })
     }

@@ -2020,7 +2020,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 // `Downcast`  : only changes information about a `Place` without moving.
                 // So it's safe to skip these.
                 ProjectionElem::OpaqueCast(_)
-                | ProjectionElem::Downcast(_, _)
+                | ProjectionElem::Downcast { .. }
                 | ProjectionElem::UnwrapUnsafeBinder(_)
                 | ProjectionElem::PhantomDeref => (),
             }
@@ -2252,7 +2252,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 // assigning to (P->variant) is okay if assigning to `P` is okay
                 //
                 // FIXME: is this true even if P is an adt with a dtor?
-                | ProjectionElem::Downcast(_/*adt_def*/, _/*variant_idx*/) =>
+                | ProjectionElem::Downcast{..} =>
                     {}
 
                 ProjectionElem::UnwrapUnsafeBinder(_) => {
@@ -2666,7 +2666,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     | ProjectionElem::ConstantIndex { .. }
                     | ProjectionElem::Subslice { .. }
                     | ProjectionElem::OpaqueCast { .. }
-                    | ProjectionElem::Downcast(..)
+                    | ProjectionElem::Downcast { .. }
                     | ProjectionElem::UnwrapUnsafeBinder(_) => {
                         let upvar_field_projection = self.is_upvar_field_projection(place);
                         if let Some(field) = upvar_field_projection {

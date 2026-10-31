@@ -103,7 +103,7 @@
   
       bb6: {
           StorageLive(_12);
-          _12 = move ((_4 as Err).0: i32);
+          _12 = move ((_4 is Err).0: i32);
           StorageLive(_13);
           _13 = Result::<!, i32>::Err(copy _12);
           _3 = ControlFlow::<Result<!, i32>, i32>::Break(move _13);
@@ -115,7 +115,7 @@
   
       bb7: {
           StorageLive(_11);
-          _11 = move ((_4 as Ok).0: i32);
+          _11 = move ((_4 is Ok).0: i32);
           _3 = ControlFlow::<Result<!, i32>, i32>::Continue(copy _11);
           StorageDead(_11);
 -         goto -> bb5;

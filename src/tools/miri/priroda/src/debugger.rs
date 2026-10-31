@@ -861,9 +861,10 @@ impl<'tcx> PrirodaContext<'tcx> {
                 match projection_elem {
                     ProjectionElem::Field(field_idx, _) => StorageProj::Field(field_idx.index()),
                     ProjectionElem::Deref => StorageProj::Deref,
-                    ProjectionElem::Downcast(Some(name), _) => StorageProj::Downcast(*name),
-                    ProjectionElem::Downcast(None, variant_idx) =>
-                        StorageProj::Variant(variant_idx.index()),
+                    ProjectionElem::Downcast { name: Some(name), .. } =>
+                        StorageProj::Downcast(*name),
+                    ProjectionElem::Downcast { name: None, variant_index, .. } =>
+                        StorageProj::Variant(variant_index.index()),
                     other => StorageProj::Unsupported(format!("{other:?}")),
                 }
             })

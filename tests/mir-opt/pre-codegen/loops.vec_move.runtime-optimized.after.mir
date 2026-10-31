@@ -294,7 +294,7 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
 
     bb12: {
         StorageLive(_26);
-        _26 = move ((_24 as Some).0: impl Sized);
+        _26 = move ((_24 is Some).0: impl Sized);
         _27 = opaque::<impl Sized>(move _26) -> [return: bb13, unwind: bb15];
     }
 

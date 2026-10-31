@@ -863,12 +863,16 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                 }
             }
             ProjectionElem::PhantomDeref => bug!("PhantomDeref in GVN"),
-            ProjectionElem::Downcast(name, index) => ProjectionElem::Downcast(name, index),
+            ProjectionElem::Downcast { name, variant_index, assume_variant } => {
+                ProjectionElem::Downcast { name, variant_index, assume_variant }
+            }
             ProjectionElem::Field(f, _) => match self.get(value) {
                 Value::Aggregate(_, fields) => return Some((projection_ty, fields[f.as_usize()])),
                 Value::Union(active, field) if active == f => return Some((projection_ty, field)),
-                Value::Projection(outer_value, ProjectionElem::Downcast(_, read_variant))
-                    if let Value::Aggregate(written_variant, fields) = self.get(outer_value)
+                Value::Projection(
+                    outer_value,
+                    ProjectionElem::Downcast { variant_index: read_variant, .. },
+                ) if let Value::Aggregate(written_variant, fields) = self.get(outer_value)
                     // This pass is not aware of control-flow, so we do not know whether the
                     // replacement we are doing is actually reachable. We could be in any arm of
                     // ```
@@ -1166,12 +1170,14 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         fields: &[VnIndex],
     ) -> Option<VnIndex> {
         let Some(&first_field) = fields.first() else { return None };
-        let Value::Projection(copy_from_value, _) = self.get(first_field) else { return None };
+        let Value::Projection(mut src, ProjectionElem::Field(..)) = self.get(first_field) else {
+            return None;
+        };
 
         // All fields must correspond one-to-one and come from the same aggregate value.
         if fields.iter().enumerate().any(|(index, &v)| {
             if let Value::Projection(pointer, ProjectionElem::Field(from_index, _)) = self.get(v)
-                && copy_from_value == pointer
+                && src == pointer
                 && from_index.index() == index
             {
                 return false;
@@ -1181,13 +1187,15 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             return None;
         }
 
-        let mut copy_from_local_value = copy_from_value;
-        if let Value::Projection(pointer, proj) = self.get(copy_from_value)
-            && let ProjectionElem::Downcast(_, read_variant) = proj
+        if let Value::Projection(
+            pointer,
+            ProjectionElem::Downcast { variant_index: read_variant, assume_variant, .. },
+        ) = self.get(src)
         {
-            if variant_index == read_variant {
+            // We cannot copy a value that downcasts from an inactive variant.
+            if assume_variant && variant_index == read_variant {
                 // When copying a variant, there is no need to downcast.
-                copy_from_local_value = pointer;
+                src = pointer;
             } else {
                 // The copied variant must be identical.
                 return None;
@@ -1195,7 +1203,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         }
 
         // Both must be variants of the same type.
-        if self.ty(copy_from_local_value) == ty { Some(copy_from_local_value) } else { None }
+        if self.ty(src) == ty { Some(src) } else { None }
     }
 
     fn simplify_aggregate(

@@ -43,7 +43,7 @@
       }
   
       bb3: {
-          _2 = move ((_3 as Some).0: i32);
+          _2 = move ((_3 is Some).0: i32);
           StorageDead(_5);
           StorageDead(_4);
           StorageDead(_3);

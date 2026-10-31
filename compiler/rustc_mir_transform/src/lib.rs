@@ -125,6 +125,7 @@ declare_passes! {
     mod add_call_guards : AddCallGuards { AllCallEdges, CriticalCallEdges };
     mod add_moves_for_packed_drops : AddMovesForPackedDrops;
     mod add_subtyping_projections : Subtyper;
+    mod assume_variant : AssumeVariant;
     mod check_inline : CheckForceInline;
     mod check_call_recursion : CheckCallRecursion, CheckDropRecursion;
     mod check_alignment : CheckAlignment;
@@ -750,6 +751,7 @@ pub(crate) fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
             &sroa::ScalarReplacementOfAggregates,
             &simplify::SimplifyLocals::BeforeConstProp,
             &dead_store_elimination::DeadStoreElimination::Initial,
+            &assume_variant::AssumeVariant,
             &gvn::GVN,
             &simplify::SimplifyLocals::AfterGVN,
             // This pass does attempt to track assignments.

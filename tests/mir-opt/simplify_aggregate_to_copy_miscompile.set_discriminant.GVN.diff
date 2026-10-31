@@ -11,7 +11,7 @@
       }
   
       bb1: {
-          _3 = copy (((*_2) as variant#0).0: i32);
+          _3 = copy (((*_2) is variant#0).0: i32);
           discriminant((*_1)) = 1;
           _0 = Value::V0(copy _3);
           return;

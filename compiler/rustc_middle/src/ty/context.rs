@@ -2429,7 +2429,11 @@ impl<'tcx> TyCtxt<'tcx> {
     ) -> Place<'tcx> {
         self.mk_place_elem(
             place,
-            PlaceElem::Downcast(Some(adt_def.variant(variant_index).name), variant_index),
+            PlaceElem::Downcast {
+                name: Some(adt_def.variant(variant_index).name),
+                variant_index,
+                assume_variant: false,
+            },
         )
     }
 
@@ -2438,7 +2442,10 @@ impl<'tcx> TyCtxt<'tcx> {
         place: Place<'tcx>,
         variant_index: VariantIdx,
     ) -> Place<'tcx> {
-        self.mk_place_elem(place, PlaceElem::Downcast(None, variant_index))
+        self.mk_place_elem(
+            place,
+            PlaceElem::Downcast { name: None, variant_index, assume_variant: false },
+        )
     }
 
     pub fn mk_place_index(self, place: Place<'tcx>, index: Local) -> Place<'tcx> {

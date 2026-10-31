@@ -92,13 +92,13 @@ fn convert_to_hir_projections_and_truncate_for_capture(
                 let variant = variant.unwrap_or(FIRST_VARIANT);
                 HirProjectionKind::Field(*field, variant)
             }
-            ProjectionElem::Downcast(.., idx) => {
+            ProjectionElem::Downcast { variant_index, .. } => {
                 // We don't expect to see multi-variant enums here, as earlier
                 // phases will have truncated them already. However, there can
                 // still be downcasts, thanks to single-variant enums.
                 // We keep track of VariantIdx so we can use this information
                 // if the next ProjectionElem is a Field.
-                variant = Some(*idx);
+                variant = Some(*variant_index);
                 continue;
             }
             ProjectionElem::UnwrapUnsafeBinder(_) => HirProjectionKind::UnwrapUnsafeBinder,
@@ -233,7 +233,7 @@ fn strip_prefix<'tcx>(
             }
             HirProjectionKind::Field(..) => {
                 if base_ty.is_enum() {
-                    assert_matches!(iter.next(), Some(ProjectionElem::Downcast(..)));
+                    assert_matches!(iter.next(), Some(ProjectionElem::Downcast { .. }));
                 }
                 assert_matches!(iter.next(), Some(ProjectionElem::Field(..)));
             }
@@ -314,7 +314,11 @@ impl<'tcx> PlaceBuilder<'tcx> {
     }
 
     pub(crate) fn downcast(self, adt_def: AdtDef<'tcx>, variant_index: VariantIdx) -> Self {
-        self.project(PlaceElem::Downcast(Some(adt_def.variant(variant_index).name), variant_index))
+        self.project(PlaceElem::Downcast {
+            name: Some(adt_def.variant(variant_index).name),
+            variant_index,
+            assume_variant: false,
+        })
     }
 
     fn index(self, index: Local) -> Self {
@@ -804,7 +808,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     }
                     ProjectionElem::Field(..)
                     | ProjectionElem::PhantomDeref
-                    | ProjectionElem::Downcast(..)
+                    | ProjectionElem::Downcast { .. }
                     | ProjectionElem::OpaqueCast(..)
                     | ProjectionElem::ConstantIndex { .. }
                     | ProjectionElem::Subslice { .. }

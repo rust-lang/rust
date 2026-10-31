@@ -320,7 +320,7 @@ fn check_place<'tcx>(
             },
             ProjectionElem::ConstantIndex { .. }
             | ProjectionElem::OpaqueCast(..)
-            | ProjectionElem::Downcast(..)
+            | ProjectionElem::Downcast { .. }
             | ProjectionElem::Subslice { .. }
             | ProjectionElem::Index(_)
             | ProjectionElem::UnwrapUnsafeBinder(_)

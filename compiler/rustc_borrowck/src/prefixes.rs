@@ -58,7 +58,7 @@ impl<'tcx> Iterator for Prefixes<'tcx> {
                             self.next = Some(cursor_base);
                             return Some(cursor);
                         }
-                        ProjectionElem::Downcast(..)
+                        ProjectionElem::Downcast { .. }
                         | ProjectionElem::Subslice { .. }
                         | ProjectionElem::OpaqueCast { .. }
                         | ProjectionElem::ConstantIndex { .. }

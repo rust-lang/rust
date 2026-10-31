@@ -191,8 +191,8 @@ fn calculate_debuginfo_offset<
                 *offset += place.layout().fields.offset(field.index());
                 place = place.project_field(bx, field);
             }
-            mir::ProjectionElem::Downcast(_, variant) => {
-                place = place.downcast(bx, variant);
+            mir::ProjectionElem::Downcast { variant_index, .. } => {
+                place = place.downcast(bx, variant_index);
             }
             mir::ProjectionElem::ConstantIndex {
                 offset: index,
