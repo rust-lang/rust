@@ -46,12 +46,13 @@ case $HOST_TARGET in
     exit 1
     ;;
 esac
+
 # Also smoke-test `x.py miri`. This doesn't run any actual tests (that would take too long),
 # but it ensures that the crates build properly when tested with Miri.
-
 #FIXME: Re-enable this for msvc once CI issues are fixed
 if [ "$HOST_TARGET" != "x86_64-pc-windows-msvc" ]; then
   python3 "$X_PY" miri --stage 2 library/core -- notest
   python3 "$X_PY" miri --stage 2 library/alloc -- notest
-  python3 "$X_PY" miri --stage 2 library/std -- notest
+  # This runs some tests that don't use a test harness and hence ignore the filter.
+  MIRIFLAGS="-Zmiri-disable-isolation --cfg skip_missing_miri_shims" python3 "$X_PY" miri --stage 2 library/std -- notest
 fi

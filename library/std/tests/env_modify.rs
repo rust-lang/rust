@@ -179,8 +179,9 @@ fn env_home_dir() {
     }
 }
 
-#[test] // miri shouldn't detect any data race in this fn
-#[cfg_attr(any(not(miri), target_os = "emscripten"), ignore)]
+// This is primarily a Miri test (ensuring there are no data races), but can also run natively.
+#[test]
+#[cfg_attr(target_os = "emscripten", ignore)]
 fn test_env_get_set_multithreaded() {
     let getter = thread::spawn(|| {
         for _ in 0..100 {
