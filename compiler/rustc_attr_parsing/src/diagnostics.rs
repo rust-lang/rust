@@ -275,7 +275,7 @@ pub(crate) struct DocUnknownSpotlight {
         applicability = "machine-applicable",
         code = "notable_trait"
     )]
-    pub sugg_span: Span,
+    pub sugg_span: Option<Span>,
 }
 
 #[derive(Diagnostic)]
