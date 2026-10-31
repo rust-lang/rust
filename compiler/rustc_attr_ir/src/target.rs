@@ -5,10 +5,10 @@ use std::fmt::{self, Display};
 use rustc_abi::ExternAbi;
 pub use rustc_ast::visit::AssocCtxt;
 use rustc_ast::{
-    Arm, AssocItemKind, Closure, ConstBlockItem, ConstItem, Crate, EnumDef, Expr, ExprField,
-    FieldDef, Fn, ForeignItemKind, ForeignMod, GenericParam, GenericParamKind, Generics, Impl,
-    InlineAsm, MacroDef, ModKind, Param, Pat, Safety, StaticItem, Stmt, Trait, TraitAlias, TyAlias,
-    UseTree, Variant, VariantData, WherePredicate, ast,
+    Arm, AssocItemKind, Closure, ConstBlockItem, ConstItem, EnumDef, Expr, ExprField, FieldDef, Fn,
+    ForeignItemKind, ForeignMod, GenericParam, GenericParamKind, Generics, Impl, InlineAsm,
+    MacroDef, ModKind, Param, Pat, Safety, StaticItem, Stmt, Trait, TraitAlias, TyAlias, UseTree,
+    Variant, VariantData, WherePredicate, ast,
 };
 use rustc_macros::StableHash;
 use rustc_span::{Ident, Symbol};
@@ -53,7 +53,7 @@ pub enum AstTarget<'a> {
     Expression(&'a Expr),
 
     Arm(&'a Arm),
-    Crate(Option<&'a Crate>),
+    Crate,
     ExprField(&'a ExprField),
     Field(&'a FieldDef),
     GenericParam(&'a GenericParam),
@@ -241,6 +241,7 @@ impl Target {
             AstTarget::ForeignFn(_) => Target::ForeignFn,
             AstTarget::ForeignTy(_) => Target::ForeignTy,
 
+            AstTarget::ExternCrate(..) => Target::ExternCrate,
             AstTarget::Use(_) => Target::Use,
             AstTarget::Static(_) => Target::Static,
             AstTarget::Const(_) => Target::Const,
@@ -261,7 +262,7 @@ impl Target {
             AstTarget::Expression(_) => Target::Expression,
 
             AstTarget::Arm(_) => Target::Arm,
-            AstTarget::Crate(_) => Target::Crate,
+            AstTarget::Crate => Target::Crate,
             AstTarget::ExprField(_) => Target::ExprField,
             AstTarget::Field(_) => Target::Field,
             AstTarget::GenericParam(g) => match g.kind {
