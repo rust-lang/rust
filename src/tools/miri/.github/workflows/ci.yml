@@ -245,9 +245,6 @@ jobs:
   cron-rustc-pull:
     name: automatic pull from rustc
     runs-on: ubuntu-latest
-    permissions:
-        contents: write # The cronjob needs to be able to push to the repo...
-        pull-requests: write # ... and create a PR.
     if: ${{ github.event_name == 'schedule' }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
@@ -268,6 +265,8 @@ jobs:
       - uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         id: app-token
         with:
+          permission-contents: write # The cronjob needs to be able to push to the repo...
+          permission-pull-requests: write # ... and create a PR.
           app-id: ${{ vars.APP_CLIENT_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
       - name: pull changes from rustc and create PR
