@@ -33,7 +33,7 @@
 </tspan>
     <tspan x="10px" y="136px"><tspan>   </tspan><tspan class="fg-bright-blue bold">│</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">┌─────────────────┘</tspan>
 </tspan>
-    <tspan x="10px" y="154px"><tspan>   </tspan><tspan class="fg-bright-blue bold">‡</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">│</tspan>
+    <tspan x="10px" y="154px"><tspan>   </tspan><tspan class="fg-bright-blue bold">┆</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">┆</tspan>
 </tspan>
     <tspan x="10px" y="172px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">│</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">│</tspan><tspan>         ),</tspan>
 </tspan>
@@ -43,7 +43,7 @@
 </tspan>
     <tspan x="10px" y="226px"><tspan>   </tspan><tspan class="fg-bright-blue bold">│</tspan><tspan> </tspan><tspan class="fg-bright-red bold">┏━━━━━━━━━━━━━━━━━━┛</tspan>
 </tspan>
-    <tspan x="10px" y="244px"><tspan>   </tspan><tspan class="fg-bright-blue bold">‡</tspan><tspan> </tspan><tspan class="fg-bright-red bold">┃</tspan>
+    <tspan x="10px" y="244px"><tspan>   </tspan><tspan class="fg-bright-blue bold">┆</tspan><tspan> </tspan><tspan class="fg-bright-red bold">┇</tspan>
 </tspan>
     <tspan x="10px" y="262px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">│</tspan><tspan> </tspan><tspan class="fg-bright-red bold">┃</tspan><tspan>         ",</tspan>
 </tspan>
@@ -69,7 +69,7 @@
 </tspan>
     <tspan x="10px" y="460px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">│</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">│</tspan><tspan>         1 // last line shown in multispan header</tspan>
 </tspan>
-    <tspan x="10px" y="478px"><tspan>   </tspan><tspan class="fg-bright-blue bold">‡</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">│</tspan>
+    <tspan x="10px" y="478px"><tspan>   </tspan><tspan class="fg-bright-blue bold">┆</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">┆</tspan>
 </tspan>
     <tspan x="10px" y="496px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">│</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">│</tspan><tspan>         ),</tspan>
 </tspan>
@@ -85,7 +85,7 @@
 </tspan>
     <tspan x="10px" y="604px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">│</tspan><tspan> </tspan><tspan class="fg-bright-red bold">┃</tspan><tspan>         1 last line shown in multispan</tspan>
 </tspan>
-    <tspan x="10px" y="622px"><tspan>   </tspan><tspan class="fg-bright-blue bold">‡</tspan><tspan> </tspan><tspan class="fg-bright-red bold">┃</tspan>
+    <tspan x="10px" y="622px"><tspan>   </tspan><tspan class="fg-bright-blue bold">┆</tspan><tspan> </tspan><tspan class="fg-bright-red bold">┇</tspan>
 </tspan>
     <tspan x="10px" y="640px"><tspan class="fg-bright-blue bold">LL</tspan><tspan> </tspan><tspan class="fg-bright-blue bold">│</tspan><tspan> </tspan><tspan class="fg-bright-red bold">┃</tspan><tspan>         ",</tspan>
 </tspan>
