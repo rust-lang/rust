@@ -518,14 +518,15 @@ fn show_md_content_with_pager(content: &str, color: ColorConfig) {
     }
 
     // The pager failed. Try to print pretty output to stdout.
-    if let Some((bufwtr, mdbuf)) = &mut pretty_data
+    if matches!(color, ColorConfig::Auto | ColorConfig::Always)
+        && let Some((bufwtr, mdbuf)) = &mut pretty_data
         && bufwtr.write_all(&mdbuf).is_ok()
     {
-        return;
+        // Colored output was successfully printed to stdout.
+    } else {
+        // Everything failed. Print the raw markdown text.
+        safe_print!("{content}");
     }
-
-    // Everything failed. Print the raw markdown text.
-    safe_print!("{content}");
 }
 
 /// Prints the markdown content with colored output.
