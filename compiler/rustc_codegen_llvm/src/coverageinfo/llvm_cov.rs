@@ -12,14 +12,14 @@ pub(crate) fn covmap_var_name() -> CString {
     .expect("covmap variable name should not contain NUL")
 }
 
-pub(crate) fn covmap_section_name(llmod: &llvm::Module) -> CString {
+pub(crate) fn covmap_section_name<'ll>(llmod: llvm::Module<'ll>) -> CString {
     CString::new(llvm::build_byte_buffer(|s| {
         llvm::LLVMRustCoverageWriteCovmapSectionNameToString(llmod, s);
     }))
     .expect("covmap section name should not contain NUL")
 }
 
-pub(crate) fn covfun_section_name(llmod: &llvm::Module) -> CString {
+pub(crate) fn covfun_section_name<'ll>(llmod: llvm::Module<'ll>) -> CString {
     CString::new(llvm::build_byte_buffer(|s| {
         llvm::LLVMRustCoverageWriteCovfunSectionNameToString(llmod, s);
     }))

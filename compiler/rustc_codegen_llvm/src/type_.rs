@@ -152,7 +152,7 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
         (**self).borrow().llcx
     }
 
-    pub(crate) fn llmod(&self) -> &'ll llvm::Module {
+    pub(crate) fn llmod(&self) -> llvm::Module<'ll> {
         (**self).borrow().llmod
     }
 
