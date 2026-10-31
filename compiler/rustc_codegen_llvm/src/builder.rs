@@ -1305,7 +1305,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn cleanup_landing_pad(&mut self, pers_fn: &'ll Value) -> (&'ll Value, &'ll Value) {
-        let ty = self.type_struct(&[self.type_ptr(), self.type_i32()], false);
+        let ty = self.type_struct(&[self.type_ptr(), self.type_i32()]);
         let landing_pad = self.landing_pad(ty, pers_fn, 0);
         unsafe {
             llvm::LLVMSetCleanup(landing_pad, llvm::TRUE);
@@ -1314,13 +1314,13 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn filter_landing_pad(&mut self, pers_fn: &'ll Value) {
-        let ty = self.type_struct(&[self.type_ptr(), self.type_i32()], false);
+        let ty = self.type_struct(&[self.type_ptr(), self.type_i32()]);
         let landing_pad = self.landing_pad(ty, pers_fn, 1);
         self.add_clause(landing_pad, self.const_array(self.type_ptr(), &[]));
     }
 
     fn resume(&mut self, exn0: &'ll Value, exn1: &'ll Value) {
-        let ty = self.type_struct(&[self.type_ptr(), self.type_i32()], false);
+        let ty = self.type_struct(&[self.type_ptr(), self.type_i32()]);
         let mut exn = self.const_poison(ty);
         exn = self.insert_value(exn, exn0, 0);
         exn = self.insert_value(exn, exn1, 1);
