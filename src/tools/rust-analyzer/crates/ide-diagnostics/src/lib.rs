@@ -54,6 +54,7 @@ mod handlers {
     pub(crate) mod invalid_cast;
     pub(crate) mod invalid_derive_target;
     pub(crate) mod invalid_lhs_of_assignment;
+    pub(crate) mod invalid_pat_path_res;
     pub(crate) mod invalid_range_pat_type;
     pub(crate) mod macro_error;
     pub(crate) mod malformed_derive;
@@ -550,6 +551,7 @@ pub fn semantic_diagnostics(
             AnyDiagnostic::ExplicitDropMethodUse(d) => handlers::explicit_drop_method_use::explicit_drop_method_use(&ctx, &d),
             AnyDiagnostic::YieldOutsideCoroutine(d) => handlers::yield_outside_coroutine::yield_outside_coroutine(&ctx, &d),
             AnyDiagnostic::ReturnOutsideFunction(d) => handlers::return_outside_function::return_outside_function(&ctx, &d),
+            AnyDiagnostic::InvalidPatPathRes(d) => handlers::invalid_pat_path_res::invalid_pat_path_res(&ctx, &d)
         };
         res.push(d)
     }

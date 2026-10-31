@@ -21,6 +21,7 @@ use hir_def::{
         assoc::{ImplItems, TraitItems},
         diagnostics::{DefDiagnosticKind, DefDiagnostics},
     },
+    resolver::ValueNs,
     signatures::{
         ConstSignature, FunctionSignature, ImplFlags, ImplSignature, TraitFlags, TraitSignature,
         TypeAliasSignature,
@@ -154,6 +155,7 @@ diagnostics![AnyDiagnostic<'db> ->
     InvalidDeriveTarget,
     InvalidLhsOfAssignment,
     InvalidRangePatType,
+    InvalidPatPathRes,
     MacroDefError,
     MacroError,
     MacroExpansionParseError,
@@ -714,6 +716,21 @@ pub struct YieldOutsideCoroutine {
 pub struct ReturnOutsideFunction {
     pub expr: InFile<ExprOrPatPtr>,
     pub kind: ReturnKind,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InvalidPatPathResKind {
+    Function,
+    GenericParam,
+    ImplSelf,
+    LocalBinding,
+    Static,
+}
+
+#[derive(Debug)]
+pub struct InvalidPatPathRes {
+    pub pat: InFile<ExprOrPatPtr>,
+    pub kind: InvalidPatPathResKind,
 }
 
 pub(crate) struct DiagnosticsCollector<'a, 'db> {
@@ -1914,6 +1931,20 @@ impl<'db> AnyDiagnostic<'db> {
                     }
                     _ => return None,
                 }
+            }
+            InferenceDiagnostic::InvalidPatPathRes { pat, res } => {
+                let pat = pat_syntax(*pat)?.map(Into::into);
+                let kind = match res {
+                    ValueNs::FunctionId(_) => InvalidPatPathResKind::Function,
+                    ValueNs::GenericParam(_) => InvalidPatPathResKind::GenericParam,
+                    ValueNs::ImplSelf(_) => InvalidPatPathResKind::ImplSelf,
+                    ValueNs::LocalBinding(_) => InvalidPatPathResKind::LocalBinding,
+                    ValueNs::StaticId(_) => InvalidPatPathResKind::Static,
+                    ValueNs::ConstId(_) | ValueNs::EnumVariantId(_) | ValueNs::StructId(_) => {
+                        return None;
+                    }
+                };
+                InvalidPatPathRes { pat, kind }.into()
             }
         })
     }
