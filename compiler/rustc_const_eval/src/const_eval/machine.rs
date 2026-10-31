@@ -7,7 +7,7 @@ use rustc_ast::Mutability;
 use rustc_attr_ir::find_attr;
 use rustc_attr_ir::lang_items::LangItem;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, IndexEntry};
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::{CRATE_HIR_ID, HirId};
 use rustc_lint_defs::builtin::LONG_RUNNING_CONST_EVAL;
 use rustc_middle::mir::AssertMessage;
@@ -596,6 +596,36 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                     // Skip the `return_to_block` at the end (we panicked, we do not return).
                     return interp_ok(None);
                 }
+            }
+
+            sym::comptime_fetch_file => {
+                let arg_place = ecx.deref_pointer(&args[0])?;
+                let key = ecx.read_str(&arg_place)?;
+                let key = ecx.tcx.arena.alloc(key.to_string());
+
+                let krate = LOCAL_CRATE; // somehow fetch crate of the object
+
+                let content = ecx.tcx.experimental_comptime_fetch_file((krate, key));
+                let variant_index = if let Some(value) = content {
+                    let ptr = ecx.allocate_bytes_dedup(value)?;
+
+                    let (variant_idx, variant_place) =
+                        ecx.project_downcast_named(dest, sym::Some)?;
+                    let field_place = ecx.project_field(&variant_place, FieldIdx::ZERO)?;
+                    ecx.write_immediate(
+                        Immediate::ScalarPair(
+                            Scalar::from_pointer(ptr, ecx),
+                            Scalar::from_target_usize(value.len() as u64, ecx),
+                        ),
+                        &field_place,
+                    )?;
+
+                    variant_idx
+                } else {
+                    ecx.project_downcast_named(dest, sym::None)?.0
+                };
+
+                ecx.write_discriminant(variant_index, dest)?;
             }
 
             sym::type_id_vtable => {
