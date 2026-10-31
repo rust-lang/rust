@@ -1,13 +1,11 @@
 #![feature(generic_const_items)]
-#![allow(incomplete_features)]
 
 trait Tr<P> {
     const K: ()
     where
         P: Copy
-    where
+    where //~ ERROR cannot define duplicate `where` clauses on an item
         P: Eq;
-    //~^ ERROR cannot define duplicate `where` clauses on an item
 }
 
 // Test that we error on the first where-clause but also that we don't suggest to swap it with the
@@ -23,5 +21,9 @@ impl<P> Tr<P> for () {
         P: Copy;
     //~^^^^^ ERROR where clauses are not allowed before const item bodies
 }
+
+// We once used to accidentally accept this:
+#[cfg(false)]
+const _: () where where; //~ ERROR cannot define duplicate `where` clauses on an item
 
 fn main() {}

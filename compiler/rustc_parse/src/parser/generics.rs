@@ -527,21 +527,23 @@ impl<'a> Parser<'a> {
                 });
                 Ok((predicate, Trailing::No, UsePreAttrPos::No))
             })?;
-            match predicate {
-                Some(predicate) => predicates.push(predicate),
-                None => break,
+
+            let has_parsed_pred = predicate.is_some();
+            if let Some(pred) = predicate {
+                predicates.push(pred);
             }
 
-            let prev_token = self.prev_token.span;
-            let ate_comma = self.eat(exp!(Comma));
+            let pred_hi = self.prev_token.span;
+            let ate_comma = has_parsed_pred && self.eat(exp!(Comma));
 
             if let RecoverDupeWhereClause::Yes = recover_dupe
                 && self.eat_keyword_noexpect(kw::Where)
             {
                 self.dcx().emit_err(MultipleWhereClauses {
-                    span: self.token.span,
-                    previous: pred_lo,
-                    between: prev_token.shrink_to_hi().to(self.prev_token.span),
+                    span: self.prev_token.span,
+                    previous: where_sp,
+                    between: has_parsed_pred
+                        .then(|| pred_hi.shrink_to_hi().to(self.prev_token.span)),
                 });
             } else if !ate_comma {
                 break;
