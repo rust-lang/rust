@@ -10,7 +10,8 @@ use rustc_errors::Applicability;
 use rustc_hir::{Block, Expr, ExprKind, StmtKind};
 use rustc_lexer::TokenKind;
 use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
-use rustc_span::{BytePos, Ident, Span, Symbol};
+use rustc_span::{BytePos, Span, Symbol};
+use rustc_structures::LintName;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -247,13 +248,16 @@ impl CollapsibleIf {
                         matches!(
                             lint,
                             LintCheck {
-                                tool: Some(Ident { name: sym::clippy, .. }),
+                                lint_name: LintName {
+                                    tool: Some(sym::clippy),
+                                    ..
+                                },
                                 kind: LintCheckKind::Expect,
                                 ..
                             }
                         )
                     })
-                    .any(|lint| [expected_lint_name, sym::style, sym::all].contains(&lint.lint_name)) =>
+                    .any(|lint| [expected_lint_name, sym::style, sym::all].contains(&lint.lint_name.name)) =>
             {
                 let attr_span = lints.first().unwrap().attr_span.to(lints.last().unwrap().attr_span);
                 // There is an `expect` attribute -- check that there is no _other_ significant text
