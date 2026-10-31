@@ -1407,7 +1407,7 @@ impl InvocationCollectorNode for Box<ast::Item> {
                 );
 
                 if let Some(lint_store) = ecx.lint_store {
-                    lint_store.pre_expansion_lint(
+                    let lints = lint_store.pre_expansion_lint(
                         ecx.sess,
                         ecx.ecfg.features,
                         ecx.resolver.registered_lint_tools(),
@@ -1416,6 +1416,7 @@ impl InvocationCollectorNode for Box<ast::Item> {
                         &items,
                         ident.name,
                     );
+                    ecx.resolver.buffer_pre_expansion_lints(lints);
                 }
 
                 *mod_kind = ModKind::Loaded(items, Inline::No { had_parse_error }, spans);

@@ -453,6 +453,19 @@ impl<'a> Diag<'a> {
         Self { dcx, diag: Some(Box::new(diag)) }
     }
 
+    pub fn from_inner_with_level(
+        dcx: DiagCtxtHandle<'a>,
+        mut diag: DiagInner,
+        level: Level,
+    ) -> Self {
+        diag.level = level;
+        Self::new_diagnostic(dcx, diag)
+    }
+
+    pub fn into_inner(mut self) -> DiagInner {
+        self.take_diag()
+    }
+
     /// Delay emission of this diagnostic as a bug.
     ///
     /// This can be useful in contexts where an error indicates a bug but

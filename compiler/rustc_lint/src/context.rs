@@ -33,11 +33,12 @@ use rustc_span::{Ident, Span, Symbol, bug, sym};
 use tracing::debug;
 
 use self::TargetLint::*;
+use crate::early::{EarlyLintMode, PostExpansion, PreExpansion};
 use crate::levels::LintLevelsBuilder;
 use crate::passes::{EarlyLintPassObject, LateLintPassObject};
 
-pub(crate) type EarlyLintPassFactory =
-    Box<dyn Fn() -> EarlyLintPassObject + sync::DynSend + sync::DynSync>;
+pub(crate) type EarlyLintPassFactory<M = PostExpansion> =
+    Box<dyn Fn() -> EarlyLintPassObject<M> + sync::DynSend + sync::DynSync>;
 type LateLintPassFactory =
     Box<dyn for<'tcx> Fn(TyCtxt<'tcx>) -> LateLintPassObject<'tcx> + sync::DynSend + sync::DynSync>;
 
@@ -57,7 +58,7 @@ pub struct LintStore {
     ///
     /// * See [rust#69838](https://github.com/rust-lang/rust/pull/69838)
     /// * See [rust-clippy#5518](https://github.com/rust-lang/rust-clippy/pull/5518)
-    pub(crate) pre_expansion_lint_passes: Vec<EarlyLintPassFactory>,
+    pub(crate) pre_expansion_lint_passes: Vec<EarlyLintPassFactory<PreExpansion>>,
 
     /// These lint passes run on AST nodes.
     pub(crate) early_lint_passes: Vec<EarlyLintPassFactory>,
@@ -181,7 +182,7 @@ impl LintStore {
     }
 
     /// See the comment on `LintStore::pre_expansion_lint_passes`.
-    pub fn register_pre_expansion_lint_pass(&mut self, pass: EarlyLintPassFactory) {
+    pub fn register_pre_expansion_lint_pass(&mut self, pass: EarlyLintPassFactory<PreExpansion>) {
         self.pre_expansion_lint_passes.push(pass);
     }
 
@@ -499,9 +500,10 @@ pub struct LateContext<'tcx> {
 }
 
 /// Context for lint checking of the AST, after expansion, before lowering to HIR.
-pub struct EarlyContext<'a> {
+pub struct EarlyContext<'a, M = PostExpansion> {
     pub builder: LintLevelsBuilder<'a, crate::levels::TopDown>,
     pub buffered: LintBuffer,
+    pub(crate) mode: M,
 }
 
 pub trait LintContext {
@@ -549,7 +551,7 @@ pub trait LintContext {
     }
 }
 
-impl<'a> EarlyContext<'a> {
+impl<'a, M: EarlyLintMode> EarlyContext<'a, M> {
     pub(crate) fn new(
         sess: &'a Session,
         features: &'a Features,
@@ -557,7 +559,8 @@ impl<'a> EarlyContext<'a> {
         lint_store: &'a LintStore,
         registered_lint_tools: &'a RegisteredTools,
         buffered: LintBuffer,
-    ) -> EarlyContext<'a> {
+        mode: M,
+    ) -> EarlyContext<'a, M> {
         EarlyContext {
             builder: LintLevelsBuilder::new(
                 sess,
@@ -567,6 +570,7 @@ impl<'a> EarlyContext<'a> {
                 registered_lint_tools,
             ),
             buffered,
+            mode,
         }
     }
 }
@@ -598,7 +602,7 @@ impl<'tcx> LintContext for LateContext<'tcx> {
     }
 }
 
-impl LintContext for EarlyContext<'_> {
+impl<M: EarlyLintMode> LintContext for EarlyContext<'_, M> {
     type LintExpectationId = UnstableLintExpectationId;
 
     /// Gets the overall compiler `Session` object.
@@ -612,7 +616,7 @@ impl LintContext for EarlyContext<'_> {
         span: Option<S>,
         decorator: impl for<'a> Diagnostic<'a>,
     ) {
-        self.builder.opt_span_lint(lint, span.map(|s| s.into()), decorator)
+        M::opt_span_lint(self, lint, span.map(|s| s.into()), decorator)
     }
 
     fn get_lint_level_spec(&self, lint: &'static Lint) -> UnstableLevelSpec {

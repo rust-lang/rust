@@ -18,7 +18,7 @@ use rustc_data_structures::sync::{
 };
 use rustc_data_structures::thousands;
 use rustc_errors::timings::TimingSection;
-use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level};
+use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level, PreExpansionLint};
 use rustc_expand::base::{ExtCtxt, LintStoreExpand};
 use rustc_feature::Features;
 use rustc_fs_util::try_canonicalize;
@@ -93,20 +93,18 @@ fn pre_expansion_lint<'a>(
     registered_lint_tools: &RegisteredTools,
     check_node: EarlyCheckNode<'a>,
     node_name: Symbol,
-) {
+) -> Vec<PreExpansionLint> {
     sess.prof.generic_activity_with_arg("pre_AST_expansion_lint_checks", node_name.as_str()).run(
         || {
-            rustc_lint::check_ast_node(
+            rustc_lint::check_ast_node_pre_expansion(
                 sess,
                 features,
-                true,
                 lint_store,
                 registered_lint_tools,
-                None,
                 check_node,
-            );
+            )
         },
-    );
+    )
 }
 
 // Cannot implement directly for `LintStore` due to trait coherence.
@@ -122,9 +120,9 @@ impl LintStoreExpand for LintStoreExpandImpl<'_> {
         attrs: &[ast::Attribute],
         items: &[Box<ast::Item>],
         name: Symbol,
-    ) {
+    ) -> Vec<PreExpansionLint> {
         let check_node = EarlyCheckNode::LoadedMod(node_id, attrs, items);
-        pre_expansion_lint(sess, features, self.0, registered_lint_tools, check_node, name);
+        pre_expansion_lint(sess, features, self.0, registered_lint_tools, check_node, name)
     }
 }
 
@@ -143,7 +141,7 @@ fn configure_and_expand(
     let features = tcx.features();
     let lint_store = unerased_lint_store(sess);
     let crate_name = tcx.crate_name(LOCAL_CRATE);
-    pre_expansion_lint(
+    let lints = pre_expansion_lint(
         sess,
         features,
         lint_store,
@@ -151,6 +149,7 @@ fn configure_and_expand(
         EarlyCheckNode::CrateRoot(&krate, pre_configured_attrs),
         crate_name,
     );
+    resolver.lint_buffer().pre_expansion.extend(lints);
     rustc_builtin_macros::register_builtin_macros(resolver);
 
     let num_standard_library_imports = sess.time("crate_injection", || {
@@ -490,10 +489,9 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
     rustc_lint::check_ast_node(
         sess,
         tcx.features(),
-        false,
         lint_store,
         tcx.registered_lint_tools(()),
-        Some(lint_buffer),
+        lint_buffer,
         EarlyCheckNode::CrateRoot(&*krate, &*krate.attrs),
     )
 }

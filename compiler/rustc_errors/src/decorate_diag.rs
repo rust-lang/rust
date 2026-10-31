@@ -1,13 +1,14 @@
 use std::any::Any;
 
 /// This module provides types and traits for buffering lints until later in compilation.
+use rustc_ast::AttrId;
 use rustc_ast::node_id::NodeId;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_error_messages::MultiSpan;
 use rustc_lint_defs::{Lint, LintId};
 
-use crate::{Diag, DiagCtxtHandle, Diagnostic, Level};
+use crate::{Diag, DiagCtxtHandle, DiagInner, Diagnostic, Level};
 
 pub struct DecorateDiagCompat(
     /// The third argument of the closure is a `Session`. However, due to the dependency tree,
@@ -51,19 +52,28 @@ pub struct BufferedEarlyLint {
     pub diagnostic: DecorateDiagCompat,
 }
 
+#[derive(Debug)]
+pub struct PreExpansionLint {
+    pub lint: &'static Lint,
+    pub span: Option<MultiSpan>,
+    pub diag: DiagInner,
+    pub attrs: Vec<AttrId>,
+}
+
 #[derive(Default, Debug)]
 pub struct LintBuffer {
-    pub map: FxIndexMap<NodeId, Vec<BufferedEarlyLint>>,
+    pub early: FxIndexMap<NodeId, Vec<BufferedEarlyLint>>,
+    pub pre_expansion: Vec<PreExpansionLint>,
 }
 
 impl LintBuffer {
     pub fn add_early_lint(&mut self, early_lint: BufferedEarlyLint) {
-        self.map.entry(early_lint.node_id).or_default().push(early_lint);
+        self.early.entry(early_lint.node_id).or_default().push(early_lint);
     }
 
     pub fn take(&mut self, id: NodeId) -> Vec<BufferedEarlyLint> {
         // FIXME(#120456) - is `swap_remove` correct?
-        self.map.swap_remove(&id).unwrap_or_default()
+        self.early.swap_remove(&id).unwrap_or_default()
     }
 
     pub fn buffer_lint(

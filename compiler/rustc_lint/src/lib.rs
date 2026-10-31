@@ -141,7 +141,10 @@ use unused::*;
 pub use builtin::MissingDoc;
 pub use context::{CheckLintNameResult, EarlyContext, LateContext, LintContext, LintStore};
 pub use early::diagnostics::DiagAndSess;
-pub use early::{EarlyCheckNode, check_ast_node};
+pub use early::{
+    EarlyCheckNode, EarlyLintMode, PostExpansion, PreExpansion, check_ast_node,
+    check_ast_node_pre_expansion,
+};
 pub use late::{check_crate, late_lint_mod, unerased_lint_store};
 pub use levels::LintLevelsBuilder;
 pub use passes::{EarlyLintPass, LateLintPass};
@@ -167,7 +170,7 @@ fn lint_mod(tcx: TyCtxt<'_>, mod_id: LocalModId) {
 early_lint_methods!(
     declare_combined_early_lint_pass,
     [
-        pub BuiltinCombinedPreExpansionLintPass,
+        pub BuiltinCombinedPreExpansionLintPass<PreExpansion>,
         [
             // tidy-alphabetical-start
             KeywordIdents: KeywordIdents,

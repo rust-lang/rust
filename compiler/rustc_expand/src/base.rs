@@ -11,7 +11,7 @@ use rustc_ast::{self as ast, AttrVec, Attribute, HasAttrs, Item, NodeId, PatKind
 use rustc_attr_ir::{self as attrs, CfgEntry, Deprecation, Stability, find_attr};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::sync;
-use rustc_errors::{BufferedEarlyLint, DiagCtxtHandle, ErrorGuaranteed};
+use rustc_errors::{BufferedEarlyLint, DiagCtxtHandle, ErrorGuaranteed, PreExpansionLint};
 use rustc_feature::Features;
 use rustc_hir::def::MacroKinds;
 use rustc_lint_defs::RegisteredTools;
@@ -1132,6 +1132,8 @@ pub trait ResolverExpand {
     /// Mark the scope as having a compile error so that error for lookup in this scope
     /// should be suppressed
     fn mark_scope_with_compile_error(&mut self, parent_node: NodeId);
+
+    fn buffer_pre_expansion_lints(&mut self, lints: Vec<PreExpansionLint>);
 }
 
 pub trait LintStoreExpand {
@@ -1144,7 +1146,7 @@ pub trait LintStoreExpand {
         attrs: &[Attribute],
         items: &[Box<Item>],
         name: Symbol,
-    );
+    ) -> Vec<PreExpansionLint>;
 }
 
 type LintStoreExpandDyn<'a> = Option<&'a (dyn LintStoreExpand + 'a)>;

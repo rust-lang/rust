@@ -59,7 +59,7 @@ use crate::diagnostics::{
     BuiltinUnusedDocComment, BuiltinUnusedDocCommentSub, BuiltinWhileTrue,
     EqInternalMethodImplemented, InvalidAsmLabel,
 };
-use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
+use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext, PreExpansion};
 
 declare_lint! {
     /// The `while_true` lint detects `while true { }`.
@@ -1745,7 +1745,7 @@ declare_lint_pass!(
 struct UnderMacro(bool);
 
 impl KeywordIdents {
-    fn check_tokens(&mut self, cx: &EarlyContext<'_>, tokens: &TokenStream) {
+    fn check_tokens(&mut self, cx: &EarlyContext<'_, PreExpansion>, tokens: &TokenStream) {
         // Check if the preceding token is `$`, because we want to allow `$async`, etc.
         let mut prev_dollar = false;
         for tt in tokens.iter() {
@@ -1776,7 +1776,7 @@ impl KeywordIdents {
 
     fn check_ident_token(
         &mut self,
-        cx: &EarlyContext<'_>,
+        cx: &EarlyContext<'_, PreExpansion>,
         UnderMacro(under_macro): UnderMacro,
         ident: Ident,
         prefix: &'static str,
@@ -1818,14 +1818,14 @@ impl KeywordIdents {
     }
 }
 
-impl EarlyLintPass for KeywordIdents {
-    fn check_mac_def(&mut self, cx: &EarlyContext<'_>, mac_def: &ast::MacroDef) {
+impl EarlyLintPass<PreExpansion> for KeywordIdents {
+    fn check_mac_def(&mut self, cx: &EarlyContext<'_, PreExpansion>, mac_def: &ast::MacroDef) {
         self.check_tokens(cx, &mac_def.body.tokens);
     }
-    fn check_mac(&mut self, cx: &EarlyContext<'_>, mac: &ast::MacCall) {
+    fn check_mac(&mut self, cx: &EarlyContext<'_, PreExpansion>, mac: &ast::MacCall) {
         self.check_tokens(cx, &mac.args.tokens);
     }
-    fn check_ident(&mut self, cx: &EarlyContext<'_>, ident: &Ident) {
+    fn check_ident(&mut self, cx: &EarlyContext<'_, PreExpansion>, ident: &Ident) {
         if ident.name.as_str().starts_with('\'') {
             self.check_ident_token(cx, UnderMacro(false), ident.without_first_quote(), "'");
         } else {

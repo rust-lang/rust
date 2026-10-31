@@ -7,7 +7,7 @@ LL | #[allow("literal")]
    = help: try using `#[allow(literal)]`
 
 error: expected a lint, found literal
-  --> $DIR/lint-attribute-literals.rs:7:8
+  --> $DIR/lint-attribute-literals.rs:6:8
    |
 LL | #[deny(1.0)]
    |        ^^^ not the name of a lint
@@ -24,7 +24,7 @@ LL | #[allow("literal")]
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: expected a lint, found literal
-  --> $DIR/lint-attribute-literals.rs:7:8
+  --> $DIR/lint-attribute-literals.rs:6:8
    |
 LL | #[deny(1.0)]
    |        ^^^ not the name of a lint
@@ -32,23 +32,5 @@ LL | #[deny(1.0)]
    = help: for example, write `#[deny(dead_code)]` for `dead_code`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: expected a lint, found literal
-  --> $DIR/lint-attribute-literals.rs:3:9
-   |
-LL | #[allow("literal")]
-   |         ^^^^^^^^^ not the name of a lint
-   |
-   = help: try using `#[allow(literal)]`
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: expected a lint, found literal
-  --> $DIR/lint-attribute-literals.rs:7:8
-   |
-LL | #[deny(1.0)]
-   |        ^^^ not the name of a lint
-   |
-   = help: for example, write `#[deny(dead_code)]` for `dead_code`
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: aborting due to 6 previous errors
+error: aborting due to 4 previous errors
 
