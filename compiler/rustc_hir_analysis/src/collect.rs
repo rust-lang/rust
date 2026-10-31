@@ -345,10 +345,10 @@ impl<'tcx> ItemCtxt<'tcx> {
                 }
                 hir::TestBinderItem::Predicate(predicate) => {
                     let mut clauses = Default::default();
-                    clauses_of::where_predicate_clauses(self, &predicate, &mut clauses);
-                    items.push(TestBinderItem::Predicate(
-                        clauses.into_iter().map(|(c, span)| (c.kind(), span)).collect(),
-                    ));
+                    clauses_of::where_predicate_clauses(self, predicate, &mut clauses);
+                    for (clause, span) in clauses {
+                        items.push(TestBinderItem::Predicate { clause, span });
+                    }
                 }
                 hir::TestBinderItem::RegionEquality { lhs, rhs } => {
                     let span = lhs.ident.span.to(rhs.ident.span);

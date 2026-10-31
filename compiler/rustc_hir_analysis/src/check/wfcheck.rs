@@ -2398,16 +2398,14 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
                         self.tcx()
                             .dcx()
                             .span_err(span, "top level false constraints are not supported");
-                        return;
+                    } else {
+                        self.infcx.register_solver_region_constraint(constraint);
                     }
-                    self.infcx.register_solver_region_constraint(constraint);
                 }
-                TestBinderItem::Predicate(clauses) => {
-                    for (clause, span) in clauses {
-                        let cause = traits::ObligationCause::misc(span, self.body_def_id);
-                        let obligation = Obligation::new(self.tcx(), cause, self.param_env, clause);
-                        self.register_obligation(obligation);
-                    }
+                TestBinderItem::Predicate { clause, span } => {
+                    let cause = traits::ObligationCause::misc(span, self.body_def_id);
+                    let obligation = Obligation::new(self.tcx(), cause, self.param_env, clause);
+                    self.register_obligation(obligation);
 
                     match self.ocx.evaluate_obligations_error_on_ambiguity() {
                         TraitErrors::NoErrors => (),
@@ -2822,7 +2820,10 @@ pub(crate) enum TestBinderItem<'tcx> {
     /// Constraints to be inserted directly into constraint storage to be proven
     Constraint(SolverRegionConstraint<'tcx>),
     /// Constraints declared using `where` syntax, used via `register_obligation`
-    Predicate(Vec<(ty::Binder<'tcx, ty::ClauseKind<'tcx>>, Span)>),
+    Predicate {
+        clause: ty::Clause<'tcx>,
+        span: Span,
+    },
 }
 
 #[derive(Clone, Debug, TypeFoldable, TypeVisitable)]

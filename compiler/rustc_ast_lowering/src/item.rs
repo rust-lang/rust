@@ -2015,38 +2015,28 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_test_binder_body(&mut self, body: &TestBinderBody) -> hir::TestBinderBody<'hir> {
-        let mut items: Vec<hir::TestBinderItem<'_>> = vec![];
         let mut dedup_map = Default::default();
-        for item in &body.items {
-            match item {
-                TestBinderItem::Forall(forall) => {
-                    items.push(hir::TestBinderItem::Forall(self.lower_test_binder_forall(forall)));
-                }
-                TestBinderItem::Exists(exist) => {
-                    items.push(hir::TestBinderItem::Exists(self.lower_test_binder_exists(exist)));
-                }
-                TestBinderItem::Predicate(predicate) => {
-                    items.push(hir::TestBinderItem::Predicate(self.lower_where_predicate(
-                        predicate,
-                        &[],
-                        &mut dedup_map,
-                    )));
-                }
-                TestBinderItem::Constraint(constraint) => {
-                    items.push(hir::TestBinderItem::Constraint(
-                        self.lower_test_binder_constraint(constraint),
-                    ));
-                }
-                TestBinderItem::RegionEquality(region_equality) => {
-                    let TestBinderRegionEquality { lhs, rhs } = region_equality;
-                    let lhs = self.lower_lifetime(lhs, LifetimeSource::Other, lhs.ident.into());
-                    let rhs = self.lower_lifetime(rhs, LifetimeSource::Other, rhs.ident.into());
-                    items.push(hir::TestBinderItem::RegionEquality { lhs, rhs });
-                }
+        let items = self.arena.alloc_from_iter(body.items.iter().map(|item| match item {
+            TestBinderItem::Forall(forall) => {
+                hir::TestBinderItem::Forall(self.lower_test_binder_forall(forall))
             }
-        }
+            TestBinderItem::Exists(exist) => {
+                hir::TestBinderItem::Exists(self.lower_test_binder_exists(exist))
+            }
+            TestBinderItem::Predicate(predicate) => hir::TestBinderItem::Predicate(
+                self.lower_where_predicate(predicate, &[], &mut dedup_map),
+            ),
+            TestBinderItem::Constraint(constraint) => {
+                hir::TestBinderItem::Constraint(self.lower_test_binder_constraint(constraint))
+            }
+            TestBinderItem::RegionEquality(region_equality) => {
+                let TestBinderRegionEquality { lhs, rhs } = region_equality;
+                let lhs = self.lower_lifetime(lhs, LifetimeSource::Other, lhs.ident.into());
+                let rhs = self.lower_lifetime(rhs, LifetimeSource::Other, rhs.ident.into());
+                hir::TestBinderItem::RegionEquality { lhs, rhs }
+            }
+        }));
         let span = self.lower_span(body.span);
-        let items = self.arena.alloc_from_iter(items);
         hir::TestBinderBody { items, span }
     }
 
