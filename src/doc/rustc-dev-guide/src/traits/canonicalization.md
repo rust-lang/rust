@@ -21,8 +21,8 @@ but really it doesn't matter as long as it is consistent).
 [cq]: ./canonical-queries.md
 
 So, for example, if we have the type `X = (?T, ?U)`, where `?T` and `?U` are distinct
-unbound inference variables, then the canonical form of `X` would be `(?0,
-?1)`, where `?0` and `?1` represent these **canonical placeholders**.
+unbound inference variables, then the canonical form of `X` would be `(?0, ?1)`,
+where `?0` and `?1` represent these **canonical placeholders**.
 Note that the type `Y = (?U, ?T)` also canonicalizes to `(?0, ?1)`.
 But the type `Z = (?T, ?T)` would canonicalize to `(?0, ?0)` (as would `(?U, ?U)`).
 In other words, the exact identity of the inference variables is not important,
