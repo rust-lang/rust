@@ -40,13 +40,13 @@ fn variant_b::{closure#0}(_1: &mut {closure@$DIR/slice_filter.rs:11:25: 11:41}, 
 
     bb1: {
         StorageLive(_12);
-        _12 = Le(copy _10, copy _6);
+        _12 = Ge(copy _6, copy _10);
         switchInt(move _12) -> [0: bb2, otherwise: bb6];
     }
 
     bb2: {
         StorageLive(_13);
-        _13 = Le(copy _8, copy _4);
+        _13 = Ge(copy _4, copy _8);
         switchInt(move _13) -> [0: bb3, otherwise: bb4];
     }
 
