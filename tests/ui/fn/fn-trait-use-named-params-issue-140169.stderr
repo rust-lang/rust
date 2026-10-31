@@ -4,12 +4,6 @@ error: C-variadic parameters aren't allowed in parenthesized argument lists
 LL | fn f5(_: impl Fn(u8, ...)) {}
    |                      ^^^ help: remove the C-variadics
 
-error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
-  --> $DIR/fn-trait-use-named-params-issue-140169.rs:11:18
-   |
-LL | fn f7(_: impl Fn(#[inline] u8)) {}
-   |                  ^^^^^^^^^
-
 error[E0658]: parameters in parenthesized generic argument lists with names, attributes, or c-variadics are experimental
   --> $DIR/fn-trait-use-named-params-issue-140169.rs:2:22
    |
@@ -81,7 +75,7 @@ LL | fn f7(_: impl Fn(#[inline] u8)) {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: parameters in parenthesized generic argument lists with names, attributes, or c-variadics are experimental
-  --> $DIR/fn-trait-use-named-params-issue-140169.rs:15:22
+  --> $DIR/fn-trait-use-named-params-issue-140169.rs:14:22
    |
 LL | fn f8(_: impl Fn(u8, #[allow(unused_attributes)] u8)) {}
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -98,6 +92,6 @@ LL | fn f7(_: impl Fn(#[inline] u8)) {}
    |
    = help: the `inline` attribute can only be applied to functions
 
-error: aborting due to 11 previous errors
+error: aborting due to 10 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

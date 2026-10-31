@@ -3,10 +3,8 @@
 fn f1(f: impl Fn(#[cfg(false)] x: u8)) { f() }
 fn f2(_: impl Fn(#[inline] x: u8)) {}
 //~^ ERROR the `inline` attribute cannot be used on function params
-//~| ERROR: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
 fn f3(_: impl Fn(#[cfg_attr(true, inline)] a1: usize)) {}
 //~^ ERROR the `inline` attribute cannot be used on function params
-//~| ERROR: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters
 fn f4(_: impl Fn(/** */ x: u8)) {}
 //~^ ERROR documentation comments cannot be applied to function parameters
 

@@ -18,7 +18,7 @@ impl SingleAttributeParser for CrateNameParser {
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "name");
     const ALLOWED_TARGETS: AllowedTargets<'_> =
-        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]);
+        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate), Error(Target::Param)]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
@@ -37,7 +37,7 @@ impl CombineAttributeParser for CrateTypeParser {
     type Item = CrateType;
     const CONVERT: ConvertFn<Self::Item> = |items, _| AttributeKind::CrateType(items);
     const ALLOWED_TARGETS: AllowedTargets<'_> =
-        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]);
+        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate), Error(Target::Param)]);
     const TEMPLATE: AttributeTemplate =
         template!(NameValueStr: "crate type", "https://doc.rust-lang.org/reference/linkage.html");
     const STABILITY: AttributeStability = AttributeStability::Stable;
@@ -81,7 +81,7 @@ impl SingleAttributeParser for RecursionLimitParser {
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "N", "https://doc.rust-lang.org/reference/attributes/limits.html#the-recursion_limit-attribute");
     const ALLOWED_TARGETS: AllowedTargets<'_> =
-        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]);
+        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate), Error(Target::Param)]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
@@ -113,7 +113,7 @@ impl SingleAttributeParser for TypeLengthLimitParser {
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "N");
     const ALLOWED_TARGETS: AllowedTargets<'_> =
-        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]);
+        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate), Error(Target::Param)]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
@@ -156,7 +156,7 @@ impl NoArgsAttributeParser for NoStdParser {
     const PATH: &[Symbol] = &[sym::no_std];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::Warn;
     const ALLOWED_TARGETS: AllowedTargets<'_> =
-        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]);
+        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate), Error(Target::Param)]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::NoStd;
 }
@@ -167,7 +167,7 @@ impl NoArgsAttributeParser for NoMainParser {
     const PATH: &[Symbol] = &[sym::no_main];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::Warn;
     const ALLOWED_TARGETS: AllowedTargets<'_> =
-        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]);
+        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate), Error(Target::Param)]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::NoMain;
 }
@@ -187,7 +187,7 @@ impl SingleAttributeParser for WindowsSubsystemParser {
     const PATH: &[Symbol] = &[sym::windows_subsystem];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::WarnButFutureError;
     const ALLOWED_TARGETS: AllowedTargets<'_> =
-        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]);
+        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate), Error(Target::Param)]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: ["windows", "console"], "https://doc.rust-lang.org/reference/runtime.html#the-windows_subsystem-attribute");
     const STABILITY: AttributeStability = AttributeStability::Stable;
 
@@ -243,7 +243,7 @@ impl NoArgsAttributeParser for NoBuiltinsParser {
     const PATH: &[Symbol] = &[sym::no_builtins];
     const ON_DUPLICATE: OnDuplicate = OnDuplicate::Warn;
     const ALLOWED_TARGETS: AllowedTargets<'_> =
-        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]);
+        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate), Error(Target::Param)]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::NoBuiltins;
 }
@@ -282,7 +282,7 @@ impl CombineAttributeParser for FeatureParser {
     type Item = Ident;
     const CONVERT: ConvertFn<Self::Item> = AttributeKind::Feature;
     const ALLOWED_TARGETS: AllowedTargets<'_> =
-        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate)]);
+        AllowedTargets::AllowListWarnRest(&[Allow(Target::Crate), Error(Target::Param)]);
     const TEMPLATE: AttributeTemplate = template!(List: &["feature1, feature2, ..."]);
     const STABILITY: AttributeStability = AttributeStability::Stable;
 
