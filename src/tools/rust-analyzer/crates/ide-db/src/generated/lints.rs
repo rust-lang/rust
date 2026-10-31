@@ -930,6 +930,13 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         deny_since: None,
     },
     Lint {
+        label: "no_link_attributes",
+        description: r##"detects usage of `#[no_link]` on `extern crate` items"##,
+        default_severity: Severity::Error,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "no_mangle_const_items",
         description: r##"const items will not have their symbols exported"##,
         default_severity: Severity::Error,
@@ -1462,6 +1469,13 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         deny_since: None,
     },
     Lint {
+        label: "unmarked_unchecked_type_aliases",
+        description: r##"suggest adding `#[rustc_unchecked_type_aliases]` to unchecked type aliases"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "unnameable_test_items",
         description: r##"detects an item that cannot be named being marked as `#[test_case]`"##,
         default_severity: Severity::Warning,
@@ -1812,8 +1826,15 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         deny_since: None,
     },
     Lint {
+        label: "edition_future_compatibility",
+        description: r##"lint group for: unmarked-unchecked-type-aliases"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "future_incompatible",
-        description: r##"lint group for: internal-eq-trait-method-impls, aarch64-softfloat-neon, ambiguous-associated-items, ambiguous-derive-helpers, ambiguous-glob-imported-traits, ambiguous-glob-imports, ambiguous-import-visibilities, ambiguous-panic-imports, coherence-leak-check, conflicting-repr-hints, const-evaluatable-unchecked, float-literal-f32-fallback, forbidden-lint-groups, ill-formed-attribute-input, invalid-macro-export-arguments, invalid-type-param-default, late-bound-lifetime-arguments, legacy-derive-helpers, macro-expanded-macro-exports-accessed-by-absolute-paths, method-call-on-diverging-infer-var, out-of-scope-macro-calls, partial-stack-protector, patterns-in-fns-without-body, proc-macro-derive-resolution-fallback, pub-use-of-private-extern-crate, recursion-depth-exceeding-limit, repr-c-enums-larger-than-int, self-constructor-from-outer-item, semicolon-in-expressions-from-macros, semicolon-in-expressions-from-non-local-macros, uncovered-param-in-projection, uninhabited-static, unstable-imports, unstable-name-collisions, unstable-syntax-pre-expansion, unsupported-calling-conventions, varargs-without-pattern, x86-softfloat-sse"##,
+        description: r##"lint group for: internal-eq-trait-method-impls, aarch64-softfloat-neon, ambiguous-associated-items, ambiguous-derive-helpers, ambiguous-glob-imported-traits, ambiguous-glob-imports, ambiguous-import-visibilities, ambiguous-panic-imports, coherence-leak-check, conflicting-repr-hints, const-evaluatable-unchecked, float-literal-f32-fallback, forbidden-lint-groups, ill-formed-attribute-input, invalid-macro-export-arguments, invalid-type-param-default, late-bound-lifetime-arguments, legacy-derive-helpers, macro-expanded-macro-exports-accessed-by-absolute-paths, method-call-on-diverging-infer-var, no-link-attributes, out-of-scope-macro-calls, partial-stack-protector, patterns-in-fns-without-body, proc-macro-derive-resolution-fallback, pub-use-of-private-extern-crate, recursion-depth-exceeding-limit, repr-c-enums-larger-than-int, self-constructor-from-outer-item, semicolon-in-expressions-from-macros, semicolon-in-expressions-from-non-local-macros, uncovered-param-in-projection, uninhabited-static, unstable-imports, unstable-name-collisions, unstable-syntax-pre-expansion, unsupported-calling-conventions, varargs-without-pattern, x86-softfloat-sse"##,
         default_severity: Severity::Allow,
         warn_since: None,
         deny_since: None,
@@ -1903,8 +1924,18 @@ pub const DEFAULT_LINT_GROUPS: &[LintGroup] = &[
     },
     LintGroup {
         lint: Lint {
+            label: "edition_future_compatibility",
+            description: r##"lint group for: unmarked-unchecked-type-aliases"##,
+            default_severity: Severity::Allow,
+            warn_since: None,
+            deny_since: None,
+        },
+        children: &["unmarked_unchecked_type_aliases"],
+    },
+    LintGroup {
+        lint: Lint {
             label: "future_incompatible",
-            description: r##"lint group for: internal-eq-trait-method-impls, aarch64-softfloat-neon, ambiguous-associated-items, ambiguous-derive-helpers, ambiguous-glob-imported-traits, ambiguous-glob-imports, ambiguous-import-visibilities, ambiguous-panic-imports, coherence-leak-check, conflicting-repr-hints, const-evaluatable-unchecked, float-literal-f32-fallback, forbidden-lint-groups, ill-formed-attribute-input, invalid-macro-export-arguments, invalid-type-param-default, late-bound-lifetime-arguments, legacy-derive-helpers, macro-expanded-macro-exports-accessed-by-absolute-paths, method-call-on-diverging-infer-var, out-of-scope-macro-calls, partial-stack-protector, patterns-in-fns-without-body, proc-macro-derive-resolution-fallback, pub-use-of-private-extern-crate, recursion-depth-exceeding-limit, repr-c-enums-larger-than-int, self-constructor-from-outer-item, semicolon-in-expressions-from-macros, semicolon-in-expressions-from-non-local-macros, uncovered-param-in-projection, uninhabited-static, unstable-imports, unstable-name-collisions, unstable-syntax-pre-expansion, unsupported-calling-conventions, varargs-without-pattern, x86-softfloat-sse"##,
+            description: r##"lint group for: internal-eq-trait-method-impls, aarch64-softfloat-neon, ambiguous-associated-items, ambiguous-derive-helpers, ambiguous-glob-imported-traits, ambiguous-glob-imports, ambiguous-import-visibilities, ambiguous-panic-imports, coherence-leak-check, conflicting-repr-hints, const-evaluatable-unchecked, float-literal-f32-fallback, forbidden-lint-groups, ill-formed-attribute-input, invalid-macro-export-arguments, invalid-type-param-default, late-bound-lifetime-arguments, legacy-derive-helpers, macro-expanded-macro-exports-accessed-by-absolute-paths, method-call-on-diverging-infer-var, no-link-attributes, out-of-scope-macro-calls, partial-stack-protector, patterns-in-fns-without-body, proc-macro-derive-resolution-fallback, pub-use-of-private-extern-crate, recursion-depth-exceeding-limit, repr-c-enums-larger-than-int, self-constructor-from-outer-item, semicolon-in-expressions-from-macros, semicolon-in-expressions-from-non-local-macros, uncovered-param-in-projection, uninhabited-static, unstable-imports, unstable-name-collisions, unstable-syntax-pre-expansion, unsupported-calling-conventions, varargs-without-pattern, x86-softfloat-sse"##,
             default_severity: Severity::Allow,
             warn_since: None,
             deny_since: None,
@@ -1930,6 +1961,7 @@ pub const DEFAULT_LINT_GROUPS: &[LintGroup] = &[
             "legacy_derive_helpers",
             "macro_expanded_macro_exports_accessed_by_absolute_paths",
             "method_call_on_diverging_infer_var",
+            "no_link_attributes",
             "out_of_scope_macro_calls",
             "partial_stack_protector",
             "patterns_in_fns_without_body",
@@ -3141,22 +3173,6 @@ fn main() {
 ```
 
 [arbitrary self types]: arbitrary-self-types.md
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
-        label: "arc_is_unique",
-        description: r##"# `arc_is_unique`
-
-
-
-The tracking issue for this feature is: [#138938]
-
-[#138938]: https://github.com/rust-lang/rust/issues/138938
-
-------------------------
 "##,
         default_severity: Severity::Allow,
         warn_since: None,
@@ -5829,6 +5845,22 @@ The tracking issue for this feature is: [#154215]
         deny_since: None,
     },
     Lint {
+        label: "const_nonzero_strict_ops",
+        description: r##"# `const_nonzero_strict_ops`
+
+
+
+The tracking issue for this feature is: [#164850]
+
+[#164850]: https://github.com/rust-lang/rust/issues/164850
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "const_ops",
         description: r##"# `const_ops`
 
@@ -8447,6 +8479,22 @@ This feature has no tracking issue, and is therefore likely internal to the comp
         deny_since: None,
     },
     Lint {
+        label: "extended_float_error_kind",
+        description: r##"# `extended_float_error_kind`
+
+
+
+The tracking issue for this feature is: [#164793]
+
+[#164793]: https://github.com/rust-lang/rust/issues/164793
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "extern_item_impls",
         description: r##"# `extern_item_impls`
 
@@ -8549,6 +8597,22 @@ The tracking issue for this feature is: [#154005]
         description: r##"# `fd`
 
 This feature is internal to the Rust compiler and is not intended for general use.
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "fd_view",
+        description: r##"# `fd_view`
+
+
+
+The tracking issue for this feature is: [#160402]
+
+[#160402]: https://github.com/rust-lang/rust/issues/160402
 
 ------------------------
 "##,
@@ -10787,6 +10851,22 @@ The tracking issue for this feature is: [#132818]
         deny_since: None,
     },
     Lint {
+        label: "io_slice_const",
+        description: r##"# `io_slice_const`
+
+
+
+The tracking issue for this feature is: [#146459]
+
+[#146459]: https://github.com/rust-lang/rust/issues/146459
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "ip",
         description: r##"# `ip`
 
@@ -11876,6 +11956,22 @@ The tracking issue for this feature is: [#117108]
         deny_since: None,
     },
     Lint {
+        label: "marked_unchecked_type_aliases",
+        description: r##"# `marked_unchecked_type_aliases`
+
+Allows explicitly marking type aliases as unchecked / opting type aliases out of being checked even if `checked_type_aliases` is enabled or they're a TAIT.
+
+The tracking issue for this feature is: [#112792]
+
+[#112792]: https://github.com/rust-lang/rust/issues/112792
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "marker_trait_attr",
         description: r##"# `marker_trait_attr`
 
@@ -11974,6 +12070,22 @@ The tracking issue for this feature is: [#93092]
 The tracking issue for this feature is: [#117428]
 
 [#117428]: https://github.com/rust-lang/rust/issues/117428
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "maybe_uninit_from_ref",
+        description: r##"# `maybe_uninit_from_ref`
+
+
+
+The tracking issue for this feature is: [#165213]
+
+[#165213]: https://github.com/rust-lang/rust/issues/165213
 
 ------------------------
 "##,
@@ -12705,6 +12817,22 @@ This feature has no tracking issue, and is therefore likely internal to the comp
 The tracking issue for this feature is: [#84186]
 
 [#84186]: https://github.com/rust-lang/rust/issues/84186
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "nonzero_strict_ops",
+        description: r##"# `nonzero_strict_ops`
+
+
+
+The tracking issue for this feature is: [#164850]
+
+[#164850]: https://github.com/rust-lang/rust/issues/164850
 
 ------------------------
 "##,
@@ -15799,22 +15927,6 @@ fn main() {
     //~^ WARNING: cast from `*const u8` to `usize` implicitly exposes pointer provenance
 }
 ```
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
-        label: "string_into_chars",
-        description: r##"# `string_into_chars`
-
-
-
-The tracking issue for this feature is: [#133125]
-
-[#133125]: https://github.com/rust-lang/rust/issues/133125
-
-------------------------
 "##,
         default_severity: Severity::Allow,
         warn_since: None,
