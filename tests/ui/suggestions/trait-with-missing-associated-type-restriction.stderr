@@ -11,6 +11,10 @@ help: a method is available that returns `<Self as Trait<T>>::A`
    |
 LL |     fn func(&self) -> Self::A;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ consider calling `Trait::func`
+help: consider returning the local binding `self`
+   |
+LL |     fn funq(&self) -> Self::A { self }
+   |                                 ++++
 
 error[E0308]: mismatched types
   --> $DIR/trait-with-missing-associated-type-restriction.rs:14:9
