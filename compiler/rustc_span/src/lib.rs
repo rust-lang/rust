@@ -17,6 +17,7 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
+#![cfg_attr(all(bootstrap, target_arch = "loongarch64"), feature(stdarch_loongarch))]
 #![feature(core_io_borrowed_buf)]
 #![feature(decl_macro)]
 #![feature(diagnostic_on_unknown)]

@@ -11,19 +11,21 @@
 //! mutate it.
 //!
 //! Shareable mutable containers exist to permit mutability in a controlled manner, even in the
-//! presence of aliasing. [`Cell<T>`], [`RefCell<T>`], and [`OnceCell<T>`] allow doing this in
-//! a single-threaded way—they do not implement [`Sync`]. (If you need to do aliasing and
-//! mutation among multiple threads, [`Mutex<T>`], [`RwLock<T>`], [`OnceLock<T>`] or [`atomic`]
-//! types are the correct data structures to do so).
+//! presence of aliasing. The cell types in this module allow this from a single
+//! thread (as enforced by not implementing [`Sync`]).
+//! If you need to mutate while sharing across threads, each cell type has a
+//! corresponding [`std::sync`] type that you can use. See also [`atomic`] types
+//! which provide cross thread shared mutability for primitive types.
 //!
-//! Values of the `Cell<T>`, `RefCell<T>`, and `OnceCell<T>` types may be mutated through shared
-//! references (i.e. the common `&T` type), whereas most Rust types can only be mutated through
-//! unique (`&mut T`) references. We say these cell types provide 'interior mutability'
-//! (mutable via `&T`), in contrast with typical Rust types that exhibit 'inherited mutability'
-//! (mutable only via `&mut T`).
+//! Values of the cell types types may be mutated through shared references (i.e. the common `&T`
+//! type), whereas most Rust types can only be mutated through unique (`&mut T`) references.
+//! We say these cell types provide 'interior mutability' (mutable via `&T`), in contrast with
+//! typical Rust types that exhibit 'inherited mutability' (mutable only via `&mut T`).
 //!
-//! Cell types come in four flavors: `Cell<T>`, `RefCell<T>`, `OnceCell<T>`, and `LazyCell<T>`.
-//! Each provides a different way of providing safe interior mutability.
+//! Cell types come in four flavors: `Cell<T>`, `RefCell<T>`, `OnceCell<T>`, and
+//! `LazyCell<T>`. Each provides a different way of providing safe interior mutability.
+//!
+//! [`std::sync`]: ../sync/index.html
 //!
 //! ## `Cell<T>`
 //!

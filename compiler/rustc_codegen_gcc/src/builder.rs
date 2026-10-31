@@ -17,8 +17,8 @@ use rustc_codegen_ssa::common::{
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::{
-    BackendTypes, BaseTypeCodegenMethods, BuilderMethods, ConstCodegenMethods,
-    LayoutTypeCodegenMethods, OverflowOp, ReturnSlot, StaticBuilderMethods,
+    BackendTypes, BaseTypeCodegenMethods, BuilderMethods, ConstCodegenMethods, OverflowOp,
+    ReturnSlot, StaticBuilderMethods,
 };
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
@@ -1187,11 +1187,9 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let align = dest.val.align.restrict_for_offset(dest.layout.field(self.cx(), 0).size);
         cg_elem.val.store(self, PlaceRef::new_sized_aligned(current_val, cg_elem.layout, align));
 
-        let next = self.inbounds_gep(
-            self.backend_type(cg_elem.layout),
-            current.to_rvalue(),
-            &[self.const_usize(1)],
-        );
+        let next = self
+            .inbounds_ptradd(current.to_rvalue(), self.const_usize(cg_elem.layout.size.bytes()));
+        let next = self.context.new_cast(self.location, next, ptr_type);
         self.llbb().add_assignment(self.location, current, next);
         self.br(header_bb);
 
@@ -1270,52 +1268,29 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         );
     }
 
-    fn gep(
-        &mut self,
-        typ: Type<'gcc>,
-        ptr: RValue<'gcc>,
-        indices: &[RValue<'gcc>],
-    ) -> RValue<'gcc> {
-        // NOTE: due to opaque pointers now being used, we need to cast here.
-        let ptr = self.context.new_cast(self.location, ptr, typ.make_pointer());
+    fn gep(&mut self, stride: Size, ptr: RValue<'gcc>, index: RValue<'gcc>) -> RValue<'gcc> {
         let ptr_type = ptr.get_type();
-        let mut pointee_type = ptr.get_type();
         // NOTE: we cannot use array indexing here like in inbounds_gep because array indexing is
         // always considered in bounds in GCC (FIXME(antoyo): to be verified).
         // So, we have to cast to a number.
-        let mut result = self.context.new_bitcast(self.location, ptr, self.sizet_type);
-        // FIXME(antoyo): if there were more than 1 index, this code is probably wrong and would
-        // require dereferencing the pointer.
-        for index in indices {
-            pointee_type = pointee_type.get_pointee().expect("pointee type");
-            #[cfg(feature = "master")]
-            let pointee_size = {
-                let size = self.cx.context.new_sizeof(pointee_type);
-                self.context.new_cast(self.location, size, index.get_type())
-            };
-            #[cfg(not(feature = "master"))]
-            let pointee_size =
-                self.context.new_rvalue_from_int(index.get_type(), pointee_type.get_size() as i32);
-            result = result + self.gcc_int_cast(*index * pointee_size, self.sizet_type);
-        }
+        let ptr = self.context.new_bitcast(self.location, ptr, self.sizet_type);
+        let pointee_size =
+            self.context.new_rvalue_from_int(index.get_type(), stride.bytes() as i32);
+        let result = ptr + self.gcc_int_cast(index * pointee_size, self.sizet_type);
         self.context.new_bitcast(self.location, result, ptr_type)
     }
 
     fn inbounds_gep(
         &mut self,
-        typ: Type<'gcc>,
+        stride: Size,
         ptr: RValue<'gcc>,
-        indices: &[RValue<'gcc>],
+        index: RValue<'gcc>,
     ) -> RValue<'gcc> {
+        let typ = self.cx.type_array(self.cx.type_i8(), stride.bytes());
         // NOTE: due to opaque pointers now being used, we need to cast here.
         let ptr = self.context.new_cast(self.location, ptr, typ.make_pointer());
         // NOTE: array indexing is always considered in bounds in GCC (FIXME(antoyo): to be verified).
-        let mut indices = indices.iter();
-        let index = indices.next().expect("first index in inbounds_gep");
-        let mut result = self.context.new_array_access(self.location, ptr, *index);
-        for index in indices {
-            result = self.context.new_array_access(self.location, result, *index);
-        }
+        let result = self.context.new_array_access(self.location, ptr, index);
         result.get_address(self.location)
     }
 

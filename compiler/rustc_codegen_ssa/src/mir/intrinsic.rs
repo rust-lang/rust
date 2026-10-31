@@ -181,11 +181,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     sym::vtable_align => ty::COMMON_VTABLE_ENTRIES_ALIGN,
                     _ => bug!(),
                 };
-                let value = meth::VirtualIndex::from_index(idx).get_usize(
-                    bx,
-                    vtable,
-                    instance.ty(bx.tcx(), bx.typing_env()),
-                );
+                let value = meth::VirtualIndex::from_index(idx).get_usize(bx, vtable);
                 match name {
                     // Size is always <= isize::MAX.
                     sym::vtable_size => {
@@ -207,7 +203,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let layout = bx.layout_of(ty);
                 let ptr = args[0].immediate();
                 let offset = args[1].immediate();
-                OperandValue::Immediate(bx.gep(bx.backend_type(layout), ptr, &[offset]))
+                OperandValue::Immediate(bx.gep(layout.size, ptr, offset))
             }
             sym::copy => {
                 copy_intrinsic(

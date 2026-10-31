@@ -375,7 +375,12 @@ impl<'tcx> OpsemInhabitedCtx<'tcx> {
         let inhabited = adt_def.variants().iter().any(|variant| {
             variant.fields.iter().all(|field| {
                 let ty = field.ty(tcx, adt_args);
-                let ty = tcx.normalize_erasing_regions(typing_env, ty);
+                let Ok(ty) = tcx.try_normalize_erasing_regions(typing_env, ty) else {
+                    tcx.dcx().delayed_bug(format!(
+                        "failed to normalize field type in `is_opsem_inhabited`: {field:?}"
+                    ));
+                    return true;
+                };
                 self.is_inhabited_ty(ty)
             })
         });
