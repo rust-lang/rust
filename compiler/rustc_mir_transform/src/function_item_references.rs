@@ -2,7 +2,6 @@ use itertools::Itertools;
 use rustc_abi::ExternAbi;
 use rustc_hir::def_id::DefId;
 use rustc_lint_defs::builtin::FUNCTION_ITEM_REFERENCES;
-use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, EarlyBinder, GenericArgsRef, Ty, TyCtxt};
 use rustc_span::{Span, Spanned, sym};
@@ -14,7 +13,10 @@ pub(super) struct FunctionItemReferences;
 impl<'tcx> crate::MirLint<'tcx> for FunctionItemReferences {
     fn run_lint(&self, tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
         let mut checker = FunctionItemRefChecker { tcx, body };
-        checker.visit_body(body);
+        body.basic_blocks
+            .iter()
+            .filter_map(|bb| bb.terminator.as_ref())
+            .for_each(|t| checker.visit_terminator(t));
     }
 }
 
@@ -23,11 +25,11 @@ struct FunctionItemRefChecker<'a, 'tcx> {
     body: &'a Body<'tcx>,
 }
 
-impl<'tcx> Visitor<'tcx> for FunctionItemRefChecker<'_, 'tcx> {
+impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
     /// Emits a lint for function reference arguments bound by `fmt::Pointer` or passed to
     /// `transmute`. This only handles arguments in calls outside macro expansions to avoid double
     /// counting function references formatted as pointers by macros.
-    fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
+    fn visit_terminator(&mut self, terminator: &Terminator<'tcx>) {
         if let TerminatorKind::Call {
             func,
             args,
@@ -61,11 +63,8 @@ impl<'tcx> Visitor<'tcx> for FunctionItemRefChecker<'_, 'tcx> {
                 }
             }
         }
-        self.super_terminator(terminator, location);
     }
-}
 
-impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
     /// Emits a lint for function reference arguments bound by `fmt::Pointer` in calls to the
     /// function defined by `def_id` with the generic parameters `args_ref`.
     fn check_bound_args(
