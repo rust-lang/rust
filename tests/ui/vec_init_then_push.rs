@@ -1,4 +1,5 @@
 #![warn(clippy::vec_init_then_push)]
+#![expect(clippy::new_instead_of_clear)]
 //@no-rustfix
 fn main() {
     let mut def_err: Vec<u32> = Default::default();

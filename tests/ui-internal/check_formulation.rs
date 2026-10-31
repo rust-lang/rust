@@ -1,6 +1,7 @@
 #![deny(clippy::almost_standard_lint_formulation)]
 #![allow(clippy::lint_without_lint_pass)]
 #![feature(rustc_private)]
+#![feature(default_field_values)]
 
 #[macro_use]
 extern crate rustc_middle;
