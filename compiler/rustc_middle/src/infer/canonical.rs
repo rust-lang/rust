@@ -77,7 +77,7 @@ pub struct QueryResponse<'tcx, R> {
     pub value: R,
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Hash)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 #[derive(StableHash, TypeFoldable, TypeVisitable)]
 pub struct QueryRegionConstraints<'tcx> {
     pub constraints: Vec<QueryRegionConstraint<'tcx>>,
@@ -87,8 +87,6 @@ pub struct QueryRegionConstraints<'tcx> {
     /// constructing a trivially true constraint when AoB is disabled.
     pub solver_constraints: Option<Box<ir::region_constraint::RegionConstraint<TyCtxt<'tcx>>>>,
 }
-
-impl Eq for QueryRegionConstraints<'_> {}
 
 impl<'tcx> QueryRegionConstraints<'tcx> {
     /// Represents an empty (trivially true) set of region constraints.
