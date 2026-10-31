@@ -114,7 +114,7 @@ pub(crate) fn auxv() -> Result<AuxVec, ()> {
 
     // If calling getauxval fails, try to read the auxiliary vector from
     // its file:
-    auxv_from_file("/proc/self/auxv").map_err(|_| ())
+    auxv_from_file(c"/proc/self/auxv").map_err(|_| ())
 }
 
 /// Tries to read the `key` from the auxiliary vector by calling the
@@ -146,7 +146,7 @@ fn getauxval(key: usize) -> Result<usize, ()> {
 
 /// Tries to read the auxiliary vector from the `file`. If this fails, this
 /// function returns `Err`.
-pub(super) fn auxv_from_file(file: &str) -> Result<AuxVec, alloc::string::String> {
+pub(super) fn auxv_from_file(file: &core::ffi::CStr) -> Result<AuxVec, alloc::string::String> {
     let file = super::read_file(file)?;
     auxv_from_file_bytes(&file)
 }
