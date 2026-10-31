@@ -20,6 +20,7 @@ use std::ptr;
 use bitflags::bitflags;
 use libc::{c_char, c_int, c_uchar, c_uint, c_ulonglong, c_void, size_t};
 
+pub(crate) use self::branded::{Context, ContextRaw, wrap_llcx};
 use super::RustString;
 use super::debuginfo::{
     DIArray, DIBuilder, DIDerivedType, DIDescriptor, DIFile, DIFlags, DILocation, DISPFlags,
@@ -28,6 +29,8 @@ use super::debuginfo::{
 use crate::llvm;
 use crate::llvm::MetadataKindId;
 use crate::macros::TryFromU32;
+
+mod branded;
 
 /// In the LLVM-C API, boolean values are passed as `typedef int LLVMBool`,
 /// which has a different ABI from Rust or C++ `bool`.
@@ -701,17 +704,7 @@ struct InvariantOpaque<'a> {
 
 // Opaque pointer types
 
-/// Corresponds to `LLVMContextRef`.
-#[derive(Clone, Copy)]
-#[repr(transparent)]
-pub(crate) struct Context<'ll> {
-    pub(crate) llcx_raw: ptr::NonNull<ContextRaw>,
-    pub(crate) _invariant_ll: PhantomData<fn(&'ll ()) -> &'ll ()>,
-}
-
 unsafe extern "C" {
-    /// Pointee of the raw pointer that is wrapped by a lifetime-branded [`Context`].
-    pub(crate) type ContextRaw;
     pub(crate) type Module;
     pub(crate) type Type;
     pub(crate) type Value;
