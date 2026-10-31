@@ -1,6 +1,6 @@
 //@check-pass
 
-#![feature(rustc_attrs, const_trait_impl)]
+#![feature(const_trait_impl, comptime)]
 
 struct Bar<T>(T);
 
@@ -8,7 +8,7 @@ const trait Trait {
     fn method(&self) {}
 }
 
-#[rustc_comptime]
+#[comptime]
 impl<T: const Trait> Bar<T> {
     fn boo(&self) {
         self.0.method()

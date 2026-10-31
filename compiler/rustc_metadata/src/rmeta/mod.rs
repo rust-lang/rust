@@ -651,6 +651,7 @@ define_tables! {
     constness: Table<hir::Constness>,
     safety: Table<hir::Safety>,
     defaultness: Table<hir::Defaultness>,
+    fn_arg_idents: Table<LazyArray<Option<Ident>>>,
     impl_is_fully_generic_for_reflection: Table<bool>,
 
 - optional:
@@ -691,7 +692,6 @@ define_tables! {
     mir_const_qualif: Table<LazyValue<mir::ConstQualifs>>,
     rendered_const: Table<LazyValue<String>>,
     rendered_precise_capturing_args: Table<LazyArray<PreciseCapturingArgKind<Symbol, Symbol>>>,
-    fn_arg_idents: Table<LazyArray<Option<Ident>>>,
     coroutine_kind: Table<hir::CoroutineKind>,
     coroutine_for_closure: Table<RemappedRawDefId>,
     adt_destructor: Table<LazyValue<ty::Destructor>>,

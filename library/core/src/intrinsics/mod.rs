@@ -1139,7 +1139,7 @@ pub const unsafe fn transmute_unchecked<Src, Dst>(src: Src) -> Dst;
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-#[rustc_comptime]
+#[comptime]
 pub fn needs_drop<T: ?Sized>() -> bool;
 
 /// Calculates the offset from a pointer.
@@ -2864,7 +2864,7 @@ pub unsafe fn vtable_align(ptr: *const ()) -> usize;
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-#[rustc_comptime]
+#[comptime]
 pub fn size_of<T>() -> usize;
 
 /// The minimum alignment of a type.
@@ -2884,7 +2884,7 @@ pub fn size_of<T>() -> usize;
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-#[rustc_comptime]
+#[comptime]
 pub fn align_of<T>() -> usize;
 
 /// The offset of a field inside a type.
@@ -2905,7 +2905,7 @@ pub fn align_of<T>() -> usize;
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[lang = "offset_of"]
-#[rustc_comptime]
+#[comptime]
 pub fn offset_of<T: PointeeSized>(variant: u32, field: u32) -> usize;
 
 /// The offset of a field queried by its field representing type.
@@ -2920,7 +2920,7 @@ pub fn offset_of<T: PointeeSized>(variant: u32, field: u32) -> usize;
 #[rustc_intrinsic]
 #[unstable(feature = "field_projections", issue = "145383")]
 #[rustc_const_unstable(feature = "field_projections", issue = "145383")]
-#[rustc_comptime]
+#[comptime]
 pub fn field_offset<F: crate::field::Field>() -> usize;
 
 /// Returns the number of variants of the type `T` cast to a `usize`;
@@ -2935,7 +2935,7 @@ pub fn field_offset<F: crate::field::Field>() -> usize;
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
-#[rustc_comptime]
+#[comptime]
 pub fn variant_count<T>() -> usize;
 
 /// The size of the referenced value in bytes.
@@ -2975,7 +2975,7 @@ pub const unsafe fn align_of_val<T: ?Sized>(ptr: *const T) -> usize;
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
-#[rustc_comptime]
+#[comptime]
 pub fn type_name<T: ?Sized>() -> &'static str;
 
 /// Gets the actual field `TypeId` of the [`FieldRepresentingType`]'s `TypeId`.
@@ -2985,7 +2985,7 @@ pub fn type_name<T: ?Sized>() -> &'static str;
 /// [`FieldRepresentingType`]: crate::field::FieldRepresentingType
 #[rustc_intrinsic]
 #[unstable(feature = "core_intrinsics", issue = "none")]
-#[rustc_comptime]
+#[comptime]
 pub fn field_representing_type_actual_type_id(
     _frt_type_id: crate::any::TypeId,
 ) -> crate::any::TypeId;
@@ -2997,7 +2997,7 @@ pub fn field_representing_type_actual_type_id(
 /// [`FieldRepresentingType`]: crate::field::FieldRepresentingType
 #[rustc_intrinsic]
 #[unstable(feature = "core_intrinsics", issue = "none")]
-#[rustc_comptime]
+#[comptime]
 pub fn field_representing_type_name(_frt_type_id: crate::any::TypeId) -> &'static str;
 
 /// Gets the name of the field represented by the [`FieldRepresentingType`]'s `TypeId`.
@@ -3007,7 +3007,7 @@ pub fn field_representing_type_name(_frt_type_id: crate::any::TypeId) -> &'stati
 /// [`FieldRepresentingType`]: crate::field::FieldRepresentingType
 #[rustc_intrinsic]
 #[unstable(feature = "core_intrinsics", issue = "none")]
-#[rustc_comptime]
+#[comptime]
 pub fn field_representing_type_offset(_frt_type_id: crate::any::TypeId) -> usize;
 
 /// Lowers in MIR to `Rvalue::Aggregate` with `AggregateKind::RawPtr`.

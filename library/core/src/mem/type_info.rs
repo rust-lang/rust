@@ -35,7 +35,7 @@ impl TypeId {
     /// It can only be called at compile time.
     #[unstable(feature = "type_info", issue = "146922")]
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
-    #[rustc_comptime]
+    #[comptime]
     pub fn info(self) -> Type {
         intrinsics::reflection::type_id_type_of(self)
     }
@@ -269,7 +269,7 @@ impl TypeId {
     /// ```
     #[unstable(feature = "type_info", issue = "146922")]
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
-    #[rustc_comptime]
+    #[comptime]
     pub fn is_signed(self) -> bool {
         intrinsics::reflection::type_id_is_signed(self)
     }
@@ -288,7 +288,7 @@ impl TypeId {
     /// ```
     #[unstable(feature = "type_info", issue = "146922")]
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
-    #[rustc_comptime]
+    #[comptime]
     pub fn element_ty(self) -> Option<TypeId> {
         intrinsics::reflection::type_id_element_ty(self)
     }
@@ -307,7 +307,7 @@ impl TypeId {
     /// ```
     #[unstable(feature = "type_info", issue = "146922")]
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
-    #[rustc_comptime]
+    #[comptime]
     pub fn array_len(self) -> usize {
         intrinsics::reflection::type_id_array_len(self)
     }
@@ -325,7 +325,7 @@ impl TypeId {
     /// ```
     #[unstable(feature = "type_info", issue = "146922")]
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
-    #[rustc_comptime]
+    #[comptime]
     pub fn size(self) -> Option<usize> {
         intrinsics::reflection::type_id_size_of(self)
     }
@@ -351,7 +351,7 @@ impl TypeId {
     /// ```
     #[unstable(feature = "type_info", issue = "146922")]
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
-    #[rustc_comptime]
+    #[comptime]
     pub fn variants(self) -> usize {
         intrinsics::reflection::type_id_variants(self)
     }
@@ -413,7 +413,7 @@ impl TypeId {
     /// ```
     #[unstable(feature = "type_info", issue = "146922")]
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
-    #[rustc_comptime]
+    #[comptime]
     pub fn variant(self, variant_index: usize) -> VariantId {
         intrinsics::reflection::type_id_fields(self, variant_index);
         VariantId { base: self, variant: variant_index }
@@ -477,7 +477,7 @@ impl TypeId {
     /// ```
     #[unstable(feature = "type_info", issue = "146922")]
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
-    #[rustc_comptime]
+    #[comptime]
     // FIXME(type_info): Add enum variant pattern types and use them to represent individual variants
     // Then add a `variant` method to get a wrapper around such a pattern type (similar to the FRT
     // type we have) and add methods on that. It's the only way to really sensibly represent
@@ -548,7 +548,7 @@ impl TypeId {
     /// ```
     #[unstable(feature = "type_info", issue = "146922")]
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
-    #[rustc_comptime]
+    #[comptime]
     pub fn field(self, variant_index: usize, field_index: usize) -> FieldId {
         FieldId {
             frt_type_id: intrinsics::reflection::type_id_field_representing_type(
@@ -563,7 +563,7 @@ impl TypeId {
     /// Returns `false` for everything but adts.
     #[unstable(feature = "type_info", issue = "146922")]
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
-    #[rustc_comptime]
+    #[comptime]
     pub fn non_exhaustive(self) -> bool {
         intrinsics::reflection::type_id_non_exhaustive(self)
     }
@@ -572,7 +572,7 @@ impl TypeId {
     /// Returns an empty slice for everything that doesn't have generics.
     #[unstable(feature = "type_info", issue = "146922")]
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
-    #[rustc_comptime]
+    #[comptime]
     pub fn generics(self) -> &'static [Generic] {
         intrinsics::reflection::type_id_generics(self)
     }
@@ -597,7 +597,7 @@ impl TypeId {
     /// ```
     #[unstable(feature = "type_info", issue = "146922")]
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
-    #[rustc_comptime]
+    #[comptime]
     pub fn points_to(self) -> Option<TypeId> {
         intrinsics::reflection::type_id_points_to(self)
     }
@@ -617,7 +617,7 @@ impl TypeId {
     /// ```
     #[unstable(feature = "type_info", issue = "146922")]
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
-    #[rustc_comptime]
+    #[comptime]
     pub fn points_mutably(self) -> bool {
         intrinsics::reflection::type_id_points_mutably(self)
     }
@@ -652,7 +652,7 @@ impl TypeId {
     /// ```
     #[unstable(feature = "type_info", issue = "146922")]
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
-    #[rustc_comptime]
+    #[comptime]
     pub fn function_ptr(self) -> Option<FnPtr> {
         intrinsics::reflection::type_id_function_ptr(self)
     }
@@ -693,7 +693,7 @@ impl VariantId {
     /// ```
     #[unstable(feature = "type_info", issue = "146922")]
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
-    #[rustc_comptime]
+    #[comptime]
     pub fn name(self) -> &'static str {
         intrinsics::reflection::type_id_variant_name(self.base, self.variant)
     }
@@ -701,7 +701,7 @@ impl VariantId {
     /// Returns whether this variant is marked with `#[non_exhaustive]`.
     #[unstable(feature = "type_info", issue = "146922")]
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
-    #[rustc_comptime]
+    #[comptime]
     pub fn non_exhaustive(self) -> bool {
         intrinsics::reflection::type_id_variant_non_exhaustive(self.base, self.variant)
     }
@@ -740,7 +740,7 @@ impl FieldId {
     /// ```
     #[unstable(feature = "type_info", issue = "146922")]
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
-    #[rustc_comptime]
+    #[comptime]
     pub fn type_id(self) -> TypeId {
         intrinsics::field_representing_type_actual_type_id(self.frt_type_id)
     }
@@ -762,7 +762,7 @@ impl FieldId {
     /// ```
     #[unstable(feature = "type_info", issue = "146922")]
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
-    #[rustc_comptime]
+    #[comptime]
     pub fn name(self) -> &'static str {
         intrinsics::field_representing_type_name(self.frt_type_id)
     }
@@ -784,7 +784,7 @@ impl FieldId {
     /// ```
     #[unstable(feature = "type_info", issue = "146922")]
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
-    #[rustc_comptime]
+    #[comptime]
     pub fn offset(self) -> usize {
         intrinsics::field_representing_type_offset(self.frt_type_id)
     }
