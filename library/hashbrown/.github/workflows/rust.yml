@@ -9,6 +9,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@a37ce9120846195fa4ece8f58b268e6043cb2f26 # v3.7.0
+      with:
+        persist-credentials: false
     - env:
         TARGET: x86_64-unknown-linux-gnu
       run: ci/miri.sh
@@ -17,6 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@a37ce9120846195fa4ece8f58b268e6043cb2f26 # v3.7.0
+      with:
+        persist-credentials: false
     - name: Install taplo
       run: curl -fsSL https://github.com/tamasfe/taplo/releases/latest/download/taplo-linux-x86_64.gz | gzip -d - | install -m 755 /dev/stdin /usr/local/bin/taplo
     - env:
@@ -37,6 +41,8 @@ jobs:
     needs: basics
     steps:
     - uses: actions/checkout@a37ce9120846195fa4ece8f58b268e6043cb2f26 # v3.7.0
+      with:
+        persist-credentials: false
     - uses: dtolnay/rust-toolchain@master
       with:
         toolchain: ${{ matrix.channel }}
@@ -86,6 +92,8 @@ jobs:
     needs: basics
     steps:
     - uses: actions/checkout@a37ce9120846195fa4ece8f58b268e6043cb2f26 # v3.7.0
+      with:
+        persist-credentials: false
     - run: cargo install cargo-msrv
     - run: cargo msrv --workspace verify
 
@@ -94,6 +102,8 @@ jobs:
     needs: basics
     steps:
     - uses: actions/checkout@a37ce9120846195fa4ece8f58b268e6043cb2f26 # v3.7.0
+      with:
+        persist-credentials: false
     - uses: dtolnay/rust-toolchain@nightly
     - run: |
         RUSTFLAGS="-Zforce-unstable-if-unmarked" cargo +nightly build --features rustc-dep-of-std
