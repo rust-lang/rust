@@ -17,7 +17,6 @@ use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_infer::infer::region_constraints::RegionConstraintData;
 use rustc_infer::infer::{
     BoundRegionConversionTime, InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin,
-    SolverRegionConstraint,
 };
 use rustc_infer::traits::{Obligation, ObligationCause, PredicateObligations};
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
@@ -112,7 +111,6 @@ pub(crate) fn type_check<'tcx>(
         outlives_constraints: OutlivesConstraintSet::default(),
         type_tests: Vec::default(),
         universe_causes: FxIndexMap::default(),
-        solver_constraints: None,
     };
 
     let CreateResult {
@@ -175,26 +173,10 @@ pub(crate) fn type_check<'tcx>(
 
     let polonius_context = typeck.polonius_context;
 
-    if let Some(solver_constraints) = typeck.constraints.solver_constraints.take() {
-        assert!(infcx.tcx.assumptions_on_binders());
-        let mut converter = constraint_conversion::ConstraintConversion::new(
-            typeck.infcx,
-            typeck.universal_regions,
-            typeck.region_bound_pairs,
-            typeck.known_type_outlives_obligations,
-            Locations::All(rustc_span::DUMMY_SP),
-            rustc_span::DUMMY_SP,
-            ConstraintCategory::Boring,
-            typeck.constraints,
-        );
-        typeck.infcx.destructure_solver_region_constraints_for_borrowck(
-            *solver_constraints,
-            &mut converter,
-            typeck.known_type_outlives_obligations,
-            typeck.region_bound_pairs,
-            universal_region_relations.outlives.clone(),
-        );
-    }
+    assert!(
+        infcx.take_solver_region_constraints().is_none(),
+        "solver constraints remain after MIR type checking",
+    );
 
     // In case type check encountered an error region, we suppress unhelpful extra
     // errors in by clearing out all outlives bounds that we may end up checking.
@@ -297,19 +279,9 @@ pub(crate) struct MirTypeckRegionConstraints<'tcx> {
     pub(crate) universe_causes: FxIndexMap<ty::UniverseIndex, UniverseInfo<'tcx>>,
 
     pub(crate) type_tests: Vec<TypeTest<'tcx>>,
-
-    /// Constraints from completed AoB type operations, lowered once all bounds are available.
-    pub(crate) solver_constraints: Option<Box<SolverRegionConstraint<'tcx>>>,
 }
 
 impl<'tcx> MirTypeckRegionConstraints<'tcx> {
-    pub(crate) fn register_solver_constraint(&mut self, constraint: SolverRegionConstraint<'tcx>) {
-        self.solver_constraints = Some(Box::new(match self.solver_constraints.take() {
-            Some(previous) => SolverRegionConstraint::build_and(*previous, constraint),
-            None => constraint,
-        }));
-    }
-
     /// Creates a `Region` for a given `PlaceholderRegion`, or returns the
     /// region that corresponds to a previously created one.
     pub(crate) fn placeholder_region(
