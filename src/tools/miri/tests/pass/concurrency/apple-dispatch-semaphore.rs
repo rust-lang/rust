@@ -1,6 +1,7 @@
 //@only-target: darwin
 // We use `yield` to test specific interleavings, so disable automatic preemption.
 //@compile-flags: -Zmiri-disable-isolation -Zmiri-fixed-schedule
+//@run-native
 #![allow(non_camel_case_types)]
 
 use std::{ffi, thread, time};
@@ -78,7 +79,7 @@ fn main() {
         let res = dispatch_semaphore_wait(sem.ptr, timeout);
         assert_eq!(res, 0);
         let res = dispatch_semaphore_wait(sem.ptr, timeout);
-        assert_eq!(res, 1);
+        assert_eq!(res, 49); // KERN_OPERATION_TIMED_OUT
         let elapsed_time = before_time.elapsed().as_millis();
         assert!(10 <= elapsed_time && elapsed_time <= 100);
 
