@@ -17,6 +17,9 @@ LL |         && Some(x) == x
 error: expected expression, found `let` statement
   --> $DIR/missing-let.rs:13:9
    |
+LL |     if Some(_) = y &&
+   |                    -- expected an expression after this
+...
 LL |         let Some(_) = z
    |         ^^^
    |

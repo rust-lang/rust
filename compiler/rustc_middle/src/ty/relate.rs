@@ -88,12 +88,12 @@ impl<'tcx> Relate<TyCtxt<'tcx>> for &'tcx ty::List<ty::PolyExistentialPredicate<
     }
 }
 
-impl<'tcx> Relate<TyCtxt<'tcx>> for ty::GenericArgsRef<'tcx> {
+impl<'tcx> Relate<TyCtxt<'tcx>> for ty::GenericArgs<'tcx> {
     fn relate<R: TypeRelation<TyCtxt<'tcx>>>(
         relation: &mut R,
-        a: ty::GenericArgsRef<'tcx>,
-        b: ty::GenericArgsRef<'tcx>,
-    ) -> RelateResult<'tcx, ty::GenericArgsRef<'tcx>> {
+        a: ty::GenericArgs<'tcx>,
+        b: ty::GenericArgs<'tcx>,
+    ) -> RelateResult<'tcx, ty::GenericArgs<'tcx>> {
         relate_args_invariantly(relation, a, b)
     }
 }

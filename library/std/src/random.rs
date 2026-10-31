@@ -102,9 +102,8 @@ use crate::sys::random as sys;
 /// Solaris                | [`arc4random_buf`](https://docs.oracle.com/cd/E88353_01/html/E37843/arc4random-3c.html)
 /// Vita                   | `arc4random_buf`
 /// Hermit                 | `read_entropy`
-/// Horizon, Cygwin        | `getrandom`
+/// Horizon, Cygwin, Redox | `getrandom`
 /// AIX, Hurd, QNX         | `/dev/urandom`
-/// Redox                  | `/scheme/rand`
 /// RTEMS                  | [`arc4random_buf`](https://docs.rtems.org/branches/main/bsp-howto/getentropy.html)
 /// SGX                    | [`rdrand`](https://en.wikipedia.org/wiki/RDRAND)
 /// SOLID                  | `SOLID_RNG_SampleRandomBytes`

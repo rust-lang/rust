@@ -355,7 +355,7 @@ fn has_late_bound_to_non_late_bound_regions(from_sig: FnSig<'_>, to_sig: FnSig<'
 
     fn check_ty(from_ty: Ty<'_>, to_ty: Ty<'_>) -> bool {
         match (from_ty.kind(), to_ty.kind()) {
-            (&ty::Adt(_, from_subs), &ty::Adt(_, to_subs)) => check_subs(from_subs, to_subs),
+            (&ty::Adt(_, from_subs), &ty::Adt(_, to_subs)) => check_subs(from_subs.as_slice(), to_subs.as_slice()),
             (&ty::Array(from_ty, _), &ty::Array(to_ty, _)) | (&ty::Slice(from_ty), &ty::Slice(to_ty)) => {
                 check_ty(from_ty, to_ty)
             },

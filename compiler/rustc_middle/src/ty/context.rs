@@ -74,10 +74,10 @@ use crate::traits::solve::{
 use crate::ty::predicate::ExistentialPredicateStableCmpExt as _;
 use crate::ty::{
     self, AdtDef, AdtDefData, AdtKind, Binder, Clause, ClausePolarity, Clauses, Const, ConstKind,
-    FnSigKind, GenericArg, GenericArgs, GenericArgsRef, GenericParamDefKind, List,
-    ListWithCachedTypeInfo, ParamConst, Pattern, PatternKind, PolyExistentialPredicate, PolyFnSig,
-    Predicate, PredicateKind, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind,
-    TyVid, ValTree, ValTreeKind, Visibility,
+    FnSigKind, GenericArg, GenericArgsUnsized, GenericParamDefKind, List, ListWithCachedTypeInfo,
+    ParamConst, Pattern, PatternKind, PolyExistentialPredicate, PolyFnSig, Predicate,
+    PredicateKind, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVid, ValTree,
+    ValTreeKind, Visibility,
 };
 
 impl<'tcx> rustc_type_ir::inherent::DefId<TyCtxt<'tcx>> for DefId {
@@ -145,7 +145,7 @@ pub struct CtxtInterners<'tcx> {
     // they're accessed quite often.
     type_: InternedSet<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>,
     const_lists: InternedSet<'tcx, List<ty::Const<'tcx>>>,
-    args: InternedSet<'tcx, GenericArgs<'tcx>>,
+    args: InternedSet<'tcx, GenericArgsUnsized<'tcx>>,
     type_lists: InternedSet<'tcx, List<Ty<'tcx>>>,
     canonical_var_kinds: InternedSet<'tcx, List<CanonicalVarKind<'tcx>>>,
     region: InternedSet<'tcx, RegionKind<'tcx>>,
@@ -2080,7 +2080,7 @@ macro_rules! slice_interners {
 // should be used when possible, because it's faster.
 slice_interners!(
     const_lists: pub mk_const_list(Const<'tcx>),
-    args: pub mk_args(GenericArg<'tcx>),
+    args: pub mk_args_raw(GenericArg<'tcx>),
     type_lists: pub mk_type_list(Ty<'tcx>),
     canonical_var_kinds: pub mk_canonical_var_kinds(CanonicalVarKind<'tcx>),
     poly_existential_predicates: intern_poly_existential_predicates(PolyExistentialPredicate<'tcx>),
@@ -2189,16 +2189,16 @@ impl<'tcx> TyCtxt<'tcx> {
     /// consts always have `impl`-form args, and will return an invalid result if the `def_id` comes
     /// from a [`ty::AliasConstKind::InherentSelf`] (see the doc on that for what "impl form args"
     /// means).
-    pub fn check_args_compatible(self, def_id: DefId, args: &'tcx [ty::GenericArg<'tcx>]) -> bool {
+    pub fn check_args_compatible(self, def_id: DefId, args: ty::GenericArgs<'tcx>) -> bool {
         let is_inherent_assoc_ty = matches!(self.def_kind(def_id), DefKind::AssocTy)
             && matches!(self.def_kind(self.parent(def_id)), DefKind::Impl { of_trait: false });
-        self.check_args_compatible_inner(def_id, args, is_inherent_assoc_ty)
+        self.check_args_compatible_inner(def_id, args.as_slice(), is_inherent_assoc_ty)
     }
 
     pub fn check_alias_term_args_compatible(
         self,
         kind: ty::AliasTermKind<'tcx>,
-        args: &'tcx [ty::GenericArg<'tcx>],
+        args: ty::GenericArgs<'tcx>,
     ) -> bool {
         let (def_id, is_self_args) = match kind {
             ty::AliasTermKind::ProjectionTy { def_id }
@@ -2211,13 +2211,13 @@ impl<'tcx> TyCtxt<'tcx> {
             ty::AliasTermKind::InherentTy { def_id }
             | ty::AliasTermKind::InherentConstSelf { def_id } => (def_id, true),
         };
-        self.check_args_compatible_inner(def_id, args, is_self_args)
+        self.check_args_compatible_inner(def_id, args.as_slice(), is_self_args)
     }
 
     fn check_args_compatible_inner(
         self,
         def_id: DefId,
-        args: &'tcx [ty::GenericArg<'tcx>],
+        args: &[ty::GenericArg<'tcx>],
         is_self_args: bool,
     ) -> bool {
         let generics = self.generics_of(def_id);
@@ -2268,7 +2268,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// If you have a [`ty::Alias`], you should use
     /// [`Self::debug_assert_alias_term_args_compatible`] instead. See note on
     /// [`Self::check_args_compatible`].
-    pub fn debug_assert_args_compatible(self, def_id: DefId, args: &'tcx [ty::GenericArg<'tcx>]) {
+    pub fn debug_assert_args_compatible(self, def_id: DefId, args: ty::GenericArgs<'tcx>) {
         if cfg!(debug_assertions) && !self.check_args_compatible(def_id, args) {
             let is_inherent_assoc_ty = matches!(self.def_kind(def_id), DefKind::AssocTy)
                 && matches!(self.def_kind(self.parent(def_id)), DefKind::Impl { of_trait: false });
@@ -2279,7 +2279,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn debug_assert_alias_term_args_compatible(
         self,
         kind: ty::AliasTermKind<'tcx>,
-        args: ty::GenericArgsRef<'tcx>,
+        args: ty::GenericArgs<'tcx>,
     ) {
         if cfg!(debug_assertions) {
             self.debug_assert_alias_term_kind_matches_def_kind(kind);
@@ -2349,7 +2349,7 @@ impl<'tcx> TyCtxt<'tcx> {
     fn emit_bug_args_compatible(
         self,
         def_id: DefId,
-        args: &'tcx [ty::GenericArg<'tcx>],
+        args: ty::GenericArgs<'tcx>,
         is_self_args: bool,
     ) -> ! {
         if is_self_args {
@@ -2361,7 +2361,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 self.mk_args_from_iter(
                     [self.types.self_param.into()].into_iter().chain(
                         self.generics_of(def_id)
-                            .own_args(ty::GenericArgs::identity_for_item(self, def_id))
+                            .own_args(ty::GenericArgs::identity_for_item(self, def_id).as_slice())
                             .iter()
                             .copied()
                     )
@@ -2382,7 +2382,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         def_id: DefId,
         args: impl IntoIterator<Item: Into<GenericArg<'tcx>>>,
-    ) -> GenericArgsRef<'tcx> {
+    ) -> ty::GenericArgs<'tcx> {
         let args = self.mk_args_from_iter(args.into_iter().map(Into::into));
         self.debug_assert_args_compatible(def_id, args);
         args
@@ -2604,10 +2604,14 @@ impl<'tcx> TyCtxt<'tcx> {
         T::collect_and_apply(iter, |xs| self.mk_type_list(xs))
     }
 
+    pub fn mk_args(self, args: &[GenericArg<'tcx>]) -> ty::GenericArgs<'tcx> {
+        ty::GenericArgs::from_args(self.mk_args_raw(args))
+    }
+
     pub fn mk_args_from_iter<I, T>(self, iter: I) -> T::Output
     where
         I: Iterator<Item = T>,
-        T: CollectAndApply<GenericArg<'tcx>, ty::GenericArgsRef<'tcx>>,
+        T: CollectAndApply<GenericArg<'tcx>, ty::GenericArgs<'tcx>>,
     {
         T::collect_and_apply(iter, |xs| self.mk_args(xs))
     }
@@ -2640,7 +2644,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         self_ty: Ty<'tcx>,
         rest: impl IntoIterator<Item = GenericArg<'tcx>>,
-    ) -> GenericArgsRef<'tcx> {
+    ) -> ty::GenericArgs<'tcx> {
         self.mk_args_from_iter(iter::once(self_ty.into()).chain(rest))
     }
 

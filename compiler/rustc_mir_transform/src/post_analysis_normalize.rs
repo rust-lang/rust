@@ -89,7 +89,7 @@ impl<'tcx> MutVisitor<'tcx> for PostAnalysisNormalizeVisitor<'tcx> {
     }
 
     #[inline]
-    fn visit_args(&mut self, args: &mut ty::GenericArgsRef<'tcx>, _: Location) {
+    fn visit_args(&mut self, args: &mut ty::GenericArgs<'tcx>, _: Location) {
         if let Ok(a) = self.tcx.try_normalize_erasing_regions(
             self.typing_env,
             ty::set_aliases_to_non_rigid(self.tcx, *args),

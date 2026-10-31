@@ -1507,11 +1507,20 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) -> MergingSucc {
         let span = terminator.source_info.span;
 
+        // If any input operand is `!`, then  we don't need to generate the asm terminator,
+        // but we still need to evaluate the operands.
+        // We do this in codegen instead of MIR building so that it doesn't affect borrowck.
+        // Fixes an ICE with `!` inline asm inputs (#154904).
+        let mut any_input_uninhabited = false;
+
         let operands: Vec<_> = operands
             .iter()
             .map(|op| match *op {
                 mir::InlineAsmOperand::In { reg, ref value } => {
                     let value = self.codegen_operand(bx, value);
+                    if value.layout.is_uninhabited() {
+                        any_input_uninhabited = true;
+                    }
                     InlineAsmOperandRef::In { reg, value }
                 }
                 mir::InlineAsmOperand::Out { reg, late, ref place } => {
@@ -1520,6 +1529,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
                 mir::InlineAsmOperand::InOut { reg, late, ref in_value, ref out_place } => {
                     let in_value = self.codegen_operand(bx, in_value);
+                    if in_value.layout.is_uninhabited() {
+                        any_input_uninhabited = true;
+                    }
                     let out_place =
                         out_place.map(|out_place| self.codegen_place(bx, out_place.as_ref()));
                     InlineAsmOperandRef::InOut { reg, late, in_value, out_place }
@@ -1579,18 +1591,23 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             })
             .collect();
 
-        helper.do_inlineasm(
-            self,
-            bx,
-            template,
-            &operands,
-            options,
-            line_spans,
-            if asm_macro.diverges(options) { None } else { targets.get(0).copied() },
-            unwind,
-            instance,
-            mergeable_succ,
-        )
+        if any_input_uninhabited {
+            bx.unreachable();
+            MergingSucc::False
+        } else {
+            helper.do_inlineasm(
+                self,
+                bx,
+                template,
+                &operands,
+                options,
+                line_spans,
+                if asm_macro.diverges(options) { None } else { targets.get(0).copied() },
+                unwind,
+                instance,
+                mergeable_succ,
+            )
+        }
     }
 
     pub(crate) fn codegen_block(&mut self, mut bb: mir::BasicBlock) {

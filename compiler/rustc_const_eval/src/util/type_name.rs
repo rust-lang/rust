@@ -4,7 +4,7 @@ use rustc_data_structures::intern::Interned;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::DisambiguatedDefPathData;
 use rustc_middle::ty::print::{PrettyPrinter, PrintError, Printer};
-use rustc_middle::ty::{self, GenericArg, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::bug;
 
 struct TypeNamePrinter<'tcx> {
@@ -61,7 +61,7 @@ impl<'tcx> Printer<'tcx> for TypeNamePrinter<'tcx> {
             | ty::Closure(def_id, args)
             | ty::CoroutineClosure(def_id, args)
             | ty::Coroutine(def_id, args) => self.print_def_path(def_id, args),
-            ty::Foreign(def_id) => self.print_def_path(def_id, &[]),
+            ty::Foreign(def_id) => self.print_def_path(def_id, ty::GenericArgs::empty()),
 
             ty::FnDef(def_id, args) => self.print_def_path(def_id, args.no_bound_vars().unwrap()),
             ty::Alias(_, ty::AliasTy { kind: ty::Free { .. }, .. }) => {
@@ -132,11 +132,11 @@ impl<'tcx> Printer<'tcx> for TypeNamePrinter<'tcx> {
     fn print_path_with_generic_args(
         &mut self,
         print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
-        args: &[GenericArg<'tcx>],
+        args: ty::GenericArgs<'tcx>,
     ) -> Result<(), PrintError> {
         print_prefix(self)?;
         if !args.is_empty() {
-            self.generic_delimiters(|cx| cx.comma_sep(args.iter().copied()))
+            self.generic_delimiters(|cx| cx.comma_sep(args.iter()))
         } else {
             Ok(())
         }
@@ -145,7 +145,7 @@ impl<'tcx> Printer<'tcx> for TypeNamePrinter<'tcx> {
     fn print_coroutine_with_kind(
         &mut self,
         def_id: DefId,
-        parent_args: &'tcx [GenericArg<'tcx>],
+        parent_args: ty::GenericArgs<'tcx>,
         kind: Ty<'tcx>,
     ) -> Result<(), PrintError> {
         self.print_def_path(def_id, parent_args)?;

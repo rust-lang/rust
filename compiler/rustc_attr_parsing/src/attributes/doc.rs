@@ -1,5 +1,5 @@
 use rustc_ast::ast::{AttrStyle, LitKind, MetaItemLit};
-use rustc_attr_ir::target::Target;
+use rustc_attr_ir::target::{AstTarget, ConstTypeAstTarget, Target};
 use rustc_attr_ir::{
     AttributeKind, CfgEntry, CfgHideShow, DocAttribute, DocCfgHideShow, DocCfgHideShowValue,
     DocInline, HideOrShow,
@@ -8,7 +8,7 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexMap, IndexEntry};
 use rustc_errors::{Applicability, MultiSpan, msg};
 use rustc_feature::AttributeStability;
 use rustc_lint_defs::builtin::{INVALID_DOC_ATTRIBUTES, UNUSED_ATTRIBUTES};
-use rustc_span::{Span, Symbol, edition, sym};
+use rustc_span::{Span, Symbol, edition, kw, sym};
 
 use super::prelude::{ALL_TARGETS, AllowedTargets};
 use super::{AcceptMapping, AttributeParser, template};
@@ -19,9 +19,10 @@ use crate::diagnostics::{
     DocAutoCfgHideShowExpectsList, DocAutoCfgHideShowNoIdentBeforeValues,
     DocAutoCfgHideShowUnexpectedItem, DocAutoCfgHideShowUnexpectedItemAfterValues,
     DocAutoCfgHideShowValuesMix, DocAutoCfgWrongLiteral, DocInlineConflict, DocInlineOnlyUse,
-    DocKeywordNotKeyword, DocTestLiteral, DocTestTakesList, DocTestUnknown, DocUnknownAny,
-    DocUnknownInclude, DocUnknownPasses, DocUnknownPlugins, DocUnknownSpotlight, ExpectedNameValue,
-    ExpectedNoArgs, IllFormedAttributeInput, MalformedDoc, UnusedDuplicate,
+    DocKeywordAttributeNotAnonConst, DocKeywordNotKeyword, DocTestLiteral, DocTestTakesList,
+    DocTestUnknown, DocUnknownAny, DocUnknownInclude, DocUnknownPasses, DocUnknownPlugins,
+    DocUnknownSpotlight, ExpectedNameValue, ExpectedNoArgs, IllFormedAttributeInput, MalformedDoc,
+    UnusedDuplicate,
 };
 use crate::parser::{
     ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItemParser, OwnedPathParser,
@@ -117,6 +118,15 @@ fn parse_keyword_and_attribute(
     }
 
     if !check_attr_not_crate_level(cx, span, attr_name) {
+        return;
+    }
+
+    if !matches!(
+        cx.ast_target,
+        AstTarget::Const(ConstTypeAstTarget::ConstItem(item))
+        if item.ident.name == kw::Underscore)
+    {
+        cx.emit_err(DocKeywordAttributeNotAnonConst { span, attr_name });
         return;
     }
 

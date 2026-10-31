@@ -20,11 +20,11 @@ pub enum ExprKind {
 #[derive(StableHash, TyEncodable, TyDecodable, TypeVisitable, TypeFoldable)]
 pub struct Expr<'tcx> {
     pub kind: ExprKind,
-    args: ty::GenericArgsRef<'tcx>,
+    args: ty::GenericArgs<'tcx>,
 }
 
 impl<'tcx> rustc_type_ir::inherent::ExprConst<TyCtxt<'tcx>> for Expr<'tcx> {
-    fn args(self) -> ty::GenericArgsRef<'tcx> {
+    fn args(self) -> ty::GenericArgs<'tcx> {
         self.args
     }
 }
@@ -90,14 +90,15 @@ impl<'tcx> Expr<'tcx> {
         Self { kind: ExprKind::FunctionCall, args }
     }
 
-    pub fn call_args(self) -> (Ty<'tcx>, Const<'tcx>, impl Iterator<Item = Const<'tcx>>) {
+    pub fn call_args(self) -> (Ty<'tcx>, Const<'tcx>, Vec<Const<'tcx>>) {
         assert_matches!(self.kind, ExprKind::FunctionCall);
 
-        match self.args().as_slice() {
+        let args = self.args();
+        match args.as_slice() {
             [func_ty, func, rest @ ..] => (
                 func_ty.expect_ty(),
                 func.expect_const(),
-                rest.iter().map(|arg| arg.expect_const()),
+                rest.iter().map(|arg| arg.expect_const()).collect(),
             ),
             _ => bug!("Invalid args for `Call` expr {self:?}"),
         }
@@ -128,11 +129,11 @@ impl<'tcx> Expr<'tcx> {
         }
     }
 
-    pub fn new(kind: ExprKind, args: ty::GenericArgsRef<'tcx>) -> Self {
+    pub fn new(kind: ExprKind, args: ty::GenericArgs<'tcx>) -> Self {
         Self { kind, args }
     }
 
-    pub fn args(self) -> ty::GenericArgsRef<'tcx> {
+    pub fn args(self) -> ty::GenericArgs<'tcx> {
         self.args
     }
 }

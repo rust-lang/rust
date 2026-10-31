@@ -4,7 +4,7 @@ use rustc_hir::def_id::DefId;
 use rustc_lint_defs::builtin::FUNCTION_ITEM_REFERENCES;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, EarlyBinder, GenericArgsRef, Ty, TyCtxt};
+use rustc_middle::ty::{self, EarlyBinder, GenericArgs, Ty, TyCtxt};
 use rustc_span::{Span, Spanned, sym};
 
 use crate::diagnostics;
@@ -71,7 +71,7 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
     fn check_bound_args(
         &self,
         def_id: DefId,
-        args_ref: GenericArgsRef<'tcx>,
+        args_ref: GenericArgs<'tcx>,
         args: &[Spanned<Operand<'tcx>>],
         source_info: SourceInfo,
     ) {
@@ -122,8 +122,8 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
     }
 
     /// If a type is a reference or raw pointer to the anonymous type of a function definition,
-    /// returns that function's `DefId` and `GenericArgsRef`.
-    fn is_fn_ref(ty: Ty<'tcx>) -> Option<(DefId, GenericArgsRef<'tcx>)> {
+    /// returns that function's `DefId` and `GenericArgs`.
+    fn is_fn_ref(ty: Ty<'tcx>) -> Option<(DefId, GenericArgs<'tcx>)> {
         let referent_ty = match ty.kind() {
             ty::Ref(_, referent_ty, _) => Some(referent_ty),
             ty::RawPtr(referent_ty, _) => Some(referent_ty),
@@ -147,7 +147,7 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
     fn emit_lint(
         &self,
         fn_id: DefId,
-        fn_args: GenericArgsRef<'tcx>,
+        fn_args: GenericArgs<'tcx>,
         source_info: SourceInfo,
         span: Span,
     ) {

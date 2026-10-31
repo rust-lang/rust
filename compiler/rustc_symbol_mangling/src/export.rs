@@ -96,7 +96,7 @@ impl<'tcx> AbiStableHash<'tcx> for Ty<'tcx> {
                         field_ty.abi_stable_hash(tcx, hasher);
                     }
                 }
-                args.abi_stable_hash(tcx, hasher);
+                args.as_slice().abi_stable_hash(tcx, hasher);
             }
 
             ty::Tuple(args) if args.len() == 0 => {}

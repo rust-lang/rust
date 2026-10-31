@@ -2306,6 +2306,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
             attr.span,
             self.cfg().lint_node_id,
             node.as_target(),
+            rustc_attr_ir::target::AstTarget::None,
             self.cfg().features,
             ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },
             parse_cfg,

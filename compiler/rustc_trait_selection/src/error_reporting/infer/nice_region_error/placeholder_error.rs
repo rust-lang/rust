@@ -7,7 +7,7 @@ use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::print::{FmtPrinter, Print, PrintTraitRefExt as _, RegionHighlightMode};
-use rustc_middle::ty::{self, GenericArgsRef, IsSuggestable, RePlaceholder, Region, TyCtxt};
+use rustc_middle::ty::{self, GenericArgs, IsSuggestable, RePlaceholder, Region, TyCtxt};
 use rustc_span::{Span, bug};
 use rustc_structures::Limit;
 use tracing::{debug, instrument};
@@ -250,8 +250,8 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
         sub_placeholder: Option<Region<'tcx>>,
         sup_placeholder: Option<Region<'tcx>>,
         trait_def_id: DefId,
-        expected_args: GenericArgsRef<'tcx>,
-        actual_args: GenericArgsRef<'tcx>,
+        expected_args: GenericArgs<'tcx>,
+        actual_args: GenericArgs<'tcx>,
     ) -> Diag<'tcx> {
         let span = cause.span;
 

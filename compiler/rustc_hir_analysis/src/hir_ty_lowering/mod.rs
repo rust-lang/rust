@@ -43,9 +43,9 @@ use rustc_lint_defs::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::middle::stability::AllowUnstable;
 use rustc_middle::ty::{
-    self, Const, FnSigKind, GenericArgKind, GenericArgsRef, GenericParamDefKind, LitToConstInput,
-    Ty, TyCtxt, TypeSuperFoldable, TypeVisitableExt, TypingMode, Unnormalized, Upcast,
-    const_lit_matches_ty, fold_regions,
+    self, Const, FnSigKind, GenericArgKind, GenericParamDefKind, LitToConstInput, Ty, TyCtxt,
+    TypeSuperFoldable, TypeVisitableExt, TypingMode, Unnormalized, Upcast, const_lit_matches_ty,
+    fold_regions,
 };
 use rustc_session::diagnostics::feature_err;
 use rustc_span::def_id::{LocalModId, ModId};
@@ -207,7 +207,7 @@ pub trait HirTyLowerer<'tcx> {
         item_def_id: DefId,
         item_segment: &hir::PathSegment<'_>,
         poly_trait_ref: ty::PolyTraitRef<'tcx>,
-    ) -> Result<(DefId, GenericArgsRef<'tcx>), ErrorGuaranteed>;
+    ) -> Result<(DefId, ty::GenericArgs<'tcx>), ErrorGuaranteed>;
 
     fn lower_fn_sig(
         &self,
@@ -309,7 +309,7 @@ pub enum PermitVariants {
 enum TypeRelativePath<'tcx> {
     AssocItem(ty::AliasTerm<'tcx>),
     Variant { adt: Ty<'tcx>, variant_did: DefId },
-    Ctor { ctor_def_id: DefId, args: GenericArgsRef<'tcx> },
+    Ctor { ctor_def_id: DefId, args: ty::GenericArgs<'tcx> },
 }
 
 /// New-typed boolean indicating whether explicit late-bound lifetimes
@@ -632,7 +632,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         span: Span,
         def_id: DefId,
         item_segment: &hir::PathSegment<'_>,
-    ) -> GenericArgsRef<'tcx> {
+    ) -> ty::GenericArgs<'tcx> {
         let (args, _) = self.lower_generic_args_of_path(span, def_id, &[], item_segment, None);
         if let Some(c) = item_segment.args().constraints.first() {
             prohibit_assoc_item_constraint(self, c, Some((def_id, item_segment, span)));
@@ -659,7 +659,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// 2. The path in question is the path to the trait `std::ops::Index`,
     ///    which will have been resolved to a `def_id`
     /// 3. The `generic_args` contains info on the `<...>` contents. The `usize` type
-    ///    parameters are returned in the `GenericArgsRef`
+    ///    parameters are returned in the `GenericArgs`
     /// 4. Associated item constraints like `Output = u32` are contained in `generic_args.constraints`.
     ///
     /// Note that the type listing given here is *exactly* what the user provided.
@@ -672,7 +672,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ///
     /// We have the parent args are the args for the parent trait:
     /// `[Vec<u8>, u8]` and `generic_args` are the arguments for the associated
-    /// type itself: `['a]`. The returned `GenericArgsRef` concatenates these two
+    /// type itself: `['a]`. The returned `GenericArgs` concatenates these two
     /// lists: `[Vec<u8>, u8, 'a]`.
     #[instrument(level = "debug", skip(self, span), ret)]
     pub(crate) fn lower_generic_args_of_path(
@@ -682,7 +682,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         parent_args: &[ty::GenericArg<'tcx>],
         segment: &hir::PathSegment<'_>,
         self_ty: Option<Ty<'tcx>>,
-    ) -> (GenericArgsRef<'tcx>, GenericArgCountResult) {
+    ) -> (ty::GenericArgs<'tcx>, GenericArgCountResult) {
         // If the type is parameterized by this region, then replace this
         // region with the current anon region binding (in other words,
         // whatever & would get replaced with).
@@ -903,10 +903,15 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         span: Span,
         item_def_id: DefId,
         item_segment: &hir::PathSegment<'_>,
-        parent_args: GenericArgsRef<'tcx>,
-    ) -> GenericArgsRef<'tcx> {
-        let (args, _) =
-            self.lower_generic_args_of_path(span, item_def_id, parent_args, item_segment, None);
+        parent_args: ty::GenericArgs<'tcx>,
+    ) -> ty::GenericArgs<'tcx> {
+        let (args, _) = self.lower_generic_args_of_path(
+            span,
+            item_def_id,
+            parent_args.as_slice(),
+            item_segment,
+            None,
+        );
         if let Some(c) = item_segment.args().constraints.first() {
             prohibit_assoc_item_constraint(self, c, Some((item_def_id, item_segment, span)));
         }
@@ -1022,7 +1027,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         let constraints = segment.args().constraints;
 
-        if transient && (!generic_args[1..].is_empty() || !constraints.is_empty()) {
+        if transient && (!generic_args.as_slice()[1..].is_empty() || !constraints.is_empty()) {
             // Since the bound won't be present in the middle::ty IR as established above, any
             // arguments or constraints won't be checked for well-formedness in later passes.
             //
@@ -1544,7 +1549,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             },
                         );
                         let ty::Adt(_, enum_args) = self_ty.kind() else { unreachable!() };
-                        return Ok(TypeRelativePath::Ctor { ctor_def_id, args: enum_args });
+                        return Ok(TypeRelativePath::Ctor { ctor_def_id, args: *enum_args });
                     }
                     if let PermitVariants::Yes = mode.permit_variants() {
                         tcx.check_stability(variant_def.def_id, Some(qpath_hir_id), span, None);
@@ -1965,7 +1970,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         trait_segment: Option<&hir::PathSegment<'_>>,
         item_segment: &hir::PathSegment<'_>,
         assoc_tag: ty::AssocTag,
-    ) -> Result<(DefId, GenericArgsRef<'tcx>), ErrorGuaranteed> {
+    ) -> Result<(DefId, ty::GenericArgs<'tcx>), ErrorGuaranteed> {
         let tcx = self.tcx();
 
         let trait_def_id = tcx.parent(item_def_id);
@@ -3857,7 +3862,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         &self,
         ctor_def_id: DefId,
         ctor_of: CtorOf,
-        args: GenericArgsRef<'tcx>,
+        args: ty::GenericArgs<'tcx>,
     ) -> Const<'tcx> {
         let tcx = self.tcx();
         let parent_did = tcx.parent(ctor_def_id);

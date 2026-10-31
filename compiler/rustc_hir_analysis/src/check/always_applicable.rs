@@ -11,7 +11,7 @@ use rustc_errors::{ErrorGuaranteed, struct_span_code_err};
 use rustc_infer::infer::{RegionResolutionError, TyCtxtInferExt};
 use rustc_infer::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::util::CheckRegions;
-use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt, TypingMode};
+use rustc_middle::ty::{self, GenericArgs, Ty, TyCtxt, TypeVisitableExt, TypingMode};
 use rustc_span::{span_bug, sym};
 use rustc_trait_selection::regions::InferCtxtRegionExt;
 use rustc_trait_selection::traits::{self, ObligationCtxt};
@@ -59,7 +59,7 @@ pub(crate) fn check_drop_impl(
                 tcx,
                 drop_impl_did,
                 adt_def.did(),
-                adt_to_impl_args,
+                *adt_to_impl_args,
             )?;
 
             ensure_all_fields_are_const_destruct(tcx, drop_impl_did, adt_def.did())?;
@@ -68,7 +68,7 @@ pub(crate) fn check_drop_impl(
                 tcx,
                 drop_impl_did,
                 adt_def.did(),
-                adt_to_impl_args,
+                *adt_to_impl_args,
             )?;
 
             check_drop_xor_pin_drop(tcx, adt_def.did(), drop_impl_did)?;
@@ -107,14 +107,14 @@ pub(crate) fn check_negative_auto_trait_impl<'tcx>(
                 tcx,
                 impl_def_id,
                 adt_def.did(),
-                adt_to_impl_args,
+                *adt_to_impl_args,
             )?;
 
             ensure_impl_predicates_are_implied_by_item_defn(
                 tcx,
                 impl_def_id,
                 adt_def.did(),
-                adt_to_impl_args,
+                *adt_to_impl_args,
             )
         }
         _ => {
@@ -138,9 +138,11 @@ fn ensure_impl_params_and_item_params_correspond<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_def_id: LocalDefId,
     adt_def_id: DefId,
-    adt_to_impl_args: GenericArgsRef<'tcx>,
+    adt_to_impl_args: ty::GenericArgs<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
-    let Err(arg) = tcx.uses_unique_generic_params(adt_to_impl_args, CheckRegions::OnlyParam) else {
+    let Err(arg) =
+        tcx.uses_unique_generic_params(adt_to_impl_args.as_slice(), CheckRegions::OnlyParam)
+    else {
         return Ok(());
     };
 
@@ -252,7 +254,7 @@ fn ensure_impl_predicates_are_implied_by_item_defn<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_def_id: LocalDefId,
     adt_def_id: DefId,
-    adt_to_impl_args: GenericArgsRef<'tcx>,
+    adt_to_impl_args: GenericArgs<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
     let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
