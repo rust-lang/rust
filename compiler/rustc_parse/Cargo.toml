@@ -20,9 +20,10 @@ rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
 thin-vec = "0.2.21"
 tracing = "0.1"
-unicode-normalization = "0.1.25"
-unicode-properties = { version = "0.1.4", default-features = false, features = ["emoji"] }
-unicode-width = "0.2.2"
+# FIXME(unicode18): Remove pins when a Unicode 18 compatible unicode-properties releases
+unicode-normalization = "=0.1.25"
+unicode-properties = { version = "=0.1.4", default-features = false, features = ["emoji"] }
+unicode-width = "=0.2.2"
 # tidy-alphabetical-end
 
 [dev-dependencies]
