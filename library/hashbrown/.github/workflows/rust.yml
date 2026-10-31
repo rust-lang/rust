@@ -4,6 +4,8 @@ on:
   pull_request:
   merge_group:
 
+permissions: {}
+
 jobs:
   miri:
     runs-on: ubuntu-latest
