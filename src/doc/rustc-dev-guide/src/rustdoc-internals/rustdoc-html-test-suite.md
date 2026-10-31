@@ -3,7 +3,7 @@
 This page is about the test suite named `rustdoc-html` used to test the HTML output of `rustdoc`.
 For other rustdoc-specific test suites, see [Rustdoc test suites].
 
-Each test file in this test suite is simply a Rust source file `file.rs` sprinkled with
+Each test file in this test suite is simply a Rust source file sprinkled with
 so-called *directives* located inside normal Rust code comments.
 These come in two flavors: *Compiletest* and *HtmlDocCk*.
 
