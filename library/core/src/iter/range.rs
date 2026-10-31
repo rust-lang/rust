@@ -1366,21 +1366,22 @@ impl<A: Step> Iterator for ops::RangeFrom<A> {
 
     #[inline]
     fn next(&mut self) -> Option<A> {
-        let n = Step::forward(self.start.clone(), 1);
+        let n = Step::forward_checked(self.start.clone(), 1)?;
         Some(mem::replace(&mut self.start, n))
     }
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        (usize::MAX, None)
+        (0, None)
     }
 
-    #[inline]
-    fn nth(&mut self, n: usize) -> Option<A> {
-        let plus_n = Step::forward(self.start.clone(), n);
-        self.start = Step::forward(plus_n.clone(), 1);
-        Some(plus_n)
-    }
+    // The generic implementation is probably good enough for a experiment
+    // #[inline]
+    // fn nth(&mut self, n: usize) -> Option<A> {
+    //     let plus_n = Step::forward(self.start.clone(), n);
+    //     self.start = Step::forward(plus_n.clone(), 1);
+    //     Some(plus_n)
+    // }
 }
 
 // Safety: See above implementation for `ops::Range<A>`
