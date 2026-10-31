@@ -7,21 +7,21 @@ use run_make_support::{bin_name, run_fail_with_args, rustc};
 #[derive(Debug)]
 enum Variant {
     Abort,
-    AbortImmediate,
+    Crash,
 }
 
 fn main() {
     rustc().input("main.rs").run();
 
     check_one(Variant::Abort);
-    check_one(Variant::AbortImmediate);
+    check_one(Variant::Crash);
 }
 
 fn check_one(variant: Variant) {
     println!("checking variant {variant:?}");
     let arg = match variant {
         Variant::Abort => "abort",
-        Variant::AbortImmediate => "abort_immediate",
+        Variant::Crash => "crash",
     };
     let bin = &bin_name("main");
     let out = run_fail_with_args(bin, &[arg]);
@@ -40,7 +40,7 @@ fn check_one(variant: Variant) {
             let sig = status.signal().expect("no signal recorded");
             match variant {
                 Variant::Abort => assert_eq!(sig, libc::SIGABRT),
-                Variant::AbortImmediate => assert_matches!(sig, libc::SIGILL | libc::SIGTRAP),
+                Variant::Crash => assert_matches!(sig, libc::SIGILL | libc::SIGTRAP),
             };
         }
         windows => {
@@ -52,7 +52,7 @@ fn check_one(variant: Variant) {
             let code = status.code().unwrap();
             let expected = match variant {
                 Variant::Abort => STATUS_STACK_BUFFER_OVERRUN.0,
-                Variant::AbortImmediate => STATUS_ILLEGAL_INSTRUCTION.0,
+                Variant::Crash => STATUS_ILLEGAL_INSTRUCTION.0,
             };
             assert_eq!(code, expected);
         }

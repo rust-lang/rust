@@ -1,7 +1,7 @@
 //! A module for working with processes.
 //!
-//! Most process-related functionality requires std, but [`abort_immediate`]
-//! is available on all targets.
+//! Most process-related functionality requires std, but [`crash`] is available
+//! on all targets.
 
 /// Terminates the process in a violent fashion.
 ///
@@ -11,18 +11,18 @@
 /// will be run, Rust IO buffers (eg, from `BufWriter`) will not be flushed,
 /// and C stdio buffers will not be flushed.
 ///
-/// Unlike [`abort`](../../std/process/fn.abort.html), `abort_immediate` does
-/// not attempt to match C `abort()` or otherwise perform a "clean" abort.
-/// Instead, it emits code that will crash the process with as little overhead
-/// as possible, such as a "halt and catch fire" style instruction. You should
-/// generally prefer using `abort` instead except where the absolute minimum
-/// overhead is required.
+/// Unlike [`abort`](../../std/process/fn.abort.html), `crash` does not attempt
+/// to match C `abort()` or otherwise perform a "clean" abort. Instead, it emits
+/// code that will crash the process with as little overhead as possible, such
+/// as a "halt and catch fire" style instruction. You should generally prefer
+/// using `abort` instead except where the absolute minimum overhead is
+/// required.
 ///
 /// # Platform-specific behavior
 ///
-/// `abort_immediate` lowers to a trap instruction on *most* architectures; on
-/// some architectures it simply lowers to call the unmangled `abort` function.
-/// The exact behavior is architecture- and system-dependent.
+/// `crash` lowers to a trap instruction on *most* architectures; on some
+/// architectures it simply lowers to call the unmangled `abort` function. The
+/// exact behavior is architecture- and system-dependent.
 ///
 /// On bare-metal (no OS) systems the trap instruction usually causes a
 /// *hardware* exception to be raised in a *synchronous* fashion; hardware
@@ -38,25 +38,21 @@
 /// # Examples
 ///
 /// ```no_run
-/// #![feature(abort_immediate)]
-///
 /// use core::process;
 ///
 /// fn main() {
 ///     println!("aborting");
 ///
-///     process::abort_immediate();
+///     process::crash();
 ///
 ///     // execution never gets here
 /// }
 /// ```
 ///
-/// The `abort_immediate` function terminates the process, so the destructor
-/// will not get run on the example below:
+/// The `crash` function terminates the process, so the destructor will not get
+/// run on the example below:
 ///
 /// ```no_run
-/// #![feature(abort_immediate)]
-///
 /// use core::process;
 ///
 /// struct HasDrop;
@@ -69,18 +65,18 @@
 ///
 /// fn main() {
 ///     let _x = HasDrop;
-///     process::abort_immediate();
+///     process::crash();
 ///     // the destructor implemented for HasDrop will never get run
 /// }
 /// ```
 ///
-#[unstable(feature = "abort_immediate", issue = "154601")]
-#[rustc_const_unstable(feature = "abort_immediate", issue = "154601")]
+#[stable(feature = "abort_immediate", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "abort_immediate", since = "CURRENT_RUSTC_VERSION")]
 #[cold]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[doc(alias = "halt")]
 #[doc(alias = "trap")]
-pub const fn abort_immediate() -> ! {
+pub const fn crash() -> ! {
     crate::intrinsics::abort_immediate()
 }
 
