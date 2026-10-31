@@ -334,6 +334,7 @@ impl<'a> StripUnconfigured<'a> {
             self.lint_node_id,
             // Doesn't matter what the target actually is here.
             Target::Crate,
+            rustc_attr_ir::target::AstTarget::None,
             self.features,
             emit_errors,
             parse_cfg,

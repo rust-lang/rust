@@ -276,7 +276,7 @@ fn is_ty_fully_unsafe_celled<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool
                 }
 
                 variant.fields.iter().all(|field| {
-                    let field_ty = field.ty(cx.tcx, args).skip_norm_wip();
+                    let field_ty = field.ty(cx.tcx, *args).skip_norm_wip();
                     inner(cx, field_ty, depth + 1)
                 })
             }

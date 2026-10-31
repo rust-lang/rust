@@ -550,7 +550,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         else {
             return None;
         };
-        if &args[0..self.tcx.generics_of(parent_def_id).count()]
+        if &args.as_slice()[0..self.tcx.generics_of(parent_def_id).count()]
             != ty::GenericArgs::identity_for_item(self.tcx, parent_def_id).as_slice()
         {
             return None;

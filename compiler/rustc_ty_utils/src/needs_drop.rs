@@ -5,7 +5,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::DefId;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::util::{AlwaysRequiresDrop, needs_drop_components};
-use rustc_middle::ty::{self, EarlyBinder, GenericArgsRef, Ty, TyCtxt, Unnormalized};
+use rustc_middle::ty::{self, EarlyBinder, GenericArgs, Ty, TyCtxt, Unnormalized};
 use rustc_span::bug;
 use rustc_structures::Limit;
 use tracing::{debug, instrument};
@@ -52,7 +52,7 @@ fn needs_async_drop_raw<'tcx>(
         query.value,
         query.typing_env,
         adt_has_async_dtor,
-        DropTysOptions::default().recurse_into_box_for_async_drop(),
+        DropTysOptions::default().async_drop(),
     )
     .filter(filter_array_elements_async(tcx, query.typing_env))
     .next()
@@ -167,7 +167,7 @@ impl<'tcx, F> NeedsDropTypes<'tcx, F> {
 
 impl<'tcx, F, I> Iterator for NeedsDropTypes<'tcx, F>
 where
-    F: Fn(ty::AdtDef<'tcx>, GenericArgsRef<'tcx>) -> NeedsDropResult<I>,
+    F: Fn(ty::AdtDef<'tcx>, GenericArgs<'tcx>) -> NeedsDropResult<I>,
     I: Iterator<Item = Ty<'tcx>>,
 {
     type Item = NeedsDropResult<Ty<'tcx>>;
@@ -335,7 +335,9 @@ enum DtorType {
 struct DropTysOptions {
     only_significant: bool,
     exhaustive: bool,
-    async_drop_recurses_into_box: bool,
+    /// Compute async drop components: query `adt_async_drop_tys` for nested
+    /// ADTs and recurse into `Box`.
+    async_drop: bool,
 }
 
 impl DropTysOptions {
@@ -349,8 +351,8 @@ impl DropTysOptions {
         self
     }
 
-    fn recurse_into_box_for_async_drop(mut self) -> Self {
-        self.async_drop_recurses_into_box = true;
+    fn async_drop(mut self) -> Self {
+        self.async_drop = true;
         self
     }
 }
@@ -369,11 +371,17 @@ fn drop_tys_helper<'tcx>(
     fn with_query_cache<'tcx>(
         tcx: TyCtxt<'tcx>,
         iter: impl IntoIterator<Item = Ty<'tcx>>,
+        async_drop: bool,
     ) -> NeedsDropResult<Vec<Ty<'tcx>>> {
         iter.into_iter().try_fold(Vec::new(), |mut vec, subty| {
             match subty.kind() {
                 ty::Adt(adt_id, args) => {
-                    for subty in tcx.adt_drop_tys(adt_id.did())? {
+                    let adt_tys = if async_drop {
+                        tcx.adt_async_drop_tys(adt_id.did())?
+                    } else {
+                        tcx.adt_drop_tys(adt_id.did())?
+                    };
+                    for subty in adt_tys {
                         vec.push(
                             EarlyBinder::bind(tcx, subty).instantiate(tcx, args).skip_norm_wip(),
                         );
@@ -385,11 +393,11 @@ fn drop_tys_helper<'tcx>(
         })
     }
 
-    let adt_components = move |adt_def: ty::AdtDef<'tcx>, args: GenericArgsRef<'tcx>| {
+    let adt_components = move |adt_def: ty::AdtDef<'tcx>, args: GenericArgs<'tcx>| {
         if adt_def.is_manually_drop() {
             debug!("drop_tys_helper: `{:?}` is manually drop", adt_def);
             Ok(Vec::new())
-        } else if options.async_drop_recurses_into_box && adt_def.is_box() {
+        } else if options.async_drop && adt_def.is_box() {
             let box_components = match args.as_slice() {
                 [boxed_ty, allocator_ty] => {
                     let boxed_ty = boxed_ty.expect_ty();
@@ -442,7 +450,7 @@ fn drop_tys_helper<'tcx>(
                 // ADTs are `needs_drop` exactly if they `impl Drop` or if any of their "transitive"
                 // fields do. There can be no cycles here, because ADTs cannot contain themselves as
                 // fields.
-                with_query_cache(tcx, field_tys)
+                with_query_cache(tcx, field_tys, options.async_drop)
             }
         }
         .map(|v| v.into_iter())
@@ -506,7 +514,7 @@ fn adt_async_drop_tys<'tcx>(
         tcx.type_of(def_id).instantiate_identity().skip_norm_wip(),
         ty::TypingEnv::non_body_analysis(tcx, def_id),
         adt_has_dtor,
-        DropTysOptions::default().recurse_into_box_for_async_drop(),
+        DropTysOptions::default().async_drop(),
     )
     .collect::<Result<Vec<_>, _>>()
     .map(|components| tcx.mk_type_list(&components))

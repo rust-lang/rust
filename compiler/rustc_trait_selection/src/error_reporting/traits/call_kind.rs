@@ -6,7 +6,7 @@ use rustc_attr_ir::lang_items::{self, LangItem};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::{
-    self, AssocContainer, GenericArgsRef, Instance, Ty, TyCtxt, TypingEnv, Unnormalized,
+    self, AssocContainer, GenericArgs, Instance, Ty, TyCtxt, TypingEnv, Unnormalized,
 };
 use rustc_span::{DUMMY_SP, DesugaringKind, Ident, Span, sym};
 use tracing::debug;
@@ -65,7 +65,7 @@ pub enum CallKind<'tcx> {
         self_arg: Option<Ident>,
         desugaring: Option<(CallDesugaringKind, Ty<'tcx>)>,
         method_did: DefId,
-        method_args: GenericArgsRef<'tcx>,
+        method_args: GenericArgs<'tcx>,
     },
     /// A call to `Fn(..)::call(..)`, desugared from `my_closure(a, b, c)`
     FnCall { fn_trait_id: DefId, self_ty: Ty<'tcx> },
@@ -85,7 +85,7 @@ pub fn call_kind<'tcx>(
     tcx: TyCtxt<'tcx>,
     typing_env: TypingEnv<'tcx>,
     method_did: DefId,
-    method_args: GenericArgsRef<'tcx>,
+    method_args: GenericArgs<'tcx>,
     fn_call_span: Span,
     from_hir_call: bool,
     self_arg: Option<Ident>,

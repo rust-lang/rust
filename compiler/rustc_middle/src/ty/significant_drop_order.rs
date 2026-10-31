@@ -46,7 +46,7 @@ fn true_significant_drop_ty<'tcx>(
             // These are important types from Rust ecosystem
             ["tracing", "instrument", "Instrumented"] | ["bytes", "Bytes"] => Some(smallvec![]),
             ["hashbrown", "raw", "RawTable" | "RawIntoIter"] => {
-                if let [ty, ..] = &***args
+                if let [ty, ..] = args.as_slice()
                     && let Some(ty) = ty.as_type()
                 {
                     Some(smallvec![ty])
@@ -55,7 +55,7 @@ fn true_significant_drop_ty<'tcx>(
                 }
             }
             ["hashbrown", "raw", "RawDrain"] => {
-                if let [_, ty, ..] = &***args
+                if let [_, ty, ..] = args.as_slice()
                     && let Some(ty) = ty.as_type()
                 {
                     Some(smallvec![ty])

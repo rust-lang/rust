@@ -163,7 +163,7 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         self.next_const_var(DUMMY_SP)
     }
 
-    fn fresh_args_for_item(&self, def_id: DefId) -> ty::GenericArgsRef<'tcx> {
+    fn fresh_args_for_item(&self, def_id: DefId) -> ty::GenericArgs<'tcx> {
         self.fresh_args_for_item(DUMMY_SP, def_id)
     }
 

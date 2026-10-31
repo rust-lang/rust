@@ -29,9 +29,9 @@ use rustc_middle::traits::solve::Goal;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{
     self, BoundVarReplacerDelegate, ConstVid, FloatVid, GenericArg, GenericArgKind, GenericArgs,
-    GenericArgsRef, GenericParamDefKind, InferConst, OpaqueTypeKey, ProvisionalHiddenType,
-    PseudoCanonicalInput, Term, Ty, TyCtxt, TyVid, TypeFoldable, TypeFolder, TypeSuperFoldable,
-    TypeVisitable, TypeVisitableExt, TypingEnv, TypingMode, fold_regions,
+    GenericParamDefKind, InferConst, OpaqueTypeKey, ProvisionalHiddenType, PseudoCanonicalInput,
+    Term, Ty, TyCtxt, TyVid, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitable,
+    TypeVisitableExt, TypingEnv, TypingMode, fold_regions,
 };
 use rustc_span::{DUMMY_SP, Span, Symbol, bug};
 use rustc_type_ir::{CanonicalizerState, MayBeErased};
@@ -1076,7 +1076,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
     /// Given a set of generics defined on a type or impl, returns the generic parameters mapping
     /// each type/region parameter to a fresh inference variable.
-    pub fn fresh_args_for_item(&self, span: Span, def_id: DefId) -> GenericArgsRef<'tcx> {
+    pub fn fresh_args_for_item(&self, span: Span, def_id: DefId) -> GenericArgs<'tcx> {
         GenericArgs::for_item(self.tcx, def_id, |param, _| self.var_for_def(span, param))
     }
 

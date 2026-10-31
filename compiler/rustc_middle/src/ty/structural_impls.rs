@@ -24,7 +24,7 @@ impl fmt::Debug for ty::TraitDef {
         ty::tls::with(|tcx| {
             with_no_trimmed_paths!({
                 let s = FmtPrinter::print_string(tcx, Namespace::TypeNS, |p| {
-                    p.print_def_path(self.def_id, &[])
+                    p.print_def_path(self.def_id, ty::GenericArgs::empty())
                 })?;
                 f.write_str(&s)
             })
@@ -37,7 +37,7 @@ impl<'tcx> fmt::Debug for ty::AdtDef<'tcx> {
         ty::tls::with(|tcx| {
             with_no_trimmed_paths!({
                 let s = FmtPrinter::print_string(tcx, Namespace::TypeNS, |p| {
-                    p.print_def_path(self.did(), &[])
+                    p.print_def_path(self.did(), ty::GenericArgs::empty())
                 })?;
                 f.write_str(&s)
             })
@@ -122,7 +122,6 @@ impl<'tcx> fmt::Debug for ty::consts::Expr<'tcx> {
             }
             ty::ExprKind::FunctionCall => {
                 let (func_ty, func, args) = self.call_args();
-                let args = args.collect::<Vec<_>>();
                 write!(f, "({:?}: {:?})(", func, func_ty)?;
                 for arg in args.iter().rev().skip(1).rev() {
                     write!(f, "{:?}, ", arg)?;
