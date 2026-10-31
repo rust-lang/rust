@@ -1,6 +1,6 @@
 use crate::any::type_name;
 use crate::clone::TrivialClone;
-use crate::marker::Destruct;
+use crate::marker::{Destruct, Freeze};
 use crate::mem::{ManuallyDrop, transmute_neo};
 use crate::{fmt, intrinsics, ptr, slice};
 
@@ -1062,6 +1062,9 @@ impl<T> MaybeUninit<T> {
     /// Note that even if the contents of a `MaybeUninit` have been initialized, the value may still
     /// contain padding bytes which are left uninitialized.
     ///
+    /// This method requires `T: Freeze`. It's not available for types with interior mutability,
+    /// such as `Cell<T>`.
+    ///
     /// # Examples
     ///
     /// ```
@@ -1075,7 +1078,10 @@ impl<T> MaybeUninit<T> {
     /// assert_eq!(bytes, val.to_ne_bytes());
     /// ```
     #[unstable(feature = "maybe_uninit_as_bytes", issue = "93092")]
-    pub const fn as_bytes(&self) -> &[MaybeUninit<u8>] {
+    pub const fn as_bytes(&self) -> &[MaybeUninit<u8>]
+    where
+        T: Freeze,
+    {
         // SAFETY: MaybeUninit<u8> is always valid, even for padding bytes
         unsafe {
             slice::from_raw_parts(self.as_ptr().cast::<MaybeUninit<u8>>(), super::size_of::<T>())
@@ -1114,6 +1120,35 @@ impl<T> MaybeUninit<T> {
                 super::size_of::<T>(),
             )
         }
+    }
+
+    /// Converts `&T` to `&MaybeUninit<T>`.
+    ///
+    /// The value stays initialized. This function changes only the type of the reference.
+    ///
+    /// There is no corresponding `from_mut` method, because it could allow writing uninitialized memory
+    /// into the original value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(maybe_uninit_from_ref, maybe_uninit_as_bytes)]
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let val = 0x12345678_u32;
+    /// let uninit = MaybeUninit::from_ref(&val);
+    /// let bytes = uninit.as_bytes();
+    ///
+    /// // All bytes of a u32 are initialized, so assume_init is sound here:
+    /// let byte_val = unsafe { bytes[0].assume_init() };
+    /// assert_eq!(byte_val, val.to_ne_bytes()[0]);
+    /// ```
+    #[unstable(feature = "maybe_uninit_from_ref", issue = "165213")]
+    #[inline]
+    #[must_use]
+    pub const fn from_ref(r: &T) -> &MaybeUninit<T> {
+        // SAFETY: `MaybeUninit<T>` is repr(transparent) and every initialized T is a valid MaybeUninit<T>
+        unsafe { &*ptr::from_ref(r).cast() }
     }
 }
 
@@ -1478,6 +1513,9 @@ impl<T> [MaybeUninit<T>] {
     /// Note that even if the contents of a `MaybeUninit` have been initialized, the value may still
     /// contain padding bytes which are left uninitialized.
     ///
+    /// This method requires `T: Freeze`. It's not available for types with interior mutability,
+    /// such as `Cell<T>`.
+    ///
     /// # Examples
     ///
     /// ```
@@ -1492,7 +1530,10 @@ impl<T> [MaybeUninit<T>] {
     /// assert_eq!(&[val1, val2], &[0x1234u16, 0x5678u16]);
     /// ```
     #[unstable(feature = "maybe_uninit_as_bytes", issue = "93092")]
-    pub const fn as_bytes(&self) -> &[MaybeUninit<u8>] {
+    pub const fn as_bytes(&self) -> &[MaybeUninit<u8>]
+    where
+        T: Freeze,
+    {
         // SAFETY: MaybeUninit<u8> is always valid, even for padding bytes
         unsafe {
             slice::from_raw_parts(self.as_ptr().cast::<MaybeUninit<u8>>(), super::size_of_val(self))
