@@ -6,25 +6,23 @@
 
 Canonicalization is the process of **isolating** an inference value from its context.
 It is a key part of implementing [canonical queries][cq],
-and you may wish to read the parent chapter
-to get more context.
+and you may wish to read the parent chapter to get more context.
 
 Canonicalization is really based on a very simple concept: every
 [inference variable](../type-inference.md#vars) is always in one of
 two states: either it is **unbound**, in which case we don't know yet what type it is,
 or it is **bound**, in which case we do.
-So, to isolate some data-structure T that contains types/regions from its
-environment, we just walk down and find the unbound variables that
+So, to isolate some data-structure T that contains types/regions from its environment,
+we just walk down and find the unbound variables that
 appear in T; those variables get replaced with "canonical variables",
 starting from zero and numbered in a fixed order (left to right, for the most part,
-but really it doesn't matter as long as it is
-consistent).
+but really it doesn't matter as long as it is consistent).
 
 [cq]: ./canonical-queries.md
 
 So, for example, if we have the type `X = (?T, ?U)`, where `?T` and `?U` are distinct
-unbound inference variables, then the canonical
-form of `X` would be `(?0, ?1)`, where `?0` and `?1` represent these **canonical placeholders**.
+unbound inference variables, then the canonical form of `X` would be `(?0,
+?1)`, where `?0` and `?1` represent these **canonical placeholders**.
 Note that the type `Y = (?U, ?T)` also canonicalizes to `(?0, ?1)`.
 But the type `Z = (?T, ?T)` would canonicalize to `(?0, ?0)` (as would `(?U, ?U)`).
 In other words, the exact identity of the inference variables is not important,
@@ -32,11 +30,9 @@ unless they are repeated.
 
 We use this to improve caching as well as to detect cycles and other things during trait resolution.
 Roughly speaking, the idea is that if two trait queries have the same canonical form,
-then they will get
-the same answer.
+then they will get the same answer.
 That answer will be expressed in terms of the canonical variables (`?0`,
-`?1`), which we can then map back to the
-original variables (`?T`, `?U`).
+`?1`), which we can then map back to the original variables (`?T`, `?U`).
 
 ## Canonicalizing the query
 
@@ -44,8 +40,8 @@ To see how it works, imagine that we are asking to solve the following
 trait query: `?A: Foo<'static, ?B>`, where `?A` and `?B` are unbound.
 This query contains two unbound variables, but it also contains the lifetime `'static`.
 The trait system generally ignores all lifetimes and treats them equally,
-so when canonicalizing, we will *also*
-replace any [free lifetime](../appendix/background.md#free-vs-bound) with a
+so when canonicalizing,
+we will *also* replace any [free lifetime](../appendix/background.md#free-vs-bound) with a
 canonical variable (Note that `'static` is actually a _free_ lifetime variable here.
 We are not considering it in the typing context of the whole program,
 but only in the context of this trait reference.
@@ -94,8 +90,7 @@ S = [?A, '?B, ?C]
 ```
 
 We can then replace the bound canonical variables (`?0`, etc) with these inference variables,
-yielding the following fully instantiated
-query:
+yielding the following fully instantiated query:
 
 ```text
 ?A: Foo<'?B, ?C>
@@ -107,8 +102,7 @@ We're going to need it later.
 OK, now that we have a fresh inference context and an instantiated query,
 we can go ahead and try to solve it.
 The trait solver itself is explained in more detail in [another section](../solve/the-solver.md),
-but
-suffice to say that it will compute a [certainty value][cqqr] (`Proven` or
+but suffice to say that it will compute a [certainty value][cqqr] (`Proven` or
 `Ambiguous`) and have side-effects on the inference variables we've created.
 For example, if there were only one impl of `Foo`, like so:
 
@@ -140,8 +134,8 @@ We do that by **re-applying canonicalization**, but to the **query result**.
 As discussed in [the parent section][cqqr], most trait queries wind up
 with a result that brings together a "certainty value" `certainty`, a
 result substitution `var_values`, and some region constraints.
-To create this, we wind up re-using the substitution S that we created
-when first instantiating our query.
+To create this,
+we wind up re-using the substitution S that we created when first instantiating our query.
 To refresh your memory, we had a query:
 
 ```text
@@ -190,8 +184,8 @@ Canonical(QR) = for<T, L> {
 
 (One subtle point: when we canonicalize the query **result**,
 we do not use any special treatment for free lifetimes.
-Note that both references to `'?D`, for example, were converted into the same
-canonical variable (`?1`).
+Note that both references to `'?D`, for example,
+were converted into the same canonical variable (`?1`).
 This is in contrast to the original query,
 where we canonicalized every free lifetime into a fresh canonical variable.)
 
@@ -252,8 +246,8 @@ And finally, the region constraint of `?C: 'static` would be recorded for later 
 
 (What we *actually* do is a mildly optimized variant of that: Rather
 than eagerly instantiating all of the canonical values in the result with variables,
-we instead walk the vector of values, looking for
-cases where the value is just a canonical variable.
+we instead walk the vector of values,
+looking for cases where the value is just a canonical variable.
 In our example,
 `values[2]` is `?C`, so that means we can deduce that `?C := ?B` and `'?D := 'static`.
 This gives us a partial set of values.
