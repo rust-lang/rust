@@ -17,7 +17,7 @@ jobs:
     environment: publish
     permissions:
       contents: write # Required by `release-plz/action` to push tags and create releases.
-      id-token: write
+      id-token: write # Required by `release-plz/action` to obtain an OIDC token.
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
