@@ -78,10 +78,10 @@ it would take too many resources to run the full test suite for each commit on e
 
 > **Note on doc comments**
 >
-> Note that PR CI as of Oct 2024 <!-- datecheck --> by default does not try to
-> run `./x doc xxx`. This means that if you have any broken intradoc links that
-> would lead to `./x doc xxx` failing, it will happen very late into the full
-> merge queue CI pipeline.
+> Note that PR CI as of Oct 2024 <!-- datecheck --> by default does not try to run `./x doc xxx`.
+> This means that if you have any broken intradoc links that
+> would lead to `./x doc xxx` failing,
+> it will happen very late into the full merge queue CI pipeline.
 >
 > Thus, it is a good idea to run `./x doc xxx` locally for any doc comment
 > changes to help catch these early.
@@ -175,8 +175,8 @@ for example `*msvc*` or `*-alt`.
 You can start at most 20 jobs in a single try build.
 When using glob patterns in the PR description,
 you can optionally wrap them in backticks (`` ` ``) to avoid GitHub rendering
-the pattern as Markdown if it contains e.g. an asterisk. Note that this escaping will not work when using
-the `@bors jobs=` parameter.
+the pattern as Markdown if it contains e.g. an asterisk.
+Note that this escaping will not work when using the `@bors jobs=` parameter.
 
 The job pattern needs to match one or more jobs defined in the `auto` or `optional` sections
 of [`jobs.yml`]:
@@ -371,7 +371,7 @@ with the intermediate artifacts being stored on [ghcr.io].
 We also push the built Docker images to ghcr, so that they can be reused by other tools
 (rustup) or by developers running the Docker build locally (to speed up their build).
 
-Since we test multiple, diverged branches (`main`, `beta` and `stable`),
+Since we test multiple, diverged branches (`main`, `beta`, and `stable`),
 we can’t rely on a single cache for the images,
 otherwise builds on a branch would override the cache for the others.
 Instead, we store the images under different tags,
