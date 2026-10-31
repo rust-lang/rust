@@ -24,7 +24,7 @@ use rustc_middle::ty::adjustment::{Adjust, Adjustment, DerefAdjustKind};
 use rustc_middle::ty::layout::{LayoutError, LayoutOf as _, TyAndLayout};
 use rustc_middle::ty::{
     self, AdtDef, AliasTy, AssocItem, AssocTag, Binder, BoundRegion, BoundVarIndexKind, FnSig, GenericArg,
-    GenericArgKind, GenericArgsRef, IntTy, ProjectionAliasTy, Region, RegionKind, TraitRef, Ty, TyCtxt,
+    GenericArgKind, GenericArgs, IntTy, ProjectionAliasTy, Region, RegionKind, TraitRef, Ty, TyCtxt,
     TypeSuperVisitable as _, TypeVisitable, TypeVisitableExt as _, TypeVisitor, UintTy, Unnormalized, VariantDef,
     VariantDiscr,
 };
@@ -72,7 +72,7 @@ pub fn can_partially_move_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool
         ty::Param(_) => false,
         ty::Adt(def, subs) => def
             .all_fields()
-            .any(|f| !is_copy(cx, f.ty(cx.tcx, subs).skip_norm_wip())),
+            .any(|f| !is_copy(cx, f.ty(cx.tcx, *subs).skip_norm_wip())),
         _ => true,
     }
 }
@@ -301,7 +301,7 @@ pub fn implements_trait_with_env_from_iter<'tcx>(
         "`DefId` must belong to a trait or trait alias"
     );
     #[cfg(debug_assertions)]
-    assert_generic_args_match(tcx, trait_id, trait_ref.args);
+    assert_generic_args_match(tcx, trait_id, trait_ref.args.as_slice());
 
     let obligation = Obligation::new(tcx, ObligationCause::dummy(), param_env, trait_ref);
     infcx
@@ -487,7 +487,7 @@ pub fn needs_ordered_drop<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
                 ty::Array(ty, _) => needs_ordered_drop_inner(cx, *ty, seen),
                 ty::Adt(adt, subs) => adt
                     .all_fields()
-                    .map(|f| f.ty(cx.tcx, subs).skip_norm_wip())
+                    .map(|f| f.ty(cx.tcx, *subs).skip_norm_wip())
                     .any(|ty| needs_ordered_drop_inner(cx, ty, seen)),
                 _ => true,
             }
@@ -1007,7 +1007,7 @@ pub struct AdtVariantInfo {
 
 impl AdtVariantInfo {
     /// Returns ADT variants ordered by size
-    pub fn new<'tcx>(cx: &LateContext<'tcx>, adt: AdtDef<'tcx>, subst: GenericArgsRef<'tcx>) -> Vec<Self> {
+    pub fn new<'tcx>(cx: &LateContext<'tcx>, adt: AdtDef<'tcx>, subst: GenericArgs<'tcx>) -> Vec<Self> {
         let mut variants_size = adt
             .variants()
             .iter()
@@ -1081,7 +1081,7 @@ pub fn approx_ty_size<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> u64 {
             .map(|v| {
                 v.fields
                     .iter()
-                    .map(|field| approx_ty_size(cx, field.ty(cx.tcx, subst).skip_norm_wip()))
+                    .map(|field| approx_ty_size(cx, field.ty(cx.tcx, *subst).skip_norm_wip()))
                     .sum::<u64>()
             })
             .sum(),
@@ -1091,7 +1091,7 @@ pub fn approx_ty_size<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> u64 {
             .map(|v| {
                 v.fields
                     .iter()
-                    .map(|field| approx_ty_size(cx, field.ty(cx.tcx, subst).skip_norm_wip()))
+                    .map(|field| approx_ty_size(cx, field.ty(cx.tcx, *subst).skip_norm_wip()))
                     .sum::<u64>()
             })
             .max()
@@ -1102,7 +1102,7 @@ pub fn approx_ty_size<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> u64 {
             .map(|v| {
                 v.fields
                     .iter()
-                    .map(|field| approx_ty_size(cx, field.ty(cx.tcx, subst).skip_norm_wip()))
+                    .map(|field| approx_ty_size(cx, field.ty(cx.tcx, *subst).skip_norm_wip()))
                     .max()
                     .unwrap_or_default()
             })
@@ -1183,7 +1183,7 @@ pub fn make_projection<'tcx>(
         tcx: TyCtxt<'tcx>,
         container_id: DefId,
         assoc_ty: Symbol,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
     ) -> Option<AliasTy<'tcx>> {
         let Some(assoc_item) = tcx.associated_items(container_id).find_by_ident_and_kind(
             tcx,
@@ -1195,7 +1195,7 @@ pub fn make_projection<'tcx>(
             return None;
         };
         #[cfg(debug_assertions)]
-        assert_generic_args_match(tcx, assoc_item.def_id, args);
+        assert_generic_args_match(tcx, assoc_item.def_id, args.as_slice());
 
         let kind = if let DefKind::Impl { of_trait: false } = tcx.def_kind(tcx.parent(assoc_item.def_id)) {
             ty::AliasTyKind::Inherent {
@@ -1494,7 +1494,7 @@ pub fn get_field_def_id_by_name(ty: Ty<'_>, name: Symbol) -> Option<DefId> {
 pub fn option_arg_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
     match *ty.kind() {
         ty::Adt(adt, args)
-            if let [arg] = &**args
+            if let [arg] = *args.as_slice()
                 && let Some(arg) = arg.as_type()
                 && adt.is_diag_item(cx, sym::Option) =>
         {
@@ -1541,7 +1541,7 @@ pub fn has_non_owning_mutable_access<'tcx>(cx: &LateContext<'tcx>, iter_ty: Ty<'
                 .types()
                 .any(|arg_ty| has_non_owning_mutable_access_inner(cx, visited, arg_ty)),
             ty::Adt(adt_def, args) => adt_def.all_fields().any(|field| {
-                has_non_owning_mutable_access_inner(cx, visited, normalize_ty(cx, field.ty(cx.tcx, args)))
+                has_non_owning_mutable_access_inner(cx, visited, normalize_ty(cx, field.ty(cx.tcx, *args)))
             }),
             ty::Array(elem_ty, _) | ty::Slice(elem_ty) => has_non_owning_mutable_access_inner(cx, visited, *elem_ty),
             ty::RawPtr(pointee_ty, mutability) | ty::Ref(_, pointee_ty, mutability) => {

@@ -22,7 +22,7 @@ use rustc_middle::mir::interpret::{AllocId, Allocation, ErrorHandled, GlobalAllo
 use rustc_middle::mir::{self, BinOp};
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, LayoutOf};
 use rustc_middle::ty::offload_meta::OffloadMetadata;
-use rustc_middle::ty::{self, GenericArgsRef, Instance, SimdAlign, Ty, TyCtxt};
+use rustc_middle::ty::{self, GenericArgs, Instance, SimdAlign, Ty, TyCtxt};
 use rustc_session::diagnostics::feature_err;
 use rustc_span::{ErrorGuaranteed, Span, Symbol, bug, span_bug, sym};
 use rustc_structures::CrateType;
@@ -2005,7 +2005,7 @@ fn get_args_from_tuple<'ll, 'tcx>(
 fn generic_simd_intrinsic<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,
     name: Symbol,
-    fn_args: GenericArgsRef<'tcx>,
+    fn_args: GenericArgs<'tcx>,
     args: &[OperandRef<'tcx, &'ll Value>],
     ret_ty: Ty<'tcx>,
     llret_ty: &'ll Type,

@@ -21,7 +21,7 @@ use cranelift_codegen::ir::{
     AtomicRmwOp, BlockArg, ExceptionTableData, ExceptionTableItem, ExceptionTag,
 };
 use rustc_middle::ty;
-use rustc_middle::ty::GenericArgsRef;
+use rustc_middle::ty::GenericArgs;
 use rustc_middle::ty::layout::{HasTypingEnv as _, ValidityRequirement};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_span::{Spanned, Symbol, sym};
@@ -387,7 +387,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     instance: Instance<'tcx>,
     intrinsic: Symbol,
-    generic_args: GenericArgsRef<'tcx>,
+    generic_args: GenericArgs<'tcx>,
     args: &[Spanned<mir::Operand<'tcx>>],
     ret: CPlace<'tcx>,
     destination: Option<BasicBlock>,

@@ -250,7 +250,7 @@ pub(crate) fn args_known_to_outlive_opaque_params<'tcx>(
     for (parent_outlived_region, opaque_outlived_arg_idx) in parent_outlives_regions.iter() {
         let mut opaque_outlives_args = DenseBitSet::new_empty(self_identity_args.len());
         for (parent_outlived_arg_idx, parent_outlives_arg) in
-            self_identity_args[..generics.parent_count].iter().enumerate()
+            self_identity_args.as_slice()[..generics.parent_count].iter().enumerate()
         {
             let type_outlives = match parent_outlives_arg.kind() {
                 // Consts don't have any non-static regions

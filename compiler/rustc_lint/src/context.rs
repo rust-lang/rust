@@ -26,9 +26,7 @@ use rustc_middle::lint::{LevelSpec, StableLevelSpec, UnstableLevelSpec};
 use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::ty::layout::{LayoutError, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::print::{PrintError, PrintTraitRefExt as _, Printer, with_no_trimmed_paths};
-use rustc_middle::ty::{
-    self, GenericArg, RegisteredTools, Ty, TyCtxt, TypingEnv, TypingMode, Unnormalized,
-};
+use rustc_middle::ty::{self, RegisteredTools, Ty, TyCtxt, TypingEnv, TypingMode, Unnormalized};
 use rustc_session::{DynLintStore, Session};
 use rustc_span::edit_distance::find_best_match_for_names;
 use rustc_span::{Ident, Span, Symbol, bug, sym};
@@ -738,7 +736,7 @@ impl<'tcx> LateContext<'tcx> {
                 if trait_ref.is_none()
                     && let ty::Adt(def, args) = self_ty.kind()
                 {
-                    return self.print_def_path(def.did(), args);
+                    return self.print_def_path(def.did(), *args);
                 }
 
                 // This shouldn't ever be needed, but just in case:
@@ -798,14 +796,14 @@ impl<'tcx> LateContext<'tcx> {
             fn print_path_with_generic_args(
                 &mut self,
                 print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
-                _args: &[GenericArg<'tcx>],
+                _args: ty::GenericArgs<'tcx>,
             ) -> Result<(), PrintError> {
                 print_prefix(self)
             }
         }
 
         let mut p = LintPathPrinter { tcx: self.tcx, path: vec![] };
-        p.print_def_path(def_id, &[]).unwrap();
+        p.print_def_path(def_id, ty::GenericArgs::empty()).unwrap();
         p.path
     }
 

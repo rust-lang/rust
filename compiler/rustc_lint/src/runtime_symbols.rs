@@ -117,7 +117,7 @@ impl<'tcx> LateLintPass<'tcx> for RuntimeSymbols {
                     let did = item.owner_id.def_id;
                     let instance = Instance::new_raw(
                         did.to_def_id(),
-                        ty::List::identity_for_item(cx.tcx, did),
+                        ty::GenericArgs::identity_for_item(cx.tcx, did),
                     );
                     let symbol_name = cx.tcx.symbol_name(instance);
 
