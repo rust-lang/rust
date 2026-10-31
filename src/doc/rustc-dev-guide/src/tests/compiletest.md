@@ -477,6 +477,10 @@ causing separate files to be generated for 32bit and 64bit systems.
 > (including transitively via `rust.debug` or `rust.debug-assertions`),
 > they will not be run!
 
+Similarly,
+to generate separate files for each panic strategy ("panic-abort" and "panic-unwind"),
+add `// EMIT_MIR_FOR_EACH_PANIC_STRATEGY` to the test.
+
 [`tests/mir-opt`]: https://github.com/rust-lang/rust/tree/HEAD/tests/mir-opt
 [`ignore-std-debug-assertions` directive]: ./directives.md#controlling-when-tests-are-run
 
