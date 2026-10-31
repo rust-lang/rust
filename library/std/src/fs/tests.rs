@@ -2569,7 +2569,6 @@ fn test_eq_windows_file_type() {
 /// Regression test for https://github.com/rust-lang/rust/issues/50619.
 #[test]
 #[cfg(target_os = "linux")]
-#[cfg_attr(miri, ignore)] // Cannot spawn processes on Miri
 fn test_read_dir_infinite_loop() {
     use crate::io::ErrorKind;
     use crate::process::Command;

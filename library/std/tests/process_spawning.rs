@@ -6,7 +6,7 @@ mod common;
 
 #[test]
 // Process spawning not supported by Miri, Emscripten and wasi
-#[cfg_attr(any(miri, target_os = "emscripten", target_os = "wasi"), ignore)]
+#[cfg_attr(any(skip_missing_miri_shims, target_os = "emscripten", target_os = "wasi"), ignore)]
 #[cfg_attr(
     any(target_os = "tvos", target_os = "watchos", target_os = "l4re"),
     ignore = "fork is prohibited"
