@@ -518,9 +518,11 @@ fn show_md_content_with_pager(content: &str, color: ColorConfig) {
     }
 
     // The pager failed. Try to print pretty output to stdout.
-    if let Some((bufwtr, mdbuf)) = &mut pretty_data
+    if matches!(color, ColorConfig::Auto | ColorConfig::Always)
+        && let Some((bufwtr, mdbuf)) = &mut pretty_data
         && bufwtr.write_all(&mdbuf).is_ok()
     {
+        // Colored output was successfully printed to stdout.
         return;
     }
 
