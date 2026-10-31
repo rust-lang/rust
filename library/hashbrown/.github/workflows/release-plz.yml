@@ -16,7 +16,7 @@ jobs:
     if: ${{ github.repository_owner == 'rust-lang' }}
     environment: publish
     permissions:
-      contents: write
+      contents: write # Required by `release-plz/action` to push tags and create releases.
       id-token: write
     steps:
       - name: Checkout repository
@@ -39,7 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.repository_owner == 'rust-lang' }}
     permissions:
-      contents: write
+      contents: write # Required by `release-plz/action` to push to the pull request branch.
       pull-requests: write
     concurrency:
       group: release-plz-${{ github.ref }}
