@@ -134,7 +134,7 @@ fn count_until_true_genmc(flag: &AtomicBool) -> u64 {
 
 GenMC is written in C++, which complicates development a bit.
 The prerequisites for building Miri-GenMC are:
-- A compiler with sufficient C++20 support (we are testing GCC 13).
+- A compiler with sufficient C++23 support (we are testing GCC 13 on Linux and AppleClang 17 of Xcode 16.4 on macOS).
 
 The actual code for GenMC is not contained in the Miri repo itself, but in a [separate GenMC repo](https://github.com/MPI-SWS/genmc) (with its own maintainers).
 These sources need to be available to build Miri-GenMC.
