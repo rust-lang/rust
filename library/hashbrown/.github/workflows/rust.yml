@@ -43,9 +43,10 @@ jobs:
     - uses: actions/checkout@a37ce9120846195fa4ece8f58b268e6043cb2f26 # v3.7.0
       with:
         persist-credentials: false
-    - uses: dtolnay/rust-toolchain@master
-      with:
-        toolchain: ${{ matrix.channel }}
+    - run: rustup install ${TOOLCHAIN} && rustup default ${TOOLCHAIN}
+      shell: bash
+      env:
+        TOOLCHAIN: ${{ matrix.channel }}
     - env:
         TARGET: ${{ matrix.target }}
         CHANNEL: ${{ matrix.channel }}
@@ -104,7 +105,7 @@ jobs:
     - uses: actions/checkout@a37ce9120846195fa4ece8f58b268e6043cb2f26 # v3.7.0
       with:
         persist-credentials: false
-    - uses: dtolnay/rust-toolchain@nightly
+    - run: rustup install nightly && rustup default nightly
     - run: |
         RUSTFLAGS="-Zforce-unstable-if-unmarked" cargo +nightly build --features rustc-dep-of-std
 
