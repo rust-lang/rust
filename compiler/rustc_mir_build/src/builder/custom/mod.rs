@@ -45,6 +45,7 @@ pub(super) fn build_custom_mir<'tcx>(
         basic_blocks: BasicBlocks::new(IndexVec::new()),
         source: MirSource::item(did),
         phase: MirPhase::Built,
+        typing_mode: BodyTypingMode::PostTypeckThroughBorrowck,
         source_scopes: IndexVec::new(),
         coroutine: None,
         local_decls: IndexVec::new(),
@@ -73,6 +74,9 @@ pub(super) fn build_custom_mir<'tcx>(
         local_data: ClearCrossCrate::Set(SourceScopeLocalData { lint_root: hir_id }),
     });
     body.injection_phase = Some(parse_attribute(dialect, phase));
+    if let Some(MirPhase::Runtime(_)) = body.injection_phase {
+        body.typing_mode = BodyTypingMode::PostAnalysis;
+    }
 
     let mut pctxt = ParseCtxt {
         tcx,
