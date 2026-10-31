@@ -1,10 +1,14 @@
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::transitive_relation::TransitiveRelationBuilder;
 use rustc_hir::def_id::LocalDefId;
 use rustc_infer::infer::SubregionOrigin;
 use rustc_infer::infer::canonical::{QueryRegionConstraint, QueryRegionConstraints};
 use rustc_infer::infer::outlives::env::RegionBoundPairs;
-use rustc_infer::infer::outlives::obligations::{TypeOutlives, TypeOutlivesDelegate};
+use rustc_infer::infer::outlives::obligations::{
+    TypeOutlives, TypeOutlivesDelegate, assumed_type_outlives,
+};
 use rustc_infer::infer::region_constraints::{GenericKind, VerifyBound};
+use rustc_middle::ty::region_constraint::Assumptions;
 use rustc_middle::ty::{
     self, GenericArgKind, TyCtxt, TypeFoldable, TypeVisitableExt, elaborate, fold_regions,
 };
@@ -79,8 +83,23 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         }
 
         if let Some(constraint) = solver_constraints {
-            self.constraints
-                .register_solver_constraint((**constraint).clone().with_spans(self.span));
+            let infcx = &self.infcx.infcx;
+            let assumptions = Assumptions::new(
+                infcx,
+                assumed_type_outlives(
+                    infcx.tcx,
+                    self.known_type_outlives_obligations,
+                    self.region_bound_pairs,
+                ),
+                // Root destructuring only uses type-outlives assumptions.
+                TransitiveRelationBuilder::default().freeze(),
+                ty::UniverseIndex::ROOT,
+            );
+            infcx.destructure_solver_region_constraints(
+                (**constraint).clone().with_spans(self.span),
+                assumptions,
+                self,
+            );
         }
     }
 

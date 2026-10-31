@@ -59,12 +59,12 @@
 //! might later infer `?U` to something like `&'b u32`, which would
 //! imply that `'b: 'a`.
 
-use rustc_data_structures::transitive_relation::{TransitiveRelation, TransitiveRelationBuilder};
+use rustc_data_structures::transitive_relation::TransitiveRelationBuilder;
 use rustc_data_structures::undo_log::UndoLogs;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::outlives::{Component, push_outlives_components};
 use rustc_middle::ty::{
-    self, GenericArgKind, GenericArgs, PolyTypeOutlivesClause, Region, RegionVid, Ty, TyCtxt,
+    self, GenericArgKind, GenericArgs, PolyTypeOutlivesClause, Region, Ty, TyCtxt,
     TypeVisitableExt, Upcast,
 };
 use rustc_span::bug;
@@ -242,24 +242,6 @@ impl<'tcx> InferCtxt<'tcx> {
         self.destructure_solver_region_constraints(constraint, assumptions, self);
     }
 
-    pub fn destructure_solver_region_constraints_for_borrowck(
-        &self,
-        constraint: SolverRegionConstraint<'tcx>,
-        // this is always ConstraintConversion but lol
-        conversion: impl TypeOutlivesDelegate<'tcx>,
-        known_type_outlives: &[PolyTypeOutlivesClause<'tcx>],
-        region_bound_pairs: &RegionBoundPairs<'tcx>,
-        region_outlives: TransitiveRelation<RegionVid>,
-    ) {
-        let assumptions = region_constraint::Assumptions::new(
-            self,
-            assumed_type_outlives(self.tcx, known_type_outlives, region_bound_pairs),
-            region_outlives.maybe_map(|r| Some(Region::new_var(self.tcx, r))).unwrap(),
-            ty::UniverseIndex::ROOT,
-        );
-        self.destructure_solver_region_constraints(constraint, assumptions, conversion);
-    }
-
     #[instrument(level = "debug", skip(self, conversion))]
     pub fn destructure_solver_region_constraints(
         &self,
@@ -411,7 +393,7 @@ impl<'tcx> InferCtxt<'tcx> {
 /// e.g. `T: 'a` from a `&'a T` argument, are only tracked in `region_bound_pairs` so we have to
 /// pull them in separately. Without them we'd fail to prove `T: 'a` for a `&'a T` argument
 /// whenever the only explicit bound on `T` mentions a different region.
-fn assumed_type_outlives<'tcx>(
+pub fn assumed_type_outlives<'tcx>(
     tcx: TyCtxt<'tcx>,
     known_type_outlives: &[PolyTypeOutlivesClause<'tcx>],
     region_bound_pairs: &RegionBoundPairs<'tcx>,
