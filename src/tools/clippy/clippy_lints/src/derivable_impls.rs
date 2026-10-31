@@ -3,7 +3,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::indent_of;
 use clippy_utils::{is_default_equivalent, peel_blocks};
-use rustc_ast::attr::AttributeExt;
+use rustc_attr_ir::find_attr;
 use rustc_errors::Applicability;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::{
@@ -250,7 +250,7 @@ impl<'tcx> LateLintPass<'tcx> for DerivableImpls {
                 .skip_norm_wip()
                 .kind()
             && let attrs = cx.tcx.hir_attrs(item.hir_id())
-            && !attrs.iter().any(|attr| attr.doc_str().is_some())
+            && !find_attr!(attrs, DocComment { .. })
             && cx.tcx.hir_attrs(impl_item_hir).is_empty()
         {
             let is_const = matches!(constness, hir::Constness::Const { always: false });
