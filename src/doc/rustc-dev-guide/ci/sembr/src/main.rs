@@ -122,9 +122,8 @@ fn comply(content: &str) -> String {
         };
         let mut newly_split_lines = line.split_inclusive(&*REGEX_SPLIT);
         let first = newly_split_lines.next().unwrap().trim_end().to_owned();
-        let mut remaining: Vec<_> = newly_split_lines
-            .map(|portion| format!("{:indent$}{}", "", portion.trim_end()))
-            .collect();
+        let mut remaining: Vec<_> =
+            newly_split_lines.map(|portion| format!("{:indent$}{}", "", portion.trim())).collect();
         let mut new_lines = Vec::new();
         new_lines.push(first);
         new_lines.append(&mut remaining);
@@ -244,13 +243,14 @@ some code. block
 ```
 sentence with *italics* should not be ignored. truly.
 git log main.. compiler
- foo.   bar.  baz
 o? whatever
 r? @reviewer
  r? @reviewer
 ~? diagnostic
 
 the queries that we do, as well as the **query DAG**. The
+
+trim double space.  or many spaces.   in this next sentence
 ";
     let expected = "
 # some. heading
@@ -276,9 +276,6 @@ some code. block
 sentence with *italics* should not be ignored.
 truly.
 git log main.. compiler
- foo.
-   bar.
-  baz
 o?
 whatever
 r? @reviewer
@@ -287,6 +284,10 @@ r? @reviewer
 
 the queries that we do, as well as the **query DAG**.
 The
+
+trim double space.
+or many spaces.
+in this next sentence
 ";
     assert_eq!(expected, comply(original));
 }
