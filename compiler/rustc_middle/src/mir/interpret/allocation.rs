@@ -330,7 +330,7 @@ impl AllocError {
 }
 
 /// The information that makes up a memory access: offset and size.
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct AllocRange {
     pub start: Size,
     pub size: Size,
