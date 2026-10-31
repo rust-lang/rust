@@ -1776,7 +1776,6 @@ impl<'a> Parser<'a> {
         }
 
         // Parse the type of a constant item. That is, the `":" $ty` fragment.
-        // FIXME: This could maybe benefit from `.may_recover()`?
         let ty = match (
             self.eat(exp!(Colon)),
             self.check(exp!(Eq)) | self.check(exp!(Semi)) | self.check_keyword(exp!(Where)),
@@ -1787,12 +1786,9 @@ impl<'a> Parser<'a> {
         };
 
         // Proactively parse a where-clause to be able to provide a good error message in case we
-        // encounter the item body following it.
-        let before_where_clause = if self.may_recover() {
-            self.parse_where_clause(RecoverDupeWhereClause::Yes)?
-        } else {
-            WhereClause::default()
-        };
+        // encounter the item body following it. We rely on the "duplicate where clause" parse
+        // error recovery code to reject duplicate where clauses when there's no body.
+        let mut before_where_clause = self.parse_where_clause(RecoverDupeWhereClause::Yes)?;
 
         let body = if self.eat(exp!(Eq)) { Some(self.parse_expr()?) } else { None };
 
@@ -1804,7 +1800,7 @@ impl<'a> Parser<'a> {
         if before_where_clause.has_where_token
             && let Some(body) = &body
         {
-            self.dcx().emit_err(diagnostics::WhereClauseBeforeConstBody {
+            self.dcx().emit_err(diagnostics::WhereClauseBeforeConstItemBody {
                 span: before_where_clause.span,
                 name: ident.span,
                 body: body.span,
@@ -1817,37 +1813,26 @@ impl<'a> Parser<'a> {
                         }
                     })
                 } else {
-                    // FIXME(generic_const_items): Provide a structured suggestion to merge the first
-                    // where-clause into the second one.
+                    // FIXME(generic_const_items): Provide a structured suggestion to merge the
+                    // first where-clause into the second one.
                     None
                 },
             });
         }
 
-        // Merge the predicates of both where-clauses since either one can be relevant.
-        // If we didn't parse a body (which is valid for associated consts in traits) and we were
-        // allowed to recover, `before_where_clause` contains the predicates, otherwise they are
-        // in `after_where_clause`. Further, both of them might contain predicates iff two
-        // where-clauses were provided which is syntactically ill-formed but we want to recover from
-        // it and treat them as one large where-clause.
-        let mut predicates = before_where_clause.predicates;
-        predicates.extend(after_where_clause.predicates);
-        let where_clause = WhereClause {
-            has_where_token: before_where_clause.has_where_token
-                || after_where_clause.has_where_token,
-            predicates,
-            span: if after_where_clause.has_where_token {
-                after_where_clause.span
-            } else {
-                before_where_clause.span
-            },
-        };
-
-        if where_clause.has_where_token {
-            self.psess.gated_spans.gate(sym::generic_const_items, where_clause.span);
+        // Merge the predicates of both where-clauses since either one can be relevant. If we didn't
+        // parse a body, `before_where_clause` will contain *the* predicates, otherwise they are in
+        // `after_where_clause`.
+        before_where_clause.has_where_token |= after_where_clause.has_where_token;
+        before_where_clause.predicates.extend(after_where_clause.predicates);
+        if after_where_clause.has_where_token {
+            before_where_clause.span = after_where_clause.span;
         }
+        generics.where_clause = before_where_clause;
 
-        generics.where_clause = where_clause;
+        if generics.where_clause.has_where_token {
+            self.psess.gated_spans.gate(sym::generic_const_items, generics.where_clause.span);
+        }
 
         let body = if let body @ Some(_) = self.try_recover_const_missing_semi(&body, const_span) {
             body
