@@ -8,4 +8,4 @@
 #[rustc_intrinsic]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_comptime]
-pub fn comptime_read_file(file_path_raw: &[u8]) -> Option<&'static [u8]>;
+pub fn comptime_fetch_file(file_path: &str) -> Option<&'static [u8]>;

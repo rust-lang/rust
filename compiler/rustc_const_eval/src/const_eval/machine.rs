@@ -600,12 +600,12 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
 
             sym::comptime_fetch_file => {
                 let arg_place = ecx.deref_pointer(&args[0])?;
-                let key = ecx.read_str(&arg_place)?;
-                let key = ecx.tcx.arena.alloc(key.to_string());
+                let path = ecx.read_str(&arg_place)?;
+                let path_sym = Symbol::intern(path);
 
                 let krate = LOCAL_CRATE; // somehow fetch crate of the object
 
-                let content = ecx.tcx.experimental_comptime_fetch_file((krate, key));
+                let content = ecx.tcx.experimental_comptime_fetch_file((krate, path_sym));
                 let variant_index = if let Some(value) = content {
                     let ptr = ecx.allocate_bytes_dedup(value)?;
 

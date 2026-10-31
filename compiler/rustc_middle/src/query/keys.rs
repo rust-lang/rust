@@ -420,8 +420,8 @@ impl<'tcx> QueryKey for (ty::Instance<'tcx>, CollectionMode) {
     }
 }
 
-impl<'tcx> QueryKey for (CrateNum, &'tcx String) {
-    type LocalQueryKey = &'tcx String;
+impl QueryKey for (CrateNum, Symbol) {
+    type LocalQueryKey = Symbol;
 
     #[inline(always)]
     fn as_local_key(&self) -> Option<Self::LocalQueryKey> {

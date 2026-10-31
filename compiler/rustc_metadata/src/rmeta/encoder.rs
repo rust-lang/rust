@@ -772,9 +772,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             .encode_enabled_denied_partial_mitigations());
 
         let mut comptime_files = Vec::new();
-        for file in &tcx.sess.opts.unstable_opts.experimental_comptime_files {
-            if let Some(file_data) = tcx.experimental_comptime_fetch_file((LOCAL_CRATE, file)) {
-                comptime_files.push((file.clone(), file_data.to_vec()));
+        for raw_path in &tcx.sess.opts.unstable_opts.experimental_comptime_files {
+            let path = Symbol::intern(raw_path);
+            if let Some(file_data) = tcx.experimental_comptime_fetch_file((LOCAL_CRATE, path)) {
+                comptime_files.push((raw_path.clone(), file_data.to_vec()));
             }
         }
 

@@ -626,6 +626,7 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
     provide_extern(&mut providers.extern_queries);
 
     providers.extern_queries.experimental_comptime_fetch_file = |tcx, (cnum, key)| {
+        let key = key.as_str();
         let cstore = CStore::from_tcx(tcx);
         let crate_data = cstore.get_crate_data(cnum);
         crate_data
