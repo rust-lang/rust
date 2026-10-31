@@ -22,14 +22,12 @@ struct SeveralC(u8);
 
 #[repr(u8, u8)] //~ WARN `#[repr(..)]` attribute is specified more than once [repeated_reprs]
 //~^ ERROR conflicting representation hints
-//~| WARN this was previously accepted
 enum SeveralPrimitiveRerprs {
     Variant,
 }
 
 #[repr(C, C, u8)] //~ WARN `#[repr(..)]` attribute is specified more than once [repeated_reprs]
 //~^ ERROR conflicting representation hints
-//~| WARN this was previously accepted
 #[repr(C, u8, u8)]
 enum SeveralCAndPrims {
     Variant(u8),
@@ -38,14 +36,12 @@ enum SeveralCAndPrims {
 #[repr(Rust, u8, u8)] //~ WARN `#[repr(..)]` attribute is specified more than once [repeated_reprs]
 //~^ ERROR conflicting representation hints
 //~^^ ERROR conflicting representation hints
-//~| WARN this was previously accepted
 enum RustAndPrimDisallowed {
     Variant(u8),
 }
 
 #[repr(u8, u8)] //~ WARN `#[repr(..)]` attribute is specified more than once [repeated_reprs]
 //~^ ERROR conflicting representation hints
-//~| WARN this was previously accepted
 #[repr(u16)]
 enum ConflictingPrimReprs {
     Variant,
@@ -53,7 +49,6 @@ enum ConflictingPrimReprs {
 
 #[repr(C, u8)]
 //~^ ERROR conflicting representation hints
-//~| WARN this was previously accepted
 enum CWithIntsCausesFCW1 {
     A,
     B,
@@ -61,7 +56,6 @@ enum CWithIntsCausesFCW1 {
 
 #[repr(C, C, u8, u8, u8)] //~ WARN `#[repr(..)]` attribute is specified more than once [repeated_reprs]
 //~^ ERROR conflicting representation hints
-//~| WARN this was previously accepted
 enum CWithIntsCausesFCW2 {
     A,
     B,

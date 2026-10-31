@@ -12,13 +12,11 @@ enum B {
 }
 
 #[repr(C, u64)] //~ ERROR conflicting representation hints
-//~^ WARN this was previously accepted
 enum C {
     C,
 }
 
 #[repr(u32, u64)] //~ ERROR conflicting representation hints
-//~^ WARN this was previously accepted
 enum D {
     D,
 }

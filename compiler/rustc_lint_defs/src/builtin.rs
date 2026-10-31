@@ -32,7 +32,6 @@ pub mod hardwired {
             BINDINGS_WITH_VARIANT_NAME,
             BREAK_WITH_LABEL_AND_LOOP,
             COHERENCE_LEAK_CHECK,
-            CONFLICTING_REPR_HINTS,
             CONST_EVALUATABLE_UNCHECKED,
             CONST_ITEM_MUTATION,
             DEAD_CODE,
@@ -245,42 +244,6 @@ declare_lint! {
         report_in_deps: true,
     };
     crate_level_only
-}
-
-declare_lint! {
-    /// The `conflicting_repr_hints` lint detects [`repr` attributes] with
-    /// conflicting hints.
-    ///
-    /// [`repr` attributes]: https://doc.rust-lang.org/reference/type-layout.html#representations
-    ///
-    /// ### Example
-    ///
-    /// ```rust,compile_fail
-    /// #[repr(u32, u64)]
-    /// enum Foo {
-    ///     Variant1,
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// The compiler incorrectly accepted these conflicting representations in
-    /// the past. This is a [future-incompatible] lint to transition this to a
-    /// hard error in the future. See [issue #68585] for more details.
-    ///
-    /// To correct the issue, remove one of the conflicting hints.
-    ///
-    /// [issue #68585]: https://github.com/rust-lang/rust/issues/68585
-    /// [future-incompatible]: ../index.md#future-incompatible-lints
-    pub CONFLICTING_REPR_HINTS,
-    Deny,
-    "conflicts between `#[repr(..)]` hints that were previously accepted and used in practice",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #68585),
-        report_in_deps: true,
-    };
 }
 
 declare_lint! {
