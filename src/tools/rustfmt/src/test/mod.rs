@@ -51,6 +51,9 @@ const FILE_SKIP_LIST: &[&str] = &[
     "cfg_mod/foo.rs",
     "cfg_mod/wasm32.rs",
     "skip/foo.rs",
+    // BUG rustfmt#7238: empty file formatting on Windows is not idempotent
+    #[cfg(windows)]
+    "empty_file.rs",
 ];
 
 fn init_log() {
