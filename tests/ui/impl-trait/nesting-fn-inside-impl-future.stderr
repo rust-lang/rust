@@ -1,0 +1,25 @@
+error: impl trait in impl method signature does not match trait method signature
+  --> $DIR/nesting-fn-inside-impl-future.rs:15:34
+   |
+LL |     fn bar(&self) -> impl Future<Output = Box<dyn Fn(&mut ())>>;
+   |                      ------------------------------------------ return type from trait method defined here
+...
+LL |     fn bar(&self) -> impl Future<Output = Box<dyn Fn(&mut ())>> {
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this bound is stronger than that defined on the trait
+   |
+   = note: add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
+   = note: we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
+note: the lint level is defined here
+  --> $DIR/nesting-fn-inside-impl-future.rs:5:9
+   |
+LL | #![deny(refining_impl_trait)]
+   |         ^^^^^^^^^^^^^^^^^^^
+   = note: `#[deny(refining_impl_trait_internal)]` implied by `#[deny(refining_impl_trait)]`
+help: replace the return type so that it matches the trait
+   |
+LL -     fn bar(&self) -> impl Future<Output = Box<dyn Fn(&mut ())>> {
+LL +     fn bar(&self) -> impl std::future::Future<Output = std::boxed::Box<(dyn for<'a> std::ops::Fn(&'a mut ()) + 'static)>> {
+   |
+
+error: aborting due to 1 previous error
+
