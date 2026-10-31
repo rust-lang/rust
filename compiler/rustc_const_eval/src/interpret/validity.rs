@@ -655,9 +655,10 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                 // Try to compute the end address. Cannot use `Size` addition as that also applies
                 // the "max obj size" bound.
                 let addr = Size::from_bytes(addr.to_target_usize(*self.ecx.tcx)).bytes();
-                if addr
+                // addr + size must fit into usize, i.e., `sum <= usize::MAX`.
+                if !addr
                     .checked_add(size.bytes())
-                    .is_none_or(|result| result >= self.ecx.target_usize_max())
+                    .is_some_and(|result| result <= self.ecx.target_usize_max())
                 {
                     throw_validation_failure!(
                         self.path,
