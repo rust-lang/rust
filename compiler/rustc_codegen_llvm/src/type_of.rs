@@ -33,42 +33,13 @@ fn uncached_llvm_type<'a, 'tcx>(
             let vector_type = cx.type_scalable_vector(element, count.as_u64());
             return match number_of_vectors.0 {
                 1 => vector_type,
-                2 => cx.type_struct(&[vector_type, vector_type], false),
-                3 => cx.type_struct(&[vector_type, vector_type, vector_type], false),
-                4 => cx.type_struct(&[vector_type, vector_type, vector_type, vector_type], false),
-                5 => cx.type_struct(
-                    &[vector_type, vector_type, vector_type, vector_type, vector_type],
-                    false,
-                ),
-                6 => cx.type_struct(
-                    &[vector_type, vector_type, vector_type, vector_type, vector_type, vector_type],
-                    false,
-                ),
-                7 => cx.type_struct(
-                    &[
-                        vector_type,
-                        vector_type,
-                        vector_type,
-                        vector_type,
-                        vector_type,
-                        vector_type,
-                        vector_type,
-                    ],
-                    false,
-                ),
-                8 => cx.type_struct(
-                    &[
-                        vector_type,
-                        vector_type,
-                        vector_type,
-                        vector_type,
-                        vector_type,
-                        vector_type,
-                        vector_type,
-                        vector_type,
-                    ],
-                    false,
-                ),
+                2 => cx.type_struct(&[vector_type; 2], false),
+                3 => cx.type_struct(&[vector_type; 3], false),
+                4 => cx.type_struct(&[vector_type; 4], false),
+                5 => cx.type_struct(&[vector_type; 5], false),
+                6 => cx.type_struct(&[vector_type; 6], false),
+                7 => cx.type_struct(&[vector_type; 7], false),
+                8 => cx.type_struct(&[vector_type; 8], false),
                 _ => bug!("`#[rustc_scalable_vector]` tuple struct with too many fields"),
             };
         }
