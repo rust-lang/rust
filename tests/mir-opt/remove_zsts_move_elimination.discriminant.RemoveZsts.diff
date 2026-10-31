@@ -1,0 +1,12 @@
+- // MIR for `discriminant` before RemoveZsts
++ // MIR for `discriminant` after RemoveZsts
+  
+  fn discriminant() -> Unit {
+      let mut _0: Unit;
+  
+      bb0: {
+          discriminant(_0) = 0;
+          return;
+      }
+  }
+  

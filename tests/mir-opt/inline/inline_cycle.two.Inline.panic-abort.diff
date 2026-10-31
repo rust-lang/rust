@@ -29,8 +29,10 @@
       }
   
       bb1: {
++         _3 = const ();
 +         StorageDead(_5);
 +         StorageDead(_4);
++         _1 = const ();
 +         StorageDead(_3);
 +         StorageDead(_2);
           StorageDead(_1);

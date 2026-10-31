@@ -29,13 +29,13 @@
 -         StorageLive(_5);
 -         _5 = move _1;
 -         StorageLive(_6);
--         StorageLive(_7);
--         _7 = copy _2;
--         StorageLive(_8);
--         _8 = copy _3;
 +         nop;
+          StorageLive(_7);
+-         _7 = copy _2;
 +         _7 = [const 1_u8; 8];
 +         nop;
+          StorageLive(_8);
+-         _8 = copy _3;
 +         _8 = [const 2_u8; 8];
 +         nop;
 +         nop;
@@ -45,8 +45,12 @@
 +         nop;
 +         nop;
 +         nop;
++         StorageLive(_6);
           _6 = (move _7, move _8);
 -         _4 = <F as FnOnce<([u8; 8], [u8; 8])>>::call_once(move _5, move _6) -> [return: bb1, unwind unreachable];
++         StorageDead(_7);
++         StorageDead(_8);
++         StorageLive(_4);
 +         _4 = <F as FnOnce<([u8; 8], [u8; 8])>>::call_once(move _1, move _6) -> [return: bb1, unwind unreachable];
       }
   
@@ -55,7 +59,8 @@
 -         StorageDead(_7);
 -         StorageDead(_6);
 -         StorageDead(_5);
--         StorageDead(_4);
+          StorageDead(_4);
++         StorageDead(_6);
 +         nop;
 +         nop;
 +         nop;

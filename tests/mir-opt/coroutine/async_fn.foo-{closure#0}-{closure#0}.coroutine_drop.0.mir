@@ -15,6 +15,7 @@ fn foo::{closure#0}::{closure#0}(_1: &mut {async block@$DIR/async_fn.rs:21:13: 2
 
     bb0: {
         _8 = discriminant((*_1));
+        _0 = const ();
         switchInt(move _8) -> [0: bb2, otherwise: bb3];
     }
 

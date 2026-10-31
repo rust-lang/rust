@@ -38,6 +38,7 @@
           // DBG: _5 = &(*_2)[0 of 3];
           // DBG: _6 = &(*_2)[1 of 3];
           // DBG: _7 = &(*_2)[2 of 3];
+          _0 = const ();
           StorageDead(_4);
           return;
       }

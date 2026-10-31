@@ -10,6 +10,7 @@ fn std::ptr::drop_glue(_1: &mut [String; 42]) -> () {
     }
 
     bb1: {
+        _0 = const ();
         return;
     }
 }

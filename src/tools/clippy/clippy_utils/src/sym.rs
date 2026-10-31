@@ -660,7 +660,6 @@ generate! {
     visit_str,
     visit_string,
     wake,
-    warnings,
     wildcard_imports,
     with_capacity,
     wrapping_neg,
