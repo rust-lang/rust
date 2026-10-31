@@ -41,5 +41,5 @@ const W_CORE: () = core::panic!(MSG);
 const W2_CORE: () = core::panic!("{}", MSG);
 //~^ ERROR evaluation panicked
 
-const ABORT: () = core::process::abort_immediate();
+const ABORT: () = core::process::crash();
 //~^ ERROR the program aborted execution
