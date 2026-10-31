@@ -181,11 +181,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     sym::vtable_align => ty::COMMON_VTABLE_ENTRIES_ALIGN,
                     _ => bug!(),
                 };
-                let value = meth::VirtualIndex::from_index(idx).get_usize(
-                    bx,
-                    vtable,
-                    instance.ty(bx.tcx(), bx.typing_env()),
-                );
+                let value = meth::VirtualIndex::from_index(idx).get_usize(bx, vtable);
                 match name {
                     // Size is always <= isize::MAX.
                     sym::vtable_size => {
