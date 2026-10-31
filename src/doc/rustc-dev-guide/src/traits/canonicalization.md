@@ -13,7 +13,7 @@ Canonicalization is really based on a very simple concept: every
 [inference variable](../type-inference.md#vars) is always in one of
 two states: either it is **unbound**, in which case we don't know yet what type it is,
 or it is **bound**, in which case we do.
-So to isolate some data-structure T that contains types/regions from its
+So, to isolate some data-structure T that contains types/regions from its
 environment, we just walk down and find the unbound variables that
 appear in T; those variables get replaced with "canonical variables",
 starting from zero and numbered in a fixed order (left to right, for the most part,
@@ -22,13 +22,13 @@ consistent).
 
 [cq]: ./canonical-queries.md
 
-So, for example, if we have the type `X = (?T, ?U)`, where `?T` and `?U` are distinct,
+So, for example, if we have the type `X = (?T, ?U)`, where `?T` and `?U` are distinct
 unbound inference variables, then the canonical
 form of `X` would be `(?0, ?1)`, where `?0` and `?1` represent these **canonical placeholders**.
 Note that the type `Y = (?U, ?T)` also canonicalizes to `(?0, ?1)`.
 But the type `Z = (?T, ?T)` would canonicalize to `(?0, ?0)` (as would `(?U, ?U)`).
-In other words, the exact identity of the inference variables is not important – unless
-they are repeated.
+In other words, the exact identity of the inference variables is not important,
+unless they are repeated.
 
 We use this to improve caching as well as to detect cycles and other things during trait resolution.
 Roughly speaking, the idea is that if two trait queries have the same canonical form,
@@ -47,8 +47,8 @@ The trait system generally ignores all lifetimes and treats them equally,
 so when canonicalizing, we will *also*
 replace any [free lifetime](../appendix/background.md#free-vs-bound) with a
 canonical variable (Note that `'static` is actually a _free_ lifetime variable here.
-We are not considering it in the typing context of the whole
-program but only in the context of this trait reference.
+We are not considering it in the typing context of the whole program,
+but only in the context of this trait reference.
 Mathematically, we are not quantifying over the whole program, but only this obligation).
 Therefore, we get the following result:
 
@@ -63,7 +63,7 @@ for<T,L,T> { ?0: Foo<'?1, ?2> }
 ```
 
 This `for<>` gives some information about each of the canonical variables within.
- In this case, each `T` indicates a type variable,
+In this case, each `T` indicates a type variable,
 so `?0` and `?2` are types; the `L` indicates a lifetime variable, so `?1` is a lifetime.
 The `canonicalize` method *also* gives back a
 `CanonicalVarValues` array OV with the "original values" for each canonicalized variable:
@@ -142,13 +142,13 @@ with a result that brings together a "certainty value" `certainty`, a
 result substitution `var_values`, and some region constraints.
 To create this, we wind up re-using the substitution S that we created
 when first instantiating our query.
-To refresh your memory, we had a query
+To refresh your memory, we had a query:
 
 ```text
 for<T,L,T> { ?0: Foo<'?1, ?2> }
 ```
 
-for which we made a substutition S:
+We made a substutition S for it:
 
 ```text
 S = [?A, '?B, ?C]
@@ -199,7 +199,7 @@ Now, this result must be reapplied in each context where needed.
 
 ## Processing the canonicalized query result
 
-In the previous section we produced a canonical query result.
+In the previous section, we produced a canonical query result.
 We now have to apply that result in our original context.
 If you recall, way back in the beginning, we were trying to prove this query:
 
@@ -228,7 +228,7 @@ We now want to apply that response to our context.
 Conceptually, how we do that is to (a) instantiate each of the canonical variables in
 the result with a fresh inference variable, (b) unify the values in
 the result with the original values, and then (c) record the region constraints for later.
-Doing step (a) would yield a result of
+Doing step (a) would yield this result:
 
 ```text
 {
@@ -248,7 +248,7 @@ Step (b) would then unify:
 ?B with ?C
 ```
 
-And finally the region constraint of `?C: 'static` would be recorded for later verification.
+And finally, the region constraint of `?C: 'static` would be recorded for later verification.
 
 (What we *actually* do is a mildly optimized variant of that: Rather
 than eagerly instantiating all of the canonical values in the result with variables,
