@@ -4,7 +4,6 @@ use bitflags::Flags;
 use llvm::Linkage::*;
 use rustc_abi::Align;
 use rustc_codegen_ssa::MemFlags;
-use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, BuilderMethods, ReturnSlot};
 use rustc_middle::ty::offload_meta::{MappingFlags, OffloadMetadata, OffloadSize};
@@ -15,7 +14,7 @@ use crate::builder::Builder;
 use crate::common::CodegenCx;
 use crate::context::SimpleCx;
 use crate::llvm::AttributePlace::Function;
-use crate::llvm::{self, Linkage, Type, Value};
+use crate::llvm::{self, Linkage, Type, TypeKind, Value};
 
 // LLVM kernel-independent globals required for offloading
 pub(crate) struct OffloadGlobals<'ll> {
@@ -475,16 +474,15 @@ fn declare_offload_fn<'ll>(
     )
 }
 
-pub(crate) fn scalar_width<'ll>(cx: &'ll SimpleCx<'_>, ty: &'ll Type) -> u64 {
-    match cx.type_kind(ty) {
-        TypeKind::Half
-        | TypeKind::Float
-        | TypeKind::Double
-        | TypeKind::X86_FP80
-        | TypeKind::FP128
-        | TypeKind::PPC_FP128 => cx.float_width(ty) as u64,
-        TypeKind::Integer => cx.int_width(ty),
-        other => bug!("scalar_width was called on a non scalar type {other:?}"),
+pub(crate) fn scalar_width<'ll>(cx: &SimpleCx<'ll>, ty: &'ll Type) -> u64 {
+    if let Some(float) = cx.float_type(ty) {
+        float.size().bits()
+    } else if let Some(width) = cx.int_width(ty) {
+        width
+    } else if cx.type_kind(ty) == TypeKind::Pointer {
+        bug!("scalar_width doesn't support pointer type {ty:?}")
+    } else {
+        bug!("scalar_width was called on a non scalar type {ty:?}")
     }
 }
 
@@ -560,7 +558,7 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
 
     // Step 0)
     unsafe {
-        llvm::LLVMRustPositionBuilderPastAllocas(&builder.llbuilder, builder.llfn());
+        llvm::LLVMRustPositionBuilderPastAllocas(builder.llbuilder(), builder.llfn());
     }
 
     let ty = cx.type_array(cx.type_ptr(), num_args);
@@ -594,7 +592,7 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
 
     // Step 1)
     unsafe {
-        llvm::LLVMPositionBuilderAtEnd(&builder.llbuilder, bb);
+        llvm::LLVMPositionBuilderAtEnd(builder.llbuilder(), bb);
     }
 
     // Now we allocate once per function param, a copy to be passed to one of our maps.
@@ -612,11 +610,11 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
 
                 let bb = builder.llbb();
                 unsafe {
-                    llvm::LLVMRustPositionBuilderPastAllocas(builder.llbuilder, builder.llfn());
+                    llvm::LLVMRustPositionBuilderPastAllocas(builder.llbuilder(), builder.llfn());
                 }
                 let addr = builder.direct_alloca(cx.type_i64(), Align::EIGHT, "addr");
                 unsafe {
-                    llvm::LLVMPositionBuilderAtEnd(builder.llbuilder, bb);
+                    llvm::LLVMPositionBuilderAtEnd(builder.llbuilder(), bb);
                 }
 
                 let cast = builder.bitcast(v, cx.type_ix(num_bits));

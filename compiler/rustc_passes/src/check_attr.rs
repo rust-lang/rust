@@ -38,9 +38,8 @@ use rustc_middle::query::Providers;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, TyCtxt, TypingMode, Unnormalized, Variance};
-use rustc_session::diagnostics::feature_err;
 use rustc_span::edition::Edition;
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, bug, kw, span_bug, sym};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, bug, span_bug, sym};
 use rustc_structures::CrateType;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::{TyCtxtInferExt, ValuePairs};
@@ -137,7 +136,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(attr_kind) => {
                     self.check_one_parsed_attribute(hir_id, span, target, item, attr_kind);
                 }
-                Attribute::Unparsed(u) => {
+                Attribute::Tool(u) | Attribute::DeriveHelper(u) => {
                     match &*u.path.segments {
                         [name, rest @ ..] => {
                             if BUILTIN_ATTRIBUTE_SET.contains(name) {
@@ -192,10 +191,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::ProcMacroDerive { .. } => {
                 self.check_proc_macro(hir_id, target, ProcMacroKind::Derive)
             }
-            AttributeKind::RustcAllowConstFnUnstable(_, first_span) => {
-                self.check_rustc_allow_const_fn_unstable(hir_id, *first_span, span, target)
-            }
-            AttributeKind::Naked(..) => self.check_naked(hir_id, target),
             AttributeKind::MayDangle(attr_span) => self.check_may_dangle(hir_id, *attr_span),
             AttributeKind::Doc(attr) => self.check_doc_attrs(attr, hir_id, target),
             AttributeKind::EiiImpl(eii_impl) => self.check_eii_impl(eii_impl),
@@ -270,6 +265,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::MoveSizeLimit { .. } => (),
             AttributeKind::MustNotSupend { .. } => (),
             AttributeKind::MustUse { .. } => (),
+            AttributeKind::Naked(..) => (),
             AttributeKind::NeedsAllocator => (),
             AttributeKind::NeedsPanicRuntime => (),
             AttributeKind::NoBuiltins => (),
@@ -301,6 +297,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcAllocator => (),
             AttributeKind::RustcAllocatorZeroed => (),
             AttributeKind::RustcAllocatorZeroedVariant { .. } => (),
+            AttributeKind::RustcAllowConstFnUnstable(..) => (),
             AttributeKind::RustcAllowIncoherentImpl(..) => (),
             AttributeKind::RustcAllowLifetimeDependentSpecialization => (),
             AttributeKind::RustcAsPtr => (),
@@ -384,7 +381,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcShowSpans(_) => (),
             AttributeKind::RustcSimdMonomorphizeLaneLimit(..) => (),
             AttributeKind::RustcSkipDuringMethodDispatch { .. } => (),
-
             AttributeKind::RustcSpecializationTrait => (),
             AttributeKind::RustcStdInternalSymbol => (),
             AttributeKind::RustcStrictCoherence(..) => (),
@@ -400,6 +396,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::ThreadLocal => (),
             AttributeKind::TrackCaller(_) => (),
             AttributeKind::TypeLengthLimit { .. } => (),
+            AttributeKind::UncheckedTypeAlias => (),
             AttributeKind::Unroll(..) => (),
             AttributeKind::UnstableFeatureBound(..) => (),
             AttributeKind::UnstableRemoved(..) => (),
@@ -731,32 +728,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    /// Checks if `#[naked]` is applied to a function definition.
-    fn check_naked(&self, hir_id: HirId, target: Target) {
-        match target {
-            Target::Fn
-            | Target::Method(
-                MethodKind::Trait { body: true } | MethodKind::TraitImpl | MethodKind::Inherent,
-            ) => {
-                let fn_sig = self.tcx.hir_node(hir_id).fn_sig().unwrap();
-                let abi = fn_sig.header.abi;
-                if abi.is_rustic_abi() && !self.tcx.features().naked_functions_rustic_abi() {
-                    feature_err(
-                        &self.tcx.sess,
-                        sym::naked_functions_rustic_abi,
-                        fn_sig.span,
-                        format!(
-                            "`#[naked]` is currently unstable on `extern \"{}\"` functions",
-                            abi.as_str()
-                        ),
-                    )
-                    .emit();
-                }
-            }
-            _ => {}
-        }
-    }
-
     fn check_doc_alias_value(&self, span: Span, hir_id: HirId, target: Target, alias: Symbol) {
         if let Some(location) = match target {
             Target::AssocTy(_) => {
@@ -903,19 +874,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    fn check_doc_keyword_and_attribute(&self, span: Span, hir_id: HirId, attr_name: &'static str) {
-        let item_kind = match self.tcx.hir_node(hir_id) {
-            hir::Node::Item(item) => Some(&item.kind),
-            _ => None,
-        };
-        if let Some(ItemKind::Const(ident, _gen, _ty, _rhs)) = item_kind
-            && ident.name == kw::Underscore
-        {
-        } else {
-            self.dcx().emit_err(diagnostics::DocKeywordAttributeNotAnonConst { span, attr_name });
-        }
-    }
-
     /// Runs various checks on `#[doc]` attributes.
     fn check_doc_attrs(&self, attr: &DocAttribute, hir_id: HirId, target: Target) {
         let DocAttribute {
@@ -933,7 +891,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             // already checked in attr_parsing
             auto_cfg_change: _,
             fake_variadic,
-            keyword,
+            // already checked in attr_parsing
+            keyword: _,
             masked,
             // FIXME: currently unchecked
             notable_trait: _,
@@ -956,18 +915,12 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             test_attrs: _,
             // already checked in attr_parsing
             no_crate_inject: _,
-            attribute,
+            // already checked in attr_parsing
+            attribute: _,
         } = attr;
 
         for (alias, span) in aliases {
             self.check_doc_alias_value(*span, hir_id, target, *alias);
-        }
-
-        if let Some((_, span)) = keyword {
-            self.check_doc_keyword_and_attribute(*span, hir_id, "keyword");
-        }
-        if let Some((_, span)) = attribute {
-            self.check_doc_keyword_and_attribute(*span, hir_id, "attribute");
         }
 
         if let Some(span) = fake_variadic {
@@ -1123,27 +1076,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 hint_spans.collect::<Vec<Span>>(),
                 diagnostics::ReprConflictingLint,
             );
-        }
-    }
-
-    /// Outputs an error for `#[allow_internal_unstable]` which can only be applied to macros.
-    /// (Allows proc_macro functions)
-    fn check_rustc_allow_const_fn_unstable(
-        &self,
-        hir_id: HirId,
-        attr_span: Span,
-        span: Span,
-        target: Target,
-    ) {
-        match target {
-            Target::Fn | Target::Method(_) => {
-                if !self.tcx.is_const_fn(hir_id.expect_owner().to_def_id()) {
-                    self.tcx
-                        .dcx()
-                        .emit_err(diagnostics::RustcAllowConstFnUnstable { attr_span, span });
-                }
-            }
-            _ => {}
         }
     }
 

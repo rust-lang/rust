@@ -17,12 +17,13 @@ use rustc_middle::mir::{AnnotationSource, ConstraintCategory, ReturnConstraint};
 use rustc_middle::ty::{
     self, GenericArgs, Region, RegionVid, Ty, TyCtxt, TypeFoldable, TypeVisitor, fold_regions,
 };
-use rustc_span::{Ident, Span, bug, kw};
+use rustc_span::{Ident, Span, Symbol, bug, kw};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::error_reporting::infer::nice_region_error::{
     self, HirTraitObjectVisitor, NiceRegionError, TraitObjectVisitor, find_anon_type,
     find_param_with_region, suggest_adding_lifetime_params,
 };
+use rustc_trait_selection::error_reporting::traits::suggestions::ReturnsVisitor;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{Obligation, ObligationCtxt};
 use tracing::{debug, instrument, trace};
@@ -947,7 +948,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
     ///    |                    is returning data with lifetime `'b`
     /// ```
     fn report_general_error(&self, errci: &ErrorConstraintInfo<'tcx>) -> Diag<'diag> {
-        let ErrorConstraintInfo { fr, outlived_fr, span, category, .. } = errci;
+        let ErrorConstraintInfo { fr, outlived_fr, span, category } = errci;
 
         let mir_def_name = self.infcx.tcx.def_descr(self.mir_def_id().to_def_id());
 
@@ -990,8 +991,168 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
         self.suggest_adding_lifetime_params(&mut diag, *fr, *outlived_fr);
         self.suggest_move_on_borrowing_closure(&mut diag);
         self.suggest_deref_closure_return(&mut diag);
+        self.point_at_dyn_trait_in_field_def(&mut diag, *span, *outlived_fr);
 
         diag
+    }
+
+    /// When a returned value has a field with a lifetime that isn't `'static`, and the requirement
+    /// comes from a `dyn Trait` with an implicit `'static` in the given field, point at the trait
+    /// object in the definition and suggest constraining it with a lifetime.
+    fn point_at_dyn_trait_in_field_def(
+        &self,
+        diag: &mut Diag<'_>,
+        span: Span,
+        outlived_fr: RegionVid,
+    ) {
+        let Some(outlived_f) = self.regioncx.to_error_region(outlived_fr) else { return };
+        if outlived_f.kind() != ty::ReStatic {
+            return;
+        }
+        let Some(body_id) = self.infcx.tcx.hir_node_by_def_id(self.mir_def_id()).body_id() else {
+            return;
+        };
+        let mut visitor = ReturnsVisitor::default();
+        visitor.visit_body(&self.infcx.tcx.hir_body(body_id));
+        if visitor.returns.is_empty() {
+            return;
+        }
+
+        enum NameOrPos {
+            Name(Symbol),
+            Pos(usize),
+        }
+
+        for ret in visitor.returns {
+            let (def_id, lit_field) = match ret.kind {
+                hir::ExprKind::Struct(hir::QPath::Resolved(_, path), fields, _tail) => {
+                    let Def(_, def_id) = path.res else { continue };
+                    let Some(def_id) = def_id.as_local() else { continue };
+                    let Some(field) = fields.iter().find(|f| f.expr.span.contains(span)) else {
+                        continue;
+                    };
+                    (def_id, NameOrPos::Name(field.ident.name))
+                }
+                hir::ExprKind::Call(callee, args)
+                    if let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = callee.kind =>
+                {
+                    let Def(_, def_id) = path.res else { continue };
+                    let Some(def_id) = def_id.as_local() else { continue };
+                    let Some((pos, _)) =
+                        args.iter().enumerate().find(|(_, a)| a.span.contains(span))
+                    else {
+                        continue;
+                    };
+                    (def_id, NameOrPos::Pos(pos))
+                }
+                _ => continue,
+            };
+            let (def_spans, fields, generics) = match self.infcx.tcx.hir_node_by_def_id(def_id) {
+                hir::Node::Item(item) => match item.kind {
+                    hir::ItemKind::Struct(name, generics, data) => {
+                        let (hir::VariantData::Struct { fields, .. }
+                        | hir::VariantData::Tuple(fields, ..)) = data
+                        else {
+                            continue;
+                        };
+                        (vec![name.span], fields, generics)
+                    }
+                    _ => continue,
+                },
+                hir::Node::Variant(variant) => {
+                    let hir::VariantData::Struct { fields, .. } = variant.data else { continue };
+                    let parent = self.infcx.tcx.parent(def_id.into());
+                    let mut def_spans = vec![self.infcx.tcx.def_span(parent).shrink_to_lo()];
+                    let generics = if let DefKind::Variant = self.infcx.tcx.def_kind(parent) {
+                        let parent = self.infcx.tcx.parent(parent);
+                        def_spans.push(self.infcx.tcx.def_span(parent).shrink_to_lo());
+                        self.infcx
+                            .tcx
+                            .hir_get_generics(parent.expect_local())
+                            .expect("item with no generics?")
+                    } else {
+                        self.infcx
+                            .tcx
+                            .hir_get_generics(parent.expect_local())
+                            .expect("item with no generics?")
+                    };
+                    (def_spans, fields, generics)
+                }
+                hir::Node::Ctor(data) => {
+                    let hir::VariantData::Tuple(fields, ..) = data else { continue };
+                    let parent = self.infcx.tcx.parent(def_id.into());
+                    let mut def_spans = vec![self.infcx.tcx.def_span(parent).shrink_to_lo()];
+                    let generics = if let DefKind::Variant = self.infcx.tcx.def_kind(parent) {
+                        let parent = self.infcx.tcx.parent(parent);
+                        def_spans.push(self.infcx.tcx.def_span(parent).shrink_to_lo());
+                        self.infcx
+                            .tcx
+                            .hir_get_generics(parent.expect_local())
+                            .expect("item with no generics?")
+                    } else {
+                        self.infcx
+                            .tcx
+                            .hir_get_generics(parent.expect_local())
+                            .expect("item with no generics?")
+                    };
+                    (def_spans, *fields, generics)
+                }
+                _ => continue,
+            };
+
+            let Some((_, f)) = fields.iter().enumerate().find(|(i, f)| match lit_field {
+                NameOrPos::Name(name) => f.ident.name == name,
+                NameOrPos::Pos(pos) => *i == pos,
+            }) else {
+                continue;
+            };
+
+            let mut v = ty::TraitObjectVisitor(vec![]);
+            v.visit_ty_unambig(f.ty);
+            let mut span: MultiSpan = v.0.iter().map(|x| x.span).collect::<Vec<_>>().into();
+            // Display the item and variant lines.
+            for def_span in def_spans {
+                span.push_span_context(def_span);
+            }
+            // Display the field's line (even if different to its type's).
+            span.push_span_context(f.ident.span);
+            // Display the type's start line (even if different to its type's).
+            span.push_span_context(f.ty.span.shrink_to_lo());
+            let (these, s, introduce) = if v.0.len() == 1 {
+                ("this", "", "introduces")
+            } else {
+                ("these", "s", "introduce")
+            };
+            diag.span_note(
+                span,
+                format!("{these} `dyn Trait`{s} {introduce} an implicit `'static` obligation"),
+            );
+            let suggestion_param_name = generics
+                .params
+                .iter()
+                .filter(|p| matches!(p.kind, hir::GenericParamKind::Lifetime { .. }))
+                .map(|p| p.name.ident().name)
+                .find(|i| *i != kw::UnderscoreLifetime);
+            if let Some(name) = suggestion_param_name {
+                let msg = "consider using an explicit lifetime";
+                let mut sugg = vec![];
+                for ty in v.0 {
+                    sugg.push((ty.span.shrink_to_hi(), format!(" + {name}")));
+                }
+                diag.multipart_suggestion(msg, sugg, Applicability::MachineApplicable);
+            } else {
+                let msg = "consider introducing an explicit lifetime";
+                let mut sugg = vec![match generics.span_for_lifetime_suggestion() {
+                    Some(span) => (span, "'a, ".to_string()),
+                    None => (generics.span, "<'a>".to_string()),
+                }];
+                for ty in v.0 {
+                    sugg.push((ty.span.shrink_to_hi(), " + 'a".to_string()));
+                }
+                diag.multipart_suggestion(msg, sugg, Applicability::MachineApplicable);
+            }
+            return;
+        }
     }
 
     /// Adds a suggestion to errors where an `impl Trait` is returned.

@@ -47,6 +47,20 @@ fn foo8() {
     //~^ ERROR expected `{`, found `a`
     //~| HELP you might have meant to write a field access
 }
+fn foo9() {
+    macro_rules! m {
+        (static a : () = $e:expr) => {
+            static a: () = $e;
+        };
+    }
+
+    m! { static a : () = {
+        let x = (vec![1, 2, 3],);
+        for _ in x 0 {}
+        //~^ ERROR expected `{`, found `0`
+        //~| HELP you might have meant to write a field access
+    } }
+}
 
 struct S {
     a: A,

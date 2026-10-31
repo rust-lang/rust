@@ -765,7 +765,7 @@ impl<'a> Parser<'a> {
                 snapshot = Some(self.create_snapshot_for_diagnostic());
             }
             let stmt = match self.parse_full_stmt(recover) {
-                Err(mut err) if recover.yes() => {
+                Err(mut err) if recover.yes(self) => {
                     if let Some(ref mut snapshot) = snapshot {
                         snapshot.recover_vcs_conflict_marker();
                     }
@@ -1072,7 +1072,7 @@ impl<'a> Parser<'a> {
                             let res =
                                 self.check_mistyped_turbofish_with_multiple_type_params(e, expr);
 
-                            Some(if recover.no() {
+                            Some(if recover.no(self) {
                                 res?
                             } else {
                                 res.unwrap_or_else(|mut e| {

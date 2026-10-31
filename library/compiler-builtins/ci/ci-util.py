@@ -17,7 +17,7 @@ from glob import glob
 from inspect import cleandoc
 from os import getenv
 from pathlib import Path
-from typing import TypedDict, Self
+from typing import Self, TypedDict
 
 USAGE = cleandoc("""
     usage:
@@ -126,12 +126,10 @@ class PrCfg:
                 self.extra_extensive = [x.strip() for x in args.split(",")]
                 args = None
             else:
-                eprint(f"Found unexpected directive `{name}`")
-                exit(1)
+                sys.exit(f"Found unexpected directive `{name}`")
 
             if args is not None:
-                eprint("Found arguments where not expected")
-                exit(1)
+                sys.exit("Found arguments where not expected")
 
         eprint(pprint.pformat(self))
 
@@ -340,13 +338,12 @@ class Context:
         eprint(f"total extensive tests: {total_to_test}")
 
         if error_on_many_tests and total_to_test > PrCfg.MANY_EXTENSIVE_THRESHOLD:
-            eprint(
+            sys.exit(
                 f"More than {PrCfg.MANY_EXTENSIVE_THRESHOLD} tests would be run; add"
                 f" `{PrCfg.DIR_ALLOW_MANY_EXTENSIVE}` to the PR body if this is"
                 " intentional. If this is refactoring that happens to touch a lot of"
                 f" files, `{PrCfg.DIR_SKIP_EXTENSIVE}` can be used instead."
             )
-            exit(1)
 
 
 def base_name(name: str) -> tuple[str, str]:
@@ -367,15 +364,15 @@ def base_name(name: str) -> tuple[str, str]:
         return found
 
     if name.endswith("f"):
-        return (name.rstrip("f"), "f32")
+        return (name.removesuffix("f"), "f32")
     elif name.endswith("f16"):
-        return (name.rstrip("f16"), "f16")
+        return (name.removesuffix("f16"), "f16")
     elif name.endswith("f32"):
-        return (name.rstrip("f32"), "f32")
+        return (name.removesuffix("f32"), "f32")
     elif name.endswith("f64"):
-        return (name.rstrip("f64"), "f64")
+        return (name.removesuffix("f64"), "f64")
     elif name.endswith("f128"):
-        return (name.rstrip("f128"), "f128")
+        return (name.removesuffix("f128"), "f128")
 
     return (name, "f64")
 
@@ -402,13 +399,11 @@ def locate_baseline(flags: list[str]) -> None:
                 tag = flags[1]
                 flags = flags[1:]
             case _:
-                eprint(USAGE)
-                exit(1)
+                sys.exit(USAGE)
         flags = flags[1:]
 
     if extract and not download:
-        eprint("cannot extract without downloading")
-        exit(1)
+        sys.exit("cannot extract without downloading")
 
     try:
         # Locate the most recent job to complete with success on our branch
@@ -419,8 +414,10 @@ def locate_baseline(flags: list[str]) -> None:
                 "list",
                 "--status=success",
                 f"--branch={DEFAULT_BRANCH}",
-                "--json=databaseId,url,headSha,conclusion,createdAt,"
-                "status,workflowDatabaseId,workflowName",
+                (
+                    "--json=databaseId,url,headSha,conclusion,createdAt,"
+                    "status,workflowDatabaseId,workflowName"
+                ),
                 # Return the first array element matching our workflow name. NB: cannot
                 # just use `--limit=1`, jq filtering happens after limiting. We also
                 # cannot just use `--workflow` because GH gets confused from
@@ -490,18 +487,16 @@ def handle_bench_regressions(args: list[str]):
 
     match args:
         case [pr_number]:
-            pr_number = pr_number
+            pass
         case _:
-            eprint(USAGE)
-            exit(1)
+            sys.exit(USAGE)
 
     pr = PrInfo.from_pr(pr_number)
     if pr.cfg.allow_regressions:
         eprint("PR allows regressions")
         return
 
-    eprint("Regressions were found; benchmark failed")
-    exit(1)
+    sys.exit("Regressions were found; benchmark failed")
 
 
 def main():
@@ -515,10 +510,9 @@ def main():
             handle_bench_regressions(args)
         case ["--help" | "-h"]:
             print(USAGE)
-            exit()
+            sys.exit()
         case _:
-            eprint(USAGE)
-            exit(1)
+            sys.exit(USAGE)
 
 
 if __name__ == "__main__":

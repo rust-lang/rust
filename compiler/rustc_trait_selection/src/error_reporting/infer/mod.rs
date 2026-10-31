@@ -713,7 +713,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         t1_out: &mut DiagStyledString,
         t2_out: &mut DiagStyledString,
         path: String,
-        args: &'tcx [ty::GenericArg<'tcx>],
+        args: &[ty::GenericArg<'tcx>],
         other_path: String,
         other_ty: Ty<'tcx>,
     ) -> bool {
@@ -752,9 +752,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn cmp_fn_sig(
         &self,
         sig1: ty::PolyFnSig<'tcx>,
-        fn_def1: Option<(DefId, Option<&'tcx [ty::GenericArg<'tcx>]>)>,
+        fn_def1: Option<(DefId, Option<ty::GenericArgs<'tcx>>)>,
         sig2: ty::PolyFnSig<'tcx>,
-        fn_def2: Option<(DefId, Option<&'tcx [ty::GenericArg<'tcx>]>)>,
+        fn_def2: Option<(DefId, Option<ty::GenericArgs<'tcx>>)>,
     ) -> (DiagStyledString, DiagStyledString) {
         let sig1 = self.normalize_fn_sig(Unnormalized::new_wip(sig1));
         let sig2 = self.normalize_fn_sig(Unnormalized::new_wip(sig2));
@@ -1174,7 +1174,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         // process starts here
         match (t1.kind(), t2.kind()) {
-            (&ty::Adt(def1, sub1), &ty::Adt(def2, sub2)) => {
+            (&ty::Adt(def1, sub1_args), &ty::Adt(def2, sub2_args)) => {
+                let sub1 = sub1_args.as_slice();
+                let sub2 = sub2_args.as_slice();
                 let did1 = def1.did();
                 let did2 = def2.did();
 
@@ -1182,8 +1184,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let generics2 = self.tcx.generics_of(did2);
 
                 let non_default_after_default = generics1
-                    .check_concrete_type_after_default(self.tcx, sub1)
-                    || generics2.check_concrete_type_after_default(self.tcx, sub2);
+                    .check_concrete_type_after_default(self.tcx, sub1_args)
+                    || generics2.check_concrete_type_after_default(self.tcx, sub2_args);
                 let sub_no_defaults_1 = if non_default_after_default {
                     generics1.own_args(sub1)
                 } else {
@@ -1407,8 +1409,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 }}
                             }
                             // We skip the type of `Self`:
-                            let args1 = &trait_ref1.args[1..];
-                            let args2 = &trait_ref2.args[1..];
+                            let args1 = &trait_ref1.args.as_slice()[1..];
+                            let args2 = &trait_ref2.args.as_slice()[1..];
                             self.compare_generics(&mut values, args1, args2);
                         } else {
                             values
@@ -2187,7 +2189,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn format_on_type_error_notes(
         &self,
         directive: &Directive,
-        args: &ty::GenericArgsRef<'tcx>,
+        args: &ty::GenericArgs<'tcx>,
         item_def: ty::AdtDef<'tcx>,
         expected_ty: Ty<'tcx>,
         found_ty: Ty<'tcx>,
@@ -2484,9 +2486,9 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for SameTypeModuloInfer<'_, 'tcx> {
         a_ty: Ty<'tcx>,
         _: Ty<'tcx>,
         _: DefId,
-        a_args: ty::GenericArgsRef<'tcx>,
-        b_args: ty::GenericArgsRef<'tcx>,
-        _: impl FnOnce(ty::GenericArgsRef<'tcx>) -> Ty<'tcx>,
+        a_args: ty::GenericArgs<'tcx>,
+        b_args: ty::GenericArgs<'tcx>,
+        _: impl FnOnce(ty::GenericArgs<'tcx>) -> Ty<'tcx>,
     ) -> RelateResult<'tcx, Ty<'tcx>> {
         relate::relate_args_invariantly(self, a_args, b_args)?;
         Ok(a_ty)

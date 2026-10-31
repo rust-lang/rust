@@ -6,7 +6,7 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::{BuiltinImplSource, CodegenObligationError};
 use rustc_middle::ty::{
-    self, ClosureKind, GenericArgsRef, Instance, PseudoCanonicalInput, TyCtxt, TypeVisitableExt,
+    self, ClosureKind, GenericArgs, Instance, PseudoCanonicalInput, TyCtxt, TypeVisitableExt,
     Unnormalized,
 };
 use rustc_span::{bug, sym};
@@ -16,7 +16,7 @@ use traits::translate_args;
 
 fn resolve_instance_raw<'tcx>(
     tcx: TyCtxt<'tcx>,
-    key: ty::PseudoCanonicalInput<'tcx, (DefId, GenericArgsRef<'tcx>)>,
+    key: ty::PseudoCanonicalInput<'tcx, (DefId, GenericArgs<'tcx>)>,
 ) -> Result<Option<Instance<'tcx>>, ErrorGuaranteed> {
     let PseudoCanonicalInput { typing_env, value: (def_id, args) } = key;
 
@@ -111,7 +111,7 @@ fn resolve_associated_item<'tcx>(
     trait_item_id: DefId,
     typing_env: ty::TypingEnv<'tcx>,
     trait_id: DefId,
-    rcvr_args: GenericArgsRef<'tcx>,
+    rcvr_args: GenericArgs<'tcx>,
 ) -> Result<Option<Instance<'tcx>>, ErrorGuaranteed> {
     debug!(?trait_item_id, ?typing_env, ?trait_id, ?rcvr_args, "resolve_associated_item");
 
@@ -255,15 +255,17 @@ fn resolve_associated_item<'tcx>(
                 // We only resolve totally substituted vtable entries.
                 None
             } else {
-                let vtable_base = tcx.first_method_vtable_slot(trait_ref);
-                let offset = tcx
-                    .own_existential_vtable_entries(trait_id)
-                    .iter()
-                    .copied()
-                    .position(|def_id| def_id == trait_item_id);
-                offset.map(|offset| Instance {
-                    def: ty::InstanceKind::Virtual(trait_item_id, vtable_base + offset),
-                    args: rcvr_args,
+                tcx.first_method_vtable_slot(trait_ref).and_then(|vtable_base| {
+                    let offset = tcx
+                        .own_existential_vtable_entries(trait_id)
+                        .iter()
+                        .copied()
+                        .position(|def_id| def_id == trait_item_id);
+
+                    offset.map(|offset| Instance {
+                        def: ty::InstanceKind::Virtual(trait_item_id, vtable_base + offset),
+                        args: rcvr_args,
+                    })
                 })
             }
         }

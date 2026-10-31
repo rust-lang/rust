@@ -719,10 +719,10 @@ impl GlobalState {
                 let fetch_semantic = self.vfs_done
                     && self.fetch_workspaces_queue.last_op_result().is_some()
                     && (!self.config.run_build_scripts(None)
-                        || (self.fetch_build_data_queue.last_op_result().is_none()
+                        || (self.fetch_build_data_queue.last_op_result().is_some()
                             && !self.fetch_build_data_queue.op_in_progress()))
                     && (!self.config.expand_proc_macros()
-                        || (self.fetch_proc_macros_queue.last_op_result().is_none()
+                        || (self.fetch_proc_macros_queue.last_op_result().is_some()
                             && !self.fetch_proc_macros_queue.op_in_progress()));
                 move |sender| {
                     // We aren't observing the semantics token cache here
@@ -821,7 +821,7 @@ impl GlobalState {
     fn update_status_or_notify(&mut self) {
         let status = self.current_status();
         if self.last_reported_status != status {
-            self.last_reported_status = status.clone();
+            let old_status = std::mem::replace(&mut self.last_reported_status, status.clone());
 
             if self.config.server_status_notification() {
                 self.send_notification::<lsp_ext::ServerStatusNotification>(status);
@@ -829,7 +829,7 @@ impl GlobalState {
                 health @ (lsp_ext::Health::Warning | lsp_ext::Health::Error),
                 Some(message),
             ) = (status.health, &status.message)
-                && self.last_reported_status.message != status.message
+                && old_status.message != status.message
             {
                 let open_log_button = tracing::enabled!(tracing::Level::ERROR)
                     && (self.fetch_build_data_error().is_err()

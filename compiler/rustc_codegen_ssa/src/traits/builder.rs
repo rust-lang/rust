@@ -1,4 +1,3 @@
-use std::assert_matches;
 use std::ops::Deref;
 
 use rustc_abi::{Align, Scalar, Size, WrappingRange};
@@ -23,7 +22,7 @@ use super::misc::MiscCodegenMethods;
 use super::type_::{ArgAbiBuilderMethods, BaseTypeCodegenMethods, LayoutTypeCodegenMethods};
 use super::{CodegenMethods, StaticBuilderMethods};
 use crate::MemFlags;
-use crate::common::{AtomicRmwBinOp, IntPredicate, RealPredicate, SynchronizationScope, TypeKind};
+use crate::common::{AtomicRmwBinOp, IntPredicate, RealPredicate, SynchronizationScope};
 use crate::mir::operand::{OperandRef, OperandValue};
 use crate::mir::place::{PlaceRef, PlaceValue};
 
@@ -406,18 +405,15 @@ pub trait BuilderMethods<'a, 'tcx>:
         dest_ty: Self::Type,
     ) -> Self::Value {
         let in_ty = self.cx().val_ty(x);
-        let (float_ty, int_ty) = if self.cx().type_kind(dest_ty) == TypeKind::Vector
-            && self.cx().type_kind(in_ty) == TypeKind::Vector
+        let (float_ty, int_ty) = if let Some(dest_ty) = self.cx().vector_element_type(dest_ty)
+            && let Some(in_ty) = self.cx().vector_element_type(in_ty)
         {
-            (self.cx().element_type(in_ty), self.cx().element_type(dest_ty))
+            (in_ty, dest_ty)
         } else {
             (in_ty, dest_ty)
         };
-        assert_matches!(
-            self.cx().type_kind(float_ty),
-            TypeKind::Half | TypeKind::Float | TypeKind::Double | TypeKind::FP128
-        );
-        assert_eq!(self.cx().type_kind(int_ty), TypeKind::Integer);
+        assert!(self.cx().float_type(float_ty).is_some_and(|f| f.is_ieee()));
+        assert!(self.cx().int_width(int_ty).is_some());
 
         if signed { self.fptosi_sat(x, dest_ty) } else { self.fptoui_sat(x, dest_ty) }
     }
@@ -585,7 +581,7 @@ pub trait BuilderMethods<'a, 'tcx>:
 
     fn va_arg(&mut self, list: Self::Value, ty: Self::Type) -> Self::Value;
     fn extract_element(&mut self, vec: Self::Value, idx: Self::Value) -> Self::Value;
-    fn vector_splat(&mut self, num_elts: usize, elt: Self::Value) -> Self::Value;
+    fn vector_splat(&mut self, num_elts: u64, elt: Self::Value) -> Self::Value;
     fn extract_value(&mut self, agg_val: Self::Value, idx: u64) -> Self::Value;
     fn insert_value(&mut self, agg_val: Self::Value, elt: Self::Value, idx: u64) -> Self::Value;
 

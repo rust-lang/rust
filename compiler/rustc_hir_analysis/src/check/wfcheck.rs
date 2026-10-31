@@ -1306,7 +1306,11 @@ pub(super) fn check_const_item<'tcx>(
     if tcx.is_direct_const(def_id.into()) {
         if !tcx.features().const_param_ty_unchecked() {
             wfcx.register_bound(
-                ObligationCause::new(span, def_id, ObligationCauseCode::ConstParam(item_ty)),
+                ObligationCause::new(
+                    tcx.ty_span(def_id),
+                    def_id,
+                    ObligationCauseCode::ConstItemTy(item_ty),
+                ),
                 wfcx.param_env,
                 item_ty,
                 tcx.require_lang_item(LangItem::ConstParamTy, span),
@@ -2380,7 +2384,16 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     pub(super) fn check_test_binder_body(&self, body: TestBinderBody<'tcx>) {
-        let TestBinderBody { span, foralls, exists, constraints, predicates } = body;
+        let TestBinderBody { span, foralls, exists, region_equalities, constraints, predicates } =
+            body;
+        for (equality, span) in region_equalities {
+            let cause = traits::ObligationCause::misc(span, self.body_def_id);
+            self.infcx.register_region_eq_constraint(
+                equality,
+                ty::VisibleForLeakCheck::Yes,
+                &cause,
+            );
+        }
         if !predicates.is_empty() {
             for (predicate, span) in predicates {
                 let cause = traits::ObligationCause::misc(span, self.body_def_id);
@@ -2800,6 +2813,7 @@ pub(crate) struct TestBinderBody<'tcx> {
     pub span: Span,
     pub foralls: Vec<TestBinderForall<'tcx>>,
     pub exists: Vec<TestBinderExists<'tcx>>,
+    pub region_equalities: Vec<(ty::RegionEqPredicate<'tcx>, Span)>,
     /// Constraints to be inserted directly into constraint storage to be proven
     pub constraints: SolverRegionConstraint<'tcx>,
     /// Constraints declared using `where` syntax, used via `register_obligation`

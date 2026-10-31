@@ -1,4 +1,5 @@
 use std::fmt;
+use std::ops::Index;
 
 use arrayvec::ArrayVec;
 use derive_where::derive_where;
@@ -71,6 +72,10 @@ impl<I: Interner, V> Canonical<I, V> {
         let Canonical { max_universe, var_kinds, value } = self;
         Canonical { max_universe, var_kinds, value: map_op(value) }
     }
+
+    pub fn project<W>(self, f: impl FnOnce(V) -> W) -> Canonicalized<W> {
+        Canonicalized(f(self.value))
+    }
 }
 
 impl<I: Interner, V: fmt::Display> fmt::Display for Canonical<I, V> {
@@ -80,6 +85,31 @@ impl<I: Interner, V: fmt::Display> fmt::Display for Canonical<I, V> {
             f,
             "Canonical {{ value: {value}, max_universe: {max_universe:?}, var_kinds: {var_kinds:?} }}",
         )
+    }
+}
+
+/// A projection of a `Canonical<V>`, as produced by `Canonical::project`. Useful as a marker when
+/// dealing with fields within a `Canonical<V>`, because it indicates that `T` may contain
+/// canonical bound variables that must be instantiated before use.
+///
+/// The field is private and the contents can only be accessed directly with `into_uninstantiated`,
+/// which is easy to spot.
+#[derive(Copy, Clone, Debug)]
+pub struct Canonicalized<T>(T);
+
+impl<T> Canonicalized<T> {
+    pub fn into_uninstantiated(self) -> T {
+        self.0
+    }
+}
+
+impl<T: SliceLike> Canonicalized<T> {
+    pub fn len(self) -> usize {
+        self.0.len()
+    }
+
+    pub fn iter(self) -> impl Iterator<Item = Canonicalized<T::Item>> {
+        self.0.iter().map(|x| Canonicalized(x))
     }
 }
 
@@ -264,6 +294,14 @@ impl<I: Interner> CanonicalVarValues<I> {
     #[inline]
     pub fn len(&self) -> usize {
         self.var_values.len()
+    }
+}
+
+impl<I: Interner> Index<ty::BoundVar> for CanonicalVarValues<I> {
+    type Output = I::GenericArg;
+
+    fn index(&self, value: ty::BoundVar) -> &I::GenericArg {
+        &self.var_values.as_slice()[value.as_usize()]
     }
 }
 

@@ -1,5 +1,5 @@
 use rustc_ast::{Block, BlockCheckMode, Local, LocalKind, Stmt, StmtKind};
-use rustc_attr_ir::target::Target;
+use rustc_attr_ir::target::{AstTarget, Target};
 use rustc_hir as hir;
 use rustc_span::sym;
 use smallvec::SmallVec;
@@ -37,7 +37,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             match &s.kind {
                 StmtKind::Let(local) => {
                     let hir_id = self.lower_node_id(s.id);
-                    let local = self.lower_local(local);
+                    let local = self.lower_local(local, &s);
                     self.alias_attrs(hir_id, local.hir_id);
                     let kind = hir::StmtKind::Let(local);
                     let span = self.lower_span(s.span);
@@ -88,7 +88,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    fn lower_local(&mut self, l: &Local) -> &'hir hir::LetStmt<'hir> {
+    fn lower_local(&mut self, l: &Local, s: &Stmt) -> &'hir hir::LetStmt<'hir> {
         // Let statements are allowed to have impl trait in bindings.
         let super_ = l.super_.map(|span| self.lower_span(span));
         let ty = l.ty.as_ref().map(|t| {
@@ -104,7 +104,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
         let span = self.lower_span(l.span);
         let source = hir::LocalSource::Normal;
-        self.lower_attrs(hir_id, &l.attrs, l.span, Target::Statement);
+        self.lower_attrs(hir_id, &l.attrs, l.span, Target::Statement, AstTarget::Statement(s));
         self.arena.alloc(hir::LetStmt { hir_id, super_, ty, pat, init, els, span, source })
     }
 

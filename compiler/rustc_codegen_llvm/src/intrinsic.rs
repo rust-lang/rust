@@ -4,12 +4,12 @@ use std::{assert_matches, iter, ptr};
 
 use rustc_abi::{
     AddressSpace, Align, BackendRepr, CVariadicStatus, Float, HasDataLayout, NumScalableVectors,
-    Primitive, Size, WrappingRange,
+    Primitive, Size,
 };
 use rustc_attr_ir::find_attr;
 use rustc_codegen_ssa::RetagInfo;
 use rustc_codegen_ssa::base::{compare_simd_types, wants_msvc_seh, wants_wasm_eh};
-use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
+use rustc_codegen_ssa::common::IntPredicate;
 use rustc_codegen_ssa::diagnostics::{ExpectedPointerMutability, InvalidMonomorphization};
 use rustc_codegen_ssa::mir::IntrinsicResult;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
@@ -22,7 +22,7 @@ use rustc_middle::mir::interpret::{AllocId, Allocation, ErrorHandled, GlobalAllo
 use rustc_middle::mir::{self, BinOp};
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, LayoutOf};
 use rustc_middle::ty::offload_meta::OffloadMetadata;
-use rustc_middle::ty::{self, GenericArgsRef, Instance, SimdAlign, Ty, TyCtxt};
+use rustc_middle::ty::{self, GenericArgs, Instance, SimdAlign, Ty, TyCtxt};
 use rustc_session::diagnostics::feature_err;
 use rustc_span::{ErrorGuaranteed, Span, Symbol, bug, span_bug, sym};
 use rustc_structures::CrateType;
@@ -44,7 +44,7 @@ use crate::diagnostics::{
     OffloadWithoutEnable, OffloadWithoutFatLTO, UnknownIntrinsic,
 };
 use crate::intrinsic::ty::typetree::fnc_typetrees;
-use crate::llvm::{self, Attribute, AttributePlace, Metadata, Type, Value};
+use crate::llvm::{self, Attribute, AttributePlace, Metadata, Type, TypeKind, Value};
 use crate::type_of::LayoutLlvmExt;
 use crate::va_arg::emit_va_arg;
 
@@ -242,7 +242,9 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 args[1].immediate(),
                 args[2].immediate(),
             ),
-            sym::breakpoint => self.call_intrinsic("llvm.debugtrap", &[], &[]),
+            sym::breakpoint | sym::resumable_breakpoint => {
+                self.call_intrinsic("llvm.debugtrap", &[], &[])
+            }
             sym::va_arg => {
                 let target = &self.cx.tcx.sess.target;
                 let stability = target.supports_c_variadic_definitions();
@@ -941,35 +943,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         };
         let fn_ty = self.get_type_of_global(fn_ptr);
 
-        let mut llargs = vec![];
-
-        for arg in args {
-            match arg.val {
-                OperandValue::ZeroSized => {}
-                OperandValue::Immediate(a) => llargs.push(a),
-                OperandValue::Pair(a, b) => {
-                    llargs.push(a);
-                    llargs.push(b);
-                }
-                OperandValue::Ref(op_place_val) => {
-                    let mut llval = op_place_val.llval;
-                    // We can't use `PlaceRef::load` here because the argument
-                    // may have a type we don't treat as immediate, but the ABI
-                    // used for this call is passing it by-value. In that case,
-                    // the load would just produce `OperandValue::Ref` instead
-                    // of the `OperandValue::Immediate` we need for the call.
-                    llval = self.load(self.backend_type(arg.layout), llval, op_place_val.align);
-                    if let BackendRepr::Scalar(scalar) = arg.layout.backend_repr {
-                        if scalar.is_bool() {
-                            self.range_metadata(llval, WrappingRange { start: 0, end: 1 });
-                        }
-                        // We store bools as `i8` so we need to truncate to `i1`.
-                        llval = self.to_immediate_scalar(llval, scalar);
-                    }
-                    llargs.push(llval);
-                }
-            }
-        }
+        let mut llargs = args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>();
 
         debug!("call intrinsic {:?} with args ({:?})", instance, llargs);
 
@@ -985,7 +959,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
 
         let llret = unsafe {
             llvm::LLVMBuildCallWithOperandBundles(
-                self.llbuilder,
+                self.llbuilder(),
                 fn_ty,
                 fn_ptr,
                 llargs.as_ptr(),
@@ -1106,10 +1080,9 @@ fn can_autocast<'ll>(cx: &CodegenCx<'ll, '_>, rust_ty: &'ll Type, llvm_ty: &'ll 
                 },
             )
         }
-        TypeKind::Vector => {
-            let llvm_element_ty = cx.element_type(llvm_ty);
-            let element_count = cx.vector_length(llvm_ty) as u64;
-
+        _ if let Some((llvm_element_ty, element_count)) =
+            cx.vector_element_type_and_length(llvm_ty) =>
+        {
             if llvm_element_ty == cx.type_bf16() {
                 rust_ty == cx.type_vector(cx.type_i16(), element_count)
             } else if llvm_element_ty == cx.type_i1() {
@@ -1120,20 +1093,18 @@ fn can_autocast<'ll>(cx: &CodegenCx<'ll, '_>, rust_ty: &'ll Type, llvm_ty: &'ll 
             }
         }
         TypeKind::BFloat => rust_ty == cx.type_i16(),
-        TypeKind::X86_AMX if cx.type_kind(rust_ty) == TypeKind::Vector => {
-            let element_ty = cx.element_type(rust_ty);
-            let element_count = cx.vector_length(rust_ty) as u64;
-
-            let element_size_bits = match cx.type_kind(element_ty) {
-                TypeKind::Half => 16,
-                TypeKind::Float => 32,
-                TypeKind::Double => 64,
-                TypeKind::FP128 => 128,
-                TypeKind::Integer => cx.int_width(element_ty),
-                TypeKind::Pointer => cx.int_width(cx.isize_ty),
-                _ => bug!(
-                    "Vector element type `{element_ty:?}` not one of integer, float or pointer"
-                ),
+        TypeKind::X86_AMX
+            if let Some((element_ty, element_count)) =
+                cx.vector_element_type_and_length(rust_ty) =>
+        {
+            let element_size_bits = if let Some(float) = cx.float_type(element_ty) {
+                float.size().bits()
+            } else if let Some(bits) = cx.int_width(element_ty) {
+                bits
+            } else if cx.type_kind(element_ty) == TypeKind::Pointer {
+                cx.data_layout().pointer_size().bits()
+            } else {
+                bug!("Vector element type `{element_ty:?}` not one of integer, float or pointer")
             };
 
             element_size_bits * element_count == 8192
@@ -1166,8 +1137,10 @@ fn autocast<'ll>(
             ret
         }
         // cast from the i1xN vector type to the primitive type
-        (TypeKind::Vector, TypeKind::Integer) if bx.element_type(src_ty) == bx.type_i1() => {
-            let vector_length = bx.vector_length(src_ty) as u64;
+        (TypeKind::Vector, TypeKind::Integer)
+            if let Some((elem, vector_length)) = bx.vector_element_type_and_length(src_ty)
+                && elem == bx.type_i1() =>
+        {
             let int_width = vector_length.next_power_of_two().max(8);
 
             let val = if vector_length == int_width {
@@ -1188,8 +1161,10 @@ fn autocast<'ll>(
             bx.bitcast(val, dest_ty)
         }
         // cast from the primitive type to the i1xN vector type
-        (TypeKind::Integer, TypeKind::Vector) if bx.element_type(dest_ty) == bx.type_i1() => {
-            let vector_length = bx.vector_length(dest_ty) as u64;
+        (TypeKind::Integer, TypeKind::Vector)
+            if let Some((elem, vector_length)) = bx.vector_element_type_and_length(dest_ty)
+                && elem == bx.type_i1() =>
+        {
             let int_width = vector_length.next_power_of_two().max(8);
 
             let intermediate_ty = bx.type_vector(bx.type_i1(), int_width);
@@ -2030,7 +2005,7 @@ fn get_args_from_tuple<'ll, 'tcx>(
 fn generic_simd_intrinsic<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,
     name: Symbol,
-    fn_args: GenericArgsRef<'tcx>,
+    fn_args: GenericArgs<'tcx>,
     args: &[OperandRef<'tcx, &'ll Value>],
     ret_ty: Ty<'tcx>,
     llret_ty: &'ll Type,
@@ -2233,7 +2208,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             }
         );
         require!(
-            bx.type_kind(bx.element_type(llret_ty)) == TypeKind::Integer,
+            bx.vector_element_type(llret_ty).is_some_and(|elem| bx.int_width(elem).is_some()),
             InvalidMonomorphization::ReturnIntegerType { span, name, ret_ty, out_ty }
         );
 

@@ -553,7 +553,7 @@ trait UnusedDelimLint {
                 if let Some((init, els)) = local.kind.init_else_opt() {
                     if els.is_some()
                         && let ExprKind::Paren(paren) = &init.kind
-                        && !init.span.eq_ctxt(paren.span)
+                        && init.span.ctxt() != paren.span.ctxt()
                     {
                         // This branch prevents cases where parentheses wrap an expression
                         // resulting from macro expansion, such as:
@@ -788,7 +788,7 @@ impl UnusedParens {
     /// such a pattern can be required by the matcher even when they are redundant in the
     /// expansion, so removing them would break the macro call. (Issue #86959)
     fn pat_is_macro_arg(pat_span: Span, parent_span: Span) -> bool {
-        !pat_span.eq_ctxt(parent_span)
+        pat_span.ctxt() != parent_span.ctxt()
     }
 
     fn cast_followed_by_lt(&self, expr: &ast::Expr) -> Option<ast::NodeId> {

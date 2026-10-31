@@ -113,7 +113,9 @@ pub trait Interner:
     type Span: Span<Self>;
 
     type GenericArgs: GenericArgs<Self>;
-    type GenericArgsSlice: Copy + Debug + Hash + Eq + SliceLike<Item = Self::GenericArg>;
+    type GenericArgsSlice<'a>: Copy + Debug + Hash + Eq + SliceLike<Item = Self::GenericArg>
+    where
+        Self: 'a;
     type GenericArg: GenericArg<Self>;
     type Term: Term<Self>;
 
@@ -293,17 +295,18 @@ pub trait Interner:
         self,
         alias: ty::AliasConstKind<Self>,
     ) -> Option<ty::EarlyBinder<Self, Const<Self>>>;
+    fn anon_const_kind(self, def_id: Self::DefId) -> ty::AnonConstKind;
 
     fn def_span(self, def_id: Self::DefId) -> Self::Span;
 
     type AdtDef: AdtDef<Self>;
     fn adt_def(self, adt_def_id: Self::AdtId) -> Self::AdtDef;
 
-    fn trait_ref_and_own_args_for_alias(
+    fn trait_ref_and_own_args_for_alias<'a>(
         self,
         def_id: Self::TraitAssocTermId,
-        args: Self::GenericArgs,
-    ) -> (ty::TraitRef<Self>, Self::GenericArgsSlice);
+        args: &'a Self::GenericArgs,
+    ) -> (ty::TraitRef<Self>, Self::GenericArgsSlice<'a>);
 
     fn mk_args(self, args: &[Self::GenericArg]) -> Self::GenericArgs;
 
@@ -351,6 +354,15 @@ pub trait Interner:
     fn assumptions_on_binders(self) -> bool;
 
     fn renormalize_rigid_aliases(self) -> bool;
+
+    fn erase_and_anonymize_regions<T: TypeFoldable<Self>>(self, value: T) -> T;
+
+    fn const_eval_resolve_for_typeck(
+        self,
+        typing_env: Self::TypingEnv,
+        ct: ty::AliasConst<Self>,
+        span: Self::Span,
+    ) -> ty::ConstEvalResult<Self>;
 
     fn coroutine_hidden_types(
         self,

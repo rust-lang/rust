@@ -1,0 +1,21 @@
+error[E0107]: missing generics for struct `Ref`
+  --> $DIR/with-fn-mut-and-impl-sized.rs:11:22
+   |
+LL | fn delay<Make: FnMut(Ref) -> C, C: std::mem::TransmuteFrom()>(make: Make) -> impl Sized {}
+   |                      ^^^ expected 1 generic argument
+   |
+help: add missing generic argument
+   |
+LL | fn delay<Make: FnMut(Ref<T>) -> C, C: std::mem::TransmuteFrom()>(make: Make) -> impl Sized {}
+   |                         +++
+
+error[E0220]: associated type `Output` not found for `TransmuteFrom`
+  --> $DIR/with-fn-mut-and-impl-sized.rs:11:46
+   |
+LL | fn delay<Make: FnMut(Ref) -> C, C: std::mem::TransmuteFrom()>(make: Make) -> impl Sized {}
+   |                                              ^^^^^^^^^^^^^^^ associated type `Output` not found
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0107, E0220.
+For more information about an error, try `rustc --explain E0107`.

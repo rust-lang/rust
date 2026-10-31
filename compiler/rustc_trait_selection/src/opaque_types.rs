@@ -137,7 +137,7 @@ struct LazyOpaqueTyEnv<'tcx> {
     ///     `type Opaque<'a: 'static, 'b: 'c, 'c: 'b> = impl Sized;`
     ///     Identity args: `['a, 'b, 'c]`
     ///     Canonical args: `['static, 'b, 'b]`
-    canonical_args: std::cell::OnceCell<ty::GenericArgsRef<'tcx>>,
+    canonical_args: std::cell::OnceCell<GenericArgs<'tcx>>,
 }
 
 impl<'tcx> LazyOpaqueTyEnv<'tcx> {
@@ -158,7 +158,7 @@ impl<'tcx> LazyOpaqueTyEnv<'tcx> {
         self.get_canonical_args()[param_index].error_reported()
     }
 
-    fn get_canonical_args(&self) -> ty::GenericArgsRef<'tcx> {
+    fn get_canonical_args(&self) -> GenericArgs<'tcx> {
         if let Some(&canonical_args) = self.canonical_args.get() {
             return canonical_args;
         }

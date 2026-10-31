@@ -11,8 +11,8 @@ use rustc_infer::traits::{
     ObligationCauseCode, PredicateObligation, PredicateObligations, WellFormedLoc,
 };
 use rustc_middle::ty::{
-    self, DelayedSet, GenericArgsRef, PredicateProxy, Term, TermKind, Ty, TyCtxt,
-    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+    self, DelayedSet, GenericArgs, PredicateProxy, Term, TermKind, Ty, TyCtxt, TypeSuperVisitable,
+    TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
 use rustc_session::diagnostics::feature_err;
 use rustc_span::def_id::{DefId, LocalDefId};
@@ -187,6 +187,13 @@ pub fn clause_obligations<'tcx>(
             wf.add_wf_preds_for_term(ty.into());
         }
         ty::ClauseKind::Projection(t) => {
+            if !t.projection_term.kind.is_type() {
+                assert!(matches!(
+                    t.projection_term.kind,
+                    ty::AliasTermKind::ProjectionConst { .. }
+                ));
+                wf.require_const_item_ty(t.projection_term.expect_ct());
+            }
             wf.add_wf_preds_for_projection_term(t.projection_term);
             wf.add_wf_preds_for_term(t.term);
         }
@@ -274,7 +281,7 @@ enum Elaborate {
 ///
 /// Note that bounds that can be expressed as associated item bounds are **not**
 /// super predicates. This means that form 2 and 3 from above are only relevant if
-/// the [`GenericArgsRef`] of the projection type are not its identity arguments.
+/// the [`GenericArgs`] of the projection type are not its identity arguments.
 fn extend_cause_with_original_assoc_item_obligation<'tcx>(
     tcx: TyCtxt<'tcx>,
     item: Option<&hir::Item<'tcx>>,
@@ -532,7 +539,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         data.args.visit_with(self);
     }
 
-    fn add_wf_preds_for_projection_args(&mut self, args: GenericArgsRef<'tcx>) {
+    fn add_wf_preds_for_projection_args(&mut self, args: GenericArgs<'tcx>) {
         let tcx = self.tcx();
         let cause = self.cause(ObligationCauseCode::WellFormed(WellFormedLoc::None));
         let param_env = self.param_env;
@@ -572,6 +579,33 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         }
     }
 
+    fn require_const_item_ty(&mut self, ct: ty::AliasConst<'tcx>) {
+        let ty = ct.type_of(self.tcx()).skip_norm_wip();
+
+        if ct.kind.is_direct_const(self.tcx()) {
+            // This is already checked in `wfcheck::check_const_item`.
+            return;
+        }
+
+        if self.tcx().features().const_param_ty_unchecked() || ty.has_escaping_bound_vars() {
+            return;
+        }
+
+        let cause = self.cause(ObligationCauseCode::ConstItemTy(ty));
+        let trait_ref = ty::TraitRef::new(
+            self.tcx(),
+            self.tcx().require_lang_item(LangItem::ConstParamTy, cause.span),
+            [ty],
+        );
+        self.out.push(traits::Obligation::with_depth(
+            self.tcx(),
+            cause,
+            self.recursion_depth,
+            self.param_env,
+            ty::Binder::dummy(trait_ref),
+        ));
+    }
+
     /// Pushes all the predicates needed to validate that `term` is WF into `out`.
     #[instrument(level = "debug", skip(self))]
     fn add_wf_preds_for_term(&mut self, term: Term<'tcx>) {
@@ -583,7 +617,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
     fn nominal_obligations(
         &mut self,
         def_id: DefId,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
         mut push_obligation: impl FnMut(&mut Self, PredicateObligation<'tcx>),
     ) {
         // PERF: `Sized`'s predicates include `MetaSized`, but both are compiler implemented marker
@@ -1028,8 +1062,16 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
 
                 if !t.has_escaping_bound_vars() {
                     for projection in data.projection_bounds() {
+                        let projection = projection.with_self_ty(tcx, t);
+                        let projection_pred = projection.skip_binder();
+                        if matches!(
+                            projection_pred.projection_term.kind,
+                            ty::AliasTermKind::ProjectionConst { .. }
+                        ) {
+                            self.require_const_item_ty(projection_pred.projection_term.expect_ct());
+                        }
+
                         let pred_binder = projection
-                            .with_self_ty(tcx, t)
                             .map_bound(|p| {
                                 p.term.as_const().map(|ct| {
                                     let assoc_const_ty = tcx

@@ -700,9 +700,19 @@ struct InvariantOpaque<'a> {
 }
 
 // Opaque pointer types
+
+/// Corresponds to `LLVMContextRef`.
+#[derive(Clone, Copy)]
+#[repr(transparent)]
+pub(crate) struct Context<'ll> {
+    pub(crate) llcx_raw: ptr::NonNull<ContextRaw>,
+    pub(crate) _invariant_ll: PhantomData<fn(&'ll ()) -> &'ll ()>,
+}
+
 unsafe extern "C" {
+    /// Pointee of the raw pointer that is wrapped by a lifetime-branded [`Context`].
+    pub(crate) type ContextRaw;
     pub(crate) type Module;
-    pub(crate) type Context;
     pub(crate) type Type;
     pub(crate) type Value;
     pub(crate) type ConstantInt;
@@ -887,11 +897,11 @@ pub(crate) type GetSymbolsErrorCallback = unsafe extern "C" fn(*const c_char) ->
 
 unsafe extern "C" {
     // Create and destroy contexts.
-    pub(crate) fn LLVMContextCreate() -> ptr::NonNull<Context>;
-    pub(crate) fn LLVMContextDispose(C: ptr::NonNull<Context>);
-    pub(crate) fn LLVMContextSetDiscardValueNames(C: &Context, Discard: Bool);
-    pub(crate) fn LLVMGetMDKindIDInContext(
-        C: &Context,
+    pub(crate) fn LLVMContextCreate() -> ptr::NonNull<ContextRaw>;
+    pub(crate) fn LLVMContextDispose(C: ptr::NonNull<ContextRaw>);
+    pub(crate) fn LLVMContextSetDiscardValueNames<'ll>(C: Context<'ll>, Discard: Bool);
+    pub(crate) fn LLVMGetMDKindIDInContext<'ll>(
+        C: Context<'ll>,
         Name: *const c_uchar, // See "PTR_LEN_STR".
         SLen: c_uint,
     ) -> MetadataKindId;
@@ -905,9 +915,9 @@ unsafe extern "C" {
     pub(crate) fn LLVMDisposeTargetMachine(T: ptr::NonNull<TargetMachine>);
 
     // Create modules.
-    pub(crate) fn LLVMModuleCreateWithNameInContext(
+    pub(crate) fn LLVMModuleCreateWithNameInContext<'ll>(
         ModuleID: *const c_char,
-        C: &Context,
+        C: Context<'ll>,
     ) -> *const Module;
     pub(crate) safe fn LLVMCloneModule(M: &Module) -> &Module;
 
@@ -931,24 +941,24 @@ unsafe extern "C" {
     pub(crate) safe fn LLVMGetTypeKind(Ty: &Type) -> RawEnum<TypeKind>;
 
     // Operations on integer types
-    pub(crate) fn LLVMInt1TypeInContext(C: &Context) -> &Type;
-    pub(crate) fn LLVMInt8TypeInContext(C: &Context) -> &Type;
-    pub(crate) fn LLVMInt16TypeInContext(C: &Context) -> &Type;
-    pub(crate) fn LLVMInt32TypeInContext(C: &Context) -> &Type;
-    pub(crate) fn LLVMInt64TypeInContext(C: &Context) -> &Type;
-    pub(crate) safe fn LLVMIntTypeInContext(C: &Context, NumBits: c_uint) -> &Type;
+    pub(crate) fn LLVMInt1TypeInContext<'ll>(C: Context<'ll>) -> &'ll Type;
+    pub(crate) fn LLVMInt8TypeInContext<'ll>(C: Context<'ll>) -> &'ll Type;
+    pub(crate) fn LLVMInt16TypeInContext<'ll>(C: Context<'ll>) -> &'ll Type;
+    pub(crate) fn LLVMInt32TypeInContext<'ll>(C: Context<'ll>) -> &'ll Type;
+    pub(crate) fn LLVMInt64TypeInContext<'ll>(C: Context<'ll>) -> &'ll Type;
+    pub(crate) safe fn LLVMIntTypeInContext<'ll>(C: Context<'ll>, NumBits: c_uint) -> &'ll Type;
 
     pub(crate) fn LLVMGetIntTypeWidth(IntegerTy: &Type) -> c_uint;
 
     // Operations on real types
-    pub(crate) fn LLVMHalfTypeInContext(C: &Context) -> &Type;
-    pub(crate) fn LLVMFloatTypeInContext(C: &Context) -> &Type;
-    pub(crate) fn LLVMDoubleTypeInContext(C: &Context) -> &Type;
-    pub(crate) fn LLVMFP128TypeInContext(C: &Context) -> &Type;
+    pub(crate) fn LLVMHalfTypeInContext<'ll>(C: Context<'ll>) -> &'ll Type;
+    pub(crate) fn LLVMFloatTypeInContext<'ll>(C: Context<'ll>) -> &'ll Type;
+    pub(crate) fn LLVMDoubleTypeInContext<'ll>(C: Context<'ll>) -> &'ll Type;
+    pub(crate) fn LLVMFP128TypeInContext<'ll>(C: Context<'ll>) -> &'ll Type;
 
     // Operations on non-IEEE real types
-    pub(crate) fn LLVMBFloatTypeInContext(C: &Context) -> &Type;
-    pub(crate) fn LLVMPPCFP128TypeInContext(C: &Context) -> &Type;
+    pub(crate) fn LLVMBFloatTypeInContext<'ll>(C: Context<'ll>) -> &'ll Type;
+    pub(crate) fn LLVMPPCFP128TypeInContext<'ll>(C: Context<'ll>) -> &'ll Type;
 
     // Operations on function types
     pub(crate) fn LLVMFunctionType<'a>(
@@ -963,15 +973,18 @@ unsafe extern "C" {
     pub(crate) fn LLVMIsFunctionVarArg(FunctionTy: &Type) -> Bool;
 
     // Operations on struct types
-    pub(crate) fn LLVMStructTypeInContext<'a>(
-        C: &'a Context,
-        ElementTypes: *const &'a Type,
+    pub(crate) fn LLVMStructTypeInContext<'ll>(
+        C: Context<'ll>,
+        ElementTypes: *const &'ll Type,
         ElementCount: c_uint,
         Packed: Bool,
-    ) -> &'a Type;
+    ) -> &'ll Type;
 
     // Operations on array, pointer, and vector types (sequence types)
-    pub(crate) safe fn LLVMPointerTypeInContext(C: &Context, AddressSpace: c_uint) -> &Type;
+    pub(crate) safe fn LLVMPointerTypeInContext<'ll>(
+        C: Context<'ll>,
+        AddressSpace: c_uint,
+    ) -> &'ll Type;
     pub(crate) fn LLVMVectorType(ElementType: &Type, ElementCount: c_uint) -> &Type;
     pub(crate) fn LLVMScalableVectorType(ElementType: &Type, ElementCount: c_uint) -> &Type;
 
@@ -979,7 +992,7 @@ unsafe extern "C" {
     pub(crate) fn LLVMGetVectorSize(VectorTy: &Type) -> c_uint;
 
     // Operations on other types
-    pub(crate) fn LLVMVoidTypeInContext(C: &Context) -> &Type;
+    pub(crate) fn LLVMVoidTypeInContext<'ll>(C: Context<'ll>) -> &'ll Type;
 
     // Operations on all values
     pub(crate) fn LLVMTypeOf(Val: &Value) -> &Type;
@@ -1013,16 +1026,16 @@ unsafe extern "C" {
     pub(crate) fn LLVMGetPoison(Ty: &Type) -> &Value;
 
     // Operations on metadata
-    pub(crate) fn LLVMMDStringInContext2(
-        C: &Context,
+    pub(crate) fn LLVMMDStringInContext2<'ll>(
+        C: Context<'ll>,
         Str: *const c_uchar, // See "PTR_LEN_STR".
         SLen: size_t,
-    ) -> &Metadata;
-    pub(crate) fn LLVMMDNodeInContext2<'a>(
-        C: &'a Context,
-        Vals: *const &'a Metadata,
+    ) -> &'ll Metadata;
+    pub(crate) fn LLVMMDNodeInContext2<'ll>(
+        C: Context<'ll>,
+        Vals: *const &'ll Metadata,
         Count: size_t,
-    ) -> &'a Metadata;
+    ) -> &'ll Metadata;
     pub(crate) fn LLVMAddNamedMetadataOperand<'a>(
         M: &'a Module,
         Name: *const c_char,
@@ -1046,18 +1059,18 @@ unsafe extern "C" {
         Length: u64,
     ) -> &'a Value;
     pub(crate) fn LLVMArrayType2(ElementType: &Type, ElementCount: u64) -> &Type;
-    pub(crate) fn LLVMConstStringInContext2(
-        C: &Context,
+    pub(crate) fn LLVMConstStringInContext2<'ll>(
+        C: Context<'ll>,
         Str: *const c_uchar, // See "PTR_LEN_STR".
         Length: size_t,
         DontNullTerminate: Bool,
-    ) -> &Value;
-    pub(crate) fn LLVMConstStructInContext<'a>(
-        C: &'a Context,
-        ConstantVals: *const &'a Value,
+    ) -> &'ll Value;
+    pub(crate) fn LLVMConstStructInContext<'ll>(
+        C: Context<'ll>,
+        ConstantVals: *const &'ll Value,
         Count: c_uint,
         Packed: Bool,
-    ) -> &'a Value;
+    ) -> &'ll Value;
     pub(crate) fn LLVMConstNamedStruct<'a>(
         StructTy: &'a Type,
         ConstantVals: *const &'a Value,
@@ -1121,13 +1134,13 @@ unsafe extern "C" {
     pub(crate) fn LLVMGetNextGlobalAlias(GlobalAlias: &Value) -> Option<&Value>;
 
     // Operations on attributes
-    pub(crate) fn LLVMCreateStringAttribute(
-        C: &Context,
+    pub(crate) fn LLVMCreateStringAttribute<'ll>(
+        C: Context<'ll>,
         Name: *const c_uchar, // See "PTR_LEN_STR".
         NameLen: c_uint,
         Value: *const c_uchar, // See "PTR_LEN_STR".
         ValueLen: c_uint,
-    ) -> &Attribute;
+    ) -> &'ll Attribute;
 
     // Operations on functions
     pub(crate) fn LLVMSetFunctionCallConv(Fn: &Value, CC: c_uint);
@@ -1169,11 +1182,11 @@ unsafe extern "C" {
 
     // Operations on basic blocks
     pub(crate) fn LLVMGetBasicBlockParent(BB: &BasicBlock) -> &Value;
-    pub(crate) fn LLVMAppendBasicBlockInContext<'a>(
-        C: &'a Context,
-        Fn: &'a Value,
+    pub(crate) fn LLVMAppendBasicBlockInContext<'ll>(
+        C: Context<'ll>,
+        Fn: &'ll Value,
         Name: *const c_char,
-    ) -> &'a BasicBlock;
+    ) -> &'ll BasicBlock;
 
     // Operations on instructions
     pub(crate) fn LLVMIsAInstruction(Val: &Value) -> Option<&Value>;
@@ -1196,10 +1209,10 @@ unsafe extern "C" {
     );
 
     // Instruction builders
-    pub(crate) fn LLVMCreateBuilderInContext(C: &Context) -> &mut Builder<'_>;
+    pub(crate) fn LLVMCreateBuilderForModule<'ll>(M: &'ll Module) -> ptr::NonNull<Builder<'ll>>;
     pub(crate) fn LLVMPositionBuilderAtEnd<'a>(Builder: &Builder<'a>, Block: &'a BasicBlock);
     pub(crate) fn LLVMGetInsertBlock<'a>(Builder: &Builder<'a>) -> &'a BasicBlock;
-    pub(crate) fn LLVMDisposeBuilder<'a>(Builder: &'a mut Builder<'a>);
+    pub(crate) fn LLVMDisposeBuilder<'ll>(Builder: ptr::NonNull<Builder<'ll>>);
 
     // Metadata
     pub(crate) fn LLVMSetCurrentDebugLocation2<'a>(Builder: &Builder<'a>, Loc: *const Metadata);
@@ -1662,7 +1675,7 @@ unsafe extern "C" {
 
     pub(crate) fn LLVMIsMultithreaded() -> Bool;
 
-    pub(crate) fn LLVMStructCreateNamed(C: &Context, Name: *const c_char) -> &Type;
+    pub(crate) fn LLVMStructCreateNamed<'ll>(C: Context<'ll>, Name: *const c_char) -> &'ll Type;
 
     pub(crate) fn LLVMStructSetBody<'a>(
         StructTy: &'a Type,
@@ -1674,7 +1687,7 @@ unsafe extern "C" {
     pub(crate) fn LLVMCountStructElementTypes(StructTy: &Type) -> c_uint;
     pub(crate) fn LLVMGetStructElementTypes<'a>(StructTy: &'a Type, Dest: *mut &'a Type);
 
-    pub(crate) safe fn LLVMMetadataAsValue<'a>(C: &'a Context, MD: &'a Metadata) -> &'a Value;
+    pub(crate) safe fn LLVMMetadataAsValue<'ll>(C: Context<'ll>, MD: &'ll Metadata) -> &'ll Value;
 
     pub(crate) safe fn LLVMSetUnnamedAddress(Global: &Value, UnnamedAddr: UnnamedAddr);
 
@@ -1764,7 +1777,7 @@ unsafe extern "C" {
     ) -> &'ll Metadata;
 
     pub(crate) fn LLVMDIBuilderCreateDebugLocation<'ll>(
-        Ctx: &'ll Context,
+        Ctx: Context<'ll>,
         Line: c_uint,
         Column: c_uint,
         Scope: &'ll Metadata,
@@ -2019,33 +2032,54 @@ unsafe extern "C" {
     ) -> Option<&Value>;
 
     // Operations on attributes
-    pub(crate) fn LLVMRustCreateAttrNoValue(C: &Context, attr: AttributeKind) -> &Attribute;
-    pub(crate) fn LLVMRustCreateAlignmentAttr(C: &Context, bytes: u64) -> &Attribute;
-    pub(crate) fn LLVMRustCreateDereferenceableAttr(C: &Context, bytes: u64) -> &Attribute;
-    pub(crate) fn LLVMRustCreateDereferenceableOrNullAttr(C: &Context, bytes: u64) -> &Attribute;
-    pub(crate) fn LLVMRustCreateByValAttr<'a>(C: &'a Context, ty: &'a Type) -> &'a Attribute;
-    pub(crate) fn LLVMRustCreateByRefAttr<'a>(C: &'a Context, ty: &'a Type) -> &'a Attribute;
-    pub(crate) fn LLVMRustCreateStructRetAttr<'a>(C: &'a Context, ty: &'a Type) -> &'a Attribute;
-    pub(crate) fn LLVMRustCreateElementTypeAttr<'a>(C: &'a Context, ty: &'a Type) -> &'a Attribute;
-    pub(crate) fn LLVMRustCreateUWTableAttr(C: &Context, async_: bool) -> &Attribute;
-    pub(crate) fn LLVMRustCreateAllocSizeAttr(C: &Context, size_arg: u32) -> &Attribute;
-    pub(crate) fn LLVMRustCreateAllocKindAttr(C: &Context, size_arg: u64) -> &Attribute;
-    pub(crate) fn LLVMRustCreateMemoryEffectsAttr(
-        C: &Context,
+    pub(crate) fn LLVMRustCreateAttrNoValue<'ll>(
+        C: Context<'ll>,
+        attr: AttributeKind,
+    ) -> &'ll Attribute;
+    pub(crate) fn LLVMRustCreateAlignmentAttr<'ll>(C: Context<'ll>, bytes: u64) -> &'ll Attribute;
+    pub(crate) fn LLVMRustCreateDereferenceableAttr<'ll>(
+        C: Context<'ll>,
+        bytes: u64,
+    ) -> &'ll Attribute;
+    pub(crate) fn LLVMRustCreateDereferenceableOrNullAttr<'ll>(
+        C: Context<'ll>,
+        bytes: u64,
+    ) -> &'ll Attribute;
+    pub(crate) fn LLVMRustCreateByValAttr<'ll>(C: Context<'ll>, ty: &'ll Type) -> &'ll Attribute;
+    pub(crate) fn LLVMRustCreateByRefAttr<'ll>(C: Context<'ll>, ty: &'ll Type) -> &'ll Attribute;
+    pub(crate) fn LLVMRustCreateStructRetAttr<'ll>(
+        C: Context<'ll>,
+        ty: &'ll Type,
+    ) -> &'ll Attribute;
+    pub(crate) fn LLVMRustCreateElementTypeAttr<'ll>(
+        C: Context<'ll>,
+        ty: &'ll Type,
+    ) -> &'ll Attribute;
+    pub(crate) fn LLVMRustCreateUWTableAttr<'ll>(C: Context<'ll>, async_: bool) -> &'ll Attribute;
+    pub(crate) fn LLVMRustCreateAllocSizeAttr<'ll>(
+        C: Context<'ll>,
+        size_arg: u32,
+    ) -> &'ll Attribute;
+    pub(crate) fn LLVMRustCreateAllocKindAttr<'ll>(
+        C: Context<'ll>,
+        size_arg: u64,
+    ) -> &'ll Attribute;
+    pub(crate) fn LLVMRustCreateMemoryEffectsAttr<'ll>(
+        C: Context<'ll>,
         effects: MemoryEffects,
-    ) -> &Attribute;
+    ) -> &'ll Attribute;
     /// ## Safety
     /// - Each of `LowerWords` and `UpperWords` must point to an array that is
     ///   long enough to fully define an integer of size `NumBits`, i.e. each
     ///   pointer must point to `NumBits.div_ceil(64)` elements or more.
     /// - The implementation will make its own copy of the pointed-to `u64`
     ///   values, so the pointers only need to outlive this function call.
-    pub(crate) fn LLVMRustCreateRangeAttribute(
-        C: &Context,
+    pub(crate) fn LLVMRustCreateRangeAttribute<'ll>(
+        C: Context<'ll>,
         NumBits: c_uint,
         LowerWords: *const u64,
         UpperWords: *const u64,
-    ) -> &Attribute;
+    ) -> &'ll Attribute;
 
     // Operations on functions
     pub(crate) fn LLVMRustAddFunctionAttributes<'a>(
@@ -2560,12 +2594,12 @@ unsafe extern "C" {
         Target: &TargetMachine,
     ) -> bool;
     pub(crate) fn LLVMRustFreeThinLTOData(Data: &'static mut ThinLTOData);
-    pub(crate) fn LLVMRustParseBitcodeForLTO(
-        Context: &Context,
+    pub(crate) fn LLVMRustParseBitcodeForLTO<'ll>(
+        Context: Context<'ll>,
         Data: *const u8,
         len: usize,
         Identifier: *const c_char,
-    ) -> Option<&Module>;
+    ) -> Option<&'ll Module>;
 
     pub(crate) fn LLVMRustLinkerNew(M: &Module) -> &mut Linker<'_>;
     pub(crate) fn LLVMRustLinkerAdd(
@@ -2581,20 +2615,20 @@ unsafe extern "C" {
     );
 
     /// Removes the currently-installed `DiagnosticHandler`, and returns an owning pointer to it.
-    pub(crate) fn LLVMRustContextTakeDiagnosticHandler(
-        Context: &Context,
+    pub(crate) fn LLVMRustContextTakeDiagnosticHandler<'ll>(
+        Context: Context<'ll>,
     ) -> Option<ptr::NonNull<DiagnosticHandler>>;
 
     /// Installs a diagnostic handler that was previously removed by
     /// [`LLVMRustContextTakeDiagnosticHandler`].
-    pub(crate) fn LLVMRustContextSetDiagnosticHandler(
-        context: &Context,
+    pub(crate) fn LLVMRustContextSetDiagnosticHandler<'ll>(
+        context: Context<'ll>,
         diagnostic_handler: Option<ptr::NonNull<DiagnosticHandler>>,
     );
 
     /// Installs a custom diagnostic handler.
-    pub(crate) fn LLVMRustContextConfigureDiagnosticHandler(
-        context: &Context,
+    pub(crate) fn LLVMRustContextConfigureDiagnosticHandler<'ll>(
+        context: Context<'ll>,
         diagnostic_handler_callback: DiagnosticHandlerCallback,
         diagnostic_handler_callback_data: *mut c_void,
         remark_all_passes: bool,

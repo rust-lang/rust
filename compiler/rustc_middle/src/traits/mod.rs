@@ -29,7 +29,7 @@ pub use self::select::{EvaluationCache, EvaluationResult, OverflowError, Selecti
 use crate::mir::ConstraintCategory;
 pub use crate::traits::solve::BuiltinImplSource;
 use crate::ty::abstract_const::NotConstEvaluatable;
-use crate::ty::{self, AdtKind, GenericArgsRef, Ty};
+use crate::ty::{self, AdtKind, GenericArgs, Ty};
 
 /// The reason why we incurred this obligation; used for error reporting.
 ///
@@ -415,6 +415,10 @@ pub enum ObligationCauseCode<'tcx> {
     /// Requirement for a `const N: Ty` to implement `Ty: ConstParamTy`
     ConstParam(Ty<'tcx>),
 
+    /// Requirement for the type of a const item used in the type system to implement
+    /// `ConstParamTy`.
+    ConstItemTy(Ty<'tcx>),
+
     /// Obligations emitted during the normalization of a free type alias.
     TypeAlias(ObligationCauseCodeHandle<'tcx>, Span, DefId),
 
@@ -754,7 +758,7 @@ impl<'tcx, N> ImplSource<'tcx, N> {
 #[derive(TypeFoldable, TypeVisitable)]
 pub struct ImplSourceUserDefinedData<'tcx, N> {
     pub impl_def_id: DefId,
-    pub args: GenericArgsRef<'tcx>,
+    pub args: GenericArgs<'tcx>,
     pub nested: ThinVec<N>,
 }
 

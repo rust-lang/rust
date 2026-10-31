@@ -225,6 +225,11 @@ note: associated function defined here
 LL | pub trait Trait: Sized {
 LL |     fn static_self() -> F { F }
    |        ^^^^^^^^^^^
+note: associated function provided through this `impl`
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:14:1
+   |
+LL | impl Trait for F {}
+   | ^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/unused-target-expr-in-glob-or-list.rs:107:37
@@ -290,6 +295,11 @@ note: associated function defined here
 LL | pub trait Trait: Sized {
 LL |     fn static_self() -> F { F }
    |        ^^^^^^^^^^^
+note: associated function provided through this `impl`
+  --> $DIR/unused-target-expr-in-glob-or-list.rs:14:1
+   |
+LL | impl Trait for F {}
+   | ^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/unused-target-expr-in-glob-or-list.rs:127:33

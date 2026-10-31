@@ -19,7 +19,6 @@
 //!
 //! The original `lse.S` has some truly horrifying code that expects to be compiled multiple times with different constants.
 //! We do something similar, but with macro arguments.
-#![cfg_attr(feature = "c", allow(unused_macros))] // avoid putting the macros into a submodule
 
 use core::sync::atomic::{AtomicU8, Ordering};
 
@@ -191,7 +190,6 @@ macro_rules! sanitize_ptr {
 macro_rules! compare_and_swap {
     ($ordering:ident, $bytes:tt, $name:ident) => {
         intrinsics! {
-            #[maybe_use_optimized_c_shim]
             pub unsafe extern "C" fn $name (
                 expected: int_ty!($bytes), desired: int_ty!($bytes), ptr: *mut int_ty!($bytes)
             ) -> int_ty!($bytes) {
@@ -242,7 +240,6 @@ macro_rules! compare_and_swap {
 macro_rules! compare_and_swap_u128 {
     ($ordering:ident, $name:ident) => {
         intrinsics! {
-            #[maybe_use_optimized_c_shim]
             pub unsafe extern "C" fn $name (
                 expected: u128, desired: u128, ptr: *mut u128
             ) -> u128 {
@@ -302,7 +299,6 @@ macro_rules! compare_and_swap_u128 {
 macro_rules! swap {
     ($ordering:ident, $bytes:tt, $name:ident) => {
         intrinsics! {
-            #[maybe_use_optimized_c_shim]
             pub unsafe extern "C" fn $name (
                 left: int_ty!($bytes), right_ptr: *mut int_ty!($bytes)
             ) -> int_ty!($bytes) {
@@ -346,7 +342,6 @@ macro_rules! swap {
 macro_rules! fetch_op {
     ($ordering:ident, $bytes:tt, $name:ident, $op:literal, $lse_op:literal) => {
         intrinsics! {
-            #[maybe_use_optimized_c_shim]
             pub unsafe extern "C" fn $name (
                 val: int_ty!($bytes), ptr: *mut int_ty!($bytes)
             ) -> int_ty!($bytes) {

@@ -4,14 +4,6 @@ error: `#![doc(keyword = "...")]` isn't allowed as a crate-level attribute
 LL | #![doc(keyword = "match")]
    |        ^^^^^^^
 
-error: nonexistent keyword `tadam` used in `#[doc(keyword = "...")]`
-  --> $DIR/doc_keyword.rs:18:17
-   |
-LL | #[doc(keyword = "tadam")]
-   |                 ^^^^^^^
-   |
-   = help: only existing keywords are allowed in core/std
-
 error: `#[doc(keyword = "...")]` should be used on anonymous constants
   --> $DIR/doc_keyword.rs:7:7
    |
@@ -23,6 +15,14 @@ error: `#[doc(keyword = "...")]` should be used on anonymous constants
    |
 LL |     #[doc(keyword = "match")]
    |           ^^^^^^^
+
+error: nonexistent keyword `tadam` used in `#[doc(keyword = "...")]`
+  --> $DIR/doc_keyword.rs:18:17
+   |
+LL | #[doc(keyword = "tadam")]
+   |                 ^^^^^^^
+   |
+   = help: only existing keywords are allowed in core/std
 
 error: aborting due to 4 previous errors
 

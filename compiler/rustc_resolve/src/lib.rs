@@ -1745,7 +1745,7 @@ impl<'tcx> Resolver<'_, 'tcx> {
         }
 
         // A relative span's parent must be an absolute span.
-        debug_assert_eq!(span.data_untracked().parent, None);
+        debug_assert_eq!(span.parent(), None);
         let _id = self.tcx.untracked().source_span.push(span);
         debug_assert_eq!(_id, def_id);
 

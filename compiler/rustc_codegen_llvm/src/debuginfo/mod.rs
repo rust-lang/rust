@@ -15,7 +15,7 @@ use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir::def_id::{DefId, DefIdMap};
 use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
-use rustc_middle::ty::{self, GenericArgsRef, Instance, Ty, TypeVisitableExt, Unnormalized};
+use rustc_middle::ty::{self, GenericArgs, Instance, Ty, TypeVisitableExt, Unnormalized};
 use rustc_session::Session;
 use rustc_session::config::{self, DebugInfo};
 use rustc_span::{
@@ -55,7 +55,7 @@ pub(crate) struct CodegenUnitDebugContext<'ll, 'tcx> {
     created_files: RefCell<UnordMap<Option<(StableSourceFileId, SourceFileHash)>, &'ll DIFile>>,
 
     type_map: metadata::TypeMap<'ll, 'tcx>,
-    adt_stack: RefCell<Vec<(DefId, GenericArgsRef<'tcx>)>>,
+    adt_stack: RefCell<Vec<(DefId, GenericArgs<'tcx>)>>,
     namespace_map: RefCell<DefIdMap<&'ll DIScope>>,
     recursion_marker_type: OnceCell<&'ll DIType>,
 }
@@ -121,7 +121,7 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
 
 impl<'ll> Builder<'_, 'll, '_> {
     pub(crate) fn get_dbg_loc(&self) -> Option<&'ll DILocation> {
-        unsafe { llvm::LLVMGetCurrentDebugLocation2(self.llbuilder) }
+        unsafe { llvm::LLVMGetCurrentDebugLocation2(self.llbuilder()) }
     }
 }
 
@@ -287,7 +287,7 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         fn get_template_parameters<'ll, 'tcx>(
             cx: &CodegenCx<'ll, 'tcx>,
             generics: &ty::Generics,
-            args: GenericArgsRef<'tcx>,
+            args: GenericArgs<'tcx>,
         ) -> &'ll DIArray {
             if args.terms().next().is_none() {
                 return create_DIArray(DIB(cx), &[]);
@@ -576,13 +576,13 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
 
     fn set_dbg_loc(&mut self, dbg_loc: &'ll DILocation) {
         unsafe {
-            llvm::LLVMSetCurrentDebugLocation2(self.llbuilder, dbg_loc);
+            llvm::LLVMSetCurrentDebugLocation2(self.llbuilder(), dbg_loc);
         }
     }
 
     fn clear_dbg_loc(&mut self) {
         unsafe {
-            llvm::LLVMSetCurrentDebugLocation2(self.llbuilder, ptr::null());
+            llvm::LLVMSetCurrentDebugLocation2(self.llbuilder(), ptr::null());
         }
     }
 

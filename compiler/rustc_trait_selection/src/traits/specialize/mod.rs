@@ -21,9 +21,7 @@ use rustc_middle::query::LocalCrate;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::fast_reject::{self, TreatParams};
 use rustc_middle::ty::print::PrintTraitRefExt as _;
-use rustc_middle::ty::{
-    self, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt, TypingMode, Unnormalized,
-};
+use rustc_middle::ty::{self, GenericArgs, Ty, TyCtxt, TypeVisitableExt, TypingMode, Unnormalized};
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, bug, sym};
 use specialization_graph::GraphExt;
 use tracing::{debug, instrument};
@@ -87,9 +85,9 @@ pub fn translate_args<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     source_impl: DefId,
-    source_args: GenericArgsRef<'tcx>,
+    source_args: GenericArgs<'tcx>,
     target_node: specialization_graph::Node,
-) -> GenericArgsRef<'tcx> {
+) -> GenericArgs<'tcx> {
     translate_args_with_cause(
         infcx,
         param_env,
@@ -110,10 +108,10 @@ pub fn translate_args_with_cause<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     source_impl: DefId,
-    source_args: GenericArgsRef<'tcx>,
+    source_args: GenericArgs<'tcx>,
     target_node: specialization_graph::Node,
     cause: &ObligationCause<'tcx>,
-) -> GenericArgsRef<'tcx> {
+) -> GenericArgs<'tcx> {
     debug!(
         "translate_args({:?}, {:?}, {:?}, {:?})",
         param_env, source_impl, source_args, target_node
@@ -157,7 +155,7 @@ fn fulfill_implication<'tcx>(
     source_impl: DefId,
     target_impl: DefId,
     cause: &ObligationCause<'tcx>,
-) -> Result<GenericArgsRef<'tcx>, NoSolution> {
+) -> Result<GenericArgs<'tcx>, NoSolution> {
     debug!(
         "fulfill_implication({:?}, trait_ref={:?} |- {:?} applies)",
         param_env, source_trait_ref, target_impl

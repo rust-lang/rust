@@ -16,7 +16,7 @@ use rustc_infer::traits::{Obligation, ObligationCause, ObligationCauseCode, Well
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
 };
-use rustc_middle::ty::{self, FnSig, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
+use rustc_middle::ty::{self, FnSig, GenericArgs, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{Ident, Span, bug, sym};
 use rustc_target::spec::{AbiMap, AbiMapping};
@@ -665,7 +665,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Expectation<'tcx>,
         tuple_arguments_flag: TupleArgumentsFlag,
         fn_id: SplatLoweringInfo<'tcx>,
-        callee_generic_args: Option<GenericArgsRef<'tcx>>,
+        callee_generic_args: Option<GenericArgs<'tcx>>,
     ) {
         let mut formal_inputs = Cow::Borrowed(fn_sig.inputs());
         if let (SplatLoweringInfo::FnDef(def_id), Some(args)) = (fn_id, callee_generic_args) {
@@ -1022,7 +1022,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .sess
                 .source_map()
                 .is_multiline(call_expr.span.with_lo(callee_expr.span.hi()))
-                && call_expr.span.eq_ctxt(callee_expr.span);
+                && call_expr.span.ctxt() == callee_expr.span.ctxt();
             if call_is_multiline {
                 err.span_suggestion(
                     callee_expr.span.shrink_to_hi(),
@@ -1127,7 +1127,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         call_hir_id: Option<HirId>,
         span: Span,
         callee_did: DefId,
-        callee_args: GenericArgsRef<'tcx>,
+        callee_args: GenericArgs<'tcx>,
     ) {
         let const_context = self.tcx.hir_body_const_context(self.body_def_id);
 

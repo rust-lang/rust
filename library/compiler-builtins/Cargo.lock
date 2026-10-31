@@ -521,12 +521,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "glob"
-version = "0.3.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e4eba85ea1d0a966a983acd07deee566e67395d2d96b6fb39e62b5a833f1eb0b"
-
-[[package]]
 name = "gmp-mpfr-sys"
 version = "1.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1304,9 +1298,6 @@ checksum = "16062d030850f35054e37746427b9febb74a2f24c9c6dd6fa2d0c13c5f53221e"
 name = "update-api-list"
 version = "0.1.0"
 dependencies = [
- "api-list-common",
- "getopts",
- "glob",
  "pretty_assertions",
  "regex",
 ]

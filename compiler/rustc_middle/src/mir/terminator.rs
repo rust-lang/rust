@@ -103,7 +103,13 @@ impl SwitchTargets {
     /// Returns true if all targets (including the fallback target) are distinct.
     #[inline]
     pub fn is_distinct(&self) -> bool {
-        self.targets.iter().collect::<FxHashSet<_>>().len() == self.targets.len()
+        match self.targets.as_slice() {
+            // ~95% of cases in our benchmark suite are 2 or 3 targets,
+            // Avoid allocating the HashSet for those.
+            &[a, b] => a != b,
+            &[a, b, c] => a != b && a != c && b != c,
+            targets => targets.iter().collect::<FxHashSet<_>>().len() == targets.len(),
+        }
     }
 }
 

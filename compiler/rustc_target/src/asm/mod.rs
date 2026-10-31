@@ -711,13 +711,19 @@ impl InlineAsmRegClass {
         })
     }
 
-    /// Returns the list of template modifiers that can be used with this
-    /// register class.
-    pub fn valid_modifiers(self, arch: InlineAsmArch) -> &'static [char] {
+    /// Returns the list of template modifiers that can be used with this register class, as well as
+    /// whether the `asm_experimental_reg` feature is enabled: there can be template modifiers that
+    /// apply to currently unstable registers, and we don't want to make these modifiers usable
+    /// without the feature gate.
+    pub fn valid_modifiers(
+        self,
+        arch: InlineAsmArch,
+        allow_experimental_reg: bool,
+    ) -> &'static [char] {
         match self {
             Self::X86(r) => r.valid_modifiers(arch),
             Self::Arm(r) => r.valid_modifiers(arch),
-            Self::AArch64(r) => r.valid_modifiers(arch),
+            Self::AArch64(r) => r.valid_modifiers(arch, allow_experimental_reg),
             Self::Amdgpu(r) => r.valid_modifiers(arch),
             Self::RiscV(r) => r.valid_modifiers(arch),
             Self::Nvptx(r) => r.valid_modifiers(arch),
@@ -1268,13 +1274,24 @@ impl InlineAsmClobberAbi {
                     x10, x11, x12, x13, x14, x15, x16, x17,
                     // t3-t6
                     x28, x29, x30, x31,
+
+                    // Only ABI_FLEN bits of the callee-saved floating point registers are
+                    // preserved. As LLVM doesn't have partial clobbers, this means we have to
+                    // clobber the callee-saved floating point registers as well as the temporary
+                    // registers.
                     // ft0-ft7
                     f0, f1, f2, f3, f4, f5, f6, f7,
+                    // fs0-fs1 (callee-saved)
+                    f8, f9,
                     // fa0-fa7
                     f10, f11, f12, f13, f14, f15, f16, f17,
+                    // fs2-fs11 (callee-saved)
+                    f18, f19, f20, f21, f22, f23, f24, f25,
+                    f26, f27,
                     // ft8-ft11
                     f28, f29, f30, f31,
 
+                    // v0-v31
                     v0, v1, v2, v3, v4, v5, v6, v7,
                     v8, v9, v10, v11, v12, v13, v14, v15,
                     v16, v17, v18, v19, v20, v21, v22, v23,
@@ -1293,12 +1310,14 @@ impl InlineAsmClobberAbi {
                     x5, x6, x7,
                     // a0-a5
                     x10, x11, x12, x13, x14, x15,
-                    // ft0-ft7
+
+                    // f0-f31
                     f0, f1, f2, f3, f4, f5, f6, f7,
-                    // fa0-fa7
-                    f10, f11, f12, f13, f14, f15, f16, f17,
-                    // ft8-ft11
-                    f28, f29, f30, f31,
+                    f8, f9, f10, f11, f12, f13, f14, f15,
+                    f16, f17, f18, f19, f20, f21, f22, f23,
+                    f24, f25, f26, f27, f28, f29, f30, f31,
+
+                    // v0-v31
 
                     v0, v1, v2, v3, v4, v5, v6, v7,
                     v8, v9, v10, v11, v12, v13, v14, v15,

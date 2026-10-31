@@ -14,7 +14,7 @@ use rustc_middle::ty::layout::{
     LayoutOfHelpers, TyAndLayout,
 };
 use rustc_middle::ty::{
-    self, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, TypingEnv, Variance,
+    self, GenericArgs, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, TypingEnv, Variance,
 };
 use rustc_span::{Span, span_bug};
 use rustc_structures::Limit;
@@ -360,7 +360,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     pub(super) fn resolve(
         &self,
         def: DefId,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
     ) -> InterpResult<'tcx, ty::Instance<'tcx>> {
         let _trace = enter_trace_span!(M, resolve::try_resolve, def = ?def);
         trace!("resolve: {:?}, {:#?}", def, args);

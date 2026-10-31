@@ -20,8 +20,7 @@ use crate::token::{
     self, CommentKind, Delimiter, DocFragmentKind, InvisibleOrigin, MetaVarKind, Token,
 };
 use crate::tokenstream::{
-    AttrTokenStream, AttrTokenTree, DelimSpacing, DelimSpan, LazyAttrTokenStream, Spacing,
-    TokenStream, TokenStreamIter, TokenTree,
+    DelimSpacing, DelimSpan, LazyTokenStream, Spacing, TokenStream, TokenStreamIter, TokenTree,
 };
 use crate::util::comments;
 use crate::util::literal::escape_string_symbol;
@@ -62,7 +61,9 @@ impl Attribute {
     pub fn get_normal_item(&self) -> &AttrItem {
         match &self.kind {
             AttrKind::Normal(normal) => &normal.item,
-            AttrKind::Synthetic(..) | AttrKind::DocComment(..) => unreachable!(),
+            AttrKind::Synthetic(..) | AttrKind::DocComment(..) | AttrKind::Generated(..) => {
+                unreachable!()
+            }
         }
     }
 
@@ -71,7 +72,9 @@ impl Attribute {
             AttrKind::Normal(..) => {
                 Attribute { kind: AttrKind::Synthetic(Box::new(synthetic_attr)), ..self }
             }
-            AttrKind::Synthetic(..) | AttrKind::DocComment(..) => unreachable!(),
+            AttrKind::Synthetic(..) | AttrKind::DocComment(..) | AttrKind::Generated(..) => {
+                unreachable!()
+            }
         }
     }
 }
@@ -84,6 +87,7 @@ impl AttributeExt for Attribute {
                 _ => None,
             },
             AttrKind::Synthetic(..) | AttrKind::DocComment(..) => None,
+            AttrKind::Generated(generated) => generated.value_span(),
         }
     }
 
@@ -91,9 +95,10 @@ impl AttributeExt for Attribute {
     /// So `#[doc = "doc"]` (which is a doc comment) and `#[doc(...)]` (which is not
     /// a doc comment) will return `false`.
     fn is_doc_comment(&self) -> Option<Span> {
-        match self.kind {
+        match &self.kind {
             AttrKind::Normal(..) | AttrKind::Synthetic(..) => None,
             AttrKind::DocComment(..) => Some(self.span),
+            AttrKind::Generated(generated) => generated.is_doc_comment(),
         }
     }
 
@@ -104,6 +109,7 @@ impl AttributeExt for Attribute {
             AttrKind::Normal(normal) => normal.item.name(),
             AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace(_)) => None,
             AttrKind::DocComment(..) => None,
+            AttrKind::Generated(generated) => generated.name(),
         }
     }
 
@@ -115,6 +121,7 @@ impl AttributeExt for Attribute {
             }
             AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace(_)) => None,
             AttrKind::DocComment(_, _) => None,
+            AttrKind::Generated(generated) => generated.symbol_path(),
         }
     }
 
@@ -123,6 +130,7 @@ impl AttributeExt for Attribute {
             AttrKind::Normal(attr) => Some(attr.item.path.span),
             AttrKind::Synthetic(..) => unreachable!(),
             AttrKind::DocComment(_, _) => None,
+            AttrKind::Generated(generated) => generated.path_span(),
         }
     }
 
@@ -139,6 +147,7 @@ impl AttributeExt for Attribute {
                         .all(|(s, n)| s.args.is_none() && s.ident.name == *n)
             }
             AttrKind::Synthetic(..) | AttrKind::DocComment(..) => false,
+            AttrKind::Generated(generated) => generated.path_matches(name),
         }
     }
 
@@ -147,6 +156,7 @@ impl AttributeExt for Attribute {
             AttrKind::Normal(normal) => matches!(normal.item.args, AttrArgs::Empty),
             AttrKind::Synthetic(..) => unreachable!(),
             AttrKind::DocComment(..) => false,
+            AttrKind::Generated(generated) => generated.is_word(),
         }
     }
 
@@ -160,7 +170,7 @@ impl AttributeExt for Attribute {
     fn meta_item_list(&self) -> Option<ThinVec<MetaItemInner>> {
         match &self.kind {
             AttrKind::Normal(normal) => normal.item.meta_item_list(),
-            AttrKind::Synthetic(..) | AttrKind::DocComment(..) => None,
+            AttrKind::Synthetic(..) | AttrKind::DocComment(..) | AttrKind::Generated(..) => None,
         }
     }
 
@@ -184,6 +194,7 @@ impl AttributeExt for Attribute {
             AttrKind::Normal(normal) => normal.item.value_str(),
             AttrKind::Synthetic(..) => unreachable!(),
             AttrKind::DocComment(..) => None,
+            AttrKind::Generated(generated) => generated.value_str(),
         }
     }
 
@@ -207,6 +218,7 @@ impl AttributeExt for Attribute {
                 Some((value, DocFragmentKind::Raw(value_span), self.span))
             }
             AttrKind::Normal(..) | AttrKind::Synthetic(..) => None,
+            AttrKind::Generated(generated) => generated.doc_str_and_fragment_kind()?,
         }
     }
 
@@ -234,25 +246,22 @@ impl AttributeExt for Attribute {
         }
     }
 
-    fn is_automatically_derived_attr(&self) -> bool {
-        self.has_name(sym::automatically_derived)
-    }
-
-    fn is_doc_hidden(&self) -> bool {
-        self.has_name(sym::doc)
-            && self.meta_item_list().is_some_and(|l| list_contains_name(&l, sym::hidden))
-    }
-
     fn is_doc_keyword_or_attribute(&self) -> bool {
-        if self.has_name(sym::doc)
-            && let Some(items) = self.meta_item_list()
-        {
-            for item in items {
-                if item.has_name(sym::keyword) || item.has_name(sym::attribute) {
-                    return true;
+        match &self.kind {
+            AttrKind::Normal(_) => {
+                if self.has_name(sym::doc)
+                    && let Some(items) = self.meta_item_list()
+                {
+                    for item in items {
+                        if item.has_name(sym::keyword) || item.has_name(sym::attribute) {
+                            return true;
+                        }
+                    }
                 }
             }
+            _ => {}
         }
+
         false
     }
 
@@ -283,7 +292,7 @@ impl Attribute {
     pub fn meta(&self) -> Option<MetaItem> {
         match &self.kind {
             AttrKind::Normal(normal) => normal.item.meta(self.span),
-            AttrKind::Synthetic(..) | AttrKind::DocComment(..) => None,
+            AttrKind::Synthetic(..) | AttrKind::DocComment(..) | AttrKind::Generated(..) => None,
         }
     }
 
@@ -292,23 +301,24 @@ impl Attribute {
             AttrKind::Normal(normal) => normal.item.meta_kind(),
             AttrKind::Synthetic(..) => unreachable!(),
             AttrKind::DocComment(..) => None,
+            AttrKind::Generated(..) => None,
         }
     }
 
-    pub fn token_trees(&self) -> Vec<TokenTree> {
-        match self.kind {
-            AttrKind::Normal(ref normal) => normal
+    pub fn append_token_trees_to(&self, res: &mut Vec<TokenTree>) {
+        match &self.kind {
+            AttrKind::Normal(normal) => normal
                 .tokens
                 .as_ref()
                 .unwrap_or_else(|| panic!("attribute is missing tokens: {self:?}"))
-                .to_attr_token_stream()
-                .to_token_trees(),
+                .append_token_trees_to(res),
             // Empty tokens here ensures synthetic attributes are invisible to proc macros.
-            AttrKind::Synthetic(..) => vec![],
-            AttrKind::DocComment(comment_kind, data) => vec![TokenTree::token_alone(
-                token::DocComment(comment_kind, self.style, data),
+            AttrKind::Synthetic(..) => {}
+            AttrKind::Generated(generated) => generated.append_token_trees_to(res),
+            AttrKind::DocComment(comment_kind, data) => res.push(TokenTree::token_alone(
+                token::DocComment(*comment_kind, self.style, *data),
                 self.span,
-            )],
+            )),
         }
     }
 
@@ -527,7 +537,7 @@ impl MetaItem {
                 unreachable!()
             }
             Some(TokenTree::Token(Token { kind, .. }, _)) if kind.is_delim() => {
-                panic!("Should be `AttrTokenTree::Delimited`, not delim tokens: {:?}", tt);
+                panic!("Should be `TokenTree::Delimited`, not delim tokens: {:?}", tt);
             }
             _ => return None,
         };
@@ -738,7 +748,7 @@ pub fn mk_doc_comment(
 pub fn mk_attr_from_item(
     g: &AttrIdGenerator,
     item: AttrItem,
-    tokens: Option<LazyAttrTokenStream>,
+    tokens: Option<LazyTokenStream>,
     style: AttrStyle,
     span: Span,
 ) -> Attribute {
@@ -750,28 +760,24 @@ pub fn mk_attr_from_item(
     }
 }
 
-fn mk_attr_tokens(
-    style: AttrStyle,
-    item_tokens: AttrTokenStream,
-    span: Span,
-) -> LazyAttrTokenStream {
+fn mk_attr_tokens(style: AttrStyle, item_tokens: TokenStream, span: Span) -> LazyTokenStream {
     let mut tokens = match style {
         AttrStyle::Outer => {
-            vec![AttrTokenTree::Token(Token::new(token::Pound, span), Spacing::JointHidden)]
+            vec![TokenTree::Token(Token::new(token::Pound, span), Spacing::JointHidden)]
         }
         AttrStyle::Inner => vec![
-            AttrTokenTree::Token(Token::new(token::Pound, span), Spacing::Joint),
-            AttrTokenTree::Token(Token::new(token::Bang, span), Spacing::JointHidden),
+            TokenTree::Token(Token::new(token::Pound, span), Spacing::Joint),
+            TokenTree::Token(Token::new(token::Bang, span), Spacing::JointHidden),
         ],
     };
-    tokens.push(AttrTokenTree::Delimited(
+    tokens.push(TokenTree::Delimited(
         DelimSpan::from_single(span),
         DelimSpacing::new(Spacing::JointHidden, Spacing::Alone),
         Delimiter::Bracket,
         item_tokens,
     ));
 
-    LazyAttrTokenStream::new_direct(AttrTokenStream::new(tokens))
+    LazyTokenStream::new_direct(TokenStream::new(tokens))
 }
 
 // `span` is used for the `Attribute` and everything within it (except for any span within
@@ -782,7 +788,7 @@ pub fn mk_attr_word(g: &AttrIdGenerator, style: AttrStyle, name: Symbol, span: S
 
     let tokens = Some(mk_attr_tokens(
         style,
-        AttrTokenStream::new(vec![AttrTokenTree::Token(
+        TokenStream::new(vec![TokenTree::Token(
             Token::from_ast_ident(Ident::new(name, span)),
             Spacing::Alone,
         )]),
@@ -821,13 +827,13 @@ pub fn mk_attr_nested_word(
 
     let tokens = Some(mk_attr_tokens(
         style,
-        AttrTokenStream::new(vec![
-            AttrTokenTree::Token(Token::from_ast_ident(Ident::new(outer, span)), Spacing::Alone),
-            AttrTokenTree::Delimited(
+        TokenStream::new(vec![
+            TokenTree::Token(Token::from_ast_ident(Ident::new(outer, span)), Spacing::Alone),
+            TokenTree::Delimited(
                 DelimSpan::from_single(span),
                 DelimSpacing::new(Spacing::JointHidden, Spacing::Alone),
                 Delimiter::Parenthesis,
-                AttrTokenStream::new(vec![AttrTokenTree::Token(
+                TokenStream::new(vec![TokenTree::Token(
                     Token::from_ast_ident(Ident::new(inner, span)),
                     Spacing::Alone,
                 )]),
@@ -867,10 +873,10 @@ pub fn mk_attr_name_value_str(
 
     let tokens = Some(mk_attr_tokens(
         style,
-        AttrTokenStream::new(vec![
-            AttrTokenTree::Token(Token::from_ast_ident(Ident::new(name, span)), Spacing::Alone),
-            AttrTokenTree::Token(Token::new(token::Eq, span), Spacing::Alone),
-            AttrTokenTree::Token(
+        TokenStream::new(vec![
+            TokenTree::Token(Token::from_ast_ident(Ident::new(name, span)), Spacing::Alone),
+            TokenTree::Token(Token::new(token::Eq, span), Spacing::Alone),
+            TokenTree::Token(
                 Token::new(token::TokenKind::lit(lit.kind, lit.symbol, lit.suffix), span),
                 Spacing::Alone,
             ),
@@ -972,9 +978,6 @@ pub trait AttributeExt: Debug + 'static {
     /// i.e. `proc_macro`, `proc_macro_attribute` or `proc_macro_derive`.
     fn is_proc_macro_attr(&self) -> bool;
 
-    /// Returns true if this attribute is `#[automatically_deived]`.
-    fn is_automatically_derived_attr(&self) -> bool;
-
     /// Returns the documentation and its kind if this is a doc comment or a sugared doc comment.
     /// * `///doc` returns `Some(("doc", CommentKind::Line))`.
     /// * `/** doc */` returns `Some(("doc", CommentKind::Block))`.
@@ -990,9 +993,6 @@ pub trait AttributeExt: Debug + 'static {
     /// commented module (for inner doc) vs within its parent module (for outer
     /// doc).
     fn doc_resolution_scope(&self) -> Option<AttrStyle>;
-
-    /// Returns `true` if this attribute contains `doc(hidden)`.
-    fn is_doc_hidden(&self) -> bool;
 
     /// Returns `true` is this attribute contains `doc(keyword)` or `doc(attribute)`.
     fn is_doc_keyword_or_attribute(&self) -> bool;

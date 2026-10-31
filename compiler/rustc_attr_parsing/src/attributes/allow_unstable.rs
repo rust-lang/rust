@@ -1,5 +1,7 @@
 use std::iter;
 
+use rustc_ast::Const;
+use rustc_attr_ir::target::AstTarget;
 use rustc_feature::AttributeStability;
 
 use super::macro_attrs::check_macro_only;
@@ -77,6 +79,22 @@ impl CombineAttributeParser for RustcAllowConstFnUnstableParser {
         args: &ArgParser,
     ) -> impl IntoIterator<Item = Self::Item> {
         parse_unstable(cx, args, <Self as CombineAttributeParser>::PATH[0])
+    }
+
+    fn finalize_check(cx: &mut FinalizeCheckContext<'_, '_>, attr_span: Span) {
+        match cx.ast_target {
+            AstTarget::Fn(_) | AstTarget::Method(_) => {
+                let fn_sig =
+                    cx.ast_target.get_fn_sig().expect("missing fn signature for AST target");
+                if matches!(fn_sig.header.constness, Const::No) {
+                    cx.emit_err(diagnostics::RustcAllowConstFnUnstable {
+                        attr_span,
+                        span: cx.target_span,
+                    });
+                }
+            }
+            _ => {}
+        }
     }
 }
 

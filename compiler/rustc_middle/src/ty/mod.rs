@@ -923,7 +923,7 @@ impl<'tcx> ProvisionalHiddenType<'tcx> {
         // This zip may have several times the same lifetime in `args` paired with a different
         // lifetime from `id_args`. Simply `collect`ing the iterator is the correct behaviour:
         // it will pick the last one, which is the one we introduced in the impl-trait desugaring.
-        let map = args.iter().zip(id_args).collect();
+        let map = args.iter().zip(id_args.iter()).collect();
         debug!("map = {:#?}", map);
 
         // Convert the type from the function into a type valid outside by mapping generic
@@ -1118,6 +1118,10 @@ impl<'tcx> rustc_type_ir::inherent::TypingEnv<TyCtxt<'tcx>> for TypingEnv<'tcx> 
         tcx.layout_of(self.as_query_input(ty))
             .unwrap_or_else(|e| panic!("could not compute layout for {ty:?}: {e:?}"))
             .size
+    }
+
+    fn post_analysis(tcx: TyCtxt<'tcx>, def_id: DefId) -> TypingEnv<'tcx> {
+        Self::post_analysis(tcx, def_id)
     }
 }
 
@@ -1580,11 +1584,7 @@ impl Hash for FieldDef {
 impl<'tcx> FieldDef {
     /// Returns the type of this field. The `args` are typically obtained via
     /// the second field of [`TyKind::Adt`].
-    pub fn ty(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        args: GenericArgsRef<'tcx>,
-    ) -> Unnormalized<'tcx, Ty<'tcx>> {
+    pub fn ty(&self, tcx: TyCtxt<'tcx>, args: GenericArgs<'tcx>) -> Unnormalized<'tcx, Ty<'tcx>> {
         tcx.type_of(self.did).instantiate(tcx, args)
     }
 
@@ -1906,6 +1906,24 @@ impl<'tcx> TyCtxt<'tcx> {
         body
     }
 
+    /// Gets all tool attributes named `name`.
+    pub fn tool_attrs(
+        self,
+        did: impl Into<DefId>,
+        name: &[Symbol],
+    ) -> impl Iterator<Item = &'tcx rustc_attr_ir::AttrItem> {
+        #[expect(deprecated)]
+        self.get_all_attrs(did).iter().filter_map(|attr| {
+            if let rustc_attr_ir::Attribute::Tool(t) = attr
+                && *t.path.segments == *name
+            {
+                Some(&**t)
+            } else {
+                None
+            }
+        })
+    }
+
     /// Gets all attributes.
     ///
     /// <div class="warning">
@@ -1915,7 +1933,7 @@ impl<'tcx> TyCtxt<'tcx> {
     ///
     /// </div>
     ///
-    #[deprecated = "Though there are valid usecases for this method, especially when your attribute is not a parsed attribute, usually you want to use `rustc_attr_ir::find_attr!` instead."]
+    #[deprecated = "Though there are valid usecases for this method, usually you want to use `rustc_attr_ir::find_attr!` or `tool_attrs` instead."]
     pub fn get_all_attrs(self, did: impl Into<DefId>) -> &'tcx [rustc_attr_ir::Attribute] {
         let did: DefId = did.into();
         if let Some(did) = did.as_local() {
@@ -1954,7 +1972,7 @@ impl<'tcx> TyCtxt<'tcx> {
     fn ordinary_coroutine_layout(
         self,
         def_id: DefId,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
     ) -> Result<&'tcx CoroutineLayout<'tcx>, &'tcx LayoutError<'tcx>> {
         let coroutine_kind_ty = args.as_coroutine().kind_ty();
         let mir = self.optimized_mir(def_id);
@@ -1995,7 +2013,7 @@ impl<'tcx> TyCtxt<'tcx> {
     fn async_drop_coroutine_layout(
         self,
         def_id: DefId,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
     ) -> Result<&'tcx CoroutineLayout<'tcx>, &'tcx LayoutError<'tcx>> {
         let ty = || Ty::new_coroutine(self, def_id, args);
         if args[0].has_placeholders() || args[0].has_non_region_param() {
@@ -2012,7 +2030,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn coroutine_layout(
         self,
         def_id: DefId,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
     ) -> Result<&'tcx CoroutineLayout<'tcx>, &'tcx LayoutError<'tcx>> {
         if self.is_async_drop_in_place_coroutine(def_id) {
             // layout of `async_drop_in_place<T>::{closure}` in case,

@@ -459,7 +459,7 @@ where
                         },
                         target_args,
                     );
-                    return ecx.evaluate_const_and_instantiate_projection_term(
+                    return ecx.evaluate_const(
                         goal.param_env,
                         goal.predicate.alias,
                         goal.predicate.term,

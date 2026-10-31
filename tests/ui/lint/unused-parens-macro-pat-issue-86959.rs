@@ -42,12 +42,13 @@ macro_rules! nested_pat {
 }
 
 // `body_or_pat!()` breaks the context leg. its a `PatKind::Or`, but the parens and the arm
-// both come from the macro body so they share one `SyntaxContext`, `eq_ctxt` is true and
-// `avoid_or` is false. these are the macro authors own parens, no metavariable involved, so
+// both come from the macro body so they share one `SyntaxContext`; as such, the compiler
+// can deduce that the pattern is not expanded from a metavariable (`pat_is_macro_arg`, hence
+// `avoid_or`, is false). these are the macro authors own parens, no metavariable involved, so
 // removing them is safe. this is the case that matters most: `from_expansion()` is true here
-// and `!eq_ctxt` is false, so if the gate were ever keyed on "are we inside a macro" instead
-// of "did this cross a context boundary" it would be wrongly silenced. nothing else in the
-// file detects that.
+// (and again, the contexts are the same so `pat_is_macro_arg` is false), so if the gate were
+// ever keyed on "are we inside a macro" instead of "did this cross a context boundary" it
+// would be wrongly silenced. nothing else in the file detects that.
 macro_rules! body_or_pat {
     () => {
         match 'a' {

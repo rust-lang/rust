@@ -1735,7 +1735,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                         || adt_def.all_fields().any(|field| {
                             ty_may_have_ref_inner(
                                 tcx,
-                                field.ty(tcx, args).skip_normalization(),
+                                field.ty(tcx, *args).skip_normalization(),
                                 depth,
                             )
                         })
@@ -1849,7 +1849,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             && adt.repr().transparent()
             && let [single_field] = adt.non_enum_variant().fields.raw.as_slice()
         {
-            Some((FieldIdx::ZERO, single_field.ty(self.tcx, args).skip_norm_wip()))
+            Some((FieldIdx::ZERO, single_field.ty(self.tcx, *args).skip_norm_wip()))
         } else {
             None
         }

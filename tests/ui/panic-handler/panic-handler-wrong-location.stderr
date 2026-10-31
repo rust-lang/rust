@@ -5,6 +5,7 @@ error: the `panic_handler` attribute cannot be used on statics
    |
 LL | #[panic_handler]
    |   ^^^^^^^^^^^^^
+LL | static X: u32 = 42;
    |
    = help: the `panic_handler` attribute can only be applied to functions
 

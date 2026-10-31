@@ -318,6 +318,13 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     return reborrow_coerce;
                 }
             }
+            ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Infer(ty::IntVar(_) | ty::FloatVar(_)) => {
+                // For now, do nothing. If coercions are ever added for ints/floats then the arms
+                // handling these types in `check_expr_lit` will need re-evaluation.
+            }
             _ => {}
         }
 
@@ -348,6 +355,14 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 } else {
                     self.unify(a, b, ForceLeakCheck::No)
                 }
+            }
+            ty::Int(_)
+            | ty::Uint(_)
+            | ty::Float(_)
+            | ty::Infer(ty::IntVar(_) | ty::FloatVar(_)) => {
+                // For now, just use unification rules. If coercions are ever added for ints/floats
+                // then the arms handling these types in `check_expr_lit` will need re-evaluation.
+                self.unify(a, b, ForceLeakCheck::No)
             }
             _ => {
                 // Otherwise, just use unification rules.
@@ -962,13 +977,15 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         };
         if a_def.did() == b_def.did() {
             // Reborrow is applicable here
-            self.unify_and(
+            let coerce = self.unify_and(
                 a,
                 b,
                 [],
                 Adjust::GenericReborrow(ty::Mutability::Mut),
                 ForceLeakCheck::No,
-            )
+            )?;
+            self.taint_if_reborrow_impls_are_invalid(ty::Mutability::Mut);
+            Ok(coerce)
         } else {
             // FIXME: CoerceShared check goes here, error for now
             Err(TypeError::Mismatch)
@@ -1003,6 +1020,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         ocx.register_obligation(obligation);
         let errs = ocx.evaluate_obligations_error_on_ambiguity();
         if errs.no_errors() {
+            self.taint_if_reborrow_impls_are_invalid(ty::Mutability::Not);
             Ok(InferOk {
                 value: (
                     vec![Adjustment {
@@ -1015,6 +1033,24 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             })
         } else {
             Err(TypeError::Mismatch)
+        }
+    }
+
+    /// Borrowck and const eval lower a generic reborrow by walking the fields of the source and
+    /// target types, trusting that coherence has validated the `Reborrow` and `CoerceShared` impls
+    /// that permit it. If coherence rejected any of those impls, that walk can hit shapes it does
+    /// not expect, so we taint the body to keep it away from them.
+    fn taint_if_reborrow_impls_are_invalid(&self, mutability: ty::Mutability) {
+        let lang_items = self.tcx.lang_items();
+        let trait_def_ids = match mutability {
+            ty::Mutability::Mut => [lang_items.reborrow(), None],
+            // A shared reborrow also reborrows any fields of the source that implement `Reborrow`.
+            ty::Mutability::Not => [lang_items.coerce_shared(), lang_items.reborrow()],
+        };
+        for trait_def_id in trait_def_ids.into_iter().flatten() {
+            if let Err(guar) = self.tcx.ensure_result().coherent_trait(trait_def_id) {
+                self.set_tainted_by_errors(guar);
+            }
         }
     }
 

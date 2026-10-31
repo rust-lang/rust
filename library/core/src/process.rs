@@ -99,6 +99,6 @@ pub const fn abort_immediate() -> ! {
 // actually want to stabilize both of them.
 #[unstable(feature = "breakpoint", issue = "133724")]
 #[inline(always)]
-pub fn resumable_breakpoint() {
-    crate::intrinsics::breakpoint();
+pub const fn resumable_breakpoint() {
+    crate::intrinsics::resumable_breakpoint();
 }

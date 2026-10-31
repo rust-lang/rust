@@ -996,7 +996,7 @@ fn variant_info_for_coroutine<'tcx>(
     cx: &LayoutCx<'tcx>,
     layout: TyAndLayout<'tcx>,
     def_id: DefId,
-    args: ty::GenericArgsRef<'tcx>,
+    args: ty::GenericArgs<'tcx>,
 ) -> (Vec<VariantInfo>, Option<Size>) {
     use itertools::Itertools;
 

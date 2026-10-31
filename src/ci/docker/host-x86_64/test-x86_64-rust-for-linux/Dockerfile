@@ -1,4 +1,4 @@
-FROM ubuntu:22.04
+FROM ubuntu:26.04
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -17,10 +17,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   flex \
   bison \
   bc \
-  clang-15 \
-  libclang1-15 \
-  llvm-15 \
-  lld-15 \
+  clang-22 \
+  libclang1-22 \
+  llvm-22 \
+  lld-22 \
   libelf-dev \
   libedit-dev \
   libssl-dev \
@@ -32,7 +32,7 @@ COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
 # RfL needs access to cland, lld and llvm tools
-ENV PATH="${PATH}:/usr/lib/llvm-15/bin"
+ENV PATH="${PATH}:/usr/lib/llvm-22/bin"
 
 ENV RUST_CONFIGURE_ARGS="--build=x86_64-unknown-linux-gnu"
 

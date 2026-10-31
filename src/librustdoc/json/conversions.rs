@@ -1086,7 +1086,7 @@ fn maybe_from_hir_attr(
     let kind = match attr {
         rustc_attr_ir::Attribute::Parsed(kind) => kind,
 
-        rustc_attr_ir::Attribute::Unparsed(_) => {
+        rustc_attr_ir::Attribute::Tool(_) | rustc_attr_ir::Attribute::DeriveHelper(_) => {
             // FIXME: We should handle `#[doc(hidden)]`.
             return vec![other_attr(tcx, attr)];
         }

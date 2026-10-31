@@ -161,7 +161,7 @@ fn expr_search_pat(tcx: TyCtxt<'_>, e: &Expr<'_>) -> (Pat, Pat) {
         // e.g. `return format!(..)` would be considered to be from a proc macro
         // if we build up a pattern for the macro expansion and compare it to the invocation `format!()`.
         // So instead we return an empty pattern such that `span_matches_pat` always returns true.
-        if !e.span.eq_ctxt(outer_span) {
+        if e.span.ctxt() != outer_span.ctxt() {
             return (Pat::Str(""), Pat::Str(""));
         }
 
@@ -370,7 +370,7 @@ fn attr_search_pat(attr: &Attribute) -> (Pat, Pat) {
                 (Pat::Str("#"), Pat::Str("]"))
             }
         },
-        AttrKind::Synthetic(..) => unreachable!(),
+        AttrKind::Synthetic(..) | AttrKind::Generated (..) => unreachable!(),
         AttrKind::DocComment(_kind @ CommentKind::Line, ..) => {
             if attr.style == AttrStyle::Outer {
                 (Pat::Str("///"), Pat::Str(""))

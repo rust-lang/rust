@@ -23,8 +23,8 @@ use crate::mir::FakeReadCause;
 use crate::thir::DerefPatBorrowMode;
 use crate::traits::ObligationCause;
 use crate::ty::{
-    self, BoundVar, CanonicalPolyFnSig, ClosureSizeProfileData, GenericArgKind, GenericArgs,
-    GenericArgsRef, Ty, UserArgs, tls,
+    self, BoundVar, CanonicalPolyFnSig, ClosureSizeProfileData, GenericArgKind, GenericArgs, Ty,
+    UserArgs, tls,
 };
 
 #[derive(TyEncodable, TyDecodable, Debug, StableHash)]
@@ -54,7 +54,7 @@ pub struct TypeckResults<'tcx> {
     /// of this node. This only applies to nodes that refer to entities
     /// parameterized by type parameters, such as generic fns, types, or
     /// other items.
-    node_args: ItemLocalMap<GenericArgsRef<'tcx>>,
+    node_args: ItemLocalMap<GenericArgs<'tcx>>,
 
     /// This will either store the canonicalized types provided by the user
     /// or the generic parameters that the user explicitly gave (if any) attached
@@ -357,16 +357,16 @@ impl<'tcx> TypeckResults<'tcx> {
         self.node_types.get(&id.local_id).cloned()
     }
 
-    pub fn node_args_mut(&mut self) -> LocalTableInContextMut<'_, GenericArgsRef<'tcx>> {
+    pub fn node_args_mut(&mut self) -> LocalTableInContextMut<'_, GenericArgs<'tcx>> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.node_args }
     }
 
-    pub fn node_args(&self, id: HirId) -> GenericArgsRef<'tcx> {
+    pub fn node_args(&self, id: HirId) -> GenericArgs<'tcx> {
         validate_hir_id_for_typeck_results(self.hir_owner, id);
         self.node_args.get(&id.local_id).cloned().unwrap_or_else(|| GenericArgs::empty())
     }
 
-    pub fn node_args_opt(&self, id: HirId) -> Option<GenericArgsRef<'tcx>> {
+    pub fn node_args_opt(&self, id: HirId) -> Option<GenericArgs<'tcx>> {
         validate_hir_id_for_typeck_results(self.hir_owner, id);
         self.node_args.get(&id.local_id).cloned()
     }
@@ -880,7 +880,7 @@ impl<'tcx> IsIdentity for CanonicalUserType<'tcx> {
                     return false;
                 }
 
-                iter::zip(user_args.args, BoundVar::ZERO..).all(|(arg, cvar)| {
+                iter::zip(user_args.args.as_slice(), BoundVar::ZERO..).all(|(arg, cvar)| {
                     match arg.kind() {
                         GenericArgKind::Type(ty) => match ty.kind() {
                             ty::Bound(debruijn, b) => {

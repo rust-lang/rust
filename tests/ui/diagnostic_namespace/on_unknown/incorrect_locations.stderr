@@ -3,6 +3,8 @@ warning: the `diagnostic::on_unknown` attribute cannot be used on extern crates
    |
 LL | #[diagnostic::on_unknown(message = "foo")]
    |   ^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | extern crate std as other_std;
    |
    = help: the `diagnostic::on_unknown` attribute can be applied to crates, modules, and use statements
    = note: `#[warn(misplaced_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
@@ -12,6 +14,8 @@ warning: the `diagnostic::on_unknown` attribute cannot be used on constants
    |
 LL | #[diagnostic::on_unknown(message = "foo")]
    |   ^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | const CONST: () = ();
    |
    = help: the `diagnostic::on_unknown` attribute can be applied to crates, modules, and use statements
 
@@ -20,6 +24,8 @@ warning: the `diagnostic::on_unknown` attribute cannot be used on statics
    |
 LL | #[diagnostic::on_unknown(message = "foo")]
    |   ^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | static STATIC: () = ();
    |
    = help: the `diagnostic::on_unknown` attribute can be applied to crates, modules, and use statements
 
@@ -28,6 +34,8 @@ warning: the `diagnostic::on_unknown` attribute cannot be used on type aliases
    |
 LL | #[diagnostic::on_unknown(message = "foo")]
    |   ^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | type Type = ();
    |
    = help: the `diagnostic::on_unknown` attribute can be applied to crates, modules, and use statements
 
@@ -36,6 +44,8 @@ warning: the `diagnostic::on_unknown` attribute cannot be used on enums
    |
 LL | #[diagnostic::on_unknown(message = "foo")]
    |   ^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | enum Enum {}
    |
    = help: the `diagnostic::on_unknown` attribute can be applied to crates, modules, and use statements
 
@@ -44,6 +54,8 @@ warning: the `diagnostic::on_unknown` attribute cannot be used on inherent impl 
    |
 LL | #[diagnostic::on_unknown(message = "foo")]
    |   ^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | impl Enum {}
    |
    = help: the `diagnostic::on_unknown` attribute can be applied to crates, modules, and use statements
 
@@ -52,6 +64,8 @@ warning: the `diagnostic::on_unknown` attribute cannot be used on foreign module
    |
 LL | #[diagnostic::on_unknown(message = "foo")]
    |   ^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | extern "C" {}
    |
    = help: the `diagnostic::on_unknown` attribute can be applied to crates, modules, and use statements
 
@@ -60,6 +74,8 @@ warning: the `diagnostic::on_unknown` attribute cannot be used on functions
    |
 LL | #[diagnostic::on_unknown(message = "foo")]
    |   ^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | fn fun() {}
    |
    = help: the `diagnostic::on_unknown` attribute can be applied to crates, modules, and use statements
 
@@ -68,6 +84,8 @@ warning: the `diagnostic::on_unknown` attribute cannot be used on structs
    |
 LL | #[diagnostic::on_unknown(message = "foo")]
    |   ^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | struct Struct {}
    |
    = help: the `diagnostic::on_unknown` attribute can be applied to crates, modules, and use statements
 
@@ -76,6 +94,8 @@ warning: the `diagnostic::on_unknown` attribute cannot be used on traits
    |
 LL | #[diagnostic::on_unknown(message = "foo")]
    |   ^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | trait Trait {}
    |
    = help: the `diagnostic::on_unknown` attribute can be applied to crates, modules, and use statements
 
@@ -84,6 +104,8 @@ warning: the `diagnostic::on_unknown` attribute cannot be used on trait impl blo
    |
 LL | #[diagnostic::on_unknown(message = "foo")]
    |   ^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | impl Trait for i32 {}
    |
    = help: the `diagnostic::on_unknown` attribute can be applied to crates, modules, and use statements
 

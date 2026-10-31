@@ -1,4 +1,5 @@
 use crate::ffi::{OsStr, OsString};
+use crate::macros::rustdoc_skip_body;
 use crate::mem;
 use crate::sys::os_str::Buf;
 use crate::sys::{AsInner, FromInner, IntoInner};
@@ -29,6 +30,7 @@ impl OsStringExt for OsString {
         FromInner::from_inner(Buf { inner: vec })
     }
     #[inline]
+    #[rustdoc_skip_body]
     fn into_vec(self) -> Vec<u8> {
         self.into_inner().inner
     }
@@ -57,6 +59,7 @@ impl OsStrExt for OsStr {
         unsafe { mem::transmute(slice) }
     }
     #[inline]
+    #[rustdoc_skip_body]
     fn as_bytes(&self) -> &[u8] {
         &self.as_inner().inner
     }

@@ -83,9 +83,9 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for TypeRelating<'_, 'tcx> {
         a_ty: Ty<'tcx>,
         b_ty: Ty<'tcx>,
         def_id: DefId,
-        a_args: ty::GenericArgsRef<'tcx>,
-        b_args: ty::GenericArgsRef<'tcx>,
-        _: impl FnOnce(ty::GenericArgsRef<'tcx>) -> Ty<'tcx>,
+        a_args: ty::GenericArgs<'tcx>,
+        b_args: ty::GenericArgs<'tcx>,
+        _: impl FnOnce(ty::GenericArgs<'tcx>) -> Ty<'tcx>,
     ) -> RelateResult<'tcx, Ty<'tcx>> {
         if self.ambient_variance == ty::Invariant {
             // Avoid fetching the variance if we are in an invariant
