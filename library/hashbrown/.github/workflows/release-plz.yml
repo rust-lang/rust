@@ -40,7 +40,7 @@ jobs:
     if: ${{ github.repository_owner == 'rust-lang' }}
     permissions:
       contents: write # Required by `release-plz/action` to push to the pull request branch.
-      pull-requests: write
+      pull-requests: write # Required by `release-plz/action` to create and update pull requests.
     concurrency:
       group: release-plz-${{ github.ref }}
       cancel-in-progress: false
