@@ -51,7 +51,8 @@ See `InferCtxtBuilder` for more information.
 ## Inference variables
 
 The main purpose of the inference context is to house a bunch of
-**inference variables** – these represent types or regions whose precise value is not yet known,
+**inference variables**.
+These represent types or regions whose precise value is not yet known,
 but will be uncovered as we perform type-checking.
 
 If you're familiar with the basic ideas of unification from H-M type systems,
@@ -77,7 +78,7 @@ All told, the inference context stores five kinds of inference variables
 All the type variables work in much the same way: you can create a new type variable,
 and what you get is `Ty<'tcx>` representing an
 unresolved type `?T`.
-Then later you can apply the various operations that the inferencer supports,
+You can then later apply the various operations that the inferencer supports,
 such as equality or subtyping, and it
 will possibly **instantiate** (or **bind**) that `?T` to a specific value as a result.
 
@@ -119,12 +120,12 @@ The same basic concepts as above apply.
 ## "Trying" equality
 
 Sometimes you would like to know if it is *possible* to equate two types without error.
- You can test that with `infcx.can_eq` (or `infcx.can_sub` for subtyping).
+You can test that with `infcx.can_eq` (or `infcx.can_sub` for subtyping).
 If this returns `Ok`, then equality is possible – but in all cases, any side-effects are reversed.
 
 Be aware, though, that the success or failure of these methods is always **modulo regions**.
 That is, two types `&'a u32` and `&'b u32` will return `Ok` for `can_eq`, even if `'a != 'b`.
- This falls out from the "two-phase" nature of how we solve region constraints.
+This falls out from the "two-phase" nature of how we solve region constraints.
 
 ## Snapshots
 
@@ -156,8 +157,8 @@ This follows from Rust's rather limited notion of subtyping: so,
 in the above case, `?T <: i32` is equivalent to `?T = i32`.
 
 However, in some cases we have to be more careful.
-For example, when regions are involved.
-So if you have `?T <: &'a i32`,
+An example is when regions are involved.
+So, if you have `?T <: &'a i32`,
 what we would do is to first "generalize" `&'a i32` into a type with a region variable:
 `&'?b i32`, and then unify `?T` with that (`?T = &'?b i32`).
 We then relate this new variable with the original bound:
@@ -170,7 +171,7 @@ This will result in a region constraint (see below) of `'?b: 'a`.
 
 One final interesting case is relating two unbound type variables,
 like `?T <: ?U`.
- In that case, we can't make progress, so we enqueue an obligation `Subtype(?T,
+In that case, we can't make progress, so we enqueue an obligation `Subtype(?T,
 ?U)` and return it via the `InferOk`
 mechanism.
 You'll have to try again when more details about `?T` or `?U` are known.
@@ -226,7 +227,7 @@ constraints in the root universe (i.e. not arising from a `for<'a>`) must
 not influence the trait system, as these regions are all erased during codegen.
 
 To solve **lexical** region constraints, you invoke [`resolve_regions_and_report_errors`].
- This "closes" the region constraint process and invokes the [`lexical_region_resolve`] code.
+This "closes" the region constraint process and invokes the [`lexical_region_resolve`] code.
 Once this is done, any further attempt to equate or create a subtyping
 relationship will yield an ICE.
 
