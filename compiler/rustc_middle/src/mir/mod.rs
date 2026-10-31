@@ -32,7 +32,7 @@ use crate::mir::interpret::{AllocRange, Scalar};
 use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::print::{FmtPrinter, Printer, pretty_print_const, with_no_trimmed_paths};
 use crate::ty::{
-    self, GenericArg, GenericArgsRef, Instance, InstanceKind, List, ShimKind, Ty, TyCtxt,
+    self, GenericArg, GenericArgs, Instance, InstanceKind, List, ShimKind, Ty, TyCtxt,
     TypeVisitableExt, TypingEnv, UserTypeAnnotationIndex,
 };
 
@@ -40,7 +40,6 @@ pub mod basic_blocks;
 mod consts;
 pub mod coverage;
 mod generic_graph;
-pub mod generic_graphviz;
 pub mod graphviz;
 pub mod interpret;
 pub mod pretty;
@@ -1695,7 +1694,7 @@ pub fn find_self_call<'tcx>(
     body: &Body<'tcx>,
     local: Local,
     block: BasicBlock,
-) -> Option<(DefId, GenericArgsRef<'tcx>)> {
+) -> Option<(DefId, GenericArgs<'tcx>)> {
     debug!("find_self_call(local={:?}): terminator={:?}", local, body[block].terminator);
     if let Some(Terminator { kind: TerminatorKind::Call { func, args, .. }, .. }) =
         &body[block].terminator

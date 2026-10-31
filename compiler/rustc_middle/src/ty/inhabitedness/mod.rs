@@ -348,7 +348,7 @@ impl<'tcx> OpsemInhabitedCtx<'tcx> {
     fn is_inhabited_adt_ty(
         &mut self,
         adt_def: ty::AdtDef<'tcx>,
-        adt_args: ty::GenericArgsRef<'tcx>,
+        adt_args: ty::GenericArgs<'tcx>,
     ) -> bool {
         let Self { tcx, typing_env, .. } = *self;
 
@@ -392,7 +392,7 @@ impl<'tcx> OpsemInhabitedCtx<'tcx> {
 
 fn is_opsem_inhabited_adt_cached<'tcx>(
     tcx: TyCtxt<'tcx>,
-    env: ty::PseudoCanonicalInput<'tcx, (ty::AdtDef<'tcx>, ty::GenericArgsRef<'tcx>)>,
+    env: ty::PseudoCanonicalInput<'tcx, (ty::AdtDef<'tcx>, ty::GenericArgs<'tcx>)>,
 ) -> bool {
     let ((def, args), typing_env) = (env.value, env.typing_env);
     OpsemInhabitedCtx { tcx, typing_env, seen: Some(FxHashSet::default()), stop_at_ref: false }

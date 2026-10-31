@@ -2199,3 +2199,11 @@ pub(crate) struct Unused {
 #[derive(Diagnostic)]
 #[diag("use of deprecated `no_link` attribute")]
 pub(crate) struct NoLinkAttrUsed;
+
+#[derive(Diagnostic)]
+#[diag("`#[doc({$attr_name} = \"...\")]` should be used on anonymous constants")]
+pub(crate) struct DocKeywordAttributeNotAnonConst {
+    #[primary_span]
+    pub span: Span,
+    pub attr_name: Symbol,
+}

@@ -341,7 +341,7 @@ enum CoerceSharedFieldPairError<'tcx> {
     MissingSourceField { target: ReborrowDataField<'tcx> },
 }
 
-fn single_region_arg<'tcx>(args: ty::GenericArgsRef<'tcx>) -> Option<ty::Region<'tcx>> {
+fn single_region_arg<'tcx>(args: ty::GenericArgs<'tcx>) -> Option<ty::Region<'tcx>> {
     let mut lifetimes = args.iter().filter_map(|arg| arg.as_region());
     let lifetime = lifetimes.next()?;
     lifetimes.next().is_none().then_some(lifetime)
@@ -353,9 +353,9 @@ fn single_region_arg<'tcx>(args: ty::GenericArgsRef<'tcx>) -> Option<ty::Region<
 fn collect_coerce_shared_field_pairs<'tcx>(
     tcx: TyCtxt<'tcx>,
     source_def: ty::AdtDef<'tcx>,
-    source_args: ty::GenericArgsRef<'tcx>,
+    source_args: ty::GenericArgs<'tcx>,
     target_def: ty::AdtDef<'tcx>,
-    target_args: ty::GenericArgsRef<'tcx>,
+    target_args: ty::GenericArgs<'tcx>,
 ) -> Result<CoerceSharedFields<'tcx>, CoerceSharedFieldPairError<'tcx>> {
     let source_variant = source_def.non_enum_variant();
     let target_variant = target_def.non_enum_variant();
@@ -424,9 +424,9 @@ fn validate_coerce_shared_fields<'tcx>(
     span: Span,
     diagnostic_context: CoerceSharedDiagnosticContext,
     source_def: ty::AdtDef<'tcx>,
-    source_args: ty::GenericArgsRef<'tcx>,
+    source_args: ty::GenericArgs<'tcx>,
     target_def: ty::AdtDef<'tcx>,
-    target_args: ty::GenericArgsRef<'tcx>,
+    target_args: ty::GenericArgs<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
     let tcx = infcx.tcx;
     let fields = match collect_coerce_shared_field_pairs(
@@ -509,9 +509,9 @@ fn validate_coerce_shared_fields_are_memcpy_compatible<'tcx>(
     span: Span,
     diagnostic_context: CoerceSharedDiagnosticContext,
     source_def: ty::AdtDef<'tcx>,
-    source_args: ty::GenericArgsRef<'tcx>,
+    source_args: ty::GenericArgs<'tcx>,
     target_def: ty::AdtDef<'tcx>,
-    target_args: ty::GenericArgsRef<'tcx>,
+    target_args: ty::GenericArgs<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
     let tcx = infcx.tcx;
     let source_non_zst_fields =
@@ -578,7 +578,7 @@ fn non_zst_reborrow_data_fields<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     def: ty::AdtDef<'tcx>,
-    args: ty::GenericArgsRef<'tcx>,
+    args: ty::GenericArgs<'tcx>,
 ) -> Vec<ReborrowDataField<'tcx>> {
     let tcx = infcx.tcx;
     collect_reborrow_data_fields(tcx, def, args)

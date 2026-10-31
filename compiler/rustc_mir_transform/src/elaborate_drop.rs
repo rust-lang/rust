@@ -8,7 +8,7 @@ use rustc_index::Idx;
 use rustc_middle::mir::*;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
-use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt};
+use rustc_middle::ty::{self, GenericArgs, Ty, TyCtxt};
 use rustc_mir_dataflow::DropFlagState;
 use rustc_span::{DUMMY_SP, bug, dummy_spanned, span_bug};
 use tracing::{debug, instrument};
@@ -756,7 +756,7 @@ where
         base_place: Place<'tcx>,
         variant_path: D::Path,
         variant: &'tcx ty::VariantDef,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
     ) -> Vec<(Place<'tcx>, Option<D::Path>)> {
         variant
             .fields
@@ -976,7 +976,7 @@ where
     fn open_drop_for_box_contents(
         &mut self,
         adt: ty::AdtDef<'tcx>,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
         succ: BasicBlock,
         unwind: Unwind,
         dropline: Option<BasicBlock>,
@@ -1010,11 +1010,7 @@ where
     }
 
     #[instrument(level = "debug", ret)]
-    fn open_drop_for_adt(
-        &mut self,
-        adt: ty::AdtDef<'tcx>,
-        args: GenericArgsRef<'tcx>,
-    ) -> BasicBlock {
+    fn open_drop_for_adt(&mut self, adt: ty::AdtDef<'tcx>, args: GenericArgs<'tcx>) -> BasicBlock {
         if adt.variants().is_empty() {
             return self.new_block(self.unwind, TerminatorKind::Unreachable);
         }
@@ -1058,7 +1054,7 @@ where
     fn open_drop_for_adt_contents(
         &mut self,
         adt: ty::AdtDef<'tcx>,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
     ) -> (BasicBlock, Unwind, Option<BasicBlock>) {
         let (succ, unwind, dropline) = self.drop_ladder_bottom();
         if !adt.is_enum() {
@@ -1073,7 +1069,7 @@ where
     fn open_drop_for_multivariant(
         &mut self,
         adt: ty::AdtDef<'tcx>,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
         succ: BasicBlock,
         unwind: Unwind,
         dropline: Option<BasicBlock>,
@@ -1504,7 +1500,7 @@ where
             // See librustc_body/transform/coroutine.rs for more details.
             ty::Coroutine(_, args) => self.open_drop_for_tuple(args.as_coroutine().upvar_tys()),
             ty::Tuple(fields) => self.open_drop_for_tuple(fields),
-            ty::Adt(def, args) => self.open_drop_for_adt(*def, args),
+            ty::Adt(def, args) => self.open_drop_for_adt(*def, *args),
             ty::Dynamic(..) => self.complete_drop(self.succ, self.unwind),
             ty::Array(ety, size) => {
                 let size = size.try_to_target_usize(self.tcx());

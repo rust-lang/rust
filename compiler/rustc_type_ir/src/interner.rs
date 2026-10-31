@@ -113,7 +113,9 @@ pub trait Interner:
     type Span: Span<Self>;
 
     type GenericArgs: GenericArgs<Self>;
-    type GenericArgsSlice: Copy + Debug + Hash + Eq + SliceLike<Item = Self::GenericArg>;
+    type GenericArgsSlice<'a>: Copy + Debug + Hash + Eq + SliceLike<Item = Self::GenericArg>
+    where
+        Self: 'a;
     type GenericArg: GenericArg<Self>;
     type Term: Term<Self>;
 
@@ -300,11 +302,11 @@ pub trait Interner:
     type AdtDef: AdtDef<Self>;
     fn adt_def(self, adt_def_id: Self::AdtId) -> Self::AdtDef;
 
-    fn trait_ref_and_own_args_for_alias(
+    fn trait_ref_and_own_args_for_alias<'a>(
         self,
         def_id: Self::TraitAssocTermId,
-        args: Self::GenericArgs,
-    ) -> (ty::TraitRef<Self>, Self::GenericArgsSlice);
+        args: &'a Self::GenericArgs,
+    ) -> (ty::TraitRef<Self>, Self::GenericArgsSlice<'a>);
 
     fn mk_args(self, args: &[Self::GenericArg]) -> Self::GenericArgs;
 

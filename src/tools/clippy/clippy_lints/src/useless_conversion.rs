@@ -13,7 +13,7 @@ use rustc_infer::traits::Obligation;
 use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::adjustment::{Adjust, AutoBorrow, AutoBorrowMutability};
-use rustc_middle::ty::{self, EarlyBinder, GenericArg, GenericArgsRef, Ty, TypeVisitableExt as _};
+use rustc_middle::ty::{self, EarlyBinder, GenericArg, GenericArgs, Ty, TypeVisitableExt as _};
 use rustc_span::Span;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 
@@ -86,7 +86,7 @@ fn into_iter_bound<'tcx>(
     into_iter_did: DefId,
     into_iter_receiver: Ty<'tcx>,
     param_index: u32,
-    node_args: GenericArgsRef<'tcx>,
+    node_args: GenericArgs<'tcx>,
 ) -> Option<Span> {
     let mut into_iter_span = None;
 

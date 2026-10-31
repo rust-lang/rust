@@ -378,7 +378,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 let variant_index = VariantIdx::from_u32(variant_index.to_leaf().to_u32());
                 PatKind::Variant {
                     adt_def: *adt_def,
-                    args,
+                    args: *args,
                     variant_index,
                     subpatterns: self
                         .lower_field_values_to_fieldpats(fields.iter().map(|ct| ct.to_value())),

@@ -18,7 +18,7 @@ pub use self::ref_decodable::RefDecodable;
 use crate::infer::canonical::{CanonicalVarKind, CanonicalVarKinds};
 use crate::mir;
 use crate::mir::interpret::{AllocId, ConstAllocation, CtfeProvenance};
-use crate::ty::{self, AdtDef, GenericArgsRef, Ty, TyCtxt};
+use crate::ty::{self, AdtDef, GenericArgs, Ty, TyCtxt};
 
 mod ref_decodable;
 
@@ -230,7 +230,7 @@ impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::Clause<'tcx> {
     }
 }
 
-impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for GenericArgsRef<'tcx> {
+impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for GenericArgs<'tcx> {
     fn decode(decoder: &mut D) -> Self {
         let len = decoder.read_usize();
         let tcx = decoder.interner();

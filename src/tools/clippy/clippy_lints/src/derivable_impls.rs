@@ -11,7 +11,7 @@ use rustc_hir::{
 };
 use rustc_lint::{LateContext, LateLintPass, impl_lint_pass};
 use rustc_middle::ty::adjustment::{Adjust, PointerCoercion};
-use rustc_middle::ty::{self, AdtDef, GenericArgsRef, Ty, TypeckResults, VariantDef};
+use rustc_middle::ty::{self, AdtDef, GenericArgs, Ty, TypeckResults, VariantDef};
 use rustc_span::sym;
 
 declare_clippy_lint! {
@@ -98,7 +98,7 @@ fn check_struct<'tcx>(
     self_ty: &hir::Ty<'_>,
     func_expr: &Expr<'_>,
     adt_def: AdtDef<'_>,
-    ty_args: GenericArgsRef<'_>,
+    ty_args: GenericArgs<'_>,
     typeck_results: &'tcx TypeckResults<'tcx>,
     is_const: bool,
 ) {

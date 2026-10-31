@@ -508,7 +508,7 @@ where
 {
 }
 
-impl<'s, I: Interner, Iter: IntoIterator> EarlyBinder<I, Iter>
+impl<I: Interner, Iter: IntoIterator> EarlyBinder<I, Iter>
 where
     Iter::Item: Deref,
     <Iter::Item as Deref>::Target: Copy + TypeFoldable<I>,
@@ -516,8 +516,8 @@ where
     pub fn iter_instantiated_copied(
         self,
         cx: I,
-        args: &'s [I::GenericArg],
-    ) -> IterInstantiatedCopied<'s, I, Iter> {
+        args: I::GenericArgs,
+    ) -> IterInstantiatedCopied<I, Iter> {
         IterInstantiatedCopied { it: self.value.into_iter(), cx, args }
     }
 
@@ -528,21 +528,19 @@ where
     }
 }
 
-pub struct IterInstantiatedCopied<'a, I: Interner, Iter: IntoIterator> {
+pub struct IterInstantiatedCopied<I: Interner, Iter: IntoIterator> {
     it: Iter::IntoIter,
     cx: I,
-    args: &'a [I::GenericArg],
+    args: I::GenericArgs,
 }
 
-impl<'a, I: Interner, Iter: IntoIterator<IntoIter: Clone>> Clone
-    for IterInstantiatedCopied<'a, I, Iter>
-{
-    fn clone(&self) -> IterInstantiatedCopied<'a, I, Iter> {
+impl<I: Interner, Iter: IntoIterator<IntoIter: Clone>> Clone for IterInstantiatedCopied<I, Iter> {
+    fn clone(&self) -> IterInstantiatedCopied<I, Iter> {
         IterInstantiatedCopied { it: self.it.clone(), cx: self.cx, args: self.args }
     }
 }
 
-impl<I: Interner, Iter: IntoIterator> Iterator for IterInstantiatedCopied<'_, I, Iter>
+impl<I: Interner, Iter: IntoIterator> Iterator for IterInstantiatedCopied<I, Iter>
 where
     Iter::Item: Deref,
     <Iter::Item as Deref>::Target: Copy + TypeFoldable<I>,
@@ -560,7 +558,7 @@ where
     }
 }
 
-impl<I: Interner, Iter: IntoIterator> DoubleEndedIterator for IterInstantiatedCopied<'_, I, Iter>
+impl<I: Interner, Iter: IntoIterator> DoubleEndedIterator for IterInstantiatedCopied<I, Iter>
 where
     Iter::IntoIter: DoubleEndedIterator,
     Iter::Item: Deref,
@@ -573,7 +571,7 @@ where
     }
 }
 
-impl<I: Interner, Iter: IntoIterator> ExactSizeIterator for IterInstantiatedCopied<'_, I, Iter>
+impl<I: Interner, Iter: IntoIterator> ExactSizeIterator for IterInstantiatedCopied<I, Iter>
 where
     Iter::IntoIter: ExactSizeIterator,
     Iter::Item: Deref,

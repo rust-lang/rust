@@ -248,7 +248,7 @@ impl<'diag, 'tcx> BorrowCheckRootCtxt<'diag, 'tcx> {
         input: &mut CollectRegionConstraintsResult<'tcx>,
         closure_requirements: &Option<ClosureRegionRequirements<'tcx>>,
         closure_def_id: LocalDefId,
-        args: ty::GenericArgsRef<'tcx>,
+        args: ty::GenericArgs<'tcx>,
         locations: Locations,
     ) {
         if let Some(closure_requirements) = closure_requirements {

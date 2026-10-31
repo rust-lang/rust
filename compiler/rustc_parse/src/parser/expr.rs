@@ -2610,6 +2610,13 @@ impl<'a> Parser<'a> {
             if self.prev_token == token::Or {
                 // This was part of a closure, the that part of the parser recover.
                 return Err(self.dcx().create_err(err));
+            } else if AssocOp::from_token(&self.prev_token).is_some()
+                || self.prev_token == token::Bang
+            {
+                // This was something like `- let`, we want to point at that.
+                let mut err = self.dcx().create_err(err);
+                err.span_label(self.prev_token.span, "expected an expression after this");
+                Recovered::Yes(err.emit_err())
             } else {
                 Recovered::Yes(self.dcx().emit_err(err))
             }

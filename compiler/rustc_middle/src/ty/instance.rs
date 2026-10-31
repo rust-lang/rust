@@ -16,8 +16,8 @@ use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::ty::normalize_erasing_regions::NormalizationError;
 use crate::ty::print::{FmtPrinter, Print};
 use crate::ty::{
-    self, AssocContainer, EarlyBinder, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypeFoldable,
-    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+    self, AssocContainer, EarlyBinder, GenericArgs, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
+    TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
 
 /// An `InstanceKind` along with the args that are needed to substitute the instance.
@@ -32,7 +32,7 @@ use crate::ty::{
 #[derive(StableHash, Lift, TypeFoldable, TypeVisitable)]
 pub struct Instance<'tcx> {
     pub def: InstanceKind<'tcx>,
-    pub args: GenericArgsRef<'tcx>,
+    pub args: GenericArgs<'tcx>,
 }
 
 /// Describes why a `ReifyShim` was created. This is needed to distinguish a ReifyShim created to
@@ -481,7 +481,7 @@ fn resolve_async_drop_poll<'tcx>(mut cor_ty: Ty<'tcx>) -> Instance<'tcx> {
                         first_cor,
                         cor_ty,
                     )),
-                    args: proxy_args,
+                    args: *proxy_args,
                 };
             }
         } else {
@@ -495,12 +495,12 @@ fn resolve_async_drop_poll<'tcx>(mut cor_ty: Ty<'tcx>) -> Instance<'tcx> {
                         first_cor,
                         cor_ty,
                     )),
-                    args: proxy_args,
+                    args: *proxy_args,
                 };
             } else {
                 return Instance {
                     def: ty::InstanceKind::Shim(ShimKind::AsyncDropGlue(poll_def_id, cor_ty)),
-                    args: child_args,
+                    args: *child_args,
                 };
             }
         }
@@ -516,7 +516,7 @@ impl<'tcx> Instance<'tcx> {
     /// this function should probably use [`Instance::expect_resolve`], or if run
     /// in a polymorphic environment or within a lint (that may encounter ambiguity)
     /// [`Instance::try_resolve`] instead.
-    pub fn new_raw(def_id: DefId, args: GenericArgsRef<'tcx>) -> Instance<'tcx> {
+    pub fn new_raw(def_id: DefId, args: GenericArgs<'tcx>) -> Instance<'tcx> {
         assert!(
             !args.has_escaping_bound_vars(),
             "args of instance {def_id:?} has escaping bound vars: {args:?}"
@@ -573,7 +573,7 @@ impl<'tcx> Instance<'tcx> {
         tcx: TyCtxt<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
         def_id: DefId,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
     ) -> Result<Option<Instance<'tcx>>, ErrorGuaranteed> {
         assert_matches!(
             tcx.def_kind(def_id),
@@ -614,7 +614,7 @@ impl<'tcx> Instance<'tcx> {
         tcx: TyCtxt<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
         def_id: DefId,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
         span: Span,
     ) -> Instance<'tcx> {
         // We compute the span lazily, to avoid unnecessary query calls.
@@ -656,7 +656,7 @@ impl<'tcx> Instance<'tcx> {
         tcx: TyCtxt<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
         def_id: DefId,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
     ) -> Option<Instance<'tcx>> {
         debug!("resolve(def_id={:?}, args={:?})", def_id, args);
         // Use either `resolve_closure` or `resolve_for_vtable`
@@ -705,7 +705,7 @@ impl<'tcx> Instance<'tcx> {
         tcx: TyCtxt<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
         def_id: DefId,
-        args: GenericArgsRef<'tcx>,
+        args: GenericArgs<'tcx>,
         span: Span,
     ) -> Instance<'tcx> {
         debug!("resolve_for_vtable(def_id={:?}, args={:?})", def_id, args);
@@ -785,7 +785,7 @@ impl<'tcx> Instance<'tcx> {
     pub fn resolve_closure(
         tcx: TyCtxt<'tcx>,
         def_id: DefId,
-        args: ty::GenericArgsRef<'tcx>,
+        args: ty::GenericArgs<'tcx>,
         requested_kind: ty::ClosureKind,
     ) -> Instance<'tcx> {
         let actual_kind = args.as_closure().kind();
@@ -833,7 +833,7 @@ impl<'tcx> Instance<'tcx> {
     pub fn fn_once_adapter_instance(
         tcx: TyCtxt<'tcx>,
         closure_did: DefId,
-        args: ty::GenericArgsRef<'tcx>,
+        args: ty::GenericArgs<'tcx>,
     ) -> Instance<'tcx> {
         let fn_once = tcx.require_lang_item(LangItem::FnOnce, DUMMY_SP);
         let call_once = tcx
@@ -864,7 +864,7 @@ impl<'tcx> Instance<'tcx> {
         tcx: TyCtxt<'tcx>,
         trait_item_id: DefId,
         trait_id: DefId,
-        rcvr_args: ty::GenericArgsRef<'tcx>,
+        rcvr_args: ty::GenericArgs<'tcx>,
     ) -> Option<Instance<'tcx>> {
         let ty::Coroutine(coroutine_def_id, args) = *rcvr_args.type_at(0).kind() else {
             return None;
@@ -936,7 +936,7 @@ impl<'tcx> Instance<'tcx> {
     /// This function returns `Some(args)` in the former case and `None` otherwise -- i.e., if
     /// this function returns `None`, then the MIR body does not require instantiation during
     /// codegen.
-    fn args_for_mir_body(&self) -> Option<GenericArgsRef<'tcx>> {
+    fn args_for_mir_body(&self) -> Option<GenericArgs<'tcx>> {
         self.def.has_polymorphic_mir_body().then_some(self.args)
     }
 

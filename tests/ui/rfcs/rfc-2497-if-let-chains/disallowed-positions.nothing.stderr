@@ -306,7 +306,9 @@ error: expected expression, found `let` statement
   --> $DIR/disallowed-positions.rs:130:12
    |
 LL |     if x = let 0 = 0 {}
-   |            ^^^
+   |          - ^^^
+   |          |
+   |          expected an expression after this
    |
    = note: only supported directly in conditions of `if` and `while` expressions
 
@@ -370,7 +372,9 @@ error: expected expression, found `let` statement
   --> $DIR/disallowed-positions.rs:161:19
    |
 LL |     if let true = let true = true {}
-   |                   ^^^
+   |                 - ^^^
+   |                 |
+   |                 expected an expression after this
    |
    = note: only supported directly in conditions of `if` and `while` expressions
 
@@ -426,7 +430,9 @@ error: expected expression, found `let` statement
   --> $DIR/disallowed-positions.rs:184:12
    |
 LL |     if (|| let 0 = 0) {}
-   |            ^^^
+   |         -- ^^^
+   |         |
+   |         expected an expression after this
    |
    = note: only supported directly in conditions of `if` and `while` expressions
 
@@ -512,7 +518,9 @@ error: expected expression, found `let` statement
   --> $DIR/disallowed-positions.rs:221:15
    |
 LL |     while x = let 0 = 0 {}
-   |               ^^^
+   |             - ^^^
+   |             |
+   |             expected an expression after this
    |
    = note: only supported directly in conditions of `if` and `while` expressions
 
@@ -576,7 +584,9 @@ error: expected expression, found `let` statement
   --> $DIR/disallowed-positions.rs:252:22
    |
 LL |     while let true = let true = true {}
-   |                      ^^^
+   |                    - ^^^
+   |                    |
+   |                    expected an expression after this
    |
    = note: only supported directly in conditions of `if` and `while` expressions
 
@@ -632,7 +642,9 @@ error: expected expression, found `let` statement
   --> $DIR/disallowed-positions.rs:275:15
    |
 LL |     while (|| let 0 = 0) {}
-   |               ^^^
+   |            -- ^^^
+   |            |
+   |            expected an expression after this
    |
    = note: only supported directly in conditions of `if` and `while` expressions
 
@@ -648,7 +660,9 @@ error: expected expression, found `let` statement
   --> $DIR/disallowed-positions.rs:295:6
    |
 LL |     &let 0 = 0;
-   |      ^^^
+   |     -^^^
+   |     |
+   |     expected an expression after this
    |
    = note: only supported directly in conditions of `if` and `while` expressions
 
@@ -656,7 +670,9 @@ error: expected expression, found `let` statement
   --> $DIR/disallowed-positions.rs:298:6
    |
 LL |     !let 0 = 0;
-   |      ^^^
+   |     -^^^
+   |     |
+   |     expected an expression after this
    |
    = note: only supported directly in conditions of `if` and `while` expressions
 
@@ -664,7 +680,9 @@ error: expected expression, found `let` statement
   --> $DIR/disallowed-positions.rs:300:6
    |
 LL |     *let 0 = 0;
-   |      ^^^
+   |     -^^^
+   |     |
+   |     expected an expression after this
    |
    = note: only supported directly in conditions of `if` and `while` expressions
 
@@ -672,7 +690,9 @@ error: expected expression, found `let` statement
   --> $DIR/disallowed-positions.rs:302:6
    |
 LL |     -let 0 = 0;
-   |      ^^^
+   |     -^^^
+   |     |
+   |     expected an expression after this
    |
    = note: only supported directly in conditions of `if` and `while` expressions
 
@@ -680,7 +700,9 @@ error: expected expression, found `let` statement
   --> $DIR/disallowed-positions.rs:304:13
    |
 LL |     let _ = let _ = 3;
-   |             ^^^
+   |           - ^^^
+   |           |
+   |           expected an expression after this
    |
    = note: only supported directly in conditions of `if` and `while` expressions
 
@@ -696,7 +718,9 @@ error: expected expression, found `let` statement
   --> $DIR/disallowed-positions.rs:315:13
    |
 LL |     true || let 0 = 0;
-   |             ^^^
+   |          -- ^^^
+   |          |
+   |          expected an expression after this
    |
    = note: only supported directly in conditions of `if` and `while` expressions
 
@@ -704,7 +728,9 @@ error: expected expression, found `let` statement
   --> $DIR/disallowed-positions.rs:317:14
    |
 LL |     (true || let 0 = 0);
-   |              ^^^
+   |           -- ^^^
+   |           |
+   |           expected an expression after this
    |
    = note: only supported directly in conditions of `if` and `while` expressions
 
@@ -712,7 +738,9 @@ error: expected expression, found `let` statement
   --> $DIR/disallowed-positions.rs:319:22
    |
 LL |     true && (true || let 0 = 0);
-   |                      ^^^
+   |                   -- ^^^
+   |                   |
+   |                   expected an expression after this
    |
    = note: only supported directly in conditions of `if` and `while` expressions
 
@@ -720,7 +748,9 @@ error: expected expression, found `let` statement
   --> $DIR/disallowed-positions.rs:323:9
    |
 LL |     x = let 0 = 0;
-   |         ^^^
+   |       - ^^^
+   |       |
+   |       expected an expression after this
    |
    = note: only supported directly in conditions of `if` and `while` expressions
 
@@ -768,7 +798,9 @@ error: expected expression, found `let` statement
   --> $DIR/disallowed-positions.rs:337:17
    |
 LL |     (let true = let true = true);
-   |                 ^^^
+   |               - ^^^
+   |               |
+   |               expected an expression after this
    |
    = note: only supported directly in conditions of `if` and `while` expressions
 
@@ -776,7 +808,9 @@ error: expected expression, found `let` statement
   --> $DIR/disallowed-positions.rs:343:25
    |
 LL |         let x = true && let y = 1;
-   |                         ^^^
+   |                      -- ^^^
+   |                      |
+   |                      expected an expression after this
    |
    = note: only supported directly in conditions of `if` and `while` expressions
 
@@ -792,7 +826,9 @@ error: expected expression, found `let` statement
   --> $DIR/disallowed-positions.rs:354:6
    |
 LL |     &let 0 = 0
-   |      ^^^
+   |     -^^^
+   |     |
+   |     expected an expression after this
    |
    = note: only supported directly in conditions of `if` and `while` expressions
 
@@ -800,7 +836,9 @@ error: expected expression, found `let` statement
   --> $DIR/disallowed-positions.rs:365:17
    |
 LL |         true && let 1 = 1
-   |                 ^^^
+   |              -- ^^^
+   |              |
+   |              expected an expression after this
    |
    = note: only supported directly in conditions of `if` and `while` expressions
 
@@ -808,7 +846,9 @@ error: expected expression, found `let` statement
   --> $DIR/disallowed-positions.rs:370:17
    |
 LL |         true && let 1 = 1
-   |                 ^^^
+   |              -- ^^^
+   |              |
+   |              expected an expression after this
    |
    = note: only supported directly in conditions of `if` and `while` expressions
 
@@ -816,7 +856,9 @@ error: expected expression, found `let` statement
   --> $DIR/disallowed-positions.rs:375:17
    |
 LL |         true && let 1 = 1
-   |                 ^^^
+   |              -- ^^^
+   |              |
+   |              expected an expression after this
    |
    = note: only supported directly in conditions of `if` and `while` expressions
 
@@ -824,7 +866,9 @@ error: expected expression, found `let` statement
   --> $DIR/disallowed-positions.rs:386:17
    |
 LL |         true && let 1 = 1
-   |                 ^^^
+   |              -- ^^^
+   |              |
+   |              expected an expression after this
    |
    = note: only supported directly in conditions of `if` and `while` expressions
 
@@ -960,7 +1004,9 @@ error: expected expression, found `let` statement
   --> $DIR/disallowed-positions.rs:439:22
    |
 LL |     let x = (true && let y = 1);
-   |                      ^^^
+   |                   -- ^^^
+   |                   |
+   |                   expected an expression after this
    |
    = note: only supported directly in conditions of `if` and `while` expressions
 

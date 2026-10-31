@@ -397,9 +397,9 @@ pub trait GenericArgs<I: Interner<GenericArgs = Self>>:
         original_args: &[I::GenericArg],
     ) -> I::GenericArgs;
 
-    fn split_closure_args(self) -> ty::ClosureArgsParts<I>;
-    fn split_coroutine_closure_args(self) -> ty::CoroutineClosureArgsParts<I>;
-    fn split_coroutine_args(self) -> ty::CoroutineArgsParts<I>;
+    fn split_closure_args<'a>(&'a self) -> ty::ClosureArgsParts<'a, I>;
+    fn split_coroutine_closure_args<'a>(&'a self) -> ty::CoroutineClosureArgsParts<'a, I>;
+    fn split_coroutine_args<'a>(&'a self) -> ty::CoroutineArgsParts<'a, I>;
 
     fn as_closure(self) -> ty::ClosureArgs<I> {
         ty::ClosureArgs { args: self }

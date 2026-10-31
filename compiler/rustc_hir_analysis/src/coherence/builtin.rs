@@ -496,7 +496,7 @@ pub(crate) fn reborrow_info<'tcx>(
         }
     };
 
-    let lifetimes_count = generic_lifetime_params_count(args);
+    let lifetimes_count = generic_lifetime_params_count(args.as_slice());
     let data_fields = collect_reborrow_data_fields(tcx, def, args);
 
     if lifetimes_count != 1 {
@@ -576,7 +576,7 @@ struct ReborrowDataField<'tcx> {
 fn collect_reborrow_data_fields<'tcx>(
     tcx: TyCtxt<'tcx>,
     def: ty::AdtDef<'tcx>,
-    args: ty::GenericArgsRef<'tcx>,
+    args: ty::GenericArgs<'tcx>,
 ) -> Vec<ReborrowDataField<'tcx>> {
     def.non_enum_variant()
         .fields

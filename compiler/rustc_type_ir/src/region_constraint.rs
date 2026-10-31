@@ -1090,7 +1090,8 @@ fn rewrite_alias_ty_outlives_constraints_in_universe_for_eager_placeholder_handl
             current_index: DebruijnIndex::ZERO,
         };
         let escaping_outlives = bound_outlives.skip_binder().fold_with(&mut replacer);
-        let bound_vars = bound_outlives.bound_vars().iter().chain(
+        let bound_vars = bound_outlives.bound_vars();
+        let bound_vars = bound_vars.iter().chain(
             core::mem::take(&mut replacer.regions)
                 .into_iter()
                 .map(|(_, bound_region)| BoundVariableKind::Region(bound_region.kind)),

@@ -13,7 +13,7 @@ use tracing::{debug, instrument};
 
 use crate::traits::query::NoSolution;
 use crate::ty::{
-    self, EarlyBinder, FallibleTypeFolder, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypeFolder,
+    self, EarlyBinder, FallibleTypeFolder, GenericArgs, Ty, TyCtxt, TypeFoldable, TypeFolder,
     TypeVisitableExt, Unnormalized,
 };
 
@@ -161,7 +161,7 @@ impl<'tcx> TyCtxt<'tcx> {
     #[instrument(level = "debug", skip(self))]
     pub fn instantiate_and_normalize_erasing_regions<T>(
         self,
-        param_args: GenericArgsRef<'tcx>,
+        param_args: GenericArgs<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
         value: EarlyBinder<'tcx, T>,
     ) -> T
@@ -179,7 +179,7 @@ impl<'tcx> TyCtxt<'tcx> {
     #[instrument(level = "debug", skip(self))]
     pub fn try_instantiate_and_normalize_erasing_regions<T>(
         self,
-        param_args: GenericArgsRef<'tcx>,
+        param_args: GenericArgs<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
         value: EarlyBinder<'tcx, T>,
     ) -> Result<T, NormalizationError<'tcx>>
