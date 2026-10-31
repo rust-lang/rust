@@ -67,9 +67,9 @@ Trait resolution consists of three major parts:
   It may also require evaluating those nested obligations to resolve ambiguities.
 
 - **Fulfillment**: The fulfillment code is what tracks that obligations are completely fulfilled.
-  Basically it is a worklist of obligations to be selected: once selection is successful,
+  Basically, it is a worklist of obligations to be selected: once selection is successful,
   the obligation is
-  removed from the worklist and any nested obligations are enqueued.
+  removed from the worklist, and any nested obligations are enqueued.
   Fulfillment constrains inference variables.
 
 - **Evaluation**: Checks whether obligations holds without constraining any inference variables.
@@ -120,7 +120,7 @@ The subroutines that decide whether a particular impl/where-clause/etc applies
 to a particular obligation are collectively referred to as the process of
 _matching_. For `impl` candidates <!-- date-check: Oct 2022 -->,
 this amounts to unifying the impl header (the `Self` type and the trait arguments)
-while ignoring  nested obligations.
+while ignoring nested obligations.
 If matching succeeds then we add it to a set of candidates.
 There are other rules when assembling candidates for built-in traits such as `Copy`,
 `Sized`, and `CoerceUnsized`.
