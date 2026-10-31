@@ -218,7 +218,8 @@ impl StoreBufferAlloc {
             // we can't return anything outdated.
             return interp_ok(None);
         };
-        let store_buffer = Ref::map(self.store_buffers.borrow(), |buffer| &buffer[pos]);
+        let store_buffer =
+            Ref::map(self.store_buffers.borrow(), |buffer| buffer.get_pos(pos).unwrap());
         interp_ok(Some(store_buffer))
     }
 
@@ -255,7 +256,7 @@ impl StoreBufferAlloc {
                 pos_range.start
             }
         };
-        interp_ok(&mut buffers[pos])
+        interp_ok(buffers.get_mut_pos(pos).unwrap())
     }
 }
 

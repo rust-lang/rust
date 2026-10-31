@@ -4,14 +4,19 @@ use core::time::Duration;
 
 use rustc_abi::FieldIdx;
 
-use crate::concurrency::sync::{FutexRef, SyncObj};
+use crate::concurrency::sync::FutexRef;
+use crate::meta_obj::GetMetaError;
 use crate::*;
 
 pub struct FreeBsdFutex {
     futex: FutexRef,
 }
 
-impl SyncObj for FreeBsdFutex {}
+impl MetaObj for FreeBsdFutex {
+    fn opaque(&self) -> bool {
+        false
+    }
+}
 
 /// Extended variant of the `timespec` struct.
 pub struct UmtxTime {
@@ -43,23 +48,23 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         uaddr2: &OpTy<'tcx>,
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
+        let ecx = self.eval_context_mut();
 
-        let obj = this.read_pointer(obj)?;
-        let op = this.read_scalar(op)?.to_i32()?;
-        let val = this.read_target_usize(val)?;
-        let uaddr = this.read_target_usize(uaddr)?;
-        let uaddr2 = this.read_pointer(uaddr2)?;
+        let obj_ptr = ecx.read_pointer(obj)?;
+        let op = ecx.read_scalar(op)?.to_i32()?;
+        let val = ecx.read_target_usize(val)?;
+        let uaddr = ecx.read_target_usize(uaddr)?;
+        let uaddr2 = ecx.read_pointer(uaddr2)?;
 
-        let wait = this.eval_libc_i32("UMTX_OP_WAIT");
-        let wait_uint = this.eval_libc_i32("UMTX_OP_WAIT_UINT");
-        let wait_uint_private = this.eval_libc_i32("UMTX_OP_WAIT_UINT_PRIVATE");
+        let wait = ecx.eval_libc_i32("UMTX_OP_WAIT");
+        let wait_uint = ecx.eval_libc_i32("UMTX_OP_WAIT_UINT");
+        let wait_uint_private = ecx.eval_libc_i32("UMTX_OP_WAIT_UINT_PRIVATE");
 
-        let wake = this.eval_libc_i32("UMTX_OP_WAKE");
-        let wake_private = this.eval_libc_i32("UMTX_OP_WAKE_PRIVATE");
+        let wake = ecx.eval_libc_i32("UMTX_OP_WAKE");
+        let wake_private = ecx.eval_libc_i32("UMTX_OP_WAKE_PRIVATE");
 
-        let timespec_layout = this.libc_ty_layout("timespec");
-        let umtx_time_layout = this.libc_ty_layout("_umtx_time");
+        let timespec_layout = ecx.libc_ty_layout("timespec");
+        let umtx_time_layout = ecx.libc_ty_layout("_umtx_time");
         assert!(
             timespec_layout.size != umtx_time_layout.size,
             "`struct timespec` and `struct _umtx_time` should have different sizes."
@@ -70,21 +75,22 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // processes or not. For Miri, we can treat them the same.
             op if op == wait || op == wait_uint || op == wait_uint_private => {
                 let obj_layout =
-                    if op == wait { this.machine.layouts.isize } else { this.machine.layouts.u32 };
-                let obj = this.ptr_to_mplace(obj, obj_layout);
+                    if op == wait { ecx.machine.layouts.isize } else { ecx.machine.layouts.u32 };
+                let obj = ecx.ptr_to_mplace(obj_ptr, obj_layout);
 
                 // Read the Linux futex wait implementation in Miri to understand why this fence is needed.
-                this.atomic_fence(AtomicFenceOrd::SeqCst)?;
-                let obj_val = this
+                ecx.atomic_fence(AtomicFenceOrd::SeqCst)?;
+                let obj_val = ecx
                     .read_scalar_atomic(&obj, AtomicReadOrd::Acquire)?
                     .to_bits(obj_layout.size)?; // isize and u32 can have different sizes
 
                 if obj_val == u128::from(val) {
                     // This cannot fail since we already did an atomic acquire read on that pointer.
                     // Acquire reads are only allowed on mutable memory.
-                    let futex_ref = this
-                        .get_sync_or_init(obj.ptr(), |_| FreeBsdFutex { futex: Default::default() })
-                        .unwrap()
+                    let futex_ref = ecx
+                        .get_or_insert_meta(&obj, |_| {
+                            interp_ok(FreeBsdFutex { futex: Default::default() })
+                        })?
                         .futex
                         .clone();
 
@@ -93,16 +99,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     // extended variant, `struct _umtx_time`, as the `uaddr2` argument of _umtx_op().
                     // They are distinguished by the `uaddr` value, which must be equal
                     // to the size of the structure pointed to by `uaddr2`, casted to uintptr_t.
-                    let deadline = if this.ptr_is_null(uaddr2)? {
+                    let deadline = if ecx.ptr_is_null(uaddr2)? {
                         // no timeout parameter
                         None
                     } else {
                         if uaddr == umtx_time_layout.size.bytes() {
                             // `uaddr2` points to a `struct _umtx_time`.
-                            let umtx_time_place = this.ptr_to_mplace(uaddr2, umtx_time_layout);
+                            let umtx_time_place = ecx.ptr_to_mplace(uaddr2, umtx_time_layout);
 
-                            let Some(umtx_time) = this.read_umtx_time(&umtx_time_place)? else {
-                                return this.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
+                            let Some(umtx_time) = ecx.read_umtx_time(&umtx_time_place)? else {
+                                return ecx.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
                             };
 
                             let style = if umtx_time.abs_time {
@@ -111,19 +117,19 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                                 TimeoutStyle::Relative
                             };
 
-                            Some(this.machine.timeout(
+                            Some(ecx.machine.timeout(
                                 umtx_time.timeout_clock,
                                 style,
                                 umtx_time.timeout,
                             ))
                         } else if uaddr == timespec_layout.size.bytes() {
                             // RealTime clock can't be used in isolation mode.
-                            this.check_no_isolation("`_umtx_op` with `timespec` timeout")?;
+                            ecx.check_no_isolation("`_umtx_op` with `timespec` timeout")?;
 
                             // `uaddr2` points to a `struct timespec`.
-                            let timespec = this.ptr_to_mplace(uaddr2, timespec_layout);
-                            let Some(duration) = this.read_timespec(&timespec)? else {
-                                return this.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
+                            let timespec = ecx.ptr_to_mplace(uaddr2, timespec_layout);
+                            let Some(duration) = ecx.read_timespec(&timespec)? else {
+                                return ecx.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
                             };
 
                             // FreeBSD does not seem to document which clock is used when the timeout
@@ -131,18 +137,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                             // code (umtx_copyin_umtx_time() in kern_umtx.c), it seems to default to CLOCK_REALTIME,
                             // so that's what we also do.
                             // Discussion in golang: https://github.com/golang/go/issues/17168#issuecomment-250235271
-                            Some(this.machine.timeout(
+                            Some(ecx.machine.timeout(
                                 TimeoutClock::RealTime,
                                 TimeoutStyle::Relative,
                                 duration,
                             ))
                         } else {
-                            return this.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
+                            return ecx.set_errno_and_return_neg1(LibcError("EINVAL"), dest);
                         }
                     };
 
                     let dest = dest.clone();
-                    this.futex_wait(
+                    ecx.futex_wait(
                         futex_ref,
                         u32::MAX, // we set the bitset to include all bits
                         deadline,
@@ -167,24 +173,30 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 } else {
                     // The manual doesn’t specify what should happen if the futex value doesn’t match the expected one.
                     // On FreeBSD 14.2, testing shows that WAIT operations return 0 even when the value is incorrect.
-                    this.write_int(0, dest)?;
+                    ecx.write_int(0, dest)?;
                     interp_ok(())
                 }
             }
             // UMTX_OP_WAKE and UMTX_OP_WAKE_PRIVATE only differ in whether they work across
             // processes or not. For Miri, we can treat them the same.
             op if op == wake || op == wake_private => {
-                let Some(futex_ref) =
-                    this.get_sync_or_init(obj, |_| FreeBsdFutex { futex: Default::default() })
-                else {
-                    // From Linux implementation:
-                    // No AllocId, or no live allocation at that AllocId.
-                    // Return an error code. (That seems nicer than silently doing something non-intuitive.)
-                    // This means that if an address gets reused by a new allocation,
-                    // we'll use an independent futex queue for this... that seems acceptable.
-                    return this.set_errno_and_return_neg1(LibcError("EFAULT"), dest);
+                let futex = match ecx.try_get_meta::<FreeBsdFutex>(obj_ptr) {
+                    Ok(f) => f,
+                    Err(GetMetaError::NoMem) => {
+                        // From Linux implementation:
+                        // No AllocId, or no live allocation at that AllocId.
+                        // Return an error code. (That seems nicer than silently doing something non-intuitive.)
+                        // This means that if an address gets reused by a new allocation,
+                        // we'll use an independent futex queue for this... that seems acceptable.
+                        return ecx.set_errno_and_return_neg1(LibcError("EFAULT"), dest);
+                    }
+                    Err(GetMetaError::NoObj) => {
+                        // Nobody waiting here, nothing to do.
+                        ecx.write_int(0, dest)?;
+                        return interp_ok(());
+                    }
                 };
-                let futex_ref = futex_ref.futex.clone();
+                let futex_ref = futex.futex.clone();
 
                 // Saturating cast for when usize is smaller than u64.
                 let count = usize::try_from(val).unwrap_or(usize::MAX);
@@ -197,10 +209,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
 
                 // Read the Linux futex wake implementation in Miri to understand why this fence is needed.
-                this.atomic_fence(AtomicFenceOrd::SeqCst)?;
+                ecx.atomic_fence(AtomicFenceOrd::SeqCst)?;
 
                 // `_umtx_op` doesn't return the amount of woken threads.
-                let _woken = this.futex_wake(
+                let _woken = ecx.futex_wake(
                     &futex_ref,
                     u32::MAX, // we set the bitset to include all bits
                     count,
@@ -209,7 +221,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // From the manual:
                 // If successful, all requests, except UMTX_SHM_CREAT and UMTX_SHM_LOOKUP
                 // sub-requests of the UMTX_OP_SHM request, will return zero.
-                this.write_int(0, dest)?;
+                ecx.write_int(0, dest)?;
                 interp_ok(())
             }
             op => {

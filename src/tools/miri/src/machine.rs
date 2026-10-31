@@ -2,8 +2,7 @@
 //! `Machine` trait.
 
 use std::borrow::Cow;
-use std::cell::{Cell, RefCell};
-use std::collections::BTreeMap;
+use std::cell::RefCell;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::{fmt, process};
@@ -37,10 +36,10 @@ use rustc_target::spec::{Arch, Os};
 
 use crate::alloc_addresses::EvalContextExt;
 use crate::concurrency::data_race::{self, NaReadType, NaWriteType};
-use crate::concurrency::sync::SyncObj;
 use crate::concurrency::{
     AllocDataRaceHandler, GenmcCtx, GenmcEvalContextExt as _, GlobalDataRaceHandler, weak_memory,
 };
+use crate::data_structures::range_object_map::RangeObjectMap;
 use crate::helpers::is_no_core;
 use crate::*;
 
@@ -391,11 +390,9 @@ pub struct AllocExtra<'tcx> {
     /// if this allocation is leakable. The backtrace is not
     /// pruned yet; that should be done before printing it.
     pub backtrace: Option<Vec<FrameInfo<'tcx>>>,
-    /// Synchronization objects like to attach extra data to particular addresses. We store that
-    /// inside the relevant allocation, to ensure that everything is removed when the allocation is
-    /// freed.
-    /// This maps offsets to synchronization-primitive-specific data.
-    pub sync_objs: BTreeMap<Size, Box<dyn SyncObj>>,
+    /// Some shims implement APIs that manipulate opaque data stored in memory, or that attach
+    /// extra data to particular memory locations. This is where we store that data.
+    pub meta_objs: RangeObjectMap<Box<dyn MetaObj>>,
 }
 
 // We need a `Clone` impl because the machine passes `Allocation` through `Cow`...
@@ -408,7 +405,7 @@ impl<'tcx> Clone for AllocExtra<'tcx> {
 
 impl VisitProvenance for AllocExtra<'_> {
     fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
-        let AllocExtra { borrow_tracker, data_race, backtrace: _, sync_objs: _ } = self;
+        let AllocExtra { borrow_tracker, data_race, backtrace: _, meta_objs: _ } = self;
 
         borrow_tracker.visit_provenance(visit);
         data_race.visit_provenance(visit);
@@ -639,7 +636,7 @@ pub struct MiriMachine<'tcx> {
     pub native_lib: Vec<!>,
     /// A memory location for exchanging the current `ecx` pointer with native code.
     #[cfg(all(feature = "native-lib", unix))]
-    pub native_lib_ecx_interchange: &'static Cell<usize>,
+    pub native_lib_ecx_interchange: &'static std::cell::Cell<usize>,
 
     /// Run a garbage collector for BorTags every N basic blocks.
     pub(crate) gc_interval: u32,
@@ -671,11 +668,6 @@ pub struct MiriMachine<'tcx> {
 
     /// A cache of "data range" computations for unions (i.e., the offsets of non-padding bytes).
     union_data_ranges: FxHashMap<Ty<'tcx>, RangeSet>,
-
-    /// Caches the sanity-checks for various pthread primitives.
-    pub(crate) pthread_mutex_sanity: Cell<bool>,
-    pub(crate) pthread_rwlock_sanity: Cell<bool>,
-    pub(crate) pthread_condvar_sanity: Cell<bool>,
 
     /// (Foreign) symbols that are synthesized as part of the allocator shim: the key indicates the
     /// name of the symbol being synthesized; the value indicates whether this should invoke some
@@ -840,7 +832,7 @@ impl<'tcx> MiriMachine<'tcx> {
                 )
             }).collect(),
             #[cfg(all(feature = "native-lib", unix))]
-            native_lib_ecx_interchange: Box::leak(Box::new(Cell::new(0))),
+            native_lib_ecx_interchange: Box::leak(Box::new(std::cell::Cell::new(0))),
             #[cfg(not(all(feature = "native-lib", unix)))]
             native_lib: config.native_lib.iter().map(|_| {
                 panic!("calling functions from native libraries via FFI is not supported in this build of Miri")
@@ -855,9 +847,6 @@ impl<'tcx> MiriMachine<'tcx> {
             allocation_spans: RefCell::new(FxHashMap::default()),
             symbolic_alignment: RefCell::new(FxHashMap::default()),
             union_data_ranges: FxHashMap::default(),
-            pthread_mutex_sanity: Cell::new(false),
-            pthread_rwlock_sanity: Cell::new(false),
-            pthread_condvar_sanity: Cell::new(false),
             allocator_shim_symbols: Self::allocator_shim_symbols(tcx),
             mangle_internal_symbol_cache: Default::default(),
             float_nondet: config.float_nondet,
@@ -1021,7 +1010,7 @@ impl<'tcx> MiriMachine<'tcx> {
             borrow_tracker,
             data_race,
             backtrace,
-            sync_objs: BTreeMap::default(),
+            meta_objs: RangeObjectMap::new(),
         })
     }
 }
@@ -1082,9 +1071,6 @@ impl VisitProvenance for MiriMachine<'_> {
             allocation_spans: _,
             symbolic_alignment: _,
             union_data_ranges: _,
-            pthread_mutex_sanity: _,
-            pthread_rwlock_sanity: _,
-            pthread_condvar_sanity: _,
             allocator_shim_symbols: _,
             mangle_internal_symbol_cache: _,
             float_nondet: _,
@@ -1725,8 +1711,8 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             borrow_tracker.before_memory_read(alloc_id, prov_extra, range, machine)?;
         }
         // Check if there are any sync objects that would like to prevent reading this memory.
-        for (_offset, obj) in alloc_extra.sync_objs.range(range.start..range.end()) {
-            obj.on_access(concurrency::sync::AccessKind::Read)?;
+        for obj in alloc_extra.meta_objs.range(range) {
+            obj.on_access()?;
         }
 
         interp_ok(())
@@ -1771,17 +1757,13 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         }
         // Delete sync objects that don't like writes.
         // Most of the time, we can just skip this.
-        if !alloc_extra.sync_objs.is_empty() {
-            let mut to_delete = vec![];
-            for (offset, obj) in alloc_extra.sync_objs.range(range.start..range.end()) {
-                obj.on_access(concurrency::sync::AccessKind::Write)?;
-                if obj.delete_on_write() {
-                    to_delete.push(*offset);
-                }
+        if !alloc_extra.meta_objs.is_empty() {
+            // First inform them about the access.
+            for obj in alloc_extra.meta_objs.range(range) {
+                obj.on_access()?;
             }
-            for offset in to_delete {
-                alloc_extra.sync_objs.remove(&offset);
-            }
+            // Then remove the opaque objects.
+            alloc_extra.meta_objs.remove_range_if(range, |obj| obj.opaque());
         }
         interp_ok(())
     }
@@ -1820,8 +1802,8 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
             borrow_tracker.before_memory_deallocation(alloc_id, prove_extra, size, machine)?;
         }
         // Check if there are any sync objects that would like to prevent freeing this memory.
-        for obj in alloc_extra.sync_objs.values() {
-            obj.on_access(concurrency::sync::AccessKind::Dealloc)?;
+        for obj in alloc_extra.meta_objs.range(AllocRange { start: Size::ZERO, size }) {
+            obj.on_access()?;
         }
 
         if let Some((_, deallocated_at)) = machine.allocation_spans.borrow_mut().get_mut(&alloc_id)
