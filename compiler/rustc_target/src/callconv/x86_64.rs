@@ -2,7 +2,7 @@
 // https://github.com/jckarter/clay/blob/db0bd2702ab0b6e48965cd85f8859bbd5f60e48e/compiler/externals.cpp
 
 use rustc_abi::{
-    BackendRepr, HasDataLayout, Primitive, Reg, RegKind, Size, TyAbiInterface, TyAndLayout,
+    BackendRepr, Float, HasDataLayout, Primitive, Reg, RegKind, Size, TyAbiInterface, TyAndLayout,
     Variants,
 };
 
@@ -10,13 +10,34 @@ use crate::callconv::{ArgAbi, CastTarget, FnAbi};
 use crate::spec::HasTargetSpec;
 
 /// Classification of "eightbyte" components.
-// N.B., the order of the variants is from general to specific,
-// such that `unify(a, b)` is the "smaller" of `a` and `b`.
+///
+/// N.B., the order of the variants is from general to specific,
+/// such that `merge(a, b)` is the "smaller" of `a` and `b`, unless it is an error.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 enum Class {
     Int,
     Sse,
     SseUp,
+    X87,
+    X87Up,
+}
+
+impl Class {
+    fn upper_half(self) -> Class {
+        match self {
+            Class::Sse | Class::SseUp => Class::SseUp,
+            Class::X87 | Class::X87Up => Class::X87Up,
+            Class::Int => Class::Int,
+        }
+    }
+
+    fn merge(self, other: Self) -> Result<Self, Memory> {
+        match (self, other) {
+            (Class::X87 | Class::X87Up, Class::Sse | Class::SseUp) => Err(Memory),
+            (Class::Sse | Class::SseUp, Class::X87 | Class::X87Up) => Err(Memory),
+            _ => Ok(Ord::min(self, other)),
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -54,6 +75,7 @@ where
         let mut c = match layout.backend_repr {
             BackendRepr::Scalar(scalar) => match scalar.primitive() {
                 Primitive::Int(..) | Primitive::Pointer(_) => Class::Int,
+                Primitive::Float(Float::X87F80) => Class::X87,
                 Primitive::Float(_) => Class::Sse,
             },
 
@@ -85,13 +107,13 @@ where
         let first = (off.bytes() / 8) as usize;
         let last = ((off.bytes() + layout.size.bytes() - 1) / 8) as usize;
         for cls in &mut cls[first..=last] {
-            *cls = Some(cls.map_or(c, |old| old.min(c)));
+            *cls = match cls {
+                Some(old) => Some(Class::merge(*old, c)?),
+                None => Some(c),
+            };
 
-            // Everything after the first Sse "eightbyte"
-            // component is the upper half of a register.
-            if c == Class::Sse {
-                c = Class::SseUp;
-            }
+            // Everything after the first "eightbyte" component is the upper half of a register.
+            c = c.upper_half();
         }
 
         Ok(())
@@ -127,6 +149,17 @@ where
         }
     }
 
+    // If X87UP is not preceded by X87, the whole argument is passed in memory.
+    if let [Some(Class::X87Up), ..] = cls {
+        return Err(Memory);
+    }
+
+    for [prev, curr] in cls[..n].array_windows() {
+        if *curr == Some(Class::X87Up) && *prev != Some(Class::X87) {
+            return Err(Memory);
+        }
+    }
+
     Ok(cls)
 }
 
@@ -152,6 +185,13 @@ fn reg_component(cls: &[Option<Class>], i: &mut usize, size: Size) -> Option<Reg
             } else {
                 Reg::opaque_vector(Size::from_bytes(8) * (vec_len as u64))
             })
+        }
+        Class::X87 => {
+            let consumed =
+                1 + cls[*i + 1..].iter().take_while(|&&c| c == Some(Class::X87Up)).count();
+            assert_eq!(consumed, 2);
+            *i += consumed;
+            Some(Reg::x87_f80())
         }
         c => unreachable!("reg_component: unhandled class {:?}", c),
     }
@@ -193,10 +233,21 @@ where
             arg.make_indirect();
             return;
         }
+        if is_arg && arg.layout.is_x87_f80(cx) {
+            // This branch and cast are not technically required, but it makes the IR more readable.
+            arg.cast_to(Reg::x87_f80());
+            return;
+        }
         let mut cls_or_mem = classify_arg(cx, arg);
 
         if is_arg {
             if let Ok(cls) = cls_or_mem {
+                // An argument of class X87 is passed in memory.
+                if cls.contains(&Some(Class::X87)) {
+                    std::assert_matches!(cls, [Some(Class::X87), Some(Class::X87Up), ..]);
+                    cls_or_mem = Err(Memory);
+                }
+
                 let mut needed_int = 0;
                 let mut needed_sse = 0;
                 for c in cls {

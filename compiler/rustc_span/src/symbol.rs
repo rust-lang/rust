@@ -2436,6 +2436,8 @@ symbols! {
         x86,
         x86_64,
         x86_amx_intrinsics,
+        x87_f80,
+        x87_f80_raw,
         x87_reg,
         x87_target_feature,
         xcoff,

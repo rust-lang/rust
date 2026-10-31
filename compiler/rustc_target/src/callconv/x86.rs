@@ -55,6 +55,10 @@ where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout + HasTargetSpec,
 {
+    if ret.layout.is_x87_f80(cx) {
+        ret.cast_to(Reg::x87_f80());
+        return;
+    }
     if ret.layout.is_aggregate() && ret.layout.is_sized() {
         // Returning a structure. Most often, this will use
         // a hidden first argument. On some platforms, though,
@@ -107,7 +111,11 @@ where
     let align_4 = Align::from_bytes(4).unwrap();
     let align_16 = Align::from_bytes(16).unwrap();
 
-    if arg.layout.is_aggregate() {
+    if arg.layout.is_x87_f80(cx) {
+        // This branch and cast are not technically required, but it makes the IR more readable.
+        arg.cast_to(Reg::x87_f80());
+        return;
+    } else if arg.layout.is_aggregate() {
         // We need to compute the alignment of the `byval` argument. The rules can be found in
         // `X86_32ABIInfo::getTypeStackAlignInBytes` in Clang's `TargetInfo.cpp`. Summarized
         // here, they are:
@@ -232,6 +240,7 @@ pub(crate) fn fill_inregs<'a, Ty, C>(
             PassMode::Ignore | PassMode::Indirect { attrs: _, address_space: _, mode: _ } => {
                 continue;
             }
+            PassMode::Cast { .. } if arg.layout.is_x87_f80(cx) => continue,
             PassMode::Direct(ref mut attrs) => attrs,
             PassMode::Pair(..)
             | PassMode::IndirectUnsized { attrs: _, meta_attrs: _ }
