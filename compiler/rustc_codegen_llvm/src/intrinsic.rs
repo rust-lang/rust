@@ -398,7 +398,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 // FIXME: could be `trunc nuw`, even for signed.
                 let high = self.trunc(high, narrow_llty);
 
-                let pair_llty = self.type_struct(&[narrow_llty, narrow_llty], false);
+                let pair_llty = self.type_struct(&[narrow_llty, narrow_llty]);
                 let pair = self.const_poison(pair_llty);
                 let pair = self.insert_value(pair, low, 0);
                 let pair = self.insert_value(pair, high, 1);
@@ -1669,7 +1669,7 @@ fn codegen_gnu_try<'ll, 'tcx>(
         // the landing pad clauses the exception's type had been matched to.
         // rust_try ignores the selector.
         bx.switch_to_block(catch);
-        let lpad_ty = bx.type_struct(&[bx.type_ptr(), bx.type_i32()], false);
+        let lpad_ty = bx.type_struct(&[bx.type_ptr(), bx.type_i32()]);
         let vals = bx.landing_pad(lpad_ty, bx.eh_personality(), 1);
         let tydesc = bx.const_null(bx.type_ptr());
         bx.add_clause(vals, tydesc);

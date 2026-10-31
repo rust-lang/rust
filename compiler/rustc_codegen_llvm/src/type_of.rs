@@ -33,42 +33,13 @@ fn uncached_llvm_type<'a, 'tcx>(
             let vector_type = cx.type_scalable_vector(element, count.as_u64());
             return match number_of_vectors.0 {
                 1 => vector_type,
-                2 => cx.type_struct(&[vector_type, vector_type], false),
-                3 => cx.type_struct(&[vector_type, vector_type, vector_type], false),
-                4 => cx.type_struct(&[vector_type, vector_type, vector_type, vector_type], false),
-                5 => cx.type_struct(
-                    &[vector_type, vector_type, vector_type, vector_type, vector_type],
-                    false,
-                ),
-                6 => cx.type_struct(
-                    &[vector_type, vector_type, vector_type, vector_type, vector_type, vector_type],
-                    false,
-                ),
-                7 => cx.type_struct(
-                    &[
-                        vector_type,
-                        vector_type,
-                        vector_type,
-                        vector_type,
-                        vector_type,
-                        vector_type,
-                        vector_type,
-                    ],
-                    false,
-                ),
-                8 => cx.type_struct(
-                    &[
-                        vector_type,
-                        vector_type,
-                        vector_type,
-                        vector_type,
-                        vector_type,
-                        vector_type,
-                        vector_type,
-                        vector_type,
-                    ],
-                    false,
-                ),
+                2 => cx.type_struct(&[vector_type; 2]),
+                3 => cx.type_struct(&[vector_type; 3]),
+                4 => cx.type_struct(&[vector_type; 4]),
+                5 => cx.type_struct(&[vector_type; 5]),
+                6 => cx.type_struct(&[vector_type; 6]),
+                7 => cx.type_struct(&[vector_type; 7]),
+                8 => cx.type_struct(&[vector_type; 8]),
                 _ => bug!("`#[rustc_scalable_vector]` tuple struct with too many fields"),
             };
         }
@@ -104,11 +75,11 @@ fn uncached_llvm_type<'a, 'tcx>(
     match layout.fields {
         FieldsShape::Primitive | FieldsShape::Union(_) => {
             let fill = cx.type_padding_filler(layout.size, layout.align.abi);
-            let packed = false;
             match name {
-                None => cx.type_struct(&[fill], packed),
+                None => cx.type_struct(&[fill]),
                 Some(ref name) => {
                     let llty = cx.type_named_struct(name);
+                    let packed = false;
                     cx.set_struct_body(llty, &[fill], packed);
                     llty
                 }
@@ -118,7 +89,7 @@ fn uncached_llvm_type<'a, 'tcx>(
         FieldsShape::Arbitrary { .. } => match name {
             None => {
                 let (llfields, packed) = struct_llfields(cx, layout);
-                cx.type_struct(&llfields, packed)
+                if packed { cx.type_packed_struct(&llfields) } else { cx.type_struct(&llfields) }
             }
             Some(ref name) => {
                 let llty = cx.type_named_struct(name);
@@ -294,13 +265,10 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
             BackendRepr::ScalarPair { .. } => {
                 // An immediate pair always contains just the two elements, without any padding
                 // filler, as it should never be stored to memory.
-                return cx.type_struct(
-                    &[
-                        self.scalar_pair_element_llvm_type(cx, 0, true),
-                        self.scalar_pair_element_llvm_type(cx, 1, true),
-                    ],
-                    false,
-                );
+                return cx.type_struct(&[
+                    self.scalar_pair_element_llvm_type(cx, 0, true),
+                    self.scalar_pair_element_llvm_type(cx, 1, true),
+                ]);
             }
             _ => {}
         };

@@ -335,7 +335,7 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         let output_type = match &output_types[..] {
             [] => self.type_void(),
             [ty] => ty,
-            tys => self.type_struct(tys, false),
+            tys => self.type_struct(tys),
         };
         let dialect = match asm_arch {
             InlineAsmArch::X86 | InlineAsmArch::X86_64
