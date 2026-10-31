@@ -259,7 +259,7 @@ impl Target {
             AstTarget::MacroDef(..) => Target::MacroDef,
 
             AstTarget::Closure(_) => Target::Closure,
-            AstTarget::Expression(_) => Target::Expression,
+            AstTarget::Expression(e) => Target::from_expr(e),
 
             AstTarget::Arm(_) => Target::Arm,
             AstTarget::Crate => Target::Crate,
