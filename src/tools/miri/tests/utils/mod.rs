@@ -9,10 +9,12 @@ mod macros;
 mod fs;
 mod io;
 mod miri_extern;
+mod float;
 
 pub use self::fs::*;
 pub use self::io::*;
 pub use self::miri_extern::*;
+pub use self::float::*;
 
 /// Return a `CString` version of the given string.
 pub fn into_c_string(str: impl Into<OsString>) -> CString {
