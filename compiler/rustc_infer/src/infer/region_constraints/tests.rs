@@ -38,8 +38,9 @@ fn trivial_solver_constraints_keep_query_response_empty() {
 #[test]
 fn extending_query_response_preserves_solver_constraints() {
     let mut constraints = QueryRegionConstraints::<'static>::default();
-    constraints
-        .add_solver_constraints(rustc_type_ir::region_constraint::RegionConstraint::new_ambig(NoSpan));
+    constraints.add_solver_constraints(
+        rustc_type_ir::region_constraint::RegionConstraint::new_ambig(NoSpan),
+    );
     assert!(!constraints.is_empty());
 
     let mut output = QueryRegionConstraints::default();
@@ -58,7 +59,8 @@ fn extending_query_response_preserves_solver_constraints() {
 fn taking_solver_constraints_clears_storage() {
     let mut storage = RegionConstraintStorage::default();
     let mut undo_log = InferCtxtUndoLogs::default();
-    let mut collector = RegionConstraintCollector { storage: &mut storage, undo_log: &mut undo_log };
+    let mut collector =
+        RegionConstraintCollector { storage: &mut storage, undo_log: &mut undo_log };
     collector.register_solver_constraint(SolverRegionConstraint::new_ambig(DUMMY_SP));
 
     assert!(collector.take_and_reset_solver_data().is_ambig());
