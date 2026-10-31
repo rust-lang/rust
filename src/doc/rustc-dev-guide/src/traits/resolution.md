@@ -27,8 +27,7 @@ it is the job of trait resolution to figure out whether there exists an impl of
 (in this case) `isize : Clone`.
 
 Note that in some cases, like generic functions, we may not be able to find a specific impl,
-but we can figure out that the caller must
-provide an impl.
+but we can figure out that the caller must provide an impl.
 For example, consider the body of `clone_slice`:
 
 ```rust,ignore
@@ -51,8 +50,8 @@ the trait resolution system resolves an obligation by proving that an appropriat
 
 During type checking, we do not store the results of trait selection.
 We simply wish to verify that trait selection will succeed.
-Then later, at codegen time, when we have all concrete types available, we
-can repeat the trait selection to choose an actual implementation,
+Then later, at codegen time, when we have all concrete types available,
+we can repeat the trait selection to choose an actual implementation,
 which will then be generated in the output binary.
 
 ## Overview
@@ -68,8 +67,7 @@ Trait resolution consists of three major parts:
 
 - **Fulfillment**: The fulfillment code is what tracks that obligations are completely fulfilled.
   Basically, it is a worklist of obligations to be selected: once selection is successful,
-  the obligation is
-  removed from the worklist, and any nested obligations are enqueued.
+  the obligation is removed from the worklist, and any nested obligations are enqueued.
   Fulfillment constrains inference variables.
 
 - **Evaluation**: Checks whether obligations holds without constraining any inference variables.
@@ -101,8 +99,8 @@ it is not possible to give back immediate feedback as to whether a unification o
 relationship between lifetimes holds or not.
 Therefore, lifetime matching is *not* considered during selection.
 This is reflected in the fact that subregion assignment is infallible.
-This may yield lifetime constraints that will later be found to be in error (in
-contrast, the non-lifetime-constraints have already been checked
+This may yield lifetime constraints that will later be found to be in error (in contrast,
+the non-lifetime-constraints have already been checked
 during selection and can never cause an error,
 though naturally they may lead to other errors downstream).
 
@@ -126,8 +124,8 @@ There are other rules when assembling candidates for built-in traits such as `Co
 `Sized`, and `CoerceUnsized`.
 
 Once this first pass is done, we can examine the set of candidates.
-If it is a singleton set, then we are done: this is the only impl in
-scope that could possibly apply.
+If it is a singleton set,
+then we are done: this is the only impl in scope that could possibly apply.
 Otherwise, we can **winnow** down the set of candidates by using where clauses and other conditions.
 Winnowing uses `evaluate_candidate` to check whether the nested obligations may apply.
 If this still leaves more than 1 candidate,
@@ -176,8 +174,7 @@ Besides an impl, the other major way to resolve an obligation is via a where cla
 The selection process is always given a [parameter
 environment] which contains a list of where clauses,
 which are basically obligations that we can assume are satisfiable.
-We will iterate over that list and check whether our current obligation can be found
-in that list.
+We will iterate over that list and check whether our current obligation can be found in that list.
 If so, it is considered satisfied.
 More precisely, we want to check whether there is a where-clause obligation that is for
 the same trait (or some subtrait) and which can match against the obligation.
