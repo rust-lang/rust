@@ -9,8 +9,8 @@ use rustc_lint_defs::builtin::{REFINING_IMPL_TRAIT_INTERNAL, REFINING_IMPL_TRAIT
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_types_for_signature};
 use rustc_middle::ty::{
-    self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt, TypeVisitor, TypingMode, Unnormalized,
+    self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeSuperVisitable,
+    TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Unnormalized,
 };
 use rustc_span::def_id::ModId;
 use rustc_span::{Span, span_bug};
@@ -428,7 +428,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Anonymize<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        self.tcx.anonymize_bound_vars(t)
+        self.tcx.anonymize_bound_vars(t.super_fold_with(self))
     }
 }
 

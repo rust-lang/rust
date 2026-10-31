@@ -1,5 +1,6 @@
 //! Regression test for <https://github.com/rust-lang/rust/issues/165091>
 
+//@ check-pass
 //@ edition: 2024
 
 #![deny(refining_impl_trait)]
