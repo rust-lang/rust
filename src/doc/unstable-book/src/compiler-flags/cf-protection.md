@@ -5,7 +5,8 @@ The tracking issue for this feature is: [#93754](https://github.com/rust-lang/ru
 ------------------------
 
 This option enables control-flow enforcement technology (CET) on x86; a more detailed description of
-CET is available [here]. Similar to `clang`, this flag takes one of the following values:
+CET is available [here]. On RISC-V it enables the Zicfilp and Zicfiss extensions instead (see
+[below](#risc-v)). Similar to `clang`, this flag takes one of the following values:
 
 - `none` - Disable CET completely (this is the default).
 - `branch` - Enable indirect branch tracking (`IBT`).
@@ -23,6 +24,21 @@ modules with a `cargo` command like:
 ```sh
 $ RUSTFLAGS="-Z cf-protection=full" cargo +nightly build -Z build-std --target x86_64-unknown-linux-gnu
 ```
+
+### RISC-V
+
+On RISC-V, `branch` emits [`Zicfilp`] landing pads and `return` uses the [`Zicfiss`] shadow stack.
+The corresponding target features need to be enabled as well:
+
+```sh
+$ RUSTFLAGS="-C target-feature=+experimental-zicfilp,+experimental-zicfiss -Z cf-protection=full" \
+    cargo +nightly build -Z build-std=core --target riscv64gc-unknown-none-elf
+```
+
+Landing pads always use the `unlabeled` scheme, since LLVM does not implement `func-sig` yet.
+
+[`Zicfilp`]: https://github.com/riscv/riscv-cfi/blob/main/src/cfi_forward.adoc
+[`Zicfiss`]: https://github.com/riscv/riscv-cfi/blob/main/src/cfi_backward.adoc
 
 ### Detection
 

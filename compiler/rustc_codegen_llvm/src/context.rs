@@ -453,6 +453,17 @@ fn init_module<'ll, 'tcx>(tcx: TyCtxt<'tcx>, llcx: llvm::Context<'ll>, llmod: &'
             "cf-protection-branch",
             1,
         );
+
+        // The RISC-V backend requires a label scheme whenever `cf-protection-branch` is set.
+        // `unlabeled` is the only one LLVM currently implements.
+        if matches!(sess.target.arch, Arch::RiscV32 | Arch::RiscV64) {
+            llvm::add_module_flag_str(
+                llmod,
+                llvm::ModuleFlagMergeBehavior::Error,
+                "cf-branch-label-scheme",
+                "unlabeled",
+            );
+        }
     }
     if let CFProtection::Return | CFProtection::Full = sess.opts.unstable_opts.cf_protection {
         llvm::add_module_flag_u32(

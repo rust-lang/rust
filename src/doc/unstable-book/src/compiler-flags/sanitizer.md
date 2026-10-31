@@ -838,8 +838,10 @@ In addition to support from a runtime by the application or operating system, th
 
 ## RISC-V 64 family
 
-ShadowCallStack uses either the `gp` register for software shadow stack, also known as `x3`, or the `ssp` register if [`Zicfiss`][riscv-zicfiss] extension is available.
-`gp`/`x3` is currently always reserved and available for ShadowCallStack instrumentation, and `ssp` in case of `Zicfiss` is only accessible through its dedicated shadow stack instructions.
+ShadowCallStack uses the `gp` register, also known as `x3`, for a software shadow stack.
+`gp`/`x3` is currently always reserved and available for ShadowCallStack instrumentation.
+The hardware shadow stack of the [`Zicfiss`][riscv-zicfiss] extension is enabled with
+[`-Z cf-protection=return`](cf-protection.md) instead.
 
 Support from the runtime and operating system is required when `gp`/`x3` is used for software shadow stack.
 A runtime must prepare a memory region and point `gp`/`x3` to the region before executing the code.
