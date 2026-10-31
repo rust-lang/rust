@@ -1,3 +1,5 @@
+#![cfg(not(skip_missing_miri_shims))] // disable tests Miri does not support
+
 use super::{Command, Output, Stdio};
 use crate::io::prelude::*;
 use crate::io::{BorrowedBuf, ErrorKind};

@@ -403,7 +403,7 @@ fn thread_current_in_dtor() {
 // https://github.com/rust-lang/rust/pull/148799#issuecomment-3731806901
 #[cfg(target_os = "windows")]
 #[test]
-#[cfg_attr(miri, ignore)] // Miri does not support fibers
+#[cfg_attr(skip_missing_miri_shims, ignore)] // Miri does not support fibers
 fn fiber_does_not_trigger_dtor() {
     use core::ffi::c_void;
     use std::ptr;
