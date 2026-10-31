@@ -18,7 +18,6 @@ fn main() {
     #[expect(clippy::needless_return)]
     (|| return 2)();
     (|| -> Option<i32> { None? })();
-    #[expect(clippy::try_err)]
     (|| -> Result<i32, i32> { Err(2)? })();
 
     // don't lint async equivalents either
@@ -29,7 +28,6 @@ fn main() {
         x?;
         Some(1)
     })();
-    #[expect(clippy::try_err)]
     (|| async {
         Err::<(), i32>(2)?;
         Ok::<(), i32>(())
@@ -50,7 +48,6 @@ fn main() {
         x?;
         Some(1)
     })();
-    #[expect(clippy::try_err)]
     (async || {
         Err::<(), i32>(2)?;
         Ok::<(), i32>(())

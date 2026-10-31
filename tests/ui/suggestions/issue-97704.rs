@@ -1,5 +1,4 @@
 //@ edition:2021
-//@ run-rustfix
 
 #![allow(unused)]
 
@@ -7,7 +6,7 @@ use std::future::Future;
 
 async fn foo() -> Result<(), i32> {
     func(async { Ok::<_, i32>(()) })?;
-    //~^ ERROR the `?` operator can only be applied to values that implement `Try`
+    //~^ ERROR the trait bound `impl Future<Output = Result<(), i32>>: ops::try_trait_old::Try` is not satisfied [E0277]
 
     Ok(())
 }

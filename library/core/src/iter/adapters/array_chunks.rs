@@ -2,7 +2,7 @@ use crate::array;
 use crate::iter::adapters::SourceIter;
 use crate::iter::{FusedIterator, InPlaceIterable, TrustedFused, TrustedRandomAccessNoCoerce};
 use crate::num::NonZero;
-use crate::ops::{ControlFlow, NeverShortCircuit, Try};
+use crate::ops::{ControlFlow, NeverShortCircuit, Try, qmark};
 
 /// An iterator over `N` elements of the iterator at a time.
 ///
@@ -85,7 +85,7 @@ where
         let mut acc = init;
         loop {
             match self.iter.next_chunk() {
-                Ok(chunk) => acc = f(acc, chunk)?,
+                Ok(chunk) => acc = qmark!(f(acc, chunk)),
                 Err(remainder) => {
                     // Make sure to not overwrite `self.remainder` with an empty array
                     // when `next` is called after `ArrayChunks` exhaustion.
@@ -131,7 +131,7 @@ where
         // `next_chunk_back` can't return `Err` with non-empty remainder
         // (assuming correct `I as ExactSizeIterator` impl).
         while let Ok(chunk) = self.iter.next_chunk_back() {
-            acc = f(acc, chunk)?
+            acc = qmark!(f(acc, chunk))
         }
 
         try { acc }

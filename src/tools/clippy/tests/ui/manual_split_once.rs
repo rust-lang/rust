@@ -57,7 +57,6 @@ fn indirect() -> Option<()> {
     let r = iter.next().unwrap();
 
     let mut iter = "a.b.c".splitn(2, '.');
-    //~^ manual_split_once
     let l = iter.next()?;
     let r = iter.next()?;
 
@@ -67,7 +66,6 @@ fn indirect() -> Option<()> {
     let l = iter.next().unwrap();
 
     let mut iter = "a.b.c".rsplitn(2, '.');
-    //~^ manual_split_once
     let r = iter.next()?;
     let l = iter.next()?;
 

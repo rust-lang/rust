@@ -12,6 +12,7 @@ impl SadGirl {
 async fn async_main() -> Result<(), ()> {
     // should be `.call().await?`
     SadGirl {}.call()?; //~ ERROR: the `?` operator can only be applied to values
+    //~| ERROR the trait bound `impl Future<Output = Result<(), ()>>: ops::try_trait_old::Try` is not satisfied [E0277]
     Ok(())
 }
 

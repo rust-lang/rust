@@ -27,13 +27,13 @@ fn main() {
     //~^ manual_split_once
 
     fn _f(s: &str) -> Option<&str> {
-        let _ = s.split_once('=')?.1;
+        let _ = s.split_once('=').map(|x| x.1)?;
         //~^ manual_split_once
-        let _ = s.split_once('=')?.1;
+        let _ = s.split_once('=').map(|x| x.1)?;
         //~^ manual_split_once
-        let _ = s.rsplit_once('=')?.0;
+        let _ = s.rsplit_once('=').map(|x| x.0)?;
         //~^ manual_split_once
-        let _ = s.rsplit_once('=')?.0;
+        let _ = s.rsplit_once('=').map(|x| x.0)?;
         //~^ manual_split_once
         None
     }
@@ -56,20 +56,18 @@ fn indirect() -> Option<()> {
     
     
 
-    let (l, r) = "a.b.c".split_once('.')?;
-    //~^ manual_split_once
-    
-    
+    let mut iter = "a.b.c".splitn(2, '.');
+    let l = iter.next()?;
+    let r = iter.next()?;
 
     let (l, r) = "a.b.c".rsplit_once('.').unwrap();
     //~^ manual_split_once
     
     
 
-    let (l, r) = "a.b.c".rsplit_once('.')?;
-    //~^ manual_split_once
-    
-    
+    let mut iter = "a.b.c".rsplitn(2, '.');
+    let r = iter.next()?;
+    let l = iter.next()?;
 
     // could lint, currently doesn't
 

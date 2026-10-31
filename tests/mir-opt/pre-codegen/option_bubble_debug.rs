@@ -21,7 +21,7 @@ pub fn option_direct(x: Option<u32>) -> Option<u32> {
 // EMIT_MIR option_bubble_debug.option_traits.runtime-optimized.after.mir
 pub fn option_traits(x: Option<u32>) -> Option<u32> {
     // CHECK-LABEL: fn option_traits(_1: Option<u32>) -> Option<u32>
-    // CHECK: = <Option<u32> as Try>::branch(copy _1)
+    // CHECK: = <Option<u32> as ops::try_trait_old::Try>::branch(copy _1)
     // CHECK: [[TEMP:_.+]] = Not({{.+}});
     // CHECK: _0 = <Option<u32> as Try>::from_output(move [[TEMP]])
 

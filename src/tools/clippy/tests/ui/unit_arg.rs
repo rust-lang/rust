@@ -2,7 +2,6 @@
 //@no-rustfix: overlapping suggestions
 #![warn(clippy::unit_arg)]
 #![expect(
-    clippy::needless_question_mark,
     clippy::never_loop,
     clippy::no_effect,
     clippy::unused_unit

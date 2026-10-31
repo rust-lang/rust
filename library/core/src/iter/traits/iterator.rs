@@ -9,7 +9,7 @@ use crate::array;
 use crate::cmp::{self, KeyAndValue, Ordering};
 use crate::marker::Destruct;
 use crate::num::NonZero;
-use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, Residual, Try};
+use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, Residual, Try, qmark};
 
 fn _assert_is_dyn_compatible(_: &dyn Iterator<Item = ()>) {}
 
@@ -2501,7 +2501,8 @@ pub const trait Iterator {
     {
         let mut accum = init;
         while let Some(x) = self.next() {
-            accum = f(accum, x)?;
+            // Cannot use `?` as legacy desugaring does not use `ops::Try`
+            accum = qmark!(f(accum, x));
         }
         try { accum }
     }
@@ -4318,7 +4319,8 @@ impl<I: Iterator + ?Sized> IteratorRefSpec for &mut I {
     {
         let mut accum = init;
         while let Some(x) = self.next() {
-            accum = f(accum, x)?;
+            // Cannot use `?` as legacy desugaring does not use `ops::Try`
+            accum = qmark!(f(accum, x));
         }
         try { accum }
     }

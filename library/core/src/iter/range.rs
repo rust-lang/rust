@@ -6,7 +6,7 @@ use crate::marker::Destruct;
 use crate::mem;
 use crate::net::{Ipv4Addr, Ipv6Addr};
 use crate::num::NonZero;
-use crate::ops::{self, Try};
+use crate::ops::{self, Try, qmark};
 
 // Safety: All invariants are upheld.
 macro_rules! unsafe_impl_trusted_step {
@@ -1428,13 +1428,13 @@ impl<A: Step> RangeInclusiveIteratorImpl for ops::RangeInclusive<A> {
             let n =
                 Step::forward_checked(self.start.clone(), 1).expect("`Step` invariants not upheld");
             let n = mem::replace(&mut self.start, n);
-            accum = f(accum, n)?;
+            accum = qmark!(f(accum, n));
         }
 
         self.exhausted = true;
 
         if self.start == self.end {
-            accum = f(accum, self.start.clone())?;
+            accum = qmark!(f(accum, self.start.clone()));
         }
 
         try { accum }
@@ -1457,13 +1457,13 @@ impl<A: Step> RangeInclusiveIteratorImpl for ops::RangeInclusive<A> {
             let n =
                 Step::backward_checked(self.end.clone(), 1).expect("`Step` invariants not upheld");
             let n = mem::replace(&mut self.end, n);
-            accum = f(accum, n)?;
+            accum = qmark!(f(accum, n));
         }
 
         self.exhausted = true;
 
         if self.start == self.end {
-            accum = f(accum, self.start.clone())?;
+            accum = qmark!(f(accum, self.start.clone()));
         }
 
         try { accum }
@@ -1488,13 +1488,13 @@ impl<T: TrustedStep> RangeInclusiveIteratorImpl for ops::RangeInclusive<T> {
             // SAFETY: just checked precondition
             let n = unsafe { Step::forward_unchecked(self.start, 1) };
             let n = mem::replace(&mut self.start, n);
-            accum = f(accum, n)?;
+            accum = qmark!(f(accum, n));
         }
 
         self.exhausted = true;
 
         if self.start == self.end {
-            accum = f(accum, self.start)?;
+            accum = qmark!(f(accum, self.start));
         }
 
         try { accum }
@@ -1517,13 +1517,13 @@ impl<T: TrustedStep> RangeInclusiveIteratorImpl for ops::RangeInclusive<T> {
             // SAFETY: just checked precondition
             let n = unsafe { Step::backward_unchecked(self.end, 1) };
             let n = mem::replace(&mut self.end, n);
-            accum = f(accum, n)?;
+            accum = qmark!(f(accum, n));
         }
 
         self.exhausted = true;
 
         if self.start == self.end {
-            accum = f(accum, self.start)?;
+            accum = qmark!(f(accum, self.start));
         }
 
         try { accum }
