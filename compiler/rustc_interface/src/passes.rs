@@ -621,6 +621,7 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
         // Account for explicitly marked-to-track files
         // (e.g. accessed in proc macros).
         let file_depinfo = sess.file_depinfo.borrow();
+        tracing::error!("{:?}", *file_depinfo);
 
         let normalize_path = |path: PathBuf| escape_dep_filename(&path.to_string_lossy());
 
@@ -656,6 +657,18 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
             checksum_hash_algo,
         );
         files.extend(extra_tracked_files);
+
+        let comptime_tracked_files = hash_iter_files(
+            tcx.sess
+                .opts
+                .unstable_opts
+                .experimental_comptime_files
+                .iter()
+                .map(PathBuf::from)
+                .map(normalize_path),
+            checksum_hash_algo,
+        );
+        files.extend(comptime_tracked_files);
 
         // We also need to track used PGO profile files
         if let Some(ref profile_instr) = sess.opts.cg.profile_use {
