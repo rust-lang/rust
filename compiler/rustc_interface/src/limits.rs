@@ -9,7 +9,7 @@
 //! `#![recursion_limit="22"]`. This pass just looks for those attributes.
 
 use rustc_ast::{self as ast, DUMMY_NODE_ID};
-use rustc_attr_ir::target::Target;
+use rustc_attr_ir::target::AstTarget;
 use rustc_attr_ir::{Attribute, find_attr};
 use rustc_attr_parsing::{AttributeParser, ShouldEmit};
 use rustc_feature::Features;
@@ -29,7 +29,7 @@ pub fn get_limits(krate_attrs: &[ast::Attribute], sess: &Session, features: &Fea
                 sym::pattern_complexity_limit,
             ])
         }),
-        Target::Crate,
+        AstTarget::Crate,
         DUMMY_SP,
         DUMMY_NODE_ID,
         Some(features),

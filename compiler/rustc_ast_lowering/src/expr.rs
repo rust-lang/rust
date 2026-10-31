@@ -6,7 +6,7 @@ use rustc_ast::node_id::NodeMap;
 use rustc_ast::visit::{Visitor, walk_expr};
 use rustc_ast::*;
 use rustc_attr_ir::lang_items::LangItem;
-use rustc_attr_ir::target::{AstTarget, Target};
+use rustc_attr_ir::target::AstTarget;
 use rustc_errors::msg;
 use rustc_hir as hir;
 use rustc_hir::HirId;
@@ -231,13 +231,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let old_attrs =
                         self.curr_owner.attrs.get(&ex.hir_id.local_id).copied().unwrap_or(&[]);
                     let new_attrs = self
-                        .lower_attrs_vec(
-                            &e.attrs,
-                            e.span,
-                            ex.hir_id,
-                            Target::from_expr(e),
-                            AstTarget::Expression(e),
-                        )
+                        .lower_attrs_vec(&e.attrs, e.span, ex.hir_id, AstTarget::Expression(e))
                         .into_iter()
                         .chain(old_attrs.iter().cloned());
                     let new_attrs = &*self.arena.alloc_from_iter(new_attrs);
@@ -261,13 +255,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
 
         let expr_hir_id = self.lower_node_id(e.id);
-        self.lower_attrs(
-            expr_hir_id,
-            &e.attrs,
-            e.span,
-            Target::from_expr(e),
-            AstTarget::Expression(e),
-        );
+        self.lower_attrs(expr_hir_id, &e.attrs, e.span, AstTarget::Expression(e));
 
         let kind = match &e.kind {
             ExprKind::Array(exprs) => hir::ExprKind::Array(self.lower_exprs(exprs)),
@@ -807,7 +795,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let guard = arm.guard.as_ref().map(|guard| self.lower_expr(&guard.cond));
         let hir_id = self.next_id();
         let span = self.lower_span(arm.span);
-        self.lower_attrs(hir_id, &arm.attrs, arm.span, Target::Arm, AstTarget::Arm(arm));
+        self.lower_attrs(hir_id, &arm.attrs, arm.span, AstTarget::Arm(arm));
         let is_never_pattern = pat.is_never_pattern();
         // We need to lower the body even if it's unneeded for never pattern in match,
         // ensure that we can get HirId for DefId if need (issue #137708).
@@ -1671,7 +1659,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_expr_field(&mut self, f: &ExprField) -> hir::ExprField<'hir> {
         let hir_id = self.lower_node_id(f.id);
-        self.lower_attrs(hir_id, &f.attrs, f.span, Target::ExprField, AstTarget::ExprField(f));
+        self.lower_attrs(hir_id, &f.attrs, f.span, AstTarget::ExprField(f));
         hir::ExprField {
             hir_id,
             ident: self.lower_ident(f.ident),
@@ -1938,13 +1926,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         //
         // Also, add the attributes to the outer returned expr node.
         let expr = self.expr_drop_temps_mut(for_span, match_expr);
-        self.lower_attrs(
-            expr.hir_id,
-            &e.attrs,
-            e.span,
-            Target::from_expr(e),
-            AstTarget::Expression(e),
-        );
+        self.lower_attrs(expr.hir_id, &e.attrs, e.span, AstTarget::Expression(e));
         expr
     }
 
