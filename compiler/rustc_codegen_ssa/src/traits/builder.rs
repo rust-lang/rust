@@ -349,26 +349,23 @@ pub trait BuilderMethods<'a, 'tcx>:
         size: Size,
     );
 
-    fn gep(&mut self, ty: Self::Type, ptr: Self::Value, indices: &[Self::Value]) -> Self::Value;
-    fn inbounds_gep(
-        &mut self,
-        ty: Self::Type,
-        ptr: Self::Value,
-        indices: &[Self::Value],
-    ) -> Self::Value;
+    fn gep(&mut self, stride: Size, ptr: Self::Value, index: Self::Value) -> Self::Value;
+    fn inbounds_gep(&mut self, stride: Size, ptr: Self::Value, index: Self::Value) -> Self::Value {
+        self.gep(stride, ptr, index)
+    }
     fn inbounds_nuw_gep(
         &mut self,
-        ty: Self::Type,
+        stride: Size,
         ptr: Self::Value,
-        indices: &[Self::Value],
+        index: Self::Value,
     ) -> Self::Value {
-        self.inbounds_gep(ty, ptr, indices)
+        self.inbounds_gep(stride, ptr, index)
     }
     fn ptradd(&mut self, ptr: Self::Value, offset: Self::Value) -> Self::Value {
-        self.gep(self.cx().type_i8(), ptr, &[offset])
+        self.gep(Size::from_bytes(1), ptr, offset)
     }
     fn inbounds_ptradd(&mut self, ptr: Self::Value, offset: Self::Value) -> Self::Value {
-        self.inbounds_gep(self.cx().type_i8(), ptr, &[offset])
+        self.inbounds_gep(Size::from_bytes(1), ptr, offset)
     }
 
     fn trunc(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
