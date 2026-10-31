@@ -499,7 +499,7 @@ fn main() -> Result<()> {
     // target is also 64bit little-endian, so `host == target` is too strict.
     if cfg!(all(
         feature = "genmc",
-        target_os = "linux",
+        any(target_os = "linux", target_os = "macos"),
         target_pointer_width = "64",
         target_endian = "little"
     )) && host == target
