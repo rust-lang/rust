@@ -87,7 +87,10 @@ impl AttributeExt for Attribute {
             AttrKind::Normal(normal) => normal.item.name(),
             AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace(_)) => None,
             AttrKind::DocComment(..) => None,
-            AttrKind::Generated(generated) => Some(generated.name()),
+            AttrKind::Generated(generated) => match generated.path() {
+                [name] => Some(*name),
+                _ => None,
+            },
         }
     }
 
@@ -104,7 +107,7 @@ impl AttributeExt for Attribute {
                         .all(|(s, n)| s.args.is_none() && s.ident.name == *n)
             }
             AttrKind::Synthetic(..) | AttrKind::DocComment(..) => false,
-            AttrKind::Generated(generated) => generated.path_matches(name),
+            AttrKind::Generated(generated) => generated.path() == name,
         }
     }
 
@@ -934,7 +937,7 @@ impl Attribute {
             AttrKind::Synthetic(CfgTrace(_)) => smallvec![sym::cfg],
             AttrKind::Synthetic(CfgAttrTrace(_)) => smallvec![sym::cfg_attr],
             AttrKind::DocComment(_, _) => smallvec![sym::doc],
-            AttrKind::Generated(generated) => generated.symbol_path(),
+            AttrKind::Generated(generated) => generated.path().iter().copied().collect(),
         }
     }
 

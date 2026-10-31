@@ -34,7 +34,6 @@ use rustc_span::{
     ByteSymbol, DUMMY_SP, ErrorGuaranteed, Ident, LocalExpnId, Span, Spanned, Symbol, kw, respan,
     sym,
 };
-use smallvec::{SmallVec, smallvec};
 use thin_vec::{ThinVec, thin_vec};
 
 use crate::attr::data_structures::CfgEntry;
@@ -3534,32 +3533,15 @@ impl GeneratedAttr {
         }
     }
 
-    pub fn name(&self) -> Symbol {
+    pub fn path(&self) -> &[Symbol] {
         match self {
-            GeneratedAttr::AutomaticallyDerived => sym::automatically_derived,
-            GeneratedAttr::RustcConstUnstableDerived => sym::rustc_const_unstable,
-            GeneratedAttr::Inline => sym::inline,
-            GeneratedAttr::DocHidden => sym::doc,
-            GeneratedAttr::CoverageOff => sym::coverage,
-            GeneratedAttr::RustcTestMarker(_) => sym::rustc_test_marker,
-        }
-    }
-
-    pub fn path_matches(&self, name: &[Symbol]) -> bool {
-        let path = match self {
             GeneratedAttr::AutomaticallyDerived => &[sym::automatically_derived],
             GeneratedAttr::RustcConstUnstableDerived => &[sym::rustc_const_unstable],
             GeneratedAttr::Inline => &[sym::inline],
             GeneratedAttr::DocHidden => &[sym::doc],
             GeneratedAttr::CoverageOff => &[sym::coverage],
             GeneratedAttr::RustcTestMarker(_) => &[sym::rustc_test_marker],
-        };
-
-        path == name
-    }
-
-    pub fn symbol_path(&self) -> SmallVec<[Symbol; 1]> {
-        smallvec![self.name()]
+        }
     }
 
     pub fn path_span(&self) -> Option<Span> {
