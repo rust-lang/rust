@@ -186,6 +186,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             | sym::simd_minimum_number_nsz
             | sym::simd_saturating_add
             | sym::simd_saturating_sub
+            | sym::simd_add_algebraic
+            | sym::simd_sub_algebraic
+            | sym::simd_mul_algebraic
+            | sym::simd_div_algebraic
+            | sym::simd_rem_algebraic
             | sym::simd_arith_offset => {
                 use mir::BinOp;
 
@@ -199,6 +204,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 enum Op {
                     MirOp(BinOp),
                     SaturatingOp(BinOp),
+                    AlgebraicOp(BinOp),
                     FMinMax(MinMax),
                     WrappingOffset,
                 }
@@ -223,6 +229,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     sym::simd_minimum_number_nsz => Op::FMinMax(MinMax::MinimumNumberNsz),
                     sym::simd_saturating_add => Op::SaturatingOp(BinOp::Add),
                     sym::simd_saturating_sub => Op::SaturatingOp(BinOp::Sub),
+                    sym::simd_add_algebraic => Op::AlgebraicOp(BinOp::Add),
+                    sym::simd_sub_algebraic => Op::AlgebraicOp(BinOp::Sub),
+                    sym::simd_mul_algebraic => Op::AlgebraicOp(BinOp::Mul),
+                    sym::simd_div_algebraic => Op::AlgebraicOp(BinOp::Div),
+                    sym::simd_rem_algebraic => Op::AlgebraicOp(BinOp::Rem),
                     sym::simd_arith_offset => Op::WrappingOffset,
                     _ => unreachable!(),
                 };
@@ -232,9 +243,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     let right = self.read_immediate(&self.project_index(&right, i)?)?;
                     let dest = self.project_index(&dest, i)?;
                     let val = match which {
-                        Op::MirOp(mir_op) => {
+                        Op::MirOp(mir_op) | Op::AlgebraicOp(mir_op) => {
                             // this does NaN adjustments.
-                            let val = self.binary_op(mir_op, &left, &right).map_err_kind(|kind| {
+                            let mut val = self.binary_op(mir_op, &left, &right).map_err_kind(|kind| {
                                 match kind {
                                     InterpErrorKind::UndefinedBehavior(UndefinedBehaviorInfo::ShiftOverflow { shift_amount, .. }) => {
                                         // this resets the interpreter backtrace, but it's not worth avoiding that.
@@ -247,6 +258,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                                     kind => kind
                                 }
                             })?;
+                            if matches!(which, Op::AlgebraicOp(_)) {
+                                assert!(val.layout.ty.is_floating_point());
+                                val = M::apply_float_nondet(self, val)?;
+                            }
                             if matches!(
                                 mir_op,
                                 BinOp::Eq
@@ -367,6 +382,38 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 for i in 0..op_len {
                     let op = self.read_immediate(&self.project_index(&op, i)?)?;
                     res = self.binary_op(mir_op, &res, &op)?;
+                }
+                self.write_immediate(*res, &dest)?;
+            }
+            sym::simd_reduce_add_algebraic | sym::simd_reduce_mul_algebraic => {
+                use mir::BinOp;
+
+                let (op, op_len) = self.project_to_simd(&args[0])?;
+
+                let scalar = |f: Double| {
+                    self.float_to_float_or_int(
+                        &ImmTy::from_scalar(
+                            Scalar::from_f64(f),
+                            self.layout_of(self.tcx.types.f64)?,
+                        ),
+                        dest.layout,
+                    )
+                };
+                let (init, mir_op) = match intrinsic_name {
+                    sym::simd_reduce_add_algebraic => (scalar(-Double::ZERO)?, BinOp::Add),
+                    sym::simd_reduce_mul_algebraic => {
+                        (scalar(Double::from_u128(1).value)?, BinOp::Mul)
+                    }
+                    _ => unreachable!(),
+                };
+
+                let mut res = init;
+                for i in M::nondet_index_iterator(self, op_len) {
+                    let op = self.read_immediate(&self.project_index(&op, i)?)?;
+                    res = self.binary_op(mir_op, &res, &op)?;
+                    if dest.layout.ty.is_floating_point() {
+                        res = M::apply_float_nondet(self, res)?;
+                    }
                 }
                 self.write_immediate(*res, &dest)?;
             }

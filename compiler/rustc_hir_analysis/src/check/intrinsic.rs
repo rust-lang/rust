@@ -657,6 +657,11 @@ pub(crate) fn check_intrinsic_type(
         | sym::simd_maximum_number_nsz
         | sym::simd_saturating_add
         | sym::simd_saturating_sub
+        | sym::simd_add_algebraic
+        | sym::simd_sub_algebraic
+        | sym::simd_mul_algebraic
+        | sym::simd_div_algebraic
+        | sym::simd_rem_algebraic
         | sym::simd_carryless_mul => (1, 0, vec![param(0), param(0)], param(0)),
         sym::simd_arith_offset => (2, 0, vec![param(0), param(1)], param(0)),
         sym::simd_neg
@@ -708,6 +713,8 @@ pub(crate) fn check_intrinsic_type(
         }
         sym::simd_reduce_add_unordered
         | sym::simd_reduce_mul_unordered
+        | sym::simd_reduce_add_algebraic
+        | sym::simd_reduce_mul_algebraic
         | sym::simd_reduce_and
         | sym::simd_reduce_or
         | sym::simd_reduce_xor
