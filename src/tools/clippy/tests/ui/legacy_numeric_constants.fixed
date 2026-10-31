@@ -1,12 +1,12 @@
 //@aux-build:proc_macros.rs
 #![warn(clippy::legacy_numeric_constants)]
-#![expect(deprecated, renamed_and_removed_lints, clippy::no_effect, clippy::useless_attribute)]
+#![expect(deprecated, clippy::no_effect, clippy::useless_attribute)]
 
 #[macro_use]
 extern crate proc_macros;
 
 pub mod a {
-    #[expect(legacy_numeric_constants)]
+    #[expect(clippy::legacy_numeric_constants)]
     pub use std::u128;
 }
 
@@ -22,7 +22,7 @@ macro_rules! b {
     };
 }
 
-#[expect(legacy_numeric_constants)]
+#[expect(clippy::legacy_numeric_constants)]
 use std::{f64, u8::MIN, u32, u32::MAX};
 
 fn main() {
