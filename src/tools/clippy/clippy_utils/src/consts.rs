@@ -433,6 +433,13 @@ impl Constant {
             _ => false,
         }
     }
+
+    pub fn to_int(&self, tcx: TyCtxt<'_>, ty: IntTy) -> Option<i128> {
+        match *self {
+            Self::Int(x) => Some(sext(tcx, x, ty)),
+            _ => None,
+        }
+    }
 }
 
 /// Parses a `LitKind` to a `Constant`.
@@ -592,6 +599,15 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
     /// Attempts to evaluate the expression.
     pub fn eval(&self, e: &Expr<'_>) -> Option<Constant> {
         self.expr(e)
+    }
+
+    /// Attempts to evaluate the expression and optionally dereference the result.
+    pub fn eval_deref(&self, e: &Expr<'_>, deref: bool) -> Option<Constant> {
+        match (self.eval(e), deref) {
+            (Some(c), false) => Some(c),
+            (Some(Constant::Ref(c)), true) => Some(*c),
+            _ => None,
+        }
     }
 
     /// Attempts to evaluate the expression without accessing other items.

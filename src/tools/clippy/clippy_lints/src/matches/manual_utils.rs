@@ -113,11 +113,12 @@ where
     // it's being passed by value.
     let scrutinee = peel_hir_expr_refs(scrutinee).0;
     let (scrutinee_str, _) = snippet_with_context(cx, scrutinee.span, expr_ctxt, "..", &mut app);
-    let scrutinee_str = if scrutinee.span.ctxt() == expr.span.ctxt() && cx.precedence(scrutinee) < ExprPrecedence::Unambiguous {
-        format!("({scrutinee_str})")
-    } else {
-        scrutinee_str.into()
-    };
+    let scrutinee_str =
+        if scrutinee.span.ctxt() == expr.span.ctxt() && cx.precedence(scrutinee) < ExprPrecedence::Unambiguous {
+            format!("({scrutinee_str})")
+        } else {
+            scrutinee_str.into()
+        };
 
     let closure_expr_snip = some_expr.to_snippet_with_context(cx, expr_ctxt, &mut app);
     let closure_body = if some_expr.needs_unsafe_block {

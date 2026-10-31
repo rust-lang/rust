@@ -3,10 +3,12 @@ name: Deploy
 on:
   push:
     branches:
-      - master
+      - main
       - beta
     tags:
       - rust-1.**
+
+permissions: {}
 
 concurrency:
   group: ${{ github.workflow }}
@@ -25,13 +27,13 @@ jobs:
     steps:
     # Setup
     - name: Checkout
-      uses: actions/checkout@v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
         # Unsetting this would make so that any malicious package could get our Github Token
         persist-credentials: false
 
     - name: Checkout
-      uses: actions/checkout@v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
         ref: ${{ env.TARGET_BRANCH }}
         path: 'out'
@@ -54,19 +56,19 @@ jobs:
     # We need to check out all files that (transitively) depend on the
     # structure of the gh-pages branch, so that we're able to change that
     # structure without breaking the deployment.
-    - name: Use deploy files from master branch
+    - name: Use deploy files from main branch
       run: |
-        git fetch --no-tags --prune --depth=1 origin master
-        git checkout origin/master -- .github/deploy.sh util/versions.py util/gh-pages/versions.html
+        git fetch --no-tags --prune --depth=1 origin main
+        git checkout origin/main -- .github/deploy.sh util/versions.py util/gh-pages/versions.html
 
     # Generate lockfile for caching to avoid build problems with cached deps
     - name: cargo generate-lockfile
       run: cargo generate-lockfile
 
     - name: Cache
-      uses: Swatinem/rust-cache@v2
+      uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       with:
-        save-if: ${{ github.ref == 'refs/heads/master' }}
+        save-if: ${{ github.ref == 'refs/heads/main' }}
 
     - name: cargo collect-metadata
       run: cargo collect-metadata
@@ -74,5 +76,7 @@ jobs:
     - name: Deploy
       run: |
         eval "$(ssh-agent -s)"
-        ssh-add - <<< "${{ secrets.DEPLOY_KEY }}"
+        ssh-add - <<< "${DEPLOY_KEY}"
         bash .github/deploy.sh
+      env:
+        DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}

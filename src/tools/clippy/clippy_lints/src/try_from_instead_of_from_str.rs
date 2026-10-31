@@ -189,7 +189,10 @@ impl<'tcx> LateLintPass<'tcx> for TryFromInsteadOfFromStr {
                 })
             // We check that the lifetime used by `TryFrom::Error` is not used anywhere else.
             && check_lifetimes(err_ty, imp, &of_trait.trait_ref)
+            && let [param] = cx.tcx.hir_body(fn_body).params
             // We retrieve all snippets for lint suggestion.
+            // Only capture the pattern's span: the type is already guaranteed to be `&str`.
+            && let Some(fn_arg) = snippet_opt(cx, param.pat.span)
             && let Some(fn_body) = snippet_opt(cx, cx.tcx.hir_span_with_body(fn_body.hir_id))
             && let Some(err_ty) = snippet_opt(cx, err_ty.span)
             && let Some(generics) = snippet_opt(cx, imp.generics.span)
@@ -200,7 +203,7 @@ impl<'tcx> LateLintPass<'tcx> for TryFromInsteadOfFromStr {
 impl{generics} core::str::FromStr for {self_ty} {{
     type Err = {err_ty};
 
-    fn from_str(value: &str) -> Result<Self, Self::Err> {fn_body}
+    fn from_str({fn_arg}: &str) -> Result<Self, Self::Err> {fn_body}
 }}"
             );
             span_lint_and_then(

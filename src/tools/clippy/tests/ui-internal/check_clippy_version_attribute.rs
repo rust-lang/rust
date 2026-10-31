@@ -1,4 +1,5 @@
 #![feature(rustc_private)]
+#![feature(default_field_values)]
 #![deny(clippy::invalid_clippy_version_attribute, clippy::missing_clippy_version_attribute)]
 
 #[macro_use]
