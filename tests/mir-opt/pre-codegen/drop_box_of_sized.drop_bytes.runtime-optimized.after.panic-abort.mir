@@ -78,6 +78,7 @@ fn drop_bytes(_1: *mut Box<[u8; 1024]>) -> () {
     bb1: {
         StorageDead(_2);
         StorageDead(_3);
+        _0 = const ();
         return;
     }
 }

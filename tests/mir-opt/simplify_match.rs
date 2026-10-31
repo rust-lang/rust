@@ -9,6 +9,7 @@ fn noop() {}
 // CHECK: debug x => const false;
 // CHECK-NOT: switchInt
 // CHECK: bb0: {
+// CHECK-NEXT: _0 = const ();
 // CHECK-NEXT: return;
 fn main() {
     match {

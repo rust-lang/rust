@@ -27,6 +27,7 @@ fn unaligned_copy_manual(_1: *const u128, _2: *mut u128) -> () {
         _5 = copy ((*_3).0: u128);
         ((*_4).0: u128) = move _5;
         StorageDead(_5);
+        _0 = const ();
         StorageDead(_4);
         StorageDead(_3);
         return;

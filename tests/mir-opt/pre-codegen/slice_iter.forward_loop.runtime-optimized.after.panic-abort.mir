@@ -195,6 +195,7 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
         StorageDead(_12);
         StorageDead(_15);
         StorageDead(_20);
+        _0 = const ();
         StorageDead(_23);
         drop(_2) -> [return: bb11, unwind unreachable];
     }

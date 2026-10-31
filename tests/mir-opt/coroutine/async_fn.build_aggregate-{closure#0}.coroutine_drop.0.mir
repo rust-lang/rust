@@ -86,6 +86,7 @@ fn build_aggregate::{closure#0}(_1: &mut {async fn body of build_aggregate()}) -
 
     bb0: {
         _50 = discriminant((*_1));
+        _0 = const ();
         switchInt(move _50) -> [0: bb16, 3: bb17, 4: bb18, otherwise: bb19];
     }
 

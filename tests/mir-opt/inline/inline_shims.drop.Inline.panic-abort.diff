@@ -89,6 +89,7 @@
       }
   
       bb1: {
++         _3 = const ();
 +         StorageDead(_8);
 +         StorageDead(_7);
 +         StorageDead(_6);
@@ -105,6 +106,7 @@
       }
   
       bb2: {
++         _8 = const ();
 +         StorageDead(_16);
 +         StorageDead(_15);
 +         StorageDead(_14);
@@ -126,6 +128,7 @@
 +     }
 + 
 +     bb5: {
++         _0 = const ();
 +         StorageDead(_18);
 +         StorageDead(_17);
           StorageDead(_5);
