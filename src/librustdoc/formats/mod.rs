@@ -4,6 +4,7 @@ pub(crate) mod renderer;
 
 pub(crate) use renderer::{FormatRenderer, run_format};
 use rustc_hir::def_id::DefId;
+use rustc_middle::ty::TyCtxt;
 
 use crate::clean::{self, ItemId};
 use crate::html::render::Context;
@@ -24,6 +25,14 @@ impl Impl {
 
     pub(crate) fn trait_did(&self) -> Option<DefId> {
         self.inner_impl().trait_.as_ref().map(|t| t.def_id())
+    }
+
+    pub(crate) fn is_deref_trait(&self, tcx: TyCtxt<'_>) -> bool {
+        self.trait_did() == tcx.lang_items().deref_trait()
+    }
+
+    pub(crate) fn is_deref_mut_trait(&self, tcx: TyCtxt<'_>) -> bool {
+        self.trait_did() == tcx.lang_items().deref_mut_trait()
     }
 
     /// This function is used to extract a `DefId` to be used as a key for the `Cache::impls` field.
