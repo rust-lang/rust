@@ -283,7 +283,7 @@ impl<'a, 'tcx, V> RetagPlan<V> {
         }
 
         let intptr_ty = data_layout.ptr_sized_integer();
-        let align = intptr_ty.align(data_layout).abi;
+        let align = intptr_ty.align(data_layout);
 
         let alloc = Allocation::from_bytes(&bytes, align, Mutability::Not, ());
         let const_alloc = tcx.mk_const_alloc(alloc);

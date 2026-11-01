@@ -27,7 +27,7 @@ impl<'a, 'tcx> VirtualIndex {
         let vtable_byte_offset = self.0 * ptr_size.bytes();
 
         let gep = bx.inbounds_ptradd(llvtable, bx.const_usize(vtable_byte_offset));
-        let ptr_align = bx.data_layout().pointer_align().abi;
+        let ptr_align = bx.data_layout().pointer_align();
         let ptr = bx.load(llty, gep, ptr_align);
 
         // VTable loads are invariant.

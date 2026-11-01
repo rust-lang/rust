@@ -485,7 +485,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 }
                 // Vectors require at least element alignment, else disable the opt
                 BackendRepr::SimdVector { element, count: _ }
-                    if element.default_align(dl).abi > align =>
+                    if element.default_align(dl) > align =>
                 {
                     BackendRepr::Memory { sized: true }
                 }
@@ -810,7 +810,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         // the alignment of the union. (This value is used both for
         // determining the alignment of the overall enum, and the
         // determining the alignment of the payload after the tag.)
-        let mut prefix_align = min_ity.align(dl).abi;
+        let mut prefix_align = min_ity.align(dl);
         if repr.c() {
             for fields in variants {
                 for field in fields {
