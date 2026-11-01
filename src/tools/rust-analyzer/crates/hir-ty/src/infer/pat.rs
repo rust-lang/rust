@@ -1383,7 +1383,9 @@ impl<'db> InferenceContext<'db> {
                         // (RFC 3627, Rule 5). If we implement a pattern typing ruleset with Rule 4E
                         // but not Rule 5, we'll need to check that here.
                         debug_assert!(ref_pat_matches_mut_ref);
-                        // FIXME: Emit an error.
+                        self.push_diagnostic(
+                            InferenceDiagnostic::MatchInheritedImmRefWithMutRefPat { pat },
+                        );
                     }
 
                     pat_info.binding_mode = ByRef::No;

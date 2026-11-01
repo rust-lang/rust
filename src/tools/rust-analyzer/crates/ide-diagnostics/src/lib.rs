@@ -58,6 +58,7 @@ mod handlers {
     pub(crate) mod invalid_range_pat_type;
     pub(crate) mod macro_error;
     pub(crate) mod malformed_derive;
+    pub(crate) mod match_inherited_imm_ref_with_mut_ref_pat;
     pub(crate) mod method_call_illegal_sized_bound;
     pub(crate) mod mismatched_arg_count;
     pub(crate) mod mismatched_array_pat_len;
@@ -105,7 +106,6 @@ mod handlers {
     pub(crate) mod unresolved_module;
     pub(crate) mod unused_must_use;
     pub(crate) mod yield_outside_coroutine;
-
     // The handlers below are unusual, the implement the diagnostics as well.
     pub(crate) mod field_shorthand;
     pub(crate) mod json_is_not_rust;
@@ -551,6 +551,9 @@ pub fn semantic_diagnostics(
             AnyDiagnostic::ExplicitDropMethodUse(d) => handlers::explicit_drop_method_use::explicit_drop_method_use(&ctx, &d),
             AnyDiagnostic::YieldOutsideCoroutine(d) => handlers::yield_outside_coroutine::yield_outside_coroutine(&ctx, &d),
             AnyDiagnostic::ReturnOutsideFunction(d) => handlers::return_outside_function::return_outside_function(&ctx, &d),
+            AnyDiagnostic::MatchInheritedImmRefWithMutRefPat(d) => {
+        handlers::match_inherited_imm_ref_with_mut_ref_pat::match_inherited_imm_ref_with_mut_ref_pat(&ctx, &d)
+    }
             AnyDiagnostic::InvalidPatPathRes(d) => handlers::invalid_pat_path_res::invalid_pat_path_res(&ctx, &d)
         };
         res.push(d)
